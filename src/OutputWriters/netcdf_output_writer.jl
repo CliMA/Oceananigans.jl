@@ -308,7 +308,7 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
     )
 
     # Open the NetCDF dataset file
-    dataset = Dataset(filepath, mode, attrib=global_attributes)
+    dataset = NCDataset(filepath, mode, attrib=global_attributes)
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
@@ -336,6 +336,8 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
 
         sync(dataset)
     end
+
+    close(dataset)
 
     return NetCDFOutputWriter(filepath, dataset, outputs, schedule, mode, field_slicer, array_type, 0.0, verbose)
 end
@@ -368,7 +370,7 @@ define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, a
 ##### Write output
 #####
 
-Base.open(nc::NetCDFOutputWriter) = Dataset(nc.filepath, "a")
+Base.open(nc::NetCDFOutputWriter) = NCDataset(nc.filepath, "a")
 Base.close(nc::NetCDFOutputWriter) = close(nc.dataset)
 
 """
@@ -378,6 +380,8 @@ Writes output to netcdf file `output_writer.filepath` at specified intervals. In
 every time an output is written to the file.
 """
 function write_output!(ow::NetCDFOutputWriter, model)
+    ow.dataset = open(ow)
+
     ds, verbose, filepath = ow.dataset, ow.verbose, ow.filepath
 
     time_index = length(ds["time"]) + 1
@@ -408,8 +412,6 @@ function write_output!(ow::NetCDFOutputWriter, model)
         end
     end
 
-    sync(ow.dataset)
-
     if verbose
         # Time and file size after computing and writing all outputs.
         t1, sz1 = time_ns(), filesize(filepath)
@@ -418,6 +420,9 @@ function write_output!(ow::NetCDFOutputWriter, model)
                     prettytime((t1-t0)/1e9), pretty_filesize(sz1), pretty_filesize(sz1-sz0))
         end
     end
+
+    sync(ds)
+    close(ow)
 
     return nothing
 end

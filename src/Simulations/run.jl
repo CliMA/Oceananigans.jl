@@ -120,7 +120,6 @@ function run!(sim; pickup=false)
 
     # Output and diagnostics initialization
     for writer in values(sim.output_writers)
-        open(writer)
         initialize_schedule!(writer.schedule)
         add_dependencies!(sim.diagnostics, writer)
     end
@@ -151,11 +150,6 @@ function run!(sim; pickup=false)
 
         time_after = time()
         sim.run_time += time_after - time_before
-    end
-
-    # Output finalization
-    for writer in values(sim.output_writers)
-        close(writer)
     end
 
     return nothing
