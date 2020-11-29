@@ -274,18 +274,13 @@ steps:
 #####
 
   - label: "🧻 clean up gpu environment"
-    env:
-      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-    command: "rm -rf $JULIA_DEPOT_PATH"
+    command: "rm -rf $SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     agents:
       queue: Oceananigans
       architecture: GPU
 
   - label: "🧹 clean up cpu environment"
-    env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      CUDA_VISIBLE_DEVICES: "-1"
-    command: "rm -rf $JULIA_DEPOT_PATH"
+    command: "rm -rf $TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     agents:
       queue: Oceananigans
       architecture: CPU
