@@ -5,7 +5,7 @@ using Oceananigans.Simulations:
 @testset "Time step wizard" begin
     for arch in archs
         @info "Testing time step wizard [$(typeof(arch))]..."
-        
+
         grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
         model = IncompressibleModel(architecture=arch, grid=grid)
 

@@ -66,7 +66,7 @@ get_Δt(wizard::TimeStepWizard) = wizard.Δt
 get_Δt(simulation::Simulation) = get_Δt(simulation.Δt)
 
 set_Δt!(simulation, dt) = (simulation.Δt = dt)
-set_Δt!(simulation::Simulation{M,<:TimeStepWizard}, dt) where M = set_Δt!(simulation.wizard, dt)
+set_Δt!(simulation::Simulation{M,<:TimeStepWizard}, dt) where M = set_Δt!(simulation.Δt, dt)
 
 ab2_or_rk3_time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler) = time_step!(model, Δt, euler=euler)
 ab2_or_rk3_time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; euler) = time_step!(model, Δt)
@@ -88,7 +88,7 @@ function align_time_step!(sim)
         Δt = sim.stop_time - clock.time
     end
 
-    set_Δt!(simulation, Δt)
+    set_Δt!(sim, Δt)
 
     return nothing
 end
@@ -162,9 +162,9 @@ function run!(sim; pickup=false)
         iterations = min(sim.iteration_interval, sim.stop_iteration - clock.iteration)
 
         for n in 1:iterations
-            align_time_step!(simulation)
+            align_time_step!(sim)
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
-            ab2_or_rk3_time_step!(model, get_Δt(simulation), euler=euler)
+            ab2_or_rk3_time_step!(model, get_Δt(sim), euler=euler)
 
             # Run diagnostics, then write output
             [  diag.schedule(model) && run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
