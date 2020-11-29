@@ -71,7 +71,9 @@ function Simulation(model; Δt,
 
    run_time = 0.0
 
-   return Simulation(model, Δt, stop_criteria, stop_iteration, stop_time, wall_time_limit,
+   FT = eltype(model.grid)
+
+   return Simulation(model, FT(Δt), stop_criteria, stop_iteration, stop_time, wall_time_limit,
                      run_time, diagnostics, output_writers, progress, iteration_interval,
                      parameters)
 end
