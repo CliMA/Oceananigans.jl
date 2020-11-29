@@ -241,16 +241,6 @@ steps:
       architecture: CPU
     depends_on: "init_cpu"
 
-  # - label: "🦖 🦕 convergence tests"
-  #   env:
-  #     TEST_GROUP: "convergence"
-  #   commands:
-  #     - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-  #   agents:
-  #     queue: Oceananigans
-  #     architecture: CPU
-  #   depends_on: "init_cpu"
-
 #####
 ##### Documentation
 #####
