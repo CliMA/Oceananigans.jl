@@ -88,10 +88,10 @@ leaving all other model properties unchanged.
 Possible values for `pickup` are:
 
     * `pickup=true` will pick a simulation up from the latest checkpoint associated with
-      the `Checkpointer` in simulation.output_writers`. 
+      the `Checkpointer` in simulation.output_writers`.
 
     * `pickup=iteration::Int` will pick a simulation up from the checkpointed file associated
-       with `iteration` and the `Checkpointer` in simulation.output_writers`. 
+       with `iteration` and the `Checkpointer` in simulation.output_writers`.
 
     * `pickup=filepath::String` will pick a simulation up from checkpointer data in `filepath`.
 
@@ -122,7 +122,7 @@ function run!(sim; pickup=false)
     for writer in values(sim.output_writers)
         open(writer)
         initialize_schedule!(writer.schedule)
-        add_dependencies!(sim.diagnostics, writer) 
+        add_dependencies!(sim.diagnostics, writer)
     end
 
     [initialize_schedule!(diag.schedule) for diag in values(sim.diagnostics)]
@@ -151,6 +151,11 @@ function run!(sim; pickup=false)
 
         time_after = time()
         sim.run_time += time_after - time_before
+    end
+
+    # Output finalization
+    for writer in values(sim.output_writers)
+        close(writer)
     end
 
     return nothing
