@@ -368,8 +368,8 @@ define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, a
 ##### Write output
 #####
 
-Base.open(ow::NetCDFOutputWriter) = open(ow.dataset)
-Base.close(ow::NetCDFOutputWriter) = close(ow.dataset)
+Base.open(nc::NetCDFOutputWriter) = Dataset(nc.filepath, "a")
+Base.close(nc::NetCDFOutputWriter) = close(nc.dataset)
 
 """
     write_output!(output_writer, model)
