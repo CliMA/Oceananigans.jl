@@ -1,50 +1,32 @@
-using Oceananigans.BoundaryConditions: BC, Periodic
-
-struct PressureSolver{T, A, W, S, R, C}
-          type :: T
-  architecture :: A
-   wavenumbers :: W
-       storage :: S
-    transforms :: R
-     constants :: C
+struct PressureSolver{A, G, W, S, B, T, C}
+    architecture :: A
+            grid :: G
+     wavenumbers :: W
+         storage :: S
+          buffer :: B
+      transforms :: T
+       constants :: C
 end
 
-abstract type PressureSolverType end
+function PressureSolver(arch, grid, planner_flag=FFTW.PATIENT)
+    topo = (TX, TY, TZ) =  topology(grid)
 
-struct TriplyPeriodic       <: PressureSolverType end
-struct HorizontallyPeriodic <: PressureSolverType end
-struct Channel              <: PressureSolverType end
-struct Box                  <: PressureSolverType end
+    wavenumbers = (kx² = λx(grid, TX()),
+                   ky² = λy(grid, TY()),
+                   kz² = λz(grid, TZ()))
 
-poisson_bc_symbol(::BC) = :N
-poisson_bc_symbol(::BC{<:Periodic}) = :P
-poisson_bc_symbol(::Nothing) = :P
+    constants = nothing
+    # kz⁺ = reshape(0:Nz-1,       1, 1, Nz)
+    # kz⁻ = reshape(0:-1:-(Nz-1), 1, 1, Nz)
 
-#####
-##### Special forms for IncompressibleModel constructor
-#####
+    # ω_4Nz⁺ = ω.(4Nz, kz⁺) |> CuArray
+    # ω_4Nz⁻ = ω.(4Nz, kz⁻) |> CuArray
 
-PressureSolver(::Nothing, arch, grid, pressure_bcs) = PressureSolver(arch, grid, pressure_bcs)
+    storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
 
-# In principle we should check that the grid used to construct pressure_solver
-# and the argument `grid` are identical. We don't this right now.
-PressureSolver(pressure_solver::PressureSolver, arch, grid, pressure_bcs) = pressure_solver
+    transforms, buffer_needed = plan_transforms(arch, topo, storage, planner_flag)
 
-function PressureSolver(arch, grid, pressure_bcs, planner_flag=FFTW.PATIENT)
-    x = poisson_bc_symbol(pressure_bcs.x.left)
-    y = poisson_bc_symbol(pressure_bcs.y.left)
-    z = poisson_bc_symbol(pressure_bcs.z.left)
-    bc_symbol = Symbol(x, y, z)
+    buffer = buffer_needed ? similar(storage) : nothing
 
-    if bc_symbol == :PPP
-        return TriplyPeriodicPressureSolver(arch, grid, pressure_bcs, planner_flag)
-    elseif bc_symbol == :PPN
-        return HorizontallyPeriodicPressureSolver(arch, grid, pressure_bcs, planner_flag)
-    elseif bc_symbol == :PNN
-        return ChannelPressureSolver(arch, grid, pressure_bcs, planner_flag)
-    elseif bc_symbol == :NNN
-        return BoxPressureSolver(arch, grid, pressure_bcs, planner_flag)
-    else
-        throw(ArgumentError("Unsupported pressure boundary conditions: $bc_symbol"))
-    end
+    return PressureSolver(arch, grid, wavenumbers, storage, buffer, transforms, constants)
 end
