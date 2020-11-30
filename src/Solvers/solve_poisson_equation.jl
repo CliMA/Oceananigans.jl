@@ -9,8 +9,13 @@ function solve_poisson_equation!(solver)
     RHS, ϕ = solver.storage, solver.storage
 
     # Apply forward transforms
-    solver.transforms.forward.periodic * RHS
-    solver.transforms.forward.bounded * RHS
+    if !isnothing(solver.transforms.forward.periodic)
+        solver.transforms.forward.periodic * RHS
+    end
+
+    if !isnothing(solver.transforms.forward.bounded)
+        solver.transforms.forward.bounded * RHS
+    end
 
     # Solve the discrete Poisson equation.
     @. ϕ = -RHS / (kx² + ky² + kz²)
@@ -21,11 +26,16 @@ function solve_poisson_equation!(solver)
     ϕ[1, 1, 1] = 0
 
     # Apply backward transforms
-    solver.transforms.backward.periodic * RHS
-    solver.transforms.backward.bounded * RHS
+    if !isnothing(solver.transforms.backward.bounded)
+        solver.transforms.backward.bounded * ϕ
+    end
+
+    if !isnothing(solver.transforms.backward.periodic)
+        solver.transforms.backward.periodic * ϕ
+    end
 
     # Must normalize by 2N for each dimension transformed via FFTW.REDFT.
-    factor = prod(normalization_factor(arch, T(), N) for (T, N) in zip(topo, size(grid)))
+    factor = prod(normalization_factor(solver.architecture, T(), N) for (T, N) in zip(topo, size(solver.grid)))
     @. ϕ = ϕ / factor
 
     return nothing

@@ -9,9 +9,8 @@ end
 function divergence_free_poisson_solution(arch, FT, topology, Nx, Ny, Nz, planner_flag=FFTW.MEASURE)
     ArrayType = array_type(arch)
     grid = RegularCartesianGrid(FT, topology=topology, size=(Nx, Ny, Nz), extent=(1.0, 2.5, π))
-    fbcs = TracerBoundaryConditions(grid)
-    pbcs = PressureBoundaryConditions(grid)
-    solver = PressureSolver(arch, grid, fbcs, planner_flag)
+    p_bcs = PressureBoundaryConditions(grid)
+    solver = PressureSolver(arch, grid, planner_flag)
 
     # Generate right hand side from a random (divergent) velocity field.
     Ru = CellField(FT, arch, grid, UVelocityBoundaryConditions(grid))
@@ -34,8 +33,8 @@ function divergence_free_poisson_solution(arch, FT, topology, Nx, Ny, Nz, planne
                     dependencies=Event(device(arch)))
     wait(device(arch), event)
 
-    ϕ   = CellField(FT, arch, grid, pbcs)  # "pressure"
-    ∇²ϕ = CellField(FT, arch, grid, pbcs)
+    ϕ   = CellField(FT, arch, grid, p_bcs)  # "pressure"
+    ∇²ϕ = CellField(FT, arch, grid, p_bcs)
 
     # Using Δt = 1 but it doesn't matter since velocities = 0.
     solve_for_pressure!(ϕ.data, solver, arch, grid, 1, datatuple(U))
@@ -151,6 +150,10 @@ topos = (PPP_topo, PPB_topo, PBB_topo, BBB_topo)
             end
         end
     end
+
+    @test divergence_free_poisson_solution(CPU(), Float64, PPP_topo, 16, 16, 16, FFTW.ESTIMATE)
+    @test divergence_free_poisson_solution(CPU(), Float64, PPB_topo, 16, 16, 16, FFTW.ESTIMATE)
+
     #=
     @testset "Divergence-free solution [CPU]" begin
         @info "  Testing divergence-free solution [CPU]..."
