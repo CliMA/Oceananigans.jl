@@ -11,10 +11,14 @@ end
 function PressureSolver(arch, grid, planner_flag=FFTW.PATIENT)
     topo = (TX, TY, TZ) =  topology(grid)
 
+    λx = poisson_eigenvalues(grid.Nx, grid.Lx, 1, TX())
+    λy = poisson_eigenvalues(grid.Ny, grid.Ly, 2, TY())
+    λz = poisson_eigenvalues(grid.Nz, grid.Lz, 3, TZ())
+
     eigenvalues = (
-        λx = poisson_eigenvalues(grid.Nx, grid.Lx, 1, TX()),
-        λy = poisson_eigenvalues(grid.Ny, grid.Ly, 2, TY()),
-        λz = poisson_eigenvalues(grid.Nz, grid.Lz, 3, TZ())
+        λx = arch_array(arch, λx),
+        λy = arch_array(arch, λy),
+        λz = arch_array(arch, λz)
     )
 
     constants = nothing

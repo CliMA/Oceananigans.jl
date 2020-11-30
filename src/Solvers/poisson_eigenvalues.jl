@@ -1,7 +1,3 @@
-reshaped_size(N, dim) = dim == 1 ? (N, 1, 1) :
-                        dim == 2 ? (1, N, 1) :
-                        dim == 3 ? (1, 1, N) : nothing
-
 """
     poisson_eigenvalues(N, L, dim, ::Periodic)
 
