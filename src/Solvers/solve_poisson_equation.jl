@@ -3,7 +3,7 @@ normalization_factor(::CPU, ::Bounded, N) = 1/(2N)
 
 function solve_poisson_equation!(solver)
     topo = TX, TY, TZ = topology(solver.grid)
-    kx², ky², kz² = solver.wavenumbers
+    λx, λy, λz = solver.eigenvalues
 
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
@@ -18,7 +18,7 @@ function solve_poisson_equation!(solver)
     end
 
     # Solve the discrete Poisson equation.
-    @. ϕ = -RHS / (kx² + ky² + kz²)
+    @. ϕ = -RHS / (λx + λy + λz)
 
     # Setting DC component of the solution (the mean) to be zero. This is also
     # necessary because the source term to the Poisson equation has zero mean

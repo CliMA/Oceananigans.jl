@@ -23,7 +23,7 @@ Return the `M`th root of unity raised to the `k`th power.
 @inline ω(M, k) = exp(-2im*π*k/M)
 
 include("batched_tridiagonal_solver.jl")
-include("discrete_eigenvalues.jl")
+include("poisson_eigenvalues.jl")
 include("plan_transforms.jl")
 include("pressure_solver.jl")
 include("solve_poisson_equation.jl")
