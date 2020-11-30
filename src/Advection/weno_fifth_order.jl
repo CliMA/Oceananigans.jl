@@ -121,12 +121,12 @@ const ƞ = 2  # WENO exponent
     α₀ = left_biased_αx₀(i, j, k, ψ)
     α₁ = left_biased_αx₁(i, j, k, ψ)
     α₂ = left_biased_αx₂(i, j, k, ψ)
-    
-    Σα = α₀ + α₁ + α₂ 
+
+    Σα = α₀ + α₁ + α₂
     w₀ = α₀ / Σα
     w₁ = α₁ / Σα
     w₂ = α₂ / Σα
-    
+
     return w₀, w₁, w₂
 end
 
@@ -139,7 +139,7 @@ end
     w₀ = α₀ / Σα
     w₁ = α₁ / Σα
     w₂ = α₂ / Σα
-    
+
     return w₀, w₁, w₂
 end
 
@@ -152,7 +152,7 @@ end
     w₀ = α₀ / Σα
     w₁ = α₁ / Σα
     w₂ = α₂ / Σα
-    
+
     return w₀, w₁, w₂
 end
 
@@ -160,12 +160,12 @@ end
     α₀ = right_biased_αx₀(i, j, k, ψ)
     α₁ = right_biased_αx₁(i, j, k, ψ)
     α₂ = right_biased_αx₂(i, j, k, ψ)
-    
-    Σα = α₀ + α₁ + α₂ 
+
+    Σα = α₀ + α₁ + α₂
     w₀ = α₀ / Σα
     w₁ = α₁ / Σα
     w₂ = α₂ / Σα
-    
+
     return w₀, w₁, w₂
 end
 
@@ -178,7 +178,7 @@ end
     w₀ = α₀ / Σα
     w₁ = α₁ / Σα
     w₂ = α₂ / Σα
-    
+
     return w₀, w₁, w₂
 end
 
@@ -191,7 +191,7 @@ end
     w₀ = α₀ / Σα
     w₁ = α₁ / Σα
     w₂ = α₂ / Σα
-    
+
     return w₀, w₁, w₂
 end
 

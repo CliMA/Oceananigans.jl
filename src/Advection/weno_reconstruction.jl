@@ -1,10 +1,10 @@
-using StaticArrays
+# using StaticArrays
 # using SymPy
 
 """
 WENO reconstruction schemes following the lecture notes by Shu (1998) and
 the review article by Shu (2009). WENO smoothness indicators are due to
-Jiang & Shu (1996). 
+Jiang & Shu (1996).
 
 Shu (1998), "Essentially Non-Oscillatory and Weighted Essentially Non-Oscillatory
     Schemes for Hyperbolic Conservation Laws", In: Advanced Numerical Approximation
@@ -76,7 +76,7 @@ that when combined these ENO interpolants produce a WENO scheme of order 2k-1.
 eno_coefficients_matrix(FT, k) =
     cat([eno_coefficients(k, r) for r in 0:k-1]..., dims=1) |> SMatrix{k,k,FT}
 
-eno_coefficients_matrix(k) = eno_coefficients_matrix(Rational, k) 
+eno_coefficients_matrix(k) = eno_coefficients_matrix(Rational, k)
 
 """
     optimal_weno_weights([FT=Rational], k)
@@ -159,7 +159,7 @@ the ENO interpolants.
 """
 # function β_coefficients(FT, k)
 #     B = zeros(Float64, k, k, k)
-    
+
 #     for r in 0:k-1
 #         ϕ = [Sym("ϕᵢ" * subscript_index(n)) for n in r:-1:r-k+1]
 #         β_symbolic = β(k, r, ϕ) |> expand
@@ -168,7 +168,7 @@ the ENO interpolants.
 #             B[m, n, r+1] = β_symbolic.coeff(ϕ[m] * ϕ[n])
 #         end
 #     end
-    
+
 #     B = rationalize.(B, tol=√eps(Float64))
 #     return SArray{Tuple{k,k,k},FT}(B)
 # end
