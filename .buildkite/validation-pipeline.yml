@@ -27,6 +27,9 @@ steps:
 
       # Download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+
+      # Use Conda.jl to provide PyPlot
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project=validation/convergence_tests/ -e 'using Pkg; Pkg.add(\"PyCall\"); ENV[\"PYTHON\"]=\"\"; Pkg.build(\"PyCall\"); using PyPlot;'"
     agents:
       queue: Oceananigans
       architecture: GPU
@@ -51,7 +54,7 @@ steps:
       # Download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
 
-      # Use Conda.jl to provide PyPlot.
+      # Use Conda.jl to provide PyPlot
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project=validation/convergence_tests/ -e 'using Pkg; Pkg.add(\"PyCall\"); ENV[\"PYTHON\"]=\"\"; Pkg.build(\"PyCall\"); using PyPlot;'"
     agents:
       queue: Oceananigans
