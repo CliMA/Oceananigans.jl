@@ -1,7 +1,3 @@
-# TODO: Move to transforms.jl
-normalization_factor(arch, topo, N) = 1
-normalization_factor(::CPU, ::Bounded, N) = 1/(2N)
-
 function solve_poisson_equation!(solver)
     topo = TX, TY, TZ = topology(solver.grid)
     λx, λy, λz = solver.eigenvalues
@@ -24,10 +20,6 @@ function solve_poisson_equation!(solver)
     # Apply backward transforms
     solver.transforms.backward.bounded(ϕ)
     solver.transforms.backward.periodic(ϕ)
-
-    # Must normalize by 2N for each dimension transformed via FFTW.REDFT.
-    factor = prod(normalization_factor(solver.architecture, T(), N) for (T, N) in zip(topo, size(solver.grid)))
-    @. ϕ = factor * ϕ
 
     return nothing
 end

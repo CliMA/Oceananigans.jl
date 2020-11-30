@@ -1,40 +1,40 @@
-struct Transform{P}
+abstract type AbstractTransformDirection end
+
+struct Forward <: AbstractTransformDirection end
+struct Backward <: AbstractTransformDirection end
+
+struct Transform{P, D, N}
                plan :: P
-#    twiddle_factors :: T
+          direction :: D
+      normalization :: N
 end
 
-# function Transform(plan, arch, grid, dims)
-#     isnothing(plan) && return Transform(nothing, nothing)
+normalization_factor(arch, topo, direction, N) = 1
 
-#     if arch isa CPU
-#         twiddle_factors = nothing
-#     elseif arch isa GPU && topo isa Bounded
-#         Ns = size(grid)
-#         N = Ns[dim]
+# FFTW.REDFT01 needs to be normalized by 1/2N.
+# See: http://www.fftw.org/fftw3_doc/1d-Real_002deven-DFTs-_0028DCTs_0029.html#g_t1d-Real_002deven-DFTs-_0028DCTs_0029
+normalization_factor(::CPU, ::Bounded, ::Backward, N) = 1/(2N)
 
+function Transform(plan, direction, arch, grid, dims)
+    isnothing(plan) && return Transform(nothing, nothing, nothing)
 
-#         inds⁺ = reshape()
+    N = size(grid)
+    topo = topology(grid)
+    normalization = prod(normalization_factor(arch, topo[d](), direction, N[d]) for d in dims)
 
-#         ky⁺ = reshape(0:Ny-1,       1, Ny, 1)
-#         kz⁺ = reshape(0:Nz-1,       1, 1, Nz)
-#         ky⁻ = reshape(0:-1:-(Ny-1), 1, Ny, 1)
-#         kz⁻ = reshape(0:-1:-(Nz-1), 1, 1, Nz)
-
-#         ω_4Ny⁺ = ω.(4Ny, ky⁺) |> CuArray
-#         ω_4Nz⁺ = ω.(4Nz, kz⁺) |> CuArray
-#         ω_4Ny⁻ = ω.(4Ny, ky⁻) |> CuArray
-#         ω_4Nz⁻ = ω.(4Nz, kz⁻) |> CuArray
-#         reshaped_size(N, dim)
-#         twiddle_factors = (
-#             forward =
-#             backward =
-#         )
-# end
+    return Transform(plan, direction, normalization)
+end
 
 (transform::Transform{<:Nothing})(A) = nothing
 
 function (transform::Transform)(A)
     transform.plan * A
+
+    # Avoid a kernel launch if possible.
+    if transform.normalization != 1
+        @. A *= transform.normalization
+    end
+
     return nothing
 end
 
@@ -81,18 +81,25 @@ function plan_backward_transform(A::CuArray, topo, dims, planner_flag)
     return plan_ifft!(A, dims)
 end
 
-function plan_transforms(arch, topo, storage, planner_flag)
+function plan_transforms(arch, grid, storage, planner_flag)
+    topo = topology(grid)
     periodic_dims = findall(t -> t == Periodic, topo)
     bounded_dims = findall(t -> t == Bounded, topo)
 
+    forward_periodic_plan = plan_forward_transform(storage, Periodic(), periodic_dims, planner_flag)
+    forward_bounded_plan = plan_forward_transform(storage, Bounded(), bounded_dims, planner_flag)
+
     forward_transforms = (
-        periodic = plan_forward_transform(storage, Periodic(), periodic_dims, planner_flag) |> Transform,
-        bounded = plan_forward_transform(storage, Bounded(), bounded_dims, planner_flag) |> Transform
+        periodic = Transform(forward_periodic_plan, Forward(), arch, grid, periodic_dims),
+        bounded = Transform(forward_bounded_plan, Forward(), arch, grid, bounded_dims)
     )
 
+    backward_periodic_plan = plan_backward_transform(storage, Periodic(), periodic_dims, planner_flag)
+    backward_bounded_plan = plan_backward_transform(storage, Bounded(), bounded_dims, planner_flag)
+
     backward_transforms = (
-        periodic = plan_backward_transform(storage, Periodic(), periodic_dims, planner_flag) |> Transform,
-        bounded = plan_backward_transform(storage, Bounded(), bounded_dims, planner_flag) |> Transform
+        periodic = Transform(backward_periodic_plan, Backward(), arch, grid, periodic_dims),
+        bounded = Transform(backward_bounded_plan, Backward(), arch, grid, bounded_dims)
     )
 
     transforms = (forward = forward_transforms, backward = backward_transforms)
