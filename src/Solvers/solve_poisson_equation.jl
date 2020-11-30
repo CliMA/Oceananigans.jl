@@ -36,7 +36,7 @@ function solve_poisson_equation!(solver)
 
     # Must normalize by 2N for each dimension transformed via FFTW.REDFT.
     factor = prod(normalization_factor(solver.architecture, T(), N) for (T, N) in zip(topo, size(solver.grid)))
-    @. ϕ = ϕ / factor
+    @. ϕ = factor * ϕ
 
     return nothing
 end
