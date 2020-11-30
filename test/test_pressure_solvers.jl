@@ -6,9 +6,9 @@ function pressure_solver_instantiates(arch, FT, Nx, Ny, Nz, planner_flag)
     return true  # Just making sure the PressureSolver does not error/crash.
 end
 
-function divergence_free_poisson_solution(arch, FT, topology, Nx, Ny, Nz, planner_flag=FFTW.MEASURE)
+function divergence_free_poisson_solution(arch, FT, topo, Nx, Ny, Nz, planner_flag=FFTW.MEASURE)
     ArrayType = array_type(arch)
-    grid = RegularCartesianGrid(FT, topology=topology, size=(Nx, Ny, Nz), extent=(1.0, 2.5, π))
+    grid = RegularCartesianGrid(FT, topology=topo, size=(Nx, Ny, Nz), extent=(1.0, 2.5, π))
     p_bcs = PressureBoundaryConditions(grid)
     solver = PressureSolver(arch, grid, planner_flag)
 
@@ -139,6 +139,9 @@ topos = (PPP_topo, PPB_topo, PBB_topo, BBB_topo)
 @testset "Pressure solvers" begin
     @info "Testing pressure solvers..."
 
+    PB = (Periodic, Bounded)
+    all_topos = collect(Iterators.product(PB, PB, PB))[:]
+
     for arch in archs
         @testset "Pressure solver instantiation [$(typeof(arch))]" begin
             @info "  Testing pressure solver instantiation [$(typeof(arch))]..."
@@ -151,14 +154,10 @@ topos = (PPP_topo, PPB_topo, PBB_topo, BBB_topo)
         end
     end
 
-    @test divergence_free_poisson_solution(CPU(), Float64, PPP_topo, 16, 16, 16, FFTW.ESTIMATE)
-    @test divergence_free_poisson_solution(CPU(), Float64, PPB_topo, 16, 16, 16, FFTW.ESTIMATE)
-
-    #=
     @testset "Divergence-free solution [CPU]" begin
         @info "  Testing divergence-free solution [CPU]..."
 
-        for topo in topos
+        for topo in all_topos
             @info "    Testing $topo topology on square grids..."
             for N in [7, 16], FT in float_types
                 @test divergence_free_poisson_solution(CPU(), FT, topo, N, N, N, FFTW.ESTIMATE)
@@ -169,7 +168,7 @@ topos = (PPP_topo, PPB_topo, PBB_topo, BBB_topo)
         end
 
         Ns = [11, 16]
-        for topo in topos
+        for topo in all_topos
             @info "    Testing $topo topology on rectangular grids..."
             for Nx in Ns, Ny in Ns, Nz in Ns, FT in float_types
                 @test divergence_free_poisson_solution(CPU(), FT, topo, Nx, Ny, Nz, FFTW.ESTIMATE)
@@ -177,6 +176,7 @@ topos = (PPP_topo, PPB_topo, PBB_topo, BBB_topo)
         end
     end
 
+    #=
     @hascuda @testset "Divergence-free solution [GPU]" begin
         @info "  Testing divergence-free solution [GPU]..."
         for topo in (PPP_topo, PPB_topo, PBB_topo)
