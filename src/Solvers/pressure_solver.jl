@@ -1,4 +1,4 @@
-struct PressureSolver{A, G, E, S, B, T, C}
+struct PressureSolver{A, G, E, S, B, T}
     architecture :: A
             grid :: G
      eigenvalues :: E

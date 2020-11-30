@@ -3,10 +3,11 @@ abstract type AbstractTransformDirection end
 struct Forward <: AbstractTransformDirection end
 struct Backward <: AbstractTransformDirection end
 
-struct Transform{P, D, N}
+struct Transform{P, D, N, T}
                plan :: P
           direction :: D
       normalization :: N
+            twiddle :: T
 end
 
 normalization_factor(arch, topo, direction, N) = 1
@@ -15,23 +16,71 @@ normalization_factor(arch, topo, direction, N) = 1
 # See: http://www.fftw.org/fftw3_doc/1d-Real_002deven-DFTs-_0028DCTs_0029.html#g_t1d-Real_002deven-DFTs-_0028DCTs_0029
 normalization_factor(::CPU, ::Bounded, ::Backward, N) = 1/(2N)
 
+twiddle_factors(arch, grid, dim) = nothing
+
+# GPU DCTs need twiddle factors.
+function twiddle_factors(arch::GPU, grid, dims)
+    length(dims) > 1 && return nothing
+    dim = dims[1]
+
+    topo = topology(grid)
+    topo[dim] != Bounded && return nothing
+
+    Ns = size(grid)
+    N = Ns[dim]
+
+    inds⁺ = reshape(0:N-1, reshaped_size(N, dim)...)
+    inds⁻ = reshape(0:-1:-(N-1), reshaped_size(N, dim)...)
+
+    ω_4N⁺ = ω.(4N, inds⁺)
+    ω_4N⁻ = ω.(4N, inds⁻)
+
+    # The zeroth coefficient of the IDCT (DCT-III or FFTW.REDFT01)
+    # is not multiplied by 2.
+    ω_4N⁻[1] *= 1/2
+
+    twiddle_factors = (
+        forward = arch_array(arch, ω_4N⁺),
+        backward = arch_array(arch, ω_4N⁻)
+    )
+
+    return twiddle_factors
+end
+
 function Transform(plan, direction, arch, grid, dims)
-    isnothing(plan) && return Transform(nothing, nothing, nothing)
+    isnothing(plan) && return Transform(nothing, nothing, nothing, nothing)
 
     N = size(grid)
     topo = topology(grid)
     normalization = prod(normalization_factor(arch, topo[d](), direction, N[d]) for d in dims)
+    twiddle = twiddle_factors(arch, grid, dims)
 
-    return Transform(plan, direction, normalization)
+    @show topo, dims
+    @show twiddle
+
+    return Transform(plan, direction, normalization, twiddle)
 end
 
 (transform::Transform{<:Nothing})(A) = nothing
 
 function (transform::Transform)(A)
+    if transform.direction isa Backward && !isnothing(transform.twiddle)
+        @info "backward twiddle"
+        @show size(transform.twiddle.backward)
+        @. A *= transform.twiddle.backward
+    end
+
     transform.plan * A
+
+    if transform.direction isa Forward && !isnothing(transform.twiddle)
+        @info "forward twiddle"
+        @show size(transform.twiddle.forward)
+        @. A = 2 * real(transform.twiddle.forward * A)
+    end
 
     # Avoid a kernel launch if possible.
     if transform.normalization != 1
+        @show transform.normalization
         @. A *= transform.normalization
     end
 

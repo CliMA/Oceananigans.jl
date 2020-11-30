@@ -29,9 +29,9 @@ to perform a GPU fast cosine transform algorithm.
 @kernel function calculate_pressure_right_hand_side!(RHS, arch, grid::AbstractGrid{FT, TX, TY, TZ}, Δt, U★) where {FT, TX, TY, TZ}
     i, j, k = @index(Global, NTuple)
 
-    i′ = permute_index(arch, TX, i, grid.Nx)
-    j′ = permute_index(arch, TY, j, grid.Ny)
-    k′ = permute_index(arch, TZ, k, grid.Nz)
+    i′ = permute_index(arch, TX(), i, grid.Nx)
+    j′ = permute_index(arch, TY(), j, grid.Ny)
+    k′ = permute_index(arch, TZ(), k, grid.Nz)
 
     @inbounds RHS[i′, j′, k′] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
 end
@@ -44,9 +44,9 @@ transform was performed.
 @kernel function copy_pressure!(p, ϕ, arch, grid::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     i, j, k = @index(Global, NTuple)
 
-    i′ = unpermute_index(arch, TX, i, grid.Nx)
-    j′ = unpermute_index(arch, TY, j, grid.Ny)
-    k′ = unpermute_index(arch, TZ, k, grid.Nz)
+    i′ = unpermute_index(arch, TX(), i, grid.Nx)
+    j′ = unpermute_index(arch, TY(), j, grid.Ny)
+    k′ = unpermute_index(arch, TZ(), k, grid.Nz)
 
     @inbounds p[i′, j′, k′] = real(ϕ[i, j, k])
 end
