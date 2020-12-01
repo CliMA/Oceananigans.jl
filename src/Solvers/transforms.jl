@@ -3,11 +3,12 @@ abstract type AbstractTransformDirection end
 struct Forward <: AbstractTransformDirection end
 struct Backward <: AbstractTransformDirection end
 
-struct Transform{P, D, N, T}
+struct Transform{P, D, N, T, R}
                plan :: P
           direction :: D
       normalization :: N
             twiddle :: T
+          transpose :: R
 end
 
 normalization_factor(arch, topo, direction, N) = 1
@@ -48,112 +49,41 @@ function twiddle_factors(arch::GPU, grid, dims)
 end
 
 function Transform(plan, direction, arch, grid, dims)
-    isnothing(plan) && return Transform(nothing, nothing, nothing, nothing)
+    isnothing(plan) && return Transform{Nothing,Nothing,Nothing,Nothing,Nothing}(nothing, nothing, nothing, nothing, nothing)
 
     N = size(grid)
     topo = topology(grid)
     normalization = prod(normalization_factor(arch, topo[d](), direction, N[d]) for d in dims)
     twiddle = twiddle_factors(arch, grid, dims)
+    transpose = arch isa GPU && dims == [2] ? (2, 1, 3) : nothing
 
-    @show topo, dims
-    @show twiddle
-
-    return Transform(plan, direction, normalization, twiddle)
+    return Transform{typeof(plan),typeof(direction),typeof(normalization),typeof(twiddle),typeof(transpose)}(
+        plan, direction, normalization, twiddle, transpose)
 end
 
-(transform::Transform{<:Nothing})(A) = nothing
+(transform::Transform{<:Nothing})(A, B) = nothing
 
-function (transform::Transform)(A)
+function (transform::Transform)(A, B)
     if transform.direction isa Backward && !isnothing(transform.twiddle)
-        @info "backward twiddle"
-        @show size(transform.twiddle.backward)
         @. A *= transform.twiddle.backward
     end
 
-    transform.plan * A
+    if !isnothing(transform.transpose)
+        permutedims!(B, A, transform.transpose)
+        transform.plan * B
+        permutedims!(A, B, transform.transpose)
+    else
+        transform.plan * A
+    end
 
     if transform.direction isa Forward && !isnothing(transform.twiddle)
-        @info "forward twiddle"
-        @show size(transform.twiddle.forward)
         @. A = 2 * real(transform.twiddle.forward * A)
     end
 
     # Avoid a kernel launch if possible.
     if transform.normalization != 1
-        @show transform.normalization
         @. A *= transform.normalization
     end
 
     return nothing
-end
-
-#=
-These functions return the transforms required to solve Poisson's equation with
-periodic boundary conditions or staggered Neumann boundary.
-
-Fast Fourier transforms (FFTs) are used in the periodic dimensions and
-real-to-real discrete cosine transforms are used in the wall-bounded dimensions.
-Note that the DCT-II is used for the DCT and the DCT-III for the IDCT
-which correspond to REDFT10 and REDFT01 in FFTW.
-
-They operatore on an array with the shape of `A`, which is needed to plan
-efficient transforms. `A` will be mutated.
-=#
-
-function plan_forward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT)
-    length(dims) == 0 && return nothing
-    return FFTW.plan_fft!(A, dims, flags=planner_flag)
-end
-
-function plan_forward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PATIENT)
-    length(dims) == 0 && return nothing
-    return FFTW.plan_r2r!(A, FFTW.REDFT10, dims, flags=planner_flag)
-end
-
-function plan_backward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT)
-    length(dims) == 0 && return nothing
-    return FFTW.plan_ifft!(A, dims, flags=planner_flag)
-end
-
-function plan_backward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PATIENT)
-    length(dims) == 0 && return nothing
-    return FFTW.plan_r2r!(A, FFTW.REDFT01, dims, flags=planner_flag)
-end
-
-function plan_forward_transform(A::CuArray, topo, dims, planner_flag)
-    length(dims) == 0 && return nothing
-    return plan_fft!(A, dims)
-end
-
-function plan_backward_transform(A::CuArray, topo, dims, planner_flag)
-    length(dims) == 0 && return nothing
-    return plan_ifft!(A, dims)
-end
-
-function plan_transforms(arch, grid, storage, planner_flag)
-    topo = topology(grid)
-    periodic_dims = findall(t -> t == Periodic, topo)
-    bounded_dims = findall(t -> t == Bounded, topo)
-
-    forward_periodic_plan = plan_forward_transform(storage, Periodic(), periodic_dims, planner_flag)
-    forward_bounded_plan = plan_forward_transform(storage, Bounded(), bounded_dims, planner_flag)
-
-    forward_transforms = (
-        periodic = Transform(forward_periodic_plan, Forward(), arch, grid, periodic_dims),
-        bounded = Transform(forward_bounded_plan, Forward(), arch, grid, bounded_dims)
-    )
-
-    backward_periodic_plan = plan_backward_transform(storage, Periodic(), periodic_dims, planner_flag)
-    backward_bounded_plan = plan_backward_transform(storage, Bounded(), bounded_dims, planner_flag)
-
-    backward_transforms = (
-        periodic = Transform(backward_periodic_plan, Backward(), arch, grid, periodic_dims),
-        bounded = Transform(backward_bounded_plan, Backward(), arch, grid, bounded_dims)
-    )
-
-    transforms = (forward = forward_transforms, backward = backward_transforms)
-
-    buffer_needed = false
-
-    return transforms, buffer_needed
 end

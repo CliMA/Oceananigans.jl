@@ -24,6 +24,7 @@ function PressureSolver(arch, grid, planner_flag=FFTW.PATIENT)
 
     transforms, buffer_needed = plan_transforms(arch, grid, storage, planner_flag)
 
+    # TODO: buffer should have size of storage permuted by (2, 1, 3).
     buffer = buffer_needed ? similar(storage) : nothing
 
     return PressureSolver(arch, grid, eigenvalues, storage, buffer, transforms)

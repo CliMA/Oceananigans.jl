@@ -29,6 +29,7 @@ reshaped_size(N, dim) = dim == 1 ? (N, 1, 1) :
 include("batched_tridiagonal_solver.jl")
 include("poisson_eigenvalues.jl")
 include("transforms.jl")
+include("plan_transforms.jl")
 include("pressure_solver.jl")
 include("solve_poisson_equation.jl")
 include("index_permutations.jl")
