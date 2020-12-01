@@ -1,6 +1,6 @@
 using Oceananigans.Utils: work_layout
 using Oceananigans.Architectures: device
-using Oceananigans.TimeSteppers: rk3_substep_tracer!
+using Oceananigans.TimeSteppers: rk3_substep_field!
 
 import Oceananigans.TimeSteppers: rk3_substep!
 
