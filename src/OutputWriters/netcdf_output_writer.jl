@@ -436,8 +436,10 @@ drop_averaged_dims(output::WindowedTimeAverage{<:AveragedField}, data) = dropdim
 #####
 
 function Base.show(io::IO, ow::NetCDFOutputWriter)
-    dims = join([dim * "(" * string(length(ow.dataset[dim])) * "), "
-                 for dim in keys(ow.dataset.dim)])[1:end-2]
+    dims = NCDataset(ow.filepath, "r") do ds
+        join([dim * "(" * string(length(ds[dim])) * "), "
+              for dim in keys(ds.dim)])[1:end-2]
+    end
 
     averaging_schedule = output_averaging_schedule(ow)
 
