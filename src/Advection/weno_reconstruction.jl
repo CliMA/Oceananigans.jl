@@ -1,5 +1,5 @@
-# using StaticArrays
-# using SymPy
+using StaticArrays
+using SymPy
 
 """
 WENO reconstruction schemes following the lecture notes by Shu (1998) and
@@ -112,7 +112,7 @@ x(j) = j  # Assume uniform grid for now.
 Return a symbolic expression for the `j`th Lagrange basis polynomial ℓ(ξ) for an
 ENO reconstruction scheme of order k and left shift `r` with field values `ϕ`.
 """
-# ℓ(ξ, k, r, j) = prod((ξ - x(m-r)) / (x(j-r) - x(m-r)) for m in 0:k-1 if m != j)
+ℓ(ξ, k, r, j) = prod((ξ - x(m-r)) / (x(j-r) - x(m-r)) for m in 0:k-1 if m != j)
 
 """
     L(ξ, k, r, ϕ)
@@ -120,7 +120,7 @@ ENO reconstruction scheme of order k and left shift `r` with field values `ϕ`.
 Return a symbolic expression for the interpolating Lagrange polynomial p(ξ) for an
 ENO reconstruction scheme of order k and left shift `r` with field values `ϕ`.
 """
-# p(ξ, k, r, ϕ) = sum(ℓ(ξ, k, r, j) * ϕ[j+1] for j in 0:k-1)
+p(ξ, k, r, ϕ) = sum(ℓ(ξ, k, r, j) * ϕ[j+1] for j in 0:k-1)
 
 """
     β(k, r, ϕ)
@@ -129,10 +129,10 @@ Return a symbolic expression for the smoothness indicator β for a WENO reconstr
 scheme with stencils of size `k` and left shift `r` (WENO scheme of order 2k-1). The
 field values are represented by the symbols in `ϕ` which should have length k.
 """
-# function β(k, r, ϕ)
-#     @vars ξ
-#     return sum(integrate(diff(p(ξ, k, r, ϕ), ξ, l)^2, (ξ, Sym(-1//2), Sym(1//2))) for l in 1:k-1)
-# end
+function β(k, r, ϕ)
+    @vars ξ
+    return sum(integrate(diff(p(ξ, k, r, ϕ), ξ, l)^2, (ξ, Sym(-1//2), Sym(1//2))) for l in 1:k-1)
+end
 
 """
     subscript(n)
@@ -157,20 +157,20 @@ The `B[m, n, r]` coefficient corresponds to the coefficient of the
 `ϕ[r-k+m+1] * ϕ[r-k+n+1]` term where r-k+1 <= m, n <= r and `r` is the left shift of
 the ENO interpolants.
 """
-# function β_coefficients(FT, k)
-#     B = zeros(Float64, k, k, k)
+function β_coefficients(FT, k)
+    B = zeros(Float64, k, k, k)
 
-#     for r in 0:k-1
-#         ϕ = [Sym("ϕᵢ" * subscript_index(n)) for n in r:-1:r-k+1]
-#         β_symbolic = β(k, r, ϕ) |> expand
+    for r in 0:k-1
+        ϕ = [Sym("ϕᵢ" * subscript_index(n)) for n in r:-1:r-k+1]
+        β_symbolic = β(k, r, ϕ) |> expand
 
-#         for m in 1:k, n in 1:k
-#             B[m, n, r+1] = β_symbolic.coeff(ϕ[m] * ϕ[n])
-#         end
-#     end
+        for m in 1:k, n in 1:k
+            B[m, n, r+1] = β_symbolic.coeff(ϕ[m] * ϕ[n])
+        end
+    end
 
-#     B = rationalize.(B, tol=√eps(Float64))
-#     return SArray{Tuple{k,k,k},FT}(B)
-# end
+    B = rationalize.(B, tol=√eps(Float64))
+    return SArray{Tuple{k,k,k},FT}(B)
+end
 
-# β_coefficients(k) = β_coefficients(Rational, k)
+β_coefficients(k) = β_coefficients(Rational, k)

@@ -1,7 +1,7 @@
-# using SymPy
+using SymPy
 
 using Oceananigans.Advection:
-    eno_coefficients, optimal_weno_weights, # β,
+    eno_coefficients, optimal_weno_weights, β,
     weno_flux_x, weno_flux_y, weno_flux_z,
     left_biased_interpolate_xᶠᵃᵃ, left_biased_interpolate_yᵃᶠᵃ, left_biased_interpolate_zᵃᵃᶠ
 
@@ -30,14 +30,14 @@ end
 
 @testset "WENO reconstruction" begin
     @info "Testing WENO reconstruction..."
-    
+
     # Janky regression test
-    
-    # weno5 = WENO(5)
+
+    weno5 = WENO(5)
 
     N = 10
     a = collect(Float64, (1:N) .^ 2)
-    
+
     ax = reshape(a, (N, 1, 1))
     ay = reshape(a, (1, N, 1))
     az = reshape(a, (1, 1, N))
@@ -45,9 +45,9 @@ end
     correct = [73//6, 121//6, 181//6, 253//6]
 
     inds = 4:N-3
-    # @test all([weno_flux_x(i, 1, 1, weno5, ax) for i in inds] .≈ correct) 
-    # @test all([weno_flux_y(1, j, 1, weno5, ay) for j in inds] .≈ correct)
-    # @test all([weno_flux_z(1, 1, k, weno5, az) for k in inds] .≈ correct)
+    @test all([weno_flux_x(i, 1, 1, weno5, ax) for i in inds] .≈ correct)
+    @test all([weno_flux_y(1, j, 1, weno5, ay) for j in inds] .≈ correct)
+    @test all([weno_flux_z(1, 1, k, weno5, az) for k in inds] .≈ correct)
 
     @test rationalize.([left_biased_interpolate_xᶠᵃᵃ(i, 1, 1, nothing, WENO5(), ax) for i in inds]) == correct
     @test rationalize.([left_biased_interpolate_yᵃᶠᵃ(1, j, 1, nothing, WENO5(), ay) for j in inds]) == correct
@@ -60,7 +60,7 @@ end
 
             @test eno_coefficients(2, -1) == [ 3//2, -1//2]
             @test eno_coefficients(2,  0) == [ 1//2,  1//2]
-            @test eno_coefficients(2,  1) == [-1//2,  3//2]     
+            @test eno_coefficients(2,  1) == [-1//2,  3//2]
         end
 
         @testset "WENO-5" begin
@@ -102,7 +102,7 @@ end
             # Compare with Table II of Jiang & Shu (1996).
             @test optimal_weno_weights(2) == [2//3, 1//3]
         end
-        
+
         @testset "WENO-5" begin
             # Compare with equation (2.15) of Shu (2009).
             @test optimal_weno_weights(3) == [3//10, 3//5, 1//10]
@@ -115,17 +115,17 @@ end
         end
     end
 
-    # @testset "WENO smoothness indicators" begin
-    #     @testset "WENO-5" begin
-    #         @vars ϕᵢ₋₂  ϕᵢ₋₁ ϕᵢ ϕᵢ₊₁ ϕᵢ₊₂
-            
-    #         β₀_correct = 13//12 * (ϕᵢ₋₂ - 2ϕᵢ₋₁ + ϕᵢ  )^2 + 1//4 * ( ϕᵢ₋₂ - 4ϕᵢ₋₁ + 3ϕᵢ  )^2 |> expand
-    #         β₁_correct = 13//12 * (ϕᵢ₋₁ - 2ϕᵢ   + ϕᵢ₊₁)^2 + 1//4 * ( ϕᵢ₋₁         -  ϕᵢ₊₁)^2 |> expand
-    #         β₂_correct = 13//12 * (ϕᵢ   - 2ϕᵢ₊₁ + ϕᵢ₊₂)^2 + 1//4 * (3ϕᵢ   - 4ϕᵢ₊₁ +  ϕᵢ₊₂)^2 |> expand
+    @testset "WENO smoothness indicators" begin
+        @testset "WENO-5" begin
+            @vars ϕᵢ₋₂  ϕᵢ₋₁ ϕᵢ ϕᵢ₊₁ ϕᵢ₊₂
 
-    #         @test β(3, 0, (ϕᵢ, ϕᵢ₋₁, ϕᵢ₋₂)) |> expand == β₀_correct
-    #         @test β(3, 1, (ϕᵢ₊₁, ϕᵢ, ϕᵢ₋₁)) |> expand == β₁_correct
-    #         @test β(3, 2, (ϕᵢ₊₂, ϕᵢ₊₁, ϕᵢ)) |> expand == β₂_correct
-    #     end
-    # end
+            β₀_correct = 13//12 * (ϕᵢ₋₂ - 2ϕᵢ₋₁ + ϕᵢ  )^2 + 1//4 * ( ϕᵢ₋₂ - 4ϕᵢ₋₁ + 3ϕᵢ  )^2 |> expand
+            β₁_correct = 13//12 * (ϕᵢ₋₁ - 2ϕᵢ   + ϕᵢ₊₁)^2 + 1//4 * ( ϕᵢ₋₁         -  ϕᵢ₊₁)^2 |> expand
+            β₂_correct = 13//12 * (ϕᵢ   - 2ϕᵢ₊₁ + ϕᵢ₊₂)^2 + 1//4 * (3ϕᵢ   - 4ϕᵢ₊₁ +  ϕᵢ₊₂)^2 |> expand
+
+            @test β(3, 0, (ϕᵢ, ϕᵢ₋₁, ϕᵢ₋₂)) |> expand == β₀_correct
+            @test β(3, 1, (ϕᵢ₊₁, ϕᵢ, ϕᵢ₋₁)) |> expand == β₁_correct
+            @test β(3, 2, (ϕᵢ₊₂, ϕᵢ₊₁, ϕᵢ)) |> expand == β₂_correct
+        end
+    end
 end
