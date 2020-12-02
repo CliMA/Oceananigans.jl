@@ -44,7 +44,7 @@ Compute the tendency for the height, h.
                                      forcings,
                                      clock) where tracer_index
 
-    return ( - ∂xᶜᵃᵃ(i, j, k, grid, solution.h) )
+    return ( - ∂xᶜᵃᵃ(i, j, k, grid, solution.uh) )
 end
 
 @inline function tracer_tendency(i, j, k, grid,

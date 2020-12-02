@@ -19,7 +19,7 @@ vh(x, y, z) = 0.0
 
 set!(model, uh = uh, vh = vh, h = h)
 
-simulation = Simulation(model, Δt = 0.1, stop_iteration = 10)
+simulation = Simulation(model, Δt = 0.01, stop_iteration = 100)
 
 using Plots
 using Oceananigans.Grids: xnodes 
@@ -39,6 +39,7 @@ using Printf
 plot!(h_plot, x, interior(model.solution.h)[:, 1, 1], linewidth=2,
       label=@sprintf("t = %.3f", model.clock.time))
 
+#=
 using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
 
 simulation.output_writers[:height] =
@@ -64,3 +65,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
     plot(x, h, linewidth=2, title=@sprintf("t = %.3f", t),
          label="", xlabel="x", ylabel="height", xlims=(0, 2π))
 end
+=#
