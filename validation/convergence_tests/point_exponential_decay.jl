@@ -1,5 +1,6 @@
 if haskey(ENV, "CI") && ENV["CI"] == "true"
     ENV["PYTHON"] = ""
+    ENV["MPLBACKEND"]="tkagg"
     using Pkg
     Pkg.build("PyCall")
 end
