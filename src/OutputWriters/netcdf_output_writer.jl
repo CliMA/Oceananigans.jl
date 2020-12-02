@@ -10,7 +10,7 @@ using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 
-xdim(::Type{Face}) = ("xF",) 
+xdim(::Type{Face}) = ("xF",)
 ydim(::Type{Face}) = ("yF",)
 zdim(::Type{Face}) = ("zF",)
 
@@ -59,7 +59,7 @@ function add_schedule_metadata!(global_attributes, schedule::TimeInterval)
     global_attributes["interval"] = schedule.interval
     global_attributes["output time interval"] =
         "Output was saved every $(prettytime(schedule.interval))."
-    
+
     return nothing
 end
 
@@ -68,7 +68,7 @@ function add_schedule_metadata!(global_attributes, schedule::WallTimeInterval)
     global_attributes["interval"] = schedule.interval
     global_attributes["output time interval"] =
         "Output was saved every $(prettytime(schedule.interval))."
-    
+
     return nothing
 end
 
@@ -81,7 +81,7 @@ function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterva
 
     global_attributes["time_averaging_stride"] = schedule.stride
     global_attributes["time averaging stride"] =
-        "Output was time averaged with a stride of $(schedule.stride) iteration(s) within the time averaging window."	
+        "Output was time averaged with a stride of $(schedule.stride) iteration(s) within the time averaging window."
 
     return nothing
 end
@@ -110,7 +110,7 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
-                                         mode = "c",
+                                         mode = nothing,
                                   compression = 0,
                                       verbose = false)
 
@@ -259,16 +259,19 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
                             global_attributes = Dict(),
                             output_attributes = Dict(),
                                    dimensions = Dict(),
-                                         mode = "c",
+                                         mode = nothing,
                                   compression = 0,
                                       verbose = false)
 
-    if isfile(filepath) && mode == "c"
+    if isfile(filepath) && isnothing(mode)
         @warn "$filepath already exists but no NetCDFOutputWriter mode was explicitly specified. " *
               "Will default to mode = \"a\" to append to existing file. You might experience errors " *
               "when writing output if the existing file belonged to a different simulation!"
         mode = "a"
     end
+
+    # Default to create/clobber.
+    isnothing(mode) && (mode = "c")
 
     # We need to convert to a Dict with String keys if user provides a named tuple.
     outputs = dictify(outputs)
@@ -286,10 +289,10 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
 
     add_schedule_metadata!(global_attributes, schedule)
 
-    # Convert schedule to TimeInterval and each output to WindowedTimeAverage if 
+    # Convert schedule to TimeInterval and each output to WindowedTimeAverage if
     # schedule::AveragedTimeInterval
     schedule, outputs = time_average_outputs(schedule, outputs, model, field_slicer)
-    
+
     grid = model.grid
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -305,7 +308,7 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
     )
 
     # Open the NetCDF dataset file
-    dataset = Dataset(filepath, mode, attrib=global_attributes)
+    dataset = NCDataset(filepath, mode, attrib=global_attributes)
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
@@ -333,6 +336,8 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
 
         sync(dataset)
     end
+
+    close(dataset)
 
     return NetCDFOutputWriter(filepath, dataset, outputs, schedule, mode, field_slicer, array_type, 0.0, verbose)
 end
@@ -365,8 +370,8 @@ define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, a
 ##### Write output
 #####
 
-Base.open(ow::NetCDFOutputWriter) = Dataset(ow.filepath, "a")
-Base.close(ow::NetCDFOutputWriter) = close(ow.dataset)
+Base.open(nc::NetCDFOutputWriter) = NCDataset(nc.filepath, "a")
+Base.close(nc::NetCDFOutputWriter) = close(nc.dataset)
 
 """
     write_output!(output_writer, model)
@@ -375,6 +380,8 @@ Writes output to netcdf file `output_writer.filepath` at specified intervals. In
 every time an output is written to the file.
 """
 function write_output!(ow::NetCDFOutputWriter, model)
+    ow.dataset = open(ow)
+
     ds, verbose, filepath = ow.dataset, ow.verbose, ow.filepath
 
     time_index = length(ds["time"]) + 1
@@ -405,8 +412,6 @@ function write_output!(ow::NetCDFOutputWriter, model)
         end
     end
 
-    sync(ow.dataset)
-
     if verbose
         # Time and file size after computing and writing all outputs.
         t1, sz1 = time_ns(), filesize(filepath)
@@ -415,6 +420,9 @@ function write_output!(ow::NetCDFOutputWriter, model)
                     prettytime((t1-t0)/1e9), pretty_filesize(sz1), pretty_filesize(sz1-sz0))
         end
     end
+
+    sync(ds)
+    close(ow)
 
     return nothing
 end
@@ -428,8 +436,10 @@ drop_averaged_dims(output::WindowedTimeAverage{<:AveragedField}, data) = dropdim
 #####
 
 function Base.show(io::IO, ow::NetCDFOutputWriter)
-    dims = join([dim * "(" * string(length(ow.dataset[dim])) * "), "
-                 for dim in keys(ow.dataset.dim)])[1:end-2]
+    dims = NCDataset(ow.filepath, "r") do ds
+        join([dim * "(" * string(length(ds[dim])) * "), "
+              for dim in keys(ds.dim)])[1:end-2]
+    end
 
     averaging_schedule = output_averaging_schedule(ow)
 

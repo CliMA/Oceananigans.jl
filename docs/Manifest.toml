@@ -120,6 +120,12 @@ git-tree-sha1 = "a4875e0763112d6d017126f3944f4133abb342ae"
 uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 version = "0.25.5"
 
+[[DocumenterCitations]]
+deps = ["Bibliography", "Documenter", "Markdown", "Unicode"]
+git-tree-sha1 = "d4288345626b076a9d633b999c0e39cb16d669a6"
+uuid = "daee34ce-89f3-4625-b898-19384cb65244"
+version = "0.2.0"
+
 [[EarCut_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "92d8f9f208637e8d2d28c664051a00569c01493d"
