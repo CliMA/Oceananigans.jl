@@ -137,7 +137,6 @@ function run!(sim; pickup=false)
 
     # Output and diagnostics initialization
     for writer in values(sim.output_writers)
-        open(writer)
         initialize_schedule!(writer.schedule)
         add_dependencies!(sim.diagnostics, writer)
     end
