@@ -76,11 +76,11 @@ function calculate_interior_tendency_contributions!(tendencies,
     barrier = Event(device(arch))
 
     Gu_event = calculate_Gu_kernel!(tendencies.u, grid, advection, coriolis, surface_waves, closure,
-                                    background_fields, velocities, tracers, diffusivities,
+                                    buoyancy, background_fields, velocities, tracers, diffusivities,
                                     forcings, hydrostatic_pressure, clock, dependencies=barrier)
 
     Gv_event = calculate_Gv_kernel!(tendencies.v, grid, advection, coriolis, surface_waves, closure,
-                                    background_fields, velocities, tracers, diffusivities,
+                                    buoyancy, background_fields, velocities, tracers, diffusivities,
                                     forcings, hydrostatic_pressure, clock, dependencies=barrier)
 
     Gw_event = calculate_Gw_kernel!(tendencies.w, grid, advection, coriolis, surface_waves, closure,
@@ -116,6 +116,7 @@ end
                                coriolis,
                                surface_waves,
                                closure,
+                               buoyancy,
                                background_fields,
                                velocities,
                                tracers,
@@ -127,7 +128,7 @@ end
     i, j, k = @index(Global, NTuple)
 
     @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves,
-                                                closure, background_fields, velocities, tracers,
+                                                closure, buoyancy, background_fields, velocities, tracers,
                                                 diffusivities, forcings, hydrostatic_pressure, clock)
 end
 
@@ -138,6 +139,7 @@ end
                                coriolis,
                                surface_waves,
                                closure,
+                               buoyancy,
                                background_fields,
                                velocities,
                                tracers,
@@ -149,7 +151,7 @@ end
     i, j, k = @index(Global, NTuple)
 
     @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves,
-                                                closure, background_fields, velocities, tracers,
+                                                closure, buoyancy, background_fields, velocities, tracers,
                                                 diffusivities, forcings, hydrostatic_pressure, clock)
 end
 

@@ -145,3 +145,21 @@ end
     return - (g_z(b.gravitational_acceleration) * ρ′(i, j, k, grid, b.equation_of_state, Θ, sᴬ)
               / b.equation_of_state.reference_density)
 end
+
+@inline function x_dot_g_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+    Θ, sᴬ = get_temperature_and_salinity(b, C)
+    return - (g_x(b.gravitational_acceleration) * ρ′(i, j, k, grid, b.equation_of_state, Θ, sᴬ)
+              / b.equation_of_state.reference_density)
+end
+
+@inline function y_dot_g_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+    Θ, sᴬ = get_temperature_and_salinity(b, C)
+    return - (g_y(b.gravitational_acceleration) * ρ′(i, j, k, grid, b.equation_of_state, Θ, sᴬ)
+              / b.equation_of_state.reference_density)
+end
+
+@inline function z_dot_g_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+    Θ, sᴬ = get_temperature_and_salinity(b, C)
+    return - (g_z(b.gravitational_acceleration) * ρ′(i, j, k, grid, b.equation_of_state, Θ, sᴬ)
+              / b.equation_of_state.reference_density)
+end

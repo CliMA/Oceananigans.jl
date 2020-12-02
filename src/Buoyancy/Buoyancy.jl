@@ -3,7 +3,8 @@ module Buoyancy
 export
     BuoyancyTracer, SeawaterBuoyancy, buoyancy_perturbation,
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
-    ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbation, buoyancy_frequency_squared,
+    ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbation, x_dot_g_b, y_dot_g_b, z_dot_g_b,
+    buoyancy_frequency_squared,
     BuoyancyField
 
 using Printf
@@ -44,6 +45,9 @@ validate_buoyancy(::Nothing, tracers) = nothing
 required_tracers(::Nothing) = ()
 
 @inline buoyancy_perturbation(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
+@inline x_dot_g_b(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
+@inline y_dot_g_b(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
+@inline z_dot_g_b(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
 
 @inline ∂x_b(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
 @inline ∂y_b(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
@@ -59,6 +63,9 @@ struct BuoyancyTracer <: AbstractBuoyancy{Nothing} end
 required_tracers(::BuoyancyTracer) = (:b,)
 
 @inline buoyancy_perturbation(i, j, k, grid, ::BuoyancyTracer, C) = @inbounds C.b[i, j, k]
+@inline x_dot_g_b(i, j, k, grid, ::BuoyancyTracer, C) = 0
+@inline y_dot_g_b(i, j, k, grid, ::BuoyancyTracer, C) = 0
+@inline z_dot_g_b(i, j, k, grid, ::BuoyancyTracer, C) = @inbounds C.b[i, j, k]
 
 @inline ∂x_b(i, j, k, grid, ::BuoyancyTracer, C) = ∂xᶠᵃᵃ(i, j, k, grid, C.b)
 @inline ∂y_b(i, j, k, grid, ::BuoyancyTracer, C) = ∂yᵃᶠᵃ(i, j, k, grid, C.b)
