@@ -14,8 +14,7 @@ Compute the tendency for the x-directional transport, uh
                                       forcings,
                                       clock)
 
-    return ( - 0.0 )
-#    return ( - ∂xᶠᵃᵃ(i, j, k, grid, solution.h) )
+    return ( - ∂xᶠᵃᵃ(i, j, k, grid, solution.h) )
 end
 
 """
@@ -30,9 +29,7 @@ Compute the tendency for the y-directional transport, vh.
                                       forcings,
                                       clock)
 
-    return ( -0.0 )
-#    return ( - ∂yᵃᶠᵃ(i, j, k, grid, solution.h) )
-
+    return ( - ∂yᵃᶠᵃ(i, j, k, grid, solution.h) )
 end
 
 """
@@ -47,9 +44,7 @@ Compute the tendency for the height, h.
                                      forcings,
                                      clock) where tracer_index
 
-    return ( - 0.0  )
-#    return ( - ∂xᶠᵃᵃ(i, j, k, grid, solution.h) )
-
+    return ( - ∂xᶜᵃᵃ(i, j, k, grid, solution.h) )
 end
 
 @inline function tracer_tendency(i, j, k, grid,
@@ -63,8 +58,5 @@ end
 
     @inbounds c = tracers[tracer_index]
 
-    # velocities should be replaced with transport, as a vector
     return ( 0.0 )
-#    return ( - div_Uc(i, j, k, grid, advection, solution, c) )
-
 end
