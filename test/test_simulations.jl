@@ -80,6 +80,20 @@ end
             @test wall_time_limit_exceeded(simulation) == false
             simulation.wall_time_limit = 1e-12
             @test wall_time_limit_exceeded(simulation) == true
+
+            # Test that simulation stops at `stop_iteration`.
+            model = IncompressibleModel(architecture=arch, grid=grid)
+            simulation = Simulation(model, Δt=Δt, stop_iteration=3, iteration_interval=88)
+            run!(simulation)
+
+            @test simulation.model.clock.iteration == 3
+
+            # Test that simulation stops at `stop_time`.
+            model = IncompressibleModel(architecture=arch, grid=grid)
+            simulation = Simulation(model, Δt=Δt, stop_time=20.20, iteration_interval=123)
+            run!(simulation)
+
+            @test simulation.model.clock.time ≈ 20.20
         end
     end
 end

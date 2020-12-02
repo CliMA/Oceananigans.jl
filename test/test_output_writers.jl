@@ -1055,18 +1055,30 @@ end
 function run_netcdf_output_alignment_tests(arch)
     grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = IncompressibleModel(architecture=arch, grid=grid)
-    simulation = Simulation(model, Δt=Float64(π), stop_time=35)
+    simulation = Simulation(model, Δt=0.2, stop_time=40)
 
-    test_filename = "test_output_alignment.nc"
+    test_filename1 = "test_output_alignment1.nc"
+    simulation.output_writers[:stuff] =
+        NetCDFOutputWriter(model, model.velocities, filepath=test_filename1,
+                           schedule=TimeInterval(7.3))
+
+    test_filename2 = "test_output_alignment2.nc"
     simulation.output_writers[:something] =
-        NetCDFOutputWriter(model, model.velocities, filepath=test_filename,
-                           schedule=TimeInterval(6.8))
+        NetCDFOutputWriter(model, model.tracers, filepath=test_filename2,
+                           schedule=TimeInterval(3.0))
 
     run!(simulation)
 
-    ds = NCDataset(test_filename)
-    @test all(ds["time"] .== (6.8 * (0:5)))
-    rm(test_filename)
+    Dataset(test_filename1, "r") do ds
+        @test all(ds["time"] .== 0:7.3:40)
+    end
+
+    Dataset(test_filename2, "r") do ds
+        @test all(ds["time"] .== 0:3.0:40)
+    end
+
+    rm(test_filename1)
+    rm(test_filename2)
 
     return nothing
 end

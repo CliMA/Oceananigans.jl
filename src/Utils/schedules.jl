@@ -9,8 +9,7 @@ abstract type AbstractSchedule end
 
 initialize_schedule!(schedule) = nothing # fallback
 
-# In general there is no alignment to be done.
-# We can only align if schedule::TimeInterval.
+# Default behavior is no alignment.
 align_time_step(schedule, clock, Δt) = Δt
 
 #####
