@@ -7,7 +7,10 @@ false.
 """
 abstract type AbstractSchedule end
 
-initialize_schedule!(abstract_schedule) = nothing # fallback
+initialize_schedule!(schedule) = nothing # fallback
+
+# Default behavior is no alignment.
+align_time_step(schedule, clock, Δt) = Δt
 
 #####
 ##### TimeInterval
@@ -35,7 +38,10 @@ TimeInterval(interval) = TimeInterval(Float64(interval), 0.0)
 function (schedule::TimeInterval)(model)
     time = model.clock.time
 
-    if time >= schedule.previous_actuation_time + schedule.interval
+    if time == schedule.previous_actuation_time + schedule.interval
+        schedule.previous_actuation_time = time
+        return true
+    elseif time > schedule.previous_actuation_time + schedule.interval
         # Shave overshoot off previous_actuation_time to prevent overshoot from accumulating
         schedule.previous_actuation_time = time - rem(time, schedule.interval)
         return true
@@ -44,6 +50,9 @@ function (schedule::TimeInterval)(model)
     end
 
 end
+
+align_time_step(schedule::TimeInterval, clock, Δt) =
+    min(Δt, schedule.previous_actuation_time + schedule.interval - clock.time)
 
 #####
 ##### IterationInterval

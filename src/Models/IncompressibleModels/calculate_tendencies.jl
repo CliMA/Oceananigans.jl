@@ -1,7 +1,7 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
 
+using Oceananigans: fields
 using Oceananigans.Utils: work_layout
-using ..Models: fields
 
 """
     calculate_tendencies!(model::IncompressibleModel)
@@ -16,9 +16,9 @@ function calculate_tendencies!(model::IncompressibleModel)
     # "tendencies" is a NamedTuple of OffsetArrays corresponding to the tendency data for use
     # in GPU computations.
     #
-    # "model.timestepper.Gⁿ" is a NamedTuple of Fields, whose data also corresponds to 
+    # "model.timestepper.Gⁿ" is a NamedTuple of Fields, whose data also corresponds to
     # tendency data.
-    
+
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     calculate_interior_tendency_contributions!(model.timestepper.Gⁿ,
@@ -36,8 +36,8 @@ function calculate_tendencies!(model::IncompressibleModel)
                                                model.diffusivities,
                                                model.forcing,
                                                model.clock)
-                                               
-    # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the 
+
+    # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
     calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ,
                                                model.architecture,
@@ -126,7 +126,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
+    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves,
                                                 closure, background_fields, velocities, tracers,
                                                 diffusivities, forcings, hydrostatic_pressure, clock)
 end
@@ -148,7 +148,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
+    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves,
                                                 closure, background_fields, velocities, tracers,
                                                 diffusivities, forcings, hydrostatic_pressure, clock)
 end
@@ -169,7 +169,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves, 
+    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves,
                                                 closure, background_fields, velocities, tracers,
                                                 diffusivities, forcings, clock)
 end

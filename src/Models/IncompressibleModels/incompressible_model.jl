@@ -87,12 +87,12 @@ function IncompressibleModel(;
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
           surface_waves = nothing,
-                forcing = NamedTuple(),
+                forcing::NamedTuple = NamedTuple(),
                 closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
-    boundary_conditions = NamedTuple(),
+    boundary_conditions::NamedTuple = NamedTuple(),
                 tracers = (:T, :S),
             timestepper = :QuasiAdamsBashforth2,
-      background_fields = NamedTuple(),
+      background_fields::NamedTuple = NamedTuple(),
               particles = nothing,
              velocities = nothing,
               pressures = nothing,
@@ -131,7 +131,7 @@ function IncompressibleModel(;
     pressures     = PressureFields(pressures,  architecture, grid, boundary_conditions)
     diffusivities = DiffusivityFields(diffusivities, architecture, grid,
                                       tracernames(tracers), boundary_conditions, closure)
-                                      
+
     pressure_solver = PressureSolver(pressure_solver, architecture, grid, PressureBoundaryConditions(grid))
 
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
@@ -150,7 +150,7 @@ end
 
 #####
 ##### Recursive util for building NamedTuples of boundary conditions from NamedTuples of fields
-##### 
+#####
 ##### Note: ignores tuples, including tuples of Symbols (tracer names) and
 ##### tuples of DiffusivityFields (which occur for tupled closures)
 #####

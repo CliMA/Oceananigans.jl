@@ -1,9 +1,10 @@
 push!(LOAD_PATH, "..")
 
 using Documenter
-using Bibliography
+using DocumenterCitations
 using Literate
 using Plots  # to avoid capturing precompilation output by Literate
+
 using Oceananigans
 using Oceananigans.Operators
 using Oceananigans.Grids
@@ -14,20 +15,11 @@ using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
 
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
-const BIBLIOGRAPHY = import_bibtex(bib_filepath)
-@info "Bibliography: found $(length(BIBLIOGRAPHY)) entries."
-
-include("bibliography.jl")
-include("citations.jl")
+bib = CitationBibliography(bib_filepath)
 
 #####
 ##### Generate examples
 #####
-
-# Gotta set this environment variable when using the GR run-time on Travis CI.
-# This happens as examples will use Plots.jl to make plots and movies.
-# See: https://github.com/jheinen/GR.jl/issues/278
-ENV["GKSwstype"] = "100"
 
 const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
@@ -140,7 +132,7 @@ format = Documenter.HTML(
         canonical = "https://clima.github.io/OceananigansDocumentation/stable/"
 )
 
-makedocs(
+makedocs(bib,
   sitename = "Oceananigans.jl",
    authors = "Ali Ramadhan, Gregory Wagner, John Marshall, Jean-Michel Campin, Chris Hill",
     format = format,
@@ -152,10 +144,9 @@ makedocs(
  checkdocs = :none  # Should fix our docstring so we can use checkdocs=:exports with strict=true.
 )
 
-withenv("TRAVIS_REPO_SLUG" => "CliMA/OceananigansDocumentation") do
-    deploydocs(
-              repo = "github.com/CliMA/OceananigansDocumentation.git",
-          versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
-      push_preview = true
-    )
-end
+deploydocs(
+          repo = "github.com/CliMA/OceananigansDocumentation.git",
+      versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
+  push_preview = true
+)
+

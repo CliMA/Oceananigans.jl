@@ -6,13 +6,13 @@ end
 
 function test_diffusion_simple(fieldname, timestepper)
 
-    model = IncompressibleModel(timestepper = timestepper,    
+    model = IncompressibleModel(timestepper = timestepper,
                                        grid = RegularCartesianGrid(size=(1, 1, 16), extent=(1, 1, 1)),
                                     closure = IsotropicDiffusivity(ν=1, κ=1),
                                    coriolis = nothing,
                                     tracers = :c,
                                    buoyancy = nothing)
-                               
+
     field = get_model_field(fieldname, model)
 
     value = π
@@ -133,7 +133,7 @@ function internal_wave_test(timestepper; N=128, Nt=10, background_stratification
     w₀(x, y, z) = w(x, y, z, 0)
     b₀(x, y, z) = b(x, y, z, 0)
 
-    model = IncompressibleModel(timestepper = timestepper,    
+    model = IncompressibleModel(timestepper = timestepper,
                                        grid = RegularCartesianGrid(size=(N, 1, N), extent=(L, L, L)),
                                     closure = IsotropicDiffusivity(ν=ν, κ=κ),
                                    buoyancy = BuoyancyTracer(),
@@ -169,6 +169,8 @@ function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, bac
         u₀ = 0
         v₀ = 0
     end
+
+    background_fields = NamedTuple{Tuple(keys(background_fields))}(values(background_fields))
 
     grid = RegularCartesianGrid(size=(N, N, 2), extent=(L, L, L))
     closure = IsotropicDiffusivity(ν=κ, κ=κ)
@@ -276,7 +278,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                                coriolis = nothing,
                                                 tracers = :c,
                                                buoyancy = nothing)
-                    
+
                 for fieldname in fieldnames
                     @info "    [$timestepper] Testing $fieldname budget in a $topology domain with isotropic diffusion..."
                     @test test_isotropic_diffusion_budget(fieldname, model)
@@ -307,7 +309,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                                coriolis = nothing,
                                                 tracers = :c,
                                                buoyancy = nothing)
-                    
+
                 for fieldname in fieldnames
                     @info "    [$timestepper] Testing $fieldname budget in a $topology domain with biharmonic diffusion..."
                     @test test_biharmonic_diffusion_budget(fieldname, model)

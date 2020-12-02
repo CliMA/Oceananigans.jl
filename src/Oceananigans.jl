@@ -62,7 +62,10 @@ export
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Output writers
-    FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer, restore_from_checkpoint
+    FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer, restore_from_checkpoint,
+
+    # Misc.
+    fields
 
 # Standard library modules
 using Printf
@@ -123,6 +126,8 @@ function write_output! end
 function location end
 function tupleit end
 function short_show end
+
+function fields end
 
 #####
 ##### Include all the submodules
