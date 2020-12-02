@@ -98,7 +98,7 @@ buoyancy_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc, bottom = b
 # due to viruses and grazing by zooplankton,
 
 growing_and_grazing(x, y, z, t, P, p) = (p.μ₀ * exp(z / p.λ) - p.m) * P
-nothing # hide
+nothing #hide
 
 # with parameters
 
@@ -215,7 +215,7 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 times = [file["timeseries/t/$iter"] for iter in iterations]
 
 buoyancy_flux_time_series = [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times]
-nothing # hide
+nothing #hide
 
 # and then we construct the ``x, z`` grid,
 
@@ -223,7 +223,7 @@ using Oceananigans.Grids: nodes
 
 xw, yw, zw = nodes(model.velocities.w)
 xp, yp, zp = nodes(model.tracers.P)
-nothing # hide
+nothing #hide
 
 # Finally, we animate plankton mixing and blooming,
 
@@ -312,4 +312,4 @@ anim = @animate for (i, iteration) in enumerate(iterations)
          layout=layout, size=(1000, 1000))
 end
 
-gif(anim, "convecting_plankton.gif", fps = 8) # hide
+gif(anim, "convecting_plankton.gif", fps = 8) #hide

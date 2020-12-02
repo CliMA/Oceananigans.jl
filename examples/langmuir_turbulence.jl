@@ -149,7 +149,7 @@ model = IncompressibleModel(
 # for buoyancy and velocity initial conditions,
 
 Ξ(z) = randn() * exp(z / 4)
-nothing # hide
+nothing #hide
 
 # Our initial condition for buoyancy consists of a surface mixed layer 33 m deep,
 # a deep linear stratification, plus noise,
@@ -268,7 +268,7 @@ run!(simulation)
 # slice of ``w`` to look for Langmuir cells.
 
 k = searchsortedfirst(grid.zF[:], -8)
-nothing # hide
+nothing #hide
 
 # Making the coordinate arrays takes a few lines of code,
 
@@ -276,7 +276,7 @@ using Oceananigans.Grids
 
 xw, yw, zw = nodes(model.velocities.w)
 xu, yu, zu = nodes(model.velocities.u)
-nothing # hide
+nothing #hide
 
 # Next, we open the JLD2 file, and extract the iterations we ended up saving at,
 
@@ -295,7 +295,7 @@ function nice_divergent_levels(c, clim; nlevels=20)
     clim < cmax && (levels = vcat([-cmax], levels, [cmax]))
     return (-clim, clim), levels
 end
-nothing # hide
+nothing #hide
 
 # Finally, we're ready to animate.
 
@@ -392,4 +392,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
     end
 end
 
-gif(anim, "langmuir_turbulence.gif", fps = 8) # hide
+gif(anim, "langmuir_turbulence.gif", fps = 8) #hide

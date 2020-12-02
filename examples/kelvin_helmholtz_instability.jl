@@ -182,7 +182,7 @@ function grow_instability!(simulation, energy)
     
     return growth_rate    
 end
-nothing # hide
+nothing #hide
 
 # Finally, we write a function that rescales the state. The rescaling is done via computing the
 # kinetic energy and then rescaling all flow fields so that the kinetic energy assumes a targetted value.
@@ -219,7 +219,7 @@ Check if the growth rate has converged. If the array `σ` has at least 2 element
 relative difference between ``σ[end]`` and ``σ[end-1]``.
 """
 convergence(σ) = length(σ) > 1 ? abs((σ[end] - σ[end-1]) / σ[end]) : 9.1e18 # pretty big (not Inf tho)
-nothing # hide
+nothing #hide
 
 # and the main function that performs the power method iteration.
 
@@ -261,7 +261,7 @@ function estimate_growth_rate(simulation, energy, ω, b; convergence_criterion=1
 
     return σ, power_method_data
 end
-nothing # hide
+nothing #hide
 
 # # Eigenplotting
 #
@@ -316,7 +316,7 @@ function power_method_plot(ω, b, σ, t)
     
     return plot(plot_growthrates, plot_eigenmode, layout=@layout([A{0.25h}; B]), size=(800, 600))
 end
-nothing # hide
+nothing #hide
 
 # # Rev your engines...
 #
@@ -345,7 +345,7 @@ anim_powermethod = @animate for i in 1:length(power_method_data)
     power_method_plot(power_method_data[i].ω, power_method_data[i].b, power_method_data[i].σ, nothing)
 end
 
-gif(anim_powermethod, "powermethod.gif", fps = 1) # hide
+gif(anim_powermethod, "powermethod.gif", fps = 1) #hide
 
 # # Now for the fun part
 #
@@ -443,7 +443,7 @@ anim_perturbations = @animate for (i, iteration) in enumerate(iterations)
 
 end
 
-gif(anim_perturbations, "kelvin_helmholtz_instability_perturbations.gif", fps = 8) # hide
+gif(anim_perturbations, "kelvin_helmholtz_instability_perturbations.gif", fps = 8) #hide
 
 # And then the same for total vorticity & buoyancy of the fluid.
 
@@ -469,4 +469,4 @@ anim_total = @animate for (i, iteration) in enumerate(iterations)
     plot(eigenmode_plot, energy_plot, layout=@layout([A{0.6h}; B]), size=(800, 600))
 end
 
-gif(anim_total, "kelvin_helmholtz_instability_total.gif", fps = 8) # hide
+gif(anim_total, "kelvin_helmholtz_instability_total.gif", fps = 8) #hide

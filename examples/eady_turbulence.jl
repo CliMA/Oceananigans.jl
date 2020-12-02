@@ -230,7 +230,7 @@ v̄ = sum(model.velocities.v.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
 
 model.velocities.u.data.parent .-= ū
 model.velocities.v.data.parent .-= v̄
-nothing # hide
+nothing #hide
 
 # ## Simulation set-up
 #
@@ -269,7 +269,7 @@ progress(sim) = @printf("i: % 6d, sim time: % 10s, wall time: % 10s, Δt: % 10s,
                         prettytime(1e-9 * (time_ns() - start_time)),
                         prettytime(sim.Δt.Δt),
                         CFL(sim.model))
-nothing # hide
+nothing #hide
 
 # ### Build the simulation
 #
@@ -307,7 +307,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ=ζ, δ=δ),
                                                       schedule = TimeInterval(4hours),
                                                         prefix = "eady_turbulence",
                                                          force = true)
-nothing # hide
+nothing #hide
 
 # All that's left is to press the big red button:
 
@@ -343,7 +343,7 @@ function nice_divergent_levels(c, clim, nlevels=31)
     clim < cmax && (levels = vcat([-cmax], levels, [cmax]))
     return levels
 end
-nothing # hide
+nothing #hide
 
 # Now we're ready to animate.
 
@@ -395,4 +395,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
     iter == iterations[end] && close(file)
 end
 
-gif(anim, "eady_turbulence.gif", fps = 8) # hide
+gif(anim, "eady_turbulence.gif", fps = 8) #hide

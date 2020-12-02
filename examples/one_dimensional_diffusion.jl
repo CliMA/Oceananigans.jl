@@ -141,4 +141,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
          label="", xlabel="Temperature", ylabel="z", xlims=(0, 1))
 end
 
-gif(anim, "one_dimensional_diffusion.gif", fps = 15) # hide
+gif(anim, "one_dimensional_diffusion.gif", fps = 15) #hide

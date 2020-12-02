@@ -88,7 +88,7 @@ u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
 # For salinity, `S`, we impose an evaporative flux of the form
 
 @inline Qˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S
-nothing # hide
+nothing #hide
 
 # where `S` is salinity. We use an evporation rate of 1 millimeter per hour,
 
@@ -268,4 +268,4 @@ anim = @animate for (i, iter) in enumerate(iterations[intro:end])
     iter == iterations[end] && close(file)
 end
 
-gif(anim, "ocean_wind_mixing_and_convection.gif", fps = 8) # hide
+gif(anim, "ocean_wind_mixing_and_convection.gif", fps = 8) #hide

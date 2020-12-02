@@ -90,7 +90,7 @@ f = coriolis.f
 ω² = (N^2 * k^2 + f^2 * m^2) / (k^2 + m^2)
 
 ω = sqrt(ω²)
-nothing # hide
+nothing #hide
 
 # We define a Gaussian envelope for the wave packet so that we can 
 # observe wave propagation.
@@ -101,7 +101,7 @@ A = 1e-9
 
 ## A Gaussian envelope centered at ``(x, z) = (0, 0)``.
 a(x, z) = A * exp( -( x^2 + z^2 ) / 2δ^2 )
-nothing # hide
+nothing #hide
 
 # An inertia-gravity wave is a linear solution to the Boussinesq equations.
 # In order that our initial condition excites an inertia-gravity wave, we
@@ -149,7 +149,7 @@ using JLD2, Printf, Plots, Oceananigans.Grids
 # We use coordinate arrays appropriate for the vertical velocity field,
 
 x, y, z = nodes(model.velocities.w)
-nothing # hide
+nothing #hide
 
 # open the jld2 file with the data,
 
@@ -180,4 +180,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
                  aspectratio = :equal)
 end
 
-gif(anim, "internal_wave.gif", fps = 8) # hide
+gif(anim, "internal_wave.gif", fps = 8) #hide

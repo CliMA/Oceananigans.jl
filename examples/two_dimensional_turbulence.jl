@@ -114,7 +114,7 @@ using Oceananigans.Grids
 
 xω, yω, zω = nodes(ω_field)
 xs, ys, zs = nodes(s_field)
-nothing # hide
+nothing #hide
 
 # and animate the vorticity and fluid speed.
 
@@ -154,4 +154,4 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     plot(ω_plot, s_plot, title=["Vorticity" "Speed"], layout=(1, 2), size=(1200, 500))
 end
 
-gif(anim, "two_dimensional_turbulence.gif", fps = 8) # hide
+gif(anim, "two_dimensional_turbulence.gif", fps = 8) #hide
