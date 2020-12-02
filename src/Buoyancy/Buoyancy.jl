@@ -64,6 +64,7 @@ required_tracers(::BuoyancyTracer) = (:b,)
 @inline ∂y_b(i, j, k, grid, ::BuoyancyTracer, C) = ∂yᵃᶠᵃ(i, j, k, grid, C.b)
 @inline ∂z_b(i, j, k, grid, ::BuoyancyTracer, C) = ∂zᵃᵃᶠ(i, j, k, grid, C.b)
 
+include("gravitational_acceleration.jl")
 include("seawater_buoyancy.jl")
 include("linear_equation_of_state.jl")
 include("nonlinear_equation_of_state.jl")
