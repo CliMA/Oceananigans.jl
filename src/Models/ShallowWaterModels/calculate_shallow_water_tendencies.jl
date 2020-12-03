@@ -108,7 +108,7 @@ function calculate_interior_tendency_contributions!(tendencies,
 end
 
 #####
-##### Tendency calculators for u, v-velocity
+##### Tendency calculators for the transports and height: uh, vh, h
 #####
 
 """ Calculate the right-hand-side of the uh-transport equation. """

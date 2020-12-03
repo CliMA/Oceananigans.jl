@@ -16,7 +16,9 @@ Compute the tendency for the x-directional transport, uh
                                       forcings,
                                       clock)
 
-    return ( - ∂xᶠᵃᵃ(i, j, k, grid, solution.h) )
+    return ( - gravitational_acceleration * ∂xᶠᵃᵃ(i, j, k, grid, solution.h)
+             + coriolis.f * ℑxyᶠᶜᵃ(i, j, k, grid, solution.vh))
+
 end
 
 """
@@ -33,7 +35,8 @@ Compute the tendency for the y-directional transport, vh.
                                       forcings,
                                       clock)
 
-    return ( - ∂yᵃᶠᵃ(i, j, k, grid, solution.h) )
+    return ( - gravitational_acceleration * ∂yᵃᶠᵃ(i, j, k, grid, solution.h)
+             - coriolis.f * ℑxyᶜᶠᵃ(i, j, k, grid, solution.uh))
 end
 
 """

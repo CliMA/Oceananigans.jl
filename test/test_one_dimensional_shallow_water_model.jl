@@ -7,9 +7,10 @@ using Oceananigans.Grids: Periodic, Bounded
 grid = RegularCartesianGrid(size=(64, 1, 1), extent=(10, 1, 1), topology=(Periodic, Bounded, Bounded))
 
 model = ShallowWaterModel(        grid = grid,
+            gravitational_acceleration = 1,
                           architecture = CPU(),
                              advection = nothing, 
-                              coriolis = FPlane(f=0.0)
+                              coriolis = FPlane(f=1.0)
                                   )
 
 width = 0.3
@@ -63,16 +64,28 @@ time = [file["timeseries/t/$iter"] for iter in iterations]
 
 # Build array of T(z, t)
 
-Nx = file["grid/Nx"]
-hp = zeros(Nx, length(iterations))
+Nx  = file["grid/Nx"]
+hp  = zeros(Nx, length(iterations))
+uhp = zeros(Nx, length(iterations))
+vhp = zeros(Nx, length(iterations))
 
 for (i, iter) in enumerate(iterations)
-    hp[:, i] = file["timeseries/h/$iter"][:, 1, 1]
+    hp[:, i]  = file["timeseries/h/$iter"][:, 1, 1]
+    uhp[:, i] = file["timeseries/uh/$iter"][:, 1, 1]
+    vhp[:, i] = file["timeseries/vh/$iter"][:, 1, 1]
 end
 
 plt = contourf(time, x, hp, linewidth=0)
+savefig("Hovmolleer_h")
 
-savefig("Hovmolleer")
-println("Saving Hovmoller plot of the solution.")
+plt = contourf(time, x, uhp, linewidth=0)
+savefig("Hovmolleer_uh")
+
+println(maximum(vhp))
+println(minimum(vhp))
+#plt = contourf(time, x, vhp, linewidth=0)
+#savefig("Hovmolleer_vh")
+
+println("Saving Hovmoller plots of the solution.")
 
 
