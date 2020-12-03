@@ -38,31 +38,34 @@ function ShallowWaterSolutionFields(arch, grid, bcs)
     return (uh=uh, vh=vh, h=h)
 end
 
-struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, Q, C, K, TS} <: AbstractModel{TS}
+struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, TS} <: AbstractModel{TS}
     
-                 grid :: G         # Grid of physical points on which `Model` is solved
-         architecture :: A         # Computer `Architecture` on which `Model` is run
-                clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
-            advection :: V         # Advection scheme for velocities _and_ tracers
-             coriolis :: R         # Set of parameters for the background rotation rate of `Model`
-              forcing :: F         # Container for forcing functions defined by the user
-              closure :: E         # Diffusive 'turbulence closure' for all model fields
-             solution :: Q         # Container for transports `uh`, `vh`, and height `h`
-              tracers :: C         # Container for tracer fields
-        diffusivities :: K         # Container for turbulent diffusivities
-          timestepper :: TS        # Object containing timestepper fields and parameters
+                          grid :: G         # Grid of physical points on which `Model` is solved
+                  architecture :: A         # Computer `Architecture` on which `Model` is run
+                         clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
+    gravitational_acceleration :: T         # Gravitational acceleration, full, or reduced
+                     advection :: V         # Advection scheme for velocities _and_ tracers
+                      coriolis :: R         # Set of parameters for the background rotation rate of `Model`
+                       forcing :: F         # Container for forcing functions defined by the user
+                       closure :: E         # Diffusive 'turbulence closure' for all model fields
+                    bathymetry :: B         # Diffusive 'turbulence closure' for all model fields
+                      solution :: Q         # Container for transports `uh`, `vh`, and height `h`
+                       tracers :: C         # Container for tracer fields
+                 diffusivities :: K         # Container for turbulent diffusivities
+                   timestepper :: TS        # Object containing timestepper fields and parameters
 
 end
 
 function ShallowWaterModel(;
                            grid,
+                           gravitational_acceleration,
   architecture::AbstractArchitecture = CPU(),
-                          float_type = Float64,
-                               clock = Clock{float_type}(0, 0, 1),
+                               clock = Clock{eltype(grid)}(0, 0, 1),
                            advection = UpwindBiasedFifthOrder(),
                             coriolis = nothing,
                              forcing = NamedTuple(),
                              closure = nothing,
+                          bathymetry = nothing,
                             solution = nothing,
                  tracers::NamedTuple = NamedTuple(),
                        diffusivities = nothing,
@@ -93,10 +96,12 @@ function ShallowWaterModel(;
     return ShallowWaterModel(grid,
                              architecture,
                              clock,
+                             eltype(grid)(gravitational_acceleration),
                              advection,
                              coriolis,
                              forcing,
                              closure,
+                             bathymetry,
                              solution,
                              tracers,
                              diffusivities,

@@ -6,8 +6,10 @@ using Oceananigans.Operators
 Compute the tendency for the x-directional transport, uh
 """
 @inline function uh_solution_tendency(i, j, k, grid,
+                                      gravitational_acceleration,
                                       advection,
                                       coriolis,
+                                      bathymetry,
                                       solution,
                                       tracers,
                                       diffusivities,
@@ -21,8 +23,10 @@ end
 Compute the tendency for the y-directional transport, vh.
 """
 @inline function vh_solution_tendency(i, j, k, grid,
+                                      gravitational_acceleration,
                                       advection,
                                       coriolis,
+                                      bathymetry,
                                       solution,
                                       tracers,
                                       diffusivities,
@@ -36,8 +40,10 @@ end
 Compute the tendency for the height, h.
 """
 @inline function h_solution_tendency(i, j, k, grid,
+                                     gravitational_acceleration,
                                      advection,
                                      coriolis,
+                                     bathymetry,
                                      solution,
                                      tracers,
                                      diffusivities,

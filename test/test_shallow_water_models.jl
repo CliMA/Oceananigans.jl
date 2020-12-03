@@ -6,8 +6,8 @@ using Oceananigans.Grids: Periodic, Bounded
 
     @testset "Model constructor errors" begin
         grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
-        @test_throws TypeError ShallowWaterModel(architecture=CPU, grid=grid)
-        @test_throws TypeError ShallowWaterModel(architecture=GPU, grid=grid)
+        @test_throws TypeError ShallowWaterModel(architecture=CPU, grid=grid, gravitational_acceleration=1)
+        @test_throws TypeError ShallowWaterModel(architecture=GPU, grid=grid, gravitational_acceleration=1)
     end
 
     topos = (
@@ -23,7 +23,7 @@ using Oceananigans.Grids: Periodic, Bounded
 		        arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
 
                 grid = RegularCartesianGrid(FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
-                model = ShallowWaterModel(grid=grid, architecture=arch, float_type=FT)
+                model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)
 
                 # Just testing that the model was constructed with no errors/crashes.
                 @test model isa ShallowWaterModel
@@ -33,7 +33,7 @@ using Oceananigans.Grids: Periodic, Bounded
 
                 too_big_grid = RegularCartesianGrid(FT, topology=topo, size=(1, 1, 2), extent=(1, 2, 3))
 
-                @test_throws ArgumentError ShallowWaterModel(grid=too_big_grid, architecture=arch, float_type=FT)
+                @test_throws ArgumentError ShallowWaterModel(grid=too_big_grid, gravitational_acceleration=1, architecture=arch)
             end
         end
     end
@@ -45,7 +45,7 @@ using Oceananigans.Grids: Periodic, Bounded
             L = (2π, 3π, 5π)
 
             grid = RegularCartesianGrid(FT, size=N, extent=L)
-            model = ShallowWaterModel(grid=grid, architecture=arch, float_type=FT)
+            model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)
 
             x, y, z = nodes((Face, Cell, Cell), model.grid, reshape=true)
 
@@ -69,7 +69,7 @@ using Oceananigans.Grids: Periodic, Bounded
             @info "  Testing time-stepping ShallowWaterModels [$arch, $topo]..."
 
             grid = RegularCartesianGrid(size=(1, 1, 1), extent=(2π, 2π, 2π), topology=topo)
-            model = ShallowWaterModel(grid=grid, architecture=arch)
+            model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)
             simulation = Simulation(model, Δt=1.0, stop_iteration=1)
 
             run!(simulation)
