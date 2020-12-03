@@ -4,19 +4,19 @@ using Oceananigans
 using Oceananigans.Models: ShallowWaterModel
 using Oceananigans.Grids: Periodic, Bounded
 
-grid = RegularCartesianGrid(size=(64, 1, 1), extent=(10, 1, 1), topology=(Periodic, Bounded, Bounded))
+grid = RegularCartesianGrid(size=(64, 1, 1), extent=(10, 1, 1), topology=(Periodic, Periodic, Bounded))
 
 model = ShallowWaterModel(        grid = grid,
             gravitational_acceleration = 1,
                           architecture = CPU(),
-                             advection = nothing, 
+                             advection = nothing,
                               coriolis = FPlane(f=1.0)
                                   )
 
 width = 0.3
- h(x, y, z)  = 1.0 + 0.1 * exp(-(x - 5)^2 / (2width^2));  
+ h(x, y, z)  = 1.0 + 0.1 * exp(-(x - 5)^2 / (2width^2));
 uh(x, y, z) = 0.0
-vh(x, y, z) = 0.0 
+vh(x, y, z) = 0.0
 
 set!(model, uh = uh, vh = vh, h = h)
 
@@ -25,7 +25,7 @@ simulation = Simulation(model, Δt = 0.01, stop_iteration = 500)
 
 
 using Plots
-using Oceananigans.Grids: xnodes 
+using Oceananigans.Grids: xnodes
 
 x = xnodes(model.solution.h);
 
@@ -36,13 +36,11 @@ h_plot = plot(x, interior(model.solution.h)[:, 1, 1],
               ylabel = "height")
 
 
-using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
+using Oceananigans.OutputWriters: NetCDFOutputWriter, IterationInterval
 
 simulation.output_writers[:height] =
-    JLD2OutputWriter(model, model.solution, prefix = "one_dimensional_wave_equation",
-                     schedule=IterationInterval(1), force = true)
-
-
+    NetCDFOutputWriter(model, model.solution, filepath = "one_dimensional_wave_equation.nc",
+                       schedule=IterationInterval(1), mode="c")
 
 run!(simulation)
 
@@ -55,37 +53,17 @@ plt = plot!(h_plot, x, interior(model.solution.h)[:, 1, 1], linewidth=2,
 savefig("slice")
 println("Saving plot of initial and final conditions.")
 
-using JLD2
+using NCDatasets
 
-file = jldopen(simulation.output_writers[:height].filepath)
-iterations = parse.(Int, keys(file["timeseries/t"]))
+NCDataset("one_dimensional_wave_equation.nc") do ds
+    @info "Saving Hovmoller plots of the solution."
 
-time = [file["timeseries/t/$iter"] for iter in iterations]
+    contourf(ds["time"], ds["xC"], ds["h"][:, 1, 1, :], linewidth=0)
+    savefig("Hovmolleer_h.png")
 
-# Build array of T(z, t)
+    contourf(ds["time"], ds["xF"], ds["uh"][:, 1, 1, :], linewidth=0)
+    savefig("Hovmolleer_uh.png")
 
-Nx  = file["grid/Nx"]
-hp  = zeros(Nx, length(iterations))
-uhp = zeros(Nx, length(iterations))
-vhp = zeros(Nx, length(iterations))
-
-for (i, iter) in enumerate(iterations)
-    hp[:, i]  = file["timeseries/h/$iter"][:, 1, 1]
-    uhp[:, i] = file["timeseries/uh/$iter"][:, 1, 1]
-    vhp[:, i] = file["timeseries/vh/$iter"][:, 1, 1]
+    contourf(ds["time"], ds["xC"], ds["vh"][:, 1, 1, :], linewidth=0)
+    savefig("Hovmolleer_vh.png")
 end
-
-plt = contourf(time, x, hp, linewidth=0)
-savefig("Hovmolleer_h")
-
-plt = contourf(time, x, uhp, linewidth=0)
-savefig("Hovmolleer_uh")
-
-println(maximum(vhp))
-println(minimum(vhp))
-#plt = contourf(time, x, vhp, linewidth=0)
-#savefig("Hovmolleer_vh")
-
-println("Saving Hovmoller plots of the solution.")
-
-
