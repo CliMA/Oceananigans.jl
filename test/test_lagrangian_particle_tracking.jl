@@ -1,4 +1,15 @@
 using NCDatasets
+using StructArrays
+
+struct TestParticle{T}
+    x :: T
+    y :: T
+    z :: T
+    u :: T
+    v :: T
+    w :: T
+    s :: T
+end
 
 function run_simple_particle_tracking_tests(arch, timestepper)
     topo = (Periodic, Periodic, Bounded)
@@ -14,17 +25,6 @@ function run_simple_particle_tracking_tests(arch, timestepper)
     particles = LagrangianParticles(x=xs, y=ys, z=zs)
     @test particles isa LagrangianParticles
 
-    # Particle type for this test
-    struct TestParticle{T}
-        x :: T
-        y :: T
-        z :: T
-        u :: T
-        v :: T
-        w :: T
-        s :: T
-    end
-
     us = convert(array_type(arch), zeros(P))
     vs = convert(array_type(arch), zeros(P))
     ws = convert(array_type(arch), zeros(P))
@@ -32,14 +32,15 @@ function run_simple_particle_tracking_tests(arch, timestepper)
 
     particles = StructArray{TestParticle}((xs, ys, zs, us, vs, ws, ss))
 
-    u, v, w = model.velocities
+    velocities = VelocityFields(arch, grid)
+    u, v, w = velocities
     speed = ComputedField(√(u^2 + v^2 + w^2))
 
-    tracked_fields = merge(model.velocities, (s=speed,))
+    tracked_fields = merge(velocities, (s=speed,))
     lagrangian_particles = LagrangianParticles(particles; tracked_fields)
 
     model = IncompressibleModel(architecture=arch, grid=grid, timestepper=timestepper,
-                                particles=lagrangian_particles)
+                                velocities=velocities, particles=lagrangian_particles)
 
     set!(model, u=1, v=1)
 

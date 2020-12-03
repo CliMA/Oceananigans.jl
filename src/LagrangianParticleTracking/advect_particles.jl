@@ -1,22 +1,22 @@
 """
-    enforce_boundary_conditions(x, xₗ, xᵣ, ::Type{Bounded})
+    enforce_boundary_conditions(x, xₗ, xᵣ, ::Bounded)
 
 If a particle with position `x` and domain `xₗ < x < xᵣ` goes through the edge of the domain
 along a `Bounded` dimension, put them back at the wall.
 """
-@inline function enforce_boundary_conditions(::Type{Bounded}, x, xₗ, xᵣ, restitution)
+@inline function enforce_boundary_conditions(::Bounded, x, xₗ, xᵣ, restitution)
     x > xᵣ && return xᵣ - (x - xᵣ) * restitution
     x < xₗ && return xₗ + (xₗ - x) * restitution
     return x
 end
 
 """
-    enforce_boundary_conditions(x, xₗ, xᵣ, ::Type{Periodic})
+    enforce_boundary_conditions(x, xₗ, xᵣ, ::Periodic)
 
 If a particle with position `x` and domain `xₗ < x < xᵣ` goes through the edge of the domain
 along a `Periodic` dimension, put them on the other side.
 """
-@inline function enforce_boundary_conditions(::Type{Periodic}, x, xₗ, xᵣ, restitution)
+@inline function enforce_boundary_conditions(::Periodic, x, xₗ, xᵣ, restitution)
     x > xᵣ && return xₗ + (x - xᵣ)
     x < xₗ && return xᵣ - (xₗ - x)
     return x
@@ -26,14 +26,14 @@ end
     p = @index(Global)
 
     # Advect particles using forward Euler.
-    @inbounds particles.x[p] += interpolate(velocities.u, Face, Cell, Cell, grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
-    @inbounds particles.y[p] += interpolate(velocities.v, Cell, Face, Cell, grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
-    @inbounds particles.z[p] += interpolate(velocities.w, Cell, Cell, Face, grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
+    @inbounds particles.x[p] += interpolate(velocities.u, Face(), Cell(), Cell(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
+    @inbounds particles.y[p] += interpolate(velocities.v, Cell(), Face(), Cell(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
+    @inbounds particles.z[p] += interpolate(velocities.w, Cell(), Cell(), Face(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
 
     # Enforce boundary conditions for particles.
-    @inbounds particles.x[p] = enforce_boundary_conditions(TX, particles.x[p], grid.xF[1], grid.xF[grid.Nx], restitution)
-    @inbounds particles.y[p] = enforce_boundary_conditions(TY, particles.y[p], grid.yF[1], grid.yF[grid.Ny], restitution)
-    @inbounds particles.z[p] = enforce_boundary_conditions(TZ, particles.z[p], grid.zF[1], grid.zF[grid.Nz], restitution)
+    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], grid.xF[1], grid.xF[grid.Nx], restitution)
+    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], grid.yF[1], grid.yF[grid.Ny], restitution)
+    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], grid.zF[1], grid.zF[grid.Nz], restitution)
 end
 
 @kernel function update_field_property!(particle_property, particles, grid, field, LX, LY, LZ)
@@ -63,7 +63,7 @@ function advect_particles!(lagrangian_particles, model, Δt)
         update_field_property_kernel! = update_field_property!(device(model.architecture), workgroup, worksize)
 
         update_event = update_field_property_kernel!(particle_property, lagrangian_particles.particles, model.grid,
-                                                     datatuple(tracked_field), LX, LY, LZ,
+                                                     datatuple(tracked_field), LX(), LY(), LZ(),
                                                      dependencies=Event(device(model.architecture)))
         push!(events, update_event)
     end
