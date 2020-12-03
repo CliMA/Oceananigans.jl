@@ -10,8 +10,36 @@ function run_simple_particle_tracking_tests(arch, timestepper)
     ys = convert(array_type(arch), zeros(P))
     zs = convert(array_type(arch), 0.5*ones(P))
 
+    # Test first constructor
+    particles = LagrangianParticles(x=xs, y=ys, z=zs)
+    @test particles isa LagrangianParticles
+
+    # Particle type for this test
+    struct TestParticle{T}
+        x :: T
+        y :: T
+        z :: T
+        u :: T
+        v :: T
+        w :: T
+        s :: T
+    end
+
+    us = convert(array_type(arch), zeros(P))
+    vs = convert(array_type(arch), zeros(P))
+    ws = convert(array_type(arch), zeros(P))
+    ss = convert(array_type(arch), zeros(P))
+
+    particles = StructArray{TestParticle}((xs, ys, zs, us, vs, ws, ss))
+
+    u, v, w = model.velocities
+    speed = ComputedField(√(u^2 + v^2 + w^2))
+
+    tracked_fields = merge(model.velocities, (s=speed,))
+    lagrangian_particles = LagrangianParticles(particles; tracked_fields)
+
     model = IncompressibleModel(architecture=arch, grid=grid, timestepper=timestepper,
-                                particles=LagrangianParticles(x=xs, y=ys, z=zs))
+                                particles=lagrangian_particles)
 
     set!(model, u=1, v=1)
 
@@ -26,29 +54,51 @@ function run_simple_particle_tracking_tests(arch, timestepper)
 
     @test length(model.particles) == P
     @test size(model.particles) == (P,)
+    @test propertynames(model.particles.particles) == (:x, :y, :z, :u, :v, :w, :s)
 
     x = convert(array_type(arch), model.particles.particles.x)
     y = convert(array_type(arch), model.particles.particles.y)
     z = convert(array_type(arch), model.particles.particles.z)
+    u = convert(array_type(arch), model.particles.particles.u)
+    v = convert(array_type(arch), model.particles.particles.v)
+    w = convert(array_type(arch), model.particles.particles.w)
+    s = convert(array_type(arch), model.particles.particles.s)
 
     @test size(x) == (P,)
     @test size(y) == (P,)
     @test size(z) == (P,)
+    @test size(u) == (P,)
+    @test size(v) == (P,)
+    @test size(w) == (P,)
+    @test size(s) == (P,)
 
     @test all(x .≈ 0.01)
     @test all(y .≈ 0.01)
     @test all(z .≈ 0.5)
+    @test all(u .≈ 1)
+    @test all(v .≈ 1)
+    @test all(w .≈ 0)
+    @test all(s .≈ √2)
 
     ds = NCDataset(test_output_file)
     x, y, z = ds["x"], ds["y"], ds["z"]
+    u, v, w, s = ds["u"], ds["v"], ds["w"], ds["s"]
 
     @test size(x) == (P, 2)
     @test size(y) == (P, 2)
     @test size(z) == (P, 2)
+    @test size(u) == (P, 2)
+    @test size(v) == (P, 2)
+    @test size(w) == (P, 2)
+    @test size(s) == (P, 2)
 
     @test all(x[:, end] .≈ 0.01)
     @test all(y[:, end] .≈ 0.01)
     @test all(z[:, end] .≈ 0.5)
+    @test all(u[:, end] .≈ 1)
+    @test all(v[:, end] .≈ 1)
+    @test all(w[:, end] .≈ 0)
+    @test all(s[:, end] .≈ √2)
 
     close(ds)
     rm(test_output_file)

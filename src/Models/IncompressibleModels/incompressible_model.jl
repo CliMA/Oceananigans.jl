@@ -13,6 +13,7 @@ using Oceananigans.Grids: with_halo
 using Oceananigans.Solvers: PressureSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
+using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: inflate_halo_size, tupleit
 
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
@@ -93,7 +94,7 @@ function IncompressibleModel(;
                 tracers = (:T, :S),
             timestepper = :QuasiAdamsBashforth2,
       background_fields::NamedTuple = NamedTuple(),
-              particles = nothing,
+              particles::Union{Nothing,LagrangianParticles} = nothing,
              velocities = nothing,
               pressures = nothing,
           diffusivities = nothing,

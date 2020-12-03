@@ -31,4 +31,7 @@ include("solution_and_tracer_tendencies.jl")
 include("calculate_shallow_water_tendencies.jl")
 include("update_shallow_water_state.jl")
 
+# No support for particle advection yet.
+advect_particles!(model::ShallowWaterModel, Δt) = nothing
+
 end # module
