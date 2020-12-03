@@ -4,22 +4,24 @@ using Oceananigans
 using Oceananigans.Models: ShallowWaterModel
 using Oceananigans.Grids: Periodic, Bounded
 
-grid = RegularCartesianGrid(size=(64, 1, 1), extent=(2π, 2π, 2π))
+grid = RegularCartesianGrid(size=(64, 1, 1), extent=(10, 1, 1), topology=(Periodic, Bounded, Bounded))
 
 model = ShallowWaterModel(        grid = grid,
                           architecture = CPU(),
                              advection = nothing, 
-                              coriolis = nothing
+                              coriolis = FPlane(f=0.0)
                                   )
 
 width = 0.3
- h(x, y, z)  = 1.0 + 0.1 * exp(-(x - π)^2 / (2width^2));  
+ h(x, y, z)  = 1.0 + 0.1 * exp(-(x - 5)^2 / (2width^2));  
 uh(x, y, z) = 0.0
 vh(x, y, z) = 0.0 
 
 set!(model, uh = uh, vh = vh, h = h)
 
-simulation = Simulation(model, Δt = 0.01, stop_iteration = 100)
+simulation = Simulation(model, Δt = 0.01, stop_iteration = 500)
+
+
 
 using Plots
 using Oceananigans.Grids: xnodes 
@@ -32,14 +34,7 @@ h_plot = plot(x, interior(model.solution.h)[:, 1, 1],
               xlabel = "x",
               ylabel = "height")
 
-run!(simulation)
 
-using Printf
-
-plot!(h_plot, x, interior(model.solution.h)[:, 1, 1], linewidth=2,
-      label=@sprintf("t = %.3f", model.clock.time))
-
-#=
 using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
 
 simulation.output_writers[:height] =
@@ -47,22 +42,37 @@ simulation.output_writers[:height] =
                      schedule=IterationInterval(1), force = true)
 
 
-simulation.stop_iteration += 10
 
 run!(simulation)
+
+
+using Printf
+
+plt = plot!(h_plot, x, interior(model.solution.h)[:, 1, 1], linewidth=2,
+            label=@sprintf("t = %.3f", model.clock.time))
+
+savefig("slice")
+println("Saving plot of initial and final conditions.")
 
 using JLD2
 
 file = jldopen(simulation.output_writers[:height].filepath)
-
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
-anim = @animate for (i, iter) in enumerate(iterations)
+time = [file["timeseries/t/$iter"] for iter in iterations]
 
-    h = file["timeseries/h/$iter"][:, 1, 1]
-    t = file["timeseries/t/$iter"]
+# Build array of T(z, t)
 
-    plot(x, h, linewidth=2, title=@sprintf("t = %.3f", t),
-         label="", xlabel="x", ylabel="height", xlims=(0, 2π))
+Nx = file["grid/Nx"]
+hp = zeros(Nx, length(iterations))
+
+for (i, iter) in enumerate(iterations)
+    hp[:, i] = file["timeseries/h/$iter"][:, 1, 1]
 end
-=#
+
+plt = contourf(time, x, hp, linewidth=0)
+
+savefig("Hovmolleer")
+println("Saving Hovmoller plot of the solution.")
+
+
