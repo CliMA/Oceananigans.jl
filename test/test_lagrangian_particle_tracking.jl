@@ -51,6 +51,9 @@ function run_simple_particle_tracking_tests(arch, timestepper)
                                                         filepath=test_output_file,
                                                         schedule=IterationInterval(1))
 
+    sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
+                                                     dir = ".", prefix = "particles_checkpoint")
+
     run!(sim)
 
     @test length(model.particles) == P
@@ -103,6 +106,43 @@ function run_simple_particle_tracking_tests(arch, timestepper)
 
     close(ds)
     rm(test_output_file)
+
+    # Test checkpoint of particle properties
+    model.particles.particles.x .= 0
+    model.particles.particles.y .= 0
+    model.particles.particles.z .= 0
+    model.particles.particles.u .= 0
+    model.particles.particles.v .= 0
+    model.particles.particles.w .= 0
+    model.particles.particles.s .= 0
+
+    set!(model, "particles_checkpoint_iteration1.jld2")
+
+    x = convert(array_type(arch), model.particles.particles.x)
+    y = convert(array_type(arch), model.particles.particles.y)
+    z = convert(array_type(arch), model.particles.particles.z)
+    u = convert(array_type(arch), model.particles.particles.u)
+    v = convert(array_type(arch), model.particles.particles.v)
+    w = convert(array_type(arch), model.particles.particles.w)
+    s = convert(array_type(arch), model.particles.particles.s)
+
+    @test model.particles.particles isa StructArray
+
+    @test size(x) == (P,)
+    @test size(y) == (P,)
+    @test size(z) == (P,)
+    @test size(u) == (P,)
+    @test size(v) == (P,)
+    @test size(w) == (P,)
+    @test size(s) == (P,)
+
+    @test all(x .≈ 0.01)
+    @test all(y .≈ 0.01)
+    @test all(z .≈ 0.5)
+    @test all(u .≈ 1)
+    @test all(v .≈ 1)
+    @test all(w .≈ 0)
+    @test all(s .≈ √2)
 
     return nothing
 end

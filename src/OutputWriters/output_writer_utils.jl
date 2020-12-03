@@ -1,6 +1,8 @@
+using StructArrays: StructArray, replace_storage
 using Oceananigans.Fields: AbstractField
 using Oceananigans.BoundaryConditions: bctype, CoordinateBoundaryConditions, FieldBoundaryConditions
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
+using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 
 #####
 ##### Output writer utilities
@@ -66,7 +68,7 @@ end
 # Special serializeproperty! for AB2 time stepper struct used by the checkpointer so
 # it only saves the fields and not the tendency BCs or χ value (as they can be
 # constructed by the `Model` constructor).
-function serializeproperty!(file, location, 
+function serializeproperty!(file, location,
                             ts::Union{QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper})
     serializeproperty!(file, location * "/Gⁿ", ts.Gⁿ)
     serializeproperty!(file, location * "/G⁻", ts.G⁻)
@@ -74,6 +76,11 @@ end
 
 serializeproperty!(file, location, p::NamedTuple) =
     [serializeproperty!(file, location * "/$subp", getproperty(p, subp)) for subp in keys(p)]
+
+serializeproperty!(file, location, s::StructArray) = (file[location] = replace_storage(Array, s))
+
+serializeproperty!(file, location, p::LagrangianParticles) =
+    serializeproperty!(file, location, p.particles)
 
 serializeproperties!(file, structure, ps) =
     [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]
