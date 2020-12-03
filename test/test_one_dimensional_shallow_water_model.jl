@@ -4,7 +4,7 @@ using Oceananigans
 using Oceananigans.Models: ShallowWaterModel
 using Oceananigans.Grids: Periodic, Bounded
 
-grid = RegularCartesianGrid(size=(64, 1, 1), extent=(10, 1, 1), topology=(Periodic, Bounded, Bounded))
+grid = RegularCartesianGrid(size=(64, 1, 1), extent=(10, 1, 1) , topology=(Periodic, Periodic, Bounded))
 
 model = ShallowWaterModel(        grid = grid,
             gravitational_acceleration = 1,
@@ -36,13 +36,11 @@ h_plot = plot(x, interior(model.solution.h)[:, 1, 1],
               ylabel = "height")
 
 
-using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
+using Oceananigans.OutputWriters: IterationInterval, NetCDFOutputWriter
 
 simulation.output_writers[:height] =
-    JLD2OutputWriter(model, model.solution, prefix = "one_dimensional_wave_equation",
-                     schedule=IterationInterval(1), force = true)
-
-
+    NetCDFOutputWriter(model, model.solution, filepath = "one_dimensional_wave_equation.nc",
+                       mode = "c", schedule=IterationInterval(1))
 
 run!(simulation)
 
@@ -55,37 +53,34 @@ plt = plot!(h_plot, x, interior(model.solution.h)[:, 1, 1], linewidth=2,
 savefig("slice")
 println("Saving plot of initial and final conditions.")
 
-using JLD2
 
-file = jldopen(simulation.output_writers[:height].filepath)
-iterations = parse.(Int, keys(file["timeseries/t"]))
 
-time = [file["timeseries/t/$iter"] for iter in iterations]
+using NCDatasets
 
-# Build array of T(z, t)
+NCDataset("one_dimensional_wave_equation.nc") do ds
+    @info "Saving Hovmoller plots of the solution."
 
-Nx  = file["grid/Nx"]
-hp  = zeros(Nx, length(iterations))
-uhp = zeros(Nx, length(iterations))
-vhp = zeros(Nx, length(iterations))
+    contourf(ds["time"], ds["xC"], ds["h"][:, 1, 1, :], linewidth=0)
+    savefig("Hovmolleer_h.png")
 
-for (i, iter) in enumerate(iterations)
-    hp[:, i]  = file["timeseries/h/$iter"][:, 1, 1]
-    uhp[:, i] = file["timeseries/uh/$iter"][:, 1, 1]
-    vhp[:, i] = file["timeseries/vh/$iter"][:, 1, 1]
+    contourf(ds["time"], ds["xF"], ds["uh"][:, 1, 1, :], linewidth=0)
+    savefig("Hovmolleer_uh.png")
+
+    contourf(ds["time"], ds["xC"], ds["vh"][:, 1, 1, :], linewidth=0)
+    savefig("Hovmolleer_vh.png")
 end
 
-plt = contourf(time, x, hp, linewidth=0)
-savefig("Hovmolleer_h")
+using JLD2
 
-plt = contourf(time, x, uhp, linewidth=0)
-savefig("Hovmolleer_uh")
+NCDataset(simulation.output_writers[:height].filepath) do ds
+    
+    anim = @animate for (n, t) in enumerate(ds["time"])
+        plot(ds["xC"], ds["h"][:, 1, 1, n], linewidth=2, title=@sprintf("t = %.3f", t),
+             label="", xlabel="x", ylabel="height", xlims=(0, 10), ylims=(0.95, 1.12))
+    end
+    
+end
 
-println(maximum(vhp))
-println(minimum(vhp))
-#plt = contourf(time, x, vhp, linewidth=0)
-#savefig("Hovmolleer_vh")
-
-println("Saving Hovmoller plots of the solution.")
+gif(anim, "one_dimensional_shallow_water_nc.gif", fps = 15) # hide
 
 
