@@ -2,6 +2,8 @@ using Oceananigans.Advection
 using Oceananigans.Coriolis
 using Oceananigans.Operators
 
+@inline squared(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
+
 """
 Compute the tendency for the x-directional transport, uh
 """
@@ -16,8 +18,7 @@ Compute the tendency for the x-directional transport, uh
                                       forcings,
                                       clock)
 
-    uh2 = solution.uh^2 
-    termx = ℑxᶜᵃᵃ(i, j, k, grid, uh2) / solution.h + 0.5 * gravitational_acceleration * solution.h^2
+    termx = ℑxᶜᵃᵃ(i, j, k, grid, squared, solution.uh) / solution.h + 0.5 * gravitational_acceleration * solution.h^2
     termy = ℑyᵃᶠᵃ(i, j, k, grid, solution.uh) * ℑxᶠᵃᵃ(i, j, k, grid, solution.vh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
     
     return ( - ∂xᶠᵃᵃ(i, j, k, grid, termx)
@@ -40,9 +41,8 @@ Compute the tendency for the y-directional transport, vh.
                                       forcings,
                                       clock)
 
-    vh2 = solution.vh^2
     termx = ℑyᵃᶠᵃ(i, j, k, grid, solution.uh) * ℑxᶠᵃᵃ(i, j, k, grid, solution.vh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
-    termy = ℑyᵃᶜᵃ(i, j, k, grid, vh2) / solution.h + 0.5 * gravitational_acceleration * solution.h^2
+    termy = ℑyᵃᶜᵃ(i, j, k, grid, squared, solution.vh) / solution.h + 0.5 * gravitational_acceleration * solution.h^2
     
     return ( - ∂xᶠᵃᵃ(i, j, k, grid, termx)
              - ∂yᵃᶠᵃ(i, j, k, grid, termy)

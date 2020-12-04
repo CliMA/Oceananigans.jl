@@ -4,7 +4,7 @@ using Oceananigans
 using Oceananigans.Models: ShallowWaterModel
 using Oceananigans.Grids: Periodic, Bounded
 
-grid = RegularCartesianGrid(size=(64, 64, 1), extent=(10, 1, 1) , topology=(Periodic, Periodic, Bounded))
+grid = RegularCartesianGrid(size=(64, 1, 1), extent=(10, 1, 1) , topology=(Periodic, Periodic, Bounded))
 
 model = ShallowWaterModel(        grid = grid,
             gravitational_acceleration = 1,
@@ -37,6 +37,7 @@ h_plot = plot(x, interior(model.solution.h)[:, 1, 1],
               ylabel = "height")
 savefig("initial_height")
 
+@time time_step!(model, 1)
 
 ### Set up the OutputWriter using NetCDF
 
@@ -87,9 +88,7 @@ NCDataset("one_dimensional_wave_equation.nc") do ds
     contourf(ds["time"], ds["xC"], ds["vh"][:, 1, 1, :], linewidth=0, c = :balance)
     savefig("Hovmoller_vh.png")
 end
-=#
 
-#=
 ### Create an animation of the solution
 anim = NCDataset(simulation.output_writers[:height].filepath) do ds
     @info "Saving animation of the solution."
@@ -103,4 +102,5 @@ anim = NCDataset(simulation.output_writers[:height].filepath) do ds
 end
 
 gif(anim, "one_dimensional_shallow_water_nc.gif", fps = 15) # hide
+
 =#
