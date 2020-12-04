@@ -4,19 +4,19 @@ using Oceananigans
 using Oceananigans.Models: ShallowWaterModel
 using Oceananigans.Grids: Periodic, Bounded
 
-grid = RegularCartesianGrid(size=(64, 1, 1), extent=(10, 1, 1) , topology=(Periodic, Periodic, Bounded))
+grid = RegularCartesianGrid(size=(64, 1, 1), extent=(10, 1, 1), topology=(Periodic, Periodic, Bounded))
 
 model = ShallowWaterModel(        grid = grid,
             gravitational_acceleration = 1,
                           architecture = CPU(),
-                             advection = nothing, 
+                             advection = nothing,
                               coriolis = FPlane(f=1.0)
                                   )
 
 width = 0.3
- h(x, y, z)  = 1.0 + 0.1 * exp(-(x - 5)^2 / (2width^2));  
+ h(x, y, z)  = 1.0 + 0.1 * exp(-(x - 5)^2 / (2width^2));
 uh(x, y, z) = 0.0
-vh(x, y, z) = 0.0 
+vh(x, y, z) = 0.0
 
 set!(model, uh = uh, vh = vh, h = h)
 
@@ -25,7 +25,7 @@ simulation = Simulation(model, Δt = 0.01, stop_iteration = 500)
 
 
 using Plots
-using Oceananigans.Grids: xnodes 
+using Oceananigans.Grids: xnodes
 
 x = xnodes(model.solution.h);
 
@@ -41,7 +41,6 @@ using Oceananigans.OutputWriters: IterationInterval, NetCDFOutputWriter
 simulation.output_writers[:height] =
     NetCDFOutputWriter(model, model.solution, filepath = "one_dimensional_wave_equation.nc",
                        mode = "c", schedule=IterationInterval(1))
-
 run!(simulation)
 
 
@@ -52,8 +51,6 @@ plt = plot!(h_plot, x, interior(model.solution.h)[:, 1, 1], linewidth=2,
 
 savefig("slice")
 println("Saving plot of initial and final conditions.")
-
-
 
 using NCDatasets
 
@@ -82,5 +79,4 @@ NCDataset(simulation.output_writers[:height].filepath) do ds
 end
 
 gif(anim, "one_dimensional_shallow_water_nc.gif", fps = 15) # hide
-
 
