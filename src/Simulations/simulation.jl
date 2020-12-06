@@ -71,7 +71,7 @@ function Simulation(model; Δt,
 
    # Check for NaNs in the model's first field.
    model_fields = fields(model)
-   field_to_check_nans = NamedTuple{(keys(model_fields)[1],)}((model_fields[1],))
+   field_to_check_nans = NamedTuple{keys(model_fields) |> first |> tuple}(first(model_fields) |> tuple)
    diagnostics[:nan_checker] = NaNChecker(fields=field_to_check_nans,
                                           schedule=IterationInterval(iteration_interval))
 
