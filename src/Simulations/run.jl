@@ -156,7 +156,7 @@ function run!(sim; pickup=false)
         iterations = min(sim.iteration_interval, sim.stop_iteration - clock.iteration)
 
         for n in 1:iterations
-            clock.time == simulation.stop_time && break
+            clock.time >= simulation.stop_time && break
             
             Δt = min(get_Δt(sim), aligned_time_step(sim))
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
