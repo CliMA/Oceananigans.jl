@@ -51,6 +51,7 @@ achieve a single timestep. A pressure correction step is applied at each interme
 stage.
 """
 function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
+    Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
     model.clock.iteration == 0 && update_state!(model)
