@@ -105,6 +105,9 @@
             grid = RegularCartesianGrid(FT, size=N, extent=L)
             model = IncompressibleModel(architecture=arch, float_type=eltype(grid), grid=grid)
 
+            u, v, w = model.velocities
+            T, S = model.tracers
+
             # Test setting an array
             T₀ = rand(FT, size(grid)...)
             T_answer = deepcopy(T₀)
@@ -122,27 +125,28 @@
 
             set!(model, enforce_incompressibility=false, u=u₀, v=v₀, w=w₀, T=T₀, S=S₀)
 
-            Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
-            xC, yC, zC = nodes(model.tracers.T)
-            xF, yF, zF = nodes((Face, Face, Face), model.grid)
-            u, v, w = model.velocities.u.data, model.velocities.v.data, model.velocities.w.data
-            T, S = model.tracers.T.data, model.tracers.S.data
+            xC, yC, zC = nodes((Cell, Cell, Cell), model.grid; reshape=true)
+            xF, yF, zF = nodes((Face, Face, Face), model.grid; reshape=true)
 
-            all_values_match = true
+            # Form solution arrays
+            u_answer = u₀.(xF, yC, zC)
+            v_answer = v₀.(xC, yF, zC)
+            w_answer = w₀.(xC, yC, zF)
+            T_answer = T₀.(xC, yC, zC)
+            S_answer = S₀.(xC, yC, zC)
 
-            for i in 1:Nx, j in 1:Ny, k in 1:Nz
-                @inbounds begin
-                    values_match = ( u[i, j, k] ≈ 1 + xF[i] + yC[j] + zC[k]       &&
-                                     v[i, j, k] ≈ 2 + sin(xC[i] * yF[j] * zC[k])  &&
-                                     w[i, j, k] ≈ 3 + yC[j] * zF[k]               &&
-                                     T[i, j, k] ≈ 4 + tanh(xC[i] + yC[j] - zC[k]) &&
-                                     S[i, j, k] ≈ 5)
-                end
+            Nx, Ny, Nz = size(model.grid)
 
-                all_values_match = all_values_match & values_match
-            end
+            values_match = [
+                            all(u_answer .≈ interior(model.velocities.u)),
+                            all(v_answer .≈ interior(model.velocities.v)),
+                            all(w_answer[:, :, 2:Nz] .≈ interior(model.velocities.w)[:, :, 2:Nz]),
+                            all(T_answer .≈ interior(model.tracers.T)),
+                            all(S_answer .≈ interior(model.tracers.S)),
+                           ]
 
-            @test all_values_match
+            @test values_match
+            @test all(values_match)
 
             # Test that update_state! works via u boundary conditions
             @test u[1, 1, 1] == u[Nx+1, 1, 1]  # x-periodicity
@@ -151,8 +155,8 @@
             @test all(u[1:Nx, 1:Ny, Nz] .== u[1:Nx, 1:Ny, Nz+1]) # free slip at top
 
             # Test that enforce_incompressibility works
-            set!(model, w=1)
-            @test interior(w) ≈ zeros(FT, size(grid)...)
+            set!(model, u=0, v=0, w=1)
+            @test all(interior(w) .≈ zeros(FT, Nx, Ny, Nz+1))
         end
     end
 end
