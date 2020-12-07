@@ -106,7 +106,7 @@
             model = IncompressibleModel(architecture=arch, float_type=eltype(grid), grid=grid)
 
             # Test setting an array
-            T₀ = rand(size(grid)...)
+            T₀ = rand(FT, size(grid)...)
             T_answer = deepcopy(T₀)
 
             set!(model; enforce_incompressibility=false, T=T₀)
@@ -129,22 +129,30 @@
             T, S = model.tracers.T.data, model.tracers.S.data
 
             all_values_match = true
+
             for i in 1:Nx, j in 1:Ny, k in 1:Nz
-                values_match = ( u[i, j, k] ≈ 1 + xF[i] + yC[j] + zC[k]       &&
-                                 v[i, j, k] ≈ 2 + sin(xC[i] * yF[j] * zC[k])  &&
-                                 w[i, j, k] ≈ 3 + yC[j] * zF[k]               &&
-                                 T[i, j, k] ≈ 4 + tanh(xC[i] + yC[j] - zC[k]) &&
-                                 S[i, j, k] ≈ 5)
+                @inbounds begin
+                    values_match = ( u[i, j, k] ≈ 1 + xF[i] + yC[j] + zC[k]       &&
+                                     v[i, j, k] ≈ 2 + sin(xC[i] * yF[j] * zC[k])  &&
+                                     w[i, j, k] ≈ 3 + yC[j] * zF[k]               &&
+                                     T[i, j, k] ≈ 4 + tanh(xC[i] + yC[j] - zC[k]) &&
+                                     S[i, j, k] ≈ 5)
+                end
+
                 all_values_match = all_values_match & values_match
             end
 
             @test all_values_match
 
+            # Test that update_state! works via u boundary conditions
+            @test u[1, 1, 1] == u[Nx+1, 1, 1]  # x-periodicity
+            @test u[1, 1, 1] == u[1, Ny+1, 1]  # y-periodicity
+            @test all(u[1:Nx, 1:Ny, 1] .== u[1:Nx, 1:Ny, 0])     # free slip at bottom
+            @test all(u[1:Nx, 1:Ny, Nz] .== u[1:Nx, 1:Ny, Nz+1]) # free slip at top
+
             # Test that enforce_incompressibility works
-            
-            # Test that update_state! works
-                    
-            
+            set!(model, w=1)
+            @test interior(w) ≈ zeros(FT, size(grid)...)
         end
     end
 end
