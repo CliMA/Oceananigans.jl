@@ -16,11 +16,6 @@ using Oceananigans.Operators
 @inline vh_transport_y(i, j, k, grid, h, vh, g) =
     @inbounds ℑyᵃᶜᵃ(i, j, k, grid, squared, vh) / h[i, j, k] + g/2 * h[i, j, k]^2
 
-@inline x_f_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U) = - coriolis.f * ℑxyᶠᶜᵃ(i, j, k, grid, U)
-
-@inline y_f_cross_U(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U) =   coriolis.f * ℑxyᶜᶠᵃ(i, j, k, grid, U)
-
-
 """
 Compute the tendency for the x-directional transport, uh
 """
@@ -35,9 +30,11 @@ Compute the tendency for the x-directional transport, uh
                                       forcings,
                                       clock)
 
+    g = gravitational_acceleration
+
     return ( - ∂xᶠᵃᵃ(i, j, k, grid, uh_transport_x, solution.h, solution.uh, gravitational_acceleration)
              - ∂yᵃᶠᵃ(i, j, k, grid, uh_transport_y, solution.h, solution.uh, solution.vh)
-             - x_f_cross_U(i, j, k, grid, solution.vh) )
+             - x_f_cross_U(i, j, k, grid, coriolis, solution) )
 end
 
 """
@@ -56,7 +53,7 @@ Compute the tendency for the y-directional transport, vh.
 
     return ( - ∂xᶠᵃᵃ(i, j, k, grid, vh_transport_x, solution.h, solution.uh, solution.vh)
              - ∂yᵃᶠᵃ(i, j, k, grid, vh_transport_y, solution.h, solution.vh, gravitational_acceleration)
-             - y_f_cross_U(i, j, k, grid, solution.uh) )
+             - y_f_cross_U(i, j, k, grid, coriolis, solution) )
 end
 
 """
