@@ -24,6 +24,11 @@ Compute the tendency for the x-directional transport, uh
                                       forcings,
                                       clock)
 
+#    termx = ℑxᶜᵃᵃ(i, j, k, grid, squared, solution.uh) / solution.h + 0.5 * gravitational_acceleration * solution.h^2
+#    termy = ℑyᵃᶠᵃ(i, j, k, grid, solution.uh) * ℑxᶠᵃᵃ(i, j, k, grid, solution.vh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
+
+#    return ( - ∂xᶠᵃᵃ(i, j, k, grid, termx)
+#             - ∂yᵃᶠᵃ(i, j, k, grid, termy)
     return ( - ∂xᶠᵃᵃ(i, j, k, grid, uh_transport_x, solution.h, solution.uh, gravitational_acceleration)
              - ∂yᵃᶠᵃ(i, j, k, grid, uh_transport_y, solution.h, solution.uh, solution.vh)
              + coriolis.f * ℑxyᶠᶜᵃ(i, j, k, grid, solution.vh))
@@ -49,6 +54,11 @@ Compute the tendency for the y-directional transport, vh.
                                       forcings,
                                       clock)
 
+#    termx = ℑyᵃᶠᵃ(i, j, k, grid, solution.uh) * ℑxᶠᵃᵃ(i, j, k, grid, solution.vh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
+#    termy = ℑyᵃᶜᵃ(i, j, k, grid, squared, solution.vh) / solution.h + 0.5 * gravitational_acceleration * solution.h^2
+
+#    return ( - ∂xᶠᵃᵃ(i, j, k, grid, termx)
+#             - ∂yᵃᶠᵃ(i, j, k, grid, termy)
     return ( - ∂xᶠᵃᵃ(i, j, k, grid, vh_transport_x, solution.h, solution.uh, solution.vh)
              - ∂yᵃᶠᵃ(i, j, k, grid, vh_transport_y, solution.h, solution.vh, gravitational_acceleration)
              - coriolis.f * ℑxyᶜᶠᵃ(i, j, k, grid, solution.uh))
