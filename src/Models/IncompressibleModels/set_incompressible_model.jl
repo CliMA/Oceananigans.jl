@@ -1,5 +1,4 @@
-using Oceananigans.TimeSteppers: update_state!,
-using Oceananigans.TimeSteppers: calculate_pressure_correction!, pressure_correct_velocities!
+using Oceananigans.TimeSteppers: update_state!, calculate_pressure_correction!, pressure_correct_velocities!
 
 import Oceananigans.Fields: set!
 
@@ -52,4 +51,3 @@ function set!(model::IncompressibleModel; enforce_incompressibility=true, kwargs
 
     return nothing
 end
-
