@@ -10,6 +10,12 @@ using Oceananigans.Operators
 @inline uh_transport_y(i, j, k, grid, h, uh, vh) =
     ℑyᵃᶠᵃ(i, j, k, grid, uh) * ℑxᶠᵃᵃ(i, j, k, grid, vh) / ℑxyᶠᶠᵃ(i, j, k, grid, h)
 
+@inline vh_transport_x(i, j, k, grid, h, uh, vh) =
+    ℑyᵃᶠᵃ(i, j, k, grid, uh) * ℑxᶠᵃᵃ(i, j, k, grid, vh) / ℑxyᶠᶠᵃ(i, j, k, grid, h)
+
+@inline vh_transport_y(i, j, k, grid, h, vh, g) =
+    @inbounds ℑyᵃᶜᵃ(i, j, k, grid, squared, vh) / h[i, j, k] + g/2 * h[i, j, k]^2
+
 """
 Compute the tendency for the x-directional transport, uh
 """
@@ -28,12 +34,6 @@ Compute the tendency for the x-directional transport, uh
              - ∂yᵃᶠᵃ(i, j, k, grid, uh_transport_y, solution.h, solution.uh, solution.vh)
              + coriolis.f * ℑxyᶠᶜᵃ(i, j, k, grid, solution.vh))
 end
-
-@inline vh_transport_x(i, j, k, grid, h, uh, vh) =
-    ℑyᵃᶠᵃ(i, j, k, grid, uh) * ℑxᶠᵃᵃ(i, j, k, grid, vh) / ℑxyᶠᶠᵃ(i, j, k, grid, h)
-
-@inline vh_transport_y(i, j, k, grid, h, vh, g) =
-    @inbounds ℑyᵃᶜᵃ(i, j, k, grid, squared, vh) / h[i, j, k] + g/2 * h[i, j, k]^2
 
 """
 Compute the tendency for the y-directional transport, vh.

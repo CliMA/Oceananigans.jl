@@ -48,7 +48,7 @@ struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, 
                       coriolis :: R         # Set of parameters for the background rotation rate of `Model`
                        forcing :: F         # Container for forcing functions defined by the user
                        closure :: E         # Diffusive 'turbulence closure' for all model fields
-                    bathymetry :: B         # Diffusive 'turbulence closure' for all model fields
+                    bathymetry :: B         # Bathymetry/Topography for the model
                       solution :: Q         # Container for transports `uh`, `vh`, and height `h`
                        tracers :: C         # Container for tracer fields
                  diffusivities :: K         # Container for turbulent diffusivities
