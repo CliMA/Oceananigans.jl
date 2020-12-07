@@ -145,7 +145,6 @@
                             all(S_answer .≈ interior(model.tracers.S)),
                            ]
 
-            @test values_match
             @test all(values_match)
 
             # Test that update_state! works via u boundary conditions
@@ -155,8 +154,8 @@
             @test all(u[1:Nx, 1:Ny, Nz] .== u[1:Nx, 1:Ny, Nz+1]) # free slip at top
 
             # Test that enforce_incompressibility works
-            set!(model, u=0, v=0, w=1)
-            @test all(interior(w) .≈ zeros(FT, Nx, Ny, Nz+1))
+            set!(model, u=0, v=0, w=1, T=0, S=0)
+            @test all(abs.(interior(w)) .< 10 * eps(FT))
         end
     end
 end
