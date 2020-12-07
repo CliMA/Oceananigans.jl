@@ -1,6 +1,16 @@
 using Oceananigans.Models: ShallowWaterModel
 using Oceananigans.Grids: Periodic, Bounded
 
+function time_stepping_shallow_water_model_works(arch, topo, coriolis)
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(2π, 2π, 2π), topology=topo)
+    model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch, coriolis=coriolis)
+    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+
+    run!(simulation)
+
+    return model.clock.iteration == 1
+end
+
 @testset "Shallow Water Models" begin
     @info "Testing shallow water models..."
 
@@ -64,17 +74,19 @@ using Oceananigans.Grids: Periodic, Bounded
         end
     end
 
-    for arch in archs, topo in topos
-        @testset "Time-stepping ShallowWaterModels [$arch, $topo]" begin
-            @info "  Testing time-stepping ShallowWaterModels [$arch, $topo]..."
+    for arch in archs
+        for topo in topos
+            @testset "Time-stepping ShallowWaterModels [$arch, $topo]" begin
+                @info "  Testing time-stepping ShallowWaterModels [$arch, $topo]..."
+                @test time_stepping_shallow_water_model_works(arch, topo, nothing)
+            end
+        end
 
-            grid = RegularCartesianGrid(size=(1, 1, 1), extent=(2π, 2π, 2π), topology=topo)
-            model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)
-            simulation = Simulation(model, Δt=1.0, stop_iteration=1)
-
-            run!(simulation)
-
-            @test model.clock.iteration == 1
+        for coriolis in (nothing, FPlane(f=1), BetaPlane(f₀=1, β=0.1))
+            @testset "Time-stepping ShallowWaterModels [$arch, $(typeof(coriolis))]" begin
+                @info "  Testing time-stepping ShallowWaterModels [$arch, $(typeof(coriolis))]..."
+                @test time_stepping_shallow_water_model_works(arch, topos[1], coriolis)
+            end
         end
     end
 end
