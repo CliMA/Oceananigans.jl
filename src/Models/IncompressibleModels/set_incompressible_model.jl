@@ -1,3 +1,6 @@
+using Oceananigans.TimeSteppers: update_state!,
+using Oceananigans.TimeSteppers: calculate_pressure_correction!, pressure_correct_velocities!
+
 import Oceananigans.Fields: set!
 
 """
@@ -27,7 +30,7 @@ T₀[T₀ .< 0.5] .= 0
 set!(model, u=u₀, v=v₀, T=T₀)
 ```
 """
-function set!(model::IncompressibleModel; kwargs...)
+function set!(model::IncompressibleModel; enforce_incompressibility=true, kwargs...)
     for (fldname, value) in kwargs
         if fldname ∈ propertynames(model.velocities)
             ϕ = getproperty(model.velocities, fldname)
@@ -38,6 +41,15 @@ function set!(model::IncompressibleModel; kwargs...)
         end
         set!(ϕ, value)
     end
+
+    if enforce_incompressibility
+        FT = eltype(model.grid)
+        calculate_pressure_correction!(model, one(FT))
+        pressure_correct_velocities!(model, one(FT))
+    end
+
+    update_state!(model)
+
     return nothing
 end
 
