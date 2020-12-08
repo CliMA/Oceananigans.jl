@@ -4,8 +4,9 @@ using Oceananigans.Grids: Periodic, Bounded
 function time_stepping_shallow_water_model_works(arch, topo, coriolis)
     grid = RegularCartesianGrid(size=(1, 1, 1), extent=(2π, 2π, 2π), topology=topo)
     model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch, coriolis=coriolis)
-    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+    set!(model, h=1)
 
+    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
     run!(simulation)
 
     return model.clock.iteration == 1
