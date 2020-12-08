@@ -155,7 +155,8 @@
 
             # Test that enforce_incompressibility works
             set!(model, u=0, v=0, w=1, T=0, S=0)
-            @test all(abs.(interior(w)) .< 10 * eps(FT))
+            ϵ = 10 * eps(FT)
+            @test all(abs.(interior(w)) .< ϵ)
         end
     end
 end
