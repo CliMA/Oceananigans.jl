@@ -137,26 +137,37 @@
 
             Nx, Ny, Nz = size(model.grid)
 
+            u_cpu = XFaceField(CPU(), grid)
+            v_cpu = YFaceField(CPU(), grid)
+            w_cpu = ZFaceField(CPU(), grid)
+            T_cpu = CellField(CPU(), grid)
+            S_cpu = CellField(CPU(), grid)
+
+            set!(u_cpu, u)
+            set!(v_cpu, v)
+            set!(w_cpu, w)
+            set!(T_cpu, T)
+            set!(S_cpu, S)
+
             values_match = [
-                            all(u_answer .≈ interior(model.velocities.u)),
-                            all(v_answer .≈ interior(model.velocities.v)),
-                            all(w_answer[:, :, 2:Nz] .≈ interior(model.velocities.w)[:, :, 2:Nz]),
-                            all(T_answer .≈ interior(model.tracers.T)),
-                            all(S_answer .≈ interior(model.tracers.S)),
+                            all(u_answer .≈ interior(u_cpu)),
+                            all(v_answer .≈ interior(v_cpu)),
+                            all(w_answer[:, :, 2:Nz] .≈ interior(w_cpu)[:, :, 2:Nz]),
+                            all(T_answer .≈ interior(T_cpu)),
+                            all(S_answer .≈ interior(S_cpu)),
                            ]
 
             @test all(values_match)
 
             # Test that update_state! works via u boundary conditions
-            @test u[1, 1, 1] == u[Nx+1, 1, 1]  # x-periodicity
-            @test u[1, 1, 1] == u[1, Ny+1, 1]  # y-periodicity
-            @test all(u[1:Nx, 1:Ny, 1] .== u[1:Nx, 1:Ny, 0])     # free slip at bottom
-            @test all(u[1:Nx, 1:Ny, Nz] .== u[1:Nx, 1:Ny, Nz+1]) # free slip at top
+            @test u_cpu[1, 1, 1] == u_cpu[Nx+1, 1, 1]  # x-periodicity
+            @test u_cpu[1, 1, 1] == u_cpu[1, Ny+1, 1]  # y-periodicity
+            @test all(u_cpu[1:Nx, 1:Ny, 1] .== u_cpu[1:Nx, 1:Ny, 0])     # free slip at bottom
+            @test all(u_cpu[1:Nx, 1:Ny, Nz] .== u_cpu[1:Nx, 1:Ny, Nz+1]) # free slip at top
 
             # Test that enforce_incompressibility works
             set!(model, u=0, v=0, w=1, T=0, S=0)
             ϵ = 10 * eps(FT)
-            w_cpu = ZFaceField(CPU(), grid)
             set!(w_cpu, w)
             @test all(abs.(interior(w_cpu)) .< ϵ)
         end
