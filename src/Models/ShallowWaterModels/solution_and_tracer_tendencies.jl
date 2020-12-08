@@ -2,54 +2,76 @@ using Oceananigans.Advection
 using Oceananigans.Coriolis
 using Oceananigans.Operators
 
+@inline squared(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
+
+@inline uh_transport_x(i, j, k, grid, h, uh, g) =
+    @inbounds ℑxᶜᵃᵃ(i, j, k, grid, squared, uh) / h[i, j, k] + g/2 * h[i, j, k]^2
+
+@inline uh_transport_y(i, j, k, grid, h, uh, vh) =
+    ℑyᵃᶠᵃ(i, j, k, grid, uh) * ℑxᶠᵃᵃ(i, j, k, grid, vh) / ℑxyᶠᶠᵃ(i, j, k, grid, h)
+
+@inline vh_transport_x(i, j, k, grid, h, uh, vh) =
+    ℑyᵃᶠᵃ(i, j, k, grid, uh) * ℑxᶠᵃᵃ(i, j, k, grid, vh) / ℑxyᶠᶠᵃ(i, j, k, grid, h)
+
+@inline vh_transport_y(i, j, k, grid, h, vh, g) =
+    @inbounds ℑyᵃᶜᵃ(i, j, k, grid, squared, vh) / h[i, j, k] + g/2 * h[i, j, k]^2
+
 """
 Compute the tendency for the x-directional transport, uh
 """
 @inline function uh_solution_tendency(i, j, k, grid,
+                                      gravitational_acceleration,
                                       advection,
                                       coriolis,
+                                      bathymetry,
                                       solution,
                                       tracers,
                                       diffusivities,
                                       forcings,
                                       clock)
 
-    return ( - 0.0 )
-#    return ( - ∂xᶠᵃᵃ(i, j, k, grid, solution.h) )
+    g = gravitational_acceleration
+
+    return ( - ∂xᶠᵃᵃ(i, j, k, grid, uh_transport_x, solution.h, solution.uh, gravitational_acceleration)
+             - ∂yᵃᶠᵃ(i, j, k, grid, uh_transport_y, solution.h, solution.uh, solution.vh)
+             - x_f_cross_U(i, j, k, grid, coriolis, solution) )
 end
 
 """
 Compute the tendency for the y-directional transport, vh.
 """
 @inline function vh_solution_tendency(i, j, k, grid,
+                                      gravitational_acceleration,
                                       advection,
                                       coriolis,
+                                      bathymetry,
                                       solution,
                                       tracers,
                                       diffusivities,
                                       forcings,
                                       clock)
 
-    return ( -0.0 )
-#    return ( - ∂yᵃᶠᵃ(i, j, k, grid, solution.h) )
-
+    return ( - ∂xᶠᵃᵃ(i, j, k, grid, vh_transport_x, solution.h, solution.uh, solution.vh)
+             - ∂yᵃᶠᵃ(i, j, k, grid, vh_transport_y, solution.h, solution.vh, gravitational_acceleration)
+             - y_f_cross_U(i, j, k, grid, coriolis, solution) )
 end
 
 """
 Compute the tendency for the height, h.
 """
 @inline function h_solution_tendency(i, j, k, grid,
+                                     gravitational_acceleration,
                                      advection,
                                      coriolis,
+                                     bathymetry,
                                      solution,
                                      tracers,
                                      diffusivities,
                                      forcings,
-                                     clock) where tracer_index
+                                     clock)
 
-    return ( - 0.0  )
-#    return ( - ∂xᶠᵃᵃ(i, j, k, grid, solution.h) )
-
+    return ( - ∂xᶜᵃᵃ(i, j, k, grid, solution.uh)
+             - ∂yᵃᶜᵃ(i, j, k, grid, solution.vh) )
 end
 
 @inline function tracer_tendency(i, j, k, grid,
@@ -63,8 +85,5 @@ end
 
     @inbounds c = tracers[tracer_index]
 
-    # velocities should be replaced with transport, as a vector
     return ( 0.0 )
-#    return ( - div_Uc(i, j, k, grid, advection, solution, c) )
-
 end
