@@ -156,7 +156,8 @@
             # Test that enforce_incompressibility works
             set!(model, u=0, v=0, w=1, T=0, S=0)
             ϵ = 10 * eps(FT)
-            w_cpu = Oceananigans.Fields.similar_cpu_field(w)
+            w_cpu = ZFaceField(CPU(), grid)
+            set!(w_cpu, w)
             @test all(abs.(interior(w_cpu)) .< ϵ)
         end
     end
