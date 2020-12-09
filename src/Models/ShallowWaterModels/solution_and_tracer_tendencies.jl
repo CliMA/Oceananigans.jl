@@ -24,7 +24,7 @@ Compute the tendency for the x-directional transport, uh
      g = gravitational_acceleration
 
     return ( - div_hUu(i, j, k, grid, advection, solution)
-             - ∂xᶠᵃᵃ(i, j, k, grid, gh2, solution.h, gravitational_acceleration)
+             - ∂x₄ᶠᵃᵃ(i, j, k, grid, gh2, solution.h, gravitational_acceleration)
              - x_f_cross_U(i, j, k, grid, coriolis, solution) )
 end
 
@@ -45,7 +45,7 @@ Compute the tendency for the y-directional transport, vh.
      g = gravitational_acceleration
 
     return ( - div_hUv(i, j, k, grid, advection, solution)
-             - ∂yᵃᶠᵃ(i, j, k, grid, gh2, solution.h, gravitational_acceleration)
+             - ∂y₄ᵃᶠᵃ(i, j, k, grid, gh2, solution.h, gravitational_acceleration)
              - y_f_cross_U(i, j, k, grid, coriolis, solution) )
 end
 
@@ -63,7 +63,7 @@ Compute the tendency for the height, h.
                                      forcings,
                                      clock)
 
-    return ( - ∂xᶜᵃᵃ(i, j, k, grid, solution.uh)
+    return ( - ∂x₄ᶜᵃᵃ(i, j, k, grid, solution.uh)
              - ∂yᵃᶜᵃ(i, j, k, grid, solution.vh) )
 end
 
