@@ -240,7 +240,7 @@ function multiplication_and_derivative_ccf(model)
 
     w₀(x, y, z) = sin(π * z)
     T₀(x, y, z) = 42 * z
-    set!(model; w=w₀, T=T₀)
+    set!(model; enforce_incompressibility=false, w=w₀, T=T₀)
 
     w = model.velocities.w
     T = model.tracers.T
@@ -264,7 +264,7 @@ function multiplication_and_derivative_ccc(model)
 
     w₀(x, y, z) = sin(π*z)
     T₀(x, y, z) = 42*z
-    set!(model; w=w₀, T=T₀)
+    set!(model; enforce_incompressibility=false, w=w₀, T=T₀)
 
     w = model.velocities.w
     T = model.tracers.T
@@ -346,7 +346,7 @@ end
 function computations_with_averaged_fields(model)
     u, v, w, T, S = fields(model)
 
-    set!(model, u = (x, y, z) -> z, v = 2, w = 3)
+    set!(model, enforce_incompressibility = false, u = (x, y, z) -> z, v = 2, w = 3)
     
     # Two ways to compute turbulent kinetic energy
     U = AveragedField(u, dims=(1, 2))
@@ -361,7 +361,7 @@ end
 
 function computations_with_averaged_field_derivative(model)
 
-    set!(model, u = (x, y, z) -> z, v = 2, w = 3)
+    set!(model, enforce_incompressibility = false, u = (x, y, z) -> z, v = 2, w = 3)
     
     u, v, w, T, S = fields(model)
 
@@ -382,7 +382,7 @@ end
 function computations_with_computed_fields(model)
     u, v, w, T, S = fields(model)
     
-    set!(model, u = (x, y, z) -> z, v = 2, w = 3)
+    set!(model, enforce_incompressibility = false, u = (x, y, z) -> z, v = 2, w = 3)
 
     # Two ways to compute turbulent kinetic energy
     U = AveragedField(u, dims=(1, 2))
