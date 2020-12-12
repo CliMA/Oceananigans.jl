@@ -22,15 +22,16 @@ end
     @inbounds momentum_flux_vv(i, j, k, grid, advection, solution.vh, solution.vh) / solution.h[i, j, k]
 
 
-@inline ∂x₄ᶠᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = ( -f(i+1, j, k, grid, args...) + 15*f(i, j, k, grid, args...)
-                                                                   - 15*f(i-1, j, k, grid, args...) + f(i-2, j, k, grid, args...)) / ( 12*Δx(i, j, k, grid) )
 
-@inline ∂y₄ᵃᶠᵃ(i, j, k, grid, f::F, args...) where F<:Function = (- f(i, j+1, k, grid, args...) + 15*f(i, j, k, grid, args...)
-                                                                  - 15*f(i, j-1, k, grid, args...) + f(i, j-1, k, grid, args...)) / ( 12*Δy(i, j, k, grid) )
+function div_UV(i, j, k, grid, solution)
+
+    return 1 / Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, mass_flux_x, solution.uh) +
+                                      δyᵃᶜᵃ(i, j, k, grid, mass_flux_y, solution.vh))
+end
+
+@inline mass_flux_x(i, j, k, grid, uh) = @inbounds Ax_ψᵃᵃᶠ(i, j, k, grid, uh)
+
+@inline mass_flux_y(i, j, k, grid, vh) = @inbounds Ay_ψᵃᵃᶠ(i, j, k, grid, vh) 
 
 
-@inline ∂x₄ᶜᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = (- f(i+2, j, k, grid, args...) + 15*f(i+1, j, k, grid, args...)
-                                                                  - 15*f(i, j, k, grid, args...) + f(i-1, j, k, grid, args...)) / ( 12*Δx(i, j, k, grid) )
 
-@inline ∂y₄ᵃᶜᵃ(i, j, k, grid, f::F, args...) where F<:Function = (- f(i, j+2, k, grid, args...) + 15*f(i, j+1, k, grid, args...)
-                                                                  - 15*f(i, j, k, grid, args...) + f(i, j-1, k, grid, args...)) / ( 12*Δy(i, j, k, grid) )
