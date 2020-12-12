@@ -21,7 +21,7 @@ Compute the tendency for the x-directional transport, uh
                                       forcings,
                                       clock)
 
-     g = gravitational_acceleration
+    g = gravitational_acceleration
 
     return ( - div_hUu(i, j, k, grid, advection, solution)
              - ∂xᶠᵃᵃ(i, j, k, grid, gh2, solution.h, gravitational_acceleration)
