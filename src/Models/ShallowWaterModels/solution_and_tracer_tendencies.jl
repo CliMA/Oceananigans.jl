@@ -4,8 +4,7 @@ using Oceananigans.Operators
 
 @inline squared(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
 
-@inline gh2(i, j, k, grid, h, g) =
-    @inbounds g/2 * h[i, j, k]^2
+@inline gh2(i, j, k, grid, h, g) = @inbounds g/2 * h[i, j, k]^2
 
 """
 Compute the tendency for the x-directional transport, uh
