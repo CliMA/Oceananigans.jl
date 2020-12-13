@@ -29,8 +29,15 @@ the field's location in `(x, y, z)`.
 Example
 =======
 
-julia> ω = Field(Face, Face, Cell, CPU(), RegularCartesianmodel.grid)
+```julia
+julia> using Oceananigans
 
+julia> ω = Field(Face, Face, Cell, CPU(), RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+Field located at (Face, Face, Cell)
+├── data: OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}, size: (3, 3, 3)
+├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+└── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=ZeroFlux, top=ZeroFlux)
+```
 """
 function Field(X, Y, Z, arch, grid,
                 bcs = FieldBoundaryConditions(grid, (X, Y, Z)),
