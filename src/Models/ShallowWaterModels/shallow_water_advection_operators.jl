@@ -1,5 +1,4 @@
 function div_hUu(i, j, k, grid, advection, solution)
-
     return 1 / Vᵃᵃᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_huu, advection, solution) +
                                       δyᵃᶜᵃ(i, j, k, grid, momentum_flux_huv, advection, solution))
 end
@@ -23,15 +22,12 @@ end
 
 
 
-function div_UV(i, j, k, grid, solution)
+function div_UV(i, j, k, grid, advection, solution)
 
-    return 1 / Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, mass_flux_x, solution.uh) +
-                                      δyᵃᶜᵃ(i, j, k, grid, mass_flux_y, solution.vh))
+    return 1 / Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, mass_flux_x, advection, solution.uh) +
+                                      δyᵃᶜᵃ(i, j, k, grid, mass_flux_y, advection, solution.vh))
 end
 
 @inline mass_flux_x(i, j, k, grid, uh) = @inbounds Ax_ψᵃᵃᶠ(i, j, k, grid, uh)
 
 @inline mass_flux_y(i, j, k, grid, vh) = @inbounds Ay_ψᵃᵃᶠ(i, j, k, grid, vh) 
-
-
-
