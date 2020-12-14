@@ -1,5 +1,5 @@
 #####
-##### "No" advection
+##### Abstraction that zeros out advection terms
 #####
 
 boundary_buffer(::Nothing) = 0
