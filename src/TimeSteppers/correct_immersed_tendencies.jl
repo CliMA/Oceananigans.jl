@@ -21,24 +21,48 @@ function correct_immersed_tendencies!(model, immersed_boundary, Δt, γⁿ, ζ�
 
     barrier = Event(device(model.architecture))
 
-    correct_immersed_tendencies_kernel! = _correct_immersed_tendencies!(device(model.architecture), workgroup, worksize)
+    correct_immersed_velocities_tendencies_kernel! = _correct_velocities_tendencies!(device(model.architecture), workgroup, worksize)
+    correct_immersed_tracer_tendencies_kernel! = _correct_tracer_tendencies!(device(model.architecture), workgroup, worksize)
     
-    # event we want to occur, evaluate using kernel function
-    correct_tendencies_event =
-        correct_immersed_tendencies_kernel!(model.timestepper.Gⁿ,
-                                            model.grid,
+    # events we want to occur, evaluate using kernel function
+    # first the event to correct velocities
+    correct_velocities_event =
+            correct_immersed_velocities_tendencies_kernel!(model.grid,
                                             immersed_boundary,
+                                            model.timestepper.Gⁿ,
                                             model.timestepper.G⁻,
                                             model.velocities,
                                             Δt, γⁿ, ζⁿ,
                                             dependencies=barrier)
-    # wait for these things to happen before continuing in calculations
-    wait(device(model.architecture), correct_tendencies_event)
+    events = [correct_velocities_event]
+    
+    # then the events to correct tracers (if any, will start on 4th index)
+    for i in 1:length(model.tracers)
+        @inbounds c = model.tracers[i]
+        @inbounds Gcⁿ = model.timestepper.Gⁿ[i+3]
+        @inbounds Gc⁻ = model.timestepper.G⁻[i+3]
 
+        correct_tracer_event = correct_immersed_tracer_tendencies_kernel!(c, Δt, γⁿ, ζⁿ, Gcⁿ, Gc⁻, immersed_boundary, dependencies=barrier, model.grid)
+
+        push!(events, correct_tracer_event)
+    end
+    
+    # wait for these things to happen before continuing in calculations
+    wait(device(model.architecture), MultiEvent(Tuple(events)))
+    
     return nothing
 end
 
-@kernel function _correct_immersed_tendencies!(Gⁿ, grid::AbstractGrid{FT}, immersed, G⁻, velocities, Δt, γⁿ, ζⁿ) where FT
+"""
+Correct the tendency terms in the velocity for the nth stage of the 3rd-order RK method
+for the presence of an immersed boundary
+
+    `G^{n+1} = (-u^{n} - Δt ζⁿ G^{n-1})/(Δt γⁿ)`,
+    
+where `n` denotes the substage.
+"""
+
+@kernel function _correct_velocities_tendencies!(Gⁿ, grid::AbstractGrid{FT}, immersed, G⁻, velocities, Δt, γⁿ, ζⁿ) where FT
     i, j, k = @index(Global, NTuple)
     
     # evaluating x,y,z at cell centers to determine if boundary or not
@@ -62,4 +86,22 @@ end
     end
 end
 
+"""
+Correct the tendency terms in the tracer equations for the nth stage of the 3rd-order RK method for the presence of an immersed boundary
+
+    `Gc^{n+1} = (-c^{n} - Δt ζⁿ Gc^{n-1})/(Δt γⁿ)`,
+    
+where `n` denotes the substage.
+"""
+
+@kernel function _correct_velocities_tendencies!(Gcⁿ, grid::AbstractGrid{FT}, immersed, Gc⁻, c, Δt, γⁿ, ζⁿ) where FT
+    i, j, k = @index(Global, NTuple)
+    
+    # evaluating x,y,z at cell centers to determine if boundary or not
+    x = xnode(Cell, i, grid)
+    y = ynode(Cell, j, grid)
+    z = znode(Cell, k, grid)
+    
+    @inbounds Gcⁿ[i, j, k] = ifelse(immersed(x, y, z),- (c[i, j, k] + ζⁿ * Δt * Gc⁻[i, j, k]) / (γⁿ * Δt), Gcⁿ[i, j, k])
+end
 
