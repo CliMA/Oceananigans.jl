@@ -29,7 +29,7 @@ for example, `i ∈ 1:N` becomes
 
 if `N=8`.
 """
-@inline _unpermute_index(i, N) = ifelse(i <= N/2, 2i-1, 2(N-i+1))
+@inline _unpermute_index(i, N) = ifelse(i <= ceil(N/2), 2i-1, 2(N-i+1))
 
 @inline   permute_index(::TriplyPeriodic, ::GPU, i, j, k, Nx, Ny, Nz) = i, j, k
 @inline unpermute_index(::TriplyPeriodic, ::GPU, i, j, k, Nx, Ny, Nz) = i, j, k

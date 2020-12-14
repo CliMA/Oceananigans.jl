@@ -5,7 +5,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils: launch!
 
-import ..Models: fields
+import Oceananigans: fields
 
 #####
 ##### IncompressibleModel definition
@@ -28,7 +28,7 @@ Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.
 fields(model::IncompressibleModel) = merge(model.velocities, model.tracers)
 
 include("update_hydrostatic_pressure.jl")
-include("update_state.jl")
+include("update_incompressible_model_state.jl")
 include("pressure_correction.jl")
 include("velocity_and_tracer_tendencies.jl")
 include("calculate_tendencies.jl")

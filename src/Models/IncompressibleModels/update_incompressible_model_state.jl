@@ -5,7 +5,7 @@ using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 import Oceananigans.TimeSteppers: update_state!
 
 """
-    update_state!(model)
+    update_state!(model::IncompressibleModel)
 
 Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic pressure) to the current model state.
 """

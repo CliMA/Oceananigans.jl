@@ -136,10 +136,10 @@ coriolis = FPlane(f=1e-4) # [s⁻¹]
 #
 # We build a `NamedTuple` of parameters that describe the background flow,
 
-background_parameters = ( α = 10 * coriolis.f, # s⁻¹, geostrophic shear
-                          f = coriolis.f,      # s⁻¹, Coriolis parameter
-                          N = 1e-3,            # s⁻¹, buoyancy frequency
-                         Lz = grid.Lz)         # m, ocean depth
+basic_state_parameters = ( α = 10 * coriolis.f, # s⁻¹, geostrophic shear
+                           f = coriolis.f,      # s⁻¹, Coriolis parameter
+                           N = 1e-3,            # s⁻¹, buoyancy frequency
+                          Lz = grid.Lz)         # m, ocean depth
 
 # and then construct the background fields ``U`` and ``B``
 
@@ -149,21 +149,21 @@ using Oceananigans.Fields: BackgroundField
 U(x, y, z, t, p) = + p.α * (z + p.Lz)
 B(x, y, z, t, p) = - p.α * p.f * y + p.N^2 * z
 
-U_field = BackgroundField(U, parameters=background_parameters)
-B_field = BackgroundField(B, parameters=background_parameters)
+U_field = BackgroundField(U, parameters=basic_state_parameters)
+B_field = BackgroundField(B, parameters=basic_state_parameters)
 
 # ## Boundary conditions
 #
 # The boundary conditions prescribe a quadratic drag at the bottom as a flux
 # condition.
 
-drag_coefficient = 1e-4
+cᴰ = 1e-4 # quadratic drag coefficient
 
 @inline drag_u(x, y, t, u, v, cᴰ) = - cᴰ * u * sqrt(u^2 + v^2)
 @inline drag_v(x, y, t, u, v, cᴰ) = - cᴰ * v * sqrt(u^2 + v^2)
 
-drag_bc_u = BoundaryCondition(Flux, drag_u, field_dependencies=(:u, :v), parameters=drag_coefficient)
-drag_bc_v = BoundaryCondition(Flux, drag_v, field_dependencies=(:u, :v), parameters=drag_coefficient)
+drag_bc_u = BoundaryCondition(Flux, drag_u, field_dependencies=(:u, :v), parameters=cᴰ)
+drag_bc_v = BoundaryCondition(Flux, drag_v, field_dependencies=(:u, :v), parameters=cᴰ)
 
 u_bcs = UVelocityBoundaryConditions(grid, bottom = drag_bc_u) 
 v_bcs = VVelocityBoundaryConditions(grid, bottom = drag_bc_v)
@@ -210,8 +210,8 @@ model = IncompressibleModel(
 Ξ(z) = randn() * z/grid.Lz * (z/grid.Lz + 1)
 
 ## Scales for the initial velocity and buoyancy
-Ũ = 1e-1 * background_parameters.α * grid.Lz
-B̃ = 1e-2 * background_parameters.α * coriolis.f
+Ũ = 1e-1 * basic_state_parameters.α * grid.Lz
+B̃ = 1e-2 * basic_state_parameters.α * coriolis.f
 
 uᵢ(x, y, z) = Ũ * Ξ(z)
 vᵢ(x, y, z) = Ũ * Ξ(z)
@@ -247,7 +247,7 @@ nothing # hide
 
 ## Calculate absolute limit on time-step using diffusivities and 
 ## background velocity.
-Ū = background_parameters.α * grid.Lz
+Ū = basic_state_parameters.α * grid.Lz
 
 max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z, 0.2/coriolis.f)
 
