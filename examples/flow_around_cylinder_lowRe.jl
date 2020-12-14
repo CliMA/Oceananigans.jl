@@ -1,4 +1,4 @@
-# # Flow around a cylinder in 2D using immersed boundaries
+# # Steady-state flow around a cylinder in 2D using immersed boundaries
 
 using Statistics
 using Plots
@@ -16,8 +16,8 @@ using Oceananigans.OutputWriters
 topology=(Periodic, Bounded, Bounded)
 
 # setting up 2D grid
-#grid = RegularCartesianGrid(topology=topology, size=(350, 350, 1), x=(20, 40), y=(10, 30), z=(0, 1))
-grid = RegularCartesianGrid(topology=topology, size=(1500, 1500, 1), x=(0, 60), y=(0, 60), z=(0, 1))
+grid = RegularCartesianGrid(topology=topology, size=(350, 350, 1), x=(20, 40), y=(10, 30), z=(0, 1))
+#grid = RegularCartesianGrid(topology=topology, size=(1500, 1500, 1), x=(0, 60), y=(0, 60), z=(0, 1))
 
 
 # reynolds number
@@ -56,14 +56,14 @@ maximum(sim.model.velocities.v.data),
 minimum(sim.model.velocities.v.data))
 
 # Δt=5.7e-3,
-simulation = Simulation(model, Δt=4.0e-3, stop_time=300, iteration_interval=50, progress=progress)
+simulation = Simulation(model, Δt=5.7e-3, stop_time=5, iteration_interval=10, progress=progress)
 
 # ## Output
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model,
                                                       merge(model.velocities, model.pressures),
                                                       schedule = TimeInterval(0.5),
-                                                      prefix = "flow_around_cylinder_LowRe_long",
+                                                      prefix = "flow_around_cylinder_LowRe",
                                                       force = true)
 
 # run it
@@ -114,6 +114,6 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     legend=false,fillalpha=0, aspect_ratio=1)
 end
 
-gif(anim, "flow_around_cyl_velocity_long.gif", fps = 8) # hide
+gif(anim, "flow_around_cyl_velocity.gif", fps = 8) # hide
 
 
