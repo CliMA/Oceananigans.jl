@@ -16,7 +16,9 @@ using Oceananigans.OutputWriters
 topology=(Periodic, Bounded, Bounded)
 
 # setting up 2D grid
-grid = RegularCartesianGrid(topology=topology, size=(350, 350, 1), x=(20, 40), y=(10, 30), z=(0, 1))
+#grid = RegularCartesianGrid(topology=topology, size=(350, 350, 1), x=(20, 40), y=(10, 30), z=(0, 1))
+grid = RegularCartesianGrid(topology=topology, size=(1500, 1500, 1), x=(0, 60), y=(0, 60), z=(0, 1))
+
 
 # reynolds number
 Re = 40
@@ -37,7 +39,7 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
                                buoyancy = nothing,
                                 tracers = nothing,
                                 closure = IsotropicDiffusivity(ν=1/Re),
-                    boundary_conditions = (v=v_bcs),
+                    boundary_conditions = (v=v_bcs,),
                       immersed_boundary = inside_cylinder
                            )
 
@@ -53,14 +55,15 @@ sim.model.clock.time,
 maximum(sim.model.velocities.v.data),
 minimum(sim.model.velocities.v.data))
 
-simulation = Simulation(model, Δt=5.7e-3, stop_time=5, iteration_interval=10, progress=progress)
+# Δt=5.7e-3,
+simulation = Simulation(model, Δt=4.0e-3, stop_time=300, iteration_interval=50, progress=progress)
 
 # ## Output
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model,
                                                       merge(model.velocities, model.pressures),
                                                       schedule = TimeInterval(0.5),
-                                                      prefix = "flow_around_cylinder_LowRe",
+                                                      prefix = "flow_around_cylinder_LowRe_long",
                                                       force = true)
 
 # run it
@@ -111,6 +114,6 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     legend=false,fillalpha=0, aspect_ratio=1)
 end
 
-gif(anim, "flow_around_cyl_velocity.gif", fps = 8) # hide
+gif(anim, "flow_around_cyl_velocity_long.gif", fps = 8) # hide
 
 
