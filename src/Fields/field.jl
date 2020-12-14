@@ -31,6 +31,7 @@ Example
 
 ```jldoctest
 julia> using Oceananigans
+julia> using Oceananigans: Face, Cell
 
 julia> ω = Field(Face, Face, Cell, CPU(), RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 Field located at (Face, Face, Cell)
