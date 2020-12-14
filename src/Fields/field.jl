@@ -29,7 +29,7 @@ the field's location in `(x, y, z)`.
 Example
 =======
 
-```julia
+```jldoctest
 julia> using Oceananigans
 
 julia> ω = Field(Face, Face, Cell, CPU(), RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)))
