@@ -79,8 +79,10 @@ function plot_solutions!(all_results, t_scheme)
         for i in 1:length(c_sim)
             x = xnodes(Cell, grids[i])[:]
             Nx = length(x)
+            println("Nx = ", Nx)
+            println(size(c_sim[i]))
             
-            label_name = @printf("simulation has Nx = %d\n", Nx)
+            label_name = @sprintf("simulation for Nx = %d\n", Nx)
             plt = plot!(x, c_sim[i], lw=2, linestyle=:dash,  label=label_name)
         end
 
@@ -92,19 +94,24 @@ function plot_solutions!(all_results, t_scheme)
             x = xnodes(Cell, grids[i])[:]
             Nx = length(x)
 
-            label_name = @printf("error with %d", Nx);
+            label_name = @sprintf("error for Nx = %d", Nx);
             error = abs.(c_sim[i] .- c_ana[1])
             println("Error for ", t_scheme, " with Nx = ", Nx, " is ", maximum(error), "\n")
-            
-            plt2 = plot!(x, error, lw=2, linestyle=:solid,
-                        xlabel="x", xlims=(minimum(x), maximum(x)),
-                         label=label_name, yaxis=:log)
+
+            if i == 1
+                plt2 = plot(x, error, lw=2, linestyle=:solid,
+                            xlabel="x", xlims=(minimum(x), maximum(x)),
+                            label=label_name, yaxis=:log)
+            else
+                plt2 = plot!(x, error, lw=2, linestyle=:solid,
+                             xlabel="x", xlims=(minimum(x), maximum(x)),
+                             label=label_name, yaxis=:log)
+            end
             
             display(plt2)
             figure_name = string("test2", t_scheme)
             savefig(figure_name)
-        end
-        
+        end 
         
     end
     

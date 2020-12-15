@@ -42,7 +42,7 @@ advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder())
 
 U = 1
 κ = 1e-8
-Nx = 2 .^ (6) # 
+Nx = 2 .^ (6:7) # 
 #Nx = 2 .^ (6:8) # N = 64 through N = 256
 #Nx = [8, 16, 32, 64, 96, 128, 192, 256, 384, 512]
 
@@ -67,7 +67,7 @@ rate_of_convergence(::CenteredFourthOrder) = 4
 
 results = Dict()
 for scheme in advection_schemes
-    println("Doing simulations for scheme = ", scheme)
+    println("Doing simulation for scheme = ", scheme)
     t_scheme = typeof(scheme)
     results[t_scheme] = run_convergence_test(κ, U, Nx, scheme)
     
