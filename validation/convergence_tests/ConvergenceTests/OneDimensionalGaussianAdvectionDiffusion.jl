@@ -51,13 +51,13 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     cx_simulation = interior(cx_simulation)[:, 1, 1]
     cx_errors = compute_error(cx_simulation, c_analytical)
 
-    vx_simulation = model.velocities.v
-    vx_simulation = interior(vx_simulation)[:, 1, 1]
-    vx_errors = compute_error(vx_simulation, c_analytical)
+    #vx_simulation = model.velocities.v
+    #vx_simulation = interior(vx_simulation)[:, 1, 1]
+    #vx_errors = compute_error(vx_simulation, c_analytical)
 
-    wx_simulation = model.velocities.w
-    wx_simulation = interior(wx_simulation)[:, 1, 1]
-    wx_errors = compute_error(wx_simulation, c_analytical)
+    #wx_simulation = model.velocities.w
+    #wx_simulation = interior(wx_simulation)[:, 1, 1]
+    #wx_errors = compute_error(wx_simulation, c_analytical)
 
     #####
     ##### Test cy and u-advection
@@ -90,18 +90,19 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     cy_simulation = interior(cy_simulation)[1, :, 1]
     cy_errors = compute_error(cy_simulation, c_analytical)
 
-    uy_simulation = model.velocities.u
-    uy_simulation = interior(uy_simulation)[1, :, 1]
-    uy_errors = compute_error(uy_simulation, c_analytical)
+    #uy_simulation = model.velocities.u
+    #uy_simulation = interior(uy_simulation)[1, :, 1]
+    #uy_errors = compute_error(uy_simulation, c_analytical)
 
-    wy_simulation = model.velocities.w
-    wy_simulation = interior(wy_simulation)[1, :, 1]
-    wy_errors = compute_error(wy_simulation, c_analytical)
+    #wy_simulation = model.velocities.w
+    #wy_simulation = interior(wy_simulation)[1, :, 1]
+    #wy_errors = compute_error(wy_simulation, c_analytical)
 
     #####
     ##### Test cz and w-advection
     #####
 
+    #=
     zdomain = (x=(0, 1), y=(0, 1), z=(-1, 1.5))
     zgrid = RegularCartesianGrid(topology=topo, size=(1, 1, Nx), halo=(3, 3, 3); zdomain...)
 
@@ -136,53 +137,54 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     vz_simulation = model.velocities.v
     vz_simulation = interior(vz_simulation)[1, 1, :]
     vz_errors = compute_error(vz_simulation, c_analytical)
-
+    =#
+    
     return (
 
             cx = (simulation = cx_simulation,
                   analytical = c_analytical,
                           L₁ = cx_errors.L₁,
                           L∞ = cx_errors.L∞),
+        
+#            cy = (simulation = cy_simulation,
+#                  analytical = c_analytical,
+#                          L₁ = cy_errors.L₁,
+#                          L∞ = cy_errors.L∞),
 
-            cy = (simulation = cy_simulation,
-                  analytical = c_analytical,
-                          L₁ = cy_errors.L₁,
-                          L∞ = cy_errors.L∞),
+#            cz = (simulation = cy_simulation,
+#                  analytical = c_analytical,
+#                          L₁ = cy_errors.L₁,
+#                          L∞ = cy_errors.L∞),
 
-            cz = (simulation = cy_simulation,
-                  analytical = c_analytical,
-                          L₁ = cy_errors.L₁,
-                          L∞ = cy_errors.L∞),
+#            uy = (simulation = uy_simulation,
+#                  analytical = c_analytical, # same solution as c.
+#                          L₁ = uy_errors.L₁,
+#                          L∞ = uy_errors.L∞),
 
-            uy = (simulation = uy_simulation,
-                  analytical = c_analytical, # same solution as c.
-                          L₁ = uy_errors.L₁,
-                          L∞ = uy_errors.L∞),
+#            uz = (simulation = uz_simulation,
+#                  analytical = c_analytical, # same solution as c.
+#                          L₁ = uz_errors.L₁,
+#                          L∞ = uz_errors.L∞),
 
-            uz = (simulation = uz_simulation,
-                  analytical = c_analytical, # same solution as c.
-                          L₁ = uz_errors.L₁,
-                          L∞ = uz_errors.L∞),
+#            vx = (simulation = vx_simulation,
+#                  analytical = c_analytical, # same solution as c.
+#                          L₁ = vx_errors.L₁,
+#                          L∞ = vx_errors.L∞),
 
-            vx = (simulation = vx_simulation,
-                  analytical = c_analytical, # same solution as c.
-                          L₁ = vx_errors.L₁,
-                          L∞ = vx_errors.L∞),
+#            vz = (simulation = vz_simulation,
+#                  analytical = c_analytical, # same solution as c.
+#                          L₁ = vz_errors.L₁,
+#                          L∞ = vz_errors.L∞),
 
-            vz = (simulation = vz_simulation,
-                  analytical = c_analytical, # same solution as c.
-                          L₁ = vz_errors.L₁,
-                          L∞ = vz_errors.L∞),
+#            wx = (simulation = wx_simulation,
+#                  analytical = c_analytical, # same solution as c.
+#                          L₁ = wx_errors.L₁,
+#                          L∞ = wx_errors.L∞),
 
-            wx = (simulation = wx_simulation,
-                  analytical = c_analytical, # same solution as c.
-                          L₁ = wx_errors.L₁,
-                          L∞ = wx_errors.L∞),
-
-            wy = (simulation = wy_simulation,
-                  analytical = c_analytical, # same solution as c.
-                          L₁ = wy_errors.L₁,
-                          L∞ = wy_errors.L∞),
+#            wy = (simulation = wy_simulation,
+#                  analytical = c_analytical, # same solution as c.
+#                          L₁ = wy_errors.L₁,
+#                          L∞ = wy_errors.L∞),
 
             grid = grid
 
