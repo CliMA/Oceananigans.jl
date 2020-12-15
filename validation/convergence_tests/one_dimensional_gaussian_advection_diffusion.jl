@@ -30,7 +30,7 @@ function run_convergence_test(κ, U, resolutions)
     return results
 end
 
-#####
+##### 
 ##### Run test
 #####
 
