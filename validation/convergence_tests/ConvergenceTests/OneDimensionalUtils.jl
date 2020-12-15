@@ -1,12 +1,14 @@
 module OneDimensionalUtils
 
-using PyPlot
+#using PyPlot
+using Plots
 
 using Oceananigans.Grids
+using Oceananigans.Advection
 
-defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-removespine(side) = gca().spines[side].set_visible(false)
-removespines(sides...) = [removespine(side) for side in sides]
+#defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+#removespine(side) = gca().spines[side].set_visible(false)
+#removespines(sides...) = [removespine(side) for side in sides]
 
 """ Unpack a vector of results associated with a convergence test. """
 function unpack_solutions(results)
@@ -53,61 +55,50 @@ end
 """ Unpack a vector of grids associated with a convergence test. """
 unpack_grids(results) = map(r -> r.grid, results)
 
-function plot_solutions!(axs, all_results, names, linestyles, specialcolors)
 
-    for j = 1:length(all_results)
+#function plot_solutions!(axs, all_results, names, linestyles, specialcolors)
+function plot_solutions!(results)
 
-        results = all_results[j]
-        name = names[j]
-        linestyle = linestyles[j]
+    #name = names[j]
+    #linestyle = linestyles[j]
 
-        c_ana, c_sim = unpack_solutions(results)
+    c_ana, c_sim = unpack_solutions(results[CenteredSecondOrder])
 
-        grids = unpack_grids(results)
+    grids = unpack_grids(results[CenteredSecondOrder])
 
-        x = xnodes(Cell, grids[end])[:]
+    #c_ana, c_sim = unpack_solutions(results)
 
-        sca(axs[1])
+    #grids = unpack_grids(results)
 
-        plot(x, c_ana[end], "-", color=specialcolors[j], alpha=0.2, linewidth=3, label="$name analytical")
+    x = xnodes(Cell, grids[end])[:]
 
-        for i in 1:length(c_sim)
-            x = xnodes(Cell, grids[i])[:]
-
-            plot(x, c_sim[i], linestyle, color=defaultcolors[i], alpha=0.8, linewidth=1,
-                 label="$name simulated, \$ N_x \$ = $(grids[i].Nx)")
-
-            xlim(minimum(x), maximum(x))
-        end
-
-        sca(axs[2])
-
-        for i in 1:length(c_sim)
-            x = xnodes(Cell, grids[i])[:]
-
-            semilogy(x, abs.(c_sim[i] .- c_ana[i]), linestyle, color=defaultcolors[i], alpha=0.8,
-                     label="$name, \$ N_x \$ = $(grids[i].Nx)")
-
-            xlim(minimum(x), maximum(x))
-        end
-
+    plt = plot(x,  c_ana[1], lw=3, linestyle=:solid, label="analytical", xlabel="x", xlims=(minimum(x), maximum(x)))
+    
+    for i in 1:length(c_sim)
+        x = xnodes(Cell, grids[i])[:]
+        
+        plt = plot!(x, c_sim[i], lw=2, linestyle=:dash,  label="simulation")
     end
 
-    sca(axs[1])
-    ylabel(L"c")
-    removespines("top", "right", "bottom")
-    axs[1].tick_params(bottom=false, labelbottom=false)
-    lgd1 = legend(loc="upper left", prop=Dict(:size=>7), bbox_to_anchor=(-0.35, 0, 1.5, 1.0))
+    display(plt)
+    savefig("test1")
+        
+    for i in 1:length(c_sim)
+        x = xnodes(Cell, grids[i])[:]
 
-    sca(axs[2])
-    removespines("top", "right")
-    xlabel(L"x")
-    ylabel("Absolute error \$ | c_\\mathrm{sim} - c_\\mathrm{analytical} | \$")
-    lgd2 = legend(loc="upper right", prop=Dict(:size=>10), bbox_to_anchor=(-0.2, 0.4, 1.5, 1.0))
+        plt2 = plot(x, abs.(c_sim[i] .- c_ana[1]), lw=2, linestyle=:solid,  xlabel="x", xlims=(minimum(x), maximum(x)),
+                    label="error", yaxis=:log)
 
-    return (lgd1, lgd2)
+        display(plt2)
+        savefig("test2")
+        
+    end
+
+    return 
 end
 
+
+#=
 function plot_error_convergence!(axs, Nx, all_results, names)
 
     for j = 1:length(all_results)
@@ -138,5 +129,6 @@ function plot_error_convergence!(axs, Nx, all_results, names)
 
     return lgd
 end
+=#
 
 end # module
