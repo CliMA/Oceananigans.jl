@@ -6,6 +6,8 @@ using Plots
 using Oceananigans.Grids
 using Oceananigans.Advection
 
+using Printf
+
 #defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 #removespine(side) = gca().spines[side].set_visible(false)
 #removespines(sides...) = [removespine(side) for side in sides]
@@ -41,7 +43,7 @@ function unpack_errors(results)
     cz_L∞ = map(r -> r.cz.L∞, results)
     uz_L∞ = map(r -> r.uz.L∞, results)
     vz_L∞ = map(r -> r.vz.L∞, results)
-
+    
     return (cx_L₁, cy_L₁, cz_L₁,
             uy_L₁, uz_L₁,
             vx_L₁, vz_L₁,
@@ -57,43 +59,55 @@ unpack_grids(results) = map(r -> r.grid, results)
 
 
 #function plot_solutions!(axs, all_results, names, linestyles, specialcolors)
-function plot_solutions!(results)
+function plot_solutions!(all_results, t_scheme)
 
-    #name = names[j]
-    #linestyle = linestyles[j]
+    for j = 1:length(all_results)
 
-    c_ana, c_sim = unpack_solutions(results[CenteredSecondOrder])
+        results = all_results[t_scheme]
+        #name = names[j]
+        #linestyle = linestyles[j]
 
-    grids = unpack_grids(results[CenteredSecondOrder])
+        c_ana, c_sim = unpack_solutions(results)
 
-    #c_ana, c_sim = unpack_solutions(results)
+        grids = unpack_grids(results)
 
-    #grids = unpack_grids(results)
+        x = xnodes(Cell, grids[end])[:]
 
-    x = xnodes(Cell, grids[end])[:]
-
-    plt = plot(x,  c_ana[1], lw=3, linestyle=:solid, label="analytical", xlabel="x", xlims=(minimum(x), maximum(x)))
+        plt = plot(x,  c_ana[1], lw=3, linestyle=:solid, label="analytical",
+                   xlabel="x", xlims=(minimum(x), maximum(x)))
     
-    for i in 1:length(c_sim)
-        x = xnodes(Cell, grids[i])[:]
+        for i in 1:length(c_sim)
+            x = xnodes(Cell, grids[i])[:]
+            Nx = length(x)
+            
+            label_name = @printf("simulation has Nx = %d\n", Nx)
+            plt = plot!(x, c_sim[i], lw=2, linestyle=:dash,  label=label_name)
+        end
+
+        display(plt)
+        figure_name = string("test1", t_scheme)
+        savefig(figure_name)
+
+        for i in 1:length(c_sim)
+            x = xnodes(Cell, grids[i])[:]
+            Nx = length(x)
+
+            label_name = @printf("error with %d", Nx);
+            error = abs.(c_sim[i] .- c_ana[1])
+            println("Error for ", t_scheme, " with Nx = ", Nx, " is ", maximum(error), "\n")
+            
+            plt2 = plot!(x, error, lw=2, linestyle=:solid,
+                        xlabel="x", xlims=(minimum(x), maximum(x)),
+                         label=label_name, yaxis=:log)
+            
+            display(plt2)
+            figure_name = string("test2", t_scheme)
+            savefig(figure_name)
+        end
         
-        plt = plot!(x, c_sim[i], lw=2, linestyle=:dash,  label="simulation")
+        
     end
-
-    display(plt)
-    savefig("test1")
-        
-    for i in 1:length(c_sim)
-        x = xnodes(Cell, grids[i])[:]
-
-        plt2 = plot(x, abs.(c_sim[i] .- c_ana[1]), lw=2, linestyle=:solid,  xlabel="x", xlims=(minimum(x), maximum(x)),
-                    label="error", yaxis=:log)
-
-        display(plt2)
-        savefig("test2")
-        
-    end
-
+    
     return 
 end
 
