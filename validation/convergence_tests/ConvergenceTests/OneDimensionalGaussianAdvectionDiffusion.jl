@@ -63,6 +63,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     ##### Test cy and u-advection
     #####
 
+    #=
     ydomain = (x=(0, 1), y=(-1, 1.5), z=(0, 1))
     ygrid = RegularCartesianGrid(topology=topo, size=(1, Nx, 1), halo=(3, 3, 3); ydomain...)
 
@@ -97,7 +98,8 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     #wy_simulation = model.velocities.w
     #wy_simulation = interior(wy_simulation)[1, :, 1]
     #wy_errors = compute_error(wy_simulation, c_analytical)
-
+    =#
+    
     #####
     ##### Test cz and w-advection
     #####
