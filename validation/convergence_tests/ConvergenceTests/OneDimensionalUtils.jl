@@ -73,45 +73,62 @@ function plot_solutions!(all_results, t_scheme)
 
         x = xnodes(Cell, grids[end])[:]
 
-        plt = plot(x,  c_ana[1], lw=3, linestyle=:solid, label="analytical",
-                   xlabel="x", xlims=(minimum(x), maximum(x)))
-    
+        ### Plot analytical solution
+        plt = plot(x,
+                   c_ana[end],
+                   lw = 3,
+                   linestyle = :solid,
+                   label = "analytical",
+                   xlabel = "x",
+                   xlims = (minimum(x), maximum(x))
+        )
+
+        ### Plot simultion solution
         for i in 1:length(c_sim)
             x = xnodes(Cell, grids[i])[:]
             Nx = length(x)
-            println("Nx = ", Nx)
-            println(size(c_sim[i]))
             
-            label_name = @sprintf("simulation for Nx = %d\n", Nx)
-            plt = plot!(x, c_sim[i], lw=2, linestyle=:dash,  label=label_name)
+            plot!(plt,
+                  x,
+                  c_sim[i],
+                  lw = 2,
+                  linestyle = :dash,
+                  label = @sprintf("simulation for Nx = %d\n", Nx)
+            )
         end
 
         display(plt)
-        figure_name = string("test1", t_scheme)
-        savefig(figure_name)
+        savefig(plt, string("test1", t_scheme))
 
+        plt2 = plot(x,
+                    0 .* x .+ 1e-16,
+                    yaxis = :log,
+                    label = "zero"
+                    )
+
+        ### Plot error for each simulation solution
         for i in 1:length(c_sim)
             x = xnodes(Cell, grids[i])[:]
             Nx = length(x)
 
-            label_name = @sprintf("error for Nx = %d", Nx);
-            error = abs.(c_sim[i] .- c_ana[1])
+            error = abs.(c_sim[i] .- c_ana[i]) .+ 1e-16
             println("Error for ", t_scheme, " with Nx = ", Nx, " is ", maximum(error), "\n")
 
-            if i == 1
-                plt2 = plot(x, error, lw=2, linestyle=:solid,
-                            xlabel="x", xlims=(minimum(x), maximum(x)),
-                            label=label_name, yaxis=:log)
-            else
-                plt2 = plot!(x, error, lw=2, linestyle=:solid,
-                             xlabel="x", xlims=(minimum(x), maximum(x)),
-                             label=label_name, yaxis=:log)
-            end
+            plot!(plt2,
+                  x,
+                  error,
+                  lw = 2,
+                  linestyle = :solid,
+                  xlabel = "x",
+                  xlims = (minimum(x), maximum(x)),
+                  label = @sprintf("error for Nx = %d", Nx),
+                  yaxis = :log
+                )
             
-            display(plt2)
-            figure_name = string("test2", t_scheme)
-            savefig(figure_name)
-        end 
+        end
+        
+        display(plt2)
+        savefig(plt2, string("test2", t_scheme))
         
     end
     
