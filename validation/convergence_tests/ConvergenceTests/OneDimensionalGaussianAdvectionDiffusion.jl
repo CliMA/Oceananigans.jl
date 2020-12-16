@@ -12,8 +12,16 @@ include("analysis.jl")
 σ(t, κ, t₀) = 4 * κ * (t + t₀)
 c(x, y, z, t, U, κ, t₀) = 1 / √(4π * κ * (t + t₀)) * exp(-(x - U * t)^2 / σ(t, κ, t₀))
 
-function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
-                  architecture = CPU(), topo = (Periodic, Periodic, Periodic), advection = CenteredSecondOrder())
+function run_test(;
+                  Nx,
+                  Δt,
+                  stop_iteration,
+                  U = 1,
+                  κ = 1e-4,
+                  width = 0.05,
+                  architecture = CPU(),
+                  topo = (Periodic, Periodic, Periodic),
+                  advection = CenteredSecondOrder())
 
     t₀ = width^2 / 4κ
 
