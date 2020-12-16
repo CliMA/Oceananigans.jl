@@ -1,3 +1,5 @@
+using Oceananigans.Grids: AbstractGrid
+
 #####
 ##### Momentum flux operators
 #####
