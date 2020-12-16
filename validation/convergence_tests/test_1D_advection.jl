@@ -1,11 +1,7 @@
 using Test
-
 using Plots
-#using PyPlot
 using LaTeXStrings
-
 using Printf
-
 using Oceananigans.Advection
 
 # Define a few utilities for running tests and unpacking and plotting results
@@ -14,7 +10,6 @@ include("ConvergenceTests/ConvergenceTests.jl")
 using .ConvergenceTests
 using .ConvergenceTests.OneDimensionalGaussianAdvectionDiffusion: run_test
 using .ConvergenceTests.OneDimensionalUtils: plot_solutions!, unpack_solutions, unpack_errors,  unpack_grids
-#using .ConvergenceTests.OneDimensionalUtils: plot_solutions!, plot_error_convergence!, unpack_errors
 
 """ Run advection test for all Nx in resolutions. """
 function run_convergence_test(κ, U, resolutions, advection_scheme)
@@ -69,16 +64,13 @@ rate_of_convergence(::WENO5) = 5
 
 results = Dict()
 for scheme in advection_schemes
-    println("Plotting error curves for scheme = ", scheme)
+
     t_scheme = typeof(scheme)
     results[t_scheme] = run_convergence_test(κ, U, Nx, scheme)
-    
-    legends = plot_solutions!(results, t_scheme)
+    plot_solutions!(results, t_scheme)
 end
 
 for scheme in advection_schemes
-
-    println("Plotting converges curves for scheme = ", scheme)
 
     t_scheme = typeof(scheme)
     name = string(t_scheme)

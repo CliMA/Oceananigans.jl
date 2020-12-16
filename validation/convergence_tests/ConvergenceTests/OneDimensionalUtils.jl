@@ -63,14 +63,11 @@ end
 unpack_grids(results) = map(r -> r.grid, results)
 
 
-#function plot_solutions!(axs, all_results, names, linestyles, specialcolors)
 function plot_solutions!(all_results, t_scheme)
 
     for j = 1:length(all_results)
 
         results = all_results[t_scheme]
-        #name = names[j]
-        #linestyle = linestyles[j]
 
         c_ana, c_sim = unpack_solutions(results)
 
@@ -105,20 +102,14 @@ function plot_solutions!(all_results, t_scheme)
         display(plt)
         savefig(plt, string("test1", t_scheme))
 
-        #plt2 = plot(x,
-        #            0 .* x .+ 1e-16,
-        #            yaxis = :log,
-        #            label = "zero"
-        #            )
         plt2 = plot()
         
         ### Plot error for each simulation solution
         for i in 1:length(c_sim)
+            
             x = xnodes(Cell, grids[i])[:]
             Nx = length(x)
-
             error = abs.(c_sim[i] .- c_ana[i]) .+ 1e-16
-            println("Error for ", t_scheme, " with Nx = ", Nx, " is ", maximum(error), "\n")
 
             plot!(plt2,
                   x,
@@ -145,33 +136,14 @@ end
 function plot_error_convergence!(Nx, all_results, t_scheme)
 
     for j = 1:length(all_results)
+        
         results = all_results[t_scheme]
-        #results = all_results[j]
-        #name = names[j]
+       
         u_L₁, v_L₁, cx_L₁, cy_L₁, u_L∞, v_L∞, cx_L∞, cy_L∞ = unpack_errors(results)
 
-        #common_kwargs = (linestyle="None", color=defaultcolors[j], mfc="None", alpha=0.8)
-        #loglog(Nx,  u_L₁; basex=2, marker="o", label="\$L_1\$-norm, \$u\$ $name", common_kwargs...)
-        #loglog(Nx,  v_L₁; basex=2, marker="2", label="\$L_1\$-norm, \$v\$ $name", common_kwargs...)
-        #loglog(Nx, cx_L₁; basex=2, marker="*", label="\$L_1\$-norm, \$x\$ tracer $name", common_kwargs...)
-        #loglog(Nx, cy_L₁; basex=2, marker="+", label="\$L_1\$-norm, \$y\$ tracer $name", common_kwargs...)
-
-        #loglog(Nx,  u_L∞; basex=2, marker="1", label="\$L_\\infty\$-norm, \$u\$ $name", common_kwargs...)
-        #loglog(Nx,  v_L∞; basex=2, marker="_", label="\$L_\\infty\$-norm, \$v\$ $name", common_kwargs...)
-        #loglog(Nx, cx_L∞; basex=2, marker="^", label="\$L_\\infty\$-norm, \$x\$ tracer $name", common_kwargs...)
-        #loglog(Nx, cy_L∞; basex=2, marker="s", label="\$L_\\infty\$-norm, \$y\$ tracer $name", common_kwargs...)
     end
 
-    # Guide line to confirm second-order scaling
-    #u_L₁, v_L₁, cx_L₁, cy_L₁, u_L∞, v_L∞, cx_L∞, cy_L∞ = unpack_errors(all_results[1])
-    #loglog(Nx, cx_L₁[1] .* (Nx[1] ./ Nx).^2, "k-", basex=2, alpha=0.8, label=L"\sim N_x^{-2}")
-
-    #xlabel(L"N_x")
-    #ylabel("\$L\$-norms of \$ | c_\\mathrm{sim} - c_\\mathrm{analytical} |\$")
-    #removespines("top", "right")
-    #lgd = legend(loc="upper right", bbox_to_anchor=(1.4, 1.0), prop=Dict(:size=>6))
-
-    return #lgd
+    return 
 end
 
 end # module
