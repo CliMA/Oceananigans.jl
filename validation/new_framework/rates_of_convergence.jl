@@ -2,6 +2,7 @@ using Plots
 using LaTeXStrings
 using Printf
 using Polynomials
+using LinearAlgebra
 
 using Oceananigans
 using Oceananigans.Advection
@@ -89,6 +90,7 @@ error  = Dict()
 ROC    = Dict()
 
 time_stepper = AdamsBashforth2
+pnorm = 1
 
 for N in Ns, scheme in schemes
 
@@ -102,13 +104,13 @@ for N in Ns, scheme in schemes
     local F₀ = zeros(N+2,1,1)
     local F₋₁= zeros(N+2,1,1)
 
-    local Ftmp = zeros(N+2,1,1)
-    
     for i in 4:N-2, j in 1:grid.Ny, k in 1:grid.Nz
+        
         #F₀[i, j, k] = advective_tracer_flux_x(i, j, k, grid, scheme(), U, c₀)
         #F₋₁[i, j, k] = advective_tracer_flux_x(i, j, k, grid, scheme(), U, c₋₁)
         F₀[i, j, k] = advective_flux(i, j, k, grid, scheme(), U, c₀)
         F₋₁[i, j, k] = advective_flux(i, j, k, grid, scheme(), U, c₋₁)
+        
     end
 
     local cₛᵢₘ = zeros(N)
@@ -121,19 +123,22 @@ for N in Ns, scheme in schemes
         
     end
     
-    error[(N, scheme)] = maximum(abs.(cₑᵣᵣ))
+    error[(N, scheme)] = norm(cₑᵣᵣ, pnorm)/N^(1/pnorm)
 
 end
 
 ### Compute rates of convergence
 
+println(" ")        
+println("Results are for the L"*string(pnorm)*"-norm:")
+println(" ")        
 for scheme in schemes
     
     name = labels(scheme())
     roc = rate_of_convergence(scheme())
     j = 3
-    local p = fit(log10.(Ns[2:end]), log10.([error[(N, scheme)] for N in Ns][2:end]), 1)
-    ROC[scheme] = p[1]
+    local best_fit = fit(log10.(Ns[2:end]), log10.([error[(N, scheme)] for N in Ns][2:end]), 1)
+    ROC[scheme] = best_fit[1]
     println("Method = ", name, ", Rate of Convergence = ", @sprintf("%.2f", -ROC[scheme]), ", Expected = ", roc)
     
 end
@@ -156,7 +161,7 @@ for scheme in schemes
             yscale = :log10,
             xlabel = "log₂N",
             xticks = (log2.(Ns), string.(Int.(log2.(Ns)))),
-            ylabel = "L∞-norm: |cₛᵢₘ - c₁|",
+            ylabel = "L"*string(pnorm)*"-norm: |cₛᵢₘ - c₁|",
              label =  string(labels(scheme()))*" slope = "*@sprintf("%.2f", ROC[scheme]),
             legend = :outertopright,
              title = "Rates of Convergence"
