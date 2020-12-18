@@ -11,6 +11,9 @@ using Printf
 
 error = Dict()
 
+# Advection of a Gaussian.
+c(x, t, U, W) = exp(-(x - U * t)^2/W);
+
 struct UpwindFirstOrder end
 struct CenteredSecondOrder end
 struct UpwindThirdOrder end
@@ -45,7 +48,10 @@ methods = (
 orders = (1, 2, 3, 4, 5, 6)
 
 roc    = zeros(length(methods))
+ROC    = Dict()
 labels = Dict()
+shapes = Dict()
+colors = Dict()
 
 for i in 1:length(schemes)
            scheme = schemes[i]
@@ -53,8 +59,20 @@ for i in 1:length(schemes)
    labels[scheme] = methods[i] 
 end
 
-# Advection of a Gaussian.
-c(x, t, U, W) = exp(-(x - U * t)^2/W);
+shapes[UpwindFirstOrder]    = :circle
+shapes[CenteredSecondOrder] = :rect
+shapes[UpwindThirdOrder]    = :dtriangle
+shapes[CenteredForthOrder]  = :star4
+shapes[UpwindFifthOrder]    = :star5
+shapes[CenteredSixthOrder]  = :star6
+
+colors[UpwindFirstOrder]    = :blue
+colors[CenteredSecondOrder] = :green
+colors[UpwindThirdOrder]    = :red
+colors[CenteredForthOrder]  = :orange
+colors[UpwindFifthOrder]    = :yellow
+colors[CenteredSixthOrder]  = :purple
+
 
 for N in Ns, scheme in schemes
     
@@ -74,6 +92,16 @@ for N in Ns, scheme in schemes
 
 end
 
+for i in 1:length(schemes)
+
+    scheme = schemes[i] 
+      name = labels[scheme]
+    
+    j = 3
+    ROC[scheme] = log10([error[(N, scheme)] for N in Ns][j-1] / [error[(N, scheme)] for N in Ns][j]) / log10(Ns[j-1] / Ns[j])
+    println("Method = ", name, ", Rate of Convergence = ", @sprintf("%.2f", -ROC[scheme]), ", Expected = ", roc[i]) 
+end
+
 plt = plot()
 
 for scheme in schemes
@@ -83,14 +111,16 @@ for scheme in schemes
         log2.(Ns),
         [error[(N, scheme)] for N in Ns],
         seriestype = :scatter,
-             shape = :star5,
+             shape = shapes[scheme],
         markersize = 6,
+       markercolor = colors[scheme],
             xscale = :log10,
             yscale = :log10,
             xlabel = "log₂N",
-             label = "L₁-norm, c(x) "*string(labels[scheme]),
+            xticks = (log2.(Ns), string.(Int.(log2.(Ns)))),
+             label =  string(labels[scheme])*" slope = "*@sprintf("%.2f", ROC[scheme]),
             legend = :bottomleft,
-             title = "Convergence Rates"
+             title = "Rates of Convergence"
         )
 
 end
@@ -105,7 +135,9 @@ for i in 1:length(schemes)
         [error[(N, scheme)] for N in Ns][end-3] .* (Ns[end-3] ./ Ns[end-3:end]) .^ roc[i],
         linestyle = :solid,
                lw = 3,
-        label = raw"N^{-" * "$i" * raw"}" |> latexstring
+        linecolor = colors[scheme],
+            label = "Expected slope = "*@sprintf("%d",i)
+#        label = raw"N^{-" * "$i" * raw"}" |> latexstring
     )
     
 end
@@ -114,13 +146,4 @@ display(plt)
 
 savefig(plt, "convergence_rates")
 
-for i in 1:length(schemes)
-
-    scheme = schemes[i] 
-      name = labels[scheme]
-    
-    j = 3
-    ROC = log10([error[(N, scheme)] for N in Ns][j-1] / [error[(N, scheme)] for N in Ns][j]) / log10(Ns[j-1] / Ns[j])
-    println("Method = ", name, ", Rate of convergence = ", ROC, " expected = ", roc[i]) 
-end
 
