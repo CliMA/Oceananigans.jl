@@ -1,6 +1,7 @@
 using Plots
 using LaTeXStrings
 using Printf
+using Polynomials
 
 using Oceananigans
 using Oceananigans.Advection
@@ -10,11 +11,11 @@ using Oceananigans.Advection
            U  = 1
            L  = 2.5
            W  = 0.1
-           Ns = 2 .^ (4:9)
+           Ns = 2 .^ (4:7)
 
            Δt = 0.01 * minimum(L/Ns) / U
 
-c(x, t, U, W) = exp(-(x - U * t)^2/W);
+c(x, t, U, W) = exp( -(x - U * t)^2 / W );
 
 ### Difference Operator
 
@@ -56,15 +57,12 @@ schemes = (
 
 ### Dictionaries and Functions for output
 
-error  = Dict()
-ROC    = Dict()
-
-rate_of_convergence(::UpwindBiasedFirstOrder)    = 1
-rate_of_convergence(::CenteredSecondOrder) = 2
-rate_of_convergence(::UpwindBiasedThirdOrder)    = 3
-rate_of_convergence(::CenteredFourthOrder) = 4
-rate_of_convergence(::UpwindBiasedFifthOrder)    = 5
-rate_of_convergence(::CenteredSixthOrder)  = 6
+rate_of_convergence(::UpwindBiasedFirstOrder) = 1
+rate_of_convergence(::CenteredSecondOrder)    = 2
+rate_of_convergence(::UpwindBiasedThirdOrder) = 3
+rate_of_convergence(::CenteredFourthOrder)    = 4
+rate_of_convergence(::UpwindBiasedFifthOrder) = 5
+rate_of_convergence(::CenteredSixthOrder)     = 6
 
 labels(::UpwindBiasedFirstOrder) = "Upwind1ˢᵗ"
 labels(::CenteredSecondOrder)    = "Center2ⁿᵈ"
@@ -87,7 +85,8 @@ colors(::CenteredFourthOrder)    = :cyan
 colors(::UpwindBiasedFifthOrder) = :magenta
 colors(::CenteredSixthOrder)     = :purple
 
-### Loop over schemes
+error  = Dict()
+ROC    = Dict()
 
 time_stepper = AdamsBashforth2
 
@@ -113,7 +112,7 @@ for N in Ns, scheme in schemes
     end
 
     local cₛᵢₘ = zeros(N)
-    cₑᵣᵣ = zeros(N)
+    local cₑᵣᵣ = zeros(N)
 
     for i in 4:N-1
         
@@ -131,11 +130,10 @@ end
 for scheme in schemes
     
     name = labels(scheme())
-
     roc = rate_of_convergence(scheme())
-    
     j = 3
-    ROC[scheme] = log10([error[(N, scheme)] for N in Ns][j-1] / [error[(N, scheme)] for N in Ns][j]) / log10(Ns[j-1] / Ns[j])
+    local p = fit(log10.(Ns[2:end]), log10.([error[(N, scheme)] for N in Ns][2:end]), 1)
+    ROC[scheme] = p[1]
     println("Method = ", name, ", Rate of Convergence = ", @sprintf("%.2f", -ROC[scheme]), ", Expected = ", roc)
     
 end
@@ -166,17 +164,17 @@ for scheme in schemes
 
 end
 
-for i in 1:length(schemes)
-
-    roc = rate_of_convergence(schemes[i]())
+for scheme in schemes
+        
+    roc = rate_of_convergence(scheme())
     
     plot!(
         plt,
         log2.(Ns[end-3:end]),
-        [error[(N, schemes[i])] for N in Ns][end-3] .* (Ns[end-3] ./ Ns[end-3:end]) .^ roc,
+        [error[(N, scheme)] for N in Ns][end-3] .* (Ns[end-3] ./ Ns[end-3:end]) .^ roc,
         linestyle = :solid,
                lw = 3,
-        linecolor = colors(schemes[i]()),
+        linecolor = colors(scheme()),
             label = "Expected slope = "*@sprintf("%d",-roc)
     )
     
