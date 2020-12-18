@@ -1,16 +1,9 @@
 module OneDimensionalUtils
 
-#using PyPlot
-using Plots
-
 using Oceananigans.Grids
 using Oceananigans.Advection
-
+using Plots
 using Printf
-
-#defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
-#removespine(side) = gca().spines[side].set_visible(false)
-#removespines(sides...) = [removespine(side) for side in sides]
 
 """ Unpack a vector of results associated with a convergence test. """
 function unpack_solutions(results)
