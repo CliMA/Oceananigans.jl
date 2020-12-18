@@ -36,10 +36,6 @@ time_steppers = (
 ### Advection Schemes
 
 struct UpwindBiasedFirstOrder    end
-#struct CenteredSecondOrder end
-#struct UpwindThirdOrder    end
-#struct CenteredFourthOrder  end
-#struct UpwindFifthOrder    end
 struct CenteredSixthOrder  end
 
 advective_flux(i, j, k, grid, ::UpwindBiasedFirstOrder,    U, c) =                 c[i-1]
@@ -58,7 +54,7 @@ schemes = (
     CenteredSixthOrder
 );
 
-### Dictionaries for output
+### Dictionaries and Functions for output
 
 error  = Dict()
 ROC    = Dict()
@@ -70,26 +66,26 @@ rate_of_convergence(::CenteredFourthOrder) = 4
 rate_of_convergence(::UpwindBiasedFifthOrder)    = 5
 rate_of_convergence(::CenteredSixthOrder)  = 6
 
-labels(::UpwindBiasedFirstOrder)    = "Upwind1ˢᵗ"
-labels(::CenteredSecondOrder) = "Center2ⁿᵈ"
-labels(::UpwindBiasedThirdOrder)    = "Upwind3ʳᵈ"
-labels(::CenteredFourthOrder) = "Center4ᵗʰ"
-labels(::UpwindBiasedFifthOrder)    = "Upwind5ᵗʰ"
-labels(::CenteredSixthOrder)  = "Center6ᵗʰ"
+labels(::UpwindBiasedFirstOrder) = "Upwind1ˢᵗ"
+labels(::CenteredSecondOrder)    = "Center2ⁿᵈ"
+labels(::UpwindBiasedThirdOrder) = "Upwind3ʳᵈ"
+labels(::CenteredFourthOrder)    = "Center4ᵗʰ"
+labels(::UpwindBiasedFifthOrder) = "Upwind5ᵗʰ"
+labels(::CenteredSixthOrder)     = "Center6ᵗʰ"
 
-shapes(::UpwindBiasedFirstOrder)    = :circle
-shapes(::CenteredSecondOrder) = :diamond
-shapes(::UpwindBiasedThirdOrder)    = :dtriangle
-shapes(::CenteredFourthOrder)  = :rect
-shapes(::UpwindBiasedFifthOrder)    = :star5
-shapes(::CenteredSixthOrder)  = :star6
+shapes(::UpwindBiasedFirstOrder) = :circle
+shapes(::CenteredSecondOrder)    = :diamond
+shapes(::UpwindBiasedThirdOrder) = :dtriangle
+shapes(::CenteredFourthOrder)    = :rect
+shapes(::UpwindBiasedFifthOrder) = :star5
+shapes(::CenteredSixthOrder)     = :star6
 
-colors(::UpwindBiasedFirstOrder)    = :blue
-colors(::CenteredSecondOrder) = :green
-colors(::UpwindBiasedThirdOrder)    = :red
-colors(::CenteredFourthOrder)  = :cyan
-colors(::UpwindBiasedFifthOrder)    = :magenta
-colors(::CenteredSixthOrder)  = :purple
+colors(::UpwindBiasedFirstOrder) = :blue
+colors(::CenteredSecondOrder)    = :green
+colors(::UpwindBiasedThirdOrder) = :red
+colors(::CenteredFourthOrder)    = :cyan
+colors(::UpwindBiasedFifthOrder) = :magenta
+colors(::CenteredSixthOrder)     = :purple
 
 ### Loop over schemes
 
