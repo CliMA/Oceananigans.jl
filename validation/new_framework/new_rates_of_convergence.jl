@@ -4,11 +4,11 @@ using Printf
 using Polynomials
 using LinearAlgebra
 
-using Oceananigans
+using Oceananigans.Grids
 using Oceananigans.Advection
 
-#using .RatesOfConvergence
 include("RatesOfConvergence.jl")
+using .RatesOfConvergence
 
 ### Model parameters and function
 
@@ -62,7 +62,7 @@ for N in Ns, scheme in schemes
 
     for i in 4:N-1
         
-        cₛᵢₘ[i] = Time_Stepper(i, c₀, F₀, F₋₁, grid.Δx, Δt, time_stepper())
+        cₛᵢₘ[i] = one_time_step!(i, c₀, F₀, F₋₁, grid.Δx, Δt, time_stepper())
         cₑᵣᵣ[i] = cₛᵢₘ[i] - c₁[i]
         
     end
@@ -87,4 +87,4 @@ for scheme in schemes
     
 end
 
-plot_solutions!(error, Ns, schemes, rate_of_convergence, shapes, colors, labels, pnorm)
+plot_solutions!(error, Ns, schemes, rate_of_convergence, shapes, colors, labels, pnorm, ROC)

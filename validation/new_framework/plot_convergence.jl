@@ -1,4 +1,8 @@
-function plot_solutions!(error, Ns, schemes, rate_of_convergence, shapes, colors, labels, pnorm)
+using Plots
+using LaTeXStrings
+using Printf
+
+function plot_solutions!(error, Ns, schemes, rate_of_convergence, shapes, colors, labels, pnorm, ROC)
 
     plt = plot()
 
