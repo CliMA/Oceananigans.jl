@@ -126,12 +126,12 @@ for N in Ns, scheme in schemes
     
 end
 
-print("error\n")
+print("error from explicit method\n")
 print([error[(N, CenteredSecondOrder)] for N in Ns])
-
-print("error2\n")
+print("\n")
+print("error from Oceananigans\n")
 print([error2[(N, CenteredSecondOrder)] for N in Ns])
-
+print("\n")
 println(" ")        
 println("Results are for the L"*string(pnorm)*"-norm:")
 println(" ")        
