@@ -5,14 +5,10 @@ using Oceananigans.Advection
 using Printf
 
 export ForwardEuler, AdamsBashforth2
-export one_time_step!
+export update_solution #one_time_step!
 
 export UpwindBiasedFirstOrder, CenteredSixthOrder
-export advective_flux
-export rate_of_convergence
-export labels
-export shapes
-export colors
+export advective_flux, rate_of_convergence, labels, shapes, colors, halos
 
 export plot_solutions!
 

@@ -35,5 +35,14 @@ colors(::CenteredFourthOrder)    = :cyan
 colors(::UpwindBiasedFifthOrder) = :magenta
 colors(::CenteredSixthOrder)     = :purple
 
+halos(::UpwindBiasedFirstOrder) = 1
+halos(::CenteredSecondOrder)    = 1
+halos(::UpwindBiasedThirdOrder) = 2
+halos(::CenteredFourthOrder)    = 2
+halos(::UpwindBiasedFifthOrder) = 3
+halos(::CenteredSixthOrder)     = 3
+
+
+
 
 
