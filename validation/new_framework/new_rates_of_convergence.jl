@@ -12,10 +12,10 @@ using Oceananigans.Advection
 include("RatesOfConvergence.jl")
 
 using .RatesOfConvergence: ForwardEuler, AdamsBashforth2
-using .RatesOfConvergence: update_solution #one_time_step!
+using .RatesOfConvergence: update_solution 
 
 using .RatesOfConvergence: UpwindBiasedFirstOrder, CenteredSixthOrder
-using .RatesOfConvergence: advective_flux, rate_of_convergence, labels, shapes, colors, halos
+using .RatesOfConvergence: rate_of_convergence, labels, shapes, colors, halos
 
 using .RatesOfConvergence: plot_solutions!
 
@@ -24,126 +24,112 @@ using .RatesOfConvergence: plot_solutions!
            U  = 1
            L  = 2.5
            W  = 0.1
-           Ns = 2 .^ (3:7)
+           Ns = 2 .^ (6:10)
 
-           Δt = 0.01 * minimum(L/Ns) / U
+c(x, y, z, t, U, W) = exp( - (x - U * t)^2 / W^2 );
 
-c(x, y, z, t, U, W) = exp( -(x - U * t)^2 / W );
+### Advection schemes
+# UpwindBiasedFirstOrdder and CenteredSixthOrder are not currently supported in Oceananigans
+# Switching between Oceananigans fluxes and independent fluxes is done in advection_schemes
+# This should be better
 
 schemes = (
-#    UpwindBiasedFirstOrder, 
-    CenteredSecondOrder, 
-#    UpwindBiasedThirdOrder, 
-#    CenteredFourthOrder, 
-#    UpwindBiasedFifthOrder, 
-#    CenteredSixthOrder
+#    UpwindBiasedFirstOrder(), 
+    CenteredSecondOrder(), 
+    UpwindBiasedThirdOrder(), 
+    CenteredFourthOrder(), 
+    UpwindBiasedFifthOrder(), 
+#    CenteredSixthOrder()
 );
 
-error  = Dict()
-ROC    = Dict()
+### Dictionaries to store errors and computed Rates of Convergence
+error1 = Dict()
+ROC1   = Dict()
 
 error2 = Dict()
+ROC2   = Dict()
 
 time_stepper = AdamsBashforth2
+Δt = 0.01 * minimum(L/Ns) / U    
 pnorm = 1
 
 for N in Ns, scheme in schemes
 
-    grid = RegularCartesianGrid(size=(N, 1, 1), x=(-1, -1+L), y=(0, 1), z=(0, 1), halo=(halos(scheme()), 1, 1))
+    grid = RegularCartesianGrid(Float64; size=(N, 1, 1), x=(-1, -1+L), y=(0, 1), z=(0, 1), halo=(halos(scheme), 1, 1))
 
-    ### Using Oceananigans
+    ### Oceananigans
     model = IncompressibleModel(architecture = CPU(),
-                                 timestepper = :RungeKutta3,
+                                float_type = Float64,
+                                timestepper = :QuasiAdamsBashforth2,
                                         grid = grid,
-                                   advection = scheme(),
+                                   advection = scheme,
                                     coriolis = nothing,
                                     buoyancy = nothing,
                                      tracers = :c,
                                      closure = nothing)
 
 
-    set!(model, u = U,
-         c = (x, y, z) -> c(x, y, z, 0, U, W) )
+    set!(model, u = U, c = (x, y, z) -> c(x, y, z, 0, U, W) )
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=1, iteration_interval=1)
 
     run!(simulation)
 
-    ### Using explicit method
+    ### Independent method that uses advective_tracer_flux_x from Oceananigans
     cₛᵢₘ = update_solution(c, U, W, Δt, grid, scheme, time_stepper)
-        
+
+    ### Exact solution
     c₁  = c.(grid.xC[:,1,1], grid.yC[1,1,1], grid.zC[1,1,1],  Δt, U, W);
-    c1ₑᵣᵣ = zeros(N)
-    c2ₑᵣᵣ = zeros(N)
-    
-    for i in 2:N-1
-        
-        c1ₑᵣᵣ[i] = cₛᵢₘ[i] - c₁[i]
-        c2ₑᵣᵣ[i] = model.tracers.c[i] - c₁[i]
-        
-    end
 
-    error[ (N, scheme)] = norm(c1ₑᵣᵣ, pnorm)/N^(1/pnorm)
-    error2[(N, scheme)] = norm(c2ₑᵣᵣ, pnorm)/N^(1/pnorm)
+    ### Compute error using p-norm
+    error1[ (N,scheme)] = norm(abs.(cₛᵢₘ[1:N] .- c₁[1:N]),                pnorm)/N^(1/pnorm)
+    error2[(N, scheme)] = norm(abs.(model.tracers.c[1:N,1,1] .- c₁[1:N]), pnorm)/N^(1/pnorm)
 
-    #=
-    plt1 = plot(
-        grid.xC,
-        cₛᵢₘ,
-        lw=3,
-        linecolor=:blue,
-        label="Explicit Method",
-        title="Solutions at Δt"
-    )
-    plot!(
-        plt1,
-        grid.xC,
-        model.tracers.c.data[:,1,1],
-        lw=2,
-        linecolor=:red,
-        label="IncompressibleModel"
-    )
-    #display(plt1)
-    savefig(plt1, "tmp1")
-    
-    #xc = xnodes(model.tracers.c)
-    plt2 = plot(grid.xC[1:end-1],
-                c1ₑᵣᵣ, 
-                lw=3,
-                linecolor=:blue,
-                label="Explicit Method",
-                title="Errors at Δt"
-               )
-    plot!(plt2, grid.xC[1:end-1],
-               c2ₑᵣᵣ,
-               lw=2,
-               linecolor=:red,
-               label="IncompressibleModel"
-               )
-    #display(plt2)
-    savefig(plt2, "tmp2")
-    =#
-    
 end
 
-print("error from explicit method\n")
-print([error[(N, CenteredSecondOrder)] for N in Ns])
-print("\n")
-print("error from Oceananigans\n")
-print([error2[(N, CenteredSecondOrder)] for N in Ns])
-print("\n")
 println(" ")        
 println("Results are for the L"*string(pnorm)*"-norm:")
 println(" ")        
+
 for scheme in schemes
     
-    name = labels(scheme())
-    roc = rate_of_convergence(scheme())
+    name = labels(scheme)
+    roc = rate_of_convergence(scheme)
     j = 3
-    local best_fit = fit(log10.(Ns[2:end]), log10.([error[(N, scheme)] for N in Ns][2:end]), 1)
-    ROC[scheme] = best_fit[1]
-    println("Method = ", name, ", Rate of Convergence = ", @sprintf("%.2f", -ROC[scheme]), ", Expected = ", roc)
+    
+    local best_fit = fit(log10.(Ns[2:end]),
+                         log10.([error1[(N, scheme)] for N in Ns][2:end]), 1)
+
+    ROC1[scheme] = best_fit[1]
+    println("Method = ", name, ",             Rate of Convergence = ", @sprintf("%.2f", -ROC1[scheme]), ", Expected = ", roc)
+    
+    local best_fit2 = fit(log10.(Ns[2:end]),
+                          log10.([error2[(N, scheme)] for N in Ns][2:end]), 1)
+
+    ROC2[scheme] = best_fit2[1]
+    println("Method = ", scheme, ", Rate of Convergence = ", @sprintf("%.2f", -ROC2[scheme]), ", Expected = ", roc)
     
 end
 
-plot_solutions!(error, Ns, schemes, rate_of_convergence, shapes, colors, labels, pnorm, ROC)
+plt1 = plot_solutions!(error1,
+                       Ns,
+                       schemes,
+                       rate_of_convergence,
+                       shapes,
+                       colors,
+                       labels,
+                       pnorm,
+                       ROC1)
+savefig(plt1, "convergence_rates_independent")
+
+plt2 = plot_solutions!(error2,
+                       Ns,
+                       schemes,
+                       rate_of_convergence,
+                       shapes,
+                       colors,
+                       labels,
+                       pnorm,
+                       ROC2)
+savefig(plt2, "convergence_rates_Oceananigans")
+
