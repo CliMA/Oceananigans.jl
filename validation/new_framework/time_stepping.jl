@@ -42,8 +42,8 @@ function update_solution(c, U, W, Δt, grid, scheme, time_stepper)
         
     end
     
-    cₛᵢₘ = OffsetArray(zeros(grid.Nx+2), -1)
-
+    cₛᵢₘ = OffsetArray(zeros(Float64, grid.Nx+2), -1)
+    
     for i in 1:grid.Nx
         cₛᵢₘ[i] = one_time_step!(i, c₀, F₀, F₋₁, grid.Δx, Δt, time_stepper())
     end

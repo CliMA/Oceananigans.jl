@@ -8,6 +8,7 @@ using OffsetArrays
 using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Advection
+using Oceananigans.Models: ShallowWaterModel
 
 include("RatesOfConvergence.jl")
 
@@ -36,9 +37,9 @@ c(x, y, z, t, U, W) = exp( - (x - U * t)^2 / W^2 );
 schemes = (
 #    UpwindBiasedFirstOrder(), 
     CenteredSecondOrder(), 
-    UpwindBiasedThirdOrder(), 
-    CenteredFourthOrder(), 
-    UpwindBiasedFifthOrder(), 
+#    UpwindBiasedThirdOrder(), 
+#    CenteredFourthOrder(), 
+#    UpwindBiasedFifthOrder(), 
 #    CenteredSixthOrder()
 );
 
@@ -58,6 +59,21 @@ for N in Ns, scheme in schemes
     grid = RegularCartesianGrid(Float64; size=(N, 1, 1), x=(-1, -1+L), y=(0, 1), z=(0, 1), halo=(halos(scheme), 1, 1))
 
     ### Oceananigans
+    model = ShallowWaterModel(architecture = CPU(),
+#                                float_type = Float64,
+#                                timestepper = :QuasiAdamsBashforth2,
+                                        grid = grid,
+                                   advection = scheme,
+                                    coriolis = nothing,
+                  gravitational_acceleration = 0)
+#                                     tracers = :c)
+    
+    set!(model, h = (x,y,z) -> c(x, y, z, 0, U, W) )
+    
+    simulation = Simulation(model, Δt=Δt, stop_iteration=1, iteration_interval=1)
+    
+    run!(simulation)
+    #=
     model = IncompressibleModel(architecture = CPU(),
                                 float_type = Float64,
                                 timestepper = :QuasiAdamsBashforth2,
@@ -67,8 +83,6 @@ for N in Ns, scheme in schemes
                                     buoyancy = nothing,
                                      tracers = :c,
                                      closure = nothing)
-
-
     set!(model, u = U, c = (x, y, z) -> c(x, y, z, 0, U, W) )
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=1, iteration_interval=1)
@@ -84,9 +98,11 @@ for N in Ns, scheme in schemes
     ### Compute error using p-norm
     error1[ (N,scheme)] = norm(abs.(cₛᵢₘ[1:N] .- c₁[1:N]),                pnorm)/N^(1/pnorm)
     error2[(N, scheme)] = norm(abs.(model.tracers.c[1:N,1,1] .- c₁[1:N]), pnorm)/N^(1/pnorm)
-
+    =#
+    
 end
 
+#=
 println(" ")        
 println("Results are for the L"*string(pnorm)*"-norm:")
 println(" ")        
@@ -133,3 +149,4 @@ plt2 = plot_solutions!(error2,
                        ROC2)
 savefig(plt2, "convergence_rates_Oceananigans")
 
+=#
