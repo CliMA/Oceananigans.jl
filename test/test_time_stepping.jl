@@ -197,7 +197,12 @@ Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             SmagorinskyLilly, BlasiusSmagorinsky,
             AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
 
-advection_schemes = (CenteredSecondOrder(), UpwindBiasedThirdOrder(), CenteredFourthOrder(), UpwindBiasedFifthOrder(), WENO5())
+advection_schemes = (nothing,
+                     CenteredSecondOrder(),
+                     UpwindBiasedThirdOrder(),
+                     CenteredFourthOrder(),
+                     UpwindBiasedFifthOrder(),
+                     WENO5())
 
 timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 

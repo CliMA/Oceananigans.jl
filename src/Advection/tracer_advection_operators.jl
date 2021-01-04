@@ -17,3 +17,5 @@ which will end up at the location `ccc`.
                              δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, U.v, c) +
                              δzᵃᵃᶜ(i, j, k, grid, advective_tracer_flux_z, advection, U.w, c))
 end
+
+@inline div_Uc(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, c) where FT = zero(FT)

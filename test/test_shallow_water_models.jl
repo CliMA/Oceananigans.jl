@@ -1,9 +1,10 @@
 using Oceananigans.Models: ShallowWaterModel
 using Oceananigans.Grids: Periodic, Bounded
 
-function time_stepping_shallow_water_model_works(arch, topo, coriolis)
+function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection)
     grid = RegularCartesianGrid(size=(1, 1, 1), extent=(2π, 2π, 2π), topology=topo)
-    model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch, coriolis=coriolis)
+    model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch, coriolis=coriolis,
+                              advection=advection)
     set!(model, h=1)
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
@@ -79,14 +80,21 @@ end
         for topo in topos
             @testset "Time-stepping ShallowWaterModels [$arch, $topo]" begin
                 @info "  Testing time-stepping ShallowWaterModels [$arch, $topo]..."
-                @test time_stepping_shallow_water_model_works(arch, topo, nothing)
+                @test time_stepping_shallow_water_model_works(arch, topo, nothing, nothing)
             end
         end
 
         for coriolis in (nothing, FPlane(f=1), BetaPlane(f₀=1, β=0.1))
             @testset "Time-stepping ShallowWaterModels [$arch, $(typeof(coriolis))]" begin
                 @info "  Testing time-stepping ShallowWaterModels [$arch, $(typeof(coriolis))]..."
-                @test time_stepping_shallow_water_model_works(arch, topos[1], coriolis)
+                @test time_stepping_shallow_water_model_works(arch, topos[1], coriolis, nothing)
+            end
+        end
+
+        for advection in (nothing, CenteredSecondOrder(), WENO5())
+            @testset "Time-stepping ShallowWaterModels [$arch, $(typeof(advection))]" begin
+                @info "  Testing time-stepping ShallowWaterModels [$arch, $(typeof(advection))]..."
+                @test time_stepping_shallow_water_model_works(arch, topos[1], nothing, advection)
             end
         end
     end
