@@ -9,7 +9,7 @@ using Oceananigans.BoundaryConditions: UVelocityBoundaryConditions,
                                        TracerBoundaryConditions
 
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CellField
-using Oceananigans.Forcings: model_forcing
+using Oceananigans.Forcings: model_forcing, shallow_water_model_forcing
 using Oceananigans.Grids: with_halo
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
@@ -67,7 +67,7 @@ function ShallowWaterModel(;
                              closure = nothing,
                           bathymetry = nothing,
                             solution = nothing,
-                 tracers::NamedTuple = NamedTuple(),
+                             tracers = (),
                        diffusivities = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
                  timestepper::Symbol = :RungeKutta3)
@@ -92,7 +92,8 @@ function ShallowWaterModel(;
                               G⁻ = ShallowWaterTendencyFields(architecture, grid, tracernames(tracers)))
 
     # Regularize forcing and closure for model tracer and velocity fields.
-    forcing = model_forcing(tracernames(tracers); forcing...)
+    model_fields = merge(solution, tracers)
+    forcing = shallow_water_model_forcing(model_fields; forcing...)
     closure = with_tracers(tracernames(tracers), closure)
 
     return ShallowWaterModel(grid,

@@ -24,8 +24,15 @@ end
 
 regularize_forcing(::Nothing, field_name, model_field_names) = zeroforcing
 
+function regularize_forcing(forcing::Function, field::Field)
+    LX, LY, LZ = location(field)
+    return ContinuousForcing{LX, LY, LZ}(forcing)
+end
+
+regularize_forcing(::Nothing, field::Field) = zeroforcing
+
 """
-    model_forcing(; u=zeroforcing, v=zeroforcing, w=zeroforcing, tracer_forcings...)
+    model_forcing(; u=nothing, v=nothing, w=nothing, tracer_forcings...)
 
 Return a named tuple of forcing functions for each solution field, wrapping
 forcing function in `ContinuousForcing`s and ensuring that
@@ -49,4 +56,20 @@ function model_forcing(tracer_names; u=nothing, v=nothing, w=nothing, tracer_for
     tracer_forcings = with_tracers(tracer_names, specified_forcings, (name, initial_tuple) -> zeroforcing)
 
     return merge((u=u, v=v, w=w), tracer_forcings)
+end
+
+function shallow_water_model_forcing(model_fields; forcings...)
+
+    model_field_names = keys(model_fields)
+
+    regularized_forcings = Tuple(
+        field_name in keys(forcings) ?
+            regularize_forcing(forcings[field_name], field) :
+            regularize_forcing(nothing, field)
+        for (field_name, field) in pairs(model_fields)
+    )
+
+    specified_forcings = NamedTuple{model_field_names}(regularized_forcings)
+
+    return specified_forcings
 end
