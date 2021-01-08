@@ -37,9 +37,9 @@ c(x, y, z, t, U, W) = exp( - (x - U * t)^2 / W^2 );
 schemes = (
 #    UpwindBiasedFirstOrder(), 
     CenteredSecondOrder(), 
-#    UpwindBiasedThirdOrder(), 
-#    CenteredFourthOrder(), 
-#    UpwindBiasedFifthOrder(), 
+    UpwindBiasedThirdOrder(), 
+    CenteredFourthOrder(), 
+    UpwindBiasedFifthOrder(), 
 #    CenteredSixthOrder()
 );
 
@@ -88,6 +88,7 @@ for N in Ns, scheme in schemes
     simulation = Simulation(model, Δt=Δt, stop_iteration=1, iteration_interval=1)
 
     run!(simulation)
+    =#
 
     ### Independent method that uses advective_tracer_flux_x from Oceananigans
     cₛᵢₘ = update_solution(c, U, W, Δt, grid, scheme, time_stepper)
@@ -97,12 +98,11 @@ for N in Ns, scheme in schemes
 
     ### Compute error using p-norm
     error1[ (N,scheme)] = norm(abs.(cₛᵢₘ[1:N] .- c₁[1:N]),                pnorm)/N^(1/pnorm)
-    error2[(N, scheme)] = norm(abs.(model.tracers.c[1:N,1,1] .- c₁[1:N]), pnorm)/N^(1/pnorm)
-    =#
+    error2[(N, scheme)] = norm(abs.(model.solution.h[1:N,1,1] .- c₁[1:N]), pnorm)/N^(1/pnorm)
+    #error2[(N, scheme)] = norm(abs.(model.tracers.c[1:N,1,1] .- c₁[1:N]), pnorm)/N^(1/pnorm)
     
 end
 
-#=
 println(" ")        
 println("Results are for the L"*string(pnorm)*"-norm:")
 println(" ")        
@@ -149,4 +149,3 @@ plt2 = plot_solutions!(error2,
                        ROC2)
 savefig(plt2, "convergence_rates_Oceananigans")
 
-=#

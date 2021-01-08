@@ -62,23 +62,14 @@ Compute the tendency for the height, h.
                                      forcings,
                                      clock)
 
-    U = 1
 
-    flux = zeros(grid.Nx+1, grid.Ny, grid.Nz)
-    
-    for i in 1:grid.Nx+1, j in 1:grid.Ny, k in 1:grid.Nz
-        
-        flux[i, j, k] = advective_tracer_flux_x(i, j, k, grid, advection, U, solution.h)
-        
-    end
-    
-    return ( -flux
-             )
-    
-    #=
+    #U = 1
+    #V = 0
+
+    #return ( - div_UV(i, j, k, grid, advection, U, V, solution.h) )
+
     return ( - ∂xᶜᵃᵃ(i, j, k, grid, solution.uh)
              - ∂yᵃᶜᵃ(i, j, k, grid, solution.vh) )
-    =#
     
 end
 
