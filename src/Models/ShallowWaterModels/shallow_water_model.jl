@@ -9,7 +9,7 @@ using Oceananigans.BoundaryConditions: UVelocityBoundaryConditions,
                                        TracerBoundaryConditions
 
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CellField
-using Oceananigans.Forcings: model_forcing, shallow_water_model_forcing
+using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: with_halo
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
@@ -93,7 +93,7 @@ function ShallowWaterModel(;
 
     # Regularize forcing and closure for model tracer and velocity fields.
     model_fields = merge(solution, tracers)
-    forcing = shallow_water_model_forcing(model_fields; forcing...)
+    forcing = model_forcing(model_fields; forcing...)
     closure = with_tracers(tracernames(tracers), closure)
 
     return ShallowWaterModel(grid,
