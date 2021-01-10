@@ -89,6 +89,9 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 #
 # # A _Power_ful algorithm
 #
+# The goal here is to find the fastest growing linear mode, and also its corresponding growth
+# rate without performing eigen-analysis of the linear operator ``L``.
+#
 # Successive application of ``L`` to a random initial state will render it parallel 
 # with eigenmode ``\phi_1``:
 # ```math
