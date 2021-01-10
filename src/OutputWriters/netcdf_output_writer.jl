@@ -31,7 +31,7 @@ const default_dimension_attributes = Dict(
     "yC" => Dict("longname" => "Locations of the cell centers in the y-direction.", "units" => "m"),
     "yF" => Dict("longname" => "Locations of the cell faces in the y-direction.",   "units" => "m"),
     "zC" => Dict("longname" => "Locations of the cell centers in the z-direction.", "units" => "m"),
-    "zF" => Dict("longname" => "Locations of the cell faces in the z-direction.",   "units" => "m"),
+    "zF" => Dict("longname" => "Locations of the cell faces in the z-direction",   "units" => "m"),
     "time" => Dict("longname" => "Time",   "units" => "s"),
 )
 
@@ -320,7 +320,7 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
 
         # Creates an unlimited dimension "time"
         defDim(dataset, "time", Inf)
-        defVar(dataset, "time", typeof(model.clock.time), ("time",))
+	defVar(dataset, "time", typeof(model.clock.time), ("time",), attrib=default_dimension_attributes["time"])
 
         # Use default output attributes for known outputs if the user has not specified any.
         # Unknown outputs get an empty tuple (no output attributes).
