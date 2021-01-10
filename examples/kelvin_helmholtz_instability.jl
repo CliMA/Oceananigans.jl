@@ -89,8 +89,11 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 #
 # # A _Power_ful algorithm
 #
-# The goal here is to find the fastest growing linear mode, and also its corresponding growth
-# rate without performing eigen-analysis of the linear operator ``L``.
+# In an unstable flow, it is often useful to determine the dominant scale and speed of growth of the instability, 
+# either to compare with observations, or to test linear theory.  However, it can be quite challenging to determine 
+# either the growth rate or scale from a freely evolving fully non-linear simulation.  Here we mimic a linear growth 
+# solution by iteratively reducing the strength of the fields to keep the flow in a linear regime, but still retaining the 
+# growing predominance of the fastest growing mode.  
 #
 # Successive application of ``L`` to a random initial state will render it parallel 
 # with eigenmode ``\phi_1``:
