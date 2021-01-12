@@ -5,7 +5,7 @@ using Oceananigans.Fields: architecture, tracernames
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: work_layout
 
-import Oceananigans.Fields: compute!
+import Oceananigans.Fields: compute!, compute_at!
 
 import Oceananigans: short_show
 
