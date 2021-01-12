@@ -1,5 +1,5 @@
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
-using Oceananigans.Fields: PressureField
+using Oceananigans.Fields: PressureField, compute_at!
 using Oceananigans.Buoyancy: BuoyancyField
 
 function simple_binary_operation(op, a, b, num1, num2)
