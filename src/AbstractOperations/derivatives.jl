@@ -109,7 +109,7 @@ architecture(∂::Derivative) = architecture(∂.arg)
 ##### Nested computations
 #####
 
-compute!(∂::Derivative) = compute!(∂.arg)
+compute_at!(∂::Derivative, time) = compute_at!(∂.arg, time)
 
 #####
 
