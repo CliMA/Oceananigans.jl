@@ -1,6 +1,6 @@
 using Statistics
 
-using Oceananigans.Fields: CellField, ZFaceField
+using Oceananigans.Fields: CellField, ZFaceField, compute_at!
 using Oceananigans.Grids: halo_size
 
 @testset "Averaged fields" begin
