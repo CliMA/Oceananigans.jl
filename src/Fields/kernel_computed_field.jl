@@ -1,4 +1,6 @@
+using Oceananigans: AbstractModel
 using Oceananigans.Grids
+using Oceananigans.Utils: tupleit
 
 struct KernelComputedField{X, Y, Z, S, A, G, K, F, P} <: AbstractField{X, Y, Z, A, G}
                   data :: A
@@ -40,26 +42,36 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, F, P} <: AbstractField{X, Y, Z, 
     compute!(tke)
     ```
     """
-    function KernelComputedField{X, Y, Z}(kernel::K, model;
-                                          field_dependencies::F=(),
-                                          parameters::P=nothing,
-                                          data=nothing,
-                                          recompute_safely=true) where {X, Y, Z, K, F, P}
+    function KernelComputedField{X, Y, Z}(kernel::K, arch, grid;
+                                          field_dependencies = (),
+                                          parameters::P = nothing,
+                                          data = nothing,
+                                          recompute_safely = true) where {X, Y, Z, K, P}
+
+        field_dependencies = tupleit(field_dependencies)
 
         if isnothing(data)
-            data = new_data(model.architecture, model.grid, (X, Y, Z))
+            data = new_data(arch, grid, (X, Y, Z))
         end
 
         # Use FieldStatus if we want to avoid always recomputing
         status = recompute_safely ? nothing : FieldStatus(0.0)
 
-        G = typeof(model.grid)
+        G = typeof(grid)
         A = typeof(data)
         S = typeof(status)
+        F = typeof(field_dependencies)
 
-        return KernelComputedField{X, Y, Z, S, A, G, K, F, P}(data, grid, kernel, field_dependencies, parameters)
+        return new{X, Y, Z, S,
+                   A, G, K, F, P}(data, grid, kernel, field_dependencies, parameters)
     end
 end
+
+KernelComputedField(X, Y, Z, kernel, model::AbstractModel; kwargs...) =
+    KernelComputedField{X, Y, Z}(kernel, model.architecture, model.grid; kwargs...)
+
+KernelComputedField(X, Y, Z, kernel, arch::AbstractArchitecture, grid::AbstractGrid; kwargs...) =
+    KernelComputedField{X, Y, Z}(kernel, arch, grid; kwargs...)
 
 function compute!(kcf::KernelComputedField{X, Y, Z}) where {X, Y, Z}
 
