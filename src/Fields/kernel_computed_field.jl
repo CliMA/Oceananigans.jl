@@ -1,11 +1,12 @@
 using Oceananigans.Grids
 
-struct KernelComputedField{X, Y, Z, A, G, K, F, P} <: AbstractField{X, Y, Z, A, G}
+struct KernelComputedField{X, Y, Z, S, A, G, K, F, P} <: AbstractField{X, Y, Z, A, G}
                   data :: A
                   grid :: G
                 kernel :: K
     field_dependencies :: F
             parameters :: P
+                status :: S
 
     """
         KernelComputedField(loc, kernel, grid)
@@ -42,23 +43,28 @@ struct KernelComputedField{X, Y, Z, A, G, K, F, P} <: AbstractField{X, Y, Z, A, 
     function KernelComputedField{X, Y, Z}(kernel::K, model;
                                           field_dependencies::F=(),
                                           parameters::P=nothing,
-                                          data=nothing) where {X, Y, Z, K, F, P}
+                                          data=nothing,
+                                          recompute_safely=true) where {X, Y, Z, K, F, P}
 
         if isnothing(data)
             data = new_data(model.architecture, model.grid, (X, Y, Z))
         end
 
+        # Use FieldStatus if we want to avoid always recomputing
+        status = recompute_safely ? nothing : FieldStatus(0.0)
+
         G = typeof(model.grid)
         A = typeof(data)
+        S = typeof(status)
 
-        return KernelComputedField{X, Y, Z, A, G, K, F, P}(data, grid, kernel, field_dependencies, parameters)
+        return KernelComputedField{X, Y, Z, S, A, G, K, F, P}(data, grid, kernel, field_dependencies, parameters)
     end
 end
 
-function compute!(kcf::KernelComputedField{X, Y, Z}, time) where {X, Y, Z}
+function compute!(kcf::KernelComputedField{X, Y, Z}) where {X, Y, Z}
 
     for dependency in kcf.field_dependencies
-        compute!(dependency, time)
+        compute!(dependency)
     end
 
     arch = architecture(kcf.data)
@@ -79,6 +85,7 @@ function compute!(kcf::KernelComputedField{X, Y, Z}, time) where {X, Y, Z}
     return nothing
 end
 
-compute!(kcf::KernelComputedField) = compute!(kcf, nothing)
+compute!(field::KernelComputedField{X, Y, Z, <:FieldStatus}, time) where {X, Y, Z} =
+    conditional_compute!(field, time)
 
 Adapt.adapt_structure(to, kcf::KernelComputedField) = Adapt.adapt(to, kcf.data)
