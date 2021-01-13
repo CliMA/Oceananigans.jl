@@ -136,6 +136,9 @@ function run_simple_particle_tracking_tests(arch, timestepper)
     @test all(file["timeseries/particles/1"].w .≈ 0)
     @test all(file["timeseries/particles/1"].s .≈ √2)
 
+    close(file)
+    rm(jld2_filepath)
+
     # Test checkpoint of particle properties
     model.particles.particles.x .= 0
     model.particles.particles.y .= 0
