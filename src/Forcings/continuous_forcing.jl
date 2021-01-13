@@ -84,13 +84,13 @@ ContinuousForcing(func; parameters=nothing, field_dependencies=()) =
     ContinuousForcing(func, parameters, field_dependencies)
 
 """
-    regularize_forcing(forcing::ContinuousForcing, field, field_name, model_field_names)
+    regularize_forcing(forcing::ContinuousForcing, field, model_field_names)
 
 Regularize `forcing::ContinuousForcing` by determining the indices of `forcing.field_dependencies`
 in `model_field_names`, and associated interpolation functions so `forcing` can be used during
 time-stepping `IncompressibleModel`.
 """
-function regularize_forcing(forcing::ContinuousForcing, field, field_name, model_field_names)
+function regularize_forcing(forcing::ContinuousForcing, field, model_field_names)
 
     X, Y, Z = location(field)
 
