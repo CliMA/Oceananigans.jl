@@ -17,29 +17,29 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, F, P} <: AbstractField{X, Y, Z, 
     =======
 
     ```julia
-
     using KernelAbstractions: @index, @kernel
-    using Oceananigans.Operators: ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ
-
-    @inline ψ′²(i, j, k, grid, ψ, Ψ) = @inbounds (ψ[i, j, k] - Ψ[i, j, k])^2
-
-    @kernel function compute_tke!(tke, grid, u, v, w, U, V)
+    using Oceananigans.Fields: AveragedField, KernelComputedField, compute!
+    using Oceananigans.Grids: Cell, Face
+    
+    @inline ψ²(i, j, k, grid, ψ, Ψ) = @inbounds (ψ[i, j, k] - Ψ[i, j, k])^2
+    @kernel function compute_var!(var, grid, ϕ, Φ)
         i, j, k = @index(Global, NTuple)
-
-        @inbounds tke[i, j, k] = (ℑxᶜᵃᵃ(i, j, k, grid, ψ′², u, U) + 
-                                  ℑyᵃᶜᵃ(i, j, k, grid, ψ′², v, V) +
-                                  ℑzᵃᵃᶜ(i, j, k, grid, ψ², w)
-                                 ) / 2
+    
+        @inbounds var[i, j, k] = ψ′²(i, j, k, grid, ϕ, Φ)
     end
-
+    
     u, v, w = model.velocities
-
+    
     U = AveragedField(u, dims=(1, 2))
-    V = AveragedField(u, dims=(1, 2))
-
-    tke = KernelComputedField(compute_tke!, model; field_dependencies=(u, v, w, U, V)) 
-
-    compute!(tke)
+    V = AveragedField(V, dims=(1, 2))
+    
+    u′² = KernelComputedField(Face, Cell, Cell, compute_var!, model; field_dependencies=(u, U,))
+    v′² = KernelComputedField(Cell, Face, Cell, compute_var!, model; field_dependencies=(v, V,))
+    w′² = KernelComputedField(Cell, Cell, Face, compute_var!, model; field_dependencies=(w, 0,))
+    
+    compute!(u′²)
+    compute!(v′²)
+    compute!(w′²)
     ```
     """
     function KernelComputedField{X, Y, Z}(kernel::K, arch, grid;
