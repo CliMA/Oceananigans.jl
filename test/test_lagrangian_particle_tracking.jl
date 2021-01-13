@@ -22,8 +22,8 @@ function run_simple_particle_tracking_tests(arch, timestepper)
     zs = convert(array_type(arch), 0.5*ones(P))
 
     # Test first constructor
-    particles = LagrangianParticles(x=xs, y=ys, z=zs)
-    @test particles isa LagrangianParticles
+    lagrangian_particles = LagrangianParticles(x=xs, y=ys, z=zs)
+    @test lagrangian_particles isa LagrangianParticles
 
     us = convert(array_type(arch), zeros(P))
     vs = convert(array_type(arch), zeros(P))
@@ -37,7 +37,10 @@ function run_simple_particle_tracking_tests(arch, timestepper)
     speed = ComputedField(√(u^2 + v^2 + w^2))
 
     tracked_fields = merge(velocities, (s=speed,))
+
+    # Test second constructor
     lagrangian_particles = LagrangianParticles(particles; tracked_fields)
+    @test lagrangian_particles isa LagrangianParticles
 
     model = IncompressibleModel(architecture=arch, grid=grid, timestepper=timestepper,
                                 velocities=velocities, particles=lagrangian_particles)
@@ -46,10 +49,13 @@ function run_simple_particle_tracking_tests(arch, timestepper)
 
     sim = Simulation(model, Δt=1e-2, stop_iteration=1)
 
-    test_output_file = "test_particles.nc"
-    sim.output_writers[:particles] = NetCDFOutputWriter(model, model.particles,
-                                                        filepath=test_output_file,
-                                                        schedule=IterationInterval(1))
+    jld2_filepath = "test_particles.jld2"
+    sim.output_writers[:particles_jld2] =
+        JLD2OutputWriter(model, (particles=model.particles,), prefix="test_particles", schedule=IterationInterval(1))
+
+    nc_filepath = "test_particles.nc"
+    sim.output_writers[:particles_nc] =
+        NetCDFOutputWriter(model, model.particles, filepath=nc_filepath, schedule=IterationInterval(1))
 
     sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
                                                      dir = ".", prefix = "particles_checkpoint")
@@ -84,7 +90,8 @@ function run_simple_particle_tracking_tests(arch, timestepper)
     @test all(w .≈ 0)
     @test all(s .≈ √2)
 
-    ds = NCDataset(test_output_file)
+    # Test NetCDF output is correct.
+    ds = NCDataset(nc_filepath)
     x, y, z = ds["x"], ds["y"], ds["z"]
     u, v, w, s = ds["u"], ds["v"], ds["w"], ds["s"]
 
@@ -105,7 +112,29 @@ function run_simple_particle_tracking_tests(arch, timestepper)
     @test all(s[:, end] .≈ √2)
 
     close(ds)
-    rm(test_output_file)
+    rm(nc_filepath)
+
+    # Test JLD2 output is correct
+    file = jldopen(jld2_filepath)
+    @test haskey(file["timeseries"], "particles")
+    @test haskey(file["timeseries/particles"], "0")
+    @test haskey(file["timeseries/particles"], "0")
+
+    @test size(file["timeseries/particles/1"].x) == (P,)
+    @test size(file["timeseries/particles/1"].y) == (P,)
+    @test size(file["timeseries/particles/1"].z) == (P,)
+    @test size(file["timeseries/particles/1"].u) == (P,)
+    @test size(file["timeseries/particles/1"].v) == (P,)
+    @test size(file["timeseries/particles/1"].w) == (P,)
+    @test size(file["timeseries/particles/1"].s) == (P,)
+
+    @test all(file["timeseries/particles/1"].x .≈ 0.01)
+    @test all(file["timeseries/particles/1"].y .≈ 0.01)
+    @test all(file["timeseries/particles/1"].z .≈ 0.5)
+    @test all(file["timeseries/particles/1"].u .≈ 1)
+    @test all(file["timeseries/particles/1"].v .≈ 1)
+    @test all(file["timeseries/particles/1"].w .≈ 0)
+    @test all(file["timeseries/particles/1"].s .≈ √2)
 
     # Test checkpoint of particle properties
     model.particles.particles.x .= 0

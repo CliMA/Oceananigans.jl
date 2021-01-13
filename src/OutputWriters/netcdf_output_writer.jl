@@ -40,7 +40,8 @@ function default_dimensions(output, grid, field_slicer)
         "zF" => grid.zF.parent[parent_slice_indices(Face, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)])
 end
 
-default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, field_slicer) = Dict("particleid" => collect(1:length(outputs["particles"])))
+default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, field_slicer) =
+    Dict("particle_id" => collect(1:length(outputs["particles"])))
 
 const default_dimension_attributes = Dict(
     "xC"          => Dict("longname" => "Locations of the cell centers in the x-direction.", "units" => "m"),
@@ -368,7 +369,7 @@ function define_output_variable!(dataset, output::LagrangianParticles, name, arr
     particle_fields = eltype(output.particles) |> fieldnames .|> string
     for particle_field in particle_fields
         defVar(dataset, particle_field, eltype(array_type),
-               ("particleid", "time"), compression=compression)
+               ("particle_id", "time"), compression=compression)
     end
 end
 
