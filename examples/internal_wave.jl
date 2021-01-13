@@ -180,4 +180,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
                  aspectratio = :equal)
 end
 
-gif(anim, "internal_wave.gif", fps = 8) # hide
+mp4(anim, "internal_wave.mp4", fps = 8) # hide

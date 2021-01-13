@@ -312,4 +312,4 @@ anim = @animate for (i, iteration) in enumerate(iterations)
          layout=layout, size=(1000, 1000))
 end
 
-gif(anim, "convecting_plankton.gif", fps = 8) # hide
+mp4(anim, "convecting_plankton.mp4", fps = 8) # hide

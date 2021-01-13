@@ -345,7 +345,7 @@ anim_powermethod = @animate for i in 1:length(power_method_data)
     power_method_plot(power_method_data[i].ω, power_method_data[i].b, power_method_data[i].σ, nothing)
 end
 
-gif(anim_powermethod, "powermethod.gif", fps = 1) # hide
+mp4(anim_powermethod, "powermethod.mp4", fps = 1) # hide
 
 # # Now for the fun part
 #
@@ -443,7 +443,7 @@ anim_perturbations = @animate for (i, iteration) in enumerate(iterations)
 
 end
 
-gif(anim_perturbations, "kelvin_helmholtz_instability_perturbations.gif", fps = 8) # hide
+mp4(anim_perturbations, "kelvin_helmholtz_instability_perturbations.mp4", fps = 8) # hide
 
 # And then the same for total vorticity & buoyancy of the fluid.
 
@@ -469,4 +469,4 @@ anim_total = @animate for (i, iteration) in enumerate(iterations)
     plot(eigenmode_plot, energy_plot, layout=@layout([A{0.6h}; B]), size=(800, 600))
 end
 
-gif(anim_total, "kelvin_helmholtz_instability_total.gif", fps = 8) # hide
+mp4(anim_total, "kelvin_helmholtz_instability_total.mp4", fps = 8) # hide
