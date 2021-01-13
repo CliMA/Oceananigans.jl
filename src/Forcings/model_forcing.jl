@@ -1,7 +1,7 @@
 @inline zeroforcing(args...) = 0
 
 """
-    regularize_forcing(forcing, field, model_field_names)
+    regularize_forcing(forcing, field, field_name, model_field_names)
 
 "Regularizes" or "adds information" to user-defined forcing objects that are passed to
 model constructors. `regularize_forcing` is called inside `model_forcing`.
@@ -11,19 +11,19 @@ the fields (and field locations) of various forcing functions are available. The
 can be used to infer the location at which the forcing is applied, or to add a field
 dependency to a special forcing object, as for `Relxation`.
 """
-regularize_forcing(forcing, field, model_field_names) = forcing # fallback
+regularize_forcing(forcing, field, field_name, model_field_names) = forcing # fallback
 
 """
-    regularize_forcing(forcing::Function, field::Field, model_field_names)
+    regularize_forcing(forcing::Function, field::Field, field_name, model_field_names)
 
 Wrap `forcing` in a `ContinuousForcing` at the location of `field`.
 """
-function regularize_forcing(forcing::Function, field::Field, model_field_names)
+function regularize_forcing(forcing::Function, field::Field, field_name, model_field_names)
     LX, LY, LZ = location(field)
     return ContinuousForcing{LX, LY, LZ}(forcing)
 end
 
-regularize_forcing(::Nothing, field::Field, model_field_names) = zeroforcing
+regularize_forcing(::Nothing, field::Field, field_name, model_field_names) = zeroforcing
 
 """
     model_forcing(model_fields; forcings...)
@@ -38,8 +38,8 @@ function model_forcing(model_fields; forcings...)
 
     regularized_forcings = Tuple(
         field_name in keys(forcings) ?
-            regularize_forcing(forcings[field_name], field, model_field_names) :
-            regularize_forcing(nothing, field, model_field_names)
+            regularize_forcing(forcings[field_name], field, field_name, model_field_names) :
+            regularize_forcing(nothing, field, field_name, model_field_names)
         for (field_name, field) in pairs(model_fields)
     )
 
