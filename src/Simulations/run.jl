@@ -157,8 +157,15 @@ function run!(sim; pickup=false)
 
         for n in 1:iterations
             clock.time >= sim.stop_time && break
-            
-            Δt = min(get_Δt(sim), aligned_time_step(sim))
+
+            # Temporary fix for https://github.com/CliMA/Oceananigans.jl/issues/1280
+            aligned_Δt = aligned_time_step(sim)
+            if aligned_Δt <= 0
+                Δt = get_Δt(sim)
+            else
+                Δt = min(get_Δt(sim), aligned_Δt)
+            end
+
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
             ab2_or_rk3_time_step!(model, Δt, euler=euler)
 
