@@ -14,7 +14,7 @@ DocTestSetup = quote
 end
 ```
 
-```jldoctest particles1
+```jldoctest particles
 grid = RegularCartesianGrid(size=(10, 10, 10), extent=(1, 1, 1));
 
 n_particles = 10;
@@ -27,7 +27,7 @@ z₀ = -0.5 * ones(n_particles);
 
 lagrangian_particles = LagrangianParticles(x=x₀, y=y₀, z=z₀)
 
-#output
+# output
 10 Lagrangian particles with
 ├── 3 properties: (:x, :y, :z)
 └── 0 tracked fields: ()
@@ -38,7 +38,7 @@ then pass it to a model constructor
 ```jldoctest particles
 model = IncompressibleModel(grid=grid, particles=lagrangian_particles)
 
-#output
+# output
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=10, Ny=10, Nz=10)
 ├── tracers: (:T, :S)
@@ -58,6 +58,9 @@ representing a microbe in an agent-based model, then you can create your own cus
 and pass a `StructArray` to the `LagrangianParticles` constructor.
 
 ```jldoctest particles
+using Oceananigans
+using StructArrays
+
 struct LagrangianMicrobe{T, S, D}
     x :: T
     y :: T
@@ -82,7 +85,7 @@ particles = StructArray{LagrangianMicrobe}((x₀, y₀, z₀, species, dna));
 
 lagrangian_particles = LagrangianParticles(particles)
 
-#output
+# output
 3 Lagrangian particles with
 ├── 5 properties: (:x, :y, :z, :species, :dna)
 └── 0 tracked fields: ()
