@@ -68,6 +68,7 @@ model_setup_pages = [
     "Forcing functions" => "model_setup/forcing_functions.md",
     "Background fields" => "model_setup/background_fields.md",
     "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
+    "Lagrangian particles" => "model_setup/lagrangian_particles.md"
     "Diagnostics" => "model_setup/diagnostics.md",
     "Output writers" => "model_setup/output_writers.md",
     "Checkpointing" => "model_setup/checkpointing.md",

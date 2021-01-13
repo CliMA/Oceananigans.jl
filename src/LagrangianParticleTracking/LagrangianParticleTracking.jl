@@ -27,7 +27,13 @@ struct LagrangianParticles{P, R, T}
     tracked_fields :: T
 end
 
-function LagrangianParticles(; x, y, z, restitution=1.0, tracked_fields::NamedTuple=NamedTuple())
+"""
+    LagrangianParticles(; x, y, z, restitution=1.0)
+
+Construct some `LagrangianParticles` that can be passed to a model. The particles will have initial locations
+`x`, `y`, and `z`. The coefficient of restitution for particle-wall collisions is specified by `restitution`.
+"""
+function LagrangianParticles(; x, y, z, restitution=1.0)
     size(x) == size(y) == size(z) ||
         throw(ArgumentError("x, y, z must all have the same size!"))
 
@@ -36,9 +42,19 @@ function LagrangianParticles(; x, y, z, restitution=1.0, tracked_fields::NamedTu
 
     particles = StructArray{Particle}((x, y, z))
 
-    return LagrangianParticles(particles; restitution, tracked_fields)
+    return LagrangianParticles(particles; restitution)
 end
 
+"""
+    LagrangianParticles(particles::StructArray; restitution=1.0, tracked_fields::NamedTuple=NamedTuple())
+
+Construct some `LagrangianParticles` that can be passed to a model. The `particles` should be a `StructArray`
+and can contain custom fields. The coefficient of restitution for particle-wall collisions is specified by `restitution`.
+
+A number of `tracked_fields` may be passed in as a `NamedTuple` of fields. Each particle will track the value of each
+field. Each tracked field must have a corresponding particle property. So if `T` is a tracked field, then `T` must also
+be a custom particle property.
+"""
 function LagrangianParticles(particles::StructArray; restitution=1.0, tracked_fields::NamedTuple=NamedTuple())
     for (field_name, tracked_field) in pairs(tracked_fields)
         field_name in propertynames(particles) ||
