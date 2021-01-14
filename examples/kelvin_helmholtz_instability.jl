@@ -59,10 +59,10 @@ Ri_plot = plot(@. Ri * sech(zF / h)^2 / sech(zF)^2, zF; xlabel="Ri(z)", color=:b
 
 plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 
-# In unstable flows, such as jets and vorticies, it is often useful to determine the dominant spatial structure of the 
+# In unstable flows it is often useful to determine the dominant spatial structure of the 
 # instability and the growth rate at which the instability grows. If the simulation idealizes a physical flow, this can be used to make 
-# predictions as to what should devleop over time.  Since these instabilities are often attributed to a linear instability and 
-# in that cases we can determine information about the structure and the groth rate of the instability by analyzing the linear operator
+# predictions as to what should develop and how quickly.  Since these instabilities are often attributed to a linear instability, 
+# we can determine information about the structure and the growth rate of the instability by analyzing the linear operator
 # that governs small perturbations about a base state, or by solving for the linear dynamics.
 
 # Here, we discuss first briefly linear instabilities and how one can obtain growth rates and structures of most unstable
