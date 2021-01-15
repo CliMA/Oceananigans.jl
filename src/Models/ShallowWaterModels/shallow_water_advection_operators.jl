@@ -21,10 +21,12 @@ end
     @inbounds momentum_flux_vv(i, j, k, grid, advection, solution.vh, solution.vh) / solution.h[i, j, k]
 
 
-function div_UV(i, j, k, grid, advection, U, V, h)
+function div_UV(i, j, k, grid, advection, h)
     
+    U = 1
+
     return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, U, h)  +
-                                    δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, V, h) )
+                                    δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, U, h) )
 end
 
 #@inline mass_flux_x(i, j, k, grid, advection, U, h) =
@@ -32,4 +34,3 @@ end
 
 #@inline mass_flux_y(i, j, k, grid, advection, V, h) =
 #    @inbounds momentum_flux_vv(i, j, k, grid, advection, V, h)
-

@@ -63,13 +63,10 @@ Compute the tendency for the height, h.
                                      clock)
 
 
-    #U = 1
-    #V = 0
+    return ( - div_UV(i, j, k, grid, advection, solution.h) )
 
-    #return ( - div_UV(i, j, k, grid, advection, U, V, solution.h) )
-
-    return ( - ∂xᶜᵃᵃ(i, j, k, grid, solution.uh)
-             - ∂yᵃᶜᵃ(i, j, k, grid, solution.vh) )
+    #return ( - ∂xᶜᵃᵃ(i, j, k, grid, solution.uh)
+    #         - ∂yᵃᶜᵃ(i, j, k, grid, solution.vh) )
     
 end
 
