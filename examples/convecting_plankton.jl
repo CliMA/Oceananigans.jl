@@ -309,7 +309,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
 
     plot(w_contours, flux_plot, P_contours, P_profile,
          title=[w_title "" P_title ""],
-         layout=layout, size=(1000, 1000))
+         layout=layout, size=(1000.5, 1000.5))
 end
 
 mp4(anim, "convecting_plankton.mp4", fps = 8) # hide
