@@ -13,7 +13,7 @@ short_show(::T_onefunction) = "1"
     struct Relaxation{R, M, T}
 
 Callable object for restoring fields to a `target` at
-some `rate` and within a `mask`ed region in `x, y, z`. 
+some `rate` and within a `mask`ed region in `x, y, z`.
 """
 struct Relaxation{R, M, T}
       rate :: R
@@ -73,9 +73,9 @@ Relaxation{Float64, GaussianMask{:z,Float64}, LinearTarget{:z,Float64}}
 Relaxation(; rate, mask=onefunction, target=zerofunction) = Relaxation(rate, mask, target)
 
 """ Wrap `forcing::Relaxation` in `ContinuousForcing` and add the appropriate field dependency. """
-function regularize_forcing(forcing::Relaxation, field_name, model_field_names)
+function regularize_forcing(forcing::Relaxation, field, field_name, model_field_names)
     continuous_relaxation = ContinuousForcing(forcing, field_dependencies=field_name)
-    return regularize_forcing(continuous_relaxation, field_name, model_field_names)
+    return regularize_forcing(continuous_relaxation, field, field_name, model_field_names)
 end
 
 @inline (f::Relaxation)(x, y, z, t, field) =
@@ -121,7 +121,7 @@ struct GaussianMask{D, T}
         T = promote_type(typeof(center), typeof(width))
         return new{D, T}(center, width)
     end
-end    
+end
 
 @inline (g::GaussianMask{:x})(x, y, z) = exp(-(x - g.center)^2 / (2 * g.width^2))
 @inline (g::GaussianMask{:y})(x, y, z) = exp(-(y - g.center)^2 / (2 * g.width^2))
@@ -147,7 +147,7 @@ with `intercept` and `gradient`, and varying along direction `D`.
 Examples
 ========
 
-* Create a linear target function varying in `z`, equal to `0` at 
+* Create a linear target function varying in `z`, equal to `0` at
   `z=0` and with gradient 10⁻⁶:
 
 ```julia

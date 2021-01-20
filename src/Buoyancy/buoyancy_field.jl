@@ -5,7 +5,7 @@ using Oceananigans.Fields: architecture, tracernames
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: work_layout
 
-import Oceananigans.Fields: compute!
+import Oceananigans.Fields: compute!, compute_at!
 
 import Oceananigans: short_show
 
@@ -64,7 +64,7 @@ _buoyancy_field(::Nothing, args...; kwargs...) = nothing
 _buoyancy_field(buoyancy::BuoyancyTracer, tracers, arch, grid, args...) =
     BuoyancyField(tracers.b.data, grid, buoyancy, tracers, true)
 
-compute!(::BuoyancyField{<:BuoyancyTracer}) = nothing
+compute!(::BuoyancyField{<:BuoyancyTracer}, time=nothing) = nothing
  
 #####
 ##### Other buoyancy types
@@ -87,7 +87,7 @@ end
 Compute the current `buoyancy_field` associated with `buoyancy_field.tracers` and store
 the result in `buoyancy_field.data`.
 """
-function compute!(buoyancy_field::BuoyancyField)
+function compute!(buoyancy_field::BuoyancyField, time=nothing)
 
     data = buoyancy_field.data
     grid = buoyancy_field.grid
@@ -106,7 +106,7 @@ function compute!(buoyancy_field::BuoyancyField)
     return nothing
 end
 
-compute!(b::BuoyancyField{B, <:FieldStatus}, time) where B =
+compute_at!(b::BuoyancyField{B, <:FieldStatus}, time) where B =
     conditional_compute!(b, time)
 
 """Compute an `operation` and store in `data`."""

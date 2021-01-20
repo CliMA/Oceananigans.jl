@@ -59,10 +59,12 @@ opertator for fields that have no instrinsic location, like numbers or functions
 """
 interpolation_operator(::Nothing, to) = identity
 
-assumed_field_location(name) = name === :u ? (Face, Cell, Cell) :
-                               name === :v ? (Cell, Face, Cell) :
-                               name === :w ? (Cell, Cell, Face) :
-                                             (Cell, Cell, Cell)
+assumed_field_location(name) = name === :u  ? (Face, Cell, Cell) :
+                               name === :v  ? (Cell, Face, Cell) :
+                               name === :w  ? (Cell, Cell, Face) :
+                               name === :uh ? (Face, Cell, Cell) :
+                               name === :vh ? (Cell, Face, Cell) :
+                                              (Cell, Cell, Cell)
 
 """
     index_and_interp_dependencies(X, Y, Z, dependencies, model_field_names)

@@ -150,8 +150,8 @@ end
 ##### Nested computations
 #####
 
-function compute!(Π::MultiaryOperation)
-    c = Tuple(compute!(a) for a in Π.args)
+function compute_at!(Π::MultiaryOperation, time)
+    c = Tuple(compute_at!(a, time) for a in Π.args)
     return nothing
 end
 
