@@ -1,5 +1,5 @@
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
-using Oceananigans.Fields: PressureField
+using Oceananigans.Fields: PressureField, compute_at!
 using Oceananigans.Buoyancy: BuoyancyField
 
 function simple_binary_operation(op, a, b, num1, num2)
@@ -705,19 +705,19 @@ end
                     g = model.buoyancy.gravitational_acceleration
                     b = BuoyancyField(model)
 
-                    compute!(uT, 1.0)
-                    compute!(b, 1.0)
+                    compute_at!(uT, 1.0)
+                    compute_at!(b, 1.0)
                     @test all(interior(uT) .== 6)
                     @test all(interior(b) .== g * α * 3) 
 
                     set!(model, u=2, T=4)
-                    compute!(uT, 1.0)
-                    compute!(b, 1.0)
+                    compute_at!(uT, 1.0)
+                    compute_at!(b, 1.0)
                     @test all(interior(uT) .== 6) 
                     @test all(interior(b) .== g * α * 3) 
 
-                    compute!(uT, 2.0)
-                    compute!(b, 2.0)
+                    compute_at!(uT, 2.0)
+                    compute_at!(b, 2.0)
                     @test all(interior(uT) .== 8) 
                     @test all(interior(b) .== g * α * 4) 
                 end

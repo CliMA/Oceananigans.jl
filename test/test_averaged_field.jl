@@ -1,6 +1,6 @@
 using Statistics
 
-using Oceananigans.Fields: CellField, ZFaceField
+using Oceananigans.Fields: CellField, ZFaceField, compute_at!
 using Oceananigans.Grids: halo_size
 
 @testset "Averaged fields" begin
@@ -60,16 +60,16 @@ using Oceananigans.Grids: halo_size
 
                     # Test conditional computation
                     set!(c, 1)
-                    compute!(C, FT(1)) # will compute
+                    compute_at!(C, FT(1)) # will compute
                     @test all(interior(C) .== 1)
                     @test C.status.time == FT(1)
 
                     set!(c, 2)
-                    compute!(C, FT(1)) # will not compute because status == 1
+                    compute_at!(C, FT(1)) # will not compute because status == 1
                     @test C.status.time == FT(1)
                     @test all(interior(C) .== 1)
 
-                    compute!(C, FT(2))
+                    compute_at!(C, FT(2))
                     @test C.status.time == FT(2)
                     @test all(interior(C) .== 2)
                 end

@@ -45,18 +45,16 @@ end
 """
     compute!(field)
 
-Computes `field.data` if needed.
+Computes `field.data`.
 """
 compute!(field) = nothing
 
 """
-    compute!(field, time)
+    compute_at!(field, time)
 
-Computes `field.data` if needed. Falls back to compute!(field), 
-unless a special method is defined that avoids recomputing `field` at
-`time` if it has already been computed.
+Computes `field.data` at `time`. Falls back to compute!(field).
 """
-compute!(field, time) = compute!(field)
+compute_at!(field, time) = compute!(field)
 
 mutable struct FieldStatus{T}
     time :: T
@@ -72,7 +70,7 @@ Computes `field.data` if `time != field.status.time`.
 function conditional_compute!(field, time)
 
     if time == zero(time) || time != field.status.time
-        compute!(field)
+        compute!(field, time)
         field.status.time = time
     end
 
@@ -81,7 +79,7 @@ end
 
 # This edge case occurs if `fetch_output` is called with `model::Nothing`.
 # We do the safe thing here and always compute.
-conditional_compute!(field, ::Nothing) = compute!(field)
+conditional_compute!(field, ::Nothing) = compute!(field, nothing)
 
 """
     @compute(exprs...)

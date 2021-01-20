@@ -63,8 +63,8 @@ end
 
 Compute the average of `avg.operand` and store the result in `avg.data`.
 """
-function compute!(avg::AveragedField)
-    compute!(avg.operand)
+function compute!(avg::AveragedField, time=nothing)
+    compute_at!(avg.operand, time)
 
     # Omit halo regions from operand on averaged dimension
     operand_parent = parent(avg.operand)
@@ -83,7 +83,7 @@ function compute!(avg::AveragedField)
     return nothing
 end
 
-compute!(avg::AveragedField{X, Y, Z, <:FieldStatus}, time) where {X, Y, Z} =
+compute_at!(avg::AveragedField{X, Y, Z, <:FieldStatus}, time) where {X, Y, Z} =
     conditional_compute!(avg, time)
 
 #####

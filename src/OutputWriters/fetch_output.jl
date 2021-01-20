@@ -1,6 +1,6 @@
 using CUDA
 
-using Oceananigans.Fields: AbstractField, compute!
+using Oceananigans.Fields: AbstractField, compute_at!
 
 fetch_output(output, model, field_slicer) = output(model)
 
@@ -9,7 +9,7 @@ time(model) = model.clock.time
 time(::Nothing) = nothing
 
 function fetch_output(field::AbstractField, model, field_slicer)
-    compute!(field, time(model))
+    compute_at!(field, time(model))
     return slice_parent(field_slicer, field)
 end
 

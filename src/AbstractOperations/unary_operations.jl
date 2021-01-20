@@ -122,7 +122,7 @@ architecture(υ::UnaryOperation) = architecture(υ.arg)
 ##### Nested computations
 #####
 
-compute!(υ::UnaryOperation) = compute!(υ.arg)
+compute_at!(υ::UnaryOperation, time) = compute_at!(υ.arg, time)
 
 #####
 ##### GPU capabilities
