@@ -13,6 +13,8 @@ using Printf
 using JLD2
 using LinearAlgebra
 
+import Oceananigans.Utils: cell_advection_timescale
+
 ### Parameters
 
 Lx = 2 * π       # Geometry
@@ -60,11 +62,11 @@ uh_perturbation(x, y, z) = amp * ψ(x, y, z, ℓ, k)
 vh_perturbation(x, y, z) = amp * ψ(x, y, z, ℓ, k)
 
 ## Total fields
-uh(x, y, z) = UH(x, y, z) + uh_perturbation(x, y, z)
-vh(x, y, z) = 0           + vh_perturbation(x, y, z)
-h(x, y, z) =  H(x, y, z)  +  h_perturbation(x, y, z)
+uhᵢ(x, y, z) = UH(x, y, z) + uh_perturbation(x, y, z)
+vhᵢ(x, y, z) = 0           + vh_perturbation(x, y, z)
+hᵢ(x, y, z) =  H(x, y, z)  +  h_perturbation(x, y, z)
 
-set!(model, uh = uh, vh = vh, h = h)
+set!(model, uh = uhᵢ , vh = vhᵢ , h = hᵢ)
 
 wizard = TimeStepWizard(cfl=1.0, Δt=1e-3, max_change=1.1, max_Δt=1e-1)
 
