@@ -2,7 +2,7 @@ using Oceananigans.Architectures: CPU, architecture
 using Oceananigans.Models: ShallowWaterModel
 using Oceananigans.Grids: Periodic, Bounded, RegularCartesianGrid
 using Oceananigans.Grids: xnodes, ynodes, interior
-using Oceananigans.Simulations: Simulation, set!, run!
+using Oceananigans.Simulations: Simulation, set!, run!, TimeStepWizard
 using Oceananigans.Coriolis: FPlane
 using Oceananigans.Advection: WENO5
 using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
@@ -13,10 +13,20 @@ using Printf
 using JLD2
 using LinearAlgebra
 
-Lx = 10
+### Parameters
+
+Lx = 2 * π       # Geometry
 Ly = Lx
 Nx = 64
 Ny = Nx
+
+f = 10           # Physics
+g = 10
+
+Δη = 1.0         # Initial Conditions
+k   = 0.5
+ℓ   = 0.5
+amp = 0.1
 
 grid = RegularCartesianGrid(
     size=(Nx, Ny, 1),
@@ -26,34 +36,28 @@ grid = RegularCartesianGrid(
     topology=(Periodic, Bounded, Bounded)
     )
 
+
 model = ShallowWaterModel(
-    grid=grid,
-    gravitational_acceleration=1,
     architecture=CPU(),
-    coriolis=FPlane(f=1),
-    advection=WENO5()
+ #   timestepper = :RungeKutta3, 
+    advection=WENO5(),
+    grid=grid,
+    gravitational_acceleration=g,
+    coriolis=FPlane(f=f)
     )
 
-### Parameters
-Δη = 0.1
-g  = model.gravitational_acceleration
-f  = model.coriolis.f
-
-k   = 4
-ℓ   = 1
-amp = 0e-3
-
 ### Basic State
-H₀(x, y, z) =   1.0
-H(x, y, z)  =   H₀(x, y, z) - Δη * tanh(y)
-U(x, y, z)  =   g / f * Δη * sech(y)^2
+H₀(x, y, z) =   10.0
+H(x, y, z)  =   H₀(x, y, z) - f / g * Δη * tanh(y) + f / g * 2 * y / Ly
+U(x, y, z)  =   Δη * sech(y)^2 - 2 / Ly
 UH(x, y, z) = U(x, y, z) * H(x, y, z)
-Ω( x, y, z) =  2 * g / f * Δη * sech(y)^2 * tanh(y)
+Ω( x, y, z) =  2 * Δη * sech(y)^2 * tanh(y)
 
 ### Perturbation
-h_perturbation( x, y, z) = amp * exp(-y^2 / 2ℓ^2) * cos(k * x * 2 * π / Lx )
-uh_perturbation(x, y, z) = amp * exp(-y^2 / 2ℓ^2) * cos(k * x * 2 * π / Lx )
-vh_perturbation(x, y, z) = amp * exp(-y^2 / 2ℓ^2) * cos(k * x * 2 * π / Lx )
+ψ(x, y, z, ℓ , k) = exp(-(y + ℓ/10)^2 / 2ℓ^2) * cos(k * x) * cos(k * y)
+h_perturbation( x, y, z) = amp * ψ(x, y, z, ℓ, k)
+uh_perturbation(x, y, z) = amp * ψ(x, y, z, ℓ, k)
+vh_perturbation(x, y, z) = amp * ψ(x, y, z, ℓ, k)
 
 ## Total fields
 uh(x, y, z) = UH(x, y, z) + uh_perturbation(x, y, z)
@@ -61,6 +65,8 @@ vh(x, y, z) = 0           + vh_perturbation(x, y, z)
 h(x, y, z) =  H(x, y, z)  +  h_perturbation(x, y, z)
 
 set!(model, uh = uh, vh = vh, h = h)
+
+wizard = TimeStepWizard(cfl=1.0, Δt=1e-3, max_change=1.1, max_Δt=1e-1)
 
 u_op   = model.solution.uh / model.solution.h
 v_op   = model.solution.vh / model.solution.h
@@ -74,7 +80,8 @@ v_field = ComputedField(v_op)
 ω_field = ComputedField(ω_op)
 ω_pert  = ComputedField(ω_pert)
 
-simulation = Simulation(model, Δt=1e-2, stop_iteration=1)
+#simulation = Simulation(model, Δt=1e-3, stop_iteration=5)
+simulation = Simulation(model, Δt=wizard, stop_iteration=5)
 
 simulation.output_writers[:fields] =
     JLD2OutputWriter(
@@ -127,14 +134,15 @@ anim = @animate for (i, iteration) in enumerate(iterations)
         layout = (1,2), 
         size=(1200,500) 
         )
-
-    print("Norm of perturbation = ", norm(ωp_snapshot), "with N = ", model.grid.Nx, "\n")
+    
+    print("Norm of perturbation = ", norm(ωp_snapshot), " with N = ", model.grid.Nx, "\n")
 
 end
 
+gif(anim, "swm_bickley_jet.gif", fps=8)
 
 # To-Do-List
-# 1) Plot perturbation fields
+# 1) Figure out why convergence is linear and not quadratic!
 # 2) Get timestepping wizard working
 # 3) Speed up
 
