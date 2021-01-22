@@ -25,10 +25,11 @@ Ny = Nx
 f = 10           # Physics
 g = 10
 
-Δη = 1.0         # Initial Conditions
-k   = 0.5
-ℓ   = 0.5
-amp = 0.1
+# Initial Conditions
+Δη = 0.1
+ϵ = 0.1 # Perturbation amplitude
+ℓ = 0.5 # Perturbation width
+k = 0.5 # Perturbation wavenumber
 
 grid = RegularCartesianGrid(
     size=(Nx, Ny, 1),
@@ -50,21 +51,21 @@ model = ShallowWaterModel(
 
 ### Basic State
 H₀(x, y, z) =   10.0
-H(x, y, z)  =   H₀(x, y, z) - f / g * Δη * tanh(y) + f / g * 2 * y / Ly
-U(x, y, z)  =   Δη * sech(y)^2 - 2 / Ly
+H(x, y, z)  =   H₀(x, y, z) - f / g * Δη * tanh(y) #+ f / g * 2 * y / Ly
+U(x, y, z)  =   Δη * sech(y)^2 #- 2 / Ly
 UH(x, y, z) = U(x, y, z) * H(x, y, z)
 Ω( x, y, z) =  2 * Δη * sech(y)^2 * tanh(y)
 
 ### Perturbation
 ψ(x, y, z, ℓ , k) = exp(-(y + ℓ/10)^2 / 2ℓ^2) * cos(k * x) * cos(k * y)
-h_perturbation( x, y, z) = amp * ψ(x, y, z, ℓ, k)
-uh_perturbation(x, y, z) = amp * ψ(x, y, z, ℓ, k)
-vh_perturbation(x, y, z) = amp * ψ(x, y, z, ℓ, k)
+#h_perturbation( x, y, z) = ϵ * ψ(x, y, z, ℓ, k)
+#uh_perturbation(x, y, z) = ϵ * ψ(x, y, z, ℓ, k)
+#vh_perturbation(x, y, z) = ϵ * ψ(x, y, z, ℓ, k)
 
 ## Total fields
-uhᵢ(x, y, z) = UH(x, y, z) + uh_perturbation(x, y, z)
-vhᵢ(x, y, z) = 0           + vh_perturbation(x, y, z)
-hᵢ(x, y, z) =  H(x, y, z)  +  h_perturbation(x, y, z)
+uhᵢ(x, y, z) = UH(x, y, z) + ϵ * ψ(x, y, z, ℓ, k)
+vhᵢ(x, y, z) = 0           + ϵ * ψ(x, y, z, ℓ, k)
+hᵢ(x, y, z) =  H(x, y, z)  + ϵ * ψ(x, y, z, ℓ, k)
 
 set!(model, uh = uhᵢ , vh = vhᵢ , h = hᵢ)
 
