@@ -1,7 +1,7 @@
 module Fields
 
 export
-    Face, Cell,
+    Face, Center,
     AbstractField, Field,
     CellField, XFaceField, YFaceField, ZFaceField,
     ReducedField, AveragedField, ComputedField, BackgroundField,

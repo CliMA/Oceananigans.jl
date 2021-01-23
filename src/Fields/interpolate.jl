@@ -1,17 +1,17 @@
-@inline fractional_x_index(x, ::Type{Cell}, grid::RegularCartesianGrid) = @inbounds (x - grid.xC[1]) / grid.Δx
+@inline fractional_x_index(x, ::Type{Center}, grid::RegularCartesianGrid) = @inbounds (x - grid.xC[1]) / grid.Δx
 @inline fractional_x_index(x, ::Type{Face}, grid::RegularCartesianGrid) = @inbounds (x - grid.xF[1]) / grid.Δx
 
-@inline fractional_y_index(y, ::Type{Cell}, grid::RegularCartesianGrid) = @inbounds (y - grid.yC[1]) / grid.Δy
+@inline fractional_y_index(y, ::Type{Center}, grid::RegularCartesianGrid) = @inbounds (y - grid.yC[1]) / grid.Δy
 @inline fractional_y_index(y, ::Type{Face}, grid::RegularCartesianGrid) = @inbounds (y - grid.yF[1]) / grid.Δy
 
-@inline fractional_z_index(z, ::Type{Cell}, grid::RegularCartesianGrid) = @inbounds (z - grid.zC[1]) / grid.Δz
+@inline fractional_z_index(z, ::Type{Center}, grid::RegularCartesianGrid) = @inbounds (z - grid.zC[1]) / grid.Δz
 @inline fractional_z_index(z, ::Type{Face}, grid::RegularCartesianGrid) = @inbounds (z - grid.zF[1]) / grid.Δz
 
 """
     fractional_indices(x, y, z, loc, grid::RegularCartesianGrid)
 
 Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular Cartesian grid located at `loc`
-where `loc` is a 3-tuple of `Cell` and `Face`. Fractional indices are floats indicating a location between
+where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are floats indicating a location between
 grid points.
 """
 @inline function fractional_indices(x, y, z, loc, grid::RegularCartesianGrid)
