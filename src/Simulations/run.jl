@@ -71,6 +71,13 @@ ab2_or_rk3_time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; euler
 we_want_to_pickup(pickup::Bool) = pickup
 we_want_to_pickup(pickup) = true
 
+"""
+    aligned_time_step(sim)
+
+Returns a time step Δt that is aligned with the output writer schedules and stop time of the simulation `sim`.
+The purpose of aligning the time step is to ensure simulations do not time step beyond the `sim.stop_time` and
+to ensure that output is written at the exact time specified by the output writer schedules.
+"""
 function aligned_time_step(sim)
     clock = sim.model.clock
 
