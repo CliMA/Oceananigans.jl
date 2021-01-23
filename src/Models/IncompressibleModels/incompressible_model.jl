@@ -141,7 +141,8 @@ function IncompressibleModel(;
     timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers))
 
     # Regularize forcing and closure for model tracer and velocity fields.
-    forcing = model_forcing(tracernames(tracers); forcing...)
+    model_fields = merge(velocities, tracers)
+    forcing = model_forcing(model_fields; forcing...)
     closure = with_tracers(tracernames(tracers), closure)
 
     return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, surface_waves,

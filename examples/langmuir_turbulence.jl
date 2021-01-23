@@ -383,7 +383,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
     uxz_title = @sprintf("u(x, z, t) (m s⁻¹) at y=0 m and t = %s", prettytime(t))
          
     plot(wxy_plot, B_plot, wxz_plot, U_plot, uxz_plot, fluxes_plot,
-         layout = Plots.grid(3, 2, widths=(0.7, 0.3)), size = (900, 1000),
+         layout = Plots.grid(3, 2, widths=(0.7, 0.3)), size = (900.5, 1000.5),
          title = [wxy_title "" wxz_title "" uxz_title ""])
 
     if iter == iterations[end]
@@ -392,4 +392,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
     end
 end
 
-gif(anim, "langmuir_turbulence.gif", fps = 8) # hide
+mp4(anim, "langmuir_turbulence.mp4", fps = 8) # hide
