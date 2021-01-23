@@ -45,7 +45,7 @@ B = BackgroundField(stratification, parameters=(Ri=0.1, h=1/4))
 using Plots, Oceananigans.Grids
 
 zF = znodes(Face, grid)
-zC = znodes(Cell, grid)
+zC = znodes(Center, grid)
 
 Ri, h = B.parameters
 

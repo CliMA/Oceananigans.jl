@@ -81,7 +81,7 @@ end
             grid = RegularCartesianGrid(FT, size=N, extent=L)
             model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)
 
-            x, y, z = nodes((Face, Cell, Cell), model.grid, reshape=true)
+            x, y, z = nodes((Face, Center, Center), model.grid, reshape=true)
 
             uh₀(x, y, z) = x * y^2
             uh_answer = @. x * y^2

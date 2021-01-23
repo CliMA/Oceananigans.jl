@@ -183,11 +183,11 @@ function time_stepping_with_background_fields(arch)
 
     time_step!(model, 1, euler=true)
 
-    return location(model.background_fields.velocities.u) === (Face, Cell, Cell) &&
-           location(model.background_fields.velocities.v) === (Cell, Face, Cell) &&
-           location(model.background_fields.velocities.w) === (Cell, Cell, Face) &&
-           location(model.background_fields.tracers.T) === (Cell, Cell, Cell) &&
-           location(model.background_fields.tracers.S) === (Cell, Cell, Cell)
+    return location(model.background_fields.velocities.u) === (Face, Center, Center) &&
+           location(model.background_fields.velocities.v) === (Center, Face, Center) &&
+           location(model.background_fields.velocities.w) === (Center, Center, Face) &&
+           location(model.background_fields.tracers.T) === (Center, Center, Center) &&
+           location(model.background_fields.tracers.S) === (Center, Center, Center)
 end
 
 Planes = (FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane)

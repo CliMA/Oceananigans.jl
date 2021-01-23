@@ -2,7 +2,7 @@ using Printf
 using Logging
 
 using Oceananigans
-using Oceananigans: Face, Cell
+using Oceananigans: Face, Center
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.AbstractOperations
@@ -35,7 +35,7 @@ function simulate_lid_driven_cavity(; Re, N, end_time)
 
     u, v, w = model.velocities
     ζ_op = ∂y(w) - ∂z(v)
-    ζ = Field(Cell, Face, Face, model.architecture, model.grid, TracerBoundaryConditions(grid))
+    ζ = Field(Center, Face, Face, model.architecture, model.grid, TracerBoundaryConditions(grid))
     ζ_computation = Computation(ζ_op, ζ)
 
     fields = Dict(

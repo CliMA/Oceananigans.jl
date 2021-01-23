@@ -65,15 +65,15 @@ Set{Any} with 7 elements:
   :tanh
   :sin
 
-julia> c = Field(Cell, Cell, Cell, CPU(), RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)));
+julia> c = Field(Center, Center, Center, CPU(), RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)));
 
 julia> square_it(c)
-UnaryOperation at (Cell, Cell, Cell)
+UnaryOperation at (Center, Center, Center)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 │   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
 └── tree:
-    square_it at (Cell, Cell, Cell) via identity
-    └── Field located at (Cell, Cell, Cell)
+    square_it at (Center, Center, Center) via identity
+    └── Field located at (Center, Center, Center)
 ```
 """
 macro unary(ops...)

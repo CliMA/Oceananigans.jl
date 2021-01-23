@@ -14,7 +14,7 @@ import Oceananigans: short_show
 
 Type representing buoyancy computed on the model grid.
 """
-struct BuoyancyField{B, S, A, G, T} <: AbstractField{Cell, Cell, Cell, A, G}
+struct BuoyancyField{B, S, A, G, T} <: AbstractField{Center, Center, Center, A, G}
         data :: A
         grid :: G
     buoyancy :: B
@@ -29,7 +29,7 @@ struct BuoyancyField{B, S, A, G, T} <: AbstractField{Cell, Cell, Cell, A, G}
     """
     function BuoyancyField(data, grid, buoyancy, tracers, recompute_safely::Bool)
 
-        validate_field_data(Cell, Cell, Cell, data, grid)
+        validate_field_data(Center, Center, Center, data, grid)
 
         status = recompute_safely ? nothing : FieldStatus(zero(eltype(grid)))
 
@@ -38,7 +38,7 @@ struct BuoyancyField{B, S, A, G, T} <: AbstractField{Cell, Cell, Cell, A, G}
     end
 
     function BuoyancyField(data, grid, buoyancy, tracers, status)
-        validate_field_data(Cell, Cell, Cell, data, grid)
+        validate_field_data(Center, Center, Center, data, grid)
         return new{typeof(buoyancy), typeof(status), typeof(data),
                    typeof(grid), typeof(tracers)}(data, grid, buoyancy, tracers, status)
     end
@@ -74,7 +74,7 @@ function _buoyancy_field(buoyancy::AbstractBuoyancy, tracers, arch, grid,
                          data, recompute_safely)
 
     if isnothing(data)
-        data = new_data(arch, grid, (Cell, Cell, Cell))
+        data = new_data(arch, grid, (Center, Center, Center))
         recompute_safely = false
     end
 

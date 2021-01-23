@@ -80,7 +80,7 @@ function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
     grid = RegularCartesianGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
     solver = PressureSolver(arch, grid, TracerBoundaryConditions(grid))
 
-    xC, yC, zC = nodes((Cell, Cell, Cell), grid, reshape=true)
+    xC, yC, zC = nodes((Center, Center, Center), grid, reshape=true)
 
     Tx, Ty, Tz = topology(grid)
     Ψ(x, y, z) = ψ(Tx, mode, x) * ψ(Ty, mode, y) * ψ(Tz, mode, z)
