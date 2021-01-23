@@ -59,6 +59,16 @@ Ri_plot = plot(@. Ri * sech(zF / h)^2 / sech(zF)^2, zF; xlabel="Ri(z)", color=:b
 
 plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 
+# In unstable flows it is often useful to determine the dominant spatial structure of the 
+# instability and the growth rate at which the instability grows. If the simulation idealizes a physical flow, this can be used to make 
+# predictions as to what should develop and how quickly.  Since these instabilities are often attributed to a linear instability, 
+# we can determine information about the structure and the growth rate of the instability by analyzing the linear operator
+# that governs small perturbations about a base state, or by solving for the linear dynamics.
+
+# Here, we discuss first briefly linear instabilities and how one can obtain growth rates and structures of most unstable
+# modes via eigenanalysis. Then we present an alternative method for approximating the eigenanalysis results when
+# one does not have access to the linear dynamics or the linear operator about the base state.
+
 # # Linear Instabilities
 #
 # The base state ``U(z)``, ``B(z)`` is a solution of the inviscid equations of motion. Whether the base state is 
@@ -80,16 +90,17 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 # ```
 # From hereafter we'll use the convention that the eigenvalues are ordered according to their real part, ``\real(\lambda_1) \ge \real(\lambda_2) \ge \dotsb``.
 #
-# Two remarks:
-# 
-# - Oceananigans.jl, does not include a linearized version of the equations, but we can ensure we remain in the linear regime if keep our perturbation fields small thus ensuring that terms quadratic in perturbations are much smaller than all other terms. This way we get approximately: ``\partial_t \Phi \approx L \Phi``.
-# - While using the small-amplitude trick Oceananigans.jl is able to solve the approximately linear equations of motion, we still don't have access to the linear operator ``L`` to perform eigendecomposition. 
-# 
-# This last caveat is bypassed with the following algorithm.
+# Remarks:
 #
-# # A _Power_ful algorithm
+# As we touched upon briefly above, Oceananigans.jl, does not include a linearized version of the equations. Furthermore, Oceananigans.jl does
+# not give us access to the linear operator ``L`` so that we can perform eigenanalysis. Below we discuss an alternative way
+# of approximating the eigenanalysis results. The method boils down to solving the nonlinear equations while continually renormalize
+# the magnitude of the perturbations to ensure that nonlinear terms (terms that are quadratic or higher in perturbations) remain negligibly small, 
+# i.e.,much smaller than the background flow.
+
+# # The power method algorithm
 #
-# Successive application of ``L`` to a random initial state will render it parallel 
+# Successive application of ``L`` to a random initial state will eventually render it parallel 
 # with eigenmode ``\phi_1``:
 # ```math
 # \lim_{n \to \infty} L^n \Phi \propto \phi_1 \, .

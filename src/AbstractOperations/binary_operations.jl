@@ -171,9 +171,9 @@ end
 ##### Nested computations
 #####
 
-function compute!(β::BinaryOperation)
-    compute!(β.a)
-    compute!(β.b)
+function compute_at!(β::BinaryOperation, time)
+    compute_at!(β.a, time)
+    compute_at!(β.b, time)
     return nothing
 end
 
