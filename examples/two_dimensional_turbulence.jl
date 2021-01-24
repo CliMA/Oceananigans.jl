@@ -11,8 +11,10 @@
 #
 # First let's make sure we have all required packages installed.
 
-using Pkg
-pkg"add Oceananigans, JLD2, Plots"
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, JLD2, Plots"
+# ```
 
 # ## Model setup
 

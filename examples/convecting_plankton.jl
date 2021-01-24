@@ -12,7 +12,7 @@
 # The phytoplankton in our model are advected, diffuse, grow, and die according to
 #
 # ```math
-# ∂_t P + \bm{u} ⋅ ∇P - κ ∇²P = (μ₀ \exp(z / λ) - m) \, P \, ,
+# ∂_t P + \bm{u ⋅ ∇} P - κ ∇²P = (μ₀ \exp(z / λ) - m) \, P \, ,
 # ```
 #
 # where ``\bm{u}`` is the turbulent velocity field, ``κ`` is an isotropic diffusivity,
@@ -35,8 +35,10 @@
 #
 # First let's make sure we have all required packages installed.
 
-using Pkg
-pkg"add Oceananigans, Plots, JLD2, Measures"
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, Plots, JLD2, Measures"
+# ```
 
 # ## The grid
 #
