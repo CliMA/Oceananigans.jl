@@ -3,7 +3,7 @@ function halo_regions_initalized_correctly(arch, FT, Nx, Ny, Nz)
     Lx, Ly, Lz = 10, 20, 30
 
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    field = CellField(FT, arch, grid)
+    field = CenterField(FT, arch, grid)
 
     # Fill the interior with random numbers.
     interior(field) .= rand(FT, Nx, Ny, Nz)
@@ -24,7 +24,7 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
     Lx, Ly, Lz = 100, 200, 300
 
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    field = CellField(FT, arch, grid)
+    field = CenterField(FT, arch, grid)
 
     set!(field, rand(FT, Nx, Ny, Nz))
     fill_halo_regions!(field, arch)

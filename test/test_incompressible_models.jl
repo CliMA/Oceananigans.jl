@@ -140,8 +140,8 @@
             u_cpu = XFaceField(CPU(), grid)
             v_cpu = YFaceField(CPU(), grid)
             w_cpu = ZFaceField(CPU(), grid)
-            T_cpu = CellField(CPU(), grid)
-            S_cpu = CellField(CPU(), grid)
+            T_cpu = CenterField(CPU(), grid)
+            S_cpu = CenterField(CPU(), grid)
 
             set!(u_cpu, u)
             set!(v_cpu, v)

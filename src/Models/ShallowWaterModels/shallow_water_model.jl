@@ -8,7 +8,7 @@ using Oceananigans.BoundaryConditions: UVelocityBoundaryConditions,
                                        VVelocityBoundaryConditions,
                                        TracerBoundaryConditions
 
-using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CellField
+using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: with_halo
 using Oceananigans.TimeSteppers: Clock, TimeStepper
@@ -19,7 +19,7 @@ function ShallowWaterTendencyFields(arch, grid, tracer_names)
 
     uh = XFaceField(arch, grid, UVelocityBoundaryConditions(grid))
     vh = YFaceField(arch, grid, VVelocityBoundaryConditions(grid))
-    h  = CellField(arch,  grid, TracerBoundaryConditions(grid))
+    h  = CenterField(arch,  grid, TracerBoundaryConditions(grid))
     tracers = TracerFields(tracer_names, arch, grid)
 
     return merge((uh=uh, vh=vh, h=h), tracers)
@@ -33,7 +33,7 @@ function ShallowWaterSolutionFields(arch, grid, bcs)
 
     uh = XFaceField(arch, grid, uh_bcs)
     vh = YFaceField(arch, grid, vh_bcs)
-    h = CellField(arch, grid, h_bcs)
+    h = CenterField(arch, grid, h_bcs)
 
     return (uh=uh, vh=vh, h=h)
 end

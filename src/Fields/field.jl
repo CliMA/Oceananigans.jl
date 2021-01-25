@@ -67,14 +67,14 @@ Field(L::Tuple, args...) = Field(destantiate.(L)..., args...)
 #####
 
 """
-    CellField([ FT=eltype(grid) ], arch::AbstractArchitecture, grid,
+    CenterField([ FT=eltype(grid) ], arch::AbstractArchitecture, grid,
               [  bcs = TracerBoundaryConditions(grid),
                 data = new_data(FT, arch, grid, (Center, Center, Center) ] )
 
 Return a `Field{Center, Center, Center}` on architecture `arch` and `grid` containing `data`
 with field boundary conditions `bcs`.
 """
-function CellField(FT::DataType, arch, grid,
+function CenterField(FT::DataType, arch, grid,
                     bcs = TracerBoundaryConditions(grid),
                    data = new_data(FT, arch, grid, (Center, Center, Center)))
 
@@ -126,7 +126,7 @@ function ZFaceField(FT::DataType, arch, grid,
     return Field{Center, Center, Face}(data, grid, bcs)
 end
 
- CellField(arch::AbstractArchitecture, grid, args...) =  CellField(eltype(grid), arch, grid, args...)
+ CenterField(arch::AbstractArchitecture, grid, args...) =  CenterField(eltype(grid), arch, grid, args...)
 XFaceField(arch::AbstractArchitecture, grid, args...) = XFaceField(eltype(grid), arch, grid, args...)
 YFaceField(arch::AbstractArchitecture, grid, args...) = YFaceField(eltype(grid), arch, grid, args...)
 ZFaceField(arch::AbstractArchitecture, grid, args...) = ZFaceField(eltype(grid), arch, grid, args...)
