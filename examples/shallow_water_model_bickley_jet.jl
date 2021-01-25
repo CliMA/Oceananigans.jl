@@ -17,16 +17,20 @@ import Oceananigans.Utils: cell_advection_timescale
 
 ### Parameters
 
-Lx = 2 * π       # Geometry
+Lx = 20       # Geometry
 Ly = Lx
 Nx = 64
 Ny = Nx
 
-f = 10           # Physics
+f = 1            # Physics
 g = 10
 
-# Initial Conditions
-Δη = 0.1
+# Jet parameters
+Uj = 1.0
+Lj = 1.0
+Δη = Uj * Lj * f /g
+
+# Perturbation parameters
 ϵ = 0.1 # Perturbation amplitude
 ℓ = 0.5 # Perturbation width
 k = 0.5 # Perturbation wavenumber
@@ -51,8 +55,8 @@ model = ShallowWaterModel(
 
 ### Basic State
 H₀(x, y, z) =   10.0
-H(x, y, z)  =   H₀(x, y, z) - f / g * Δη * tanh(y) #+ f / g * 2 * y / Ly
-U(x, y, z)  =   Δη * sech(y)^2 #- 2 / Ly
+H(x, y, z)  =   H₀(x, y, z) - Δη * tanh(y)
+U(x, y, z)  =         g / f * Δη * sech(y)^2
 UH(x, y, z) = U(x, y, z) * H(x, y, z)
 Ω( x, y, z) =  2 * Δη * sech(y)^2 * tanh(y)
 
@@ -64,10 +68,9 @@ UH(x, y, z) = U(x, y, z) * H(x, y, z)
 
 ## Total fields
 uhᵢ(x, y, z) = UH(x, y, z) + ϵ * ψ(x, y, z, ℓ, k)
-vhᵢ(x, y, z) = 0           + ϵ * ψ(x, y, z, ℓ, k)
-hᵢ(x, y, z) =  H(x, y, z)  + ϵ * ψ(x, y, z, ℓ, k)
+hᵢ(x, y, z) =  H(x, y, z)
 
-set!(model, uh = uhᵢ , vh = vhᵢ , h = hᵢ)
+set!(model, uh = uhᵢ , h = hᵢ)
 
 wizard = TimeStepWizard(cfl=1.0, Δt=1e-3, max_change=1.1, max_Δt=1e-1)
 
