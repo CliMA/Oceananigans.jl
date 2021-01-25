@@ -18,9 +18,9 @@ for arch in archs
     @testset "KernelComputedField [$(typeof(arch))]" begin
         @info "  Testing KernelComputedField..."
 
-        single_field = Field(Cell, Cell, Cell, arch, grid)
+        single_field = Field(Center, Center, Center, arch, grid)
 
-        doubled_field = KernelComputedField(Cell, Cell, Cell,
+        doubled_field = KernelComputedField(Center, Center, Center,
                                             double!, arch, grid,
                                             field_dependencies = single_field)
 
@@ -28,7 +28,7 @@ for arch in archs
         @test doubled_field isa KernelComputedField
 
         multiple = 3
-        multiplied_field = KernelComputedField(Cell, Cell, Cell,
+        multiplied_field = KernelComputedField(Center, Center, Center,
                                                multiply!, arch, grid,
                                                field_dependencies = doubled_field,
                                                parameters = multiple)
