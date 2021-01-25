@@ -73,7 +73,7 @@ Keyword arguments
     - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
     - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
     - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
-                 preallocated `CellField`s.
+                 preallocated `CenterField`s.
     - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
                      `:RungeKutta3`.
 """

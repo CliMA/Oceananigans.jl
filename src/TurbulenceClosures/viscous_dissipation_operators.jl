@@ -17,32 +17,32 @@
 # Viscosities-as-functions
 
 @inline viscous_flux_ux(i, j, k, grid, clock, ν::Function, u) =
-        viscous_flux_ux(i, j, k, grid, clock, ν(xnode(Cell, i, grid), ynode(Cell, j, grid), znode(Cell, k, grid), clock.time), u)
+        viscous_flux_ux(i, j, k, grid, clock, ν(xnode(Center, i, grid), ynode(Center, j, grid), znode(Center, k, grid), clock.time), u)
 
 @inline viscous_flux_uy(i, j, k, grid, clock, ν::Function, u) =
-        viscous_flux_uy(i, j, k, grid, clock, ν(xnode(Cell, i, grid), ynode(Face, j, grid), znode(Face, k, grid), clock.time), u)
+        viscous_flux_uy(i, j, k, grid, clock, ν(xnode(Center, i, grid), ynode(Face, j, grid), znode(Face, k, grid), clock.time), u)
 
 @inline viscous_flux_uz(i, j, k, grid, clock, ν::Function, u) =
-        viscous_flux_uz(i, j, k, grid, clock, ν(xnode(Face, i, grid), ynode(Cell, j, grid), znode(Face, k, grid), clock.time), u)
+        viscous_flux_uz(i, j, k, grid, clock, ν(xnode(Face, i, grid), ynode(Center, j, grid), znode(Face, k, grid), clock.time), u)
 
 @inline viscous_flux_vx(i, j, k, grid, clock, ν::Function, v) =
-        viscous_flux_vx(i, j, k, grid, clock, ν(xnode(Face, i, grid), ynode(Face, j, grid), znode(Cell, k, grid), clock.time), v)
+        viscous_flux_vx(i, j, k, grid, clock, ν(xnode(Face, i, grid), ynode(Face, j, grid), znode(Center, k, grid), clock.time), v)
 
 @inline viscous_flux_vy(i, j, k, grid, clock, ν::Function, v) =
-        viscous_flux_vy(i, j, k, grid, clock, ν(xnode(Cell, i, grid), ynode(Cell, j, grid), znode(Cell, k, grid), clock.time), v)
+        viscous_flux_vy(i, j, k, grid, clock, ν(xnode(Center, i, grid), ynode(Center, j, grid), znode(Center, k, grid), clock.time), v)
 
 @inline viscous_flux_vz(i, j, k, grid, clock, ν::Function, v) =
-        viscous_flux_vz(i, j, k, grid, clock, ν(xnode(Cell, i, grid), ynode(Face, j, grid), znode(Face, k, grid), clock.time), v)
+        viscous_flux_vz(i, j, k, grid, clock, ν(xnode(Center, i, grid), ynode(Face, j, grid), znode(Face, k, grid), clock.time), v)
                         
 
 @inline viscous_flux_wx(i, j, k, grid, clock, ν::Function, w) =
-        viscous_flux_wx(i, j, k, grid, clock, ν(xnode(Face, i, grid), ynode(Cell, j, grid), znode(Face, k, grid), clock.time), w)
+        viscous_flux_wx(i, j, k, grid, clock, ν(xnode(Face, i, grid), ynode(Center, j, grid), znode(Face, k, grid), clock.time), w)
                         
 @inline viscous_flux_wy(i, j, k, grid, clock, ν::Function, w) =
-        viscous_flux_wy(i, j, k, grid, clock, ν(xnode(Cell, i, grid), ynode(Face, j, grid), znode(Face, k, grid), clock.time), w)
+        viscous_flux_wy(i, j, k, grid, clock, ν(xnode(Center, i, grid), ynode(Face, j, grid), znode(Face, k, grid), clock.time), w)
 
 @inline viscous_flux_wz(i, j, k, grid, clock, ν::Function, w) =
-        viscous_flux_wz(i, j, k, grid, clock, ν(xnode(Cell, i, grid), ynode(Cell, j, grid), znode(Cell, k, grid), clock.time), w)
+        viscous_flux_wz(i, j, k, grid, clock, ν(xnode(Center, i, grid), ynode(Center, j, grid), znode(Center, k, grid), clock.time), w)
                         
 
 #####

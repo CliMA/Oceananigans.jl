@@ -50,7 +50,7 @@ model = IncompressibleModel(grid = grid, background_fields = (u=U,))
 model.background_fields.velocities.u
 
 # output
-FunctionField located at (Face, Cell, Cell)
+FunctionField located at (Face, Center, Center)
 ├── func: U
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 ├── clock: Clock(time=0 seconds, iteration=0)
@@ -93,7 +93,7 @@ model = IncompressibleModel(grid = grid, background_fields = (u=U_field, b=B_fie
 model.background_fields.tracers.b
 
 # output
-FunctionField located at (Cell, Cell, Cell)
+FunctionField located at (Center, Center, Center)
 ├── func: B
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 ├── clock: Clock(time=0 seconds, iteration=0)

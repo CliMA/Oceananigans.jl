@@ -1,9 +1,9 @@
 module Fields
 
 export
-    Face, Cell,
+    Face, Center,
     AbstractField, Field,
-    CellField, XFaceField, YFaceField, ZFaceField,
+    CenterField, XFaceField, YFaceField, ZFaceField,
     ReducedField, AveragedField, ComputedField, KernelComputedField, BackgroundField,
     interior, interiorparent, data,
     xnode, ynode, znode, location,

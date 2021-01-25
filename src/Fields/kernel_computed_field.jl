@@ -19,7 +19,7 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, F, P} <: AbstractField{X, Y, Z, 
     ```julia
     using KernelAbstractions: @index, @kernel
     using Oceananigans.Fields: AveragedField, KernelComputedField, compute!
-    using Oceananigans.Grids: Cell, Face
+    using Oceananigans.Grids: Center, Face
     
     @inline ψ²(i, j, k, grid, ψ, Ψ) = @inbounds (ψ[i, j, k] - Ψ[i, j, k])^2
     @kernel function compute_variance!(var, grid, ϕ, Φ)
@@ -33,9 +33,9 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, F, P} <: AbstractField{X, Y, Z, 
     U = AveragedField(u, dims=(1, 2))
     V = AveragedField(V, dims=(1, 2))
     
-    u′² = KernelComputedField(Face, Cell, Cell, compute_variance!, model; field_dependencies=(u, U,))
-    v′² = KernelComputedField(Cell, Face, Cell, compute_variance!, model; field_dependencies=(v, V,))
-    w′² = KernelComputedField(Cell, Cell, Face, compute_variance!, model; field_dependencies=(w, 0,))
+    u′² = KernelComputedField(Face, Center, Center, compute_variance!, model; field_dependencies=(u, U,))
+    v′² = KernelComputedField(Center, Face, Center, compute_variance!, model; field_dependencies=(v, V,))
+    w′² = KernelComputedField(Center, Center, Face, compute_variance!, model; field_dependencies=(w, 0,))
     
     compute!(u′²)
     compute!(v′²)

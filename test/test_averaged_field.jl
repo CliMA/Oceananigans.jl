@@ -1,6 +1,6 @@
 using Statistics
 
-using Oceananigans.Fields: CellField, ZFaceField, compute_at!
+using Oceananigans.Fields: CenterField, ZFaceField, compute_at!
 using Oceananigans.Grids: halo_size
 
 @testset "Averaged fields" begin
@@ -16,7 +16,7 @@ using Oceananigans.Grids: halo_size
                                                    x = (0, 2), y = (0, 2), z = (0, 2))
 
                 w = ZFaceField(arch, grid)
-                T = CellField(arch, grid)
+                T = CenterField(arch, grid)
 
                 trilinear(x, y, z) = x + y + z
 
@@ -53,7 +53,7 @@ using Oceananigans.Grids: halo_size
             @info "  Testing conditional computation of AveragedFields [$(typeof(arch))]"
             for FT in float_types
                 grid = RegularCartesianGrid(size=(2, 2, 2), extent=(1, 1, 1)) 
-                c = CellField(FT, arch, grid)
+                c = CenterField(FT, arch, grid)
 
                 for dims in (1, 2, 3, (1, 2), (2, 3), (1, 3), (1, 2, 3))
                     C = AveragedField(c, dims=dims)

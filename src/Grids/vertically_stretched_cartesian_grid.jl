@@ -71,13 +71,13 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     xF₋, yF₋ = XF₋ = @. X₁ - Hh * Δh
     xF₊, yF₊ = XF₊ = @. XF₋ + total_extent(topology[1:2], Hh, Δh, Lh)
 
-    # Cell-node limits in x, y, z
+    # Center-node limits in x, y, z
     xC₋, yC₋ = XC₋ = @. XF₋ + Δh / 2
     xC₊, yC₊ = XC₊ = @. XC₋ + Lh + Δh * (2Hh - 1)
     
-    # Total length of Cell and Face quantities
+    # Total length of Center and Face quantities
     TFx, TFy, TFz = total_length.(Face, topology, size, halo)
-    TCx, TCy, TCz = total_length.(Cell, topology, size, halo)
+    TCx, TCy, TCz = total_length.(Center, topology, size, halo)
 
     # Include halo points in coordinate arrays
     xF = range(xF₋, xF₊; length = TFx)
@@ -137,7 +137,7 @@ function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, zF_generator)
     zF = vcat(zF₋, interior_zF, zF₊)
 
     # Build cell centers, cell center spacings, and cell interface spacings
-    TCz = total_length(Cell, z_topo, Nz, Hz)
+    TCz = total_length(Center, z_topo, Nz, Hz)
      zC = [ (zF[k + 1] + zF[k]) / 2 for k = 1:TCz ]
     ΔzC = [  zC[k] - zC[k - 1]      for k = 2:TCz ]
 

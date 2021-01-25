@@ -14,9 +14,9 @@ xdim(::Type{Face}) = ("xF",)
 ydim(::Type{Face}) = ("yF",)
 zdim(::Type{Face}) = ("zF",)
 
-xdim(::Type{Cell}) = ("xC",)
-ydim(::Type{Cell}) = ("yC",)
-zdim(::Type{Cell}) = ("zC",)
+xdim(::Type{Center}) = ("xC",)
+ydim(::Type{Center}) = ("yC",)
+zdim(::Type{Center}) = ("zC",)
 
 xdim(::Type{Nothing}) = ()
 ydim(::Type{Nothing}) = ()
@@ -223,9 +223,9 @@ simulation = Simulation(model, Δt=1.25, stop_iteration=3);
 
 f(model) = model.clock.time^2; # scalar output
 
-g(model) = model.clock.time .* exp.(znodes(Cell, grid)); # vector/profile output
+g(model) = model.clock.time .* exp.(znodes(Center, grid)); # vector/profile output
 
-h(model) = model.clock.time .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+h(model) = model.clock.time .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
                             .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1])); # xy slice output
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h);
@@ -300,11 +300,11 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
     TX, TY, TZ = topology(grid)
 
     dims = Dict(
-        "xC" => grid.xC.parent[parent_slice_indices(Cell, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
+        "xC" => grid.xC.parent[parent_slice_indices(Center, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
         "xF" => grid.xF.parent[parent_slice_indices(Face, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
-        "yC" => grid.yC.parent[parent_slice_indices(Cell, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
+        "yC" => grid.yC.parent[parent_slice_indices(Center, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
         "yF" => grid.yF.parent[parent_slice_indices(Face, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
-        "zC" => grid.zC.parent[parent_slice_indices(Cell, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)],
+        "zC" => grid.zC.parent[parent_slice_indices(Center, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)],
         "zF" => grid.zF.parent[parent_slice_indices(Face, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)]
     )
 

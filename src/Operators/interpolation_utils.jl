@@ -1,5 +1,5 @@
 using Oceananigans.Utils: instantiate
-using Oceananigans.Grids: Face, Cell
+using Oceananigans.Grids: Face, Center
 
 import Base: identity
 
@@ -15,9 +15,9 @@ interpolation."""
 interpolation_code(from, to) = interpolation_code(to)
 
 interpolation_code(::Type{Face}) = :ᶠ
-interpolation_code(::Type{Cell}) = :ᶜ
+interpolation_code(::Type{Center}) = :ᶜ
 interpolation_code(::Face) = :ᶠ
-interpolation_code(::Cell) = :ᶜ
+interpolation_code(::Center) = :ᶜ
 
 # Intercept non-interpolations
 interpolation_code(from::L, to::L) where L = :ᵃ
@@ -38,7 +38,7 @@ end
     interpolation_operator(from, to)
 
 Returns the function to interpolate a field `from = (XA, YZ, ZA)`, `to = (XB, YB, ZB)`,
-where the `XA`s and `XB`s are `Face()` or `Cell()` instances.
+where the `XA`s and `XB`s are `Face()` or `Center()` instances.
 """
 function interpolation_operator(from, to)
     from, to = instantiate.(from), instantiate.(to)
@@ -59,12 +59,12 @@ opertator for fields that have no instrinsic location, like numbers or functions
 """
 interpolation_operator(::Nothing, to) = identity
 
-assumed_field_location(name) = name === :u  ? (Face, Cell, Cell) :
-                               name === :v  ? (Cell, Face, Cell) :
-                               name === :w  ? (Cell, Cell, Face) :
-                               name === :uh ? (Face, Cell, Cell) :
-                               name === :vh ? (Cell, Face, Cell) :
-                                              (Cell, Cell, Cell)
+assumed_field_location(name) = name === :u  ? (Face, Center, Center) :
+                               name === :v  ? (Center, Face, Center) :
+                               name === :w  ? (Center, Center, Face) :
+                               name === :uh ? (Face, Center, Center) :
+                               name === :vh ? (Center, Face, Center) :
+                                              (Center, Center, Center)
 
 """
     index_and_interp_dependencies(X, Y, Z, dependencies, model_field_names)

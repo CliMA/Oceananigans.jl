@@ -147,10 +147,10 @@ function restore_field(file, address, arch, grid, loc, kwargs)
     return Field(field_address, arch, grid, bcs, data)
 end
 
-const u_location = (Face, Cell, Cell)
-const v_location = (Cell, Face, Cell)
-const w_location = (Cell, Cell, Face)
-const c_location = (Cell, Cell, Cell)
+const u_location = (Face, Center, Center)
+const v_location = (Center, Face, Center)
+const w_location = (Center, Center, Face)
+const c_location = (Center, Center, Center)
 
 """
     restore_from_checkpoint(filepath; kwargs=Dict())
