@@ -13,11 +13,11 @@ using Oceananigans.Grids: with_halo
 using Oceananigans.Solvers: PressureSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
+using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: inflate_halo_size, tupleit
 
-
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
-                                   V, S, K, BG} <: AbstractModel{TS}
+                                   V, S, K, BG, P} <: AbstractModel{TS}
          architecture :: A         # Computer `Architecture` on which `Model` is run
                  grid :: G         # Grid of physical points on which `Model` is solved
                 clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
@@ -28,6 +28,7 @@ mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
               forcing :: F         # Container for forcing functions defined by the user
               closure :: E         # Diffusive 'turbulence closure' for all model fields
     background_fields :: BG        # Background velocity and tracer fields
+            particles :: P         # Particle set for Lagrangian tracking
            velocities :: U         # Container for velocity fields `u`, `v`, and `w`
               tracers :: C         # Container for tracer fields
             pressures :: Φ         # Container for hydrostatic and nonhydrostatic pressure
@@ -52,6 +53,7 @@ end
                 tracers = (:T, :S),
             timestepper = :QuasiAdamsBashforth2,
       background_fields = NamedTuple(),
+              particles = nothing,
              velocities = nothing,
               pressures = nothing,
           diffusivities = nothing,
@@ -92,6 +94,7 @@ function IncompressibleModel(;
                 tracers = (:T, :S),
             timestepper = :QuasiAdamsBashforth2,
       background_fields::NamedTuple = NamedTuple(),
+              particles::Union{Nothing,LagrangianParticles} = nothing,
              velocities = nothing,
               pressures = nothing,
           diffusivities = nothing,
@@ -143,8 +146,8 @@ function IncompressibleModel(;
     closure = with_tracers(tracernames(tracers), closure)
 
     return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, surface_waves,
-                               forcing, closure, background_fields, velocities, tracers, pressures,
-                               diffusivities, timestepper, pressure_solver)
+                               forcing, closure, background_fields, particles, velocities, tracers,
+                               pressures, diffusivities, timestepper, pressure_solver)
 end
 
 #####

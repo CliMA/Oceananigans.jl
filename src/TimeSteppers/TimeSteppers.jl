@@ -12,6 +12,7 @@ using KernelAbstractions
 using Oceananigans: AbstractModel
 using Oceananigans.Architectures: @hascuda, device
 using Oceananigans.Fields: TendencyFields
+using Oceananigans.LagrangianParticleTracking: update_particle_properties!
 using Oceananigans.Utils: work_layout
 
 """

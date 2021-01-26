@@ -60,11 +60,12 @@ function Checkpointer(model; schedule,
                            force = false,
                          verbose = false,
                       properties = [:architecture, :grid, :clock, :coriolis,
-                                    :buoyancy, :closure, :velocities, :tracers, :timestepper]
+                                    :buoyancy, :closure, :velocities, :tracers,
+                                    :timestepper, :particles]
                      )
 
     # Certain properties are required for `restore_from_checkpoint` to work.
-    required_properties = (:grid, :architecture, :velocities, :tracers, :timestepper)
+    required_properties = (:grid, :architecture, :velocities, :tracers, :timestepper, :particles)
 
     for rp in required_properties
         if rp ∉ properties
@@ -77,7 +78,7 @@ function Checkpointer(model; schedule,
         p isa Symbol || error("Property $p to be checkpointed must be a Symbol.")
         p ∉ propertynames(model) && error("Cannot checkpoint $p, it is not a model property!")
 
-        if has_reference(Function, getproperty(model, p)) && (p ∉ required_properties)
+        if (p ∉ required_properties) && has_reference(Function, getproperty(model, p))
             @warn "model.$p contains a function somewhere in its hierarchy and will not be checkpointed."
             filter!(e -> e != p, properties)
         end
@@ -91,7 +92,7 @@ end
 """ Returns the full prefix (the `superprefix`) associated with `checkpointer`. """
 checkpoint_superprefix(prefix) = prefix * "_iteration"
 
-""" 
+"""
     checkpoint_path(iteration::Int, c::Checkpointer)
 
 Returns the path to the `c`heckpointer file associated with model `iteration`.
@@ -256,20 +257,24 @@ function set!(model, filepath::AbstractString)
             #
             # Note: this step is unecessary for models that use RungeKutta3TimeStepper and
             # tendency restoration could be depcrecated in the future.
-            
+
             # Tendency "n"
-            parent_data = file["timestepper/Gⁿ/$name/data"] 
+            parent_data = file["timestepper/Gⁿ/$name/data"]
 
             tendencyⁿ_field = model.timestepper.Gⁿ[name]
             copyto!(tendencyⁿ_field.data.parent, parent_data)
 
             # Tendency "n-1"
-            parent_data = file["timestepper/G⁻/$name/data"] 
+            parent_data = file["timestepper/G⁻/$name/data"]
 
             tendency⁻_field = model.timestepper.G⁻[name]
             copyto!(tendency⁻_field.data.parent, parent_data)
         end
-        
+
+        if !isnothing(model.particles)
+            copyto!(model.particles.properties, file["particles"])
+        end
+
         checkpointed_clock = file["clock"]
 
         # Update model clock
