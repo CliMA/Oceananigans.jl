@@ -80,7 +80,7 @@ serializeproperty!(file, location, p::NamedTuple) =
 serializeproperty!(file, location, s::StructArray) = (file[location] = replace_storage(Array, s))
 
 serializeproperty!(file, location, p::LagrangianParticles) =
-    serializeproperty!(file, location, p.particles)
+    serializeproperty!(file, location, p.properties)
 
 serializeproperties!(file, structure, ps) =
     [serializeproperty!(file, "$p", getproperty(structure, p)) for p in ps]

@@ -15,9 +15,9 @@ function fetch_output(field::AbstractField, model, field_slicer)
 end
 
 function fetch_output(lagrangian_particles::LagrangianParticles, model, field_slicer)
-    particles = lagrangian_particles.particles
-    names = propertynames(particles)
-    return NamedTuple{names}([getproperty(particles, name) for name in names])
+    particle_properties = lagrangian_particles.properties
+    names = propertynames(particle_properties)
+    return NamedTuple{names}([getproperty(particle_properties, name) for name in names])
 end
 
 convert_output(output, writer) = output

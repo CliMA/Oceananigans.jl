@@ -42,27 +42,23 @@ end
     @inbounds particle_property[p] = interpolate(field, LX, LY, LZ, grid, particles.x[p], particles.y[p], particles.z[p])
 end
 
-function advect_particles!(lagrangian_particles, model, Δt)
+function update_particle_properties!(lagrangian_particles, model, Δt)
+
+    # Update tracked field properties.
+
     workgroup = min(length(lagrangian_particles), MAX_THREADS_PER_BLOCK)
     worksize = length(lagrangian_particles)
-    advect_particles_kernel! = _advect_particles!(device(model.architecture), workgroup, worksize)
-
-    advect_particles_event = advect_particles_kernel!(lagrangian_particles.particles, lagrangian_particles.restitution, model.grid, Δt,
-                                                      datatuple(model.velocities),
-                                                      dependencies=Event(device(model.architecture)))
-
-    wait(device(model.architecture), advect_particles_event)
 
     events = []
 
     for (field_name, tracked_field) in pairs(lagrangian_particles.tracked_fields)
         compute!(tracked_field)
-        particle_property = getproperty(lagrangian_particles.particles, field_name)
+        particle_property = getproperty(lagrangian_particles.properties, field_name)
         LX, LY, LZ = location(tracked_field)
 
         update_field_property_kernel! = update_field_property!(device(model.architecture), workgroup, worksize)
 
-        update_event = update_field_property_kernel!(particle_property, lagrangian_particles.particles, model.grid,
+        update_event = update_field_property_kernel!(particle_property, lagrangian_particles.properties, model.grid,
                                                      datatuple(tracked_field), LX(), LY(), LZ(),
                                                      dependencies=Event(device(model.architecture)))
         push!(events, update_event)
@@ -70,9 +66,23 @@ function advect_particles!(lagrangian_particles, model, Δt)
 
     wait(device(model.architecture), MultiEvent(Tuple(events)))
 
+    # Compute dynamics
+
+    lagrangian_particles.dynamics(lagrangian_particles, model, Δt)
+
+    # Advect particles
+
+    advect_particles_kernel! = _advect_particles!(device(model.architecture), workgroup, worksize)
+
+    advect_particles_event = advect_particles_kernel!(lagrangian_particles.properties, lagrangian_particles.restitution, model.grid, Δt,
+                                                      datatuple(model.velocities),
+                                                      dependencies=Event(device(model.architecture)))
+
+    wait(device(model.architecture), advect_particles_event)
+
     return nothing
 end
 
-advect_particles!(::Nothing, model, Δt) = nothing
+update_particle_properties!(::Nothing, model, Δt) = nothing
 
-advect_particles!(model, Δt) = advect_particles!(model.particles, model, Δt)
+update_particle_properties!(model, Δt) = update_particle_properties!(model.particles, model, Δt)

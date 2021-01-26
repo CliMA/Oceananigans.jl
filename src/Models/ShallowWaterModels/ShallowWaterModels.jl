@@ -6,7 +6,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Utils: launch!
 
 import Oceananigans: fields
-import Oceananigans.LagrangianParticleTracking: advect_particles!
+import Oceananigans.LagrangianParticleTracking: update_particle_properties!
 
 #####
 ##### ShallowWaterModel definition
@@ -33,6 +33,6 @@ include("update_shallow_water_state.jl")
 include("shallow_water_advection_operators.jl")
 
 # No support for particle advection yet.
-advect_particles!(model::ShallowWaterModel, Δt) = nothing
+update_particle_properties!(model::ShallowWaterModel, Δt) = nothing
 
 end # module

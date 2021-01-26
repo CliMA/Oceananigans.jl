@@ -64,15 +64,15 @@ function run_simple_particle_tracking_tests(arch, timestepper)
 
     @test length(model.particles) == P
     @test size(model.particles) == (P,)
-    @test propertynames(model.particles.particles) == (:x, :y, :z, :u, :v, :w, :s)
+    @test propertynames(model.particles.properties) == (:x, :y, :z, :u, :v, :w, :s)
 
-    x = convert(array_type(arch), model.particles.particles.x)
-    y = convert(array_type(arch), model.particles.particles.y)
-    z = convert(array_type(arch), model.particles.particles.z)
-    u = convert(array_type(arch), model.particles.particles.u)
-    v = convert(array_type(arch), model.particles.particles.v)
-    w = convert(array_type(arch), model.particles.particles.w)
-    s = convert(array_type(arch), model.particles.particles.s)
+    x = convert(array_type(arch), model.particles.properties.x)
+    y = convert(array_type(arch), model.particles.properties.y)
+    z = convert(array_type(arch), model.particles.properties.z)
+    u = convert(array_type(arch), model.particles.properties.u)
+    v = convert(array_type(arch), model.particles.properties.v)
+    w = convert(array_type(arch), model.particles.properties.w)
+    s = convert(array_type(arch), model.particles.properties.s)
 
     @test size(x) == (P,)
     @test size(y) == (P,)
@@ -140,25 +140,25 @@ function run_simple_particle_tracking_tests(arch, timestepper)
     rm(jld2_filepath)
 
     # Test checkpoint of particle properties
-    model.particles.particles.x .= 0
-    model.particles.particles.y .= 0
-    model.particles.particles.z .= 0
-    model.particles.particles.u .= 0
-    model.particles.particles.v .= 0
-    model.particles.particles.w .= 0
-    model.particles.particles.s .= 0
+    model.particles.properties.x .= 0
+    model.particles.properties.y .= 0
+    model.particles.properties.z .= 0
+    model.particles.properties.u .= 0
+    model.particles.properties.v .= 0
+    model.particles.properties.w .= 0
+    model.particles.properties.s .= 0
 
     set!(model, "particles_checkpoint_iteration1.jld2")
 
-    x = convert(array_type(arch), model.particles.particles.x)
-    y = convert(array_type(arch), model.particles.particles.y)
-    z = convert(array_type(arch), model.particles.particles.z)
-    u = convert(array_type(arch), model.particles.particles.u)
-    v = convert(array_type(arch), model.particles.particles.v)
-    w = convert(array_type(arch), model.particles.particles.w)
-    s = convert(array_type(arch), model.particles.particles.s)
+    x = convert(array_type(arch), model.particles.properties.x)
+    y = convert(array_type(arch), model.particles.properties.y)
+    z = convert(array_type(arch), model.particles.properties.z)
+    u = convert(array_type(arch), model.particles.properties.u)
+    v = convert(array_type(arch), model.particles.properties.v)
+    w = convert(array_type(arch), model.particles.properties.w)
+    s = convert(array_type(arch), model.particles.properties.s)
 
-    @test model.particles.particles isa StructArray
+    @test model.particles.properties isa StructArray
 
     @test size(x) == (P,)
     @test size(y) == (P,)

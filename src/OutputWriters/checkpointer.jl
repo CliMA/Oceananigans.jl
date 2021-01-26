@@ -272,7 +272,7 @@ function set!(model, filepath::AbstractString)
         end
 
         if !isnothing(model.particles)
-            copyto!(model.particles.particles, file["particles"])
+            copyto!(model.particles.properties, file["particles"])
         end
 
         checkpointed_clock = file["clock"]
