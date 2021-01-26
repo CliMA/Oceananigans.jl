@@ -89,6 +89,6 @@ function Base.show(io::IO, lagrangian_particles::LagrangianParticles)
         "└── $(length(fields)) tracked fields: $(propertynames(fields))")
 end
 
-include("advect_particles.jl")
+include("update_particle_properties.jl")
 
 end # module
