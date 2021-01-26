@@ -13,7 +13,7 @@ function Base.show(io::IO, model::IncompressibleModel{TS, C, A}) where {TS, C, A
     if isnothing(model.particles)
         print(io, "└── coriolis: $(typeof(model.coriolis))")
     else
-        particles = model.particles.particles
+        particles = model.particles.properties
         properties = propertynames(particles)
         print(io, "├── coriolis: $(typeof(model.coriolis))\n")
         print(io, "└── particles: $(length(particles)) Lagrangian particles with $(length(properties)) properties: $properties")
