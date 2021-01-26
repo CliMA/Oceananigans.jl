@@ -75,7 +75,7 @@ Keyword arguments
     - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
     - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
     - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
-                 preallocated `CellField`s.
+                 preallocated `CenterField`s.
     - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
                      `:RungeKutta3`.
 """
@@ -141,7 +141,8 @@ function IncompressibleModel(;
     timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers))
 
     # Regularize forcing and closure for model tracer and velocity fields.
-    forcing = model_forcing(tracernames(tracers); forcing...)
+    model_fields = merge(velocities, tracers)
+    forcing = model_forcing(model_fields; forcing...)
     closure = with_tracers(tracernames(tracers), closure)
 
     return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, surface_waves,

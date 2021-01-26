@@ -58,8 +58,8 @@ end
 
 Compute `comp.operand` and store the result in `comp.data`.
 """
-function compute!(comp::ComputedField{X, Y, Z}) where {X, Y, Z}
-    compute!(comp.operand) # ensures any 'dependencies' of the computation are computed first
+function compute!(comp::ComputedField{X, Y, Z}, time=nothing) where {X, Y, Z}
+    compute_at!(comp.operand, time) # ensures any 'dependencies' of the computation are computed first
 
     arch = architecture(comp.data)
 
@@ -77,7 +77,7 @@ function compute!(comp::ComputedField{X, Y, Z}) where {X, Y, Z}
     return nothing
 end
 
-compute!(field::ComputedField{X, Y, Z, <:FieldStatus}, time) where {X, Y, Z} =
+compute_at!(field::ComputedField{X, Y, Z, <:FieldStatus}, time) where {X, Y, Z} =
     conditional_compute!(field, time)
 
 """Compute an `operand` and store in `data`."""

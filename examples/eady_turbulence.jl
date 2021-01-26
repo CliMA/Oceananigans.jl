@@ -12,8 +12,10 @@
 #
 # First let's make sure we have all required packages installed.
 
-using Pkg
-pkg"add Oceananigans, JLD2, Plots"
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, JLD2, Plots"
+# ```
 
 # ## The Eady problem 
 #
@@ -395,4 +397,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
     iter == iterations[end] && close(file)
 end
 
-gif(anim, "eady_turbulence.gif", fps = 8) # hide
+mp4(anim, "eady_turbulence.mp4", fps = 8) # hide

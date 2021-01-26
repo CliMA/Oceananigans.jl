@@ -32,9 +32,9 @@ Example
 
 julia> stepper = TimeStepper(:QuasiAdamsBashforth2, CPU(), grid, tracernames)
 """
-function TimeStepper(name::Symbol, args...)
+function TimeStepper(name::Symbol, args...; kwargs...)
     fullname = Symbol(name, :TimeStepper)
-    return eval(Expr(:call, fullname, args...))
+    return @eval $fullname($args...; $kwargs...)
 end
 
 # Fallback

@@ -53,7 +53,7 @@ function BoundaryCondition(TBC, condition::Function;
         field_dependencies != () && error("Cannot set `field_dependencies` when `discrete_form=true`!")
         condition = DiscreteBoundaryFunction(condition, parameters)
     else
-        # Note that the boundary :x and location Cell, Cell are in general incorrect.
+        # Note that the boundary :x and location Center, Center are in general incorrect.
         # These are corrected in the FieldBoundaryConditions constructor.
         condition = ContinuousBoundaryFunction(condition, parameters, field_dependencies)
     end

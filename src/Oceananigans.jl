@@ -27,7 +27,7 @@ export
     TracerBoundaryConditions, PressureBoundaryConditions,
 
     # Fields and field manipulation
-    Field, CellField, XFaceField, YFaceField, ZFaceField,
+    Field, CenterField, XFaceField, YFaceField, ZFaceField,
     BackgroundField, interior, set!,
 
     # Forcing functions

@@ -204,9 +204,9 @@ function vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
     #####
 
     # Random right hand side
-    Ru = CellField(Float64, arch, fake_grid, UVelocityBoundaryConditions(fake_grid))
-    Rv = CellField(Float64, arch, fake_grid, VVelocityBoundaryConditions(fake_grid))
-    Rw = CellField(Float64, arch, fake_grid, WVelocityBoundaryConditions(fake_grid))
+    Ru = CenterField(Float64, arch, fake_grid, UVelocityBoundaryConditions(fake_grid))
+    Rv = CenterField(Float64, arch, fake_grid, VVelocityBoundaryConditions(fake_grid))
+    Rw = CenterField(Float64, arch, fake_grid, WVelocityBoundaryConditions(fake_grid))
 
     interior(Ru) .= rand(Nx, Ny, Nz)
     interior(Rv) .= rand(Nx, Ny, Nz)
@@ -241,7 +241,7 @@ function vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
     ϕ̃ = zeros(Complex{Float64}, Nx, Ny, Nz)
     solve_batched_tridiagonal_system!(ϕ̃, arch, btsolver)
 
-    ϕ = CellField(Float64, arch, fake_grid, PressureBoundaryConditions(fake_grid))
+    ϕ = CenterField(Float64, arch, fake_grid, PressureBoundaryConditions(fake_grid))
     interior(ϕ) .= real.(ifft(ϕ̃, [1, 2]))
     ϕ.data .= ϕ.data .- mean(interior(ϕ))
 
@@ -251,7 +251,7 @@ function vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
 
     fill_halo_regions!(ϕ, arch, nothing, model_fields)
 
-    ∇²ϕ = CellField(Float64, arch, fake_grid, PressureBoundaryConditions(fake_grid))
+    ∇²ϕ = CenterField(Float64, arch, fake_grid, PressureBoundaryConditions(fake_grid))
     for i in 1:Nx, j in 1:Ny, k in 1:Nz
         ∇²ϕ.data[i, j, k] = ∇²(i, j, k, Δx, Δy, ΔzF, ΔzC, ϕ.data)
     end

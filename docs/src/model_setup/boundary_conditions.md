@@ -280,13 +280,13 @@ IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 
 julia> model.velocities.u
-Field located at (Face, Cell, Cell)
+Field located at (Face, Center, Center)
 ├── data: OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}, size: (18, 18, 18)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 └── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=Value, top=Value)
 
 julia> model.tracers.T
-Field located at (Cell, Cell, Cell)
+Field located at (Center, Center, Center)
 ├── data: OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}, size: (18, 18, 18)
 ├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 └── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=Gradient, top=Value)

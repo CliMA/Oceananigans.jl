@@ -103,43 +103,43 @@ end
         @info "  Testing field initialization..."
         for arch in archs, FT in float_types
             grid = RegularCartesianGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic))
-            @test correct_field_size(arch, grid, CellField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, CenterField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, XFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, YFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, ZFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
 
             grid = RegularCartesianGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Bounded))
-            @test correct_field_size(arch, grid, CellField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, CenterField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, XFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, YFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, ZFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3] + 1)
 
             grid = RegularCartesianGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Bounded, Bounded))
-            @test correct_field_size(arch, grid, CellField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, CenterField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, XFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, YFaceField, N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, ZFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
 
             grid = RegularCartesianGrid(FT, size=N, extent=L, halo=H, topology=(Bounded, Bounded, Bounded))
-            @test correct_field_size(arch, grid, CellField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(arch, grid, CenterField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, XFaceField, N[1] + 1 + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, YFaceField, N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, ZFaceField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
 
-            @test correct_reduced_field_size((Cell, Cell, Cell), arch, grid, 1,         1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
-            @test correct_reduced_field_size((Face, Cell, Cell), arch, grid, 1,         1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
-            @test correct_reduced_field_size((Cell, Face, Cell), arch, grid, 1,         1,               N[2] + 2 * H[2] + 1, N[3] + 2 * H[3])
-            @test correct_reduced_field_size((Cell, Face, Face), arch, grid, 1,         1,               N[2] + 2 * H[2] + 1, N[3] + 2 * H[3] + 1)
-            @test correct_reduced_field_size((Cell, Cell, Cell), arch, grid, 2,         N[1] + 2 * H[1], 1,                   N[3] + 2 * H[3])
-            @test correct_reduced_field_size((Cell, Cell, Cell), arch, grid, 2,         N[1] + 2 * H[1], 1,                   N[3] + 2 * H[3])
-            @test correct_reduced_field_size((Cell, Cell, Cell), arch, grid, 3,         N[1] + 2 * H[1], N[2] + 2 * H[2],     1)
-            @test correct_reduced_field_size((Cell, Cell, Cell), arch, grid, (1, 2),    1,               1,                   N[3] + 2 * H[3])
-            @test correct_reduced_field_size((Cell, Cell, Cell), arch, grid, (2, 3),    N[1] + 2 * H[1], 1,                   1)
-            @test correct_reduced_field_size((Cell, Cell, Cell), arch, grid, (1, 2, 3), 1,               1,                   1)
+            @test correct_reduced_field_size((Center, Center, Center), arch, grid, 1,         1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
+            @test correct_reduced_field_size((Face, Center, Center), arch, grid, 1,         1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
+            @test correct_reduced_field_size((Center, Face, Center), arch, grid, 1,         1,               N[2] + 2 * H[2] + 1, N[3] + 2 * H[3])
+            @test correct_reduced_field_size((Center, Face, Face), arch, grid, 1,         1,               N[2] + 2 * H[2] + 1, N[3] + 2 * H[3] + 1)
+            @test correct_reduced_field_size((Center, Center, Center), arch, grid, 2,         N[1] + 2 * H[1], 1,                   N[3] + 2 * H[3])
+            @test correct_reduced_field_size((Center, Center, Center), arch, grid, 2,         N[1] + 2 * H[1], 1,                   N[3] + 2 * H[3])
+            @test correct_reduced_field_size((Center, Center, Center), arch, grid, 3,         N[1] + 2 * H[1], N[2] + 2 * H[2],     1)
+            @test correct_reduced_field_size((Center, Center, Center), arch, grid, (1, 2),    1,               1,                   N[3] + 2 * H[3])
+            @test correct_reduced_field_size((Center, Center, Center), arch, grid, (2, 3),    N[1] + 2 * H[1], 1,                   1)
+            @test correct_reduced_field_size((Center, Center, Center), arch, grid, (1, 2, 3), 1,               1,                   1)
         end
     end
 
-    FieldTypes = (CellField, XFaceField, YFaceField, ZFaceField)
+    FieldTypes = (CenterField, XFaceField, YFaceField, ZFaceField)
     reduced_dims = (1, 2, 3, (1, 2), (2, 3), (1, 3), (1, 2, 3))
 
     int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
@@ -161,7 +161,7 @@ end
             end
 
             for dims in reduced_dims, val in vals
-                @test correct_reduced_field_value_was_set(arch, grid, (Cell, Cell, Cell), dims, val)
+                @test correct_reduced_field_value_was_set(arch, grid, (Center, Center, Center), dims, val)
             end
 
             for FieldType in FieldTypes
@@ -173,7 +173,7 @@ end
             end
 
             for dims in reduced_dims
-                reduced_field = ReducedField((Cell, Cell, Cell), arch, grid, dims=dims)
+                reduced_field = ReducedField((Center, Center, Center), arch, grid, dims=dims)
                 sz = size(reduced_field)
                 A = rand(FT, sz...) |> ArrayType
                 set!(reduced_field, A)
@@ -191,11 +191,11 @@ end
         @test Fields.has_velocities((:u, :v, :w)) == true
 
 		grid = RegularCartesianGrid(size=(4, 6, 8), extent=(1, 1, 1))
-		ϕ = CellField(CPU(), grid)
+		ϕ = CenterField(CPU(), grid)
 		@test cpudata(ϕ).parent isa Array
 
 		@hascuda begin
-			ϕ = CellField(GPU(), grid)
+			ϕ = CenterField(GPU(), grid)
 			@test cpudata(ϕ).parent isa Array
 		end
     end
