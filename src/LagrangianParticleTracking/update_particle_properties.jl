@@ -26,9 +26,9 @@ end
     p = @index(Global)
 
     # Advect particles using forward Euler.
-    @inbounds particles.x[p] += interpolate(velocities.u, Face(), Cell(), Cell(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
-    @inbounds particles.y[p] += interpolate(velocities.v, Cell(), Face(), Cell(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
-    @inbounds particles.z[p] += interpolate(velocities.w, Cell(), Cell(), Face(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
+    @inbounds particles.x[p] += interpolate(velocities.u, Face(), Center(), Center(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
+    @inbounds particles.y[p] += interpolate(velocities.v, Center(), Face(), Center(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
+    @inbounds particles.z[p] += interpolate(velocities.w, Center(), Center(), Face(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
 
     # Enforce boundary conditions for particles.
     @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], grid.xF[1], grid.xF[grid.Nx], restitution)
