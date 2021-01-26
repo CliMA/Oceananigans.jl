@@ -3,7 +3,7 @@ using LaTeXStrings
 using Printf
 using Polynomials
 using LinearAlgebra
-using OffsetArrays
+using OffsetArrays 
 
 using Oceananigans
 using Oceananigans.Grids
@@ -26,6 +26,7 @@ using .RatesOfConvergence: plot_solutions!
            L  = 2.5
            W  = 0.1
            Ns = 2 .^ (6:10)
+           Ns = 2 .^ (6:14)
 
 c(x, y, z, t, U, W) = exp( - (x - U * t)^2 / W^2 );
 
@@ -36,8 +37,8 @@ c(x, y, z, t, U, W) = exp( - (x - U * t)^2 / W^2 );
 
 schemes = (
 #    UpwindBiasedFirstOrder(), 
-    CenteredSecondOrder(), 
-    UpwindBiasedThirdOrder(), 
+#    CenteredSecondOrder(), 
+#    UpwindBiasedThirdOrder(), 
     CenteredFourthOrder(), 
     UpwindBiasedFifthOrder(), 
 #    CenteredSixthOrder()
@@ -53,6 +54,8 @@ ROC2   = Dict()
 time_stepper = AdamsBashforth2
 Δt = 0.01 * minimum(L/Ns) / U    
 pnorm = 1
+
+plt = plot()
 
 for N in Ns, scheme in schemes
 
@@ -84,9 +87,7 @@ for N in Ns, scheme in schemes
                                      tracers = :c,
                                      closure = nothing)
     set!(model, u = U, c = (x, y, z) -> c(x, y, z, 0, U, W) )
-
     simulation = Simulation(model, Δt=Δt, stop_iteration=1, iteration_interval=1)
-
     run!(simulation)
     =#
 
@@ -97,11 +98,15 @@ for N in Ns, scheme in schemes
     c₁  = c.(grid.xC[:,1,1], grid.yC[1,1,1], grid.zC[1,1,1],  Δt, U, W);
 
     ### Compute error using p-norm
-    error1[ (N,scheme)] = norm(abs.(cₛᵢₘ[1:N] .- c₁[1:N]),                pnorm)/N^(1/pnorm)
+    error1[(N, scheme)] = norm(abs.(cₛᵢₘ[1:N]                 .- c₁[1:N]), pnorm)/N^(1/pnorm)
     error2[(N, scheme)] = norm(abs.(model.solution.h[1:N,1,1] .- c₁[1:N]), pnorm)/N^(1/pnorm)
     #error2[(N, scheme)] = norm(abs.(model.tracers.c[1:N,1,1] .- c₁[1:N]), pnorm)/N^(1/pnorm)
     
+    plot!(plt, abs.(model.solution.h[1:N,1,1] .- c₁[1:N]))
+    #plot!(plt, abs.(cₛᵢₘ[1:N] .- c₁[1:N]))
+
 end
+savefig(plt,"errors.png")
 
 println(" ")        
 println("Results are for the L"*string(pnorm)*"-norm:")
@@ -109,6 +114,9 @@ println(" ")
 
 for scheme in schemes
     
+    println("error1 = ", [error1[(N, scheme)] for N in Ns], "\n")
+    println("error2 = ", [error2[(N, scheme)] for N in Ns], "\n")
+
     name = labels(scheme)
     roc = rate_of_convergence(scheme)
     j = 3
@@ -148,4 +156,3 @@ plt2 = plot_solutions!(error2,
                        pnorm,
                        ROC2)
 savefig(plt2, "convergence_rates_Oceananigans")
-

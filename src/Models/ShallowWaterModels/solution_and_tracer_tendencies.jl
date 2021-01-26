@@ -64,10 +64,6 @@ Compute the tendency for the height, h.
 
 
     return ( - div_UV(i, j, k, grid, advection, solution.h) )
-
-    #return ( - ∂xᶜᵃᵃ(i, j, k, grid, solution.uh)
-    #         - ∂yᵃᶜᵃ(i, j, k, grid, solution.vh) )
-    
 end
 
 @inline function tracer_tendency(i, j, k, grid,
