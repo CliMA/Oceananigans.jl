@@ -38,6 +38,7 @@ OffsetArrays = "^1.4"
 OrderedCollections = "^1.1"
 SafeTestsets = "0.0.1"
 SeawaterPolynomials = "^0.2"
+StructArrays = "0.4"
 julia = "^1.5"
 
 [extras]
