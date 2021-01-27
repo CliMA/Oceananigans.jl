@@ -69,6 +69,12 @@ function Simulation(model; Δt,
              "recalculate the time step every iteration which can be slow."
    end
 
+   # Check for NaNs in the model's first field.
+   model_fields = fields(model)
+   field_to_check_nans = NamedTuple{keys(model_fields) |> first |> tuple}(first(model_fields) |> tuple)
+   diagnostics[:nan_checker] = NaNChecker(fields=field_to_check_nans,
+                                          schedule=IterationInterval(iteration_interval))
+
    run_time = 0.0
 
    return Simulation(model, Δt, stop_criteria, stop_iteration, stop_time, wall_time_limit,

@@ -1,6 +1,6 @@
 using Oceananigans.BoundaryConditions: PBC, ZFBC, NFBC, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 
-using Oceananigans.Fields: Face, Cell
+using Oceananigans.Fields: Face, Center
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
 

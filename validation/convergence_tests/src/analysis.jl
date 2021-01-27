@@ -1,9 +1,9 @@
 using Test
 
-location(s::Symbol) = (s === :u ? (Face, Cell, Cell) :
-                       s === :v ? (Cell, Face, Cell) :
-                       s === :w ? (Cell, Cell, Face) :
-                                  (Cell, Cell, Cell))
+location(s::Symbol) = (s === :u ? (Face, Center, Center) :
+                       s === :v ? (Center, Face, Center) :
+                       s === :w ? (Center, Center, Face) :
+                                  (Center, Center, Center))
 
 print_min_max_mean(ψ, name="") =
     @info @sprintf("%s min: %.9e, max: %.9e, mean: %.9e", name, minimum(ψ), maximum(ψ), mean(ψ))

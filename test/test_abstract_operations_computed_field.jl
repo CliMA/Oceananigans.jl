@@ -1,5 +1,5 @@
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
-using Oceananigans.Fields: PressureField
+using Oceananigans.Fields: PressureField, compute_at!
 using Oceananigans.Buoyancy: BuoyancyField
 
 function simple_binary_operation(op, a, b, num1, num2)
@@ -55,7 +55,7 @@ end
 
 function x_derivative_cell(FT, arch)
     grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(3, 3, 3))
-    a = Field(Cell, Cell, Cell, arch, grid, nothing)
+    a = Field(Center, Center, Center, arch, grid, nothing)
     dx_a = ∂x(a)
 
     for k in 1:3
@@ -108,7 +108,7 @@ function compute_many_plus(model)
     T, S = model.tracers
     u, v, w = model.velocities
 
-    @compute uTS = ComputedField(@at((Cell, Cell, Cell), u + T + S))
+    @compute uTS = ComputedField(@at((Center, Center, Center), u + T + S))
     result = Array(interior(uTS))
 
     return all(result .≈ eltype(model.grid)(2+π+42))
@@ -140,7 +140,7 @@ function compute_kinetic_energy(model)
     set!(v, 2)
     set!(w, 3)
 
-    kinetic_energy_operation = @at (Cell, Cell, Cell) (u^2 + v^2 + w^2) / 2
+    kinetic_energy_operation = @at (Center, Center, Center) (u^2 + v^2 + w^2) / 2
     @compute kinetic_energy = ComputedField(kinetic_energy_operation, data=model.pressures.pHY′.data)
     result = Array(interior(kinetic_energy))
 
@@ -157,7 +157,7 @@ function horizontal_average_of_plus(model)
 
     @compute ST = AveragedField(S + T, dims=(1, 2))
 
-    zC = znodes(Cell, model.grid)
+    zC = znodes(Center, model.grid)
     correct_profile = @. sin(π * zC) + 42 * zC
 
     result = Array(interior(ST))[:]
@@ -175,8 +175,8 @@ function zonal_average_of_plus(model)
 
     @compute ST = AveragedField(S + T, dims=1)
 
-    yC = ynodes(Cell, model.grid, reshape=true)
-    zC = znodes(Cell, model.grid, reshape=true)
+    yC = ynodes(Center, model.grid, reshape=true)
+    zC = znodes(Center, model.grid, reshape=true)
     correct_slice = @. sin(π * zC) * sin(π * yC) + 42*zC + yC^2
 
     result = Array(interior(ST))
@@ -209,7 +209,7 @@ function horizontal_average_of_minus(model)
 
     @compute ST = AveragedField(S - T, dims=(1, 2))
 
-    zC = znodes(Cell, model.grid)
+    zC = znodes(Center, model.grid)
     correct_profile = @. sin(π * zC) - 42 * zC
 
     result = Array(interior(ST))
@@ -227,7 +227,7 @@ function horizontal_average_of_times(model)
 
     @compute ST = AveragedField(S * T, dims=(1, 2))
 
-    zC = znodes(Cell, model.grid)
+    zC = znodes(Center, model.grid)
     correct_profile = @. sin(π * zC) * 42 * zC
 
     result = Array(interior(ST))
@@ -240,7 +240,7 @@ function multiplication_and_derivative_ccf(model)
 
     w₀(x, y, z) = sin(π * z)
     T₀(x, y, z) = 42 * z
-    set!(model; w=w₀, T=T₀)
+    set!(model; enforce_incompressibility=false, w=w₀, T=T₀)
 
     w = model.velocities.w
     T = model.tracers.T
@@ -256,7 +256,7 @@ function multiplication_and_derivative_ccf(model)
     return all(result[1, 1, 2:Nz] .≈ correct_profile[2:Nz])
 end
 
-const C = Cell
+const C = Center
 const F = Face
 
 function multiplication_and_derivative_ccc(model)
@@ -264,7 +264,7 @@ function multiplication_and_derivative_ccc(model)
 
     w₀(x, y, z) = sin(π*z)
     T₀(x, y, z) = 42*z
-    set!(model; w=w₀, T=T₀)
+    set!(model; enforce_incompressibility=false, w=w₀, T=T₀)
 
     w = model.velocities.w
     T = model.tracers.T
@@ -293,7 +293,7 @@ function computation_including_boundaries(FT, arch)
     @. v.data = 2 + rand()
     @. w.data = 3 + rand()
 
-    op = @at (Cell, Face, Face) u * v * w
+    op = @at (Center, Face, Face) u * v * w
     @compute uvw = ComputedField(op)
 
     return all(interior(uvw) .!= 0)
@@ -346,13 +346,13 @@ end
 function computations_with_averaged_fields(model)
     u, v, w, T, S = fields(model)
 
-    set!(model, u = (x, y, z) -> z, v = 2, w = 3)
+    set!(model, enforce_incompressibility = false, u = (x, y, z) -> z, v = 2, w = 3)
     
     # Two ways to compute turbulent kinetic energy
     U = AveragedField(u, dims=(1, 2))
     V = AveragedField(v, dims=(1, 2))
 
-    tke_op = @at (Cell, Cell, Cell) ((u - U)^2  + (v - V)^2 + w^2) / 2
+    tke_op = @at (Center, Center, Center) ((u - U)^2  + (v - V)^2 + w^2) / 2
     tke = ComputedField(tke_op)
     compute!(tke)
 
@@ -361,7 +361,7 @@ end
 
 function computations_with_averaged_field_derivative(model)
 
-    set!(model, u = (x, y, z) -> z, v = 2, w = 3)
+    set!(model, enforce_incompressibility = false, u = (x, y, z) -> z, v = 2, w = 3)
     
     u, v, w, T, S = fields(model)
 
@@ -370,7 +370,7 @@ function computations_with_averaged_field_derivative(model)
     V = AveragedField(v, dims=(1, 2))
     
     # This tests a vertical derivative of an AveragedField
-    shear_production_op = @at (Cell, Cell, Cell) u * w * ∂z(U)
+    shear_production_op = @at (Center, Center, Center) u * w * ∂z(U)
     shear = ComputedField(shear_production_op)
     compute!(shear)
 
@@ -382,7 +382,7 @@ end
 function computations_with_computed_fields(model)
     u, v, w, T, S = fields(model)
     
-    set!(model, u = (x, y, z) -> z, v = 2, w = 3)
+    set!(model, enforce_incompressibility = false, u = (x, y, z) -> z, v = 2, w = 3)
 
     # Two ways to compute turbulent kinetic energy
     U = AveragedField(u, dims=(1, 2))
@@ -391,7 +391,7 @@ function computations_with_computed_fields(model)
     u′ = ComputedField(u - U)
     v′ = ComputedField(v - V)
     
-    tke_op = @at (Cell, Cell, Cell) (u′^2  + v′^2 + w^2) / 2
+    tke_op = @at (Center, Center, Center) (u′^2  + v′^2 + w^2) / 2
     tke = ComputedField(tke_op)
     compute!(tke)
     
@@ -405,7 +405,7 @@ end
         arch = CPU()
         grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(3, 3, 3))
         u, v, w = VelocityFields(arch, grid)
-        c = Field(Cell, Cell, Cell, arch, grid, nothing)
+        c = Field(Center, Center, Center, arch, grid, nothing)
 
         @testset "Unary operations and derivatives [$FT]" begin
             for ψ in (u, v, w, c)
@@ -436,7 +436,7 @@ end
             for (ψ, ϕ, σ) in ((u, v, w), (u, v, c), (u, v, generic_function))
                 for op_symbol in Oceananigans.AbstractOperations.multiary_operators
                     op = eval(op_symbol)
-                    @test typeof(op((Cell, Cell, Cell), ψ, ϕ, σ)[2, 2, 2]) <: Number
+                    @test typeof(op((Center, Center, Center), ψ, ϕ, σ)[2, 2, 2]) <: Number
                 end
             end
         end
@@ -487,7 +487,7 @@ end
         Nx = 3 # Δx=1, xC = 0.5, 1.5, 2.5
         for FT in float_types
             grid = RegularCartesianGrid(FT, size=(Nx, Nx, Nx), extent=(Nx, Nx, Nx))
-            a, b = (Field(Cell, Cell, Cell, arch, grid, nothing) for i in 1:2)
+            a, b = (Field(Center, Center, Center, arch, grid, nothing) for i in 1:2)
 
             set!(b, 2)
             set!(a, (x, y, z) -> x < 2 ? 3x : 6)
@@ -495,7 +495,7 @@ end
             #                            0   0.5   1   1.5   2   2.5   3
             # x -▶                  ∘ ~~~|--- * ---|--- * ---|--- * ---|~~~ ∘
             #        i Face:    0        1         2        3          4
-            #        i Cell:        0         1         2         3         4
+            #        i Center:        0         1         2         3         4
 
             #              a = [    0,       1.5,      4.5,       6,        0    ]
             #              b = [    0,        2,        2,        2,        0    ]
@@ -503,7 +503,7 @@ end
 
             # x -▶                  ∘ ~~~|--- * ---|--- * ---|--- * ---|~~~ ∘
             #        i Face:    0        1         2         3         4
-            #        i Cell:        0         1         2         3         4
+            #        i Center:        0         1         2         3         4
 
             # ccc: b * ∂x(a) = [             4.5,      4.5      -4.5,            ]
             # fcc: b * ∂x(a) = [         3,        6,        3,       -6         ]
@@ -543,7 +543,7 @@ end
 
                     u, v, w, T, S = fields(model)
 
-                    @test_throws ArgumentError @at (Nothing, Nothing, Cell) T * S
+                    @test_throws ArgumentError @at (Nothing, Nothing, Center) T * S
 
                     for ϕ in (u, v, w, T, S)
                         for op in (sin, cos, sqrt, exp, tanh)
@@ -641,7 +641,7 @@ end
 
                     TS = AveragedField(T * S, dims=(1, 2))
 
-                    @test_throws ArgumentError @at (Nothing, Nothing, Cell) T * S
+                    @test_throws ArgumentError @at (Nothing, Nothing, Center) T * S
                     @test_throws ArgumentError TS * S
 
                     @test operations_with_averaged_field(model)
@@ -705,19 +705,19 @@ end
                     g = model.buoyancy.gravitational_acceleration
                     b = BuoyancyField(model)
 
-                    compute!(uT, 1.0)
-                    compute!(b, 1.0)
+                    compute_at!(uT, 1.0)
+                    compute_at!(b, 1.0)
                     @test all(interior(uT) .== 6)
                     @test all(interior(b) .== g * α * 3) 
 
                     set!(model, u=2, T=4)
-                    compute!(uT, 1.0)
-                    compute!(b, 1.0)
+                    compute_at!(uT, 1.0)
+                    compute_at!(b, 1.0)
                     @test all(interior(uT) .== 6) 
                     @test all(interior(b) .== g * α * 3) 
 
-                    compute!(uT, 2.0)
-                    compute!(b, 2.0)
+                    compute_at!(uT, 2.0)
+                    compute_at!(b, 2.0)
                     @test all(interior(uT) .== 8) 
                     @test all(interior(b) .== g * α * 4) 
                 end

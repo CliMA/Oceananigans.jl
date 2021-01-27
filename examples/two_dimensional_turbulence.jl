@@ -11,8 +11,10 @@
 #
 # First let's make sure we have all required packages installed.
 
-using Pkg
-pkg"add Oceananigans, JLD2, Plots"
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, JLD2, Plots"
+# ```
 
 # ## Model setup
 
@@ -154,4 +156,4 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     plot(ω_plot, s_plot, title=["Vorticity" "Speed"], layout=(1, 2), size=(1200, 500))
 end
 
-gif(anim, "two_dimensional_turbulence.gif", fps = 8) # hide
+mp4(anim, "two_dimensional_turbulence.mp4", fps = 8) # hide

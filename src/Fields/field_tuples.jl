@@ -30,15 +30,15 @@ end
     TracerFields(tracer_names, arch, grid, bcs)
 
 Returns a `NamedTuple` with tracer fields specified by `tracer_names` initialized as
-`CellField`s on the architecture `arch` and `grid`. Boundary conditions `bcs` may
+`CenterField`s on the architecture `arch` and `grid`. Boundary conditions `bcs` may
 be specified via a named tuple of `FieldBoundaryCondition`s.
 """
 function TracerFields(tracer_names, arch, grid, bcs)
 
     tracer_fields =
         Tuple(c ∈ keys(bcs) ?
-              CellField(arch, grid, bcs[c]) :
-              CellField(arch, grid, TracerBoundaryConditions(grid))
+              CenterField(arch, grid, bcs[c]) :
+              CenterField(arch, grid, TracerBoundaryConditions(grid))
               for c in tracer_names)
 
     return NamedTuple{tracer_names}(tracer_fields)
@@ -48,7 +48,7 @@ end
     TracerFields(tracer_names, arch, grid; kwargs...)
 
 Return a NamedTuple with tracer fields specified by `tracer_names` initialized as
-`CellField`s on the architecture `arch` and `grid`. Fields may be passed via optional
+`CenterField`s on the architecture `arch` and `grid`. Fields may be passed via optional
 keyword arguments `kwargs` for each field.
 
 This function is used by `OutputWriters.Checkpointer` and `TendencyFields`.
@@ -56,7 +56,7 @@ This function is used by `OutputWriters.Checkpointer` and `TendencyFields`.
 """
 function TracerFields(tracer_names, arch, grid; kwargs...)
     tracer_fields =
-        Tuple(c ∈ keys(kwargs) ? kwargs[c] : CellField(arch, grid, TracerBoundaryConditions(grid))
+        Tuple(c ∈ keys(kwargs) ? kwargs[c] : CenterField(arch, grid, TracerBoundaryConditions(grid))
               for c in tracer_names)
 
     return NamedTuple{tracer_names}(tracer_fields)
@@ -76,15 +76,15 @@ TracerFields(::NamedTuple{(), Tuple{}}, arch, grid, bcs) = NamedTuple()
     PressureFields(arch, grid, bcs::NamedTuple)
 
 Return a NamedTuple with pressure fields `pHY′` and `pNHS` initialized as
-`CellField`s on the architecture `arch` and `grid`.  Boundary conditions `bcs` may
+`CenterField`s on the architecture `arch` and `grid`.  Boundary conditions `bcs` may
 be specified via a named tuple of `FieldBoundaryCondition`s.
 """
 function PressureFields(arch, grid, bcs=NamedTuple())
     pHY′_bcs = :pHY′ ∈ keys(bcs) ? bcs[:pHY′] : PressureBoundaryConditions(grid)
     pNHS_bcs = :pNHS ∈ keys(bcs) ? bcs[:pNHS] : PressureBoundaryConditions(grid)
 
-    pHY′ = CellField(arch, grid, pHY′_bcs)
-    pNHS = CellField(arch, grid, pNHS_bcs)
+    pHY′ = CenterField(arch, grid, pHY′_bcs)
+    pNHS = CenterField(arch, grid, pNHS_bcs)
 
     return (pHY′=pHY′, pNHS=pNHS)
 end
@@ -145,7 +145,7 @@ function TracerFields(proposed_tracers::NamedTuple, arch, grid, bcs)
 
     tracer_names = propertynames(proposed_tracers)
 
-    tracer_fields = Tuple(CellField(arch, grid, bcs[c], proposed_tracers[c].data)
+    tracer_fields = Tuple(CenterField(arch, grid, bcs[c], proposed_tracers[c].data)
                           for c in tracer_names)
 
     return NamedTuple{tracer_names}(tracer_fields)
@@ -160,8 +160,8 @@ in `proposed_tracer_fields` with corresponding fields in the `NamedTuple` `bcs`.
 function PressureFields(proposed_pressures::NamedTuple{(:pHY′, :pNHS)}, arch, grid, bcs)
     validate_field_tuple_grid("pressures", proposed_pressures, grid)
 
-    pHY′ = CellField(arch, grid, bcs.pHY′, proposed_pressures.pHY′.data)
-    pNHS = CellField(arch, grid, bcs.pNHS, proposed_pressures.pNHS.data)
+    pHY′ = CenterField(arch, grid, bcs.pHY′, proposed_pressures.pHY′.data)
+    pNHS = CenterField(arch, grid, bcs.pNHS, proposed_pressures.pNHS.data)
 
     return (pHY′=pHY′, pNHS=pNHS)
 end

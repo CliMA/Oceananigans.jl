@@ -9,13 +9,13 @@
 # Diffusivities-as-functions
 
 @inline diffusive_flux_x(i, j, k, grid, clock, κ::Function, c) =
-        diffusive_flux_x(i, j, k, grid, clock, κ(xnode(Face, i, grid), ynode(Cell, j, grid), znode(Cell, k, grid), clock.time), c)
+        diffusive_flux_x(i, j, k, grid, clock, κ(xnode(Face, i, grid), ynode(Center, j, grid), znode(Center, k, grid), clock.time), c)
 
 @inline diffusive_flux_y(i, j, k, grid, clock, κ::Function, c) =
-        diffusive_flux_y(i, j, k, grid, clock, κ(xnode(Cell, i, grid), ynode(Face, j, grid), znode(Cell, k, grid), clock.time), c)
+        diffusive_flux_y(i, j, k, grid, clock, κ(xnode(Center, i, grid), ynode(Face, j, grid), znode(Center, k, grid), clock.time), c)
 
 @inline diffusive_flux_z(i, j, k, grid, clock, κ::Function, c) =
-        diffusive_flux_z(i, j, k, grid, clock, κ(xnode(Cell, i, grid), ynode(Cell, j, grid), znode(Face, k, grid), clock.time), c)
+        diffusive_flux_z(i, j, k, grid, clock, κ(xnode(Center, i, grid), ynode(Center, j, grid), znode(Face, k, grid), clock.time), c)
                      
 #####
 ##### Laplacian diffusion operator

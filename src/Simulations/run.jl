@@ -71,6 +71,13 @@ ab2_or_rk3_time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; euler
 we_want_to_pickup(pickup::Bool) = pickup
 we_want_to_pickup(pickup) = true
 
+"""
+    aligned_time_step(sim)
+
+Returns a time step Δt that is aligned with the output writer schedules and stop time of the simulation `sim`.
+The purpose of aligning the time step is to ensure simulations do not time step beyond the `sim.stop_time` and
+to ensure that output is written at the exact time specified by the output writer schedules.
+"""
 function aligned_time_step(sim)
     clock = sim.model.clock
 
@@ -156,7 +163,16 @@ function run!(sim; pickup=false)
         iterations = min(sim.iteration_interval, sim.stop_iteration - clock.iteration)
 
         for n in 1:iterations
-            Δt = min(get_Δt(sim), aligned_time_step(sim))
+            clock.time >= sim.stop_time && break
+
+            # Temporary fix for https://github.com/CliMA/Oceananigans.jl/issues/1280
+            aligned_Δt = aligned_time_step(sim)
+            if aligned_Δt <= 0
+                Δt = get_Δt(sim)
+            else
+                Δt = min(get_Δt(sim), aligned_Δt)
+            end
+
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
             ab2_or_rk3_time_step!(model, Δt, euler=euler)
 

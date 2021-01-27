@@ -65,14 +65,14 @@ function plot_solutions!(axs, all_results, names, linestyles, specialcolors)
 
         grids = unpack_grids(results)
 
-        x = xnodes(Cell, grids[end])[:]
+        x = xnodes(Center, grids[end])[:]
 
         sca(axs[1])
 
         plot(x, c_ana[end], "-", color=specialcolors[j], alpha=0.2, linewidth=3, label="$name analytical")
 
         for i in 1:length(c_sim)
-            x = xnodes(Cell, grids[i])[:]
+            x = xnodes(Center, grids[i])[:]
 
             plot(x, c_sim[i], linestyle, color=defaultcolors[i], alpha=0.8, linewidth=1,
                  label="$name simulated, \$ N_x \$ = $(grids[i].Nx)")
@@ -83,7 +83,7 @@ function plot_solutions!(axs, all_results, names, linestyles, specialcolors)
         sca(axs[2])
 
         for i in 1:length(c_sim)
-            x = xnodes(Cell, grids[i])[:]
+            x = xnodes(Center, grids[i])[:]
 
             semilogy(x, abs.(c_sim[i] .- c_ana[i]), linestyle, color=defaultcolors[i], alpha=0.8,
                      label="$name, \$ N_x \$ = $(grids[i].Nx)")
