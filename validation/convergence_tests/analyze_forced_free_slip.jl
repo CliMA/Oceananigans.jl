@@ -69,5 +69,5 @@ for (name, error) in zip(names, errors)
     L∞ = map(e -> e.L∞, error)
     name = "Forced flow free slip " * strip(name.s, '$')
     test_rate_of_convergence(L₁[p], Nx[p], expected=-2.0, atol=0.001, name=name * " L₁")
-    test_rate_of_convergence(L∞[p], Nx[p], expected=-2.0, atol=0.001, name=name * " L∞")
+    test_rate_of_convergence(L∞[p], Nx[p], expected=-2.0, atol=0.005, name=name * " L∞")
 end

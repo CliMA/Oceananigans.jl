@@ -78,9 +78,9 @@ savefig(filepath, dpi=480, bbox_extra_artists=(legend,), bbox_inches="tight")
 # Test rate of convergence
 for (results, name) in zip(all_results, names)
     atol_L₁, atol_L∞ =
-        name == "diffusion only" ? (0.05, 0.05) :
-        name == "advection only" ? (0.10, 0.50) :
-        name == "advection-diffusion" ? (0.05, 0.01) : nothing
+        name == "diffusion only" ? (0.06, 0.01) :
+        name == "advection only" ? (0.02, 0.10) :
+        name == "advection-diffusion" ? (0.01, 0.02) : nothing
 
     name = "1D Gaussian " * name
     @info "Testing rate of convergence for $name..."
@@ -94,25 +94,25 @@ for (results, name) in zip(all_results, names)
     vx_L∞,        vz_L∞,
     wx_L∞, wy_L∞         = unpack_errors(results)
 
-    test_rate_of_convergence(uy_L₁, Nx, expected=-2.0, atol=0.01, name=name*" ux_L₁")
-    test_rate_of_convergence(uz_L₁, Nx, expected=-2.0, atol=0.01, name=name*" uz_L₁")
-    test_rate_of_convergence(vx_L₁, Nx, expected=-2.0, atol=0.01, name=name*" vx_L₁")
-    test_rate_of_convergence(vz_L₁, Nx, expected=-2.0, atol=0.01, name=name*" vz_L₁")
-    test_rate_of_convergence(wx_L₁, Nx, expected=-2.0, atol=0.01, name=name*" wx_L₁")
-    test_rate_of_convergence(wy_L₁, Nx, expected=-2.0, atol=0.01, name=name*" wy_L₁")
-    test_rate_of_convergence(cx_L₁, Nx, expected=-2.0, atol=0.01, name=name*" cx_L₁")
-    test_rate_of_convergence(cy_L₁, Nx, expected=-2.0, atol=0.01, name=name*" cy_L₁")
-    test_rate_of_convergence(cz_L₁, Nx, expected=-2.0, atol=0.01, name=name*" cz_L₁")
+    test_rate_of_convergence(uy_L₁, Nx, expected=-2.0, atol=atol_L₁, name=name*" ux_L₁")
+    test_rate_of_convergence(uz_L₁, Nx, expected=-2.0, atol=atol_L₁, name=name*" uz_L₁")
+    test_rate_of_convergence(vx_L₁, Nx, expected=-2.0, atol=atol_L₁, name=name*" vx_L₁")
+    test_rate_of_convergence(vz_L₁, Nx, expected=-2.0, atol=atol_L₁, name=name*" vz_L₁")
+    test_rate_of_convergence(wx_L₁, Nx, expected=-2.0, atol=atol_L₁, name=name*" wx_L₁")
+    test_rate_of_convergence(wy_L₁, Nx, expected=-2.0, atol=atol_L₁, name=name*" wy_L₁")
+    test_rate_of_convergence(cx_L₁, Nx, expected=-2.0, atol=atol_L₁, name=name*" cx_L₁")
+    test_rate_of_convergence(cy_L₁, Nx, expected=-2.0, atol=atol_L₁, name=name*" cy_L₁")
+    test_rate_of_convergence(cz_L₁, Nx, expected=-2.0, atol=atol_L₁, name=name*" cz_L₁")
 
-    test_rate_of_convergence(uy_L∞, Nx, expected=-2.0, atol=0.01, name=name*" ux_L∞")
-    test_rate_of_convergence(uz_L∞, Nx, expected=-2.0, atol=0.01, name=name*" uz_L∞")
-    test_rate_of_convergence(vx_L∞, Nx, expected=-2.0, atol=0.01, name=name*" vx_L∞")
-    test_rate_of_convergence(vz_L∞, Nx, expected=-2.0, atol=0.01, name=name*" vz_L∞")
-    test_rate_of_convergence(wx_L∞, Nx, expected=-2.0, atol=0.01, name=name*" wx_L∞")
-    test_rate_of_convergence(wy_L∞, Nx, expected=-2.0, atol=0.01, name=name*" wy_L∞")
-    test_rate_of_convergence(cx_L∞, Nx, expected=-2.0, atol=0.01, name=name*" cx_L∞")
-    test_rate_of_convergence(cy_L∞, Nx, expected=-2.0, atol=0.01, name=name*" cy_L∞")
-    test_rate_of_convergence(cz_L∞, Nx, expected=-2.0, atol=0.01, name=name*" cz_L∞")
+    test_rate_of_convergence(uy_L∞, Nx, expected=-2.0, atol=atol_L∞, name=name*" ux_L∞")
+    test_rate_of_convergence(uz_L∞, Nx, expected=-2.0, atol=atol_L∞, name=name*" uz_L∞")
+    test_rate_of_convergence(vx_L∞, Nx, expected=-2.0, atol=atol_L∞, name=name*" vx_L∞")
+    test_rate_of_convergence(vz_L∞, Nx, expected=-2.0, atol=atol_L∞, name=name*" vz_L∞")
+    test_rate_of_convergence(wx_L∞, Nx, expected=-2.0, atol=atol_L∞, name=name*" wx_L∞")
+    test_rate_of_convergence(wy_L∞, Nx, expected=-2.0, atol=atol_L∞, name=name*" wy_L∞")
+    test_rate_of_convergence(cx_L∞, Nx, expected=-2.0, atol=atol_L∞, name=name*" cx_L∞")
+    test_rate_of_convergence(cy_L∞, Nx, expected=-2.0, atol=atol_L∞, name=name*" cy_L∞")
+    test_rate_of_convergence(cz_L∞, Nx, expected=-2.0, atol=atol_L∞, name=name*" cz_L∞")
 
     @test uy_L₁ ≈ uz_L₁ ≈ vx_L₁ ≈ vz_L₁ ≈ wx_L₁ ≈ wy_L₁ ≈ cx_L₁ ≈ cy_L₁ ≈ cz_L₁
     @test uy_L∞ ≈ uz_L∞ ≈ vx_L∞ ≈ vz_L∞ ≈ wx_L∞ ≈ wy_L∞ ≈ cx_L∞ ≈ cy_L∞ ≈ cz_L∞
