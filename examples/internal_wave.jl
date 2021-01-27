@@ -8,7 +8,7 @@
 #
 # First let's make sure we have all required packages installed.
 
-# ````julia
+# ```julia
 # using Pkg
 # pkg"add Oceananigans, JLD2, Plots"
 # ```
