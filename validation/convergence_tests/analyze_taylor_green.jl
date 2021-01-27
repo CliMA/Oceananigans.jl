@@ -50,5 +50,5 @@ mkpath(dirname(filepath))
 savefig(filepath, dpi=480)
 
 p = sortperm(Nx)
-test_rate_of_convergence(L₁[p], Nx[p], expected=-2.0, atol=0.001, name="Taylor-Green L₁")
-test_rate_of_convergence(L∞[p], Nx[p], expected=-2.0, atol=0.050, name="Taylor-Green L∞")
+test_rate_of_convergence(L₁[p], Nx[p], expected=-2.0, atol=0.05, name="Taylor-Green L₁")
+test_rate_of_convergence(L∞[p], Nx[p], expected=-2.0, atol=0.05, name="Taylor-Green L∞")
