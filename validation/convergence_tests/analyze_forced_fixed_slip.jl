@@ -47,10 +47,10 @@ for j = 1:2
 
     @show size(L₁) size(Nx)
 
-    ax.loglog(Nx, L₁, base=2, color=defaultcolors[j], alpha=0.6, mfc="None",
+    ax.loglog(Nx, L₁, color=defaultcolors[j], alpha=0.6, mfc="None",
             linestyle="None", marker="o", label="\$L_1\$-norm, $(labels[j])")
 
-    ax.loglog(Nx, L∞, base=2, color=defaultcolors[j], alpha=0.6, mfc="None",
+    ax.loglog(Nx, L∞, color=defaultcolors[j], alpha=0.6, mfc="None",
             linestyle="None", marker="^", label="\$L_\\infty\$-norm, $(labels[j])")
 
     if j == 2
@@ -58,8 +58,11 @@ for j = 1:2
         ii = sortperm(Nx)
         Nx = Nx[ii]
         L₁ = L₁[ii]
-        ax.loglog(Nx, L₁[end] * (Nx[end] ./ Nx).^2, "k-", base=2, linewidth=1, alpha=0.6, label=L"\sim N_x^{-2}")
+        ax.loglog(Nx, L₁[end] * (Nx[end] ./ Nx).^2, "k-", linewidth=1, alpha=0.6, label=L"\sim N_x^{-2}")
     end
+
+    ax.set_xscale("log", base=2)
+    ax.set_yscale("log", base=10)
 end
 
 filenames = filenameses[1]

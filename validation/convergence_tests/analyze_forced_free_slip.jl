@@ -41,20 +41,22 @@ for i = 1:length(errors)
     L₁ = map(err -> err.L₁, error)
     L∞ = map(err -> err.L∞, error)
 
-    loglog(Nx, L₁, base=2, color=defaultcolors[i], alpha=0.6, mfc="None",
+    loglog(Nx, L₁, color=defaultcolors[i], alpha=0.6, mfc="None",
            linestyle="None", marker="o", label="\$L_1\$-norm, $name")
-    loglog(Nx, L∞, base=2, color=defaultcolors[i], alpha=0.6, mfc="None",
+    loglog(Nx, L∞, color=defaultcolors[i], alpha=0.6, mfc="None",
            linestyle="None", marker="^", label="\$L_\\infty\$-norm, $name")
 end
 
 L₁ = map(err -> err.L₁, errors[1])
-loglog(Nx, L₁[end] * (Nx[end] ./ Nx).^2, "k-", base=2, linewidth=1, alpha=0.6, label=L"\sim N_x^{-2}")
+loglog(Nx, L₁[end] * (Nx[end] ./ Nx).^2, "k-", linewidth=1, alpha=0.6, label=L"\sim N_x^{-2}")
 
 legend()
+xscale("log", base=2)
+yscale("log", base=10)
 xlabel(L"N_x")
 ylabel("Norms of the absolute error, \$ | u_{\\mathrm{sim}} - u_{\\mathrm{exact}} | \$")
-removespines("top", "right")
 title("Convergence for forced free slip")
+removespines("top", "right")
 
 filename = "forced_free_slip_convergence_$(typeof(arch)).png"
 filepath = joinpath(@__DIR__, "figs", filename)
