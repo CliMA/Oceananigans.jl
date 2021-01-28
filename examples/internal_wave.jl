@@ -4,6 +4,15 @@
 # and watch it propagate. This example illustrates how to set up a two-dimensional
 # model, set initial conditions, and how to use `BackgroundField`s.
 #
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, JLD2, Plots"
+# ```
+
 # ## The physical domain
 #
 # First, we pick a resolution and domain size. We use a two-dimensional domain
@@ -173,4 +182,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
                  aspectratio = :equal)
 end
 
-gif(anim, "internal_wave.gif", fps = 8) # hide
+mp4(anim, "internal_wave.mp4", fps = 8) # hide

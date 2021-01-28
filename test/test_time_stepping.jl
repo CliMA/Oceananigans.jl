@@ -1,5 +1,6 @@
 using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.Fields: BackgroundField
+using Oceananigans.TimeSteppers: Clock
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
@@ -97,7 +98,7 @@ function incompressible_in_time(arch, FT, Nt, timestepper)
     grid = model.grid
     u, v, w = model.velocities
 
-    div_U = CellField(FT, arch, grid, TracerBoundaryConditions(grid))
+    div_U = CenterField(FT, arch, grid, TracerBoundaryConditions(grid))
 
     # Just add a temperature perturbation so we get some velocity field.
     @. model.tracers.T.data[8:24, 8:24, 8:24] += 0.01
@@ -182,11 +183,11 @@ function time_stepping_with_background_fields(arch)
 
     time_step!(model, 1, euler=true)
 
-    return location(model.background_fields.velocities.u) === (Face, Cell, Cell) &&
-           location(model.background_fields.velocities.v) === (Cell, Face, Cell) &&
-           location(model.background_fields.velocities.w) === (Cell, Cell, Face) &&
-           location(model.background_fields.tracers.T) === (Cell, Cell, Cell) &&
-           location(model.background_fields.tracers.S) === (Cell, Cell, Cell)
+    return location(model.background_fields.velocities.u) === (Face, Center, Center) &&
+           location(model.background_fields.velocities.v) === (Center, Face, Center) &&
+           location(model.background_fields.velocities.w) === (Center, Center, Face) &&
+           location(model.background_fields.tracers.T) === (Center, Center, Center) &&
+           location(model.background_fields.tracers.S) === (Center, Center, Center)
 end
 
 Planes = (FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane)
@@ -196,7 +197,12 @@ Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             SmagorinskyLilly, BlasiusSmagorinsky,
             AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
 
-advection_schemes = (CenteredSecondOrder(), UpwindBiasedThirdOrder(), CenteredFourthOrder(), UpwindBiasedFifthOrder(), WENO5())
+advection_schemes = (nothing,
+                     CenteredSecondOrder(),
+                     UpwindBiasedThirdOrder(),
+                     CenteredFourthOrder(),
+                     UpwindBiasedFifthOrder(),
+                     WENO5())
 
 timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 

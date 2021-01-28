@@ -7,7 +7,7 @@ using OffsetArrays: OffsetArray
 #####
 
 """
-Return a range of indices for a field located at `Cell` centers
+Return a range of indices for a field located at `Center` centers
 `along a grid dimension of length `N` and with halo points `H`.
 """
 offset_indices(loc, topo, N, H=0) = 1 - H : N + H

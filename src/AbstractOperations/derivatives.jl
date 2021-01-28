@@ -35,18 +35,18 @@ function _derivative(L, ∂, arg, L∂, grid) where {X, Y, Z}
     return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, grid)
 end
 
-"""Return `Cell` if given `Face` or `Face` if given `Cell`."""
-flip(::Type{Face}) = Cell
-flip(::Type{Cell}) = Face
+"""Return `Center` if given `Face` or `Face` if given `Center`."""
+flip(::Type{Face}) = Center
+flip(::Type{Center}) = Face
 
 """Return the x-derivative function acting at (`X`, `Any`, `Any`)."""
-∂x(X::Union{Type{Face}, Type{Cell}}) = eval(Symbol(:∂x, interpolation_code(flip(X)), :ᵃᵃ))
+∂x(X::Union{Type{Face}, Type{Center}}) = eval(Symbol(:∂x, interpolation_code(flip(X)), :ᵃᵃ))
 
 """Return the y-derivative function acting at (`Any`, `Y`, `Any`)."""
-∂y(Y::Union{Type{Face}, Type{Cell}}) = eval(Symbol(:∂yᵃ, interpolation_code(flip(Y)), :ᵃ))
+∂y(Y::Union{Type{Face}, Type{Center}}) = eval(Symbol(:∂yᵃ, interpolation_code(flip(Y)), :ᵃ))
 
 """Return the z-derivative function acting at (`Any`, `Any`, `Z`)."""
-∂z(Z::Union{Type{Face}, Type{Cell}}) = eval(Symbol(:∂zᵃᵃ, interpolation_code(flip(Z))))
+∂z(Z::Union{Type{Face}, Type{Center}}) = eval(Symbol(:∂zᵃᵃ, interpolation_code(flip(Z))))
 
 const derivative_operators = Set([:∂x, :∂y, :∂z])
 push!(operators, derivative_operators...)
@@ -55,7 +55,7 @@ push!(operators, derivative_operators...)
     ∂x(L::Tuple, a::AbstractField)
 
 Return an abstract representation of an x-derivative acting on `a` followed by
-interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Cell`s.
+interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
 ∂x(L::Tuple, arg::AF{X, Y, Z}) where {X, Y, Z} =
     _derivative(L, ∂x(X), arg, (flip(X), Y, Z), arg.grid)
@@ -64,7 +64,7 @@ interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Cell`s.
     ∂y(L::Tuple, a::AbstractField)
 
 Return an abstract representation of a y-derivative acting on `a` followed by
-interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Cell`s.
+interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
 ∂y(L::Tuple, arg::AF{X, Y, Z}) where {X, Y, Z} =
     _derivative(L, ∂y(Y), arg, (X, flip(Y), Z), arg.grid)
@@ -73,7 +73,7 @@ interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Cell`s.
     ∂z(L::Tuple, a::AbstractField)
 
 Return an abstract representation of a z-derivative acting on `a` followed by
-interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Cell`s.
+interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
 ∂z(L::Tuple, arg::AF{X, Y, Z}) where {X, Y, Z} =
     _derivative(L, ∂z(Z), arg, (X, Y, flip(Z)), arg.grid)
@@ -109,7 +109,7 @@ architecture(∂::Derivative) = architecture(∂.arg)
 ##### Nested computations
 #####
 
-compute!(∂::Derivative) = compute!(∂.arg)
+compute_at!(∂::Derivative, time) = compute_at!(∂.arg, time)
 
 #####
 

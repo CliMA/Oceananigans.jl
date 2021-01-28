@@ -7,6 +7,15 @@
 #   * How to use `AbstractOperations`.
 #   * How to use `ComputedField`s to generate output.
 
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, JLD2, Plots"
+# ```
+
 # ## Model setup
 
 # We instantiate the model with an isotropic diffusivity. We use a grid with 128² points,
@@ -41,12 +50,13 @@ set!(model, u=u₀, v=u₀)
 
 using Oceananigans.Fields, Oceananigans.AbstractOperations
 
-## To make our equations prettier, we unpack `u`, `v`, and `w` from 
-## the `NamedTuple` model.velocities:
+# To make our equations prettier, we unpack `u`, `v`, and `w` from 
+# the `NamedTuple` model.velocities:
 u, v, w = model.velocities
 
 # Next we create two objects called `ComputedField`s that calculate
-# _(i)_ vorticity, defined as
+# _(i)_ vorticity that measures the rate at which the fluid rotates 
+# and is defined as
 #
 # ```math
 # ω = ∂_x v - ∂_y u \, ,
@@ -56,7 +66,6 @@ u, v, w = model.velocities
 
 ω_field = ComputedField(ω)
 
-# "Vorticity" measures the rate at which the fluid rotates. 
 # We also calculate _(ii)_ the _speed_ of the flow,
 #
 # ```math
@@ -107,8 +116,9 @@ using Oceananigans.Grids
 
 xω, yω, zω = nodes(ω_field)
 xs, ys, zs = nodes(s_field)
+nothing # hide
 
-# and animate the vorticity.
+# and animate the vorticity and fluid speed.
 
 using Plots
 
@@ -122,25 +132,22 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     ω_snapshot = file["timeseries/ω/$iteration"][:, :, 1]
     s_snapshot = file["timeseries/s/$iteration"][:, :, 1]
 
-    ω_max = maximum(abs, ω_snapshot) + 1e-9
     ω_lim = 2.0
+    ω_levels = range(-ω_lim, stop=ω_lim, length=20)
 
-    s_max = maximum(abs, s_snapshot) + 1e-9
     s_lim = 0.2
-
-    ω_levels = vcat([-ω_max], range(-ω_lim, stop=ω_lim, length=20), [ω_max])
-    s_levels = vcat(range(0, stop=s_lim, length=20), [s_max]) 
+    s_levels = range(0, stop=s_lim, length=20)
 
     kwargs = (xlabel="x", ylabel="y", aspectratio=1, linewidth=0, colorbar=true,
               xlims=(0, model.grid.Lx), ylims=(0, model.grid.Ly))
-
-    ω_plot = contourf(xω, yω, ω_snapshot';
+              
+    ω_plot = contourf(xω, yω, clamp.(ω_snapshot', -ω_lim, ω_lim);
                        color = :balance,
                       levels = ω_levels,
                        clims = (-ω_lim, ω_lim),
                       kwargs...)
 
-    s_plot = contourf(xs, ys, s_snapshot';
+    s_plot = contourf(xs, ys, clamp.(s_snapshot', 0, s_lim);
                        color = :thermal,
                       levels = s_levels,
                        clims = (0, s_lim),
@@ -149,4 +156,4 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     plot(ω_plot, s_plot, title=["Vorticity" "Speed"], layout=(1, 2), size=(1200, 500))
 end
 
-gif(anim, "two_dimensional_turbulence.gif", fps = 8) # hide
+mp4(anim, "two_dimensional_turbulence.mp4", fps = 8) # hide

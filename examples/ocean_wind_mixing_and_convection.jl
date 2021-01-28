@@ -7,6 +7,15 @@
 #   * How to use a turbulence closure for large eddy simulation.
 #   * How to use a function to impose a boundary condition.
 #
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, JLD2, Plots"
+# ```
+
 # We start by importing all of the packages and functions that we'll need for this
 # example.
 
@@ -205,9 +214,9 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 
 """ Returns colorbar levels equispaced between `(-clim, clim)` and encompassing the extrema of `c`. """
 function divergent_levels(c, clim, nlevels=21)
-    levels = range(-clim, stop=clim, length=nlevels)
     cmax = maximum(abs, c)
-    return ((-clim, clim), clim > cmax ? levels : levels = vcat([-cmax], levels, [cmax]))
+    levels = clim > cmax ? range(-clim, stop=clim, length=nlevels) : range(-cmax, stop=cmax, length=nlevels)
+    return (levels[1], levels[end]), levels
 end
 
 """ Returns colorbar levels equispaced between `clims` and encompassing the extrema of `c`."""
@@ -261,4 +270,4 @@ anim = @animate for (i, iter) in enumerate(iterations[intro:end])
     iter == iterations[end] && close(file)
 end
 
-gif(anim, "ocean_wind_mixing_and_convection.gif", fps = 8) # hide
+mp4(anim, "ocean_wind_mixing_and_convection.mp4", fps = 8) # hide

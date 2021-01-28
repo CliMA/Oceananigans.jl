@@ -10,6 +10,15 @@
 #   * How to time-step a model forward.
 #   * How to look at results.
 #
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, JLD2, Plots"
+# ```
+
 # ## Using `Oceananigans.jl`
 #
 # Write
@@ -134,4 +143,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
          label="", xlabel="Temperature", ylabel="z", xlims=(0, 1))
 end
 
-gif(anim, "one_dimensional_diffusion.gif", fps = 15) # hide
+mp4(anim, "one_dimensional_diffusion.mp4", fps = 15) # hide

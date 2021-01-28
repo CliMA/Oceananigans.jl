@@ -38,6 +38,10 @@ ordered dictionary `simulation.output_writers`. prior to calling `run!(simulatio
 
 More specific detail about the `NetCDFOutputWriter` and `JLD2OutputWriter` is given below.
 
+!!! tip "Time step alignment and output writing"
+    Oceananigans simulations will shorten the time step as needed to align model output with each
+    output writer's schedule.
+
 ## NetCDF output writer
 
 Model data can be saved to NetCDF files along with associated metadata. The NetCDF output writer is generally used by
@@ -70,6 +74,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 └── array type: Array{Float32}
 ```
+
 ```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
     NetCDFOutputWriter(model, fields, filepath="another_surface_xy_slice.nc",
@@ -113,8 +118,8 @@ model = IncompressibleModel(grid=grid);
 simulation = Simulation(model, Δt=1.25, stop_iteration=3);
 
 f(model) = model.clock.time^2; # scalar output
-g(model) = model.clock.time .* exp.(znodes(Cell, grid)); # vector/profile output
-h(model) = model.clock.time .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+g(model) = model.clock.time .* exp.(znodes(Center, grid)); # vector/profile output
+h(model) = model.clock.time .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
                             .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1])); # xy slice output
 
 outputs = Dict("scalar" => f, "profile" => g, "slice" => h);
@@ -160,6 +165,7 @@ of the function will be saved to the JLD2 file.
 ### Examples
 
 Write out 3D fields for w and T and a horizontal average:
+
 ```jldoctest jld2_output_writer
 using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Fields
 using Oceananigans.Utils: hour, minute
@@ -222,6 +228,7 @@ With `AveragedTimeInterval`, the time-average of ``a`` is taken as a left Rieman
 ```math
 \langle a \rangle = \frac{1}{T} \int_{t_i-T}^{t_i} a \, \mathrm{d} t \, ,
 ```
+
 where ``\langle a \rangle`` is the time-average of ``a``, ``T`` is the time-`window` for averaging specified by
 the `window` keyword argument to `AveragedTimeInterval`, and the ``t_i`` are discrete times separated by the
 time `interval`. The ``t_i`` specify both the end of the averaging window and the time at which output is written.

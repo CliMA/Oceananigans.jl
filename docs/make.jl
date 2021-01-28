@@ -1,9 +1,10 @@
 push!(LOAD_PATH, "..")
 
 using Documenter
-using Bibliography
+using DocumenterCitations
 using Literate
 using Plots  # to avoid capturing precompilation output by Literate
+
 using Oceananigans
 using Oceananigans.Operators
 using Oceananigans.Grids
@@ -14,20 +15,11 @@ using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
 
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
-const BIBLIOGRAPHY = import_bibtex(bib_filepath)
-@info "Bibliography: found $(length(BIBLIOGRAPHY)) entries."
-
-include("bibliography.jl")
-include("citations.jl")
+bib = CitationBibliography(bib_filepath)
 
 #####
 ##### Generate examples
 #####
-
-# Gotta set this environment variable when using the GR run-time on Travis CI.
-# This happens as examples will use Plots.jl to make plots and movies.
-# See: https://github.com/jheinen/GR.jl/issues/278
-ENV["GKSwstype"] = "100"
 
 const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
@@ -39,7 +31,8 @@ examples = [
     "convecting_plankton.jl",
     "ocean_wind_mixing_and_convection.jl",
     "langmuir_turbulence.jl",
-    "eady_turbulence.jl"
+    "eady_turbulence.jl",
+    "kelvin_helmholtz_instability.jl"
 ]
 
 for example in examples
@@ -58,7 +51,8 @@ example_pages = [
     "Convecting plankton"              => "generated/convecting_plankton.md",
     "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
     "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
-    "Eady turbulence"                  => "generated/eady_turbulence.md"
+    "Eady turbulence"                  => "generated/eady_turbulence.md",
+    "Kelvin-Helmholtz instability"     => "generated/kelvin_helmholtz_instability.md"
 ]
 
 model_setup_pages = [
@@ -74,6 +68,7 @@ model_setup_pages = [
     "Forcing functions" => "model_setup/forcing_functions.md",
     "Background fields" => "model_setup/background_fields.md",
     "Turbulent diffusivity closures and LES models" => "model_setup/turbulent_diffusivity_closures_and_les_models.md",
+    "Lagrangian particles" => "model_setup/lagrangian_particles.md",
     "Diagnostics" => "model_setup/diagnostics.md",
     "Output writers" => "model_setup/output_writers.md",
     "Checkpointing" => "model_setup/checkpointing.md",
@@ -135,10 +130,10 @@ pages = [
 format = Documenter.HTML(
     collapselevel = 1,
        prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://clima.github.io/OceananigansDocumentation/latest/"
+        canonical = "https://clima.github.io/OceananigansDocumentation/stable/"
 )
 
-makedocs(
+makedocs(bib,
   sitename = "Oceananigans.jl",
    authors = "Ali Ramadhan, Gregory Wagner, John Marshall, Jean-Michel Campin, Chris Hill",
     format = format,
@@ -150,10 +145,9 @@ makedocs(
  checkdocs = :none  # Should fix our docstring so we can use checkdocs=:exports with strict=true.
 )
 
-withenv("TRAVIS_REPO_SLUG" => "CliMA/OceananigansDocumentation") do
-    deploydocs(
-              repo = "github.com/CliMA/OceananigansDocumentation.git",
-          versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
-      push_preview = true
-    )
-end
+deploydocs(
+          repo = "github.com/CliMA/OceananigansDocumentation.git",
+      versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
+  push_preview = true
+)
+

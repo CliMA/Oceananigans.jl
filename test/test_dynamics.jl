@@ -14,7 +14,7 @@ function test_diffusion_simple(fieldname, timestepper)
                                    coriolis = nothing,
                                     tracers = :c,
                                    buoyancy = nothing)
-                               
+
     field = get_model_field(fieldname, model)
 
     value = π
@@ -75,7 +75,7 @@ function test_diffusion_cosine(fieldname, timestepper)
 
     field = get_model_field(fieldname, model)
 
-    zC = znodes(Cell, grid, reshape=true)
+    zC = znodes(Center, grid, reshape=true)
     interior(field) .= cos.(m * zC)
 
     diffusing_cosine(κ, m, z, t) = exp(-κ * m^2 * t) * cos(m * z)
@@ -173,6 +173,7 @@ function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, bac
     end
 
     grid = RegularCartesianGrid(size=(N, N), extent=(L, L), topology=(Periodic, Periodic, Flat))
+    background_fields = NamedTuple{Tuple(keys(background_fields))}(values(background_fields))
     closure = IsotropicDiffusivity(ν=κ, κ=κ)
     model = IncompressibleModel(timestepper=timestepper, grid=grid, closure=closure,
                                 background_fields=background_fields)
@@ -280,7 +281,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                                coriolis = nothing,
                                                 tracers = :c,
                                                buoyancy = nothing)
-                    
+
                 for fieldname in fieldnames
                     @info "    [$timestepper] Testing $fieldname budget in a $topology domain with isotropic diffusion..."
                     @test test_isotropic_diffusion_budget(fieldname, model)
@@ -311,7 +312,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                                coriolis = nothing,
                                                 tracers = :c,
                                                buoyancy = nothing)
-                    
+
                 for fieldname in fieldnames
                     @info "    [$timestepper] Testing $fieldname budget in a $topology domain with biharmonic diffusion..."
                     @test test_biharmonic_diffusion_budget(fieldname, model)

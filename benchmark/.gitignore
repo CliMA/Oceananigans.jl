@@ -1,0 +1,10 @@
+# HTML table output
+*.html
+
+# Multithreading benchmark output
+*.bson
+
+# PkgBenchmark tuning cache and regression benchmark output
+*.txt
+*.json
+

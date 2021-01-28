@@ -18,10 +18,10 @@ using Oceananigans.Fields
 
 using Oceananigans.Operators: interpolation_operator
 using Oceananigans.Architectures: device
-using Oceananigans.Models: AbstractModel
+using Oceananigans: AbstractModel
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.Fields: data, compute!
+import Oceananigans.Fields: data, compute_at!
 
 #####
 ##### Basic functionality

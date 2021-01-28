@@ -23,7 +23,7 @@ function instantiate_windowed_time_average(model)
 end
 
 function time_step_with_windowed_time_average(model)
-    
+
     model.clock.iteration = 0
     model.clock.time = 0.0
 
@@ -200,6 +200,11 @@ function run_thermal_bubble_netcdf_tests(arch)
     @test all(w_sliced .≈ Array(interiorparent(model.velocities.w))[i_slice, j_slice, k_slice])
     @test all(T_sliced .≈ Array(interiorparent(model.tracers.T))[i_slice, j_slice, k_slice])
     @test all(S_sliced .≈ Array(interiorparent(model.tracers.S))[i_slice, j_slice, k_slice])
+
+    rm(nc_filepath)
+    rm(nc_sliced_filepath)
+
+    return nothing
 end
 
 function run_thermal_bubble_netcdf_tests_with_halos(arch)
@@ -219,17 +224,12 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
     CUDA.@allowscalar model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
-    outputs = Dict(
-        "v" => model.velocities.v,
-        "u" => model.velocities.u,
-        "w" => model.velocities.w,
-        "T" => model.tracers.T,
-        "S" => model.tracers.S
-    )
-
     nc_filepath = "test_dump_with_halos_$(typeof(arch)).nc"
-    nc_writer = NetCDFOutputWriter(model, outputs, filepath=nc_filepath, schedule=IterationInterval(10),
+    nc_writer = NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
+                                   filepath=nc_filepath,
+                                   schedule=IterationInterval(10),
                                    field_slicer=FieldSlicer(with_halos=true))
+
     push!(simulation.output_writers, nc_writer)
 
     run!(simulation)
@@ -293,6 +293,10 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
     @test all(w .≈ Array(model.velocities.w.data.parent))
     @test all(T .≈ Array(model.tracers.T.data.parent))
     @test all(S .≈ Array(model.tracers.S.data.parent))
+
+    rm(nc_filepath)
+
+    return nothing
 end
 
 function run_netcdf_function_output_tests(arch)
@@ -309,21 +313,21 @@ function run_netcdf_function_output_tests(arch)
     # Define scalar, vector, and 2D slice outputs
     f(model) = model.clock.time^2
 
-    g(model) = model.clock.time .* exp.(znodes(Cell, grid))
+    g(model) = model.clock.time .* exp.(znodes(Center, grid))
 
-    h(model) = model.clock.time .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+    h(model) = model.clock.time .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
                                     .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
 
-    outputs = Dict("scalar" => f,  "profile" => g,       "slice" => h)
-       dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
+    outputs = (scalar=f, profile=g, slice=h)
+    dims = (scalar=(), profile=("zC",), slice=("xC", "yC"))
 
-    output_attributes = Dict(
-        "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
-        "profile" => Dict("longname" => "Some vertical profile", "units" => "watermelons"),
-        "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
+    output_attributes = (
+        scalar = (longname="Some scalar", units="bananas"),
+        profile = (longname="Some vertical profile", units="watermelons"),
+        slice = (longname="Some slice", units="mushrooms")
     )
 
-    global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
+    global_attributes = (location="Bay of Fundy", onions=7)
 
     nc_filepath = "test_function_outputs_$(typeof(arch)).nc"
 
@@ -395,7 +399,7 @@ function run_netcdf_function_output_tests(arch)
     @test dimnames(ds["profile"]) == ("zC", "time")
 
     for n in 0:iters
-        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(Cell, grid))
+        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(Center, grid))
     end
 
     @test ds["slice"].attrib["longname"] == "Some slice"
@@ -404,11 +408,11 @@ function run_netcdf_function_output_tests(arch)
     @test dimnames(ds["slice"]) == ("xC", "yC", "time")
 
     for n in 0:iters
-        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
                                                  .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
     end
 
-    close(simulation.output_writers[:food])
+    close(ds)
 
     #####
     ##### Take 1 more time step and test that appending to a NetCDF file works
@@ -435,12 +439,14 @@ function run_netcdf_function_output_tests(arch)
     @test ds["scalar"][:] == [(n*Δt)^2 for n in 0:iters]
 
     for n in 0:iters
-        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(Cell, grid))
-        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(Center, grid))
+        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
                                                  .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
     end
 
-    close(simulation.output_writers[:food])
+    close(ds)
+
+    rm(nc_filepath)
 
     return nothing
 end
@@ -501,7 +507,7 @@ function jld2_sliced_field_output(model)
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
 
-    simulation.output_writers[:velocities] = 
+    simulation.output_writers[:velocities] =
         JLD2OutputWriter(model, model.velocities,
                                       schedule = TimeInterval(1),
                                  field_slicer = FieldSlicer(i=1:2, j=1:3, k=:),
@@ -654,7 +660,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     #####
     ##### Test `run!(sim, pickup=true)
     #####
-    
+
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=9)
 
     # Pickup from explicit checkpoint path
@@ -670,7 +676,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
 
     run!(new_simulation, pickup=true)
     test_model_equality(new_model, true_model)
-    
+
     run!(new_simulation, pickup=0)
     test_model_equality(new_model, true_model)
 
@@ -832,6 +838,8 @@ function run_dependency_adding_tests(model)
 
     @test dependencies_added_correctly!(model, windowed_time_average, netcdf_output_writer)
 
+    rm("test.nc")
+
     return nothing
 end
 
@@ -843,15 +851,15 @@ function run_windowed_time_averaging_simulation_tests!(model)
     model.clock.iteration = model.clock.time = 0
     simulation = Simulation(model, Δt=1.0, stop_iteration=0)
 
-    jld2_output_writer = JLD2OutputWriter(model, model.velocities, 
+    jld2_output_writer = JLD2OutputWriter(model, model.velocities,
                                           schedule = AveragedTimeInterval(π, window=1),
-                                            prefix = "test", 
+                                            prefix = "test",
                                              force = true)
 
                                           # https://github.com/Alexander-Barth/NCDatasets.jl/issues/105
-    nc_filepath = "windowed_time_average_test1.nc"
+    nc_filepath1 = "windowed_time_average_test1.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
-    nc_output_writer = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath,
+    nc_output_writer = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath1,
                                           schedule = AveragedTimeInterval(π, window=1))
 
     jld2_outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in jld2_output_writer.outputs)
@@ -859,21 +867,21 @@ function run_windowed_time_averaging_simulation_tests!(model)
 
     @test all(jld2_outputs_are_time_averaged)
     @test all(nc_outputs_are_time_averaged)
-    
+
     # Test that the collection does *not* start when a simulation is initialized
     # when time_interval ≠ time_averaging_window
     simulation.output_writers[:jld2] = jld2_output_writer
     simulation.output_writers[:nc] = nc_output_writer
 
     run!(simulation)
-    
+
     jld2_u_windowed_time_average = simulation.output_writers[:jld2].outputs.u
     nc_w_windowed_time_average = simulation.output_writers[:nc].outputs["w"]
-    
+
     @test !(jld2_u_windowed_time_average.schedule.collecting)
     @test !(nc_w_windowed_time_average.schedule.collecting)
 
-    # Test that time-averaging is finalized prior to output even when averaging over 
+    # Test that time-averaging is finalized prior to output even when averaging over
     # time_window is not fully realized. For this, step forward to a time at which
     # collection should start. Note that time_interval = π and time_window = 1.0.
     simulation.Δt = 1.5
@@ -888,30 +896,33 @@ function run_windowed_time_averaging_simulation_tests!(model)
     simulation.stop_iteration = 3
     run!(simulation) # model.clock.time ≈ 3.15, after output
 
-    @test jld2_u_windowed_time_average.schedule.previous_interval_stop_time == 
+    @test jld2_u_windowed_time_average.schedule.previous_interval_stop_time ==
         model.clock.time - rem(model.clock.time, jld2_u_windowed_time_average.schedule.interval)
 
-    @test nc_w_windowed_time_average.schedule.previous_interval_stop_time == 
+    @test nc_w_windowed_time_average.schedule.previous_interval_stop_time ==
         model.clock.time - rem(model.clock.time, nc_w_windowed_time_average.schedule.interval)
 
     # Test that collection does start when a simulation is initialized and
     # time_interval == time_averaging_window
     model.clock.iteration = model.clock.time = 0
 
-    simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities, 
+    simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities,
                                                         schedule = AveragedTimeInterval(π, window=π),
-                                                          prefix = "test", 
+                                                          prefix = "test",
                                                            force = true)
 
-    nc_filepath = "windowed_time_average_test2.nc"
+    nc_filepath2 = "windowed_time_average_test2.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
-    simulation.output_writers[:nc] = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath,
+    simulation.output_writers[:nc] = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath2,
                                                         schedule=AveragedTimeInterval(π, window=π))
 
     run!(simulation)
 
     @test simulation.output_writers[:jld2].outputs.u.schedule.collecting
     @test simulation.output_writers[:nc].outputs["w"].schedule.collecting
+
+    rm(nc_filepath1)
+    rm(nc_filepath2)
 
     return nothing
 end
@@ -989,7 +1000,7 @@ function run_netcdf_time_averaging_tests(arch)
     simulation = Simulation(model, Δt=Δt, stop_time=50Δt)
 
     ∫c_dxdy = AveragedField(model.tracers.c, dims=(1, 2))
-    
+
     nc_outputs = Dict("c" => ∫c_dxdy)
     nc_dimensions = Dict("c" => ("zC",))
 
@@ -997,19 +1008,16 @@ function run_netcdf_time_averaging_tests(arch)
     simulation.output_writers[:horizontal_average] =
         NetCDFOutputWriter(model, nc_outputs, filepath=horizontal_average_nc_filepath, schedule=TimeInterval(10Δt),
                            dimensions=nc_dimensions, array_type=Array{Float64}, verbose=true)
- 
+
     time_average_nc_filepath = "decay_windowed_time_average_test.nc"
     window = 6Δt
     stride = 2
     simulation.output_writers[:time_average] =
-        NetCDFOutputWriter(model, nc_outputs, filepath=time_average_nc_filepath, array_type=Array{Float64}, 
+        NetCDFOutputWriter(model, nc_outputs, filepath=time_average_nc_filepath, array_type=Array{Float64},
                            schedule=AveragedTimeInterval(10Δt, window=window, stride=stride),
                            dimensions=nc_dimensions, verbose=true)
 
     run!(simulation)
-
-    close(simulation.output_writers[:horizontal_average].dataset)
-    close(simulation.output_writers[:time_average].dataset)
 
     ##### Horizontal average should evaluate to
     #####
@@ -1044,7 +1052,7 @@ function run_netcdf_time_averaging_tests(arch)
     for name in attribute_names
         @test haskey(ds.attrib, name) && !isnothing(ds.attrib[name])
     end
-    
+
     c̄(ts) = 1/length(ts) * sum(c̄.(zs, t) for t in ts)
 
     window_size = Int(window/Δt)
@@ -1054,6 +1062,40 @@ function run_netcdf_time_averaging_tests(arch)
     end
 
     close(ds)
+
+    rm(horizontal_average_nc_filepath)
+    rm(time_average_nc_filepath)
+
+    return nothing
+end
+
+function run_netcdf_output_alignment_tests(arch)
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    model = IncompressibleModel(architecture=arch, grid=grid)
+    simulation = Simulation(model, Δt=0.2, stop_time=40)
+
+    test_filename1 = "test_output_alignment1.nc"
+    simulation.output_writers[:stuff] =
+        NetCDFOutputWriter(model, model.velocities, filepath=test_filename1,
+                           schedule=TimeInterval(7.3))
+
+    test_filename2 = "test_output_alignment2.nc"
+    simulation.output_writers[:something] =
+        NetCDFOutputWriter(model, model.tracers, filepath=test_filename2,
+                           schedule=TimeInterval(3.0))
+
+    run!(simulation)
+
+    Dataset(test_filename1, "r") do ds
+        @test all(ds["time"] .== 0:7.3:40)
+    end
+
+    Dataset(test_filename2, "r") do ds
+        @test all(ds["time"] .== 0:3.0:40)
+    end
+
+    rm(test_filename1)
+    rm(test_filename2)
 
     return nothing
 end
@@ -1088,23 +1130,24 @@ end
             run_thermal_bubble_netcdf_tests(arch)
             run_thermal_bubble_netcdf_tests_with_halos(arch)
             run_netcdf_function_output_tests(arch)
+            run_netcdf_output_alignment_tests(arch)
         end
 
         @testset "JLD2 [$(typeof(arch))]" begin
             @info "  Testing JLD2 output writer [$(typeof(arch))]..."
-            
+
             @test jld2_field_output(model)
             @test jld2_sliced_field_output(model)
-            
+
             run_jld2_file_splitting_tests(arch)
         end
 
         @testset "Checkpointer [$(typeof(arch))]" begin
             @info "  Testing Checkpointer [$(typeof(arch))]..."
-            
+
             run_thermal_bubble_checkpointer_tests(arch)
             run_checkpoint_with_function_bcs_tests(arch)
-            
+
             @hascuda run_cross_architecture_checkpointer_tests(CPU(), GPU())
             @hascuda run_cross_architecture_checkpointer_tests(GPU(), CPU())
         end
@@ -1116,9 +1159,9 @@ end
 
         @testset "Time averaging of output [$(typeof(arch))]" begin
             @info "    Testing time averaging of output [$(typeof(arch))]..."
-            
+
             run_windowed_time_averaging_simulation_tests!(model)
-                
+
             @test jld2_time_averaging_of_horizontal_averages(model)
 
             run_netcdf_time_averaging_tests(arch)

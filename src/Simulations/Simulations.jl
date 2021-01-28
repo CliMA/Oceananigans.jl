@@ -5,7 +5,7 @@ export TimeStepWizard, Simulation, run!
 import Base: show
 
 using OrderedCollections: OrderedDict
-using Oceananigans: AbstractDiagnostic, AbstractOutputWriter
+using Oceananigans: AbstractDiagnostic, AbstractOutputWriter, fields
 
 using Oceananigans.Models
 using Oceananigans.Diagnostics
