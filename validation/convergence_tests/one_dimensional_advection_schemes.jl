@@ -163,14 +163,15 @@ for scheme in advection_schemes
 
         xscale("log", base=2)
         yscale("log", base=10)
+        title("Convergence for $name advection scheme")
         xlabel(L"N_x")
         ylabel("\$L\$-norms of \$ | c_\\mathrm{sim} - c_\\mathrm{analytical} |\$")
         removespines("top", "right")
-        legend = legend(loc="upper right", bbox_to_anchor=(1.4, 1.0), prop=Dict(:size=>6))
+        lgd = legend(loc="upper right", bbox_to_anchor=(1.4, 1.0), prop=Dict(:size=>6))
 
         filename = "one_dimensional_convergence_$(name)_$(typeof(arch)).png"
         filepath = joinpath(@__DIR__, "figs", filename)
         mkpath(dirname(filepath))
-        savefig(filepath, dpi=480, bbox_extra_artists=(legend,), bbox_inches="tight")
+        savefig(filepath, dpi=480, bbox_extra_artists=(lgd,), bbox_inches="tight")
     end
 end
