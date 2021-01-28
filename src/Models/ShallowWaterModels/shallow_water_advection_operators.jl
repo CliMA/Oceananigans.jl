@@ -25,7 +25,8 @@ function div_UV(i, j, k, grid, advection, h)
     
     U = 1
 
-    #return advective_tracer_flux_x(i, j, k, grid, advection, U, h)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, U, h)  +
-                                    δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, U, h) )
+    return 1/Vᵃᵃᶜ(i, j, k, grid) * δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, U, h)
+
+    #return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, U, h)  +
+    #                                δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, U, h) )
 end

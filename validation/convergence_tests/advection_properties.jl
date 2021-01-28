@@ -10,7 +10,7 @@ labels(::CenteredSecondOrder)    = "Center2ⁿᵈ"
 labels(::UpwindBiasedThirdOrder) = "Upwind3ʳᵈ"
 labels(::CenteredFourthOrder)    = "Center4ᵗʰ"
 labels(::UpwindBiasedFifthOrder) = "Upwind5ᵗʰ"
-labels(::WENO5)                  = "WENO5ᵗʰ"
+labels(::WENO5)                  = "WENO5ᵗʰ "
 
 shapes(::CenteredSecondOrder)    = :diamond
 shapes(::UpwindBiasedThirdOrder) = :dtriangle

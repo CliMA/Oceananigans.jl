@@ -4,6 +4,7 @@ using Printf
 using Polynomials
 using LinearAlgebra
 using OffsetArrays
+using IJulia
 
 using Oceananigans
 using Oceananigans.Grids
@@ -39,7 +40,8 @@ for N in Ns, scheme in schemes
         Float64; 
         size=(N, 1, 1), 
         x=(-1, -1+L), y=(0, 1), z=(0, 1), 
-        halo=(halos(scheme), 1, 1))
+        halo=(halos(scheme), 1, 1),
+        topology=(Periodic,Periodic,Bounded))
 
     model = ShallowWaterModel(
         architecture = CPU(),
