@@ -28,6 +28,12 @@ vt = get(ENV, "VALIDATION_TEST", :all) |> Symbol
         end
     end
 
+    if vt == :advection_schemes || vt == :all
+        @safetestset "1D advection schemes" begin
+            include(joinpath(@__DIR__, "..", "validation", "convergence_tests", "one_dimensional_advection_schemes.jl"))
+        end
+    end
+
     if vt == :diffusion || vt == :all
         @safetestset "2D diffusion" begin
             include(joinpath(@__DIR__, "..", "validation", "convergence_tests", "two_dimensional_diffusion.jl"))

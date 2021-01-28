@@ -160,6 +160,39 @@ steps:
       - "validation/convergence_tests/figs/*"
 
 #####
+##### 1D advection schemes
+#####
+
+  - label: "🏍️ gpu advection schemes"
+    env:
+      JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-validation-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "convergence"
+      VALIDATION_TEST: "advection_schemes"
+    commands:
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: GPU
+    depends_on: "init_gpu"
+    artifact_paths:
+      - "validation/convergence_tests/figs/*"
+
+  - label: "🚲 cpu advection schemes"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-validation-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "convergence"
+      VALIDATION_TEST: "advection_schemes"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    depends_on: "init_cpu"
+    artifact_paths:
+      - "validation/convergence_tests/figs/*"
+
+#####
 ##### 2D Diffusion
 #####
 
