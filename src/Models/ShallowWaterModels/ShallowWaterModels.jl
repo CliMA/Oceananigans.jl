@@ -31,5 +31,6 @@ include("calculate_shallow_water_tendencies.jl")
 include("update_shallow_water_state.jl")
 
 include("shallow_water_advection_operators.jl")
+include("shallow_water_cell_advection_timescale.jl")
 
 end # module
