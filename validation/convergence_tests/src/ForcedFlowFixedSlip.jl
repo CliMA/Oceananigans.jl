@@ -48,8 +48,8 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                 topology=(Periodic, Bounded, Bounded))
 
     # "Fixed slip" boundary conditions (eg, no-slip on south wall, finite slip on north wall)."
-    u_bcs = UVelocityBoundaryConditions(grid, north = UVelocityBoundaryCondition(Value, :y, (x, y, t) -> f(x, t)),
-                                              south = BoundaryCondition(Value, 0))
+    u_bcs = UVelocityBoundaryConditions(grid, north = ValueBoundaryCondition((x, y, t) -> f(x, t)),
+                                              south = ValueBoundaryCondition(0))
 
     model = IncompressibleModel(       architecture = CPU(),
                                                grid = grid,
@@ -66,8 +66,8 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress=print_progress, iteration_interval=20)
 
     outputs = Dict()
-    outputs[:p] = model -> parent(model.pressures.pHY′) .+ parent(model.pressures.pNHS)
-    outputs = merge(outputs, model.velocities)
+    pressure_output = model -> parent(model.pressures.pHY′) .+ parent(model.pressures.pNHS)
+    outputs = merge((p=pressure_output,), model.velocities)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                           dir = dir, force = true,
@@ -94,8 +94,8 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
                                 topology=(Periodic, Bounded, Bounded))
 
     # "Fixed slip" boundary conditions (eg, no-slip on bottom and finite slip on top)."
-    u_bcs = UVelocityBoundaryConditions(grid, top = UVelocityBoundaryCondition(Value, :z, (x, z, t) -> f(x, t)),
-                                              bottom = BoundaryCondition(Value, 0))
+    u_bcs = UVelocityBoundaryConditions(grid,    top = ValueBoundaryCondition((x, z, t) -> f(x, t)),
+                                              bottom = ValueBoundaryCondition(0))
 
     model = IncompressibleModel(       architecture = CPU(),
                                                grid = grid,
@@ -112,8 +112,8 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress=print_progress, iteration_interval=20)
 
     outputs = Dict()
-    outputs[:p] = model -> parent(model.pressures.pHY′) .+ parent(model.pressures.pNHS)
-    outputs = merge(outputs, model.velocities)
+    pressure_output = model -> parent(model.pressures.pHY′) .+ parent(model.pressures.pNHS)
+    outputs = merge((p=pressure_output,), model.velocities)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                           dir = dir, force = true,

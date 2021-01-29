@@ -15,7 +15,6 @@ module PointExponentialDecay
 
 using Printf
 using Statistics
-
 using Oceananigans
 
 include("analysis.jl")

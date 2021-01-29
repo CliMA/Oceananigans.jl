@@ -39,6 +39,10 @@ function extract_two_solutions(analytical_solution, filename; name=:u)
 end
 
 function compute_error(u_simulation, u_analytical)
+    # Convert any CuArrays to Arrays.
+    u_simulation = Array(u_simulation)
+    u_analytical = Array(u_analytical)
+
     absolute_error = @. abs(u_simulation - u_analytical)
     absolute_truth = abs.(u_analytical)
     L₁ = mean(absolute_error)
