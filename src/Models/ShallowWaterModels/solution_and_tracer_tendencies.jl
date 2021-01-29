@@ -65,7 +65,7 @@ Compute the tendency for the height, h.
                                      clock)
 
 
-    return ( - div_UV(i, j, k, grid, advection, solution.h) )
+    return ( - div_UV(i, j, k, grid, advection, solution) )
 end
 
 @inline function tracer_tendency(i, j, k, grid,

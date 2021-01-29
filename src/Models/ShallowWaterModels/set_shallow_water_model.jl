@@ -13,8 +13,8 @@ function set!(model::ShallowWaterModel; kwargs...)
         end
         set!(ϕ, value)
     end
-    return nothing
 
     update_state!(model)
 
+    return nothing
 end

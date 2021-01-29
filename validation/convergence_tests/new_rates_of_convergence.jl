@@ -21,7 +21,9 @@ include("plot_rates_of_convergence.jl")
    Δt = 0.01 * minimum(L/Ns) / U
 pnorm = 1
 
-c(x, y, z, t, U, W) = exp( - (x - U * t)^2 / W^2 );
+ c(x, y, z, t, U, W) = 1 + exp( - (x - U * t)^2 / W^2 );
+ u(x, y, z)  = 1
+uh(x, y, z) = u(x, y, z) * c(x, y, z, 0, U, W) 
 
 schemes = (
     CenteredSecondOrder(), 
@@ -50,7 +52,10 @@ for N in Ns, scheme in schemes
         coriolis = nothing,
         gravitational_acceleration = 0)
     
-    set!(model, h = (x,y,z) -> c(x, y, z, 0, U, W) )
+    set!(
+        model, 
+        h = (x,y,z) -> c(x, y, z, 0, U, W),
+        uh = uh)
     
     simulation = Simulation(model, Δt=Δt, stop_iteration=1, iteration_interval=1)
     
