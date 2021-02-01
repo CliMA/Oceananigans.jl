@@ -106,7 +106,7 @@ end
     cᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c)
     cᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c)
 
-    Axᵃᵃᶠ(i, j, k, grid) * upwind_biased_product(ũ, cᴸ, cᴿ)
+    return Axᵃᵃᶠ(i, j, k, grid) * upwind_biased_product(ũ, cᴸ, cᴿ)
 end
 
 @inline function advective_tracer_flux_y(i, j, k, grid, scheme::Upwind, V, c)

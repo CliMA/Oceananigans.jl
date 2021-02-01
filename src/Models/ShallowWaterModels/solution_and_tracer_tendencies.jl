@@ -55,7 +55,6 @@ Compute the tendency for the height, h.
 """
 @inline function h_solution_tendency(i, j, k, grid,
                                      gravitational_acceleration,
-                                     advection,
                                      coriolis,
                                      bathymetry,
                                      solution,
@@ -64,8 +63,7 @@ Compute the tendency for the height, h.
                                      forcings,
                                      clock)
 
-    return ( - ∂xᶜᵃᵃ(i, j, k, grid, solution.uh)
-             - ∂yᵃᶜᵃ(i, j, k, grid, solution.vh)
+    return ( - div_uhvh(i, j, k, grid, solution)
              + forcings.h(i, j, k, grid, clock, merge(solution, tracers)))
 end
 
