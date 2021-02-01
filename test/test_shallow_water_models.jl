@@ -13,6 +13,19 @@ function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection
     return model.clock.iteration == 1
 end
 
+function time_step_wizard_shallow_water_model_works(arch, topo, coriolis)
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(2π, 2π, 2π), topology=topo)
+    model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch, coriolis=coriolis)
+    set!(model, h=1)
+
+    wizard = TimeStepWizard(cfl=1.0, Δt=1.0, max_change=1.1, max_Δt=10)
+
+    simulation = Simulation(model, Δt=wizard, stop_iteration=1)
+    run!(simulation)
+
+    return model.clock.iteration == 1
+end
+
 function shallow_water_model_tracers_and_forcings_work(arch)
     grid = RegularCartesianGrid(size=(1, 1, 1), extent=(2π, 2π, 2π))
     model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch, tracers=(:c, :d))
@@ -113,6 +126,11 @@ end
             end
         end
 
+        @testset "Time-step Wizard ShallowWaterModels [$arch, $topos[1]]" begin
+	    @info "  Testing time-step wizard ShallowWaterModels [$arch, $topos[1]]..."
+            @test time_step_wizard_shallow_water_model_works(archs[1], topos[1], nothing)
+        end
+                
         for advection in (nothing, CenteredSecondOrder(), WENO5())
             @testset "Time-stepping ShallowWaterModels [$arch, $(typeof(advection))]" begin
                 @info "  Testing time-stepping ShallowWaterModels [$arch, $(typeof(advection))]..."
