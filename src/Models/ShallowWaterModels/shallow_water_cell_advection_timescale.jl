@@ -6,13 +6,15 @@ import Oceananigans.Utils: cell_advection_timescale
 function shallow_water_cell_advection_timescale(uh, vh, h, grid)
     uhmax = maximum(abs, uh)
     vhmax = maximum(abs, vh)
-     hmin = minimum(abs,  h)
+    hmin  = minimum(abs,  h)
 
-    return min(grid.Δx/uhmax*hmin, grid.Δy/vhmax)*hmin
+    return min(grid.Δx / uhmax, grid.Δy / vhmax) * hmin
 end
 
 cell_advection_timescale(model::ShallowWaterModel) =
-    shallow_water_cell_advection_timescale(model.solution.uh.data.parent,
-                             model.solution.vh.data.parent,
-                             model.solution.h.data.parent,
-                             model.grid)
+    shallow_water_cell_advection_timescale(
+        model.solution.uh.data.parent, 
+        model.solution.vh.data.parent,
+        model.solution.h.data.parent,
+        model.grid
+        )
