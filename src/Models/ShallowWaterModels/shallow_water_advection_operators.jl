@@ -31,14 +31,3 @@ using Oceananigans.Grids: AbstractGrid
 # Support for no advection
 @inline div_hUu(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution) where FT = zero(FT)
 @inline div_hUv(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution) where FT = zero(FT)
-
-#####
-##### Mass flux and flux divergence operators
-#####
-
-@inline mass_flux_x(i, j, k, grid, uh) = @inbounds Ax_ψᵃᵃᶠ(i, j, k, grid, uh)
-@inline mass_flux_y(i, j, k, grid, vh) = @inbounds Ay_ψᵃᵃᶠ(i, j, k, grid, vh) 
-
-div_UV(i, j, k, grid, advection, solution) =
-    1 / Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, mass_flux_x, advection, solution.uh) +
-                               δyᵃᶜᵃ(i, j, k, grid, mass_flux_y, advection, solution.vh))
