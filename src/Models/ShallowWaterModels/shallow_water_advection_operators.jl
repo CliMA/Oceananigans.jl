@@ -1,4 +1,5 @@
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Operators: Ax_ψᵃᵃᶜ, Ay_ψᵃᵃᶜ
 
 #####
 ##### Momentum flux operators
@@ -31,3 +32,21 @@ using Oceananigans.Grids: AbstractGrid
 # Support for no advection
 @inline div_hUu(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution) where FT = zero(FT)
 @inline div_hUv(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution) where FT = zero(FT)
+
+#####
+##### Mass transport divergence operator
+#####
+
+"""
+    div_uhvh(i, j, k, grid, solution)
+
+Calculates the divergence of the mass flux into a cell,
+
+    1/V * [δxᶜᵃᵃ(Ax * uh) + δyᵃᶜᵃ(Ay * vh)]
+
+which will end up at the location `ccc`.
+"""
+@inline function div_uhvh(i, j, k, grid, solution)
+    1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶜ, solution.uh) + 
+                             δyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶜ, solution.vh))
+end
