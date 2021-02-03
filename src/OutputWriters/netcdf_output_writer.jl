@@ -149,7 +149,8 @@ Keyword arguments
 - `array_type`: The array type to which output arrays are converted to prior to saving.
                 Default: Array{Float32}.
 
-- `field_slicer`: An object for slicing field output in ``(x, y, z)``, including omitting halos.
+- `field_slicer`: An object for slicing field output in ``(x, y, z)``, including omitting halos,
+                  which can be done with the keyword `with_halos`.
                   Has no effect on output that is not a field. `field_slicer = nothing` means
                   no slicing occurs, so that all field data, including halo regions, is saved.
                   Default: `FieldSlicer()`, which slices halo regions.
@@ -161,9 +162,6 @@ Keyword arguments
                        otherwise `output_attributes` *must* be user-provided).
 
 - `dimensions`: A `Dict` of dimension tuples to apply to outputs (required for function outputs)
-
-- `with_halos`: Include the halo regions in the grid coordinates and output fields
-                (default: `false`).
 
 - `mode`: "a" (for append) and "c" (for clobber or create). Default: "c". See NCDatasets.jl
           documentation for more information on the `mode` option.
