@@ -1,5 +1,5 @@
 #####
-##### Solving ∇²ϕ = R
+##### Making sure we can solve ∇²ϕ = R
 #####
 
 using Test
@@ -17,7 +17,7 @@ using CUDA: CuArray
 CUDA.allowscalar(true)
 
 #####
-##### Makhoul DCT
+##### Makhoul DCT (already tested)
 #####
 
 """
@@ -456,4 +456,128 @@ end
     @show test_poisson_2d_bp(32, 32, rand(), rand())
     @show test_poisson_2d_bp(11, 17, rand(), rand())
     @show test_poisson_2d_bp(23, 19, rand(), rand())
+end
+
+#####
+##### 3D (Periodic, Bounded, Bounded)
+#####
+
+function dct_makhoul_3d_dims23(A::CuArray)
+    Nx, Ny, Nz = size(A)
+
+    # DCT along dimension 2
+
+    B = similar(A)
+
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        B[i, permute(j, Ny), k] = A[i, j, k]
+    end
+
+    # Computing fft(B, 2) (non-batched dims)
+    B = permutedims(B, (2, 1, 3))
+    B = CUDA.CUFFT.fft(B, 1)
+    B = permutedims(B, (2, 1, 3))
+
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        B[i, j, k] = 2 * ω(4Ny, j-1) * B[i, j, k]
+    end
+
+    B = real(B)
+
+    # DCT along dimension 3
+
+    C = similar(A)
+
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        C[i, j, permute(k, Nz)] = B[i, j, k]
+    end
+
+    C = CUDA.CUFFT.fft(C, 3)
+
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        C[i, j, k] = 2 * ω(4Nz, k-1) * C[i, j, k]
+    end
+
+    return real(C)
+end
+
+function idct_makhoul_3d_dims23(A::CuArray)
+    Nx, Ny, Nz = size(A)
+
+    # IDCT along dimension 2
+
+    B = similar(A, complex(eltype(A)))
+
+    for k in 1:Nz, i in 1:Nx
+        B[i, 1, k] = 1/2 * ω(4Ny, 0) * A[i, 1, k]
+        for j in 2:Ny
+            B[i, j, k] = ω(4Ny, 1-j) * A[i, j, k]
+        end
+    end
+
+    # Computing ifft(B, 2) (non-batched dims)
+    B = permutedims(B, (2, 1, 3))
+    B = CUDA.CUFFT.ifft(B, 1)
+    B = permutedims(B, (2, 1, 3))
+
+    C = similar(A)
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        C[i, unpermute(j, Ny), k] = real(B[i, j, k])
+    end
+
+    # IDCT along dimension 3
+
+    D = similar(A, complex(eltype(A)))
+
+    for j in 1:Ny, i in 1:Nx
+        D[i, j, 1] = 1/2 * ω(4Nz, 0) * C[i, j, 1]
+        for k in 2:Nz
+            D[i, j, k] = ω(4Nz, 1-k) * C[i, j, k]
+        end
+    end
+
+    D = CUDA.CUFFT.ifft(D, 3)
+
+    E = similar(A)
+    for k in 1:Nz, j in 1:Ny, i in 1:Nx
+        E[i, j, unpermute(k, Nz)] = real(D[i, j, k])
+    end
+
+    return E
+end
+
+function solve_poisson_3d_pbb(R::CuArray, Lx, Ly, Lz)
+    Nx, Ny, Nz = size(R)
+    λx = poisson_eigenvalues(Nx, Lx, 1, Periodic()) |> CuArray
+    λy = poisson_eigenvalues(Ny, Ly, 2, Bounded()) |> CuArray
+    λz = poisson_eigenvalues(Nz, Lz, 3, Bounded()) |> CuArray
+
+    ϕ = dct_makhoul_3d_dims23(R)
+    ϕ = CUDA.CUFFT.fft(ϕ, 1)
+
+    @. ϕ = - ϕ / (λx + λy + λz)
+    ϕ[1, 1, 1] = 0
+
+    ϕ = CUDA.CUFFT.ifft(ϕ, 1)
+    ϕ = idct_makhoul_3d_dims23(ϕ)
+
+    return ϕ
+end
+
+function test_poisson_3d_pbb(Nx, Ny, Nz, Lx, Ly, Lz)
+    topo = (Periodic, Bounded, Bounded)
+    grid = RegularCartesianGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    RHS = random_divergent_source_term(Float64, Oceananigans.GPU(), grid)
+    ϕ = solve_poisson_3d_pbb(RHS, Lx, Ly, Lz) |> real
+    ∇²ϕ = compute_∇²(ϕ, Float64, Oceananigans.GPU(), grid)
+    return @test ∇²ϕ ≈ RHS
+end
+
+@testset "3D (Periodic, Bounded, Bounded)" begin
+    @show test_poisson_3d_pbb(16, 16, 16, 1, 1, 1)
+    @show test_poisson_3d_pbb(16, 32, 12, 0.2, 1.7, 3.6)
+    @show test_poisson_3d_pbb(32, 16, 8,  rand(), rand(), rand())
+    @show test_poisson_3d_pbb(32, 32, 12, rand(), rand(), rand())
+    @show test_poisson_3d_pbb(11, 17, 19, rand(), rand(), rand())
+    @show test_poisson_3d_pbb(23, 19, 11, rand(), rand(), rand())
 end
