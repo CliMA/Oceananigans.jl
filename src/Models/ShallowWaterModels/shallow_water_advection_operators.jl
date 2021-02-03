@@ -38,19 +38,19 @@ import Oceananigans.Advection: div_Uc
 ##### Primitive advection
 #####
 
-U_dot_grad_u(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, u) where FT = zero(FT)
-U_dot_grad_v(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, u) where FT = zero(FT)
+U_dot_grad_u(i, j, k, grid::AbstractGrid{FT}, ::Nothing, u, v) where FT = zero(FT)
+U_dot_grad_v(i, j, k, grid::AbstractGrid{FT}, ::Nothing, u, v) where FT = zero(FT)
 
 """
-    U_dot_grad_u(i, j, k, grid, advection, U::PrimitiveSolutionLinearizedHeightFields, u)
+    U_dot_grad_u(i, j, k, grid, advection, u, v)
 
 Returns...
 """
 @inline U_dot_grad_u(i, j, k, grid, advection, u, v) = @inbounds (               u[i, j, k] * ℑxᶠᵃᵃ(i, j, k, grid, ∂xᶜᵃᵃ, u)
-                                                                  + ℑyᵃᶜᵃ(i, j, k, grid, v) * ℑyᵃᶜᵃ(i, j, k, grid, ∂yᵃᶠᵃ, u) )
+                                                                  + ℑyᵃᶜᵃ(i, j, k, grid, v) * ℑyᵃᶜᵃ(i, j, k, grid, ∂yᵃᶠᵃ, u))
 
 """
-    U_dot_grad_v(i, j, k, grid, advection, U::PrimitiveSolutionLinearizedHeightFields, v)
+    U_dot_grad_v(i, j, k, grid, advection, u, v)
 
 """
 @inline U_dot_grad_v(i, j, k, grid, advection, u, v) = @inbounds (ℑyᵃᶠᵃ(i, j, k, grid, u) * ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᵃᵃ, v)

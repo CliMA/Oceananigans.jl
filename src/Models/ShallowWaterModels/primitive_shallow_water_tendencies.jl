@@ -1,8 +1,6 @@
 using Oceananigans.Coriolis
 using Oceananigans.Operators: div_xyᶜᶜᵃ, Azᵃᵃᵃ, Vᵃᵃᶜ, δxᶠᵃᵃ, δyᵃᶜᵃ, δzᵃᵃᶜ
 
-
-
 """
 Compute the tendency for the x-directional transport, uh
 """
@@ -19,7 +17,7 @@ Compute the tendency for the x-directional transport, uh
 
     g = gravitational_acceleration
 
-    return ( - U_dot_grad_u(i, j, k, grid, solution.u, solution.v)
+    return ( - U_dot_grad_u(i, j, k, grid, advection, solution.u, solution.v)
              - g * ∂xᶠᵃᵃ(i, j, k, grid, solution.η)
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
              + forcings.u(i, j, k, grid, clock, merge(solution, tracers))) end
@@ -40,7 +38,7 @@ Compute the tendency for the y-directional transport, vh.
 
      g = gravitational_acceleration
 
-    return ( - U_dot_grad_v(i, j, k, grid, solution.u, solution.v)
+    return ( - U_dot_grad_v(i, j, k, grid, advection, solution.u, solution.v)
              - g * ∂xᶠᵃᵃ(i, j, k, grid, solution.η)
              - y_f_cross_U(i, j, k, grid, coriolis, solution)
              + forcings.v(i, j, k, grid, clock, merge(solution, tracers)))

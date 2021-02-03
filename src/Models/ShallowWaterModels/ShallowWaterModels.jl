@@ -27,11 +27,11 @@ Returns a flattened `NamedTuple` of the fields in `model.solution` and `model.tr
 """
 fields(model::ShallowWaterModel) = merge(model.solution, model.tracers)
 
+include("shallow_water_advection_operators.jl")
 include("conservative_shallow_water_tendencies.jl")
-#include("primitive_shallow_water_tendencies.jl")
+include("primitive_shallow_water_tendencies.jl")
 include("calculate_shallow_water_tendencies.jl")
 include("update_shallow_water_state.jl")
-include("shallow_water_advection_operators.jl")
 include("shallow_water_cell_advection_timescale.jl")
 
 # No support for particle advection yet.
