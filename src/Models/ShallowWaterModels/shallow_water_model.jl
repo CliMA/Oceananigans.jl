@@ -15,17 +15,13 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
 using Oceananigans.Utils: inflate_halo_size, tupleit
 
-function ShallowWaterTendencyFields(arch, grid, tracer_names)
+struct ConservativeSolution end
+struct PrimitiveSolution end
 
-    uh = XFaceField(arch, grid, UVelocityBoundaryConditions(grid))
-    vh = YFaceField(arch, grid, VVelocityBoundaryConditions(grid))
-    h  = CenterField(arch,  grid, TracerBoundaryConditions(grid))
-    tracers = TracerFields(tracer_names, arch, grid)
+const ConservativeSolutionFields = NamedTuple{(:uh, :vh, :h)}
+const PrimitiveSolutionFields = NamedTuple{(:u, :v, :η)}
 
-    return merge((uh=uh, vh=vh, h=h), tracers)
-end
-
-function ShallowWaterSolutionFields(arch, grid, bcs)
+function ShallowWaterSolutionFields(::ConservativeSolution, arch, grid, bcs)
 
     uh_bcs = :uh ∈ keys(bcs) ? bcs.uh : UVelocityBoundaryConditions(grid)
     vh_bcs = :vh ∈ keys(bcs) ? bcs.vh : VVelocityBoundaryConditions(grid)
@@ -37,6 +33,36 @@ function ShallowWaterSolutionFields(arch, grid, bcs)
 
     return (uh=uh, vh=vh, h=h)
 end
+
+function ShallowWaterSolutionFields(::PrimitiveSolution, arch, grid, bcs)
+    u_bcs = :u ∈ keys(bcs) ? bcs.u : UVelocityBoundaryConditions(grid)
+    v_bcs = :v ∈ keys(bcs) ? bcs.v : VVelocityBoundaryConditions(grid)
+    η_bcs  = :η  ∈ keys(bcs) ? bcs.η  : TracerBoundaryConditions(grid)
+
+    u = XFaceField(arch, grid, u_bcs)
+    v = YFaceField(arch, grid, v_bcs)
+    η = CenterField(arch, grid, η_bcs)
+
+    return (u=u, v=v, η=η)
+end
+
+function ShallowWaterTendencyFields(solution, arch, grid, tracer_names)
+
+    solution_tendencies_tuple = (XFaceField(arch, grid, UVelocityBoundaryConditions(grid)),
+                                 YFaceField(arch, grid, VVelocityBoundaryConditions(grid)),
+                                 CenterField(arch,  grid, TracerBoundaryConditions(grid)))
+
+    solution_names = propertynames(solution)
+    solution_tendencies = NamedTuple{solution_names}(solution_tendencies_tuple)
+
+    tracer_tendencies = TracerFields(tracer_names, arch, grid)
+
+    return merge(solution_tendencies, tracer_tendencies)
+end
+
+#####
+##### ShallowWaterModel
+#####
 
 struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, TS} <: AbstractModel{TS}
 
@@ -66,7 +92,7 @@ function ShallowWaterModel(;
                  forcing::NamedTuple = NamedTuple(),
                              closure = nothing,
                           bathymetry = nothing,
-                            solution = nothing,
+                            solution = ConservativeSolution(),
                              tracers = (),
                        diffusivities = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
@@ -81,15 +107,15 @@ function ShallowWaterModel(;
 
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, nothing)
 
-    solution = ShallowWaterSolutionFields(architecture, grid, boundary_conditions)
+    solution = ShallowWaterSolutionFields(solution, architecture, grid, boundary_conditions)
     tracers  = TracerFields(tracers, architecture, grid, boundary_conditions)
     diffusivities = DiffusivityFields(diffusivities, architecture, grid,
                                       tracernames(tracers), boundary_conditions, closure)
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers);
-                              Gⁿ = ShallowWaterTendencyFields(architecture, grid, tracernames(tracers)),
-                              G⁻ = ShallowWaterTendencyFields(architecture, grid, tracernames(tracers)))
+                              Gⁿ = ShallowWaterTendencyFields(solution, architecture, grid, tracernames(tracers)),
+                              G⁻ = ShallowWaterTendencyFields(solution, architecture, grid, tracernames(tracers)))
 
     # Regularize forcing and closure for model tracer and velocity fields.
     model_fields = merge(solution, tracers)
