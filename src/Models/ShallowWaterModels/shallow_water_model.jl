@@ -16,10 +16,10 @@ using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFi
 using Oceananigans.Utils: inflate_halo_size, tupleit
 
 struct ConservativeSolution end
-struct PrimitiveSolution end
+struct PrimitiveSolutionLinearizedHeight end
 
 const ConservativeSolutionFields = NamedTuple{(:uh, :vh, :h)}
-const PrimitiveSolutionFields = NamedTuple{(:u, :v, :η)}
+const PrimitiveSolutionLinearizedHeightFields = NamedTuple{(:u, :v, :η)}
 
 function ShallowWaterSolutionFields(::ConservativeSolution, arch, grid, bcs)
 
@@ -34,7 +34,7 @@ function ShallowWaterSolutionFields(::ConservativeSolution, arch, grid, bcs)
     return (uh=uh, vh=vh, h=h)
 end
 
-function ShallowWaterSolutionFields(::PrimitiveSolution, arch, grid, bcs)
+function ShallowWaterSolutionFields(::PrimitiveSolutionLinearizedHeight, arch, grid, bcs)
     u_bcs = :u ∈ keys(bcs) ? bcs.u : UVelocityBoundaryConditions(grid)
     v_bcs = :v ∈ keys(bcs) ? bcs.v : VVelocityBoundaryConditions(grid)
     η_bcs  = :η  ∈ keys(bcs) ? bcs.η  : TracerBoundaryConditions(grid)

@@ -1,5 +1,7 @@
 using Oceananigans.Grids: AbstractGrid
 
+import Oceananigans.Advection: div_Uc
+
 #####
 ##### Momentum flux operators
 #####
@@ -31,3 +33,44 @@ using Oceananigans.Grids: AbstractGrid
 # Support for no advection
 @inline div_hUu(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution) where FT = zero(FT)
 @inline div_hUv(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution) where FT = zero(FT)
+
+#####
+##### Primitive advection
+#####
+
+U_dot_grad_u(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, u) where FT = zero(FT)
+U_dot_grad_v(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, u) where FT = zero(FT)
+
+"""
+    U_dot_grad_u(i, j, k, grid, advection, U::PrimitiveSolutionLinearizedHeightFields, u)
+
+Returns...
+"""
+@inline U_dot_grad_u(i, j, k, grid, advection, u, v) = @inbounds (               u[i, j, k] * ℑxᶠᵃᵃ(i, j, k, grid, ∂xᶜᵃᵃ, u)
+                                                                  + ℑyᵃᶜᵃ(i, j, k, grid, v) * ℑyᵃᶜᵃ(i, j, k, grid, ∂yᵃᶠᵃ, u) )
+
+"""
+    U_dot_grad_v(i, j, k, grid, advection, U::PrimitiveSolutionLinearizedHeightFields, v)
+
+"""
+@inline U_dot_grad_v(i, j, k, grid, advection, u, v) = @inbounds (ℑyᵃᶠᵃ(i, j, k, grid, u) * ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᵃᵃ, v)
+                                                                  +            v[i, j, k] * ℑyᵃᶠᵃ(i, j, k, grid, ∂yᵃᶜᵃ, v))
+
+"""
+    div_Uc(i, j, k, grid, advection, U::PrimitiveSolutionLinearizedHeightFields, v)
+
+Calculate the advection of shallow water momentum in the y-direction using the conservative form, ∇·(Uv)
+
+```math
+    1/Aᵘ * [δxᶠᵃᵃ(ℑxᶜᵃᵃ(Ax * u) * ℑxᶜᵃᵃ(u)) + δy_fca(ℑxᶠᵃᵃ(Ay * v) * ℑyᵃᶠᵃ(u))]
+```
+
+which will end up at the location `fcc`.
+"""
+@inline function div_Uc(i, j, k, grid, advection, U::PrimitiveSolutionLinearizedHeightFields, c)
+    return 1/Azᵃᵃᵃ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, advective_tracer_flux_x, advection, U.u, c) +
+                                     δyᵃᶜᵃ(i, j, k, grid, advective_tracer_flux_y, advection, U.v, c))
+end
+
+
+
