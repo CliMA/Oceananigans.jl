@@ -31,7 +31,7 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, F, P} <: AbstractField{X, Y, Z, 
     u, v, w = model.velocities
     
     U = AveragedField(u, dims=(1, 2))
-    V = AveragedField(V, dims=(1, 2))
+    V = AveragedField(v, dims=(1, 2))
     
     u′² = KernelComputedField(Face, Center, Center, compute_variance!, model; field_dependencies=(u, U,))
     v′² = KernelComputedField(Center, Face, Center, compute_variance!, model; field_dependencies=(v, V,))
