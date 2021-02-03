@@ -20,6 +20,12 @@ CUDA.allowscalar(true)
 ##### Makhoul DCT
 #####
 
+"""
+    ω(M, k)
+Return the `M`th root of unity raised to the `k`th power.
+"""
+@inline ω(M, k) = exp(-2im*π*k/M)
+
 @inline permute(i, N) = isodd(i) ? floor(Int, i/2) + 1 : N - floor(Int, (i-1)/2)
 
 @inline unpermute(i, N) = i <= ceil(N/2) ? 2i-1 : 2(N-i+1)
@@ -144,6 +150,34 @@ end
 ##### Utils
 #####
 
+reshaped_size(N, dim) = dim == 1 ? (N, 1, 1) :
+                        dim == 2 ? (1, N, 1) :
+                        dim == 3 ? (1, 1, N) : nothing
+
+"""
+    poisson_eigenvalues(N, L, dim, ::Periodic)
+
+Return the eigenvalues satisfying the discrete form of Poisson's equation
+with periodic boundary conditions along the dimension `dim` with `N` grid
+points and domain extent `L`.
+"""
+function poisson_eigenvalues(N, L, dim, ::Periodic)
+    inds = reshape(1:N, reshaped_size(N, dim)...)
+    return @. (2sin((inds - 1) * π / N) / (L / N))^2
+end
+
+"""
+    poisson_eigenvalues(N, L, dim, ::Bounded)
+
+Return the eigenvalues satisfying the discrete form of Poisson's equation
+with staggered Neumann boundary conditions along the dimension `dim` with
+`N` grid points and domain extent `L`.
+"""
+function poisson_eigenvalues(N, L, dim, ::Bounded)
+    inds = reshape(1:N, reshaped_size(N, dim)...)
+    return @. (2sin((inds - 1) * π / 2N) / (L / N))^2
+end
+
 @kernel function ∇²!(grid, f, ∇²f)
     i, j, k = @index(Global, NTuple)
     @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
@@ -202,8 +236,8 @@ end
 
 function solve_poisson_1d_periodic(R::CuArray, L)
     N = length(R)
-    inds = 1:N
-    λ = CuArray(@. (2sin((inds - 1) * π / N) / (L / N))^2)
+    λ = poisson_eigenvalues(N, L, 1, Periodic()) |> CuArray
+    λ = reshape(λ, N)
 
     ϕ = CUDA.CUFFT.fft(R)
 
@@ -225,5 +259,201 @@ function test_poisson_1d_periodic(N, L)
     return @test ∇²ϕ ≈ RHS
 end
 
-@show test_poisson_1d_periodic(16, 1)
-@show test_poisson_1d_periodic(17, rand())
+@testset "1D Periodic" begin
+    @show test_poisson_1d_periodic(16, 1)
+    @show test_poisson_1d_periodic(17, rand())
+end
+
+#####
+##### 1D Bounded
+#####
+
+function solve_poisson_1d_bounded(R::CuArray, L)
+    N = length(R)
+    λ = poisson_eigenvalues(N, L, 1, Bounded()) |> CuArray
+    λ = reshape(λ, N)
+
+    ϕ = dct_makhoul_1d(R)
+
+    @. ϕ = -ϕ/λ
+    ϕ[1] = 0
+
+    ϕ = idct_makhoul_1d(ϕ)
+
+    return ϕ
+end
+
+function test_poisson_1d_bounded(N, L)
+    topo = (Bounded, Periodic, Periodic)
+    grid = RegularCartesianGrid(topology=topo, size=(N, 1, 1), extent=(L, 1, 1))
+    RHS = random_divergent_source_term(Float64, Oceananigans.GPU(), grid)
+    RHS = reshape(RHS, N)
+    ϕ = solve_poisson_1d_bounded(RHS, L) |> real
+    ∇²ϕ = compute_∇²(ϕ, Float64, Oceananigans.GPU(), grid)
+    return @test ∇²ϕ ≈ RHS
+end
+
+@testset "1D Bounded" begin
+    @show test_poisson_1d_bounded(16, 1)
+    @show test_poisson_1d_bounded(17, rand())
+end
+
+#####
+##### 2D Periodic
+#####
+
+function solve_poisson_2d_periodic(R::CuArray, Lx, Ly)
+    Nx, Ny = size(R)
+    λx = poisson_eigenvalues(Nx, Lx, 1, Periodic()) |> CuArray
+    λy = poisson_eigenvalues(Ny, Ly, 2, Periodic()) |> CuArray
+    λx = reshape(λx, Nx, 1)
+    λy = reshape(λy, 1, Ny)
+
+    ϕ = CUDA.CUFFT.fft(R)
+
+    @. ϕ = - ϕ / (λx + λy)
+    ϕ[1, 1] = 0
+
+    ϕ = CUDA.CUFFT.ifft(ϕ)
+
+    return ϕ
+end
+
+function test_poisson_2d_periodic(Nx, Ny, Lx, Ly)
+    topo = (Periodic, Periodic, Periodic)
+    grid = RegularCartesianGrid(topology=topo, size=(Nx, Ny, 1), extent=(Lx, Ly, 1))
+    RHS = random_divergent_source_term(Float64, Oceananigans.GPU(), grid)
+    RHS = reshape(RHS, Nx, Ny)
+    ϕ = solve_poisson_2d_periodic(RHS, Lx, Ly) |> real
+    ∇²ϕ = compute_∇²(ϕ, Float64, Oceananigans.GPU(), grid)
+    return @test ∇²ϕ ≈ RHS
+end
+
+@testset "2D (Periodic, Periodic)" begin
+    @show test_poisson_2d_periodic(16, 16, 1, 1)
+    @show test_poisson_2d_periodic(16, 32, 1, 2)
+    @show test_poisson_2d_periodic(32, 16, rand(), rand())
+    @show test_poisson_2d_periodic(32, 32, rand(), rand())
+    @show test_poisson_2d_periodic(11, 17, rand(), rand())
+    @show test_poisson_2d_periodic(23, 19, rand(), rand())
+end
+
+#####
+##### 2D Bounded
+#####
+
+function solve_poisson_2d_bounded(R::CuArray, Lx, Ly)
+    Nx, Ny = size(R)
+    λx = poisson_eigenvalues(Nx, Lx, 1, Bounded()) |> CuArray
+    λy = poisson_eigenvalues(Ny, Ly, 2, Bounded()) |> CuArray
+    λx = reshape(λx, Nx, 1)
+    λy = reshape(λy, 1, Ny)
+
+    ϕ = dct_makhoul_2d(R)
+
+    @. ϕ = - ϕ / (λx + λy)
+    ϕ[1, 1] = 0
+
+    ϕ = idct_makhoul_2d(ϕ)
+
+    return ϕ
+end
+
+function test_poisson_2d_bounded(Nx, Ny, Lx, Ly)
+    topo = (Bounded, Bounded, Periodic)
+    grid = RegularCartesianGrid(topology=topo, size=(Nx, Ny, 1), extent=(Lx, Ly, 1))
+    RHS = random_divergent_source_term(Float64, Oceananigans.GPU(), grid)
+    RHS = reshape(RHS, Nx, Ny)
+    ϕ = solve_poisson_2d_bounded(RHS, Lx, Ly) |> real
+    ∇²ϕ = compute_∇²(ϕ, Float64, Oceananigans.GPU(), grid)
+    return @test ∇²ϕ ≈ RHS
+end
+
+@testset "2D (Bounded, Bounded)" begin
+    @show test_poisson_2d_bounded(16, 16, 1, 1)
+    @show test_poisson_2d_bounded(16, 32, 0.2, 1.7)
+    @show test_poisson_2d_bounded(32, 16, rand(), rand())
+    @show test_poisson_2d_bounded(32, 32, rand(), rand())
+    @show test_poisson_2d_bounded(11, 17, rand(), rand())
+    @show test_poisson_2d_bounded(23, 19, rand(), rand())
+end
+
+#####
+##### 2D (Bounded, Periodic)
+#####
+
+function dct_makhoul_2d_dim1(A::CuArray)
+    B = similar(A)
+    Nx, Ny = size(A)
+
+    for i in 1:Nx, j in 1:Ny
+        B[permute(i, Nx), j] = A[i, j]
+    end
+
+    B = CUDA.CUFFT.fft(B, 1)
+
+    for i in 1:Nx, j in 1:Ny
+        B[i, j] = 2 * ω(4Nx, i-1) * B[i, j]
+    end
+
+    return real(B)
+end
+
+function idct_makhoul_2d_dim1(A::CuArray)
+    B = similar(A, complex(eltype(A)))
+    Nx, Ny = size(A)
+
+    for j in 1:Ny
+        B[1, j] = 1/2 * ω(4Nx, 0) * A[1, j]
+        for i in 2:Nx
+            B[i, j] = ω(4Nx, 1-i) * A[i, j]
+        end
+    end
+
+    B = CUDA.CUFFT.ifft(B, 1)
+
+    C = similar(A)
+    for i in 1:Nx, j in 1:Ny
+        C[unpermute(i, Nx), j] = real(B[i, j])
+    end
+
+    return C
+end
+
+function solve_poisson_2d_bp(R::CuArray, Lx, Ly)
+    Nx, Ny = size(R)
+    λx = poisson_eigenvalues(Nx, Lx, 1, Bounded()) |> CuArray
+    λy = poisson_eigenvalues(Ny, Ly, 2, Periodic()) |> CuArray
+    λx = reshape(λx, Nx, 1)
+    λy = reshape(λy, 1, Ny)
+
+    ϕ = dct_makhoul_2d_dim1(R)
+    ϕ = CUDA.CUFFT.fft(ϕ, 2)
+
+    @. ϕ = - ϕ / (λx + λy)
+    ϕ[1, 1] = 0
+
+    ϕ = CUDA.CUFFT.ifft(ϕ, 2)
+    ϕ = idct_makhoul_2d_dim1(ϕ)
+
+    return ϕ
+end
+
+function test_poisson_2d_bp(Nx, Ny, Lx, Ly)
+    topo = (Bounded, Periodic, Periodic)
+    grid = RegularCartesianGrid(topology=topo, size=(Nx, Ny, 1), extent=(Lx, Ly, 1))
+    RHS = random_divergent_source_term(Float64, Oceananigans.GPU(), grid)
+    RHS = reshape(RHS, Nx, Ny)
+    ϕ = solve_poisson_2d_bp(RHS, Lx, Ly) |> real
+    ∇²ϕ = compute_∇²(ϕ, Float64, Oceananigans.GPU(), grid)
+    return @test ∇²ϕ ≈ RHS
+end
+
+@testset "2D (Bounded, Periodic)" begin
+    @show test_poisson_2d_bp(16, 16, 1, 1)
+    @show test_poisson_2d_bp(16, 32, 0.2, 1.7)
+    @show test_poisson_2d_bp(32, 16, rand(), rand())
+    @show test_poisson_2d_bp(32, 32, rand(), rand())
+    @show test_poisson_2d_bp(11, 17, rand(), rand())
+    @show test_poisson_2d_bp(23, 19, rand(), rand())
+end
