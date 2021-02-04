@@ -57,9 +57,9 @@ function plan_transforms(arch, grid, storage, planner_flag)
         forward_plan_z = plan_forward_transform(storage, Bounded(),  [3], planner_flag)
 
         forward_transforms = (
-            x = Transform(forward_plan_x, Forward(), arch, grid, [1]),
-            y = Transform(forward_plan_y, Forward(), arch, grid, [2]),
-            z = Transform(forward_plan_z, Forward(), arch, grid, [3])
+            x = DiscreteTransform(forward_plan_x, Forward(), arch, grid, [1]),
+            y = DiscreteTransform(forward_plan_y, Forward(), arch, grid, [2]),
+            z = DiscreteTransform(forward_plan_z, Forward(), arch, grid, [3])
         )
 
         backward_plan_x = plan_backward_transform(storage, Periodic(), [1], planner_flag)
@@ -67,9 +67,9 @@ function plan_transforms(arch, grid, storage, planner_flag)
         backward_plan_z = plan_backward_transform(storage, Bounded(),  [3], planner_flag)
 
         backward_transforms = (
-            x = Transform(backward_plan_x, Backward(), arch, grid, [1]),
-            y = Transform(backward_plan_y, Backward(), arch, grid, [2]),
-            z = Transform(backward_plan_z, Backward(), arch, grid, [3])
+            x = DiscreteTransform(backward_plan_x, Backward(), arch, grid, [1]),
+            y = DiscreteTransform(backward_plan_y, Backward(), arch, grid, [2]),
+            z = DiscreteTransform(backward_plan_z, Backward(), arch, grid, [3])
         )
 
         buffer_needed = true
@@ -78,19 +78,24 @@ function plan_transforms(arch, grid, storage, planner_flag)
         forward_bounded_plan = plan_forward_transform(storage, Bounded(), bounded_dims, planner_flag)
 
         forward_transforms = (
-            periodic = Transform(forward_periodic_plan, Forward(), arch, grid, periodic_dims),
-            bounded = Transform(forward_bounded_plan, Forward(), arch, grid, bounded_dims)
+            periodic = DiscreteTransform(forward_periodic_plan, Forward(), arch, grid, periodic_dims),
+            bounded = DiscreteTransform(forward_bounded_plan, Forward(), arch, grid, bounded_dims)
         )
 
         backward_periodic_plan = plan_backward_transform(storage, Periodic(), periodic_dims, planner_flag)
         backward_bounded_plan = plan_backward_transform(storage, Bounded(), bounded_dims, planner_flag)
 
         backward_transforms = (
-            periodic = Transform(backward_periodic_plan, Backward(), arch, grid, periodic_dims),
-            bounded = Transform(backward_bounded_plan, Backward(), arch, grid, bounded_dims)
+            periodic = DiscreteTransform(backward_periodic_plan, Backward(), arch, grid, periodic_dims),
+            bounded = DiscreteTransform(backward_bounded_plan, Backward(), arch, grid, bounded_dims)
         )
 
         buffer_needed = false
+    end
+
+    # Need buffer for index permutations.
+    if arch isa GPU && Bounded in topo
+        buffer_needed = true
     end
 
     transforms = (forward = forward_transforms, backward = backward_transforms)

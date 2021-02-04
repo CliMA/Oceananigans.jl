@@ -22,7 +22,10 @@ function poisson_eigenvalues(N, L, dim, ::Bounded)
     return @. (2sin((inds - 1) * π / 2N) / (L / N))^2
 end
 
-# For Flat dimensions
-λx(grid::AbstractGrid{FT, <:Flat}, ::Nothing) where FT = reshape([zero(FT)], 1, 1, 1)
-λy(grid::AbstractGrid{FT, TX, <:Flat}, ::Nothing) where {FT, TX} = reshape([zero(FT)], 1, 1, 1)
-λz(grid::AbstractGrid{FT, TX, TY, <:Flat}, ::Nothing) where {FT, TX, TY} = reshape([zero(FT)], 1, 1, 1)
+"""
+    poisson_eigenvalues(N, L, dim, ::Flat)
+
+No need to do any transforms along `Flat` dimensions so just return zeros
+since they will be added to the eigenvalues for other dimensions.
+"""
+poisson_eigenvalues(N, L, dim, ::Flat) = zeros(1, 1, 1)

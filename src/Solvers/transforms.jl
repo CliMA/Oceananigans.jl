@@ -3,24 +3,46 @@ abstract type AbstractTransformDirection end
 struct Forward <: AbstractTransformDirection end
 struct Backward <: AbstractTransformDirection end
 
-struct Transform{P, D, N, T, R}
-               plan :: P
-          direction :: D
-      normalization :: N
-            twiddle :: T
-          transpose :: R
+struct DiscreteTransform{P, A, G, D, Δ, Ω, N, T, Σ}
+              plan :: P
+      architecture :: A
+              grid :: G
+         direction :: D
+              dims :: Δ
+          topology :: Ω
+     normalization :: N
+           twiddle :: T
+    transpose_dims :: Σ
 end
+
+#####
+##### Normalization factors
+#####
 
 normalization_factor(arch, topo, direction, N) = 1
 
-# FFTW.REDFT01 needs to be normalized by 1/2N.
-# See: http://www.fftw.org/fftw3_doc/1d-Real_002deven-DFTs-_0028DCTs_0029.html#g_t1d-Real_002deven-DFTs-_0028DCTs_0029
+"""
+    normalization_factor(::CPU, ::Bounded, ::Backward, N)
+
+`FFTW.REDFT01` needs to be normalized by 1/2N.
+See: http://www.fftw.org/fftw3_doc/1d-Real_002deven-DFTs-_0028DCTs_0029.html#g_t1d-Real_002deven-DFTs-_0028DCTs_0029
+"""
 normalization_factor(::CPU, ::Bounded, ::Backward, N) = 1/(2N)
+
+#####
+##### Twiddle factors
+#####
 
 twiddle_factors(arch, grid, dim) = nothing
 
-# GPU DCTs need twiddle factors.
+"""
+    twiddle_factors(arch::GPU, grid, dims)
+
+Twiddle factored are needed to perform DCTs on the GPU. See equations (19a) and (22) of [Makhoul80](@cite)
+for the forward and backward twiddle factors respectively.
+"""
 function twiddle_factors(arch::GPU, grid, dims)
+    # We only perform 1D DCTs.
     length(dims) > 1 && return nothing
     dim = dims[1]
 
@@ -48,8 +70,14 @@ function twiddle_factors(arch::GPU, grid, dims)
     return twiddle_factors
 end
 
-function Transform(plan, direction, arch, grid, dims)
-    isnothing(plan) && return Transform{Nothing,Nothing,Nothing,Nothing,Nothing}(nothing, nothing, nothing, nothing, nothing)
+#####
+##### Discrete transforms
+#####
+
+NoTransform() = DiscreteTransform([nothing for _ in fieldnames(DiscreteTransform)]...)
+
+function DiscreteTransform(plan, direction, arch, grid, dims)
+    isnothing(plan) && return NoTransform()
 
     N = size(grid)
     topo = topology(grid)
@@ -57,21 +85,33 @@ function Transform(plan, direction, arch, grid, dims)
     twiddle = twiddle_factors(arch, grid, dims)
     transpose = arch isa GPU && dims == [2] ? (2, 1, 3) : nothing
 
-    return Transform{typeof(plan),typeof(direction),typeof(normalization),typeof(twiddle),typeof(transpose)}(
-        plan, direction, normalization, twiddle, transpose)
+    topo = [topology(grid)[d]() for d in dims]
+    topo = length(topo) == 1 ? topo[1] : topo
+
+    dims = length(dims) == 1 ? dims[1] : dims
+
+    return DiscreteTransform(plan, arch, grid, direction, dims, topo, normalization, twiddle, transpose)
 end
 
-(transform::Transform{<:Nothing})(A, B) = nothing
+(transform::DiscreteTransform{<:Nothing})(A, B) = nothing
 
-function (transform::Transform)(A, B)
+function (transform::DiscreteTransform)(A, B)
     if transform.direction isa Backward && !isnothing(transform.twiddle)
         @. A *= transform.twiddle.backward
     end
 
-    if !isnothing(transform.transpose)
-        permutedims!(B, A, transform.transpose)
+    @show typeof(A)
+    @show typeof(B)
+
+    if transform.direction isa Forward && transform.architecture isa GPU && transform.topology isa Bounded
+        permute_indices!(B, A, transform.architecture, transform.grid, transform.dims)
+        copyto!(A, B)
+    end
+
+    if !isnothing(transform.transpose_dims)
+        permutedims!(B, A, transform.transpose_dims)
         transform.plan * B
-        permutedims!(A, B, transform.transpose)
+        permutedims!(A, B, transform.transpose_dims)
     else
         transform.plan * A
     end
@@ -80,7 +120,12 @@ function (transform::Transform)(A, B)
         @. A = 2 * real(transform.twiddle.forward * A)
     end
 
-    # Avoid a kernel launch if possible.
+    if transform.direction isa Backward && transform.architecture isa GPU && transform.topology isa Bounded
+        unpermute_indices!(B, A, transform.architecture, transform.grid, transform.dims)
+        copyto!(A, B)
+    end
+
+    # Avoid a tiny kernel launch if possible.
     if transform.normalization != 1
         @. A *= transform.normalization
     end
