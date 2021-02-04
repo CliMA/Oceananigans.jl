@@ -163,7 +163,7 @@ end
             u_answer = @. x * y^2
 
             η₀ = rand(size(grid)...)
-            η_answer = deepcopy(h₀)
+            η_answer = deepcopy(η₀)
 
             set!(model, u=u₀, η=η₀)
 
@@ -195,7 +195,7 @@ end
         for solution in (ConservativeSolution(), PrimitiveSolutionLinearizedHeight())
             @testset "Time-step Wizard ShallowWaterModels [$arch, $topos[1], $(typeof(solution))]" begin
                 @info "  Testing time-step wizard ShallowWaterModels [$arch, $topos[1], $(typeof(solution))]..."
-                @test time_step_wizard_shallow_water_model_works(archs[1], topos[1], nothing, solution=solution)
+                @test time_step_wizard_shallow_water_model_works(archs[1], topos[1], nothing, solution)
             end
         end
                 
