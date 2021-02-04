@@ -14,17 +14,16 @@ function benchmark_topology(Arch, N, topo)
     trial = @benchmark begin
         @sync_gpu time_step!($model, 1)
     end samples=10
-    
+
     return trial
 end
 
 # Benchmark parameters
 
 Architectures = has_cuda() ? [CPU, GPU] : [CPU]
-Ns = [192]
-Topologies = [(Periodic, Periodic, Periodic),
-              (Periodic, Periodic,  Bounded),
-              (Periodic, Bounded,   Bounded)]
+Ns = [128]
+PB = (Periodic, Bounded)
+Topologies = collect(Iterators.product(PB, PB, PB))[:]
 
 # Run and summarize benchmarks
 
@@ -41,7 +40,7 @@ if GPU in Architectures
 end
 
 for Arch in Architectures
-    suite_arch = speedups_suite(suite[@tagged Arch], base_case=(Arch, Ns[1], Topologies[1]))
+    suite_arch = speedups_suite(suite[@tagged Arch], base_case=(Arch, Ns[1], (Periodic, Periodic, Periodic)))
     df_arch = speedups_dataframe(suite_arch, slowdown=true)
     sort!(df_arch, [:Topologies, :Ns], by=string)
     benchmarks_pretty_table(df_arch, title="Topologies relative performance ($Arch)")
