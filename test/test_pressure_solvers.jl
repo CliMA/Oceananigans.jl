@@ -91,9 +91,9 @@ function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
     return L¹_error
 end
 
-function poisson_solver_convergence(arch, topo, N¹, N²; FT=Float64)
-    error¹ = analytical_poisson_solver_test(arch, N¹, topo, FT=FT)
-    error² = analytical_poisson_solver_test(arch, N², topo, FT=FT)
+function poisson_solver_convergence(arch, topo, N¹, N²; FT=Float64, mode=1)
+    error¹ = analytical_poisson_solver_test(arch, N¹, topo; FT, mode)
+    error² = analytical_poisson_solver_test(arch, N², topo; FT, mode)
 
     rate = log(error¹ / error²) / log(N² / N¹)
 
@@ -113,7 +113,7 @@ topos = collect(Iterators.product(PB, PB, PB))[:]
 @testset "Pressure solvers" begin
     @info "Testing pressure solvers..."
 
-    for arch in archs
+    for arch in [GPU()]
         @testset "Pressure solver instantiation [$(typeof(arch))]" begin
             @info "  Testing pressure solver instantiation [$(typeof(arch))]..."
             for FT in float_types
@@ -154,7 +154,7 @@ topos = collect(Iterators.product(PB, PB, PB))[:]
             @info "  Testing convergence to analytic solution [$(typeof(arch))]..."
             for topo in topos
                 @test poisson_solver_convergence(arch, topo, 2^6, 2^7)
-                @test poisson_solver_convergence(arch, topo, 67, 131)
+                @test poisson_solver_convergence(arch, topo, 67, 131, mode=2)
             end
         end
     end
