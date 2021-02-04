@@ -49,8 +49,8 @@ function divergence_free_poisson_solution(arch, FT, topo, Nx, Ny, Nz, planner_fl
     R, U = random_divergent_source_term(FT, arch, grid)
 
     p_bcs = PressureBoundaryConditions(grid)
-    ϕ   = CellField(FT, arch, grid, p_bcs)  # "pressure"
-    ∇²ϕ = CellField(FT, arch, grid, p_bcs)
+    ϕ   = CenterField(FT, arch, grid, p_bcs)  # "pressure"
+    ∇²ϕ = CenterField(FT, arch, grid, p_bcs)
 
     # Using Δt = 1 but it doesn't matter since velocities = 0.
     solve_for_pressure!(ϕ.data, solver, arch, grid, 1, datatuple(U))
