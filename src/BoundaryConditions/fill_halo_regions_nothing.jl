@@ -1,7 +1,5 @@
-using Oceananigans.Grids: AbstractGrid, Flat
-
 #####
-##### Suprise: there is no halo-filling in `Flat` directions
+##### Nothing happens when your boundary condition is nothing
 #####
 
 fill_west_halo!(c, ::Nothing, arch, barrier, grid, args...) = nothing
