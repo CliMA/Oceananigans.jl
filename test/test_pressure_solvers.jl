@@ -113,7 +113,7 @@ topos = collect(Iterators.product(PB, PB, PB))[:]
 @testset "Pressure solvers" begin
     @info "Testing pressure solvers..."
 
-    for arch in [GPU()]
+    for arch in archs
         @testset "Pressure solver instantiation [$(typeof(arch))]" begin
             @info "  Testing pressure solver instantiation [$(typeof(arch))]..."
             for FT in float_types
