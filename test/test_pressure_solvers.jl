@@ -6,18 +6,14 @@ function pressure_solver_instantiates(arch, FT, Nx, Ny, Nz, planner_flag)
     return true  # Just making sure the PressureSolver does not error/crash.
 end
 
-function divergence_free_poisson_solution(arch, FT, topo, Nx, Ny, Nz, planner_flag=FFTW.MEASURE)
-    ArrayType = array_type(arch)
-    grid = RegularCartesianGrid(FT, topology=topo, size=(Nx, Ny, Nz), extent=(1.0, 2.5, π))
-    p_bcs = PressureBoundaryConditions(grid)
-    solver = PressureSolver(arch, grid, planner_flag)
-
+function random_divergent_source_term(FT, arch, grid)
     # Generate right hand side from a random (divergent) velocity field.
     Ru = CellField(FT, arch, grid, UVelocityBoundaryConditions(grid))
     Rv = CellField(FT, arch, grid, VVelocityBoundaryConditions(grid))
     Rw = CellField(FT, arch, grid, WVelocityBoundaryConditions(grid))
     U = (u=Ru, v=Rv, w=Rw)
 
+    Nx, Ny, Nz = size(grid)
     set!(Ru, rand(Nx, Ny, Nz))
     set!(Rv, rand(Nx, Ny, Nz))
     set!(Rw, rand(Nx, Ny, Nz))
@@ -28,21 +24,38 @@ function divergence_free_poisson_solution(arch, FT, topo, Nx, Ny, Nz, planner_fl
     fill_halo_regions!(Rw, arch, nothing, nothing)
 
     # Compute the right hand side R = ∇⋅U
+    ArrayType = array_type(arch)
     R = zeros(Nx, Ny, Nz) |> ArrayType
     event = launch!(arch, grid, :xyz, divergence!, grid, U.u.data, U.v.data, U.w.data, R,
                     dependencies=Event(device(arch)))
     wait(device(arch), event)
 
+    return R, U
+end
+
+function compute_∇²!(∇²ϕ, ϕ, arch, grid)
+    fill_halo_regions!(ϕ, arch)
+    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ.data, ∇²ϕ.data, dependencies=Event(device(arch)))
+    wait(device(arch), event)
+    fill_halo_regions!(∇²ϕ, arch)
+    return nothing
+end
+
+function divergence_free_poisson_solution(arch, FT, topo, Nx, Ny, Nz, planner_flag=FFTW.MEASURE)
+    ArrayType = array_type(arch)
+    grid = RegularCartesianGrid(FT, topology=topo, size=(Nx, Ny, Nz), extent=(1.0, 2.5, π))
+
+    solver = PressureSolver(arch, grid, planner_flag)
+    R, U = random_divergent_source_term(FT, arch, grid)
+
+    p_bcs = PressureBoundaryConditions(grid)
     ϕ   = CellField(FT, arch, grid, p_bcs)  # "pressure"
     ∇²ϕ = CellField(FT, arch, grid, p_bcs)
 
     # Using Δt = 1 but it doesn't matter since velocities = 0.
     solve_for_pressure!(ϕ.data, solver, arch, grid, 1, datatuple(U))
 
-    fill_halo_regions!(ϕ, arch)
-    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ.data, ∇²ϕ.data, dependencies=Event(device(arch)))
-    wait(device(arch), event)
-    fill_halo_regions!(∇²ϕ, arch)
+    compute_∇²!(∇²ϕ, ϕ, arch, grid)
 
     return CUDA.@allowscalar interior(∇²ϕ) ≈ R
 end
@@ -56,24 +69,6 @@ end
 
 k²(::Type{Bounded}, n) = (n/2)^2
 k²(::Type{Periodic}, n) = n^2
-
-using Oceananigans.Solvers: permute_index, unpermute_index
-
-@kernel function permute_indices!(dst, src, solver_type, arch, grid)
-    i, j, k = @index(Global, NTuple)
-
-    i′, j′, k′ = permute_index(solver_type, arch, i, j, k, grid.Nx, grid.Ny, grid.Nz)
-
-    @inbounds dst[i′, j′, k′] = src[i, j, k]
-end
-
-@kernel function unpermute_indices!(dst, src, solver_type, arch, grid)
-    i, j, k = @index(Global, NTuple)
-
-    i′, j′, k′ = unpermute_index(solver_type, arch, i, j, k, grid.Nx, grid.Ny, grid.Nz)
-
-    @inbounds dst[i′, j′, k′] = src[i, j, k]
-end
 
 function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
     grid = RegularCartesianGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
@@ -165,6 +160,7 @@ topos = (PPP_topo, PPB_topo, PBB_topo, BBB_topo)
     @test divergence_free_poisson_solution(GPU(), Float64, PPB_topo, 16, 16, 16, FFTW.ESTIMATE)
     @test divergence_free_poisson_solution(GPU(), Float64, PBB_topo, 16, 16, 16, FFTW.ESTIMATE)
     # @test divergence_free_poisson_solution(GPU(), Float64, PBP_topo, 16, 16, 16, FFTW.ESTIMATE)
+    # @test divergence_free_poisson_solution(GPU(), Float64, BBB_topo, 16, 16, 16, FFTW.ESTIMATE)
 
     #=
     @testset "Divergence-free solution [CPU]" begin
