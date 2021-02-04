@@ -17,8 +17,8 @@ using OffsetArrays
 using Oceananigans
 using Oceananigans.Fields
 
-using Oceananigans: Face, Cell
-using Oceananigans.Fields: Face, Cell, nodes
+using Oceananigans: Face, Center
+using Oceananigans.Fields: Face, Center, nodes
 
 import Oceananigans: RegularCartesianGrid
 import Oceananigans.Fields: location

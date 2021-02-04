@@ -27,7 +27,7 @@ export
     TracerBoundaryConditions, PressureBoundaryConditions,
 
     # Fields and field manipulation
-    Field, CellField, XFaceField, YFaceField, ZFaceField,
+    Field, CenterField, XFaceField, YFaceField, ZFaceField,
     BackgroundField, interior, set!,
 
     # Forcing functions
@@ -47,6 +47,9 @@ export
     IsotropicDiffusivity, AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
     ConstantSmagorinsky, AnisotropicMinimumDissipation,
+
+    # Lagrangian particle tracking
+    LagrangianParticles,
 
     # Models
     IncompressibleModel, NonDimensionalModel, Clock,
@@ -142,6 +145,7 @@ include("Coriolis/Coriolis.jl")
 include("Buoyancy/Buoyancy.jl")
 include("SurfaceWaves.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
+include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("Solvers/Solvers.jl")
 include("Forcings/Forcings.jl")
 include("TimeSteppers/TimeSteppers.jl")
@@ -165,6 +169,7 @@ using .Coriolis
 using .Buoyancy
 using .SurfaceWaves
 using .TurbulenceClosures
+using .LagrangianParticleTracking
 using .Solvers
 using .Forcings
 using .Models

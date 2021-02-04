@@ -8,9 +8,9 @@ end
 
 function random_divergent_source_term(FT, arch, grid)
     # Generate right hand side from a random (divergent) velocity field.
-    Ru = CellField(FT, arch, grid, UVelocityBoundaryConditions(grid))
-    Rv = CellField(FT, arch, grid, VVelocityBoundaryConditions(grid))
-    Rw = CellField(FT, arch, grid, WVelocityBoundaryConditions(grid))
+    Ru = CenterField(FT, arch, grid, UVelocityBoundaryConditions(grid))
+    Rv = CenterField(FT, arch, grid, VVelocityBoundaryConditions(grid))
+    Rw = CenterField(FT, arch, grid, WVelocityBoundaryConditions(grid))
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
@@ -74,7 +74,7 @@ function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
     grid = RegularCartesianGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
     solver = PressureSolver(arch, grid)
 
-    xC, yC, zC = nodes((Cell, Cell, Cell), grid, reshape=true)
+    xC, yC, zC = nodes((Center, Center, Center), grid, reshape=true)
 
     TX, TY, TZ = topology(grid)
     Ψ(x, y, z) = ψ(TX, mode, x) * ψ(TY, mode, y) * ψ(TZ, mode, z)

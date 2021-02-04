@@ -73,7 +73,7 @@ function test_diffusion_cosine(fieldname, timestepper)
 
     field = get_model_field(fieldname, model)
 
-    zC = znodes(Cell, grid, reshape=true)
+    zC = znodes(Center, grid, reshape=true)
     interior(field) .= cos.(m * zC)
 
     diffusing_cosine(κ, m, z, t) = exp(-κ * m^2 * t) * cos(m * z)

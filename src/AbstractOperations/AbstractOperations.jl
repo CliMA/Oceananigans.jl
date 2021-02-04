@@ -21,7 +21,7 @@ using Oceananigans.Architectures: device
 using Oceananigans: AbstractModel
 
 import Oceananigans.Architectures: architecture
-import Oceananigans.Fields: data, compute!
+import Oceananigans.Fields: data, compute_at!
 
 #####
 ##### Basic functionality

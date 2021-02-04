@@ -125,7 +125,7 @@
 
             set!(model, enforce_incompressibility=false, u=u₀, v=v₀, w=w₀, T=T₀, S=S₀)
 
-            xC, yC, zC = nodes((Cell, Cell, Cell), model.grid; reshape=true)
+            xC, yC, zC = nodes((Center, Center, Center), model.grid; reshape=true)
             xF, yF, zF = nodes((Face, Face, Face), model.grid; reshape=true)
 
             # Form solution arrays
@@ -140,8 +140,8 @@
             u_cpu = XFaceField(CPU(), grid)
             v_cpu = YFaceField(CPU(), grid)
             w_cpu = ZFaceField(CPU(), grid)
-            T_cpu = CellField(CPU(), grid)
-            S_cpu = CellField(CPU(), grid)
+            T_cpu = CenterField(CPU(), grid)
+            S_cpu = CenterField(CPU(), grid)
 
             set!(u_cpu, u)
             set!(v_cpu, v)

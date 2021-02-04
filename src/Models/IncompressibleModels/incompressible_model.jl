@@ -13,11 +13,11 @@ using Oceananigans.Grids: with_halo
 using Oceananigans.Solvers: PressureSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
+using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: inflate_halo_size, tupleit
 
-
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
-                                   V, S, K, BG} <: AbstractModel{TS}
+                                   V, S, K, BG, P} <: AbstractModel{TS}
          architecture :: A         # Computer `Architecture` on which `Model` is run
                  grid :: G         # Grid of physical points on which `Model` is solved
                 clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
@@ -28,6 +28,7 @@ mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
               forcing :: F         # Container for forcing functions defined by the user
               closure :: E         # Diffusive 'turbulence closure' for all model fields
     background_fields :: BG        # Background velocity and tracer fields
+            particles :: P         # Particle set for Lagrangian tracking
            velocities :: U         # Container for velocity fields `u`, `v`, and `w`
               tracers :: C         # Container for tracer fields
             pressures :: Φ         # Container for hydrostatic and nonhydrostatic pressure
@@ -52,6 +53,7 @@ end
                 tracers = (:T, :S),
             timestepper = :QuasiAdamsBashforth2,
       background_fields = NamedTuple(),
+              particles = nothing,
              velocities = nothing,
               pressures = nothing,
           diffusivities = nothing,
@@ -73,7 +75,7 @@ Keyword arguments
     - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
     - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
     - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
-                 preallocated `CellField`s.
+                 preallocated `CenterField`s.
     - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
                      `:RungeKutta3`.
 """
@@ -92,6 +94,7 @@ function IncompressibleModel(;
                 tracers = (:T, :S),
             timestepper = :QuasiAdamsBashforth2,
       background_fields::NamedTuple = NamedTuple(),
+              particles::Union{Nothing,LagrangianParticles} = nothing,
              velocities = nothing,
               pressures = nothing,
           diffusivities = nothing,
@@ -140,12 +143,13 @@ function IncompressibleModel(;
     timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers))
 
     # Regularize forcing and closure for model tracer and velocity fields.
-    forcing = model_forcing(tracernames(tracers); forcing...)
+    model_fields = merge(velocities, tracers)
+    forcing = model_forcing(model_fields; forcing...)
     closure = with_tracers(tracernames(tracers), closure)
 
     return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, surface_waves,
-                               forcing, closure, background_fields, velocities, tracers, pressures,
-                               diffusivities, timestepper, pressure_solver)
+                               forcing, closure, background_fields, particles, velocities, tracers,
+                               pressures, diffusivities, timestepper, pressure_solver)
 end
 
 #####
