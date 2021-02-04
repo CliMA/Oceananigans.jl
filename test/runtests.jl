@@ -51,7 +51,7 @@ Logging.global_logger(OceananigansLogger())
 float_types = (Float32, Float64)
 
          archs = (CPU(),)
-# @hascuda archs = (GPU(),)
+@hascuda archs = (GPU(),)
 
 closures = (
     :IsotropicDiffusivity,
@@ -77,18 +77,18 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 @testset "Oceananigans" begin
     if group == :unit || group == :all
         @testset "Unit tests" begin
-            # include("test_grids.jl")
-            # include("test_operators.jl")
-            # include("test_boundary_conditions.jl")
-            # include("test_fields.jl")
-            # include("test_averaged_field.jl")
-            # include("test_halo_regions.jl")
-            # include("test_solvers.jl")
+            include("test_grids.jl")
+            include("test_operators.jl")
+            include("test_boundary_conditions.jl")
+            include("test_fields.jl")
+            include("test_averaged_field.jl")
+            include("test_halo_regions.jl")
+            include("test_solvers.jl")
             include("test_pressure_solvers.jl")
-            # include("test_coriolis.jl")
-            # include("test_buoyancy.jl")
-            # include("test_surface_waves.jl")
-            # include("test_utils.jl")
+            include("test_coriolis.jl")
+            include("test_buoyancy.jl")
+            include("test_surface_waves.jl")
+            include("test_utils.jl")
         end
     end
 
