@@ -3,7 +3,7 @@ abstract type AbstractTransformDirection end
 struct Forward <: AbstractTransformDirection end
 struct Backward <: AbstractTransformDirection end
 
-struct DiscreteTransform{P, A, G, D, Δ, Ω, N, T, Σ}
+struct DiscreteTransform{P, D, A, G, Δ, Ω, N, T, Σ}
               plan :: P
       architecture :: A
               grid :: G
@@ -71,7 +71,7 @@ function twiddle_factors(arch::GPU, grid, dims)
 end
 
 #####
-##### Discrete transforms
+##### Constructing discrete transforms
 #####
 
 NoTransform() = DiscreteTransform([nothing for _ in fieldnames(DiscreteTransform)]...)
@@ -93,50 +93,75 @@ function DiscreteTransform(plan, direction, arch, grid, dims)
     return DiscreteTransform(plan, arch, grid, direction, dims, topo, normalization, twiddle, transpose)
 end
 
-(transform::DiscreteTransform{<:Nothing})(A, B) = nothing
+#####
+##### Applying discrete transforms
+#####
 
-function (transform::DiscreteTransform)(A, B)
-    if transform.direction isa Backward && !isnothing(transform.twiddle)
-        @. A *= transform.twiddle.backward
-    end
+(transform::DiscreteTransform{<:Nothing})(A, buffer) = nothing
 
-    @show typeof(A)
-    @show typeof(B)
-
-    if transform.direction isa Forward && transform.architecture isa GPU && transform.topology isa Bounded
-        @info "Permuting!"
-        permute_indices!(B, A, transform.architecture, transform.grid, transform.dims)
-        copyto!(A, B)
-    end
-
-    if !isnothing(transform.transpose_dims)
-        @info "Transposing!"
-        permutedims!(B, A, transform.transpose_dims)
-        transform.plan * B
-        permutedims!(A, B, transform.transpose_dims)
-    else
-        transform.plan * A
-    end
-
-    if transform.direction isa Forward && !isnothing(transform.twiddle)
-        @. A = 2 * real(transform.twiddle.forward * A)
-    end
-
-    if transform.direction isa Backward && transform.architecture isa GPU && transform.topology isa Bounded
-        @info "Unpermuting!"
-        unpermute_indices!(B, A, transform.architecture, transform.grid, transform.dims)
-        copyto!(A, B)
-        @. A = real(A)
-    end
-
-    # Avoid a tiny kernel launch if possible.
-    if transform.normalization != 1
-        @. A *= transform.normalization
-    end
-
+function (transform::DiscreteTransform{P, <:Forward})(A, buffer) where P
+    maybe_permute_indices!(A, buffer, transform.architecture, transform.grid, transform.dims, transform.topology)
+    apply_transform!(A, buffer, transform.plan, transform.transpose_dims)
+    maybe_twiddle_forward!(A, transform.twiddle)
+    maybe_normalize!(A, transform.normalization)
     return nothing
 end
 
-# TODO:
-# Dispatch on Forward/Backward
-# apply_twiddle!, apply_normalization!, etc.
+function (transform::DiscreteTransform{P, <:Backward})(A, buffer) where P
+    maybe_twiddle_backward!(A, transform.twiddle)
+    apply_transform!(A, buffer, transform.plan, transform.transpose_dims)
+    maybe_unpermute_indices!(A, buffer, transform.architecture, transform.grid, transform.dims, transform.topology)
+    maybe_normalize!(A, transform.normalization)
+    return nothing
+end
+
+maybe_permute_indices!(A, B, arch, grid, dim, dim_topo) = nothing
+
+function maybe_permute_indices!(A, B, arch::GPU, grid, dim, ::Bounded)
+    permute_indices!(B, A, arch, grid, dim)
+    copyto!(A, B)
+    return nothing
+end
+
+maybe_unpermute_indices!(A, B, arch, grid, dim, dim_topo) = nothing
+
+function maybe_unpermute_indices!(A, B, arch::GPU, grid, dim, ::Bounded)
+    unpermute_indices!(B, A, arch, grid, dim)
+    copyto!(A, B)
+    @. A = real(A)
+    return nothing
+end
+
+function apply_transform!(A, B, plan, ::Nothing)
+    plan * A
+    return nothing
+end
+
+function apply_transform!(A, B, plan, transpose_dims)
+    permutedims!(B, A, transpose_dims)
+    plan * B
+    permutedims!(A, B, transpose_dims)
+    return nothing
+end
+
+maybe_twiddle_forward!(A, ::Nothing) = nothing
+
+function maybe_twiddle_forward!(A, twiddle)
+    @. A = 2 * real(twiddle.forward * A)
+    return nothing
+end
+
+maybe_twiddle_backward!(A, ::Nothing) = nothing
+
+function maybe_twiddle_backward!(A, twiddle)
+    @. A *= twiddle.backward
+    return nothing
+end
+
+function maybe_normalize!(A, normalization)
+    # Avoid a tiny kernel launch if possible.
+    if normalization != 1
+        @. A *= normalization
+    end
+    return nothing
+end
