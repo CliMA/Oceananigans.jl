@@ -104,11 +104,13 @@ function (transform::DiscreteTransform)(A, B)
     @show typeof(B)
 
     if transform.direction isa Forward && transform.architecture isa GPU && transform.topology isa Bounded
+        @info "Permuting!"
         permute_indices!(B, A, transform.architecture, transform.grid, transform.dims)
         copyto!(A, B)
     end
 
     if !isnothing(transform.transpose_dims)
+        @info "Transposing!"
         permutedims!(B, A, transform.transpose_dims)
         transform.plan * B
         permutedims!(A, B, transform.transpose_dims)
@@ -121,8 +123,10 @@ function (transform::DiscreteTransform)(A, B)
     end
 
     if transform.direction isa Backward && transform.architecture isa GPU && transform.topology isa Bounded
+        @info "Unpermuting!"
         unpermute_indices!(B, A, transform.architecture, transform.grid, transform.dims)
         copyto!(A, B)
+        @. A = real(A)
     end
 
     # Avoid a tiny kernel launch if possible.
@@ -132,3 +136,7 @@ function (transform::DiscreteTransform)(A, B)
 
     return nothing
 end
+
+# TODO:
+# Dispatch on Forward/Backward
+# apply_twiddle!, apply_normalization!, etc.

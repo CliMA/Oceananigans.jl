@@ -1,5 +1,28 @@
 using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!
 
+using Test
+using FFTW
+using Oceananigans
+using Oceananigans.Architectures
+using Oceananigans.Solvers
+using Oceananigans.Utils
+using Oceananigans.Operators
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+using KernelAbstractions: @kernel, @index, Event
+
+import CUDA
+CUDA.allowscalar(true)
+
+@kernel function ∇²!(grid, f, ∇²f)
+    i, j, k = @index(Global, NTuple)
+    @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
+end
+
+@kernel function divergence!(grid, u, v, w, div)
+    i, j, k = @index(Global, NTuple)
+    @inbounds div[i, j, k] = divᶜᶜᶜ(i, j, k, grid, u, v, w)
+end
+
 function pressure_solver_instantiates(arch, FT, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(100, 100, 100))
     solver = PressureSolver(arch, grid, planner_flag)
@@ -43,7 +66,7 @@ end
 
 function divergence_free_poisson_solution(arch, FT, topo, Nx, Ny, Nz, planner_flag=FFTW.MEASURE)
     ArrayType = array_type(arch)
-    grid = RegularCartesianGrid(FT, topology=topo, size=(Nx, Ny, Nz), extent=(1.0, 2.5, π))
+    grid = RegularCartesianGrid(FT, topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
 
     solver = PressureSolver(arch, grid, planner_flag)
     R, U = random_divergent_source_term(FT, arch, grid)
@@ -56,6 +79,8 @@ function divergence_free_poisson_solution(arch, FT, topo, Nx, Ny, Nz, planner_fl
     solve_for_pressure!(ϕ.data, solver, arch, grid, 1, datatuple(U))
 
     compute_∇²!(∇²ϕ, ϕ, arch, grid)
+
+    interior(∇²ϕ) .≈ R
 
     return CUDA.@allowscalar interior(∇²ϕ) ≈ R
 end
