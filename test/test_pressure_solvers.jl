@@ -1,28 +1,5 @@
 using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!
 
-using Test
-using FFTW
-using Oceananigans
-using Oceananigans.Architectures
-using Oceananigans.Solvers
-using Oceananigans.Utils
-using Oceananigans.Operators
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using KernelAbstractions: @kernel, @index, Event
-
-import CUDA
-CUDA.allowscalar(true)
-
-@kernel function ∇²!(grid, f, ∇²f)
-    i, j, k = @index(Global, NTuple)
-    @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
-end
-
-@kernel function divergence!(grid, u, v, w, div)
-    i, j, k = @index(Global, NTuple)
-    @inbounds div[i, j, k] = divᶜᶜᶜ(i, j, k, grid, u, v, w)
-end
-
 function pressure_solver_instantiates(arch, FT, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(100, 100, 100))
     solver = PressureSolver(arch, grid, planner_flag)
@@ -80,8 +57,6 @@ function divergence_free_poisson_solution(arch, FT, topo, Nx, Ny, Nz, planner_fl
 
     compute_∇²!(∇²ϕ, ϕ, arch, grid)
 
-    interior(∇²ϕ) .≈ R
-
     return CUDA.@allowscalar interior(∇²ϕ) ≈ R
 end
 
@@ -97,36 +72,19 @@ k²(::Type{Periodic}, n) = n^2
 
 function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
     grid = RegularCartesianGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
-    solver = PressureSolver(arch, grid, TracerBoundaryConditions(grid))
+    solver = PressureSolver(arch, grid)
 
     xC, yC, zC = nodes((Cell, Cell, Cell), grid, reshape=true)
 
-    Tx, Ty, Tz = topology(grid)
-    Ψ(x, y, z) = ψ(Tx, mode, x) * ψ(Ty, mode, y) * ψ(Tz, mode, z)
-    f(x, y, z) = -(k²(Tx, mode) + k²(Ty, mode) + k²(Tz, mode)) * Ψ(x, y, z)
+    TX, TY, TZ = topology(grid)
+    Ψ(x, y, z) = ψ(TX, mode, x) * ψ(TY, mode, y) * ψ(TZ, mode, z)
+    f(x, y, z) = -(k²(TX, mode) + k²(TY, mode) + k²(TZ, mode)) * Ψ(x, y, z)
 
-    if arch isa GPU && topo == PBB_topo
-        storage = solver.storage.storage1
-    else
-        storage = solver.storage
-    end
+    solver.storage .= convert(array_type(arch), f.(xC, yC, zC))
 
-    buffer = similar(storage)
-    buffer .= convert(array_type(arch), f.(xC, yC, zC))
+    solve_poisson_equation!(solver)
 
-    event = launch!(arch, grid, :xyz,
-                    permute_indices!, storage, buffer, solver.type, arch, grid,
-                    dependencies = Event(device(arch)))
-    wait(device(arch), event)
-
-    solve_poisson_equation!(solver, grid)
-
-    event = launch!(arch, grid, :xyz,
-                    unpermute_indices!, buffer, storage, solver.type, arch, grid,
-                    dependencies = Event(device(arch)))
-    wait(device(arch), event)
-
-    ϕ = real(Array(buffer))
+    ϕ = real(Array(solver.storage))
 
     L¹_error = mean(abs, ϕ - Ψ.(xC, yC, zC))
 
@@ -134,13 +92,13 @@ function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
 end
 
 function poisson_solver_convergence(arch, topo, N¹, N²; FT=Float64)
-    error¹ = analytical_poisson_solver_test(arch, N¹, topo; FT=FT)
-    error² = analytical_poisson_solver_test(arch, N², topo; FT=FT)
+    error¹ = analytical_poisson_solver_test(arch, N¹, topo, FT=FT)
+    error² = analytical_poisson_solver_test(arch, N², topo, FT=FT)
 
     rate = log(error¹ / error²) / log(N² / N¹)
 
-    Tx, Ty, Tz = topo
-    @info "Convergence of L¹-normed error, $(typeof(arch)), $FT, ($(N¹)³ -> $(N²)³), topology=($Tx, $Ty, $Tz): $rate"
+    TX, TY, TZ = topo
+    @info "Convergence of L¹-normed error, $(typeof(arch)), $FT, ($(N¹)³ -> $(N²)³), topology=($TX, $TY, $TZ): $rate"
 
     return isapprox(rate, 2, rtol=5e-3)
 end
@@ -149,92 +107,55 @@ end
 ##### Run pressure solver tests
 #####
 
-const PPP_topo = (Periodic, Periodic, Periodic)
-const PPB_topo = (Periodic, Periodic, Bounded)
-const PBB_topo = (Periodic, Bounded,  Bounded)
-const BBB_topo = (Bounded,  Bounded,  Bounded)
-
-const PBP_topo = (Periodic, Bounded, Periodic)
-
-topos = (PPP_topo, PPB_topo, PBB_topo, BBB_topo)
+PB = (Periodic, Bounded)
+topos = collect(Iterators.product(PB, PB, PB))[:]
 
 @testset "Pressure solvers" begin
     @info "Testing pressure solvers..."
 
-    PB = (Periodic, Bounded)
-    all_topos = collect(Iterators.product(PB, PB, PB))[:]
-
-    # for arch in archs
-    #     @testset "Pressure solver instantiation [$(typeof(arch))]" begin
-    #         @info "  Testing pressure solver instantiation [$(typeof(arch))]..."
-    #         for FT in float_types
-    #             @test pressure_solver_instantiates(arch, FT, 32, 32, 32, FFTW.ESTIMATE)
-    #             @test pressure_solver_instantiates(arch, FT, 1,  32, 32, FFTW.MEASURE)
-    #             @test pressure_solver_instantiates(arch, FT, 32,  1, 32, FFTW.ESTIMATE)
-    #             @test pressure_solver_instantiates(arch, FT,  1,  1, 32, FFTW.MEASURE)
-    #         end
-    #     end
-    # end
-
-    @test divergence_free_poisson_solution(CPU(), Float64, PPP_topo, 16, 16, 16, FFTW.ESTIMATE)
-    @test divergence_free_poisson_solution(CPU(), Float64, PPB_topo, 16, 16, 16, FFTW.ESTIMATE)
-    @test divergence_free_poisson_solution(CPU(), Float64, PBB_topo, 16, 16, 16, FFTW.ESTIMATE)
-    @test divergence_free_poisson_solution(CPU(), Float64, BBB_topo, 16, 16, 16, FFTW.ESTIMATE)
-
-    @test divergence_free_poisson_solution(GPU(), Float64, PPP_topo, 16, 16, 16, FFTW.ESTIMATE)
-    @test divergence_free_poisson_solution(GPU(), Float64, PPB_topo, 16, 16, 16, FFTW.ESTIMATE)
-    @test divergence_free_poisson_solution(GPU(), Float64, PBB_topo, 16, 16, 16, FFTW.ESTIMATE)
-    # @test divergence_free_poisson_solution(GPU(), Float64, PBP_topo, 16, 16, 16, FFTW.ESTIMATE)
-    # @test divergence_free_poisson_solution(GPU(), Float64, BBB_topo, 16, 16, 16, FFTW.ESTIMATE)
-
-    #=
-    @testset "Divergence-free solution [CPU]" begin
-        @info "  Testing divergence-free solution [CPU]..."
-
-        for topo in all_topos
-            @info "    Testing $topo topology on square grids..."
-            for N in [7, 16], FT in float_types
-                @test divergence_free_poisson_solution(CPU(), FT, topo, N, N, N, FFTW.ESTIMATE)
-                @test divergence_free_poisson_solution(CPU(), FT, topo, 1, N, N, FFTW.MEASURE)
-                @test divergence_free_poisson_solution(CPU(), FT, topo, N, 1, N, FFTW.ESTIMATE)
-                @test divergence_free_poisson_solution(CPU(), FT, topo, 1, 1, N, FFTW.MEASURE)
+    for arch in archs
+        @testset "Pressure solver instantiation [$(typeof(arch))]" begin
+            @info "  Testing pressure solver instantiation [$(typeof(arch))]..."
+            for FT in float_types
+                @test pressure_solver_instantiates(arch, FT, 32, 32, 32, FFTW.ESTIMATE)
+                @test pressure_solver_instantiates(arch, FT, 1,  32, 32, FFTW.MEASURE)
+                @test pressure_solver_instantiates(arch, FT, 32,  1, 32, FFTW.ESTIMATE)
+                @test pressure_solver_instantiates(arch, FT,  1,  1, 32, FFTW.MEASURE)
             end
         end
 
-        Ns = [11, 16]
-        for topo in all_topos
-            @info "    Testing $topo topology on rectangular grids..."
-            for Nx in Ns, Ny in Ns, Nz in Ns, FT in float_types
-                @test divergence_free_poisson_solution(CPU(), FT, topo, Nx, Ny, Nz, FFTW.ESTIMATE)
+        @testset "Divergence-free solution [$(typeof(arch))]" begin
+            @info "  Testing divergence-free solution [$(typeof(arch))]..."
+
+            for topo in topos
+                @info "    Testing $topo topology on square grids [$(typeof(arch))]..."
+                for N in [7, 16]
+                    @test divergence_free_poisson_solution(arch, Float64, topo, N, N, N)
+                    @test divergence_free_poisson_solution(arch, Float64, topo, 1, N, N)
+                    @test divergence_free_poisson_solution(arch, Float64, topo, N, 1, N)
+                    @test divergence_free_poisson_solution(arch, Float64, topo, 1, 1, N)
+                end
+            end
+
+            Ns = [11, 16]
+            for topo in topos
+                @info "    Testing $topo topology on rectangular grids with even and prime sizes [$(typeof(arch))]..."
+                for Nx in Ns, Ny in Ns, Nz in Ns
+                    @test divergence_free_poisson_solution(arch, Float64, topo, Nx, Ny, Nz)
+                end
+            end
+
+            # Do a couple at Float32 (kinda expensive to repeat all tests...)
+            @test divergence_free_poisson_solution(arch, Float32, (Periodic, Bounded, Periodic), 16, 16, 16)
+            @test divergence_free_poisson_solution(arch, Float32, (Bounded, Periodic, Bounded), 7,  11, 13)
+        end
+
+        @testset "Convergence to analytic solution [$(typeof(arch))]" begin
+            @info "  Testing convergence to analytic solution [$(typeof(arch))]..."
+            for topo in topos
+                @test poisson_solver_convergence(arch, topo, 2^6, 2^7)
+                @test poisson_solver_convergence(arch, topo, 67, 131)
             end
         end
     end
-
-    @hascuda @testset "Divergence-free solution [GPU]" begin
-        @info "  Testing divergence-free solution [GPU]..."
-        for topo in (PPP_topo, PPB_topo, PBB_topo)
-            @info "    Testing $topo topology on GPUs..."
-            @test divergence_free_poisson_solution(GPU(), Float64, topo, 16, 16, 16)
-            @test divergence_free_poisson_solution(GPU(), Float64, topo, 32, 32, 16)
-            @test divergence_free_poisson_solution(GPU(), Float64, topo, 16, 32, 24)
-	        @test divergence_free_poisson_solution(GPU(), Float64, topo, 5,  7,  11)
-        end
-    end
-
-    @testset "Convergence to analytical solution [CPU]" begin
-        @info "  Testing convergence to analytical solution [CPU]..."
-        for topo in topos
-            @test poisson_solver_convergence(CPU(), topo, 2^6, 2^7)
-            @test poisson_solver_convergence(CPU(), topo, 67, 131)
-        end
-    end
-
-    @hascuda @testset "Convergence to analytical solution [GPU]" begin
-        @info "  Testing convergence to analytical solution [GPU]..."
-        for topo in (PPP_topo, PPB_topo, PBB_topo)
-            @test poisson_solver_convergence(GPU(), topo, 2^6, 2^7)
-            @test poisson_solver_convergence(GPU(), topo, 67, 131)
-        end
-    end
-    =#
 end
