@@ -138,9 +138,20 @@ function apply_transform!(A, B, plan, ::Nothing)
 end
 
 function apply_transform!(A, B, plan, transpose_dims)
-    permutedims!(B, A, transpose_dims)
-    plan * B
-    permutedims!(A, B, transpose_dims)
+    old_size = size(A)
+    transposed_size = [old_size[d] for d in transpose_dims]
+
+    if old_size == transposed_size
+        permutedims!(B, A, transpose_dims)
+        plan * B
+        permutedims!(A, B, transpose_dims)
+    else
+        B_reshaped = reshape(B, transposed_size...)
+        permutedims!(B_reshaped, A, transpose_dims)
+        plan * B_reshaped
+        permutedims!(A, B_reshaped, transpose_dims)
+    end
+
     return nothing
 end
 

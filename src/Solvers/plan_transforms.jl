@@ -48,6 +48,7 @@ function plan_backward_transform(A::CuArray, topo, dims, planner_flag)
 end
 
 function plan_transforms(arch, grid, storage, planner_flag)
+    Nx, Ny, Nz = size(grid)
     topo = topology(grid)
     periodic_dims = findall(t -> t == Periodic, topo)
     bounded_dims = findall(t -> t == Bounded, topo)
@@ -55,11 +56,11 @@ function plan_transforms(arch, grid, storage, planner_flag)
     if arch isa GPU && topo in non_batched_topologies
         if topo == (Periodic, Bounded, Bounded)
             forward_plan_x = plan_forward_transform(storage, Periodic(), [1], planner_flag)
-            forward_plan_y = plan_forward_transform(storage, Bounded(),  [1], planner_flag)
+            forward_plan_y = plan_forward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(),  [1], planner_flag)
             forward_plan_z = plan_forward_transform(storage, Bounded(),  [3], planner_flag)
 
             backward_plan_x = plan_backward_transform(storage, Periodic(), [1], planner_flag)
-            backward_plan_y = plan_backward_transform(storage, Bounded(),  [1], planner_flag)
+            backward_plan_y = plan_backward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(),  [1], planner_flag)
             backward_plan_z = plan_backward_transform(storage, Bounded(),  [3], planner_flag)
 
             forward_transforms = (
@@ -76,11 +77,11 @@ function plan_transforms(arch, grid, storage, planner_flag)
 
         elseif topo == (Periodic, Bounded, Periodic)
             forward_plan_x = plan_forward_transform(storage, Periodic(), [1], planner_flag)
-            forward_plan_y = plan_forward_transform(storage, Bounded(),  [1], planner_flag)
+            forward_plan_y = plan_forward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(),  [1], planner_flag)
             forward_plan_z = plan_forward_transform(storage, Periodic(), [3], planner_flag)
 
             backward_plan_x = plan_backward_transform(storage, Periodic(), [1], planner_flag)
-            backward_plan_y = plan_backward_transform(storage, Bounded(),  [1], planner_flag)
+            backward_plan_y = plan_backward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(),  [1], planner_flag)
             backward_plan_z = plan_backward_transform(storage, Periodic(), [3], planner_flag)
 
             forward_transforms = (
@@ -97,11 +98,11 @@ function plan_transforms(arch, grid, storage, planner_flag)
 
         elseif topo == (Bounded, Periodic, Bounded)
             forward_plan_x = plan_forward_transform(storage, Bounded(), [1], planner_flag)
-            forward_plan_y = plan_forward_transform(storage, Periodic(), [1], planner_flag)
+            forward_plan_y = plan_forward_transform(reshape(storage, (Ny, Nx, Nz)), Periodic(), [1], planner_flag)
             forward_plan_z = plan_forward_transform(storage, Bounded(), [3], planner_flag)
 
             backward_plan_x = plan_backward_transform(storage, Bounded(), [1], planner_flag)
-            backward_plan_y = plan_backward_transform(storage, Periodic(),  [1], planner_flag)
+            backward_plan_y = plan_backward_transform(reshape(storage, (Ny, Nx, Nz)), Periodic(),  [1], planner_flag)
             backward_plan_z = plan_backward_transform(storage, Bounded(), [3], planner_flag)
 
             forward_transforms = (
@@ -118,11 +119,11 @@ function plan_transforms(arch, grid, storage, planner_flag)
 
         elseif topo == (Bounded, Bounded, Periodic)
             forward_plan_x = plan_forward_transform(storage, Bounded(),  [1], planner_flag)
-            forward_plan_y = plan_forward_transform(storage, Bounded(),  [1], planner_flag)
+            forward_plan_y = plan_forward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(),  [1], planner_flag)
             forward_plan_z = plan_forward_transform(storage, Periodic(), [3], planner_flag)
 
             backward_plan_x = plan_backward_transform(storage, Bounded(),  [1], planner_flag)
-            backward_plan_y = plan_backward_transform(storage, Bounded(),  [1], planner_flag)
+            backward_plan_y = plan_backward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(),  [1], planner_flag)
             backward_plan_z = plan_backward_transform(storage, Periodic(), [3], planner_flag)
 
             forward_transforms = (
@@ -139,11 +140,11 @@ function plan_transforms(arch, grid, storage, planner_flag)
 
         elseif topo == (Bounded, Bounded, Bounded)
             forward_plan_x = plan_forward_transform(storage, Bounded(), [1], planner_flag)
-            forward_plan_y = plan_forward_transform(storage, Bounded(), [1], planner_flag)
+            forward_plan_y = plan_forward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(), [1], planner_flag)
             forward_plan_z = plan_forward_transform(storage, Bounded(), [3], planner_flag)
 
             backward_plan_x = plan_backward_transform(storage, Bounded(), [1], planner_flag)
-            backward_plan_y = plan_backward_transform(storage, Bounded(),  [1], planner_flag)
+            backward_plan_y = plan_backward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(),  [1], planner_flag)
             backward_plan_z = plan_backward_transform(storage, Bounded(), [3], planner_flag)
 
             forward_transforms = (
