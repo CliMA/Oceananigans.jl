@@ -3,7 +3,7 @@
 # https://github.com/CliMA/Oceananigans.jl/pull/997
 
 """
-    _permute_index(i, N)
+    permute_index(i, N)
 
 Permute `i` such that, for example, `i ∈ 1:N` becomes
 
@@ -12,13 +12,15 @@ Permute `i` such that, for example, `i ∈ 1:N` becomes
     [1, 2, 3, 4, 5, 6, 7, 8, 9] -> [1, 9, 2, 8, 3, 7, 4, 6, 5]
 
 for `N=8` and `N=9` respectively.
+
+See equation (20) of [Makhoul80](@cite).
 """
-@inline _permute_index(i, N)::Int = ifelse(isodd(i),
-                                           Base.unsafe_trunc(Int, i/2) + 1,
-                                           N - Base.unsafe_trunc(Int, (i-1)/2))
+@inline permute_index(i, N)::Int = ifelse(isodd(i),
+                                          Base.unsafe_trunc(Int, i/2) + 1,
+                                          N - Base.unsafe_trunc(Int, (i-1)/2))
 
 """
-    _unpermute_index(i, N)
+    unpermute_index(i, N)
 
 Permute `i` in the opposite manner as `_permute_index`, such that,
 for example, `i ∈ 1:N` becomes
@@ -28,13 +30,65 @@ for example, `i ∈ 1:N` becomes
    [1, 2, 3, 4, 5, 6, 7, 8, 9] -> [1, 3, 5, 7, 9, 8, 6, 4, 2]
 
 for `N=8` and `N=9` respectively.
+
+See equation (20) of [Makhoul80](@cite).
 """
-@inline _unpermute_index(i, N) = ifelse(i <= ceil(N/2), 2i-1, 2(N-i+1))
+@inline unpermute_index(i, N) = ifelse(i <= ceil(N/2), 2i-1, 2(N-i+1))
 
-# Fallback (do not permute)
-@inline permute_index(arch, topo, i, N) = i
-@inline unpermute_index(arch, topo, i, N) = i
+@kernel function permute_x_indices!(dst, src, grid)
+    i, j, k = @index(Global, NTuple)
+    i′ = permute_index(i, grid.Nx)
+    @inbounds dst[i′, j, k] = src[i, j, k]
+end
 
-# Only need to permute along bounded dimensions on GPUs.
-@inline permute_index(::GPU, ::Bounded, i, N) = _permute_index(i, N)
-@inline unpermute_index(::GPU, ::Bounded, i, N) = _unpermute_index(i, N)
+@kernel function permute_y_indices!(dst, src, grid)
+    i, j, k = @index(Global, NTuple)
+    j′ = permute_index(j, grid.Ny)
+    @inbounds dst[i, j′, k] = src[i, j, k]
+end
+
+@kernel function permute_z_indices!(dst, src, grid)
+    i, j, k = @index(Global, NTuple)
+    k′ = permute_index(k, grid.Nz)
+    @inbounds dst[i, j, k′] = src[i, j, k]
+end
+
+@kernel function unpermute_x_indices!(dst, src, grid)
+    i, j, k = @index(Global, NTuple)
+    i′ = unpermute_index(i, grid.Nx)
+    @inbounds dst[i′, j, k] = src[i, j, k]
+end
+
+@kernel function unpermute_y_indices!(dst, src, grid)
+    i, j, k = @index(Global, NTuple)
+    j′ = unpermute_index(j, grid.Ny)
+    @inbounds dst[i, j′, k] = src[i, j, k]
+end
+
+@kernel function unpermute_z_indices!(dst, src, grid)
+    i, j, k = @index(Global, NTuple)
+    k′ = unpermute_index(k, grid.Nz)
+    @inbounds dst[i, j, k′] = src[i, j, k]
+end
+
+permute_kernel! = Dict(
+    1 => permute_x_indices!,
+    2 => permute_y_indices!,
+    3 => permute_z_indices!
+)
+
+unpermute_kernel! = Dict(
+    1 => unpermute_x_indices!,
+    2 => unpermute_y_indices!,
+    3 => unpermute_z_indices!
+)
+
+function permute_indices!(dst, src, arch, grid, dim)
+    event = launch!(arch, grid, :xyz, permute_kernel![dim], dst, src, grid, dependencies=Event(device(arch)))
+    wait(device(arch), event)
+end
+
+function unpermute_indices!(dst, src, arch, grid, dim)
+    event = launch!(arch, grid, :xyz, unpermute_kernel![dim], dst, src, grid, dependencies=Event(device(arch)))
+    wait(device(arch), event)
+end
