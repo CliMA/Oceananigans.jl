@@ -5,16 +5,8 @@ function solve_poisson_equation!(solver)
     # We can use the same storage for the RHS and the solution ϕ.
     RHS, ϕ = solver.storage, solver.storage
 
-    # Apply forward transforms
-    if :bounded in keys(solver.transforms.forward)
-        solver.transforms.forward.bounded(RHS, solver.buffer)
-        solver.transforms.forward.periodic(RHS, solver.buffer)
-    elseif :x in keys(solver.transforms.forward)
-        # Do DCT first
-        solver.transforms.forward.z(RHS, solver.buffer)
-        solver.transforms.forward.y(RHS, solver.buffer)
-        solver.transforms.forward.x(RHS, solver.buffer)
-    end
+    # Apply forward transforms in order
+    [transform!(RHS, solver.buffer) for transform! in solver.transforms.forward]
 
     # Solve the discrete Poisson equation.
     @. ϕ = -RHS / (λx + λy + λz)
@@ -24,16 +16,8 @@ function solve_poisson_equation!(solver)
     # and so the DC component comes out to be ∞.
     CUDA.@allowscalar ϕ[1, 1, 1] = 0
 
-    # Apply backward transforms
-    if :bounded in keys(solver.transforms.backward)
-        solver.transforms.backward.periodic(ϕ, solver.buffer)
-        solver.transforms.backward.bounded(ϕ, solver.buffer)
-    elseif :x in keys(solver.transforms.backward)
-        # Do DCT last
-        solver.transforms.backward.x(ϕ, solver.buffer)
-        solver.transforms.backward.y(ϕ, solver.buffer)
-        solver.transforms.backward.z(ϕ, solver.buffer)
-    end
+    # Apply backward transforms in order
+    [transform!(RHS, solver.buffer) for transform! in solver.transforms.backward]
 
     return nothing
 end
