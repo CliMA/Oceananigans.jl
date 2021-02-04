@@ -2,44 +2,70 @@ using Adapt
 using Statistics
 using KernelAbstractions: @kernel, @index, Event
 using Oceananigans.Grids
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 
 """
     struct ComputedField{X, Y, Z, A, G, O} <: AbstractField{X, Y, Z, A, G}
 
 Type representing a field computed from an operand.
 """
-struct ComputedField{X, Y, Z, S, A, G, O} <: AbstractField{X, Y, Z, A, G}
-       data :: A
-       grid :: G
-    operand :: O
-     status :: S
+struct ComputedField{X, Y, Z, S, A, G, O, C} <: AbstractField{X, Y, Z, A, G}
+                   data :: A
+                   grid :: G
+                operand :: O
+    boundary_conditions :: C
+                 status :: S
 
-    function ComputedField{X, Y, Z}(data, grid, operand; recompute_safely=true) where {X, Y, Z}
+    function ComputedField{X, Y, Z}(data::A,
+                                    grid::G,
+                                    operand::O,
+                                    boundary_conditions::C;
+                                    recompute_safely=true) where {X, Y, Z, A, G, O, C}
+
         validate_field_data(X, Y, Z, data, grid)
 
         # Use FieldStatus if we want to avoid always recomputing
         status = recompute_safely ? nothing : FieldStatus(0.0)
 
-        return new{X, Y, Z, typeof(status), typeof(data),
-                   typeof(grid), typeof(operand)}(data, grid, operand, status)
-    end
-
-    function ComputedField{X, Y, Z}(data, grid, operand, status) where {X, Y, Z}
-        validate_field_data(X, Y, Z, data, grid)
-
-        return new{X, Y, Z, typeof(status), typeof(data),
-                   typeof(grid), typeof(operand)}(data, grid, operand, status)
+        return new{X, Y, Z, typeof(status), A, G, O, C}(data, grid, operand, boundary_conditions, status)
     end
 end
 
+# We define special default boundary conditions for ComputedField, because currently
+# `DefaultBoundaryCondition` uses ImpenetrableBoundaryCondition() in bounded directions
+# and for fields on Faces, which is not what we want in general for ComputedFields
+DefaultComputedFieldBoundaryCondition(::Type{Grids.Periodic}, loc) = PeriodicBoundaryCondition()
+DefaultComputedFieldBoundaryCondition(::Type{Flat}, loc) = nothing
+DefaultComputedFieldBoundaryCondition(::Type{Bounded}, ::Type{Center}) = NoFluxBoundaryCondition()
+DefaultComputedFieldBoundaryCondition(::Type{Bounded}, ::Type{Face}) = nothing
+
+function ComputedFieldBoundaryConditions(grid, loc,
+                                           east = DefaultComputedFieldBoundaryCondition(topology(grid, 1), loc[1]),
+                                           west = DefaultComputedFieldBoundaryCondition(topology(grid, 1), loc[1]),
+                                          south = DefaultComputedFieldBoundaryCondition(topology(grid, 2), loc[2]),
+                                          north = DefaultComputedFieldBoundaryCondition(topology(grid, 2), loc[2]),
+                                         bottom = DefaultComputedFieldBoundaryCondition(topology(grid, 3), loc[3]),
+                                            top = DefaultComputedFieldBoundaryCondition(topology(grid, 3), loc[3]))
+
+    return FieldBoundaryConditions(grid, loc; east=east, west=west, south=south, north=north, bottom=bottom, top=top)
+end
+
 """
-    ComputedField(operand; data=nothing)
+    ComputedField(operand; data = nothing, recompute_safely = true,
+                  boundary_conditions = ComputedFieldBoundaryConditions(operand.grid, location(operand))
 
 Returns a field whose data is `computed` from `operand`.
+
 If the keyword argument `data` is not provided, memory is allocated to store
 the result. The `arch`itecture of `data` is inferred from `operand`.
+
+If `data` is provided and `recompute_safely=false`, then "recomputation" of the `ComputedField`
+is avoided if possible.
+
+`boundary_conditions` are set to 
 """
-function ComputedField(operand; data=nothing, recompute_safely=true)
+function ComputedField(operand; data = nothing, recompute_safely = true,
+                       boundary_conditions = ComputedFieldBoundaryConditions(operand.grid, location(operand)))
     
     loc = location(operand)
     arch = architecture(operand)
@@ -50,7 +76,7 @@ function ComputedField(operand; data=nothing, recompute_safely=true)
         recompute_safely = false
     end
 
-    return ComputedField{loc[1], loc[2], loc[3]}(data, grid, operand; recompute_safely=recompute_safely)
+    return ComputedField{loc[1], loc[2], loc[3]}(data, grid, operand, boundary_conditions; recompute_safely=recompute_safely)
 end
 
 """
@@ -73,6 +99,8 @@ function compute!(comp::ComputedField{X, Y, Z}, time=nothing) where {X, Y, Z}
     event = compute_kernel!(comp.data, comp.operand; dependencies=Event(device(arch)))
 
     wait(device(arch), event)
+
+    fill_halo_regions!(comp, arch)
 
     return nothing
 end
