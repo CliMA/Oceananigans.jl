@@ -1,9 +1,9 @@
 using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!
 
-function pressure_solver_instantiates(arch, FT, Nx, Ny, Nz, planner_flag)
+function poisson_solver_instantiates(arch, FT, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(100, 100, 100))
-    solver = PressureSolver(arch, grid, planner_flag)
-    return true  # Just making sure the PressureSolver does not error/crash.
+    solver = FFTBasedPoissonSolver(arch, grid, planner_flag)
+    return true  # Just making sure the FFTBasedPoissonSolver does not error/crash.
 end
 
 function random_divergent_source_term(FT, arch, grid)
@@ -45,7 +45,7 @@ function divergence_free_poisson_solution(arch, FT, topo, Nx, Ny, Nz, planner_fl
     ArrayType = array_type(arch)
     grid = RegularCartesianGrid(FT, topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
 
-    solver = PressureSolver(arch, grid, planner_flag)
+    solver = FFTBasedPoissonSolver(arch, grid, planner_flag)
     R, U = random_divergent_source_term(FT, arch, grid)
 
     p_bcs = PressureBoundaryConditions(grid)
@@ -72,7 +72,7 @@ k²(::Type{Periodic}, n) = n^2
 
 function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
     grid = RegularCartesianGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
-    solver = PressureSolver(arch, grid)
+    solver = FFTBasedPoissonSolver(arch, grid)
 
     xC, yC, zC = nodes((Center, Center, Center), grid, reshape=true)
 
@@ -110,17 +110,17 @@ end
 PB = (Periodic, Bounded)
 topos = collect(Iterators.product(PB, PB, PB))[:]
 
-@testset "Pressure solvers" begin
-    @info "Testing pressure solvers..."
+@testset "Poisson solvers" begin
+    @info "Testing Poisson solvers..."
 
     for arch in archs
-        @testset "Pressure solver instantiation [$(typeof(arch))]" begin
-            @info "  Testing pressure solver instantiation [$(typeof(arch))]..."
+        @testset "Poisson solver instantiation [$(typeof(arch))]" begin
+            @info "  Testing Poisson solver instantiation [$(typeof(arch))]..."
             for FT in float_types
-                @test pressure_solver_instantiates(arch, FT, 32, 32, 32, FFTW.ESTIMATE)
-                @test pressure_solver_instantiates(arch, FT, 1,  32, 32, FFTW.MEASURE)
-                @test pressure_solver_instantiates(arch, FT, 32,  1, 32, FFTW.ESTIMATE)
-                @test pressure_solver_instantiates(arch, FT,  1,  1, 32, FFTW.MEASURE)
+                @test poisson_solver_instantiates(arch, FT, 32, 32, 32, FFTW.ESTIMATE)
+                @test poisson_solver_instantiates(arch, FT, 1,  32, 32, FFTW.MEASURE)
+                @test poisson_solver_instantiates(arch, FT, 32,  1, 32, FFTW.ESTIMATE)
+                @test poisson_solver_instantiates(arch, FT,  1,  1, 32, FFTW.MEASURE)
             end
         end
 

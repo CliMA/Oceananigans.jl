@@ -1,4 +1,4 @@
-struct PressureSolver{A, G, E, S, B, T}
+struct FFTBasedPoissonSolver{A, G, E, S, B, T}
     architecture :: A
             grid :: G
      eigenvalues :: E
@@ -7,7 +7,7 @@ struct PressureSolver{A, G, E, S, B, T}
       transforms :: T
 end
 
-function PressureSolver(arch, grid, planner_flag=FFTW.PATIENT)
+function FFTBasedPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
     topo = (TX, TY, TZ) =  topology(grid)
 
     λx = poisson_eigenvalues(grid.Nx, grid.Lx, 1, TX())
@@ -27,5 +27,5 @@ function PressureSolver(arch, grid, planner_flag=FFTW.PATIENT)
     # TODO: buffer should have size of storage permuted by (2, 1, 3).
     buffer = buffer_needed ? similar(storage) : nothing
 
-    return PressureSolver(arch, grid, eigenvalues, storage, buffer, transforms)
+    return FFTBasedPoissonSolver(arch, grid, eigenvalues, storage, buffer, transforms)
 end

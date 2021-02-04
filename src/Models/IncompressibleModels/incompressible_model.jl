@@ -10,7 +10,7 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: with_halo
-using Oceananigans.Solvers: PressureSolver
+using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
@@ -134,7 +134,7 @@ function IncompressibleModel(;
                                       tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
-        pressure_solver = PressureSolver(architecture, grid)
+        pressure_solver = FFTBasedPoissonSolver(architecture, grid)
     end
 
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
