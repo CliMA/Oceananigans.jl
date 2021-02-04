@@ -130,7 +130,9 @@ function IncompressibleModel(;
     diffusivities = DiffusivityFields(diffusivities, architecture, grid,
                                       tracernames(tracers), boundary_conditions, closure)
 
-    pressure_solver = PressureSolver(pressure_solver, architecture, grid, PressureBoundaryConditions(grid))
+    if isnothing(pressure_solver)
+        pressure_solver = PressureSolver(architecture, grid)
+    end
 
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
 
