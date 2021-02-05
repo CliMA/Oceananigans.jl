@@ -7,6 +7,7 @@ using Oceananigans.Grids: validate_tupled_argument
 using Oceananigans.BoundaryConditions: BCType
 
 import Oceananigans.BoundaryConditions:
+    bctype_str, print_condition,
     fill_west_halo!, fill_east_halo!, fill_south_halo!,
     fill_north_halo!, fill_bottom_halo!, fill_top_halo!
 
@@ -27,8 +28,6 @@ end
 #####
 ##### Rank connectivity graph
 #####
-
-const Connectivity = NamedTuple{(:east, :west, :north, :south, :top, :bottom)}
 
 struct RankConnectivity{E, W, N, S, T, B}
       east :: E
@@ -97,20 +96,22 @@ end
 
 struct HaloCommunication <: BCType end
 
-const HaloCommunicationBC = BoundaryCondition{<:HaloCommunication}
+# const HaloCommunicationBC = BoundaryCondition{<:HaloCommunication}
+
+bctype_str(::HaloCommunicationBC) ="HaloCommunication"
 
 HaloCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(HaloCommunication, val; kwargs...)
 
-struct HaloCommunicationRanks{T}
-    from :: T
+struct HaloCommunicationRanks{F, T}
+    from :: F
       to :: T
 end
 
 HaloCommunicationRanks(; from, to) = HaloCommunicationRanks(from, to)
 
-function inject_halo_communication_boundary_conditions(field_bcs, my_rank, connectivity)
-    new_field_bcs = []
+print_condition(hcr::HaloCommunicationRanks) = "(from rank $(hcr.from), to rank $(hcr.to))"
 
+function inject_halo_communication_boundary_conditions(field_bcs, my_rank, connectivity)
     rank_east = connectivity.east
     rank_west = connectivity.west
     rank_north = connectivity.north
@@ -132,14 +133,14 @@ function inject_halo_communication_boundary_conditions(field_bcs, my_rank, conne
     top_comm_bc = HaloCommunicationBoundaryCondition(top_comm_ranks)
     bottom_comm_bc = HaloCommunicationBoundaryCondition(bottom_comm_ranks)
 
-    x_bcs = CoordinateBoundaryConditions(isnothing(rank_west) ? field_bcs.x.left : west_comm_bc,
-                                         isnothing(rank_east) ? field_bcs.x.right : east_comm_bc)
+    x_bcs = CoordinateBoundaryConditions(isnothing(rank_west) ? field_bcs.west : west_comm_bc,
+                                         isnothing(rank_east) ? field_bcs.east : east_comm_bc)
 
-    y_bcs = CoordinateBoundaryConditions(isnothing(rank_south) ? field_bcs.y.south : south_comm_bc,
-                                         isnothing(rank_north) ? field_bcs.y.north : north_comm_bc)
+    y_bcs = CoordinateBoundaryConditions(isnothing(rank_south) ? field_bcs.south : south_comm_bc,
+                                         isnothing(rank_north) ? field_bcs.north : north_comm_bc)
 
-    z_bcs = CoordinateBoundaryConditions(isnothing(rank_bottom) ? field_bcs.z.bottom : bottom_comm_bc,
-                                         isnothing(rank_top) ? field_bcs.z.top : top_comm_bc)
+    z_bcs = CoordinateBoundaryConditions(isnothing(rank_bottom) ? field_bcs.bottom : bottom_comm_bc,
+                                         isnothing(rank_top) ? field_bcs.top : top_comm_bc)
 
     return FieldBoundaryConditions(x_bcs, y_bcs, z_bcs)
 end
@@ -235,10 +236,10 @@ end
 #####
 
 struct DistributedModel{I, A, R, G}
-                 index :: I
-                 ranks :: R
-                 model :: A
-          connectivity :: G
+           index :: I
+           ranks :: R
+           model :: A
+    connectivity :: G
 end
 
 """
@@ -249,7 +250,7 @@ x, y, z: Left and right endpoints for each dimension.
 ranks: Number of ranks in each dimension.
 model_kwargs: Passed to `Model` constructor.
 """
-function DistributedModel(; grid, ranks, model_kwargs...)
+function DistributedModel(; grid, ranks, boundary_conditions=nothing, model_kwargs...)
     validate_tupled_argument(ranks, Int, "ranks")
 
     Nx, Ny, Nz = size(grid)
@@ -276,7 +277,7 @@ function DistributedModel(; grid, ranks, model_kwargs...)
     end
 
     i, j, k = index = rank2index(my_rank, Rx, Ry, Rz)
-    @debug "My rank: $my_rank, my index: $index"
+    @info "My rank: $my_rank, my index: $index"
 
     #####
     ##### Construct local grid
@@ -294,7 +295,7 @@ function DistributedModel(; grid, ranks, model_kwargs...)
     y₁, y₂ = yL + (j-1)*ly, yL + j*ly
     z₁, z₂ = zL + (k-1)*lz, zL + k*lz
 
-    @debug "Constructing local grid: n=($nx, $ny, $nz), x ∈ [$x₁, $x₂], y ∈ [$y₁, $y₂], z ∈ [$z₁, $z₂]"
+    @info "Constructing local grid: n=($nx, $ny, $nz), x ∈ [$x₁, $x₂], y ∈ [$y₁, $y₂], z ∈ [$z₁, $z₂]"
     my_grid = RegularCartesianGrid(topology=topology(grid), size=(nx, ny, nz), x=(x₁, x₂), y=(y₁, y₂), z=(z₁, z₂))
 
     #####
@@ -302,20 +303,43 @@ function DistributedModel(; grid, ranks, model_kwargs...)
     #####
 
     my_connectivity = RankConnectivity(index, ranks, topology(grid))
-    @debug "Local connectivity: $my_connectivity"
+    @info "Local connectivity: $my_connectivity"
 
     #####
     ##### Change appropriate boundary conditions to halo communication BCs
     #####
 
-    # @debug "Injecting halo communication boundary conditions..."
-    # boundary_conditions_with_communication = inject_halo_communication_boundary_conditions(boundary_conditions, my_rank, my_connectivity)
+    # FIXME: Stop assuming (u, v, w, T, S).
+
+    bcs = isnothing(boundary_conditions) ? NamedTuple() : boundary_conditions
+
+    bcs = (
+        u = haskey(bcs, :u) ? bcs.u : UVelocityBoundaryConditions(grid),
+        v = haskey(bcs, :v) ? bcs.v : VVelocityBoundaryConditions(grid),
+        w = haskey(bcs, :w) ? bcs.w : WVelocityBoundaryConditions(grid),
+        T = haskey(bcs, :T) ? bcs.T : TracerBoundaryConditions(grid),
+        S = haskey(bcs, :S) ? bcs.S : TracerBoundaryConditions(grid)
+    )
+
+    @debug "Injecting halo communication boundary conditions..."
+
+    communicative_bcs = (
+        u = inject_halo_communication_boundary_conditions(bcs.u, my_rank, my_connectivity),
+        v = inject_halo_communication_boundary_conditions(bcs.v, my_rank, my_connectivity),
+        w = inject_halo_communication_boundary_conditions(bcs.w, my_rank, my_connectivity),
+        T = inject_halo_communication_boundary_conditions(bcs.T, my_rank, my_connectivity),
+        S = inject_halo_communication_boundary_conditions(bcs.S, my_rank, my_connectivity)
+    )
 
     #####
     ##### Construct local model
     #####
 
-    my_model = IncompressibleModel(; grid=my_grid, model_kwargs...)
+    my_model = IncompressibleModel(; grid=my_grid, boundary_conditions=communicative_bcs, model_kwargs...)
 
     return DistributedModel(index, ranks, my_model, my_connectivity)
+end
+
+function Base.show(io::IO, dm::DistributedModel)
+    print(io, "DistributedModel with $(dm.ranks) ranks")
 end

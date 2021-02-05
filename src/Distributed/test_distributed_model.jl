@@ -47,6 +47,15 @@ function test_triply_periodic_connectivity_with_411_ranks()
     @test model.grid.yF[ny+1] == 2
     @test model.grid.zF[1] == -3
     @test model.grid.zF[nz+1] == 0
+
+    for field in fields(model)
+        @test field.boundary_conditions.east isa HaloCommunicationBC
+        @test field.boundary_conditions.west isa HaloCommunicationBC
+        @test !isa(field.boundary_conditions.north, HaloCommunicationBC)
+        @test !isa(field.boundary_conditions.south, HaloCommunicationBC)
+        @test !isa(field.boundary_conditions.top, HaloCommunicationBC)
+        @test !isa(field.boundary_conditions.bottom, HaloCommunicationBC)
+    end
 end
 
 function test_triply_periodic_connectivity_with_141_ranks()
@@ -87,6 +96,15 @@ function test_triply_periodic_connectivity_with_141_ranks()
     @test model.grid.yF[ny+1] == 0.5*(my_rank+1)
     @test model.grid.zF[1] == -3
     @test model.grid.zF[nz+1] == 0
+
+    for field in fields(model)
+        @test !isa(field.boundary_conditions.east, HaloCommunicationBC)
+        @test !isa(field.boundary_conditions.west, HaloCommunicationBC)
+        @test field.boundary_conditions.north isa HaloCommunicationBC
+        @test field.boundary_conditions.south isa HaloCommunicationBC
+        @test !isa(field.boundary_conditions.top, HaloCommunicationBC)
+        @test !isa(field.boundary_conditions.bottom, HaloCommunicationBC)
+    end
 end
 
 function test_triply_periodic_connectivity_with_114_ranks()
@@ -127,14 +145,24 @@ function test_triply_periodic_connectivity_with_114_ranks()
     @test model.grid.yF[ny+1] == 2
     @test model.grid.zF[1] == -3 + 0.75*my_rank
     @test model.grid.zF[nz+1] == -3 + 0.75*(my_rank+1)
+
+    for field in fields(model)
+        @test !isa(field.boundary_conditions.east, HaloCommunicationBC)
+        @test !isa(field.boundary_conditions.west, HaloCommunicationBC)
+        @test !isa(field.boundary_conditions.north, HaloCommunicationBC)
+        @test !isa(field.boundary_conditions.south, HaloCommunicationBC)
+        @test field.boundary_conditions.top isa HaloCommunicationBC
+        @test field.boundary_conditions.bottom isa HaloCommunicationBC
+    end
 end
 
 @testset "Distributed MPI Oceananigans" begin
     test_triply_periodic_connectivity_with_411_ranks()
     test_triply_periodic_connectivity_with_141_ranks()
     test_triply_periodic_connectivity_with_114_ranks()
+    # TODO: 221 ranks
+    # TODO: triply bounded
 end
 
 # MPI.Finalize()
 # @test MPI.Finalized()
-
