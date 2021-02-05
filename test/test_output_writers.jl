@@ -800,6 +800,20 @@ function run_cross_architecture_checkpointer_tests(arch1, arch2)
     return nothing
 end
 
+function run_checkpointer_cleanup_tests(arch)
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    model = IncompressibleModel(architecture=arch, grid=grid)
+    simulation = Simulation(model, Δt=0.2, stop_iteration=10)
+
+    simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(3), cleanup=true)
+    run!(simulation)
+
+    [@test !isfile("checkpoint_iteration$i.jld2") for i in 1:10 if i != 9]
+    @test isfile("checkpoint_iteration9.jld2")
+
+    return nothing
+end
+
 #####
 ##### Dependency adding tests
 #####
@@ -1150,6 +1164,8 @@ end
 
             @hascuda run_cross_architecture_checkpointer_tests(CPU(), GPU())
             @hascuda run_cross_architecture_checkpointer_tests(GPU(), CPU())
+
+            run_checkpointer_cleanup_tests(arch)
         end
 
         @testset "Dependency adding [$(typeof(arch))]" begin
