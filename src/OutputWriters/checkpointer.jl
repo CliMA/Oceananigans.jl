@@ -15,6 +15,7 @@ mutable struct Checkpointer{T, P} <: AbstractOutputWriter
     properties :: P
          force :: Bool
        verbose :: Bool
+       cleanup :: Bool
 end
 
 """
@@ -23,6 +24,7 @@ end
                      prefix = "checkpoint",
                       force = false,
                     verbose = false,
+                    cleanup = false,
                  properties = [:architecture, :boundary_conditions, :grid, :clock, :coriolis,
                                :buoyancy, :closure, :velocities, :tracers, :timestepper]
                  )
@@ -52,6 +54,9 @@ Keyword arguments
 - `verbose`: Log what the output writer is doing with statistics on compute/write times
              and file sizes. Default: `false`.
 
+- `cleanup`: Previous checkpoint files will be deleted once a new checkpoint file is written.
+             Default: `false`.
+
 - `properties`: List of model properties to checkpoint. Some are required.
 """
 function Checkpointer(model; schedule,
@@ -59,6 +64,7 @@ function Checkpointer(model; schedule,
                           prefix = "checkpoint",
                            force = false,
                          verbose = false,
+                         cleanup = false,
                       properties = [:architecture, :grid, :clock, :coriolis,
                                     :buoyancy, :closure, :velocities, :tracers,
                                     :timestepper, :particles]
@@ -86,7 +92,7 @@ function Checkpointer(model; schedule,
 
     mkpath(dir)
 
-    return Checkpointer(schedule, dir, prefix, properties, force, verbose)
+    return Checkpointer(schedule, dir, prefix, properties, force, cleanup, verbose)
 end
 
 """ Returns the full prefix (the `superprefix`) associated with `checkpointer`. """
@@ -112,6 +118,17 @@ function write_output!(c::Checkpointer, model)
 
     t2, sz = time_ns(), filesize(filepath)
     c.verbose && @info "Checkpointing done: time=$(prettytime((t2-t1)/1e9)), size=$(pretty_filesize(sz))"
+
+    c.cleanup && cleanup_checkpoints(c)
+
+    return nothing
+end
+
+function cleanup_checkpoints(checkpointer)
+    filepaths = glob(checkpoint_superprefix(checkpointer.prefix) * "*.jld2", checkpointer.dir)
+    latest_checkpoint_filepath = latest_checkpoint(checkpointer, filepaths)
+    [rm(filepath) for filepath in filepaths if filepath != latest_checkpoint_filepath]
+    return nothing
 end
 
 # This is the default name used in the simulation.output_writers ordered dict.
