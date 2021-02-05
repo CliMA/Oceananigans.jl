@@ -2,6 +2,8 @@ using Test
 using MPI
 using Oceananigans
 
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+
 MPI.Initialized() || MPI.Init()
 comm = MPI.COMM_WORLD
 
@@ -12,7 +14,8 @@ mpi_ranks = MPI.Comm_size(comm)
 function test_triply_periodic_connectivity_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    dm = DistributedModel(grid=full_grid, ranks=(4, 1, 1))
+    arch = MultiCPU(ranks=(4, 1, 1))
+    dm = DistributedModel(architecture=arch, grid=full_grid)
 
     my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test my_rank == index2rank(dm.index..., dm.ranks...)
@@ -61,7 +64,8 @@ end
 function test_triply_periodic_connectivity_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    dm = DistributedModel(grid=full_grid, ranks=(1, 4, 1))
+    arch = MultiCPU(ranks=(1, 4, 1))
+    dm = DistributedModel(architecture=arch, grid=full_grid)
 
     my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test my_rank == index2rank(dm.index..., dm.ranks...)
@@ -110,7 +114,8 @@ end
 function test_triply_periodic_connectivity_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    dm = DistributedModel(grid=full_grid, ranks=(1, 1, 4))
+    arch = MultiCPU(ranks=(1, 1, 4))
+    dm = DistributedModel(architecture=arch, grid=full_grid)
 
     my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test my_rank == index2rank(dm.index..., dm.ranks...)

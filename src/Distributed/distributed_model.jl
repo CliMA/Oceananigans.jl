@@ -1,6 +1,7 @@
 import MPI
 
 using Oceananigans
+using Oceananigans.Architectures
 using Oceananigans.Grids
 
 using Oceananigans.Grids: validate_tupled_argument
@@ -10,6 +11,21 @@ import Oceananigans.BoundaryConditions:
     bctype_str, print_condition,
     fill_west_halo!, fill_east_halo!, fill_south_halo!,
     fill_north_halo!, fill_bottom_halo!, fill_top_halo!
+
+#####
+##### Architecture stuff
+#####
+
+# TODO: Put connectivity inside architecture? MPI should be initialize so you can construct it in there.
+#       Might have to make it MultiCPU(; grid, ranks)
+
+struct MultiCPU{R} <: AbstractArchitecture
+    ranks :: R
+end
+
+MultiCPU(; ranks) = MultiCPU(ranks)
+
+child_architecture(::MultiCPU) = CPU()
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
@@ -235,22 +251,17 @@ end
 ##### Distributed model struct and constructor
 #####
 
-struct DistributedModel{I, A, R, G}
+struct DistributedModel{A, I, M, R, G}
+    architecture :: A
            index :: I
            ranks :: R
-           model :: A
+           model :: M
     connectivity :: G
 end
 
-"""
-    DistributedModel(size, x, y, z, ranks, model_kwargs...)
+function DistributedModel(; architecture, grid, boundary_conditions=nothing, model_kwargs...)
+    ranks = architecture.ranks
 
-size: Number of total grid points.
-x, y, z: Left and right endpoints for each dimension.
-ranks: Number of ranks in each dimension.
-model_kwargs: Passed to `Model` constructor.
-"""
-function DistributedModel(; grid, ranks, boundary_conditions=nothing, model_kwargs...)
     validate_tupled_argument(ranks, Int, "ranks")
 
     Nx, Ny, Nz = size(grid)
@@ -335,9 +346,14 @@ function DistributedModel(; grid, ranks, boundary_conditions=nothing, model_kwar
     ##### Construct local model
     #####
 
-    my_model = IncompressibleModel(; grid=my_grid, boundary_conditions=communicative_bcs, model_kwargs...)
+    my_model = IncompressibleModel(;
+               architecture = child_architecture(architecture),
+                       grid = my_grid,
+        boundary_conditions = communicative_bcs,
+        model_kwargs...
+    )
 
-    return DistributedModel(index, ranks, my_model, my_connectivity)
+    return DistributedModel(architecture, index, ranks, my_model, my_connectivity)
 end
 
 function Base.show(io::IO, dm::DistributedModel)
