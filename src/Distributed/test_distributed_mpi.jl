@@ -353,7 +353,7 @@ function run_triply_periodic_halo_communication_tests_with_411_ranks()
     dm = DistributedModel(architecture=arch, grid=full_grid)
 
     for field in fields(dm.model)
-        set!(field, arch.my_rank)
+        interior(field) .= arch.my_rank
         fill_halo_regions!(field, arch)
 
         @test all(east_halo(field) .== arch.connectivity.east)
@@ -376,7 +376,7 @@ function run_triply_periodic_halo_communication_tests_with_141_ranks()
     dm = DistributedModel(architecture=arch, grid=full_grid)
 
     for field in fields(dm.model)
-        set!(field, arch.my_rank)
+        interior(field) .= arch.my_rank
         fill_halo_regions!(field, arch)
 
         @test all(north_halo(field) .== arch.connectivity.north)
@@ -399,7 +399,7 @@ function run_triply_periodic_halo_communication_tests_with_114_ranks()
     dm = DistributedModel(architecture=arch, grid=full_grid)
 
     for field in fields(dm.model)
-        set!(field, arch.my_rank)
+        interior(field) .= arch.my_rank
         fill_halo_regions!(field, arch)
 
         @test all(top_halo(field) .== arch.connectivity.top)
@@ -422,7 +422,7 @@ function run_triply_periodic_halo_communication_tests_with_221_ranks()
     dm = DistributedModel(architecture=arch, grid=full_grid)
 
     for field in fields(dm.model)
-        set!(field, arch.my_rank)
+        interior(field) .= arch.my_rank
         fill_halo_regions!(field, arch)
 
         @test all(east_halo(field) .== arch.connectivity.east)
@@ -469,7 +469,7 @@ end
         run_triply_periodic_bc_injection_tests_with_221_ranks()
     end
 
-    # TODO: Larger halos!
+    # TODO: Test larger halos!
     @testset "Halo communication" begin
         @info "  Testing halo communication..."
         run_triply_periodic_halo_communication_tests_with_411_ranks()

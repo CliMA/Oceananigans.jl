@@ -132,12 +132,12 @@ end
 for side in sides
     side_str = string(side)
     send_side_halo = Symbol("send_$(side)_halo")
-    underlying_side_halo = Symbol("underlying_$(side)_halo")
+    underlying_side_boundary = Symbol("underlying_$(side)_boundary")
     side_send_tag = Symbol("$(side)_send_tag")
 
     @eval begin
         function $send_side_halo(c, grid, c_location, my_rank, rank_to_send_to)
-            send_buffer = $underlying_side_halo(c, grid, c_location)
+            send_buffer = $underlying_side_boundary(c, grid, c_location)
             send_tag = $side_send_tag(my_rank, rank_to_send_to)
 
             @debug "Sending " * $side_str * " halo: my_rank=$my_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
