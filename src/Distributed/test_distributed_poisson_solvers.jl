@@ -53,10 +53,10 @@ function compute_∇²!(∇²ϕ, ϕ, arch, grid)
     return nothing
 end
 
-function divergence_free_poisson_solution_triply_periodic()
+function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(16, 16, 1), extent=(1, 2, 3))
-    arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
+    full_grid = RegularCartesianGrid(topology=topo, size=grid_points, extent=(1, 2, 3))
+    arch = MultiCPU(grid=full_grid, ranks=ranks)
     dm = DistributedModel(architecture=arch, grid=full_grid)
 
     local_grid = dm.model.grid
@@ -81,5 +81,6 @@ end
 
 @testset "Distributed FFT-based Poisson solver" begin
     @info "  Testing distributed FFT-based Poisson solver..."
-    @test divergence_free_poisson_solution_triply_periodic()
+    @test divergence_free_poisson_solution_triply_periodic((16, 16, 1), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((64, 64, 1), (1, 4, 1))
 end

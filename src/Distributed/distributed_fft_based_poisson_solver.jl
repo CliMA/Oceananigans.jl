@@ -1,5 +1,7 @@
 using PencilFFTs
 
+import Oceananigans.Solvers: solve_poisson_equation!
+
 struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S}
               plan :: P
          full_grid :: F

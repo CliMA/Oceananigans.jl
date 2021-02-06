@@ -7,6 +7,7 @@ include("distributed_utils.jl")
 include("distributed_architectures.jl")
 include("halo_communication_bcs.jl")
 include("halo_communication.jl")
+include("distributed_fft_based_poisson_solver.jl")
 
 #####
 ##### Distributed model struct and constructor
@@ -77,6 +78,7 @@ function DistributedModel(; architecture, grid, boundary_conditions=nothing, mod
                architecture = child_architecture(architecture),
                        grid = my_grid,
         boundary_conditions = communicative_bcs,
+          # pressure_solver = DistributedFFTBasedPoissonSolver(architecture, grid, my_grid),
         model_kwargs...
     )
 
