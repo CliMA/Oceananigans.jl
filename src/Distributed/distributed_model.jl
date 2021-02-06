@@ -5,7 +5,6 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 
 using KernelAbstractions: @kernel, @index, Event, MultiEvent
-using Oceananigans.Grids: validate_tupled_argument
 using Oceananigans.BoundaryConditions: BCType
 
 import Oceananigans.BoundaryConditions:
@@ -14,101 +13,8 @@ import Oceananigans.BoundaryConditions:
     fill_west_halo!, fill_east_halo!, fill_south_halo!,
     fill_north_halo!, fill_bottom_halo!, fill_top_halo!
 
-#####
-##### Architecture stuff
-#####
+include("distributed_architectures.jl")
 
-# TODO: Put connectivity inside architecture? MPI should be initialize so you can construct it in there.
-#       Might have to make it MultiCPU(; grid, ranks)
-
-abstract type AbstractMultiArchitecture <: AbstractArchitecture end
-
-struct MultiCPU{R} <: AbstractMultiArchitecture
-    ranks :: R
-end
-
-MultiCPU(; ranks) = MultiCPU(ranks)
-
-child_architecture(::MultiCPU) = CPU()
-
-#####
-##### Converting between index and MPI rank taking k as the fast index
-#####
-
-@inline index2rank(i, j, k, Rx, Ry, Rz) = (i-1)*Ry*Rz + (j-1)*Rz + (k-1)
-
-@inline function rank2index(r, Rx, Ry, Rz)
-    i = div(r, Ry*Rz)
-    r -= i*Ry*Rz
-    j = div(r, Rz)
-    k = mod(r, Rz)
-    return i+1, j+1, k+1
-end
-
-#####
-##### Rank connectivity graph
-#####
-
-struct RankConnectivity{E, W, N, S, T, B}
-      east :: E
-      west :: W
-     north :: N
-     south :: S
-       top :: T
-    bottom :: B
-end
-
-RankConnectivity(; east, west, north, south, top, bottom) =
-    RankConnectivity(east, west, north, south, top, bottom)
-
-function increment_index(i, R, topo)
-    R == 1 && return nothing
-    if i+1 > R
-        if topo == Periodic
-            return 1
-        else
-            return nothing
-        end
-    else
-        return i+1
-    end
-end
-
-function decrement_index(i, R, topo)
-    R == 1 && return nothing
-    if i-1 < 1
-        if topo == Periodic
-            return R
-        else
-            return nothing
-        end
-    else
-        return i-1
-    end
-end
-
-function RankConnectivity(model_index, ranks, topology)
-    i, j, k = model_index
-    Rx, Ry, Rz = ranks
-    TX, TY, TZ = topology
-
-    i_east  = increment_index(i, Rx, TX)
-    i_west  = decrement_index(i, Rx, TX)
-    j_north = increment_index(j, Ry, TY)
-    j_south = decrement_index(j, Ry, TY)
-    k_top   = increment_index(k, Rz, TZ)
-    k_bot   = decrement_index(k, Rz, TZ)
-
-    r_east  = isnothing(i_east)  ? nothing : index2rank(i_east, j, k, Rx, Ry, Rz)
-    r_west  = isnothing(i_west)  ? nothing : index2rank(i_west, j, k, Rx, Ry, Rz)
-    r_north = isnothing(j_north) ? nothing : index2rank(i, j_north, k, Rx, Ry, Rz)
-    r_south = isnothing(j_south) ? nothing : index2rank(i, j_south, k, Rx, Ry, Rz)
-    r_top   = isnothing(k_top)   ? nothing : index2rank(i, j, k_top, Rx, Ry, Rz)
-    r_bot   = isnothing(k_bot)   ? nothing : index2rank(i, j, k_bot, Rx, Ry, Rz)
-
-    return RankConnectivity(east=r_east, west=r_west, north=r_north,
-                            south=r_south, top=r_top, bottom=r_bot)
-end
 
 #####
 ##### Halo communication boundary condition
@@ -278,8 +184,6 @@ function fill_east_and_west_halos!(c, east_bc::HaloCommunicationBC, west_bc::Hal
     send_req1 = MPI.Isend(send_buffer1, rank_to_send_to1, send_tag1, MPI.COMM_WORLD)
     send_req2 = MPI.Isend(send_buffer2, rank_to_send_to2, send_tag2, MPI.COMM_WORLD)
 
-    ###
-
     rank_to_recv_from1 = east_bc.condition.to
     rank_to_recv_from2 = west_bc.condition.to
 
@@ -316,18 +220,20 @@ end
 ##### Distributed model struct and constructor
 #####
 
-struct DistributedModel{A, I, M, R, G}
+# TODO: add the full grid!
+
+struct DistributedModel{A, M}
     architecture :: A
-           index :: I
-           ranks :: R
            model :: M
-    connectivity :: G
 end
 
 function DistributedModel(; architecture, grid, boundary_conditions=nothing, model_kwargs...)
-    ranks = architecture.ranks
+    my_rank = architecture.my_rank
+    i, j, k = architecture.my_index
+    Rx, Ry, Rz = architecture.ranks
+    my_connectivity = architecture.connectivity
 
-    validate_tupled_argument(ranks, Int, "ranks")
+    ## Construct local grid
 
     Nx, Ny, Nz = size(grid)
 
@@ -336,28 +242,6 @@ function DistributedModel(; architecture, grid, boundary_conditions=nothing, mod
     yL, yR = grid.yF[1], grid.yF[Ny+1]
     zL, zR = grid.zF[1], grid.zF[Nz+1]
     Lx, Ly, Lz = length(grid)
-
-    Rx, Ry, Rz = ranks
-    total_ranks = Rx*Ry*Rz
-
-    comm = MPI.COMM_WORLD
-
-    mpi_ranks = MPI.Comm_size(comm)
-    my_rank   = MPI.Comm_rank(comm)
-
-    if total_ranks != mpi_ranks
-        throw(ArgumentError("ranks=($Rx, $Ry, $Rz) [$total_ranks total] inconsistent " *
-                            "with number of MPI ranks: $mpi_ranks. Exiting with return code 1."))
-        MPI.Finalize()
-        exit(code=1)
-    end
-
-    i, j, k = index = rank2index(my_rank, Rx, Ry, Rz)
-    @info "My rank: $my_rank, my index: $index"
-
-    #####
-    ##### Construct local grid
-    #####
 
     # Make sure we can put an integer number of grid points in each rank.
     @assert isinteger(Nx / Rx)
@@ -371,19 +255,9 @@ function DistributedModel(; architecture, grid, boundary_conditions=nothing, mod
     y₁, y₂ = yL + (j-1)*ly, yL + j*ly
     z₁, z₂ = zL + (k-1)*lz, zL + k*lz
 
-    @info "Constructing local grid: n=($nx, $ny, $nz), x ∈ [$x₁, $x₂], y ∈ [$y₁, $y₂], z ∈ [$z₁, $z₂]"
     my_grid = RegularCartesianGrid(topology=topology(grid), size=(nx, ny, nz), x=(x₁, x₂), y=(y₁, y₂), z=(z₁, z₂))
 
-    #####
-    ##### Construct local connectivity
-    #####
-
-    my_connectivity = RankConnectivity(index, ranks, topology(grid))
-    @info "Local connectivity: $my_connectivity"
-
-    #####
-    ##### Change appropriate boundary conditions to halo communication BCs
-    #####
+    ## Change appropriate boundary conditions to halo communication BCs
 
     # FIXME: Stop assuming (u, v, w, T, S).
 
@@ -397,8 +271,6 @@ function DistributedModel(; architecture, grid, boundary_conditions=nothing, mod
         S = haskey(bcs, :S) ? bcs.S : TracerBoundaryConditions(grid)
     )
 
-    @debug "Injecting halo communication boundary conditions..."
-
     communicative_bcs = (
         u = inject_halo_communication_boundary_conditions(bcs.u, my_rank, my_connectivity),
         v = inject_halo_communication_boundary_conditions(bcs.v, my_rank, my_connectivity),
@@ -407,9 +279,7 @@ function DistributedModel(; architecture, grid, boundary_conditions=nothing, mod
         S = inject_halo_communication_boundary_conditions(bcs.S, my_rank, my_connectivity)
     )
 
-    #####
-    ##### Construct local model
-    #####
+    ## Construct local model
 
     my_model = IncompressibleModel(;
                architecture = child_architecture(architecture),
@@ -418,9 +288,5 @@ function DistributedModel(; architecture, grid, boundary_conditions=nothing, mod
         model_kwargs...
     )
 
-    return DistributedModel(architecture, index, ranks, my_model, my_connectivity)
-end
-
-function Base.show(io::IO, dm::DistributedModel)
-    print(io, "DistributedModel with $(dm.ranks) ranks")
+    return DistributedModel(architecture, my_model)
 end
