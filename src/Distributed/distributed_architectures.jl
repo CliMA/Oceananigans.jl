@@ -1,6 +1,6 @@
 using Oceananigans.Architectures
 
-using Oceananigans.Grids: validate_tupled_argument
+using Oceananigans.Grids: topology, validate_tupled_argument
 
 # TODO: Put connectivity inside architecture? MPI should be initialize so you can construct it in there.
 #       Might have to make it MultiCPU(; grid, ranks)
