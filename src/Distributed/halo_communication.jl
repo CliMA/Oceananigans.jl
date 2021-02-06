@@ -58,33 +58,14 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-@inline   west_send_buffer(c, N, H) = c.parent[N+1:N+H, :, :]
-@inline   east_send_buffer(c, N, H) = c.parent[1+H:2H,  :, :]
-@inline  south_send_buffer(c, N, H) = c.parent[:, N+1:N+H, :]
-@inline  north_send_buffer(c, N, H) = c.parent[:, 1+H:2H,  :]
-@inline    top_send_buffer(c, N, H) = c.parent[:, :,  1+H:2H]
-@inline bottom_send_buffer(c, N, H) = c.parent[:, :, N+1:N+H]
+fill_halo_regions!(field::AbstractField{LX, LY, LZ}, arch::AbstractMultiArchitecture, args...) where {LX, LY, LZ} =
+    fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, (LX, LY, LZ), args...)
 
-@inline west_recv_buffer(grid)  = zeros(grid.Hx, grid.Ny + 2grid.Hy, grid.Nz + 2grid.Hz)
-@inline south_recv_buffer(grid) = zeros(grid.Nx + 2grid.Hx, grid.Hy, grid.Nz + 2grid.Hz)
-@inline top_recv_buffer(grid)   = zeros(grid.Nx + 2grid.Hx, grid.Ny + 2grid.Hy, grid.Hz)
-
-const   east_recv_buffer =  west_recv_buffer
-const  north_recv_buffer = south_recv_buffer
-const bottom_recv_buffer =   top_recv_buffer
-
-@inline   copy_recv_buffer_into_west_halo!(c, N, H, buf) = (c.parent[    1:H,    :, :] .= buf)
-@inline   copy_recv_buffer_into_east_halo!(c, N, H, buf) = (c.parent[N+H+1:N+2H, :, :] .= buf)
-@inline  copy_recv_buffer_into_south_halo!(c, N, H, buf) = (c.parent[:,     1:H,    :] .= buf)
-@inline  copy_recv_buffer_into_north_halo!(c, N, H, buf) = (c.parent[:, N+H+1:N+2H, :] .= buf)
-@inline copy_recv_buffer_into_bottom_halo!(c, N, H, buf) = (c.parent[:, :,     1:H   ] .= buf)
-@inline    copy_recv_buffer_into_top_halo!(c, N, H, buf) = (c.parent[:, :, N+H+1:N+2H] .= buf)
-
-function fill_halo_regions!(c::AbstractArray, bcs, arch::AbstractMultiArchitecture, grid, args...)
+function fill_halo_regions!(c::AbstractArray, bcs, arch::AbstractMultiArchitecture, grid, location, args...)
 
     barrier = Event(device(child_architecture(arch)))
 
-    east_event, west_event = fill_east_and_west_halos!(c, bcs.east, bcs.west, arch, barrier, grid, args...)
+    east_event, west_event = fill_east_and_west_halos!(c, bcs.east, bcs.west, arch, barrier, grid, location, args...)
     # north_event, south_event = fill_north_and_south_halos!(c, bcs.north, bcs.south, arch, barrier, grid, args...)
     # top_event, bottom_event = fill_top_and_bottom_halos!(c, bcs.east, bcs.west, arch, barrier, grid, args...)
 
@@ -95,14 +76,14 @@ function fill_halo_regions!(c::AbstractArray, bcs, arch::AbstractMultiArchitectu
     return nothing
 end
 
-function fill_east_and_west_halos!(c, east_bc, west_bc, arch, barrier, grid, args...)
+function fill_east_and_west_halos!(c, east_bc, west_bc, arch, barrier, grid, location, args...)
     east_event = fill_east_halo!(c, east_bc, child_architecture(arch), barrier, grid, args...)
     west_event = fill_west_halo!(c, west_bc, child_architecture(arch), barrier, grid, args...)
     return east_event, west_event
 end
 
-function send_east_halo(c, grid, my_rank, rank_to_send_to)
-    send_buffer = east_send_buffer(c, grid.Nx, grid.Hx)
+function send_east_halo(c, grid, c_location, my_rank, rank_to_send_to)
+    send_buffer = underlying_east_halo(c, grid, c_location)
     send_tag = east_send_tag(my_rank, rank_to_send_to)
 
     @debug "Sending east halo: my_rank=$my_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
@@ -111,8 +92,8 @@ function send_east_halo(c, grid, my_rank, rank_to_send_to)
     return status
 end
 
-function send_west_halo(c, grid, my_rank, rank_to_send_to)
-    send_buffer = west_send_buffer(c, grid.Nx, grid.Hx)
+function send_west_halo(c, grid, c_location, my_rank, rank_to_send_to)
+    send_buffer = underlying_west_halo(c, grid, c_location)
     send_tag = west_send_tag(my_rank, rank_to_send_to)
 
     @debug "Sending west halo: my_rank=$my_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
@@ -121,37 +102,33 @@ function send_west_halo(c, grid, my_rank, rank_to_send_to)
     return status
 end
 
-function recv_and_fill_east_halo!(c, grid, my_rank, rank_to_recv_from)
-    recv_buffer = east_recv_buffer(grid)
+function recv_and_fill_east_halo!(c, grid, c_location, my_rank, rank_to_recv_from)
+    recv_buffer = underlying_east_halo(c, grid, c_location)
     recv_tag = east_recv_tag(my_rank, rank_to_recv_from)
 
     @debug "Receiving east halo: my_rank=$my_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
     MPI.Recv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
 
-    copy_recv_buffer_into_east_halo!(c, grid.Nx, grid.Hx, recv_buffer)
-
     return nothing
 end
 
-function recv_and_fill_west_halo!(c, grid, my_rank, rank_to_recv_from)
-    recv_buffer = west_recv_buffer(grid)
+function recv_and_fill_west_halo!(c, grid, c_location, my_rank, rank_to_recv_from)
+    recv_buffer = underlying_west_halo(c, grid, c_location)
     recv_tag = west_recv_tag(my_rank, rank_to_recv_from)
 
     @debug "Receiving west halo: my_rank=$my_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
     MPI.Recv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
 
-    copy_recv_buffer_into_west_halo!(c, grid.Nx, grid.Hx, recv_buffer)
-
     return nothing
 end
 
-function fill_east_and_west_halos!(c, east_bc::HaloCommunicationBC, west_bc::HaloCommunicationBC, arch, barrier, grid, args...)
+function fill_east_and_west_halos!(c, east_bc::HaloCommunicationBC, west_bc::HaloCommunicationBC, arch, barrier, grid, c_location, args...)
     my_rank = east_bc.condition.from
-    send_east_halo(c, grid, my_rank, east_bc.condition.to)
-    send_west_halo(c, grid, my_rank, west_bc.condition.to)
+    send_east_halo(c, grid, c_location, my_rank, east_bc.condition.to)
+    send_west_halo(c, grid, c_location, my_rank, west_bc.condition.to)
 
-    recv_and_fill_east_halo!(c, grid, my_rank, east_bc.condition.to)
-    recv_and_fill_west_halo!(c, grid, my_rank, west_bc.condition.to)
+    recv_and_fill_east_halo!(c, grid, c_location, my_rank, east_bc.condition.to)
+    recv_and_fill_west_halo!(c, grid, c_location, my_rank, west_bc.condition.to)
 
     return nothing, nothing
 end
