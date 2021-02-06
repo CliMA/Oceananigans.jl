@@ -4,7 +4,7 @@ struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S}
               plan :: P
          full_grid :: F
            my_grid :: L
-    my_eigenvalues :: λ
+       eigenvalues :: λ
            storage :: S
 end
 
@@ -24,27 +24,22 @@ function DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
     λy = poisson_eigenvalues(full_grid.Ny, full_grid.Ly, 2, TY())
     λz = poisson_eigenvalues(full_grid.Nz, full_grid.Lz, 3, TZ())
 
-    my_eigenvalues = (; λx, λy, λz)
+    I, J, K = arch.my_index
+    λx = λx[(J-1)*local_grid.Ny+1:J*local_grid.Ny, :, :]
 
-    # I, J, K = arch.my_index
-    # my_eigenvalues = (
-    #     λx = λx[(I-1)*local_grid.Nx+1:I*local_grid.Nx, :, :],
-    #     λy = λy[:, (J-1)*local_grid.Ny+1:J*local_grid.Ny, :],
-    #     λz = λz[:, :, (K-1)*local_grid.Nz+1:K*local_grid.Nz]
-    # )
+    eigenvalues = (; λx, λy, λz)
 
     # transform = PencilFFTs.Transforms.FFT!()
     transform = PencilFFTs.Transforms.FFT()
     proc_dims = (arch.ranks[2], arch.ranks[3])
     plan = PencilFFTPlan(size(full_grid), transform, proc_dims, MPI.COMM_WORLD)
-
     storage = allocate_input(plan)
 
-    return DistributedFFTBasedPoissonSolver(plan, full_grid, local_grid, my_eigenvalues, storage)
+    return DistributedFFTBasedPoissonSolver(plan, full_grid, local_grid, eigenvalues, storage)
 end
 
 function solve_poisson_equation!(solver::DistributedFFTBasedPoissonSolver)
-    λx, λy, λz = solver.my_eigenvalues
+    λx, λy, λz = solver.eigenvalues
 
     # https://jipolanco.github.io/PencilFFTs.jl/dev/PencilFFTs/#PencilFFTs.allocate_input
     # RHS = ϕ = first(solver.storage)
@@ -53,12 +48,6 @@ function solve_poisson_equation!(solver::DistributedFFTBasedPoissonSolver)
     # Apply forward transforms.
     # ϕ = solver.plan * solver.storage
     ϕ = solver.plan * RHS
-
-    @show size(RHS)
-    @show size(ϕ)
-
-    λx = reshape(λx, 1, solver.my_grid.Nx, 1)
-    λy = reshape(λy, solver.my_grid.Ny, 1, 1)
 
     # Solve the discrete Poisson equation.
     # @. ϕ = -RHS / (λx + λy + λz)

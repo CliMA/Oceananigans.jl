@@ -77,40 +77,5 @@ function divergence_free_poisson_solution_triply_periodic()
     interior(ϕ) .= real(solver.storage)
     compute_∇²!(∇²ϕ, ϕ, arch, local_grid)
 
-    return nothing
+    return @test R ≈ interior(∇²ϕ)
 end
-
-topo = (Periodic, Periodic, Periodic)
-full_grid = RegularCartesianGrid(topology=topo, size=(16, 16, 1), extent=(1, 2, 3))
-arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
-dm = DistributedModel(architecture=arch, grid=full_grid)
-local_grid = dm.model.grid
-solver = DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
-Random.seed!(0)
-R = rand(size(full_grid)...)
-I, J, K = arch.my_index
-R = R[:, local_grid.Ny*(J-1)+1:local_grid.Ny*J, :]
-solver.storage .= R
-F = solver.plan * solver.storage
-λx, λy, λz = solver.my_eigenvalues
-λx = λx[(J-1)*local_grid.Ny+1:J*local_grid.Ny, :, :]
-@. F = -F / (λx + λy + λz)
-if MPI.Comm_rank(MPI.COMM_WORLD) == 0
-    F[1, 1, 1] = 0
-end
-B = real(solver.plan \ F)
-
-Nx, Ny, Nz = 16, 16, 1
-Lx, Ly, Lz = 1, 2, 3
-Random.seed!(0)
-R = rand(16, 16, 1)
-F = fft(R)
-λx = @. (2sin((0:Nx - 1) * π / Nx) / (Lx / Nx))^2
-λy = @. (2sin((0:Ny - 1) * π / Ny) / (Ly / Ny))^2
-λz = @. (2sin((0:Nz - 1) * π / Nz) / (Lz / Nz))^2
-λx = reshape(λx, Nx, 1, 1)
-λy = reshape(λy, 1, Ny, 1)
-λz = reshape(λz, 1, 1, Nz)
-@. F = -F / (λx + λy + λz)
-F[1, 1, 1] = 0
-B = real(ifft(F))
