@@ -358,6 +358,12 @@ function run_triply_periodic_halo_communication_tests_with_411_ranks()
 
         @test all(east_halo(field) .== arch.connectivity.east)
         @test all(west_halo(field) .== arch.connectivity.west)
+
+        @test all(interior(field) .== arch.my_rank)
+        @test all(north_halo(field, include_corners=false) .== arch.my_rank)
+        @test all(south_halo(field, include_corners=false) .== arch.my_rank)
+        @test all(top_halo(field, include_corners=false) .== arch.my_rank)
+        @test all(bottom_halo(field, include_corners=false) .== arch.my_rank)
     end
 
     return nothing
@@ -375,6 +381,12 @@ function run_triply_periodic_halo_communication_tests_with_141_ranks()
 
         @test all(north_halo(field) .== arch.connectivity.north)
         @test all(south_halo(field) .== arch.connectivity.south)
+
+        @test all(interior(field) .== arch.my_rank)
+        @test all(east_halo(field, include_corners=false) .== arch.my_rank)
+        @test all(west_halo(field, include_corners=false) .== arch.my_rank)
+        @test all(top_halo(field, include_corners=false) .== arch.my_rank)
+        @test all(bottom_halo(field, include_corners=false) .== arch.my_rank)
     end
 
     return nothing
@@ -392,6 +404,35 @@ function run_triply_periodic_halo_communication_tests_with_114_ranks()
 
         @test all(top_halo(field) .== arch.connectivity.top)
         @test all(bottom_halo(field) .== arch.connectivity.bottom)
+
+        @test all(interior(field) .== arch.my_rank)
+        @test all(east_halo(field, include_corners=false) .== arch.my_rank)
+        @test all(west_halo(field, include_corners=false) .== arch.my_rank)
+        @test all(north_halo(field, include_corners=false) .== arch.my_rank)
+        @test all(south_halo(field, include_corners=false) .== arch.my_rank)
+    end
+
+    return nothing
+end
+
+function run_triply_periodic_halo_communication_tests_with_221_ranks()
+    topo = (Periodic, Periodic, Periodic)
+    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 3), extent=(1, 2, 3))
+    arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
+    dm = DistributedModel(architecture=arch, grid=full_grid)
+
+    for field in fields(dm.model)
+        set!(field, arch.my_rank)
+        fill_halo_regions!(field, arch)
+
+        @test all(east_halo(field) .== arch.connectivity.east)
+        @test all(west_halo(field) .== arch.connectivity.west)
+        @test all(north_halo(field) .== arch.connectivity.north)
+        @test all(south_halo(field) .== arch.connectivity.south)
+
+        @test all(interior(field) .== arch.my_rank)
+        @test all(top_halo(field, include_corners=false) .== arch.my_rank)
+        @test all(bottom_halo(field, include_corners=false) .== arch.my_rank)
     end
 
     return nothing
@@ -404,29 +445,29 @@ end
 @testset "Distributed MPI Oceananigans" begin
     @info "Testing distributed MPI Oceananigans..."
 
-    # @testset "Multi architectures rank connectivity" begin
-    #     @info "  Testing multi architecture rank connectivity..."
-    #     run_triply_periodic_rank_connectivity_tests_with_411_ranks()
-    #     run_triply_periodic_rank_connectivity_tests_with_141_ranks()
-    #     run_triply_periodic_rank_connectivity_tests_with_114_ranks()
-    #     run_triply_periodic_rank_connectivity_tests_with_221_ranks()
-    # end
+    @testset "Multi architectures rank connectivity" begin
+        @info "  Testing multi architecture rank connectivity..."
+        run_triply_periodic_rank_connectivity_tests_with_411_ranks()
+        run_triply_periodic_rank_connectivity_tests_with_141_ranks()
+        run_triply_periodic_rank_connectivity_tests_with_114_ranks()
+        run_triply_periodic_rank_connectivity_tests_with_221_ranks()
+    end
 
-    # @testset "Local grids for distributed models" begin
-    #     @info "  Testing local grids for distributed models..."
-    #     run_triply_periodic_local_grid_tests_with_411_ranks()
-    #     run_triply_periodic_local_grid_tests_with_141_ranks()
-    #     run_triply_periodic_local_grid_tests_with_114_ranks()
-    #     run_triply_periodic_local_grid_tests_with_221_ranks()
-    # end
+    @testset "Local grids for distributed models" begin
+        @info "  Testing local grids for distributed models..."
+        run_triply_periodic_local_grid_tests_with_411_ranks()
+        run_triply_periodic_local_grid_tests_with_141_ranks()
+        run_triply_periodic_local_grid_tests_with_114_ranks()
+        run_triply_periodic_local_grid_tests_with_221_ranks()
+    end
 
-    # @testset "Injection of halo communication BCs" begin
-    #     @info "  Testing injection of halo communication BCs..."
-    #     run_triply_periodic_bc_injection_tests_with_411_ranks()
-    #     run_triply_periodic_bc_injection_tests_with_141_ranks()
-    #     run_triply_periodic_bc_injection_tests_with_114_ranks()
-    #     run_triply_periodic_bc_injection_tests_with_221_ranks()
-    # end
+    @testset "Injection of halo communication BCs" begin
+        @info "  Testing injection of halo communication BCs..."
+        run_triply_periodic_bc_injection_tests_with_411_ranks()
+        run_triply_periodic_bc_injection_tests_with_141_ranks()
+        run_triply_periodic_bc_injection_tests_with_114_ranks()
+        run_triply_periodic_bc_injection_tests_with_221_ranks()
+    end
 
     # TODO: Larger halos!
     @testset "Halo communication" begin
@@ -434,10 +475,8 @@ end
         run_triply_periodic_halo_communication_tests_with_411_ranks()
         run_triply_periodic_halo_communication_tests_with_141_ranks()
         run_triply_periodic_halo_communication_tests_with_114_ranks()
+        # run_triply_periodic_halo_communication_tests_with_221_ranks()
     end
-
-    # TODO: 221 ranks
-    # TODO: triply bounded
 end
 
 # MPI.Finalize()
