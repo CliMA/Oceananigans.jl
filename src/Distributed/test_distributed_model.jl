@@ -236,7 +236,7 @@ end
 
 function run_triply_periodic_halo_communication_tests_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 1), extent=(1, 2, 3))
+    full_grid = RegularCartesianGrid(topology=topo, size=(8, 6, 4), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
     dm = DistributedModel(architecture=arch, grid=full_grid)
 
@@ -246,6 +246,40 @@ function run_triply_periodic_halo_communication_tests_with_411_ranks()
 
         @test all(east_halo(field) .== arch.connectivity.east)
         @test all(west_halo(field) .== arch.connectivity.west)
+    end
+
+    return nothing
+end
+
+function run_triply_periodic_halo_communication_tests_with_141_ranks()
+    topo = (Periodic, Periodic, Periodic)
+    full_grid = RegularCartesianGrid(topology=topo, size=(3, 8, 2), extent=(1, 2, 3))
+    arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
+    dm = DistributedModel(architecture=arch, grid=full_grid)
+
+    for field in fields(dm.model)
+        set!(field, arch.my_rank)
+        fill_halo_regions!(field, arch)
+
+        @test all(north_halo(field) .== arch.connectivity.north)
+        @test all(south_halo(field) .== arch.connectivity.south)
+    end
+
+    return nothing
+end
+
+function run_triply_periodic_halo_communication_tests_with_114_ranks()
+    topo = (Periodic, Periodic, Periodic)
+    full_grid = RegularCartesianGrid(topology=topo, size=(3, 5, 8), extent=(1, 2, 3))
+    arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
+    dm = DistributedModel(architecture=arch, grid=full_grid)
+
+    for field in fields(dm.model)
+        set!(field, arch.my_rank)
+        fill_halo_regions!(field, arch)
+
+        @test all(top_halo(field) .== arch.connectivity.top)
+        @test all(bottom_halo(field) .== arch.connectivity.bottom)
     end
 
     return nothing
@@ -283,6 +317,8 @@ end
     @testset "Halo communication" begin
         @info "  Testing halo communication..."
         run_triply_periodic_halo_communication_tests_with_411_ranks()
+        run_triply_periodic_halo_communication_tests_with_141_ranks()
+        run_triply_periodic_halo_communication_tests_with_114_ranks()
     end
 
     # TODO: 221 ranks

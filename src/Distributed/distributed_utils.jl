@@ -16,7 +16,7 @@ north_halo(f::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
 bottom_halo(f::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
     view(f.data, :, :, left_halo_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz), :)
 
-bottom_halo(f::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
+top_halo(f::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
     view(f.data, :, :, right_halo_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz), :)
 
 underlying_west_halo(f, grid, location) =

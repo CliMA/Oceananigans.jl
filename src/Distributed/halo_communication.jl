@@ -24,7 +24,7 @@ opposite_side = Dict(
 )
 
 # Unfortunately can't call MPI.Comm_size(MPI.COMM_WORLD) before MPI.Init().
-const MAX_RANKS = 10^3
+MAX_RANKS = 10^3
 RANK_DIGITS = 3
 
 # Define functions that return unique send and recv MPI tags for each side.
@@ -35,8 +35,8 @@ RANK_DIGITS = 3
 
 for side in sides
     side_str = string(side)
-    send_tag_fn_name = Symbol(side, :_send_tag)
-    recv_tag_fn_name = Symbol(side, :_recv_tag)
+    send_tag_fn_name = Symbol("$(side)_send_tag")
+    recv_tag_fn_name = Symbol("$(side)_recv_tag")
     @eval begin
         function $send_tag_fn_name(my_rank, rank_to_send_to)
             from_digits = string(my_rank, pad=RANK_DIGITS)
@@ -61,74 +61,112 @@ end
 fill_halo_regions!(field::AbstractField{LX, LY, LZ}, arch::AbstractMultiArchitecture, args...) where {LX, LY, LZ} =
     fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, (LX, LY, LZ), args...)
 
-function fill_halo_regions!(c::AbstractArray, bcs, arch::AbstractMultiArchitecture, grid, location, args...)
+function fill_halo_regions!(c::AbstractArray, bcs, arch::AbstractMultiArchitecture, grid, c_location, args...)
 
     barrier = Event(device(child_architecture(arch)))
 
-    east_event, west_event = fill_east_and_west_halos!(c, bcs.east, bcs.west, arch, barrier, grid, location, args...)
-    # north_event, south_event = fill_north_and_south_halos!(c, bcs.north, bcs.south, arch, barrier, grid, args...)
-    # top_event, bottom_event = fill_top_and_bottom_halos!(c, bcs.east, bcs.west, arch, barrier, grid, args...)
+    east_event, west_event = fill_east_and_west_halos!(c, bcs.east, bcs.west, arch, barrier, grid, c_location, args...)
+    north_event, south_event = fill_north_and_south_halos!(c, bcs.north, bcs.south, arch, barrier, grid, c_location, args...)
+    top_event, bottom_event = fill_top_and_bottom_halos!(c, bcs.top, bcs.bottom, arch, barrier, grid, c_location, args...)
 
-    events = [east_event, west_event] # , north_event, south_event, top_event, bottom_event]
+    events = [east_event, west_event, north_event, south_event, top_event, bottom_event]
     events = filter(e -> e isa Event, events)
     wait(device(child_architecture(arch)), MultiEvent(Tuple(events)))
 
     return nothing
 end
 
-function fill_east_and_west_halos!(c, east_bc, west_bc, arch, barrier, grid, location, args...)
-    east_event = fill_east_halo!(c, east_bc, child_architecture(arch), barrier, grid, args...)
-    west_event = fill_west_halo!(c, west_bc, child_architecture(arch), barrier, grid, args...)
-    return east_event, west_event
+#####
+##### fill_east_and_west_halos!   }
+##### fill_north_and_south_halos! } for non-communicating boundary conditions (fallback)
+##### fill_top_and_bottom_halos!  }
+#####
+
+for (side, opposite_side) in zip([:east, :north, :top], [:west, :south, :bottom])
+    fill_both_halos! = Symbol("fill_$(side)_and_$(opposite_side)_halos!")
+    fill_side_halo! = Symbol("fill_$(side)_halo!")
+    fill_opposite_side_halo! = Symbol("fill_$(opposite_side)_halo!")
+
+    @eval begin
+        function $fill_both_halos!(c, bc_side, bc_opposite_side, arch, barrier, grid, args...)
+            event_side = $fill_side_halo!(c, bc_side, child_architecture(arch), barrier, grid, args...)
+            event_opposite_side = $fill_opposite_side_halo!(c, bc_opposite_side, child_architecture(arch), barrier, grid, args...)
+            return event_side, event_opposite_side
+        end
+    end
 end
 
-function send_east_halo(c, grid, c_location, my_rank, rank_to_send_to)
-    send_buffer = underlying_east_halo(c, grid, c_location)
-    send_tag = east_send_tag(my_rank, rank_to_send_to)
+#####
+##### fill_east_and_west_halos!   }
+##### fill_north_and_south_halos! } for when both halos are communicative
+##### fill_top_and_bottom_halos!  }
+#####
 
-    @debug "Sending east halo: my_rank=$my_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
-    status = MPI.Isend(send_buffer, rank_to_send_to, send_tag, MPI.COMM_WORLD)
+for (side, opposite_side) in zip([:east, :north, :top], [:west, :south, :bottom])
+    fill_both_halos! = Symbol("fill_$(side)_and_$(opposite_side)_halos!")
+    send_side_halo = Symbol("send_$(side)_halo")
+    send_opposite_side_halo = Symbol("send_$(opposite_side)_halo")
+    recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
+    recv_and_fill_opposite_side_halo! = Symbol("recv_and_fill_$(opposite_side)_halo!")
 
-    return status
+    @eval begin
+        function $fill_both_halos!(c, bc_side::HaloCommunicationBC, bc_opposite_side::HaloCommunicationBC, arch, barrier, grid, c_location, args...)
+            @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
+            my_rank = bc_side.condition.from
+
+            $send_side_halo(c, grid, c_location, my_rank, bc_side.condition.to)
+            $send_opposite_side_halo(c, grid, c_location, my_rank, bc_opposite_side.condition.to)
+
+            $recv_and_fill_side_halo!(c, grid, c_location, my_rank, bc_side.condition.to)
+            $recv_and_fill_opposite_side_halo!(c, grid, c_location, my_rank, bc_opposite_side.condition.to)
+
+            return nothing, nothing
+        end
+    end
 end
 
-function send_west_halo(c, grid, c_location, my_rank, rank_to_send_to)
-    send_buffer = underlying_west_halo(c, grid, c_location)
-    send_tag = west_send_tag(my_rank, rank_to_send_to)
+#####
+##### Sending halos
+#####
 
-    @debug "Sending west halo: my_rank=$my_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
-    status = MPI.Isend(send_buffer, rank_to_send_to, send_tag, MPI.COMM_WORLD)
+for side in sides
+    side_str = string(side)
+    send_side_halo = Symbol("send_$(side)_halo")
+    underlying_side_halo = Symbol("underlying_$(side)_halo")
+    side_send_tag = Symbol("$(side)_send_tag")
 
-    return status
+    @eval begin
+        function $send_side_halo(c, grid, c_location, my_rank, rank_to_send_to)
+            send_buffer = $underlying_side_halo(c, grid, c_location)
+            send_tag = $side_send_tag(my_rank, rank_to_send_to)
+
+            @debug "Sending " * $side_str * " halo: my_rank=$my_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
+            status = MPI.Isend(send_buffer, rank_to_send_to, send_tag, MPI.COMM_WORLD)
+
+            return status
+        end
+    end
 end
 
-function recv_and_fill_east_halo!(c, grid, c_location, my_rank, rank_to_recv_from)
-    recv_buffer = underlying_east_halo(c, grid, c_location)
-    recv_tag = east_recv_tag(my_rank, rank_to_recv_from)
+#####
+##### Receiving and filling halos (buffer is a view so should get filled upon receive)
+#####
 
-    @debug "Receiving east halo: my_rank=$my_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
-    MPI.Recv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
+for side in sides
+    side_str = string(side)
+    recv_and_fill_side_halo! = Symbol("recv_and_fill_$(side)_halo!")
+    underlying_side_halo = Symbol("underlying_$(side)_halo")
+    side_recv_tag = Symbol("$(side)_recv_tag")
 
-    return nothing
-end
+    @eval begin
+        function $recv_and_fill_side_halo!(c, grid, c_location, my_rank, rank_to_recv_from)
+            recv_buffer = $underlying_side_halo(c, grid, c_location)
+            recv_tag = $side_recv_tag(my_rank, rank_to_recv_from)
 
-function recv_and_fill_west_halo!(c, grid, c_location, my_rank, rank_to_recv_from)
-    recv_buffer = underlying_west_halo(c, grid, c_location)
-    recv_tag = west_recv_tag(my_rank, rank_to_recv_from)
+            @debug "Receiving " * $side_str * " halo: my_rank=$my_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
+            MPI.Recv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
 
-    @debug "Receiving west halo: my_rank=$my_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
-    MPI.Recv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
-
-    return nothing
-end
-
-function fill_east_and_west_halos!(c, east_bc::HaloCommunicationBC, west_bc::HaloCommunicationBC, arch, barrier, grid, c_location, args...)
-    my_rank = east_bc.condition.from
-    send_east_halo(c, grid, c_location, my_rank, east_bc.condition.to)
-    send_west_halo(c, grid, c_location, my_rank, west_bc.condition.to)
-
-    recv_and_fill_east_halo!(c, grid, c_location, my_rank, east_bc.condition.to)
-    recv_and_fill_west_halo!(c, grid, c_location, my_rank, west_bc.condition.to)
-
-    return nothing, nothing
+            return nothing
+        end
+    end
 end
