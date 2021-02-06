@@ -230,6 +230,31 @@ function run_triply_periodic_bc_injection_tests_with_114_ranks()
     end
 end
 
+#####
+##### Halo communication
+#####
+
+function run_triply_periodic_halo_communication_tests_with_411_ranks()
+    topo = (Periodic, Periodic, Periodic)
+    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 1), extent=(1, 2, 3))
+    arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
+    dm = DistributedModel(architecture=arch, grid=full_grid)
+
+    for field in fields(dm.model)
+        set!(field, arch.my_rank)
+        fill_halo_regions!(field, arch)
+
+        @test all(east_halo(u) .== arch.connectivity.east)
+        @test all(west_halo(u) .== arch.connectivity.west)
+    end
+
+    return nothing
+end
+
+#####
+##### Run tests!
+#####
+
 @testset "Distributed MPI Oceananigans" begin
     @info "Testing distributed MPI Oceananigans..."
 
@@ -252,6 +277,11 @@ end
         run_triply_periodic_bc_injection_tests_with_411_ranks()
         run_triply_periodic_bc_injection_tests_with_141_ranks()
         run_triply_periodic_bc_injection_tests_with_114_ranks()
+    end
+
+    @testset "Halo communication" begin
+        @info "  Testing halo communication..."
+        run_triply_periodic_halo_communication_tests_with_411_ranks()
     end
 
     # TODO: 221 ranks

@@ -3,6 +3,7 @@ using MPI
 using Oceananigans
 using Oceananigans.Grids
 
+include("distributed_utils.jl")
 include("distributed_architectures.jl")
 include("halo_communication_bcs.jl")
 include("halo_communication.jl")
@@ -80,4 +81,9 @@ function DistributedModel(; architecture, grid, boundary_conditions=nothing, mod
     )
 
     return DistributedModel(architecture, grid, my_model)
+end
+
+function Base.show(io::IO, dm::DistributedModel)
+    print(io, "DistributedModel with ")
+    print(io, dm.architecture)
 end
