@@ -477,6 +477,8 @@ end
         run_triply_periodic_halo_communication_tests_with_114_ranks()
         # run_triply_periodic_halo_communication_tests_with_221_ranks()
     end
+
+    include("test_distributed_poisson_solvers.jl")
 end
 
 # MPI.Finalize()

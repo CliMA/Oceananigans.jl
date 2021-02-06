@@ -63,8 +63,7 @@ function divergence_free_poisson_solution_triply_periodic()
     solver = DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
 
     R = random_divergent_source_term(Float64, child_architecture(arch), local_grid)
-    # first(solver.storage) .= R
-    solver.storage .= R
+    first(solver.storage) .= R
 
     solve_poisson_equation!(solver)
 
@@ -74,8 +73,13 @@ function divergence_free_poisson_solution_triply_periodic()
     ϕ   = CenterField(Float64, child_architecture(arch), local_grid, p_bcs)  # "pressure"
     ∇²ϕ = CenterField(Float64, child_architecture(arch), local_grid, p_bcs)
 
-    interior(ϕ) .= real(solver.storage)
+    interior(ϕ) .= real(first(solver.storage))
     compute_∇²!(∇²ϕ, ϕ, arch, local_grid)
 
-    return @test R ≈ interior(∇²ϕ)
+    return R ≈ interior(∇²ϕ)
+end
+
+@testset "Distributed FFT-based Poisson solver" begin
+    @info "  Testing distributed FFT-based Poisson solver..."
+    @test divergence_free_poisson_solution_triply_periodic()
 end
