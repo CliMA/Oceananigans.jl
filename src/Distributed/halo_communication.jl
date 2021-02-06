@@ -149,7 +149,7 @@ for side in sides
 end
 
 #####
-##### Receiving and filling halos (buffer is a view so should get filled upon receive)
+##### Receiving and filling halos (buffer is a view so it gets filled upon receive)
 #####
 
 for side in sides

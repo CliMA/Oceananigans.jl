@@ -58,7 +58,7 @@ underlying_south_halo(f, grid, location) =
     view(f.parent, :, underlying_left_halo_indices(location, topology(grid, 2), grid.Ny, grid.Hy), :)
 
 underlying_north_halo(f, grid, location) =
-    view(f.parent, :, underlying_right_halo_indices(location, topology(grid, 2), grid.Nz, grid.Hz), :)
+    view(f.parent, :, underlying_right_halo_indices(location, topology(grid, 2), grid.Ny, grid.Hy), :)
 
 underlying_bottom_halo(f, grid, location) =
     view(f.parent, :, :, underlying_left_halo_indices(location, topology(grid, 3), grid.Nz, grid.Hz))
