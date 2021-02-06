@@ -58,10 +58,10 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-fill_halo_regions!(field::AbstractField{LX, LY, LZ}, arch::AbstractMultiArchitecture, args...) where {LX, LY, LZ} =
+fill_halo_regions!(field::AbstractField{LX, LY, LZ}, arch, args...) where {LX, LY, LZ} =
     fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, (LX, LY, LZ), args...)
 
-function fill_halo_regions!(c::AbstractArray, bcs, arch::AbstractMultiArchitecture, grid, c_location, args...)
+function fill_halo_regions!(c::AbstractArray, bcs, arch, grid, c_location, args...)
 
     barrier = Event(device(child_architecture(arch)))
 
