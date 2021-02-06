@@ -74,11 +74,14 @@ function DistributedModel(; architecture, grid, boundary_conditions=nothing, mod
 
     ## Construct local model
 
+    pressure_solver = haskey(model_kwargs, :pressure_solver) ? Dict(model_kwargs)[:pressure_solver] :
+                                                               DistributedFFTBasedPoissonSolver(architecture, grid, my_grid)
+
     my_model = IncompressibleModel(;
                architecture = child_architecture(architecture),
                        grid = my_grid,
         boundary_conditions = communicative_bcs,
-          # pressure_solver = DistributedFFTBasedPoissonSolver(architecture, grid, my_grid),
+            pressure_solver = pressure_solver,
         model_kwargs...
     )
 
