@@ -244,8 +244,8 @@ function run_triply_periodic_halo_communication_tests_with_411_ranks()
         set!(field, arch.my_rank)
         fill_halo_regions!(field, arch)
 
-        @test all(east_halo(u) .== arch.connectivity.east)
-        @test all(west_halo(u) .== arch.connectivity.west)
+        @test all(east_halo(field) .== arch.connectivity.east)
+        @test all(west_halo(field) .== arch.connectivity.west)
     end
 
     return nothing
@@ -279,6 +279,7 @@ end
         run_triply_periodic_bc_injection_tests_with_114_ranks()
     end
 
+    # TODO: Larger halos!
     @testset "Halo communication" begin
         @info "  Testing halo communication..."
         run_triply_periodic_halo_communication_tests_with_411_ranks()

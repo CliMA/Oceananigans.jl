@@ -28,23 +28,28 @@ const MAX_RANKS = 10^3
 RANK_DIGITS = 3
 
 # Define functions that return unique send and recv MPI tags for each side.
+# It's an integer where
+#   digit 1: the side
+#   digits 2-4: the from rank
+#   digits 5-7: the to rank
+
 for side in sides
     side_str = string(side)
     send_tag_fn_name = Symbol(side, :_send_tag)
     recv_tag_fn_name = Symbol(side, :_recv_tag)
     @eval begin
-        function $send_tag_fn_name(bc)
-            from_digits = string(bc.condition.from, pad=RANK_DIGITS)
-            to_digits = string(bc.condition.to, pad=RANK_DIGITS)
+        function $send_tag_fn_name(my_rank, rank_to_send_to)
+            from_digits = string(my_rank, pad=RANK_DIGITS)
+            to_digits = string(rank_to_send_to, pad=RANK_DIGITS)
             side_digit = string(side_id[Symbol($side_str)])
             return parse(Int, from_digits * to_digits * side_digit)
         end
 
-        function $recv_tag_fn_name(bc)
-            from_digits = string(bc.condition.from, pad=RANK_DIGITS)
-            to_digits = string(bc.condition.to, pad=RANK_DIGITS)
+        function $recv_tag_fn_name(my_rank, rank_to_recv_from)
+            from_digits = string(rank_to_recv_from, pad=RANK_DIGITS)
+            to_digits = string(my_rank, pad=RANK_DIGITS)
             side_digit = string(side_id[opposite_side[Symbol($side_str)]])
-            return parse(Int, to_digits * from_digits * side_digit)
+            return parse(Int, from_digits * to_digits * side_digit)
         end
     end
 end
@@ -96,56 +101,57 @@ function fill_east_and_west_halos!(c, east_bc, west_bc, arch, barrier, grid, arg
     return east_event, west_event
 end
 
+function send_east_halo(c, grid, my_rank, rank_to_send_to)
+    send_buffer = east_send_buffer(c, grid.Nx, grid.Hx)
+    send_tag = east_send_tag(my_rank, rank_to_send_to)
+
+    @debug "Sending east halo: my_rank=$my_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
+    status = MPI.Isend(send_buffer, rank_to_send_to, send_tag, MPI.COMM_WORLD)
+
+    return status
+end
+
+function send_west_halo(c, grid, my_rank, rank_to_send_to)
+    send_buffer = west_send_buffer(c, grid.Nx, grid.Hx)
+    send_tag = west_send_tag(my_rank, rank_to_send_to)
+
+    @debug "Sending west halo: my_rank=$my_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
+    status = MPI.Isend(send_buffer, rank_to_send_to, send_tag, MPI.COMM_WORLD)
+
+    return status
+end
+
+function recv_and_fill_east_halo!(c, grid, my_rank, rank_to_recv_from)
+    recv_buffer = east_recv_buffer(grid)
+    recv_tag = east_recv_tag(my_rank, rank_to_recv_from)
+
+    @debug "Receiving east halo: my_rank=$my_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
+    MPI.Recv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
+
+    copy_recv_buffer_into_east_halo!(c, grid.Nx, grid.Hx, recv_buffer)
+
+    return nothing
+end
+
+function recv_and_fill_west_halo!(c, grid, my_rank, rank_to_recv_from)
+    recv_buffer = west_recv_buffer(grid)
+    recv_tag = west_recv_tag(my_rank, rank_to_recv_from)
+
+    @debug "Receiving west halo: my_rank=$my_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
+    MPI.Recv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
+
+    copy_recv_buffer_into_west_halo!(c, grid.Nx, grid.Hx, recv_buffer)
+
+    return nothing
+end
+
 function fill_east_and_west_halos!(c, east_bc::HaloCommunicationBC, west_bc::HaloCommunicationBC, arch, barrier, grid, args...)
-    # 1 -> send east halo to eastern rank and fill east halo from eastern rank's west halo.
-    # 2 -> send west halo to western rank and fill west halo from western rank's east halo.
-
-    @assert east_bc.condition.from == west_bc.condition.from
     my_rank = east_bc.condition.from
+    send_east_halo(c, grid, my_rank, east_bc.condition.to)
+    send_west_halo(c, grid, my_rank, west_bc.condition.to)
 
-    rank_to_send_to1 = east_bc.condition.to
-    rank_to_send_to2 = west_bc.condition.to
-
-    send_buffer1 = east_send_buffer(c, grid.Nx, grid.Hx)
-    send_buffer2 = west_send_buffer(c, grid.Nx, grid.Hx)
-
-    send_tag1 = east_send_tag(east_bc)
-    send_tag2 = west_send_tag(west_bc)
-
-    @info "MPI.Isend: my_rank=$my_rank, rank_to_send_to=$rank_to_send_to1, send_tag=$send_tag1"
-    @info "MPI.Isend: my_rank=$my_rank, rank_to_send_to=$rank_to_send_to2, send_tag=$send_tag2"
-
-    send_req1 = MPI.Isend(send_buffer1, rank_to_send_to1, send_tag1, MPI.COMM_WORLD)
-    send_req2 = MPI.Isend(send_buffer2, rank_to_send_to2, send_tag2, MPI.COMM_WORLD)
-
-    rank_to_recv_from1 = east_bc.condition.to
-    rank_to_recv_from2 = west_bc.condition.to
-
-    recv_buffer1 = east_recv_buffer(grid)
-    recv_buffer2 = west_recv_buffer(grid)
-
-    recv_tag1 = east_recv_tag(east_bc)
-    recv_tag2 = west_recv_tag(west_bc)
-
-    @info "MPI.Recv!: my_rank=$my_rank, rank_to_recv_from=$rank_to_recv_from1, recv_tag=$recv_tag1"
-    @info "MPI.Recv!: my_rank=$my_rank, rank_to_recv_from=$rank_to_recv_from2, recv_tag=$recv_tag2"
-
-    MPI.Recv!(recv_buffer1, rank_to_recv_from1, recv_tag1, MPI.COMM_WORLD)
-    MPI.Recv!(recv_buffer2, rank_to_recv_from2, recv_tag2, MPI.COMM_WORLD)
-
-    @info "Communication done!"
-
-    copy_recv_buffer_into_east_halo!(c, grid.Nx, grid.Hx, recv_buffer1)
-    copy_recv_buffer_into_west_halo!(c, grid.Nx, grid.Hx, recv_buffer2)
-
-    # @info "Sendrecv!: my_rank=$my_rank, rank_send_to=rank_recv_from=$rank_send_to, " *
-    #       "send_tag=$send_tag, recv_tag=$recv_tag"
-    #
-    # MPI.Sendrecv!(send_buffer, rank_send_to,   send_tag,
-    #               recv_buffer, rank_recv_from, recv_tag,
-    #               MPI.COMM_WORLD)
-    #
-    # @info "Sendrecv!: my_rank=$my_rank done!"
+    recv_and_fill_east_halo!(c, grid, my_rank, east_bc.condition.to)
+    recv_and_fill_west_halo!(c, grid, my_rank, west_bc.condition.to)
 
     return nothing, nothing
 end
