@@ -79,7 +79,7 @@ function DistributedModel(; architecture, grid, boundary_conditions=nothing, mod
     pressure_solver = haskey(model_kwargs, :pressure_solver) ? Dict(model_kwargs)[:pressure_solver] :
                                                                DistributedFFTBasedPoissonSolver(architecture, grid, my_grid)
 
-    p_bcs = PressureBoundaryConditions(grid)
+    p_bcs = PressureBoundaryConditions(my_grid)
     p_bcs = inject_halo_communication_boundary_conditions(p_bcs, my_rank, my_connectivity)
 
     pHY′ = CenterField(child_architecture(architecture), my_grid, p_bcs)
