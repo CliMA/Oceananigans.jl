@@ -461,6 +461,7 @@ end
         run_triply_periodic_local_grid_tests_with_221_ranks()
     end
 
+    # Test pressure bcs!
     @testset "Injection of halo communication BCs" begin
         @info "  Testing injection of halo communication BCs..."
         run_triply_periodic_bc_injection_tests_with_411_ranks()
