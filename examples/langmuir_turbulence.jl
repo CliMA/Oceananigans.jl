@@ -141,7 +141,7 @@ model = IncompressibleModel(
                buoyancy = BuoyancyTracer(),
                coriolis = coriolis,
                 closure = AnisotropicMinimumDissipation(),
-          stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+           stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
     boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions),
 )
 
