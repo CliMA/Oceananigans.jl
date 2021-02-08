@@ -3,7 +3,7 @@ module Architectures
 export
     @hascuda,
     AbstractArchitecture, CPU, GPU,
-    device, architecture, array_type
+    device, architecture, array_type, arch_array
 
 using CUDA
 
@@ -44,11 +44,16 @@ end
 device(::CPU) = KernelAbstractions.CPU()
 device(::GPU) = KernelAbstractions.CUDADevice()
 
-         architecture(::Number)  = nothing
-         architecture(::Array)   = CPU()
-@hascuda architecture(::CuArray) = GPU()
+architecture(::Number)  = nothing
+architecture(::Array)   = CPU()
+architecture(::CuArray) = GPU()
 
-         array_type(::CPU) = Array
-@hascuda array_type(::GPU) = CuArray
+array_type(::CPU) = Array
+array_type(::GPU) = CuArray
+
+arch_array(::CPU, A::Array) = A
+arch_array(::CPU, A::CuArray) = Array(A)
+arch_array(::GPU, A::Array) = CuArray(A)
+arch_array(::GPU, A::CuArray) = A
 
 end
