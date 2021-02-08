@@ -50,15 +50,6 @@ RegularCartesianGrid{Float64, Periodic, Bounded, Bounded}
 grid spacing (Δx, Δy, Δz): (156.25, 156.25, 31.25)
 ```
 
-Note that currently only a subset of the possible topologies are available (the limiting factor being the pressure solver):
-
-```
-Topology = (Periodic, Periodic, Periodic)
-Topology = (Periodic, Periodic, Bounded)
-Topology = (Periodic, Bounded, Bounded)
-Topology = (Bounded, Bounded, Bounded) # Note: only works on CPUs
-```
-
 To specify a two-dimensional, horizontally-periodic model, write
 
 ```jldoctest
