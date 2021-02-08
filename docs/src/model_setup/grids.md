@@ -50,33 +50,6 @@ RegularCartesianGrid{Float64, Periodic, Bounded, Bounded}
 grid spacing (Δx, Δy, Δz): (156.25, 156.25, 31.25)
 ```
 
-To specify a two-dimensional, horizontally-periodic model, write
-
-```jldoctest
-julia> grid = RegularCartesianGrid(topology=(Periodic, Periodic, Flat), size=(64, 64), extent=(1e4, 1e4))
-RegularCartesianGrid{Float64, Periodic, Periodic, Flat}
-                   domain: x ∈ [0.0, 10000.0], y ∈ [0.0, 10000.0], z ∈ [0.0, 0.0]
-                 topology: (Periodic, Periodic, Flat)
-  resolution (Nx, Ny, Nz): (64, 64, 1)
-   halo size (Hx, Hy, Hz): (1, 1, 0)
-grid spacing (Δx, Δy, Δz): (156.25, 156.25, 0.0)
-```
-
-Grid spacing in `Flat` directions is `0`. Notice that two-dimensional domains accept 2-`Tuple`s
-for `size` and `extent`. To specify a one-dimensional "column" model that varies only in ``z``, write
-
-```jldoctest
-julia> grid = RegularCartesianGrid(topology=(Flat, Flat, Bounded), size=128, extent=256)
-RegularCartesianGrid{Float64, Flat, Flat, Bounded}
-                   domain: x ∈ [0.0, 0.0], y ∈ [0.0, 0.0], z ∈ [-256.0, 0.0]
-                 topology: (Flat, Flat, Bounded)
-  resolution (Nx, Ny, Nz): (1, 1, 128)
-   halo size (Hx, Hy, Hz): (0, 0, 1)
-grid spacing (Δx, Δy, Δz): (0.0, 0.0, 2.0)
-```
-
-For one-dimensional domains, `size` and `extent` may either be scalars or 1-`Tuple`s.
-
 ## Specifying domain end points
 
 To specify a domain with a different origin than the default, the `x`, `y`, and `z` keyword arguments must be used.
@@ -91,16 +64,4 @@ RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}
   resolution (Nx, Ny, Nz): (32, 16, 256)
    halo size (Hx, Hy, Hz): (1, 1, 1)
 grid spacing (Δx, Δy, Δz): (6.25, 0.78125, 0.02454369260617026)
-```
-
-For two- and one-dimensional domains, `Flat` dimensions may be omitted, or provided as a scalar:
-
-```jldoctest
-julia> grid = RegularCartesianGrid(size=(32, 32), x=(-100, 100), y=(0, 200), z=-1000, topology=(Periodic, Periodic, Flat))
-RegularCartesianGrid{Float64, Periodic, Periodic, Flat}
-                   domain: x ∈ [-100.0, 100.0], y ∈ [0.0, 200.0], z ∈ [-1000.0, -1000.0]
-                 topology: (Periodic, Periodic, Flat)
-  resolution (Nx, Ny, Nz): (32, 32, 1)
-   halo size (Hx, Hy, Hz): (1, 1, 0)
-grid spacing (Δx, Δy, Δz): (6.25, 6.25, 0.0)
 ```
