@@ -161,6 +161,13 @@ function plan_transforms(arch, grid, storage, planner_flag)
         end
 
     else
+        # This is the case where batching transforms is possible. It's always possible on the CPU
+        # since FFTW is awesome so it includes all topologies on the CPU.
+        # 
+        # On the GPU batching is possible when the topology is not one of non_batched_topologies
+        # (where an FFT is needed along dimension 2), so it includes (Periodic, Periodic, Periodic),
+        # (Periodic, Periodic, Bounded), and (Bounded, Periodic, Periodic).
+
         forward_periodic_plan = plan_forward_transform(storage, Periodic(), periodic_dims, planner_flag)
         forward_bounded_plan = plan_forward_transform(storage, Bounded(), bounded_dims, planner_flag)
 

@@ -4,15 +4,15 @@ struct Forward <: AbstractTransformDirection end
 struct Backward <: AbstractTransformDirection end
 
 struct DiscreteTransform{P, D, A, G, Δ, Ω, N, T, Σ}
-              plan :: P
-      architecture :: A
-              grid :: G
-         direction :: D
-              dims :: Δ
-          topology :: Ω
-     normalization :: N
-           twiddle :: T
-    transpose_dims :: Σ
+               plan :: P
+       architecture :: A
+               grid :: G
+          direction :: D
+               dims :: Δ
+           topology :: Ω
+      normalization :: N
+    twiddle_factors :: T # # https://en.wikipedia.org/wiki/Twiddle_factor
+     transpose_dims :: Σ
 end
 
 #####
@@ -38,7 +38,7 @@ twiddle_factors(arch, grid, dim) = nothing
 """
     twiddle_factors(arch::GPU, grid, dims)
 
-Twiddle factored are needed to perform DCTs on the GPU. See equations (19a) and (22) of [Makhoul80](@cite)
+Twiddle factors are needed to perform DCTs on the GPU. See equations (19a) and (22) of [Makhoul80](@cite)
 for the forward and backward twiddle factors respectively.
 """
 function twiddle_factors(arch::GPU, grid, dims)
@@ -102,13 +102,13 @@ end
 function (transform::DiscreteTransform{P, <:Forward})(A, buffer) where P
     maybe_permute_indices!(A, buffer, transform.architecture, transform.grid, transform.dims, transform.topology)
     apply_transform!(A, buffer, transform.plan, transform.transpose_dims)
-    maybe_twiddle_forward!(A, transform.twiddle)
+    maybe_twiddle_forward!(A, transform.twiddle_factors)
     maybe_normalize!(A, transform.normalization)
     return nothing
 end
 
 function (transform::DiscreteTransform{P, <:Backward})(A, buffer) where P
-    maybe_twiddle_backward!(A, transform.twiddle)
+    maybe_twiddle_backward!(A, transform.twiddle_factors)
     apply_transform!(A, buffer, transform.plan, transform.transpose_dims)
     maybe_unpermute_indices!(A, buffer, transform.architecture, transform.grid, transform.dims, transform.topology)
     maybe_normalize!(A, transform.normalization)
