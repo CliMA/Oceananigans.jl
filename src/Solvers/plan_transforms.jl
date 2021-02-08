@@ -1,13 +1,13 @@
 #=
 These functions return the transforms required to solve Poisson's equation with
-periodic boundary conditions or staggered Neumann boundary.
+periodic boundary conditions or staggered Neumann boundary conditions.
 
 Fast Fourier transforms (FFTs) are used in the periodic dimensions and
 real-to-real discrete cosine transforms are used in the wall-bounded dimensions.
 Note that the DCT-II is used for the DCT and the DCT-III for the IDCT
 which correspond to REDFT10 and REDFT01 in FFTW.
 
-They operatore on an array with the shape of `A`, which is needed to plan
+They operate on an array with the shape of `A`, which is needed to plan
 efficient transforms. `A` will be mutated.
 =#
 
@@ -178,10 +178,7 @@ function plan_transforms(arch, grid, storage, planner_flag)
         )
     end
 
-    # Need buffer for index permutations and transposes.
-    buffer_needed = arch isa GPU && Bounded in topo ? true : false
-
     transforms = (forward = forward_transforms, backward = backward_transforms)
 
-    return transforms, buffer_needed
+    return transforms
 end

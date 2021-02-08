@@ -22,9 +22,10 @@ function FFTBasedPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
 
     storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
 
-    transforms, buffer_needed = plan_transforms(arch, grid, storage, planner_flag)
+    transforms = plan_transforms(arch, grid, storage, planner_flag)
 
-    # TODO: buffer should have size of storage permuted by (2, 1, 3).
+    # Need buffer for index permutations and transposes.
+    buffer_needed = arch isa GPU && Bounded in topo ? true : false
     buffer = buffer_needed ? similar(storage) : nothing
 
     return FFTBasedPoissonSolver(arch, grid, eigenvalues, storage, buffer, transforms)
