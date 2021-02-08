@@ -138,6 +138,7 @@ function vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
     @inline ∂y²(i, j, k, Δy, f)       = (∂y_aca(i, j, k, Δy, f)  - ∂y_aca(i, j-1, k, Δy, f))  / Δy
     @inline ∂z²(i, j, k, ΔzF, ΔzC, f) = (∂z_aac(i, j, k, ΔzF, f) - ∂z_aac(i, j, k-1, ΔzF, f)) / ΔzC[k]
 
+    @inline hdiv_cca(i, j, k, Δx, Δy, u, v) = ∂x_caa(i, j, k, Δx, u) + ∂y_aca(i, j, k, Δy, v)
     @inline div_ccc(i, j, k, Δx, Δy, ΔzF, u, v, w) = ∂x_caa(i, j, k, Δx, u) + ∂y_aca(i, j, k, Δy, v) + ∂z_aac(i, j, k, ΔzF, w)
 
     @inline ∇²(i, j, k, Δx, Δy, ΔzF, ΔzC, f) = ∂x²(i, j, k, Δx, f) + ∂y²(i, j, k, Δy, f) + ∂z²(i, j, k, ΔzF, ΔzC, f)
@@ -216,7 +217,11 @@ function vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
     model_fields = datatuple(U)
     fill_halo_regions!(U, arch, nothing, model_fields)
 
-    _compute_w_from_continuity!(U, fake_grid)
+    # _compute_w_from_continuity!(U, fake_grid)
+    # U.w[i, j, 1] = 0 is enforced via halo regions.
+    for i in 1:Nx, j in 1:Ny, k in 2:Nz
+        @inbounds Rw[i, j, k] = Rw[i, j, k-1] - ΔzC[k] * hdiv_cca(i, j, k-1, fake_grid.Δx, fake_grid.Δy, Ru, Rv)
+    end
 
     fill_halo_regions!(Rw, arch, nothing, model_fields)
 
@@ -282,7 +287,7 @@ end
 
             Nx = Ny = 8
             zF = [1, 2, 4, 7, 11, 16, 22, 29, 37]
-            @test_skip vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
+            @test vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
         end
     end
 end
