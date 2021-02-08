@@ -9,7 +9,7 @@ using Oceananigans.TurbulenceClosures: ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ,
     u_velocity_tendency(i, j, k, grid,
                         advection,
                         coriolis,
-                        surface_waves,
+                        stokes_drift,
                         closure,
                         background_fields,
                         velocities,
@@ -28,7 +28,7 @@ The tendency for ``u`` is called ``G_u`` and defined via
 
 where ∂_x ϕ_n is the non-hydrostatic pressure gradient in the x-direction.
 
-`coriolis`, `surface_waves`, and `closure` are types encoding information about Coriolis
+`coriolis`, `stokes_drift`, and `closure` are types encoding information about Coriolis
 forces, surface waves, and the prescribed turbulence closure.
 
 `background_fields` is a `NamedTuple` containing background velocity and tracer
@@ -44,7 +44,7 @@ pressure anomaly.
 @inline function u_velocity_tendency(i, j, k, grid,
                                      advection,
                                      coriolis,
-                                     surface_waves,
+                                     stokes_drift,
                                      closure,
                                      background_fields,
                                      velocities,
@@ -60,8 +60,8 @@ pressure anomaly.
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᵃᵃ(i, j, k, grid, hydrostatic_pressure)
              + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
-             + x_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, velocities, clock.time)
-             + ∂t_uˢ(i, j, k, grid, surface_waves, clock.time)
+             + x_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
+             + ∂t_uˢ(i, j, k, grid, stokes_drift, clock.time)
              + forcings.u(i, j, k, grid, clock, merge(velocities, tracers)))
 end
 
@@ -69,7 +69,7 @@ end
     v_velocity_tendency(i, j, k, grid,
                         advection,
                         coriolis,
-                        surface_waves,
+                        stokes_drift,
                         closure,
                         background_fields,
                         velocities,
@@ -88,7 +88,7 @@ The tendency for ``v`` is called ``G_v`` and defined via
 
 where ∂_y ϕ_n is the non-hydrostatic pressure gradient in the y-direction.
 
-`coriolis`, `surface_waves`, and `closure` are types encoding information about Coriolis
+`coriolis`, `stokes_drift`, and `closure` are types encoding information about Coriolis
 forces, surface waves, and the prescribed turbulence closure.
 
 `background_fields` is a `NamedTuple` containing background velocity and tracer
@@ -104,7 +104,7 @@ pressure anomaly.
 @inline function v_velocity_tendency(i, j, k, grid,
                                      advection,
                                      coriolis,
-                                     surface_waves,
+                                     stokes_drift,
                                      closure,
                                      background_fields,
                                      velocities,
@@ -120,8 +120,8 @@ pressure anomaly.
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᵃᶠᵃ(i, j, k, grid, hydrostatic_pressure)
              + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
-             + y_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, velocities, clock.time)
-             + ∂t_vˢ(i, j, k, grid, surface_waves, clock.time)
+             + y_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
+             + ∂t_vˢ(i, j, k, grid, stokes_drift, clock.time)
              + forcings.v(i, j, k, grid, clock, merge(velocities, tracers)))
 end
 
@@ -129,7 +129,7 @@ end
     w_velocity_tendency(i, j, k, grid,
                         advection,
                         coriolis,
-                        surface_waves, 
+                        stokes_drift, 
                         closure,
                         background_fields,
                         velocities,
@@ -145,7 +145,7 @@ The tendency for ``w`` is called ``G_w`` and defined via
 
 where ∂_z ϕ_n is the non-hydrostatic pressure gradient in the z-direction.
 
-`coriolis`, `surface_waves`, and `closure` are types encoding information about Coriolis
+`coriolis`, `stokes_drift`, and `closure` are types encoding information about Coriolis
 forces, surface waves, and the prescribed turbulence closure.
 
 `background_fields` is a `NamedTuple` containing background velocity and tracer
@@ -160,7 +160,7 @@ velocity components, tracer fields, and precalculated diffusivities where applic
 @inline function w_velocity_tendency(i, j, k, grid,
                                      advection,
                                      coriolis,
-                                     surface_waves, 
+                                     stokes_drift, 
                                      closure,
                                      background_fields,
                                      velocities,
@@ -174,8 +174,8 @@ velocity components, tracer fields, and precalculated diffusivities where applic
              - div_Uw(i, j, k, grid, advection, velocities, background_fields.velocities.w)
              - z_f_cross_U(i, j, k, grid, coriolis, velocities)
              + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
-             + z_curl_Uˢ_cross_U(i, j, k, grid, surface_waves, velocities, clock.time)
-             + ∂t_wˢ(i, j, k, grid, surface_waves, clock.time)
+             + z_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
+             + ∂t_wˢ(i, j, k, grid, stokes_drift, clock.time)
              + forcings.w(i, j, k, grid, clock, merge(velocities, tracers)))
 end
 
