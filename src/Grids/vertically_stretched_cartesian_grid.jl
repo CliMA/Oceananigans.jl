@@ -90,7 +90,7 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
      xC = OffsetArray(xC,  -Hx)
      yC = OffsetArray(yC,  -Hy)
      zC = OffsetArray(zC,  -Hz)
-    ΔzC = OffsetArray(ΔzC, 1 - Hz)
+    ΔzC = OffsetArray(ΔzC, -Hz)
 
      xF = OffsetArray(xF,  -Hx)
      yF = OffsetArray(yF,  -Hy)
