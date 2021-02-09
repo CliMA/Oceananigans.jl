@@ -136,4 +136,8 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
     if group == :shallow_water || group == :all
         include("test_shallow_water_models.jl")
     end
+
+    if group == :hydrostatic_free_surface || group == :all
+        include("test_hydrostatic_free_surface_models.jl")
+    end
 end
