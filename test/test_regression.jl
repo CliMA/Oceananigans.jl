@@ -56,25 +56,27 @@ include("regression_tests/thermal_bubble_regression_test.jl")
 include("regression_tests/rayleigh_benard_regression_test.jl")
 include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
 
+grid_types = [:regular, :vertically_unstretched]
+
 @testset "Regression" begin
     @info "Running regression tests..."
 
-    for arch in archs
-        @testset "Thermal bubble [$(typeof(arch))]" begin
-            @info "  Testing thermal bubble regression [$(typeof(arch))]"
-            run_thermal_bubble_regression_test(arch)
+    for arch in archs, grid_type in grid_types
+        @testset "Thermal bubble [$(typeof(arch)), $grid_type grid]" begin
+            @info "  Testing thermal bubble regression [$(typeof(arch)), $grid_type grid]"
+            run_thermal_bubble_regression_test(arch, grid_type)
         end
 
-        @testset "Rayleigh–Bénard tracer [$(typeof(arch))]" begin
-            @info "  Testing Rayleigh–Bénard tracer regression [$(typeof(arch))]"
-            run_rayleigh_benard_regression_test(arch)
+        @testset "Rayleigh–Bénard tracer [$(typeof(arch)), $grid_type grid]]" begin
+            @info "  Testing Rayleigh–Bénard tracer regression [$(typeof(arch)), $grid_type grid]"
+            run_rayleigh_benard_regression_test(arch, grid_type)
         end
 
-        @testset "Ocean large eddy simulation [$(typeof(arch))]" begin
-            for closure in (AnisotropicMinimumDissipation(), ConstantSmagorinsky())
-                closurename = string(typeof(closure).name.wrapper)
-                @info "  Testing oceanic large eddy simulation regression [$closurename, $(typeof(arch))]"
-                run_ocean_large_eddy_simulation_regression_test(arch, closure)
+        for closure in (AnisotropicMinimumDissipation(), ConstantSmagorinsky())
+            closurename = string(typeof(closure).name.wrapper)
+            @testset "Ocean large eddy simulation [$(typeof(arch)), $closurename, $grid_type grid]" begin
+                @info "  Testing oceanic large eddy simulation regression [$(typeof(arch)), $closurename, $grid_type grid]"
+                run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
             end
         end
     end
