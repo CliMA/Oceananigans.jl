@@ -3,7 +3,8 @@ module Solvers
 export
     BatchedTridiagonalSolver, solve_batched_tridiagonal_system!,
     FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver,
-    solve_for_pressure!, solve_poisson_equation!
+    solve_for_pressure!, solve_poisson_equation!,
+    PressureSolver
 
 using Statistics
 
@@ -37,5 +38,8 @@ include("plan_transforms.jl")
 include("fft_based_poisson_solver.jl")
 include("fourier_tridiagonal_poisson_solver.jl")
 include("solve_for_pressure.jl")
+
+PressureSolver(arch, grid::RegularCartesianGrid) = FFTBasedPoissonSolver(arch, grid)
+PressureSolver(arch, grid::VerticallyStretchedCartesianGrid) = FourierTridiagonalPoissonSolver(arch, grid)
 
 end

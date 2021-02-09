@@ -6,6 +6,9 @@ struct FourierTridiagonalPoissonSolver{A, G, B, S}
 end
 
 function FourierTridiagonalPoissonSolver(arch, grid)
+    # FIXME: Gonna add more tests before supporting all/other topologies.
+    @assert topology(grid) == (Periodic, Periodic, Bounded)
+
     Nx, Ny, Nz = size(grid)
     # ΔzC, ΔzF = grid.ΔzC, grid.ΔzF
 
