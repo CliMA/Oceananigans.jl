@@ -97,6 +97,10 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
      zF = OffsetArray(zF,  -Hz)
     ΔzF = OffsetArray(ΔzF, -Hz)
 
+    # Needed for pressure solver solution to be divergence-free.
+    # Will figure out why later...
+    ΔzC[Nz] = ΔzC[Nz-1]
+
     return VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, typeof(xF), typeof(zF)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
 end
