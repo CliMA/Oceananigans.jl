@@ -84,7 +84,7 @@ function divergence_free_poisson_solution(arch, FT, topo, Nx, Ny, Nz, planner_fl
     R, U = random_divergent_source_term(FT, arch, grid)
 
     p_bcs = PressureBoundaryConditions(grid)
-    ϕ   = CenterField(FT, arch, grid, p_bcs)  # "pressure"
+    ϕ   = CenterField(FT, arch, grid, p_bcs)  # "kinematic pressure"
     ∇²ϕ = CenterField(FT, arch, grid, p_bcs)
 
     # Using Δt = 1 but it doesn't matter since velocities = 0.
@@ -145,58 +145,19 @@ end
 function vertically_stretched_poisson_solver_correct_answer(FT, arch, Nx, Ny, zF)
     Nz = length(zF) - 1
     vs_grid = VerticallyStretchedCartesianGrid(size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), zF=zF)
+    solver = FourierTridiagonalPoissonSolver(arch, vs_grid)
 
-    ΔzC = vs_grid.ΔzC
-    ΔzF = vs_grid.ΔzF
-
-    #####
-    ##### Generate batched tridiagonal system coefficients and solver
-    #####
-
-    kx² = λx = poisson_eigenvalues(vs_grid.Nx, vs_grid.Lx, 1, topology(vs_grid, 1)())
-    ky² = λx = poisson_eigenvalues(vs_grid.Ny, vs_grid.Ly, 2, topology(vs_grid, 2)())
-
-    # Lower and upper diagonals are the same
-    ld = [1/ΔzF[k] for k in 1:Nz-1]
-    ud = copy(ld)
-
-    # Diagonal (different for each i,j)
-    @inline δ(k, ΔzF, ΔzC, kx², ky²) = - (1/ΔzF[k-1] + 1/ΔzF[k]) - ΔzC[k] * (kx² + ky²)
-
-    d = zeros(Nx, Ny, Nz)
-    for i in 1:Nx, j in 1:Ny
-        d[i, j, 1] = -1/ΔzF[1] - ΔzC[1] * (kx²[i] + ky²[j])
-        d[i, j, 2:Nz-1] .= [δ(k, ΔzF, ΔzC, kx²[i], ky²[j]) for k in 2:Nz-1]
-        d[i, j, Nz] = -1/ΔzF[Nz-1] - ΔzC[Nz] * (kx²[i] + ky²[j])
-    end
-
-    #####
-    ##### Random right hand side
-    #####
+    p_bcs = PressureBoundaryConditions(vs_grid)
+    ϕ   = CenterField(FT, arch, vs_grid, p_bcs)  # "kinematic pressure"
+    ∇²ϕ = CenterField(FT, arch, vs_grid, p_bcs)
 
     R = random_div_free_source_term(FT, arch, vs_grid)
-    F = reshape(ΔzC[1:Nz], 1, 1, Nz) .* R  # RHS needs to be multiplied by ΔzC
-
-    #####
-    ##### Solve system
-    #####
-
-    F̃ = fft(F, [1, 2])
-
-    btsolver = BatchedTridiagonalSolver(arch, dl=ld, d=d, du=ud, f=F̃, grid=vs_grid)
-
-    ϕ̃ = zeros(Complex{FT}, Nx, Ny, Nz)
-    solve_batched_tridiagonal_system!(ϕ̃, arch, btsolver)
-
-    ϕ = CenterField(FT, arch, vs_grid, PressureBoundaryConditions(vs_grid))
-    interior(ϕ) .= real.(ifft(ϕ̃, [1, 2]))
-    ϕ.data .= ϕ.data .- mean(interior(ϕ))
-
-    #####
-    ##### Compute Laplacian of solution ϕ to test that it's correct
-    #####
-
-    ∇²ϕ = CenterField(FT, arch, vs_grid, PressureBoundaryConditions(vs_grid))
+    F = reshape(vs_grid.ΔzC[1:Nz], 1, 1, Nz) .* R  # RHS needs to be multiplied by ΔzC
+    solver.batched_tridiagonal_solver.f .= F
+    
+    solve_poisson_equation!(solver)
+    
+    interior(ϕ) .= real.(solver.storage)
     compute_∇²!(∇²ϕ, ϕ, arch, vs_grid)
 
     return interior(∇²ϕ) ≈ R

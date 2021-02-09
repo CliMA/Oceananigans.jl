@@ -2,7 +2,10 @@ module Solvers
 
 export
     BatchedTridiagonalSolver, solve_batched_tridiagonal_system!,
-    FFTBasedPoissonSolver, solve_for_pressure!, solve_poisson_equation!
+    FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver,
+    solve_for_pressure!, solve_poisson_equation!
+
+using Statistics
 
 using FFTW
 using CUDA
@@ -28,11 +31,11 @@ reshaped_size(N, dim) = dim == 1 ? (N, 1, 1) :
 
 include("batched_tridiagonal_solver.jl")
 include("poisson_eigenvalues.jl")
+include("index_permutations.jl")
 include("discrete_transforms.jl")
 include("plan_transforms.jl")
 include("fft_based_poisson_solver.jl")
-include("solve_poisson_equation.jl")
-include("index_permutations.jl")
+include("fourier_tridiagonal_poisson_solver.jl")
 include("solve_for_pressure.jl")
 
 end
