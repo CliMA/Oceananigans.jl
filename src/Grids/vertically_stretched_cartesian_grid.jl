@@ -153,3 +153,22 @@ function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, zF_generator)
 
     return Lz, zF, zC, ΔzF, ΔzC
 end
+
+# We cannot reconstruct a VerticallyStretchedCartesianGrid without the zF_generator.
+# So the best we can do is tell the user what they should have done.
+function with_halo(new_halo, old_grid::VerticallyStretchedCartesianGrid)
+    new_halo != halo_size(old_grid) &&
+        @error "You need to construct your VerticallyStretchedCartesianGrid with the keyword argument halo=$new_halo"
+    return old_grid
+end
+
+short_show(grid::VerticallyStretchedCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+    "VerticallyStretchedCartesianGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
+
+function show(io::IO, g::VerticallyStretchedCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    print(io, "VerticallyStretchedCartesianGrid{$FT, $TX, $TY, $TZ}\n",
+              "                   domain: $(domain_string(g))\n",
+              "                 topology: ", (TX, TY, TZ), '\n',
+              "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
+              "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
+end
