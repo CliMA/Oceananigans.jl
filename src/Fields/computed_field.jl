@@ -39,7 +39,7 @@ DefaultComputedFieldBoundaryCondition(::Type{Flat}, loc) = nothing
 DefaultComputedFieldBoundaryCondition(::Type{Bounded}, ::Type{Center}) = NoFluxBoundaryCondition()
 DefaultComputedFieldBoundaryCondition(::Type{Bounded}, ::Type{Face}) = nothing
 
-function ComputedFieldBoundaryConditions(grid, loc,
+function ComputedFieldBoundaryConditions(grid, loc;
                                            east = DefaultComputedFieldBoundaryCondition(topology(grid, 1), loc[1]),
                                            west = DefaultComputedFieldBoundaryCondition(topology(grid, 1), loc[1]),
                                           south = DefaultComputedFieldBoundaryCondition(topology(grid, 2), loc[2]),
