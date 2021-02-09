@@ -57,8 +57,7 @@ solution_storage(solver) = solver.storage
 
 function copy_pressure!(p, solver, arch, grid)
     ϕ = solution_storage(solver)
-    copy_event = launch!(arch, grid, :xyz,
-                         copy_pressure!, p, ϕ, arch, grid,
+    copy_event = launch!(arch, grid, :xyz, copy_pressure_kernel!, p, ϕ,
                          dependencies = Event(device(arch)))
 
     wait(device(arch), copy_event)

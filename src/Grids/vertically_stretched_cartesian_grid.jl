@@ -101,6 +101,10 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     # Will figure out why later...
     ΔzC[Nz] = ΔzC[Nz-1]
 
+    # Seems needed to avoid out-of-bounds error in viscous dissipation
+    # operator wanting to access ΔzC[Nz+2].
+    ΔzC = OffsetArray(cat(ΔzC[0], ΔzC..., ΔzC[Nz], dims=1), -Hz-1)
+
     return VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, typeof(xF), typeof(zF)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
 end
