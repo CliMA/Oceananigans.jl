@@ -56,8 +56,6 @@ end
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
-		        arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
-
                 grid = RegularCartesianGrid(FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
                 model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)
 
