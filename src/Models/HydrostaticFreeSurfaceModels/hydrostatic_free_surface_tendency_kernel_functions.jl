@@ -5,6 +5,13 @@ using Oceananigans.Operators
 using Oceananigans.SurfaceWaves
 using Oceananigans.TurbulenceClosures: ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
 
+# Temporary implementation of momentum advection for hydrostatic free surface model
+U_dot_∇u(i, j, k, grid, advection::VectorInvariant, velocities) = 0
+U_dot_∇v(i, j, k, grid, advection::VectorInvariant, velocities) = 0
+
+U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, velocities) = div_Uu(i, j, k, grid, advection, velocities, velocities.u)
+U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, velocities) = div_Uv(i, j, k, grid, advection, velocities, velocities.v)
+
 """
     hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid,
                                                               advection,
@@ -40,7 +47,7 @@ free surface displacement in the x-direction.
                                                               hydrostatic_pressure_anomaly,
                                                               clock)
  
-    return ( - x_f_cross_U(i, j, k, grid, coriolis, velocities)
+    return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
              - ∂xᶠᵃᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
              + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
              + forcings.u(i, j, k, grid, clock, merge(velocities, (η=free_surface_displacement,), tracers)))
@@ -81,7 +88,8 @@ free surface displacement in the y-direction.
                                                               hydrostatic_pressure_anomaly,
                                                               clock)
 
-    return ( - y_f_cross_U(i, j, k, grid, coriolis, velocities)
+    return ( - U_dot_∇v(i, j, k, grid, advection, velocities)
+             - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᵃᶠᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
              + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
              + forcings.v(i, j, k, grid, clock, merge(velocities, (η=free_surface_displacement,), tracers)))
@@ -123,9 +131,8 @@ where `c = C[tracer_index]`.
 
     @inbounds c = tracers[tracer_index]
 
-    #return ( - div_Uc(i, j, k, grid, tracer_advection_scheme, velocities, c)
-    #         + ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, buoyancy)
-    return ( ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, buoyancy)
+    return ( - div_Uc(i, j, k, grid, advection, velocities, c)
+             + ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, buoyancy)
              + forcing(i, j, k, grid, clock, merge(velocities, (η=free_surface_displacement,), tracers)))
 end
 

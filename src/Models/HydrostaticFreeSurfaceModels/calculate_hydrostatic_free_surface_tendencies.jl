@@ -75,11 +75,11 @@ function calculate_interior_tendency_contributions!(tendencies,
 
     barrier = Event(device(arch))
 
-    Gu_event = calculate_Gu_kernel!(tendencies.u, grid, advection, coriolis, closure,
+    Gu_event = calculate_Gu_kernel!(tendencies.u, grid, advection.momentum, coriolis, closure,
                                     velocities, free_surface_displacement, tracers, diffusivities,
                                     forcings, hydrostatic_pressure_anomaly, clock, dependencies=barrier)
 
-    Gv_event = calculate_Gv_kernel!(tendencies.v, grid, advection, coriolis, closure,
+    Gv_event = calculate_Gv_kernel!(tendencies.v, grid, advection.momentum, coriolis, closure,
                                     velocities, free_surface_displacement, tracers, diffusivities,
                                     forcings, hydrostatic_pressure_anomaly, clock, dependencies=barrier)
 
@@ -91,9 +91,10 @@ function calculate_interior_tendency_contributions!(tendencies,
 
     for tracer_index in 1:length(tracers)
         @inbounds c_tendency = tendencies[tracer_index+3]
+        @inbounds c_advection = advection[tracer_index+1]
         @inbounds forcing = forcings[tracer_index+3]
 
-        Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index), advection, closure, buoyancy,
+        Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index), c_advection, closure, buoyancy,
                                         velocities, free_surface_displacement, tracers, diffusivities,
                                         forcing, clock, dependencies=barrier)
 

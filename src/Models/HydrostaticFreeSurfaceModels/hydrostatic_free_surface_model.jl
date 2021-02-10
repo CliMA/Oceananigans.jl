@@ -4,7 +4,7 @@ using OrderedCollections: OrderedDict
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, GPU
-using Oceananigans.Advection: CenteredSecondOrder
+using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder
 using Oceananigans.Buoyancy: validate_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, TracerBoundaryConditions
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
@@ -33,25 +33,28 @@ function FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, arch, grid)
     return ExplicitFreeSurface(η, g)
 end
 
-validate_advection(advection) = (VectorInvariant(), CenteredSecondOrder())
+""" Returns a default_tracer_advection, tracer_advection `tuple`. """
+validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
+validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSecondOrder(), advection_scheme_tuple
+validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture,
                                            G, T, V, B, R, S, F, P, U, C, Φ, K} <: AbstractModel{TS}
-     architecture :: A         # Computer `Architecture` on which `Model` is run
-             grid :: G         # Grid of physical points on which `Model` is solved
-            clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
-        advection :: V         # Advection scheme for tracers
-         buoyancy :: B         # Set of parameters for buoyancy model
-         coriolis :: R         # Set of parameters for the background rotation rate of `Model`
-     free_surface :: S         # Free surface parameters and fields
-          forcing :: F         # Container for forcing functions defined by the user
-          closure :: E         # Diffusive 'turbulence closure' for all model fields
-        particles :: P         # Particle set for Lagrangian tracking
-       velocities :: U         # Container for velocity fields `u`, `v`, and `w`
-          tracers :: C         # Container for tracer fields
-         pressure :: Φ         # Container for hydrostatic pressure
-    diffusivities :: K         # Container for turbulent diffusivities
-      timestepper :: TS        # Object containing timestepper fields and parameters
+     architecture :: A        # Computer `Architecture` on which `Model` is run
+             grid :: G        # Grid of physical points on which `Model` is solved
+            clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
+        advection :: V        # Advection scheme for tracers
+         buoyancy :: B        # Set of parameters for buoyancy model
+         coriolis :: R        # Set of parameters for the background rotation rate of `Model`
+     free_surface :: S        # Free surface parameters and fields
+          forcing :: F        # Container for forcing functions defined by the user
+          closure :: E        # Diffusive 'turbulence closure' for all model fields
+        particles :: P        # Particle set for Lagrangian tracking
+       velocities :: U        # Container for velocity fields `u`, `v`, and `w`
+          tracers :: C        # Container for tracer fields
+         pressure :: Φ        # Container for hydrostatic pressure
+    diffusivities :: K        # Container for turbulent diffusivities
+      timestepper :: TS       # Object containing timestepper fields and parameters
 end
 
 """
@@ -92,7 +95,8 @@ Keyword arguments
 function HydrostaticFreeSurfaceModel(; grid,
                 architecture::AbstractArchitecture = CPU(),
                                              clock = Clock{eltype(grid)}(0, 0, 1),
-                                         advection = (momentum=VectorInvariant(), tracers=CenteredSecondOrder()),
+                                momentum_advection = CenteredSecondOrder(),
+                                  tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
                                           coriolis = nothing,
                                       free_surface = ExplicitFreeSurface(gravitational_acceleration=g_Earth),
@@ -144,15 +148,15 @@ function HydrostaticFreeSurfaceModel(; grid,
     forcing = model_forcing(model_fields; forcing...)
     closure = with_tracers(tracernames(tracers), closure)
 
+    default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
+
     # Advection schemes
-    momentum_advection_scheme, default_tracer_advection_scheme = validate_advection(advection)
+    tracer_advection_tuple = with_tracers(tracernames(tracers),
+                                          tracer_advection,
+                                          (name, tracer_advection) -> default_tracer_advection,
+                                          with_velocities=false)
 
-    tracer_advection_schemes = with_tracers(tracernames(tracers),
-                                            advection,
-                                            (name, tuple) -> default_tracer_advection_scheme,
-                                            with_velocities=false)
-
-    advection = merge((momentum=momentum_advection_scheme,), tracer_advection_schemes)
+    advection = merge((momentum=momentum_advection,), tracer_advection_tuple)
 
     return HydrostaticFreeSurfaceModel(architecture, grid, clock, advection, buoyancy, coriolis,
                                        free_surface, forcing, closure, particles, velocities, tracers,
