@@ -9,6 +9,8 @@ using Oceananigans.Grids
 
 const MAX_THREADS_PER_BLOCK = 256
 
+flatten_reduced_dimensions(worksize, dims) = Tuple(i ∈ dims ? 1 : worksize[i] for i = 1:3)
+
 """
     work_layout(grid, dims; include_right_boundaries=false, location=nothing)
 
@@ -22,7 +24,7 @@ to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-function work_layout(grid, dims; include_right_boundaries=false, location=nothing)
+function work_layout(grid, dims; include_right_boundaries=false, location=nothing, reduced_dimensions=())
 
     Nx, Ny, Nz = size(grid)
 
@@ -46,6 +48,8 @@ function work_layout(grid, dims; include_right_boundaries=false, location=nothin
 
     Nx′, Ny′, Nz′ = include_right_boundaries ? size(location, grid) : (Nx, Ny, Nz)
 
+    Nx′, Ny′, Nz′ = flatten_reduced_dimensions((Nx′, Ny′, Nz′), reduced_dimensions)
+
     worksize = dims == :xyz ? (Nx′, Ny′, Nz′) :
                dims == :xy  ? (Nx′, Ny′) :
                dims == :xz  ? (Nx′, Nz′) :
@@ -66,11 +70,15 @@ The keyword argument `dependencies` is an `Event` or `MultiEvent` specifying pri
 that must complete before `kernel!` is launched.
 """
 function launch!(arch, grid, dims, kernel!, args...; 
-                 dependencies = nothing, include_right_boundaries = false,
-                 location = nothing, kwargs...)
+                 dependencies = nothing,
+                 include_right_boundaries = false,
+                 reduced_dimensions = (),
+                 location = nothing,
+                 kwargs...)
 
     workgroup, worksize = work_layout(grid, dims,
                                       include_right_boundaries = include_right_boundaries,
+                                            reduced_dimensions = reduced_dimensions,
                                                       location = location)
 
     loop! = kernel!(Architectures.device(arch), workgroup, worksize)

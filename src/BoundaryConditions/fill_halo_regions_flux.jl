@@ -58,11 +58,11 @@ end
 ##### Kernel launchers for flux boundary conditions
 #####
 
-  fill_west_halo!(c, bc::FBC, arch, dep, grid, args...) = launch!(arch, grid, :yz, _fill_west_halo!,   c, bc, grid.Hx, grid.Nx, dependencies=dep)
-  fill_east_halo!(c, bc::FBC, arch, dep, grid, args...) = launch!(arch, grid, :yz, _fill_east_halo!,   c, bc, grid.Hx, grid.Nx, dependencies=dep)
- fill_south_halo!(c, bc::FBC, arch, dep, grid, args...) = launch!(arch, grid, :xz, _fill_south_halo!,  c, bc, grid.Hy, grid.Ny, dependencies=dep)
- fill_north_halo!(c, bc::FBC, arch, dep, grid, args...) = launch!(arch, grid, :xz, _fill_north_halo!,  c, bc, grid.Hy, grid.Ny, dependencies=dep)
-fill_bottom_halo!(c, bc::FBC, arch, dep, grid, args...) = launch!(arch, grid, :xy, _fill_bottom_halo!, c, bc, grid.Hz, grid.Nz, dependencies=dep)
-   fill_top_halo!(c, bc::FBC, arch, dep, grid, args...) = launch!(arch, grid, :xy, _fill_top_halo!,    c, bc, grid.Hz, grid.Nz, dependencies=dep)
+  fill_west_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :yz, _fill_west_halo!,   c, bc, grid.Hx, grid.Nx; dependencies=dep, kwargs...)
+  fill_east_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :yz, _fill_east_halo!,   c, bc, grid.Hx, grid.Nx; dependencies=dep, kwargs...)
+ fill_south_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xz, _fill_south_halo!,  c, bc, grid.Hy, grid.Ny; dependencies=dep, kwargs...)
+ fill_north_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xz, _fill_north_halo!,  c, bc, grid.Hy, grid.Ny; dependencies=dep, kwargs...)
+fill_bottom_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xy, _fill_bottom_halo!, c, bc, grid.Hz, grid.Nz; dependencies=dep, kwargs...)
+   fill_top_halo!(c, bc::FBC, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xy, _fill_top_halo!,    c, bc, grid.Hz, grid.Nz; dependencies=dep, kwargs...)
 
 
