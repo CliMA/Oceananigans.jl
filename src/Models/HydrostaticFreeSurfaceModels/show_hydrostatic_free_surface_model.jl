@@ -3,7 +3,7 @@ using Oceananigans: short_show
 
 """Show the innards of a `Model` in the REPL."""
 function Base.show(io::IO, model::HydrostaticFreeSurfaceModel{TS, C, A}) where {TS, C, A}
-    print(io, "IncompressibleModel{$A, $(eltype(model.grid))}",
+    print(io, "HydrostaticFreeSurfaceModel{$A, $(eltype(model.grid))}",
         "(time = $(prettytime(model.clock.time)), iteration = $(model.clock.iteration)) \n",
         "├── grid: $(short_show(model.grid))\n",
         "├── tracers: $(tracernames(model.tracers))\n",
