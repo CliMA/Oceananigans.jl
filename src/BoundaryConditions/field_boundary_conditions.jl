@@ -17,6 +17,14 @@ Construct a `FieldBoundaryConditions` using a `CoordinateBoundaryCondition` for 
 FieldBoundaryConditions(x, y, z) = FieldBoundaryConditions((x, y, z))
 
 """
+    DefaultBoundaryCondition(topo, ::Type{Nothing})
+
+Returns nothing.
+"""
+DefaultBoundaryCondition(topo, ::Type{Nothing}) = nothing
+DefaultBoundaryCondition(::Type{Grids.Periodic}, ::Type{Nothing}) = nothing
+
+"""
     DefaultBoundaryCondition(::Type{Periodic}, loc)
 
 Returns [`PeriodicBoundaryCondition`](@ref).

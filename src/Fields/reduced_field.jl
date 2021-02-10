@@ -1,8 +1,10 @@
+import Oceananigans.BoundaryConditions: fill_halo_regions!
+
 #####
 ##### AbstractReducedField stuff
 #####
 
-abstract type AbstractReducedField{X, Y, Z, A, G, N} <: AbstractField{X, Y, Z, A, G} end
+abstract type AbstractReducedField{X, Y, Z, A, G, D} <: AbstractField{X, Y, Z, A, G} end
 
 const ARF = AbstractReducedField
 
@@ -26,6 +28,9 @@ const ARF = AbstractReducedField
 
 @inline Base.getindex( r::ARF{Nothing, Nothing, Nothing},    i, j, k) = @inbounds r.data[1, 1, 1]
 @inline Base.setindex!(r::ARF{Nothing, Nothing, Nothing}, d, i, j, k) = @inbounds r.data[1, 1, 1] = d
+
+fill_halo_regions!(field::AbstractReducedField, arch, args...) =
+    fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...; reduced_dimensions=field.dims)
 
 const DimsType = NTuple{N, Int} where N
 
@@ -60,15 +65,16 @@ end
 #####
 
 """
-    struct ReducedField{X, Y, Z, A, G, N} <: AbstractField{X, Y, Z, A, G}
+    struct ReducedField{X, Y, Z, A, G, D} <: AbstractField{X, Y, Z, A, G}
 
 Representation of a field at the location `(X, Y, Z)` with data of type `A`
-on a grid of type `G` that is 'reduced' on `N` dimensions.
+on a grid of type `G` that is 'reduced' on `D` dimensions.
 """
-struct ReducedField{X, Y, Z, A, G, N} <: AbstractReducedField{X, Y, Z, A, G, N}
-    data :: A
-    grid :: G
-    dims :: NTuple{N, Int}
+struct ReducedField{X, Y, Z, A, G, D, B} <: AbstractReducedField{X, Y, Z, A, G, D}
+                   data :: A
+                   grid :: G
+                   dims :: D
+    boundary_conditions :: B
 
     """
         ReducedField{X, Y, Z}(data, grid, dims)
@@ -76,25 +82,33 @@ struct ReducedField{X, Y, Z, A, G, N} <: AbstractReducedField{X, Y, Z, A, G, N}
     Returns a `ReducedField` at location `(X, Y, Z)` with `data` on `grid`
     that is reduced over the dimensions in `dims`.
     """
-    function ReducedField{X, Y, Z}(data, grid, dims) where {X, Y, Z}
+    function ReducedField{X, Y, Z}(data::A, grid::G, dims, bcs::B) where {X, Y, Z, A, G, B}
 
         dims = validate_reduced_dims(dims)
         validate_reduced_locations(X, Y, Z, dims)
         validate_field_data(X, Y, Z, data, grid)
 
-        return new{X, Y, Z, typeof(data), typeof(grid), length(dims)}(data, grid, dims)
+        D = typeof(dims)
+
+        return new{X, Y, Z, A, G, D, B}(data, grid, dims, bcs)
     end
 end
 
 """
-    ReducedField(X, Y, Z, arch, grid; dims, data=nothing)
+    ReducedField(X, Y, Z, arch, grid; dims, data=nothing, boundary_conditions=nothing)
 
-Returns a `ReducedField` reduced over `dims` on `grid` and `arch`itecture.
+Returns a `ReducedField` reduced over `dims` on `grid` and `arch`itecture with `boundary_conditions`.
+
 The location `(X, Y, Z)` may be the parent, three-dimension location or the reduced location.
+
 If `data` is specified, it should be an `OffsetArray` with singleton reduced dimensions;
 otherwise `data` is allocated.
+
+If `boundary_conditions` are not provided, default boundary conditions are constructed
+using the reduced location.
 """
-function ReducedField(Xr, Yr, Zr, arch, grid; dims, data=nothing)
+function ReducedField(Xr, Yr, Zr, arch, grid; dims, data=nothing,
+                      boundary_conditions=nothing)
 
     dims = validate_reduced_dims(dims)
 
@@ -105,7 +119,11 @@ function ReducedField(Xr, Yr, Zr, arch, grid; dims, data=nothing)
         data = new_data(arch, grid, (X, Y, Z))
     end
 
-    return ReducedField{X, Y, Z}(data, grid, dims)
+    if isnothing(boundary_conditions)
+        boundary_conditions = FieldBoundaryConditions(grid, (X, Y, Z))
+    end
+
+    return ReducedField{X, Y, Z}(data, grid, dims, boundary_conditions)
 end
 
 ReducedField(loc::Tuple, args...; kwargs...) = ReducedField(loc..., args...; kwargs...)
