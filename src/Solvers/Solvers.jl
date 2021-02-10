@@ -2,7 +2,8 @@ module Solvers
 
 export
     BatchedTridiagonalSolver, solve_batched_tridiagonal_system!,
-    FFTBasedPoissonSolver, solve_for_pressure!, solve_poisson_equation!
+    FFTBasedPoissonSolver, solve_for_pressure!, solve_poisson_equation!,
+    PCGSolver
 
 using FFTW
 using CUDA
