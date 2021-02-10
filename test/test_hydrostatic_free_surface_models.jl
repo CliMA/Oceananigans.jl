@@ -14,7 +14,6 @@ end
 function hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
     grid = RegularCartesianGrid(size=(1, 1, 1), extent=(2π, 2π, 2π))
     model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch, tracers=(:T, :S, :c, :d))
-    set!(model, η=1)
 
     @test model.tracers.T isa Field
     @test model.tracers.S isa Field
