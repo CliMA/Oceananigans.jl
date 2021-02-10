@@ -4,7 +4,7 @@ import Oceananigans.BoundaryConditions: fill_halo_regions!
 ##### AbstractReducedField stuff
 #####
 
-abstract type AbstractReducedField{X, Y, Z, A, G, D} <: AbstractField{X, Y, Z, A, G} end
+abstract type AbstractReducedField{X, Y, Z, A, G, N} <: AbstractField{X, Y, Z, A, G} end
 
 const ARF = AbstractReducedField
 
@@ -65,15 +65,15 @@ end
 #####
 
 """
-    struct ReducedField{X, Y, Z, A, G, D} <: AbstractField{X, Y, Z, A, G}
+    struct ReducedField{X, Y, Z, A, G, N} <: AbstractField{X, Y, Z, A, G}
 
 Representation of a field at the location `(X, Y, Z)` with data of type `A`
-on a grid of type `G` that is 'reduced' on `D` dimensions.
+on a grid of type `G` that is 'reduced' over `N` dimensions.
 """
-struct ReducedField{X, Y, Z, A, G, D, B} <: AbstractReducedField{X, Y, Z, A, G, D}
+struct ReducedField{X, Y, Z, A, G, N, B} <: AbstractReducedField{X, Y, Z, A, G, N}
                    data :: A
                    grid :: G
-                   dims :: D
+                   dims :: NTuple{N, Int}
     boundary_conditions :: B
 
     """
@@ -88,9 +88,9 @@ struct ReducedField{X, Y, Z, A, G, D, B} <: AbstractReducedField{X, Y, Z, A, G, 
         validate_reduced_locations(X, Y, Z, dims)
         validate_field_data(X, Y, Z, data, grid)
 
-        D = typeof(dims)
+        N = length(dims)
 
-        return new{X, Y, Z, A, G, D, B}(data, grid, dims, bcs)
+        return new{X, Y, Z, A, G, N, B}(data, grid, dims, bcs)
     end
 end
 

@@ -4,14 +4,14 @@ using Oceananigans.Grids
 using Oceananigans.Grids: interior_parent_indices
 
 """
-    struct AveragedField{X, Y, Z, A, G, D, O} <: AbstractReducedField{X, Y, Z, A, G, D}
+    struct AveragedField{X, Y, Z, A, G, N, O} <: AbstractReducedField{X, Y, Z, A, G, N}
 
 Type representing an average over a field-like object.
 """
-struct AveragedField{X, Y, Z, S, A, G, D, O} <: AbstractReducedField{X, Y, Z, A, G, D}
+struct AveragedField{X, Y, Z, S, A, G, N, O} <: AbstractReducedField{X, Y, Z, A, G, N}
        data :: A
        grid :: G
-       dims :: D
+       dims :: NTuple{N, Int}
     operand :: O
      status :: S
 
@@ -25,14 +25,13 @@ struct AveragedField{X, Y, Z, S, A, G, D, O} <: AbstractReducedField{X, Y, Z, A,
         status = recompute_safely ? nothing : FieldStatus(0.0)
 
         S = typeof(status)
-        D = typeof(dims)
+        N = length(dims)
         
-        return new{X, Y, Z, S, A, G, D, O}(data, grid, dims, operand, status)
+        return new{X, Y, Z, S, A, G, N, O}(data, grid, dims, operand, status)
     end
 
-    function AveragedField{X, Y, Z}(data, grid, dims, operand, status) where {X, Y, Z}
-        return new{X, Y, Z, typeof(status), typeof(data),
-                   typeof(grid), length(dims), typeof(operand)}(data, grid, dims, operand, status)
+    function AveragedField{X, Y, Z}(data::A, grid::G, dims, operand::O, status::S) where {X, Y, Z, A, G, O, S}
+        return new{X, Y, Z, S, A, G, length(dims), O}(data, grid, dims, operand, status)
     end
 end
 
