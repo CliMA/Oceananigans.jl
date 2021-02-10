@@ -9,7 +9,7 @@ using Oceananigans.Utils: work_layout
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function calculate_tendencies!(model::IncompressibleModel)
+function calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     # Note:
     #
@@ -27,12 +27,11 @@ function calculate_tendencies!(model::IncompressibleModel)
                                                model.advection,
                                                model.coriolis,
                                                model.buoyancy,
-                                               model.surface_waves,
                                                model.closure,
-                                               model.background_fields,
                                                model.velocities,
+                                               model.free_surface.η,
                                                model.tracers,
-                                               model.pressures.pHY′,
+                                               model.pressure.pHY′,
                                                model.diffusivities,
                                                model.forcing,
                                                model.clock)
@@ -56,45 +55,46 @@ function calculate_interior_tendency_contributions!(tendencies,
                                                     advection,
                                                     coriolis,
                                                     buoyancy,
-                                                    surface_waves,
                                                     closure,
-                                                    background_fields,
                                                     velocities,
+                                                    free_surface_displacement,
                                                     tracers,
-                                                    hydrostatic_pressure,
+                                                    hydrostatic_pressure_anomaly,
                                                     diffusivities,
                                                     forcings,
                                                     clock)
 
     workgroup, worksize = work_layout(grid, :xyz)
+    xy_workgroup, xy_worksize = work_layout(grid, :xy)
 
     calculate_Gu_kernel! = calculate_Gu!(device(arch), workgroup, worksize)
     calculate_Gv_kernel! = calculate_Gv!(device(arch), workgroup, worksize)
-    calculate_Gw_kernel! = calculate_Gw!(device(arch), workgroup, worksize)
     calculate_Gc_kernel! = calculate_Gc!(device(arch), workgroup, worksize)
+
+    calculate_Gη_kernel! = calculate_Gη!(device(arch), xy_workgroup, xy_worksize)
 
     barrier = Event(device(arch))
 
-    Gu_event = calculate_Gu_kernel!(tendencies.u, grid, advection, coriolis, surface_waves, closure,
-                                    background_fields, velocities, tracers, diffusivities,
-                                    forcings, hydrostatic_pressure, clock, dependencies=barrier)
+    Gu_event = calculate_Gu_kernel!(tendencies.u, grid, advection, coriolis, closure,
+                                    velocities, free_surface_displacement, tracers, diffusivities,
+                                    forcings, hydrostatic_pressure_anomaly, clock, dependencies=barrier)
 
-    Gv_event = calculate_Gv_kernel!(tendencies.v, grid, advection, coriolis, surface_waves, closure,
-                                    background_fields, velocities, tracers, diffusivities,
-                                    forcings, hydrostatic_pressure, clock, dependencies=barrier)
+    Gv_event = calculate_Gv_kernel!(tendencies.v, grid, advection, coriolis, closure,
+                                    velocities, free_surface_displacement, tracers, diffusivities,
+                                    forcings, hydrostatic_pressure_anomaly, clock, dependencies=barrier)
 
-    Gw_event = calculate_Gw_kernel!(tendencies.w, grid, advection, coriolis, surface_waves, closure,
-                                    background_fields, velocities, tracers, diffusivities,
+    Gη_event = calculate_Gη_kernel!(tendencies.η, grid, closure,
+                                    velocities, free_surface_displacement, tracers, diffusivities,
                                     forcings, clock, dependencies=barrier)
 
-    events = [Gu_event, Gv_event, Gw_event]
+    events = [Gu_event, Gv_event, Gη_event]
 
     for tracer_index in 1:length(tracers)
         @inbounds c_tendency = tendencies[tracer_index+3]
         @inbounds forcing = forcings[tracer_index+3]
 
         Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index), advection, closure, buoyancy,
-                                        background_fields, velocities, tracers, diffusivities,
+                                        velocities, free_surface_displacement, tracers, diffusivities,
                                         forcing, clock, dependencies=barrier)
 
         push!(events, Gc_event)
@@ -106,7 +106,7 @@ function calculate_interior_tendency_contributions!(tendencies,
 end
 
 #####
-##### Tendency calculators for u, v, w-velocity
+##### Tendency calculators for u, v
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
@@ -114,21 +114,20 @@ end
                                grid,
                                advection,
                                coriolis,
-                               surface_waves,
                                closure,
-                               background_fields,
                                velocities,
+                               free_surface_displacement,
                                tracers,
                                diffusivities,
                                forcings,
-                               hydrostatic_pressure,
+                               hydrostatic_pressure_anomaly,
                                clock)
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves,
-                                                closure, background_fields, velocities, tracers,
-                                                diffusivities, forcings, hydrostatic_pressure, clock)
+    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, advection, coriolis,
+                                                                         closure, velocities, free_surface_displacement, tracers,
+                                                                         diffusivities, forcings, hydrostatic_pressure_anomaly, clock)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
@@ -136,42 +135,38 @@ end
                                grid,
                                advection,
                                coriolis,
-                               surface_waves,
                                closure,
-                               background_fields,
                                velocities,
+                               free_surface_displacement,
                                tracers,
                                diffusivities,
                                forcings,
-                               hydrostatic_pressure,
+                               hydrostatic_pressure_anomaly,
                                clock)
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves,
-                                                closure, background_fields, velocities, tracers,
-                                                diffusivities, forcings, hydrostatic_pressure, clock)
+    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, advection, coriolis,
+                                                                         closure, velocities, free_surface_displacement, tracers,
+                                                                         diffusivities, forcings, hydrostatic_pressure_anomaly, clock)
 end
 
 """ Calculate the right-hand-side of the w-velocity equation. """
-@kernel function calculate_Gw!(Gw,
+@kernel function calculate_Gη!(Gη,
                                grid,
-                               advection,
-                               coriolis,
-                               surface_waves,
                                closure,
-                               background_fields,
                                velocities,
+                               free_surface_displacement,
                                tracers,
                                diffusivities,
                                forcings,
                                clock)
 
-    i, j, k = @index(Global, NTuple)
+    i, j = @index(Global, NTuple)
 
-    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves,
-                                                closure, background_fields, velocities, tracers,
-                                                diffusivities, forcings, clock)
+    @inbounds Gη[i, j, 1] = free_surface_tendency(i, j, grid, closure,
+                                                  velocities, free_surface_displacement, tracers,
+                                                  diffusivities, forcings, clock)
 end
 
 #####
@@ -185,8 +180,8 @@ end
                                advection,
                                closure,
                                buoyancy,
-                               background_fields,
                                velocities,
+                               free_surface_displacement,
                                tracers,
                                diffusivities,
                                forcing,
@@ -194,9 +189,9 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, tracer_index, advection, closure,
-                                            buoyancy, background_fields, velocities, tracers,
-                                            diffusivities, forcing, clock)
+    @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, tracer_index, advection, closure,
+                                                                     buoyancy, velocities, free_surface_displacement, tracers,
+                                                                     diffusivities, forcing, clock)
 end
 
 #####

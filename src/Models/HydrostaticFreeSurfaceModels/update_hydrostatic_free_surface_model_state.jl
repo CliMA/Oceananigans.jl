@@ -13,8 +13,11 @@ Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
 function update_state!(model::HydrostaticFreeSurfaceModel)
 
     # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.velocities, model.tracers, (η=model.free_surface.η,)), model.architecture, 
-                       model.clock, fields(model))
+    fill_halo_regions!(fields(model), model.architecture, model.clock, fields(model))
+
+    compute_w_from_continuity!(model)
+
+    fill_halo_regions!(model.velocities.w, model.architecture, model.clock, fields(model))
 
     # Calculate diffusivities
     calculate_diffusivities!(model.diffusivities, model.architecture, model.grid, model.closure,

@@ -1,4 +1,6 @@
-import Oceananigans.TimeSteppers: time_step!, tick!
+using Oceananigans.TimeSteppers: store_tendencies!, update_particle_properties!
+
+import Oceananigans.TimeSteppers: time_step!, tick!, ab2_step!
 
 """
     time_step!(model::HydrostaticFreeSurfaceModel, Δt; euler=false)
@@ -8,7 +10,6 @@ pressure-correction substep. Setting `euler=true` will take a forward Euler time
 """
 function time_step!(model::HydrostaticFreeSurfaceModel, Δt; euler=false)
 
-    #=
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
@@ -18,7 +19,7 @@ function time_step!(model::HydrostaticFreeSurfaceModel, Δt; euler=false)
 
     calculate_tendencies!(model)
 
-    ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
+    #ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
 
     calculate_pressure_correction!(model, Δt)
     pressure_correct_velocities!(model, Δt)
@@ -26,7 +27,6 @@ function time_step!(model::HydrostaticFreeSurfaceModel, Δt; euler=false)
     update_state!(model)
     store_tendencies!(model)
     update_particle_properties!(model, Δt)
-    =#
 
     tick!(model.clock, Δt)
 
