@@ -13,6 +13,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Architectures: device, @hascuda, CPU, GPU, array_type, arch_array
 using Oceananigans.Utils
 using Oceananigans.Grids
+using Oceananigans.BoundaryConditions
 
 using Oceananigans.Grids: unpack_grid
 

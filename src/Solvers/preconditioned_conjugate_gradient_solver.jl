@@ -25,7 +25,7 @@ function PCGSolver(;arch=arch, parameters=parameters)
           dotproduct(x,y)  = mapreduce((x,y)->x*y, + , x[ii,ji,ki], y[ii,ji,ki])
           norm(x)          = ( mapreduce((x)->x*x, + , x[ii,ji,ki]   ) )^0.5
           Amatrix_function = parameters.Amatrix_function
-          A(x) = ( Amatrix_function(x,a_res,bcs); return  a_res )
+          A(x) = ( Amatrix_function(a_res,x,arch,grid,bcs); return  a_res )
           M(x) = ( PCmatrix_function(x) )
           settings = (q=q, 
                       p=p,
