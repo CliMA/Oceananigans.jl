@@ -1,11 +1,11 @@
 # # Geostrophic adjustment using Oceananigans.HydrostaticFreeSurfaceMode l
 #
 # This example demonstrates how to simulate the one-dimensional geostrophic adjustment of a
-# free surface using `Oceananigans.HydrostaticFreeSurfaceModel`, which solves the hydrostatic
-# Boussinesq equations beneach a small-amplitude free surface, with boundary conditions
-# expanded around ``z = 0`` and free surface dynamics linearized under the assumption
-# ``η / H \ll 1``, where ``η`` is the free surface displacement, and ``H`` is the
-# total depth of the fluid.
+# free surface using `Oceananigans.HydrostaticFreeSurfaceModel`. Here, we solve the hydrostatic
+# Boussinesq equations beneath a free surface with a small-amplitude about rest ``z = 0``,
+# with boundary conditions expanded around ``z = 0``, and free surface dynamics linearized under 
+# the assumption # ``η / H \ll 1``, where ``η`` is the free surface displacement, and ``H`` is 
+# the total depth of the fluid.
 #
 # ## Install dependencies
 #
@@ -27,7 +27,7 @@ grid = RegularCartesianGrid(size = (128, 1, 1),
                             x = (0, 1000kilometers), y = (0, 1000kilometers), z = (-400, 0),
                             topology = (Bounded, Periodic, Bounded))
 
-# and Coriolis forces appropriate for mid-latitudes on Earth,
+# and Coriolis parameter appropriate for the mid-latitudes on Earth,
 
 coriolis = FPlane(f=1e-4)
 
@@ -40,7 +40,7 @@ using Oceananigans.Models: HydrostaticFreeSurfaceModel
 model = HydrostaticFreeSurfaceModel(grid=grid, coriolis=coriolis)
 #model = HydrostaticFreeSurfaceModel(grid=grid, coriolis=nothing)
 
-# ## A Geostrophc adjustment initial value problem
+# ## A geostrophic adjustment initial value problem
 #
 # We pose a geostrophic adjustment problem that consists of a Gaussian geostrophic
 # velocity and height field,
