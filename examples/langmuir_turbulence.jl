@@ -130,7 +130,7 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 
 using Oceananigans.Advection
 using Oceananigans.Buoyancy: BuoyancyTracer
-using Oceananigans.SurfaceWaves: UniformStokesDrift
+using Oceananigans.StokesDrift: UniformStokesDrift
 
 model = IncompressibleModel(
            architecture = CPU(),
