@@ -11,7 +11,6 @@ using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, Trac
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: with_halo
 using Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
-using Oceananigans.Solvers: PressureSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
