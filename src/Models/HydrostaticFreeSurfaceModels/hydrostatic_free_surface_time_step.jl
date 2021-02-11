@@ -1,4 +1,4 @@
-using Oceananigans.TimeSteppers: store_tendencies!, update_particle_properties!
+using Oceananigans.TimeSteppers: store_tendencies!, update_particle_properties!, ab2_step_field!
 
 import Oceananigans.TimeSteppers: time_step!, tick!, ab2_step!
 
@@ -19,7 +19,7 @@ function time_step!(model::HydrostaticFreeSurfaceModel, Δt; euler=false)
 
     calculate_tendencies!(model)
 
-    #ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
+    ab2_step!(model, Δt, χ) # full step for tracers, fractional step for velocities.
 
     calculate_pressure_correction!(model, Δt)
     pressure_correct_velocities!(model, Δt)
@@ -33,12 +33,11 @@ function time_step!(model::HydrostaticFreeSurfaceModel, Δt; euler=false)
     return nothing
 end
 
-#=
 #####
 ##### Time stepping in each step
 #####
 
-function ab2_step!(model, Δt, χ)
+function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
 
@@ -46,38 +45,50 @@ function ab2_step!(model, Δt, χ)
 
     step_field_kernel! = ab2_step_field!(device(model.architecture), workgroup, worksize)
 
-    model_fields = fields(model)
-
     events = []
 
-    for (i, field) in enumerate(model_fields)
+    prognostic_fields = fields(model)
+    three_dimensional_field_names = tuple(:u, :v, propertynames(model.tracers)...)
 
-        field_event = step_field_kernel!(field, Δt, χ,
-                                         model.timestepper.Gⁿ[i],
-                                         model.timestepper.G⁻[i],
+    for name in three_dimensional_field_names
+
+        Gⁿ = model.timestepper.Gⁿ[name]
+        G⁻ = model.timestepper.G⁻[name]
+        field = prognostic_fields[name]
+
+        field_event = step_field_kernel!(field, Δt, χ, Gⁿ, G⁻,
                                          dependencies=Event(device(model.architecture)))
 
         push!(events, field_event)
     end
+
+    free_surface_event = ab2_step_free_surface!(model.free_surface, model.architecture, model.grid, model.timestepper, Δt, χ)
+
+    push!(events, free_surface_event)
 
     wait(device(model.architecture), MultiEvent(Tuple(events)))
 
     return nothing
 end
 
-"""
-Time step via
+function ab2_step_free_surface!(free_surface::ExplicitFreeSurface, arch, grid, timestepper, Δt, χ)
 
-    `U^{n+1} = U^n + Δt ( (3/2 + χ) * G^{n} - (1/2 + χ) G^{n-1} )`
+    event = launch!(arch, grid, :xy,
+                    _ab2_step_field!,
+                    free_surface.η,
+                    Δt,
+                    χ,
+                    timestepper.Gⁿ.η,
+                    timestepper.G⁻.η,
+                    dependencies = Event(device(arch)))
 
-"""
+    return event
+end
 
-@kernel function ab2_step_field!(U, Δt, χ::FT, Gⁿ, G⁻) where FT
-    i, j, k = @index(Global, NTuple)
+@kernel function _ab2_step_free_surface!(η, Δt, χ::FT, Gηⁿ, Gη⁻) where FT
+    i, j = @index(Global, NTuple)
 
     @inbounds begin
-        U[i, j, k] += Δt * (  (FT(1.5) + χ) * Gⁿ[i, j, k] - (FT(0.5) + χ) * G⁻[i, j, k] )
-
+        η[i, j, 1] += Δt * ( (FT(1.5) + χ) * Gηⁿ[i, j, 1] - (FT(0.5) + χ) * Gη⁻[i, j, 1] )
     end
 end
-=#
