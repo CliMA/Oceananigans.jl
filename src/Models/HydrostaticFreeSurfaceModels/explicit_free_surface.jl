@@ -13,7 +13,7 @@ ExplicitFreeSurface(; gravitational_acceleration=g_Earth) =
     ExplicitFreeSurface(nothing, gravitational_acceleration)
 
 Adapt.adapt_structure(to, free_surface::ExplicitFreeSurface) =
-    ExplicitFreeSurface(Adapt.adapt(to, free_surface.η), gravitational_acceleration)
+    ExplicitFreeSurface(Adapt.adapt(to, free_surface.η), free_surface.gravitational_acceleration)
 
 function FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, arch, grid)
     η = CenterField(arch, grid, TracerBoundaryConditions(grid))
