@@ -113,7 +113,7 @@ function solve_poisson_equation!(solver::PCGSolver,RHS,x)
        α     = ρ/dotprod(p,q)
        x    .= x .+ α .* p
        r    .= r .- α .* q
-       println("Solver ", i," ", norm(r) )
+       ## println("Solver ", i," ", norm(r) )
        if norm(r) <= tol
         break
        end
