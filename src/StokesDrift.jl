@@ -1,4 +1,4 @@
-module SurfaceWaves
+module StokesDrift
 
 export
     ∂t_uˢ,
