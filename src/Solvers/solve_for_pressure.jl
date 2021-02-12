@@ -21,6 +21,10 @@ function solve_for_pressure!(pressure, solver, arch, grid, Δt, U★)
     return nothing
 end
 
+function solve_for_pressure!(pressure, solver::PCGSolver, arch, grid, Δt, U★)
+    return nothing
+end
+
 """
 Calculate the right-hand-side of the Poisson equation for the non-hydrostatic pressure.
 """
