@@ -130,7 +130,7 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 
 using Oceananigans.Advection
 using Oceananigans.Buoyancy: BuoyancyTracer
-using Oceananigans.SurfaceWaves: UniformStokesDrift
+using Oceananigans.StokesDrift: UniformStokesDrift
 
 model = IncompressibleModel(
            architecture = CPU(),
@@ -141,7 +141,7 @@ model = IncompressibleModel(
                buoyancy = BuoyancyTracer(),
                coriolis = coriolis,
                 closure = AnisotropicMinimumDissipation(),
-          surface_waves = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+           stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
     boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions),
 )
 
