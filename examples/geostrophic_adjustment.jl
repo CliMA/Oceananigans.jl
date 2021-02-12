@@ -121,7 +121,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
                   label = "", xlabel = "x (km)", ylabel = "u (m s⁻¹)", ylims = (-1e-4, 2e-3))
 
     η_plot = plot(xη / kilometers, η, linewidth = 2,
-                  label = "", xlabel = "x (km)", ylabel = "η (m)", ylims = (-a/10, 2a))
+                  label = "", xlabel = "x (km)", ylabel = "η (m)", ylims = (-η₀/10, 2η₀))
 
     plot(v_plot, u_plot, η_plot, layout = (3, 1), size = (800, 600))
 end
