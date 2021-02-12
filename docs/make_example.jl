@@ -1,7 +1,6 @@
 push!(LOAD_PATH, "..")
 
 using Documenter
-using DocumenterCitations
 using Literate
 using Plots  # to avoid capturing precompilation output by Literate
 
@@ -13,15 +12,6 @@ using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
-
-#=
-bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
-const BIBLIOGRAPHY = import_bibtex(bib_filepath)
-@info "Bibliography: found $(length(BIBLIOGRAPHY)) entries."
-
-include("bibliography.jl")
-include("citations.jl")
-=#
 
 #####
 ##### Generate examples
@@ -37,7 +27,7 @@ const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
            # "internal_wave.jl",
-            "eady_turbulence.jl"
+            "geostrophic_adjustment.jl"
            ]
 
 for example in examples
@@ -51,7 +41,7 @@ end
 
 example_pages = [
                  #"Internal wave"                    => "generated/internal_wave.md",
-                 "Eady turbulence"                  => "generated/eady_turbulence.md"
+                 "Geostrophic adjustment"            => "generated/geostrophic_adjustment.md"
                 ]
 
 pages = [
