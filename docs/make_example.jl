@@ -1,10 +1,13 @@
-# This script can be used to build the Documentation only with a few examples (e.g., an example 
-# a developer is currently working on). This makes previewing how the example will look like 
-# in the actual documentation much faster. To use it simply run:
-# 
-# $ julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'; julia --project=docs/ docs/make_example.jl; open docs/build/index.html
-#
-# from the repo's home directory.
+#=
+This script can be used to build the Documentation only with a few examples (e.g., an example 
+a developer is currently working on). This makes previewing how the example will look like 
+in the actual documentation much faster. To use the script, modify it to include the example
+you are working on and then run:
+
+$ julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'; julia --project=docs/ docs/make_example.jl
+
+from the repo's home directory and then open `docs/build/index.html` with your favorite browser.
+=#
 
 push!(LOAD_PATH, "..")
 
