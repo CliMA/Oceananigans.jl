@@ -1,3 +1,11 @@
+# This script can be used to build the Documentation only with a few examples (e.g., an example 
+# a developer is currently working on). This makes previewing how the example will look like 
+# in the actual documentation much faster. To use it simply run:
+# 
+# $ julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'; julia --project=docs/ docs/make_example.jl; open docs/build/index.html
+#
+# from the repo's home directory.
+
 push!(LOAD_PATH, "..")
 
 using Documenter
