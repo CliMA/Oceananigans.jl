@@ -24,7 +24,7 @@ using Oceananigans
 using Oceananigans.Utils: kilometers
 
 grid = RegularCartesianGrid(size = (128, 1, 1),
-                            x = (0, 1000kilometers), y = (0, 1000kilometers), z = (-400, 0),
+                            x = (0, 1000kilometers), y = (0, 1), = (-400, 0),
                             topology = (Bounded, Periodic, Bounded))
 
 # and Coriolis parameter appropriate for the mid-latitudes on Earth,
@@ -38,12 +38,11 @@ coriolis = FPlane(f=1e-4)
 using Oceananigans.Models: HydrostaticFreeSurfaceModel
 
 model = HydrostaticFreeSurfaceModel(grid=grid, coriolis=coriolis)
-#model = HydrostaticFreeSurfaceModel(grid=grid, coriolis=nothing)
 
 # ## A geostrophic adjustment initial value problem
 #
-# We pose a geostrophic adjustment problem that consists of a Gaussian geostrophic
-# velocity and height field,
+# We pose a geostrophic adjustment problem that consists of a partially-geostrophic
+# Gaussian height field complemented by a geostrophic y-velocity,
 
 Gaussian(x, L) = exp(-x^2 / 2L^2)
 
@@ -55,13 +54,13 @@ vᵍ(x, y, z) = - U * (x - x₀) / L * Gaussian(x - x₀, L)
 
 g = model.free_surface.gravitational_acceleration
 
-a = coriolis.f * U * L / g # free surface amplitude
+η₀ = coriolis.f * U * L / g # geostrohpic free surface amplitude
 
-ηᵍ(x, y, z) = a * Gaussian(x - x₀, L)
+ηᵍ(x, y, z) = η₀ * Gaussian(x - x₀, L)
 
 # We use an initial height field that's twice the geostrophic solution,
 # thus superimposing a geostrophic and ageostrophic component in the free
-# surface displacement field,
+# surface displacement field:
 
 ηⁱ(x, y, z) = 2 * ηᵍ(x, y, z)
 
@@ -119,7 +118,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
                   label = "", xlabel = "x (km)", ylabel = "v (m s⁻¹)", ylims = (-U, U))
                   
     u_plot = plot(xu / kilometers, u, linewidth = 2,
-                  label = "", xlabel = "x (km)", ylabel = "u (m s⁻¹)")
+                  label = "", xlabel = "x (km)", ylabel = "u (m s⁻¹)", ylims = (-1e-4, 2e-3))
 
     η_plot = plot(xη / kilometers, η, linewidth = 2,
                   label = "", xlabel = "x (km)", ylabel = "η (m)", ylims = (-a/10, 2a))
@@ -129,4 +128,4 @@ end
 
 close(file)
 
-gif(anim, "geostrophic_adjustment.gif", fps = 15) # hide
+mp4(anim, "geostrophic_adjustment.mp4", fps = 15) # hide
