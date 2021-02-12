@@ -18,27 +18,13 @@ using Oceananigans.Utils: inflate_halo_size, tupleit
 
 struct VectorInvariant end
 
-struct ExplicitFreeSurface{E, T}
-    η :: E
-    gravitational_acceleration :: T
-end
-
-ExplicitFreeSurface(; gravitational_acceleration=g_Earth) =
-    ExplicitFreeSurface(nothing, gravitational_acceleration)
-
-function FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, arch, grid)
-    η = CenterField(arch, grid, TracerBoundaryConditions(grid))
-    g = convert(eltype(grid), free_surface.gravitational_acceleration)
-    return ExplicitFreeSurface(η, g)
-end
-
 """ Returns a default_tracer_advection, tracer_advection `tuple`. """
 validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_tracer_advection is invalid tracer_advection!")
 validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSecondOrder(), advection_scheme_tuple
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 
-mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture,
-                                           G, T, V, B, R, S, F, P, U, C, Φ, K} <: AbstractModel{TS}
+mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
+                                           G, T, V, B, R, F, P, U, C, Φ, K} <: AbstractModel{TS}
      architecture :: A        # Computer `Architecture` on which `Model` is run
              grid :: G        # Grid of physical points on which `Model` is solved
             clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
@@ -109,6 +95,8 @@ function HydrostaticFreeSurfaceModel(; grid,
                                      diffusivities = nothing,
     )
 
+    @warn "HydrostaticFreeSurfaceModel is experimental. Use with caution!"
+
     if architecture == GPU() && !has_cuda()
          throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
     end
@@ -137,8 +125,8 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(:QuasiAdamsBashforth2, architecture, grid, tracernames(tracers);
-                              Gⁿ = HydrostaticFreeSurfaceTendencyFields(architecture, grid, tracernames(tracers)),
-                              G⁻ = HydrostaticFreeSurfaceTendencyFields(architecture, grid, tracernames(tracers)))
+                              Gⁿ = HydrostaticFreeSurfaceTendencyFields(free_surface, architecture, grid, tracernames(tracers)),
+                              G⁻ = HydrostaticFreeSurfaceTendencyFields(free_surface, architecture, grid, tracernames(tracers)))
 
     free_surface = FreeSurface(free_surface, architecture, grid)
 

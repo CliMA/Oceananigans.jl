@@ -17,7 +17,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel)
 
     compute_w_from_continuity!(model)
 
-    fill_halo_regions!(model.velocities.w, model.architecture, model.clock, fields(model))
+    #fill_halo_regions!(model.velocities.w, model.architecture, model.clock, fields(model))
 
     # Calculate diffusivities
     calculate_diffusivities!(model.diffusivities, model.architecture, model.grid, model.closure,
@@ -37,4 +37,3 @@ function update_state!(model::HydrostaticFreeSurfaceModel)
 
     return nothing
 end
-

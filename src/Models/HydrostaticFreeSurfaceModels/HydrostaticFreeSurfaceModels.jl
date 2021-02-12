@@ -12,6 +12,9 @@ import Oceananigans: fields
 #####
 
 include("compute_w_from_continuity.jl")
+include("explicit_free_surface.jl")
+include("implicit_free_surface.jl")
+include("rigid_lid.jl")
 include("hydrostatic_free_surface_tendency_fields.jl")
 include("hydrostatic_free_surface_model.jl")
 include("show_hydrostatic_free_surface_model.jl")
@@ -31,10 +34,10 @@ fields(model::HydrostaticFreeSurfaceModel) = merge((u = model.velocities.u,
                                                     η = model.free_surface.η),
                                                     model.tracers)
 
-include("calculate_hydrostatic_free_surface_barotropic_pressure.jl")
+include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")
-include("update_hydrostatic_free_surface_model_state.jl")
 include("calculate_hydrostatic_free_surface_tendencies.jl")
-include("hydrostatic_free_surface_time_step.jl")
+include("update_hydrostatic_free_surface_model_state.jl")
+include("hydrostatic_free_surface_ab2_step.jl")
 
 end # module

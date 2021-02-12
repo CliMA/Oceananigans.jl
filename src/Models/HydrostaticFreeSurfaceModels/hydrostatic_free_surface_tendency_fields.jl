@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions: UVelocityBoundaryConditions, VVelocityBoundaryConditions, TracerBoundaryConditions
 using Oceananigans.Fields: XFaceField, YFaceField, CenterField, TracerFields
 
-function HydrostaticFreeSurfaceTendencyFields(arch, grid, tracer_names)
+function HydrostaticFreeSurfaceTendencyFields(free_surface, arch, grid, tracer_names)
 
     u = XFaceField(arch, grid, UVelocityBoundaryConditions(grid))
     v = YFaceField(arch, grid, VVelocityBoundaryConditions(grid))

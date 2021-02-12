@@ -2,7 +2,7 @@ using Oceananigans.Advection
 using Oceananigans.Buoyancy
 using Oceananigans.Coriolis
 using Oceananigans.Operators
-using Oceananigans.SurfaceWaves
+using Oceananigans.StokesDrift
 using Oceananigans.TurbulenceClosures: ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
 
 # Temporary implementation of momentum advection for hydrostatic free surface model
@@ -14,16 +14,16 @@ U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, velocities) = div_
 
 """
     hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid,
-                                                              advection,
-                                                              coriolis,
-                                                              closure,
-                                                              velocities,
-                                                              free_surface_displacement,
-                                                              tracers,
-                                                              diffusivities,
-                                                              forcings,
-                                                              hydrostatic_pressure_anomaly,
-                                                              clock)
+                                                 advection,
+                                                 coriolis,
+                                                 closure,
+                                                 velocities,
+                                                 free_surface_displacement,
+                                                 tracers,
+                                                 diffusivities,
+                                                 forcings,
+                                                 hydrostatic_pressure_anomaly,
+                                                 clock)
 
 Return the tendency for the horizontal velocity in the x-direction, or the east-west 
 direction, ``u``, at grid point `i, j, k` for a HydrostaticFreeSurfaceModel.
@@ -32,25 +32,27 @@ The tendency for ``u`` is called ``G_u`` and defined via
 
     ``∂_t u = G_u - ∂_x ϕ_n``
 
-where ∂_x ϕ_n is the barotropic pressure gradient associated with
-free surface displacement in the x-direction.
+where ϕ_n is the part of the barotropic pressure that's treated
+implicitly during time-stepping.
 """
 @inline function hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid,
                                                               advection,
                                                               coriolis,
                                                               closure,
                                                               velocities,
-                                                              free_surface_displacement,
+                                                              free_surface,
                                                               tracers,
                                                               diffusivities,
-                                                              forcings,
                                                               hydrostatic_pressure_anomaly,
+                                                              forcings,
                                                               clock)
  
     return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
+             - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
+             - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᵃᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
              + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
-             + forcings.u(i, j, k, grid, clock, merge(velocities, (η=free_surface_displacement,), tracers)))
+             + forcings.u(i, j, k, grid, clock, merge(velocities, (η=free_surface.η,), tracers)))
 end
 
 """
@@ -73,26 +75,27 @@ The tendency for ``v`` is called ``G_v`` and defined via
 
     ``∂_t v = G_v - ∂_y ϕ_n``
 
-where ∂_y ϕ_n is the barotropic pressure gradient associated with
-free surface displacement in the y-direction.
+where ϕ_n is the part of the barotropic pressure that's treated
+implicitly during time-stepping.
 """
 @inline function hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid,
                                                               advection,
                                                               coriolis,
                                                               closure,
                                                               velocities,
-                                                              free_surface_displacement,
+                                                              free_surface,
                                                               tracers,
                                                               diffusivities,
-                                                              forcings,
                                                               hydrostatic_pressure_anomaly,
+                                                              forcings,
                                                               clock)
 
     return ( - U_dot_∇v(i, j, k, grid, advection, velocities)
+             - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᵃᶠᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
              + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
-             + forcings.v(i, j, k, grid, clock, merge(velocities, (η=free_surface_displacement,), tracers)))
+             + forcings.v(i, j, k, grid, clock, merge(velocities, (η=free_surface.η,), tracers)))
 end
 
 """
@@ -123,7 +126,7 @@ where `c = C[tracer_index]`.
                                                           closure,
                                                           buoyancy,
                                                           velocities,
-                                                          free_surface_displacement,
+                                                          free_surface,
                                                           tracers,
                                                           diffusivities,
                                                           forcing,
@@ -133,41 +136,32 @@ where `c = C[tracer_index]`.
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, c)
              + ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, buoyancy)
-             + forcing(i, j, k, grid, clock, merge(velocities, (η=free_surface_displacement,), tracers)))
+             + forcing(i, j, k, grid, clock, merge(velocities, (η=free_surface.η,), tracers)))
 end
 
-@inline ∇_ν_∇η(args...) = 0
-
 """
-     free_surface_tendency(i, j, k, grid, 
+     free_surface_tendency(i, j, grid, 
                            velocities,
-                           free_surface_displacement,
+                           free_surface,
                            tracers,
-                           diffusivities,
                            forcing,
                            clock)
 
-Return the tendency for a tracer field with index `tracer_index` 
-at grid point `i, j, k`.
+Return the tendency for an explicit free surface at horizontal grid point `i, j`.
 
-The tendency is called ``G_c`` and defined via
+The tendency is called ``G_η`` and defined via
 
-    ``∂_t c = G_c``
-
-where `c = C[tracer_index]`. 
+    ``∂_t η = G_η``
 """
 @inline function free_surface_tendency(i, j, grid,
-                                       closure,
                                        velocities,
-                                       free_surface_displacement,
+                                       free_surface,
                                        tracers,
-                                       diffusivities,
                                        forcings,
                                        clock)
 
     k_surface = grid.Nz + 1
 
-    return @inbounds ( - grid.Lz * velocities.w[i, j, k_surface]
-                       + ∇_ν_∇η(i, j, grid, clock, closure, free_surface_displacement, diffusivities)
-                       + forcings.η(i, j, k_surface, grid, clock, merge(velocities, (η=free_surface_displacement,), tracers)))
+    return @inbounds (   velocities.w[i, j, k_surface]
+                       + forcings.η(i, j, k_surface, grid, clock, merge(velocities, (η=free_surface.η,), tracers)))
 end
