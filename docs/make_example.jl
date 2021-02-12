@@ -1,9 +1,10 @@
 push!(LOAD_PATH, "..")
 
 using Documenter
-using Bibliography
+using DocumenterCitations
 using Literate
 using Plots  # to avoid capturing precompilation output by Literate
+
 using Oceananigans
 using Oceananigans.Operators
 using Oceananigans.Grids
