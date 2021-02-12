@@ -48,7 +48,7 @@ implicitly during time-stepping.
                                                               clock)
  
     return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
-             - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
+             - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᵃᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
              + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
