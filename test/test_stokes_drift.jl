@@ -4,7 +4,7 @@ function instantiate_stokes_drift()
     ∂z_uˢ(z, t) = exp(z/20) * cos(t)
     ∂z_vˢ(z, t) = exp(z/20) * cos(t)
     stokes_drift = StokesDrift.UniformStokesDrift(∂t_uˢ=∂t_uˢ, ∂t_vˢ=∂t_vˢ,
-                                                    ∂z_uˢ=∂z_uˢ, ∂z_vˢ=∂z_vˢ)
+                                                  ∂z_uˢ=∂z_uˢ, ∂z_vˢ=∂z_vˢ)
                                                     
     return true
 end
