@@ -1,4 +1,4 @@
-using Oceananigans.Grids: xnode, ynode, znode, Cell, AbstractGrid
+using Oceananigans.Grids: xnode, ynode, znode, Center, AbstractGrid
 
 """
     correct_immersed_tendencies!(model)
@@ -42,9 +42,9 @@ end
     i, j, k = @index(Global, NTuple)
     
     # evaluating x,y,z at cell centers to determine if boundary or not
-    x = xnode(Cell, i, grid)
-    y = ynode(Cell, j, grid)
-    z = znode(Cell, k, grid)
+    x = xnode(Center, i, grid)
+    y = ynode(Center, j, grid)
+    z = znode(Center, k, grid)
 
     @inbounds begin
         # correcting velocity tendency terms: if immersd boundary gives true then correct tendency, otherwise don't (it's a fluid node)
