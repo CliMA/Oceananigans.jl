@@ -2,7 +2,7 @@ import Base: show
 import Oceananigans: short_show
 
 location_str(::Type{Face})    = "Face"
-location_str(::Type{Cell})    = "Cell"
+location_str(::Type{Center})    = "Center"
 location_str(::Type{Nothing}) = "⋅"
 
 show_location(X, Y, Z) = "($(location_str(X)), $(location_str(Y)), $(location_str(Z)))"

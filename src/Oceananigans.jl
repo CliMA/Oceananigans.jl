@@ -27,7 +27,7 @@ export
     TracerBoundaryConditions, PressureBoundaryConditions,
 
     # Fields and field manipulation
-    Field, CellField, XFaceField, YFaceField, ZFaceField,
+    Field, CenterField, XFaceField, YFaceField, ZFaceField,
     BackgroundField, interior, set!,
 
     # Forcing functions
@@ -41,15 +41,18 @@ export
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
 
     # Surface waves via Craik-Leibovich equations
-    SurfaceWaves,
+    StokesDrift,
 
     # Turbulence closures
     IsotropicDiffusivity, AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
     ConstantSmagorinsky, AnisotropicMinimumDissipation,
 
+    # Lagrangian particle tracking
+    LagrangianParticles,
+
     # Models
-    IncompressibleModel, NonDimensionalModel, Clock,
+    IncompressibleModel, NonDimensionalModel, HydrostaticFreeSurfaceModel, Clock,
 
     # Time stepping
     time_step!, TimeStepWizard,
@@ -140,8 +143,9 @@ include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("Coriolis/Coriolis.jl")
 include("Buoyancy/Buoyancy.jl")
-include("SurfaceWaves.jl")
+include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
+include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("Solvers/Solvers.jl")
 include("Forcings/Forcings.jl")
 include("TimeSteppers/TimeSteppers.jl")
@@ -163,8 +167,9 @@ using .BoundaryConditions
 using .Fields
 using .Coriolis
 using .Buoyancy
-using .SurfaceWaves
+using .StokesDrift
 using .TurbulenceClosures
+using .LagrangianParticleTracking
 using .Solvers
 using .Forcings
 using .Models

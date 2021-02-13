@@ -24,7 +24,8 @@ Compute the tendency for the x-directional transport, uh
 
     return ( - div_hUu(i, j, k, grid, advection, solution)
              - ∂xᶠᵃᵃ(i, j, k, grid, gh2, solution.h, gravitational_acceleration)
-             - x_f_cross_U(i, j, k, grid, coriolis, solution) )
+             - x_f_cross_U(i, j, k, grid, coriolis, solution)
+             + forcings.uh(i, j, k, grid, clock, merge(solution, tracers)))
 end
 
 """
@@ -45,7 +46,8 @@ Compute the tendency for the y-directional transport, vh.
 
     return ( - div_hUv(i, j, k, grid, advection, solution)
              - ∂yᵃᶠᵃ(i, j, k, grid, gh2, solution.h, gravitational_acceleration)
-             - y_f_cross_U(i, j, k, grid, coriolis, solution) )
+             - y_f_cross_U(i, j, k, grid, coriolis, solution)
+             + forcings.vh(i, j, k, grid, clock, merge(solution, tracers)))
 end
 
 """
@@ -53,7 +55,6 @@ Compute the tendency for the height, h.
 """
 @inline function h_solution_tendency(i, j, k, grid,
                                      gravitational_acceleration,
-                                     advection,
                                      coriolis,
                                      bathymetry,
                                      solution,
@@ -62,8 +63,8 @@ Compute the tendency for the height, h.
                                      forcings,
                                      clock)
 
-    return ( - ∂xᶜᵃᵃ(i, j, k, grid, solution.uh)
-             - ∂yᵃᶜᵃ(i, j, k, grid, solution.vh) )
+    return ( - div_uhvh(i, j, k, grid, solution)
+             + forcings.h(i, j, k, grid, clock, merge(solution, tracers)))
 end
 
 @inline function tracer_tendency(i, j, k, grid,

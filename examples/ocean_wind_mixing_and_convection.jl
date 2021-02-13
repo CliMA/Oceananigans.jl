@@ -11,8 +11,10 @@
 #
 # First let's make sure we have all required packages installed.
 
-using Pkg
-pkg"add Oceananigans, JLD2, Plots"
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, JLD2, Plots"
+# ```
 
 # We start by importing all of the packages and functions that we'll need for this
 # example.
@@ -268,4 +270,4 @@ anim = @animate for (i, iter) in enumerate(iterations[intro:end])
     iter == iterations[end] && close(file)
 end
 
-gif(anim, "ocean_wind_mixing_and_convection.gif", fps = 8) # hide
+mp4(anim, "ocean_wind_mixing_and_convection.mp4", fps = 8) # hide

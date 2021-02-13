@@ -15,23 +15,23 @@ struct AveragedField{X, Y, Z, S, A, G, N, O} <: AbstractReducedField{X, Y, Z, A,
     operand :: O
      status :: S
 
-    function AveragedField{X, Y, Z}(data, grid, dims, operand;
-                                    recompute_safely=true) where {X, Y, Z}
+    function AveragedField{X, Y, Z}(data::A, grid::G, dims, operand::O;
+                                    recompute_safely=true) where {X, Y, Z, A, G, O}
 
         dims = validate_reduced_dims(dims)
         validate_reduced_locations(X, Y, Z, dims)
         validate_field_data(X, Y, Z, data, grid)
 
         status = recompute_safely ? nothing : FieldStatus(0.0)
+
+        S = typeof(status)
+        N = length(dims)
         
-        return new{X, Y, Z, typeof(status), typeof(data),
-                   typeof(grid), length(dims), typeof(operand)}(data, grid, dims,
-                                                                operand, status)
+        return new{X, Y, Z, S, A, G, N, O}(data, grid, dims, operand, status)
     end
 
-    function AveragedField{X, Y, Z}(data, grid, dims, operand, status) where {X, Y, Z}
-        return new{X, Y, Z, typeof(status), typeof(data),
-                   typeof(grid), length(dims), typeof(operand)}(data, grid, dims, operand, status)
+    function AveragedField{X, Y, Z}(data::A, grid::G, dims, operand::O, status::S) where {X, Y, Z, A, G, O, S}
+        return new{X, Y, Z, S, A, G, length(dims), O}(data, grid, dims, operand, status)
     end
 end
 
@@ -63,8 +63,8 @@ end
 
 Compute the average of `avg.operand` and store the result in `avg.data`.
 """
-function compute!(avg::AveragedField)
-    compute!(avg.operand)
+function compute!(avg::AveragedField, time=nothing)
+    compute_at!(avg.operand, time)
 
     # Omit halo regions from operand on averaged dimension
     operand_parent = parent(avg.operand)
@@ -83,7 +83,7 @@ function compute!(avg::AveragedField)
     return nothing
 end
 
-compute!(avg::AveragedField{X, Y, Z, <:FieldStatus}, time) where {X, Y, Z} =
+compute_at!(avg::AveragedField{X, Y, Z, <:FieldStatus}, time) where {X, Y, Z} =
     conditional_compute!(avg, time)
 
 #####

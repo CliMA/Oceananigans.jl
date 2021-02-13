@@ -1,9 +1,9 @@
 using Test
 
-location(s::Symbol) = (s === :u ? (Face, Cell, Cell) :
-                       s === :v ? (Cell, Face, Cell) :
-                       s === :w ? (Cell, Cell, Face) :
-                                  (Cell, Cell, Cell))
+location(s::Symbol) = (s === :u ? (Face, Center, Center) :
+                       s === :v ? (Center, Face, Center) :
+                       s === :w ? (Center, Center, Face) :
+                                  (Center, Center, Center))
 
 print_min_max_mean(ψ, name="") =
     @info @sprintf("%s min: %.9e, max: %.9e, mean: %.9e", name, minimum(ψ), maximum(ψ), mean(ψ))
@@ -39,6 +39,10 @@ function extract_two_solutions(analytical_solution, filename; name=:u)
 end
 
 function compute_error(u_simulation, u_analytical)
+    # Convert any CuArrays to Arrays.
+    u_simulation = Array(u_simulation)
+    u_analytical = Array(u_analytical)
+
     absolute_error = @. abs(u_simulation - u_analytical)
     absolute_truth = abs.(u_analytical)
     L₁ = mean(absolute_error)

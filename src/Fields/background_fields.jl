@@ -1,7 +1,7 @@
 function BackgroundVelocityFields(bg, grid, clock)
-    u = :u ∈ keys(bg) ? regularize_background_field(Face, Cell, Cell, bg[:u], grid, clock) : ZeroField()
-    v = :v ∈ keys(bg) ? regularize_background_field(Cell, Face, Cell, bg[:v], grid, clock) : ZeroField()
-    w = :w ∈ keys(bg) ? regularize_background_field(Cell, Cell, Face, bg[:w], grid, clock) : ZeroField()
+    u = :u ∈ keys(bg) ? regularize_background_field(Face, Center, Center, bg[:u], grid, clock) : ZeroField()
+    v = :v ∈ keys(bg) ? regularize_background_field(Center, Face, Center, bg[:v], grid, clock) : ZeroField()
+    w = :w ∈ keys(bg) ? regularize_background_field(Center, Center, Face, bg[:w], grid, clock) : ZeroField()
 
     return (u=u, v=v, w=w)
 end
@@ -9,7 +9,7 @@ end
 function BackgroundTracerFields(bg, tracer_names, grid, clock)
     tracer_fields =
         Tuple(c ∈ keys(bg) ?
-              regularize_background_field(Cell, Cell, Cell, getindex(bg, c), grid, clock) :
+              regularize_background_field(Center, Center, Center, getindex(bg, c), grid, clock) :
               ZeroField()
               for c in tracer_names)
         

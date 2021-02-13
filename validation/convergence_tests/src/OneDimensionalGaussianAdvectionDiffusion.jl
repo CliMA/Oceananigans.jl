@@ -5,8 +5,10 @@ using Statistics
 
 using Oceananigans
 using Oceananigans.Grids
+using Oceananigans.Advection
+using Oceananigans.Fields: interiorparent
 
-include("analysis.jl")
+using ConvergenceTests: compute_error
 
 # Advection and diffusion of a Gaussian.
 σ(t, κ, t₀) = 4 * κ * (t + t₀)
@@ -18,7 +20,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     t₀ = width^2 / 4κ
 
     #####
-    ##### Test cx and v-advection
+    ##### Test advection-diffusion in the x-direction
     #####
 
     domain = (x=(-1, 1.5), y=(0, 1), z=(0, 1))
@@ -34,33 +36,30 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
                                      closure = IsotropicDiffusivity(ν=κ, κ=κ))
 
     set!(model, u = U,
-                c = (x, y, z) -> c(x, y, z, 0, U, κ, t₀),
                 v = (x, y, z) -> c(x, y, z, 0, U, κ, t₀),
-                w = (x, y, z) -> c(x, y, z, 0, U, κ, t₀))
+                w = (x, y, z) -> c(x, y, z, 0, U, κ, t₀),
+                c = (x, y, z) -> c(x, y, z, 0, U, κ, t₀))
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
-    @info "Running Gaussian advection diffusion test for v and cx with Nx = $Nx and Δt = $Δt ($(typeof(advection)))..."
+    @info "Running Gaussian advection diffusion test for vx, wx, and cx with Nx = $Nx and Δt = $Δt ($(typeof(advection)))..."
     run!(simulation)
 
     x = xnodes(model.tracers.c)
     c_analytical = c.(x, 0, 0, model.clock.time, U, κ, t₀)
 
     # Calculate errors
-    cx_simulation = model.tracers.c
-    cx_simulation = interior(cx_simulation)[:, 1, 1]
-    cx_errors = compute_error(cx_simulation, c_analytical)
-
-    vx_simulation = model.velocities.v
-    vx_simulation = interior(vx_simulation)[:, 1, 1]
+    vx_simulation = interiorparent(model.velocities.v)[:, 1, 1] |> Array
     vx_errors = compute_error(vx_simulation, c_analytical)
 
-    wx_simulation = model.velocities.w
-    wx_simulation = interior(wx_simulation)[:, 1, 1]
+    wx_simulation = interiorparent(model.velocities.w)[:, 1, 1] |> Array
     wx_errors = compute_error(wx_simulation, c_analytical)
 
+    cx_simulation = interiorparent(model.tracers.c)[:, 1, 1] |> Array
+    cx_errors = compute_error(cx_simulation, c_analytical)
+
     #####
-    ##### Test cy and u-advection
+    ##### Test advection-diffusion in the y-direction
     #####
 
     ydomain = (x=(0, 1), y=(-1, 1.5), z=(0, 1))
@@ -76,30 +75,27 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
                                      closure = IsotropicDiffusivity(ν=κ, κ=κ))
 
     set!(model, v = U,
-                c = (x, y, z) -> c(y, x, z, 0, U, κ, t₀),
                 u = (x, y, z) -> c(y, x, z, 0, U, κ, t₀),
-                w = (x, y, z) -> c(y, x, z, 0, U, κ, t₀))
+                w = (x, y, z) -> c(y, x, z, 0, U, κ, t₀),
+                c = (x, y, z) -> c(y, x, z, 0, U, κ, t₀))
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
-    @info "Running Gaussian advection diffusion test for u and cy with Nx = $Nx and Δt = $Δt ($(typeof(advection)))..."
+    @info "Running Gaussian advection diffusion test for uy, wy, and cy with Ny = $Nx and Δt = $Δt ($(typeof(advection)))..."
     run!(simulation)
 
     # Calculate errors
-    cy_simulation = model.tracers.c
-    cy_simulation = interior(cy_simulation)[1, :, 1]
-    cy_errors = compute_error(cy_simulation, c_analytical)
-
-    uy_simulation = model.velocities.u
-    uy_simulation = interior(uy_simulation)[1, :, 1]
+    uy_simulation = interiorparent(model.velocities.u)[1, :, 1] |> Array
     uy_errors = compute_error(uy_simulation, c_analytical)
 
-    wy_simulation = model.velocities.w
-    wy_simulation = interior(wy_simulation)[1, :, 1]
+    wy_simulation = interiorparent(model.velocities.w)[1, :, 1] |> Array
     wy_errors = compute_error(wy_simulation, c_analytical)
 
+    cy_simulation = interiorparent(model.tracers.c)[1, :, 1] |> Array
+    cy_errors = compute_error(cy_simulation, c_analytical)
+
     #####
-    ##### Test cz and w-advection
+    ##### Test advection-diffusion in the z-direction
     #####
 
     zdomain = (x=(0, 1), y=(0, 1), z=(-1, 1.5))
@@ -115,27 +111,24 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
                                      closure = IsotropicDiffusivity(ν=κ, κ=κ))
 
     set!(model, w = U,
-                c = (x, y, z) -> c(z, x, y, 0, U, κ, t₀),
                 u = (x, y, z) -> c(z, x, y, 0, U, κ, t₀),
-                v = (x, y, z) -> c(z, x, y, 0, U, κ, t₀))
+                v = (x, y, z) -> c(z, x, y, 0, U, κ, t₀),
+                c = (x, y, z) -> c(z, x, y, 0, U, κ, t₀))
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)
 
-    @info "Running Gaussian advection diffusion test for u and cy with Nx = $Nx and Δt = $Δt ($(typeof(advection)))..."
+    @info "Running Gaussian advection diffusion test for uz, vz, and cz with Nz = $Nx and Δt = $Δt ($(typeof(advection)))..."
     run!(simulation)
 
     # Calculate errors
-    cz_simulation = model.tracers.c
-    cz_simulation = interior(cz_simulation)[1, 1, :]
-    cz_errors = compute_error(cz_simulation, c_analytical)
-
-    uz_simulation = model.velocities.u
-    uz_simulation = interior(uz_simulation)[1, 1, :]
+    uz_simulation = interiorparent(model.velocities.u)[1, 1, :] |> Array
     uz_errors = compute_error(uz_simulation, c_analytical)
 
-    vz_simulation = model.velocities.v
-    vz_simulation = interior(vz_simulation)[1, 1, :]
+    vz_simulation = interiorparent(model.velocities.v)[1, 1, :] |> Array
     vz_errors = compute_error(vz_simulation, c_analytical)
+
+    cz_simulation = interiorparent(model.tracers.c)[1, 1, :] |> Array
+    cz_errors = compute_error(cz_simulation, c_analytical)
 
     return (
 

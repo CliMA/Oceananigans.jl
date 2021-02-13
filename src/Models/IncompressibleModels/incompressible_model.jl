@@ -10,24 +10,26 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: with_halo
-using Oceananigans.Solvers: PressureSolver
+using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
+using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: inflate_halo_size, tupleit
 
+mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
+                                   V, S, K, BG, P, I} <: AbstractModel{TS}
 
-mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
-                                   V, S, K, BG, I} <: AbstractModel{TS}
          architecture :: A         # Computer `Architecture` on which `Model` is run
                  grid :: G         # Grid of physical points on which `Model` is solved
                 clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
             advection :: V         # Advection scheme for velocities _and_ tracers
              buoyancy :: B         # Set of parameters for buoyancy model
              coriolis :: R         # Set of parameters for the background rotation rate of `Model`
-        surface_waves :: SW        # Set of parameters for surfaces waves via the Craik-Leibovich approximation
+         stokes_drift :: SD        # Set of parameters for surfaces waves via the Craik-Leibovich approximation
               forcing :: F         # Container for forcing functions defined by the user
               closure :: E         # Diffusive 'turbulence closure' for all model fields
     background_fields :: BG        # Background velocity and tracer fields
+            particles :: P         # Particle set for Lagrangian tracking
            velocities :: U         # Container for velocity fields `u`, `v`, and `w`
               tracers :: C         # Container for tracer fields
             pressures :: Φ         # Container for hydrostatic and nonhydrostatic pressure
@@ -46,13 +48,14 @@ end
               advection = CenteredSecondOrder(),
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
-          surface_waves = nothing,
+           stokes_drift = nothing,
                 forcing = NamedTuple(),
                 closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
     boundary_conditions = NamedTuple(),
                 tracers = (:T, :S),
             timestepper = :QuasiAdamsBashforth2,
       background_fields = NamedTuple(),
+              particles = nothing,
              velocities = nothing,
               pressures = nothing,
           diffusivities = nothing,
@@ -75,7 +78,7 @@ Keyword arguments
     - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
     - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
     - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
-                 preallocated `CellField`s.
+                 preallocated `CenterField`s.
     - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
                      `:RungeKutta3`.
 """
@@ -87,13 +90,14 @@ function IncompressibleModel(;
               advection = CenteredSecondOrder(),
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
-          surface_waves = nothing,
+          stokes_drift = nothing,
                 forcing::NamedTuple = NamedTuple(),
                 closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
     boundary_conditions::NamedTuple = NamedTuple(),
                 tracers = (:T, :S),
             timestepper = :QuasiAdamsBashforth2,
       background_fields::NamedTuple = NamedTuple(),
+              particles::Union{Nothing,LagrangianParticles} = nothing,
              velocities = nothing,
               pressures = nothing,
           diffusivities = nothing,
@@ -133,7 +137,9 @@ function IncompressibleModel(;
     diffusivities = DiffusivityFields(diffusivities, architecture, grid,
                                       tracernames(tracers), boundary_conditions, closure)
 
-    pressure_solver = PressureSolver(pressure_solver, architecture, grid, PressureBoundaryConditions(grid))
+    if isnothing(pressure_solver)
+        pressure_solver = FFTBasedPoissonSolver(architecture, grid)
+    end
 
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
 
@@ -141,12 +147,13 @@ function IncompressibleModel(;
     timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers))
 
     # Regularize forcing and closure for model tracer and velocity fields.
-    forcing = model_forcing(tracernames(tracers); forcing...)
+    model_fields = merge(velocities, tracers)
+    forcing = model_forcing(model_fields; forcing...)
     closure = with_tracers(tracernames(tracers), closure)
 
-    return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, surface_waves,
-                               forcing, closure, background_fields, velocities, tracers, pressures,
-                               diffusivities, timestepper, pressure_solver, immersed_boundary)
+    return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
+                               forcing, closure, background_fields, particles, velocities, tracers,
+                               pressures, diffusivities, timestepper, pressure_solver,immersed_boundary)
 end
 
 #####

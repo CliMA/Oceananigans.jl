@@ -1,7 +1,7 @@
 module Grids
 
 export
-    Cell, Face,
+    Center, Face,
     AbstractTopology, Periodic, Bounded, Flat, topology,
     AbstractGrid, RegularCartesianGrid, VerticallyStretchedCartesianGrid,
     xnode, ynode, znode, xnodes, ynodes, znodes, nodes,
@@ -21,11 +21,11 @@ using OffsetArrays
 #####
 
 """
-    Cell
+    Center
 
 A type describing the location at the center of a grid cell.
 """
-struct Cell end
+struct Center end
 
 """
 	Face

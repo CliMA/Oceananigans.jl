@@ -78,14 +78,14 @@ model = IncompressibleModel(grid=grid, forcing=(v=v_forcing,))
 model.forcing.v
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :ω),Tuple{Int64,Float64,Irrational{:π}}}} at (Cell, Face, Cell)
+ContinuousForcing{NamedTuple{(:μ, :λ, :ω),Tuple{Int64,Float64,Irrational{:π}}}} at (Center, Face, Center)
 ├── func: parameterized_func
 ├── parameters: (μ = 42, λ = 0.1, ω = π)
 └── field dependencies: ()
 ```
 
 After passing through the constructor for `IncompressibleModel`, the `v`-forcing location
-information is available and set to `Cell, Face, Cell`.
+information is available and set to `Center, Face, Center`.
 
 ```jldoctest forcing
 # Field-dependent forcing

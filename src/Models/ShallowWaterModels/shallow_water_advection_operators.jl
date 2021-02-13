@@ -1,12 +1,9 @@
-function div_hUu(i, j, k, grid, advection, solution)
-    return 1 / Vᵃᵃᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_huu, advection, solution) +
-                                      δyᵃᶜᵃ(i, j, k, grid, momentum_flux_huv, advection, solution))
-end
+using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Operators: Ax_ψᵃᵃᶜ, Ay_ψᵃᵃᶜ
 
-function div_hUv(i, j, k, grid, advection, solution)
-    return 1 / Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_hvu, advection, solution) +
-                                      δyᵃᶠᵃ(i, j, k, grid, momentum_flux_hvv, advection, solution))
-end
+#####
+##### Momentum flux operators
+#####
 
 @inline momentum_flux_huu(i, j, k, grid, advection, solution) =
     @inbounds momentum_flux_uu(i, j, k, grid, advection, solution.uh, solution.uh) / solution.h[i, j, k]
@@ -20,14 +17,36 @@ end
 @inline momentum_flux_hvv(i, j, k, grid, advection, solution) =
     @inbounds momentum_flux_vv(i, j, k, grid, advection, solution.vh, solution.vh) / solution.h[i, j, k]
 
+#####
+##### Momentum flux divergence operators
+#####
 
+@inline div_hUu(i, j, k, grid, advection, solution) =
+    1 / Vᵃᵃᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_huu, advection, solution) +
+                               δyᵃᶜᵃ(i, j, k, grid, momentum_flux_huv, advection, solution))
 
-function div_UV(i, j, k, grid, advection, solution)
+@inline div_hUv(i, j, k, grid, advection, solution) =
+    1 / Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_hvu, advection, solution) +
+                               δyᵃᶠᵃ(i, j, k, grid, momentum_flux_hvv, advection, solution))
 
-    return 1 / Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, mass_flux_x, advection, solution.uh) +
-                                      δyᵃᶜᵃ(i, j, k, grid, mass_flux_y, advection, solution.vh))
+# Support for no advection
+@inline div_hUu(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution) where FT = zero(FT)
+@inline div_hUv(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution) where FT = zero(FT)
+
+#####
+##### Mass transport divergence operator
+#####
+
+"""
+    div_uhvh(i, j, k, grid, solution)
+
+Calculates the divergence of the mass flux into a cell,
+
+    1/V * [δxᶜᵃᵃ(Ax * uh) + δyᵃᶜᵃ(Ay * vh)]
+
+which will end up at the location `ccc`.
+"""
+@inline function div_uhvh(i, j, k, grid, solution)
+    1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶜ, solution.uh) + 
+                             δyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶜ, solution.vh))
 end
-
-@inline mass_flux_x(i, j, k, grid, uh) = @inbounds Ax_ψᵃᵃᶠ(i, j, k, grid, uh)
-
-@inline mass_flux_y(i, j, k, grid, vh) = @inbounds Ay_ψᵃᵃᶠ(i, j, k, grid, vh) 

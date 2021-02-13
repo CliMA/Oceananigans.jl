@@ -25,8 +25,8 @@ struct ContinuousForcing{X, Y, Z, P, F, D, I, ℑ}
         field_dependencies = tupleit(field_dependencies)
 
         return new{Nothing, Nothing, Nothing,
-                   typeof(parameters), 
-                   typeof(func), 
+                   typeof(parameters),
+                   typeof(func),
                    typeof(field_dependencies),
                    Nothing,
                    Nothing}(func, parameters, field_dependencies, nothing, nothing)
@@ -51,7 +51,7 @@ end
 Construct a "continuous form" forcing with optional `parameters` and optional
 `field_dependencies` on other fields in a model.
 
-If neither `parameters` nor `field_dependencies` are provided, then `func` must be 
+If neither `parameters` nor `field_dependencies` are provided, then `func` must be
 callable with the signature
 
     `func(x, y, z, t)`
@@ -83,21 +83,21 @@ callable with the signature
 ContinuousForcing(func; parameters=nothing, field_dependencies=()) =
     ContinuousForcing(func, parameters, field_dependencies)
 
-""" 
-    regularize_forcing(forcing::ContinuousForcing, field_name, model_field_names)
+"""
+    regularize_forcing(forcing::ContinuousForcing, field, field_name, model_field_names)
 
 Regularize `forcing::ContinuousForcing` by determining the indices of `forcing.field_dependencies`
 in `model_field_names`, and associated interpolation functions so `forcing` can be used during
 time-stepping `IncompressibleModel`.
 """
-function regularize_forcing(forcing::ContinuousForcing, field_name, model_field_names)
+function regularize_forcing(forcing::ContinuousForcing, field, field_name, model_field_names)
 
-    X, Y, Z = assumed_field_location(field_name)
+    X, Y, Z = location(field)
 
     indices, interps = index_and_interp_dependencies(X, Y, Z,
                                                      forcing.field_dependencies,
                                                      model_field_names)
-    
+
     return ContinuousForcing{X, Y, Z}(forcing.func, forcing.parameters, forcing.field_dependencies,
                                       indices, interps)
 end

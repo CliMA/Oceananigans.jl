@@ -84,7 +84,7 @@ Grid properties
 
 - `(Lx, Ly, Lz)::FT`: Physical extent of the grid in the (x, y, z)-direction
 
-- `(Δx, Δy, Δz)::FT`: Cell width in the (x, y, z)-direction
+- `(Δx, Δy, Δz)::FT`: Center width in the (x, y, z)-direction
 
 - `(xC, yC, zC)`: (x, y, z) coordinates of cell centers.
 
@@ -173,12 +173,12 @@ function RegularCartesianGrid(FT=Float64;
     xF₋, yF₋, zF₋ = XF₋ = @. X₁ - H * Δ
     xF₊, yF₊, zF₊ = XF₊ = @. XF₋ + total_extent(topology, halo, Δ, L)
 
-    # Cell-node limits in x, y, z
+    # Center-node limits in x, y, z
     xC₋, yC₋, zC₋ = XC₋ = @. XF₋ + Δ / 2
     xC₊, yC₊, zC₊ = XC₊ = @. XC₋ + L + Δ * (2H - 1)
 
     TFx, TFy, TFz = total_length.(Face, topology, N, H)
-    TCx, TCy, TCz = total_length.(Cell, topology, N, H)
+    TCx, TCy, TCz = total_length.(Center, topology, N, H)
 
     # Include halo points in coordinate arrays
     xF = range(xF₋, xF₊; length = TFx)

@@ -80,14 +80,16 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_grids.jl")
             include("test_operators.jl")
             include("test_boundary_conditions.jl")
-            include("test_fields.jl")
+            include("test_field.jl")
+            include("test_reduced_field.jl")
             include("test_averaged_field.jl")
+            include("test_kernel_computed_field.jl")
             include("test_halo_regions.jl")
             include("test_solvers.jl")
-            include("test_pressure_solvers.jl")
+            include("test_poisson_solvers.jl")
             include("test_coriolis.jl")
             include("test_buoyancy.jl")
-            include("test_surface_waves.jl")
+            include("test_stokes_drift.jl")
             include("test_utils.jl")
         end
     end
@@ -113,7 +115,8 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_simulations.jl")
             include("test_diagnostics.jl")
             include("test_output_writers.jl")
-            include("test_abstract_operations.jl")
+            include("test_abstract_operations_computed_field.jl")
+            include("test_lagrangian_particle_tracking.jl")
         end
     end
 
@@ -133,5 +136,9 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
     if group == :shallow_water || group == :all
         include("test_shallow_water_models.jl")
+    end
+
+    if group == :hydrostatic_free_surface || group == :all
+        include("test_hydrostatic_free_surface_models.jl")
     end
 end
