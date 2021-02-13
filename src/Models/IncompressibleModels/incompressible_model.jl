@@ -136,6 +136,34 @@ function IncompressibleModel(;
     if isnothing(pressure_solver)
         pressure_solver = FFTBasedPoissonSolver(architecture, grid)
     end
+    if pressure_solver == :FFT
+        pressure_solver = FFTBasedPoissonSolver(architecture, grid)
+    end
+    if pressure_solver == :PCG
+        reference_pressure_solver = FFTBasedPoissonSolver(architecture, grid)
+
+        function Amatrix_function!(result,x,arch,grid,bcs)
+
+          @kernel function ∇²!(grid, f, ∇²f)
+            i, j, k = @index(Global, NTuple)
+            @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
+          end
+
+          event = launch!(arch, grid, :xyz, ∇²!, grid, x, result, dependencies=Event(device(arch)))
+          wait(device(arch), event)
+          fill_halo_regions!(result,bcs,arch,grid)
+
+        end
+        pressure_solver = PCGSolver( ;arch=architecture, grid=grid,boundary_conditions=pressures.pNHS.boundary_conditions,
+              parameters=(PCmatrix_function=nothing,
+                          Amatrix_function=Amatrix_function!,
+                          Template_field=nothing,
+                          maxit=nothing,
+                          tol=nothing,
+                          reference_pressure_solver=reference_pressure_solver,
+                         )
+           )
+    end
 
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
 

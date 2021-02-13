@@ -14,6 +14,7 @@ using Oceananigans.Architectures: device, @hascuda, CPU, GPU, array_type, arch_a
 using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
+using Oceananigans.Fields
 
 using Oceananigans.Grids: unpack_grid
 

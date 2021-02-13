@@ -22,6 +22,25 @@ function solve_for_pressure!(pressure, solver, arch, grid, Δt, U★)
 end
 
 function solve_for_pressure!(pressure, solver::PCGSolver, arch, grid, Δt, U★)
+    ## Use FFT solver
+    ## solve_for_pressure!(pressure, solver.settings.reference_pressure_solver, arch, grid, Δt, U★)
+
+    ## Try PCG solver
+    RHS = solver.settings.RHS
+    rhs_event = launch!(arch, grid, :xyz,
+                        calculate_pressure_right_hand_side!, RHS, arch, grid, Δt, U★,
+                        dependencies = Event(device(arch)))
+    wait(device(arch), rhs_event)
+    fill_halo_regions!(RHS,solver.settings.bcs,arch,grid)
+
+    x = solver.settings.x
+    x .= 0.
+    
+    solve_poisson_equation!(solver,RHS,x)
+
+    fill_halo_regions!(x,solver.settings.bcs,arch,grid)
+    pressure.data .= x
+
     return nothing
 end
 
