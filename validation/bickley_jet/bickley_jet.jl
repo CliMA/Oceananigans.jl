@@ -151,9 +151,6 @@ function visualize(experiment_name)
 
         @info "    Plotting frame $i from iteration $iteration..."
 
-        local ζ
-        local c
-
         ζ = ζ_timeseries[i]
         c = c_timeseries[i]
         t = ζ_timeseries.times[i]
@@ -180,10 +177,10 @@ function visualize(experiment_name)
         plot(ζ_plot, c_plot, title = [ζ_title c_title], size = (4000, 2000))
     end
 
-    gif(anim, experiment_name * ".gif", fps = 8)
+    mp4(anim, experiment_name * ".mp4", fps = 8)
 end
 
-for Nh in (32, 64, 128)
-    experiment_name = run(Nh=Nh)
+for momentum_advection in (WENO5(), CenteredSecondOrder(), VectorInvariant())
+    experiment_name = run(momentum_advection=momentum_advection, Nh=64)
     visualize(experiment_name)
 end
