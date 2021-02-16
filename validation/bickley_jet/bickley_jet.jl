@@ -38,14 +38,14 @@ ũ(x, y, ℓ, k) = + ψ̃(x, y, ℓ, k) * (k * tan(k * y) + y / ℓ^2)
 ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x) 
 
 """
-    run(output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0,
-        momentum_advection = VectorInvariant())
+    run_bickley_jet(output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0,
+                    momentum_advection = VectorInvariant())
 
 Run the Bickley jet validation experiment until `stop_time` using `momentum_advection`
 scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch`itecture.
 """
-function run(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0,
-               momentum_advection = VectorInvariant())
+function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0,
+                           momentum_advection = VectorInvariant())
 
     grid = RegularCartesianGrid(size=(Nh, Nh, 1),
                                 x = (-2π, 2π), y=(-2π, 2π), z=(0, 1),
@@ -129,11 +129,11 @@ function run(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64,
 end
     
 """
-    visualize(experiment_name)
+    visualize_bickley_jet(experiment_name)
 
 Visualize the Bickley jet data associated with `experiment_name`.
 """
-function visualize(experiment_name)
+function visualize_bickley_jet(experiment_name)
 
     @info "Making a fun movie about an unstable Bickley jet..."
 
@@ -181,6 +181,6 @@ function visualize(experiment_name)
 end
 
 for momentum_advection in (WENO5(), CenteredSecondOrder(), VectorInvariant())
-    experiment_name = run(momentum_advection=momentum_advection, Nh=64)
-    visualize(experiment_name)
+    experiment_name = run_bickley_jet(momentum_advection=momentum_advection, Nh=64)
+    visualize_bickley_jet(experiment_name)
 end
