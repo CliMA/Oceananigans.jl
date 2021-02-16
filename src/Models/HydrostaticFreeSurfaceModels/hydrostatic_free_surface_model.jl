@@ -123,6 +123,9 @@ function HydrostaticFreeSurfaceModel(; grid,
     diffusivities = DiffusivityFields(diffusivities, architecture, grid,
                                       tracernames(tracers), boundary_conditions, closure)
 
+    velocities.w.boundary_conditions.top === nothing || error("Top boundary condition for HydrostaticFreeSurfaceModel velocities.w
+                                                              must be `nothing`!")
+
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(:QuasiAdamsBashforth2, architecture, grid, tracernames(tracers);
                               Gⁿ = HydrostaticFreeSurfaceTendencyFields(free_surface, architecture, grid, tracernames(tracers)),
