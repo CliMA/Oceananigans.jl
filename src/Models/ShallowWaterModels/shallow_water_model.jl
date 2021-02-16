@@ -1,6 +1,6 @@
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
-using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Architectures: AbstractArchitecture, CPU
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
