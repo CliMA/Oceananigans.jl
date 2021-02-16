@@ -74,7 +74,6 @@ model_setup_pages = [
     "Diagnostics" => "model_setup/diagnostics.md",
     "Output writers" => "model_setup/output_writers.md",
     "Checkpointing" => "model_setup/checkpointing.md",
-    "Time stepping" => "model_setup/time_stepping.md",
     "Setting initial conditions" => "model_setup/setting_initial_conditions.md"
 ]
 
