@@ -4,7 +4,7 @@
 # free surface using `Oceananigans.HydrostaticFreeSurfaceModel`. Here, we solve the hydrostatic
 # Boussinesq equations beneath a free surface with a small-amplitude about rest ``z = 0``,
 # with boundary conditions expanded around ``z = 0``, and free surface dynamics linearized under 
-# the assumption # ``η / H \ll 1``, where ``η`` is the free surface displacement, and ``H`` is 
+# the assumption ``η / H \ll 1``, where ``η`` is the free surface displacement, and ``H`` is 
 # the total depth of the fluid.
 #
 # ## Install dependencies
@@ -42,7 +42,7 @@ model = HydrostaticFreeSurfaceModel(grid=grid, coriolis=coriolis)
 # ## A geostrophic adjustment initial value problem
 #
 # We pose a geostrophic adjustment problem that consists of a partially-geostrophic
-# Gaussian height field complemented by a geostrophic y-velocity,
+# Gaussian height field complemented by a geostrophic ``y``-velocity,
 
 Gaussian(x, L) = exp(-x^2 / 2L^2)
 
