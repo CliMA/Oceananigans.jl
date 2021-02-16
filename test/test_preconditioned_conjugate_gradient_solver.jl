@@ -74,9 +74,9 @@ function run_pcg_solver_tests(arch)
 end
 
 @testset "Conjugate gradient solvers" begin
-    for arch in [CPU()]
+    for arch in archs
         @info "Testing conjugate gradient solvers [$(typeof(arch))]..."
-        # run_pcg_solver_tests(arch)
+        run_pcg_solver_tests(arch)
     end
 end
 
