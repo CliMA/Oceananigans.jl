@@ -109,7 +109,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
                           xlims = (grid.xF[1], grid.xF[grid.Nx]),
                           ylims = (grid.yF[1], grid.yF[grid.Ny]),
                           clims = (-v_lim, v_lim))
-    plot!(circleShape(30,20,1),seriestype=[:shape,],linecolor=:black,
+    plot!(circle_shape(30,20,1),seriestype=[:shape,],linecolor=:black,
     legend=false,fillalpha=0, aspect_ratio=1)
 end
 
