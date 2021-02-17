@@ -2,13 +2,14 @@ using Oceananigans: AbstractModel
 using Oceananigans.Grids
 using Oceananigans.Utils: tupleit
 
-struct KernelComputedField{X, Y, Z, S, A, G, K, F, P} <: AbstractField{X, Y, Z, A, G}
-                  data :: A
-                  grid :: G
-                kernel :: K
-    field_dependencies :: F
-            parameters :: P
-                status :: S
+struct KernelComputedField{X, Y, Z, S, A, G, K, C, F, P} <: AbstractField{X, Y, Z, A, G}
+                   data :: A
+                   grid :: G
+                 kernel :: K
+    boundary_conditions :: C
+     field_dependencies :: F
+             parameters :: P
+                 status :: S
 
     """
         KernelComputedField(loc, kernel, grid)
@@ -43,6 +44,7 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, F, P} <: AbstractField{X, Y, Z, 
     ```
     """
     function KernelComputedField{X, Y, Z}(kernel::K, arch, grid;
+                                          boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)),
                                           field_dependencies = (),
                                           parameters::P = nothing,
                                           data = nothing,
@@ -61,9 +63,10 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, F, P} <: AbstractField{X, Y, Z, 
         A = typeof(data)
         S = typeof(status)
         F = typeof(field_dependencies)
+        C = typeof(boundary_conditions)
 
         return new{X, Y, Z, S,
-                   A, G, K, F, P}(data, grid, kernel, field_dependencies, parameters)
+                   A, G, K, C, F, P}(data, grid, kernel, boundary_conditions, field_dependencies, parameters)
     end
 end
 
@@ -93,6 +96,8 @@ function compute!(kcf::KernelComputedField{X, Y, Z}) where {X, Y, Z}
         compute_kernel!(kcf.data, kcf.grid, kcf.field_dependencies..., kcf.parameters)
 
     wait(device(arch), event)
+
+    fill_halo_regions!(kcf, arch)
 
     return nothing
 end

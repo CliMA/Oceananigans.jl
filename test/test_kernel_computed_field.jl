@@ -41,10 +41,25 @@ for arch in archs
         compute!(doubled_field)
         @test doubled_field.data[1, 1, 1] == 2π
 
+        # Test boundary conditions / halo filling
+        @test doubled_field.data[0, 1, 1] == doubled_field.data[2, 1, 1] # periodic
+        @test doubled_field.data[1, 0, 1] == doubled_field.data[1, 2, 1] # periodic
+        @test doubled_field.data[1, 1, 0] == doubled_field.data[1, 1, 1] # no flux
+        @test doubled_field.data[1, 1, 1] == doubled_field.data[1, 1, 2] # no flux
+
         set!(doubled_field, 0)
         compute!(multiplied_field)
 
         @test doubled_field.data[1, 1, 1] == 2π
         @test multiplied_field.data[1, 1, 1] == multiple * 2 * π
+
+        doubled_face_field = KernelComputedField(Center, Center, Face,
+                                                 double!, arch, grid,
+                                                 field_dependencies = single_field)
+
+        # Test that nothing happens for fields on faces in bounded directions
+        compute!(doubled_face_field)
+        @test doubled_face_field.data[1, 1, 0] == 0
+        @test doubled_face_field.data[1, 1, 3] == 0
     end
 end
