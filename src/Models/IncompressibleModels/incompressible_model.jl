@@ -153,7 +153,7 @@ function IncompressibleModel(;
 
     return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                forcing, closure, background_fields, particles, velocities, tracers,
-                               pressures, diffusivities, timestepper, pressure_solver,immersed_boundary)
+                               pressures, diffusivities, timestepper, pressure_solver, immersed_boundary)
 end
 
 #####
