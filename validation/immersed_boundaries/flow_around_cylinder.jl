@@ -55,7 +55,6 @@ sim.model.clock.time,
 maximum(sim.model.velocities.v.data),
 minimum(sim.model.velocities.v.data))
 
-# Δt=5.7e-3,
 simulation = Simulation(model, Δt=5.7e-3, stop_time=5, iteration_interval=10, progress=progress)
 
 # ## Output
@@ -63,7 +62,7 @@ simulation = Simulation(model, Δt=5.7e-3, stop_time=5, iteration_interval=10, p
 simulation.output_writers[:fields] = JLD2OutputWriter(model,
                                                       merge(model.velocities, model.pressures),
                                                       schedule = TimeInterval(0.5),
-                                                      prefix = "flow_around_cylinder_LowRe",
+                                                      prefix = "flow_around_cylinder",
                                                       force = true)
 
 # run it
