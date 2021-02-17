@@ -1,16 +1,9 @@
-using Oceananigans.Advection
 using Oceananigans.Buoyancy
 using Oceananigans.Coriolis
 using Oceananigans.Operators
 using Oceananigans.StokesDrift
 using Oceananigans.TurbulenceClosures: ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
-
-# Temporary implementation of momentum advection for hydrostatic free surface model
-U_dot_∇u(i, j, k, grid, advection::VectorInvariant, velocities) = 0
-U_dot_∇v(i, j, k, grid, advection::VectorInvariant, velocities) = 0
-
-U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, velocities) = div_Uu(i, j, k, grid, advection, velocities, velocities.u)
-U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, velocities) = div_Uv(i, j, k, grid, advection, velocities, velocities.v)
+using Oceananigans.Advection: div_Uc
 
 """
     hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid,

@@ -1,4 +1,4 @@
-# # Geostrophic adjustment using Oceananigans.HydrostaticFreeSurfaceMode l
+# # Geostrophic adjustment using Oceananigans.HydrostaticFreeSurfaceModel
 #
 # This example demonstrates how to simulate the one-dimensional geostrophic adjustment of a
 # free surface using `Oceananigans.HydrostaticFreeSurfaceModel`. Here, we solve the hydrostatic
