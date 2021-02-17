@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δx_vᶜᶠᶜ, Δy_uᶠᶜᶜ
+using Oceananigans.Operators: Δx_vᶜᶠᶜ, Δy_uᶠᶜᶜ, Δxᶠᶜᵃ, Δyᶜᶠᵃ
 
 """
     FPlane{FT} <: AbstractRotation
@@ -39,8 +39,8 @@ function FPlane(FT::DataType=Float64; f=nothing, rotation_rate=Ω_Earth, latitud
     end
 end
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::FPlane, U) = - coriolis.f * ℑxyᶠᶜᵃ(i, j, k, grid, Δx_vᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
-@inline y_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   coriolis.f * ℑxyᶜᶠᵃ(i, j, k, grid, Δy_uᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
+@inline x_f_cross_U(i, j, k, grid, coriolis::FPlane, U) = - coriolis.f * ℑxyᶠᶜᵃ(i, j, k, grid, Δx_vᶜᶠᶜ, U[2]) / Δxᶠᶜᵃ(i, j, k, grid)
+@inline y_f_cross_U(i, j, k, grid, coriolis::FPlane, U) =   coriolis.f * ℑxyᶜᶠᵃ(i, j, k, grid, Δy_uᶠᶜᶜ, U[1]) / Δyᶜᶠᵃ(i, j, k, grid)
 
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::FPlane, U) where FT = zero(FT)
 
