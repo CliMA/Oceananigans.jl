@@ -30,6 +30,16 @@ using Oceananigans.Grids: RegularCartesianGrid, VerticallyStretchedCartesianGrid
 @inline ΔzF(i, j, k, grid::RegularCartesianGrid) = grid.Δz
 @inline ΔzF(i, j, k, grid::VerticallyStretchedCartesianGrid) = @inbounds grid.ΔzF[k]
 
+# Experimental grid spacing operators for Coriolis forces
+@inline Δxᶜᶠᶜ(i, j, k, grid) = grid.Δx
+@inline Δxᶠᶜᶜ(i, j, k, grid) = grid.Δx
+
+@inline Δyᶠᶜᶜ(i, j, k, grid) = grid.Δy
+@inline Δyᶜᶠᶜ(i, j, k, grid) = grid.Δy
+
+@inline Δx_vᶜᶠᶜ(i, j, k, grid, v) = @inbounds Δxᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
+@inline Δy_uᶠᶜᶜ(i, j, k, grid, v) = @inbounds Δyᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
+
 #####
 ##### Areas
 #####
