@@ -36,7 +36,7 @@ mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
         diffusivities :: K         # Container for turbulent diffusivities
           timestepper :: TS        # Object containing timestepper fields and parameters
       pressure_solver :: S         # Pressure/Poisson solver
-    immersed_boundary :: I         # Determines immersed boundary
+    immersed_boundary :: I         # Models the physics of immersed boundaries within the grid
 end
 
 """
