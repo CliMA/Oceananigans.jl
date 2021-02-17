@@ -38,7 +38,7 @@ using Oceananigans.Grids: RegularCartesianGrid, VerticallyStretchedCartesianGrid
 @inline Δyᶜᶠᵃ(i, j, k, grid) = grid.Δy
 
 @inline Δx_vᶜᶠᵃ(i, j, k, grid, v) = @inbounds Δxᶜᶠᵃ(i, j, k, grid) * v[i, j, k]
-@inline Δy_uᶠᶜᵃ(i, j, k, grid, v) = @inbounds Δyᶠᶜᵃ(i, j, k, grid) * u[i, j, k]
+@inline Δy_uᶠᶜᵃ(i, j, k, grid, u) = @inbounds Δyᶠᶜᵃ(i, j, k, grid) * u[i, j, k]
 
 #####
 ##### Areas
