@@ -78,7 +78,7 @@ u, v, w = model.velocities
 xv, yv, zv = nodes(v)
 
 # defining a function to mark boundary
-function circleShape(h,k,r)
+function circle_shape(h, k, r)
             θ = LinRange(0,2*π,500)
             h.+r*sin.(θ),k.+r*cos.(θ)
 end
@@ -114,5 +114,4 @@ anim = @animate for (i, iteration) in enumerate(iterations)
 end
 
 gif(anim, "flow_around_cyl_velocity.gif", fps = 8) # hide
-
 
