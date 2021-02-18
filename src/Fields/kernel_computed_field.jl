@@ -42,6 +42,21 @@ end
     """
         KernelComputedField(X, Y, Z, kernel, model; boundary_conditions=ComputedFieldBoundaryConditions(grid, (X, Y, Z)), field_dependencies=(), parameters=nothing, data=nothing, recompute_safely=true)
 
+Builds a `KernelComputedField` at `X, Y, Z` computed with `kernel` and `model.architecture` and `model.grid`, with `boundary_conditions`.
+
+`field_dependencies` are an iterable of `AbstractField`s or other objects on which `compute!` is called prior to launching `kernel`.
+
+`data` is a three-dimensional `OffsetArray` of scratch space where the kernel computation is stored. If `data=nothing` (the default) then additional memory will be allocated to store the `data` of `KernelComputedField`.
+
+If `isnothing(parameters)`, `kernel` is launched with the function signature
+
+`kernel(data, grid, field_dependencies...)`
+
+Otherwise, `kernel` is launched with the function signature
+
+`kernel(data, grid, field_dependencies..., parameters)`
+
+`recompute_safely` (default: `true`) determines whether the `KernelComputedField` is "recomputed" if embedded in the expression tree of another operation. If `recompute_safely=true`, the `KernelComputedField` is always recomputed. If `recompute_safely=false`, the `KernelComputedField` will not be recomputed if its status is up-to-date. If `data=nothing`, then `recompute_safely` is switched to `false`.
     Example
     =======
 
