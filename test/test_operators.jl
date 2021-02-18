@@ -57,8 +57,8 @@ end
 @testset "Operators" begin
     @info "Testing operators..."
 
-    @testset "Regular grid spacings, areas, and volume operators"
-        @info "  Testing regular grid spacing, areas, and volume operators..."
+    @testset "Regular grid lengths, areas, and volume operators"
+        @info "  Testing regular grid lengths, areas, and volume operators..."
         grid = RegularCartesianGrid(size=(1, 1, 1), extent=(π, 2π, 3π))
 
         for δ in (Δx, Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ) 
