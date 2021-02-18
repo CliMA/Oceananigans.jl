@@ -45,15 +45,13 @@ calculate_diffusivities!(K, arch, grid, closure::HorizontalCurvilinearDiffusivit
 @inline ν_δᶜᶜᵃ(i, j, k, grid, clock, ν, u, v) = @inbounds νᶜᶜᶜ(i, j, k, grid, clock, ν) * div_xyᶜᶜᵃ(i, j, k, grid, u, v)
 @inline ν_ζᶠᶠᵃ(i, j, k, grid, clock, ν, u, v) = @inbounds νᶠᶠᶜ(i, j, k, grid, clock, ν) * ζ₃ᶠᶠᵃ(i, j, k, grid, u, v)
     
-#=
 @inline function ∇_κ_∇c(i, j, k, grid, clock, closure::HorizontalCurvilinearDiffusivity,
                         c, ::Val{tracer_index}, args...) where tracer_index
 
     @inbounds κ = closure.κ[tracer_index]
 
-    return ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, clock, κ, c)
+    return ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, clock, κ, κ, 0, c)
 end
-=#
 
 @inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure::HorizontalCurvilinearDiffusivity, U, args...) = (
       δxᶠᵃᵃ(i, j, k, grid, ν_δᶜᶜᵃ, clock, closure.ν, U.u, U.v) / Δxᶠᶜᵃ(i, j, k, grid)
