@@ -26,7 +26,8 @@ export
 ##### Convinient aliases
 #####
 
-using Oceananigans.Grids: AbstractGrid, RegularCartesianGrid, AbstractRectilinearGrid
+using Oceananigans.Grids: AbstractGrid, RegularCartesianGrid
+using Oceananigans.Grids: VerticallyStretchedCartesianGrid, AbstractRectilinearGrid
 
 const AG  = AbstractGrid
 const ARG = AbstractRectilinearGrid
