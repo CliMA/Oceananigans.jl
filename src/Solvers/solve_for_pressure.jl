@@ -21,25 +21,6 @@ function solve_for_pressure!(pressure, solver, arch, grid, Δt, U★)
     return nothing
 end
 
-function solve_for_pressure!(pressure, solver::PreconditionedConjugateGradientSolver, arch, grid, Δt, U★)
-    RHS = solver.settings.RHS
-    rhs_event = launch!(arch, grid, :xyz,
-                        calculate_pressure_right_hand_side!, RHS, arch, grid, Δt, U★,
-                        dependencies = Event(device(arch)))
-    wait(device(arch), rhs_event)
-    fill_halo_regions!(RHS, solver.settings.bcs, arch, grid)
-
-    x = solver.settings.x
-    x .= 0
-
-    solve_poisson_equation!(solver, RHS, x)
-
-    fill_halo_regions!(x, solver.settings.bcs, arch, grid)
-    pressure.data .= x
-
-    return nothing
-end
-
 """
 Calculate the right-hand-side of the Poisson equation for the non-hydrostatic pressure.
 """
