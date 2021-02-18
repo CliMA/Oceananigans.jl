@@ -2,9 +2,9 @@
 ##### Diffusive fluxes
 #####
 
-@inline diffusive_flux_x(i, j, k, grid, clock, κᶠᶜᶜ::Number, c) = κᶠᶜᶜ * Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, c)
-@inline diffusive_flux_y(i, j, k, grid, clock, κᶜᶠᶜ::Number, c) = κᶜᶠᶜ * Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, c)
-@inline diffusive_flux_z(i, j, k, grid, clock, κᶜᶜᶠ::Number, c) = κᶜᶜᶠ * Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, c)
+@inline diffusive_flux_x(i, j, k, grid, clock, κᶠᶜᶜ::Number, c) = κᶠᶜᶜ * Axᶠᶜᶜ(i, j, k, grid) * ∂xᶠᶜᵃ(i, j, k, grid, c)
+@inline diffusive_flux_y(i, j, k, grid, clock, κᶜᶠᶜ::Number, c) = κᶜᶠᶜ * Ayᶜᶠᶜ(i, j, k, grid) * ∂yᶜᶠᵃ(i, j, k, grid, c)
+@inline diffusive_flux_z(i, j, k, grid, clock, κᶜᶜᶠ::Number, c) = κᶜᶜᶠ * Azᶜᶜᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, c)
 
 # Diffusivities-as-functions
 
@@ -31,7 +31,7 @@ Calculates diffusion for a tracer c via
 which will end up at the location `ccc`.
 """
 @inline function ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, clock, κˣ, κʸ, κᶻ, c)
-    return 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, diffusive_flux_x, clock, κˣ, c) +
+    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, diffusive_flux_x, clock, κˣ, c) +
                                     δyᵃᶜᵃ(i, j, k, grid, diffusive_flux_y, clock, κʸ, c) +
                                     δzᵃᵃᶜ(i, j, k, grid, diffusive_flux_z, clock, κᶻ, c))
 end

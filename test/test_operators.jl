@@ -86,14 +86,14 @@ end
 
         @testset "East-normal areas in the yz-plane" begin
             @info "    Testing areas with easterly normal in the yz-plane..."
-            for A in (Axᵃᵃᶜ, Axᵃᵃᶠ)
+            for A in (Axᵃᵃᶜ, Axᵃᵃᶠ, Axᶠᶜᶜ)
                 @test A(1, 1, 1, grid) == FT(6 * π^2)
             end
         end
 
         @testset "West-normal areas in the xz-plane" begin
             @info "    Testing areas with westerly normal in the xz-plane..."
-            for A in (Ayᵃᵃᶜ, Ayᵃᵃᶠ)
+            for A in (Ayᵃᵃᶜ, Ayᵃᵃᶠ, Ayᶜᶠᶜ)
                 @test A(1, 1, 1, grid) == FT(3 * π^2)
             end
         end
@@ -107,7 +107,7 @@ end
 
         @testset "Volumes" begin
             @info "    Testing volumes..."
-            for V in (Vᵃᵃᶜ, Vᵃᵃᶠ)
+            for V in (Vᵃᵃᶜ, Vᵃᵃᶠ, Vᶜᶜᶜ)
                 @test V(1, 1, 1, grid) == FT(6 * π^3)
             end
         end
