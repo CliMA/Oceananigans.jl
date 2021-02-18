@@ -2,14 +2,24 @@
 ##### Rectilinear derivative operators
 #####
 
-@inline ∂xᶜᵃᵃ(i, j, k, grid, u, args...) = δxᶜᵃᵃ(i, j, k, grid, u, args...) / Δx(i, j, k, grid)
-@inline ∂xᶠᵃᵃ(i, j, k, grid, c, args...) = δxᶠᵃᵃ(i, j, k, grid, c, args...) / Δx(i, j, k, grid)
+@inline ∂xᶜᵃᵃ(i, j, k, grid, u) = δxᶜᵃᵃ(i, j, k, grid, u) / Δx(i, j, k, grid)
+@inline ∂xᶠᵃᵃ(i, j, k, grid, c) = δxᶠᵃᵃ(i, j, k, grid, c) / Δx(i, j, k, grid)
 
-@inline ∂yᵃᶜᵃ(i, j, k, grid, v, args...) = δyᵃᶜᵃ(i, j, k, grid, v, args...) / Δy(i, j, k, grid)
-@inline ∂yᵃᶠᵃ(i, j, k, grid, c, args...) = δyᵃᶠᵃ(i, j, k, grid, c, args...) / Δy(i, j, k, grid)
+@inline ∂yᵃᶜᵃ(i, j, k, grid, v) = δyᵃᶜᵃ(i, j, k, grid, v) / Δy(i, j, k, grid)
+@inline ∂yᵃᶠᵃ(i, j, k, grid, c) = δyᵃᶠᵃ(i, j, k, grid, c) / Δy(i, j, k, grid)
 
-@inline ∂zᵃᵃᶜ(i, j, k, grid, w, args...) = δzᵃᵃᶜ(i, j, k, grid, w, args...) / ΔzF(i, j, k, grid)
-@inline ∂zᵃᵃᶠ(i, j, k, grid, c, args...) = δzᵃᵃᶠ(i, j, k, grid, c, args...) / ΔzC(i, j, k, grid)
+@inline ∂zᵃᵃᶜ(i, j, k, grid, w) = δzᵃᵃᶜ(i, j, k, grid, w) / ΔzF(i, j, k, grid)
+@inline ∂zᵃᵃᶠ(i, j, k, grid, c) = δzᵃᵃᶠ(i, j, k, grid, c) / ΔzC(i, j, k, grid)
+
+
+@inline ∂xᶜᵃᵃ(i, j, k, grid, u::T, args...) where T<:Function = δxᶜᵃᵃ(i, j, k, grid, u, args...) / Δx(i, j, k, grid)
+@inline ∂xᶠᵃᵃ(i, j, k, grid, c::T, args...) where T<:Function = δxᶠᵃᵃ(i, j, k, grid, c, args...) / Δx(i, j, k, grid)
+
+@inline ∂yᵃᶜᵃ(i, j, k, grid, v::T, args...) where T<:Function = δyᵃᶜᵃ(i, j, k, grid, v, args...) / Δy(i, j, k, grid)
+@inline ∂yᵃᶠᵃ(i, j, k, grid, c::T, args...) where T<:Function = δyᵃᶠᵃ(i, j, k, grid, c, args...) / Δy(i, j, k, grid)
+
+@inline ∂zᵃᵃᶜ(i, j, k, grid, w::T, args...) where T<:Function = δzᵃᵃᶜ(i, j, k, grid, w, args...) / ΔzF(i, j, k, grid)
+@inline ∂zᵃᵃᶠ(i, j, k, grid, c::T, args...) where T<:Function = δzᵃᵃᶠ(i, j, k, grid, c, args...) / ΔzC(i, j, k, grid)
 
 #####
 ##### Operators of the form A*δ(q) where A is an area and q is some quantity.
