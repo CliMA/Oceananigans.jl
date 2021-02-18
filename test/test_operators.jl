@@ -57,6 +57,39 @@ end
 @testset "Operators" begin
     @info "Testing operators..."
 
+    @testset "Regular grid spacings, areas, and volume operators"
+        @info "  Testing regular grid spacing, areas, and volume operators..."
+        grid = RegularCartesianGrid(size=(1, 1, 1), extent=(π, 2π, 3π))
+
+        for δ in (Δx, Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ) 
+            @test δ(1, 1, 1, grid) == π
+        end
+
+        for δ in (Δy, Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ) 
+            @test δ(1, 1, 1, grid) == 2π
+        end
+
+        for δ in (ΔzF, ΔzC)
+            @test δ(1, 1, 1, grid) == 3π
+        end
+
+        for A in (Axᵃᵃᶜ, Axᵃᵃᶠ)
+            @test A(1, 1, 1, grid) = 3 * π^2   
+        end
+
+        for A in (Ayᵃᵃᶜ, Ayᵃᵃᶠ)
+            @test A(1, 1, 1, grid) = 6 * π^2   
+        end
+
+        for A in (Azᵃᵃᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ)
+            @test A(1, 1, 1, grid) = 2 * π^2   
+        end
+
+        for V in (Vᵃᵃᶜ, Vᵃᵃᶠ)
+            @test V(1, 1, 1, grid) == 12 * π^3
+        end
+    end
+
     @testset "Function differentiation" begin
         @info "  Testing function differentiation..."
         @test test_function_differentiation()
