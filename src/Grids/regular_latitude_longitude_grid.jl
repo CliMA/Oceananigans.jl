@@ -109,21 +109,3 @@ function show(io::IO, g::RegularLatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT
               "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
               "grid spacing (Δλ, Δϕ, Δz): ", (g.Δλ, g.Δϕ, g.Δz))
 end
-
-# TODO: Move to Oceananigans.Operators (or define operators first?)
-
-# zonal length between cell centers (MITgcm dxC)
-Δxᶠᵃᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.radius * cosd(grid.ϕᵃᶠᵃ[j]) * deg2rad(grid.Δλ)
-
-# meridional length between cell centers (MITgcm dyC)
-Δyᵃᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.radius * deg2rad(grid.Δϕ)
-
-# lengths between cell faces through the center (MITgcm dxF, dyF)
-Δxᶜᵃᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.radius * cosd(grid.ϕᵃᶜᵃ[j]) * deg2rad(grid.Δλ)
-Δyᶜᵃᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.radius * deg2rad(grid.Δϕ)
-
-# lengths along cell boundaries (MITgcm dxG, dyG)
-Δxᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.radius * cosd(grid.ϕᵃᶠᵃ[j]) * deg2rad(grid.Δλ)
-Δyᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.radius * deg2rad(grid.Δϕ)
-
-Δzᵃᵃᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.Δz
