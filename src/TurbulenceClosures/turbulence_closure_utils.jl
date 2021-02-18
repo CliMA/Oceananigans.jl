@@ -9,8 +9,14 @@ function tracer_diffusivities(tracers, κ::NamedTuple)
     return κ
 end
 
+convert_diffusivity(T, κ) = κ # fallback
+
 convert_diffusivity(T, κ::Number) = convert(T, κ)
-convert_diffusivity(T, κ::NamedTuple) = convert(NamedTuple{propertynames(κ), NTuple{length(κ), T}}, κ)
+
+function convert_diffusivity(T, κ::NamedTuple)
+    κ_names = propertynames(κ)
+    return NamedTuple{κ_names}(Tuple(convert_diffusivity(κi) for κi in κ))
+end
 
 @inline geo_mean_Δᶠ(i, j, k, grid::RegularCartesianGrid{T}) where T = (grid.Δx * grid.Δy * grid.Δz)^T(1/3)
 

@@ -1,49 +1,32 @@
 #####
+##### Viscosities at different locations
+#####
+
+@inline νᶜᶜᶜ(i, j, k, grid, clock, ν::Number) = ν
+@inline νᶠᶠᶜ(i, j, k, grid, clock, ν::Number) = ν
+@inline νᶠᶜᶠ(i, j, k, grid, clock, ν::Number) = ν
+@inline νᶜᶠᶠ(i, j, k, grid, clock, ν::Number) = ν
+
+@inline νᶜᶜᶜ(i, j, k, grid, clock, ν::Function) = ν(xnode(Center, grid, i), ynode(Center, grid, j), znode(Center, grid, k), clock.time)
+@inline νᶠᶠᶜ(i, j, k, grid, clock, ν::Function) = ν(xnode(Face,   grid, i), ynode(Face,   grid, j), znode(Center, grid, k), clock.time)
+@inline νᶠᶜᶠ(i, j, k, grid, clock, ν::Function) = ν(xnode(Face,   grid, i), ynode(Center, grid, j), znode(Face,   grid, k), clock.time)
+@inline νᶜᶠᶠ(i, j, k, grid, clock, ν::Function) = ν(xnode(Face,   grid, i), ynode(Center, grid, j), znode(Face,   grid, k), clock.time)
+
+#####
 ##### Viscous fluxes
 #####
 
-@inline viscous_flux_ux(i, j, k, grid, clock, νᶜᶜᶜ::Number, u) = νᶜᶜᶜ * ℑxᶜᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶜᵃᵃ(i, j, k, grid, u)
-@inline viscous_flux_uy(i, j, k, grid, clock, νᶠᶠᶜ::Number, u) = νᶠᶠᶜ * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶠᵃ(i, j, k, grid, u)
-@inline viscous_flux_uz(i, j, k, grid, clock, νᶠᶜᶠ::Number, u) = νᶠᶜᶠ * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶠ(i, j, k, grid, u)
+@inline viscous_flux_ux(i, j, k, grid, clock, ν, u) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * ℑxᶜᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶜᵃᵃ(i, j, k, grid, u)
+@inline viscous_flux_uy(i, j, k, grid, clock, ν, u) = νᶠᶠᶜ(i, j, k, grid, clock, ν) * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶠᵃ(i, j, k, grid, u)
+@inline viscous_flux_uz(i, j, k, grid, clock, ν, u) = νᶠᶜᶠ(i, j, k, grid, clock, ν) * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶠ(i, j, k, grid, u)
 
-@inline viscous_flux_vx(i, j, k, grid, clock, νᶠᶠᶜ::Number, v) = νᶠᶠᶜ * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶠᵃᵃ(i, j, k, grid, v)
-@inline viscous_flux_vy(i, j, k, grid, clock, νᶜᶜᶜ::Number, v) = νᶜᶜᶜ * ℑyᵃᶜᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶜᵃ(i, j, k, grid, v)
-@inline viscous_flux_vz(i, j, k, grid, clock, νᶜᶠᶠ::Number, v) = νᶜᶠᶠ * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶠ(i, j, k, grid, v)
+@inline viscous_flux_vx(i, j, k, grid, clock, ν, v) = νᶠᶠᶜ(i, j, k, grid, clock, ν) * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶠᵃᵃ(i, j, k, grid, v)
+@inline viscous_flux_vy(i, j, k, grid, clock, ν, v) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * ℑyᵃᶜᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶜᵃ(i, j, k, grid, v)
+@inline viscous_flux_vz(i, j, k, grid, clock, ν, v) = νᶜᶠᶠ(i, j, k, grid, clock, ν) * ℑzᵃᵃᶠ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶠ(i, j, k, grid, v)
 
-@inline viscous_flux_wx(i, j, k, grid, clock, νᶠᶜᶠ::Number, w) = νᶠᶜᶠ * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶠᵃᵃ(i, j, k, grid, w)
-@inline viscous_flux_wy(i, j, k, grid, clock, νᶜᶠᶠ::Number, w) = νᶜᶠᶠ * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶠᵃ(i, j, k, grid, w)
-@inline viscous_flux_wz(i, j, k, grid, clock, νᶜᶜᶜ::Number, w) = νᶜᶜᶜ * ℑzᵃᵃᶜ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶜ(i, j, k, grid, w)
-
-# Viscosities-as-functions
-
-@inline viscous_flux_ux(i, j, k, grid, clock, ν::Function, u) =
-        viscous_flux_ux(i, j, k, grid, clock, ν(xnode(Center, i, grid), ynode(Center, j, grid), znode(Center, k, grid), clock.time), u)
-
-@inline viscous_flux_uy(i, j, k, grid, clock, ν::Function, u) =
-        viscous_flux_uy(i, j, k, grid, clock, ν(xnode(Center, i, grid), ynode(Face, j, grid), znode(Face, k, grid), clock.time), u)
-
-@inline viscous_flux_uz(i, j, k, grid, clock, ν::Function, u) =
-        viscous_flux_uz(i, j, k, grid, clock, ν(xnode(Face, i, grid), ynode(Center, j, grid), znode(Face, k, grid), clock.time), u)
-
-@inline viscous_flux_vx(i, j, k, grid, clock, ν::Function, v) =
-        viscous_flux_vx(i, j, k, grid, clock, ν(xnode(Face, i, grid), ynode(Face, j, grid), znode(Center, k, grid), clock.time), v)
-
-@inline viscous_flux_vy(i, j, k, grid, clock, ν::Function, v) =
-        viscous_flux_vy(i, j, k, grid, clock, ν(xnode(Center, i, grid), ynode(Center, j, grid), znode(Center, k, grid), clock.time), v)
-
-@inline viscous_flux_vz(i, j, k, grid, clock, ν::Function, v) =
-        viscous_flux_vz(i, j, k, grid, clock, ν(xnode(Center, i, grid), ynode(Face, j, grid), znode(Face, k, grid), clock.time), v)
-                        
-
-@inline viscous_flux_wx(i, j, k, grid, clock, ν::Function, w) =
-        viscous_flux_wx(i, j, k, grid, clock, ν(xnode(Face, i, grid), ynode(Center, j, grid), znode(Face, k, grid), clock.time), w)
-                        
-@inline viscous_flux_wy(i, j, k, grid, clock, ν::Function, w) =
-        viscous_flux_wy(i, j, k, grid, clock, ν(xnode(Center, i, grid), ynode(Face, j, grid), znode(Face, k, grid), clock.time), w)
-
-@inline viscous_flux_wz(i, j, k, grid, clock, ν::Function, w) =
-        viscous_flux_wz(i, j, k, grid, clock, ν(xnode(Center, i, grid), ynode(Center, j, grid), znode(Center, k, grid), clock.time), w)
-                        
+@inline viscous_flux_wx(i, j, k, grid, clock, ν, w) = νᶠᶜᶠ(i, j, k, grid, clock, ν) * ℑxᶠᵃᵃ(i, j, k, grid, Axᵃᵃᶜ) * ∂xᶠᵃᵃ(i, j, k, grid, w)
+@inline viscous_flux_wy(i, j, k, grid, clock, ν, w) = νᶜᶠᶠ(i, j, k, grid, clock, ν) * ℑyᵃᶠᵃ(i, j, k, grid, Ayᵃᵃᶜ) * ∂yᵃᶠᵃ(i, j, k, grid, w)
+@inline viscous_flux_wz(i, j, k, grid, clock, ν, w) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * ℑzᵃᵃᶜ(i, j, k, grid, Azᵃᵃᵃ) * ∂zᵃᵃᶜ(i, j, k, grid, w)
 
 #####
 ##### Viscous dissipation operators
