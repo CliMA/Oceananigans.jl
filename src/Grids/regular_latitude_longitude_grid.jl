@@ -44,13 +44,13 @@ function RegularLatitudeLongitudeGrid(FT=Float64; size, latitude, longitude, z, 
     Nx, Ny, Nz = size = validate_size(TX, TY, TZ, size)
     Hx, Hy, Hz = halo = validate_halo(TX, TY, TZ, halo)
 
-    Lx = ϕ₂ - ϕ₁
-    Ly = λ₂ - λ₁
+    Lx = λ₂ - λ₁
+    Ly = ϕ₂ - ϕ₁
     Lz = z₂ - z₁
 
-    Δϕ = Nx / Lx
-    Δλ = Ny / Ly
-    Δz = Nz / Lz
+    Δϕ = Lx / Nx
+    Δλ = Ly / Ny
+    Δz = Lz / Nz
 
     # FIXME? MITgcm generates (xG, yG) vorticity grid points then interpolates them to generate (xC, yC):
     # https://github.com/MITgcm/MITgcm/blob/fc300b65987b52171b1110c7930f580ca71dead0/model/src/ini_spherical_polar_grid.F#L86-L89
@@ -65,6 +65,18 @@ function RegularLatitudeLongitudeGrid(FT=Float64; size, latitude, longitude, z, 
     zᵃᵃᶜ = range(z₁ + Δz/2, z₂ - Δz/2, length=Nz)
 
     return RegularLatitudeLongitudeGrid{FT, TX, TY, TZ, typeof(λᶠᵃᵃ)}(Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δλ, Δϕ, Δz, λᶠᵃᵃ, λᶜᵃᵃ, ϕᵃᶠᵃ, ϕᵃᶜᵃ, zᵃᵃᶠ, zᵃᵃᶜ, radius)
+end
+
+domain_string(grid::RegularLatitudeLongitudeGrid) =
+    "longitude λ ∈ [$(grid.λᶠᵃᵃ[1]), $(grid.λᶠᵃᵃ[end])], latitude ∈ [$(grid.ϕᵃᶠᵃ[1]), $(grid.ϕᵃᶠᵃ[end])], z ∈ [$(grid.zᵃᵃᶠ[1]), $(grid.zᵃᵃᶠ[end])]"
+
+function show(io::IO, g::RegularLatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    print(io, "RegularLatitudeLongitudeGrid{$FT, $TX, $TY, $TZ}\n",
+              "                   domain: $(domain_string(g))\n",
+              "                 topology: ", (TX, TY, TZ), '\n',
+              "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
+              "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
+              "grid spacing (Δλ, Δϕ, Δz): ", (g.Δλ, g.Δϕ, g.Δz))
 end
 
 # TODO: Move to Oceananigans.Operators (or define operators first?)

@@ -205,7 +205,7 @@ end
 short_show(grid::RegularCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     "RegularCartesianGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
 
-function domain_string(grid)
+function domain_string(grid::RegularCartesianGrid)
     xₗ, xᵣ = x_domain(grid)
     yₗ, yᵣ = y_domain(grid)
     zₗ, zᵣ = z_domain(grid)
@@ -236,7 +236,7 @@ function with_halo(new_halo, old_grid::RegularCartesianGrid)
 
     FT = eltype(old_grid)
     Nx, Ny, Nz = size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
-    topo = topology(old_grid) 
+    topo = topology(old_grid)
 
     x = x_domain(old_grid)
     y = y_domain(old_grid)
