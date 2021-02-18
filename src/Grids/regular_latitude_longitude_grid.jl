@@ -36,7 +36,7 @@ function RegularLatitudeLongitudeGrid(FT=Float64; size, latitude, longitude, z, 
     z₁, z₂ = z
     @assert z₁ < z₂
 
-    TX = ϕ₁ == -180 && ϕ₂ == 180 ? Periodic : Bounded
+    TX = λ₁ == -180 && λ₂ == 180 ? Periodic : Bounded
     TY = Bounded
     TZ = Bounded
     topo = (TX, TY, TZ)
@@ -94,8 +94,12 @@ function RegularLatitudeLongitudeGrid(FT=Float64; size, latitude, longitude, z, 
     return RegularLatitudeLongitudeGrid{FT, TX, TY, TZ, typeof(λᶠᵃᵃ)}(Nx, Ny, Nz, Hx, Hy, Hz, Lλ, Lϕ, Lz, Δλ, Δϕ, Δz, λᶠᵃᵃ, λᶜᵃᵃ, ϕᵃᶠᵃ, ϕᵃᶜᵃ, zᵃᵃᶠ, zᵃᵃᶜ, radius)
 end
 
-domain_string(grid::RegularLatitudeLongitudeGrid) =
-    "longitude λ ∈ [$(grid.λᶠᵃᵃ[1]), $(grid.λᶠᵃᵃ[end])], latitude ∈ [$(grid.ϕᵃᶠᵃ[1]), $(grid.ϕᵃᶠᵃ[end])], z ∈ [$(grid.zᵃᵃᶠ[1]), $(grid.zᵃᵃᶠ[end])]"
+function domain_string(grid::RegularLatitudeLongitudeGrid)
+    λ₁, λ₂ = domain(topology(grid, 1), grid.Nx, grid.λᶠᵃᵃ)
+    ϕ₁, ϕ₂ = domain(topology(grid, 2), grid.Ny, grid.ϕᵃᶠᵃ)
+    z₁, z₂ = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
+    return "longitude λ ∈ [$λ₁, $λ₂], latitude ∈ [$ϕ₁, $ϕ₂], z ∈ [$z₁, $z₂]"
+end
 
 function show(io::IO, g::RegularLatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     print(io, "RegularLatitudeLongitudeGrid{$FT, $TX, $TY, $TZ}\n",
