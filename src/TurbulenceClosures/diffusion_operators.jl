@@ -37,3 +37,47 @@ which will end up at the location `ccc`.
 end
 
 @inline ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, clock, κ, c) = ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, clock, κ, κ, κ, c)
+
+#####
+#####
+#####
+
+"""
+    κ_∂x_c(i, j, k, grid, c, κ, closure, args...)
+
+Return `κ ∂x c`, where `κ` is an array or function that computes
+diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
+data located at cell centers.
+"""
+@inline function κ_∂x_c(i, j, k, grid, κ, c, closure, args...)
+    κ = ℑxᶠᵃᵃ(i, j, k, grid, κ, closure, args...)
+    ∂x_c = ∂xᶠᵃᵃ(i, j, k, grid, c)
+    return κ * ∂x_c
+end
+
+"""
+    κ_∂y_c(i, j, k, grid, c, κ, closure, args...)
+
+Return `κ ∂y c`, where `κ` is an array or function that computes
+diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
+data located at cell centers.
+"""
+@inline function κ_∂y_c(i, j, k, grid, κ, c, closure, args...)
+    κ = ℑyᵃᶠᵃ(i, j, k, grid, κ, closure, args...)
+    ∂y_c = ∂yᵃᶠᵃ(i, j, k, grid, c)
+    return κ * ∂y_c
+end
+
+"""
+    κ_∂z_c(i, j, k, grid, c, κ, closure, buoyancy, u, v, w, T, S)
+
+Return `κ ∂z c`, where `κ` is an array or function that computes
+diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
+data located at cell centers.
+"""
+@inline function κ_∂z_c(i, j, k, grid, κ, c, closure, args...)
+    κ = ℑzᵃᵃᶠ(i, j, k, grid, κ, closure, args...)
+    ∂z_c = ∂zᵃᵃᶠ(i, j, k, grid, c)
+    return κ * ∂z_c
+end
+

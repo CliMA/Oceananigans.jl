@@ -38,20 +38,6 @@ end
 
 calculate_diffusivities!(K, arch, grid, closure::HorizontallyCurvilinearAnisotropicDiffusivity, args...) = nothing
 
-@inline νᶜᶜᶜ(i, j, k, grid, clock, ν) = ν
-@inline νᶠᶠᶜ(i, j, k, grid, clock, ν) = ν
-
-@inline νᶜᶜᶜ(i, j, k, grid, clock, ν::Function) = ν(xnode(Center, grid, i), ynode(Center, grid, j), znode(Center, grid, k), clock.time)
-@inline νᶠᶠᶜ(i, j, k, grid, clock, ν::Function) = ν(xnode(Face,   grid, i), ynode(Face,   grid, j), znode(Center, grid, k), clock.time)
-@inline νᶠᶜᶠ(i, j, k, grid, clock, ν::Function) = ν(xnode(Face,   grid, i), ynode(Center, grid, j), znode(Face,   grid, k), clock.time)
-@inline νᶜᶠᶠ(i, j, k, grid, clock, ν::Function) = ν(xnode(Face,   grid, i), ynode(Center, grid, j), znode(Face,   grid, k), clock.time)
-
-@inline ν_δᶜᶜᶜ(i, j, k, grid, clock, ν, u, v) = @inbounds νᶜᶜᶜ(i, j, k, grid, clock, ν) * div_xyᶜᶜᵃ(i, j, k, grid, u, v)
-@inline ν_ζᶠᶠᶜ(i, j, k, grid, clock, ν, u, v) = @inbounds νᶠᶠᶜ(i, j, k, grid, clock, ν) * ζ₃ᶠᶠᵃ(i, j, k, grid, u, v)
-
-@inline ν_uzᶠᶜᶠ(i, j, k, grid, clock, ν, u) = @inbounds νᶠᶜᶠ(i, j, k, grid, clock, ν) * ∂zᵃᵃᶠ(i, j, k, grid, u)
-@inline ν_vzᶜᶠᶠ(i, j, k, grid, clock, ν, v) = @inbounds νᶜᶠᶠ(i, j, k, grid, clock, ν) * ∂zᵃᵃᶠ(i, j, k, grid, v)
-    
 @inline function ∇_κ_∇c(i, j, k, grid, clock, closure::HorizontallyCurvilinearAnisotropicDiffusivity,
                         c, ::Val{tracer_index}, args...) where tracer_index
 
@@ -74,4 +60,6 @@ end
 )
 
 Base.show(io::IO, closure::HorizontallyCurvilinearAnisotropicDiffusivity) =
-    print(io, "HorizontallyCurvilinearAnisotropicDiffusivity: ν=$(closure.ν), κ=$(closure.κ)")
+    print(io, "AnisotropicDiffusivity: " *
+              "(νh=$(closure.νh), νz=$(closure.νz)), " *
+              "(κh=$(closure.κh), κz=$(closure.κz))")
