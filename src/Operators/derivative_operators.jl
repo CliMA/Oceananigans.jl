@@ -38,14 +38,24 @@
 ##### Second derivatives
 #####
 
-@inline ∂²xᶜᵃᵃ(i, j, k, grid, c, args...) = ∂xᶜᵃᵃ(i, j, k, grid, ∂xᶠᵃᵃ, c, args...)
-@inline ∂²xᶠᵃᵃ(i, j, k, grid, u, args...) = ∂xᶠᵃᵃ(i, j, k, grid, ∂xᶜᵃᵃ, u, args...)
+@inline ∂²xᶜᵃᵃ(i, j, k, grid, c) = ∂xᶜᵃᵃ(i, j, k, grid, ∂xᶠᵃᵃ, c)
+@inline ∂²xᶠᵃᵃ(i, j, k, grid, u) = ∂xᶠᵃᵃ(i, j, k, grid, ∂xᶜᵃᵃ, u)
 
-@inline ∂²yᵃᶜᵃ(i, j, k, grid, c, args...) = ∂yᵃᶜᵃ(i, j, k, grid, ∂yᵃᶠᵃ, c, args...)
-@inline ∂²yᵃᶠᵃ(i, j, k, grid, v, args...) = ∂yᵃᶠᵃ(i, j, k, grid, ∂yᵃᶜᵃ, v, args...)
+@inline ∂²yᵃᶜᵃ(i, j, k, grid, c) = ∂yᵃᶜᵃ(i, j, k, grid, ∂yᵃᶠᵃ, c)
+@inline ∂²yᵃᶠᵃ(i, j, k, grid, v) = ∂yᵃᶠᵃ(i, j, k, grid, ∂yᵃᶜᵃ, v)
 
-@inline ∂²zᵃᵃᶜ(i, j, k, grid, c, args...) = ∂zᵃᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c, args...)
-@inline ∂²zᵃᵃᶠ(i, j, k, grid, w, args...) = ∂zᵃᵃᶠ(i, j, k, grid, ∂zᵃᵃᶜ, w, args...)
+@inline ∂²zᵃᵃᶜ(i, j, k, grid, c) = ∂zᵃᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
+@inline ∂²zᵃᵃᶠ(i, j, k, grid, w) = ∂zᵃᵃᶠ(i, j, k, grid, ∂zᵃᵃᶜ, w)
+
+
+@inline ∂²xᶜᵃᵃ(i, j, k, grid, c::T, args...) where T<:Function = ∂xᶜᵃᵃ(i, j, k, grid, ∂xᶠᵃᵃ, c, args...)
+@inline ∂²xᶠᵃᵃ(i, j, k, grid, u::T, args...) where T<:Function = ∂xᶠᵃᵃ(i, j, k, grid, ∂xᶜᵃᵃ, u, args...)
+
+@inline ∂²yᵃᶜᵃ(i, j, k, grid, c::T, args...) where T<:Function = ∂yᵃᶜᵃ(i, j, k, grid, ∂yᵃᶠᵃ, c, args...)
+@inline ∂²yᵃᶠᵃ(i, j, k, grid, v::T, args...) where T<:Function = ∂yᵃᶠᵃ(i, j, k, grid, ∂yᵃᶜᵃ, v, args...)
+
+@inline ∂²zᵃᵃᶜ(i, j, k, grid, c::T, args...) where T<:Function = ∂zᵃᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c, args...)
+@inline ∂²zᵃᵃᶠ(i, j, k, grid, w::T, args...) where T<:Function = ∂zᵃᵃᶠ(i, j, k, grid, ∂zᵃᵃᶜ, w, args...)
 
 #####
 ##### Fourth derivatives
