@@ -11,8 +11,62 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, C, F, P} <: AbstractField{X, Y, 
              parameters :: P
                  status :: S
 
+
+    function KernelComputedField{X, Y, Z}(kernel::K, arch, grid;
+                                          boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)),
+                                          field_dependencies = (),
+                                          parameters::P = nothing,
+                                          data = nothing,
+                                          recompute_safely = true) where {X, Y, Z, K, P}
+
+        field_dependencies = tupleit(field_dependencies)
+
+        if isnothing(data)
+            data = new_data(arch, grid, (X, Y, Z))
+        end
+
+        # Use FieldStatus if we want to avoid always recomputing
+        status = recompute_safely ? nothing : FieldStatus(0.0)
+
+        G = typeof(grid)
+        A = typeof(data)
+        S = typeof(status)
+        F = typeof(field_dependencies)
+        C = typeof(boundary_conditions)
+
+        return new{X, Y, Z, S,
+                   A, G, K, C, F, P}(data, grid, kernel, boundary_conditions, field_dependencies, parameters)
+    end
+end
+
     """
-        KernelComputedField(loc, kernel, grid)
+        KernelComputedField(X, Y, Z, kernel, model; 
+                            boundary_conditions=ComputedFieldBoundaryConditions(grid, (X, Y, Z)), 
+                            field_dependencies=(), 
+                            parameters=nothing, 
+                            data=nothing, recompute_safely=true)
+
+Builds a `KernelComputedField` at `X, Y, Z` computed with `kernel` and `model.architecture` and `model.grid`, with `boundary_conditions`.
+
+`field_dependencies` are an iterable of `AbstractField`s or other objects on which `compute!` is called prior to launching `kernel`.
+
+`data` is a three-dimensional `OffsetArray` of scratch space where the kernel computation is stored. 
+
+If `data=nothing` (the default) then additional memory will be allocated to store the `data` of `KernelComputedField`.
+
+If `isnothing(parameters)`, `kernel` is launched with the function signature
+
+`kernel(data, grid, field_dependencies...)`
+
+Otherwise, `kernel` is launched with the function signature
+
+`kernel(data, grid, field_dependencies..., parameters)`
+
+`recompute_safely` (default: `true`) determines whether the `KernelComputedField` is "recomputed" if embedded in the expression 
+tree of another operation. 
+If `recompute_safely=true`, the `KernelComputedField` is always recomputed. 
+If `recompute_safely=false`, the `KernelComputedField` will not be recomputed if its status is up-to-date. 
+If `data=nothing`, then `recompute_safely` is switched to `false`.
 
     Example
     =======
@@ -43,33 +97,6 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, C, F, P} <: AbstractField{X, Y, 
     compute!(w′²)
     ```
     """
-    function KernelComputedField{X, Y, Z}(kernel::K, arch, grid;
-                                          boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)),
-                                          field_dependencies = (),
-                                          parameters::P = nothing,
-                                          data = nothing,
-                                          recompute_safely = true) where {X, Y, Z, K, P}
-
-        field_dependencies = tupleit(field_dependencies)
-
-        if isnothing(data)
-            data = new_data(arch, grid, (X, Y, Z))
-        end
-
-        # Use FieldStatus if we want to avoid always recomputing
-        status = recompute_safely ? nothing : FieldStatus(0.0)
-
-        G = typeof(grid)
-        A = typeof(data)
-        S = typeof(status)
-        F = typeof(field_dependencies)
-        C = typeof(boundary_conditions)
-
-        return new{X, Y, Z, S,
-                   A, G, K, C, F, P}(data, grid, kernel, boundary_conditions, field_dependencies, parameters)
-    end
-end
-
 KernelComputedField(X, Y, Z, kernel, model::AbstractModel; kwargs...) =
     KernelComputedField{X, Y, Z}(kernel, model.architecture, model.grid; kwargs...)
 
