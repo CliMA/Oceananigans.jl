@@ -61,7 +61,8 @@ closures = (
     :SmagorinskyLilly,
     :BlasiusSmagorinsky,
     :RozemaAnisotropicMinimumDissipation,
-    :VerstappenAnisotropicMinimumDissipation
+    :VerstappenAnisotropicMinimumDissipation,
+    :HorizontallyCurvilinearAnisotropicDiffusivity
 )
 
 #####

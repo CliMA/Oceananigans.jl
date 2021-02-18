@@ -2,12 +2,17 @@ module Operators
 
 export
     Δx, Δy, ΔzF, ΔzC,
-    Axᵃᵃᶜ, Axᵃᵃᶠ, Ayᵃᵃᶜ, Ayᵃᵃᶠ, Azᵃᵃᵃ,
-    Vᵃᵃᶜ, Vᵃᵃᶠ,
+    Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶠᶠᵃ, Δxᶜᶠᵃ,
+    Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δyᶜᶠᵃ,
+    Axᵃᵃᶜ, Axᵃᵃᶠ, Axᶠᶜᶜ,
+    Ayᵃᵃᶜ, Ayᵃᵃᶠ, Ayᶜᶠᶜ,
+    Azᵃᵃᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ,
+    Vᵃᵃᶜ, Vᵃᵃᶠ, Vᶜᶜᶜ,
     δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, δzᵃᵃᶠ,
     Ax_ψᵃᵃᶠ, Ax_ψᵃᵃᶜ, Ay_ψᵃᵃᶠ, Ay_ψᵃᵃᶜ, Az_ψᵃᵃᵃ,
     δᴶxᶜᵃᶜ, δᴶxᶜᵃᶠ, δᴶxᶠᵃᶜ, δᴶxᶠᵃᶠ, δᴶyᵃᶜᶜ, δᴶyᵃᶜᶠ, δᴶyᵃᶠᶜ, δᴶyᵃᶠᶠ, δᴶzᵃᵃᶜ, δᴶzᵃᵃᶠ,
     ∂xᶜᵃᵃ, ∂xᶠᵃᵃ, ∂yᵃᶜᵃ, ∂yᵃᶠᵃ, ∂zᵃᵃᶜ, ∂zᵃᵃᶠ,
+    ∂xᶜᶜᵃ, ∂xᶠᶠᵃ, ∂xᶠᶜᵃ, ∂xᶜᶠᵃ, ∂yᶜᶜᵃ, ∂yᶠᶠᵃ, ∂yᶠᶜᵃ, ∂yᶜᶠᵃ,
     ∂²xᶜᵃᵃ, ∂²xᶠᵃᵃ, ∂²yᵃᶜᵃ, ∂²yᵃᶠᵃ, ∂²zᵃᵃᶜ, ∂²zᵃᵃᶠ,
     ∂⁴xᶜᵃᵃ, ∂⁴xᶠᵃᵃ, ∂⁴yᵃᶜᵃ, ∂⁴yᵃᶠᵃ, ∂⁴zᵃᵃᶜ, ∂⁴zᵃᵃᶠ,
     ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ,
@@ -22,11 +27,14 @@ export
 #####
 
 using Oceananigans.Grids: AbstractGrid, RegularCartesianGrid
+using Oceananigans.Grids: VerticallyStretchedCartesianGrid, AbstractRectilinearGrid
 
 const AG  = AbstractGrid
+const ARG = AbstractRectilinearGrid
 const RCG = RegularCartesianGrid
 
 include("areas_and_volumes.jl")
+include("field_metric_products.jl")
 include("difference_operators.jl")
 include("derivative_operators.jl")
 include("interpolation_operators.jl")
