@@ -40,8 +40,11 @@ using Oceananigans.Grids: AbstractRectilinearGrid, RegularCartesianGrid, Vertica
 @inline Δyᶠᶜᵃ(i, j, k, grid) = grid.Δy
 @inline Δyᶜᶠᵃ(i, j, k, grid) = grid.Δy
 
+@inline Δx_uᶠᶜᵃ(i, j, k, grid, u) = @inbounds Δxᶠᶜᵃ(i, j, k, grid) * u[i, j, k]
 @inline Δx_vᶜᶠᵃ(i, j, k, grid, v) = @inbounds Δxᶜᶠᵃ(i, j, k, grid) * v[i, j, k]
+
 @inline Δy_uᶠᶜᵃ(i, j, k, grid, u) = @inbounds Δyᶠᶜᵃ(i, j, k, grid) * u[i, j, k]
+@inline Δy_vᶜᶠᵃ(i, j, k, grid, v) = @inbounds Δyᶜᶠᵃ(i, j, k, grid) * v[i, j, k]
 
 #####
 ##### Areas
@@ -54,6 +57,9 @@ using Oceananigans.Grids: AbstractRectilinearGrid, RegularCartesianGrid, Vertica
 @inline Ayᵃᵃᶠ(i, j, k, grid) = Δx(i, j, k, grid) * ΔzC(i, j, k, grid)
 
 @inline Azᵃᵃᵃ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
+
+@inline Azᶠᶠᵃ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
+@inline Azᶜᶜᵃ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
 
 #####
 ##### Volumes
