@@ -67,7 +67,7 @@ using Oceananigans.Grids: AbstractRectilinearGrid, RegularCartesianGrid, Vertica
 ##### Horizontally-curvilinear grid areas
 #####
 
+@inline Azᶜᶜᵃ(i, j, k, grid::AbstractRectilinearGrid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
 @inline Azᶠᶠᵃ(i, j, k, grid::AbstractRectilinearGrid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
 @inline Azᶜᶠᵃ(i, j, k, grid::AbstractRectilinearGrid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
-@inline Azᶠᶠᵃ(i, j, k, grid::AbstractRectilinearGrid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
 @inline Azᶠᶜᵃ(i, j, k, grid::AbstractRectilinearGrid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)

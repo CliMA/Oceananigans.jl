@@ -57,37 +57,61 @@ end
 @testset "Operators" begin
     @info "Testing operators..."
 
-    @testset "Regular grid lengths, areas, and volume operators"
-        @info "  Testing regular grid lengths, areas, and volume operators..."
-        grid = RegularCartesianGrid(size=(1, 1, 1), extent=(π, 2π, 3π))
+    @testset "Grid lengths, areas, and volume operators" begin
+        @info "  Testing grid lengths, areas, and volume operators..."
 
-        for δ in (Δx, Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ) 
-            @test δ(1, 1, 1, grid) == π
+        FT = Float64
+        grid = RegularCartesianGrid(FT, size=(1, 1, 1), extent=(π, 2π, 3π))
+
+        @testset "Easterly lengths" begin
+            @info "    Testing easterly lengths..."
+            for δ in (Δx, Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ) 
+                @test δ(1, 1, 1, grid) == FT(π)
+            end
         end
 
-        for δ in (Δy, Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ) 
-            @test δ(1, 1, 1, grid) == 2π
+        @testset "Westerly lengths" begin
+            @info "    Testing westerly lengths..."
+            for δ in (Δy, Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ) 
+                @test δ(1, 1, 1, grid) == FT(2π)
+            end
         end
 
-        for δ in (ΔzF, ΔzC)
-            @test δ(1, 1, 1, grid) == 3π
+        @testset "Vertical lengths" begin
+            @info "    Testing vertical lengths..."
+            for δ in (ΔzF, ΔzC)
+                @test δ(1, 1, 1, grid) == FT(3π)
+            end
         end
 
-        for A in (Axᵃᵃᶜ, Axᵃᵃᶠ)
-            @test A(1, 1, 1, grid) = 3 * π^2   
+        @testset "East-normal areas in the yz-plane" begin
+            @info "    Testing areas with easterly normal in the yz-plane..."
+            for A in (Axᵃᵃᶜ, Axᵃᵃᶠ)
+                @test A(1, 1, 1, grid) == FT(6 * π^2)
+            end
         end
 
-        for A in (Ayᵃᵃᶜ, Ayᵃᵃᶠ)
-            @test A(1, 1, 1, grid) = 6 * π^2   
+        @testset "West-normal areas in the xz-plane" begin
+            @info "    Testing areas with westerly normal in the xz-plane..."
+            for A in (Ayᵃᵃᶜ, Ayᵃᵃᶠ)
+                @test A(1, 1, 1, grid) == FT(3 * π^2)
+            end
         end
 
-        for A in (Azᵃᵃᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ)
-            @test A(1, 1, 1, grid) = 2 * π^2   
+        @testset "Horizontal areas in the xy-plane" begin
+            @info "    Testing horizontal areas in the xy-plane..."
+            for A in (Azᵃᵃᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ)
+                @test A(1, 1, 1, grid) == FT(2 * π^2)
+            end
         end
 
-        for V in (Vᵃᵃᶜ, Vᵃᵃᶠ)
-            @test V(1, 1, 1, grid) == 12 * π^3
+        @testset "Volumes" begin
+            @info "    Testing volumes..."
+            for V in (Vᵃᵃᶜ, Vᵃᵃᶠ)
+                @test V(1, 1, 1, grid) == FT(6 * π^3)
+            end
         end
+
     end
 
     @testset "Function differentiation" begin
