@@ -12,14 +12,14 @@
 @inline ∂zᵃᵃᶠ(i, j, k, grid, c) = δzᵃᵃᶠ(i, j, k, grid, c) / ΔzC(i, j, k, grid)
 
 
-@inline ∂xᶜᵃᵃ(i, j, k, grid, u::T, args...) where T<:Function = δxᶜᵃᵃ(i, j, k, grid, u, args...) / Δx(i, j, k, grid)
-@inline ∂xᶠᵃᵃ(i, j, k, grid, c::T, args...) where T<:Function = δxᶠᵃᵃ(i, j, k, grid, c, args...) / Δx(i, j, k, grid)
+@inline ∂xᶜᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = δxᶜᵃᵃ(i, j, k, grid, f, args...) / Δx(i, j, k, grid)
+@inline ∂xᶠᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = δxᶠᵃᵃ(i, j, k, grid, f, args...) / Δx(i, j, k, grid)
 
-@inline ∂yᵃᶜᵃ(i, j, k, grid, v::T, args...) where T<:Function = δyᵃᶜᵃ(i, j, k, grid, v, args...) / Δy(i, j, k, grid)
-@inline ∂yᵃᶠᵃ(i, j, k, grid, c::T, args...) where T<:Function = δyᵃᶠᵃ(i, j, k, grid, c, args...) / Δy(i, j, k, grid)
+@inline ∂yᵃᶜᵃ(i, j, k, grid, f::F, args...) where F<:Function = δyᵃᶜᵃ(i, j, k, grid, f, args...) / Δy(i, j, k, grid)
+@inline ∂yᵃᶠᵃ(i, j, k, grid, f::F, args...) where T<:Function = δyᵃᶠᵃ(i, j, k, grid, f, args...) / Δy(i, j, k, grid)
 
-@inline ∂zᵃᵃᶜ(i, j, k, grid, w::T, args...) where T<:Function = δzᵃᵃᶜ(i, j, k, grid, w, args...) / ΔzF(i, j, k, grid)
-@inline ∂zᵃᵃᶠ(i, j, k, grid, c::T, args...) where T<:Function = δzᵃᵃᶠ(i, j, k, grid, c, args...) / ΔzC(i, j, k, grid)
+@inline ∂zᵃᵃᶜ(i, j, k, grid, f::F, args...) where F<:Function = δzᵃᵃᶜ(i, j, k, grid, f, args...) / ΔzF(i, j, k, grid)
+@inline ∂zᵃᵃᶠ(i, j, k, grid, f::F, args...) where F<:Function = δzᵃᵃᶠ(i, j, k, grid, f, args...) / ΔzC(i, j, k, grid)
 
 #####
 ##### Operators of the form A*δ(q) where A is an area and q is some quantity.
@@ -48,14 +48,14 @@
 @inline ∂²zᵃᵃᶠ(i, j, k, grid, w) = ∂zᵃᵃᶠ(i, j, k, grid, ∂zᵃᵃᶜ, w)
 
 
-@inline ∂²xᶜᵃᵃ(i, j, k, grid, c::T, args...) where T<:Function = ∂xᶜᵃᵃ(i, j, k, grid, ∂xᶠᵃᵃ, c, args...)
-@inline ∂²xᶠᵃᵃ(i, j, k, grid, u::T, args...) where T<:Function = ∂xᶠᵃᵃ(i, j, k, grid, ∂xᶜᵃᵃ, u, args...)
+@inline ∂²xᶜᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = ∂xᶜᵃᵃ(i, j, k, grid, ∂xᶠᵃᵃ, f, args...)
+@inline ∂²xᶠᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = ∂xᶠᵃᵃ(i, j, k, grid, ∂xᶜᵃᵃ, f, args...)
 
-@inline ∂²yᵃᶜᵃ(i, j, k, grid, c::T, args...) where T<:Function = ∂yᵃᶜᵃ(i, j, k, grid, ∂yᵃᶠᵃ, c, args...)
-@inline ∂²yᵃᶠᵃ(i, j, k, grid, v::T, args...) where T<:Function = ∂yᵃᶠᵃ(i, j, k, grid, ∂yᵃᶜᵃ, v, args...)
+@inline ∂²yᵃᶜᵃ(i, j, k, grid, f::F, args...) where F<:Function = ∂yᵃᶜᵃ(i, j, k, grid, ∂yᵃᶠᵃ, f, args...)
+@inline ∂²yᵃᶠᵃ(i, j, k, grid, f::F, args...) where F<:Function = ∂yᵃᶠᵃ(i, j, k, grid, ∂yᵃᶜᵃ, f, args...)
 
-@inline ∂²zᵃᵃᶜ(i, j, k, grid, c::T, args...) where T<:Function = ∂zᵃᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c, args...)
-@inline ∂²zᵃᵃᶠ(i, j, k, grid, w::T, args...) where T<:Function = ∂zᵃᵃᶠ(i, j, k, grid, ∂zᵃᵃᶜ, w, args...)
+@inline ∂²zᵃᵃᶜ(i, j, k, grid, f::F, args...) where F<:Function = ∂zᵃᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, f, args...)
+@inline ∂²zᵃᵃᶠ(i, j, k, grid, f::F, args...) where F<:Function = ∂zᵃᵃᶠ(i, j, k, grid, ∂zᵃᵃᶜ, f, args...)
 
 #####
 ##### Fourth derivatives
