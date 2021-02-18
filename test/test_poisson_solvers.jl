@@ -51,7 +51,7 @@ function random_div_free_source_term(FT, arch, grid)
     # _compute_w_from_continuity!(U, grid)
     # Rw[i, j, 1] = 0 will be enforced via halo regions.
     for i in 1:Nx, j in 1:Ny, k in 2:Nz
-        @inbounds Rw[i, j, k] = Rw[i, j, k-1] - ΔzC(i, j, k, grid) * hdivᶜᶜᵃ(i, j, k, grid, Ru, Rv)
+        @inbounds Rw[i, j, k] = Rw[i, j, k-1] - ΔzC(i, j, k, grid) * div_xyᶜᶜᵃ(i, j, k, grid, Ru, Rv)
     end
 
     fill_halo_regions!(Rw, arch, nothing, nothing)

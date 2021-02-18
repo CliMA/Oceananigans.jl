@@ -18,7 +18,7 @@ N = ds.time.size
 for n in range(N):
     print(f"Plotting vertically stretched plankton frame {n}/{N}...")
 
-    fig, (ax_w, ax_p) = plt.subplots(figsize=(15, 8), ncols=2, dpi=400)
+    fig, (ax_w, ax_p) = plt.subplots(figsize=(15, 8), ncols=2, dpi=200)
     plt.subplots_adjust(hspace=0.25)
     fig.suptitle(f"Vertically stretched convecting plankton: time = {ds.time.values[n]/3600:.2f} hours")
 
@@ -49,7 +49,7 @@ for n in range(N):
     ax_p.set_xlim(xF[0], xF[-1])
     ax_p.set_ylim(zF[0], zF[-1])
     ax_p.set_aspect("equal")
-    
+
     plt.tight_layout()
     plt.savefig(f"vertically_stretched_plankton_{n:05d}.png")
     plt.close(fig)
