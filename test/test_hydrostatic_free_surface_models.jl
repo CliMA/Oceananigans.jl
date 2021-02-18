@@ -1,8 +1,9 @@
 using Oceananigans: CPU, GPU
 using Oceananigans.Models: HydrostaticFreeSurfaceModel
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 using Oceananigans.Grids: Periodic, Bounded
 
-function time_stepping_hydrostatic_free_surface_model_works(arch, topo, coriolis)
+function time_stepping_hydrostatic_free_surface_model_works(arch, topo, coriolis, advection=VectorInvariant())
     grid = RegularCartesianGrid(size=(1, 1, 1), extent=(2π, 2π, 2π), topology=topo)
     model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch, coriolis=coriolis)
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
@@ -106,6 +107,13 @@ end
             @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(coriolis))]" begin
                 @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(coriolis))]..."
                 @test time_stepping_hydrostatic_free_surface_model_works(arch, topos[1], coriolis)
+            end
+        end
+
+        for advection in (VectorInvariant(), CenteredSecondOrder(), WENO5())
+            @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(advection))]" begin
+                @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(advection))]..."
+                @test time_stepping_hydrostatic_free_surface_model_works(arch, topos[1], nothing, advection)
             end
         end
 

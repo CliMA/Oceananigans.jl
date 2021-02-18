@@ -14,7 +14,7 @@ export
     ℑᴶxᶜᵃᵃ, ℑᴶxᶠᵃᵃ, ℑᴶyᵃᶜᵃ, ℑᴶyᵃᶠᵃ, ℑᴶzᵃᵃᶜ, ℑᴶzᵃᵃᶠ,
     ℑxyᶜᶜᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ, ℑxyᶜᶠᵃ, ℑxzᶜᵃᶜ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶜ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ, ℑyzᵃᶜᶠ,
     ℑxyzᶜᶜᶠ, ℑxyzᶜᶠᶜ, ℑxyzᶠᶜᶜ, ℑxyzᶜᶠᶠ, ℑxyzᶠᶜᶠ, ℑxyzᶠᶠᶜ,
-    hdivᶜᶜᵃ, divᶜᶜᶜ, div_xyᶜᶜᵃ, div_xzᶜᵃᶜ, div_yzᵃᶜᶜ,
+    divᶜᶜᶜ, div_xyᶜᶜᵃ, ζ₃ᶠᶠᵃ,
     ∇², ∇²hᶜᶜᵃ, ∇²hᶠᶜᵃ, ∇²hᶜᶠᵃ, ∇⁴hᶜᶜᵃ, ∇⁴hᶠᶜᵃ, ∇⁴hᶜᶠᵃ
 
 #####
@@ -31,6 +31,7 @@ include("difference_operators.jl")
 include("derivative_operators.jl")
 include("interpolation_operators.jl")
 include("divergence_operators.jl")
+include("vorticity_operators.jl")
 include("laplacian_operators.jl")
 include("interpolation_utils.jl")
 
