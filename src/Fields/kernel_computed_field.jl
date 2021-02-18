@@ -11,8 +11,36 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, C, F, P} <: AbstractField{X, Y, 
              parameters :: P
                  status :: S
 
+
+    function KernelComputedField{X, Y, Z}(kernel::K, arch, grid;
+                                          boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)),
+                                          field_dependencies = (),
+                                          parameters::P = nothing,
+                                          data = nothing,
+                                          recompute_safely = true) where {X, Y, Z, K, P}
+
+        field_dependencies = tupleit(field_dependencies)
+
+        if isnothing(data)
+            data = new_data(arch, grid, (X, Y, Z))
+        end
+
+        # Use FieldStatus if we want to avoid always recomputing
+        status = recompute_safely ? nothing : FieldStatus(0.0)
+
+        G = typeof(grid)
+        A = typeof(data)
+        S = typeof(status)
+        F = typeof(field_dependencies)
+        C = typeof(boundary_conditions)
+
+        return new{X, Y, Z, S,
+                   A, G, K, C, F, P}(data, grid, kernel, boundary_conditions, field_dependencies, parameters)
+    end
+end
+
     """
-        KernelComputedField(loc, kernel, grid)
+        KernelComputedField(X, Y, Z, kernel, model; field_dependencies, parameters)
 
     Example
     =======
@@ -43,33 +71,6 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, C, F, P} <: AbstractField{X, Y, 
     compute!(w′²)
     ```
     """
-    function KernelComputedField{X, Y, Z}(kernel::K, arch, grid;
-                                          boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)),
-                                          field_dependencies = (),
-                                          parameters::P = nothing,
-                                          data = nothing,
-                                          recompute_safely = true) where {X, Y, Z, K, P}
-
-        field_dependencies = tupleit(field_dependencies)
-
-        if isnothing(data)
-            data = new_data(arch, grid, (X, Y, Z))
-        end
-
-        # Use FieldStatus if we want to avoid always recomputing
-        status = recompute_safely ? nothing : FieldStatus(0.0)
-
-        G = typeof(grid)
-        A = typeof(data)
-        S = typeof(status)
-        F = typeof(field_dependencies)
-        C = typeof(boundary_conditions)
-
-        return new{X, Y, Z, S,
-                   A, G, K, C, F, P}(data, grid, kernel, boundary_conditions, field_dependencies, parameters)
-    end
-end
-
 KernelComputedField(X, Y, Z, kernel, model::AbstractModel; kwargs...) =
     KernelComputedField{X, Y, Z}(kernel, model.architecture, model.grid; kwargs...)
 
