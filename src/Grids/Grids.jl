@@ -4,7 +4,7 @@ export
     Center, Face,
     AbstractTopology, Periodic, Bounded, Flat, topology,
     AbstractGrid,
-    AbstractCartesianGrid, RegularCartesianGrid, VerticallyStretchedCartesianGrid,
+    AbstractRectilinearGrid, RegularCartesianGrid, VerticallyStretchedCartesianGrid,
     xnode, ynode, znode, xnodes, ynodes, znodes, nodes,
     xC, xF, yC, yF, zC, zF
 
@@ -73,11 +73,11 @@ Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, T
 abstract type AbstractGrid{FT, TX, TY, TZ} end
 
 """
-    AbstractCartesianGrid{FT, TX, TY, TZ}
+    AbstractRectilinearGrid{FT, TX, TY, TZ}
 
 Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
-abstract type AbstractCartesianGrid{FT, TX, TY, TZ} <: AbstractGrid{FT, TX, TY, TZ} end
+abstract type AbstractRectilinearGrid{FT, TX, TY, TZ} <: AbstractGrid{FT, TX, TY, TZ} end
 
 Base.eltype(::AbstractGrid{FT}) where FT = FT
 Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)

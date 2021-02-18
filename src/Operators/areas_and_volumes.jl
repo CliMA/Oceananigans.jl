@@ -15,14 +15,14 @@ may involve defining more grid spacing operators, potentially up to eight per di
 although not all may be used in practice.
 """
 
-using Oceananigans.Grids: RegularCartesianGrid, VerticallyStretchedCartesianGrid
+using Oceananigans.Grids: AbstractRectilinearGrid, RegularCartesianGrid, VerticallyStretchedCartesianGrid
 
 #####
-##### Grid spacings
+##### Cartesian grid spacings
 #####
 
-@inline Δx(i, j, k, grid) = grid.Δx
-@inline Δy(i, j, k, grid) = grid.Δy
+@inline Δx(i, j, k, grid::AbstractRectilinearGrid) = grid.Δx
+@inline Δy(i, j, k, grid::AbstractRectilinearGrid) = grid.Δy
 
 @inline ΔzC(i, j, k, grid::RegularCartesianGrid) = grid.Δz
 @inline ΔzC(i, j, k, grid::VerticallyStretchedCartesianGrid) = @inbounds grid.ΔzC[k]
@@ -30,7 +30,10 @@ using Oceananigans.Grids: RegularCartesianGrid, VerticallyStretchedCartesianGrid
 @inline ΔzF(i, j, k, grid::RegularCartesianGrid) = grid.Δz
 @inline ΔzF(i, j, k, grid::VerticallyStretchedCartesianGrid) = @inbounds grid.ΔzF[k]
 
-# Experimental grid spacing operators for Coriolis forces
+#####
+##### Curvilinear grid spacing operators
+#####
+
 @inline Δxᶜᶠᵃ(i, j, k, grid) = grid.Δx
 @inline Δxᶠᶜᵃ(i, j, k, grid) = grid.Δx
 

@@ -1,12 +1,12 @@
 """
-    VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractGrid{FT, TX, TY, TZ}
+    VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
 
 A Cartesian grid with with constant horizontal grid spacings `Δx` and `Δy`, and
 non-uniform or stretched vertical grid spacing `Δz` between cell centers and cell faces,
 topology `{TX, TY, TZ}`, and coordinate ranges of type `R` (where a range can be used) and
 `A` (where an array is needed).
 """
-struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractCartesianGrid{FT, TX, TY, TZ}
+struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
 
     # Number of grid points in (x,y,z).
      Nx :: Int
