@@ -16,7 +16,7 @@
 @inline ∂xᶠᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = δxᶠᵃᵃ(i, j, k, grid, f, args...) / Δx(i, j, k, grid)
 
 @inline ∂yᵃᶜᵃ(i, j, k, grid, f::F, args...) where F<:Function = δyᵃᶜᵃ(i, j, k, grid, f, args...) / Δy(i, j, k, grid)
-@inline ∂yᵃᶠᵃ(i, j, k, grid, f::F, args...) where T<:Function = δyᵃᶠᵃ(i, j, k, grid, f, args...) / Δy(i, j, k, grid)
+@inline ∂yᵃᶠᵃ(i, j, k, grid, f::F, args...) where F<:Function = δyᵃᶠᵃ(i, j, k, grid, f, args...) / Δy(i, j, k, grid)
 
 @inline ∂zᵃᵃᶜ(i, j, k, grid, f::F, args...) where F<:Function = δzᵃᵃᶜ(i, j, k, grid, f, args...) / ΔzF(i, j, k, grid)
 @inline ∂zᵃᵃᶠ(i, j, k, grid, f::F, args...) where F<:Function = δzᵃᵃᶠ(i, j, k, grid, f, args...) / ΔzC(i, j, k, grid)
