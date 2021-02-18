@@ -71,6 +71,10 @@ Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, T
 """
 abstract type AbstractGrid{FT, TX, TY, TZ} end
 
+abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ} <: AbstractGrid{FT, TX, TY, TZ} end
+
+abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ} <: AbstractCurvilinearGrid{FT, TX, TY, TZ} end
+
 Base.eltype(::AbstractGrid{FT}) where FT = FT
 Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
 Base.length(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
@@ -84,5 +88,6 @@ include("grid_utils.jl")
 include("input_validation.jl")
 include("regular_cartesian_grid.jl")
 include("vertically_stretched_cartesian_grid.jl")
+include("regular_latitude_longitude_grid.jl")
 
 end
