@@ -27,17 +27,6 @@ using Oceananigans.Grids: Flat
 @inline δzᵃᵃᶠ(i, j, k, grid, f::F, args...) where F<:Function = f(i, j, k,   grid, args...) - f(i, j, k-1, grid, args...)
 
 #####
-##### Operators that calculate A*q where A is an area and q is some quantity.
-##### Useful for defining flux difference operators and other flux operators.
-#####
-
-@inline Ax_ψᵃᵃᶠ(i, j, k, grid, u) = @inbounds Axᵃᵃᶠ(i, j, k, grid) * u[i, j, k]
-@inline Ax_ψᵃᵃᶜ(i, j, k, grid, c) = @inbounds Axᵃᵃᶜ(i, j, k, grid) * c[i, j, k]
-@inline Ay_ψᵃᵃᶠ(i, j, k, grid, v) = @inbounds Ayᵃᵃᶠ(i, j, k, grid) * v[i, j, k]
-@inline Ay_ψᵃᵃᶜ(i, j, k, grid, c) = @inbounds Ayᵃᵃᶜ(i, j, k, grid) * c[i, j, k]
-@inline Az_ψᵃᵃᵃ(i, j, k, grid, c) = @inbounds Azᵃᵃᵃ(i, j, k, grid) * c[i, j, k]
-
-#####
 ##### "Flux difference" operators of the form δ(A*f) where A is an area and f is an array.
 #####
 

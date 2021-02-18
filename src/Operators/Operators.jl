@@ -2,7 +2,10 @@ module Operators
 
 export
     Δx, Δy, ΔzF, ΔzC,
-    Axᵃᵃᶜ, Axᵃᵃᶠ, Ayᵃᵃᶜ, Ayᵃᵃᶠ, Azᵃᵃᵃ,
+    Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶠᶠᵃ, Δxᶜᶠᵃ,
+    Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δyᶜᶠᵃ,
+    Axᵃᵃᶜ, Axᵃᵃᶠ, Ayᵃᵃᶜ, Ayᵃᵃᶠ,
+    Azᵃᵃᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ,
     Vᵃᵃᶜ, Vᵃᵃᶠ,
     δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, δzᵃᵃᶠ,
     Ax_ψᵃᵃᶠ, Ax_ψᵃᵃᶜ, Ay_ψᵃᵃᶠ, Ay_ψᵃᵃᶜ, Az_ψᵃᵃᵃ,
@@ -27,6 +30,7 @@ const AG  = AbstractGrid
 const RCG = RegularCartesianGrid
 
 include("areas_and_volumes.jl")
+include("field_metric_products.jl")
 include("difference_operators.jl")
 include("derivative_operators.jl")
 include("interpolation_operators.jl")

@@ -1,5 +1,5 @@
 #####
-##### Derivative operators
+##### Rectilinear derivative operators
 #####
 
 @inline ∂xᶜᵃᵃ(i, j, k, grid, u) = δxᶜᵃᵃ(i, j, k, grid, u) / Δx(i, j, k, grid)
@@ -11,18 +11,15 @@
 @inline ∂zᵃᵃᶜ(i, j, k, grid, w) = δzᵃᵃᶜ(i, j, k, grid, w) / ΔzF(i, j, k, grid)
 @inline ∂zᵃᵃᶠ(i, j, k, grid, c) = δzᵃᵃᶠ(i, j, k, grid, c) / ΔzC(i, j, k, grid)
 
-#####
-##### Derivative operators acting on functions
-#####
 
-@inline ∂xᶜᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = (f(i+1, j, k, grid, args...) - f(i,   j, k, grid, args...)) / Δx(i, j, k, grid)
-@inline ∂xᶠᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = (f(i,   j, k, grid, args...) - f(i-1, j, k, grid, args...)) / Δx(i, j, k, grid)
+@inline ∂xᶜᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = δxᶜᵃᵃ(i, j, k, grid, f, args...) / Δx(i, j, k, grid)
+@inline ∂xᶠᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = δxᶠᵃᵃ(i, j, k, grid, f, args...) / Δx(i, j, k, grid)
 
-@inline ∂yᵃᶜᵃ(i, j, k, grid, f::F, args...) where F<:Function = (f(i, j+1, k, grid, args...) - f(i, j,   k, grid, args...)) / Δy(i, j, k, grid)
-@inline ∂yᵃᶠᵃ(i, j, k, grid, f::F, args...) where F<:Function = (f(i, j,   k, grid, args...) - f(i, j-1, k, grid, args...)) / Δy(i, j, k, grid)
+@inline ∂yᵃᶜᵃ(i, j, k, grid, f::F, args...) where F<:Function = δyᵃᶜᵃ(i, j, k, grid, f, args...) / Δy(i, j, k, grid)
+@inline ∂yᵃᶠᵃ(i, j, k, grid, f::F, args...) where F<:Function = δyᵃᶠᵃ(i, j, k, grid, f, args...) / Δy(i, j, k, grid)
 
-@inline ∂zᵃᵃᶜ(i, j, k, grid, f::F, args...) where F<:Function = (f(i, j, k+1, grid, args...) - f(i, j, k,   grid, args...)) / ΔzF(i, j, k, grid)
-@inline ∂zᵃᵃᶠ(i, j, k, grid, f::F, args...) where F<:Function = (f(i, j, k,   grid, args...) - f(i, j, k-1, grid, args...)) / ΔzC(i, j, k, grid)
+@inline ∂zᵃᵃᶜ(i, j, k, grid, f::F, args...) where F<:Function = δzᵃᵃᶜ(i, j, k, grid, f, args...) / ΔzF(i, j, k, grid)
+@inline ∂zᵃᵃᶠ(i, j, k, grid, f::F, args...) where F<:Function = δzᵃᵃᶠ(i, j, k, grid, f, args...) / ΔzC(i, j, k, grid)
 
 #####
 ##### Operators of the form A*δ(q) where A is an area and q is some quantity.
@@ -50,6 +47,7 @@
 @inline ∂²zᵃᵃᶜ(i, j, k, grid, c) = ∂zᵃᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
 @inline ∂²zᵃᵃᶠ(i, j, k, grid, w) = ∂zᵃᵃᶠ(i, j, k, grid, ∂zᵃᵃᶜ, w)
 
+
 @inline ∂²xᶜᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = ∂xᶜᵃᵃ(i, j, k, grid, ∂xᶠᵃᵃ, f, args...)
 @inline ∂²xᶠᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = ∂xᶠᵃᵃ(i, j, k, grid, ∂xᶜᵃᵃ, f, args...)
 
@@ -63,11 +61,27 @@
 ##### Fourth derivatives
 #####
 
-@inline ∂⁴xᶜᵃᵃ(i, j, k, grid, c) = ∂²xᶜᵃᵃ(i, j, k, grid, ∂²xᶜᵃᵃ, c)
-@inline ∂⁴xᶠᵃᵃ(i, j, k, grid, u) = ∂²xᶠᵃᵃ(i, j, k, grid, ∂²xᶠᵃᵃ, u)
+@inline ∂⁴xᶜᵃᵃ(i, j, k, grid, c, args...) = ∂²xᶜᵃᵃ(i, j, k, grid, ∂²xᶜᵃᵃ, c, args...)
+@inline ∂⁴xᶠᵃᵃ(i, j, k, grid, u, args...) = ∂²xᶠᵃᵃ(i, j, k, grid, ∂²xᶠᵃᵃ, u, args...)
 
-@inline ∂⁴yᵃᶜᵃ(i, j, k, grid, c) = ∂²yᵃᶜᵃ(i, j, k, grid, ∂²yᵃᶜᵃ, c)
-@inline ∂⁴yᵃᶠᵃ(i, j, k, grid, v) = ∂²yᵃᶠᵃ(i, j, k, grid, ∂²yᵃᶠᵃ, v)
+@inline ∂⁴yᵃᶜᵃ(i, j, k, grid, c, args...) = ∂²yᵃᶜᵃ(i, j, k, grid, ∂²yᵃᶜᵃ, c, args...)
+@inline ∂⁴yᵃᶠᵃ(i, j, k, grid, v, args...) = ∂²yᵃᶠᵃ(i, j, k, grid, ∂²yᵃᶠᵃ, v, args...)
 
-@inline ∂⁴zᵃᵃᶜ(i, j, k, grid, c) = ∂²zᵃᵃᶜ(i, j, k, grid, ∂²zᵃᵃᶜ, c)
-@inline ∂⁴zᵃᵃᶠ(i, j, k, grid, w) = ∂²zᵃᵃᶠ(i, j, k, grid, ∂²zᵃᵃᶠ, w)
+@inline ∂⁴zᵃᵃᶜ(i, j, k, grid, c, args...) = ∂²zᵃᵃᶜ(i, j, k, grid, ∂²zᵃᵃᶜ, c, args...)
+@inline ∂⁴zᵃᵃᶠ(i, j, k, grid, w, args...) = ∂²zᵃᵃᶠ(i, j, k, grid, ∂²zᵃᵃᶠ, w, args...)
+
+#####
+##### Horizontally curvilinear derivative operators
+#####
+
+@inline ∂xᶜᶜᵃ(i, j, k, grid, u, args...) = δxᶜᵃᵃ(i, j, k, grid, u, args...) / Δxᶜᶜᵃ(i, j, k, grid)
+@inline ∂xᶜᶠᵃ(i, j, k, grid, ζ, args...) = δxᶜᵃᵃ(i, j, k, grid, ζ, args...) / Δxᶜᶠᵃ(i, j, k, grid)
+
+@inline ∂xᶠᶠᵃ(i, j, k, grid, v, args...) = δxᶠᵃᵃ(i, j, k, grid, v, args...) / Δxᶠᶠᵃ(i, j, k, grid)
+@inline ∂xᶠᶜᵃ(i, j, k, grid, c, args...) = δxᶠᵃᵃ(i, j, k, grid, c, args...) / Δxᶠᶜᵃ(i, j, k, grid)
+
+@inline ∂yᶜᶜᵃ(i, j, k, grid, v, args...) = δyᵃᶜᵃ(i, j, k, grid, v, args...) / Δyᶜᶜᵃ(i, j, k, grid)
+@inline ∂yᶠᶜᵃ(i, j, k, grid, ζ, args...) = δyᵃᶜᵃ(i, j, k, grid, ζ, args...) / Δyᶠᶜᵃ(i, j, k, grid)
+
+@inline ∂yᶠᶠᵃ(i, j, k, grid, u, args...) = δyᵃᶠᵃ(i, j, k, grid, u, args...) / Δyᶠᶠᵃ(i, j, k, grid)
+@inline ∂yᶜᶠᵃ(i, j, k, grid, c, args...) = δyᵃᶠᵃ(i, j, k, grid, c, args...) / Δyᶜᶠᵃ(i, j, k, grid)
