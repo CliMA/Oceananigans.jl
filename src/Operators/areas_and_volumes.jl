@@ -30,8 +30,6 @@ The operators in this file fall into three categories:
    at rectilinear (possibly stretched) in the vertical.
 """
 
-using Oceananigans.Grids: ARG, RegularCartesianGrid, VerticallyStretchedCartesianGrid
-
 #####
 ##### Grid lengths for horiontally-regular algorithms
 #####
