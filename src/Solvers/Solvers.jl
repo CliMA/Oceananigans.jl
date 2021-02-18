@@ -2,7 +2,8 @@ module Solvers
 
 export
     BatchedTridiagonalSolver, solve_batched_tridiagonal_system!,
-    FFTBasedPoissonSolver, solve_for_pressure!, solve_poisson_equation!
+    FFTBasedPoissonSolver, solve_for_pressure!, solve_poisson_equation!,
+    PreconditionedConjugateGradientSolver
 
 using FFTW
 using CUDA
@@ -12,6 +13,8 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Architectures: device, @hascuda, CPU, GPU, array_type, arch_array
 using Oceananigans.Utils
 using Oceananigans.Grids
+using Oceananigans.BoundaryConditions
+using Oceananigans.Fields
 
 using Oceananigans.Grids: unpack_grid
 
@@ -31,6 +34,7 @@ include("poisson_eigenvalues.jl")
 include("discrete_transforms.jl")
 include("plan_transforms.jl")
 include("fft_based_poisson_solver.jl")
+include("preconditioned_conjugate_gradient_solver.jl")
 include("solve_poisson_equation.jl")
 include("index_permutations.jl")
 include("solve_for_pressure.jl")
