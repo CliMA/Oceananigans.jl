@@ -72,16 +72,26 @@ Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, T
 """
 abstract type AbstractGrid{FT, TX, TY, TZ} end
 
-abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ} <: AbstractGrid{FT, TX, TY, TZ} end
-
-abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ} <: AbstractCurvilinearGrid{FT, TX, TY, TZ} end
-
 """
     AbstractRectilinearGrid{FT, TX, TY, TZ}
 
-Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, TZ}`.
+Abstract supertype for rectilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
 abstract type AbstractRectilinearGrid{FT, TX, TY, TZ} <: AbstractGrid{FT, TX, TY, TZ} end
+
+"""
+    AbstractCurvilinearGrid{FT, TX, TY, TZ}
+
+Abstract supertype for curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
+"""
+abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ} <: AbstractGrid{FT, TX, TY, TZ} end
+
+"""
+    AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
+
+Abstract supertype for horizontally-curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
+"""
+abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ} <: AbstractCurvilinearGrid{FT, TX, TY, TZ} end
 
 Base.eltype(::AbstractGrid{FT}) where FT = FT
 Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
