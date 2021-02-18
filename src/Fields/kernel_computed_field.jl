@@ -40,7 +40,7 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, C, F, P} <: AbstractField{X, Y, 
 end
 
     """
-        KernelComputedField(X, Y, Z, kernel, model; field_dependencies, parameters)
+        KernelComputedField(X, Y, Z, kernel, model; boundary_conditions=ComputedFieldBoundaryConditions(grid, (X, Y, Z)), field_dependencies=(), parameters=nothing, data=nothing, recompute_safely=true)
 
     Example
     =======
