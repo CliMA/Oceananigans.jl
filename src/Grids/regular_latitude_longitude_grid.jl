@@ -27,11 +27,11 @@ function RegularLatitudeLongitudeGrid(FT=Float64; size, latitude, longitude, z, 
     @assert length(longitude) == 2
     @assert length(z) == 2
 
-    ϕ₁, ϕ₂ = latitude
-    @assert -180 <= ϕ₁ < ϕ₂ <= 180
-
     λ₁, λ₂ = longitude
-    @assert -90 <= λ₁ < λ₂ <= 90
+    @assert -180 <= λ₁ < λ₂ <= 180
+
+    ϕ₁, ϕ₂ = latitude
+    @assert -90 <= ϕ₁ < ϕ₂ <= 90
 
     z₁, z₂ = z
     @assert z₁ < z₂
@@ -41,30 +41,57 @@ function RegularLatitudeLongitudeGrid(FT=Float64; size, latitude, longitude, z, 
     TZ = Bounded
     topo = (TX, TY, TZ)
 
-    Nx, Ny, Nz = size = validate_size(TX, TY, TZ, size)
-    Hx, Hy, Hz = halo = validate_halo(TX, TY, TZ, halo)
+    Nx, Ny, Nz = N = validate_size(TX, TY, TZ, size)
+    Hx, Hy, Hz = H = validate_halo(TX, TY, TZ, halo)
 
-    Lx = λ₂ - λ₁
-    Ly = ϕ₂ - ϕ₁
+    Lλ = λ₂ - λ₁
+    Lϕ = ϕ₂ - ϕ₁
     Lz = z₂ - z₁
 
-    Δϕ = Lx / Nx
-    Δλ = Ly / Ny
+    Δϕ = Lλ / Nx
+    Δλ = Lϕ / Ny
     Δz = Lz / Nz
+
+    # Now including halos
+    λF₋ = λ₁ - Hx * Δλ
+    ϕF₋ = ϕ₁ - Hy * Δϕ
+    zF₋ = z₁ - Hz * Δz
+
+    λF₊ = λ₂ + Hx * Δλ
+    ϕF₊ = ϕ₂ + Hy * Δϕ
+    zF₊ = z₂ + Hz * Δz
+
+    λC₋ = λF₋ + Δλ / 2
+    ϕC₋ = ϕF₋ + Δϕ / 2
+    zC₋ = zF₋ + Δz / 2
+
+    λC₊ = λF₋ + total_extent(TX, Hx, Δλ, Lλ)
+    ϕC₊ = ϕF₋ + total_extent(TY, Hy, Δϕ, Lϕ)
+    zC₊ = zF₋ + total_extent(TZ, Hz, Δz, Lz)
+
+    TFλ, TFϕ, TFz = total_length.(Face, topo, N, H)
+    TCλ, TCϕ, TCz = total_length.(Center, topo, N, H)
 
     # FIXME? MITgcm generates (xG, yG) vorticity grid points then interpolates them to generate (xC, yC):
     # https://github.com/MITgcm/MITgcm/blob/fc300b65987b52171b1110c7930f580ca71dead0/model/src/ini_spherical_polar_grid.F#L86-L89
 
-    λᶠᵃᵃ = range(λ₁, λ₂, length=Ny+1)
-    λᶜᵃᵃ = range(λ₁ + Δλ/2, λ₂ - Δλ/2, length=Ny+1)
+    λᶠᵃᵃ = range(λF₋, λF₊, length = TFλ)
+    ϕᵃᶠᵃ = range(ϕF₋, ϕF₊, length = TFϕ)
+    zᵃᵃᶠ = range(zF₋, zF₊, length = TFz)
 
-    ϕᵃᶠᵃ = range(ϕ₁, ϕ₂, length=Nx+1)
-    ϕᵃᶜᵃ = range(ϕ₁ + Δϕ/2, ϕ₂ - Δϕ/2, length=Nx)
+    λᶜᵃᵃ = range(λC₋, λC₊, length = TCλ)
+    ϕᵃᶜᵃ = range(ϕC₋, ϕC₊, length = TCϕ)
+    zᵃᵃᶜ = range(zC₋, zC₊, length = TCz)
 
-    zᵃᵃᶠ = range(z₁, z₂, length=Nz+1)
-    zᵃᵃᶜ = range(z₁ + Δz/2, z₂ - Δz/2, length=Nz)
+    λᶠᵃᵃ = OffsetArray(λᶠᵃᵃ, -Hx)
+    ϕᵃᶠᵃ = OffsetArray(ϕᵃᶠᵃ, -Hy)
+    zᵃᵃᶠ = OffsetArray(zᵃᵃᶠ, -Hz)
 
-    return RegularLatitudeLongitudeGrid{FT, TX, TY, TZ, typeof(λᶠᵃᵃ)}(Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δλ, Δϕ, Δz, λᶠᵃᵃ, λᶜᵃᵃ, ϕᵃᶠᵃ, ϕᵃᶜᵃ, zᵃᵃᶠ, zᵃᵃᶜ, radius)
+    λᶜᵃᵃ = OffsetArray(λᶜᵃᵃ, -Hx)
+    ϕᵃᶜᵃ = OffsetArray(ϕᵃᶜᵃ, -Hy)
+    zᵃᵃᶜ = OffsetArray(zᵃᵃᶜ, -Hz)
+
+    return RegularLatitudeLongitudeGrid{FT, TX, TY, TZ, typeof(λᶠᵃᵃ)}(Nx, Ny, Nz, Hx, Hy, Hz, Lλ, Lϕ, Lz, Δλ, Δϕ, Δz, λᶠᵃᵃ, λᶜᵃᵃ, ϕᵃᶠᵃ, ϕᵃᶜᵃ, zᵃᵃᶠ, zᵃᵃᶜ, radius)
 end
 
 domain_string(grid::RegularLatitudeLongitudeGrid) =
