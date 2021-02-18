@@ -6,7 +6,7 @@ non-uniform or stretched vertical grid spacing `Δz` between cell centers and ce
 topology `{TX, TY, TZ}`, and coordinate ranges of type `R` (where a range can be used) and
 `A` (where an array is needed).
 """
-struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractGrid{FT, TX, TY, TZ}
+struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractCartesianGrid{FT, TX, TY, TZ}
 
     # Number of grid points in (x,y,z).
      Nx :: Int

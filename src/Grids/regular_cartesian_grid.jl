@@ -5,7 +5,7 @@ A Cartesian grid with with constant grid spacings `Δx`, `Δy`, and `Δz` betwee
 and cell faces, elements of type `FT`, topology `{TX, TY, TZ}`, and coordinate ranges
 of type `R`.
 """
-struct RegularCartesianGrid{FT, TX, TY, TZ, R} <: AbstractGrid{FT, TX, TY, TZ}
+struct RegularCartesianGrid{FT, TX, TY, TZ, R} <: AbstractCartesianGrid{FT, TX, TY, TZ}
     # Number of grid points in (x,y,z).
     Nx :: Int
     Ny :: Int
