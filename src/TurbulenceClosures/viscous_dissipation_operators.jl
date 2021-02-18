@@ -7,10 +7,10 @@
 @inline νᶠᶜᶠ(i, j, k, grid, clock, ν::Number) = ν
 @inline νᶜᶠᶠ(i, j, k, grid, clock, ν::Number) = ν
 
-@inline νᶜᶜᶜ(i, j, k, grid, clock, ν::Function) = ν(xnode(Center, grid, i), ynode(Center, grid, j), znode(Center, grid, k), clock.time)
-@inline νᶠᶠᶜ(i, j, k, grid, clock, ν::Function) = ν(xnode(Face,   grid, i), ynode(Face,   grid, j), znode(Center, grid, k), clock.time)
-@inline νᶠᶜᶠ(i, j, k, grid, clock, ν::Function) = ν(xnode(Face,   grid, i), ynode(Center, grid, j), znode(Face,   grid, k), clock.time)
-@inline νᶜᶠᶠ(i, j, k, grid, clock, ν::Function) = ν(xnode(Face,   grid, i), ynode(Center, grid, j), znode(Face,   grid, k), clock.time)
+@inline νᶜᶜᶜ(i, j, k, grid, clock, ν::Function) = ν(xnode(Center, i, grid), ynode(Center, j, grid), znode(Center, k, grid), clock.time)
+@inline νᶠᶠᶜ(i, j, k, grid, clock, ν::Function) = ν(xnode(Face,   i, grid), ynode(Face,   j, grid), znode(Center, k, grid), clock.time)
+@inline νᶠᶜᶠ(i, j, k, grid, clock, ν::Function) = ν(xnode(Face,   i, grid), ynode(Center, j, grid), znode(Face,   k, grid), clock.time)
+@inline νᶜᶠᶠ(i, j, k, grid, clock, ν::Function) = ν(xnode(Face,   i, grid), ynode(Center, j, grid), znode(Face,   k, grid), clock.time)
 
 #####
 ##### Viscous fluxes
