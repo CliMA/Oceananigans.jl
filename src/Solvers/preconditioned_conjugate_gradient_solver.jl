@@ -1,11 +1,11 @@
 using Oceananigans.Grids: interior_parent_indices
 
-struct PCGSolver{A, S}
+struct PreconditionedConjugateGradientSolver{A, S}
     architecture :: A
         settings :: S
 end
 
-function PCGSolver(; arch = arch, grid = nothing, boundary_conditions = nothing, parameters = parameters)
+function PreconditionedConjugateGradientSolver(; arch = arch, grid = nothing, boundary_conditions = nothing, parameters = parameters)
 
     bcs = boundary_conditions
     if isnothing(boundary_conditions)
@@ -54,10 +54,6 @@ function PCGSolver(; arch = arch, grid = nothing, boundary_conditions = nothing,
     ji = interior_parent_indices(Center, topology(grid, 2), grid.Ny, grid.Hy)
     ki = interior_parent_indices(Center, topology(grid, 3), grid.Nz, grid.Hz)
 
-    # ii = grid.Hx:grid.Nx+grid.Hx-1
-    # ji = grid.Hy:grid.Ny+grid.Hy-1
-    # ki = grid.Hz:grid.Nz+grid.Hz-1
-
     dotproduct(x,y)  = mapreduce((x,y)->x*y, + , view(x, ii, ji, ki), view(y, ii, ji, ki))
     norm(x)          = ( mapreduce((x)->x*x, + , view(x, ii, ji, ki)   ) )^0.5
 
@@ -88,7 +84,7 @@ function PCGSolver(; arch = arch, grid = nothing, boundary_conditions = nothing,
         reference_pressure_solver=reference_pressure_solver,
     )
 
-   return PCGSolver(arch, settings)
+   return PreconditionedConjugateGradientSolver(arch, settings)
 end
 
 @kernel function compute_residual!(r, RHS, A)
@@ -104,7 +100,7 @@ end
 
 using Statistics
 
-function solve_poisson_equation!(solver::PCGSolver, RHS, x)
+function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, RHS, x)
 #
 # Alg - see Fig 2.5 The Preconditioned Conjugate Gradient Method in
 #                    "Templates for the Solution of Linear Systems: Building Blocks for Iterative Methods"
@@ -210,13 +206,13 @@ function solve_poisson_equation!(solver::PCGSolver, RHS, x)
        i    = i+1
       end
 ==#
-      ## println("PCGSolver ", i," ", norm(r) )
+      ## println("PreconditionedConjugateGradientSolver ", i," ", norm(r) )
 
     fill_halo_regions!(x, sset.bcs, sset.arch, sset.grid)
     return x, norm(r.parent)
 end
 
-function Base.show(io::IO, solver::PCGSolver)
+function Base.show(io::IO, solver::PreconditionedConjugateGradientSolver)
     print(io, "Oceanigans compatible preconditioned conjugate gradient solver.\n")
     print(io, " Problem size = "  , size(solver.settings.q) )
     print(io, "\n Boundary conditions = "  , solver.settings.bcs  )

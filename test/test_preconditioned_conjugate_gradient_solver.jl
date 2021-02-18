@@ -50,7 +50,7 @@ function run_pcg_solver_tests(arch)
         tol = 1.e-13
     )
 
-    pcg_solver = PCGSolver(arch = arch, parameters = pcg_params)
+    pcg_solver = PreconditionedConjugateGradientSolver(arch = arch, parameters = pcg_params)
 
     # Set initial guess and solve
     ϕ.data.parent .= 0
@@ -79,12 +79,3 @@ end
         run_pcg_solver_tests(arch)
     end
 end
-
-## using Plots
-## p1=heatmap(interior(u)[:,:,1],title='u')
-## p2=heatmap(interior(RHS)[:,:,1],title="∇⋅U")
-## p3=heatmap(interior(ϕ)[:,:,1],title="η")
-## contour!(interior(ϕ)[:,:,1],linecolor=(:black))
-## p4=heatmap(result[1:Nx,1:Ny,1].-RHS.data[1:Nx,1:Ny,1],title="∇²η - ∇⋅U")
-## plot(p1,p2,p3,p4,size=(1600,1600))
-## savefig("plot.png")
