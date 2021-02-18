@@ -15,14 +15,14 @@ may involve defining more grid spacing operators, potentially up to eight per di
 although not all may be used in practice.
 """
 
-using Oceananigans.Grids: RegularCartesianGrid, VerticallyStretchedCartesianGrid
+using Oceananigans.Grids: AbstractRectilinearGrid, RegularCartesianGrid, VerticallyStretchedCartesianGrid
 
 #####
-##### Grid spacings
+##### Rectilinear grid lengths
 #####
 
-@inline Δx(i, j, k, grid) = grid.Δx
-@inline Δy(i, j, k, grid) = grid.Δy
+@inline Δx(i, j, k, grid::AbstractRectilinearGrid) = grid.Δx
+@inline Δy(i, j, k, grid::AbstractRectilinearGrid) = grid.Δy
 
 @inline ΔzC(i, j, k, grid::RegularCartesianGrid) = grid.Δz
 @inline ΔzC(i, j, k, grid::VerticallyStretchedCartesianGrid) = @inbounds grid.ΔzC[k]
@@ -30,21 +30,8 @@ using Oceananigans.Grids: RegularCartesianGrid, VerticallyStretchedCartesianGrid
 @inline ΔzF(i, j, k, grid::RegularCartesianGrid) = grid.Δz
 @inline ΔzF(i, j, k, grid::VerticallyStretchedCartesianGrid) = @inbounds grid.ΔzF[k]
 
-# Experimental curvilinear grid spacing operators
-@inline Δxᶜᶠᵃ(i, j, k, grid) = grid.Δx
-@inline Δxᶠᶜᵃ(i, j, k, grid) = grid.Δx
-
-@inline Δyᶠᶜᵃ(i, j, k, grid) = grid.Δy
-@inline Δyᶜᶠᵃ(i, j, k, grid) = grid.Δy
-
-@inline Δx_uᶠᶜᵃ(i, j, k, grid, u) = @inbounds Δxᶠᶜᵃ(i, j, k, grid) * u[i, j, k]
-@inline Δx_vᶜᶠᵃ(i, j, k, grid, v) = @inbounds Δxᶜᶠᵃ(i, j, k, grid) * v[i, j, k]
-
-@inline Δy_uᶠᶜᵃ(i, j, k, grid, u) = @inbounds Δyᶠᶜᵃ(i, j, k, grid) * u[i, j, k]
-@inline Δy_vᶜᶠᵃ(i, j, k, grid, v) = @inbounds Δyᶜᶠᵃ(i, j, k, grid) * v[i, j, k]
-
 #####
-##### Areas
+##### Rectilinear areas
 #####
 
 @inline Axᵃᵃᶜ(i, j, k, grid) = Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
@@ -55,12 +42,32 @@ using Oceananigans.Grids: RegularCartesianGrid, VerticallyStretchedCartesianGrid
 
 @inline Azᵃᵃᵃ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
 
-@inline Azᶠᶠᵃ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
-@inline Azᶜᶜᵃ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
-
 #####
-##### Volumes
+##### Rectilinear volumes
 #####
 
 @inline Vᵃᵃᶜ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
 @inline Vᵃᵃᶠ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzC(i, j, k, grid)
+
+#####
+##### Horizontally-curvilinear grid lengths
+#####
+
+@inline Δxᶜᶜᵃ(i, j, k, grid::AbstractRectilinearGrid) = grid.Δx
+@inline Δxᶜᶠᵃ(i, j, k, grid::AbstractRectilinearGrid) = grid.Δx
+@inline Δxᶠᶠᵃ(i, j, k, grid::AbstractRectilinearGrid) = grid.Δx
+@inline Δxᶠᶜᵃ(i, j, k, grid::AbstractRectilinearGrid) = grid.Δx
+
+@inline Δyᶜᶜᵃ(i, j, k, grid::AbstractRectilinearGrid) = grid.Δy
+@inline Δyᶠᶜᵃ(i, j, k, grid::AbstractRectilinearGrid) = grid.Δy
+@inline Δyᶜᶠᵃ(i, j, k, grid::AbstractRectilinearGrid) = grid.Δy
+@inline Δyᶠᶠᵃ(i, j, k, grid::AbstractRectilinearGrid) = grid.Δy
+
+#####
+##### Horizontally-curvilinear grid areas
+#####
+
+@inline Azᶜᶜᵃ(i, j, k, grid::AbstractRectilinearGrid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
+@inline Azᶠᶠᵃ(i, j, k, grid::AbstractRectilinearGrid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
+@inline Azᶜᶠᵃ(i, j, k, grid::AbstractRectilinearGrid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
+@inline Azᶠᶜᵃ(i, j, k, grid::AbstractRectilinearGrid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)

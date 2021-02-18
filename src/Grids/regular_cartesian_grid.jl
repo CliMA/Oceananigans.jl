@@ -1,11 +1,11 @@
 """
-    RegularCartesianGrid{FT, TX, TY, TZ, R} <: AbstractGrid{FT, TX, TY, TZ}
+    RegularCartesianGrid{FT, TX, TY, TZ, R} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
 
 A Cartesian grid with with constant grid spacings `Δx`, `Δy`, and `Δz` between cell centers
 and cell faces, elements of type `FT`, topology `{TX, TY, TZ}`, and coordinate ranges
 of type `R`.
 """
-struct RegularCartesianGrid{FT, TX, TY, TZ, R} <: AbstractGrid{FT, TX, TY, TZ}
+struct RegularCartesianGrid{FT, TX, TY, TZ, R} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
     # Number of grid points in (x,y,z).
     Nx :: Int
     Ny :: Int
