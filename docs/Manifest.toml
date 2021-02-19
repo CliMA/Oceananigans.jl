@@ -140,11 +140,9 @@ version = "0.26.2"
 
 [[DocumenterCitations]]
 deps = ["Bibliography", "Documenter", "Markdown", "Unicode"]
-git-tree-sha1 = "7920a0386bc8cdba19212a573e07655c771671a1"
-repo-rev = "master"
-repo-url = "https://github.com/ali-ramadhan/DocumenterCitations.jl.git"
+git-tree-sha1 = "e8f1cf4d6c23d1fac65faca1932940d9edb4602e"
 uuid = "daee34ce-89f3-4625-b898-19384cb65244"
-version = "0.2.0"
+version = "0.2.1"
 
 [[EarCut_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
@@ -286,9 +284,9 @@ version = "1.0.0"
 
 [[JLD2]]
 deps = ["CodecZlib", "DataStructures", "MacroTools", "Mmap", "Pkg", "Printf", "Requires", "UUIDs"]
-git-tree-sha1 = "bb9a457481adf060ab5898823a49d4f854ff4ddd"
+git-tree-sha1 = "e8c4d588007dc02a1b23442ef3d14a8d7146df97"
 uuid = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
-version = "0.4.0"
+version = "0.4.1"
 
 [[JLLWrappers]]
 git-tree-sha1 = "a431f5f2ca3f4feef3bd7a5e94b8b8d4f2f647a0"
