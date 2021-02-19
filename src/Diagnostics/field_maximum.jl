@@ -7,7 +7,7 @@ element-wise to `field`.
 Examples
 =======
 ```julia
-julia> model = IncompressibleModel(grid=RegularRectilinearGrid(size=(16, 16, 16), length=(1, 1, 1)));
+julia> model = IncompressibleModel(grid=RegularRectilinearOrthogonalGrid(size=(16, 16, 16), length=(1, 1, 1)));
 
 julia> max_abs_u = FieldMaximum(abs, model.velocities.u);
 

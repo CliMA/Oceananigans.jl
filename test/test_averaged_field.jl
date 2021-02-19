@@ -11,7 +11,7 @@ using Oceananigans.Grids: halo_size
             @info "  Testing AveragedFields [$(typeof(arch))]"
             for FT in float_types
 
-                grid = RegularRectilinearGrid(topology = (Periodic, Periodic, Bounded),
+                grid = RegularRectilinearOrthogonalGrid(topology = (Periodic, Periodic, Bounded),
                                                 size = (2, 2, 2),
                                                    x = (0, 2), y = (0, 2), z = (0, 2))
 
@@ -52,7 +52,7 @@ using Oceananigans.Grids: halo_size
         @testset "Conditional computation of AveragedFields [$(typeof(arch))]" begin
             @info "  Testing conditional computation of AveragedFields [$(typeof(arch))]"
             for FT in float_types
-                grid = RegularRectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1)) 
+                grid = RegularRectilinearOrthogonalGrid(size=(2, 2, 2), extent=(1, 1, 1)) 
                 c = CenterField(FT, arch, grid)
 
                 for dims in (1, 2, 3, (1, 2), (2, 3), (1, 3), (1, 2, 3))

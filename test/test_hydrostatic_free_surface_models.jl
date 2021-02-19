@@ -4,7 +4,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 using Oceananigans.Grids: Periodic, Bounded
 
 function time_stepping_hydrostatic_free_surface_model_works(arch, topo, coriolis, advection=VectorInvariant())
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(2π, 2π, 2π), topology=topo)
+    grid = RegularRectilinearOrthogonalGrid(size=(1, 1, 1), extent=(2π, 2π, 2π), topology=topo)
     model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch, coriolis=coriolis)
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
     run!(simulation)
@@ -13,7 +13,7 @@ function time_stepping_hydrostatic_free_surface_model_works(arch, topo, coriolis
 end
 
 function hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(2π, 2π, 2π))
+    grid = RegularRectilinearOrthogonalGrid(size=(1, 1, 1), extent=(2π, 2π, 2π))
     model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch, tracers=(:T, :S, :c, :d))
 
     @test model.tracers.T isa Field
@@ -41,7 +41,7 @@ end
     @info "Testing hydrostatic free surface models..."
 
     @testset "Model constructor errors" begin
-        grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        grid = RegularRectilinearOrthogonalGrid(size=(1, 1, 1), extent=(1, 1, 1))
         @test_throws TypeError HydrostaticFreeSurfaceModel(architecture=CPU, grid=grid)
         @test_throws TypeError HydrostaticFreeSurfaceModel(architecture=GPU, grid=grid)
     end
@@ -56,7 +56,7 @@ end
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
-                grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
+                grid = RegularRectilinearOrthogonalGrid(FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
                 model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)
 
                 # Just testing that the model was constructed with no errors/crashes.
@@ -74,7 +74,7 @@ end
             N = (4, 4, 1)
             L = (2π, 3π, 5π)
 
-            grid = RegularRectilinearGrid(FT, size=N, extent=L)
+            grid = RegularRectilinearOrthogonalGrid(FT, size=N, extent=L)
             model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)
 
             x, y, z = nodes((Face, Center, Center), model.grid, reshape=true)

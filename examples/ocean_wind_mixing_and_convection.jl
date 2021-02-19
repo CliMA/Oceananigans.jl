@@ -37,7 +37,7 @@ using Oceananigans.OutputWriters: JLD2OutputWriter, FieldSlicer, TimeInterval
 # We use 32³ grid points with 2 m grid spacing in the horizontal and
 # 1 m spacing in the vertical,
 
-grid = RegularRectilinearGrid(size=(32, 32, 32), extent=(64, 64, 32))
+grid = RegularRectilinearOrthogonalGrid(size=(32, 32, 32), extent=(64, 64, 32))
 
 # ## Buoyancy that depends on temperature and salinity
 #

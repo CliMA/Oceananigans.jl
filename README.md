@@ -97,7 +97,7 @@ Let's initialize a 3D horizontally periodic model with 100×100×50 grid points 
 
 ```julia
 using Oceananigans
-grid = RegularRectilinearGrid(size=(100, 100, 50), extent=(2π, 2π, 1))
+grid = RegularRectilinearOrthogonalGrid(size=(100, 100, 50), extent=(2π, 2π, 1))
 model = IncompressibleModel(grid=grid)
 simulation = Simulation(model, Δt=60, stop_time=3600)
 run!(simulation)
@@ -118,7 +118,7 @@ topology = (Periodic, Periodic, Bounded)
 
 model = IncompressibleModel(
     architecture = CPU(),
-            grid = RegularRectilinearGrid(topology=topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
+            grid = RegularRectilinearOrthogonalGrid(topology=topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
          closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
 )
 

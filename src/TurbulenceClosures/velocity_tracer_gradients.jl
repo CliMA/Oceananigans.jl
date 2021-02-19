@@ -166,15 +166,15 @@ const norm_∂z_w = ∂z_w
     norm_Σ₁₁(i, j, k, grid, u) + norm_Σ₂₂(i, j, k, grid, v) + norm_Σ₃₃(i, j, k, grid, w)
 
 # ffc
-@inline norm_Σ₁₂(i, j, k, grid::RegularRectilinearGrid{T}, u, v) where T =
+@inline norm_Σ₁₂(i, j, k, grid::RegularRectilinearOrthogonalGrid{T}, u, v) where T =
     T(0.5) * (norm_∂y_u(i, j, k, grid, u) + norm_∂x_v(i, j, k, grid, v))
 
 # fcf
-@inline norm_Σ₁₃(i, j, k, grid::RegularRectilinearGrid{T}, u, w) where T =
+@inline norm_Σ₁₃(i, j, k, grid::RegularRectilinearOrthogonalGrid{T}, u, w) where T =
     T(0.5) * (norm_∂z_u(i, j, k, grid, u) + norm_∂x_w(i, j, k, grid, w))
 
 # cff
-@inline norm_Σ₂₃(i, j, k, grid::RegularRectilinearGrid{T}, v, w) where T =
+@inline norm_Σ₂₃(i, j, k, grid::RegularRectilinearOrthogonalGrid{T}, v, w) where T =
     T(0.5) * (norm_∂z_v(i, j, k, grid, v) + norm_∂y_w(i, j, k, grid, w))
 
 @inline norm_Σ₁₂²(i, j, k, grid, u, v) = norm_Σ₁₂(i, j, k, grid, u, v)^2

@@ -1,12 +1,12 @@
 """
-    VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
+    VerticallyStretchedRectilinearOrthogonalGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
 
 A rectilinear grid with with constant horizontal grid spacings `Δx` and `Δy`, and
 non-uniform or stretched vertical grid spacing `Δz` between cell centers and cell faces,
 topology `{TX, TY, TZ}`, and coordinate ranges of type `R` (where a range can be used) and
 `A` (where an array is needed).
 """
-struct VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
+struct VerticallyStretchedRectilinearOrthogonalGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
 
     # Number of grid points in (x,y,z).
      Nx :: Int
@@ -41,7 +41,7 @@ struct VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A} <: AbstractRecti
      zF :: A
 end
 
-function VerticallyStretchedRectilinearGrid(FT=Float64, arch=CPU();
+function VerticallyStretchedRectilinearOrthogonalGrid(FT=Float64, arch=CPU();
                                               size, x, y, zF,
                                               halo = (1, 1, 1), 
                                           topology = (Periodic, Periodic, Bounded))
@@ -97,7 +97,7 @@ function VerticallyStretchedRectilinearGrid(FT=Float64, arch=CPU();
      zF = OffsetArray(zF,  -Hz)
     ΔzF = OffsetArray(ΔzF, -Hz)
 
-    return VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, typeof(xF), typeof(zF)}(
+    return VerticallyStretchedRectilinearOrthogonalGrid{FT, TX, TY, TZ, typeof(xF), typeof(zF)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
 end
 

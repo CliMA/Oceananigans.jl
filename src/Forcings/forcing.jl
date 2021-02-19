@@ -72,7 +72,7 @@ Note that because forcing locations are regularized within the
 `IncompressibleModel` constructor:
 
 ```jldoctest forcing
-grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+grid = RegularRectilinearOrthogonalGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = IncompressibleModel(grid=grid, forcing=(v=v_forcing,))
 
 model.forcing.v

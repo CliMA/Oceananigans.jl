@@ -23,7 +23,7 @@ end
 
 function run_field_interpolation_tests(arch, FT)
 
-    grid = RegularRectilinearGrid(size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7))
+    grid = RegularRectilinearOrthogonalGrid(size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7))
 
     velocities = VelocityFields(arch, grid)
     tracers = TracerFields((:c,), arch, grid)
@@ -87,25 +87,25 @@ end
     @testset "Field initialization" begin
         @info "  Testing Field initialization..."
         for arch in archs, FT in float_types
-            grid = RegularRectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic))
+            grid = RegularRectilinearOrthogonalGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic))
             @test correct_field_size(arch, grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, XFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, YFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
 
-            grid = RegularRectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Bounded))
+            grid = RegularRectilinearOrthogonalGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Bounded))
             @test correct_field_size(arch, grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, XFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, YFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3] + 1)
 
-            grid = RegularRectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Bounded, Bounded))
+            grid = RegularRectilinearOrthogonalGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Bounded, Bounded))
             @test correct_field_size(arch, grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, XFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, YFaceField,  N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
 
-            grid = RegularRectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Bounded, Bounded, Bounded))
+            grid = RegularRectilinearOrthogonalGrid(FT, size=N, extent=L, halo=H, topology=(Bounded, Bounded, Bounded))
             @test correct_field_size(arch, grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, XFaceField,  N[1] + 1 + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, YFaceField,  N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
@@ -127,7 +127,7 @@ end
 
         for arch in archs, FT in float_types
 	        ArrayType = array_type(arch)
-            grid = RegularRectilinearGrid(FT, size=N, extent=L, topology=(Periodic, Periodic, Bounded))
+            grid = RegularRectilinearOrthogonalGrid(FT, size=N, extent=L, topology=(Periodic, Periodic, Bounded))
 
             for FieldType in FieldTypes, val in vals
                 @test correct_field_value_was_set(arch, grid, FieldType, val)
@@ -151,7 +151,7 @@ end
         @test Fields.has_velocities((:u, :v)) == false
         @test Fields.has_velocities((:u, :v, :w)) == true
 
-		grid = RegularRectilinearGrid(size=(4, 6, 8), extent=(1, 1, 1))
+		grid = RegularRectilinearOrthogonalGrid(size=(4, 6, 8), extent=(1, 1, 1))
 		ϕ = CenterField(CPU(), grid)
 		@test cpudata(ϕ).parent isa Array
 

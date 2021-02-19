@@ -47,7 +47,7 @@ function run_thermal_bubble_netcdf_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
 
     topo = (Periodic, Periodic, Bounded)
-    grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RegularRectilinearOrthogonalGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
     simulation = Simulation(model, Δt=6, stop_iteration=10)
@@ -212,7 +212,7 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
     Lx, Ly, Lz = 100, 100, 100
 
     topo = (Periodic, Periodic, Bounded)
-    grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RegularRectilinearOrthogonalGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
     simulation = Simulation(model, Δt=6, stop_iteration=10)
@@ -305,7 +305,7 @@ function run_netcdf_function_output_tests(arch)
     Δt = 1.25
     iters = 3
 
-    grid = RegularRectilinearGrid(size=(N, N, N), extent=(L, 2L, 3L))
+    grid = RegularRectilinearOrthogonalGrid(size=(N, N, N), extent=(L, 2L, 3L))
     model = IncompressibleModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
     grid = model.grid
@@ -531,7 +531,7 @@ function jld2_sliced_field_output(model)
 end
 
 function run_jld2_file_splitting_tests(arch)
-    model = IncompressibleModel(architecture=arch, grid=RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
+    model = IncompressibleModel(architecture=arch, grid=RegularRectilinearOrthogonalGrid(size=(16, 16, 16), extent=(1, 1, 1)))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
 
     function fake_bc_init(file, model)
@@ -609,7 +609,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RegularRectilinearOrthogonalGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     true_model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
 
@@ -690,7 +690,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
 end
 
 function run_checkpoint_with_function_bcs_tests(arch)
-    grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    grid = RegularRectilinearOrthogonalGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
     @inline some_flux(x, y, t) = 2x + exp(y)
     top_u_bc = top_T_bc = FluxBoundaryCondition(some_flux)
@@ -766,7 +766,7 @@ function run_checkpoint_with_function_bcs_tests(arch)
 end
 
 function run_cross_architecture_checkpointer_tests(arch1, arch2)
-    grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    grid = RegularRectilinearOrthogonalGrid(size=(16, 16, 16), extent=(1, 1, 1))
     model = IncompressibleModel(architecture=arch1, grid=grid)
     set!(model, u=π/2, v=ℯ, T=Base.MathConstants.γ, S=Base.MathConstants.φ)
 
@@ -976,7 +976,7 @@ end
 function run_netcdf_time_averaging_tests(arch)
     topo = (Periodic, Periodic, Periodic)
     domain = (x=(0, 1), y=(0, 1), z=(0, 1))
-    grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 4); domain...)
+    grid = RegularRectilinearOrthogonalGrid(topology=topo, size=(4, 4, 4); domain...)
 
     λ(x, y, z) = x + (1 - y)^2 + tanh(z)
     Fc(x, y, z, t, c) = - λ(x, y, z) * c
@@ -1070,7 +1070,7 @@ function run_netcdf_time_averaging_tests(arch)
 end
 
 function run_netcdf_output_alignment_tests(arch)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RegularRectilinearOrthogonalGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = IncompressibleModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=0.2, stop_time=40)
 
@@ -1114,7 +1114,7 @@ end
 
     for arch in archs
         # Some tests can reuse this same grid and model.
-        grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1),
+        grid = RegularRectilinearOrthogonalGrid(size=(4, 4, 4), extent=(1, 1, 1),
                                     topology=(Periodic, Periodic, Bounded))
 
         model = IncompressibleModel(architecture=arch, grid=grid)

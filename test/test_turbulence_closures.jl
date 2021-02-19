@@ -25,7 +25,7 @@ end
 function constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.7))
           arch = CPU()
        closure = IsotropicDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
-          grid = RegularRectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
+          grid = RegularRectilinearOrthogonalGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
     velocities = VelocityFields(arch, grid)
        tracers = TracerFields((:T, :S), arch, grid)
          clock = Clock(time=0.0)
@@ -54,7 +54,7 @@ end
 function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νz=FT(0.1), κz=FT(0.5))
           arch = CPU()
        closure = AnisotropicDiffusivity(FT, νh=νh, νz=νz, κh=(T=κh, S=κh), κz=(T=κz, S=κz))
-          grid = RegularRectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
+          grid = RegularRectilinearOrthogonalGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
            eos = LinearEquationOfState(FT)
       buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=eos)
     velocities = VelocityFields(arch, grid)
@@ -94,7 +94,7 @@ function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
       tracernames = (:b,)
           closure = getproperty(TurbulenceClosures, closurename)(FT, kwargs...)
           closure = with_tracers(tracernames, closure)
-             grid = RegularRectilinearGrid(FT, size=(3, 3, 3), extent=(3, 3, 3))
+             grid = RegularRectilinearOrthogonalGrid(FT, size=(3, 3, 3), extent=(3, 3, 3))
     diffusivities = DiffusivityFields(arch, grid, tracernames, NamedTuple(), closure)
          buoyancy = BuoyancyTracer()
        velocities = VelocityFields(arch, grid)
@@ -113,7 +113,7 @@ function time_step_with_variable_isotropic_diffusivity(arch)
 
     model = IncompressibleModel(
         architecture=arch, closure=closure,
-        grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
+        grid=RegularRectilinearOrthogonalGrid(size=(1, 1, 1), extent=(1, 2, 3))
     )
 
     time_step!(model, 1, euler=true)
@@ -134,7 +134,7 @@ function time_step_with_variable_anisotropic_diffusivity(arch)
 
     model = IncompressibleModel(
         architecture=arch, closure=closure,
-        grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
+        grid=RegularRectilinearOrthogonalGrid(size=(1, 1, 1), extent=(1, 2, 3))
     )
 
     time_step!(model, 1, euler=true)
@@ -147,7 +147,7 @@ function time_step_with_tupled_closure(FT, arch)
 
     model = IncompressibleModel(
         architecture=arch, float_type=FT, closure=closure_tuple,
-        grid=RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, 2, 3))
+        grid=RegularRectilinearOrthogonalGrid(FT, size=(1, 1, 1), extent=(1, 2, 3))
     )
 
     time_step!(model, 1, euler=true)
@@ -155,7 +155,7 @@ function time_step_with_tupled_closure(FT, arch)
 end
 
 function compute_closure_specific_diffusive_cfl(closurename)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
+    grid = RegularRectilinearOrthogonalGrid(size=(1, 1, 1), extent=(1, 2, 3))
     closure = getproperty(TurbulenceClosures, closurename)()
 
     model = IncompressibleModel(grid=grid, closure=closure)

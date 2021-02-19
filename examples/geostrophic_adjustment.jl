@@ -23,7 +23,7 @@
 using Oceananigans
 using Oceananigans.Utils: kilometers
 
-grid = RegularRectilinearGrid(size = (128, 1, 1),
+grid = RegularRectilinearOrthogonalGrid(size = (128, 1, 1),
                             x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
                             topology = (Bounded, Periodic, Bounded))
 

@@ -13,7 +13,7 @@ export
 
     # Grids
     Periodic, Bounded, Flat,
-    RegularRectilinearGrid, VerticallyStretchedRectilinearGrid,
+    RegularRectilinearOrthogonalGrid, VerticallyStretchedRectilinearOrthogonalGrid,
 
     # Advection schemes
     CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5,

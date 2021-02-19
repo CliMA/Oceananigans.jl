@@ -69,11 +69,11 @@ julia> using Oceananigans, Oceananigans.Grids, Oceananigans.AbstractOperations
 julia> harmonic_plus(a, b, c) = 1/3 * (1/a + 1/b + 1/c)
 harmonic_plus(generic function with 1 method)
 
-julia> c, d, e = Tuple(Field(Center, Center, Center, CPU(), RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:3);
+julia> c, d, e = Tuple(Field(Center, Center, Center, CPU(), RegularRectilinearOrthogonalGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:3);
 
 julia> harmonic_plus(c, d, e) # before magic @multiary transformation
 BinaryOperation at (Center, Center, Center)
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── grid: RegularRectilinearOrthogonalGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 │   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
 └── tree:
     * at (Center, Center, Center) via identity
@@ -97,7 +97,7 @@ Set{Any} with 3 elements:
 
 julia> harmonic_plus(c, d, e)
 MultiaryOperation at (Center, Center, Center)
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── grid: RegularRectilinearOrthogonalGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 │   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
 └── tree:
     harmonic_plus at (Center, Center, Center)

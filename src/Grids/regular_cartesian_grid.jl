@@ -1,11 +1,11 @@
 """
-    RegularRectilinearGrid{FT, TX, TY, TZ, R} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
+    RegularRectilinearOrthogonalGrid{FT, TX, TY, TZ, R} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
 
 A rectilinear grid with with constant grid spacings `Δx`, `Δy`, and `Δz` between cell centers
 and cell faces, elements of type `FT`, topology `{TX, TY, TZ}`, and coordinate ranges
 of type `R`.
 """
-struct RegularRectilinearGrid{FT, TX, TY, TZ, R} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
+struct RegularRectilinearOrthogonalGrid{FT, TX, TY, TZ, R} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
     # Number of grid points in (x,y,z).
     Nx :: Int
     Ny :: Int
@@ -33,11 +33,11 @@ struct RegularRectilinearGrid{FT, TX, TY, TZ, R} <: AbstractRectilinearGrid{FT, 
 end
 
 """
-    RegularRectilinearGrid([FT=Float64]; size,
+    RegularRectilinearOrthogonalGrid([FT=Float64]; size,
                          extent = nothing, x = nothing, y = nothing, z = nothing,
                          topology = (Periodic, Periodic, Bounded), halo = (1, 1, 1))
 
-Creates a `RegularRectilinearGrid` with `size = (Nx, Ny, Nz)` grid points.
+Creates a `RegularRectilinearOrthogonalGrid` with `size = (Nx, Ny, Nz)` grid points.
 
 Keyword arguments
 =================
@@ -98,8 +98,8 @@ Examples
 ```jldoctest
 julia> using Oceananigans
 
-julia> grid = RegularRectilinearGrid(size=(32, 32, 32), extent=(1, 2, 3))
-RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}
+julia> grid = RegularRectilinearOrthogonalGrid(size=(32, 32, 32), extent=(1, 2, 3))
+RegularRectilinearOrthogonalGrid{Float64, Periodic, Periodic, Bounded}
                    domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [-3.0, 0.0]
                  topology: (Periodic, Periodic, Bounded)
   resolution (Nx, Ny, Nz): (32, 32, 32)
@@ -112,8 +112,8 @@ grid spacing (Δx, Δy, Δz): (0.03125, 0.0625, 0.09375)
 ```jldoctest
 julia> using Oceananigans
 
-julia> grid = RegularRectilinearGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
-RegularRectilinearGrid{Float32, Periodic, Periodic, Bounded}
+julia> grid = RegularRectilinearOrthogonalGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
+RegularRectilinearOrthogonalGrid{Float32, Periodic, Periodic, Bounded}
                    domain: x ∈ [0.0, 8.0], y ∈ [-10.0, 10.0], z ∈ [-3.1415927, 3.1415927]
                  topology: (Periodic, Periodic, Bounded)
   resolution (Nx, Ny, Nz): (32, 32, 16)
@@ -126,8 +126,8 @@ grid spacing (Δx, Δy, Δz): (0.25f0, 0.625f0, 0.3926991f0)
 ```jldoctest
 julia> using Oceananigans
 
-julia> grid = RegularRectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=(Periodic, Periodic, Flat))
-RegularRectilinearGrid{Float64, Periodic, Periodic, Flat}
+julia> grid = RegularRectilinearOrthogonalGrid(size=(32, 32), extent=(2π, 4π), topology=(Periodic, Periodic, Flat))
+RegularRectilinearOrthogonalGrid{Float64, Periodic, Periodic, Flat}
                    domain: x ∈ [0.0, 6.283185307179586], y ∈ [0.0, 12.566370614359172], z ∈ [0.0, 0.0]
                  topology: (Periodic, Periodic, Flat)
   resolution (Nx, Ny, Nz): (32, 32, 1)
@@ -140,8 +140,8 @@ grid spacing (Δx, Δy, Δz): (0.19634954084936207, 0.39269908169872414, 0.0)
 ```jldoctest
 julia> using Oceananigans
 
-julia> grid = RegularRectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bounded))
-RegularRectilinearGrid{Float64, Flat, Flat, Bounded}
+julia> grid = RegularRectilinearOrthogonalGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bounded))
+RegularRectilinearOrthogonalGrid{Float64, Flat, Flat, Bounded}
                    domain: x ∈ [0.0, 0.0], y ∈ [0.0, 0.0], z ∈ [-128.0, 0.0]
                  topology: (Flat, Flat, Bounded)
   resolution (Nx, Ny, Nz): (1, 1, 256)
@@ -149,7 +149,7 @@ RegularRectilinearGrid{Float64, Flat, Flat, Bounded}
 grid spacing (Δx, Δy, Δz): (0.0, 0.0, 0.5)
 ```
 """
-function RegularRectilinearGrid(FT=Float64;
+function RegularRectilinearOrthogonalGrid(FT=Float64;
                                   size,
                                      x = nothing, y = nothing, z = nothing,
                                 extent = nothing,
@@ -198,12 +198,12 @@ function RegularRectilinearGrid(FT=Float64;
     yF = OffsetArray(yF, -Hy)
     zF = OffsetArray(zF, -Hz)
 
-    return RegularRectilinearGrid{FT, TX, TY, TZ, typeof(xC)}(
+    return RegularRectilinearOrthogonalGrid{FT, TX, TY, TZ, typeof(xC)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
 end
 
-short_show(grid::RegularRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    "RegularRectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
+short_show(grid::RegularRectilinearOrthogonalGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+    "RegularRectilinearOrthogonalGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
 
 function domain_string(grid)
     xₗ, xᵣ = x_domain(grid)
@@ -212,8 +212,8 @@ function domain_string(grid)
     return "x ∈ [$xₗ, $xᵣ], y ∈ [$yₗ, $yᵣ], z ∈ [$zₗ, $zᵣ]"
 end
 
-function show(io::IO, g::RegularRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    print(io, "RegularRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
+function show(io::IO, g::RegularRectilinearOrthogonalGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    print(io, "RegularRectilinearOrthogonalGrid{$FT, $TX, $TY, $TZ}\n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
               "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
@@ -222,17 +222,17 @@ function show(io::IO, g::RegularRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, 
 end
 
 """
-    with_halo(new_halo, old_grid::RegularRectilinearGrid)
+    with_halo(new_halo, old_grid::RegularRectilinearOrthogonalGrid)
 
-Returns a new `RegularRectilinearGrid` with the same properties as
+Returns a new `RegularRectilinearOrthogonalGrid` with the same properties as
 `old_grid` but with halos set to `new_halo`.
 
-Note that in contrast to the constructor for `RegularRectilinearGrid`,
+Note that in contrast to the constructor for `RegularRectilinearOrthogonalGrid`,
 `new_halo` is expected to be a 3-`Tuple` by `with_halo`. The elements
 of `new_halo` corresponding to `Flat` directions are removed (and are
-therefore ignored) prior to constructing the new `RegularRectilinearGrid`.
+therefore ignored) prior to constructing the new `RegularRectilinearOrthogonalGrid`.
 """
-function with_halo(new_halo, old_grid::RegularRectilinearGrid)
+function with_halo(new_halo, old_grid::RegularRectilinearOrthogonalGrid)
 
     FT = eltype(old_grid)
     Nx, Ny, Nz = size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
@@ -247,7 +247,7 @@ function with_halo(new_halo, old_grid::RegularRectilinearGrid)
     size = pop_flat_elements(size, topo)
     new_halo = pop_flat_elements(new_halo, topo)
 
-    new_grid = RegularRectilinearGrid(eltype(old_grid); size=size, x=x, y=y, z=z,
+    new_grid = RegularRectilinearOrthogonalGrid(eltype(old_grid); size=size, x=x, y=y, z=z,
                                     topology=topo, halo=new_halo)
 
     return new_grid

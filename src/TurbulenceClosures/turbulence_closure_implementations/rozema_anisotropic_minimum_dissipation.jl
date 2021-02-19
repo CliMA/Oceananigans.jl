@@ -32,9 +32,9 @@ end
 const RAMD = RozemaAnisotropicMinimumDissipation
 
 "Return the filter width for Anisotropic Minimum Dissipation on a Regular rectilinear grid."
-@inline Δx(i, j, k, grid::RegularRectilinearGrid, ::RAMD) = grid.Δx
-@inline Δy(i, j, k, grid::RegularRectilinearGrid, ::RAMD) = grid.Δy
-@inline Δz(i, j, k, grid::RegularRectilinearGrid, ::RAMD) = grid.Δz
+@inline Δx(i, j, k, grid::RegularRectilinearOrthogonalGrid, ::RAMD) = grid.Δx
+@inline Δy(i, j, k, grid::RegularRectilinearOrthogonalGrid, ::RAMD) = grid.Δy
+@inline Δz(i, j, k, grid::RegularRectilinearOrthogonalGrid, ::RAMD) = grid.Δz
 
 # We only have regular grids for now. When we have non-regular grids this will need to be changed.
 const Δxᶜᶜᶜ = Δx

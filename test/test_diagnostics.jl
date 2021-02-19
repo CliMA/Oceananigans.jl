@@ -1,7 +1,7 @@
 using Oceananigans.Diagnostics
 
 function nan_checker_aborts_simulation(arch)
-    grid = RegularRectilinearGrid(size=(4, 2, 1), extent=(1, 1, 1))
+    grid = RegularRectilinearOrthogonalGrid(size=(4, 2, 1), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch)
     simulation = Simulation(model, Δt=1, stop_iteration=1)
     
@@ -14,7 +14,7 @@ end
 
 TestModel(::GPU, FT, ν=1.0, Δx=0.5) =
     IncompressibleModel(
-          grid = RegularRectilinearGrid(FT, size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
+          grid = RegularRectilinearOrthogonalGrid(FT, size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
        closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = GPU(),
     float_type = FT
@@ -22,7 +22,7 @@ TestModel(::GPU, FT, ν=1.0, Δx=0.5) =
 
 TestModel(::CPU, FT, ν=1.0, Δx=0.5) =
     IncompressibleModel(
-          grid = RegularRectilinearGrid(FT, size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
+          grid = RegularRectilinearOrthogonalGrid(FT, size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
        closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = CPU(),
     float_type = FT

@@ -46,7 +46,7 @@
 
 using Oceananigans
 
-grid = RegularRectilinearGrid(size=(64, 1, 64), extent=(64, 1, 64))
+grid = RegularRectilinearOrthogonalGrid(size=(64, 1, 64), extent=(64, 1, 64))
 
 # ## Boundary conditions
 #

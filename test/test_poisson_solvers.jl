@@ -1,7 +1,7 @@
 using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!
 
 function poisson_solver_instantiates(arch, FT, Nx, Ny, Nz, planner_flag)
-    grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(100, 100, 100))
+    grid = RegularRectilinearOrthogonalGrid(FT, size=(Nx, Ny, Nz), extent=(100, 100, 100))
     solver = FFTBasedPoissonSolver(arch, grid, planner_flag)
     return true  # Just making sure the FFTBasedPoissonSolver does not error/crash.
 end
@@ -43,7 +43,7 @@ end
 
 function divergence_free_poisson_solution(arch, FT, topo, Nx, Ny, Nz, planner_flag=FFTW.MEASURE)
     ArrayType = array_type(arch)
-    grid = RegularRectilinearGrid(FT, topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+    grid = RegularRectilinearOrthogonalGrid(FT, topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
 
     solver = FFTBasedPoissonSolver(arch, grid, planner_flag)
     R, U = random_divergent_source_term(FT, arch, grid)
@@ -71,7 +71,7 @@ k²(::Type{Bounded}, n) = (n/2)^2
 k²(::Type{Periodic}, n) = n^2
 
 function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
-    grid = RegularRectilinearGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
+    grid = RegularRectilinearOrthogonalGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
     solver = FFTBasedPoissonSolver(arch, grid)
 
     xC, yC, zC = nodes((Center, Center, Center), grid, reshape=true)

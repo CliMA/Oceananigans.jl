@@ -6,7 +6,7 @@ using Oceananigans.Grids: total_extent
 
 function test_xnode_ynode_znode_are_correct(FT, N=3)
 
-    grid = RegularRectilinearGrid(FT, size=(N, N, N), x=(0, π), y=(0, π), z=(0, π),
+    grid = RegularRectilinearOrthogonalGrid(FT, size=(N, N, N), x=(0, π), y=(0, π), z=(0, π),
                                 topology=(Periodic, Periodic, Bounded))
 
     @test xnode(Center, 2, grid) ≈ FT(π/2)
@@ -32,21 +32,21 @@ end
 ##### Regular rectilinear grids
 #####
 
-function regular_rectilinear_correct_size(FT)
-    grid = RegularRectilinearGrid(FT, size=(4, 6, 8), extent=(2π, 4π, 9π))
+function regular_rectilinear_orthogonal_correct_size(FT)
+    grid = RegularRectilinearOrthogonalGrid(FT, size=(4, 6, 8), extent=(2π, 4π, 9π))
 
     # Checking ≈ as the grid could be storing Float32 values.
     return (grid.Nx ≈ 4  && grid.Ny ≈ 6  && grid.Nz ≈ 8 &&
             grid.Lx ≈ 2π && grid.Ly ≈ 4π && grid.Lz ≈ 9π)
 end
 
-function regular_rectilinear_correct_extent(FT)
-    grid = RegularRectilinearGrid(FT, size=(4, 6, 8), x=(1, 2), y=(π, 3π), z=(0, 4))
+function regular_rectilinear_orthogonal_correct_extent(FT)
+    grid = RegularRectilinearOrthogonalGrid(FT, size=(4, 6, 8), x=(1, 2), y=(π, 3π), z=(0, 4))
     return (grid.Lx ≈ 1 && grid.Ly ≈ 2π  && grid.Lz ≈ 4)
 end
 
-function regular_rectilinear_correct_coordinate_lengths(FT)
-    grid = RegularRectilinearGrid(FT, size=(2, 3, 4), extent=(1, 1, 1), halo=(1, 1, 1),
+function regular_rectilinear_orthogonal_correct_coordinate_lengths(FT)
+    grid = RegularRectilinearOrthogonalGrid(FT, size=(2, 3, 4), extent=(1, 1, 1), halo=(1, 1, 1),
                                 topology=(Periodic, Bounded, Bounded))
 
     return (
@@ -59,38 +59,38 @@ function regular_rectilinear_correct_coordinate_lengths(FT)
            )
 end
 
-function regular_rectilinear_correct_halo_size(FT)
-    grid = RegularRectilinearGrid(FT, size=(4, 6, 8), extent=(2π, 4π, 9π), halo=(1, 2, 3))
+function regular_rectilinear_orthogonal_correct_halo_size(FT)
+    grid = RegularRectilinearOrthogonalGrid(FT, size=(4, 6, 8), extent=(2π, 4π, 9π), halo=(1, 2, 3))
     return (grid.Hx == 1  && grid.Hy == 2  && grid.Hz == 3)
 end
 
-function regular_rectilinear_correct_halo_faces(FT)
+function regular_rectilinear_orthogonal_correct_halo_faces(FT)
     N, H, L = 4, 1, 2.0
     Δ = L / N
-    grid = RegularRectilinearGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(H, H, H))
+    grid = RegularRectilinearOrthogonalGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(H, H, H))
     return grid.xF[0] == - H * Δ && grid.yF[0] == - H * Δ && grid.zF[0] == - H * Δ
 end
 
-function regular_rectilinear_correct_first_cells(FT)
+function regular_rectilinear_orthogonal_correct_first_cells(FT)
     N, H, L = 4, 1, 4.0
     Δ = L / N
-    grid = RegularRectilinearGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(H, H, H))
+    grid = RegularRectilinearOrthogonalGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(H, H, H))
     return grid.xC[1] == Δ/2 && grid.yC[1] == Δ/2 && grid.zC[1] == Δ/2
 end
 
-function regular_rectilinear_correct_end_faces(FT)
+function regular_rectilinear_orthogonal_correct_end_faces(FT)
     N, L = 4, 2.0
     Δ = L / N
-    grid = RegularRectilinearGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(1, 1, 1),
+    grid = RegularRectilinearOrthogonalGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(1, 1, 1),
                                 topology=(Periodic, Bounded, Bounded))
     return grid.xF[end] == L && grid.yF[end] == L + Δ && grid.zF[end] == L + Δ
 end
 
-function regular_rectilinear_ranges_have_correct_length(FT)
+function regular_rectilinear_orthogonal_ranges_have_correct_length(FT)
     Nx, Ny, Nz = 8, 9, 10
     Hx, Hy, Hz = 1, 2, 1
 
-    grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(1, 1, 1), halo=(Hx, Hy, Hz),
+    grid = RegularRectilinearOrthogonalGrid(FT, size=(Nx, Ny, Nz), extent=(1, 1, 1), halo=(Hx, Hy, Hz),
                                 topology=(Bounded, Bounded, Bounded))
 
     return (length(grid.xC) == Nx + 2Hx && length(grid.xF) == Nx + 1 + 2Hx &&
@@ -99,14 +99,14 @@ function regular_rectilinear_ranges_have_correct_length(FT)
 end
 
 # See: https://github.com/climate-machine/Oceananigans.jl/issues/480
-function regular_rectilinear_no_roundoff_error_in_ranges(FT)
+function regular_rectilinear_orthogonal_no_roundoff_error_in_ranges(FT)
     Nx, Ny, Nz, Hz = 1, 1, 64, 1
-    grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(1, 1, π/2), halo=(1, 1, Hz))
+    grid = RegularRectilinearOrthogonalGrid(FT, size=(Nx, Ny, Nz), extent=(1, 1, π/2), halo=(1, 1, Hz))
     return length(grid.zC) == Nz + 2Hz && length(grid.zF) == Nz + 1 + 2Hz
 end
 
-function regular_rectilinear_grid_properties_are_same_type(FT)
-    grid = RegularRectilinearGrid(FT, size=(10, 10, 10), extent=(1, 1//7, 2π))
+function regular_rectilinear_orthogonal_grid_properties_are_same_type(FT)
+    grid = RegularRectilinearOrthogonalGrid(FT, size=(10, 10, 10), extent=(1, 1//7, 2π))
     return all(isa.([grid.Lx, grid.Ly, grid.Lz, grid.Δx, grid.Δy, grid.Δz], FT)) &&
            all(eltype.([grid.xF, grid.yF, grid.zF, grid.xC, grid.yC, grid.zC]) .== FT)
 end
@@ -116,13 +116,13 @@ end
 #####
 
 function correct_constant_grid_spacings(FT)
-    grid = VerticallyStretchedRectilinearGrid(FT, size=(16, 16, 16), x=(0, 1), y=(0, 1), zF=collect(0:16))
+    grid = VerticallyStretchedRectilinearOrthogonalGrid(FT, size=(16, 16, 16), x=(0, 1), y=(0, 1), zF=collect(0:16))
     return all(grid.ΔzF .== 1) && all(grid.ΔzC .== 1)
 end
 
 function correct_quadratic_grid_spacings(FT)
     Nx = Ny = Nz = 16
-    grid = VerticallyStretchedRectilinearGrid(FT, size=(Nx, Ny, Nz),
+    grid = VerticallyStretchedRectilinearOrthogonalGrid(FT, size=(Nx, Ny, Nz),
                                             x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
 
      zF(k) = (k-1)^2
@@ -148,7 +148,7 @@ function correct_tanh_grid_spacings(FT)
 
     zF(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
 
-    grid = VerticallyStretchedRectilinearGrid(FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), zF=zF)
+    grid = VerticallyStretchedRectilinearOrthogonalGrid(FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), zF=zF)
 
 
      zC(k) = (zF(k) + zF(k+1)) / 2
@@ -167,23 +167,23 @@ end
 
 function vertically_stretched_grid_properties_are_same_type(FT)
     Nx, Ny, Nz = 16, 16, 16
-    grid = VerticallyStretchedRectilinearGrid(FT, size=(16, 16, 16), x=(0,1), y=(0,1), zF=collect(0:16))
+    grid = VerticallyStretchedRectilinearOrthogonalGrid(FT, size=(16, 16, 16), x=(0,1), y=(0,1), zF=collect(0:16))
     return all(isa.([grid.Lx, grid.Ly, grid.Lz, grid.Δx, grid.Δy], FT)) &&
            all(eltype.([grid.ΔzF, grid.ΔzC, grid.xF, grid.yF, grid.zF, grid.xC, grid.yC, grid.zC]) .== FT)
 end
 
-function flat_size_regular_rectilinear_grid(FT; topology, size, extent)
-    grid = RegularRectilinearGrid(FT; size=size, topology=topology, extent=extent)
+function flat_size_regular_rectilinear_orthogonal_grid(FT; topology, size, extent)
+    grid = RegularRectilinearOrthogonalGrid(FT; size=size, topology=topology, extent=extent)
     return grid.Nx, grid.Ny, grid.Nz
 end
 
-function flat_halo_regular_rectilinear_grid(FT; topology, size, halo, extent)
-    grid = RegularRectilinearGrid(FT; size=size, halo=halo, topology=topology, extent=extent)
+function flat_halo_regular_rectilinear_orthogonal_grid(FT; topology, size, halo, extent)
+    grid = RegularRectilinearOrthogonalGrid(FT; size=size, halo=halo, topology=topology, extent=extent)
     return grid.Hx, grid.Hy, grid.Hz
 end
 
-function flat_extent_regular_rectilinear_grid(FT; topology, size, extent)
-    grid = RegularRectilinearGrid(FT; size=size, topology=topology, extent=extent)
+function flat_extent_regular_rectilinear_orthogonal_grid(FT; topology, size, extent)
+    grid = RegularRectilinearOrthogonalGrid(FT; size=size, topology=topology, extent=extent)
     return grid.Lx, grid.Ly, grid.Lz
 end
 
@@ -211,16 +211,16 @@ end
             @info "    Testing grid initialization..."
 
             for FT in float_types
-                @test regular_rectilinear_correct_size(FT)
-                @test regular_rectilinear_correct_extent(FT)
-                @test regular_rectilinear_correct_coordinate_lengths(FT)
-                @test regular_rectilinear_correct_halo_size(FT)
-                @test regular_rectilinear_correct_halo_faces(FT)
-                @test regular_rectilinear_correct_first_cells(FT)
-                @test regular_rectilinear_correct_end_faces(FT)
-                @test regular_rectilinear_ranges_have_correct_length(FT)
-                @test regular_rectilinear_no_roundoff_error_in_ranges(FT)
-                @test regular_rectilinear_grid_properties_are_same_type(FT)
+                @test regular_rectilinear_orthogonal_correct_size(FT)
+                @test regular_rectilinear_orthogonal_correct_extent(FT)
+                @test regular_rectilinear_orthogonal_correct_coordinate_lengths(FT)
+                @test regular_rectilinear_orthogonal_correct_halo_size(FT)
+                @test regular_rectilinear_orthogonal_correct_halo_faces(FT)
+                @test regular_rectilinear_orthogonal_correct_first_cells(FT)
+                @test regular_rectilinear_orthogonal_correct_end_faces(FT)
+                @test regular_rectilinear_orthogonal_ranges_have_correct_length(FT)
+                @test regular_rectilinear_orthogonal_no_roundoff_error_in_ranges(FT)
+                @test regular_rectilinear_orthogonal_grid_properties_are_same_type(FT)
             end
         end
 
@@ -228,48 +228,48 @@ end
             @info "    Testing grid constructor errors..."
 
             for FT in float_types
-                @test isbitstype(typeof(RegularRectilinearGrid(FT, size=(16, 16, 16), extent=(1, 1, 1))))
+                @test isbitstype(typeof(RegularRectilinearOrthogonalGrid(FT, size=(16, 16, 16), extent=(1, 1, 1))))
 
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(32,), extent=(1, 1, 1))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(32, 64), extent=(1, 1, 1))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(32, 32, 32, 16), extent=(1, 1, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(32,), extent=(1, 1, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(32, 64), extent=(1, 1, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(32, 32, 32, 16), extent=(1, 1, 1))
 
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(32, 32, 32.0), extent=(1, 1, 1))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(20.1, 32, 32), extent=(1, 1, 1))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(32, nothing, 32), extent=(1, 1, 1))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(32, "32", 32), extent=(1, 1, 1))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(32, 32, 32), extent=(1, nothing, 1))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(32, 32, 32), extent=(1, "1", 1))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(32, 32, 32), extent=(1, 1, 1), halo=(1, 1))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(32, 32, 32), extent=(1, 1, 1), halo=(1.0, 1, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(32, 32, 32.0), extent=(1, 1, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(20.1, 32, 32), extent=(1, 1, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(32, nothing, 32), extent=(1, 1, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(32, "32", 32), extent=(1, 1, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(32, 32, 32), extent=(1, nothing, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(32, 32, 32), extent=(1, "1", 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(32, 32, 32), extent=(1, 1, 1), halo=(1, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(32, 32, 32), extent=(1, 1, 1), halo=(1.0, 1, 1))
 
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(16, 16, 16))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(16, 16, 16), x=2)
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(16, 16, 16), y=[1, 2])
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(16, 16, 16), z=(-π, π))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(16, 16, 16), x=1, y=2, z=3)
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(16, 16, 16), x=(0, 1), y=(0, 2), z=4)
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(16, 16, 16), x=(-1//2, 1), y=(1//7, 5//7), z=("0", "1"))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(16, 16, 16), x=(-1//2, 1), y=(1//7, 5//7), z=(1, 2, 3))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(16, 16, 16), x=(1, 0), y=(1//7, 5//7), z=(1, 2))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(16, 16, 16), extent=(1, 2, 3), x=(0, 1))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(16, 16, 16), extent=(1, 2, 3), x=(0, 1), y=(1, 5), z=(-π, π))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(16, 16, 16))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(16, 16, 16), x=2)
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(16, 16, 16), y=[1, 2])
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(16, 16, 16), z=(-π, π))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(16, 16, 16), x=1, y=2, z=3)
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(16, 16, 16), x=(0, 1), y=(0, 2), z=4)
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(16, 16, 16), x=(-1//2, 1), y=(1//7, 5//7), z=("0", "1"))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(16, 16, 16), x=(-1//2, 1), y=(1//7, 5//7), z=(1, 2, 3))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(16, 16, 16), x=(1, 0), y=(1//7, 5//7), z=(1, 2))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(16, 16, 16), extent=(1, 2, 3), x=(0, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(16, 16, 16), extent=(1, 2, 3), x=(0, 1), y=(1, 5), z=(-π, π))
 
-                @test_throws ArgumentError RegularRectilinearGrid(FT, size=(16, 16, 16), extent=(1, 1, 1), topology=(Periodic, Periodic, Flux))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, size=(16, 16, 16), extent=(1, 1, 1), topology=(Periodic, Periodic, Flux))
 
-                @test_throws ArgumentError RegularRectilinearGrid(FT, topology=(Flat, Periodic, Periodic), size=(16, 16, 16), extent=1)
-                @test_throws ArgumentError RegularRectilinearGrid(FT, topology=(Periodic, Flat, Periodic), size=(16, 16, 16), extent=(1, 1))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, topology=(Periodic, Periodic, Flat), size=(16, 16, 16), extent=(1, 1, 1))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, topology=(Periodic, Periodic, Flat), size=(16, 16),     extent=(1, 1, 1))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, topology=(Periodic, Periodic, Flat), size=16,           extent=(1, 1, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, topology=(Flat, Periodic, Periodic), size=(16, 16, 16), extent=1)
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, topology=(Periodic, Flat, Periodic), size=(16, 16, 16), extent=(1, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, topology=(Periodic, Periodic, Flat), size=(16, 16, 16), extent=(1, 1, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, topology=(Periodic, Periodic, Flat), size=(16, 16),     extent=(1, 1, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, topology=(Periodic, Periodic, Flat), size=16,           extent=(1, 1, 1))
 
-                @test_throws ArgumentError RegularRectilinearGrid(FT, topology=(Periodic, Flat, Flat), size=16, extent=(1, 1, 1))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, topology=(Flat, Periodic, Flat), size=16, extent=(1, 1))
-                @test_throws ArgumentError RegularRectilinearGrid(FT, topology=(Flat, Flat, Periodic), size=(16, 16), extent=1)
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, topology=(Periodic, Flat, Flat), size=16, extent=(1, 1, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, topology=(Flat, Periodic, Flat), size=16, extent=(1, 1))
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, topology=(Flat, Flat, Periodic), size=(16, 16), extent=1)
                 
-                @test_throws ArgumentError RegularRectilinearGrid(FT, topology=(Flat, Flat, Flat), size=16, extent=1)
+                @test_throws ArgumentError RegularRectilinearOrthogonalGrid(FT, topology=(Flat, Flat, Flat), size=16, extent=1)
             end
         end
 
@@ -277,51 +277,51 @@ end
             @info "    Testing construction of grids with Flat dimensions..."
 
             for FT in float_types
-                @test flat_size_regular_rectilinear_grid(FT; topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
-                @test flat_size_regular_rectilinear_grid(FT; topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
-                @test flat_size_regular_rectilinear_grid(FT; topology=(Periodic, Bounded, Flat),  size=(2, 3), extent=(1, 1)) === (2, 3, 1)
+                @test flat_size_regular_rectilinear_orthogonal_grid(FT; topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
+                @test flat_size_regular_rectilinear_orthogonal_grid(FT; topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
+                @test flat_size_regular_rectilinear_orthogonal_grid(FT; topology=(Periodic, Bounded, Flat),  size=(2, 3), extent=(1, 1)) === (2, 3, 1)
 
-                @test flat_size_regular_rectilinear_grid(FT; topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
-                @test flat_size_regular_rectilinear_grid(FT; topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
-                @test flat_size_regular_rectilinear_grid(FT; topology=(Periodic, Bounded, Flat),  size=(2, 3), extent=(1, 1)) === (2, 3, 1)
+                @test flat_size_regular_rectilinear_orthogonal_grid(FT; topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
+                @test flat_size_regular_rectilinear_orthogonal_grid(FT; topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
+                @test flat_size_regular_rectilinear_orthogonal_grid(FT; topology=(Periodic, Bounded, Flat),  size=(2, 3), extent=(1, 1)) === (2, 3, 1)
 
-                @test flat_size_regular_rectilinear_grid(FT; topology=(Periodic, Flat, Flat), size=2, extent=1) === (2, 1, 1)
-                @test flat_size_regular_rectilinear_grid(FT; topology=(Flat, Periodic, Flat), size=2, extent=1) === (1, 2, 1)
-                @test flat_size_regular_rectilinear_grid(FT; topology=(Flat, Flat, Bounded),  size=2, extent=1) === (1, 1, 2)
+                @test flat_size_regular_rectilinear_orthogonal_grid(FT; topology=(Periodic, Flat, Flat), size=2, extent=1) === (2, 1, 1)
+                @test flat_size_regular_rectilinear_orthogonal_grid(FT; topology=(Flat, Periodic, Flat), size=2, extent=1) === (1, 2, 1)
+                @test flat_size_regular_rectilinear_orthogonal_grid(FT; topology=(Flat, Flat, Bounded),  size=2, extent=1) === (1, 1, 2)
 
-                @test flat_size_regular_rectilinear_grid(FT; topology=(Flat, Flat, Flat), size=(), extent=()) === (1, 1, 1)
+                @test flat_size_regular_rectilinear_orthogonal_grid(FT; topology=(Flat, Flat, Flat), size=(), extent=()) === (1, 1, 1)
 
-                @test flat_halo_regular_rectilinear_grid(FT; topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=nothing) === (0, 1, 1)
-                @test flat_halo_regular_rectilinear_grid(FT; topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=nothing) === (1, 0, 1)
-                @test flat_halo_regular_rectilinear_grid(FT; topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=nothing) === (1, 1, 0)
+                @test flat_halo_regular_rectilinear_orthogonal_grid(FT; topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=nothing) === (0, 1, 1)
+                @test flat_halo_regular_rectilinear_orthogonal_grid(FT; topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=nothing) === (1, 0, 1)
+                @test flat_halo_regular_rectilinear_orthogonal_grid(FT; topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=nothing) === (1, 1, 0)
 
-                @test flat_halo_regular_rectilinear_grid(FT; topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=(2, 3)) === (0, 2, 3)
-                @test flat_halo_regular_rectilinear_grid(FT; topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 0, 3)
-                @test flat_halo_regular_rectilinear_grid(FT; topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 3, 0)
+                @test flat_halo_regular_rectilinear_orthogonal_grid(FT; topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=(2, 3)) === (0, 2, 3)
+                @test flat_halo_regular_rectilinear_orthogonal_grid(FT; topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 0, 3)
+                @test flat_halo_regular_rectilinear_orthogonal_grid(FT; topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 3, 0)
 
-                @test flat_halo_regular_rectilinear_grid(FT; topology=(Periodic, Flat, Flat), size=1, extent=1, halo=2) === (2, 0, 0)
-                @test flat_halo_regular_rectilinear_grid(FT; topology=(Flat, Periodic, Flat), size=1, extent=1, halo=2) === (0, 2, 0)
-                @test flat_halo_regular_rectilinear_grid(FT; topology=(Flat, Flat, Bounded),  size=1, extent=1, halo=2) === (0, 0, 2)
+                @test flat_halo_regular_rectilinear_orthogonal_grid(FT; topology=(Periodic, Flat, Flat), size=1, extent=1, halo=2) === (2, 0, 0)
+                @test flat_halo_regular_rectilinear_orthogonal_grid(FT; topology=(Flat, Periodic, Flat), size=1, extent=1, halo=2) === (0, 2, 0)
+                @test flat_halo_regular_rectilinear_orthogonal_grid(FT; topology=(Flat, Flat, Bounded),  size=1, extent=1, halo=2) === (0, 0, 2)
 
-                @test flat_halo_regular_rectilinear_grid(FT; topology=(Flat, Flat, Flat), size=(), extent=(), halo=()) === (0, 0, 0)
+                @test flat_halo_regular_rectilinear_orthogonal_grid(FT; topology=(Flat, Flat, Flat), size=(), extent=(), halo=()) === (0, 0, 0)
 
-                @test flat_extent_regular_rectilinear_grid(FT; topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) == (0, 1, 1)
-                @test flat_extent_regular_rectilinear_grid(FT; topology=(Periodic, Flat, Periodic), size=(2, 3), extent=(1, 1)) == (1, 0, 1)
-                @test flat_extent_regular_rectilinear_grid(FT; topology=(Periodic, Periodic, Flat), size=(2, 3), extent=(1, 1)) == (1, 1, 0)
+                @test flat_extent_regular_rectilinear_orthogonal_grid(FT; topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) == (0, 1, 1)
+                @test flat_extent_regular_rectilinear_orthogonal_grid(FT; topology=(Periodic, Flat, Periodic), size=(2, 3), extent=(1, 1)) == (1, 0, 1)
+                @test flat_extent_regular_rectilinear_orthogonal_grid(FT; topology=(Periodic, Periodic, Flat), size=(2, 3), extent=(1, 1)) == (1, 1, 0)
 
-                @test flat_extent_regular_rectilinear_grid(FT; topology=(Periodic, Flat, Flat), size=2, extent=1) == (1, 0, 0)
-                @test flat_extent_regular_rectilinear_grid(FT; topology=(Flat, Periodic, Flat), size=2, extent=1) == (0, 1, 0)
-                @test flat_extent_regular_rectilinear_grid(FT; topology=(Flat, Flat, Periodic), size=2, extent=1) == (0, 0, 1)
+                @test flat_extent_regular_rectilinear_orthogonal_grid(FT; topology=(Periodic, Flat, Flat), size=2, extent=1) == (1, 0, 0)
+                @test flat_extent_regular_rectilinear_orthogonal_grid(FT; topology=(Flat, Periodic, Flat), size=2, extent=1) == (0, 1, 0)
+                @test flat_extent_regular_rectilinear_orthogonal_grid(FT; topology=(Flat, Flat, Periodic), size=2, extent=1) == (0, 0, 1)
 
-                @test flat_extent_regular_rectilinear_grid(FT; topology=(Flat, Flat, Flat), size=(), extent=()) == (0, 0, 0)
+                @test flat_extent_regular_rectilinear_orthogonal_grid(FT; topology=(Flat, Flat, Flat), size=(), extent=()) == (0, 0, 0)
             end
         end
 
         # Testing show function
         topo = (Periodic, Periodic, Periodic)
-        grid = RegularRectilinearGrid(topology=topo, size=(3, 7, 9), x=(0, 1), y=(-π, π), z=(0, 2π))
+        grid = RegularRectilinearOrthogonalGrid(topology=topo, size=(3, 7, 9), x=(0, 1), y=(-π, π), z=(0, 2π))
         show(grid); println();
-        @test grid isa RegularRectilinearGrid
+        @test grid isa RegularRectilinearOrthogonalGrid
     end
 
     @testset "Vertically stretched rectilinear grid" begin

@@ -43,7 +43,7 @@ using Oceananigans
 
 U(x, y, z, t) = 0.2 * z
 
-grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+grid = RegularRectilinearOrthogonalGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
 model = IncompressibleModel(grid = grid, background_fields = (u=U,))
 
@@ -52,7 +52,7 @@ model.background_fields.velocities.u
 # output
 FunctionField located at (Face, Center, Center)
 ├── func: U
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── grid: RegularRectilinearOrthogonalGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 ├── clock: Clock(time=0 seconds, iteration=0)
 └── parameters: nothing
 ```
@@ -85,7 +85,7 @@ BackgroundField{typeof(B), NamedTuple{(:α, :N, :f),Tuple{Float64,Float64,Float6
 When inserted into `IncompressibleModel`, we get out
 
 ```jldoctest moar_background
-grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+grid = RegularRectilinearOrthogonalGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
 model = IncompressibleModel(grid = grid, background_fields = (u=U_field, b=B_field),
                             tracers=:b, buoyancy=BuoyancyTracer())
@@ -95,7 +95,7 @@ model.background_fields.tracers.b
 # output
 FunctionField located at (Center, Center, Center)
 ├── func: B
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── grid: RegularRectilinearOrthogonalGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 ├── clock: Clock(time=0 seconds, iteration=0)
 └── parameters: (α = 3.14, N = 1.0, f = 0.1)
 ```

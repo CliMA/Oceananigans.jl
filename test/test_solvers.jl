@@ -18,7 +18,7 @@ function can_solve_single_tridiagonal_system(arch, N)
 
     ϕ = reshape(zeros(N), (1, 1, N)) |> ArrayType
 
-    grid = RegularRectilinearGrid(size=(1, 1, N), extent=(1, 1, 1))
+    grid = RegularRectilinearOrthogonalGrid(size=(1, 1, N), extent=(1, 1, 1))
     btsolver = BatchedTridiagonalSolver(arch; dl=a, d=b, du=c, f=f, grid=grid)
 
     solve_batched_tridiagonal_system!(ϕ, arch, btsolver)
@@ -29,7 +29,7 @@ end
 function can_solve_single_tridiagonal_system_with_functions(arch, N)
     ArrayType = array_type(arch)
 
-    grid = RegularRectilinearGrid(size=(1, 1, N), extent=(1, 1, 1))
+    grid = RegularRectilinearOrthogonalGrid(size=(1, 1, N), extent=(1, 1, 1))
 
     a = rand(N-1)
     c = rand(N-1)
@@ -75,7 +75,7 @@ function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz)
     # Convert to CuArray if needed.
     a, b, c, f = ArrayType.([a, b, c, f])
 
-    grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 1, 1))
+    grid = RegularRectilinearOrthogonalGrid(size=(Nx, Ny, Nz), extent=(1, 1, 1))
     btsolver = BatchedTridiagonalSolver(arch; dl=a, d=b, du=c, f=f, grid=grid)
 
     ϕ = zeros(Nx, Ny, Nz) |> ArrayType
@@ -88,7 +88,7 @@ end
 function can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz)
     ArrayType = array_type(arch)
 
-    grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 1, 1))
+    grid = RegularRectilinearOrthogonalGrid(size=(Nx, Ny, Nz), extent=(1, 1, 1))
 
     a = rand(Nz-1)
     c = rand(Nz-1)
@@ -166,7 +166,7 @@ function vertically_stretched_poisson_solver_correct_answer(arch, Nx, Ny, zF)
 
     # Temporary hack: Useful for reusing fill_halo_regions! and
     # BatchedTridiagonalSolver which only need Nx, Ny, Nz.
-    fake_grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    fake_grid = RegularRectilinearOrthogonalGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 
     #####
     ##### Generate batched tridiagonal system coefficients and solver

@@ -211,9 +211,9 @@ end
 #####
 
 # Recall that filter widths are 2x the grid spacing in VAMD
-@inline Δᶠxᶜᶜᶜ(i, j, k, grid::RegularRectilinearGrid) = 2 * grid.Δx
-@inline Δᶠyᶜᶜᶜ(i, j, k, grid::RegularRectilinearGrid) = 2 * grid.Δy
-@inline Δᶠzᶜᶜᶜ(i, j, k, grid::RegularRectilinearGrid) = 2 * grid.Δz
+@inline Δᶠxᶜᶜᶜ(i, j, k, grid::RegularRectilinearOrthogonalGrid) = 2 * grid.Δx
+@inline Δᶠyᶜᶜᶜ(i, j, k, grid::RegularRectilinearOrthogonalGrid) = 2 * grid.Δy
+@inline Δᶠzᶜᶜᶜ(i, j, k, grid::RegularRectilinearOrthogonalGrid) = 2 * grid.Δz
 
 for loc in (:ccf, :fcc, :cfc, :ffc, :cff, :fcf), ξ in (:x, :y, :z)
     Δ_loc = Symbol(:Δᶠ, ξ, :_, loc)
