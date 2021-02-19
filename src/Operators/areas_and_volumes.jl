@@ -109,8 +109,6 @@ The operators in this file fall into three categories:
 ##### Temporary place for grid spacings and areas for RegularLatitudeLongitudeGrid
 #####
 
-# TODO: Move to Oceananigans.Operators (or define operators first?)
-
 @inline Δxᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * cosd(grid.ϕᵃᶠᵃ[j]) * deg2rad(grid.Δλ)
 @inline Δyᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δϕ)
 
