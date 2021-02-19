@@ -12,6 +12,7 @@ export
   AnisotropicMinimumDissipation,
   RozemaAnisotropicMinimumDissipation,
   VerstappenAnisotropicMinimumDissipation,
+  HorizontallyCurvilinearAnisotropicDiffusivity,
 
   DiffusivityFields,
   calculate_diffusivities!,
@@ -155,7 +156,6 @@ with_tracers(tracers, closure_tuple::Tuple) =
 #####
 
 include("turbulence_closure_utils.jl")
-include("closure_operators.jl")
 include("diffusion_operators.jl")
 include("viscous_dissipation_operators.jl")
 include("velocity_tracer_gradients.jl")
@@ -165,6 +165,7 @@ include("closure_tuples.jl")
 include("turbulence_closure_implementations/nothing_closure.jl")
 include("turbulence_closure_implementations/isotropic_diffusivity.jl")
 include("turbulence_closure_implementations/anisotropic_diffusivity.jl")
+include("turbulence_closure_implementations/horizontally_curvilinear_anistropic_diffusivity.jl")
 include("turbulence_closure_implementations/anisotropic_biharmonic_diffusivity.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 include("turbulence_closure_implementations/smagorinsky_lilly.jl")
