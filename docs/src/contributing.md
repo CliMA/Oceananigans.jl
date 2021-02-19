@@ -102,6 +102,16 @@ properly. Didn't write new functions? That's fine, but be sure that the document
 the code you touched is still in great shape. It is not uncommon to find some strange wording
 or clarification that you can take care of while you are here.
 
+You can preview how the Documentation will look like after merging by building the documentation 
+locally. From the main directory of your local repository call
+
+```
+julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'
+julia --project=docs/ docs/make.jl
+```
+ 
+ and then open `docs/build/index.html` in your favorite browser.
+
 ## Credits
 
 This contributor's guide is heavily based on the excellent [MetPy contributor's guide](https://github.com/Unidata/MetPy/blob/master/CONTRIBUTING.md).
