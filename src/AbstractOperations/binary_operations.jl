@@ -119,11 +119,11 @@ julia> @binary plus_or_times
  :*
  :plus_or_times
 
-julia> c, d = (Field(Center, Center, Center, CPU(), RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:2);
+julia> c, d = (Field(Center, Center, Center, CPU(), RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:2);
 
 julia> plus_or_times(c, d)
 BinaryOperation at (Center, Center, Center)
-├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 │   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
 └── tree:
     plus_or_times at (Center, Center, Center) via identity

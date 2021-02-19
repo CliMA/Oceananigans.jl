@@ -219,5 +219,5 @@ function calculate_diffusivities!(K, arch, grid, closure::AbstractLeith, buoyanc
     return nothing
 end
 
-"Return the filter width for a Leith Diffusivity on a Regular Cartesian grid."
-@inline Δᶠ(i, j, k, grid::RegularCartesianGrid, ::AbstractLeith) = sqrt(grid.Δx * grid.Δy)
+"Return the filter width for a Leith Diffusivity on a Regular rectilinear grid."
+@inline Δᶠ(i, j, k, grid::RegularRectilinearGrid, ::AbstractLeith) = sqrt(grid.Δx * grid.Δy)

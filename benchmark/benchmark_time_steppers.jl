@@ -6,7 +6,7 @@ using Benchmarks
 # Benchmark function
 
 function benchmark_time_stepper(Arch, N, TimeStepper)
-    grid = RegularCartesianGrid(size=(N, N, N), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(size=(N, N, N), extent=(1, 1, 1))
     model = IncompressibleModel(architecture=Arch(), grid=grid, timestepper=TimeStepper)
 
     time_step!(model, 1) # warmup

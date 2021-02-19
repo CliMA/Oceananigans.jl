@@ -4,7 +4,7 @@ export
     Center, Face,
     AbstractTopology, Periodic, Bounded, Flat, topology,
     AbstractGrid,
-    AbstractRectilinearGrid, RegularCartesianGrid, VerticallyStretchedCartesianGrid,
+    AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid,
     xnode, ynode, znode, xnodes, ynodes, znodes, nodes,
     xC, xF, yC, yF, zC, zF
 
@@ -90,7 +90,7 @@ topology(grid, dim) = topology(grid)[dim]
 
 include("grid_utils.jl")
 include("input_validation.jl")
-include("regular_cartesian_grid.jl")
-include("vertically_stretched_cartesian_grid.jl")
+include("regular_rectilinear_grid.jl")
+include("vertically_stretched_rectilinear_grid.jl")
 
 end

@@ -1,6 +1,6 @@
 # Coordinate system and notation
 
-Oceananigans.jl is formulated in a Cartesian coordinate system
+Oceananigans.jl is formulated in a rectilinear coordinate system
 ``\bm{x} = (x, y, z)`` with unit vectors ``\bm{\hat x}``, ``\bm{\hat y}``, and ``\bm{\hat z}``,
 where ``\bm{\hat x}`` points east, ``\bm{\hat y}`` points north, and ``\bm{\hat z}`` points 'upward',
 opposite the direction of gravitational acceleration.

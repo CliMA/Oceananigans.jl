@@ -18,7 +18,7 @@ function convert_diffusivity(FT, κ::NamedTuple)
     return NamedTuple{κ_names}(Tuple(convert_diffusivity(FT, κi) for κi in κ))
 end
 
-@inline geo_mean_Δᶠ(i, j, k, grid::RegularCartesianGrid{T}) where T = (grid.Δx * grid.Δy * grid.Δz)^T(1/3)
+@inline geo_mean_Δᶠ(i, j, k, grid::RegularRectilinearGrid{T}) where T = (grid.Δx * grid.Δy * grid.Δz)^T(1/3)
 
 @kernel function calculate_nonlinear_viscosity!(νₑ, grid, closure, buoyancy, U, C)
     i, j, k = @index(Global, NTuple)

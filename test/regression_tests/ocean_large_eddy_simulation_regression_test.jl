@@ -14,7 +14,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     ∂T∂z = 0.005    # Initial vertical temperature gradient
 
     # Grid
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(16, 16, 16))
+    grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(16, 16, 16))
 
     # Boundary conditions
     u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
