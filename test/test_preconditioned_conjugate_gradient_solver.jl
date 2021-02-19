@@ -5,6 +5,27 @@ using Statistics
     @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
 end
 
+@kernel function implicit_η!(grid, f, implicit_η_f)
+    ### Not sure what to call this
+    ### it is for left hand side operator in
+    ### (-g∇ₕ² + 1/Δt )ϕⁿ⁺¹=ϕⁿ/Δt + ∇ₕHUˢᵗᵃʳ
+
+    #
+    # g= model.free_surface.gravitational_acceleration
+    #
+    g = 9.81
+
+    #
+    # Δt= simulation.Δt
+    #
+    Δt = 9.81
+
+    i, j, k = @index(Global, NTuple)
+    @inbounds implicit_η_f[i, j] = -g * ∇²(i, j, grid, f) + f[i,j]/Δt
+
+    # need this for 2d vertically integrated ∇²hᶜᶜᵃ
+end
+
 @kernel function divergence!(grid, u, v, w, div)
     i, j, k = @index(Global, NTuple)
     @inbounds div[i, j, k] = divᶜᶜᶜ(i, j, k, grid, u, v, w)
