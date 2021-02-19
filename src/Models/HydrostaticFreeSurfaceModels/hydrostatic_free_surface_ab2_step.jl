@@ -81,8 +81,17 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
 
     ##### Implicit solver for η
     
-    ## Need to wait for U* and V* to finish
+    ## Need to wait for u* and v* to finish
     wait(device(model.architecture), velocities_update)
+
+    ## We need vertically integrated U,V (see continuity bits in src/Models/HydrostaticFreeSurfaceModels/compute_w_from_continuity.jl), 
+    ## model.free_surface.η, g and Δt and grid.... 
+    ## Then we can invoke solve_for_pressure! on the right type via calculate_pressure_correction!
+
+    ## Note Jean-Michel is a fan of doing ExplicitFreeSurface step before solve, so maybe this code is part of free_surface::ExplicitFreeSurface
+    ## that comes after explicit step
+    
+    ## Once we have η we can update u* and v* with pressure gradient just as in pressure_correct_velocities!
 
     return
 end
