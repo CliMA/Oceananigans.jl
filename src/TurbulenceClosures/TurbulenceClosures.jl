@@ -1,30 +1,30 @@
 module TurbulenceClosures
 
 export
-  AbstractIsotropicDiffusivity,
-  IsotropicDiffusivity,
-  AnisotropicDiffusivity,
-  AnisotropicBiharmonicDiffusivity,
-  TwoDimensionalLeith,
-  ConstantSmagorinsky,
-  SmagorinskyLilly,
-  BlasiusSmagorinsky,
-  AnisotropicMinimumDissipation,
-  RozemaAnisotropicMinimumDissipation,
-  VerstappenAnisotropicMinimumDissipation,
-  HorizontallyCurvilinearAnisotropicDiffusivity,
+    AbstractIsotropicDiffusivity,
+    IsotropicDiffusivity,
+    AnisotropicDiffusivity,
+    AnisotropicBiharmonicDiffusivity,
+    TwoDimensionalLeith,
+    ConstantSmagorinsky,
+    SmagorinskyLilly,
+    BlasiusSmagorinsky,
+    AnisotropicMinimumDissipation,
+    RozemaAnisotropicMinimumDissipation,
+    VerstappenAnisotropicMinimumDissipation,
+    HorizontallyCurvilinearAnisotropicDiffusivity,
 
-  DiffusivityFields,
-  calculate_diffusivities!,
+    DiffusivityFields,
+    calculate_diffusivities!,
 
-  ∇_κ_∇c,
-  ∇_κ_∇T,
-  ∇_κ_∇S,
-  ∂ⱼ_2ν_Σ₁ⱼ,
-  ∂ⱼ_2ν_Σ₂ⱼ,
-  ∂ⱼ_2ν_Σ₃ⱼ,
+    ∇_κ_∇c,
+    ∇_κ_∇T,
+    ∇_κ_∇S,
+    ∂ⱼ_2ν_Σ₁ⱼ,
+    ∂ⱼ_2ν_Σ₂ⱼ,
+    ∂ⱼ_2ν_Σ₃ⱼ,
 
-  cell_diffusion_timescale
+    cell_diffusion_timescale
 
 using CUDA
 using KernelAbstractions
