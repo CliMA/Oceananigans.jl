@@ -41,10 +41,13 @@ struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractRectili
      zF :: A
 end
 
-function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
+function VerticallyStretchedCartesianGrid(FT=Float64, architecture=CPU();
                                               size, x, y, zF,
-                                              halo = (1, 1, 1), 
+                                              halo = (1, 1, 1),
                                           topology = (Periodic, Periodic, Bounded))
+
+    architecture isa GPU && error("VerticallyStretchedCartesianGrid only works with architecture=CPU() right now.")
+    topology != (Periodic, Periodic, Bounded) && error("Only topology = (Periodic, Periodic, Bounded) is supported right now.")
 
     TX, TY, TZ = validate_topology(topology)
     size = validate_size(TX, TY, TZ, size)
@@ -58,10 +61,10 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     Lz, zF, zC, ΔzF, ΔzC = generate_stretched_vertical_grid(FT, topology[3], Nz, Hz, zF)
 
     # Convert to appropriate array type for arch
-     zF = convert(array_type(arch), zF)
-     zC = convert(array_type(arch), zC)
-    ΔzF = convert(array_type(arch), ΔzF)
-    ΔzC = convert(array_type(arch), ΔzC)
+     zF = convert(array_type(architecture), zF)
+     zC = convert(array_type(architecture), zC)
+    ΔzF = convert(array_type(architecture), ΔzF)
+    ΔzC = convert(array_type(architecture), ΔzC)
 
     # Construct uniform horizontal grid
     Lh, Nh, Hh, X₁ = (Lx, Ly), size[1:2], halo[1:2], (x[1], y[1])
@@ -74,7 +77,7 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     # Center-node limits in x, y, z
     xC₋, yC₋ = XC₋ = @. XF₋ + Δh / 2
     xC₊, yC₊ = XC₊ = @. XC₋ + Lh + Δh * (2Hh - 1)
-    
+
     # Total length of Center and Face quantities
     TFx, TFy, TFz = total_length.(Face, topology, size, halo)
     TCx, TCy, TCz = total_length.(Center, topology, size, halo)
@@ -133,7 +136,7 @@ function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, zF_generator)
 
     Lz = interior_zF[Nz+1] - interior_zF[1]
 
-    # Build halo regions 
+    # Build halo regions
     ΔzF₋ = lower_exterior_ΔzF(z_topo, interior_zF, Hz)
     ΔzF₊ = upper_exterior_ΔzF(z_topo, interior_zF, Hz)
 
