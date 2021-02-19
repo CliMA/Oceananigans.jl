@@ -124,7 +124,7 @@ mutable struct NetCDFOutputWriter{D, O, T, S, A} <: AbstractOutputWriter
 end
 
 """
-function NetCDFOutputWriter(model, outputs; filepath, schedule
+    NetCDFOutputWriter(model, outputs; filepath, schedule
                                    array_type = Array{Float32},
                                  field_slicer = FieldSlicer(),
                             global_attributes = Dict(),
