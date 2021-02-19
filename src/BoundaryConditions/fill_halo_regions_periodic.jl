@@ -19,7 +19,7 @@ for (x, side) in zip(coords, sides)
     H = Symbol(:H, x)
     N = Symbol(:N, x)
     @eval begin
-        $name(c, bc::PBC, arch, dependencies, grid, args...) =
+        $name(c, bc::PBC, arch, dependencies, grid, args...; kwargs...) =
             $name(c, bc, grid.$(H), grid.$(N))
     end
 end

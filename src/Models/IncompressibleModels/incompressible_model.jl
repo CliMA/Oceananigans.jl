@@ -16,7 +16,7 @@ using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFi
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: inflate_halo_size, tupleit
 
-mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SW, U, C, Φ, F,
+mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
                                    V, S, K, BG, P} <: AbstractModel{TS}
          architecture :: A         # Computer `Architecture` on which `Model` is run
                  grid :: G         # Grid of physical points on which `Model` is solved
@@ -24,7 +24,7 @@ mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
             advection :: V         # Advection scheme for velocities _and_ tracers
              buoyancy :: B         # Set of parameters for buoyancy model
              coriolis :: R         # Set of parameters for the background rotation rate of `Model`
-        surface_waves :: SW        # Set of parameters for surfaces waves via the Craik-Leibovich approximation
+         stokes_drift :: SD        # Set of parameters for surfaces waves via the Craik-Leibovich approximation
               forcing :: F         # Container for forcing functions defined by the user
               closure :: E         # Diffusive 'turbulence closure' for all model fields
     background_fields :: BG        # Background velocity and tracer fields
@@ -46,7 +46,7 @@ end
               advection = CenteredSecondOrder(),
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
-          surface_waves = nothing,
+           stokes_drift = nothing,
                 forcing = NamedTuple(),
                 closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
     boundary_conditions = NamedTuple(),
@@ -87,7 +87,7 @@ function IncompressibleModel(;
               advection = CenteredSecondOrder(),
                buoyancy = SeawaterBuoyancy(float_type),
                coriolis = nothing,
-          surface_waves = nothing,
+          stokes_drift = nothing,
                 forcing::NamedTuple = NamedTuple(),
                 closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
     boundary_conditions::NamedTuple = NamedTuple(),
@@ -147,7 +147,7 @@ function IncompressibleModel(;
     forcing = model_forcing(model_fields; forcing...)
     closure = with_tracers(tracernames(tracers), closure)
 
-    return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, surface_waves,
+    return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                forcing, closure, background_fields, particles, velocities, tracers,
                                pressures, diffusivities, timestepper, pressure_solver)
 end

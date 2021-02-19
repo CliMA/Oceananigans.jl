@@ -19,20 +19,19 @@ function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)
     return nothing
 end
 
-fill_halo_regions!(field, arch, args...) =
-    fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...)
+fill_halo_regions!(field, arch, args...) = fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...)
 
 "Fill halo regions in x, y, and z for a given field."
-function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...)
+function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...; kwargs...)
 
     barrier = Event(device(arch))
 
-      west_event =   fill_west_halo!(c, fieldbcs.west,   arch, barrier, grid, args...)
-      east_event =   fill_east_halo!(c, fieldbcs.east,   arch, barrier, grid, args...)
-     south_event =  fill_south_halo!(c, fieldbcs.south,  arch, barrier, grid, args...)
-     north_event =  fill_north_halo!(c, fieldbcs.north,  arch, barrier, grid, args...)
-    bottom_event = fill_bottom_halo!(c, fieldbcs.bottom, arch, barrier, grid, args...)
-       top_event =    fill_top_halo!(c, fieldbcs.top,    arch, barrier, grid, args...)
+      west_event =   fill_west_halo!(c, fieldbcs.west,   arch, barrier, grid, args...; kwargs...)
+      east_event =   fill_east_halo!(c, fieldbcs.east,   arch, barrier, grid, args...; kwargs...)
+     south_event =  fill_south_halo!(c, fieldbcs.south,  arch, barrier, grid, args...; kwargs...)
+     north_event =  fill_north_halo!(c, fieldbcs.north,  arch, barrier, grid, args...; kwargs...)
+    bottom_event = fill_bottom_halo!(c, fieldbcs.bottom, arch, barrier, grid, args...; kwargs...)
+       top_event =    fill_top_halo!(c, fieldbcs.top,    arch, barrier, grid, args...; kwargs...)
 
     # Wait at the end
     events = [west_event, east_event, south_event, north_event, bottom_event, top_event]
@@ -41,3 +40,14 @@ function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...)
 
     return nothing
 end
+
+#####
+##### Halo-filling for nothing boundary conditions
+#####
+
+  fill_west_halo!(c, ::Nothing, args...; kwargs...) = nothing
+  fill_east_halo!(c, ::Nothing, args...; kwargs...) = nothing
+ fill_south_halo!(c, ::Nothing, args...; kwargs...) = nothing 
+ fill_north_halo!(c, ::Nothing, args...; kwargs...) = nothing
+   fill_top_halo!(c, ::Nothing, args...; kwargs...) = nothing
+fill_bottom_halo!(c, ::Nothing, args...; kwargs...) = nothing

@@ -41,7 +41,7 @@ export
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
 
     # Surface waves via Craik-Leibovich equations
-    SurfaceWaves,
+    StokesDrift,
 
     # Turbulence closures
     IsotropicDiffusivity, AnisotropicDiffusivity,
@@ -52,7 +52,7 @@ export
     LagrangianParticles,
 
     # Models
-    IncompressibleModel, NonDimensionalModel, Clock,
+    IncompressibleModel, NonDimensionalModel, HydrostaticFreeSurfaceModel, Clock,
 
     # Time stepping
     time_step!, TimeStepWizard,
@@ -143,7 +143,7 @@ include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("Coriolis/Coriolis.jl")
 include("Buoyancy/Buoyancy.jl")
-include("SurfaceWaves.jl")
+include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("Solvers/Solvers.jl")
@@ -167,7 +167,7 @@ using .BoundaryConditions
 using .Fields
 using .Coriolis
 using .Buoyancy
-using .SurfaceWaves
+using .StokesDrift
 using .TurbulenceClosures
 using .LagrangianParticleTracking
 using .Solvers

@@ -67,6 +67,25 @@ function cell_diffusion_timescale(closure::AnisotropicBiharmonicDiffusivity, dif
                Δz^2 / max_κz)
 end
 
+function cell_diffusion_timescale(closure::HorizontallyCurvilinearAnisotropicDiffusivity, diffusivities, grid)
+    Δx = min_Δx(grid)
+    Δy = min_Δy(grid)
+    Δz = min_Δz(grid)
+
+    max_νh = maximum_numeric_diffusivity(closure.νh)
+    max_νz = maximum_numeric_diffusivity(closure.νz)
+
+    max_κh = maximum_numeric_diffusivity(closure.κh)
+    max_κz = maximum_numeric_diffusivity(closure.κz)
+
+    return min(Δx^2 / max_νh,
+               Δy^2 / max_νh,
+               Δz^2 / max_νz,
+               Δx^2 / max_κh,
+               Δy^2 / max_κh,
+               Δz^2 / max_κz)
+end
+
 function cell_diffusion_timescale(closure::SmagorinskyLilly{FT, P, <:NamedTuple{()}},
                                   diffusivities, grid) where {FT, P}
     Δ = min_Δxyz(grid)
