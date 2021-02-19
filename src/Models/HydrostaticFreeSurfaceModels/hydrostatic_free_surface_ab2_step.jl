@@ -75,3 +75,14 @@ end
         η[i, j, 1] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, 1] - (FT(0.5) + χ) * Gη⁻[i, j, 1])
     end
 end
+
+
+function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_update, model, χ, Δt)
+
+    ##### Implicit solver for η
+    
+    ## Need to wait for U* and V* to finish
+    wait(device(model.architecture), velocities_update)
+
+    return
+end
