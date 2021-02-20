@@ -3,7 +3,7 @@ using NCDatasets
 using Oceananigans.Fields
 using Oceananigans.Utils: show_schedule
 
-using Dates: now
+using Dates: AbstractTime, now
 using Oceananigans.Grids: topology, halo_size
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 using Oceananigans.TimeSteppers: float_or_date_time
@@ -324,11 +324,12 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
                    compression=compression, attrib=default_dimension_attributes[dim_name])
         end
 
-        # Creates an unlimited dimension "time"
-        time_attrib = model.clock.time isa Dates.AbstractTime ?
+        # DateTime and TimeDate are both <: AbstractTime
+        time_attrib = model.clock.time isa AbstractTime ?
             Dict("longname" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
             Dict("longname" => "Time", "units" => "seconds")
 
+        # Creates an unlimited dimension "time"
         defDim(dataset, "time", Inf)
         defVar(dataset, "time", eltype(model.grid), ("time",), attrib=time_attrib)
 
