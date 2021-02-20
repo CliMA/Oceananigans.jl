@@ -50,6 +50,7 @@ tick_time!(clock::Clock{<:AbstractTime}, Δt) = clock.time += Nanosecond(round(I
 
 unit_time(t) = t
 unit_time(t::Millisecond) = t.value / 1000
+unit_time(t::Nanosecond) = t.value / 1_000_000_000
 
 function tick!(clock, Δt; stage=false)
 
