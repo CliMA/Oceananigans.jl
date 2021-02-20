@@ -1,3 +1,5 @@
+using Oceananigans.Coriolis: Ω_Earth
+
 function instantiate_fplane_1(FT)
     coriolis = FPlane(FT, f=π)
     return coriolis.f == FT(π)
@@ -49,6 +51,16 @@ function instantiate_ntbetaplane_2(FT)
     @test coriolis.γ  == FT(-4Ω*sind(φ)/R)
 end
 
+function instantiate_hydrostatic_spherical_coriolis1(FT)
+    coriolis = HydrostaticSphericalCoriolis(FT)
+    @test coriolis.rotation_rate == FT(Ω_Earth)
+end
+
+function instantiate_hydrostatic_spherical_coriolis2(FT)
+    coriolis = HydrostaticSphericalCoriolis(FT, rotation_rate=π)
+    @test coriolis.rotation_rate == FT(π)
+end
+
 @testset "Coriolis" begin
     @info "Testing Coriolis..."
 
@@ -61,6 +73,8 @@ end
             instantiate_ntfplane_2(FT)
             instantiate_betaplane_1(FT)
             instantiate_betaplane_2(FT)
+            instantiate_hydrostatic_spherical_coriolis1(FT)
+            instantiate_hydrostatic_spherical_coriolis2(FT)
 
             # Test that FPlane throws an ArgumentError
             @test_throws ArgumentError FPlane(FT)
