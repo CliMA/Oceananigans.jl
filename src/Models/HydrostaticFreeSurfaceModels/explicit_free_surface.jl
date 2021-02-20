@@ -1,5 +1,5 @@
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Operators: ∂xᶠᵃᵃ, ∂yᵃᶠᵃ
+using Oceananigans.Operators: ∂xᶠᶜᵃ, ∂yᶜᶠᵃ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
 using Adapt
@@ -22,7 +22,7 @@ function FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, arch, grid)
 end
 
 explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂xᶠᵃᵃ(i, j, k, grid, free_surface.η)
+    free_surface.gravitational_acceleration * ∂xᶠᶜᵃ(i, j, k, grid, free_surface.η)
 
 explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂yᵃᶠᵃ(i, j, k, grid, free_surface.η)
+    free_surface.gravitational_acceleration * ∂yᶜᶠᵃ(i, j, k, grid, free_surface.η)
