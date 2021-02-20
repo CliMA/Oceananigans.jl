@@ -1,6 +1,7 @@
 using Oceananigans.Buoyancy
 using Oceananigans.Coriolis
 using Oceananigans.Operators
+using Oceananigans.Operators: ∂xᶠᶜᵃ, ∂yᶜᶠᵃ
 using Oceananigans.StokesDrift
 using Oceananigans.TurbulenceClosures: ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
 using Oceananigans.Advection: div_Uc
@@ -43,7 +44,7 @@ implicitly during time-stepping.
     return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
-             - ∂xᶠᵃᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
+             - ∂xᶠᶜᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
              + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
              + forcings.u(i, j, k, grid, clock, merge(velocities, (η=free_surface.η,), tracers)))
 end
@@ -86,7 +87,7 @@ implicitly during time-stepping.
     return ( - U_dot_∇v(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
-             - ∂yᵃᶠᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
+             - ∂yᶜᶠᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
              + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
              + forcings.v(i, j, k, grid, clock, merge(velocities, (η=free_surface.η,), tracers)))
 end

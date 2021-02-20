@@ -1,9 +1,15 @@
-function run_thermal_bubble_regression_test(arch)
+function run_thermal_bubble_regression_test(arch, grid_type)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    if grid_type == :regular
+        grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    elseif grid_type == :vertically_unstretched
+        zF = range(-Lz, 0, length=Nz+1)
+        grid = VerticallyStretchedCartesianGrid(size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), zF=zF)
+    end
+
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = IncompressibleModel(architecture=arch, grid=grid, closure=closure, coriolis=FPlane(f=1e-4))
     simulation = Simulation(model, Δt=6, stop_iteration=10)
