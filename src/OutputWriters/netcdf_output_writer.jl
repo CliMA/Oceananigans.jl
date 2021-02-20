@@ -1,3 +1,4 @@
+using Dates
 using NCDatasets
 
 using Oceananigans.Fields
@@ -324,8 +325,12 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
         end
 
         # Creates an unlimited dimension "time"
+        time_attrib = model.clock.time isa Dates.AbstractTime ?
+            Dict("longname" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
+            Dict("longname" => "Time", "units" => "seconds")
+
         defDim(dataset, "time", Inf)
-        defVar(dataset, "time", typeof(model.clock.time), ("time",), attrib=default_dimension_attributes["time"])
+        defVar(dataset, "time", eltype(model.grid), ("time",), attrib=time_attrib)
 
         # Use default output attributes for known outputs if the user has not specified any.
         # Unknown outputs get an empty tuple (no output attributes).
