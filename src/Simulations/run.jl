@@ -3,7 +3,7 @@ using Glob
 using Oceananigans.Utils: initialize_schedule!, align_time_step
 using Oceananigans.Fields: set!
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!, tick_time, unit_time
 
 using Oceananigans: AbstractModel
 
@@ -88,8 +88,8 @@ function aligned_time_step(sim)
     end
 
     # Align time step with simulation stop time
-    if clock.time + Δt > sim.stop_time
-        Δt = sim.stop_time - clock.time
+    if tick_time(clock, Δt) > sim.stop_time
+        Δt = unit_time(sim.stop_time - clock.time)
     end
 
     return Δt

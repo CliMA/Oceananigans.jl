@@ -1,5 +1,5 @@
 using Adapt
-using Dates: AbstractTime, Nanosecond
+using Dates: AbstractTime, Nanosecond, Millisecond
 using Oceananigans.Utils: prettytime
 
 import Base: show
@@ -16,10 +16,10 @@ mutable struct Clock{T}
          time :: T
     iteration :: Int
         stage :: Int
-    
+
     """
         Clock{T}(time, iteration, stage=1)
-    
+
     Returns a `Clock` with time of type `T`, initialized to the first stage.
     """
     function Clock{T}(time, iteration=0, stage=1) where T
@@ -42,9 +42,15 @@ Base.show(io::IO, c::Clock{T}) where T =
                     ", iteration = ", c.iteration,
                         ", stage = ", c.stage)
 
+tick_time(clock, Δt) = clock.time + Δt
+tick_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + Nanosecond(round(Int, 1e9 * Δt))
+
 tick_time!(clock, Δt) = clock.time += Δt
 tick_time!(clock::Clock{<:AbstractTime}, Δt) = clock.time += Nanosecond(round(Int, 1e9 * Δt))
-    
+
+unit_time(t) = t
+unit_time(t::Millisecond) = t.value / 1000
+
 function tick!(clock, Δt; stage=false)
 
     tick_time!(clock, Δt)
