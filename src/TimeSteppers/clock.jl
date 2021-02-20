@@ -1,5 +1,6 @@
 using Adapt
-using Dates: AbstractTime, Nanosecond, Millisecond
+using Dates: AbstractTime, DateTime, Nanosecond, Millisecond
+using TimesDates: TimeDate
 using Oceananigans.Utils: prettytime
 
 import Base: show
@@ -48,9 +49,14 @@ tick_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + Nanosecond(round(Int
 tick_time!(clock, Δt) = clock.time += Δt
 tick_time!(clock::Clock{<:AbstractTime}, Δt) = clock.time += Nanosecond(round(Int, 1e9 * Δt))
 
+# Convert the time to units of clock.time (assumed to be seconds if using DateTime or TimeDate).
 unit_time(t) = t
 unit_time(t::Millisecond) = t.value / 1000
 unit_time(t::Nanosecond) = t.value / 1_000_000_000
+
+# Convert to a base Julia type (a float or DateTime). Mainly used by NetCDFOutputWriter.
+float_or_date_time(t) = t
+float_or_date_time(t::TimeDate) = DateTime(t)
 
 function tick!(clock, Δt; stage=false)
 

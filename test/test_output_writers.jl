@@ -42,7 +42,7 @@ end
 ##### NetCDFOutputWriter tests
 #####
 
-function run_date_time_netcdf_tests(arch)
+function run_DateTime_netcdf_tests(arch)
     grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=DateTime(2021, 1, 1))
     model = IncompressibleModel(architecture=arch, grid=grid, clock=clock)
@@ -50,12 +50,43 @@ function run_date_time_netcdf_tests(arch)
     Δt = 5days + 3hours + 44.123seconds
     simulation = Simulation(model, Δt=Δt, stop_time=DateTime(2021, 2, 1))
 
-    filepath = "test_datetime.nc"
+    filepath = "test_DateTime.nc"
     simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model), filepath=filepath, schedule=IterationInterval(1))
 
     run!(simulation)
 
-    ds = NCDataset("test_datetime.nc")
+    ds = NCDataset(filepath)
+    @test ds["time"].attrib["units"] == "seconds since 2000-01-01 00:00:00"
+
+    Nt = length(ds["time"])
+    @test Nt == 8
+
+    for n in 1:Nt-1
+        @test ds["time"][n] == DateTime(2021, 1, 1) + (n-1) * Millisecond(1000Δt)
+    end
+
+    @test ds["time"][Nt] == DateTime(2021, 2, 1)
+
+    close(ds)
+    rm(filepath)
+
+    return nothing
+end
+
+function run_TimeDate_netcdf_tests(arch)
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    clock = Clock(time=TimeDate(2021, 1, 1))
+    model = IncompressibleModel(architecture=arch, grid=grid, clock=clock)
+
+    Δt = 5days + 3hours + 44.123seconds
+    simulation = Simulation(model, Δt=Δt, stop_time=TimeDate(2021, 2, 1))
+
+    filepath = "test_TimeDate.nc"
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model), filepath=filepath, schedule=IterationInterval(1))
+
+    run!(simulation)
+
+    ds = NCDataset(filepath)
     @test ds["time"].attrib["units"] == "seconds since 2000-01-01 00:00:00"
 
     Nt = length(ds["time"])
@@ -1158,7 +1189,8 @@ end
 
         @testset "NetCDF [$(typeof(arch))]" begin
             @info "  Testing NetCDF output writer [$(typeof(arch))]..."
-            run_date_time_netcdf_tests(arch)
+            run_DateTime_netcdf_tests(arch)
+            run_TimeDate_netcdf_tests(arch)
             run_thermal_bubble_netcdf_tests(arch)
             run_thermal_bubble_netcdf_tests_with_halos(arch)
             run_netcdf_function_output_tests(arch)

@@ -1,4 +1,3 @@
-using Dates
 using NCDatasets
 
 using Oceananigans.Fields
@@ -7,6 +6,7 @@ using Oceananigans.Utils: show_schedule
 using Dates: now
 using Oceananigans.Grids: topology, halo_size
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
+using Oceananigans.TimeSteppers: float_or_date_time
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
@@ -420,7 +420,7 @@ function write_output!(ow::NetCDFOutputWriter, model)
     ds, verbose, filepath = ow.dataset, ow.verbose, ow.filepath
 
     time_index = length(ds["time"]) + 1
-    ds["time"][time_index] = model.clock.time
+    ds["time"][time_index] = float_or_date_time(model.clock.time)
 
     if verbose
         @info "Writing to NetCDF: $filepath..."
