@@ -42,6 +42,37 @@ end
 ##### NetCDFOutputWriter tests
 #####
 
+function run_date_time_netcdf_tests(arch)
+    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    clock = Clock(time=DateTime(2021, 1, 1))
+    model = IncompressibleModel(architecture=arch, grid=grid, clock=clock)
+
+    Δt = 5days + 3hours + 44.123seconds
+    simulation = Simulation(model, Δt=Δt, stop_time=DateTime(2021, 2, 1))
+
+    filepath = "test_datetime.nc"
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model), filepath=filepath, schedule=IterationInterval(1))
+
+    run!(simulation)
+
+    ds = NCDataset("test_datetime.nc")
+    @test ds["time"].attrib["units"] == "seconds since 2000-01-01 00:00:00"
+
+    Nt = length(ds["time"])
+    @test Nt == 8
+
+    for n in 1:Nt-1
+        @test ds["time"][n] == DateTime(2021, 1, 1) + (n-1) * Millisecond(1000Δt)
+    end
+
+    @test ds["time"][Nt] == DateTime(2021, 2, 1)
+
+    close(ds)
+    rm(filepath)
+
+    return nothing
+end
+
 function run_thermal_bubble_netcdf_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
@@ -1127,6 +1158,7 @@ end
 
         @testset "NetCDF [$(typeof(arch))]" begin
             @info "  Testing NetCDF output writer [$(typeof(arch))]..."
+            run_date_time_netcdf_tests(arch)
             run_thermal_bubble_netcdf_tests(arch)
             run_thermal_bubble_netcdf_tests_with_halos(arch)
             run_netcdf_function_output_tests(arch)
