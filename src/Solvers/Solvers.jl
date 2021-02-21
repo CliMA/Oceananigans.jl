@@ -41,7 +41,7 @@ include("fourier_tridiagonal_poisson_solver.jl")
 include("preconditioned_conjugate_gradient_solver.jl")
 include("solve_for_pressure.jl")
 
-PressureSolver(arch, grid::RegularCartesianGrid) = FFTBasedPoissonSolver(arch, grid)
-PressureSolver(arch, grid::VerticallyStretchedCartesianGrid) = FourierTridiagonalPoissonSolver(arch, grid)
+PressureSolver(arch, grid::RegularRectilinearGrid) = FFTBasedPoissonSolver(arch, grid)
+PressureSolver(arch, grid::VerticallyStretchedRectilinearGrid) = FourierTridiagonalPoissonSolver(arch, grid)
 
 end

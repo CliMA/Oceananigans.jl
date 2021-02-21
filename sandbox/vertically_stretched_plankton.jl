@@ -11,7 +11,7 @@ S = 2  # stretching factor
 zF = -Lz .* (1 .+ [tanh(S * (2 * (k - 1) / 2Nz - 1)) / tanh(S) for k in 1:2Nz][1:Nz+1]) |> reverse
 zF[end] = 0
 
-grid = VerticallyStretchedCartesianGrid(size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), zF=zF, halo=(3, 3, 3))
+grid = VerticallyStretchedRectilinearGrid(size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), zF=zF, halo=(3, 3, 3))
 
 buoyancy_flux(x, y, t, p) = p.initial_buoyancy_flux * exp(-t^4 / (24 * p.shut_off_time^4))
 
