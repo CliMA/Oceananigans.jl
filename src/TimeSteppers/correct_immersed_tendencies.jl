@@ -7,7 +7,9 @@ Correct the tendency terms to implement no-slip boundary conditions on an immers
  without the contribution from the non-hydrostatic pressure. 
 Makes velocity vanish within the immersed surface.
 """
-correct_immersed_tendencies!(model, Δt, γⁿ, ζⁿ) =
+correct_immersed_tendencies!(model, Δt, γⁿ, ζⁿ) = nothing #fallback function 
+
+correct_immersed_tendencies!(model::IncompressibleModel, Δt, γⁿ, ζⁿ) =
     correct_immersed_tendencies!(model, model.immersed_boundary, Δt, γⁿ, ζⁿ)
 
 # if no immersed boundary, do nothing (no cost)
