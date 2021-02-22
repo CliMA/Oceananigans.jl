@@ -51,6 +51,18 @@ function (wsa::WindowedSpatialAverage)(model)
     window = slice_parent(wsa.field_slicer, wsa.field)
     return dropdims(mean(window, dims=wsa.dims), dims=wsa.dims)
 end
+
+using NCDatasets: defVar
+using Oceananigans.Fields: reduced_location
+import Oceananigans.OutputWriters: xdim, ydim, zdim, define_output_variable!
+
+function define_output_variable!(dataset, wsa::WindowedSpatialAverage, name, array_type, compression, attributes, dimensions)
+    LX, LY, LZ = reduced_location(location(wsa.field), dims=wsa.dims)
+    output_dims = tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
+    defVar(dataset, name, eltype(array_type), (output_dims..., "time"),
+           compression=compression, attrib=attributes)
+    return nothing
+end
 #----
 
 
@@ -73,12 +85,7 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
 simulation = Simulation(model, Δt=1second, iteration_interval=5, progress=progress, stop_iteration=10,)
 
 wout = (;  Uw, U2w)
-wdims = (Uw = ("xF", "zC"), U2w = ("xF", "zC"))
-
 simulation.output_writers[:simple_output] = NetCDFOutputWriter(model, wout, schedule = TimeInterval(10seconds),
-                                                               filepath = "windowed_avg.nc", mode = "c",
-                                                               dimensions = wdims,
-                                                                )
+                                                               filepath = "windowed_avg.nc", mode = "c")
 
 run!(simulation)
-
