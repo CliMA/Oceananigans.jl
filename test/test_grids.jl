@@ -115,54 +115,51 @@ end
 ##### Vertically stretched grids
 #####
 
-function correct_constant_grid_spacings(FT)
-    grid = VerticallyStretchedCartesianGrid(FT, size=(16, 16, 16), x=(0, 1), y=(0, 1), zF=collect(0:16))
-    return all(grid.ΔzF .== 1) && all(grid.ΔzC .== 1)
+function run_correct_constant_grid_spacings_tests(FT, Nz)
+    grid = VerticallyStretchedCartesianGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:16))
+    @test all(grid.ΔzF .== 1)
+    @test all(grid.ΔzC .== 1)
+    return nothing
 end
 
-function correct_quadratic_grid_spacings(FT)
-    Nx = Ny = Nz = 16
-    grid = VerticallyStretchedCartesianGrid(FT, size=(Nx, Ny, Nz),
-                                            x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
+function run_correct_quadratic_grid_spacings_tests(FT, Nz)
+    grid = VerticallyStretchedCartesianGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
 
      zF(k) = (k-1)^2
      zC(k) = (k^2 + (k-1)^2) / 2
     ΔzF(k) = k^2 - (k-1)^2
-    ΔzC(k) = 2k - 2
+    ΔzC(k) = zC(k+1) - zC(k)
 
-     zF_is_correct = all(isapprox.(  grid.zF[1:Nz+1],  zF.(1:Nz+1) ))
-     zC_is_correct = all(isapprox.(  grid.zC[1:Nz],    zC.(1:Nz)   ))
-    ΔzF_is_correct = all(isapprox.( grid.ΔzF[1:Nz],   ΔzF.(1:Nz)   ))
+    @test all(isapprox.(  grid.zF[1:Nz+1],  zF.(1:Nz+1) ))
+    @test all(isapprox.(  grid.zC[1:Nz],    zC.(1:Nz)   ))
+    @test all(isapprox.( grid.ΔzF[1:Nz],   ΔzF.(1:Nz)   ))
 
-    # Note that ΔzC[1, 1, 1] involves a halo point, which is not directly determined by
+    # Note that ΔzC[1] involves a halo point, which is not directly determined by
     # the user-supplied zF
-    ΔzC_is_correct = all(isapprox.( grid.ΔzC[2:Nz-1], ΔzC.(2:Nz-1) ))
+    @test all(isapprox.( grid.ΔzC[2:Nz-1], ΔzC.(2:Nz-1) ))
 
-    return zF_is_correct && zC_is_correct && ΔzF_is_correct && ΔzC_is_correct
+    return nothing
 end
 
-function correct_tanh_grid_spacings(FT)
-    Nx = Ny = Nz = 16
-
+function run_correct_tanh_grid_spacings_tests(FT, Nz)
     S = 3  # Stretching factor
-
     zF(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
 
-    grid = VerticallyStretchedCartesianGrid(FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), zF=zF)
-
+    grid = VerticallyStretchedCartesianGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=zF)
 
      zC(k) = (zF(k) + zF(k+1)) / 2
     ΔzF(k) = zF(k+1) - zF(k)
-    ΔzC(k) = zC(k) - zC(k-1)
+    ΔzC(k) = zC(k+1) - zC(k)
 
-     zF_is_correct = all(isapprox.(  grid.zF[1:Nz+1],  zF.(1:Nz+1) ))
-     zC_is_correct = all(isapprox.(  grid.zC[1:Nz],    zC.(1:Nz)   ))
-    ΔzF_is_correct = all(isapprox.( grid.ΔzF[1:Nz],   ΔzF.(1:Nz)   ))
+    @test all(isapprox.(  grid.zF[1:Nz+1],  zF.(1:Nz+1) ))
+    @test all(isapprox.(  grid.zC[1:Nz],    zC.(1:Nz)   ))
+    @test all(isapprox.( grid.ΔzF[1:Nz],   ΔzF.(1:Nz)   ))
 
-    # See correct_quadratic_grid_spacings for an explanation of this test component
-    ΔzC_is_correct = all(isapprox.( grid.ΔzC[2:Nz-1], ΔzC.(2:Nz-1) ))
+    # Note that ΔzC[1] involves a halo point, which is not directly determined by
+    # the user-supplied zF
+    @test all(isapprox.( grid.ΔzC[2:Nz-1], ΔzC.(2:Nz-1) ))
 
-   return zF_is_correct && zC_is_correct && ΔzF_is_correct && ΔzC_is_correct
+   return nothing
 end
 
 function vertically_stretched_grid_properties_are_same_type(FT)
@@ -268,7 +265,7 @@ end
                 @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Periodic, Flat, Flat), size=16, extent=(1, 1, 1))
                 @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Flat, Periodic, Flat), size=16, extent=(1, 1))
                 @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Flat, Flat, Periodic), size=(16, 16), extent=1)
-                
+
                 @test_throws ArgumentError RegularCartesianGrid(FT, topology=(Flat, Flat, Flat), size=16, extent=1)
             end
         end
@@ -331,11 +328,17 @@ end
             @info "    Testing grid initialization..."
 
             for FT in float_types
-                @test correct_constant_grid_spacings(FT)
-                @test correct_quadratic_grid_spacings(FT)
-                @test correct_tanh_grid_spacings(FT)
+                run_correct_constant_grid_spacings_tests(FT, 16)
+                run_correct_quadratic_grid_spacings_tests(FT, 16)
+                run_correct_tanh_grid_spacings_tests(FT, 16)
                 @test vertically_stretched_grid_properties_are_same_type(FT)
             end
         end
+
+        # Testing show function
+        Nz = 20
+        grid = VerticallyStretchedCartesianGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
+        show(grid); println();
+        @test grid isa VerticallyStretchedCartesianGrid
     end
 end

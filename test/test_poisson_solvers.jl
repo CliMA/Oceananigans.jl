@@ -1,4 +1,5 @@
 using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!
+using Oceananigans.Solvers: poisson_eigenvalues
 
 function poisson_solver_instantiates(arch, FT, Nx, Ny, Nz, planner_flag)
     grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(100, 100, 100))
@@ -33,6 +34,36 @@ function random_divergent_source_term(FT, arch, grid)
     return R, U
 end
 
+function random_div_free_source_term(FT, arch, grid)
+    # Random right hand side
+    Ru = CenterField(FT, arch, grid, UVelocityBoundaryConditions(grid))
+    Rv = CenterField(FT, arch, grid, VVelocityBoundaryConditions(grid))
+    Rw = CenterField(FT, arch, grid, WVelocityBoundaryConditions(grid))
+
+    Nx, Ny, Nz = size(grid)
+    interior(Ru) .= rand(Nx, Ny, Nz)
+    interior(Rv) .= rand(Nx, Ny, Nz)
+    interior(Rw) .= zeros(Nx, Ny, Nz)
+
+    U = (u=Ru, v=Rv, w=Rw)
+    fill_halo_regions!(U, arch, nothing, nothing)
+
+    # _compute_w_from_continuity!(U, grid)
+    # Rw[i, j, 1] = 0 will be enforced via halo regions.
+    for i in 1:Nx, j in 1:Ny, k in 2:Nz
+        @inbounds Rw[i, j, k] = Rw[i, j, k-1] - ΔzC(i, j, k, grid) * div_xyᶜᶜᵃ(i, j, k, grid, Ru, Rv)
+    end
+
+    fill_halo_regions!(Rw, arch, nothing, nothing)
+
+    R = zeros(Nx, Ny, Nz)
+    for i in 1:Nx, j in 1:Ny, k in 1:Nz
+        R[i, j, k] = divᶜᶜᶜ(i, j, k, grid, Ru, Rv, Rw)
+    end
+
+    return R
+end
+
 function compute_∇²!(∇²ϕ, ϕ, arch, grid)
     fill_halo_regions!(ϕ, arch)
     event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ.data, ∇²ϕ.data, dependencies=Event(device(arch)))
@@ -40,6 +71,10 @@ function compute_∇²!(∇²ϕ, ϕ, arch, grid)
     fill_halo_regions!(∇²ϕ, arch)
     return nothing
 end
+
+#####
+##### Regular Cartesian grid Poisson solver
+#####
 
 function divergence_free_poisson_solution(arch, FT, topo, Nx, Ny, Nz, planner_flag=FFTW.MEASURE)
     ArrayType = array_type(arch)
@@ -49,7 +84,7 @@ function divergence_free_poisson_solution(arch, FT, topo, Nx, Ny, Nz, planner_fl
     R, U = random_divergent_source_term(FT, arch, grid)
 
     p_bcs = PressureBoundaryConditions(grid)
-    ϕ   = CenterField(FT, arch, grid, p_bcs)  # "pressure"
+    ϕ   = CenterField(FT, arch, grid, p_bcs)  # "kinematic pressure"
     ∇²ϕ = CenterField(FT, arch, grid, p_bcs)
 
     # Using Δt = 1 but it doesn't matter since velocities = 0.
@@ -101,6 +136,31 @@ function poisson_solver_convergence(arch, topo, N¹, N²; FT=Float64, mode=1)
     @info "Convergence of L¹-normed error, $(typeof(arch)), $FT, ($(N¹)³ -> $(N²)³), topology=($TX, $TY, $TZ): $rate"
 
     return isapprox(rate, 2, rtol=5e-3)
+end
+
+#####
+##### Vertically stretched Poisson solver
+#####
+
+function vertically_stretched_poisson_solver_correct_answer(FT, arch, Nx, Ny, zF)
+    Nz = length(zF) - 1
+    vs_grid = VerticallyStretchedCartesianGrid(size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), zF=zF)
+    solver = FourierTridiagonalPoissonSolver(arch, vs_grid)
+
+    p_bcs = PressureBoundaryConditions(vs_grid)
+    ϕ   = CenterField(FT, arch, vs_grid, p_bcs)  # "kinematic pressure"
+    ∇²ϕ = CenterField(FT, arch, vs_grid, p_bcs)
+
+    R = random_div_free_source_term(FT, arch, vs_grid)
+    F = reshape(vs_grid.ΔzC[1:Nz], 1, 1, Nz) .* R  # RHS needs to be multiplied by ΔzC
+    solver.batched_tridiagonal_solver.f .= F
+    
+    solve_poisson_equation!(solver)
+    
+    interior(ϕ) .= real.(solver.storage)
+    compute_∇²!(∇²ϕ, ϕ, arch, vs_grid)
+
+    return interior(∇²ϕ) ≈ R
 end
 
 #####
@@ -156,6 +216,20 @@ topos = collect(Iterators.product(PB, PB, PB))[:]
                 @test poisson_solver_convergence(arch, topo, 2^6, 2^7)
                 @test poisson_solver_convergence(arch, topo, 67, 131, mode=2)
             end
+        end
+    end
+
+    for arch in [CPU()]
+        @testset "Vertically stretched Poisson solver [FACR, $arch]" begin
+            @info "  Testing vertically stretched Poisson solver [FACR, $arch]..."
+
+            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, 8, 8, 1:8)
+
+            zF = [1, 2, 4, 7, 11, 16, 22, 29, 37]
+            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, 8, 8, zF)
+            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, 16, 8, zF)
+            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, 8, 16, zF)
+            @test vertically_stretched_poisson_solver_correct_answer(Float32, arch, 8, 8, zF)
         end
     end
 end
