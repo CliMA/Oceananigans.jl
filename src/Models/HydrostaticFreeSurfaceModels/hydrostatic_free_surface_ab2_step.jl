@@ -95,3 +95,39 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
 
     return
 end
+
+
+using Oceananigans.Architectures: device
+using Oceananigans.Operators: ΔzC
+
+"""
+Compute the vertical integrated transport from the bottom to z=0 (i.e. linear free-surface)
+
+    `U^{*} = ∫ [(u^{*})] dz`
+    `V^{*} = ∫ [(v^{*})] dz`
+"""
+### Note - what we really want is RHS = divergence of the vertically integrated transport
+###        we can optimize this a bit later to do this all in one go to save using intermediate variables.
+function compute_vertcally_integrated_transport!(model)
+
+    event = launch!(model.architecture,
+                    model.grid,
+                    :xy,
+                    _compute_vertically_integraed_transport!,
+                    model.velocities,
+                    model.grid,
+                    dependencies=Event(device(model.architecture)))
+
+    wait(device(model.architecture), event)
+
+    return nothing
+end
+
+@kernel function _compute_vertically_integrated_transport!(U, grid)
+    i, j = @index(Global, NTuple)
+    # U.w[i, j, 1] = 0 is enforced via halo regions.
+    @unroll for k in 2:grid.Nz+1
+        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - ΔzC(i, j, k, grid) * div_xyᶜᶜᵃ(i, j, k-1, grid, U.u, U.v)
+    end
+end
+
