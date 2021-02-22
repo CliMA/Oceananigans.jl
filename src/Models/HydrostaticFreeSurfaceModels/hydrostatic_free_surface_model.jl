@@ -117,11 +117,14 @@ function HydrostaticFreeSurfaceModel(; grid,
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, tracernames(tracers), nothing)
 
     # Either check grid-correctness, or construct tuples of fields
-    velocities    = VelocityFields(velocities, architecture, grid, boundary_conditions)
+    velocities    = HydrostaticFreeSurfaceVelocityFields(velocities, architecture, grid, boundary_conditions)
     tracers       = TracerFields(tracers,      architecture, grid, boundary_conditions)
     pressure      = (pHY′ = CenterField(architecture, grid, TracerBoundaryConditions(grid)),)
     diffusivities = DiffusivityFields(diffusivities, architecture, grid,
                                       tracernames(tracers), boundary_conditions, closure)
+
+    velocities.w.boundary_conditions.top === nothing || error("Top boundary condition for HydrostaticFreeSurfaceModel velocities.w
+                                                              must be `nothing`!")
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(:QuasiAdamsBashforth2, architecture, grid, tracernames(tracers);

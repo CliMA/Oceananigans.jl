@@ -138,7 +138,7 @@ function IncompressibleModel(;
                                       tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
-        pressure_solver = FFTBasedPoissonSolver(architecture, grid)
+        pressure_solver = PressureSolver(architecture, grid)
     end
 
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)

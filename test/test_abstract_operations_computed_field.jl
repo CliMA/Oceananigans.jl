@@ -103,6 +103,7 @@ function compute_plus(model)
     return all(result .≈ eltype(model.grid)(π+42))
 end
 
+
 function compute_many_plus(model)
     set!(model; u=2, S=π, T=42)
     T, S = model.tracers
@@ -634,6 +635,28 @@ end
                     @test volume_average_of_times(model)
                 end
 
+                @testset "ComputedField boundary conditions [$FT, $(typeof(arch))]" begin
+                    @info "      Testing boundary conditions for ComputedField..."
+
+                    set!(model; S=π, T=42)
+                    T, S = model.tracers
+
+                    @compute ST = ComputedField(S + T, data=model.pressures.pHY′.data)
+
+                    Nx, Ny, Nz = size(model.grid)
+
+                    @test all(ST.data[0, 1:Ny, 1:Nz] .== ST.data[Nx+1, 1:Ny, 1:Nz])
+                    @test all(ST.data[1:Nx, 0, 1:Nz] .== ST.data[1:Nx, Ny+1, 1:Nz])
+                    @test all(ST.data[1:Nx, 1:Ny, 0] .== ST.data[1:Nx, 1:Ny, 1])
+                    @test all(ST.data[1:Nx, 1:Ny, Nz] .== ST.data[1:Nx, 1:Ny, Nz+1])
+
+                    @compute ST_face = ComputedField(@at (Center, Center, Face) S * T)
+
+                    @test all(ST_face.data[1:Nx, 1:Ny, 0] .== 0)
+                    @test all(ST_face.data[1:Nx, 1:Ny, Nz+2] .== 0)
+                end
+
+
                 @testset "Operations with AveragedField [$FT, $(typeof(arch))]" begin
                     @info "      Testing operations with AveragedField..."
 
@@ -690,7 +713,6 @@ end
                         @test_skip computations_with_computed_fields(model)
                     end
                 end
-
 
                 @testset "Conditional computation of ComputedField and BuoyancyField [$FT, $(typeof(arch))]" begin
                     @info "      Testing conditional computation of ComputedField and BuoyancyField " *

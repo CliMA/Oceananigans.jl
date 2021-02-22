@@ -1,12 +1,12 @@
 """
-    VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractGrid{FT, TX, TY, TZ}
+    VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
 
 A Cartesian grid with with constant horizontal grid spacings `Δx` and `Δy`, and
 non-uniform or stretched vertical grid spacing `Δz` between cell centers and cell faces,
 topology `{TX, TY, TZ}`, and coordinate ranges of type `R` (where a range can be used) and
 `A` (where an array is needed).
 """
-struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractGrid{FT, TX, TY, TZ}
+struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
 
     # Number of grid points in (x,y,z).
      Nx :: Int
@@ -41,10 +41,13 @@ struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractGrid{FT
      zF :: A
 end
 
-function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
+function VerticallyStretchedCartesianGrid(FT=Float64, architecture=CPU();
                                               size, x, y, zF,
-                                              halo = (1, 1, 1), 
+                                              halo = (1, 1, 1),
                                           topology = (Periodic, Periodic, Bounded))
+
+    architecture isa GPU && error("VerticallyStretchedCartesianGrid only works with architecture=CPU() right now.")
+    topology != (Periodic, Periodic, Bounded) && error("Only topology = (Periodic, Periodic, Bounded) is supported right now.")
 
     TX, TY, TZ = validate_topology(topology)
     size = validate_size(TX, TY, TZ, size)
@@ -58,10 +61,10 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     Lz, zF, zC, ΔzF, ΔzC = generate_stretched_vertical_grid(FT, topology[3], Nz, Hz, zF)
 
     # Convert to appropriate array type for arch
-     zF = convert(array_type(arch), zF)
-     zC = convert(array_type(arch), zC)
-    ΔzF = convert(array_type(arch), ΔzF)
-    ΔzC = convert(array_type(arch), ΔzC)
+     zF = convert(array_type(architecture), zF)
+     zC = convert(array_type(architecture), zC)
+    ΔzF = convert(array_type(architecture), ΔzF)
+    ΔzC = convert(array_type(architecture), ΔzC)
 
     # Construct uniform horizontal grid
     Lh, Nh, Hh, X₁ = (Lx, Ly), size[1:2], halo[1:2], (x[1], y[1])
@@ -74,7 +77,7 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
     # Center-node limits in x, y, z
     xC₋, yC₋ = XC₋ = @. XF₋ + Δh / 2
     xC₊, yC₊ = XC₊ = @. XC₋ + Lh + Δh * (2Hh - 1)
-    
+
     # Total length of Center and Face quantities
     TFx, TFy, TFz = total_length.(Face, topology, size, halo)
     TCx, TCy, TCz = total_length.(Center, topology, size, halo)
@@ -90,12 +93,20 @@ function VerticallyStretchedCartesianGrid(FT=Float64, arch=CPU();
      xC = OffsetArray(xC,  -Hx)
      yC = OffsetArray(yC,  -Hy)
      zC = OffsetArray(zC,  -Hz)
-    ΔzC = OffsetArray(ΔzC, 1 - Hz)
+    ΔzC = OffsetArray(ΔzC, -Hz)
 
      xF = OffsetArray(xF,  -Hx)
      yF = OffsetArray(yF,  -Hy)
      zF = OffsetArray(zF,  -Hz)
     ΔzF = OffsetArray(ΔzF, -Hz)
+
+    # Needed for pressure solver solution to be divergence-free.
+    # Will figure out why later...
+    ΔzC[Nz] = ΔzC[Nz-1]
+
+    # Seems needed to avoid out-of-bounds error in viscous dissipation
+    # operator wanting to access ΔzC[Nz+2].
+    ΔzC = OffsetArray(cat(ΔzC[0], ΔzC..., ΔzC[Nz], dims=1), -Hz-1)
 
     return VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, typeof(xF), typeof(zF)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
@@ -125,7 +136,7 @@ function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, zF_generator)
 
     Lz = interior_zF[Nz+1] - interior_zF[1]
 
-    # Build halo regions 
+    # Build halo regions
     ΔzF₋ = lower_exterior_ΔzF(z_topo, interior_zF, Hz)
     ΔzF₊ = upper_exterior_ΔzF(z_topo, interior_zF, Hz)
 
@@ -148,4 +159,23 @@ function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, zF_generator)
     ΔzF = [zF[k + 1] - zF[k] for k = 1:TFz-1]
 
     return Lz, zF, zC, ΔzF, ΔzC
+end
+
+# We cannot reconstruct a VerticallyStretchedCartesianGrid without the zF_generator.
+# So the best we can do is tell the user what they should have done.
+function with_halo(new_halo, old_grid::VerticallyStretchedCartesianGrid)
+    new_halo != halo_size(old_grid) &&
+        @error "You need to construct your VerticallyStretchedCartesianGrid with the keyword argument halo=$new_halo"
+    return old_grid
+end
+
+short_show(grid::VerticallyStretchedCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+    "VerticallyStretchedCartesianGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
+
+function show(io::IO, g::VerticallyStretchedCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    print(io, "VerticallyStretchedCartesianGrid{$FT, $TX, $TY, $TZ}\n",
+              "                   domain: $(domain_string(g))\n",
+              "                 topology: ", (TX, TY, TZ), '\n',
+              "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
+              "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
 end

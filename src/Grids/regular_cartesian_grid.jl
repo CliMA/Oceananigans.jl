@@ -1,11 +1,11 @@
 """
-    RegularCartesianGrid{FT, TX, TY, TZ, R} <: AbstractGrid{FT, TX, TY, TZ}
+    RegularCartesianGrid{FT, TX, TY, TZ, R} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
 
 A Cartesian grid with with constant grid spacings `Δx`, `Δy`, and `Δz` between cell centers
 and cell faces, elements of type `FT`, topology `{TX, TY, TZ}`, and coordinate ranges
 of type `R`.
 """
-struct RegularCartesianGrid{FT, TX, TY, TZ, R} <: AbstractGrid{FT, TX, TY, TZ}
+struct RegularCartesianGrid{FT, TX, TY, TZ, R} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
     # Number of grid points in (x,y,z).
     Nx :: Int
     Ny :: Int
@@ -202,25 +202,6 @@ function RegularCartesianGrid(FT=Float64;
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
 end
 
-short_show(grid::RegularCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    "RegularCartesianGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
-
-function domain_string(grid)
-    xₗ, xᵣ = x_domain(grid)
-    yₗ, yᵣ = y_domain(grid)
-    zₗ, zᵣ = z_domain(grid)
-    return "x ∈ [$xₗ, $xᵣ], y ∈ [$yₗ, $yᵣ], z ∈ [$zₗ, $zᵣ]"
-end
-
-function show(io::IO, g::RegularCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    print(io, "RegularCartesianGrid{$FT, $TX, $TY, $TZ}\n",
-              "                   domain: $(domain_string(g))\n",
-              "                 topology: ", (TX, TY, TZ), '\n',
-              "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
-              "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
-              "grid spacing (Δx, Δy, Δz): ", (g.Δx, g.Δy, g.Δz))
-end
-
 """
     with_halo(new_halo, old_grid::RegularCartesianGrid)
 
@@ -251,4 +232,23 @@ function with_halo(new_halo, old_grid::RegularCartesianGrid)
                                     topology=topo, halo=new_halo)
 
     return new_grid
+end
+
+short_show(grid::RegularCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+    "RegularCartesianGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
+
+function domain_string(grid)
+    xₗ, xᵣ = x_domain(grid)
+    yₗ, yᵣ = y_domain(grid)
+    zₗ, zᵣ = z_domain(grid)
+    return "x ∈ [$xₗ, $xᵣ], y ∈ [$yₗ, $yᵣ], z ∈ [$zₗ, $zᵣ]"
+end
+
+function show(io::IO, g::RegularCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    print(io, "RegularCartesianGrid{$FT, $TX, $TY, $TZ}\n",
+              "                   domain: $(domain_string(g))\n",
+              "                 topology: ", (TX, TY, TZ), '\n',
+              "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
+              "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
+              "grid spacing (Δx, Δy, Δz): ", (g.Δx, g.Δy, g.Δz))
 end

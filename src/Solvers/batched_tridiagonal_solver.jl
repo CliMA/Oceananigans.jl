@@ -46,6 +46,8 @@ end
 @inline get_coefficient(a::Function, i, j, k, grid, p) = a(i, j, k, grid, p)
 
 """
+    solve_batched_tridiagonal_system!(ϕ, arch, solver)
+
 Solve the batched tridiagonal system of linear equations described by the
 `BatchedTridiagonalSolver` `solver` using a modified TriDiagonal Matrix Algorithm (TDMA)
 that is still capable of solving singular systems with a zero eigenvalue.
