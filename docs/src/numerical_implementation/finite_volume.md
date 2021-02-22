@@ -1,6 +1,6 @@
 # Finite volume method on a staggered grid
 
-The `Oceananigans.jl` staggered grid is defined by a Cartesian array of cuboids of horizontal dimensions 
+The `Oceananigans.jl` staggered grid is defined by a rectilinear array of cuboids of horizontal dimensions 
 ``\Delta x_{i, j, k}, \Delta y_{i, j, k}`` and vertical dimension 
 ``\Delta z_{i, j, k}``, where ``(i, j, k)`` index the location of each cell in the staggered grid.
 Note that the indices ``(i, j, k)`` increase with increasing coordinate ``(x, y, z)``.

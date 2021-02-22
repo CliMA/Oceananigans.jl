@@ -13,7 +13,7 @@ end
 function run_pcg_solver_tests(arch)
     Lx, Ly, Lz = 4e6, 6e6, 1
     Nx, Ny, Nz = 100, 150, 1
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 
     function Amatrix_function!(result, x, arch, grid, bcs)
         event = launch!(arch, grid, :xyz, ∇²!, grid, x, result, dependencies=Event(device(arch)))

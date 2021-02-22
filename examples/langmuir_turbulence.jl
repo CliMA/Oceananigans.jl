@@ -33,7 +33,7 @@ using Oceananigans
 # We create a grid with modest resolution. The grid extent is similar, but not
 # exactly the same as that in McWilliams et al. (1997).
 
-grid = RegularCartesianGrid(size=(32, 32, 48), extent=(128, 128, 96))
+grid = RegularRectilinearGrid(size=(32, 32, 48), extent=(128, 128, 96))
 
 # ### The Stokes Drift profile
 #

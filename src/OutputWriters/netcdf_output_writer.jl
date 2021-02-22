@@ -176,7 +176,7 @@ to separate NetCDF files:
 ```jldoctest netcdf1
 using Oceananigans, Oceananigans.OutputWriters
 
-grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1));
+grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
 model = IncompressibleModel(grid=grid);
 
@@ -232,7 +232,7 @@ provided that their `dimensions` are provided:
 ```jldoctest
 using Oceananigans, Oceananigans.OutputWriters
 
-grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 2, 3));
+grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
 
 model = IncompressibleModel(grid=grid);
 

@@ -192,7 +192,7 @@ end
 ##### Double dot product of strain on cell edges (currently unused)
 #####
 
-"Return the filter width for Constant Smagorinsky on a Regular Cartesian grid."
+"Return the filter width for Constant Smagorinsky on a regular rectilinear grid."
 @inline Δᶠ(i, j, k, grid, ::AbstractSmagorinsky) = geo_mean_Δᶠ(i, j, k, grid)
 
 # Temporarily set filter widths to cell-size (rather than distance between cell centers, etc.)
