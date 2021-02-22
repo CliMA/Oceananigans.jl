@@ -16,7 +16,8 @@
 using Oceananigans
 using Oceananigans.Grids: RegularLatitudeLongitudeGrid
 
-grid = RegularLatitudeLongitudeGrid(size = (60, 360, 1), latitude = (0, 60), longitude = (-180, 180), z = (-1, 0))
+#grid = RegularLatitudeLongitudeGrid(size = (720, 120, 1), latitude = (0, 60), longitude = (-180, 180), z = (-1, 0))
+grid = RegularLatitudeLongitudeGrid(size = (360, 60, 1), latitude = (0, 60), longitude = (-180, 180), z = (-1, 0))
 
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 
@@ -85,9 +86,10 @@ run!(simulation)
 
 using JLD2, Printf, Oceananigans.Grids, Plots
 
-xu, yu, zu = nodes(model.velocities.u)
-xv, yv, zv = nodes(model.velocities.v)
-xη, yη, zη = nodes(model.free_surface.η)
+λ, ϕ, r = nodes(model.free_surface.η, reshape=true)
+
+λ = λ .+ 180
+ϕ = ϕ .+ 90
 
 using Oceananigans.Utils: hours
 
@@ -95,26 +97,15 @@ file = jldopen(simulation.output_writers[:fields].filepath)
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
-anim = @animate for (i, iter) in enumerate(iterations)
+iter = iterations[end]
+η = file["timeseries/η/$iter"][:, :, 1]
 
-    u = file["timeseries/u/$iter"][:, :, 1]
-    v = file["timeseries/v/$iter"][:, :, 1]
-    η = file["timeseries/η/$iter"][:, :, 1]
-    t = file["timeseries/t/$iter"]
+x = @. grid.radius * cosd(ϕ) * sind(λ)
+y = @. grid.radius * sind(ϕ) * sind(λ)
+z = @. grid.radius * cosd(λ) * ϕ ./ ϕ
 
-    titlestr = @sprintf("Rossby wave...")
+x = x[:, :, 1]'
+y = y[:, :, 1]'
+z = z[:, :, 1]'
 
-    #v_plot = Plots.contourf(xv, yv, v)
-    #u_plot = Plots.contourf(xu, yu, u)
-    #η_plot = Plots.contourf(xη, yη, η)
-
-    u_plot = Plots.heatmap(u)
-    v_plot = Plots.heatmap(v)
-    η_plot = Plots.heatmap(η)
-
-    Plots.plot(v_plot, u_plot, η_plot, layout = (1, 3), size = (800, 600))
-end
-
-close(file)
-
-Plots.mp4(anim, "rossby_splash.mp4", fps = 15) # hide
+Makie.surface(x, y, z, color=η)
