@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: device
-using Oceananigans.Operators: div_xyᶜᶜᵃ, ΔzC
+using Oceananigans.Operators: div_xyᶜᶜᵃ, Δzᵃᵃᶠ
 
 """
 Compute the vertical velocity w by integrating the continuity equation from the bottom upwards
@@ -25,6 +25,6 @@ end
     i, j = @index(Global, NTuple)
     # U.w[i, j, 1] = 0 is enforced via halo regions.
     @unroll for k in 2:grid.Nz+1
-        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - ΔzC(i, j, k, grid) * div_xyᶜᶜᵃ(i, j, k-1, grid, U.u, U.v)
+        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δzᵃᵃᶠ(i, j, k, grid) * div_xyᶜᶜᵃ(i, j, k-1, grid, U.u, U.v)
     end
 end

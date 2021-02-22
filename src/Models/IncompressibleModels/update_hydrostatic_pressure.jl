@@ -1,3 +1,5 @@
+using Oceananigans.Operators: Δzᵃᵃᶜ
+
 """
 Update the hydrostatic pressure perturbation pHY′. This is done by integrating
 the `buoyancy_perturbation` downwards:
@@ -7,10 +9,10 @@ the `buoyancy_perturbation` downwards:
 @kernel function update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
     i, j = @index(Global, NTuple)
 
-    @inbounds pHY′[i, j, grid.Nz] = - ℑzᵃᵃᶠ(i, j, grid.Nz+1, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, grid.Nz+1, grid)
+    @inbounds pHY′[i, j, grid.Nz] = - ℑzᵃᵃᶠ(i, j, grid.Nz+1, grid, buoyancy_perturbation, buoyancy, C) * Δzᵃᵃᶜ(i, j, grid.Nz+1, grid)
 
     @unroll for k in grid.Nz-1 : -1 : 1
         @inbounds pHY′[i, j, k] =
-            pHY′[i, j, k+1] - ℑzᵃᵃᶠ(i, j, k+1, grid, buoyancy_perturbation, buoyancy, C) * ΔzF(i, j, k+1, grid)
+            pHY′[i, j, k+1] - ℑzᵃᵃᶠ(i, j, k+1, grid, buoyancy_perturbation, buoyancy, C) * Δzᵃᵃᶜ(i, j, k+1, grid)
     end
 end
