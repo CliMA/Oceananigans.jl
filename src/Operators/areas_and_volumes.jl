@@ -96,11 +96,35 @@ The operators in this file fall into three categories:
 ##### Areas for three-dimensionally curvilinear algorithms
 #####
 
-@inline Axᶠᶜᶜ(i, j, k, grid::ARG) = Δyᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
-@inline Ayᶜᶠᶜ(i, j, k, grid::ARG) = Δxᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Axᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Ayᶜᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
 
 #####
 ##### Volumes for three-dimensionally curvilinear algorithms
 #####
 
-@inline Vᶜᶜᶜ(i, j, k, grid::ARG) = Δxᶜᶜᵃ(i, j, k, grid) * Δyᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Vᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+
+#####
+##### Temporary place for grid spacings and areas for RegularLatitudeLongitudeGrid
+#####
+
+@inline Δxᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * cosd(grid.ϕᵃᶠᵃ[j]) * deg2rad(grid.Δλ)
+@inline Δyᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δϕ)
+
+@inline Δxᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * cosd(grid.ϕᵃᶜᵃ[j]) * deg2rad(grid.Δλ)
+@inline Δyᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δϕ)
+
+@inline Δxᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * cosd(grid.ϕᵃᶠᵃ[j]) * deg2rad(grid.Δλ)
+@inline Δyᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δϕ)
+
+@inline Δxᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * cosd(grid.ϕᵃᶜᵃ[j]) * deg2rad(grid.Δλ)
+@inline Δyᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δϕ)
+
+@inline Δzᵃᵃᶜ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.Δz
+@inline Δzᵃᵃᶠ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.Δz
+
+@inline Azᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * abs(sind(grid.ϕᵃᶜᵃ[j+1]) - sind(grid.ϕᵃᶜᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * abs(sind(grid.ϕᵃᶜᵃ[j+1]) - sind(grid.ϕᵃᶜᵃ[j]))
+@inline Azᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * abs(sind(grid.ϕᵃᶠᵃ[j+1]) - sind(grid.ϕᵃᶠᵃ[j]))
+@inline Azᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * abs(sind(grid.ϕᵃᶠᵃ[j+1]) - sind(grid.ϕᵃᶠᵃ[j]))

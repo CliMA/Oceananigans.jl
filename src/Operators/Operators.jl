@@ -26,12 +26,14 @@ export
 ##### Convinient aliases
 #####
 
-using Oceananigans.Grids: AbstractGrid, RegularRectilinearGrid
-using Oceananigans.Grids: VerticallyStretchedRectilinearGrid, AbstractRectilinearGrid
+using Oceananigans.Grids: RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RegularLatitudeLongitudeGrid
+using Oceananigans.Grids: AbstractGrid, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 
 const AG  = AbstractGrid
 const ARG = AbstractRectilinearGrid
 const RCG = RegularRectilinearGrid
+const ACG = AbstractCurvilinearGrid
+const AHCG = AbstractHorizontallyCurvilinearGrid
 
 include("areas_and_volumes.jl")
 include("field_metric_products.jl")
