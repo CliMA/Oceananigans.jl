@@ -59,13 +59,16 @@ set!(model, η=splash)
 #
 # We pick a time-step that resolves the surface dynamics,
 
+using Oceananigans.Utils: prettytime
+
 g = model.free_surface.gravitational_acceleration
 
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
-wave_propagation_time_scale = 100 # 100e3 * model.grid.Δλ / gravity_wave_speed
+wave_propagation_time_scale = 100e3 * model.grid.Δλ / gravity_wave_speed
 
-simulation = Simulation(model, Δt = 0.1 * wave_propagation_time_scale, stop_iteration = 1000)
+simulation = Simulation(model, Δt = 0.1wave_propagation_time_scale, stop_time = 10000wave_propagation_time_scale,
+                        progress = s -> @info "Time = $(prettytime(s.model.clock.time)) / $(prettytime(s.stop_time))")
 
 # ## Output
 #
@@ -73,10 +76,10 @@ simulation = Simulation(model, Δt = 0.1 * wave_propagation_time_scale, stop_ite
 
 output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
-using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
+using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = IterationInterval(10),
+                                                      schedule = TimeInterval(10wave_propagation_time_scale),
                                                       prefix = "rossby_splash",
                                                       force = true)
 
@@ -84,28 +87,47 @@ run!(simulation)
 
 # ## Visualizing the results
 
-using JLD2, Printf, Oceananigans.Grids, Plots
+using JLD2, Printf, Oceananigans.Grids, GLMakie
+using Oceananigans.Utils: hours
 
 λ, ϕ, r = nodes(model.free_surface.η, reshape=true)
 
-λ = λ .+ 180
-ϕ = ϕ .+ 90
-
-using Oceananigans.Utils: hours
+λ = λ .+ 180  # Convert to λ ∈ [0°, 360°]
+ϕ = 90 .- ϕ   # Convert to ϕ ∈ [0°, 180°] (0° at north pole)
 
 file = jldopen(simulation.output_writers[:fields].filepath)
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
-iter = iterations[end]
-η = file["timeseries/η/$iter"][:, :, 1]
+iter = Node(0)
+plot_title = @lift @sprintf("Oceananigans.jl on the sphere! Rossby splash u, v, η: time = %s", prettytime(file["timeseries/t/" * string($iter)]))
+u = @lift file["timeseries/u/" * string($iter)][:, :, 1]
+v = @lift file["timeseries/v/" * string($iter)][:, :, 1]
+η = @lift file["timeseries/η/" * string($iter)][:, :, 1]
 
-x = @. grid.radius * cosd(ϕ) * sind(λ)
-y = @. grid.radius * sind(ϕ) * sind(λ)
-z = @. grid.radius * cosd(λ) * ϕ ./ ϕ
+# Plot on the unit sphere to align with the spherical wireframe.
+# Multiply by 1.01 so the η field is a bit above the wireframe.
+x = @. 1.01 * cosd(λ) * sind(ϕ)
+y = @. 1.01 * sind(λ) * sind(ϕ)
+z = @. 1.01 * cosd(ϕ) * λ ./ λ
 
-x = x[:, :, 1]'
-y = y[:, :, 1]'
-z = z[:, :, 1]'
+x = x[:, :, 1]
+y = y[:, :, 1]
+z = z[:, :, 1]
 
-Makie.surface(x, y, z, color=η)
+fig = Figure(resolution = (1920, 1080))
+
+for (n, var) in enumerate([u, v, η])
+    ax = fig[1, n] = LScene(fig, title="$n")
+    wireframe!(ax, Sphere(Point3f0(0), 1f0), show_axis=false)
+    surface!(ax, x, y, z, color=var, colormap=:balance)
+    rotate_cam!(ax.scene, (2π/3, 0, 0))
+    zoom!(ax.scene, (0, 0, 0), 5, false)
+end
+
+supertitle = fig[0, :] = Label(fig, plot_title, textsize=30)
+
+record(fig, "rossby_splash.mp4", iterations, framerate=60) do i
+    @info "Animating iteration $i/$(iterations[end])..."
+    iter[] = i
+end
