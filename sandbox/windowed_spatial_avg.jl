@@ -11,7 +11,7 @@ Nx = Ny = Nz = 8
 Lx = Ly = Lz = 1
 N² = 1e-4 # s⁻²
 
-grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), topology=(Periodic, Periodic, Periodic))
+grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), topology=(Periodic, Periodic, Periodic))
 
 model = IncompressibleModel(
                    grid = grid,
@@ -56,8 +56,19 @@ using NCDatasets: defVar
 using Oceananigans.Fields: reduced_location
 import Oceananigans.OutputWriters: xdim, ydim, zdim, define_output_variable!
 
-function define_output_variable!(dataset, wsa::WindowedSpatialAverage, name, array_type, compression, attributes, dimensions)
+function define_output_variable!(dataset, 
+                                 wsa::WindowedSpatialAverage,
+                                 name, array_type, compression, attributes, dimensions)
     LX, LY, LZ = reduced_location(location(wsa.field), dims=wsa.dims)
+    output_dims = tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
+    defVar(dataset, name, eltype(array_type), (output_dims..., "time"),
+           compression=compression, attrib=attributes)
+    return nothing
+end
+function define_output_variable!(dataset, 
+                                 wsa::WindowedTimeAverage{<:WindowedSpatialAverage}, 
+                                 name, array_type, compression, attributes, dimensions)
+    LX, LY, LZ = reduced_location(location(wsa.operand.field), dims=wsa.operand.dims)
     output_dims = tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
     defVar(dataset, name, eltype(array_type), (output_dims..., "time"),
            compression=compression, attrib=attributes)
@@ -72,7 +83,7 @@ u, v, w = model.velocities
 slicer = FieldSlicer(j=Ny÷2+1:Ny)
 
 Uw = WindowedSpatialAverage(u; dims=2, field_slicer=slicer)
-U2w = WindowedSpatialAverage(ComputedField(u^2); dims=2, field_slicer=slicer)
+U2w = WindowedSpatialAverage(ComputedField(u^2); dims=(1, 2), field_slicer=slicer)
 #----
 
 
@@ -85,7 +96,8 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
 simulation = Simulation(model, Δt=1second, iteration_interval=5, progress=progress, stop_iteration=10,)
 
 wout = (;  Uw, U2w)
-simulation.output_writers[:simple_output] = NetCDFOutputWriter(model, wout, schedule = TimeInterval(10seconds),
+simulation.output_writers[:simple_output] = NetCDFOutputWriter(model, wout, 
+                                                               schedule = AveragedTimeInterval(10seconds),
                                                                filepath = "windowed_avg.nc", mode = "c")
 
 run!(simulation)
