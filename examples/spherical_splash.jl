@@ -135,7 +135,7 @@ for (n, var) in enumerate([u, v, η])
     zoom!(ax.scene, (0, 0, 0), 5, false)
 end
 
-supertitle = fig[0, :] = Label(fig, plot_title, textsize=60)
+supertitle = fig[0, :] = Label(fig, plot_title, textsize=30)
 
 record(fig, "rossby_splash.mp4", iterations, framerate=30) do i
     @info "Animating iteration $i/$(iterations[end])..."
