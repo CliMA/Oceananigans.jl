@@ -85,21 +85,21 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     ##### Implicit solver for η
     
     ## Need to wait for u* and v* to finish
-    wait(device(model.architecture), velocities_update)
+    ### wait(device(model.architecture), velocities_update)
 
     ## Note Jean-Michel is a fan of doing ExplicitFreeSurface step before solve, so maybe this code is part of free_surface::ExplicitFreeSurface
     ## that comes after explicit step
-    explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
+    event = explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
 
     ## We need vertically integrated U,V (see continuity bits in src/Models/HydrostaticFreeSurfaceModels/compute_w_from_continuity.jl), 
     ## model.free_surface.η, g and Δt and grid.... 
-    compute_vertcally_integrated_transport!(free_surface, model)
+    ## event = compute_vertcally_integrated_transport!(free_surface, model)
 
     ## Then we can invoke solve_for_pressure! on the right type via calculate_pressure_correction!
 
     ## Once we have η we can update u* and v* with pressure gradient just as in pressure_correct_velocities!
 
-    return
+    return event
 end
 
 
@@ -125,9 +125,9 @@ function compute_vertcally_integrated_transport!(free_surface, model)
                     free_surface.barotropic_transport,
                     dependencies=Event(device(model.architecture)))
 
-    wait(device(model.architecture), event)
+    ## wait(device(model.architecture), event)
 
-    return nothing
+    return event
 end
 
 @kernel function _compute_vertically_integrated_transport!(U, grid, barotropic_transport )
@@ -136,8 +136,10 @@ end
     barotropic_transport.u[i, j, 1] = 0.
     barotropic_transport.v[i, j, 1] = 0.
     @unroll for k in 1:grid.Nz
-        @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
-        @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
+        #### @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
+        #### @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
+        @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
+        @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
     end
 end
 
