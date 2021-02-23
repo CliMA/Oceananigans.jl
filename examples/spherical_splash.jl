@@ -67,7 +67,7 @@ gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wav
 
 wave_propagation_time_scale = 100e3 * model.grid.Δλ / gravity_wave_speed
 
-simulation = Simulation(model, Δt = 0.1wave_propagation_time_scale, stop_time = 10000wave_propagation_time_scale,
+simulation = Simulation(model, Δt = 0.05wave_propagation_time_scale, stop_time = 100wave_propagation_time_scale,
                         progress = s -> @info "Time = $(prettytime(s.model.clock.time)) / $(prettytime(s.stop_time))")
 
 # ## Output
@@ -79,7 +79,7 @@ output_fields = merge(model.velocities, (η=model.free_surface.η,))
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(10wave_propagation_time_scale),
+                                                      schedule = TimeInterval(0.05wave_propagation_time_scale),
                                                       prefix = "rossby_splash",
                                                       force = true)
 
@@ -99,8 +99,16 @@ file = jldopen(simulation.output_writers[:fields].filepath)
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
+# u_max = v_max = η_max = 0
+
+# for i in iterations
+#     u_max = max(u_max, maximum(abs, file["timeseries/u/$i"]))
+#     v_max = max(v_max, maximum(abs, file["timeseries/v/$i"]))
+#     η_max = max(η_max, maximum(abs, file["timeseries/η/$i"]))
+# end
+
 iter = Node(0)
-plot_title = @lift @sprintf("Oceananigans.jl on the sphere! Rossby splash u, v, η: time = %s", prettytime(file["timeseries/t/" * string($iter)]))
+plot_title = @lift @sprintf("Oceananigans.jl on the sphere! Rossby splash: u, v, η @ time = %s", prettytime(file["timeseries/t/" * string($iter)]))
 u = @lift file["timeseries/u/" * string($iter)][:, :, 1]
 v = @lift file["timeseries/v/" * string($iter)][:, :, 1]
 η = @lift file["timeseries/η/" * string($iter)][:, :, 1]
@@ -117,17 +125,19 @@ z = z[:, :, 1]
 
 fig = Figure(resolution = (1920, 1080))
 
+clims = [(-0.003, 0.003), (-0.003, 0.003), (-0.01, 0.01)]
+
 for (n, var) in enumerate([u, v, η])
     ax = fig[1, n] = LScene(fig, title="$n")
     wireframe!(ax, Sphere(Point3f0(0), 1f0), show_axis=false)
-    surface!(ax, x, y, z, color=var, colormap=:balance)
+    surface!(ax, x, y, z, color=var, colormap=:balance, colorrange=clims[n])
     rotate_cam!(ax.scene, (2π/3, 0, 0))
     zoom!(ax.scene, (0, 0, 0), 5, false)
 end
 
-supertitle = fig[0, :] = Label(fig, plot_title, textsize=30)
+supertitle = fig[0, :] = Label(fig, plot_title, textsize=60)
 
-record(fig, "rossby_splash.mp4", iterations, framerate=60) do i
+record(fig, "rossby_splash.mp4", iterations, framerate=30) do i
     @info "Animating iteration $i/$(iterations[end])..."
     iter[] = i
 end
