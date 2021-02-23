@@ -3,7 +3,6 @@ using Oceananigans.Operators: Δx_vᶜᶠᵃ, Δy_uᶠᶜᵃ, Δxᶠᶜᵃ, Δy�
 
 struct VectorInvariantEnergyConserving end
 struct VectorInvariantEnstrophyConserving end
-# struct FluxFormEnergyConserving end
 
 """
     HydrostaticSphericalCoriolis{FT} <: AbstractRotation
