@@ -2,7 +2,7 @@
     @info "Testing models..."
 
     @testset "Model constructor errors" begin
-        grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
         @test_throws TypeError IncompressibleModel(architecture=CPU, grid=grid)
         @test_throws TypeError IncompressibleModel(architecture=GPU, grid=grid)
         @test_throws TypeError IncompressibleModel(grid=grid, boundary_conditions=1)
@@ -21,7 +21,7 @@
             for arch in archs, FT in float_types
 		        arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
 
-                grid = RegularCartesianGrid(FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
+                grid = RegularRectilinearGrid(FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
                 model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
                 # Just testing that the model was constructed with no errors/crashes.
@@ -36,8 +36,8 @@
     @testset "Adjustment of halos in IncompressibleModel constructor" begin
         @info "  Testing adjustment of halos in IncompressibleModel constructor..."
 
-        default_grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 2, 3))
-        funny_grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 3, 4))
+        default_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
+        funny_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 3, 4))
 
         # Model ensures that halos are at least of size 1
         model = IncompressibleModel(grid=default_grid)
@@ -75,7 +75,7 @@
     @testset "Model construction with single tracer and nothing tracer" begin
         @info "  Testing model construction with single tracer and nothing tracer..."
         for arch in archs
-            grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 2, 3))
+            grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
 
             model = IncompressibleModel(grid=grid, architecture=arch, tracers=:c, buoyancy=nothing)
             @test model isa IncompressibleModel
@@ -88,7 +88,7 @@
     @testset "Non-dimensional model" begin
         @info "  Testing non-dimensional model construction..."
         for arch in archs, FT in float_types
-            grid = RegularCartesianGrid(FT, size=(16, 16, 2), extent=(3, 2, 1))
+            grid = RegularRectilinearGrid(FT, size=(16, 16, 2), extent=(3, 2, 1))
             model = NonDimensionalModel(architecture=arch, float_type=FT, grid=grid, Re=1, Pr=1, Ro=Inf)
 
             # Just testing that a NonDimensionalModel was constructed with no errors/crashes.
@@ -102,7 +102,7 @@
             N = (4, 4, 4)
             L = (2π, 3π, 5π)
 
-            grid = RegularCartesianGrid(FT, size=N, extent=L)
+            grid = RegularRectilinearGrid(FT, size=N, extent=L)
             model = IncompressibleModel(architecture=arch, float_type=eltype(grid), grid=grid)
 
             u, v, w = model.velocities

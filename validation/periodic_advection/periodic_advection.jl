@@ -31,7 +31,7 @@ ic_name(::typeof(ϕ_Square))   = "Square"
 function setup_model(N, L, U, ϕₐ, time_stepper, advection_scheme)
     topology = (Periodic, Flat, Flat)
     domain = (x=(-L/2, L/2), y=(0, 1), z=(0, 1))
-    grid = RegularCartesianGrid(topology=topology, size=(N, 1, 1), halo=(9, 9, 9); domain...)
+    grid = RegularRectilinearGrid(topology=topology, size=(N, 1, 1), halo=(9, 9, 9); domain...)
 
     model = IncompressibleModel(
                grid = grid,

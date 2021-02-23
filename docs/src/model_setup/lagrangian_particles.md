@@ -15,7 +15,7 @@ end
 ```
 
 ```jldoctest particles
-grid = RegularCartesianGrid(size=(10, 10, 10), extent=(1, 1, 1));
+grid = RegularRectilinearGrid(size=(10, 10, 10), extent=(1, 1, 1));
 
 n_particles = 10;
 
@@ -40,7 +40,7 @@ model = IncompressibleModel(grid=grid, particles=lagrangian_particles)
 
 # output
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
-├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=10, Ny=10, Nz=10)
+├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=10, Ny=10, Nz=10)
 ├── tracers: (:T, :S)
 ├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
 ├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}

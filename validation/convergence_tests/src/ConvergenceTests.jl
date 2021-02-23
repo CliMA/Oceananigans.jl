@@ -20,7 +20,7 @@ using Oceananigans.Fields
 using Oceananigans: Face, Center
 using Oceananigans.Fields: Face, Center, nodes
 
-import Oceananigans: RegularCartesianGrid
+import Oceananigans: RegularRectilinearGrid
 import Oceananigans.Fields: location
 
 figspath = joinpath(@__DIR__, "..", "figs")
