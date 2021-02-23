@@ -2,7 +2,7 @@ using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!
 using Oceananigans.Solvers: poisson_eigenvalues
 
 function poisson_solver_instantiates(arch, FT, Nx, Ny, Nz, planner_flag)
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(100, 100, 100))
+    grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(100, 100, 100))
     solver = FFTBasedPoissonSolver(arch, grid, planner_flag)
     return true  # Just making sure the FFTBasedPoissonSolver does not error/crash.
 end
@@ -73,12 +73,12 @@ function compute_∇²!(∇²ϕ, ϕ, arch, grid)
 end
 
 #####
-##### Regular Cartesian grid Poisson solver
+##### Regular rectilinear grid Poisson solver
 #####
 
 function divergence_free_poisson_solution(arch, FT, topo, Nx, Ny, Nz, planner_flag=FFTW.MEASURE)
     ArrayType = array_type(arch)
-    grid = RegularCartesianGrid(FT, topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(FT, topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
 
     solver = FFTBasedPoissonSolver(arch, grid, planner_flag)
     R, U = random_divergent_source_term(FT, arch, grid)
@@ -106,7 +106,7 @@ k²(::Type{Bounded}, n) = (n/2)^2
 k²(::Type{Periodic}, n) = n^2
 
 function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
-    grid = RegularCartesianGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
+    grid = RegularRectilinearGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
     solver = FFTBasedPoissonSolver(arch, grid)
 
     xC, yC, zC = nodes((Center, Center, Center), grid, reshape=true)
@@ -144,7 +144,7 @@ end
 
 function vertically_stretched_poisson_solver_correct_answer(FT, arch, Nx, Ny, zF)
     Nz = length(zF) - 1
-    vs_grid = VerticallyStretchedCartesianGrid(size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), zF=zF)
+    vs_grid = VerticallyStretchedRectilinearGrid(size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), zF=zF)
     solver = FourierTridiagonalPoissonSolver(arch, vs_grid)
 
     p_bcs = PressureBoundaryConditions(vs_grid)

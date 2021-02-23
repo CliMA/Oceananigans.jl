@@ -1,12 +1,12 @@
 """
-    VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
+    VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
 
-A Cartesian grid with with constant horizontal grid spacings `Δx` and `Δy`, and
+A rectilinear grid with with constant horizontal grid spacings `Δx` and `Δy`, and
 non-uniform or stretched vertical grid spacing `Δz` between cell centers and cell faces,
 topology `{TX, TY, TZ}`, and coordinate ranges of type `R` (where a range can be used) and
 `A` (where an array is needed).
 """
-struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
+struct VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
 
     # Number of grid points in (x,y,z).
      Nx :: Int
@@ -41,12 +41,12 @@ struct VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, R, A} <: AbstractRectili
      zF :: A
 end
 
-function VerticallyStretchedCartesianGrid(FT=Float64, architecture=CPU();
+function VerticallyStretchedRectilinearGrid(FT=Float64, architecture=CPU();
                                               size, x, y, zF,
                                               halo = (1, 1, 1),
                                           topology = (Periodic, Periodic, Bounded))
 
-    architecture isa GPU && error("VerticallyStretchedCartesianGrid only works with architecture=CPU() right now.")
+    architecture isa GPU && error("VerticallyStretchedRectilinearGrid only works with architecture=CPU() right now.")
     topology != (Periodic, Periodic, Bounded) && error("Only topology = (Periodic, Periodic, Bounded) is supported right now.")
 
     TX, TY, TZ = validate_topology(topology)
@@ -108,7 +108,7 @@ function VerticallyStretchedCartesianGrid(FT=Float64, architecture=CPU();
     # operator wanting to access ΔzC[Nz+2].
     ΔzC = OffsetArray(cat(ΔzC[0], ΔzC..., ΔzC[Nz], dims=1), -Hz-1)
 
-    return VerticallyStretchedCartesianGrid{FT, TX, TY, TZ, typeof(xF), typeof(zF)}(
+    return VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, typeof(xF), typeof(zF)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
 end
 
@@ -161,19 +161,19 @@ function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, zF_generator)
     return Lz, zF, zC, ΔzF, ΔzC
 end
 
-# We cannot reconstruct a VerticallyStretchedCartesianGrid without the zF_generator.
+# We cannot reconstruct a VerticallyStretchedRectilinearGrid without the zF_generator.
 # So the best we can do is tell the user what they should have done.
-function with_halo(new_halo, old_grid::VerticallyStretchedCartesianGrid)
+function with_halo(new_halo, old_grid::VerticallyStretchedRectilinearGrid)
     new_halo != halo_size(old_grid) &&
-        @error "You need to construct your VerticallyStretchedCartesianGrid with the keyword argument halo=$new_halo"
+        @error "You need to construct your VerticallyStretchedRectilinearGrid with the keyword argument halo=$new_halo"
     return old_grid
 end
 
-short_show(grid::VerticallyStretchedCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    "VerticallyStretchedCartesianGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
+short_show(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+    "VerticallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
 
-function show(io::IO, g::VerticallyStretchedCartesianGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    print(io, "VerticallyStretchedCartesianGrid{$FT, $TX, $TY, $TZ}\n",
+function show(io::IO, g::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    print(io, "VerticallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
               "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',

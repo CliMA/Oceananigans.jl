@@ -6,7 +6,7 @@ using Benchmarks
 # Benchmark function
 
 function benchmark_topology(Arch, N, topo)
-    grid = RegularCartesianGrid(topology=topo, size=(N, N, N), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(topology=topo, size=(N, N, N), extent=(1, 1, 1))
     model = IncompressibleModel(architecture=Arch(), grid=grid)
 
     time_step!(model, 1) # warmup

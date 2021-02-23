@@ -10,7 +10,7 @@ end
 ```
 
 ```jldoctest
-julia> grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1));
+julia> grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
 julia> model = IncompressibleModel(grid=grid);
 
@@ -18,7 +18,7 @@ julia> set!(model, u=0.1, v=1.5)
 ```
 
 ```jldoctest
-julia> grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1));
+julia> grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
 julia> model = IncompressibleModel(grid=grid);
 

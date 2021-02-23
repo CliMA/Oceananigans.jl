@@ -98,7 +98,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Impose boundary conditions
     #####
 
-    grid = RegularCartesianGrid(size = (Nxy, Nxy, Nz), extent = (4π*h, 2π*h, 2h))
+    grid = RegularRectilinearGrid(size = (Nxy, Nxy, Nz), extent = (4π*h, 2π*h, 2h))
 
     Tbcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Value,  Θ_wall),
                                        bottom = BoundaryCondition(Value, -Θ_wall))

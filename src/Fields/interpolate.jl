@@ -1,20 +1,20 @@
-@inline fractional_x_index(x, ::Center, grid::RegularCartesianGrid) = @inbounds (x - grid.xC[1]) / grid.Δx
-@inline fractional_x_index(x, ::Face, grid::RegularCartesianGrid) = @inbounds (x - grid.xF[1]) / grid.Δx
+@inline fractional_x_index(x, ::Center, grid::RegularRectilinearGrid) = @inbounds (x - grid.xC[1]) / grid.Δx
+@inline fractional_x_index(x, ::Face, grid::RegularRectilinearGrid) = @inbounds (x - grid.xF[1]) / grid.Δx
 
-@inline fractional_y_index(y, ::Center, grid::RegularCartesianGrid) = @inbounds (y - grid.yC[1]) / grid.Δy
-@inline fractional_y_index(y, ::Face, grid::RegularCartesianGrid) = @inbounds (y - grid.yF[1]) / grid.Δy
+@inline fractional_y_index(y, ::Center, grid::RegularRectilinearGrid) = @inbounds (y - grid.yC[1]) / grid.Δy
+@inline fractional_y_index(y, ::Face, grid::RegularRectilinearGrid) = @inbounds (y - grid.yF[1]) / grid.Δy
 
-@inline fractional_z_index(z, ::Center, grid::RegularCartesianGrid) = @inbounds (z - grid.zC[1]) / grid.Δz
-@inline fractional_z_index(z, ::Face, grid::RegularCartesianGrid) = @inbounds (z - grid.zF[1]) / grid.Δz
+@inline fractional_z_index(z, ::Center, grid::RegularRectilinearGrid) = @inbounds (z - grid.zC[1]) / grid.Δz
+@inline fractional_z_index(z, ::Face, grid::RegularRectilinearGrid) = @inbounds (z - grid.zF[1]) / grid.Δz
 
 """
-    fractional_indices(x, y, z, loc, grid::RegularCartesianGrid)
+    fractional_indices(x, y, z, loc, grid::RegularRectilinearGrid)
 
-Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular Cartesian grid located at `loc`
+Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectilinear grid located at `loc`
 where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are floats indicating a location between
 grid points.
 """
-@inline function fractional_indices(x, y, z, loc, grid::RegularCartesianGrid)
+@inline function fractional_indices(x, y, z, loc, grid::RegularRectilinearGrid)
     i = fractional_x_index(x, loc[1], grid)
     j = fractional_y_index(y, loc[2], grid)
     k = fractional_z_index(z, loc[3], grid)
