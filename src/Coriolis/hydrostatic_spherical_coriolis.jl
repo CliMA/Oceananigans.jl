@@ -1,6 +1,10 @@
 using Oceananigans.Grids: RegularLatitudeLongitudeGrid
 using Oceananigans.Operators: Δx_vᶜᶠᵃ, Δy_uᶠᶜᵃ, Δxᶠᶜᵃ, Δyᶜᶠᵃ
 
+# Our two Coriolis schemes are energy-conserving or enstrophy-conserving
+# with a "vector invariant" momentum advection scheme, but not with a "flux form"
+# or "conservation form" advection scheme (which does not currently exist for
+# curvilinear grids).
 struct VectorInvariantEnergyConserving end
 struct VectorInvariantEnstrophyConserving end
 
