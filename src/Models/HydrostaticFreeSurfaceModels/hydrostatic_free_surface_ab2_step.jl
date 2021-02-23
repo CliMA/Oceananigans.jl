@@ -54,7 +54,10 @@ end
 ##### Free surface time-stepping: explicit, implicit, rigid lid ?
 #####
 
-function ab2_step_free_surface!(free_surface::ExplicitFreeSurface, velocities_update, model, χ, Δt)
+ab2_step_free_surface!(free_surface::ExplicitFreeSurface, velocities_update, model, χ, Δt) =
+    explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
+
+function explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
 
     event = launch!(model.architecture, model.grid, :xy,
                     _ab2_step_free_surface!,
@@ -84,13 +87,16 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     ## Need to wait for u* and v* to finish
     wait(device(model.architecture), velocities_update)
 
-    ## We need vertically integrated U,V (see continuity bits in src/Models/HydrostaticFreeSurfaceModels/compute_w_from_continuity.jl), 
-    ## model.free_surface.η, g and Δt and grid.... 
-    ## Then we can invoke solve_for_pressure! on the right type via calculate_pressure_correction!
-
     ## Note Jean-Michel is a fan of doing ExplicitFreeSurface step before solve, so maybe this code is part of free_surface::ExplicitFreeSurface
     ## that comes after explicit step
-    
+    explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
+
+    ## We need vertically integrated U,V (see continuity bits in src/Models/HydrostaticFreeSurfaceModels/compute_w_from_continuity.jl), 
+    ## model.free_surface.η, g and Δt and grid.... 
+    compute_vertcally_integrated_transport!(free_surface, model)
+
+    ## Then we can invoke solve_for_pressure! on the right type via calculate_pressure_correction!
+
     ## Once we have η we can update u* and v* with pressure gradient just as in pressure_correct_velocities!
 
     return
@@ -108,14 +114,15 @@ Compute the vertical integrated transport from the bottom to z=0 (i.e. linear fr
 """
 ### Note - what we really want is RHS = divergence of the vertically integrated transport
 ###        we can optimize this a bit later to do this all in one go to save using intermediate variables.
-function compute_vertcally_integrated_transport!(model)
+function compute_vertcally_integrated_transport!(free_surface, model)
 
     event = launch!(model.architecture,
                     model.grid,
                     :xy,
-                    _compute_vertically_integraed_transport!,
+                    _compute_vertically_integrated_transport!,
                     model.velocities,
                     model.grid,
+                    free_surface.barotropic_transport,
                     dependencies=Event(device(model.architecture)))
 
     wait(device(model.architecture), event)
@@ -123,11 +130,14 @@ function compute_vertcally_integrated_transport!(model)
     return nothing
 end
 
-@kernel function _compute_vertically_integrated_transport!(U, grid)
+@kernel function _compute_vertically_integrated_transport!(U, grid, barotropic_transport )
     i, j = @index(Global, NTuple)
     # U.w[i, j, 1] = 0 is enforced via halo regions.
-    @unroll for k in 2:grid.Nz+1
-        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - ΔzC(i, j, k, grid) * div_xyᶜᶜᵃ(i, j, k-1, grid, U.u, U.v)
+    barotropic_transport.u[i, j, 1] = 0.
+    barotropic_transport.v[i, j, 1] = 0.
+    @unroll for k in 1:grid.Nz
+        @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
+        @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
     end
 end
 

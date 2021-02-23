@@ -77,21 +77,21 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 @testset "Oceananigans" begin
     if group == :unit || group == :all
         @testset "Unit tests" begin
-            include("test_grids.jl")
-            include("test_operators.jl")
-            include("test_boundary_conditions.jl")
-            include("test_field.jl")
-            include("test_reduced_field.jl")
-            include("test_averaged_field.jl")
-            include("test_kernel_computed_field.jl")
-            include("test_halo_regions.jl")
-            include("test_solvers.jl")
-            include("test_poisson_solvers.jl")
+            ### include("test_grids.jl")
+            ### include("test_operators.jl")
+            ### include("test_boundary_conditions.jl")
+            ### include("test_field.jl")
+            ### include("test_reduced_field.jl")
+            ### include("test_averaged_field.jl")
+            ### include("test_kernel_computed_field.jl")
+            ### include("test_halo_regions.jl")
+            ### include("test_solvers.jl")
+            ### include("test_poisson_solvers.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
-            include("test_coriolis.jl")
-            include("test_buoyancy.jl")
-            include("test_stokes_drift.jl")
-            include("test_utils.jl")
+            ### include("test_coriolis.jl")
+            ### include("test_buoyancy.jl")
+            ### include("test_stokes_drift.jl")
+            ### include("test_utils.jl")
         end
     end
 
