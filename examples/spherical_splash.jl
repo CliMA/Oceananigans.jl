@@ -6,7 +6,7 @@
 
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, JLD2, Plots"
+# pkg"add Oceananigans, JLD2, GLMakie"
 # ```
 
 # ## A spherical domain
