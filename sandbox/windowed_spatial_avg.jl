@@ -57,18 +57,16 @@ using Oceananigans.Fields: reduced_location
 import Oceananigans.OutputWriters: xdim, ydim, zdim, define_output_variable!
 
 function define_output_variable!(dataset, 
-                                 wsa::WindowedSpatialAverage,
+                                 wtsa::Union{WindowedSpatialAverage, WindowedTimeAverage{<:WindowedSpatialAverage}}, 
                                  name, array_type, compression, attributes, dimensions)
+    if wtsa isa WindowedSpatialAverage
+        wsa = wtsa
+    elseif wtsa isa WindowedTimeAverage
+        wsa = wtsa.operand
+    else
+        throw("Wrong type for windowed averaged")
+    end
     LX, LY, LZ = reduced_location(location(wsa.field), dims=wsa.dims)
-    output_dims = tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
-    defVar(dataset, name, eltype(array_type), (output_dims..., "time"),
-           compression=compression, attrib=attributes)
-    return nothing
-end
-function define_output_variable!(dataset, 
-                                 wsa::WindowedTimeAverage{<:WindowedSpatialAverage}, 
-                                 name, array_type, compression, attributes, dimensions)
-    LX, LY, LZ = reduced_location(location(wsa.operand.field), dims=wsa.operand.dims)
     output_dims = tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
     defVar(dataset, name, eltype(array_type), (output_dims..., "time"),
            compression=compression, attrib=attributes)
@@ -97,7 +95,7 @@ simulation = Simulation(model, Δt=1second, iteration_interval=5, progress=progr
 
 wout = (;  Uw, U2w)
 simulation.output_writers[:simple_output] = NetCDFOutputWriter(model, wout, 
-                                                               schedule = AveragedTimeInterval(10seconds),
+                                                               schedule = TimeInterval(10seconds),
                                                                filepath = "windowed_avg.nc", mode = "c")
 
 run!(simulation)
