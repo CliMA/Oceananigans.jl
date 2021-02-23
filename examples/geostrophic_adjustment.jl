@@ -22,6 +22,8 @@
 
 using Oceananigans
 using Oceananigans.Utils: kilometers
+using Oceananigans.Buoyancy: g_Earth
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 
 grid = RegularCartesianGrid(size = (128, 1, 1),
                             x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
@@ -37,7 +39,9 @@ coriolis = FPlane(f=1e-4)
 
 using Oceananigans.Models: HydrostaticFreeSurfaceModel
 
-model = HydrostaticFreeSurfaceModel(grid=grid, coriolis=coriolis)
+free_surface = ExplicitFreeSurface(gravitational_acceleration=g_Earth)
+free_surface = ImplicitFreeSurface(gravitational_acceleration=g_Earth)
+model = HydrostaticFreeSurfaceModel(grid=grid, coriolis=coriolis, free_surface = free_surface)
 
 # ## A geostrophic adjustment initial value problem
 #
