@@ -54,7 +54,7 @@ function z_derivative(a)
 end
 
 function x_derivative_cell(FT, arch)
-    grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(3, 3, 3))
+    grid = RegularRectilinearGrid(FT, size=(3, 3, 3), extent=(3, 3, 3))
     a = Field(Center, Center, Center, arch, grid, nothing)
     dx_a = ∂x(a)
 
@@ -286,7 +286,7 @@ end
 
 function computation_including_boundaries(FT, arch)
     topo = (Periodic, Bounded, Bounded)
-    grid = RegularCartesianGrid(FT, topology=topo, size=(13, 17, 19), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(FT, topology=topo, size=(13, 17, 19), extent=(1, 1, 1))
     model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid)
 
     u, v, w = model.velocities
@@ -323,7 +323,7 @@ function pressure_field(model)
 end
 
 function computations_with_buoyancy_field(FT, arch, buoyancy)
-    grid = RegularCartesianGrid(FT, size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, 1, 1))
     tracers = buoyancy isa BuoyancyTracer ? :b : (:T, :S)
     model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid,
                                 tracers=tracers, buoyancy=buoyancy)
@@ -404,7 +404,7 @@ end
 
     for FT in float_types
         arch = CPU()
-        grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(3, 3, 3))
+        grid = RegularRectilinearGrid(FT, size=(3, 3, 3), extent=(3, 3, 3))
         u, v, w = VelocityFields(arch, grid)
         c = Field(Center, Center, Center, arch, grid, nothing)
 
@@ -449,7 +449,7 @@ end
         for FT in float_types
             num1 = FT(π)
             num2 = FT(42)
-            grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(3, 3, 3))
+            grid = RegularRectilinearGrid(FT, size=(3, 3, 3), extent=(3, 3, 3))
 
             u, v, w = VelocityFields(arch, grid)
             T, S = TracerFields((:T, :S), arch, grid)
@@ -468,7 +468,7 @@ end
         arch = CPU()
         @info "  Testing derivatives..."
         for FT in float_types
-            grid = RegularCartesianGrid(FT, size=(3, 3, 3), extent=(3, 3, 3),
+            grid = RegularRectilinearGrid(FT, size=(3, 3, 3), extent=(3, 3, 3),
                                         topology=(Periodic, Periodic, Periodic))
 
             u, v, w = VelocityFields(arch, grid)
@@ -487,7 +487,7 @@ end
         arch = CPU()
         Nx = 3 # Δx=1, xC = 0.5, 1.5, 2.5
         for FT in float_types
-            grid = RegularCartesianGrid(FT, size=(Nx, Nx, Nx), extent=(Nx, Nx, Nx))
+            grid = RegularRectilinearGrid(FT, size=(Nx, Nx, Nx), extent=(Nx, Nx, Nx))
             a, b = (Field(Center, Center, Center, arch, grid, nothing) for i in 1:2)
 
             set!(b, 2)
@@ -528,7 +528,7 @@ end
 
             for FT in (Float64,) #float_types
 
-                grid = RegularCartesianGrid(FT, size=(4, 4, 4), extent=(1, 1, 1),
+                grid = RegularRectilinearGrid(FT, size=(4, 4, 4), extent=(1, 1, 1),
                                             topology=(Periodic, Periodic, Bounded))
 
                 buoyancy = SeawaterBuoyancy(gravitational_acceleration = 1,

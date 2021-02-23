@@ -24,7 +24,7 @@
 
 using Oceananigans, Oceananigans.Advection
 
-grid = RegularCartesianGrid(size=(128, 128, 1), extent=(2π, 2π, 2π))
+grid = RegularRectilinearGrid(size=(128, 128, 1), extent=(2π, 2π, 2π))
 
 model = IncompressibleModel(timestepper = :RungeKutta3, 
                               advection = UpwindBiasedFifthOrder(),

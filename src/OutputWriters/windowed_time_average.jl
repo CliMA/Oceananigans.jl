@@ -59,7 +59,7 @@ using Oceananigans
 using Oceananigans.OutputWriters: JLD2OutputWriter
 using Oceananigans.Utils: minutes
 
-model = IncompressibleModel(grid=RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = IncompressibleModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
 simulation = Simulation(model, Δt=10minutes, stop_time=30years)
 

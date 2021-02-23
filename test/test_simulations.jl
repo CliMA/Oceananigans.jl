@@ -6,7 +6,7 @@ using Oceananigans.Simulations:
     for arch in archs
         @info "Testing time step wizard [$(typeof(arch))]..."
 
-        grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
         model = IncompressibleModel(architecture=arch, grid=grid)
 
         Δx = grid.Δx
@@ -44,7 +44,7 @@ end
     for arch in archs
         @info "Testing simulations [$(typeof(arch))]..."
 
-        grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
         model = IncompressibleModel(architecture=arch, grid=grid)
 
         for Δt in (3, TimeStepWizard(Δt=5.0))
