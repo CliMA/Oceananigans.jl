@@ -61,6 +61,7 @@ const VIEnergy = HydrostaticSphericalCoriolis{<:VectorInvariantEnergyConserving}
 #####
 ##### Show
 #####
+
 Base.show(io::IO, hydrostatic_spherical_coriolis::HydrostaticSphericalCoriolis{FT}) where FT =
     print(io, "HydrostaticSphericalCoriolis{$FT}: rotation_rate = ",
           @sprintf("%.2e",  hydrostatic_spherical_coriolis.rotation_rate))
