@@ -109,3 +109,24 @@ function show(io::IO, g::RegularLatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT
               "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
               "grid spacing (Δλ, Δϕ, Δz): ", (g.Δλ, g.Δϕ, g.Δz))
 end
+
+#####
+##### << Spherical nodes >>
+#####
+
+# Node by node
+@inline xnode(::Type{Center}, i, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.λᶜᵃᵃ[i]
+@inline xnode(::Type{Face},   i, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.λᶠᵃᵃ[i]
+
+@inline ynode(::Type{Center}, j, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.ϕᵃᶜᵃ[j]
+@inline ynode(::Type{Face},   j, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.ϕᵃᶠᵃ[j]
+
+@inline znode(::Type{Center}, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶠ[k]
+@inline znode(::Type{Face},   k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶜ[k]
+
+all_x_nodes(::Type{Center}, grid::RegularLatitudeLongitudeGrid) = grid.λᶜᵃᵃ
+all_x_nodes(::Type{Face},   grid::RegularLatitudeLongitudeGrid) = grid.λᶠᵃᵃ
+all_y_nodes(::Type{Center}, grid::RegularLatitudeLongitudeGrid) = grid.ϕᵃᶜᵃ
+all_y_nodes(::Type{Face},   grid::RegularLatitudeLongitudeGrid) = grid.ϕᵃᶠᵃ
+all_z_nodes(::Type{Center}, grid::RegularLatitudeLongitudeGrid) = grid.zᵃᵃᶜ
+all_z_nodes(::Type{Face},   grid::RegularLatitudeLongitudeGrid) = grid.zᵃᵃᶠ

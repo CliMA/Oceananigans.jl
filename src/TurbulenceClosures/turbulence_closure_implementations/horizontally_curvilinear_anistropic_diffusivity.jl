@@ -1,3 +1,5 @@
+using Oceananigans.Operators: Δzᵃᵃᶜ
+
 """
     HorizontallyCurvilinearAnisotropicDiffusivity{N, K}
 
