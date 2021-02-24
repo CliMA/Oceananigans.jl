@@ -1,4 +1,4 @@
-# # Geostrophic adjustment using Oceananigans.HydrostaticFreeSurfaceModel
+# # Splash on a sphere using Oceananigans.HydrostaticFreeSurfaceModel
 #
 # ## Install dependencies
 #
@@ -11,47 +11,47 @@
 
 # ## A spherical domain
 #
-# We use a one-dimensional domain of geophysical proportions,
+# We two-dimensional latitude-longitude grid on a sphere of unit radius,
 
 using Oceananigans
 using Oceananigans.Grids: RegularLatitudeLongitudeGrid
 
-#grid = RegularLatitudeLongitudeGrid(size = (720, 120, 1), latitude = (0, 60), longitude = (-180, 180), z = (-1, 0))
-grid = RegularLatitudeLongitudeGrid(size = (360, 60, 1), latitude = (0, 60), longitude = (-180, 180), z = (-1, 0))
+grid = RegularLatitudeLongitudeGrid(size = (360, 60, 1),
+                                    radius = 1,
+                                    latitude = (-60, 60),
+                                    longitude = (-180, 180),
+                                    z = (-1, 0))
 
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 
-coriolis = HydrostaticSphericalCoriolis()
+coriolis = HydrostaticSphericalCoriolis(rotation_rate=10.0)
 
 # ## Building a `HydrostaticFreeSurfaceModel`
 #
 # We use `grid` and `coriolis` to build a simple `HydrostaticFreeSurfaceModel`,
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
-using Oceananigans.Models: HydrostaticFreeSurfaceModel
-using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
-
-closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=1, κh=1)
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, ExplicitFreeSurface
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     momentum_advection = VectorInvariant(),
+                                    free_surface = ExplicitFreeSurface(gravitational_acceleration=1),
                                     tracers = (),
                                     buoyancy = nothing,
                                     coriolis = coriolis,
-                                    closure = closure)
+                                    closure = nothing)
 
-# ## A geostrophic adjustment initial value problem
+# ## Making a splash
 #
-# We pose a geostrophic adjustment problem that consists of a partially-geostrophic
-# Gaussian height field complemented by a geostrophic ``y``-velocity,
+# We make a splash by imposing a Gaussian height field,
 
-Gaussian(λ, ϕ, dλ, dϕ) = exp(-λ^2 / 2dλ^2 - ϕ^2 / 2dϕ^2)
+Gaussian(λ, ϕ, L) = exp(-(λ^2 + ϕ^2) / 2L^2)
 
-a = 0.01 # geostrophic velocity
-L = 4 # degree
-ϕ₀ = 30 # degrees
+a = 0.01 # splash amplitude
+L = 10 # degree
+ϕ₀ = 5 # degrees
 
-splash(λ, ϕ, z) = a * Gaussian(λ, ϕ - ϕ₀, L, L)
+splash(λ, ϕ, z) = a * Gaussian(λ, ϕ - ϕ₀, L)
 
 set!(model, η=splash)
 
@@ -65,10 +65,16 @@ g = model.free_surface.gravitational_acceleration
 
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
-wave_propagation_time_scale = 100e3 * model.grid.Δλ / gravity_wave_speed
+# Time-scale for gravity wave propagation across the smallest grid cell
+wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.ϕᵃᶜᵃ)) * deg2rad(grid.Δλ),
+                                  grid.radius * deg2rad(grid.Δϕ)) / gravity_wave_speed
 
-simulation = Simulation(model, Δt = 0.05wave_propagation_time_scale, stop_time = 100wave_propagation_time_scale,
-                        progress = s -> @info "Time = $(prettytime(s.model.clock.time)) / $(prettytime(s.stop_time))")
+simulation = Simulation(model,
+                        Δt = 0.05wave_propagation_time_scale,
+                        stop_iteration = 4000,
+                        iteration_interval = 100,
+                        progress = s -> @info "Iteration = $(s.model.clock.iteration) / $(s.stop_iteration)")
+                                                         
 
 # ## Output
 #
@@ -76,11 +82,11 @@ simulation = Simulation(model, Δt = 0.05wave_propagation_time_scale, stop_time 
 
 output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
-using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
+using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(0.05wave_propagation_time_scale),
-                                                      prefix = "rossby_splash",
+                                                      schedule = IterationInterval(10),
+                                                      prefix = "spherical_splash",
                                                       force = true)
 
 run!(simulation)
@@ -99,45 +105,38 @@ file = jldopen(simulation.output_writers[:fields].filepath)
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
-# u_max = v_max = η_max = 0
-
-# for i in iterations
-#     u_max = max(u_max, maximum(abs, file["timeseries/u/$i"]))
-#     v_max = max(v_max, maximum(abs, file["timeseries/v/$i"]))
-#     η_max = max(η_max, maximum(abs, file["timeseries/η/$i"]))
-# end
-
 iter = Node(0)
-plot_title = @lift @sprintf("Oceananigans.jl on the sphere! Rossby splash: u, v, η @ time = %s", prettytime(file["timeseries/t/" * string($iter)]))
+plot_title = @lift @sprintf("Oceananigans.jl on the sphere! Spherical splash: u, v, η @ time = %s",
+                            prettytime(file["timeseries/t/" * string($iter)]))
+
 u = @lift file["timeseries/u/" * string($iter)][:, :, 1]
 v = @lift file["timeseries/v/" * string($iter)][:, :, 1]
 η = @lift file["timeseries/η/" * string($iter)][:, :, 1]
 
 # Plot on the unit sphere to align with the spherical wireframe.
-# Multiply by 1.01 so the η field is a bit above the wireframe.
-x = @. 1.01 * cosd(λ) * sind(ϕ)
-y = @. 1.01 * sind(λ) * sind(ϕ)
-z = @. 1.01 * cosd(ϕ) * λ ./ λ
+x3 = @. cosd(λ) * sind(ϕ)
+y3 = @. sind(λ) * sind(ϕ)
+z3 = @. cosd(ϕ) * λ ./ λ
 
-x = x[:, :, 1]
-y = y[:, :, 1]
-z = z[:, :, 1]
+x = @lift (1 .+ 20 .* file["timeseries/η/" * string($iter)][:, :, 1]) .* x3[:, :, 1]
+y = @lift (1 .+ 20 .* file["timeseries/η/" * string($iter)][:, :, 1]) .* y3[:, :, 1]
+z = @lift (1 .+ 20 .* file["timeseries/η/" * string($iter)][:, :, 1]) .* z3[:, :, 1]
 
 fig = Figure(resolution = (1920, 1080))
 
 clims = [(-0.003, 0.003), (-0.003, 0.003), (-0.01, 0.01)]
 
-for (n, var) in enumerate([u, v, η])
+for (n, var) in enumerate((u, v, η))
     ax = fig[1, n] = LScene(fig, title="$n")
-    wireframe!(ax, Sphere(Point3f0(0), 1f0), show_axis=false)
+    wireframe!(ax, Sphere(Point3f0(0), 0.98f0), show_axis=false)
     surface!(ax, x, y, z, color=var, colormap=:balance, colorrange=clims[n])
-    rotate_cam!(ax.scene, (2π/3, 0, 0))
-    zoom!(ax.scene, (0, 0, 0), 5, false)
+    rotate_cam!(ax.scene, (2π/3, π/8, 0))
+    zoom!(ax.scene, (0, 0, 0), 2, false)
 end
 
 supertitle = fig[0, :] = Label(fig, plot_title, textsize=30)
 
-record(fig, "rossby_splash.mp4", iterations, framerate=30) do i
+record(fig, "spherical_splash.mp4", iterations, framerate=30) do i
     @info "Animating iteration $i/$(iterations[end])..."
     iter[] = i
 end
