@@ -130,7 +130,7 @@ for (n, var) in enumerate((u, v, η))
     ax = fig[1, n] = LScene(fig, title="$n")
     wireframe!(ax, Sphere(Point3f0(0), 0.98f0), show_axis=false)
     surface!(ax, x, y, z, color=var, colormap=:balance, colorrange=clims[n])
-    rotate_cam!(ax.scene, (2π/3, π/8, 0))
+    rotate_cam!(ax.scene, (2π/3, 0, 0))
     zoom!(ax.scene, (0, 0, 0), 2, false)
 end
 
