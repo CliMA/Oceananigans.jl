@@ -27,7 +27,7 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, arch, grid)
     η = CenterField(arch, grid, TracerBoundaryConditions(grid))
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
 
-    implicit_step_solver = nothing # PreconditionedConjugateGradientSolver?
+    implicit_step_solver = ImplicitFreeSurfaceSolver(arch, η)
 
     barotropic_u_transport = ReducedField(Face, Center, Nothing, arch, grid; dims=(1, 2), boundary_conditions=nothing)
     barotropic_v_transport = ReducedField(Center, Face, Nothing, arch, grid; dims=(1, 2), boundary_conditions=nothing)

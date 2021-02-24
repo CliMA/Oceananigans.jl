@@ -90,15 +90,17 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     ## Note Jean-Michel is a fan of doing ExplicitFreeSurface step before solve, so maybe this code is part of free_surface::ExplicitFreeSurface
     ## that comes after explicit step
     event = explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
+    wait(device(model.architecture), event)
 
     ## We need vertically integrated U,V (see continuity bits in src/Models/HydrostaticFreeSurfaceModels/compute_w_from_continuity.jl), 
     ## model.free_surface.η, g and Δt and grid.... 
-    ## event = compute_vertcally_integrated_transport!(free_surface, model)
+    event = compute_vertcally_integrated_transport!(free_surface, model)
 
     ## Then we can invoke solve_for_pressure! on the right type via calculate_pressure_correction!
 
     ## Once we have η we can update u* and v* with pressure gradient just as in pressure_correct_velocities!
 
+    ## The explicit form of this function defaults to returning an event, we do the same for now.
     return event
 end
 
