@@ -41,12 +41,11 @@ struct VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A} <: AbstractRecti
      zF :: A
 end
 
-function VerticallyStretchedRectilinearGrid(FT=Float64, architecture=CPU();
+function VerticallyStretchedRectilinearGrid(FT=Float64; architecture = CPU(),
                                               size, x, y, zF,
                                               halo = (1, 1, 1),
                                           topology = (Periodic, Periodic, Bounded))
 
-    architecture isa GPU && error("VerticallyStretchedRectilinearGrid only works with architecture=CPU() right now.")
     topology != (Periodic, Periodic, Bounded) && error("Only topology = (Periodic, Periodic, Bounded) is supported right now.")
 
     TX, TY, TZ = validate_topology(topology)
@@ -59,12 +58,6 @@ function VerticallyStretchedRectilinearGrid(FT=Float64, architecture=CPU();
 
     # Initialize vertically-stretched arrays on CPU
     Lz, zF, zC, ΔzF, ΔzC = generate_stretched_vertical_grid(FT, topology[3], Nz, Hz, zF)
-
-    # Convert to appropriate array type for arch
-     zF = convert(array_type(architecture), zF)
-     zC = convert(array_type(architecture), zC)
-    ΔzF = convert(array_type(architecture), ΔzF)
-    ΔzC = convert(array_type(architecture), ΔzC)
 
     # Construct uniform horizontal grid
     Lh, Nh, Hh, X₁ = (Lx, Ly), size[1:2], halo[1:2], (x[1], y[1])
@@ -107,6 +100,12 @@ function VerticallyStretchedRectilinearGrid(FT=Float64, architecture=CPU();
     # Seems needed to avoid out-of-bounds error in viscous dissipation
     # operator wanting to access ΔzC[Nz+2].
     ΔzC = OffsetArray(cat(ΔzC[0], ΔzC..., ΔzC[Nz], dims=1), -Hz-1)
+
+    # Convert to appropriate array type for arch
+     zF = OffsetArray(arch_array(architecture,  zF.parent),  zF.offsets...)
+     zC = OffsetArray(arch_array(architecture,  zC.parent),  zC.offsets...)
+    ΔzF = OffsetArray(arch_array(architecture, ΔzF.parent), ΔzF.offsets...)
+    ΔzC = OffsetArray(arch_array(architecture, ΔzC.parent), ΔzC.offsets...)
 
     return VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, typeof(xF), typeof(zF)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
@@ -179,3 +178,16 @@ function show(io::IO, g::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) whe
               "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
               "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
 end
+
+Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+    VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}(
+        grid.Nx, grid.Ny, grid.Nz,
+        grid.Hx, grid.Hy, grid.Hz,
+        grid.Lx, grid.Ly, grid.Lz,
+        grid.Δx, grid.Δy,
+        Adapt.adapt(to, grid.ΔzF),
+        Adapt.adapt(to, grid.ΔzC),
+        grid.xC, grid.yC,
+        Adapt.adapt(to, grid.zC),
+        grid.xF, grid.yF,
+        Adapt.adapt(to, grid.zF))
