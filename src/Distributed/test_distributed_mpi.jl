@@ -7,6 +7,8 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 MPI.Initialized() || MPI.Init()
 comm = MPI.COMM_WORLD
 
+include("distributed_model.jl")
+
 # Right now just testing with 4 ranks!
 mpi_ranks = MPI.Comm_size(comm)
 @assert mpi_ranks == 4

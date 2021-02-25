@@ -15,6 +15,7 @@ struct MultiCPU{R, I, ρ, C} <: AbstractMultiArchitecture
 end
 
 child_architecture(::MultiCPU) = CPU()
+child_architecture(::CPU) = CPU()
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
