@@ -24,7 +24,7 @@ end
 Returns a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
 By default, `rotation_rate` is assumed to be Earth's.
 """
-HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, stencil::S=VectorInvariantEnstrophyConserving()) where S =
+HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, stencil::S=VectorInvariantEnengyConserving()) where S =
     HydrostaticSphericalCoriolis{S, FT}(rotation_rate, stencil)
 
 @inline fᵃᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid, coriolis::HydrostaticSphericalCoriolis) =
