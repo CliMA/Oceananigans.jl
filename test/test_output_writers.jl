@@ -801,7 +801,7 @@ function run_cross_architecture_checkpointer_tests(arch1, arch2)
 end
 
 function run_checkpointer_cleanup_tests(arch)
-    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = IncompressibleModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=0.2, stop_iteration=10)
 
