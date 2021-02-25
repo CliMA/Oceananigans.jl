@@ -140,8 +140,8 @@ end
     @unroll for k in 1:grid.Nz
         #### @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
         #### @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
-        @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
-        @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
+        @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k]*Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
+        @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k]*Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
     end
 end
 
