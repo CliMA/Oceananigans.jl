@@ -124,6 +124,9 @@ The operators in this file fall into three categories:
 @inline Δzᵃᵃᶜ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.Δz
 @inline Δzᵃᵃᶠ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.Δz
 
+@inline Axᶠᶜᶜ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds Δyᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Ayᶜᶠᶜ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds Δxᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+
 @inline Azᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * abs(sind(grid.ϕᵃᶜᵃ[j+1]) - sind(grid.ϕᵃᶜᵃ[j]))
 @inline Azᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * abs(sind(grid.ϕᵃᶜᵃ[j+1]) - sind(grid.ϕᵃᶜᵃ[j]))
 @inline Azᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * abs(sind(grid.ϕᵃᶠᵃ[j+1]) - sind(grid.ϕᵃᶠᵃ[j]))
