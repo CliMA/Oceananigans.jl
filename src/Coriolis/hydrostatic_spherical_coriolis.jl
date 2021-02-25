@@ -53,8 +53,8 @@ const VIEnstrophy = HydrostaticSphericalCoriolis{<:VectorInvariantEnstrophyConse
 
 const VIEnergy = HydrostaticSphericalCoriolis{<:VectorInvariantEnergyConserving}
 
-@inline f_ℑx_vᶠᶠᵃ(i, j, k, coriolis, v) = fᵃᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_vᶜᶠᵃ, U[2])
-@inline f_ℑy_uᶠᶠᵃ(i, j, k, coriolis, u) = fᵃᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_uᶠᶜᵃ, U[1])
+@inline f_ℑx_vᶠᶠᵃ(i, j, k, grid, coriolis, v) = fᵃᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_vᶜᶠᵃ, U[2])
+@inline f_ℑy_uᶠᶠᵃ(i, j, k, grid, coriolis, u) = fᵃᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_uᶠᶜᵃ, U[1])
 
 @inline x_f_cross_U(i, j, k, grid::RegularLatitudeLongitudeGrid, coriolis::VIEnergy, U) =
     @inbounds + ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, coriolis, U[2]) / Δxᶠᶜᵃ(i, j, k, grid)
