@@ -27,9 +27,6 @@ By default, `rotation_rate` is assumed to be Earth's.
 HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, stencil::S=VectorInvariantEnengyConserving()) where S =
     HydrostaticSphericalCoriolis{S, FT}(rotation_rate, stencil)
 
-@inline fᵃᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid, coriolis::HydrostaticSphericalCoriolis) =
-    @inbounds 2 * coriolis.rotation_rate * sind(grid.ϕᵃᶜᵃ[j])
-
 @inline fᵃᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid, coriolis::HydrostaticSphericalCoriolis) =
     @inbounds 2 * coriolis.rotation_rate * sind(grid.ϕᵃᶠᵃ[j])
 
@@ -45,7 +42,7 @@ const VIEnstrophy = HydrostaticSphericalCoriolis{<:VectorInvariantEnstrophyConse
     @inbounds + ℑyᵃᶜᵃ(i, j, k, grid, fᵃᶠᵃ, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_vᶜᶠᵃ, U[2]) / Δxᶠᶜᵃ(i, j, k, grid)
 
 @inline y_f_cross_U(i, j, k, grid::RegularLatitudeLongitudeGrid, coriolis::VIEnstrophy, U) =
-    @inbounds - ℑxᶜᵃᵃ(i, j, k, grid, fᵃᶜᵃ, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_uᶠᶜᵃ, U[1]) / Δyᶜᶠᵃ(i, j, k, grid)
+    @inbounds - ℑxᶜᵃᵃ(i, j, k, grid, fᵃᶠᵃ, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_uᶠᶜᵃ, U[1]) / Δyᶜᶠᵃ(i, j, k, grid)
 
 #####
 ##### Energy-conserving stencil
