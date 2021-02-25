@@ -29,8 +29,8 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, arch, grid)
 
     implicit_step_solver = ImplicitFreeSurfaceSolver(arch, η)
 
-    barotropic_u_transport = ReducedField(Face, Center, Nothing, arch, grid; dims=(1, 2), boundary_conditions=nothing)
-    barotropic_v_transport = ReducedField(Center, Face, Nothing, arch, grid; dims=(1, 2), boundary_conditions=nothing)
+    barotropic_u_transport = ReducedField(Face, Center, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
+    barotropic_v_transport = ReducedField(Center, Face, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
     barotropic_transport = (u=barotropic_u_transport, v=barotropic_v_transport)
 
     return ImplicitFreeSurface(η, g, barotropic_transport, implicit_step_solver)

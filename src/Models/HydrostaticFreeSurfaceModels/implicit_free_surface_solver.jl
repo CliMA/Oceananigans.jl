@@ -4,7 +4,7 @@ struct ImplicitFreeSurfaceSolver{S}
     solver :: S
 end
 
-function ImplicitFreeSurfaceSolver(arch, template_field; Amatrix_operator=nothing)
+function ImplicitFreeSurfaceSolver(arch, template_field; Amatrix_operator=nothing, maxit=nothing, tol=nothing)
 
     @kernel function implicit_η!(grid, f, implicit_η_f, g, Δt)
         ### Not sure what to call this
@@ -17,7 +17,7 @@ function ImplicitFreeSurfaceSolver(arch, template_field; Amatrix_operator=nothin
     end
 
 
-    if Amatrix_operator == nothing
+    if isnothing( Amatrix_operator )
         function Amatrix_function!(result, x, arch, grid, bcs)
             event = launch!(arch, grid, :xyz, implicit_η!, grid, x, result, dependencies=Event(device(arch)))
             wait(device(arch), event)
@@ -26,15 +26,24 @@ function ImplicitFreeSurfaceSolver(arch, template_field; Amatrix_operator=nothin
         end
     end
 
-     pcg_params = (
+    if isnothing( maxit )
+        maxit = template_field.grid.Nx * template_field.grid.Ny
+    end
+
+    if isnothing( tol )
+        tol = 1.e-13
+    end
+
+    pcg_params = (
         PCmatrix_function = nothing,
         Amatrix_function = Amatrix_function!,
         Template_field = template_field,
-        maxit = 1000, # grid.Nx * grid.Ny,
-        tol = 1.e-13
+        maxit = maxit,
+        tol = tol,
     )
 
 
     S = PreconditionedConjugateGradientSolver(arch = arch, parameters = pcg_params)
+
     return ImplicitFreeSurfaceSolver(S)
 end
