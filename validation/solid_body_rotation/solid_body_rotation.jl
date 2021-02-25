@@ -30,18 +30,19 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 using Oceananigans.Utils: prettytime
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
-grid = RegularLatitudeLongitudeGrid(size = (360, 60, 1),
+grid = RegularLatitudeLongitudeGrid(size = (90, 15, 1),
                                     radius = 1,
                                     latitude = (-60, 60),
                                     longitude = (-180, 180),
-                                    halo = (1, 1, 1),
                                     z = (-1, 0))
 
+coriolis = HydrostaticSphericalCoriolis(rotation_rate = 1,
+                                        stencil = VectorInvariantEnstrophyConserving())
+
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    momentum_advection = nothing,
-                                    #momentum_advection = VectorInvariant(),
+                                    momentum_advection = VectorInvariant(),
                                     free_surface = ExplicitFreeSurface(gravitational_acceleration=1),
-                                    coriolis = HydrostaticSphericalCoriolis(rotation_rate=1, stencil=VectorInvariantEnergyConserving()),
+                                    coriolis = coriolis,
                                     tracers = :c,
                                     buoyancy = nothing,
                                     closure = nothing)
@@ -80,12 +81,11 @@ simulation = Simulation(model,
                         Δt = 0.1wave_propagation_time_scale,
                         stop_time = 32 * circumvection_timescale,
                         iteration_interval = 100,
-                        #progress = s -> @info "Iteration = $(s.model.clock.iteration) / $(s.stop_iteration)")
                         progress = s -> @info "Time = $(s.model.clock.time) / $(s.stop_time)")
                                                          
 output_fields = merge(model.velocities, model.tracers, (η=model.free_surface.η,))
 
-output_prefix = "solid_body_rotation_energy_conserving_no_momentum_advection_Hx$(grid.Hx)_Nx$(grid.Nx)"
+output_prefix = "solid_body_rotation_Nx$(grid.Nx)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(circumvection_timescale / 20),
