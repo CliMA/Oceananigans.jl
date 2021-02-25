@@ -88,7 +88,7 @@ function aligned_time_step(sim)
     end
 
     # Align time step with simulation stop time
-    if tick_time(clock, Δt) > sim.stop_time
+    if next_time(clock, Δt) > sim.stop_time
         Δt = unit_time(sim.stop_time - clock.time)
     end
 

@@ -43,8 +43,8 @@ Base.show(io::IO, c::Clock{T}) where T =
                     ", iteration = ", c.iteration,
                         ", stage = ", c.stage)
 
-tick_time(clock, Δt) = clock.time + Δt
-tick_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + Nanosecond(round(Int, 1e9 * Δt))
+next_time(clock, Δt) = clock.time + Δt
+next_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + Nanosecond(round(Int, 1e9 * Δt))
 
 tick_time!(clock, Δt) = clock.time += Δt
 tick_time!(clock::Clock{<:AbstractTime}, Δt) = clock.time += Nanosecond(round(Int, 1e9 * Δt))
