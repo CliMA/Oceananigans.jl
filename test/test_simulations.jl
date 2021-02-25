@@ -93,7 +93,7 @@ function run_basic_simulation_tests(arch, Δt)
 end
 
 function run_simulation_date_tests(arch, start_time, stop_time, Δt)
-    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
     clock = Clock(time=start_time)
     model = IncompressibleModel(architecture=arch, grid=grid, clock=clock)

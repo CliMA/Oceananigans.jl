@@ -44,7 +44,7 @@ end
 #####
 
 function run_DateTime_netcdf_tests(arch)
-    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=DateTime(2021, 1, 1))
     model = IncompressibleModel(architecture=arch, grid=grid, clock=clock)
 
@@ -75,7 +75,7 @@ function run_DateTime_netcdf_tests(arch)
 end
 
 function run_TimeDate_netcdf_tests(arch)
-    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=TimeDate(2021, 1, 1))
     model = IncompressibleModel(architecture=arch, grid=grid, clock=clock)
 
