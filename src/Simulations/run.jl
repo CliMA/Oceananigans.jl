@@ -7,7 +7,7 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 
 using Oceananigans: AbstractModel
 
-import Oceananigans.OutputWriters: checkpoint_path
+import Oceananigans.OutputWriters: checkpoint_path, set!
 
 # Simulations are for running
 
@@ -190,43 +190,4 @@ function run!(sim; pickup=false)
     end
 
     return nothing
-end
-
-#####
-##### Util for "picking up" a simulation from a checkpoint
-#####
-
-""" Returns `filepath`. Shortcut for `run!(simulation, pickup=filepath)`. """
-checkpoint_path(filepath::AbstractString, checkpointers) = filepath
-
-function checkpoint_path(pickup, checkpointers)
-    length(checkpointers) == 0 && error("No checkpointers found: cannot pickup simulation!")
-    length(checkpointers) > 1 && error("Multiple checkpointers found: not sure which one to pickup simulation from!")
-    return checkpoint_path(pickup, first(checkpointers))
-end
-
-"""
-    checkpoint_path(pickup::Bool, checkpointer)
-
-For `pickup=true`, parse the filenames in `checkpointer.dir` associated with
-`checkpointer.prefix` and return the path to the file whose name contains
-the largest iteration.
-"""
-function checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
-    filepaths = glob(checkpoint_superprefix(checkpointer.prefix) * "*.jld2", checkpointer.dir)
-
-    if length(filepaths) == 0 # no checkpoint files found
-        return nothing
-    else
-        return latest_checkpoint(checkpointer, filepaths)
-    end
-end
-
-function latest_checkpoint(checkpointer, filepaths)
-    filenames = basename.(filepaths)
-    leading = length(checkpoint_superprefix(checkpointer.prefix))
-    trailing = 5 # length(".jld2")
-    iterations = map(name -> parse(Int, name[leading+1:end-trailing]), filenames)
-    latest_iteration, idx = findmax(iterations)
-    return filepaths[idx]
 end
