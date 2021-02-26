@@ -47,6 +47,7 @@ function plan_backward_transform(A::CuArray, topo, dims, planner_flag)
     return CUDA.CUFFT.plan_ifft!(A, dims)
 end
 
+" Used by FFTBasedPoissonSolver "
 function plan_transforms(arch, grid::RegularRectilinearGrid, storage, planner_flag)
     Nx, Ny, Nz = size(grid)
     topo = topology(grid)
@@ -190,20 +191,40 @@ function plan_transforms(arch, grid::RegularRectilinearGrid, storage, planner_fl
     return transforms
 end
 
+" Used by FourierTridiagonalPoissonSolver "
 function plan_transforms(arch, grid::VerticallyStretchedRectilinearGrid, storage, planner_flag)
     Nx, Ny, Nz = size(grid)
     TX, TY, TZ = topo = topology(grid)
-    periodic_dims = findall(t -> t == Periodic, topo)
-    bounded_dims = findall(t -> t == Bounded, topo)
 
-    if (TX, TY) == (Periodic, Periodic)
-        dims = (1, 2)
+    # Limit ourselves to x, y transforms (z uses a tridiagonal solve)
+    periodic_dims = findall(t -> t == Periodic, topo[1:2])
+    bounded_dims = findall(t -> t == Bounded, topo[1:2])
 
-        forward_plan = plan_forward_transform(storage, Periodic(), dims, planner_flag)
-        forward_transforms = (DiscreteTransform(forward_plan, Forward(), arch, grid, dims),)
+    if arch isa GPU && topo in non_batched_topologies
+        @error "lol"
+    else
+        # This is the case where batching transforms is possible. It's always possible on the CPU
+        # since FFTW is awesome so it includes all topologies on the CPU.
+        #
+        # On the GPU batching is possible when the topology is not one of non_batched_topologies
+        # (where an FFT is needed along dimension 2), so it includes (Periodic, Periodic, Periodic),
+        # (Periodic, Periodic, Bounded), and (Bounded, Periodic, Periodic).
 
-        backward_plan = plan_backward_transform(storage, Periodic(), dims, planner_flag)
-        backward_transforms = (DiscreteTransform(backward_plan, Backward(), arch, grid, dims),)
+        forward_periodic_plan = plan_forward_transform(storage, Periodic(), periodic_dims, planner_flag)
+        forward_bounded_plan = plan_forward_transform(storage, Bounded(), bounded_dims, planner_flag)
+
+        forward_transforms = (
+            DiscreteTransform(forward_bounded_plan, Forward(), arch, grid, bounded_dims),
+            DiscreteTransform(forward_periodic_plan, Forward(), arch, grid, periodic_dims)
+        )
+
+        backward_periodic_plan = plan_backward_transform(storage, Periodic(), periodic_dims, planner_flag)
+        backward_bounded_plan = plan_backward_transform(storage, Bounded(), bounded_dims, planner_flag)
+
+        backward_transforms = (
+            DiscreteTransform(backward_periodic_plan, Backward(), arch, grid, periodic_dims),
+            DiscreteTransform(backward_bounded_plan, Backward(), arch, grid, bounded_dims)
+        )
     end
 
     transforms = (forward = forward_transforms, backward = backward_transforms)
