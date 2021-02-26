@@ -86,6 +86,10 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 @inline y_domain(grid) = domain(topology(grid, 2), grid.Ny, grid.yF)
 @inline z_domain(grid) = domain(topology(grid, 3), grid.Nz, grid.zF)
 
+@inline x_domain(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.xᶠᵃᵃ)
+@inline y_domain(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.yᵃᶠᵃ)
+@inline z_domain(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
+
 #####
 ##### << Indexing >>
 #####

@@ -118,25 +118,25 @@ end
 function vertically_stretched_grid_properties_are_same_type(FT, arch)
     grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, 16), x=(0,1), y=(0,1), zF=collect(0:16))
     return all(isa.([grid.Lx, grid.Ly, grid.Lz, grid.Δx, grid.Δy], FT)) &&
-           all(eltype.([grid.ΔzF, grid.ΔzC, grid.xF, grid.yF, grid.zF, grid.xC, grid.yC, grid.zC]) .== FT)
+           all(eltype.([grid.Δzᵃᵃᶜ, grid.Δzᵃᵃᶠ, grid.xᶠᵃᵃ, grid.yᵃᶠᵃ, grid.zᵃᵃᶠ, grid.xᶜᵃᵃ, grid.yᵃᶜᵃ, grid.zᵃᵃᶜ]) .== FT)
 end
 
 function run_architecturally_correct_stretched_grid_tests(FT, arch, zF)
     grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, length(zF)-1), x=(0, 1), y=(0, 1), zF=zF)
 
     ArrayType = array_type(arch)
-    @test grid.zF  isa OffsetArray{FT, 1, <:ArrayType}
-    @test grid.zC  isa OffsetArray{FT, 1, <:ArrayType}
-    @test grid.ΔzF isa OffsetArray{FT, 1, <:ArrayType}
-    @test grid.ΔzC isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.zᵃᵃᶠ  isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.zᵃᵃᶜ  isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.Δzᵃᵃᶠ isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.Δzᵃᵃᶜ isa OffsetArray{FT, 1, <:ArrayType}
 
     return nothing
 end
 
 function run_correct_constant_grid_spacings_tests(FT, Nz)
     grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz))
-    @test all(grid.ΔzF .== 1)
-    @test all(grid.ΔzC .== 1)
+    @test all(grid.Δzᵃᵃᶜ .== 1)
+    @test all(grid.Δzᵃᵃᶠ .== 1)
     return nothing
 end
 
@@ -148,13 +148,13 @@ function run_correct_quadratic_grid_spacings_tests(FT, Nz)
     ΔzF(k) = k^2 - (k-1)^2
     ΔzC(k) = zC(k+1) - zC(k)
 
-    @test all(isapprox.(  grid.zF[1:Nz+1],  zF.(1:Nz+1) ))
-    @test all(isapprox.(  grid.zC[1:Nz],    zC.(1:Nz)   ))
-    @test all(isapprox.( grid.ΔzF[1:Nz],   ΔzF.(1:Nz)   ))
+    @test all(isapprox.(  grid.zᵃᵃᶠ[1:Nz+1],  zF.(1:Nz+1) ))
+    @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zC.(1:Nz)   ))
+    @test all(isapprox.( grid.Δzᵃᵃᶜ[1:Nz],   ΔzF.(1:Nz)   ))
 
-    # Note that ΔzC[1] involves a halo point, which is not directly determined by
+    # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zF
-    @test all(isapprox.( grid.ΔzC[2:Nz-1], ΔzC.(2:Nz-1) ))
+    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:Nz-1], ΔzC.(2:Nz-1) ))
 
     return nothing
 end
@@ -169,13 +169,13 @@ function run_correct_tanh_grid_spacings_tests(FT, Nz)
     ΔzF(k) = zF(k+1) - zF(k)
     ΔzC(k) = zC(k+1) - zC(k)
 
-    @test all(isapprox.(  grid.zF[1:Nz+1],  zF.(1:Nz+1) ))
-    @test all(isapprox.(  grid.zC[1:Nz],    zC.(1:Nz)   ))
-    @test all(isapprox.( grid.ΔzF[1:Nz],   ΔzF.(1:Nz)   ))
+    @test all(isapprox.(  grid.zᵃᵃᶠ[1:Nz+1],  zF.(1:Nz+1) ))
+    @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zC.(1:Nz)   ))
+    @test all(isapprox.( grid.Δzᵃᵃᶜ[1:Nz],   ΔzF.(1:Nz)   ))
 
-    # Note that ΔzC[1] involves a halo point, which is not directly determined by
+    # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zF
-    @test all(isapprox.( grid.ΔzC[2:Nz-1], ΔzC.(2:Nz-1) ))
+    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:Nz-1], ΔzC.(2:Nz-1) ))
 
    return nothing
 end
