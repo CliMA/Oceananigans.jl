@@ -15,7 +15,7 @@ A parameter object for constant rotation around a vertical axis.
 """
 struct HydrostaticSphericalCoriolis{S, FT} <: AbstractRotation
     rotation_rate :: FT
-    stencil :: S
+    scheme :: S
 end
 
 """
@@ -24,8 +24,8 @@ end
 Returns a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
 By default, `rotation_rate` is assumed to be Earth's.
 """
-HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, stencil::S=VectorInvariantEnengyConserving()) where S =
-    HydrostaticSphericalCoriolis{S, FT}(rotation_rate, stencil)
+HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, scheme::S=VectorInvariantEnengyConserving()) where S =
+    HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
 
 @inline fᵃᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid, coriolis::HydrostaticSphericalCoriolis) =
     @inbounds 2 * coriolis.rotation_rate * sind(grid.ϕᵃᶠᵃ[j])
@@ -33,7 +33,7 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, stenc
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::HydrostaticSphericalCoriolis, U) where FT = zero(FT)
 
 #####
-##### Enstrophy-conserving stencil
+##### Enstrophy-conserving scheme
 #####
 
 const VIEnstrophy = HydrostaticSphericalCoriolis{<:VectorInvariantEnstrophyConserving}
@@ -45,7 +45,7 @@ const VIEnstrophy = HydrostaticSphericalCoriolis{<:VectorInvariantEnstrophyConse
     @inbounds - ℑxᶜᵃᵃ(i, j, k, grid, fᵃᶠᵃ, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_uᶠᶜᵃ, U[1]) / Δyᶜᶠᵃ(i, j, k, grid)
 
 #####
-##### Energy-conserving stencil
+##### Energy-conserving scheme
 #####
 
 const VIEnergy = HydrostaticSphericalCoriolis{<:VectorInvariantEnergyConserving}
