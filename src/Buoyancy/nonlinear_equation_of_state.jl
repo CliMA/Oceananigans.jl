@@ -1,4 +1,6 @@
 using Oceananigans.Fields: AbstractField
+using Oceananigans.Grids: zF, zC
+using Oceananigans.Operators: Δzᵃᵃᶠ, Δzᵃᵃᶜ
 
 """ Return the geopotential height at `i, j, k` at cell centers. """
 @inline function Zᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT}) where FT
