@@ -154,15 +154,15 @@ function vertically_stretched_poisson_solver_correct_answer(FT, arch, Nx, Ny, zF
     ∇²ϕ = CenterField(FT, arch, vs_grid, p_bcs)
 
     R = random_divergence_free_source_term(FT, arch, vs_grid)
-    F = reshape(vs_grid.ΔzC[1:Nz], 1, 1, Nz) .* R  # RHS needs to be multiplied by ΔzC
+    F = CUDA.@allowscalar reshape(vs_grid.ΔzC[1:Nz], 1, 1, Nz) .* R  # RHS needs to be multiplied by ΔzC
     solver.batched_tridiagonal_solver.f .= F
 
     solve_poisson_equation!(solver)
 
-    interior(ϕ) .= real.(solver.storage)
+    CUDA.@allowscalar interior(ϕ) .= real.(solver.storage)
     compute_∇²!(∇²ϕ, ϕ, arch, vs_grid)
 
-    return interior(∇²ϕ) ≈ R
+    return CUDA.@allowscalar interior(∇²ϕ) ≈ R
 end
 
 #####
