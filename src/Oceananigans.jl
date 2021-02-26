@@ -12,8 +12,10 @@ export
     OceananigansLogger,
 
     # Grids
+    Center, Face,
     Periodic, Bounded, Flat,
     RegularRectilinearGrid, VerticallyStretchedRectilinearGrid,
+    xnodes, ynodes, znodes, nodes,
 
     # Advection schemes
     CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5,
