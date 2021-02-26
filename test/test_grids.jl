@@ -115,10 +115,28 @@ end
 ##### Vertically stretched grids
 #####
 
+function vertically_stretched_grid_properties_are_same_type(FT, arch)
+    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, 16), x=(0,1), y=(0,1), zF=collect(0:16))
+    return all(isa.([grid.Lx, grid.Ly, grid.Lz, grid.Δx, grid.Δy], FT)) &&
+           all(eltype.([grid.Δzᵃᵃᶜ, grid.Δzᵃᵃᶠ, grid.xᶠᵃᵃ, grid.yᵃᶠᵃ, grid.zᵃᵃᶠ, grid.xᶜᵃᵃ, grid.yᵃᶜᵃ, grid.zᵃᵃᶜ]) .== FT)
+end
+
+function run_architecturally_correct_stretched_grid_tests(FT, arch, zF)
+    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, length(zF)-1), x=(0, 1), y=(0, 1), zF=zF)
+
+    ArrayType = array_type(arch)
+    @test grid.zᵃᵃᶠ  isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.zᵃᵃᶜ  isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.Δzᵃᵃᶠ isa OffsetArray{FT, 1, <:ArrayType}
+    @test grid.Δzᵃᵃᶜ isa OffsetArray{FT, 1, <:ArrayType}
+
+    return nothing
+end
+
 function run_correct_constant_grid_spacings_tests(FT, Nz)
-    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:16))
-    @test all(grid.ΔzF .== 1)
-    @test all(grid.ΔzC .== 1)
+    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz))
+    @test all(grid.Δzᵃᵃᶜ .== 1)
+    @test all(grid.Δzᵃᵃᶠ .== 1)
     return nothing
 end
 
@@ -130,13 +148,13 @@ function run_correct_quadratic_grid_spacings_tests(FT, Nz)
     ΔzF(k) = k^2 - (k-1)^2
     ΔzC(k) = zC(k+1) - zC(k)
 
-    @test all(isapprox.(  grid.zF[1:Nz+1],  zF.(1:Nz+1) ))
-    @test all(isapprox.(  grid.zC[1:Nz],    zC.(1:Nz)   ))
-    @test all(isapprox.( grid.ΔzF[1:Nz],   ΔzF.(1:Nz)   ))
+    @test all(isapprox.(  grid.zᵃᵃᶠ[1:Nz+1],  zF.(1:Nz+1) ))
+    @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zC.(1:Nz)   ))
+    @test all(isapprox.( grid.Δzᵃᵃᶜ[1:Nz],   ΔzF.(1:Nz)   ))
 
-    # Note that ΔzC[1] involves a halo point, which is not directly determined by
+    # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zF
-    @test all(isapprox.( grid.ΔzC[2:Nz-1], ΔzC.(2:Nz-1) ))
+    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:Nz-1], ΔzC.(2:Nz-1) ))
 
     return nothing
 end
@@ -151,22 +169,15 @@ function run_correct_tanh_grid_spacings_tests(FT, Nz)
     ΔzF(k) = zF(k+1) - zF(k)
     ΔzC(k) = zC(k+1) - zC(k)
 
-    @test all(isapprox.(  grid.zF[1:Nz+1],  zF.(1:Nz+1) ))
-    @test all(isapprox.(  grid.zC[1:Nz],    zC.(1:Nz)   ))
-    @test all(isapprox.( grid.ΔzF[1:Nz],   ΔzF.(1:Nz)   ))
+    @test all(isapprox.(  grid.zᵃᵃᶠ[1:Nz+1],  zF.(1:Nz+1) ))
+    @test all(isapprox.(  grid.zᵃᵃᶜ[1:Nz],    zC.(1:Nz)   ))
+    @test all(isapprox.( grid.Δzᵃᵃᶜ[1:Nz],   ΔzF.(1:Nz)   ))
 
-    # Note that ΔzC[1] involves a halo point, which is not directly determined by
+    # Note that Δzᵃᵃᶠ[1] involves a halo point, which is not directly determined by
     # the user-supplied zF
-    @test all(isapprox.( grid.ΔzC[2:Nz-1], ΔzC.(2:Nz-1) ))
+    @test all(isapprox.( grid.Δzᵃᵃᶠ[2:Nz-1], ΔzC.(2:Nz-1) ))
 
    return nothing
-end
-
-function vertically_stretched_grid_properties_are_same_type(FT)
-    Nx, Ny, Nz = 16, 16, 16
-    grid = VerticallyStretchedRectilinearGrid(FT, size=(16, 16, 16), x=(0,1), y=(0,1), zF=collect(0:16))
-    return all(isa.([grid.Lx, grid.Ly, grid.Lz, grid.Δx, grid.Δy], FT)) &&
-           all(eltype.([grid.ΔzF, grid.ΔzC, grid.xF, grid.yF, grid.zF, grid.xC, grid.yC, grid.zC]) .== FT)
 end
 
 function flat_size_regular_rectilinear_grid(FT; topology, size, extent)
@@ -183,7 +194,6 @@ function flat_extent_regular_rectilinear_grid(FT; topology, size, extent)
     grid = RegularRectilinearGrid(FT; size=size, topology=topology, extent=extent)
     return grid.Lx, grid.Ly, grid.Lz
 end
-
 
 #####
 ##### Test the tests
@@ -324,21 +334,32 @@ end
     @testset "Vertically stretched rectilinear grid" begin
         @info "  Testing vertically stretched rectilinear grid..."
 
-        @testset "Grid initialization" begin
-            @info "    Testing grid initialization..."
+        for arch in archs, FT in float_types
+            @testset "Vertically stretched rectilinear grid construction [$(typeof(arch)), $FT]" begin
+                @info "    Testing vertically stretched rectilinear grid construction [$(typeof(arch)), $FT]..."
+                @test vertically_stretched_grid_properties_are_same_type(FT, arch)
 
-            for FT in float_types
-                run_correct_constant_grid_spacings_tests(FT, 16)
-                run_correct_quadratic_grid_spacings_tests(FT, 16)
-                run_correct_tanh_grid_spacings_tests(FT, 16)
-                @test vertically_stretched_grid_properties_are_same_type(FT)
+                zF1 = collect(0:10).^2
+                zF2 = [1, 3, 5, 10, 15, 33, 50]
+                for zF in [zF1, zF2]
+                    run_architecturally_correct_stretched_grid_tests(FT, arch, zF)
+                end
             end
-        end
 
-        # Testing show function
-        Nz = 20
-        grid = VerticallyStretchedRectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
-        show(grid); println();
-        @test grid isa VerticallyStretchedRectilinearGrid
+            @testset "Vertically stretched rectilinear grid spacings [$(typeof(arch)), $FT]" begin
+                @info "    Testing vertically stretched rectilinear grid spacings [$(typeof(arch)), $FT]..."
+                for Nz in [16, 17]
+                    run_correct_constant_grid_spacings_tests(FT, Nz)
+                    run_correct_quadratic_grid_spacings_tests(FT, Nz)
+                    run_correct_tanh_grid_spacings_tests(FT, Nz)
+                end
+            end
+
+            # Testing show function
+            Nz = 20
+            grid = VerticallyStretchedRectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
+            show(grid); println();
+            @test grid isa VerticallyStretchedRectilinearGrid
+        end
     end
 end

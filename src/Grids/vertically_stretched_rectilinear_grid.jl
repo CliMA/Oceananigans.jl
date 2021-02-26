@@ -9,45 +9,42 @@ topology `{TX, TY, TZ}`, and coordinate ranges of type `R` (where a range can be
 struct VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
 
     # Number of grid points in (x,y,z).
-     Nx :: Int
-     Ny :: Int
-     Nz :: Int
+    Nx :: Int
+    Ny :: Int
+    Nz :: Int
 
     # Halo size in (x,y,z).
-     Hx :: Int
-     Hy :: Int
-     Hz :: Int
+    Hx :: Int
+    Hy :: Int
+    Hz :: Int
 
     # Domain size [m].
-     Lx :: FT
-     Ly :: FT
-     Lz :: FT
+    Lx :: FT
+    Ly :: FT
+    Lz :: FT
 
     # Grid spacing [m].
-     Δx :: FT
-     Δy :: FT
-    ΔzF :: A
-    ΔzC :: A
+       Δx :: FT
+       Δy :: FT
+    Δzᵃᵃᶜ :: A
+    Δzᵃᵃᶠ :: A
 
     # Range of coordinates at the centers of the cells.
-     xC :: R
-     yC :: R
-     zC :: A
+    xᶜᵃᵃ :: R
+    yᵃᶜᵃ :: R
+    zᵃᵃᶜ :: A
 
     # Range of grid coordinates at the faces of the cells.
     # Note: there are Nx+1 faces in the x-dimension, Ny+1 in the y, and Nz+1 in the z.
-     xF :: R
-     yF :: R
-     zF :: A
+    xᶠᵃᵃ :: R
+    yᵃᶠᵃ :: R
+    zᵃᵃᶠ :: A
 end
 
-function VerticallyStretchedRectilinearGrid(FT=Float64, architecture=CPU();
+function VerticallyStretchedRectilinearGrid(FT=Float64; architecture = CPU(),
                                               size, x, y, zF,
                                               halo = (1, 1, 1),
                                           topology = (Periodic, Periodic, Bounded))
-
-    architecture isa GPU && error("VerticallyStretchedRectilinearGrid only works with architecture=CPU() right now.")
-    topology != (Periodic, Periodic, Bounded) && error("Only topology = (Periodic, Periodic, Bounded) is supported right now.")
 
     TX, TY, TZ = validate_topology(topology)
     size = validate_size(TX, TY, TZ, size)
@@ -58,13 +55,7 @@ function VerticallyStretchedRectilinearGrid(FT=Float64, architecture=CPU();
     Hx, Hy, Hz = halo
 
     # Initialize vertically-stretched arrays on CPU
-    Lz, zF, zC, ΔzF, ΔzC = generate_stretched_vertical_grid(FT, topology[3], Nz, Hz, zF)
-
-    # Convert to appropriate array type for arch
-     zF = convert(array_type(architecture), zF)
-     zC = convert(array_type(architecture), zC)
-    ΔzF = convert(array_type(architecture), ΔzF)
-    ΔzC = convert(array_type(architecture), ΔzC)
+    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ = generate_stretched_vertical_grid(FT, topology[3], Nz, Hz, zF)
 
     # Construct uniform horizontal grid
     Lh, Nh, Hh, X₁ = (Lx, Ly), size[1:2], halo[1:2], (x[1], y[1])
@@ -83,33 +74,39 @@ function VerticallyStretchedRectilinearGrid(FT=Float64, architecture=CPU();
     TCx, TCy, TCz = total_length.(Center, topology, size, halo)
 
     # Include halo points in coordinate arrays
-    xF = range(xF₋, xF₊; length = TFx)
-    yF = range(yF₋, yF₊; length = TFy)
+    xᶠᵃᵃ = range(xF₋, xF₊; length = TFx)
+    yᵃᶠᵃ = range(yF₋, yF₊; length = TFy)
 
-    xC = range(xC₋, xC₊; length = TCx)
-    yC = range(yC₋, yC₊; length = TCy)
+    xᶜᵃᵃ = range(xC₋, xC₊; length = TCx)
+    yᵃᶜᵃ = range(yC₋, yC₊; length = TCy)
 
-    # Offset.
-     xC = OffsetArray(xC,  -Hx)
-     yC = OffsetArray(yC,  -Hy)
-     zC = OffsetArray(zC,  -Hz)
-    ΔzC = OffsetArray(ΔzC, -Hz)
+    xᶜᵃᵃ = OffsetArray(xᶜᵃᵃ,  -Hx)
+    yᵃᶜᵃ = OffsetArray(yᵃᶜᵃ,  -Hy)
+    zᵃᵃᶜ = OffsetArray(zᵃᵃᶜ,  -Hz)
 
-     xF = OffsetArray(xF,  -Hx)
-     yF = OffsetArray(yF,  -Hy)
-     zF = OffsetArray(zF,  -Hz)
-    ΔzF = OffsetArray(ΔzF, -Hz)
+    xᶠᵃᵃ = OffsetArray(xᶠᵃᵃ,  -Hx)
+    yᵃᶠᵃ = OffsetArray(yᵃᶠᵃ,  -Hy)
+    zᵃᵃᶠ = OffsetArray(zᵃᵃᶠ,  -Hz)
+
+    Δzᵃᵃᶠ = OffsetArray(Δzᵃᵃᶠ, -Hz)
+    Δzᵃᵃᶜ = OffsetArray(Δzᵃᵃᶜ, -Hz)
 
     # Needed for pressure solver solution to be divergence-free.
     # Will figure out why later...
-    ΔzC[Nz] = ΔzC[Nz-1]
+    Δzᵃᵃᶠ[Nz] = Δzᵃᵃᶠ[Nz-1]
 
     # Seems needed to avoid out-of-bounds error in viscous dissipation
-    # operator wanting to access ΔzC[Nz+2].
-    ΔzC = OffsetArray(cat(ΔzC[0], ΔzC..., ΔzC[Nz], dims=1), -Hz-1)
+    # operators wanting to access Δzᵃᵃᶠ[Nz+2].
+    Δzᵃᵃᶠ = OffsetArray(cat(Δzᵃᵃᶠ[0], Δzᵃᵃᶠ..., Δzᵃᵃᶠ[Nz], dims=1), -Hz-1)
 
-    return VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, typeof(xF), typeof(zF)}(
-        Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, ΔzF, ΔzC, xC, yC, zC, xF, yF, zF)
+    # Convert to appropriate array type for arch
+    zᵃᵃᶠ  = OffsetArray(arch_array(architecture,  zᵃᵃᶠ.parent),  zᵃᵃᶠ.offsets...)
+    zᵃᵃᶜ  = OffsetArray(arch_array(architecture,  zᵃᵃᶜ.parent),  zᵃᵃᶜ.offsets...)
+    Δzᵃᵃᶜ = OffsetArray(arch_array(architecture, Δzᵃᵃᶜ.parent), Δzᵃᵃᶜ.offsets...)
+    Δzᵃᵃᶠ = OffsetArray(arch_array(architecture, Δzᵃᵃᶠ.parent), Δzᵃᵃᶠ.offsets...)
+
+    return VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, typeof(xᶠᵃᵃ), typeof(zᵃᵃᶠ)}(
+        Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δzᵃᵃᶜ, Δzᵃᵃᶠ, xᶜᵃᵃ, yᵃᶜᵃ, zᵃᵃᶜ, xᶠᵃᵃ, yᵃᶠᵃ, zᵃᵃᶠ)
 end
 
 #####
@@ -119,11 +116,11 @@ end
 get_z_face(z::Function, k) = z(k)
 get_z_face(z::AbstractVector, k) = z[k]
 
-lower_exterior_ΔzF(z_topo,          zFi, Hz) = [zFi[end - Hz + k] - zFi[end - Hz + k - 1] for k = 1:Hz]
-lower_exterior_ΔzF(::Type{Bounded}, zFi, Hz) = [zFi[2]  - zFi[1] for k = 1:Hz]
+lower_exterior_Δzᵃᵃᶜ(z_topo,          zFi, Hz) = [zFi[end - Hz + k] - zFi[end - Hz + k - 1] for k = 1:Hz]
+lower_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[2]  - zFi[1] for k = 1:Hz]
 
-upper_exterior_ΔzF(z_topo,          zFi, Hz) = [zFi[k + 1] - zFi[k] for k = 1:Hz]
-upper_exterior_ΔzF(::Type{Bounded}, zFi, Hz) = [zFi[end]   - zFi[end - 1] for k = 1:Hz]
+upper_exterior_Δzᵃᵃᶜ(z_topo,          zFi, Hz) = [zFi[k + 1] - zFi[k] for k = 1:Hz]
+upper_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[end]   - zFi[end - 1] for k = 1:Hz]
 
 function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, zF_generator)
 
@@ -137,8 +134,8 @@ function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, zF_generator)
     Lz = interior_zF[Nz+1] - interior_zF[1]
 
     # Build halo regions
-    ΔzF₋ = lower_exterior_ΔzF(z_topo, interior_zF, Hz)
-    ΔzF₊ = upper_exterior_ΔzF(z_topo, interior_zF, Hz)
+    ΔzF₋ = lower_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
+    ΔzF₊ = lower_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
 
     z¹, zᴺ⁺¹ = interior_zF[1], interior_zF[Nz+1]
 
@@ -169,6 +166,10 @@ function with_halo(new_halo, old_grid::VerticallyStretchedRectilinearGrid)
     return old_grid
 end
 
+@inline x_domain(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.xᶠᵃᵃ)
+@inline y_domain(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.yᵃᶠᵃ)
+@inline z_domain(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
+
 short_show(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     "VerticallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
 
@@ -179,3 +180,29 @@ function show(io::IO, g::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) whe
               "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
               "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
 end
+
+Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+    VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, typeof(grid.xᶠᵃᵃ), typeof(Adapt.adapt(to, grid.zᵃᵃᶠ))}(
+        grid.Nx, grid.Ny, grid.Nz,
+        grid.Hx, grid.Hy, grid.Hz,
+        grid.Lx, grid.Ly, grid.Lz,
+        grid.Δx, grid.Δy,
+        Adapt.adapt(to, grid.Δzᵃᵃᶜ),
+        Adapt.adapt(to, grid.Δzᵃᵃᶠ),
+        grid.xᶜᵃᵃ, grid.yᵃᶜᵃ,
+        Adapt.adapt(to, grid.zᵃᵃᶜ),
+        grid.xᶠᵃᵃ, grid.yᵃᶠᵃ,
+        Adapt.adapt(to, grid.zᵃᵃᶠ))
+
+#####
+##### Should merge with grid_utils.jl at some point
+#####
+
+@inline xnode(::Type{Center}, i, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
+@inline xnode(::Type{Face}, i, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
+
+@inline ynode(::Type{Center}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᶜᵃ[j]
+@inline ynode(::Type{Face}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᵃᵃ[j]
+
+@inline znode(::Type{Center}, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶜ[k]
+@inline znode(::Type{Face}, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶠ[k]
