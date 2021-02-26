@@ -4,7 +4,7 @@ export
     Center, Face,
     AbstractTopology, Periodic, Bounded, Flat, topology,
     AbstractGrid,
-    AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid,
+    AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RegularLatitudeLongitudeGrid,
     xnode, ynode, znode, xnodes, ynodes, znodes, nodes,
     xC, xF, yC, yF, zC, zF
 
