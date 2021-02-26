@@ -180,7 +180,7 @@ function show(io::IO, g::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) whe
 end
 
 Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}(
+    VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, typeof(grid.xF), typeof(Adapt.adapt(to, grid.zF))}(
         grid.Nx, grid.Ny, grid.Nz,
         grid.Hx, grid.Hy, grid.Hz,
         grid.Lx, grid.Ly, grid.Lz,
