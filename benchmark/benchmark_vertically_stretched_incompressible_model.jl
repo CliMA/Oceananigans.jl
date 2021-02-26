@@ -6,7 +6,7 @@ using Benchmarks
 # Benchmark function
 
 function benchmark_vertically_stretched_incompressible_model(Arch, FT, N)
-    grid = VerticallyStretchedRectilinearGrid(architecture=Arch(), topology=topo, size=(N, N, N), x=(0, 1), y=(0, 1), zF=collect(0:N))
+    grid = VerticallyStretchedRectilinearGrid(architecture=Arch(), size=(N, N, N), x=(0, 1), y=(0, 1), zF=collect(0:N))
     model = IncompressibleModel(architecture=Arch(), float_type=FT, grid=grid)
 
     time_step!(model, 1) # warmup
@@ -31,10 +31,10 @@ suite = run_benchmarks(benchmark_vertically_stretched_incompressible_model; Arch
 
 df = benchmarks_dataframe(suite)
 sort!(df, [:Architectures, :Float_types, :Ns], by=(string, string, identity))
-benchmarks_pretty_table(df, title="Incompressible model benchmarks")
+benchmarks_pretty_table(df, title="Vertically-stretched incompressible model benchmarks")
 
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df_Δ, [:Float_types, :Ns], by=(string, identity))
-    benchmarks_pretty_table(df_Δ, title="Incompressible model CPU -> GPU speedup")
+    benchmarks_pretty_table(df_Δ, title="Vertically-stretched incompressible model CPU -> GPU speedup")
 end
