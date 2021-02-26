@@ -193,3 +193,16 @@ Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, T
         Adapt.adapt(to, grid.zᵃᵃᶜ),
         grid.xᶠᵃᵃ, grid.yᵃᶠᵃ,
         Adapt.adapt(to, grid.zᵃᵃᶠ))
+
+#####
+##### Should merge with grid_utils.jl at some point
+#####
+
+@inline xnode(::Type{Center}, i, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
+@inline xnode(::Type{Face}, i, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
+
+@inline ynode(::Type{Center}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᶜᵃ[j]
+@inline ynode(::Type{Face}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᵃᵃ[j]
+
+@inline znode(::Type{Center}, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶜ[k]
+@inline znode(::Type{Face}, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶠ[k]

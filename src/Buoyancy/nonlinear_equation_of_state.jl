@@ -1,14 +1,14 @@
 using Oceananigans.Fields: AbstractField
 
 """ Return the geopotential height at `i, j, k` at cell centers. """
-@inline function Zᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT}) where FT 
+@inline function Zᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT}) where FT
     @inbounds begin
         if k < 1
-            return grid.zC[1] + (1 - k) * grid.Δz
+            return zC(1, grid) + (1 - k) * Δzᵃᵃᶠ(i, j, 1, grid)
         elseif k > grid.Nz
-            return grid.zC[grid.Nz] - (k - grid.Nz) * grid.Δz
+            return zC(grid.Nz, grid) - (k - grid.Nz) * Δzᵃᵃᶠ(i, j, grid.Nz, grid)
         else
-            return grid.zC[k]
+            return zC(k, grid)
         end
     end
 end
@@ -17,11 +17,11 @@ end
 @inline function Zᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT}) where FT
     @inbounds begin
         if k < 1
-            return grid.zF[1] + (1 - k) * grid.Δz
+            return zF(1, grid) + (1 - k) * Δzᵃᵃᶜ(i, j, 1, grid)
         elseif k > grid.Nz + 1
-            return grid.zF[grid.Nz+1] - (k - grid.Nz + 1) * grid.Δz
+            return zF(grid.Nz + 1, grid) - (k - grid.Nz + 1) * Δzᵃᵃᶜ(i, j, k, grid)
         else
-            return grid.zF[k]
+            return zF(k, grid)
         end
     end
 end
