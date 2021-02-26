@@ -92,11 +92,17 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     event = explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
     wait(device(model.architecture), event)
 
-    ## We need vertically integrated U,V (see continuity bits in src/Models/HydrostaticFreeSurfaceModels/compute_w_from_continuity.jl), 
-    ## model.free_surface.η, g and Δt and grid.... 
-    event = compute_vertcally_integrated_transport!(free_surface, model)
+    ## We need vertically integrated U,V
+    event = compute_vertically_integrated_transport!(free_surface, model)
+    wait(device(model.architecture), event)
+     
+    ## Compute volume scaled divergence of the barotropic transport and put into solver RHS
+    event = compute_volume_scaled_divergence!(free_surface, model)
+    
+    ## Include surface pressure term into RHS
 
     ## Then we can invoke solve_for_pressure! on the right type via calculate_pressure_correction!
+    ### RHS = free_surface.implicit_step_solver.solver.settings.RHS
 
     ## Once we have η we can update u* and v* with pressure gradient just as in pressure_correct_velocities!
 
@@ -116,7 +122,7 @@ Compute the vertical integrated transport from the bottom to z=0 (i.e. linear fr
 """
 ### Note - what we really want is RHS = divergence of the vertically integrated transport
 ###        we can optimize this a bit later to do this all in one go to save using intermediate variables.
-function compute_vertcally_integrated_transport!(free_surface, model)
+function compute_vertically_integrated_transport!(free_surface, model)
 
     event = launch!(model.architecture,
                     model.grid,
@@ -126,8 +132,6 @@ function compute_vertcally_integrated_transport!(free_surface, model)
                     model.grid,
                     free_surface.barotropic_transport,
                     dependencies=Event(device(model.architecture)))
-
-    ## wait(device(model.architecture), event)
 
     return event
 end
@@ -140,8 +144,30 @@ end
     @unroll for k in 1:grid.Nz
         #### @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
         #### @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
-        @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k]*Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
-        @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k]*Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
+        @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k]*Δyᶠᶠᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
+        @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k]*Δxᶠᶠᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
     end
 end
 
+function compute_volume_scaled_divergence!(free_surface, model)
+    event = launch!(model.architecture,
+                    model.grid,
+                    :xy,
+                    _compute_volume_scaled_divergence!,
+                    model.grid,
+                    free_surface.barotropic_transport.u,
+                    free_surface.barotropic_transport.v,
+                    free_surface.implicit_step_solver.solver.settings.RHS,
+                    dependencies=Event(device(model.architecture)))
+    return event
+end
+
+@kernel function _compute_volume_scaled_divergence!(grid, ut, vt, div)
+    # Here we use a form that has been multiplied through by volumes to be consistent with
+    # the "A" matrix where multiplying each row by volume is used to ensure symmetry.
+    # The quantities differenced here are transports i.e. normal velocity vectors
+    # integrated over an area.
+    #
+    i, j = @index(Global, NTuple)
+    @inbounds div[i, j] = δxᶜᵃᵃ(i, j, 1, grid, ut) + δyᵃᶜᵃ(i, j, 1, grid, vt)
+end

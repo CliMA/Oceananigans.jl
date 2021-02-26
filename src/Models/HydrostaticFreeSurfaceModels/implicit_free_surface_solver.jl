@@ -1,25 +1,43 @@
 using Oceananigans.Solvers
+using Oceananigans.Operators
 
 struct ImplicitFreeSurfaceSolver{S}
     solver :: S
 end
 
-function ImplicitFreeSurfaceSolver(arch, template_field; Amatrix_operator=nothing, maxit=nothing, tol=nothing)
+function ImplicitFreeSurfaceSolver(arch, template_field, 
+                                   vertically_integrated_lateral_face_areas; 
+                                   Amatrix_operator=nothing, 
+                                   maxit=nothing, 
+                                   tol=nothing)
+     Ax_baro = vertically_integrated_lateral_face_areas.Ax
+     Ay_baro = vertically_integrated_lateral_face_areas.Ay
+     @inline Ax_∂xᶠᵃᵃ_baro(i, j, k, grid, c) = Ax_baro[i, j] * ∂xᶠᵃᵃ(i, j, 1, grid, c)
+     @inline Ay_∂yᵃᶠᵃ_baro(i, j, k, grid, c) = Ay_baro[i, j] * ∂yᵃᶠᵃ(i, j, 1, grid, c)
+     @inline function ∇²_baro(i, j, k, grid, c)
+        return  δxᶜᵃᵃ(i, j, 1, grid, Ax_∂xᶠᵃᵃ_baro, c) +
+                δyᵃᶜᵃ(i, j, 1, grid, Ay_∂yᵃᶠᵃ_baro, c)
+    end
+
 
     @kernel function implicit_η!(grid, f, implicit_η_f, g, Δt)
         ### Not sure what to call this
         ### it is for left hand side operator in
         ### (-g∇ₕ² + 1/Δt )ϕⁿ⁺¹=ϕⁿ/Δt + ∇ₕHUˢᵗᵃʳ
+        ###
+        ### The discrete form of the ∇² operator for this problem needs to be written
+        ### for finite volume case in which rows of A matrix are multiplied through
+        ### by a cell volume to ensure a symmetric operator.
 
         i, j = @index(Global, NTuple)
-        @inbounds implicit_η_f[i, j] = -g * ∇²(i, j, 1, grid, f) + f[i,j]/Δt
+        @inbounds implicit_η_f[i, j] = -g * ∇²_baro(i, j, 1, grid, f) + f[i,j]/Δt
 
     end
 
 
     if isnothing( Amatrix_operator )
         function Amatrix_function!(result, x, arch, grid, bcs)
-            event = launch!(arch, grid, :xyz, implicit_η!, grid, x, result, dependencies=Event(device(arch)))
+            event = launch!(arch, grid, :xy, implicit_η!, grid, x, result, dependencies=Event(device(arch)))
             wait(device(arch), event)
             fill_halo_regions!(result, bcs, arch, grid)
             return nothing
