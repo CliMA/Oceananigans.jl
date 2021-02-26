@@ -5,6 +5,7 @@ using Oceananigans.Diagnostics
 using Oceananigans.Fields
 using Oceananigans.OutputWriters
 
+using Dates: Millisecond
 using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC, ContinuousBoundaryFunction
 using Oceananigans.TimeSteppers: update_state!
 
@@ -41,6 +42,68 @@ end
 #####
 ##### NetCDFOutputWriter tests
 #####
+
+function run_DateTime_netcdf_tests(arch)
+    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    clock = Clock(time=DateTime(2021, 1, 1))
+    model = IncompressibleModel(architecture=arch, grid=grid, clock=clock)
+
+    Δt = 5days + 3hours + 44.123seconds
+    simulation = Simulation(model, Δt=Δt, stop_time=DateTime(2021, 2, 1))
+
+    filepath = "test_DateTime.nc"
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model), filepath=filepath, schedule=IterationInterval(1))
+
+    run!(simulation)
+
+    ds = NCDataset(filepath)
+    @test ds["time"].attrib["units"] == "seconds since 2000-01-01 00:00:00"
+
+    Nt = length(ds["time"])
+    @test Nt == 8
+
+    for n in 1:Nt-1
+        @test ds["time"][n] == DateTime(2021, 1, 1) + (n-1) * Millisecond(1000Δt)
+    end
+
+    @test ds["time"][Nt] == DateTime(2021, 2, 1)
+
+    close(ds)
+    rm(filepath)
+
+    return nothing
+end
+
+function run_TimeDate_netcdf_tests(arch)
+    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    clock = Clock(time=TimeDate(2021, 1, 1))
+    model = IncompressibleModel(architecture=arch, grid=grid, clock=clock)
+
+    Δt = 5days + 3hours + 44.123seconds
+    simulation = Simulation(model, Δt=Δt, stop_time=TimeDate(2021, 2, 1))
+
+    filepath = "test_TimeDate.nc"
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model), filepath=filepath, schedule=IterationInterval(1))
+
+    run!(simulation)
+
+    ds = NCDataset(filepath)
+    @test ds["time"].attrib["units"] == "seconds since 2000-01-01 00:00:00"
+
+    Nt = length(ds["time"])
+    @test Nt == 8
+
+    for n in 1:Nt-1
+        @test ds["time"][n] == DateTime(2021, 1, 1) + (n-1) * Millisecond(1000Δt)
+    end
+
+    @test ds["time"][Nt] == DateTime(2021, 2, 1)
+
+    close(ds)
+    rm(filepath)
+
+    return nothing
+end
 
 function run_thermal_bubble_netcdf_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
@@ -800,6 +863,20 @@ function run_cross_architecture_checkpointer_tests(arch1, arch2)
     return nothing
 end
 
+function run_checkpointer_cleanup_tests(arch)
+    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    model = IncompressibleModel(architecture=arch, grid=grid)
+    simulation = Simulation(model, Δt=0.2, stop_iteration=10)
+
+    simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(3), cleanup=true)
+    run!(simulation)
+
+    [@test !isfile("checkpoint_iteration$i.jld2") for i in 1:10 if i != 9]
+    @test isfile("checkpoint_iteration9.jld2")
+
+    return nothing
+end
+
 #####
 ##### Dependency adding tests
 #####
@@ -1127,6 +1204,8 @@ end
 
         @testset "NetCDF [$(typeof(arch))]" begin
             @info "  Testing NetCDF output writer [$(typeof(arch))]..."
+            run_DateTime_netcdf_tests(arch)
+            run_TimeDate_netcdf_tests(arch)
             run_thermal_bubble_netcdf_tests(arch)
             run_thermal_bubble_netcdf_tests_with_halos(arch)
             run_netcdf_function_output_tests(arch)
@@ -1150,6 +1229,8 @@ end
 
             @hascuda run_cross_architecture_checkpointer_tests(CPU(), GPU())
             @hascuda run_cross_architecture_checkpointer_tests(GPU(), CPU())
+
+            run_checkpointer_cleanup_tests(arch)
         end
 
         @testset "Dependency adding [$(typeof(arch))]" begin

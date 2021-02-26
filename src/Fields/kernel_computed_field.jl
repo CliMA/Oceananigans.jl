@@ -7,18 +7,18 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, C, F, P} <: AbstractField{X, Y, 
                    grid :: G
                  kernel :: K
     boundary_conditions :: C
-     field_dependencies :: F
+  computed_dependencies :: F
              parameters :: P
                  status :: S
 
     function KernelComputedField{X, Y, Z}(kernel::K, arch, grid;
                                           boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)),
-                                          field_dependencies = (),
+                                          computed_dependencies = (),
                                           parameters::P = nothing,
                                           data = nothing,
                                           recompute_safely = true) where {X, Y, Z, K, P}
 
-        field_dependencies = tupleit(field_dependencies)
+        computed_dependencies = tupleit(computed_dependencies)
 
         if isnothing(data)
             data = new_data(arch, grid, (X, Y, Z))
@@ -30,25 +30,25 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, C, F, P} <: AbstractField{X, Y, 
         G = typeof(grid)
         A = typeof(data)
         S = typeof(status)
-        F = typeof(field_dependencies)
+        F = typeof(computed_dependencies)
         C = typeof(boundary_conditions)
 
         return new{X, Y, Z, S,
-                   A, G, K, C, F, P}(data, grid, kernel, boundary_conditions, field_dependencies, parameters)
+                   A, G, K, C, F, P}(data, grid, kernel, boundary_conditions, computed_dependencies, parameters)
     end
 end
 
 """
     KernelComputedField(X, Y, Z, kernel, model; 
                         boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)), 
-                        field_dependencies = (), 
+                        computed_dependencies = (), 
                         parameters = nothing, 
                         data = nothing,
                         recompute_safely = true)
 
 Builds a `KernelComputedField` at `X, Y, Z` computed with `kernel` and `model.architecture` and `model.grid`, with `boundary_conditions`.
 
-`field_dependencies` are an iterable of `AbstractField`s or other objects on which `compute!` is called prior to launching `kernel`.
+`computed_dependencies` are an iterable of `AbstractField`s or other objects on which `compute!` is called prior to launching `kernel`.
 
 `data` is a three-dimensional `OffsetArray` of scratch space where the kernel computation is stored. 
 
@@ -56,11 +56,11 @@ If `data=nothing` (the default) then additional memory will be allocated to stor
 
 If `isnothing(parameters)`, `kernel` is launched with the function signature
 
-`kernel(data, grid, field_dependencies...)`
+`kernel(data, grid, computed_dependencies...)`
 
 Otherwise, `kernel` is launched with the function signature
 
-`kernel(data, grid, field_dependencies..., parameters)`
+`kernel(data, grid, computed_dependencies..., parameters)`
 
 `recompute_safely` (default: `true`) determines whether the `KernelComputedField` is "recomputed" if embedded in the expression 
 tree of another operation. 
@@ -88,9 +88,9 @@ u, v, w = model.velocities
 U = AveragedField(u, dims=(1, 2))
 V = AveragedField(v, dims=(1, 2))
 
-u′² = KernelComputedField(Face, Center, Center, compute_variance!, model; field_dependencies=(u, U,))
-v′² = KernelComputedField(Center, Face, Center, compute_variance!, model; field_dependencies=(v, V,))
-w′² = KernelComputedField(Center, Center, Face, compute_variance!, model; field_dependencies=(w, 0,))
+u′² = KernelComputedField(Face, Center, Center, compute_variance!, model; computed_dependencies=(u, U,))
+v′² = KernelComputedField(Center, Face, Center, compute_variance!, model; computed_dependencies=(v, V,))
+w′² = KernelComputedField(Center, Center, Face, compute_variance!, model; computed_dependencies=(w, 0,))
 
 compute!(u′²)
 compute!(v′²)
@@ -105,7 +105,7 @@ KernelComputedField(X, Y, Z, kernel, arch::AbstractArchitecture, grid::AbstractG
 
 function compute!(kcf::KernelComputedField{X, Y, Z}) where {X, Y, Z}
 
-    for dependency in kcf.field_dependencies
+    for dependency in kcf.computed_dependencies
         compute!(dependency)
     end
 
@@ -119,8 +119,8 @@ function compute!(kcf::KernelComputedField{X, Y, Z}) where {X, Y, Z}
     compute_kernel! = kcf.kernel(device(arch), workgroup, worksize)
 
     event = isnothing(kcf.parameters) ?
-        compute_kernel!(kcf.data, kcf.grid, kcf.field_dependencies...) :
-        compute_kernel!(kcf.data, kcf.grid, kcf.field_dependencies..., kcf.parameters)
+        compute_kernel!(kcf.data, kcf.grid, kcf.computed_dependencies...) :
+        compute_kernel!(kcf.data, kcf.grid, kcf.computed_dependencies..., kcf.parameters)
 
     wait(device(arch), event)
 

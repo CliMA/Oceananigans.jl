@@ -3,9 +3,10 @@ using NCDatasets
 using Oceananigans.Fields
 using Oceananigans.Utils: show_schedule
 
-using Dates: now
+using Dates: AbstractTime, now
 using Oceananigans.Grids: topology, halo_size
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
+using Oceananigans.TimeSteppers: float_or_date_time
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
@@ -323,9 +324,14 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
                    compression=compression, attrib=default_dimension_attributes[dim_name])
         end
 
+        # DateTime and TimeDate are both <: AbstractTime
+        time_attrib = model.clock.time isa AbstractTime ?
+            Dict("longname" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
+            Dict("longname" => "Time", "units" => "seconds")
+
         # Creates an unlimited dimension "time"
         defDim(dataset, "time", Inf)
-        defVar(dataset, "time", typeof(model.clock.time), ("time",), attrib=default_dimension_attributes["time"])
+        defVar(dataset, "time", eltype(model.grid), ("time",), attrib=time_attrib)
 
         # Use default output attributes for known outputs if the user has not specified any.
         # Unknown outputs get an empty tuple (no output attributes).
@@ -415,7 +421,7 @@ function write_output!(ow::NetCDFOutputWriter, model)
     ds, verbose, filepath = ow.dataset, ow.verbose, ow.filepath
 
     time_index = length(ds["time"]) + 1
-    ds["time"][time_index] = model.clock.time
+    ds["time"][time_index] = float_or_date_time(model.clock.time)
 
     if verbose
         @info "Writing to NetCDF: $filepath..."
