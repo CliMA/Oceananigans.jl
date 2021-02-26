@@ -121,9 +121,8 @@ function vertically_stretched_grid_properties_are_same_type(FT, arch)
            all(eltype.([grid.ΔzF, grid.ΔzC, grid.xF, grid.yF, grid.zF, grid.xC, grid.yC, grid.zC]) .== FT)
 end
 
-function run_architecturally_correct_stretched_grid_tests(FT, arch)
-    Nz = 10
-    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
+function run_architecturally_correct_stretched_grid_tests(FT, arch, zF)
+    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, length(zF)-1), x=(0, 1), y=(0, 1), zF=zF)
 
     ArrayType = array_type(arch)
     @test grid.zF  isa OffsetArray{FT, 1, <:ArrayType}
@@ -340,7 +339,12 @@ end
             @testset "Vertically stretched rectilinear grid construction [$(typeof(arch)), $FT]" begin
                 @info "    Testing vertically stretched rectilinear grid construction [$(typeof(arch)), $FT]..."
                 @test vertically_stretched_grid_properties_are_same_type(FT, arch)
-                run_architecturally_correct_stretched_grid_tests(FT, arch)
+
+                zF1 = collect(0:10).^2
+                zF2 = [1, 3, 5, 10, 15, 33, 50]
+                for zF in [zF1, zF2]
+                    run_architecturally_correct_stretched_grid_tests(FT, arch, zF)
+                end
             end
 
             @testset "Vertically stretched rectilinear grid spacings [$(typeof(arch)), $FT]" begin
