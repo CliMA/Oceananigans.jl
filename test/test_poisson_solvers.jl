@@ -144,9 +144,9 @@ end
 ##### Vertically stretched Poisson solver
 #####
 
-function vertically_stretched_poisson_solver_correct_answer(FT, arch, Nx, Ny, zF)
+function vertically_stretched_poisson_solver_correct_answer(FT, arch, topo, Nx, Ny, zF)
     Nz = length(zF) - 1
-    vs_grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), zF=zF)
+    vs_grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), zF=zF)
     solver = FourierTridiagonalPoissonSolver(arch, vs_grid)
 
     p_bcs = PressureBoundaryConditions(vs_grid)
@@ -221,17 +221,19 @@ topos = collect(Iterators.product(PB, PB, PB))[:]
         end
     end
 
-    for arch in archs
-        @testset "Vertically stretched Poisson solver [FACR, $(typeof(arch))]" begin
-            @info "  Testing vertically stretched Poisson solver [FACR, $(typeof(arch))]..."
+    vs_topos = [(Periodic, Periodic, Bounded)]
 
-            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, 8, 8, 1:8)
+    for arch in archs, topo in vs_topos
+        @testset "Vertically stretched Poisson solver [FACR, $(typeof(arch)), $topo]" begin
+            @info "  Testing vertically stretched Poisson solver [FACR, $(typeof(arch)), $topo]..."
+
+            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 8, 8, 1:8)
 
             zF = [1, 2, 4, 7, 11, 16, 22, 29, 37]
-            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, 8, 8, zF)
-            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, 16, 8, zF)
-            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, 8, 16, zF)
-            @test vertically_stretched_poisson_solver_correct_answer(Float32, arch, 8, 8, zF)
+            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 8, 8, zF)
+            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 16, 8, zF)
+            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 8, 16, zF)
+            @test vertically_stretched_poisson_solver_correct_answer(Float32, arch, topo, 8, 8, zF)
         end
     end
 end

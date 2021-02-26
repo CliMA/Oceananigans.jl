@@ -1,8 +1,9 @@
-struct FourierTridiagonalPoissonSolver{A, G, B, S}
+struct FourierTridiagonalPoissonSolver{A, G, B, S, T}
                   architecture :: A
                           grid :: G
     batched_tridiagonal_solver :: B
                        storage :: S
+                    transforms :: T
 end
 
 @kernel function compute_diagonals!(D, grid, λx, λy)
@@ -18,18 +19,22 @@ end
     D[i, j, Nz] = -1/ΔzF(i, j, Nz-1, grid) - ΔzC(i, j, Nz, grid) * (λx[i] + λy[j])
 end
 
-function FourierTridiagonalPoissonSolver(arch, grid)
-    # FIXME: Gonna add more tests before supporting all/other topologies.
-    @assert topology(grid) == (Periodic, Periodic, Bounded)
+function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
+    TX, TY, TZ = topology(grid)
+    TZ != Bounded && error("FourierTridiagonalPoissonSolver can only be used with a Bounded z topology.")
 
     Nx, Ny, Nz = size(grid)
 
     # Compute discrete Poisson eigenvalues
-    λx = poisson_eigenvalues(grid.Nx, grid.Lx, 1, topology(grid, 1)())
-    λy = poisson_eigenvalues(grid.Ny, grid.Ly, 2, topology(grid, 2)())
+    λx = poisson_eigenvalues(grid.Nx, grid.Lx, 1, TX())
+    λy = poisson_eigenvalues(grid.Ny, grid.Ly, 2, TY())
 
     λx = arch_array(arch, λx)
     λy = arch_array(arch, λy)
+
+    # Plan required transforms for x and y
+    sol_storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
+    transforms = plan_transforms(arch, grid, sol_storage, planner_flag)
 
     # Lower and upper diagonals are the same
     CUDA.@allowscalar begin
@@ -47,22 +52,20 @@ function FourierTridiagonalPoissonSolver(arch, grid)
     rhs_storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
     btsolver = BatchedTridiagonalSolver(arch, dl=ld, d=D, du=ud, f=rhs_storage, grid=grid)
 
-    sol_storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
-
-    return FourierTridiagonalPoissonSolver(arch, grid, btsolver, sol_storage)
+    return FourierTridiagonalPoissonSolver(arch, grid, btsolver, sol_storage, transforms)
 end
 
 function solve_poisson_equation!(solver::FourierTridiagonalPoissonSolver)
     ϕ = solver.storage
     RHS = solver.batched_tridiagonal_solver.f
 
-    solver.architecture isa CPU && FFTW.fft!(RHS, [1, 2])
-    solver.architecture isa GPU && CUDA.CUFFT.fft!(RHS, [1, 2])
+    # Apply forward transforms in order
+    [transform!(RHS, nothing) for transform! in solver.transforms.forward]
 
     solve_batched_tridiagonal_system!(ϕ, solver.architecture, solver.batched_tridiagonal_solver)
 
-    solver.architecture isa CPU && FFTW.ifft!(ϕ, [1, 2])
-    solver.architecture isa GPU && CUDA.CUFFT.ifft!(ϕ, [1, 2])
+    # Apply backward transforms in order
+    [transform!(ϕ, nothing) for transform! in solver.transforms.backward]
 
     ϕ .= real.(ϕ)
     ϕ .= ϕ .- mean(ϕ)

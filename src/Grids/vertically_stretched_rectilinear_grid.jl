@@ -46,8 +46,6 @@ function VerticallyStretchedRectilinearGrid(FT=Float64; architecture = CPU(),
                                               halo = (1, 1, 1),
                                           topology = (Periodic, Periodic, Bounded))
 
-    topology != (Periodic, Periodic, Bounded) && error("Only topology = (Periodic, Periodic, Bounded) is supported right now.")
-
     TX, TY, TZ = validate_topology(topology)
     size = validate_size(TX, TY, TZ, size)
     halo = validate_halo(TX, TY, TZ, halo)
