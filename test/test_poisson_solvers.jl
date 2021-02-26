@@ -175,58 +175,58 @@ topos = collect(Iterators.product(PB, PB, PB))[:]
 @testset "Poisson solvers" begin
     @info "Testing Poisson solvers..."
 
-    # for arch in archs
-    #     @testset "Poisson solver instantiation [$(typeof(arch))]" begin
-    #         @info "  Testing Poisson solver instantiation [$(typeof(arch))]..."
-    #         for FT in float_types
-    #             @test poisson_solver_instantiates(arch, FT, 32, 32, 32, FFTW.ESTIMATE)
-    #             @test poisson_solver_instantiates(arch, FT, 1,  32, 32, FFTW.MEASURE)
-    #             @test poisson_solver_instantiates(arch, FT, 32,  1, 32, FFTW.ESTIMATE)
-    #             @test poisson_solver_instantiates(arch, FT,  1,  1, 32, FFTW.MEASURE)
-    #         end
-    #     end
+    for arch in archs
+        @testset "Poisson solver instantiation [$(typeof(arch))]" begin
+            @info "  Testing Poisson solver instantiation [$(typeof(arch))]..."
+            for FT in float_types
+                @test poisson_solver_instantiates(arch, FT, 32, 32, 32, FFTW.ESTIMATE)
+                @test poisson_solver_instantiates(arch, FT, 1,  32, 32, FFTW.MEASURE)
+                @test poisson_solver_instantiates(arch, FT, 32,  1, 32, FFTW.ESTIMATE)
+                @test poisson_solver_instantiates(arch, FT,  1,  1, 32, FFTW.MEASURE)
+            end
+        end
 
-    #     @testset "Divergence-free solution [$(typeof(arch))]" begin
-    #         @info "  Testing divergence-free solution [$(typeof(arch))]..."
+        @testset "Divergence-free solution [$(typeof(arch))]" begin
+            @info "  Testing divergence-free solution [$(typeof(arch))]..."
 
-    #         for topo in topos
-    #             @info "    Testing $topo topology on square grids [$(typeof(arch))]..."
-    #             for N in [7, 16]
-    #                 @test divergence_free_poisson_solution(arch, Float64, topo, N, N, N)
-    #                 @test divergence_free_poisson_solution(arch, Float64, topo, 1, N, N)
-    #                 @test divergence_free_poisson_solution(arch, Float64, topo, N, 1, N)
-    #                 @test divergence_free_poisson_solution(arch, Float64, topo, 1, 1, N)
-    #             end
-    #         end
+            for topo in topos
+                @info "    Testing $topo topology on square grids [$(typeof(arch))]..."
+                for N in [7, 16]
+                    @test divergence_free_poisson_solution(arch, Float64, topo, N, N, N)
+                    @test divergence_free_poisson_solution(arch, Float64, topo, 1, N, N)
+                    @test divergence_free_poisson_solution(arch, Float64, topo, N, 1, N)
+                    @test divergence_free_poisson_solution(arch, Float64, topo, 1, 1, N)
+                end
+            end
 
-    #         Ns = [11, 16]
-    #         for topo in topos
-    #             @info "    Testing $topo topology on rectangular grids with even and prime sizes [$(typeof(arch))]..."
-    #             for Nx in Ns, Ny in Ns, Nz in Ns
-    #                 @test divergence_free_poisson_solution(arch, Float64, topo, Nx, Ny, Nz)
-    #             end
-    #         end
+            Ns = [11, 16]
+            for topo in topos
+                @info "    Testing $topo topology on rectangular grids with even and prime sizes [$(typeof(arch))]..."
+                for Nx in Ns, Ny in Ns, Nz in Ns
+                    @test divergence_free_poisson_solution(arch, Float64, topo, Nx, Ny, Nz)
+                end
+            end
 
-    #         # Do a couple at Float32 (kinda expensive to repeat all tests...)
-    #         @test divergence_free_poisson_solution(arch, Float32, (Periodic, Bounded, Periodic), 16, 16, 16)
-    #         @test divergence_free_poisson_solution(arch, Float32, (Bounded, Periodic, Bounded), 7,  11, 13)
-    #     end
+            # Do a couple at Float32 (kinda expensive to repeat all tests...)
+            @test divergence_free_poisson_solution(arch, Float32, (Periodic, Bounded, Periodic), 16, 16, 16)
+            @test divergence_free_poisson_solution(arch, Float32, (Bounded, Periodic, Bounded), 7,  11, 13)
+        end
 
-    #     @testset "Convergence to analytic solution [$(typeof(arch))]" begin
-    #         @info "  Testing convergence to analytic solution [$(typeof(arch))]..."
-    #         for topo in topos
-    #             @test poisson_solver_convergence(arch, topo, 2^6, 2^7)
-    #             @test poisson_solver_convergence(arch, topo, 67, 131, mode=2)
-    #         end
-    #     end
-    # end
+        @testset "Convergence to analytic solution [$(typeof(arch))]" begin
+            @info "  Testing convergence to analytic solution [$(typeof(arch))]..."
+            for topo in topos
+                @test poisson_solver_convergence(arch, topo, 2^6, 2^7)
+                @test poisson_solver_convergence(arch, topo, 67, 131, mode=2)
+            end
+        end
+    end
 
     # Vertically stretched topologies to test.
     vs_topos = [
         (Periodic, Periodic, Bounded),
-        # (Periodic, Bounded,  Bounded),
-        # (Bounded,  Periodic, Bounded),
-        # (Bounded,  Bounded,  Bounded)
+        (Periodic, Bounded,  Bounded),
+        (Bounded,  Periodic, Bounded),
+        (Bounded,  Bounded,  Bounded)
     ]
 
     for arch in archs, topo in vs_topos

@@ -197,11 +197,61 @@ function plan_transforms(arch, grid::VerticallyStretchedRectilinearGrid, storage
     TX, TY, TZ = topo = topology(grid)
 
     # Limit ourselves to x, y transforms (z uses a tridiagonal solve)
-    periodic_dims = findall(t -> t == Periodic, topo[1:2])
-    bounded_dims = findall(t -> t == Bounded, topo[1:2])
+    periodic_dims = findall(t -> t == Periodic, (TX, TY))
+    bounded_dims = findall(t -> t == Bounded, (TX, TY))
 
     if arch isa GPU && topo in non_batched_topologies
-        @error "lol"
+        if (TX, TY) == (Periodic, Bounded)
+            forward_plan_x = plan_forward_transform(storage, Periodic(), [1], planner_flag)
+            forward_plan_y = plan_forward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(), [1], planner_flag)
+
+            backward_plan_x = plan_backward_transform(storage, Periodic(), [1], planner_flag)
+            backward_plan_y = plan_backward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(),  [1], planner_flag)
+
+            forward_transforms = (
+                DiscreteTransform(forward_plan_y, Forward(), arch, grid, [2]),
+                DiscreteTransform(forward_plan_x, Forward(), arch, grid, [1])
+            )
+
+            backward_transforms = (
+                DiscreteTransform(backward_plan_x, Backward(), arch, grid, [1]),
+                DiscreteTransform(backward_plan_y, Backward(), arch, grid, [2])
+            )
+
+        elseif (TX, TY) == (Bounded, Periodic)
+            forward_plan_x = plan_forward_transform(storage, Bounded(), [1], planner_flag)
+            forward_plan_y = plan_forward_transform(reshape(storage, (Ny, Nx, Nz)), Periodic(), [1], planner_flag)
+
+            backward_plan_x = plan_backward_transform(storage, Bounded(), [1], planner_flag)
+            backward_plan_y = plan_backward_transform(reshape(storage, (Ny, Nx, Nz)), Periodic(),  [1], planner_flag)
+
+            forward_transforms = (
+                DiscreteTransform(forward_plan_x, Forward(), arch, grid, [1]),
+                DiscreteTransform(forward_plan_y, Forward(), arch, grid, [2])
+            )
+
+            backward_transforms = (
+                DiscreteTransform(backward_plan_y, Backward(), arch, grid, [2]),
+                DiscreteTransform(backward_plan_x, Backward(), arch, grid, [1])
+            )
+
+        elseif (TX, TY) == (Bounded, Bounded)
+            forward_plan_x = plan_forward_transform(storage, Bounded(), [1], planner_flag)
+            forward_plan_y = plan_forward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(), [1], planner_flag)
+
+            backward_plan_x = plan_backward_transform(storage, Bounded(), [1], planner_flag)
+            backward_plan_y = plan_backward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(),  [1], planner_flag)
+
+            forward_transforms = (
+                DiscreteTransform(forward_plan_x, Forward(), arch, grid, [1]),
+                DiscreteTransform(forward_plan_y, Forward(), arch, grid, [2])
+            )
+
+            backward_transforms = (
+                DiscreteTransform(backward_plan_x, Backward(), arch, grid, [1]),
+                DiscreteTransform(backward_plan_y, Backward(), arch, grid, [2])
+            )
+        end
     else
         # This is the case where batching transforms is possible. It's always possible on the CPU
         # since FFTW is awesome so it includes all topologies on the CPU.
