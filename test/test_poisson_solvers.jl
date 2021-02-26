@@ -154,7 +154,7 @@ function vertically_stretched_poisson_solver_correct_answer(FT, arch, topo, Nx, 
     ∇²ϕ = CenterField(FT, arch, vs_grid, p_bcs)
 
     R = random_divergence_free_source_term(FT, arch, vs_grid)
-    F = CUDA.@allowscalar reshape(vs_grid.ΔzC[1:Nz], 1, 1, Nz) .* R  # RHS needs to be multiplied by ΔzC
+    F = CUDA.@allowscalar reshape(vs_grid.Δzᵃᵃᶠ[1:Nz], 1, 1, Nz) .* R  # RHS needs to be multiplied by ΔzC
     solver.batched_tridiagonal_solver.f .= F
 
     solve_poisson_equation!(solver)
@@ -235,6 +235,7 @@ topos = collect(Iterators.product(PB, PB, PB))[:]
 
             @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 8, 8, 1:8)
             @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 7, 7, 1:7)
+            @test vertically_stretched_poisson_solver_correct_answer(Float32, arch, topo, 8, 8, 1:8)
 
             zF_even = [1, 2, 4, 7, 11, 16, 22, 29, 37]      # Nz = 8
             zF_odd  = [1, 2, 4, 7, 11, 16, 22, 29, 37, 51]  # Nz = 9
@@ -243,7 +244,6 @@ topos = collect(Iterators.product(PB, PB, PB))[:]
                 @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 8,  8, zF)
                 @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 16, 8, zF)
                 @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 8, 16, zF)
-                @test vertically_stretched_poisson_solver_correct_answer(Float32, arch, topo, 8,  8, zF)
                 @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 8, 11, zF)
                 @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 5,  8, zF)
                 @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 7, 13, zF)

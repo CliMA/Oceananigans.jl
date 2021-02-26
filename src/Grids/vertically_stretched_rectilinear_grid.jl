@@ -166,6 +166,10 @@ function with_halo(new_halo, old_grid::VerticallyStretchedRectilinearGrid)
     return old_grid
 end
 
+@inline x_domain(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.xᶠᵃᵃ)
+@inline y_domain(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.yᵃᶠᵃ)
+@inline z_domain(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
+
 short_show(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     "VerticallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
 
@@ -178,7 +182,7 @@ function show(io::IO, g::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) whe
 end
 
 Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, typeof(grid.xF), typeof(Adapt.adapt(to, grid.zF))}(
+    VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, typeof(grid.xᶠᵃᵃ), typeof(Adapt.adapt(to, grid.zᵃᵃᶠ))}(
         grid.Nx, grid.Ny, grid.Nz,
         grid.Hx, grid.Hy, grid.Hz,
         grid.Lx, grid.Ly, grid.Lz,
