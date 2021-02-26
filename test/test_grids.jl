@@ -195,7 +195,6 @@ function flat_extent_regular_rectilinear_grid(FT; topology, size, extent)
     return grid.Lx, grid.Ly, grid.Lz
 end
 
-
 #####
 ##### Test the tests
 #####

@@ -16,7 +16,7 @@ function FourierTridiagonalPoissonSolver(arch, grid)
     λy = poisson_eigenvalues(grid.Ny, grid.Ly, 2, topology(grid, 2)())
 
     # Lower and upper diagonals are the same
-    ld = [1/ΔzF(1, 1, k, grid) for k in 1:Nz-1]
+    ld = arch_array(arch, [1/ΔzF(1, 1, k, grid) for k in 1:Nz-1])
     ud = ld
 
     # Diagonal (different for each i,j)
@@ -28,6 +28,8 @@ function FourierTridiagonalPoissonSolver(arch, grid)
         d[i, j, 2:Nz-1] .= [δ(i, j, k, grid, λx[i], λy[j]) for k in 2:Nz-1]
         d[i, j, Nz] = -1/ΔzF(i, j, Nz-1, grid) - ΔzC(i, j, Nz, grid) * (λx[i] + λy[j])
     end
+
+    d = arch_array(arch, d)
 
     rhs_storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
     btsolver = BatchedTridiagonalSolver(arch, dl=ld, d=d, du=ud, f=rhs_storage, grid=grid)
@@ -41,13 +43,16 @@ function solve_poisson_equation!(solver::FourierTridiagonalPoissonSolver)
     ϕ = solver.storage
     RHS = solver.batched_tridiagonal_solver.f
 
-    FFTW.fft!(RHS, [1, 2])
+    solver.architecture isa CPU && FFTW.fft!(RHS, [1, 2])
+    solver.architecture isa GPU && CUDA.CUFFT.fft!(RHS, [1, 2])
 
     solve_batched_tridiagonal_system!(ϕ, solver.architecture, solver.batched_tridiagonal_solver)
 
-    FFTW.ifft!(ϕ, [1, 2])
+    solver.architecture isa CPU && FFTW.ifft!(ϕ, [1, 2])
+    solver.architecture isa GPU && CUDA.CUFFT.ifft!(ϕ, [1, 2])
+
     ϕ .= real.(ϕ)
     ϕ .= ϕ .- mean(ϕ)
-   
+
     return nothing
 end

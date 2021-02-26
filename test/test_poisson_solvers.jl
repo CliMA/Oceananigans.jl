@@ -1,5 +1,6 @@
 using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!
 using Oceananigans.Solvers: poisson_eigenvalues
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: _compute_w_from_continuity!
 
 function poisson_solver_instantiates(arch, FT, Nx, Ny, Nz, planner_flag)
     grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(100, 100, 100))
@@ -8,7 +9,6 @@ function poisson_solver_instantiates(arch, FT, Nx, Ny, Nz, planner_flag)
 end
 
 function random_divergent_source_term(FT, arch, grid)
-    # Generate right hand side from a random (divergent) velocity field.
     Ru = CenterField(FT, arch, grid, UVelocityBoundaryConditions(grid))
     Rv = CenterField(FT, arch, grid, VVelocityBoundaryConditions(grid))
     Rw = CenterField(FT, arch, grid, WVelocityBoundaryConditions(grid))
@@ -34,32 +34,34 @@ function random_divergent_source_term(FT, arch, grid)
     return R, U
 end
 
-function random_div_free_source_term(FT, arch, grid)
+function random_divergence_free_source_term(FT, arch, grid)
     # Random right hand side
     Ru = CenterField(FT, arch, grid, UVelocityBoundaryConditions(grid))
     Rv = CenterField(FT, arch, grid, VVelocityBoundaryConditions(grid))
     Rw = CenterField(FT, arch, grid, WVelocityBoundaryConditions(grid))
+    U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
-    interior(Ru) .= rand(Nx, Ny, Nz)
-    interior(Rv) .= rand(Nx, Ny, Nz)
-    interior(Rw) .= zeros(Nx, Ny, Nz)
+    set!(Ru, rand(Nx, Ny, Nz))
+    set!(Rv, rand(Nx, Ny, Nz))
+    set!(Rw, zeros(Nx, Ny, Nz))
 
-    U = (u=Ru, v=Rv, w=Rw)
-    fill_halo_regions!(U, arch, nothing, nothing)
+    fill_halo_regions!(Ru, arch, nothing, nothing)
+    fill_halo_regions!(Rv, arch, nothing, nothing)
+    fill_halo_regions!(Rw, arch, nothing, nothing)
 
-    # _compute_w_from_continuity!(U, grid)
-    # Rw[i, j, 1] = 0 will be enforced via halo regions.
-    for i in 1:Nx, j in 1:Ny, k in 2:Nz
-        @inbounds Rw[i, j, k] = Rw[i, j, k-1] - ΔzC(i, j, k, grid) * div_xyᶜᶜᵃ(i, j, k, grid, Ru, Rv)
-    end
+    event = launch!(arch, grid, :xy, _compute_w_from_continuity!, U, grid,
+                    dependencies=Event(device(arch)))
+    wait(device(arch), event)
 
     fill_halo_regions!(Rw, arch, nothing, nothing)
 
-    R = zeros(Nx, Ny, Nz)
-    for i in 1:Nx, j in 1:Ny, k in 1:Nz
-        R[i, j, k] = divᶜᶜᶜ(i, j, k, grid, Ru, Rv, Rw)
-    end
+    # Compute the right hand side R = ∇⋅U
+    ArrayType = array_type(arch)
+    R = zeros(Nx, Ny, Nz) |> ArrayType
+    event = launch!(arch, grid, :xyz, divergence!, grid, Ru.data, Rv.data, Rw.data, R,
+                    dependencies=Event(device(arch)))
+    wait(device(arch), event)
 
     return R
 end
@@ -144,19 +146,19 @@ end
 
 function vertically_stretched_poisson_solver_correct_answer(FT, arch, Nx, Ny, zF)
     Nz = length(zF) - 1
-    vs_grid = VerticallyStretchedRectilinearGrid(size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), zF=zF)
+    vs_grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), zF=zF)
     solver = FourierTridiagonalPoissonSolver(arch, vs_grid)
 
     p_bcs = PressureBoundaryConditions(vs_grid)
     ϕ   = CenterField(FT, arch, vs_grid, p_bcs)  # "kinematic pressure"
     ∇²ϕ = CenterField(FT, arch, vs_grid, p_bcs)
 
-    R = random_div_free_source_term(FT, arch, vs_grid)
+    R = random_divergence_free_source_term(FT, arch, vs_grid)
     F = reshape(vs_grid.ΔzC[1:Nz], 1, 1, Nz) .* R  # RHS needs to be multiplied by ΔzC
     solver.batched_tridiagonal_solver.f .= F
-    
+
     solve_poisson_equation!(solver)
-    
+
     interior(ϕ) .= real.(solver.storage)
     compute_∇²!(∇²ϕ, ϕ, arch, vs_grid)
 
@@ -219,9 +221,9 @@ topos = collect(Iterators.product(PB, PB, PB))[:]
         end
     end
 
-    for arch in [CPU()]
-        @testset "Vertically stretched Poisson solver [FACR, $arch]" begin
-            @info "  Testing vertically stretched Poisson solver [FACR, $arch]..."
+    for arch in archs
+        @testset "Vertically stretched Poisson solver [FACR, $(typeof(arch))]" begin
+            @info "  Testing vertically stretched Poisson solver [FACR, $(typeof(arch))]..."
 
             @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, 8, 8, 1:8)
 
