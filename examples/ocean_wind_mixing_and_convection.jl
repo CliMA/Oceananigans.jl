@@ -25,12 +25,6 @@ using Plots
 using JLD2
 
 using Oceananigans
-using Oceananigans.Utils
-
-using Oceananigans.Grids: nodes
-using Oceananigans.Advection: UpwindBiasedFifthOrder
-using Oceananigans.Diagnostics: FieldMaximum
-using Oceananigans.OutputWriters: JLD2OutputWriter, FieldSlicer, TimeInterval
 
 # ## The grid
 #
@@ -64,7 +58,7 @@ Qᵀ = Qʰ / (ρₒ * cᴾ) # K m⁻¹ s⁻¹, surface _temperature_ flux
 
 dTdz = 0.01 # K m⁻¹
 
-T_bcs = TracerBoundaryConditions(grid, 
+T_bcs = TracerBoundaryConditions(grid,
                                  top = BoundaryCondition(Flux, Qᵀ),
                                  bottom = BoundaryCondition(Gradient, dTdz))
 
@@ -94,7 +88,7 @@ nothing # hide
 
 # where `S` is salinity. We use an evporation rate of 1 millimeter per hour,
 
-evaporation_rate = 1e-3 / hour 
+evaporation_rate = 1e-3 / hour
 
 # We build the `Flux` evaporation `BoundaryCondition` with the function `Qˢ`,
 # indicating that `Qˢ` depends on salinity `S` and passing
@@ -200,7 +194,7 @@ run!(simulation)
 # We animate the data saved in `ocean_wind_mixing_and_convection.jld2`.
 # We prepare for animating the flow by creating coordinate arrays,
 # opening the file, building a vector of the iterations that we saved
-# data at, and defining functions for computing colorbar limits: 
+# data at, and defining functions for computing colorbar limits:
 
 ## Coordinate arrays
 xw, yw, zw = nodes(model.velocities.w)
@@ -262,7 +256,7 @@ anim = @animate for (i, iter) in enumerate(iterations[intro:end])
     T_title = "temperature (ᵒC)"
     S_title = "salinity (g kg⁻¹)"
     ν_title = "eddy viscosity (m² s⁻¹)"
-                       
+
     ## Arrange the plots side-by-side.
     plot(w_plot, T_plot, S_plot, ν_plot, layout=(2, 2), size=(1200, 600),
          title=[w_title T_title S_title ν_title])
