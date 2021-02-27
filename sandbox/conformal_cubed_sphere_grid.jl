@@ -14,16 +14,16 @@ function ConformalCubedSphereGrid(FT=Float64; face_size, z, radius=R_Earth)
     # -z face (face 2)
     z⁻_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=RotX(π))
 
-    # +x face (face 3)
+    # +y face (face 3)
     x⁺_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=RotX(π/2))
 
-    # -x face (face 4)
+    # -y face (face 4)
     x⁻_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=RotX(-π/2))
 
-    # +y face (face 5)
+    # +x face (face 5)
     y⁺_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=RotY(π/2))
 
-    # -y face (face 6)
+    # -x face (face 6)
     y⁻_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=RotY(-π/2))
 
     faces = (
