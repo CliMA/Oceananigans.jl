@@ -33,7 +33,7 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, arch, grid)
     barotropic_transport = (u=barotropic_u_transport, v=barotropic_v_transport)
 
     Ax_zintegral = ReducedField(Face, Center, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
-    Ay_zintegral = ReducedField(Face, Center, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
+    Ay_zintegral = ReducedField(Center, Face, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
     vertically_integrated_lateral_face_areas = (Ax = Ax_zintegral, Ay=Ay_zintegral)
     compute_vertically_integrated_lateral_face_areas!(vertically_integrated_lateral_face_areas, grid, arch)
 

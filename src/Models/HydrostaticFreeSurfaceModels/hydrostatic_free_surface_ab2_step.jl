@@ -91,7 +91,6 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     ## that comes after explicit step
     event = explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
     wait(device(model.architecture), event)
-    ### fill_halo_regions!(x, sset.bcs, sset.arch, sset.grid)
     fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model) )
 
     ## We need vertically integrated U,V
@@ -101,6 +100,11 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     v=free_surface.barotropic_transport.v
     fill_halo_regions!(u.data ,u.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
     fill_halo_regions!(v.data ,v.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
+    ### We don't need the halo below, its just here for some debugging
+    Ax=free_surface.vertically_integrated_lateral_face_areas.Ax
+    Ay=free_surface.vertically_integrated_lateral_face_areas.Ay
+    fill_halo_regions!(Ax.data ,Ax.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
+    fill_halo_regions!(Ay.data ,Ay.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
 
 
     ## Compute volume scaled divergence of the barotropic transport and put into solver RHS
@@ -110,14 +114,15 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     ## Include surface pressure term into RHS
     RHS = free_surface.implicit_step_solver.solver.settings.RHS
     ## fill_halo_regions!(RHS.data ,RHS.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
-    ϕ          = CenterField(model.architecture, model.grid)
-    fill_halo_regions!(RHS , ϕ.boundary_conditions, model.architecture, model.grid)
+    η = free_surface.η
+    fill_halo_regions!(RHS   , η.boundary_conditions, model.architecture, model.grid)
+    fill_halo_regions!(η.data, η.boundary_conditions, model.architecture, model.grid)
     RHS .= RHS .+ free_surface.η.data/Δt
 
     ## Then we can invoke solve_for_pressure! on the right type via calculate_pressure_correction!
     x  = free_surface.implicit_step_solver.solver.settings.x
     x .= 0
-    fill_halo_regions!(x ,ϕ.boundary_conditions, model.architecture, model.grid)
+    fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
     solve_poisson_equation!(free_surface.implicit_step_solver.solver, RHS, x)
     ## exit()
 
@@ -186,5 +191,5 @@ end
     # integrated over an area.
     #
     i, j = @index(Global, NTuple)
-    @inbounds div[i, j] = δxᶜᵃᵃ(i, j, 1, grid, ut) + δyᵃᶜᵃ(i, j, 1, grid, vt)
+    @inbounds div[i, j, 1] = δxᶜᵃᵃ(i, j, 1, grid, ut) + δyᵃᶜᵃ(i, j, 1, grid, vt)
 end

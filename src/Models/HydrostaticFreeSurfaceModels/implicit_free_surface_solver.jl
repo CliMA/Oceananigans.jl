@@ -14,14 +14,15 @@ function ImplicitFreeSurfaceSolver(arch, template_field,
     ## This should probably end up in some operator and grid generic auxilliaries
     Ax_baro = vertically_integrated_lateral_face_areas.Ax
     Ay_baro = vertically_integrated_lateral_face_areas.Ay
-    @inline Ax_∂xᶠᵃᵃ_baro(i, j, k, grid, c) = Ax_baro[i, j] * ∂xᶠᵃᵃ(i, j, 1, grid, c)
-    @inline Ay_∂yᵃᶠᵃ_baro(i, j, k, grid, c) = Ay_baro[i, j] * ∂yᵃᶠᵃ(i, j, 1, grid, c)
+    @inline Ax_∂xᶠᵃᵃ_baro(i, j, k, grid, c) = Ax_baro[i, j, 1] * ∂xᶠᵃᵃ(i, j, 1, grid, c)
+    @inline Ay_∂yᵃᶠᵃ_baro(i, j, k, grid, c) = Ay_baro[i, j, 1] * ∂yᵃᶠᵃ(i, j, 1, grid, c)
     @inline function ∇²_baro(i, j, k, grid, c)
        return  δxᶜᵃᵃ(i, j, 1, grid, Ax_∂xᶠᵃᵃ_baro, c) +
                δyᵃᶜᵃ(i, j, 1, grid, Ay_∂yᵃᶠᵃ_baro, c)
     end
 
     @kernel function implicit_η!(grid, f, implicit_η_f)
+        i, j = @index(Global, NTuple)
         ### Not sure what to call this
         ### it is for left hand side operator in
         ### (-g∇ₕ² + 1/Δt )ϕⁿ⁺¹=ϕⁿ/Δt + ∇ₕHUˢᵗᵃʳ
