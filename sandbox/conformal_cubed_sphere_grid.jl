@@ -6,6 +6,8 @@ struct ConformalCubedSphereGrid{FT, F, C}
 end
 
 function ConformalCubedSphereGrid(FT=Float64; face_size, z, radius=R_Earth)
+    @warn "ConformalCubedSphereGrid is experimental: use with caution!"
+
     # +z face (face 1)
     z⁺_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=nothing)
 
@@ -58,5 +60,5 @@ end
 function show(io::IO, grid::ConformalCubedSphereGrid{FT}) where FT
     face = grid.faces[1]
     Nx, Ny, Nz = face.Nx, face.Ny, face.Nz
-    print(io, "ConformalCubedSphereGrid{$FT}: face size = ($Nx, $Ny, $Nz)")
+    print(io, "ConformalCubedSphereGrid{$FT}: $(length(grid.faces)) faces with size = ($Nx, $Ny, $Nz)")
 end
