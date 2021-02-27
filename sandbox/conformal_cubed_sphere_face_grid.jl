@@ -4,11 +4,11 @@ using CubedSphere
 
 using Oceananigans
 using Oceananigans.Grids
-using Oceananigans.Grids: R_Earth
+using Oceananigans.Grids: AbstractGrid, R_Earth
 
 import Base: show
 
-struct ConformalCubedSphereFaceGrid{FT, A, R}
+struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R} <: AbstractGrid{FT, TX, TY, TZ}
         Nx :: Int
         Ny :: Int
         Nz :: Int
@@ -29,13 +29,14 @@ struct ConformalCubedSphereFaceGrid{FT, A, R}
     radius :: FT
 end
 
-function ConformalCubedSphereFaceGrid(FT=Float64; size, ξ=(-1, 1), η=(-1, 1), z, radius=R_Earth, halo=(1, 1, 1), rotation=nothing)
+function ConformalCubedSphereFaceGrid(FT=Float64; topology=(Bounded, Bounded, Bounded), size, ξ=(-1, 1), η=(-1, 1), z, radius=R_Earth, halo=(1, 1, 1), rotation=nothing)
+    TX, TY, TZ = topology
     Nξ, Nη, Nz = size
     Hx, Hy, Hz = halo
 
     # Use a regular grid for the face of the cube
 
-    ξη_grid = RegularRectilinearGrid(FT, topology=(Bounded, Bounded, Bounded), size=(Nξ, Nη, Nz), x=ξ, y=η, z=z, halo=halo)
+    ξη_grid = RegularRectilinearGrid(FT, topology=topology, size=(Nξ, Nη, Nz), x=ξ, y=η, z=z, halo=halo)
 
     ξᶠᵃᵃ = xnodes(Face, ξη_grid)
     ξᶜᵃᵃ = xnodes(Center, ξη_grid)
@@ -111,7 +112,8 @@ function ConformalCubedSphereFaceGrid(FT=Float64; size, ξ=(-1, 1), η=(-1, 1), 
     any(any.(isnan, λS)) &&
         @warn "Your cubed sphere face contains a grid point at a pole so its longitude λ is undefined (NaN)."
 
-    return ConformalCubedSphereFaceGrid(Nξ, Nη, Nz, Hx, Hy, Hz, λᶜᶜᶜ, λᶠᶜᶜ, λᶜᶠᶜ, λᶠᶠᶜ, ϕᶜᶜᶜ, ϕᶠᶜᶜ, ϕᶜᶠᶜ, ϕᶠᶠᶜ, zᵃᵃᶠ, zᵃᵃᶜ, Δz , radius)
+    return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, typeof(λᶜᶜᶜ), typeof(zᵃᵃᶠ)}(
+        Nξ, Nη, Nz, Hx, Hy, Hz, λᶜᶜᶜ, λᶠᶜᶜ, λᶜᶠᶜ, λᶠᶠᶜ, ϕᶜᶜᶜ, ϕᶠᶜᶜ, ϕᶜᶠᶜ, ϕᶠᶠᶜ, zᵃᵃᶠ, zᵃᵃᶜ, Δz , radius)
 end
 
 function show(io::IO, g::ConformalCubedSphereFaceGrid{FT}) where FT
