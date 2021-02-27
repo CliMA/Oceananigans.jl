@@ -1,9 +1,12 @@
 using OffsetArrays
+using Rotations
 using CubedSphere
 
 using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Grids: R_Earth
+
+import Base: show
 
 struct ConformalCubedSphereFaceGrid{FT, A, R}
         Nx :: Int
@@ -109,6 +112,12 @@ function ConformalCubedSphereFaceGrid(FT=Float64; size, ξ=(-1, 1), η=(-1, 1), 
         @warn "Your cubed sphere face contains a grid point at a pole so its longitude λ is undefined (NaN)."
 
     return ConformalCubedSphereFaceGrid(Nξ, Nη, Nz, Hx, Hy, Hz, λᶜᶜᶜ, λᶠᶜᶜ, λᶜᶠᶜ, λᶠᶠᶜ, ϕᶜᶜᶜ, ϕᶠᶜᶜ, ϕᶜᶠᶜ, ϕᶠᶠᶜ, zᵃᵃᶠ, zᵃᵃᶜ, Δz , radius)
+end
+
+function show(io::IO, g::ConformalCubedSphereFaceGrid{FT}) where FT
+    print(io, "ConformalCubedSphereFaceGrid{$FT}\n",
+              "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
+              "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
 end
 
 # @inline Δxᶜᶜᶜ(i, j, k, grid::ConformalCubedSphereFaceField) = @inbounds grid.radius * cosd(grid.ϕᶜᶜᶜ[i, j]) * deg2rad(grid.λᶠᶜᶜ[i+1, j] - grid.λᶠᶜᶜ[i, j])
