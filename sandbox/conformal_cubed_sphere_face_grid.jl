@@ -51,18 +51,18 @@ function ConformalCubedSphereFaceGrid(FT=Float64; topology=(Bounded, Bounded, Bo
 
     # Compute staggered grid Cartesian coordinates (X, Y, Z) on the unit sphere.
 
-    Xᶜᶜᶜ = zeros(Nξ,   Nη)
-    Xᶠᶜᶜ = zeros(Nξ+1, Nη)
+    Xᶜᶜᶜ = zeros(Nξ,   Nη  )
+    Xᶠᶜᶜ = zeros(Nξ+1, Nη  )
     Xᶜᶠᶜ = zeros(Nξ,   Nη+1)
     Xᶠᶠᶜ = zeros(Nξ+1, Nη+1)
 
-    Yᶜᶜᶜ = zeros(Nξ,   Nη)
-    Yᶠᶜᶜ = zeros(Nξ+1, Nη)
+    Yᶜᶜᶜ = zeros(Nξ,   Nη  )
+    Yᶠᶜᶜ = zeros(Nξ+1, Nη  )
     Yᶜᶠᶜ = zeros(Nξ,   Nη+1)
     Yᶠᶠᶜ = zeros(Nξ+1, Nη+1)
 
-    Zᶜᶜᶜ = zeros(Nξ,   Nη)
-    Zᶠᶜᶜ = zeros(Nξ+1, Nη)
+    Zᶜᶜᶜ = zeros(Nξ,   Nη  )
+    Zᶠᶜᶜ = zeros(Nξ+1, Nη  )
     Zᶜᶠᶜ = zeros(Nξ,   Nη+1)
     Zᶠᶠᶜ = zeros(Nξ+1, Nη+1)
 
