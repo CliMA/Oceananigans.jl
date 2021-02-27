@@ -6,31 +6,32 @@ struct ConformalCubedSphereGrid{FT, F, C}
 end
 
 function ConformalCubedSphereGrid(FT=Float64; face_size, z, radius=R_Earth)
-    faces = ConformalCubedSphereFaceGrid[]
-
     # +z face (face 1)
     z⁺_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=nothing)
-    push!(faces, z⁺_face_grid)
 
     # -z face (face 2)
     z⁻_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=RotX(π))
-    push!(faces, z⁻_face_grid)
 
     # +x face (face 3)
     x⁺_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=RotX(π/2))
-    push!(faces, x⁺_face_grid)
 
     # -x face (face 4)
     x⁻_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=RotX(-π/2))
-    push!(faces, x⁻_face_grid)
 
     # +y face (face 5)
     y⁺_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=RotY(π/2))
-    push!(faces, y⁺_face_grid)
 
     # -y face (face 6)
     y⁻_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=RotY(-π/2))
-    push!(faces, y⁻_face_grid)
+
+    faces = (
+        z⁺_face_grid,
+        z⁻_face_grid,
+        x⁺_face_grid,
+        x⁻_face_grid,
+        y⁺_face_grid,
+        y⁻_face_grid
+    )
 
     # Construct face connectivity:
     #
