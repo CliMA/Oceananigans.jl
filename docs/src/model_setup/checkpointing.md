@@ -14,7 +14,7 @@ end
 ```
 
 ```jldoctest
-julia> using Oceananigans.OutputWriters, Oceananigans.Utils
+julia> using Oceananigans, Oceananigans.Units
 
 julia> model = IncompressibleModel(grid=RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)));
 
