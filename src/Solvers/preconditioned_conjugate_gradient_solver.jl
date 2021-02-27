@@ -156,6 +156,8 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
     r.parent .= 0
     # quick_launch!(arch, grid, compute_residual!, r, RHS, A(x))
     r.parent .= RHS.parent .- A(x).parent
+    println("PreconditionedConjugateGradientSolver ", i," RHS ", norm(RHS.parent) )
+    println("PreconditionedConjugateGradientSolver ", i," A(x) ", norm(A(x).parent) )
 
     while true
         println("PreconditionedConjugateGradientSolver ", i," ", norm(r.parent) )
@@ -207,7 +209,7 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
        i    = i+1
       end
 ==#
-      println("PreconditionedConjugateGradientSolver ", i," ", norm(r) )
+      println("PreconditionedConjugateGradientSolver ", i," ", norm(r.parent) )
 
     fill_halo_regions!(x, sset.bcs, sset.arch, sset.grid)
     return x, norm(r.parent)
