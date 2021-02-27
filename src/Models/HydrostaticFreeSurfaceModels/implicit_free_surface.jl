@@ -37,7 +37,7 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, arch, grid)
     vertically_integrated_lateral_face_areas = (Ax = Ax_zintegral, Ay=Ay_zintegral)
     compute_vertically_integrated_lateral_face_areas!(vertically_integrated_lateral_face_areas, grid, arch)
 
-    implicit_step_solver = ImplicitFreeSurfaceSolver(arch, η, vertically_integrated_lateral_face_areas)
+    implicit_step_solver = ImplicitFreeSurfaceSolver(arch, η, vertically_integrated_lateral_face_areas; maxit=1)
 
     return ImplicitFreeSurface(η, g, 
                                barotropic_transport, 
@@ -58,9 +58,9 @@ explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ImplicitFre
     A.Ay[i, j, 1] = 0.
     @unroll for k in 1:grid.Nz
         #### @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
-        #### @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
-        @inbounds A.Ax[i, j, 1] += Δyᶠᶠᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
-        @inbounds A.Ay[i, j, 1] += Δxᶠᶠᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
+        #### @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k-1]*Δxᶜᶠᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
+        @inbounds A.Ax[i, j, 1] += Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
+        @inbounds A.Ay[i, j, 1] += Δxᶜᶠᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
     end
 end
 

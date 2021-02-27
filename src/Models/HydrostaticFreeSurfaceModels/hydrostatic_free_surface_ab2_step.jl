@@ -91,18 +91,35 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     ## that comes after explicit step
     event = explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
     wait(device(model.architecture), event)
+    ### fill_halo_regions!(x, sset.bcs, sset.arch, sset.grid)
+    fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model) )
 
     ## We need vertically integrated U,V
     event = compute_vertically_integrated_transport!(free_surface, model)
     wait(device(model.architecture), event)
-     
+    u=free_surface.barotropic_transport.u
+    v=free_surface.barotropic_transport.v
+    fill_halo_regions!(u.data ,u.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
+    fill_halo_regions!(v.data ,v.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
+
+
     ## Compute volume scaled divergence of the barotropic transport and put into solver RHS
     event = compute_volume_scaled_divergence!(free_surface, model)
+    wait(device(model.architecture), event)
     
     ## Include surface pressure term into RHS
+    RHS = free_surface.implicit_step_solver.solver.settings.RHS
+    ## fill_halo_regions!(RHS.data ,RHS.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
+    ϕ          = CenterField(model.architecture, model.grid)
+    fill_halo_regions!(RHS , ϕ.boundary_conditions, model.architecture, model.grid)
+    RHS .= RHS .+ free_surface.η.data/Δt
 
     ## Then we can invoke solve_for_pressure! on the right type via calculate_pressure_correction!
-    ### RHS = free_surface.implicit_step_solver.solver.settings.RHS
+    x  = free_surface.implicit_step_solver.solver.settings.x
+    x .= 0
+    fill_halo_regions!(x ,ϕ.boundary_conditions, model.architecture, model.grid)
+    solve_poisson_equation!(free_surface.implicit_step_solver.solver, RHS, x)
+    ## exit()
 
     ## Once we have η we can update u* and v* with pressure gradient just as in pressure_correct_velocities!
 
@@ -144,8 +161,8 @@ end
     @unroll for k in 1:grid.Nz
         #### @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
         #### @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
-        @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k]*Δyᶠᶠᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
-        @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k]*Δxᶠᶠᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
+        @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k]*Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
+        @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k]*Δxᶜᶠᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
     end
 end
 
