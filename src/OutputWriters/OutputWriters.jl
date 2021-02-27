@@ -24,7 +24,7 @@ Base.open(ow::AbstractOutputWriter) = nothing
 Base.close(ow::AbstractOutputWriter) = nothing
 
 include("output_writer_utils.jl")
-include("field_slicer.jl")
+#include("field_slicer.jl")
 include("fetch_output.jl")
 include("windowed_time_average.jl")
 include("time_average_outputs.jl")

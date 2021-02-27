@@ -1,4 +1,6 @@
 import Oceananigans: short_show
+import Oceananigans.Grids: Face, Bounded, topology
+using Oceananigans.Fields: location
 
 """
     struct FieldSlicer{I, J, K, W}

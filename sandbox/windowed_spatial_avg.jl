@@ -42,7 +42,7 @@ set!(model, u=u0, v=v0, w=w0)
 
 #++++
 using Oceananigans.Grids
-using Oceananigans.Diagnostics: WindowedSpatialAverage
+using Oceananigans.Diagnostics: WindowedSpatialAverage, FieldSlicer
 u, v, w = model.velocities
 slicer = FieldSlicer(j=Ny÷2+1:Ny)
 

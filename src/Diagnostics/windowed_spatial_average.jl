@@ -1,5 +1,5 @@
-import Oceananigans.OutputWriters: slice_parent
 using Statistics: mean
+using Oceananigans.Fields: compute!
 
 struct WindowedSpatialAverage{F, S, D}
           field :: F
@@ -42,18 +42,6 @@ end
 
 # The function below makes sure that the correct dimensions are automatically applied to
 # the NetCDF output using NetCDFOutputWriter
-using NCDatasets: defVar
-using Oceananigans.Fields: reduced_location
-import Oceananigans.OutputWriters: xdim, ydim, zdim, define_output_variable!
-function define_output_variable!(dataset, 
-                                 wtsa::Union{WindowedSpatialAverage, WindowedTimeAverage{<:WindowedSpatialAverage}}, 
-                                 name, array_type, compression, attributes, dimensions)
-    wsa = wtsa isa WindowedTimeAverage ? wtsa.operand : wtsa
-    LX, LY, LZ = reduced_location(location(wsa.field), dims=wsa.dims)
-
-    output_dims = tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
-    defVar(dataset, name, eltype(array_type), (output_dims..., "time"),
-           compression=compression, attrib=attributes)
-    return nothing
-end
+#using NCDatasets: defVar
+#import Oceananigans.OutputWriters: xdim, ydim, zdim, define_output_variable!
 
