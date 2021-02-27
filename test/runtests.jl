@@ -29,6 +29,7 @@ using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
 using Oceananigans.AbstractOperations
 using Oceananigans.Logger
+using Oceananigans.Units
 using Oceananigans.Utils
 using Oceananigans.Architectures: device # to resolve conflict with CUDA.device
 
