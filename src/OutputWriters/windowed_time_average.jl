@@ -2,6 +2,7 @@ using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.OutputWriters: fetch_output
 using Oceananigans.Utils: AbstractSchedule, prettytime
 
+import Oceananigans: short_show
 import Oceananigans.Utils: TimeInterval, show_schedule
 import Oceananigans.Diagnostics: run_diagnostic!
 
