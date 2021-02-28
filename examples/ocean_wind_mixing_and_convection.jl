@@ -25,6 +25,7 @@ using Plots
 using JLD2
 
 using Oceananigans
+using Oceananigans.Units
 
 # ## The grid
 #
