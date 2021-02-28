@@ -41,6 +41,12 @@ function run_field_reduction_tests(FT, arch)
     w_vals = f.(nodes(w, reshape=true)...)
     c_vals = f.(nodes(c, reshape=true)...)
 
+    # Convert to CuArray if needed.
+    u_vals = arch_array(arch, u_vals)
+    v_vals = arch_array(arch, v_vals)
+    w_vals = arch_array(arch, w_vals)
+    c_vals = arch_array(arch, c_vals)
+
     ϕs_vals = (u_vals, v_vals, w_vals, c_vals)
 
     dims_to_test = (1, 2, 3, (1, 2), (1, 3), (2, 3))
