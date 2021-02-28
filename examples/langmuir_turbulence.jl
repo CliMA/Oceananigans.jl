@@ -5,7 +5,7 @@
 #
 # > [McWilliams, J. C. et al., "Langmuir Turbulence in the ocean," Journal of Fluid Mechanics (1997)](https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/langmuir-turbulence-in-the-ocean/638FD0E368140E5972144348DB930A38).
 #
-# This example demonstrates 
+# This example demonstrates
 #
 #   * How to run large eddy simulations with surface wave effects via the
 #     Craik-Leibovich approximation.
@@ -185,23 +185,20 @@ wizard = TimeStepWizard(cfl=1.0, Δt=45.0, max_change=1.1, max_Δt=1minute)
 # We define a function that prints a helpful message with
 # maximum absolute value of ``u, v, w`` and the current wall clock time.
 
-using Oceananigans.Diagnostics, Printf
-
-umax = FieldMaximum(abs, model.velocities.u)
-vmax = FieldMaximum(abs, model.velocities.v)
-wmax = FieldMaximum(abs, model.velocities.w)
+using Printf
 
 wall_clock = time_ns()
 
 function print_progress(simulation)
     model = simulation.model
+    u, v, w = model.velocities
 
     ## Print a progress message
     msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
                    model.clock.iteration,
                    prettytime(model.clock.time),
                    prettytime(wizard.Δt),
-                   umax(), vmax(), wmax(),
+                   maximum(abs, u), maximum(abs, v), maximum(abs, w),
                    prettytime(1e-9 * (time_ns() - wall_clock))
                   )
 
@@ -383,7 +380,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
     wxy_title = @sprintf("w(x, y, t) (m s⁻¹) at z=-8 m and t = %s ", prettytime(t))
     wxz_title = @sprintf("w(x, z, t) (m s⁻¹) at y=0 m and t = %s", prettytime(t))
     uxz_title = @sprintf("u(x, z, t) (m s⁻¹) at y=0 m and t = %s", prettytime(t))
-         
+
     plot(wxy_plot, B_plot, wxz_plot, U_plot, uxz_plot, fluxes_plot,
          layout = Plots.grid(3, 2, widths=(0.7, 0.3)), size = (900.5, 1000.5),
          title = [wxy_title "" wxz_title "" uxz_title ""])
