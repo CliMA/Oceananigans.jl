@@ -31,7 +31,7 @@ using Oceananigans.Grids: halo_size
                 @compute T̅ = AveragedField(T, dims=(1, 2))
 
                 fill_halo_regions!(T, arch)
-                @compute T̂ = meAveragedFieldan(T, dims=1)
+                @compute T̂ = AveragedField(T, dims=1)
 
                 @compute w̃ = AveragedField(w, dims=(1, 2, 3))
                 @compute w̅ = AveragedField(w, dims=(1, 2))
