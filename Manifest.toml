@@ -86,8 +86,8 @@ version = "4.0.4"
 
 [[CubedSphere]]
 deps = ["Elliptic", "Printf", "Requires", "Rotations", "TaylorSeries", "Test"]
-git-tree-sha1 = "7f85dc7e8c338d76f53c2c5120583caa0d249dec"
-repo-rev = "ali/lat-lon"
+git-tree-sha1 = "5becacdb1322e01805c360ab8787a85b81ba5b08"
+repo-rev = "main"
 repo-url = "https://github.com/CliMA/CubedSphere.jl.git"
 uuid = "7445602f-e544-4518-8976-18f8e8ae6cdb"
 version = "0.1.0"
