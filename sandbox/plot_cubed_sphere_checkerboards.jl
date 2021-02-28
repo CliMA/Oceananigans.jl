@@ -45,6 +45,6 @@ ax.coastlines(resolution="50m")
 ax.set_global()
 
 plt.show()
-# plt.savefig("cubed_sphere_staggered_grid.png", dpi=200)
+# plt.savefig("cubed_sphere_checkerboards.png", dpi=200)
 
 plt.close("all")

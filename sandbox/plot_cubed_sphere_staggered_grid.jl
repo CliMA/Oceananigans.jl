@@ -10,13 +10,14 @@ grid = ConformalCubedSphereGrid(face_size=(Nx_face, Ny_face, 1), z=(-1, 0))
 
 ## Plot staggered grid points on a checkerboard for one face
 
-projection = ccrs.NearsidePerspective()
+# projection = ccrs.Orthographic(central_longitude=270)
+projection = ccrs.Robinson()
 transform = ccrs.PlateCarree()
 
 fig = plt.figure(figsize=(16, 9))
 ax = fig.add_subplot(1, 1, 1, projection=projection)
 
-face = grid.faces[3]
+face = grid.faces[2]
 lons = face.λᶜᶜᶜ[1:Nx_face, 1:Ny_face]
 lats = face.ϕᶜᶜᶜ[1:Nx_face, 1:Ny_face]
 checkerboard = [(i+j)%2 for i in 1:Nx_face, j in 1:Ny_face]

@@ -10,7 +10,7 @@ grid = ConformalCubedSphereGrid(face_size=(Nx_face, Ny_face, 1), z=(-1, 0))
 
 ## Plot points of each face
 
-projection = ccrs.Mollweide()
+projection = ccrs.Robinson()
 transform = ccrs.PlateCarree()
 
 fig = plt.figure(figsize=(16, 9))
