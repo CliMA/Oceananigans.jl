@@ -4,7 +4,7 @@ function nan_checker_aborts_simulation(arch)
     grid = RegularRectilinearGrid(size=(4, 2, 1), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch)
     simulation = Simulation(model, Δt=1, stop_iteration=1)
-    
+
     model.velocities.u[1, 1, 1] = NaN
 
     run!(simulation)
@@ -27,13 +27,6 @@ TestModel(::CPU, FT, ν=1.0, Δx=0.5) =
   architecture = CPU(),
     float_type = FT
 )
-
-function max_abs_field_diagnostic_is_correct(arch, FT)
-    model = TestModel(arch, FT)
-    set!(model.velocities.u, rand(size(model.grid)))
-    u_max = FieldMaximum(abs, model.velocities.u)
-    return u_max(model) == maximum(abs, model.velocities.u.data.parent)
-end
 
 function advective_cfl_diagnostic_is_correct(arch, FT)
     model = TestModel(arch, FT)
@@ -104,7 +97,6 @@ end
             for FT in float_types
                 @test diffusive_cfl_diagnostic_is_correct(arch, FT)
                 @test advective_cfl_diagnostic_is_correct(arch, FT)
-                @test max_abs_field_diagnostic_is_correct(arch, FT)
                 @test diagnostics_getindex(arch, FT)
                 @test diagnostics_setindex(arch, FT)
             end
