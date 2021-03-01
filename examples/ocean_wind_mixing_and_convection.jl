@@ -25,7 +25,7 @@ using Plots
 using JLD2
 
 using Oceananigans
-using Oceananigans.Units
+using Oceananigans.Units: minute, minutes, hour
 
 # ## The grid
 #

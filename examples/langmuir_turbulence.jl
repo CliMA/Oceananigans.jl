@@ -22,7 +22,7 @@
 # ```
 
 using Oceananigans
-using Oceananigans.Units
+using Oceananigans.Units: minute, minutes, hours
 
 # ## Model set-up
 #

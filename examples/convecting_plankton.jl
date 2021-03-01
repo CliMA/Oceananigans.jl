@@ -45,7 +45,7 @@
 # We use a two-dimensional grid with 64² points and 1 m grid spacing:
 
 using Oceananigans
-using Oceananigans.Units
+using Oceananigans.Units: minutes, hour, hours, day
 
 grid = RegularRectilinearGrid(size=(64, 1, 64), extent=(64, 1, 64))
 
@@ -165,7 +165,7 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         prettytime(sim.model.clock.time),
                         prettytime(sim.Δt.Δt))
 
-simulation = Simulation(model, Δt=wizard, stop_time=24hour,
+simulation = Simulation(model, Δt=wizard, stop_time=24hours,
                         iteration_interval=20, progress=progress)
 
 # We add a basic `JLD2OutputWriter` that writes velocities and both

@@ -21,7 +21,7 @@
 #
 # The "Eady problem" simulates the baroclinic instability problem proposed by Eric Eady in
 # the classic paper
-# ["Long waves and cyclone waves," Tellus (1949)](https://www.tandfonline.com/doi/abs/10.3402/tellusa.v1i3.8507).
+# ["Long waves and cyclone waves," Tellus (1949)](https://doi.org/10.3402/tellusa.v1i3.8507).
 # The Eady problem is a simple, canonical model for the generation of mid-latitude
 # atmospheric storms and the ocean eddies that permeate the world sea.
 #
@@ -119,7 +119,7 @@
 
 using Printf
 using Oceananigans
-using Oceananigans.Units
+using Oceananigans.Units: hours, day, days
 
 # ## The grid
 #
