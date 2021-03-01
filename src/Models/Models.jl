@@ -1,6 +1,6 @@
 module Models
 
-export IncompressibleModel, NonDimensionalModel
+export IncompressibleModel, NonDimensionalModel, HydrostaticFreeSurfaceModel, ShallowWaterModel
 
 using Oceananigans: AbstractModel
 

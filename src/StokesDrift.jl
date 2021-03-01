@@ -1,6 +1,7 @@
 module StokesDrift
 
 export
+    UniformStokesDrift,
     ∂t_uˢ,
     ∂t_vˢ,
     ∂t_wˢ,
