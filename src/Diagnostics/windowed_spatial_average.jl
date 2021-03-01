@@ -19,23 +19,27 @@ Example
 =======
 
 ```jldoctest
-using Oceananigans
-using Oceananigans.Diagnostics: WindowedSpatialAverage, FieldSlicer
-using Oceananigans.OutputWriters: AveragedTimeInterval, NetCDFOutputWriter
+julia> using Oceananigans
 
-grid = RegularRectilinearGrid(size=(4, 6, 4), extent=(1,1,1))
-model = IncompressibleModel(grid=grid)
+julia> using Oceananigans.Diagnostics: WindowedSpatialAverage, FieldSlicer
 
-set!(model.velocities.u, 1)
+julia> using Oceananigans.OutputWriters: AveragedTimeInterval, NetCDFOutputWriter
 
-slicer = FieldSlicer(j=3:6, k=1)
+julia> grid = RegularRectilinearGrid(size=(4, 6, 4), extent=(1,1,1));
 
-U_wsa = WindowedSpatialAverage(model.velocities.u; dims=(1, 2), field_slicer=slicer)
+julia> model = IncompressibleModel(grid=grid);
 
-simulation = Simulation(model, Δt=10, stop_iteration=10)
-simulation.output_writers[:simple_output] = NetCDFOutputWriter(model, (U_wsa=U_wsa,), 
-                                                               schedule = 10,
-                                                               filepath = "windowed_spatial_average_jldoctest.nc")
+julia> set!(model.velocities.u, 1);
+
+julia> slicer = FieldSlicer(j=3:6, k=1);
+
+julia> U_wsa = WindowedSpatialAverage(model.velocities.u; dims=(1, 2), field_slicer=slicer);
+
+julia> simulation = Simulation(model, Δt=10, stop_iteration=10);
+
+julia> simulation.output_writers[:simple_output] = NetCDFOutputWriter(model, (U_wsa=U_wsa,), 
+                                                                      schedule = 10,
+                                                                      filepath = "windowed_spatial_average_jldoctest.nc");
 ```
 """
 WindowedSpatialAverage(field; dims, field_slicer=FieldSlicer()) = WindowedSpatialAverage(field, field_slicer, dims)
