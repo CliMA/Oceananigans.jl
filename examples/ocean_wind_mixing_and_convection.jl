@@ -25,11 +25,7 @@ using Plots
 using JLD2
 
 using Oceananigans
-using Oceananigans.Utils
-
-using Oceananigans.Grids: nodes
-using Oceananigans.Advection: UpwindBiasedFifthOrder
-using Oceananigans.OutputWriters: JLD2OutputWriter, FieldSlicer, TimeInterval
+using Oceananigans.Units: minute, minutes, hour
 
 # ## The grid
 #

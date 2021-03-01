@@ -28,6 +28,14 @@ TestModel(::CPU, FT, ν=1.0, Δx=0.5) =
     float_type = FT
 )
 
+function diagnostic_windowed_spatial_average(arch, FT)
+    model = TestModel(arch, FT)
+    set!(model.velocities.u, 7)
+    slicer = FieldSlicer(i=model.grid.Nx÷2:model.grid.Nx, k=1)
+    u_mean = WindowedSpatialAverage(model.velocities.u; dims=(1, 2), field_slicer=slicer)
+    return u_mean(model)[1] == 7
+end
+
 function advective_cfl_diagnostic_is_correct(arch, FT)
     model = TestModel(arch, FT)
 
@@ -97,6 +105,7 @@ end
             for FT in float_types
                 @test diffusive_cfl_diagnostic_is_correct(arch, FT)
                 @test advective_cfl_diagnostic_is_correct(arch, FT)
+                @test diagnostic_windowed_spatial_average(arch, FT)
                 @test diagnostics_getindex(arch, FT)
                 @test diagnostics_setindex(arch, FT)
             end

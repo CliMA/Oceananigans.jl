@@ -4,7 +4,7 @@ export
     NaNChecker,
     CFL, AdvectiveCFL, DiffusiveCFL,
     run_diagnostic!,
-    TimeInterval, IterationInterval, WallTimeInterval
+    TimeInterval, IterationInterval, WallTimeInterval, WindowedSpatialAverage
 
 using CUDA
 using Oceananigans
@@ -15,5 +15,7 @@ using Oceananigans: AbstractDiagnostic
 
 include("nan_checker.jl")
 include("cfl.jl")
+include("field_slicer.jl")
+include("windowed_spatial_average.jl")
 
 end

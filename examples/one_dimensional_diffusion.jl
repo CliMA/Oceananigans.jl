@@ -32,7 +32,7 @@ using Oceananigans
 # A core Oceananigans type is `IncompressibleModel`. We build an `IncompressibleModel`
 # by passing it a `grid`, plus information about the equations we would like to solve.
 #
-# Below, we build a regular rectilinear grid with 128 grid points in the `z`-direction, 
+# Below, we build a regular rectilinear grid with 128 grid points in the `z`-direction,
 # where `z` spans from `z = -0.5` to `z = 0.5`,
 
 grid = RegularRectilinearGrid(size=(1, 1, 128), x=(0, 1), y=(0, 1), z=(-0.5, 0.5))
@@ -71,7 +71,6 @@ set!(model, T=initial_temperature)
 # To see the new data in `model.tracers.T`, we plot it:
 
 using Plots
-using Oceananigans.Grids: znodes # for obtaining the z-coordinates of model.tracers.T
 
 z = znodes(model.tracers.T)
 
