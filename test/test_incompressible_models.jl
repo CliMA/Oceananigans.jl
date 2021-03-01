@@ -89,9 +89,9 @@
         @info "  Testing non-dimensional model construction..."
         for arch in archs, FT in float_types
             grid = RegularRectilinearGrid(FT, size=(16, 16, 2), extent=(3, 2, 1))
-            model = NonDimensionalModel(architecture=arch, float_type=FT, grid=grid, Re=1, Pr=1, Ro=Inf)
+            model = NonDimensionalImcompressibleModel(architecture=arch, float_type=FT, grid=grid, Re=1, Pr=1, Ro=Inf)
 
-            # Just testing that a NonDimensionalModel was constructed with no errors/crashes.
+            # Just testing that a NonDimensionalImcompressibleModel was constructed with no errors/crashes.
             @test model isa IncompressibleModel
         end
     end
