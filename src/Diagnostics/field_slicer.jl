@@ -1,5 +1,5 @@
 import Oceananigans: short_show
-import Oceananigans.Grids: Face, Bounded, topology
+using Oceananigans.Grids: Face, Bounded, topology
 using Oceananigans.Fields: location
 
 """
