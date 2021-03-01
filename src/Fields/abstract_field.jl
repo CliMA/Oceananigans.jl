@@ -225,22 +225,6 @@ Returns the largest result of calling the function `f` on each element of an Oce
 maximum(f, field::AbstractField; dims=:) = maximum(f, interiorparent(field); dims=dims)
 
 """
-    extrema(field::AbstractField; dims=:)
-
-Compute the minimum and maximum elements of an Oceananigans `field` over the given dimensions
-(not including halo points). By default all dimensions are included.
-"""
-extrema(field::AbstractField; dims=:) = extrema(interiorparent(field); dims=dims)
-
-"""
-    extrema(f, field::AbstractField; dims=:)
-
-Compute the minimum and maximum of `f` applied to each element in the given dimensions of an
-Oceananigans `field` (not including halo points). By default all dimensions are included.
-"""
-extrema(f, field::AbstractField; dims=:) = extrema(f, interiorparent(field); dims=dims)
-
-"""
     mean(field::AbstractField; dims=:)
 
 Compute the mean of an Oceananigans `field` over the given dimensions (not including halo points).
