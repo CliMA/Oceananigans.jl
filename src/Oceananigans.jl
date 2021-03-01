@@ -55,7 +55,7 @@ export
     LagrangianParticles,
 
     # Models
-    IncompressibleModel, NonDimensionalModel, HydrostaticFreeSurfaceModel, fields,
+    IncompressibleModel, NonDimensionalIncompressibleModel, HydrostaticFreeSurfaceModel, fields,
 
     # Time stepping
     Clock, TimeStepWizard, time_step!,
