@@ -8,6 +8,9 @@ using Oceananigans.Grids: topology, halo_size
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 using Oceananigans.TimeSteppers: float_or_date_time
 
+using Oceananigans.Diagnostics: WindowedSpatialAverage, FieldSlicer, parent_slice_indices, short_show
+using Oceananigans.Fields: reduced_location, location
+
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
 dictify(outputs::LagrangianParticles) = Dict("particles" => outputs)
@@ -386,6 +389,21 @@ define_output_variable!(dataset, output::AbstractField, name, array_type, compre
 """ Defines empty field variable for `WindowedTimeAverage`s over fields. """
 define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
     define_output_variable!(dataset, output.operand, args...)
+
+
+""" Defines variable for WindowedSpatialAverage outputs """
+function define_output_variable!(dataset, 
+                                 wtsa::Union{WindowedSpatialAverage, WindowedTimeAverage{<:WindowedSpatialAverage}}, 
+                                 name, array_type, compression, attributes, dimensions)
+    wsa = wtsa isa WindowedTimeAverage ? wtsa.operand : wtsa
+    LX, LY, LZ = reduced_location(location(wsa.field), dims=wsa.dims)
+
+    output_dims = tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
+    defVar(dataset, name, eltype(array_type), (output_dims..., "time"),
+           compression=compression, attrib=attributes)
+    return nothing
+end
+
 
 #####
 ##### Write output
