@@ -21,7 +21,7 @@
 # We use a one-dimensional domain of geophysical proportions,
 
 using Oceananigans
-using Oceananigans.Units: hours
+using Oceananigans.Units: hours, meters, kilometers
 
 grid = RegularRectilinearGrid(size = (128, 1, 1),
                             x = (0, 1000kilometers), y = (0, 1), z = (-400meters, 0),
