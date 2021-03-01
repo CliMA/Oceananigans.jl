@@ -35,10 +35,9 @@ U_wsa = WindowedSpatialAverage(model.velocities.u; dims=(1, 2), field_slicer=sli
 simulation = Simulation(model, Δt=10, stop_iteration=10)
 simulation.output_writers[:simple_output] = NetCDFOutputWriter(model, (U_wsa=U_wsa,), 
                                                                schedule = 10,
-                                                               filepath = "file.nc")
+                                                               filepath = "windowed_spatial_average_jldoctest.nc")
 ```
 """
-
 WindowedSpatialAverage(field; dims, field_slicer=FieldSlicer()) = WindowedSpatialAverage(field, field_slicer, dims)
 
 function (wsa::WindowedSpatialAverage)(model)
