@@ -43,7 +43,7 @@ export
     BuoyancyTracer, SeawaterBuoyancy,
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
 
-    # Stokes drift (surface waves) via Craik-Leibovich equations
+    # Surface wave Stokes drift via Craik-Leibovich equations
     UniformStokesDrift,
 
     # Turbulence closures
