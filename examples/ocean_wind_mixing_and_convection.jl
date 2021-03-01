@@ -153,15 +153,13 @@ wizard = TimeStepWizard(cfl=1.0, Δt=10.0, max_change=1.1, max_Δt=1minute)
 
 # Nice progress messaging is helpful:
 
-wmax = FieldMaximum(abs, model.velocities.w)
-
 start_time = time_ns() # so we can print the total elapsed wall time
 
 ## Print a progress message
 progress_message(sim) =
     @printf("i: %04d, t: %s, Δt: %s, wmax = %.1e ms⁻¹, wall time: %s\n",
             sim.model.clock.iteration, prettytime(model.clock.time),
-            prettytime(wizard.Δt), wmax(sim.model),
+            prettytime(wizard.Δt), maximum(abs, sim.model.velocities.w),
             prettytime((time_ns() - start_time) * 1e-9))
 
 # We then set up the simulation:

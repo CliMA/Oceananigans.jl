@@ -180,21 +180,18 @@ wizard = TimeStepWizard(cfl=1.0, Δt=45.0, max_change=1.1, max_Δt=1minute)
 
 using Printf
 
-umax = FieldMaximum(abs, model.velocities.u)
-vmax = FieldMaximum(abs, model.velocities.v)
-wmax = FieldMaximum(abs, model.velocities.w)
-
 wall_clock = time_ns()
 
 function print_progress(simulation)
     model = simulation.model
+    u, v, w = model.velocities
 
     ## Print a progress message
     msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
                    model.clock.iteration,
                    prettytime(model.clock.time),
                    prettytime(wizard.Δt),
-                   umax(), vmax(), wmax(),
+                   maximum(abs, u), maximum(abs, v), maximum(abs, w),
                    prettytime(1e-9 * (time_ns() - wall_clock))
                   )
 

@@ -21,6 +21,62 @@ function correct_field_value_was_set(arch, grid, FieldType, val::Number)
     CUDA.@allowscalar return interior(f) ≈ val * ones(size(f))
 end
 
+function run_field_reduction_tests(FT, arch)
+    N = 8
+    topo = (Bounded, Bounded, Bounded)
+    grid = RegularRectilinearGrid(FT, topology=topo, size=(N, N, N), x=(-1, 1), y=(0, 2π), z=(-1, 1))
+
+    u = XFaceField(arch, grid)
+    v = YFaceField(arch, grid)
+    w = ZFaceField(arch, grid)
+    c = CenterField(arch, grid)
+
+    f(x, y, z) = exp(x) * sin(y) * tanh(z)
+
+    ϕs = (u, v, w, c)
+    [set!(ϕ, f) for ϕ in ϕs]
+
+    u_vals = f.(nodes(u, reshape=true)...)
+    v_vals = f.(nodes(v, reshape=true)...)
+    w_vals = f.(nodes(w, reshape=true)...)
+    c_vals = f.(nodes(c, reshape=true)...)
+
+    # Convert to CuArray if needed.
+    u_vals = arch_array(arch, u_vals)
+    v_vals = arch_array(arch, v_vals)
+    w_vals = arch_array(arch, w_vals)
+    c_vals = arch_array(arch, c_vals)
+
+    ϕs_vals = (u_vals, v_vals, w_vals, c_vals)
+
+    dims_to_test = (1, 2, 3, (1, 2), (1, 3), (2, 3))
+
+    # Important to make sure no CUDA scalar operations occur!
+    CUDA.@disallowscalar begin
+        for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
+            @test minimum(ϕ) == minimum(ϕ_vals)
+            @test maximum(ϕ) == maximum(ϕ_vals)
+            @test mean(ϕ) == mean(ϕ_vals)
+
+            @test minimum(∛, ϕ) == minimum(∛, ϕ_vals)
+            @test maximum(abs, ϕ) == maximum(abs, ϕ_vals)
+            @test mean(abs2, ϕ) == mean(abs2, ϕ)
+
+            for dims in dims_to_test
+                @test minimum(ϕ, dims=dims) == minimum(ϕ_vals, dims=dims)
+                @test maximum(ϕ, dims=dims) == maximum(ϕ_vals, dims=dims)
+                @test mean(ϕ, dims=dims) == mean(ϕ_vals, dims=dims)
+
+                @test minimum(sin, ϕ, dims=dims) == minimum(sin, ϕ_vals, dims=dims)
+                @test maximum(cos, ϕ, dims=dims) == maximum(cos, ϕ_vals, dims=dims)
+                @test mean(cosh, ϕ, dims=dims) == mean(cosh, ϕ, dims=dims)
+            end
+        end
+    end
+
+    return nothing
+end
+
 function run_field_interpolation_tests(arch, FT)
 
     grid = RegularRectilinearGrid(size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7))
@@ -73,19 +129,20 @@ function run_field_interpolation_tests(arch, FT)
     @test all(isapprox.(ℑv, F, atol=ε_max))
     @test all(isapprox.(ℑw, F, atol=ε_max))
     @test all(isapprox.(ℑc, F, atol=ε_max))
-    
+
     return nothing
 end
 
 @testset "Fields" begin
     @info "Testing Fields..."
 
-    N = (4, 6, 8)
-    L = (2π, 3π, 5π)
-    H = (1, 1, 1)
-
     @testset "Field initialization" begin
         @info "  Testing Field initialization..."
+
+        N = (4, 6, 8)
+        L = (2π, 3π, 5π)
+        H = (1, 1, 1)
+
         for arch in archs, FT in float_types
             grid = RegularRectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic))
             @test correct_field_size(arch, grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
@@ -113,20 +170,24 @@ end
         end
     end
 
-    FieldTypes = (CenterField, XFaceField, YFaceField, ZFaceField)
-
-    int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
-    uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
-    float_vals = Any[0.0, -0.0, 6e-34, 1.0f10]
-    rational_vals = Any[1//11, -23//7]
-    other_vals = Any[π]
-    vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
-
     @testset "Setting fields" begin
         @info "  Testing field setting..."
 
+        FieldTypes = (CenterField, XFaceField, YFaceField, ZFaceField)
+
+        N = (4, 6, 8)
+        L = (2π, 3π, 5π)
+        H = (1, 1, 1)
+
+        int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
+        uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
+        float_vals = Any[0.0, -0.0, 6e-34, 1.0f10]
+        rational_vals = Any[1//11, -23//7]
+        other_vals = Any[π]
+        vals = vcat(int_vals, uint_vals, float_vals, rational_vals, other_vals)
+
         for arch in archs, FT in float_types
-	        ArrayType = array_type(arch)
+            ArrayType = array_type(arch)
             grid = RegularRectilinearGrid(FT, size=N, extent=L, topology=(Periodic, Periodic, Bounded))
 
             for FieldType in FieldTypes, val in vals
@@ -143,6 +204,22 @@ end
         end
     end
 
+    @testset "Field reductions" begin
+        @info "  Testing field reductions..."
+
+        for arch in archs, FT in float_types
+            run_field_reduction_tests(FT, arch)
+        end
+    end
+
+    @testset "Field interpolation" begin
+        @info "  Testing field interpolation..."
+
+        for arch in archs, FT in float_types
+            run_field_interpolation_tests(arch, FT)
+        end
+    end
+
     @testset "Field utils" begin
         @info "  Testing field utils..."
 
@@ -151,21 +228,13 @@ end
         @test Fields.has_velocities((:u, :v)) == false
         @test Fields.has_velocities((:u, :v, :w)) == true
 
-		grid = RegularRectilinearGrid(size=(4, 6, 8), extent=(1, 1, 1))
-		ϕ = CenterField(CPU(), grid)
-		@test cpudata(ϕ).parent isa Array
+        grid = RegularRectilinearGrid(size=(4, 6, 8), extent=(1, 1, 1))
+        ϕ = CenterField(CPU(), grid)
+        @test cpudata(ϕ).parent isa Array
 
-		@hascuda begin
-			ϕ = CenterField(GPU(), grid)
-			@test cpudata(ϕ).parent isa Array
-		end
-    end
-
-    @testset "Field interpolation" begin
-        @info "  Testing field interpolation..."
-
-        for arch in archs, FT in float_types
-            run_field_interpolation_tests(arch, FT)
+        @hascuda begin
+            ϕ = CenterField(GPU(), grid)
+            @test cpudata(ϕ).parent isa Array
         end
     end
 end
