@@ -46,7 +46,7 @@ implicitly during time-stepping.
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
              + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
-             + forcings.u(i, j, k, grid, clock, merge(velocities, (η=free_surface.η,), tracers)))
+             + forcings.u(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
 """
@@ -89,7 +89,7 @@ implicitly during time-stepping.
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
              + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
-             + forcings.v(i, j, k, grid, clock, merge(velocities, (η=free_surface.η,), tracers)))
+             + forcings.v(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
 """
@@ -130,7 +130,7 @@ where `c = C[tracer_index]`.
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, c)
              + ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, buoyancy)
-             + forcing(i, j, k, grid, clock, merge(velocities, (η=free_surface.η,), tracers)))
+             + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
 """
@@ -157,5 +157,5 @@ The tendency is called ``G_η`` and defined via
     k_surface = grid.Nz + 1
 
     return @inbounds (   velocities.w[i, j, k_surface]
-                       + forcings.η(i, j, k_surface, grid, clock, merge(velocities, (η=free_surface.η,), tracers)))
+                       + forcings.η(i, j, k_surface, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end

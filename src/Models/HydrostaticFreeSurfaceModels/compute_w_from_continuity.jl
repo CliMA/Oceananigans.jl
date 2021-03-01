@@ -6,17 +6,19 @@ Compute the vertical velocity w by integrating the continuity equation from the 
 
     `w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz`
 """
-function compute_w_from_continuity!(model)
+compute_w_from_continuity!(model) = compute_w_from_continuity!(model.velocities, model.architecture, model.grid)
 
-    event = launch!(model.architecture,
-                    model.grid,
+function compute_w_from_continuity!(velocities, arch, grid)
+
+    event = launch!(arch,
+                    grid,
                     :xy,
                     _compute_w_from_continuity!,
-                    model.velocities,
-                    model.grid,
-                    dependencies=Event(device(model.architecture)))
+                    velocities,
+                    grid,
+                    dependencies=Event(device(arch)))
 
-    wait(device(model.architecture), event)
+    wait(device(arch), event)
 
     return nothing
 end
