@@ -38,10 +38,3 @@ function (wsa::WindowedSpatialAverage)(model)
     window = slice_parent(wsa.field_slicer, wsa.field)
     return dropdims(mean(window, dims=wsa.dims), dims=wsa.dims)
 end
-
-
-# The function below makes sure that the correct dimensions are automatically applied to
-# the NetCDF output using NetCDFOutputWriter
-#using NCDatasets: defVar
-#import Oceananigans.OutputWriters: xdim, ydim, zdim, define_output_variable!
-
