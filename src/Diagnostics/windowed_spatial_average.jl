@@ -18,15 +18,23 @@ slice defined by `field_sicer`.
 Example
 =======
 
-```julia
-using Oceananigans.Diagnostics: WindowedSpatialAverage
+```jldoctest
+using Oceananigans
+using Oceananigans.Diagnostics: WindowedSpatialAverage, FieldSlicer
+using Oceananigans.OutputWriters: AveragedTimeInterval, NetCDFOutputWriter
 
-slicer = FieldSlicer(j=Ny÷2+1:Ny)
+grid = RegularRectilinearGrid(size=(4, 6, 4), extent=(1,1,1))
+model = IncompressibleModel(grid=grid)
 
-U_wsa = WindowedSpatialAverage(u; dims=(1, 2), field_slicer=slicer)
+set!(model.velocities.u, 1)
 
+slicer = FieldSlicer(j=3:6, k=1)
+
+U_wsa = WindowedSpatialAverage(model.velocities.u; dims=(1, 2), field_slicer=slicer)
+
+simulation = Simulation(model, Δt=10, stop_iteration=10)
 simulation.output_writers[:simple_output] = NetCDFOutputWriter(model, (U_wsa=U_wsa,), 
-                                                               schedule = AveragedTimeInterval(10seconds),
+                                                               schedule = 10,
                                                                filepath = "file.nc")
 ```
 """
