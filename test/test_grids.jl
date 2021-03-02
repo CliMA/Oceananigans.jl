@@ -445,20 +445,20 @@ function test_basic_lat_lon_periodic_domain(FT)
     @test grid.Δϕ == 5
     @test grid.Δz == 1
 
-    @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ + 1
+    @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ
     @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
 
     @test length(grid.ϕᵃᶠᵃ) == Nϕ + 2Hϕ + 1
     @test length(grid.ϕᵃᶜᵃ) == Nϕ + 2Hϕ
 
     @test grid.λᶠᵃᵃ[1] == -180
-    @test grid.λᶠᵃᵃ[Nλ+1] == 180
+    @test grid.λᶠᵃᵃ[Nλ] == 180 - grid.Δλ
 
     @test grid.ϕᵃᶠᵃ[1] == -80
     @test grid.ϕᵃᶠᵃ[Nϕ+1] == 80
 
     @test grid.λᶠᵃᵃ[0] == -180 - grid.Δλ
-    @test grid.λᶠᵃᵃ[Nλ+2] == 180 + grid.Δλ
+    @test grid.λᶠᵃᵃ[Nλ+1] == 180
 
     @test grid.ϕᵃᶠᵃ[0] == -80 - grid.Δϕ
     @test grid.ϕᵃᶠᵃ[Nϕ+2] == 80 + grid.Δϕ
