@@ -130,7 +130,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                               Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)),
                               G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)))
 
-    free_surface = FreeSurface(free_surface, architecture, grid)
+    free_surface = FreeSurface(free_surface, velocities, architecture, grid)
 
     # Regularize forcing and closure for model tracer and velocity fields.
     model_fields = merge((u=velocities.u, v=velocities.v, η=free_surface.η), tracers)
