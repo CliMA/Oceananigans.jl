@@ -65,7 +65,7 @@ end
 function instantiate_hydrostatic_spherical_coriolis2(FT)
     coriolis = HydrostaticSphericalCoriolis(FT, rotation_rate=π)
     @test coriolis.rotation_rate == FT(π)
-    @test coriolis.scheme isa VectorInvariantEnstrophyConserving # default
+    @test coriolis.scheme isa VectorInvariantEnergyConserving # default
 end
 
 @testset "Coriolis" begin
