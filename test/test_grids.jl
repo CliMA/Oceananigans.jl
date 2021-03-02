@@ -290,7 +290,7 @@ end
 ##### Vertically stretched grids
 #####
 
-function vertically_stretched_grid_properties_are_same_type(FT, arch)
+function test_vertically_stretched_grid_properties_are_same_type(FT, arch)
     grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, 16), x=(0,1), y=(0,1), zF=collect(0:16))
 
     @test grid.Lx isa FT
@@ -312,7 +312,7 @@ function vertically_stretched_grid_properties_are_same_type(FT, arch)
     return nothing
 end
 
-function run_architecturally_correct_stretched_grid_tests(FT, arch, zF)
+function test_architecturally_correct_stretched_grid(FT, arch, zF)
     grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, length(zF)-1), x=(0, 1), y=(0, 1), zF=zF)
 
     ArrayType = array_type(arch)
@@ -324,7 +324,7 @@ function run_architecturally_correct_stretched_grid_tests(FT, arch, zF)
     return nothing
 end
 
-function run_correct_constant_grid_spacings_tests(FT, Nz)
+function test_correct_constant_grid_spacings(FT, Nz)
     grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz))
 
     @test all(grid.Δzᵃᵃᶜ .== 1)
@@ -333,7 +333,7 @@ function run_correct_constant_grid_spacings_tests(FT, Nz)
     return nothing
 end
 
-function run_correct_quadratic_grid_spacings_tests(FT, Nz)
+function test_correct_quadratic_grid_spacings(FT, Nz)
     grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
 
      zF(k) = (k-1)^2
@@ -352,7 +352,7 @@ function run_correct_quadratic_grid_spacings_tests(FT, Nz)
     return nothing
 end
 
-function run_correct_tanh_grid_spacings_tests(FT, Nz)
+function test_correct_tanh_grid_spacings(FT, Nz)
     S = 3  # Stretching factor
     zF(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
 
@@ -371,6 +371,94 @@ function run_correct_tanh_grid_spacings_tests(FT, Nz)
     @test all(isapprox.( grid.Δzᵃᵃᶠ[2:Nz-1], ΔzC.(2:Nz-1) ))
 
    return nothing
+end
+
+#####
+##### Regular latitude-longitude grid tests
+#####
+
+function test_basic_lat_lon_bounded_domain(FT)
+    Nλ = 18
+    Nϕ = 9
+
+    Hλ = Hϕ = 1
+
+    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nϕ, 1), longitude=(-90, 90), latitude=(-45, 45), z=(0, 1), halo=(Hλ, Hϕ, 1))
+
+    @test topology(grid) == (Bounded, Bounded, Bounded)
+
+    @test grid.Nx == Nλ
+    @test grid.Ny == Nϕ
+    @test grid.Nz == 1
+
+    @test grid.Lx == 180
+    @test grid.Ly == 90
+    @test grid.Lz == 1
+
+    @test grid.Δλ == 10
+    @test grid.Δϕ == 10
+    @test grid.Δz == 1
+
+    @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ + 1
+    @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
+
+    @test length(grid.ϕᵃᶠᵃ) == Nϕ + 2Hϕ + 1
+    @test length(grid.ϕᵃᶜᵃ) == Nϕ + 2Hϕ
+
+    @test grid.λᶠᵃᵃ[1] == -90
+    @test grid.λᶠᵃᵃ[Nλ+1] == 90
+
+    @test grid.ϕᵃᶠᵃ[1] == -45
+    @test grid.ϕᵃᶠᵃ[Nϕ+1] == 45
+
+    @test grid.λᶠᵃᵃ[0] == -90 - grid.Δλ
+    @test grid.λᶠᵃᵃ[Nλ+2] == 90 + grid.Δλ
+
+    @test grid.ϕᵃᶠᵃ[0] == -45 - grid.Δϕ
+    @test grid.ϕᵃᶜᵃ[Nϕ+1] == 45 + grid.Δϕ
+
+    @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλ)
+    @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλ)
+
+    @test all(diff(grid.ϕᵃᶠᵃ.parent) .== grid.Δϕ)
+    @test all(diff(grid.ϕᵃᶜᵃ.parent) .== grid.Δϕ)
+
+    return nothing
+end
+
+function test_basic_lat_lon_periodic_domain(FT)
+    Nλ = 36
+    Nϕ = 18
+
+    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nϕ, 1), longitude=(-180, 180), latitude=(-90, 90), z=(0, 1))
+
+    @test topology(grid) == (Periodic, Bounded, Bounded)
+
+    @test grid.Nx == Nλ
+    @test grid.Ny == Nϕ
+    @test grid.Nz == 1
+
+    @test grid.Lx == 360
+    @test grid.Ly == 180
+    @test grid.Lz == 1
+
+    @test grid.Δλ == 10
+    @test grid.Δϕ == 10
+    @test grid.Δz == 1
+
+    @test grid.λᶠᵃᵃ[1] == -180
+    @test grid.λᶠᵃᵃ[Nλ+1] == 180
+
+    @test grid.ϕᵃᶠᵃ[1] == -45
+    @test grid.ϕᵃᶠᵃ[Nϕ+1] == 45
+
+    @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλ)
+    @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλ)
+
+    @test all(diff(grid.ϕᵃᶠᵃ.parent) .== grid.Δϕ)
+    @test all(diff(grid.ϕᵃᶜᵃ.parent) .== grid.Δϕ)
+
+    return nothing
 end
 
 #####
@@ -437,21 +525,22 @@ end
         for arch in archs, FT in float_types
             @testset "Vertically stretched rectilinear grid construction [$(typeof(arch)), $FT]" begin
                 @info "    Testing vertically stretched rectilinear grid construction [$(typeof(arch)), $FT]..."
-                @test vertically_stretched_grid_properties_are_same_type(FT, arch)
+
+                test_vertically_stretched_grid_properties_are_same_type(FT, arch)
 
                 zF1 = collect(0:10).^2
                 zF2 = [1, 3, 5, 10, 15, 33, 50]
                 for zF in [zF1, zF2]
-                    run_architecturally_correct_stretched_grid_tests(FT, arch, zF)
+                    test_architecturally_correct_stretched_grid(FT, arch, zF)
                 end
             end
 
             @testset "Vertically stretched rectilinear grid spacings [$(typeof(arch)), $FT]" begin
                 @info "    Testing vertically stretched rectilinear grid spacings [$(typeof(arch)), $FT]..."
                 for Nz in [16, 17]
-                    run_correct_constant_grid_spacings_tests(FT, Nz)
-                    run_correct_quadratic_grid_spacings_tests(FT, Nz)
-                    run_correct_tanh_grid_spacings_tests(FT, Nz)
+                    test_correct_constant_grid_spacings(FT, Nz)
+                    test_correct_quadratic_grid_spacings(FT, Nz)
+                    test_correct_tanh_grid_spacings(FT, Nz)
                 end
             end
 
@@ -460,6 +549,15 @@ end
             grid = VerticallyStretchedRectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
             show(grid); println();
             @test grid isa VerticallyStretchedRectilinearGrid
+        end
+    end
+
+    @testset "Regular latitude-longitude grid" begin
+        @info "  Testing regular latitude-longitude grid..."
+
+        for FT in float_types
+            test_basic_lat_lon_bounded_domain(FT)
+            test_basic_lat_lon_periodic_domain(FT)
         end
     end
 end
