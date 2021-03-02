@@ -30,10 +30,17 @@ include("set_hydrostatic_free_surface_model.jl")
 
 Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.tracers`.
 """
-fields(model::HydrostaticFreeSurfaceModel) = merge((u = model.velocities.u,
-                                                    v = model.velocities.v,
-                                                    η = model.free_surface.η),
-                                                    model.tracers)
+fields(model::HydrostaticFreeSurfaceModel) = hydrostatic_prognostic_fields(model.velocities, model.free_surface, model.tracers)
+
+"""
+    fields(model::HydrostaticFreeSurfaceModel)
+
+Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.tracers`.
+"""
+hydrostatic_prognostic_fields(velocities, free_surface, tracers) = merge((u = velocities.u,
+                                                                          v = velocities.v,
+                                                                          η = free_surface.η),
+                                                                          tracers)
 
 include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_advection.jl")

@@ -32,3 +32,10 @@ using Oceananigans.Advection: div_Uu, div_Uv
 @inline U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U) = div_Uu(i, j, k, grid, advection, U, U.u)
 @inline U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, U) = div_Uv(i, j, k, grid, advection, U, U.v)
 
+######
+###### No advection
+######
+
+@inline U_dot_∇u(i, j, k, grid::AbstractGrid{FT}, advection::Nothing, U) where FT = zero(FT)
+@inline U_dot_∇v(i, j, k, grid::AbstractGrid{FT}, advection::Nothing, U) where FT = zero(FT)
+

@@ -19,11 +19,11 @@ function store_tendencies!(model)
 
     events = []
 
-    for (i, field) in enumerate(model_fields)
+    for field_name in keys(model_fields)
 
-        field_event = store_field_tendencies_kernel!(model.timestepper.G⁻[i],
+        field_event = store_field_tendencies_kernel!(model.timestepper.G⁻[field_name],
                                                      model.grid,
-                                                     model.timestepper.Gⁿ[i],
+                                                     model.timestepper.Gⁿ[field_name],
                                                      dependencies=barrier)
 
         push!(events, field_event)

@@ -123,15 +123,14 @@ function HydrostaticFreeSurfaceModel(; grid,
     diffusivities = DiffusivityFields(diffusivities, architecture, grid,
                                       tracernames(tracers), boundary_conditions, closure)
 
-    velocities.w.boundary_conditions.top === nothing || error("Top boundary condition for HydrostaticFreeSurfaceModel velocities.w
-                                                              must be `nothing`!")
+    validate_velocity_boundary_conditions(velocities)
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(:QuasiAdamsBashforth2, architecture, grid, tracernames(tracers);
-                              Gⁿ = HydrostaticFreeSurfaceTendencyFields(free_surface, architecture, grid, tracernames(tracers)),
-                              G⁻ = HydrostaticFreeSurfaceTendencyFields(free_surface, architecture, grid, tracernames(tracers)))
+                              Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)),
+                              G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)))
 
-    free_surface = FreeSurface(free_surface, architecture, grid)
+    free_surface = FreeSurface(free_surface, velocities, architecture, grid)
 
     # Regularize forcing and closure for model tracer and velocity fields.
     model_fields = merge((u=velocities.u, v=velocities.v, η=free_surface.η), tracers)
@@ -151,4 +150,10 @@ function HydrostaticFreeSurfaceModel(; grid,
     return HydrostaticFreeSurfaceModel(architecture, grid, clock, advection, buoyancy, coriolis,
                                        free_surface, forcing, closure, particles, velocities, tracers,
                                        pressure, diffusivities, timestepper)
+end
+
+function validate_velocity_boundary_conditions(velocities)
+    velocities.w.boundary_conditions.top === nothing || error("Top boundary condition for HydrostaticFreeSurfaceModel velocities.w
+                                                              must be `nothing`!")
+    return nothing
 end

@@ -28,6 +28,6 @@ const Centered = AbstractCenteredAdvectionScheme
 ##### Advective tracer flux operators
 #####
     
-@inline advective_tracer_flux_x(i, j, k, grid, scheme::Centered, U, c) = @inbounds Axᵃᵃᶠ(i, j, k, grid) * U[i, j, k] * _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c)
-@inline advective_tracer_flux_y(i, j, k, grid, scheme::Centered, V, c) = @inbounds Ayᵃᵃᶠ(i, j, k, grid) * V[i, j, k] * _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c)
-@inline advective_tracer_flux_z(i, j, k, grid, scheme::Centered, W, c) = @inbounds Azᵃᵃᵃ(i, j, k, grid) * W[i, j, k] * _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c)
+@inline advective_tracer_flux_x(i, j, k, grid, scheme::Centered, U, c) = @inbounds Ax_uᶠᶜᶜ(i, j, k, grid, U) * _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c)
+@inline advective_tracer_flux_y(i, j, k, grid, scheme::Centered, V, c) = @inbounds Ay_vᶜᶠᶜ(i, j, k, grid, V) * _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c)
+@inline advective_tracer_flux_z(i, j, k, grid, scheme::Centered, W, c) = @inbounds Az_wᶜᶜᵃ(i, j, k, grid, W) * _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c)
