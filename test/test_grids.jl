@@ -427,8 +427,9 @@ end
 function test_basic_lat_lon_periodic_domain(FT)
     Nλ = 36
     Nϕ = 32
+    Hλ = Hϕ = 1
 
-    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nϕ, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
+    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nϕ, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1), halo=(Hλ, Hϕ, 1))
 
     @test topology(grid) == (Periodic, Bounded, Bounded)
 
@@ -571,7 +572,7 @@ end
         end
 
         # Testing show function
-        grid = RegularLatitudeLongitudeGrid(FT, size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
+        grid = RegularLatitudeLongitudeGrid(size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
         show(grid); println();
         @test grid isa RegularLatitudeLongitudeGrid
     end
