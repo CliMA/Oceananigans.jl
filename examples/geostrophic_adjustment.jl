@@ -3,8 +3,8 @@
 # This example demonstrates how to simulate the one-dimensional geostrophic adjustment of a
 # free surface using `Oceananigans.HydrostaticFreeSurfaceModel`. Here, we solve the hydrostatic
 # Boussinesq equations beneath a free surface with a small-amplitude about rest ``z = 0``,
-# with boundary conditions expanded around ``z = 0``, and free surface dynamics linearized under 
-# the assumption ``η / H \ll 1``, where ``η`` is the free surface displacement, and ``H`` is 
+# with boundary conditions expanded around ``z = 0``, and free surface dynamics linearized under
+# the assumption ``η / H \ll 1``, where ``η`` is the free surface displacement, and ``H`` is
 # the total depth of the fluid.
 #
 # ## Install dependencies
@@ -21,10 +21,10 @@
 # We use a one-dimensional domain of geophysical proportions,
 
 using Oceananigans
-using Oceananigans.Utils: kilometers
+using Oceananigans.Units: hours, meters, kilometers
 
 grid = RegularRectilinearGrid(size = (128, 1, 1),
-                            x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
+                            x = (0, 1000kilometers), y = (0, 1), z = (-400meters, 0),
                             topology = (Bounded, Periodic, Bounded))
 
 # and Coriolis parameter appropriate for the mid-latitudes on Earth,
@@ -34,8 +34,6 @@ coriolis = FPlane(f=1e-4)
 # ## Building a `HydrostaticFreeSurfaceModel`
 #
 # We use `grid` and `coriolis` to build a simple `HydrostaticFreeSurfaceModel`,
-
-using Oceananigans.Models: HydrostaticFreeSurfaceModel
 
 model = HydrostaticFreeSurfaceModel(grid=grid, coriolis=coriolis)
 
@@ -84,8 +82,6 @@ simulation = Simulation(model, Δt = 0.1 * wave_propagation_time_scale, stop_ite
 
 output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
-using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
-
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = IterationInterval(10),
                                                       prefix = "geostrophic_adjustment",
@@ -95,8 +91,7 @@ run!(simulation)
 
 # ## Visualizing the results
 
-using JLD2, Plots, Printf, Oceananigans.Grids
-using Oceananigans.Utils: hours
+using JLD2, Plots, Printf
 
 xη = xw = xv = xnodes(model.free_surface.η)
 xu = xnodes(model.velocities.u)
@@ -116,7 +111,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
 
     v_plot = plot(xv / kilometers, v, linewidth = 2, title = titlestr,
                   label = "", xlabel = "x (km)", ylabel = "v (m s⁻¹)", ylims = (-U, U))
-                  
+
     u_plot = plot(xu / kilometers, u, linewidth = 2,
                   label = "", xlabel = "x (km)", ylabel = "u (m s⁻¹)", ylims = (-2e-3, 2e-3))
 

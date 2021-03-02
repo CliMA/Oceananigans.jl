@@ -63,7 +63,7 @@ function solve_poisson_equation!(solver::FFTBasedPoissonSolver)
     CUDA.@allowscalar ϕ[1, 1, 1] = 0
 
     # Apply backward transforms in order
-    [transform!(RHS, solver.buffer) for transform! in solver.transforms.backward]
+    [transform!(ϕ, solver.buffer) for transform! in solver.transforms.backward]
 
     return nothing
 end

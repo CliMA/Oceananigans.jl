@@ -8,14 +8,14 @@ export
     xnode, ynode, znode, xnodes, ynodes, znodes, nodes,
     xC, xF, yC, yF, zC, zF
 
-import Base: size, length, eltype, show
-
-import Oceananigans: short_show
+using Adapt
+using OffsetArrays
 
 using Oceananigans
 using Oceananigans.Architectures
 
-using OffsetArrays
+import Base: size, length, eltype, show
+import Oceananigans: short_show
 
 #####
 ##### Abstract types

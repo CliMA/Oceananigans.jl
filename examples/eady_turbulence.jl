@@ -17,11 +17,11 @@
 # pkg"add Oceananigans, JLD2, Plots"
 # ```
 
-# ## The Eady problem 
+# ## The Eady problem
 #
 # The "Eady problem" simulates the baroclinic instability problem proposed by Eric Eady in
 # the classic paper
-# ["Long waves and cyclone waves," Tellus (1949)](https://www.tandfonline.com/doi/abs/10.3402/tellusa.v1i3.8507).
+# ["Long waves and cyclone waves," Tellus (1949)](https://doi.org/10.3402/tellusa.v1i3.8507).
 # The Eady problem is a simple, canonical model for the generation of mid-latitude
 # atmospheric storms and the ocean eddies that permeate the world sea.
 #
@@ -32,11 +32,11 @@
 # is balanced by a bottom boundary condition that extracts momentum from turbulent motions
 # and serves as a crude model for the drag associated with an unresolved and small-scale
 # turbulent bottom boundary layer.
-# 
+#
 # ### The geostrophic basic state
 #
 # The geostrophic basic state in the Eady problem is represented by the streamfunction,
-# 
+#
 # ```math
 # ψ(y, z) = - α y (z + L_z) \, ,
 # ```
@@ -72,14 +72,14 @@
 # We model the effects of a turbulent bottom boundary layer on the eddy momentum budget
 # with quadratic bottom drag. A quadratic cottom drag is introduced by imposing a vertical flux
 # of horizontal momentum that removes momentum from the layer immediately above: in other words,
-# the flux is negative (downwards) when the velocity at the bottom boundary is positive, and 
+# the flux is negative (downwards) when the velocity at the bottom boundary is positive, and
 # positive (upwards) with the velocity at the bottom boundary is negative.
 # This drag term is "quadratic" because the rate at which momentum is removed is proportional
-# to ``\bm{u}_h |\bm{u}_h|``, where ``\bm{u}_h = u \bm{\hat{x}} + v \bm{\hat{y}}`` is 
+# to ``\bm{u}_h |\bm{u}_h|``, where ``\bm{u}_h = u \bm{\hat{x}} + v \bm{\hat{y}}`` is
 # the horizontal velocity.
 #
 # The ``x``-component of the quadratic bottom drag is thus
-# 
+#
 # ```math
 # \tau_{xz}(z=L_z) = - c^D u \sqrt{u^2 + v^2} \, ,
 # ```
@@ -87,7 +87,7 @@
 # while the ``y``-component is
 #
 # ```math
-# \tau_{yz}(z=L_z) = - c^D v \sqrt{u^2 + v^2} \, , 
+# \tau_{yz}(z=L_z) = - c^D v \sqrt{u^2 + v^2} \, ,
 # ```
 #
 # where ``c^D`` is a dimensionless drag coefficient and ``\tau_{xz}(z=L_z)`` and ``\tau_{yz}(z=L_z)``
@@ -99,14 +99,14 @@
 # to stabilize the Eady problem and can be idealized as modeling the effect of
 # turbulent mixing below the grid scale. For both tracers and velocities we use
 # a Laplacian vertical diffusivity ``κ_z ∂_z^2 c`` and a horizontal
-# hyperdiffusivity ``ϰ_h (∂_x^4 + ∂_y^4) c``. 
+# hyperdiffusivity ``ϰ_h (∂_x^4 + ∂_y^4) c``.
 #
 # ### Eady problem summary and parameters
 #
 # To summarize, the Eady problem parameters along with the values we use in this example are
 #
 # | Parameter name | Description | Value | Units |
-# |:--------------:|:-----------:|:-----:|:-----:| 
+# |:--------------:|:-----------:|:-----:|:-----:|
 # | ``f``          | Coriolis parameter | ``10^{-4}`` | ``\mathrm{s^{-1}}`` |
 # | ``N``          | Buoyancy frequency (square root of ``\partial_z B``) | ``10^{-3}`` | ``\mathrm{s^{-1}}`` |
 # | ``\alpha``     | Background vertical shear ``\partial_z U`` | ``10^{-3}`` | ``\mathrm{s^{-1}}`` |
@@ -114,14 +114,16 @@
 # | ``κ_z``        | Laplacian vertical diffusivity | ``10^{-2}`` | ``\mathrm{m^2 s^{-1}}`` |
 # | ``ϰ_h``        | Biharmonic horizontal diffusivity | ``10^{-2} \times \Delta x^4 / \mathrm{day}`` | ``\mathrm{m^4 s^{-1}}`` |
 #
-# We start off by importing `Oceananigans`, `Printf`, and some convenient utils
-# for specifying dimensional constants:
+# We start off by importing `Oceananigans`, `Printf`, and some convenient constants
+# for specifying dimensional units:
 
-using Oceananigans, Oceananigans.Utils, Printf
+using Printf
+using Oceananigans
+using Oceananigans.Units: hours, day, days
 
 # ## The grid
 #
-# We use a three-dimensional grid with a depth of 4000 m and a 
+# We use a three-dimensional grid with a depth of 4000 m and a
 # horizontal extent of 1000 km, appropriate for mesoscale ocean dynamics
 # with characteristic scales of 50-200 km.
 
@@ -133,7 +135,7 @@ grid = RegularRectilinearGrid(size=(48, 48, 16), x=(0, 1e6), y=(0, 1e6), z=(-4e3
 # typical to mid-latitudes on Earth,
 
 coriolis = FPlane(f=1e-4) # [s⁻¹]
-                            
+
 # ## The background flow
 #
 # We build a `NamedTuple` of parameters that describe the background flow,
@@ -144,8 +146,6 @@ basic_state_parameters = ( α = 10 * coriolis.f, # s⁻¹, geostrophic shear
                           Lz = grid.Lz)         # m, ocean depth
 
 # and then construct the background fields ``U`` and ``B``
-
-using Oceananigans.Fields: BackgroundField
 
 ## Background fields are defined via functions of x, y, z, t, and optional parameters
 U(x, y, z, t, p) = + p.α * (z + p.Lz)
@@ -167,7 +167,7 @@ cᴰ = 1e-4 # quadratic drag coefficient
 drag_bc_u = BoundaryCondition(Flux, drag_u, field_dependencies=(:u, :v), parameters=cᴰ)
 drag_bc_v = BoundaryCondition(Flux, drag_v, field_dependencies=(:u, :v), parameters=cᴰ)
 
-u_bcs = UVelocityBoundaryConditions(grid, bottom = drag_bc_u) 
+u_bcs = UVelocityBoundaryConditions(grid, bottom = drag_bc_u)
 v_bcs = VVelocityBoundaryConditions(grid, bottom = drag_bc_v)
 
 # ## Turbulence closures
@@ -187,8 +187,6 @@ biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h,
 #
 # We instantiate the model with the fifth-order WENO advection scheme, a 3rd order
 # Runge-Kutta time-stepping scheme, and a `BuoyancyTracer`.
-
-using Oceananigans.Advection: WENO5
 
 model = IncompressibleModel(
            architecture = CPU(),
@@ -247,7 +245,7 @@ nothing # hide
 # for numerical stability given the specified background flow, Coriolis
 # time scales, and diffusion time scales.
 
-## Calculate absolute limit on time-step using diffusivities and 
+## Calculate absolute limit on time-step using diffusivities and
 ## background velocity.
 Ū = basic_state_parameters.α * grid.Lz
 
@@ -258,8 +256,6 @@ wizard = TimeStepWizard(cfl=1.0, Δt=max_Δt, max_change=1.1, max_Δt=max_Δt)
 # ### A progress messenger
 #
 # We write a function that prints out a helpful progress message while the simulation runs.
-
-using Oceananigans.Diagnostics: AdvectiveCFL
 
 CFL = AdvectiveCFL(wizard)
 
@@ -288,9 +284,6 @@ simulation = Simulation(model, Δt = wizard, iteration_interval = 20,
 # we use `ComputedField`s to diagnose and output vertical vorticity and divergence.
 # Note that `ComputedField`s take "AbstractOperations" on `Field`s as input:
 
-using Oceananigans.AbstractOperations
-using Oceananigans.Fields: ComputedField
-
 u, v, w = model.velocities # unpack velocity `Field`s
 
 ## Vertical vorticity [s⁻¹]
@@ -300,10 +293,8 @@ u, v, w = model.velocities # unpack velocity `Field`s
 δ = ComputedField(-∂z(w))
 
 # With the vertical vorticity, `ζ`, and the horizontal divergence, `δ` in hand,
-# we create a `JLD2OutputWriter` that saves `ζ` and `δ` and add them to 
+# we create a `JLD2OutputWriter` that saves `ζ` and `δ` and add them to
 # `simulation`.
-
-using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ=ζ, δ=δ),
                                                       schedule = TimeInterval(4hours),
@@ -321,11 +312,9 @@ run!(simulation)
 # the iterations we ended up saving at, and ploting slices of the saved
 # fields. We prepare for animating the flow by creating coordinate arrays,
 # opening the file, building a vector of the iterations that we saved
-# data at, and defining a function for computing colorbar limits: 
+# data at, and defining a function for computing colorbar limits:
 
 using JLD2, Plots
-
-using Oceananigans.Grids: nodes
 
 ## Coordinate arrays
 xζ, yζ, zζ = nodes(ζ)
@@ -377,15 +366,15 @@ anim = @animate for (i, iter) in enumerate(iterations)
                  xlabel = "x (m)", ylabel = "y (m)",
                  aspectratio = 1,
                  linewidth = 0, color = :balance, legend = false)
-                 
+
     xz_kwargs = (xlims = (0, grid.Lx), ylims = (-grid.Lz, 0),
                  xlabel = "x (m)", ylabel = "z (m)",
                  aspectratio = grid.Lx / grid.Lz * 0.5,
                  linewidth = 0, color = :balance, legend = false)
-                 
+
     R_xy = contourf(xζ, yζ, surface_R'; clims=(-Rlim, Rlim), levels=Rlevels, xy_kwargs...)
     δ_xy = contourf(xδ, yδ, surface_δ'; clims=(-δlim, δlim), levels=δlevels, xy_kwargs...)
-    R_xz = contourf(xζ, zζ, slice_R'; clims=(-Rlim, Rlim), levels=Rlevels, xz_kwargs...) 
+    R_xz = contourf(xζ, zζ, slice_R'; clims=(-Rlim, Rlim), levels=Rlevels, xz_kwargs...)
     δ_xz = contourf(xδ, zδ, slice_δ'; clims=(-δlim, δlim), levels=δlevels, xz_kwargs...)
 
     plot(R_xy, δ_xy, R_xz, δ_xz,

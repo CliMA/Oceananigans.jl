@@ -60,8 +60,7 @@ include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
     @info "Running regression tests..."
 
     for arch in archs
-        grid_types = arch isa CPU ? [:regular, :vertically_unstretched] : [:regular]
-        for grid_type in grid_types
+        for grid_type in [:regular, :vertically_unstretched]
             @testset "Thermal bubble [$(typeof(arch)), $grid_type grid]" begin
                 @info "  Testing thermal bubble regression [$(typeof(arch)), $grid_type grid]"
                 run_thermal_bubble_regression_test(arch, grid_type)

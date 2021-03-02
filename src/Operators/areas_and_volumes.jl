@@ -38,16 +38,16 @@ The operators in this file fall into three categories:
 @inline Δy(i, j, k, grid::ARG) = grid.Δy
 
 @inline ΔzC(i, j, k, grid::RegularRectilinearGrid) = grid.Δz
-@inline ΔzC(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.ΔzC[k]
+@inline ΔzC(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶠ[k]
 
 @inline ΔzF(i, j, k, grid::RegularRectilinearGrid) = grid.Δz
-@inline ΔzF(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.ΔzF[k]
+@inline ΔzF(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶜ[k]
 
 @inline Δzᵃᵃᶠ(i, j, k, grid::RegularRectilinearGrid) = grid.Δz
-@inline Δzᵃᵃᶠ(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.ΔzC[k]
+@inline Δzᵃᵃᶠ(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶠ[k]
 
 @inline Δzᵃᵃᶜ(i, j, k, grid::RegularRectilinearGrid) = grid.Δz
-@inline Δzᵃᵃᶜ(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.ΔzF[k]
+@inline Δzᵃᵃᶜ(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶜ[k]
 
 #####
 ##### Areas for horiontally-regular algorithms
