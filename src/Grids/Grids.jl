@@ -3,7 +3,7 @@ module Grids
 export
     Center, Face,
     Periodic, Bounded, Flat, topology,
-    RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RegularLatitudeLongitudeGrid,
+    AbstractGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RegularLatitudeLongitudeGrid,
     xnode, ynode, znode, xnodes, ynodes, znodes, nodes,
     xC, xF, yC, yF, zC, zF
 
