@@ -25,15 +25,21 @@ function ImplicitFreeSurfaceSolver(arch, template_field,
         i, j = @index(Global, NTuple)
         ### Not sure what to call this
         ### it is for left hand side operator in
-        ### (-g∇ₕ² + 1/Δt )ϕⁿ⁺¹=ϕⁿ/Δt + ∇ₕHUˢᵗᵃʳ
+        ### ( ∇ʰ⋅H∇ʰ - 1/gΔt² ) ηⁿ⁺¹ = 1/(gΔt) ∇ʰH U̅ˢᵗᵃʳ - 1/(gΔt²) ηⁿ
+        ### written in a discrete finite volume form in which the equation
+        ### is arranged to ensure a symmtric form
+        ### e.g.
+        ### 
+        ### δⁱÂʷ∂ˣηⁿ⁺¹ + δʲÂˢ∂ʸηⁿ⁺¹ - 1/gΔt² Aᶻηⁿ⁺¹ =
+        ###  1/(gΔt)(δⁱÂʷu̅ˢᵗᵃʳ + δʲÂˢv̅ˢᵗᵃʳ) - 1/gΔt² Aᶻηⁿ
         ###
-        ### The discrete form of the ∇² operator for this problem needs to be written
-        ### for finite volume case in which rows of A matrix are multiplied through
-        ### by a cell volume to ensure a symmetric operator.
+        ### where  ̂ indicates a vertical integral, and
+        ###        ̅ indicates a vertical average
+        ###
         g  = Main.model.free_surface.gravitational_acceleration ### AGHHHH - need to sort this out later.....
         Δt = Main.simulation.Δt                                 ### AGHHHH - need to sort this out later.....
         i, j = @index(Global, NTuple)
-        @inbounds implicit_η_f[i, j, 1] = -g * ∇²_baro(i, j, 1, grid, f) + f[i,j, 1]/Δt
+        @inbounds implicit_η_f[i, j, 1] =  ∇²_baro(i, j, 1, grid, f) - Azᵃᵃᵃ(i, j, 1, grid)*f[i,j, 1]/(g*Δt^2)
 
     end
 

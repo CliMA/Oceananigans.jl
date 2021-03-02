@@ -37,7 +37,7 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, arch, grid)
     vertically_integrated_lateral_face_areas = (Ax = Ax_zintegral, Ay=Ay_zintegral)
     compute_vertically_integrated_lateral_face_areas!(vertically_integrated_lateral_face_areas, grid, arch)
 
-    implicit_step_solver = ImplicitFreeSurfaceSolver(arch, η, vertically_integrated_lateral_face_areas; maxit=10)
+    implicit_step_solver = ImplicitFreeSurfaceSolver(arch, η, vertically_integrated_lateral_face_areas; maxit=2)
 
     return ImplicitFreeSurface(η, g, 
                                barotropic_transport, 
@@ -45,6 +45,7 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, arch, grid)
                                implicit_step_solver)
 end
 
+### In final form the two functions below will return 0
 explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface::ImplicitFreeSurface) =
     free_surface.gravitational_acceleration * ∂xᶠᵃᵃ(i, j, k, grid, free_surface.η)
 

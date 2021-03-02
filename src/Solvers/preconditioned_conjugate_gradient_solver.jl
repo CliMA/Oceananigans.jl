@@ -156,11 +156,11 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
     r.parent .= 0
     # quick_launch!(arch, grid, compute_residual!, r, RHS, A(x))
     r.parent .= RHS.parent .- A(x).parent
-    println("PreconditionedConjugateGradientSolver ", i," RHS ", norm(RHS.parent) )
-    println("PreconditionedConjugateGradientSolver ", i," A(x) ", norm(A(x).parent) )
+    # println("PreconditionedConjugateGradientSolver ", i," RHS ", norm(RHS.parent) )
+    # println("PreconditionedConjugateGradientSolver ", i," A(x) ", norm(A(x).parent) )
 
     while true
-        println("PreconditionedConjugateGradientSolver ", i," ", norm(r.parent) )
+        # println("PreconditionedConjugateGradientSolver ", i," ", norm(r.parent) )
         i > maxit && break
 
         z.parent       .= M(r).parent

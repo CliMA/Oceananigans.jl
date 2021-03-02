@@ -117,11 +117,14 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     η = free_surface.η
     fill_halo_regions!(RHS   , η.boundary_conditions, model.architecture, model.grid)
     fill_halo_regions!(η.data, η.boundary_conditions, model.architecture, model.grid)
-    RHS .= RHS .+ free_surface.η.data/Δt
+    ##  need to subtract Azᵃᵃᵃ(i, j, 1, grid)*η[i,j, 1]/(g*Δt^2)
+    event = add_previous_free_surface_contribution(free_surface, model, Δt )
+    wait(device(model.architecture), event)
+    ## RHS .= RHS .+ free_surface.η.data/Δt
 
     ## Then we can invoke solve_for_pressure! on the right type via calculate_pressure_correction!
     x  = free_surface.implicit_step_solver.solver.settings.x
-    x .= 0
+    x .= η.data
     fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
     solve_poisson_equation!(free_surface.implicit_step_solver.solver, RHS, x)
     ## exit()
@@ -185,11 +188,30 @@ function compute_volume_scaled_divergence!(free_surface, model)
 end
 
 @kernel function _compute_volume_scaled_divergence!(grid, ut, vt, div)
-    # Here we use a form that has been multiplied through by volumes to be consistent with
-    # the "A" matrix where multiplying each row by volume is used to ensure symmetry.
+    # Here we use a integral form that has been multiplied through by volumes to be 
+    # consistent with the symmetric "A" matrix.
     # The quantities differenced here are transports i.e. normal velocity vectors
     # integrated over an area.
     #
     i, j = @index(Global, NTuple)
     @inbounds div[i, j, 1] = δxᶜᵃᵃ(i, j, 1, grid, ut) + δyᵃᶜᵃ(i, j, 1, grid, vt)
+end
+
+function add_previous_free_surface_contribution(free_surface, model, Δt )
+   g = model.free_surface.gravitational_acceleration
+   event = launch!(model.architecture,
+                   model.grid,
+                   :xy,
+                   _add_previous_free_surface_contribution!,
+                   model.grid,
+                   free_surface.η.data,
+                   free_surface.implicit_step_solver.solver.settings.RHS,
+                   g,
+                   Δt,
+                   dependencies=Event(device(model.architecture)))
+    return event
+end
+@kernel function _add_previous_free_surface_contribution!(grid,η,RHS,g,Δt)
+    i, j = @index(Global, NTuple)
+    @inbounds RHS[i,j,1] -= Azᵃᵃᵃ(i, j, 1, grid)*η[i,j, 1]/(g*Δt^2)
 end
