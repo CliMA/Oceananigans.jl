@@ -120,6 +120,7 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     ##  need to subtract Azᵃᵃᵃ(i, j, 1, grid)*η[i,j, 1]/(g*Δt^2)
     event = add_previous_free_surface_contribution(free_surface, model, Δt )
     wait(device(model.architecture), event)
+    fill_halo_regions!(RHS   , η.boundary_conditions, model.architecture, model.grid)
     ## RHS .= RHS .+ free_surface.η.data/Δt
 
     ## Then we can invoke solve_for_pressure! on the right type via calculate_pressure_correction!
