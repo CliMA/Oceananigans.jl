@@ -53,19 +53,19 @@ function instantiate_ntbetaplane_2(FT)
 end
 
 function instantiate_hydrostatic_spherical_coriolis1(FT)
-    coriolis = HydrostaticSphericalCoriolis(FT, stencil=VectorInvariantEnergyConserving())
+    coriolis = HydrostaticSphericalCoriolis(FT, scheme=VectorInvariantEnergyConserving())
     @test coriolis.rotation_rate == FT(Ω_Earth)
-    @test coriolis.stencil isa VectorInvariantEnergyConserving
+    @test coriolis.scheme isa VectorInvariantEnergyConserving
 
-    coriolis = HydrostaticSphericalCoriolis(FT, stencil=VectorInvariantEnstrophyConserving())
+    coriolis = HydrostaticSphericalCoriolis(FT, scheme=VectorInvariantEnstrophyConserving())
     @test coriolis.rotation_rate == FT(Ω_Earth)
-    @test coriolis.stencil isa VectorInvariantEnstrophyConserving
+    @test coriolis.scheme isa VectorInvariantEnstrophyConserving
 end
 
 function instantiate_hydrostatic_spherical_coriolis2(FT)
     coriolis = HydrostaticSphericalCoriolis(FT, rotation_rate=π)
     @test coriolis.rotation_rate == FT(π)
-    @test coriolis.stencil isa VectorInvariantEnstrophyConserving # default
+    @test coriolis.scheme isa VectorInvariantEnstrophyConserving # default
 end
 
 @testset "Coriolis" begin
