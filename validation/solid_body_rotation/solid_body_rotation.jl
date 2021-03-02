@@ -6,7 +6,7 @@
 # > Williamson et al., "A Standard Test Set for Numerical Approximations to the Shallow
 #   Water Equations in Spherical Geometry", Journal of Computational Physics, 1992.
 #
-# The problem is posed in spherical strip between 60ᵒS and 60ᵒN latitude on a sphere with
+# The problem is posed in spherical strip between 80ᵒS and 80ᵒN latitude on a sphere with
 # unit radius.
 #
 # # Dependencies
@@ -20,6 +20,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 using Oceananigans.Utils: prettytime, hours
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
+using Statistics
 using JLD2
 using Printf
 using GLMakie
@@ -39,8 +40,8 @@ using GLMakie
 
 const U = 0.1
 
-solid_body_rotation(λ, ϕ) = U * cosd(ϕ)
-solid_body_geostrophic_height(λ, ϕ, R, Ω, g) = (R * Ω * U + U^2 / 2) * sind(ϕ)^2 / g
+solid_body_rotation(ϕ) = U * cosd(ϕ)
+solid_body_geostrophic_height(ϕ, R, Ω, g) = (R * Ω * U + U^2 / 2) * sind(ϕ)^2 / g
 
 # In addition to the solid body rotation solution, we paint a Gaussian tracer patch
 # on the spherical strip to visualize the rotation.
@@ -52,12 +53,12 @@ function run_solid_body_rotation(; architecture = CPU(),
                                 )
 
     Nx = round(Int, 360 / resolution)
-    Ny = round(Int, 120 / resolution)
+    Ny = round(Int, 160 / resolution)
 
     # A spherical domain
     grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
                                         radius = 1,
-                                        latitude = (-60, 60),
+                                        latitude = (-80, 80),
                                         longitude = (-180, 180),
                                         z = (-1, 0))
 
@@ -79,8 +80,8 @@ function run_solid_body_rotation(; architecture = CPU(),
     R = model.grid.radius
     Ω = model.coriolis.rotation_rate
 
-    uᵢ(λ, ϕ, z) = solid_body_rotation(λ, ϕ, U)
-    ηᵢ(λ, ϕ, z) = solid_body_geostrophic_height(λ, ϕ, U, R, Ω, g)
+    uᵢ(λ, ϕ, z) = solid_body_rotation(ϕ)
+    ηᵢ(λ, ϕ, z) = solid_body_geostrophic_height(ϕ, R, Ω, g)
 
     # Tracer patch for visualization
     Gaussian(λ, ϕ, L) = exp(-(λ^2 + ϕ^2) / 2L^2)
@@ -112,8 +113,9 @@ function run_solid_body_rotation(; architecture = CPU(),
     output_prefix = "solid_body_rotation_Nx$(grid.Nx)"
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                          schedule = TimeInterval(super_rotation_period/ 20),
+                                                          schedule = TimeInterval(super_rotation_period / 1000),
                                                           prefix = output_prefix,
+                                                          field_slicer = nothing,
                                                           force = true)
 
     run!(simulation)
@@ -134,7 +136,7 @@ function visualize_solid_body_rotation(filepath)
 
     grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
                                         radius = 1,
-                                        latitude = (-60, 60),
+                                        latitude = (-80, 80),
                                         longitude = (-180, 180),
                                         z = (-1, 0))
 
@@ -154,8 +156,8 @@ function visualize_solid_body_rotation(filepath)
     plot_title = @lift @sprintf("Zonal velocity error in solid body rotation: rotations = %.3f",
                                 file["timeseries/t/" * string($iter)] / super_rotation_period)
 
-    spatial_error = @lift abs.(file["timeseries/u/" * string($iter)][:, :, 1] .- solid_body_rotation.(λ, ϕ)) / U
-    maximum_error = @lift maximum(abs, (file["timeseries/u/" * string($iter)][:, :, 1] .- solid_body_rotation.(λ, ϕ, U)) / U)
+    spatial_error = @lift abs.(file["timeseries/u/" * string($iter)][2:Nx+1, 2:Ny+1, 1] .- solid_body_rotation.(ϕ)) / U
+    maximum_error = @lift maximum(abs, (file["timeseries/u/" * string($iter)][2:Nx+1, 2:Ny+1, 1] .- solid_body_rotation.(ϕ)) / U)
 
     # Plot on the unit sphere to align with the spherical wireframe.
     x = @. cosd(λ_azimuthal) * sind(ϕ_azimuthal)
@@ -180,6 +182,53 @@ function visualize_solid_body_rotation(filepath)
     return nothing
 end
 
+function plot_zonal_average_solid_body_rotation(filepath)
+    @show output_prefix = basename(filepath)[1:end-5]
+
+    file = jldopen(filepath)
+
+    iterations = parse.(Int, keys(file["timeseries/t"]))
+
+    Nx = file["grid/Nx"]
+    Ny = file["grid/Ny"]
+
+    grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                                        radius = 1,
+                                        latitude = (-80, 80),
+                                        longitude = (-180, 180),
+                                        z = (-1, 0))
+
+    super_rotation_period = 2π * grid.radius / U
+
+    ϕ = ynodes(Center, grid)
+
+    iter = Node(0)
+
+    plot_title = @lift @sprintf("Zonally-averaged velocity in solid body rotation: rotations = %.3f",
+                                file["timeseries/t/" * string($iter)] / super_rotation_period)
+
+    zonal_average_u = @lift dropdims(mean(file["timeseries/u/" * string($iter)][2:Nx+1, 2:Ny+1, 1], dims=1), dims=1)
+
+    fig = Figure(resolution = (1080, 1080))
+
+    ax = fig[1, 1] = Axis(fig, xlabel = "U(ϕ)", ylabel = "ϕ")
+
+    theory = lines!(ax, solid_body_rotation.(ϕ), ϕ, color=:black)
+    simulation = lines!(ax, zonal_average_u, ϕ, color=:blue)
+
+    supertitle = fig[0, :] = Label(fig, plot_title, textsize=30)
+
+    leg = Legend(fig, [theory, simulation], ["U cos(ϕ)", "Simulation"], markersize = 7,
+                 halign = :right, valign = :top, bgcolor = :transparent)
+
+    record(fig, "zonally_averaged_solid_body_rotation_Nx$Nx.mp4", iterations, framerate=30) do i
+        @info "Animating iteration $i/$(iterations[end])..."
+        iter[] = i
+    end
+
+    return nothing
+end
+
 function analyze_solid_body_rotation(filepath)
 
     @show output_prefix = basename(filepath)[1:end-5]
@@ -193,7 +242,7 @@ function analyze_solid_body_rotation(filepath)
 
     grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
                                         radius = 1,
-                                        latitude = (-60, 60),
+                                        latitude = (-80, 80),
                                         longitude = (-180, 180),
                                         z = (-1, 0))
 
@@ -205,15 +254,17 @@ function analyze_solid_body_rotation(filepath)
     λ = repeat(reshape(λ, Nx, 1), 1, Ny)
     ϕ = repeat(reshape(ϕ, 1, Ny), Nx, 1)
 
-    maximum_error = [maximum(abs, (file["timeseries/u/$i"][:, :, 1] .- solid_body_rotation.(λ, ϕ, U)) / U)
+    maximum_error = [maximum(abs, (file["timeseries/u/$i"][:, :, 1] .- solid_body_rotation.(ϕ)) / U)
                      for i in iterations]
 
     return iterations, maximum_error
 end
 
-for resolution in (1, 2, 4, 8) # degrees
-    filepath = run_solid_body_rotation(resolution=resolution)
-    visualize_solid_body_rotation(filepath)
+for resolution in (4,) #1, 2, 4, 8) # degrees
+    filepath = run_solid_body_rotation(resolution=resolution, super_rotations=0.1)
+    #visualize_solid_body_rotation(filepath)
+    #filepath = "solid_body_rotation_Nx90.jld2"
+    plot_zonal_average_solid_body_rotation(filepath)
 end
 
 #=
