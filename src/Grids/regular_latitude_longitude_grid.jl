@@ -51,31 +51,21 @@ function RegularLatitudeLongitudeGrid(FT=Float64; size, latitude, longitude, z, 
     Lϕ = ϕ₂ - ϕ₁
     Lz = z₂ - z₁
 
-    Δϕ = Lϕ / Nϕ
-    Δλ = Lλ / Nλ
-    Δz = Lz / Nz
+            Λ₁ = (λ₁, ϕ₁, z₁)
+            L  = (Lλ, Lϕ, Lz)
+    Δλ, Δϕ, Δz = Δ = @. L / N
 
-    # Now including halos
-    λF₋ = λ₁ - Hλ * Δλ
-    ϕF₋ = ϕ₁ - Hϕ * Δϕ
-    zF₋ = z₁ - Hz * Δz
+    # Calculate end points for cell faces and centers
+    λF₋, ϕF₋, zF₋ = ΛF₋ = @. Λ₁ - H * Δ
+    λF₊, ϕF₊, zF₊ = ΛF₊ = @. ΛF₋ + total_extent(topo, H, Δ, L)
 
-    λF₊ = λ₂ + Hλ * Δλ
-    ϕF₊ = ϕ₂ + Hϕ * Δϕ
-    zF₊ = z₂ + Hz * Δz
-
-    λC₋ = λF₋ + Δλ / 2
-    ϕC₋ = ϕF₋ + Δϕ / 2
-    zC₋ = zF₋ + Δz / 2
-
-    λC₊ = λC₋ + Lλ + Δλ * (2Hλ - 1)
-    ϕC₊ = ϕC₋ + Lϕ + Δϕ * (2Hϕ - 1)
-    zC₊ = zC₋ + Lz + Δz * (2Hz - 1)
+    λC₋, ϕC₋, zC₋ = ΛC₋ = @. ΛF₋ + Δ / 2
+    λC₊, ϕC₊, zC₊ = ΛC₊ = @. ΛC₋ + L + Δ * (2H - 1)
 
     TFλ, TFϕ, TFz = total_length.(Face, topo, N, H)
     TCλ, TCϕ, TCz = total_length.(Center, topo, N, H)
 
-    λᶠᵃᵃ = range(λF₋, λF₊, length = Nλ + 2Hλ + 1)
+    λᶠᵃᵃ = range(λF₋, λF₊, length = TFλ)
     ϕᵃᶠᵃ = range(ϕF₋, ϕF₊, length = TFϕ)
     zᵃᵃᶠ = range(zF₋, zF₊, length = TFz)
 
