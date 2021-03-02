@@ -378,9 +378,7 @@ end
 #####
 
 function test_basic_lat_lon_bounded_domain(FT)
-    Nλ = 18
-    Nϕ = 9
-
+    Nλ = Nϕ = 18
     Hλ = Hϕ = 1
 
     grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nϕ, 1), longitude=(-90, 90), latitude=(-45, 45), z=(0, 1), halo=(Hλ, Hϕ, 1))
@@ -396,7 +394,7 @@ function test_basic_lat_lon_bounded_domain(FT)
     @test grid.Lz == 1
 
     @test grid.Δλ == 10
-    @test grid.Δϕ == 10
+    @test grid.Δϕ == 5
     @test grid.Δz == 1
 
     @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ + 1
@@ -415,7 +413,7 @@ function test_basic_lat_lon_bounded_domain(FT)
     @test grid.λᶠᵃᵃ[Nλ+2] == 90 + grid.Δλ
 
     @test grid.ϕᵃᶠᵃ[0] == -45 - grid.Δϕ
-    @test grid.ϕᵃᶜᵃ[Nϕ+1] == 45 + grid.Δϕ
+    @test grid.ϕᵃᶠᵃ[Nϕ+2] == 45 + grid.Δϕ
 
     @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλ)
     @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλ)
@@ -428,9 +426,9 @@ end
 
 function test_basic_lat_lon_periodic_domain(FT)
     Nλ = 36
-    Nϕ = 18
+    Nϕ = 32
 
-    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nϕ, 1), longitude=(-180, 180), latitude=(-90, 90), z=(0, 1))
+    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nϕ, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
 
     @test topology(grid) == (Periodic, Bounded, Bounded)
 
@@ -439,18 +437,30 @@ function test_basic_lat_lon_periodic_domain(FT)
     @test grid.Nz == 1
 
     @test grid.Lx == 360
-    @test grid.Ly == 180
+    @test grid.Ly == 160
     @test grid.Lz == 1
 
     @test grid.Δλ == 10
-    @test grid.Δϕ == 10
+    @test grid.Δϕ == 5
     @test grid.Δz == 1
+
+    @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ + 1
+    @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
+
+    @test length(grid.ϕᵃᶠᵃ) == Nϕ + 2Hϕ + 1
+    @test length(grid.ϕᵃᶜᵃ) == Nϕ + 2Hϕ
 
     @test grid.λᶠᵃᵃ[1] == -180
     @test grid.λᶠᵃᵃ[Nλ+1] == 180
 
-    @test grid.ϕᵃᶠᵃ[1] == -45
-    @test grid.ϕᵃᶠᵃ[Nϕ+1] == 45
+    @test grid.ϕᵃᶠᵃ[1] == -80
+    @test grid.ϕᵃᶠᵃ[Nϕ+1] == 80
+
+    @test grid.λᶠᵃᵃ[0] == -180 - grid.Δλ
+    @test grid.λᶠᵃᵃ[Nλ+2] == 180 + grid.Δλ
+
+    @test grid.ϕᵃᶠᵃ[0] == -80 - grid.Δϕ
+    @test grid.ϕᵃᶠᵃ[Nϕ+2] == 80 + grid.Δϕ
 
     @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλ)
     @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλ)
@@ -559,5 +569,10 @@ end
             test_basic_lat_lon_bounded_domain(FT)
             test_basic_lat_lon_periodic_domain(FT)
         end
+
+        # Testing show function
+        grid = RegularLatitudeLongitudeGrid(FT, size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
+        show(grid); println();
+        @test grid isa RegularLatitudeLongitudeGrid
     end
 end
