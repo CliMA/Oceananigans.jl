@@ -60,19 +60,17 @@ northern_boundary = 80 # degrees
 Ω = 1 # rad / s
 g = 1 # m s⁻²
 
-function run_solid_body_tracer_advection(;
-                                         architecture = CPU(),
-                                         Nx = 360,
-                                         Ny = 8,
-                                         super_rotations = 4
-                                        )
+function run_solid_body_tracer_advection(; architecture = CPU(),
+                                           Nx = 360,
+                                           Ny = 8,
+                                           super_rotations = 4)
 
     # A spherical domain
-    grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                        radius = 1,
-                                        latitude = (-northern_boundary, northern_boundary),
-                                        longitude = (-180, 180),
-                                        z = (-1, 0))
+    @show grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                                              radius = 1,
+                                              latitude = (-northern_boundary, northern_boundary),
+                                              longitude = (-180, 180),
+                                              z = (-1, 0))
 
     uᵢ(λ, ϕ, z) = solid_body_rotation(λ, ϕ)
 
@@ -97,16 +95,17 @@ function run_solid_body_tracer_advection(;
 
     set!(model, c=cᵢ, d=dᵢ, e=eᵢ)
 
-    gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
+    @show ϕᵃᶜᵃ_max = maximum(abs, ynodes(Center, grid))
+    @show Δx_min = grid.radius * cosd(ϕᵃᶜᵃ_max) * deg2rad(grid.Δλ)
+    @show Δy_min = grid.radius * deg2rad(grid.Δϕ)
+    @show Δ_min = min(Δx_min, Δy_min)
 
-    # Time-scale for gravity wave propagation across the smallest grid cell
-    wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.ϕᵃᶜᵃ)) * deg2rad(grid.Δλ),
-                                      grid.radius * deg2rad(grid.Δϕ)) / gravity_wave_speed
-
+    # Time-scale for tracer advection across the smallest grid cell
+    @show advection_time_scale = Δ_min / U
     super_rotation_period = 2π * grid.radius / U
 
     simulation = Simulation(model,
-                            Δt = 0.1wave_propagation_time_scale,
+                            Δt = 0.1advection_time_scale,
                             stop_time = super_rotations * super_rotation_period,
                             iteration_interval = 100,
                             progress = s -> @info "Time = $(s.model.clock.time) / $(s.stop_time)")
@@ -186,5 +185,5 @@ function visualize_solid_body_tracer_advection(filepath)
     return nothing
 end
 
-filepath = run_solid_body_tracer_advection(Nx=180, Ny=30, super_rotations=2)
+filepath = run_solid_body_tracer_advection(Nx=180, Ny=8, super_rotations=2)
 visualize_solid_body_tracer_advection(filepath)

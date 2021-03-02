@@ -15,8 +15,17 @@
 
 using Oceananigans
 using Oceananigans.Grids
-using Oceananigans.Coriolis: HydrostaticSphericalCoriolis, VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, VectorInvariant, ExplicitFreeSurface
+
+using Oceananigans.Coriolis:
+    HydrostaticSphericalCoriolis,
+    VectorInvariantEnergyConserving,
+    VectorInvariantEnstrophyConserving
+
+using Oceananigans.Models.HydrostaticFreeSurfaceModels:
+    HydrostaticFreeSurfaceModel,
+    VectorInvariant,
+    ExplicitFreeSurface
+
 using Oceananigans.Utils: prettytime, hours
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
@@ -47,13 +56,10 @@ solid_body_geostrophic_height(ϕ, R, Ω, g) = (R * Ω * U + U^2 / 2) * sind(ϕ)^
 # on the spherical strip to visualize the rotation.
 
 function run_solid_body_rotation(; architecture = CPU(),
-                                   resolution = 4, # degrees
+                                   Nx = 90,
+                                   Ny = 30,
                                    coriolis_scheme = VectorInvariantEnstrophyConserving(),
-                                   super_rotations = 4
-                                )
-
-    Nx = round(Int, 360 / resolution)
-    Ny = round(Int, 160 / resolution)
+                                   super_rotations = 4)
 
     # A spherical domain
     grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
@@ -62,7 +68,7 @@ function run_solid_body_rotation(; architecture = CPU(),
                                         longitude = (-180, 180),
                                         z = (-1, 0))
 
-    free_surface = ExplicitFreeSurface(gravitational_acceleration=1)
+    free_surface = ExplicitFreeSurface(gravitational_acceleration = 1)
 
     coriolis = HydrostaticSphericalCoriolis(rotation_rate = 1,
                                             scheme = VectorInvariantEnstrophyConserving())
@@ -260,20 +266,5 @@ function analyze_solid_body_rotation(filepath)
     return iterations, maximum_error
 end
 
-for resolution in (4,) #1, 2, 4, 8) # degrees
-    filepath = run_solid_body_rotation(resolution=resolution, super_rotations=0.1)
-    #visualize_solid_body_rotation(filepath)
-    #filepath = "solid_body_rotation_Nx90.jld2"
-    plot_zonal_average_solid_body_rotation(filepath)
-end
-
-#=
-fig = Figure(resolution = (1080, 1080))
-ax = fig[1, 1] = LScene(fig, title="")
-
-for Nx in (45, 90) #, 180, 360)
-    filepath = "solid_body_rotation_Nx$Nx.jld2"
-    iterations, maximum_error = analyze_solid_body_rotation(filepath)
-    lines!(ax, iterations, maximum_error)
-end
-=#
+filepath = run_solid_body_rotation(Nx=360, Ny=120, super_rotations=0.5)
+plot_zonal_average_solid_body_rotation(filepath)
