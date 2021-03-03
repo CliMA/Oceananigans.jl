@@ -12,6 +12,7 @@ function ImplicitFreeSurfaceSolver(arch, template_field,
                                    tol=nothing)
        
     ## This should probably end up in some operator and grid generic auxilliaries
+    ## NEED TO SORT OUT HALO FOR PERIODIC CASE
     Ax_baro = vertically_integrated_lateral_face_areas.Ax
     Ay_baro = vertically_integrated_lateral_face_areas.Ay
     @inline Ax_∂xᶠᵃᵃ_baro(i, j, k, grid, c) = Ax_baro[i, j, 1] * ∂xᶠᵃᵃ(i, j, 1, grid, c)
