@@ -8,7 +8,7 @@ using Adapt
 struct ImplicitFreeSurface{E, G, B, VF, I}
     η :: E
     gravitational_acceleration :: G
-    barotropic_transport :: B
+    barotropic_volume_flux :: B
     vertically_integrated_lateral_face_areas :: VF
     implicit_step_solver :: I
 end
@@ -28,9 +28,9 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, arch, grid)
     η = CenterField(arch, grid, TracerBoundaryConditions(grid))
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
 
-    barotropic_u_transport = ReducedField(Face, Center, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
-    barotropic_v_transport = ReducedField(Center, Face, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
-    barotropic_transport = (u=barotropic_u_transport, v=barotropic_v_transport)
+    barotropic_x_volume_flux = ReducedField(Face, Center, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
+    barotropic_y_volume_flux = ReducedField(Center, Face, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
+    barotropic_volume_flux = (u=barotropic_x_volume_flux, v=barotropic_y_volume_flux)
 
     Ax_zintegral = ReducedField(Face, Center, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
     Ay_zintegral = ReducedField(Center, Face, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
@@ -40,7 +40,7 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, arch, grid)
     implicit_step_solver = ImplicitFreeSurfaceSolver(arch, η, vertically_integrated_lateral_face_areas; maxit=100)
 
     return ImplicitFreeSurface(η, g, 
-                               barotropic_transport, 
+                               barotropic_volume_flux, 
                                vertically_integrated_lateral_face_areas,
                                implicit_step_solver)
 end
@@ -58,8 +58,6 @@ explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ImplicitFre
     A.Ax[i, j, 1] = 0.
     A.Ay[i, j, 1] = 0.
     @unroll for k in 1:grid.Nz
-        #### @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
-        #### @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k-1]*Δxᶜᶠᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
         @inbounds A.Ax[i, j, 1] += Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
         @inbounds A.Ay[i, j, 1] += Δxᶜᶠᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
     end

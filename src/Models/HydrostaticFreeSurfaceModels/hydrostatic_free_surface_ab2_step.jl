@@ -95,8 +95,8 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     ## We need vertically integrated U,V
     event = compute_vertically_integrated_transport!(free_surface, model)
     wait(device(model.architecture), event)
-    u=free_surface.barotropic_transport.u
-    v=free_surface.barotropic_transport.v
+    u=free_surface.barotropic_volume_flux.u
+    v=free_surface.barotropic_volume_flux.v
     fill_halo_regions!(u.data ,u.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
     fill_halo_regions!(v.data ,v.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
     ### We don't need the halo below, its just here for some debugging
@@ -159,22 +159,22 @@ function compute_vertically_integrated_transport!(free_surface, model)
                     _compute_vertically_integrated_transport!,
                     model.velocities,
                     model.grid,
-                    free_surface.barotropic_transport,
+                    free_surface.barotropic_volume_flux,
                     dependencies=Event(device(model.architecture)))
 
     return event
 end
 
-@kernel function _compute_vertically_integrated_transport!(U, grid, barotropic_transport )
+@kernel function _compute_vertically_integrated_transport!(U, grid, barotropic_volume_flux )
     i, j = @index(Global, NTuple)
     # U.w[i, j, 1] = 0 is enforced via halo regions.
-    barotropic_transport.u[i, j, 1] = 0.
-    barotropic_transport.v[i, j, 1] = 0.
+    barotropic_volume_flux.u[i, j, 1] = 0.
+    barotropic_volume_flux.v[i, j, 1] = 0.
     @unroll for k in 1:grid.Nz
         #### @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
         #### @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
-        @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k]*Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
-        @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k]*Δxᶜᶠᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
+        @inbounds barotropic_volume_flux.u[i, j, 1] += U.u[i, j, k]*Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
+        @inbounds barotropic_volume_flux.v[i, j, 1] += U.v[i, j, k]*Δxᶜᶠᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
      end
 end
 
@@ -184,8 +184,8 @@ function compute_volume_scaled_divergence!(free_surface, model)
                     :xy,
                     _compute_volume_scaled_divergence!,
                     model.grid,
-                    free_surface.barotropic_transport.u,
-                    free_surface.barotropic_transport.v,
+                    free_surface.barotropic_volume_flux.u,
+                    free_surface.barotropic_volume_flux.v,
                     free_surface.implicit_step_solver.solver.settings.RHS,
                     dependencies=Event(device(model.architecture)))
     return event
