@@ -196,3 +196,11 @@ solver.
 
 ### Implicit free surface pressure operator
 
+The implicit free surface solver solves for the free-surface, ``\eta``, in the vertically
+equation
+
+```math
+ \partial_{t} \eta + \partial_{x} H \hat{u} + \partial_{y} H \hat{v} = M
+```
+
+where M is some surface volume flux, currently ``M=0`` is assumed.
