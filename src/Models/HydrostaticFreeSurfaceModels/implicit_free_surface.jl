@@ -37,7 +37,7 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, arch, grid)
     vertically_integrated_lateral_face_areas = (Ax = Ax_zintegral, Ay=Ay_zintegral)
     compute_vertically_integrated_lateral_face_areas!(vertically_integrated_lateral_face_areas, grid, arch)
 
-    implicit_step_solver = ImplicitFreeSurfaceSolver(arch, η, vertically_integrated_lateral_face_areas; maxit=2)
+    implicit_step_solver = ImplicitFreeSurfaceSolver(arch, η, vertically_integrated_lateral_face_areas; maxit=100)
 
     return ImplicitFreeSurface(η, g, 
                                barotropic_transport, 
@@ -45,12 +45,12 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, arch, grid)
                                implicit_step_solver)
 end
 
-### In final form the two functions below will return 0
+### In final form the two functions below will return 0 (these are invoked in hydrostatic_free_surface_tendency_kernel_functions.jl )
 explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface::ImplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂xᶠᵃᵃ(i, j, k, grid, free_surface.η)
+    free_surface.gravitational_acceleration * ∂xᶠᵃᵃ(i, j, k, grid, free_surface.η) * 0.0000
 
 explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ImplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂yᵃᶠᵃ(i, j, k, grid, free_surface.η)
+    free_surface.gravitational_acceleration * ∂yᵃᶠᵃ(i, j, k, grid, free_surface.η) * 0.0000
 
 @kernel function _compute_vertically_integrated_lateral_face_areas!(grid, A )
     i, j = @index(Global, NTuple)

@@ -85,13 +85,12 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     ##### Implicit solver for η
     
     ## Need to wait for u* and v* to finish
-    ### wait(device(model.architecture), velocities_update)
-
-    ## Note Jean-Michel is a fan of doing ExplicitFreeSurface step before solve, so maybe this code is part of free_surface::ExplicitFreeSurface
-    ## that comes after explicit step
-    event = explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
-    wait(device(model.architecture), event)
+    wait(device(model.architecture), velocities_update)
     fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model) )
+
+    η_save = deepcopy(free_surface.η)
+    ## event = explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
+    ## wait(device(model.architecture), event)
 
     ## We need vertically integrated U,V
     event = compute_vertically_integrated_transport!(free_surface, model)
@@ -113,8 +112,10 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     
     ## Include surface pressure term into RHS
     RHS = free_surface.implicit_step_solver.solver.settings.RHS
+    RHS .= RHS/(model.free_surface.gravitational_acceleration*Δt)
     ## fill_halo_regions!(RHS.data ,RHS.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
     η = free_surface.η
+    η = η_save
     fill_halo_regions!(RHS   , η.boundary_conditions, model.architecture, model.grid)
     fill_halo_regions!(η.data, η.boundary_conditions, model.architecture, model.grid)
     ##  need to subtract Azᵃᵃᵃ(i, j, 1, grid)*η[i,j, 1]/(g*Δt^2)
@@ -129,6 +130,8 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
     solve_poisson_equation!(free_surface.implicit_step_solver.solver, RHS, x)
     ## exit()
+    fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
+    free_surface.η.data .= x
 
     ## Once we have η we can update u* and v* with pressure gradient just as in pressure_correct_velocities!
 
@@ -172,7 +175,7 @@ end
         #### @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
         @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k]*Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
         @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k]*Δxᶜᶠᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
-    end
+     end
 end
 
 function compute_volume_scaled_divergence!(free_surface, model)
