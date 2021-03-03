@@ -93,7 +93,7 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     ## wait(device(model.architecture), event)
 
     ## We need vertically integrated U,V
-    event = compute_vertically_integrated_transport!(free_surface, model)
+    event = compute_vertically_integrated_volume_flux!(free_surface, model)
     wait(device(model.architecture), event)
     u=free_surface.barotropic_volume_flux.u
     v=free_surface.barotropic_volume_flux.v
@@ -144,19 +144,19 @@ using Oceananigans.Architectures: device
 using Oceananigans.Operators: ΔzC
 
 """
-Compute the vertical integrated transport from the bottom to z=0 (i.e. linear free-surface)
+Compute the vertical integrated volume flux from the bottom to z=0 (i.e. linear free-surface)
 
     `U^{*} = ∫ [(u^{*})] dz`
     `V^{*} = ∫ [(v^{*})] dz`
 """
-### Note - what we really want is RHS = divergence of the vertically integrated transport
+### Note - what we really want is RHS = divergence of the vertically integrated volume flux
 ###        we can optimize this a bit later to do this all in one go to save using intermediate variables.
-function compute_vertically_integrated_transport!(free_surface, model)
+function compute_vertically_integrated_volume_flux!(free_surface, model)
 
     event = launch!(model.architecture,
                     model.grid,
                     :xy,
-                    _compute_vertically_integrated_transport!,
+                    _compute_vertically_integrated_volume_flux!,
                     model.velocities,
                     model.grid,
                     free_surface.barotropic_volume_flux,
@@ -165,7 +165,7 @@ function compute_vertically_integrated_transport!(free_surface, model)
     return event
 end
 
-@kernel function _compute_vertically_integrated_transport!(U, grid, barotropic_volume_flux )
+@kernel function _compute_vertically_integrated_volume_flux!(U, grid, barotropic_volume_flux )
     i, j = @index(Global, NTuple)
     # U.w[i, j, 1] = 0 is enforced via halo regions.
     barotropic_volume_flux.u[i, j, 1] = 0.
