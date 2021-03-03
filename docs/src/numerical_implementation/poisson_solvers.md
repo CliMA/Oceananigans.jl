@@ -2,7 +2,7 @@
 
 ## The elliptic problem for the pressure
 
-The pressure field is obtained by taking the divergence of the horizontal component of the momentum equation
+The 3d non-hydrostatic pressure field is obtained by taking the divergence of the horizontal component of the momentum equation
 \eqref{eq:momentumStar} and invoking the vertical component to yield an elliptic Poisson equation for the
 non-hydrostatic kinematic pressure
 ```math
@@ -10,6 +10,10 @@ non-hydrostatic kinematic pressure
 ```
 along with homogenous Neumann boundary conditions ``\bm{u} \cdot \bm{\hat{n}} = 0`` (Neumann on ``\phi`` for wall-bounded
 directions and periodic otherwise) and where ``\mathscr{F}`` denotes the source term for the Poisson equation.
+
+For hydrostatic problems the Poisson equation above only needs to be solved for the vertically integrated flow
+and the pressure field is a two dimensional term ``\phi_{S}``. In this case a fully three-dimensional solve 
+is not needed.
 
 ## Direct method
 
@@ -171,3 +175,24 @@ permutation of \eqref{eq:permutation} must be applied.
 Due to the extra steps involved in calculating the cosine transform in 2D, running with two wall-bounded dimensions
 typically slows the model down by a factor of 2. Switching to the FACR algorithm may help here as a 2D cosine transform
 won't be necessary anymore.
+
+## Iterative Solvers
+
+For problems with irregular grids the eigenvectors of the discrete Poisson operator are no longer simple Fourier
+series sines and cosines. This means discrete Fast Fourier Transforms can't be used to generate the projection 
+of the equation right hand side onto eigenvectors. So an eigenvector based approach to solving
+the Poisson equation is not computationally efficient.
+
+An pre-conditioned conjugate gradient iterative solver is used instead for problems with grids
+that are non uniform in multiple directions. This includes curvilinear grids on the sphere and
+also telescoping cartesian grids that stretch along more than one dimension. There are two forms 
+of the pressure operator in this approach. One is rigid lid form and one is an implicit 
+free-surface form.
+
+### Rigid lid pressure operator
+
+The rigid lid operator is based on the same continuous form as is used in the Direct Method
+solver.
+
+### Implicit free surface pressure operator
+
