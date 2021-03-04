@@ -252,6 +252,7 @@ steps:
     commands:
       - "source /etc/bashrc"  # Needed to get access to the module command.
       - "module load mpi/openmpi-x86_64"
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -e 'ENV["JULIA_MPI_BINARY"]="system"; using Pkg; Pkg.add("MPI"); Pkg.build("MPI"; verbose=true)'"
       - "mpiexec -np 4 $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
