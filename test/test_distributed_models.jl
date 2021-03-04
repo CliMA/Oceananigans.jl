@@ -475,4 +475,21 @@ end
         run_triply_periodic_halo_communication_tests_with_114_ranks()
         # run_triply_periodic_halo_communication_tests_with_221_ranks()
     end
+
+    @testset "Time stepping" begin
+        topo = (Periodic, Periodic, Periodic)
+        full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+        arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
+        dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+        model = dm.model
+
+        time_step!(model, 1)
+        @test dm isa DistributedModel
+        @test model.clock.time == 1
+
+        simulation = Simulation(model, Δt=1, stop_iteration=2)
+        run!(simulation)
+        @test dm isa DistributedModel
+        @test model.clock.time == 2
+    end
 end
