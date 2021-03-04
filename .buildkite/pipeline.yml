@@ -48,10 +48,8 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
 
-      # Use the system MPI
-      - "source /etc/bashrc"  # Needed to get access to the module command.
-      - "module load mpi/openmpi-x86_64"
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'ENV[\"JULIA_MPI_BINARY\"]=\"system\"; using Pkg; Pkg.add(\"MPI\"); Pkg.build(\"MPI\"; verbose=true)'"
+      # Set up the mpiexecjl command
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using MPI; MPI.install_mpiexecjl()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -255,7 +253,7 @@ steps:
       TEST_GROUP: "distributed"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "mpiexec -np 4 $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+      - "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER/bin/mpiexecjl -np 4 $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU

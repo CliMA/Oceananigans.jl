@@ -20,11 +20,9 @@ function DistributedIncompressibleModel(; architecture, grid, boundary_condition
     Rx, Ry, Rz = architecture.ranks
     my_connectivity = architecture.connectivity
 
-    ## Construct local grid
-
     Nx, Ny, Nz = size(grid)
 
-    # Pull out left and right endpoints for full model.
+    # Pull out endpoints for full model.
     xL, xR = grid.xF[1], grid.xF[Nx+1]
     yL, yR = grid.yF[1], grid.yF[Ny+1]
     zL, zR = grid.zF[1], grid.zF[Nz+1]
