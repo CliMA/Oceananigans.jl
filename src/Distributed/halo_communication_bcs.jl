@@ -1,10 +1,11 @@
+using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions: BCType
 
 import Oceananigans.BoundaryConditions: bctype_str, print_condition
 
 struct HaloCommunication <: BCType end
 
-HaloCommunicationBC = BoundaryCondition{<:HaloCommunication}
+const HaloCommunicationBC = BoundaryCondition{<:HaloCommunication}
 
 bctype_str(::HaloCommunicationBC) ="HaloCommunication"
 

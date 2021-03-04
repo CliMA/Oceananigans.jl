@@ -1,6 +1,6 @@
-using PencilFFTs
+import PencilFFTs
 
-import Oceananigans.Solvers: solve_poisson_equation!
+import Oceananigans.Solvers: poisson_eigenvalues, solve_poisson_equation!
 
 struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S}
               plan :: P
@@ -8,15 +8,6 @@ struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S}
            my_grid :: L
        eigenvalues :: λ
            storage :: S
-end
-
-reshaped_size(N, dim) = dim == 1 ? (N, 1, 1) :
-                        dim == 2 ? (1, N, 1) :
-                        dim == 3 ? (1, 1, N) : nothing
-
-function poisson_eigenvalues(N, L, dim, ::Periodic)
-    inds = reshape(1:N, reshaped_size(N, dim)...)
-    return @. (2sin((inds - 1) * π / N) / (L / N))^2
 end
 
 function DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
@@ -33,8 +24,8 @@ function DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
 
     transform = PencilFFTs.Transforms.FFT!()
     proc_dims = (arch.ranks[2], arch.ranks[3])
-    plan = PencilFFTPlan(size(full_grid), transform, proc_dims, MPI.COMM_WORLD)
-    storage = allocate_input(plan)
+    plan = PencilFFTs.PencilFFTPlan(size(full_grid), transform, proc_dims, MPI.COMM_WORLD)
+    storage = PencilFFTs.allocate_input(plan)
 
     return DistributedFFTBasedPoissonSolver(plan, full_grid, local_grid, eigenvalues, storage)
 end

@@ -2,14 +2,7 @@ using MPI
 
 using Oceananigans
 using Oceananigans.Grids
-
 using Oceananigans.Grids: halo_size
-
-include("distributed_utils.jl")
-include("distributed_architectures.jl")
-include("halo_communication_bcs.jl")
-include("halo_communication.jl")
-include("distributed_fft_based_poisson_solver.jl")
 
 #####
 ##### Distributed model struct and constructor
