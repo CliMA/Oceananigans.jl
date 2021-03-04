@@ -2,9 +2,8 @@ using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.OutputWriters: fetch_output
 using Oceananigans.Utils: AbstractSchedule, prettytime
 
-import Oceananigans: short_show
+import Oceananigans: short_show, run_diagnostic!
 import Oceananigans.Utils: TimeInterval, show_schedule
-import Oceananigans.Diagnostics: run_diagnostic!
 
 """
     mutable struct AveragedTimeInterval <: AbstractSchedule
@@ -24,7 +23,7 @@ end
 
 Returns a `schedule` that specifies periodic time-averaging of output.
 The time `window` specifies the extent of the time-average, which
-reoccurs every `interval`. 
+reoccurs every `interval`.
 
 `output` is computed and accumulated into the average every `stride` iterations
 during the averaging window. For example, `stride=1` computs output every iteration,
@@ -105,17 +104,17 @@ end
 
 """
     WindowedTimeAverage(operand, model=nothing; schedule, field_slicer=FieldSlicer())
-                                                        
+
 Returns an object for computing running averages of `operand` over `schedule.window` and
 recurring on `schedule.interval`, where `schedule` is an `AveragedTimeInterval`.
-During the collection period, averages are computed every `schedule.stride` iteration. 
+During the collection period, averages are computed every `schedule.stride` iteration.
 
 `operand` may be a `Oceananigans.Field` or a function that returns an array or scalar.
 
 Calling `wta(model)` for `wta::WindowedTimeAverage` object returns `wta.result`.
-""" 
+"""
 function WindowedTimeAverage(operand, model=nothing; schedule, field_slicer=FieldSlicer())
-                                                     
+
     output = fetch_output(operand, model, field_slicer)
     result = similar(output) # convert views to arrays
     result .= output # initialize `result` with initial output
@@ -126,7 +125,7 @@ end
 function accumulate_result!(wta, model)
 
     # Time increment:
-    Δt = model.clock.time - wta.previous_collection_time    
+    Δt = model.clock.time - wta.previous_collection_time
 
     # Time intervals:
     T_current = model.clock.time - wta.window_start_time
@@ -139,7 +138,7 @@ function accumulate_result!(wta, model)
 
     # Save time of integrand collection
     wta.previous_collection_time = model.clock.time
-                    
+
     return nothing
 end
 
@@ -154,7 +153,7 @@ function run_diagnostic!(wta::WindowedTimeAverage, model)
     #
     # Note: this can be false at the zeroth iteration if interval == window (which
     # implies we are always collecting)
-    
+
     unscheduled = model.clock.iteration == 0 &&
         model.clock.time < wta.schedule.previous_interval_stop_time + wta.schedule.interval - wta.schedule.window
 
@@ -198,8 +197,8 @@ end
 function (wta::WindowedTimeAverage)(model)
 
     # For the paranoid
-    wta.schedule.collecting && 
-        model.clock.iteration > 0 && 
+    wta.schedule.collecting &&
+        model.clock.iteration > 0 &&
         @warn "Returning a WindowedTimeAverage before the collection period is complete."
 
     return wta.result

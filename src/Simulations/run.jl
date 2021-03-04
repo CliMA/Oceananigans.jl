@@ -5,7 +5,7 @@ using Oceananigans.Fields: set!
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!, next_time, unit_time
 
-using Oceananigans: AbstractModel
+using Oceananigans: AbstractModel, run_diagnostic!, write_output!
 
 import Oceananigans.OutputWriters: checkpoint_path, set!
 

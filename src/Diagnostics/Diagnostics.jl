@@ -1,17 +1,15 @@
 module Diagnostics
 
-export
-    NaNChecker,
-    CFL, AdvectiveCFL, DiffusiveCFL,
-    run_diagnostic!,
-    TimeInterval, IterationInterval, WallTimeInterval, WindowedSpatialAverage
+export NaNChecker, CFL, AdvectiveCFL, DiffusiveCFL, WindowedSpatialAverage
 
 using CUDA
 using Oceananigans
 using Oceananigans.Operators
-using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
 
 using Oceananigans: AbstractDiagnostic
+using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
+
+import Oceananigans: run_diagnostic!
 
 include("nan_checker.jl")
 include("cfl.jl")
