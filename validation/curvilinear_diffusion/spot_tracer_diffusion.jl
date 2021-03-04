@@ -9,7 +9,7 @@ using JLD2
 using Printf
 using GLMakie
 
-include("../solid_body_rotation/hydrostatic_prescribed_velocity_fields.jl")
+include(joinpath(@__DIR__, "..", "solid_body_rotation", "hydrostatic_prescribed_velocity_fields.jl"))
 
 Nx = 360
 Ny = 120
