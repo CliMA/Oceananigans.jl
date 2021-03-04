@@ -42,7 +42,7 @@ function solve_for_pressure!(pressure, solver::DistributedFFTBasedPoissonSolver,
 end
 
 topo = (Periodic, Periodic, Periodic)
-full_grid = RegularCartesianGrid(topology=topo, size=(512, 512, 1), extent=(4π, 4π, 1), halo=(3, 3, 3))
+full_grid = RegularRectilinearGrid(topology=topo, size=(512, 512, 1), extent=(4π, 4π, 1), halo=(3, 3, 3))
 arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
 
 dm = DistributedModel(

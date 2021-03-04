@@ -1,21 +1,6 @@
-using Test
+
 using Oceananigans
-using Oceananigans.Architectures
-using Oceananigans.Solvers
-using Oceananigans.Utils
-using Oceananigans.Operators
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using KernelAbstractions: @kernel, @index, Event
-
-@kernel function ∇²!(grid, f, ∇²f)
-    i, j, k = @index(Global, NTuple)
-    @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
-end
-
-@kernel function divergence!(grid, u, v, w, div)
-    i, j, k = @index(Global, NTuple)
-    @inbounds div[i, j, k] = divᶜᶜᶜ(i, j, k, grid, u, v, w)
-end
+using Oceananigans.Distributed
 
 function random_divergent_source_term(FT, arch, grid)
     # Generate right hand side from a random (divergent) velocity field.
@@ -55,7 +40,7 @@ end
 
 function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=grid_points, extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=grid_points, extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=ranks)
     dm = DistributedModel(architecture=arch, grid=full_grid)
 

@@ -117,9 +117,7 @@ function MultiCPU(; grid, ranks)
 
     if total_ranks != mpi_ranks
         throw(ArgumentError("ranks=($Rx, $Ry, $Rz) [$total_ranks total] inconsistent " *
-                            "with number of MPI ranks: $mpi_ranks. Exiting with return code 1."))
-        MPI.Finalize()
-        exit(code=1)
+                            "with number of MPI ranks: $mpi_ranks."))
     end
 
     comm = MPI.COMM_WORLD

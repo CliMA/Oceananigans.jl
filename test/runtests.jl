@@ -6,6 +6,7 @@ using LinearAlgebra
 using Logging
 
 using CUDA
+using MPI
 using JLD2
 using FFTW
 using OffsetArrays
@@ -118,6 +119,14 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
         end
     end
 
+    if group == :shallow_water || group == :all
+        include("test_shallow_water_models.jl")
+    end
+
+    if group == :hydrostatic_free_surface || group == :all
+        include("test_hydrostatic_free_surface_models.jl")
+    end
+
     if group == :simulation || group == :all
         @testset "Simulation tests" begin
             include("test_simulations.jl")
@@ -126,6 +135,11 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_abstract_operations_computed_field.jl")
             include("test_lagrangian_particle_tracking.jl")
         end
+    end
+
+    if group == :distributed || group == :all
+        MPI.Initialized() || MPI.Init()
+        include("test_distributed_poisson_solvers.jl")
     end
 
     if group == :regression || group == :all
@@ -140,13 +154,5 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
     if group == :convergence
         include("test_convergence.jl")
-    end
-
-    if group == :shallow_water || group == :all
-        include("test_shallow_water_models.jl")
-    end
-
-    if group == :hydrostatic_free_surface || group == :all
-        include("test_hydrostatic_free_surface_models.jl")
     end
 end

@@ -19,7 +19,7 @@ mpi_ranks = MPI.Comm_size(comm)
 
 function run_triply_periodic_rank_connectivity_tests_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
 
     my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -56,7 +56,7 @@ end
 
 function run_triply_periodic_rank_connectivity_tests_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
 
     my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -99,7 +99,7 @@ end
 
 function run_triply_periodic_rank_connectivity_tests_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
 
     my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -145,7 +145,7 @@ end
 
 function run_triply_periodic_rank_connectivity_tests_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
 
     my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -194,7 +194,7 @@ end
 
 function run_triply_periodic_local_grid_tests_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
     dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -214,7 +214,7 @@ end
 
 function run_triply_periodic_local_grid_tests_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
     dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -234,7 +234,7 @@ end
 
 function run_triply_periodic_local_grid_tests_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
     dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -254,7 +254,7 @@ end
 
 function run_triply_periodic_local_grid_tests_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
     dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -278,7 +278,7 @@ end
 
 function run_triply_periodic_bc_injection_tests_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
     dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -295,7 +295,7 @@ end
 
 function run_triply_periodic_bc_injection_tests_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
     dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -312,7 +312,7 @@ end
 
 function run_triply_periodic_bc_injection_tests_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
     dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -329,7 +329,7 @@ end
 
 function run_triply_periodic_bc_injection_tests_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
     dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -350,7 +350,7 @@ end
 
 function run_triply_periodic_halo_communication_tests_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(8, 6, 4), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 6, 4), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
     dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -373,7 +373,7 @@ end
 
 function run_triply_periodic_halo_communication_tests_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(3, 8, 2), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(3, 8, 2), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
     dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -396,7 +396,7 @@ end
 
 function run_triply_periodic_halo_communication_tests_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(3, 5, 8), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(3, 5, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
     dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -419,7 +419,7 @@ end
 
 function run_triply_periodic_halo_communication_tests_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularCartesianGrid(topology=topo, size=(8, 8, 3), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 3), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
     dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
