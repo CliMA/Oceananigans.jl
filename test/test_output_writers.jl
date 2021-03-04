@@ -6,6 +6,7 @@ using Oceananigans.Fields
 using Oceananigans.OutputWriters
 
 using Dates: Millisecond
+using Oceananigans: write_output!
 using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC, ContinuousBoundaryFunction
 using Oceananigans.TimeSteppers: update_state!
 
