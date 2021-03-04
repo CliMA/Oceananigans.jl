@@ -5,34 +5,61 @@
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: FunctionField
 
-import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.TimeSteppers: ab2_step_field! 
-import Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels:
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.TimeSteppers: ab2_step_field! 
+using Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
+
+#=
+using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     HorizontalVelocityFields,
     HydrostaticFreeSurfaceVelocityFields,
     validate_velocity_boundary_conditions,
     compute_w_from_continuity!,
     hydrostatic_prognostic_fields,
     calculate_hydrostatic_momentum_tendencies!
+=#
 
-struct PrescribedVelocityFields{U, V, W}
+using Adapt
+
+struct PrescribedVelocityFields{U, V, W, P}
     u :: U
     v :: V
     w :: W
+    parameters :: P
 end
 
 @inline Base.getindex(U::PrescribedVelocityFields, i) = getindex((u=U.u, v=U.v, w=U.w), i)
 
 zerofunc(x, y, z) = 0
 
-function PrescribedVelocityFields(grid; u=zerofunc, v=zerofunc, w=zerofunc, parameters=nothing)
-    u = FunctionField{Face, Center, Center}(u, grid; parameters=parameters)
-    v = FunctionField{Center, Face, Center}(v, grid; parameters=parameters)
-    w = FunctionField{Center, Center, Face}(w, grid; parameters=parameters)
+"""
+    PrescribedVelocityFields(; u=zerofunc, v=zerofunc, w=zerofunc, parameters=nothing)
 
-    return PrescribedVelocityFields(u, v, w)
+Builds `PrescribedVelocityFields` with prescribed functions `u`, `v`, and `w`.
+
+If `isnothing(parameters)`, then `u, v, w` are called with the signature
+
+    `u(x, y, z, t) = # something interesting`
+
+If `!isnothing(parameters)`, then `u, v, w` are called with the signature
+
+    `u(x, y, z, t, parameters) = # something parameterized and interesting`
+
+In the constructor for `HydrostaticFreeSurfaceModel`, the functions `u, v, w` are wrapped
+in `FunctionField` and associated with the model's `grid` and `clock`.
+"""
+PrescribedVelocityFields(; u=zerofunc, v=zerofunc, w=zerofunc, parameters=nothing) =
+    PrescribedVelocityFields(u, v, w, parameters)
+
+function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields,
+                                              arch, grid, clock, bcs)
+
+    u = FunctionField{Face, Center, Center}(u, grid; clock=clock, parameters=velocities.parameters)
+    v = FunctionField{Center, Face, Center}(v, grid; clock=clock, parameters=velocities.parameters)
+    w = FunctionField{Center, Center, Face}(w, grid; clock=clock, parameters=velocities.parameters)
+
+    return PrescribedVelocityFields(u, v, w, velocities.parameters)
 end
 
 @inline ab2_step_field!(ϕ::FunctionField, args...) = nothing 
@@ -40,10 +67,15 @@ end
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
 
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
-HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields, args...) = velocities
 FreeSurface(free_surface, ::PrescribedVelocityFields, arch, grid) = nothing
 validate_velocity_boundary_conditions(::PrescribedVelocityFields) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, arch, grid) = nothing, nothing
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, free_surface, tracers) = tracers
 calculate_hydrostatic_momentum_tendencies!(tendencies, ::PrescribedVelocityFields, args...) = []
+
+Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
+    PrescribedVelocityFields(Adapt.adapt(to, velocities.u),
+                             Adapt.adapt(to, velocities.v),
+                             Adapt.adapt(to, velocities.w),
+                             nothing)
