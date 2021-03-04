@@ -43,12 +43,12 @@ function PreconditionedConjugateGradientSolver(; arch = arch, grid = nothing, bo
 
     if isnothing(parameters.PCmatrix_function)
         # preconditioner not provided, use the Identity matrix
-        PCmatrix_function(x) = x
+        PCmatrix_function(x; args...) = x
     else
         PCmatrix_function = parameters.PCmatrix_function
     end
 
-    M(x) = PCmatrix_function(x)
+    M(x; args...) = PCmatrix_function(x; args...)
 
     ii = interior_parent_indices(Center, topology(grid, 1), grid.Nx, grid.Hx)
     ji = interior_parent_indices(Center, topology(grid, 2), grid.Ny, grid.Hy)
@@ -58,7 +58,7 @@ function PreconditionedConjugateGradientSolver(; arch = arch, grid = nothing, bo
     norm(x)          = ( mapreduce((x)->x*x, + , view(x, ii, ji, ki)   ) )^0.5
 
     Amatrix_function = parameters.Amatrix_function
-    A(x) = ( Amatrix_function(a_res, x, arch, grid, bcs); return  a_res )
+    A(x; args...) = ( Amatrix_function(a_res, x, arch, grid, bcs; args...); return  a_res )
 
     reference_pressure_solver = nothing
     if haskey(parameters, :reference_pressure_solver )
@@ -100,7 +100,7 @@ end
 
 using Statistics
 
-function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, RHS, x, args...)
+function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, RHS, x; args...)
 #
 # Alg - see Fig 2.5 The Preconditioned Conjugate Gradient Method in
 #                    "Templates for the Solution of Linear Systems: Building Blocks for Iterative Methods"
@@ -155,7 +155,7 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
 
     r.parent .= 0
     # quick_launch!(arch, grid, compute_residual!, r, RHS, A(x))
-    r.parent .= RHS.parent .- A(x).parent
+    r.parent .= RHS.parent .- A(x; args...).parent
     # println("PreconditionedConjugateGradientSolver ", i," RHS ", norm(RHS.parent) )
     # println("PreconditionedConjugateGradientSolver ", i," A(x) ", norm(A(x).parent) )
 
@@ -163,7 +163,7 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
         # println("PreconditionedConjugateGradientSolver ", i," ", norm(r.parent) )
         i > maxit && break
 
-        z.parent       .= M(r, args...).parent
+        z.parent       .= M(r; args...).parent
         ρ        = dotprod(z.parent, r.parent)
 
         if i == 0
@@ -173,7 +173,7 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
             p.parent   .= z.parent .+ β .* p.parent
         end
 
-        q.parent       .= A(p, args...).parent
+        q.parent       .= A(p; args...).parent
         α        = ρ / dotprod(p.parent, q.parent)
         x.parent       .= x.parent .+ α .* p.parent
         r.parent       .= r.parent .- α .* q.parent

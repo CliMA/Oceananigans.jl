@@ -36,7 +36,7 @@ function run_pcg_solver_tests(arch)
     Nx, Ny, Nz = 100, 150, 1
     grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 
-    function Amatrix_function!(result, x, arch, grid, bcs)
+    function Amatrix_function!(result, x, arch, grid, bcs; args...)
         event = launch!(arch, grid, :xyz, ∇²!, grid, x, result, dependencies=Event(device(arch)))
         wait(device(arch), event)
         fill_halo_regions!(result, bcs, arch, grid)
@@ -75,7 +75,7 @@ function run_pcg_solver_tests(arch)
 
     # Set initial guess and solve
     ϕ.data.parent .= 0
-    @time solve_poisson_equation!(pcg_solver, RHS.data, ϕ.data)
+    @time solve_poisson_equation!(pcg_solver, RHS.data, ϕ.data; worda="boo", wordb="cat")
 
     # Compute ∇² of solution
     result = similar(ϕ.data)
