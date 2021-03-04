@@ -191,7 +191,7 @@ function run_triply_periodic_local_grid_tests_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
-    dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    dm = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     local_grid = dm.model.grid
@@ -211,7 +211,7 @@ function run_triply_periodic_local_grid_tests_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
-    dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    dm = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     local_grid = dm.model.grid
@@ -231,7 +231,7 @@ function run_triply_periodic_local_grid_tests_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
-    dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    dm = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     local_grid = dm.model.grid
@@ -251,7 +251,7 @@ function run_triply_periodic_local_grid_tests_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
-    dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    dm = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     i, j, k = arch.my_index
     local_grid = dm.model.grid
@@ -275,7 +275,7 @@ function run_triply_periodic_bc_injection_tests_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
-    dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    dm = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in fields(dm.model)
         fbcs = field.boundary_conditions
@@ -292,7 +292,7 @@ function run_triply_periodic_bc_injection_tests_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
-    dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    dm = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in fields(dm.model)
         fbcs = field.boundary_conditions
@@ -309,7 +309,7 @@ function run_triply_periodic_bc_injection_tests_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
-    dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    dm = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in fields(dm.model)
         fbcs = field.boundary_conditions
@@ -326,7 +326,7 @@ function run_triply_periodic_bc_injection_tests_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
-    dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    dm = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in fields(dm.model)
         fbcs = field.boundary_conditions
@@ -347,7 +347,7 @@ function run_triply_periodic_halo_communication_tests_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 6, 4), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
-    dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    dm = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in fields(dm.model)
         interior(field) .= arch.my_rank
@@ -370,7 +370,7 @@ function run_triply_periodic_halo_communication_tests_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(3, 8, 2), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
-    dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    dm = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in fields(dm.model)
         interior(field) .= arch.my_rank
@@ -393,7 +393,7 @@ function run_triply_periodic_halo_communication_tests_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(3, 5, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
-    dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    dm = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in fields(dm.model)
         interior(field) .= arch.my_rank
@@ -416,7 +416,7 @@ function run_triply_periodic_halo_communication_tests_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 3), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
-    dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    dm = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in fields(dm.model)
         interior(field) .= arch.my_rank
@@ -480,16 +480,16 @@ end
         topo = (Periodic, Periodic, Periodic)
         full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
         arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
-        dm = DistributedModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+        dm = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
         model = dm.model
 
         time_step!(model, 1)
-        @test dm isa DistributedModel
+        @test dm isa DistributedIncompressibleModel
         @test model.clock.time == 1
 
         simulation = Simulation(model, Δt=1, stop_iteration=2)
         run!(simulation)
-        @test dm isa DistributedModel
+        @test dm isa DistributedIncompressibleModel
         @test model.clock.time == 2
     end
 end

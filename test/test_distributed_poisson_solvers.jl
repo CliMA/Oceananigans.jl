@@ -39,7 +39,7 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=grid_points, extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=ranks)
-    dm = DistributedModel(architecture=arch, grid=full_grid)
+    dm = DistributedIncompressibleModel(architecture=arch, grid=full_grid)
 
     local_grid = dm.model.grid
     solver = DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)

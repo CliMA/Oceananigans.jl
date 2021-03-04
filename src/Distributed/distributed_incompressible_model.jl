@@ -8,13 +8,13 @@ using Oceananigans.Grids: halo_size
 ##### Distributed model struct and constructor
 #####
 
-struct DistributedModel{A, G, M}
+struct DistributedIncompressibleModel{A, G, M}
     architecture :: A
             grid :: G
            model :: M
 end
 
-function DistributedModel(; architecture, grid, boundary_conditions=nothing, model_kwargs...)
+function DistributedIncompressibleModel(; architecture, grid, boundary_conditions=nothing, model_kwargs...)
     my_rank = architecture.my_rank
     i, j, k = architecture.my_index
     Rx, Ry, Rz = architecture.ranks
@@ -88,10 +88,10 @@ function DistributedModel(; architecture, grid, boundary_conditions=nothing, mod
         model_kwargs...
     )
 
-    return DistributedModel(architecture, grid, my_model)
+    return DistributedIncompressibleModel(architecture, grid, my_model)
 end
 
-function Base.show(io::IO, dm::DistributedModel)
-    print(io, "DistributedModel with ")
+function Base.show(io::IO, dm::DistributedIncompressibleModel)
+    print(io, "DistributedIncompressibleModel with ")
     print(io, dm.architecture)
 end

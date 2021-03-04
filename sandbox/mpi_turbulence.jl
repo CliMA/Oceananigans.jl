@@ -16,7 +16,7 @@ topo = (Periodic, Periodic, Periodic)
 full_grid = RegularRectilinearGrid(topology=topo, size=(512, 512, 1), extent=(4π, 4π, 1), halo=(3, 3, 3))
 arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
 
-dm = DistributedModel(
+dm = DistributedIncompressibleModel(
     architecture = arch,
             grid = full_grid,
      timestepper = :RungeKutta3,
