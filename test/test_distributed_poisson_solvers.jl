@@ -1,7 +1,4 @@
 
-using Oceananigans
-using Oceananigans.Distributed
-
 function random_divergent_source_term(FT, arch, grid)
     # Generate right hand side from a random (divergent) velocity field.
     Ru = CenterField(FT, arch, grid, UVelocityBoundaryConditions(grid))

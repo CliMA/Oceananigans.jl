@@ -29,6 +29,7 @@ using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
 using Oceananigans.AbstractOperations
+using Oceananigans.Distributed
 using Oceananigans.Logger
 using Oceananigans.Units
 using Oceananigans.Utils
@@ -139,6 +140,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
     if group == :distributed || group == :all
         MPI.Initialized() || MPI.Init()
+        include("test_distributed_models.jl")
         include("test_distributed_poisson_solvers.jl")
     end
 

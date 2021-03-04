@@ -1,15 +1,10 @@
-using Test
 using MPI
-using Oceananigans
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-
-MPI.Initialized() || MPI.Init()
-comm = MPI.COMM_WORLD
-
-include("distributed_model.jl")
+using Oceananigans.Distributed: index2rank, east_halo, west_halo, north_halo, south_halo, top_halo, bottom_halo
 
 # Right now just testing with 4 ranks!
+comm = MPI.COMM_WORLD
 mpi_ranks = MPI.Comm_size(comm)
 @assert mpi_ranks == 4
 
@@ -480,9 +475,4 @@ end
         run_triply_periodic_halo_communication_tests_with_114_ranks()
         # run_triply_periodic_halo_communication_tests_with_221_ranks()
     end
-
-    include("test_distributed_poisson_solvers.jl")
 end
-
-# MPI.Finalize()
-# @test MPI.Finalized()

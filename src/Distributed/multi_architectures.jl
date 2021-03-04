@@ -120,8 +120,6 @@ function MultiCPU(; grid, ranks)
                             "with number of MPI ranks: $mpi_ranks."))
     end
 
-    comm = MPI.COMM_WORLD
-
     my_connectivity = RankConnectivity(my_index, ranks, topology(grid))
 
     return MultiCPU(my_rank, my_index, ranks, my_connectivity)
