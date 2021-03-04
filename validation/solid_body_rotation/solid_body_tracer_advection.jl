@@ -95,10 +95,10 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
 
     set!(model, c=cᵢ, d=dᵢ, e=eᵢ)
 
-    @show ϕᵃᶜᵃ_max = maximum(abs, ynodes(Center, grid))
-    @show Δx_min = grid.radius * cosd(ϕᵃᶜᵃ_max) * deg2rad(grid.Δλ)
-    @show Δy_min = grid.radius * deg2rad(grid.Δϕ)
-    @show Δ_min = min(Δx_min, Δy_min)
+    ϕᵃᶜᵃ_max = maximum(abs, ynodes(Center, grid))
+    Δx_min = grid.radius * cosd(ϕᵃᶜᵃ_max) * deg2rad(grid.Δλ)
+    Δy_min = grid.radius * deg2rad(grid.Δϕ)
+    Δ_min = min(Δx_min, Δy_min)
 
     # Time-scale for tracer advection across the smallest grid cell
     @show advection_time_scale = Δ_min / U
