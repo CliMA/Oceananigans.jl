@@ -1,10 +1,8 @@
 module OutputWriters
 
 export
-    write_output!,
     FieldSlicer,
-    JLD2OutputWriter,
-    NetCDFOutputWriter,
+    JLD2OutputWriter, NetCDFOutputWriter,
     Checkpointer, restore_from_checkpoint,
     WindowedTimeAverage,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
@@ -19,6 +17,8 @@ using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
 
 using Oceananigans: AbstractOutputWriter
 using Oceananigans.Fields: OffsetArray
+
+import Oceananigans: write_output!
 
 Base.open(ow::AbstractOutputWriter) = nothing
 Base.close(ow::AbstractOutputWriter) = nothing
