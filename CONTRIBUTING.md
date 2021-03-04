@@ -14,7 +14,7 @@ practices. New contributors should make sure to read that guide.
 
 ## What can I do?
 
-* Tackle an existing issue. We keep a list of [good first issues](https://github.com/climate-machine/Oceananigans.jl/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
+* Tackle an existing issue. We keep a list of [good first issues](https://github.com/CLiMA/Oceananigans.jl/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
   that are self-contained and suitable for a newcomer to try and work on.
 
 * Try to run Oceananigans and play around with it to simulate your favorite
