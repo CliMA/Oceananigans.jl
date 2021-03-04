@@ -50,14 +50,14 @@ calculate_diffusivities!(K, arch, grid, closure::HorizontallyCurvilinearAnisotro
 end
 
 @inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure::HorizontallyCurvilinearAnisotropicDiffusivity, U, args...) = (
-      δxᶠᵃᵃ(i, j, k, grid, ν_δᶜᶜᶜ, clock, closure.νh, U.u, U.v) / Δxᶠᶜᵃ(i, j, k, grid)
+    + δxᶠᵃᵃ(i, j, k, grid, ν_δᶜᶜᶜ, clock, closure.νh, U.u, U.v) / Δxᶠᶜᵃ(i, j, k, grid)
     - δyᵃᶜᵃ(i, j, k, grid, ν_ζᶠᶠᶜ, clock, closure.νh, U.u, U.v) / Δyᶠᶜᵃ(i, j, k, grid)
     + δzᵃᵃᶜ(i, j, k, grid, ν_uzᶠᶜᶠ, clock, closure.νz, U.u)     / Δzᵃᵃᶜ(i, j, k, grid)
 )
 
 @inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure::HorizontallyCurvilinearAnisotropicDiffusivity, U, args...) = (
-      δyᵃᶠᵃ(i, j, k, grid, ν_δᶜᶜᶜ, clock, closure.νh, U.u, U.v) / Δyᶜᶠᵃ(i, j, k, grid)
     + δxᶜᵃᵃ(i, j, k, grid, ν_ζᶠᶠᶜ, clock, closure.νh, U.u, U.v) / Δxᶜᶠᵃ(i, j, k, grid)
+    + δyᵃᶠᵃ(i, j, k, grid, ν_δᶜᶜᶜ, clock, closure.νh, U.u, U.v) / Δyᶜᶠᵃ(i, j, k, grid)
     + δzᵃᵃᶜ(i, j, k, grid, ν_vzᶜᶠᶠ, clock, closure.νz, U.v)     / Δzᵃᵃᶜ(i, j, k, grid)
 )
 
