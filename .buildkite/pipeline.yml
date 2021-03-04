@@ -241,6 +241,23 @@ steps:
     depends_on: "init_cpu"
 
 #####
+##### Distributed/MPI
+#####
+
+  - label: "🐉 cpu distributed tests"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "distributed"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "module load mpi/openmpi-x86_64"
+      - "mpiexec -np 4 $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    depends_on: "init_cpu"
+
+#####
 ##### Regression
 #####
 
