@@ -100,7 +100,7 @@ end
 
 using Statistics
 
-function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, RHS, x)
+function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, RHS, x, args...)
 #
 # Alg - see Fig 2.5 The Preconditioned Conjugate Gradient Method in
 #                    "Templates for the Solution of Linear Systems: Building Blocks for Iterative Methods"
@@ -163,7 +163,7 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
         # println("PreconditionedConjugateGradientSolver ", i," ", norm(r.parent) )
         i > maxit && break
 
-        z.parent       .= M(r).parent
+        z.parent       .= M(r, args...).parent
         ρ        = dotprod(z.parent, r.parent)
 
         if i == 0
@@ -173,7 +173,7 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
             p.parent   .= z.parent .+ β .* p.parent
         end
 
-        q.parent       .= A(p).parent
+        q.parent       .= A(p, args...).parent
         α        = ρ / dotprod(p.parent, q.parent)
         x.parent       .= x.parent .+ α .* p.parent
         r.parent       .= r.parent .- α .* q.parent
