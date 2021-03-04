@@ -34,10 +34,10 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
 Gaussian(λ, ϕ, L) = exp(-(λ^2 + ϕ^2) / 2L^2)
 
 # Tracer patch parameters
-L = 4 # degree
+L = 12 # degree
 ϕ₀ = 0 # degrees
 
-cᵢ(λ, ϕ, z) = Gaussian(0, ϕ - ϕ₀, L)
+cᵢ(λ, ϕ, z) = Gaussian(λ, ϕ - ϕ₀, L)
 
 set!(model, c=cᵢ)
 
@@ -58,18 +58,17 @@ end
 cell_diffusion_time_scale = Δ_min^2
 
 simulation = Simulation(model,
-                        Δt = 0.01cell_diffusion_time_scale,
-                        stop_time = 1cell_diffusion_time_scale,
+                        Δt = 0.1cell_diffusion_time_scale,
+                        stop_time = 1000cell_diffusion_time_scale,
                         iteration_interval = 100,
                         progress = progress)
                                                          
-#output_fields = merge(model.velocities, model.tracers, (η=model.free_surface.η,))
 output_fields = model.tracers
 
 output_prefix = "spot_tracer_diffusion_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(cell_diffusion_time_scale / 10),
+                                                      schedule = TimeInterval(10cell_diffusion_time_scale),
                                                       prefix = output_prefix,
                                                       force = true)
 
@@ -78,11 +77,6 @@ run!(simulation)
 file = jldopen(simulation.output_writers[:fields].filepath)
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
-
-for iter in iterations
-    c = file["timeseries/c/$iter"][1, :, 1]
-    @show maximum(c)
-end
 
 λ = xnodes(Center, grid)
 ϕ = ynodes(Center, grid)
@@ -96,15 +90,20 @@ plot_title = "hi"
 
 c = @lift file["timeseries/c/" * string($iter)][:, :, 1]
 
-fig = Figure(resolution = (1080, 1080))
+set_theme!(Theme(fontsize = 30))
 
-ax = fig[1, 1] = Axis(fig, xlabel = "λ", ylabel = "ϕ")
+fig = Figure(resolution = (1920, 1080))
 
-contourf!(ax, λ, ϕ, c, color=:black)
+title = @lift "Tracer spot on a sphere, t = $(file["timeseries/t/" * string($iter)])"
 
-supertitle = fig[0, :] = Label(fig, plot_title, textsize=30)
+ax = fig[1, 1] = Axis(fig,
+                      xlabel = "λ",
+                      ylabel = "ϕ",
+                      title = title)
 
-record(fig, "spot_tracer_diffusion_Nx$(grid.Nx)_Ny$(grid.Ny)", iterations, framerate=30) do i
+heatmap!(ax, c)
+
+record(fig, "spot_tracer_diffusion_Nx$(grid.Nx)_Ny$(grid.Ny).mp4", iterations, framerate=30) do i
     @info "Animating iteration $i/$(iterations[end])..."
     iter[] = i
 end

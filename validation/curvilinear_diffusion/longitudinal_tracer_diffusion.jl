@@ -54,7 +54,7 @@ end
 cell_diffusion_time_scale = Δ_min^2
 
 simulation = Simulation(model,
-                        Δt = 0.01cell_diffusion_time_scale,
+                        Δt = 0.1cell_diffusion_time_scale,
                         stop_time = 100cell_diffusion_time_scale,
                         iteration_interval = 100,
                         progress = progress)
@@ -64,7 +64,7 @@ output_fields = model.tracers
 output_prefix = "longitudinal_tracer_diffusion_Nx$(grid.Nx)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(cell_diffusion_time_scale / 10),
+                                                      schedule = TimeInterval(cell_diffusion_time_scale),
                                                       prefix = output_prefix,
                                                       force = true)
 
@@ -83,7 +83,7 @@ end
 
 iter = Node(0)
 
-plot_title = @lift "Diffusion on a circle of constant longitude, t = $(file["timeseries/t/" * string($iter)])"
+title = @lift "Tracer diffusion on a parallel, t = $(file["timeseries/t/" * string($iter)])"
 
 c = @lift file["timeseries/c/" * string($iter)][:, 1, 1]
 
@@ -92,8 +92,6 @@ fig = Figure(resolution = (1080, 540))
 ax = fig[1, 1] = Axis(fig, ylabel = "c(λ)", xlabel = "λ")
 
 lines!(ax, λ, c, color=:black)
-
-supertitle = fig[0, :] = Label(fig, plot_title, textsize=30)
 
 record(fig, "longitudinal_tracer_diffusion_Nx$(grid.Nx).mp4", iterations, framerate=30) do i
     @info "Animating iteration $i/$(iterations[end])..."
