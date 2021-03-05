@@ -8,10 +8,7 @@ export
     TwoDimensionalLeith,
     ConstantSmagorinsky,
     SmagorinskyLilly,
-    BlasiusSmagorinsky,
     AnisotropicMinimumDissipation,
-    RozemaAnisotropicMinimumDissipation,
-    VerstappenAnisotropicMinimumDissipation,
     HorizontallyCurvilinearAnisotropicDiffusivity,
 
     DiffusivityFields,

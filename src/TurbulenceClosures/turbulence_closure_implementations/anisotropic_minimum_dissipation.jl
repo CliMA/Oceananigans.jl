@@ -17,9 +17,9 @@ struct AnisotropicMinimumDissipation{FT, PK, PN, K} <: AbstractIsotropicDiffusiv
     end
 end
 
-const VAMD = AnisotropicMinimumDissipation
+const AMD = AnisotropicMinimumDissipation
 
-Base.show(io::IO, closure::VAMD{FT}) where FT =
+Base.show(io::IO, closure::AMD{FT}) where FT =
     print(io, "AnisotropicMinimumDissipation{$FT} turbulence closure with:\n",
               "           Poincaré constant for momentum eddy viscosity Cν: ", closure.Cν, '\n',
               "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, '\n',
@@ -120,7 +120,7 @@ end
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(Center, i, grid), ynode(Center, j, grid), znode(Center, k, grid))
 
-@inline function νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, buoyancy, U, C) where FT
+@inline function νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::AMD, buoyancy, U, C) where FT
     ijk = (i, j, k, grid)
     q = norm_tr_∇uᶜᶜᶜ(ijk..., U.u, U.v, U.w)
 
@@ -136,7 +136,7 @@ end
     return max(zero(FT), νˢᵍˢ) + closure.ν
 end
 
-@inline function κᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, ::Val{tracer_index},
+@inline function κᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::AMD, c, ::Val{tracer_index},
                        U) where {FT, tracer_index}
 
     ijk = (i, j, k, grid)
@@ -211,7 +211,7 @@ end
 ##### Filter width at various locations
 #####
 
-# Recall that filter widths are 2x the grid spacing in VAMD
+# Recall that filter widths are 2x the grid spacing in AMD
 @inline Δᶠxᶜᶜᶜ(i, j, k, grid) = 2 * Oceananigans.Operators.Δx(i, j, k, grid)
 @inline Δᶠyᶜᶜᶜ(i, j, k, grid) = 2 * Oceananigans.Operators.Δy(i, j, k, grid)
 @inline Δᶠzᶜᶜᶜ(i, j, k, grid) = 2 * Oceananigans.Operators.ΔzC(i, j, k, grid)

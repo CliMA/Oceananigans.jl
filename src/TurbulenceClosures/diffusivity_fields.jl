@@ -41,9 +41,7 @@ end
 ##### For closures that also require tracer diffusivity fields κₑ on each tracer.
 #####
 
-const ViscosityDiffusivityClosures = Union{VAMD, RAMD}
-
-function DiffusivityFields(arch, grid, tracer_names, ::ViscosityDiffusivityClosures;
+function DiffusivityFields(arch, grid, tracer_names, ::AMD;
                            νₑ = CenterField(arch, grid, DiffusivityBoundaryConditions(grid)),
                            kwargs...)
 
@@ -52,7 +50,7 @@ function DiffusivityFields(arch, grid, tracer_names, ::ViscosityDiffusivityClosu
     return (νₑ=νₑ, κₑ=κₑ)
 end
 
-function DiffusivityFields(arch, grid, tracer_names, bcs, ::ViscosityDiffusivityClosures)
+function DiffusivityFields(arch, grid, tracer_names, bcs, ::AMD)
 
     νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
     νₑ = CenterField(arch, grid, νₑ_bcs)
