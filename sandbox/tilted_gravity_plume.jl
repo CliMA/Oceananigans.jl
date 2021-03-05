@@ -2,11 +2,12 @@ using Oceananigans
 using Oceananigans.Advection
 using Oceananigans.OutputWriters
 using Oceananigans.Utils
+using Oceananigans.Units
 
 N = 64
 L = 2000
 topo = (Periodic, Bounded, Bounded)
-grid = RegularCartesianGrid(topology=topo, size=(1, N, N), extent=(L, L, L))
+grid = RegularRectilinearGrid(topology=topo, size=(1, N, N), extent=(L, L, L))
 
 g_Earth = 9.80665
 θ = 45
@@ -32,14 +33,18 @@ function print_progress(sim)
     end
     return nothing
 end
-simulation = Simulation(model, Δt=10seconds, stop_time=12hours, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=10seconds, stop_time=4hours, progress=print_progress, iteration_interval=10)
 
 fields = merge(model.velocities, model.tracers)
 simulation.output_writers[:fields] =
-    NetCDFOutputWriter(model, fields, filepath="tilted_gravity_plume.nc", schedule=TimeInterval(5minutes))
+    NetCDFOutputWriter(model, fields, filepath="tilted_gravity_plume.nc", 
+                       schedule=TimeInterval(5minutes),
+                       mode="c",
+                       )
 
 run!(simulation)
 
+pause
 using NCDatasets, Plots
 
 ds = NCDataset("tilted_gravity_plume.nc", "r")
