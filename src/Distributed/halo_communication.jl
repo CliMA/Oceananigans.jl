@@ -10,12 +10,7 @@ import Oceananigans.BoundaryConditions:
 #####
 
 sides  = (:west, :east, :south, :north, :top, :bottom)
-
-side_id = Dict(
-    :east => 1, :west => 2,
-    :north => 3, :south => 4,
-    :top => 5, :bottom => 6
-)
+side_id = Dict(side => n for (n, side) in enumerate(sides))
 
 opposite_side = Dict(
     :east => :west, :west => :east,
@@ -23,15 +18,13 @@ opposite_side = Dict(
     :top => :bottom, :bottom => :top
 )
 
-# Unfortunately can't call MPI.Comm_size(MPI.COMM_WORLD) before MPI.Init().
-MAX_RANKS = 10^3
-RANK_DIGITS = 3
-
 # Define functions that return unique send and recv MPI tags for each side.
 # It's an integer where
 #   digit 1: the side
 #   digits 2-4: the from rank
 #   digits 5-7: the to rank
+
+RANK_DIGITS = 3
 
 for side in sides
     side_str = string(side)
