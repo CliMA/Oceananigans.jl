@@ -101,14 +101,7 @@ function cell_diffusion_timescale(closure::SmagorinskyLilly, diffusivities, grid
     return min(Δ^2 / max_νκ, Δ^2 / max_κ)
 end
 
-function cell_diffusion_timescale(closure::RozemaAnisotropicMinimumDissipation{FT, <:NamedTuple{()}},
-                                  diffusivities, grid) where FT
-    Δ = min_Δxyz(grid)
-    max_ν = maximum(diffusivities.νₑ.data.parent)
-    return Δ^2 / max_ν
-end
-
-function cell_diffusion_timescale(closure::VerstappenAnisotropicMinimumDissipation{FT, PK, PN, <:NamedTuple{()}},
+function cell_diffusion_timescale(closure::AnisotropicMinimumDissipation{FT, PK, PN, <:NamedTuple{()}},
                                   diffusivities, grid) where {FT, PK, PN}
     Δ = min_Δxyz(grid)
     max_ν = maximum(diffusivities.νₑ.data.parent)
