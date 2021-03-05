@@ -27,7 +27,7 @@ DiffusivityFields(arch, grid, tracer_names, bcs, closure_tuple::Tuple) =
 ##### For closures that only require an eddy viscosity νₑ field.
 #####
 
-const ViscosityClosures = Union{AbstractSmagorinsky, AbstractLeith}
+const ViscosityClosures = Union{SmagorinskyLilly, AbstractLeith}
 
 DiffusivityFields(arch, grid, tracer_names, ::ViscosityClosures;
                   νₑ = CenterField(arch, grid, DiffusivityBoundaryConditions(grid))) = (νₑ=νₑ,)

@@ -93,14 +93,7 @@ function cell_diffusion_timescale(closure::SmagorinskyLilly{FT, P, <:NamedTuple{
     return Δ^2 / max_ν
 end
 
-function cell_diffusion_timescale(closure::BlasiusSmagorinsky{ML, FT, P, <:NamedTuple{()}},
-                                  diffusivities, grid) where {ML, FT, P}
-    Δ = min_Δxyz(grid)
-    max_ν = maximum(diffusivities.νₑ.data.parent)
-    return Δ^2 / max_ν
-end
-
-function cell_diffusion_timescale(closure::AbstractSmagorinsky, diffusivities, grid)
+function cell_diffusion_timescale(closure::SmagorinskyLilly, diffusivities, grid)
     Δ = min_Δxyz(grid)
     min_Pr = minimum(closure.Pr)
     max_κ = maximum(closure.κ)
