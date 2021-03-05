@@ -163,7 +163,7 @@ end
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 `closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline function ∇_κ_∇c(i, j, k, grid, clock, closure::AbstractAnisotropicMinimumDissipation,
+@inline function ∇_κ_∇c(i, j, k, grid, clock, closure::AnisotropicMinimumDissipation,
                         c, ::Val{tracer_index}, diffusivities, args...) where tracer_index
 
     κₑ = diffusivities.κₑ[tracer_index]
@@ -174,7 +174,7 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
            )
 end
 
-function calculate_diffusivities!(K, arch, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
+function calculate_diffusivities!(K, arch, grid, closure::AnisotropicMinimumDissipation, buoyancy, U, C)
     workgroup, worksize = work_layout(grid, :xyz)
 
     barrier = Event(device(arch))
@@ -197,7 +197,7 @@ function calculate_diffusivities!(K, arch, grid, closure::AbstractAnisotropicMin
     return nothing
 end
 
-@kernel function calculate_viscosity!(νₑ, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
+@kernel function calculate_viscosity!(νₑ, grid, closure::AnisotropicMinimumDissipation, buoyancy, U, C)
     i, j, k = @index(Global, NTuple)
     @inbounds νₑ[i, j, k] = νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, U, C)
 end

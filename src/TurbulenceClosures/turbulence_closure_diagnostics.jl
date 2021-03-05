@@ -122,7 +122,7 @@ function cell_diffusion_timescale(closure::VerstappenAnisotropicMinimumDissipati
     return Δ^2 / max_ν
 end
 
-function cell_diffusion_timescale(closure::AbstractAnisotropicMinimumDissipation, diffusivities, grid)
+function cell_diffusion_timescale(closure::AnisotropicMinimumDissipation, diffusivities, grid)
     Δ = min_Δxyz(grid)
     max_ν = maximum(diffusivities.νₑ.data.parent)
     max_κ = max(Tuple(maximum(κₑ.data.parent) for κₑ in diffusivities.κₑ)...)
