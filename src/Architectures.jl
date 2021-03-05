@@ -2,7 +2,7 @@ module Architectures
 
 export
     @hascuda,
-    AbstractArchitecture, CPU, GPU,
+    AbstractArchitecture, AbstractCPUArchitecture, AbstractGPUArchitecture, CPU, GPU,
     device, architecture, array_type, arch_array
 
 using CUDA
@@ -16,20 +16,35 @@ Abstract supertype for architectures supported by Oceananigans.
 """
 abstract type AbstractArchitecture end
 
+
+"""
+    AbstractCPUArchitecture
+
+Abstract supertype for CPU architectures supported by Oceananigans.
+"""
+abstract type AbstractCPUArchitecture <: AbstractArchitecture end
+
+"""
+    AbstractGPUArchitecture
+
+Abstract supertype for GPU architectures supported by Oceananigans.
+"""
+abstract type AbstractGPUArchitecture <: AbstractArchitecture end
+
 """
     CPU <: AbstractArchitecture
 
 Run Oceananigans on one CPU node. Uses multiple threads if the environment
 variable `JULIA_NUM_THREADS` is set.
 """
-struct CPU <: AbstractArchitecture end
+struct CPU <: AbstractCPUArchitecture end
 
 """
     GPU <: AbstractArchitecture
 
 Run Oceananigans on a single NVIDIA CUDA GPU.
 """
-struct GPU <: AbstractArchitecture end
+struct GPU <: AbstractGPUArchitecture end
 
 """
     @hascuda expr
@@ -41,8 +56,8 @@ macro hascuda(expr)
     return has_cuda() ? :($(esc(expr))) : :(nothing)
 end
 
-device(::CPU) = KernelAbstractions.CPU()
-device(::GPU) = KernelAbstractions.CUDADevice()
+device(::AbstractCPUArchitecture) = KernelAbstractions.CPU()
+device(::AbstractGPUArchitecture) = KernelAbstractions.CUDADevice()
 
 architecture(::Number)  = nothing
 architecture(::Array)   = CPU()

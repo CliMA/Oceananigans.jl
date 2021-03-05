@@ -7,6 +7,8 @@ export
     DistributedFFTBasedPoissonSolver,
     DistributedIncompressibleModel
 
+using Oceananigans.Utils
+
 include("distributed_utils.jl")
 include("multi_architectures.jl")
 include("halo_communication_bcs.jl")

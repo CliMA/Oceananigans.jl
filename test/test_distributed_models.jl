@@ -66,13 +66,13 @@ function run_triply_periodic_rank_connectivity_tests_with_141_ranks()
     @test isnothing(connectivity.bottom)
 
     # +---+
-    # | 0 |
-    # +---+
-    # | 1 |
+    # | 3 |
     # +---+
     # | 2 |
     # +---+
-    # | 3 |
+    # | 1 |
+    # +---+
+    # | 0 |
     # +---+
 
     if my_rank == 0
@@ -476,20 +476,19 @@ end
         # run_triply_periodic_halo_communication_tests_with_221_ranks()
     end
 
-    # @testset "Time stepping" begin
-    #     topo = (Periodic, Periodic, Periodic)
-    #     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    #     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
-    #     dm = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
-    #     model = dm.model
+    @testset "Time stepping" begin
+        topo = (Periodic, Periodic, Periodic)
+        full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+        arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
+        model = DistributedIncompressibleModel(architecture=arch, grid=full_grid)
 
-    #     time_step!(model, 1)
-    #     @test dm isa DistributedIncompressibleModel
-    #     @test model.clock.time == 1
+        time_step!(model, 1)
+        @test model isa IncompressibleModel
+        @test model.clock.time == 1
 
-    #     simulation = Simulation(model, Δt=1, stop_iteration=2)
-    #     run!(simulation)
-    #     @test dm isa DistributedIncompressibleModel
-    #     @test model.clock.time == 2
-    # end
+        simulation = Simulation(model, Δt=1, stop_iteration=2)
+        run!(simulation)
+        @test model isa IncompressibleModel
+        @test model.clock.time == 2
+    end
 end

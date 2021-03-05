@@ -5,14 +5,8 @@ using Oceananigans.Grids
 using Oceananigans.Grids: halo_size
 
 #####
-##### Distributed model struct and constructor
+##### Distributed incompressible model constructor
 #####
-
-struct DistributedIncompressibleModel{A, G, M}
-    architecture :: A
-            grid :: G
-           model :: M
-end
 
 function DistributedIncompressibleModel(; architecture, grid, boundary_conditions=nothing, model_kwargs...)
     my_rank = architecture.my_rank
@@ -21,14 +15,15 @@ function DistributedIncompressibleModel(; architecture, grid, boundary_condition
     my_connectivity = architecture.connectivity
 
     Nx, Ny, Nz = size(grid)
+    Lx, Ly, Lz = length(grid)
 
-    # Pull out endpoints for full model.
+    # Pull out endpoints for full grid.
     xL, xR = grid.xF[1], grid.xF[Nx+1]
     yL, yR = grid.yF[1], grid.yF[Ny+1]
     zL, zR = grid.zF[1], grid.zF[Nz+1]
-    Lx, Ly, Lz = length(grid)
 
     # Make sure we can put an integer number of grid points in each rank.
+    # Will generalize in the future.
     @assert isinteger(Nx / Rx)
     @assert isinteger(Ny / Ry)
     @assert isinteger(Nz / Rz)
@@ -73,23 +68,18 @@ function DistributedIncompressibleModel(; architecture, grid, boundary_condition
     p_bcs = PressureBoundaryConditions(my_grid)
     p_bcs = inject_halo_communication_boundary_conditions(p_bcs, my_rank, my_connectivity)
 
-    pHY′ = CenterField(child_architecture(architecture), my_grid, p_bcs)
-    pNHS = CenterField(child_architecture(architecture), my_grid, p_bcs)
+    pHY′ = CenterField(architecture, my_grid, p_bcs)
+    pNHS = CenterField(architecture, my_grid, p_bcs)
     pressures = (pHY′=pHY′, pNHS=pNHS)
 
     my_model = IncompressibleModel(;
-               architecture = child_architecture(architecture),
+               architecture = architecture,
                        grid = my_grid,
         boundary_conditions = communicative_bcs,
             pressure_solver = pressure_solver,
                   pressures = pressures,
-        model_kwargs...
+                       model_kwargs...
     )
 
-    return DistributedIncompressibleModel(architecture, grid, my_model)
-end
-
-function Base.show(io::IO, dm::DistributedIncompressibleModel)
-    print(io, "DistributedIncompressibleModel with ")
-    print(io, dm.architecture)
+    return my_model
 end

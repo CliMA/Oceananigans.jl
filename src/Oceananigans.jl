@@ -76,7 +76,7 @@ export
     ∂x, ∂y, ∂z, @at,
 
     # Distributed
-    MultiCPU,
+    MultiCPU, DistributedIncompressibleModel,
 
     # Utils
     prettytime

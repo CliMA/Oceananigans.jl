@@ -1,24 +1,9 @@
-import Oceananigans.Solvers: solve_for_pressure!
+using Oceananigans.Solvers: calculate_pressure_source_term_fft_based_solver!
 
-function solve_for_pressure!(pressure, solver::DistributedFFTBasedPoissonSolver, arch, grid, Δt, U★)
+import Oceananigans.Solvers: solve_for_pressure!, source_term_storage, source_term_kernel, solution_storage
 
-    RHS = first(solver.storage)
+source_term_storage(solver::DistributedFFTBasedPoissonSolver) = first(solver.storage)
 
-    rhs_event = launch!(arch, grid, :xyz,
-                        calculate_pressure_right_hand_side!, RHS, arch, grid, Δt, U★,
-                        dependencies = Event(device(arch)))
+source_term_kernel(::DistributedFFTBasedPoissonSolver) = calculate_pressure_source_term_fft_based_solver!
 
-    wait(device(arch), rhs_event)
-
-    solve_poisson_equation!(solver)
-
-    ϕ = first(solver.storage)
-
-    copy_event = launch!(arch, grid, :xyz,
-                         copy_pressure!, pressure, ϕ, arch, grid,
-                         dependencies = Event(device(arch)))
-
-    wait(device(arch), copy_event)
-
-    return nothing
-end
+solution_storage(solver::DistributedFFTBasedPoissonSolver) = first(solver.storage)
