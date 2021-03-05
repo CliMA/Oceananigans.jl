@@ -40,7 +40,7 @@ export
     FPlane, BetaPlane, NonTraditionalFPlane, NonTraditionalBetaPlane,
 
     # Buoyancy and equations of state
-    BuoyancyTracer, SeawaterBuoyancy,
+    BuoyancyModel, BuoyancyTracer, SeawaterBuoyancy,
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
 
     # Surface wave Stokes drift via Craik-Leibovich equations

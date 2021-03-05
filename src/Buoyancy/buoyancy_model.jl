@@ -10,3 +10,5 @@ function BuoyancyModel(model; gravity_unit_vector=(0, 0, 1))
 
     return BuoyancyModel(model, gravity_unit_vector)
 end
+
+required_tracers(bm::BuoyancyModel) = required_tracers(bm.model)
