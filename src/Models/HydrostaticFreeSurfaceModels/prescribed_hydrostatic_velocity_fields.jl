@@ -5,20 +5,9 @@
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: FunctionField
 
-
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.TimeSteppers: ab2_step_field! 
-using Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
-
-#=
-using Oceananigans.Models.HydrostaticFreeSurfaceModels:
-    HorizontalVelocityFields,
-    HydrostaticFreeSurfaceVelocityFields,
-    validate_velocity_boundary_conditions,
-    compute_w_from_continuity!,
-    hydrostatic_prognostic_fields,
-    calculate_hydrostatic_momentum_tendencies!
-=#
+import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.TimeSteppers: ab2_step_field! 
+import Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
 
 using Adapt
 
@@ -55,9 +44,9 @@ PrescribedVelocityFields(; u=zerofunc, v=zerofunc, w=zerofunc, parameters=nothin
 function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields,
                                               arch, grid, clock, bcs)
 
-    u = FunctionField{Face, Center, Center}(u, grid; clock=clock, parameters=velocities.parameters)
-    v = FunctionField{Center, Face, Center}(v, grid; clock=clock, parameters=velocities.parameters)
-    w = FunctionField{Center, Center, Face}(w, grid; clock=clock, parameters=velocities.parameters)
+    u = FunctionField{Face, Center, Center}(velocities.u, grid; clock=clock, parameters=velocities.parameters)
+    v = FunctionField{Center, Face, Center}(velocities.v, grid; clock=clock, parameters=velocities.parameters)
+    w = FunctionField{Center, Center, Face}(velocities.w, grid; clock=clock, parameters=velocities.parameters)
 
     return PrescribedVelocityFields(u, v, w, velocities.parameters)
 end
@@ -66,8 +55,9 @@ end
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
 
+ab2_step_free_surface!(::Nothing, args...) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
-FreeSurface(free_surface, ::PrescribedVelocityFields, arch, grid) = nothing
+FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, arch, grid) = nothing
 validate_velocity_boundary_conditions(::PrescribedVelocityFields) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, arch, grid) = nothing, nothing
