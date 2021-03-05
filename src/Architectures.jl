@@ -66,9 +66,9 @@ architecture(::CuArray) = GPU()
 array_type(::CPU) = Array
 array_type(::GPU) = CuArray
 
-arch_array(::CPU, A::Array) = A
-arch_array(::CPU, A::CuArray) = Array(A)
-arch_array(::GPU, A::Array) = CuArray(A)
-arch_array(::GPU, A::CuArray) = A
+arch_array(::AbstractCPUArchitecture, A::Array) = A
+arch_array(::AbstractCPUArchitecture, A::CuArray) = Array(A)
+arch_array(::AbstractGPUArchitecture, A::Array) = CuArray(A)
+arch_array(::AbstractGPUArchitecture, A::CuArray) = A
 
 end

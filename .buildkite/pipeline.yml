@@ -166,7 +166,7 @@ steps:
 ##### HydrostaticFreeSurfaceModel
 #####
 
-  - label: "💧 gpu hydrostatic free surface model tests"
+  - label: "🐡 gpu hydrostatic free surface model tests"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "hydrostatic_free_surface"
@@ -177,7 +177,7 @@ steps:
       architecture: GPU
     depends_on: "init_gpu"
 
-  - label: "💦 cpu hydrostatic free surface model tests"
+  - label: "🐠 cpu hydrostatic free surface model tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "hydrostatic_free_surface"
@@ -193,7 +193,7 @@ steps:
 ##### ShallowWaterModel
 #####
 
-  - label: "💧 gpu shallow water model tests"
+  - label: "🦑 gpu shallow water model tests"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "shallow_water"
@@ -204,7 +204,7 @@ steps:
       architecture: GPU
     depends_on: "init_gpu"
 
-  - label: "💦 cpu shallow water model tests"
+  - label: "🦐 cpu shallow water model tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "shallow_water"
@@ -337,7 +337,7 @@ steps:
 ##### Clean up
 #####
 
-  - label: "🧻 clean up gpu environment"
+  - label: "🧽 clean up gpu environment"
     command: "rm -rf $SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     agents:
       queue: Oceananigans
