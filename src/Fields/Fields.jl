@@ -1,10 +1,10 @@
 module Fields
 
 export
-    Face, Cell,
+    Face, Center,
     AbstractField, Field,
-    CellField, XFaceField, YFaceField, ZFaceField,
-    ReducedField, AveragedField, ComputedField, BackgroundField,
+    CenterField, XFaceField, YFaceField, ZFaceField,
+    ReducedField, AveragedField, ComputedField, KernelComputedField, BackgroundField,
     interior, interiorparent, data,
     xnode, ynode, znode, location,
     set!, compute!, @compute,
@@ -26,6 +26,7 @@ include("zero_field.jl")
 include("reduced_field.jl")
 include("averaged_field.jl")
 include("computed_field.jl")
+include("kernel_computed_field.jl")
 include("pressure_field.jl")
 include("function_field.jl")
 include("set!.jl")

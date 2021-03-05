@@ -1,3 +1,5 @@
+using Oceananigans.TimeSteppers: update_state!, calculate_pressure_correction!, pressure_correct_velocities!
+
 import Oceananigans.Fields: set!
 
 """
@@ -12,7 +14,7 @@ a function with arguments `(x, y, z)`, or any data type for which a
 Example
 =======
 ```julia
-model = IncompressibleModel(grid=RegularCartesianGrid(size=(32, 32, 32), length=(1, 1, 1))
+model = IncompressibleModel(grid=RegularRectilinearGrid(size=(32, 32, 32), length=(1, 1, 1))
 
 # Set u to a parabolic function of z, v to random numbers damped
 # at top and bottom, and T to some silly array of half zeros,
@@ -27,7 +29,7 @@ T₀[T₀ .< 0.5] .= 0
 set!(model, u=u₀, v=v₀, T=T₀)
 ```
 """
-function set!(model::IncompressibleModel; kwargs...)
+function set!(model::IncompressibleModel; enforce_incompressibility=true, kwargs...)
     for (fldname, value) in kwargs
         if fldname ∈ propertynames(model.velocities)
             ϕ = getproperty(model.velocities, fldname)
@@ -38,6 +40,14 @@ function set!(model::IncompressibleModel; kwargs...)
         end
         set!(ϕ, value)
     end
+
+    if enforce_incompressibility
+        FT = eltype(model.grid)
+        calculate_pressure_correction!(model, one(FT))
+        pressure_correct_velocities!(model, one(FT))
+    end
+
+    update_state!(model)
+
     return nothing
 end
-

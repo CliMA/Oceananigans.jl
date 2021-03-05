@@ -14,8 +14,10 @@
 #
 # First let's make sure we have all required packages installed.
 
-using Pkg
-pkg"add Oceananigans, JLD2, Plots"
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, JLD2, Plots"
+# ```
 
 # ## Using `Oceananigans.jl`
 #
@@ -30,10 +32,10 @@ using Oceananigans
 # A core Oceananigans type is `IncompressibleModel`. We build an `IncompressibleModel`
 # by passing it a `grid`, plus information about the equations we would like to solve.
 #
-# Below, we build a Cartesian grid with 128 grid points in the `z`-direction, where `z`
-# spans from `z = -0.5` to `z = 0.5`,
+# Below, we build a regular rectilinear grid with 128 grid points in the `z`-direction,
+# where `z` spans from `z = -0.5` to `z = 0.5`,
 
-grid = RegularCartesianGrid(size=(1, 1, 128), x=(0, 1), y=(0, 1), z=(-0.5, 0.5))
+grid = RegularRectilinearGrid(size=(1, 1, 128), x=(0, 1), y=(0, 1), z=(-0.5, 0.5))
 
 # We next specify a model with an `IsotropicDiffusivity`, which models either
 # molecular or turbulent diffusion,
@@ -69,7 +71,6 @@ set!(model, T=initial_temperature)
 # To see the new data in `model.tracers.T`, we plot it:
 
 using Plots
-using Oceananigans.Grids: znodes # for obtaining the z-coordinates of model.tracers.T
 
 z = znodes(model.tracers.T)
 
@@ -141,4 +142,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
          label="", xlabel="Temperature", ylabel="z", xlims=(0, 1))
 end
 
-gif(anim, "one_dimensional_diffusion.gif", fps = 15) # hide
+mp4(anim, "one_dimensional_diffusion.mp4", fps = 15) # hide

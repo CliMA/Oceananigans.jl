@@ -12,6 +12,7 @@ using KernelAbstractions
 using Oceananigans: AbstractModel
 using Oceananigans.Architectures: @hascuda, device
 using Oceananigans.Fields: TendencyFields
+using Oceananigans.LagrangianParticleTracking: update_particle_properties!
 using Oceananigans.Utils: work_layout
 
 """
@@ -31,9 +32,9 @@ Example
 
 julia> stepper = TimeStepper(:QuasiAdamsBashforth2, CPU(), grid, tracernames)
 """
-function TimeStepper(name::Symbol, args...)
+function TimeStepper(name::Symbol, args...; kwargs...)
     fullname = Symbol(name, :TimeStepper)
-    return eval(Expr(:call, fullname, args...))
+    return @eval $fullname($args...; $kwargs...)
 end
 
 # Fallback
@@ -49,5 +50,6 @@ include("clock.jl")
 include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
+include("correct_immersed_tendencies.jl")
 
 end # module

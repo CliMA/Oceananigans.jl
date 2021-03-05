@@ -117,7 +117,7 @@ end
 # Only numbers, arrays, and functions supported now.
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Number) = C
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
-@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(Cell, i, grid), ynode(Cell, j, grid), znode(Cell, k, grid))
+@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(Center, i, grid), ynode(Center, j, grid), znode(Center, k, grid))
 
 @inline function νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, buoyancy, U, C) where FT
     ijk = (i, j, k, grid)
@@ -211,9 +211,9 @@ end
 #####
 
 # Recall that filter widths are 2x the grid spacing in VAMD
-@inline Δᶠxᶜᶜᶜ(i, j, k, grid::RegularCartesianGrid) = 2 * grid.Δx
-@inline Δᶠyᶜᶜᶜ(i, j, k, grid::RegularCartesianGrid) = 2 * grid.Δy
-@inline Δᶠzᶜᶜᶜ(i, j, k, grid::RegularCartesianGrid) = 2 * grid.Δz
+@inline Δᶠxᶜᶜᶜ(i, j, k, grid) = 2 * Oceananigans.Operators.Δx(i, j, k, grid)
+@inline Δᶠyᶜᶜᶜ(i, j, k, grid) = 2 * Oceananigans.Operators.Δy(i, j, k, grid)
+@inline Δᶠzᶜᶜᶜ(i, j, k, grid) = 2 * Oceananigans.Operators.ΔzC(i, j, k, grid)
 
 for loc in (:ccf, :fcc, :cfc, :ffc, :cff, :fcf), ξ in (:x, :y, :z)
     Δ_loc = Symbol(:Δᶠ, ξ, :_, loc)

@@ -29,7 +29,7 @@ ic_name(::typeof(ϕ_Square))   = "Square"
 function setup_simulation(N, advection_scheme)
     L = 2000
     topology = (Periodic, Flat, Bounded)
-    grid = RegularCartesianGrid(topology=topology, size=(N, 1, N), halo=(5, 5, 5), extent=(L, L, L))
+    grid = RegularRectilinearGrid(topology=topology, size=(N, 1, N), halo=(5, 5, 5), extent=(L, L, L))
 
     model = IncompressibleModel(
                grid = grid,

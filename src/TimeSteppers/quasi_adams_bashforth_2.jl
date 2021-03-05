@@ -37,6 +37,7 @@ Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method
 pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
 """
 function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false)
+    Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
 
@@ -53,6 +54,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     tick!(model.clock, Δt)
     update_state!(model)
     store_tendencies!(model)
+    update_particle_properties!(model, Δt)
 
     return nothing
 end

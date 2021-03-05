@@ -131,7 +131,18 @@ Private = false
 Pages   = [
     "Grids/Grids.jl",
     "Grids/grid_utils.jl",
-    "Grids/regular_cartesian_grid.jl"
+    "Grids/regular_rectilinear_grid.jl"
+]
+```
+
+## Lagrangian particle tracking
+
+```@autodocs
+Modules = [Oceananigans.LagrangianParticleTracking]
+Private = false
+Pages   = [
+    "LagrangianParticleTracking/LagrangianParticleTracking.jl",
+    "LagrangianParticleTracking/advect_particles.jl"
 ]
 ```
 

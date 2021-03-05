@@ -1,56 +1,8 @@
-function set_velocity_tracer_fields(arch, grid, fieldname, value, answer)
-    model = IncompressibleModel(architecture=arch, float_type=eltype(grid), grid=grid)
-    kwarg = Dict(fieldname=>value)
-    set!(model; kwarg...)
-
-    if fieldname ∈ propertynames(model.velocities)
-        ϕ = getproperty(model.velocities, fieldname)
-    else
-        ϕ = getproperty(model.tracers, fieldname)
-    end
-
-    return interior(ϕ) ≈ answer
-end
-
-function initial_conditions_correctly_set(arch, FT)
-    model = IncompressibleModel(grid=RegularCartesianGrid(FT, size=(16, 16, 8), extent=(1, 2, 3)),
-                                architecture=arch, float_type=FT)
-
-    # Set initial condition to some basic function we can easily check for.
-    # We offset the functions by an integer so that we don't end up comparing
-    # zero values with other zero values. I was too lazy to pick clever functions.
-    u₀(x, y, z) = 1 + x + y + z
-    v₀(x, y, z) = 2 + sin(x * y * z)
-    w₀(x, y, z) = 3 + y * z
-    T₀(x, y, z) = 4 + tanh(x + y - z)
-    S₀(x, y, z) = 5
-
-    set!(model, u=u₀, v=v₀, w=w₀, T=T₀, S=S₀)
-
-    Nx, Ny, Nz = model.grid.Nx, model.grid.Ny, model.grid.Nz
-    xC, yC, zC = nodes(model.tracers.T)
-    xF, yF, zF = nodes((Face, Face, Face), model.grid)
-    u, v, w = model.velocities.u.data, model.velocities.v.data, model.velocities.w.data
-    T, S = model.tracers.T.data, model.tracers.S.data
-
-    all_values_match = true
-    for i in 1:Nx, j in 1:Ny, k in 1:Nz
-        values_match = ( u[i, j, k] ≈ 1 + xF[i] + yC[j] + zC[k]       &&
-                         v[i, j, k] ≈ 2 + sin(xC[i] * yF[j] * zC[k])  &&
-                         w[i, j, k] ≈ 3 + yC[j] * zF[k]               &&
-                         T[i, j, k] ≈ 4 + tanh(xC[i] + yC[j] - zC[k]) &&
-                         S[i, j, k] ≈ 5)
-        all_values_match = all_values_match & values_match
-    end
-
-    return all_values_match
-end
-
 @testset "Models" begin
     @info "Testing models..."
 
     @testset "Model constructor errors" begin
-        grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
         @test_throws TypeError IncompressibleModel(architecture=CPU, grid=grid)
         @test_throws TypeError IncompressibleModel(architecture=GPU, grid=grid)
         @test_throws TypeError IncompressibleModel(grid=grid, boundary_conditions=1)
@@ -69,7 +21,7 @@ end
             for arch in archs, FT in float_types
 		        arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
 
-                grid = RegularCartesianGrid(FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
+                grid = RegularRectilinearGrid(FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
                 model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
                 # Just testing that the model was constructed with no errors/crashes.
@@ -84,8 +36,8 @@ end
     @testset "Adjustment of halos in IncompressibleModel constructor" begin
         @info "  Testing adjustment of halos in IncompressibleModel constructor..."
 
-        default_grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 2, 3))
-        funny_grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 3, 4))
+        default_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
+        funny_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 3, 4))
 
         # Model ensures that halos are at least of size 1
         model = IncompressibleModel(grid=default_grid)
@@ -123,7 +75,7 @@ end
     @testset "Model construction with single tracer and nothing tracer" begin
         @info "  Testing model construction with single tracer and nothing tracer..."
         for arch in archs
-            grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 2, 3))
+            grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
 
             model = IncompressibleModel(grid=grid, architecture=arch, tracers=:c, buoyancy=nothing)
             @test model isa IncompressibleModel
@@ -136,10 +88,10 @@ end
     @testset "Non-dimensional model" begin
         @info "  Testing non-dimensional model construction..."
         for arch in archs, FT in float_types
-            grid = RegularCartesianGrid(FT, size=(16, 16, 2), extent=(3, 2, 1))
-            model = NonDimensionalModel(architecture=arch, float_type=FT, grid=grid, Re=1, Pr=1, Ro=Inf)
+            grid = RegularRectilinearGrid(FT, size=(16, 16, 2), extent=(3, 2, 1))
+            model = NonDimensionalImcompressibleModel(architecture=arch, float_type=FT, grid=grid, Re=1, Pr=1, Ro=Inf)
 
-            # Just testing that a NonDimensionalModel was constructed with no errors/crashes.
+            # Just testing that a NonDimensionalImcompressibleModel was constructed with no errors/crashes.
             @test model isa IncompressibleModel
         end
     end
@@ -150,18 +102,74 @@ end
             N = (4, 4, 4)
             L = (2π, 3π, 5π)
 
-            grid = RegularCartesianGrid(FT, size=N, extent=L)
-            x, y, z = nodes((Face, Cell, Cell), grid, reshape=true)
+            grid = RegularRectilinearGrid(FT, size=N, extent=L)
+            model = IncompressibleModel(architecture=arch, float_type=eltype(grid), grid=grid)
 
-            u₀(x, y, z) = x * y^2 * z^3
-            u_answer = @. x * y^2 * z^3
+            u, v, w = model.velocities
+            T, S = model.tracers
 
-            T₀ = rand(size(grid)...)
+            # Test setting an array
+            T₀ = rand(FT, size(grid)...)
             T_answer = deepcopy(T₀)
 
-            @test set_velocity_tracer_fields(arch, grid, :u, u₀, u_answer)
-            @test set_velocity_tracer_fields(arch, grid, :T, T₀, T_answer)
-            @test initial_conditions_correctly_set(arch, FT)
+            set!(model; enforce_incompressibility=false, T=T₀)
+
+            @test interior(T) ≈ T_answer
+
+            # Test setting functions
+            u₀(x, y, z) = 1 + x + y + z
+            v₀(x, y, z) = 2 + sin(x * y * z)
+            w₀(x, y, z) = 3 + y * z
+            T₀(x, y, z) = 4 + tanh(x + y - z)
+            S₀(x, y, z) = 5
+
+            set!(model, enforce_incompressibility=false, u=u₀, v=v₀, w=w₀, T=T₀, S=S₀)
+
+            xC, yC, zC = nodes((Center, Center, Center), model.grid; reshape=true)
+            xF, yF, zF = nodes((Face, Face, Face), model.grid; reshape=true)
+
+            # Form solution arrays
+            u_answer = u₀.(xF, yC, zC)
+            v_answer = v₀.(xC, yF, zC)
+            w_answer = w₀.(xC, yC, zF)
+            T_answer = T₀.(xC, yC, zC)
+            S_answer = S₀.(xC, yC, zC)
+
+            Nx, Ny, Nz = size(model.grid)
+
+            u_cpu = XFaceField(CPU(), grid)
+            v_cpu = YFaceField(CPU(), grid)
+            w_cpu = ZFaceField(CPU(), grid)
+            T_cpu = CenterField(CPU(), grid)
+            S_cpu = CenterField(CPU(), grid)
+
+            set!(u_cpu, u)
+            set!(v_cpu, v)
+            set!(w_cpu, w)
+            set!(T_cpu, T)
+            set!(S_cpu, S)
+
+            values_match = [
+                            all(u_answer .≈ interior(u_cpu)),
+                            all(v_answer .≈ interior(v_cpu)),
+                            all(w_answer[:, :, 2:Nz] .≈ interior(w_cpu)[:, :, 2:Nz]),
+                            all(T_answer .≈ interior(T_cpu)),
+                            all(S_answer .≈ interior(S_cpu)),
+                           ]
+
+            @test all(values_match)
+
+            # Test that update_state! works via u boundary conditions
+            @test u_cpu[1, 1, 1] == u_cpu[Nx+1, 1, 1]  # x-periodicity
+            @test u_cpu[1, 1, 1] == u_cpu[1, Ny+1, 1]  # y-periodicity
+            @test all(u_cpu[1:Nx, 1:Ny, 1] .== u_cpu[1:Nx, 1:Ny, 0])     # free slip at bottom
+            @test all(u_cpu[1:Nx, 1:Ny, Nz] .== u_cpu[1:Nx, 1:Ny, Nz+1]) # free slip at top
+
+            # Test that enforce_incompressibility works
+            set!(model, u=0, v=0, w=1, T=0, S=0)
+            ϵ = 10 * eps(FT)
+            set!(w_cpu, w)
+            @test all(abs.(interior(w_cpu)) .< ϵ)
         end
     end
 end

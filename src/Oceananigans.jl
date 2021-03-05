@@ -12,8 +12,10 @@ export
     OceananigansLogger,
 
     # Grids
+    Center, Face,
     Periodic, Bounded, Flat,
-    RegularCartesianGrid, VerticallyStretchedCartesianGrid,
+    RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RegularLatitudeLongitudeGrid,
+    xnodes, ynodes, znodes, nodes,
 
     # Advection schemes
     CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5,
@@ -27,8 +29,9 @@ export
     TracerBoundaryConditions, PressureBoundaryConditions,
 
     # Fields and field manipulation
-    Field, CellField, XFaceField, YFaceField, ZFaceField,
-    BackgroundField, interior, set!,
+    Field, CenterField, XFaceField, YFaceField, ZFaceField,
+    AveragedField, ComputedField, KernelComputedField, BackgroundField,
+    interior, interiorparent, set!, compute!,
 
     # Forcing functions
     Forcing, Relaxation, LinearTarget, GaussianMask,
@@ -40,37 +43,47 @@ export
     BuoyancyTracer, SeawaterBuoyancy,
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
 
-    # Surface waves via Craik-Leibovich equations
-    SurfaceWaves,
+    # Surface wave Stokes drift via Craik-Leibovich equations
+    UniformStokesDrift,
 
     # Turbulence closures
     IsotropicDiffusivity, AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
     ConstantSmagorinsky, AnisotropicMinimumDissipation,
 
+    # Lagrangian particle tracking
+    LagrangianParticles,
+
     # Models
-    IncompressibleModel, NonDimensionalModel, Clock,
+    IncompressibleModel, NonDimensionalIncompressibleModel, HydrostaticFreeSurfaceModel, fields,
 
     # Time stepping
-    time_step!, TimeStepWizard,
+    Clock, TimeStepWizard, time_step!,
 
     # Simulations
     Simulation, run!,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
+    # Diagnostics
+    NaNChecker, FieldMaximum,
+    CFL, AdvectiveCFL, DiffusiveCFL,
+
     # Output writers
-    FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer, restore_from_checkpoint,
+    FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
+    TimeInterval, IterationInterval, AveragedTimeInterval,
 
-    # Misc.
-    fields
+    # Abstract operations
+    ∂x, ∂y, ∂z, @at,
 
-# Standard library modules
+    # Utils
+    prettytime
+
+
 using Printf
 using Logging
 using Statistics
 using LinearAlgebra
 
-# Third-party modules
 using CUDA
 using Adapt
 using OffsetArrays
@@ -131,6 +144,7 @@ function fields end
 #####
 
 include("Architectures.jl")
+include("Units.jl")
 include("Grids/Grids.jl")
 include("Utils/Utils.jl")
 include("Logger.jl")
@@ -140,8 +154,9 @@ include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("Coriolis/Coriolis.jl")
 include("Buoyancy/Buoyancy.jl")
-include("SurfaceWaves.jl")
+include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
+include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("Solvers/Solvers.jl")
 include("Forcings/Forcings.jl")
 include("TimeSteppers/TimeSteppers.jl")
@@ -152,24 +167,29 @@ include("Simulations/Simulations.jl")
 include("AbstractOperations/AbstractOperations.jl")
 
 #####
-##### Re-export stuff from submodules
+##### Needed so we can export names from sub-modules at the top-level
 #####
 
 using .Logger
 using .Architectures
 using .Utils
+using .Advection
 using .Grids
 using .BoundaryConditions
 using .Fields
 using .Coriolis
 using .Buoyancy
-using .SurfaceWaves
+using .StokesDrift
 using .TurbulenceClosures
+using .LagrangianParticleTracking
 using .Solvers
 using .Forcings
 using .Models
 using .TimeSteppers
+using .Diagnostics
+using .OutputWriters
 using .Simulations
+using .AbstractOperations
 
 function __init__()
     threads = Threads.nthreads()

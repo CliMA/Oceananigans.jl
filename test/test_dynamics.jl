@@ -7,7 +7,7 @@ end
 function test_diffusion_simple(fieldname, timestepper)
 
     model = IncompressibleModel(timestepper = timestepper,
-                                       grid = RegularCartesianGrid(size=(1, 1, 16), extent=(1, 1, 1)),
+                                       grid = RegularRectilinearGrid(size=(1, 1, 16), extent=(1, 1, 1)),
                                     closure = IsotropicDiffusivity(ν=1, κ=1),
                                    coriolis = nothing,
                                     tracers = :c,
@@ -64,7 +64,7 @@ end
 function test_diffusion_cosine(fieldname, timestepper)
     Nz, Lz, κ, m = 128, π/2, 1, 2
 
-    grid = RegularCartesianGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
+    grid = RegularRectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
 
     model = IncompressibleModel(timestepper = timestepper,
                                        grid = grid,
@@ -73,7 +73,7 @@ function test_diffusion_cosine(fieldname, timestepper)
 
     field = get_model_field(fieldname, model)
 
-    zC = znodes(Cell, grid, reshape=true)
+    zC = znodes(Center, grid, reshape=true)
     interior(field) .= cos.(m * zC)
 
     diffusing_cosine(κ, m, z, t) = exp(-κ * m^2 * t) * cos(m * z)
@@ -134,7 +134,7 @@ function internal_wave_test(timestepper; N=128, Nt=10, background_stratification
     b₀(x, y, z) = b(x, y, z, 0)
 
     model = IncompressibleModel(timestepper = timestepper,
-                                       grid = RegularCartesianGrid(size=(N, 1, N), extent=(L, L, L)),
+                                       grid = RegularRectilinearGrid(size=(N, 1, N), extent=(L, L, L)),
                                     closure = IsotropicDiffusivity(ν=ν, κ=κ),
                                    buoyancy = BuoyancyTracer(),
                           background_fields = background_fields,
@@ -172,7 +172,7 @@ function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, bac
 
     background_fields = NamedTuple{Tuple(keys(background_fields))}(values(background_fields))
 
-    grid = RegularCartesianGrid(size=(N, N, 2), extent=(L, L, L))
+    grid = RegularRectilinearGrid(size=(N, N, 2), extent=(L, L, L))
     closure = IsotropicDiffusivity(ν=κ, κ=κ)
     model = IncompressibleModel(timestepper=timestepper, grid=grid, closure=closure,
                                 background_fields=background_fields)
@@ -209,7 +209,7 @@ function taylor_green_vortex_test(arch, timestepper; FT=Float64, N=64, Nt=10)
     model = IncompressibleModel(
         architecture = arch,
          timestepper = timestepper,
-                grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
+                grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
              closure = IsotropicDiffusivity(FT, ν=1, κ=0),  # Turn off diffusivity.
              tracers = nothing,
             buoyancy = nothing)
@@ -270,7 +270,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 topology[2] === Periodic && push!(fieldnames, :v)
                 topology[3] === Periodic && push!(fieldnames, :w)
 
-                grid = RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
+                grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
 
                 model = IncompressibleModel(timestepper = timestepper,
                                                    grid = grid,
@@ -301,7 +301,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 topology[2] === Periodic && push!(fieldnames, :v)
                 topology[3] === Periodic && push!(fieldnames, :w)
 
-                grid = RegularCartesianGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
+                grid = RegularRectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
 
                 model = IncompressibleModel(timestepper = timestepper,
                                                    grid = grid,

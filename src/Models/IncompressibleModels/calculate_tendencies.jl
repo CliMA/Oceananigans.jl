@@ -27,7 +27,7 @@ function calculate_tendencies!(model::IncompressibleModel)
                                                model.advection,
                                                model.coriolis,
                                                model.buoyancy,
-                                               model.surface_waves,
+                                               model.stokes_drift,
                                                model.closure,
                                                model.background_fields,
                                                model.velocities,
@@ -56,7 +56,7 @@ function calculate_interior_tendency_contributions!(tendencies,
                                                     advection,
                                                     coriolis,
                                                     buoyancy,
-                                                    surface_waves,
+                                                    stokes_drift,
                                                     closure,
                                                     background_fields,
                                                     velocities,
@@ -75,15 +75,15 @@ function calculate_interior_tendency_contributions!(tendencies,
 
     barrier = Event(device(arch))
 
-    Gu_event = calculate_Gu_kernel!(tendencies.u, grid, advection, coriolis, surface_waves, closure,
+    Gu_event = calculate_Gu_kernel!(tendencies.u, grid, advection, coriolis, stokes_drift, closure,
                                     buoyancy, background_fields, velocities, tracers, diffusivities,
                                     forcings, hydrostatic_pressure, clock, dependencies=barrier)
 
-    Gv_event = calculate_Gv_kernel!(tendencies.v, grid, advection, coriolis, surface_waves, closure,
+    Gv_event = calculate_Gv_kernel!(tendencies.v, grid, advection, coriolis, stokes_drift, closure,
                                     buoyancy, background_fields, velocities, tracers, diffusivities,
                                     forcings, hydrostatic_pressure, clock, dependencies=barrier)
 
-    Gw_event = calculate_Gw_kernel!(tendencies.w, grid, advection, coriolis, surface_waves, closure,
+    Gw_event = calculate_Gw_kernel!(tendencies.w, grid, advection, coriolis, stokes_drift, closure,
                                     background_fields, velocities, tracers, diffusivities,
                                     forcings, clock, dependencies=barrier)
 
@@ -114,7 +114,7 @@ end
                                grid,
                                advection,
                                coriolis,
-                               surface_waves,
+                               stokes_drift,
                                closure,
                                buoyancy,
                                background_fields,
@@ -127,7 +127,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves,
+    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, advection, coriolis, stokes_drift,
                                                 closure, buoyancy, background_fields, velocities, tracers,
                                                 diffusivities, forcings, hydrostatic_pressure, clock)
 end
@@ -137,7 +137,7 @@ end
                                grid,
                                advection,
                                coriolis,
-                               surface_waves,
+                               stokes_drift,
                                closure,
                                buoyancy,
                                background_fields,
@@ -150,7 +150,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves,
+    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, advection, coriolis, stokes_drift,
                                                 closure, buoyancy, background_fields, velocities, tracers,
                                                 diffusivities, forcings, hydrostatic_pressure, clock)
 end
@@ -160,7 +160,7 @@ end
                                grid,
                                advection,
                                coriolis,
-                               surface_waves,
+                               stokes_drift,
                                closure,
                                background_fields,
                                velocities,
@@ -171,7 +171,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, advection, coriolis, surface_waves,
+    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, advection, coriolis, stokes_drift,
                                                 closure, background_fields, velocities, tracers,
                                                 diffusivities, forcings, clock)
 end

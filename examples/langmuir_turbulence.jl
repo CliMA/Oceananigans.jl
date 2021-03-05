@@ -5,7 +5,7 @@
 #
 # > [McWilliams, J. C. et al., "Langmuir Turbulence in the ocean," Journal of Fluid Mechanics (1997)](https://www.cambridge.org/core/journals/journal-of-fluid-mechanics/article/langmuir-turbulence-in-the-ocean/638FD0E368140E5972144348DB930A38).
 #
-# This example demonstrates 
+# This example demonstrates
 #
 #   * How to run large eddy simulations with surface wave effects via the
 #     Craik-Leibovich approximation.
@@ -16,10 +16,13 @@
 #
 # First let's make sure we have all required packages installed.
 
-using Pkg
-pkg"add Oceananigans, JLD2, Plots"
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, JLD2, Plots"
+# ```
 
 using Oceananigans
+using Oceananigans.Units: minute, minutes, hours
 
 # ## Model set-up
 #
@@ -31,7 +34,7 @@ using Oceananigans
 # We create a grid with modest resolution. The grid extent is similar, but not
 # exactly the same as that in McWilliams et al. (1997).
 
-grid = RegularCartesianGrid(size=(32, 32, 48), extent=(128, 128, 96))
+grid = RegularRectilinearGrid(size=(32, 32, 48), extent=(128, 128, 96))
 
 # ### The Stokes Drift profile
 #
@@ -90,8 +93,6 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 # At the surface at ``z=0``, McWilliams et al. (1997) impose a wind stress
 # on ``u``,
 
-using Oceananigans.BoundaryConditions
-
 Qᵘ = -3.72e-5 # m² s⁻², surface kinematic momentum flux
 
 u_boundary_conditions = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
@@ -126,10 +127,6 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 # model for large eddy simulation. Because our Stokes drift does not vary in ``x, y``,
 # we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
-using Oceananigans.Advection
-using Oceananigans.Buoyancy: BuoyancyTracer
-using Oceananigans.SurfaceWaves: UniformStokesDrift
-
 model = IncompressibleModel(
            architecture = CPU(),
               advection = WENO5(),
@@ -139,7 +136,7 @@ model = IncompressibleModel(
                buoyancy = BuoyancyTracer(),
                coriolis = coriolis,
                 closure = AnisotropicMinimumDissipation(),
-          surface_waves = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
+           stokes_drift = UniformStokesDrift(∂z_uˢ=∂z_uˢ),
     boundary_conditions = (u=u_boundary_conditions, b=b_boundary_conditions),
 )
 
@@ -174,8 +171,6 @@ set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
 # We use the `TimeStepWizard` for adaptive time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0,
 
-using Oceananigans.Utils
-
 wizard = TimeStepWizard(cfl=1.0, Δt=45.0, max_change=1.1, max_Δt=1minute)
 
 # ### Nice progress messaging
@@ -183,23 +178,20 @@ wizard = TimeStepWizard(cfl=1.0, Δt=45.0, max_change=1.1, max_Δt=1minute)
 # We define a function that prints a helpful message with
 # maximum absolute value of ``u, v, w`` and the current wall clock time.
 
-using Oceananigans.Diagnostics, Printf
-
-umax = FieldMaximum(abs, model.velocities.u)
-vmax = FieldMaximum(abs, model.velocities.v)
-wmax = FieldMaximum(abs, model.velocities.w)
+using Printf
 
 wall_clock = time_ns()
 
 function print_progress(simulation)
     model = simulation.model
+    u, v, w = model.velocities
 
     ## Print a progress message
     msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
                    model.clock.iteration,
                    prettytime(model.clock.time),
                    prettytime(wizard.Δt),
-                   umax(), vmax(), wmax(),
+                   maximum(abs, u), maximum(abs, v), maximum(abs, w),
                    prettytime(1e-9 * (time_ns() - wall_clock))
                   )
 
@@ -222,8 +214,6 @@ simulation = Simulation(model, iteration_interval = 10,
 # We set up an output writer for the simulation that saves all velocity fields,
 # tracer fields, and the subgrid turbulent diffusivity.
 
-using Oceananigans.OutputWriters
-
 output_interval = 5minutes
 
 fields_to_output = merge(model.velocities, model.tracers, (νₑ=model.diffusivities.νₑ,))
@@ -238,8 +228,6 @@ simulation.output_writers[:fields] =
 #
 # We also set up output of time- and horizontally-averaged velocity field and
 # momentum fluxes,
-
-using Oceananigans.Fields
 
 u, v, w = model.velocities
 
@@ -271,8 +259,6 @@ k = searchsortedfirst(grid.zF[:], -8)
 nothing # hide
 
 # Making the coordinate arrays takes a few lines of code,
-
-using Oceananigans.Grids
 
 xw, yw, zw = nodes(model.velocities.w)
 xu, yu, zu = nodes(model.velocities.u)
@@ -381,9 +367,9 @@ anim = @animate for (i, iter) in enumerate(iterations)
     wxy_title = @sprintf("w(x, y, t) (m s⁻¹) at z=-8 m and t = %s ", prettytime(t))
     wxz_title = @sprintf("w(x, z, t) (m s⁻¹) at y=0 m and t = %s", prettytime(t))
     uxz_title = @sprintf("u(x, z, t) (m s⁻¹) at y=0 m and t = %s", prettytime(t))
-         
+
     plot(wxy_plot, B_plot, wxz_plot, U_plot, uxz_plot, fluxes_plot,
-         layout = Plots.grid(3, 2, widths=(0.7, 0.3)), size = (900, 1000),
+         layout = Plots.grid(3, 2, widths=(0.7, 0.3)), size = (900.5, 1000.5),
          title = [wxy_title "" wxz_title "" uxz_title ""])
 
     if iter == iterations[end]
@@ -392,4 +378,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
     end
 end
 
-gif(anim, "langmuir_turbulence.gif", fps = 8) # hide
+mp4(anim, "langmuir_turbulence.mp4", fps = 8) # hide

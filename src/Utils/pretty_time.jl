@@ -1,6 +1,8 @@
 using Printf
 using Dates: AbstractTime
 
+using Oceananigans.Units
+
 maybe_int(t) = isinteger(t) ? Int(t) : t
 
 """

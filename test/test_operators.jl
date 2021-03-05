@@ -1,5 +1,5 @@
 function test_function_differentiation(T=Float64)
-    grid = RegularCartesianGrid(T; size=(3, 3, 3), extent=(3, 3, 3))
+    grid = RegularRectilinearGrid(T; size=(3, 3, 3), extent=(3, 3, 3))
     ϕ = rand(T, 3, 3, 3)
     ϕ² = ϕ.^2
 
@@ -27,7 +27,7 @@ function test_function_differentiation(T=Float64)
 end
 
 function test_function_interpolation(T=Float64)
-    grid = RegularCartesianGrid(T; size=(3, 3, 3), extent=(3, 3, 3))
+    grid = RegularRectilinearGrid(T; size=(3, 3, 3), extent=(3, 3, 3))
     ϕ = rand(T, 3, 3, 3)
     ϕ² = ϕ.^2
 
@@ -57,6 +57,63 @@ end
 @testset "Operators" begin
     @info "Testing operators..."
 
+    @testset "Grid lengths, areas, and volume operators" begin
+        @info "  Testing grid lengths, areas, and volume operators..."
+
+        FT = Float64
+        grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(π, 2π, 3π))
+
+        @testset "Easterly lengths" begin
+            @info "    Testing easterly lengths..."
+            for δ in (Δx, Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ) 
+                @test δ(1, 1, 1, grid) == FT(π)
+            end
+        end
+
+        @testset "Westerly lengths" begin
+            @info "    Testing westerly lengths..."
+            for δ in (Δy, Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ) 
+                @test δ(1, 1, 1, grid) == FT(2π)
+            end
+        end
+
+        @testset "Vertical lengths" begin
+            @info "    Testing vertical lengths..."
+            for δ in (ΔzF, ΔzC)
+                @test δ(1, 1, 1, grid) == FT(3π)
+            end
+        end
+
+        @testset "East-normal areas in the yz-plane" begin
+            @info "    Testing areas with easterly normal in the yz-plane..."
+            for A in (Axᵃᵃᶜ, Axᵃᵃᶠ, Axᶠᶜᶜ)
+                @test A(1, 1, 1, grid) == FT(6 * π^2)
+            end
+        end
+
+        @testset "West-normal areas in the xz-plane" begin
+            @info "    Testing areas with westerly normal in the xz-plane..."
+            for A in (Ayᵃᵃᶜ, Ayᵃᵃᶠ, Ayᶜᶠᶜ)
+                @test A(1, 1, 1, grid) == FT(3 * π^2)
+            end
+        end
+
+        @testset "Horizontal areas in the xy-plane" begin
+            @info "    Testing horizontal areas in the xy-plane..."
+            for A in (Azᵃᵃᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ)
+                @test A(1, 1, 1, grid) == FT(2 * π^2)
+            end
+        end
+
+        @testset "Volumes" begin
+            @info "    Testing volumes..."
+            for V in (Vᵃᵃᶜ, Vᵃᵃᶠ, Vᶜᶜᶜ)
+                @test V(1, 1, 1, grid) == FT(6 * π^3)
+            end
+        end
+
+    end
+
     @testset "Function differentiation" begin
         @info "  Testing function differentiation..."
         @test test_function_differentiation()
@@ -74,7 +131,7 @@ end
         Lx, Ly, Lz = 100, 100, 100
 
         arch = CPU()
-        grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
 
         Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
         Tx, Ty, Tz = Nx+2Hx, Ny+2Hy, Nz+2Hz
@@ -85,7 +142,7 @@ end
 
         # A yz-slice with Nx==1.
         A2yz = OffsetArray(zeros(1+2Hx, Ty, Tz), 1-Hx:1+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)
-        grid_yz = RegularCartesianGrid(size=(1, Ny, Nz), extent=(Lx, Ly, Lz))
+        grid_yz = RegularRectilinearGrid(size=(1, Ny, Nz), extent=(Lx, Ly, Lz))
 
         # Manually fill in halos for the slice.
         A2yz[0:2, 0:Ny+1, 1:Nz] .= A3[1:1, 0:Ny+1, 1:Nz]
@@ -94,7 +151,7 @@ end
 
         # An xz-slice with Ny==1.
         A2xz = OffsetArray(zeros(Tx, 1+2Hy, Tz), 1-Hx:Nx+Hx, 1-Hy:1+Hy, 1-Hz:Nz+Hz)
-        grid_xz = RegularCartesianGrid(size=(Nx, 1, Nz), extent=(Lx, Ly, Lz))
+        grid_xz = RegularRectilinearGrid(size=(Nx, 1, Nz), extent=(Lx, Ly, Lz))
 
         # Manually fill in halos for the slice.
         A2xz[0:Nx+1, 0:2, 1:Nz] .= A3[0:Nx+1, 1:1, 1:Nz]

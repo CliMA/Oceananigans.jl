@@ -39,7 +39,7 @@ include("fill_halo_regions_value_gradient.jl")
 include("fill_halo_regions_normal_flow.jl")
 include("fill_halo_regions_periodic.jl")
 include("fill_halo_regions_flux.jl")
-include("fill_halo_regions_flat.jl")
+include("fill_halo_regions_nothing.jl")
 
 include("apply_flux_bcs.jl")
 

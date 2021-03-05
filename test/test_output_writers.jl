@@ -5,6 +5,8 @@ using Oceananigans.Diagnostics
 using Oceananigans.Fields
 using Oceananigans.OutputWriters
 
+using Dates: Millisecond
+using Oceananigans: write_output!
 using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC, ContinuousBoundaryFunction
 using Oceananigans.TimeSteppers: update_state!
 
@@ -42,12 +44,74 @@ end
 ##### NetCDFOutputWriter tests
 #####
 
+function run_DateTime_netcdf_tests(arch)
+    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    clock = Clock(time=DateTime(2021, 1, 1))
+    model = IncompressibleModel(architecture=arch, grid=grid, clock=clock)
+
+    Δt = 5days + 3hours + 44.123seconds
+    simulation = Simulation(model, Δt=Δt, stop_time=DateTime(2021, 2, 1))
+
+    filepath = "test_DateTime.nc"
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model), filepath=filepath, schedule=IterationInterval(1))
+
+    run!(simulation)
+
+    ds = NCDataset(filepath)
+    @test ds["time"].attrib["units"] == "seconds since 2000-01-01 00:00:00"
+
+    Nt = length(ds["time"])
+    @test Nt == 8
+
+    for n in 1:Nt-1
+        @test ds["time"][n] == DateTime(2021, 1, 1) + (n-1) * Millisecond(1000Δt)
+    end
+
+    @test ds["time"][Nt] == DateTime(2021, 2, 1)
+
+    close(ds)
+    rm(filepath)
+
+    return nothing
+end
+
+function run_TimeDate_netcdf_tests(arch)
+    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    clock = Clock(time=TimeDate(2021, 1, 1))
+    model = IncompressibleModel(architecture=arch, grid=grid, clock=clock)
+
+    Δt = 5days + 3hours + 44.123seconds
+    simulation = Simulation(model, Δt=Δt, stop_time=TimeDate(2021, 2, 1))
+
+    filepath = "test_TimeDate.nc"
+    simulation.output_writers[:cal] = NetCDFOutputWriter(model, fields(model), filepath=filepath, schedule=IterationInterval(1))
+
+    run!(simulation)
+
+    ds = NCDataset(filepath)
+    @test ds["time"].attrib["units"] == "seconds since 2000-01-01 00:00:00"
+
+    Nt = length(ds["time"])
+    @test Nt == 8
+
+    for n in 1:Nt-1
+        @test ds["time"][n] == DateTime(2021, 1, 1) + (n-1) * Millisecond(1000Δt)
+    end
+
+    @test ds["time"][Nt] == DateTime(2021, 2, 1)
+
+    close(ds)
+    rm(filepath)
+
+    return nothing
+end
+
 function run_thermal_bubble_netcdf_tests(arch)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
 
     topo = (Periodic, Periodic, Bounded)
-    grid = RegularCartesianGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
     simulation = Simulation(model, Δt=6, stop_iteration=10)
@@ -212,7 +276,7 @@ function run_thermal_bubble_netcdf_tests_with_halos(arch)
     Lx, Ly, Lz = 100, 100, 100
 
     topo = (Periodic, Periodic, Bounded)
-    grid = RegularCartesianGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
     simulation = Simulation(model, Δt=6, stop_iteration=10)
@@ -305,7 +369,7 @@ function run_netcdf_function_output_tests(arch)
     Δt = 1.25
     iters = 3
 
-    grid = RegularCartesianGrid(size=(N, N, N), extent=(L, 2L, 3L))
+    grid = RegularRectilinearGrid(size=(N, N, N), extent=(L, 2L, 3L))
     model = IncompressibleModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
     grid = model.grid
@@ -313,9 +377,9 @@ function run_netcdf_function_output_tests(arch)
     # Define scalar, vector, and 2D slice outputs
     f(model) = model.clock.time^2
 
-    g(model) = model.clock.time .* exp.(znodes(Cell, grid))
+    g(model) = model.clock.time .* exp.(znodes(Center, grid))
 
-    h(model) = model.clock.time .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+    h(model) = model.clock.time .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
                                     .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
 
     outputs = (scalar=f, profile=g, slice=h)
@@ -399,7 +463,7 @@ function run_netcdf_function_output_tests(arch)
     @test dimnames(ds["profile"]) == ("zC", "time")
 
     for n in 0:iters
-        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(Cell, grid))
+        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(Center, grid))
     end
 
     @test ds["slice"].attrib["longname"] == "Some slice"
@@ -408,7 +472,7 @@ function run_netcdf_function_output_tests(arch)
     @test dimnames(ds["slice"]) == ("xC", "yC", "time")
 
     for n in 0:iters
-        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
                                                  .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
     end
 
@@ -439,8 +503,8 @@ function run_netcdf_function_output_tests(arch)
     @test ds["scalar"][:] == [(n*Δt)^2 for n in 0:iters]
 
     for n in 0:iters
-        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(Cell, grid))
-        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(Cell, grid, reshape=true)[:, :, 1])
+        @test ds["profile"][:, n+1] == n*Δt .* exp.(znodes(Center, grid))
+        @test ds["slice"][:, :, n+1] == n*Δt .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
                                                  .* cos.(ynodes(Face, grid, reshape=true)[:, :, 1]))
     end
 
@@ -531,7 +595,7 @@ function jld2_sliced_field_output(model)
 end
 
 function run_jld2_file_splitting_tests(arch)
-    model = IncompressibleModel(architecture=arch, grid=RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1)))
+    model = IncompressibleModel(architecture=arch, grid=RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
 
     function fake_bc_init(file, model)
@@ -609,7 +673,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     true_model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
 
@@ -690,7 +754,7 @@ function run_thermal_bubble_checkpointer_tests(arch)
 end
 
 function run_checkpoint_with_function_bcs_tests(arch)
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
     @inline some_flux(x, y, t) = 2x + exp(y)
     top_u_bc = top_T_bc = FluxBoundaryCondition(some_flux)
@@ -766,7 +830,7 @@ function run_checkpoint_with_function_bcs_tests(arch)
 end
 
 function run_cross_architecture_checkpointer_tests(arch1, arch2)
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
     model = IncompressibleModel(architecture=arch1, grid=grid)
     set!(model, u=π/2, v=ℯ, T=Base.MathConstants.γ, S=Base.MathConstants.φ)
 
@@ -796,6 +860,20 @@ function run_cross_architecture_checkpointer_tests(arch1, arch2)
     # Test that the restored model can be time stepped
     time_step!(restored_model, 1)
     @test restored_model isa IncompressibleModel
+
+    return nothing
+end
+
+function run_checkpointer_cleanup_tests(arch)
+    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    model = IncompressibleModel(architecture=arch, grid=grid)
+    simulation = Simulation(model, Δt=0.2, stop_iteration=10)
+
+    simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(3), cleanup=true)
+    run!(simulation)
+
+    [@test !isfile("checkpoint_iteration$i.jld2") for i in 1:10 if i != 9]
+    @test isfile("checkpoint_iteration9.jld2")
 
     return nothing
 end
@@ -976,7 +1054,7 @@ end
 function run_netcdf_time_averaging_tests(arch)
     topo = (Periodic, Periodic, Periodic)
     domain = (x=(0, 1), y=(0, 1), z=(0, 1))
-    grid = RegularCartesianGrid(topology=topo, size=(4, 4, 4); domain...)
+    grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 4); domain...)
 
     λ(x, y, z) = x + (1 - y)^2 + tanh(z)
     Fc(x, y, z, t, c) = - λ(x, y, z) * c
@@ -1070,7 +1148,7 @@ function run_netcdf_time_averaging_tests(arch)
 end
 
 function run_netcdf_output_alignment_tests(arch)
-    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = IncompressibleModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=0.2, stop_time=40)
 
@@ -1114,7 +1192,7 @@ end
 
     for arch in archs
         # Some tests can reuse this same grid and model.
-        grid = RegularCartesianGrid(size=(4, 4, 4), extent=(1, 1, 1),
+        grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1),
                                     topology=(Periodic, Periodic, Bounded))
 
         model = IncompressibleModel(architecture=arch, grid=grid)
@@ -1127,6 +1205,8 @@ end
 
         @testset "NetCDF [$(typeof(arch))]" begin
             @info "  Testing NetCDF output writer [$(typeof(arch))]..."
+            run_DateTime_netcdf_tests(arch)
+            run_TimeDate_netcdf_tests(arch)
             run_thermal_bubble_netcdf_tests(arch)
             run_thermal_bubble_netcdf_tests_with_halos(arch)
             run_netcdf_function_output_tests(arch)
@@ -1150,6 +1230,8 @@ end
 
             @hascuda run_cross_architecture_checkpointer_tests(CPU(), GPU())
             @hascuda run_cross_architecture_checkpointer_tests(GPU(), CPU())
+
+            run_checkpointer_cleanup_tests(arch)
         end
 
         @testset "Dependency adding [$(typeof(arch))]" begin

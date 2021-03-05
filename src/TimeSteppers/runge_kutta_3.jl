@@ -51,6 +51,7 @@ achieve a single timestep. A pressure correction step is applied at each interme
 stage.
 """
 function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
+    Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
     model.clock.iteration == 0 && update_state!(model)
@@ -72,6 +73,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
     calculate_tendencies!(model)
 
+    correct_immersed_tendencies!(model, Δt, γ¹, 0)
+
     rk3_substep!(model, Δt, γ¹, nothing)
 
     calculate_pressure_correction!(model, first_stage_Δt)
@@ -80,12 +83,15 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     tick!(model.clock, first_stage_Δt; stage=true)
     store_tendencies!(model)
     update_state!(model)
+    update_particle_properties!(model, first_stage_Δt)
 
     #
     # Second stage
     #
 
     calculate_tendencies!(model)
+
+    correct_immersed_tendencies!(model, Δt, γ², ζ²)
 
     rk3_substep!(model, Δt, γ², ζ²)
 
@@ -95,12 +101,15 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     tick!(model.clock, second_stage_Δt; stage=true)
     store_tendencies!(model)
     update_state!(model)
+    update_particle_properties!(model, second_stage_Δt)
 
     #
     # Third stage
     #
 
     calculate_tendencies!(model)
+    
+    correct_immersed_tendencies!(model, Δt, γ³, ζ³)
 
     rk3_substep!(model, Δt, γ³, ζ³)
 
@@ -109,6 +118,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
     tick!(model.clock, third_stage_Δt)
     update_state!(model)
+    update_particle_properties!(model, third_stage_Δt)
 
     return nothing
 end

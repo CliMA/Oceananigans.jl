@@ -1,6 +1,6 @@
 # # Two dimensional turbulence example
 #
-# In this example, we initialize a random velocity field and observe its turbulent decay 
+# In this example, we initialize a random velocity field and observe its turbulent decay
 # in a two-dimensional domain. This example demonstrates:
 #
 #   * How to run a model with no tracers and no buoyancy model.
@@ -11,8 +11,10 @@
 #
 # First let's make sure we have all required packages installed.
 
-using Pkg
-pkg"add Oceananigans, JLD2, Plots"
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, JLD2, Plots"
+# ```
 
 # ## Model setup
 
@@ -20,11 +22,11 @@ pkg"add Oceananigans, JLD2, Plots"
 # a fifth-order advection scheme, third-order Runge-Kutta time-stepping,
 # and a small isotropic viscosity.
 
-using Oceananigans, Oceananigans.Advection
+using Oceananigans
 
-grid = RegularCartesianGrid(size=(128, 128, 1), extent=(2π, 2π, 2π))
+grid = RegularRectilinearGrid(size=(128, 128, 1), extent=(2π, 2π, 2π))
 
-model = IncompressibleModel(timestepper = :RungeKutta3, 
+model = IncompressibleModel(timestepper = :RungeKutta3,
                               advection = UpwindBiasedFifthOrder(),
                                    grid = grid,
                                buoyancy = nothing,
@@ -46,14 +48,12 @@ set!(model, u=u₀, v=u₀)
 
 # ## Computing vorticity and speed
 
-using Oceananigans.Fields, Oceananigans.AbstractOperations
-
-# To make our equations prettier, we unpack `u`, `v`, and `w` from 
+# To make our equations prettier, we unpack `u`, `v`, and `w` from
 # the `NamedTuple` model.velocities:
 u, v, w = model.velocities
 
 # Next we create two objects called `ComputedField`s that calculate
-# _(i)_ vorticity that measures the rate at which the fluid rotates 
+# _(i)_ vorticity that measures the rate at which the fluid rotates
 # and is defined as
 #
 # ```math
@@ -85,8 +85,6 @@ simulation = Simulation(model, Δt=0.2, stop_time=50, iteration_interval=100, pr
 #
 # We set up an output writer for the simulation that saves the vorticity every 20 iterations.
 
-using Oceananigans.OutputWriters
-
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ω=ω_field, s=s_field),
                                                       schedule = TimeInterval(2),
                                                       prefix = "two_dimensional_turbulence",
@@ -110,8 +108,6 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 
 # Construct the ``x, y`` grid for plotting purposes,
 
-using Oceananigans.Grids
-
 xω, yω, zω = nodes(ω_field)
 xs, ys, zs = nodes(s_field)
 nothing # hide
@@ -125,7 +121,7 @@ using Plots
 anim = @animate for (i, iteration) in enumerate(iterations)
 
     @info "Plotting frame $i from iteration $iteration..."
-    
+
     t = file["timeseries/t/$iteration"]
     ω_snapshot = file["timeseries/ω/$iteration"][:, :, 1]
     s_snapshot = file["timeseries/s/$iteration"][:, :, 1]
@@ -138,7 +134,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
 
     kwargs = (xlabel="x", ylabel="y", aspectratio=1, linewidth=0, colorbar=true,
               xlims=(0, model.grid.Lx), ylims=(0, model.grid.Ly))
-              
+
     ω_plot = contourf(xω, yω, clamp.(ω_snapshot', -ω_lim, ω_lim);
                        color = :balance,
                       levels = ω_levels,
@@ -154,4 +150,4 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     plot(ω_plot, s_plot, title=["Vorticity" "Speed"], layout=(1, 2), size=(1200, 500))
 end
 
-gif(anim, "two_dimensional_turbulence.gif", fps = 8) # hide
+mp4(anim, "two_dimensional_turbulence.mp4", fps = 8) # hide

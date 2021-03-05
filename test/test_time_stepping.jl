@@ -5,14 +5,14 @@ using Oceananigans.TimeSteppers: Clock
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
     extent = Tuple(1 for i = 1:topological_tuple_length(topology...))
-    grid = RegularCartesianGrid(size=size, extent=extent, topology=topology)
+    grid = RegularRectilinearGrid(size=size, extent=extent, topology=topology)
     model = IncompressibleModel(grid=grid, architecture=arch)
     time_step!(model, 1, euler=true)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
 function time_stepping_works_with_coriolis(arch, FT, Coriolis)
-    grid = RegularCartesianGrid(FT, size=(1, 1, 1), extent=(1, 2, 3))
+    grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, 2, 3))
     c = Coriolis(FT, latitude=45)
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, coriolis=c)
 
@@ -23,7 +23,7 @@ end
 
 function time_stepping_works_with_closure(arch, FT, Closure)
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
-    grid = RegularCartesianGrid(FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
+    grid = RegularRectilinearGrid(FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
 
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, closure=Closure(FT))
     time_step!(model, 1, euler=true)
@@ -33,21 +33,21 @@ end
 
 function time_stepping_works_with_advection_scheme(arch, advection_scheme)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
-    grid = RegularCartesianGrid(size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
+    grid = RegularRectilinearGrid(size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
     model = IncompressibleModel(grid=grid, architecture=arch, advection=advection_scheme)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
 function time_stepping_works_with_nothing_closure(arch, FT)
-    grid = RegularCartesianGrid(FT; size=(1, 1, 1), extent=(1, 2, 3))
+    grid = RegularRectilinearGrid(FT; size=(1, 1, 1), extent=(1, 2, 3))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, closure=nothing)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
 function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
-    grid = RegularCartesianGrid(FT; size=(1, 1, 1), extent=(1, 2, 3))
+    grid = RegularRectilinearGrid(FT; size=(1, 1, 1), extent=(1, 2, 3))
 
     eos = EOS()
     b = SeawaterBuoyancy(equation_of_state=eos)
@@ -62,7 +62,7 @@ function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
 
     # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
-    grid = RegularCartesianGrid(FT, size=(13, 17, 19), extent=(1, 2, 3))
+    grid = RegularRectilinearGrid(FT, size=(13, 17, 19), extent=(1, 2, 3))
 
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, forcing=(T=add_ones,))
     time_step!(model, 1, euler=true)
@@ -92,13 +92,13 @@ function incompressible_in_time(arch, FT, Nt, timestepper)
     Nx, Ny, Nz = 32, 32, 32
     Lx, Ly, Lz = 10, 10, 10
 
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, timestepper=timestepper)
 
     grid = model.grid
     u, v, w = model.velocities
 
-    div_U = CellField(FT, arch, grid, TracerBoundaryConditions(grid))
+    div_U = CenterField(FT, arch, grid, TracerBoundaryConditions(grid))
 
     # Just add a temperature perturbation so we get some velocity field.
     @. model.tracers.T.data[8:24, 8:24, 8:24] += 0.01
@@ -139,7 +139,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     νz, κz = α*νh, α*κh
 
     topology = (Periodic, Bounded, Bounded)
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model = IncompressibleModel(architecture = arch, float_type = FT, grid = grid,
                                 closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz))
 
@@ -165,7 +165,7 @@ end
 
 function time_stepping_with_background_fields(arch)
 
-    grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
     background_u(x, y, z, t) = π
     background_v(x, y, z, t) = sin(x) * cos(y) * exp(t)
@@ -183,11 +183,11 @@ function time_stepping_with_background_fields(arch)
 
     time_step!(model, 1, euler=true)
 
-    return location(model.background_fields.velocities.u) === (Face, Cell, Cell) &&
-           location(model.background_fields.velocities.v) === (Cell, Face, Cell) &&
-           location(model.background_fields.velocities.w) === (Cell, Cell, Face) &&
-           location(model.background_fields.tracers.T) === (Cell, Cell, Cell) &&
-           location(model.background_fields.tracers.S) === (Cell, Cell, Cell)
+    return location(model.background_fields.velocities.u) === (Face, Center, Center) &&
+           location(model.background_fields.velocities.v) === (Center, Face, Center) &&
+           location(model.background_fields.velocities.w) === (Center, Center, Face) &&
+           location(model.background_fields.tracers.T) === (Center, Center, Center) &&
+           location(model.background_fields.tracers.S) === (Center, Center, Center)
 end
 
 Planes = (FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane)
@@ -197,7 +197,12 @@ Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             SmagorinskyLilly, BlasiusSmagorinsky,
             AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
 
-advection_schemes = (CenteredSecondOrder(), UpwindBiasedThirdOrder(), CenteredFourthOrder(), UpwindBiasedFifthOrder(), WENO5())
+advection_schemes = (nothing,
+                     CenteredSecondOrder(),
+                     UpwindBiasedThirdOrder(),
+                     CenteredFourthOrder(),
+                     UpwindBiasedFifthOrder(),
+                     WENO5())
 
 timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
@@ -208,13 +213,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         @testset "Time stepping with DateTimes [$(typeof(arch)), $FT]" begin
             @info "  Testing time stepping with datetime clocks [$(typeof(arch)), $FT]"
 
-            model = IncompressibleModel(grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)),
+            model = IncompressibleModel(grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)),
                                         clock = Clock(time=DateTime(2020)))
 
             time_step!(model, 7.883)
             @test model.clock.time == DateTime("2020-01-01T00:00:07.883")
 
-            model = IncompressibleModel(grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)),
+            model = IncompressibleModel(grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)),
                                         clock = Clock(time=TimeDate(2020)))
 
             time_step!(model, 123e-9)  # 123 nanoseconds
