@@ -1,6 +1,6 @@
 using Oceananigans: CPU, GPU
 using Oceananigans.Models: HydrostaticFreeSurfaceModel
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields
 using Oceananigans.Grids: Periodic, Bounded
 
 function time_stepping_hydrostatic_free_surface_model_works(; architecture,
@@ -129,28 +129,27 @@ end
         end
 
         @testset "Time-stepping HydrostaticFreeSurfaceModels with PrescribedVelocityFields [$arch]" begin
-            @info "  Testing time-stepping HydrostaticFreeSurfaceModels with PrescribedVelocityFields [$arch]"...
+            @info "  Testing time-stepping HydrostaticFreeSurfaceModels with PrescribedVelocityFields [$arch]..."
 
-                # Non-parameterized functions 
-                u(x, y, z, t) = 1
-                v(x, y, z, t) = exp(z) 
-                w(x, y, z, t) = sin(z) 
-                velocities = PrescribedVelocityFields(u=u, v=v, w=w)
+            # Non-parameterized functions
+            u(x, y, z, t) = 1
+            v(x, y, z, t) = exp(z)
+            w(x, y, z, t) = sin(z)
+            velocities = PrescribedVelocityFields(u=u, v=v, w=w)
 
-                @test time_stepping_hydrostatic_free_surface_model_works(architecture = arch,
-                                                                         advection = nothing,
-                                                                         velocities = velocities)
-                parameters = (U=1, m=0.1, W=0.001)
-                u(x, y, z, t, p) = p.U
-                v(x, y, z, t, p) = exp(p.m * z) 
-                w(x, y, z, t, p) = p.W * sin(z) 
+            @test time_stepping_hydrostatic_free_surface_model_works(architecture = arch,
+                                                                     advection = nothing,
+                                                                     velocities = velocities)
+            parameters = (U=1, m=0.1, W=0.001)
+            u(x, y, z, t, p) = p.U
+            v(x, y, z, t, p) = exp(p.m * z)
+            w(x, y, z, t, p) = p.W * sin(z)
 
-                velocities = PrescribedVelocityFields(u=u, v=v, w=w, parameters=parameters)
+            velocities = PrescribedVelocityFields(u=u, v=v, w=w, parameters=parameters)
 
-                @test time_stepping_hydrostatic_free_surface_model_works(architecture = arch,
-                                                                         advection = nothing,
-                                                                         velocities = velocities)
-            end
+            @test time_stepping_hydrostatic_free_surface_model_works(architecture = arch,
+                                                                     advection = nothing,
+                                                                     velocities = velocities)
         end
 
         @testset "HydrostaticFreeSurfaceModel with tracers and forcings [$arch]" begin
