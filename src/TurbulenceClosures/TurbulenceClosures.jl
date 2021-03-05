@@ -79,22 +79,6 @@ tensor diffusivities.
 abstract type AbstractTensorDiffusivity <: AbstractTurbulenceClosure end
 
 """
-    AbstractSmagorinsky{FT} <: AbstractIsotropicDiffusivity
-
-Abstract supertype for large eddy simulation models based off the model described
-by Smagorinsky with model parameters stored as properties of type `FT`.
-"""
-abstract type AbstractSmagorinsky{FT} <: AbstractIsotropicDiffusivity end
-
-"""
-    AbstractAnisotropicMinimumDissipation{FT} <: AbstractIsotropicDiffusivity
-
-Abstract supertype for large eddy simulation models based on the anisotropic minimum
-dissipation principle with model parameters stored as properties of type `FT`.
-"""
-abstract type AbstractAnisotropicMinimumDissipation{FT} <: AbstractIsotropicDiffusivity end
-
-"""
     AbstractLeith{FT} <: AbstractIsotropicDiffusivity
 
 Abstract supertype for large eddy simulation models based on the Leith viscosity
@@ -169,9 +153,7 @@ include("turbulence_closure_implementations/horizontally_curvilinear_anistropic_
 include("turbulence_closure_implementations/anisotropic_biharmonic_diffusivity.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 include("turbulence_closure_implementations/smagorinsky_lilly.jl")
-include("turbulence_closure_implementations/blasius_smagorinsky.jl")
-include("turbulence_closure_implementations/verstappen_anisotropic_minimum_dissipation.jl")
-include("turbulence_closure_implementations/rozema_anisotropic_minimum_dissipation.jl")
+include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
 
 include("diffusivity_fields.jl")
 include("turbulence_closure_diagnostics.jl")
@@ -179,13 +161,6 @@ include("turbulence_closure_diagnostics.jl")
 #####
 ##### Some value judgements here
 #####
-
-"""
-    AnisotropicMinimumDissipation
-
-An alias for `VerstappenAnisotropicMinimumDissipation`.
-"""
-const AnisotropicMinimumDissipation = VerstappenAnisotropicMinimumDissipation
 
 """
     ConstantSmagorinsky

@@ -8,7 +8,7 @@
 
 Parameters for the Smagorinsky-Lilly turbulence closure.
 """
-struct SmagorinskyLilly{FT, P, K} <: AbstractSmagorinsky{FT}
+struct SmagorinskyLilly{FT, P, K} <: AbstractIsotropicDiffusivity
      C :: FT
     Cb :: FT
     Pr :: P

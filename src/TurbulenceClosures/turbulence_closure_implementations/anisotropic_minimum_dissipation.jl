@@ -1,25 +1,26 @@
 """
-    VerstappenAnisotropicMinimumDissipation{FT} <: AbstractAnisotropicMinimumDissipation{FT}
+    AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure
 
-Parameters for the anisotropic minimum dissipation large eddy simulation model proposed by
-Verstappen (2018) and described by Vreugdenhil & Taylor (2018).
+Parameters for the "anisotropic minimum dissipation" turbulence closure for large eddy simulation
+proposed originally by Rozema et al. (2015) and Abkar and Moin (2017), and then modified
+by Verstappen (2018), and finally described and validated for by Vreugdenhil & Taylor (2018).
 """
-struct VerstappenAnisotropicMinimumDissipation{FT, PK, PN, K} <: AbstractAnisotropicMinimumDissipation{FT}
+struct AnisotropicMinimumDissipation{FT, PK, PN, K} <: AbstractIsotropicDiffusivity
     Cν :: PN
     Cκ :: PK
     Cb :: FT
      ν :: FT
      κ :: K
 
-    function VerstappenAnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ) where FT
+    function AnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ) where FT
         return new{FT, typeof(Cκ), typeof(Cν), typeof(κ)}(Cν, Cκ, Cb, ν, convert_diffusivity(FT, κ))
     end
 end
 
-const VAMD = VerstappenAnisotropicMinimumDissipation
+const VAMD = AnisotropicMinimumDissipation
 
 Base.show(io::IO, closure::VAMD{FT}) where FT =
-    print(io, "VerstappenAnisotropicMinimumDissipation{$FT} turbulence closure with:\n",
+    print(io, "AnisotropicMinimumDissipation{$FT} turbulence closure with:\n",
               "           Poincaré constant for momentum eddy viscosity Cν: ", closure.Cν, '\n',
               "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, '\n',
               "                        Buoyancy modification multiplier Cb: ", closure.Cb, '\n',
@@ -27,10 +28,10 @@ Base.show(io::IO, closure::VAMD{FT}) where FT =
               "             Background kinematic viscosity for momentum, ν: ", closure.ν)
 
 """
-    VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
+    AnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
                                             Cb=0.0, ν=ν₀, κ=κ₀)
 
-Returns parameters of type `FT` for the `VerstappenAnisotropicMinimumDissipation`
+Returns parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
 
 Keyword arguments
@@ -58,7 +59,7 @@ Example
 =======
 
 julia> pretty_diffusive_closure = AnisotropicMinimumDissipation(C=1/2)
-VerstappenAnisotropicMinimumDissipation{Float64} turbulence closure with:
+AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.5
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.5
                         Buoyancy modification multiplier Cb: 0.0
@@ -71,7 +72,7 @@ julia> surface_enhanced_tracer_C(x, y, z) = 1/12 * (1 + exp((z + Δz/2) / 8Δz))
 surface_enhanced_tracer_C (generic function with 1 method)
 
 julia> fancy_closure = AnisotropicMinimumDissipation(Cκ=surface_enhanced_tracer_C)
-VerstappenAnisotropicMinimumDissipation{Float64} turbulence closure with:
+AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: surface_enhanced_tracer_C
                         Buoyancy modification multiplier Cb: 0.0
@@ -79,7 +80,7 @@ VerstappenAnisotropicMinimumDissipation{Float64} turbulence closure with:
              Background kinematic viscosity for momentum, ν: 1.05e-6
 
 julia> tracer_specific_closure = AnisotropicMinimumDissipation(Cκ=(c₁=1/12, c₂=1/6))
-VerstappenAnisotropicMinimumDissipation{Float64} turbulence closure with:
+AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: (c₁ = 0.08333333333333333, c₂ = 0.16666666666666666)
                         Buoyancy modification multiplier Cb: 0.0
@@ -95,18 +96,18 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     production of small, unresolved scales in a large-eddy simulation of turbulence?",
     Computers & Fluids 176, pp. 276-284.
 """
-function VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
+function AnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
                                                  Cb=0.0, ν=ν₀, κ=κ₀)
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
 
-    return VerstappenAnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ)
+    return AnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ)
 end
 
-function with_tracers(tracers, closure::VerstappenAnisotropicMinimumDissipation{FT}) where FT
+function with_tracers(tracers, closure::AnisotropicMinimumDissipation{FT}) where FT
     κ = tracer_diffusivities(tracers, closure.κ)
     Cκ = tracer_diffusivities(tracers, closure.Cκ)
-    return VerstappenAnisotropicMinimumDissipation{FT}(closure.Cν, Cκ, closure.Cb, closure.ν, κ)
+    return AnisotropicMinimumDissipation{FT}(closure.Cν, Cκ, closure.Cb, closure.ν, κ)
 end
 
 #####
