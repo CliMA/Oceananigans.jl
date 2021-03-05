@@ -12,7 +12,7 @@ mpi_ranks = MPI.Comm_size(comm)
 ##### Multi architectures and rank connectivity
 #####
 
-function run_triply_periodic_rank_connectivity_tests_with_411_ranks()
+function test_triply_periodic_rank_connectivity_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
@@ -49,7 +49,7 @@ function run_triply_periodic_rank_connectivity_tests_with_411_ranks()
     return nothing
 end
 
-function run_triply_periodic_rank_connectivity_tests_with_141_ranks()
+function test_triply_periodic_rank_connectivity_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
@@ -92,7 +92,7 @@ function run_triply_periodic_rank_connectivity_tests_with_141_ranks()
     return nothing
 end
 
-function run_triply_periodic_rank_connectivity_tests_with_114_ranks()
+function test_triply_periodic_rank_connectivity_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
@@ -138,7 +138,7 @@ function run_triply_periodic_rank_connectivity_tests_with_114_ranks()
     return nothing
 end
 
-function run_triply_periodic_rank_connectivity_tests_with_221_ranks()
+function test_triply_periodic_rank_connectivity_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
@@ -187,7 +187,7 @@ end
 ##### Local grids for distributed models
 #####
 
-function run_triply_periodic_local_grid_tests_with_411_ranks()
+function test_triply_periodic_local_grid_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
@@ -207,7 +207,7 @@ function run_triply_periodic_local_grid_tests_with_411_ranks()
     return nothing
 end
 
-function run_triply_periodic_local_grid_tests_with_141_ranks()
+function test_triply_periodic_local_grid_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
@@ -227,7 +227,7 @@ function run_triply_periodic_local_grid_tests_with_141_ranks()
     return nothing
 end
 
-function run_triply_periodic_local_grid_tests_with_114_ranks()
+function test_triply_periodic_local_grid_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
@@ -247,7 +247,7 @@ function run_triply_periodic_local_grid_tests_with_114_ranks()
     return nothing
 end
 
-function run_triply_periodic_local_grid_tests_with_221_ranks()
+function test_triply_periodic_local_grid_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
@@ -271,13 +271,13 @@ end
 ##### Injection of halo communication BCs
 #####
 
-function run_triply_periodic_bc_injection_tests_with_411_ranks()
+function test_triply_periodic_bc_injection_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
-    for field in fields(model)
+    for field in merge(fields(model), model.pressures)
         fbcs = field.boundary_conditions
         @test fbcs.east isa HaloCommunicationBC
         @test fbcs.west isa HaloCommunicationBC
@@ -288,13 +288,13 @@ function run_triply_periodic_bc_injection_tests_with_411_ranks()
     end
 end
 
-function run_triply_periodic_bc_injection_tests_with_141_ranks()
+function test_triply_periodic_bc_injection_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
-    for field in fields(model)
+    for field in merge(fields(model), model.pressures)
         fbcs = field.boundary_conditions
         @test !isa(fbcs.east, HaloCommunicationBC)
         @test !isa(fbcs.west, HaloCommunicationBC)
@@ -305,13 +305,13 @@ function run_triply_periodic_bc_injection_tests_with_141_ranks()
     end
 end
 
-function run_triply_periodic_bc_injection_tests_with_114_ranks()
+function test_triply_periodic_bc_injection_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
-    for field in fields(model)
+    for field in merge(fields(model), model.pressures)
         fbcs = field.boundary_conditions
         @test !isa(fbcs.east, HaloCommunicationBC)
         @test !isa(fbcs.west, HaloCommunicationBC)
@@ -322,13 +322,13 @@ function run_triply_periodic_bc_injection_tests_with_114_ranks()
     end
 end
 
-function run_triply_periodic_bc_injection_tests_with_221_ranks()
+function test_triply_periodic_bc_injection_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
-    for field in fields(model)
+    for field in merge(fields(model), model.pressures)
         fbcs = field.boundary_conditions
         @test fbcs.east isa HaloCommunicationBC
         @test fbcs.west isa HaloCommunicationBC
@@ -343,13 +343,13 @@ end
 ##### Halo communication
 #####
 
-function run_triply_periodic_halo_communication_tests_with_411_ranks()
+function test_triply_periodic_halo_communication_with_411_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 6, 4), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(16, 6, 4), extent=(1, 2, 3), halo=halo)
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
-    for field in fields(model)
+    for field in merge(fields(model), model.pressures)
         interior(field) .= arch.my_rank
         fill_halo_regions!(field, arch)
 
@@ -366,13 +366,13 @@ function run_triply_periodic_halo_communication_tests_with_411_ranks()
     return nothing
 end
 
-function run_triply_periodic_halo_communication_tests_with_141_ranks()
+function test_triply_periodic_halo_communication_with_141_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(3, 8, 2), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(4, 16, 4), extent=(1, 2, 3), halo=halo)
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
-    for field in fields(model)
+    for field in merge(fields(model), model.pressures)
         interior(field) .= arch.my_rank
         fill_halo_regions!(field, arch)
 
@@ -389,13 +389,13 @@ function run_triply_periodic_halo_communication_tests_with_141_ranks()
     return nothing
 end
 
-function run_triply_periodic_halo_communication_tests_with_114_ranks()
+function test_triply_periodic_halo_communication_with_114_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(3, 5, 8), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 16), extent=(1, 2, 3), halo=halo)
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
-    for field in fields(model)
+    for field in merge(fields(model), model.pressures)
         interior(field) .= arch.my_rank
         fill_halo_regions!(field, arch)
 
@@ -412,20 +412,20 @@ function run_triply_periodic_halo_communication_tests_with_114_ranks()
     return nothing
 end
 
-function run_triply_periodic_halo_communication_tests_with_221_ranks()
+function test_triply_periodic_halo_communication_with_221_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 3), extent=(1, 2, 3))
+    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
-    for field in fields(model)
+    for field in merge(fields(model), model.pressures)
         interior(field) .= arch.my_rank
         fill_halo_regions!(field, arch)
 
-        @test all(east_halo(field) .== arch.connectivity.east)
-        @test all(west_halo(field) .== arch.connectivity.west)
-        @test all(north_halo(field) .== arch.connectivity.north)
-        @test all(south_halo(field) .== arch.connectivity.south)
+        @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
+        @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
+        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
+        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
 
         @test all(interior(field) .== arch.my_rank)
         @test all(top_halo(field, include_corners=false) .== arch.my_rank)
@@ -444,36 +444,36 @@ end
 
     @testset "Multi architectures rank connectivity" begin
         @info "  Testing multi architecture rank connectivity..."
-        run_triply_periodic_rank_connectivity_tests_with_411_ranks()
-        run_triply_periodic_rank_connectivity_tests_with_141_ranks()
-        run_triply_periodic_rank_connectivity_tests_with_114_ranks()
-        run_triply_periodic_rank_connectivity_tests_with_221_ranks()
+        test_triply_periodic_rank_connectivity_with_411_ranks()
+        test_triply_periodic_rank_connectivity_with_141_ranks()
+        test_triply_periodic_rank_connectivity_with_114_ranks()
+        test_triply_periodic_rank_connectivity_with_221_ranks()
     end
 
     @testset "Local grids for distributed models" begin
         @info "  Testing local grids for distributed models..."
-        run_triply_periodic_local_grid_tests_with_411_ranks()
-        run_triply_periodic_local_grid_tests_with_141_ranks()
-        run_triply_periodic_local_grid_tests_with_114_ranks()
-        run_triply_periodic_local_grid_tests_with_221_ranks()
+        test_triply_periodic_local_grid_with_411_ranks()
+        test_triply_periodic_local_grid_with_141_ranks()
+        test_triply_periodic_local_grid_with_114_ranks()
+        test_triply_periodic_local_grid_with_221_ranks()
     end
 
-    # TODO: Test pressure bcs!
     @testset "Injection of halo communication BCs" begin
         @info "  Testing injection of halo communication BCs..."
-        run_triply_periodic_bc_injection_tests_with_411_ranks()
-        run_triply_periodic_bc_injection_tests_with_141_ranks()
-        run_triply_periodic_bc_injection_tests_with_114_ranks()
-        run_triply_periodic_bc_injection_tests_with_221_ranks()
+        test_triply_periodic_bc_injection_with_411_ranks()
+        test_triply_periodic_bc_injection_with_141_ranks()
+        test_triply_periodic_bc_injection_with_114_ranks()
+        test_triply_periodic_bc_injection_with_221_ranks()
     end
 
-    # TODO: Test larger halos!
     @testset "Halo communication" begin
         @info "  Testing halo communication..."
-        run_triply_periodic_halo_communication_tests_with_411_ranks()
-        run_triply_periodic_halo_communication_tests_with_141_ranks()
-        run_triply_periodic_halo_communication_tests_with_114_ranks()
-        # run_triply_periodic_halo_communication_tests_with_221_ranks()
+        for H in 1:3
+            test_triply_periodic_halo_communication_with_411_ranks((H, H, H))
+            test_triply_periodic_halo_communication_with_141_ranks((H, H, H))
+            test_triply_periodic_halo_communication_with_114_ranks((H, H, H))
+            test_triply_periodic_halo_communication_with_221_ranks((H, H, H))
+        end
     end
 
     @testset "Time stepping" begin

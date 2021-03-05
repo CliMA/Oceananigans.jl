@@ -45,11 +45,11 @@ function DistributedIncompressibleModel(; architecture, grid, boundary_condition
     bcs = isnothing(boundary_conditions) ? NamedTuple() : boundary_conditions
 
     bcs = (
-        u = haskey(bcs, :u) ? bcs.u : UVelocityBoundaryConditions(grid),
-        v = haskey(bcs, :v) ? bcs.v : VVelocityBoundaryConditions(grid),
-        w = haskey(bcs, :w) ? bcs.w : WVelocityBoundaryConditions(grid),
-        T = haskey(bcs, :T) ? bcs.T : TracerBoundaryConditions(grid),
-        S = haskey(bcs, :S) ? bcs.S : TracerBoundaryConditions(grid)
+        u = haskey(bcs, :u) ? bcs.u : UVelocityBoundaryConditions(my_grid),
+        v = haskey(bcs, :v) ? bcs.v : VVelocityBoundaryConditions(my_grid),
+        w = haskey(bcs, :w) ? bcs.w : WVelocityBoundaryConditions(my_grid),
+        T = haskey(bcs, :T) ? bcs.T : TracerBoundaryConditions(my_grid),
+        S = haskey(bcs, :S) ? bcs.S : TracerBoundaryConditions(my_grid)
     )
 
     communicative_bcs = (

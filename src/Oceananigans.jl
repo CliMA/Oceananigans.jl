@@ -75,9 +75,6 @@ export
     # Abstract operations
     ∂x, ∂y, ∂z, @at,
 
-    # Distributed
-    MultiCPU, DistributedIncompressibleModel,
-
     # Utils
     prettytime
 
