@@ -128,7 +128,7 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     x  = free_surface.implicit_step_solver.solver.settings.x
     x .= η.data
     fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
-    solve_poisson_equation!(free_surface.implicit_step_solver.solver, RHS, x)
+    solve_poisson_equation!(free_surface.implicit_step_solver.solver, RHS, x; Δt=Δt, g=free_surface.gravitational_acceleration)
     ## exit()
     fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
     free_surface.η.data .= x

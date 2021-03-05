@@ -11,8 +11,7 @@ function ImplicitFreeSurfaceSolver(arch, template_field,
                                    maxit=nothing, 
                                    tol=nothing)
        
-    ## This should probably end up in some operator and grid generic auxilliaries
-    ## NEED TO SORT OUT HALO FOR PERIODIC CASE
+    ## Some of this should probably end up in some operator and grid generic auxilliaries
     Ax_baro = vertically_integrated_lateral_face_areas.Ax
     Ay_baro = vertically_integrated_lateral_face_areas.Ay
     @inline Ax_∂xᶠᵃᵃ_baro(i, j, k, grid, c) = Ax_baro[i, j, 1] * ∂xᶠᵃᵃ(i, j, 1, grid, c)
@@ -22,7 +21,7 @@ function ImplicitFreeSurfaceSolver(arch, template_field,
                δyᵃᶜᵃ(i, j, 1, grid, Ay_∂yᵃᶠᵃ_baro, c)
     end
 
-    @kernel function implicit_η!(grid, f, implicit_η_f)
+    @kernel function implicit_η!(Δt, g, grid, f, implicit_η_f)
         i, j = @index(Global, NTuple)
         ### Not sure what to call this
         ### it is for left hand side operator in
@@ -37,8 +36,8 @@ function ImplicitFreeSurfaceSolver(arch, template_field,
         ### where  ̂ indicates a vertical integral, and
         ###        ̅ indicates a vertical average
         ###
-        g  = Main.model.free_surface.gravitational_acceleration ### AGHHHH - need to sort this out later.....
-        Δt = Main.simulation.Δt                                 ### AGHHHH - need to sort this out later.....
+        ### g  = Main.model.free_surface.gravitational_acceleration ### AGHHHH - need to sort this out later.....
+        ### Δt = Main.simulation.Δt                                 ### AGHHHH - need to sort this out later.....
         i, j = @index(Global, NTuple)
         @inbounds implicit_η_f[i, j, 1] =  ∇²_baro(i, j, 1, grid, f) - Azᵃᵃᵃ(i, j, 1, grid)*f[i,j, 1]/(g*Δt^2)
 
@@ -46,8 +45,10 @@ function ImplicitFreeSurfaceSolver(arch, template_field,
 
 
     if isnothing( Amatrix_operator )
-        function Amatrix_function!(result, x, arch, grid, bcs)
-            event = launch!(arch, grid, :xy, implicit_η!, grid, x, result, dependencies=Event(device(arch)))
+        function Amatrix_function!(result, x, arch, grid, bcs; args...)
+            Δt=args.data.Δt
+             g=args.data.g
+            event = launch!(arch, grid, :xy, implicit_η!, Δt, g, grid, x, result, dependencies=Event(device(arch)))
             wait(device(arch), event)
             fill_halo_regions!(result, bcs, arch, grid)
             return nothing
