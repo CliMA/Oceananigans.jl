@@ -140,7 +140,7 @@ end
 
 function Base.show(io::IO, arch::MultiCPU)
     c = arch.connectivity
-    print(io, "MultiCPU architecture (rank $(arch.my_rank)/$(prod(arch.ranks))) [index $(arch.my_index) / $(arch.ranks)]\n",
+    print(io, "MultiCPU architecture (rank $(arch.my_rank)/$(prod(arch.ranks)-1)) [index $(arch.my_index) / $(arch.ranks)]\n",
               "└── connectivity:",
               isnothing(c.east) ? "" : " east=$(c.east)",
               isnothing(c.west) ? "" : " west=$(c.west)",

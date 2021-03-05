@@ -1,6 +1,3 @@
-using MPI
-
-using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Grids: halo_size
 
