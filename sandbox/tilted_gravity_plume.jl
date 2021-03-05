@@ -37,7 +37,7 @@ simulation = Simulation(model, Δt=10seconds, stop_time=4hours, progress=print_p
 
 fields = merge(model.velocities, model.tracers)
 simulation.output_writers[:fields] =
-    NetCDFOutputWriter(model, fields, filepath="tilted_gravity_plume.nc", 
+    NetCDFOutputWriter(model, fields, filepath="tilted_gravity_plume.nc",
                        schedule=TimeInterval(5minutes),
                        mode="c",
                        )
