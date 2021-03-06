@@ -51,7 +51,7 @@ To use the constant anisotropic minimum dissipation (AMD) LES closure,
 julia> using Oceananigans.TurbulenceClosures
 
 julia> closure = AnisotropicMinimumDissipation()
-VerstappenAnisotropicMinimumDissipation{Float64} turbulence closure with:
+AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.08333333333333333
                         Buoyancy modification multiplier Cb: 0.0
