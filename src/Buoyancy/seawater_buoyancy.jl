@@ -86,8 +86,8 @@ and cell centers in `y` and `z`.
 @inline function ∂x_b(i, j, k, grid, b::SeawaterBuoyancyModel, C)
     Θ, sᴬ = get_temperature_and_salinity(b, C)
     return g_z(b) * (
-           thermal_expansionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂xᶠᵃᵃ(i, j, k, grid, Θ)
-        - haline_contractionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂xᶠᵃᵃ(i, j, k, grid, sᴬ) )
+           thermal_expansionᶠᶜᶜ(i, j, k, grid, b.model.equation_of_state, Θ, sᴬ) * ∂xᶠᵃᵃ(i, j, k, grid, Θ)
+        - haline_contractionᶠᶜᶜ(i, j, k, grid, b.model.equation_of_state, Θ, sᴬ) * ∂xᶠᵃᵃ(i, j, k, grid, sᴬ) )
 end
 
 """
@@ -112,8 +112,8 @@ and cell centers in `x` and `z`.
 @inline function ∂y_b(i, j, k, grid, b::SeawaterBuoyancyModel, C)
     Θ, sᴬ = get_temperature_and_salinity(b, C)
     return g_z(b) * (
-           thermal_expansionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂yᵃᶠᵃ(i, j, k, grid, Θ)
-        - haline_contractionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂yᵃᶠᵃ(i, j, k, grid, sᴬ) )
+           thermal_expansionᶜᶠᶜ(i, j, k, grid, b.model.equation_of_state, Θ, sᴬ) * ∂yᵃᶠᵃ(i, j, k, grid, Θ)
+        - haline_contractionᶜᶠᶜ(i, j, k, grid, b.model.equation_of_state, Θ, sᴬ) * ∂yᵃᶠᵃ(i, j, k, grid, sᴬ) )
 end
 
 """

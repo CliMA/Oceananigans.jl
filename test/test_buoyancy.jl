@@ -84,9 +84,8 @@ buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temper
                 @test density_perturbation_works(arch, FT, SeawaterPolynomials.RoquetEquationOfState())
             end
 
-            buoyancies =
-                (nothing, BuoyancyTracer(), SeawaterBuoyancy(FT),
-                 (SeawaterBuoyancy(FT, equation_of_state=eos(FT)) for eos in EquationsOfState)...)
+            buoyancies = (nothing, BuoyancyModel(model=BuoyancyTracer()), BuoyancyModel(model=SeawaterBuoyancy(FT)),
+                          (BuoyancyModel(model=SeawaterBuoyancy(FT, equation_of_state=eos(FT))) for eos in EquationsOfState)...)
 
             for arch in archs
                 for buoyancy in buoyancies

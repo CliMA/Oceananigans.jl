@@ -23,7 +23,7 @@ struct BuoyancyField{B, S, A, G, T} <: AbstractField{Center, Center, Center, A, 
 
     """
         BuoyancyField(data, grid, buoyancy, tracers)
-    
+
     Returns a `BuoyancyField` with `data` on `grid` corresponding to
     `buoyancy` computed from `tracers`.
     """
@@ -61,16 +61,16 @@ _buoyancy_field(::Nothing, args...; kwargs...) = nothing
 ##### BuoyancyTracer
 #####
 
-_buoyancy_field(buoyancy::BuoyancyTracer, tracers, arch, grid, args...) =
+_buoyancy_field(buoyancy::BuoyancyTracerModel, tracers, arch, grid, args...) =
     BuoyancyField(tracers.b.data, grid, buoyancy, tracers, true)
 
-compute!(::BuoyancyField{<:BuoyancyTracer}, time=nothing) = nothing
- 
+compute!(::BuoyancyField{<:BuoyancyTracerModel}, time=nothing) = nothing
+
 #####
 ##### Other buoyancy types
 #####
 
-function _buoyancy_field(buoyancy::AbstractBuoyancy, tracers, arch, grid,
+function _buoyancy_field(buoyancy::BuoyancyModel, tracers, arch, grid,
                          data, recompute_safely)
 
     if isnothing(data)
@@ -92,12 +92,12 @@ function compute!(buoyancy_field::BuoyancyField, time=nothing)
     data = buoyancy_field.data
     grid = buoyancy_field.grid
     tracers = buoyancy_field.tracers
-    buoyancy = buoyancy_field.buoyancy
+    buoyancy = buoyancy_field.buoyancy.model
     arch = architecture(data)
 
     workgroup, worksize = work_layout(grid, :xyz)
 
-    compute_kernel! = compute_buoyancy!(device(arch), workgroup, worksize) 
+    compute_kernel! = compute_buoyancy!(device(arch), workgroup, worksize)
 
     event = compute_kernel!(data, grid, buoyancy, tracers; dependencies=Event(device(arch)))
 
