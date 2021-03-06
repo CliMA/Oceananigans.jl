@@ -217,7 +217,7 @@ and apply the discrete form to the hydrostatic form of the velocity fractional s
 
 ```math
     \tag{eq:hydrostatic-fractional-step}
-    \bm{u}^{n+1} = \bm{u}^\star - g\Delta t \bm{\nabla} \eta_^{n+1} .
+    \bm{u}^{n+1} = \bm{u}^{\star} - g\Delta t \bm{\nabla} \eta^{n+1} .
 ```
 
 as follows.
@@ -225,7 +225,7 @@ as follows.
 Assuming ``M=0`` (for now), for the ``n+1`` timestep velocity we want the following to hold
 
 ```math
-    A_{z}\frac{\eta^{n+1}-\eta{n}}{\Delta t}=-\delta_{x}^{caa}\sum_{k} A_{x} u^{n+1} - \delta_{y}^{caa}\sum_{k} A_{y} v^{n+1}
+    A_{z}\frac{\eta^{n+1}-\eta^{n}}{\Delta t}=-\delta_{x}^{caa}\sum_{k} A_{x} u^{n+1} - \delta_{y}^{caa}\sum_{k} A_{y} v^{n+1}
 ```
 
 substituting for ``u^{n+1}`` and ``v^{n+1}`` from the discrete form of the 
