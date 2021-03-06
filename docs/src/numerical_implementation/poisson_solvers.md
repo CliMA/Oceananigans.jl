@@ -200,15 +200,43 @@ The implicit free surface solver solves for the free-surface, ``\eta``, in the v
 integrated continuity equation
 
 ```math
- \partial_{t} \eta + \partial_{x} H \hat{u} + \partial_{y} H \hat{v} = M
+    \tag{eq:vertically-integrated-continuity}
+    \partial_{t} \eta + \partial_{x} H \hat{u} + \partial_{y} H \hat{v} = M
 ```
 
 where M is some surface volume flux (e.g terms such as precipitation, evaporation and runoff), 
-currently ``M=0`` is assumed. This equation is formulated in a discrete integral form using
-summation
+currently ``M=0`` is assumed. To form a linear system that can be solved implicitly we recast
+the continuity equation into a discrete integral form
 
 ```math
- A_{z} \partial_{t} \eta + \delta_{x}^{caa}\sum_{k} A_{x} u +\delta_{y}^{caa}\sum_{k} A_{y} v = A_{z} M
+    \tag{eq:semi-discrete-integral-continuity}
+    A_{z} \partial_{t} \eta + \delta_{x}^{caa}\sum_{k} A_{x} u +\delta_{y}^{caa}\sum_{k} A_{y} v = A_{z} M
 ```
 
-This discrete form is used in forming a linear system that can be solved implicitly.
+and apply the discrete form to the hydrostatic form of the velocity fractional step equation
+
+```math
+    \tag{eq:hydrostatic-fractional-step}
+    \bm{u}^{n+1} = \bm{u}^\star - g\Delta t \bm{\nabla} \eta_^{n+1} .
+```
+
+as follows.
+
+Assuming ``M=0`` (for now), for the ``n+1`` timestep velocity we want the following to hold
+
+```math
+    A_{z}\frac{\eta^{n+1}-\eta{n}}{\Delta t}=-\delta_{x}^{caa}\sum_{k} A_{x} u^{n+1} - \delta_{y}^{caa}\sum_{k} A_{y} v{n+1}
+```
+
+substituting for ``u^{n+1}`` and ``v^{n+1}`` from the discrete form of the 
+right-hand-side of ``\ref{eq:hydrostatic-fractional-step}`` then gives an implicit equation
+for ``\eta^{n+1}``.
+
+```math
+   \delta_{x}^{caa}\sum_{k} A_{x} \partial_{x}^{faa}\eta^{n+1} + \delta_{y}^{aca}\sum_{k} A_{y} \partial_{y}^{afa}\eta^{n+1}
+   - \frac(1)(g\Delta t^{2})A_{z} \eta^{n+1}
+   =
+   \frac{1}{g \Delta t}\left( \delta_{x}^{caa}\sum_{k} A_{x} u\^{*} + \delta_{y}^{aca}\sum_{k} A_{y} v\^{*} \right)
+   - \frac(1)(g\Delta t^{2})A_{z} \eta^{n}
+   
+```
