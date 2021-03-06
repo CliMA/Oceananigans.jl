@@ -225,7 +225,7 @@ as follows.
 Assuming ``M=0`` (for now), for the ``n+1`` timestep velocity we want the following to hold
 
 ```math
-    A_{z}\frac{\eta^{n+1}-\eta{n}}{\Delta t}=-\delta_{x}^{caa}\sum_{k} A_{x} u^{n+1} - \delta_{y}^{caa}\sum_{k} A_{y} v{n+1}
+    A_{z}\frac{\eta^{n+1}-\eta{n}}{\Delta t}=-\delta_{x}^{caa}\sum_{k} A_{x} u^{n+1} - \delta_{y}^{caa}\sum_{k} A_{y} v^{n+1}
 ```
 
 substituting for ``u^{n+1}`` and ``v^{n+1}`` from the discrete form of the 
@@ -234,9 +234,8 @@ for ``\eta^{n+1}``.
 
 ```math
    \delta_{x}^{caa}\sum_{k} A_{x} \partial_{x}^{faa}\eta^{n+1} + \delta_{y}^{aca}\sum_{k} A_{y} \partial_{y}^{afa}\eta^{n+1}
-   - \frac(1)(g\Delta t^{2})A_{z} \eta^{n+1}
+   - \frac{1}{g\Delta t^{2}}A_{z} \eta^{n+1}
    =
-   \frac{1}{g \Delta t}\left( \delta_{x}^{caa}\sum_{k} A_{x} u\^{*} + \delta_{y}^{aca}\sum_{k} A_{y} v\^{*} \right)
-   - \frac(1)(g\Delta t^{2})A_{z} \eta^{n}
-   
+   \frac{1}{g \Delta t}\left( \delta_{x}^{caa}\sum_{k} A_{x} u^{\star} + \delta_{y}^{aca}\sum_{k} A_{y} v^{\star} \right)
+   - \frac{1}{g\Delta t^{2}}A_{z} \eta^{n}
 ```
