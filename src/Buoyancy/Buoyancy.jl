@@ -43,7 +43,6 @@ end
 include("buoyancy_model.jl")
 include("no_buoyancy.jl")
 include("buoyancy_tracer.jl")
-include("gravitational_acceleration.jl")
 include("seawater_buoyancy.jl")
 include("linear_equation_of_state.jl")
 include("nonlinear_equation_of_state.jl")

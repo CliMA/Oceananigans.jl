@@ -1,20 +1,20 @@
 """
-    SeawaterBuoyancy{FT, EOS, G, T, S} <: AbstractBuoyancy{EOS}
+    SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancy{EOS}
 
 Buoyancy model for seawater. `T` and `S` are either `nothing` if both
 temperature and salinity are active, or of type `FT` if temperature
 or salinity are constant, respectively.
 """
-struct SeawaterBuoyancy{FT, EOS, G, T, S} <: AbstractBuoyancy{EOS}
+struct SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancy{EOS}
              equation_of_state :: EOS
-    gravitational_acceleration :: G
+    gravitational_acceleration :: FT
           constant_temperature :: T
              constant_salinity :: S
 end
 
 required_tracers(::SeawaterBuoyancy) = (:T, :S)
-required_tracers(::SeawaterBuoyancy{FT, EOS, G, <:Nothing, <:Number}) where {FT, EOS, G} = (:T,) # active temperature only
-required_tracers(::SeawaterBuoyancy{FT, EOS, G, <:Number, <:Nothing}) where {FT, EOS, G} = (:S,) # active salinity only
+required_tracers(::SeawaterBuoyancy{FT, EOS, <:Nothing, <:Number}) where {FT, EOS, G} = (:T,) # active temperature only
+required_tracers(::SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing}) where {FT, EOS, G} = (:S,) # active salinity only
 
 """
     SeawaterBuoyancy([FT=Float64;] gravitational_acceleration = g_Earth,
@@ -47,23 +47,25 @@ function SeawaterBuoyancy(                        FT = Float64;
     constant_temperature = constant_temperature === true ? zero(FT) : constant_temperature
     constant_salinity = constant_salinity === true ? zero(FT) : constant_salinity
 
-    if gravitational_acceleration isa Number
-        gravitational_acceleration = FT(gravitational_acceleration)
-    end
-
-    return SeawaterBuoyancy{FT, typeof(equation_of_state), typeof(gravitational_acceleration),typeof(constant_temperature), typeof(constant_salinity)}(
+    return SeawaterBuoyancy{FT, typeof(equation_of_state), typeof(constant_temperature), typeof(constant_salinity)}(
                             equation_of_state, gravitational_acceleration, constant_temperature, constant_salinity)
 end
 
-const TemperatureSeawaterBuoyancy = SeawaterBuoyancy{FT, EOS, G, <:Nothing, <:Number} where {FT, EOS, G}
-const SalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, EOS, G, <:Number, <:Nothing} where {FT, EOS, G}
+const TemperatureSeawaterBuoyancy = SeawaterBuoyancy{FT, EOS, <:Nothing, <:Number} where {FT, EOS, G}
+const SalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing} where {FT, EOS, G}
 
 @inline get_temperature_and_salinity(::SeawaterBuoyancy, C) = C.T, C.S
 @inline get_temperature_and_salinity(b::TemperatureSeawaterBuoyancy, C) = C.T, b.constant_salinity
 @inline get_temperature_and_salinity(b::SalinitySeawaterBuoyancy, C) = b.constant_temperature, C.S
 
+const SeawaterBuoyancyModel = BuoyancyModel{<:SeawaterBuoyancy}
+
+@inline g_x(buoyancy_model::SeawaterBuoyancyModel) = buoyancy_model.model.gravitational_acceleration * ĝ_x(buoyancy_model)
+@inline g_y(buoyancy_model::SeawaterBuoyancyModel) = buoyancy_model.model.gravitational_acceleration * ĝ_y(buoyancy_model)
+@inline g_z(buoyancy_model::SeawaterBuoyancyModel) = buoyancy_model.model.gravitational_acceleration * ĝ_z(buoyancy_model)
+
 """
-    ∂x_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+    ∂x_b(i, j, k, grid, b::SeawaterBuoyancyModel, C)
 
 Returns the x-derivative of buoyancy for temperature and salt-stratified water,
 
@@ -81,15 +83,15 @@ Note: In Oceananigans, `model.tracers.T` is conservative temperature and
 Note that `∂x_Θ`, `∂x_sᴬ`, `α`, and `β` are all evaluated at cell interfaces in `x`
 and cell centers in `y` and `z`.
 """
-@inline function ∂x_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+@inline function ∂x_b(i, j, k, grid, b::SeawaterBuoyancyModel, C)
     Θ, sᴬ = get_temperature_and_salinity(b, C)
-    return g_z(b.gravitational_acceleration) * (
+    return g_z(b) * (
            thermal_expansionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂xᶠᵃᵃ(i, j, k, grid, Θ)
         - haline_contractionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂xᶠᵃᵃ(i, j, k, grid, sᴬ) )
 end
 
 """
-    ∂y_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+    ∂y_b(i, j, k, grid, b::SeawaterBuoyancyModel, C)
 
 Returns the y-derivative of buoyancy for temperature and salt-stratified water,
 
@@ -107,15 +109,15 @@ Note: In Oceananigans, `model.tracers.T` is conservative temperature and
 Note that `∂y_Θ`, `∂y_sᴬ`, `α`, and `β` are all evaluated at cell interfaces in `y`
 and cell centers in `x` and `z`.
 """
-@inline function ∂y_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+@inline function ∂y_b(i, j, k, grid, b::SeawaterBuoyancyModel, C)
     Θ, sᴬ = get_temperature_and_salinity(b, C)
-    return g_z(b.gravitational_acceleration) * (
+    return g_z(b) * (
            thermal_expansionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂yᵃᶠᵃ(i, j, k, grid, Θ)
         - haline_contractionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂yᵃᶠᵃ(i, j, k, grid, sᴬ) )
 end
 
 """
-    ∂z_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+    ∂z_b(i, j, k, grid, b::SeawaterBuoyancyModel, C)
 
 Returns the vertical derivative of buoyancy for temperature and salt-stratified water,
 
@@ -133,33 +135,33 @@ Note: In Oceananigans, `model.tracers.T` is conservative temperature and
 Note that `∂z_Θ`, `∂z_sᴬ`, `α`, and `β` are all evaluated at cell interfaces in `z`
 and cell centers in `x` and `y`.
 """
-@inline function ∂z_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+@inline function ∂z_b(i, j, k, grid, b::SeawaterBuoyancyModel, C)
     Θ, sᴬ = get_temperature_and_salinity(b, C)
-    return g_z(b.gravitational_acceleration) * (
-           thermal_expansionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂zᵃᵃᶠ(i, j, k, grid, Θ)
-        - haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂zᵃᵃᶠ(i, j, k, grid, sᴬ) )
+    return g_z(b) * (
+           thermal_expansionᶜᶜᶠ(i, j, k, grid, b.model.equation_of_state, Θ, sᴬ) * ∂zᵃᵃᶠ(i, j, k, grid, Θ)
+        - haline_contractionᶜᶜᶠ(i, j, k, grid, b.model.equation_of_state, Θ, sᴬ) * ∂zᵃᵃᶠ(i, j, k, grid, sᴬ) )
 end
 
-@inline function buoyancy_perturbation(i, j, k, grid, b::SeawaterBuoyancy, C)
+@inline function buoyancy_perturbation(i, j, k, grid, b::SeawaterBuoyancyModel, C)
     Θ, sᴬ = get_temperature_and_salinity(b, C)
-    return - (g_z(b.gravitational_acceleration) * ρ′(i, j, k, grid, b.equation_of_state, Θ, sᴬ)
-              / b.equation_of_state.reference_density)
+    return - (g_z(b) * ρ′(i, j, k, grid, b.model.equation_of_state, Θ, sᴬ)
+              / b.model.equation_of_state.reference_density)
 end
 
-@inline function x_dot_g_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+@inline function x_dot_g_b(i, j, k, grid, b::SeawaterBuoyancyModel, C)
     Θ, sᴬ = get_temperature_and_salinity(b, C)
-    return - (g_x(b.gravitational_acceleration) * ρ′(i, j, k, grid, b.equation_of_state, Θ, sᴬ)
-              / b.equation_of_state.reference_density)
+    return - (g_z(b) * ρ′(i, j, k, grid, b.model.equation_of_state, Θ, sᴬ)
+              / b.model.equation_of_state.reference_density)
 end
 
-@inline function y_dot_g_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+@inline function y_dot_g_b(i, j, k, grid, b::SeawaterBuoyancyModel, C)
     Θ, sᴬ = get_temperature_and_salinity(b, C)
-    return - (g_y(b.gravitational_acceleration) * ρ′(i, j, k, grid, b.equation_of_state, Θ, sᴬ)
-              / b.equation_of_state.reference_density)
+    return - (g_z(b) * ρ′(i, j, k, grid, b.model.equation_of_state, Θ, sᴬ)
+              / b.model.equation_of_state.reference_density)
 end
 
-@inline function z_dot_g_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+@inline function z_dot_g_b(i, j, k, grid, b::SeawaterBuoyancyModel, C)
     Θ, sᴬ = get_temperature_and_salinity(b, C)
-    return - (g_z(b.gravitational_acceleration) * ρ′(i, j, k, grid, b.equation_of_state, Θ, sᴬ)
-              / b.equation_of_state.reference_density)
+    return - (g_z(b) * ρ′(i, j, k, grid, b.model.equation_of_state, Θ, sᴬ)
+              / b.model.equation_of_state.reference_density)
 end

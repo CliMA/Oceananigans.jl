@@ -8,7 +8,7 @@ grid = RegularRectilinearGrid(topology=topo, size=(1, N, N), extent=(L, L, L))
 
 θ = 45
 g = (0, sind(θ), cosd(θ))
-buoyancy = BuoyancyModel(BuoyancyTracer(), gravity_unit_vector=g)
+buoyancy = BuoyancyModel(model=BuoyancyTracer(), gravitational_unit_vector=g)
 
 model = IncompressibleModel(
            grid = grid,
@@ -43,7 +43,7 @@ ds = NCDataset("tilted_gravity_plume.nc", "r")
 Nt = length(ds["time"])
 anim = @animate for n in 1:Nt
     @info "frame $n/$Nt"
-    heatmap(ds["yC"], ds["zC"], ds["T"][1, :, :, n]', clims=(20, 20.01))
+    heatmap(ds["yC"], ds["zC"], ds["b"][1, :, :, n]', clims=(20, 20.01))
 end
 gif(anim, "tilted_gravity_plume.gif")
 close(ds)

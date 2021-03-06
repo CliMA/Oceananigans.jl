@@ -24,6 +24,10 @@ Dynamics: Fundamentals and Large-Scale Circulation" (2ed, 2017).
 """
 LinearEquationOfState(FT=Float64; α=1.67e-4, β=7.80e-4) = LinearEquationOfState{FT}(α, β)
 
+#####
+##### Thermal expansion and haline contraction coefficients
+#####
+
 @inline  thermal_expansion(Θ, sᴬ, D, eos::LinearEquationOfState) = eos.α
 @inline haline_contraction(Θ, sᴬ, D, eos::LinearEquationOfState) = eos.β
 
@@ -38,46 +42,62 @@ LinearEquationOfState(FT=Float64; α=1.67e-4, β=7.80e-4) = LinearEquationOfStat
 @inline haline_contractionᶜᶠᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
 @inline haline_contractionᶜᶜᶠ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.β
 
+#####
+##### Convinient aliases to dispatch on
+#####
+
 const LinearSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState} where FT
-const LinearTemperatureSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState, G, <:Nothing, <:Number} where {FT,G}
-const LinearSalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState, G, <:Number, <:Nothing} where {FT,G}
+const LinearTemperatureSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState, <:Nothing, <:Number} where {FT,G}
+const LinearSalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState, <:Number, <:Nothing} where {FT,G}
 
-@inline buoyancy_perturbation(i, j, k, grid, b::LinearSeawaterBuoyancy, C) =
-    @inbounds g_z(b.gravitational_acceleration) * (  b.equation_of_state.α * C.T[i, j, k]
-                                                   - b.equation_of_state.β * C.S[i, j, k])
+const LinearSeawaterBuoyancyModel = BuoyancyModel{<:LinearSeawaterBuoyancy}
+const LinearTemperatureSeawaterBuoyancyModel = BuoyancyModel{<:LinearTemperatureSeawaterBuoyancy}
+const LinearSalinitySeawaterBuoyancyModel = BuoyancyModel{<:LinearSalinitySeawaterBuoyancy}
 
-@inline buoyancy_perturbation(i, j, k, grid, b::LinearTemperatureSeawaterBuoyancy, C) =
-    @inbounds g_z(b.gravitational_acceleration) * b.equation_of_state.α * C.T[i, j, k]
+#####
+##### Buoyancy perturbation
+#####
 
-@inline buoyancy_perturbation(i, j, k, grid, b::LinearSalinitySeawaterBuoyancy, C) =
-    @inbounds - g_z(b.gravitational_acceleration) * b.equation_of_state.β * C.S[i, j, k]
+@inline buoyancy_perturbation(i, j, k, grid, b::LinearSeawaterBuoyancyModel, C) =
+    @inbounds g_z(b) * (  b.model.equation_of_state.α * C.T[i, j, k]
+                        - b.model.equation_of_state.β * C.S[i, j, k])
 
-@inline x_dot_g_b(i, j, k, grid, b::LinearSeawaterBuoyancy, C) =
-    @inbounds g_x(b.gravitational_acceleration) * (  b.equation_of_state.α * C.T[i, j, k]
-                                                   - b.equation_of_state.β * C.S[i, j, k])
+@inline buoyancy_perturbation(i, j, k, grid, b::LinearTemperatureSeawaterBuoyancyModel, C) =
+    @inbounds g_z(b) * b.model.equation_of_state.α * C.T[i, j, k]
 
-@inline y_dot_g_b(i, j, k, grid, b::LinearSeawaterBuoyancy, C) =
-    @inbounds g_y(b.gravitational_acceleration) * (  b.equation_of_state.α * C.T[i, j, k]
-                                                   - b.equation_of_state.β * C.S[i, j, k])
+@inline buoyancy_perturbation(i, j, k, grid, b::LinearSalinitySeawaterBuoyancyModel, C) =
+    @inbounds - g_z(b) * b.model.equation_of_state.β * C.S[i, j, k]
 
-@inline z_dot_g_b(i, j, k, grid, b::LinearSeawaterBuoyancy, C) =
-    @inbounds g_z(b.gravitational_acceleration) * (  b.equation_of_state.α * C.T[i, j, k]
-                                                   - b.equation_of_state.β * C.S[i, j, k])
+#####
+##### Buoyancy forces
+#####
 
-@inline x_dot_g_b(i, j, k, grid, b::LinearTemperatureSeawaterBuoyancy, C) =
-    @inbounds g_x(b.gravitational_acceleration) * b.equation_of_state.α * C.T[i, j, k]
+@inline x_dot_g_b(i, j, k, grid, b::LinearSeawaterBuoyancyModel, C) =
+    @inbounds g_x(b) * (  b.model.equation_of_state.α * C.T[i, j, k]
+                        - b.model.equation_of_state.β * C.S[i, j, k])
 
-@inline y_dot_g_b(i, j, k, grid, b::LinearTemperatureSeawaterBuoyancy, C) =
-    @inbounds g_y(b.gravitational_acceleration) * b.equation_of_state.α * C.T[i, j, k]
+@inline y_dot_g_b(i, j, k, grid, b::LinearSeawaterBuoyancyModel, C) =
+    @inbounds g_y(b) * (  b.model.equation_of_state.α * C.T[i, j, k]
+                        - b.model.equation_of_state.β * C.S[i, j, k])
 
-@inline z_dot_g_b(i, j, k, grid, b::LinearTemperatureSeawaterBuoyancy, C) =
-    @inbounds g_z(b.gravitational_acceleration) * b.equation_of_state.α * C.T[i, j, k]
+@inline z_dot_g_b(i, j, k, grid, b::LinearSeawaterBuoyancyModel, C) =
+    @inbounds g_z(b) * (  b.model.equation_of_state.α * C.T[i, j, k]
+                        - b.model.equation_of_state.β * C.S[i, j, k])
 
-@inline x_dot_g_b(i, j, k, grid, b::LinearSalinitySeawaterBuoyancy, C) =
-    @inbounds - g_x(b.gravitational_acceleration) * b.equation_of_state.β * C.S[i, j, k]
+@inline x_dot_g_b(i, j, k, grid, b::LinearTemperatureSeawaterBuoyancyModel, C) =
+    @inbounds g_x(b) * b.model.equation_of_state.α * C.T[i, j, k]
 
-@inline y_dot_g_b(i, j, k, grid, b::LinearSalinitySeawaterBuoyancy, C) =
-    @inbounds - g_y(b.gravitational_acceleration) * b.equation_of_state.β * C.S[i, j, k]
+@inline y_dot_g_b(i, j, k, grid, b::LinearTemperatureSeawaterBuoyancyModel, C) =
+    @inbounds g_y(b) * b.model.equation_of_state.α * C.T[i, j, k]
 
-@inline z_dot_g_b(i, j, k, grid, b::LinearSalinitySeawaterBuoyancy, C) =
-    @inbounds - g_z(b.gravitational_acceleration) * b.equation_of_state.β * C.S[i, j, k]
+@inline z_dot_g_b(i, j, k, grid, b::LinearTemperatureSeawaterBuoyancyModel, C) =
+    @inbounds g_z(b) * b.model.equation_of_state.α * C.T[i, j, k]
+
+@inline x_dot_g_b(i, j, k, grid, b::LinearSalinitySeawaterBuoyancyModel, C) =
+    @inbounds - g_x(b) * b.model.equation_of_state.β * C.S[i, j, k]
+
+@inline y_dot_g_b(i, j, k, grid, b::LinearSalinitySeawaterBuoyancyModel, C) =
+    @inbounds - g_y(b) * b.model.equation_of_state.β * C.S[i, j, k]
+
+@inline z_dot_g_b(i, j, k, grid, b::LinearSalinitySeawaterBuoyancyModel, C) =
+    @inbounds - g_z(b) * b.model.equation_of_state.β * C.S[i, j, k]
