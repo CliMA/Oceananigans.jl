@@ -27,20 +27,25 @@ Ny = 30
 
 # A spherical domain
 grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                    radius = 1,
                                     longitude = (0, 60),
-                                    latitude = (30, 60),
+                                    latitude = (-15, 45),
                                     z = (-4000, 0))
 
-free_surface = ExplicitFreeSurface(gravitational_acceleration=1)
+free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
 
 coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving())
 
-surface_wind_stress = BoundaryCondition(Flux,
-                                        (λ, ϕ, t, p) -> - p.τ * cos(2π * (ϕ - p.ϕ₀) / p.Lϕ),
-                                        parameters = (τ = 5e-4, Lϕ = grid.Ly, ϕ₀ = 45))
+surface_wind_stress_parameters = (τ₀ = 1e-2,
+                                  Lϕ = grid.Ly,
+                                  ϕ₀ = 15)
 
-u_bcs = UVelocityBoundaryConditions(grid, top = surface_wind_stress)
+surface_wind_stress(λ, ϕ, t, p) = - p.τ₀ * cos(2π * (ϕ - p.ϕ₀) / p.Lϕ)
+
+surface_wind_stress_bc = BoundaryCondition(Flux,
+                                           surface_wind_stress,
+                                           parameters = surface_wind_stress_parameters)
+
+u_bcs = UVelocityBoundaryConditions(grid, top = surface_wind_stress_bc)
                                         
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = CPU(),
@@ -49,7 +54,9 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = coriolis,
                                     boundary_conditions = (u=u_bcs,),
                                     buoyancy = nothing,
-                                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=1e3, κh=1e3))
+                                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=1e2, κh=1e2))
+
+g = model.free_surface.gravitational_acceleration
 
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
@@ -57,11 +64,9 @@ gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wav
 wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.ϕᵃᶜᵃ)) * deg2rad(grid.Δλ),
                                   grid.radius * deg2rad(grid.Δϕ)) / gravity_wave_speed
 
-super_rotation_period = 2π * grid.radius / U
-
 simulation = Simulation(model,
                         Δt = 0.1wave_propagation_time_scale,
-                        stop_iterations = 1000,
+                        stop_iteration = 10000,
                         iteration_interval = 100,
                         progress = s -> @info "Time = $(s.model.clock.time) / $(s.stop_time)")
                                                          
@@ -86,8 +91,8 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 λ = xnodes(Face, grid)
 ϕ = ynodes(Center, grid)
 
-λ = repeat(reshape(λ, Nx, 1), 1, Ny)
-ϕ = repeat(reshape(ϕ, 1, Ny), Nx, 1)
+λ = repeat(reshape(λ, Nx+1, 1), 1, Ny)
+ϕ = repeat(reshape(ϕ, 1, Ny), Nx+1, 1)
 
 λ_azimuthal = λ .+ 180  # Convert to λ ∈ [0°, 360°]
 ϕ_azimuthal = 90 .- ϕ   # Convert to ϕ ∈ [0°, 180°] (0° at north pole)
@@ -107,7 +112,7 @@ fig = Figure(resolution = (1080, 1080))
 
 ax = fig[1, 1] = LScene(fig, title="")
 wireframe!(ax, Sphere(Point3f0(0), 0.99f0), show_axis=false)
-surface!(ax, x, y, z, color=spatial_error, colormap=:thermal, colorrange=(0.0, 0.02))
+surface!(ax, x, y, z, color=u, colormap=:balance) #, colorrange=(0.0, 0.02))
 rotate_cam!(ax.scene, (-π/4, π/8, 0))
 zoom!(ax.scene, (0, 0, 0), 2, false)
 
