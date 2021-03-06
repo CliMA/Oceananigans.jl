@@ -233,11 +233,10 @@ right-hand-side of ``\ref{eq:hydrostatic-fractional-step}`` then gives an implic
 for ``\eta^{n+1}``.
 
 ```math
-   \delta_{x}^{caa}\sum_{k} A_{x} \partial_{x}^{faa}\eta^{n+1} + \delta_{y}^{aca}\sum_{k} A_{y} \partial_{y}^{afa}\eta^{n+1}
-   - \frac{1}{g\Delta t^{2}}A_{z} \eta^{n+1}
-   =
-   \frac{1}{g \Delta t}\left( \delta_{x}^{caa}\sum_{k} A_{x} u^{\star} + \delta_{y}^{aca}\sum_{k} A_{y} v^{\star} \right)
-   - \frac{1}{g\Delta t^{2}}A_{z} \eta^{n}
+\begin{aligned}
+   \delta_{x}^{caa}\sum_{k} A_{x} \partial_{x}^{faa}\eta^{n+1} + \delta_{y}^{aca}\sum_{k} A_{y} \partial_{y}^{afa}\eta^{n+1} - \frac{1}{g\Delta t^{2}}A_{z} \eta^{n+1} = & \frac{1}{g \Delta t}\left( \delta_{x}^{caa}\sum_{k} A_{x} u^{\star} + \delta_{y}^{aca}\sum_{k} A_{y} v^{\star} \right)
+   & - \frac{1}{g\Delta t^{2}}A_{z} \eta^{n}
+\end{algned}
 ```
 
 Formulated in this way, the linear operator will be symmetric and so can be solved using a preconditioned conjugate 
