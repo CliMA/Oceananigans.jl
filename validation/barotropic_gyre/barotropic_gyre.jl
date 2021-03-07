@@ -22,12 +22,12 @@ using JLD2
 using Printf
 using GLMakie
 
-Nx = 60
-Ny = 30
+Nx = 120
+Ny = 60
 
 # A spherical domain
 grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                    longitude = (0, 60),
+                                    longitude = (-30, 30),
                                     latitude = (-15, 45),
                                     z = (-4000, 0))
 
@@ -35,7 +35,7 @@ free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
 
 coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving())
 
-surface_wind_stress_parameters = (τ₀ = 1e-2,
+surface_wind_stress_parameters = (τ₀ = 5e-4,
                                   Lϕ = grid.Ly,
                                   ϕ₀ = 15)
 
@@ -66,7 +66,7 @@ wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.ϕᵃᶜ�
 
 simulation = Simulation(model,
                         Δt = 0.1wave_propagation_time_scale,
-                        stop_iteration = 10000,
+                        stop_iteration = 100000,
                         iteration_interval = 100,
                         progress = s -> @info "Time = $(s.model.clock.time) / $(s.stop_time)")
                                                          
@@ -110,10 +110,10 @@ z = @. cosd(ϕ_azimuthal)
 
 fig = Figure(resolution = (1080, 1080))
 
-ax = fig[1, 1] = LScene(fig, title="")
+ax = fig[1, 1] = LScene(fig)
 wireframe!(ax, Sphere(Point3f0(0), 0.99f0), show_axis=false)
 surface!(ax, x, y, z, color=u, colormap=:balance) #, colorrange=(0.0, 0.02))
-rotate_cam!(ax.scene, (-π/4, π/8, 0))
+rotate_cam!(ax.scene, (3π/4, π/8, 0))
 zoom!(ax.scene, (0, 0, 0), 2, false)
 
 supertitle = fig[0, :] = Label(fig, plot_title, textsize=30)
