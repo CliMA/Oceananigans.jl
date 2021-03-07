@@ -2,6 +2,8 @@ using Base: @propagate_inbounds
 using CUDA
 using Adapt
 using OffsetArrays
+
+using Oceananigans: AbstractField
 using Oceananigans.Architectures
 using Oceananigans.Utils
 using Oceananigans.Grids: interior_indices, interior_parent_indices
@@ -13,14 +15,6 @@ import Oceananigans.Architectures: architecture
 import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, xnode, ynode, znode
 import Oceananigans.Utils: datatuple
-
-"""
-    AbstractField{X, Y, Z, A, G}
-
-Abstract supertype for fields located at `(X, Y, Z)` with data stored in a container
-of type `A`. The field is defined on a grid `G`.
-"""
-abstract type AbstractField{X, Y, Z, A, G} end
 
 function validate_field_data(X, Y, Z, data, grid)
     Tx, Ty, Tz = total_size((X, Y, Z), grid)
@@ -168,6 +162,12 @@ total_size(f::AbstractField) = total_size(location(f), f.grid)
 #####
 
 @propagate_inbounds Base.getindex(f::AbstractField, inds...) = @inbounds getindex(f.data, inds...)
+
+#####
+##### setindex
+#####
+
+@propagate_inbounds Base.setindex!(f::AbstractField, a, inds...) = @inbounds setindex!(f.data, a, inds...)
 
 #####
 ##### Coordinates of fields

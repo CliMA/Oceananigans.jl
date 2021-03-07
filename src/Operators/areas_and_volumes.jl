@@ -1,3 +1,5 @@
+using Oceananigans.Grids: Center, Face
+
 """
 Notes:
 
@@ -82,9 +84,8 @@ The operators in this file fall into three categories:
 @inline Δyᶜᶠᵃ(i, j, k, grid::ARG) = grid.Δy
 @inline Δyᶠᶠᵃ(i, j, k, grid::ARG) = grid.Δy
 
-
 #####
-##### Areas for horizontally-curvilinear, vertically-rectilinear algorithms
+##### Areas for algorithms that generalize to horizontally-curvilinear, vertically-rectilinear grids
 #####
 
 @inline Azᶜᶜᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
@@ -97,13 +98,18 @@ The operators in this file fall into three categories:
 #####
 
 @inline Axᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Axᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+
 @inline Ayᶜᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Ayᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
 
 #####
 ##### Volumes for three-dimensionally curvilinear algorithms
 #####
 
 @inline Vᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Vᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Vᶜᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
 
 #####
 ##### Temporary place for grid spacings and areas for RegularLatitudeLongitudeGrid
@@ -129,3 +135,46 @@ The operators in this file fall into three categories:
 @inline Azᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * (sind(grid.ϕᵃᶜᵃ[j])   - sind(grid.ϕᵃᶜᵃ[j-1]))
 @inline Azᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Azᶜᶜᵃ(i, j, k, grid)
 @inline Azᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Azᶠᶠᵃ(i, j, k, grid)
+
+#####
+##### Generic functions for specified locations
+#####
+##### For example, Δx(i, j, k, Face, Center, Z) is equivalent to = Δxᶠᶜᵃ(i, j, k, grid).
+#####
+##### We also use the function "volume" rather than `V`.
+#####
+
+location_superscript(::Type{Center}) = :ᶜ
+location_superscript(::Type{Face}) = :ᶠ
+
+location_code_xy(X, Y) = Symbol(location_superscript(X), location_superscript(Y), :ᵃ)
+location_code(X, Y, Z) = Symbol(location_superscript(X), location_superscript(Y), location_superscript(Z))
+
+for X in (:Center, :Face)
+    for Y in (:Center, :Face)
+        Xe = @eval $X
+        Ye = @eval $Y
+
+        Δx_function = Symbol(:Δx, location_code_xy(Xe, Ye)) 
+        Δy_function = Symbol(:Δy, location_code_xy(Xe, Ye)) 
+        Δz_function = Symbol(:Δz, location_code_xy(Xe, Ye)) 
+
+        Ax_function = Symbol(:Ax, location_code(Xe, Ye, Center))
+        Ay_function = Symbol(:Ay, location_code(Xe, Ye, Center))
+        Az_function = Symbol(:Az, location_code_xy(Xe, Ye))
+
+        @eval begin
+            Δx(i, j, k, grid, ::Type{$X}, ::Type{$Y}, Z) = $Δx_function(i, j, k, grid)
+            Δy(i, j, k, grid, ::Type{$X}, ::Type{$Y}, Z) = $Δy_function(i, j, k, grid)
+            Δz(i, j, k, grid, ::Type{$X}, ::Type{$Y}, Z) = $Δz_function(i, j, k, grid)
+            Az(i, j, k, grid, ::Type{$X}, ::Type{$Y}, Z) = $Az_function(i, j, k, grid)
+
+            Ax(i, j, k, grid, ::Type{$X}, ::Type{$Y}, ::Type{Center}) = $Ax_function(i, j, k, grid)
+            Ay(i, j, k, grid, ::Type{$X}, ::Type{$Y}, ::Type{Center}) = $Ay_function(i, j, k, grid)
+        end
+    end
+end
+
+volume(i, j, k, grid, ::Type{Center}, ::Type{Center}, ::Type{Center}) = Vᶜᶜᶜ(i, j, k, grid)
+volume(i, j, k, grid, ::Type{Face},   ::Type{Center}, ::Type{Center}) = Vᶠᶜᶜ(i, j, k, grid)
+volume(i, j, k, grid, ::Type{Center}, ::Type{Face},   ::Type{Center}) = Vᶜᶠᶜ(i, j, k, grid)

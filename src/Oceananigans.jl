@@ -127,6 +127,14 @@ Abstract supertype for output writers that write data to disk.
 """
 abstract type AbstractOutputWriter end
 
+"""
+    AbstractField{X, Y, Z, A, G}
+
+Abstract supertype for fields located at `(X, Y, Z)` with data stored in a container
+of type `A`. The field is defined on a grid `G`.
+"""
+abstract type AbstractField{X, Y, Z, A, G} end
+
 #####
 ##### Place-holder functions
 #####
