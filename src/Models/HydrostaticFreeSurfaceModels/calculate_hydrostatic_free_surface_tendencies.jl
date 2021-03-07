@@ -28,16 +28,15 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
                                                                         model.forcing,
                                                                         model.clock)
 
-    #=
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
-    calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ,
-                                               model.architecture,
-                                               model.velocities,
-                                               model.tracers,
-                                               model.clock,
-                                               fields(model))
-    =#
+    calculate_hydrostatic_boundary_tendency_contributions!(model.timestepper.Gⁿ,
+                                                           model.architecture,
+                                                           model.velocities,
+                                                           model.free_surface,
+                                                           model.tracers,
+                                                           model.clock,
+                                                           fields(model))
 
     return nothing
 end
@@ -142,4 +141,47 @@ end
 @kernel function calculate_hydrostatic_free_surface_Gη!(Gη, grid, args...)
     i, j = @index(Global, NTuple)
     @inbounds Gη[i, j, 1] = free_surface_tendency(i, j, grid, args...)
+end
+
+#####
+##### Boundary condributions to hydrostatic free surface model
+#####
+
+""" Apply boundary conditions by adding flux divergences to the right-hand-side. """
+function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velocities, free_surface, tracers, clock, model_fields)
+
+    barrier = Event(device(arch))
+
+    events = []
+
+    # Velocity fields
+    for i in (:u, :v)
+        x_bcs_event = apply_x_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
+        y_bcs_event = apply_y_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
+        z_bcs_event = apply_z_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
+
+        push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
+    end
+
+    # Free surface
+    x_bcs_event = apply_x_bcs!(Gⁿ.η, free_surface.η, arch, barrier, clock, model_fields)
+    y_bcs_event = apply_y_bcs!(Gⁿ.η, free_surface.η, arch, barrier, clock, model_fields)
+    z_bcs_event = apply_z_bcs!(Gⁿ.η, free_surface.η, arch, barrier, clock, model_fields)
+
+    push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
+
+    # Tracer fields
+    for i in propertynames(tracers)
+        x_bcs_event = apply_x_bcs!(Gⁿ[i], tracers[i], arch, barrier, clock, model_fields)
+        y_bcs_event = apply_y_bcs!(Gⁿ[i], tracers[i], arch, barrier, clock, model_fields)
+        z_bcs_event = apply_z_bcs!(Gⁿ[i], tracers[i], arch, barrier, clock, model_fields)
+
+        push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
+    end
+
+    events = filter(e -> typeof(e) <: Event, events)
+
+    wait(device(arch), MultiEvent(Tuple(events)))
+
+    return nothing
 end
