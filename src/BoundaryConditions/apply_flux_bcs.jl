@@ -1,5 +1,3 @@
-using Oceananigans.Operators: Ax, Ay, Az, volume, ΔzF
-using Oceananigans.Operators: Azᶜᶜᵃ, Vᶜᶜᶜ
 using Oceananigans: AbstractField
 
 #####
