@@ -53,7 +53,7 @@ function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFiel
     return PrescribedVelocityFields(u, v, w, velocities.parameters)
 end
 
-@kernel !(ϕ::FunctionField, args...) = nothing 
+@kernel ab2_step_field!(ϕ::FunctionField, args...) = nothing 
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
 
