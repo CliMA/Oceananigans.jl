@@ -33,7 +33,7 @@ The operators in this file fall into three categories:
 """
 
 #####
-##### Grid lengths for horiontally-regular algorithms
+##### Grid lengths for horizontally-regular algorithms
 #####
 
 @inline Δx(i, j, k, grid::ARG) = grid.Δx
@@ -52,7 +52,7 @@ The operators in this file fall into three categories:
 @inline Δzᵃᵃᶜ(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶜ[k]
 
 #####
-##### Areas for horiontally-regular algorithms
+##### Areas for horizontally-regular algorithms
 #####
 
 @inline Axᵃᵃᶜ(i, j, k, grid) = Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
@@ -64,7 +64,7 @@ The operators in this file fall into three categories:
 @inline Azᵃᵃᵃ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
 
 #####
-##### Volumes for horiontally-regular algorithms
+##### Volumes for horizontally-regular algorithms
 #####
 
 @inline Vᵃᵃᶜ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
