@@ -23,7 +23,7 @@ unsure about anything.
 * Implement a new feature if you need it to use Oceananigans.
 
 If you're interested in working on something, let us know by commenting on
-existing issues or by opening a new issue if. This is to make sure no one else
+existing issues or by opening a new issue. This is to make sure no one else
 is working on the same issue and so we can help and guide you in case there
 is anything you need to know beforehand.
 
@@ -101,6 +101,16 @@ Writing documentation strings is really important to make sure others use your f
 properly. Didn't write new functions? That's fine, but be sure that the documentation for
 the code you touched is still in great shape. It is not uncommon to find some strange wording
 or clarification that you can take care of while you are here.
+
+You can preview how the Documentation will look like after merging by building the documentation 
+locally. From the main directory of your local repository call
+
+```
+julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'
+julia --project=docs/ docs/make.jl
+```
+ 
+and then open `docs/build/index.html` in your favorite browser.
 
 ## Credits
 

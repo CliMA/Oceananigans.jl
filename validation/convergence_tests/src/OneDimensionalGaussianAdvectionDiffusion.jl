@@ -24,7 +24,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     #####
 
     domain = (x=(-1, 1.5), y=(0, 1), z=(0, 1))
-    grid = RegularCartesianGrid(topology=topo, size=(Nx, 1, 1), halo=(3, 3, 3); domain...)
+    grid = RegularRectilinearGrid(topology=topo, size=(Nx, 1, 1), halo=(3, 3, 3); domain...)
 
     model = IncompressibleModel(architecture = architecture,
                                  timestepper = :RungeKutta3,
@@ -63,7 +63,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     #####
 
     ydomain = (x=(0, 1), y=(-1, 1.5), z=(0, 1))
-    ygrid = RegularCartesianGrid(topology=topo, size=(1, Nx, 1), halo=(3, 3, 3); ydomain...)
+    ygrid = RegularRectilinearGrid(topology=topo, size=(1, Nx, 1), halo=(3, 3, 3); ydomain...)
 
     model = IncompressibleModel(architecture = architecture,
                                  timestepper = :RungeKutta3,
@@ -99,7 +99,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     #####
 
     zdomain = (x=(0, 1), y=(0, 1), z=(-1, 1.5))
-    zgrid = RegularCartesianGrid(topology=topo, size=(1, 1, Nx), halo=(3, 3, 3); zdomain...)
+    zgrid = RegularRectilinearGrid(topology=topo, size=(1, 1, Nx), halo=(3, 3, 3); zdomain...)
 
     model = IncompressibleModel(architecture = architecture,
                                  timestepper = :RungeKutta3,

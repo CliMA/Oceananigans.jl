@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction
 
 function test_boundary_condition(arch, FT, topo, side, field_name, boundary_condition)
-    grid = RegularCartesianGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
+    grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
 
     boundary_condition_kwarg = Dict(side => boundary_condition)
     field_boundary_conditions = TracerBoundaryConditions(grid; boundary_condition_kwarg...)
@@ -23,7 +23,7 @@ end
 
 function test_flux_budget(arch, FT, fldname)
     N, κ, Lz = 16, 1, 0.7
-    grid = RegularCartesianGrid(FT, size=(N, N, N), extent=(1, 1, Lz))
+    grid = RegularRectilinearGrid(FT, size=(N, N, N), extent=(1, 1, Lz))
 
     bottom_flux = FT(0.3)
     flux_bc = BoundaryCondition(Flux, bottom_flux)
@@ -64,7 +64,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     bz = FT(π)
     flux = - κ₀ * bz
 
-    grid = RegularCartesianGrid(FT, size=(16, 16, 16), extent=(1, 1, Lz))
+    grid = RegularRectilinearGrid(FT, size=(16, 16, 16), extent=(1, 1, Lz))
 
     buoyancy_bcs = TracerBoundaryConditions(grid, bottom=BoundaryCondition(Gradient, bz))
     κₑ_bcs = DiffusivityBoundaryConditions(grid, bottom=BoundaryCondition(Value, κ₀))
@@ -133,7 +133,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
         # We use Periodic, Bounded, Bounded here because triply Bounded domains don't work on the GPU
         # yet.
-        grid = RegularCartesianGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=(Periodic, Bounded, Bounded))
+        grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=(Periodic, Bounded, Bounded))
 
         u_boundary_conditions = UVelocityBoundaryConditions(grid; 
                                                             bottom = simple_function_bc(Value),

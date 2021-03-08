@@ -1,13 +1,14 @@
 using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!
+using Oceananigans.Solvers: poisson_eigenvalues
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: _compute_w_from_continuity!
 
 function poisson_solver_instantiates(arch, FT, Nx, Ny, Nz, planner_flag)
-    grid = RegularCartesianGrid(FT, size=(Nx, Ny, Nz), extent=(100, 100, 100))
+    grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(100, 100, 100))
     solver = FFTBasedPoissonSolver(arch, grid, planner_flag)
     return true  # Just making sure the FFTBasedPoissonSolver does not error/crash.
 end
 
 function random_divergent_source_term(FT, arch, grid)
-    # Generate right hand side from a random (divergent) velocity field.
     Ru = CenterField(FT, arch, grid, UVelocityBoundaryConditions(grid))
     Rv = CenterField(FT, arch, grid, VVelocityBoundaryConditions(grid))
     Rw = CenterField(FT, arch, grid, WVelocityBoundaryConditions(grid))
@@ -33,6 +34,38 @@ function random_divergent_source_term(FT, arch, grid)
     return R, U
 end
 
+function random_divergence_free_source_term(FT, arch, grid)
+    # Random right hand side
+    Ru = CenterField(FT, arch, grid, UVelocityBoundaryConditions(grid))
+    Rv = CenterField(FT, arch, grid, VVelocityBoundaryConditions(grid))
+    Rw = CenterField(FT, arch, grid, WVelocityBoundaryConditions(grid))
+    U = (u=Ru, v=Rv, w=Rw)
+
+    Nx, Ny, Nz = size(grid)
+    set!(Ru, rand(Nx, Ny, Nz))
+    set!(Rv, rand(Nx, Ny, Nz))
+    set!(Rw, zeros(Nx, Ny, Nz))
+
+    fill_halo_regions!(Ru, arch, nothing, nothing)
+    fill_halo_regions!(Rv, arch, nothing, nothing)
+    fill_halo_regions!(Rw, arch, nothing, nothing)
+
+    event = launch!(arch, grid, :xy, _compute_w_from_continuity!, U, grid,
+                    dependencies=Event(device(arch)))
+    wait(device(arch), event)
+
+    fill_halo_regions!(Rw, arch, nothing, nothing)
+
+    # Compute the right hand side R = ∇⋅U
+    ArrayType = array_type(arch)
+    R = zeros(Nx, Ny, Nz) |> ArrayType
+    event = launch!(arch, grid, :xyz, divergence!, grid, Ru.data, Rv.data, Rw.data, R,
+                    dependencies=Event(device(arch)))
+    wait(device(arch), event)
+
+    return R
+end
+
 function compute_∇²!(∇²ϕ, ϕ, arch, grid)
     fill_halo_regions!(ϕ, arch)
     event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ.data, ∇²ϕ.data, dependencies=Event(device(arch)))
@@ -41,15 +74,19 @@ function compute_∇²!(∇²ϕ, ϕ, arch, grid)
     return nothing
 end
 
+#####
+##### Regular rectilinear grid Poisson solver
+#####
+
 function divergence_free_poisson_solution(arch, FT, topo, Nx, Ny, Nz, planner_flag=FFTW.MEASURE)
     ArrayType = array_type(arch)
-    grid = RegularCartesianGrid(FT, topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(FT, topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
 
     solver = FFTBasedPoissonSolver(arch, grid, planner_flag)
     R, U = random_divergent_source_term(FT, arch, grid)
 
     p_bcs = PressureBoundaryConditions(grid)
-    ϕ   = CenterField(FT, arch, grid, p_bcs)  # "pressure"
+    ϕ   = CenterField(FT, arch, grid, p_bcs)  # "kinematic pressure"
     ∇²ϕ = CenterField(FT, arch, grid, p_bcs)
 
     # Using Δt = 1 but it doesn't matter since velocities = 0.
@@ -71,7 +108,7 @@ k²(::Type{Bounded}, n) = (n/2)^2
 k²(::Type{Periodic}, n) = n^2
 
 function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
-    grid = RegularCartesianGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
+    grid = RegularRectilinearGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
     solver = FFTBasedPoissonSolver(arch, grid)
 
     xC, yC, zC = nodes((Center, Center, Center), grid, reshape=true)
@@ -101,6 +138,31 @@ function poisson_solver_convergence(arch, topo, N¹, N²; FT=Float64, mode=1)
     @info "Convergence of L¹-normed error, $(typeof(arch)), $FT, ($(N¹)³ -> $(N²)³), topology=($TX, $TY, $TZ): $rate"
 
     return isapprox(rate, 2, rtol=5e-3)
+end
+
+#####
+##### Vertically stretched Poisson solver
+#####
+
+function vertically_stretched_poisson_solver_correct_answer(FT, arch, topo, Nx, Ny, zF)
+    Nz = length(zF) - 1
+    vs_grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), zF=zF)
+    solver = FourierTridiagonalPoissonSolver(arch, vs_grid)
+
+    p_bcs = PressureBoundaryConditions(vs_grid)
+    ϕ   = CenterField(FT, arch, vs_grid, p_bcs)  # "kinematic pressure"
+    ∇²ϕ = CenterField(FT, arch, vs_grid, p_bcs)
+
+    R = random_divergence_free_source_term(FT, arch, vs_grid)
+    F = CUDA.@allowscalar reshape(vs_grid.Δzᵃᵃᶠ[1:Nz], 1, 1, Nz) .* R  # RHS needs to be multiplied by ΔzC
+    solver.batched_tridiagonal_solver.f .= F
+
+    solve_poisson_equation!(solver)
+
+    CUDA.@allowscalar interior(ϕ) .= real.(solver.storage)
+    compute_∇²!(∇²ϕ, ϕ, arch, vs_grid)
+
+    return CUDA.@allowscalar interior(∇²ϕ) ≈ R
 end
 
 #####
@@ -155,6 +217,36 @@ topos = collect(Iterators.product(PB, PB, PB))[:]
             for topo in topos
                 @test poisson_solver_convergence(arch, topo, 2^6, 2^7)
                 @test poisson_solver_convergence(arch, topo, 67, 131, mode=2)
+            end
+        end
+    end
+
+    # Vertically stretched topologies to test.
+    vs_topos = [
+        (Periodic, Periodic, Bounded),
+        (Periodic, Bounded,  Bounded),
+        (Bounded,  Periodic, Bounded),
+        (Bounded,  Bounded,  Bounded)
+    ]
+
+    for arch in archs, topo in vs_topos
+        @testset "Vertically stretched Poisson solver [FACR, $(typeof(arch)), $topo]" begin
+            @info "  Testing vertically stretched Poisson solver [FACR, $(typeof(arch)), $topo]..."
+
+            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 8, 8, 1:8)
+            @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 7, 7, 1:7)
+            @test vertically_stretched_poisson_solver_correct_answer(Float32, arch, topo, 8, 8, 1:8)
+
+            zF_even = [1, 2, 4, 7, 11, 16, 22, 29, 37]      # Nz = 8
+            zF_odd  = [1, 2, 4, 7, 11, 16, 22, 29, 37, 51]  # Nz = 9
+
+            for zF in [zF_even, zF_odd]
+                @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 8,  8, zF)
+                @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 16, 8, zF)
+                @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 8, 16, zF)
+                @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 8, 11, zF)
+                @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 5,  8, zF)
+                @test vertically_stretched_poisson_solver_correct_answer(Float64, arch, topo, 7, 13, zF)
             end
         end
     end

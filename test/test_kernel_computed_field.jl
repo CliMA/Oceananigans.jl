@@ -1,7 +1,7 @@
 using Oceananigans.Fields: KernelComputedField
 using KernelAbstractions: @kernel, @index
 
-grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1),
+grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1),
                             topology=(Periodic, Periodic, Bounded))
 
 @kernel function double!(doubled_field, grid, single_field)
@@ -22,7 +22,7 @@ for arch in archs
 
         doubled_field = KernelComputedField(Center, Center, Center,
                                             double!, arch, grid,
-                                            field_dependencies = single_field)
+                                            computed_dependencies = single_field)
 
         # Test that the constructor worked
         @test doubled_field isa KernelComputedField
@@ -30,7 +30,7 @@ for arch in archs
         multiple = 3
         multiplied_field = KernelComputedField(Center, Center, Center,
                                                multiply!, arch, grid,
-                                               field_dependencies = doubled_field,
+                                               computed_dependencies = doubled_field,
                                                parameters = multiple)
 
         # Test that the constructor worked
@@ -55,7 +55,7 @@ for arch in archs
 
         doubled_face_field = KernelComputedField(Center, Center, Face,
                                                  double!, arch, grid,
-                                                 field_dependencies = single_field)
+                                                 computed_dependencies = single_field)
 
         # Test that nothing happens for fields on faces in bounded directions
         compute!(doubled_face_field)

@@ -3,9 +3,13 @@ using NCDatasets
 using Oceananigans.Fields
 using Oceananigans.Utils: show_schedule
 
-using Dates: now
+using Dates: AbstractTime, now
 using Oceananigans.Grids: topology, halo_size
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
+using Oceananigans.TimeSteppers: float_or_date_time
+
+using Oceananigans.Diagnostics: WindowedSpatialAverage, FieldSlicer, parent_slice_indices, short_show
+using Oceananigans.Fields: reduced_location, location
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
@@ -124,7 +128,7 @@ mutable struct NetCDFOutputWriter{D, O, T, S, A} <: AbstractOutputWriter
 end
 
 """
-function NetCDFOutputWriter(model, outputs; filepath, schedule
+    NetCDFOutputWriter(model, outputs; filepath, schedule
                                    array_type = Array{Float32},
                                  field_slicer = FieldSlicer(),
                             global_attributes = Dict(),
@@ -176,7 +180,7 @@ to separate NetCDF files:
 ```jldoctest netcdf1
 using Oceananigans, Oceananigans.OutputWriters
 
-grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1));
+grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
 model = IncompressibleModel(grid=grid);
 
@@ -232,7 +236,7 @@ provided that their `dimensions` are provided:
 ```jldoctest
 using Oceananigans, Oceananigans.OutputWriters
 
-grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 2, 3));
+grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
 
 model = IncompressibleModel(grid=grid);
 
@@ -323,9 +327,14 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
                    compression=compression, attrib=default_dimension_attributes[dim_name])
         end
 
+        # DateTime and TimeDate are both <: AbstractTime
+        time_attrib = model.clock.time isa AbstractTime ?
+            Dict("longname" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
+            Dict("longname" => "Time", "units" => "seconds")
+
         # Creates an unlimited dimension "time"
         defDim(dataset, "time", Inf)
-        defVar(dataset, "time", typeof(model.clock.time), ("time",), attrib=default_dimension_attributes["time"])
+        defVar(dataset, "time", eltype(model.grid), ("time",), attrib=time_attrib)
 
         # Use default output attributes for known outputs if the user has not specified any.
         # Unknown outputs get an empty tuple (no output attributes).
@@ -381,6 +390,21 @@ define_output_variable!(dataset, output::AbstractField, name, array_type, compre
 define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, args...) =
     define_output_variable!(dataset, output.operand, args...)
 
+
+""" Defines variable for WindowedSpatialAverage outputs """
+function define_output_variable!(dataset, 
+                                 wtsa::Union{WindowedSpatialAverage, WindowedTimeAverage{<:WindowedSpatialAverage}}, 
+                                 name, array_type, compression, attributes, dimensions)
+    wsa = wtsa isa WindowedTimeAverage ? wtsa.operand : wtsa
+    LX, LY, LZ = reduced_location(location(wsa.field), dims=wsa.dims)
+
+    output_dims = tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
+    defVar(dataset, name, eltype(array_type), (output_dims..., "time"),
+           compression=compression, attrib=attributes)
+    return nothing
+end
+
+
 #####
 ##### Write output
 #####
@@ -415,7 +439,7 @@ function write_output!(ow::NetCDFOutputWriter, model)
     ds, verbose, filepath = ow.dataset, ow.verbose, ow.filepath
 
     time_index = length(ds["time"]) + 1
-    ds["time"][time_index] = model.clock.time
+    ds["time"][time_index] = float_or_date_time(model.clock.time)
 
     if verbose
         @info "Writing to NetCDF: $filepath..."

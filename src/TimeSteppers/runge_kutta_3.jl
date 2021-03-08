@@ -73,6 +73,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
     calculate_tendencies!(model)
 
+    correct_immersed_tendencies!(model, Δt, γ¹, 0)
+
     rk3_substep!(model, Δt, γ¹, nothing)
 
     calculate_pressure_correction!(model, first_stage_Δt)
@@ -89,6 +91,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
     calculate_tendencies!(model)
 
+    correct_immersed_tendencies!(model, Δt, γ², ζ²)
+
     rk3_substep!(model, Δt, γ², ζ²)
 
     calculate_pressure_correction!(model, second_stage_Δt)
@@ -104,6 +108,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
     #
 
     calculate_tendencies!(model)
+    
+    correct_immersed_tendencies!(model, Δt, γ³, ζ³)
 
     rk3_substep!(model, Δt, γ³, ζ³)
 

@@ -1,7 +1,7 @@
 using Oceananigans.Grids: xnode, znode
 using Oceananigans.TimeSteppers: update_state!
 
-function run_rayleigh_benard_regression_test(arch)
+function run_rayleigh_benard_regression_test(arch, grid_type)
 
     #####
     ##### Parameters
@@ -25,7 +25,12 @@ function run_rayleigh_benard_regression_test(arch)
     ##### Model setup
     #####
 
-    grid = RegularCartesianGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    if grid_type == :regular
+        grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    elseif grid_type == :vertically_unstretched
+        zF = range(-Lz, 0, length=Nz+1)
+        grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), zF=zF)
+    end
 
     # Force salinity as a passive tracer (βS=0)
     c★(x, z) = exp(4z) * sin(2π/Lx * x)
@@ -44,7 +49,8 @@ function run_rayleigh_benard_regression_test(arch)
                     forcing = (c=Forcing(Fc, discrete_form=true),)
     )
 
-    Δt = 0.01 * min(model.grid.Δx, model.grid.Δy, model.grid.Δz)^2 / ν
+    # Lz/Nz will work for both the :regular and :vertically_unstretched grids.
+    Δt = 0.01 * min(model.grid.Δx, model.grid.Δy, Lz/Nz)^2 / ν
 
     # We will manually change the stop_iteration as needed.
     simulation = Simulation(model, Δt=Δt, stop_iteration=0)

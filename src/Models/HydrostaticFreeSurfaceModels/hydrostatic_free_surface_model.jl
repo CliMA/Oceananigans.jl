@@ -9,7 +9,7 @@ using Oceananigans.Buoyancy: validate_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, TracerBoundaryConditions
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo
+using Oceananigans.Grids: with_halo, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 using Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
@@ -101,6 +101,8 @@ function HydrostaticFreeSurfaceModel(; grid,
          throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
     end
 
+    validate_momentum_advection(momentum_advection, grid)
+
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
     validate_buoyancy(buoyancy, tracernames(tracers))
 
@@ -123,15 +125,14 @@ function HydrostaticFreeSurfaceModel(; grid,
     diffusivities = DiffusivityFields(diffusivities, architecture, grid,
                                       tracernames(tracers), boundary_conditions, closure)
 
-    velocities.w.boundary_conditions.top === nothing || error("Top boundary condition for HydrostaticFreeSurfaceModel velocities.w
-                                                              must be `nothing`!")
+    validate_velocity_boundary_conditions(velocities)
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(:QuasiAdamsBashforth2, architecture, grid, tracernames(tracers);
-                              Gⁿ = HydrostaticFreeSurfaceTendencyFields(free_surface, architecture, grid, tracernames(tracers)),
-                              G⁻ = HydrostaticFreeSurfaceTendencyFields(free_surface, architecture, grid, tracernames(tracers)))
+                              Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)),
+                              G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)))
 
-    free_surface = FreeSurface(free_surface, architecture, grid)
+    free_surface = FreeSurface(free_surface, velocities, architecture, grid)
 
     # Regularize forcing and closure for model tracer and velocity fields.
     model_fields = merge((u=velocities.u, v=velocities.v, η=free_surface.η), tracers)
@@ -152,3 +153,15 @@ function HydrostaticFreeSurfaceModel(; grid,
                                        free_surface, forcing, closure, particles, velocities, tracers,
                                        pressure, diffusivities, timestepper)
 end
+
+function validate_velocity_boundary_conditions(velocities)
+    velocities.w.boundary_conditions.top === nothing || error("Top boundary condition for HydrostaticFreeSurfaceModel velocities.w
+                                                              must be `nothing`!")
+    return nothing
+end
+
+momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
+
+validate_momentum_advection(momentum_advection, grid) = nothing
+validate_momentum_advection(momentum_advection::VectorInvariant, grid::AbstractRectilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
+validate_momentum_advection(momentum_advection::VectorInvariant, grid::AbstractHorizontallyCurvilinearGrid) = nothing

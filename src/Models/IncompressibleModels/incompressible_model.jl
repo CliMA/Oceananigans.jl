@@ -17,7 +17,8 @@ using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: inflate_halo_size, tupleit
 
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
-                                   V, S, K, BG, P} <: AbstractModel{TS}
+                                   V, S, K, BG, P, I} <: AbstractModel{TS}
+
          architecture :: A         # Computer `Architecture` on which `Model` is run
                  grid :: G         # Grid of physical points on which `Model` is solved
                 clock :: Clock{T}  # Tracks iteration number and simulation time of `Model`
@@ -35,6 +36,7 @@ mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
         diffusivities :: K         # Container for turbulent diffusivities
           timestepper :: TS        # Object containing timestepper fields and parameters
       pressure_solver :: S         # Pressure/Poisson solver
+    immersed_boundary :: I         # Models the physics of immersed boundaries within the grid
 end
 
 """
@@ -57,7 +59,8 @@ end
              velocities = nothing,
               pressures = nothing,
           diffusivities = nothing,
-        pressure_solver = nothing
+        pressure_solver = nothing,
+      immersed_boundary = nothing
     )
 
 Construct an incompressible `Oceananigans.jl` model on `grid`.
@@ -98,7 +101,8 @@ function IncompressibleModel(;
              velocities = nothing,
               pressures = nothing,
           diffusivities = nothing,
-        pressure_solver = nothing
+        pressure_solver = nothing,
+      immersed_boundary = nothing
     )
 
     if architecture == GPU() && !has_cuda()
@@ -134,7 +138,7 @@ function IncompressibleModel(;
                                       tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
-        pressure_solver = FFTBasedPoissonSolver(architecture, grid)
+        pressure_solver = PressureSolver(architecture, grid)
     end
 
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
@@ -149,7 +153,7 @@ function IncompressibleModel(;
 
     return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                forcing, closure, background_fields, particles, velocities, tracers,
-                               pressures, diffusivities, timestepper, pressure_solver)
+                               pressures, diffusivities, timestepper, pressure_solver, immersed_boundary)
 end
 
 #####

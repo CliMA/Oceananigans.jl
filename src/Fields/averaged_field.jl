@@ -26,7 +26,7 @@ struct AveragedField{X, Y, Z, S, A, G, N, O} <: AbstractReducedField{X, Y, Z, A,
 
         S = typeof(status)
         N = length(dims)
-        
+
         return new{X, Y, Z, S, A, G, N, O}(data, grid, dims, operand, status)
     end
 
@@ -44,7 +44,7 @@ operand_averaging_indices(::Type{Nothing}, op_loc, topo, N, H) = interior_parent
 Returns an AveragedField.
 """
 function AveragedField(operand::AbstractField; dims, data=nothing, recompute_safely=true)
-    
+
     arch = architecture(operand)
     loc = reduced_location(location(operand), dims=dims)
     grid = operand.grid
@@ -87,15 +87,9 @@ compute_at!(avg::AveragedField{X, Y, Z, <:FieldStatus}, time) where {X, Y, Z} =
     conditional_compute!(avg, time)
 
 #####
-##### Very sugar
-#####
-
-Statistics.mean(ϕ::AbstractField; kwargs...) = AveragedField(ϕ; kwargs...)
-
-#####
 ##### Adapt
 #####
 
-Adapt.adapt_structure(to, averaged_field::AveragedField{X, Y, Z}) where {X, Y, Z} = 
+Adapt.adapt_structure(to, averaged_field::AveragedField{X, Y, Z}) where {X, Y, Z} =
     AveragedField{X, Y, Z}(Adapt.adapt(to, averaged_field.data),
                            nothing, averaged_field.dims, nothing, nothing)

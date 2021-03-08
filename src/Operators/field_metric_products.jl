@@ -18,4 +18,6 @@
 @inline Ay_ψᵃᵃᶜ(i, j, k, grid, c) = @inbounds Ayᵃᵃᶜ(i, j, k, grid) * c[i, j, k]
 @inline Az_ψᵃᵃᵃ(i, j, k, grid, c) = @inbounds Azᵃᵃᵃ(i, j, k, grid) * c[i, j, k]
 
-
+@inline Ax_uᶠᶜᶜ(i, j, k, grid, u) = @inbounds Axᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
+@inline Ay_vᶜᶠᶜ(i, j, k, grid, v) = @inbounds Ayᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
+@inline Az_wᶜᶜᵃ(i, j, k, grid, w) = @inbounds Azᶜᶜᵃ(i, j, k, grid) * w[i, j, k]

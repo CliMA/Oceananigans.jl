@@ -234,7 +234,7 @@ To create, for example, a set of horizontally-periodic field boundary conditions
 ```jldoctest
 julia> topology = (Periodic, Periodic, Bounded);
 
-julia> grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology);
+julia> grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology);
 
 julia> T_bcs = TracerBoundaryConditions(grid,    top = ValueBoundaryCondition(20),
                                               bottom = GradientBoundaryCondition(0.01))
@@ -263,7 +263,7 @@ Below, non-default boundary conditions are imposed on the ``u``-velocity and tem
 ```jldoctest
 julia> topology = (Periodic, Periodic, Bounded);
 
-julia> grid = RegularCartesianGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology);
+julia> grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology);
 
 julia> u_bcs = UVelocityBoundaryConditions(grid, top = ValueBoundaryCondition(+0.1),
                                               bottom = ValueBoundaryCondition(-0.1));
@@ -273,7 +273,7 @@ julia> T_bcs = TracerBoundaryConditions(grid, top = ValueBoundaryCondition(20),
 
 julia> model = IncompressibleModel(grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
-├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
+├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 ├── tracers: (:T, :S)
 ├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
 ├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
@@ -282,13 +282,13 @@ IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 julia> model.velocities.u
 Field located at (Face, Center, Center)
 ├── data: OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}, size: (18, 18, 18)
-├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
+├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 └── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=Value, top=Value)
 
 julia> model.tracers.T
 Field located at (Center, Center, Center)
 ├── data: OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}, size: (18, 18, 18)
-├── grid: RegularCartesianGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
+├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 └── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=Gradient, top=Value)
 ```
 

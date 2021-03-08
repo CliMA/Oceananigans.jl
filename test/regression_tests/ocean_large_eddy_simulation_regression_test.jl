@@ -1,7 +1,7 @@
 using Oceananigans.TurbulenceClosures: VerstappenAnisotropicMinimumDissipation
 using Oceananigans.TimeSteppers: update_state!
 
-function run_ocean_large_eddy_simulation_regression_test(arch, closure)
+function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
     name = "ocean_large_eddy_simulation_" * string(typeof(closure).name.wrapper)
 
     spinup_steps = 10000
@@ -14,7 +14,13 @@ function run_ocean_large_eddy_simulation_regression_test(arch, closure)
     ∂T∂z = 0.005    # Initial vertical temperature gradient
 
     # Grid
-    grid = RegularCartesianGrid(size=(16, 16, 16), extent=(16, 16, 16))
+    N = L = 16
+    if grid_type == :regular
+        grid = RegularRectilinearGrid(size=(N, N, N), extent=(L, L, L))
+    elseif grid_type == :vertically_unstretched
+        zF = range(-L, 0, length=N+1)
+        grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(N, N, N), x=(0, L), y=(0, L), zF=zF)
+    end
 
     # Boundary conditions
     u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))

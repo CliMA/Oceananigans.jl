@@ -21,7 +21,7 @@ const C2 = CenteredSecondOrder
 @inline momentum_flux_ww(i, j, k, grid, ::C2, W, w) = ℑzᵃᵃᶜ(i, j, k, grid, Az_ψᵃᵃᵃ, W) * ℑzᵃᵃᶜ(i, j, k, grid, w)
 
 # Calculate the flux of a tracer quantity c through the faces of a cell.
-# In this case, the fluxes are given by u*Ax*T̅ˣ, v*Ay*T̅ʸ, and w*Az*T̅ᶻ.
-@inline advective_tracer_flux_x(i, j, k, grid, ::C2, U, c) = Ax_ψᵃᵃᶠ(i, j, k, grid, U) * ℑxᶠᵃᵃ(i, j, k, grid, c)
-@inline advective_tracer_flux_y(i, j, k, grid, ::C2, V, c) = Ay_ψᵃᵃᶠ(i, j, k, grid, V) * ℑyᵃᶠᵃ(i, j, k, grid, c)
-@inline advective_tracer_flux_z(i, j, k, grid, ::C2, W, c) = Az_ψᵃᵃᵃ(i, j, k, grid, W) * ℑzᵃᵃᶠ(i, j, k, grid, c)
+# In this case, the fluxes are given by u*Ax*c̄ˣ, v*Ay*c̄ʸ, and w*Az*c̄ᶻ.
+@inline advective_tracer_flux_x(i, j, k, grid, ::C2, U, c) = Ax_uᶠᶜᶜ(i, j, k, grid, U) * ℑxᶠᵃᵃ(i, j, k, grid, c)
+@inline advective_tracer_flux_y(i, j, k, grid, ::C2, V, c) = Ay_vᶜᶠᶜ(i, j, k, grid, V) * ℑyᵃᶠᵃ(i, j, k, grid, c)
+@inline advective_tracer_flux_z(i, j, k, grid, ::C2, W, c) = Az_wᶜᶜᵃ(i, j, k, grid, W) * ℑzᵃᵃᶠ(i, j, k, grid, c)
