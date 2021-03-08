@@ -38,9 +38,13 @@ model = ShallowWaterModel(
                       coriolis=FPlane(f=f)
     )
 
-hᵢ = model.grid.Lz .+ 0.1*rand(size(model.grid)...)
+uᵢ = rand(size(model.grid)...)
+vᵢ = rand(size(model.grid)...)
+hᵢ = model.grid.Lz
+uhᵢ = uᵢ * hᵢ
+vhᵢ = vᵢ * hᵢ
 
-set!(model, h = hᵢ)
+set!(model, uh = uhᵢ, vh = vhᵢ, h = hᵢ)
 
 uh, vh, h = model.solution
 
@@ -48,22 +52,22 @@ u_op   = model.solution.uh / model.solution.h
 v_op   = model.solution.vh / model.solution.h
 η_op   = model.solution.h - model.grid.Lz
 ω_op   = @at (Center, Center, Center) ∂x(v_op) - ∂y(u_op)
-s_op   = sqrt(u_op^2 + v_op^2) 
+speed_op   = sqrt(u_op^2 + v_op^2) 
 
 u_field = ComputedField(u_op)
 v_field = ComputedField(v_op)
 η_field = ComputedField(η_op)
 ω_field = ComputedField(ω_op)
-s_field = ComputedField(s_op)
+speed_field = ComputedField(speed_op)
 
-simulation = Simulation(model, Δt=1e-3, stop_iteration=1000)
+simulation = Simulation(model, Δt=2e-5, stop_iteration=10000)
 
 simulation.output_writers[:fields] =
     JLD2OutputWriter(
         model,
         (u = u_field, v = v_field, η = η_field, ω = ω_field, s = s_field),
         prefix = "two_dimensional_turbulence_shallow_water",
-        schedule=IterationInterval(20),
+        schedule=IterationInterval(100),
         force = true)
 
 run!(simulation)
@@ -89,6 +93,7 @@ kwargs = (
 
 @info "Making a movie of the vorticity and speed fields..."
 
+print("\n")
 anim = @animate for (i, iteration) in enumerate(iterations[2:end])
 
     @info "Plotting frame $i from iteration $iteration..."
@@ -106,7 +111,10 @@ anim = @animate for (i, iteration) in enumerate(iterations[2:end])
         layout = (1,2), 
         size=(1200,500) 
         )
-    
+
+    print("Maximum of vorticity = ", maximum(abs, ω_snapshot), " and speed = ", maximum(abs, s_snapshot),"\n")
+    #print("Maximum of vorticity = ", maximum(abs(ω_snapshot)), " speed = ", maximum(abs(s_snapshot)), " with N = ", model.grid.Nx, "\n")
+
 end
 
-gif(anim, "two_dimensional_turbulence_shallow_water.gif", fps=8)
+gif(anim, "two_dimensional_turbulence_shallow_water.mp4", fps=8)
