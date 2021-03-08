@@ -24,7 +24,7 @@ ImplicitFreeSurface(; gravitational_acceleration=g_Earth) =
 ###     ExplicitFreeSurface(Adapt.adapt(to, free_surface.η), free_surface.gravitational_acceleration)
 
 # Internal function for HydrostaticFreeSurfaceModel
-function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, arch, grid)
+function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arch, grid)
     η = CenterField(arch, grid, TracerBoundaryConditions(grid))
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
 
