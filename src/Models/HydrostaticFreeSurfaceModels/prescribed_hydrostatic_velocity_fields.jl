@@ -5,10 +5,7 @@
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: FunctionField
 
-using KernelAbstractions: @kernel
-
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.TimeSteppers: ab2_step_field! 
 import Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
 
 using Adapt
@@ -53,7 +50,6 @@ function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFiel
     return PrescribedVelocityFields(u, v, w, velocities.parameters)
 end
 
-@kernel ab2_step_field!(ϕ::FunctionField, args...) = nothing 
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
 
