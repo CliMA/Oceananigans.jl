@@ -39,10 +39,10 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, schem
 const VIEnstrophy = HydrostaticSphericalCoriolis{<:VectorInvariantEnstrophyConserving}
 
 @inline x_f_cross_U(i, j, k, grid::RegularLatitudeLongitudeGrid, coriolis::VIEnstrophy, U) =
-    @inbounds + ℑyᵃᶜᵃ(i, j, k, grid, fᵃᶠᵃ, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_vᶜᶠᵃ, U[2]) / Δxᶠᶜᵃ(i, j, k, grid)
+    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᵃᶠᵃ, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_vᶜᶠᵃ, U[2]) / Δxᶠᶜᵃ(i, j, k, grid)
 
 @inline y_f_cross_U(i, j, k, grid::RegularLatitudeLongitudeGrid, coriolis::VIEnstrophy, U) =
-    @inbounds - ℑxᶜᵃᵃ(i, j, k, grid, fᵃᶠᵃ, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_uᶠᶜᵃ, U[1]) / Δyᶜᶠᵃ(i, j, k, grid)
+    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᵃᶠᵃ, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_uᶠᶜᵃ, U[1]) / Δyᶜᶠᵃ(i, j, k, grid)
 
 #####
 ##### Energy-conserving scheme
@@ -54,10 +54,10 @@ const VIEnergy = HydrostaticSphericalCoriolis{<:VectorInvariantEnergyConserving}
 @inline f_ℑy_uᶠᶠᵃ(i, j, k, grid, coriolis, u) = fᵃᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_uᶠᶜᵃ, u)
 
 @inline x_f_cross_U(i, j, k, grid::RegularLatitudeLongitudeGrid, coriolis::VIEnergy, U) =
-    @inbounds + ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, coriolis, U[2]) / Δxᶠᶜᵃ(i, j, k, grid)
+    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, coriolis, U[2]) / Δxᶠᶜᵃ(i, j, k, grid)
 
 @inline y_f_cross_U(i, j, k, grid::RegularLatitudeLongitudeGrid, coriolis::VIEnergy, U) =
-    @inbounds - ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᵃ, coriolis, U[1]) / Δyᶜᶠᵃ(i, j, k, grid)  
+    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᵃ, coriolis, U[1]) / Δyᶜᶠᵃ(i, j, k, grid)  
 
 #####
 ##### Show
