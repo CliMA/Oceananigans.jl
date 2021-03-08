@@ -2,8 +2,8 @@
     AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure
 
 Parameters for the "anisotropic minimum dissipation" turbulence closure for large eddy simulation
-proposed originally by Rozema et al. (2015) and Abkar and Moin (2017), and then modified
-by Verstappen (2018), and finally described and validated for by Vreugdenhil & Taylor (2018).
+proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
+by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
 """
 struct AnisotropicMinimumDissipation{FT, PK, PN, K} <: AbstractIsotropicDiffusivity
     Cν :: PN
