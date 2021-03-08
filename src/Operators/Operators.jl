@@ -36,14 +36,16 @@ const RCG = RegularRectilinearGrid
 const ACG = AbstractCurvilinearGrid
 const AHCG = AbstractHorizontallyCurvilinearGrid
 
-include("areas_and_volumes.jl")
-include("field_metric_products.jl")
 include("difference_operators.jl")
-include("derivative_operators.jl")
 include("interpolation_operators.jl")
+include("interpolation_utils.jl")
+
+include("spacings_and_areas_and_volumes.jl")
+include("products_between_fields_and_grid_metrics.jl")
+
+include("derivative_operators.jl")
 include("divergence_operators.jl")
 include("vorticity_operators.jl")
 include("laplacian_operators.jl")
-include("interpolation_utils.jl")
 
 end
