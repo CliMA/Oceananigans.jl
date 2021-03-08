@@ -16,7 +16,7 @@ using Oceananigans.TurbulenceClosures: AnisotropicBiharmonicDiffusivity
 topo = (Periodic, Periodic, Bounded)
 #grid = RegularRectilinearGrid(topology=topo, size=(128, 128, 1), extent=(4π, 4π, 1), halo=(3, 3, 3))
 grid = RegularCartesianGrid(size = (64, 64, 1),
-                            x = (0, 4π), y = (0, 4π), z = (0, 10),
+                            x = (0, 4π), y = (0, 4π), z = (0, 1),
                             topology = (Periodic, Periodic, Bounded))
 arch = CPU()
 
@@ -25,26 +25,25 @@ model = ShallowWaterModel(
             grid = grid,
      timestepper = :RungeKutta3,
        advection = WENO5(),
-         closure = IsotropicDiffusivity(ν=1e-5),
-gravitational_acceleration = 10.0
+         closure = IsotropicDiffusivity(ν=1e2),
+gravitational_acceleration = 1.0
 )
 
 set!(model, h=model.grid.Lz)
 
-ϵ=1e-1
-uh₀ = ϵ * rand(size(model.grid)...);
+uh₀ = rand(size(model.grid)...);
 uh₀ .-= mean(uh₀);
 set!(model, uh=uh₀, vh=uh₀)
 
 
 progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.model.clock.time)"
-simulation = Simulation(model, Δt=0.001, stop_time=200, iteration_interval=1, progress=progress)
+simulation = Simulation(model, Δt=0.001, stop_time=1.5, iteration_interval=1, progress=progress)
 
 uh, vh, h = model.solution
 outputs = (ζ=ComputedField(∂x(vh/h) - ∂y(uh/h)), h)
 filepath = "mpi_shallow_water_turbulence.nc"
 simulation.output_writers[:fields] =
-    NetCDFOutputWriter(model, outputs, filepath=filepath, schedule=TimeInterval(1.0), mode="c")
+    NetCDFOutputWriter(model, outputs, filepath=filepath, schedule=TimeInterval(0.01), mode="c")
 
 run!(simulation)
 
