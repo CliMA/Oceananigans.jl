@@ -12,10 +12,6 @@ struct Field{X, Y, Z, A, G, B} <: AbstractField{X, Y, Z, A, G}
                    grid :: G
     boundary_conditions :: B
 
-    function Field{X, Y, Z}(data::A) where {X, Y, Z, A}
-        return new{X, Y, Z, A, Nothing, Nothing}(data, nothing, nothing)
-    end
-
     function Field{X, Y, Z}(data::A, grid::G, bcs::B) where {X, Y, Z, A, G, B}
         validate_field_data(X, Y, Z, data, grid)
         return new{X, Y, Z, A, G, B}(data, grid, bcs)
@@ -137,4 +133,4 @@ ZFaceField(arch::AbstractArchitecture, grid, args...) = ZFaceField(eltype(grid),
 
 @propagate_inbounds Base.setindex!(f::Field, v, inds...) = @inbounds setindex!(f.data, v, inds...)
 
-Adapt.adapt_structure(to, field::Field{X, Y, Z}) where {X, Y, Z} = Field{X, Y, Z}(Adapt.adapt(to, field.data))
+Adapt.adapt_structure(to, field::Field{X, Y, Z}) where {X, Y, Z} = Adapt.adapt(to, field.data)

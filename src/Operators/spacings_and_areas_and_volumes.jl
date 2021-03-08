@@ -139,42 +139,31 @@ The operators in this file fall into three categories:
 #####
 ##### Generic functions for specified locations
 #####
-##### For example, Δx(i, j, k, Face, Center, Z) is equivalent to = Δxᶠᶜᵃ(i, j, k, grid).
+##### For example, Δx(i, j, k, Face, Center, LZ) is equivalent to = Δxᶠᶜᵃ(i, j, k, grid).
 #####
 ##### We also use the function "volume" rather than `V`.
 #####
 
-location_superscript(::Type{Center}) = :ᶜ
-location_superscript(::Type{Face}) = :ᶠ
+location_code_xy(LX, LY) = Symbol(interpolation_code(LX), interpolation_code(LY), :ᵃ)
+location_code(LX, LY, LZ) = Symbol(interpolation_code(LX), interpolation_code(LY), interpolation_code(LZ))
 
-location_code_xy(X, Y) = Symbol(location_superscript(X), location_superscript(Y), :ᵃ)
-location_code(X, Y, Z) = Symbol(location_superscript(X), location_superscript(Y), location_superscript(Z))
+for LX in (:Center, :Face)
+    for LY in (:Center, :Face)
+        LXe = @eval $LX
+        LYe = @eval $LY
 
-for X in (:Center, :Face)
-    for Y in (:Center, :Face)
-        Xe = @eval $X
-        Ye = @eval $Y
-
-        Δx_function = Symbol(:Δx, location_code_xy(Xe, Ye)) 
-        Δy_function = Symbol(:Δy, location_code_xy(Xe, Ye)) 
-        Δz_function = Symbol(:Δz, location_code_xy(Xe, Ye)) 
-
-        Ax_function = Symbol(:Ax, location_code(Xe, Ye, Center))
-        Ay_function = Symbol(:Ay, location_code(Xe, Ye, Center))
-        Az_function = Symbol(:Az, location_code_xy(Xe, Ye))
+        Ax_function = Symbol(:Ax, location_code(LXe, LYe, Center()))
+        Ay_function = Symbol(:Ay, location_code(LXe, LYe, Center()))
+        Az_function = Symbol(:Az, location_code_xy(LXe, LYe))
 
         @eval begin
-            Δx(i, j, k, grid, ::Type{$X}, ::Type{$Y}, Z) = $Δx_function(i, j, k, grid)
-            Δy(i, j, k, grid, ::Type{$X}, ::Type{$Y}, Z) = $Δy_function(i, j, k, grid)
-            Δz(i, j, k, grid, ::Type{$X}, ::Type{$Y}, Z) = $Δz_function(i, j, k, grid)
-            Az(i, j, k, grid, ::Type{$X}, ::Type{$Y}, Z) = $Az_function(i, j, k, grid)
-
-            Ax(i, j, k, grid, ::Type{$X}, ::Type{$Y}, ::Type{Center}) = $Ax_function(i, j, k, grid)
-            Ay(i, j, k, grid, ::Type{$X}, ::Type{$Y}, ::Type{Center}) = $Ay_function(i, j, k, grid)
+            Az(i, j, k, grid, ::$LX, ::$LY, LZ) = $Az_function(i, j, k, grid)
+            Ax(i, j, k, grid, ::$LX, ::$LY, ::Center) = $Ax_function(i, j, k, grid)
+            Ay(i, j, k, grid, ::$LX, ::$LY, ::Center) = $Ay_function(i, j, k, grid)
         end
     end
 end
 
-volume(i, j, k, grid, ::Type{Center}, ::Type{Center}, ::Type{Center}) = Vᶜᶜᶜ(i, j, k, grid)
-volume(i, j, k, grid, ::Type{Face},   ::Type{Center}, ::Type{Center}) = Vᶠᶜᶜ(i, j, k, grid)
-volume(i, j, k, grid, ::Type{Center}, ::Type{Face},   ::Type{Center}) = Vᶜᶠᶜ(i, j, k, grid)
+volume(i, j, k, grid, ::Center, ::Center, ::Center) = Vᶜᶜᶜ(i, j, k, grid)
+volume(i, j, k, grid, ::Face,   ::Center, ::Center) = Vᶠᶜᶜ(i, j, k, grid)
+volume(i, j, k, grid, ::Center, ::Face,   ::Center) = Vᶜᶠᶜ(i, j, k, grid)
