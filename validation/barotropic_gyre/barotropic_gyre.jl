@@ -66,7 +66,7 @@ wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.ϕᵃᶜ�
 
 simulation = Simulation(model,
                         Δt = 0.1wave_propagation_time_scale,
-                        stop_iteration = 100000,
+                        stop_iteration = 10000,
                         iteration_interval = 100,
                         progress = s -> @info "Time = $(s.model.clock.time) / $(s.stop_time)")
                                                          
