@@ -3,18 +3,25 @@ using CUDA
 using Adapt
 using OffsetArrays
 
-using Oceananigans: AbstractField
 using Oceananigans.Architectures
 using Oceananigans.Utils
 using Oceananigans.Grids: interior_indices, interior_parent_indices
 
 import Base: minimum, maximum, extrema
 import Statistics: mean
-import Oceananigans: location
+import Oceananigans: location, instantiated_location
 import Oceananigans.Architectures: architecture
 import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, xnode, ynode, znode
 import Oceananigans.Utils: datatuple
+
+"""
+    AbstractField{X, Y, Z, A, G}
+
+Abstract supertype for fields located at `(X, Y, Z)` with data stored in a container
+of type `A`. The field is defined on a grid `G`.
+"""
+abstract type AbstractField{X, Y, Z, A, G} end
 
 function validate_field_data(X, Y, Z, data, grid)
     Tx, Ty, Tz = total_size((X, Y, Z), grid)
@@ -36,7 +43,6 @@ end
 #####
 
 # Note: overload compute! for custom fields to produce non-default behavior
-
 
 """
     compute!(field)
@@ -99,6 +105,8 @@ end
 "Returns the location `(X, Y, Z)` of an `AbstractField{X, Y, Z}`."
 @inline location(::AbstractField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z) # note no instantiation
 @inline location(f, i) = location(f)[i]
+
+@inline instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
 
 "Returns the architecture where the field data `f.data` is stored."
 architecture(f::AbstractField) = architecture(f.data)
