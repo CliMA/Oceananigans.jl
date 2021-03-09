@@ -38,7 +38,7 @@ using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusi
 # HydrostaticSphericalCoriolis(Float64, scheme=VectorInvariantEnergyConserving())
 # momentum_advection = VectorInvariant()
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    momentum_advection =  VectorInvariant(),
+                                    momentum_advection =  momentum_advection = VectorInvariant(),
                                     tracers = (),
                                     buoyancy = nothing,
                                     coriolis = coriolis,
@@ -80,12 +80,17 @@ set!(model, u=uᵢ, v=vᵢ, η = ηᵢ)
 
 # Create Simulation
 
+speed = (n * (3 + n ) * ω - 2*Ω) / ((1+n) * (2+n))
+# angles per day speed / π * 180  * 86400
+# abs(45 * π / 180 / speed / 86400) days for 45 degree rotation
+numdays = abs(45 * π / 180 / speed / 86400)
+
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
 wave_propagation_time_scale = h₀ * model.grid.Δλ / gravity_wave_speed
 # 20wave_propagation_time_scale,
 Δt =  0.5wave_propagation_time_scale
-simulation = Simulation(model, Δt = Δt, stop_time = 3*86400, progress = s -> @info "Time = $(prettytime(s.model.clock.time)) / $(prettytime(s.stop_time))")
+simulation = Simulation(model, Δt = Δt, stop_time = numdays*86400, progress = s -> @info "Time = $(prettytime(s.model.clock.time)) / $(prettytime(s.stop_time))")
 
 output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
@@ -139,7 +144,7 @@ for (n, var) in enumerate([up, vp, ηp])
     ax = fig[3:7, 3n-2:3n] = LScene(fig) # make plot area wider
     wireframe!(ax, Sphere(Point3f0(0), 1f0), show_axis=false)
     surface!(ax, x, y, z, color=var, colormap=:balance, colorrange=clims[n])
-    rotate_cam!(ax.scene, (2π/3, π/6, 0))
+    rotate_cam!(ax.scene, (π/2, π/6, 0))
     zoom!(ax.scene, (0, 0, 0), 5, false)
     fig[2, 2 + 3*(n-1)] = Label(fig, statenames[n], textsize = 50) # put names in center
 end
