@@ -58,8 +58,8 @@ explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ImplicitFre
     A.Ax[i, j, 1] = 0.
     A.Ay[i, j, 1] = 0.
     @unroll for k in 1:grid.Nz
-        @inbounds A.Ax[i, j, 1] += Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
-        @inbounds A.Ay[i, j, 1] += Δxᶜᶠᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
+        @inbounds A.Ax[i, j, 1] += Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
+        @inbounds A.Ay[i, j, 1] += Δxᶜᶠᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
     end
 end
 
