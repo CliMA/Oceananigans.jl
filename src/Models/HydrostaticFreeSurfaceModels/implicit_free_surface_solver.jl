@@ -40,9 +40,7 @@ function ImplicitFreeSurfaceSolver(arch, template_field,
         ### Δt = Main.simulation.Δt                                 ### AGHHHH - need to sort this out later.....
         i, j = @index(Global, NTuple)
         @inbounds implicit_η_f[i, j, 1] =  ∇²_baro(i, j, 1, grid, f) - Azᵃᵃᵃ(i, j, 1, grid)*f[i,j, 1]/(g*Δt^2)
-
     end
-
 
     if isnothing( Amatrix_operator )
         function Amatrix_function!(result, x, arch, grid, bcs; args...)
@@ -70,7 +68,6 @@ function ImplicitFreeSurfaceSolver(arch, template_field,
         maxit = maxit,
         tol = tol,
     )
-
 
     S = PreconditionedConjugateGradientSolver(arch = arch, parameters = pcg_params)
 
