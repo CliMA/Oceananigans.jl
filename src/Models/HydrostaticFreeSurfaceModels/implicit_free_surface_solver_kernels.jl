@@ -83,6 +83,6 @@ function add_previous_free_surface_contribution(free_surface, model, Δt )
 end
 @kernel function _add_previous_free_surface_contribution!(grid,η,RHS,g,Δt)
     i, j = @index(Global, NTuple)
-    @inbounds RHS[i,j,1] -= Azᵃᵃᵃ(i, j, 1, grid)*η[i,j, 1]/(g*Δt^2)
+    @inbounds RHS[i,j,1] -= Azᶜᶜᵃ(i, j, 1, grid)*η[i,j, 1]/(g*Δt^2)
 end
 
