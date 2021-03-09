@@ -21,3 +21,20 @@
 @inline Ax_uᶠᶜᶜ(i, j, k, grid, u) = @inbounds Axᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
 @inline Ay_vᶜᶠᶜ(i, j, k, grid, v) = @inbounds Ayᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
 @inline Az_wᶜᶜᵃ(i, j, k, grid, w) = @inbounds Azᶜᶜᵃ(i, j, k, grid) * w[i, j, k]
+
+@inline Ax_uᶠᶜᶜ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Axᶠᶜᶜ(i, j, k, grid) * f(i, j, k, grid, args...)
+@inline Ay_vᶜᶠᶜ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Ayᶜᶠᶜ(i, j, k, grid) * f(i, j, k, grid, args...)
+@inline Az_wᶜᶜᵃ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Azᶜᶜᵃ(i, j, k, grid) * f(i, j, k, grid, args...)
+
+@inline Ax_cᶜᶜᶜ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Axᶜᶜᶜ(i, j, k, grid) * f(i, j, k, grid, args...)
+@inline Ay_cᶜᶜᶜ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Ayᶜᶜᶜ(i, j, k, grid) * f(i, j, k, grid, args...)
+@inline Az_cᶜᶜᶜ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Azᶜᶜᵃ(i, j, k, grid) * f(i, j, k, grid, args...)
+
+@inline Ax_ζᶠᶠᶜ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Axᶠᶠᶜ(i, j, k, grid) * f(i, j, k, grid, args...)
+@inline Ay_ζᶠᶠᶜ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Ayᶠᶠᶜ(i, j, k, grid) * f(i, j, k, grid, args...)
+
+@inline Ax_ηᶠᶜᶠ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Axᶠᶜᶠ(i, j, k, grid) * f(i, j, k, grid, args...)
+@inline Az_ηᶠᶜᶠ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Azᶠᶜᵃ(i, j, k, grid) * f(i, j, k, grid, args...)
+
+@inline Ay_ξᶜᶠᶠ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Ayᶜᶠᶠ(i, j, k, grid) * f(i, j, k, grid, args...)
+@inline Az_ξᶜᶠᶠ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Azᶜᶠᵃ(i, j, k, grid) * f(i, j, k, grid, args...)
