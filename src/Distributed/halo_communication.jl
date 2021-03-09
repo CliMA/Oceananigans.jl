@@ -21,8 +21,8 @@ opposite_side = Dict(
 # Define functions that return unique send and recv MPI tags for each side.
 # It's an integer where
 #   digit 1: the side
-#   digits 2-4: the from rank
-#   digits 5-7: the to rank
+#   digits 2-4: the "from" rank
+#   digits 5-7: the "to" rank
 
 RANK_DIGITS = 3
 
