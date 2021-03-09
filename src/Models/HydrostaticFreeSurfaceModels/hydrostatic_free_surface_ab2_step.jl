@@ -141,7 +141,7 @@ end
 
 
 using Oceananigans.Architectures: device
-using Oceananigans.Operators: ΔzC
+using Oceananigans.Operators: ΔzC, Δzᵃᵃᶠ, Δzᵃᵃᶜ
 
 """
 Compute the vertical integrated volume flux from the bottom to z=0 (i.e. linear free-surface)
@@ -171,10 +171,14 @@ end
     barotropic_volume_flux.u[i, j, 1] = 0.
     barotropic_volume_flux.v[i, j, 1] = 0.
     @unroll for k in 1:grid.Nz
-        #### @inbounds barotropic_transport.u[i, j, 1] += U.u[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
-        #### @inbounds barotropic_transport.v[i, j, 1] += U.v[i, j, k-1]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
-        @inbounds barotropic_volume_flux.u[i, j, 1] += U.u[i, j, k]*Δyᶠᶜᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
-        @inbounds barotropic_volume_flux.v[i, j, 1] += U.v[i, j, k]*Δxᶜᶠᵃ(i, j, k, grid)*ΔzC(i, j, k, grid)
+        #### Not sure this will always be Δzᵃᵃᶜ. When we have step bathymetry then it may be
+        #### Δzᶠᶜᶜ and Δzᶜᶠᶜ. Not entirely sure the notation works perfectly. For the X direction
+        #### volume flux we locate the z direction length at the intersection of a YZ plane that is
+        #### on an x face and a XZ plane that passes through a y center. For the Y direction
+        #### volume flux we locate the z direction lenght at the intersection of the XZ plane 
+        #### that is on a y face and the YZ plane that passes through the x center.
+        @inbounds barotropic_volume_flux.u[i, j, 1] += U.u[i, j, k]*Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
+        @inbounds barotropic_volume_flux.v[i, j, 1] += U.v[i, j, k]*Δxᶜᶠᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
      end
 end
 
