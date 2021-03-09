@@ -22,8 +22,8 @@ using JLD2
 using Printf
 using GLMakie
 
-Nx = 360
-Ny = 360
+Nx = 60
+Ny = 60
 
 # A spherical domain
 grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
@@ -35,11 +35,11 @@ free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
 
 coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving())
 
-surface_wind_stress_parameters = (τ₀ = 1e-4,
-                                  Lφ = grid.Ly,
-                                  φ₀ = 15)
+@show surface_wind_stress_parameters = (τ₀ = 1e-4,
+                                        Lφ = grid.Ly,
+                                        φ₀ = 15)
 
-surface_wind_stress(λ, φ, t, p) = p.τ₀ * cosd((φ - p.φ₀) / p.Lφ)
+surface_wind_stress(λ, φ, t, p) = p.τ₀ * cos(2π * (φ - p.φ₀) / p.Lφ)
 
 surface_wind_stress_bc = BoundaryCondition(Flux,
                                            surface_wind_stress,
@@ -76,7 +76,7 @@ variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = CPU(),
-                                    momentum_advection = VectorInvariant(),
+                                    momentum_advection = nothing, #VectorInvariant(),
                                     free_surface = free_surface,
                                     coriolis = coriolis,
                                     boundary_conditions = (u=u_bcs, v=v_bcs),
