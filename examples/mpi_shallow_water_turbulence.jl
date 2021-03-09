@@ -15,7 +15,7 @@ model = DistributedShallowWaterModel(
                           grid = full_grid,
                    timestepper = :RungeKutta3,
                      advection = UpwindBiasedFifthOrder(),
-                       closure = IsotropicDiffusivity(ν=1e-5),
+#                       closure = IsotropicDiffusivity(ν=1e-5),
     gravitational_acceleration = 1.0
 )
 
@@ -26,13 +26,13 @@ uh₀ .-= mean(uh₀);
 set!(model, uh=uh₀, vh=uh₀)
 
 progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.model.clock.time)"
-simulation = Simulation(model, Δt=0.001, stop_time=2, iteration_interval=1, progress=progress)
+simulation = Simulation(model, Δt=0.001, stop_time=100, iteration_interval=1, progress=progress)
 
 uh, vh, h = model.solution
 outputs = (ζ=ComputedField(∂x(vh/h) - ∂y(uh/h)),)
 filepath = "mpi_shallow_water_turbulence_rank$(arch.my_rank).nc"
 simulation.output_writers[:fields] =
-    NetCDFOutputWriter(model, outputs, filepath=filepath, schedule=TimeInterval(0.01), mode="c")
+    NetCDFOutputWriter(model, outputs, filepath=filepath, schedule=TimeInterval(1.0), mode="c")
 
 MPI.Barrier(MPI.COMM_WORLD)
 
