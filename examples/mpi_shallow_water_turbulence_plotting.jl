@@ -6,7 +6,7 @@ using Printf
 using NCDatasets
 using CairoMakie
 
-ranks = (4,1,1)
+ranks = (2,2,1)
 nranks = prod(ranks)
 
 ds = [NCDataset("mpi_shallow_water_turbulence_rank$r.nc") for r in 0:nranks-1]
@@ -19,7 +19,7 @@ fig = Figure(resolution=(1600, 1200))
 
 for rx in 1:ranks[1], ry in 1:ranks[2]
     ax = fig[ry, rx] = Axis(fig)
-    r = (ry-1)*ranks[2] + rx - 1
+    r = (ry-1)*ranks[2] + rx - 1 + 1
     hm = CairoMakie.heatmap!(ax, ds[r]["xF"], ds[r]["yF"], ζ[r], colormap=:balance, colorrange=(-2, 2))
     #r > 1 && hidexdecorations!(ax, grid=false)
     #if r == 1
