@@ -194,8 +194,7 @@ Planes = (FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane)
 
 Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
-            SmagorinskyLilly, BlasiusSmagorinsky,
-            AnisotropicMinimumDissipation, RozemaAnisotropicMinimumDissipation)
+            SmagorinskyLilly, AnisotropicMinimumDissipation)
 
 advection_schemes = (nothing,
                      CenteredSecondOrder(),
