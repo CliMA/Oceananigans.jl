@@ -1,4 +1,23 @@
 #####
+##### Diffusive flux divergence
+#####
+
+"""
+    ∇_κ_∇c(i, j, k, grid, clock, closure::AbstractTurbulenceClosure, c, ::Val{tracer_index}, args...)
+
+Calculates diffusion for a tracer c via
+
+    1/V * [δxᶜᵃᵃ(Ax * diffusive_flux_x) + δyᵃᶜᵃ(Ay * diffusive_flux_y) + δzᵃᵃᶜ(Az * diffusive_flux_z)]
+
+which will end up at the location `ccc`.
+"""
+@inline function ∇_κ_∇c(i, j, k, grid, clock, closure::AbstractTurbulenceClosure, c, ::Val{tracer_index}, args...) where tracer_index
+    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_uᶠᶜᶜ, diffusive_flux_x, clock, closure, c, Val(tracer_index), args...) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_vᶜᶠᶜ, diffusive_flux_y, clock, closure, c, Val(tracer_index), args...) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_wᶜᶜᶠ, diffusive_flux_z, clock, closure, c, Val(tracer_index), args...))
+end
+
+#####
 ##### Diffusive fluxes
 #####
 

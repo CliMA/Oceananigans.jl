@@ -12,6 +12,8 @@ struct HorizontallyCurvilinearAnisotropicDiffusivity{NH, NZ, KH, KZ} <: Abstract
     κz :: KZ
 end
 
+const HCAD = HorizontallyCurvilinearAnisotropicDiffusivity
+
 """
     HorizontallyCurvilinearAnisotropicDiffusivity(; ν=0, κ=0)
 
@@ -40,13 +42,27 @@ end
 
 calculate_diffusivities!(K, arch, grid, closure::HorizontallyCurvilinearAnisotropicDiffusivity, args...) = nothing
 
-@inline function ∇_κ_∇c(i, j, k, grid, clock, closure::HorizontallyCurvilinearAnisotropicDiffusivity,
-                        c, ::Val{tracer_index}, args...) where tracer_index
+viscous_flux_ux(i, j, k, grid, clock, closure::HCAD, U, args...) = + ν_δᶜᶜᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   
+viscous_flux_uy(i, j, k, grid, clock, closure::HCAD, U, args...) = - ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   
+viscous_flux_uz(i, j, k, grid, clock, closure::HCAD, U, args...) = + ν_uzᶠᶜᶠ(i, j, k, grid, clock, closure.νh, U.u)
 
+viscous_flux_vx(i, j, k, grid, clock, closure::HCAD, U, args...) = ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)
+viscous_flux_vy(i, j, k, grid, clock, closure::HCAD, U, args...) = ν_δᶜᶜᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)
+viscous_flux_vz(i, j, k, grid, clock, closure::HCAD, U, args...) = ν_uzᶠᶜᶠ(i, j, k, grid, clock, closure.νh, U.v)
+
+function diffusive_flux_x(i, j, k, grid, clock, closure::HCAD, c, ::Val{tracer_index}, args...) where tracer_index
     @inbounds κh = closure.κh[tracer_index]
-    @inbounds κz = closure.κz[tracer_index]
+    return diffusive_flux_x(i, j, k, grid, clock, κh, c)
+end
 
-    return ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, clock, κh, κh, κz, c)
+function diffusive_flux_y(i, j, k, grid, clock, closure::HCAD, c, ::Val{tracer_index}, args...) where tracer_index
+    @inbounds κh = closure.κh[tracer_index]
+    return diffusive_flux_y(i, j, k, grid, clock, κh, c)
+end
+
+function diffusive_flux_z(i, j, k, grid, clock, closure::HCAD, c, ::Val{tracer_index}, args...) where tracer_index
+    @inbounds κz = closure.κz[tracer_index]
+    return diffusive_flux_z(i, j, k, grid, clock, κz, c)
 end
 
 @inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure::HorizontallyCurvilinearAnisotropicDiffusivity, U, args...) = (

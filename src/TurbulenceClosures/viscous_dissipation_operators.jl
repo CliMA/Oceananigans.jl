@@ -1,4 +1,26 @@
 #####
+##### Viscous flux divergences
+#####
+
+@inline function ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure::AbstractTurbulenceClosure, args...)
+    return 1/Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Ax_cᶜᶜᶜ, viscous_flux_ux, args...) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_ζᶠᶠᶜ, viscous_flux_uy, args...) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_ηᶠᶜᶠ, viscous_flux_uz, args...))
+end
+
+@inline function ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure::AbstractTurbulenceClosure, args...)
+    return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_ζᶠᶠᶜ, viscous_flux_vx, args...) +
+                                    δyᵃᶠᵃ(i, j, k, grid, Ay_cᶜᶜᶜ, viscous_flux_vy, args...) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_ξᶜᶠᶠ, viscous_flux_vz, args...))
+end
+
+@inline function ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure::AbstractTurbulenceClosure, args...)
+    return 1/Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_ηᶠᶜᶠ, viscous_flux_wx, args...) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_ξᶜᶠᶠ, viscous_flux_wy, args...) +
+                                    δzᵃᵃᶠ(i, j, k, grid, Az_cᶜᶜᶜ, viscous_flux_wz, args...))
+end
+
+#####
 ##### Viscosities at different locations
 #####
 
