@@ -39,7 +39,7 @@ surface_wind_stress_parameters = (τ₀ = 1e-4,
                                   Lφ = grid.Ly,
                                   φ₀ = 15)
 
-surface_wind_stress(λ, φ, t, p) = p.τ₀ * cos(2π * (φ - p.φ₀) / p.Lφ)
+surface_wind_stress(λ, φ, t, p) = p.τ₀ * cosd((φ - p.φ₀) / p.Lφ)
 
 surface_wind_stress_bc = BoundaryCondition(Flux,
                                            surface_wind_stress,
