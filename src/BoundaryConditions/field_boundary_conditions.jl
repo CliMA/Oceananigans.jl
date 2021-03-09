@@ -230,7 +230,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid
     return FieldBoundaryConditions(x, y, z)
 end
 
-function regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, model_field_names)
+function regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, field_name=nothing, model_field_names)
     boundary_conditions_names = propertynames(boundary_conditions)
     boundary_conditions_tuple = Tuple(regularize_field_boundary_conditions(bcs, grid, name, model_field_names)
                                       for (name, bcs) in zip(boundary_conditions_names, boundary_conditions))
@@ -238,4 +238,4 @@ function regularize_field_boundary_conditions(boundary_conditions::NamedTuple, g
     return boundary_conditions
 end
 
-regularize_field_boundary_conditions(::Missing, grid, model_field_names) = missing
+regularize_field_boundary_conditions(::Missing, grid, field_name=nothing, model_field_names) = missing
