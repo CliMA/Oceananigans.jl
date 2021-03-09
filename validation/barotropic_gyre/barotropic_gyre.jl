@@ -69,8 +69,10 @@ v_bcs = VVelocityBoundaryConditions(grid,
                                         
 @show const νh₀ = 5e3 * (60 / grid.Nx)^2
 
-variable_horizontal_diffusivity =
-    HorizontallyCurvilinearAnisotropicDiffusivity(νh = (λ, φ, z, t) -> νh₀ * cosd(φ))
+#variable_horizontal_diffusivity =
+#    HorizontallyCurvilinearAnisotropicDiffusivity(νh = (λ, φ, z, t) -> νh₀ * cosd(φ))
+
+variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh = νh₀)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = CPU(),
@@ -89,8 +91,9 @@ gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wav
 wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.ϕᵃᶜᵃ)) * deg2rad(grid.Δλ),
                                   grid.radius * deg2rad(grid.Δϕ)) / gravity_wave_speed
 
-progress(s) = @info @sprintf("Time: %s, max(u): %.2e m s⁻¹",
+progress(s) = @info @sprintf("Time: %s, iteration: %d, max(u): %.2e m s⁻¹",
                              prettytime(s.model.clock.time),
+                             s.model.clock.iteration,
                              maximum(s.model.velocities.u))
 
 simulation = Simulation(model,
