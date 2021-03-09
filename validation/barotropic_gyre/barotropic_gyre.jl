@@ -22,8 +22,8 @@ using JLD2
 using Printf
 using GLMakie
 
-Nx = 60
-Ny = 60
+Nx = 360
+Ny = 360
 
 # A spherical domain
 grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
@@ -52,12 +52,12 @@ v_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, 1
 
 u_bottom_drag_bc = BoundaryCondition(Flux,
                                      u_bottom_drag,
-                                     discrete_form = true
+                                     discrete_form = true,
                                      parameters = μ)
 
 v_bottom_drag_bc = BoundaryCondition(Flux,
                                      v_bottom_drag,
-                                     discrete_form = true
+                                     discrete_form = true,
                                      parameters = μ)
 
 u_bcs = UVelocityBoundaryConditions(grid,
@@ -67,36 +67,41 @@ u_bcs = UVelocityBoundaryConditions(grid,
 v_bcs = VVelocityBoundaryConditions(grid,
                                     bottom = v_bottom_drag_bc)
                                         
+@show const νh₀ = 5e3 * (60 / grid.Nx)^2
+
+variable_horizontal_diffusivity =
+    HorizontallyCurvilinearAnisotropicDiffusivity(νh = (λ, φ, z, t) -> νh₀ * cosd(φ))
+
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = CPU(),
                                     momentum_advection = VectorInvariant(),
                                     free_surface = free_surface,
                                     coriolis = coriolis,
                                     boundary_conditions = (u=u_bcs, v=v_bcs),
-                                    buoyancy = nothing,
-                                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=5e3, κh=5e3))
+                                    closure = variable_horizontal_diffusivity,
+                                    buoyancy = nothing)
 
 g = model.free_surface.gravitational_acceleration
 
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
 # Time-scale for gravity wave propagation across the smallest grid cell
-wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(grid.Δλ),
-                                  grid.radius * deg2rad(grid.Δφ)) / gravity_wave_speed
+wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.ϕᵃᶜᵃ)) * deg2rad(grid.Δλ),
+                                  grid.radius * deg2rad(grid.Δϕ)) / gravity_wave_speed
 
 progress(s) = @info @sprintf("Time: %s, max(u): %.2e m s⁻¹",
                              prettytime(s.model.clock.time),
                              maximum(s.model.velocities.u))
 
 simulation = Simulation(model,
-                        Δt = 0.5wave_propagation_time_scale,
-                        stop_time = 100days,
+                        Δt = 0.2wave_propagation_time_scale,
+                        stop_time = 3years,
                         iteration_interval = 100,
                         progress = progress)
                                                          
 output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
-output_prefix = "barotropic_gyre"
+output_prefix = "barotropic_gyre_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(1day),
