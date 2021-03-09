@@ -39,7 +39,7 @@ function ImplicitFreeSurfaceSolver(arch, template_field,
         ### g  = Main.model.free_surface.gravitational_acceleration ### AGHHHH - need to sort this out later.....
         ### Δt = Main.simulation.Δt                                 ### AGHHHH - need to sort this out later.....
         i, j = @index(Global, NTuple)
-        @inbounds implicit_η_f[i, j, 1] =  ∇²_baro(i, j, 1, grid, f) - Azᵃᵃᵃ(i, j, 1, grid)*f[i,j, 1]/(g*Δt^2)
+        @inbounds implicit_η_f[i, j, 1] =  ∇²_baro(i, j, 1, grid, f) - Azᶜᶜᵃ(i, j, 1, grid)*f[i,j, 1]/(g*Δt^2)
     end
 
     if isnothing( Amatrix_operator )
