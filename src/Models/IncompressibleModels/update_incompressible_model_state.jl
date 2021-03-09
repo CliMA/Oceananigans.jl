@@ -19,7 +19,7 @@ function update_state!(model::IncompressibleModel)
     calculate_diffusivities!(model.diffusivities, model.architecture, model.grid, model.closure,
                              model.buoyancy, model.velocities, model.tracers)
 
-    fill_halo_regions!(model.diffusivities, model.architecture, model.clock, fields(model))
+    fill_halo_regions!(model.diffusivities, model.clock, fields(model))
 
     # Calculate hydrostatic pressure
     pressure_calculation = launch!(model.architecture, model.grid, :xy, update_hydrostatic_pressure!,
@@ -29,7 +29,7 @@ function update_state!(model::IncompressibleModel)
     # Fill halo regions for pressure
     wait(device(model.architecture), pressure_calculation)
 
-    fill_halo_regions!(model.pressures.pHY′, model.architecture)
+    fill_halo_regions!(model.pressures.pHY′)
 
     return nothing
 end
