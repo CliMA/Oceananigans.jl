@@ -182,26 +182,6 @@ end
     return max(zero(FT), κˢᵍˢ) + κ
 end
 
-
-#=                 
-"""
-    ∇_κ_∇c(i, j, k, grid, clock, c, tracer_index, closure, diffusivities)
-
-Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
-`closure`, where `c` is an array of scalar data located at cell centers.
-"""
-@inline function ∇_κ_∇c(i, j, k, grid, clock, closure::AnisotropicMinimumDissipation,
-                        c, ::Val{tracer_index}, diffusivities, args...) where tracer_index
-
-    κₑ = diffusivities.κₑ[tracer_index]
-
-    return (  ∂xᶜᵃᵃ(i, j, k, grid, κ_∂x_c, κₑ, c, closure)
-            + ∂yᵃᶜᵃ(i, j, k, grid, κ_∂y_c, κₑ, c, closure)
-            + ∂zᵃᵃᶜ(i, j, k, grid, κ_∂z_c, κₑ, c, closure)
-           )
-end
-=#
-
 function calculate_diffusivities!(K, arch, grid, closure::AnisotropicMinimumDissipation, buoyancy, U, C)
     workgroup, worksize = work_layout(grid, :xyz)
 

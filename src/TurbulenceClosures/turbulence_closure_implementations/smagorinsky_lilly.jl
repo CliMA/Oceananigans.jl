@@ -146,19 +146,6 @@ end
     return κₑ * ∂z_c
 end
 
-#=
-"""
-    ∇_κ_∇c(i, j, k, grid, clock, c, closure, diffusivities)
-
-Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
-`closure`, where `c` is an array of scalar data located at cell centers.
-"""
-@inline ∇_κ_∇c(i, j, k, grid, clock, closure::SmagorinskyLilly, c, ::Val{tracer_index},
-               diffusivities, args...) where tracer_index = (∂xᶜᵃᵃ(i, j, k, grid, κ_∂x_c, closure, c, Val(tracer_index), diffusivities.νₑ) +
-                                                             ∂yᵃᶜᵃ(i, j, k, grid, κ_∂y_c, closure, c, Val(tracer_index), diffusivities.νₑ) +
-                                                             ∂zᵃᵃᶜ(i, j, k, grid, κ_∂z_c, closure, c, Val(tracer_index), diffusivities.νₑ))
-=#
-
 function calculate_diffusivities!(K, arch, grid, closure::SmagorinskyLilly, buoyancy, U, C)
 
     event = launch!(arch, grid, :xyz, calculate_nonlinear_viscosity!, K.νₑ, grid, closure, buoyancy, U, C,
