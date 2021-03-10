@@ -160,7 +160,7 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
     ### println("PreconditionedConjugateGradientSolver ", i," A(x) ", norm(A(x; args...).parent) )
 
     while true
-        println("PreconditionedConjugateGradientSolver ", i," norm(r.parent) ", norm(r.parent) )
+        ### println("PreconditionedConjugateGradientSolver ", i," norm(r.parent) ", norm(r.parent) )
         i >= maxit && break
         norm(r.parent) <= tol && break
 

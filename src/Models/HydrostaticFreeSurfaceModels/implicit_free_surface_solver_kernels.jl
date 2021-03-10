@@ -86,3 +86,39 @@ end
     @inbounds RHS[i,j,1] -= Azᶜᶜᵃ(i, j, 1, grid)*η[i,j, 1]/(g*Δt^2)
 end
 
+
+function ∇²_baro_operator( HAx, HAy )
+    ## Some of this should probably end up in some operator and grid generic auxilliaries
+    Ax_baro = HAx
+    Ay_baro = HAy
+    @inline Ax_∂xᶠᶜᵃ_baro(i, j, k, grid, c) = Ax_baro[i, j, 1] * ∂xᶠᶜᵃ(i, j, 1, grid, c)
+    @inline Ay_∂yᶜᶠᵃ_baro(i, j, k, grid, c) = Ay_baro[i, j, 1] * ∂yᶜᶠᵃ(i, j, 1, grid, c)
+    @inline function ∇²_baro(i, j, k, grid, c)
+       return  δxᶜᵃᵃ(i, j, 1, grid, Ax_∂xᶠᶜᵃ_baro, c) +
+               δyᵃᶜᵃ(i, j, 1, grid, Ay_∂yᶜᶠᵃ_baro, c)
+    end
+    return  ∇²_baro
+end
+
+@kernel function implicit_η!(∇²_baro, Δt, g, grid, f, implicit_η_f)
+        i, j = @index(Global, NTuple)
+        ### Not sure what to call this function
+        ### it is for left hand side operator in
+        ### ( ∇ʰ⋅H∇ʰ - 1/gΔt² ) ηⁿ⁺¹ = 1/(gΔt) ∇ʰH U̅ˢᵗᵃʳ - 1/(gΔt²) ηⁿ
+        ### written in a discrete finite volume form in which the equation
+        ### is arranged to ensure a symmtric form
+        ### e.g.
+        ### 
+        ### δⁱÂʷ∂ˣηⁿ⁺¹ + δʲÂˢ∂ʸηⁿ⁺¹ - 1/gΔt² Aᶻηⁿ⁺¹ =
+        ###  1/(gΔt)(δⁱÂʷu̅ˢᵗᵃʳ + δʲÂˢv̅ˢᵗᵃʳ) - 1/gΔt² Aᶻηⁿ
+        ###
+        ### where  ̂ indicates a vertical integral, and
+        ###        ̅ indicates a vertical average
+        ###
+        ### g  = Main.model.free_surface.gravitational_acceleration ### AGHHHH - need to sort this out later.....
+        ### Δt = Main.simulation.Δt                                 ### AGHHHH - need to sort this out later.....
+        i, j = @index(Global, NTuple)
+        @inbounds implicit_η_f[i, j, 1] =  ∇²_baro(i, j, 1, grid, f) - Azᶜᶜᵃ(i, j, 1, grid)*f[i,j, 1]/(g*Δt^2)
+end
+
+

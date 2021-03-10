@@ -80,7 +80,15 @@ function run_implicit_free_surface_solver_tests(arch)
     fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
     free_surface.η.data .= x
 
-    @test true
+    # Amatrix_function!(result, x, arch, grid, bcs; args...)
+    result = free_surface.implicit_step_solver.solver.settings.A(x;Δt=Δt,g=free_surface.gravitational_acceleration)
+
+    CUDA.@allowscalar begin
+     @test abs(minimum(result[1:Nx, 1:Ny, 1] .- RHS[1:Nx, 1:Ny, 1])) < 1e-11
+     @test abs(maximum(result[1:Nx, 1:Ny, 1] .- RHS[1:Nx, 1:Ny, 1])) < 1e-11
+     @test std(result[1:Nx, 1:Ny, 1] .- RHS[1:Nx, 1:Ny, 1]) < 1e-13
+    end
+
 
     return nothing
 end
