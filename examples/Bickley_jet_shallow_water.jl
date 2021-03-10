@@ -20,7 +20,7 @@ using IJulia
 Lx = 2π
 Ly = 20
 Lz = 1
-Nx = 64
+Nx = 256
 Ny = Nx
 
  f = 1
@@ -43,7 +43,7 @@ model = ShallowWaterModel(
     )
 
    
-Ω(x, y, z) = 2 * U * sech(y - Ly/2)^2 * tanh(y - Ly/2)
+ Ω(x, y, z) = 2 * U * sech(y - Ly/2)^2 * tanh(y - Ly/2)
 uⁱ(x, y, z) =   U * sech(y - Ly/2)^2 .+ ϵ * exp(- (y - Ly/2)^2 ) * randn()
 ηⁱ(x, y, z) = -Δη * tanh(y - Ly/2)
 hⁱ(x, y, z) = model.grid.Lz .+ ηⁱ(x, y, z)   
@@ -51,21 +51,28 @@ uhⁱ(x, y, z) = uⁱ(x, y, z) * hⁱ(x, y, z)
 
 set!(model, uh = uhⁱ , h = hⁱ)
 
-progress(sim) = @printf("Iteration: %d, time: %s, norm v:\n",
-                        sim.model.clock.iteration,
-                        prettytime(sim.model.clock.time))
+uh, vh, h = model.solution
+        u = ComputedField(uh / h)
+        v = ComputedField(vh / h)
+  ω_field = ComputedField( ∂x(vh/h) - ∂y(uh/h) )
+   ω_pert = ComputedField( ω_field - Ω )
 
-simulation = Simulation(model, Δt = 1e-3, stop_time = 1.0, progress=progress)
+function progress(sim)  
+    compute!(v)
+    @printf("Iteration: %d, time: %s, norm v: %f\n",
+    sim.model.clock.iteration,
+    prettytime(sim.model.clock.time),
+    norm(interior(v)) )
+end
 
-u_op   = model.solution.uh / model.solution.h
-v_op   = model.solution.vh / model.solution.h
-ω_op   = @at (Center, Center, Center) ∂x(v_op) - ∂y(u_op)
-ω_pert = @at (Center, Center, Center) ω_op - Ω
+simulation = Simulation(model, Δt = 1e-3, stop_time = 150.0, progress=progress)
 
-ω_field = ComputedField(ω_op)
-ω_pert  = ComputedField(ω_pert)
+function growth_rate(model)
+    compute!(v)
+    return norm(interior(v))
+end
 
-outputs = (ω_total = ω_op, ω_pert = ω_pert)
+outputs = (ω_total = ω_field, ω_pert = ω_pert)
 
 simulation.output_writers[:fields] = 
     NetCDFOutputWriter(
@@ -75,9 +82,7 @@ simulation.output_writers[:fields] =
         schedule=TimeInterval(1.0),         
         mode = "c")
 
-growth_rate(model) = norm(interior(v_op))
-#fields_to_output = (growth_rate = growth_rate,)
-#dims = (growth_rate=(),)
+growth_rate(model) = norm(interior(v))
 
 simulation.output_writers[:growth] = 
     NetCDFOutputWriter(
@@ -90,8 +95,8 @@ simulation.output_writers[:growth] =
 
 run!(simulation)
 
-xc = xnodes(model.solution.h)
-yc = ynodes(model.solution.h)
+xf = xnodes(ω_field)
+yf = ynodes(ω_field)
 
 kwargs = (
          xlabel = "x",
@@ -116,8 +121,8 @@ anim = @animate for (iter, t) in enumerate(ds["time"])
      ω_max = maximum(abs, ω)
     ωp_max = maximum(abs, ωp)
 
-     plot_ω = contour(xc, yc, ω',  clim=(-ω_max,  ω_max),  title=@sprintf("Total ζ at t = %.3f", t); kwargs...)
-    plot_ωp = contour(xc, yc, ωp', clim=(-ωp_max, ωp_max), title=@sprintf("Perturbation ζ at t = %.3f", t); kwargs...)
+     plot_ω = contour(xf, yf, ω',  clim=(-ω_max,  ω_max),  title=@sprintf("Total ζ at t = %.3f", t); kwargs...)
+    plot_ωp = contour(xf, yf, ωp', clim=(-ωp_max, ωp_max), title=@sprintf("Perturbation ζ at t = %.3f", t); kwargs...)
 
     plot(plot_ω, plot_ωp, layout = (1,2), size=(1200, 500))
 
@@ -126,10 +131,8 @@ end
 
 close(ds)
 
-#mp4(anim, "Bickley_Jet_ShallowWater.mp4", fps=15)
-gif(anim, "Bickley_Jet_ShallowWater.gif", fps=15)
-
-#=
+mp4(anim, "Bickley_Jet_ShallowWater.mp4", fps=15)
+#gif(anim, "Bickley_Jet_ShallowWater.gif", fps=15)
 
 ds2 = NCDataset(simulation.output_writers[:growth].filepath, "r")
 
@@ -150,4 +153,3 @@ plot!(plt, t[I], log.(poly), lw=4, label="best fit")
 savefig(plt, "growth_rates.png")
 
 print("Best slope = ", best_fit[1])
-=#
