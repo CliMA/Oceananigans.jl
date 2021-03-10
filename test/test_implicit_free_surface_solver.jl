@@ -1,7 +1,8 @@
 using Statistics
 using Oceananigans.Buoyancy: g_Earth
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface, FreeSurface, 
-      compute_volume_scaled_divergence!, add_previous_free_surface_contribution
+      compute_volume_scaled_divergence!, add_previous_free_surface_contribution,
+      compute_vertically_integrated_volume_flux!
 
 function run_implicit_free_surface_solver_tests(arch)
     Nx = 360
@@ -15,12 +16,16 @@ function run_implicit_free_surface_solver_tests(arch)
 
     # A boring grid
     ## RegularRectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
+    ### grid = RegularRectilinearGrid(size = (128, 1, 1),
+    ###                         x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
+    ###                         topology = (Bounded, Periodic, Bounded))
+
 
     free_surface = ImplicitFreeSurface(gravitational_acceleration=g_Earth)
 
     # Create fields with default bounded and zeroflux boundaries.
     velocities = VelocityFields(arch, grid)
-    η          = CenterField(arch, grid)
+    η          = CenterField(arch, grid, TracerBoundaryConditions(grid))
     @. η.data  = 0
 
     # Initialize the solver
@@ -28,18 +33,33 @@ function run_implicit_free_surface_solver_tests(arch)
 
     # Create a divergent velocity
     u, v, w = velocities
+    @. u.data = 0
+    @. v.data = 0
+    @. w.data = 0
     imid = Int(floor(grid.Nx / 2)) + 1
     jmid = Int(floor(grid.Ny / 2)) + 1
     CUDA.@allowscalar u.data[imid, jmid, 1] = 1
 
     fill_halo_regions!(u.data, u.boundary_conditions, arch, grid, nothing, nothing)
-
-    ### event = launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, RHS.data,
-    ###                 dependencies=Event(device(arch)))
-    ### wait(device(arch), event)
+    fill_halo_regions!(v.data, v.boundary_conditions, arch, grid, nothing, nothing)
+    fill_halo_regions!(w.data, w.boundary_conditions, arch, grid, nothing, nothing)
 
     # Create a fake model
-    model = (architecture=arch,grid=grid,free_surface=free_surface)
+    model = (architecture=arch,grid=grid,free_surface=free_surface, Δt=Δt, velocities=velocities)
+
+    ## We need vertically integrated U,V
+    event = compute_vertically_integrated_volume_flux!(free_surface, model)
+    wait(device(model.architecture), event)
+    u=free_surface.barotropic_volume_flux.u
+    v=free_surface.barotropic_volume_flux.v
+    fill_halo_regions!(u.data ,u.boundary_conditions, arch, grid, nothing, nothing )
+    fill_halo_regions!(v.data ,v.boundary_conditions, arch, grid, nothing, nothing )
+
+    ### We don't need the halo below, its just here for some debugging
+    Ax=free_surface.vertically_integrated_lateral_face_areas.Ax
+    Ay=free_surface.vertically_integrated_lateral_face_areas.Ay
+    fill_halo_regions!(Ax.data ,Ax.boundary_conditions, arch, grid, nothing, nothing )
+    fill_halo_regions!(Ay.data ,Ay.boundary_conditions, arch, grid, nothing, nothing )
 
     # Calculate the vertically ingrated divergence term
     event = compute_volume_scaled_divergence!(free_surface, model)
@@ -52,6 +72,13 @@ function run_implicit_free_surface_solver_tests(arch)
     wait(device(model.architecture), event)
     fill_halo_regions!(RHS   , η.boundary_conditions, model.architecture, model.grid)
 
+    x  = free_surface.implicit_step_solver.solver.settings.x
+    x .= η.data
+    fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
+    solve_poisson_equation!(free_surface.implicit_step_solver.solver, RHS, x; Δt=Δt, g=free_surface.gravitational_acceleration)
+    ## exit()
+    fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
+    free_surface.η.data .= x
 
     @test true
 

@@ -156,15 +156,18 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
     r.parent .= 0
     # quick_launch!(arch, grid, compute_residual!, r, RHS, A(x))
     r.parent .= RHS.parent .- A(x; args...).parent
-    # println("PreconditionedConjugateGradientSolver ", i," RHS ", norm(RHS.parent) )
-    # println("PreconditionedConjugateGradientSolver ", i," A(x) ", norm(A(x).parent) )
+    ### println("PreconditionedConjugateGradientSolver ", i," RHS ", norm(RHS.parent) )
+    ### println("PreconditionedConjugateGradientSolver ", i," A(x) ", norm(A(x; args...).parent) )
 
     while true
-        # println("PreconditionedConjugateGradientSolver ", i," ", norm(r.parent) )
-        i > maxit && break
+        println("PreconditionedConjugateGradientSolver ", i," norm(r.parent) ", norm(r.parent) )
+        i >= maxit && break
+        norm(r.parent) <= tol && break
 
         z.parent       .= M(r; args...).parent
+        ### println("PreconditionedConjugateGradientSolver ", i," norm(z.parent) ", norm(z.parent) )
         ρ        = dotprod(z.parent, r.parent)
+        ### println("PreconditionedConjugateGradientSolver ", i," ρ ", ρ )
 
         if i == 0
             p.parent   .= z.parent
@@ -174,11 +177,11 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
         end
 
         q.parent       .= A(p; args...).parent
+        ### println("PreconditionedConjugateGradientSolver ", i," norm(q.parent) ", norm(q.parent) )
         α        = ρ / dotprod(p.parent, q.parent)
+        ### println("PreconditionedConjugateGradientSolver ", i," α ", α )
         x.parent       .= x.parent .+ α .* p.parent
         r.parent       .= r.parent .- α .* q.parent
-
-        norm(r.parent) <= tol && break
 
         i     = i+1
         ρⁱᵐ¹  = ρ
