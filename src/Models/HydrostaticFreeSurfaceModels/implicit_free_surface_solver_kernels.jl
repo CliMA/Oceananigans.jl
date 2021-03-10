@@ -115,8 +115,6 @@ end
         ### where  ̂ indicates a vertical integral, and
         ###        ̅ indicates a vertical average
         ###
-        ### g  = Main.model.free_surface.gravitational_acceleration ### AGHHHH - need to sort this out later.....
-        ### Δt = Main.simulation.Δt                                 ### AGHHHH - need to sort this out later.....
         i, j = @index(Global, NTuple)
         @inbounds implicit_η_f[i, j, 1] =  ∇²_baro(i, j, 1, grid, f) - Azᶜᶜᵃ(i, j, 1, grid)*f[i,j, 1]/(g*Δt^2)
 end
