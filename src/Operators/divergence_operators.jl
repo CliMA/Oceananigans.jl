@@ -29,6 +29,6 @@ where `Azᶜᶜᵃ` is the area of the cell centered on (Center, Center, Any) --
 and `Δx` is the length of the cell centered on (Center, Face, Any) in `x` (a `v` cell).
 `div_xyᶜᶜᵃ` ends up at the location `cca`.
 """
-@inline div_xyᶜᶜᵃ(i, j, k, grid, u, v) =
+@inline div_xyᶜᶜᵃ(i, j, k, grid::G, u, v) where G <: AbstractGrid =
     1/Azᶜᶜᵃ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_uᶠᶜᵃ, u) +
                               δyᵃᶜᵃ(i, j, k, grid, Δx_vᶜᶠᵃ, v))
