@@ -99,6 +99,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_solvers.jl")
             include("test_poisson_solvers.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
+            include("test_implicit_free_surface_solver.jl")
         end
     end
 
