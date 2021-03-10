@@ -48,7 +48,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
 # λ ∈ [-180°, 180°]
 # ϕ ∈ [-90°, 90°] # 0° is equator
 R = model.grid.radius   # [m]
-ω = 7.848e-6            # [s⁻¹]
+ω = 0.0 # 7.848e-6            # [s⁻¹]
 K = 7.848e-6            # [s⁻¹]
 n = 4                   # dimensionless
 g = model.free_surface.gravitational_acceleration          # [m/s²]
@@ -88,6 +88,7 @@ numdays = abs(45 * π / 180 / speed / 86400)
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
 wave_propagation_time_scale = h₀ * model.grid.Δλ / gravity_wave_speed
+# numdays*86400
 # 20wave_propagation_time_scale,
 Δt =  0.5wave_propagation_time_scale
 simulation = Simulation(model, Δt = Δt, stop_time = numdays*86400, progress = s -> @info "Time = $(prettytime(s.model.clock.time)) / $(prettytime(s.stop_time))")
@@ -97,7 +98,7 @@ output_fields = merge(model.velocities, (η=model.free_surface.η,))
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(20.0wave_propagation_time_scale),
+                                                      schedule = TimeInterval(200.0wave_propagation_time_scale),
                                                       prefix = "rh",
                                                       force = true)
 
