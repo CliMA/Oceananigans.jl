@@ -1,5 +1,5 @@
 using Oceananigans.Grids: RegularLatitudeLongitudeGrid
-using Oceananigans.Operators: Δx_vᶜᶠᵃ, Δy_uᶠᶜᵃ, Δxᶠᶜᵃ, Δyᶜᶠᵃ
+using Oceananigans.Operators: Δx_vᶜᶠᵃ, Δy_uᶠᶜᵃ, Δxᶠᶜᵃ, Δyᶜᶠᵃ, hack_sind
 
 # Our two Coriolis schemes are energy-conserving or enstrophy-conserving
 # with a "vector invariant" momentum advection scheme, but not with a "flux form"
@@ -28,7 +28,7 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, schem
     HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
 
 @inline fᵃᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid, coriolis::HydrostaticSphericalCoriolis) =
-    @inbounds 2 * coriolis.rotation_rate * sind(grid.ϕᵃᶠᵃ[j])
+    @inbounds 2 * coriolis.rotation_rate * hack_sind(grid.ϕᵃᶠᵃ[j])
 
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::HydrostaticSphericalCoriolis, U) where FT = zero(FT)
 

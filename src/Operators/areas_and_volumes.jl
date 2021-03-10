@@ -118,8 +118,11 @@ The operators in this file fall into three categories:
 ##### Temporary place for grid spacings and areas for RegularLatitudeLongitudeGrid
 #####
 
-@inline Δxᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * cosd(grid.ϕᵃᶠᵃ[j]) * deg2rad(grid.Δλ)
-@inline Δxᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * cosd(grid.ϕᵃᶜᵃ[j]) * deg2rad(grid.Δλ)
+@inline hack_cosd(ϕ) = cos(π * ϕ / 180)
+@inline hack_sind(ϕ) = sin(π * ϕ / 180)
+
+@inline Δxᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.ϕᵃᶠᵃ[j]) * deg2rad(grid.Δλ)
+@inline Δxᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.ϕᵃᶜᵃ[j]) * deg2rad(grid.Δλ)
 @inline Δxᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δxᶠᶜᵃ(i, j, k, grid)
 @inline Δxᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δxᶜᶠᵃ(i, j, k, grid)
 
@@ -131,7 +134,7 @@ The operators in this file fall into three categories:
 @inline Δzᵃᵃᶜ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.Δz
 @inline Δzᵃᵃᶠ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.Δz
 
-@inline Azᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * (sind(grid.ϕᵃᶠᵃ[j+1]) - sind(grid.ϕᵃᶠᵃ[j]))
-@inline Azᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * (sind(grid.ϕᵃᶜᵃ[j])   - sind(grid.ϕᵃᶜᵃ[j-1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * (hack_sind(grid.ϕᵃᶠᵃ[j+1]) - hack_sind(grid.ϕᵃᶠᵃ[j]))
+@inline Azᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * (hack_sind(grid.ϕᵃᶜᵃ[j])   - hack_sind(grid.ϕᵃᶜᵃ[j-1]))
 @inline Azᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Azᶜᶜᵃ(i, j, k, grid)
 @inline Azᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Azᶠᶠᵃ(i, j, k, grid)
