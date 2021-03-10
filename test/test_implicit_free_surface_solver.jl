@@ -4,22 +4,23 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface, Fre
       compute_volume_scaled_divergence!, add_previous_free_surface_contribution,
       compute_vertically_integrated_volume_flux!
 
-function run_implicit_free_surface_solver_tests(arch)
-    Nx = 360
-    Ny = 360
-    Δt = 900
+function run_implicit_free_surface_solver_tests(arch, grid)
+    ### Nx = 360
+    ### Ny = 360
     # A spherical domain with bounded toplogy
-    grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                    longitude = (-30, 30),
-                                    latitude = (15, 75),
-                                    z = (-4000, 0)) 
+    ### grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
+    ###                                 longitude = (-30, 30),
+    ###                                 latitude = (15, 75),
+    ###                                 z = (-4000, 0)) 
 
     # A boring grid
     ## RegularRectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
     ### grid = RegularRectilinearGrid(size = (128, 1, 1),
     ###                         x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
     ###                         topology = (Bounded, Periodic, Bounded))
-
+    Nx = grid.Nx
+    Ny = grid.Ny
+    Δt = 900
 
     free_surface = ImplicitFreeSurface(gravitational_acceleration=g_Earth)
 
@@ -90,12 +91,24 @@ function run_implicit_free_surface_solver_tests(arch)
     end
 
 
-    return nothing
+    return CUDA.@allowscalar result[1:Nx, 1:Ny, 1] ≈ RHS[1:Nx, 1:Ny, 1]
 end
 
 @testset "Implicit free surface solver tests" begin
     for arch in archs
         @info "Testing implicit free surface solver [$(typeof(arch))]..."
-        run_implicit_free_surface_solver_tests(arch)
+        # A spherical domain with bounded toplogy
+        Nx = 360
+        Ny = 360
+        grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                                    longitude = (-30, 30),
+                                    latitude = (15, 75),
+                                    z = (-4000, 0))
+        @test run_implicit_free_surface_solver_tests(arch, grid)
+        grid = RegularRectilinearGrid(size = (128, 1, 1),
+                            x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
+                            topology = (Bounded, Periodic, Bounded))
+        @test run_implicit_free_surface_solver_tests(arch, grid)
+
     end
 end
