@@ -60,25 +60,33 @@ end
 
 calculate_diffusivities!(K, arch, grid, closure::AnisotropicDiffusivity, args...) = nothing
 
-@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure::AnisotropicDiffusivity, U, args...) =
-    ∂ⱼνᵢⱼ∂ᵢu(i, j, k, grid, clock, closure.νx, closure.νy, closure.νz, U.u)
-
-@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure::AnisotropicDiffusivity, U, args...) =
-    ∂ⱼνᵢⱼ∂ᵢv(i, j, k, grid, clock, closure.νx, closure.νy, closure.νz, U.v)
-
-@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, clock, closure::AnisotropicDiffusivity, U, args...) =
-    ∂ⱼνᵢⱼ∂ᵢw(i, j, k, grid, clock, closure.νx, closure.νy, closure.νz, U.w)
-
-@inline function ∇_κ_∇c(i, j, k, grid, clock, closure::AnisotropicDiffusivity,
-                        c, ::Val{tracer_index}, args...) where tracer_index
-
+@inline function diffusive_flux_x(i, j, k, grid, clock, closure::AnisotropicDiffusivity, c, ::Val{tracer_index}, args...) where tracer_index
     @inbounds κx = closure.κx[tracer_index]
-    @inbounds κy = closure.κy[tracer_index]
-    @inbounds κz = closure.κz[tracer_index]
-
-    return ∂ⱼκᵢⱼ∂ᵢc(i, j, k, grid, clock, κx, κy, κz, c)
+    return diffusive_flux_x(i, j, k, grid, clock, κx, c)
 end
 
+@inline function diffusive_flux_y(i, j, k, grid, clock, closure::AnisotropicDiffusivity, c, ::Val{tracer_index}, args...) where tracer_index
+    @inbounds κy = closure.κy[tracer_index]
+    return diffusive_flux_y(i, j, k, grid, clock, κy, c)
+end
+
+@inline function diffusive_flux_z(i, j, k, grid, clock, closure::AnisotropicDiffusivity, c, ::Val{tracer_index}, args...) where tracer_index
+    @inbounds κz = closure.κz[tracer_index]
+    return diffusive_flux_z(i, j, k, grid, clock, κz, c)
+end
+
+viscous_flux_ux(i, j, k, grid, clock, closure::AnisotropicDiffusivity, U, args...) = viscous_flux_ux(i, j, k, grid, clock, closure.νx, U[1])
+viscous_flux_uy(i, j, k, grid, clock, closure::AnisotropicDiffusivity, U, args...) = viscous_flux_uy(i, j, k, grid, clock, closure.νy, U[1])  
+viscous_flux_uz(i, j, k, grid, clock, closure::AnisotropicDiffusivity, U, args...) = viscous_flux_uz(i, j, k, grid, clock, closure.νz, U[1])
+
+viscous_flux_vx(i, j, k, grid, clock, closure::AnisotropicDiffusivity, U, args...) = viscous_flux_vx(i, j, k, grid, clock, closure.νx, U[2])
+viscous_flux_vy(i, j, k, grid, clock, closure::AnisotropicDiffusivity, U, args...) = viscous_flux_vy(i, j, k, grid, clock, closure.νy, U[2])  
+viscous_flux_vz(i, j, k, grid, clock, closure::AnisotropicDiffusivity, U, args...) = viscous_flux_vz(i, j, k, grid, clock, closure.νz, U[2])
+
+viscous_flux_wx(i, j, k, grid, clock, closure::AnisotropicDiffusivity, U, args...) = viscous_flux_wx(i, j, k, grid, clock, closure.νx, U[3])
+viscous_flux_wy(i, j, k, grid, clock, closure::AnisotropicDiffusivity, U, args...) = viscous_flux_wy(i, j, k, grid, clock, closure.νy, U[3])  
+viscous_flux_wz(i, j, k, grid, clock, closure::AnisotropicDiffusivity, U, args...) = viscous_flux_wz(i, j, k, grid, clock, closure.νz, U[3])
+                        
 Base.show(io::IO, closure::AnisotropicDiffusivity) =
     print(io, "AnisotropicDiffusivity: " *
               "(νx=$(closure.νx), νy=$(closure.νy), νz=$(closure.νz)), " *

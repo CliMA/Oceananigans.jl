@@ -5,7 +5,7 @@ Parameters for the "anisotropic minimum dissipation" turbulence closure for larg
 proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
 by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
 """
-struct AnisotropicMinimumDissipation{FT, PK, PN, K} <: AbstractIsotropicDiffusivity
+struct AnisotropicMinimumDissipation{FT, PK, PN, K} <: AbstractEddyViscosityClosure
     Cν :: PN
     Cκ :: PK
     Cb :: FT
@@ -111,6 +111,31 @@ function with_tracers(tracers, closure::AnisotropicMinimumDissipation{FT}) where
 end
 
 #####
+##### Diffusive fluxes
+#####
+
+function diffusive_flux_x(i, j, k, grid, clock, closure::AnisotropicMinimumDissipation, c,
+                          ::Val{tracer_index}, diffusivities, args...) where tracer_index
+
+    κₑ = diffusivities.κₑ[tracer_index]
+    return diffusive_flux_x(i, j, k, grid, clock, κₑ, c)
+end
+
+function diffusive_flux_y(i, j, k, grid, clock, closure::AnisotropicMinimumDissipation, c,
+                          ::Val{tracer_index}, diffusivities, args...) where tracer_index
+
+    κₑ = diffusivities.κₑ[tracer_index]
+    return diffusive_flux_y(i, j, k, grid, clock, κₑ, c)
+end
+
+function diffusive_flux_z(i, j, k, grid, clock, closure::AnisotropicMinimumDissipation, c,
+                          ::Val{tracer_index}, diffusivities, args...) where tracer_index
+
+    κₑ = diffusivities.κₑ[tracer_index]
+    return diffusive_flux_z(i, j, k, grid, clock, κₑ, c)
+end
+
+#####
 ##### Kernel functions
 #####
 
@@ -157,6 +182,8 @@ end
     return max(zero(FT), κˢᵍˢ) + κ
 end
 
+
+#=                 
 """
     ∇_κ_∇c(i, j, k, grid, clock, c, tracer_index, closure, diffusivities)
 
@@ -173,6 +200,7 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
             + ∂zᵃᵃᶜ(i, j, k, grid, κ_∂z_c, κₑ, c, closure)
            )
 end
+=#
 
 function calculate_diffusivities!(K, arch, grid, closure::AnisotropicMinimumDissipation, buoyancy, U, C)
     workgroup, worksize = work_layout(grid, :xyz)

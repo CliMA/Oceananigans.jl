@@ -4,11 +4,11 @@
 #####
 
 """
-    SmagorinskyLilly{FT} <: AbstractIsotropicDiffusivity
+    SmagorinskyLilly{FT} <: AbstractEddyViscosityClosure
 
 Parameters for the Smagorinsky-Lilly turbulence closure.
 """
-struct SmagorinskyLilly{FT, P, K} <: AbstractIsotropicDiffusivity
+struct SmagorinskyLilly{FT, P, K} <: AbstractEddyViscosityClosure
      C :: FT
     Cb :: FT
     Pr :: P
@@ -106,77 +106,58 @@ end
 ##### Abstract Smagorinsky functionality
 #####
 
-"""
-    κ_∂x_c(i, j, k, grid, c, tracer, closure, νₑ)
-
-Return `κ ∂x c`, where `κ` is a function that computes
-diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
-data located at cell centers.
-"""
-@inline function κ_∂x_c(i, j, k, grid, closure::SmagorinskyLilly,
-                        c, ::Val{tracer_index}, νₑ) where tracer_index
+@inline function diffusive_flux_x(i, j, k, grid, clock, closure::SmagorinskyLilly,
+                                  c, ::Val{tracer_index}, diffusivities, args...) where tracer_index
 
     @inbounds Pr = closure.Pr[tracer_index]
     @inbounds κ = closure.κ[tracer_index]
 
+    νₑ = diffusivities.νₑ
     νₑ = ℑxᶠᵃᵃ(i, j, k, grid, νₑ, closure)
     κₑ = (νₑ - closure.ν) / Pr + κ
     ∂x_c = ∂xᶠᵃᵃ(i, j, k, grid, c)
+
     return κₑ * ∂x_c
 end
 
-"""
-    κ_∂y_c(i, j, k, grid, c, tracer, closure, νₑ)
-
-Return `κ ∂y c`, where `κ` is a function that computes
-diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
-data located at cell centers.
-"""
-@inline function κ_∂y_c(i, j, k, grid, closure::SmagorinskyLilly,
-                        c, ::Val{tracer_index}, νₑ) where tracer_index
+@inline function diffusive_flux_y(i, j, k, grid, clock, closure::SmagorinskyLilly,
+                                  c, ::Val{tracer_index}, diffusivities, args...) where tracer_index
 
     @inbounds Pr = closure.Pr[tracer_index]
     @inbounds κ = closure.κ[tracer_index]
 
+    νₑ = diffusivities.νₑ
     νₑ = ℑyᵃᶠᵃ(i, j, k, grid, νₑ, closure)
     κₑ = (νₑ - closure.ν) / Pr + κ
     ∂y_c = ∂yᵃᶠᵃ(i, j, k, grid, c)
     return κₑ * ∂y_c
 end
 
-"""
-    κ_∂z_c(i, j, k, grid, c, tracer, closure, νₑ)
-
-Return `κ ∂z c`, where `κ` is a function that computes
-diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
-data located at cell centers.
-"""
-@inline function κ_∂z_c(i, j, k, grid, closure::SmagorinskyLilly,
-                        c, ::Val{tracer_index}, νₑ) where tracer_index
+@inline function diffusive_flux_z(i, j, k, grid, clock, closure::SmagorinskyLilly,
+                                  c, ::Val{tracer_index}, diffusivities, args...) where tracer_index
 
     @inbounds Pr = closure.Pr[tracer_index]
     @inbounds κ = closure.κ[tracer_index]
 
+    νₑ = diffusivities.νₑ
     νₑ = ℑzᵃᵃᶠ(i, j, k, grid, νₑ, closure)
     κₑ = (νₑ - closure.ν) / Pr + κ
     ∂z_c = ∂zᵃᵃᶠ(i, j, k, grid, c)
     return κₑ * ∂z_c
 end
 
+#=
 """
     ∇_κ_∇c(i, j, k, grid, clock, c, closure, diffusivities)
 
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 `closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline ∇_κ_∇c(i, j, k, grid, clock, closure::SmagorinskyLilly, c, tracer_index,
-               diffusivities, args...) = (
-
-      ∂xᶜᵃᵃ(i, j, k, grid, κ_∂x_c, closure, c, tracer_index, diffusivities.νₑ)
-    + ∂yᵃᶜᵃ(i, j, k, grid, κ_∂y_c, closure, c, tracer_index, diffusivities.νₑ)
-    + ∂zᵃᵃᶜ(i, j, k, grid, κ_∂z_c, closure, c, tracer_index, diffusivities.νₑ)
-
-)
+@inline ∇_κ_∇c(i, j, k, grid, clock, closure::SmagorinskyLilly, c, ::Val{tracer_index},
+               diffusivities, args...) where tracer_index = (∂xᶜᵃᵃ(i, j, k, grid, κ_∂x_c, closure, c, Val(tracer_index), diffusivities.νₑ) +
+                                                             ∂yᵃᶜᵃ(i, j, k, grid, κ_∂y_c, closure, c, Val(tracer_index), diffusivities.νₑ) +
+                                                             ∂zᵃᵃᶜ(i, j, k, grid, κ_∂z_c, closure, c, Val(tracer_index), diffusivities.νₑ))
+=#
 
 function calculate_diffusivities!(K, arch, grid, closure::SmagorinskyLilly, buoyancy, U, C)
 

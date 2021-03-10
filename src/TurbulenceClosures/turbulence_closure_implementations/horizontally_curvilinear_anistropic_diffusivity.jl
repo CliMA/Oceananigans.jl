@@ -50,32 +50,20 @@ viscous_flux_vx(i, j, k, grid, clock, closure::HCAD, U, args...) = ν_ζᶠᶠ�
 viscous_flux_vy(i, j, k, grid, clock, closure::HCAD, U, args...) = ν_δᶜᶜᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)
 viscous_flux_vz(i, j, k, grid, clock, closure::HCAD, U, args...) = ν_uzᶠᶜᶠ(i, j, k, grid, clock, closure.νh, U.v)
 
-function diffusive_flux_x(i, j, k, grid, clock, closure::HCAD, c, ::Val{tracer_index}, args...) where tracer_index
+@inline function diffusive_flux_x(i, j, k, grid, clock, closure::HCAD, c, ::Val{tracer_index}, args...) where tracer_index
     @inbounds κh = closure.κh[tracer_index]
     return diffusive_flux_x(i, j, k, grid, clock, κh, c)
 end
 
-function diffusive_flux_y(i, j, k, grid, clock, closure::HCAD, c, ::Val{tracer_index}, args...) where tracer_index
+@inline function diffusive_flux_y(i, j, k, grid, clock, closure::HCAD, c, ::Val{tracer_index}, args...) where tracer_index
     @inbounds κh = closure.κh[tracer_index]
     return diffusive_flux_y(i, j, k, grid, clock, κh, c)
 end
 
-function diffusive_flux_z(i, j, k, grid, clock, closure::HCAD, c, ::Val{tracer_index}, args...) where tracer_index
+@inline function diffusive_flux_z(i, j, k, grid, clock, closure::HCAD, c, ::Val{tracer_index}, args...) where tracer_index
     @inbounds κz = closure.κz[tracer_index]
     return diffusive_flux_z(i, j, k, grid, clock, κz, c)
 end
-
-@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure::HorizontallyCurvilinearAnisotropicDiffusivity, U, args...) = (
-    + δxᶠᵃᵃ(i, j, k, grid, ν_δᶜᶜᶜ, clock, closure.νh, U.u, U.v) / Δxᶠᶜᵃ(i, j, k, grid)
-    - δyᵃᶜᵃ(i, j, k, grid, ν_ζᶠᶠᶜ, clock, closure.νh, U.u, U.v) / Δyᶠᶜᵃ(i, j, k, grid)
-    + δzᵃᵃᶜ(i, j, k, grid, ν_uzᶠᶜᶠ, clock, closure.νz, U.u)     / Δzᵃᵃᶜ(i, j, k, grid)
-)
-
-@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure::HorizontallyCurvilinearAnisotropicDiffusivity, U, args...) = (
-    + δxᶜᵃᵃ(i, j, k, grid, ν_ζᶠᶠᶜ, clock, closure.νh, U.u, U.v) / Δxᶜᶠᵃ(i, j, k, grid)
-    + δyᵃᶠᵃ(i, j, k, grid, ν_δᶜᶜᶜ, clock, closure.νh, U.u, U.v) / Δyᶜᶠᵃ(i, j, k, grid)
-    + δzᵃᵃᶜ(i, j, k, grid, ν_vzᶜᶠᶠ, clock, closure.νz, U.v)     / Δzᵃᵃᶜ(i, j, k, grid)
-)
 
 Base.show(io::IO, closure::HorizontallyCurvilinearAnisotropicDiffusivity) =
     print(io, "AnisotropicDiffusivity: " *
