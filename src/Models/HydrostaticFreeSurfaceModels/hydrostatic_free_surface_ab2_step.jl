@@ -93,7 +93,9 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     wait(device(model.architecture), velocities_update)
     fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model) )
 
-    η_save = deepcopy(free_surface.η)
+    ## Leaving this here for now. There may be some scenarios where stepping forward η and then using
+    ## the stepped forward value as a guess is helpful.
+    ## η_save = deepcopy(free_surface.η)
     ## event = explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
     ## wait(device(model.architecture), event)
 
@@ -104,12 +106,6 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     v=free_surface.barotropic_volume_flux.v
     fill_halo_regions!(u.data ,u.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
     fill_halo_regions!(v.data ,v.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
-    ### We don't need the halo below, its just here for some debugging
-    Ax=free_surface.vertically_integrated_lateral_face_areas.Ax
-    Ay=free_surface.vertically_integrated_lateral_face_areas.Ay
-    fill_halo_regions!(Ax.data ,Ax.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
-    fill_halo_regions!(Ay.data ,Ay.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
-
 
     ## Compute volume scaled divergence of the barotropic transport and put into solver RHS
     event = compute_volume_scaled_divergence!(free_surface, model)
@@ -118,9 +114,7 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     ## Include surface pressure term into RHS
     RHS = free_surface.implicit_step_solver.solver.settings.RHS
     RHS .= RHS/(model.free_surface.gravitational_acceleration*Δt)
-    ## fill_halo_regions!(RHS.data ,RHS.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
     η = free_surface.η
-    η = η_save
     fill_halo_regions!(RHS   , η.boundary_conditions, model.architecture, model.grid)
     fill_halo_regions!(η.data, η.boundary_conditions, model.architecture, model.grid)
     ##  need to subtract Azᵃᵃᵃ(i, j, 1, grid)*η[i,j, 1]/(g*Δt^2)
@@ -134,11 +128,8 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     x .= η.data
     fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
     solve_poisson_equation!(free_surface.implicit_step_solver.solver, RHS, x; Δt=Δt, g=free_surface.gravitational_acceleration)
-    ## exit()
     fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
     free_surface.η.data .= x
-
-    ## Once we have η we can update u* and v* with pressure gradient just as in pressure_correct_velocities!
 
     ## The explicit form of this function defaults to returning an event, we do the same for now.
     return event
