@@ -12,6 +12,7 @@ Logging.global_logger(OceananigansLogger())
 MPI.Init()
 comm = MPI.COMM_WORLD
 
+local_rank = MPI.Comm_rank(comm)
 R = MPI.Comm_size(comm)
 
 Nx = parse(Int, ARGS[1])
@@ -33,8 +34,12 @@ time_step!(model, 1) # warmup
 
 trial = @benchmark begin
     @sync_gpu time_step!($model, 1)
+    MPI.Barrier(comm)
 end samples=10
 
-jldopen("strong_scaling_incompressible_model_$R.jld2", "w") do file
+@info "Rank $local_rank is done benchmarking!"
+
+jldopen("strong_scaling_incompressible_model_$(R)_$local_rank.jld2", "w") do file
     file["trial"] = trial
 end
+

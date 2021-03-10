@@ -4,11 +4,11 @@ using Benchmarks
 
 # Benchmark parameters
 
-Nx = 128
-Ny = 128
+Nx = 256
+Ny = 256
 Nz = Nx
 
-ranks = (1, 2, 4)
+ranks = (1, 2, 4, 8, 16)
 
 # Run and collect benchmarks
 
