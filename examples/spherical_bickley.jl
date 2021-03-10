@@ -39,8 +39,8 @@ using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusi
 νh = κh = 1e4
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     momentum_advection = VectorInvariant(),
-                                    tracers = (),
                                     buoyancy = nothing,
+                                    tracers = :c,
                                     coriolis = coriolis,
                                     closure = HorizontallyCurvilinearAnisotropicDiffusivity(κh=κh, νh =  νh))
 
@@ -75,7 +75,7 @@ hᵖ(θ, ϕ) =  0.0
 u(θ, ϕ) = uᵐ(θ, ϕ) + ϵ * uᵖ(θ, ϕ)
 v(θ, ϕ) = vᵐ(θ, ϕ) + ϵ * vᵖ(θ, ϕ)
 h(θ, ϕ) = hᵐ(θ, ϕ) + ϵ * hᵖ(θ, ϕ)
-
+tracer(θ, ϕ) = sin(2*θ)
 
 
 
@@ -88,8 +88,9 @@ rescale²(ϕ) = ϕ / 180 * π # θ to ϕ
 uᵢ(λ, ϕ, z) = u(rescale²(ϕ), rescale¹(λ))
 vᵢ(λ, ϕ, z) = v(rescale²(ϕ), rescale¹(λ))
 ηᵢ(λ, ϕ, z) = h(rescale²(ϕ), rescale¹(λ)) # (rescale¹(λ), rescale²(ϕ))
+tracerᵢ(λ, ϕ, z) = tracer(rescale²(ϕ), rescale¹(λ)) # (rescale¹(λ), rescale²(ϕ))
 
-set!(model, u=uᵢ, v=vᵢ, η = ηᵢ) 
+set!(model, u=uᵢ, v=vᵢ, η = ηᵢ, c = tracerᵢ) 
 
 # Create Simulation
 
@@ -100,7 +101,7 @@ wave_propagation_time_scale =  h₀ * model.grid.Δλ / gravity_wave_speed
 Δt =  0.25wave_propagation_time_scale
 simulation = Simulation(model, Δt = Δt, stop_time = 6000wave_propagation_time_scale, progress = s -> @info "Time = $(prettytime(s.model.clock.time)) / $(prettytime(s.stop_time))")
 
-output_fields = merge(model.velocities, (η=model.free_surface.η,))
+output_fields = merge(model.velocities, (η=model.free_surface.η,), model.tracers)
 
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
 
@@ -129,10 +130,12 @@ plot_title = @lift @sprintf("Spherical-Bickley Test: u, v, η @ time = %s", pret
 up = @lift file["timeseries/u/" * string($iter)][:, :, 1]
 vp = @lift file["timeseries/v/" * string($iter)][:, :, 1]
 ηp = @lift file["timeseries/η/" * string($iter)][:, :, 1]
+cp = @lift file["timeseries/c/" * string($iter)][:, :, 1]
 
 up0 = file["timeseries/u/" * string(0)][:, :, 1]
 vp0 = file["timeseries/v/" * string(0)][:, :, 1]
 ηp0 = file["timeseries/η/" * string(0)][:, :, 1]
+cp0 = file["timeseries/c/" * string(0)][:, :, 1]
 
 # Plot on the unit sphere to align with the spherical wireframe.
 # Multiply by 1.01 so the η field is a bit above the wireframe.
@@ -146,10 +149,10 @@ z = z[:, :, 1]
 
 fig = Figure(resolution = (3156, 1074))
 
-clims = [(-10,10), (-10,10), (-1.0,1.0)]
+clims = [(-10,10), (-10,10), (-1.0,1.0), (-1.0, 1.0)]
 
-statenames = ["u", "v", "η"]
-for (n, var) in enumerate([up, vp, ηp])
+statenames = ["u", "v", "η", "c"]
+for (n, var) in enumerate([up, vp, ηp, cp])
     ax = fig[3:7, 3n-2:3n] = LScene(fig) # make plot area wider
     wireframe!(ax, Sphere(Point3f0(0), 1f0), show_axis=false)
     surface!(ax, x, y, z, color=var, colormap=:balance, colorrange=clims[n])
@@ -175,11 +178,11 @@ record(fig, "SphericalBickley.mp4", iterations, framerate=30) do i
 end
 
 ##
-record(fig, "SphericalBickley.mp4", iterations, framerate=10) do i
+record(fig, "SphericalBickley.mp4", iterations, framerate=30) do i
     iter[] = i
-    #=
-    for n in 1:3
+    
+    for n in 1:4
         rotate_cam!(fig.scene.children[n], (2π/360, 0, 0))
     end
-    =#
+
 end
