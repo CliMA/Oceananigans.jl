@@ -2,20 +2,22 @@ using Oceananigans.Architectures
 
 using Oceananigans.Grids: topology, validate_tupled_argument
 
-struct MultiCPU{G, R, I, ρ, C} <: AbstractCPUArchitecture
-       full_grid :: G
-         my_rank :: R
-        my_index :: I
-           ranks :: ρ
-    connectivity :: C
+struct MultiCPU{G, R, I, ρ, C, γ} <: AbstractCPUArchitecture
+    distributed_grid :: G
+          local_rank :: R
+         local_index :: I
+               ranks :: ρ
+        connectivity :: C
+        communicator :: γ
 end
 
-struct MultiGPU{G, R, I, ρ, C} <: AbstractGPUArchitecture
-       full_grid :: G
-         my_rank :: R
-        my_index :: I
-           ranks :: ρ
-    connectivity :: C
+struct MultiGPU{G, R, I, ρ, C, γ} <: AbstractGPUArchitecture
+    distributed_grid :: G
+          local_rank :: R
+         local_index :: I
+               ranks :: ρ
+        connectivity :: C
+        communicator :: γ
 end
 
 const AbstractMultiArchitecture = Union{MultiCPU, MultiGPU}
@@ -109,7 +111,7 @@ end
 ##### Constructors
 #####
 
-function MultiCPU(; grid, ranks)
+function MultiCPU(; grid, ranks, communicator=MPI.COMM_WORLD)
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
 
     validate_tupled_argument(ranks, Int, "ranks")
@@ -117,21 +119,19 @@ function MultiCPU(; grid, ranks)
     Rx, Ry, Rz = ranks
     total_ranks = Rx*Ry*Rz
 
-    comm = MPI.COMM_WORLD
+    mpi_ranks = MPI.Comm_size(communicator)
+    local_rank   = MPI.Comm_rank(communicator)
 
-    mpi_ranks = MPI.Comm_size(comm)
-    my_rank   = MPI.Comm_rank(comm)
-
-    i, j, k = my_index = rank2index(my_rank, Rx, Ry, Rz)
+    i, j, k = local_index = rank2index(local_rank, Rx, Ry, Rz)
 
     if total_ranks != mpi_ranks
         throw(ArgumentError("ranks=($Rx, $Ry, $Rz) [$total_ranks total] inconsistent " *
                             "with number of MPI ranks: $mpi_ranks."))
     end
 
-    my_connectivity = RankConnectivity(my_index, ranks, topology(grid))
+    local_connectivity = RankConnectivity(local_index, ranks, topology(grid))
 
-    return MultiCPU(grid, my_rank, my_index, ranks, my_connectivity)
+    return MultiCPU(grid, local_rank, local_index, ranks, local_connectivity, communicator)
 end
 
 #####
@@ -140,7 +140,7 @@ end
 
 function Base.show(io::IO, arch::MultiCPU)
     c = arch.connectivity
-    print(io, "MultiCPU architecture (rank $(arch.my_rank)/$(prod(arch.ranks)-1)) [index $(arch.my_index) / $(arch.ranks)]\n",
+    print(io, "MultiCPU architecture (rank $(arch.local_rank)/$(prod(arch.ranks)-1)) [index $(arch.local_index) / $(arch.ranks)]\n",
               "└── connectivity:",
               isnothing(c.east) ? "" : " east=$(c.east)",
               isnothing(c.west) ? "" : " west=$(c.west)",

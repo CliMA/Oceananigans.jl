@@ -23,7 +23,7 @@ unsure about anything.
 * Implement a new feature if you need it to use Oceananigans.
 
 If you're interested in working on something, let us know by commenting on
-existing issues or by opening a new issue if. This is to make sure no one else
+existing issues or by opening a new issue. This is to make sure no one else
 is working on the same issue and so we can help and guide you in case there
 is anything you need to know beforehand.
 
@@ -110,7 +110,7 @@ julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(
 julia --project=docs/ docs/make.jl
 ```
  
- and then open `docs/build/index.html` in your favorite browser.
+and then open `docs/build/index.html` in your favorite browser.
 
 ## Credits
 

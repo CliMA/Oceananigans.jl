@@ -187,7 +187,7 @@ We set up the problem by imposing the time-dependent forcing functions ``F_u`` a
 on ``u`` and ``v``, initializing the flow at ``t=0``, and integrating the problem forwards
 in time using Oceananigans. We find the expected convergence of the numerical solution to the
 analytical solution: the error between the numerical and analytical solutions
-decreasess with ``1/N_x^2 \sim \Delta x^2``, where ``N_x`` is the number of grid
+decreases with ``1/N_x^2 \sim \Delta x^2``, where ``N_x`` is the number of grid
 points and ``\Delta x`` is the spatial resolution:
 
 ![Forced free slip convergence](convergence_plots/forced_free_slip_convergence.png)
@@ -196,7 +196,7 @@ The convergence tests are performed using both ``y`` and ``z`` as the bounded di
 
 ### Forced, free-slip flow
 
-A forced flow satsifying free-slip conditions at ``y=0`` and ``y=\pi`` has the streamfunction
+A forced flow satisfying free-slip conditions at ``y=0`` and ``y=\pi`` has the streamfunction
 ```math
 \psi(x, y, t) = - \cos \left [ x - \xi(t) \right ] \sin(y)
 ```
@@ -262,7 +262,7 @@ We set up the problem in the same manner as the forced, free-slip problem above.
 Note that we also must the no-slip boundary condition ``u |_{y=0} = 0`` and the
 time-dependent fixed-slip condition ``u |_{y=1} = f``.
 As for the free-slip problem, we find that the error between the numerical and
-analytical solutions decreasess with ``1/N_x^2 \sim \Delta x^2``, where ``N_x``
+analytical solutions decreases with ``1/N_x^2 \sim \Delta x^2``, where ``N_x``
 is the number of grid points and ``\Delta x`` is the spatial resolution:
 
 ![Forced fixed slip convergence](convergence_plots/forced_fixed_slip_convergence.png)

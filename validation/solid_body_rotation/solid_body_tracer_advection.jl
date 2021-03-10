@@ -24,7 +24,8 @@ using Oceananigans.Coriolis:
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
     VectorInvariant,
-    ExplicitFreeSurface
+    ExplicitFreeSurface,
+    PrescribedVelocityFields
 
 using Oceananigans.Utils: prettytime, hours
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
@@ -32,8 +33,6 @@ using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInter
 using JLD2
 using Printf
 using GLMakie
-
-include("hydrostatic_prescribed_velocity_fields.jl")
 
 # # The geostrophic flow
 #
@@ -72,12 +71,12 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
                                               longitude = (-180, 180),
                                               z = (-1, 0))
 
-    uᵢ(λ, ϕ, z) = solid_body_rotation(λ, ϕ)
+    uᵢ(λ, ϕ, z, t=0) = solid_body_rotation(λ, ϕ)
 
     model = HydrostaticFreeSurfaceModel(grid = grid,
                                         architecture = architecture,
                                         tracers = (:c, :d, :e),
-                                        velocities = PrescribedVelocityFields(grid, u=uᵢ),
+                                        velocities = PrescribedVelocityFields(u=uᵢ),
                                         coriolis = nothing,
                                         buoyancy = nothing,
                                         closure = nothing)
@@ -95,10 +94,10 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
 
     set!(model, c=cᵢ, d=dᵢ, e=eᵢ)
 
-    @show ϕᵃᶜᵃ_max = maximum(abs, ynodes(Center, grid))
-    @show Δx_min = grid.radius * cosd(ϕᵃᶜᵃ_max) * deg2rad(grid.Δλ)
-    @show Δy_min = grid.radius * deg2rad(grid.Δϕ)
-    @show Δ_min = min(Δx_min, Δy_min)
+    ϕᵃᶜᵃ_max = maximum(abs, ynodes(Center, grid))
+    Δx_min = grid.radius * cosd(ϕᵃᶜᵃ_max) * deg2rad(grid.Δλ)
+    Δy_min = grid.radius * deg2rad(grid.Δϕ)
+    Δ_min = min(Δx_min, Δy_min)
 
     # Time-scale for tracer advection across the smallest grid cell
     @show advection_time_scale = Δ_min / U

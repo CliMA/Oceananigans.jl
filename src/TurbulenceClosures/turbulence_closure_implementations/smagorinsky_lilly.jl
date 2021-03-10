@@ -4,11 +4,11 @@
 #####
 
 """
-    SmagorinskyLilly{FT} <: AbstractSmagorinsky{FT}
+    SmagorinskyLilly{FT} <: AbstractIsotropicDiffusivity
 
 Parameters for the Smagorinsky-Lilly turbulence closure.
 """
-struct SmagorinskyLilly{FT, P, K} <: AbstractSmagorinsky{FT}
+struct SmagorinskyLilly{FT, P, K} <: AbstractIsotropicDiffusivity
      C :: FT
     Cb :: FT
     Pr :: P
@@ -113,7 +113,7 @@ Return `κ ∂x c`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂x_c(i, j, k, grid, closure::AbstractSmagorinsky,
+@inline function κ_∂x_c(i, j, k, grid, closure::SmagorinskyLilly,
                         c, ::Val{tracer_index}, νₑ) where tracer_index
 
     @inbounds Pr = closure.Pr[tracer_index]
@@ -132,7 +132,7 @@ Return `κ ∂y c`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂y_c(i, j, k, grid, closure::AbstractSmagorinsky,
+@inline function κ_∂y_c(i, j, k, grid, closure::SmagorinskyLilly,
                         c, ::Val{tracer_index}, νₑ) where tracer_index
 
     @inbounds Pr = closure.Pr[tracer_index]
@@ -151,7 +151,7 @@ Return `κ ∂z c`, where `κ` is a function that computes
 diffusivity at cell centers (location `ccc`), and `c` is an array of scalar
 data located at cell centers.
 """
-@inline function κ_∂z_c(i, j, k, grid, closure::AbstractSmagorinsky,
+@inline function κ_∂z_c(i, j, k, grid, closure::SmagorinskyLilly,
                         c, ::Val{tracer_index}, νₑ) where tracer_index
 
     @inbounds Pr = closure.Pr[tracer_index]
@@ -169,7 +169,7 @@ end
 Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 `closure`, where `c` is an array of scalar data located at cell centers.
 """
-@inline ∇_κ_∇c(i, j, k, grid, clock, closure::AbstractSmagorinsky, c, tracer_index,
+@inline ∇_κ_∇c(i, j, k, grid, clock, closure::SmagorinskyLilly, c, tracer_index,
                diffusivities, args...) = (
 
       ∂xᶜᵃᵃ(i, j, k, grid, κ_∂x_c, closure, c, tracer_index, diffusivities.νₑ)
@@ -178,7 +178,7 @@ Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
 
 )
 
-function calculate_diffusivities!(K, arch, grid, closure::AbstractSmagorinsky, buoyancy, U, C)
+function calculate_diffusivities!(K, arch, grid, closure::SmagorinskyLilly, buoyancy, U, C)
 
     event = launch!(arch, grid, :xyz, calculate_nonlinear_viscosity!, K.νₑ, grid, closure, buoyancy, U, C,
                     dependencies=Event(device(arch)))
@@ -193,7 +193,7 @@ end
 #####
 
 "Return the filter width for Constant Smagorinsky on a regular rectilinear grid."
-@inline Δᶠ(i, j, k, grid, ::AbstractSmagorinsky) = geo_mean_Δᶠ(i, j, k, grid)
+@inline Δᶠ(i, j, k, grid, ::SmagorinskyLilly) = geo_mean_Δᶠ(i, j, k, grid)
 
 # Temporarily set filter widths to cell-size (rather than distance between cell centers, etc.)
 const Δᶠ_ccc = Δᶠ
