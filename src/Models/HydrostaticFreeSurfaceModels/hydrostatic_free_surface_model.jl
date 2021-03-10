@@ -5,7 +5,7 @@ using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, GPU
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder
-using Oceananigans.Buoyancy: validate_buoyancy, SeawaterBuoyancy, g_Earth
+using Oceananigans.BuoyancyModels: validate_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, TracerBoundaryConditions
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
@@ -69,7 +69,7 @@ Keyword arguments
     - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
     - `gravitational_acceleration`: The gravitational acceleration applied to the free surface
     - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
-    - `buoyancy`: The buoyancy model. See `Oceananigans.Buoyancy`.
+    - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
     - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
     - `coriolis`: Parameters for the background rotation rate of the model.
     - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.

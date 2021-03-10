@@ -50,12 +50,12 @@ const LinearSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState} whe
 const LinearTemperatureSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState, <:Nothing, <:Number} where {FT,G}
 const LinearSalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState, <:Number, <:Nothing} where {FT,G}
 
-const LinearSeawaterBuoyancyModel = BuoyancyModel{<:LinearSeawaterBuoyancy}
-const LinearTemperatureSeawaterBuoyancyModel = BuoyancyModel{<:LinearTemperatureSeawaterBuoyancy}
-const LinearSalinitySeawaterBuoyancyModel = BuoyancyModel{<:LinearSalinitySeawaterBuoyancy}
+const LinearSeawaterBuoyancyModel = Buoyancy{<:LinearSeawaterBuoyancy}
+const LinearTemperatureSeawaterBuoyancyModel = Buoyancy{<:LinearTemperatureSeawaterBuoyancy}
+const LinearSalinitySeawaterBuoyancyModel = Buoyancy{<:LinearSalinitySeawaterBuoyancy}
 
 #####
-##### Buoyancy perturbation
+##### BuoyancyModels perturbation
 #####
 
 @inline buoyancy_perturbation(i, j, k, grid, b::LinearSeawaterBuoyancyModel, C) =
@@ -69,7 +69,7 @@ const LinearSalinitySeawaterBuoyancyModel = BuoyancyModel{<:LinearSalinitySeawat
     @inbounds - g_z(b) * b.model.equation_of_state.β * C.S[i, j, k]
 
 #####
-##### Buoyancy forces
+##### BuoyancyModels forces
 #####
 
 @inline x_dot_g_b(i, j, k, grid, b::LinearSeawaterBuoyancyModel, C) =

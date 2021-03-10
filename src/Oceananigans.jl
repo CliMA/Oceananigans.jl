@@ -39,8 +39,8 @@ export
     # Coriolis forces
     FPlane, BetaPlane, NonTraditionalFPlane, NonTraditionalBetaPlane,
 
-    # Buoyancy and equations of state
-    BuoyancyModel, BuoyancyTracer, SeawaterBuoyancy,
+    # BuoyancyModels and equations of state
+    Buoyancy, BuoyancyTracer, SeawaterBuoyancy,
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
@@ -153,7 +153,7 @@ include("Advection/Advection.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("Coriolis/Coriolis.jl")
-include("Buoyancy/Buoyancy.jl")
+include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
@@ -179,7 +179,7 @@ using .Grids
 using .BoundaryConditions
 using .Fields
 using .Coriolis
-using .Buoyancy
+using .BuoyancyModels
 using .StokesDrift
 using .TurbulenceClosures
 using .LagrangianParticleTracking

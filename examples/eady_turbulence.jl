@@ -108,7 +108,7 @@
 # | Parameter name | Description | Value | Units |
 # |:--------------:|:-----------:|:-----:|:-----:|
 # | ``f``          | Coriolis parameter | ``10^{-4}`` | ``\mathrm{s^{-1}}`` |
-# | ``N``          | Buoyancy frequency (square root of ``\partial_z B``) | ``10^{-3}`` | ``\mathrm{s^{-1}}`` |
+# | ``N``          | BuoyancyModels frequency (square root of ``\partial_z B``) | ``10^{-3}`` | ``\mathrm{s^{-1}}`` |
 # | ``\alpha``     | Background vertical shear ``\partial_z U`` | ``10^{-3}`` | ``\mathrm{s^{-1}}`` |
 # | ``c^D``        | Bottom quadratic drag coefficient | ``10^{-4}`` | none |
 # | ``κ_z``        | Laplacian vertical diffusivity | ``10^{-2}`` | ``\mathrm{m^2 s^{-1}}`` |

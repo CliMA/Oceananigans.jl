@@ -34,7 +34,7 @@ using Oceananigans.Units: minute, minutes, hour
 
 grid = RegularRectilinearGrid(size=(32, 32, 32), extent=(64, 64, 32))
 
-# ## Buoyancy that depends on temperature and salinity
+# ## BuoyancyModels that depends on temperature and salinity
 #
 # We use the `SeawaterBuoyancy` model with a linear equation of state,
 

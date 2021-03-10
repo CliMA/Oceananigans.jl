@@ -45,21 +45,21 @@ Pages   = [
 ]
 ```
 
-## Buoyancy
+## BuoyancyModels
 
 ```@autodocs
-Modules = [Oceananigans.Buoyancy]
+Modules = [Oceananigans.BuoyancyModels]
 Private = false
 Pages   = [
-    "Buoyancy/no_buoyancy.jl",
-    "Buoyancy/buoyancy_tracer.jl",
-    "Buoyancy/seawater_buoyancy.jl",
-    "Buoyancy/Buoyancy.jl",
-    "Buoyancy/linear_equation_of_state.jl",
-    "Buoyancy/nonlinear_equation_of_state.jl",
-    "Buoyancy/roquet_idealized_nonlinear_eos.jl",
-    "Buoyancy/show_buoyancy.jl",
-    "Buoyancy/buoyancy_utils.jl"
+    "BuoyancyModels/no_buoyancy.jl",
+    "BuoyancyModels/buoyancy_tracer.jl",
+    "BuoyancyModels/seawater_buoyancy.jl",
+    "BuoyancyModels/BuoyancyModels.jl",
+    "BuoyancyModels/linear_equation_of_state.jl",
+    "BuoyancyModels/nonlinear_equation_of_state.jl",
+    "BuoyancyModels/roquet_idealized_nonlinear_eos.jl",
+    "BuoyancyModels/show_buoyancy.jl",
+    "BuoyancyModels/buoyancy_utils.jl"
 ]
 ```
 

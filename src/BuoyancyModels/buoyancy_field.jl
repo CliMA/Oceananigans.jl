@@ -70,7 +70,7 @@ compute!(::BuoyancyField{<:BuoyancyTracerModel}, time=nothing) = nothing
 ##### Other buoyancy types
 #####
 
-function _buoyancy_field(buoyancy::BuoyancyModel, tracers, arch, grid,
+function _buoyancy_field(buoyancy::Buoyancy, tracers, arch, grid,
                          data, recompute_safely)
 
     if isnothing(data)

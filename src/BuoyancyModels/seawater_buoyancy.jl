@@ -1,7 +1,7 @@
 """
     SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancy{EOS}
 
-Buoyancy model for seawater. `T` and `S` are either `nothing` if both
+BuoyancyModels model for seawater. `T` and `S` are either `nothing` if both
 temperature and salinity are active, or of type `FT` if temperature
 or salinity are constant, respectively.
 """
@@ -58,7 +58,7 @@ const SalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing} 
 @inline get_temperature_and_salinity(b::TemperatureSeawaterBuoyancy, C) = C.T, b.constant_salinity
 @inline get_temperature_and_salinity(b::SalinitySeawaterBuoyancy, C) = b.constant_temperature, C.S
 
-const SeawaterBuoyancyModel = BuoyancyModel{<:SeawaterBuoyancy}
+const SeawaterBuoyancyModel = Buoyancy{<:SeawaterBuoyancy}
 
 @inline g_x(buoyancy_model::SeawaterBuoyancyModel) = buoyancy_model.model.gravitational_acceleration * ĝ_x(buoyancy_model)
 @inline g_y(buoyancy_model::SeawaterBuoyancyModel) = buoyancy_model.model.gravitational_acceleration * ĝ_y(buoyancy_model)

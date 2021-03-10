@@ -5,7 +5,7 @@ Type indicating that the tracer `b` represents buoyancy.
 """
 struct BuoyancyTracer <: AbstractBuoyancy{Nothing} end
 
-const BuoyancyTracerModel = BuoyancyModel{<:BuoyancyTracer}
+const BuoyancyTracerModel = Buoyancy{<:BuoyancyTracer}
 
 required_tracers(::BuoyancyTracer) = (:b,)
 

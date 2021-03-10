@@ -11,10 +11,10 @@ use_buoyancy_tracer = false
 
 g̃ = (0, sind(θ), cosd(θ))
 if use_buoyancy_tracer
-    buoyancy = BuoyancyModel(model=BuoyancyTracer(), gravitational_unit_vector=g̃)
+    buoyancy = Buoyancy(model=BuoyancyTracer(), gravitational_unit_vector=g̃)
     tracers = :b
 else
-    buoyancy = BuoyancyModel(model=SeawaterBuoyancy(), gravitational_unit_vector=g̃)
+    buoyancy = Buoyancy(model=SeawaterBuoyancy(), gravitational_unit_vector=g̃)
     tracers = :T, :S
 end
 

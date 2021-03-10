@@ -20,7 +20,7 @@ using Oceananigans.Advection
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.Coriolis
-using Oceananigans.Buoyancy
+using Oceananigans.BuoyancyModels
 using Oceananigans.Forcings
 using Oceananigans.Solvers
 using Oceananigans.Models

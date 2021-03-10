@@ -12,7 +12,7 @@ N² = 1e-5
 
 g̃ = (0, sind(θ), cosd(θ))
 if use_buoyancy_tracer
-    buoyancy = BuoyancyModel(model=BuoyancyTracer(), gravitational_unit_vector=g̃)
+    buoyancy = Buoyancy(model=BuoyancyTracer(), gravitational_unit_vector=g̃)
     tracers = :b
 
     ybc = GradientBoundaryCondition(N²*g̃[2])
@@ -24,7 +24,7 @@ if use_buoyancy_tracer
     
 
 else
-    buoyancy = BuoyancyModel(model=SeawaterBuoyancy(), gravitational_unit_vector=g̃)
+    buoyancy = Buoyancy(model=SeawaterBuoyancy(), gravitational_unit_vector=g̃)
     tracers = :T, :S
 
     α = 2e-4; g₀ = 9.81
@@ -60,7 +60,7 @@ else
 end
 
 print_progress(sim) = @info "iteration: $(sim.model.clock.iteration), time: $(sim.model.clock.time)"
-simulation = Simulation(model, Δt=10seconds, stop_time=4hours, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=10seconds, stop_time=1hour, progress=print_progress, iteration_interval=10)
 
 fields = merge(model.velocities, model.tracers)
 simulation.output_writers[:fields] =

@@ -23,7 +23,7 @@ Base.show(io::IO, closure::AMD{FT}) where FT =
     print(io, "AnisotropicMinimumDissipation{$FT} turbulence closure with:\n",
               "           Poincaré constant for momentum eddy viscosity Cν: ", closure.Cν, '\n',
               "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, '\n',
-              "                        Buoyancy modification multiplier Cb: ", closure.Cb, '\n',
+              "                        BuoyancyModels modification multiplier Cb: ", closure.Cb, '\n',
               "                Background diffusivit(ies) for tracer(s), κ: ", closure.κ, '\n',
               "             Background kinematic viscosity for momentum, ν: ", closure.ν)
 
@@ -42,7 +42,7 @@ Keyword arguments
     - `Cκ` : Poincaré constant for tracer eddy diffusivities. If one number or function, the same
              number or function is applied to all tracers. If a `NamedTuple`, it must possess
              a field specifying the Poncaré constant for every tracer.
-    - `Cb` : Buoyancy modification multiplier (`Cb = 0` turns it off, `Cb = 1` turns it on)
+    - `Cb` : BuoyancyModels modification multiplier (`Cb = 0` turns it off, `Cb = 1` turns it on)
     - `ν`  : Constant background viscosity for momentum.
     - `κ`  : Constant background diffusivity for tracer. If a single number, the same background
              diffusivity is applied to all tracers. If a `NamedTuple`, it must possess a field
@@ -62,7 +62,7 @@ julia> pretty_diffusive_closure = AnisotropicMinimumDissipation(C=1/2)
 AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.5
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.5
-                        Buoyancy modification multiplier Cb: 0.0
+                        BuoyancyModels modification multiplier Cb: 0.0
                 Background diffusivit(ies) for tracer(s), κ: 1.46e-7
              Background kinematic viscosity for momentum, ν: 1.05e-6
 
@@ -75,7 +75,7 @@ julia> fancy_closure = AnisotropicMinimumDissipation(Cκ=surface_enhanced_tracer
 AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: surface_enhanced_tracer_C
-                        Buoyancy modification multiplier Cb: 0.0
+                        BuoyancyModels modification multiplier Cb: 0.0
                 Background diffusivit(ies) for tracer(s), κ: 1.46e-7
              Background kinematic viscosity for momentum, ν: 1.05e-6
 
@@ -83,7 +83,7 @@ julia> tracer_specific_closure = AnisotropicMinimumDissipation(Cκ=(c₁=1/12, c
 AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: (c₁ = 0.08333333333333333, c₂ = 0.16666666666666666)
-                        Buoyancy modification multiplier Cb: 0.0
+                        BuoyancyModels modification multiplier Cb: 0.0
                 Background diffusivit(ies) for tracer(s), κ: 1.46e-7
              Background kinematic viscosity for momentum, ν: 1.05e-6
 
