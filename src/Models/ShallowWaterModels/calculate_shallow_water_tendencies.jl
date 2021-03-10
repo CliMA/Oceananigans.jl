@@ -199,7 +199,6 @@ function calculate_boundary_tendency_contributions!(Gⁿ, arch, solution, tracer
 
     events = []
 
-    #=
     # Solution fields
     for i in 1:3
         x_bcs_event = apply_x_bcs!(Gⁿ[i], solution[i], arch, barrier, clock, model_fields)
@@ -217,7 +216,6 @@ function calculate_boundary_tendency_contributions!(Gⁿ, arch, solution, tracer
     end
 
     events = filter(e -> typeof(e) <: Event, events)
-    =#
     
     wait(device(arch), MultiEvent(Tuple(events)))
 

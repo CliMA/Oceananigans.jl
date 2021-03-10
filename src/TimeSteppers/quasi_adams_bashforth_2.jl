@@ -1,3 +1,5 @@
+using Oceananigans.Fields: FunctionField
+
 """
     QuasiAdamsBashforth2TimeStepper{T, TG} <: AbstractTimeStepper
 
@@ -105,3 +107,5 @@ Time step via
 
     end
 end
+
+@kernel ab2_step_field!(ϕ::FunctionField, args...) = nothing

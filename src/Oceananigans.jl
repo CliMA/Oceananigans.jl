@@ -165,6 +165,7 @@ include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
 include("Simulations/Simulations.jl")
 include("AbstractOperations/AbstractOperations.jl")
+include("Distributed/Distributed.jl")
 
 #####
 ##### Needed so we can export names from sub-modules at the top-level
@@ -190,6 +191,7 @@ using .Diagnostics
 using .OutputWriters
 using .Simulations
 using .AbstractOperations
+using .Distributed
 
 function __init__()
     threads = Threads.nthreads()

@@ -2,14 +2,12 @@
 
 using Oceananigans
 using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, PrescribedVelocityFields
 
 using Statistics
 using JLD2
 using Printf
 using GLMakie
-
-include(joinpath(@__DIR__, "..", "solid_body_rotation", "hydrostatic_prescribed_velocity_fields.jl"))
 
 Nx = 360
 Ny = 120
@@ -26,7 +24,7 @@ grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = CPU(),
                                     tracers = :c,
-                                    velocities = PrescribedVelocityFields(grid), # quiescent
+                                    velocities = PrescribedVelocityFields(), # quiescent
                                     closure = HorizontallyCurvilinearAnisotropicDiffusivity(κh=1),
                                     buoyancy = nothing)
 
