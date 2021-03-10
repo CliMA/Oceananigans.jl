@@ -9,8 +9,7 @@ using Oceananigans.Grids: halo_size
 #####
 
 function DistributedIncompressibleModel(; architecture, grid, model_kwargs...)
-    my_rank = architecture.my_rank
-    i, j, k = architecture.my_index
+    i, j, k = architecture.local_index
     Rx, Ry, Rz = architecture.ranks
     my_connectivity = architecture.connectivity
 

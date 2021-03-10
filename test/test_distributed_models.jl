@@ -17,8 +17,8 @@ function test_triply_periodic_rank_connectivity_with_411_ranks()
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
 
-    my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    @test my_rank == index2rank(arch.my_index..., arch.ranks...)
+    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
+    @test local_rank == index2rank(arch.local_index..., arch.ranks...)
 
     connectivity = arch.connectivity
 
@@ -32,16 +32,16 @@ function test_triply_periodic_rank_connectivity_with_411_ranks()
     # | 0 | 1 | 2 | 3 |
     # +---+---+---+---+
 
-    if my_rank == 0
+    if local_rank == 0
         @test connectivity.east == 1
         @test connectivity.west == 3
-    elseif my_rank == 1
+    elseif local_rank == 1
         @test connectivity.east == 2
         @test connectivity.west == 0
-    elseif my_rank == 2
+    elseif local_rank == 2
         @test connectivity.east == 3
         @test connectivity.west == 1
-    elseif my_rank == 3
+    elseif local_rank == 3
         @test connectivity.east == 0
         @test connectivity.west == 2
     end
@@ -54,8 +54,8 @@ function test_triply_periodic_rank_connectivity_with_141_ranks()
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
 
-    my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    @test my_rank == index2rank(arch.my_index..., arch.ranks...)
+    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
+    @test local_rank == index2rank(arch.local_index..., arch.ranks...)
 
     connectivity = arch.connectivity
 
@@ -75,16 +75,16 @@ function test_triply_periodic_rank_connectivity_with_141_ranks()
     # | 0 |
     # +---+
 
-    if my_rank == 0
+    if local_rank == 0
         @test connectivity.north == 1
         @test connectivity.south == 3
-    elseif my_rank == 1
+    elseif local_rank == 1
         @test connectivity.north == 2
         @test connectivity.south == 0
-    elseif my_rank == 2
+    elseif local_rank == 2
         @test connectivity.north == 3
         @test connectivity.south == 1
-    elseif my_rank == 3
+    elseif local_rank == 3
         @test connectivity.north == 0
         @test connectivity.south == 2
     end
@@ -97,8 +97,8 @@ function test_triply_periodic_rank_connectivity_with_114_ranks()
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
 
-    my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    @test my_rank == index2rank(arch.my_index..., arch.ranks...)
+    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
+    @test local_rank == index2rank(arch.local_index..., arch.ranks...)
 
     connectivity = arch.connectivity
 
@@ -121,16 +121,16 @@ function test_triply_periodic_rank_connectivity_with_114_ranks()
     #  / 0 /
     # /---/
 
-    if my_rank == 0
+    if local_rank == 0
         @test connectivity.top == 1
         @test connectivity.bottom == 3
-    elseif my_rank == 1
+    elseif local_rank == 1
         @test connectivity.top == 2
         @test connectivity.bottom == 0
-    elseif my_rank == 2
+    elseif local_rank == 2
         @test connectivity.top == 3
         @test connectivity.bottom == 1
-    elseif my_rank == 3
+    elseif local_rank == 3
         @test connectivity.top == 0
         @test connectivity.bottom == 2
     end
@@ -143,8 +143,8 @@ function test_triply_periodic_rank_connectivity_with_221_ranks()
     full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
 
-    my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    @test my_rank == index2rank(arch.my_index..., arch.ranks...)
+    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
+    @test local_rank == index2rank(arch.local_index..., arch.ranks...)
 
     connectivity = arch.connectivity
 
@@ -158,22 +158,22 @@ function test_triply_periodic_rank_connectivity_with_221_ranks()
     # | 1 | 3 |
     # +---+---+
 
-    if my_rank == 0
+    if local_rank == 0
         @test connectivity.east == 2
         @test connectivity.west == 2
         @test connectivity.north == 1
         @test connectivity.south == 1
-    elseif my_rank == 1
+    elseif local_rank == 1
         @test connectivity.east == 3
         @test connectivity.west == 3
         @test connectivity.north == 0
         @test connectivity.south == 0
-    elseif my_rank == 2
+    elseif local_rank == 2
         @test connectivity.east == 0
         @test connectivity.west == 0
         @test connectivity.north == 3
         @test connectivity.south == 3
-    elseif my_rank == 3
+    elseif local_rank == 3
         @test connectivity.east == 1
         @test connectivity.west == 1
         @test connectivity.north == 2
@@ -193,12 +193,12 @@ function test_triply_periodic_local_grid_with_411_ranks()
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
-    my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
+    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
-    @test local_grid.xF[1] == 0.25*my_rank
-    @test local_grid.xF[nx+1] == 0.25*(my_rank+1)
+    @test local_grid.xF[1] == 0.25*local_rank
+    @test local_grid.xF[nx+1] == 0.25*(local_rank+1)
     @test local_grid.yF[1] == 0
     @test local_grid.yF[ny+1] == 2
     @test local_grid.zF[1] == -3
@@ -213,14 +213,14 @@ function test_triply_periodic_local_grid_with_141_ranks()
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
-    my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
+    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
     @test local_grid.xF[1] == 0
     @test local_grid.xF[nx+1] == 1
-    @test local_grid.yF[1] == 0.5*my_rank
-    @test local_grid.yF[ny+1] == 0.5*(my_rank+1)
+    @test local_grid.yF[1] == 0.5*local_rank
+    @test local_grid.yF[ny+1] == 0.5*(local_rank+1)
     @test local_grid.zF[1] == -3
     @test local_grid.zF[nz+1] == 0
 
@@ -233,7 +233,7 @@ function test_triply_periodic_local_grid_with_114_ranks()
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
-    my_rank = MPI.Comm_rank(MPI.COMM_WORLD)
+    local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
@@ -241,8 +241,8 @@ function test_triply_periodic_local_grid_with_114_ranks()
     @test local_grid.xF[nx+1] == 1
     @test local_grid.yF[1] == 0
     @test local_grid.yF[ny+1] == 2
-    @test local_grid.zF[1] == -3 + 0.75*my_rank
-    @test local_grid.zF[nz+1] == -3 + 0.75*(my_rank+1)
+    @test local_grid.zF[1] == -3 + 0.75*local_rank
+    @test local_grid.zF[nz+1] == -3 + 0.75*(local_rank+1)
 
     return nothing
 end
@@ -253,7 +253,7 @@ function test_triply_periodic_local_grid_with_221_ranks()
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
-    i, j, k = arch.my_index
+    i, j, k = arch.local_index
     local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
@@ -350,17 +350,17 @@ function test_triply_periodic_halo_communication_with_411_ranks(halo)
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in merge(fields(model), model.pressures)
-        interior(field) .= arch.my_rank
+        interior(field) .= arch.local_rank
         fill_halo_regions!(field, arch)
 
         @test all(east_halo(field) .== arch.connectivity.east)
         @test all(west_halo(field) .== arch.connectivity.west)
 
-        @test all(interior(field) .== arch.my_rank)
-        @test all(north_halo(field, include_corners=false) .== arch.my_rank)
-        @test all(south_halo(field, include_corners=false) .== arch.my_rank)
-        @test all(top_halo(field, include_corners=false) .== arch.my_rank)
-        @test all(bottom_halo(field, include_corners=false) .== arch.my_rank)
+        @test all(interior(field) .== arch.local_rank)
+        @test all(north_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(south_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
     end
 
     return nothing
@@ -373,17 +373,17 @@ function test_triply_periodic_halo_communication_with_141_ranks(halo)
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in merge(fields(model), model.pressures)
-        interior(field) .= arch.my_rank
+        interior(field) .= arch.local_rank
         fill_halo_regions!(field, arch)
 
         @test all(north_halo(field) .== arch.connectivity.north)
         @test all(south_halo(field) .== arch.connectivity.south)
 
-        @test all(interior(field) .== arch.my_rank)
-        @test all(east_halo(field, include_corners=false) .== arch.my_rank)
-        @test all(west_halo(field, include_corners=false) .== arch.my_rank)
-        @test all(top_halo(field, include_corners=false) .== arch.my_rank)
-        @test all(bottom_halo(field, include_corners=false) .== arch.my_rank)
+        @test all(interior(field) .== arch.local_rank)
+        @test all(east_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(west_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
     end
 
     return nothing
@@ -396,17 +396,17 @@ function test_triply_periodic_halo_communication_with_114_ranks(halo)
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in merge(fields(model), model.pressures)
-        interior(field) .= arch.my_rank
+        interior(field) .= arch.local_rank
         fill_halo_regions!(field, arch)
 
         @test all(top_halo(field) .== arch.connectivity.top)
         @test all(bottom_halo(field) .== arch.connectivity.bottom)
 
-        @test all(interior(field) .== arch.my_rank)
-        @test all(east_halo(field, include_corners=false) .== arch.my_rank)
-        @test all(west_halo(field, include_corners=false) .== arch.my_rank)
-        @test all(north_halo(field, include_corners=false) .== arch.my_rank)
-        @test all(south_halo(field, include_corners=false) .== arch.my_rank)
+        @test all(interior(field) .== arch.local_rank)
+        @test all(east_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(west_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(north_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(south_halo(field, include_corners=false) .== arch.local_rank)
     end
 
     return nothing
@@ -419,7 +419,7 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo)
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in merge(fields(model), model.pressures)
-        interior(field) .= arch.my_rank
+        interior(field) .= arch.local_rank
         fill_halo_regions!(field, arch)
 
         @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
@@ -427,9 +427,9 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo)
         @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
         @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
 
-        @test all(interior(field) .== arch.my_rank)
-        @test all(top_halo(field, include_corners=false) .== arch.my_rank)
-        @test all(bottom_halo(field, include_corners=false) .== arch.my_rank)
+        @test all(interior(field) .== arch.local_rank)
+        @test all(top_halo(field, include_corners=false) .== arch.local_rank)
+        @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
     end
 
     return nothing

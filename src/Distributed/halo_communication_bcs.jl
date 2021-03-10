@@ -20,7 +20,7 @@ HaloCommunicationRanks(; from, to) = HaloCommunicationRanks(from, to)
 
 print_condition(hcr::HaloCommunicationRanks) = "(from rank $(hcr.from) to rank $(hcr.to))"
 
-function inject_halo_communication_boundary_conditions(field_bcs, my_rank, connectivity)
+function inject_halo_communication_boundary_conditions(field_bcs, local_rank, connectivity)
     rank_east = connectivity.east
     rank_west = connectivity.west
     rank_north = connectivity.north
@@ -28,12 +28,12 @@ function inject_halo_communication_boundary_conditions(field_bcs, my_rank, conne
     rank_top = connectivity.top
     rank_bottom = connectivity.bottom
 
-    east_comm_ranks = HaloCommunicationRanks(from=my_rank, to=rank_east)
-    west_comm_ranks = HaloCommunicationRanks(from=my_rank, to=rank_west)
-    north_comm_ranks = HaloCommunicationRanks(from=my_rank, to=rank_north)
-    south_comm_ranks = HaloCommunicationRanks(from=my_rank, to=rank_south)
-    top_comm_ranks = HaloCommunicationRanks(from=my_rank, to=rank_top)
-    bottom_comm_ranks = HaloCommunicationRanks(from=my_rank, to=rank_bottom)
+    east_comm_ranks = HaloCommunicationRanks(from=local_rank, to=rank_east)
+    west_comm_ranks = HaloCommunicationRanks(from=local_rank, to=rank_west)
+    north_comm_ranks = HaloCommunicationRanks(from=local_rank, to=rank_north)
+    south_comm_ranks = HaloCommunicationRanks(from=local_rank, to=rank_south)
+    top_comm_ranks = HaloCommunicationRanks(from=local_rank, to=rank_top)
+    bottom_comm_ranks = HaloCommunicationRanks(from=local_rank, to=rank_bottom)
 
     east_comm_bc = HaloCommunicationBoundaryCondition(east_comm_ranks)
     west_comm_bc = HaloCommunicationBoundaryCondition(west_comm_ranks)

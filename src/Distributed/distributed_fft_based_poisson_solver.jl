@@ -17,7 +17,7 @@ function DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
     λy = poisson_eigenvalues(full_grid.Ny, full_grid.Ly, 2, TY())
     λz = poisson_eigenvalues(full_grid.Nz, full_grid.Lz, 3, TZ())
 
-    I, J, K = arch.my_index
+    I, J, K = arch.local_index
     λx = λx[(J-1)*local_grid.Ny+1:J*local_grid.Ny, :, :]
 
     eigenvalues = (; λx, λy, λz)

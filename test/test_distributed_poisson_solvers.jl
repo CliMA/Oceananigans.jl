@@ -50,7 +50,7 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     solve_poisson_equation!(solver)
 
     p_bcs = PressureBoundaryConditions(local_grid)
-    p_bcs = inject_halo_communication_boundary_conditions(p_bcs, arch.my_rank, arch.connectivity)
+    p_bcs = inject_halo_communication_boundary_conditions(p_bcs, arch.local_rank, arch.connectivity)
 
     ϕ   = CenterField(Float64, child_architecture(arch), local_grid, p_bcs)  # "pressure"
     ∇²ϕ = CenterField(Float64, child_architecture(arch), local_grid, p_bcs)
@@ -64,5 +64,5 @@ end
 @testset "Distributed FFT-based Poisson solver" begin
     @info "  Testing distributed FFT-based Poisson solver..."
     @test divergence_free_poisson_solution_triply_periodic((16, 16, 1), (1, 4, 1))
-    @test divergence_free_poisson_solution_triply_periodic((64, 64, 1), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((44, 44, 1), (1, 4, 1))
 end

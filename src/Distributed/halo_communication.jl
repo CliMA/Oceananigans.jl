@@ -31,16 +31,16 @@ for side in sides
     send_tag_fn_name = Symbol("$(side)_send_tag")
     recv_tag_fn_name = Symbol("$(side)_recv_tag")
     @eval begin
-        function $send_tag_fn_name(my_rank, rank_to_send_to)
-            from_digits = string(my_rank, pad=RANK_DIGITS)
+        function $send_tag_fn_name(local_rank, rank_to_send_to)
+            from_digits = string(local_rank, pad=RANK_DIGITS)
             to_digits = string(rank_to_send_to, pad=RANK_DIGITS)
             side_digit = string(side_id[Symbol($side_str)])
             return parse(Int, from_digits * to_digits * side_digit)
         end
 
-        function $recv_tag_fn_name(my_rank, rank_to_recv_from)
+        function $recv_tag_fn_name(local_rank, rank_to_recv_from)
             from_digits = string(rank_to_recv_from, pad=RANK_DIGITS)
-            to_digits = string(my_rank, pad=RANK_DIGITS)
+            to_digits = string(local_rank, pad=RANK_DIGITS)
             side_digit = string(side_id[opposite_side[Symbol($side_str)]])
             return parse(Int, from_digits * to_digits * side_digit)
         end
@@ -105,13 +105,13 @@ for (side, opposite_side) in zip([:east, :north, :top], [:west, :south, :bottom]
     @eval begin
         function $fill_both_halos!(c, bc_side::HaloCommunicationBC, bc_opposite_side::HaloCommunicationBC, arch, barrier, grid, c_location, args...)
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
-            my_rank = bc_side.condition.from
+            local_rank = bc_side.condition.from
 
-            $send_side_halo(c, grid, c_location, my_rank, bc_side.condition.to)
-            $send_opposite_side_halo(c, grid, c_location, my_rank, bc_opposite_side.condition.to)
+            $send_side_halo(c, grid, c_location, local_rank, bc_side.condition.to)
+            $send_opposite_side_halo(c, grid, c_location, local_rank, bc_opposite_side.condition.to)
 
-            $recv_and_fill_side_halo!(c, grid, c_location, my_rank, bc_side.condition.to)
-            $recv_and_fill_opposite_side_halo!(c, grid, c_location, my_rank, bc_opposite_side.condition.to)
+            $recv_and_fill_side_halo!(c, grid, c_location, local_rank, bc_side.condition.to)
+            $recv_and_fill_opposite_side_halo!(c, grid, c_location, local_rank, bc_opposite_side.condition.to)
 
             return nothing, nothing
         end
@@ -129,11 +129,11 @@ for side in sides
     side_send_tag = Symbol("$(side)_send_tag")
 
     @eval begin
-        function $send_side_halo(c, grid, c_location, my_rank, rank_to_send_to)
+        function $send_side_halo(c, grid, c_location, local_rank, rank_to_send_to)
             send_buffer = $underlying_side_boundary(c, grid, c_location)
-            send_tag = $side_send_tag(my_rank, rank_to_send_to)
+            send_tag = $side_send_tag(local_rank, rank_to_send_to)
 
-            @debug "Sending " * $side_str * " halo: my_rank=$my_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
+            @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
             status = MPI.Isend(send_buffer, rank_to_send_to, send_tag, MPI.COMM_WORLD)
 
             return status
@@ -152,11 +152,11 @@ for side in sides
     side_recv_tag = Symbol("$(side)_recv_tag")
 
     @eval begin
-        function $recv_and_fill_side_halo!(c, grid, c_location, my_rank, rank_to_recv_from)
+        function $recv_and_fill_side_halo!(c, grid, c_location, local_rank, rank_to_recv_from)
             recv_buffer = $underlying_side_halo(c, grid, c_location)
-            recv_tag = $side_recv_tag(my_rank, rank_to_recv_from)
+            recv_tag = $side_recv_tag(local_rank, rank_to_recv_from)
 
-            @debug "Receiving " * $side_str * " halo: my_rank=$my_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
+            @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
             MPI.Recv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
 
             return nothing
