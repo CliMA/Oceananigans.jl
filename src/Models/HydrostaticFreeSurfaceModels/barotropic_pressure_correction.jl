@@ -30,7 +30,7 @@ end
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        U.u[i, j, k] -= g * Δt * ∂xᶠᵃᵃ(i, j, k, grid, η) # there should be a Δt here?
-        U.v[i, j, k] -= g * Δt * ∂yᵃᶠᵃ(i, j, k, grid, η) # there should be a Δt here?
+        U.u[i, j, k] -= g * Δt * ∂xᶠᵃᵃ(i, j, k, grid, η)
+        U.v[i, j, k] -= g * Δt * ∂yᵃᶠᵃ(i, j, k, grid, η)
     end
 end
