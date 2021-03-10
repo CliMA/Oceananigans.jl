@@ -2,6 +2,9 @@ using Oceananigans.TimeSteppers: ab2_step_field!
 
 import Oceananigans.TimeSteppers: ab2_step!
 
+combine_events(::Nothing, tracer_events) = MultiEvent(tuple(tracer_events...))
+combine_events(free_surface_event, tracer_events) = MultiEvent(tuple(free_surface_event, tracer_events...))
+
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
@@ -45,7 +48,9 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
     # Update the free surface if not using a rigid lid once the velocities have finished updating.
     free_surface_event = ab2_step_free_surface!(model.free_surface, velocities_update, model, χ, Δt)
 
-    wait(device(model.architecture), MultiEvent(tuple(free_surface_event, tracer_events...)))
+    tracer_and_free_surface_events = combine_events(free_surface_event, tracer_events)
+
+    wait(device(model.architecture), tracer_and_free_surface_events)
 
     return nothing
 end

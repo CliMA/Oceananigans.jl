@@ -9,7 +9,7 @@ using Oceananigans.Operators: Ax_ψᵃᵃᶜ, Ay_ψᵃᵃᶜ
     @inbounds momentum_flux_uu(i, j, k, grid, advection, solution.uh, solution.uh) / solution.h[i, j, k]
 
 @inline momentum_flux_huv(i, j, k, grid, advection, solution) =
-    @inbounds momentum_flux_uv(i, j, k, grid, advection, solution.uh, solution.vh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
+    @inbounds momentum_flux_uv(i, j, k, grid, advection, solution.vh, solution.uh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
 
 @inline momentum_flux_hvu(i, j, k, grid, advection, solution) =
     @inbounds momentum_flux_vu(i, j, k, grid, advection, solution.uh, solution.vh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
