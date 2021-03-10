@@ -2,7 +2,6 @@ module OneDimensionalGaussianAdvectionDiffusion
 
 using Printf
 using Statistics
-using LinearAlgebra
 
 using Oceananigans
 using Oceananigans.Grids
@@ -13,19 +12,10 @@ using ConvergenceTests: compute_error
 
 # Advection and diffusion of a Gaussian.
 σ(t, κ, t₀) = 4 * κ * (t + t₀)
-c(x, y, z, t, U, κ, t₀) = exp(-(x - U * t)^2 / 0.1^2)
+c(x, y, z, t, U, κ, t₀) = 1 / √(4π * κ * (t + t₀)) * exp(-(x - U * t)^2 / σ(t, κ, t₀))
 
-function run_test(;
-                  Nx,
-                  Δt,
-                  stop_iteration,
-                  U = 1,
-                  κ = 1e-4,
-                  width = 0.05,
-                  architecture = CPU(),
-                  topo = (Periodic, Periodic, Periodic),
-                  advection = CenteredSecondOrder()
-                  )
+function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
+                  architecture = CPU(), topo = (Periodic, Periodic, Periodic), advection = CenteredSecondOrder())
 
     t₀ = width^2 / 4κ
 
@@ -37,14 +27,13 @@ function run_test(;
     grid = RegularRectilinearGrid(topology=topo, size=(Nx, 1, 1), halo=(3, 3, 3); domain...)
 
     model = IncompressibleModel(architecture = architecture,
-#                                 timestepper = :RungeKutta3,
-                                 timestepper = :QuasiAdamsBashforth2,
+                                 timestepper = :RungeKutta3,
                                         grid = grid,
                                    advection = advection,
                                     coriolis = nothing,
                                     buoyancy = nothing,
                                      tracers = :c,
-                                     closure = nothing)
+                                     closure = IsotropicDiffusivity(ν=κ, κ=κ))
 
     set!(model, u = U,
                 v = (x, y, z) -> c(x, y, z, 0, U, κ, t₀),
@@ -145,10 +134,49 @@ function run_test(;
 
             cx = (simulation = cx_simulation,
                   analytical = c_analytical,
-                  L₁ = cx_error_L₁,
-                  L∞ = cx_error_L∞
-                  ),
-        
+                          L₁ = cx_errors.L₁,
+                          L∞ = cx_errors.L∞),
+
+            cy = (simulation = cy_simulation,
+                  analytical = c_analytical,
+                          L₁ = cy_errors.L₁,
+                          L∞ = cy_errors.L∞),
+
+            cz = (simulation = cy_simulation,
+                  analytical = c_analytical,
+                          L₁ = cy_errors.L₁,
+                          L∞ = cy_errors.L∞),
+
+            uy = (simulation = uy_simulation,
+                  analytical = c_analytical, # same solution as c.
+                          L₁ = uy_errors.L₁,
+                          L∞ = uy_errors.L∞),
+
+            uz = (simulation = uz_simulation,
+                  analytical = c_analytical, # same solution as c.
+                          L₁ = uz_errors.L₁,
+                          L∞ = uz_errors.L∞),
+
+            vx = (simulation = vx_simulation,
+                  analytical = c_analytical, # same solution as c.
+                          L₁ = vx_errors.L₁,
+                          L∞ = vx_errors.L∞),
+
+            vz = (simulation = vz_simulation,
+                  analytical = c_analytical, # same solution as c.
+                          L₁ = vz_errors.L₁,
+                          L∞ = vz_errors.L∞),
+
+            wx = (simulation = wx_simulation,
+                  analytical = c_analytical, # same solution as c.
+                          L₁ = wx_errors.L₁,
+                          L∞ = wx_errors.L∞),
+
+            wy = (simulation = wy_simulation,
+                  analytical = c_analytical, # same solution as c.
+                          L₁ = wy_errors.L₁,
+                          L∞ = wy_errors.L∞),
+
             grid = grid
 
             )

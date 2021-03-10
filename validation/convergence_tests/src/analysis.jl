@@ -49,7 +49,6 @@ function compute_error(u_simulation, u_analytical)
     L₂ = mean(absolute_error.^2)
     L∞ = maximum(absolute_error)
 
-#    return (L₁=L₁)
     return (L₁=L₁, L∞=L∞)
 end
 
