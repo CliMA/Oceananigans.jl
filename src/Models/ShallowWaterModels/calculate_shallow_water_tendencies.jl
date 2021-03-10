@@ -86,7 +86,7 @@ function calculate_interior_tendency_contributions!(tendencies,
                                       dependencies=barrier)
 
     Gh_event  = calculate_Gh_kernel!(tendencies.h,
-                                     grid, gravitational_acceleration, advection, coriolis, bathymetry,
+                                     grid, gravitational_acceleration, coriolis, bathymetry,
                                      solution, tracers, diffusivities, forcings, clock,
                                      dependencies=barrier)
 
@@ -153,7 +153,6 @@ end
 @kernel function calculate_Gh!(Gh,
                                 grid,
                                 gravitational_acceleration,
-                                advection,
                                 coriolis,
                                 bathymetry,
                                 solution,
@@ -164,7 +163,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gh[i, j, k] = h_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, bathymetry,
+    @inbounds Gh[i, j, k] = h_solution_tendency(i, j, k, grid, gravitational_acceleration, coriolis, bathymetry,
                                                 solution, tracers, diffusivities, forcings, clock)
 end
 
@@ -200,7 +199,6 @@ function calculate_boundary_tendency_contributions!(Gⁿ, arch, solution, tracer
 
     events = []
 
-    #=
     # Solution fields
     for i in 1:3
         x_bcs_event = apply_x_bcs!(Gⁿ[i], solution[i], arch, barrier, clock, model_fields)
@@ -218,7 +216,6 @@ function calculate_boundary_tendency_contributions!(Gⁿ, arch, solution, tracer
     end
 
     events = filter(e -> typeof(e) <: Event, events)
-    =#
     
     wait(device(arch), MultiEvent(Tuple(events)))
 

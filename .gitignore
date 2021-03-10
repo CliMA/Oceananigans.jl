@@ -29,6 +29,11 @@ docs/src/generated
 *.gif
 *.mp4
 
+# Benchmark output
+*.html
+*.json
+*.bson
+
 # Jupyter Lab stuff and notebooks
 *.ipynb
 .ipynb_checkpoints

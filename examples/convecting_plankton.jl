@@ -12,7 +12,7 @@
 # The phytoplankton in our model are advected, diffuse, grow, and die according to
 #
 # ```math
-# ∂_t P + \bm{u} ⋅ ∇P - κ ∇²P = (μ₀ \exp(z / λ) - m) \, P \, ,
+# ∂_t P + \bm{u ⋅ ∇} P - κ ∇²P = (μ₀ \exp(z / λ) - m) \, P \, ,
 # ```
 #
 # where ``\bm{u}`` is the turbulent velocity field, ``κ`` is an isotropic diffusivity,
@@ -35,22 +35,23 @@
 #
 # First let's make sure we have all required packages installed.
 
-using Pkg
-pkg"add Oceananigans, Plots, JLD2, Measures"
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, Plots, JLD2, Measures"
+# ```
 
 # ## The grid
 #
 # We use a two-dimensional grid with 64² points and 1 m grid spacing:
 
 using Oceananigans
+using Oceananigans.Units: minutes, hour, hours, day
 
-grid = RegularCartesianGrid(size=(64, 1, 64), extent=(64, 1, 64))
+grid = RegularRectilinearGrid(size=(64, 1, 64), extent=(64, 1, 64))
 
 # ## Boundary conditions
 #
 # We impose a surface buoyancy flux that's initially constant and then decays to zero,
-
-using Oceananigans.Utils
 
 buoyancy_flux(x, y, t, p) = p.initial_buoyancy_flux * exp(-t^4 / (24 * p.shut_off_time^4))
 
@@ -113,13 +114,11 @@ plankton_dynamics = Forcing(growing_and_grazing, field_dependencies = :P,
                             parameters = plankton_dynamics_parameters)
 
 # ## The model
-# 
+#
 # The name "`P`" for phytoplankton is specified in the
-# constructor for `IncompressibleModel`. We additionally specify a fifth-order 
+# constructor for `IncompressibleModel`. We additionally specify a fifth-order
 # advection scheme, third-order Runge-Kutta time-stepping, isotropic viscosity and diffusivities,
 # and Coriolis forces appropriate for planktonic convection at mid-latitudes on Earth.
-
-using Oceananigans.Advection
 
 model = IncompressibleModel(
                    grid = grid,
@@ -145,7 +144,7 @@ stratification(z) = z < -mixed_layer_depth ? N² * z : - N² * mixed_layer_depth
 
 noise(z) = 1e-4 * N² * grid.Lz * randn() * exp(z / 4)
 
-initial_buoyancy(x, y, z) = stratification(z) + noise(z) 
+initial_buoyancy(x, y, z) = stratification(z) + noise(z)
 
 set!(model, b=initial_buoyancy, P=1)
 
@@ -165,14 +164,12 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         sim.model.clock.iteration,
                         prettytime(sim.model.clock.time),
                         prettytime(sim.Δt.Δt))
-                               
-simulation = Simulation(model, Δt=wizard, stop_time=24hour,
+
+simulation = Simulation(model, Δt=wizard, stop_time=24hours,
                         iteration_interval=20, progress=progress)
 
 # We add a basic `JLD2OutputWriter` that writes velocities and both
 # the two-dimensional and horizontally-averaged plankton concentration,
-
-using Oceananigans.OutputWriters, Oceananigans.Fields
 
 averaged_plankton = AveragedField(model.tracers.P, dims=(1, 2))
 
@@ -187,7 +184,7 @@ simulation.output_writers[:simple_output] =
                      force = true)
 
 # !!! info "Using multiple output writers"
-#     Because each output writer is associated with a single output `schedule`, 
+#     Because each output writer is associated with a single output `schedule`,
 #     it often makes sense to use _different_ output writers for different types of output.
 #     For example, reduced fields like `AveragedField` usually consume less disk space than
 #     two- or three-dimensional fields, and can thus be output more frequently without
@@ -219,8 +216,6 @@ nothing # hide
 
 # and then we construct the ``x, z`` grid,
 
-using Oceananigans.Grids: nodes
-
 xw, yw, zw = nodes(model.velocities.w)
 xp, yp, zp = nodes(model.tracers.P)
 nothing # hide
@@ -242,7 +237,7 @@ end
 anim = @animate for (i, iteration) in enumerate(iterations)
 
     @info "Plotting frame $i from iteration $iteration..."
-    
+
     t = file["timeseries/t/$iteration"]
     w = file["timeseries/w/$iteration"][:, 1, :]
     P = file["timeseries/plankton/$iteration"][:, 1, :]
@@ -299,7 +294,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
              markershape = :circle,
              color = :steelblue,
              markerstrokewidth = 0,
-             markersize = 15, 
+             markersize = 15,
              label = "Current buoyancy flux")
 
     layout = Plots.grid(2, 2, widths=(0.7, 0.3))
@@ -309,7 +304,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
 
     plot(w_contours, flux_plot, P_contours, P_profile,
          title=[w_title "" P_title ""],
-         layout=layout, size=(1000, 1000))
+         layout=layout, size=(1000.5, 1000.5))
 end
 
-gif(anim, "convecting_plankton.gif", fps = 8) # hide
+mp4(anim, "convecting_plankton.mp4", fps = 8) # hide

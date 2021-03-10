@@ -1,3 +1,5 @@
+using Oceananigans.Fields: FunctionField
+
 """
     QuasiAdamsBashforth2TimeStepper{T, TG} <: AbstractTimeStepper
 
@@ -38,7 +40,7 @@ pressure-correction substep. Setting `euler=true` will take a forward Euler time
 """
 function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false)
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
-    
+
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
@@ -54,6 +56,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     tick!(model.clock, Δt)
     update_state!(model)
     store_tendencies!(model)
+    update_particle_properties!(model, Δt)
 
     return nothing
 end
@@ -104,3 +107,5 @@ Time step via
 
     end
 end
+
+@kernel ab2_step_field!(ϕ::FunctionField, args...) = nothing

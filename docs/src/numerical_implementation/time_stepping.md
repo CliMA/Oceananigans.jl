@@ -57,7 +57,7 @@ where ``\chi`` is a parameter. Ascher et al. (1995) claim that ``\chi = \tfrac{1
 Combining the equations for ``\bm{u}^\star`` and the time integral of the momentum equation yields
 ```math
     \tag{eq:fractional-step}
-    \bm{u}^{n+1} - \bm{u}^\star = - \Delta t \bm{\nabla} \phi_{\rm{non}}^{n+1} \, \rm{d} t \, .
+    \bm{u}^{n+1} - \bm{u}^\star = - \Delta t \bm{\nabla} \phi_{\rm{non}}^{n+1} \, .
 ```
 Taking the divergence of fractional step equation and requiring that 
 ``\bm{\nabla} \bm{\cdot} \bm{u}^{n+1} = 0`` yields a Poisson equation for the potential 

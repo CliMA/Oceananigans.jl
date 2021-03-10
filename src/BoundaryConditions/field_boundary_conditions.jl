@@ -17,6 +17,14 @@ Construct a `FieldBoundaryConditions` using a `CoordinateBoundaryCondition` for 
 FieldBoundaryConditions(x, y, z) = FieldBoundaryConditions((x, y, z))
 
 """
+    DefaultBoundaryCondition(topo, ::Type{Nothing})
+
+Returns nothing.
+"""
+DefaultBoundaryCondition(topo, ::Type{Nothing}) = nothing
+DefaultBoundaryCondition(::Type{Grids.Periodic}, ::Type{Nothing}) = nothing
+
+"""
     DefaultBoundaryCondition(::Type{Periodic}, loc)
 
 Returns [`PeriodicBoundaryCondition`](@ref).
@@ -31,11 +39,11 @@ Returns `nothing`.
 DefaultBoundaryCondition(::Type{Flat}, loc) = nothing
 
 """
-    DefaultBoundaryCondition(::Type{Bounded}, ::Type{Cell})
+    DefaultBoundaryCondition(::Type{Bounded}, ::Type{Center})
 
 Returns [`NoFluxBoundaryCondition`](@ref).
 """
-DefaultBoundaryCondition(::Type{Bounded}, ::Type{Cell}) = NoFluxBoundaryCondition()
+DefaultBoundaryCondition(::Type{Bounded}, ::Type{Center}) = NoFluxBoundaryCondition()
 
 """
     DefaultBoundaryCondition(::Type{Bounded}, ::Type{Face})
@@ -63,7 +71,7 @@ end
                                        bottom = DefaultBoundaryCondition(topology(grid, 3), loc[3]),
                                           top = DefaultBoundaryCondition(topology(grid, 3), loc[3]))
 
-Construct `FieldBoundaryConditions` for a field with location `loc` (a 3-tuple of `Face` or `Cell`)
+Construct `FieldBoundaryConditions` for a field with location `loc` (a 3-tuple of `Face` or `Center`)
 defined on `grid`.
 
 Boundary conditions on `x`-, `y`-, and `z`-boundaries are specified via
@@ -101,10 +109,10 @@ end
 """
     UVelocityBoundaryConditions(grid;   east = DefaultBoundaryCondition(topology(grid, 1), Face),
                                         west = DefaultBoundaryCondition(topology(grid, 1), Face),
-                                       south = DefaultBoundaryCondition(topology(grid, 2), Cell),
-                                       north = DefaultBoundaryCondition(topology(grid, 2), Cell),
-                                      bottom = DefaultBoundaryCondition(topology(grid, 3), Cell),
-                                         top = DefaultBoundaryCondition(topology(grid, 3), Cell))
+                                       south = DefaultBoundaryCondition(topology(grid, 2), Center),
+                                       north = DefaultBoundaryCondition(topology(grid, 2), Center),
+                                      bottom = DefaultBoundaryCondition(topology(grid, 3), Center),
+                                         top = DefaultBoundaryCondition(topology(grid, 3), Center))
 
 Construct `FieldBoundaryConditions` for the `u`-velocity field on `grid`.
 Boundary conditions on `x`-, `y`-, and `z`-boundaries are specified via
@@ -116,15 +124,15 @@ keyword arguments:
 
 Default boundary conditions depend on `topology(grid)`. See `DefaultBoundaryCondition`.
 """
-UVelocityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Face, Cell, Cell); user_defined_bcs...)
+UVelocityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Face, Center, Center); user_defined_bcs...)
 
 """
-    VVelocityBoundaryConditions(grid;   east = DefaultBoundaryCondition(topology(grid, 1), Cell),
-                                        west = DefaultBoundaryCondition(topology(grid, 1), Cell),
+    VVelocityBoundaryConditions(grid;   east = DefaultBoundaryCondition(topology(grid, 1), Center),
+                                        west = DefaultBoundaryCondition(topology(grid, 1), Center),
                                        south = DefaultBoundaryCondition(topology(grid, 2), Face),
                                        north = DefaultBoundaryCondition(topology(grid, 2), Face),
-                                      bottom = DefaultBoundaryCondition(topology(grid, 3), Cell),
-                                         top = DefaultBoundaryCondition(topology(grid, 3), Cell))
+                                      bottom = DefaultBoundaryCondition(topology(grid, 3), Center),
+                                         top = DefaultBoundaryCondition(topology(grid, 3), Center))
 
 Construct `FieldBoundaryConditions` for the `v`-velocity field on `grid`.
 Boundary conditions on `x`-, `y`-, and `z`-boundaries are specified via
@@ -136,13 +144,13 @@ keyword arguments:
 
 Default boundary conditions depend on `topology(grid)`. See `DefaultBoundaryCondition`.
 """
-VVelocityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell, Face, Cell); user_defined_bcs...)
+VVelocityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Center, Face, Center); user_defined_bcs...)
 
 """
-    WVelocityBoundaryConditions(grid;   east = DefaultBoundaryCondition(topology(grid, 1), Cell),
-                                        west = DefaultBoundaryCondition(topology(grid, 1), Cell),
-                                       south = DefaultBoundaryCondition(topology(grid, 2), Cell),
-                                       north = DefaultBoundaryCondition(topology(grid, 2), Cell),
+    WVelocityBoundaryConditions(grid;   east = DefaultBoundaryCondition(topology(grid, 1), Center),
+                                        west = DefaultBoundaryCondition(topology(grid, 1), Center),
+                                       south = DefaultBoundaryCondition(topology(grid, 2), Center),
+                                       north = DefaultBoundaryCondition(topology(grid, 2), Center),
                                       bottom = DefaultBoundaryCondition(topology(grid, 3), Face),
                                          top = DefaultBoundaryCondition(topology(grid, 3), Face))
 
@@ -156,15 +164,15 @@ keyword arguments:
 
 Default boundary conditions depend on `topology(grid)`. See `DefaultBoundaryCondition`.
 """
-WVelocityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell, Cell, Face); user_defined_bcs...)
+WVelocityBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Center, Center, Face); user_defined_bcs...)
 
 """
-    TracerBoundaryConditions(grid;   east = DefaultBoundaryCondition(topology(grid, 1), Cell),
-                                     west = DefaultBoundaryCondition(topology(grid, 1), Cell),
-                                    south = DefaultBoundaryCondition(topology(grid, 2), Cell),
-                                    north = DefaultBoundaryCondition(topology(grid, 2), Cell),
-                                   bottom = DefaultBoundaryCondition(topology(grid, 3), Cell),
-                                      top = DefaultBoundaryCondition(topology(grid, 3), Cell))
+    TracerBoundaryConditions(grid;   east = DefaultBoundaryCondition(topology(grid, 1), Center),
+                                     west = DefaultBoundaryCondition(topology(grid, 1), Center),
+                                    south = DefaultBoundaryCondition(topology(grid, 2), Center),
+                                    north = DefaultBoundaryCondition(topology(grid, 2), Center),
+                                   bottom = DefaultBoundaryCondition(topology(grid, 3), Center),
+                                      top = DefaultBoundaryCondition(topology(grid, 3), Center))
 
 Construct `FieldBoundaryConditions` for a tracer field on `grid`.
 Boundary conditions on `x`-, `y`-, and `z`-boundaries are specified via
@@ -176,7 +184,7 @@ keyword arguments:
 
 Default boundary conditions depend on `topology(grid)`. See `DefaultBoundaryCondition`.
 """
-TracerBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Cell, Cell, Cell); user_defined_bcs...)
+TracerBoundaryConditions(grid; user_defined_bcs...) = FieldBoundaryConditions(grid, (Center, Center, Center); user_defined_bcs...)
 
 const PressureBoundaryConditions = TracerBoundaryConditions
 const DiffusivityBoundaryConditions = TracerBoundaryConditions

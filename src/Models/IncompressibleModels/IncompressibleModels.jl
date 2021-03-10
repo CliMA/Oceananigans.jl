@@ -32,5 +32,6 @@ include("update_incompressible_model_state.jl")
 include("pressure_correction.jl")
 include("velocity_and_tracer_tendencies.jl")
 include("calculate_tendencies.jl")
+include("correct_incompressible_immersed_tendencies.jl")
 
 end # module

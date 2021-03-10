@@ -20,13 +20,13 @@ By default, momentum and tracer forcing functions are assumed to be functions of
 ```jldoctest
 u_forcing(x, y, z, t) = exp(z) * cos(x) * sin(t)
 
-grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = IncompressibleModel(grid=grid, forcing=(u=u_forcing,))
 
 model.forcing.u
 
 # output
-ContinuousForcing{Nothing} at (Face, Cell, Cell)
+ContinuousForcing{Nothing} at (Face, Center, Center)
 ├── func: u_forcing
 ├── parameters: nothing
 └── field dependencies: ()
@@ -63,13 +63,13 @@ T_forcing_func(x, y, z, t, p) = - p.μ * exp(z / p.λ) * cos(p.k * x) * sin(p.ω
 
 T_forcing = Forcing(T_forcing_func, parameters=(μ=1, λ=0.5, k=2π, ω=4π))
 
-grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = IncompressibleModel(grid=grid, forcing=(u=u_forcing, T=T_forcing))
 
 model.forcing.T
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :k, :ω),Tuple{Int64,Float64,Float64,Float64}}} at (Cell, Cell, Cell)
+ContinuousForcing{NamedTuple{(:μ, :λ, :k, :ω),Tuple{Int64,Float64,Float64,Float64}}} at (Center, Center, Center)
 ├── func: T_forcing_func
 ├── parameters: (μ = 1, λ = 0.5, k = 6.283185307179586, ω = 12.566370614359172)
 └── field dependencies: ()
@@ -79,7 +79,7 @@ ContinuousForcing{NamedTuple{(:μ, :λ, :k, :ω),Tuple{Int64,Float64,Float64,Flo
 model.forcing.u
 
 # output
-ContinuousForcing{Float64} at (Face, Cell, Cell)
+ContinuousForcing{Float64} at (Face, Center, Center)
 ├── func: u_forcing_func
 ├── parameters: 0.1
 └── field dependencies: ()
@@ -108,13 +108,13 @@ S_forcing_func(x, y, z, t, S, μ) = - μ * S
 
 S_forcing = Forcing(S_forcing_func, parameters=0.01, field_dependencies=:S)
 
-grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = IncompressibleModel(grid=grid, forcing=(w=w_forcing, S=S_forcing))
 
 model.forcing.w
 
 # output
-ContinuousForcing{Nothing} at (Cell, Cell, Face)
+ContinuousForcing{Nothing} at (Center, Center, Face)
 ├── func: w_forcing_func
 ├── parameters: nothing
 └── field dependencies: (:u, :v, :w)
@@ -124,7 +124,7 @@ ContinuousForcing{Nothing} at (Cell, Cell, Face)
 model.forcing.S
 
 # output
-ContinuousForcing{Float64} at (Cell, Cell, Cell)
+ContinuousForcing{Float64} at (Center, Center, Center)
 ├── func: S_forcing_func
 ├── parameters: 0.01
 └── field dependencies: (:S,)
@@ -187,7 +187,7 @@ end
 
 u_forcing = Forcing(u_forcing_func, discrete_form=true, parameters=1e-3)
 
-grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1))
+grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = IncompressibleModel(grid=grid, tracers=:b, buoyancy=BuoyancyTracer(), forcing=(u=u_forcing, b=b_forcing))
 
 model.forcing.b
@@ -222,13 +222,13 @@ of the velocity field are damped to zero everywhere on a time-scale of 1000 seco
 ```jldoctest
 damping = Relaxation(rate = 1/1000)
 
-grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1)) 
+grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)) 
 model = IncompressibleModel(grid=grid, forcing=(u=damping, v=damping, w=damping))
 
 model.forcing.w
 
 # output
-ContinuousForcing{Nothing} at (Cell, Cell, Face)
+ContinuousForcing{Nothing} at (Center, Center, Face)
 ├── func: Relaxation(rate=0.001, mask=1, target=0)
 ├── parameters: nothing
 └── field dependencies: (:w,)
@@ -244,7 +244,7 @@ velocity fields to zero and restores temperature to a linear gradient in the bot
 1/10th of the domain:
 
 ```jldoctest sponge_layer
-grid = RegularCartesianGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(-1, 0))
+grid = RegularRectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(-1, 0))
 
         damping_rate = 1/100 # relax fields on a 100 second time-scale
 temperature_gradient = 0.001 # ⁰C m⁻¹
@@ -261,7 +261,7 @@ model = IncompressibleModel(grid=grid, forcing=(u=uvw_sponge, v=uvw_sponge, w=uv
 model.forcing.u
 
 # output
-ContinuousForcing{Nothing} at (Face, Cell, Cell)
+ContinuousForcing{Nothing} at (Face, Center, Center)
 ├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=0)
 ├── parameters: nothing
 └── field dependencies: (:u,)
@@ -271,7 +271,7 @@ ContinuousForcing{Nothing} at (Face, Cell, Cell)
 model.forcing.T
 
 # output
-ContinuousForcing{Nothing} at (Cell, Cell, Cell)
+ContinuousForcing{Nothing} at (Center, Center, Center)
 ├── func: Relaxation(rate=0.01, mask=exp(-(z + 1.0)^2 / (2 * 0.1^2)), target=20.0 + 0.001 * z)
 ├── parameters: nothing
 └── field dependencies: (:T,)

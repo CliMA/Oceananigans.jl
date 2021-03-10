@@ -6,6 +6,7 @@ using LinearAlgebra
 using Logging
 
 using CUDA
+using MPI
 using JLD2
 using FFTW
 using OffsetArrays
@@ -28,7 +29,9 @@ using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
 using Oceananigans.AbstractOperations
+using Oceananigans.Distributed
 using Oceananigans.Logger
+using Oceananigans.Units
 using Oceananigans.Utils
 using Oceananigans.Architectures: device # to resolve conflict with CUDA.device
 
@@ -59,9 +62,8 @@ closures = (
     :AnisotropicBiharmonicDiffusivity,
     :TwoDimensionalLeith,
     :SmagorinskyLilly,
-    :BlasiusSmagorinsky,
-    :RozemaAnisotropicMinimumDissipation,
-    :VerstappenAnisotropicMinimumDissipation
+    :AnisotropicMinimumDissipation,
+    :HorizontallyCurvilinearAnisotropicDiffusivity
 )
 
 #####
@@ -80,15 +82,23 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_grids.jl")
             include("test_operators.jl")
             include("test_boundary_conditions.jl")
-            include("test_fields.jl")
+            include("test_field.jl")
+            include("test_reduced_field.jl")
             include("test_averaged_field.jl")
+            include("test_kernel_computed_field.jl")
             include("test_halo_regions.jl")
-            include("test_solvers.jl")
-            include("test_pressure_solvers.jl")
             include("test_coriolis.jl")
             include("test_buoyancy.jl")
-            include("test_surface_waves.jl")
+            include("test_stokes_drift.jl")
             include("test_utils.jl")
+        end
+    end
+
+    if group == :solvers || group == :all
+        @testset "Solvers" begin
+            include("test_solvers.jl")
+            include("test_poisson_solvers.jl")
+            include("test_preconditioned_conjugate_gradient_solver.jl")
         end
     end
 
@@ -108,13 +118,28 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
         end
     end
 
+    if group == :shallow_water || group == :all
+        include("test_shallow_water_models.jl")
+    end
+
+    if group == :hydrostatic_free_surface || group == :all
+        include("test_hydrostatic_free_surface_models.jl")
+    end
+
     if group == :simulation || group == :all
         @testset "Simulation tests" begin
             include("test_simulations.jl")
             include("test_diagnostics.jl")
             include("test_output_writers.jl")
-            include("test_abstract_operations.jl")
+            include("test_abstract_operations_computed_field.jl")
+            include("test_lagrangian_particle_tracking.jl")
         end
+    end
+
+    if group == :distributed || group == :all
+        MPI.Initialized() || MPI.Init()
+        include("test_distributed_models.jl")
+        include("test_distributed_poisson_solvers.jl")
     end
 
     if group == :regression || group == :all
@@ -129,9 +154,5 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
     if group == :convergence
         include("test_convergence.jl")
-    end
-
-    if group == :shallow_water || group == :all
-        include("test_shallow_water_models.jl")
     end
 end

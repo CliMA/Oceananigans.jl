@@ -3,11 +3,11 @@ using Glob
 using Oceananigans.Utils: initialize_schedule!, align_time_step
 using Oceananigans.Fields: set!
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!, next_time, unit_time
 
-using Oceananigans: AbstractModel
+using Oceananigans: AbstractModel, run_diagnostic!, write_output!
 
-import Oceananigans.OutputWriters: checkpoint_path
+import Oceananigans.OutputWriters: checkpoint_path, set!
 
 # Simulations are for running
 
@@ -71,6 +71,13 @@ ab2_or_rk3_time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; euler
 we_want_to_pickup(pickup::Bool) = pickup
 we_want_to_pickup(pickup) = true
 
+"""
+    aligned_time_step(sim)
+
+Returns a time step Δt that is aligned with the output writer schedules and stop time of the simulation `sim`.
+The purpose of aligning the time step is to ensure simulations do not time step beyond the `sim.stop_time` and
+to ensure that output is written at the exact time specified by the output writer schedules.
+"""
 function aligned_time_step(sim)
     clock = sim.model.clock
 
@@ -81,8 +88,8 @@ function aligned_time_step(sim)
     end
 
     # Align time step with simulation stop time
-    if clock.time + Δt > sim.stop_time
-        Δt = sim.stop_time - clock.time
+    if next_time(clock, Δt) > sim.stop_time
+        Δt = unit_time(sim.stop_time - clock.time)
     end
 
     return Δt
@@ -157,8 +164,15 @@ function run!(sim; pickup=false)
 
         for n in 1:iterations
             clock.time >= sim.stop_time && break
-            
-            Δt = min(get_Δt(sim), aligned_time_step(sim))
+
+            # Temporary fix for https://github.com/CliMA/Oceananigans.jl/issues/1280
+            aligned_Δt = aligned_time_step(sim)
+            if aligned_Δt <= 0
+                Δt = get_Δt(sim)
+            else
+                Δt = min(get_Δt(sim), aligned_Δt)
+            end
+
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
             ab2_or_rk3_time_step!(model, Δt, euler=euler)
 
@@ -176,43 +190,4 @@ function run!(sim; pickup=false)
     end
 
     return nothing
-end
-
-#####
-##### Util for "picking up" a simulation from a checkpoint
-#####
-
-""" Returns `filepath`. Shortcut for `run!(simulation, pickup=filepath)`. """
-checkpoint_path(filepath::AbstractString, checkpointers) = filepath
-
-function checkpoint_path(pickup, checkpointers)
-    length(checkpointers) == 0 && error("No checkpointers found: cannot pickup simulation!")
-    length(checkpointers) > 1 && error("Multiple checkpointers found: not sure which one to pickup simulation from!")
-    return checkpoint_path(pickup, first(checkpointers))
-end
-
-"""
-    checkpoint_path(pickup::Bool, checkpointer)
-
-For `pickup=true`, parse the filenames in `checkpointer.dir` associated with
-`checkpointer.prefix` and return the path to the file whose name contains
-the largest iteration.
-"""
-function checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
-    filepaths = glob(checkpoint_superprefix(checkpointer.prefix) * "*.jld2", checkpointer.dir)
-
-    if length(filepaths) == 0 # no checkpoint files found
-        return nothing
-    else
-        return latest_checkpoint(checkpointer, filepaths)
-    end
-end
-
-function latest_checkpoint(checkpointer, filepaths)
-    filenames = basename.(filepaths)
-    leading = length(checkpoint_superprefix(checkpointer.prefix))
-    trailing = 5 # length(".jld2")
-    iterations = map(name -> parse(Int, name[leading+1:end-trailing]), filenames)
-    latest_iteration, idx = findmax(iterations)
-    return filepaths[idx]
 end
