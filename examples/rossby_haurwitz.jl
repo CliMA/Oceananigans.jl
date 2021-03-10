@@ -38,7 +38,7 @@ using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusi
 # HydrostaticSphericalCoriolis(Float64, scheme=VectorInvariantEnergyConserving())
 # momentum_advection = VectorInvariant()
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    momentum_advection =  momentum_advection = VectorInvariant(),
+                                    momentum_advection =  nothing,
                                     tracers = (),
                                     buoyancy = nothing,
                                     coriolis = coriolis,
@@ -99,7 +99,7 @@ using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(200.0wave_propagation_time_scale),
-                                                      prefix = "rh",
+                                                      prefix = "rh_liner",
                                                       force = true)
 
 run!(simulation)
