@@ -13,9 +13,9 @@ sides  = (:west, :east, :south, :north, :top, :bottom)
 side_id = Dict(side => n for (n, side) in enumerate(sides))
 
 opposite_side = Dict(
-    :east => :west, :west => :east,
-    :north => :south, :south => :north,
-    :top => :bottom, :bottom => :top
+    :west => :east, :east => :west,
+    :south => :north, :north => :south,
+    :bottom => :top, :top => :bottom
 )
 
 # Define functions that return unique send and recv MPI tags for each side.
@@ -58,11 +58,11 @@ function fill_halo_regions!(c::AbstractArray, bcs, arch::AbstractMultiArchitectu
 
     barrier = Event(device(child_architecture(arch)))
 
-    east_event, west_event = fill_east_and_west_halos!(c, bcs.east, bcs.west, arch, barrier, grid, c_location, args...)
-    north_event, south_event = fill_north_and_south_halos!(c, bcs.north, bcs.south, arch, barrier, grid, c_location, args...)
-    top_event, bottom_event = fill_top_and_bottom_halos!(c, bcs.top, bcs.bottom, arch, barrier, grid, c_location, args...)
+    west_event, east_event = fill_west_and_east_halos!(c, bcs.west, bcs.east, arch, barrier, grid, c_location, args...)
+    south_event, north_event = fill_south_and_north_halos!(c, bcs.south, bcs.north, arch, barrier, grid, c_location, args...)
+    bottom_event, top_event = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, arch, barrier, grid, c_location, args...)
 
-    events = [east_event, west_event, north_event, south_event, top_event, bottom_event]
+    events = [west_event, east_event, south_event, north_event, bottom_event, top_event]
     events = filter(e -> e isa Event, events)
     wait(device(child_architecture(arch)), MultiEvent(Tuple(events)))
 
@@ -70,12 +70,12 @@ function fill_halo_regions!(c::AbstractArray, bcs, arch::AbstractMultiArchitectu
 end
 
 #####
-##### fill_east_and_west_halos!   }
-##### fill_north_and_south_halos! } for non-communicating boundary conditions (fallback)
-##### fill_top_and_bottom_halos!  }
+##### fill_west_and_east_halos!   }
+##### fill_south_and_north_halos! } for non-communicating boundary conditions (fallback)
+##### fill_bottom_and_top_halos!  }
 #####
 
-for (side, opposite_side) in zip([:east, :north, :top], [:west, :south, :bottom])
+for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top])
     fill_both_halos! = Symbol("fill_$(side)_and_$(opposite_side)_halos!")
     fill_side_halo! = Symbol("fill_$(side)_halo!")
     fill_opposite_side_halo! = Symbol("fill_$(opposite_side)_halo!")
@@ -90,12 +90,12 @@ for (side, opposite_side) in zip([:east, :north, :top], [:west, :south, :bottom]
 end
 
 #####
-##### fill_east_and_west_halos!   }
-##### fill_north_and_south_halos! } for when both halos are communicative
-##### fill_top_and_bottom_halos!  }
+##### fill_west_and_east_halos!   }
+##### fill_south_and_north_halos! } for when both halos are communicative
+##### fill_bottom_and_top_halos!  }
 #####
 
-for (side, opposite_side) in zip([:east, :north, :top], [:west, :south, :bottom])
+for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top])
     fill_both_halos! = Symbol("fill_$(side)_and_$(opposite_side)_halos!")
     send_side_halo = Symbol("send_$(side)_halo")
     send_opposite_side_halo = Symbol("send_$(opposite_side)_halo")

@@ -23,6 +23,7 @@ function DistributedIncompressibleModel(; architecture, grid, model_kwargs...)
 
     # Make sure we can put an integer number of grid points in each rank.
     # Will generalize in the future.
+    # TODO: Check that we have enough grid points on each rank to fit the halos!
     @assert isinteger(Nx / Rx)
     @assert isinteger(Ny / Ry)
     @assert isinteger(Nz / Rz)
