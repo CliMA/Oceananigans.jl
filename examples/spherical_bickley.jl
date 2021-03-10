@@ -36,12 +36,13 @@ using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusi
 # VectorInvariantEnergyConserving()
 # HydrostaticSphericalCoriolis(Float64, scheme=VectorInvariantEnergyConserving())
 # momentum_advection = VectorInvariant()
+νh = κh = 1e4
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     momentum_advection = VectorInvariant(),
                                     tracers = (),
                                     buoyancy = nothing,
                                     coriolis = coriolis,
-                                    closure = nothing)
+                                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(κh=κh, νh =  νh))
 
 # ## The Bickley jet on a sphere
 # θ ∈ [-π/2, π/2]
