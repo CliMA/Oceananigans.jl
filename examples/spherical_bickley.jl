@@ -17,6 +17,7 @@ using Oceananigans
 using Oceananigans.Grids: RegularLatitudeLongitudeGrid
 using Oceananigans.Utils: prettytime
 
+
 grid = RegularLatitudeLongitudeGrid(size = (180*2, 80*2, 1), longitude = (-180, 180), latitude = (-80, 80), z = (-1, 0))
 #  λ for latitude and ϕ for latitude is
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, HydrostaticSphericalCoriolis

@@ -16,6 +16,7 @@
 using Oceananigans
 using Oceananigans.Grids: RegularLatitudeLongitudeGrid
 using Oceananigans.Utils: prettytime
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface    
 
 h₀ = 8e3
 
@@ -42,7 +43,8 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     tracers = (),
                                     buoyancy = nothing,
                                     coriolis = coriolis,
-                                    closure = nothing)
+                                    closure = nothing,
+                                    free_surface = ExplicitFreeSurface(gravitational_acceleration=90))
 
 # ## The Bickley jet on a sphere
 # λ ∈ [-180°, 180°]
@@ -99,9 +101,9 @@ using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(200.0wave_propagation_time_scale),
-                                                      prefix = "rh_liner",
+                                                      prefix = "rh_nonlinear",
                                                       force = true)
-
+##
 run!(simulation)
 ##
 using JLD2, Printf, Oceananigans.Grids, GLMakie
@@ -169,9 +171,4 @@ end
 ##
 record(fig, "RossbyHaurwitzEvolution.mp4", iterations, framerate=30) do i
     iter[] = i
-    #=
-    for n in 1:3
-        rotate_cam!(fig.scene.children[n], (2π/360, 0, 0))
-    end
-    =#
 end
