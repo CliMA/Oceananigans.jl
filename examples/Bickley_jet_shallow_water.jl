@@ -40,7 +40,7 @@ using Oceananigans.Models: ShallowWaterModel
 Lx = 2π/0.95
 Ly = 20
 Lz = 1
-Nx = 32 #128
+Nx = 128
 Ny = Nx
 
 grid = RegularRectilinearGrid(size = (Nx, Ny, 1),
@@ -53,28 +53,25 @@ grid = RegularRectilinearGrid(size = (Nx, Ny, 1),
 # a relatively narrow mesoscale jet.   
 # The physical parameters are
 #
-# FJP: 3] Should we change the parameters to be on planetary scales?
-# 
 #   * ``f``: Coriolis parameter
 #   * ``g``: Acceleration due to gravity
 #   * ``U``: Maximum jet speed
 #   * ``\Delta\eta``: Maximum free-surface deformation that is dictated by geostrophy
 #   * ``\epsilon`` : Amplitude of the perturbation
 
-f = 1;
-g = 9.80665;
-U = 1.0;
-Δη = f * U / g;
-ϵ = 1e-4;
+f = 1
+g = 9.80665
+U = 1.0
+Δη = f * U / g
+ϵ = 1e-4
+nothing # hide
 
 # ## Building a `ShallowWaterModel`
 #
 # We use `grid`, `coriolis` and `gravitational_acceleration` to build the model.
-# Furthermore, we specify this runs on `CPUs`, uses `RungeKutta3` for time-stepping
-# and `WENO5` for advection.
+# Furthermore, we specify `RungeKutta3` for time-stepping and `WENO5` for advection.
 
 model = ShallowWaterModel(
-    architecture=CPU(),
     timestepper=:RungeKutta3,
     advection=WENO5(),
     grid=grid,
@@ -88,11 +85,12 @@ model = ShallowWaterModel(
 # The initial conditions have a small perturbation that is random in space and 
 # decays away from the center of the jet.
 
-  Ω(x, y, z) = 2 * U * sech(y - Ly/2)^2 * tanh(y - Ly/2);
- uⁱ(x, y, z) =   U * sech(y - Ly/2)^2 + ϵ * exp(- (y - Ly/2)^2 ) * randn();
- ηⁱ(x, y, z) = -Δη * tanh(y - Ly/2);
- hⁱ(x, y, z) = model.grid.Lz + ηⁱ(x, y, z);
-uhⁱ(x, y, z) = uⁱ(x, y, z) * hⁱ(x, y, z);
+  Ω(x, y, z) = 2 * U * sech(y - Ly/2)^2 * tanh(y - Ly/2)
+ uⁱ(x, y, z) =   U * sech(y - Ly/2)^2 + ϵ * exp(- (y - Ly/2)^2 ) * randn()
+ ηⁱ(x, y, z) = -Δη * tanh(y - Ly/2)
+ hⁱ(x, y, z) = model.grid.Lz + ηⁱ(x, y, z)
+uhⁱ(x, y, z) = uⁱ(x, y, z) * hⁱ(x, y, z)
+nothing # hide
 
 # We set the initial conditions for the zonal mass transport `uhⁱ` and height `hⁱ`.
 
@@ -118,13 +116,14 @@ function progress(sim)
     prettytime(sim.model.clock.time),
     norm(interior(v)) )
 end
+nothing # hide
 
 # ## Running a `Simulation`
 #
 # We pick the time-step that ensures to resolve the surface gravity waves.
 # A time-step wizard can be applied to use an adaptive time step.
 
-simulation = Simulation(model, Δt = 1e-2, stop_time = 5.0)
+simulation = Simulation(model, Δt = 1e-2, stop_time = 150.0, progress=progress)
 
 # ## Prepare output files
 #
@@ -134,6 +133,7 @@ function growth_rate(model)
     compute!(v)
     return norm(interior(v))
 end
+nothing # hide
 
 # Choose the two fields to be output to be the total and perturbation vorticity.
 
@@ -168,12 +168,14 @@ run!(simulation)
 # ## Visiualize the results
 #
 
-using NCDatasets, Plots, IJulia;
+using NCDatasets, Plots, IJulia
+nothing # hide
 
 # Define the coordinates for plotting
 
-xf = xnodes(ω_field);
-yf = ynodes(ω_field);
+xf = xnodes(ω_field)
+yf = ynodes(ω_field)
+nothing # hide
 
 # Define keyword arguments for plotting the contours
 
@@ -187,7 +189,8 @@ kwargs = (
        colorbar = true,
            ylim = (0, Ly),
            xlim = (0, Lx)
-);
+)
+nothing # hide
 
 # Read in the `output_writer` for the two-dimensional fields
 # and then create an animation showing both the total and perturbation
@@ -240,7 +243,5 @@ poly = 2 .* exp.(best_fit[0] .+ best_fit[1]*t[I])
 plt = plot(t[1000:end], log.(σ[1000:end]), lw=4, label="sigma", 
         xlabel="time", ylabel="log(v)", title="growth rate", legend=:bottomright)
 plot!(plt, t[I], log.(poly), lw=4, label="best fit")
-#display(plt)
-savefig(plt, "growth_rates.png")
 
 print("Best slope = ", best_fit[1])

@@ -25,7 +25,6 @@ const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
-    "Bickley_jet_shallow_water.jl",
     "one_dimensional_diffusion.jl",
     "geostrophic_adjustment.jl",
     "two_dimensional_turbulence.jl",
@@ -34,7 +33,8 @@ examples = [
     "ocean_wind_mixing_and_convection.jl",
     "langmuir_turbulence.jl",
     "eady_turbulence.jl",
-    "kelvin_helmholtz_instability.jl"
+    "kelvin_helmholtz_instability.jl",
+    "Bickley_jet_shallow_water.jl"
 ]
 
 for example in examples
@@ -47,7 +47,6 @@ end
 #####
 
 example_pages = [
-    "Bickley_jet_shallow_water.jl"     => "generated/Bickley_jet_shallow_water.md", 
     "One-dimensional diffusion"        => "generated/one_dimensional_diffusion.md",
     "Geostrophic adjustment"           => "generated/geostrophic_adjustment.md",
     "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
@@ -56,8 +55,9 @@ example_pages = [
     "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
     "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
     "Eady turbulence"                  => "generated/eady_turbulence.md",
-    "Kelvin-Helmholtz instability"     => "generated/kelvin_helmholtz_instability.md"
-]
+    "Kelvin-Helmholtz instability"     => "generated/kelvin_helmholtz_instability.md",
+    "Bickley jet shallow water model"     => "generated/Bickley_jet_shallow_water.md"
+ ]
 
 model_setup_pages = [
     "Overview" => "model_setup/overview.md",
@@ -142,8 +142,8 @@ makedocs(bib,
     format = format,
      pages = pages,
    modules = [Oceananigans],
-   doctest = false,
-    strict = false,
+   doctest = true,
+    strict = true,
      clean = true,
  checkdocs = :none  # Should fix our docstring so we can use checkdocs=:exports with strict=true.
 )
