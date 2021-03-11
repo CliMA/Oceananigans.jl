@@ -21,8 +21,25 @@ using Statistics
 using JLD2
 using Printf
 
-Nx = 6 * 60
-Ny = 6 * 60
+function geostrophic2cartesian(λ, φ, radius=1)
+    Nx = length(λ)
+    Ny = length(φ)
+
+    λ = repeat(reshape(λ, Nx, 1), 1, Ny) 
+    φ = repeat(reshape(φ, 1, Ny), Nx, 1)
+
+    λ_azimuthal = λu .+ 180  # Convert to λ ∈ [0°, 360°]
+    φ_azimuthal = 90 .- φu   # Convert to φ ∈ [0°, 180°] (0° at north pole)
+
+    x = @. radius * cosd(λ_azimuthal) * sind(φ_azimuthal)
+    y = @. radius * sind(λ_azimuthal) * sind(φ_azimuthal)
+    z = @. radius * cosd(φ_azimuthal)
+
+    return x, y, z
+end
+
+Nx = 1 * 60
+Ny = 1 * 60
 
 # A spherical domain
 grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
@@ -73,7 +90,7 @@ v_bcs = VVelocityBoundaryConditions(grid,
 variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    architecture = GPU(),
+                                    architecture = CPU(),
                                     momentum_advection = VectorInvariant(),
                                     free_surface = free_surface,
                                     coriolis = coriolis,
@@ -89,30 +106,46 @@ gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wav
 wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.ϕᵃᶜᵃ)) * deg2rad(grid.Δλ),
                                   grid.radius * deg2rad(grid.Δϕ)) / gravity_wave_speed
 
-progress(s) = @info @sprintf("Time: %s, iteration: %d, max(u): %.2e m s⁻¹",
-                             prettytime(s.model.clock.time),
-                             s.model.clock.iteration,
-                             maximum(s.model.velocities.u))
+mutable struct Progress
+    interval_start_time :: Float64
+end
+
+function (p::Progress)(sim)
+    wall_time = (time_ns() - p.interval_start_time) * 1e-9
+
+    @info @sprintf("Time: %s, iteration: %d, max(u): %.2e m s⁻¹, wall time: %s",
+                   prettytime(sim.model.clock.time),
+                   sim.model.clock.iteration,
+                   maximum(sim.model.velocities.u),
+                   prettytime(wall_time))
+
+    p.interval_start_time = time_ns()
+
+    return nothing
+end
 
 simulation = Simulation(model,
                         Δt = 0.2wave_propagation_time_scale,
                         stop_time = 3years,
                         iteration_interval = 100,
-                        progress = progress)
+                        progress = Progress(time_ns()))
                                                          
 output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
 output_prefix = "barotropic_gyre_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(1day),
+                                                      schedule = TimeInterval(10day),
                                                       prefix = output_prefix,
                                                       field_slicer = nothing,
                                                       force = true)
 
 run!(simulation)
 
-#=
+#####
+##### Animation!
+#####
+
 using GLMakie
 
 filepath = simulation.output_writers[:fields].filepath
@@ -121,39 +154,17 @@ file = jldopen(filepath)
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
-λu = xnodes(Face, grid)
-φu = ynodes(Center, grid)
-
-λc = xnodes(Center, grid)
-φc = ynodes(Center, grid)
-
-λu = repeat(reshape(λu, Nx+1, 1), 1, Ny) 
-φu = repeat(reshape(φu, 1, Ny), Nx+1, 1)
-
-λc = repeat(reshape(λc, Nx, 1), 1, Ny) 
-φc = repeat(reshape(φc, 1, Ny), Nx, 1)
-
-λu_azimuthal = λu .+ 180  # Convert to λ ∈ [0°, 360°]
-φu_azimuthal = 90 .- φu   # Convert to φ ∈ [0°, 180°] (0° at north pole)
-
-λc_azimuthal = λc .+ 180  # Convert to λ ∈ [0°, 360°]
-φc_azimuthal = 90 .- φc   # Convert to φ ∈ [0°, 180°] (0° at north pole)
+xu, yu, zu = geographic2cartesian(xnodes(Face,   grid), ynodes(Center, grid))
+xv, yv, zv = geographic2cartesian(xnodes(Center, grid), ynodes(Face,   grid))
+xc, yc, zc = geographic2cartesian(xnodes(Center, grid), ynodes(Center, grid))
 
 iter = Node(0)
 
 plot_title = @lift @sprintf("Barotropic gyre: time = %s", prettytime(file["timeseries/t/" * string($iter)]))
 
 u = @lift file["timeseries/u/" * string($iter)][:, :, 1]
+v = @lift file["timeseries/v/" * string($iter)][:, :, 1]
 η = @lift file["timeseries/η/" * string($iter)][:, :, 1]
-
-# Plot on the unit sphere to align with the spherical wireframe.
-xu = @. cosd(λu_azimuthal) * sind(φu_azimuthal)
-yu = @. sind(λu_azimuthal) * sind(φu_azimuthal)
-zu = @. cosd(φu_azimuthal)
-
-xc = @. cosd(λc_azimuthal) * sind(φc_azimuthal)
-yc = @. sind(λc_azimuthal) * sind(φc_azimuthal)
-zc = @. cosd(φc_azimuthal)
 
 fig = Figure(resolution = (2160, 1540))
 
@@ -165,6 +176,12 @@ zoom!(ax.scene, (0, 0, 0), 2, true)
 
 ax = fig[1, 2] = LScene(fig)
 wireframe!(ax, Sphere(Point3f0(0), 0.99f0), show_axis=false)
+surface!(ax, xv, yv, zv, color=v, colormap=:balance)
+rotate_cam!(ax.scene, (3π/4, -π/8, 0))
+zoom!(ax.scene, (0, 0, 0), 2, true)
+
+ax = fig[1, 3] = LScene(fig)
+wireframe!(ax, Sphere(Point3f0(0), 0.99f0), show_axis=false)
 surface!(ax, xc, yc, zc, color=η, colormap=:balance)
 rotate_cam!(ax.scene, (3π/4, -π/8, 0))
 zoom!(ax.scene, (0, 0, 0), 2, true)
@@ -175,4 +192,3 @@ record(fig, output_prefix * ".mp4", iterations, framerate=30) do i
     @info "Animating iteration $i/$(iterations[end])..."
     iter[] = i
 end
-=#
