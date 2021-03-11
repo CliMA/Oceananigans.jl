@@ -124,6 +124,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
     if group == :hydrostatic_free_surface || group == :all
         include("test_hydrostatic_free_surface_models.jl")
+        include("test_vertical_vorticity_field.jl")
     end
 
     if group == :simulation || group == :all

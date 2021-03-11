@@ -50,4 +50,10 @@ include("update_hydrostatic_free_surface_model_state.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
 include("prescribed_hydrostatic_velocity_fields.jl")
 
+#####
+##### Some diagnostics
+#####
+
+include("vertical_vorticity_field.jl")
+
 end # module
