@@ -15,17 +15,29 @@ struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R} <: AbstractGrid{FT, TX
         Hx :: Int
         Hy :: Int
         Hz :: Int
-      λᶜᶜᶜ :: A
-      λᶠᶜᶜ :: A
-      λᶜᶠᶜ :: A
-      λᶠᶠᶜ :: A
-      ϕᶜᶜᶜ :: A
-      ϕᶠᶜᶜ :: A
-      ϕᶜᶠᶜ :: A
-      ϕᶠᶠᶜ :: A
-      zᵃᵃᶠ :: R
+      λᶜᶜᵃ :: A
+      λᶠᶜᵃ :: A
+      λᶜᶠᵃ :: A
+      λᶠᶠᵃ :: A
+      φᶜᶜᵃ :: A
+      φᶠᶜᵃ :: A
+      φᶜᶠᵃ :: A
+      φᶠᶠᵃ :: A
       zᵃᵃᶜ :: R
+      zᵃᵃᶠ :: R
+    #  Δxᶜᶜᵃ :: A
+    #  Δxᶠᶜᵃ :: A
+    #  Δxᶜᶠᵃ :: A
+    #  Δxᶠᶠᵃ :: A
+    #  Δyᶜᶜᵃ :: A
+    #  Δyᶜᶠᵃ :: A
+    #  Δyᶠᶜᵃ :: A
+    #  Δyᶠᶠᵃ :: A
      Δz    :: FT
+    #  Azᶜᶜᵃ :: A
+    #  Azᶠᶜᵃ :: A
+    #  Azᶜᶠᵃ :: A
+    #  Azᶠᶠᵃ :: A
     radius :: FT
 end
 
@@ -51,26 +63,26 @@ function ConformalCubedSphereFaceGrid(FT=Float64; topology=(Bounded, Bounded, Bo
 
     # Compute staggered grid Cartesian coordinates (X, Y, Z) on the unit sphere.
 
-    Xᶜᶜᶜ = zeros(Nξ,   Nη  )
-    Xᶠᶜᶜ = zeros(Nξ+1, Nη  )
-    Xᶜᶠᶜ = zeros(Nξ,   Nη+1)
-    Xᶠᶠᶜ = zeros(Nξ+1, Nη+1)
+    Xᶜᶜᵃ = zeros(Nξ,   Nη  )
+    Xᶠᶜᵃ = zeros(Nξ+1, Nη  )
+    Xᶜᶠᵃ = zeros(Nξ,   Nη+1)
+    Xᶠᶠᵃ = zeros(Nξ+1, Nη+1)
 
-    Yᶜᶜᶜ = zeros(Nξ,   Nη  )
-    Yᶠᶜᶜ = zeros(Nξ+1, Nη  )
-    Yᶜᶠᶜ = zeros(Nξ,   Nη+1)
-    Yᶠᶠᶜ = zeros(Nξ+1, Nη+1)
+    Yᶜᶜᵃ = zeros(Nξ,   Nη  )
+    Yᶠᶜᵃ = zeros(Nξ+1, Nη  )
+    Yᶜᶠᵃ = zeros(Nξ,   Nη+1)
+    Yᶠᶠᵃ = zeros(Nξ+1, Nη+1)
 
-    Zᶜᶜᶜ = zeros(Nξ,   Nη  )
-    Zᶠᶜᶜ = zeros(Nξ+1, Nη  )
-    Zᶜᶠᶜ = zeros(Nξ,   Nη+1)
-    Zᶠᶠᶜ = zeros(Nξ+1, Nη+1)
+    Zᶜᶜᵃ = zeros(Nξ,   Nη  )
+    Zᶠᶜᵃ = zeros(Nξ+1, Nη  )
+    Zᶜᶠᵃ = zeros(Nξ,   Nη+1)
+    Zᶠᶠᵃ = zeros(Nξ+1, Nη+1)
 
     ξS = (ξᶜᵃᵃ, ξᶠᵃᵃ, ξᶜᵃᵃ, ξᶠᵃᵃ)
     ηS = (ηᵃᶜᵃ, ηᵃᶜᵃ, ηᵃᶠᵃ, ηᵃᶠᵃ)
-    XS = (Xᶜᶜᶜ, Xᶠᶜᶜ, Xᶜᶠᶜ, Xᶠᶠᶜ)
-    YS = (Yᶜᶜᶜ, Yᶠᶜᶜ, Yᶜᶠᶜ, Yᶠᶠᶜ)
-    ZS = (Zᶜᶜᶜ, Zᶠᶜᶜ, Zᶜᶠᶜ, Zᶠᶠᶜ)
+    XS = (Xᶜᶜᵃ, Xᶠᶜᵃ, Xᶜᶠᵃ, Xᶠᶠᵃ)
+    YS = (Yᶜᶜᵃ, Yᶠᶜᵃ, Yᶜᶠᵃ, Yᶠᶠᵃ)
+    ZS = (Zᶜᶜᵃ, Zᶠᶜᵃ, Zᶜᶠᵃ, Zᶠᶠᵃ)
 
     for (ξ, η, X, Y, Z) in zip(ξS, ηS, XS, YS, ZS)
         for i in 1:length(ξ), j in 1:length(η)
@@ -88,32 +100,32 @@ function ConformalCubedSphereFaceGrid(FT=Float64; topology=(Bounded, Bounded, Bo
         end
     end
 
-    # Compute staggered grid latitude-longitude (ϕ, λ) coordinates.
+    # Compute staggered grid latitude-longitude (φ, λ) coordinates.
 
-    λᶜᶜᶜ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy    ), -Hx, -Hy)
-    λᶠᶜᶜ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
-    λᶜᶠᶜ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
-    λᶠᶠᶜ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
+    λᶜᶜᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy    ), -Hx, -Hy)
+    λᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
+    λᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
+    λᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
 
-    ϕᶜᶜᶜ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy    ), -Hx, -Hy)
-    ϕᶠᶜᶜ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
-    ϕᶜᶠᶜ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
-    ϕᶠᶠᶜ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
+    φᶜᶜᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy    ), -Hx, -Hy)
+    φᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
+    φᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
+    φᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
 
-    λS = (λᶜᶜᶜ, λᶠᶜᶜ, λᶜᶠᶜ, λᶠᶠᶜ)
-    ϕS = (ϕᶜᶜᶜ, ϕᶠᶜᶜ, ϕᶜᶠᶜ, ϕᶠᶠᶜ)
+    λS = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ)
+    φS = (φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ)
 
-    for (ξ, η, X, Y, Z, λ, ϕ) in zip(ξS, ηS, XS, YS, ZS, λS, ϕS)
+    for (ξ, η, X, Y, Z, λ, φ) in zip(ξS, ηS, XS, YS, ZS, λS, φS)
         for i in 1:length(ξ), j in 1:length(η)
-            @inbounds ϕ[i, j], λ[i, j] = cartesian_to_lat_lon(X[i, j], Y[i, j], Z[i, j])
+            @inbounds φ[i, j], λ[i, j] = cartesian_to_lat_lon(X[i, j], Y[i, j], Z[i, j])
         end
     end
 
     any(any.(isnan, λS)) &&
         @warn "Your cubed sphere face contains a grid point at a pole so its longitude λ is undefined (NaN)."
 
-    return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, typeof(λᶜᶜᶜ), typeof(zᵃᵃᶠ)}(
-        Nξ, Nη, Nz, Hx, Hy, Hz, λᶜᶜᶜ, λᶠᶜᶜ, λᶜᶠᶜ, λᶠᶠᶜ, ϕᶜᶜᶜ, ϕᶠᶜᶜ, ϕᶜᶠᶜ, ϕᶠᶠᶜ, zᵃᵃᶠ, zᵃᵃᶜ, Δz , radius)
+    return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, typeof(λᶜᶜᵃ), typeof(zᵃᵃᶠ)}(
+        Nξ, Nη, Nz, Hx, Hy, Hz, λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ, φᶜᶜᵃ, φᶠᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ, zᵃᵃᶠ, zᵃᵃᶜ, Δz , radius)
 end
 
 function show(io::IO, g::ConformalCubedSphereFaceGrid{FT}) where FT

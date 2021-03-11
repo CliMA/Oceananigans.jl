@@ -1,6 +1,8 @@
 using DataDeps
 using JLD2
 
+ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
+
 dd = DataDep("cubed_sphere_32_grid",
     "Conformal cubed sphere grid with 32×32 grid points on each face",
     "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
