@@ -22,11 +22,12 @@ function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, args...)
 end
 
 fill_halo_regions!(field, args...) =
-    fill_halo_regions!(field.data, field.boundary_conditions, architecture(field.data), field.grid, args...)
+    fill_halo_regions!(field.data, field.boundary_conditions, field.grid, args...)
 
 "Fill halo regions in x, y, and z for a given field."
-function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...; kwargs...)
+function fill_halo_regions!(c::AbstractArray, fieldbcs, grid, args...; kwargs...)
 
+    arch = architecture(c)
     barrier = Event(device(arch))
 
       west_event =   fill_west_halo!(c, fieldbcs.west,   arch, barrier, grid, args...; kwargs...)
