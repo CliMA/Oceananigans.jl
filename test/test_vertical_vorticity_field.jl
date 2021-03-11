@@ -22,7 +22,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField, 
 
             compute!(ζ)
 
-            @test all(!isnan.(ζ.data))
+            @test all(isfinite.(ζ.data))
         end
     end
 end
