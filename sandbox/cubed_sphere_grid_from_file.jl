@@ -1,5 +1,7 @@
 using DataDeps
 using JLD2
+using Oceananigans
+using Oceananigans.Grids
 
 ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
@@ -11,4 +13,5 @@ dd = DataDep("cubed_sphere_32_grid",
 
 DataDeps.register(dd)
 
-cs32 = jldopen(datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2")
+cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
+grid = ConformalCubedSphereFaceGrid(cs32_filepath, face=1, Nz=1, z=(-1, 0))
