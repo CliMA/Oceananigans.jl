@@ -165,7 +165,6 @@ function write_output!(c::Checkpointer, model)
     t2, sz = time_ns(), filesize(filepath)
     c.verbose && @info "Checkpointing done: time=$(prettytime((t2-t1)/1e9)), size=$(pretty_filesize(sz))"
 
-    @show c.cleanup
     c.cleanup && cleanup_checkpoints(c)
 
     return nothing
@@ -174,8 +173,6 @@ end
 function cleanup_checkpoints(checkpointer)
     filepaths = glob(checkpoint_superprefix(checkpointer.prefix) * "*.jld2", checkpointer.dir)
     latest_checkpoint_filepath = latest_checkpoint(checkpointer, filepaths)
-    @show filepaths
-    @show latest_checkpoint_filepath
     [rm(filepath) for filepath in filepaths if filepath != latest_checkpoint_filepath]
     return nothing
 end

@@ -92,7 +92,7 @@ function compute!(buoyancy_field::BuoyancyField, time=nothing)
     data = buoyancy_field.data
     grid = buoyancy_field.grid
     tracers = buoyancy_field.tracers
-    buoyancy = buoyancy_field.buoyancy.model
+    buoyancy = buoyancy_field.buoyancy
     arch = architecture(data)
 
     workgroup, worksize = work_layout(grid, :xyz)

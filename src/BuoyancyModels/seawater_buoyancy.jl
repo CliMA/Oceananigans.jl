@@ -13,8 +13,8 @@ struct SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancyModel{EOS}
 end
 
 required_tracers(::SeawaterBuoyancy) = (:T, :S)
-required_tracers(::SeawaterBuoyancy{FT, EOS, <:Nothing, <:Number}) where {FT, EOS, G} = (:T,) # active temperature only
-required_tracers(::SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing}) where {FT, EOS, G} = (:S,) # active salinity only
+required_tracers(::SeawaterBuoyancy{FT, EOS, <:Nothing, <:Number}) where {FT, EOS} = (:T,) # active temperature only
+required_tracers(::SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing}) where {FT, EOS} = (:S,) # active salinity only
 
 """
     SeawaterBuoyancy([FT=Float64;] gravitational_acceleration = g_Earth,
@@ -51,8 +51,8 @@ function SeawaterBuoyancy(                        FT = Float64;
                             equation_of_state, gravitational_acceleration, constant_temperature, constant_salinity)
 end
 
-const TemperatureSeawaterBuoyancy = SeawaterBuoyancy{FT, EOS, <:Nothing, <:Number} where {FT, EOS, G}
-const SalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing} where {FT, EOS, G}
+const TemperatureSeawaterBuoyancy = SeawaterBuoyancy{FT, EOS, <:Nothing, <:Number} where {FT, EOS}
+const SalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing} where {FT, EOS}
 
 @inline get_temperature_and_salinity(::SeawaterBuoyancy, C) = C.T, C.S
 @inline get_temperature_and_salinity(b::TemperatureSeawaterBuoyancy, C) = C.T, b.constant_salinity

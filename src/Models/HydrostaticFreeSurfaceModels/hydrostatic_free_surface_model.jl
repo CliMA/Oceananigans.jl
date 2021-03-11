@@ -5,7 +5,7 @@ using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, GPU
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder
-using Oceananigans.BuoyancyModels: validate_buoyancy, SeawaterBuoyancy, g_Earth
+using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, TracerBoundaryConditions
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
@@ -105,6 +105,8 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
     validate_buoyancy(buoyancy, tracernames(tracers))
+
+    buoyancy = regularize_buoyancy(buoyancy)
 
     # Recursively "regularize" field-dependent boundary conditions by supplying list of tracer names.
     # We also regularize boundary conditions included in velocities, tracers, pressure, and diffusivities.

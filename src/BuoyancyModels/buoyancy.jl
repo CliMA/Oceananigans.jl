@@ -19,7 +19,8 @@ end
 
 @inline get_temperature_and_salinity(bm::Buoyancy, C) = get_temperature_and_salinity(bm.model, C)
 
-regularize_buoyancy(b::AbstractBuoyancyModel) = Buoyancy(model=b, gravitational_unit_vector=(0, 0, 1))
+regularize_buoyancy(b) = b
+regularize_buoyancy(b::AbstractBuoyancyModel) = Buoyancy(model=b)
 
 @inline ĝ_x(buoyancy) = @inbounds buoyancy.gravitational_unit_vector[1]
 @inline ĝ_y(buoyancy) = @inbounds buoyancy.gravitational_unit_vector[2]
