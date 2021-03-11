@@ -1,25 +1,26 @@
 """
-    VerstappenAnisotropicMinimumDissipation{FT} <: AbstractAnisotropicMinimumDissipation{FT}
+    AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure
 
-Parameters for the anisotropic minimum dissipation large eddy simulation model proposed by
-Verstappen (2018) and described by Vreugdenhil & Taylor (2018).
+Parameters for the "anisotropic minimum dissipation" turbulence closure for large eddy simulation
+proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
+by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
 """
-struct VerstappenAnisotropicMinimumDissipation{FT, PK, PN, K} <: AbstractAnisotropicMinimumDissipation{FT}
+struct AnisotropicMinimumDissipation{FT, PK, PN, K} <: AbstractEddyViscosityClosure
     Cν :: PN
     Cκ :: PK
     Cb :: FT
      ν :: FT
      κ :: K
 
-    function VerstappenAnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ) where FT
+    function AnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ) where FT
         return new{FT, typeof(Cκ), typeof(Cν), typeof(κ)}(Cν, Cκ, Cb, ν, convert_diffusivity(FT, κ))
     end
 end
 
-const VAMD = VerstappenAnisotropicMinimumDissipation
+const AMD = AnisotropicMinimumDissipation
 
-Base.show(io::IO, closure::VAMD{FT}) where FT =
-    print(io, "VerstappenAnisotropicMinimumDissipation{$FT} turbulence closure with:\n",
+Base.show(io::IO, closure::AMD{FT}) where FT =
+    print(io, "AnisotropicMinimumDissipation{$FT} turbulence closure with:\n",
               "           Poincaré constant for momentum eddy viscosity Cν: ", closure.Cν, '\n',
               "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, '\n',
               "                        Buoyancy modification multiplier Cb: ", closure.Cb, '\n',
@@ -27,10 +28,10 @@ Base.show(io::IO, closure::VAMD{FT}) where FT =
               "             Background kinematic viscosity for momentum, ν: ", closure.ν)
 
 """
-    VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
+    AnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
                                             Cb=0.0, ν=ν₀, κ=κ₀)
 
-Returns parameters of type `FT` for the `VerstappenAnisotropicMinimumDissipation`
+Returns parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
 
 Keyword arguments
@@ -58,7 +59,7 @@ Example
 =======
 
 julia> pretty_diffusive_closure = AnisotropicMinimumDissipation(C=1/2)
-VerstappenAnisotropicMinimumDissipation{Float64} turbulence closure with:
+AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.5
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.5
                         Buoyancy modification multiplier Cb: 0.0
@@ -71,7 +72,7 @@ julia> surface_enhanced_tracer_C(x, y, z) = 1/12 * (1 + exp((z + Δz/2) / 8Δz))
 surface_enhanced_tracer_C (generic function with 1 method)
 
 julia> fancy_closure = AnisotropicMinimumDissipation(Cκ=surface_enhanced_tracer_C)
-VerstappenAnisotropicMinimumDissipation{Float64} turbulence closure with:
+AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: surface_enhanced_tracer_C
                         Buoyancy modification multiplier Cb: 0.0
@@ -79,7 +80,7 @@ VerstappenAnisotropicMinimumDissipation{Float64} turbulence closure with:
              Background kinematic viscosity for momentum, ν: 1.05e-6
 
 julia> tracer_specific_closure = AnisotropicMinimumDissipation(Cκ=(c₁=1/12, c₂=1/6))
-VerstappenAnisotropicMinimumDissipation{Float64} turbulence closure with:
+AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: (c₁ = 0.08333333333333333, c₂ = 0.16666666666666666)
                         Buoyancy modification multiplier Cb: 0.0
@@ -95,18 +96,43 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     production of small, unresolved scales in a large-eddy simulation of turbulence?",
     Computers & Fluids 176, pp. 276-284.
 """
-function VerstappenAnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
+function AnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
                                                  Cb=0.0, ν=ν₀, κ=κ₀)
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
 
-    return VerstappenAnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ)
+    return AnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ)
 end
 
-function with_tracers(tracers, closure::VerstappenAnisotropicMinimumDissipation{FT}) where FT
+function with_tracers(tracers, closure::AnisotropicMinimumDissipation{FT}) where FT
     κ = tracer_diffusivities(tracers, closure.κ)
     Cκ = tracer_diffusivities(tracers, closure.Cκ)
-    return VerstappenAnisotropicMinimumDissipation{FT}(closure.Cν, Cκ, closure.Cb, closure.ν, κ)
+    return AnisotropicMinimumDissipation{FT}(closure.Cν, Cκ, closure.Cb, closure.ν, κ)
+end
+
+#####
+##### Diffusive fluxes
+#####
+
+function diffusive_flux_x(i, j, k, grid, clock, closure::AnisotropicMinimumDissipation, c,
+                          ::Val{tracer_index}, diffusivities, args...) where tracer_index
+
+    κₑ = diffusivities.κₑ[tracer_index]
+    return diffusive_flux_x(i, j, k, grid, clock, κₑ, c)
+end
+
+function diffusive_flux_y(i, j, k, grid, clock, closure::AnisotropicMinimumDissipation, c,
+                          ::Val{tracer_index}, diffusivities, args...) where tracer_index
+
+    κₑ = diffusivities.κₑ[tracer_index]
+    return diffusive_flux_y(i, j, k, grid, clock, κₑ, c)
+end
+
+function diffusive_flux_z(i, j, k, grid, clock, closure::AnisotropicMinimumDissipation, c,
+                          ::Val{tracer_index}, diffusivities, args...) where tracer_index
+
+    κₑ = diffusivities.κₑ[tracer_index]
+    return diffusive_flux_z(i, j, k, grid, clock, κₑ, c)
 end
 
 #####
@@ -119,7 +145,7 @@ end
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(Center, i, grid), ynode(Center, j, grid), znode(Center, k, grid))
 
-@inline function νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, buoyancy, U, C) where FT
+@inline function νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::AMD, buoyancy, U, C) where FT
     ijk = (i, j, k, grid)
     q = norm_tr_∇uᶜᶜᶜ(ijk..., U.u, U.v, U.w)
 
@@ -135,7 +161,7 @@ end
     return max(zero(FT), νˢᵍˢ) + closure.ν
 end
 
-@inline function κᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::VAMD, c, ::Val{tracer_index},
+@inline function κᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::AMD, c, ::Val{tracer_index},
                        U) where {FT, tracer_index}
 
     ijk = (i, j, k, grid)
@@ -156,24 +182,7 @@ end
     return max(zero(FT), κˢᵍˢ) + κ
 end
 
-"""
-    ∇_κ_∇c(i, j, k, grid, clock, c, tracer_index, closure, diffusivities)
-
-Return the diffusive flux divergence `∇ ⋅ (κ ∇ c)` for the turbulence
-`closure`, where `c` is an array of scalar data located at cell centers.
-"""
-@inline function ∇_κ_∇c(i, j, k, grid, clock, closure::AbstractAnisotropicMinimumDissipation,
-                        c, ::Val{tracer_index}, diffusivities, args...) where tracer_index
-
-    κₑ = diffusivities.κₑ[tracer_index]
-
-    return (  ∂xᶜᵃᵃ(i, j, k, grid, κ_∂x_c, κₑ, c, closure)
-            + ∂yᵃᶜᵃ(i, j, k, grid, κ_∂y_c, κₑ, c, closure)
-            + ∂zᵃᵃᶜ(i, j, k, grid, κ_∂z_c, κₑ, c, closure)
-           )
-end
-
-function calculate_diffusivities!(K, arch, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
+function calculate_diffusivities!(K, arch, grid, closure::AnisotropicMinimumDissipation, buoyancy, U, C)
     workgroup, worksize = work_layout(grid, :xyz)
 
     barrier = Event(device(arch))
@@ -196,7 +205,7 @@ function calculate_diffusivities!(K, arch, grid, closure::AbstractAnisotropicMin
     return nothing
 end
 
-@kernel function calculate_viscosity!(νₑ, grid, closure::AbstractAnisotropicMinimumDissipation, buoyancy, U, C)
+@kernel function calculate_viscosity!(νₑ, grid, closure::AnisotropicMinimumDissipation, buoyancy, U, C)
     i, j, k = @index(Global, NTuple)
     @inbounds νₑ[i, j, k] = νᶜᶜᶜ(i, j, k, grid, closure, buoyancy, U, C)
 end
@@ -210,7 +219,7 @@ end
 ##### Filter width at various locations
 #####
 
-# Recall that filter widths are 2x the grid spacing in VAMD
+# Recall that filter widths are 2x the grid spacing in AMD
 @inline Δᶠxᶜᶜᶜ(i, j, k, grid) = 2 * Oceananigans.Operators.Δx(i, j, k, grid)
 @inline Δᶠyᶜᶜᶜ(i, j, k, grid) = 2 * Oceananigans.Operators.Δy(i, j, k, grid)
 @inline Δᶠzᶜᶜᶜ(i, j, k, grid) = 2 * Oceananigans.Operators.ΔzC(i, j, k, grid)

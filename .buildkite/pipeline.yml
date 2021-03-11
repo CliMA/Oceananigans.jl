@@ -47,6 +47,9 @@ steps:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.precompile()'"
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+
+      # Set up the mpiexecjl command
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using MPI; MPI.install_mpiexecjl()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -163,7 +166,7 @@ steps:
 ##### HydrostaticFreeSurfaceModel
 #####
 
-  - label: "💧 gpu hydrostatic free surface model tests"
+  - label: "🐡 gpu hydrostatic free surface model tests"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "hydrostatic_free_surface"
@@ -174,7 +177,7 @@ steps:
       architecture: GPU
     depends_on: "init_gpu"
 
-  - label: "💦 cpu hydrostatic free surface model tests"
+  - label: "🐠 cpu hydrostatic free surface model tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "hydrostatic_free_surface"
@@ -190,7 +193,7 @@ steps:
 ##### ShallowWaterModel
 #####
 
-  - label: "💧 gpu shallow water model tests"
+  - label: "🦑 gpu shallow water model tests"
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "shallow_water"
@@ -201,7 +204,7 @@ steps:
       architecture: GPU
     depends_on: "init_gpu"
 
-  - label: "💦 cpu shallow water model tests"
+  - label: "🦐 cpu shallow water model tests"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "shallow_water"
@@ -235,6 +238,23 @@ steps:
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
       - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    agents:
+      queue: Oceananigans
+      architecture: CPU
+    depends_on: "init_cpu"
+
+#####
+##### Distributed/MPI
+#####
+
+  - label: "🐉 cpu distributed tests"
+    env:
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      TEST_GROUP: "distributed"
+      CUDA_VISIBLE_DEVICES: "-1"
+    commands:
+      - "PATH=$PATH:$TARTARUS_HOME/julia-$JULIA_VERSION/bin"  # Need julia binary in $PATH for mpiexecjl to work.
+      - "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER/bin/mpiexecjl -np 4 $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
       architecture: CPU
@@ -317,7 +337,7 @@ steps:
 ##### Clean up
 #####
 
-  - label: "🧻 clean up gpu environment"
+  - label: "🧽 clean up gpu environment"
     command: "rm -rf $SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     agents:
       queue: Oceananigans

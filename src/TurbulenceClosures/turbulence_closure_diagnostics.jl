@@ -93,14 +93,7 @@ function cell_diffusion_timescale(closure::SmagorinskyLilly{FT, P, <:NamedTuple{
     return Δ^2 / max_ν
 end
 
-function cell_diffusion_timescale(closure::BlasiusSmagorinsky{ML, FT, P, <:NamedTuple{()}},
-                                  diffusivities, grid) where {ML, FT, P}
-    Δ = min_Δxyz(grid)
-    max_ν = maximum(diffusivities.νₑ.data.parent)
-    return Δ^2 / max_ν
-end
-
-function cell_diffusion_timescale(closure::AbstractSmagorinsky, diffusivities, grid)
+function cell_diffusion_timescale(closure::SmagorinskyLilly, diffusivities, grid)
     Δ = min_Δxyz(grid)
     min_Pr = minimum(closure.Pr)
     max_κ = maximum(closure.κ)
@@ -108,28 +101,21 @@ function cell_diffusion_timescale(closure::AbstractSmagorinsky, diffusivities, g
     return min(Δ^2 / max_νκ, Δ^2 / max_κ)
 end
 
-function cell_diffusion_timescale(closure::RozemaAnisotropicMinimumDissipation{FT, <:NamedTuple{()}},
-                                  diffusivities, grid) where FT
-    Δ = min_Δxyz(grid)
-    max_ν = maximum(diffusivities.νₑ.data.parent)
-    return Δ^2 / max_ν
-end
-
-function cell_diffusion_timescale(closure::VerstappenAnisotropicMinimumDissipation{FT, PK, PN, <:NamedTuple{()}},
+function cell_diffusion_timescale(closure::AnisotropicMinimumDissipation{FT, PK, PN, <:NamedTuple{()}},
                                   diffusivities, grid) where {FT, PK, PN}
     Δ = min_Δxyz(grid)
     max_ν = maximum(diffusivities.νₑ.data.parent)
     return Δ^2 / max_ν
 end
 
-function cell_diffusion_timescale(closure::AbstractAnisotropicMinimumDissipation, diffusivities, grid)
+function cell_diffusion_timescale(closure::AnisotropicMinimumDissipation, diffusivities, grid)
     Δ = min_Δxyz(grid)
     max_ν = maximum(diffusivities.νₑ.data.parent)
     max_κ = max(Tuple(maximum(κₑ.data.parent) for κₑ in diffusivities.κₑ)...)
     return min(Δ^2 / max_ν, Δ^2 / max_κ)
 end
 
-function cell_diffusion_timescale(closure::AbstractLeith, diffusivities, grid)
+function cell_diffusion_timescale(closure::TwoDimensionalLeith, diffusivities, grid)
     Δ = min_Δxyz(grid)
     max_ν = maximum(diffusivities.νₑ.data.parent)
     return Δ^2 / max_ν

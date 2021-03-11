@@ -89,10 +89,10 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(ten
                                                         free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
                                                         forcings, clock, barrier)
     
-    for tracer_index in 1:length(tracers)
-        @inbounds c_tendency = tendencies[tracer_index+3]
-        @inbounds c_advection = advection[tracer_index+1]
-        @inbounds forcing = forcings[tracer_index+3]
+    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
+        @inbounds c_tendency = tendencies[tracer_name]
+        @inbounds c_advection = advection[tracer_name]
+        @inbounds forcing = forcings[tracer_name]
 
         Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index),
                                         c_advection, closure, buoyancy,

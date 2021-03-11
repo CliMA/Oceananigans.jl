@@ -1,4 +1,4 @@
-using Oceananigans.TurbulenceClosures: VerstappenAnisotropicMinimumDissipation
+using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
 using Oceananigans.TimeSteppers: update_state!
 
 function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)

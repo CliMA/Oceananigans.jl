@@ -119,7 +119,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, tracernames(tracers), nothing)
 
     # Either check grid-correctness, or construct tuples of fields
-    velocities    = HydrostaticFreeSurfaceVelocityFields(velocities, architecture, grid, boundary_conditions)
+    velocities    = HydrostaticFreeSurfaceVelocityFields(velocities, architecture, grid, clock, boundary_conditions)
     tracers       = TracerFields(tracers,      architecture, grid, boundary_conditions)
     pressure      = (pHY′ = CenterField(architecture, grid, TracerBoundaryConditions(grid)),)
     diffusivities = DiffusivityFields(diffusivities, architecture, grid,
@@ -135,7 +135,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     free_surface = FreeSurface(free_surface, velocities, architecture, grid)
 
     # Regularize forcing and closure for model tracer and velocity fields.
-    model_fields = merge((u=velocities.u, v=velocities.v, η=free_surface.η), tracers)
+    model_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
     forcing = model_forcing(model_fields; forcing...)
     closure = with_tracers(tracernames(tracers), closure)
 
@@ -163,5 +163,5 @@ end
 momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 validate_momentum_advection(momentum_advection, grid) = nothing
-validate_momentum_advection(momentum_advection::VectorInvariant, grid::AbstractRectilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
-validate_momentum_advection(momentum_advection::VectorInvariant, grid::AbstractHorizontallyCurvilinearGrid) = nothing
+validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
+validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, grid::AbstractHorizontallyCurvilinearGrid) = nothing

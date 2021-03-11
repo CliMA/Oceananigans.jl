@@ -78,7 +78,7 @@ function CenterField(FT::DataType, arch, grid,
                     bcs = TracerBoundaryConditions(grid),
                    data = new_data(FT, arch, grid, (Center, Center, Center)))
 
-    return Field{Center, Center, Center}(data, grid, bcs)
+    return Field(Center, Center, Center, arch, grid, bcs, data)
 end
 
 """
@@ -93,7 +93,7 @@ function XFaceField(FT::DataType, arch, grid,
                      bcs = UVelocityBoundaryConditions(grid),
                     data = new_data(FT, arch, grid, (Face, Center, Center)))
 
-    return Field{Face, Center, Center}(data, grid, bcs)
+    return Field(Face, Center, Center, arch, grid, bcs, data)
 end
 
 """
@@ -108,7 +108,7 @@ function YFaceField(FT::DataType, arch, grid,
                      bcs = VVelocityBoundaryConditions(grid),
                     data = new_data(FT, arch, grid, (Center, Face, Center)))
 
-    return Field{Center, Face, Center}(data, grid, bcs)
+    return Field(Center, Face, Center, arch, grid, bcs, data)
 end
 
 """
@@ -123,7 +123,7 @@ function ZFaceField(FT::DataType, arch, grid,
                      bcs = WVelocityBoundaryConditions(grid),
                     data = new_data(FT, arch, grid, (Center, Center, Face)))
 
-    return Field{Center, Center, Face}(data, grid, bcs)
+    return Field(Center, Center, Face, arch, grid, bcs, data)
 end
 
 CenterField(arch::AbstractArchitecture, grid, args...) = CenterField(eltype(grid), arch, grid, args...)

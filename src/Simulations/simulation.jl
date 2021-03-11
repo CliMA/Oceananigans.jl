@@ -83,7 +83,7 @@ function Simulation(model; Δt,
 end
 
 Base.show(io::IO, s::Simulation) =
-    print(io, "Simulation{$(typeof(s.model).name){$(typeof(s.model.architecture)), $(eltype(s.model.grid))}}\n",
+    print(io, "Simulation{$(typeof(s.model).name){$(Base.typename(typeof(s.model.architecture))), $(eltype(s.model.grid))}}\n",
             "├── Model clock: time = $(prettytime(s.model.clock.time)), iteration = $(s.model.clock.iteration) \n",
             "├── Next time step ($(typeof(s.Δt))): $(prettytime(get_Δt(s.Δt))) \n",
             "├── Iteration interval: $(s.iteration_interval)\n",
