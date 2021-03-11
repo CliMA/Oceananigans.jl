@@ -54,8 +54,8 @@ explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ImplicitFre
 @kernel function _compute_vertically_integrated_lateral_face_areas!(grid, A )
     i, j = @index(Global, NTuple)
     # U.w[i, j, 1] = 0 is enforced via halo regions.
-    A.Ax[i, j, 1] = 0.
-    A.Ay[i, j, 1] = 0.
+    A.Ax[i, j, 1] = 0
+    A.Ay[i, j, 1] = 0
     @unroll for k in 1:grid.Nz
         @inbounds A.Ax[i, j, 1] += Δyᶠᶜᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
         @inbounds A.Ay[i, j, 1] += Δxᶜᶠᵃ(i, j, k, grid)*Δzᵃᵃᶜ(i, j, k, grid)
