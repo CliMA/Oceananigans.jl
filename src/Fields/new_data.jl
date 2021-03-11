@@ -45,7 +45,7 @@ Returns an `OffsetArray` of zeros of float type `FT`, with
 parent data in CPU memory and indices corresponding to a field on a
 `grid` of `size(grid)` and located at `loc`.
 """
-function new_data(FT, ::CPU, grid, loc)
+function new_data(FT, ::AbstractCPUArchitecture, grid, loc)
     underlying_data = zeros(FT, total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
                                 total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
                                 total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
@@ -60,7 +60,7 @@ Returns an `OffsetArray` of zeros of float type `FT`, with
 parent data in GPU memory and indices corresponding to a field on a `grid`
 of `size(grid)` and located at `loc`.
 """
-function new_data(FT, ::GPU, grid, loc)
+function new_data(FT, ::AbstractGPUArchitecture, grid, loc)
     underlying_data = CuArray{FT}(undef, total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
                                          total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
                                          total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))

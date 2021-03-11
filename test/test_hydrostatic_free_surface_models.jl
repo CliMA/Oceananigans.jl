@@ -1,6 +1,5 @@
 using Oceananigans: CPU, GPU
-using Oceananigans.Models: HydrostaticFreeSurfaceModel
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
 using Oceananigans.Grids: Periodic, Bounded
 
@@ -13,6 +12,7 @@ function time_step_hydrostatic_model_works(arch, grid; coriolis=nothing, momentu
                                         closure = closure)
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+
     run!(simulation)
 
     return model.clock.iteration == 1
@@ -166,6 +166,28 @@ end
         @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
             @info "  Testing time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
             @test time_step_hydrostatic_model_works(arch, rectilinear_grid, closure=closure)
+
+        @testset "Time-stepping HydrostaticFreeSurfaceModels with PrescribedVelocityFields [$arch]" begin
+            @info "  Testing time-stepping HydrostaticFreeSurfaceModels with PrescribedVelocityFields [$arch]..."
+
+            # Non-parameterized functions
+            u(x, y, z, t) = 1
+            v(x, y, z, t) = exp(z)
+            w(x, y, z, t) = sin(z)
+            velocities = PrescribedVelocityFields(u=u, v=v, w=w)
+
+            @test time_step_hydrostatic_model_works(arch, rectilinear_grid, advection = nothing, velocities = velocities)
+            @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, advection = nothing, velocities = velocities)
+                                            
+            parameters = (U=1, m=0.1, W=0.001)
+            u(x, y, z, t, p) = p.U
+            v(x, y, z, t, p) = exp(p.m * z)
+            w(x, y, z, t, p) = p.W * sin(z)
+
+            velocities = PrescribedVelocityFields(u=u, v=v, w=w, parameters=parameters)
+
+            @test time_step_hydrostatic_model_works(arch, rectilinear_grid, advection = nothing, velocities = velocities)
+            @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, advection = nothing, velocities = velocities)
         end
 
         @testset "HydrostaticFreeSurfaceModel with tracers and forcings [$arch]" begin
