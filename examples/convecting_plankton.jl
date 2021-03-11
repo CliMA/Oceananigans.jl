@@ -277,12 +277,12 @@ anim = @animate for (i, iteration) in enumerate(iterations)
 
     flux_plot = plot(times ./ hour, buoyancy_flux_time_series,
                      linewidth = 1,
-                     label = "BuoyancyModels flux time series",
+                     label = "Buoyancy flux time series",
                      color = :black,
                      alpha = 0.4,
                      legend = :topright,
                      xlabel = "Time (hours)",
-                     ylabel = "BuoyancyModels flux (m² s⁻³)",
+                     ylabel = "Buoyancy flux (m² s⁻³)",
                      ylims = (0.0, 1.1 * buoyancy_flux_parameters.initial_buoyancy_flux))
 
     plot!(flux_plot, times[1:i] ./ hour, buoyancy_flux_time_series[1:i],

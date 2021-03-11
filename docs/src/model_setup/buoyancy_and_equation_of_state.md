@@ -1,4 +1,4 @@
-# BuoyancyModels and equation of state
+# Buoyancy models and equations of state
 
 The buoyancy option selects how buoyancy is treated. There are currently three options:
 
@@ -43,7 +43,7 @@ IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 ```
 
-## BuoyancyModels as a tracer
+## Buoyancy as a tracer
 
 To directly evolve buoyancy as a tracer simply pass `buoyancy = BuoyancyTracer()` to the model
 constructor. BuoyancyModels `:b` must be included as a tracer, for example,

@@ -18,11 +18,11 @@ import SeawaterPolynomials: ρ′, thermal_expansion, haline_contraction
 const g_Earth = 9.80665
 
 """
-    AbstractBuoyancy{EOS}
+    AbstractBuoyancyModel{EOS}
 
 Abstract supertype for buoyancy models.
 """
-abstract type AbstractBuoyancy{EOS} end
+abstract type AbstractBuoyancyModel{EOS} end
 
 """
     AbstractEquationOfState
@@ -40,7 +40,7 @@ function validate_buoyancy(buoyancy, tracers)
     return nothing
 end
 
-include("buoyancy_model.jl")
+include("buoyancy.jl")
 include("no_buoyancy.jl")
 include("buoyancy_tracer.jl")
 include("seawater_buoyancy.jl")

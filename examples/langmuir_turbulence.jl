@@ -313,7 +313,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
     B_plot = plot(B_snapshot, zu,
                   label = nothing,
                   legend = :bottom,
-                  xlabel = "BuoyancyModels (m s⁻²)",
+                  xlabel = "Buoyancy (m s⁻²)",
                   ylabel = "z (m)")
 
     U_plot = plot([U_snapshot V_snapshot], zu,

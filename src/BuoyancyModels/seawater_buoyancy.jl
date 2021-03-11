@@ -1,11 +1,11 @@
 """
-    SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancy{EOS}
+    SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancyModel{EOS}
 
 BuoyancyModels model for seawater. `T` and `S` are either `nothing` if both
 temperature and salinity are active, or of type `FT` if temperature
 or salinity are constant, respectively.
 """
-struct SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancy{EOS}
+struct SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancyModel{EOS}
              equation_of_state :: EOS
     gravitational_acceleration :: FT
           constant_temperature :: T

@@ -42,7 +42,7 @@ modification to the eddy viscosity.
 Keyword arguments
 =================
     - `C`  : Model constant
-    - `Cb` : BuoyancyModels term multipler (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
+    - `Cb` : Buoyancy term multipler (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
              Typically `Cb=1/Pr`.)
     - `Pr` : Turbulent Prandtl numbers for each tracer. Either a constant applied to every
              tracer, or a `NamedTuple` with fields for each tracer individually.

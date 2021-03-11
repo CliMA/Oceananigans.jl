@@ -1,9 +1,9 @@
 """
-    BuoyancyTracer <: AbstractBuoyancy{Nothing}
+    BuoyancyTracer <: AbstractBuoyancyModel{Nothing}
 
 Type indicating that the tracer `b` represents buoyancy.
 """
-struct BuoyancyTracer <: AbstractBuoyancy{Nothing} end
+struct BuoyancyTracer <: AbstractBuoyancyModel{Nothing} end
 
 const BuoyancyTracerModel = Buoyancy{<:BuoyancyTracer}
 

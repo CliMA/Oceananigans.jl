@@ -62,7 +62,7 @@ const default_output_attributes = Dict(
     "u" => Dict("longname" => "Velocity in the x-direction", "units" => "m/s"),
     "v" => Dict("longname" => "Velocity in the y-direction", "units" => "m/s"),
     "w" => Dict("longname" => "Velocity in the z-direction", "units" => "m/s"),
-    "b" => Dict("longname" => "BuoyancyModels",                    "units" => "m/s²"),
+    "b" => Dict("longname" => "Buoyancy",                    "units" => "m/s²"),
     "T" => Dict("longname" => "Conservative temperature",    "units" => "°C"),
     "S" => Dict("longname" => "Absolute salinity",           "units" => "g/kg")
 )
@@ -392,8 +392,8 @@ define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, a
 
 
 """ Defines variable for WindowedSpatialAverage outputs """
-function define_output_variable!(dataset, 
-                                 wtsa::Union{WindowedSpatialAverage, WindowedTimeAverage{<:WindowedSpatialAverage}}, 
+function define_output_variable!(dataset,
+                                 wtsa::Union{WindowedSpatialAverage, WindowedTimeAverage{<:WindowedSpatialAverage}},
                                  name, array_type, compression, attributes, dimensions)
     wsa = wtsa isa WindowedTimeAverage ? wtsa.operand : wtsa
     LX, LY, LZ = reduced_location(location(wsa.field), dims=wsa.dims)

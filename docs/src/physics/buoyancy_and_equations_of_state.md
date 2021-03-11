@@ -1,8 +1,8 @@
-# BuoyancyModels model and equations of state
+# Buoyancy model and equations of state
 
 The buoyancy model determines the relationship between tracers and the buoyancy ``b`` in the momentum equation.
 
-## BuoyancyModels tracer
+## Buoyancy tracer
 
 The simplest buoyancy model uses buoyancy ``b`` itself as a tracer: ``b`` obeys the tracer
 conservation equation and is used directly in the momentum equations in the momentum equation.
@@ -22,7 +22,7 @@ Both ``\theta`` and ``S`` obey the tracer conservation equation.
 
 ### Linear equation of state
 
-BuoyancyModels is determined from a linear equation of state via
+Buoyancy is determined from a linear equation of state via
 ```math
     b = g \left ( \alpha_\theta \theta - \beta_S S \right ) \, ,
 ```
@@ -31,4 +31,4 @@ and ``\beta_S`` is the haline contraction coefficient.
 
 ### Nonlinear equation of state
 
-BuoyancyModels is determined by the simplified equations of state introduced by Roquet et al (2015).
+Buoyancy is determined by the simplified equations of state introduced by Roquet et al (2015).
