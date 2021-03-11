@@ -177,8 +177,8 @@ end
             w(x, y, z, t) = sin(z)
             velocities = PrescribedVelocityFields(u=u, v=v, w=w)
 
-            @test time_step_hydrostatic_model_works(arch, rectilinear_grid, advection = nothing, velocities = velocities)
-            @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, advection = nothing, velocities = velocities)
+            @test time_step_hydrostatic_model_works(arch, rectilinear_grid, momentum_advection  = nothing, velocities = velocities)
+            @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, momentum_advection = nothing, velocities = velocities)
                                             
             parameters = (U=1, m=0.1, W=0.001)
             u(x, y, z, t, p) = p.U
@@ -187,8 +187,8 @@ end
 
             velocities = PrescribedVelocityFields(u=u, v=v, w=w, parameters=parameters)
 
-            @test time_step_hydrostatic_model_works(arch, rectilinear_grid, advection = nothing, velocities = velocities)
-            @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, advection = nothing, velocities = velocities)
+            @test time_step_hydrostatic_model_works(arch, rectilinear_grid, momentum_advection  = nothing, velocities = velocities)
+            @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, momentum_advection = nothing, velocities = velocities)
         end
 
         @testset "HydrostaticFreeSurfaceModel with tracers and forcings [$arch]" begin
