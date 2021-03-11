@@ -121,5 +121,3 @@ function show(io::IO, g::ConformalCubedSphereFaceGrid{FT}) where FT
               "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
               "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
 end
-
-# @inline Δxᶜᶜᶜ(i, j, k, grid::ConformalCubedSphereFaceField) = @inbounds grid.radius * cosd(grid.ϕᶜᶜᶜ[i, j]) * deg2rad(grid.λᶠᶜᶜ[i+1, j] - grid.λᶠᶜᶜ[i, j])

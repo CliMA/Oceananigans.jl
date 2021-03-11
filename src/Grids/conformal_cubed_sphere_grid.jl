@@ -1,4 +1,5 @@
-include("conformal_cubed_sphere_face_grid.jl")
+# FIXME? What is the cubed sphere topology?
+# Not sure we can define a {TX, TY, TZ} topology for it?
 
 struct ConformalCubedSphereGrid{FT, F, C}
                 faces :: F
@@ -37,13 +38,17 @@ function ConformalCubedSphereGrid(FT=Float64; face_size, z, radius=R_Earth)
 
     # Construct face connectivity:
     #
-    # +---+
-    # | 1 |
-    # +---+---+---+---+
-    # | 2 | 3 | 4 | 5 |
-    # +---+---+---+---+
-    # | 6 |
-    # +---+
+    # TODO: Use this connectivity as the default
+    # See figure 8.2 of https://mitgcm.readthedocs.io/en/latest/phys_pkgs/exch2.html?highlight=cube%20sphere#generating-topology-files-for-exch2
+    #
+    #         +---+---+
+    #         | 5 | 6 |
+    #     +---+---+---+
+    #     | 3 | 4 |
+    # +---+---+---+
+    # | 1 | 2 |
+    # +---+---+
+    #
 
     face_connectivity = (
         (right=4, left=2, above=5, below=3),

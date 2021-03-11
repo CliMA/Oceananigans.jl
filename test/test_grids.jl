@@ -473,6 +473,38 @@ function test_basic_lat_lon_periodic_domain(FT)
 end
 
 #####
+##### Conformal cubed sphere face grid
+#####
+
+function test_cubed_sphere_face_array_size(FT)
+    grid = ConformalCubedSphereFaceGrid(FT, size=(10, 10, 1), z=(0, 1))
+
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+
+    @test grid.λᶜᶜᶜ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶠᶜᶜ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶜᶠᶜ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶠᶠᶜ isa OffsetArray{FT, 2, <:Array}
+    @test grid.ϕᶜᶜᶜ isa OffsetArray{FT, 2, <:Array}
+    @test grid.ϕᶠᶜᶜ isa OffsetArray{FT, 2, <:Array}
+    @test grid.ϕᶜᶠᶜ isa OffsetArray{FT, 2, <:Array}
+    @test grid.ϕᶠᶠᶜ isa OffsetArray{FT, 2, <:Array}
+
+    @test size(grid.λᶜᶜᶜ) == (Nx + 2Hx,     Ny + 2Hy    )
+    @test size(grid.λᶠᶜᶜ) == (Nx + 2Hx + 1, Ny + 2Hy    )
+    @test size(grid.λᶜᶠᶜ) == (Nx + 2Hx,     Ny + 2Hy + 1)
+    @test size(grid.λᶠᶠᶜ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
+
+    @test size(grid.ϕᶜᶜᶜ) == (Nx + 2Hx,     Ny + 2Hy    )
+    @test size(grid.ϕᶠᶜᶜ) == (Nx + 2Hx + 1, Ny + 2Hy    )
+    @test size(grid.ϕᶜᶠᶜ) == (Nx + 2Hx,     Ny + 2Hy + 1)
+    @test size(grid.ϕᶠᶠᶜ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
+
+    return nothing
+end
+
+#####
 ##### Test the tests
 #####
 
@@ -575,5 +607,27 @@ end
         grid = RegularLatitudeLongitudeGrid(size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
         show(grid); println();
         @test grid isa RegularLatitudeLongitudeGrid
+    end
+
+    @testset "Conformal cubed sphere face grid" begin
+        @info "  Testing conformal cubed sphere face grid..."
+
+        for FT in float_types
+            test_cubed_sphere_face_array_size(Float64)
+        end
+
+        # Testing show function
+        grid = ConformalCubedSphereFaceGrid(size=(10, 10, 1), z=(0, 1))
+        show(grid); println();
+        @test grid isa ConformalCubedSphereFaceGrid
+    end
+
+    @testset "Conformal cubed sphere grid" begin
+        @info "  Testing conformal cubed sphere grid..."
+
+        # Test show function
+       grid = ConformalCubedSphereGrid(face_size=(10, 10, 1), z=(-1, 0))
+       show(grid); println();
+       @test grid isa ConformalCubedSphereGrid
     end
 end
