@@ -20,10 +20,9 @@ using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInter
 using Statistics
 using JLD2
 using Printf
-using GLMakie
 
-Nx = 60
-Ny = 60
+Nx = 6 * 60
+Ny = 6 * 60
 
 # A spherical domain
 grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
@@ -47,8 +46,8 @@ surface_wind_stress_bc = BoundaryCondition(Flux,
 
 μ = 1 / 60days
 
-u_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, 1]
-v_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, 1]
+@inline u_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, 1]
+@inline v_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, 1]
 
 u_bottom_drag_bc = BoundaryCondition(Flux,
                                      u_bottom_drag,
@@ -69,14 +68,13 @@ v_bcs = VVelocityBoundaryConditions(grid,
                                         
 @show const νh₀ = 5e3 * (60 / grid.Nx)^2
 
-#variable_horizontal_diffusivity =
-#    HorizontallyCurvilinearAnisotropicDiffusivity(νh = (λ, φ, z, t) -> νh₀ * cosd(φ))
+@inline νh(λ, φ, z, t) = νh₀ * cos(π * φ / 180)
 
-variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh = νh₀)
+variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    architecture = CPU(),
-                                    momentum_advection = nothing, #VectorInvariant(),
+                                    architecture = GPU(),
+                                    momentum_advection = VectorInvariant(),
                                     free_surface = free_surface,
                                     coriolis = coriolis,
                                     boundary_conditions = (u=u_bcs, v=v_bcs),
@@ -113,6 +111,9 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       force = true)
 
 run!(simulation)
+
+#=
+using GLMakie
 
 filepath = simulation.output_writers[:fields].filepath
 
@@ -174,3 +175,4 @@ record(fig, output_prefix * ".mp4", iterations, framerate=30) do i
     @info "Animating iteration $i/$(iterations[end])..."
     iter[] = i
 end
+=#
