@@ -74,6 +74,10 @@ Azᶜᶠᵃ = contents(cs32_bin, 14, N)
 Δλᶜᶠᵃ = contents(cs32_bin, 15, N)
 Δφᶠᶜᵃ = contents(cs32_bin, 16, N)
 
+#####
+##### Quick and dirty plots of all the variables
+#####
+
 using PyPlot
 
 function quick_and_dirty_plot(var, var_name)
@@ -87,25 +91,17 @@ end
 
 quick_and_dirty_plot(λᶜᶜᵃ, "λᶜᶜᵃ")
 quick_and_dirty_plot(φᶜᶜᵃ, "φᶜᶜᵃ")
-
 quick_and_dirty_plot(Δλᶜᶜᵃ, "Δλᶜᶜᵃ")
 quick_and_dirty_plot(Δφᶜᶜᵃ, "Δφᶜᶜᵃ")
-
 quick_and_dirty_plot(Azᶜᶜᵃ, "Azᶜᶜᵃ")
-
 quick_and_dirty_plot(λᶠᶠᵃ, "λᶠᶠᵃ")
 quick_and_dirty_plot(φᶠᶠᵃ, "φᶠᶠᵃ")
-
 quick_and_dirty_plot(Δλᶠᶠᵃ, "Δλᶠᶠᵃ")
 quick_and_dirty_plot(Δφᶠᶠᵃ, "Δφᶠᶠᵃ")
-
 quick_and_dirty_plot(Azᶠᶠᵃ, "Azᶠᶠᵃ")
-
 quick_and_dirty_plot(Δλᶠᶜᵃ, "Δλᶠᶜᵃ")
 quick_and_dirty_plot(Δφᶜᶠᵃ, "Δφᶜᶠᵃ")
-
 quick_and_dirty_plot(Azᶠᶜᵃ, "Azᶠᶜᵃ")
 quick_and_dirty_plot(Azᶜᶠᵃ, "Azᶜᶠᵃ")
-
 quick_and_dirty_plot(Δλᶜᶠᵃ, "Δλᶜᶠᵃ")
 quick_and_dirty_plot(Δφᶠᶜᵃ, "Δφᶠᶜᵃ")
