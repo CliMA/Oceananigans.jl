@@ -38,8 +38,9 @@ const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
            # "internal_wave.jl",
-            "geostrophic_adjustment.jl"
-           ]
+           # "geostrophic_adjustment.jl"
+            "Bickley_jet_shallow_water.jl"
+            ]
 
 for example in examples
     example_filepath = joinpath(EXAMPLES_DIR, example)
@@ -52,8 +53,9 @@ end
 
 example_pages = [
                  #"Internal wave"                    => "generated/internal_wave.md",
-                 "Geostrophic adjustment"            => "generated/geostrophic_adjustment.md"
-                ]
+                 #"Geostrophic adjustment"            => "generated/geostrophic_adjustment.md",
+                 "Bickley jet shallow water model"    => "generated/Bickley_jet_shallow_water.md"
+                 ]
 
 pages = [
          "Home" => "index.md",

@@ -1,6 +1,6 @@
 # # Shallow Water Example: an unstable Bickley jet 
 #
-# This example shows how to use `Oceananigans.ShallowWwaterModel` to simulate
+# This example shows how to use `Oceananigans.ShallowWaterModel` to simulate
 # the evolution of an unstable, geostrophically balanced, Bickley jet.
 # The model solves the governing equations for the shallow water model in
 # conservation form.  The geometry is that of a periodic channel
@@ -23,22 +23,9 @@
 # pkg"add Oceananigans, NCDatasets, Plots, Printf, LinearAlgebra, Polynomials"
 # ```
 #
-# FJP: 1] Change the title in sidebar to be something else.
-#
-# FJP: 2] Need to reduce these lines here as this is way too much!
 
-using Oceananigans.Architectures: CPU, architecture
+using Oceananigans
 using Oceananigans.Models: ShallowWaterModel
-using Oceananigans.Grids
-using Oceananigans.Grids: Periodic, Bounded, RegularRectilinearGrid
-using Oceananigans.Grids: xnodes, ynodes, interior
-using Oceananigans.Simulations: Simulation, set!, run!
-using Oceananigans.Coriolis: FPlane
-using Oceananigans.Advection: WENO5
-using Oceananigans.OutputWriters: NetCDFOutputWriter, TimeInterval, IterationInterval
-using Oceananigans.Fields, Oceananigans.AbstractOperations
-
-import Oceananigans.Utils: cell_advection_timescale, prettytime
 
 # ## Two-dimensional domain 
 #
@@ -53,7 +40,7 @@ import Oceananigans.Utils: cell_advection_timescale, prettytime
 Lx = 2π/0.95
 Ly = 20
 Lz = 1
-Nx = 128
+Nx = 32 #128
 Ny = Nx
 
 grid = RegularRectilinearGrid(size = (Nx, Ny, 1),
@@ -63,7 +50,7 @@ grid = RegularRectilinearGrid(size = (Nx, Ny, 1),
 # ## Physical parameters
 #
 # This is a toy problem and we choose the parameters so this jet idealizes
-# a relatively narrow mesosale jet.   
+# a relatively narrow mesoscale jet.   
 # The physical parameters are
 #
 # FJP: 3] Should we change the parameters to be on planetary scales?
@@ -102,9 +89,9 @@ model = ShallowWaterModel(
 # decays away from the center of the jet.
 
   Ω(x, y, z) = 2 * U * sech(y - Ly/2)^2 * tanh(y - Ly/2);
- uⁱ(x, y, z) =   U * sech(y - Ly/2)^2 .+ ϵ * exp(- (y - Ly/2)^2 ) * randn();
+ uⁱ(x, y, z) =   U * sech(y - Ly/2)^2 + ϵ * exp(- (y - Ly/2)^2 ) * randn();
  ηⁱ(x, y, z) = -Δη * tanh(y - Ly/2);
- hⁱ(x, y, z) = model.grid.Lz .+ ηⁱ(x, y, z);
+ hⁱ(x, y, z) = model.grid.Lz + ηⁱ(x, y, z);
 uhⁱ(x, y, z) = uⁱ(x, y, z) * hⁱ(x, y, z);
 
 # We set the initial conditions for the zonal mass transport `uhⁱ` and height `hⁱ`.
@@ -137,7 +124,7 @@ end
 # We pick the time-step that ensures to resolve the surface gravity waves.
 # A time-step wizard can be applied to use an adaptive time step.
 
-simulation = Simulation(model, Δt = 1e-2, stop_time = 150.0)
+simulation = Simulation(model, Δt = 1e-2, stop_time = 5.0)
 
 # ## Prepare output files
 #
@@ -166,7 +153,6 @@ simulation.output_writers[:fields] =
 # Build the `output_writer` for the growth rate, which is a scalar field.
 # Output every time step.
 #
-# FJP 4] Is there a better way to produce a diagnostics file like this?
 
 simulation.output_writers[:growth] =
     NetCDFOutputWriter(
@@ -246,13 +232,15 @@ close(ds2)
 
 using Polynomials
 
-I = 6000:7000
+I = 60:70
+#I = 6000:7000
 best_fit = fit((t[I]), log.(σ[I]), 1)
 poly = 2 .* exp.(best_fit[0] .+ best_fit[1]*t[I])
 
 plt = plot(t[1000:end], log.(σ[1000:end]), lw=4, label="sigma", 
         xlabel="time", ylabel="log(v)", title="growth rate", legend=:bottomright)
 plot!(plt, t[I], log.(poly), lw=4, label="best fit")
+#display(plt)
 savefig(plt, "growth_rates.png")
 
 print("Best slope = ", best_fit[1])
