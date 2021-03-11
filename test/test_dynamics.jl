@@ -267,7 +267,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     b₀(x, y, z) = N² * (x*g̃[1] + y*g̃[2] + z*g̃[3])
     set!(model, b=b₀)
 
-    simulation = Simulation(model, Δt=10minute, stop_time=1hour)
+    simulation = Simulation(model, Δt=1minute, stop_time=10hour)
     run!(simulation)
 
     ∂y_b = ComputedField(∂y(model.tracers.b))
@@ -279,8 +279,11 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     mean_∂y_b = mean(∂y_b)
     mean_∂z_b = mean(∂z_b)
 
-    @info "N² * g̃[2] = $(N² * g̃[2]), mean(∂y_b) = $(mean_∂y_b), Δ = $(N² * g̃[2] - mean_∂y_b) at t = $(prettytime(model.clock.time))"
-    @info "N² * g̃[3] = $(N² * g̃[3]), mean(∂z_b) = $(mean_∂z_b), Δ = $(N² * g̃[3] - mean_∂z_b) at t = $(prettytime(model.clock.time))"
+    Δ_y = N² * g̃[2] - mean_∂y_b
+    Δ_z = N² * g̃[3] - mean_∂z_b
+
+    @info "N² * g̃[2] = $(N² * g̃[2]), mean(∂y_b) = $(mean_∂y_b), Δ = $Δ_y at t = $(prettytime(model.clock.time)) with θ=$θ"
+    @info "N² * g̃[3] = $(N² * g̃[3]), mean(∂z_b) = $(mean_∂z_b), Δ = $Δ_z at t = $(prettytime(model.clock.time)) with θ=$θ"
 
     @test N² * g̃[2] ≈ mean(∂y_b)
     @test N² * g̃[3] ≈ mean(∂z_b)
@@ -332,8 +335,11 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     mean_∂y_T = mean(∂y_T)
     mean_∂z_T = mean(∂z_T)
 
-    @info "∂T∂z * g̃[2] = $(∂T∂z * g̃[2]), mean(∂y_T) = $(mean_∂y_T), Δ = $(∂T∂z * g̃[2] - mean_∂y_T) at t = $(prettytime(model.clock.time))"
-    @info "∂T∂z * g̃[3] = $(∂T∂z * g̃[3]), mean(∂z_T) = $(mean_∂z_T), Δ = $(∂T∂z * g̃[3] - mean_∂z_T) at t = $(prettytime(model.clock.time))"
+    Δ_y = ∂T∂z * g̃[2] - mean_∂y_T
+    Δ_z = ∂T∂z * g̃[3] - mean_∂z_T
+
+    @info "∂T∂z * g̃[2] = $(∂T∂z * g̃[2]), mean(∂y_T) = $(mean_∂y_T), Δ = $Δ_y at t = $(prettytime(model.clock.time)) with θ=$θ"
+    @info "∂T∂z * g̃[3] = $(∂T∂z * g̃[3]), mean(∂z_T) = $(mean_∂z_T), Δ = $Δ_z at t = $(prettytime(model.clock.time)) with θ=$θ"
 
     @test ∂T∂z * g̃[2] ≈ mean(∂y_T)
     @test ∂T∂z * g̃[3] ≈ mean(∂z_T)

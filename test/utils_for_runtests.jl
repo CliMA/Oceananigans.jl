@@ -108,7 +108,7 @@ discrete_func(i, j, grid, clock, model_fields) = - model_fields.u[i, j, grid.Nz]
 parameterized_discrete_func(i, j, grid, clock, model_fields, p) = - p.μ * model_fields.u[i, j, grid.Nz]
 
 parameterized_fun(ξ, η, t, p) = p.μ * cos(p.ω * t)
-field_dependent_fun(ξ, η, t, u, v, w) = - w * sqrt(u^2 + v^2) 
+field_dependent_fun(ξ, η, t, u, v, w) = - w * sqrt(u^2 + v^2)
 exploding_fun(ξ, η, t, T, S, p) = - p.μ * cosh(S - p.S0) * exp((T - p.T0) / p.λ)
 
 # Many bc. Very many
