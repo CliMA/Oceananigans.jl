@@ -3,12 +3,17 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, Prescri
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
 using Oceananigans.Grids: Periodic, Bounded
 
-function time_step_hydrostatic_model_works(arch, grid; coriolis=nothing, momentum_advection=nothing, closure=nothing)
+function time_step_hydrostatic_model_works(arch, grid;
+                                           coriolis = nothing,
+                                           momentum_advection = nothing,
+                                           closure = nothing,
+                                           velocities = nothing)
 
     model = HydrostaticFreeSurfaceModel(grid = grid,
                                         architecture = arch,
                                         momentum_advection = momentum_advection,
                                         coriolis = coriolis,
+                                        velocities = velocities,
                                         closure = closure)
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
