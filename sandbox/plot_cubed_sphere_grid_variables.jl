@@ -23,7 +23,9 @@
 #  14  : rAs <-> Area (in m^2) at V pt ( zA^cfa )
 #  15  : dxG <-> dx (in m) at V pt (cfa)
 #  16  : dyG <-> dy (in m) at U pt (fca)
-
+#  17  : cosine of the local angle between the grid orientation (e.g., U(1) velocity) and West-East direction at grid-cell center
+#  18  : sine of the local angle between the grid orientation (e.g., U(1) velocity) and West-East direction at grid-cell center
+#
 # For all cca fields (1 to 5), the last row and last column (i.e., (33,:) & (:,33) are
 # not used and are just zero.
 # And for fields 11,13,16 : last column (:,33) is just zero.
