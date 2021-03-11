@@ -482,24 +482,24 @@ function test_cubed_sphere_face_array_size(FT)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
-    @test grid.λᶜᶜᶜ isa OffsetArray{FT, 2, <:Array}
-    @test grid.λᶠᶜᶜ isa OffsetArray{FT, 2, <:Array}
-    @test grid.λᶜᶠᶜ isa OffsetArray{FT, 2, <:Array}
-    @test grid.λᶠᶠᶜ isa OffsetArray{FT, 2, <:Array}
-    @test grid.ϕᶜᶜᶜ isa OffsetArray{FT, 2, <:Array}
-    @test grid.ϕᶠᶜᶜ isa OffsetArray{FT, 2, <:Array}
-    @test grid.ϕᶜᶠᶜ isa OffsetArray{FT, 2, <:Array}
-    @test grid.ϕᶠᶠᶜ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶜᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶠᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶜᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶠᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶜᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶠᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶜᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶠᶠᵃ isa OffsetArray{FT, 2, <:Array}
 
-    @test size(grid.λᶜᶜᶜ) == (Nx + 2Hx,     Ny + 2Hy    )
-    @test size(grid.λᶠᶜᶜ) == (Nx + 2Hx + 1, Ny + 2Hy    )
-    @test size(grid.λᶜᶠᶜ) == (Nx + 2Hx,     Ny + 2Hy + 1)
-    @test size(grid.λᶠᶠᶜ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
+    @test size(grid.λᶜᶜᵃ) == (Nx + 2Hx,     Ny + 2Hy    )
+    @test size(grid.λᶠᶜᵃ) == (Nx + 2Hx + 1, Ny + 2Hy    )
+    @test size(grid.λᶜᶠᵃ) == (Nx + 2Hx,     Ny + 2Hy + 1)
+    @test size(grid.λᶠᶠᵃ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
 
-    @test size(grid.ϕᶜᶜᶜ) == (Nx + 2Hx,     Ny + 2Hy    )
-    @test size(grid.ϕᶠᶜᶜ) == (Nx + 2Hx + 1, Ny + 2Hy    )
-    @test size(grid.ϕᶜᶠᶜ) == (Nx + 2Hx,     Ny + 2Hy + 1)
-    @test size(grid.ϕᶠᶠᶜ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
+    @test size(grid.φᶜᶜᵃ) == (Nx + 2Hx,     Ny + 2Hy    )
+    @test size(grid.φᶠᶜᵃ) == (Nx + 2Hx + 1, Ny + 2Hy    )
+    @test size(grid.φᶜᶠᵃ) == (Nx + 2Hx,     Ny + 2Hy + 1)
+    @test size(grid.φᶠᶠᵃ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
 
     return nothing
 end

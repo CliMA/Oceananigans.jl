@@ -1,7 +1,6 @@
 using DataDeps
 using JLD2
 using Oceananigans
-using Oceananigans.Grids
 
 ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
