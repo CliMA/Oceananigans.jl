@@ -241,7 +241,109 @@ function taylor_green_vortex_test(arch, timestepper; FT=Float64, N=64, Nt=10)
           @sprintf("Δu: (avg=%6.3g, max=%6.3g), Δv: (avg=%6.3g, max=%6.3g)",
                    u_rel_err_avg, u_rel_err_max, v_rel_err_avg, v_rel_err_max)
 
-    u_rel_err_max < 5e-6 && v_rel_err_max < 5e-6
+    return u_rel_err_max < 5e-6 && v_rel_err_max < 5e-6
+end
+
+function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(arch, FT; N=32, L=2000, θ=60, N²=1e-5)
+    topo = (Periodic, Bounded, Bounded)
+    grid = RegularRectilinearGrid(FT, topology=topo, size=(1, N, N), extent=(L, L, L))
+
+    g̃ = (0, sind(θ), cosd(θ))
+    buoyancy = Buoyancy(model=BuoyancyTracer(), gravitational_unit_vector=g̃)
+
+    y_bc = GradientBoundaryCondition(N² * g̃[2])
+    z_bc = GradientBoundaryCondition(N² * g̃[3])
+    b_bcs = TracerBoundaryConditions(grid, bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
+
+    model = IncompressibleModel(
+               architecture = arch,
+                       grid = grid,
+                   buoyancy = buoyancy,
+                    tracers = :b,
+                    closure = nothing,
+        boundary_conditions = (b=b_bcs,)
+    )
+
+    b₀(x, y, z) = N² * (x*g̃[1] + y*g̃[2] + z*g̃[3])
+    set!(model, b=b₀)
+
+    simulation = Simulation(model, Δt=10minute, stop_time=1hour)
+    run!(simulation)
+
+    ∂y_b = ComputedField(∂y(model.tracers.b))
+    ∂z_b = ComputedField(∂z(model.tracers.b))
+
+    compute!(∂y_b)
+    compute!(∂z_b)
+
+    mean_∂y_b = mean(∂y_b)
+    mean_∂z_b = mean(∂z_b)
+
+    @info "N² * g̃[2] = $(N² * g̃[2]), mean(∂y_b) = $(mean_∂y_b), Δ = $(N² * g̃[2] - mean_∂y_b) at t = $(prettytime(model.clock.time))"
+    @info "N² * g̃[3] = $(N² * g̃[3]), mean(∂z_b) = $(mean_∂z_b), Δ = $(N² * g̃[3] - mean_∂z_b) at t = $(prettytime(model.clock.time))"
+
+    @test N² * g̃[2] ≈ mean(∂y_b)
+    @test N² * g̃[3] ≈ mean(∂z_b)
+
+    CUDA.@allowscalar begin
+        @test all(N² * g̃[2] .≈ interior(∂y_b))
+        @test all(N² * g̃[3] .≈ interior(∂z_b))
+    end
+
+    return nothing
+end
+
+function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer(arch, FT; N=32, L=2000, θ=60, N²=1e-5)
+    topo = (Periodic, Bounded, Bounded)
+    grid = RegularRectilinearGrid(FT, topology=topo, size=(1, N, N), extent=(L, L, L))
+
+    g̃ = (0, sind(θ), cosd(θ))
+    buoyancy = Buoyancy(model=SeawaterBuoyancy(), gravitational_unit_vector=g̃)
+
+    α  = buoyancy.model.equation_of_state.α
+    g₀ = buoyancy.model.gravitational_acceleration
+    ∂T∂z = N² / (g₀ * α)
+
+    y_bc = GradientBoundaryCondition(∂T∂z * g̃[2])
+    z_bc = GradientBoundaryCondition(∂T∂z * g̃[3])
+    T_bcs = TracerBoundaryConditions(grid, bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
+
+    model = IncompressibleModel(
+               architecture = arch,
+                       grid = grid,
+                   buoyancy = buoyancy,
+                    tracers = (:T, :S),
+                    closure = nothing,
+        boundary_conditions = (T=T_bcs,)
+    )
+
+    T₀(x, y, z) = ∂T∂z * (x*g̃[1] + y*g̃[2] + z*g̃[3])
+    set!(model, T=T₀)
+
+    simulation = Simulation(model, Δt=10minute, stop_time=1hour)
+    run!(simulation)
+
+    ∂y_T = ComputedField(∂y(model.tracers.T))
+    ∂z_T = ComputedField(∂z(model.tracers.T))
+
+    compute!(∂y_T)
+    compute!(∂z_T)
+
+    mean_∂y_T = mean(∂y_T)
+    mean_∂z_T = mean(∂z_T)
+
+    @info "∂T∂z * g̃[2] = $(∂T∂z * g̃[2]), mean(∂y_T) = $(mean_∂y_T), Δ = $(∂T∂z * g̃[2] - mean_∂y_T) at t = $(prettytime(model.clock.time))"
+    @info "∂T∂z * g̃[3] = $(∂T∂z * g̃[3]), mean(∂z_T) = $(mean_∂z_T), Δ = $(∂T∂z * g̃[3] - mean_∂z_T) at t = $(prettytime(model.clock.time))"
+
+    @test ∂T∂z * g̃[2] ≈ mean(∂y_T)
+    @test ∂T∂z * g̃[3] ≈ mean(∂z_T)
+
+    CUDA.@allowscalar begin
+        @test all(∂T∂z * g̃[2] .≈ interior(∂y_T))
+        @test all(∂T∂z * g̃[3] .≈ interior(∂z_T))
+    end
+
+    return nothing
 end
 
 timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
@@ -348,11 +450,21 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
     end
 
-    @testset "Tests with background fields" begin
+    @testset "Background fields" begin
         for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
             @info "  Testing dynamics with background fields [$timestepper]..."
             @test_skip passive_tracer_advection_test(timestepper, background_velocity_field=true)
             @test internal_wave_test(timestepper, background_stratification=true)
+        end
+    end
+
+    @testset "Tilted gravity" begin
+        for arch in archs
+            @info "  Testing tilted gravity [$(typeof(arch))]..."
+            for θ in (0, 1, -30, 60, 90, -180)
+                stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(arch, Float64, θ=θ)
+                stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer(arch, Float64, θ=θ)
+            end
         end
     end
 end
