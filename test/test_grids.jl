@@ -1,4 +1,8 @@
+using DataDeps
+
 using Oceananigans.Grids: total_extent, halo_size
+
+ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
 #####
 ##### Regular rectilinear grids
@@ -620,5 +624,24 @@ end
         grid = ConformalCubedSphereFaceGrid(size=(10, 10, 1), z=(0, 1))
         show(grid); println();
         @test grid isa ConformalCubedSphereFaceGrid
+    end
+
+    @testset "Conformal cubed sphere face grid from file" begin
+        @info "  Testing conformal cubed sphere face grid construction from file..."
+
+        dd = DataDep("cubed_sphere_32_grid",
+            "Conformal cubed sphere grid with 32×32 grid points on each face",
+            "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
+            "3cc5d86290c3af028cddfa47e61e095ee470fe6f8d779c845de09da2f1abeb15" # sha256sum
+        )
+
+        DataDeps.register(dd)
+
+        cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
+
+        for face in 1:6
+            grid = ConformalCubedSphereFaceGrid(cs32_filepath, face=face, Nz=1, z=(-1, 0))
+            @test grid isa ConformalCubedSphereFaceGrid
+        end
     end
 end
