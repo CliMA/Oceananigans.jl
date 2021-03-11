@@ -34,7 +34,7 @@ const ARF = AbstractReducedField
 @inline Base.setindex!(r::ARF{Nothing, Nothing, Nothing}, d, i, j, k) = @inbounds r.data[1, 1, 1] = d
 
 fill_halo_regions!(field::AbstractReducedField, args...) =
-    fill_halo_regions!(field.data, field.boundary_conditions, architecture(field.data), field.grid, args...; reduced_dimensions=field.dims)
+    fill_halo_regions!(field.data, field.boundary_conditions, field.grid, args...; reduced_dimensions=field.dims)
 
 const DimsType = NTuple{N, Int} where N
 
