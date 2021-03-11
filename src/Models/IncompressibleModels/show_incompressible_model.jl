@@ -8,7 +8,7 @@ function Base.show(io::IO, model::IncompressibleModel{TS, C, A}) where {TS, C, A
         "├── grid: $(short_show(model.grid))\n",
         "├── tracers: $(tracernames(model.tracers))\n",
         "├── closure: $(typeof(model.closure))\n",
-        "├── buoyancy: $(typeof(model.buoyancy))\n")
+        "├── buoyancy: $(typeof(model.buoyancy.model))\n")
 
     if isnothing(model.particles)
         print(io, "└── coriolis: $(typeof(model.coriolis))")
