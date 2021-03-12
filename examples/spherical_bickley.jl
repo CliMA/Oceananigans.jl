@@ -16,9 +16,10 @@
 using Oceananigans
 using Oceananigans.Grids: RegularLatitudeLongitudeGrid
 using Oceananigans.Utils: prettytime
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface 
 
 
-grid = RegularLatitudeLongitudeGrid(size = (180*2, 80*2, 1), longitude = (-180, 180), latitude = (-80, 80), z = (-1, 0))
+grid = RegularLatitudeLongitudeGrid(size = (90*2, 40*2, 1), longitude = (-180, 180), latitude = (-80, 80), z = (-1, 0), radius = 1.2)
 #  λ for latitude and ϕ for latitude is
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, HydrostaticSphericalCoriolis
 
@@ -37,13 +38,15 @@ using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusi
 # VectorInvariantEnergyConserving()
 # HydrostaticSphericalCoriolis(Float64, scheme=VectorInvariantEnergyConserving())
 # momentum_advection = VectorInvariant()
-νh = κh = 1e4
+νh = κh = 1e-6
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     momentum_advection = VectorInvariant(),
                                     buoyancy = nothing,
                                     tracers = :c,
                                     coriolis = coriolis,
-                                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(κh=κh, νh =  νh))
+                                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(κh=κh, νh =  νh),
+                                    free_surface = ExplicitFreeSurface(gravitational_acceleration=1e-4),
+)
 
 # ## The Bickley jet on a sphere
 # θ ∈ [-π/2, π/2]
@@ -53,7 +56,9 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
 
 m = 2
 θᵖ = π/2 * 0.05
-ϵ = 0.05 * 6 
+ϵ = 0.3
+vˢ = 5e-4
+g = model.free_surface.gravitational_acceleration 
   
 # u =   - r⁻¹∂ψ/∂θ
 # v =  ( r cos(θ) )⁻¹ ∂ψ/∂ϕ
@@ -64,7 +69,7 @@ m = 2
 # here: θ ∈ [-π/2, π/2] is latitude, ϕ ∈ [0, 2π) is longitude
 uᵐ(θ, ϕ) =  ℓᵐ * sech(ℓᵐ * θ)^2 
 vᵐ(θ, ϕ) =  0.0
-hᵐ(θ, ϕ) =  0.0 
+hᵐ(θ, ϕ) =  1.0 
 
 u1(θ, ϕ) =  ℓ * 2 * (θ - θᵖ)* exp(-ℓ * (θ - θᵖ)^2) * cos(θ) * cos(2 * (θ - θᵖ)) * sin(m * ϕ)
 u2(θ, ϕ) =  exp(-ℓ * (θ - θᵖ)^2) * sin(θ) * cos(2 * (θ - θᵖ)) * sin(m * ϕ)
@@ -73,10 +78,10 @@ uᵖ(θ, ϕ) =  u1(θ, ϕ) + u2(θ, ϕ) + u3(θ, ϕ)
 vᵖ(θ, ϕ) =  m * exp(-ℓ * (θ - θᵖ)^2) * cos(2 * (θ - θᵖ)) * cos(m * ϕ)
 hᵖ(θ, ϕ) =  0.0 
 
-u(θ, ϕ) = uᵐ(θ, ϕ) + ϵ * uᵖ(θ, ϕ)
-v(θ, ϕ) = vᵐ(θ, ϕ) + ϵ * vᵖ(θ, ϕ)
+u(θ, ϕ) = vˢ * (uᵐ(θ, ϕ) + ϵ * uᵖ(θ, ϕ))
+v(θ, ϕ) = vˢ * (vᵐ(θ, ϕ) + ϵ * vᵖ(θ, ϕ))
 h(θ, ϕ) = hᵐ(θ, ϕ) + ϵ * hᵖ(θ, ϕ)
-tracer(θ, ϕ) = sin(2*θ)
+tracer(θ, ϕ) = tanh(ℓᵐ * θ)
 
 
 
@@ -95,19 +100,18 @@ set!(model, u=uᵢ, v=vᵢ, η = ηᵢ, c = tracerᵢ)
 
 # Create Simulation
 
-gravity_wave_speed = sqrt(10 * grid.Lz) # hydrostatic (shallow water) gravity wave speed
-h₀ = 8e3
-wave_propagation_time_scale =  h₀ * model.grid.Δλ / gravity_wave_speed
+gravity_wave_speed = sqrt(model.free_surface.gravitational_acceleration * grid.Lz) # hydrostatic (shallow water) gravity wave speed
+
 # 20wave_propagation_time_scale,
-Δt =  0.25wave_propagation_time_scale
-simulation = Simulation(model, Δt = Δt, stop_time = 6000wave_propagation_time_scale, progress = s -> @info "Time = $(prettytime(s.model.clock.time)) / $(prettytime(s.stop_time))")
+Δt = grid.Lz * model.grid.Δλ / gravity_wave_speed * 0.001
+simulation = Simulation(model, Δt = Δt, stop_time = 4*6000Δt, progress = s -> @info "Time = $(prettytime(s.model.clock.time)) / $(prettytime(s.stop_time))")
 
 output_fields = merge(model.velocities, (η=model.free_surface.η,), model.tracers)
 
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(10.0wave_propagation_time_scale),
+                                                      schedule = TimeInterval(100Δt),
                                                       prefix = "rh",
                                                       force = true)
 
@@ -150,7 +154,7 @@ z = z[:, :, 1]
 
 fig = Figure(resolution = (3156, 1074))
 
-clims = [(-10,10), (-10,10), (-1.0,1.0), (-1.0, 1.0)]
+clims = [(-2e-3, 2e-3), (-2e-3, 2e-3), (0.94,1.01), (-1.0, 1.0)]
 
 statenames = ["u", "v", "η", "c"]
 for (n, var) in enumerate([up, vp, ηp, cp])
