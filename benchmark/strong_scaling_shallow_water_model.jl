@@ -4,8 +4,8 @@ using Benchmarks
 
 # Benchmark parameters
 
-Nx = 256
-Ny = 256
+Nx = 4096
+Ny = 4096
 
 ranks = (1, 2, 4, 8, 16)
 
@@ -21,8 +21,10 @@ end
 
 suite = BenchmarkGroup(["size", "ranks"])
 for r in ranks
-    jldopen("strong_scaling_shallow_water_model_$r.jld2", "r") do file
-        suite[((Nx, Ny), r)] = file["trial"]
+    for local_rank in collect(0:(r-1))
+        file_name = string("strong_scaling_shallow_water_model_",r,"_",local_rank,".jld2")
+        jldopen(file_name, "r") do file suite[((Nx, Ny), r)] = file["trial"]
+        end
     end
 end
 
@@ -36,3 +38,4 @@ suite_Δ = speedups_suite(suite, base_case=((Nx, Ny), 1))
 df_Δ = speedups_dataframe(suite_Δ)
 sort!(df_Δ, :ranks)
 benchmarks_pretty_table(df_Δ, title="Shallow water model strong scaling speedup")
+
