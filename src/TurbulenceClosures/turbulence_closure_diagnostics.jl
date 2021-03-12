@@ -115,7 +115,7 @@ function cell_diffusion_timescale(closure::AnisotropicMinimumDissipation, diffus
     return min(Δ^2 / max_ν, Δ^2 / max_κ)
 end
 
-function cell_diffusion_timescale(closure::AbstractLeith, diffusivities, grid)
+function cell_diffusion_timescale(closure::TwoDimensionalLeith, diffusivities, grid)
     Δ = min_Δxyz(grid)
     max_ν = maximum(diffusivities.νₑ.data.parent)
     return Δ^2 / max_ν

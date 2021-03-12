@@ -1,20 +1,20 @@
 using Oceananigans: CPU, GPU
-using Oceananigans.Models: HydrostaticFreeSurfaceModel
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields
+using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
 using Oceananigans.Grids: Periodic, Bounded
 
-function time_stepping_hydrostatic_free_surface_model_works(; architecture,
-                                                              topology = (Periodic, Periodic, Bounded),
-                                                              coriolis = nothing,
-                                                              advection = VectorInvariant(),
-                                                              velocities = nothing)
-
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(2π, 2π, 2π), topology=topology)
+function time_step_hydrostatic_model_works(arch, grid;
+                                           coriolis = nothing,
+                                           momentum_advection = nothing,
+                                           closure = nothing,
+                                           velocities = nothing)
 
     model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        architecture = architecture,
+                                        architecture = arch,
+                                        momentum_advection = momentum_advection,
                                         coriolis = coriolis,
-                                        velocities = velocities)
+                                        velocities = velocities,
+                                        closure = closure)
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
 
@@ -22,6 +22,7 @@ function time_stepping_hydrostatic_free_surface_model_works(; architecture,
 
     return model.clock.iteration == 1
 end
+
 
 function hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(2π, 2π, 2π))
@@ -108,24 +109,68 @@ end
 
     for arch in archs
         for topo in topos
-            @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $topo]" begin
-                @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $topo]..."
-                @test time_stepping_hydrostatic_free_surface_model_works(architecture=arch, topology=topo)
+            grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=topo)
+
+            @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $topo]" begin
+                @info "  Testing time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $topo]..."
+                @test time_step_hydrostatic_model_works(arch, grid)
+            end
+        end
+
+        rectilinear_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), halo=(3, 3, 3))
+        lat_lon_sector_grid = RegularLatitudeLongitudeGrid(size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=(-1, 0))
+        lat_lon_strip_grid = RegularLatitudeLongitudeGrid(size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0))
+
+        for grid in (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid)
+            topo = topology(grid)
+            @testset "Time-stepping HydrostaticFreeSurfaceModels with different grids [$arch, $(typeof(grid).name.wrapper), $topo]" begin
+                @info "  Testing time-stepping HydrostaticFreeSurfaceModels with different grids [$arch, $(typeof(grid).name.wrapper), $topo]..."
+                @test time_step_hydrostatic_model_works(arch, grid)
             end
         end
 
         for coriolis in (nothing, FPlane(f=1), BetaPlane(f₀=1, β=0.1))
             @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(coriolis))]" begin
                 @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(coriolis))]..."
-                @test time_stepping_hydrostatic_free_surface_model_works(architecture=arch, coriolis=coriolis)
+                @test time_step_hydrostatic_model_works(arch, rectilinear_grid, coriolis=coriolis)
             end
         end
 
-        for advection in (nothing, VectorInvariant(), CenteredSecondOrder(), WENO5())
-            @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(advection))]" begin
-                @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(advection))]..."
-                @test time_stepping_hydrostatic_free_surface_model_works(architecture=arch, advection=advection)
+        for coriolis in (nothing,
+                         HydrostaticSphericalCoriolis(scheme=VectorInvariantEnergyConserving()),
+                         HydrostaticSphericalCoriolis(scheme=VectorInvariantEnstrophyConserving()))
+
+            @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(coriolis))]" begin
+                @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, coriolis=coriolis)
+                @test time_step_hydrostatic_model_works(arch, lat_lon_strip_grid, coriolis=coriolis)
             end
+        end
+
+        for momentum_advection in (VectorInvariant(), CenteredSecondOrder(), WENO5())
+            @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]" begin
+                @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]..."
+                @test time_step_hydrostatic_model_works(arch, rectilinear_grid, momentum_advection=momentum_advection)
+            end
+        end
+
+        momentum_advection = VectorInvariant()
+        @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]" begin
+            @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]..."
+            @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, momentum_advection=momentum_advection)
+        end
+
+        for closure in (IsotropicDiffusivity(), HorizontallyCurvilinearAnisotropicDiffusivity())
+            @testset "Time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
+                @info "  Testing time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
+                @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, closure=closure)
+                @test time_step_hydrostatic_model_works(arch, lat_lon_strip_grid, closure=closure)
+            end
+        end
+
+        closure = IsotropicDiffusivity()
+        @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
+            @info "  Testing time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
+            @test time_step_hydrostatic_model_works(arch, rectilinear_grid, closure=closure)
         end
 
         @testset "Time-stepping HydrostaticFreeSurfaceModels with PrescribedVelocityFields [$arch]" begin
@@ -137,9 +182,9 @@ end
             w(x, y, z, t) = sin(z)
             velocities = PrescribedVelocityFields(u=u, v=v, w=w)
 
-            @test time_stepping_hydrostatic_free_surface_model_works(architecture = arch,
-                                                                     advection = nothing,
-                                                                     velocities = velocities)
+            @test time_step_hydrostatic_model_works(arch, rectilinear_grid, momentum_advection  = nothing, velocities = velocities)
+            @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, momentum_advection = nothing, velocities = velocities)
+                                            
             parameters = (U=1, m=0.1, W=0.001)
             u(x, y, z, t, p) = p.U
             v(x, y, z, t, p) = exp(p.m * z)
@@ -147,9 +192,8 @@ end
 
             velocities = PrescribedVelocityFields(u=u, v=v, w=w, parameters=parameters)
 
-            @test time_stepping_hydrostatic_free_surface_model_works(architecture = arch,
-                                                                     advection = nothing,
-                                                                     velocities = velocities)
+            @test time_step_hydrostatic_model_works(arch, rectilinear_grid, momentum_advection  = nothing, velocities = velocities)
+            @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, momentum_advection = nothing, velocities = velocities)
         end
 
         @testset "HydrostaticFreeSurfaceModel with tracers and forcings [$arch]" begin
