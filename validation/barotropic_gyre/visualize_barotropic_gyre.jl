@@ -1,32 +1,12 @@
 # # Barotropic gyre
 
-using Oceananigans
 using Oceananigans.Grids
-
-using Oceananigans.Coriolis:
-    HydrostaticSphericalCoriolis,
-    VectorInvariantEnergyConserving,
-    VectorInvariantEnstrophyConserving
-
-using Oceananigans.Models.HydrostaticFreeSurfaceModels:
-    HydrostaticFreeSurfaceModel,
-    VectorInvariant,
-    ExplicitFreeSurface
-
-using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
 using Oceananigans.Utils: prettytime, hours, day, days, years
-using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
 using Statistics
 using JLD2
 using Printf
 using GLMakie
-
-Nx = 360
-Ny = 360
-
-output_prefix = "barotropic_gyre_Nx$(Nx)_Ny$(Ny)"
-filepath = output_prefix * ".jld2"
 
 function geographic2cartesian(λ, φ, r=1)
     Nλ = length(λ)
@@ -45,54 +25,68 @@ function geographic2cartesian(λ, φ, r=1)
     return x, y, z
 end
 
-file = jldopen(filepath)
+function visualize_barotropic_gyre(filepath)
 
-Nx = file["grid/Nx"]
-Ny = file["grid/Ny"]
+    file = jldopen(filepath)
 
-# A spherical domain
-grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                    longitude = (-30, 30),
-                                    latitude = (15, 75),
-                                    z = (-4000, 0))
+    Nx = file["grid/Nx"]
+    Ny = file["grid/Ny"]
 
-iterations = parse.(Int, keys(file["timeseries/t"]))
+    # A spherical domain
+    grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                                        longitude = (-30, 30),
+                                        latitude = (15, 75),
+                                        z = (-4000, 0))
 
-λu = xnodes(Face, grid)
-φu = ynodes(Center, grid)
+    iterations = parse.(Int, keys(file["timeseries/t"]))
 
-λc = xnodes(Center, grid)
-φc = ynodes(Center, grid)
+    xu, yu, zu = geographic2cartesian(xnodes(Face,   grid), ynodes(Center, grid))
+    xv, yv, zv = geographic2cartesian(xnodes(Center, grid), ynodes(Face,   grid))
+    xc, yc, zc = geographic2cartesian(xnodes(Center, grid), ynodes(Center, grid))
 
-xu, yu, zu = geographic2cartesian(λu, φu)
-xc, yc, zc = geographic2cartesian(λc, φc)
+    iter = Node(0)
 
-iter = Node(0)
+    plot_title = @lift @sprintf("Barotropic gyre: time = %s", prettytime(file["timeseries/t/" * string($iter)]))
 
-plot_title = @lift @sprintf("Barotropic gyre: time = %s", prettytime(file["timeseries/t/" * string($iter)]))
+    u = @lift file["timeseries/u/" * string($iter)][:, :, 1]
+    v = @lift file["timeseries/v/" * string($iter)][:, :, 1]
+    η = @lift file["timeseries/η/" * string($iter)][:, :, 1]
 
-u = @lift file["timeseries/u/" * string($iter)][:, :, 1]
-η = @lift file["timeseries/η/" * string($iter)][:, :, 1]
+    fig = Figure(resolution = (2160, 1080))
 
-fig = Figure(resolution = (2160, 1540))
+    x = (xu, xv, xc)
+    y = (yu, yv, yc)
+    z = (zu, zv, zc)
 
-ax = fig[1, 1] = LScene(fig)
-wireframe!(ax, Sphere(Point3f0(0), 0.99f0), show_axis=false)
-surface!(ax, xu, yu, zu, color=u, colormap=:balance)
-rotate_cam!(ax.scene, (3π/4, -π/8, 0))
-zoom!(ax.scene, (0, 0, 0), 2, true)
+    statenames = ["u", "v", "η"]
+    for (n, var) in enumerate([u, v, η])
+        ax = fig[3:7, 3n-2:3n] = LScene(fig) # make plot area wider
+        wireframe!(ax, Sphere(Point3f0(0), 0.99f0), show_axis=false)
+        surface!(ax, x[n], y[n], z[n], color=var, colormap=:balance) #, colorrange=clims[n])
+        rotate_cam!(ax.scene, (3π/4, -π/8, 0))
+        zoom!(ax.scene, (0, 0, 0), 5, false)
+        fig[2, 2 + 3*(n-1)] = Label(fig, statenames[n], textsize = 50) # put names in center
+    end
 
-ax = fig[1, 2] = LScene(fig)
-wireframe!(ax, Sphere(Point3f0(0), 0.99f0), show_axis=false)
-surface!(ax, xc, yc, zc, color=η, colormap=:balance)
-rotate_cam!(ax.scene, (3π/4, -π/8, 0))
-zoom!(ax.scene, (0, 0, 0), 2, true)
+    supertitle = fig[0, :] = Label(fig, plot_title, textsize=50)
 
-supertitle = fig[0, :] = Label(fig, plot_title, textsize=50)
+    record(fig, output_prefix * ".mp4", iterations, framerate=30) do i
+        @info "Animating iteration $i/$(iterations[end])..."
+        iter[] = i
+    end
 
-record(fig, output_prefix * ".mp4", iterations, framerate=30) do i
-    @info "Animating iteration $i/$(iterations[end])..."
-    iter[] = i
+    close(file)
+
+    return nothing
 end
 
-close(file)
+#Nx = 720
+#Ny = 720
+
+Nx = 60
+Ny = 60
+
+output_prefix = "barotropic_gyre_Nx$(Nx)_Ny$(Ny)"
+filepath = output_prefix * ".jld2"
+
+visualize_barotropic_gyre(filepath)

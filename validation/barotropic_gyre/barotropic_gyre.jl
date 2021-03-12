@@ -21,15 +21,15 @@ using Statistics
 using JLD2
 using Printf
 
-function geostrophic2cartesian(λ, φ, radius=1)
+function geographic2cartesian(λ, φ, radius=1)
     Nx = length(λ)
     Ny = length(φ)
 
     λ = repeat(reshape(λ, Nx, 1), 1, Ny) 
     φ = repeat(reshape(φ, 1, Ny), Nx, 1)
 
-    λ_azimuthal = λu .+ 180  # Convert to λ ∈ [0°, 360°]
-    φ_azimuthal = 90 .- φu   # Convert to φ ∈ [0°, 180°] (0° at north pole)
+    λ_azimuthal = λ .+ 180  # Convert to λ ∈ [0°, 360°]
+    φ_azimuthal = 90 .- φ   # Convert to φ ∈ [0°, 180°] (0° at north pole)
 
     x = @. radius * cosd(λ_azimuthal) * sind(φ_azimuthal)
     y = @. radius * sind(λ_azimuthal) * sind(φ_azimuthal)
@@ -37,6 +37,8 @@ function geostrophic2cartesian(λ, φ, radius=1)
 
     return x, y, z
 end
+
+#=
 
 Nx = 1 * 60
 Ny = 1 * 60
@@ -141,6 +143,7 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       force = true)
 
 run!(simulation)
+=#
 
 #####
 ##### Animation!
@@ -148,47 +151,6 @@ run!(simulation)
 
 using GLMakie
 
-filepath = simulation.output_writers[:fields].filepath
+include("visualize_barotropic_gyre.jl")
 
-file = jldopen(filepath)
-
-iterations = parse.(Int, keys(file["timeseries/t"]))
-
-xu, yu, zu = geographic2cartesian(xnodes(Face,   grid), ynodes(Center, grid))
-xv, yv, zv = geographic2cartesian(xnodes(Center, grid), ynodes(Face,   grid))
-xc, yc, zc = geographic2cartesian(xnodes(Center, grid), ynodes(Center, grid))
-
-iter = Node(0)
-
-plot_title = @lift @sprintf("Barotropic gyre: time = %s", prettytime(file["timeseries/t/" * string($iter)]))
-
-u = @lift file["timeseries/u/" * string($iter)][:, :, 1]
-v = @lift file["timeseries/v/" * string($iter)][:, :, 1]
-η = @lift file["timeseries/η/" * string($iter)][:, :, 1]
-
-fig = Figure(resolution = (2160, 1540))
-
-ax = fig[1, 1] = LScene(fig)
-wireframe!(ax, Sphere(Point3f0(0), 0.99f0), show_axis=false)
-surface!(ax, xu, yu, zu, color=u, colormap=:balance)
-rotate_cam!(ax.scene, (3π/4, -π/8, 0))
-zoom!(ax.scene, (0, 0, 0), 2, true)
-
-ax = fig[1, 2] = LScene(fig)
-wireframe!(ax, Sphere(Point3f0(0), 0.99f0), show_axis=false)
-surface!(ax, xv, yv, zv, color=v, colormap=:balance)
-rotate_cam!(ax.scene, (3π/4, -π/8, 0))
-zoom!(ax.scene, (0, 0, 0), 2, true)
-
-ax = fig[1, 3] = LScene(fig)
-wireframe!(ax, Sphere(Point3f0(0), 0.99f0), show_axis=false)
-surface!(ax, xc, yc, zc, color=η, colormap=:balance)
-rotate_cam!(ax.scene, (3π/4, -π/8, 0))
-zoom!(ax.scene, (0, 0, 0), 2, true)
-
-supertitle = fig[0, :] = Label(fig, plot_title, textsize=50)
-
-record(fig, output_prefix * ".mp4", iterations, framerate=30) do i
-    @info "Animating iteration $i/$(iterations[end])..."
-    iter[] = i
-end
+visualize_barotropic_gyre(simulation.output_writers[:fields])
