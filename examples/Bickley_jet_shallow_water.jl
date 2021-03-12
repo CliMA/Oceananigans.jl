@@ -103,30 +103,19 @@ uh, vh, h = model.solution
   ω_field = ComputedField( ∂x(vh/h) - ∂y(uh/h) )
    ω_pert = ComputedField( ω_field - Ω )
 
-# Progress will output the clock times and the norm of the cross channel velocity,
-# as this is used to compute the growth rates.  We obtain the `norm` function from `LinearAlgebra`.
-
-using LinearAlgebra, Printf
-
-function progress(sim)
-    compute!(v)
-    @printf("Iteration: %d, time: %s, norm v: %f\n",
-    sim.model.clock.iteration,
-    prettytime(sim.model.clock.time),
-    norm(interior(v)) )
-end
-nothing # hide
-
 # ## Running a `Simulation`
 #
 # We pick the time-step that ensures to resolve the surface gravity waves.
 # A time-step wizard can be applied to use an adaptive time step.
 
-simulation = Simulation(model, Δt = 1e-2, stop_time = 150.00, progress=progress)
+simulation = Simulation(model, Δt = 1e-2, stop_time = 150.00)
 
 # ## Prepare output files
 #
-# Define a function to compute the growth rate based on the cross channel velocity
+# Define a function to compute the norm of the perturbation on the cross channel velocity.
+# We obtain the `norm` function from `LinearAlgebra`.
+
+using LinearAlgebra, Printf
 
 function perturbation_norm(model)
     compute!(v)
