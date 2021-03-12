@@ -145,7 +145,7 @@ simulation.output_writers[:fields] =
     NetCDFOutputWriter(
         model,
         (ω = ω_field, ωp = ω_pert),
-        filepath="Bickley_jet_shallow_water.nc",
+        filepath=joinpath(@__DIR__, "Bickley_jet_shallow_water.nc"),
         schedule=TimeInterval(1.0),
         mode = "c")
 
@@ -157,7 +157,7 @@ simulation.output_writers[:growth] =
     NetCDFOutputWriter(
         model,
         (perturbation_norm = perturbation_norm,),
-        filepath="perturbation_norm_shallow_water.nc",
+        filepath=joinpath(@__DIR__, "perturbation_norm_shallow_water.nc"),
         schedule=IterationInterval(1),
         dimensions=(perturbation_norm=(),),
         mode = "c")
