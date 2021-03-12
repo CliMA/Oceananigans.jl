@@ -6,8 +6,7 @@ using Oceananigans.Grids: halo_size
 #####
 
 function DistributedShallowWaterModel(; architecture, grid, boundary_conditions=nothing, model_kwargs...)
-    my_rank = architecture.my_rank
-    i, j, k = architecture.my_index
+    i, j, k = architecture.local_index
     Rx, Ry, Rz = architecture.ranks
     my_connectivity = architecture.connectivity
 
@@ -36,30 +35,12 @@ function DistributedShallowWaterModel(; architecture, grid, boundary_conditions=
     # FIXME: local grid might have different topology!
     my_grid = RegularRectilinearGrid(topology=topology(grid), size=(nx, ny, Nz), x=(x₁, x₂), y=(y₁, y₂), z=(zL, zR), halo=halo_size(grid))
 
-    ## Change appropriate boundary conditions to halo communication BCs
-
-    # FIXME: Stop assuming (uh, vh, h).
-
-    bcs = isnothing(boundary_conditions) ? NamedTuple() : boundary_conditions
-
-    bcs = (
-        uh = haskey(bcs, :uh) ? bcs.uh : UVelocityBoundaryConditions(my_grid),
-        vh = haskey(bcs, :vh) ? bcs.vh : VVelocityBoundaryConditions(my_grid),
-         h = haskey(bcs, :h)  ? bcs.h  : TracerBoundaryConditions(my_grid)
-    )
-
-    communicative_bcs = (
-        uh = inject_halo_communication_boundary_conditions(bcs.uh, my_rank, my_connectivity),
-        vh = inject_halo_communication_boundary_conditions(bcs.vh, my_rank, my_connectivity),
-         h = inject_halo_communication_boundary_conditions(bcs.h,  my_rank, my_connectivity)
-    )
-
     ## Construct local model
 
     my_model = ShallowWaterModel(;
                architecture = architecture,
                        grid = my_grid,
-        boundary_conditions = communicative_bcs,
+    #    boundary_conditions = communicative_bcs,
                        model_kwargs...
     )
 
