@@ -52,7 +52,7 @@ explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface::ImplicitFre
 explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ImplicitFreeSurface) = 0
 
 @kernel function _compute_vertically_integrated_lateral_face_areas!(grid, A )
-    i, j = @index(Global, NTuple)
+    i, j, k = @index(Global, NTuple)
     # U.w[i, j, 1] = 0 is enforced via halo regions.
     A.Ax[i, j, 1] = 0
     A.Ay[i, j, 1] = 0
@@ -66,7 +66,7 @@ function compute_vertically_integrated_lateral_face_areas!(vertically_integrated
 
     event = launch!(arch,
                     grid,
-                    :xy,
+                    :xyz,
                     _compute_vertically_integrated_lateral_face_areas!,
                     grid,
                     vertically_integrated_lateral_face_areas,
