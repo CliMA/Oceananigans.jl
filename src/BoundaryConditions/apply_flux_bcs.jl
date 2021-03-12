@@ -35,6 +35,10 @@ apply_z_bcs!(Gc, c, arch, dep, args...) = launch!(arch, c.grid, :xy, _apply_z_bc
                                                   c.boundary_conditions.z.left, c.boundary_conditions.z.right, args...,
                                                   dependencies=dep)
 
+apply_x_bcs!(::Nothing, args...) = nothing
+apply_y_bcs!(::Nothing, args...) = nothing
+apply_z_bcs!(::Nothing, args...) = nothing
+
 """
     _apply_x_bcs!(Gc, grid, west_bc, east_bc, args...)
 
