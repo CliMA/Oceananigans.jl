@@ -14,6 +14,8 @@ import Oceananigans: fields
 include("compute_w_from_continuity.jl")
 include("explicit_free_surface.jl")
 include("implicit_free_surface.jl")
+include("implicit_free_surface_solver.jl")
+include("implicit_free_surface_solver_kernels.jl")
 include("rigid_lid.jl")
 include("hydrostatic_free_surface_velocity_fields.jl")
 include("hydrostatic_free_surface_tendency_fields.jl")

@@ -94,6 +94,10 @@ struct ReducedField{X, Y, Z, A, G, N, B} <: AbstractReducedField{X, Y, Z, A, G, 
 
         return new{X, Y, Z, A, G, N, B}(data, grid, dims, bcs)
     end
+    function ReducedField{X, Y, Z}(data::A, dims) where {X, Y, Z, A}
+        N = length(dims)
+        return new{X, Y, Z, A, Nothing, N, Nothing}(data, nothing, dims, nothing)
+    end
 end
 
 """
@@ -137,4 +141,4 @@ ReducedField(loc::Tuple, args...; kwargs...) = ReducedField(loc..., args...; kwa
 reduced_location(loc; dims) = Tuple(i ∈ dims ? Nothing : loc[i] for i in 1:3)
 
 Adapt.adapt_structure(to, reduced_field::ReducedField{X, Y, Z}) where {X, Y, Z} =
-    ReducedField{X, Y, Z}(adapt(to, reduced_field.data), nothing, nothing, nothing)
+    ReducedField{X, Y, Z}(adapt(to, reduced_field.data), adapt(to, reduced_field.grid), reduced_field.dims, nothing)
