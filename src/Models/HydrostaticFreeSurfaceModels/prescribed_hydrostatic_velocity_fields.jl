@@ -62,6 +62,8 @@ HorizontalVelocityFields(::PrescribedVelocityFields, arch, grid) = nothing, noth
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, free_surface, tracers) = tracers
 calculate_hydrostatic_momentum_tendencies!(tendencies, ::PrescribedVelocityFields, args...) = []
 
+apply_flux_bcs!(::Nothing, c, arch, events, barrier, clock, model_fields) = nothing
+
 Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),
                              Adapt.adapt(to, velocities.v),

@@ -147,6 +147,16 @@ end
 ##### Boundary condributions to hydrostatic free surface model
 #####
 
+function apply_flux_bcs!(Gcⁿ, events, c, arch, barrier, clock, model_fields)
+    x_bcs_event = apply_x_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
+    y_bcs_event = apply_y_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
+    z_bcs_event = apply_z_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
+
+    push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
+
+    return nothing
+end
+
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
 function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velocities, free_surface, tracers, clock, model_fields)
 
@@ -156,27 +166,15 @@ function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velo
 
     # Velocity fields
     for i in (:u, :v)
-        x_bcs_event = apply_x_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
-        y_bcs_event = apply_y_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
-        z_bcs_event = apply_z_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
-
-        push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
+        apply_flux_bcs!(Gⁿ[i], events, velocities[i], arch, barrier, clock, model_fields)
     end
 
     # Free surface
-    x_bcs_event = apply_x_bcs!(Gⁿ.η, free_surface.η, arch, barrier, clock, model_fields)
-    y_bcs_event = apply_y_bcs!(Gⁿ.η, free_surface.η, arch, barrier, clock, model_fields)
-    z_bcs_event = apply_z_bcs!(Gⁿ.η, free_surface.η, arch, barrier, clock, model_fields)
-
-    push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
+    apply_flux_bcs!(Gⁿ.η, events, displacement(free_surface), arch, events, barrier, clock, model_fields)
 
     # Tracer fields
     for i in propertynames(tracers)
-        x_bcs_event = apply_x_bcs!(Gⁿ[i], tracers[i], arch, barrier, clock, model_fields)
-        y_bcs_event = apply_y_bcs!(Gⁿ[i], tracers[i], arch, barrier, clock, model_fields)
-        z_bcs_event = apply_z_bcs!(Gⁿ[i], tracers[i], arch, barrier, clock, model_fields)
-
-        push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
+        apply_flux_bcs!(Gⁿ[i], events, tracers[i], arch, barrier, clock, model_fields)
     end
 
     events = filter(e -> typeof(e) <: Event, events)
