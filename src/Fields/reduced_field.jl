@@ -94,6 +94,10 @@ struct ReducedField{X, Y, Z, A, G, N, B} <: AbstractReducedField{X, Y, Z, A, G, 
 
         return new{X, Y, Z, A, G, N, B}(data, grid, dims, bcs)
     end
+    function ReducedField{X, Y, Z}(data::A, dims) where {X, Y, Z, A}
+        N = length(dims)
+        return new{X, Y, Z, A, Nothing, N, Nothing}(data, nothing, dims, nothing)
+    end
 end
 
 """
