@@ -13,7 +13,7 @@ function compute_vertically_integrated_volume_flux!(free_surface, model)
 
     event = launch!(model.architecture,
                     model.grid,
-                    :xy,
+                    :xyz,
                     _compute_vertically_integrated_volume_flux!,
                     model.velocities,
                     model.grid,
@@ -23,7 +23,7 @@ function compute_vertically_integrated_volume_flux!(free_surface, model)
     return event
 end
 @kernel function _compute_vertically_integrated_volume_flux!(U, grid, barotropic_volume_flux )
-    i, j = @index(Global, NTuple)
+    i, j, k = @index(Global, NTuple)
     # U.w[i, j, 1] = 0 is enforced via halo regions.
     barotropic_volume_flux.u[i, j, 1] = 0.
     barotropic_volume_flux.v[i, j, 1] = 0.
