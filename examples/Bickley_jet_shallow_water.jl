@@ -167,8 +167,12 @@ run!(simulation)
 # ## Visualize the results
 #
 
-using NCDatasets, Plots
+using NCDatasets
 nothing # hide
+
+# This sets the environment to avoid an error in GKSwstype
+
+ENV["GKSwstype"] = "100"
 
 # Define the coordinates for plotting
 

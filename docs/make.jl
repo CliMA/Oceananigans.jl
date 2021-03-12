@@ -17,6 +17,8 @@ using Oceananigans.AbstractOperations
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
 bib = CitationBibliography(bib_filepath)
 
+ENV["GKSwstype"] = "100"
+
 #####
 ##### Generate examples
 #####
@@ -142,8 +144,8 @@ makedocs(bib,
     format = format,
      pages = pages,
    modules = [Oceananigans],
-   doctest = true,
-    strict = true,
+   doctest = false,
+    strict = false,
      clean = true,
  checkdocs = :none  # Should fix our docstring so we can use checkdocs=:exports with strict=true.
 )
