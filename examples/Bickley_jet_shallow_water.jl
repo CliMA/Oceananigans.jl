@@ -195,6 +195,8 @@ nothing # hide
 # and then create an animation showing both the total and perturbation
 # vorticities.
 
+using Plots
+
 ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
 iterations = keys(ds["time"])
