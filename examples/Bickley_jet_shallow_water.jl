@@ -34,10 +34,9 @@ using Oceananigans.Models: ShallowWaterModel
 # We pick the length of the domain to fit one unstable mode along the channel
 # exactly.  Note that ``Lz`` is the mean depth of the fluid.  It is determined
 # using linear stability theory that the zonal wavenumber that yields the most unstable
-# mode is ``k=0.95``. See [Linear-Stability-Calculators](https://github.com/francispoulin/Linear-Stability-Calculators/tree/main/ShallowWater/Julia/Cartesian)
-# for details on how that is computed.
+# mode that fits in this zonal channel has a growth rate of ``\sigma \approx 0.14``.
 
-Lx = 2π/0.95
+Lx = 2π
 Ly = 20
 Lz = 1
 Nx = 128
@@ -82,8 +81,8 @@ model = ShallowWaterModel(
 # ## Background state and perturbation
 # 
 # We specify `Ω` to be the background vorticity of the jet in the absence of any perturbations.
-# The initial conditions have a small perturbation that is random in space and 
-# decays away from the center of the jet.
+# The initial conditions include a small-ampitude perturbation that decays away from the center
+# of the jet.
 
   Ω(x, y, z) = 2 * U * sech(y - Ly/2)^2 * tanh(y - Ly/2)
  uⁱ(x, y, z) =   U * sech(y - Ly/2)^2 + ϵ * exp(- (y - Ly/2)^2 ) * randn()
@@ -123,13 +122,13 @@ nothing # hide
 # We pick the time-step that ensures to resolve the surface gravity waves.
 # A time-step wizard can be applied to use an adaptive time step.
 
-simulation = Simulation(model, Δt = 1e-2, stop_time = 15.00, progress=progress)
+simulation = Simulation(model, Δt = 1e-2, stop_time = 150.00, progress=progress)
 
 # ## Prepare output files
 #
 # Define a function to compute the growth rate based on the cross channel velocity
 
-function growth_rate(model)
+function perturbation_norm(model)
     compute!(v)
     return norm(interior(v))
 end
@@ -146,7 +145,7 @@ simulation.output_writers[:fields] =
     NetCDFOutputWriter(
         model,
         (ω = ω_field, ωp = ω_pert),
-        filepath=joinpath(@__DIR__, "Bickley_jet_shallow_water.nc"),
+        filepath="Bickley_jet_shallow_water.nc",
         schedule=TimeInterval(1.0),
         mode = "c")
 
@@ -157,10 +156,10 @@ simulation.output_writers[:fields] =
 simulation.output_writers[:growth] =
     NetCDFOutputWriter(
         model,
-        (growth_rate = growth_rate,),
-        filepath="growth_rate_shallow_water.nc",
+        (perturbation_norm = perturbation_norm,),
+        filepath="perturbation_norm_shallow_water.nc",
         schedule=IterationInterval(1),
-        dimensions=(growth_rate=(),),
+        dimensions=(perturbation_norm=(),),
         mode = "c")
 
 run!(simulation)
@@ -168,7 +167,7 @@ run!(simulation)
 # ## Visualize the results
 #
 
-using NCDatasets, Plots, IJulia
+using NCDatasets, Plots
 nothing # hide
 
 # Define the coordinates for plotting
@@ -226,7 +225,7 @@ ds2 = NCDataset(simulation.output_writers[:growth].filepath, "r")
 iterations = keys(ds2["time"])
 
 t = ds2["time"][:]
-σ = ds2["growth_rate"][:]
+σ = ds2["perturbation_norm"][:]
 
 close(ds2)
 
@@ -240,7 +239,11 @@ best_fit = fit((t[I]), log.(σ[I]), 1)
 poly = 2 .* exp.(best_fit[0] .+ best_fit[1]*t[I])
 
 plt = plot(t[1000:end], log.(σ[1000:end]), lw=4, label="sigma", 
-        xlabel="time", ylabel="log(v)", title="growth rate", legend=:bottomright)
+        xlabel="time", ylabel="log(v)", title="growth of perturbation", legend=:bottomright)
 plot!(plt, t[I], log.(poly), lw=4, label="best fit")
 
-print("Best slope = ", best_fit[1])
+# We can compute the slope of the curve on a log scale, which approximates the growth rate
+# of the simulation. This should be close to the theoretical prediction.
+
+print("Growth rate in the simulation is approximated to be ", best_fit[1], 
+      ", which is close to the theoretical value of 0.14.")
