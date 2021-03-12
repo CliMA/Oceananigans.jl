@@ -21,27 +21,8 @@ using Statistics
 using JLD2
 using Printf
 
-function geographic2cartesian(λ, φ, radius=1)
-    Nx = length(λ)
-    Ny = length(φ)
-
-    λ = repeat(reshape(λ, Nx, 1), 1, Ny) 
-    φ = repeat(reshape(φ, 1, Ny), Nx, 1)
-
-    λ_azimuthal = λ .+ 180  # Convert to λ ∈ [0°, 360°]
-    φ_azimuthal = 90 .- φ   # Convert to φ ∈ [0°, 180°] (0° at north pole)
-
-    x = @. radius * cosd(λ_azimuthal) * sind(φ_azimuthal)
-    y = @. radius * sind(λ_azimuthal) * sind(φ_azimuthal)
-    z = @. radius * cosd(φ_azimuthal)
-
-    return x, y, z
-end
-
-#=
-
-Nx = 1 * 60
-Ny = 1 * 60
+Nx = 12 * 60
+Ny = 12 * 60
 
 # A spherical domain
 grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
@@ -49,7 +30,7 @@ grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
                                     latitude = (15, 75),
                                     z = (-4000, 0))
 
-free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
+free_surface = ExplicitFreeSurface(gravitational_acceleration=0.01)
 
 coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving())
 
@@ -85,14 +66,14 @@ u_bcs = UVelocityBoundaryConditions(grid,
 v_bcs = VVelocityBoundaryConditions(grid,
                                     bottom = v_bottom_drag_bc)
                                         
-@show const νh₀ = 5e3 * (60 / grid.Nx)^2
+@show const νh₀ = 2e4 * (60 / grid.Nx)^2
 
 @inline νh(λ, φ, z, t) = νh₀ * cos(π * φ / 180)
 
 variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    architecture = CPU(),
+                                    architecture = GPU(),
                                     momentum_advection = VectorInvariant(),
                                     free_surface = free_surface,
                                     coriolis = coriolis,
@@ -143,14 +124,13 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       force = true)
 
 run!(simulation)
-=#
 
 #####
 ##### Animation!
 #####
 
-using GLMakie
-
+#=
 include("visualize_barotropic_gyre.jl")
 
 visualize_barotropic_gyre(simulation.output_writers[:fields])
+=#
