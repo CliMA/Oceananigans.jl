@@ -20,7 +20,7 @@
 # run the simulation.
 # ```julia
 # using Pkg
-# pkg"add Oceananigans, NCDatasets, Plots, Printf, LinearAlgebra, Polynomials"
+# pkg"add Oceananigans, NCDatasets, Plots, Printf, Polynomials"
 # ```
 #
 
@@ -33,7 +33,7 @@ using Oceananigans.Models: ShallowWaterModel
 # the number of vertical grid points to be one.  
 # We pick the length of the domain to fit one unstable mode along the channel
 # exactly.  Note that ``Lz`` is the mean depth of the fluid.  It is determined
-# using linear stability theory that the wavenumber that yields the most unstable
+# using linear stability theory that the zonal wavenumber that yields the most unstable
 # mode is ``k=0.95``. See [Linear-Stability-Calculators](https://github.com/francispoulin/Linear-Stability-Calculators/tree/main/ShallowWater/Julia/Cartesian)
 # for details on how that is computed.
 
@@ -123,7 +123,7 @@ nothing # hide
 # We pick the time-step that ensures to resolve the surface gravity waves.
 # A time-step wizard can be applied to use an adaptive time step.
 
-simulation = Simulation(model, Δt = 1e-2, stop_time = 150.0, progress=progress)
+simulation = Simulation(model, Δt = 1e-2, stop_time = 15.00, progress=progress)
 
 # ## Prepare output files
 #
@@ -165,7 +165,7 @@ simulation.output_writers[:growth] =
 
 run!(simulation)
 
-# ## Visiualize the results
+# ## Visualize the results
 #
 
 using NCDatasets, Plots, IJulia
@@ -201,8 +201,8 @@ ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 iterations = keys(ds["time"])
 
 anim = @animate for (iter, t) in enumerate(ds["time"])
-        ω = ds["ω"][:,:,1,iter]
-    ωp = ds["ωp"][:,:,1,iter]
+     ω = ds["ω"][:, :, 1, iter]
+    ωp = ds["ωp"][:, :, 1, iter]
 
      ω_max = maximum(abs, ω)
     ωp_max = maximum(abs, ωp)
@@ -235,8 +235,7 @@ close(ds2)
 
 using Polynomials
 
-I = 60:70
-#I = 6000:7000
+I = 6000:7000
 best_fit = fit((t[I]), log.(σ[I]), 1)
 poly = 2 .* exp.(best_fit[0] .+ best_fit[1]*t[I])
 
