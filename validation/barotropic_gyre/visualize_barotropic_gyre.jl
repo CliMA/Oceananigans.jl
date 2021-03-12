@@ -83,8 +83,8 @@ end
 #Nx = 720
 #Ny = 720
 
-Nx = 60
-Ny = 60
+Nx = 360
+Ny = 360
 
 output_prefix = "barotropic_gyre_Nx$(Nx)_Ny$(Ny)"
 filepath = output_prefix * ".jld2"
