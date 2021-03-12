@@ -163,5 +163,5 @@ end
 momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 validate_momentum_advection(momentum_advection, grid) = nothing
-validate_momentum_advection(momentum_advection::VectorInvariant, grid::AbstractRectilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
-validate_momentum_advection(momentum_advection::VectorInvariant, grid::AbstractHorizontallyCurvilinearGrid) = nothing
+validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
+validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, grid::AbstractHorizontallyCurvilinearGrid) = nothing

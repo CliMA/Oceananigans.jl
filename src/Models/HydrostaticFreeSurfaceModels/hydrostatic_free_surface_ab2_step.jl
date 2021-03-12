@@ -59,7 +59,10 @@ end
 ##### Free surface time-stepping: explicit, implicit, rigid lid ?
 #####
 
-function ab2_step_free_surface!(free_surface::ExplicitFreeSurface, velocities_update, model, χ, Δt)
+ab2_step_free_surface!(free_surface::ExplicitFreeSurface, velocities_update, model, χ, Δt) =
+    explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
+
+function explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
 
     event = launch!(model.architecture, model.grid, :xy,
                     _ab2_step_free_surface!,
@@ -79,4 +82,55 @@ end
     @inbounds begin
         η[i, j, 1] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, 1] - (FT(0.5) + χ) * Gη⁻[i, j, 1])
     end
+end
+
+
+function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_update, model, χ, Δt)
+
+    ##### Implicit solver for η
+    
+    ## Need to wait for u* and v* to finish
+    wait(device(model.architecture), velocities_update)
+    fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model) )
+
+    ## Leaving this here for now. There may be some scenarios where stepping forward η and then using
+    ## the stepped forward value as a guess is helpful.
+    ## η_save = deepcopy(free_surface.η)
+    ## event = explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
+    ## wait(device(model.architecture), event)
+
+    ## We need vertically integrated U,V
+    event = compute_vertically_integrated_volume_flux!(free_surface, model)
+    wait(device(model.architecture), event)
+    u=free_surface.barotropic_volume_flux.u
+    v=free_surface.barotropic_volume_flux.v
+    fill_halo_regions!(u.data ,u.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
+    fill_halo_regions!(v.data ,v.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
+
+    ## Compute volume scaled divergence of the barotropic transport and put into solver RHS
+    event = compute_volume_scaled_divergence!(free_surface, model)
+    wait(device(model.architecture), event)
+    
+    ## Include surface pressure term into RHS
+    RHS = free_surface.implicit_step_solver.solver.settings.RHS
+    RHS .= RHS/(model.free_surface.gravitational_acceleration*Δt)
+    η = free_surface.η
+    fill_halo_regions!(RHS   , η.boundary_conditions, model.architecture, model.grid)
+    fill_halo_regions!(η.data, η.boundary_conditions, model.architecture, model.grid)
+    ##  need to subtract Azᵃᵃᵃ(i, j, 1, grid)*η[i,j, 1]/(g*Δt^2)
+    event = add_previous_free_surface_contribution(free_surface, model, Δt )
+    wait(device(model.architecture), event)
+    fill_halo_regions!(RHS   , η.boundary_conditions, model.architecture, model.grid)
+    ## RHS .= RHS .+ free_surface.η.data/Δt
+
+    ## Then we can invoke solve_for_pressure! on the right type via calculate_pressure_correction!
+    x  = free_surface.implicit_step_solver.solver.settings.x
+    x .= η.data
+    fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
+    solve_poisson_equation!(free_surface.implicit_step_solver.solver, RHS, x; Δt=Δt, g=free_surface.gravitational_acceleration)
+    fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
+    free_surface.η.data .= x
+
+    ## The explicit form of this function defaults to returning an event, we do the same for now.
+    return event
 end

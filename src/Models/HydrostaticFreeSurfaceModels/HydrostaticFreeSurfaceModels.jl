@@ -14,6 +14,8 @@ import Oceananigans: fields
 include("compute_w_from_continuity.jl")
 include("explicit_free_surface.jl")
 include("implicit_free_surface.jl")
+include("implicit_free_surface_solver.jl")
+include("implicit_free_surface_solver_kernels.jl")
 include("rigid_lid.jl")
 include("hydrostatic_free_surface_velocity_fields.jl")
 include("hydrostatic_free_surface_tendency_fields.jl")
@@ -49,5 +51,11 @@ include("calculate_hydrostatic_free_surface_tendencies.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
 include("prescribed_hydrostatic_velocity_fields.jl")
+
+#####
+##### Some diagnostics
+#####
+
+include("vertical_vorticity_field.jl")
 
 end # module
