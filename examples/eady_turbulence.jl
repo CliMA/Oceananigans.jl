@@ -251,7 +251,7 @@ Ū = basic_state_parameters.α * grid.Lz
 
 max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z, 0.2/coriolis.f)
 
-wizard = TimeStepWizard(cfl=1.0, Δt=max_Δt, max_change=1.1, max_Δt=max_Δt)
+wizard = TimeStepWizard(cfl=0.9, Δt=max_Δt, max_change=1.1, max_Δt=max_Δt)
 
 # ### A progress messenger
 #
