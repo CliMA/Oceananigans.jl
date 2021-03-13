@@ -17,6 +17,12 @@ using Oceananigans.AbstractOperations
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
 bib = CitationBibliography(bib_filepath)
 
+# Gotta set this environment variable when using the GR run-time on a remote machine.
+# This happens as examples will use Plots.jl to make plots and movies.
+# See: https://github.com/jheinen/GR.jl/issues/278
+
+ENV["GKSwstype"] = "100"
+
 #####
 ##### Generate examples
 #####
@@ -33,7 +39,8 @@ examples = [
     "ocean_wind_mixing_and_convection.jl",
     "langmuir_turbulence.jl",
     "eady_turbulence.jl",
-    "kelvin_helmholtz_instability.jl"
+    "kelvin_helmholtz_instability.jl",
+    "Bickley_jet_shallow_water.jl"
 ]
 
 for example in examples
@@ -46,16 +53,17 @@ end
 #####
 
 example_pages = [
-    "One-dimensional diffusion"        => "generated/one_dimensional_diffusion.md",
-    "Geostrophic adjustment"           => "generated/geostrophic_adjustment.md",
-    "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
-    "Internal wave"                    => "generated/internal_wave.md",
-    "Convecting plankton"              => "generated/convecting_plankton.md",
-    "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
-    "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
-    "Eady turbulence"                  => "generated/eady_turbulence.md",
-    "Kelvin-Helmholtz instability"     => "generated/kelvin_helmholtz_instability.md"
-]
+    "One-dimensional diffusion"          => "generated/one_dimensional_diffusion.md",
+    "Geostrophic adjustment"             => "generated/geostrophic_adjustment.md",
+    "Two-dimensional turbulence"         => "generated/two_dimensional_turbulence.md",
+    "Internal wave"                      => "generated/internal_wave.md",
+    "Convecting plankton"                => "generated/convecting_plankton.md",
+    "Ocean wind mixing and convection"   => "generated/ocean_wind_mixing_and_convection.md",
+    "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
+    "Eady turbulence"                    => "generated/eady_turbulence.md",
+    "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
+    "Bickley jet in shallow water model" => "generated/Bickley_jet_shallow_water.md"
+ ]
 
 model_setup_pages = [
     "Overview" => "model_setup/overview.md",

@@ -31,6 +31,7 @@ using Oceananigans.AbstractOperations
 # Gotta set this environment variable when using the GR run-time on Travis CI.
 # This happens as examples will use Plots.jl to make plots and movies.
 # See: https://github.com/jheinen/GR.jl/issues/278
+
 ENV["GKSwstype"] = "100"
 
 const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
@@ -38,8 +39,9 @@ const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
            # "internal_wave.jl",
-            "geostrophic_adjustment.jl"
-           ]
+           # "geostrophic_adjustment.jl"
+            "Bickley_jet_shallow_water.jl"
+            ]
 
 for example in examples
     example_filepath = joinpath(EXAMPLES_DIR, example)
@@ -52,8 +54,9 @@ end
 
 example_pages = [
                  #"Internal wave"                    => "generated/internal_wave.md",
-                 "Geostrophic adjustment"            => "generated/geostrophic_adjustment.md"
-                ]
+                 #"Geostrophic adjustment"            => "generated/geostrophic_adjustment.md",
+                 "Bickley jet in shallow water model"    => "generated/Bickley_jet_shallow_water.md"
+                 ]
 
 pages = [
          "Home" => "index.md",
