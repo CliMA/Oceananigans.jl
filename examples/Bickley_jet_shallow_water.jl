@@ -30,7 +30,7 @@ using Oceananigans.Models: ShallowWaterModel
 # ## Two-dimensional domain 
 #
 # The shallow water model is a two-dimensional model and thus the number of vertical
-# points `N_z` must be set to one.  Note that ``Lz`` is the mean depth of the fluid. 
+# points `Nz` must be set to one.  Note that ``L_z`` is the mean depth of the fluid. 
 
 Lx = 2π
 Ly = 20
@@ -121,7 +121,7 @@ nothing #hide
 #
 # We pick the time-step so that we make sure we resolve the surface gravity waves, which 
 # propagate with speed of the order ``\sqrt{g L_z}``. That is, with `Δt = 1e-2` we ensure 
-# that `` \sqrt{g L_z} Δt / dx,  \sqrt{g L_z} Δt / dy < 0.7``.
+# that `` \sqrt{g L_z} Δt / Δx,  \sqrt{g L_z} Δt / Δy < 0.7``.
 
 simulation = Simulation(model, Δt = 1e-2, stop_time = 150)
 
