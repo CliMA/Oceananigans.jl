@@ -209,13 +209,17 @@ anim = @animate for (iter, t) in enumerate(ds["time"])
      ω = ds["ω"][:, :, 1, iter]
     ωp = ds["ωp"][:, :, 1, iter]
 
-     ω_max = maximum(abs, ω)
     ωp_max = maximum(abs, ωp)
 
-     plot_ω = contour(xf, yf, ω',  clim=(-1,  1),  title=@sprintf("Total ω at t = %.3f", t); kwargs...)
-    plot_ωp = contour(xf, yf, ωp', clim=(-ωp_max, ωp_max), title=@sprintf("Perturbation ω at t = %.3f", t); kwargs...)
+     plot_ω = contour(xf, yf, ω',
+                       clim = (-1, 1), 
+                      title = @sprintf("Total ω at t = %.1f", t); kwargs...)
+                      
+    plot_ωp = contour(xf, yf, ωp',
+                       clim = (-ωp_max, ωp_max),
+                      title = @sprintf("Perturbation ω at t = %.1f", t); kwargs...)
 
-    plot(plot_ω, plot_ωp, layout = (1,2), size=(1200, 500))
+    plot(plot_ω, plot_ωp, layout = (1, 2), size=(1200, 500))
 end
 
 close(ds)
