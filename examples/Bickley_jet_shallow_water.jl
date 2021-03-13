@@ -83,14 +83,14 @@ model = ShallowWaterModel(
 # ```math
 # \begin{align}
 # \overline{\eta}(y) & = - Δη \tanh(y) ,
-# \overline{u}(y) & = U \sech^2(y) .
+# \overline{u}(y) & = U \mathrm{sech}^2(y) .
 # \end{align}
 # ```
 # 
-# The vorticity of the background state is ``Ω = - \partial_y \overline{u} = 2 U \sech^2(y) \tanh(y)``.
+# The vorticity of the background state is ``Ω = - \partial_y \overline{u} = 2 U \mathrm{sech}^2(y) \tanh(y)``.
 #
 # Linear stability theory predicts that for the particular parameters that we consider here,
-# the growth rate for the maximum grwoth rate should be ``0.14``.
+# the growth rate for the maximum growth rate should be ``0.14``.
 # 
 # We specify `Ω` to be the background vorticity of the jet in the absence of any perturbations.
 # The initial conditions include a small-ampitude perturbation that decays away from the center
