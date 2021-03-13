@@ -81,10 +81,8 @@ model = ShallowWaterModel(
 # maximum free-surface deformation of ``Δη``, i.e.,
 #
 # ```math
-# \begin{align}
-# \overline{\eta}(y) & = - Δη \tanh(y) ,
-# \overline{u}(y) & = U \mathrm{sech}^2(y) .
-# \end{align}
+# \overline{\eta}(y) = - Δη \tanh(y) , \\
+# \overline{u}(y) = U \mathrm{sech}^2(y) .
 # ```
 # 
 # The vorticity of the background state is ``Ω = - \partial_y \overline{u} = 2 U \mathrm{sech}^2(y) \tanh(y)``.
