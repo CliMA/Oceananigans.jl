@@ -1,9 +1,9 @@
-# # Shallow Water Example: an unstable Bickley jet 
+# # An unstable Bickley jet in Shallow Water model 
 #
 # This example shows how to use `Oceananigans.ShallowWaterModel` to simulate
 # the evolution of an unstable, geostrophically balanced, Bickley jet.
 # The model solves the governing equations for the shallow water model in
-# conservation form.  The geometry is that of a periodic channel
+# conservative form.  The geometry is that of a periodic channel
 # in the ``x``-direction with a flat bottom and a free-surface.  The initial
 # conditions are that of a Bickley jet with small amplitude perturbations.
 # The interested reader can see ["The nonlinear evolution of barotropically unstable jets," J. Phys. Oceanogr. (2003)](https://doi.org/10.1175/1520-0485(2003)033<2173:TNEOBU>2.0.CO;2)
@@ -11,8 +11,8 @@
 #
 # Unlike the other models, the fields that are simulated are the mass transports, 
 # ``uh`` and ``vh`` in the ``x`` and ``y`` directions, respectively,
-# and the height ``h``.  Note that ``u`` and ``v`` are the velocities, which 
-# can easily be computed when needed.
+# and the height ``h``.  Note that the velocities ``u`` and ``v`` are not state 
+# variables but can be easily computed when needed, e.g., via `u = uh / h`.
 #
 # ## Install dependencies
 #
@@ -76,19 +76,18 @@ model = ShallowWaterModel(
 
 # ## Background state and perturbation
 #
-# The background velocity ``\overline u``, free-surface ``\eta`` and vorticity ``\Omega``
-#  are choosen to be a geostrophically balanced Bickely jet with maximum speed of ``U`` and 
-# maximum free-surface deformation of ``Δη``,
+# The background velocity ``\overline{u}`` and free-surface ``\overline{\eta}`` are chosen to 
+# represent a geostrophically balanced Bickely jet with maximum speed of ``U`` and 
+# maximum free-surface deformation of ``Δη``, i.e.,
 #
 # ```math
-# \overline \eta(y) = - Δη \tanh(y),
+# \begin{align}
+# \overline{\eta}(y) & = - Δη \tanh(y) ,
+# \overline{u}(y) & = U \sech^2(y) .
+# \end{align}
 # ```
-# ```math
-# \overline    u(y) =    U \sech^2(y),
-# ```
-# ```math
-# \overilne    Ω(y) =  2 U \sech^2(y) \tanh(y).
-# ```
+# 
+# The vorticity of the background state is ``Ω = - \partial_y \overline{u} = 2 U \sech^2(y) \tanh(y)``.
 #
 # Linear stability theory predicts that for the particular parameters that we consider here,
 # the growth rate for the maximum grwoth rate should be ``0.14``.
@@ -266,5 +265,5 @@ plot!(plt, t[I], 2 * best_fit[I], # factor 2 offsets our fit from the curve for 
 # We can compute the slope of the curve on a log scale, which approximates the growth rate
 # of the simulation. This should be close to the theoretical prediction.
 
-println("Growth rate in the simulation is approximated to be ", best_fit[1], ",\n",
+println("Growth rate in the simulation is approximated to be ", linear_fit_polynomial[1], ",\n",
         "which is close to the theoretical value of 0.14.")

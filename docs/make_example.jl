@@ -55,7 +55,7 @@ end
 example_pages = [
                  #"Internal wave"                    => "generated/internal_wave.md",
                  #"Geostrophic adjustment"            => "generated/geostrophic_adjustment.md",
-                 "Bickley jet shallow water model"    => "generated/Bickley_jet_shallow_water.md"
+                 "Bickley jet in shallow water model"    => "generated/Bickley_jet_shallow_water.md"
                  ]
 
 pages = [
