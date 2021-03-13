@@ -53,16 +53,16 @@ end
 #####
 
 example_pages = [
-    "One-dimensional diffusion"        => "generated/one_dimensional_diffusion.md",
-    "Geostrophic adjustment"           => "generated/geostrophic_adjustment.md",
-    "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
-    "Internal wave"                    => "generated/internal_wave.md",
-    "Convecting plankton"              => "generated/convecting_plankton.md",
-    "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
-    "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
-    "Eady turbulence"                  => "generated/eady_turbulence.md",
-    "Kelvin-Helmholtz instability"     => "generated/kelvin_helmholtz_instability.md",
-    "Bickley jet shallow water model"  => "generated/Bickley_jet_shallow_water.md"
+    "One-dimensional diffusion"          => "generated/one_dimensional_diffusion.md",
+    "Geostrophic adjustment"             => "generated/geostrophic_adjustment.md",
+    "Two-dimensional turbulence"         => "generated/two_dimensional_turbulence.md",
+    "Internal wave"                      => "generated/internal_wave.md",
+    "Convecting plankton"                => "generated/convecting_plankton.md",
+    "Ocean wind mixing and convection"   => "generated/ocean_wind_mixing_and_convection.md",
+    "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
+    "Eady turbulence"                    => "generated/eady_turbulence.md",
+    "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
+    "Bickley jet in shallow water model" => "generated/Bickley_jet_shallow_water.md"
  ]
 
 model_setup_pages = [
