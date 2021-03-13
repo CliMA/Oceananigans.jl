@@ -153,7 +153,6 @@ simulation.output_writers[:fields] =
 
 # Build the `output_writer` for the growth rate, which is a scalar field.
 # Output every time step.
-#
 
 simulation.output_writers[:growth] =
     NetCDFOutputWriter(
@@ -163,6 +162,8 @@ simulation.output_writers[:growth] =
         schedule=IterationInterval(1),
         dimensions=(perturbation_norm=(),),
         mode = "c")
+
+# And finally run the simulation.
 
 run!(simulation)
 
