@@ -17,6 +17,10 @@ using Oceananigans.AbstractOperations
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
 bib = CitationBibliography(bib_filepath)
 
+# Gotta set this environment variable when using the GR run-time on a remote machine.
+# This happens as examples will use Plots.jl to make plots and movies.
+# See: https://github.com/jheinen/GR.jl/issues/278
+
 ENV["GKSwstype"] = "100"
 
 #####
@@ -58,7 +62,7 @@ example_pages = [
     "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
     "Eady turbulence"                  => "generated/eady_turbulence.md",
     "Kelvin-Helmholtz instability"     => "generated/kelvin_helmholtz_instability.md",
-    "Bickley jet shallow water model"     => "generated/Bickley_jet_shallow_water.md"
+    "Bickley jet shallow water model"  => "generated/Bickley_jet_shallow_water.md"
  ]
 
 model_setup_pages = [

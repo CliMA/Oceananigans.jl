@@ -29,12 +29,8 @@ using Oceananigans.Models: ShallowWaterModel
 
 # ## Two-dimensional domain 
 #
-# The shallow water model is a two-dimensional model and we must specify
-# the number of vertical grid points to be one.  
-# We pick the length of the domain to fit one unstable mode along the channel
-# exactly.  Note that ``Lz`` is the mean depth of the fluid.  It is determined
-# using linear stability theory that the zonal wavenumber that yields the most unstable
-# mode that fits in this zonal channel has a growth rate of ``\sigma \approx 0.14``.
+# The shallow water model is a two-dimensional model and thus the number of vertical
+# points `N_z` must be set to one.  Note that ``Lz`` is the mean depth of the fluid. 
 
 Lx = 2π
 Ly = 20
@@ -43,7 +39,7 @@ Nx = 128
 Ny = Nx
 
 grid = RegularRectilinearGrid(size = (Nx, Ny, 1),
-                            x = (0, Lx), y = (0, Ly), z = (0, Lz),
+                            x = (0, Lx), y = (-Ly/2, Ly/2), z = (0, Lz),
                             topology = (Periodic, Bounded, Bounded))
 
 # ## Physical parameters
@@ -79,14 +75,31 @@ model = ShallowWaterModel(
     )
 
 # ## Background state and perturbation
+#
+# The background velocity ``\overline u``, free-surface ``\eta`` and vorticity ``\Omega``
+#  are choosen to be a geostrophically balanced Bickely jet with maximum speed of ``U`` and 
+# maximum free-surface deformation of ``Δη``,
+#
+# ```math
+# \overline \eta(y) = - Δη \tanh(y),
+# ```
+# ```math
+# \overline    u(y) =    U \sech^2(y),
+# ```
+# ```math
+# \overilne    Ω(y) =  2 U \sech^2(y) \tanh(y).
+# ```
+#
+# Linear stability theory predicts that for the particular parameters that we consider here,
+# the growth rate for the maximum grwoth rate should be ``0.14``.
 # 
 # We specify `Ω` to be the background vorticity of the jet in the absence of any perturbations.
 # The initial conditions include a small-ampitude perturbation that decays away from the center
 # of the jet.
 
-  Ω(x, y, z) = 2 * U * sech(y - Ly/2)^2 * tanh(y - Ly/2)
- uⁱ(x, y, z) =   U * sech(y - Ly/2)^2 + ϵ * exp(- (y - Ly/2)^2 ) * randn()
- ηⁱ(x, y, z) = -Δη * tanh(y - Ly/2)
+  Ω(x, y, z) = 2 * U * sech(y)^2 * tanh(y)
+ uⁱ(x, y, z) =   U * sech(y)^2 + ϵ * exp(- y^2 ) * randn()
+ ηⁱ(x, y, z) = -Δη * tanh(y)
  hⁱ(x, y, z) = model.grid.Lz + ηⁱ(x, y, z)
 uhⁱ(x, y, z) = uⁱ(x, y, z) * hⁱ(x, y, z)
 nothing # hide
@@ -100,15 +113,18 @@ set!(model, uh = uhⁱ , h = hⁱ)
 uh, vh, h = model.solution
         u = ComputedField(uh / h)
         v = ComputedField(vh / h)
-  ω_field = ComputedField( ∂x(vh/h) - ∂y(uh/h) )
-   ω_pert = ComputedField( ω_field - Ω )
+        v = ComputedField(v)
+        ω = ComputedField(∂x(vh/h) - ∂y(uh/h))
+   ω_pert = ComputedField(ω - Ω)
+nothing #hide
 
 # ## Running a `Simulation`
 #
-# We pick the time-step that ensures to resolve the surface gravity waves.
-# A time-step wizard can be applied to use an adaptive time step.
+# We pick the time-step so that we make sure we resolve the surface gravity waves, which 
+# propagate with speed of the order ``\sqrt{g L_z}``. That is, with `Δt = 1e-2` we ensure 
+# that `` \sqrt{g L_z} Δt / dx,  \sqrt{g L_z} Δt / dy < 0.7``.
 
-simulation = Simulation(model, Δt = 1e-2, stop_time = 150.00)
+simulation = Simulation(model, Δt = 1e-2, stop_time = 150)
 
 # ## Prepare output files
 #
@@ -125,7 +141,7 @@ nothing # hide
 
 # Choose the two fields to be output to be the total and perturbation vorticity.
 
-outputs = (ω_total = ω_field, ω_pert = ω_pert)
+outputs = (ω_total = ω, ω_pert = ω_pert)
 
 # Build the `output_writer` for the two-dimensional fields to be output.
 # Output every `t = 1.0`.
@@ -133,7 +149,7 @@ outputs = (ω_total = ω_field, ω_pert = ω_pert)
 simulation.output_writers[:fields] =
     NetCDFOutputWriter(
         model,
-        (ω = ω_field, ωp = ω_pert),
+        (ω = ω, ωp = ω_pert),
         filepath=joinpath(@__DIR__, "Bickley_jet_shallow_water.nc"),
         schedule=TimeInterval(1.0),
         mode = "c")
@@ -165,8 +181,8 @@ ENV["GKSwstype"] = "100"
 
 # Define the coordinates for plotting
 
-xf = xnodes(ω_field)
-yf = ynodes(ω_field)
+xf = xnodes(ω)
+yf = ynodes(ω)
 nothing # hide
 
 # Define keyword arguments for plotting the contours
@@ -179,7 +195,7 @@ kwargs = (
       linewidth = 0,
           color = :balance,
        colorbar = true,
-           ylim = (0, Ly),
+           ylim = (-Ly/2, Ly/2),
            xlim = (0, Lx)
 )
 nothing # hide
@@ -201,12 +217,10 @@ anim = @animate for (iter, t) in enumerate(ds["time"])
      ω_max = maximum(abs, ω)
     ωp_max = maximum(abs, ωp)
 
-     plot_ω = contour(xf, yf, ω',  clim=(-ω_max,  ω_max),  title=@sprintf("Total ω at t = %.3f", t); kwargs...)
+     plot_ω = contour(xf, yf, ω',  clim=(-1,  1),  title=@sprintf("Total ω at t = %.3f", t); kwargs...)
     plot_ωp = contour(xf, yf, ωp', clim=(-ωp_max, ωp_max), title=@sprintf("Perturbation ω at t = %.3f", t); kwargs...)
 
     plot(plot_ω, plot_ωp, layout = (1,2), size=(1200, 500))
-
-    print("At t = ", t, " maximum of ωp = ", maximum(abs, ωp), "\n")
 end
 
 close(ds)
@@ -219,26 +233,38 @@ ds2 = NCDataset(simulation.output_writers[:growth].filepath, "r")
 
 iterations = keys(ds2["time"])
 
-t = ds2["time"][:]
-σ = ds2["perturbation_norm"][:]
+     t = ds2["time"][:]
+norm_v = ds2["perturbation_norm"][:]
 
 close(ds2)
 
-# Import `Polynomials` to be able to use `best_fit`.
-# Compute the best fit slope and save the figure.
+# We import the `fit` function from `Polynomials.jl` to compute the best-fit slope of the 
+# perturbation norm on a logarithmic plot. This slope corresponds to the growth rate.
 
-using Polynomials
+using Polynomials: fit
 
 I = 6000:7000
-best_fit = fit((t[I]), log.(σ[I]), 1)
-poly = 2 .* exp.(best_fit[0] .+ best_fit[1]*t[I])
 
-plt = plot(t[1000:end], log.(σ[1000:end]), lw=4, label="sigma", 
-        xlabel="time", ylabel="log(v)", title="growth of perturbation", legend=:bottomright)
-plot!(plt, t[I], log.(poly), lw=4, label="best fit")
+degree = 1
+linear_fit_polynomial = fit(t[I], log.(norm_v[I]), degree)
 
+best_fit = exp.(linear_fit_polynomial[0] .+ linear_fit_polynomial[1] * t)
+
+plt = plot(t, norm_v,
+            yaxis = :log,
+            ylims = (1e-3, 30),
+               lw = 4,
+            label = "norm(v)", 
+           xlabel = "time",
+           ylabel = "norm(v)",
+            title = "growth of perturbation norm",
+           legend = :bottomright)
+plot!(plt, t[I], 2 * best_fit[I], # factor 2 offsets our fit from the curve for better visualization
+               lw = 4,
+            label = "best fit")
+            
 # We can compute the slope of the curve on a log scale, which approximates the growth rate
 # of the simulation. This should be close to the theoretical prediction.
 
-print("Growth rate in the simulation is approximated to be ", best_fit[1], 
-      ", which is close to the theoretical value of 0.14.")
+println("Growth rate in the simulation is approximated to be ", best_fit[1], ",\n",
+        "which is close to the theoretical value of 0.14.")
