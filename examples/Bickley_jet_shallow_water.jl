@@ -184,6 +184,7 @@ nothing # hide
 kwargs = (
          xlabel = "x",
          ylabel = "y",
+         aspect = 1,
            fill = true,
          levels = 20,
       linewidth = 0,
@@ -215,7 +216,7 @@ anim = @animate for (iter, t) in enumerate(ds["time"])
                        clim = (-ωp_max, ωp_max),
                       title = @sprintf("Perturbation vorticity, ω - ω̄, at t = %.1f", t); kwargs...)
 
-    plot(plot_ω, plot_ωp, layout = (1, 2), size=(1200, 500))
+    plot(plot_ω, plot_ωp, layout = (1, 2), size = (800, 440))
 end
 
 close(ds)
