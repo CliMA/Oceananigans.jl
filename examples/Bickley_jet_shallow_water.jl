@@ -82,7 +82,7 @@ model = ShallowWaterModel(
 #
 # The total height of the fluid is ``h = L_z + \eta``. Linear stability theory predicts that 
 # for the parameters we consider here, the growth rate for the most unstable mode that fits 
-# our domain is approximately ``0.14``.
+# our domain is approximately ``0.139``.
 # 
 # We also specify `ω̄` as the vorticity of the background state, 
 # ``ω̄ = - ∂_y ū = 2 U \mathrm{sech}^2(y) \tanh(y)``.
@@ -264,5 +264,5 @@ plot!(plt, t[I], 2 * best_fit[I], # factor 2 offsets fit from curve for better v
 # We can compute the slope of the curve on a logarithmic scale, which approximates the growth 
 # rate of the simulation. This should be close to the theoretical prediction.
 
-println("Numerical growth rate is approximated to be ", linear_fit_polynomial[1], ",\n",
-        "which is close to the theoretical value of 0.14.")
+println("Numerical growth rate is approximated to be ", round(linear_fit_polynomial[1], digits=3), ",\n",
+        "which is close to the theoretical value of 0.139.")
