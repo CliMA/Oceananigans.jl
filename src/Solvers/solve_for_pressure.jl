@@ -1,58 +1,64 @@
 using Oceananigans.Operators
 
 function solve_for_pressure!(pressure, solver, arch, grid, Δt, U★)
+    
+    calculate_pressure_right_hand_side!(solver, arch, grid, Δt, U★)
+    
+    solve_poisson_equation!(solver)
 
-    if solver.type isa Channel && arch isa GPU
-        ϕ = RHS = solver.storage.storage1
-    else
-        ϕ = RHS = solver.storage
-    end
+    copy_pressure!(pressure, solver, arch, grid)
+    
+    return nothing
+end
 
-    event = launch!(arch, grid, :xyz,
-                    calculate_pressure_right_hand_side!, RHS, solver.type, arch, grid, Δt, U★,
-                    dependencies = Event(device(arch)))
+#####
+##### Calculate the right-hand-side of the Poisson equation for the non-hydrostatic pressure.
+#####
 
-    wait(device(arch), event)
+@kernel function calculate_pressure_source_term_fft_based_solver!(RHS, grid, Δt, U★)
+    i, j, k = @index(Global, NTuple)
 
-    solve_poisson_equation!(solver, grid)
+    @inbounds RHS[i, j, k] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+end
 
-    event = launch!(arch, grid, :xyz,
-                    copy_pressure!, pressure, ϕ, solver.type, arch, grid,
-                    dependencies = Event(device(arch)))
+@kernel function calculate_pressure_source_term_fourier_tridiagonal_solver!(RHS, grid, Δt, U★)
+    i, j, k = @index(Global, NTuple)
 
-    wait(device(arch), event)
+    @inbounds RHS[i, j, k] = ΔzC(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+end
+
+source_term_storage(solver::FFTBasedPoissonSolver) = solver.storage
+source_term_storage(solver::FourierTridiagonalPoissonSolver) = solver.batched_tridiagonal_solver.f
+
+source_term_kernel(::FFTBasedPoissonSolver) = calculate_pressure_source_term_fft_based_solver!
+source_term_kernel(::FourierTridiagonalPoissonSolver) = calculate_pressure_source_term_fourier_tridiagonal_solver!
+
+function calculate_pressure_right_hand_side!(solver, arch, grid, Δt, U★)
+    RHS = source_term_storage(solver)
+    rhs_event = launch!(arch, grid, :xyz, source_term_kernel(solver), RHS, grid, Δt, U★,
+                        dependencies = Event(device(arch)))
+
+    wait(device(arch), rhs_event)
 
     return nothing
 end
 
-"""
-Calculate the right-hand-side of the Poisson equation for the non-hydrostatic
-pressure and in the process apply the permutation
+#####
+##### Copy the non-hydrostatic pressure into `p` from the pressure solver.
+#####
 
-    [a, b, c, d, e, f, g, h] -> [a, c, e, g, h, f, d, b]
-
-along any direction we need to perform a GPU fast cosine transform algorithm.
-"""
-@kernel function calculate_pressure_right_hand_side!(RHS, solver_type, arch, grid, Δt, U★)
+@kernel function copy_pressure_kernel!(p, ϕ)
     i, j, k = @index(Global, NTuple)
 
-    i′, j′, k′ = permute_index(solver_type, arch, i, j, k, grid.Nx, grid.Ny, grid.Nz)
-
-    @inbounds RHS[i′, j′, k′] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+    @inbounds p[i, j, k] = real(ϕ[i, j, k])
 end
 
-"""
-Copy the non-hydrostatic pressure into `p` from `solver.storage` and
-undo the permutation
+solution_storage(solver) = solver.storage
 
-    [a, b, c, d, e, f, g, h] -> [a, c, e, g, h, f, d, b]
+function copy_pressure!(p, solver, arch, grid)
+    ϕ = solution_storage(solver)
+    copy_event = launch!(arch, grid, :xyz, copy_pressure_kernel!, p, ϕ,
+                         dependencies = Event(device(arch)))
 
-along any dimensions in which a GPU fast cosine transform was performed.
-"""
-@kernel function copy_pressure!(p, ϕ, solver_type, arch, grid)
-    i, j, k = @index(Global, NTuple)
-
-    i′, j′, k′ = unpermute_index(solver_type, arch, i, j, k, grid.Nx, grid.Ny, grid.Nz)
-
-    @inbounds p[i′, j′, k′] = real(ϕ[i, j, k])
+    wait(device(arch), copy_event)
 end

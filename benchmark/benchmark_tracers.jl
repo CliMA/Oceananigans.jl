@@ -1,25 +1,9 @@
-using Printf
-using TimerOutputs
+using BenchmarkTools
+using CUDA
 using Oceananigans
-using Oceananigans.Utils
+using Benchmarks
 
-include("benchmark_utils.jl")
-
-#####
-##### Benchmark setup and parameters
-#####
-
-const timer = TimerOutput()
-
-FT = Float64
-Nt = 10  # Number of iterations to use for benchmarking time stepping.
-
-         archs = [CPU()]        # Architectures to benchmark on.
-@hascuda archs = [CPU(), GPU()] # Benchmark GPU on systems with CUDA-enabled GPUs.
-
-#####
-##### Utility functions for generating tracer lists
-#####
+# Utility functions for generating tracer lists
 
 function active_tracers(n)
     n == 0 && return []
@@ -28,49 +12,62 @@ function active_tracers(n)
     throw(ArgumentError("Can't have more than 2 active tracers!"))
 end
 
-passive_tracers(n) = [Symbol("C" * string(n)) for n in 1:n]
+passive_tracers(n) = [Symbol("C" * string(m)) for m in 1:n]
 
-tracer_list(na, np) = Tuple(vcat(active_tracers(na), passive_tracers(np)))
+tracer_list(n_active, n_passive) =
+    Tuple(vcat(active_tracers(n_active), passive_tracers(n_passive)))
 
-""" Number of active tracers to buoyancy """
-function na2buoyancy(n)
-    n == 0 && return nothing
-    n == 1 && return BuoyancyTracer()
-    n == 2 && return SeawaterBuoyancy()
+function buoyancy(n_active)
+    n_active == 0 && return nothing
+    n_active == 1 && return BuoyancyTracer()
+    n_active == 2 && return SeawaterBuoyancy()
     throw(ArgumentError("Can't have more than 2 active tracers!"))
 end
 
-#####
-##### Run benchmarks
-#####
+# Benchmark function
 
-# Each test case specifies (number of active tracers, number of passive tracers)
-test_cases = [(0, 0), (0, 1), (0, 2), (1, 0), (2, 0), (2, 3), (2, 5), (2, 10)]
+function benchmark_tracers(Arch, N, n_tracers)
+    n_active, n_passive = n_tracers
+    grid = RegularRectilinearGrid(size=(N, N, N), extent=(1, 1, 1))
+    model = IncompressibleModel(architecture=Arch(), grid=grid, buoyancy=buoyancy(n_active),
+                                tracers=tracer_list(n_active, n_passive))
 
-for arch in archs, test_case in test_cases
-    N = arch isa CPU ? (32, 32, 32) : (256, 256, 128)
-    na, np = test_case
-    tracers = tracer_list(na, np)
+    time_step!(model, 1) # warmup
 
-    grid = RegularCartesianGrid(size=N, extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid,
-                                buoyancy=na2buoyancy(na), tracers=tracers)
-
-    time_step!(model, 1)  # precompile
-
-    bname =  benchmark_name(N, "$na active + $(lpad(np, 2)) passive", arch, FT)
-    @printf("Running benchmark: %s...\n", bname)
-    for i in 1:Nt
-        @timeit timer bname time_step!(model, 1)
-    end
+    trial = @benchmark begin
+        @sync_gpu time_step!($model, 1)
+    end samples=10
+    
+    return trial
 end
 
-#####
-##### Print benchmark results
-#####
+# Benchmark parameters
 
-println()
-println(oceananigans_versioninfo())
-println(versioninfo_with_gpu())
-print_timer(timer, title="Tracer benchmarks", sortby=:name)
-println()
+Architectures = has_cuda() ? [CPU, GPU] : [CPU]
+Ns = [128]
+
+# Each test case specifies (number of active tracers, number of passive tracers)
+tracers = [(0, 0), (0, 1), (0, 2), (1, 0), (2, 0), (2, 3), (2, 5), (2, 10)]
+
+# Run benchmarks
+
+print_system_info()
+suite = run_benchmarks(benchmark_tracers; Architectures, Ns, tracers)
+
+df = benchmarks_dataframe(suite)
+sort!(df, [:Architectures, :tracers, :Ns], by=(string, string, identity))
+benchmarks_pretty_table(df, title="Arbitrary tracers benchmarks")
+
+if GPU in Architectures
+    df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
+    sort!(df_Δ, [:tracers, :Ns])
+    benchmarks_pretty_table(df_Δ, title="Arbitrary tracers CPU -> GPU speedup")
+end
+
+for Arch in Architectures
+    suite_arch = speedups_suite(suite[@tagged Arch], base_case=(Arch, Ns[1], (0, 0)))
+    df_arch = speedups_dataframe(suite_arch, slowdown=true)
+    sort!(df_arch, [:tracers, :Ns], by=(string, identity))
+    benchmarks_pretty_table(df_arch, title="Arbitrary tracers relative performance ($Arch)")
+end
+

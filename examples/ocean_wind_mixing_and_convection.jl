@@ -7,6 +7,15 @@
 #   * How to use a turbulence closure for large eddy simulation.
 #   * How to use a function to impose a boundary condition.
 #
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, JLD2, Plots"
+# ```
+
 # We start by importing all of the packages and functions that we'll need for this
 # example.
 
@@ -16,19 +25,14 @@ using Plots
 using JLD2
 
 using Oceananigans
-using Oceananigans.Utils
-
-using Oceananigans.Grids: nodes
-using Oceananigans.Advection: UpwindBiasedFifthOrder
-using Oceananigans.Diagnostics: FieldMaximum
-using Oceananigans.OutputWriters: JLD2OutputWriter, FieldSlicer, TimeInterval
+using Oceananigans.Units: minute, minutes, hour
 
 # ## The grid
 #
 # We use 32³ grid points with 2 m grid spacing in the horizontal and
 # 1 m spacing in the vertical,
 
-grid = RegularCartesianGrid(size=(32, 32, 32), extent=(64, 64, 32))
+grid = RegularRectilinearGrid(size=(32, 32, 32), extent=(64, 64, 32))
 
 # ## Buoyancy that depends on temperature and salinity
 #
@@ -55,7 +59,7 @@ Qᵀ = Qʰ / (ρₒ * cᴾ) # K m⁻¹ s⁻¹, surface _temperature_ flux
 
 dTdz = 0.01 # K m⁻¹
 
-T_bcs = TracerBoundaryConditions(grid, 
+T_bcs = TracerBoundaryConditions(grid,
                                  top = BoundaryCondition(Flux, Qᵀ),
                                  bottom = BoundaryCondition(Gradient, dTdz))
 
@@ -85,7 +89,7 @@ nothing # hide
 
 # where `S` is salinity. We use an evporation rate of 1 millimeter per hour,
 
-evaporation_rate = 1e-3 / hour 
+evaporation_rate = 1e-3 / hour
 
 # We build the `Flux` evaporation `BoundaryCondition` with the function `Qˢ`,
 # indicating that `Qˢ` depends on salinity `S` and passing
@@ -149,15 +153,13 @@ wizard = TimeStepWizard(cfl=1.0, Δt=10.0, max_change=1.1, max_Δt=1minute)
 
 # Nice progress messaging is helpful:
 
-wmax = FieldMaximum(abs, model.velocities.w)
-
 start_time = time_ns() # so we can print the total elapsed wall time
 
 ## Print a progress message
 progress_message(sim) =
     @printf("i: %04d, t: %s, Δt: %s, wmax = %.1e ms⁻¹, wall time: %s\n",
             sim.model.clock.iteration, prettytime(model.clock.time),
-            prettytime(wizard.Δt), wmax(sim.model),
+            prettytime(wizard.Δt), maximum(abs, sim.model.velocities.w),
             prettytime((time_ns() - start_time) * 1e-9))
 
 # We then set up the simulation:
@@ -191,7 +193,7 @@ run!(simulation)
 # We animate the data saved in `ocean_wind_mixing_and_convection.jld2`.
 # We prepare for animating the flow by creating coordinate arrays,
 # opening the file, building a vector of the iterations that we saved
-# data at, and defining functions for computing colorbar limits: 
+# data at, and defining functions for computing colorbar limits:
 
 ## Coordinate arrays
 xw, yw, zw = nodes(model.velocities.w)
@@ -205,9 +207,9 @@ iterations = parse.(Int, keys(file["timeseries/t"]))
 
 """ Returns colorbar levels equispaced between `(-clim, clim)` and encompassing the extrema of `c`. """
 function divergent_levels(c, clim, nlevels=21)
-    levels = range(-clim, stop=clim, length=nlevels)
     cmax = maximum(abs, c)
-    return ((-clim, clim), clim > cmax ? levels : levels = vcat([-cmax], levels, [cmax]))
+    levels = clim > cmax ? range(-clim, stop=clim, length=nlevels) : range(-cmax, stop=cmax, length=nlevels)
+    return (levels[1], levels[end]), levels
 end
 
 """ Returns colorbar levels equispaced between `clims` and encompassing the extrema of `c`."""
@@ -253,7 +255,7 @@ anim = @animate for (i, iter) in enumerate(iterations[intro:end])
     T_title = "temperature (ᵒC)"
     S_title = "salinity (g kg⁻¹)"
     ν_title = "eddy viscosity (m² s⁻¹)"
-                       
+
     ## Arrange the plots side-by-side.
     plot(w_plot, T_plot, S_plot, ν_plot, layout=(2, 2), size=(1200, 600),
          title=[w_title T_title S_title ν_title])
@@ -261,4 +263,4 @@ anim = @animate for (i, iter) in enumerate(iterations[intro:end])
     iter == iterations[end] && close(file)
 end
 
-gif(anim, "ocean_wind_mixing_and_convection.gif", fps = 8) # hide
+mp4(anim, "ocean_wind_mixing_and_convection.mp4", fps = 8) # hide

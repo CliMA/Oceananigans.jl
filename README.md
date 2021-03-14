@@ -19,16 +19,19 @@
   <a href="https://github.com/clima/Oceananigans.jl/issues/new">
     <img alt="Ask us anything" src="https://img.shields.io/badge/Ask%20us-anything-1abc9c.svg?style=flat-square">
   </a>
+  <a href="https://github.com/SciML/ColPrac">
+    <img alt="ColPrac: Contributor's Guide on Collaborative Practices for Community Packages" src="https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet?style=flat-square">
+  </a>
   <a href="https://doi.org/10.21105/joss.02018">
     <img alt="JOSS" src="https://joss.theoj.org/papers/10.21105/joss.02018/status.svg">
   </a>
+</p>
+
+<!-- Version and documentation badges -->
+<p align="center">
   <a href="https://github.com/CliMA/Oceananigans.jl/releases">
     <img alt="GitHub tag (latest SemVer pre-release)" src="https://img.shields.io/github/v/tag/CliMA/Oceananigans.jl?include_prereleases&label=latest%20version&logo=github&sort=semver&style=flat-square">
   </a>
-</p>
-
-<!-- Documentation badges -->
-<p align="center">
   <a href="https://clima.github.io/OceananigansDocumentation/stable">
     <img alt="Stable documentation" src="https://img.shields.io/badge/documentation-stable%20release-blue?style=flat-square">
   </a>
@@ -41,9 +44,6 @@
 <p align="center">
   <a href="https://buildkite.com/clima/oceananigans">
     <img alt="Buildkite CPU+GPU build status" src="https://img.shields.io/buildkite/4d921fc17b95341ea5477fb62df0e6d9364b61b154e050a123/master?logo=buildkite&label=Buildkite%20CPU%2BGPU&style=flat-square">
-  </a>
-  <a href="https://travis-ci.com/clima/Oceananigans.jl">
-    <img alt="CPU build status" src="https://img.shields.io/travis/com/clima/Oceananigans.jl/master?label=Travis&logo=travis&logoColor=white&style=flat-square">
   </a>
   <a href="https://hub.docker.com/r/aliramadhan/oceananigans">
     <img alt="Docker build status" src="https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans?label=Docker&logo=docker&logoColor=white&style=flat-square">
@@ -97,7 +97,7 @@ Let's initialize a 3D horizontally periodic model with 100×100×50 grid points 
 
 ```julia
 using Oceananigans
-grid = RegularCartesianGrid(size=(100, 100, 50), extent=(2π, 2π, 1))
+grid = RegularRectilinearGrid(size=(100, 100, 50), extent=(2π, 2π, 1))
 model = IncompressibleModel(grid=grid)
 simulation = Simulation(model, Δt=60, stop_time=3600)
 run!(simulation)
@@ -118,7 +118,7 @@ topology = (Periodic, Periodic, Bounded)
 
 model = IncompressibleModel(
     architecture = CPU(),
-            grid = RegularCartesianGrid(topology=topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
+            grid = RegularRectilinearGrid(topology=topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
          closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
 )
 

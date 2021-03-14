@@ -1,35 +1,17 @@
 module Models
 
-export IncompressibleModel, NonDimensionalModel, Clock, tick!, fields
+export IncompressibleModel, NonDimensionalImcompressibleModel, HydrostaticFreeSurfaceModel, ShallowWaterModel
 
-using Adapt
+using Oceananigans: AbstractModel
 
-using Oceananigans.Architectures
-using Oceananigans.Fields
-using Oceananigans.Coriolis
-using Oceananigans.Buoyancy
-using Oceananigans.TurbulenceClosures
-using Oceananigans.BoundaryConditions
-using Oceananigans.Solvers
-using Oceananigans.Utils
+abstract type AbstractIncompressibleModel{TS} <: AbstractModel{TS} end
 
-"""
-    AbstractModel
+include("IncompressibleModels/IncompressibleModels.jl")
+include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
+include("ShallowWaterModels/ShallowWaterModels.jl")
 
-Abstract supertype for models.
-"""
-abstract type AbstractModel end
-
-"""
-    fields(model)
-
-Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.tracers`.
-"""
-fields(model) = merge(model.velocities, model.tracers)
-
-include("clock.jl")
-include("incompressible_model.jl")
-include("non_dimensional_model.jl")
-include("show_models.jl")
+using .IncompressibleModels: IncompressibleModel, NonDimensionalImcompressibleModel
+using .HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
+using .ShallowWaterModels: ShallowWaterModel
 
 end

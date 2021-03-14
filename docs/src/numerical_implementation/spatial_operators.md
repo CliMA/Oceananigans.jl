@@ -123,9 +123,9 @@ An isotropic viscosity operator acting on vertical momentum is discretized via
 ```math
     \bm{\nabla} \left ( \nu_e \bm{\nabla} w \right )
     = \frac{1}{V} \left[
-          \delta_x^{faa} \left( \nu_e \overline{A_x}^{caa} \delta_x^{caa} w \right)
-        + \delta_y^{afa} \left( \nu_e \overline{A_y}^{aca} \delta_y^{aca} w \right)
-        + \delta_z^{aaf} \left( \nu_e \overline{A_z}^{aac} \delta_z^{aac} w \right)
+          \delta_x^{faa} \left( \nu_e \overline{A_x}^{caa} \partial_x^{caa} w \right)
+        + \delta_y^{afa} \left( \nu_e \overline{A_y}^{aca} \partial_y^{aca} w \right)
+        + \delta_z^{aaf} \left( \nu_e \overline{A_z}^{aac} \partial_z^{aac} w \right)
     \right ] \, ,
 ```
 where ``\nu`` is the kinematic viscosity.
@@ -134,9 +134,9 @@ An isotropic diffusion operator acting on a tracer ``c``, on the other hand, is 
 ```math
    \bm{\nabla} \bm{\cdot} \left ( \kappa_e \bm{\nabla} c \right ) =
     = \frac{1}{V} \left[
-        \delta_x^{caa} \left( \kappa_e A_x \delta_x^{faa} c \right)
-      + \delta_y^{aca} \left( \kappa_e A_y \delta_y^{afa} c \right)
-      + \delta_z^{aac} \left( \kappa_e A_z \delta_z^{aaf} c \right)
+        \delta_x^{caa} \left( \kappa_e A_x \partial_x^{faa} c \right)
+      + \delta_y^{aca} \left( \kappa_e A_y \partial_y^{afa} c \right)
+      + \delta_z^{aac} \left( \kappa_e A_z \partial_z^{aaf} c \right)
     \right] \, .
 ```
 

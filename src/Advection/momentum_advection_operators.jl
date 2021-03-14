@@ -46,3 +46,7 @@ which will end up at the location `ccf`.
                                     δyᵃᶜᵃ(i, j, k, grid, momentum_flux_wv, advection, U.v, w) +
                                     δzᵃᵃᶠ(i, j, k, grid, momentum_flux_ww, advection, U.w, w))
 end
+
+@inline div_Uu(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, u) where FT = zero(FT)
+@inline div_Uv(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, v) where FT = zero(FT)
+@inline div_Uw(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, w) where FT = zero(FT)

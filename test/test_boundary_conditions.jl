@@ -1,6 +1,6 @@
 using Oceananigans.BoundaryConditions: PBC, ZFBC, NFBC, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 
-using Oceananigans.Fields: Face, Cell
+using Oceananigans.Fields: Face, Center
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
 
@@ -46,7 +46,7 @@ end
 
         # Triply periodic
         ppp_topology = (Periodic, Periodic, Periodic)
-        ppp_grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=ppp_topology)
+        ppp_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=ppp_topology)
 
         u_bcs = UVelocityBoundaryConditions(ppp_grid)
         v_bcs = VVelocityBoundaryConditions(ppp_grid)
@@ -87,7 +87,7 @@ end
 
         # Doubly periodic. Engineers call this a "Channel geometry".
         ppb_topology = (Periodic, Periodic, Bounded)
-        ppb_grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=ppb_topology)
+        ppb_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=ppb_topology)
 
         u_bcs = UVelocityBoundaryConditions(ppb_grid)
         v_bcs = VVelocityBoundaryConditions(ppb_grid)
@@ -128,7 +128,7 @@ end
 
         # Singly periodic. Oceanographers call this a "Channel", engineers call it a "Pipe"
         pbb_topology = (Periodic, Bounded, Bounded)
-        pbb_grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=pbb_topology)
+        pbb_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=pbb_topology)
 
         u_bcs = UVelocityBoundaryConditions(pbb_grid)
         v_bcs = VVelocityBoundaryConditions(pbb_grid)
@@ -169,7 +169,7 @@ end
 
         # Triply bounded. Oceanographers call this a "Basin", engineers call it a "Box"
         bbb_topology = (Bounded, Bounded, Bounded)
-        bbb_grid = RegularCartesianGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=bbb_topology)
+        bbb_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=bbb_topology)
 
         u_bcs = UVelocityBoundaryConditions(bbb_grid)
         v_bcs = VVelocityBoundaryConditions(bbb_grid)

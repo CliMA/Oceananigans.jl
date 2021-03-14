@@ -1,9 +1,20 @@
+#=
+This script can be used to build the Documentation only with a few examples (e.g., an example 
+a developer is currently working on). This makes previewing how the example will look like 
+in the actual documentation much faster. To use the script, modify it to include the example
+you are working on and then run:
+
+$ julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'; julia --project=docs/ docs/make_example.jl
+
+from the repo's home directory and then open `docs/build/index.html` with your favorite browser.
+=#
+
 push!(LOAD_PATH, "..")
 
 using Documenter
-using Bibliography
 using Literate
 using Plots  # to avoid capturing precompilation output by Literate
+
 using Oceananigans
 using Oceananigans.Operators
 using Oceananigans.Grids
@@ -13,15 +24,6 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
 
-#=
-bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
-const BIBLIOGRAPHY = import_bibtex(bib_filepath)
-@info "Bibliography: found $(length(BIBLIOGRAPHY)) entries."
-
-include("bibliography.jl")
-include("citations.jl")
-=#
-
 #####
 ##### Generate examples
 #####
@@ -29,6 +31,7 @@ include("citations.jl")
 # Gotta set this environment variable when using the GR run-time on Travis CI.
 # This happens as examples will use Plots.jl to make plots and movies.
 # See: https://github.com/jheinen/GR.jl/issues/278
+
 ENV["GKSwstype"] = "100"
 
 const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
@@ -36,8 +39,9 @@ const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
            # "internal_wave.jl",
-            "eady_turbulence.jl"
-           ]
+           # "geostrophic_adjustment.jl"
+            "Bickley_jet_shallow_water.jl"
+            ]
 
 for example in examples
     example_filepath = joinpath(EXAMPLES_DIR, example)
@@ -50,8 +54,9 @@ end
 
 example_pages = [
                  #"Internal wave"                    => "generated/internal_wave.md",
-                 "Eady turbulence"                  => "generated/eady_turbulence.md"
-                ]
+                 #"Geostrophic adjustment"            => "generated/geostrophic_adjustment.md",
+                 "Bickley jet in shallow water model"    => "generated/Bickley_jet_shallow_water.md"
+                 ]
 
 pages = [
          "Home" => "index.md",

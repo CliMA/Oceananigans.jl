@@ -1,9 +1,6 @@
 module Utils
 
 export
-    second, minute, hour, day, year, meter, kilometer,
-    seconds, minutes, hours, days, years, meters, kilometers,
-    KiB, MiB, GiB, TiB,
     launch_config, work_layout, launch!,
     cell_advection_timescale,
     TimeStepWizard, update_Δt!,
@@ -31,8 +28,6 @@ short_show(f::Function) = string(Symbol(f))
 ##### Include utils
 #####
 
-include("adapt_structure.jl")
-include("units.jl")
 include("automatic_halo_sizing.jl")
 include("kernel_launching.jl")
 include("cell_advection_timescale.jl")

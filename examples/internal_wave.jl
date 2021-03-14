@@ -4,6 +4,15 @@
 # and watch it propagate. This example illustrates how to set up a two-dimensional
 # model, set initial conditions, and how to use `BackgroundField`s.
 #
+# ## Install dependencies
+#
+# First let's make sure we have all required packages installed.
+
+# ```julia
+# using Pkg
+# pkg"add Oceananigans, JLD2, Plots"
+# ```
+
 # ## The physical domain
 #
 # First, we pick a resolution and domain size. We use a two-dimensional domain
@@ -11,7 +20,7 @@
 
 using Oceananigans
 
-grid = RegularCartesianGrid(size=(128, 1, 128), x=(-π, π), y=(-π, π), z=(-π, π),
+grid = RegularRectilinearGrid(size=(128, 1, 128), x=(-π, π), y=(-π, π), z=(-π, π),
                             topology=(Periodic, Periodic, Periodic))
 
 # ## Internal wave parameters
@@ -31,8 +40,6 @@ coriolis = FPlane(f=0.2)
 # and `N` is the "buoyancy frequency". This means that the modeled buoyancy field
 # perturbs the basic state `B(z)`.
 
-using Oceananigans.Fields: BackgroundField
-
 ## Background fields are functions of `x, y, z, t`, and optional parameters.
 ## Here we have one parameter, the buoyancy frequency
 B_func(x, y, z, t, N) = N^2 * z
@@ -46,11 +53,9 @@ B = BackgroundField(B_func, parameters=N)
 # We add a small amount of `IsotropicDiffusivity` to keep the model stable
 # during time-stepping, and specify that we're using a single tracer called
 # `b` that we identify as buoyancy by setting `buoyancy=BuoyancyTracer()`.
-  
-using Oceananigans.Advection
 
 model = IncompressibleModel(
-                 grid = grid, 
+                 grid = grid,
             advection = CenteredFourthOrder(),
           timestepper = :RungeKutta3,
               closure = IsotropicDiffusivity(ν=1e-6, κ=1e-6),
@@ -85,7 +90,7 @@ f = coriolis.f
 ω = sqrt(ω²)
 nothing # hide
 
-# We define a Gaussian envelope for the wave packet so that we can 
+# We define a Gaussian envelope for the wave packet so that we can
 # observe wave propagation.
 
 ## Some Gaussian parameters
@@ -118,10 +123,8 @@ set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 # We're ready to release the packet. We build a simulation with a constant time-step,
 
 simulation = Simulation(model, Δt = 0.1 * 2π/ω, stop_iteration = 15)
-                        
-# and add an output writer that saves the vertical velocity field every two iterations:
 
-using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
+# and add an output writer that saves the vertical velocity field every two iterations:
 
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
                                                           schedule = IterationInterval(1),
@@ -137,7 +140,7 @@ run!(simulation)
 # To visualize the solution, we load snapshots of the data and use it to make contour
 # plots of vertical velocity.
 
-using JLD2, Printf, Plots, Oceananigans.Grids
+using JLD2, Printf, Plots
 
 # We use coordinate arrays appropriate for the vertical velocity field,
 
@@ -173,4 +176,4 @@ anim = @animate for (i, iter) in enumerate(iterations)
                  aspectratio = :equal)
 end
 
-gif(anim, "internal_wave.gif", fps = 8) # hide
+mp4(anim, "internal_wave.mp4", fps = 8) # hide

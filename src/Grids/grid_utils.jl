@@ -59,7 +59,7 @@ constant grid spacing `Δ`, and interior extent `L`.
     total_length(loc, topo, N, H=0)
 
 Returns the total length (number of nodes), including halo points, of a field
-located at `Cell` centers along a grid dimension of length `N` and with halo points `H`.
+located at `Center` centers along a grid dimension of length `N` and with halo points `H`.
 """
 @inline total_length(loc, topo, N, H=0) = N + 2H
 
@@ -138,36 +138,36 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 #####
 
 # Node by node
-@inline xnode(::Type{Cell}, i, grid) = @inbounds grid.xC[i]
+@inline xnode(::Type{Center}, i, grid) = @inbounds grid.xC[i]
 @inline xnode(::Type{Face}, i, grid) = @inbounds grid.xF[i]
 
-@inline ynode(::Type{Cell}, j, grid) = @inbounds grid.yC[j]
+@inline ynode(::Type{Center}, j, grid) = @inbounds grid.yC[j]
 @inline ynode(::Type{Face}, j, grid) = @inbounds grid.yF[j]
 
-@inline znode(::Type{Cell}, k, grid) = @inbounds grid.zC[k]
+@inline znode(::Type{Center}, k, grid) = @inbounds grid.zC[k]
 @inline znode(::Type{Face}, k, grid) = @inbounds grid.zF[k]
 
 # Convenience is king
-@inline xC(i, grid) = xnode(Cell, i, grid)
+@inline xC(i, grid) = xnode(Center, i, grid)
 @inline xF(i, grid) = xnode(Face, i, grid)
 
-@inline yC(j, grid) = ynode(Cell, j, grid)
+@inline yC(j, grid) = ynode(Center, j, grid)
 @inline yF(j, grid) = ynode(Face, j, grid)
 
-@inline zC(k, grid) = znode(Cell, k, grid)
+@inline zC(k, grid) = znode(Center, k, grid)
 @inline zF(k, grid) = znode(Face, k, grid)
 
-all_x_nodes(::Type{Cell}, grid) = grid.xC
+all_x_nodes(::Type{Center}, grid) = grid.xC
 all_x_nodes(::Type{Face}, grid) = grid.xF
-all_y_nodes(::Type{Cell}, grid) = grid.yC
+all_y_nodes(::Type{Center}, grid) = grid.yC
 all_y_nodes(::Type{Face}, grid) = grid.yF
-all_z_nodes(::Type{Cell}, grid) = grid.zC
+all_z_nodes(::Type{Center}, grid) = grid.zC
 all_z_nodes(::Type{Face}, grid) = grid.zF
 
 """
     xnodes(loc, grid, reshape=false)
 
-Returns a view over the interior `loc=Cell` or `loc=Face` nodes
+Returns a view over the interior `loc=Center` or `loc=Face` nodes
 on `grid` in the x-direction. For `Bounded` directions,
 `Face` nodes include the boundary points. `reshape=false` will
 return a 1D array while `reshape=true` will return a 3D array
@@ -186,7 +186,7 @@ end
 """
     ynodes(loc, grid, reshape=false)
 
-Returns a view over the interior `loc=Cell` or `loc=Face` nodes
+Returns a view over the interior `loc=Center` or `loc=Face` nodes
 on `grid` in the y-direction. For `Bounded` directions,
 `Face` nodes include the boundary points. `reshape=false` will
 return a 1D array while `reshape=true` will return a 3D array
@@ -206,7 +206,7 @@ end
 """
     znodes(loc, grid, reshape=false)
 
-Returns a view over the interior `loc=Cell` or `loc=Face` nodes
+Returns a view over the interior `loc=Center` or `loc=Face` nodes
 on `grid` in the z-direction. For `Bounded` directions,
 `Face` nodes include the boundary points. `reshape=false` will
 return a 1D array while `reshape=true` will return a 3D array
@@ -219,10 +219,10 @@ Examples
 ```jldoctest znodes
 julia> using Oceananigans, Oceananigans.Grids
 
-julia> horz_periodic_grid = RegularCartesianGrid(size=(3, 3, 3), extent=(2π, 2π, 1),
+julia> horz_periodic_grid = RegularRectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1),
                                                  topology=(Periodic, Periodic, Bounded));
 
-julia> zC = znodes(Cell, horz_periodic_grid)
+julia> zC = znodes(Center, horz_periodic_grid)
 3-element view(OffsetArray(::StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}, 0:4), 1:3) with eltype Float64:
  -0.8333333333333331
  -0.4999999999999999
