@@ -243,9 +243,14 @@ using Polynomials: fit
 I = 6000:7000
 
 degree = 1
-linear_fit_polynomial = fit(t[I], log.(norm_v[I]), degree)
+linear_fit_polynomial = fit(t[I], log.(norm_v[I]), degree, var = :t)
 
-best_fit = @. exp(linear_fit_polynomial[0] + linear_fit_polynomial[1] * t)
+# We can get the coefficient of the ``n``-th power from the fitted polynomial by using `n` 
+# as an index. Using the polynomial coefficients we construct the best fit and plot it together 
+# with the time-series for the perturbation norm for comparison. 
+
+constant, slope = linear_fit_polynomial[0], linear_fit_polynomial[1]
+best_fit = @. exp(constant + slope * t)
 
 plot(t, norm_v,
         yaxis = :log,
@@ -261,9 +266,8 @@ plot!(t[I], 2 * best_fit[I], # factor 2 offsets fit from curve for better visual
            lw = 4,
         label = "best fit")
             
-# We can compute the slope of the curve on a logarithmic scale, which approximates the growth 
-# rate of the simulation. This should be close to the theoretical prediction.
+# The slope of the best-fit curve on a logarithmic scale approximates the rate at which instability
+# grows in the simulation. Let's see how this compares with the theoretical growth rate.
 
-println("Numerical growth rate is approximated to be ",
-        round(linear_fit_polynomial[1], digits=3), ",\n",
+println("Numerical growth rate is approximated to be ", round(slope, digits=3), ",\n",
         "which is very close to the theoretical value of 0.139.")
