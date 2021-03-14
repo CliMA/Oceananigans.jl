@@ -95,14 +95,14 @@ nothing # hide
 # The initial conditions include a small-amplitude perturbation that decays away from the 
 # center of the jet.
 
- ϵ = 1e-4
+ small_amplitude = 1e-4
  
- uⁱ(x, y, z) = ū(x, y, z) + ϵ * exp(-y^2) * randn()
+ uⁱ(x, y, z) = ū(x, y, z) + small_amplitude * exp(-y^2) * randn()
  hⁱ(x, y, z) = h̄(x, y, z)
 uhⁱ(x, y, z) = uⁱ(x, y, z) * hⁱ(x, y, z)
 nothing # hide
 
-# We set the initial conditions for the zonal mass transport `uhⁱ` and height `hⁱ`.
+# We set the initial conditions for the zonal mass transport `uhⁱ` and the fluid height `hⁱ`.
 
 set!(model, uh = uhⁱ, h = hⁱ)
 
@@ -264,5 +264,6 @@ plot!(t[I], 2 * best_fit[I], # factor 2 offsets fit from curve for better visual
 # We can compute the slope of the curve on a logarithmic scale, which approximates the growth 
 # rate of the simulation. This should be close to the theoretical prediction.
 
-println("Numerical growth rate is approximated to be ", round(linear_fit_polynomial[1], digits=3), ",\n",
+println("Numerical growth rate is approximated to be ",
+        round(linear_fit_polynomial[1], digits=3), ",\n",
         "which is very close to the theoretical value of 0.139.")
