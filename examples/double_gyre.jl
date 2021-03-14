@@ -13,9 +13,11 @@ using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.AbstractOperations
 
+using Oceananigans.Fields: PressureField
+
 using Printf
 
-grid = RegularCartesianGrid(size=(32, 32, 4), x=(-2e5, 2e5), y=(-3e5, 3e5), z=(-1e3, 0),
+grid = RegularCartesianGrid(size=(64, 64, 16), x=(-2e5, 2e5), y=(-3e5, 3e5), z=(-1e3, 0),
                             topology=(Bounded, Bounded, Bounded))
 
 # ## Boundary conditions
@@ -24,15 +26,15 @@ grid = RegularCartesianGrid(size=(32, 32, 4), x=(-2e5, 2e5), y=(-3e5, 3e5), z=(-
 
 @inline wind_stress(x, y, t, p) = - p.τ * cos(2π * y / p.Ly)
 
-surface_stress_u_bc = BoundaryCondition(Flux, wind_stress, parameters=(τ=1e-3, Ly=grid.Ly))
+surface_stress_u_bc = BoundaryCondition(Flux, wind_stress, parameters=(τ=1e-4, Ly=grid.Ly))
 
 # ### Bottom drag
 
 @inline bottom_drag_u(x, y, t, u, p) = - p.μ * p.Lz * u
 @inline bottom_drag_v(x, y, t, v, p) = - p.μ * p.Lz * v
 
-bottom_drag_u_bc = BoundaryCondition(Flux, bottom_drag_u, field_dependencies=:u, parameters=(μ=1/day, Lz=grid.Lz))
-bottom_drag_v_bc = BoundaryCondition(Flux, bottom_drag_v, field_dependencies=:v, parameters=(μ=1/day, Lz=grid.Lz))
+bottom_drag_u_bc = BoundaryCondition(Flux, bottom_drag_u, field_dependencies=:u, parameters=(μ=1/180day, Lz=grid.Lz))
+bottom_drag_v_bc = BoundaryCondition(Flux, bottom_drag_v, field_dependencies=:v, parameters=(μ=1/180day, Lz=grid.Lz))
 
 u_bcs = UVelocityBoundaryConditions(grid, top = surface_stress_u_bc, bottom = bottom_drag_u_bc)
 v_bcs = VVelocityBoundaryConditions(grid, bottom = bottom_drag_v_bc)
@@ -43,7 +45,7 @@ v_bcs = VVelocityBoundaryConditions(grid, bottom = bottom_drag_v_bc)
 
 buoyancy_flux_bc = BoundaryCondition(Flux, buoyancy_flux,
                                      field_dependencies = :b,
-                                     parameters = (μ=1/day, Δb=0.1, Ly=grid.Ly))
+                                     parameters = (μ=1/day, Δb=0.05, Ly=grid.Ly))
 
 b_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc,
                                        bottom = BoundaryCondition(Value, 0))
@@ -71,9 +73,9 @@ set!(model, b=bᵢ)
 
 # ## Simulation setup
 
-max_Δt = 1/3model.coriolis.f₀
+max_Δt = 1 / 5model.coriolis.f₀
 
-wizard = TimeStepWizard(cfl=1.0, Δt=10minutes, max_change=1.1, max_Δt=max_Δt)
+wizard = TimeStepWizard(cfl=1.0, Δt=hour/2, max_change=1.1, max_Δt=max_Δt)
 
 # Finally, we set up and run the the simulation.
 
@@ -100,7 +102,7 @@ function print_progress(simulation)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=30days, iteration_interval=10, progress=print_progress)
+simulation = Simulation(model, Δt=wizard, stop_time=365days, iteration_interval=10, progress=print_progress)
 
 # ## Output
 
@@ -113,16 +115,18 @@ buoyancy_variance = ComputedField(b^2)
 outputs = merge(model.velocities, model.tracers, (speed=speed, b²=buoyancy_variance))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(5days),
+                                                      schedule = TimeInterval(2days),
                                                       prefix = "double_gyre",
                                                       field_slicer = FieldSlicer(k=model.grid.Nz),
                                                       force = true)
 
+p = PressureField(model)
+barotropic_p = AveragedField(p, dims=3)
 barotropic_u = AveragedField(model.velocities.u, dims=3)
 barotropic_v = AveragedField(model.velocities.v, dims=3)
 
 simulation.output_writers[:barotropic_velocities] =
-    JLD2OutputWriter(model, (u=barotropic_u, v=barotropic_v),
+    JLD2OutputWriter(model, (u=barotropic_u, v=barotropic_v, p=barotropic_p),
                      schedule = AveragedTimeInterval(30days, window=10days),
                      prefix = "double_gyre_circulation",
                      force = true)
