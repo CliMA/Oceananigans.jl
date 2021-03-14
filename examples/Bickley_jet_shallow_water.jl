@@ -257,7 +257,7 @@ plot(t, norm_v,
         title = "growth of perturbation norm",
        legend = :bottomright)
 
-plot!(plt, t[I], 2 * best_fit[I], # factor 2 offsets fit from curve for better visualization
+plot!(t[I], 2 * best_fit[I], # factor 2 offsets fit from curve for better visualization
            lw = 4,
         label = "best fit")
             
