@@ -265,4 +265,4 @@ plot!(plt, t[I], 2 * best_fit[I], # factor 2 offsets fit from curve for better v
 # rate of the simulation. This should be close to the theoretical prediction.
 
 println("Numerical growth rate is approximated to be ", round(linear_fit_polynomial[1], digits=3), ",\n",
-        "which is close to the theoretical value of 0.139.")
+        "which is very close to the theoretical value of 0.139.")
