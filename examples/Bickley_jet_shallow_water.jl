@@ -173,6 +173,7 @@ run!(simulation)
 # Load required packages to read output and plot.
 
 using NCDatasets, Plots, Printf
+nothing # hide
 
 # Define the coordinates for plotting.
 
@@ -246,10 +247,13 @@ degree = 1
 linear_fit_polynomial = fit(t[I], log.(norm_v[I]), degree, var = :t)
 
 # We can get the coefficient of the ``n``-th power from the fitted polynomial by using `n` 
-# as an index. Using the polynomial coefficients we construct the best fit and plot it together 
-# with the time-series for the perturbation norm for comparison. 
+# as an index, e.g.,
 
 constant, slope = linear_fit_polynomial[0], linear_fit_polynomial[1]
+
+# We then use the computed linear fit coefficients to construct the best fit and plot it 
+# together with the time-series for the perturbation norm for comparison. 
+
 best_fit = @. exp(constant + slope * t)
 
 plot(t, norm_v,
