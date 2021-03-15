@@ -1,4 +1,7 @@
 using Oceananigans.Grids: xnode, ynode, znode, Center, AbstractGrid
+using ForwardDiff
+using LinearAlgebra
+using Oceananigans.Fields: interpolate
 
 import Oceananigans.TimeSteppers: correct_immersed_tendencies!
 
@@ -9,15 +12,15 @@ Correct the tendency terms to implement no-slip boundary conditions on an immers
  without the contribution from the non-hydrostatic pressure. 
 Makes velocity vanish within the immersed surface.
 """
-
-correct_immersed_tendencies!(model::IncompressibleModel, Δt, γⁿ, ζⁿ) =
-    correct_immersed_tendencies!(model, model.immersed_boundary, Δt, γⁿ, ζⁿ)
+# check if incompressible model (only model it works with for now!)
+correct_immersed_tendencies!(model::IncompressibleModel) =
+    correct_immersed_tendencies!(model, model.immersed_boundary)
 
 # if no immersed boundary, do nothing (no cost)
-correct_immersed_tendencies!(model, ::Nothing, Δt, γⁿ, ζⁿ) = nothing
+correct_immersed_tendencies!(model, ::Nothing) = nothing
 
 # otherwise, unpack the model
-function correct_immersed_tendencies!(model, immersed_boundary, Δt, γⁿ, ζⁿ)
+function correct_immersed_tendencies!(model, immersed_boundary)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
 
@@ -27,12 +30,11 @@ function correct_immersed_tendencies!(model, immersed_boundary, Δt, γⁿ, ζ�
     
     # event we want to occur, evaluate using kernel function
     correct_tendencies_event =
-        correct_immersed_tendencies_kernel!(model.timestepper.Gⁿ,
-                                            model.grid,
+        correct_immersed_tendencies_kernel!(model.grid,
                                             immersed_boundary,
-                                            model.timestepper.G⁻,
                                             model.velocities,
-                                            Δt, γⁿ, ζⁿ,
+                                            model.grid.Δx, 
+                                            model.grid.Δy, model.grid.Δz,
                                             dependencies=barrier)
     # wait for these things to happen before continuing in calculations
     wait(device(model.architecture), correct_tendencies_event)
@@ -40,26 +42,132 @@ function correct_immersed_tendencies!(model, immersed_boundary, Δt, γⁿ, ζ�
     return nothing
 end
 
-@kernel function _correct_immersed_tendencies!(Gⁿ, grid::AbstractGrid{FT}, immersed, G⁻, velocities, Δt, γⁿ, ζⁿ) where FT
+@kernel function _correct_immersed_tendencies!(grid::AbstractGrid{FT}, immersed, velocities, Δx, Δy, Δz) where FT
+    
     i, j, k = @index(Global, NTuple)
     
-    # evaluating x,y,z at cell centers to determine if boundary or not
-    x = xnode(Center, i, grid)
+    # (x,y,z) for u velocity grid
+    x = xnode(Face, i, grid)
     y = ynode(Center, j, grid)
     z = znode(Center, k, grid)
-
+    
     @inbounds begin
-        # correcting velocity tendency terms: if immersd boundary gives true then correct tendency, otherwise don't (it's a fluid node)
-        Gⁿ.u[i, j, k] = ifelse(immersed(x, y, z),
-                               - (velocities.u[i, j, k] + ζⁿ * Δt * G⁻.u[i, j, k]) / (γⁿ * Δt),
-                               Gⁿ.u[i, j, k])
-
-        Gⁿ.v[i, j, k] = ifelse(immersed(x, y, z),
-                               - (velocities.v[i, j, k] + ζⁿ * Δt * G⁻.v[i, j, k]) / (γⁿ * Δt),
-                               Gⁿ.v[i, j, k])
-
-        Gⁿ.w[i, j, k] = ifelse(immersed(x, y, z),
-                               - (velocities.w[i, j, k] + ζⁿ * Δt * G⁻.w[i, j, k]) / (γⁿ * Δt),
-                               Gⁿ.w[i, j, k])
+        spc = [x, y, z]
+        if immersed(spc) < 0 # solid node
+            if max_neighbor(x,y,z,Δx,Δy,Δz,immersed) > 0 # fluid neighbor
+                
+                UI = immersed_value(spc, immersed, grid, velocities, dirichZero, 1)
+         
+                velocities.u[i, j, k] = UI
+            else
+                velocities.u[i, j, k] = 0.
+            end
+        end
     end
+   
+    # (x,y,z) for v velocity grid
+    x = xnode(Center, i, grid)
+    y = ynode(Face, j, grid)
+    z = znode(Center, k, grid)
+    
+    @inbounds begin
+        spc = [x, y, z]
+        if immersed(spc) < 0 # solid node
+            if max_neighbor(x, y, z, Δx, Δy, Δz, immersed) > 0 # fluid neighbor
+                
+                VI = immersed_value(spc, immersed, grid, velocities, dirichZero, 2)
+                
+                velocities.v[i, j, k] = VI
+            else
+                velocities.v[i, j, k] = 0.
+            end
+        end
+    end
+    
+    # (x,y,z) for w velocity grid
+    x = xnode(Center, i, grid)
+    y = ynode(Center, j, grid)
+    z = znode(Face, k, grid)
+    
+    @inbounds begin
+        spc = [x, y, z]
+        if immersed(spc) < 0 # solid node
+            if max_neighbor(x, y, z, Δx, Δy, Δz, immersed) > 0 # fluid neighbor
+                
+                WI = immersed_value(spc, immersed, grid, velocities, dirichZero, 3)
+
+                velocities.w[i, j, k] = WI
+                
+            else
+                velocities.w[i, j, k] = 0.
+                
+            end
+        end
+    end
+end
+
+# function to finds the most positive distnace of neighboring nodes
+max_neighbor(x, y, z, Δx, Δy, Δz, immersed_distance)= max(immersed_distance([x+Δx y z]),
+                    immersed_distance([x-Δx y z]), immersed_distance([x y+Δy z]),
+                    immersed_distance([x y-Δy z]), immersed_distance([x y z+Δz]),
+                    immersed_distance([x y z-Δz]))  
+
+# function to find the tangential plane to the point for rotation to tangential and normal
+function projection_matrix(N)
+
+    if abs(N[1]) == 1 # if normal vector is entirely in the x direction
+        v1 = [-N[3]/N[1]; 0; 1]  # we want v1 = [0,0,1]
+    elseif abs(N[2]) == 1 || N[3]==0 # if normal vector is entirely in the y direction or 0 z comp
+        v1 = [1; -N[1]/N[2]; 0] # we want v1 = [1,0,0]
+    else
+        v1 = [1; 0; -N[1]/N[3]] # else we want v1 = [1, 0 , ?]
+    end
+
+    v1 = v1./norm(v1); # normalizing vector
+    v2 = cross(N, v1); # cross product to be orthonormal to both vectors
+    transpose(hcat(v1, v2, N)) # creating a matrix of all 3 vectors
+end 
+
+# dirichlet bc Vb to find enforced pt vel u1 given the value at u2 and the sfc normal distances 
+# assume boundary is at dist = 0 and fluid is negative d,so if reflected equidistant : d1 = -d2 
+function interp_bc(u2, d2, Vb)
+    u1 = 2*Vb-u2
+end
+        
+# hard coding dirichlet zero bc for now
+dirichZero(x) = 0.        
+    
+# function to find the value to enforce at a given immersed node         
+function immersed_value(xvec, im_dist, grid, velocities, b_conds, needed_idx)
+    # a function that finds the gradient of the distance function, ie. the sfc normal vectors
+    # requires function have vector input, not what we want in the long run
+
+    normalDist = x-> ForwardDiff.gradient(im_dist,x)   
+    xF = xvec; # forced node is the x argument
+    n = normalDist(xF); # sfc normal vector
+    d2 = abs(im_dist(xF)) # distance to surface
+    x₀ = xF + d2*n #closest point on boundary
+    xI = x₀ + d2*n #reflected point over boundary
+    
+    #interpolated velocities withw trilinear interpolation
+    uI = interpolate(velocities.u, xI[1], xI[2], xI[3])
+    vI = interpolate(velocities.v, xI[1], xI[2], xI[3])
+    wI = interpolate(velocities.w, xI[1], xI[2], xI[3])
+    
+    # matrix to rotate into tangential and normal
+    matrix = projection_matrix(n);
+    # new velocity vector: V_rot = [Vt1, Vt2, Vn]
+    V_rot = matrix*[uI; vI; wI];
+    
+    # velocities at forced point from interpolation and BCs
+    # need some kind of thing to separate out boundary conditions into what we have
+    VF¹ = interp_bc(V_rot[1], d2, b_conds(xF));
+    VF² = interp_bc(V_rot[2], d2, b_conds(xF));
+    VFⁿ = interp_bc(V_rot[3], d2, b_conds(xF));
+    
+    # now we need to return to cartesian coordinate system
+    VF = inv(matrix)*[VF¹;VF²;VFⁿ];
+    
+    # now we need to choose the one velocity out of these that we are enforcing at this location
+    vel = VF[needed_idx]
 end
