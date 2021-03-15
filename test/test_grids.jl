@@ -1,4 +1,8 @@
+using DataDeps
+
 using Oceananigans.Grids: total_extent, halo_size
+
+ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
 #####
 ##### Regular rectilinear grids
@@ -473,6 +477,38 @@ function test_basic_lat_lon_periodic_domain(FT)
 end
 
 #####
+##### Conformal cubed sphere face grid
+#####
+
+function test_cubed_sphere_face_array_size(FT)
+    grid = ConformalCubedSphereFaceGrid(FT, size=(10, 10, 1), z=(0, 1))
+
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+
+    @test grid.λᶜᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶠᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶜᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶠᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶜᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶠᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶜᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶠᶠᵃ isa OffsetArray{FT, 2, <:Array}
+
+    @test size(grid.λᶜᶜᵃ) == (Nx + 2Hx,     Ny + 2Hy    )
+    @test size(grid.λᶠᶜᵃ) == (Nx + 2Hx + 1, Ny + 2Hy    )
+    @test size(grid.λᶜᶠᵃ) == (Nx + 2Hx,     Ny + 2Hy + 1)
+    @test size(grid.λᶠᶠᵃ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
+
+    @test size(grid.φᶜᶜᵃ) == (Nx + 2Hx,     Ny + 2Hy    )
+    @test size(grid.φᶠᶜᵃ) == (Nx + 2Hx + 1, Ny + 2Hy    )
+    @test size(grid.φᶜᶠᵃ) == (Nx + 2Hx,     Ny + 2Hy + 1)
+    @test size(grid.φᶠᶠᵃ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
+
+    return nothing
+end
+
+#####
 ##### Test the tests
 #####
 
@@ -575,5 +611,37 @@ end
         grid = RegularLatitudeLongitudeGrid(size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
         show(grid); println();
         @test grid isa RegularLatitudeLongitudeGrid
+    end
+
+    @testset "Conformal cubed sphere face grid" begin
+        @info "  Testing conformal cubed sphere face grid..."
+
+        for FT in float_types
+            test_cubed_sphere_face_array_size(Float64)
+        end
+
+        # Testing show function
+        grid = ConformalCubedSphereFaceGrid(size=(10, 10, 1), z=(0, 1))
+        show(grid); println();
+        @test grid isa ConformalCubedSphereFaceGrid
+    end
+
+    @testset "Conformal cubed sphere face grid from file" begin
+        @info "  Testing conformal cubed sphere face grid construction from file..."
+
+        dd = DataDep("cubed_sphere_32_grid",
+            "Conformal cubed sphere grid with 32×32 grid points on each face",
+            "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
+            "3cc5d86290c3af028cddfa47e61e095ee470fe6f8d779c845de09da2f1abeb15" # sha256sum
+        )
+
+        DataDeps.register(dd)
+
+        cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
+
+        for face in 1:6
+            grid = ConformalCubedSphereFaceGrid(cs32_filepath, face=face, Nz=1, z=(-1, 0))
+            @test grid isa ConformalCubedSphereFaceGrid
+        end
     end
 end

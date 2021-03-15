@@ -15,6 +15,7 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RegularLatitudeLongitudeGrid,
+    ConformalCubedSphereFaceGrid,
     xnodes, ynodes, znodes, nodes,
 
     # Advection schemes

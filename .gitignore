@@ -34,6 +34,11 @@ docs/src/generated
 *.json
 *.bson
 
+# Grid files
+*.tgz
+*.bin
+*.m
+
 # Jupyter Lab stuff and notebooks
 *.ipynb
 .ipynb_checkpoints
