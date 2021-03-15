@@ -14,7 +14,7 @@ end
 
 TestModel_VerticallyStrectedRectGrid(arch, FT, ν=1.0, Δx=0.5) =
     IncompressibleModel(
-          grid = VerticallyStretchedRectilinearGrid(FT, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), zF=0:Δx:3Δx,),
+          grid = VerticallyStretchedRectilinearGrid(FT, architecture = arch, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), zF=0:Δx:3Δx,),
        closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = arch,
     float_type = FT
