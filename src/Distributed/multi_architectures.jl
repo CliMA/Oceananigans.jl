@@ -111,7 +111,7 @@ end
 ##### Constructors
 #####
 
-function MultiCPU(; grid, ranks, communicator=MPI.COMM_WORLD)
+function MultiArchitecture(MultiArch, grid, ranks, communicator)
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
 
     validate_tupled_argument(ranks, Int, "ranks")
@@ -131,8 +131,11 @@ function MultiCPU(; grid, ranks, communicator=MPI.COMM_WORLD)
 
     local_connectivity = RankConnectivity(local_index, ranks, topology(grid))
 
-    return MultiCPU(grid, local_rank, local_index, ranks, local_connectivity, communicator)
+    return MultiArch(grid, local_rank, local_index, ranks, local_connectivity, communicator)
 end
+
+MultiCPU(; grid, ranks, communicator=MPI.COMM_WORLD) = MultiArchitecture(MultiCPU, grid, ranks, communicator)
+MultiGPU(; grid, ranks, communicator=MPI.COMM_WORLD) = MultiArchitecture(MultiGPU, grid, ranks, communicator)
 
 #####
 ##### Pretty printing
