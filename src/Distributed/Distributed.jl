@@ -1,7 +1,7 @@
 module Distributed
 
 export
-    MultiCPU, child_architecture,
+    MultiCPU, MultiGPU, child_architecture,
     HaloCommunication, HaloCommunicationBC,
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver,
