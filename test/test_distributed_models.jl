@@ -440,6 +440,7 @@ end
 #####
 
 @testset "Distributed MPI Oceananigans" begin
+    #=
     @info "Testing distributed MPI Oceananigans..."
 
     @testset "Multi architectures rank connectivity" begin
@@ -475,8 +476,8 @@ end
             test_triply_periodic_halo_communication_with_221_ranks((H, H, H))
         end
     end
-
-    @testset "Time stepping" begin
+    
+    @testset "Time stepping IncompressibleModel" begin
         topo = (Periodic, Periodic, Periodic)
         full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
         arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
@@ -490,5 +491,22 @@ end
         run!(simulation)
         @test model isa IncompressibleModel
         @test model.clock.time == 2
+    end
+    =#
+    @testset "Time stepping ShallowWaterModel" begin
+        topo = (Periodic, Periodic, Bounded)
+        full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 1), extent=(1, 2, 3))
+        arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
+        model = DistributedShallowWaterModel(architecture=arch, grid=full_grid, gravitational_acceleration=1)
+
+        set!(model, h=model.grid.Lz)
+        time_step!(model, 1)
+        @test model isa ShallowWaterModel
+        @test model.clock.time == 1
+
+        simulation = Simulation(model, Δt=1, stop_iteration=2)
+        run!(simulation)
+        @test model isa ShallowWaterModel
+        #@test model.clock.time == 2
     end
 end
