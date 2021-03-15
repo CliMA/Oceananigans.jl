@@ -215,5 +215,5 @@ Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, T
 
 min_Δx(grid::VerticallyStretchedRectilinearGrid) = grid.Δx
 min_Δy(grid::VerticallyStretchedRectilinearGrid) = grid.Δy
-min_Δz(grid::VerticallyStretchedRectilinearGrid) = minimum(grid.Δzᵃᵃᶜ[1:grid.Nz])
+min_Δz(grid::VerticallyStretchedRectilinearGrid) = minimum(view(grid.Δzᵃᵃᶜ, 1:grid.Nz))
 
