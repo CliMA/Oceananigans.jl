@@ -187,12 +187,12 @@ Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, T
         grid.Hx, grid.Hy, grid.Hz,
         grid.Lx, grid.Ly, grid.Lz,
         grid.Δx, grid.Δy,
-        Adapt.adapt(to, grid.Δzᵃᵃᶜ.data),
-        Adapt.adapt(to, grid.Δzᵃᵃᶠ.data),
+        Adapt.adapt(to, grid.Δzᵃᵃᶜ),
+        Adapt.adapt(to, grid.Δzᵃᵃᶠ),
         grid.xᶜᵃᵃ, grid.yᵃᶜᵃ,
-        Adapt.adapt(to, grid.zᵃᵃᶜ.data),
+        Adapt.adapt(to, grid.zᵃᵃᶜ),
         grid.xᶠᵃᵃ, grid.yᵃᶠᵃ,
-        Adapt.adapt(to, grid.zᵃᵃᶠ.data))
+        Adapt.adapt(to, grid.zᵃᵃᶠ))
 
 #####
 ##### Should merge with grid_utils.jl at some point
