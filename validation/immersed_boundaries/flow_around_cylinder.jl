@@ -24,7 +24,9 @@ Re = 40
 
 #cylinder with center at (30,20)
 const R = 1 # radius
-inside_cylinder(x, y, z) = ((x-30)^2 + (y-20)^2) <= R # immersed solid
+vCent = [30.0, 20.0, 0.];
+dist_cylinder(v) = sqrt((vCent[1]-v[1])^2+(vCent[2]-v[2])^2)-R # immersed solid
+inside_cylinder(x, y, z) = ((x-vCent[1])^2 + (y-vCent[2])^2) <= R # immersed solid
 
 # boundary conditions: inflow and outflow in y
 v_bcs = VVelocityBoundaryConditions(grid,
@@ -39,7 +41,7 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
                                 tracers = nothing,
                                 closure = IsotropicDiffusivity(ν=1/Re),
                     boundary_conditions = (v=v_bcs,),
-                      immersed_boundary = inside_cylinder
+                      immersed_boundary = dist_cylinder
                            )
 
 # initial condition
