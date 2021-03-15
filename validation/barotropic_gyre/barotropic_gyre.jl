@@ -11,7 +11,8 @@ using Oceananigans.Coriolis:
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
     VectorInvariant,
-    ExplicitFreeSurface
+    ExplicitFreeSurface,
+    ImplicitFreeSurface
 
 using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
 using Oceananigans.Utils: prettytime, hours, day, days, years
@@ -30,6 +31,7 @@ grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
                                     latitude = (15, 75),
                                     z = (-4000, 0))
 
+#free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
 free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
 
 coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving())
@@ -111,7 +113,7 @@ function (p::Progress)(sim)
 end
 
 simulation = Simulation(model,
-                        Δt = 0.2wave_propagation_time_scale,
+                        Δt = 3600,
                         stop_time = 1years,
                         iteration_interval = 100,
                         progress = Progress(time_ns()))
