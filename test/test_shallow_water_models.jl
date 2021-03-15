@@ -150,4 +150,13 @@ end
             shallow_water_model_tracers_and_forcings_work(arch)
         end
     end
+
+    @testset "Distributed ShallowWaterModel" begin
+        @info "  Testing time-stepping ShallowWaterModel on one CPU core..."
+        Nx, Ny = 32, 32
+        for rank=1:4
+            run(`mpiexec -np $rank julia --project distributed_shallow_water_model.jl $Nx $Ny $rank`)
+        end
+    end     
 end
+
