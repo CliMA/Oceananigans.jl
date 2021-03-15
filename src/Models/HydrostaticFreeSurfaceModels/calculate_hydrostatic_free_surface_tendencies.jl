@@ -148,9 +148,9 @@ end
 #####
 
 function apply_flux_bcs!(Gcⁿ, events, c, arch, barrier, clock, model_fields)
-    x_bcs_event = apply_x_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
-    y_bcs_event = apply_y_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
-    z_bcs_event = apply_z_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
+    x_bcs_event = apply_x_bcs!(Gcⁿ, c, arch, barrier, clock, model_fields)
+    y_bcs_event = apply_y_bcs!(Gcⁿ, c, arch, barrier, clock, model_fields)
+    z_bcs_event = apply_z_bcs!(Gcⁿ, c, arch, barrier, clock, model_fields)
 
     push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
 
@@ -170,7 +170,7 @@ function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velo
     end
 
     # Free surface
-    apply_flux_bcs!(Gⁿ.η, events, displacement(free_surface), arch, events, barrier, clock, model_fields)
+    apply_flux_bcs!(Gⁿ.η, events, displacement(free_surface), arch, barrier, clock, model_fields)
 
     # Tracer fields
     for i in propertynames(tracers)
