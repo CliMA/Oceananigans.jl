@@ -107,6 +107,5 @@ include("input_validation.jl")
 include("regular_rectilinear_grid.jl")
 include("vertically_stretched_rectilinear_grid.jl")
 include("regular_latitude_longitude_grid.jl")
-include("grid_timescales.jl")
 
 end

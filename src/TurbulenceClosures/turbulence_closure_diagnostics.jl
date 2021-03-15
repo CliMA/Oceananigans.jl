@@ -1,5 +1,9 @@
 # Timescale for diffusion across one cell
-using Oceananigans.Grids: min_Δxyz, min_Δxy, min_Δx, min_Δy, min_Δz
+using Oceananigans.Grids: min_Δx, min_Δy, min_Δz
+
+min_Δxyz(grid) = min(min_Δx(grid), min_Δy(grid), min_Δz(grid))
+min_Δxy(grid) = min(min_Δx(grid), min_Δy(grid))
+
 
 cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.diffusivities, model.grid)
 cell_diffusion_timescale(::Nothing, diffusivities, grid) = Inf

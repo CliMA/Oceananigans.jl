@@ -301,6 +301,3 @@ function pop_flat_elements(tup, topo)
     return Tuple(new_tup)
 end
 
-
-
-
