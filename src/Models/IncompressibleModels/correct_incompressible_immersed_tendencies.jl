@@ -1,4 +1,4 @@
-using Oceananigans.Grids: xnode, ynode, znode, Center, AbstractGrid
+using Oceananigans.Grids: xnode, ynode, znode, Face, Center, AbstractGrid
 using ForwardDiff
 using LinearAlgebra
 using Oceananigans.Fields: interpolate
