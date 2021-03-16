@@ -206,3 +206,14 @@ Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, T
 
 @inline znode(::Type{Center}, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶜ[k]
 @inline znode(::Type{Face}, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶠ[k]
+
+
+
+#
+# Get minima of grid
+#
+
+min_Δx(grid::VerticallyStretchedRectilinearGrid) = grid.Δx
+min_Δy(grid::VerticallyStretchedRectilinearGrid) = grid.Δy
+min_Δz(grid::VerticallyStretchedRectilinearGrid) = minimum(view(grid.Δzᵃᵃᶜ, 1:grid.Nz))
+

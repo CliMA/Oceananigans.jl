@@ -118,7 +118,8 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     boundary_conditions = merge(embedded_boundary_conditions, boundary_conditions)
 
-    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, tracernames(tracers), nothing)
+    model_field_names = (:u, :v, :w, tracernames(tracers)...)
+    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, model_field_names)
 
     # Either check grid-correctness, or construct tuples of fields
     velocities    = HydrostaticFreeSurfaceVelocityFields(velocities, architecture, grid, clock, boundary_conditions)
@@ -165,5 +166,5 @@ end
 momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 validate_momentum_advection(momentum_advection, grid) = nothing
-validate_momentum_advection(momentum_advection::VectorInvariant, grid::AbstractRectilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
-validate_momentum_advection(momentum_advection::VectorInvariant, grid::AbstractHorizontallyCurvilinearGrid) = nothing
+validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
+validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, grid::AbstractHorizontallyCurvilinearGrid) = nothing

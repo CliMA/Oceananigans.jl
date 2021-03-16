@@ -12,32 +12,49 @@ function nan_checker_aborts_simulation(arch)
     return nothing
 end
 
-TestModel(::GPU, FT, ν=1.0, Δx=0.5) =
+TestModel_VerticallyStrectedRectGrid(arch, FT, ν=1.0, Δx=0.5) =
     IncompressibleModel(
-          grid = RegularRectilinearGrid(FT, size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
+          grid = VerticallyStretchedRectilinearGrid(FT, architecture = arch, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), zF=0:Δx:3Δx,),
        closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
-  architecture = GPU(),
+  architecture = arch,
     float_type = FT
 )
 
-TestModel(::CPU, FT, ν=1.0, Δx=0.5) =
+
+TestModel_RegularRectGrid(arch, FT, ν=1.0, Δx=0.5) =
     IncompressibleModel(
           grid = RegularRectilinearGrid(FT, size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
        closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
-  architecture = CPU(),
+  architecture = arch,
     float_type = FT
 )
+
+
 
 function diagnostic_windowed_spatial_average(arch, FT)
-    model = TestModel(arch, FT)
+    model = TestModel_RegularRectGrid(arch, FT)
     set!(model.velocities.u, 7)
     slicer = FieldSlicer(i=model.grid.Nx÷2:model.grid.Nx, k=1)
     u_mean = WindowedSpatialAverage(model.velocities.u; dims=(1, 2), field_slicer=slicer)
     return u_mean(model)[1] == 7
 end
 
-function advective_cfl_diagnostic_is_correct(arch, FT)
-    model = TestModel(arch, FT)
+function advective_cfl_diagnostic_is_correct_on_vertically_stretched_grid(arch, FT)
+    model = TestModel_VerticallyStrectedRectGrid(arch, FT)
+
+    Δt = FT(1.3e-6)
+    Δx = FT(model.grid.Δx)
+    u₀ = FT(1.2)
+    CFL_by_hand = Δt * u₀ / Δx
+
+    model.velocities.u.data.parent .= u₀
+    cfl = AdvectiveCFL(FT(Δt))
+
+    return cfl(model) ≈ CFL_by_hand
+end
+
+function advective_cfl_diagnostic_is_correct_on_regular_grid(arch, FT)
+    model = TestModel_RegularRectGrid(arch, FT)
 
     Δt = FT(1.3e-6)
     Δx = FT(model.grid.Δx)
@@ -56,7 +73,7 @@ function diffusive_cfl_diagnostic_is_correct(arch, FT)
     ν = FT(1.2)
     CFL_by_hand = Δt * ν / Δx^2
 
-    model = TestModel(arch, FT, ν, Δx)
+    model = TestModel_RegularRectGrid(arch, FT, ν, Δx)
     cfl = DiffusiveCFL(FT(Δt))
 
     return cfl(model) ≈ CFL_by_hand
@@ -66,7 +83,7 @@ get_iteration(model) = model.clock.iteration
 get_time(model) = model.clock.time
 
 function diagnostics_getindex(arch, FT)
-    model = TestModel(arch, FT)
+    model = TestModel_RegularRectGrid(arch, FT)
     simulation = Simulation(model, Δt=0, stop_iteration=0)
     nc = NaNChecker(model, schedule=IterationInterval(1), fields=model.velocities)
     simulation.diagnostics[:nc] = nc
@@ -76,7 +93,7 @@ function diagnostics_getindex(arch, FT)
 end
 
 function diagnostics_setindex(arch, FT)
-    model = TestModel(arch, FT)
+    model = TestModel_RegularRectGrid(arch, FT)
     simulation = Simulation(model, Δt=0, stop_iteration=0)
 
     nc1 = NaNChecker(model, schedule=IterationInterval(1), fields=model.velocities)
@@ -104,7 +121,8 @@ end
             @info "  Testing miscellaneous timeseries diagnostics [$(typeof(arch))]"
             for FT in float_types
                 @test diffusive_cfl_diagnostic_is_correct(arch, FT)
-                @test advective_cfl_diagnostic_is_correct(arch, FT)
+                @test advective_cfl_diagnostic_is_correct_on_regular_grid(arch, FT)
+                @test advective_cfl_diagnostic_is_correct_on_vertically_stretched_grid(arch, FT)
                 @test diagnostic_windowed_spatial_average(arch, FT)
                 @test diagnostics_getindex(arch, FT)
                 @test diagnostics_setindex(arch, FT)

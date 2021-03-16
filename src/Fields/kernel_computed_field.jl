@@ -3,13 +3,13 @@ using Oceananigans.Grids
 using Oceananigans.Utils: tupleit
 
 struct KernelComputedField{X, Y, Z, S, A, G, K, C, F, P} <: AbstractField{X, Y, Z, A, G}
-                   data :: A
-                   grid :: G
-                 kernel :: K
-    boundary_conditions :: C
-  computed_dependencies :: F
-             parameters :: P
-                 status :: S
+                     data :: A
+                     grid :: G
+                   kernel :: K
+      boundary_conditions :: C
+    computed_dependencies :: F
+               parameters :: P
+                   status :: S
 
     function KernelComputedField{X, Y, Z}(kernel::K, arch, grid;
                                           boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)),

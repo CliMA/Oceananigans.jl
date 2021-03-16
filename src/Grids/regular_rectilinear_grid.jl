@@ -252,3 +252,14 @@ function show(io::IO, g::RegularRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, 
               "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
               "grid spacing (Δx, Δy, Δz): ", (g.Δx, g.Δy, g.Δz))
 end
+
+
+#
+# Get minima of grid
+#
+
+min_Δx(grid::RegularRectilinearGrid) = grid.Δx
+min_Δy(grid::RegularRectilinearGrid) = grid.Δy
+min_Δz(grid::RegularRectilinearGrid) = grid.Δz
+
+

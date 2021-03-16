@@ -15,6 +15,7 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RegularLatitudeLongitudeGrid,
+    ConformalCubedSphereFaceGrid,
     xnodes, ynodes, znodes, nodes,
 
     # Advection schemes
@@ -134,6 +135,7 @@ abstract type AbstractOutputWriter end
 function run_diagnostic! end
 function write_output! end
 function location end
+function instantiated_location end
 function tupleit end
 function short_show end
 
