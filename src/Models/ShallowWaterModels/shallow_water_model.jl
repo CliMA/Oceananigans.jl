@@ -79,7 +79,8 @@ function ShallowWaterModel(;
     Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, advection)
     grid = with_halo((Hx, Hy, Hz), grid)
 
-    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, nothing)
+    model_field_names = (:uh, :vh, :h, tracers...)
+    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, model_field_names)
 
     solution = ShallowWaterSolutionFields(architecture, grid, boundary_conditions)
     tracers  = TracerFields(tracers, architecture, grid, boundary_conditions)

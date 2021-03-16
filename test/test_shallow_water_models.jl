@@ -130,7 +130,7 @@ end
 	    @info "  Testing time-step wizard ShallowWaterModels [$arch, $topos[1]]..."
             @test time_step_wizard_shallow_water_model_works(archs[1], topos[1], nothing)
         end
-                
+
         for advection in (nothing, CenteredSecondOrder(), WENO5())
             @testset "Time-stepping ShallowWaterModels [$arch, $(typeof(advection))]" begin
                 @info "  Testing time-stepping ShallowWaterModels [$arch, $(typeof(advection))]..."

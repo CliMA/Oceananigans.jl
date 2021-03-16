@@ -116,7 +116,8 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     boundary_conditions = merge(embedded_boundary_conditions, boundary_conditions)
 
-    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, tracernames(tracers), nothing)
+    model_field_names = (:u, :v, :w, tracernames(tracers)...)
+    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, model_field_names)
 
     # Either check grid-correctness, or construct tuples of fields
     velocities    = HydrostaticFreeSurfaceVelocityFields(velocities, architecture, grid, clock, boundary_conditions)
