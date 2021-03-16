@@ -54,13 +54,19 @@ end
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
 
 ab2_step_free_surface!(::Nothing, args...) = nothing
-extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
-FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, arch, grid) = nothing
-validate_velocity_boundary_conditions(::PrescribedVelocityFields) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...) = nothing
+
+validate_velocity_boundary_conditions(::PrescribedVelocityFields) = nothing
+extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
+
+FreeSurfaceDisplacementField(::PrescribedVelocityFields, arch, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, arch, grid) = nothing, nothing
+FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, arch, grid) = nothing
+
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, free_surface, tracers) = tracers
 calculate_hydrostatic_momentum_tendencies!(tendencies, ::PrescribedVelocityFields, args...) = []
+
+apply_flux_bcs!(::Nothing, c, arch, events, barrier, clock, model_fields) = nothing
 
 Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),

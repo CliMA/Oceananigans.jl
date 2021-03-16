@@ -1,3 +1,5 @@
+using Oceananigans.Grids: Center, Face
+
 """
 Notes:
 
@@ -83,7 +85,7 @@ The operators in this file fall into three categories:
 @inline Δyᶠᶠᵃ(i, j, k, grid::ARG) = grid.Δy
 
 #####
-##### Areas for horizontally-curvilinear, vertically-rectilinear algorithms
+##### Areas for algorithms that generalize to horizontally-curvilinear, vertically-rectilinear grids
 #####
 
 @inline Azᶜᶜᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
@@ -138,3 +140,35 @@ The operators in this file fall into three categories:
 @inline Azᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * (hack_sind(grid.ϕᵃᶜᵃ[j])   - hack_sind(grid.ϕᵃᶜᵃ[j-1]))
 @inline Azᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Azᶜᶜᵃ(i, j, k, grid)
 @inline Azᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Azᶠᶠᵃ(i, j, k, grid)
+
+#####
+##### Generic functions for specified locations
+#####
+##### For example, Δx(i, j, k, Face, Center, LZ) is equivalent to = Δxᶠᶜᵃ(i, j, k, grid).
+#####
+##### We also use the function "volume" rather than `V`.
+#####
+
+location_code_xy(LX, LY) = Symbol(interpolation_code(LX), interpolation_code(LY), :ᵃ)
+location_code(LX, LY, LZ) = Symbol(interpolation_code(LX), interpolation_code(LY), interpolation_code(LZ))
+
+for LX in (:Center, :Face)
+    for LY in (:Center, :Face)
+        LXe = @eval $LX
+        LYe = @eval $LY
+
+        Ax_function = Symbol(:Ax, location_code(LXe, LYe, Center()))
+        Ay_function = Symbol(:Ay, location_code(LXe, LYe, Center()))
+        Az_function = Symbol(:Az, location_code_xy(LXe, LYe))
+
+        @eval begin
+            Az(i, j, k, grid, ::$LX, ::$LY, LZ) = $Az_function(i, j, k, grid)
+            Ax(i, j, k, grid, ::$LX, ::$LY, ::Center) = $Ax_function(i, j, k, grid)
+            Ay(i, j, k, grid, ::$LX, ::$LY, ::Center) = $Ay_function(i, j, k, grid)
+        end
+    end
+end
+
+volume(i, j, k, grid, ::Center, ::Center, ::Center) = Vᶜᶜᶜ(i, j, k, grid)
+volume(i, j, k, grid, ::Face,   ::Center, ::Center) = Vᶠᶜᶜ(i, j, k, grid)
+volume(i, j, k, grid, ::Center, ::Face,   ::Center) = Vᶜᶠᶜ(i, j, k, grid)

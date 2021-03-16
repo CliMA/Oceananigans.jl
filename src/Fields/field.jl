@@ -12,9 +12,9 @@ struct Field{X, Y, Z, A, G, B} <: AbstractField{X, Y, Z, A, G}
                    grid :: G
     boundary_conditions :: B
 
-    function Field{X, Y, Z}(data, grid, bcs) where {X, Y, Z}
+    function Field{X, Y, Z}(data::A, grid::G, bcs::B) where {X, Y, Z, A, G, B}
         validate_field_data(X, Y, Z, data, grid)
-        return new{X, Y, Z, typeof(data), typeof(grid), typeof(bcs)}(data, grid, bcs)
+        return new{X, Y, Z, A, G, B}(data, grid, bcs)
     end
 end
 
@@ -127,9 +127,9 @@ function ZFaceField(FT::DataType, arch, grid,
 end
 
 CenterField(arch::AbstractArchitecture, grid, args...) = CenterField(eltype(grid), arch, grid, args...)
- XFaceField(arch::AbstractArchitecture, grid, args...) =  XFaceField(eltype(grid), arch, grid, args...)
- YFaceField(arch::AbstractArchitecture, grid, args...) =  YFaceField(eltype(grid), arch, grid, args...)
- ZFaceField(arch::AbstractArchitecture, grid, args...) =  ZFaceField(eltype(grid), arch, grid, args...)
+ XFaceField(arch::AbstractArchitecture, grid, args...) = XFaceField(eltype(grid), arch, grid, args...)
+ YFaceField(arch::AbstractArchitecture, grid, args...) = YFaceField(eltype(grid), arch, grid, args...)
+ ZFaceField(arch::AbstractArchitecture, grid, args...) = ZFaceField(eltype(grid), arch, grid, args...)
 
 @propagate_inbounds Base.setindex!(f::Field, v, inds...) = @inbounds setindex!(f.data, v, inds...)
 
