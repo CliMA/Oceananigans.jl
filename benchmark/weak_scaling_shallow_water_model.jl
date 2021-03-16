@@ -1,14 +1,13 @@
 using JLD2
-using BenchmarkTools 
+using BenchmarkTools
 using Benchmarks
 
 # Benchmark parameters
 
  Nx = 4096
-Nyp = 256
+Nyp = 256  # Ny per core
 
 ranks = (1, 2, 4, 8, 16)
-#ranks = (1, 4, 16)
 
 # Run and collect benchmarks
 
