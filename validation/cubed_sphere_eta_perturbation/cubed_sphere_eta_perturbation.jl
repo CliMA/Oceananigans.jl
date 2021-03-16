@@ -1,6 +1,7 @@
 using Statistics
 using Logging
 using Printf
+using DataDeps
 using JLD2
 
 using Oceananigans
@@ -9,13 +10,26 @@ using Oceananigans.Coriolis
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.TurbulenceClosures
 
+ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
+
 Logging.global_logger(OceananigansLogger())
+
+dd = DataDep("cubed_sphere_32_grid",
+    "Conformal cubed sphere grid with 32×32 grid points on each face",
+    "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
+    "3cc5d86290c3af028cddfa47e61e095ee470fe6f8d779c845de09da2f1abeb15" # sha256sum
+)
+
+DataDeps.register(dd)
 
 ## Choose a lat-lon grid or cubed sphere face grid
 
 H = 4kilometers
 
-grid = RegularLatitudeLongitudeGrid(size = (60, 60, 1), longitude = (-40, 40), latitude = (-40, 40), z = (-H, 0))
+# grid = RegularLatitudeLongitudeGrid(size = (60, 60, 1), longitude = (-40, 40), latitude = (-40, 40), z = (-H, 0))
+
+cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
+grid = ConformalCubedSphereFaceGrid(cs32_filepath, face=1, Nz=1, z=(-H, 0))
 
 ## Turbulent diffusivity closure
 
@@ -34,8 +48,10 @@ model = HydrostaticFreeSurfaceModel(
     momentum_advection = VectorInvariant(),
           free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
         # free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
-              coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
-               closure = constant_horizontal_diffusivity,
+              coriolis = nothing,
+           #  coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
+               closure = nothing,
+             # closure = constant_horizontal_diffusivity,
              # closure = variable_horizontal_diffusivity,
                tracers = nothing,
               buoyancy = nothing
@@ -51,14 +67,21 @@ A  = 1e-5 * H  # Amplitude of the perturbation
 Δφ = 10  # Latitudinal width
 
 η′(λ, φ, z) = A * exp(- (λ - λ₀)^2 / Δλ^2) * exp(- (φ - φ₀)^2 / Δφ^2)
-set!(model, η=η′)
 
-g = model.free_surface.gravitational_acceleration
-gravity_wave_speed = sqrt(g * H) # hydrostatic (shallow water) gravity wave speed
+## set! doesn't work for ConformalCubedSphereFaceGrid yet!
 
-# Time-scale for gravity wave propagation across the smallest grid cell
-wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.ϕᵃᶜᵃ)) * deg2rad(grid.Δλ),
-                                  grid.radius * deg2rad(grid.Δϕ)) / gravity_wave_speed
+# set!(model, η=η′)
+
+for i in 1:grid.Nx, j in 1:grid.Ny
+    model.free_surface.η[i, j, 1] = η′(grid.λᶜᶜᵃ[i, j], grid.φᶜᶜᵃ[i, j], 0)
+end
+
+# g = model.free_surface.gravitational_acceleration
+# gravity_wave_speed = sqrt(g * H) # hydrostatic (shallow water) gravity wave speed
+
+# # Time-scale for gravity wave propagation across the smallest grid cell
+# wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.ϕᵃᶜᵃ)) * deg2rad(grid.Δλ),
+#                                   grid.radius * deg2rad(grid.Δϕ)) / gravity_wave_speed
 
 mutable struct Progress
     interval_start_time :: Float64
@@ -83,7 +106,7 @@ end
 
 simulation = Simulation(model,
                         Δt = 20minutes,
-                        stop_time = 1years,
+                        stop_time = 1year,
                         iteration_interval = 20,
                         progress = Progress(time_ns()))
 
@@ -92,7 +115,7 @@ output_fields = merge(model.velocities, (η=model.free_surface.η,))
 output_prefix = grid isa RegularLatitudeLongitudeGrid ? "lat_lon_waves" : "cubed_sphere_face_waves"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(1day),
+                                                      schedule = TimeInterval(1hour),
                                                       prefix = output_prefix,
                                                       force = true)
 
