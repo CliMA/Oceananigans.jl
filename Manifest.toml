@@ -354,9 +354,9 @@ version = "0.9.1"
 
 [[PencilFFTs]]
 deps = ["AbstractFFTs", "FFTW", "LinearAlgebra", "MPI", "PencilArrays", "Reexport", "TimerOutputs"]
-git-tree-sha1 = "a7665838a566accd7d9cf308bbb497126dc5edf4"
+git-tree-sha1 = "0d9b9a843eebd0f3e218bb8fc89b839d04f21be8"
 uuid = "4a48f351-57a6-4416-9ec4-c37015456aae"
-version = "0.12.1"
+version = "0.12.2"
 
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
@@ -479,9 +479,9 @@ version = "1.4.0"
 
 [[TaylorSeries]]
 deps = ["InteractiveUtils", "LinearAlgebra", "Markdown", "Requires", "SparseArrays"]
-git-tree-sha1 = "80303b0c68665137fc75038445e4976ae8438754"
+git-tree-sha1 = "39523982677336d055907fe734b30b9951b2cadc"
 uuid = "6aa5eb33-94cf-58f4-a9d0-e4b2c4fc25ea"
-version = "0.10.10"
+version = "0.10.11"
 
 [[Test]]
 deps = ["Distributed", "InteractiveUtils", "Logging", "Random"]

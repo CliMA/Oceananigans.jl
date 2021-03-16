@@ -652,9 +652,9 @@ uuid = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 
 [[StatsBase]]
 deps = ["DataAPI", "DataStructures", "LinearAlgebra", "Missings", "Printf", "Random", "SortingAlgorithms", "SparseArrays", "Statistics"]
-git-tree-sha1 = "400aa43f7de43aeccc5b2e39a76a79d262202b76"
+git-tree-sha1 = "a83fa3021ac4c5a918582ec4721bc0cf70b495a9"
 uuid = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-version = "0.33.3"
+version = "0.33.4"
 
 [[StructArrays]]
 deps = ["Adapt", "DataAPI", "Tables"]
