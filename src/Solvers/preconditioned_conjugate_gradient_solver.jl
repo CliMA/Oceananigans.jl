@@ -214,8 +214,7 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
 ==#
       println("PreconditionedConjugateGradientSolver ", i," ", norm(r.parent) )
 
-    fill_halo_regions!(x, sset.bcs, sset.grid)
-
+    fill_halo_regions!(x, sset.bcs, sset.arch, sset.grid)
     return x, norm(r.parent)
 end
 
