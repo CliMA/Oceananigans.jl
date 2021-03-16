@@ -21,10 +21,8 @@ for r in ranks
 end
 
 suite = BenchmarkGroup(["size", "ranks"])
-for r in ranks
-    for local_rank in collect(0:(r-1))
-        jldopen(file_name, "r") do file suite[((Nx, Ny), r)] = file["trial"]
-        end
+for r in ranks, local_rank in collect(0:(r-1))
+    jldopen(file_name, "r") do file suite[((Nx, Ny), r)] = file["trial"]
     end
 end
 

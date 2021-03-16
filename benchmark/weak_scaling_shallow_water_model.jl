@@ -22,12 +22,10 @@ for r in ranks
 end
 
 suite = BenchmarkGroup(["size", "ranks"])
-for r in ranks
+for r in ranks, local_rank in collect(0:(r-1))
     Ny = r*Nyp
-    for local_rank in collect(0:(r-1))
-        file_name = string("weak_scaling_shallow_water_model_",r,"_",local_rank,".jld2")
-        jldopen(file_name, "r") do file suite[((Nx, Ny), r)] = file["trial"]
-        end
+    file_name = string("weak_scaling_shallow_water_model_",r,"_",local_rank,".jld2")
+    jldopen(file_name, "r") do file suite[((Nx, Ny), r)] = file["trial"]
     end
 end
 
