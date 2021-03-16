@@ -1,6 +1,6 @@
 using Statistics
-using Oceananigans.Buoyancy: g_Earth
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface, FreeSurface, 
+using Oceananigans.BuoyancyModels: g_Earth
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface, FreeSurface,
       compute_volume_scaled_divergence!, add_previous_free_surface_contribution,
       compute_vertically_integrated_volume_flux!
 
@@ -11,7 +11,7 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     ### grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
     ###                                 longitude = (-30, 30),
     ###                                 latitude = (15, 75),
-    ###                                 z = (-4000, 0)) 
+    ###                                 z = (-4000, 0))
 
     # A boring grid
     ## RegularRectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
