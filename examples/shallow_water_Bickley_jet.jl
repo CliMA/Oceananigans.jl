@@ -148,7 +148,7 @@ simulation.output_writers[:fields] =
     NetCDFOutputWriter(
         model,
         (ω = ω, ω_pert = ω_pert),
-          filepath = joinpath(@__DIR__, "Bickley_jet_shallow_water.nc"),
+          filepath = joinpath(@__DIR__, "shallow_water_Bickley_jet.nc"),
           schedule = TimeInterval(1.0),
               mode = "c")
 

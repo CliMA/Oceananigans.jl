@@ -40,7 +40,7 @@ examples = [
     "langmuir_turbulence.jl",
     "eady_turbulence.jl",
     "kelvin_helmholtz_instability.jl",
-    "Bickley_jet_shallow_water.jl"
+    "shallow_water_Bickley_jet.jl"
 ]
 
 for example in examples
@@ -62,7 +62,7 @@ example_pages = [
     "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
     "Eady turbulence"                    => "generated/eady_turbulence.md",
     "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
-    "Bickley jet in shallow water model" => "generated/Bickley_jet_shallow_water.md"
+    "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md"
  ]
 
 model_setup_pages = [
