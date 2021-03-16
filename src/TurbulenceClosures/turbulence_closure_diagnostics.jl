@@ -1,10 +1,9 @@
 # Timescale for diffusion across one cell
-min_Δxyz(grid) = min(grid.Δx, grid.Δy, grid.Δz)
-min_Δxy(grid) = min(grid.Δx, grid.Δy)
+using Oceananigans.Grids: min_Δx, min_Δy, min_Δz
 
-min_Δx(grid) = grid.Δx
-min_Δy(grid) = grid.Δy
-min_Δz(grid) = grid.Δz
+min_Δxyz(grid) = min(min_Δx(grid), min_Δy(grid), min_Δz(grid))
+min_Δxy(grid) = min(min_Δx(grid), min_Δy(grid))
+
 
 cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.diffusivities, model.grid)
 cell_diffusion_timescale(::Nothing, diffusivities, grid) = Inf
@@ -115,7 +114,7 @@ function cell_diffusion_timescale(closure::AnisotropicMinimumDissipation, diffus
     return min(Δ^2 / max_ν, Δ^2 / max_κ)
 end
 
-function cell_diffusion_timescale(closure::AbstractLeith, diffusivities, grid)
+function cell_diffusion_timescale(closure::TwoDimensionalLeith, diffusivities, grid)
     Δ = min_Δxyz(grid)
     max_ν = maximum(diffusivities.νₑ.data.parent)
     return Δ^2 / max_ν

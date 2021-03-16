@@ -259,9 +259,9 @@ uuid = "a63ad114-7e13-5084-954f-fe012c677804"
 
 [[NNlib]]
 deps = ["ChainRulesCore", "Compat", "LinearAlgebra", "Pkg", "Requires", "Statistics"]
-git-tree-sha1 = "5ce2e4b2bfe3811811e7db4b6a148439806fd2f8"
+git-tree-sha1 = "ab1d43fead2ecb9aa5ae460d3d547c2cf8d89461"
 uuid = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
-version = "0.7.16"
+version = "0.7.17"
 
 [[OrderedCollections]]
 git-tree-sha1 = "4fa2ba51070ec13fcc7517db714445b4ab986bdf"
