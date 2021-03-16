@@ -1,5 +1,3 @@
-import Oceananigans.Architectures: architecture
-
 """
     FunctionField{X, Y, Z, C, F, G} <: AbstractField{X, Y, Z, F, G}
 
