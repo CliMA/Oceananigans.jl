@@ -155,6 +155,28 @@ using Oceananigans.Grids: Flat
 @inline Azᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Azᶠᶠᵃ(i, j, k, grid)
 
 #####
+##### Temporary place for grid spacings and areas for ConformalCubedSphereFaceGrid
+#####
+
+@inline Δxᶜᶜᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Δxᶜᶜᵃ[i, j]
+@inline Δxᶠᶜᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Δxᶠᶜᵃ[i, j]
+@inline Δxᶜᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Δxᶜᶠᵃ[i, j]
+@inline Δxᶠᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Δxᶠᶠᵃ[i, j]
+
+@inline Δyᶜᶜᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Δyᶜᶜᵃ[i, j]
+@inline Δyᶠᶜᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Δyᶠᶜᵃ[i, j]
+@inline Δyᶜᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Δyᶜᶠᵃ[i, j]
+@inline Δyᶠᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Δyᶠᶠᵃ[i, j]
+
+@inline Δzᵃᵃᶜ(i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.Δz
+@inline Δzᵃᵃᶠ(i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.Δz
+
+@inline Azᶜᶜᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Azᶜᶜᵃ[i, j]
+@inline Azᶠᶜᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Azᶠᶜᵃ[i, j]
+@inline Azᶜᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Azᶜᶠᵃ[i, j]
+@inline Azᶠᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Azᶠᶠᵃ[i, j]
+
+#####
 ##### Generic functions for specified locations
 #####
 ##### For example, Δx(i, j, k, Face, Center, LZ) is equivalent to = Δxᶠᶜᵃ(i, j, k, grid).
