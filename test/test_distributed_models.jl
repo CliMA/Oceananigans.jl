@@ -440,7 +440,7 @@ end
 #####
 
 @testset "Distributed MPI Oceananigans" begin
-    #=
+    
     @info "Testing distributed MPI Oceananigans..."
 
     @testset "Multi architectures rank connectivity" begin
@@ -485,14 +485,14 @@ end
 
         time_step!(model, 1)
         @test model isa IncompressibleModel
-        @test model.clock.time == 1
+        @test model.clock.time ≈ 1
 
         simulation = Simulation(model, Δt=1, stop_iteration=2)
         run!(simulation)
         @test model isa IncompressibleModel
-        @test model.clock.time == 2
+        @test model.clock.time ≈ 2
     end
-    =#
+    
     @testset "Time stepping ShallowWaterModel" begin
         topo = (Periodic, Periodic, Bounded)
         full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 1), extent=(1, 2, 3))
@@ -502,11 +502,11 @@ end
         set!(model, h=model.grid.Lz)
         time_step!(model, 1)
         @test model isa ShallowWaterModel
-        @test model.clock.time == 1
+        @test model.clock.time ≈ 1
 
         simulation = Simulation(model, Δt=1, stop_iteration=2)
         run!(simulation)
         @test model isa ShallowWaterModel
-        #@test model.clock.time == 2
+        @test model.clock.time ≈ 2
     end
 end
