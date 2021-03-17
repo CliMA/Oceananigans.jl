@@ -169,6 +169,9 @@ for LX in (:Center, :Face)
     end
 end
 
+Ax(i, j, k, grid, ::Face, ::Center, ::Face) = Axᶠᶜᶠ(i, j, k, grid)
+Ay(i, j, k, grid, ::Center, ::Face, ::Face) = Ayᶜᶠᶠ(i, j, k, grid)
+
 volume(i, j, k, grid, ::Center, ::Center, ::Center) = Vᶜᶜᶜ(i, j, k, grid)
 volume(i, j, k, grid, ::Face,   ::Center, ::Center) = Vᶠᶜᶜ(i, j, k, grid)
 volume(i, j, k, grid, ::Center, ::Face,   ::Center) = Vᶜᶠᶜ(i, j, k, grid)
