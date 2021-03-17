@@ -10,7 +10,7 @@ function Buoyancy(; model, gravitational_unit_vector=(0, 0, 1))
     gx, gy, gz = gravitational_unit_vector
 
     gx^2 + gy^2 + gz^2 ≈ 1 ||
-        throw(ArgumentError("gravitational_unit_vector must be a unit vector with gx² + gy² + gz² = 1"))
+        throw(ArgumentError("gravitational_unit_vector must be a unit vector with g[1]² + g[2]² + g[3]² = 1"))
 
     return Buoyancy(model, gravitational_unit_vector)
 end

@@ -46,6 +46,7 @@ include("buoyancy_tracer.jl")
 include("seawater_buoyancy.jl")
 include("linear_equation_of_state.jl")
 include("nonlinear_equation_of_state.jl")
+include("g_dot_b.jl")
 include("buoyancy_field.jl")
 
 Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT =
