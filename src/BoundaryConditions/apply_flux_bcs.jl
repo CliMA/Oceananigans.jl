@@ -111,16 +111,21 @@ If `west_bc.condition` is a function, the function must have the signature
 
 The same logic holds for south and bottom boundary conditions in `y`, and `z`, respectively.
 """
-@inline apply_x_west_bc!(Gc, loc, west_flux::BC{<:Flux}, j, k, grid, args...) =
-    @inbounds Gc[1, j, k] += getbc(west_flux,   j, k, grid, args...) /  Δx(1, j, k, grid)
+@inline function apply_x_west_bc!(Gc, loc, west_flux::BC{<:Flux}, j, k, grid, args...)
+    LX, LY, LZ = loc
+    @inbounds Gc[1, j, k] += getbc(west_flux, j, k, grid, args...) * Ax(1, j, k, grid, flip(LX), LY, LZ) / volume(1, j, k, grid, LX, LY, LZ)
+    return nothing
+end
 
-@inline apply_y_south_bc!(Gc, loc, south_flux::BC{<:Flux}, i, k, grid, args...) =
-    @inbounds Gc[i, 1, k] += getbc(south_flux,  i, k, grid, args...) /  Δy(i, 1, k, grid)
+@inline function apply_y_south_bc!(Gc, loc, south_flux::BC{<:Flux}, i, k, grid, args...)
+    LX, LY, LZ = loc
+    @inbounds Gc[i, 1, k] += getbc(south_flux, i, k, grid, args...) * Ay(i, 1, k, grid, LX, flip(LY), LZ) / volume(i, 1, k, grid, LX, LY, LZ)
+    return nothing
+end
 
 @inline function apply_z_bottom_bc!(Gc, loc, bottom_flux::BC{<:Flux}, i, j, grid, args...)
     LX, LY, LZ = loc
-    flipped_LZ = flip(LZ)
-    @inbounds Gc[i, j, 1] += getbc(bottom_flux, i, j, grid, args...) * Az(i, j, 1, grid, LX, LY, flipped_LZ) / volume(i, j, 1, grid, LX, LY, LZ)
+    @inbounds Gc[i, j, 1] += getbc(bottom_flux, i, j, grid, args...) * Az(i, j, 1, grid, LX, LY, flip(LZ)) / volume(i, j, 1, grid, LX, LY, LZ)
     return nothing
 end
 
@@ -139,15 +144,20 @@ If `east_bc.condition` is a function, the function must have the signature
 
 The same logic holds for north and top boundary conditions in `y`, and `z`, respectively.
 """
-@inline apply_x_east_bc!(Gc, loc, east_flux::BC{<:Flux}, j, k, grid, args...) =
-    @inbounds Gc[grid.Nx, j, k] -= getbc(east_flux,  j, k, grid, args...) /  Δx(grid.Nx, j, k, grid)
+@inline function apply_x_east_bc!(Gc, loc, east_flux::BC{<:Flux}, j, k, grid, args...)
+    LX, LY, LZ = loc
+    @inbounds Gc[grid.Nx, j, k] -= getbc(east_flux, j, k, grid, args...) * Ax(grid.Nx+1, j, k, grid, flip(LX), LY, LZ) / volume(grid.Nx, j, k, grid, LX, LY, LZ)
+    return nothing
+end
 
-@inline apply_y_north_bc!(Gc, loc, north_flux::BC{<:Flux}, i, k, grid, args...) =
-    @inbounds Gc[i, grid.Ny, k] -= getbc(north_flux, i, k, grid, args...) /  Δy(i, grid.Ny, k, grid)
+@inline function apply_y_north_bc!(Gc, loc, north_flux::BC{<:Flux}, i, k, grid, args...)
+    LX, LY, LZ = loc
+    @inbounds Gc[i, grid.Ny, k] -= getbc(north_flux, i, k, grid, args...) * Ay(i, grid.Ny+1, k, grid, LX, flip(LY), LZ) / volume(i, grid.Ny, k, grid, LX, LY, LZ)
+    return nothing
+end
 
 @inline function apply_z_top_bc!(Gc, loc, top_flux::BC{<:Flux}, i, j, grid, args...)
     LX, LY, LZ = loc
-    flipped_LZ = flip(LZ)
-    @inbounds Gc[i, j, grid.Nz] -= getbc(top_flux, i, j, grid, args...) * Az(i, j, grid.Nz+1, grid, LX, LY, flipped_LZ) / volume(i, j, grid.Nz, grid, LX, LY, LZ)
+    @inbounds Gc[i, j, grid.Nz] -= getbc(top_flux, i, j, grid, args...) * Az(i, j, grid.Nz+1, grid, LX, LY, flip(LZ)) / volume(i, j, grid.Nz, grid, LX, LY, LZ)
     return nothing
 end
