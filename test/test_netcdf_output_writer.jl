@@ -600,6 +600,59 @@ function test_netcdf_output_alignment(arch)
     return nothing
 end
 
+function test_netcdf_vertically_stretched_grid_output(arch)
+    Nx = Ny = 8
+    Nz = 16
+    zF = [k^2 for k in 0:Nz]
+    grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), zF=zF)
+
+    model = IncompressibleModel(architecture=arch, grid=grid)
+
+    Δt = 1.25
+    iters = 3
+    simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
+    grid = model.grid
+
+    nc_filepath = "test_netcdf_vertically_stretched_grid_output_$(typeof(arch)).nc"
+
+    simulation.output_writers[:fields] =
+        NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
+                             filepath = nc_filepath,
+                             schedule = IterationInterval(1),
+                           array_type = Array{Float64},
+                              verbose = true)
+
+    run!(simulation)
+
+    ds = NCDataset(nc_filepath)
+
+    @test length(ds["xC"]) == Nx
+    @test length(ds["yC"]) == Ny
+    @test length(ds["zC"]) == Nz
+    @test length(ds["xF"]) == Nx
+    @test length(ds["yF"]) == Ny
+    @test length(ds["zF"]) == Nz+1  # z is Bounded
+
+    @test ds["xC"][1] == grid.xᶜᵃᵃ[1]
+    @test ds["xF"][1] == grid.xᶠᵃᵃ[1]
+    @test ds["yC"][1] == grid.yᵃᶜᵃ[1]
+    @test ds["yF"][1] == grid.yᵃᶠᵃ[1]
+    @test ds["zC"][1] == grid.zᵃᵃᶜ[1]
+    @test ds["zF"][1] == grid.zᵃᵃᶠ[1]
+
+    @test ds["xC"][end] == grid.xᶜᵃᵃ[Nx]
+    @test ds["xF"][end] == grid.xᶠᵃᵃ[Nx]
+    @test ds["yC"][end] == grid.yᵃᶜᵃ[Ny]
+    @test ds["yF"][end] == grid.yᵃᶠᵃ[Ny]
+    @test ds["zC"][end] == grid.zᵃᵃᶜ[Nz]
+    @test ds["zF"][end] == grid.zᵃᵃᶠ[Nz+1]  # z is Bounded
+
+    close(ds)
+    rm(nc_filepath)
+
+    return nothing
+end
+
 for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
@@ -610,5 +663,6 @@ for arch in archs
         test_netcdf_function_output(arch)
         test_netcdf_output_alignment(arch)
         test_netcdf_time_averaging(arch)
+        test_netcdf_vertically_stretched_grid_output(arch)
     end
 end
