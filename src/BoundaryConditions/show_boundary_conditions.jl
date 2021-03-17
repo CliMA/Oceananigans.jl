@@ -1,3 +1,4 @@
+import Base: show
 import Oceananigans: short_show
 
 bctype_str(::FBC)  = "Flux"
@@ -22,7 +23,7 @@ function print_condition(f::Function)
     return "$(ms)"
 end
 
-Base.show(io::IO, bc) =
+show(io::IO, bc::BoundaryCondition) =
     print(io, "BoundaryCondition: type=$(bctype_str(bc)), condition=$(print_condition(bc.condition))")
 
 #####
