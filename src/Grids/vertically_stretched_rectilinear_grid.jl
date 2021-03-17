@@ -202,10 +202,18 @@ Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, T
 @inline xnode(::Type{Face}, i, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
 
 @inline ynode(::Type{Center}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᶜᵃ[j]
-@inline ynode(::Type{Face}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᵃᵃ[j]
+@inline ynode(::Type{Face}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᶠᵃ[j]
 
 @inline znode(::Type{Center}, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶜ[k]
 @inline znode(::Type{Face}, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶠ[k]
+
+
+all_x_nodes(::Type{Center}, grid::VerticallyStretchedRectilinearGrid) = grid.xᶜᵃᵃ
+all_x_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.xᶠᵃᵃ
+all_y_nodes(::Type{Center}, grid::VerticallyStretchedRectilinearGrid) = grid.yᵃᶜᵃ
+all_y_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.yᵃᶠᵃ
+all_z_nodes(::Type{Center}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃᵃᶜ
+all_z_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃᵃᶠ
 
 
 
