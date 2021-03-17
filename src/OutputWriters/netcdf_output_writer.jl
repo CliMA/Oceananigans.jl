@@ -392,8 +392,8 @@ define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, a
 
 
 """ Defines variable for WindowedSpatialAverage outputs """
-function define_output_variable!(dataset, 
-                                 wtsa::Union{WindowedSpatialAverage, WindowedTimeAverage{<:WindowedSpatialAverage}}, 
+function define_output_variable!(dataset,
+                                 wtsa::Union{WindowedSpatialAverage, WindowedTimeAverage{<:WindowedSpatialAverage}},
                                  name, array_type, compression, attributes, dimensions)
     wsa = wtsa isa WindowedTimeAverage ? wtsa.operand : wtsa
     LX, LY, LZ = reduced_location(location(wsa.field), dims=wsa.dims)

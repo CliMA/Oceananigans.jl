@@ -73,7 +73,7 @@ model_setup_pages = [
     "Clock" => "model_setup/clock.md",
     "Coriolis (rotation)" => "model_setup/coriolis.md",
     "Tracers" => "model_setup/tracers.md",
-    "Buoyancy and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
+    "Buoyancy models and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
     "Boundary conditions" => "model_setup/boundary_conditions.md",
     "Forcing functions" => "model_setup/forcing_functions.md",
     "Background fields" => "model_setup/background_fields.md",
@@ -88,7 +88,7 @@ model_setup_pages = [
 physics_pages = [
     "Navier-Stokes and tracer conservation equations" => "physics/navier_stokes_and_tracer_conservation.md",
     "Coriolis forces" => "physics/coriolis_forces.md",
-    "Buoyancy model and equations of state" => "physics/buoyancy_and_equations_of_state.md",
+    "Buoyancy models and equations of state" => "physics/buoyancy_and_equations_of_state.md",
     "Turbulence closures" => "physics/turbulence_closures.md",
     "Surface gravity waves and the Craik-Leibovich approximation" => "physics/surface_gravity_waves.md"
 ]

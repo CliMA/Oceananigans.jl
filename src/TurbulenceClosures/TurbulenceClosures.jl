@@ -33,7 +33,7 @@ using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
-using Oceananigans.Buoyancy
+using Oceananigans.BuoyancyModels
 using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device, @hascuda
