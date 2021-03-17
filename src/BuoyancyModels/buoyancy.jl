@@ -3,21 +3,30 @@ struct Buoyancy{M, G}
     gravitational_unit_vector :: G
 end
 
-function Buoyancy(; model, gravitational_unit_vector=(0, 0, 1))
-    length(gravitational_unit_vector) == 3 ||
+struct VerticalDirection end
+
+function Buoyancy(; model, gravitational_unit_vector=VerticalDirection())
+    ĝ = gravitational_unit_vector
+    ĝ isa VerticalDirection || length(ĝ) == 3 ||
         throw(ArgumentError("gravitational_unit_vector must have length 3"))
 
-    gx, gy, gz = gravitational_unit_vector
+    if !isa(ĝ, VerticalDirection)
+        gx, gy, gz = ĝ
 
-    gx^2 + gy^2 + gz^2 ≈ 1 ||
-        throw(ArgumentError("gravitational_unit_vector must be a unit vector with g[1]² + g[2]² + g[3]² = 1"))
+        gx^2 + gy^2 + gz^2 ≈ 1 ||
+            throw(ArgumentError("gravitational_unit_vector must be a unit vector with g[1]² + g[2]² + g[3]² = 1"))
+    end
 
-    return Buoyancy(model, gravitational_unit_vector)
+    return Buoyancy(model, ĝ)
 end
 
 @inline ĝ_x(buoyancy) = @inbounds buoyancy.gravitational_unit_vector[1]
 @inline ĝ_y(buoyancy) = @inbounds buoyancy.gravitational_unit_vector[2]
 @inline ĝ_z(buoyancy) = @inbounds buoyancy.gravitational_unit_vector[3]
+
+@inline ĝ_x(::Buoyancy{M, VerticalDirection}) where M = 0
+@inline ĝ_y(::Buoyancy{M, VerticalDirection}) where M = 0
+@inline ĝ_z(::Buoyancy{M, VerticalDirection}) where M = 1
 
 #####
 ##### For convinience
