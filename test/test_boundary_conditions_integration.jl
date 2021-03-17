@@ -54,7 +54,7 @@ function test_incompressible_flux_budget(arch, name, side, topo)
     field = is_velocity_field ? getproperty(model.velocities, name) : getproperty(model.tracers, name)
     set!(field, 0)
 
-    simulation = Simulation(model, Δt = 1.0, stop_iteration = 3)
+    simulation = Simulation(model, Δt = 1.0, stop_iteration = 1)
     run!(simulation)
 
     mean_ϕ = CUDA.@allowscalar field[1, 1, 1]
