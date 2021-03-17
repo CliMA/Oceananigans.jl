@@ -47,8 +47,8 @@ LinearEquationOfState(FT=Float64; α=1.67e-4, β=7.80e-4) = LinearEquationOfStat
 #####
 
 const LinearSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState} where FT
-const LinearTemperatureSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState, <:Nothing, <:Number} where {FT,G}
-const LinearSalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState, <:Number, <:Nothing} where {FT,G}
+const LinearTemperatureSeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState, <:Nothing, <:Number} where FT
+const LinearSalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfState, <:Number, <:Nothing} where FT
 
 #####
 ##### BuoyancyModels perturbation
