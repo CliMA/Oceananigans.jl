@@ -186,7 +186,7 @@ BoundaryCondition: type=Flux, condition=filtered_drag(i, j, grid, clock, model_f
 !!! info "The 'discrete form' for boundary condition functions"
     The argument `discrete_form=true` indicates to [`BoundaryCondition`](@ref) that `filtered_drag`
     uses the 'discrete form'. Boundary condition functions that use the 'discrete form'
-    are called with the signature 
+    are called with the signature
     ```julia
     f(i, j, grid, clock, model_fields)
     ```
@@ -241,16 +241,16 @@ julia> T_bcs = TracerBoundaryConditions(grid,    top = ValueBoundaryCondition(20
 Oceananigans.FieldBoundaryConditions (NamedTuple{(:x, :y, :z)}), with boundary conditions
 ├── x: CoordinateBoundaryConditions{BoundaryCondition{Oceananigans.BoundaryConditions.Periodic,Nothing},BoundaryCondition{Oceananigans.BoundaryConditions.Periodic,Nothing}}
 ├── y: CoordinateBoundaryConditions{BoundaryCondition{Oceananigans.BoundaryConditions.Periodic,Nothing},BoundaryCondition{Oceananigans.BoundaryConditions.Periodic,Nothing}}
-└── z: CoordinateBoundaryConditions{BoundaryCondition{Gradient,Float64},BoundaryCondition{Value,Int64}}
+└── z: CoordinateBoundaryConditions{BoundaryCondition{Oceananigans.BoundaryConditions.Gradient,Float64},BoundaryCondition{Oceananigans.BoundaryConditions.Value,Int64}}
 ```
 
 `T_bcs` is a [`FieldBoundaryConditions`](@ref) object for temperature `T` appropriate
 for horizontally periodic grid topologies.
 The default `Periodic` boundary conditions in ``x`` and ``y`` are inferred from the `topology` of `grid`.
 
-For ``u``, ``v``, and ``w``, use the 
+For ``u``, ``v``, and ``w``, use the
 `UVelocityBoundaryConditions`
-`VVelocityBoundaryConditions`, and 
+`VVelocityBoundaryConditions`, and
 `WVelocityBoundaryConditions` constructors, respectively.
 
 ## Specifying model boundary conditions
