@@ -59,7 +59,7 @@ const SalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing} 
 @inline get_temperature_and_salinity(b::SalinitySeawaterBuoyancy, C) = b.constant_temperature, C.S
 
 """
-    ∂x_b(i, j, k, grid, b::SeawaterBuoyancyModel, C)
+    ∂x_b(i, j, k, grid, b::SeawaterBuoyancy, C)
 
 Returns the x-derivative of buoyancy for temperature and salt-stratified water,
 
@@ -85,7 +85,7 @@ and cell centers in `y` and `z`.
 end
 
 """
-    ∂y_b(i, j, k, grid, b::SeawaterBuoyancyModel, C)
+    ∂y_b(i, j, k, grid, b::SeawaterBuoyancy, C)
 
 Returns the y-derivative of buoyancy for temperature and salt-stratified water,
 
@@ -111,7 +111,7 @@ and cell centers in `x` and `z`.
 end
 
 """
-    ∂z_b(i, j, k, grid, b::SeawaterBuoyancyModel, C)
+    ∂z_b(i, j, k, grid, b::SeawaterBuoyancy, C)
 
 Returns the vertical derivative of buoyancy for temperature and salt-stratified water,
 
