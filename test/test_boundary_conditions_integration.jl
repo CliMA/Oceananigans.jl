@@ -136,7 +136,6 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 @testset "Boundary condition integration tests" begin
     @info "Testing boundary condition integration into IncompressibleModel..."
 
-    #=
     @testset "Boundary condition regularization" begin
         @info "  Testing boundary condition regularization in IncompressibleModel constructor..."
 
@@ -224,7 +223,6 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             end
         end
     end
-    =#
 
     @testset "Budgets with Flux boundary conditions" begin
         for arch in archs
@@ -250,12 +248,10 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         end
     end
 
-    #=
     @testset "Custom diffusivity boundary conditions" begin
         for arch in archs, FT in (Float64,) #float_types
             @info "  Testing flux budgets with diffusivity boundary conditions [$(typeof(arch)), $FT]..."
             @test fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
         end
     end
-    =#
 end
