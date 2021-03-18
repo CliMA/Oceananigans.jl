@@ -80,7 +80,7 @@ end
 function accurate_advective_cfl_on_regular_grid(arch, FT)
     model = TestModel_RegularRectGrid(arch, FT)
 
-    Δt = FT(1.3e-6)
+    Δt = FT(1.7)
 
     Δx = model.grid.Δx
     Δy = model.grid.Δy
@@ -100,16 +100,16 @@ function accurate_advective_cfl_on_regular_grid(arch, FT)
 end
 
 function accurate_advective_cfl_on_stretched_grid(arch, FT)
-    grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(16, 16, 16), x=(0, 100), y=(0, 100), zF=[k^2 for k in 0:16])
+    grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(4, 4, 8), x=(0, 100), y=(0, 100), zF=[k^2 for k in 0:8])
     model = IncompressibleModel(grid=grid, architecture=arch)
 
-    Δt = FT(1.3e-6)
+    Δt = FT(15.5)
 
     Δx = model.grid.Δx
     Δy = model.grid.Δy
 
     # At k = 1, w = 0 so the CFL constraint happens at the second face (k = 2).
-    Δz_min = Oceananigans.Operators.Δzᵃᵃᶠ(1, 1, 2, grid)
+    CUDA.@allowscalar Δz_min = Oceananigans.Operators.Δzᵃᵃᶠ(1, 1, 2, grid)
 
     u₀ = FT(1.2)
     v₀ = FT(-2.5)
@@ -118,6 +118,38 @@ function accurate_advective_cfl_on_stretched_grid(arch, FT)
     set!(model, u=u₀, v=v₀, w=w₀, enforce_incompressibility=false)
 
     CFL_by_hand = Δt * (abs(u₀) / Δx + abs(v₀) / Δy + abs(w₀) / Δz_min)
+
+    cfl = CFL(FT(Δt), Oceananigans.Diagnostics.accurate_cell_advection_timescale)
+
+    return cfl(model) ≈ CFL_by_hand
+end
+
+function accurate_advective_cfl_on_lat_lon_grid(arch, FT)
+    grid = RegularLatitudeLongitudeGrid(size=(8, 8, 8), longitude=(-10, 10), latitude=(0, 45), z=(-1000, 0))
+    model = HydrostaticFreeSurfaceModel(architecture=arch, grid=grid, momentum_advection=VectorInvariant())
+
+    Δt = FT(1000)
+
+    Nx, Ny, Nz = size(grid)
+
+    # Will be the smallest at higher latitudes.
+    CUDA.@allowscalar Δx_min = Oceananigans.Operators.Δxᶠᶜᵃ(1, Ny, 1, grid)
+
+    # Will be the same at every grid point.
+    CUDA.@allowscalar Δy_min = Oceananigans.Operators.Δyᶜᶠᵃ(1, 1, 1, grid)
+
+    Δz = model.grid.Δz
+
+    u₀ = FT(1.2)
+    v₀ = FT(-2.5)
+    w₀ = FT(-0.1)
+
+    # Avoid recomputation of w
+    set!(model.velocities.u, u₀)
+    set!(model.velocities.v, v₀)
+    set!(model.velocities.w, w₀)
+
+    CFL_by_hand = Δt * (abs(u₀) / Δx_min + abs(v₀) / Δy_min + abs(w₀) / Δz)
 
     cfl = CFL(FT(Δt), Oceananigans.Diagnostics.accurate_cell_advection_timescale)
 
@@ -168,6 +200,8 @@ end
             @test advective_cfl_diagnostic_is_correct_on_regular_grid(arch, FT)
             @test advective_cfl_diagnostic_is_correct_on_vertically_stretched_grid(arch, FT)
             @test accurate_advective_cfl_on_regular_grid(arch, FT)
+            @test accurate_advective_cfl_on_stretched_grid(arch, FT)
+            @test accurate_advective_cfl_on_lat_lon_grid(arch, FT)
         end
     end
 

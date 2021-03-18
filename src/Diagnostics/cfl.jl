@@ -78,7 +78,7 @@ using Oceananigans.Models
 using Oceananigans.Grids: halo_size
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δyᶜᶠᵃ, Δzᵃᵃᶠ
 
-function accurate_cell_advection_timescale(model::IncompressibleModel)
+function accurate_cell_advection_timescale(model::Union{IncompressibleModel, HydrostaticFreeSurfaceModel})
     grid = model.grid
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
