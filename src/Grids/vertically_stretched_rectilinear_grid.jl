@@ -174,11 +174,14 @@ short_show(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, 
     "VerticallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
 
 function show(io::IO, g::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    Δz_min = minimum(view(g.Δzᵃᵃᶜ, 1:g.Nz))
+    Δz_max = maximum(view(g.Δzᵃᵃᶜ, 1:g.Nz))
     print(io, "VerticallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
               "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
-              "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
+              "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
+              "grid spacing (Δx, Δy, Δz): (", g.Δx, ", ", g.Δy, ", [min=", Δz_min, ", max=", Δz_max,"])",)
 end
 
 Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
