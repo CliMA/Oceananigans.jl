@@ -48,10 +48,10 @@ grid = RegularRectilinearGrid(size = (Nx, Ny, 1),
 #   * ``U``: Maximum jet speed
 #   * ``\Delta \eta``: Maximum free-surface deformation as dictated by geostrophy
 
- f = 1
- g = 9.8
- U = 1.0
-Δη = f * U / g
+ const f = 1
+ const g = 9.8
+ const U = 1.0
+const Δη = f * U / g
 nothing # hide
 
 # ## Building a `ShallowWaterModel`
@@ -133,7 +133,7 @@ using LinearAlgebra: norm
 
 function perturbation_norm(model)
     compute!(v)
-    return norm(interior(v))
+    return norm(interiorparent(v))
 end
 nothing # hide
 
