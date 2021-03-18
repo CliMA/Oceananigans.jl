@@ -196,12 +196,14 @@ end
     for arch in archs
         @testset "CFL [$(typeof(arch))]" begin
             @info "  Testing CFL diagnostics [$(typeof(arch))]..."
-            @test diffusive_cfl_diagnostic_is_correct(arch, FT)
-            @test advective_cfl_diagnostic_is_correct_on_regular_grid(arch, FT)
-            @test advective_cfl_diagnostic_is_correct_on_vertically_stretched_grid(arch, FT)
-            @test accurate_advective_cfl_on_regular_grid(arch, FT)
-            @test accurate_advective_cfl_on_stretched_grid(arch, FT)
-            @test accurate_advective_cfl_on_lat_lon_grid(arch, FT)
+            for FT in float_types
+                @test diffusive_cfl_diagnostic_is_correct(arch, FT)
+                @test advective_cfl_diagnostic_is_correct_on_regular_grid(arch, FT)
+                @test advective_cfl_diagnostic_is_correct_on_vertically_stretched_grid(arch, FT)
+                @test accurate_advective_cfl_on_regular_grid(arch, FT)
+                @test accurate_advective_cfl_on_stretched_grid(arch, FT)
+                @test accurate_advective_cfl_on_lat_lon_grid(arch, FT)
+            end
         end
     end
 
