@@ -60,6 +60,7 @@ nothing # hide
 # Furthermore, we specify `RungeKutta3` for time-stepping and `WENO5` for advection.
 
 model = ShallowWaterModel(
+    architecture = GPU(),
     timestepper=:RungeKutta3,
     advection=WENO5(),
     grid=grid,
