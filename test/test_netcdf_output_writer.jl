@@ -611,7 +611,6 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     Δt = 1.25
     iters = 3
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
-    grid = model.grid
 
     nc_filepath = "test_netcdf_vertically_stretched_grid_output_$(typeof(arch)).nc"
 
@@ -624,6 +623,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
 
     run!(simulation)
 
+    grid = model.grid
     ds = NCDataset(nc_filepath)
 
     @test length(ds["xC"]) == Nx
@@ -653,6 +653,58 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     return nothing
 end
 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
+
+function test_netcdf_regular_lat_lon_grid_output(arch)
+    Nx = Ny = Nz = 16
+    grid = RegularLatitudeLongitudeGrid(size=(Nx, Ny, Nz), longitude=(-180, 180), latitude=(-80, 80), z=(-100, 0))
+    model = HydrostaticFreeSurfaceModel(architecture=arch, momentum_advection = VectorInvariant(), grid=grid)
+
+    Δt = 1.25
+    iters = 3
+    simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
+
+    nc_filepath = "test_netcdf_regular_lat_lon_grid_output_$(typeof(arch)).nc"
+
+    simulation.output_writers[:fields] =
+        NetCDFOutputWriter(model, merge(model.velocities, model.tracers),
+                             filepath = nc_filepath,
+                             schedule = IterationInterval(1),
+                           array_type = Array{Float64},
+                              verbose = true)
+
+    run!(simulation)
+
+    grid = model.grid
+    ds = NCDataset(nc_filepath)
+
+    @test length(ds["xC"]) == Nx
+    @test length(ds["yC"]) == Ny
+    @test length(ds["zC"]) == Nz
+    @test length(ds["xF"]) == Nx
+    @test length(ds["yF"]) == Ny+1  # y is Bounded
+    @test length(ds["zF"]) == Nz+1  # z is Bounded
+
+    @test ds["xC"][1] == grid.λᶜᵃᵃ[1]
+    @test ds["xF"][1] == grid.λᶠᵃᵃ[1]
+    @test ds["yC"][1] == grid.ϕᵃᶜᵃ[1]
+    @test ds["yF"][1] == grid.ϕᵃᶠᵃ[1]
+    @test ds["zC"][1] == grid.zᵃᵃᶜ[1]
+    @test ds["zF"][1] == grid.zᵃᵃᶠ[1]
+
+    @test ds["xC"][end] == grid.λᶜᵃᵃ[Nx]
+    @test ds["xF"][end] == grid.λᶠᵃᵃ[Nx]
+    @test ds["yC"][end] == grid.ϕᵃᶜᵃ[Ny]
+    @test ds["yF"][end] == grid.ϕᵃᶠᵃ[Ny+1]  # y is Bounded
+    @test ds["zC"][end] == grid.zᵃᵃᶜ[Nz]
+    @test ds["zF"][end] == grid.zᵃᵃᶠ[Nz+1]  # z is Bounded
+
+    close(ds)
+    rm(nc_filepath)
+
+    return nothing
+end
+
 for arch in archs
     @testset "NetCDF output writer [$(typeof(arch))]" begin
         @info "  Testing NetCDF output writer [$(typeof(arch))]..."
@@ -664,5 +716,6 @@ for arch in archs
         test_netcdf_output_alignment(arch)
         test_netcdf_time_averaging(arch)
         test_netcdf_vertically_stretched_grid_output(arch)
+        test_netcdf_regular_lat_lon_grid_output(arch)
     end
 end
