@@ -5,6 +5,31 @@ end
 
 struct VerticalDirection end
 
+"""
+    Buoyancy(; model, vertical_unit_vector=VerticalDirection())
+
+Uses a given buoyancy `model` to create buoyancy in a model. The optional keyword argument 
+`vertical_unit_vector` can be used to specify the direction opposite to the gravitational
+acceleration (which we take here to mean the "vertical" direction).
+
+Example
+=======
+
+```julia
+using Oceananigans
+
+grid = RegularRectilinearGrid(size=(1, 8, 8), extent=(1, 1000, 100))
+θ = 45 # degrees
+g̃ = (0, sind(θ), cosd(θ))
+
+buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃)
+model = IncompressibleModel(
+                   grid = grid,
+               buoyancy = buoyancy,
+                tracers = :b,
+)
+```
+"""
 function Buoyancy(; model, vertical_unit_vector=VerticalDirection())
     ĝ = vertical_unit_vector
     ĝ isa VerticalDirection || length(ĝ) == 3 ||
