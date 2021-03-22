@@ -1,4 +1,4 @@
-import Oceananigans.Utils: required_halo_size
+import Oceananigans.Grids: required_halo_size
 
 """
     AnisotropicBiharmonicDiffusivity{FT, KH, KZ}

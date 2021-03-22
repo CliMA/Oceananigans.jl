@@ -10,10 +10,10 @@ using Oceananigans.BoundaryConditions: UVelocityBoundaryConditions,
 
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo, topology
+using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
-using Oceananigans.Utils: inflate_halo_size, tupleit
+using Oceananigans.Utils: tupleit
 
 function ShallowWaterTendencyFields(arch, grid, tracer_names)
 
@@ -82,7 +82,7 @@ function ShallowWaterModel(;
     
     Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, topology(grid), advection)
     grid = with_halo((Hx, Hy, Hz), grid)
-
+    
     model_field_names = (:uh, :vh, :h, tracers...)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, model_field_names)
 

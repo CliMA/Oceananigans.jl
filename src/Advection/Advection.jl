@@ -26,7 +26,7 @@ export
 using Oceananigans.Grids
 using Oceananigans.Operators
 
-import Oceananigans.Utils: required_halo_size
+import Oceananigans.Grids: required_halo_size
 
 abstract type AbstractAdvectionScheme end
 abstract type AbstractCenteredAdvectionScheme <: AbstractAdvectionScheme end

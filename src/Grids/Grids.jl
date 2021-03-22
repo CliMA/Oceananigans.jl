@@ -104,6 +104,7 @@ topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
 topology(grid, dim) = topology(grid)[dim]
 
 include("grid_utils.jl")
+include("automatic_halo_sizing.jl")
 include("input_validation.jl")
 include("regular_rectilinear_grid.jl")
 include("vertically_stretched_rectilinear_grid.jl")
