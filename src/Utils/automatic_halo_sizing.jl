@@ -18,7 +18,7 @@ required_halo_size(CenteredFourthOrder())
 """
 required_halo_size(anything) = 1
 
-inflat_halo_size_one_dimension(H, Hx, TX          ) = max(Hx,H)
+inflat_halo_size_one_dimension(H, Hx, TX          ) = max(H, Hx)
 inflat_halo_size_one_dimension(H, Hx, ::Type{Flat}) = 0
 
 function inflate_halo_size(Hx, Hy, Hz, topology, tendency_terms...)
