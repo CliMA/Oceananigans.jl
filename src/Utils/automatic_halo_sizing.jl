@@ -16,6 +16,8 @@ required_halo_size(CenteredFourthOrder())
 # output
 2
 """
+using Oceananigans.Grids: Flat
+
 required_halo_size(anything) = 1
 
 inflat_halo_size_one_dimension(H, Hx, TX          ) = max(H, Hx)
