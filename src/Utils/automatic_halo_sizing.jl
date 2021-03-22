@@ -18,31 +18,16 @@ required_halo_size(CenteredFourthOrder())
 """
 required_halo_size(anything) = 1
 
-#FJP: this should depend on the topology!!!!
-#using Oceananigans.Grids: topology    (maybe in shallow_water_model.jl?)
-#in max calculations, ignore if Flat
+inflat_halo_size_one_dimension(H, Hx, TX          ) = max(Hx,H)
+inflat_halo_size_one_dimension(H, Hx, ::Type{Flat}) = 0
 
 function inflate_halo_size(Hx, Hy, Hz, topology, tendency_terms...)
     for term in tendency_terms
         H = required_halo_size(term)
-        if topology[1] == Flat
-            Hx = 0
-        else
-            Hx = max(Hx,H)
-        end
-        if topology[2] == Flat
-            Hy = 0
-        else
-            Hy = max(Hy,H)
-        end
-        if topology[3] == Flat
-            Hz = 0
-        else
-            Hz = max(Hz,H)
-        end
-    end
 
+        Hx = inflat_halo_size_one_dimension(H, Hx, topology[1])
+        Hy = inflat_halo_size_one_dimension(H, Hy, topology[2])
+        Hz = inflat_halo_size_one_dimension(H, Hz, topology[3])
+    end
     return Hx, Hy, Hz
 end
-
-
