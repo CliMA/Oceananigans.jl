@@ -52,6 +52,19 @@ The operators in this file fall into three categories:
 @inline Δzᵃᵃᶜ(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶜ[k]
 
 #####
+##### "Spacings" in Flat directions. Here we dispatch to `one`. This abuse of notation
+##### makes volumes correct, and avoids issues with derivatives such as those involved
+##### in the pressure correction step.
+#####
+
+#using Oceananigans.Grids: Flat
+
+#@inline Δx(i, j, k,  grid::AbstractGrid{FT, Flat})         where FT           = one(FT)
+#@inline Δy(i, j, k,  grid::AbstractGrid{FT, TX, Flat})     where {FT, TX}     = one(FT)
+#@inline ΔzC(i, j, k, grid::AbstractGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
+#@inline ΔzF(i, j, k, grid::AbstractGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
+
+#####
 ##### Areas for horizontally-regular algorithms
 #####
 
