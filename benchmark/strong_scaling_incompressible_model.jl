@@ -10,7 +10,7 @@ Nz = Nx
 
 ranks = (1, 2, 4, 8, 16)
 
-# Run and collect benchmarks
+# Run benchmarks
 
 print_system_info()
 
@@ -20,10 +20,22 @@ for r in ranks
     run(`mpiexec -np $r $julia --project strong_scaling_incompressible_model_single.jl $Nx $Ny $Nz`)
 end
 
+# Collect benchmarks
+
 suite = BenchmarkGroup(["size", "ranks"])
-for r in ranks
-    jldopen("strong_scaling_incompressible_model_$r.jld2", "r") do file
-        suite[((Nx, Ny, Nz), r)] = file["trial"]
+for R in ranks
+    for local_rank in 0:R-1
+        filename = string("strong_scaling_shallow_water_model_$(R)_$local_rank.jld2")
+        jldopen(filename, "r") do file
+            if local_rank == 0
+                suite[((Nx, Ny, Nz), R)] = file["trial"]
+            else
+                merged_trial = suite[((Nx, Ny, Nz), R)]
+                local_trial = file["trial"]
+                append!(merged_trial.times, local_trial.times)
+                append!(merged_trial.gctimes, local_trial.gctimes)
+            end
+        end
     end
 end
 
@@ -33,7 +45,8 @@ df = benchmarks_dataframe(suite)
 sort!(df, :ranks)
 benchmarks_pretty_table(df, title="Incompressible model strong scaling benchmark")
 
-suite_Δ = speedups_suite(suite, base_case=((Nx, Ny, Nz), 1))
-df_Δ = speedups_dataframe(suite_Δ)
+base_case = ((Nx, Ny, Nz), 1)
+suite_Δ = speedups_suite(suite, base_case=base_case)
+df_Δ = speedups_dataframe(suite_Δ, efficiency=:strong, base_case=base_case, key2rank=k->k[2])
 sort!(df_Δ, :ranks)
 benchmarks_pretty_table(df_Δ, title="Incompressible model strong scaling speedup")

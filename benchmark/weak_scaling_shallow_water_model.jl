@@ -9,7 +9,7 @@ Nyp = 256  # Ny per core
 
 ranks = (1, 2, 4, 8, 16)
 
-# Run and collect benchmarks
+# Run benchmarks
 
 print_system_info()
 
@@ -20,11 +20,23 @@ for r in ranks
     run(`mpiexec -np $r $julia --project weak_scaling_shallow_water_model_single.jl $Nx $Ny`)
 end
 
+# Collect benchmarks
+
 suite = BenchmarkGroup(["size", "ranks"])
-for r in ranks, local_rank in collect(0:(r-1))
-    Ny = r*Nyp
-    filename = string("weak_scaling_shallow_water_model_$(r)_$local_rank.jld2")
-    jldopen(filename, "r") do file suite[((Nx, Ny), r)] = file["trial"]
+for R in ranks
+    Ny = R * Nyp
+    for local_rank in 0:R-1
+        filename = string("weak_scaling_shallow_water_model_$(R)_$local_rank.jld2")
+        jldopen(filename, "r") do file
+            if local_rank == 0
+                suite[((Nx, Ny), R)] = file["trial"]
+            else
+                merged_trial = suite[((Nx, Ny), R)]
+                local_trial = file["trial"]
+                append!(merged_trial.times, local_trial.times)
+                append!(merged_trial.gctimes, local_trial.gctimes)
+            end
+        end
     end
 end
 

@@ -54,7 +54,7 @@ end
 
 function benchmarks_dataframe(suite)
     names = Tuple(Symbol(tag) for tag in suite.tags)
-    df_names = (names..., :min, :median, :mean, :max, :memory, :allocs)
+    df_names = (names..., :min, :median, :mean, :max, :memory, :allocs, :samples)
     empty_cols = Tuple([] for k in df_names)
     df = DataFrame(; NamedTuple{df_names}(empty_cols)...)
 
@@ -68,6 +68,7 @@ function benchmarks_dataframe(suite)
         entry[:max] = maximum(trial.times) |> prettytime
         entry[:memory] = prettymemory(trial.memory)
         entry[:allocs] = trial.allocs
+        entry[:samples] = length(trial)
 
         push!(df, entry)
     end
