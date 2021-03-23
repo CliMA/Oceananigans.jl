@@ -261,5 +261,3 @@ end
 min_Δx(grid::RegularRectilinearGrid) = grid.Δx
 min_Δy(grid::RegularRectilinearGrid) = grid.Δy
 min_Δz(grid::RegularRectilinearGrid) = grid.Δz
-
-
