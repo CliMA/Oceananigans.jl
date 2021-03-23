@@ -34,8 +34,8 @@ df = benchmarks_dataframe(suite)
 sort!(df, :ranks)
 benchmarks_pretty_table(df, title="Shallow water model weak scaling benchmark")
 
-suite_Δ = speedups_suite(suite, base_case=((Nx, Nyp), 1))
-df_Δ = speedups_dataframe(suite_Δ, slowdown=true)
+base_case = ((Nx, Nyp), 1)
+suite_Δ = speedups_suite(suite, base_case=base_case)
+df_Δ = speedups_dataframe(suite_Δ, slowdown=true, efficiency=:weak, base_case=base_case, key2rank=k->k[2])
 sort!(df_Δ, :ranks)
 benchmarks_pretty_table(df_Δ, title="Shallow water model weak scaling speedup")
-
