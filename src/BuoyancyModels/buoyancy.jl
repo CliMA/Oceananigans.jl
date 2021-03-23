@@ -30,7 +30,7 @@ model = IncompressibleModel(
 )
 ```
 """
-function Buoyancy(; model, vertical_unit_vector=VerticalDirection())
+function Buoyancy(; model, vertical_unit_vector=ZDirection())
     ĝ = vertical_unit_vector
     ĝ isa VerticalDirection || length(ĝ) == 3 ||
         throw(ArgumentError("vertical_unit_vector must have length 3"))
