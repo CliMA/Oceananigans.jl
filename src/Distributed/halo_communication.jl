@@ -58,12 +58,17 @@ function fill_halo_regions!(c::AbstractArray, bcs, arch::AbstractMultiArchitectu
 
     barrier = Event(device(child_architecture(arch)))
 
-    west_event, east_event = fill_west_and_east_halos!(c, bcs.west, bcs.east, arch, barrier, grid, c_location, args...)
-    south_event, north_event = fill_south_and_north_halos!(c, bcs.south, bcs.north, arch, barrier, grid, c_location, args...)
-    bottom_event, top_event = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, arch, barrier, grid, c_location, args...)
+    x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, arch, barrier, grid, c_location, args...)
+    y_events_requests = fill_south_and_north_halos!(c, bcs.south, bcs.north, arch, barrier, grid, c_location, args...)
+    z_events_requests = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, arch, barrier, grid, c_location, args...)
 
-    events = [west_event, east_event, south_event, north_event, bottom_event, top_event]
-    events = filter(e -> e isa Event, events)
+    events_and_requests = [x_events_requests..., y_events_requests..., z_events_requests]
+
+    mpi_requests = filter(e -> e isa MPI.Request, events_and_requests)
+    # Length check needed until this PR is merged: https://github.com/JuliaParallel/MPI.jl/pull/458
+    length(mpi_requests) > 0 && MPI.Waitall!(mpi_requests)
+
+    events = filter(e -> e isa Event, events_and_requests)
     wait(device(child_architecture(arch)), MultiEvent(Tuple(events)))
 
     return nothing
