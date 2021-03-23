@@ -26,18 +26,18 @@ arch = MultiCPU(grid=distributed_grid, ranks=(1, R, 1))
 model = DistributedShallowWaterModel(architecture=arch, grid=distributed_grid, gravitational_acceleration=1.0)
 set!(model, h=model.grid.Lz)
 
-@info "Warming up distributed shallow water model..."
+@info "Warming up distributed shallow water model on rank $local_rank..."
 
 time_step!(model, 1) # warmup
 
-@info "Benchmarking distributed shallow water model..."
+@info "Benchmarking distributed shallow water model on rank $local_rank..."
 
 trial = @benchmark begin
     @sync_gpu time_step!($model, 1)
     MPI.Barrier(comm)
 end samples=10
 
-@info "Rank $local_rank is done benchmarking!"
+@info "Done benchmarking on rank $(local_rank)!"
 
 jldopen("weak_scaling_shallow_water_model_$(R)_$local_rank.jld2", "w") do file
     file["trial"] = trial

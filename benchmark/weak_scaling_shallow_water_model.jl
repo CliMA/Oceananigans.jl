@@ -17,7 +17,7 @@ for r in ranks
     Ny = r*Nyp
     @info "Benchmarking distributed shallow water model weak scaling [N=($Nx, $Ny), ranks=$r]..."
     julia = Base.julia_cmd()
-    run(`mpiexec -np $r julia --project weak_scaling_shallow_water_model_single.jl $Nx $Ny`)
+    run(`mpiexec -np $r $julia --project weak_scaling_shallow_water_model_single.jl $Nx $Ny`)
 end
 
 suite = BenchmarkGroup(["size", "ranks"])
@@ -35,7 +35,7 @@ sort!(df, :ranks)
 benchmarks_pretty_table(df, title="Shallow water model weak scaling benchmark")
 
 suite_Δ = speedups_suite(suite, base_case=((Nx, Nyp), 1))
-df_Δ = speedups_dataframe(suite_Δ)
+df_Δ = speedups_dataframe(suite_Δ, slowdown=true)
 sort!(df_Δ, :ranks)
 benchmarks_pretty_table(df_Δ, title="Shallow water model weak scaling speedup")
 
