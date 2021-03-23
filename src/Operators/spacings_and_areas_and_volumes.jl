@@ -63,6 +63,7 @@ using Oceananigans.Grids: Flat
 @inline Δy(i, j, k,  grid::RegularRectilinearGrid{FT, TX, Flat})     where {FT, TX}     = one(FT)
 @inline ΔzC(i, j, k, grid::RegularRectilinearGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
 @inline ΔzF(i, j, k, grid::RegularRectilinearGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
+
 #####
 ##### Areas for horizontally-regular algorithms
 #####

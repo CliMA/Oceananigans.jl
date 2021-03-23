@@ -63,13 +63,6 @@ Compute the tendency for the height, h.
                                      forcings,
                                      clock)
 
-    #print("type of grid = ", typeof(grid), "\n")
-    #print("Δy  = ", Δy(i,j,k,grid), "\n")
-    #print("ΔzF = ", ΔzF(i,j,k,grid), "\n")
-    #print("ΔzC = ", ΔzC(i,j,k,grid), "\n")
-    #print("Δz  = ", grid.Δz, "\n")
-    #print("Ax  = ", Axᵃᵃᶜ(i,j,k,grid), "\n")
-
     return ( - div_uhvh(i, j, k, grid, solution)
              + forcings.h(i, j, k, grid, clock, merge(solution, tracers)))
 end

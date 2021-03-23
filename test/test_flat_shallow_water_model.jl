@@ -34,9 +34,9 @@ for (iter, topo) in enumerate(topologies)
 
     set!(model,h=1)
 
-    simulation = Simulation(model, Δt = 1e-3, stop_time = 1e-3)
+    simulation = Simulation(model, Δt = 1e-3, stop_time = 1e-2)
 
     run!(simulation)
     
-    print("Finished case with topology = ", topo, "\n\n")
+    print("Successfully completed case with topology = ", topo, "\n\n")
 end
