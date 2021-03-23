@@ -107,12 +107,15 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
 
-            $send_side_halo(c, grid, c_location, local_rank, bc_side.condition.to)
-            $send_opposite_side_halo(c, grid, c_location, local_rank, bc_opposite_side.condition.to)
+            send_req1 = $send_side_halo(c, grid, c_location, local_rank, bc_side.condition.to)
+            send_req2 = $send_opposite_side_halo(c, grid, c_location, local_rank, bc_opposite_side.condition.to)
 
-            $recv_and_fill_side_halo!(c, grid, c_location, local_rank, bc_side.condition.to)
-            $recv_and_fill_opposite_side_halo!(c, grid, c_location, local_rank, bc_opposite_side.condition.to)
+            recv_req1 = $recv_and_fill_side_halo!(c, grid, c_location, local_rank, bc_side.condition.to)
+            recv_req2 = $recv_and_fill_opposite_side_halo!(c, grid, c_location, local_rank, bc_opposite_side.condition.to)
 
+            MPI.Waitall!([send_req1, send_req2, recv_req1, recv_req2])
+
+            # No KernelAbstractions.jl even tokens to wait on so return nothing.
             return nothing, nothing
         end
     end
@@ -134,9 +137,9 @@ for side in sides
             send_tag = $side_send_tag(local_rank, rank_to_send_to)
 
             @debug "Sending " * $side_str * " halo: local_rank=$local_rank, rank_to_send_to=$rank_to_send_to, send_tag=$send_tag"
-            status = MPI.Isend(send_buffer, rank_to_send_to, send_tag, MPI.COMM_WORLD)
+            send_req = MPI.Isend(send_buffer, rank_to_send_to, send_tag, MPI.COMM_WORLD)
 
-            return status
+            return send_req
         end
     end
 end
@@ -157,9 +160,9 @@ for side in sides
             recv_tag = $side_recv_tag(local_rank, rank_to_recv_from)
 
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
-            MPI.Recv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
+            recv_req = MPI.Recv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
 
-            return nothing
+            return recv_req
         end
     end
 end
