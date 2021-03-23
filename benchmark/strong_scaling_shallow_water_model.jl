@@ -16,12 +16,13 @@ print_system_info()
 for r in ranks
     @info "Benchmarking distributed shallow water model strong scaling [N=($Nx, $Ny), ranks=$r]..."
     julia = Base.julia_cmd()
-    run(`mpiexec -np $r julia --project strong_scaling_shallow_water_model_single.jl $Nx $Ny`)
+    run(`mpiexec -np $r $julia --project strong_scaling_shallow_water_model_single.jl $Nx $Ny`)
 end
 
 suite = BenchmarkGroup(["size", "ranks"])
 for r in ranks, local_rank in collect(0:(r-1))
-    jldopen(file_name, "r") do file suite[((Nx, Ny), r)] = file["trial"]
+    filename = string("strong_scaling_shallow_water_model_$(r)_$local_rank.jld2")
+    jldopen(filename, "r") do file suite[((Nx, Ny), r)] = file["trial"]
     end
 end
 
