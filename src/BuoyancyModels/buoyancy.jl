@@ -49,8 +49,8 @@ end
 @inline ĝ_y(buoyancy) = @inbounds buoyancy.vertical_unit_vector[2]
 @inline ĝ_z(buoyancy) = @inbounds buoyancy.vertical_unit_vector[3]
 
-@inline ĝ_x(::Buoyancy{M, VerticalDirection}) where M = 0
-@inline ĝ_y(::Buoyancy{M, VerticalDirection}) where M = 0
+@inline ĝ_x(::Buoyancy{M, ZDirection}) where M = 0
+@inline ĝ_y(::Buoyancy{M, ZDirection}) where M = 0
 @inline ĝ_z(::Buoyancy{M, VerticalDirection}) where M = 1
 
 #####
