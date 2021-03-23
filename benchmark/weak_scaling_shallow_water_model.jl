@@ -30,7 +30,7 @@ for R in ranks
     run(`mpiexec -np $R $julia --project weak_scaling_shallow_water_model_single.jl $(typeof(decomposition)) $Nx $Ny $Rx $Ry`)
 end
 
-# Collect benchmarks
+# Collect and merge benchmarks from all ranks
 
 suite = BenchmarkGroup(["size", "ranks"])
 
@@ -62,6 +62,6 @@ benchmarks_pretty_table(df, title="Shallow water model weak scaling benchmark")
 
 base_case = (grid_size(1, decomposition), rank_size(1, decomposition))
 suite_Δ = speedups_suite(suite, base_case=base_case)
-df_Δ = speedups_dataframe(suite_Δ, slowdown=true, efficiency=:weak, base_case=base_case, key2rank=k->k[2])
+df_Δ = speedups_dataframe(suite_Δ, slowdown=true, efficiency=:weak, base_case=base_case, key2rank=k->prod(k[2]))
 sort!(df_Δ, :ranks)
 benchmarks_pretty_table(df_Δ, title="Shallow water model weak scaling speedup")

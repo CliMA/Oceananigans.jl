@@ -23,7 +23,7 @@ Ry = parse(Int, ARGS[5])
 
 @assert Rx * Ry == R
 
-@info "Setting up distributed shallow water model with N=($Nx, $Ny) grid points with ranks=($Rx, $Ry)..."
+@info "Setting up distributed shallow water model with N=($Nx, $Ny) grid points and ranks=($Rx, $Ry) on rank $local_rank..."
 
 topo = (Periodic, Periodic, Bounded)
 distributed_grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, 1), extent=(1, 1, 1))
@@ -39,7 +39,6 @@ time_step!(model, 1) # warmup
 
 trial = @benchmark begin
     @sync_gpu time_step!($model, 1)
-    MPI.Barrier(comm)
 end samples=10
 
 t_median = BenchmarkTools.prettytime(median(trial).time)
