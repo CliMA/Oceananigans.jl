@@ -115,7 +115,7 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
 
             MPI.Waitall!([send_req1, send_req2, recv_req1, recv_req2])
 
-            # No KernelAbstractions.jl even tokens to wait on so return nothing.
+            # No KernelAbstractions.jl event tokens to wait on so return nothing.
             return nothing, nothing
         end
     end
@@ -160,7 +160,7 @@ for side in sides
             recv_tag = $side_recv_tag(local_rank, rank_to_recv_from)
 
             @debug "Receiving " * $side_str * " halo: local_rank=$local_rank, rank_to_recv_from=$rank_to_recv_from, recv_tag=$recv_tag"
-            recv_req = MPI.Recv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
+            recv_req = MPI.Irecv!(recv_buffer, rank_to_recv_from, recv_tag, MPI.COMM_WORLD)
 
             return recv_req
         end
