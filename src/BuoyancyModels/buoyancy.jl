@@ -6,7 +6,7 @@ end
 struct ZDirection end
 
 """
-    Buoyancy(; model, vertical_unit_vector=VerticalDirection())
+    Buoyancy(; model, vertical_unit_vector=ZDirection())
 
 Uses a given buoyancy `model` to create buoyancy in a model. The optional keyword argument 
 `vertical_unit_vector` can be used to specify the direction opposite to the gravitational
@@ -32,10 +32,10 @@ model = IncompressibleModel(
 """
 function Buoyancy(; model, vertical_unit_vector=ZDirection())
     ĝ = vertical_unit_vector
-    ĝ isa VerticalDirection || length(ĝ) == 3 ||
+    ĝ isa ZDirection || length(ĝ) == 3 ||
         throw(ArgumentError("vertical_unit_vector must have length 3"))
 
-    if !isa(ĝ, VerticalDirection)
+    if !isa(ĝ, ZDirection)
         gx, gy, gz = ĝ
 
         gx^2 + gy^2 + gz^2 ≈ 1 ||
@@ -51,7 +51,7 @@ end
 
 @inline ĝ_x(::Buoyancy{M, ZDirection}) where M = 0
 @inline ĝ_y(::Buoyancy{M, ZDirection}) where M = 0
-@inline ĝ_z(::Buoyancy{M, VerticalDirection}) where M = 1
+@inline ĝ_z(::Buoyancy{M, ZDirection}) where M = 1
 
 #####
 ##### For convinience
