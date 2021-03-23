@@ -72,17 +72,11 @@ function ShallowWaterModel(;
      boundary_conditions::NamedTuple = NamedTuple(),
                  timestepper::Symbol = :RungeKutta3)
 
-    #FJP: in the proposed formulation we don't have an Nz when we define ShallowWaterModel so this goes
-    #grid.Nz == 1 || throw(ArgumentError("ShallowWaterModel must be constructed with Nz=1!"))
-
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
-    #FJP: if we we decide to keep this redefintion of inflate_halo_size then we will need to change:
-    #         incompressible_mode.jl and hydrostatic_free_surface_model.jl
-    
     Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, topology(grid), advection)
     grid = with_halo((Hx, Hy, Hz), grid)
-    
+
     model_field_names = (:uh, :vh, :h, tracers...)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, model_field_names)
 

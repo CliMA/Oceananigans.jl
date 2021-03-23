@@ -23,7 +23,7 @@ for (iter, topo) in enumerate(topologies)
 
     simulation = Simulation(model, Δt = 1e-3, stop_time = 1e-2)
 
-    #run!(simulation)
+    run!(simulation)
     
     print("Finished iter = ", iter, "\n\n")
 end
