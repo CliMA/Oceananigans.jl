@@ -3,7 +3,7 @@ struct Buoyancy{M, G}
     vertical_unit_vector :: G
 end
 
-struct VerticalDirection end
+struct ZDirection end
 
 """
     Buoyancy(; model, vertical_unit_vector=VerticalDirection())
