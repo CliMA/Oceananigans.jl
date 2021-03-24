@@ -53,8 +53,8 @@ The operators in this file fall into three categories:
 
 #####
 ##### "Spacings" in Flat directions. Here we dispatch to `one`. This abuse of notation
-##### makes volumes correct, and avoids issues with derivatives such as those involved
-##### in the pressure correction step.
+##### makes volumes correct as we want to multiply by 1, and avoids issues with
+##### derivatives such as those involved in the pressure correction step.
 #####
 
 using Oceananigans.Grids: Flat
