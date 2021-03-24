@@ -62,9 +62,9 @@ function fill_halo_regions!(c::AbstractArray, bcs, arch::AbstractMultiArchitectu
     y_events_requests = fill_south_and_north_halos!(c, bcs.south, bcs.north, arch, barrier, grid, c_location, args...)
     z_events_requests = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, arch, barrier, grid, c_location, args...)
 
-    events_and_requests = [x_events_requests..., y_events_requests..., z_events_requests]
+    events_and_requests = [x_events_requests..., y_events_requests..., z_events_requests...]
 
-    mpi_requests = filter(e -> e isa MPI.Request, events_and_requests)
+    mpi_requests = filter(e -> e isa MPI.Request, events_and_requests) |> Array{MPI.Request}
     # Length check needed until this PR is merged: https://github.com/JuliaParallel/MPI.jl/pull/458
     length(mpi_requests) > 0 && MPI.Waitall!(mpi_requests)
 
@@ -118,10 +118,9 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
             recv_req1 = $recv_and_fill_side_halo!(c, grid, c_location, local_rank, bc_side.condition.to)
             recv_req2 = $recv_and_fill_opposite_side_halo!(c, grid, c_location, local_rank, bc_opposite_side.condition.to)
 
-            MPI.Waitall!([send_req1, send_req2, recv_req1, recv_req2])
+            # MPI.Waitall!([send_req1, send_req2, recv_req1, recv_req2])
 
-            # No KernelAbstractions.jl event tokens to wait on so return nothing.
-            return nothing, nothing
+            return send_req1, send_req2, recv_req1, recv_req2
         end
     end
 end
