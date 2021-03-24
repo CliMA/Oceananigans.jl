@@ -17,13 +17,13 @@ rank_size(R, ::Pencil) = Int.((1, √R, √R))
 
 print_system_info()
 
-# for R in ranks
-#     Nx, Ny, Nz = grid_size(R, decomposition)
-#     Rx, Ry, Rz = rank_size(R, decomposition)
-#     @info "Benchmarking distributed incompressible model strong scaling with $(typeof(decomposition)) decomposition [N=($Nx, $Ny, $Nz), ranks=($Rx, $Ry, $Rz)]..."
-#     julia = Base.julia_cmd()
-#     run(`mpiexec -np $R $julia --project strong_scaling_incompressible_model_single.jl $(typeof(decomposition)) $Nx $Ny $Nz $Rx $Ry $Rz`)
-# end
+for R in ranks
+    Nx, Ny, Nz = grid_size(R, decomposition)
+    Rx, Ry, Rz = rank_size(R, decomposition)
+    @info "Benchmarking distributed incompressible model strong scaling with $(typeof(decomposition)) decomposition [N=($Nx, $Ny, $Nz), ranks=($Rx, $Ry, $Rz)]..."
+    julia = Base.julia_cmd()
+    run(`mpiexec -np $R $julia --project strong_scaling_incompressible_model_single.jl $(typeof(decomposition)) $Nx $Ny $Nz $Rx $Ry $Rz`)
+end
 
 # Collect and merge benchmarks from all ranks
 

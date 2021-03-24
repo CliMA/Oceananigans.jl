@@ -23,7 +23,7 @@ Ry = parse(Int, ARGS[5])
 
 @assert Rx * Ry == R
 
-@info "Setting up distributed shallow water model with N=($Nx, $Ny) grid points and ranks=($Rx, $Ry) on rank $local_rank..."
+@info "Setting up distributed shallow water model with N=($Nx, $Ny) grid points and ranks=($Rx, $Ry) ($decomposition decomposition) on rank $local_rank..."
 
 topo = (Periodic, Periodic, Bounded)
 distributed_grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, 1), extent=(1, 1, 1))
