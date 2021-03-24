@@ -64,9 +64,10 @@ function fill_halo_regions!(c::AbstractArray, bcs, arch::AbstractMultiArchitectu
 
     events_and_requests = [x_events_requests..., y_events_requests..., z_events_requests...]
 
-    mpi_requests = filter(e -> e isa MPI.Request, events_and_requests) |> Array{MPI.Request}
-    # Length check needed until this PR is merged: https://github.com/JuliaParallel/MPI.jl/pull/458
-    length(mpi_requests) > 0 && MPI.Waitall!(mpi_requests)
+    # When trying to overlap halo communication, tests failed...
+    # mpi_requests = filter(e -> e isa MPI.Request, events_and_requests) |> Array{MPI.Request}
+    # # Length check needed until this PR is merged: https://github.com/JuliaParallel/MPI.jl/pull/458
+    # length(mpi_requests) > 0 && MPI.Waitall!(mpi_requests)
 
     events = filter(e -> e isa Event, events_and_requests)
     wait(device(child_architecture(arch)), MultiEvent(Tuple(events)))
@@ -118,7 +119,8 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
             recv_req1 = $recv_and_fill_side_halo!(c, grid, c_location, local_rank, bc_side.condition.to)
             recv_req2 = $recv_and_fill_opposite_side_halo!(c, grid, c_location, local_rank, bc_opposite_side.condition.to)
 
-            # MPI.Waitall!([send_req1, send_req2, recv_req1, recv_req2])
+            # Seems like we need to wait here and if we try to overlap halo communication then the tests fail...
+            MPI.Waitall!([send_req1, send_req2, recv_req1, recv_req2])
 
             return send_req1, send_req2, recv_req1, recv_req2
         end
