@@ -50,7 +50,7 @@ function validate_size(TX, TY, TZ, size)
 end
 
 function validate_halo(TX, TY, TZ, ::Nothing)
-    halo = Tuple(3 for i = 1:topological_tuple_length(TX, TY, TZ))
+    halo = Tuple(1 for i = 1:topological_tuple_length(TX, TY, TZ))
     return validate_halo(TX, TY, TZ, halo)
 end
 
