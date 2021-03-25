@@ -1,3 +1,5 @@
+import Oceananigans.Grids: required_halo_size
+
 """
     IsotropicDiffusivity{N, K}
 

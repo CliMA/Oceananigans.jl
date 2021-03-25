@@ -9,13 +9,14 @@ Example
 
 ```jldoctest
 using Oceananigans.Advection: CenteredFourthOrder
-using Oceananigans.Utils: required_halo_size
+using Oceananigans.Grids: required_halo_size
 
 required_halo_size(CenteredFourthOrder())
 
 # output
 2
 """
+
 function required_halo_size end
 
 required_halo_size(nothing) = 1
@@ -30,7 +31,10 @@ function inflate_halo_size(Hx, Hy, Hz, topology, tendency_terms...)
     oldHz = Hz
 
     for term in tendency_terms
+        print("term = ", term,"\n")
          H = required_halo_size(term)
+         print("H = ", H, "\n")
+         print("methods = ", methods(required_halo_size), "\n")
         Hx = inflat_halo_size_one_dimension(H, Hx, topology[1])
         Hy = inflat_halo_size_one_dimension(H, Hy, topology[2])
         Hz = inflat_halo_size_one_dimension(H, Hz, topology[3])
