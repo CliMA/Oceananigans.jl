@@ -18,6 +18,8 @@ required_halo_size(CenteredFourthOrder())
 """
 function required_halo_size end
 
+required_halo_size(nothing) = 1
+
 inflat_halo_size_one_dimension(H, Hx, TX          ) = max(H, Hx)
 inflat_halo_size_one_dimension(H, Hx, ::Type{Flat}) = 0
 
