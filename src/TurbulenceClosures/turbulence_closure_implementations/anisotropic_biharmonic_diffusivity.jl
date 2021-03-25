@@ -50,7 +50,8 @@ function AnisotropicBiharmonicDiffusivity(FT=Float64; νx=0, νy=0, νz=0, κx=0
     return AnisotropicBiharmonicDiffusivity(FT(νx), FT(νy), FT(νz), κx, κy, κz)
 end
 
-required_halo_size(::AnisotropicBiharmonicDiffusivity) = 2
+required_halo_size(closure::AnisotropicBiharmonicDiffusivity) = 2
+required_halo_size(closure::IsotropicDiffusivity) = 2                   #FJP: added this but why was it not here before?
                                             
 function with_tracers(tracers, closure::AnisotropicBiharmonicDiffusivity)
     κx = tracer_diffusivities(tracers, closure.κx)
