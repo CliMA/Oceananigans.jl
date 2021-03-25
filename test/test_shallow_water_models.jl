@@ -1,5 +1,6 @@
-using Oceananigans.Models: ShallowWaterModel
-using Oceananigans.Grids: Periodic, Bounded
+using Oceananigans
+using Oceananigans.Models
+using Oceananigans.Grids
 
 function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection; timestepper=:RungeKutta3)
     grid = RegularRectilinearGrid(size=(1, 1), extent=(2π, 2π), topology=topo)
@@ -57,12 +58,37 @@ end
         @test_throws TypeError ShallowWaterModel(architecture=GPU, grid=grid, gravitational_acceleration=1)
     end
 
+    topo = ( (Flat,      Flat,     Flat) )
+   
+    @testset "$topo model construction" begin
+    @info "  Testing $topo model construction..."
+        for arch in archs, FT in float_types                
+            grid = RegularRectilinearGrid(FT, topology=topo, size=(), extent=())
+            model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)        
+        end
+    end
+
+    topos = (
+             (Bounded,   Flat,     Flat),    
+             (Flat,      Bounded,  Flat),
+            )
+
+    for topo in topos
+        @testset "$topo model construction" begin
+            @info "  Testing $topo model construction..."
+            for arch in archs, FT in float_types
+                arch isa GPU && topo == (Flat, Bounded, Flat) && continue
+        
+                grid = RegularRectilinearGrid(FT, topology=topo, size=(1), extent=(1))
+                model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)        
+            end
+        end
+    end
+
     topos = (
              (Periodic, Periodic,  Flat),
              (Periodic,  Bounded,  Flat),
              (Bounded,   Bounded,  Flat),
-             #(Bounded,   Flat,     Flat),    #FJP: How to test these?
-             #(Flat,      Flat,     Flat),
             )
 
     for topo in topos
@@ -74,11 +100,7 @@ end
                 grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1), extent=(1, 2))
                 model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)
 
-                # Just testing that the model was constructed with no errors/crashes.
                 @test model isa ShallowWaterModel
-
-                # Test that the grid didn't get mangled (sort of)
-                @test size(grid) === size(model.grid)
 
                 #too_big_grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1, 2), extent=(1, 2, 3))
 
@@ -88,7 +110,7 @@ end
     end
 
     @testset "Setting ShallowWaterModel fields" begin
-        @info "  Testing setting shallow water model fields..."
+    @info "  Testing setting shallow water model fields..."
         for arch in archs, FT in float_types
             N = (4,   4)
             L = (2π, 3π)
