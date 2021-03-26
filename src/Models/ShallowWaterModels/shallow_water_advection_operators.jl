@@ -52,6 +52,8 @@ which will end up at the location `ccc`.
 end
 
 @inline function div_ucvc(i, j, k, grid, u, v, c)
-    1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶜ, u, c) +            # Error points to this line
-                             δyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶜ, v, c))
+    uc = u * ℑxyᶠᶠᵃ(i, j, k, grid, c)
+    vc = v * ℑxyᶠᶠᵃ(i, j, k, grid, c)
+    1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶜ, uc) +            # Error points to this line
+                             δyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶜ, vc))
 end
