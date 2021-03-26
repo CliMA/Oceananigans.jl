@@ -24,12 +24,7 @@
                 grid = RegularRectilinearGrid(FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
                 model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
 
-                # Just testing that the model was constructed with no errors/crashes.
                 @test model isa IncompressibleModel
-
-                # FJP: the grid does not need to equal model.grid
-                # Test that the grid didn't get mangled
-                #@test grid === model.grid
             end
         end
     end
