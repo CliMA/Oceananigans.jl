@@ -50,3 +50,8 @@ which will end up at the location `ccc`.
     1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶜ, solution.uh) + 
                              δyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶜ, solution.vh))
 end
+
+@inline function div_ucvc(i, j, k, grid, u, v, c)
+    1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶜ, u, c) +            # Error points to this line
+                             δyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶜ, v, c))
+end

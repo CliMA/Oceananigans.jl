@@ -78,5 +78,12 @@ end
 
     @inbounds c = tracers[tracer_index]
 
-    return ( 0.0 )
+    u = solution.uh / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)   # are these computed correctly?
+    v = solution.vh / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
+
+    return ( 0.0
+             - div_ucvc(i, j, k, grid, u, v, c)           # are these evaluated at the correct locations?
+             + c * ∂xᶜᵃᵃ(i, j, k, grid, u)
+             + c * ∂yᵃᶜᵃ(i, j, k, grid, v) 
+            )
 end
