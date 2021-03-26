@@ -23,9 +23,10 @@
 using Oceananigans
 using Oceananigans.Units: hours, meters, kilometers
 
-grid = RegularRectilinearGrid(size = (128, 1, 1),
-                            x = (0, 1000kilometers), y = (0, 1), z = (-400meters, 0),
-                            topology = (Bounded, Periodic, Bounded))
+Lz = 400meters
+grid = RegularRectilinearGrid(size = (128),
+                            x = (0, 1000kilometers),
+                            topology = (Bounded, Flat, Flat))
 
 # and Coriolis parameter appropriate for the mid-latitudes on Earth,
 

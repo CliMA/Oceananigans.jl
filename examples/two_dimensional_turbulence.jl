@@ -24,7 +24,7 @@
 
 using Oceananigans
 
-grid = RegularRectilinearGrid(size=(128, 128, 1), extent=(2π, 2π, 2π))
+grid = RegularRectilinearGrid(size=(128, 128), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
 
 model = IncompressibleModel(timestepper = :RungeKutta3,
                               advection = UpwindBiasedFifthOrder(),
@@ -79,7 +79,7 @@ s_field = ComputedField(s)
 
 progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(round(Int, sim.model.clock.time))"
 
-simulation = Simulation(model, Δt=0.2, stop_time=50, iteration_interval=100, progress=progress)
+simulation = Simulation(model, Δt=0.2, stop_time=50, iteration_interval=1, progress=progress)
 
 # ## Output
 #
