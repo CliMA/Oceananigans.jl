@@ -1,6 +1,7 @@
 using Oceananigans.Advection
 using Oceananigans.Coriolis
 using Oceananigans.Operators
+using Oceananigans.TurbulenceClosures: ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
 
 @inline squared(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
 
@@ -63,7 +64,7 @@ Compute the tendency for the height, h.
                                      forcings,
                                      clock)
 
-    return ( - div_uhvh(i, j, k, grid, solution)
+    return ( - div_Uh(i, j, k, grid, solution)
              + forcings.h(i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -73,17 +74,14 @@ end
                                  solution,
                                  tracers,
                                  diffusivities,
-                                 forcings,
+                                 forcing,
                                  clock) where tracer_index
 
     @inbounds c = tracers[tracer_index]
 
-    u = solution.uh / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)   # are these computed correctly?
-    v = solution.vh / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
-
-    return ( 0.0
-             - div_ucvc(i, j, k, grid, u, v, c)           # are these evaluated at the correct locations?
-             + c * ∂xᶜᵃᵃ(i, j, k, grid, u)
-             + c * ∂yᵃᶜᵃ(i, j, k, grid, v) 
+    return ( -  div_Uc(i, j, k, grid, advection, solution, c) 
+             + c_div_U(i, j, k, grid, solution, c)         
+             +  ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, nothing)
+             + forcing(i, j, k, grid, clock, merge(solution, tracers)) 
             )
 end
