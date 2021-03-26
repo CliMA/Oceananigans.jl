@@ -9,12 +9,12 @@ using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, Seawa
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, TracerBoundaryConditions
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
+using Oceananigans.Grids: inflate_halo_size, with_halo, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 using Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
-using Oceananigans.Utils: inflate_halo_size, tupleit
+using Oceananigans.Utils: tupleit
 
 struct VectorInvariant end
 
