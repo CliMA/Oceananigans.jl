@@ -14,6 +14,7 @@ Compute the tendency for the x-directional transport, uh
                                       gravitational_acceleration,
                                       advection,
                                       coriolis,
+                                      closure,
                                       bathymetry,
                                       solution,
                                       tracers,
@@ -36,6 +37,7 @@ Compute the tendency for the y-directional transport, vh.
                                       gravitational_acceleration,
                                       advection,
                                       coriolis,
+                                      closure,
                                       bathymetry,
                                       solution,
                                       tracers,
@@ -57,6 +59,7 @@ Compute the tendency for the height, h.
 @inline function h_solution_tendency(i, j, k, grid,
                                      gravitational_acceleration,
                                      coriolis,
+                                     closure,
                                      bathymetry,
                                      solution,
                                      tracers,
@@ -71,6 +74,7 @@ end
 @inline function tracer_tendency(i, j, k, grid,
                                  val_tracer_index::Val{tracer_index},
                                  advection,
+                                 closure,
                                  solution,
                                  tracers,
                                  diffusivities,
@@ -81,7 +85,7 @@ end
 
     return ( -  div_Uc(i, j, k, grid, advection, solution, c) 
              + c_div_U(i, j, k, grid, solution, c)         
-            # +  ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, nothing)
+             +  ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, nothing)
              + forcing(i, j, k, grid, clock, merge(solution, tracers)) 
             )
 end
