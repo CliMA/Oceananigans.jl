@@ -81,7 +81,7 @@ end
 
     return ( -  div_Uc(i, j, k, grid, advection, solution, c) 
              + c_div_U(i, j, k, grid, solution, c)         
-             +  ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, nothing)
+            # +  ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, nothing)
              + forcing(i, j, k, grid, clock, merge(solution, tracers)) 
             )
 end

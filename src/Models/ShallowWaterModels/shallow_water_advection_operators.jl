@@ -85,7 +85,8 @@ end
 """
     c_div_U(i, j, k, grid, advection, U)
 
-Calculates the horizontal divergence of the velocity field U = (u, v), ∇·(U),
+Calculates the produce of the tracer concentration c with 
+the horizontal divergence of the velocity field U = (u, v), c ∇·(U),
 
     1/V * [δxᶜᵃᵃ(Ax * uh / h) + δyᵃᶜᵃ(Ay * vh / h]
 
@@ -96,4 +97,4 @@ which will end up at the location `ccc`.
 end
 
 # Support for no advection
-@inline div_Uc(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, c) where FT = zero(FT)
+@inline c_div_Uc(i, j, k, grid::AbstractGrid{FT}, ::Nothing, solution, c) where FT = zero(FT)
