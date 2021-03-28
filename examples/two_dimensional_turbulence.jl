@@ -24,7 +24,8 @@
 
 using Oceananigans
 
-grid = RegularRectilinearGrid(size=(128, 128), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
+grid = RegularRectilinearGrid(size=(128, 128), extent=(2π, 2π), 
+                            topology=(Periodic, Periodic, Flat))
 
 model = IncompressibleModel(timestepper = :RungeKutta3,
                               advection = UpwindBiasedFifthOrder(),
@@ -144,7 +145,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
     s_plot = contourf(xs, ys, clamp.(s_snapshot', 0, s_lim);
                        color = :thermal,
                       levels = s_levels,
-                       clims = (0, s_lim),
+                       clims = (0., s_lim),
                       kwargs...)
 
     plot(ω_plot, s_plot, title=["Vorticity" "Speed"], layout=(1, 2), size=(1200, 500))
