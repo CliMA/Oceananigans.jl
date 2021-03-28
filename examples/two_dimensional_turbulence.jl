@@ -80,7 +80,7 @@ s_field = ComputedField(s)
 
 progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(round(Int, sim.model.clock.time))"
 
-simulation = Simulation(model, Δt=0.2, stop_time=50, iteration_interval=1, progress=progress)
+simulation = Simulation(model, Δt=0.2, stop_time=50, iteration_interval=100, progress=progress)
 
 # ## Output
 #
