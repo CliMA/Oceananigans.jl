@@ -13,7 +13,7 @@ set!(model, uh=0, h=1, c=c)
 
 using Oceananigans.OutputWriters: JLD2OutputWriter, IterationInterval
 
-simulation = Simulation(model, Δt = 0.01, stop_iteration=100)
+simulation = Simulation(model, Δt = 0.001, stop_iteration=1000)
 
 simulation.output_writers[:c] =
     JLD2OutputWriter(model, model.tracers, prefix = "tracer_diffusion",
@@ -36,7 +36,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
     
     #print("max c = ", maximum(c), "\n")
     plot(x, c, linewidth=2, title=@sprintf("t = %.3f", t),
-            label="", xlabel="Tracer", ylabel="x", xlims=(-π, π))
+            label="", xlabel="Tracer", ylabel="x", xlims=(-π, π), ylims=(0,1))
 end
 
 mp4(anim, "tracer_diffusion.mp4", fps = 8) # hide
