@@ -25,14 +25,9 @@ using Oceananigans.Units: hours, meters, kilometers
 
 Lz = 400meters
 
-grid = RegularRectilinearGrid(size = (128, 1),
-                            x = (0, 1000kilometers), y = (0, 1),
-                            topology = (Bounded, Periodic, Flat))
-#=                            
-grid = RegularRectilinearGrid(size = (128, 1, 1),
-                            x = (0, 1000kilometers), y = (0, 1), z = (-400meters, 0),
-                            topology = (Bounded, Periodic, Bounded))
-=#
+grid = RegularRectilinearGrid(size = (128),
+                            x = (0, 1000kilometers),
+                            topology = (Bounded, Flat, Flat))
 
 # and Coriolis parameter appropriate for the mid-latitudes on Earth,
 
@@ -96,7 +91,6 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
 
 run!(simulation)
 
-#=
 # ## Visualizing the results
 
 using JLD2, Plots, Printf
@@ -132,4 +126,3 @@ end
 close(file)
 
 mp4(anim, "geostrophic_adjustment.mp4", fps = 15) # hide
-=#
