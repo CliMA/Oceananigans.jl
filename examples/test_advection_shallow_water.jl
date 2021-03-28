@@ -3,10 +3,9 @@ using Oceananigans.Models
 using Plots
 using Revise
 
+   grid = RegularRectilinearGrid(size=64, x=(-π, π), topology=(Periodic, Flat, Flat))
 closure = IsotropicDiffusivity(κ=1.0)
-
- grid = RegularRectilinearGrid(size=64, x=(-π, π), topology=(Periodic, Flat, Flat))
-model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, tracers=(:c), closure=closure)
+  model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, tracers=(:c), closure=closure)
 
 c(x, y, z) = exp(-x^2*10)
 
@@ -35,7 +34,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
     c = file["timeseries/c/$iter"][:, 1, 1]
     t = file["timeseries/t/$iter"]
     
-    print("max c = ", maximum(c), "\n")
+    #print("max c = ", maximum(c), "\n")
     plot(x, c, linewidth=2, title=@sprintf("t = %.3f", t),
             label="", xlabel="Tracer", ylabel="x", xlims=(-π, π))
 end

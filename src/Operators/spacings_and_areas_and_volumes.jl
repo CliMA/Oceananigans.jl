@@ -124,10 +124,12 @@ using Oceananigans.Grids: Flat
 ##### Volumes for three-dimensionally curvilinear algorithms
 #####
 
-@inline Vᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+#@inline Vᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
 @inline Vᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
 @inline Vᶜᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
 @inline Vᶜᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
+
+@inline Vᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
 
 #####
 ##### Temporary place for grid spacings and areas for RegularLatitudeLongitudeGrid
