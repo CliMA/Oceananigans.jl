@@ -59,10 +59,12 @@ The operators in this file fall into three categories:
 
 using Oceananigans.Grids: Flat
 
-@inline Δx(i, j, k,  grid::RegularRectilinearGrid{FT, Flat})         where FT           = one(FT)
-@inline Δy(i, j, k,  grid::RegularRectilinearGrid{FT, TX, Flat})     where {FT, TX}     = one(FT)
-@inline ΔzC(i, j, k, grid::RegularRectilinearGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
-@inline ΔzF(i, j, k, grid::RegularRectilinearGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
+@inline Δx(   i, j, k, grid::RegularRectilinearGrid{FT, Flat})         where FT           = one(FT)
+@inline Δy(   i, j, k, grid::RegularRectilinearGrid{FT, TX, Flat})     where {FT, TX}     = one(FT)
+@inline ΔzC(  i, j, k, grid::RegularRectilinearGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
+@inline ΔzF(  i, j, k, grid::RegularRectilinearGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
+@inline Δzᵃᵃᶠ(i, j, k, grid::RegularRectilinearGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
+@inline Δzᵃᵃᶜ(i, j, k, grid::RegularRectilinearGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
 
 #####
 ##### Areas for horizontally-regular algorithms
@@ -87,15 +89,15 @@ using Oceananigans.Grids: Flat
 ##### Grid lengths for horizontally-curvilinear, vertically-rectilinear algorithms
 #####
 
-@inline Δxᶜᶜᵃ(i, j, k, grid::ARG) = grid.Δx
-@inline Δxᶜᶠᵃ(i, j, k, grid::ARG) = grid.Δx
-@inline Δxᶠᶠᵃ(i, j, k, grid::ARG) = grid.Δx
-@inline Δxᶠᶜᵃ(i, j, k, grid::ARG) = grid.Δx
+@inline Δxᶜᶜᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid)
+@inline Δxᶜᶠᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid)
+@inline Δxᶠᶠᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid)
+@inline Δxᶠᶜᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid)
 
-@inline Δyᶜᶜᵃ(i, j, k, grid::ARG) = grid.Δy
-@inline Δyᶠᶜᵃ(i, j, k, grid::ARG) = grid.Δy
-@inline Δyᶜᶠᵃ(i, j, k, grid::ARG) = grid.Δy
-@inline Δyᶠᶠᵃ(i, j, k, grid::ARG) = grid.Δy
+@inline Δyᶜᶜᵃ(i, j, k, grid::ARG) = Δy(i, j, k, grid)
+@inline Δyᶠᶜᵃ(i, j, k, grid::ARG) = Δy(i, j, k, grid)
+@inline Δyᶜᶠᵃ(i, j, k, grid::ARG) = Δy(i, j, k, grid)
+@inline Δyᶠᶠᵃ(i, j, k, grid::ARG) = Δy(i, j, k, grid)
 
 #####
 ##### Areas for algorithms that generalize to horizontally-curvilinear, vertically-rectilinear grids
@@ -111,11 +113,9 @@ using Oceananigans.Grids: Flat
 #####
 
 @inline Axᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # c
-#@inline Axᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # u
+@inline Axᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # u
 @inline Axᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # ζ
 @inline Axᶠᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid) # η
-
-@inline Axᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δy(i, j, k, grid) * ΔzF(i, j, k, grid) # u
 
 @inline Ayᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # c
 @inline Ayᶜᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # v
@@ -126,12 +126,10 @@ using Oceananigans.Grids: Flat
 ##### Volumes for three-dimensionally curvilinear algorithms
 #####
 
-#@inline Vᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Vᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
 @inline Vᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
 @inline Vᶜᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
 @inline Vᶜᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
-
-@inline Vᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
 
 #####
 ##### Temporary place for grid spacings and areas for RegularLatitudeLongitudeGrid
