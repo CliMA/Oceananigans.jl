@@ -67,7 +67,7 @@ u_bcs = UVelocityBoundaryConditions(grid,
 
 v_bcs = VVelocityBoundaryConditions(grid,
                                     bottom = v_bottom_drag_bc)
-                                        
+
 @show const νh₀ = 5e3 * (60 / grid.Nx)^2
 
 @inline νh(λ, φ, z, t) = νh₀ * cos(π * φ / 180)
@@ -117,7 +117,7 @@ simulation = Simulation(model,
                         stop_time = 1years,
                         iteration_interval = 100,
                         progress = Progress(time_ns()))
-                                                         
+
 output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
 output_prefix = "barotropic_gyre_Nx$(grid.Nx)_Ny$(grid.Ny)"
