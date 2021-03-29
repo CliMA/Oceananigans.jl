@@ -14,7 +14,7 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
 
-using Oceananigans.BoundaryConditions: Periodic, Flux, Value, Gradient, NormalFlow
+using Oceananigans.BoundaryConditions: Flux, Value, Gradient, NormalFlow
 
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
 bib = CitationBibliography(bib_filepath)
