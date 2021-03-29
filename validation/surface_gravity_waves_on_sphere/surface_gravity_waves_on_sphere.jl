@@ -48,8 +48,8 @@ model = HydrostaticFreeSurfaceModel(
     momentum_advection = VectorInvariant(),
           free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
         # free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
-              coriolis = nothing,
-           #  coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
+           #  coriolis = nothing,
+              coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
                closure = nothing,
              # closure = constant_horizontal_diffusivity,
              # closure = variable_horizontal_diffusivity,
@@ -106,7 +106,7 @@ end
 
 simulation = Simulation(model,
                         Δt = 20minutes,
-                        stop_time = 1year,
+                        stop_time = 30days,
                         iteration_interval = 20,
                         progress = Progress(time_ns()))
 
