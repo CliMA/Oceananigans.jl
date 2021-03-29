@@ -141,7 +141,8 @@ pages = [
 format = Documenter.HTML(
     collapselevel = 1,
        prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://clima.github.io/OceananigansDocumentation/stable/"
+        canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
+       mathengine = MathJax3()
 )
 
 makedocs(bib,
