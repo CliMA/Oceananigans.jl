@@ -58,7 +58,7 @@ end
         @test_throws TypeError ShallowWaterModel(architecture=GPU, grid=grid, gravitational_acceleration=1)
     end
 
-    topo = ( (Flat,      Flat,     Flat) )
+    topo = ( Flat,      Flat,     Flat )
    
     @testset "$topo model construction" begin
     @info "  Testing $topo model construction..."
@@ -66,7 +66,7 @@ end
             grid = RegularRectilinearGrid(FT, topology=topo, size=(), extent=())
             model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch) 
             
-            @test model isa HydrostaticFreeSurfaceModel
+            @test model isa ShallowWaterModel
         end
     end
 
@@ -79,12 +79,12 @@ end
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
-                arch isa GPU && topo == (Flat, Bounded, Flat) && continue
+                #arch isa GPU && topo == (Flat, Bounded, Flat) && continue
         
                 grid = RegularRectilinearGrid(FT, topology=topo, size=(1), extent=(1))
                 model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch) 
                 
-                @test model isa HydrostaticFreeSurfaceModel
+                @test model isa ShallowWaterModel
             end
         end
     end
