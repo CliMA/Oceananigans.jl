@@ -1,17 +1,19 @@
 # Oceananigans.jl
 
-*A fast and friendly incompressible fluid flow solver in Julia that can be run in 1-3 dimensions on CPUs and GPUs.*
+*🌊 Fast and friendly fluid dynamics on CPUs and GPUs.*
 
-Oceananigans.jl is a fast and friendly incompressible fluid flow solver written in Julia that can be run in 1-3
-dimensions on CPUs and GPUs. It simulates the rotating Boussinesq equations in rectangular domains with some
-special features for fluids stratified by both temperature and salinity (oceans!) --- but can also be used without
-rotation, stratification, with arbitrary tracers, and arbitrary user-defined forcing functions.
+Oceananigans.jl is a fast and friendly fluid flow solver written in Julia that can be run in 1-3 dimensions on CPUs
+and GPUs. It can simulate the incompressible Boussinesq equations, the shallow water equations, or the hydrostatic
+Boussinesq equations with a free surface. Oceananigans.jl comes with user-friendly features for simulating rotating
+stratified fluids including user-defined boundary conditions and forcing functions, arbitrary tracers, large eddy
+simulation turbulence closures, high-order advection schemes, immersed boundaries, Lagrangian particle tracking, and
+more!
 
-We strive for a user interface that makes `Oceananigans.jl` as friendly and intuitive to use as possible,
+We strive for a user interface that makes Oceananigans.jl`as friendly and intuitive to use as possible,
 allowing users to focus on the science. Internally, we have attempted to write the underlying algorithm
 so that the code runs as fast as possible for the configuration chosen by the user --- from simple
 two-dimensional setups to complex three-dimensional simulations --- and so that as much code
-as possible is shared between the CPU and GPU algorithms.
+as possible is shared between the different architectures, models, and grids.
 
 ## Getting help
 
