@@ -166,7 +166,7 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         prettytime(sim.Δt.Δt))
 
 simulation = Simulation(model, Δt=wizard, stop_time=24hours,
-                        iteration_interval=1, progress=progress)
+                        iteration_interval=20, progress=progress)
 
 # We add a basic `JLD2OutputWriter` that writes velocities and both
 # the two-dimensional and horizontally-averaged plankton concentration,

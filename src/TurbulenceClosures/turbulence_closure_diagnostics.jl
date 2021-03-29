@@ -29,7 +29,6 @@ minimum_grid_spacing(Δx, ::Type{Flat}) = Inf
 
 function cell_diffusion_timescale(closure::IsotropicDiffusivity, diffusivities, grid)
     Δ = min_Δxyz(grid)
-
     max_κ = maximum_numeric_diffusivity(closure.κ)
     max_ν = maximum_numeric_diffusivity(closure.ν)
     return min(Δ^2 / max_ν, Δ^2 / max_κ)

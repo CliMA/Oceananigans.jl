@@ -25,7 +25,3 @@ cell_advection_timescale(model) =
                              model.velocities.v.data.parent,
                              model.velocities.w.data.parent,
                              model.grid)
-
-
-
-
