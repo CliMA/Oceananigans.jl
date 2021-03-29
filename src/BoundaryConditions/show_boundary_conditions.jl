@@ -1,4 +1,13 @@
+import Base: show
 import Oceananigans: short_show
+
+bctype_str(::FBC)  = "Flux"
+bctype_str(::PBC)  = "Periodic"
+bctype_str(::NFBC) = "NormalFlow"
+bctype_str(::VBC)  = "Value"
+bctype_str(::GBC)  = "Gradient"
+bctype_str(::ZFBC) = "ZeroFlux"
+bctype_str(::Nothing) = "Nothing"
 
 #####
 ##### BoundaryCondition
@@ -14,20 +23,12 @@ function print_condition(f::Function)
     return "$(ms)"
 end
 
-Base.show(io::IO, bc::BC{C, T}) where {C, T} =
-    print(io, "BoundaryCondition: type=$C, condition=$(print_condition(bc.condition))")
+show(io::IO, bc::BoundaryCondition) =
+    print(io, "BoundaryCondition: type=$(bctype_str(bc)), condition=$(print_condition(bc.condition))")
 
 #####
 ##### FieldBoundaryConditions
 #####
-
-bctype_str(::FBC)  = "Flux"
-bctype_str(::PBC)  = "Periodic"
-bctype_str(::NFBC) = "NormalFlow"
-bctype_str(::VBC)  = "Value"
-bctype_str(::GBC)  = "Gradient"
-bctype_str(::ZFBC) = "ZeroFlux"
-bctype_str(::Nothing) = "Nothing"
 
 short_show(fbcs::FieldBoundaryConditions) =
     string("x=(west=$(bctype_str(fbcs.x.left)), east=$(bctype_str(fbcs.x.right))), ",
