@@ -59,10 +59,12 @@ The operators in this file fall into three categories:
 
 using Oceananigans.Grids: Flat
 
-@inline Δx(i, j, k,  grid::RegularRectilinearGrid{FT, Flat})         where FT           = one(FT)
-@inline Δy(i, j, k,  grid::RegularRectilinearGrid{FT, TX, Flat})     where {FT, TX}     = one(FT)
-@inline ΔzC(i, j, k, grid::RegularRectilinearGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
-@inline ΔzF(i, j, k, grid::RegularRectilinearGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
+@inline Δx(   i, j, k, grid::RegularRectilinearGrid{FT, Flat})         where FT           = one(FT)
+@inline Δy(   i, j, k, grid::RegularRectilinearGrid{FT, TX, Flat})     where {FT, TX}     = one(FT)
+@inline ΔzC(  i, j, k, grid::RegularRectilinearGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
+@inline ΔzF(  i, j, k, grid::RegularRectilinearGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
+@inline Δzᵃᵃᶠ(i, j, k, grid::RegularRectilinearGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
+@inline Δzᵃᵃᶜ(i, j, k, grid::RegularRectilinearGrid{FT, TX, TY, Flat}) where {FT, TX, TY} = one(FT)
 
 #####
 ##### Areas for horizontally-regular algorithms
@@ -87,15 +89,15 @@ using Oceananigans.Grids: Flat
 ##### Grid lengths for horizontally-curvilinear, vertically-rectilinear algorithms
 #####
 
-@inline Δxᶜᶜᵃ(i, j, k, grid::ARG) = grid.Δx
-@inline Δxᶜᶠᵃ(i, j, k, grid::ARG) = grid.Δx
-@inline Δxᶠᶠᵃ(i, j, k, grid::ARG) = grid.Δx
-@inline Δxᶠᶜᵃ(i, j, k, grid::ARG) = grid.Δx
+@inline Δxᶜᶜᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid)
+@inline Δxᶜᶠᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid)
+@inline Δxᶠᶠᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid)
+@inline Δxᶠᶜᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid)
 
-@inline Δyᶜᶜᵃ(i, j, k, grid::ARG) = grid.Δy
-@inline Δyᶠᶜᵃ(i, j, k, grid::ARG) = grid.Δy
-@inline Δyᶜᶠᵃ(i, j, k, grid::ARG) = grid.Δy
-@inline Δyᶠᶠᵃ(i, j, k, grid::ARG) = grid.Δy
+@inline Δyᶜᶜᵃ(i, j, k, grid::ARG) = Δy(i, j, k, grid)
+@inline Δyᶠᶜᵃ(i, j, k, grid::ARG) = Δy(i, j, k, grid)
+@inline Δyᶜᶠᵃ(i, j, k, grid::ARG) = Δy(i, j, k, grid)
+@inline Δyᶠᶠᵃ(i, j, k, grid::ARG) = Δy(i, j, k, grid)
 
 #####
 ##### Areas for algorithms that generalize to horizontally-curvilinear, vertically-rectilinear grids
