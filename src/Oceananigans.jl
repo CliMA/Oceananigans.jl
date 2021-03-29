@@ -153,6 +153,7 @@ include("Operators/Operators.jl")
 include("Advection/Advection.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
+include("CubedSpheres/CubedSpheres.jl")
 include("Coriolis/Coriolis.jl")
 include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
@@ -179,6 +180,7 @@ using .Advection
 using .Grids
 using .BoundaryConditions
 using .Fields
+using .CubedSpheres
 using .Coriolis
 using .BuoyancyModels
 using .StokesDrift

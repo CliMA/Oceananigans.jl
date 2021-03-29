@@ -1,7 +1,6 @@
 using CubedSphere
 using JLD2
 using OffsetArrays
-using Rotations
 
 using Oceananigans
 using Oceananigans.Grids
