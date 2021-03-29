@@ -45,9 +45,8 @@ function simulate_lid_driven_cavity(; Re, N, end_time)
     cfl = AdvectiveCFL(wizard)
     dcfl = DiffusiveCFL(wizard)
 
-    #simulation = Simulation(model, Δt=wizard, stop_time=end_time, progress=print_progress,
-    simulation = Simulation(model, Δt=0.0001, stop_time=end_time, #progress=print_progress,
-                            iteration_interval=1, parameters=(cfl=cfl, dcfl=dcfl))
+    simulation = Simulation(model, Δt=wizard, stop_time=end_time, progress=print_progress,
+                            iteration_interval=20, parameters=(cfl=cfl, dcfl=dcfl))
 
     simulation.output_writers[:fields] = field_output_writer
 
