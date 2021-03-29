@@ -39,10 +39,10 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, C, F, P} <: AbstractField{X, Y, 
 end
 
 """
-    KernelComputedField(X, Y, Z, kernel, model; 
-                        boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)), 
-                        computed_dependencies = (), 
-                        parameters = nothing, 
+    KernelComputedField(X, Y, Z, kernel, model;
+                        boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)),
+                        computed_dependencies = (),
+                        parameters = nothing,
                         data = nothing,
                         recompute_safely = true)
 
@@ -50,7 +50,7 @@ Builds a `KernelComputedField` at `X, Y, Z` computed with `kernel` and `model.ar
 
 `computed_dependencies` are an iterable of `AbstractField`s or other objects on which `compute!` is called prior to launching `kernel`.
 
-`data` is a three-dimensional `OffsetArray` of scratch space where the kernel computation is stored. 
+`data` is a three-dimensional `OffsetArray` of scratch space where the kernel computation is stored.
 
 If `data=nothing` (the default) then additional memory will be allocated to store the `data` of `KernelComputedField`.
 
@@ -62,10 +62,10 @@ Otherwise, `kernel` is launched with the function signature
 
 `kernel(data, grid, computed_dependencies..., parameters)`
 
-`recompute_safely` (default: `true`) determines whether the `KernelComputedField` is "recomputed" if embedded in the expression 
-tree of another operation. 
-    - If `recompute_safely=true`, the `KernelComputedField` is always recomputed. 
-    - If `recompute_safely=false`, the `KernelComputedField` will not be recomputed if its status is up-to-date. 
+`recompute_safely` (default: `true`) determines whether the `KernelComputedField` is "recomputed" if embedded in the expression
+tree of another operation.
+    - If `recompute_safely=true`, the `KernelComputedField` is always recomputed.
+    - If `recompute_safely=false`, the `KernelComputedField` will not be recomputed if its status is up-to-date.
     - If `data=nothing`, then `recompute_safely` is switched to `false`.
 
 Example
@@ -104,6 +104,8 @@ KernelComputedField(X, Y, Z, kernel, arch::AbstractArchitecture, grid::AbstractG
     KernelComputedField{X, Y, Z}(kernel, arch, grid; kwargs...)
 
 function compute!(kcf::KernelComputedField{X, Y, Z}) where {X, Y, Z}
+
+    kcf.data .= 0
 
     for dependency in kcf.computed_dependencies
         compute!(dependency)
