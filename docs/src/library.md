@@ -28,7 +28,7 @@ Pages   = ["Architectures.jl"]
 
 ```@autodocs
 Modules = [Oceananigans.BoundaryConditions]
-Private = true
+Private = false
 Pages   = [
     "BoundaryConditions/BoundaryConditions.jl",
     "BoundaryConditions/boundary_condition_types.jl",

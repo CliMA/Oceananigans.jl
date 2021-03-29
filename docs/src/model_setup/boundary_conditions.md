@@ -17,6 +17,8 @@ See [Numerical implementation of boundary conditions](@ref numerical_bcs) for mo
 4. [`Gradient`](@ref) (Neumann)
 5. [`NormalFlow`](@ref)
 
+To construct a `Flux` boundary condition use the `FluxBoundaryCondition` constructor and so on.
+
 Notice that open boundary conditions and radiation boundary conditions can be imposed via flux or value boundary
 conditions defined by a function or array. Or alternatively, through a forcing function if more flexibility is
 desired.
@@ -60,9 +62,9 @@ end
 ```
 
 Boundary conditions may be specified with constants, functions, or arrays.
-In this section we illustrate usage of the [`BoundaryCondition`](@ref) constructor.
+In this section we illustrate usage of the different [`BoundaryCondition`](@ref) constructors.
 
-##### 1. Constant `Value` (Dirchlet) boundary condition
+### 1. Constant `Value` (Dirchlet) boundary condition
 
 ```jldoctest
 julia> constant_T_bc = ValueBoundaryCondition(20.0)
@@ -75,7 +77,7 @@ _normal_ velocity component must use the [`NormalFlow`](@ref) boundary condition
 
 Finally, note that `ValueBoundaryCondition(condition)` is an alias for `BoundaryCondition(Value, condition)`.
 
-##### 2. Constant `Flux` boundary condition
+### 2. Constant `Flux` boundary condition
 
 ```jldoctest
 julia> ρ₀ = 1027;  # Reference density [kg/m³]
@@ -100,7 +102,7 @@ can can be used, for example, to specify cooling, heating, evaporation, or wind 
     Conversely, a positive flux at a _bottom_ boundary acts to increase the interior
     values of a quantity.
 
-##### 3. Spatially- and temporally-varying flux
+### 3. Spatially- and temporally-varying flux
 
 Boundary conditions may be specified by functions,
 
@@ -123,7 +125,7 @@ BoundaryCondition: type=Flux, condition=surface_flux(x, y, t) in Main at none:1
     Alternative function signatures are specified by keyword arguments to
     `BoundaryCondition`, as illustrated in subsequent examples.
 
-##### 4. Spatially- and temporally-varying flux with parameters
+### 4. Spatially- and temporally-varying flux with parameters
 
 Boundary condition functions may be 'parameterized',
 
@@ -140,7 +142,7 @@ BoundaryCondition: type=Flux, condition=wind_stress(x, y, t, p) in Main at none:
     However, relatively simple objects such as floating point numbers or `NamedTuple`s must be used
     when running on the GPU.
 
-##### 5. 'Field-dependent' boundary conditions
+### 5. 'Field-dependent' boundary conditions
 
 Boundary conditions may also depend on model fields. For example, a linear drag boundary condition
 is implemented with
@@ -153,7 +155,7 @@ julia> u_bottom_bc = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
 BoundaryCondition: type=Flux, condition=linear_drag(x, y, z, t, u) in Main at none:1
 ```
 
-##### 6. 'Field-dependent' boundary conditions with parameters
+### 6. 'Field-dependent' boundary conditions with parameters
 
 When boundary conditions depends on fields _and_ parameters, their functions take the form
 
@@ -168,7 +170,7 @@ BoundaryCondition: type=Flux, condition=quadratic_drag(x, y, z, t, u, v, drag_co
 Put differently, field dependencies follow `ξ, η, t` come first in the function signature,
 which are in turn followed by `parameters`.
 
-##### 7. Discrete-form boundary condition with parameters
+### 7. Discrete-form boundary condition with parameters
 
 Discrete field data may also be accessed directly from boundary condition functions
 using the `discrete_form`. For example:
@@ -196,7 +198,7 @@ BoundaryCondition: type=Flux, condition=filtered_drag(i, j, grid, clock, model_f
     The signature is similar for ``x`` and ``y`` boundary conditions expect that `i, j` is replaced
     with `j, k` and `i, k` respectively.
 
-##### 8. Discrete-form boundary condition with parameters
+### 8. Discrete-form boundary condition with parameters
 
 ```jldoctest
 julia> Cd = 0.2;  # drag coefficient
@@ -214,7 +216,7 @@ BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, model_fie
     in a boundary condition function (such as `model_fields.u[i, j, 1]` in the above example).
     Using `@inbounds` will avoid a relatively expensive check that the index `i, j, 1` is 'in bounds'.
 
-##### 9. A random, spatially-varying, constant-in-time temperature flux specified by an array
+### 9. A random, spatially-varying, constant-in-time temperature flux specified by an array
 
 ```jldoctest
 julia> Nx = Ny = 16;  # Number of grid points.
