@@ -116,6 +116,7 @@ appendix_pages = [
 
 pages = [
     "Home" => "index.md",
+    "Publications" => "publications.md",
     "Installation instructions" => "installation_instructions.md",
     "Using GPUs" => "using_gpus.md",
     "Examples" => example_pages,

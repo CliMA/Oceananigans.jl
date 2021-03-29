@@ -151,6 +151,8 @@ If you use Oceananigans.jl as part of your research, teaching, or other activiti
 }
 ```
 
+We also maintain a [list of publication using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/publications/). If you have work using Oceananigans.jl that you would like to have listed there, please open a pull request to add it or let us know!
+
 ## Contributing
 
 If you're interested in contributing to the development of Oceananigans we want your help no matter how big or small a contribution you make! It's always great to have new people look at the code with fresh eyes: you will see errors that other developers have missed.
