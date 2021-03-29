@@ -79,10 +79,8 @@ end
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
-                arch isa GPU && topo == (Flat, Bounded, Flat) && continue
-                
                 grid = RegularRectilinearGrid(FT, topology=topo, size=(1), extent=(1))
-                model = HydrostaticFreeSurfaceModel(grid=grid, gravitational_acceleration=1, architecture=arch)        
+                model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)        
 
                 @test model isa HydrostaticFreeSurfaceModel
             end
