@@ -83,6 +83,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_operators.jl")
             include("test_boundary_conditions.jl")
             include("test_field.jl")
+            include("test_cubed_spheres.jl")
             include("test_reduced_field.jl")
             include("test_averaged_field.jl")
             include("test_kernel_computed_field.jl")
