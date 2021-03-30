@@ -20,7 +20,7 @@
 
 # We instantiate the model with an isotropic diffusivity. We use a grid with 128² points,
 # a fifth-order advection scheme, third-order Runge-Kutta time-stepping,
-# and a small isotropic viscosity.
+# and a small isotropic viscosity.  Note that we assign `Flat` to the `z` direction.
 
 using Oceananigans
 

@@ -12,7 +12,8 @@
 
 # ## The physical domain
 #
-# We simulate Kelvin-Helmholtz instability in two-dimensions in ``x, z``,
+# We simulate Kelvin-Helmholtz instability in two-dimensions in ``x, z``
+# and therefore assign `Flat` to the `y` direction,
 
 using Oceananigans
 

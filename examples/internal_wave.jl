@@ -16,7 +16,7 @@
 # ## The physical domain
 #
 # First, we pick a resolution and domain size. We use a two-dimensional domain
-# that's periodic in ``(x, y, z)``:
+# that's periodic in ``(x, z)`` and is `Flat` in ``y``:
 
 using Oceananigans
 
