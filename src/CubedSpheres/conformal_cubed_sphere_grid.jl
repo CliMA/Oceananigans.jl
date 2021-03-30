@@ -1,9 +1,9 @@
 using Rotations
-
 using Oceananigans.Grids
-using Oceananigans.Grids: R_Earth
+using Oceananigans.Grids: R_Earth, interior_indices
 
-import Base: show
+import Base: show, size, eltype
+import Oceananigans.Grids: topology
 
 function default_face_connectivity()
     # See figure 8.4 of https://mitgcm.readthedocs.io/en/latest/phys_pkgs/exch2.html?highlight=cube%20sphere#fig-6tile
@@ -90,11 +90,12 @@ function ConformalCubedSphereGrid(FT=Float64; face_size, z, radius=R_Earth)
 end
 
 function ConformalCubedSphereGrid(filepath::AbstractString, FT=Float64; Nz, z, radius = R_Earth, halo = (1, 1, 1))
+    @warn "ConformalCubedSphereGrid is experimental: use with caution!"
 
-    face_topo = (Periodic, Periodic, Bounded) # assuming all faces are connected
+    face_topo = (Bounded, Bounded, Bounded)
     face_kwargs = (Nz=Nz, z=z, topology=face_topo, radius=radius, halo=halo)
 
-    faces = [ConformalCubedSphereFaceGrid(filepath, FT; face=n, face_kwargs...) for n in 1:6]
+    faces = Tuple(ConformalCubedSphereFaceGrid(filepath, FT; face=n, face_kwargs...) for n in 1:6)
 
     face_connectivity = default_face_connectivity()
 
@@ -106,3 +107,34 @@ function Base.show(io::IO, grid::ConformalCubedSphereGrid{FT}) where FT
     Nx, Ny, Nz = face.Nx, face.Ny, face.Nz
     print(io, "ConformalCubedSphereGrid{$FT}: $(length(grid.faces)) faces with size = ($Nx, $Ny, $Nz)")
 end
+
+
+#####
+##### Grid utils (this is gonna get messy...)
+#####
+
+Base.size(grid::ConformalCubedSphereGrid) = (size(grid.faces[1])..., length(grid.faces))
+
+Base.eltype(grid::ConformalCubedSphereGrid{FT}) where FT = FT
+
+topology(::ConformalCubedSphereGrid) = (Bounded, Bounded, Bounded)
+
+# Nodes for ::ConformalCubedSphereFaceGrid
+
+λnodes(LX::Face, LY::Face, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
+    view(grid.λᶠᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+
+λnodes(LX::Center, LY::Center, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
+    view(grid.λᶜᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+
+φnodes(LX::Face, LY::Face, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
+    view(grid.φᶠᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+
+φnodes(LX::Center, LY::Center, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
+    view(grid.φᶜᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
+
+# Nodes for ::ConformalCubedSphereGrid
+# Not sure how to best represent these so will concatenate along dim 3 for now.
+
+λnodes(LX, LY, LZ, grid::ConformalCubedSphereGrid) = cat(Tuple(λnodes(LX, LY, LZ, grid_face) for grid_face in grid.faces)..., dims=3)
+φnodes(LX, LY, LZ, grid::ConformalCubedSphereGrid) = cat(Tuple(φnodes(LX, LY, LZ, grid_face) for grid_face in grid.faces)..., dims=3)
