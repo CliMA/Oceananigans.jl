@@ -18,6 +18,9 @@ function fill_halo_regions!(field::ConformalCubedSphereField{LX, LY, LZ}, arch, 
 
         # Deal with halo exchanges.
         fill_west_halo!(field_face, cubed_sphere_grid, field)
+        fill_east_halo!(field_face, cubed_sphere_grid, field)
+        fill_south_halo!(field_face, cubed_sphere_grid, field)
+        fill_north_halo!(field_face, cubed_sphere_grid, field)
     end
 
     return nothing
@@ -51,6 +54,60 @@ function fill_west_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed
     src_boundary = cubed_sphere_boundary(cubed_sphere_field, location, src_face_number, src_side)
 
     if sides_in_the_same_dimension(:west, src_side)
+        dest_halo .= src_boundary
+    else
+        dest_halo .= permutedims(src_boundary, (2, 1, 3))
+    end
+
+    return nothing
+end
+
+function fill_east_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed_sphere_grid::ConformalCubedSphereGrid, cubed_sphere_field) where {LX, LY, LZ}
+    location = (LX, LY, LZ)
+    dest_halo = underlying_east_halo(field.data, field.grid, location)
+
+    exchange_info = field.boundary_conditions.east.condition
+    src_face_number = exchange_info.to_face
+    src_side = exchange_info.to_side
+    src_boundary = cubed_sphere_boundary(cubed_sphere_field, location, src_face_number, src_side)
+
+    if sides_in_the_same_dimension(:east, src_side)
+        dest_halo .= src_boundary
+    else
+        dest_halo .= permutedims(src_boundary, (2, 1, 3))
+    end
+
+    return nothing
+end
+
+function fill_south_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed_sphere_grid::ConformalCubedSphereGrid, cubed_sphere_field) where {LX, LY, LZ}
+    location = (LX, LY, LZ)
+    dest_halo = underlying_south_halo(field.data, field.grid, location)
+
+    exchange_info = field.boundary_conditions.south.condition
+    src_face_number = exchange_info.to_face
+    src_side = exchange_info.to_side
+    src_boundary = cubed_sphere_boundary(cubed_sphere_field, location, src_face_number, src_side)
+
+    if sides_in_the_same_dimension(:south, src_side)
+        dest_halo .= src_boundary
+    else
+        dest_halo .= permutedims(src_boundary, (2, 1, 3))
+    end
+
+    return nothing
+end
+
+function fill_north_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed_sphere_grid::ConformalCubedSphereGrid, cubed_sphere_field) where {LX, LY, LZ}
+    location = (LX, LY, LZ)
+    dest_halo = underlying_north_halo(field.data, field.grid, location)
+
+    exchange_info = field.boundary_conditions.north.condition
+    src_face_number = exchange_info.to_face
+    src_side = exchange_info.to_side
+    src_boundary = cubed_sphere_boundary(cubed_sphere_field, location, src_face_number, src_side)
+
+    if sides_in_the_same_dimension(:north, src_side)
         dest_halo .= src_boundary
     else
         dest_halo .= permutedims(src_boundary, (2, 1, 3))
