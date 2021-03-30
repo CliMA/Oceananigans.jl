@@ -34,7 +34,6 @@ function simulate_lid_driven_cavity(; Re, N, end_time)
     fields = (; v, w, ζ)
     global_attributes = Dict("Re" => Re)
     output_attributes = Dict("ζ" => Dict("longname" => "vorticity", "units" => "1/s"))
-
     field_output_writer =
         NetCDFOutputWriter(model, fields, filepath="lid_driven_cavity_Re$Re.nc", schedule=TimeInterval(0.1),
                            global_attributes=global_attributes, output_attributes=output_attributes)

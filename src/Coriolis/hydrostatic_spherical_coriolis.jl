@@ -27,10 +27,10 @@ By default, `rotation_rate` is assumed to be Earth's.
 HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, scheme::S=VectorInvariantEnergyConserving()) where S =
     HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
 
-@inline ϕᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.ϕᵃᶠᵃ[j]
+@inline φᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.φᵃᶠᵃ[j]
 
 @inline fᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid, coriolis::HydrostaticSphericalCoriolis) =
-    2 * coriolis.rotation_rate * hack_sind(ϕᶠᶠᵃ(i, j, k, grid))
+    2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
 
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::HydrostaticSphericalCoriolis, U) where FT = zero(FT)
 
@@ -59,7 +59,7 @@ const VIEnergy = HydrostaticSphericalCoriolis{<:VectorInvariantEnergyConserving}
     @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᵃ, coriolis, U[2]) / Δxᶠᶜᵃ(i, j, k, grid)
 
 @inline y_f_cross_U(i, j, k, grid::RegularLatitudeLongitudeGrid, coriolis::VIEnergy, U) =
-    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᵃ, coriolis, U[1]) / Δyᶜᶠᵃ(i, j, k, grid)  
+    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_uᶠᶠᵃ, coriolis, U[1]) / Δyᶜᶠᵃ(i, j, k, grid)
 
 #####
 ##### Show
