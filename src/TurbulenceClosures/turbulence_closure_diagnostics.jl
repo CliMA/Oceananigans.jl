@@ -1,5 +1,4 @@
 # Timescale for diffusion across one cell
-using Oceananigans.Grids: min_Δx, min_Δy, min_Δz
 using Oceananigans.Grids: topology
 
 function min_Δxyz(grid)
