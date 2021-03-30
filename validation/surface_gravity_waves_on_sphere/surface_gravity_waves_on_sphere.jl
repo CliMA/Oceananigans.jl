@@ -52,6 +52,33 @@ minimum(f, field::ConformalCubedSphereField; dims=:) = minimum(minimum(f, field_
 maximum(f, field::ConformalCubedSphereField; dims=:) = maximum(maximum(f, field_face; dims) for field_face in field.faces)
 
 #####
+##### state checker for debugging
+#####
+
+function state_checker(model)
+    fields = (
+        u = model.velocities.u,
+        v = model.velocities.v,
+        w = model.velocities.w,
+        η = model.free_surface.η,
+        Gu = model.timestepper.Gⁿ.u,
+        Gv = model.timestepper.Gⁿ.v,
+        Gη = model.timestepper.Gⁿ.η
+    )
+
+    @info @sprintf("          |  minimum            maximum");
+    for (name, field) in pairs(fields)
+        for face_number in 1:length(model.grid.faces)
+            min_val, max_val = field.faces[face_number] |> interior |> extrema
+            @info @sprintf("%2s face %d | %+.12e %+.12e", name, face_number, min_val, max_val)
+        end
+        @info @sprintf("---------------------------------------------------")
+    end
+
+    return nothing
+end
+
+#####
 ##### Script starts here
 #####
 
