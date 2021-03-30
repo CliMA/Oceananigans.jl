@@ -23,11 +23,9 @@
 using Oceananigans
 using Oceananigans.Units: hours, meters, kilometers
 
-Lz = 400meters
-
-grid = RegularRectilinearGrid(size = (128),
-                            x = (0, 1000kilometers),
-                            topology = (Bounded, Flat, Flat))
+grid = RegularRectilinearGrid(size = (128, 1, 1),
+                            x = (0, 1000kilometers), y = (0, 1), z = (-400meters, 0),
+                            topology = (Bounded, Periodic, Bounded))
 
 # and Coriolis parameter appropriate for the mid-latitudes on Earth,
 
@@ -72,7 +70,7 @@ set!(model, v=vᵍ, η=ηⁱ)
 #
 # We pick a time-step that resolves the surface dynamics,
 
-gravity_wave_speed = sqrt(g * Lz) # hydrostatic (shallow water) gravity wave speed
+gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
 wave_propagation_time_scale = model.grid.Δx / gravity_wave_speed
 
@@ -85,7 +83,7 @@ simulation = Simulation(model, Δt = 0.1 * wave_propagation_time_scale, stop_ite
 output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = IterationInterval(1),
+                                                      schedule = IterationInterval(10),
                                                       prefix = "geostrophic_adjustment",
                                                       force = true)
 
