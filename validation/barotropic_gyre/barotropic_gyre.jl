@@ -67,7 +67,7 @@ u_bcs = UVelocityBoundaryConditions(grid,
 
 v_bcs = VVelocityBoundaryConditions(grid,
                                     bottom = v_bottom_drag_bc)
-                                        
+
 @show const νh₀ = 5e3 * (60 / grid.Nx)^2
 
 @inline νh(λ, φ, z, t) = νh₀ * cos(π * φ / 180)
@@ -91,8 +91,8 @@ g = model.free_surface.gravitational_acceleration
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
 # Time-scale for gravity wave propagation across the smallest grid cell
-wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.ϕᵃᶜᵃ)) * deg2rad(grid.Δλ),
-                                  grid.radius * deg2rad(grid.Δϕ)) / gravity_wave_speed
+wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(grid.Δλ),
+                                  grid.radius * deg2rad(grid.Δφ)) / gravity_wave_speed
 
 mutable struct Progress
     interval_start_time :: Float64
@@ -117,7 +117,7 @@ simulation = Simulation(model,
                         stop_time = 1years,
                         iteration_interval = 100,
                         progress = Progress(time_ns()))
-                                                         
+
 output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
 output_prefix = "barotropic_gyre_Nx$(grid.Nx)_Ny$(grid.Ny)"
