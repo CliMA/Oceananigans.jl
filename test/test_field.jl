@@ -1,4 +1,4 @@
-using Oceananigans.Fields: cpudata
+using Oceananigans.Fields: cpudata, FieldSlicer
 
 """
     correct_field_size(arch, grid, FieldType, Tx, Ty, Tz)
