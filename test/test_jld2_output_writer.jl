@@ -1,3 +1,5 @@
+using Oceananigans.Fields: FieldSlicer
+
 #####
 ##### JLD2OutputWriter tests
 #####
