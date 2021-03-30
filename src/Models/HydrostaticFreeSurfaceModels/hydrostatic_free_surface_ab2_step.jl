@@ -7,11 +7,7 @@ combine_events(free_surface_event, tracer_events) = MultiEvent(tuple(free_surfac
 
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
-
     barrier = Event(device(model.architecture))
-
-    step_field_kernel! = ab2_step_field!(device(model.architecture), workgroup, worksize)
 
     # Launch velocity update kernels
 
@@ -22,8 +18,9 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
         G⁻ = model.timestepper.G⁻[name]
         velocity_field = model.velocities[name]
 
-        event = step_field_kernel!(velocity_field, Δt, χ, Gⁿ, G⁻,
-                                   dependencies=Event(device(model.architecture)))
+        event = launch!(model.architecture, model.grid, :xyz, ab2_step_field!,
+                        velocity_field, Δt, χ, Gⁿ, G⁻,
+                        dependencies=Event(device(model.architecture)))
 
         push!(velocities_events, event)
     end
@@ -37,8 +34,9 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
         G⁻ = model.timestepper.G⁻[name]
         tracer_field = model.tracers[name]
 
-        event = step_field_kernel!(tracer_field, Δt, χ, Gⁿ, G⁻,
-                                   dependencies=Event(device(model.architecture)))
+        event = launch!(model.architecture, model.grid, :xyz, ab2_step_field!,
+                        tracer_field, Δt, χ, Gⁿ, G⁻,
+                        dependencies=Event(device(model.architecture)))
 
         push!(tracer_events, event)
     end

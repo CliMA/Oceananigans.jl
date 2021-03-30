@@ -32,7 +32,6 @@ function accurate_cell_advection_timescale(grid::ConformalCubedSphereGrid, veloc
         velocities_face = maybe_replace_with_face(velocities, grid, face_number)
         min_timescale_on_face = accurate_cell_advection_timescale(grid_face, velocities_face)
         push!(min_timescale_on_faces, min_timescale_on_face)
-        @info "min_timescale on face $face_number = $min_timescale_on_face"
     end
 
     return minimum(min_timescale_on_faces)
@@ -55,6 +54,7 @@ maximum(f, field::ConformalCubedSphereField; dims=:) = maximum(maximum(f, field_
 ##### state checker for debugging
 #####
 
+# Takes forever to compile with Julia 1.6...
 function state_checker(model)
     fields = (
         u = model.velocities.u,
@@ -124,8 +124,10 @@ A  = 1e-5 * H  # Amplitude of the perturbation
 Δλ = 20  # Longitudinal width
 Δφ = 20  # Latitudinal width
 
+ Ξ(λ, φ, z) = 1e-5 * randn()
 η′(λ, φ, z) = A * exp(- (λ - λ₀)^2 / Δλ^2) * exp(- (φ - φ₀)^2 / Δφ^2)
 
+# set!(model, u=Ξ, v=Ξ, η=η′)
 set!(model, η=η′)
 
 ## Simulation setup
