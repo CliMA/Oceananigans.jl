@@ -3,11 +3,38 @@ using Oceananigans.Fields: AbstractField
 import Oceananigans.Fields: set!
 
 const ConformalCubedSphereFaceFieldᶜᶜᶜ = AbstractField{Center, Center, Center, A, <:ConformalCubedSphereFaceGrid} where A
+const ConformalCubedSphereFaceFieldᶠᶜᶜ = AbstractField{Face,   Center, Center, A, <:ConformalCubedSphereFaceGrid} where A
+const ConformalCubedSphereFaceFieldᶜᶠᶜ = AbstractField{Center, Face,   Center, A, <:ConformalCubedSphereFaceGrid} where A
+const ConformalCubedSphereFaceFieldᶠᶠᶜ = AbstractField{Face,   Face,   Center, A, <:ConformalCubedSphereFaceGrid} where A
 
 function set!(field::ConformalCubedSphereFaceFieldᶜᶜᶜ, f::Function)
     grid = field.grid
     for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
         field[i, j, k] = f(grid.λᶜᶜᵃ[i, j], grid.φᶜᶜᵃ[i, j], grid.zᵃᵃᶜ[k])
+    end
+    return nothing
+end
+
+function set!(field::ConformalCubedSphereFaceFieldᶠᶜᶜ, f::Function)
+    grid = field.grid
+    for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
+        field[i, j, k] = f(grid.λᶠᶜᵃ[i, j], grid.φᶠᶜᵃ[i, j], grid.zᵃᵃᶜ[k])
+    end
+    return nothing
+end
+
+function set!(field::ConformalCubedSphereFaceFieldᶜᶠᶜ, f::Function)
+    grid = field.grid
+    for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
+        field[i, j, k] = f(grid.λᶜᶠᵃ[i, j], grid.φᶜᶠᵃ[i, j], grid.zᵃᵃᶜ[k])
+    end
+    return nothing
+end
+
+function set!(field::ConformalCubedSphereFaceFieldᶠᶠᶜ, f::Function)
+    grid = field.grid
+    for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
+        field[i, j, k] = f(grid.λᶠᶠᵃ[i, j], grid.φᶠᶠᵃ[i, j], grid.zᵃᵃᶜ[k])
     end
     return nothing
 end

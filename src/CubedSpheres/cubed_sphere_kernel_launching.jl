@@ -14,7 +14,6 @@ maybe_replace_with_face(t::Tuple, cubed_sphere_grid, face_number) = Tuple(maybe_
 maybe_replace_with_face(nt::NamedTuple, cubed_sphere_grid, face_number) = NamedTuple{keys(nt)}(maybe_replace_with_face(nt_elem, cubed_sphere_grid, face_number) for nt_elem in nt)
 
 function launch!(arch, grid::ConformalCubedSphereGrid, args...; kwargs...)
-    @info "launch! for cubed spheres"
 
     events = []
     for (face_number, grid_face) in enumerate(grid.faces)

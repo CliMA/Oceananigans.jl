@@ -12,10 +12,8 @@ function fill_halo_regions!(field::ConformalCubedSphereField{LX, LY, LZ}, arch, 
 
     location = (LX, LY, LZ)
     if location == (Face, Center, Center) || location == (Center, Face, Center)
-        @warn "Not filling halos for cubed sphere field with location $location. Use fill_horizontal_velocity_halos! for now."
+        # @warn "Not filling halos for cubed sphere field with location $location. Use fill_horizontal_velocity_halos! for now."
         return nothing
-    else
-        @info "Filling halos for cubed sphere field at location $location"
     end
 
     cubed_sphere_grid = field.grid
