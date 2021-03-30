@@ -2,8 +2,6 @@
 using Oceananigans.Grids: min_Δx, min_Δy, min_Δz
 using Oceananigans.Grids: topology
 
-min_Δxy(grid) = min(min_Δx(grid), min_Δy(grid))
-
 function min_Δxyz(grid)
     topo = topology(grid)
 
