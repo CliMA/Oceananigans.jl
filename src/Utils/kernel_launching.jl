@@ -69,12 +69,14 @@ Returns an `event` token associated with the `kernel!` launch.
 The keyword argument `dependencies` is an `Event` or `MultiEvent` specifying prior kernels
 that must complete before `kernel!` is launched.
 """
-function launch!(arch, grid, dims, kernel!, args...; 
+function launch!(arch, grid, dims, kernel!, args...;
                  dependencies = nothing,
                  include_right_boundaries = false,
                  reduced_dimensions = (),
                  location = nothing,
                  kwargs...)
+
+    @info "normal launch!"
 
     workgroup, worksize = work_layout(grid, dims,
                                       include_right_boundaries = include_right_boundaries,

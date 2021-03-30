@@ -6,6 +6,7 @@ using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils: launch!
+using Oceananigans.CubedSpheres: fill_horizontal_velocity_halos!
 
 import Oceananigans: fields
 

@@ -10,10 +10,19 @@ fill_north_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 
 function fill_halo_regions!(field::ConformalCubedSphereField{LX, LY, LZ}, arch, args...) where {LX, LY, LZ}
 
+    location = (LX, LY, LZ)
+    if location == (Face, Center, Center) || location == (Center, Face, Center)
+        @warn "Not filling halos for cubed sphere field with location $location. Use fill_horizontal_velocity_halos! for now."
+        return nothing
+    else
+        @info "Filling halos for cubed sphere field at location $location"
+    end
+
     cubed_sphere_grid = field.grid
 
     for field_face in field.faces
         # Fill the top and bottom halos the usual way.
+        # Disable for a bit because errors.
         fill_halo_regions!(field_face, arch, args...)
 
         # Deal with halo exchanges.

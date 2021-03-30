@@ -88,10 +88,11 @@ end
 function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_update, model, χ, Δt)
 
     ##### Implicit solver for η
-    
+
     ## Need to wait for u* and v* to finish
     wait(device(model.architecture), velocities_update)
-    fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model) )
+    fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model))
+    fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
     ## Leaving this here for now. There may be some scenarios where stepping forward η and then using
     ## the stepped forward value as a guess is helpful.
@@ -104,13 +105,14 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     wait(device(model.architecture), event)
     u=free_surface.barotropic_volume_flux.u
     v=free_surface.barotropic_volume_flux.v
-    fill_halo_regions!(u.data ,u.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
-    fill_halo_regions!(v.data ,v.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
+    fill_halo_regions!(u.data, u.boundary_conditions, model.architecture, model.grid, model.clock, fields(model))
+    fill_halo_regions!(v.data, v.boundary_conditions, model.architecture, model.grid, model.clock, fields(model))
+    fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
     ## Compute volume scaled divergence of the barotropic transport and put into solver RHS
     event = compute_volume_scaled_divergence!(free_surface, model)
     wait(device(model.architecture), event)
-    
+
     ## Include surface pressure term into RHS
     RHS = free_surface.implicit_step_solver.solver.settings.RHS
     RHS .= RHS/(model.free_surface.gravitational_acceleration*Δt)
