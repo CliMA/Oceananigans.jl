@@ -5,6 +5,34 @@ using Oceananigans.Grids: R_Earth, interior_indices
 import Base: show, size, eltype
 import Oceananigans.Grids: topology
 
+struct CubedSphereFaceConnectivityDetails{F, S}
+    face :: F
+    side :: S
+end
+
+short_string(deets::CubedSphereFaceConnectivityDetails) = "face $(deets.face) $(deets.side) side"
+
+Base.show(io::IO, deets::CubedSphereFaceConnectivityDetails) =
+    print(io, "CubedSphereFaceConnectivityDetails: $(short_string(deets))")
+
+struct CubedSphereFaceConnectivity{W, E, S, N}
+     west :: W
+     east :: E
+    south :: S
+    north :: N
+end
+
+CubedSphereFaceConnectivity(; west, east, south, north) =
+    CubedSphereFaceConnectivity(west, east, south, north)
+
+function Base.show(io::IO, connectivity::CubedSphereFaceConnectivity)
+    print(io, "CubedSphereFaceConnectivity:\n",
+              "├── west: $(short_string(connectivity.west))\n",
+              "├── east: $(short_string(connectivity.east))\n",
+              "├── south: $(short_string(connectivity.south))\n",
+              "└── north: $(short_string(connectivity.north))")
+end
+
 function default_face_connectivity()
     # See figure 8.4 of https://mitgcm.readthedocs.io/en/latest/phys_pkgs/exch2.html?highlight=cube%20sphere#fig-6tile
     #
@@ -30,12 +58,48 @@ function default_face_connectivity()
     # +----------+----------+
     #   face  F1   face  F2
 
-    face1_connectivity = (west=(5, :north), east=(2, :west),  south=(6, :north), north=(3, :west))
-    face2_connectivity = (west=(1, :east),  east=(4, :south), south=(6, :east),  north=(3, :south))
-    face3_connectivity = (west=(1, :north), east=(4, :west),  south=(2, :north), north=(5, :west))
-    face4_connectivity = (west=(3, :east),  east=(6, :south), south=(2, :east),  north=(5, :south))
-    face5_connectivity = (west=(3, :north), east=(6, :west),  south=(4, :north), north=(1, :west))
-    face6_connectivity = (west=(5, :east),  east=(2, :south), south=(4, :east),  north=(1, :south))
+    face1_connectivity = CubedSphereFaceConnectivity(
+        west  = CubedSphereFaceConnectivityDetails(5, :north),
+        east  = CubedSphereFaceConnectivityDetails(2, :west),
+        south = CubedSphereFaceConnectivityDetails(6, :north),
+        north = CubedSphereFaceConnectivityDetails(3, :west),
+    )
+
+    face2_connectivity = CubedSphereFaceConnectivity(
+        west  = CubedSphereFaceConnectivityDetails(1, :east),
+        east  = CubedSphereFaceConnectivityDetails(4, :south),
+        south = CubedSphereFaceConnectivityDetails(6, :east),
+        north = CubedSphereFaceConnectivityDetails(3, :south),
+    )
+
+    face3_connectivity = CubedSphereFaceConnectivity(
+        west  = CubedSphereFaceConnectivityDetails(1, :north),
+        east  = CubedSphereFaceConnectivityDetails(4, :west),
+        south = CubedSphereFaceConnectivityDetails(2, :north),
+        north = CubedSphereFaceConnectivityDetails(5, :west),
+    )
+
+    face4_connectivity = CubedSphereFaceConnectivity(
+        west  = CubedSphereFaceConnectivityDetails(3, :east),
+        east  = CubedSphereFaceConnectivityDetails(6, :south),
+        south = CubedSphereFaceConnectivityDetails(2, :east),
+        north = CubedSphereFaceConnectivityDetails(5, :south),
+    )
+
+    face5_connectivity = CubedSphereFaceConnectivity(
+        west  = CubedSphereFaceConnectivityDetails(3, :north),
+        east  = CubedSphereFaceConnectivityDetails(6, :west),
+        south = CubedSphereFaceConnectivityDetails(4, :north),
+        north = CubedSphereFaceConnectivityDetails(1, :west),
+    )
+
+
+    face6_connectivity = CubedSphereFaceConnectivity(
+        west  = CubedSphereFaceConnectivityDetails(5, :east),
+        east  = CubedSphereFaceConnectivityDetails(2, :south),
+        south = CubedSphereFaceConnectivityDetails(4, :east),
+        north = CubedSphereFaceConnectivityDetails(1, :south),
+    )
 
     face_connectivity = (
         face1_connectivity,
@@ -48,6 +112,9 @@ function default_face_connectivity()
 
     return face_connectivity
 end
+
+# Note: I think we want to keep faces and face_connectivity tuples
+# so it's easy to support an arbitrary number of faces.
 
 struct ConformalCubedSphereGrid{FT, F, C}
                 faces :: F
@@ -107,7 +174,6 @@ function Base.show(io::IO, grid::ConformalCubedSphereGrid{FT}) where FT
     Nx, Ny, Nz = face.Nx, face.Ny, face.Nz
     print(io, "ConformalCubedSphereGrid{$FT}: $(length(grid.faces)) faces with size = ($Nx, $Ny, $Nz)")
 end
-
 
 #####
 ##### Grid utils (this is gonna get messy...)
