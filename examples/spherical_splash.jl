@@ -45,13 +45,13 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
 #
 # We make a splash by imposing a Gaussian height field,
 
-Gaussian(λ, ϕ, L) = exp(-(λ^2 + ϕ^2) / 2L^2)
+Gaussian(λ, φ, L) = exp(-(λ^2 + φ^2) / 2L^2)
 
 a = 0.01 # splash amplitude
 L = 10 # degree
-ϕ₀ = 5 # degrees
+φ₀ = 5 # degrees
 
-splash(λ, ϕ, z) = a * Gaussian(λ, ϕ - ϕ₀, L)
+splash(λ, φ, z) = a * Gaussian(λ, φ - φ₀, L)
 
 set!(model, η=splash)
 
@@ -66,15 +66,15 @@ g = model.free_surface.gravitational_acceleration
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
 # Time-scale for gravity wave propagation across the smallest grid cell
-wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.ϕᵃᶜᵃ)) * deg2rad(grid.Δλ),
-                                  grid.radius * deg2rad(grid.Δϕ)) / gravity_wave_speed
+wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(grid.Δλ),
+                                  grid.radius * deg2rad(grid.Δφ)) / gravity_wave_speed
 
 simulation = Simulation(model,
                         Δt = 0.05wave_propagation_time_scale,
                         stop_iteration = 4000,
                         iteration_interval = 100,
                         progress = s -> @info "Iteration = $(s.model.clock.iteration) / $(s.stop_iteration)")
-                                                         
+
 
 # ## Output
 #
@@ -96,10 +96,10 @@ run!(simulation)
 using JLD2, Printf, Oceananigans.Grids, GLMakie
 using Oceananigans.Utils: hours
 
-λ, ϕ, r = nodes(model.free_surface.η, reshape=true)
+λ, φ, r = nodes(model.free_surface.η, reshape=true)
 
 λ = λ .+ 180  # Convert to λ ∈ [0°, 360°]
-ϕ = 90 .- ϕ   # Convert to ϕ ∈ [0°, 180°] (0° at north pole)
+φ = 90 .- φ   # Convert to φ ∈ [0°, 180°] (0° at north pole)
 
 file = jldopen(simulation.output_writers[:fields].filepath)
 
@@ -114,9 +114,9 @@ v = @lift file["timeseries/v/" * string($iter)][:, :, 1]
 η = @lift file["timeseries/η/" * string($iter)][:, :, 1]
 
 # Plot on the unit sphere to align with the spherical wireframe.
-x3 = @. cosd(λ) * sind(ϕ)
-y3 = @. sind(λ) * sind(ϕ)
-z3 = @. cosd(ϕ) * λ ./ λ
+x3 = @. cosd(λ) * sind(φ)
+y3 = @. sind(λ) * sind(φ)
+z3 = @. cosd(φ) * λ ./ λ
 
 x = @lift (1 .+ 20 .* file["timeseries/η/" * string($iter)][:, :, 1]) .* x3[:, :, 1]
 y = @lift (1 .+ 20 .* file["timeseries/η/" * string($iter)][:, :, 1]) .* y3[:, :, 1]

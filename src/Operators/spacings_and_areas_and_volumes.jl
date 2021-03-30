@@ -17,8 +17,8 @@ The staggering is denoted by the locations "Center" and "Face":
       reference cells.
 
 The three-dimensional location of an object is defined by a 3-tuple of locations, and
-denoted by a triplet of superscripts. For example, an object `ϕ` whose cell is located at
-(Center, Center, Face) is denoted `ϕᶜᶜᶠ`. `ᶜᶜᶠ` is Centered in `x`, `Centered` in `y`, and on
+denoted by a triplet of superscripts. For example, an object `φ` whose cell is located at
+(Center, Center, Face) is denoted `φᶜᶜᶠ`. `ᶜᶜᶠ` is Centered in `x`, `Centered` in `y`, and on
 reference cell interfaces in `z` (this is where the vertical velocity is located, for example).
 
 The super script `ᵃ` denotes "any" location.
@@ -135,15 +135,15 @@ using Oceananigans.Grids: Flat
 ##### Temporary place for grid spacings and areas for RegularLatitudeLongitudeGrid
 #####
 
-@inline hack_cosd(ϕ) = cos(π * ϕ / 180)
-@inline hack_sind(ϕ) = sin(π * ϕ / 180)
+@inline hack_cosd(φ) = cos(π * φ / 180)
+@inline hack_sind(φ) = sin(π * φ / 180)
 
-@inline Δxᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.ϕᵃᶠᵃ[j]) * deg2rad(grid.Δλ)
-@inline Δxᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.ϕᵃᶜᵃ[j]) * deg2rad(grid.Δλ)
+@inline Δxᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλ)
+@inline Δxᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλ)
 @inline Δxᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δxᶠᶜᵃ(i, j, k, grid)
 @inline Δxᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δxᶜᶠᵃ(i, j, k, grid)
 
-@inline Δyᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δϕ)
+@inline Δyᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δφ)
 @inline Δyᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
 @inline Δyᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
 @inline Δyᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
@@ -151,8 +151,8 @@ using Oceananigans.Grids: Flat
 @inline Δzᵃᵃᶜ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.Δz
 @inline Δzᵃᵃᶠ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.Δz
 
-@inline Azᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * (hack_sind(grid.ϕᵃᶠᵃ[j+1]) - hack_sind(grid.ϕᵃᶠᵃ[j]))
-@inline Azᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * (hack_sind(grid.ϕᵃᶜᵃ[j])   - hack_sind(grid.ϕᵃᶜᵃ[j-1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
 @inline Azᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Azᶜᶜᵃ(i, j, k, grid)
 @inline Azᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Azᶠᶠᵃ(i, j, k, grid)
 

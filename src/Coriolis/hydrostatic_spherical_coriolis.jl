@@ -27,11 +27,11 @@ By default, `rotation_rate` is assumed to be Earth's.
 HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, scheme::S=VectorInvariantEnergyConserving()) where S =
     HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
 
-@inline ϕᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.ϕᵃᶠᵃ[j]
-@inline ϕᶠᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶠᶠᵃ[i, j]
+@inline φᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.φᵃᶠᵃ[j]
+@inline φᶠᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶠᶠᵃ[i, j]
 
-@inline fᶠᶠᵃ(i, j, k, grid::AbstractHorizontallyCurvilinearGrid, coriolis::HydrostaticSphericalCoriolis) =
-    2 * coriolis.rotation_rate * hack_sind(ϕᶠᶠᵃ(i, j, k, grid))
+@inline fᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid, coriolis::HydrostaticSphericalCoriolis) =
+    2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
 
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::HydrostaticSphericalCoriolis, U) where FT = zero(FT)
 
