@@ -6,7 +6,9 @@ export
     λnodes, φnodes
 
 include("conformal_cubed_sphere_grid.jl")
+include("cubed_sphere_exchange_bcs.jl")
 include("cubed_sphere_field.jl")
-include("set!.jl")
+include("cubed_sphere_set!.jl")
+# include("cubed_sphere_halo_filling.jl")
 
 end # module

@@ -11,21 +11,18 @@ end
 
 # We need `bcs` and `data` to match the function signature but will ignore them.
 
-function Field(X, Y, Z, arch, grid::ConformalCubedSphereGrid, bcs::Nothing, data)
-    faces = Tuple(Field(X, Y, Z, arch, face_grid) for face_grid in grid.faces)
-
-    # Assume all faces have the same boundary conditions.
-    # Probably a very bad assumption.
-    cubed_sphere_bcs = faces[1].boundary_conditions
-
-    return ConformalCubedSphereField{X, Y, Z, typeof(arch), typeof(grid), typeof(faces), typeof(cubed_sphere_bcs)}(grid, faces, cubed_sphere_bcs)
-end
+Field(X, Y, Z, arch, grid::ConformalCubedSphereGrid, ::Nothing, data) =
+    Field(X, Y, Z, arch, grid, FieldBoundaryConditions(grid, (X, Y, Z)), data)
 
 function Field(X, Y, Z, arch, grid::ConformalCubedSphereGrid, bcs, data)
-    faces = Tuple(Field(X, Y, Z, arch, face_grid, bcs) for face_grid in grid.faces)
 
-    # Assume all faces have the same boundary conditions.
-    # Probably a very bad assumption.
+    faces = Tuple(
+        Field(X, Y, Z, arch, face_grid, inject_cubed_sphere_exchange_boundary_conditions(bcs, face_number, grid.face_connectivity))
+        for (face_number, face_grid) in enumerate(grid.faces)
+    )
+
+    # This field needs BCs otherwise errors happen so I'll assume all faces have
+    # the same boundary conditions. A very bad assumption...
     cubed_sphere_bcs = faces[1].boundary_conditions
 
     return ConformalCubedSphereField{X, Y, Z, typeof(arch), typeof(grid), typeof(faces), typeof(cubed_sphere_bcs)}(grid, faces, cubed_sphere_bcs)
