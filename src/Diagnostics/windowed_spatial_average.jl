@@ -1,5 +1,6 @@
 using Statistics: mean
-using Oceananigans.Fields: compute!
+
+using Oceananigans.Fields: compute!, slice_parent
 
 struct WindowedSpatialAverage{F, S, D}
           field :: F
