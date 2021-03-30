@@ -70,8 +70,6 @@ A  = 1e-5 * H  # Amplitude of the perturbation
 
 set!(model, η=η′)
 
-#=
-
 # g = model.free_surface.gravitational_acceleration
 # gravity_wave_speed = sqrt(g * H) # hydrostatic (shallow water) gravity wave speed
 

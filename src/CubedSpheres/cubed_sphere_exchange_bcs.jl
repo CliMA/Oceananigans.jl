@@ -1,6 +1,7 @@
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions: BCType
 
+import Base: show
 import Oceananigans.BoundaryConditions: bctype_str, print_condition
 
 struct CubedSphereExchange <: BCType end
@@ -20,6 +21,9 @@ end
 
 CubedSphereExchangeInformation(; from_face, to_face, from_side, to_side) =
     CubedSphereExchangeInformation(from_face, to_face, from_side, to_side)
+
+Base.show(io::IO, ex::CubedSphereExchangeInformation) =
+    print(io, "CubedSphereExchangeInformation: (from: face $(ex.from_face) $(ex.from_side) side, to: face $(ex.to_face) $(ex.to_side) side)")
 
 print_condition(info::CubedSphereExchangeInformation) =
     "(from: face $(info.from_face) $(info.from_side) side, to: face $(info.to_face) $(info.to_side) side)"
