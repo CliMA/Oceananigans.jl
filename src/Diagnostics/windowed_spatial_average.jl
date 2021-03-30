@@ -21,11 +21,11 @@ Example
 ```jldoctest
 julia> using Oceananigans
 
-julia> using Oceananigans.Diagnostics: WindowedSpatialAverage, FieldSlicer
+julia> using Oceananigans: AveragedTimeInterval, NetCDFOutputWriter, FieldSlicer
 
-julia> using Oceananigans.OutputWriters: AveragedTimeInterval, NetCDFOutputWriter
+julia> using Oceananigans.Diagnostics: WindowedSpatialAverage
 
-julia> grid = RegularRectilinearGrid(size=(4, 6, 4), extent=(1,1,1));
+julia> grid = RegularRectilinearGrid(size=(4, 6, 4), extent=(1, 1, 1));
 
 julia> model = IncompressibleModel(grid=grid);
 

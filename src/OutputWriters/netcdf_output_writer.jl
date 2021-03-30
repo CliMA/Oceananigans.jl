@@ -8,8 +8,8 @@ using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_n
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 using Oceananigans.TimeSteppers: float_or_date_time
 
-using Oceananigans.Diagnostics: WindowedSpatialAverage, FieldSlicer, parent_slice_indices, short_show
-using Oceananigans.Fields: reduced_location, location
+using Oceananigans.Diagnostics: WindowedSpatialAverage, parent_slice_indices, short_show
+using Oceananigans.Fields: reduced_location, location, FieldSlicer
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))

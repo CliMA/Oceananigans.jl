@@ -37,6 +37,7 @@ include("validate_field_tuple_grid.jl")
 include("field_tuples.jl")
 include("background_fields.jl")
 include("interpolate.jl")
+include("field_slicer.jl")
 include("show_fields.jl")
 
 end

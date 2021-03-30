@@ -236,5 +236,7 @@ end
             ϕ = CenterField(GPU(), grid)
             @test cpudata(ϕ).parent isa Array
         end
+
+        @test FieldSlicer() isa FieldSlicer
     end
 end
