@@ -9,7 +9,7 @@ export
     xnode, ynode, znode, location,
     set!, compute!, @compute,
     VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields,
-    interpolate
+    interpolate, FieldSlicer
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
