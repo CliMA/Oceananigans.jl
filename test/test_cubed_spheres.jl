@@ -1,4 +1,5 @@
 using Oceananigans.CubedSpheres
+using Oceananigans.Models.HydrostaticFreeSurfaceModels
 
 ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
