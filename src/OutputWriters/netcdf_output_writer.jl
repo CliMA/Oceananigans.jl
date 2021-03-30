@@ -1,15 +1,16 @@
 using NCDatasets
 
-using Oceananigans.Fields
-using Oceananigans.Utils: show_schedule
-
 using Dates: AbstractTime, now
+
+using Oceananigans.Fields
+
+using Oceananigans: short_show
+using Oceananigans.Utils: show_schedule
 using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_nodes
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 using Oceananigans.TimeSteppers: float_or_date_time
-
-using Oceananigans.Diagnostics: WindowedSpatialAverage, parent_slice_indices, short_show
-using Oceananigans.Fields: reduced_location, location, FieldSlicer
+using Oceananigans.Diagnostics: WindowedSpatialAverage
+using Oceananigans.Fields: reduced_location, location, FieldSlicer, parent_slice_indices
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
