@@ -140,10 +140,13 @@ using Oceananigans.Grids: Flat
 
 @inline Δxᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλ)
 @inline Δxᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλ)
+@inline Δxᶠᵃᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δxᶠᶜᵃ(i, j, k, grid)
+
 @inline Δxᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δxᶠᶜᵃ(i, j, k, grid)
 @inline Δxᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δxᶜᶠᵃ(i, j, k, grid)
 
 @inline Δyᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δφ)
+@inline Δyᵃᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
 @inline Δyᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
 @inline Δyᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
 @inline Δyᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)

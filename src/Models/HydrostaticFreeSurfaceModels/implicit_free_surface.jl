@@ -25,7 +25,11 @@ ImplicitFreeSurface(; gravitational_acceleration=g_Earth) =
 
 # Internal function for HydrostaticFreeSurfaceModel
 function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arch, grid)
-    η = CenterField(arch, grid, TracerBoundaryConditions(grid))
+    bcs=TracerBoundaryConditions(grid,
+       west=BoundaryCondition(Gradient, Float64(0)), east=BoundaryCondition(Gradient, Float64(0)),
+       north=BoundaryCondition(Gradient, Float64(0)), south=BoundaryCondition(Gradient, Float64(0)),
+       )
+    η = CenterField(arch, grid, TracerBoundaryConditions(grid) )
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     barotropic_x_volume_flux = ReducedField(Face, Center, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
