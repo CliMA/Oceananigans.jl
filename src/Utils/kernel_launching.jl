@@ -76,8 +76,6 @@ function launch!(arch, grid, dims, kernel!, args...;
                  location = nothing,
                  kwargs...)
 
-    @info "normal launch!"
-
     workgroup, worksize = work_layout(grid, dims,
                                       include_right_boundaries = include_right_boundaries,
                                             reduced_dimensions = reduced_dimensions,

@@ -11,6 +11,21 @@ using Oceananigans.Coriolis
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.TurbulenceClosures
 
+#####
+##### Gotta dispatch on some stuff after defining Oceananigans.CubedSpheres
+#####
+
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface
+
+import Oceananigans.CubedSpheres: maybe_replace_with_face
+
+maybe_replace_with_face(free_surface::ExplicitFreeSurface, cubed_sphere_grid, face_number) =
+  ExplicitFreeSurface(free_surface.η.faces[face_number], free_surface.gravitational_acceleration)
+
+#####
+##### Script starts here
+#####
+
 ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
 Logging.global_logger(OceananigansLogger())
