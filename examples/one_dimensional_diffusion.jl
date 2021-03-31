@@ -37,7 +37,7 @@ using Oceananigans
 
 grid = RegularRectilinearGrid(size=(128), z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 
-# The default topology is `(Periodic, Periodic, Bounded)`` but since we only want to solve
+# The default topology is `(Periodic, Periodic, Bounded)` but since we only want to solve
 # a one-dimensional problem, we assign the `x` and `y` dimensions to `Flat`.  
 # We could specify each of them to be either `Periodic` or `Bounded` but that will define
 # a halo in each of those directions, and that is numerically more costly.  
