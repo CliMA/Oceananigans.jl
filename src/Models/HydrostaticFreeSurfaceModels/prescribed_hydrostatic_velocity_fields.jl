@@ -19,7 +19,7 @@ end
 
 @inline Base.getindex(U::PrescribedVelocityFields, i) = getindex((u=U.u, v=U.v, w=U.w), i)
 
-zerofunc(x, y, z) = 0
+zerofunc(args...) = 0
 
 """
     PrescribedVelocityFields(; u=zerofunc, v=zerofunc, w=zerofunc, parameters=nothing)

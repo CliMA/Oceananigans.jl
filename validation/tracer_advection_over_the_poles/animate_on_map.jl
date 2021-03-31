@@ -8,7 +8,7 @@ cmocean = pyimport("cmocean")
 
 ## Extract data
 
-file = jldopen("full_cubed_sphere_gravity_waves.jld2")
+file = jldopen("tracer_advection_over_the_poles.jld2")
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
@@ -32,12 +32,12 @@ transform = ccrs.PlateCarree()
 
 for (n, i) in enumerate(iterations)
     @info "Plotting iteration $i/$(iterations[end])..."
-    η = flatten_cubed_sphere(file["timeseries/η/$i"], size_2d)
+    h = flatten_cubed_sphere(file["timeseries/h/$i"], size_2d)
 
     fig = plt.figure(figsize=(16, 9))
     ax = fig.add_subplot(1, 1, 1, projection=projection)
 
-    ax.scatter(λ, φ, c=η, transform=transform, cmap=cmocean.cm.balance, s=25, vmin=-0.01, vmax=0.01)
+    ax.scatter(λ, φ, c=h, transform=transform, cmap=cmocean.cm.balance, s=25, vmin=0, vmax=1000)
     # ax.pcolormesh(λ, φ, η, transform=transform, cmap="seismic", vmin=-0.01, vmax=0.01)
     # ax.contourf(λ, φ, η, transform=transform, cmap="seismic")
 
@@ -46,11 +46,11 @@ for (n, i) in enumerate(iterations)
     # ax.set_global()
 
     # plt.show()
-    filename = @sprintf("surface_gravity_waves_on_a_cubed_sphere_η_%04d.png", n)
+    filename = @sprintf("tracer_avection_over_the_poles_%04d.png", n)
     plt.savefig(filename, dpi=200)
     plt.close(fig)
 end
 
 close(file)
 
-run(`ffmpeg -y -i surface_gravity_waves_on_a_cubed_sphere_η_%04d.png -c:v libx264 -vf fps=10 -pix_fmt yuv420p out.mp4`)
+run(`ffmpeg -y -i tracer_avection_over_the_poles_%04d.png -c:v libx264 -vf fps=10 -pix_fmt yuv420p out.mp4`)
