@@ -57,6 +57,13 @@
 @inline ∂²zᵃᵃᶠ(i, j, k, grid::Union{ARG, AHCG}, f::F, args...) where F<:Function = ∂zᵃᵃᶠ(i, j, k, grid, ∂zᵃᵃᶜ, f, args...)
 
 #####
+##### Third derivatives
+#####
+
+@inline ∂³zᵃᵃᶜ(i, j, k, grid::Union{ARG, AHCG}, w) = ∂zᵃᵃᶜ(i, j, k, grid, ∂²zᵃᵃᶠ, w)
+@inline ∂³zᵃᵃᶠ(i, j, k, grid::Union{ARG, AHCG}, c) = ∂zᵃᵃᶠ(i, j, k, grid, ∂²zᵃᵃᶜ, c)
+
+#####
 ##### Fourth derivatives
 #####
 
