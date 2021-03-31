@@ -76,7 +76,7 @@ function jld2_sliced_field_output(model)
 
     rm("test.jld2")
 
-    return size(u₁) == (2, 3, 4) && size(v₁) == (2, 3, 4) && size(w₁) == (2, 3, 5)
+    return size(u₁) == (2, 2, 4) && size(v₁) == (2, 2, 4) && size(w₁) == (2, 2, 5)
 end
 
 function run_jld2_file_splitting_tests(arch)
