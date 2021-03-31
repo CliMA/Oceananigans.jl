@@ -50,3 +50,7 @@ for (n, i) in enumerate(iterations)
     plt.savefig(filename, dpi=200)
     plt.close(fig)
 end
+
+close(file)
+
+run(`ffmpeg -i surface_gravity_waves_on_a_cubed_sphere_η_%04d.png -c:v libx264 -vf fps=10 -pix_fmt yuv420p out.mp4`)

@@ -160,7 +160,7 @@ end
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 14days,
+                        stop_time = 3days,
                         iteration_interval = 1,
                         progress = Progress(time_ns()))
 
