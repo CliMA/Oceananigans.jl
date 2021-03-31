@@ -58,53 +58,6 @@ end
         @test_throws TypeError HydrostaticFreeSurfaceModel(architecture=GPU, grid=grid)
     end
 
-    topo = ( (Flat,      Flat,     Flat) )
-   
-    @testset "$topo model construction" begin
-    @info "  Testing $topo model construction..."
-        for arch in archs, FT in float_types                
-            grid = RegularRectilinearGrid(FT, topology=topo, size=(), extent=())
-            model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)
-            
-            @test model isa HydrostaticFreeSurfaceModel
-        end
-    end
-
-    topos = (
-             (Bounded,   Flat,     Flat),    
-             (Flat,      Bounded,  Flat),
-            )
-
-    for topo in topos
-        @testset "$topo model construction" begin
-            @info "  Testing $topo model construction..."
-            for arch in archs, FT in float_types
-                grid = RegularRectilinearGrid(FT, topology=topo, size=(1), extent=(1))
-                model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)        
-
-                @test model isa HydrostaticFreeSurfaceModel
-            end
-        end
-    end
-
-    topos = (
-             (Periodic, Periodic,  Flat),
-             (Periodic,  Bounded,  Flat),
-             (Bounded,   Bounded,  Flat),
-            )
-
-    for topo in topos
-        @testset "$topo model construction" begin
-            @info "  Testing $topo model construction..."
-            for arch in archs, FT in float_types
-                grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1), extent=(1, 2))
-                model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)
-
-                @test model isa HydrostaticFreeSurfaceModel
-            end
-        end
-    end
-
     topos = (
              (Periodic, Periodic,  Bounded),
              (Periodic,  Bounded,  Bounded),
@@ -118,7 +71,11 @@ end
                 grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
                 model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)
 
+                # Just testing that the model was constructed with no errors/crashes.
                 @test model isa HydrostaticFreeSurfaceModel
+
+                # Test that the grid didn't get mangled (sort of)
+                @test size(grid) === size(model.grid)
             end
         end
     end

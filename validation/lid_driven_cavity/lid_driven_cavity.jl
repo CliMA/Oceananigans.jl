@@ -5,9 +5,9 @@ using Oceananigans
 Logging.global_logger(OceananigansLogger())
 
 function simulate_lid_driven_cavity(; Re, N, end_time)
-    topology = (Flat, Bounded, Bounded)
-    domain = (y=(0, 1), z=(0, 1))
-    grid = RegularRectilinearGrid(topology=topology, size=(N, N); domain...)
+    topology = (Bounded, Bounded, Bounded)
+    domain = (x=(0, 1), y=(0, 1), z=(0, 1))
+    grid = RegularRectilinearGrid(topology=topology, size=(1, N, N); domain...)
 
     v_bcs = VVelocityBoundaryConditions(grid,
            top = ValueBoundaryCondition(1),
