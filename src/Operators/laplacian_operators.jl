@@ -16,15 +16,3 @@ end
     return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᶠᵃ(i, j, k, grid, Ax_∂xᶠᶠᶜ, v) +
                                     δyᶜᶠᵃ(i, j, k, grid, Ay_∂yᶜᶜᶜ, v))
 end
-
-@inline ∇²hᶜᶜᵃ(i, j, k, grid, F::FU, args...) where FU <: Function = ∂²xᶜᵃᵃ(i, j, k, grid, F, args...) + ∂²yᵃᶜᵃ(i, j, k, grid, F, args...)
-@inline ∇²hᶠᶜᵃ(i, j, k, grid, F::FU, args...) where FU <: Function = ∂²xᶠᵃᵃ(i, j, k, grid, F, args...) + ∂²yᵃᶜᵃ(i, j, k, grid, F, args...)
-@inline ∇²hᶜᶠᵃ(i, j, k, grid, F::FU, args...) where FU <: Function = ∂²xᶜᵃᵃ(i, j, k, grid, F, args...) + ∂²yᵃᶠᵃ(i, j, k, grid, F, args...)
-
-#####
-##### Horizontal biharmonic operators
-#####
-
-@inline ∇⁴hᶜᶜᵃ(i, j, k, grid, c) = ∇²hᶜᶜᵃ(i, j, k, grid, ∇²hᶜᶜᵃ, c)
-@inline ∇⁴hᶠᶜᵃ(i, j, k, grid, c) = ∇²hᶠᶜᵃ(i, j, k, grid, ∇²hᶠᶜᵃ, c)
-@inline ∇⁴hᶜᶠᵃ(i, j, k, grid, c) = ∇²hᶜᶠᵃ(i, j, k, grid, ∇²hᶜᶠᵃ, c)
