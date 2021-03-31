@@ -9,9 +9,7 @@ using Oceananigans.Utils
 using Benchmarks
 
 FT = Float64
-
-         Archs = [CPU]
-@hascuda Archs = [CPU, GPU]
+Archs = has_cuda() ? [CPU, GPU] : [CPU]
 
 #####
 ##### Run benchmarks
@@ -25,7 +23,7 @@ print_system_info()
 for Arch in Archs
     N = Arch == CPU ? (32, 32, 32) : (256, 256, 256)
 
-    grid = RegularCartesianGrid(FT, size=N, extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(FT, size=N, extent=(1, 1, 1))
     model = IncompressibleModel(architecture=Arch(), float_type=FT, grid=grid,
                                 buoyancy=nothing, tracers=(:α, :β, :γ, :δ, :ζ))
 
@@ -36,7 +34,7 @@ for Arch in Archs
     u, v, w = model.velocities
     α, β, γ, δ, ζ = model.tracers
 
-    dump_field = Field(Cell, Cell, Cell, Arch(), grid)
+    dump_field = Field(Center, Center, Center, Arch(), grid)
 
     test_cases = OrderedDict(
         "-α"      => -α,
