@@ -71,7 +71,7 @@ function fill_west_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed
     if sides_in_the_same_dimension(:west, src_side)
         dest_halo .= src_boundary
     else
-        dest_halo .= permutedims(src_boundary, (2, 1, 3))
+        dest_halo .= reverse(permutedims(src_boundary, (2, 1, 3)), dims=2)
     end
 
     return nothing
@@ -125,7 +125,7 @@ function fill_north_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cube
     if sides_in_the_same_dimension(:north, src_side)
         dest_halo .= src_boundary
     else
-        dest_halo .= permutedims(src_boundary, (2, 1, 3))
+        dest_halo .= reverse(permutedims(src_boundary, (2, 1, 3)), dims=1)
     end
 
     return nothing
