@@ -59,7 +59,7 @@ function jld2_sliced_field_output(model)
     simulation.output_writers[:velocities] =
         JLD2OutputWriter(model, model.velocities,
                                       schedule = TimeInterval(1),
-                                 field_slicer = FieldSlicer(i=1:2, j=1:3, k=:),
+                                 field_slicer = FieldSlicer(i=1:2, j=1:2:4, k=:),
                                           dir = ".",
                                        prefix = "test",
                                         force = true)
