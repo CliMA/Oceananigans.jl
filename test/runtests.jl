@@ -87,7 +87,6 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_averaged_field.jl")
             include("test_kernel_computed_field.jl")
             include("test_halo_regions.jl")
-            include("test_cubed_spheres.jl")
             include("test_coriolis.jl")
             include("test_buoyancy.jl")
             include("test_stokes_drift.jl")
@@ -137,6 +136,11 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_abstract_operations_computed_field.jl")
             include("test_lagrangian_particle_tracking.jl")
         end
+    end
+
+    if group == :cubed_sphere || group == :all
+        include("test_cubed_spheres.jl")
+        include("test_cubed_sphere_halo_exchange.jl")
     end
 
     if group == :distributed || group == :all
