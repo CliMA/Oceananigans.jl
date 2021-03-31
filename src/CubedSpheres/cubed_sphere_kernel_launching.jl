@@ -7,8 +7,8 @@ import Oceananigans.Utils: launch!
 
 maybe_replace_with_face(elem, cubed_sphere_grid, face_number) = elem
 
-maybe_replace_with_face(elem::ConformalCubedSphereGrid, cubed_sphere_grid, face_number) = elem.faces[face_number]
-maybe_replace_with_face(elem::ConformalCubedSphereField, cubed_sphere_grid, face_number) = elem.faces[face_number]
+maybe_replace_with_face(grid::ConformalCubedSphereGrid, cubed_sphere_grid, face_number) = grid.faces[face_number]
+maybe_replace_with_face(field::AbstractCubedSphereField, cubed_sphere_grid, face_number) = field.faces[face_number]
 
 maybe_replace_with_face(t::Tuple, cubed_sphere_grid, face_number) = Tuple(maybe_replace_with_face(t_elem, cubed_sphere_grid, face_number) for t_elem in t)
 maybe_replace_with_face(nt::NamedTuple, cubed_sphere_grid, face_number) = NamedTuple{keys(nt)}(maybe_replace_with_face(nt_elem, cubed_sphere_grid, face_number) for nt_elem in nt)

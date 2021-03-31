@@ -187,6 +187,20 @@ topology(::ConformalCubedSphereGrid) = (Bounded, Bounded, Bounded)
 
 # Nodes for ::ConformalCubedSphereFaceGrid
 
+λnode(LX::Face,   LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.λᶠᶠᵃ[i, j]
+λnode(LX::Center, LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.λᶜᶜᵃ[i, j]
+φnode(LX::Face,   LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.φᶠᶠᵃ[i, j]
+φnode(LX::Center, LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.φᶜᶜᵃ[i, j]
+
+znode(LX, LY, LZ::Face,   i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.zᵃᵃᶠ[k]
+znode(LX, LY, LZ::Center, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.zᵃᵃᶜ[k]
+
+# FIXME!
+λnode(LX::Face, LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.λᶠᶠᵃ[i, j]
+λnode(LX::Center, LY::Face, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.λᶠᶠᵃ[i, j]
+φnode(LX::Face, LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.φᶠᶠᵃ[i, j]
+φnode(LX::Center, LY::Face, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.φᶠᶠᵃ[i, j]
+
 λnodes(LX::Face, LY::Face, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
     view(grid.λᶠᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
 
