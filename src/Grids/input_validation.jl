@@ -123,13 +123,3 @@ function validate_vertically_stretched_grid_xy(TX, TY, FT, x, y)
 
     return FT(Lx), FT(Ly), FT.(x), FT.(y)
 end
-
-function validate_zonally_stretched_grid_yz(TY, TZ, FT, y, z)
-    y = validate_dimension_specification(TY, y, :y)
-    z = validate_dimension_specification(TZ, z, :z)
-
-    Ly = y[2] - y[1]
-    Lz = z[2] - z[1]
-
-    return FT(Ly), FT(Lz), FT.(y), FT.(z)
-end
