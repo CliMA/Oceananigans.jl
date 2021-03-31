@@ -91,8 +91,8 @@ g = model.free_surface.gravitational_acceleration
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
 # Time-scale for gravity wave propagation across the smallest grid cell
-wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.ϕᵃᶜᵃ)) * deg2rad(grid.Δλ),
-                                  grid.radius * deg2rad(grid.Δϕ)) / gravity_wave_speed
+wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(grid.Δλ),
+                                  grid.radius * deg2rad(grid.Δφ)) / gravity_wave_speed
 
 mutable struct Progress
     interval_start_time :: Float64

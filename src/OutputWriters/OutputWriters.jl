@@ -1,7 +1,6 @@
 module OutputWriters
 
 export
-    FieldSlicer,
     JLD2OutputWriter, NetCDFOutputWriter,
     Checkpointer, restore_from_checkpoint,
     WindowedTimeAverage,
@@ -13,10 +12,10 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 using Oceananigans.Models
-using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
 
 using Oceananigans: AbstractOutputWriter
-using Oceananigans.Fields: OffsetArray
+using Oceananigans.Fields: OffsetArray, FieldSlicer
+using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval
 
 import Oceananigans: write_output!
 

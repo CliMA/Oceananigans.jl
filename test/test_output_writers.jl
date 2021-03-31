@@ -178,11 +178,6 @@ end
 @testset "Output writers" begin
     @info "Testing output writers..."
 
-    @testset "FieldSlicer" begin
-        @info "  Testing FieldSlicer..."
-        @test FieldSlicer() isa FieldSlicer
-    end
-
     for arch in archs
         # Some tests can reuse this same grid and model.
         topo =(Periodic, Periodic, Bounded)

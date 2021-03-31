@@ -1,4 +1,5 @@
 using Oceananigans.Diagnostics: AbstractDiagnostic
+using Oceananigans.Fields: FieldSlicer
 using Oceananigans.OutputWriters: fetch_output
 using Oceananigans.Utils: AbstractSchedule, prettytime
 

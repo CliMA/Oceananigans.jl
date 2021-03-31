@@ -42,12 +42,13 @@
 
 # ## The grid
 #
-# We use a two-dimensional grid with 64² points and 1 m grid spacing:
+# We use a two-dimensional grid with 64² points and 1 m grid spacing and assign `Flat`
+# to the `y` direction:
 
 using Oceananigans
 using Oceananigans.Units: minutes, hour, hours, day
 
-grid = RegularRectilinearGrid(size=(64, 1, 64), extent=(64, 1, 64))
+grid = RegularRectilinearGrid(size=(64, 64), extent=(64, 64), topology=(Periodic, Flat, Bounded))
 
 # ## Boundary conditions
 #
@@ -58,7 +59,7 @@ buoyancy_flux(x, y, t, p) = p.initial_buoyancy_flux * exp(-t^4 / (24 * p.shut_of
 buoyancy_flux_parameters = (initial_buoyancy_flux = 1e-8, # m² s⁻³
                                     shut_off_time = 2hours)
 
-buoyancy_flux_bc = BoundaryCondition(Flux, buoyancy_flux, parameters = buoyancy_flux_parameters)
+buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, parameters = buoyancy_flux_parameters)
 
 # The fourth power in the argument of `exp` above helps keep the buoyancy flux relatively
 # constant during the first phase of the simulation. We produce a plot of this time-dependent
@@ -86,7 +87,7 @@ flux_plot = plot(time ./ hour, [buoyancy_flux(0, 0, t, buoyancy_flux_parameters)
 
 N² = 1e-4 # s⁻²
 
-buoyancy_gradient_bc = BoundaryCondition(Gradient, N²)
+buoyancy_gradient_bc = GradientBoundaryCondition(N²)
 
 # In summary, the buoyancy boundary conditions impose a destabilizing flux
 # at the top and a stable buoyancy gradient at the bottom:
