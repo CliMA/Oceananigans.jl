@@ -156,7 +156,6 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
     r.parent .= 0
     # quick_launch!(arch, grid, compute_residual!, r, RHS, A(x))
     r.parent .= RHS.parent .- A(x; args...).parent
-    tol = norm(r.parent)*1E-7
     ### println("PreconditionedConjugateGradientSolver ", i," RHS ", norm(RHS.parent) )
     ### println("PreconditionedConjugateGradientSolver ", i," A(x) ", norm(A(x; args...).parent) )
 
