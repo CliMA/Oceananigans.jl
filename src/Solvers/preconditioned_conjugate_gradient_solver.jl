@@ -212,7 +212,7 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
        i    = i+1
       end
 ==#
-      println("PreconditionedConjugateGradientSolver ", i," ", norm(r.parent) )
+      #### println("PreconditionedConjugateGradientSolver ", i," ", norm(r.parent) )
 
     fill_halo_regions!(x, sset.bcs, sset.arch, sset.grid)
     return x, norm(r.parent)

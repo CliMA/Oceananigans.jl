@@ -1,3 +1,4 @@
+using Oceananigans.Fields: FieldSlicer
 using Oceananigans.Diagnostics
 
 function nan_checker_aborts_simulation(arch)

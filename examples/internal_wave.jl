@@ -16,12 +16,12 @@
 # ## The physical domain
 #
 # First, we pick a resolution and domain size. We use a two-dimensional domain
-# that's periodic in ``(x, y, z)``:
+# that's periodic in ``(x, z)`` and is `Flat` in ``y``:
 
 using Oceananigans
 
-grid = RegularRectilinearGrid(size=(128, 1, 128), x=(-π, π), y=(-π, π), z=(-π, π),
-                            topology=(Periodic, Periodic, Periodic))
+grid = RegularRectilinearGrid(size=(128, 128), x=(-π, π), z=(-π, π),
+                              topology=(Periodic, Flat, Periodic))
 
 # ## Internal wave parameters
 #

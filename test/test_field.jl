@@ -1,4 +1,4 @@
-using Oceananigans.Fields: cpudata
+using Oceananigans.Fields: cpudata, FieldSlicer
 
 """
     correct_field_size(arch, grid, FieldType, Tx, Ty, Tz)
@@ -236,5 +236,7 @@ end
             ϕ = CenterField(GPU(), grid)
             @test cpudata(ϕ).parent isa Array
         end
+
+        @test FieldSlicer() isa FieldSlicer
     end
 end

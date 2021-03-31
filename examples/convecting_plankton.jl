@@ -42,12 +42,13 @@
 
 # ## The grid
 #
-# We use a two-dimensional grid with 64² points and 1 m grid spacing:
+# We use a two-dimensional grid with 64² points and 1 m grid spacing and assign `Flat`
+# to the `y` direction:
 
 using Oceananigans
 using Oceananigans.Units: minutes, hour, hours, day
 
-grid = RegularRectilinearGrid(size=(64, 1, 64), extent=(64, 1, 64))
+grid = RegularRectilinearGrid(size=(64, 64), extent=(64, 64), topology=(Periodic, Flat, Bounded))
 
 # ## Boundary conditions
 #
