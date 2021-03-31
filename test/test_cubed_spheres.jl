@@ -1,3 +1,4 @@
+using DataDeps
 using Oceananigans.CubedSpheres
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 
