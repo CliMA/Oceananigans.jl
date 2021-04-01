@@ -51,7 +51,7 @@ planetary vorticity gradient.
 The ``\beta``-plane model is not periodic in ``y`` and thus can be used only in domains that
 are bounded in the ``y``-direction.
 
-### The non-traditional ``f``-plane approximation
+### The non-traditional ``\beta``-plane approximation
 
 The *non-traditional* ``\beta``-plane approximation accounts for the latitudinal variation of both
 the locally vertical and the locally horizontal components of the rotation vector
@@ -59,4 +59,4 @@ the locally vertical and the locally horizontal components of the rotation vecto
     \boldsymbol{f} = \left[ 2\Omega\cos\varphi_0 \left( 1 -  \frac{z}{R} \right) + \gamma y \right] \boldsymbol{\hat y}
            + \left[ 2\Omega\sin\varphi_0 \left( 1 + 2\frac{z}{R} \right) + \beta  y \right] \boldsymbol{\hat z} \, ,
 ```
-where ``\beta = 2\Omega\cos\varphi_0 / R`` and ``\gamma = -4\Omega\varphi_0 / R``.
+where ``\beta = 2 \Omega \cos \varphi_0 / R`` and ``\gamma = -4 \Omega \varphi_0 / R``.
