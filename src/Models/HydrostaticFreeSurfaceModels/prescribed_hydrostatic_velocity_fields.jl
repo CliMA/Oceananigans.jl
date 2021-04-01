@@ -3,7 +3,7 @@
 #####
 
 using Oceananigans.Grids: Center, Face
-using Oceananigans.Fields: FunctionField
+using Oceananigans.Fields: AbstractField, FunctionField
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
