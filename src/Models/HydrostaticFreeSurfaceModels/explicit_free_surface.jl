@@ -16,7 +16,8 @@ Adapt.adapt_structure(to, free_surface::ExplicitFreeSurface) =
     ExplicitFreeSurface(Adapt.adapt(to, free_surface.η), free_surface.gravitational_acceleration)
 
 function FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, velocities, arch, grid)
-    η = CenterField(arch, grid, TracerBoundaryConditions(grid))
+    # η = CenterField(arch, grid, TracerBoundaryConditions(grid))
+    η = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
     return ExplicitFreeSurface(η, g)
 end
