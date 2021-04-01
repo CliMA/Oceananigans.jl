@@ -123,64 +123,36 @@ end
 ##### Vertically stretched grid utilities
 #####
 
+function Base.show(io::IO, grid::ZonallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    print(io, "ZonallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
+              "                    domain: (Lx=$(grid.Lx),     Ly=$(grid.Ly),   Lz=$(grid.Lz))\n",
+              "                resolution: (Nx=$(grid.Nx),     Ny=$(grid.Ny),   Nz=$(grid.Nz))\n",
+              "                 halo size: (Hx=$(grid.Hx),     Hy=$(grid.Hy),   Hz=$(grid.Hz))\n",
+              "              grid spacing: (Δx=$(grid.Δxᶜ[1]),  Δy=$(grid.Δyᶜ), Δz=$(grid.Δzᶜ))\n")
+end
+
 short_show(grid::ZonallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     "ZonallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
-
-function long_show(io::IO, grid::ZonallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    print(io, "ZonallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
-              "                    domain: (Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz)) \n\n")
-    print(io, "Hello, World!\n")
-end
-
-function show(io::IO, g::ZonallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    "ZonallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
-    #print("Hello, World!")
-    #Δx_min = minimum(view(g.Δxᶜ, 1:g.Nx))
-    #Δx_max = maximum(view(g.Δxᶜ, 1:g.Nx))
-    #print(io, "ZonallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
-    #          "                   domain: $(domain_string(g))\n",
-    #          "                 topology: ", (TX, TY, TZ), '\n',
-    #          "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
-    #          "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
-    #          "grid spacing (Δx, Δy, Δz): , [min=", Δx_min, ", max=", Δx_max,"])", g.Δyᶜ, ", ", g.Δzᶜ,)
-end
-
-#=
-Adapt.adapt_structure(to, grid::ZonallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    ZonallyStretchedRectilinearGrid{FT, TX, TY, TZ, typeof(Adapt.adapt(to, grid.xᶠᵃᵃ)), typeof(grid.zᵃᵃᶠ)}(
-        grid.Nx, grid.Ny, grid.Nz,
-        grid.Hx, grid.Hy, grid.Hz,
-        grid.Lx, grid.Ly, grid.Lz,
-        Adapt.adapt(to, grid.Δxᶜᵃᵃ),
-        Adapt.adapt(to, grid.Δxᶠᵃᵃ),
-        grid.Δy, grid.Δz,
-        Adapt.adapt(to, grid.xᶜᵃᵃ),
-        Adapt.adapt(to, grid.xᶠᵃᵃ),
-        grid.yᵃᶜᵃ, grid.zᵃᵃᶜ,
-        grid.yᵃᶠᵃ, grid.zᵃᵃᶠ)
-=#
 
 #####
 ##### Should merge with grid_utils.jl at some point
 #####
 
-#=
-@inline xnode(::Type{Center}, i, grid::ZonallyStretchedRectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
-@inline xnode(::Type{Face},   i, grid::ZonallyStretchedRectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
-@inline ynode(::Type{Center}, j, grid::ZonallyStretchedRectilinearGrid) = @inbounds grid.yᵃᶜᵃ[j]
-@inline ynode(::Type{Face},   j, grid::ZonallyStretchedRectilinearGrid) = @inbounds grid.yᵃᶠᵃ[j]
-@inline znode(::Type{Center}, k, grid::ZonallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶜ[k]
-@inline znode(::Type{Face},   k, grid::ZonallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶠ[k]
-all_x_nodes(::Type{Center}, grid::ZonallyStretchedRectilinearGrid) = grid.xᶜᵃᵃ
-all_x_nodes(::Type{Face},   grid::ZonallyStretchedRectilinearGrid) = grid.xᶠᵃᵃ
-all_y_nodes(::Type{Center}, grid::ZonallyStretchedRectilinearGrid) = grid.yᵃᶜᵃ
-all_y_nodes(::Type{Face},   grid::ZonallyStretchedRectilinearGrid) = grid.yᵃᶠᵃ
-all_z_nodes(::Type{Center}, grid::ZonallyStretchedRectilinearGrid) = grid.zᵃᵃᶜ
-all_z_nodes(::Type{Face},   grid::ZonallyStretchedRectilinearGrid) = grid.zᵃᵃᶠ
+@inline xnode(::Type{Center}, i, grid::ZonallyStretchedRectilinearGrid) = @inbounds grid.xᶜ[i]
+@inline xnode(::Type{Face},   i, grid::ZonallyStretchedRectilinearGrid) = @inbounds grid.xᶠ[i]
+@inline ynode(::Type{Center}, j, grid::ZonallyStretchedRectilinearGrid) = @inbounds grid.yᶜ[j]
+@inline ynode(::Type{Face},   j, grid::ZonallyStretchedRectilinearGrid) = @inbounds grid.yᶠ[j]
+@inline znode(::Type{Center}, k, grid::ZonallyStretchedRectilinearGrid) = @inbounds grid.zᶜ[k]
+@inline znode(::Type{Face},   k, grid::ZonallyStretchedRectilinearGrid) = @inbounds grid.zᶠ[k]
+all_x_nodes(::Type{Center},      grid::ZonallyStretchedRectilinearGrid) = grid.xᶜ
+all_x_nodes(::Type{Face},        grid::ZonallyStretchedRectilinearGrid) = grid.xᶠ
+all_y_nodes(::Type{Center},      grid::ZonallyStretchedRectilinearGrid) = grid.yᶜ
+all_y_nodes(::Type{Face},        grid::ZonallyStretchedRectilinearGrid) = grid.yᶠ
+all_z_nodes(::Type{Center},      grid::ZonallyStretchedRectilinearGrid) = grid.zᶜ
+all_z_nodes(::Type{Face},        grid::ZonallyStretchedRectilinearGrid) = grid.zᶠ
 #
 # Get minima of grid
 #
-min_Δx(grid::ZonallyStretchedRectilinearGrid) = minimum(view(grid.Δxᶜ, 1:grid.Nx))
-min_Δy(grid::ZonallyStretchedRectilinearGrid) = grid.Δy
-min_Δz(grid::ZonallyStretchedRectilinearGrid) = grid.Δz
-=#
+#min_Δx(grid::ZonallyStretchedRectilinearGrid) = minimum(view(grid.Δxᶜ, 1:grid.Nx))
+#min_Δy(grid::ZonallyStretchedRectilinearGrid) = grid.Δy
+#min_Δz(grid::ZonallyStretchedRectilinearGrid) = grid.Δz
