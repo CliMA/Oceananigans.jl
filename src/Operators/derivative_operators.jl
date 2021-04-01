@@ -33,6 +33,8 @@
 @inline Ay_∂yᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}, u) = Ayᶠᶠᶜ(i, j, k, grid) * ∂yᶠᶠᵃ(i, j, k, grid, u)
 @inline Ay_∂yᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}, v) = Ayᶜᶜᶜ(i, j, k, grid) * ∂yᶜᶜᵃ(i, j, k, grid, v)
 
+@inline Az_∂zᶜᶜᶠ(i, j, k, grid::Union{ARG, AHCG}, c) = Azᶜᶜᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, c)
+
 #####
 ##### Second derivatives
 #####
