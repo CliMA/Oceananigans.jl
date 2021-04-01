@@ -6,9 +6,9 @@ The 3d non-hydrostatic pressure field is obtained by taking the divergence of th
 \eqref{eq:momentumStar} and invoking the vertical component to yield an elliptic Poisson equation for the
 non-hydrostatic kinematic pressure
 ```math
-\nabla^2\phi_{NH} = \frac{\nabla \cdot \bm{u}^n}{\Delta t} + \nabla \cdot \bm{G}_{\bm{u}} \equiv \mathscr{F} \, ,
+\nabla^2\phi_{NH} = \frac{\nabla \cdot \boldsymbol{u}^n}{\Delta t} + \nabla \cdot \boldsymbol{G}_{\boldsymbol{u}} \equiv \mathscr{F} \, ,
 ```
-along with homogenous Neumann boundary conditions ``\bm{u} \cdot \bm{\hat{n}} = 0`` (Neumann on ``\phi`` for wall-bounded
+along with homogenous Neumann boundary conditions ``\boldsymbol{u} \cdot \boldsymbol{\hat{n}} = 0`` (Neumann on ``\phi`` for wall-bounded
 directions and periodic otherwise) and where ``\mathscr{F}`` denotes the source term for the Poisson equation.
 
 For hydrostatic problems the Poisson equation above only needs to be solved for the vertically integrated flow
@@ -18,7 +18,7 @@ is not needed.
 ## Direct method
 
 Discretizing elliptic problems that can be solved via a classical separation-of-variables approach, such as Poisson's
-equation, results in a linear system of equations ``M\bm{x} = \bm{y}`` where ``M`` is a real symmetric matrix of block
+equation, results in a linear system of equations ``M\boldsymbol{x} = \boldsymbol{y}`` where ``M`` is a real symmetric matrix of block
 tridiagonal form. This allows for the matrix to be decomposed and solved efficiently, provided that the eigenvalues and
 eigenvectors of the blocks are known (§2) [Buzbee70](@cite). In the case of Poisson's equation on a rectangle,
 [Hockney65](@cite) has taken advantage of the fact that the fast Fourier transform can be used to perform the matrix
@@ -217,7 +217,7 @@ and apply the discrete form to the hydrostatic form of the velocity fractional s
 
 ```math
     \tag{eq:hydrostatic-fractional-step}
-    \bm{u}^{n+1} = \bm{u}^{\star} - g\Delta t \bm{\nabla} \eta^{n+1} .
+    \boldsymbol{u}^{n+1} = \boldsymbol{u}^{\star} - g\Delta t \boldsymbol{\nabla} \eta^{n+1} .
 ```
 
 as follows.

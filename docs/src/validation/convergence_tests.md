@@ -141,8 +141,8 @@ where subscript denote derivatives such that ``\psi_y \equiv \partial_y \psi``, 
 With an isotropic Laplacian viscosity ``\nu = 1``, the momentum and continuity equations are
 ```math
 \begin{aligned}
-\bm{u}_t + \left ( \bm{u} \cdot \nabla \right ) \bm{u} + \nabla p &= \nabla^2 \bm{u} + \bm{F}_u \, , \\
-\nabla \cdot \bm{u} &= 0 \, ,
+\boldsymbol{u}_t + \left ( \boldsymbol{u} \cdot \nabla \right ) \boldsymbol{u} + \nabla p &= \nabla^2 \boldsymbol{u} + \boldsymbol{F}_u \, , \\
+\nabla \cdot \boldsymbol{u} &= 0 \, ,
 \end{aligned}
 ```
 while the equation for vorticity, ``\omega = v_x - u_y = \nabla^2 \psi``, is

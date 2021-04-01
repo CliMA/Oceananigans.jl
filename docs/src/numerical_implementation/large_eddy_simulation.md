@@ -8,11 +8,11 @@ Much of the early work on LES was motivated by the study of atmospheric boundary
 by [Smagorinsky63](@cite) and [Lilly66](@cite), then first implemented by [Deardorff70](@cite) and [Deardorff74](@cite).
 
 In the LES framework, the Navier-Stokes equations are averaged in the same way as [Reynolds1895](@cite) except that the
-mean field ``\overline{\bm{u}}`` is obtained via convolution with a filter convolution kernel ``G``
+mean field ``\overline{\boldsymbol{u}}`` is obtained via convolution with a filter convolution kernel ``G``
 ```math
-\overline{\bm{u}(\bm{x}, t)} = G \star \bm{u} =
+\overline{\boldsymbol{u}(\boldsymbol{x}, t)} = G \star \boldsymbol{u} =
   \int_{-\infty}^\infty \int_{-\infty}^\infty
-  \bm{u}(\bm{x}^\prime, t) G(\bm{x} - \bm{x}^\prime, t - \tau) \, d\bm{x}^\prime \, d\tau \, ,
+  \boldsymbol{u}(\boldsymbol{x}^\prime, t) G(\boldsymbol{x} - \boldsymbol{x}^\prime, t - \tau) \, d\boldsymbol{x}^\prime \, d\tau \, ,
 ```
 as described by [Leonard75](@cite) who introduced the general filtering formalism.
 
@@ -21,22 +21,22 @@ tensor ``\tau^\text{SGS}_{ij}``, which looks the same as the Reynolds stress ten
 
 It is probably important to note that the large eddy simulation filtering operation does not satisfy the properties
 of a Reynolds operator (§2.1)[sagaut06](@cite) and that in general, the filtered residual is not zero:
-``\overline{\bm{u}^\prime(\bm{x}, t)} \ne 0``.
+``\overline{\boldsymbol{u}^\prime(\boldsymbol{x}, t)} \ne 0``.
 
 §13.2 of [Pope00](@cite) lists a number of popular choices for the filter function ``G``. For practical reasons we
 simply employ the box kernel
 ```math
-  G_\Delta = G(\bm{x}, t) = \frac{1}{\Delta} H \left( \frac{1}{2}\Delta - |\bm{x}| \right) \delta(t - t_n) \, ,
+  G_\Delta = G(\boldsymbol{x}, t) = \frac{1}{\Delta} H \left( \frac{1}{2}\Delta - |\boldsymbol{x}| \right) \delta(t - t_n) \, ,
 ```
 where ``H`` is the Heaviside function, ``\Delta`` is the grid spacing, and ``t_n`` is the current time step. With
 \eqref{eq:box-kernel} we get back the averaging operator originally used by [Deardorff70](@cite)
 ```math
-\overline{\bm{u}(x, y, z, t)} =
+\overline{\boldsymbol{u}(x, y, z, t)} =
   \frac{1}{\Delta x \Delta y \Delta z}
   \int_{x - \frac{1}{2}\Delta x}^{x + \frac{1}{2}\Delta x}
   \int_{y - \frac{1}{2}\Delta y}^{y + \frac{1}{2}\Delta y}
   \int_{z - \frac{1}{2}\Delta z}^{z + \frac{1}{2}\Delta z}
-  \bm{u}(\xi, \eta, \zeta, t) \, d\xi \, d\eta \, d\zeta \, ,
+  \boldsymbol{u}(\xi, \eta, \zeta, t) \, d\xi \, d\eta \, d\zeta \, ,
 ```
 which if evaluated at the cell centers just returns the cell averages we already compute in the finite volume method.
 
