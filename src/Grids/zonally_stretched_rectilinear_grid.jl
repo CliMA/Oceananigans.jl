@@ -43,54 +43,50 @@ generate_regular_grid(FT,   ::Type{Flat}, Lx, x, N, H) = 0, 0, 1, 1
 
 function generate_regular_grid(FT, topo, Lx, x, N, H)
 
+    # uniform spacing
     Δx = Lx / N
 
-   TFx = total_length(Face,   topo, N, H) 
-   TCx = total_length(Center, topo, N, H)
+   # Total length of xᶠ and xᶜ
+   Txᶠ = total_length(Face,   topo, N, H) 
+   Txᶜ = total_length(Center, topo, N, H)
 
-   xF₋ = x[1] - H * Δx
-   xF₊ = xF₋  + total_extent(topo, H, Δx, Lx)
+   # Halo locations on left and right
+   xᶠ₋ = x[1] - H * Δx
+   xᶠ₊ = xᶠ₋  + total_extent(topo, H, Δx, Lx)
+   xᶜ₋ = xᶠ₋ + Δx / 2
+   xᶜ₊ = xᶜ₋ + Lx + Δx * (2 * H - 1)
 
-   xC₋ = xF₋ + Δx / 2
-   xC₊ = xC₋ + Lx + Δx * (2 * H - 1)
-
-    xᶠ = collect(range(xF₋, xF₊; length = TFx))  
-    xᶜ = collect(range(xC₋, xC₊; length = TCx))
-
-    xᶠ = OffsetArray(xᶠ, -H)
-    xᶜ = OffsetArray(xᶜ, -H)
+    # Construct locations of face and cell centers 
+    xᶠ = OffsetArray(collect(range(xᶠ₋, xᶠ₊; length = Txᶠ)), -H)
+    xᶜ = OffsetArray(collect(range(xᶜ₋, xᶜ₊; length = Txᶜ)), -H)
 
    return xᶜ, xᶠ, Δx, Δx
 end
 
-# FJP: should not use periodic in a stretched direction!!!!
+# FJP: How to deal with periodic domains? Depends on how halos are extended
 generate_stretched_grid(FT, ::Type{Flat}, Lx, x, N, H) = 0, 0, 1, 1
 
 function generate_stretched_grid(FT, topo, Lx, x, N, H)
 
-    TFx = total_length(Face,   topo, N, H) 
-    TCx = total_length(Center, topo, N, H)
+    # Total length of xᶠ and xᶜ
+    Txᶠ = total_length(Face,   topo, N, H) 
+    Txᶜ = total_length(Center, topo, N, H)
 
-    interior_xᶠ = x[1] .+ Lx*collect(0:1/N:1).^2        # assume quadratic spacing for now
+    interior_xᶠ = x[1] .+ Lx*collect(range(0, 1, length=N+1)).^2        # assume quadratic spacing for now
 
     # Find withs near boundaries
-    ΔxF₋ = interior_xᶠ[2]   - interior_xᶠ[1]
-    ΔxF₊ = interior_xᶠ[end] - interior_xᶠ[end-1]
+    Δxᶠ₋ = interior_xᶠ[2]   - interior_xᶠ[1]
+    Δxᶠ₊ = interior_xᶠ[end] - interior_xᶠ[end-1]
 
-    # Build halos of constant width and cell faces
-    xF₋ = [x[1]   - ΔxF₋*sum(i) for i=1:H]
-    xF₊ = [x[end] + ΔxF₊*sum(i) for i=1:H]
-     xᶠ = vcat(xF₋, interior_xᶠ, xF₊)
-    Δxᶠ = [  xᶠ[i+1] - xᶠ[i]        for i = 1:TFx-1 ]
+    # Halos have constant widths
+    xᶠ₋ = [x[1]   - Δxᶠ₋ * sum(i) for i=1:H]
+    xᶠ₊ = [x[end] + Δxᶠ₊ * sum(i) for i=1:H]
 
-    # Build cell centers, cell spacings 
-      xᶜ = [ (xᶠ[i + 1] + xᶠ[i]) / 2 for i = 1:TCx   ]
-     Δxᶜ = [  xᶜ[i] - xᶜ[i - 1]      for i = 2:TCx   ]
-
-      xᶠ = OffsetArray(xᶠ,  -H)
-      xᶜ = OffsetArray(xᶜ,  -H)
-     Δxᶜ = OffsetArray(Δxᶜ, -H)
-     Δxᶠ = OffsetArray(Δxᶠ, -H)
+    # Build shifted grids
+     xᶠ = OffsetArray(vcat(xᶠ₋, interior_xᶠ, xᶠ₊),                       -H)
+     xᶜ = OffsetArray([(xᶠ[i + 1] + xᶠ[i]) / 2 for i = (1-H):(Txᶜ-H)],   -H)
+    Δxᶜ = OffsetArray([xᶜ[i]     - xᶜ[i - 1]  for i = (2-H):(Txᶜ-H)],   -H)
+    Δxᶠ = OffsetArray([xᶠ[i+1]   - xᶠ[i]      for i = (1-H):(Txᶠ-1-H)], -H)
 
    return xᶜ, xᶠ, Δxᶜ, Δxᶠ
 end
@@ -119,7 +115,7 @@ function ZonallyStretchedRectilinearGrid(FT=Float64;
        yᶜ, yᶠ, Δyᶜ, Δyᶠ = generate_regular_grid(FT,   topology[2], Ly, y, Ny, Hy)
        zᶜ, zᶠ, Δzᶜ, Δzᶠ = generate_regular_grid(FT,   topology[3], Lz, z, Nz, Hz)
 
-       return ZonallyStretchedRectilinearGrid{FT, TX, TY, TZ, typeof(xᶜ), typeof(yᶠ), typeof(zᶠ)}(
+       return ZonallyStretchedRectilinearGrid{FT, TX, TY, TZ, typeof(xᶜ), typeof(yᶜ), typeof(zᶜ)}(
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, xᶜ, yᶜ, zᶜ, xᶠ, yᶠ, zᶠ, Δxᶜ, Δxᶠ, Δyᶜ, Δzᶜ)
 end
 
@@ -127,20 +123,27 @@ end
 ##### Vertically stretched grid utilities
 #####
 
-#=
 short_show(grid::ZonallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     "ZonallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
-function show(io::IO, g::ZonallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    Δx_min = minimum(view(g.Δxᶜ, 1:g.Nx))
-    Δx_max = maximum(view(g.Δxᶜ, 1:g.Nx))
+
+function long_show(io::IO, grid::ZonallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     print(io, "ZonallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
-              "                   domain: $(domain_string(g))\n",
-              "                 topology: ", (TX, TY, TZ), '\n',
-              "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
-              "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
-              "grid spacing (Δx, Δy, Δz): , [min=", Δx_min, ", max=", Δx_max,"])", g.Δyᶜ, ", ", g.Δzᶜ,)
+              "                    domain: (Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz)) \n\n")
+    print(io, "Hello, World!\n")
 end
-=#
+
+function show(io::IO, g::ZonallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    "ZonallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
+    #print("Hello, World!")
+    #Δx_min = minimum(view(g.Δxᶜ, 1:g.Nx))
+    #Δx_max = maximum(view(g.Δxᶜ, 1:g.Nx))
+    #print(io, "ZonallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
+    #          "                   domain: $(domain_string(g))\n",
+    #          "                 topology: ", (TX, TY, TZ), '\n',
+    #          "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
+    #          "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
+    #          "grid spacing (Δx, Δy, Δz): , [min=", Δx_min, ", max=", Δx_max,"])", g.Δyᶜ, ", ", g.Δzᶜ,)
+end
 
 #=
 Adapt.adapt_structure(to, grid::ZonallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
