@@ -119,14 +119,14 @@ of eddy viscosity and diffusivity *predictors*
 ```
 to ensure that ``\nu_e \ge 0`` and ``\kappa_e \ge 0``, where ``\nu`` and ``\kappa`` are the
 constant isotropic background viscosity and diffusivities for each tracer.
-The eddy viscosity predictor is
+ is
 ```math
     \tag{eq:nu-dagger}
     \nu_e^\dagger = -(C \Delta_f)^2
     \frac
         {\left( \hat{\partial}_k \hat{u}_i \right) \left( \hat{\partial}_k \hat{u}_j \right) \hat{\Sigma}_{ij}
         + C_b \hat{\delta}_{i3} \left( \hat{\partial}_k \hat{u_i} \right) \hat{\partial}_k b}
-        {\left( \hat{\partial}_l \hat{u}_m \right) \left( \hat{\partial}_l \hat{u}_m \right)}
+        {\left( \hat{\partial}_l \hat{u}_m \right) \left( \hat{\partial}_l \hat{u}_m \right)} \, ,
 ```
 while the eddy diffusivity predictor for tracer ``c`` is
 ```math
