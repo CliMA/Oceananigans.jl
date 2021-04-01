@@ -55,7 +55,7 @@ With this form the kinematic stress divergence becomes
 and diffusive flux divergence
 ```math
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c = - \left [ \kappa_{h} \left ( \partial_x^2 + \partial_y^2 \right )^2
-                                    + \kappa_{v} \partial_z^4 \right ] c \, .
+                                    + \kappa_{v} \partial_z^4 \right ] c \, ,
 ```
 in terms of the horizontal biharmonic viscosities and diffusivities ``\nu_h`` and ``\kappa_{h}`` and the
 vertical biharmonic viscosity and diffusivities ``\nu_v`` and ``\kappa_{v}``.
@@ -76,7 +76,7 @@ The eddy viscosity is given by
     \tag{eq:smagorinsky-viscosity}
 ```
 where ``\Delta_f`` is the "filter width" associated with the finite volume grid spacing,
-``C`` is a user-specified model constant, ``\Sigma^2 \equiv \Sigma_{ij} \Sigma{ij}``, and
+``C`` is a user-specified model constant, ``\Sigma^2 \equiv \Sigma_{ij} \Sigma_{ij}``, and
 ``\nu`` is a constant isotropic background viscosity.
 The factor ``\Upsilon(Ri)`` reduces ``\nu_e`` in regions of
 strong stratification where the resolved gradient Richardson number
