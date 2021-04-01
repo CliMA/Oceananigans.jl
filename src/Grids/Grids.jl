@@ -4,8 +4,9 @@ export
     Center, Face,
     AbstractTopology, Periodic, Bounded, Flat, topology,
     AbstractGrid, halo_size,
-    AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RegularLatitudeLongitudeGrid,
-    ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid,
+    AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid,
+    AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid,
+    RegularLatitudeLongitudeGrid, ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid,
     xnode, ynode, znode, xnodes, ynodes, znodes, nodes,
     xC, xF, yC, yF, zC, zF
 
