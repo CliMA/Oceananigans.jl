@@ -39,7 +39,7 @@ end
 flip(::Type{Face}) = Center
 flip(::Type{Center}) = Face
 
-const LocationType = Union{Type{Face}, Type{Center}}
+const LocationType = Union{Type{Face}, Type{Center}, Type{Nothing}}
 
 """Return the x-derivative function acting at (`X`, `Y`, `Any`)."""
 ∂x(X::LocationType, Y::LocationType, Z::LocationType) = eval(Symbol(:∂x, interpolation_code(flip(X)), interpolation_code(Y), :ᵃ))
