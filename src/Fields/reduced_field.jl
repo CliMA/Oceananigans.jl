@@ -132,7 +132,10 @@ function ReducedField(Xr, Yr, Zr, arch, grid; dims, data=nothing,
     return ReducedField{X, Y, Z}(data, grid, dims, boundary_conditions)
 end
 
-ReducedField(loc::Tuple, args...; kwargs...) = ReducedField(loc..., args...; kwargs...)
+function Base.similar(r::ReducedField{X, Y, Z}) where {X, Y, Z}
+    arch = architecture(r.data)
+    return ReducedField(X, Y, Z, arch, r.grid; dims=r.dims, boundary_conditions=r.boundary_conditions)
+end
 
 #####
 ##### ReducedField utils
