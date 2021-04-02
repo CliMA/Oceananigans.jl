@@ -67,6 +67,11 @@ import Oceananigans.CubedSpheres: maybe_replace_with_face
 maybe_replace_with_face(velocities::PrescribedVelocityFields, cubed_sphere_grid, face_number) =
     PrescribedVelocityFields(velocities.u.faces[face_number], velocities.v.faces[face_number], velocities.w.faces[face_number], velocities.parameters)
 
+import Oceananigans.CubedSpheres: fill_horizontal_velocity_halos!
+
+# We will use prescribed velocity `Field`s
+fill_horizontal_velocity_halos!(u, v, arch) = nothing
+
 #####
 ##### state checker for debugging
 #####
@@ -112,7 +117,7 @@ grid = ConformalCubedSphereGrid(cs32_filepath, Nz=1, z=(-H, 0))
 
 R = grid.faces[1].radius  # radius of the sphere (m)
 u₀ = 2π*R / (12days)  # advecting velocity (m/s)
-α = 0  # angle between the axis of solid body rotation and the polar axis (degrees)
+α = 60  # angle between the axis of solid body rotation and the polar axis (degrees)
 
 # U(λ, φ, z) = u₀ * (cosd(φ) * cosd(α) + sind(φ) * cosd(λ) * sind(α))
 # V(λ, φ, z) = - u₀ * sind(λ) * sind(α)
@@ -122,6 +127,7 @@ u₀ = 2π*R / (12days)  # advecting velocity (m/s)
 Ψᶠᶠᶜ = Field(Face, Face,   Center, CPU(), grid, nothing, nothing)
 Uᶠᶜᶜ = Field(Face, Center, Center, CPU(), grid, nothing, nothing)
 Vᶜᶠᶜ = Field(Center, Face, Center, CPU(), grid, nothing, nothing)
+Wᶜᶜᶠ = Field(Center, Center, Face, CPU(), grid, nothing, nothing)  # So we can use CFL
 
 for (f, grid_face) in enumerate(grid.faces)
     for i in 1:grid_face.Nx+1, j in 1:grid_face.Ny+1
@@ -142,7 +148,7 @@ model = HydrostaticFreeSurfaceModel(
     architecture = CPU(),
             grid = grid,
          tracers = :h,
-      velocities = PrescribedVelocityFields(u=Uᶠᶜᶜ, v=Vᶜᶠᶜ),
+      velocities = PrescribedVelocityFields(u=Uᶠᶜᶜ, v=Vᶜᶠᶜ, w=Wᶜᶜᶠ),
     free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
         coriolis = nothing,
          closure = nothing,
@@ -164,7 +170,9 @@ set!(model, h=cosine_bell)
 
 ## Simulation setup
 
-Δt = 20minutes
+Δt = 10minutes
+
+cfl = CFL(Δt, accurate_cell_advection_timescale)
 
 mutable struct Progress
     interval_start_time :: Float64
@@ -173,11 +181,12 @@ end
 function (p::Progress)(sim)
     wall_time = (time_ns() - p.interval_start_time) * 1e-9
 
-    @info @sprintf("Time: %s, iteration: %d, extrema(h): (min=%.2e, max=%.2e), wall time: %s",
+    @info @sprintf("Time: %s, iteration: %d, extrema(h): (min=%.2e, max=%.2e), CFL: %.2e, wall time: %s",
                    prettytime(sim.model.clock.time),
                    sim.model.clock.iteration,
                    minimum(abs, sim.model.tracers.h),
                    maximum(abs, sim.model.tracers.h),
+                   cfl(model),
                    prettytime(wall_time))
 
     p.interval_start_time = time_ns()
@@ -187,7 +196,7 @@ end
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 2days,
+                        stop_time = 3days,
                         iteration_interval = 1,
                         progress = Progress(time_ns()))
 
