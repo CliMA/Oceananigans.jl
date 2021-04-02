@@ -102,12 +102,20 @@ function Base.show(io::IO, grid::StretchedRectilinearGrid{FT, TX, TY, TZ}) where
     Δy_min, Δy_max = minimum(grid.Δyᵃᶜᵃ), maximum(grid.Δyᵃᶜᵃ)
     Δz_min, Δz_max = minimum(grid.Δzᵃᵃᶜ), maximum(grid.Δzᵃᵃᶜ)
  
-    print(io, "StretchedRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
-              "             domain: (Lx=$(grid.Lx),        Ly=$(grid.Ly),      Lz=$(grid.Lz))\n",
-              "         resolution: (Nx=$(grid.Nx),          Ny=$(grid.Ny),        Nz=$(grid.Nz))\n",
-              "          halo size: (Hx=$(grid.Hx),          Hy=$(grid.Hy),        Hz=$(grid.Hz))\n",
-              "       grid spacing: (minΔx=$(Δx_min),   minΔy=$(Δy_min),   minΔz=$(Δz_min))\n",
-              "                     maxΔx=$(Δx_max),   maxΔy=$(Δy_max),   maxΔz=$(Δz_max))\n\n   ")
+    print(io, "\nStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
+              "               domain: (Lx=$(grid.Lx),        Ly=$(grid.Ly),      Lz=$(grid.Lz))\n",
+              "           resolution: (Nx=$(grid.Nx),          Ny=$(grid.Ny),        Nz=$(grid.Nz))\n",
+              "            halo size: (Hx=$(grid.Hx),          Hy=$(grid.Hy),        Hz=$(grid.Hz))\n",
+              "         grid spacing: (minΔx=$(Δx_min),   minΔy=$(Δy_min),   minΔz=$(Δz_min))\n",
+              "                       maxΔx=$(Δx_max),   maxΔy=$(Δy_max),   maxΔz=$(Δz_max))\n\n   ")
+end
+
+# We cannot reconstruct a StretchedRectilinearGrid without the zF_generator.
+# So the best we can do is tell the user what they should have done.
+function with_halo(new_halo, old_grid::StretchedRectilinearGrid)
+    new_halo != halo_size(old_grid) &&
+        @error "You need to construct your StretchedRectilinearGrid with the keyword argument halo=$new_halo"
+    return old_grid
 end
 
 short_show(grid::StretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
