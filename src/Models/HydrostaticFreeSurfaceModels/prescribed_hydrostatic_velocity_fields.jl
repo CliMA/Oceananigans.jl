@@ -3,7 +3,7 @@
 #####
 
 using Oceananigans.Grids: Center, Face
-using Oceananigans.Fields: FunctionField
+using Oceananigans.Fields: AbstractField, FunctionField
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
@@ -40,12 +40,15 @@ in `FunctionField` and associated with the model's `grid` and `clock`.
 PrescribedVelocityFields(; u=zerofunc, v=zerofunc, w=zerofunc, parameters=nothing) =
     PrescribedVelocityFields(u, v, w, parameters)
 
+PrescribedField(X, Y, Z, f::Function,      grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
+PrescribedField(X, Y, Z, f::AbstractField, grid; kwargs...) = f
+
 function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields,
                                               arch, grid, clock, bcs)
 
-    u = FunctionField{Face, Center, Center}(velocities.u, grid; clock=clock, parameters=velocities.parameters)
-    v = FunctionField{Center, Face, Center}(velocities.v, grid; clock=clock, parameters=velocities.parameters)
-    w = FunctionField{Center, Center, Face}(velocities.w, grid; clock=clock, parameters=velocities.parameters)
+    u = PrescribedField(Face, Center, Center, velocities.u, grid; clock=clock, parameters=velocities.parameters)
+    v = PrescribedField(Center, Face, Center, velocities.v, grid; clock=clock, parameters=velocities.parameters)
+    w = PrescribedField(Center, Center, Face, velocities.w, grid; clock=clock, parameters=velocities.parameters)
 
     return PrescribedVelocityFields(u, v, w, velocities.parameters)
 end
