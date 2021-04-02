@@ -44,19 +44,21 @@ function sides_in_the_same_dimension(side1, side2)
 end
 
 function cubed_sphere_halo(cubed_sphere_field, location, face_number, side)
+    LX, LY, LZ = location
     src_field = cubed_sphere_field.faces[face_number]
-    side == :west  && return  underlying_west_halo(src_field.data, src_field.grid, location)
-    side == :east  && return  underlying_east_halo(src_field.data, src_field.grid, location)
-    side == :south && return underlying_south_halo(src_field.data, src_field.grid, location)
-    side == :north && return underlying_north_halo(src_field.data, src_field.grid, location)
+    side == :west  && return  underlying_west_halo(src_field.data, src_field.grid, LX)
+    side == :east  && return  underlying_east_halo(src_field.data, src_field.grid, LX)
+    side == :south && return underlying_south_halo(src_field.data, src_field.grid, LY)
+    side == :north && return underlying_north_halo(src_field.data, src_field.grid, LY)
 end
 
 function cubed_sphere_boundary(cubed_sphere_field, location, face_number, side)
+    LX, LY, LZ = location
     src_field = cubed_sphere_field.faces[face_number]
-    side == :west  && return  underlying_west_boundary(src_field.data, src_field.grid, location)
-    side == :east  && return  underlying_east_boundary(src_field.data, src_field.grid, location)
-    side == :south && return underlying_south_boundary(src_field.data, src_field.grid, location)
-    side == :north && return underlying_north_boundary(src_field.data, src_field.grid, location)
+    side == :west  && return  underlying_west_boundary(src_field.data, src_field.grid, LX)
+    side == :east  && return  underlying_east_boundary(src_field.data, src_field.grid, LX)
+    side == :south && return underlying_south_boundary(src_field.data, src_field.grid, LY)
+    side == :north && return underlying_north_boundary(src_field.data, src_field.grid, LY)
 end
 
 function fill_west_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed_sphere_grid::ConformalCubedSphereGrid, cubed_sphere_field) where {LX, LY, LZ}

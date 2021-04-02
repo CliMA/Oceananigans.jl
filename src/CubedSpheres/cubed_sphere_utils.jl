@@ -1,5 +1,6 @@
 using Oceananigans.Fields: AbstractField
 using Oceananigans.Grids:
+    Face, Bounded,
     interior_indices,
     left_halo_indices, right_halo_indices,
     underlying_left_halo_indices, underlying_right_halo_indices
@@ -78,6 +79,7 @@ underlying_left_boundary_indices(loc, topo, N, H) = 1+H:2H
 underlying_left_boundary_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
 
 underlying_right_boundary_indices(loc, topo, N, H) = N+1:N+H
+underlying_right_boundary_indices(::Type{Face}, ::Type{Bounded}, N, H) = N+2:N+H+1
 underlying_right_boundary_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
 
 underlying_west_boundary(f, grid, location) =
