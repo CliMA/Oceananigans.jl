@@ -31,17 +31,10 @@ The operators in this file fall into three categories:
 @inline Δy(i, j, k, grid::ARG) = grid.Δy
 
 #=
-#FJP: do we need to define ΔxC and ΔxF?
-@inline ΔxC(i, j, k, grid::RegularRectilinearGrid) = grid.Δx
+#FJP: do we need to define ΔxC and ΔxF?  Need to think about this more
 @inline ΔxC(i, j, k, grid::StretchedRectilinearGrid) = @inbounds grid.Δxᶠᵃᵃ[i]
-
-@inline ΔxF(i, j, k, grid::RegularRectilinearGrid) = grid.Δx
 @inline ΔxF(i, j, k, grid::StretchedRectilinearGrid) = @inbounds grid.Δxᶜᵃᵃ[i]
-
-@inline Δxᶠᵃᵃ(i, j, k, grid::RegularRectilinearGrid) = grid.Δx
 @inline Δxᶠᵃᵃ(i, j, k, grid::StretchedRectilinearGrid) = @inbounds grid.Δxᶠᵃᵃ[i]
-
-@inline Δxᶜᵃᵃ(i, j, k, grid::RegularRectilinearGrid) = grid.Δx
 @inline Δxᶜᵃᵃ(i, j, k, grid::StretchedRectilinearGrid) = @inbounds grid.Δxᶜᵃᵃ[i]
 =#
 
