@@ -25,16 +25,15 @@ ImplicitFreeSurface(; gravitational_acceleration=g_Earth) =
 
 # Internal function for HydrostaticFreeSurfaceModel
 function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arch, grid)
-    #η = CenterField(arch, grid, TracerBoundaryConditions(grid))
-    η = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
+    η = FreeSurfaceDisplacementField(velocities, arch, grid)
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
 
-    barotropic_x_volume_flux = ReducedField(Face, Center, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
-    barotropic_y_volume_flux = ReducedField(Center, Face, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
+    barotropic_x_volume_flux = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
+    barotropic_y_volume_flux = ReducedField(Center, Face, Nothing, arch, grid; dims=3)
     barotropic_volume_flux = (u=barotropic_x_volume_flux, v=barotropic_y_volume_flux)
 
-    Ax_zintegral = ReducedField(Face, Center, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
-    Ay_zintegral = ReducedField(Center, Face, Nothing, arch, grid; dims=(3), boundary_conditions=nothing)
+    Ax_zintegral = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
+    Ay_zintegral = ReducedField(Center, Face, Nothing, arch, grid; dims=3)
     vertically_integrated_lateral_face_areas = (Ax = Ax_zintegral, Ay=Ay_zintegral)
     compute_vertically_integrated_lateral_face_areas!(vertically_integrated_lateral_face_areas, grid, arch)
 
