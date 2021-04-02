@@ -114,64 +114,8 @@ R = grid.faces[1].radius  # radius of the sphere (m)
 u₀ = 2π*R / (12days)  # advecting velocity (m/s)
 α = 0  # angle between the axis of solid body rotation and the polar axis (degrees)
 
-U(λ, φ, z) = u₀ * (cosd(φ) * cosd(α) + sind(φ) * cosd(λ) * sind(α))
-V(λ, φ, z) = - u₀ * sind(λ) * sind(α)
-
-U1(λ, φ, z) = U(λ, φ, z)
-V1(λ, φ, z) = V(λ, φ, z)
-
-U2(λ, φ, z) = U(λ, φ, z)
-V2(λ, φ, z) = V(λ, φ, z)
-
-U3(λ, φ, z) = +V(λ, φ, z)
-V3(λ, φ, z) = -U(λ, φ, z)
-
-U4(λ, φ, z) = -V(λ, φ, z)
-V4(λ, φ, z) = +U(λ, φ, z)
-
-U4(λ, φ, z) = -V(λ, φ, z)
-V4(λ, φ, z) = +U(λ, φ, z)
-
-U5(λ, φ, z) = -V(λ, φ, z)
-V5(λ, φ, z) = +U(λ, φ, z)
-
-U6(λ, φ, z) = U(λ, φ, z)
-V6(λ, φ, z) = V(λ, φ, z)
-
-zerofunc(args...) = 0
-
-U_faces = (
-    FunctionField{Face, Center, Center}(U1, grid.faces[1]),
-    FunctionField{Face, Center, Center}(U2, grid.faces[2]),
-    FunctionField{Face, Center, Center}(U3, grid.faces[3]),
-    FunctionField{Face, Center, Center}(U4, grid.faces[4]),
-    FunctionField{Face, Center, Center}(U5, grid.faces[5]),
-    FunctionField{Face, Center, Center}(U6, grid.faces[6]),
-)
-
-V_faces = (
-    FunctionField{Center, Face, Center}(V1, grid.faces[1]),
-    FunctionField{Center, Face, Center}(V2, grid.faces[2]),
-    FunctionField{Center, Face, Center}(V3, grid.faces[3]),
-    FunctionField{Center, Face, Center}(V4, grid.faces[4]),
-    FunctionField{Center, Face, Center}(V5, grid.faces[5]),
-    FunctionField{Center, Face, Center}(V6, grid.faces[6]),
-)
-
-W_faces = (
-    FunctionField{Center, Center, Face}(zerofunc, grid.faces[1]),
-    FunctionField{Center, Center, Face}(zerofunc, grid.faces[2]),
-    FunctionField{Center, Center, Face}(zerofunc, grid.faces[3]),
-    FunctionField{Center, Center, Face}(zerofunc, grid.faces[4]),
-    FunctionField{Center, Center, Face}(zerofunc, grid.faces[5]),
-    FunctionField{Center, Center, Face}(zerofunc, grid.faces[6]),
-)
-
-U_ff = ConformalCubedSphereFunctionField{Face, Center, Center, typeof(U_faces), typeof(grid)}(U_faces)
-V_ff = ConformalCubedSphereFunctionField{Center, Face, Center, typeof(V_faces), typeof(grid)}(V_faces)
-W_ff = ConformalCubedSphereFunctionField{Center, Center, Face, typeof(W_faces), typeof(grid)}(W_faces)
-
-velocities = PrescribedVelocityFields(U_ff, V_ff, W_ff, nothing)
+U(λ, φ, z, t) = u₀ * (cosd(φ) * cosd(α) + sind(φ) * cosd(λ) * sind(α))
+V(λ, φ, z, t) = - u₀ * sind(λ) * sind(α)
 
 ## Model setup
 
@@ -179,8 +123,7 @@ model = HydrostaticFreeSurfaceModel(
     architecture = CPU(),
             grid = grid,
          tracers = :h,
-      velocities = velocities,
-    # velocities = PrescribedVelocityFields(u=U, v=V),
+      velocities = PrescribedVelocityFields(u=U, v=V),
     free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
         coriolis = nothing,
          closure = nothing,
@@ -190,7 +133,7 @@ model = HydrostaticFreeSurfaceModel(
 ## Cosine bell initial condition according to Williamson et al. (1992) §3.1
 
 h₀ = 1000 # meters
-λ₀ = 0    # Central longitude
+λ₀ = -90  # Central longitude
 φ₀ = 0    # Central latitude
 
 # Great circle distance between (λ, φ) and the center of the cosine bell (λ₀, φ₀)
@@ -225,7 +168,7 @@ end
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 1days,
+                        stop_time = 3days,
                         iteration_interval = 1,
                         progress = Progress(time_ns()))
 

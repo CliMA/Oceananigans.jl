@@ -54,14 +54,3 @@ end
 close(file)
 
 run(`ffmpeg -y -i tracer_avection_over_the_poles_%04d.png -c:v libx264 -vf fps=10 -pix_fmt yuv420p out.mp4`)
-
-# U_field = zeros(32, 32, 6)
-# for i in 1:32, j in 1:32, f in 1:6
-#     U_field[i, j, f] = model.velocities.u.faces[f][i, j, 1]
-# end
-# U_field = flatten_cubed_sphere(U_field, (32, 32*6))
-
-# fig = plt.figure(figsize=(16, 9))
-# ax = fig.add_subplot(1, 1, 1, projection=projection)
-# ax.scatter(λ, φ, c=U_field, transform=transform, cmap=cmocean.cm.balance, s=25) #, vmin=-40, vmax=40)
-# plt.show()
