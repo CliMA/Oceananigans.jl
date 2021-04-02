@@ -13,21 +13,22 @@ grid1 = StretchedRectilinearGrid(size=(8, 8, 8),
                                     halo = (1,1,1),
                              topology=(Bounded, Bounded, Bounded),
                               stretch=stretch)
-show(grid1)
 
 grid2 = StretchedRectilinearGrid(size=(8, 8), 
                                     x=(0,8), y=(0,8), 
                              topology=(Bounded, Bounded, Flat),
                               stretch=stretch)
-show(grid2)
 
 grid3 = StretchedRectilinearGrid(size=(8), 
                                     x=(0,8), 
                              topology=(Bounded, Flat, Flat),
                               stretch=stretch)
-show(grid3)
 
 grid4 = StretchedRectilinearGrid(size=(),  
                              topology=(Flat, Flat, Flat),
                               stretch=stretch)
+                            
+show(grid1)
+show(grid2)
+show(grid3)
 show(grid4)
