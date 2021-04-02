@@ -221,4 +221,157 @@ cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
         @test all(i_digits.(north_halo_values) .== 1:32)
         @test all(j_digits.(north_halo_values) .== 1)
     end
+
+    @testset "3W halo <- 1N boundary halo exchange" begin
+        # Grid point (i, j) = (0, 1) in 3W halo should be from (i, j) = (32, 32) in 1N boundary.
+        west_halo_south_value = field.faces[3][0, 1, 1]
+        @test face_digit(west_halo_south_value) == 1
+        @test i_digits(west_halo_south_value) == 32
+        @test j_digits(west_halo_south_value) == 32
+
+        # Grid point (i, j) = (0, 32) in 3W halo should be from (i, j) = (1, 32) in 1N boundary.
+        west_halo_north_value = field.faces[3][0, 32, 1]
+        @test face_digit(west_halo_north_value) == 1
+        @test i_digits(west_halo_north_value) == 1
+        @test j_digits(west_halo_north_value) == 32
+
+        west_halo_values = west_halo(field.faces[3], include_corners=false)[:]
+        @test all(face_digit.(west_halo_values) .== 1)
+        @test all(i_digits.(west_halo_values) .== reverse(1:32))
+        @test all(j_digits.(west_halo_values) .== 32)
+    end
+
+    @testset "3E halo <- 4W boundary halo exchange" begin
+        # Grid point (i, j) = (33, 1) in 3E halo should be from (i, j) = (1, 1) in 4W boundary.
+        east_halo_south_value = field.faces[3][33, 1, 1]
+        @test face_digit(east_halo_south_value) == 4
+        @test i_digits(east_halo_south_value) == 1
+        @test j_digits(east_halo_south_value) == 1
+
+        # Grid point (i, j) = (33, 32) in 3E halo should be from (i, j) = (1, 32) in 4W boundary.
+        east_halo_north_value = field.faces[3][33, 32, 1]
+        @test face_digit(east_halo_north_value) == 4
+        @test i_digits(east_halo_north_value) == 1
+        @test j_digits(east_halo_north_value) == 32
+
+        east_halo_values = east_halo(field.faces[3], include_corners=false)[:]
+        @test all(face_digit.(east_halo_values) .== 4)
+        @test all(i_digits.(east_halo_values) .== 1)
+        @test all(j_digits.(east_halo_values) .== 1:32)
+    end
+
+    @testset "3S halo <- 2N boundary halo exchange" begin
+        # Grid point (i, j) = (1, 0) in 3S halo should be from (i, j) = (1, 32) in 2N boundary.
+        south_halo_west_value = field.faces[3][1, 0, 1]
+        @test face_digit(south_halo_west_value) == 2
+        @test i_digits(south_halo_west_value) == 1
+        @test j_digits(south_halo_west_value) == 32
+
+        # Grid point (i, j) = (32, 0) in 3S halo should be from (i, j) = (32, 32) in 2N boundary.
+        south_halo_east_value = field.faces[3][32, 0, 1]
+        @test face_digit(south_halo_east_value) == 2
+        @test i_digits(south_halo_east_value) == 32
+        @test j_digits(south_halo_east_value) == 32
+
+        south_halo_values = south_halo(field.faces[3], include_corners=false)[:]
+        @test all(face_digit.(south_halo_values) .== 2)
+        @test all(i_digits.(south_halo_values) .== 1:32)
+        @test all(j_digits.(south_halo_values) .== 32)
+    end
+
+    @testset "3N halo <- 5W boundary halo exchange" begin
+        # Grid point (i, j) = (1, 33) in 3N halo should be from (i, j) = (1, 32) in 5W boundary.
+        north_halo_west_value = field.faces[3][1, 33, 1]
+        @test face_digit(north_halo_west_value) == 5
+        @test i_digits(north_halo_west_value) == 1
+        @test j_digits(north_halo_west_value) == 32
+
+        # Grid point (i, j) = (32, 33) in 3N halo should be from (i, j) = (1, 1) in 5W boundary.
+        north_halo_east_value = field.faces[3][32, 33, 1]
+        @test face_digit(north_halo_east_value) == 5
+        @test i_digits(north_halo_east_value) == 1
+        @test j_digits(north_halo_east_value) == 1
+
+        north_halo_values = north_halo(field.faces[3], include_corners=false)[:]
+        @test all(face_digit.(north_halo_values) .== 5)
+        @test all(i_digits.(north_halo_values) .== 1)
+        @test all(j_digits.(north_halo_values) .== reverse(1:32))
+    end
+
+    @testset "4W halo <- 3E boundary halo exchange" begin
+        # Grid point (i, j) = (0, 1) in 4W halo should be from (i, j) = (32, 1) in 3E boundary.
+        west_halo_south_value = field.faces[4][0, 1, 1]
+        @test face_digit(west_halo_south_value) == 3
+        @test i_digits(west_halo_south_value) == 32
+        @test j_digits(west_halo_south_value) == 1
+
+        # Grid point (i, j) = (0, 32) in 4W halo should be from (i, j) = (32, 32) in 1N boundary.
+        west_halo_north_value = field.faces[4][0, 32, 1]
+        @test face_digit(west_halo_north_value) == 3
+        @test i_digits(west_halo_north_value) == 32
+        @test j_digits(west_halo_north_value) == 32
+
+        west_halo_values = west_halo(field.faces[4], include_corners=false)[:]
+        @test all(face_digit.(west_halo_values) .== 3)
+        @test all(i_digits.(west_halo_values) .== 32)
+        @test all(j_digits.(west_halo_values) .== 1:32)
+    end
+
+    @testset "4E halo <- 6S boundary halo exchange" begin
+        # Grid point (i, j) = (33, 1) in 4E halo should be from (i, j) = (32, 1) in 6S boundary.
+        east_halo_south_value = field.faces[4][33, 1, 1]
+        @test face_digit(east_halo_south_value) == 6
+        @test i_digits(east_halo_south_value) == 32
+        @test j_digits(east_halo_south_value) == 1
+
+        # Grid point (i, j) = (33, 32) in 4E halo should be from (i, j) = (1, 1) in 6S boundary.
+        east_halo_north_value = field.faces[4][33, 32, 1]
+        @test face_digit(east_halo_north_value) == 6
+        @test i_digits(east_halo_north_value) == 1
+        @test j_digits(east_halo_north_value) == 1
+
+        east_halo_values = east_halo(field.faces[4], include_corners=false)[:]
+        @test all(face_digit.(east_halo_values) .== 6)
+        @test all(i_digits.(east_halo_values) .== reverse(1:32))
+        @test all(j_digits.(east_halo_values) .== 1)
+    end
+
+    @testset "4S halo <- 2E boundary halo exchange" begin
+        # Grid point (i, j) = (1, 0) in 4S halo should be from (i, j) = (32, 32) in 2E boundary.
+        south_halo_west_value = field.faces[4][1, 0, 1]
+        @test face_digit(south_halo_west_value) == 2
+        @test i_digits(south_halo_west_value) == 32
+        @test j_digits(south_halo_west_value) == 32
+
+        # Grid point (i, j) = (32, 0) in 4S halo should be from (i, j) = (32, 1) in 2E boundary.
+        south_halo_east_value = field.faces[4][32, 0, 1]
+        @test face_digit(south_halo_east_value) == 2
+        @test i_digits(south_halo_east_value) == 32
+        @test j_digits(south_halo_east_value) == 1
+
+        south_halo_values = south_halo(field.faces[4], include_corners=false)[:]
+        @test all(face_digit.(south_halo_values) .== 2)
+        @test all(i_digits.(south_halo_values) .== 32)
+        @test all(j_digits.(south_halo_values) .== reverse(1:32))
+    end
+
+    @testset "4N halo <- 5S boundary halo exchange" begin
+        # Grid point (i, j) = (1, 33) in 4N halo should be from (i, j) = (1, 1) in 5S boundary.
+        north_halo_west_value = field.faces[4][1, 33, 1]
+        @test face_digit(north_halo_west_value) == 5
+        @test i_digits(north_halo_west_value) == 1
+        @test j_digits(north_halo_west_value) == 1
+
+        # Grid point (i, j) = (32, 33) in 4N halo should be from (i, j) = (32, 1) in 5S boundary.
+        north_halo_east_value = field.faces[4][32, 33, 1]
+        @test face_digit(north_halo_east_value) == 5
+        @test i_digits(north_halo_east_value) == 32
+        @test j_digits(north_halo_east_value) == 1
+
+        north_halo_values = north_halo(field.faces[4], include_corners=false)[:]
+        @test all(face_digit.(north_halo_values) .== 5)
+        @test all(i_digits.(north_halo_values) .== 1:32)
+        @test all(j_digits.(north_halo_values) .== 1)
+    end
+
 end
