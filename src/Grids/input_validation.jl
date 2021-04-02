@@ -125,7 +125,7 @@ function validate_vertically_stretched_grid_xy(TX, TY, FT, x, y)
 end
 
 # No difference between this and reglar version, except for extent is taken into consideration
-function validate_zonally_stretched_grid(TX, TY, TZ, FT, extent, x, y, z)
+function validate_stretched_grid(TX, TY, TZ, FT, extent, x, y, z)
 
     x = validate_dimension_specification(TX, x, :x)
     y = validate_dimension_specification(TY, y, :y)
