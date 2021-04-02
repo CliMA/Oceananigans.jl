@@ -46,9 +46,10 @@ function Field(X, Y, Z, arch, grid,
     return Field{X, Y, Z}(data, grid, bcs)
 end
 
-#####
-##### Convenience constructor for Field that uses a 3-tuple of locations rather than a list of locations:
-#####
+function Base.similar(f::Field{X, Y, Z}) where {X, Y, Z}
+    arch = architecture(f.data)
+    return Field(X, Y, Z, arch, f.grid, f.boundary_conditions)
+end
 
 # Type "destantiation": convert Face() to Face and Center() to Center if needed.
 destantiate(X) = typeof(X)
