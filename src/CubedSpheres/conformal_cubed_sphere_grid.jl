@@ -170,9 +170,8 @@ function ConformalCubedSphereGrid(filepath::AbstractString, FT=Float64; Nz, z, r
 end
 
 function Base.show(io::IO, grid::ConformalCubedSphereGrid{FT}) where FT
-    face = grid.faces[1]
-    Nx, Ny, Nz = face.Nx, face.Ny, face.Nz
-    print(io, "ConformalCubedSphereGrid{$FT}: $(length(grid.faces)) faces with size = ($Nx, $Ny, $Nz)")
+    Nx, Ny, Nz, Nf = size(grid)
+    print(io, "ConformalCubedSphereGrid{$FT}: $Nf faces with size = ($Nx, $Ny, $Nz)")
 end
 
 #####

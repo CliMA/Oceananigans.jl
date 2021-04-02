@@ -1,4 +1,5 @@
 using Printf
+using Glob
 using JLD2
 using PyCall
 
@@ -25,6 +26,15 @@ flatten_cubed_sphere(field, size) = reshape(cat(field..., dims=4), size)
 φ = flatten_cubed_sphere((file["grid/faces/$n/φᶜᶜᵃ"][2:33, 2:33] for n in 1:6), size_2d)
 
 ## Plot!
+
+h_end = flatten_cubed_sphere(file["timeseries/h/$(iterations[end])"], size_2d)
+
+fig = plt.figure(figsize=(16, 9))
+ax = fig.add_subplot(1, 1, 1, projection=ccrs.Robinson())
+ax.scatter(λ, φ, c=h_end, transform=ccrs.PlateCarree(), cmap=cmocean.cm.balance, s=25, vmin=0, vmax=1000)
+plt.savefig("h_end.png", dpi=100)
+plt.close(fig)
+@info "Saved: h_end.png"
 
 # projection = ccrs.Orthographic(central_longitude=270)
 projection = ccrs.Robinson()
@@ -54,3 +64,5 @@ end
 close(file)
 
 run(`ffmpeg -y -i tracer_avection_over_the_poles_%04d.png -c:v libx264 -vf fps=10 -pix_fmt yuv420p out.mp4`)
+
+[rm(f) for f in glob("*.png")];

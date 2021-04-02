@@ -70,7 +70,7 @@ maybe_replace_with_face(velocities::PrescribedVelocityFields, cubed_sphere_grid,
 import Oceananigans.CubedSpheres: fill_horizontal_velocity_halos!
 
 # We will use prescribed velocity `Field`s
-fill_horizontal_velocity_halos!(u, v, arch) = nothing
+# fill_horizontal_velocity_halos!(u, v, arch) = nothing
 
 #####
 ##### state checker for debugging
@@ -135,12 +135,20 @@ for (f, grid_face) in enumerate(grid.faces)
     end
 end
 
+fill_halo_regions!(Ψᶠᶠᶜ, CPU())
+fill_halo_regions!(Ψᶠᶠᶜ, CPU()) # get those corners
+
 for (f, grid_face) in enumerate(grid.faces)
-    for i in 1:grid_face.Nx+1, j in 1:grid_face.Ny+1
+    for i in 1:grid_face.Nx+1, j in 1:grid_face.Ny
         Uᶠᶜᶜ.faces[f][i, j, 1] = (Ψᶠᶠᶜ.faces[f][i, j, 1] - Ψᶠᶠᶜ.faces[f][i, j+1, 1]) / grid.faces[f].Δyᶠᶠᵃ[i, j]
+    end
+    for i in 1:grid_face.Nx, j in 1:grid_face.Ny+1
         Vᶜᶠᶜ.faces[f][i, j, 1] = (Ψᶠᶠᶜ.faces[f][i+1, j, 1] - Ψᶠᶠᶜ.faces[f][i, j, 1]) / grid.faces[f].Δxᶠᶠᵃ[i, j]
     end
 end
+
+fill_horizontal_velocity_halos!(Uᶠᶜᶜ, Vᶜᶠᶜ, CPU())
+fill_horizontal_velocity_halos!(Uᶠᶜᶜ, Vᶜᶠᶜ, CPU()) # get those corners
 
 ## Model setup
 
@@ -196,14 +204,16 @@ end
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 3days,
+                        stop_time = 5days,
                         iteration_interval = 1,
                         progress = Progress(time_ns()))
 
 # TODO: Implement NaNChecker for ConformalCubedSphereField
 empty!(simulation.diagnostics)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, model.tracers,
+outputs = (u=Uᶠᶜᶜ, v=Vᶜᶠᶜ, h=model.tracers.h)
+
+simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(1hour),
                                                       prefix = "tracer_advection_over_the_poles",
                                                       force = true)

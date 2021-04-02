@@ -63,7 +63,7 @@ end
 
 function fill_west_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed_sphere_grid::ConformalCubedSphereGrid, cubed_sphere_field) where {LX, LY, LZ}
     location = (LX, LY, LZ)
-    dest_halo = underlying_west_halo(field.data, field.grid, location)
+    dest_halo = underlying_west_halo(field.data, field.grid, LX)
 
     exchange_info = field.boundary_conditions.west.condition
     src_face_number = exchange_info.to_face
@@ -81,7 +81,7 @@ end
 
 function fill_east_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed_sphere_grid::ConformalCubedSphereGrid, cubed_sphere_field) where {LX, LY, LZ}
     location = (LX, LY, LZ)
-    dest_halo = underlying_east_halo(field.data, field.grid, location)
+    dest_halo = underlying_east_halo(field.data, field.grid, LX)
 
     exchange_info = field.boundary_conditions.east.condition
     src_face_number = exchange_info.to_face
@@ -99,7 +99,7 @@ end
 
 function fill_south_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed_sphere_grid::ConformalCubedSphereGrid, cubed_sphere_field) where {LX, LY, LZ}
     location = (LX, LY, LZ)
-    dest_halo = underlying_south_halo(field.data, field.grid, location)
+    dest_halo = underlying_south_halo(field.data, field.grid, LY)
 
     exchange_info = field.boundary_conditions.south.condition
     src_face_number = exchange_info.to_face
@@ -117,7 +117,7 @@ end
 
 function fill_north_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed_sphere_grid::ConformalCubedSphereGrid, cubed_sphere_field) where {LX, LY, LZ}
     location = (LX, LY, LZ)
-    dest_halo = underlying_north_halo(field.data, field.grid, location)
+    dest_halo = underlying_north_halo(field.data, field.grid, LY)
 
     exchange_info = field.boundary_conditions.north.condition
     src_face_number = exchange_info.to_face
