@@ -3,7 +3,7 @@ using Oceananigans.Grids
 using Oceananigans.Grids: R_Earth, interior_indices
 
 import Base: show, size, eltype
-import Oceananigans.Grids: topology
+import Oceananigans.Grids: topology, domain_string
 
 struct CubedSphereFaceConnectivityDetails{F, S}
     face :: F
@@ -176,16 +176,8 @@ function Base.show(io::IO, grid::ConformalCubedSphereGrid{FT}) where FT
 end
 
 #####
-##### Grid utils (this is gonna get messy...)
+##### Nodes for ConformalCubedSphereFaceGrid
 #####
-
-Base.size(grid::ConformalCubedSphereGrid) = (size(grid.faces[1])..., length(grid.faces))
-
-Base.eltype(grid::ConformalCubedSphereGrid{FT}) where FT = FT
-
-topology(::ConformalCubedSphereGrid) = (Bounded, Bounded, Bounded)
-
-# Nodes for ::ConformalCubedSphereFaceGrid
 
 λnode(LX::Face,   LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.λᶠᶠᵃ[i, j]
 λnode(LX::Center, LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.λᶜᶜᵃ[i, j]
@@ -218,3 +210,17 @@ znode(LX, LY, LZ::Center, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.z�
 
 λnodes(LX, LY, LZ, grid::ConformalCubedSphereGrid) = cat(Tuple(λnodes(LX, LY, LZ, grid_face) for grid_face in grid.faces)..., dims=3)
 φnodes(LX, LY, LZ, grid::ConformalCubedSphereGrid) = cat(Tuple(φnodes(LX, LY, LZ, grid_face) for grid_face in grid.faces)..., dims=3)
+
+#####
+##### Grid utils
+#####
+
+Base.size(grid::ConformalCubedSphereGrid) = (size(grid.faces[1])..., length(grid.faces))
+
+Base.eltype(grid::ConformalCubedSphereGrid{FT}) where FT = FT
+
+topology(::ConformalCubedSphereGrid) = (Bounded, Bounded, Bounded)
+
+# Not sure what to put. Gonna leave it blank so that Base.show(io::IO, operation::AbstractOperation) doesn't error.
+domain_string(grid::ConformalCubedSphereFaceGrid) = ""
+domain_string(grid::ConformalCubedSphereGrid) = ""

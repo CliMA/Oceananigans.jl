@@ -84,6 +84,12 @@ const ConformalCubedSphereFaceFunctionField = FunctionField{X, Y, Z, C, P, F, <:
               znode(Z(), Y(), Z(), i, j, k, f.grid))
 
 #####
+##### Computed fields
+#####
+
+
+
+#####
 ##### Pretty printing
 #####
 

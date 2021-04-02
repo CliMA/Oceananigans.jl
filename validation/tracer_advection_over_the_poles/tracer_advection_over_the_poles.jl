@@ -114,8 +114,27 @@ R = grid.faces[1].radius  # radius of the sphere (m)
 u₀ = 2π*R / (12days)  # advecting velocity (m/s)
 α = 0  # angle between the axis of solid body rotation and the polar axis (degrees)
 
-U(λ, φ, z, t) = u₀ * (cosd(φ) * cosd(α) + sind(φ) * cosd(λ) * sind(α))
-V(λ, φ, z, t) = - u₀ * sind(λ) * sind(α)
+# U(λ, φ, z) = u₀ * (cosd(φ) * cosd(α) + sind(φ) * cosd(λ) * sind(α))
+# V(λ, φ, z) = - u₀ * sind(λ) * sind(α)
+
+Ψ(λ, φ, z) = - R * u₀ * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
+
+Ψᶠᶠᶜ = Field(Face, Face,   Center, CPU(), grid, nothing, nothing)
+Uᶠᶜᶜ = Field(Face, Center, Center, CPU(), grid, nothing, nothing)
+Vᶜᶠᶜ = Field(Center, Face, Center, CPU(), grid, nothing, nothing)
+
+for (f, grid_face) in enumerate(grid.faces)
+    for i in 1:grid_face.Nx+1, j in 1:grid_face.Ny+1
+        Ψᶠᶠᶜ.faces[f][i, j, 1] = Ψ(grid_face.λᶠᶠᵃ[i, j], grid_face.φᶠᶠᵃ[i, j], 0)
+    end
+end
+
+for (f, grid_face) in enumerate(grid.faces)
+    for i in 1:grid_face.Nx+1, j in 1:grid_face.Ny+1
+        Uᶠᶜᶜ.faces[f][i, j, 1] = (Ψᶠᶠᶜ.faces[f][i, j, 1] - Ψᶠᶠᶜ.faces[f][i, j+1, 1]) / grid.faces[f].Δyᶠᶠᵃ[i, j]
+        Vᶜᶠᶜ.faces[f][i, j, 1] = (Ψᶠᶠᶜ.faces[f][i+1, j, 1] - Ψᶠᶠᶜ.faces[f][i, j, 1]) / grid.faces[f].Δxᶠᶠᵃ[i, j]
+    end
+end
 
 ## Model setup
 
@@ -123,7 +142,7 @@ model = HydrostaticFreeSurfaceModel(
     architecture = CPU(),
             grid = grid,
          tracers = :h,
-      velocities = PrescribedVelocityFields(u=U, v=V),
+      velocities = PrescribedVelocityFields(u=Uᶠᶜᶜ, v=Vᶜᶠᶜ),
     free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
         coriolis = nothing,
          closure = nothing,
@@ -168,7 +187,7 @@ end
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 3days,
+                        stop_time = 2days,
                         iteration_interval = 1,
                         progress = Progress(time_ns()))
 
