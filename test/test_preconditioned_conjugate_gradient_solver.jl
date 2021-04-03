@@ -1,14 +1,9 @@
 using Statistics
 
-@kernel function ∇²!(grid, f, ∇²f)
-    i, j, k = @index(Global, NTuple)
-    @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
-end
-
 @kernel function implicit_η!(grid, f, implicit_η_f)
     ### Not sure what to call this
     ### it is for left hand side operator in
-    ### (-g∇ₕ² + 1/Δt )ϕⁿ⁺¹=ϕⁿ/Δt + ∇ₕHUˢᵗᵃʳ
+    ### (-g∇ₕ² + 1/Δt )ϕⁿ⁺¹ = ϕⁿ / Δt + ∇ₕHUˢᵗᵃʳ
 
     #
     # g= model.free_surface.gravitational_acceleration
@@ -21,7 +16,7 @@ end
     Δt = 9.81
 
     i, j, k = @index(Global, NTuple)
-    @inbounds implicit_η_f[i, j] = -g * ∇²(i, j, grid, f) + f[i,j]/Δt
+    @inbounds implicit_η_f[i, j] = -g * ∇²ᶜᶜᶜ(i, j, grid, f) + f[i, j] / Δt
 
     # need this for 2d vertically integrated ∇²hᶜᶜᵃ
 end
