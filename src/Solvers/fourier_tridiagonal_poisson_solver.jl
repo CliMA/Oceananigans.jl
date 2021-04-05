@@ -92,12 +92,31 @@ function solve_poisson_equation!(solver::FourierTridiagonalPoissonSolver)
     return nothing
 end
 
-function set_source_term!(solver, R)
+@kernel function calculate_pressure_source_term_fourier_tridiagonal_solver!(RHS, grid, Δt, U★)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds RHS[i, j, k] = ΔzF(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+end
+
+"""
+    set_source_term!(solver, source_term)
+
+Sets the `source_term` ``R`` in the discrete Poisson equation `solver`.
+The Poisson equation is
+
+```math
+\\nabla^2 \\phi = R
+```
+
+where ``\\nabla^2`` is the Laplacian, ``R`` is the Poisson `source_term`,
+and ``\\phi`` is the solution to the Poisson equation.
+"""
+function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
     grid = solver.grid
     arch = solver.architecture
 
     source_term = solver.batched_tridiagonal_solver.f
-    source_term .= R
+    source_term .= source_term
 
     event = launch!(arch, grid, :xyz, multiply_by_Δzᵃᵃᶜ!, source_term, grid, dependencies=Event(device(arch)))
     wait(device(arch), event)
