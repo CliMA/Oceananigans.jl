@@ -295,7 +295,7 @@ end
 #####
 
 function test_vertically_stretched_grid_properties_are_same_type(FT, arch)
-    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, 16), x=(0,1), y=(0,1), zF=collect(0:16))
+    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, 16), x=(0,1), y=(0,1), z=(0, 16), z_stretch=collect(0:16))
 
     @test grid.Lx isa FT
     @test grid.Ly isa FT
@@ -317,7 +317,7 @@ function test_vertically_stretched_grid_properties_are_same_type(FT, arch)
 end
 
 function test_architecturally_correct_stretched_grid(FT, arch, zF)
-    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, length(zF)-1), x=(0, 1), y=(0, 1), zF=zF)
+    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, length(zF)-1), x=(0, 1), y=(0, 1), z=(0, 1), z_stretch=zF)
 
     ArrayType = array_type(arch)
     @test grid.zᵃᵃᶠ  isa OffsetArray{FT, 1, <:ArrayType}
@@ -329,7 +329,7 @@ function test_architecturally_correct_stretched_grid(FT, arch, zF)
 end
 
 function test_correct_constant_grid_spacings(FT, Nz)
-    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz))
+    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Nz), z_stretch=collect(0:Nz))
 
     @test all(grid.Δzᵃᵃᶜ .== 1)
     @test all(grid.Δzᵃᵃᶠ .== 1)
@@ -338,7 +338,7 @@ function test_correct_constant_grid_spacings(FT, Nz)
 end
 
 function test_correct_quadratic_grid_spacings(FT, Nz)
-    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
+    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Nz^2), z_stretch=collect(0:Nz).^2)
 
      zF(k) = (k-1)^2
      zC(k) = (k^2 + (k-1)^2) / 2
@@ -360,7 +360,7 @@ function test_correct_tanh_grid_spacings(FT, Nz)
     S = 3  # Stretching factor
     zF(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
 
-    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=zF)
+    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, 1), z_stretch=zF)
 
      zC(k) = (zF(k) + zF(k+1)) / 2
     ΔzF(k) = zF(k+1) - zF(k)
@@ -593,7 +593,7 @@ end
 
             # Testing show function
             Nz = 20
-            grid = VerticallyStretchedRectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
+            grid = VerticallyStretchedRectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Nz^2), z_stretch=collect(0:Nz).^2)
             show(grid); println();
             @test grid isa VerticallyStretchedRectilinearGrid
         end

@@ -42,20 +42,21 @@ struct VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A} <: AbstractRecti
 end
 
 function VerticallyStretchedRectilinearGrid(FT=Float64; architecture = CPU(),
-                                              size, x, y, zF,
+                                              size, x, y, z,
+                                              z_stretch,
                                               halo = (1, 1, 1),
                                           topology = (Periodic, Periodic, Bounded))
 
     TX, TY, TZ = validate_topology(topology)
     size = validate_size(TX, TY, TZ, size)
     halo = validate_halo(TX, TY, TZ, halo)
-    Lx, Ly, x, y = validate_vertically_stretched_grid_xy(TX, TY, FT, x, y)
+    Lx, Ly, x, y = validate_vertically_stretched_grid_xy(TX, TY, TZ, FT, x, y, z)
 
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
     # Initialize vertically-stretched arrays on CPU
-    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ = generate_stretched_vertical_grid(FT, topology[3], Nz, Hz, zF)
+    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ = generate_stretched_vertical_grid(FT, topology[3], Nz, Hz, z_stretch)
 
     # Construct uniform horizontal grid
     Lh, Nh, Hh, X₁ = (Lx, Ly), size[1:2], halo[1:2], (x[1], y[1])
@@ -116,19 +117,16 @@ end
 get_z_face(z::Function, k) = z(k)
 get_z_face(z::AbstractVector, k) = z[k]
 
-lower_exterior_Δzᵃᵃᶜ(z_topo,          zFi, Hz) = [zFi[end - Hz + k] - zFi[end - Hz + k - 1] for k = 1:Hz]
-lower_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[2]  - zFi[1] for k = 1:Hz]
+lower_exterior_Δzᵃᵃᶜ(z_topo,          zi, Hz) = [zi[end - Hz + k] - zi[end - Hz + k - 1] for k = 1:Hz]
+lower_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zi, Hz) = [zi[2]  - zi[1] for k = 1:Hz]
 
-upper_exterior_Δzᵃᵃᶜ(z_topo,          zFi, Hz) = [zFi[k + 1] - zFi[k] for k = 1:Hz]
-upper_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[end]   - zFi[end - 1] for k = 1:Hz]
-
-function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, zF_generator)
+function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, z_stretch)
 
     # Ensure correct type for zF and derived quantities
     interior_zF = zeros(FT, Nz+1)
 
     for k = 1:Nz+1
-        interior_zF[k] = get_z_face(zF_generator, k)
+        interior_zF[k] = get_z_face(z_stretch, k)
     end
 
     Lz = interior_zF[Nz+1] - interior_zF[1]
@@ -158,7 +156,7 @@ function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, zF_generator)
     return Lz, zF, zC, ΔzF, ΔzC
 end
 
-# We cannot reconstruct a VerticallyStretchedRectilinearGrid without the zF_generator.
+# We cannot reconstruct a VerticallyStretchedRectilinearGrid without the z_stretch.
 # So the best we can do is tell the user what they should have done.
 function with_halo(new_halo, old_grid::VerticallyStretchedRectilinearGrid)
     new_halo != halo_size(old_grid) &&

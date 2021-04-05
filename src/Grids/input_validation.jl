@@ -114,12 +114,14 @@ function validate_regular_grid_domain(TX, TY, TZ, FT, extent, x, y, z)
     return FT(Lx), FT(Ly), FT(Lz), FT.(x), FT.(y), FT.(z)
 end
 
-function validate_vertically_stretched_grid_xy(TX, TY, FT, x, y)
+function validate_vertically_stretched_grid_xy(TX, TY, TZ, FT, x, y, z)
     x = validate_dimension_specification(TX, x, :x)
     y = validate_dimension_specification(TY, y, :y)
+    z = validate_dimension_specification(TZ, z, :z)
 
     Lx = x[2] - x[1]
     Ly = y[2] - y[1]
+    Lz = z[2] - z[1]
 
-    return FT(Lx), FT(Ly), FT.(x), FT.(y)
+    return FT(Lx), FT(Ly), FT(Lz), FT.(x), FT.(y), FT.(z)
 end
