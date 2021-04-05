@@ -143,7 +143,7 @@ GPU runs are generally memory-limited, so it's good to both keep track of and tr
 
 Try to use higher-order schemes as you need fewer grid points to achieve the same resolution
 
-Use nvidia-smi to monitor the memory usage of the GPU
+Use the [`nvidia-smi`)[https://developer.nvidia.com/nvidia-system-management-interface] command line utility to monitor the memory usage of the GPU.
 
 Manually define scratch space to be reused in diagnostics, to avoid creating one scratch space for each separate diagnostic you have.
 
