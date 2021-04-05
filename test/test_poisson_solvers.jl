@@ -146,7 +146,7 @@ end
 
 function vertically_stretched_poisson_solver_correct_answer(FT, arch, topo, Nx, Ny, zF)
     Nz = length(zF) - 1
-    vs_grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), zF=zF)
+    vs_grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(0, 1), z_stretch=zF)
     solver = FourierTridiagonalPoissonSolver(arch, vs_grid)
 
     p_bcs = PressureBoundaryConditions(vs_grid)

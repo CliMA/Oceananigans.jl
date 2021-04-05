@@ -25,7 +25,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
     regression_data_filepath = joinpath(dirname(@__FILE__), "data", "thermal_bubble_regression.nc")
-
+    
     ####
     #### Uncomment the block below to generate regression data.
     ####
