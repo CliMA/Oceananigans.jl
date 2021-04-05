@@ -54,12 +54,13 @@ function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
 
     # Set up batched tridiagonal solver
     rhs_storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
+
     btsolver = BatchedTridiagonalSolver(arch,
-                                        dl = lower_diagonal,
-                                         d = diagonal,
-                                        du = upper_diagonal,
-                                         f = rhs_storage,
-                                        grid = grid)
+                                        grid = grid,
+                                          dl = lower_diagonal,
+                                           d = diagonal,
+                                          du = upper_diagonal,
+                                           f = rhs_storage)
 
     # Need buffer for index permutations and transposes.
     buffer_needed = arch isa GPU && Bounded in (TX, TY) ? true : false
