@@ -88,6 +88,8 @@ function StretchedRectilinearGrid(FT=Float64;
              Hx, Hy, Hz  = halo
                       L = (Lx, Ly, Lz)
 
+        # What if stretch is nothing????  set default to linear
+    
        xᶜᵃᵃ, xᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᵃᵃ = generate_grid(FT, topology[1], Lx, x, Nx, Hx, stretch["x"])
        yᵃᶜᵃ, yᵃᶠᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ = generate_grid(FT, topology[2], Ly, y, Ny, Hy, stretch["y"])
        zᵃᵃᶜ, zᵃᵃᶠ, Δzᵃᵃᶜ, Δzᵃᵃᶠ = generate_grid(FT, topology[3], Lz, z, Nz, Hz, stretch["z"])
