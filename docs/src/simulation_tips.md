@@ -116,9 +116,9 @@ using Oceananigans.Fields: KernelComputedField
 @kernel function kinetic_energy_ccc!(tke, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
     @inbounds tke[i, j, k] = (
-                              ℑxᶜᵃᵃ(i, j, k, grid, ψ², u) + # Interpolate x to center
-                              ℑyᵃᶜᵃ(i, j, k, grid, ψ², v) + # Interpolate y to center
-                              ℑzᵃᵃᶜ(i, j, k, grid, ψ², w)   # Interpolate z to center
+                              ℑxᶜᵃᵃ(i, j, k, grid, ψ², u) + # Calculates u^2 using function ψ² and then interpolates in x to grid center
+                              ℑyᵃᶜᵃ(i, j, k, grid, ψ², v) + # Calculates v^2 using function ψ² and then interpolates in y to grid center
+                              ℑzᵃᵃᶜ(i, j, k, grid, ψ², w)   # Calculates w^2 using function ψ² and then interpolates in z to grid center
                              ) / 2
 end
 
