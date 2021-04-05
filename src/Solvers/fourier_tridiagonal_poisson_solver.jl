@@ -14,13 +14,13 @@ end
     Nz = grid.Nz
 
     # Using a homogeneous Neumann (zero Gradient) boundary condition:
-    D[i, j, 1] = - 1 / ΔzC(i, j, 2, grid) - ΔzF(i, j, 1, grid) * (λx[i] + λy[j])
+    D[i, j, 1] = - 1 / Δzᵃᵃᶠ(i, j, 2, grid) - Δzᵃᵃᶜ(i, j, 1, grid) * (λx[i] + λy[j])
 
     @unroll for k in 2:Nz-1
-        D[i, j, k] = - (1 / ΔzC(i, j, k+1, grid) + 1 / ΔzC(i, j, k, grid)) - ΔzF(i, j, k, grid) * (λx[i] + λy[j])
+        D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
     end
 
-    D[i, j, Nz] = -1 / ΔzC(i, j, Nz, grid) - ΔzF(i, j, Nz, grid) * (λx[i] + λy[j])
+    D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
 end
 
 function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
@@ -42,7 +42,7 @@ function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
 
     # Lower and upper diagonals are the same
     CUDA.@allowscalar begin
-        lower_diagonal = arch_array(arch, [1 / ΔzC(1, 1, k, grid) for k in 2:Nz])
+        lower_diagonal = arch_array(arch, [1 / Δzᵃᵃᶠ(1, 1, k, grid) for k in 2:Nz])
         upper_diagonal = lower_diagonal
     end
 
@@ -96,7 +96,7 @@ end
 @kernel function calculate_pressure_source_term_fourier_tridiagonal_solver!(RHS, grid, Δt, U★)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds RHS[i, j, k] = ΔzF(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+    @inbounds RHS[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
 end
 
 """
