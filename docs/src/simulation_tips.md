@@ -29,6 +29,7 @@ until you restart the Julia session. So this latter approach is good for product
 may be undesirable in the early stages of development while you still have to change the parameters
 of the simulation for exploration.
 
+It is especially important to avoid global variables in functions that are meant to be executed in GPU kernels such as functions in boundary condition and forcings. Otherwise the Julia GPU compiler can fail with obscure errors. This is explained in more detail in the GPU simulation tips section below.
 
 ### Consider inlining small functions
 
@@ -150,4 +151,3 @@ Manually define scratch space to be reused in diagnostics, to avoid creating one
 ### Arrays in GPUs are usually different from arrays in CPUs
 
 Talk about converting to CuArrays and viewing CuArrays as well!
-
