@@ -143,7 +143,7 @@ different kernel.
 
 GPU runs are generally memory-limited, so it's good to both keep track of and try to reduce the size of your runs. Useful tips in this regard are
 
-Try to use higher-order schemes as you need fewer grid points to achieve the same resolution
+Try to use higher-order schemes as you need fewer grid points to achieve the same accuracy
 
 Use the [`nvidia-smi`](https://developer.nvidia.com/nvidia-system-management-interface) command line utility to monitor the memory usage of the GPU.
 
