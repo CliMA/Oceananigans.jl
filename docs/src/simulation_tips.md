@@ -47,7 +47,7 @@ an implementation of the Heaviside function that forces it to be inlined:
 ```
 
 In practice it's hard to say whether inlining a function will bring runtime benefits _with
-certainty_, since Julia already inlines some small functions automatically. However, it is generally
+certainty_, since Julia and KernelAbstractions.jl already inline some small functions automatically. However, it is generally
 a good idea to at least investigate this aspect in your code as the benefits can potentially be
 significant.
 
