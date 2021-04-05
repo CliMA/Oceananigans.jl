@@ -72,8 +72,10 @@ Any global variable that needs to be accessed by the GPU needs to be a constant 
 
 `ComputedField`s are the most convenient way to calculate diagnostics for your simulation. They will
 always work on CPUs, but when their complexity is high (in terms of number of abstract operations)
-the compiler can't  translate them into GPU code and they fail. For example, in the example below,
-calculating `u²` works in both CPUs and GPUs, but calculating `KE` only works in CPUs:
+the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is discussed 
+in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1241) and contributors are welcome.)
+For example, in the example below, calculating `u²` works in both CPUs and GPUs, but calculating 
+`KE` only works in CPUs:
 
 ```julia
 u, v, w = model.velocities
@@ -143,7 +145,7 @@ GPU runs are generally memory-limited, so it's good to both keep track of and tr
 
 Try to use higher-order schemes as you need fewer grid points to achieve the same resolution
 
-Use the [`nvidia-smi`)[https://developer.nvidia.com/nvidia-system-management-interface] command line utility to monitor the memory usage of the GPU.
+Use the [`nvidia-smi`](https://developer.nvidia.com/nvidia-system-management-interface) command line utility to monitor the memory usage of the GPU.
 
 Manually define scratch space to be reused in diagnostics, to avoid creating one scratch space for each separate diagnostic you have.
 
