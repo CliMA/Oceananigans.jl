@@ -297,20 +297,26 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     @testset "Incompressibility" begin
         for FT in float_types, arch in archs
             Nx, Ny, Nz = 32, 32, 32
-            Lx, Ly, Lz = 10, 10, 10
 
-            regular_grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(0, Lz))
+            regular_grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(-1, 1))
 
-            S = 1.3 # Stretching factor
-            zF(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
-            vertically_stretched_grid = VerticallyStretchedRectilinearGrid(FT,
-                                                                           architecture = arch,
-                                                                           size = (Nx, Ny, Nz),
-                                                                           x = (0, Lx),
-                                                                           y = (0, Ly),
-                                                                           zF = zF)
+            S = 0.01 # Stretching factor
+            hyperbolically_spaced_nodes(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
+            hyperbolic_vs_grid = VerticallyStretchedRectilinearGrid(FT,
+                                                                    architecture = arch,
+                                                                    size = (Nx, Ny, Nz),
+                                                                    x = (0, 1),
+                                                                    y = (0, 1),
+                                                                    zF = hyperbolically_spaced_nodes)
 
-            for grid in (regular_grid, vertically_stretched_grid)
+            regular_vs_grid = VerticallyStretchedRectilinearGrid(FT,
+                                                                 architecture = arch,
+                                                                 size = (Nx, Ny, Nz),
+                                                                 x = (0, 1),
+                                                                 y = (0, 1),
+                                                                 zF = collect(range(0, stop=1, length=Nz+1)))
+
+            for grid in (regular_grid, hyperbolic_vs_grid, regular_vs_grid)
                 @info "  Testing incompressibility [$FT, $(typeof(grid).name.wrapper)]..."
 
                 for Nt in [1, 10, 100], timestepper in timesteppers
