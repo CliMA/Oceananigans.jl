@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δzᵃᵃᶜ
+using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
 
 struct FourierTridiagonalPoissonSolver{A, G, B, S, β, T}
                   architecture :: A
