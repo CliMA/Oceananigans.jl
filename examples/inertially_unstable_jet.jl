@@ -14,11 +14,9 @@ grid = RegularRectilinearGrid(size=(128, 128),
                           topology=(Flat, Bounded, Bounded),
                              halo = (3, 3))
 
-
    coriolis = FPlane(0.73e-4)
    const N² = 1e-2
 const U_max = 14.6 
-
 
 B_func(x, y, z, t, N) = N² * (z + D)
                     N = sqrt(N²)
@@ -34,11 +32,9 @@ background_fields = (b=B,),
          buoyancy = BuoyancyTracer(),
           closure = AnisotropicDiffusivity(νh=0, νz=1.27e-2))
 
-# Steady unstable jet
 ū(x, y, z) =                                              U_max * sech(y/L_jet)^2 * exp( - (z + D)^2/H_jet^2 )
-b̄(x, y, z) = 2 * coriolis.f * L_jet / H_jet^2 * (z + D) * U_max  * tanh(y/L_jet)   * exp( - (z + D)^2/H_jet^2 )
+b̄(x, y, z) = 2 * coriolis.f * L_jet / H_jet^2 * (z + D) * U_max * tanh(y/L_jet)   * exp( - (z + D)^2/H_jet^2 )
 
-# Initial conditions
 perturbation(x, y, z) = randn() * sech(y/L_jet)^2 * exp( - (z + D)^2/H_jet^2 )
           uⁱ(x, y, z) = ū(x, y, z) + 1e-4 * perturbation(x, y, z)
           bⁱ(x, y, z) = b̄(x, y, z) + 1e-4 * perturbation(x, y, z)
@@ -71,8 +67,6 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
 
 simulation = Simulation(model, Δt=10, stop_time=2days,
                         iteration_interval=10, progress=progress)
-
-#outputs = ( u = model.velocities.u, b = model.tracers.b)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (u = ũ, b = b̃),
                                                        schedule = IterationInterval(60),
@@ -111,7 +105,6 @@ anim = @animate for (i, iteration) in enumerate(iterations)
                      clim=(-b_max, b_max), 
                      kwargs...)
 
-   
     plt = plot(u_plot, b_plot, layout=(1, 2), size=(1200, 500))
 end
 
@@ -119,6 +112,5 @@ mp4(anim, "Inertial_Instability_2D.mp4", fps=15)
 
 # To-Do
 # 2. Try wizard
-# 3. Plot perturbations
 # 4. Do 2D and 3D simulations on cedar (cpu and then cpu)
 # 5. Try MPI?
