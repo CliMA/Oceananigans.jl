@@ -300,7 +300,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
             regular_grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(-1, 1))
 
-            S = 0.01 # Stretching factor
+            S = 1.3 # Stretching factor
             hyperbolically_spaced_nodes(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
             hyperbolic_vs_grid = VerticallyStretchedRectilinearGrid(FT,
                                                                     architecture = arch,
