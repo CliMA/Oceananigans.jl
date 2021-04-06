@@ -28,17 +28,28 @@ model = IncompressibleModel(
              grid = grid,
         advection = WENO5(),
       timestepper = :RungeKutta3,
-          closure = IsotropicDiffusivity(ν=1e-6, κ=1e-6),
          coriolis = coriolis,
           tracers = :b,
 background_fields = (b=B,),
-         buoyancy = BuoyancyTracer())
+         buoyancy = BuoyancyTracer(),
+          closure = AnisotropicDiffusivity(νh=0, νz=1.27e-2))
 
-          ϵ = 1e-4
-uⁱ(x, y, z) =                               (ϵ * randn() + U_max) * sech(y/L_jet)^2 * exp( - (z + D)^2/H_jet^2 )
-bⁱ(x, y, z) = 2 * coriolis.f * L_jet / H_jet^2 * (z + D) * U_max  * tanh(y/L_jet)   * exp( - (z + D)^2/H_jet^2 )
+# Steady unstable jet
+ū(x, y, z) =                                              U_max * sech(y/L_jet)^2 * exp( - (z + D)^2/H_jet^2 )
+b̄(x, y, z) = 2 * coriolis.f * L_jet / H_jet^2 * (z + D) * U_max  * tanh(y/L_jet)   * exp( - (z + D)^2/H_jet^2 )
+
+# Initial conditions
+perturbation(x, y, z) = randn() * sech(y/L_jet)^2 * exp( - (z + D)^2/H_jet^2 )
+          uⁱ(x, y, z) = ū(x, y, z) + 1e-4 * perturbation(x, y, z)
+          bⁱ(x, y, z) = b̄(x, y, z) + 1e-4 * perturbation(x, y, z)
 
 set!(model, u = uⁱ, b = bⁱ)
+
+u = model.velocities.u 
+b = model.tracers.b
+
+ũ = ComputedField(u - ū)
+b̃ = ComputedField(b - b̄)
 
 y, z = ynodes(model.velocities.u), znodes(model.velocities.u)
 
@@ -61,16 +72,14 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
 simulation = Simulation(model, Δt=10, stop_time=2days,
                         iteration_interval=10, progress=progress)
 
-outputs = ( u = model.velocities.u, 
-            b = model.tracers.b)
+#outputs = ( u = model.velocities.u, b = model.tracers.b)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = IterationInterval(60),
-                                                        prefix = "inertial_instability",
-                                                         force = true)
+simulation.output_writers[:fields] = JLD2OutputWriter(model, (u = ũ, b = b̃),
+                                                       schedule = IterationInterval(60),
+                                                         prefix = "inertial_instability",
+                                                          force = true)
 
 run!(simulation)
-
 
 file = jldopen(simulation.output_writers[:fields].filepath)
 
@@ -84,19 +93,20 @@ anim = @animate for (i, iteration) in enumerate(iterations)
 
    @info "Plotting frame $i from iteration $iteration..."
 
-   t = file["timeseries/t/$iteration"]
+            t = file["timeseries/t/$iteration"]
    u_snapshot = file["timeseries/u/$iteration"][1, :, :]
    b_snapshot = file["timeseries/b/$iteration"][1, :, :]
 
+   u_max = maximum(abs, u_snapshot)
    u_plot = contourf(y/1e3, z/1e3, u_snapshot',
-                     title = @sprintf("u, at t = %.1f hours", t/hours),
-                     color=:matter,
-                     clim=(-1, 13); 
+                     title = @sprintf("ũ, at t = %.1f hours", t/hours),
+                     color=:balance,
+                     clim=(-u_max, u_max); 
                      kwargs...)
 
    b_max = maximum(abs, b_snapshot) 
    b_plot = contourf(y/1e3, z/1e3, b_snapshot',
-                     title = @sprintf("b, at t = %.1f hours", t/hours),
+                     title = @sprintf("b̃, at t = %.1f hours", t/hours),
                      color=:balance;
                      clim=(-b_max, b_max), 
                      kwargs...)
@@ -108,6 +118,7 @@ end
 mp4(anim, "Inertial_Instability_2D.mp4", fps=15)
 
 # To-Do
-# 1. Add perturbations (test!)
+# 2. Try wizard
+# 3. Plot perturbations
 # 4. Do 2D and 3D simulations on cedar (cpu and then cpu)
 # 5. Try MPI?
