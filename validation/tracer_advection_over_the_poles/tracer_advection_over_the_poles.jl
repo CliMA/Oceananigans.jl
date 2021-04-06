@@ -146,7 +146,7 @@ function tracer_advection_over_the_poles(face_number)
 
     R = grid.faces[1].radius  # radius of the sphere (m)
     u₀ = 2π*R / (12days)  # advecting velocity (m/s)
-    α = 45  # angle between the axis of solid body rotation and the polar axis (degrees)
+    α = 0  # angle between the axis of solid body rotation and the polar axis (degrees)
 
     # U(λ, φ, z) = u₀ * (cosd(φ) * cosd(α) + sind(φ) * cosd(λ) * sind(α))
     # V(λ, φ, z) = - u₀ * sind(λ) * sind(α)
@@ -233,8 +233,9 @@ function tracer_advection_over_the_poles(face_number)
     return simulation
 end
 
-tracer_advection_over_the_poles(1)
-
 include("animate_on_map.jl")
 
-animate_tracer_advection(1)
+for face_number in 1:6
+    tracer_advection_over_the_poles(face_number)
+    animate_tracer_advection(face_number)
+end

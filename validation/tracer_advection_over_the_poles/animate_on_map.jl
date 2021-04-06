@@ -89,7 +89,7 @@ function animate_tracer_advection(face_number)
 
     run(`ffmpeg -y -i tracer_avection_over_the_poles_face$(face_number)_%04d.png -c:v libx264 -vf fps=10 -pix_fmt yuv420p tracer_advection_face$(face_number).mp4`)
 
-    [rm(f) for f in glob("tracer_avection_over_the_poles_face$(face_number)_*.png")];
+    [rm(f) for f in glob("tracer_avection_over_the_poles_face$(face_number)_*.png")]
 
     return nothing
 end

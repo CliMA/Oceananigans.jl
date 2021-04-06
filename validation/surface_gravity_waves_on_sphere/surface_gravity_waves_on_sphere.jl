@@ -79,6 +79,32 @@ function state_checker(model)
 end
 
 #####
+##### Progress monitor
+#####
+
+mutable struct Progress
+    interval_start_time :: Float64
+end
+
+function (p::Progress)(sim)
+    wall_time = (time_ns() - p.interval_start_time) * 1e-9
+
+    @info @sprintf("Time: %s, iteration: %d, max(u⃗): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e, wall time: %s",
+                   prettytime(sim.model.clock.time),
+                   sim.model.clock.iteration,
+                   maximum(abs, sim.model.velocities.u),
+                   maximum(abs, sim.model.velocities.v),
+                   minimum(abs, sim.model.free_surface.η),
+                   maximum(abs, sim.model.free_surface.η),
+                   sim.parameters.cfl(sim.model),
+                   prettytime(wall_time))
+
+    p.interval_start_time = time_ns()
+
+    return nothing
+end
+
+#####
 ##### Script starts here
 #####
 
@@ -96,82 +122,76 @@ DataDeps.register(dd)
 
 cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 
-H = 4kilometers
-grid = ConformalCubedSphereGrid(cs32_filepath, Nz=1, z=(-H, 0))
+central_longitude = (0, 90, 0, 180, -90, 0)
+central_latitude  = (0, 0, 90, 0, 0, -90)
 
-## Model setup
+function surface_gravity_waves_on_cubed_sphere(face_number)
 
-model = HydrostaticFreeSurfaceModel(
-          architecture = CPU(),
-                  grid = grid,
-    momentum_advection = VectorInvariant(),
-          free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
-        # free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
-              coriolis = nothing,
-            # coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
-               closure = nothing,
-               tracers = nothing,
-              buoyancy = nothing
-)
+    H = 4kilometers
+    grid = ConformalCubedSphereGrid(cs32_filepath, Nz=1, z=(-H, 0))
 
-## Initial condition:
-## Very small sea surface height perturbation so the resulting dynamics are well-described
-## by a linear free surface.
+    ## Model setup
 
-A  = 1e-5 * H  # Amplitude of the perturbation
-λ₀ = 0   # Central longitude
-φ₀ = 40  # Central latitude
-Δλ = 20  # Longitudinal width
-Δφ = 20  # Latitudinal width
+    model = HydrostaticFreeSurfaceModel(
+              architecture = CPU(),
+                      grid = grid,
+        momentum_advection = VectorInvariant(),
+              free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
+            # free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
+                  coriolis = nothing,
+                # coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
+                   closure = nothing,
+                   tracers = nothing,
+                  buoyancy = nothing
+    )
 
- Ξ(λ, φ, z) = 1e-5 * randn()
-η′(λ, φ, z) = A * exp(- (λ - λ₀)^2 / Δλ^2) * exp(- (φ - φ₀)^2 / Δφ^2)
+    ## Initial condition:
+    ## Very small sea surface height perturbation so the resulting dynamics are well-described
+    ## by a linear free surface.
 
-# set!(model, u=Ξ, v=Ξ, η=η′)
-set!(model, η=η′)
+    A  = 1e-5 * H  # Amplitude of the perturbation
+    λ₀ = central_longitude[face_number]
+    φ₀ = central_latitude[face_number]
+    Δλ = 15  # Longitudinal width
+    Δφ = 15  # Latitudinal width
 
-## Simulation setup
+    Ξ(λ, φ, z) = 1e-5 * randn()
+    η′(λ, φ, z) = A * exp(- (λ - λ₀)^2 / Δλ^2) * exp(- (φ - φ₀)^2 / Δφ^2)
 
-Δt = 20minutes
+    # set!(model, u=Ξ, v=Ξ, η=η′)
+    set!(model, η=η′)
 
-cfl = CFL(Δt, accurate_cell_advection_timescale)
+    ## Simulation setup
 
-mutable struct Progress
-    interval_start_time :: Float64
+    Δt = 20minutes
+
+    cfl = CFL(Δt, accurate_cell_advection_timescale)
+
+    simulation = Simulation(model,
+                            Δt = Δt,
+                            stop_time = 5days,
+                            iteration_interval = 1,
+                            progress = Progress(time_ns()),
+                            parameters = (; cfl))
+
+    # TODO: Implement NaNChecker for ConformalCubedSphereField
+    empty!(simulation.diagnostics)
+
+    output_fields = merge(model.velocities, (η=model.free_surface.η,))
+
+    simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
+                                                        schedule = TimeInterval(1hour),
+                                                        prefix = "surface_gravity_waves_on_cubed_sphere_face$face_number",
+                                                        force = true)
+
+    run!(simulation)
+
+    return simulation
 end
 
-function (p::Progress)(sim)
-    wall_time = (time_ns() - p.interval_start_time) * 1e-9
+include("animate_sphere_on_map.jl")
 
-    @info @sprintf("Time: %s, iteration: %d, max(u⃗): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e, wall time: %s",
-                   prettytime(sim.model.clock.time),
-                   sim.model.clock.iteration,
-                   maximum(abs, sim.model.velocities.u),
-                   maximum(abs, sim.model.velocities.v),
-                   minimum(abs, sim.model.free_surface.η),
-                   maximum(abs, sim.model.free_surface.η),
-                   cfl(model),
-                   prettytime(wall_time))
-
-    p.interval_start_time = time_ns()
-
-    return nothing
+for face_number in 1:6
+    surface_gravity_waves_on_cubed_sphere(face_number)
+    animate_surface_gravity_waves_on_cubed_sphere(face_number)
 end
-
-simulation = Simulation(model,
-                        Δt = Δt,
-                        stop_time = 3days,
-                        iteration_interval = 1,
-                        progress = Progress(time_ns()))
-
-# TODO: Implement NaNChecker for ConformalCubedSphereField
-empty!(simulation.diagnostics)
-
-output_fields = merge(model.velocities, (η=model.free_surface.η,))
-
-simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(1hour),
-                                                      prefix = "full_cubed_sphere_gravity_waves",
-                                                      force = true)
-
-run!(simulation)
