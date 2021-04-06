@@ -39,7 +39,7 @@ function run_pcg_solver_tests(arch)
     function Amatrix_function!(result, x, arch, grid, bcs; args...)
         event = launch!(arch, grid, :xyz, ∇²!, grid, x, result, dependencies=Event(device(arch)))
         wait(device(arch), event)
-        fill_halo_regions!(result, bcs, arch, grid)
+        fill_halo_regions!(result, arch)
         return nothing
     end
 
@@ -55,13 +55,12 @@ function run_pcg_solver_tests(arch)
     jmid = Int(floor(grid.Ny / 2)) + 1
     CUDA.@allowscalar u.data[imid, jmid, 1] = 1
 
-    fill_halo_regions!(u.data, u.boundary_conditions, arch, grid)
+    fill_halo_regions!(u, arch)
 
-    event = launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, RHS.data,
-                    dependencies=Event(device(arch)))
+    event = launch!(arch, grid, :xyz, divergence!, grid, u, v, w, RHS, dependencies=Event(device(arch)))
     wait(device(arch), event)
 
-    fill_halo_regions!(RHS.data, RHS.boundary_conditions, arch, grid)
+    fill_halo_regions!(RHS, arch)
 
     pcg_params = (
         PCmatrix_function = nothing,
@@ -74,16 +73,16 @@ function run_pcg_solver_tests(arch)
     pcg_solver = PreconditionedConjugateGradientSolver(arch = arch, parameters = pcg_params)
 
     # Set initial guess and solve
-    ϕ.data.parent .= 0
-    @time solve_poisson_equation!(pcg_solver, RHS.data, ϕ.data; worda="boo", wordb="cat")
+    parent(ϕ) .= 0
+    @time solve_poisson_equation!(pcg_solver, RHS, ϕ; worda="boo", wordb="cat")
 
     # Compute ∇² of solution
-    result = similar(ϕ.data)
+    result = similar(ϕ)
 
-    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ.data, result, dependencies=Event(device(arch)))
+    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ, result, dependencies=Event(device(arch)))
     wait(device(arch), event)
 
-    fill_halo_regions!(result, ϕ.boundary_conditions, arch, grid)
+    fill_halo_regions!(result, arch)
 
     CUDA.@allowscalar begin
         @test abs(minimum(result[1:Nx, 1:Ny, 1] .- RHS.data[1:Nx, 1:Ny, 1])) < 1e-12
