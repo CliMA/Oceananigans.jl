@@ -2,67 +2,94 @@ using Printf
 using Glob
 using JLD2
 using PyCall
+using Oceananigans.Utils: prettytime
 
 plt = pyimport("matplotlib.pyplot")
 ccrs = pyimport("cartopy.crs")
 cmocean = pyimport("cmocean")
 
-## Extract data
+function animate_tracer_advection(face_number)
 
-file = jldopen("tracer_advection_over_the_poles.jld2")
+    projection = ccrs.Robinson()
+    transform = ccrs.PlateCarree()
 
-iterations = parse.(Int, keys(file["timeseries/t"]))
+    ## Extract data
 
-Nf = file["grid/faces"] |> keys |> length
-Nx = file["grid/faces/1/Nx"]
-Ny = file["grid/faces/1/Ny"]
-Nz = file["grid/faces/1/Nz"]
+    file = jldopen("tracer_advection_over_the_poles_face$face_number.jld2")
 
-size_2d = (Nx, Ny * Nf)
+    iterations = parse.(Int, keys(file["timeseries/t"]))
 
-flatten_cubed_sphere(field, size) = reshape(cat(field..., dims=4), size)
+    Nf = file["grid/faces"] |> keys |> length
+    Nx = file["grid/faces/1/Nx"]
+    Ny = file["grid/faces/1/Ny"]
+    Nz = file["grid/faces/1/Nz"]
 
-λ = flatten_cubed_sphere((file["grid/faces/$n/λᶜᶜᵃ"][2:33, 2:33] for n in 1:6), size_2d)
-φ = flatten_cubed_sphere((file["grid/faces/$n/φᶜᶜᵃ"][2:33, 2:33] for n in 1:6), size_2d)
+    size_2d = (Nx, Ny * Nf)
+    size_u = (Nx+1, Ny * Nf)
+    size_v = (Nx, (Ny+1) * Nf)
 
-## Plot!
+    flatten_cubed_sphere(field, size) = reshape(cat(field..., dims=4), size)
 
-h_end = flatten_cubed_sphere(file["timeseries/h/$(iterations[end])"], size_2d)
+    # FIXME: These are not correct. Grid does not actually have ᶠᶜᵃ and ᶜᶠᵃ right now.
+    λu = flatten_cubed_sphere((file["grid/faces/$n/λᶠᶠᵃ"][2:34, 2:33] for n in 1:6), size_u)
+    φu = flatten_cubed_sphere((file["grid/faces/$n/φᶠᶠᵃ"][2:34, 2:33] for n in 1:6), size_u)
 
-fig = plt.figure(figsize=(16, 9))
-ax = fig.add_subplot(1, 1, 1, projection=ccrs.Robinson())
-ax.scatter(λ, φ, c=h_end, transform=ccrs.PlateCarree(), cmap=cmocean.cm.balance, s=25, vmin=0, vmax=1000)
-plt.savefig("h_end.png", dpi=100)
-plt.close(fig)
-@info "Saved: h_end.png"
+    λv = flatten_cubed_sphere((file["grid/faces/$n/λᶠᶠᵃ"][2:33, 2:34] for n in 1:6), size_v)
+    φv = flatten_cubed_sphere((file["grid/faces/$n/φᶠᶠᵃ"][2:33, 2:34] for n in 1:6), size_v)
 
-# projection = ccrs.Orthographic(central_longitude=270)
-projection = ccrs.Robinson()
-transform = ccrs.PlateCarree()
+    ## Plot u and v
 
-for (n, i) in enumerate(iterations)
-    @info "Plotting iteration $i/$(iterations[end])..."
-    h = flatten_cubed_sphere(file["timeseries/h/$i"], size_2d)
+    u = flatten_cubed_sphere(file["timeseries/u/$(iterations[end])"], size_u)
+    v = flatten_cubed_sphere(file["timeseries/v/$(iterations[end])"], size_v)
 
     fig = plt.figure(figsize=(16, 9))
     ax = fig.add_subplot(1, 1, 1, projection=projection)
-
-    ax.scatter(λ, φ, c=h, transform=transform, cmap=cmocean.cm.balance, s=25, vmin=0, vmax=1000)
-    # ax.pcolormesh(λ, φ, η, transform=transform, cmap="seismic", vmin=-0.01, vmax=0.01)
-    # ax.contourf(λ, φ, η, transform=transform, cmap="seismic")
-
-    # ax.legend(loc="lower right")
-    # ax.coastlines(resolution="50m")
-    # ax.set_global()
-
-    # plt.show()
-    filename = @sprintf("tracer_avection_over_the_poles_%04d.png", n)
-    plt.savefig(filename, dpi=200)
+    sc = ax.scatter(λu, φu, c=u, transform=transform, cmap=cmocean.cm.balance, s=25, vmin=-40, vmax=40)
+    fig.colorbar(sc, ax=ax, shrink=0.6)
+    ax.set_title("Tracer advection from face $face_number: u-velocity")
+    filename = "tracer_advection_u_velocity_face$face_number.png"
+    plt.savefig(filename, dpi=100)
+    @info "Saved: $filename"
     plt.close(fig)
+
+    fig = plt.figure(figsize=(16, 9))
+    ax = fig.add_subplot(1, 1, 1, projection=projection)
+    sc = ax.scatter(λv, φv, c=v, transform=transform, cmap=cmocean.cm.balance, s=25, vmin=-40, vmax=40)
+    fig.colorbar(sc, ax=ax, shrink=0.6)
+    ax.set_title("Tracer advection from face $face_number: v-velocity")
+    filename = "tracer_advection_v_velocity_face$face_number.png"
+    plt.savefig(filename, dpi=100)
+    @info "Saved: $filename"
+    plt.close(fig)
+
+    ## Makie movie of h
+
+    λᶜᶜᵃ = flatten_cubed_sphere((file["grid/faces/$n/λᶜᶜᵃ"][2:33, 2:33] for n in 1:6), size_2d)
+    φᶜᶜᵃ = flatten_cubed_sphere((file["grid/faces/$n/φᶜᶜᵃ"][2:33, 2:33] for n in 1:6), size_2d)
+
+    for (n, i) in enumerate(iterations)
+        @info "Plotting face $face_number iteration $i/$(iterations[end]) (frame $n/$(length(iterations)))..."
+        h = flatten_cubed_sphere(file["timeseries/h/$i"], size_2d)
+
+        fig = plt.figure(figsize=(16, 9))
+        ax = fig.add_subplot(1, 1, 1, projection=projection)
+
+        sc = ax.scatter(λᶜᶜᵃ, φᶜᶜᵃ, c=h, transform=transform, cmap=cmocean.cm.balance, s=25, vmin=0, vmax=1000)
+        fig.colorbar(sc, ax=ax, shrink=0.6)
+
+        t = prettytime(file["timeseries/t/$i"])
+        ax.set_title("Tracer advection from face $face_number: tracer at t = $t")
+
+        filename = @sprintf("tracer_avection_over_the_poles_face%d_%04d.png", face_number, n)
+        plt.savefig(filename, dpi=100)
+        plt.close(fig)
+    end
+
+    close(file)
+
+    run(`ffmpeg -y -i tracer_avection_over_the_poles_face$(face_number)_%04d.png -c:v libx264 -vf fps=10 -pix_fmt yuv420p tracer_advection_face$(face_number).mp4`)
+
+    [rm(f) for f in glob("tracer_avection_over_the_poles_face$(face_number)_*.png")];
+
+    return nothing
 end
-
-close(file)
-
-run(`ffmpeg -y -i tracer_avection_over_the_poles_%04d.png -c:v libx264 -vf fps=10 -pix_fmt yuv420p out.mp4`)
-
-[rm(f) for f in glob("*.png")];

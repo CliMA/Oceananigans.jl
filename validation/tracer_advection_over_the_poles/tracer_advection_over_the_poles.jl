@@ -93,6 +93,30 @@ function state_checker(model)
 end
 
 #####
+##### Progress monitor
+#####
+
+mutable struct Progress
+    interval_start_time :: Float64
+end
+
+function (p::Progress)(sim)
+    wall_time = (time_ns() - p.interval_start_time) * 1e-9
+
+    @info @sprintf("Time: %s, iteration: %d, extrema(h): (min=%.2e, max=%.2e), CFL: %.2e, wall time: %s",
+                prettytime(sim.model.clock.time),
+                sim.model.clock.iteration,
+                minimum(abs, sim.model.tracers.h),
+                maximum(abs, sim.model.tracers.h),
+                sim.parameters.cfl(sim.model),
+                prettytime(wall_time))
+
+    p.interval_start_time = time_ns()
+
+    return nothing
+end
+
+#####
 ##### Script starts here
 #####
 
@@ -110,112 +134,107 @@ DataDeps.register(dd)
 
 cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 
-H = 4kilometers
-grid = ConformalCubedSphereGrid(cs32_filepath, Nz=1, z=(-H, 0))
+central_longitude = (0, 90, 0, 180, -90, 0)
+central_latitude  = (0, 0, 90, 0, 0, -90)
 
-## Prescribed velocities and initial condition according to Williamson et al. (1992) §3.1
+function tracer_advection_over_the_poles(face_number)
 
-R = grid.faces[1].radius  # radius of the sphere (m)
-u₀ = 2π*R / (12days)  # advecting velocity (m/s)
-α = 60  # angle between the axis of solid body rotation and the polar axis (degrees)
+    H = 4kilometers
+    grid = ConformalCubedSphereGrid(cs32_filepath, Nz=1, z=(-H, 0))
 
-# U(λ, φ, z) = u₀ * (cosd(φ) * cosd(α) + sind(φ) * cosd(λ) * sind(α))
-# V(λ, φ, z) = - u₀ * sind(λ) * sind(α)
+    ## Prescribed velocities and initial condition according to Williamson et al. (1992) §3.1
 
-Ψ(λ, φ, z) = - R * u₀ * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
+    R = grid.faces[1].radius  # radius of the sphere (m)
+    u₀ = 2π*R / (12days)  # advecting velocity (m/s)
+    α = 45  # angle between the axis of solid body rotation and the polar axis (degrees)
 
-Ψᶠᶠᶜ = Field(Face, Face,   Center, CPU(), grid, nothing, nothing)
-Uᶠᶜᶜ = Field(Face, Center, Center, CPU(), grid, nothing, nothing)
-Vᶜᶠᶜ = Field(Center, Face, Center, CPU(), grid, nothing, nothing)
-Wᶜᶜᶠ = Field(Center, Center, Face, CPU(), grid, nothing, nothing)  # So we can use CFL
+    # U(λ, φ, z) = u₀ * (cosd(φ) * cosd(α) + sind(φ) * cosd(λ) * sind(α))
+    # V(λ, φ, z) = - u₀ * sind(λ) * sind(α)
 
-for (f, grid_face) in enumerate(grid.faces)
-    for i in 1:grid_face.Nx+1, j in 1:grid_face.Ny+1
-        Ψᶠᶠᶜ.faces[f][i, j, 1] = Ψ(grid_face.λᶠᶠᵃ[i, j], grid_face.φᶠᶠᵃ[i, j], 0)
+    Ψ(λ, φ, z) = - R * u₀ * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
+
+    Ψᶠᶠᶜ = Field(Face, Face,   Center, CPU(), grid, nothing, nothing)
+    Uᶠᶜᶜ = Field(Face, Center, Center, CPU(), grid, nothing, nothing)
+    Vᶜᶠᶜ = Field(Center, Face, Center, CPU(), grid, nothing, nothing)
+    Wᶜᶜᶠ = Field(Center, Center, Face, CPU(), grid, nothing, nothing)  # So we can use CFL
+
+    for (f, grid_face) in enumerate(grid.faces)
+        for i in 1:grid_face.Nx+1, j in 1:grid_face.Ny+1
+            Ψᶠᶠᶜ.faces[f][i, j, 1] = Ψ(grid_face.λᶠᶠᵃ[i, j], grid_face.φᶠᶠᵃ[i, j], 0)
+        end
     end
-end
 
-fill_halo_regions!(Ψᶠᶠᶜ, CPU())
-fill_halo_regions!(Ψᶠᶠᶜ, CPU()) # get those corners
+    fill_halo_regions!(Ψᶠᶠᶜ, CPU())
+    fill_halo_regions!(Ψᶠᶠᶜ, CPU()) # get those corners
 
-for (f, grid_face) in enumerate(grid.faces)
-    for i in 1:grid_face.Nx+1, j in 1:grid_face.Ny
-        Uᶠᶜᶜ.faces[f][i, j, 1] = (Ψᶠᶠᶜ.faces[f][i, j, 1] - Ψᶠᶠᶜ.faces[f][i, j+1, 1]) / grid.faces[f].Δyᶠᶠᵃ[i, j]
+    for (f, grid_face) in enumerate(grid.faces)
+        for i in 1:grid_face.Nx+1, j in 1:grid_face.Ny
+            Uᶠᶜᶜ.faces[f][i, j, 1] = (Ψᶠᶠᶜ.faces[f][i, j, 1] - Ψᶠᶠᶜ.faces[f][i, j+1, 1]) / grid.faces[f].Δyᶠᶠᵃ[i, j]
+        end
+        for i in 1:grid_face.Nx, j in 1:grid_face.Ny+1
+            Vᶜᶠᶜ.faces[f][i, j, 1] = (Ψᶠᶠᶜ.faces[f][i+1, j, 1] - Ψᶠᶠᶜ.faces[f][i, j, 1]) / grid.faces[f].Δxᶠᶠᵃ[i, j]
+        end
     end
-    for i in 1:grid_face.Nx, j in 1:grid_face.Ny+1
-        Vᶜᶠᶜ.faces[f][i, j, 1] = (Ψᶠᶠᶜ.faces[f][i+1, j, 1] - Ψᶠᶠᶜ.faces[f][i, j, 1]) / grid.faces[f].Δxᶠᶠᵃ[i, j]
-    end
+
+    fill_horizontal_velocity_halos!(Uᶠᶜᶜ, Vᶜᶠᶜ, CPU())
+    fill_horizontal_velocity_halos!(Uᶠᶜᶜ, Vᶜᶠᶜ, CPU()) # get those corners
+
+    ## Model setup
+
+    model = HydrostaticFreeSurfaceModel(
+        architecture = CPU(),
+                grid = grid,
+             tracers = :h,
+          velocities = PrescribedVelocityFields(u=Uᶠᶜᶜ, v=Vᶜᶠᶜ, w=Wᶜᶜᶠ),
+        free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
+            coriolis = nothing,
+             closure = nothing,
+            buoyancy = nothing
+    )
+
+    ## Cosine bell initial condition according to Williamson et al. (1992) §3.1
+
+    h₀ = 1000 # meters
+    λ₀ = central_longitude[face_number]
+    φ₀ = central_longitude[face_number]
+
+    # Great circle distance between (λ, φ) and the center of the cosine bell (λ₀, φ₀)
+    r(λ, φ) = R * acos(sind(φ₀) * sind(φ) + cosd(φ₀) * cosd(φ) * cosd(λ - λ₀))
+
+    cosine_bell(λ, φ, z) = r(λ, φ) < R ? h₀/2 * (1 + cos(π * r(λ, φ) / R)) : 0
+
+    set!(model, h=cosine_bell)
+
+    ## Simulation setup
+
+    Δt = 10minutes
+
+    cfl = CFL(Δt, accurate_cell_advection_timescale)
+
+    simulation = Simulation(model,
+                            Δt = Δt,
+                            stop_time = 5days,
+                            iteration_interval = 1,
+                            progress = Progress(time_ns()),
+                            parameters = (; cfl))
+
+    # TODO: Implement NaNChecker for ConformalCubedSphereField
+    empty!(simulation.diagnostics)
+
+    outputs = (u=Uᶠᶜᶜ, v=Vᶜᶠᶜ, h=model.tracers.h)
+
+    simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
+                                                        schedule = TimeInterval(1hour),
+                                                        prefix = "tracer_advection_over_the_poles_face$face_number",
+                                                        force = true)
+
+    run!(simulation)
+
+    return simulation
 end
 
-fill_horizontal_velocity_halos!(Uᶠᶜᶜ, Vᶜᶠᶜ, CPU())
-fill_horizontal_velocity_halos!(Uᶠᶜᶜ, Vᶜᶠᶜ, CPU()) # get those corners
+tracer_advection_over_the_poles(1)
 
-## Model setup
+include("animate_on_map.jl")
 
-model = HydrostaticFreeSurfaceModel(
-    architecture = CPU(),
-            grid = grid,
-         tracers = :h,
-      velocities = PrescribedVelocityFields(u=Uᶠᶜᶜ, v=Vᶜᶠᶜ, w=Wᶜᶜᶠ),
-    free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
-        coriolis = nothing,
-         closure = nothing,
-        buoyancy = nothing
-)
-
-## Cosine bell initial condition according to Williamson et al. (1992) §3.1
-
-h₀ = 1000 # meters
-λ₀ = -90  # Central longitude
-φ₀ = 0    # Central latitude
-
-# Great circle distance between (λ, φ) and the center of the cosine bell (λ₀, φ₀)
-r(λ, φ) = R * acos(sind(φ₀) * sind(φ) + cosd(φ₀) * cosd(φ) * cosd(λ - λ₀))
-
-cosine_bell(λ, φ, z) = r(λ, φ) < R ? h₀/2 * (1 + cos(π * r(λ, φ) / R)) : 0
-
-set!(model, h=cosine_bell)
-
-## Simulation setup
-
-Δt = 10minutes
-
-cfl = CFL(Δt, accurate_cell_advection_timescale)
-
-mutable struct Progress
-    interval_start_time :: Float64
-end
-
-function (p::Progress)(sim)
-    wall_time = (time_ns() - p.interval_start_time) * 1e-9
-
-    @info @sprintf("Time: %s, iteration: %d, extrema(h): (min=%.2e, max=%.2e), CFL: %.2e, wall time: %s",
-                   prettytime(sim.model.clock.time),
-                   sim.model.clock.iteration,
-                   minimum(abs, sim.model.tracers.h),
-                   maximum(abs, sim.model.tracers.h),
-                   cfl(model),
-                   prettytime(wall_time))
-
-    p.interval_start_time = time_ns()
-
-    return nothing
-end
-
-simulation = Simulation(model,
-                        Δt = Δt,
-                        stop_time = 5days,
-                        iteration_interval = 1,
-                        progress = Progress(time_ns()))
-
-# TODO: Implement NaNChecker for ConformalCubedSphereField
-empty!(simulation.diagnostics)
-
-outputs = (u=Uᶠᶜᶜ, v=Vᶜᶠᶜ, h=model.tracers.h)
-
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(1hour),
-                                                      prefix = "tracer_advection_over_the_poles",
-                                                      force = true)
-
-run!(simulation)
+animate_tracer_advection(1)
