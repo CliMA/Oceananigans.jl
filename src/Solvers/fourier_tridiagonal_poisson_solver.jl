@@ -116,10 +116,10 @@ function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
     grid = solver.grid
     arch = solver.architecture
 
-    source_term = solver.batched_tridiagonal_solver.f
-    source_term .= source_term
+    solver_rhs = solver.batched_tridiagonal_solver.f
+    solver_rhs .= source_term
 
-    event = launch!(arch, grid, :xyz, multiply_by_Δzᵃᵃᶜ!, source_term, grid, dependencies=Event(device(arch)))
+    event = launch!(arch, grid, :xyz, multiply_by_Δzᵃᵃᶜ!, solver_rhs, grid, dependencies=Event(device(arch)))
     wait(device(arch), event)
                     
     return nothing
