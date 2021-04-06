@@ -73,6 +73,7 @@ left_boundary_indices(loc, topo, N, H) = 1:H
 left_boundary_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
 
 right_boundary_indices(loc, topo, N, H) = N-H+1:N
+right_boundary_indices(::Type{Face}, ::Type{Bounded}, N, H) = N-H:N+1
 right_boundary_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
 
 underlying_left_boundary_indices(loc, topo, N, H) = 1+H:2H
