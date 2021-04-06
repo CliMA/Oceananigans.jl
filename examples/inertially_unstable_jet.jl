@@ -1,9 +1,9 @@
 using Oceananigans
-using Oceananigans.Units: hours, meters, kilometers, minutes
+using Oceananigans.Units: hours, days, seconds, meters, kilometers, minutes
 
 using JLD2, Plots, Printf
 
-   const Ly = 1000kilometers
+   const Ly = 100kilometers
    const Lz = 3kilometers
     const D = Lz/2
 const L_jet = Ly/10
@@ -20,7 +20,7 @@ grid = RegularRectilinearGrid(size=(128, 128),
 const U_max = 14.6 
 
 
-B_func(x, y, z, t, N) = N² * z
+B_func(x, y, z, t, N) = N² * (z + D)
                     N = sqrt(N²)
                     B = BackgroundField(B_func, parameters=N)
 
@@ -34,10 +34,9 @@ model = IncompressibleModel(
 background_fields = (b=B,),
          buoyancy = BuoyancyTracer())
 
-ϵ = 1e-4
-uᵖ = 
-uⁱ(x, y, z) =                                              U_max * sech(y/L_jet)^2 * exp( - (z + D)^2/H_jet^2 )
-bⁱ(x, y, z) = 2 * coriolis.f * L_jet / H_jet^2 * (z + D) * U_max * tanh(y/L_jet)   * exp( - (z + D)^2/H_jet^2 )
+          ϵ = 1e-4
+uⁱ(x, y, z) =                               (ϵ * randn() + U_max) * sech(y/L_jet)^2 * exp( - (z + D)^2/H_jet^2 )
+bⁱ(x, y, z) = 2 * coriolis.f * L_jet / H_jet^2 * (z + D) * U_max  * tanh(y/L_jet)   * exp( - (z + D)^2/H_jet^2 )
 
 set!(model, u = uⁱ, b = bⁱ)
 
@@ -59,7 +58,7 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         prettytime(sim.model.clock.time),
                         prettytime(sim.Δt))
 
-simulation = Simulation(model, Δt=10, stop_time=48hours,
+simulation = Simulation(model, Δt=10, stop_time=2days,
                         iteration_interval=10, progress=progress)
 
 outputs = ( u = model.velocities.u, 
@@ -109,6 +108,6 @@ end
 mp4(anim, "Inertial_Instability_2D.mp4", fps=15)
 
 # To-Do
-# 1. Add perturbations
-# 4. Do 3D simulation on cedar (cpu and then cpu)
+# 1. Add perturbations (test!)
+# 4. Do 2D and 3D simulations on cedar (cpu and then cpu)
 # 5. Try MPI?
