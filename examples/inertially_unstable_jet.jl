@@ -2,18 +2,20 @@ using Oceananigans
 using Oceananigans.Units: hours, days, seconds, meters, kilometers, minutes
 using JLD2, Plots, Printf
 
+CUDA.allowscalar(true)
+
    const Ly = 100kilometers
    const Lz = 3kilometers
     const D = Lz/2
 const L_jet = Ly/10
-const H_jet = Lz/10
+const H_jet = Lz/10 
 
-grid = RegularRectilinearGrid(size=(512, 256), 
+grid = RegularRectilinearGrid(size=(64, 64), 
                                  y=(-Ly/2, Ly/2), z=(-Lz, 0),
                           topology=(Flat, Bounded, Bounded),
                              halo = (3, 3))
 
-   coriolis = FPlane(0.73e-4)
+   const f  = 7.3e-5
    const N² = 1e-2
 const U_max = 14.6 
 
@@ -22,21 +24,23 @@ B_func(x, y, z, t, N) = N² * (z + D)
                     B = BackgroundField(B_func, parameters=N)
 
 model = IncompressibleModel(
+     architecture = GPU(),
              grid = grid,
         advection = WENO5(),
       timestepper = :RungeKutta3,
-         coriolis = coriolis,
+         coriolis = FPlane(f=f),
           tracers = :b,
 background_fields = (b=B,),
          buoyancy = BuoyancyTracer(),
-          closure = AnisotropicDiffusivity(νh=0, νz=1.27e-2))
+          closure = AnisotropicDiffusivity(νh=0, νz=1.27e-2)
+          )
 
 ū(x, y, z) = U_max * sech(y/L_jet)^2 * exp( - (z + D)^2/H_jet^2 )
-b̄(x, y, z) = U_max * tanh(y/L_jet)   * exp( - (z + D)^2/H_jet^2 ) * 2 * coriolis.f * L_jet / H_jet^2 * (z + D)
+b̄(x, y, z) = U_max * tanh(y/L_jet)   * exp( - (z + D)^2/H_jet^2 ) * 2 * f * L_jet / H_jet^2 * (z + D)
 
 perturbation(x, y, z) = randn() * sech(y/L_jet)^2 * exp( - (z + D)^2/H_jet^2 )
-          uⁱ(x, y, z) = ū(x, y, z) + 1e-2 * perturbation(x, y, z)
-          bⁱ(x, y, z) = b̄(x, y, z) + 1e-4 * perturbation(x, y, z)
+          uⁱ(x, y, z) = ū(x, y, z) + 0e-2 * perturbation(x, y, z)
+          bⁱ(x, y, z) = b̄(x, y, z) + 0e-4 * perturbation(x, y, z)
 
 set!(model, u = uⁱ, b = bⁱ)
 
@@ -49,12 +53,12 @@ b̃ = ComputedField(b - b̄)
 y, z = ynodes(model.velocities.u), znodes(model.velocities.u)
 
 kwargs = (
-            xlabel="y (km)", 
-            ylabel="z (km)", 
-         linewidth=0, 
-          colorbar=true,
-             xlims=(-Ly/2e3, Ly/2e3), 
-             ylims=(-Lz/1e3,0)
+            xlabel= "y (km)", 
+            ylabel= "z (km)", 
+         linewidth= 0, 
+          colorbar= true,
+             xlims= (-Ly/2e3, Ly/2e3), 
+             ylims= (-Lz/1e3, 0)
          )
 progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         sim.model.clock.iteration,
@@ -62,15 +66,19 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         prettytime(sim.Δt))
 
 #wizard = TimeStepWizard(cfl=1.0, Δt=1minutes, max_change=1.1, max_Δt=2minutes)
-simulation = Simulation(model, Δt=10, stop_time=2days,
+simulation = Simulation(model, Δt=10, stop_time=2600, #2days,
                         iteration_interval=10, progress=progress)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (u = ũ, b = b̃),
-                                                       schedule = IterationInterval(60),
+                                                       schedule = IterationInterval(1),    #60
                                                          prefix = "inertial_instability",
                                                           force = true)
 
 run!(simulation)
+
+#print("after simulation \n")
+#print("\n u = ", u[1,:,:], "\n")
+#print("\n b = ", b[1,:,:], "\n")
 
 file = jldopen(simulation.output_writers[:fields].filepath)
 

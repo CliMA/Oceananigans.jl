@@ -8,12 +8,11 @@ using NCDatasets, Plots, Printf
 const L_jet = Ly/10
 const H_jet = Lz/10
 
-grid = RegularRectilinearGrid(size=(64, 32), 
+grid = RegularRectilinearGrid(size=(128, 128), 
                                  y=(-Ly/2, Ly/2), z=(-Lz, 0),
                           topology=(Flat, Bounded, Bounded),
                              halo = (3, 3))
 
-   coriolis = FPlane(0.73e-4)
    const  f = 7.3e-5 
    const N² = 1e-2
 const U_max = 14.6 
@@ -23,11 +22,11 @@ B_func(x, y, z, t, N) = N² * (z + D)
                     B = BackgroundField(B_func, parameters=N)
 
 model = IncompressibleModel(
-     architecture = GPU(),
+     architecture = CPU(),
              grid = grid,
         advection = WENO5(),
       timestepper = :RungeKutta3,
-         coriolis = coriolis,
+         coriolis = FPlane(f=f),
           tracers = :b,
 background_fields = (b=B,),
          buoyancy = BuoyancyTracer(),
@@ -65,7 +64,7 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         prettytime(sim.Δt))
 
 #wizard = TimeStepWizard(cfl=1.0, Δt=1minutes, max_change=1.1, max_Δt=2minutes)
-simulation = Simulation(model, Δt=10, stop_time=2hours, #days,
+simulation = Simulation(model, Δt=10, stop_time=2days,
                         iteration_interval=10, progress=progress)
 
 using LinearAlgebra: norm
@@ -140,6 +139,49 @@ end
 close(ds)
 
 mp4(anim, "Inertial_Instability_2D.mp4", fps=15)
+
+### Compute and plot growth rates
+
+#using Oceananigans
+#using Oceananigans.Units: hours, days, seconds, meters, kilometers, minutes
+#using NCDatasets, Plots, Printf
+
+ds2 = NCDataset(simulation.output_writers[:norms].filepath, "r")
+#ds2 = NCDataset("inertially_unstable_jet_norms.nc", "r")
+
+iterations = keys(ds2["time"])
+
+     t = ds2["time"][:]
+norm_u = ds2["norm_u"][:]
+
+close(ds2)
+
+using Polynomials: fit
+
+I = 9000:10000
+
+degree = 1
+linear_fit_polynomial = fit(t[I], log.(norm_u[I]), degree, var = :t)
+
+constant, slope = linear_fit_polynomial[0], linear_fit_polynomial[1]
+
+best_fit = @. exp(constant + slope * t)
+
+plt = plot(t/hours, norm_u,
+        yaxis = :log,
+        #ylims = (2, 500),
+           lw = 4,
+        label = "norm(u)",
+       xlabel = "time (hours)",
+       ylabel = "norm(u)",
+        title = "norm of perturabation",
+       legend = :bottomright)
+
+plot!(plt, t[I]/hours, 2 * best_fit[I], # factor 2 offsets fit from curve for better visualization
+           lw = 4,
+        label = "best fit")
+
+savefig(plt, "growth.png")
 
 # To-Do
 # 2. Try wizard
