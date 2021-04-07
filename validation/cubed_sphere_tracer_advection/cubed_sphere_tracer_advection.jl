@@ -70,7 +70,7 @@ maybe_replace_with_face(velocities::PrescribedVelocityFields, cubed_sphere_grid,
 import Oceananigans.CubedSpheres: fill_horizontal_velocity_halos!
 
 # We will use prescribed velocity `Field`s
-# fill_horizontal_velocity_halos!(u, v, arch) = nothing
+fill_horizontal_velocity_halos!(u, v, arch) = nothing
 
 #####
 ##### state checker for debugging
@@ -106,8 +106,8 @@ function (p::Progress)(sim)
     @info @sprintf("Time: %s, iteration: %d, extrema(h): (min=%.2e, max=%.2e), CFL: %.2e, wall time: %s",
                 prettytime(sim.model.clock.time),
                 sim.model.clock.iteration,
-                minimum(abs, sim.model.tracers.h),
-                maximum(abs, sim.model.tracers.h),
+                minimum(sim.model.tracers.h),
+                maximum(sim.model.tracers.h),
                 sim.parameters.cfl(sim.model),
                 prettytime(wall_time))
 
@@ -127,7 +127,7 @@ Logging.global_logger(OceananigansLogger())
 dd = DataDep("cubed_sphere_32_grid",
     "Conformal cubed sphere grid with 32×32 grid points on each face",
     "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
-    "3cc5d86290c3af028cddfa47e61e095ee470fe6f8d779c845de09da2f1abeb15" # sha256sum
+    "b1dafe4f9142c59a2166458a2def743cd45b20a4ed3a1ae84ad3a530e1eff538" # sha256sum
 )
 
 DataDeps.register(dd)
@@ -164,20 +164,20 @@ function tracer_advection_over_the_poles(face_number)
         end
     end
 
-    fill_halo_regions!(Ψᶠᶠᶜ, CPU())
-    fill_halo_regions!(Ψᶠᶠᶜ, CPU()) # get those corners
+    # fill_halo_regions!(Ψᶠᶠᶜ, CPU())
+    # fill_halo_regions!(Ψᶠᶠᶜ, CPU()) # get those corners
 
     for (f, grid_face) in enumerate(grid.faces)
         for i in 1:grid_face.Nx+1, j in 1:grid_face.Ny
-            Uᶠᶜᶜ.faces[f][i, j, 1] = (Ψᶠᶠᶜ.faces[f][i, j, 1] - Ψᶠᶠᶜ.faces[f][i, j+1, 1]) / grid.faces[f].Δyᶠᶠᵃ[i, j]
+            Uᶠᶜᶜ.faces[f][i, j, 1] = (Ψᶠᶠᶜ.faces[f][i, j, 1] - Ψᶠᶠᶜ.faces[f][i, j+1, 1]) / grid.faces[f].Δyᶠᶜᵃ[i, j]
         end
         for i in 1:grid_face.Nx, j in 1:grid_face.Ny+1
-            Vᶜᶠᶜ.faces[f][i, j, 1] = (Ψᶠᶠᶜ.faces[f][i+1, j, 1] - Ψᶠᶠᶜ.faces[f][i, j, 1]) / grid.faces[f].Δxᶠᶠᵃ[i, j]
+            Vᶜᶠᶜ.faces[f][i, j, 1] = (Ψᶠᶠᶜ.faces[f][i+1, j, 1] - Ψᶠᶠᶜ.faces[f][i, j, 1]) / grid.faces[f].Δxᶜᶠᵃ[i, j]
         end
     end
 
-    fill_horizontal_velocity_halos!(Uᶠᶜᶜ, Vᶜᶠᶜ, CPU())
-    fill_horizontal_velocity_halos!(Uᶠᶜᶜ, Vᶜᶠᶜ, CPU()) # get those corners
+    # fill_horizontal_velocity_halos!(Uᶠᶜᶜ, Vᶜᶠᶜ, CPU())
+    # fill_horizontal_velocity_halos!(Uᶠᶜᶜ, Vᶜᶠᶜ, CPU()) # get those corners
 
     ## Model setup
 
@@ -213,7 +213,7 @@ function tracer_advection_over_the_poles(face_number)
 
     simulation = Simulation(model,
                             Δt = Δt,
-                            stop_time = 5days,
+                            stop_time = 12days,
                             iteration_interval = 1,
                             progress = Progress(time_ns()),
                             parameters = (; cfl))
@@ -233,9 +233,12 @@ function tracer_advection_over_the_poles(face_number)
     return simulation
 end
 
+for face_number in 1:6
+    tracer_advection_over_the_poles(face_number)
+end
+
 include("animate_on_map.jl")
 
 for face_number in 1:6
-    tracer_advection_over_the_poles(face_number)
     animate_tracer_advection(face_number)
 end
