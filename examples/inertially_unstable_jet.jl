@@ -8,7 +8,7 @@ using JLD2, Plots, Printf
 const L_jet = Ly/10
 const H_jet = Lz/10
 
-grid = RegularRectilinearGrid(size=(256, 256), 
+grid = RegularRectilinearGrid(size=(512, 256), 
                                  y=(-Ly/2, Ly/2), z=(-Lz, 0),
                           topology=(Flat, Bounded, Bounded),
                              halo = (3, 3))
