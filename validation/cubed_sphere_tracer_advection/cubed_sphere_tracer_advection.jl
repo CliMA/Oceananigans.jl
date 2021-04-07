@@ -74,6 +74,7 @@ DataDeps.register(dd)
 
 cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 
+# Central (λ, φ) for each face of the cubed sphere
 central_longitude = (0, 90,  0, 180, -90,   0)
 central_latitude  = (0,  0, 90,   0,   0, -90)
 
@@ -92,7 +93,7 @@ function tracer_advection_over_the_poles(; face_number, α)
 
     period = 12days  # Time to make a full rotation (s)
     R = grid.faces[1].radius  # radius of the sphere (m)
-    u₀ = 2π*R / perioid  # advecting velocity (m/s)
+    u₀ = 2π*R / period  # advecting velocity (m/s)
 
     # U(λ, φ, z) = u₀ * (cosd(φ) * cosd(α) + sind(φ) * cosd(λ) * sind(α))
     # V(λ, φ, z) = - u₀ * sind(λ) * sind(α)
@@ -134,7 +135,7 @@ function tracer_advection_over_the_poles(; face_number, α)
 
     ## Cosine bell initial condition according to Williamson et al. (1992) §3.1
 
-    h₀ = 1000 # meters
+    h₀ = 1000
     λ₀ = central_longitude[face_number]
     φ₀ = central_longitude[face_number]
 
@@ -153,33 +154,41 @@ function tracer_advection_over_the_poles(; face_number, α)
     cfl = CFL(Δt, accurate_cell_advection_timescale)
 
     simulation = Simulation(model,
-                            Δt = Δt,
-                            stop_time = 12days,
-                            iteration_interval = 1,
-                            progress = Progress(time_ns()),
-                            parameters = (; cfl))
+                        Δt = Δt,
+                 stop_time = 1period,
+        iteration_interval = 1,
+                  progress = Progress(time_ns()),
+                parameters = (; cfl)
+    )
 
     # TODO: Implement NaNChecker for ConformalCubedSphereField
     empty!(simulation.diagnostics)
 
     outputs = (u=Uᶠᶜᶜ, v=Vᶜᶠᶜ, h=model.tracers.h)
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                        schedule = TimeInterval(1hour),
-                                                        prefix = "tracer_advection_over_the_poles_face$face_number",
-                                                        force = true)
+    simulation.output_writers[:fields] =
+        JLD2OutputWriter(model, outputs,
+            schedule = TimeInterval(1hour),
+              prefix = "tracer_advection_over_the_poles_face$(face_number)_alpha$α",
+              force = true)
 
     run!(simulation)
 
     return simulation
 end
 
-# for face_number in 1:6
-#     tracer_advection_over_the_poles(face_number)
-# end
+#####
+##### Run all the experiments!
+#####
 
-# include("animate_on_map.jl")
+αs = (0, 45, 90)
 
-# for face_number in 1:6
-#     animate_tracer_advection(face_number)
-# end
+for f in 1:6, α in αs
+    tracer_advection_over_the_poles(face_number=f, α=α)
+end
+
+include("animate_on_map.jl")
+
+for f in 1:6, α in αs
+    animate_tracer_advection(face_number=f, α=α)
+end
