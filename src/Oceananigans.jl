@@ -153,7 +153,6 @@ include("Operators/Operators.jl")
 include("Advection/Advection.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
-include("CubedSpheres/CubedSpheres.jl")
 include("Coriolis/Coriolis.jl")
 include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
@@ -167,6 +166,7 @@ include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
 include("Simulations/Simulations.jl")
 include("AbstractOperations/AbstractOperations.jl")
+include("CubedSpheres/CubedSpheres.jl")
 include("Distributed/Distributed.jl")
 
 #####
@@ -180,7 +180,6 @@ using .Advection
 using .Grids
 using .BoundaryConditions
 using .Fields
-using .CubedSpheres
 using .Coriolis
 using .BuoyancyModels
 using .StokesDrift
@@ -194,6 +193,7 @@ using .Diagnostics
 using .OutputWriters
 using .Simulations
 using .AbstractOperations
+using .CubedSpheres
 using .Distributed
 
 function __init__()

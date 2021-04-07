@@ -1,6 +1,8 @@
 import Oceananigans.BoundaryConditions:
     fill_halo_regions!, fill_west_halo!, fill_east_halo!, fill_south_halo!, fill_north_halo!
 
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_horizontal_velocity_halos!
+
 # These filling functions won't work so let's not use them.
 
  fill_west_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
