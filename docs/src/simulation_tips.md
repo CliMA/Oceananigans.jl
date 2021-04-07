@@ -2,13 +2,15 @@
 
 In Oceananigans we try to do most of the optimizing behind the scenes, that way the average user
 doesn't have to worry about details when setting up a simulation. However, there's just so much
-optimization that can be done in the source code. In order to take advantage of Julia's full speed
-the user has to be aware of some things when writing the simulation script. Furthermore, in case of
-more complex GPU runs, some details could sometimes prevent your simulation from running altogether.
-While Julia knowledge is obviously desirable here, a user that is unfamiliar with Julia can get away
-with efficient simulations by learning a few rules of thumb. It is also recommended that users go
-through Julia's [performance tips](https://docs.julialang.org/en/v1/manual/performance-tips/), which
-contains a more in-depth explanation of some of the aspects discussed here.
+optimization that can be done in the source code. Because of Oceananigans script-based interface,
+the user has to be aware of some things when writing the simulation script in order to take full
+advantage of Julia's speed. Furthermore, in case of more complex GPU runs, some details could
+sometimes prevent your simulation from running altogether. While Julia knowledge is obviously
+desirable here, a user that is unfamiliar with Julia can get away with efficient simulations by
+learning a few rules of thumb. It is nonetheless recommended that users go through Julia's
+[performance tips](https://docs.julialang.org/en/v1/manual/performance-tips/), which contains more
+in-depth explanations of some of the aspects discussed here.
+
 
 
 ## General (CPU/GPU) simulation tips
@@ -29,15 +31,19 @@ until you restart the Julia session. So this latter approach is good for product
 may be undesirable in the early stages of development while you still have to change the parameters
 of the simulation for exploration.
 
-It is especially important to avoid global variables in functions that are meant to be executed in GPU kernels such as functions in boundary condition and forcings. Otherwise the Julia GPU compiler can fail with obscure errors. This is explained in more detail in the GPU simulation tips section below.
+It is especially important to avoid global variables in functions that are meant to be executed in
+GPU kernels (such as functions defining boundary conditions and forcings). Otherwise the Julia GPU
+compiler can fail with obscure errors. This is explained in more detail in the GPU simulation tips
+section below.
+
 
 ### Consider inlining small functions
 
 Inlining is when the compiler [replaces a function call with the body of the function that is being
 called before compiling](https://en.wikipedia.org/wiki/Inline_expansion). The advantage of inlining
-(which is julia can be done with the [`@inline`
-macro](https://docs.julialang.org/en/v1/devdocs/meta/)) is that gets rid of the time spent calling the
-function. The Julia compiler automatically makes some calls as to what functions it should or
+(which in julia can be done with the [`@inline`
+macro](https://docs.julialang.org/en/v1/devdocs/meta/)) is that gets rid of the time spent calling
+the function. The Julia compiler automatically makes some calls as to what functions it should or
 shouldn't inline, but you can force a function to be inlined by including the macro `@inline` before
 its definition. This is more suited for small functions that are called often. Here's an example of
 an implementation of the Heaviside function that forces it to be inlined:
@@ -47,25 +53,37 @@ an implementation of the Heaviside function that forces it to be inlined:
 ```
 
 In practice it's hard to say whether inlining a function will bring runtime benefits _with
-certainty_, since Julia and KernelAbstractions.jl already inline some small functions automatically. However, it is generally
-a good idea to at least investigate this aspect in your code as the benefits can potentially be
-significant.
+certainty_, since Julia and KernelAbstractions.jl (needed for GPU runs) already inline some
+functions automatically. However, it is generally a good idea to at least investigate this aspect in
+your code as the benefits can potentially be significant.
 
 
 
 ## GPU simulation tips
 
-Running on GPUs is very different from running on CPUs. Oceananigans makes most of the necessary
+Running on GPUs can be very different from running on CPUs. Oceananigans makes most of the necessary
 changes in the background, so that for very simple simulations changing between CPUs and GPUs is
 just a matter of changing the `architecture` argument in the model from `CPU()` to `GPU()`. However,
 for more complex simulations some care needs to be taken on the part of the user. While knowledge of
-GPU computing (and Julia) is again desirable, the inexperienced user can also achieve efficient GPU
-simulations by following a few simple principles.
+GPU computing (and Julia) is again desirable, an inexperienced user can also achieve high efficiency
+in GPU simulations by following a few simple principles.
 
 
 ### Variables that need to be used in GPU computations need to be defined as constants
 
-Any global variable that needs to be accessed by the GPU needs to be a constant or the simulation will crash
+Any global variable that needs to be accessed by the GPU needs to be a constant or the simulation
+will crash. This includes any variables used in forcing functions and boundary conditions. For
+example, if you define a boundary condition like the example below and run your simulation on a GPU
+you'll get an error.
+
+```julia
+dTdz = 0.01 # K m⁻¹
+T_bcs = TracerBoundaryConditions(grid,
+                                 bottom = GradientBoundaryCondition(dTdz))
+```
+
+However, if you define `dTdz` as a constant by replacing the first line with `const dTdz = 0.01`,
+then (provided everything else is done properly) your run will be successful.
 
 
 ### Complex diagnostics using `ComputedField`s may not work on GPUs
@@ -75,7 +93,7 @@ always work on CPUs, but when their complexity is high (in terms of number of ab
 the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is discussed 
 in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1241) and contributors are welcome.)
 For example, in the example below, calculating `u²` works in both CPUs and GPUs, but calculating 
-`KE` only works in CPUs:
+`KE` only works on CPUs:
 
 ```julia
 u, v, w = model.velocities
@@ -86,20 +104,20 @@ compute!(KE)
 ```
 
 There are two approaches to bypass this issue. The first is to nest `ComputedField`s. For example,
-we can make `KE` be computed on GPU by defining it as
+we can make `KE` be successfully computed on GPUs by defining it as
 ```julia
 u, v, w = model.velocities
 u² = ComputedField(u^2)
 v² = ComputedField(v^2)
 w² = ComputedField(w^2)
-uplusv = ComputedField(u² + v²)
-KE = ComputedField((uplusv + w²)/2)
+u²plusv² = ComputedField(u² + v²)
+KE = ComputedField((u²plusv² + w²)/2)
 compute!(KE)
 ```
 
 This is a simple workaround that is especially suited for the development stage of a simulation.
-However, when running this on a GPU, the code will iterate over the whole domain 5 times to
-calculate `KE` (one for each computed field defined), which is not very efficient.
+However, when running this, the code will iterate over the whole domain 5 times to calculate `KE`
+(one for each computed field defined), which is not very efficient.
 
 A different way to calculate `KE` is by using `KernelComputedField`s, where the
 user manually specifies the computing kernel to the compiler. The advantage of this method is that
@@ -129,6 +147,7 @@ KE = KernelComputedField(Center, Center, Center, kinetic_energy_ccc!, model;
                          computed_dependencies=(u, v, w))
 ```
 
+
 It may be useful to know that there are some kernels already defined for commonly-used diagnostics
 in packages that are companions to Oceananigans. For example
 [Oceanostics.jl](https://github.com/tomchor/Oceanostics.jl/blob/13d2ba5c48d349c5fce292b86785ce600cc19a88/src/TurbulentKineticEnergyTerms.jl#L23-L30)
@@ -139,15 +158,34 @@ issue on Github](https://github.com/CliMA/Oceananigans.jl/issues/new) if they ne
 different kernel.
 
 
+
 ### Try to decrease the memory-use of your runs
 
-GPU runs are generally memory-limited, so it's good to both keep track of and try to reduce the size of your runs. Useful tips in this regard are
+GPU runs are generally memory-limited. As an example, a state-of-the-art Tesla V100 GPU has 32GB of
+memory, which is enough to fit, on average, a simulation with about 100 million points --- a bit
+smaller than a 512-cubed simulation. (The precise number depends on many other things, such as the
+number of tracers simulated, as well as the diagnostics that are calculated.) This means that it is
+especially important to be mindful of the size of your runs when running Oceananigans on GPUs and it
+is generally good practice to decrease the memory required for your runs. Below are some useful tips
+to achieve this
 
-Try to use higher-order schemes as you need fewer grid points to achieve the same accuracy
+- Use the [`nvidia-smi`](https://developer.nvidia.com/nvidia-system-management-interface) command
+  line utility to monitor the memory usage of the GPU. It should tell you how much memory there is
+on your GPU and how much of it you're using.
+- Try to use higher-order advection schemes. In general when you use a higher-order scheme you need
+  fewer grid points to achieve the same accuracy that you would with a lower-order one. Oceananigans
+provides two high-order advection schemes: 5th-order WENO method (WENO5) and 3rd-order upwind.
+- Manually define scratch space to be reused in diagnostics. By default, every time a user-defined
+  diagnostic is calculated the compiler reserves a new chunk of memory for that calculation, usually
+called scratch space. In general, the more diagnostics, the more scratch space needed and the bigger
+the memory requirements. However, if you explicitly create a scratch space and pass that same
+scratch space for as many diagnostics as you can, you minimize the memory requirements of your
+calculations by reusing the same memory chunk. As an example, you can see scratch space being
+created
+[here](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_constant_fluxes.jl#L380-L383)
+and then being used in calculations
+[here](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/src/TurbulenceStatistics/first_through_third_order.jl#L109-L112).
 
-Use the [`nvidia-smi`](https://developer.nvidia.com/nvidia-system-management-interface) command line utility to monitor the memory usage of the GPU.
-
-Manually define scratch space to be reused in diagnostics, to avoid creating one scratch space for each separate diagnostic you have.
 
 
 ### Arrays in GPUs are usually different from arrays in CPUs
