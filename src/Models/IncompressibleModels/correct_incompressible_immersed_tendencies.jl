@@ -6,12 +6,13 @@ using Oceananigans.Fields: interpolate
 import Oceananigans.TimeSteppers: correct_immersed_tendencies!
 
 """
-    correct_immersed_tendencies!(model, Δt, γⁿ, ζⁿ)
+    correct_immersed_tendencies!(model)
     
 Correct the tendency terms to implement no-slip boundary conditions on an immersed boundary
  without the contribution from the non-hydrostatic pressure. 
 Makes velocity vanish within the immersed surface.
 """
+
 # check if incompressible model (only model it works with for now!)
 correct_immersed_tendencies!(model::IncompressibleModel) =
     correct_immersed_tendencies!(model, model.immersed_boundary)
@@ -114,19 +115,22 @@ max_neighbor(x, y, z, Δx, Δy, Δz, immersed_distance)= max(immersed_distance([
 
 # function to find the tangential plane to the point for rotation to tangential and normal
 function projection_matrix(N)
-
-    if abs(N[1]) == 1 # if normal vector is entirely in the x direction
-        v1 = [-N[3]/N[1]; 0; 1]  # we want v1 = [0,0,1]
+    if abs(N[1]) ==1 # if normal vector is entirely in the x direction
+        v1 = [0; -sign(N[1]); 1]  # we want v1 = [0,0,1]
+        v1 = v1./norm(v1); # normalizing vector
+        v2 = [0; 0; -1];
     elseif abs(N[2]) == 1 || N[3]==0 # if normal vector is entirely in the y direction or 0 z comp
-        v1 = [1; -N[1]/N[2]; 0] # we want v1 = [1,0,0]
+        v1 = [sign(N[2]); -N[1]*sign(N[2])/N[2]; 0] # we want v1 = [1,0,0]
+        v1 = v1./norm(v1); # normalizing vector
+        v2 = cross(N,v1); # cross product to be orthonormal to both vectors
     else
-        v1 = [1; 0; -N[1]/N[3]] # else we want v1 = [1, 0 , ?]
+        v1 = [sign(N[3]); 0; -N[1]*sign(N[3])/N[3]]; # else we want v1 = [1, 0 , ?]
+        v1 = v1./norm(v1); # normalizing vector
+        v2 = cross(N,v1); # cross product to be orthonormal to both vectors
     end
-
-    v1 = v1./norm(v1); # normalizing vector
-    v2 = cross(N, v1); # cross product to be orthonormal to both vectors
-    transpose(hcat(v1, v2, N)) # creating a matrix of all 3 vectors
+    transpose(hcat(v1,v2,N)) # creating a matrix of all 3 vectors
 end 
+
 
 # dirichlet bc Vb to find enforced pt vel u1 given the value at u2 and the sfc normal distances 
 # assume boundary is at dist = 0 and fluid is negative d,so if reflected equidistant : d1 = -d2 
