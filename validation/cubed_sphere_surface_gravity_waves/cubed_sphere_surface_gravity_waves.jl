@@ -11,50 +11,12 @@ using Oceananigans.Coriolis
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.TurbulenceClosures
 
-#####
-##### Gotta dispatch on some stuff after defining Oceananigans.CubedSpheres
-#####
-
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface
-
-import Oceananigans.CubedSpheres: maybe_replace_with_face
-
-maybe_replace_with_face(free_surface::ExplicitFreeSurface, cubed_sphere_grid, face_number) =
-  ExplicitFreeSurface(free_surface.η.faces[face_number], free_surface.gravitational_acceleration)
-
-import Oceananigans.Diagnostics: accurate_cell_advection_timescale
-
-function accurate_cell_advection_timescale(grid::ConformalCubedSphereGrid, velocities)
-
-    min_timescale_on_faces = []
-
-    for (face_number, grid_face) in enumerate(grid.faces)
-        velocities_face = maybe_replace_with_face(velocities, grid, face_number)
-        min_timescale_on_face = accurate_cell_advection_timescale(grid_face, velocities_face)
-        push!(min_timescale_on_faces, min_timescale_on_face)
-    end
-
-    return minimum(min_timescale_on_faces)
-end
-
-import Oceananigans.OutputWriters: fetch_output
-
-fetch_output(field::ConformalCubedSphereField, model, field_slicer) =
-    Tuple(fetch_output(field_face, model, field_slicer) for field_face in field.faces)
-
-import Base: minimum, maximum
-
-minimum(field::ConformalCubedSphereField; dims=:) = minimum(minimum(field_face; dims) for field_face in field.faces)
-maximum(field::ConformalCubedSphereField; dims=:) = maximum(maximum(field_face; dims) for field_face in field.faces)
-
-minimum(f, field::ConformalCubedSphereField; dims=:) = minimum(minimum(f, field_face; dims) for field_face in field.faces)
-maximum(f, field::ConformalCubedSphereField; dims=:) = maximum(maximum(f, field_face; dims) for field_face in field.faces)
+using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 
 #####
 ##### state checker for debugging
 #####
 
-# Takes forever to compile with Julia 1.6...
 function state_checker(model)
     fields = (
         u = model.velocities.u,
@@ -122,10 +84,11 @@ DataDeps.register(dd)
 
 cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 
-central_longitude = (0, 90, 0, 180, -90, 0)
-central_latitude  = (0, 0, 90, 0, 0, -90)
+# Central (λ, φ) for each face of the cubed sphere
+central_longitude = (0, 90,  0, 180, -90,   0)
+central_latitude  = (0,  0, 90,   0,   0, -90)
 
-function surface_gravity_waves_on_cubed_sphere(face_number)
+function cubed_sphere_surface_gravity_waves(; face_number)
 
     H = 4kilometers
     grid = ConformalCubedSphereGrid(cs32_filepath, Nz=1, z=(-H, 0))
@@ -137,9 +100,7 @@ function surface_gravity_waves_on_cubed_sphere(face_number)
                       grid = grid,
         momentum_advection = VectorInvariant(),
               free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
-            # free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
                   coriolis = nothing,
-                # coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
                    closure = nothing,
                    tracers = nothing,
                   buoyancy = nothing
@@ -155,10 +116,8 @@ function surface_gravity_waves_on_cubed_sphere(face_number)
     Δλ = 15  # Longitudinal width
     Δφ = 15  # Latitudinal width
 
-    Ξ(λ, φ, z) = 1e-5 * randn()
     η′(λ, φ, z) = A * exp(- (λ - λ₀)^2 / Δλ^2) * exp(- (φ - φ₀)^2 / Δφ^2)
 
-    # set!(model, u=Ξ, v=Ξ, η=η′)
     set!(model, η=η′)
 
     ## Simulation setup
@@ -168,30 +127,32 @@ function surface_gravity_waves_on_cubed_sphere(face_number)
     cfl = CFL(Δt, accurate_cell_advection_timescale)
 
     simulation = Simulation(model,
-                            Δt = Δt,
-                            stop_time = 5days,
-                            iteration_interval = 1,
-                            progress = Progress(time_ns()),
-                            parameters = (; cfl))
+                        Δt = Δt,
+                 stop_time = 5days,
+        iteration_interval = 1,
+                  progress = Progress(time_ns()),
+                parameters = (; cfl)
+    )
 
     # TODO: Implement NaNChecker for ConformalCubedSphereField
     empty!(simulation.diagnostics)
 
     output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                        schedule = TimeInterval(1hour),
-                                                        prefix = "surface_gravity_waves_on_cubed_sphere_face$face_number",
-                                                        force = true)
+    simulation.output_writers[:fields] =
+        JLD2OutputWriter(model, output_fields,
+            schedule = TimeInterval(1hour),
+              prefix = "cubed_sphere_surface_gravity_waves_face$face_number",
+               force = true)
 
     run!(simulation)
 
     return simulation
 end
 
-include("animate_sphere_on_map.jl")
+# include("animate_sphere_on_map.jl")
 
-for face_number in 1:6
-    surface_gravity_waves_on_cubed_sphere(face_number)
-    animate_surface_gravity_waves_on_cubed_sphere(face_number)
-end
+# for face_number in 1:6
+#     surface_gravity_waves_on_cubed_sphere(face_number)
+#     animate_surface_gravity_waves_on_cubed_sphere(face_number)
+# end

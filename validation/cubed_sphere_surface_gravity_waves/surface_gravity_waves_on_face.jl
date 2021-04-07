@@ -17,7 +17,7 @@ Logging.global_logger(OceananigansLogger())
 dd = DataDep("cubed_sphere_32_grid",
     "Conformal cubed sphere grid with 32×32 grid points on each face",
     "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
-    "3cc5d86290c3af028cddfa47e61e095ee470fe6f8d779c845de09da2f1abeb15" # sha256sum
+    "b1dafe4f9142c59a2166458a2def743cd45b20a4ed3a1ae84ad3a530e1eff538" # sha256sum
 )
 
 DataDeps.register(dd)
