@@ -1,7 +1,8 @@
 using Oceananigans.Fields: AbstractField, call_func
 
-import Base: getindex, size, show
+import Base: getindex, size, show, minimum, maximum
 import Oceananigans.Fields: Field, CenterField, XFaceField, YFaceField, ZFaceField, FunctionField, interior
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 abstract type AbstractCubedSphereField{X, Y, Z, A, G} <: AbstractField{X, Y, Z, A, G} end
 
@@ -50,6 +51,12 @@ CenterField(FT::DataType, arch, grid::ConformalCubedSphereGrid, bcs=nothing, dat
 
 Base.size(field::AbstractCubedSphereField) = (size(field.faces[1])..., length(field.faces))
 
+Base.minimum(field::ConformalCubedSphereField; dims=:) = minimum(minimum(field_face; dims) for field_face in field.faces)
+Base.maximum(field::ConformalCubedSphereField; dims=:) = maximum(maximum(field_face; dims) for field_face in field.faces)
+
+Base.minimum(f, field::ConformalCubedSphereField; dims=:) = minimum(minimum(f, field_face; dims) for field_face in field.faces)
+Base.maximum(f, field::ConformalCubedSphereField; dims=:) = maximum(maximum(f, field_face; dims) for field_face in field.faces)
+
 interior(field::ConformalCubedSphereField) = cat(Tuple(interior(field_face) for field_face in field.faces)..., dims=4)
 
 const ConformalCubedSphereFaceField{LX, LY, LZ, A} = AbstractField{LX, LY, LZ, A, <:ConformalCubedSphereFaceGrid}
@@ -83,11 +90,7 @@ const ConformalCubedSphereFaceFunctionField = FunctionField{X, Y, Z, C, P, F, <:
               φnode(X(), Y(), Z(), i, j, k, f.grid),
               znode(Z(), Y(), Z(), i, j, k, f.grid))
 
-#####
-##### Computed fields
-#####
-
-
+fill_halo_regions!(::ConformalCubedSphereFunctionField, args...) = nothing
 
 #####
 ##### Pretty printing

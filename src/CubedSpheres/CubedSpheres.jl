@@ -13,4 +13,44 @@ include("cubed_sphere_set!.jl")
 include("cubed_sphere_halo_filling.jl")
 include("cubed_sphere_kernel_launching.jl")
 
+#####
+##### Proper launch! when `ExplicitFreeSurface` is an argument
+#####
+
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, PrescribedVelocityFields
+
+maybe_replace_with_face(free_surface::ExplicitFreeSurface, cubed_sphere_grid, face_number) =
+    ExplicitFreeSurface(free_surface.η.faces[face_number], free_surface.gravitational_acceleration)
+
+maybe_replace_with_face(velocities::PrescribedVelocityFields, cubed_sphere_grid, face_number) =
+    PrescribedVelocityFields(velocities.u.faces[face_number], velocities.v.faces[face_number], velocities.w.faces[face_number], velocities.parameters)
+
+#####
+##### CFL for cubed sphere fields
+#####
+
+import Oceananigans.Diagnostics: accurate_cell_advection_timescale
+
+function accurate_cell_advection_timescale(grid::ConformalCubedSphereGrid, velocities)
+
+    min_timescale_on_faces = []
+
+    for (face_number, grid_face) in enumerate(grid.faces)
+        velocities_face = maybe_replace_with_face(velocities, grid, face_number)
+        min_timescale_on_face = accurate_cell_advection_timescale(grid_face, velocities_face)
+        push!(min_timescale_on_faces, min_timescale_on_face)
+    end
+
+    return minimum(min_timescale_on_faces)
+end
+
+#####
+##### Output writing for cubed sphere fields
+#####
+
+import Oceananigans.OutputWriters: fetch_output
+
+fetch_output(field::ConformalCubedSphereField, model, field_slicer) =
+    Tuple(fetch_output(field_face, model, field_slicer) for field_face in field.faces)
+
 end # module
