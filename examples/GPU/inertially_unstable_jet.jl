@@ -2,7 +2,8 @@ using Oceananigans
 using Oceananigans.Units: hours, days, seconds, meters, kilometers, minutes
 using JLD2, Plots, Printf
 
-#CUDA.allowscalar(true)
+using CUDA
+CUDA.allowscalar(true)
 
    const Ly = 100kilometers
    const Lz = 3kilometers
@@ -10,10 +11,10 @@ using JLD2, Plots, Printf
 const L_jet = Ly/10
 const H_jet = Lz/10 
 
-grid = RegularRectilinearGrid(size = (1, 128, 128), 
-                                 x = (0, 1), y = (-Ly/2, Ly/2), z=(-Lz, 0),
-                          topology = (Periodic, Bounded, Bounded),
-                              halo = (1, 3, 3))
+grid = RegularRectilinearGrid(size=(4, 4), 
+                                 y=(-Ly/2, Ly/2), z=(-Lz, 0),
+                          topology=(Flat, Bounded, Bounded),
+                             halo = (3, 3))
 
    const f  = 7.3e-5
    const N² = 1e-2
@@ -23,26 +24,21 @@ B_func(x, y, z, t, N) = N² * (z + D)
                     N = sqrt(N²)
                     B = BackgroundField(B_func, parameters=N)
 
-#buoyancy_gradient_bc = GradientBoundaryCondition(N²)
-#        buoyancy_bcs = TracerBoundaryConditions(grid,
-#                                                top = buoyancy_gradient_bc,
-#                                                bottom = buoyancy_gradient_bc)
-
 model = IncompressibleModel(
-       architecture = GPU(),
-               grid = grid,
-          advection = WENO5(),
-        timestepper = :RungeKutta3,
-           coriolis = FPlane(f=f),
-            tracers = :b,
- background_fields = (b=B,),
-           buoyancy = BuoyancyTracer(),
-            closure = AnisotropicDiffusivity(νh=0, νz=1.27e-2),
-#boundary_conditions = (b=buoyancy_bcs,)
+     architecture = GPU(),
+             grid = grid,
+        advection = WENO5(),
+     #timestepper = :RungeKutta3,
+      timestepper = :QuasiAdamsBashforth2,
+         coriolis = FPlane(f=f),
+          tracers = :b,
+background_fields = (b=B,),
+         buoyancy = BuoyancyTracer(),
+          closure = AnisotropicDiffusivity(νh=0, νz=1.27e-2)
           )
 
 ū(x, y, z) = U_max * sech(y/L_jet)^2 * exp( - (z + D)^2/H_jet^2 )
-b̄(x, y, z) = U_max * tanh(y/L_jet)   * exp( - (z + D)^2/H_jet^2 ) * 2 * f * L_jet / H_jet^2 * (z + D) #+ N² * (z + D)
+b̄(x, y, z) = U_max * tanh(y/L_jet)   * exp( - (z + D)^2/H_jet^2 ) * 2 * f * L_jet / H_jet^2 * (z + D)
 
 perturbation(x, y, z) = randn() * sech(y/L_jet)^2 * exp( - (z + D)^2/H_jet^2 )
           uⁱ(x, y, z) = ū(x, y, z) + 0e-2 * perturbation(x, y, z)
@@ -53,8 +49,10 @@ set!(model, u = uⁱ, b = bⁱ)
 u = model.velocities.u 
 b = model.tracers.b
 
-ũ = ComputedField(u - ū)
-b̃ = ComputedField(b - b̄)
+ũ = ComputedField(u)
+b̃ = ComputedField(b)
+#ũ = ComputedField(u - 0 * ū)
+#b̃ = ComputedField(b - 0 * b̄)
 
 y, z = ynodes(model.velocities.u), znodes(model.velocities.u)
 
@@ -72,20 +70,29 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
                         prettytime(sim.Δt))
 
 #wizard = TimeStepWizard(cfl=1.0, Δt=1minutes, max_change=1.1, max_Δt=2minutes)
-simulation = Simulation(model, Δt=10, stop_time=2hours, #2days,
+simulation = Simulation(model, Δt=10, stop_time=20, #2days,
                         iteration_interval=10, progress=progress)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (u = ũ, b = b̃),
-                                                       schedule = IterationInterval(10),    #60
+                                                       schedule = IterationInterval(1),    #60
                                                          prefix = "inertial_instability",
                                                           force = true)
-
 run!(simulation)
 
 file = jldopen(simulation.output_writers[:fields].filepath)
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
+for (i, iteration) in enumerate(iterations)
+
+   u_snapshot = file["timeseries/u/$iteration"][1, :, :]
+   b_snapshot = file["timeseries/b/$iteration"][1, :, :]
+   print("at i = ", i, "\n")
+   print("max of u = ", maximum(abs, u_snapshot), "\n")
+   print("max of b = ", maximum(abs, b_snapshot), "\n")
+    
+end
+#=
 @info "Making a movie of perturbation zonal velocity and buoyancy..."
 
 anim = @animate for (i, iteration) in enumerate(iterations)
@@ -114,6 +121,7 @@ anim = @animate for (i, iteration) in enumerate(iterations)
 end
 
 mp4(anim, "Inertial_Instability_2D.mp4", fps=15)
+=#
 
 # To-Do
 # 2. Try wizard
