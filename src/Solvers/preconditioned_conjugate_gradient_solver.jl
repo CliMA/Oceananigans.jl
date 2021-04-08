@@ -1,59 +1,40 @@
 using Oceananigans.Grids: interior_parent_indices
 using Statistics
 
-struct PreconditionedConjugateGradientSolver{A, S}
-    architecture :: A
-        settings :: S
+struct PreconditionedConjugateGradientSolver{A, G, L, M, T}
+       architecture :: A
+               grid :: G
+    linear_operator :: L
+     preconditioner :: M
+          tolerance :: T
+    maximum_iterations :: Int
+           residual :: R
+           settings :: S
 end
 
+identity_preconditioner(x, args...) = x
+
 function PreconditionedConjugateGradientSolver(;
-                                               arch = arch,
-                                               grid = nothing,
-                                               boundary_conditions = nothing,
+                                               architecture,
+                                               grid,
+                                               solution,
+                                               max_iterations = size(grid),
+                                               tolerance = 1e-13,
+                                               preconditioner = identity_preconditioner,
                                                parameters = parameters)
 
-    bcs = boundary_conditions
-    if isnothing(boundary_conditions)
-        bcs = parameters.Template_field.boundary_conditions
-    end
+    a_residual = similar(solution)
+    residual = similar(solution)
+    search_direction = similar(solution)
 
-    if isnothing(grid)
-        grid = parameters.Template_field.grid
-    end
+    q     = similar(solution) #.data)
+    p     = similar(solution) #.data)
+    z     = similar(solution) #.data)
+    r     = similar(solution) #.data)
+    RHS   = similar(solution) #.data)
+    x     = similar(solution) #.data)
 
-    maxit = parameters.maxit
-    if isnothing(parameters.maxit)
-        maxit = grid.Nx * grid.Ny * grid.Nz
-    end
-
-    tol = parameters.tol
-    if isnothing(parameters.tol)
-        tol = 1e-13
-    end
-
-    tf = parameters.Template_field
-    if isnothing(parameters.Template_field)
-        tf = CenterField(arch, grid)
-    end
-
-    a_res = similar(tf) #.data)
-    q     = similar(tf) #.data)
-    p     = similar(tf) #.data)
-    z     = similar(tf) #.data)
-    r     = similar(tf) #.data)
-    RHS   = similar(tf) #.data)
-    x     = similar(tf) #.data)
-
-    parent(a_res) .= 0
-
-    if isnothing(parameters.PCmatrix_function)
-        # preconditioner not provided, use the Identity matrix
-        PCmatrix_function(x, args...) = x
-    else
-        PCmatrix_function = parameters.PCmatrix_function
-    end
-
-    M(x, args...) = PCmatrix_function(x, args...)
+    parent(residual) .= 0
 
     ii = interior_parent_indices(location(tf, 1), topology(grid, 1), grid.Nx, grid.Hx)
     ji = interior_parent_indices(location(tf, 2), topology(grid, 2), grid.Ny, grid.Hy)
@@ -63,7 +44,7 @@ function PreconditionedConjugateGradientSolver(;
     norm(x) = sqrt(mapreduce(x -> x * x, +, view(x, ii, ji, ki)))
 
     Amatrix_function = parameters.Amatrix_function
-    A(x, args...) = (Amatrix_function(a_res, x, arch, args...); return a_res)
+    A(x, args...) = (Amatrix_function(a_residual, x, arch, args...); return a_residual)
 
     reference_pressure_solver = nothing
     if haskey(parameters, :reference_pressure_solver )
@@ -117,38 +98,37 @@ This function executes the algorithm
 ```
     β  = 0
     r .= b - A(x)
-    i  = 0
+    iteration  = 0
     
     Loop:
-         if i > MAXIT
+         if iteration > MAXIT
             break
          end
 
-         z  = M( r )
-         ρ .= dotprod(r,z)
+         z  = M(r)
+         ρ .= dotprod(r, z)
          p  = z + β*p
          q  = A(p)
 
-         α = ρ / dotprod(p,q)
-         x = x .+ αp
-         r = r .- αq
+         α = ρ / dotprod(p, q)
+         x = x .+ α * p
+         r = r .- α * q
 
          if norm2(r) < tol
             break
          end
 
-         i = i + 1
+         iteration = iteration + 1
          ρⁱᵐ1 .= ρ
-         β    .= ρⁱᵐ¹/ρ
+         β    .= ρⁱ⁻¹/ρ
 ```
 """
-# function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
-function solve!(x, solver::PreconditionedConjugateGradientSolver, RHS, args...)
+function solve!(initial_guess, solver::PreconditionedConjugateGradientSolver, b, args...)
 
-    # Parse arguments of solver
-    arch       = solver.architecture
+    # Unpack some solver properties
+    arch = solver.architecture
+    grid = solver.grid
     settings   = solver.settings
-    grid       = settings.grid
     z, r, p, q = settings.z, settings.r, settings.p, settings.q
     A          = settings.A
     M          = settings.M
@@ -159,81 +139,57 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, RHS, args...)
 
     # Initialize
     β    = 0.0
-    i    = 0
+    iteration = 0
     ρ    = 0.0
-    ρⁱᵐ¹ = 0.0
+    ρⁱ⁻¹ = 0.0
 
-    parent(r) .= 0
+    x = initial_guess
+    r = parent(solver.residual)
+    p = parent(solver.search_direction)
+    z = parent(solver.preconditioned_residual)
 
-    parent(r) .= parent(RHS) .- parent(A(x, args...))
+    r .= b .- A(x, args...)
 
-    ### println("PreconditionedConjugateGradientSolver ", i," RHS ", norm(RHS.parent) )
-    ### println("PreconditionedConjugateGradientSolver ", i," A(x) ", norm(A(x, args...).parent) )
+    @debug "PreconditionedConjugateGradientSolver $iteration, |b|: $(norm(b))"
+    @debug "PreconditionedConjugateGradientSolver $iteration, |A(x)|: $(norm(A(initial_guess, args...)))"
+    @debug "PreconditionedConjugateGradientSolver $iteration, |r|: $(norm(r))"
+    @debug "PreconditionedConjugateGradientSolver $iteration, |z|: $(norm(z))"
+    @debug "PreconditionedConjugateGradientSolver $iteration, ρ: $ρ"
+    @debug "PreconditionedConjugateGradientSolver $iteration, |q|: $(norm(q))"
+    @debug "PreconditionedConjugateGradientSolver $iteration, α: $α"
 
     while true
-        @debug println("PreconditionedConjugateGradientSolver ", i," norm(parent(r)) ", norm(parent(r)))
-        
-        i >= maxit && break
-        norm(parent(r)) <= tol && break
+        # End conditions
+        iteration >= solver.maximum_iterations && break
+        norm(r) <= solver.tolerance && break
 
-        parent(z) .= parent(M(r, args...))
-        @debug println("PreconditionedConjugateGradientSolver ", i," norm(parent(z)) ", norm(parent(z)))
+        # z = M(r)
+        z = M(solver.residual, args...)
+        ρ = dotprod(z, r)
 
-        ρ = dotprod(parent(z), parent(r))
-        @debug println("PreconditionedConjugateGradientSolver ", i," ρ ", ρ )
-
-        if i == 0
-            parent(p) .= parent(z)
+        if iteration == 0
+            p .= z
         else
-            β = ρ / ρⁱᵐ¹
-            parent(p) .= parent(z) .+ β .* parent(p)
+            β = ρ / ρⁱ⁻¹
+            @. p = z + β * p
         end
 
-        parent(q) .= parent(A(p, args...))
-        @debug println("PreconditionedConjugateGradientSolver ", i," norm(parent(q)) ", norm(parent(q)))
+        # q = A(p)
+        q .= parent(A(solver.search_direction, args...))
+        α = ρ / dotprod(p, q)
         
-        α = ρ / dotprod(parent(p), parent(q))
-        @debug println("PreconditionedConjugateGradientSolver ", i," α ", α)
-        
-        parent(x) .= parent(x) .+ α .* parent(p)
-        parent(r) .= parent(r) .- α .* parent(q)
+        @. x += α * p
+        @. r += α * q
 
-        i     = i+1
-        ρⁱᵐ¹  = ρ
+        iteration += 1
+        ρⁱ⁻¹  = ρ
     end
 
-    #=
-    # No preconditioner verison
-    i    = 0
-    r   .= RHS .- A(x)
-    p   .= r
-    γ    = dotprod(r,r)
+    solution = initial_guess
 
-    while true
-        if i > maxit
-            break
-        end
-        q   .= A(p)
-        α    = γ/dotprod(p,q)
-        x   .= x .+ α .* p
-        r   .= r .- α .* q
-        println("Solver ", i," ", norm(r) )
-        if norm(r) <= tol
-            break
-        end
-        γ⁺   = dotprod(r,r)
-        β    = γ⁺/γ
-        p   .= r .+ β .* p
-        γ    = γ⁺
-        i    = i+1
-    end
+    fill_halo_regions!(solution, arch)
 
-    println("PreconditionedConjugateGradientSolver ", i," ", norm(r.parent) )
-    =#
-
-    fill_halo_regions!(x, arch)
-
-    return x, norm(parent(r))
+    return nothing
 end
 
 function Base.show(io::IO, solver::PreconditionedConjugateGradientSolver)
