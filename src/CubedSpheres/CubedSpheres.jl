@@ -53,4 +53,21 @@ import Oceananigans.OutputWriters: fetch_output
 fetch_output(field::ConformalCubedSphereField, model, field_slicer) =
     Tuple(fetch_output(field_face, model, field_slicer) for field_face in field.faces)
 
+#####
+##### StateChecker for each face is useful for debugging
+#####
+
+import Oceananigans.Diagnostics: state_check
+
+function state_check(field::ConformalCubedSphereField, name, pad)
+    Nf = length(field.faces)
+    for (face_number, field_face) in enumerate(field.faces)
+        face_str = " face $face_number"
+        state_check(field_face, string(name) * face_str, pad + length(face_str))
+        if face_number == Nf
+            @info "" # Leave empty line between fields for easier visual inspection.
+        end
+    end
+end
+
 end # module

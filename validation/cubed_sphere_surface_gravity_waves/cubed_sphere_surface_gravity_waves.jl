@@ -113,7 +113,6 @@ function cubed_sphere_surface_gravity_waves(; face_number)
     fields_to_check = (
         u = model.velocities.u,
         v = model.velocities.v,
-        w = model.velocities.w,
         η = model.free_surface.η,
         Gu = model.timestepper.Gⁿ.u,
         Gv = model.timestepper.Gⁿ.v,

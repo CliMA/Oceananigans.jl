@@ -35,7 +35,7 @@ function state_check(field, name, pad)
 
     name = lpad(name, pad)
 
-    @info @sprintf("%s | min = %+.12e | max = %+.12e | mean = %+.12e", name, min_val, max_val, mean_val)
+    @info @sprintf("%s | min = %+.15e | max = %+.15e | mean = %+.15e", name, min_val, max_val, mean_val)
     return nothing
 end
 
