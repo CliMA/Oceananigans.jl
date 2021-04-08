@@ -64,9 +64,9 @@ function state_check(field::ConformalCubedSphereField, name, pad)
     for (face_number, field_face) in enumerate(field.faces)
         face_str = " face $face_number"
         state_check(field_face, string(name) * face_str, pad + length(face_str))
-        if face_number == Nf
-            @info "" # Leave empty line between fields for easier visual inspection.
-        end
+
+        # Leave empty line between fields for easier visual inspection.
+        face_number == Nf && @info ""
     end
 end
 
