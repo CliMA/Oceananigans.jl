@@ -38,10 +38,10 @@ function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
     transforms = plan_transforms(arch, grid, sol_storage, planner_flag)
 
     # Lower and upper diagonals are the same
-    CUDA.@allowscalar begin
-        ld = arch_array(arch, [1/ΔzF(1, 1, k, grid) for k in 1:Nz-1])
-        ud = ld
-    end
+    CUDA.allowscalar(true)
+    ld = arch_array(arch, [1/ΔzF(1, 1, k, grid) for k in 1:Nz-1])
+    ud = ld
+    CUDA.allowscalar(false)
 
     # Compute diagonal coefficients for each grid point
     D = arch_array(arch, zeros(Nx, Ny, Nz))
