@@ -14,33 +14,6 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 
 #####
-##### state checker for debugging
-#####
-
-function state_checker(model)
-    fields = (
-        u = model.velocities.u,
-        v = model.velocities.v,
-        w = model.velocities.w,
-        η = model.free_surface.η,
-        Gu = model.timestepper.Gⁿ.u,
-        Gv = model.timestepper.Gⁿ.v,
-        Gη = model.timestepper.Gⁿ.η
-    )
-
-    @info @sprintf("          |  minimum            maximum");
-    for (name, field) in pairs(fields)
-        for face_number in 1:length(model.grid.faces)
-            min_val, max_val = field.faces[face_number] |> interior |> extrema
-            @info @sprintf("%2s face %d | %+.12e %+.12e", name, face_number, min_val, max_val)
-        end
-        @info @sprintf("---------------------------------------------------")
-    end
-
-    return nothing
-end
-
-#####
 ##### Progress monitor
 #####
 
@@ -136,6 +109,19 @@ function cubed_sphere_surface_gravity_waves(; face_number)
 
     # TODO: Implement NaNChecker for ConformalCubedSphereField
     empty!(simulation.diagnostics)
+
+    fields_to_check = (
+        u = model.velocities.u,
+        v = model.velocities.v,
+        w = model.velocities.w,
+        η = model.free_surface.η,
+        Gu = model.timestepper.Gⁿ.u,
+        Gv = model.timestepper.Gⁿ.v,
+        Gη = model.timestepper.Gⁿ.η
+    )
+
+    simulation.diagnostics[:state_checker] =
+        StateChecker(model, fields=fields_to_check, schedule=IterationInterval(1))
 
     output_fields = merge(model.velocities, (η=model.free_surface.η,))
 

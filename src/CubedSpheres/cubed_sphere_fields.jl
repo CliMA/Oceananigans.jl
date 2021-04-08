@@ -1,6 +1,9 @@
+using Statistics
+
 using Oceananigans.Fields: AbstractField, call_func
 
 import Base: getindex, size, show, minimum, maximum
+import Statistics: mean
 import Oceananigans.Fields: Field, CenterField, XFaceField, YFaceField, ZFaceField, FunctionField, interior
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
@@ -53,9 +56,11 @@ Base.size(field::AbstractCubedSphereField) = (size(field.faces[1])..., length(fi
 
 Base.minimum(field::ConformalCubedSphereField; dims=:) = minimum(minimum(field_face; dims) for field_face in field.faces)
 Base.maximum(field::ConformalCubedSphereField; dims=:) = maximum(maximum(field_face; dims) for field_face in field.faces)
+Statistics.mean(field::ConformalCubedSphereField; dims=:) = mean(mean(field_face; dims) for field_face in field.faces)
 
 Base.minimum(f, field::ConformalCubedSphereField; dims=:) = minimum(minimum(f, field_face; dims) for field_face in field.faces)
 Base.maximum(f, field::ConformalCubedSphereField; dims=:) = maximum(maximum(f, field_face; dims) for field_face in field.faces)
+Statistics.mean(f, field::ConformalCubedSphereField; dims=:) = mean(mean(f, field_face; dims) for field_face in field.faces)
 
 interior(field::ConformalCubedSphereField) = cat(Tuple(interior(field_face) for field_face in field.faces)..., dims=4)
 

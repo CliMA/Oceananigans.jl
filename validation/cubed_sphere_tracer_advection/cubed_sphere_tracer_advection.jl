@@ -16,25 +16,6 @@ using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 Logging.global_logger(OceananigansLogger())
 
 #####
-##### state checker for debugging
-#####
-
-function state_checker(model)
-    fields = model.tracers
-
-    @info @sprintf("          |  minimum            maximum");
-    for (name, field) in pairs(fields)
-        for face_number in 1:length(model.grid.faces)
-            min_val, max_val = field.faces[face_number] |> interior |> extrema
-            @info @sprintf("%2s face %d | %+.12e %+.12e", name, face_number, min_val, max_val)
-        end
-        @info @sprintf("---------------------------------------------------")
-    end
-
-    return nothing
-end
-
-#####
 ##### Progress monitor
 #####
 
