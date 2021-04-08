@@ -1,6 +1,8 @@
 using Oceananigans.Fields: FieldSlicer
 using Oceananigans.Diagnostics
 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
+
 function nan_checker_aborts_simulation(arch)
     grid = RegularRectilinearGrid(size=(4, 2, 1), extent=(1, 1, 1))
     model = IncompressibleModel(grid=grid, architecture=arch)
