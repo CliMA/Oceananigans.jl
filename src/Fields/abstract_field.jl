@@ -9,7 +9,6 @@ using Oceananigans.Grids: interior_indices, interior_parent_indices
 
 import Base: minimum, maximum, extrema
 import Statistics: mean
-import LinearAlgebra: norm
 import Oceananigans: location, instantiated_location
 import Oceananigans.Architectures: architecture
 import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
@@ -248,11 +247,3 @@ Apply the function `f` to each element of an Oceananigans `field` and take the m
 (not including halo points). By default all dimensions are included.
 """
 mean(f::Function, field::AbstractField; dims=:) = mean(f, interiorparent(field); dims=dims)
-
-"""
-    norm(field::AbstractField, p::Real=2)
-
-Compute the norm of `AbstractField` using the p-norm, excluding halo points.
-The default is the 2-norm.
-"""
-norm(field::AbstractField, p::Real=2) = norm(interiorparent(field), p)
