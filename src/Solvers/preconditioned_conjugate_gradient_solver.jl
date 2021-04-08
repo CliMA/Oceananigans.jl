@@ -1,11 +1,16 @@
 using Oceananigans.Grids: interior_parent_indices
+using Statistics
 
 struct PreconditionedConjugateGradientSolver{A, S}
     architecture :: A
         settings :: S
 end
 
-function PreconditionedConjugateGradientSolver(; arch = arch, grid = nothing, boundary_conditions = nothing, parameters = parameters)
+function PreconditionedConjugateGradientSolver(;
+                                               arch = arch,
+                                               grid = nothing,
+                                               boundary_conditions = nothing,
+                                               parameters = parameters)
 
     bcs = boundary_conditions
     if isnothing(boundary_conditions)
@@ -43,12 +48,12 @@ function PreconditionedConjugateGradientSolver(; arch = arch, grid = nothing, bo
 
     if isnothing(parameters.PCmatrix_function)
         # preconditioner not provided, use the Identity matrix
-        PCmatrix_function(x; args...) = x
+        PCmatrix_function(x, args...) = x
     else
         PCmatrix_function = parameters.PCmatrix_function
     end
 
-    M(x; args...) = PCmatrix_function(x; args...)
+    M(x, args...) = PCmatrix_function(x, args...)
 
     ii = interior_parent_indices(location(tf, 1), topology(grid, 1), grid.Nx, grid.Hx)
     ji = interior_parent_indices(location(tf, 2), topology(grid, 2), grid.Ny, grid.Hy)
@@ -58,7 +63,7 @@ function PreconditionedConjugateGradientSolver(; arch = arch, grid = nothing, bo
     norm(x) = sqrt(mapreduce(x -> x * x, +, view(x, ii, ji, ki)))
 
     Amatrix_function = parameters.Amatrix_function
-    A(x; args...) = (Amatrix_function(a_res, x, arch, grid, bcs; args...); return a_res)
+    A(x, args...) = (Amatrix_function(a_res, x, arch, args...); return a_res)
 
     reference_pressure_solver = nothing
     if haskey(parameters, :reference_pressure_solver )
@@ -87,23 +92,11 @@ function PreconditionedConjugateGradientSolver(; arch = arch, grid = nothing, bo
    return PreconditionedConjugateGradientSolver(arch, settings)
 end
 
-@kernel function compute_residual!(r, RHS, A)
-    i, j, k = @index(Global, NTuple)
-    @inbounds r[i, j, k] = RHS[i, j, k] - A[i, j, k]
-end
-
-function quick_launch!(arch, grid, kernel!, args...)
-    event = launch!(arch, grid, :xyz, kernel!, args...; dependencies=Event(device(arch)))
-    wait(device(arch), event)
-    return nothing
-end
-
-using Statistics
-
 """
-    solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, RHS, x; args...)
+    solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
 
-Solves the Poisson equation using an iterative conjugate-gradient method.
+Solves A*x = b using an iterative conjugate-gradient method,
+where A*x is determined by solver.linear_operator
     
 See fig 2.5 in
 
@@ -147,8 +140,12 @@ This function executes the algorithm
          i = i + 1
          ρⁱᵐ1 .= ρ
          β    .= ρⁱᵐ¹/ρ
+```
 """
-function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, RHS, x; args...)
+# function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
+function solve!(x, solver::PreconditionedConjugateGradientSolver, RHS, args...)
+
+    # Parse arguments of solver
     arch       = solver.architecture
     settings   = solver.settings
     grid       = settings.grid
@@ -160,6 +157,7 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
     dotprod    = settings.dotprod
     norm       = settings.norm
 
+    # Initialize
     β    = 0.0
     i    = 0
     ρ    = 0.0
@@ -167,11 +165,10 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
 
     parent(r) .= 0
 
-    # quick_launch!(arch, grid, compute_residual!, r, RHS, A(x))
-    parent(r) .= parent(RHS) .- parent(A(x; args...))
+    parent(r) .= parent(RHS) .- parent(A(x, args...))
 
     ### println("PreconditionedConjugateGradientSolver ", i," RHS ", norm(RHS.parent) )
-    ### println("PreconditionedConjugateGradientSolver ", i," A(x) ", norm(A(x; args...).parent) )
+    ### println("PreconditionedConjugateGradientSolver ", i," A(x) ", norm(A(x, args...).parent) )
 
     while true
         @debug println("PreconditionedConjugateGradientSolver ", i," norm(parent(r)) ", norm(parent(r)))
@@ -179,7 +176,7 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
         i >= maxit && break
         norm(parent(r)) <= tol && break
 
-        parent(z) .= parent(M(r; args...))
+        parent(z) .= parent(M(r, args...))
         @debug println("PreconditionedConjugateGradientSolver ", i," norm(parent(z)) ", norm(parent(z)))
 
         ρ = dotprod(parent(z), parent(r))
@@ -192,7 +189,7 @@ function solve_poisson_equation!(solver::PreconditionedConjugateGradientSolver, 
             parent(p) .= parent(z) .+ β .* parent(p)
         end
 
-        parent(q) .= parent(A(p; args...))
+        parent(q) .= parent(A(p, args...))
         @debug println("PreconditionedConjugateGradientSolver ", i," norm(parent(q)) ", norm(parent(q)))
         
         α = ρ / dotprod(parent(p), parent(q))
@@ -242,7 +239,6 @@ end
 function Base.show(io::IO, solver::PreconditionedConjugateGradientSolver)
     print(io, "Oceanigans compatible preconditioned conjugate gradient solver.\n")
     print(io, " Problem size = "  , size(solver.settings.q) )
-    print(io, "\n Boundary conditions = "  , solver.settings.bcs  )
     print(io, "\n Grid = "  , solver.settings.grid  )
     return nothing
 end

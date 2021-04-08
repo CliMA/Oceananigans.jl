@@ -102,10 +102,11 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     ## We need vertically integrated U,V
     event = compute_vertically_integrated_volume_flux!(free_surface, model)
     wait(device(model.architecture), event)
-    u=free_surface.barotropic_volume_flux.u
-    v=free_surface.barotropic_volume_flux.v
-    fill_halo_regions!(u.data ,u.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
-    fill_halo_regions!(v.data ,v.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
+    u = free_surface.barotropic_volume_flux.u
+    v = free_surface.barotropic_volume_flux.v
+
+    fill_halo_regions!(u.data, u.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
+    fill_halo_regions!(v.data, v.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
 
     ## Compute volume scaled divergence of the barotropic transport and put into solver RHS
     event = compute_volume_scaled_divergence!(free_surface, model)
@@ -126,8 +127,13 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     ## Then we can invoke solve_for_pressure! on the right type via calculate_pressure_correction!
     x  = free_surface.implicit_step_solver.solver.settings.x
     x .= η.data
-    fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
-    solve_poisson_equation!(free_surface.implicit_step_solver.solver, RHS, x; Δt=Δt, g=free_surface.gravitational_acceleration)
+    fill_halo_regions!(x, η.boundary_conditions, model.architecture, model.grid)
+
+    # ldiv!(x, A, b) solves A*x = b for x.
+    # solve!(x, solver, b; kwargs...) solves A*x = b for x.
+    solve!(x, free_surface.implicit_step_solver.solver, RHS, Δt, free_surface.gravitational_acceleration)
+
+
     fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
     free_surface.η.data .= x
 

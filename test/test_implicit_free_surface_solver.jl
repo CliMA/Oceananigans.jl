@@ -10,19 +10,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     compute_vertically_integrated_volume_flux!
 
 function run_implicit_free_surface_solver_tests(arch, grid)
-    ### Nx = 360
-    ### Ny = 360
-    # A spherical domain with bounded toplogy
-    ### grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-    ###                                 longitude = (-30, 30),
-    ###                                 latitude = (15, 75),
-    ###                                 z = (-4000, 0))
-
-    # A boring grid
-    ## RegularRectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
-    ### grid = RegularRectilinearGrid(size = (128, 1, 1),
-    ###                         x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
-    ###                         topology = (Bounded, Periodic, Bounded))
     Nx = grid.Nx
     Ny = grid.Ny
     Δt = 900
@@ -80,15 +67,14 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     x = free_surface.implicit_step_solver.solver.settings.x
     parent(x) .= parent(η)
     fill_halo_regions!(x, arch)
-
-    solve_poisson_equation!(free_surface.implicit_step_solver.solver, RHS, x; Δt=Δt, g=free_surface.gravitational_acceleration)
+    solve!(x, free_surface.implicit_step_solver.solver, RHS, Δt, free_surface.gravitational_acceleration)
 
     ## exit()
     fill_halo_regions!(x, arch)
     parent(free_surface.η) .= parent(x)
 
     # Amatrix_function!(result, x, arch, grid, bcs; args...)
-    result = free_surface.implicit_step_solver.solver.settings.A(x;Δt=Δt,g=free_surface.gravitational_acceleration)
+    result = free_surface.implicit_step_solver.solver.settings.A(x, Δt, free_surface.gravitational_acceleration)
 
     CUDA.@allowscalar begin
         @test abs(minimum(result[1:Nx, 1:Ny, 1] .- RHS[1:Nx, 1:Ny, 1])) < 1e-11
@@ -109,11 +95,13 @@ end
                                     longitude = (-30, 30),
                                     latitude = (15, 75),
                                     z = (-4000, 0))
+
         @test run_implicit_free_surface_solver_tests(arch, grid)
+
         grid = RegularRectilinearGrid(size = (128, 1, 1),
                             x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
                             topology = (Bounded, Periodic, Bounded))
-        @test run_implicit_free_surface_solver_tests(arch, grid)
 
+        @test run_implicit_free_surface_solver_tests(arch, grid)
     end
 end
