@@ -1,5 +1,6 @@
 push!(LOAD_PATH, "..")
 
+using Logging
 using Documenter
 using DocumenterCitations
 using Literate
@@ -15,6 +16,8 @@ using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
 
 using Oceananigans.BoundaryConditions: Flux, Value, Gradient, NormalFlow
+
+Logging.global_logger(OceananigansLogger())
 
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
 bib = CitationBibliography(bib_filepath)
