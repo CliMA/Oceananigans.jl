@@ -14,28 +14,6 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 
 #####
-##### filling grid halos
-#####
-
-# function fill_grid_halos!(grid)
-#     for (face_number, grid_face) in enumerate(grid.faces[1:1])
-
-#         grid_metrics = (grid_face.Δxᶜᶜᵃ, grid_face.Δxᶜᶠᵃ, grid_face.Δxᶠᶜᵃ, grid_face.Δxᶠᶠᵃ,
-#                         grid_face.Δyᶜᶜᵃ, grid_face.Δyᶜᶠᵃ, grid_face.Δyᶠᶜᵃ, grid_face.Δyᶠᶠᵃ,
-#                         grid_face.Azᶜᶜᵃ, grid_face.Azᶜᶠᵃ, grid_face.Azᶠᶜᵃ, grid_face.Azᶠᶠᵃ)
-
-#         for Δ in grid_metrics
-#             Δ[0, :] .= Δ[1, :]
-#             Δ[end, :] .= Δ[end-1, :]
-#             Δ[:, 0] .= Δ[:, 1]
-#             Δ[:, end] .= Δ[:, end-1]
-#         end
-#     end
-
-#     return nothing
-# end
-
-#####
 ##### Progress monitor
 #####
 
@@ -88,8 +66,6 @@ function cubed_sphere_surface_gravity_waves(; face_number)
     H = 4kilometers
     grid = ConformalCubedSphereGrid(cs32_filepath, Nz=1, z=(-H, 0))
 
-    # fill_grid_halos!(grid)
-
     ## Model setup
 
     model = HydrostaticFreeSurfaceModel(
@@ -98,6 +74,7 @@ function cubed_sphere_surface_gravity_waves(; face_number)
         momentum_advection = VectorInvariant(),
               free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
                   coriolis = nothing,
+                # coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
                    closure = nothing,
                    tracers = nothing,
                   buoyancy = nothing
@@ -125,7 +102,7 @@ function cubed_sphere_surface_gravity_waves(; face_number)
 
     simulation = Simulation(model,
                         Δt = Δt,
-                 stop_time = 5days,
+                 stop_time = 25days,
         iteration_interval = 1,
                   progress = Progress(time_ns()),
                 parameters = (; cfl)
@@ -159,9 +136,17 @@ function cubed_sphere_surface_gravity_waves(; face_number)
     return simulation
 end
 
-# include("animate_sphere_on_map.jl")
+for f in 1:6
+    cubed_sphere_surface_gravity_waves(face_number=f)
+end
 
-# for face_number in 1:6
-#     surface_gravity_waves_on_cubed_sphere(face_number)
-#     animate_surface_gravity_waves_on_cubed_sphere(face_number)
-# end
+include("animate_on_map_projection.jl")
+
+projections = [
+    ccrs.NearsidePerspective(central_longitude=0,   central_latitude=30),
+    ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
+]
+
+for f in 1:6
+    animate_surface_gravity_waves(face_number=f, projections=projections)
+end
