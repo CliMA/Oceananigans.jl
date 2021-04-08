@@ -14,6 +14,28 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 
 #####
+##### filling grid halos
+#####
+
+# function fill_grid_halos!(grid)
+#     for (face_number, grid_face) in enumerate(grid.faces[1:1])
+
+#         grid_metrics = (grid_face.Δxᶜᶜᵃ, grid_face.Δxᶜᶠᵃ, grid_face.Δxᶠᶜᵃ, grid_face.Δxᶠᶠᵃ,
+#                         grid_face.Δyᶜᶜᵃ, grid_face.Δyᶜᶠᵃ, grid_face.Δyᶠᶜᵃ, grid_face.Δyᶠᶠᵃ,
+#                         grid_face.Azᶜᶜᵃ, grid_face.Azᶜᶠᵃ, grid_face.Azᶠᶜᵃ, grid_face.Azᶠᶠᵃ)
+
+#         for Δ in grid_metrics
+#             Δ[0, :] .= Δ[1, :]
+#             Δ[end, :] .= Δ[end-1, :]
+#             Δ[:, 0] .= Δ[:, 1]
+#             Δ[:, end] .= Δ[:, end-1]
+#         end
+#     end
+
+#     return nothing
+# end
+
+#####
 ##### Progress monitor
 #####
 
@@ -66,6 +88,8 @@ function cubed_sphere_surface_gravity_waves(; face_number)
     H = 4kilometers
     grid = ConformalCubedSphereGrid(cs32_filepath, Nz=1, z=(-H, 0))
 
+    # fill_grid_halos!(grid)
+
     ## Model setup
 
     model = HydrostaticFreeSurfaceModel(
@@ -95,7 +119,7 @@ function cubed_sphere_surface_gravity_waves(; face_number)
 
     ## Simulation setup
 
-    Δt = 20minutes
+    Δt = 10minutes
 
     cfl = CFL(Δt, accurate_cell_advection_timescale)
 
