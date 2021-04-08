@@ -252,7 +252,7 @@ mean(f::Function, field::AbstractField; dims=:) = mean(f, interiorparent(field);
 """
     norm(field::AbstractField, p::Real=2)
 
-Compute the norm of an Oceananigans `field` using the p-norm (not including halo points).
+Compute the norm of `AbstractField` using the p-norm, excluding halo points.
 The default is the 2-norm.
 """
 norm(field::AbstractField, p::Real=2) = norm(interiorparent(field), p)
