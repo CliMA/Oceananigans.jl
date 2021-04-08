@@ -21,8 +21,13 @@ end
 end
 
 function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
-    TX, TY, TZ = topology(grid)
+    TX, TY, TZ = topo = topology(grid)
+
     TZ != Bounded && error("FourierTridiagonalPoissonSolver can only be used with a Bounded z topology.")
+
+    if Flat in topo
+        @warn "Pressure solvers with Flat topologies are not yet tested. Use at your own risk!"
+    end
 
     Nx, Ny, Nz = size(grid)
 
