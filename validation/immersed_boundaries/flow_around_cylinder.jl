@@ -56,7 +56,7 @@ sim.model.clock.time,
 maximum(sim.model.velocities.v.data),
 minimum(sim.model.velocities.v.data))
 
-simulation = Simulation(model, Δt=5.7e-3, stop_time=3, iteration_interval=20, progress=progress)
+simulation = Simulation(model, Δt=5.7e-3, stop_time=1, iteration_interval=20, progress=progress)
 
 # ## Output
 
