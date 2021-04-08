@@ -70,7 +70,7 @@ function run_field_reduction_tests(FT, arch)
             @test norm(ϕ, 0) == norm(ϕ_vals, 0)
             @test norm(ϕ, 1) == norm(ϕ_vals, 1)
             @test norm(ϕ, 4) == norm(ϕ_vals, 4)
-            @test norm(ϕ, ∞) == norm(ϕ_vals, ∞)
+            @test norm(ϕ, Inf) == norm(ϕ_vals, Inf)
             
             @test minimum(∛, ϕ) == minimum(∛, ϕ_vals)
             @test maximum(abs, ϕ) == maximum(abs, ϕ_vals)
