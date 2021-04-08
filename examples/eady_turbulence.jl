@@ -164,8 +164,8 @@ cᴰ = 1e-4 # quadratic drag coefficient
 @inline drag_u(x, y, t, u, v, cᴰ) = - cᴰ * u * sqrt(u^2 + v^2)
 @inline drag_v(x, y, t, u, v, cᴰ) = - cᴰ * v * sqrt(u^2 + v^2)
 
-drag_bc_u = BoundaryCondition(Flux, drag_u, field_dependencies=(:u, :v), parameters=cᴰ)
-drag_bc_v = BoundaryCondition(Flux, drag_v, field_dependencies=(:u, :v), parameters=cᴰ)
+drag_bc_u = FluxBoundaryCondition(drag_u, field_dependencies=(:u, :v), parameters=cᴰ)
+drag_bc_v = FluxBoundaryCondition(drag_v, field_dependencies=(:u, :v), parameters=cᴰ)
 
 u_bcs = UVelocityBoundaryConditions(grid, bottom = drag_bc_u)
 v_bcs = VVelocityBoundaryConditions(grid, bottom = drag_bc_v)

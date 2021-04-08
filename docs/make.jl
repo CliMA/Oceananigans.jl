@@ -14,6 +14,8 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
 
+using Oceananigans.BoundaryConditions: Flux, Value, Gradient, NormalFlow
+
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
 bib = CitationBibliography(bib_filepath)
 
@@ -116,6 +118,7 @@ appendix_pages = [
 
 pages = [
     "Home" => "index.md",
+    "Publications" => "publications.md",
     "Installation instructions" => "installation_instructions.md",
     "Using GPUs" => "using_gpus.md",
     "Examples" => example_pages,

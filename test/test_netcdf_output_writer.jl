@@ -91,7 +91,7 @@ function test_thermal_bubble_netcdf_output(arch)
     nc_writer = NetCDFOutputWriter(model, outputs, filepath=nc_filepath, schedule=IterationInterval(10), verbose=true)
     push!(simulation.output_writers, nc_writer)
 
-    i_slice = 1:10
+    i_slice = 1:2:10
     j_slice = 13
     k_slice = 9:11
     field_slicer = FieldSlicer(i=i_slice, j=j_slice, k=k_slice)
@@ -687,15 +687,15 @@ function test_netcdf_regular_lat_lon_grid_output(arch)
 
     @test ds["xC"][1] == grid.λᶜᵃᵃ[1]
     @test ds["xF"][1] == grid.λᶠᵃᵃ[1]
-    @test ds["yC"][1] == grid.ϕᵃᶜᵃ[1]
-    @test ds["yF"][1] == grid.ϕᵃᶠᵃ[1]
+    @test ds["yC"][1] == grid.φᵃᶜᵃ[1]
+    @test ds["yF"][1] == grid.φᵃᶠᵃ[1]
     @test ds["zC"][1] == grid.zᵃᵃᶜ[1]
     @test ds["zF"][1] == grid.zᵃᵃᶠ[1]
 
     @test ds["xC"][end] == grid.λᶜᵃᵃ[Nx]
     @test ds["xF"][end] == grid.λᶠᵃᵃ[Nx]
-    @test ds["yC"][end] == grid.ϕᵃᶜᵃ[Ny]
-    @test ds["yF"][end] == grid.ϕᵃᶠᵃ[Ny+1]  # y is Bounded
+    @test ds["yC"][end] == grid.φᵃᶜᵃ[Ny]
+    @test ds["yF"][end] == grid.φᵃᶠᵃ[Ny+1]  # y is Bounded
     @test ds["zC"][end] == grid.zᵃᵃᶜ[Nz]
     @test ds["zF"][end] == grid.zᵃᵃᶠ[Nz+1]  # z is Bounded
 

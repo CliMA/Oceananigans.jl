@@ -44,7 +44,7 @@ top_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} 
     include_corners ? view(f.data, :, :, right_halo_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz)) :
                       view(f.data, interior_indices(LX, topology(f, 1), f.grid.Nx),
                                    interior_indices(LY, topology(f, 2), f.grid.Ny),
-                                   left_halo_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz))
+                                   right_halo_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz))
 
 underlying_west_halo(f, grid, location) =
     view(f.parent, underlying_left_halo_indices(location, topology(grid, 1), grid.Nx, grid.Hx), :, :)

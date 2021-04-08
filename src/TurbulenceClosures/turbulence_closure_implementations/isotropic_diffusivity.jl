@@ -1,3 +1,5 @@
+import Oceananigans.Grids: required_halo_size
+
 """
     IsotropicDiffusivity{N, K}
 
@@ -35,6 +37,8 @@ function IsotropicDiffusivity(FT=Float64; ν=ν₀, κ=κ₀)
     end
 end
 
+required_halo_size(closure::IsotropicDiffusivity) = 1 
+ 
 function with_tracers(tracers, closure::IsotropicDiffusivity)
     κ = tracer_diffusivities(tracers, closure.κ)
     return IsotropicDiffusivity(closure.ν, κ)
