@@ -2,58 +2,89 @@ using Printf
 using Glob
 using JLD2
 using PyCall
+
 using Oceananigans.Utils: prettytime
 
+np = pyimport("numpy")
+ma = pyimport("numpy.ma")
 plt = pyimport("matplotlib.pyplot")
 ccrs = pyimport("cartopy.crs")
 cmocean = pyimport("cmocean")
 
-function animate_surface_gravity_waves_on_cubed_sphere(face_number)
+function plot_cubed_sphere_tracer_field!(fig, ax, var, grid; transform, cmap, vmin, vmax)
 
-    projection = ccrs.Robinson()
-    transform = ccrs.PlateCarree()
+    Nf = grid["faces"] |> keys |> length
+    Nx = grid["faces/1/Nx"]
+    Ny = grid["faces/1/Ny"]
+    Hx = grid["faces/1/Hx"]
+    Hy = grid["faces/1/Hy"]
+
+    for face in 1:Nf
+        λᶠᶠᵃ = grid["faces/$face/λᶠᶠᵃ"][1+Hx:Nx+2Hx, 1+Hy:Ny+2Hy]
+        φᶠᶠᵃ = grid["faces/$face/φᶠᶠᵃ"][1+Hx:Nx+2Hx, 1+Hy:Ny+2Hy]
+
+        var_face = var[face][:, :, 1]
+
+        # Remove very specific problematic grid cells near λ = 180° on face 6 that mess up the plot.
+        # May be related to https://github.com/SciTools/cartopy/issues/1151
+        if face == 6
+            for i in 1:Nx+1, j in 1:Ny+1
+                if isapprox(λᶠᶠᵃ[i, j], -180, atol=15)
+                    var_face[min(i, Nx), min(j, Ny)] = NaN
+                end
+            end
+        end
+
+        var_face_masked = ma.masked_where(np.isnan(var_face), var_face)
+
+        pc = ax.pcolormesh(λᶠᶠᵃ, φᶠᶠᵃ, var_face_masked; transform, cmap, vmin, vmax)
+
+        face == Nf && fig.colorbar(pc, ax=ax, shrink=0.6)
+
+        ax.set_global()
+    end
+
+    return ax
+end
+
+function animate_surface_gravity_waves(; face_number, projection=ccrs.Robinson())
 
     ## Extract data
 
-    file = jldopen("surface_gravity_waves_on_cubed_sphere_face$face_number.jld2")
+    file = jldopen("cubed_sphere_surface_gravity_waves_face$face_number.jld2")
 
     iterations = parse.(Int, keys(file["timeseries/t"]))
 
-    Nf = file["grid/faces"] |> keys |> length
-    Nx = file["grid/faces/1/Nx"]
-    Ny = file["grid/faces/1/Ny"]
-    Nz = file["grid/faces/1/Nz"]
-
-    size_2d = (Nx, Ny * Nf)
-    size_u = (Nx+1, Ny * Nf)
-    size_v = (Nx, (Ny+1) * Nf)
-
-    flatten_cubed_sphere(field, size) = reshape(cat(field..., dims=4), size)
-
-    λ = flatten_cubed_sphere((file["grid/faces/$n/λᶜᶜᵃ"][2:33, 2:33] for n in 1:6), size_2d)
-    φ = flatten_cubed_sphere((file["grid/faces/$n/φᶜᶜᵃ"][2:33, 2:33] for n in 1:6), size_2d)
-
-    ## Plot!
+    ## Makie movie of tracer field h
 
     for (n, i) in enumerate(iterations)
         @info "Plotting face $face_number iteration $i/$(iterations[end]) (frame $n/$(length(iterations)))..."
-        η = flatten_cubed_sphere(file["timeseries/η/$i"], size_2d)
+
+        η = file["timeseries/η/$i"]
 
         fig = plt.figure(figsize=(16, 9))
         ax = fig.add_subplot(1, 1, 1, projection=projection)
 
-        ax.scatter(λ, φ, c=η, transform=transform, cmap=cmocean.cm.balance, s=25, vmin=-0.01, vmax=0.01)
+        plot_cubed_sphere_tracer_field!(fig, ax, η, file["grid"], transform=ccrs.PlateCarree(), cmap=cmocean.cm.balance, vmin=-0.01, vmax=0.01)
 
-        filename = @sprintf("surface_gravity_waves_on_a_cubed_sphere_face%d_η_%04d.png", face_number, n)
-        plt.savefig(filename, dpi=200)
+        t = prettytime(file["timeseries/t/$i"])
+        ax.set_title("Surface gravity waves from face $face_number: η(λ, φ) at t = $t")
+
+        filename = @sprintf("cubed_sphere_surface_gravity_waves_face%d_%04d.png", face_number, n)
+        plt.savefig(filename, dpi=200, bbox_inches="tight")
         plt.close(fig)
     end
 
     close(file)
 
-    run(`ffmpeg -y -i surface_gravity_waves_on_a_cubed_sphere_face$(face_number)_η_%04d.png -c:v libx264 -vf fps=10 -pix_fmt yuv420p surface_gravity_waves_face$(face_number).mp4`)
+    filename_pattern = "cubed_sphere_surface_gravity_waves_face$(face_number)_%04d.png"
+    output_filename  = "cubed_sphere_surface_gravity_waves_face$(face_number).mp4"
 
-    [rm(f) for f in glob("surface_gravity_waves_on_a_cubed_sphere_face$(face_number)_η_*.png")]
+    # Need extra crop video filter in case we end up with odd number of pixels in width or height.
+    # See: https://stackoverflow.com/a/29582287
+    run(`ffmpeg -y -i $filename_pattern -c:v libx264 -vf "fps=15, crop=trunc(iw/2)*2:trunc(ih/2)*2" -pix_fmt yuv420p $output_filename`)
+
+    [rm(f) for f in glob("cubed_sphere_surface_gravity_waves_face$(face_number)_*.png")]
 
     return nothing
 end
