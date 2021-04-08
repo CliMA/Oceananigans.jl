@@ -53,17 +53,7 @@ end
     z = znode(Center, k, grid)
     
     @inbounds begin
-        spc = [x, y, z]
-        if immersed(spc) < 0 # solid node
-            if max_neighbor(x,y,z,Δx,Δy,Δz,immersed) > 0 # fluid neighbor
-                
-                UI = immersed_value(spc, immersed, grid, velocities, dirichZero, 1)
-         
-                velocities.u[i, j, k] = UI
-            else
-                velocities.u[i, j, k] = 0.
-            end
-        end
+        immersed_update(i, j, k, x, y, z, immersed, grid, velocities, dirichZero, 1, max_neighbor)
     end
    
     # (x,y,z) for v velocity grid
@@ -72,17 +62,7 @@ end
     z = znode(Center, k, grid)
     
     @inbounds begin
-        spc = [x, y, z]
-        if immersed(spc) < 0 # solid node
-            if max_neighbor(x, y, z, Δx, Δy, Δz, immersed) > 0 # fluid neighbor
-                
-                VI = immersed_value(spc, immersed, grid, velocities, dirichZero, 2)
-                
-                velocities.v[i, j, k] = VI
-            else
-                velocities.v[i, j, k] = 0.
-            end
-        end
+	immersed_update(i, j, k, x, y, z, immersed, grid, velocities, dirichZero, 2, max_neighbor)
     end
     
     # (x,y,z) for w velocity grid
@@ -91,23 +71,11 @@ end
     z = znode(Face, k, grid)
     
     @inbounds begin
-        spc = [x, y, z]
-        if immersed(spc) < 0 # solid node
-            if max_neighbor(x, y, z, Δx, Δy, Δz, immersed) > 0 # fluid neighbor
-                
-                WI = immersed_value(spc, immersed, grid, velocities, dirichZero, 3)
-
-                velocities.w[i, j, k] = WI
-                
-            else
-                velocities.w[i, j, k] = 0.
-                
-            end
-        end
+        immersed_update(i, j, k, x, y, z, immersed, grid, velocities, dirichZero, 3, max_neighbor)
     end
 end
 
-# function to finds the most positive distnace of neighboring nodes
+# function to finds the most positive distance of neighboring nodes
 max_neighbor(x, y, z, Δx, Δy, Δz, immersed_distance)= max(immersed_distance([x+Δx y z]),
                     immersed_distance([x-Δx y z]), immersed_distance([x y+Δy z]),
                     immersed_distance([x y-Δy z]), immersed_distance([x y z+Δz]),
@@ -175,3 +143,17 @@ function immersed_value(xvec, im_dist, grid, velocities, b_conds, needed_idx)
     # now we need to choose the one velocity out of these that we are enforcing at this location
     vel = VF[needed_idx]
 end
+
+# function to update a particular velocity
+function immersed_update(i, j, k, x, y, z, im_dist, grid, velocities, b_conds, needed_idx, max_neighbor)
+    # a function that takes in a location, checks if immersed node, and forces velocities accordingly
+    spc = [x, y, z]
+    if im_dist(spc) < 0 # solid node
+        if max_neighbor(x, y, z, grid.Δx, grid.Δy, grid.Δz, im_dist) > 0 # fluid neighbor
+            velI = immersed_value(spc, im_dist, grid, velocities, b_conds, needed_idx)
+            velocities[needed_idx][i, j, k] = velI
+        else
+            velocities[needed_idx][i, j, k] = 0.    
+        end
+    end
+ end
