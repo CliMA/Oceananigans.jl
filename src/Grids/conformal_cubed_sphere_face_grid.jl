@@ -209,7 +209,7 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, FT = Float64; fa
     c_inds = 1:Nξ
     f_inds = 1:Nξ+1
 
-    topo_2d = topo[1:2]
+    topo_2d = (Bounded, Bounded)
 
     λᶜᶜᵃ = offset_data_2d(cubed_sphere_data["λᶜᶜᵃ"][c_inds, c_inds], loc_cc, topo_2d, N, H)
     λᶠᶠᵃ = offset_data_2d(cubed_sphere_data["λᶠᶠᵃ"][f_inds, f_inds], loc_ff, topo_2d, N, H)

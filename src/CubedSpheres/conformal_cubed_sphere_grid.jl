@@ -159,7 +159,7 @@ end
 function ConformalCubedSphereGrid(filepath::AbstractString, FT=Float64; Nz, z, radius = R_Earth, halo = (1, 1, 1))
     @warn "ConformalCubedSphereGrid is experimental: use with caution!"
 
-    face_topo = (Bounded, Bounded, Bounded)
+    face_topo = (Periodic, Periodic, Bounded)
     face_kwargs = (Nz=Nz, z=z, topology=face_topo, radius=radius, halo=halo)
 
     faces = Tuple(ConformalCubedSphereFaceGrid(filepath, FT; face=n, face_kwargs...) for n in 1:6)
