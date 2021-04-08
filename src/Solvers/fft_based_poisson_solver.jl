@@ -11,7 +11,7 @@ function FFTBasedPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
     topo = (TX, TY, TZ) =  topology(grid)
 
     if Flat in topo
-        @warn "Pressure solvers with Flat topologies are not yet tested. Use at your own risk!"
+        @warn "Pressure solvers with Flat topologies are not yet tested and have bugs. Use at your own risk!"
     end
 
     λx = poisson_eigenvalues(grid.Nx, grid.Lx, 1, TX())
