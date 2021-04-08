@@ -31,11 +31,9 @@ function plan_backward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PA
     return FFTW.plan_r2r!(A, FFTW.REDFT01, dims, flags=planner_flag)
 end
 
-non_batched_topologies = ((Periodic, Bounded, Periodic),
-                          (Periodic, Bounded, Bounded),
-                          (Bounded, Periodic, Bounded),
-                          (Bounded, Bounded, Periodic),
-                          (Bounded, Bounded, Bounded))
+batchable_GPU_topologies = ((Periodic, Periodic, Periodic),
+                            (Periodic, Periodic, Bounded),
+                            (Bounded, Periodic, Periodic))
 
 function plan_forward_transform(A::CuArray, topo, dims, planner_flag)
     length(dims) == 0 && return nothing
@@ -66,7 +64,7 @@ function plan_transforms(arch, grid::RegularRectilinearGrid, storage, planner_fl
     periodic_dims = findall(t -> t == Periodic, topo)
     bounded_dims = findall(t -> t == Bounded, topo)
 
-    if arch isa GPU && topo in non_batched_topologies
+    if arch isa GPU && !(topo in batchable_GPU_topologies)
 
         rs_storage = reshape(storage, (Ny, Nx, Nz))
         forward_plan_x = plan_forward_transform(storage   , topo[1](), [1], planner_flag)
@@ -156,7 +154,7 @@ function plan_transforms(arch, grid::VerticallyStretchedRectilinearGrid, storage
             forward_plan_y = plan_forward_transform(reshape(storage, (Ny, Nx, Nz)), Periodic(), [1], planner_flag)
 
             backward_plan_x = plan_backward_transform(storage, Bounded(), [1], planner_flag)
-            backward_plan_y = plan_backward_transform(reshape(storage, (Ny, Nx, Nz)), Periodic(),  [1], planner_flag)
+            backward_plan_y = plan_backward_transform(reshape(storage, (Ny, Nx, Nz)), Periodic(), [1], planner_flag)
 
             forward_transforms = (
                 DiscreteTransform(forward_plan_x, Forward(), arch, grid, [1]),
@@ -213,4 +211,6 @@ function plan_transforms(arch, grid::VerticallyStretchedRectilinearGrid, storage
     transforms = (forward = forward_transforms, backward = backward_transforms)
 
     return transforms
+        # (where an FFT is needed along dimension 2), so it includes (Periodic, Periodic, Periodic),
+        # (Periodic, Periodic, Bounded), and (Bounded, Periodic, Periodic).
 end
