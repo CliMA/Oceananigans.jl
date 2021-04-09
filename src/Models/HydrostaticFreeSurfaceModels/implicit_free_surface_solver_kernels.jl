@@ -100,23 +100,21 @@ function ∇²_baro_operator( HAx, HAy )
     return  ∇²_baro
 end
 
-@kernel function implicit_η!(∇²_baro, Δt, g, grid, f, implicit_η_f)
-        i, j = @index(Global, NTuple)
-        ### Not sure what to call this function
-        ### it is for left hand side operator in
-        ### ( ∇ʰ⋅H∇ʰ - 1/gΔt² ) ηⁿ⁺¹ = 1/(gΔt) ∇ʰH U̅ˢᵗᵃʳ - 1/(gΔt²) ηⁿ
-        ### written in a discrete finite volume form in which the equation
-        ### is arranged to ensure a symmtric form
-        ### e.g.
-        ### 
-        ### δⁱÂʷ∂ˣηⁿ⁺¹ + δʲÂˢ∂ʸηⁿ⁺¹ - 1/gΔt² Aᶻηⁿ⁺¹ =
-        ###  1/(gΔt)(δⁱÂʷu̅ˢᵗᵃʳ + δʲÂˢv̅ˢᵗᵃʳ) - 1/gΔt² Aᶻηⁿ
-        ###
-        ### where  ̂ indicates a vertical integral, and
-        ###        ̅ indicates a vertical average
-        ###
-        i, j = @index(Global, NTuple)
-        @inbounds implicit_η_f[i, j, 1] =  ∇²_baro(i, j, 1, grid, f) - Azᶜᶜᵃ(i, j, 1, grid)*f[i,j, 1]/(g*Δt^2)
+@kernel function implicit_η!(implicit_η_f, ∇²_baro, Δt, g, grid, f)
+    i, j = @index(Global, NTuple)
+    ### Not sure what to call this function
+    ### it is for left hand side operator in
+    ### ( ∇ʰ⋅H∇ʰ - 1/gΔt² ) ηⁿ⁺¹ = 1/(gΔt) ∇ʰH U̅ˢᵗᵃʳ - 1/(gΔt²) ηⁿ
+    ### written in a discrete finite volume form in which the equation
+    ### is arranged to ensure a symmtric form
+    ### e.g.
+    ### 
+    ### δⁱÂʷ∂ˣηⁿ⁺¹ + δʲÂˢ∂ʸηⁿ⁺¹ - 1/gΔt² Aᶻηⁿ⁺¹ =
+    ###  1/(gΔt)(δⁱÂʷu̅ˢᵗᵃʳ + δʲÂˢv̅ˢᵗᵃʳ) - 1/gΔt² Aᶻηⁿ
+    ###
+    ### where  ̂ indicates a vertical integral, and
+    ###        ̅ indicates a vertical average
+    ###
+    i, j = @index(Global, NTuple)
+    @inbounds implicit_η_f[i, j, 1] =  ∇²_baro(i, j, 1, grid, f) - Azᶜᶜᵃ(i, j, 1, grid)*f[i,j, 1]/(g*Δt^2)
 end
-
-

@@ -37,7 +37,7 @@ function ImplicitFreeSurfaceSolver(arch, template_field,
         function Amatrix_operator!(L_ηⁿ, ηⁿ, arch, Δt, g)
             grid = L_ηⁿ.grid
 
-            event = launch!(arch, grid, :xy, implicit_η!, ∇²_baro, Δt, g, grid, ηⁿ, L_ηⁿ, dependencies=Event(device(arch)))
+            event = launch!(arch, grid, :xy, implicit_η!, L_ηⁿ, ∇²_baro, Δt, g, grid, ηⁿ, dependencies=Event(device(arch)))
             wait(device(arch), event)
 
             fill_halo_regions!(result, arch)
