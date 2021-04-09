@@ -94,11 +94,11 @@ and recalling that Fourier transforms do ``\partial_x \rightarrow ik_x`` and ``\
 Discretizing the ``\partial_z^2`` derivative and equating the term inside the brackets to zero we arrive at
 ``N_x\times N_y`` symmetric tridiagonal systems of ``N_z`` linear equations for the Fourier modes:
 ```math
-\frac{\tilde{\phi}_{mn,k-1}}{\Delta z^F_{k-1}}
-- \left\lbrace \frac{1}{\Delta z^F_{k-1}} + \frac{1}{\Delta z^F_k} + \Delta z^C_k (k_x^2 + k_y^2) \right\rbrace
+\frac{\tilde{\phi}_{mn,k-1}}{\Delta z^C_k}
+- \left\lbrace \frac{1}{\Delta z^C_k} + \frac{1}{\Delta z^C_{k+1}} + \Delta z^F_k (k_x^2 + k_y^2) \right\rbrace
   \tilde{\phi}_{mnk}
-+ \frac{\tilde{\phi}_{mn,k+1}}{\Delta z^F_k}
-= \Delta z^C_k \tilde{\mathscr{F}}_{mnk} \, .
++ \frac{\tilde{\phi}_{mn,k+1}}{\Delta z^C_{k+1}}
+= \Delta z^F_k \tilde{\mathscr{F}}_{mnk} \, .
 ```
 
 ## Cosine transforms on the GPU
