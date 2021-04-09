@@ -48,9 +48,6 @@ batchable_GPU_topologies = ((Periodic, Periodic, Periodic),
                             (Periodic, Periodic, Bounded),
                             (Bounded, Periodic, Periodic))
 
-const PeriodicOrFlatType = Union{Type{Periodic}, Type{Flat}}
-const BoundedOrFlatType = Union{Type{Periodic}, Type{Flat}}
-
 # In principle the order in which the transforms are applied does not matter of course,
 # but in practice we want to perform the `Bounded` forward transforms first because on
 # the GPU we take the real part after a forward transform, so if you did the `Periodic`
@@ -59,6 +56,12 @@ const BoundedOrFlatType = Union{Type{Periodic}, Type{Flat}}
 # 
 # For the same reason, `Bounded` backward transforms are applied after `Periodic`
 # backward transforms.
+#
+# Note that `Flat` "transforms" have no effect. To avoid defining forward_orders and `backward_orders`
+# for Flat we reuse the orderings that apply to combinations of Periodic and Bounded.
+
+const PeriodicOrFlatType = Union{Type{Periodic}, Type{Flat}}
+const BoundedOrFlatType = Union{Type{Bounded}, Type{Flat}}
 
 forward_orders(::PeriodicOrFlatType, ::BoundedOrFlatType,  ::BoundedOrFlatType)  = (3, 2, 1)
 forward_orders(::PeriodicOrFlatType, ::BoundedOrFlatType,  ::PeriodicOrFlatType) = (2, 1, 3)
