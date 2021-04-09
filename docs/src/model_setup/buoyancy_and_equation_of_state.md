@@ -1,4 +1,4 @@
-# Buoyancy and equation of state
+# Buoyancy models and equations of state
 
 The buoyancy option selects how buoyancy is treated. There are currently three options:
 
@@ -46,7 +46,7 @@ IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ## Buoyancy as a tracer
 
 To directly evolve buoyancy as a tracer simply pass `buoyancy = BuoyancyTracer()` to the model
-constructor. Buoyancy `:b` must be included as a tracer, for example,
+constructor. BuoyancyModels `:b` must be included as a tracer, for example,
 
 ```jldoctest buoyancy
 julia> model = IncompressibleModel(grid=grid, buoyancy=BuoyancyTracer(), tracers=(:b))

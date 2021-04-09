@@ -1,7 +1,7 @@
 using BenchmarkTools
 using CUDA
 using Oceananigans
-using Oceananigans.Buoyancy
+using Oceananigans.BuoyancyModels
 using SeawaterPolynomials
 using Benchmarks
 

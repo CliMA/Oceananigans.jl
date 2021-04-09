@@ -1,7 +1,8 @@
 module Operators
 
 export
-    Δx, Δy, ΔzF, ΔzC,
+    Δx, Δy, Δz, Ax, Ay, Az, volume,
+    ΔzF, ΔzC,
     Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶠᶠᵃ, Δxᶜᶠᵃ,
     Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δyᶜᶠᵃ,
     Axᵃᵃᶜ, Axᵃᵃᶠ, Axᶜᶜᶜ, Axᶠᶜᶜ, Axᶠᶠᶜ, Axᶠᶜᶠ,
@@ -26,12 +27,11 @@ export
     divᶜᶜᶜ, div_xyᶜᶜᵃ, div_xzᶜᵃᶜ, div_yzᵃᶜᶜ, ζ₃ᶠᶠᵃ,
     ∇², ∇²hᶜᶜᵃ, ∇²hᶠᶜᵃ, ∇²hᶜᶠᵃ, ∇⁴hᶜᶜᵃ, ∇⁴hᶠᶜᵃ, ∇⁴hᶜᶠᵃ
 
+using Oceananigans.Grids
+
 #####
 ##### Convinient aliases
 #####
-
-using Oceananigans.Grids: RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RegularLatitudeLongitudeGrid
-using Oceananigans.Grids: AbstractGrid, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 
 const AG  = AbstractGrid
 const ARG = AbstractRectilinearGrid
@@ -39,14 +39,16 @@ const RCG = RegularRectilinearGrid
 const ACG = AbstractCurvilinearGrid
 const AHCG = AbstractHorizontallyCurvilinearGrid
 
-include("areas_and_volumes.jl")
-include("field_metric_products.jl")
 include("difference_operators.jl")
-include("derivative_operators.jl")
 include("interpolation_operators.jl")
+include("interpolation_utils.jl")
+
+include("spacings_and_areas_and_volumes.jl")
+include("products_between_fields_and_grid_metrics.jl")
+
+include("derivative_operators.jl")
 include("divergence_operators.jl")
 include("vorticity_operators.jl")
 include("laplacian_operators.jl")
-include("interpolation_utils.jl")
 
 end

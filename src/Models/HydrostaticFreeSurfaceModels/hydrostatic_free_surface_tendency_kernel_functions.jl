@@ -1,4 +1,4 @@
-using Oceananigans.Buoyancy
+using Oceananigans.BuoyancyModels
 using Oceananigans.Coriolis
 using Oceananigans.Operators
 using Oceananigans.Operators: ∂xᶠᶜᵃ, ∂yᶜᶠᵃ

@@ -14,6 +14,8 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
 
+using Oceananigans.BoundaryConditions: Flux, Value, Gradient, NormalFlow
+
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
 bib = CitationBibliography(bib_filepath)
 
@@ -40,7 +42,7 @@ examples = [
     "langmuir_turbulence.jl",
     "eady_turbulence.jl",
     "kelvin_helmholtz_instability.jl",
-    "Bickley_jet_shallow_water.jl"
+    "shallow_water_Bickley_jet.jl"
 ]
 
 for example in examples
@@ -62,7 +64,7 @@ example_pages = [
     "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
     "Eady turbulence"                    => "generated/eady_turbulence.md",
     "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
-    "Bickley jet in shallow water model" => "generated/Bickley_jet_shallow_water.md"
+    "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md"
  ]
 
 model_setup_pages = [
@@ -73,7 +75,7 @@ model_setup_pages = [
     "Clock" => "model_setup/clock.md",
     "Coriolis (rotation)" => "model_setup/coriolis.md",
     "Tracers" => "model_setup/tracers.md",
-    "Buoyancy and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
+    "Buoyancy models and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
     "Boundary conditions" => "model_setup/boundary_conditions.md",
     "Forcing functions" => "model_setup/forcing_functions.md",
     "Background fields" => "model_setup/background_fields.md",
@@ -88,7 +90,7 @@ model_setup_pages = [
 physics_pages = [
     "Navier-Stokes and tracer conservation equations" => "physics/navier_stokes_and_tracer_conservation.md",
     "Coriolis forces" => "physics/coriolis_forces.md",
-    "Buoyancy model and equations of state" => "physics/buoyancy_and_equations_of_state.md",
+    "Buoyancy models and equations of state" => "physics/buoyancy_and_equations_of_state.md",
     "Turbulence closures" => "physics/turbulence_closures.md",
     "Surface gravity waves and the Craik-Leibovich approximation" => "physics/surface_gravity_waves.md"
 ]
@@ -116,6 +118,7 @@ appendix_pages = [
 
 pages = [
     "Home" => "index.md",
+    "Publications" => "publications.md",
     "Installation instructions" => "installation_instructions.md",
     "Using GPUs" => "using_gpus.md",
     "Examples" => example_pages,

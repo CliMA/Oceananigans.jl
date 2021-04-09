@@ -34,9 +34,9 @@ using Oceananigans.Models: ShallowWaterModel
 Lx, Ly, Lz = 2π, 20, 1
 Nx, Ny = 128, 128
 
-grid = RegularRectilinearGrid(size = (Nx, Ny, 1),
-                            x = (0, Lx), y = (-Ly/2, Ly/2), z = (0, Lz),
-                            topology = (Periodic, Bounded, Bounded))
+grid = RegularRectilinearGrid(size = (Nx, Ny),
+                            x = (0, Lx), y = (-Ly/2, Ly/2),
+                            topology = (Periodic, Bounded, Flat))
 
 # ## Physical parameters
 #
@@ -48,10 +48,10 @@ grid = RegularRectilinearGrid(size = (Nx, Ny, 1),
 #   * ``U``: Maximum jet speed
 #   * ``\Delta \eta``: Maximum free-surface deformation as dictated by geostrophy
 
- f = 1
- g = 9.8
- U = 1.0
-Δη = f * U / g
+ const f = 1
+ const g = 9.8
+ const U = 1.0
+const Δη = f * U / g
 nothing # hide
 
 # ## Building a `ShallowWaterModel`
@@ -87,7 +87,7 @@ model = ShallowWaterModel(
 # We also specify `ω̄` as the vorticity of the background state, 
 # ``ω̄ = - ∂_y ū = 2 U \mathrm{sech}^2(y) \tanh(y)``.
 
-h̄(x, y, z) = model.grid.Lz - Δη * tanh(y)
+h̄(x, y, z) = Lz - Δη * tanh(y)
 ū(x, y, z) = U * sech(y)^2
 ω̄(x, y, z) = 2 * U * sech(y)^2 * tanh(y)
 nothing # hide
@@ -133,7 +133,7 @@ using LinearAlgebra: norm
 
 function perturbation_norm(model)
     compute!(v)
-    return norm(interior(v))
+    return norm(interiorparent(v))
 end
 nothing # hide
 
@@ -148,7 +148,7 @@ simulation.output_writers[:fields] =
     NetCDFOutputWriter(
         model,
         (ω = ω, ω_pert = ω_pert),
-          filepath = joinpath(@__DIR__, "Bickley_jet_shallow_water.nc"),
+          filepath = joinpath(@__DIR__, "shallow_water_Bickley_jet.nc"),
           schedule = TimeInterval(1.0),
               mode = "c")
 

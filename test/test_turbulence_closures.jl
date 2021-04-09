@@ -96,7 +96,7 @@ function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
           closure = with_tracers(tracernames, closure)
              grid = RegularRectilinearGrid(FT, size=(3, 3, 3), extent=(3, 3, 3))
     diffusivities = DiffusivityFields(arch, grid, tracernames, NamedTuple(), closure)
-         buoyancy = BuoyancyTracer()
+         buoyancy = Buoyancy(model=BuoyancyTracer())
        velocities = VelocityFields(arch, grid)
           tracers = TracerFields(tracernames, arch, grid)
 

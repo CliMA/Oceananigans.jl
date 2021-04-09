@@ -44,7 +44,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
                        grid = grid,
                     closure = IsotropicDiffusivity(ν=ν, κ=κ),
                     tracers = (:b, :c),
-                   buoyancy = BuoyancyTracer(),
+                   buoyancy = Buoyancy(model=BuoyancyTracer()),
         boundary_conditions = (b=bbcs,),
                     forcing = (c=Forcing(Fc, discrete_form=true),)
     )

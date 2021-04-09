@@ -1,5 +1,7 @@
 module HydrostaticFreeSurfaceModels
 
+export HydrostaticFreeSurfaceModel, VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface
+
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
@@ -43,6 +45,9 @@ hydrostatic_prognostic_fields(velocities, free_surface, tracers) = merge((u = ve
                                                                           v = velocities.v,
                                                                           η = free_surface.η),
                                                                           tracers)
+
+displacement(free_surface) = free_surface.η
+displacement(::Nothing) = nothing
 
 include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_advection.jl")

@@ -1,8 +1,7 @@
 using CUDA
 
-using Oceananigans.Fields: AbstractField, compute_at!
+using Oceananigans.Fields: AbstractField, compute_at!, slice_parent
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
-using Oceananigans.Diagnostics: slice_parent
 
 fetch_output(output, model, field_slicer) = output(model)
 

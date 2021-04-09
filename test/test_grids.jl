@@ -1,4 +1,8 @@
+using DataDeps
+
 using Oceananigans.Grids: total_extent, halo_size
+
+ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
 #####
 ##### Regular rectilinear grids
@@ -378,15 +382,15 @@ end
 #####
 
 function test_basic_lat_lon_bounded_domain(FT)
-    Nλ = Nϕ = 18
-    Hλ = Hϕ = 1
+    Nλ = Nφ = 18
+    Hλ = Hφ = 1
 
-    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nϕ, 1), longitude=(-90, 90), latitude=(-45, 45), z=(0, 1), halo=(Hλ, Hϕ, 1))
+    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nφ, 1), longitude=(-90, 90), latitude=(-45, 45), z=(0, 1), halo=(Hλ, Hφ, 1))
 
     @test topology(grid) == (Bounded, Bounded, Bounded)
 
     @test grid.Nx == Nλ
-    @test grid.Ny == Nϕ
+    @test grid.Ny == Nφ
     @test grid.Nz == 1
 
     @test grid.Lx == 180
@@ -394,47 +398,47 @@ function test_basic_lat_lon_bounded_domain(FT)
     @test grid.Lz == 1
 
     @test grid.Δλ == 10
-    @test grid.Δϕ == 5
+    @test grid.Δφ == 5
     @test grid.Δz == 1
 
     @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ + 1
     @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
 
-    @test length(grid.ϕᵃᶠᵃ) == Nϕ + 2Hϕ + 1
-    @test length(grid.ϕᵃᶜᵃ) == Nϕ + 2Hϕ
+    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ
 
     @test grid.λᶠᵃᵃ[1] == -90
     @test grid.λᶠᵃᵃ[Nλ+1] == 90
 
-    @test grid.ϕᵃᶠᵃ[1] == -45
-    @test grid.ϕᵃᶠᵃ[Nϕ+1] == 45
+    @test grid.φᵃᶠᵃ[1] == -45
+    @test grid.φᵃᶠᵃ[Nφ+1] == 45
 
     @test grid.λᶠᵃᵃ[0] == -90 - grid.Δλ
     @test grid.λᶠᵃᵃ[Nλ+2] == 90 + grid.Δλ
 
-    @test grid.ϕᵃᶠᵃ[0] == -45 - grid.Δϕ
-    @test grid.ϕᵃᶠᵃ[Nϕ+2] == 45 + grid.Δϕ
+    @test grid.φᵃᶠᵃ[0] == -45 - grid.Δφ
+    @test grid.φᵃᶠᵃ[Nφ+2] == 45 + grid.Δφ
 
     @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλ)
     @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλ)
 
-    @test all(diff(grid.ϕᵃᶠᵃ.parent) .== grid.Δϕ)
-    @test all(diff(grid.ϕᵃᶜᵃ.parent) .== grid.Δϕ)
+    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφ)
+    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφ)
 
     return nothing
 end
 
 function test_basic_lat_lon_periodic_domain(FT)
     Nλ = 36
-    Nϕ = 32
-    Hλ = Hϕ = 1
+    Nφ = 32
+    Hλ = Hφ = 1
 
-    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nϕ, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1), halo=(Hλ, Hϕ, 1))
+    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nφ, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1), halo=(Hλ, Hφ, 1))
 
     @test topology(grid) == (Periodic, Bounded, Bounded)
 
     @test grid.Nx == Nλ
-    @test grid.Ny == Nϕ
+    @test grid.Ny == Nφ
     @test grid.Nz == 1
 
     @test grid.Lx == 360
@@ -442,32 +446,64 @@ function test_basic_lat_lon_periodic_domain(FT)
     @test grid.Lz == 1
 
     @test grid.Δλ == 10
-    @test grid.Δϕ == 5
+    @test grid.Δφ == 5
     @test grid.Δz == 1
 
     @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ
     @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
 
-    @test length(grid.ϕᵃᶠᵃ) == Nϕ + 2Hϕ + 1
-    @test length(grid.ϕᵃᶜᵃ) == Nϕ + 2Hϕ
+    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ
 
     @test grid.λᶠᵃᵃ[1] == -180
     @test grid.λᶠᵃᵃ[Nλ] == 180 - grid.Δλ
 
-    @test grid.ϕᵃᶠᵃ[1] == -80
-    @test grid.ϕᵃᶠᵃ[Nϕ+1] == 80
+    @test grid.φᵃᶠᵃ[1] == -80
+    @test grid.φᵃᶠᵃ[Nφ+1] == 80
 
     @test grid.λᶠᵃᵃ[0] == -180 - grid.Δλ
     @test grid.λᶠᵃᵃ[Nλ+1] == 180
 
-    @test grid.ϕᵃᶠᵃ[0] == -80 - grid.Δϕ
-    @test grid.ϕᵃᶠᵃ[Nϕ+2] == 80 + grid.Δϕ
+    @test grid.φᵃᶠᵃ[0] == -80 - grid.Δφ
+    @test grid.φᵃᶠᵃ[Nφ+2] == 80 + grid.Δφ
 
     @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλ)
     @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλ)
 
-    @test all(diff(grid.ϕᵃᶠᵃ.parent) .== grid.Δϕ)
-    @test all(diff(grid.ϕᵃᶜᵃ.parent) .== grid.Δϕ)
+    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφ)
+    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφ)
+
+    return nothing
+end
+
+#####
+##### Conformal cubed sphere face grid
+#####
+
+function test_cubed_sphere_face_array_size(FT)
+    grid = ConformalCubedSphereFaceGrid(FT, size=(10, 10, 1), z=(0, 1))
+
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+
+    @test grid.λᶜᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶠᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶜᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶠᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶜᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶠᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶜᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶠᶠᵃ isa OffsetArray{FT, 2, <:Array}
+
+    @test size(grid.λᶜᶜᵃ) == (Nx + 2Hx,     Ny + 2Hy    )
+    @test size(grid.λᶠᶜᵃ) == (Nx + 2Hx + 1, Ny + 2Hy    )
+    @test size(grid.λᶜᶠᵃ) == (Nx + 2Hx,     Ny + 2Hy + 1)
+    @test size(grid.λᶠᶠᵃ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
+
+    @test size(grid.φᶜᶜᵃ) == (Nx + 2Hx,     Ny + 2Hy    )
+    @test size(grid.φᶠᶜᵃ) == (Nx + 2Hx + 1, Ny + 2Hy    )
+    @test size(grid.φᶜᶠᵃ) == (Nx + 2Hx,     Ny + 2Hy + 1)
+    @test size(grid.φᶠᶠᵃ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
 
     return nothing
 end
@@ -575,5 +611,37 @@ end
         grid = RegularLatitudeLongitudeGrid(size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
         show(grid); println();
         @test grid isa RegularLatitudeLongitudeGrid
+    end
+
+    @testset "Conformal cubed sphere face grid" begin
+        @info "  Testing conformal cubed sphere face grid..."
+
+        for FT in float_types
+            test_cubed_sphere_face_array_size(Float64)
+        end
+
+        # Testing show function
+        grid = ConformalCubedSphereFaceGrid(size=(10, 10, 1), z=(0, 1))
+        show(grid); println();
+        @test grid isa ConformalCubedSphereFaceGrid
+    end
+
+    @testset "Conformal cubed sphere face grid from file" begin
+        @info "  Testing conformal cubed sphere face grid construction from file..."
+
+        dd = DataDep("cubed_sphere_32_grid",
+            "Conformal cubed sphere grid with 32×32 grid points on each face",
+            "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
+            "b1dafe4f9142c59a2166458a2def743cd45b20a4ed3a1ae84ad3a530e1eff538" # sha256sum
+        )
+
+        DataDeps.register(dd)
+
+        cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
+
+        for face in 1:6
+            grid = ConformalCubedSphereFaceGrid(cs32_filepath, face=face, Nz=1, z=(-1, 0))
+            @test grid isa ConformalCubedSphereFaceGrid
+        end
     end
 end

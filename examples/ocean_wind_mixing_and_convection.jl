@@ -60,8 +60,8 @@ Qᵀ = Qʰ / (ρₒ * cᴾ) # K m⁻¹ s⁻¹, surface _temperature_ flux
 dTdz = 0.01 # K m⁻¹
 
 T_bcs = TracerBoundaryConditions(grid,
-                                 top = BoundaryCondition(Flux, Qᵀ),
-                                 bottom = BoundaryCondition(Gradient, dTdz))
+                                 top = FluxBoundaryCondition(Qᵀ),
+                                 bottom = GradientBoundaryCondition(dTdz))
 
 # Note that a positive temperature flux at the surface of the ocean
 # implies cooling. This is because a positive temperature flux implies
@@ -80,7 +80,7 @@ Qᵘ = - ρₐ / ρₒ * cᴰ * u₁₀ * abs(u₁₀) # m² s⁻²
 
 # The boundary conditions on `u` are thus
 
-u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
+u_bcs = UVelocityBoundaryConditions(grid, top = FluxBoundaryCondition(Qᵘ))
 
 # For salinity, `S`, we impose an evaporative flux of the form
 
@@ -95,7 +95,7 @@ evaporation_rate = 1e-3 / hour
 # indicating that `Qˢ` depends on salinity `S` and passing
 # the parameter `evaporation_rate`,
 
-evaporation_bc = BoundaryCondition(Flux, Qˢ, field_dependencies=:S, parameters=evaporation_rate)
+evaporation_bc = FluxBoundaryCondition(Qˢ, field_dependencies=:S, parameters=evaporation_rate)
 
 # The full salinity boundary conditions are
 
