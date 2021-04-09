@@ -65,8 +65,8 @@ The flux ``q_c \, |_b`` may be a constant, array of discrete values, or arbitrar
 To explain how flux boundary conditions are imposed in `Oceananigans.jl`, we note that
 the average of the tracer conservation equation over a finite volume yields
 ```math
-    \partial_t c_{i, j, k} = \underbrace{ - \frac{1}{V_{i, j, k}} \oint_{\partial \Omega_{i, j, k}} \boldsymbol{u} c + \boldsymbol{q}_c \, \rm{d} S
-                                          + \frac{1}{V_{i, j, k}} \int_{V_{i, j, k}} F_c \, \rm{d} V }_{\equiv G_c |_{i, j, k}} \, ,
+    \partial_t c_{i, j, k} = \underbrace{ - \frac{1}{V_{i, j, k}} \oint_{\partial \Omega_{i, j, k}} \boldsymbol{u} c + \boldsymbol{q}_c \, \mathrm{d} S
+                                          + \frac{1}{V_{i, j, k}} \int_{V_{i, j, k}} F_c \, \mathrm{d} V }_{\equiv G_c |_{i, j, k}} \, ,
 ```
 where the surface integral over ``\partial \Omega_{i, j, k}`` averages the flux of ``c`` across the six faces of the finite volume.
 

@@ -11,7 +11,7 @@ to time step ``n+1`` at ``t_{n+1}`` is
                                     - \left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u} 
                                     - \boldsymbol{f} \times \boldsymbol{u} 
                                     + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} 
-                                    + \boldsymbol{F}_{\boldsymbol{u}} \Big ] \, \rm{d} t \, ,
+                                    + \boldsymbol{F}_{\boldsymbol{u}} \Big ] \, \mathrm{d} t \, ,
     \end{equation}
 ```
 where the superscript ``n`` and ``n+1`` imply evaluation at ``t_n`` and ``t_{n+1}``, 
@@ -19,7 +19,7 @@ such that ``\boldsymbol{u}^n \equiv \boldsymbol{u}(t=t_n)``.
 The crux of the fractional step method is to treat the pressure term 
 ``\boldsymbol{\nabla} \phi_{\rm{non}}`` implicitly using the approximation
 ```math
-\int_{t_n}^{t_{n+1}} \boldsymbol{\nabla} \phi_{\rm{non}} \, \rm{d} t \approx 
+\int_{t_n}^{t_{n+1}} \boldsymbol{\nabla} \phi_{\rm{non}} \, \mathrm{d} t \approx 
     \Delta t \boldsymbol{\nabla} \phi_{\rm{non}}^{n+1} \, ,
 ```
 while treating the rest of the terms on the right hand side of \eqref{eq:momentum-time-integral} explicitly.
@@ -29,7 +29,7 @@ To effect such a fractional step method, we define an intermediate velocity fiel
 ```math
     \begin{equation}
     \label{eq:intermediate-velocity-field}
-    \boldsymbol{u}^\star - \boldsymbol{u}^n = \int_{t_n}^{t_{n+1}} \boldsymbol{G}_{\boldsymbol{u}} \, \rm{d} t \, ,
+    \boldsymbol{u}^\star - \boldsymbol{u}^n = \int_{t_n}^{t_{n+1}} \boldsymbol{G}_{\boldsymbol{u}} \, \mathrm{d} t \, ,
     \end{equation}
 ```
 where
@@ -46,7 +46,7 @@ The integral on the right of the equation for ``\boldsymbol{u}^\star`` may be ap
 explicit methods: for example, a forward Euler method uses
 ```math
     \begin{equation}
-    \int_{t_n}^{t_{n+1}} G \, \rm{d} t \approx \Delta t G^n \, ,
+    \int_{t_n}^{t_{n+1}} G \, \mathrm{d} t \approx \Delta t G^n \, ,
     \label{eq:forward-euler}
     \end{equation}
 ```
@@ -54,7 +54,7 @@ for any time-dependent function ``G(t)``, while a second-order Adams-Bashforth m
 ```math
     \begin{equation}
     \label{eq:adams-bashforth}
-    \int_{t_n}^{t_{n+1}} G \, \rm{d} t \approx 
+    \int_{t_n}^{t_{n+1}} G \, \mathrm{d} t \approx 
         \Delta t \left [ \left ( \tfrac{3}{2} + \chi \right ) G^n 
         - \left ( \tfrac{1}{2} + \chi \right ) G^{n-1} \right ] \, ,
     \end{equation}
@@ -81,7 +81,7 @@ Tracers are stepped forward explicitly via
 ```math
     \begin{equation}
     \label{eq:tracer-timestep}
-    c^{n+1} - c^n = \int_{t_n}^{t_{n+1}} G_c \, \rm{d} t \, ,
+    c^{n+1} - c^n = \int_{t_n}^{t_{n+1}} G_c \, \mathrm{d} t \, ,
     \end{equation}
 ```
 where 
