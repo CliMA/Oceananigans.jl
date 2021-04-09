@@ -36,7 +36,7 @@ With this form the kinematic stress divergence becomes
 and diffusive flux divergence
 ```math
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c = - \left [ \kappa_{h} \left ( \partial_x^2 + \partial_y^2 \right )
-                                    + \kappa_{v} \partial_z^2 \right ] c \, .
+                                    + \kappa_{v} \partial_z^2 \right ] c \, ,
 ```
 in terms of the horizontal viscosities and diffusivities ``\nu_h`` and ``\kappa_{h}`` and the
 vertical viscosity and diffusivities ``\nu_v`` and ``\kappa_{v}``.
@@ -72,10 +72,10 @@ where ``\Sigma_{ij} = \tfrac{1}{2} \left ( u_{i, j} + u_{j, i} \right )`` is the
 strain rate.
 The eddy viscosity is given by
 ```math
-    \begin{equation}
+    \begin{align}
     \nu_e = \left ( C \Delta_f \right )^2 \sqrt{ \Sigma^2 } \, \Upsilon(Ri) + \nu \, ,
     \label{eq:smagorinsky-viscosity}
-    \end{equation}
+    \end{align}
 ```
 where ``\Delta_f`` is the "filter width" associated with the finite volume grid spacing,
 ``C`` is a user-specified model constant, ``\Sigma^2 \equiv \Sigma_{ij} \Sigma_{ij}``, and
@@ -120,16 +120,16 @@ of eddy viscosity and diffusivity *predictors*
     \kappa_e = \max \left ( 0, \kappa_e^\dagger \right ) + \kappa \, ,
 ```
 to ensure that ``\nu_e \ge 0`` and ``\kappa_e \ge 0``, where ``\nu`` and ``\kappa`` are the
-constant isotropic background viscosity and diffusivities for each tracer.
- is
+constant isotropic background viscosity and diffusivities for each tracer. The eddy viscosity 
+predictor is
 ```math
     \begin{equation}
-    \label{eq:nu-dagger}
     \nu_e^\dagger = -(C \Delta_f)^2
     \frac
-        {\left( \hat{\partial}_k \hat{u}_i \right) \left( \hat{\partial}_k \hat{u}_j \right) \hat{\Sigma}_{ij}
-        + C_b \hat{\delta}_{i3} \left( \hat{\partial}_k \hat{u_i} \right) \hat{\partial}_k b}
-        {\left( \hat{\partial}_l \hat{u}_m \right) \left( \hat{\partial}_l \hat{u}_m \right)} \, ,
+        {(\hat{\partial}_k \hat{u}_i) (\hat{\partial}_k \hat{u}_j) \hat{\Sigma}_{ij}
+        + C_b \hat{\delta}_{i3} (\hat{\partial}_k \hat{u_i}) (\hat{\partial}_k b)}
+        {(\hat{\partial}_l \hat{u}_m) (\hat{\partial}_l \hat{u}_m)} \, ,
+    \label{eq:nu-dagger}
     \end{equation}
 ```
 while the eddy diffusivity predictor for tracer ``c`` is
@@ -138,8 +138,8 @@ while the eddy diffusivity predictor for tracer ``c`` is
     \label{eq:kappa-dagger}
     \kappa_e^\dagger = -(C \Delta_f)^2
     \frac
-        {\left( \hat{\partial}_k \hat{u}_i \right) \left( \hat{\partial}_k c \right) \hat{\partial}_i c}
-        {\left( \hat{\partial}_l c \right) \left( \hat{\partial}_l c \right)} \, .
+        {(\hat{\partial}_k \hat{u}_i) (\hat{\partial}_k c) (\hat{\partial}_i c)}
+        {(\hat{\partial}_l c) (\hat{\partial}_l c)} \, .
     \end{equation}
 ```
 In the definitions of the eddy viscosity and eddy diffusivity predictor, ``C`` and ``C_b`` are

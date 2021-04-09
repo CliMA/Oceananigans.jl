@@ -89,7 +89,7 @@ The terms that appear on the right-hand side of the momentum conservation equati
 * advection of background momentum by resolved velocity, ``\left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{U}``,
 * coriolis, ``\boldsymbol{f} \times \boldsymbol{u}``,
 * the effective background rotation rate due to surface waves, ``\left ( \boldsymbol{\nabla} \times \boldsymbol{u}^S \right ) \times \boldsymbol{u}``,
-* pressure, ``\boldsymbol{\nabla} \phi``,
+* pressure gradient, ``\boldsymbol{\nabla} \phi``,
 * buoyant acceleration, ``b \boldsymbol{\hat z}``,
 * molecular or turbulence viscous stress, ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}``
 * a source of momentum due to forcing or damping of surface waves, ``\partial_t \boldsymbol{u}^S``, and
