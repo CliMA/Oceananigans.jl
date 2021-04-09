@@ -267,10 +267,10 @@ two_dimensional_topologies = [
         (Periodic, Periodic, Bounded),
         (Periodic, Bounded,  Bounded),
         (Bounded,  Periodic, Bounded),
-        (Bounded,  Bounded,  Bounded)
-        (Flat,     Bounded,  Bounded)
-        (Flat,     Periodic, Bounded)
-        (Bounded,  Flat,     Bounded)
+        (Bounded,  Bounded,  Bounded),
+        (Flat,     Bounded,  Bounded),
+        (Flat,     Periodic, Bounded),
+        (Bounded,  Flat,     Bounded),
         (Periodic, Flat,     Bounded)
     ]
 
