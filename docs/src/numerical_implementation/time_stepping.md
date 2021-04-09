@@ -7,7 +7,7 @@ to time step ``n+1`` at ``t_{n+1}`` is
     \label{eq:momentum-time-integral}
     \boldsymbol{u}^{n+1} - \boldsymbol{u}^n = 
         \int_{t_n}^{t_{n+1}} \Big [ - \boldsymbol{\nabla} \phi_{\rm{non}} 
-                                    - \boldsymbol{\nabla}_{\! h} \phi_{\rm{hyd}} 
+                                    - \boldsymbol{\nabla}_{h} \phi_{\rm{hyd}} 
                                     - \left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u} 
                                     - \boldsymbol{f} \times \boldsymbol{u} 
                                     + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} 

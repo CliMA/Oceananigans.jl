@@ -143,7 +143,7 @@ An isotropic diffusion operator acting on a tracer ``c``, on the other hand, is 
 ## Vertical integrals
 Vertical integrals are converted into sums along each column. For example, the hydrostatic pressure anomaly is
 ```math
-    p_{HY}^\prime = \int_{-L_z}^0 b^\prime \; dz \, ,
+    p_{HY}^\prime = \int_{-L_z}^0 b^\prime \, \rm{d} z \, ,
 ```
 where ``b^\prime`` is the buoyancy perturbation. Converting it into a sum that we compute from the top downwards we get
 ```math
@@ -158,7 +158,7 @@ the integral may be computed with ``\mathcal{O}(N_z)`` operations by a single th
 
 The vertical velocity ``w`` may be computed from ``u`` and ``v`` via the continuity equation
 ```math
-    w = - \int_{-L_z}^0 \left(\frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} \right) \, dz \, ,
+    w = - \int_{-L_z}^0 \left(\frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} \right) \, \rm{d} z \, ,
 ```
 to satisfy the incompressibility condition ``\nabla\cdot\boldsymbol{u} = 0`` to numerical precision. This also involves computing
 a vertical integral, in this case evaluated from the bottom up

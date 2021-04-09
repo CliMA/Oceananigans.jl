@@ -12,7 +12,7 @@ mean field ``\overline{\boldsymbol{u}}`` is obtained via convolution with a filt
 ```math
 \overline{\boldsymbol{u}(\boldsymbol{x}, t)} = G \star \boldsymbol{u} =
   \int_{-\infty}^\infty \int_{-\infty}^\infty
-  \boldsymbol{u}(\boldsymbol{x}^\prime, t) G(\boldsymbol{x} - \boldsymbol{x}^\prime, t - \tau) \, d\boldsymbol{x}^\prime \, d\tau \, ,
+  \boldsymbol{u}(\boldsymbol{x}^\prime, t) G(\boldsymbol{x} - \boldsymbol{x}^\prime, t - \tau) \, d\boldsymbol{x}^\prime \, \rm{d} \tau \, ,
 ```
 as described by [Leonard75](@cite) who introduced the general filtering formalism.
 
@@ -39,7 +39,7 @@ where ``H`` is the Heaviside function, ``\Delta`` is the grid spacing, and ``t_n
   \int_{x - \frac{1}{2}\Delta x}^{x + \frac{1}{2}\Delta x}
   \int_{y - \frac{1}{2}\Delta y}^{y + \frac{1}{2}\Delta y}
   \int_{z - \frac{1}{2}\Delta z}^{z + \frac{1}{2}\Delta z}
-  \boldsymbol{u}(\xi, \eta, \zeta, t) \, d\xi \, d\eta \, d\zeta \, ,
+  \boldsymbol{u}(\xi, \eta, \zeta, t) \, \rm{d} \xi \, \rm{d} \eta \, \rm{d} \zeta \, ,
 ```
 which if evaluated at the cell centers just returns the cell averages we already compute in the finite volume method.
 
