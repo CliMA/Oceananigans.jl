@@ -11,12 +11,13 @@ using Oceananigans.Grids
 using Oceananigans.Fields
 using Oceananigans.AbstractOperations
 using Oceananigans.OutputWriters
+using Oceananigans.BoundaryConditions
 
 # setting boundary condition topology
 topology=(Periodic, Bounded, Bounded)
 
 # setting up 2D grid
-grid = RegularRectilinearGrid(topology=topology, size=(350, 350, 1), x=(20, 40), y=(10, 30), z=(0, 1))
+grid = RegularRectilinearGrid(topology=topology, size=(350, 350, 1), x=(20, 40), y=(10, 30), z=(0, 1), halo=(3, 3, 3))
 
 
 # reynolds number
