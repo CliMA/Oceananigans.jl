@@ -15,15 +15,19 @@ Users impose gradient boundary conditions by prescribing the gradient ``\gamma``
 The prescribed gradient ``\gamma`` may be a constant, discrete array of values, or an arbitrary function.
 The gradient boundary condition is enforced setting the value of halo points located outside the domain interior such that
 ```math
-    \tag{eq:gradient-bc}
+    \begin{equation}
+    \label{eq:gradient-bc}
     \hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{\nabla} c |_{\partial \Omega_b} = \gamma \, .
+    \end{equation}
 ```
 where ``\hat{\boldsymbol{n}}`` is the vector normal to ``\partial \Omega_b``.
 
 Across the bottom boundary in ``z``, for example, this requires that
 ```math
-    \tag{eq:linear-extrapolation}
+    \begin{equation}
+    \label{eq:linear-extrapolation}
     c_{i, j, 0} = c_{i, j, 1} + \gamma_{i, j, 1} \tfrac{1}{2} \left ( \Delta z_{i, j, 1} + \Delta z_{i, j, 0} \right ) \, ,
+    \end{equation}
 ```
 where ``\Delta z_{i, j, 1} = \Delta z_{i, j, 0}`` are the heights of the finite volume at ``i, j`` and ``k=1`` and ``k=0``.
 This prescription implies that the ``z``-derivative of ``c`` across the boundary at ``k=1`` is

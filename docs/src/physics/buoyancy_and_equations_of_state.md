@@ -12,8 +12,10 @@ conservation equation and is used directly in the momentum equations in the mome
 For seawater buoyancy is, in general, modeled as a function of conservative temperature
 ``\theta``, absolute salinity ``S``, and depth below the ocean surface ``d`` via
 ```math
+    \begin{equation}
     b = - \frac{g}{\rho_0} \rho' \left (\theta, S, d \right ) \, ,
-    \tag{eq:seawater-buoyancy}
+    \label{eq:seawater-buoyancy}
+    \end{equation}
 ```
 where ``g`` is gravitational acceleration, ``\rho_0`` is the reference density.
 The function ``\rho'(\theta, S, d)`` in the seawater buoyancy relationship that links conservative temperature,

@@ -3,7 +3,8 @@
 The time-integral of the momentum equation with the pressure decomposition from time step ``n`` at ``t = t_n`` 
 to time step ``n+1`` at ``t_{n+1}`` is
 ```math
-    \tag{eq:momentum-time-integral}
+    \begin{equation}
+    \label{eq:momentum-time-integral}
     \boldsymbol{u}^{n+1} - \boldsymbol{u}^n = 
         \int_{t_n}^{t_{n+1}} \Big [ - \boldsymbol{\nabla} \phi_{\rm{non}} 
                                     - \boldsymbol{\nabla}_{\! h} \phi_{\rm{hyd}} 
@@ -11,6 +12,7 @@ to time step ``n+1`` at ``t_{n+1}`` is
                                     - \boldsymbol{f} \times \boldsymbol{u} 
                                     + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} 
                                     + \boldsymbol{F}_{\boldsymbol{u}} \Big ] \, \rm{d} t \, ,
+    \end{equation}
 ```
 where the superscript ``n`` and ``n+1`` imply evaluation at ``t_n`` and ``t_{n+1}``, 
 such that ``\boldsymbol{u}^n \equiv \boldsymbol{u}(t=t_n)``.
@@ -25,8 +27,10 @@ The implicit treatment of pressure ensures that the velocity field obtained at t
 
 To effect such a fractional step method, we define an intermediate velocity field ``\boldsymbol{u}^\star`` such that
 ```math
-    \tag{eq:intermediate-velocity-field}
+    \begin{equation}
+    \label{eq:intermediate-velocity-field}
     \boldsymbol{u}^\star - \boldsymbol{u}^n = \int_{t_n}^{t_{n+1}} \boldsymbol{G}_{\boldsymbol{u}} \, \rm{d} t \, ,
+    \end{equation}
 ```
 where
 ```math
@@ -41,23 +45,29 @@ of non-hydrostatic pressure ``\boldsymbol{\nabla} \phi_n``.
 The integral on the right of the equation for ``\boldsymbol{u}^\star`` may be approximated by a variety of 
 explicit methods: for example, a forward Euler method uses
 ```math
+    \begin{equation}
     \int_{t_n}^{t_{n+1}} G \, \rm{d} t \approx \Delta t G^n \, ,
-    \tag{eq:forward-euler}
+    \label{eq:forward-euler}
+    \end{equation}
 ```
 for any time-dependent function ``G(t)``, while a second-order Adams-Bashforth method uses the approximation
 ```math
-    \tag{eq:adams-bashforth}
+    \begin{equation}
+    \label{eq:adams-bashforth}
     \int_{t_n}^{t_{n+1}} G \, \rm{d} t \approx 
         \Delta t \left [ \left ( \tfrac{3}{2} + \chi \right ) G^n 
         - \left ( \tfrac{1}{2} + \chi \right ) G^{n-1} \right ] \, ,
+    \end{equation}
 ```
 where ``\chi`` is a parameter. Ascher et al. (1995) claim that ``\chi = \tfrac{1}{8}`` is optimal; 
 ``\chi=-\tfrac{1}{2}`` yields the forward Euler scheme.
 
 Combining the equations for ``\boldsymbol{u}^\star`` and the time integral of the momentum equation yields
 ```math
-    \tag{eq:fractional-step}
+    \begin{equation}
+    \label{eq:fractional-step}
     \boldsymbol{u}^{n+1} - \boldsymbol{u}^\star = - \Delta t \boldsymbol{\nabla} \phi_{\rm{non}}^{n+1} \, .
+    \end{equation}
 ```
 Taking the divergence of fractional step equation and requiring that 
 ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u}^{n+1} = 0`` yields a Poisson equation for the potential 
@@ -69,8 +79,10 @@ With ``\boldsymbol{u}^\star`` and ``\phi_{\rm{non}}``, ``\boldsymbol{u}^{n+1}`` 
 
 Tracers are stepped forward explicitly via
 ```math
-    \tag{eq:tracer-timestep}
+    \begin{equation}
+    \label{eq:tracer-timestep}
     c^{n+1} - c^n = \int_{t_n}^{t_{n+1}} G_c \, \rm{d} t \, ,
+    \end{equation}
 ```
 where 
 ```math

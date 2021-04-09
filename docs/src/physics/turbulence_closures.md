@@ -72,8 +72,10 @@ where ``\Sigma_{ij} = \tfrac{1}{2} \left ( u_{i, j} + u_{j, i} \right )`` is the
 strain rate.
 The eddy viscosity is given by
 ```math
+    \begin{equation}
     \nu_e = \left ( C \Delta_f \right )^2 \sqrt{ \Sigma^2 } \, \Upsilon(Ri) + \nu \, ,
-    \tag{eq:smagorinsky-viscosity}
+    \label{eq:smagorinsky-viscosity}
+    \end{equation}
 ```
 where ``\Delta_f`` is the "filter width" associated with the finite volume grid spacing,
 ``C`` is a user-specified model constant, ``\Sigma^2 \equiv \Sigma_{ij} \Sigma_{ij}``, and
@@ -121,20 +123,24 @@ to ensure that ``\nu_e \ge 0`` and ``\kappa_e \ge 0``, where ``\nu`` and ``\kapp
 constant isotropic background viscosity and diffusivities for each tracer.
  is
 ```math
-    \tag{eq:nu-dagger}
+    \begin{equation}
+    \label{eq:nu-dagger}
     \nu_e^\dagger = -(C \Delta_f)^2
     \frac
         {\left( \hat{\partial}_k \hat{u}_i \right) \left( \hat{\partial}_k \hat{u}_j \right) \hat{\Sigma}_{ij}
         + C_b \hat{\delta}_{i3} \left( \hat{\partial}_k \hat{u_i} \right) \hat{\partial}_k b}
         {\left( \hat{\partial}_l \hat{u}_m \right) \left( \hat{\partial}_l \hat{u}_m \right)} \, ,
+    \end{equation}
 ```
 while the eddy diffusivity predictor for tracer ``c`` is
 ```math
-    \tag{eq:kappa-dagger}
+    \begin{equation}
+    \label{eq:kappa-dagger}
     \kappa_e^\dagger = -(C \Delta_f)^2
     \frac
         {\left( \hat{\partial}_k \hat{u}_i \right) \left( \hat{\partial}_k c \right) \hat{\partial}_i c}
         {\left( \hat{\partial}_l c \right) \left( \hat{\partial}_l c \right)} \, .
+    \end{equation}
 ```
 In the definitions of the eddy viscosity and eddy diffusivity predictor, ``C`` and ``C_b`` are
 user-specified model constants, ``\Delta_f`` is a "filter width" associated with the finite volume

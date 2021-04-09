@@ -49,8 +49,10 @@ The Boussinesq approximation is valid when ``\rho_* + \rho' \ll \rho_0``, which 
 fluid is _approximately_ incompressible, and thus does not support acoustic waves.
 In this case, the mass conservation equation reduces to the continuity equation
 ```math
+    \begin{equation}
     \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u} = \partial_x u + \partial_y v + \partial_z w = 0 \, .
-    \tag{eq:continuity}
+    \label{eq:continuity}
+    \end{equation}
 ```
 
 ## The momentum conservation equation
@@ -59,6 +61,7 @@ The equations governing the conservation of momentum in a rotating fluid, includ
 via the Boussinesq approximation and including the averaged effects of surface gravity waves
 at the top of the domain via the Craik-Leibovich approximation are
 ```math
+    \begin{equation}
     \partial_t \boldsymbol{u} = - \left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}
                         - \left ( \boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}
                         - \left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{U}
@@ -68,7 +71,8 @@ at the top of the domain via the Craik-Leibovich approximation are
                         - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}
                         + \partial_t \boldsymbol{u}^S
                         + \boldsymbol{F_u} \, ,
-    \tag{eq:momentum}
+    \label{eq:momentum}
+    \end{equation}
 ```
 where ``b`` is buoyancy, ``\boldsymbol{\tau}`` is the kinematic stress tensor, ``\boldsymbol{F_u}``
 denotes an internal forcing of the velocity field ``\boldsymbol{u}``, ``\phi`` is the potential
@@ -94,12 +98,14 @@ From left to right, the terms that appear on the right-hand side of the momentum
 
 The conservation law for tracers in Oceananigans.jl is
 ```math
+    \begin{equation}
     \partial_t c = - \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} c
                    - \boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} c
                    - \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} C
                    - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c
                    + F_c \, ,
-    \tag{eq:tracer}
+    \label{eq:tracer}
+    \end{equation}
 ```
 where ``\boldsymbol{q}_c`` is the diffusive flux of ``c`` and ``F_c`` is an arbitrary source term.
 Oceananigans.jl permits arbitrary tracers and thus an arbitrary number of tracer

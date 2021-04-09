@@ -3,26 +3,32 @@
 In the numerical implementation of the momentum equations, the kinematic potential ``\phi`` 
 is split into "hydrostatic anomaly" and "non-hydrostatic" parts via
 ```math
-    \tag{eq:pressure}
+    \begin{equation}
+    \label{eq:pressure}
     \phi(\boldsymbol{x}, t) = \phi_{\rm{hyd}}(\boldsymbol{x}, t) + \phi_{\rm{non}}(\boldsymbol{x}, t) \, .
+    \end{equation}
 ```
 The anomalous hydrostatic component of the kinematic potential is defined by 
 ```math
-    \tag{eq:hydrostaticpressure}
+    \begin{equation}
+    \label{eq:hydrostaticpressure}
     \partial_z \phi_{\rm{hyd}} \equiv -b \, ,
+    \end{equation}
 ```
 such that the sum of the kinematic potential and buoyancy perturbation becomes
 ```math
+    \begin{equation}
     -\boldsymbol{\nabla} \phi + b \boldsymbol{\hat z} = 
         - \boldsymbol{\nabla} \phi_{\rm{non}}
         - \big ( \underbrace{\partial_x \boldsymbol{\hat x} + \partial_y \boldsymbol{\hat y} }_{\equiv \boldsymbol{\nabla}_{\! h}} \big ) \phi_{\rm{hyd}} \, .
+    \end{equation}
 ```
 The hydrostatic pressure anomaly is so named because the "total" hydrostatic pressure 
 contains additional components:
 ```math
 \begin{aligned}
-\partial_z \phi_{\text{total hydrostatic}} &= - g \left ( 1 + \tfrac{\rho_*}{\rho_0} + \tfrac{\rho'}{\rho_0} \right ) \, , \\
-                                           &= \partial_z \phi_{\rm{hyd}} - g \left ( 1 + \tfrac{\rho_*}{\rho_0} \right ) \, .
+\partial_z \phi_{\text{total hydrostatic}} & = - g \left ( 1 + \tfrac{\rho_*}{\rho_0} + \tfrac{\rho'}{\rho_0} \right ) \, , \\
+                                           & = \partial_z \phi_{\rm{hyd}} - g \left ( 1 + \tfrac{\rho_*}{\rho_0} \right ) \, .
 \end{aligned}
 ```
 Under this pressure decomposition the momentum equation becomes

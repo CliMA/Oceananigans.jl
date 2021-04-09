@@ -6,7 +6,10 @@ The 3d non-hydrostatic pressure field is obtained by taking the divergence of th
 \eqref{eq:momentumStar} and invoking the vertical component to yield an elliptic Poisson equation for the
 non-hydrostatic kinematic pressure
 ```math
-\nabla^2\phi_{NH} = \frac{\nabla \cdot \boldsymbol{u}^n}{\Delta t} + \nabla \cdot \boldsymbol{G}_{\boldsymbol{u}} \equiv \mathscr{F} \, ,
+   \begin{equation}
+   \label{eq:poisson-pressure}
+   \nabla^2\phi_{NH} = \frac{\nabla \cdot \boldsymbol{u}^n}{\Delta t} + \nabla \cdot \boldsymbol{G}_{\boldsymbol{u}} \equiv \mathscr{F} \, ,
+   \end{equation}
 ```
 along with homogenous Neumann boundary conditions ``\boldsymbol{u} \cdot \boldsymbol{\hat{n}} = 0`` (Neumann on ``\phi`` for wall-bounded
 directions and periodic otherwise) and where ``\mathscr{F}`` denotes the source term for the Poisson equation.
@@ -18,7 +21,7 @@ is not needed.
 ## Direct method
 
 Discretizing elliptic problems that can be solved via a classical separation-of-variables approach, such as Poisson's
-equation, results in a linear system of equations ``M\boldsymbol{x} = \boldsymbol{y}`` where ``M`` is a real symmetric matrix of block
+equation, results in a linear system of equations ``M \boldsymbol{x} = \boldsymbol{y}`` where ``M`` is a real symmetric matrix of block
 tridiagonal form. This allows for the matrix to be decomposed and solved efficiently, provided that the eigenvalues and
 eigenvectors of the blocks are known (§2) [Buzbee70](@cite). In the case of Poisson's equation on a rectangle,
 [Hockney65](@cite) has taken advantage of the fact that the fast Fourier transform can be used to perform the matrix
@@ -27,14 +30,17 @@ an algorithm for Poisson's equation on a staggered grid with Dirichlet, Neumann,
 
 The method can be explained easily by taking the Fourier transform of both sides of \eqref{eq:poisson-pressure} to yield
 ```math
--(k_x^2 + k_y^2 + k_z^2) \widehat{\phi}_{NH} = \widehat{\mathscr{F}}
-\quad \implies \quad
-\widehat{\phi}_{NH} = - \frac{\widehat{\mathscr{F}}}{k_x^2 + k_y^2 + k_z^2} \, ,
+    \begin{equation}
+    \label{eq:poisson-spectral}
+    -(k_x^2 + k_y^2 + k_z^2) \widehat{\phi}_{NH} = \widehat{\mathscr{F}}
+    \quad \implies \quad
+    \widehat{\phi}_{NH} = - \frac{\widehat{\mathscr{F}}}{k_x^2 + k_y^2 + k_z^2} \, ,
+    \end{equation}
 ```
 where ``\widehat{\cdot}`` denotes the Fourier component. Here ``k_x``, ``k_y``, and ``k_z`` are the wavenumbers. However, when
 solving the equation on a staggered grid we require a solution for ``\phi_{NH}`` that is second-order accurate such that
 when when its Laplacian is computed, ``\nabla^2\phi_{NH}`` matches ``\mathscr{F}`` to machine precision. This is crucial to
-ensure that the projection step in \S\ref{sec:fractional-step} works. To do this, the wavenumbers are replaced by
+ensure that the projection step in §\ref{sec:fractional-step} works. To do this, the wavenumbers are replaced by
 eigenvalues ``\lambda_x``, ``\lambda_y``, and ``\lambda_z`` satisfying the discrete form of Poisson's equation with
 appropriate boundary conditions. Thus, Poisson's equation's is diagonalized in Fourier space and the Fourier
 coefficients of the solution are easily solved for
@@ -46,10 +52,10 @@ The eigenvalues are given by [Schumann88](@cite) and can also be tediously deriv
 discrete Fourier transform into \eqref{eq:poisson-spectral}
 ```math
 \begin{aligned}
-    \lambda^x_i &= 4\frac{N_x^2}{L_x^2} \sin^2 \left [ \frac{(i-1)\pi}{N_x}  \right ], \quad i=0,1, \dots,N_x-1 \\
-    \lambda^x_j &= 4\frac{N_y^2}{L_y^2} \sin^2 \left [ \frac{(j-1)\pi}{N_y}  \right ], \quad j=0,1, \dots,N_y-1 \\
-    \lambda^x_k &= 4\frac{N_z^2}{L_z^2} \sin^2 \left [ \frac{(k-1)\pi}{2N_z} \right ], \quad k=0,1, \dots,N_z-1
-\end{aligned} \, ,
+    \lambda^x_i &= 4\frac{N_x^2}{L_x^2} \sin^2 \left [ \frac{(i-1)\pi}{N_x}  \right ], \quad i=0,1, \dots,N_x-1 \, , \\
+    \lambda^x_j &= 4\frac{N_y^2}{L_y^2} \sin^2 \left [ \frac{(j-1)\pi}{N_y}  \right ], \quad j=0,1, \dots,N_y-1 \, , \\
+    \lambda^x_k &= 4\frac{N_z^2}{L_z^2} \sin^2 \left [ \frac{(k-1)\pi}{2N_z} \right ], \quad k=0,1, \dots,N_z-1 \, ,
+\end{aligned}
 ```
 where ``\lambda_x`` and ``\lambda_y`` correspond to periodic boundary conditions in the horizontal and ``\lambda_z`` to
 Neumann boundary conditions in the vertical.
@@ -200,8 +206,10 @@ The implicit free surface solver solves for the free-surface, ``\eta``, in the v
 integrated continuity equation
 
 ```math
-    \tag{eq:vertically-integrated-continuity}
-    \partial_{t} \eta + \partial_{x} H \hat{u} + \partial_{y} H \hat{v} = M
+    \begin{equation}
+    \label{eq:vertically-integrated-continuity}
+    \partial_{t} \eta + \partial_{x} H \hat{u} + \partial_{y} H \hat{v} = M \, ,
+    \end{equation}
 ```
 
 where M is some surface volume flux (e.g terms such as precipitation, evaporation and runoff), 
@@ -209,15 +217,19 @@ currently ``M=0`` is assumed. To form a linear system that can be solved implici
 the continuity equation into a discrete integral form
 
 ```math
-    \tag{eq:semi-discrete-integral-continuity}
-    A_{z} \partial_{t} \eta + \delta_{x}^{caa}\sum_{k} A_{x} u +\delta_{y}^{caa}\sum_{k} A_{y} v = A_{z} M
+    \begin{equation}
+    \label{eq:semi-discrete-integral-continuity}
+    A_{z} \partial_{t} \eta + \delta_{x}^{caa}\sum_{k} A_{x} u +\delta_{y}^{caa}\sum_{k} A_{y} v = A_{z} M \, ,
+    \end{equation}
 ```
 
 and apply the discrete form to the hydrostatic form of the velocity fractional step equation
 
 ```math
-    \tag{eq:hydrostatic-fractional-step}
-    \boldsymbol{u}^{n+1} = \boldsymbol{u}^{\star} - g\Delta t \boldsymbol{\nabla} \eta^{n+1} .
+    \begin{equation}
+    \label{eq:hydrostatic-fractional-step}
+    \boldsymbol{u}^{n+1} = \boldsymbol{u}^{\star} - g\Delta t \boldsymbol{\nabla} \eta^{n+1} \, .
+    \end{equation}
 ```
 
 as follows.
