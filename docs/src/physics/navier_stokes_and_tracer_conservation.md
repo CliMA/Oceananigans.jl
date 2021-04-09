@@ -82,13 +82,13 @@ From left to right, the terms that appear on the right-hand side of the momentum
 * momentum advection, ``\left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}``,
 * advection of resolved momentum by the background velocity field ``\boldsymbol{U}``, ``\left ( \boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}``,
 * advection of background momentum by resolved velocity, ``\left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{U}``,
-* coriolis, ``\boldsymbol{f} \times \boldsymbol{u}``
-* the effective background rotation rate due to surface waves, ``\left ( \boldsymbol{\nabla} \times \boldsymbol{u}^S \right ) \times \boldsymbol{u}``
+* coriolis, ``\boldsymbol{f} \times \boldsymbol{u}``,
+* the effective background rotation rate due to surface waves, ``\left ( \boldsymbol{\nabla} \times \boldsymbol{u}^S \right ) \times \boldsymbol{u}``,
 * pressure, ``\boldsymbol{\nabla} \phi``,
-* buoyant acceleration, ``b \boldsymbol{\hat z}``
+* buoyant acceleration, ``b \boldsymbol{\hat z}``,
 * molecular or turbulence viscous stress, ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}``
-* a source of momentum due to forcing or damping of surface waves, ``\partial_t \boldsymbol{u}^S``
-* an arbitrary internal source of momentum, ``\boldsymbol{F_u}``
+* a source of momentum due to forcing or damping of surface waves, ``\partial_t \boldsymbol{u}^S``, and
+* an arbitrary internal source of momentum, ``\boldsymbol{F_u}``.
 
 ## The tracer conservation equation
 
