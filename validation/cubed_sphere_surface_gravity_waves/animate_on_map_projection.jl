@@ -8,6 +8,7 @@ using Oceananigans.Utils: prettytime
 np = pyimport("numpy")
 ma = pyimport("numpy.ma")
 plt = pyimport("matplotlib.pyplot")
+mticker = pyimport("matplotlib.ticker")
 ccrs = pyimport("cartopy.crs")
 cmocean = pyimport("cmocean")
 
@@ -78,7 +79,10 @@ function animate_surface_gravity_waves(; face_number, projections=[ccrs.Robinson
             ax = fig.add_subplot(1, n_subplots, n, projection=projection)
             plot_cubed_sphere_tracer_field!(fig, ax, η, file["grid"]; add_colorbar = (n == n_subplots), subplot_kwargs...)
             n_subplots == 1 && ax.set_title(plot_title)
-            ax.gridlines(color="gray", alpha=0.5, linestyle="--")
+
+            gl = ax.gridlines(color="gray", alpha=0.5, linestyle="--")
+            gl.xlocator = mticker.FixedLocator(-180:30:180)
+            gl.ylocator = mticker.FixedLocator(-80:20:80)
         end
 
         n_subplots > 1 && fig.suptitle(plot_title, y=0.85)

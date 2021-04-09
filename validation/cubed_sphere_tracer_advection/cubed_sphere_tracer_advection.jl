@@ -170,6 +170,11 @@ end
 
 include("animate_on_map.jl")
 
+projections = [
+    ccrs.NearsidePerspective(central_longitude=0,   central_latitude=30),
+    ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
+]
+
 for f in 1:6, α in αs
-    animate_tracer_advection(face_number=f, α=α)
+    animate_tracer_advection(face_number=f, α=α, projections=projections)
 end
