@@ -61,18 +61,19 @@ The equations governing the conservation of momentum in a rotating fluid, includ
 via the Boussinesq approximation and including the averaged effects of surface gravity waves
 at the top of the domain via the Craik-Leibovich approximation are
 ```math
-    \begin{equation}
-    \partial_t \boldsymbol{u} = - \left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}
+    \begin{align}
+    \partial_t \boldsymbol{u} & = - \left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}
                         - \left ( \boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}
-                        - \left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{U}
-                        - \left ( \boldsymbol{f} - \boldsymbol{\nabla} \times \boldsymbol{u}^S \right ) \times \boldsymbol{u}
+                        - \left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{U} \nonumber \\
+                        & \qquad
+                        - \left ( \boldsymbol{f} - \boldsymbol{\nabla} \times \boldsymbol{u}^S \right ) \times \boldsymbol{u} 
                         - \boldsymbol{\nabla} \phi
                         + b \boldsymbol{\hat z}
                         - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}
                         + \partial_t \boldsymbol{u}^S
                         + \boldsymbol{F_u} \, ,
     \label{eq:momentum}
-    \end{equation}
+    \end{align}
 ```
 where ``b`` is buoyancy, ``\boldsymbol{\tau}`` is the kinematic stress tensor, ``\boldsymbol{F_u}``
 denotes an internal forcing of the velocity field ``\boldsymbol{u}``, ``\phi`` is the potential
@@ -81,7 +82,7 @@ associated with kinematic and constant hydrostatic contributions to pressure,
 and ``\boldsymbol{f}`` is *Coriolis parameter*, or the background vorticity associated with the
 specified rate of rotation of the frame of reference.
 
-From left to right, the terms that appear on the right-hand side of the momentum conservation equation are:
+The terms that appear on the right-hand side of the momentum conservation equation are (in order):
 
 * momentum advection, ``\left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}``,
 * advection of resolved momentum by the background velocity field ``\boldsymbol{U}``, ``\left ( \boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}``,
@@ -98,14 +99,14 @@ From left to right, the terms that appear on the right-hand side of the momentum
 
 The conservation law for tracers in Oceananigans.jl is
 ```math
-    \begin{equation}
+    \begin{align}
     \partial_t c = - \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} c
                    - \boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} c
                    - \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} C
                    - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c
                    + F_c \, ,
     \label{eq:tracer}
-    \end{equation}
+    \end{align}
 ```
 where ``\boldsymbol{q}_c`` is the diffusive flux of ``c`` and ``F_c`` is an arbitrary source term.
 Oceananigans.jl permits arbitrary tracers and thus an arbitrary number of tracer
