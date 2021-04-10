@@ -57,7 +57,7 @@ macro hascuda(expr)
 end
 
 device(::AbstractCPUArchitecture) = KernelAbstractions.CPU()
-device(::AbstractGPUArchitecture) = KernelAbstractions.CUDADevice()
+device(::AbstractGPUArchitecture) = CUDAKernels.CUDADevice()
 
 architecture(::Number)  = nothing
 architecture(::Array)   = CPU()

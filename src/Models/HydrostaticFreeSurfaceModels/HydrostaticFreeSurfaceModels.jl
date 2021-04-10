@@ -1,5 +1,7 @@
 module HydrostaticFreeSurfaceModels
 
+export HydrostaticFreeSurfaceModel, VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface
+
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
@@ -10,6 +12,8 @@ import Oceananigans: fields
 #####
 ##### HydrostaticFreeSurfaceModel definition
 #####
+
+FreeSurfaceDisplacementField(velocities, arch, grid) = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
 
 include("compute_w_from_continuity.jl")
 include("explicit_free_surface.jl")

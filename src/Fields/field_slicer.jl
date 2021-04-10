@@ -19,13 +19,13 @@ end
 
 Returns `FieldSlicer` that slices a field prior to output or time-averaging.
 
-The keyword arguments `i, j, k` prescribe an `Integer` index or `UnitRange` of indices 
-in `x, y, z`, respectively.
+The keyword arguments `i, j, k` prescribe an `Integer` index, `UnitRange`,
+or `StepRange` of indices in `x, y, z`, respectively.
 
 The default for `i`, `j`, and `k` is `Colon()` which indicates "all indices".
 
 The keyword `with_halos` denotes whether halo data is saved or not. Halo regions are
-sliced off output for `UnitRange` and `Colon` index specifications.
+sliced off output for `UnitRange`, `StepRange`, and `Colon` index specifications.
 """
 FieldSlicer(; i=Colon(), j=Colon(), k=Colon(), with_halos=false) =
     FieldSlicer(num2int(i), num2int(j), num2int(k), with_halos)
@@ -51,15 +51,14 @@ parent_slice_indices(::Type{Face}, ::Type{Bounded}, N, H,
 
 # Slicing along reduced dimensions
 parent_slice_indices(::Type{Nothing}, loc, N, H, ::Colon, with_halos) = 1:1
-parent_slice_indices(::Type{Nothing}, loc, N, H, ::UnitRange, with_halos) = 1:1
+parent_slice_indices(::Type{Nothing}, loc, N, H, ::AbstractRange, with_halos) = 1:1
 parent_slice_indices(::Type{Nothing}, loc, N, H, ::Int, with_halos) = 1:1
 
 # Safe slice ranges without halos
 right_parent_index_without_halos(loc, topo, N, H, right) = min(H + N, right + H)
 right_parent_index_without_halos(::Type{Face}, ::Type{Bounded}, N, H, right) = min(H + N + 1, right + H)
 
-function parent_slice_indices(loc, topo, N, H, rng::UnitRange, with_halos)
-
+function parent_slice_index_endpoints(loc, topo, N, H, rng, with_halos)
     if with_halos
         left = rng[1] + H
         right = rng[end] + H
@@ -68,7 +67,17 @@ function parent_slice_indices(loc, topo, N, H, rng::UnitRange, with_halos)
         right = right_parent_index_without_halos(loc, topo, N, H, rng[end])
     end
 
+    return left, right
+end
+
+function parent_slice_indices(loc, topo, N, H, rng::UnitRange, with_halos)
+    left, right = parent_slice_index_endpoints(loc, topo, N, H, rng, with_halos)
     return UnitRange(left, right)
+end
+
+function parent_slice_indices(loc, topo, N, H, rng::StepRange, with_halos)
+    left, right = parent_slice_index_endpoints(loc, topo, N, H, rng, with_halos)
+    return StepRange(left, step(rng), right)
 end
 
 """

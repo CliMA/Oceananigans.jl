@@ -9,7 +9,7 @@ using Oceananigans.Grids: AbstractGrid, R_Earth
 
 import Base: show
 
-struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R} <: AbstractGrid{FT, TX, TY, TZ}
+struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
         Nx :: Int
         Ny :: Int
         Nz :: Int
@@ -157,8 +157,8 @@ end
 
 function offset_data(data, Hx, Hy)
     Nx, Ny = size(data) .- 1  # Just count cell centers
-    offset_data = OffsetArray(zeros(Nx + 1 + 2Hx, Ny + 1 + 2Hy), -Hx, -Hy)
-    offset_data[1:Nx+1, 1:Ny+1] .= data
+    offset_data = zeros(Nx + 1 + 2Hx, Ny + 1 + 2Hy)
+    offset_data[1+Hx:Nx+1+Hx, 1+Hy:Ny+1+Hy] .= data
     return OffsetArray(offset_data, -Hx, -Hy)
 end
 

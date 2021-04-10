@@ -382,15 +382,15 @@ end
 #####
 
 function test_basic_lat_lon_bounded_domain(FT)
-    Nλ = Nϕ = 18
-    Hλ = Hϕ = 1
+    Nλ = Nφ = 18
+    Hλ = Hφ = 1
 
-    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nϕ, 1), longitude=(-90, 90), latitude=(-45, 45), z=(0, 1), halo=(Hλ, Hϕ, 1))
+    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nφ, 1), longitude=(-90, 90), latitude=(-45, 45), z=(0, 1), halo=(Hλ, Hφ, 1))
 
     @test topology(grid) == (Bounded, Bounded, Bounded)
 
     @test grid.Nx == Nλ
-    @test grid.Ny == Nϕ
+    @test grid.Ny == Nφ
     @test grid.Nz == 1
 
     @test grid.Lx == 180
@@ -398,47 +398,47 @@ function test_basic_lat_lon_bounded_domain(FT)
     @test grid.Lz == 1
 
     @test grid.Δλ == 10
-    @test grid.Δϕ == 5
+    @test grid.Δφ == 5
     @test grid.Δz == 1
 
     @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ + 1
     @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
 
-    @test length(grid.ϕᵃᶠᵃ) == Nϕ + 2Hϕ + 1
-    @test length(grid.ϕᵃᶜᵃ) == Nϕ + 2Hϕ
+    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ
 
     @test grid.λᶠᵃᵃ[1] == -90
     @test grid.λᶠᵃᵃ[Nλ+1] == 90
 
-    @test grid.ϕᵃᶠᵃ[1] == -45
-    @test grid.ϕᵃᶠᵃ[Nϕ+1] == 45
+    @test grid.φᵃᶠᵃ[1] == -45
+    @test grid.φᵃᶠᵃ[Nφ+1] == 45
 
     @test grid.λᶠᵃᵃ[0] == -90 - grid.Δλ
     @test grid.λᶠᵃᵃ[Nλ+2] == 90 + grid.Δλ
 
-    @test grid.ϕᵃᶠᵃ[0] == -45 - grid.Δϕ
-    @test grid.ϕᵃᶠᵃ[Nϕ+2] == 45 + grid.Δϕ
+    @test grid.φᵃᶠᵃ[0] == -45 - grid.Δφ
+    @test grid.φᵃᶠᵃ[Nφ+2] == 45 + grid.Δφ
 
     @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλ)
     @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλ)
 
-    @test all(diff(grid.ϕᵃᶠᵃ.parent) .== grid.Δϕ)
-    @test all(diff(grid.ϕᵃᶜᵃ.parent) .== grid.Δϕ)
+    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφ)
+    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφ)
 
     return nothing
 end
 
 function test_basic_lat_lon_periodic_domain(FT)
     Nλ = 36
-    Nϕ = 32
-    Hλ = Hϕ = 1
+    Nφ = 32
+    Hλ = Hφ = 1
 
-    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nϕ, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1), halo=(Hλ, Hϕ, 1))
+    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nφ, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1), halo=(Hλ, Hφ, 1))
 
     @test topology(grid) == (Periodic, Bounded, Bounded)
 
     @test grid.Nx == Nλ
-    @test grid.Ny == Nϕ
+    @test grid.Ny == Nφ
     @test grid.Nz == 1
 
     @test grid.Lx == 360
@@ -446,32 +446,32 @@ function test_basic_lat_lon_periodic_domain(FT)
     @test grid.Lz == 1
 
     @test grid.Δλ == 10
-    @test grid.Δϕ == 5
+    @test grid.Δφ == 5
     @test grid.Δz == 1
 
     @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ
     @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
 
-    @test length(grid.ϕᵃᶠᵃ) == Nϕ + 2Hϕ + 1
-    @test length(grid.ϕᵃᶜᵃ) == Nϕ + 2Hϕ
+    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ
 
     @test grid.λᶠᵃᵃ[1] == -180
     @test grid.λᶠᵃᵃ[Nλ] == 180 - grid.Δλ
 
-    @test grid.ϕᵃᶠᵃ[1] == -80
-    @test grid.ϕᵃᶠᵃ[Nϕ+1] == 80
+    @test grid.φᵃᶠᵃ[1] == -80
+    @test grid.φᵃᶠᵃ[Nφ+1] == 80
 
     @test grid.λᶠᵃᵃ[0] == -180 - grid.Δλ
     @test grid.λᶠᵃᵃ[Nλ+1] == 180
 
-    @test grid.ϕᵃᶠᵃ[0] == -80 - grid.Δϕ
-    @test grid.ϕᵃᶠᵃ[Nϕ+2] == 80 + grid.Δϕ
+    @test grid.φᵃᶠᵃ[0] == -80 - grid.Δφ
+    @test grid.φᵃᶠᵃ[Nφ+2] == 80 + grid.Δφ
 
     @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλ)
     @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλ)
 
-    @test all(diff(grid.ϕᵃᶠᵃ.parent) .== grid.Δϕ)
-    @test all(diff(grid.ϕᵃᶜᵃ.parent) .== grid.Δϕ)
+    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφ)
+    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφ)
 
     return nothing
 end
@@ -632,7 +632,7 @@ end
         dd = DataDep("cubed_sphere_32_grid",
             "Conformal cubed sphere grid with 32×32 grid points on each face",
             "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
-            "3cc5d86290c3af028cddfa47e61e095ee470fe6f8d779c845de09da2f1abeb15" # sha256sum
+            "b1dafe4f9142c59a2166458a2def743cd45b20a4ed3a1ae84ad3a530e1eff538" # sha256sum
         )
 
         DataDeps.register(dd)
