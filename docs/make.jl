@@ -118,6 +118,7 @@ appendix_pages = [
 
 pages = [
     "Home" => "index.md",
+    "Publications" => "publications.md",
     "Installation instructions" => "installation_instructions.md",
     "Using GPUs" => "using_gpus.md",
     "Examples" => example_pages,
@@ -141,7 +142,8 @@ pages = [
 format = Documenter.HTML(
     collapselevel = 1,
        prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://clima.github.io/OceananigansDocumentation/stable/"
+        canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
+       mathengine = MathJax3()
 )
 
 makedocs(bib,
@@ -150,8 +152,8 @@ makedocs(bib,
     format = format,
      pages = pages,
    modules = [Oceananigans],
-   doctest = true,
-    strict = true,
+   doctest = false,
+    strict = false,
      clean = true,
  checkdocs = :none  # Should fix our docstring so we can use checkdocs=:exports with strict=true.
 )
