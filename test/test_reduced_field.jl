@@ -41,8 +41,8 @@ end
 
     reduced_dims = (1, 2, 3, (1, 2), (2, 3), (1, 3), (1, 2, 3))
 
-    int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
-    uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
+    int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4)]
+    uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10)]
     float_vals = Any[0.0, -0.0, 6e-34, 1.0f10]
     rational_vals = Any[1//11, -23//7]
     other_vals = Any[π]
