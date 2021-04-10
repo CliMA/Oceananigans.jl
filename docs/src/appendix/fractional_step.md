@@ -3,31 +3,31 @@
 Solving the momentum equation \eqref{eq:momentumFV} coupled with the continuity equation \eqref{eq:continuityFV} can be
 cumbersome so instead we employ a fractional step method. To approximate the solution of the coupled system we first
 solve an approximation to the discretized momentum equation \eqref{eq:momentumFV} for an intermediate velocity field
-``\bm{u}^\star`` without worrying about satisfying the incompressibility constraint. We then project ``\bm{u}^\star`` onto
-the space of divergence-free velocity fields to obtain a value for ``\bm{u}^{n+1}`` that satisfies
+``\boldsymbol{u}^\star`` without worrying about satisfying the incompressibility constraint. We then project ``\boldsymbol{u}^\star`` onto
+the space of divergence-free velocity fields to obtain a value for ``\boldsymbol{u}^{n+1}`` that satisfies
 \eqref{eq:continuityFV}.
 
 We thus discretize the momentum equation as
 ```math
-\renewcommand{\div}[1] {\nabla \cdotp \left ( #1 \right )}
-\frac{\bm{u}^\star - \bm{u}^n}{\Delta t}
-  = - \left[ \bm{u} \cdot \nabla\bm{u} \right]^{n+\frac{1}{2}}
-  - 2\bm{\Omega}\times\bm{u}^{n+\frac{1}{2}}
-  + \div{\nu\nabla\bm{u}^{n+\frac{1}{2}}}
-  + \bm{F}^{n+\frac{1}{2}}
+  \renewcommand{\div}[1] {\nabla \cdotp \left ( #1 \right )}
+  \frac{\boldsymbol{u}^\star - \boldsymbol{u}^n}{\Delta t}
+    = - \left[ \boldsymbol{u} \cdot \nabla\boldsymbol{u} \right]^{n+\frac{1}{2}}
+    - 2\boldsymbol{\Omega}\times\boldsymbol{u}^{n+\frac{1}{2}}
+    + \div{\nu\nabla\boldsymbol{u}^{n+\frac{1}{2}}}
+    + \boldsymbol{F}^{n+\frac{1}{2}} \, ,
 ```
 where the superscript ``n + \frac{1}{2}`` indicates that these terms are evaluated at time step ``n + \frac{1}{2}``, which
 we compute explicitly (see \S\ref{sec:time-stepping}).
 
 The projection is then performed
 ```math
-   \bm{u}^{n+1} = \bm{u}^\star - \Delta t \nabla \phi^{n+1}
+   \boldsymbol{u}^{n+1} = \boldsymbol{u}^\star - \Delta t \nabla \phi^{n+1} \, ,
 ```
-to obtain a divergence-free velocity field ``\bm{u}^{n+1}``. Here the projection is performed by solving an elliptic
+to obtain a divergence-free velocity field ``\boldsymbol{u}^{n+1}``. Here the projection is performed by solving an elliptic
 problem for the pressure ``\phi^{n+1}`` with the boundary condition
 ```math
-\newcommand{\uvec}[1]{\bm{\hat{\textbf{#1}}}}
-  \bm{\hat{n}} \cdotp \nabla\phi^{n+1} |_{\partial\Omega} = 0
+\newcommand{\uvec}[1]{\boldsymbol{\hat{\textbf{#1}}}}
+  \boldsymbol{\hat{n}} \cdotp \nabla\phi^{n+1} |_{\partial\Omega} = 0 \, .
 ```
 
 [Orszag86](@cite) and [Brown01](@cite) raise an important issue regarding these fractional step methods, which is that

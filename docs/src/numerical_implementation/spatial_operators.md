@@ -68,19 +68,19 @@ and another for taking the average of a face-centered variable and projecting it
 
 The divergence of the flux of a cell-centered quantity over the cell can be calculated as
 ```math
-\nabla \cdot \bm{f}
+\nabla \cdot \boldsymbol{f}
 = \frac{1}{V} \left[ \delta_x^{faa} (A_x f_x)
                    + \delta_y^{afa} (A_y f_y)
                    + \delta_z^{aaf} (A_z f_z) \right]
 ```
-where ``\bm{f} = (f_x, f_y, f_z)`` is the flux with components defined normal to the faces, and ``V`` is the volume of
+where ``\boldsymbol{f} = (f_x, f_y, f_z)`` is the flux with components defined normal to the faces, and ``V`` is the volume of
 the cell. The presence of a solid boundary is indicated by setting the appropriate flux normal to the boundary to zero.
 
 A similar divergence operator can be defined for a face-centered quantity. The divergence of the flux of ``T`` over a
-cell,  ``\nabla \cdot (\bm{u} T)``, required in the evaluation of ``G_T``, for example, is then
+cell,  ``\nabla \cdot (\boldsymbol{u} T)``, required in the evaluation of ``G_T``, for example, is then
 ```math
 \renewcommand{\div}[1] {\nabla \cdot \left ( #1 \right )}
-\div{\bm{u} T}
+\div{\boldsymbol{u} T}
 = \frac{1}{V} \left[ \delta_x^{caa} (A_x u \overline{T}^{faa})
                    + \delta_y^{aca} (A_y v \overline{T}^{afa})
                    + \delta_z^{aac} (A_z w \overline{T}^{aaf}) \right]
@@ -95,16 +95,16 @@ The advection terms that make up the ``\mathbf{G}`` terms in equations \eqref{eq
 \eqref{eq:verticalMomentum} can be mathematically written as, e.g,
 ```math
 \renewcommand{\div}[1] {\nabla \cdot \left ( #1 \right )}
-\bm{u} \cdot \nabla u
-    = \div{u\bm{u}} - u(\underbrace{\nabla\cdot\bm{u}}_{=0})
-    = \div{u\bm{u}}
+\boldsymbol{u} \cdot \nabla u
+    = \div{u\boldsymbol{u}} - u(\underbrace{\nabla\cdot\boldsymbol{u}}_{=0})
+    = \div{u\boldsymbol{u}}
 ```
 which can then be discretized similarly to the flux divergence operator, however, they must be discretized differently
 for each direction.
 
 For example, the ``x``-momentum advection operator is discretized as
 ```math
-\bm{u} \cdot \nabla u
+\boldsymbol{u} \cdot \nabla u
 = \frac{1}{\overline{V}^x} \left[
     \delta_x^{faa} \left( \overline{A_x u}^{caa} \overline{u}^{caa} \right)
   + \delta_y^{afa} \left( \overline{A_y v}^{aca} \overline{u}^{aca} \right)
@@ -121,7 +121,7 @@ differenced back onto the cell faces.
 
 An isotropic viscosity operator acting on vertical momentum is discretized via
 ```math
-    \bm{\nabla} \left ( \nu_e \bm{\nabla} w \right )
+    \boldsymbol{\nabla} \left ( \nu_e \boldsymbol{\nabla} w \right )
     = \frac{1}{V} \left[
           \delta_x^{faa} \left( \nu_e \overline{A_x}^{caa} \partial_x^{caa} w \right)
         + \delta_y^{afa} \left( \nu_e \overline{A_y}^{aca} \partial_y^{aca} w \right)
@@ -132,7 +132,7 @@ where ``\nu`` is the kinematic viscosity.
 
 An isotropic diffusion operator acting on a tracer ``c``, on the other hand, is discretized via
 ```math
-   \bm{\nabla} \bm{\cdot} \left ( \kappa_e \bm{\nabla} c \right ) =
+   \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \kappa_e \boldsymbol{\nabla} c \right ) =
     = \frac{1}{V} \left[
         \delta_x^{caa} \left( \kappa_e A_x \partial_x^{faa} c \right)
       + \delta_y^{aca} \left( \kappa_e A_y \partial_y^{afa} c \right)
@@ -143,7 +143,7 @@ An isotropic diffusion operator acting on a tracer ``c``, on the other hand, is 
 ## Vertical integrals
 Vertical integrals are converted into sums along each column. For example, the hydrostatic pressure anomaly is
 ```math
-    p_{HY}^\prime = \int_{-L_z}^0 b^\prime \; dz \, ,
+    p_{HY}^\prime = \int_{-L_z}^0 b^\prime \, \mathrm{d} z \, ,
 ```
 where ``b^\prime`` is the buoyancy perturbation. Converting it into a sum that we compute from the top downwards we get
 ```math
@@ -158,9 +158,9 @@ the integral may be computed with ``\mathcal{O}(N_z)`` operations by a single th
 
 The vertical velocity ``w`` may be computed from ``u`` and ``v`` via the continuity equation
 ```math
-    w = - \int_{-L_z}^0 \left(\frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} \right) \, dz \, ,
+    w = - \int_{-L_z}^0 \left(\frac{\partial u}{\partial x} + \frac{\partial v}{\partial y} \right) \, \mathrm{d} z \, ,
 ```
-to satisfy the incompressibility condition ``\nabla\cdot\bm{u} = 0`` to numerical precision. This also involves computing
+to satisfy the incompressibility condition ``\nabla\cdot\boldsymbol{u} = 0`` to numerical precision. This also involves computing
 a vertical integral, in this case evaluated from the bottom up
 ```math
     w_k =

@@ -3,7 +3,7 @@
 Velocities ``u``, ``v``, and ``w`` are defined on the faces of the cells, which are coincident with three orthogonal
 coordinate axes (the Cartesian axes in the case of Oceananigans). Pressure ``p`` and tracers ``c`` are stored at
 the cell  centers as cell averages. See figure \ref{fig:staggered_grid} for a schematic of the different control
-volumes. Other quantities may be defined at other locations. For example, vorticity ``\bm{\omega} = \nabla\times\bm{u}``
+volumes. Other quantities may be defined at other locations. For example, vorticity ``\boldsymbol{\omega} = \nabla\times\boldsymbol{u}``
 is defined at the cell edges.[^1]
 
 [^1]: In 2D it would more correct to say the cell corners. In 3D, variables like vorticity lie at the same vertical
@@ -34,7 +34,7 @@ investigated four different staggered grids and the unstaggered A-grid for use i
 
 [Arakawa77](@cite) investigated the dispersion relation of inertia-gravity waves[^2] traveling in the ``x``-direction
 ```math
-  \omega^2 = f^2 + gHk^2
+  \omega^2 = f^2 + gHk^2 \, ,
 ```
 in the linearized rotating shallow-water equations for five grids. Here ``\omega`` is the angular frequency, ``H`` is the
 height of the fluid and ``k`` is the wavenumber in the ``x``-direction. Looking at the effect of spatial discretization
@@ -42,7 +42,7 @@ error on the frequency of these waves they find that the B and C-grids reproduce
 out of the five [Arakawa77](@cite) (Figure 5). In particular, the dispersion relation for the C-grid is given by
 ```math
   \omega^2 = f^2 \left[ \cos^2 \left( \frac{k\Delta}{2} \right)
-             + 4 \left( \frac{\lambda}{\Delta} \right)^2 \sin^2 \left( \frac{k\Delta}{2} \right) \right]
+             + 4 \left( \frac{\lambda}{\Delta} \right)^2 \sin^2 \left( \frac{k\Delta}{2} \right) \right] \, ,
 ```
 where ``\lambda`` is the wavelength and ``\Delta`` is the grid spacing. Paraphrasing p. 184 of [Arakawa77](@cite): The
 wavelength of the shortest resolvable wave is ``2\Delta`` with corresponding wavenumber ``k = \pi/\Delta`` so it is
