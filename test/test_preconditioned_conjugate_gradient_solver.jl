@@ -1,14 +1,94 @@
+using Oceananigans.Solvers: solve!
 using Statistics
 
-@kernel function ∇²!(grid, f, ∇²f)
-    i, j, k = @index(Global, NTuple)
-    @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
+function identity_operator!(b, x)
+    parent(b) .= parent(x)
 end
 
-@kernel function implicit_η!(grid, f, implicit_η_f)
+function run_identity_operator_test(arch, grid)
+    b = Field(Center, Center, Center, arch, grid)
+
+    solver = PreconditionedConjugateGradientSolver(identity_operator!, template_field = b)
+
+    initial_guess = solution = similar(b)
+    set!(initial_guess, (x, y, z) -> rand())
+
+    solve!(initial_guess, solver, b)
+
+    @test norm(solution) .< solver.tolerance
+end
+
+@kernel function ∇²!(∇²ϕ, ϕ, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds ∇²ϕ[i, j, k] = ∇²(i, j, k, grid, ϕ)
+end
+
+function laplacian!(∇²ϕ, ϕ)
+    arch = architecture(ϕ)
+    grid = ϕ.grid
+    fill_halo_regions!(ϕ, arch)
+    event = launch!(arch, grid, :xyz, ∇²!, ∇²ϕ, ϕ, grid, dependencies=Event(device(arch)))
+    wait(device(arch), event)
+    return nothing
+end
+
+function run_poisson_equation_test(arch, grid)
+    # Solve ∇²ϕ = r
+    ϕ_truth = Field(Center, Center, Center, arch, grid)
+
+    # Initialize zero-mean "truth" solution with random numbers
+    set!(ϕ_truth, (x, y, z) -> rand())
+    parent(ϕ_truth) .-= mean(ϕ_truth)
+    fill_halo_regions!(ϕ_truth, arch)
+
+    # Calculate Laplacian of "truth"
+    ∇²ϕ = r = Field(Center, Center, Center, arch, grid)
+    laplacian!(∇²ϕ, ϕ_truth)
+
+    solver = PreconditionedConjugateGradientSolver(laplacian!, template_field=ϕ_truth)
+
+    # Solve Poisson equation
+    ϕ_solution = Field(Center, Center, Center, arch, grid)
+    solve!(ϕ_solution, solver, r)
+
+    # Diagnose Laplacian of solution
+    ∇²ϕ_solution = Field(Center, Center, Center, arch, grid)
+    laplacian!(∇²ϕ_solution, ϕ_solution)
+
+    # Test
+    extrema_tolerance = 1e-12
+    std_tolerance = 1e-14
+
+    CUDA.@allowscalar begin
+        @test minimum(abs, interior(∇²ϕ_solution) .- interior(∇²ϕ)) < extrema_tolerance
+        @test maximum(abs, interior(∇²ϕ_solution) .- interior(∇²ϕ)) < extrema_tolerance
+        @test          std(interior(∇²ϕ_solution) .- interior(∇²ϕ)) < std_tolerance
+
+        @test   minimum(abs, interior(ϕ_solution) .- interior(ϕ_truth)) < extrema_tolerance
+        @test   maximum(abs, interior(ϕ_solution) .- interior(ϕ_truth)) < extrema_tolerance
+        @test            std(interior(ϕ_solution) .- interior(ϕ_truth)) < std_tolerance
+    end
+
+    return nothing
+end
+
+@testset "PreconditionedConjugateGradientSolver" begin
+    for arch in archs
+        @info "Testing PreconditionedConjugateGradientSolver [$(typeof(arch))]..."
+        grid = RegularRectilinearGrid(size=(4, 8, 4), extent=(1, 3, 1))
+        run_identity_operator_test(arch, grid)
+        run_poisson_equation_test(arch, grid)
+    end
+end
+
+#=
+"""
     ### Not sure what to call this
     ### it is for left hand side operator in
-    ### (-g∇ₕ² + 1/Δt )ϕⁿ⁺¹=ϕⁿ/Δt + ∇ₕHUˢᵗᵃʳ
+    ### (-g∇ₕ² + 1/Δt) ϕⁿ⁺¹ = ϕⁿ / Δt + ∇ₕHU★
+    #
+"""
+@kernel function implicit_η!(grid, f, implicit_η_f)
 
     #
     # g= model.free_surface.gravitational_acceleration
@@ -25,77 +105,4 @@ end
 
     # need this for 2d vertically integrated ∇²hᶜᶜᵃ
 end
-
-@kernel function divergence!(grid, u, v, w, div)
-    i, j, k = @index(Global, NTuple)
-    @inbounds div[i, j, k] = divᶜᶜᶜ(i, j, k, grid, u, v, w)
-end
-
-function run_pcg_solver_tests(arch)
-    Lx, Ly, Lz = 4e6, 6e6, 1
-    Nx, Ny, Nz = 100, 150, 1
-    grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-
-    function Amatrix_function!(result, x, arch, grid, bcs; args...)
-        event = launch!(arch, grid, :xyz, ∇²!, grid, x, result, dependencies=Event(device(arch)))
-        wait(device(arch), event)
-        fill_halo_regions!(result, arch)
-        return nothing
-    end
-
-    # Fields for flow, divergence of flow, RHS, and potential to make non-divergent, ϕ
-    velocities = VelocityFields(arch, grid)
-    RHS        = CenterField(arch, grid)
-    ϕ          = CenterField(arch, grid)
-
-    # Set divergent flow and calculate divergence
-    u, v, w  = velocities
-
-    imid = Int(floor(grid.Nx / 2)) + 1
-    jmid = Int(floor(grid.Ny / 2)) + 1
-    CUDA.@allowscalar u.data[imid, jmid, 1] = 1
-
-    fill_halo_regions!(u, arch)
-
-    event = launch!(arch, grid, :xyz, divergence!, grid, u, v, w, RHS, dependencies=Event(device(arch)))
-    wait(device(arch), event)
-
-    fill_halo_regions!(RHS, arch)
-
-    pcg_params = (
-        PCmatrix_function = nothing,
-        Amatrix_function = Amatrix_function!,
-        Template_field = RHS,
-        maxit = 1000, # grid.Nx * grid.Ny,
-        tol = 1.e-13
-    )
-
-    pcg_solver = PreconditionedConjugateGradientSolver(arch = arch, parameters = pcg_params)
-
-    # Set initial guess and solve
-    parent(ϕ) .= 0
-    @time solve_poisson_equation!(pcg_solver, RHS, ϕ; worda="boo", wordb="cat")
-
-    # Compute ∇² of solution
-    result = similar(ϕ)
-
-    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ, result, dependencies=Event(device(arch)))
-    wait(device(arch), event)
-
-    fill_halo_regions!(result, arch)
-
-    CUDA.@allowscalar begin
-        @test abs(minimum(result[1:Nx, 1:Ny, 1] .- RHS.data[1:Nx, 1:Ny, 1])) < 1e-12
-        @test abs(maximum(result[1:Nx, 1:Ny, 1] .- RHS.data[1:Nx, 1:Ny, 1])) < 1e-12
-        @test std(result[1:Nx, 1:Ny, 1] .- RHS.data[1:Nx, 1:Ny, 1]) < 1e-14
-    end
-
-    return nothing
-end
-
-@testset "Conjugate gradient solvers" begin
-    for arch in archs
-        @info "Testing conjugate gradient solvers [$(typeof(arch))]..."
-        run_pcg_solver_tests(arch)
-    end
-end
+=#
