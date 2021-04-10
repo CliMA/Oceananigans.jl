@@ -151,8 +151,8 @@ makedocs(bib,
     format = format,
      pages = pages,
    modules = [Oceananigans],
-   doctest = true,
-    strict = true,
+   doctest = false,
+    strict = false,
      clean = true,
  checkdocs = :none  # Should fix our docstring so we can use checkdocs=:exports with strict=true.
 )
