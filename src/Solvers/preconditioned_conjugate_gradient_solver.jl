@@ -4,38 +4,38 @@ using Statistics
 using LinearAlgebra
 
 mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P}
-              architecture :: A
-                      grid :: G
-          linear_operator! :: L
-                 tolerance :: T
-        maximum_iterations :: Int
-                 iteration :: Int
-                      ρⁱ⁻¹ :: T
-            operator_product :: F
-          search_direction :: F
-                  residual :: F
-           preconditioner! :: M
-    preconditioner_product :: P
+               architecture :: A
+                       grid :: G
+          linear_operation! :: L
+                  tolerance :: T
+         maximum_iterations :: Int
+                  iteration :: Int
+                       ρⁱ⁻¹ :: T
+    linear_operator_product :: F
+           search_direction :: F
+                   residual :: F
+              precondition! :: M
+     preconditioner_product :: P
 end
 
-no_preconditioner!(args...) = nothing
+no_precondition!(args...) = nothing
 
-initialize_preconditioner_product(preconditioner, template_field) = similar(template_field)
-initialize_preconditioner_product(::Nothing, template_field) = nothing
+initialize_precondition_product(precondition, template_field) = similar(template_field)
+initialize_precondition_product(::Nothing, template_field) = nothing
 
-precondition(::Nothing, ::Nothing, r, args...) = r
+maybe_precondition(::Nothing, ::Nothing, r, args...) = r
 
-function precondition!(preconditioner!, z, r, args...)
-    preconditioner!(z, r, args...)
+function maybe_precondition(precondition!, z, r, args...)
+    precondition!(z, r, args...)
     return z
 end
     
 """
-    PreconditionedConjugateGradientSolver(linear_operator;
+    PreconditionedConjugateGradientSolver(linear_operation;
                                           template_field,
                                           maximum_iterations = size(template_field.grid),
                                           tolerance = 1e-13,
-                                          preconditioner = nothing)
+                                          precondition = nothing)
 
 Returns a PreconditionedConjugateGradientSolver that solves the linear equation
 ``A*x = b`` using a iterative conjugate gradient method with optional preconditioning.
@@ -54,7 +54,7 @@ Args
                     is used to infer the `architecture`, `grid`, and to create work arrays
                     that are used internally by the solver.
 
-* `linear_operator`: Function with signature `linear_operator!(p, y, args...)` that calculates
+* `linear_operation`: Function with signature `linear_operation!(p, y, args...)` that calculates
                      `A*y` and stores the result in `p` for a "candidate solution `y`. `args...`
                      are optional positional arguments passed from `solve!(x, solver, b, args...)`.
 
@@ -63,43 +63,43 @@ Args
 * `tolerance`: Tolerance for convergence of the algorithm. The algorithm quits when
                `norm(A*x - b) < tolerance`.
 
-* `preconditioner`: Function with signature `preconditioner!(z, y, args...)` that calculates
+* `precondition`: Function with signature `preconditioner!(z, y, args...)` that calculates
                     `P*y` and stores the result in `z` for linear operator `P`.
-                    Note that some preconditioner algorithms describe the step
-                    "solve `M*x = b`" for preconditioner `M`"; in this context,
+                    Note that some precondition algorithms describe the step
+                    "solve `M*x = b`" for precondition `M`"; in this context,
                     `P = M⁻¹`.
 
 See `solve!` for more information about the preconditioned conjugate-gradient algorithm.
 """
-function PreconditionedConjugateGradientSolver(linear_operator;
+function PreconditionedConjugateGradientSolver(linear_operation;
                                                template_field::AbstractField,
                                                maximum_iterations = prod(size(template_field.grid)),
                                                tolerance = 1e-13,
-                                               preconditioner = nothing)
+                                               precondition = nothing)
 
     arch = architecture(template_field)
     grid = template_field.grid
 
     # Create work arrays for solver
-    operator_product = similar(template_field) # A*xᵢ = qᵢ
+    linear_operator_product = similar(template_field) # A*xᵢ = qᵢ
     search_direction = similar(template_field) # pᵢ
             residual = similar(template_field) # rᵢ
 
-    # Either nothing (no preconditioner) or P*xᵢ = zᵢ
-    preconditioner_product = initialize_preconditioner_product(preconditioner, template_field)
+    # Either nothing (no precondition) or P*xᵢ = zᵢ
+    precondition_product = initialize_precondition_product(precondition, template_field)
 
     return PreconditionedConjugateGradientSolver(arch,
                                                  grid,
-                                                 linear_operator,
+                                                 linear_operation,
                                                  tolerance,
                                                  maximum_iterations,
                                                  0,
                                                  0.0,
-                                                 operator_product,
+                                                 linear_operator_product,
                                                  search_direction,
                                                  residual,
-                                                 preconditioner,
-                                                 preconditioner_product)
+                                                 precondition,
+                                                 precondition_product)
 end
 
 function Statistics.norm(a::AbstractField)
@@ -122,7 +122,7 @@ end
     solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
 
 Solves A*x = b using an iterative conjugate-gradient method,
-where A*x is determined by solver.linear_operator
+where A*x is determined by solver.linear_operation
     
 See fig 2.5 in
 
@@ -175,8 +175,8 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
     solver.iteration = 0
 
     # q = A*x
-    q = solver.operator_product
-    solver.linear_operator!(q, x, args...)
+    q = solver.linear_operator_product
+    solver.linear_operation!(q, x, args...)
 
     # r = b - A*x
     parent(solver.residual) .= parent(b) .- parent(q)
@@ -196,14 +196,13 @@ end
 function iterate!(x, solver, b, args...)
     r = solver.residual
     p = solver.search_direction
-    q = solver.operator_product
+    q = solver.linear_operator_product
 
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |r|: $(norm(r))"
 
     # Preconditioned:   z = P * r
     # Unpreconditioned: z = r
-    z = precondition(solver.preconditioner!, solver.preconditioner_product, r, args...) 
-
+    z = maybe_precondition(solver.precondition!, solver.preconditioner_product, r, args...) 
     ρ = dot(z, r)
 
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), ρ: $ρ"
@@ -219,7 +218,7 @@ function iterate!(x, solver, b, args...)
     end
 
     # q = A * p
-    solver.linear_operator!(q, p, args...)
+    solver.linear_operation!(q, p, args...)
     α = ρ / dot(p, q)
 
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"

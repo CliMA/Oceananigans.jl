@@ -1,12 +1,8 @@
 using Oceananigans.Solvers
 using Oceananigans.Operators
 
-struct ImplicitFreeSurfaceSolver{S}
-    solver   :: S
-end
-
 """
-    implicit_free_surface_linear_operator!(result, x, arch, grid, bcs; args...)
+    implicit_free_surface_linear_operation!(result, x, arch, grid, bcs; args...)
 
 Returns `L(ηⁿ)`, where `ηⁿ` is the free surface displacement at time step `n`
 and `L` is the linear operator that arises
@@ -14,55 +10,67 @@ in an implicit time step for the free surface displacement `η`.
 
 (See the docs section on implicit time stepping.)
 """
-function implicit_free_surface_linear_operator!(L_ηⁿ, ηⁿ, arch, Δt, g)
-    grid = L_ηⁿ.grid
+function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᵃ, ∫ᶻ_Ayᶜᶠᵃ, g, Δt)
+    grid = L_ηⁿ⁺¹.grid
+    arch = architecture(L_ηⁿ⁺¹)
 
-    event = launch!(arch, grid, :xy, implicit_η!, ∇²_baro, Δt, g, grid, ηⁿ, L_ηⁿ, dependencies=Event(device(arch)))
+    event = launch!(arch, grid, :xy, compute_implicit_η_left_hand_side!,
+                    L_ηⁿ⁺¹, grid,  ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᵃ, ∫ᶻ_Ayᶜᶠᵃ, g, Δt,
+                    dependencies=Event(device(arch)))
+
     wait(device(arch), event)
 
-    fill_halo_regions!(result, arch)
+    fill_halo_regions!(L_ηⁿ⁺¹, arch)
 
     return nothing
 end
 
-function ImplicitFreeSurfaceSolver(arch, template_field, 
-                                   vertically_integrated_lateral_face_areas;
-                                   Amatrix_operator=nothing, 
-                                   maxit=nothing, 
-                                   tol=nothing)
-       
-    ∇²_baro = ∇²_baro_operator(vertically_integrated_lateral_face_areas.Ax, vertically_integrated_lateral_face_areas.Ay)
+function ImplicitFreeSurfaceSolver(η;
+                                   maximum_iterations = η.grid.Nx * η.grid.Ny,
+                                   tolerance = 1e-13,
+                                   precondition = nothing)
 
-    if isnothing(Amatrix_operator)
-        function Amatrix_operator!(L_ηⁿ, ηⁿ, arch, Δt, g)
-            grid = L_ηⁿ.grid
+    return PreconditionedConjugateGradientSolver(implicit_free_surface_linear_operation!,
+                                                 template_field = η,
+                                                 maximum_iterations = maximum_iterations,
+                                                 tolerance = tolerance,
+                                                 preconditioner = preconditioner)
+end
 
-            event = launch!(arch, grid, :xy, implicit_η!, L_ηⁿ, ∇²_baro, Δt, g, grid, ηⁿ, dependencies=Event(device(arch)))
-            wait(device(arch), event)
+# Kernels that act on vertically integrated / surface quantities
+@inline ∫ᶻ_Ax_∂x_ηᶠᶜᵃ(i, j, k, grid, ∫ᶻ_Axᶠᶜᵃ, η) = @inbounds ∫ᶻ_Axᶠᶜᵃ[i, j, k] * ∂xᶠᶜᵃ(i, j, k, grid, η)
+@inline ∫ᶻ_Ay_∂y_ηᶜᶠᵃ(i, j, k, grid, ∫ᶻ_Ayᶜᶠᵃ, η) = @inbounds ∫ᶻ_Ayᶜᶠᵃ[i, j, k] * ∂yᶜᶠᵃ(i, j, k, grid, η)
 
-            fill_halo_regions!(result, arch)
+"""
+Compute the horizontal divergence of vertically-uniform quantity using
+vertically-integrated face areas `∫ᶻ_Axᶠᶜᵃ` and `∫ᶻ_Ayᶜᶠᵃ`.
+"""
+@inline ∇h²ᶜᶜᵃ(i, j, k, grid, ∫ᶻ_Axᶠᶜᵃ, ∫ᶻ_Ayᶜᶠᵃ, η::ReducedField{X, Y, Nothing}) where {X, Y} =
+    1 / Azᶜᶜᵃ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, ∫ᶻ_Ax_∂x_ηᶠᶜᵃ, ∫ᶻ_Axᶠᶜᵃ, η) +
+                                δyᵃᶜᵃ(i, j, k, grid, ∫ᶻ_Ay_∂y_ηᶜᶠᵃ, ∫ᶻ_Ayᶜᶠᵃ, η))
 
-            return nothing
-        end
-    end
+"""
+Returns the left hand side of the "implicit η" equation
 
-    if isnothing(maxit)
-        maxit = template_field.grid.Nx * template_field.grid.Ny
-    end
+```
+( ∇ʰ⋅H∇ʰ - 1/gΔt² ) ηⁿ⁺¹ = 1 / (gΔt) ∇ʰH U̅ˢᵗᵃʳ - 1 / (gΔt²) ηⁿ
+------------------------
+        ≡ L_ηⁿ⁺¹
+```
 
-    if isnothing(tol)
-        tol = 1.e-13
-    end
+which is written in a discrete finite volume form in which the equation
+is arranged to ensure a symmtric form by multiplying by horizontal areas Az:
 
-    pcg_params = (
-        PCmatrix_function = nothing,
-        Amatrix_function = Amatrix_function!,
-        Template_field = template_field,
-        maxit = maxit,
-        tol = tol,
-    )
+```
+δⁱÂʷ∂ˣηⁿ⁺¹ + δʲÂˢ∂ʸηⁿ⁺¹ - 1/gΔt² Az ηⁿ⁺¹ = 1 / (gΔt) (δⁱÂʷu̅ˢᵗᵃʳ + δʲÂˢv̅ˢᵗᵃʳ) - 1 / gΔt² Az ηⁿ
+```
 
-    S = PreconditionedConjugateGradientSolver(arch = arch, parameters = pcg_params)
+where  ̂ indicates a vertical integral, and                   
+       ̅ indicates a vertical average                         
+"""
+@kernel function _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᵃ, ∫ᶻ_Ayᶜᶠᵃ, g, Δt)
+    i, j = @index(Global, NTuple)
 
-    return ImplicitFreeSurfaceSolver(S)
+    @inbounds L_ηⁿ⁺¹[i, j, 1] = (  Azᶜᶜᵃ(i, j, 1, grid) * ∇h²ᶜᶜᵃ(i, j, 1, grid, ∫ᶻ_Axᶠᶜᵃ, ∫ᶻ_Ayᶜᶠᵃ, ηⁿ⁺¹)
+                                 - Azᶜᶜᵃ(i, j, 1, grid) * ηⁿ⁺¹[i, j, 1] / (g * Δt^2))
 end
