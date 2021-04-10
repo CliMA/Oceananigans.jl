@@ -1,61 +1,121 @@
+using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: interior_parent_indices
 using Statistics
 using LinearAlgebra
 
-struct PreconditionedConjugateGradientSolver{A, G, L, M, T, F}
+mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P}
               architecture :: A
                       grid :: G
           linear_operator! :: L
-           preconditioner! :: M
                  tolerance :: T
         maximum_iterations :: Int
-    linear_operator_output :: F
-     preconditioner_output :: F
+                 iteration :: Int
+                      ρⁱ⁻¹ :: T
+            operator_product :: F
           search_direction :: F
                   residual :: F
+           preconditioner! :: M
+    preconditioner_product :: P
 end
 
 no_preconditioner!(args...) = nothing
 
-function PreconditionedConjugateGradientSolver(; architecture,
-                                               grid,
-                                               linear_operator,
-                                               template_solution,
-                                               max_iterations = size(grid),
+initialize_preconditioner_product(preconditioner, template_field) = similar(template_field)
+initialize_preconditioner_product(::Nothing, template_field) = nothing
+
+precondition(::Nothing, ::Nothing, r, args...) = r
+
+function precondition!(preconditioner!, z, r, args...)
+    preconditioner!(z, r, args...)
+    return z
+end
+    
+"""
+    PreconditionedConjugateGradientSolver(linear_operator;
+                                          template_field,
+                                          maximum_iterations = size(template_field.grid),
+                                          tolerance = 1e-13,
+                                          preconditioner = nothing)
+
+Returns a PreconditionedConjugateGradientSolver that solves the linear equation
+``A*x = b`` using a iterative conjugate gradient method with optional preconditioning.
+preconditioned. The solver is used by calling
+
+```
+solve!(x, solver::PreconditionedConjugateGradientOperator, b, args...)
+```
+
+for `solver`, right-hand side `b`, solution `x`, and optional arguments `args...`.
+
+Args
+====
+
+* `template_field`: Dummy field that is the same type and size as `x` and `b`, which
+                    is used to infer the `architecture`, `grid`, and to create work arrays
+                    that are used internally by the solver.
+
+* `linear_operator`: Function with signature `linear_operator!(p, y, args...)` that calculates
+                     `A*y` and stores the result in `p` for a "candidate solution `y`. `args...`
+                     are optional positional arguments passed from `solve!(x, solver, b, args...)`.
+
+* `maximum_iterations`: Maximum number of iterations the solver may perform before exiting.
+
+* `tolerance`: Tolerance for convergence of the algorithm. The algorithm quits when
+               `norm(A*x - b) < tolerance`.
+
+* `preconditioner`: Function with signature `preconditioner!(z, y, args...)` that calculates
+                    `P*y` and stores the result in `z` for linear operator `P`.
+                    Note that some preconditioner algorithms describe the step
+                    "solve `M*x = b`" for preconditioner `M`"; in this context,
+                    `P = M⁻¹`.
+
+See `solve!` for more information about the preconditioned conjugate-gradient algorithm.
+"""
+function PreconditionedConjugateGradientSolver(linear_operator;
+                                               template_field::AbstractField,
+                                               maximum_iterations = prod(size(template_field.grid)),
                                                tolerance = 1e-13,
-                                               preconditioner = no_preconditioner)
+                                               preconditioner = nothing)
+
+    arch = architecture(template_field)
+    grid = template_field.grid
 
     # Create work arrays for solver
-    linear_operator_output = similar(example_solution) # q
-     preconditioner_output = similar(example_solution) # z
-          search_direction = similar(example_solution) # p
-                  residual = similar(example_solution) # r
+    operator_product = similar(template_field) # A*xᵢ = qᵢ
+    search_direction = similar(template_field) # pᵢ
+            residual = similar(template_field) # rᵢ
 
-   return PreconditionedConjugateGradientSolver(architecture,
-                                                grid,
-                                                linear_operator,
-                                                preconditioner,
-                                                tolerance,
-                                                maximum_iterations,
-                                                linear_operator_output,
-                                                preconditioner_output,
-                                                search_direction,
-                                                residual)
+    # Either nothing (no preconditioner) or P*xᵢ = zᵢ
+    preconditioner_product = initialize_preconditioner_product(preconditioner, template_field)
 
+    return PreconditionedConjugateGradientSolver(arch,
+                                                 grid,
+                                                 linear_operator,
+                                                 tolerance,
+                                                 maximum_iterations,
+                                                 0,
+                                                 0.0,
+                                                 operator_product,
+                                                 search_direction,
+                                                 residual,
+                                                 preconditioner,
+                                                 preconditioner_product)
 end
 
 function Statistics.norm(a::AbstractField)
     ii = interior_parent_indices(location(a, 1), topology(a.grid, 1), a.grid.Nx, a.grid.Hx)
     ji = interior_parent_indices(location(a, 2), topology(a.grid, 2), a.grid.Ny, a.grid.Hy)
     ki = interior_parent_indices(location(a, 3), topology(a.grid, 3), a.grid.Nz, a.grid.Hz)
-    return sqrt(mapreduce(x -> x * x, +, view(a, ii, ji, ki)))
+    return sqrt(mapreduce(x -> x * x, +, view(parent(a), ii, ji, ki)))
 end
 
 function Statistics.dot(a::AbstractField, b::AbstractField)
     ii = interior_parent_indices(location(a, 1), topology(a.grid, 1), a.grid.Nx, a.grid.Hx)
     ji = interior_parent_indices(location(a, 2), topology(a.grid, 2), a.grid.Ny, a.grid.Hy)
     ki = interior_parent_indices(location(a, 3), topology(a.grid, 3), a.grid.Nz, a.grid.Hz)
-    return sqrt(mapreduce((x, y) -> x * y, +, view(a, ii, ji, ki), view(b, ii, ji, ki)))
+    return mapreduce((x, y) -> x * y, +,
+                     view(parent(a), ii, ji, ki),
+                     view(parent(b), ii, ji, ki))
 end
 
 """
@@ -81,100 +141,104 @@ Given:
 This function executes the algorithm
     
 ```
-    β  = 0
-    r .= b - A(x)
-    iteration  = 0
-    
-    Loop:
-         if iteration > MAXIT
-            break
-         end
+β  = 0
+r = b - A(x)
+iteration  = 0
 
-         z  = M(r)
-         ρ .= dotprod(r, z)
-         p  = z + β*p
-         q  = A(p)
+Loop:
+     if iteration > maximum_iterations
+        break
+     end
 
-         α = ρ / dotprod(p, q)
-         x = x .+ α * p
-         r = r .- α * q
+     ρ = r ⋅ z
 
-         if norm2(r) < tol
-            break
-         end
+     z = M(r)
+     β = ρⁱ⁻¹ / ρ
+     p = z + β * p
+     q = A(p)
 
-         iteration = iteration + 1
-         ρⁱᵐ1 .= ρ
-         β    .= ρⁱ⁻¹/ρ
+     α = ρ / (p ⋅ q)
+     x = x + α * p
+     r = r - α * q
+
+     if |r| < tolerance
+        break
+     end
+
+     iteration += 1
+     ρⁱ⁻¹ = ρ
 ```
 """
-function solve!(initial_guess, solver::PreconditionedConjugateGradientSolver, b, args...)
+function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
 
-    # Unpack some solver properties
-    arch = solver.architecture
-    grid = solver.grid
-    
     # Initialize
-    iteration = 0
-    β = 0.0
-    ρ = 0.0
-    ρⁱ⁻¹ = 0.0
+    solver.iteration = 0
 
-    x = initial_guess
-    r = parent(solver.residual)
-    p = parent(solver.search_direction)
-    z = parent(solver.preconditioner_output)
-    q = parent(solver.linear_operator_output)
-
-    solver.linear_operator!(solver.linear_operator_output, x, args...)
+    # q = A*x
+    q = solver.operator_product
+    solver.linear_operator!(q, x, args...)
 
     # r = b - A*x
-    @. r = b - q
+    parent(solver.residual) .= parent(b) .- parent(q)
 
-    @debug "PreconditionedConjugateGradientSolver $iteration, |b|: $(norm(b))"
-    @debug "PreconditionedConjugateGradientSolver $iteration, |A(x)|: $(norm(A(initial_guess, args...)))"
-    @debug "PreconditionedConjugateGradientSolver $iteration, |r|: $(norm(r))"
-    @debug "PreconditionedConjugateGradientSolver $iteration, |z|: $(norm(z))"
-    @debug "PreconditionedConjugateGradientSolver $iteration, |q|: $(norm(q))"
+    @debug "PreconditionedConjugateGradientSolver, |b|: $(norm(b))"
+    @debug "PreconditionedConjugateGradientSolver, |A(x)|: $(norm(q))"
 
-    while true
-        # End conditions
-        iteration >= solver.maximum_iterations && break
-        norm(solver.residual) <= solver.tolerance && break
-
-        # z = M(r)
-        solver.preconditioner!(solver.preconditioner_output, solver.residual, args...)
-        ρ = dot(solver.preconditioner_output, solver.residual)
-
-        @debug "PreconditionedConjugateGradientSolver $iteration, ρ: $ρ"
-
-        if iteration == 0
-            p .= z
-        else
-            β = ρ / ρⁱ⁻¹
-            @. p = z + β * p
-        end
-
-        # q = A * p
-        solver.linear_operator!(solver.linear_operator_output, solver.search_direction, args...)
-
-        # α = ρ / (p ⋅ q) 
-        α = ρ / dot(solver.search_direction, solver.linear_operator_output)
-
-        @debug "PreconditionedConjugateGradientSolver $iteration, α: $α"
-        
-        @. x += α * p
-        @. r -= α * q
-
-        iteration += 1
-        ρⁱ⁻¹ = ρ
+    while iterating(solver)
+        iterate!(x, solver, b, args...)
     end
 
-    solution = x
-
-    fill_halo_regions!(solution, arch)
+    fill_halo_regions!(x, solver.architecture)
 
     return nothing
+end
+
+function iterate!(x, solver, b, args...)
+    r = solver.residual
+    p = solver.search_direction
+    q = solver.operator_product
+
+    @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |r|: $(norm(r))"
+
+    # Preconditioned:   z = P * r
+    # Unpreconditioned: z = r
+    z = precondition(solver.preconditioner!, solver.preconditioner_product, r, args...) 
+
+    ρ = dot(z, r)
+
+    @debug "PreconditionedConjugateGradientSolver $(solver.iteration), ρ: $ρ"
+    @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |z|: $(norm(z))"
+
+    if solver.iteration == 0
+        parent(p) .= parent(z)
+    else
+        β = ρ / solver.ρⁱ⁻¹
+        parent(p) .= parent(z) .+ β .* parent(p)
+
+        @debug "PreconditionedConjugateGradientSolver $(solver.iteration), β: $β"
+    end
+
+    # q = A * p
+    solver.linear_operator!(q, p, args...)
+    α = ρ / dot(p, q)
+
+    @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
+    @debug "PreconditionedConjugateGradientSolver $(solver.iteration), α: $α"
+        
+    parent(x) .+= α .* parent(p)
+    parent(r) .-= α .* parent(q)
+
+    solver.iteration += 1
+    solver.ρⁱ⁻¹ = ρ
+
+    return nothing
+end
+
+function iterating(solver)
+    # End conditions
+    solver.iteration >= solver.maximum_iterations && return false
+    norm(solver.residual) <= solver.tolerance && return false
+    return true
 end
 
 function Base.show(io::IO, solver::PreconditionedConjugateGradientSolver)
