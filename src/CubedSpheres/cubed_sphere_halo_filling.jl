@@ -148,83 +148,24 @@ function fill_horizontal_velocity_halos!(u, v, arch)
     u_loc = (Face, Center, Center)
     v_loc = (Center, Face, Center)
 
-    ## TODO: Figure out how to abstract this!
+    for face_number in 1:6, side in (:west, :east, :south, :north)
+        exchange_info = getproperty(u.faces[face_number].boundary_conditions, side).condition
+        src_face_number = exchange_info.to_face
+        src_side = exchange_info.to_side
 
-    #####
-    ##### Fill halos
-    #####
+        if sides_in_the_same_dimension(side, src_side)
+            cubed_sphere_halo(u, u_loc, face_number, side) .= cubed_sphere_boundary(u, u_loc, src_face_number, src_side)
+            cubed_sphere_halo(v, v_loc, face_number, side) .= cubed_sphere_boundary(v, v_loc, src_face_number, src_side)
+        else
+            u_sign = (isodd(face_number) && side == :west ) || (iseven(face_number) && side == :east ) ? +1 : -1
+            v_sign = (isodd(face_number) && side == :north) || (iseven(face_number) && side == :south) ? +1 : -1
 
-    # Face 1 u-velocity
-    cubed_sphere_halo(u, u_loc, 1, :west)  .= + reverse(permutedims(cubed_sphere_boundary(v, v_loc, 5, :north), (2, 1, 3)), dims=2)
-    cubed_sphere_halo(u, u_loc, 1, :east)  .=                       cubed_sphere_boundary(u, u_loc, 2, :west)
-    cubed_sphere_halo(u, u_loc, 1, :south) .=                       cubed_sphere_boundary(u, u_loc, 6, :north)
-    cubed_sphere_halo(u, u_loc, 1, :north) .= - reverse(permutedims(cubed_sphere_boundary(v, v_loc, 3, :west),  (2, 1, 3)), dims=1)
+            reverse_dim = src_side in (:west, :east) ? 1 : 2
 
-    # Face 1 v-velocity
-    cubed_sphere_halo(v, v_loc, 1, :west)  .= - reverse(permutedims(cubed_sphere_boundary(u, u_loc, 5, :north), (2, 1, 3)), dims=2)
-    cubed_sphere_halo(v, v_loc, 1, :east)  .=                       cubed_sphere_boundary(v, v_loc, 2, :west)
-    cubed_sphere_halo(v, v_loc, 1, :south) .=                       cubed_sphere_boundary(v, v_loc, 6, :north)
-    cubed_sphere_halo(v, v_loc, 1, :north) .= + reverse(permutedims(cubed_sphere_boundary(u, u_loc, 3, :west),  (2, 1, 3)), dims=1)
-
-    # Face 2 u-velocity
-    cubed_sphere_halo(u, u_loc, 2, :west)  .=                       cubed_sphere_boundary(u, u_loc, 1, :east)
-    cubed_sphere_halo(u, u_loc, 2, :east)  .= + reverse(permutedims(cubed_sphere_boundary(v, v_loc, 4, :south), (2, 1, 3)), dims=2)
-    cubed_sphere_halo(u, u_loc, 2, :south) .= - reverse(permutedims(cubed_sphere_boundary(v, v_loc, 6, :east),  (2, 1, 3)), dims=1)
-    cubed_sphere_halo(u, u_loc, 2, :north) .=                       cubed_sphere_boundary(u, u_loc, 3, :south)
-
-    # Face 2 v-velocity
-    cubed_sphere_halo(v, v_loc, 2, :west)  .=                       cubed_sphere_boundary(v, v_loc, 1, :east)
-    cubed_sphere_halo(v, v_loc, 2, :east)  .= - reverse(permutedims(cubed_sphere_boundary(u, u_loc, 4, :south), (2, 1, 3)), dims=2)
-    cubed_sphere_halo(v, v_loc, 2, :south) .= + reverse(permutedims(cubed_sphere_boundary(u, u_loc, 6, :east),  (2, 1, 3)), dims=1)
-    cubed_sphere_halo(v, v_loc, 2, :north) .=                       cubed_sphere_boundary(v, v_loc, 3, :south)
-
-    # Face 3 u-velocity
-    cubed_sphere_halo(u, u_loc, 3, :west)  .= + reverse(permutedims(cubed_sphere_boundary(v, v_loc, 1, :north), (2, 1, 3)), dims=2)
-    cubed_sphere_halo(u, u_loc, 3, :east)  .=                       cubed_sphere_boundary(u, u_loc, 4, :west)
-    cubed_sphere_halo(u, u_loc, 3, :south) .=                       cubed_sphere_boundary(u, u_loc, 2, :north)
-    cubed_sphere_halo(u, u_loc, 3, :north) .= - reverse(permutedims(cubed_sphere_boundary(v, v_loc, 5, :west),  (2, 1, 3)), dims=1)
-
-    # Face 3 v-velocity
-    cubed_sphere_halo(v, v_loc, 3, :west)  .= - reverse(permutedims(cubed_sphere_boundary(u, u_loc, 1, :north), (2, 1, 3)), dims=2)
-    cubed_sphere_halo(v, v_loc, 3, :east)  .=                       cubed_sphere_boundary(v, v_loc, 4, :west)
-    cubed_sphere_halo(v, v_loc, 3, :south) .=                       cubed_sphere_boundary(v, v_loc, 2, :north)
-    cubed_sphere_halo(v, v_loc, 3, :north) .= + reverse(permutedims(cubed_sphere_boundary(u, u_loc, 5, :west),  (2, 1, 3)), dims=1)
-
-    # Face 4 u-velocity
-    cubed_sphere_halo(u, u_loc, 4, :west)  .=                       cubed_sphere_boundary(u, u_loc, 3, :east)
-    cubed_sphere_halo(u, u_loc, 4, :east)  .= + reverse(permutedims(cubed_sphere_boundary(v, v_loc, 6, :south), (2, 1, 3)), dims=2)
-    cubed_sphere_halo(u, u_loc, 4, :south) .= - reverse(permutedims(cubed_sphere_boundary(v, v_loc, 2, :east),  (2, 1, 3)), dims=1)
-    cubed_sphere_halo(u, u_loc, 4, :north) .=                       cubed_sphere_boundary(u, u_loc, 5, :south)
-
-    # Face 4 v-velocity
-    cubed_sphere_halo(v, v_loc, 4, :west)  .=                       cubed_sphere_boundary(v, v_loc, 3, :east)
-    cubed_sphere_halo(v, v_loc, 4, :east)  .= - reverse(permutedims(cubed_sphere_boundary(u, u_loc, 6, :south), (2, 1, 3)), dims=2)
-    cubed_sphere_halo(v, v_loc, 4, :south) .= + reverse(permutedims(cubed_sphere_boundary(u, u_loc, 2, :east),  (2, 1, 3)), dims=1)
-    cubed_sphere_halo(v, v_loc, 4, :north) .=                       cubed_sphere_boundary(v, v_loc, 5, :south)
-
-    # Face 5 u-velocity
-    cubed_sphere_halo(u, u_loc, 5, :west)  .= + reverse(permutedims(cubed_sphere_boundary(v, v_loc, 3, :north), (2, 1, 3)), dims=2)
-    cubed_sphere_halo(u, u_loc, 5, :east)  .=                       cubed_sphere_boundary(u, u_loc, 6, :west)
-    cubed_sphere_halo(u, u_loc, 5, :south) .=                       cubed_sphere_boundary(u, u_loc, 4, :north)
-    cubed_sphere_halo(u, u_loc, 5, :north) .= - reverse(permutedims(cubed_sphere_boundary(v, v_loc, 1, :west),  (2, 1, 3)), dims=1)
-
-    # Face 5 v-velocity
-    cubed_sphere_halo(v, v_loc, 5, :west)  .= - reverse(permutedims(cubed_sphere_boundary(u, u_loc, 3, :north), (2, 1, 3)), dims=2)
-    cubed_sphere_halo(v, v_loc, 5, :east)  .=                       cubed_sphere_boundary(v, v_loc, 6, :west)
-    cubed_sphere_halo(v, v_loc, 5, :south) .=                       cubed_sphere_boundary(v, v_loc, 4, :north)
-    cubed_sphere_halo(v, v_loc, 5, :north) .= + reverse(permutedims(cubed_sphere_boundary(u, u_loc, 1, :west),  (2, 1, 3)), dims=1)
-
-    # Face 6 u-velocity
-    cubed_sphere_halo(u, u_loc, 6, :west)  .=                       cubed_sphere_boundary(u, u_loc, 5, :east)
-    cubed_sphere_halo(u, u_loc, 6, :east)  .= + reverse(permutedims(cubed_sphere_boundary(v, v_loc, 2, :south), (2, 1, 3)), dims=2)
-    cubed_sphere_halo(u, u_loc, 6, :south) .= - reverse(permutedims(cubed_sphere_boundary(v, v_loc, 4, :east),  (2, 1, 3)), dims=1)
-    cubed_sphere_halo(u, u_loc, 6, :north) .=                       cubed_sphere_boundary(u, u_loc, 1, :south)
-
-    # Face 6 v-velocity
-    cubed_sphere_halo(v, v_loc, 6, :west)  .=                       cubed_sphere_boundary(v, v_loc, 5, :east)
-    cubed_sphere_halo(v, v_loc, 6, :east)  .= - reverse(permutedims(cubed_sphere_boundary(u, u_loc, 2, :south), (2, 1, 3)), dims=2)
-    cubed_sphere_halo(v, v_loc, 6, :south) .= + reverse(permutedims(cubed_sphere_boundary(u, u_loc, 4, :east),  (2, 1, 3)), dims=1)
-    cubed_sphere_halo(v, v_loc, 6, :north) .=                       cubed_sphere_boundary(v, v_loc, 1, :south)
+            cubed_sphere_halo(u, u_loc, face_number, side) .= u_sign * reverse(permutedims(cubed_sphere_boundary(v, v_loc, src_face_number, src_side), (2, 1, 3)), dims=reverse_dim)
+            cubed_sphere_halo(v, v_loc, face_number, side) .= v_sign * reverse(permutedims(cubed_sphere_boundary(u, u_loc, src_face_number, src_side), (2, 1, 3)), dims=reverse_dim)
+        end
+    end
 
     return nothing
 end
