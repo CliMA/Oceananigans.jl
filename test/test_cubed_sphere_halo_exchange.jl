@@ -23,7 +23,6 @@ end
 
 cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 
-
 @testset "Cubed sphere halo exchange" begin
     arch = CPU()
     grid = ConformalCubedSphereGrid(cs32_filepath, Nz=1, z=(-1, 0))
@@ -421,39 +420,39 @@ end
     end
 
     @testset "(1W halo <- 5N boundary) horizontal velocity halo exchange" begin
-        # Grid point u[i, j] = u[0, 1] in 1W halo should be from +v[i, j] = +v[32, 33] in 5N boundary.
+        # Grid point u[i, j] = u[0, 1] in 1W halo should be from +v[i, j] = +v[32, 32] in 5N boundary.
         u_west_halo_south_value = u_field.faces[1][0, 1, 1]
         @test uv_digit(u_west_halo_south_value) == V_DIGIT
         @test sign(u_west_halo_south_value) == +1
         @test face_digit(u_west_halo_south_value) == 5
         @test i_digits(u_west_halo_south_value) == 32
-        @test j_digits(u_west_halo_south_value) == 33
+        @test j_digits(u_west_halo_south_value) == 32
 
-        # Grid point u[i, j] = u[0, 32] in 1W halo should be from +v[i, j] = +v[1, 33] in 5N boundary.
+        # Grid point u[i, j] = u[0, 32] in 1W halo should be from +v[i, j] = +v[1, 32] in 5N boundary.
         u_west_halo_north_value = u_field.faces[1][0, 32, 1]
         @test uv_digit(u_west_halo_north_value) == V_DIGIT
         @test sign(u_west_halo_north_value) == +1
         @test face_digit(u_west_halo_north_value) == 5
         @test i_digits(u_west_halo_north_value) == 1
-        @test j_digits(u_west_halo_north_value) == 33
+        @test j_digits(u_west_halo_north_value) == 32
 
         u_west_halo_values = west_halo(u_field.faces[1], include_corners=false)[:]
         @test all(uv_digit.(u_west_halo_values) .== V_DIGIT)
         @test all(sign.(u_west_halo_values) .== +1)
         @test all(face_digit.(u_west_halo_values) .== 5)
         @test all(i_digits.(u_west_halo_values) .== reverse(1:32))
-        @test all(j_digits.(u_west_halo_values) .== 33)
+        @test all(j_digits.(u_west_halo_values) .== 32)
 
-        # Grid point v[i, j] = v[0, 1] in 1W halo should be from -u[i, j] = -u[33, 32] in 5N boundary.
+        # Grid point v[i, j] = v[0, 1] in 1W halo should be from -u[i, j] = -u[32, 32] in 5N boundary.
         v_west_halo_south_value = v_field.faces[1][0, 1, 1]
         @test uv_digit(v_west_halo_south_value) == U_DIGIT
         @test sign(v_west_halo_south_value) == -1
         @test face_digit(v_west_halo_south_value) == 5
-        @test i_digits(v_west_halo_south_value) == 33
+        @test i_digits(v_west_halo_south_value) == 32
         @test j_digits(v_west_halo_south_value) == 32
 
         # Grid point v[i, j] = u[0, 33] in 1W halo should be from -u[i, j] = -u[1, 32] in 5N boundary.
-        v_west_halo_north_value = v_field.faces[1][0, 33, 1]
+        v_west_halo_north_value = v_field.faces[1][0, 32, 1]
         @test uv_digit(v_west_halo_north_value) == U_DIGIT
         @test sign(v_west_halo_north_value) == -1
         @test face_digit(v_west_halo_north_value) == 5
@@ -464,21 +463,21 @@ end
         @test all(uv_digit.(v_west_halo_values) .== U_DIGIT)
         @test all(sign.(v_west_halo_values) .== -1)
         @test all(face_digit.(v_west_halo_values) .== 5)
-        @test all(i_digits.(v_west_halo_values) .== reverse(1:33))
+        @test all(i_digits.(v_west_halo_values) .== reverse(1:32))
         @test all(j_digits.(v_west_halo_values) .== 32)
     end
 
     @testset "(1E halo <- 2W boundary) horizontal velocity halo exchange" begin
-        # Grid point u[i, j] = u[34, 1] in 1E halo should be from +u[i, j] = +u[1, 1] in 2W boundary.
-        u_east_halo_south_value = u_field.faces[1][34, 1, 1]
+        # Grid point u[i, j] = u[33, 1] in 1E halo should be from +u[i, j] = +u[1, 1] in 2W boundary.
+        u_east_halo_south_value = u_field.faces[1][33, 1, 1]
         @test uv_digit(u_east_halo_south_value) == U_DIGIT
         @test sign(u_east_halo_south_value) == +1
         @test face_digit(u_east_halo_south_value) == 2
         @test i_digits(u_east_halo_south_value) == 1
         @test j_digits(u_east_halo_south_value) == 1
 
-        # Grid point u[i, j] = u[34, 32] in 1E halo should be from +u[i, j] = +u[1, 32] in 2W boundary.
-        u_east_halo_north_value = u_field.faces[1][34, 32, 1]
+        # Grid point u[i, j] = u[33, 32] in 1E halo should be from +u[i, j] = +u[1, 32] in 2W boundary.
+        u_east_halo_north_value = u_field.faces[1][33, 32, 1]
         @test uv_digit(u_east_halo_north_value) == U_DIGIT
         @test sign(u_east_halo_north_value) == +1
         @test face_digit(u_east_halo_north_value) == 2
@@ -500,20 +499,20 @@ end
         @test i_digits(v_east_halo_south_value) == 1
         @test j_digits(v_east_halo_south_value) == 1
 
-        # # Grid point v[i, j] = v[33, 33] in 1E halo should be from +v[i, j] = +v[1, 33] in 2W boundary.
-        v_east_halo_north_value = v_field.faces[1][33, 33, 1]
+        # # Grid point v[i, j] = v[33, 32] in 1E halo should be from +v[i, j] = +v[1, 32] in 2W boundary.
+        v_east_halo_north_value = v_field.faces[1][33, 32, 1]
         @test uv_digit(v_east_halo_north_value) == V_DIGIT
         @test sign(v_east_halo_north_value) == +1
         @test face_digit(v_east_halo_north_value) == 2
         @test i_digits(v_east_halo_north_value) == 1
-        @test j_digits(v_east_halo_north_value) == 33
+        @test j_digits(v_east_halo_north_value) == 32
 
         v_east_halo_values = east_halo(v_field.faces[1], include_corners=false)[:]
         @test all(uv_digit.(v_east_halo_values) .== V_DIGIT)
         @test all(sign.(v_east_halo_values) .== +1)
         @test all(face_digit.(v_east_halo_values) .== 2)
         @test all(i_digits.(v_east_halo_values) .== 1)
-        @test all(j_digits.(v_east_halo_values) .== 1:33)
+        @test all(j_digits.(v_east_halo_values) .== 1:32)
     end
 
     @testset "(1S halo <- 6N boundary) horizontal velocity halo exchange" begin
@@ -525,56 +524,56 @@ end
         @test i_digits(u_south_halo_west_value) == 1
         @test j_digits(u_south_halo_west_value) == 32
 
-        # Grid point u[i, j] = u[33, 0] in 1S halo should be from +u[i, j] = +u[33, 32] in 6N boundary.
-        u_south_halo_east_value = u_field.faces[1][33, 0, 1]
+        # Grid point u[i, j] = u[32, 0] in 1S halo should be from +u[i, j] = +u[32, 32] in 6N boundary.
+        u_south_halo_east_value = u_field.faces[1][32, 0, 1]
         @test uv_digit(u_south_halo_east_value) == U_DIGIT
         @test sign(u_south_halo_east_value) == +1
         @test face_digit(u_south_halo_east_value) == 6
-        @test i_digits(u_south_halo_east_value) == 33
+        @test i_digits(u_south_halo_east_value) == 32
         @test j_digits(u_south_halo_east_value) == 32
 
         u_south_halo_values = south_halo(u_field.faces[1], include_corners=false)[:]
         @test all(uv_digit.(u_south_halo_values) .== U_DIGIT)
         @test all(sign.(u_south_halo_values) .== +1)
         @test all(face_digit.(u_south_halo_values) .== 6)
-        @test all(i_digits.(u_south_halo_values) .== 1:33)
+        @test all(i_digits.(u_south_halo_values) .== 1:32)
         @test all(j_digits.(u_south_halo_values) .== 32)
 
-        # Grid point v[i, j] = v[1, 0] in 1S halo should be from +v[i, j] = +v[1, 33] in 6N boundary.
+        # Grid point v[i, j] = v[1, 0] in 1S halo should be from +v[i, j] = +v[1, 32] in 6N boundary.
         v_south_halo_west_value = v_field.faces[1][1, 0, 1]
         @test uv_digit(v_south_halo_west_value) == V_DIGIT
         @test sign(v_south_halo_west_value) == +1
         @test face_digit(v_south_halo_west_value) == 6
         @test i_digits(v_south_halo_west_value) == 1
-        @test j_digits(v_south_halo_west_value) == 33
+        @test j_digits(v_south_halo_west_value) == 32
 
-        # # Grid point v[i, j] = v[32, 0] in 1S halo should be from +v[i, j] = +v[32, 33] in 6N boundary.
+        # # Grid point v[i, j] = v[32, 0] in 1S halo should be from +v[i, j] = +v[32, 32] in 6N boundary.
         v_south_halo_east_value = v_field.faces[1][32, 0, 1]
         @test uv_digit(v_south_halo_east_value) == V_DIGIT
         @test sign(v_south_halo_east_value) == +1
         @test face_digit(v_south_halo_east_value) == 6
         @test i_digits(v_south_halo_east_value) == 32
-        @test j_digits(v_south_halo_east_value) == 33
+        @test j_digits(v_south_halo_east_value) == 32
 
         v_south_halo_values = south_halo(v_field.faces[1], include_corners=false)[:]
         @test all(uv_digit.(v_south_halo_values) .== V_DIGIT)
         @test all(sign.(v_south_halo_values) .== +1)
         @test all(face_digit.(v_south_halo_values) .== 6)
         @test all(i_digits.(v_south_halo_values) .== 1:32)
-        @test all(j_digits.(v_south_halo_values) .== 33)
+        @test all(j_digits.(v_south_halo_values) .== 32)
     end
 
     @testset "(1N halo <- 3W boundary) horizontal velocity halo exchange" begin
-        # Grid point u[i, j] = u[1, 33] in 1N halo should be from -v[i, j] = -v[1, 33] in 3W boundary.
+        # Grid point u[i, j] = u[1, 33] in 1N halo should be from -v[i, j] = -v[1, 32] in 3W boundary.
         u_nouth_halo_west_value = u_field.faces[1][1, 33, 1]
         @test uv_digit(u_nouth_halo_west_value) == V_DIGIT
         @test sign(u_nouth_halo_west_value) == -1
         @test face_digit(u_nouth_halo_west_value) == 3
         @test i_digits(u_nouth_halo_west_value) == 1
-        @test j_digits(u_nouth_halo_west_value) == 33
+        @test j_digits(u_nouth_halo_west_value) == 32
 
-        # Grid point u[i, j] = u[33, 33] in 1N halo should be from -v[i, j] = -v[1, 1] in 3W boundary.
-        u_north_halo_east_value = u_field.faces[1][33, 33, 1]
+        # Grid point u[i, j] = u[32, 33] in 1N halo should be from -v[i, j] = -v[1, 1] in 3W boundary.
+        u_north_halo_east_value = u_field.faces[1][32, 33, 1]
         @test uv_digit(u_north_halo_east_value) == V_DIGIT
         @test sign(u_north_halo_east_value) == -1
         @test face_digit(u_north_halo_east_value) == 3
@@ -586,18 +585,18 @@ end
         @test all(sign.(u_north_halo_values) .== -1)
         @test all(face_digit.(u_north_halo_values) .== 3)
         @test all(i_digits.(u_north_halo_values) .== 1)
-        @test all(j_digits.(u_north_halo_values) .== reverse(1:33))
+        @test all(j_digits.(u_north_halo_values) .== reverse(1:32))
 
-        # Grid point v[i, j] = v[1, 34] in 1N halo should be from +u[i, j] = +u[1, 32] in 3W boundary.
-        v_north_halo_west_value = v_field.faces[1][1, 34, 1]
+        # Grid point v[i, j] = v[1, 33] in 1N halo should be from +u[i, j] = +u[1, 32] in 3W boundary.
+        v_north_halo_west_value = v_field.faces[1][1, 33, 1]
         @test uv_digit(v_north_halo_west_value) == U_DIGIT
         @test sign(v_north_halo_west_value) == +1
         @test face_digit(v_north_halo_west_value) == 3
         @test i_digits(v_north_halo_west_value) == 1
         @test j_digits(v_north_halo_west_value) == 32
 
-        # # Grid point v[i, j] = v[32, 34] in 1N halo should be from +u[i, j] = +u[1, 1] in 3W boundary.
-        v_north_halo_east_value = v_field.faces[1][32, 34, 1]
+        # # Grid point v[i, j] = v[32, 33] in 1N halo should be from +u[i, j] = +u[1, 1] in 3W boundary.
+        v_north_halo_east_value = v_field.faces[1][32, 33, 1]
         @test uv_digit(v_north_halo_east_value) == U_DIGIT
         @test sign(v_north_halo_east_value) == +1
         @test face_digit(v_north_halo_east_value) == 3
