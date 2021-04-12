@@ -140,8 +140,8 @@ function fill_horizontal_velocity_halos!(u, v, arch)
     ## Fill them like they're tracers (mostly to get the top and bottom filled).
     ## Right now this errors because u_loc = fcc means that west/east halo and
     ## south/north halo sizes do not match.
-    # fill_halo_regions!(u, arch)
-    # fill_halo_regions!(v, arch)
+    fill_halo_regions!(u, arch)
+    fill_halo_regions!(v, arch)
 
     ## Now fill in the ones that need to be rotated.
 
