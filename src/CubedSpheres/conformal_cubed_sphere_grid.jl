@@ -153,7 +153,12 @@ function ConformalCubedSphereGrid(FT=Float64; face_size, z, radius=R_Earth)
 
     face_connectivity = default_face_connectivity()
 
-    return ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity)}(faces, face_connectivity)
+    grid = ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity)}(faces, face_connectivity)
+
+    fill_grid_metric_halos!(grid)
+    # fill_grid_metric_halos!(grid) # get those corners?
+
+    return grid
 end
 
 function ConformalCubedSphereGrid(filepath::AbstractString, FT=Float64; Nz, z, radius = R_Earth, halo = (1, 1, 1))
@@ -166,7 +171,12 @@ function ConformalCubedSphereGrid(filepath::AbstractString, FT=Float64; Nz, z, r
 
     face_connectivity = default_face_connectivity()
 
-    return ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity)}(faces, face_connectivity)
+    grid = ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity)}(faces, face_connectivity)
+
+    fill_grid_metric_halos!(grid)
+    # fill_grid_metric_halos!(grid) # get those corners?
+
+    return grid
 end
 
 function Base.show(io::IO, grid::ConformalCubedSphereGrid{FT}) where FT
@@ -223,3 +233,70 @@ topology(::ConformalCubedSphereGrid) = (Bounded, Bounded, Bounded)
 # Not sure what to put. Gonna leave it blank so that Base.show(io::IO, operation::AbstractOperation) doesn't error.
 domain_string(grid::ConformalCubedSphereFaceGrid) = ""
 domain_string(grid::ConformalCubedSphereGrid) = ""
+
+#####
+##### filling grid halos
+#####
+
+function grid_metric_halo(grid_metric, grid, location, side)
+    LX, LY = location
+    side == :west  && return  underlying_west_halo(grid_metric, grid, LX)
+    side == :east  && return  underlying_east_halo(grid_metric, grid, LX)
+    side == :south && return underlying_south_halo(grid_metric, grid, LY)
+    side == :north && return underlying_north_halo(grid_metric, grid, LY)
+end
+
+function grid_metric_boundary(grid_metric, grid, location, side)
+    LX, LY = location
+    side == :west  && return  underlying_west_boundary(grid_metric, grid, LX)
+    side == :east  && return  underlying_east_boundary(grid_metric, grid, LX)
+    side == :south && return underlying_south_boundary(grid_metric, grid, LY)
+    side == :north && return underlying_north_boundary(grid_metric, grid, LY)
+end
+
+function fill_grid_metric_halos!(grid)
+
+    loc_cc = (Center, Center)
+    loc_cf = (Center, Face  )
+    loc_fc = (Face,   Center)
+    loc_ff = (Face,   Face  )
+
+    for face_number in 1:6, side in (:west, :east, :south, :north)
+
+        connectivity_info = getproperty(grid.face_connectivity[face_number], side)
+        src_face_number = connectivity_info.face
+        src_side = connectivity_info.side
+
+        grid_face = grid.faces[face_number]
+        src_grid_face = grid.faces[src_face_number]
+
+        if sides_in_the_same_dimension(side, src_side)
+            grid_metric_halo(grid_face.Δxᶜᶜᵃ, grid_face, loc_cc, side) .= grid_metric_boundary(grid_face.Δxᶜᶜᵃ, src_grid_face, loc_cc, src_side)
+            grid_metric_halo(grid_face.Δyᶜᶜᵃ, grid_face, loc_cc, side) .= grid_metric_boundary(grid_face.Δyᶜᶜᵃ, src_grid_face, loc_cc, src_side)
+
+            grid_metric_halo(grid_face.Δxᶜᶠᵃ, grid_face, loc_cf, side) .= grid_metric_boundary(grid_face.Δxᶜᶠᵃ, src_grid_face, loc_cf, src_side)
+            grid_metric_halo(grid_face.Δyᶜᶠᵃ, grid_face, loc_cf, side) .= grid_metric_boundary(grid_face.Δyᶜᶠᵃ, src_grid_face, loc_cf, src_side)
+
+            grid_metric_halo(grid_face.Δxᶠᶜᵃ, grid_face, loc_fc, side) .= grid_metric_boundary(grid_face.Δxᶠᶜᵃ, src_grid_face, loc_fc, src_side)
+            grid_metric_halo(grid_face.Δyᶠᶜᵃ, grid_face, loc_fc, side) .= grid_metric_boundary(grid_face.Δyᶠᶜᵃ, src_grid_face, loc_fc, src_side)
+
+            grid_metric_halo(grid_face.Δxᶠᶠᵃ, grid_face, loc_ff, side) .= grid_metric_boundary(grid_face.Δxᶠᶠᵃ, src_grid_face, loc_ff, src_side)
+            grid_metric_halo(grid_face.Δyᶠᶠᵃ, grid_face, loc_ff, side) .= grid_metric_boundary(grid_face.Δyᶠᶠᵃ, src_grid_face, loc_ff, src_side)
+        else
+            reverse_dim = src_side in (:west, :east) ? 1 : 2
+            grid_metric_halo(grid_face.Δxᶜᶜᵃ, grid_face, loc_cc, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δyᶜᶜᵃ, src_grid_face, loc_cc, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_face.Δyᶜᶜᵃ, grid_face, loc_cc, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δxᶜᶜᵃ, src_grid_face, loc_cc, src_side), (2, 1, 3)), dims=reverse_dim)
+
+            grid_metric_halo(grid_face.Δxᶜᶠᵃ, grid_face, loc_cf, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δyᶠᶜᵃ, src_grid_face, loc_fc, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_face.Δyᶜᶠᵃ, grid_face, loc_cf, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δxᶠᶜᵃ, src_grid_face, loc_fc, src_side), (2, 1, 3)), dims=reverse_dim)
+
+            grid_metric_halo(grid_face.Δxᶠᶜᵃ, grid_face, loc_fc, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δyᶜᶠᵃ, src_grid_face, loc_cf, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_face.Δyᶠᶜᵃ, grid_face, loc_fc, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δxᶜᶠᵃ, src_grid_face, loc_cf, src_side), (2, 1, 3)), dims=reverse_dim)
+
+            grid_metric_halo(grid_face.Δxᶠᶠᵃ, grid_face, loc_ff, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δyᶠᶠᵃ, src_grid_face, loc_ff, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_face.Δyᶠᶠᵃ, grid_face, loc_ff, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δxᶠᶠᵃ, src_grid_face, loc_ff, src_side), (2, 1, 3)), dims=reverse_dim)
+        end
+    end
+
+    return nothing
+end

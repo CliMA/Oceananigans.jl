@@ -100,3 +100,36 @@ underlying_bottom_boundary(f, grid, location) =
 
 underlying_top_boundary(f, grid, location) =
     view(f.parent, :, :, underlying_right_boundary_indices(location, topology(grid, 3), grid.Nz, grid.Hz))
+
+
+#####
+##### Convinience functions
+#####
+
+function sides_in_the_same_dimension(side1, side2)
+    x_sides = (:west, :east)
+    y_sides = (:south, :north)
+    z_sides = (:bottom, :top)
+    side1 in x_sides && side2 in x_sides && return true
+    side1 in y_sides && side2 in y_sides && return true
+    side1 in z_sides && side2 in z_sides && return true
+    return false
+end
+
+function cubed_sphere_halo(cubed_sphere_field, location, face_number, side)
+    LX, LY, LZ = location
+    src_field = cubed_sphere_field.faces[face_number]
+    side == :west  && return  underlying_west_halo(src_field.data, src_field.grid, LX)
+    side == :east  && return  underlying_east_halo(src_field.data, src_field.grid, LX)
+    side == :south && return underlying_south_halo(src_field.data, src_field.grid, LY)
+    side == :north && return underlying_north_halo(src_field.data, src_field.grid, LY)
+end
+
+function cubed_sphere_boundary(cubed_sphere_field, location, face_number, side)
+    LX, LY, LZ = location
+    src_field = cubed_sphere_field.faces[face_number]
+    side == :west  && return  underlying_west_boundary(src_field.data, src_field.grid, LX)
+    side == :east  && return  underlying_east_boundary(src_field.data, src_field.grid, LX)
+    side == :south && return underlying_south_boundary(src_field.data, src_field.grid, LY)
+    side == :north && return underlying_north_boundary(src_field.data, src_field.grid, LY)
+end
