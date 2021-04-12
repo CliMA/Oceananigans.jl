@@ -8,6 +8,7 @@ export
 using CUDA
 
 using KernelAbstractions
+using CUDAKernels
 
 """
     AbstractArchitecture
