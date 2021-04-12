@@ -108,9 +108,6 @@ function cubed_sphere_surface_gravity_waves(; face_number)
                 parameters = (; cfl)
     )
 
-    # TODO: Implement NaNChecker for ConformalCubedSphereField
-    empty!(simulation.diagnostics)
-
     fields_to_check = (
         u = model.velocities.u,
         v = model.velocities.v,

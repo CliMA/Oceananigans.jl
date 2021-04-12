@@ -142,9 +142,6 @@ function tracer_advection_over_the_poles(; face_number, α)
                 parameters = (; cfl)
     )
 
-    # TODO: Implement NaNChecker for ConformalCubedSphereField
-    empty!(simulation.diagnostics)
-
     outputs = (u=Uᶠᶜᶜ, v=Vᶜᶠᶜ, h=model.tracers.h)
 
     simulation.output_writers[:fields] =

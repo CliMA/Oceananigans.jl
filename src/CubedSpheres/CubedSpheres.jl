@@ -26,6 +26,18 @@ maybe_replace_with_face(velocities::PrescribedVelocityFields, cubed_sphere_grid,
     PrescribedVelocityFields(velocities.u.faces[face_number], velocities.v.faces[face_number], velocities.w.faces[face_number], velocities.parameters)
 
 #####
+##### NaN checker for cubed sphere fields
+#####
+
+import Oceananigans.Diagnostics: error_if_nan_in_field
+
+function error_if_nan_in_field(field::ConformalCubedSphereField, name, clock)
+    for (face_number, field_face) in enumerate(field.faces)
+        error_if_nan_in_field(field_face, string(name) * " (face $face_number)", clock)
+    end
+end
+
+#####
 ##### CFL for cubed sphere fields
 #####
 
