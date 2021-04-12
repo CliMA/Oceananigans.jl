@@ -7,16 +7,20 @@ Each "reference cell" is associated with an index i, j, k.
 The "location" of each reference cell is roughly the geometric centroid of the reference cell.
 On the staggered grid, there are 7 cells additional to the "reference cell"
 that are staggered with respect to the reference cell in x, y, and/or z.
+
 The staggering is denoted by the locations "Center" and "Face":
     - "Center" is shared with the reference cell;
     - "Face" lies between reference cell centers, roughly at the interface between
       reference cells.
+
 The three-dimensional location of an object is defined by a 3-tuple of locations, and
 denoted by a triplet of superscripts. For example, an object `φ` whose cell is located at
 (Center, Center, Face) is denoted `φᶜᶜᶠ`. `ᶜᶜᶠ` is Centered in `x`, `Centered` in `y`, and on
 reference cell interfaces in `z` (this is where the vertical velocity is located, for example).
 The super script `ᵃ` denotes "any" location.
+
 The operators in this file fall into three categories:
+
 1. Operators needed for an algorithm valid on rectilinear grids with
    at most a stretched vertical dimension and regular horizontal dimensions.
 2. Operators needed for an algorithm on a grid that is curvilinear in the horizontal

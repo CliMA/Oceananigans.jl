@@ -114,6 +114,12 @@ uuid = "ade2ca70-3891-5945-98fb-dc099432e06a"
 deps = ["Mmap"]
 uuid = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 
+[[DiffRules]]
+deps = ["NaNMath", "Random", "SpecialFunctions"]
+git-tree-sha1 = "214c3fcac57755cfda163d91c58893a8723f93e9"
+uuid = "b552c78f-8df3-52c6-915a-8e097449b14b"
+version = "1.0.2"
+
 [[Distributed]]
 deps = ["Random", "Serialization", "Sockets"]
 uuid = "8ba89e20-285c-5b6f-9357-94700520ee1b"
@@ -304,6 +310,11 @@ deps = ["ChainRulesCore", "Compat", "LinearAlgebra", "Pkg", "Requires", "Statist
 git-tree-sha1 = "ab1d43fead2ecb9aa5ae460d3d547c2cf8d89461"
 uuid = "872c559c-99b0-510c-b3b7-b6c96a88d5cd"
 version = "0.7.17"
+
+[[NaNMath]]
+git-tree-sha1 = "bfe47e760d60b82b66b61d2d44128b62e3a369fb"
+uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
+version = "0.3.5"
 
 [[NetCDF_jll]]
 deps = ["Artifacts", "HDF5_jll", "JLLWrappers", "LibCURL_jll", "LibSSH2_jll", "Libdl", "MbedTLS_jll", "Pkg", "Zlib_jll", "nghttp2_jll"]
@@ -498,6 +509,12 @@ deps = ["Random", "Test"]
 git-tree-sha1 = "7c53c35547de1c5b9d46a4797cf6d8253807108c"
 uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 version = "0.9.5"
+
+[[Tullio]]
+deps = ["DiffRules", "LinearAlgebra", "Requires"]
+git-tree-sha1 = "a7016e450a9e96d1b1f0ad41ef4ca49542a1f59f"
+uuid = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
+version = "0.2.12"
 
 [[UUIDs]]
 deps = ["Random", "SHA"]

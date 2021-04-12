@@ -91,7 +91,7 @@ function test_thermal_bubble_netcdf_output(arch)
     nc_writer = NetCDFOutputWriter(model, outputs, filepath=nc_filepath, schedule=IterationInterval(10), verbose=true)
     push!(simulation.output_writers, nc_writer)
 
-    i_slice = 1:10
+    i_slice = 1:2:10
     j_slice = 13
     k_slice = 9:11
     field_slicer = FieldSlicer(i=i_slice, j=j_slice, k=k_slice)
