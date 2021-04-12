@@ -22,7 +22,6 @@ function fill_halo_regions!(field::ConformalCubedSphereField{LX, LY, LZ}, arch, 
 
     for field_face in field.faces
         # Fill the top and bottom halos the usual way.
-        # Disable for a bit because errors.
         fill_halo_regions!(field_face, arch, args...)
 
         # Deal with halo exchanges.
@@ -137,13 +136,11 @@ end
 
 function fill_horizontal_velocity_halos!(u, v, arch)
 
-    ## Fill them like they're tracers (mostly to get the top and bottom filled).
-    ## Right now this errors because u_loc = fcc means that west/east halo and
-    ## south/north halo sizes do not match.
+    ## Fill them like they're tracers to get the top and bottom filled.
     fill_halo_regions!(u, arch)
     fill_halo_regions!(v, arch)
 
-    ## Now fill in the ones that need to be rotated.
+    ## Now fill the horizontal halos.
 
     u_loc = (Face, Center, Center)
     v_loc = (Center, Face, Center)
