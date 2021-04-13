@@ -66,14 +66,6 @@ function random_divergence_free_source_term(FT, arch, grid)
     return R
 end
 
-function compute_∇²!(∇²ϕ, ϕ, arch, grid)
-    fill_halo_regions!(ϕ, arch)
-    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ.data, ∇²ϕ.data, dependencies=Event(device(arch)))
-    wait(device(arch), event)
-    fill_halo_regions!(∇²ϕ, arch)
-    return nothing
-end
-
 #####
 ##### Regular rectilinear grid Poisson solver
 #####

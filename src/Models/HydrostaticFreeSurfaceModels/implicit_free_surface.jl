@@ -2,6 +2,7 @@ using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Architectures: device
 using Oceananigans.Operators: ∂xᶠᵃᵃ, ∂yᵃᶠᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.Solvers: solve!
 using Oceananigans.Fields
 
 using Adapt
@@ -18,7 +19,7 @@ end
 
 # User interface to ImplicitFreeSurface
 ImplicitFreeSurface(; gravitational_acceleration=g_Earth, solver_settings...) =
-    ImplicitFreeSurface(nothing, gravitational_acceleration, nothing, nothing, nothing, solver_settings)
+    ImplicitFreeSurface(nothing, gravitational_acceleration, nothing, nothing, nothing, nothing, solver_settings)
 
 # Internal function for HydrostaticFreeSurfaceModel
 function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arch, grid)
@@ -32,14 +33,17 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arc
 
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
-    ∫ᶻ_Ayᶠᶜᶜ = ReducedField(Center, Face, Nothing, arch, grid; dims=3)
+    ∫ᶻ_Ayᶜᶠᶜ = ReducedField(Center, Face, Nothing, arch, grid; dims=3)
 
     vertically_integrated_lateral_face_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
     compute_vertically_integrated_lateral_face_areas!(vertically_integrated_lateral_face_areas, grid, arch)
 
-    # Initialize implicit solver and allocate scratch memory
-    implicit_step_solver =  ImplicitFreeSurfaceSolver(η; free_surface.solver_settings...)
+    implicit_step_solver = PreconditionedConjugateGradientSolver(implicit_free_surface_linear_operation!,
+                                                                 template_field = η,
+                                                                 maximum_iterations = grid.Nx * grid.Ny,
+                                                                 free_surface.solver_settings...)
+    
     implicit_step_right_hand_side = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
 
     return ImplicitFreeSurface(η,
@@ -86,7 +90,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, velociti
     event = add_previous_free_surface_contribution(free_surface, model, Δt)
     wait(device(model.architecture), event)
 
-    fill_halo_regions!(RHS, model.architecture)
+    fill_halo_regions!(rhs, model.architecture)
 
     # solve!(x, solver, b, args...) solves A*x = b for x.
     solve!(η, free_surface.implicit_step_solver, rhs, ∫ᶻ_A.xᶠᶜᶜ, ∫ᶻ_A.yᶜᶠᶜ, g, Δt)
@@ -120,7 +124,7 @@ end
 
 @kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻ_Q)
     i, j = @index(Global, NTuple)
-    @inbounds rhs[i, j, 1] = flux_div_xyᶜᶜᵃ(i, j, k, grid, ∫ᶻ_Q.u, ∫ᶻ_Q.v) / (g * Δt^2)
+    @inbounds rhs[i, j, 1] = flux_div_xyᶜᶜᵃ(i, j, 1, grid, ∫ᶻ_Q.u, ∫ᶻ_Q.v) / (g * Δt^2)
 end
 
 #=
@@ -131,17 +135,17 @@ end
     # integrated over an area.
     #
     i, j = @index(Global, NTuple)
-    @inbounds divergence[i, j, 1] = δxᶜᵃᵃ(i, j, 1, grid, ∫ᶻ_U.u) + δyᵃᶜᵃ(i, j, 1, grid, ∫ᶻ_U.v)
+    @inbounds divergence[i, j, 1] = δxᶜᵃᵃ(i, j, 1, grid, ∫ᶻ_Q.u) + δyᵃᶜᵃ(i, j, 1, grid, ∫ᶻ_Q.v)
 end
 =#
 
-function add_previous_free_surface_contribution(free_surface, model, Δt )
+function add_previous_free_surface_contribution(free_surface, model, Δt)
    g = model.free_surface.gravitational_acceleration
    event = launch!(model.architecture,
                    model.grid,
                    :xy,
                    _add_previous_free_surface_contribution!,
-                   free_surface.implicit_step_solver.solver.settings.RHS,
+                   free_surface.implicit_step_right_hand_side,
                    model.grid,
                    g,
                    Δt,
