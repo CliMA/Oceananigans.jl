@@ -25,14 +25,15 @@
 ##### Operators of the form A*δ(q) where A is an area and q is some quantity.
 #####
 
-@inline Ax_∂xᶜᵃᵃ(i, j, k, grid::ARG, u) = Axᵃᵃᶠ(i, j, k, grid) * ∂xᶜᵃᵃ(i, j, k, grid, u)
-@inline Ax_∂xᶠᵃᵃ(i, j, k, grid::ARG, c) = Axᵃᵃᶠ(i, j, k, grid) * ∂xᶠᵃᵃ(i, j, k, grid, c)
+@inline Ax_∂xᶜᶜᶜ(i, j, k, grid::ARG, u) = Axᶜᶜᶜ(i, j, k, grid) * ∂xᶜᶜᵃ(i, j, k, grid, u)
+@inline Ax_∂xᶠᶠᶜ(i, j, k, grid::ARG, v) = Axᶠᶠᶜ(i, j, k, grid) * ∂xᶠᶠᵃ(i, j, k, grid, v)
+@inline Ax_∂xᶠᶜᶜ(i, j, k, grid::ARG, c) = Axᶠᶜᶜ(i, j, k, grid) * ∂xᶠᶜᵃ(i, j, k, grid, c)
 
-@inline Ay_∂yᵃᶜᵃ(i, j, k, grid::ARG, v) = Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶜᵃ(i, j, k, grid, v)
-@inline Ay_∂yᵃᶠᵃ(i, j, k, grid::ARG, c) = Ayᵃᵃᶠ(i, j, k, grid) * ∂yᵃᶠᵃ(i, j, k, grid, c)
+@inline Ay_∂yᶠᶠᶜ(i, j, k, grid::ARG, u) = Ayᶠᶠᶜ(i, j, k, grid) * ∂yᶠᶠᵃ(i, j, k, grid, u)
+@inline Ay_∂yᶜᶜᶜ(i, j, k, grid::ARG, v) = Ayᶜᶜᶜ(i, j, k, grid) * ∂yᶜᶜᵃ(i, j, k, grid, v)
+@inline Ay_∂yᶜᶠᶜ(i, j, k, grid::ARG, c) = Ayᶜᶠᶜ(i, j, k, grid) * ∂yᶜᶠᵃ(i, j, k, grid, c)
 
-@inline Az_∂zᵃᵃᶜ(i, j, k, grid::ARG, w) = Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶜ(i, j, k, grid, w)
-@inline Az_∂zᵃᵃᶠ(i, j, k, grid::ARG, c) = Azᵃᵃᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, c)
+@inline Az_∂zᶜᶜᶠ(i, j, k, grid::ARG, c) = Azᶜᶜᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, c)
 
 #####
 ##### Second derivatives

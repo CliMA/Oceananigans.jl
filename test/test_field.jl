@@ -8,6 +8,14 @@ has size `(Tx, Ty, Tz)`.
 """
 correct_field_size(a, g, FieldType, Tx, Ty, Tz) = size(parent(FieldType(a, g))) == (Tx, Ty, Tz)
 
+function run_similar_field_tests(f)
+    g = similar(f)
+    @test typeof(f) == typeof(g)
+    @test typeof(f) == typeof(g)
+    @test f.boundary_conditions == g.boundary_conditions
+    return nothing
+end
+
 """
      correct_field_value_was_set(N, L, ftf, val)
 
@@ -179,8 +187,8 @@ end
         L = (2π, 3π, 5π)
         H = (1, 1, 1)
 
-        int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
-        uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
+        int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4)]
+        uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10)]
         float_vals = Any[0.0, -0.0, 6e-34, 1.0f10]
         rational_vals = Any[1//11, -23//7]
         other_vals = Any[π]
@@ -238,5 +246,21 @@ end
         end
 
         @test FieldSlicer() isa FieldSlicer
+
+        @info "    Testing similar(f) for f::Union(Field, ReducedField)..."
+
+        grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+
+        for X in (Center, Face), Y in (Center, Face), Z in (Center, Face)
+            for arch in archs
+                f = Field(X, Y, Z, arch, grid)
+                run_similar_field_tests(f)
+
+                for dims in (3, (1, 2), (1, 2, 3))
+                    f = ReducedField(X, Y, Z, arch, grid, dims=dims)
+                    run_similar_field_tests(f)
+                end
+            end
+        end
     end
 end
