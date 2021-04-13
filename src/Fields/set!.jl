@@ -1,6 +1,6 @@
 using CUDA
 using KernelAbstractions: @kernel, @index, CUDADevice
-using Oceananigans.Architectures: device, GPU
+using Oceananigans.Architectures: device, GPU, AbstractCPUArchitecture, AbstractGPUArchitecture
 using Oceananigans.Utils: work_layout
 
 function set!(Φ::NamedTuple; kwargs...)
@@ -11,17 +11,14 @@ function set!(Φ::NamedTuple; kwargs...)
     return nothing
 end
 
-set!(u::AbstractField, v::Number) = @. u.data.parent = v
+set!(u::AbstractField, v::Number) = parent(u) .= v
 
 set!(u::AbstractField{X, Y, Z, A}, v::AbstractField{X, Y, Z, A}) where {X, Y, Z, A} =
-    @. u.data.parent = v.data.parent
+    parent(u) .= parent(v)
 
 # Niceties
-const AbstractCPUField =
-    AbstractField{X, Y, Z, A, G} where {X, Y, Z, A<:OffsetArray{T, D, <:Array} where {T, D}, G}
-
-const AbstractReducedCPUField =
-    AbstractReducedField{X, Y, Z, A, G} where {X, Y, Z, A<:OffsetArray{T, D, <:Array} where {T, D}, G}
+const AbstractCPUField = AbstractField{X, Y, Z, <:AbstractCPUArchitecture} where {X, Y, Z}
+const AbstractReducedCPUField = AbstractReducedField{X, Y, Z, <:AbstractCPUArchitecture} where {X, Y, Z}
 
 "Set the CPU field `u` to the array `v`."
 function set!(u::AbstractCPUField, v::Array)
@@ -48,11 +45,8 @@ set!(u::AbstractCPUField, f::Function) = interior(u) .= f.(nodes(u; reshape=true
 #####
 
 @hascuda begin
-    const AbstractGPUField =
-        AbstractField{X, Y, Z, A, G} where {X, Y, Z, A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
-
-    const AbstractReducedGPUField =
-        AbstractReducedField{X, Y, Z, A, G} where {X, Y, Z, A<:OffsetArray{T, D, <:CuArray} where {T, D}, G}
+    const AbstractGPUField = AbstractField{X, Y, Z, <:AbstractGPUArchitecture} where {X, Y, Z}
+    const AbstractReducedGPUField = AbstractReducedField{X, Y, Z, <:AbstractGPUArchitecture} where {X, Y, Z}
 
     """ Returns a field on the CPU with `nothing` boundary conditions. """
     function similar_cpu_field(u)
@@ -85,10 +79,10 @@ set!(u::AbstractCPUField, f::Function) = interior(u) .= f.(nodes(u; reshape=true
     end
 
     """ Set the CPU field `u` data to the GPU field data of `v`. """
-    set!(u::AbstractCPUField, v::AbstractGPUField) = u.data.parent .= Array(v.data.parent)
+    set!(u::AbstractCPUField, v::AbstractGPUField) = parent(u) .= Array(parent(v))
     
     """ Set the GPU field `u` data to the CPU field data of `v`. """
-    set!(u::AbstractGPUField, v::AbstractCPUField) = copyto!(u.data.parent, v.data.parent)
+    set!(u::AbstractGPUField, v::AbstractCPUField) = copyto!(parent(u), parent(v))
     
     """ Set the GPU field `u` data to the function `f(x, y, z)`. """
     function set!(u::AbstractGPUField, f::Function)
