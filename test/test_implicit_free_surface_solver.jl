@@ -22,16 +22,16 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     jmid = Int(floor(grid.Ny / 2)) + 1
     CUDA.@allowscalar u.data[imid, jmid, 1] = 1
 
-    implicit_free_surface_step!(model.free_surface, Event(), model, Δt, 1.5)
+    implicit_free_surface_step!(model.free_surface, Event(device(arch)), model, Δt, 1.5)
 
     # Extract right hand side "truth"
-    right_hand_side = model.free_surfce.implicit_step_right_hand_side
+    right_hand_side = model.free_surface.implicit_step_right_hand_side
 
     # Compute left hand side "solution"
     g = g_Earth
     η = model.free_surface.η
-    ∫ᶻ_Axᶠᶜᶜ = free_surface.vertically_integrated_lateral_face_areas.xᶠᶜᶜ
-    ∫ᶻ_Ayᶜᶠᶜ = free_surface.vertically_integrated_lateral_face_areas.yᶜᶠᶜ
+    ∫ᶻ_Axᶠᶜᶜ = model.free_surface.vertically_integrated_lateral_face_areas.xᶠᶜᶜ
+    ∫ᶻ_Ayᶜᶠᶜ = model.free_surface.vertically_integrated_lateral_face_areas.yᶜᶠᶜ
 
     left_hand_side = Field(Center, Center, Center, arch, grid)
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
