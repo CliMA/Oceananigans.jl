@@ -19,6 +19,8 @@ fill_horizontal_velocity_halos!(args...) = nothing
 ##### HydrostaticFreeSurfaceModel definition
 #####
 
+FreeSurfaceDisplacementField(velocities, arch, grid) = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
+
 include("compute_w_from_continuity.jl")
 include("explicit_free_surface.jl")
 include("implicit_free_surface.jl")
