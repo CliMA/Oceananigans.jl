@@ -21,12 +21,6 @@ end
     @inbounds RHS[i, j, k] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
 end
 
-@kernel function calculate_pressure_source_term_fourier_tridiagonal_solver!(RHS, grid, Δt, U★)
-    i, j, k = @index(Global, NTuple)
-
-    @inbounds RHS[i, j, k] = ΔzC(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
-end
-
 source_term_storage(solver::FFTBasedPoissonSolver) = solver.storage
 source_term_storage(solver::FourierTridiagonalPoissonSolver) = solver.batched_tridiagonal_solver.f
 

@@ -11,24 +11,27 @@ function ImplicitFreeSurfaceSolver(arch, template_field,
                                    maxit=nothing, 
                                    tol=nothing)
        
-    ∇²_baro=∇²_baro_operator( vertically_integrated_lateral_face_areas.Ax, vertically_integrated_lateral_face_areas.Ay)
+    ∇²_baro = ∇²_baro_operator(vertically_integrated_lateral_face_areas.Ax, vertically_integrated_lateral_face_areas.Ay)
 
-    if isnothing( Amatrix_operator )
+    if isnothing(Amatrix_operator)
         function Amatrix_function!(result, x, arch, grid, bcs; args...)
-            Δt=args.data.Δt
-             g=args.data.g
+            Δt = args.data.Δt
+            g = args.data.g
+
             event = launch!(arch, grid, :xy, implicit_η!, ∇²_baro, Δt, g, grid, x, result, dependencies=Event(device(arch)))
             wait(device(arch), event)
-            fill_halo_regions!(result, bcs, arch, grid)
+
+            fill_halo_regions!(result, arch)
+
             return nothing
         end
     end
 
-    if isnothing( maxit )
+    if isnothing(maxit)
         maxit = template_field.grid.Nx * template_field.grid.Ny
     end
 
-    if isnothing( tol )
+    if isnothing(tol)
         tol = 1.e-13
     end
 

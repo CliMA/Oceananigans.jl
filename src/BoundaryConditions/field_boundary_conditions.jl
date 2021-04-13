@@ -37,6 +37,7 @@ DefaultBoundaryCondition(::Type{Grids.Periodic}, loc) = PeriodicBoundaryConditio
 Returns `nothing`.
 """
 DefaultBoundaryCondition(::Type{Flat}, loc) = nothing
+DefaultBoundaryCondition(::Type{Flat}, ::Type{Nothing}) = nothing
 
 """
     DefaultBoundaryCondition(::Type{Bounded}, ::Type{Center})

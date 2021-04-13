@@ -1,4 +1,4 @@
-using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!
+using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!, set_source_term!
 using Oceananigans.Solvers: poisson_eigenvalues
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: _compute_w_from_continuity!
 
@@ -64,14 +64,6 @@ function random_divergence_free_source_term(FT, arch, grid)
     wait(device(arch), event)
 
     return R
-end
-
-function compute_∇²!(∇²ϕ, ϕ, arch, grid)
-    fill_halo_regions!(ϕ, arch)
-    event = launch!(arch, grid, :xyz, ∇²!, grid, ϕ.data, ∇²ϕ.data, dependencies=Event(device(arch)))
-    wait(device(arch), event)
-    fill_halo_regions!(∇²ϕ, arch)
-    return nothing
 end
 
 #####
@@ -155,10 +147,7 @@ function vertically_stretched_poisson_solver_correct_answer(FT, arch, topo, Nx, 
 
     R = random_divergence_free_source_term(FT, arch, vs_grid)
 
-    # set_right_hand_side!(solver, R)
-    F = CUDA.@allowscalar reshape(vs_grid.Δzᵃᵃᶠ[1:Nz], 1, 1, Nz) .* R  # RHS needs to be multiplied by ΔzC
-    solver.batched_tridiagonal_solver.f .= F
-
+    set_source_term!(solver, R)
     solve_poisson_equation!(solver)
 
     # interior(ϕ) = solution(solver) or solution!(interior(ϕ), solver)

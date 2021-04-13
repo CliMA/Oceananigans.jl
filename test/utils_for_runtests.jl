@@ -14,6 +14,15 @@ end
     @inbounds div[i, j, k] = divᶜᶜᶜ(i, j, k, grid, u, v, w)
 end
 
+function compute_∇²!(∇²ϕ, ϕ, arch, grid)
+    fill_halo_regions!(ϕ, arch)
+    child_arch = child_architecture(arch)
+    event = launch!(child_arch, grid, :xyz, ∇²!, grid, ϕ.data, ∇²ϕ.data, dependencies=Event(device(child_arch)))
+    wait(device(child_arch), event)
+    fill_halo_regions!(∇²ϕ, arch)
+    return nothing
+end
+
 #####
 ##### Useful utilities
 #####
