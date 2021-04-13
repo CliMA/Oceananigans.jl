@@ -14,11 +14,7 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     # Create a model
     model = HydrostaticFreeSurfaceModel(architecture = arch,
                                         grid = grid,
-                                        free_surface=ImplicitFreeSurface(),
-                                        advection = nothing,
-                                        coriolis = nothing,
-                                        closure = nothing)
-
+                                        free_surface=ImplicitFreeSurface())
 
     # Create a divergent velocity
     u, v, w = model.velocities
