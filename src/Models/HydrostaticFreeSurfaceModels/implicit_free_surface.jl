@@ -80,15 +80,9 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, velociti
 
     fill_halo_regions!(η, model.architecture)
 
-    # Compute the vertically integrated volume flux
     compute_vertically_integrated_volume_flux!(∫ᶻ_Q, model, velocities_update)
 
-    ## Compute volume scaled divergence of the barotropic transport and put into solver RHS
-    compute_implicit_free_surface_right_hand_side!(rhs, model, g, Δt, ∫ᶻ_Q)
-
-    # Subtract Azᵃᵃᵃ(i, j, 1, grid) * η[i, j, 1] / (g * Δt^2)
-    event = add_previous_free_surface_contribution(free_surface, model, Δt)
-    wait(device(model.architecture), event)
+    compute_implicit_free_surface_right_hand_side!(rhs, model, g, Δt, ∫ᶻ_Q, η)
 
     fill_halo_regions!(rhs, model.architecture)
 
@@ -98,7 +92,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, velociti
     return nothing
 end
 
-function compute_implicit_free_surface_right_hand_side!(rhs, model, g, Δt, ∫ᶻ_U)
+function compute_implicit_free_surface_right_hand_side!(rhs, model, g, Δt, ∫ᶻ_Q, η)
 
     event = launch!(model.architecture,
                     model.grid,
@@ -108,7 +102,8 @@ function compute_implicit_free_surface_right_hand_side!(rhs, model, g, Δt, ∫�
                     model.grid,
                     g,
                     Δt,
-                    ∫ᶻ_U,
+                    ∫ᶻ_Q,
+                    η,
                     dependencies=Event(device(model.architecture)))
 
 
@@ -122,39 +117,8 @@ end
 """ Compute the divergence of fluxes Qu and Qv. """
 @inline flux_div_xyᶜᶜᵃ(i, j, k, grid, Qu, Qv) = δxᶜᵃᵃ(i, j, k, grid, Qu) + δyᵃᶜᵃ(i, j, k, grid, Qv)
 
-@kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻ_Q)
+@kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻ_Q, η)
     i, j = @index(Global, NTuple)
-    @inbounds rhs[i, j, 1] = flux_div_xyᶜᶜᵃ(i, j, 1, grid, ∫ᶻ_Q.u, ∫ᶻ_Q.v) / (g * Δt^2)
-end
-
-#=
-@kernel function _compute_integrated_volume_flux_divergence!(divergence, grid, ∫ᶻ_U)
-    # Here we use a integral form that has been multiplied through by volumes to be 
-    # consistent with the symmetric "A" matrix.
-    # The quantities differenced here are transports i.e. normal velocity vectors
-    # integrated over an area.
-    #
-    i, j = @index(Global, NTuple)
-    @inbounds divergence[i, j, 1] = δxᶜᵃᵃ(i, j, 1, grid, ∫ᶻ_Q.u) + δyᵃᶜᵃ(i, j, 1, grid, ∫ᶻ_Q.v)
-end
-=#
-
-function add_previous_free_surface_contribution(free_surface, model, Δt)
-   g = model.free_surface.gravitational_acceleration
-   event = launch!(model.architecture,
-                   model.grid,
-                   :xy,
-                   _add_previous_free_surface_contribution!,
-                   free_surface.implicit_step_right_hand_side,
-                   model.grid,
-                   g,
-                   Δt,
-                   free_surface.η,
-                   dependencies=Event(device(model.architecture)))
-    return event
-end
-
-@kernel function _add_previous_free_surface_contribution!(RHS, grid, g, Δt, η)
-    i, j = @index(Global, NTuple)
-    @inbounds RHS[i, j, 1] -= Azᶜᶜᵃ(i, j, 1, grid) * η[i, j, 1] / (g * Δt^2)
+    @inbounds rhs[i, j, 1] = - Azᶜᶜᵃ(i, j, 1, grid) * η[i, j, 1] / (g * Δt^2)
+                               flux_div_xyᶜᶜᵃ(i, j, 1, grid, ∫ᶻ_Q.u, ∫ᶻ_Q.v) / (g * Δt)
 end
