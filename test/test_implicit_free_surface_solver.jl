@@ -10,10 +10,13 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
 function run_implicit_free_surface_solver_tests(arch, grid)
 
     Δt = 900
+    Nx = grid.Nx
+    Ny = grid.Ny
 
     # Create a model
     model = HydrostaticFreeSurfaceModel(architecture = arch,
                                         grid = grid,
+                                        momentum_advection = nothing,
                                         free_surface=ImplicitFreeSurface())
 
     # Create a divergent velocity
