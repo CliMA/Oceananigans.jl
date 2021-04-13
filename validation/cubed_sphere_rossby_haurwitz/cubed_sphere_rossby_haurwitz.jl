@@ -45,15 +45,19 @@ ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
 Logging.global_logger(OceananigansLogger())
 
-dd = DataDep("cubed_sphere_32_grid",
+dd32 = DataDep("cubed_sphere_32_grid",
     "Conformal cubed sphere grid with 32×32 grid points on each face",
     "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
     "b1dafe4f9142c59a2166458a2def743cd45b20a4ed3a1ae84ad3a530e1eff538" # sha256sum
 )
 
-DataDeps.register(dd)
+dd96 = DataDep("cubed_sphere_96_grid",
+    "Conformal cubed sphere grid with 96×96 grid points on each face",
+    "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cs96/cubed_sphere_96_grid.jld2"
+)
 
-cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
+DataDeps.register(dd32)
+DataDeps.register(dd96)
 
 function diagnose_velocities_from_streamfunction(ψ, grid)
     ψᶠᶠᶜ = Field(Face, Face,   Center, CPU(), grid, nothing, nothing)
@@ -78,12 +82,12 @@ function diagnose_velocities_from_streamfunction(ψ, grid)
     return uᶠᶜᶜ, vᶜᶠᶜ, ψᶠᶠᶜ
 end
 
-function cubed_sphere_rossby_haurwitz()
+function cubed_sphere_rossby_haurwitz(grid_filepath)
 
     ## Grid setup
 
     H = 8kilometers
-    grid = ConformalCubedSphereGrid(cs32_filepath, Nz=1, z=(-H, 0))
+    grid = ConformalCubedSphereGrid(grid_filepath, Nz=1, z=(-H, 0))
 
     ## Model setup
 
@@ -91,7 +95,6 @@ function cubed_sphere_rossby_haurwitz()
               architecture = CPU(),
                       grid = grid,
         momentum_advection = VectorInvariant(),
-        # momentum_advection = nothing,
               free_surface = ExplicitFreeSurface(gravitational_acceleration=100),
                   coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
                    closure = nothing,
@@ -131,7 +134,7 @@ function cubed_sphere_rossby_haurwitz()
     # arguments were u(θ, ϕ), λ |-> ϕ, θ |-> ϕ
     uᵢ(λ, ϕ, z) = u(rescale²(ϕ), rescale¹(λ))
     vᵢ(λ, ϕ, z) = v(rescale²(ϕ), rescale¹(λ))
-    ηᵢ(λ, ϕ, z) = h(rescale²(ϕ), rescale¹(λ))
+    ηᵢ(λ, ϕ)    = h(rescale²(ϕ), rescale¹(λ))
 
     # set!(model, u=uᵢ, v=vᵢ, η = ηᵢ)
 
@@ -143,9 +146,9 @@ function cubed_sphere_rossby_haurwitz()
 
     ## Simulation setup
 
-    # Compute amount of time needed for a 360° (2π) rotation.
+    # Compute amount of time needed for a 45° rotation.
     angular_velocity = (n * (3+n) * ω - 2Ω) / ((1+n) * (2+n))
-    stop_time = 2π / abs(angular_velocity)
+    stop_time = deg2rad(45) / abs(angular_velocity)
     @info "Stop time = $(prettytime(stop_time))"
 
     Δt = 20seconds
@@ -155,6 +158,12 @@ function cubed_sphere_rossby_haurwitz()
     wave_propagation_time_scale = min_spacing / gravity_wave_speed
     gravity_wave_cfl = Δt / wave_propagation_time_scale
     @info "Gravity wave CFL = $gravity_wave_cfl"
+
+    if !isnothing(model.closure)
+        ν = model.closure.νh
+        diffusive_cfl = ν * Δt / min_spacing^2
+        @info "Diffusive CFL = $diffusive_cfl"
+    end
 
     cfl = CFL(Δt, accurate_cell_advection_timescale)
 
@@ -187,3 +196,15 @@ function cubed_sphere_rossby_haurwitz()
 
     return simulation
 end
+
+cubed_sphere_rossby_haurwitz(datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2")
+cubed_sphere_rossby_haurwitz(datadep"cubed_sphere_96_grid/cubed_sphere_96_grid.jld2")
+
+include("animate_on_map_projection.jl")
+
+projections = [
+    ccrs.NearsidePerspective(central_longitude=0, central_latitude=30),
+    ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
+]
+
+animate_rossby_haurwitz(projections=projections)
