@@ -28,12 +28,11 @@ export
     divᶜᶜᶜ, div_xyᶜᶜᵃ, div_xzᶜᵃᶜ, div_yzᵃᶜᶜ, ζ₃ᶠᶠᵃ,
     ∇²ᶜᶜᶜ, ∇²hᶜᶜᶜ, ∇²hᶠᶜᶜ, ∇²hᶜᶠᶜ
 
+using Oceananigans.Grids
+
 #####
 ##### Convinient aliases
 #####
-
-using Oceananigans.Grids: RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RegularLatitudeLongitudeGrid
-using Oceananigans.Grids: AbstractGrid, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 
 const AG  = AbstractGrid
 const ARG = AbstractRectilinearGrid
