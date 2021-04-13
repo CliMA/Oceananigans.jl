@@ -40,7 +40,7 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     # Compare
-    extrema_tolerance = 1e-11
+    extrema_tolerance = 1e-10
     std_tolerance = 1e-13
 
     CUDA.@allowscalar begin
