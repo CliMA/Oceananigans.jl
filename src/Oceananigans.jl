@@ -57,6 +57,9 @@ export
     # Models
     IncompressibleModel, NonDimensionalIncompressibleModel, HydrostaticFreeSurfaceModel, fields,
 
+    # Hydrostatic free surface model
+    ExplicitFreeSurface, VectorInvariant, HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
+
     # Time stepping
     Clock, TimeStepWizard, time_step!,
 
@@ -74,6 +77,9 @@ export
 
     # Abstract operations
     ∂x, ∂y, ∂z, @at,
+
+    # Cubed sphere
+    ConformalCubedSphereGrid,
 
     # Utils
     prettytime

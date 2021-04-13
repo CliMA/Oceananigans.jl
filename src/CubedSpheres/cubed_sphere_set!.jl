@@ -2,6 +2,13 @@ using Oceananigans.Fields: AbstractField
 
 import Oceananigans.Fields: set!
 
+function set!(u::ConformalCubedSphereField, v::ConformalCubedSphereField)
+    for (u_face, v_face) in zip(u.faces, v.faces)
+        @. u_face.data.parent = v_face.data.parent
+    end
+    return nothing
+end
+
 const ConformalCubedSphereFaceFieldᶜᶜᶜ = AbstractField{Center, Center, Center, A, <:ConformalCubedSphereFaceGrid} where A
 const ConformalCubedSphereFaceFieldᶠᶜᶜ = AbstractField{Face,   Center, Center, A, <:ConformalCubedSphereFaceGrid} where A
 const ConformalCubedSphereFaceFieldᶜᶠᶜ = AbstractField{Center, Face,   Center, A, <:ConformalCubedSphereFaceGrid} where A
