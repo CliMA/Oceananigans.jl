@@ -18,7 +18,7 @@ function run_implicit_free_surface_solver_tests(arch, grid)
                                         grid = grid,
                                         momentum_advection = nothing,
                                         free_surface=ImplicitFreeSurface())
-
+    
     # Create a divergent velocity
     u, v, w = model.velocities
     imid = Int(floor(grid.Nx / 2)) + 1
@@ -51,7 +51,6 @@ function run_implicit_free_surface_solver_tests(arch, grid)
 
     return nothing
 end
-
 
 @testset "Implicit free surface solver tests" begin
     for arch in archs

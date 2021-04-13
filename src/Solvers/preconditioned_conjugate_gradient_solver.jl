@@ -241,8 +241,8 @@ function iterating(solver)
 end
 
 function Base.show(io::IO, solver::PreconditionedConjugateGradientSolver)
-    print(io, "Oceanigans compatible preconditioned conjugate gradient solver.\n")
-    print(io, " Problem size = "  , size(solver.settings.q) )
-    print(io, "\n Grid = "  , solver.settings.grid  )
+    print(io, "Oceananigans-compatible preconditioned conjugate gradient solver.\n")
+    print(io, " Problem size = "  , size(solver.q), '\n')
+    print(io, " Grid = "  , solver.grid)
     return nothing
 end

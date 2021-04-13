@@ -6,7 +6,7 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 
 @kernel function ∇²!(∇²f, grid, f)
     i, j, k = @index(Global, NTuple)
-    @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
+    @inbounds ∇²f[i, j, k] = ∇²ᶜᶜᶜ(i, j, k, grid, f)
 end
 
 @kernel function divergence!(grid, u, v, w, div)

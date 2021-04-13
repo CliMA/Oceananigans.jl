@@ -1,4 +1,4 @@
-using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!
+using Oceananigans.Solvers: solve_for_pressure!, solve_poisson_equation!, set_source_term!
 using Oceananigans.Solvers: poisson_eigenvalues
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: _compute_w_from_continuity!
 
@@ -146,9 +146,8 @@ function vertically_stretched_poisson_solver_correct_answer(FT, arch, topo, Nx, 
     ∇²ϕ = CenterField(FT, arch, vs_grid, p_bcs)
 
     R = random_divergence_free_source_term(FT, arch, vs_grid)
-    F = CUDA.@allowscalar reshape(vs_grid.Δzᵃᵃᶠ[1:Nz], 1, 1, Nz) .* R  # RHS needs to be multiplied by ΔzC
-    solver.batched_tridiagonal_solver.f .= F
 
+    set_source_term!(solver, R)
     solve_poisson_equation!(solver)
 
     CUDA.@allowscalar interior(ϕ) .= real.(solver.storage)
