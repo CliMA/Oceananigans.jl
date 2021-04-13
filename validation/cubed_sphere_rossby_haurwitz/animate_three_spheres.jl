@@ -26,17 +26,6 @@ function plot_cubed_sphere_tracer_field!(fig, ax, var, grid; add_colorbar, trans
 
         var_face = var[face][:, :, 1]
 
-        # Remove very specific problematic grid cells near λ = 180° on face 6 that mess up the plot.
-        # May be related to https://github.com/SciTools/cartopy/issues/1151
-        # Not needed for Orthographic or NearsidePerspective projection so let's use those.
-        # if face == 6
-        #     for i in 1:Nx+1, j in 1:Ny+1
-        #         if isapprox(λᶠᶠᵃ[i, j], -180, atol=15)
-        #             var_face[min(i, Nx), min(j, Ny)] = NaN
-        #         end
-        #     end
-        # end
-
         var_face_masked = ma.masked_where(np.isnan(var_face), var_face)
 
         im = ax.pcolormesh(λᶠᶠᵃ, φᶠᶠᵃ, var_face_masked; transform, cmap, vmin, vmax)
@@ -53,7 +42,7 @@ function plot_cubed_sphere_tracer_field!(fig, ax, var, grid; add_colorbar, trans
     return ax
 end
 
-function animate_rossby_haurwitz(; projections=[ccrs.Robinson()])
+function animate_rossby_haurwitz_three_spheres(; projection=ccrs.NearsidePerspective(central_longitude=0, central_latitude=0))
 
     ## Extract data
 
@@ -61,7 +50,7 @@ function animate_rossby_haurwitz(; projections=[ccrs.Robinson()])
 
     iterations = parse.(Int, keys(file["timeseries/t"]))
 
-    ## Makie movie of tracer field h
+    ## Makie movie of u, v, η
 
     for (n, i) in enumerate(iterations)
         @info "Plotting iteration $i/$(iterations[end]) (frame $n/$(length(iterations)))..."
@@ -71,23 +60,29 @@ function animate_rossby_haurwitz(; projections=[ccrs.Robinson()])
         η = file["timeseries/η/$i"]
 
         t = prettytime(file["timeseries/t/$i"])
-        plot_title = "Rossby-Haurwitz wave (mode 4): η(λ, φ) at t = $t"
+        plot_title = "Rossby-Haurwitz wave (mode 4) at t = $t"
 
         fig = plt.figure(figsize=(16, 9))
-        n_subplots = length(projections)
-        subplot_kwargs = (transform=ccrs.PlateCarree(), cmap=cmocean.cm.balance, vmin=8000-80, vmax=8000+80)
 
-        for (n, projection) in enumerate(projections)
-            ax = fig.add_subplot(1, n_subplots, n, projection=projection)
-            plot_cubed_sphere_tracer_field!(fig, ax, η, file["grid"]; add_colorbar = (n == n_subplots), subplot_kwargs...)
-            n_subplots == 1 && ax.set_title(plot_title)
+        ax = fig.add_subplot(1, 3, 1, projection=projection)
+        plot_cubed_sphere_tracer_field!(fig, ax, u, file["grid"], transform=ccrs.PlateCarree(), cmap=cmocean.cm.balance, vmin=-80, vmax=80, add_colorbar=false)
+        gl = ax.gridlines(color="gray", alpha=0.5, linestyle="--")
+        gl.xlocator = mticker.FixedLocator(-180:30:180)
+        gl.ylocator = mticker.FixedLocator(-80:20:80)
 
-            gl = ax.gridlines(color="gray", alpha=0.5, linestyle="--")
-            gl.xlocator = mticker.FixedLocator(-180:30:180)
-            gl.ylocator = mticker.FixedLocator(-80:20:80)
-        end
+        ax = fig.add_subplot(1, 3, 2, projection=projection)
+        plot_cubed_sphere_tracer_field!(fig, ax, v, file["grid"], transform=ccrs.PlateCarree(), cmap=cmocean.cm.balance, vmin=-80, vmax=80, add_colorbar=false)
+        gl = ax.gridlines(color="gray", alpha=0.5, linestyle="--")
+        gl.xlocator = mticker.FixedLocator(-180:30:180)
+        gl.ylocator = mticker.FixedLocator(-80:20:80)
 
-        n_subplots > 1 && fig.suptitle(plot_title, y=0.85)
+        ax = fig.add_subplot(1, 3, 3, projection=projection)
+        plot_cubed_sphere_tracer_field!(fig, ax, η, file["grid"], transform=ccrs.PlateCarree(), cmap=cmocean.cm.balance, vmin=8000, vmax=8250, add_colorbar=false)
+        gl = ax.gridlines(color="gray", alpha=0.5, linestyle="--")
+        gl.xlocator = mticker.FixedLocator(-180:30:180)
+        gl.ylocator = mticker.FixedLocator(-80:20:80)
+
+        fig.suptitle(plot_title, y=0.75)
 
         filename = @sprintf("cubed_sphere_rossby_haurwitz_%04d.png", n)
         plt.savefig(filename, dpi=200, bbox_inches="tight")
@@ -97,7 +92,7 @@ function animate_rossby_haurwitz(; projections=[ccrs.Robinson()])
     close(file)
 
     filename_pattern = "cubed_sphere_rossby_haurwitz_%04d.png"
-    output_filename  = "cubed_sphere_rossby_haurwitz.mp4"
+    output_filename  = "cubed_sphere_rossby_haurwitz_three_spheres.mp4"
 
     # Need extra crop video filter in case we end up with odd number of pixels in width or height.
     # See: https://stackoverflow.com/a/29582287

@@ -19,8 +19,10 @@ end
 
 function (p::Progress)(sim)
     wall_time = (time_ns() - p.interval_start_time) * 1e-9
+    progress = 100 * (sim.model.clock.time / sim.stop_time)
 
-    @info @sprintf("Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e, Δ(wall time): %s",
+    @info @sprintf("[%06.2f%%] Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e, Δ(wall time): %s",
+                   progress,
                    prettytime(sim.model.clock.time),
                    sim.model.clock.iteration,
                    maximum(abs, sim.model.velocities.u),
@@ -88,9 +90,9 @@ function cubed_sphere_rossby_haurwitz()
     model = HydrostaticFreeSurfaceModel(
               architecture = CPU(),
                       grid = grid,
-      # momentum_advection = VectorInvariant(),
-        momentum_advection = nothing,
-              free_surface = ExplicitFreeSurface(gravitational_acceleration=10),
+        momentum_advection = VectorInvariant(),
+        # momentum_advection = nothing,
+              free_surface = ExplicitFreeSurface(gravitational_acceleration=100),
                   coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
                    closure = nothing,
                    tracers = nothing,
@@ -102,7 +104,7 @@ function cubed_sphere_rossby_haurwitz()
 
     R = grid.faces[1].radius
     K = 7.848e-6
-    ω = 7.848e-6
+    ω = 0
     n = 4
 
     g = model.free_surface.gravitational_acceleration
@@ -117,7 +119,7 @@ function cubed_sphere_rossby_haurwitz()
     u(θ, ϕ) =  R * ω * cos(θ) + R * K * cos(θ)^(n-1) * (n * sin(θ)^2 - cos(θ)^2) * cos(n*ϕ)
     v(θ, ϕ) = -n * K * R * cos(θ)^(n-1) * sin(θ) * sin(n*ϕ)
 
-    h(θ, ϕ) =  R^2/g * (A(θ) + B(θ) * cos(n * ϕ) + C(θ) * cos(2n * ϕ))
+    h(θ, ϕ) = H + R^2/g * (A(θ) + B(θ) * cos(n * ϕ) + C(θ) * cos(2n * ϕ))
 
     # Total initial conditions
     # Previously: θ ∈ [-π/2, π/2] is latitude, ϕ ∈ [0, 2π) is longitude
@@ -141,11 +143,12 @@ function cubed_sphere_rossby_haurwitz()
 
     ## Simulation setup
 
-    # Compute number of days needed for a 45° rotation.
-    speed = (n * (3+n) * ω - 2Ω) / ((1+n) * (2+n))
-    n_days = abs(45 * π / 180 / speed / day)
+    # Compute amount of time needed for a 360° (2π) rotation.
+    angular_velocity = (n * (3+n) * ω - 2Ω) / ((1+n) * (2+n))
+    stop_time = 2π / abs(angular_velocity)
+    @info "Stop time = $(prettytime(stop_time))"
 
-    Δt = 1minute
+    Δt = 20seconds
 
     gravity_wave_speed = sqrt(g * H)
     min_spacing = filter(!iszero, grid.faces[1].Δyᶠᶠᵃ) |> minimum
@@ -157,7 +160,7 @@ function cubed_sphere_rossby_haurwitz()
 
     simulation = Simulation(model,
                         Δt = Δt,
-                 stop_time = 1day, # n_days * days,
+                 stop_time = stop_time,
         iteration_interval = 20,
                   progress = Progress(time_ns()),
                 parameters = (; cfl)
@@ -166,10 +169,7 @@ function cubed_sphere_rossby_haurwitz()
     fields_to_check = (
         u = model.velocities.u,
         v = model.velocities.v,
-        η = model.free_surface.η,
-        Gu = model.timestepper.Gⁿ.u,
-        Gv = model.timestepper.Gⁿ.v,
-        Gη = model.timestepper.Gⁿ.η
+        η = model.free_surface.η
     )
 
     simulation.diagnostics[:state_checker] =
@@ -179,7 +179,7 @@ function cubed_sphere_rossby_haurwitz()
 
     simulation.output_writers[:fields] =
     JLD2OutputWriter(model, output_fields,
-        schedule = TimeInterval(1hour),
+        schedule = TimeInterval(5minutes),
           prefix = "cubed_sphere_rossby_haurwitz",
            force = true)
 
