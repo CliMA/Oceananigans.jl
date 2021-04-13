@@ -11,6 +11,7 @@ Type representing a field computed from an operand.
 """
 struct ComputedField{X, Y, Z, S, A, D, G, O, C} <: AbstractField{X, Y, Z, A, G}
                    data :: D
+           architecture :: A
                    grid :: G
                 operand :: O
     boundary_conditions :: C
@@ -28,7 +29,7 @@ struct ComputedField{X, Y, Z, S, A, D, G, O, C} <: AbstractField{X, Y, Z, A, G}
         # Use FieldStatus if we want to avoid always recomputing
         status = recompute_safely ? nothing : FieldStatus(0.0)
 
-        return new{X, Y, Z, typeof(status), A, D, G, O, C}(data, grid, operand, boundary_conditions, status)
+        return new{X, Y, Z, typeof(status), A, D, G, O, C}(data, arch, grid, operand, boundary_conditions, status)
     end
 end
 

@@ -9,12 +9,13 @@ The field is defined on a grid `G` and has field boundary conditions `B`.
 """
 struct Field{X, Y, Z, A, D, G, B} <: AbstractField{X, Y, Z, A, G}
                    data :: D
+           architecture :: A
                    grid :: G
     boundary_conditions :: B
 
     function Field{X, Y, Z}(data::D, arch::A, grid::G, bcs::B) where {X, Y, Z, D, A, G, B}
         validate_field_data(X, Y, Z, data, grid)
-        return new{X, Y, Z, A, D, G, B}(data, grid, bcs)
+        return new{X, Y, Z, A, D, G, B}(data, arch, grid, bcs)
     end
 end
 

@@ -51,6 +51,7 @@ where `func` is callable with signature `func(x, y, z)`.
 FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid)
 
 # Ordinary functions needed for fields
+architecture(f::FunctionField) = nothing
 Base.parent(f::FunctionField) = f
 
 # Various possibilities

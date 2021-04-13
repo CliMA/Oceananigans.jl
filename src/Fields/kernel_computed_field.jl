@@ -4,6 +4,7 @@ using Oceananigans.Utils: tupleit
 
 struct KernelComputedField{X, Y, Z, A, S, D, G, K, C, F, P} <: AbstractField{X, Y, Z, A, G}
                      data :: D
+             architecture :: A
                      grid :: G
                    kernel :: K
       boundary_conditions :: C
@@ -16,7 +17,7 @@ struct KernelComputedField{X, Y, Z, A, S, D, G, K, C, F, P} <: AbstractField{X, 
                                           computed_dependencies = (),
                                           parameters::P = nothing,
                                           data = nothing,
-                                          recompute_safely = true) where {X, Y, Z, K, P}
+                                          recompute_safely = true) where {X, Y, Z, A, K, P}
 
         computed_dependencies = tupleit(computed_dependencies)
 
@@ -34,7 +35,8 @@ struct KernelComputedField{X, Y, Z, A, S, D, G, K, C, F, P} <: AbstractField{X, 
         C = typeof(boundary_conditions)
 
         return new{X, Y, Z, A, S,
-                   D, G, K, C, F, P}(data, grid, kernel, boundary_conditions, computed_dependencies, parameters)
+                   D, G, K, C, F, P}(data, arch, grid, kernel, boundary_conditions,
+                                     computed_dependencies, parameters)
     end
 end
 

@@ -111,7 +111,7 @@ end
 @inline instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
 
 "Returns the architecture where the field data `f.data` is stored."
-architecture(f::AbstractField{X, Y, Z, Arch}) where {X, Y, Z, Arch} = Arch()
+architecture(f::AbstractField) = f.architecture
 
 "Returns the length of a field's `data`."
 @inline Base.length(f::AbstractField) = length(f.data)

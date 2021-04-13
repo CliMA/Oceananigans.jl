@@ -9,11 +9,12 @@ using Oceananigans.Grids: interior_parent_indices
 Type representing an average over a field-like object.
 """
 struct AveragedField{X, Y, Z, S, A, D, G, N, O} <: AbstractReducedField{X, Y, Z, A, G, N}
-       data :: D
-       grid :: G
-       dims :: NTuple{N, Int}
-    operand :: O
-     status :: S
+            data :: D
+    architecture :: A
+            grid :: G
+            dims :: NTuple{N, Int}
+         operand :: O
+          status :: S
 
     function AveragedField{X, Y, Z}(data::D, arch::A, grid::G, dims, operand::O;
                                     recompute_safely=true) where {X, Y, Z, D, A, G, O}
@@ -27,11 +28,11 @@ struct AveragedField{X, Y, Z, S, A, D, G, N, O} <: AbstractReducedField{X, Y, Z,
         S = typeof(status)
         N = length(dims)
 
-        return new{X, Y, Z, S, A, D, G, N, O}(data, grid, dims, operand, status)
+        return new{X, Y, Z, S, A, D, G, N, O}(data, arch, grid, dims, operand, status)
     end
 
     function AveragedField{X, Y, Z}(data::D, arch::A, grid::G, dims, operand::O, status::S) where {X, Y, Z, D, A, G, O, S}
-        return new{X, Y, Z, S, A, D, G, length(dims), O}(data, grid, dims, operand, status)
+        return new{X, Y, Z, S, A, D, G, length(dims), O}(data, arch, grid, dims, operand, status)
     end
 end
 

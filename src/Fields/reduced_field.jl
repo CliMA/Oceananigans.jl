@@ -74,6 +74,7 @@ on a grid of type `G` that is 'reduced' over `N` dimensions.
 """
 struct ReducedField{X, Y, Z, A, D, G, N, B} <: AbstractReducedField{X, Y, Z, A, G, N}
                    data :: D
+           architecture :: A
                    grid :: G
                    dims :: NTuple{N, Int}
     boundary_conditions :: B
@@ -92,7 +93,7 @@ struct ReducedField{X, Y, Z, A, D, G, N, B} <: AbstractReducedField{X, Y, Z, A, 
 
         N = length(dims)
 
-        return new{X, Y, Z, A, D, G, N, B}(data, grid, dims, bcs)
+        return new{X, Y, Z, A, D, G, N, B}(data, arch, grid, dims, bcs)
     end
 end
 
