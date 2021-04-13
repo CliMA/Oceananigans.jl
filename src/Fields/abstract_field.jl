@@ -21,7 +21,9 @@ import Oceananigans.Utils: datatuple
 Abstract supertype for fields located at `(X, Y, Z)` with data stored in a container
 of type `A`. The field is defined on a grid `G`.
 """
-abstract type AbstractField{X, Y, Z, A, G} end
+abstract type AbstractField{X, Y, Z,
+                            A <: Union{AbstractArchitecture, Nothing},
+                            G <: Union{AbstractGrid, Nothing}} end
 
 function validate_field_data(X, Y, Z, data, grid)
     Tx, Ty, Tz = total_size((X, Y, Z), grid)
@@ -109,8 +111,7 @@ end
 @inline instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
 
 "Returns the architecture where the field data `f.data` is stored."
-architecture(f::AbstractField) = architecture(f.data)
-architecture(o::OffsetArray) = architecture(o.parent)
+architecture(f::AbstractField{X, Y, Z, Arch}) where {X, Y, Z, Arch} = Arch()
 
 "Returns the length of a field's `data`."
 @inline Base.length(f::AbstractField) = length(f.data)

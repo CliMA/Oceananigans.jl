@@ -4,7 +4,7 @@
 An `AbstractField` that returns a function evaluated at location `(X, Y, Z)` (and time, if
 `C` is not `Nothing`) when indexed at `i, j, k`.
 """
-struct FunctionField{X, Y, Z, C, P, F, G} <: AbstractField{X, Y, Z, F, G}
+struct FunctionField{X, Y, Z, C, P, F, G} <: AbstractField{X, Y, Z, Nothing, G}
           func :: F
           grid :: G
          clock :: C
@@ -51,7 +51,6 @@ where `func` is callable with signature `func(x, y, z)`.
 FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid)
 
 # Ordinary functions needed for fields
-architecture(::FunctionField) = nothing
 Base.parent(f::FunctionField) = f
 
 # Various possibilities

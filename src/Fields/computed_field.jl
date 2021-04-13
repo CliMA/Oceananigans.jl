@@ -9,25 +9,26 @@ using Oceananigans.BoundaryConditions: fill_halo_regions!
 
 Type representing a field computed from an operand.
 """
-struct ComputedField{X, Y, Z, S, A, G, O, C} <: AbstractField{X, Y, Z, A, G}
-                   data :: A
+struct ComputedField{X, Y, Z, S, A, D, G, O, C} <: AbstractField{X, Y, Z, A, G}
+                   data :: D
                    grid :: G
                 operand :: O
     boundary_conditions :: C
                  status :: S
 
-    function ComputedField{X, Y, Z}(data::A,
+    function ComputedField{X, Y, Z}(data::D,
+                                    arch::A,
                                     grid::G,
                                     operand::O,
                                     boundary_conditions::C;
-                                    recompute_safely=true) where {X, Y, Z, A, G, O, C}
+                                    recompute_safely=true) where {X, Y, Z, D, A, G, O, C}
 
         validate_field_data(X, Y, Z, data, grid)
 
         # Use FieldStatus if we want to avoid always recomputing
         status = recompute_safely ? nothing : FieldStatus(0.0)
 
-        return new{X, Y, Z, typeof(status), A, G, O, C}(data, grid, operand, boundary_conditions, status)
+        return new{X, Y, Z, typeof(status), A, D, G, O, C}(data, grid, operand, boundary_conditions, status)
     end
 end
 
@@ -76,7 +77,7 @@ function ComputedField(operand; data = nothing, recompute_safely = true,
         recompute_safely = false
     end
 
-    return ComputedField{loc[1], loc[2], loc[3]}(data, grid, operand, boundary_conditions; recompute_safely=recompute_safely)
+    return ComputedField{loc[1], loc[2], loc[3]}(data, arch, grid, operand, boundary_conditions; recompute_safely=recompute_safely)
 end
 
 """
@@ -87,7 +88,7 @@ Compute `comp.operand` and store the result in `comp.data`.
 function compute!(comp::ComputedField{X, Y, Z}, time=nothing) where {X, Y, Z}
     compute_at!(comp.operand, time) # ensures any 'dependencies' of the computation are computed first
 
-    arch = architecture(comp.data)
+    arch = architecture(comp)
 
     workgroup, worksize = work_layout(comp.grid,
                                       :xyz,
