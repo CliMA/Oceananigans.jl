@@ -123,6 +123,6 @@ end
 
 @kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻ_Q, η)
     i, j = @index(Global, NTuple)
-    @inbounds rhs[i, j, 1] = - Azᶜᶜᵃ(i, j, 1, grid) * η[i, j, 1] / (g * Δt^2)
+    @inbounds rhs[i, j, 1] = - Azᶜᶜᵃ(i, j, 1, grid) * η[i, j, 1] / (g * Δt^2) +
                                flux_div_xyᶜᶜᵃ(i, j, 1, grid, ∫ᶻ_Q.u, ∫ᶻ_Q.v) / (g * Δt)
 end
