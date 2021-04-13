@@ -14,6 +14,8 @@ const ConformalCubedSphereFaceFieldᶠᶜᶜ = AbstractField{Face,   Center, Cen
 const ConformalCubedSphereFaceFieldᶜᶠᶜ = AbstractField{Center, Face,   Center, A, <:ConformalCubedSphereFaceGrid} where A
 const ConformalCubedSphereFaceFieldᶠᶠᶜ = AbstractField{Face,   Face,   Center, A, <:ConformalCubedSphereFaceGrid} where A
 
+const ConformalCubedSphereFaceFieldᶜᶜⁿ = AbstractField{Center, Center, Nothing, A, <:ConformalCubedSphereFaceGrid} where A
+
 function set!(field::ConformalCubedSphereFaceFieldᶜᶜᶜ, f::Function)
     grid = field.grid
     for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
@@ -46,4 +48,12 @@ function set!(field::ConformalCubedSphereFaceFieldᶠᶠᶜ, f::Function)
     return nothing
 end
 
-set!(field::ConformalCubedSphereField, f::Function) = [set!(field_face, f) for field_face in field.faces]
+function set!(field::ConformalCubedSphereFaceFieldᶜᶜⁿ, f::Function)
+    grid = field.grid
+    for i in 1:grid.Nx, j in 1:grid.Ny
+        field[i, j, 1] = f(grid.λᶜᶜᵃ[i, j], grid.φᶜᶜᵃ[i, j])
+    end
+    return nothing
+end
+
+set!(field::AbstractCubedSphereField, f::Function) = [set!(field_face, f) for field_face in field.faces]

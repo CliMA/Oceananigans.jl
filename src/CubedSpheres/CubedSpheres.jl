@@ -31,7 +31,7 @@ maybe_replace_with_face(velocities::PrescribedVelocityFields, cubed_sphere_grid,
 
 import Oceananigans.Diagnostics: error_if_nan_in_field
 
-function error_if_nan_in_field(field::ConformalCubedSphereField, name, clock)
+function error_if_nan_in_field(field::AbstractCubedSphereField, name, clock)
     for (face_number, field_face) in enumerate(field.faces)
         error_if_nan_in_field(field_face, string(name) * " (face $face_number)", clock)
     end
@@ -62,7 +62,7 @@ end
 
 import Oceananigans.OutputWriters: fetch_output
 
-fetch_output(field::ConformalCubedSphereField, model, field_slicer) =
+fetch_output(field::AbstractCubedSphereField, model, field_slicer) =
     Tuple(fetch_output(field_face, model, field_slicer) for field_face in field.faces)
 
 #####
@@ -71,7 +71,7 @@ fetch_output(field::ConformalCubedSphereField, model, field_slicer) =
 
 import Oceananigans.Diagnostics: state_check
 
-function state_check(field::ConformalCubedSphereField, name, pad)
+function state_check(field::AbstractCubedSphereField, name, pad)
     Nf = length(field.faces)
     for (face_number, field_face) in enumerate(field.faces)
         face_str = " face $face_number"

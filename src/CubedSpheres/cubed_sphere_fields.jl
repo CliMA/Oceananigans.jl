@@ -4,7 +4,7 @@ using Oceananigans.Fields: AbstractField, call_func
 
 import Base: getindex, size, show, minimum, maximum
 import Statistics: mean
-import Oceananigans.Fields: Field, CenterField, XFaceField, YFaceField, ZFaceField, FunctionField, interior
+import Oceananigans.Fields: Field, CenterField, XFaceField, YFaceField, ZFaceField, FunctionField, ReducedField, interior
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 abstract type AbstractCubedSphereField{X, Y, Z, A, G} <: AbstractField{X, Y, Z, A, G} end
@@ -54,15 +54,15 @@ CenterField(FT::DataType, arch, grid::ConformalCubedSphereGrid, bcs=nothing, dat
 
 Base.size(field::AbstractCubedSphereField) = (size(field.faces[1])..., length(field.faces))
 
-Base.minimum(field::ConformalCubedSphereField; dims=:) = minimum(minimum(field_face; dims) for field_face in field.faces)
-Base.maximum(field::ConformalCubedSphereField; dims=:) = maximum(maximum(field_face; dims) for field_face in field.faces)
-Statistics.mean(field::ConformalCubedSphereField; dims=:) = mean(mean(field_face; dims) for field_face in field.faces)
+Base.minimum(field::AbstractCubedSphereField; dims=:) = minimum(minimum(field_face; dims) for field_face in field.faces)
+Base.maximum(field::AbstractCubedSphereField; dims=:) = maximum(maximum(field_face; dims) for field_face in field.faces)
+Statistics.mean(field::AbstractCubedSphereField; dims=:) = mean(mean(field_face; dims) for field_face in field.faces)
 
-Base.minimum(f, field::ConformalCubedSphereField; dims=:) = minimum(minimum(f, field_face; dims) for field_face in field.faces)
-Base.maximum(f, field::ConformalCubedSphereField; dims=:) = maximum(maximum(f, field_face; dims) for field_face in field.faces)
-Statistics.mean(f, field::ConformalCubedSphereField; dims=:) = mean(mean(f, field_face; dims) for field_face in field.faces)
+Base.minimum(f, field::AbstractCubedSphereField; dims=:) = minimum(minimum(f, field_face; dims) for field_face in field.faces)
+Base.maximum(f, field::AbstractCubedSphereField; dims=:) = maximum(maximum(f, field_face; dims) for field_face in field.faces)
+Statistics.mean(f, field::AbstractCubedSphereField; dims=:) = mean(mean(f, field_face; dims) for field_face in field.faces)
 
-interior(field::ConformalCubedSphereField) = cat(Tuple(interior(field_face) for field_face in field.faces)..., dims=4)
+interior(field::AbstractCubedSphereField) = cat(Tuple(interior(field_face) for field_face in field.faces)..., dims=4)
 
 const ConformalCubedSphereFaceField{LX, LY, LZ, A} = AbstractField{LX, LY, LZ, A, <:ConformalCubedSphereFaceGrid}
 
@@ -96,6 +96,30 @@ const ConformalCubedSphereFaceFunctionField = FunctionField{X, Y, Z, C, P, F, <:
               znode(Z(), Y(), Z(), i, j, k, f.grid))
 
 fill_halo_regions!(::ConformalCubedSphereFunctionField, args...) = nothing
+
+#####
+##### Reduced fields
+#####
+
+struct ConformalCubedSphereReducedField{X, Y, Z, A, G, F, B} <: AbstractCubedSphereField{X, Y, Z, A, G}
+                   grid :: G
+                  faces :: F
+    boundary_conditions :: B
+end
+
+function ReducedField(X, Y, Z, arch, grid::ConformalCubedSphereGrid; dims, data=nothing, boundary_conditions=nothing)
+
+    faces = Tuple(
+        ReducedField(X, Y, Z, arch, grid_face, dims=dims, data=data, boundary_conditions=inject_cubed_sphere_exchange_boundary_conditions(FieldBoundaryConditions(grid_face, (X, Y, Z)), face_number, grid.face_connectivity))
+        for (face_number, grid_face) in enumerate(grid.faces)
+    )
+
+    # This field needs BCs otherwise errors happen so I'll assume all faces have
+    # the same boundary conditions. A very bad assumption...
+    cubed_sphere_bcs = faces[1].boundary_conditions
+
+    return ConformalCubedSphereReducedField{X, Y, Z, typeof(arch), typeof(grid), typeof(faces), typeof(cubed_sphere_bcs)}(grid, faces, cubed_sphere_bcs)
+end
 
 #####
 ##### Pretty printing
