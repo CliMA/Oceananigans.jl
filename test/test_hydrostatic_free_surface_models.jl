@@ -77,7 +77,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
     @testset "$topo_0d model construction" begin
     @info "  Testing $topo_0d model construction..."
         for arch in archs, FT in float_types                
-            grid = RegularRectilinearGrid(FT, topology=topo, size=(), extent=())
+            grid = RegularRectilinearGrid(FT, topology=topo_0d, size=(), extent=())
             model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)
             
             @test model isa HydrostaticFreeSurfaceModel

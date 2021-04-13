@@ -22,7 +22,7 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     jmid = Int(floor(grid.Ny / 2)) + 1
     CUDA.@allowscalar u.data[imid, jmid, 1] = 1
 
-    implicit_free_surface_step!(model.free_surface, device(model.architecture), model, Δt, 1.5)
+    implicit_free_surface_step!(model.free_surface, Event(), model, Δt, 1.5)
 
     # Extract right hand side "truth"
     right_hand_side = model.free_surfce.implicit_step_right_hand_side
