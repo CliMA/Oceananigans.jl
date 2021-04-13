@@ -164,6 +164,10 @@ all_y_nodes(::Type{Face}, grid) = grid.yF
 all_z_nodes(::Type{Center}, grid) = grid.zC
 all_z_nodes(::Type{Face}, grid) = grid.zF
 
+all_x_nodes(::Type{Nothing}, grid) = []
+all_y_nodes(::Type{Nothing}, grid) = []
+all_z_nodes(::Type{Nothing}, grid) = []
+
 """
     xnodes(loc, grid, reshape=false)
 
