@@ -55,7 +55,7 @@ function AveragedField(operand::AbstractField; dims, data=nothing, recompute_saf
         recompute_safely = false
     end
 
-    return AveragedField{loc[1], loc[2], loc[3]}(data, grid, dims, operand,
+    return AveragedField{loc[1], loc[2], loc[3]}(data, arch, grid, dims, operand,
                                                  recompute_safely=recompute_safely)
 end
 
