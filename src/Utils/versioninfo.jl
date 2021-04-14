@@ -32,7 +32,8 @@ function oceananigans_versioninfo()
         return "Oceananigans v$(project.version) (DEVELOPMENT BRANCH)"
     end
 
-    @warn "Could not determine Oceananigans version info."
+    # TODO: Get version name by parsing Project.toml via Base.find_package ?
+    # @warn "Could not determine Oceananigans version info."
 
     return ""
 end

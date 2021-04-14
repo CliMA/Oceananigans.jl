@@ -67,3 +67,35 @@ julia> dcfl(model)
 ```
 """
 DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)
+
+#####
+##### Accurate CFL via reduction
+#####
+
+using CUDA, KernelAbstractions, Tullio
+
+using Oceananigans.Models
+using Oceananigans.Grids: halo_size
+using Oceananigans.Operators: Δxᶠᶜᵃ, Δyᶜᶠᵃ, Δzᵃᵃᶠ
+
+function accurate_cell_advection_timescale(model::Union{IncompressibleModel, HydrostaticFreeSurfaceModel})
+    grid = model.grid
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+
+    is = 1+Hx:Nx+Hx
+    js = 1+Hy:Ny+Hy
+    ks = 1+Hz:Nz+Hz
+
+    u = view(model.velocities.u.data.parent, is, js, ks)
+    v = view(model.velocities.v.data.parent, is, js, ks)
+    w = view(model.velocities.w.data.parent, is, js, ks)
+
+    min_timescale = minimum(
+        @tullio (min) timescale[k] := 1 / (  abs(u[i, j, k]) / Δxᶠᶜᵃ(i, j, k, grid)
+                                           + abs(v[i, j, k]) / Δyᶜᶠᵃ(i, j, k, grid)
+                                           + abs(w[i, j, k]) / Δzᵃᵃᶠ(i, j, k, grid))
+    )
+
+    return min_timescale
+end
