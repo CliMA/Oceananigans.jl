@@ -28,20 +28,20 @@ Following [Reynolds1895](@cite) we can decompose flow variables such as velocity
 
 Expressing the Navier-Stokes equations in tensor notation
 ```math
-\begin{aligned}
+\begin{align}
     \partial_i u_i &= 0  \, ,\\
     \partial_t u_i + u_j \partial_j u_i &= f_i - \alpha\partial_i p + \nu \partial_j \partial_j u_i \, ,
-\end{aligned}
+\end{align}
 ```
 where ``\alpha = \rho^{-1}`` is the specific volume and ``f_i`` represents external forces. We can plug in the Reynolds
 decomposition for ``\boldsymbol{u}`` and after some manipulation arrive at the following form for the *Reynolds-averaged
 Navier-Stokes equations*
 ```math
-\begin{aligned}
+\begin{align}
     \partial_i \overline{u}_i &= 0  \, ,\\
     \partial_t \overline{u}_i + \overline{u}_j \partial_j \overline{u}_i &= \overline{f}_i -
     \partial_j \left(-\alpha\overline{p}\delta_{ij} + 2\nu \overline{S}_{ij} - \overline{u_i^\prime u_j^\prime}\right) \, ,
-\end{aligned}
+\end{align}
 ```
 where
 ```math

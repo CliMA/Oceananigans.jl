@@ -75,23 +75,27 @@ at the top of the domain via the Craik-Leibovich approximation are
     \label{eq:momentum}
     \end{align}
 ```
-where ``b`` is buoyancy, ``\boldsymbol{\tau}`` is the kinematic stress tensor, ``\boldsymbol{F_u}``
+where ``b`` the is buoyancy, ``\boldsymbol{\tau}`` is the kinematic stress tensor, ``\boldsymbol{F_u}``
 denotes an internal forcing of the velocity field ``\boldsymbol{u}``, ``\phi`` is the potential
-associated with kinematic and constant hydrostatic contributions to pressure,
-``\boldsymbol{u}^S`` is the 'Stokes drift' velocity field associated with surface gravity waves,
-and ``\boldsymbol{f}`` is *Coriolis parameter*, or the background vorticity associated with the
-specified rate of rotation of the frame of reference.
+associated with kinematic and constant hydrostatic contributions to pressure, ``\boldsymbol{u}^S`` 
+is the 'Stokes drift' velocity field associated with surface gravity waves, and ``\boldsymbol{f}`` 
+is the *Coriolis parameter*, or the background vorticity associated with the specified rate of 
+rotation of the frame of reference.
 
 The terms that appear on the right-hand side of the momentum conservation equation are (in order):
 
-* momentum advection, ``\left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}``,
-* advection of resolved momentum by the background velocity field ``\boldsymbol{U}``, ``\left ( \boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}``,
-* advection of background momentum by resolved velocity, ``\left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{U}``,
+* momentum advection, ``\left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) 
+  \boldsymbol{u}``,
+* advection of resolved momentum by the background velocity field ``\boldsymbol{U}``, 
+  ``\left ( \boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}``,
+* advection of background momentum by resolved velocity, ``\left ( \boldsymbol{u} \boldsymbol{\cdot} 
+  \boldsymbol{\nabla} \right ) \boldsymbol{U}``,
 * coriolis, ``\boldsymbol{f} \times \boldsymbol{u}``,
-* the effective background rotation rate due to surface waves, ``\left ( \boldsymbol{\nabla} \times \boldsymbol{u}^S \right ) \times \boldsymbol{u}``,
+* the effective background rotation rate due to surface waves, ``\left ( \boldsymbol{\nabla} \times 
+  \boldsymbol{u}^S \right ) \times \boldsymbol{u}``,
 * pressure gradient, ``\boldsymbol{\nabla} \phi``,
 * buoyant acceleration, ``b \boldsymbol{\hat z}``,
-* molecular or turbulence viscous stress, ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}``
+* molecular or turbulence viscous stress, ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}``,
 * a source of momentum due to forcing or damping of surface waves, ``\partial_t \boldsymbol{u}^S``, and
 * an arbitrary internal source of momentum, ``\boldsymbol{F_u}``.
 
@@ -109,17 +113,16 @@ The conservation law for tracers in Oceananigans.jl is
     \end{align}
 ```
 where ``\boldsymbol{q}_c`` is the diffusive flux of ``c`` and ``F_c`` is an arbitrary source term.
-Oceananigans.jl permits arbitrary tracers and thus an arbitrary number of tracer
-equations to be solved simultaneously with the momentum equations.
+Oceananigans.jl permits arbitrary tracers and thus an arbitrary number of tracer equations to 
+be solved simultaneously with the momentum equations.
 
 From left to right, the terms that appear on the right-hand side of the tracer conservation equation are
 
-* tracer advection, ``\boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} c``
-* tracer advection by the background velocity field, ``U``, ``\boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} c``
-* advection of the background tracer field, ``C``, by the resolved velocity field, ``\boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} C``
-* molecular or turbulent diffusion, ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c``
-* an arbitrary internal source of tracer, ``F_c``
+* tracer advection, ``\boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} c``,
+* tracer advection by the background velocity field, ``U``, ``\boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} c``,
+* advection of the background tracer field, ``C``, by the resolved velocity field, ``\boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} C``,
+* molecular or turbulent diffusion, ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c``, and
+* an arbitrary internal source of tracer, ``F_c``.
 
-The following subsections provide more details on the
-possible forms that each individual term in the momentum and tracer
-equations can take in Oceananigans.jl.
+The following subsections provide more details on the possible forms that each individual term 
+in the momentum and tracer equations can take in Oceananigans.jl.

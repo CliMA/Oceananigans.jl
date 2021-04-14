@@ -51,11 +51,11 @@ coefficients of the solution are easily solved for
 The eigenvalues are given by [Schumann88](@cite) and can also be tediously derived by plugging in the definition of the
 discrete Fourier transform into \eqref{eq:poisson-spectral}:
 ```math
-\begin{aligned}
+\begin{align}
     \lambda^x_i &= 4\frac{N_x^2}{L_x^2} \sin^2 \left [ \frac{(i-1)\pi}{N_x}  \right ], \quad i=0,1, \dots,N_x-1 \, , \\
     \lambda^x_j &= 4\frac{N_y^2}{L_y^2} \sin^2 \left [ \frac{(j-1)\pi}{N_y}  \right ], \quad j=0,1, \dots,N_y-1 \, , \\
     \lambda^x_k &= 4\frac{N_z^2}{L_z^2} \sin^2 \left [ \frac{(k-1)\pi}{2N_z} \right ], \quad k=0,1, \dots,N_z-1 \, ,
-\end{aligned}
+\end{align}
 ```
 where ``\lambda_x`` and ``\lambda_y`` correspond to periodic boundary conditions in the horizontal and ``\lambda_z`` to
 Neumann boundary conditions in the vertical.
@@ -254,10 +254,10 @@ right-hand-side of \eqref{eq:hydrostatic-fractional-step} then gives an implicit
 for ``\eta^{n+1}``.
 
 ```math
-\begin{aligned}
+\begin{align}
    \delta_{x}^{caa}\sum_{k} A_{x} \partial_{x}^{faa}\eta^{n+1} & + \delta_{y}^{aca}\sum_{k} A_{y} \partial_{y}^{afa}\eta^{n+1} - \frac{1}{g\Delta t^{2}}A_{z} \eta^{n+1} = \\
    & = \frac{1}{g \Delta t}\left( \delta_{x}^{caa}\sum_{k} A_{x} u^{\star} + \delta_{y}^{aca}\sum_{k} A_{y} v^{\star} \right) - \frac{1}{g\Delta t^{2}}A_{z} \eta^{n} \, .
-\end{aligned}
+\end{align}
 ```
 
 Formulated in this way, the linear operator will be symmetric and so can be solved using a preconditioned conjugate 

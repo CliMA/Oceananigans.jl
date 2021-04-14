@@ -63,7 +63,7 @@ Each tracer may have a unique diffusivity components ``\kappa_h`` and ``\kappa_v
 
 ## Smagorinsky-Lilly turbulence closure
 
-In the turbulence closure proposed by Lilly (1962) and Smagorinsky (1963),
+In the turbulence closure proposed by Lilly (1962) and [Smagorinsky63](@cite),
 the subgrid stress associated with unresolved turbulent motions is modeled diffusively via
 ```math
 \tau_{ij} = \nu_e \Sigma_{ij} \, ,

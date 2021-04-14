@@ -2,7 +2,7 @@
 
 The Coriolis model controls the manifestation of the term ``\boldsymbol{f} \times \boldsymbol{u}`` in the momentum equation.
 
-## The ``f``-plane approximation
+## ``f``-plane approximation
 
 Under an ``f``-plane approximation[^3] the reference frame in which
 the momentum and tracer equations are solved rotates at a constant rate.
@@ -37,7 +37,7 @@ where ``f_y`` and ``f_z`` are constants determined by the user.
       The *traditional* ``f``-plane approximation neglects the ``y``-component of this projection, which is appropriate for
       fluid motions with large horizontal-to-vertical aspect ratios.
 
-## The ``\beta``-plane approximation
+## ``\beta``-plane approximation
 
 ### The traditional ``\beta``-plane approximation
 
