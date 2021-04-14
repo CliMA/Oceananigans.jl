@@ -7,23 +7,22 @@ combine_events(free_surface_event, tracer_events) = MultiEvent(tuple(free_surfac
 
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
-
     barrier = Event(device(model.architecture))
-
-    step_field_kernel! = ab2_step_field!(device(model.architecture), workgroup, worksize)
 
     # Launch velocity update kernels
 
     velocities_events = []
 
     for name in (:u, :v)
+        model.velocities isa PrescribedVelocityFields && break
+
         Gⁿ = model.timestepper.Gⁿ[name]
         G⁻ = model.timestepper.G⁻[name]
         velocity_field = model.velocities[name]
 
-        event = step_field_kernel!(velocity_field, Δt, χ, Gⁿ, G⁻,
-                                   dependencies=Event(device(model.architecture)))
+        event = launch!(model.architecture, model.grid, :xyz, ab2_step_field!,
+                        velocity_field, Δt, χ, Gⁿ, G⁻,
+                        dependencies=Event(device(model.architecture)))
 
         push!(velocities_events, event)
     end
@@ -37,8 +36,9 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
         G⁻ = model.timestepper.G⁻[name]
         tracer_field = model.tracers[name]
 
-        event = step_field_kernel!(tracer_field, Δt, χ, Gⁿ, G⁻,
-                                   dependencies=Event(device(model.architecture)))
+        event = launch!(model.architecture, model.grid, :xyz, ab2_step_field!,
+                        tracer_field, Δt, χ, Gⁿ, G⁻,
+                        dependencies=Event(device(model.architecture)))
 
         push!(tracer_events, event)
     end
@@ -88,10 +88,11 @@ end
 function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_update, model, χ, Δt)
 
     ##### Implicit solver for η
-    
+
     ## Need to wait for u* and v* to finish
     wait(device(model.architecture), velocities_update)
-    fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model) )
+    fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model))
+    fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
     ## Leaving this here for now. There may be some scenarios where stepping forward η and then using
     ## the stepped forward value as a guess is helpful.
@@ -104,13 +105,14 @@ function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_up
     wait(device(model.architecture), event)
     u=free_surface.barotropic_volume_flux.u
     v=free_surface.barotropic_volume_flux.v
-    fill_halo_regions!(u.data ,u.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
-    fill_halo_regions!(v.data ,v.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
+    fill_halo_regions!(u.data, u.boundary_conditions, model.architecture, model.grid, model.clock, fields(model))
+    fill_halo_regions!(v.data, v.boundary_conditions, model.architecture, model.grid, model.clock, fields(model))
+    fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
     ## Compute volume scaled divergence of the barotropic transport and put into solver RHS
     event = compute_volume_scaled_divergence!(free_surface, model)
     wait(device(model.architecture), event)
-    
+
     ## Include surface pressure term into RHS
     RHS = free_surface.implicit_step_solver.solver.settings.RHS
     RHS .= RHS/(model.free_surface.gravitational_acceleration*Δt)

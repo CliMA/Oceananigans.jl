@@ -63,22 +63,22 @@ set!(u::AbstractCPUField, f::Function) = interior(u) .= f.(nodes(u; reshape=true
     """ Set the GPU field `u` to the array `v`. """
     function set!(u::AbstractGPUField, v::Array)
         v_field = similar_cpu_field(u)
-    
+
         set!(v_field, v)
         set!(u, v_field)
-    
+
         return nothing
     end
-    
+
     """ Set the GPU field `u` to the CuArray `v`. """
     function set!(u::AbstractGPUField, v::CuArray)
-    
+
         launch!(GPU(), u.grid, :xyz, _set_gpu!, u.data, v, u.grid,
                 include_right_boundaries=true, location=location(u))
-    
+
         return nothing
     end
-    
+
     @kernel function _set_gpu!(u, v, grid)
         i, j, k = @index(Global, NTuple)
         @inbounds u[i, j, k] = v[i, j, k]
@@ -86,18 +86,18 @@ set!(u::AbstractCPUField, f::Function) = interior(u) .= f.(nodes(u; reshape=true
 
     """ Set the CPU field `u` data to the GPU field data of `v`. """
     set!(u::AbstractCPUField, v::AbstractGPUField) = u.data.parent .= Array(v.data.parent)
-    
+
     """ Set the GPU field `u` data to the CPU field data of `v`. """
     set!(u::AbstractGPUField, v::AbstractCPUField) = copyto!(u.data.parent, v.data.parent)
-    
+
     """ Set the GPU field `u` data to the function `f(x, y, z)`. """
     function set!(u::AbstractGPUField, f::Function)
         # Create a temporary field with bcs = nothing.
         v_field = similar_cpu_field(u)
-    
+
         set!(v_field, f)
         set!(u, v_field)
-    
+
         return nothing
     end
 end

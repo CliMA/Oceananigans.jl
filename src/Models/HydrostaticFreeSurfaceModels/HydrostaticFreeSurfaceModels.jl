@@ -1,6 +1,9 @@
 module HydrostaticFreeSurfaceModels
 
-export HydrostaticFreeSurfaceModel, VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface
+export
+    HydrostaticFreeSurfaceModel, VectorInvariant,
+    ExplicitFreeSurface, ImplicitFreeSurface,
+    PrescribedVelocityFields
 
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
@@ -8,6 +11,9 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Utils: launch!
 
 import Oceananigans: fields
+
+# This is only used by the cubed sphere for now.
+fill_horizontal_velocity_halos!(args...) = nothing
 
 #####
 ##### HydrostaticFreeSurfaceModel definition
