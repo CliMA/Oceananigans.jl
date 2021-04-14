@@ -8,7 +8,6 @@ export
 using CUDA
 
 using KernelAbstractions
-using CUDAKernels
 
 """
     AbstractArchitecture
@@ -58,7 +57,7 @@ macro hascuda(expr)
 end
 
 device(::AbstractCPUArchitecture) = KernelAbstractions.CPU()
-device(::AbstractGPUArchitecture) = CUDAKernels.CUDADevice()
+device(::AbstractGPUArchitecture) = KernelAbstractions.CUDADevice()
 
 architecture(::Number)  = nothing
 architecture(::Array)   = CPU()
