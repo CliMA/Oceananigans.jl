@@ -73,7 +73,7 @@ Taking the divergence of fractional step equation and requiring that
 ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u}^{n+1} = 0`` yields a Poisson equation for the potential 
 ``\phi_{\rm{non}}`` at time-step ``n+1``:
 ```math
-    \boldsymbol{\nabla}^2 \phi_{\rm{non}}^{n+1} = \frac{\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u}^{\star}}{\Delta t} \, .
+    \nabla^2 \phi_{\rm{non}}^{n+1} = \frac{\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u}^{\star}}{\Delta t} \, .
 ```
 With ``\boldsymbol{u}^\star`` and ``\phi_{\rm{non}}``, ``\boldsymbol{u}^{n+1}`` is then computed via the fractional step equation.
 

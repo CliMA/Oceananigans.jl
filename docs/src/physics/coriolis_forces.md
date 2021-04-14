@@ -1,6 +1,7 @@
 # Coriolis forces
 
-The Coriolis model controls the manifestation of the term ``\boldsymbol{f} \times \boldsymbol{u}`` in the momentum equation.
+The Coriolis model controls the manifestation of the term ``\boldsymbol{f} \times \boldsymbol{u}``
+in the momentum equation.
 
 ## ``f``-plane approximation
 
@@ -26,23 +27,24 @@ an axis in the ``y,z``-plane, such that
 where ``f_y`` and ``f_z`` are constants determined by the user.
 
 
-[^3]: The ``f``-plane approximation is used to model the effects of Earth's rotation on
-      anisotropic fluid motion in a plane tangent to the Earth's surface. In this case, the projection of Earth's
-      rotation vector at latitude ``\varphi`` and onto a coordinate system in which ``x, y, z`` correspond to the
-      directions east, north, and up is
+[^3]: The ``f``-plane approximation is used to model the effects of Earth's rotation on anisotropic 
+      fluid motion in a plane tangent to the Earth's surface. In this case, the projection of 
+      the Earth's rotation vector at latitude ``\varphi`` and onto a coordinate system in which 
+      ``x, y, z`` correspond to the directions east, north, and up is
       ```math
-          \boldsymbol{f} \approx \frac{4 \pi}{\text{day}} \left ( \cos \varphi \boldsymbol{\hat y} + \sin \varphi \boldsymbol{\hat z} \right ) \, , ``
+          \boldsymbol{f} \approx \frac{4 \pi}{\text{day}} \left ( \cos \varphi \boldsymbol{\hat y} + \sin \varphi \boldsymbol{\hat z} \right ) \, ,
       ```
-      where the Earth's rotation rate is approximately ``2 \pi / \text{day}``.
-      The *traditional* ``f``-plane approximation neglects the ``y``-component of this projection, which is appropriate for
-      fluid motions with large horizontal-to-vertical aspect ratios.
+      where the Earth's rotation rate is approximately ``2 \pi / \text{day}``. The *traditional* 
+      ``f``-plane approximation neglects the ``y``-component of this projection, which is appropriate 
+      for fluid motions with large horizontal-to-vertical aspect ratios.
 
 ## ``\beta``-plane approximation
 
 ### The traditional ``\beta``-plane approximation
 
 Under the *traditional* ``\beta``-plane approximation, the rotation axis is vertical as for the
-``f``-plane approximation, but ``f`` is expanded in a Taylor series around a central latitude such that
+``f``-plane approximation, but ``f`` is expanded in a Taylor series around a central latitude 
+such that
 ```math
     \boldsymbol{f} = \left ( f_0 + \beta y \right ) \boldsymbol{\hat z} \, ,
 ```

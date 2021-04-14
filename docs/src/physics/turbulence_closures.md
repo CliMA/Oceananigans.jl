@@ -14,12 +14,12 @@ where ``\nu`` is a constant viscosity and
 ``\Sigma_{ij} \equiv \tfrac{1}{2} \left ( u_{i, j} + u_{j, i} \right )`` is the strain-rate
 tensor. The divergence of ``\boldsymbol{\tau}`` is then
 ```math
-\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = -\nu \boldsymbol{\nabla}^2 \boldsymbol{u} \, .
+\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = -\nu \nabla^2 \boldsymbol{u} \, .
 ```
 Similarly, the diffusive tracer flux is ``\boldsymbol{q}_c = - \kappa \boldsymbol{\nabla} c`` for tracer
 diffusivity ``\kappa``, and the diffusive tracer flux divergence is
 ```math
-\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c = - \kappa \boldsymbol{\nabla}^2 c \, .
+\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c = - \kappa \nabla^2 c \, .
 ```
 Each tracer may have a unique diffusivity ``\kappa``.
 
