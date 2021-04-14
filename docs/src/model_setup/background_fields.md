@@ -19,7 +19,7 @@ When a background field ``C`` is provided, the tracer advection term becomes
     + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{u} C \right ) \, .
 ```
 
-When both a background field velocity field `\boldsymbol{U}` and a background tracer field ``C``
+When both a background field velocity field ``\boldsymbol{U}`` and a background tracer field ``C``
 are provided, then the tracer advection term becomes
 
 ```math
@@ -38,7 +38,7 @@ and surface waves acting on background fields are neglected.
 
 ## Specifying background fields
 
-`BackgroundField`s are defined by functions of `(x, y, z, t)` and optional parameters. A 
+`BackgroundField`s are defined by functions of ``(x, y, z, t)`` and optional parameters. A 
 simple example is
 
 ```jldoctest
