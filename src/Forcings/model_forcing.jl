@@ -23,7 +23,7 @@ function regularize_forcing(forcing::Function, field, field_name, model_field_na
     return ContinuousForcing{LX, LY, LZ}(forcing)
 end
 
-regularize_forcing(::Nothing, field, field_name, model_field_names) = zeroforcing
+regularize_forcing(::Nothing, field::AbstractField, field_name, model_field_names) = zeroforcing
 
 """
     model_forcing(model_fields; forcings...)

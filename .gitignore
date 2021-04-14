@@ -10,7 +10,6 @@ deps/deps.jl
 *~
 
 # Documenter.jl and MkDocs
-docs/Manifest.toml
 docs/build
 docs/site
 docs/src/generated

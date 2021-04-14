@@ -15,20 +15,22 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
 
-    step_field_kernel! = ab2_step_field!(device(model.architecture), workgroup, worksize)
-
     barrier = Event(device(model.architecture))
 
-    # Velocity update kernels
-
+    # Launch velocity update kernels
+  
     velocities_events = []
 
     for name in (:u, :v)
+        model.velocities isa PrescribedVelocityFields && break
+
         Gⁿ = model.timestepper.Gⁿ[name]
         G⁻ = model.timestepper.G⁻[name]
         velocity_field = model.velocities[name]
 
-        event = step_field_kernel!(velocity_field, Δt, χ, Gⁿ, G⁻, dependencies=barrier)
+        event = launch!(model.architecture, model.grid, :xyz, ab2_step_field!,
+                        velocity_field, Δt, χ, Gⁿ, G⁻,
+                        dependencies=barrier)
 
         push!(velocities_events, event)
     end
@@ -42,7 +44,9 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
         G⁻ = model.timestepper.G⁻[name]
         tracer_field = model.tracers[name]
 
-        event = step_field_kernel!(tracer_field, Δt, χ, Gⁿ, G⁻, dependencies=barrier)
+        event = launch!(model.architecture, model.grid, :xyz, ab2_step_field!,
+                        tracer_field, Δt, χ, Gⁿ, G⁻,
+                        dependencies=barrier)
 
         push!(tracer_events, event)
     end

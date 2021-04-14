@@ -74,10 +74,10 @@ model = ShallowWaterModel(
 # free-surface deformation of ``Δη``, i.e.,
 #
 # ```math
-# \begin{aligned}
+# \begin{align}
 # η̄(y) & = - Δη \tanh(y) , \\
 # ū(y) & = U \mathrm{sech}^2(y) .
-# \end{aligned}
+# \end{align}
 # ```
 #
 # The total height of the fluid is ``h = L_z + \eta``. Linear stability theory predicts that 

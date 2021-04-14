@@ -13,5 +13,3 @@ function HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, arch, gr
     tracers = TracerFields(tracer_names, arch, grid)
     return merge((u=u, v=v, η=η), tracers)
 end
-
-

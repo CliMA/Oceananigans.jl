@@ -72,6 +72,7 @@ closures = (
 
 CUDA.allowscalar(true)
 
+include("data_dependencies.jl")
 include("utils_for_runtests.jl")
 
 group = get(ENV, "TEST_GROUP", :all) |> Symbol
@@ -136,6 +137,11 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_abstract_operations_computed_field.jl")
             include("test_lagrangian_particle_tracking.jl")
         end
+    end
+
+    if group == :cubed_sphere || group == :all
+        include("test_cubed_spheres.jl")
+        include("test_cubed_sphere_halo_exchange.jl")
     end
 
     if group == :distributed || group == :all
