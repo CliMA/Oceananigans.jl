@@ -36,7 +36,7 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     ∫ᶻ_Axᶠᶜᶜ = model.free_surface.vertically_integrated_lateral_face_areas.xᶠᶜᶜ
     ∫ᶻ_Ayᶜᶠᶜ = model.free_surface.vertically_integrated_lateral_face_areas.yᶜᶠᶜ
 
-    left_hand_side = Field(Center, Center, Center, arch, grid)
+    left_hand_side = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     # Compare
@@ -55,11 +55,11 @@ end
 @testset "Implicit free surface solver tests" begin
     for arch in archs
 
-        rectilinear_grid = RegularRectilinearGrid(size = (128, 1, 1),
+        rectilinear_grid = RegularRectilinearGrid(size = (128, 1, 5),
                                                   x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
                                                   topology = (Bounded, Periodic, Bounded))
 
-        lat_lon_grid = RegularLatitudeLongitudeGrid(size = (90, 90, 1),
+        lat_lon_grid = RegularLatitudeLongitudeGrid(size = (90, 90, 5),
                                                     longitude = (-30, 30),
                                                     latitude = (15, 75),
                                                     z = (-4000, 0))
