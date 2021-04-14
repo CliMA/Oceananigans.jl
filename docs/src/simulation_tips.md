@@ -177,14 +177,14 @@ to achieve this
   provides two high-order advection schemes: 5th-order WENO method (WENO5) and 3rd-order upwind.
 - Manually define scratch space to be reused in diagnostics. By default, every time a user-defined
   diagnostic is calculated the compiler reserves a new chunk of memory for that calculation, usually
-called scratch space. In general, the more diagnostics, the more scratch space needed and the bigger
-the memory requirements. However, if you explicitly create a scratch space and pass that same
-scratch space for as many diagnostics as you can, you minimize the memory requirements of your
-calculations by reusing the same memory chunk. As an example, you can see scratch space being
-created
-[here](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_constant_fluxes.jl#L380-L383)
-and then being used in calculations
-[here](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/src/TurbulenceStatistics/first_through_third_order.jl#L109-L112).
+  called scratch space. In general, the more diagnostics, the more scratch space needed and the bigger
+  the memory requirements. However, if you explicitly create a scratch space and pass that same
+  scratch space for as many diagnostics as you can, you minimize the memory requirements of your
+  calculations by reusing the same memory chunk. As an example, you can see scratch space being
+  created
+  [here](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_ constant_fluxes.jl#L380-L383)
+  and then being used in calculations
+  [here](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/src/TurbulenceStatistics/first_through_third_order.jl#L109-L112).
 
 
 
