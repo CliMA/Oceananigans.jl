@@ -1,3 +1,5 @@
+using Oceananigans.Fields: FunctionField
+
 """
     QuasiAdamsBashforth2TimeStepper{T, TG} <: AbstractTimeStepper
 
@@ -105,3 +107,8 @@ Time step via
 
     end
 end
+
+@kernel ab2_step_field!(::FunctionField, args...) = nothing
+
+# Needed for use with `HydrostaticFreeSurfaceModel` + `PrescribedVelocities` + prescribed `Field` (not `FunctionField`).
+# @kernel ab2_step_field!(::Nothing, args...) = nothing

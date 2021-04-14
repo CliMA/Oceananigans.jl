@@ -1,4 +1,4 @@
-using Oceananigans.Fields: cpudata
+using Oceananigans.Fields: cpudata, FieldSlicer
 
 """
     correct_field_size(arch, grid, FieldType, Tx, Ty, Tz)
@@ -7,6 +7,14 @@ Test that the field initialized by the FieldType constructor on `arch` and `grid
 has size `(Tx, Ty, Tz)`.
 """
 correct_field_size(a, g, FieldType, Tx, Ty, Tz) = size(parent(FieldType(a, g))) == (Tx, Ty, Tz)
+
+function run_similar_field_tests(f)
+    g = similar(f)
+    @test typeof(f) == typeof(g)
+    @test typeof(f) == typeof(g)
+    @test f.boundary_conditions == g.boundary_conditions
+    return nothing
+end
 
 """
      correct_field_value_was_set(N, L, ftf, val)
@@ -235,6 +243,24 @@ end
         @hascuda begin
             ϕ = CenterField(GPU(), grid)
             @test cpudata(ϕ).parent isa Array
+        end
+
+        @test FieldSlicer() isa FieldSlicer
+
+        @info "    Testing similar(f) for f::Union(Field, ReducedField)..."
+
+        grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+
+        for X in (Center, Face), Y in (Center, Face), Z in (Center, Face)
+            for arch in archs
+                f = Field(X, Y, Z, arch, grid)
+                run_similar_field_tests(f)
+
+                for dims in (3, (1, 2), (1, 2, 3))
+                    f = ReducedField(X, Y, Z, arch, grid, dims=dims)
+                    run_similar_field_tests(f)
+                end
+            end
         end
     end
 end

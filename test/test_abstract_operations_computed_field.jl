@@ -1,6 +1,6 @@
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
 using Oceananigans.Fields: PressureField, compute_at!
-using Oceananigans.Buoyancy: BuoyancyField
+using Oceananigans.BuoyancyModels: BuoyancyField
 
 function simple_binary_operation(op, a, b, num1, num2)
     a_b = op(a, b)
@@ -348,7 +348,7 @@ function computations_with_averaged_fields(model)
     u, v, w, T, S = fields(model)
 
     set!(model, enforce_incompressibility = false, u = (x, y, z) -> z, v = 2, w = 3)
-    
+
     # Two ways to compute turbulent kinetic energy
     U = AveragedField(u, dims=(1, 2))
     V = AveragedField(v, dims=(1, 2))
@@ -363,13 +363,13 @@ end
 function computations_with_averaged_field_derivative(model)
 
     set!(model, enforce_incompressibility = false, u = (x, y, z) -> z, v = 2, w = 3)
-    
+
     u, v, w, T, S = fields(model)
 
     # Two ways to compute turbulent kinetic energy
     U = AveragedField(u, dims=(1, 2))
     V = AveragedField(v, dims=(1, 2))
-    
+
     # This tests a vertical derivative of an AveragedField
     shear_production_op = @at (Center, Center, Center) u * w * ∂z(U)
     shear = ComputedField(shear_production_op)
@@ -377,25 +377,25 @@ function computations_with_averaged_field_derivative(model)
 
     set!(model, T = (x, y, z) -> 3 * z)
 
-    return all(interior(shear)[2:3, 2:3, 2:3] .== interior(T)[2:3, 2:3, 2:3]) 
+    return all(interior(shear)[2:3, 2:3, 2:3] .== interior(T)[2:3, 2:3, 2:3])
 end
 
 function computations_with_computed_fields(model)
     u, v, w, T, S = fields(model)
-    
+
     set!(model, enforce_incompressibility = false, u = (x, y, z) -> z, v = 2, w = 3)
 
     # Two ways to compute turbulent kinetic energy
     U = AveragedField(u, dims=(1, 2))
     V = AveragedField(v, dims=(1, 2))
-    
+
     u′ = ComputedField(u - U)
     v′ = ComputedField(v - V)
-    
+
     tke_op = @at (Center, Center, Center) (u′^2  + v′^2 + w^2) / 2
     tke = ComputedField(tke_op)
     compute!(tke)
-    
+
     return all(interior(tke)[2:3, 2:3, 2:3] .== 9/2)
 end
 
@@ -701,8 +701,8 @@ end
                         @test_skip computations_with_averaged_fields(model)
                         @test_skip computations_with_averaged_field_derivative(model)
                     end
-                end 
-                    
+                end
+
                 @testset "Computations with ComputedFields [$FT, $(typeof(arch))]" begin
                     @info "      Testing computations with ComputedField [$FT, $(typeof(arch))]..."
 
@@ -723,25 +723,25 @@ end
 
                     uT = ComputedField(u * T)
 
-                    α = model.buoyancy.equation_of_state.α
-                    g = model.buoyancy.gravitational_acceleration
+                    α = model.buoyancy.model.equation_of_state.α
+                    g = model.buoyancy.model.gravitational_acceleration
                     b = BuoyancyField(model)
 
                     compute_at!(uT, 1.0)
                     compute_at!(b, 1.0)
                     @test all(interior(uT) .== 6)
-                    @test all(interior(b) .== g * α * 3) 
+                    @test all(interior(b) .== g * α * 3)
 
                     set!(model, u=2, T=4)
                     compute_at!(uT, 1.0)
                     compute_at!(b, 1.0)
-                    @test all(interior(uT) .== 6) 
-                    @test all(interior(b) .== g * α * 3) 
+                    @test all(interior(uT) .== 6)
+                    @test all(interior(b) .== g * α * 3)
 
                     compute_at!(uT, 2.0)
                     compute_at!(b, 2.0)
-                    @test all(interior(uT) .== 8) 
-                    @test all(interior(b) .== g * α * 4) 
+                    @test all(interior(uT) .== 8)
+                    @test all(interior(b) .== g * α * 4)
                 end
             end
         end

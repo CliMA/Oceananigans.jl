@@ -9,15 +9,17 @@ export
     xnode, ynode, znode, location,
     set!, compute!, @compute,
     VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields,
-    interpolate
+    interpolate, FieldSlicer
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 
-Base.zeros(FT, ::CPU, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz)
-Base.zeros(FT, ::GPU, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz) |> CuArray
-Base.zeros(arch, grid, Nx, Ny, Nz) = zeros(eltype(grid), arch, Nx, Ny, Nz)
+import Base: zeros
+
+zeros(FT, ::CPU, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz)
+zeros(FT, ::GPU, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz) |> CuArray
+zeros(arch, grid, Nx, Ny, Nz) = zeros(eltype(grid), arch, Nx, Ny, Nz)
 
 include("new_data.jl")
 include("abstract_field.jl")
@@ -34,7 +36,8 @@ include("tracer_names.jl")
 include("validate_field_tuple_grid.jl")
 include("field_tuples.jl")
 include("background_fields.jl")
-include("show_fields.jl")
 include("interpolate.jl")
+include("field_slicer.jl")
+include("show_fields.jl")
 
 end

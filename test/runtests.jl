@@ -6,6 +6,7 @@ using LinearAlgebra
 using Logging
 
 using CUDA
+using MPI
 using JLD2
 using FFTW
 using OffsetArrays
@@ -19,7 +20,7 @@ using Oceananigans.Advection
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
 using Oceananigans.Coriolis
-using Oceananigans.Buoyancy
+using Oceananigans.BuoyancyModels
 using Oceananigans.Forcings
 using Oceananigans.Solvers
 using Oceananigans.Models
@@ -28,6 +29,7 @@ using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
 using Oceananigans.AbstractOperations
+using Oceananigans.Distributed
 using Oceananigans.Logger
 using Oceananigans.Units
 using Oceananigans.Utils
@@ -70,6 +72,7 @@ closures = (
 
 CUDA.allowscalar(true)
 
+include("data_dependencies.jl")
 include("utils_for_runtests.jl")
 
 group = get(ENV, "TEST_GROUP", :all) |> Symbol
@@ -97,6 +100,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_solvers.jl")
             include("test_poisson_solvers.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
+            include("test_implicit_free_surface_solver.jl")
         end
     end
 
@@ -116,6 +120,15 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
         end
     end
 
+    if group == :shallow_water || group == :all
+        include("test_shallow_water_models.jl")
+    end
+
+    if group == :hydrostatic_free_surface || group == :all
+        include("test_hydrostatic_free_surface_models.jl")
+        include("test_vertical_vorticity_field.jl")
+    end
+
     if group == :simulation || group == :all
         @testset "Simulation tests" begin
             include("test_simulations.jl")
@@ -124,6 +137,17 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_abstract_operations_computed_field.jl")
             include("test_lagrangian_particle_tracking.jl")
         end
+    end
+
+    if group == :cubed_sphere || group == :all
+        include("test_cubed_spheres.jl")
+        include("test_cubed_sphere_halo_exchange.jl")
+    end
+
+    if group == :distributed || group == :all
+        MPI.Initialized() || MPI.Init()
+        include("test_distributed_models.jl")
+        include("test_distributed_poisson_solvers.jl")
     end
 
     if group == :regression || group == :all
@@ -138,13 +162,5 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
     if group == :convergence
         include("test_convergence.jl")
-    end
-
-    if group == :shallow_water || group == :all
-        include("test_shallow_water_models.jl")
-    end
-
-    if group == :hydrostatic_free_surface || group == :all
-        include("test_hydrostatic_free_surface_models.jl")
     end
 end

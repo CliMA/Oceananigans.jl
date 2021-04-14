@@ -5,16 +5,17 @@ using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Advection: CenteredSecondOrder
-using Oceananigans.Buoyancy: validate_buoyancy, SeawaterBuoyancy
+using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo
+using Oceananigans.Grids: inflate_halo_size, with_halo
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
-using Oceananigans.Utils: inflate_halo_size, tupleit
+using Oceananigans.Utils: tupleit
+using Oceananigans.Grids: topology
 
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
                                    V, S, K, BG, P, I} <: AbstractModel{TS}
@@ -46,7 +47,7 @@ end
              float_type = Float64,
                   clock = Clock{float_type}(0, 0, 1),
               advection = CenteredSecondOrder(),
-               buoyancy = SeawaterBuoyancy(float_type),
+               buoyancy = Buoyancy(SeawaterBuoyancy(float_type)),
                coriolis = nothing,
            stokes_drift = nothing,
                 forcing = NamedTuple(),
@@ -72,7 +73,7 @@ Keyword arguments
     - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
     - `float_type`: `Float32` or `Float64`. The floating point type used for `model` data.
     - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
-    - `buoyancy`: The buoyancy model. See `Oceananigans.Buoyancy`.
+    - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
     - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
     - `coriolis`: Parameters for the background rotation rate of the model.
     - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
@@ -88,9 +89,9 @@ function IncompressibleModel(;
              float_type = Float64,
                   clock = Clock{float_type}(0, 0, 1),
               advection = CenteredSecondOrder(),
-               buoyancy = SeawaterBuoyancy(float_type),
+               buoyancy = Buoyancy(model=SeawaterBuoyancy(float_type)),
                coriolis = nothing,
-          stokes_drift = nothing,
+           stokes_drift = nothing,
                 forcing::NamedTuple = NamedTuple(),
                 closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
     boundary_conditions::NamedTuple = NamedTuple(),
@@ -112,10 +113,12 @@ function IncompressibleModel(;
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
     validate_buoyancy(buoyancy, tracernames(tracers))
 
+    buoyancy = regularize_buoyancy(buoyancy)
+
     # Adjust halos when the advection scheme or turbulence closure requires it.
     # Note that halos are isotropic by default; however we respect user-input here
     # by adjusting each (x, y, z) halo individually.
-    Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, advection, closure)
+    Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, topology(grid), advection, closure)
     grid = with_halo((Hx, Hy, Hz), grid)
 
     # Recursively "regularize" field-dependent boundary conditions by supplying list of tracer names.
@@ -128,7 +131,8 @@ function IncompressibleModel(;
 
     boundary_conditions = merge(embedded_boundary_conditions, boundary_conditions)
 
-    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, tracernames(tracers), nothing)
+    model_field_names = (:u, :v, :w, tracernames(tracers)...)
+    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, model_field_names)
 
     # Either check grid-correctness, or construct tuples of fields
     velocities    = VelocityFields(velocities, architecture, grid, boundary_conditions)

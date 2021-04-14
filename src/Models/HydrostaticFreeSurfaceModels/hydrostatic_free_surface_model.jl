@@ -5,16 +5,16 @@ using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, GPU
 using Oceananigans.Advection: AbstractAdvectionScheme, CenteredSecondOrder
-using Oceananigans.Buoyancy: validate_buoyancy, SeawaterBuoyancy, g_Earth
+using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy, g_Earth
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, TracerBoundaryConditions
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
+using Oceananigans.Grids: inflate_halo_size, with_halo, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 using Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
-using Oceananigans.Utils: inflate_halo_size, tupleit
+using Oceananigans.Utils: tupleit
 
 struct VectorInvariant end
 
@@ -69,7 +69,7 @@ Keyword arguments
     - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
     - `gravitational_acceleration`: The gravitational acceleration applied to the free surface
     - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
-    - `buoyancy`: The buoyancy model. See `Oceananigans.Buoyancy`.
+    - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
     - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
     - `coriolis`: Parameters for the background rotation rate of the model.
     - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
@@ -106,6 +106,8 @@ function HydrostaticFreeSurfaceModel(; grid,
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
     validate_buoyancy(buoyancy, tracernames(tracers))
 
+    buoyancy = regularize_buoyancy(buoyancy)
+
     # Recursively "regularize" field-dependent boundary conditions by supplying list of tracer names.
     # We also regularize boundary conditions included in velocities, tracers, pressure, and diffusivities.
     # Note that we do not regularize boundary conditions contained in *tupled* diffusivity fields right now.
@@ -116,10 +118,11 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     boundary_conditions = merge(embedded_boundary_conditions, boundary_conditions)
 
-    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, tracernames(tracers), nothing)
+    model_field_names = (:u, :v, :w, tracernames(tracers)...)
+    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, model_field_names)
 
     # Either check grid-correctness, or construct tuples of fields
-    velocities    = HydrostaticFreeSurfaceVelocityFields(velocities, architecture, grid, boundary_conditions)
+    velocities    = HydrostaticFreeSurfaceVelocityFields(velocities, architecture, grid, clock, boundary_conditions)
     tracers       = TracerFields(tracers,      architecture, grid, boundary_conditions)
     pressure      = (pHY′ = CenterField(architecture, grid, TracerBoundaryConditions(grid)),)
     diffusivities = DiffusivityFields(diffusivities, architecture, grid,
@@ -135,7 +138,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     free_surface = FreeSurface(free_surface, velocities, architecture, grid)
 
     # Regularize forcing and closure for model tracer and velocity fields.
-    model_fields = merge((u=velocities.u, v=velocities.v, η=free_surface.η), tracers)
+    model_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
     forcing = model_forcing(model_fields; forcing...)
     closure = with_tracers(tracernames(tracers), closure)
 
@@ -163,5 +166,5 @@ end
 momentum_advection_squawk(momentum_advection, grid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 validate_momentum_advection(momentum_advection, grid) = nothing
-validate_momentum_advection(momentum_advection::VectorInvariant, grid::AbstractRectilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
-validate_momentum_advection(momentum_advection::VectorInvariant, grid::AbstractHorizontallyCurvilinearGrid) = nothing
+validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection_squawk(momentum_advection, grid)
+validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing}, grid::AbstractHorizontallyCurvilinearGrid) = nothing

@@ -1,15 +1,16 @@
 using NCDatasets
 
-using Oceananigans.Fields
-using Oceananigans.Utils: show_schedule
-
 using Dates: AbstractTime, now
-using Oceananigans.Grids: topology, halo_size
+
+using Oceananigans.Fields
+
+using Oceananigans: short_show
+using Oceananigans.Utils: show_schedule
+using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_nodes
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 using Oceananigans.TimeSteppers: float_or_date_time
-
-using Oceananigans.Diagnostics: WindowedSpatialAverage, FieldSlicer, parent_slice_indices, short_show
-using Oceananigans.Fields: reduced_location, location
+using Oceananigans.Diagnostics: WindowedSpatialAverage
+using Oceananigans.Fields: reduced_location, location, FieldSlicer, parent_slice_indices
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
@@ -36,12 +37,12 @@ function default_dimensions(output, grid, field_slicer)
     TX, TY, TZ = topology(grid)
 
     return Dict(
-        "xC" => grid.xC.parent[parent_slice_indices(Center, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
-        "xF" => grid.xF.parent[parent_slice_indices(Face, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
-        "yC" => grid.yC.parent[parent_slice_indices(Center, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
-        "yF" => grid.yF.parent[parent_slice_indices(Face, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
-        "zC" => grid.zC.parent[parent_slice_indices(Center, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)],
-        "zF" => grid.zF.parent[parent_slice_indices(Face, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)])
+        "xC" => all_x_nodes(Center, grid).parent[parent_slice_indices(Center, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
+        "xF" => all_x_nodes(Face, grid).parent[parent_slice_indices(Face, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
+        "yC" => all_y_nodes(Center, grid).parent[parent_slice_indices(Center, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
+        "yF" => all_y_nodes(Face, grid).parent[parent_slice_indices(Face, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
+        "zC" => all_z_nodes(Center, grid).parent[parent_slice_indices(Center, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)],
+        "zF" => all_z_nodes(Face, grid).parent[parent_slice_indices(Face, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)])
 end
 
 default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, field_slicer) =
@@ -392,8 +393,8 @@ define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, a
 
 
 """ Defines variable for WindowedSpatialAverage outputs """
-function define_output_variable!(dataset, 
-                                 wtsa::Union{WindowedSpatialAverage, WindowedTimeAverage{<:WindowedSpatialAverage}}, 
+function define_output_variable!(dataset,
+                                 wtsa::Union{WindowedSpatialAverage, WindowedTimeAverage{<:WindowedSpatialAverage}},
                                  name, array_type, compression, attributes, dimensions)
     wsa = wtsa isa WindowedTimeAverage ? wtsa.operand : wtsa
     LX, LY, LZ = reduced_location(location(wsa.field), dims=wsa.dims)

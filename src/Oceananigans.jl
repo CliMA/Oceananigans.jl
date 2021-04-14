@@ -15,6 +15,7 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RegularLatitudeLongitudeGrid,
+    ConformalCubedSphereFaceGrid,
     xnodes, ynodes, znodes, nodes,
 
     # Advection schemes
@@ -22,8 +23,7 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    Flux, Value, Gradient, NormalFlow,
-    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition,
     CoordinateBoundaryConditions, FieldBoundaryConditions,
     UVelocityBoundaryConditions, VVelocityBoundaryConditions, WVelocityBoundaryConditions,
     TracerBoundaryConditions, PressureBoundaryConditions,
@@ -39,8 +39,8 @@ export
     # Coriolis forces
     FPlane, BetaPlane, NonTraditionalFPlane, NonTraditionalBetaPlane,
 
-    # Buoyancy and equations of state
-    BuoyancyTracer, SeawaterBuoyancy,
+    # BuoyancyModels and equations of state
+    Buoyancy, BuoyancyTracer, SeawaterBuoyancy,
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
@@ -50,12 +50,16 @@ export
     IsotropicDiffusivity, AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
     ConstantSmagorinsky, AnisotropicMinimumDissipation,
+    HorizontallyCurvilinearAnisotropicDiffusivity,
 
     # Lagrangian particle tracking
     LagrangianParticles,
 
     # Models
     IncompressibleModel, NonDimensionalIncompressibleModel, HydrostaticFreeSurfaceModel, fields,
+
+    # Hydrostatic free surface model
+    ExplicitFreeSurface, VectorInvariant, HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
 
     # Time stepping
     Clock, TimeStepWizard, time_step!,
@@ -65,7 +69,7 @@ export
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics
-    NaNChecker, FieldMaximum,
+    NaNChecker, StateChecker,
     CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
@@ -74,6 +78,9 @@ export
 
     # Abstract operations
     ∂x, ∂y, ∂z, @at,
+
+    # Cubed sphere
+    ConformalCubedSphereGrid,
 
     # Utils
     prettytime
@@ -134,6 +141,7 @@ abstract type AbstractOutputWriter end
 function run_diagnostic! end
 function write_output! end
 function location end
+function instantiated_location end
 function tupleit end
 function short_show end
 
@@ -153,7 +161,7 @@ include("Advection/Advection.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
 include("Coriolis/Coriolis.jl")
-include("Buoyancy/Buoyancy.jl")
+include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
@@ -165,6 +173,8 @@ include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
 include("Simulations/Simulations.jl")
 include("AbstractOperations/AbstractOperations.jl")
+include("CubedSpheres/CubedSpheres.jl")
+include("Distributed/Distributed.jl")
 
 #####
 ##### Needed so we can export names from sub-modules at the top-level
@@ -178,7 +188,7 @@ using .Grids
 using .BoundaryConditions
 using .Fields
 using .Coriolis
-using .Buoyancy
+using .BuoyancyModels
 using .StokesDrift
 using .TurbulenceClosures
 using .LagrangianParticleTracking
@@ -190,6 +200,8 @@ using .Diagnostics
 using .OutputWriters
 using .Simulations
 using .AbstractOperations
+using .CubedSpheres
+using .Distributed
 
 function __init__()
     threads = Threads.nthreads()

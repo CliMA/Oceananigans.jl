@@ -164,6 +164,10 @@ all_y_nodes(::Type{Face}, grid) = grid.yF
 all_z_nodes(::Type{Center}, grid) = grid.zC
 all_z_nodes(::Type{Face}, grid) = grid.zF
 
+all_x_nodes(::Type{Nothing}, grid) = 1:1
+all_y_nodes(::Type{Nothing}, grid) = 1:1
+all_z_nodes(::Type{Nothing}, grid) = 1:1
+
 """
     xnodes(loc, grid, reshape=false)
 
@@ -300,3 +304,4 @@ function pop_flat_elements(tup, topo)
     end
     return Tuple(new_tup)
 end
+

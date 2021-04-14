@@ -1,7 +1,7 @@
 module TurbulenceClosures
 
 export
-    AbstractIsotropicDiffusivity,
+    AbstractEddyViscosityClosure,
     IsotropicDiffusivity,
     AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
@@ -33,7 +33,7 @@ using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
-using Oceananigans.Buoyancy
+using Oceananigans.BuoyancyModels
 using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device, @hascuda
@@ -59,13 +59,6 @@ Abstract supertype for turbulence closures.
 """
 abstract type AbstractTurbulenceClosure end
 
-"""
-    AbstractIsotropicDiffusivity <: AbstractTurbulenceClosure
-
-Abstract supertype for turbulence closures that are defined by an isotropic viscosity
-and isotropic diffusivities.
-"""
-abstract type AbstractIsotropicDiffusivity <: AbstractTurbulenceClosure end
 
 """
     AbstractTensorDiffusivity <: AbstractTurbulenceClosure
@@ -74,14 +67,6 @@ Abstract supertype for turbulence closures that are defined by a tensor viscosit
 tensor diffusivities.
 """
 abstract type AbstractTensorDiffusivity <: AbstractTurbulenceClosure end
-
-"""
-    AbstractLeith{FT} <: AbstractIsotropicDiffusivity
-
-Abstract supertype for large eddy simulation models based on the Leith viscosity
-principle with model parameters stored as properties of type `FT`.
-"""
-abstract type AbstractLeith{FT} <: AbstractIsotropicDiffusivity end
 
 #####
 ##### 'Tupled closure' implementation
@@ -140,6 +125,7 @@ include("turbulence_closure_utils.jl")
 include("diffusion_operators.jl")
 include("viscous_dissipation_operators.jl")
 include("velocity_tracer_gradients.jl")
+include("abstract_eddy_viscosity_closures.jl")
 
 include("closure_tuples.jl")
 
@@ -148,6 +134,8 @@ include("turbulence_closure_implementations/isotropic_diffusivity.jl")
 include("turbulence_closure_implementations/anisotropic_diffusivity.jl")
 include("turbulence_closure_implementations/horizontally_curvilinear_anistropic_diffusivity.jl")
 include("turbulence_closure_implementations/anisotropic_biharmonic_diffusivity.jl")
+
+# Eddy viscosity closures
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 include("turbulence_closure_implementations/smagorinsky_lilly.jl")
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")

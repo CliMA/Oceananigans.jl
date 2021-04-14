@@ -1,4 +1,4 @@
-push!(LOAD_PATH, "..")
+push!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
 
 using Documenter
 using DocumenterCitations
@@ -14,8 +14,16 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
 
+using Oceananigans.BoundaryConditions: Flux, Value, Gradient, NormalFlow
+
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
 bib = CitationBibliography(bib_filepath)
+
+# Gotta set this environment variable when using the GR run-time on a remote machine.
+# This happens as examples will use Plots.jl to make plots and movies.
+# See: https://github.com/jheinen/GR.jl/issues/278
+
+ENV["GKSwstype"] = "100"
 
 #####
 ##### Generate examples
@@ -33,7 +41,8 @@ examples = [
     "ocean_wind_mixing_and_convection.jl",
     "langmuir_turbulence.jl",
     "eady_turbulence.jl",
-    "kelvin_helmholtz_instability.jl"
+    "kelvin_helmholtz_instability.jl",
+    "shallow_water_Bickley_jet.jl"
 ]
 
 for example in examples
@@ -46,16 +55,17 @@ end
 #####
 
 example_pages = [
-    "One-dimensional diffusion"        => "generated/one_dimensional_diffusion.md",
-    "Geostrophic adjustment"           => "generated/geostrophic_adjustment.md",
-    "Two-dimensional turbulence"       => "generated/two_dimensional_turbulence.md",
-    "Internal wave"                    => "generated/internal_wave.md",
-    "Convecting plankton"              => "generated/convecting_plankton.md",
-    "Ocean wind mixing and convection" => "generated/ocean_wind_mixing_and_convection.md",
-    "Langmuir turbulence"              => "generated/langmuir_turbulence.md",
-    "Eady turbulence"                  => "generated/eady_turbulence.md",
-    "Kelvin-Helmholtz instability"     => "generated/kelvin_helmholtz_instability.md"
-]
+    "One-dimensional diffusion"          => "generated/one_dimensional_diffusion.md",
+    "Geostrophic adjustment"             => "generated/geostrophic_adjustment.md",
+    "Two-dimensional turbulence"         => "generated/two_dimensional_turbulence.md",
+    "Internal wave"                      => "generated/internal_wave.md",
+    "Convecting plankton"                => "generated/convecting_plankton.md",
+    "Ocean wind mixing and convection"   => "generated/ocean_wind_mixing_and_convection.md",
+    "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
+    "Eady turbulence"                    => "generated/eady_turbulence.md",
+    "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
+    "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md"
+ ]
 
 model_setup_pages = [
     "Overview" => "model_setup/overview.md",
@@ -65,7 +75,7 @@ model_setup_pages = [
     "Clock" => "model_setup/clock.md",
     "Coriolis (rotation)" => "model_setup/coriolis.md",
     "Tracers" => "model_setup/tracers.md",
-    "Buoyancy and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
+    "Buoyancy models and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
     "Boundary conditions" => "model_setup/boundary_conditions.md",
     "Forcing functions" => "model_setup/forcing_functions.md",
     "Background fields" => "model_setup/background_fields.md",
@@ -80,7 +90,7 @@ model_setup_pages = [
 physics_pages = [
     "Navier-Stokes and tracer conservation equations" => "physics/navier_stokes_and_tracer_conservation.md",
     "Coriolis forces" => "physics/coriolis_forces.md",
-    "Buoyancy model and equations of state" => "physics/buoyancy_and_equations_of_state.md",
+    "Buoyancy models and equations of state" => "physics/buoyancy_and_equations_of_state.md",
     "Turbulence closures" => "physics/turbulence_closures.md",
     "Surface gravity waves and the Craik-Leibovich approximation" => "physics/surface_gravity_waves.md"
 ]
@@ -108,6 +118,7 @@ appendix_pages = [
 
 pages = [
     "Home" => "index.md",
+    "Publications" => "publications.md",
     "Installation instructions" => "installation_instructions.md",
     "Using GPUs" => "using_gpus.md",
     "Examples" => example_pages,
@@ -115,6 +126,7 @@ pages = [
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
     "Validation experiments" => validation_pages,
+    "Simulation tips" => "simulation_tips.md",
     "Gallery" => "gallery.md",
     "Performance benchmarks" => "benchmarks.md",
     "Contributor's guide" => "contributing.md",
@@ -131,7 +143,8 @@ pages = [
 format = Documenter.HTML(
     collapselevel = 1,
        prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://clima.github.io/OceananigansDocumentation/stable/"
+        canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
+       mathengine = MathJax3()
 )
 
 makedocs(bib,

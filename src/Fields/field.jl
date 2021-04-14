@@ -12,9 +12,9 @@ struct Field{X, Y, Z, A, G, B} <: AbstractField{X, Y, Z, A, G}
                    grid :: G
     boundary_conditions :: B
 
-    function Field{X, Y, Z}(data, grid, bcs) where {X, Y, Z}
+    function Field{X, Y, Z}(data::A, grid::G, bcs::B) where {X, Y, Z, A, G, B}
         validate_field_data(X, Y, Z, data, grid)
-        return new{X, Y, Z, typeof(data), typeof(grid), typeof(bcs)}(data, grid, bcs)
+        return new{X, Y, Z, A, G, B}(data, grid, bcs)
     end
 end
 
@@ -46,9 +46,10 @@ function Field(X, Y, Z, arch, grid,
     return Field{X, Y, Z}(data, grid, bcs)
 end
 
-#####
-##### Convenience constructor for Field that uses a 3-tuple of locations rather than a list of locations:
-#####
+function Base.similar(f::Field{X, Y, Z}) where {X, Y, Z}
+    arch = architecture(f.data)
+    return Field(X, Y, Z, arch, f.grid, f.boundary_conditions)
+end
 
 # Type "destantiation": convert Face() to Face and Center() to Center if needed.
 destantiate(X) = typeof(X)
@@ -78,7 +79,7 @@ function CenterField(FT::DataType, arch, grid,
                     bcs = TracerBoundaryConditions(grid),
                    data = new_data(FT, arch, grid, (Center, Center, Center)))
 
-    return Field{Center, Center, Center}(data, grid, bcs)
+    return Field(Center, Center, Center, arch, grid, bcs, data)
 end
 
 """
@@ -93,7 +94,7 @@ function XFaceField(FT::DataType, arch, grid,
                      bcs = UVelocityBoundaryConditions(grid),
                     data = new_data(FT, arch, grid, (Face, Center, Center)))
 
-    return Field{Face, Center, Center}(data, grid, bcs)
+    return Field(Face, Center, Center, arch, grid, bcs, data)
 end
 
 """
@@ -108,7 +109,7 @@ function YFaceField(FT::DataType, arch, grid,
                      bcs = VVelocityBoundaryConditions(grid),
                     data = new_data(FT, arch, grid, (Center, Face, Center)))
 
-    return Field{Center, Face, Center}(data, grid, bcs)
+    return Field(Center, Face, Center, arch, grid, bcs, data)
 end
 
 """
@@ -123,13 +124,13 @@ function ZFaceField(FT::DataType, arch, grid,
                      bcs = WVelocityBoundaryConditions(grid),
                     data = new_data(FT, arch, grid, (Center, Center, Face)))
 
-    return Field{Center, Center, Face}(data, grid, bcs)
+    return Field(Center, Center, Face, arch, grid, bcs, data)
 end
 
- CenterField(arch::AbstractArchitecture, grid, args...) =  CenterField(eltype(grid), arch, grid, args...)
-XFaceField(arch::AbstractArchitecture, grid, args...) = XFaceField(eltype(grid), arch, grid, args...)
-YFaceField(arch::AbstractArchitecture, grid, args...) = YFaceField(eltype(grid), arch, grid, args...)
-ZFaceField(arch::AbstractArchitecture, grid, args...) = ZFaceField(eltype(grid), arch, grid, args...)
+CenterField(arch::AbstractArchitecture, grid, args...) = CenterField(eltype(grid), arch, grid, args...)
+ XFaceField(arch::AbstractArchitecture, grid, args...) =  XFaceField(eltype(grid), arch, grid, args...)
+ YFaceField(arch::AbstractArchitecture, grid, args...) =  YFaceField(eltype(grid), arch, grid, args...)
+ ZFaceField(arch::AbstractArchitecture, grid, args...) =  ZFaceField(eltype(grid), arch, grid, args...)
 
 @propagate_inbounds Base.setindex!(f::Field, v, inds...) = @inbounds setindex!(f.data, v, inds...)
 

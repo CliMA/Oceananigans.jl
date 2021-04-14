@@ -2,13 +2,14 @@ using Base: @propagate_inbounds
 using CUDA
 using Adapt
 using OffsetArrays
+
 using Oceananigans.Architectures
 using Oceananigans.Utils
 using Oceananigans.Grids: interior_indices, interior_parent_indices
 
 import Base: minimum, maximum, extrema
 import Statistics: mean
-import Oceananigans: location
+import Oceananigans: location, instantiated_location
 import Oceananigans.Architectures: architecture
 import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, xnode, ynode, znode
@@ -42,7 +43,6 @@ end
 #####
 
 # Note: overload compute! for custom fields to produce non-default behavior
-
 
 """
     compute!(field)
@@ -106,6 +106,8 @@ end
 @inline location(::AbstractField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z) # note no instantiation
 @inline location(f, i) = location(f)[i]
 
+@inline instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
+
 "Returns the architecture where the field data `f.data` is stored."
 architecture(f::AbstractField) = architecture(f.data)
 architecture(o::OffsetArray) = architecture(o.parent)
@@ -168,6 +170,12 @@ total_size(f::AbstractField) = total_size(location(f), f.grid)
 #####
 
 @propagate_inbounds Base.getindex(f::AbstractField, inds...) = @inbounds getindex(f.data, inds...)
+
+#####
+##### setindex
+#####
+
+@propagate_inbounds Base.setindex!(f::AbstractField, a, inds...) = @inbounds setindex!(f.data, a, inds...)
 
 #####
 ##### Coordinates of fields

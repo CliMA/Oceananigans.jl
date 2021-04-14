@@ -28,16 +28,15 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
                                                                         model.forcing,
                                                                         model.clock)
 
-    #=
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
-    calculate_boundary_tendency_contributions!(model.timestepper.Gⁿ,
-                                               model.architecture,
-                                               model.velocities,
-                                               model.tracers,
-                                               model.clock,
-                                               fields(model))
-    =#
+    calculate_hydrostatic_boundary_tendency_contributions!(model.timestepper.Gⁿ,
+                                                           model.architecture,
+                                                           model.velocities,
+                                                           model.free_surface,
+                                                           model.tracers,
+                                                           model.clock,
+                                                           fields(model))
 
     return nothing
 end
@@ -46,20 +45,19 @@ function calculate_hydrostatic_momentum_tendencies!(tendencies, velocities, arch
                                                     free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
                                                     forcings, clock, barrier)
 
-    calculate_Gu_kernel! = calculate_hydrostatic_free_surface_Gu!(device(arch), work_layout(grid, :xyz)...)
-    calculate_Gv_kernel! = calculate_hydrostatic_free_surface_Gv!(device(arch), work_layout(grid, :xyz)...)
-    calculate_Gη_kernel! = calculate_hydrostatic_free_surface_Gη!(device(arch), work_layout(grid, :xy)...)
+    Gu_event = launch!(arch, grid, :xyz, calculate_hydrostatic_free_surface_Gu!,
+                       tendencies.u, grid, advection.momentum, coriolis, closure,
+                       velocities, free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
+                       forcings, clock; dependencies = barrier)
 
-    Gu_event = calculate_Gu_kernel!(tendencies.u, grid, advection.momentum, coriolis, closure,
-                                    velocities, free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
-                                    forcings, clock; dependencies = barrier)
+    Gv_event = launch!(arch, grid, :xyz, calculate_hydrostatic_free_surface_Gv!,
+                       tendencies.v, grid, advection.momentum, coriolis, closure,
+                       velocities, free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
+                       forcings, clock; dependencies = barrier)
 
-    Gv_event = calculate_Gv_kernel!(tendencies.v, grid, advection.momentum, coriolis, closure,
-                                    velocities, free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
-                                    forcings, clock; dependencies = barrier)
-                                    
-    Gη_event = calculate_Gη_kernel!(tendencies.η, grid, velocities, free_surface, tracers,
-                                    forcings, clock; dependencies = barrier)
+    Gη_event = launch!(arch, grid, :xy, calculate_hydrostatic_free_surface_Gη!,
+                       tendencies.η, grid, velocities, free_surface, tracers,
+                       forcings, clock; dependencies = barrier)
 
     events = [Gu_event, Gv_event, Gη_event]
 
@@ -82,23 +80,23 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(ten
                                                                              forcings,
                                                                              clock)
 
-    calculate_Gc_kernel! = calculate_hydrostatic_free_surface_Gc!(device(arch), work_layout(grid, :xyz)...)
-
     barrier = Event(device(arch))
 
     events = calculate_hydrostatic_momentum_tendencies!(tendencies, velocities, arch, grid, advection, coriolis, closure,
                                                         free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
                                                         forcings, clock, barrier)
-    
-    for tracer_index in 1:length(tracers)
-        @inbounds c_tendency = tendencies[tracer_index+3]
-        @inbounds c_advection = advection[tracer_index+1]
-        @inbounds forcing = forcings[tracer_index+3]
 
-        Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index),
-                                        c_advection, closure, buoyancy,
-                                        velocities, free_surface, tracers, diffusivities,
-                                        forcing, clock; dependencies = barrier)
+    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
+        @inbounds c_tendency = tendencies[tracer_name]
+        @inbounds c_advection = advection[tracer_name]
+        @inbounds forcing = forcings[tracer_name]
+
+        Gc_event = launch!(arch, grid, :xyz, calculate_hydrostatic_free_surface_Gc!,
+                           c_tendency, grid, Val(tracer_index),
+                           c_advection, closure, buoyancy,
+                           velocities, free_surface, tracers, diffusivities,
+                           forcing, clock;
+                           dependencies=barrier)
 
         push!(events, Gc_event)
     end
@@ -142,4 +140,45 @@ end
 @kernel function calculate_hydrostatic_free_surface_Gη!(Gη, grid, args...)
     i, j = @index(Global, NTuple)
     @inbounds Gη[i, j, 1] = free_surface_tendency(i, j, grid, args...)
+end
+
+#####
+##### Boundary condributions to hydrostatic free surface model
+#####
+
+function apply_flux_bcs!(Gcⁿ, events, c, arch, barrier, clock, model_fields)
+    x_bcs_event = apply_x_bcs!(Gcⁿ, c, arch, barrier, clock, model_fields)
+    y_bcs_event = apply_y_bcs!(Gcⁿ, c, arch, barrier, clock, model_fields)
+    z_bcs_event = apply_z_bcs!(Gcⁿ, c, arch, barrier, clock, model_fields)
+
+    push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
+
+    return nothing
+end
+
+""" Apply boundary conditions by adding flux divergences to the right-hand-side. """
+function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velocities, free_surface, tracers, clock, model_fields)
+
+    barrier = Event(device(arch))
+
+    events = []
+
+    # Velocity fields
+    for i in (:u, :v)
+        apply_flux_bcs!(Gⁿ[i], events, velocities[i], arch, barrier, clock, model_fields)
+    end
+
+    # Free surface
+    apply_flux_bcs!(Gⁿ.η, events, displacement(free_surface), arch, barrier, clock, model_fields)
+
+    # Tracer fields
+    for i in propertynames(tracers)
+        apply_flux_bcs!(Gⁿ[i], events, tracers[i], arch, barrier, clock, model_fields)
+    end
+
+    events = filter(e -> typeof(e) <: Event, events)
+
+    wait(device(arch), MultiEvent(Tuple(events)))
+
+    return nothing
 end

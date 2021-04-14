@@ -1,9 +1,10 @@
-module Buoyancy
+module BuoyancyModels
 
 export
-    BuoyancyTracer, SeawaterBuoyancy, buoyancy_perturbation,
+    Buoyancy, BuoyancyTracer, SeawaterBuoyancy, buoyancy_perturbation,
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
-    ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbation, buoyancy_frequency_squared,
+    ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbation, x_dot_g_b, y_dot_g_b, z_dot_g_b,
+    buoyancy_frequency_squared,
     BuoyancyField
 
 using Printf
@@ -17,11 +18,11 @@ import SeawaterPolynomials: ρ′, thermal_expansion, haline_contraction
 const g_Earth = 9.80665
 
 """
-    AbstractBuoyancy{EOS}
+    AbstractBuoyancyModel{EOS}
 
 Abstract supertype for buoyancy models.
 """
-abstract type AbstractBuoyancy{EOS} end
+abstract type AbstractBuoyancyModel{EOS} end
 
 """
     AbstractEquationOfState
@@ -39,34 +40,14 @@ function validate_buoyancy(buoyancy, tracers)
     return nothing
 end
 
-validate_buoyancy(::Nothing, tracers) = nothing
-
-required_tracers(::Nothing) = ()
-
-@inline buoyancy_perturbation(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
-
-@inline ∂x_b(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
-@inline ∂y_b(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
-@inline ∂z_b(i, j, k, grid::AbstractGrid{FT}, ::Nothing, C) where FT = zero(FT)
-
-"""
-    BuoyancyTracer <: AbstractBuoyancy{Nothing}
-
-Type indicating that the tracer `b` represents buoyancy.
-"""
-struct BuoyancyTracer <: AbstractBuoyancy{Nothing} end
-
-required_tracers(::BuoyancyTracer) = (:b,)
-
-@inline buoyancy_perturbation(i, j, k, grid, ::BuoyancyTracer, C) = @inbounds C.b[i, j, k]
-
-@inline ∂x_b(i, j, k, grid, ::BuoyancyTracer, C) = ∂xᶠᵃᵃ(i, j, k, grid, C.b)
-@inline ∂y_b(i, j, k, grid, ::BuoyancyTracer, C) = ∂yᵃᶠᵃ(i, j, k, grid, C.b)
-@inline ∂z_b(i, j, k, grid, ::BuoyancyTracer, C) = ∂zᵃᵃᶠ(i, j, k, grid, C.b)
-
+include("buoyancy.jl")
+include("no_buoyancy.jl")
+include("buoyancy_tracer.jl")
 include("seawater_buoyancy.jl")
 include("linear_equation_of_state.jl")
 include("nonlinear_equation_of_state.jl")
+include("g_dot_b.jl")
+include("buoyancy_field.jl")
 
 Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT =
     println(io, "SeawaterBuoyancy{$FT}: g = $(b.gravitational_acceleration)", '\n',
@@ -74,7 +55,5 @@ Base.show(io::IO, b::SeawaterBuoyancy{FT}) where FT =
 
 Base.show(io::IO, eos::LinearEquationOfState{FT}) where FT =
     println(io, "LinearEquationOfState{$FT}: ", @sprintf("α = %.2e, β = %.2e", eos.α, eos.β))
-
-include("buoyancy_field.jl")
 
 end
