@@ -190,4 +190,24 @@ to achieve this
 
 ### Arrays in GPUs are usually different from arrays in CPUs
 
-Talk about converting to CuArrays and viewing CuArrays as well!
+On the CPU Oceananigans.jl uses regular `Array`s, but on the GPU it has to use `CuArray`s
+from the CUDA.jl package. You might need to keep this difference in mind when using arrays
+to `set!` initial conditions or when using arrays to provide boundary conditions and
+forcing functions.
+
+To learn more about working with `CuArray`s, see the
+[array programming](https://juliagpu.github.io/CUDA.jl/dev/usage/array/) section
+of the CUDA.jl documentation.
+
+Something to keep in mind when working with `CuArray`s is that you do not want to set or
+get/access elements of a `CuArray` outside of a kernel. Doing so invokes scalar operations
+in which individual elements are copied from or to the GPU for processing. This is very
+slow and can result in huge slowdowns. For this reason, Oceananigans.jl disables CUDA
+scalar operations by default.
+
+See the [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
+section of the CUDA.jl documentation for more information on scalar indexing.
+
+Sometimes you need to perform scalar operations on `CuArray`s in which case you may want
+to temporarily allow scalar operations with the `CUDA.@allowscalar` macro or by calling
+`CUDA.allowscalar(true)`.
