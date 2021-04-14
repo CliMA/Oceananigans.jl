@@ -212,7 +212,7 @@ function __init__()
         FFTW.set_num_threads(4*threads)
     end
 
-    @hascuda begin
+    if CUDA.has_cuda()
         @debug "CUDA-enabled GPU(s) detected:"
         for (gpu, dev) in enumerate(CUDA.devices())
             @debug "$dev: $(CUDA.name(dev))"
