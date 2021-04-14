@@ -274,7 +274,7 @@ julia> T_bcs = TracerBoundaryConditions(grid, top = ValueBoundaryCondition(20),
                                            bottom = GradientBoundaryCondition(0.01));
 
 julia> model = IncompressibleModel(grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
-IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
+IncompressibleModel{typename(CPU), Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 ├── tracers: (:T, :S)
 ├── closure: IsotropicDiffusivity{Float64, NamedTuple{(:T, :S), Tuple{Float64, Float64}}}
