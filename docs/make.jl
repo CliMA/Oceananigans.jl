@@ -126,6 +126,7 @@ pages = [
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
     "Validation experiments" => validation_pages,
+    "Simulation tips" => "simulation_tips.md",
     "Gallery" => "gallery.md",
     "Performance benchmarks" => "benchmarks.md",
     "Contributor's guide" => "contributing.md",
