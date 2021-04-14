@@ -142,8 +142,7 @@ pages = [
 format = Documenter.HTML(
     collapselevel = 1,
        prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
-       mathengine = MathJax3()
+        canonical = "https://clima.github.io/OceananigansDocumentation/stable/"
 )
 
 makedocs(bib,
@@ -152,8 +151,8 @@ makedocs(bib,
     format = format,
      pages = pages,
    modules = [Oceananigans],
-   doctest = false,
-    strict = false,
+   doctest = true,
+    strict = true,
      clean = true,
  checkdocs = :none  # Should fix our docstring so we can use checkdocs=:exports with strict=true.
 )
