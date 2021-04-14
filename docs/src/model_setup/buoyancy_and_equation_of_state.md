@@ -24,7 +24,7 @@ julia> model = IncompressibleModel(grid=grid, buoyancy=nothing)
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
+├── closure: IsotropicDiffusivity{Float64, NamedTuple{(:T, :S), Tuple{Float64, Float64}}}
 ├── buoyancy: Nothing
 └── coriolis: Nothing
 ```
@@ -38,7 +38,7 @@ julia> model = IncompressibleModel(grid=grid, buoyancy=nothing, tracers=())
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: ()
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(),Tuple{}}}
+├── closure: IsotropicDiffusivity{Float64, NamedTuple{(), Tuple{}}}
 ├── buoyancy: Nothing
 └── coriolis: Nothing
 ```
@@ -68,8 +68,8 @@ julia> model = IncompressibleModel(grid=grid, buoyancy=SeawaterBuoyancy())
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+├── closure: IsotropicDiffusivity{Float64, NamedTuple{(:T, :S), Tuple{Float64, Float64}}}
+├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
 └── coriolis: Nothing
 ```
 
@@ -89,8 +89,8 @@ julia> model = IncompressibleModel(grid=grid, buoyancy=buoyancy)
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+├── closure: IsotropicDiffusivity{Float64, NamedTuple{(:T, :S), Tuple{Float64, Float64}}}
+├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
 └── coriolis: Nothing
 ```
 
@@ -136,5 +136,5 @@ Boussinesq models as described by [Roquet15TEOS](@cite) is implemented in the
 julia> using SeawaterPolynomials.TEOS10
 
 julia> eos = TEOS10EquationOfState()
-SeawaterPolynomials.BoussinesqEquationOfState{TEOS10SeawaterPolynomial{Float64},Int64}(TEOS10SeawaterPolynomial{Float64}(), 1020)
+SeawaterPolynomials.BoussinesqEquationOfState{TEOS10SeawaterPolynomial{Float64}, Int64}(TEOS10SeawaterPolynomial{Float64}(), 1020)
 ```

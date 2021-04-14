@@ -62,7 +62,7 @@ parameterized_func(x, y, z, t, p) = p.μ * exp(z / p.λ) * cos(p.ω * t)
 v_forcing = Forcing(parameterized_func, parameters = (μ=42, λ=0.1, ω=π))
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :ω),Tuple{Int64,Float64,Irrational{:π}}}}
+ContinuousForcing{NamedTuple{(:μ, :λ, :ω), Tuple{Int64, Float64, Irrational{:π}}}}
 ├── func: parameterized_func
 ├── parameters: (μ = 42, λ = 0.1, ω = π)
 └── field dependencies: ()
@@ -78,7 +78,7 @@ model = IncompressibleModel(grid=grid, forcing=(v=v_forcing,))
 model.forcing.v
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :ω),Tuple{Int64,Float64,Irrational{:π}}}} at (Center, Face, Center)
+ContinuousForcing{NamedTuple{(:μ, :λ, :ω), Tuple{Int64, Float64, Irrational{:π}}}} at (Center, Face, Center)
 ├── func: parameterized_func
 ├── parameters: (μ = 42, λ = 0.1, ω = π)
 └── field dependencies: ()
@@ -109,7 +109,7 @@ c_forcing = Forcing(tracer_relaxation,
                             parameters = (μ=1/60, λ=10, H=1000, dCdz=1))
 
 # output
-ContinuousForcing{NamedTuple{(:μ, :λ, :H, :dCdz),Tuple{Float64,Int64,Int64,Int64}}}
+ContinuousForcing{NamedTuple{(:μ, :λ, :H, :dCdz), Tuple{Float64, Int64, Int64, Int64}}}
 ├── func: tracer_relaxation
 ├── parameters: (μ = 0.016666666666666666, λ = 10, H = 1000, dCdz = 1)
 └── field dependencies: (:c,)
@@ -136,7 +136,7 @@ masked_damping(i, j, k, grid, clock, model_fields, parameters) =
 masked_damping_forcing = Forcing(masked_damping, parameters=(μ=42, λ=π), discrete_form=true)
 
 # output
-DiscreteForcing{NamedTuple{(:μ, :λ),Tuple{Int64,Irrational{:π}}}}
+DiscreteForcing{NamedTuple{(:μ, :λ), Tuple{Int64, Irrational{:π}}}}
 ├── func: masked_damping
 └── parameters: (μ = 42, λ = π)
 ```

@@ -64,7 +64,7 @@ bottom_sponge_layer = Relaxation(; rate = 1/60,
                                    mask = GaussianMask{:z}(center=-Lz, width=Lz/4))
 
 # output
-Relaxation{Float64, GaussianMask{:z,Float64}, LinearTarget{:z,Float64}}
+Relaxation{Float64, GaussianMask{:z, Float64}, LinearTarget{:z, Float64}}
 ├── rate: 0.016666666666666666
 ├── mask: exp(-(z + 100.0)^2 / (2 * 25.0^2))
 └── target: 20.0 + 0.001 * z
