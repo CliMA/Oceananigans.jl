@@ -6,10 +6,6 @@ using JLD2
 
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.CubedSpheres
-using Oceananigans.Coriolis
-using Oceananigans.Models.HydrostaticFreeSurfaceModels
-using Oceananigans.TurbulenceClosures
 
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 
@@ -126,7 +122,7 @@ function tracer_advection_over_the_poles(; face_number, α)
 
     cosine_bell(λ, φ, z) = r(λ, φ) < R ? h₀/2 * (1 + cos(π * r(λ, φ) / R)) : 0
 
-    set!(model, h=cosine_bell)
+    Oceananigans.set!(model, h=cosine_bell)
 
     ## Simulation setup
 
@@ -159,19 +155,22 @@ end
 ##### Run all the experiments!
 #####
 
-αs = (0, 45, 90)
+include("animate_on_map_projection.jl")
 
-for f in 1:6, α in αs
-    tracer_advection_over_the_poles(face_number=f, α=α)
-end
+function run_cubed_sphere_tracer_advection_validation()
 
-include("animate_on_map.jl")
+    αs = (0, 45, 90)
 
-projections = [
-    ccrs.NearsidePerspective(central_longitude=0,   central_latitude=30),
-    ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
-]
+    for f in 1:6, α in αs
+        tracer_advection_over_the_poles(face_number=f, α=α)
+    end
 
-for f in 1:6, α in αs
-    animate_tracer_advection(face_number=f, α=α, projections=projections)
+    projections = [
+        ccrs.NearsidePerspective(central_longitude=0,   central_latitude=30),
+        ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
+    ]
+
+    for f in 1:6, α in αs
+        animate_tracer_advection(face_number=f, α=α, projections=projections)
+    end
 end

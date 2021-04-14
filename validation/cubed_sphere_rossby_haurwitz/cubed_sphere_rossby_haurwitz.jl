@@ -9,6 +9,8 @@ using Oceananigans.Units
 
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 
+Logging.global_logger(OceananigansLogger())
+
 #####
 ##### Progress monitor
 #####
@@ -94,7 +96,7 @@ function cubed_sphere_rossby_haurwitz(grid_filepath)
     model = HydrostaticFreeSurfaceModel(
               architecture = CPU(),
                       grid = grid,
-        momentum_advection = VectorInvariant(),
+        momentum_advection = nothing,
               free_surface = ExplicitFreeSurface(gravitational_acceleration=100),
                   coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
                    closure = nothing,
@@ -142,7 +144,7 @@ function cubed_sphere_rossby_haurwitz(grid_filepath)
 
     u₀, v₀, _ = diagnose_velocities_from_streamfunction(ψ₀, grid)
 
-    set!(model, u=u₀, v=v₀, η=ηᵢ)
+    Oceananigans.set!(model, u=u₀, v=v₀, η=ηᵢ)
 
     ## Simulation setup
 
@@ -197,14 +199,18 @@ function cubed_sphere_rossby_haurwitz(grid_filepath)
     return simulation
 end
 
-cubed_sphere_rossby_haurwitz(datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2")
-cubed_sphere_rossby_haurwitz(datadep"cubed_sphere_96_grid/cubed_sphere_96_grid.jld2")
 
 include("animate_on_map_projection.jl")
 
-projections = [
-    ccrs.NearsidePerspective(central_longitude=0, central_latitude=30),
-    ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
-]
+function run_cubed_sphere_rossby_haurwitz_validation()
 
-animate_rossby_haurwitz(projections=projections)
+    cubed_sphere_rossby_haurwitz(datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2")
+    # cubed_sphere_rossby_haurwitz(datadep"cubed_sphere_96_grid/cubed_sphere_96_grid.jld2")
+
+    projections = [
+        ccrs.NearsidePerspective(central_longitude=0, central_latitude=30),
+        ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
+    ]
+
+    animate_rossby_haurwitz(projections=projections)
+end
