@@ -14,8 +14,6 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
     velocities_events = []
 
     for name in (:u, :v)
-        model.velocities isa PrescribedVelocityFields && break
-
         Gⁿ = model.timestepper.Gⁿ[name]
         G⁻ = model.timestepper.G⁻[name]
         velocity_field = model.velocities[name]
