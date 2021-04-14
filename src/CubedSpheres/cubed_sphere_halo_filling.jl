@@ -98,7 +98,10 @@ function fill_north_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cube
     return nothing
 end
 
-function fill_horizontal_velocity_halos!(u, v, arch)
+# Don't worry about this when not on a cubed sphere.
+fill_horizontal_velocity_halos!(u, v, arch) = nothing
+
+function fill_horizontal_velocity_halos!(u::ConformalCubedSphereField, v::ConformalCubedSphereField, arch)
 
     ## Fill them like they're tracers to get the top and bottom filled.
     fill_halo_regions!(u, arch)

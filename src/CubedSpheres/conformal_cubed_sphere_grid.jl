@@ -153,12 +153,7 @@ function ConformalCubedSphereGrid(FT=Float64; face_size, z, radius=R_Earth)
 
     face_connectivity = default_face_connectivity()
 
-    grid = ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity)}(faces, face_connectivity)
-
-    fill_grid_metric_halos!(grid)
-    # fill_grid_metric_halos!(grid) # get those corners?
-
-    return grid
+    return ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity)}(faces, face_connectivity)
 end
 
 function ConformalCubedSphereGrid(filepath::AbstractString, FT=Float64; Nz, z, radius = R_Earth, halo = (1, 1, 1))
@@ -174,7 +169,6 @@ function ConformalCubedSphereGrid(filepath::AbstractString, FT=Float64; Nz, z, r
     grid = ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity)}(faces, face_connectivity)
 
     fill_grid_metric_halos!(grid)
-    # fill_grid_metric_halos!(grid) # get those corners?
 
     return grid
 end
