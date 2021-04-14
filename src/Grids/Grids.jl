@@ -2,7 +2,7 @@ module Grids
 
 export
     Center, Face,
-    AbstractTopology, Periodic, Bounded, Flat, topology,
+    AbstractTopology, Periodic, Bounded, Flat, Connected, topology,
     AbstractGrid, halo_size,
     AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid,
     AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid,
@@ -66,6 +66,13 @@ Grid topology for flat dimensions, generally with one grid point, along which th
 is uniform and does not vary.
 """
 struct Flat <: AbstractTopology end
+
+"""
+    Connected
+
+Grid topology for dimensions that are connected to other models or domains on both sides.
+"""
+const Connected = Periodic  # Right now we just need them to behave like Periodic dimensions except we change the boundary conditions.
 
 """
     AbstractGrid{FT, TX, TY, TZ}
