@@ -70,7 +70,7 @@ molecular motion in a gas can be described by a molecular viscosity.
 Taking this assumption we can express the Reynolds stresses and turbulent tracer fluxes in terms of the mean variables
 and close the equations
 ```math
-\overline{\boldsymbol{u}^\prime c^\prime} = -\kappa_e \nabla \overline{c}
+\overline{\boldsymbol{u}^\prime c^\prime} = -\kappa_e \boldsymbol{\nabla} \overline{c}
 \quad \text{and} \quad
 \overline{u_i^\prime u_j^\prime} = -2\nu_e \overline{S}_{ij} \, ,
 ```

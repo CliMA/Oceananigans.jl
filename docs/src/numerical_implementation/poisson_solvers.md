@@ -8,7 +8,7 @@ Poisson equation for the non-hydrostatic kinematic pressure
 ```math
    \begin{equation}
    \label{eq:poisson-pressure}
-   \nabla^2\phi_{NH} = \frac{\nabla \cdot \boldsymbol{u}^n}{\Delta t} + \nabla \cdot \boldsymbol{G}_{\boldsymbol{u}} \equiv \mathscr{F} \, ,
+   \nabla^2\phi_{NH} = \frac{\nabla \cdot \boldsymbol{u}^n}{\Delta t} + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{G}_{\boldsymbol{u}} \equiv \mathscr{F} \, ,
    \end{equation}
 ```
 along with homogenous Neumann boundary conditions ``\boldsymbol{u} \cdot \boldsymbol{\hat{n}} = 0`` (Neumann on ``\phi`` for wall-bounded

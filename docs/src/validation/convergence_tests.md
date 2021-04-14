@@ -139,7 +139,7 @@ where subscript denote derivatives such that ``\psi_y \equiv \partial_y \psi``, 
 With an isotropic Laplacian viscosity ``\nu = 1``, the momentum and continuity equations are
 ```math
     \begin{align}
-    \boldsymbol{u}_t + \left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u} + \nabla p & = \nabla^2 \boldsymbol{u} + \boldsymbol{F}_u \, , \\
+    \boldsymbol{u}_t + \left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u} + \boldsymbol{\nabla} p & = \nabla^2 \boldsymbol{u} + \boldsymbol{F}_u \, , \\
     \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u} & = 0 \, ,
     \end{align}
 ```
