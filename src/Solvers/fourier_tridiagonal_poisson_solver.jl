@@ -1,3 +1,5 @@
+using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
+
 struct FourierTridiagonalPoissonSolver{A, G, B, S, β, T}
                   architecture :: A
                           grid :: G
@@ -11,13 +13,14 @@ end
     i, j = @index(Global, NTuple)
     Nz = grid.Nz
 
-    D[i, j, 1] = -1/ΔzF(i, j, 1, grid) - ΔzC(i, j, 1, grid) * (λx[i] + λy[j])
+    # Using a homogeneous Neumann (zero Gradient) boundary condition:
+    D[i, j, 1] = -1 / Δzᵃᵃᶠ(i, j, 2, grid) - Δzᵃᵃᶜ(i, j, 1, grid) * (λx[i] + λy[j])
 
     @unroll for k in 2:Nz-1
-        D[i, j, k] = - (1/ΔzF(i, j, k-1, grid) + 1/ΔzF(i, j, k, grid)) - ΔzC(i, j, k, grid) * (λx[i] + λy[j])
+        D[i, j, k] = - (1 / Δzᵃᵃᶠ(i, j, k+1, grid) + 1 / Δzᵃᵃᶠ(i, j, k, grid)) - Δzᵃᵃᶜ(i, j, k, grid) * (λx[i] + λy[j])
     end
 
-    D[i, j, Nz] = -1/ΔzF(i, j, Nz-1, grid) - ΔzC(i, j, Nz, grid) * (λx[i] + λy[j])
+    D[i, j, Nz] = -1 / Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᵃᵃᶜ(i, j, Nz, grid) * (λx[i] + λy[j])
 end
 
 function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
@@ -39,19 +42,25 @@ function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
 
     # Lower and upper diagonals are the same
     CUDA.@allowscalar begin
-        ld = arch_array(arch, [1/ΔzF(1, 1, k, grid) for k in 1:Nz-1])
-        ud = ld
+        lower_diagonal = arch_array(arch, [1 / Δzᵃᵃᶠ(1, 1, k, grid) for k in 2:Nz])
+        upper_diagonal = lower_diagonal
     end
 
     # Compute diagonal coefficients for each grid point
-    D = arch_array(arch, zeros(Nx, Ny, Nz))
-    event = launch!(arch, grid, :xy, compute_diagonals!, D, grid, λx, λy,
+    diagonal = arch_array(arch, zeros(Nx, Ny, Nz))
+    event = launch!(arch, grid, :xy, compute_diagonals!, diagonal, grid, λx, λy,
                     dependencies=Event(device(arch)))
     wait(device(arch), event)
 
     # Set up batched tridiagonal solver
     rhs_storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
-    btsolver = BatchedTridiagonalSolver(arch, dl=ld, d=D, du=ud, f=rhs_storage, grid=grid)
+
+    btsolver = BatchedTridiagonalSolver(arch,
+                                        grid = grid,
+                                          dl = lower_diagonal,
+                                           d = diagonal,
+                                          du = upper_diagonal,
+                                           f = rhs_storage)
 
     # Need buffer for index permutations and transposes.
     buffer_needed = arch isa GPU && Bounded in (TX, TY) ? true : false
@@ -82,4 +91,41 @@ function solve_poisson_equation!(solver::FourierTridiagonalPoissonSolver)
     ϕ .= ϕ .- mean(ϕ)
 
     return nothing
+end
+
+@kernel function calculate_pressure_source_term_fourier_tridiagonal_solver!(RHS, grid, Δt, U★)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds RHS[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+end
+
+"""
+    set_source_term!(solver, source_term)
+
+Sets the `source_term` ``R`` in the discrete Poisson equation `solver`.
+The Poisson equation is
+
+```math
+\\nabla^2 \\phi = R
+```
+
+where ``\\nabla^2`` is the Laplacian, ``R`` is the Poisson `source_term`,
+and ``\\phi`` is the solution to the Poisson equation.
+"""
+function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
+    grid = solver.grid
+    arch = solver.architecture
+
+    solver_rhs = solver.batched_tridiagonal_solver.f
+    solver_rhs .= source_term
+
+    event = launch!(arch, grid, :xyz, multiply_by_Δzᵃᵃᶜ!, solver_rhs, grid, dependencies=Event(device(arch)))
+    wait(device(arch), event)
+                    
+    return nothing
+end
+
+@kernel function multiply_by_Δzᵃᵃᶜ!(a, grid)
+    i, j, k = @index(Global, NTuple)
+    a[i, j, k] *= Δzᵃᵃᶜ(i, j, k, grid)
 end

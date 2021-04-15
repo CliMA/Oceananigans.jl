@@ -45,20 +45,19 @@ function calculate_hydrostatic_momentum_tendencies!(tendencies, velocities, arch
                                                     free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
                                                     forcings, clock, barrier)
 
-    calculate_Gu_kernel! = calculate_hydrostatic_free_surface_Gu!(device(arch), work_layout(grid, :xyz)...)
-    calculate_Gv_kernel! = calculate_hydrostatic_free_surface_Gv!(device(arch), work_layout(grid, :xyz)...)
-    calculate_Gη_kernel! = calculate_hydrostatic_free_surface_Gη!(device(arch), work_layout(grid, :xy)...)
+    Gu_event = launch!(arch, grid, :xyz, calculate_hydrostatic_free_surface_Gu!,
+                       tendencies.u, grid, advection.momentum, coriolis, closure,
+                       velocities, free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
+                       forcings, clock; dependencies = barrier)
 
-    Gu_event = calculate_Gu_kernel!(tendencies.u, grid, advection.momentum, coriolis, closure,
-                                    velocities, free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
-                                    forcings, clock; dependencies = barrier)
+    Gv_event = launch!(arch, grid, :xyz, calculate_hydrostatic_free_surface_Gv!,
+                       tendencies.v, grid, advection.momentum, coriolis, closure,
+                       velocities, free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
+                       forcings, clock; dependencies = barrier)
 
-    Gv_event = calculate_Gv_kernel!(tendencies.v, grid, advection.momentum, coriolis, closure,
-                                    velocities, free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
-                                    forcings, clock; dependencies = barrier)
-                                    
-    Gη_event = calculate_Gη_kernel!(tendencies.η, grid, velocities, free_surface, tracers,
-                                    forcings, clock; dependencies = barrier)
+    Gη_event = launch!(arch, grid, :xy, calculate_hydrostatic_free_surface_Gη!,
+                       tendencies.η, grid, velocities, free_surface, tracers,
+                       forcings, clock; dependencies = barrier)
 
     events = [Gu_event, Gv_event, Gη_event]
 
@@ -81,23 +80,23 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(ten
                                                                              forcings,
                                                                              clock)
 
-    calculate_Gc_kernel! = calculate_hydrostatic_free_surface_Gc!(device(arch), work_layout(grid, :xyz)...)
-
     barrier = Event(device(arch))
 
     events = calculate_hydrostatic_momentum_tendencies!(tendencies, velocities, arch, grid, advection, coriolis, closure,
                                                         free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
                                                         forcings, clock, barrier)
-    
+
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         @inbounds c_tendency = tendencies[tracer_name]
         @inbounds c_advection = advection[tracer_name]
         @inbounds forcing = forcings[tracer_name]
 
-        Gc_event = calculate_Gc_kernel!(c_tendency, grid, Val(tracer_index),
-                                        c_advection, closure, buoyancy,
-                                        velocities, free_surface, tracers, diffusivities,
-                                        forcing, clock; dependencies = barrier)
+        Gc_event = launch!(arch, grid, :xyz, calculate_hydrostatic_free_surface_Gc!,
+                           c_tendency, grid, Val(tracer_index),
+                           c_advection, closure, buoyancy,
+                           velocities, free_surface, tracers, diffusivities,
+                           forcing, clock;
+                           dependencies=barrier)
 
         push!(events, Gc_event)
     end

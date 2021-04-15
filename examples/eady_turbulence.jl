@@ -75,7 +75,7 @@
 # the flux is negative (downwards) when the velocity at the bottom boundary is positive, and
 # positive (upwards) with the velocity at the bottom boundary is negative.
 # This drag term is "quadratic" because the rate at which momentum is removed is proportional
-# to ``\bm{u}_h |\bm{u}_h|``, where ``\bm{u}_h = u \bm{\hat{x}} + v \bm{\hat{y}}`` is
+# to ``\boldsymbol{u}_h |\boldsymbol{u}_h|``, where ``\boldsymbol{u}_h = u \boldsymbol{\hat{x}} + v \boldsymbol{\hat{y}}`` is
 # the horizontal velocity.
 #
 # The ``x``-component of the quadratic bottom drag is thus
@@ -95,7 +95,7 @@
 #
 # ### Vertical and horizontal viscosity and diffusivity
 #
-# Vertical and horizontal viscosties and diffusivities are required
+# Vertical and horizontal viscosities and diffusivities are required
 # to stabilize the Eady problem and can be idealized as modeling the effect of
 # turbulent mixing below the grid scale. For both tracers and velocities we use
 # a Laplacian vertical diffusivity ``κ_z ∂_z^2 c`` and a horizontal
@@ -249,7 +249,7 @@ nothing # hide
 ## background velocity.
 Ū = basic_state_parameters.α * grid.Lz
 
-max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z, 0.2/coriolis.f)
+max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z, 1/basic_state_parameters.N)
 
 wizard = TimeStepWizard(cfl=0.85, Δt=max_Δt, max_change=1.1, max_Δt=max_Δt)
 

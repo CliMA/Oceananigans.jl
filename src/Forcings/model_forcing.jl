@@ -14,16 +14,16 @@ dependency to a special forcing object, as for `Relxation`.
 regularize_forcing(forcing, field, field_name, model_field_names) = forcing # fallback
 
 """
-    regularize_forcing(forcing::Function, field::Field, field_name, model_field_names)
+    regularize_forcing(forcing::Function, field, field_name, model_field_names)
 
 Wrap `forcing` in a `ContinuousForcing` at the location of `field`.
 """
-function regularize_forcing(forcing::Function, field::Field, field_name, model_field_names)
+function regularize_forcing(forcing::Function, field, field_name, model_field_names)
     LX, LY, LZ = location(field)
     return ContinuousForcing{LX, LY, LZ}(forcing)
 end
 
-regularize_forcing(::Nothing, field::Field, field_name, model_field_names) = zeroforcing
+regularize_forcing(::Nothing, field::AbstractField, field_name, model_field_names) = zeroforcing
 
 """
     model_forcing(model_fields; forcings...)

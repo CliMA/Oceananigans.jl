@@ -1,6 +1,9 @@
 module HydrostaticFreeSurfaceModels
 
-export HydrostaticFreeSurfaceModel, VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface
+export
+    HydrostaticFreeSurfaceModel, VectorInvariant,
+    ExplicitFreeSurface, ImplicitFreeSurface,
+    PrescribedVelocityFields
 
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
@@ -9,16 +12,26 @@ using Oceananigans.Utils: launch!
 
 import Oceananigans: fields
 
+# This is only used by the cubed sphere for now.
+fill_horizontal_velocity_halos!(args...) = nothing
+
 #####
 ##### HydrostaticFreeSurfaceModel definition
 #####
 
+FreeSurfaceDisplacementField(velocities, arch, grid) = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
+
 include("compute_w_from_continuity.jl")
-include("explicit_free_surface.jl")
-include("implicit_free_surface.jl")
-include("implicit_free_surface_solver.jl")
-include("implicit_free_surface_solver_kernels.jl")
+
 include("rigid_lid.jl")
+include("explicit_free_surface.jl")
+
+# Implicit solver functionality
+include("implicit_free_surface.jl")
+include("compute_vertically_integrated_lateral_face_areas.jl")
+include("compute_vertically_integrated_volume_flux.jl")
+include("implicit_free_surface_solver.jl")
+
 include("hydrostatic_free_surface_velocity_fields.jl")
 include("hydrostatic_free_surface_tendency_fields.jl")
 include("hydrostatic_free_surface_model.jl")
