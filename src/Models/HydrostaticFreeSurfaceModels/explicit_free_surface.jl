@@ -42,21 +42,12 @@ end
 ab2_step_free_surface!(free_surface::ExplicitFreeSurface, velocities_update, model, Δt, χ) =
     explicit_ab2_step_free_surface!(free_surface::ExplicitFreeSurface, velocities_update, model, Δt, χ)
 
-function explicit_ab2_step_free_surface!(free_surface, velocities_update, model, Δt, χ)
+explicit_ab2_step_free_surface!(free_surface, velocities_update, model, Δt, χ) =
+    launch!(model.architecture, model.grid, :xy, _explicit_ab2_step_free_surface!, free_surface.η,
+            Δt, χ, model.timestepper.Gⁿ.η, model.timestepper.G⁻.η,
+            dependencies=Event(device(model.architecture)))
 
-    event = launch!(model.architecture, model.grid, :xy,
-                    _explicit_ab2_step_free_surface!,
-                    free_surface.η,
-                    Δt,
-                    χ,
-                    model.timestepper.Gⁿ.η,
-                    model.timestepper.G⁻.η,
-                    dependencies=Event(device(model.architecture)))
-
-    return event
-end
-
-@kernel function _explicit_ab2_step_free_surface!(η, Δt::FT, χ, Gηⁿ, Gη⁻) where FT
+@kernel function _explicit_ab2_step_free_surface!(η, Δt, χ::FT, Gηⁿ, Gη⁻) where FT
     i, j = @index(Global, NTuple)
 
     @inbounds begin
