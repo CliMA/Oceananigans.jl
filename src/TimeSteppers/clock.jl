@@ -34,13 +34,10 @@ Returns a `Clock` initialized to the zeroth iteration and first time step stage.
 """
 Clock(; time, iteration=0, stage=1) = Clock{typeof(time)}(time, iteration, stage)
 
-short_show(clock::Clock) = string("Clock(time=", prettytime(clock.time),
-                                  ", iteration=", clock.iteration, ")")
+short_show(clock::Clock) = string("Clock(time=$(prettytime(clock.time)), iteration=$(clock.iteration))")
 
 Base.show(io::IO, c::Clock{T}) where T =
-    println(io, "Clock{$T}: time = ", prettytime(c.time),
-                    ", iteration = ", c.iteration,
-                        ", stage = ", c.stage)
+    println(io, "Clock{$T}: time = $(prettytime(c.time)), iteration = $(c.iteration), stage = $(c.stage)")
 
 next_time(clock, Δt) = clock.time + Δt
 next_time(clock::Clock{<:AbstractTime}, Δt) = clock.time + Nanosecond(round(Int, 1e9 * Δt))

@@ -127,9 +127,9 @@ function ZFaceField(FT::DataType, arch, grid,
 end
 
 CenterField(arch::AbstractArchitecture, grid, args...) = CenterField(eltype(grid), arch, grid, args...)
- XFaceField(arch::AbstractArchitecture, grid, args...) = XFaceField(eltype(grid), arch, grid, args...)
- YFaceField(arch::AbstractArchitecture, grid, args...) = YFaceField(eltype(grid), arch, grid, args...)
- ZFaceField(arch::AbstractArchitecture, grid, args...) = ZFaceField(eltype(grid), arch, grid, args...)
+ XFaceField(arch::AbstractArchitecture, grid, args...) =  XFaceField(eltype(grid), arch, grid, args...)
+ YFaceField(arch::AbstractArchitecture, grid, args...) =  YFaceField(eltype(grid), arch, grid, args...)
+ ZFaceField(arch::AbstractArchitecture, grid, args...) =  ZFaceField(eltype(grid), arch, grid, args...)
 
 @propagate_inbounds Base.setindex!(f::Field, v, inds...) = @inbounds setindex!(f.data, v, inds...)
 

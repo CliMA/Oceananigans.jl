@@ -78,8 +78,9 @@ using Oceananigans.Models
 using Oceananigans.Grids: halo_size
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δyᶜᶠᵃ, Δzᵃᵃᶠ
 
-function accurate_cell_advection_timescale(model::Union{IncompressibleModel, HydrostaticFreeSurfaceModel})
-    grid = model.grid
+accurate_cell_advection_timescale(model) = accurate_cell_advection_timescale(model.grid, model.velocities)
+
+function accurate_cell_advection_timescale(grid, velocities)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
 
@@ -87,9 +88,9 @@ function accurate_cell_advection_timescale(model::Union{IncompressibleModel, Hyd
     js = 1+Hy:Ny+Hy
     ks = 1+Hz:Nz+Hz
 
-    u = view(model.velocities.u.data.parent, is, js, ks)
-    v = view(model.velocities.v.data.parent, is, js, ks)
-    w = view(model.velocities.w.data.parent, is, js, ks)
+    u = view(velocities.u.data.parent, is, js, ks)
+    v = view(velocities.v.data.parent, is, js, ks)
+    w = view(velocities.w.data.parent, is, js, ks)
 
     min_timescale = minimum(
         @tullio (min) timescale[k] := 1 / (  abs(u[i, j, k]) / Δxᶠᶜᵃ(i, j, k, grid)
