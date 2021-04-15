@@ -116,7 +116,7 @@ end
 # Note: I think we want to keep faces and face_connectivity tuples
 # so it's easy to support an arbitrary number of faces.
 
-struct ConformalCubedSphereGrid{FT, F, C}
+struct ConformalCubedSphereGrid{FT, F, C} <: AbstractHorizontallyCurvilinearGrid{FT, Connected, Connected, Bounded}
                 faces :: F
     face_connectivity :: C
 end

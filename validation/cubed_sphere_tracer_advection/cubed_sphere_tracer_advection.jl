@@ -100,14 +100,15 @@ function tracer_advection_over_the_poles(; face_number, α)
     ## Model setup
 
     model = HydrostaticFreeSurfaceModel(
-        architecture = CPU(),
-                grid = grid,
-             tracers = :h,
-          velocities = PrescribedVelocityFields(u=Uᶠᶜᶜ, v=Vᶜᶠᶜ, w=Wᶜᶜᶠ),
-        free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
-            coriolis = nothing,
-             closure = nothing,
-            buoyancy = nothing
+              architecture = CPU(),
+                      grid = grid,
+        momentum_advection = nothing,
+                   tracers = :h,
+                velocities = PrescribedVelocityFields(u=Uᶠᶜᶜ, v=Vᶜᶠᶜ, w=Wᶜᶜᶠ),
+              free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
+                  coriolis = nothing,
+                   closure = nothing,
+                  buoyancy = nothing
     )
 
     ## Cosine bell initial condition according to Williamson et al. (1992) §3.1

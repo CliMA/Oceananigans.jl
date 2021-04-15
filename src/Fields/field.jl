@@ -7,14 +7,15 @@ A field defined at the location (`X`, `Y`, `Z`), each of which can be either `Ce
 or `Face`, and with data stored in a container of type `A` (typically an array).
 The field is defined on a grid `G` and has field boundary conditions `B`.
 """
-struct Field{X, Y, Z, A, G, B} <: AbstractField{X, Y, Z, A, G}
-                   data :: A
+struct Field{X, Y, Z, A, D, G, B} <: AbstractField{X, Y, Z, A, G}
+                   data :: D
+           architecture :: A
                    grid :: G
     boundary_conditions :: B
 
-    function Field{X, Y, Z}(data::A, grid::G, bcs::B) where {X, Y, Z, A, G, B}
+    function Field{X, Y, Z}(data::D, arch::A, grid::G, bcs::B) where {X, Y, Z, D, A, G, B}
         validate_field_data(X, Y, Z, data, grid)
-        return new{X, Y, Z, A, G, B}(data, grid, bcs)
+        return new{X, Y, Z, A, D, G, B}(data, arch, grid, bcs)
     end
 end
 
@@ -43,13 +44,11 @@ function Field(X, Y, Z, arch, grid,
                 bcs = FieldBoundaryConditions(grid, (X, Y, Z)),
                data = new_data(eltype(grid), arch, grid, (X, Y, Z)))
 
-    return Field{X, Y, Z}(data, grid, bcs)
+    return Field{X, Y, Z}(data, arch, grid, bcs)
 end
 
-function Base.similar(f::Field{X, Y, Z}) where {X, Y, Z}
-    arch = architecture(f.data)
-    return Field(X, Y, Z, arch, f.grid, f.boundary_conditions)
-end
+Base.similar(f::Field{X, Y, Z, Arch}) where {X, Y, Z, Arch} =
+    Field(X, Y, Z, Arch(), f.grid, f.boundary_conditions)
 
 # Type "destantiation": convert Face() to Face and Center() to Center if needed.
 destantiate(X) = typeof(X)

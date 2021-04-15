@@ -2,8 +2,9 @@ using Oceananigans: AbstractModel
 using Oceananigans.Grids
 using Oceananigans.Utils: tupleit
 
-struct KernelComputedField{X, Y, Z, S, A, G, K, C, F, P} <: AbstractField{X, Y, Z, A, G}
-                     data :: A
+struct KernelComputedField{X, Y, Z, A, S, D, G, K, C, F, P} <: AbstractField{X, Y, Z, A, G}
+                     data :: D
+             architecture :: A
                      grid :: G
                    kernel :: K
       boundary_conditions :: C
@@ -11,12 +12,12 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, C, F, P} <: AbstractField{X, Y, 
                parameters :: P
                    status :: S
 
-    function KernelComputedField{X, Y, Z}(kernel::K, arch, grid;
+    function KernelComputedField{X, Y, Z}(kernel::K, arch::A, grid;
                                           boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)),
                                           computed_dependencies = (),
                                           parameters::P = nothing,
                                           data = nothing,
-                                          recompute_safely = true) where {X, Y, Z, K, P}
+                                          recompute_safely = true) where {X, Y, Z, A, K, P}
 
         computed_dependencies = tupleit(computed_dependencies)
 
@@ -28,13 +29,14 @@ struct KernelComputedField{X, Y, Z, S, A, G, K, C, F, P} <: AbstractField{X, Y, 
         status = recompute_safely ? nothing : FieldStatus(0.0)
 
         G = typeof(grid)
-        A = typeof(data)
+        D = typeof(data)
         S = typeof(status)
         F = typeof(computed_dependencies)
         C = typeof(boundary_conditions)
 
-        return new{X, Y, Z, S,
-                   A, G, K, C, F, P}(data, grid, kernel, boundary_conditions, computed_dependencies, parameters)
+        return new{X, Y, Z, A, S,
+                   D, G, K, C, F, P}(data, arch, grid, kernel, boundary_conditions,
+                                     computed_dependencies, parameters)
     end
 end
 
@@ -109,7 +111,7 @@ function compute!(kcf::KernelComputedField{X, Y, Z}) where {X, Y, Z}
         compute!(dependency)
     end
 
-    arch = architecture(kcf.data)
+    arch = architecture(kcf)
 
     workgroup, worksize = work_layout(kcf.grid,
                                       :xyz,
