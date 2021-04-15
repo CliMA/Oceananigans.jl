@@ -6,12 +6,10 @@ using JLD2
 
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.CubedSpheres
-using Oceananigans.Coriolis
-using Oceananigans.Models.HydrostaticFreeSurfaceModels
-using Oceananigans.TurbulenceClosures
 
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
+
+Logging.global_logger(OceananigansLogger())
 
 #####
 ##### Progress monitor
@@ -45,8 +43,6 @@ end
 
 ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
-Logging.global_logger(OceananigansLogger())
-
 dd = DataDep("cubed_sphere_32_grid",
     "Conformal cubed sphere grid with 32×32 grid points on each face",
     "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
@@ -71,10 +67,9 @@ function cubed_sphere_surface_gravity_waves(; face_number)
     model = HydrostaticFreeSurfaceModel(
               architecture = CPU(),
                       grid = grid,
-        momentum_advection = VectorInvariant(),
+        momentum_advection = nothing,
               free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
                   coriolis = nothing,
-                # coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
                    closure = nothing,
                    tracers = nothing,
                   buoyancy = nothing
@@ -90,9 +85,9 @@ function cubed_sphere_surface_gravity_waves(; face_number)
     Δλ = 15  # Longitudinal width
     Δφ = 15  # Latitudinal width
 
-    η′(λ, φ, z) = A * exp(- (λ - λ₀)^2 / Δλ^2) * exp(- (φ - φ₀)^2 / Δφ^2)
+    η′(λ, φ) = A * exp(- (λ - λ₀)^2 / Δλ^2) * exp(- (φ - φ₀)^2 / Δφ^2)
 
-    set!(model, η=η′)
+    Oceananigans.set!(model, η=η′)
 
     ## Simulation setup
 
@@ -133,17 +128,20 @@ function cubed_sphere_surface_gravity_waves(; face_number)
     return simulation
 end
 
-for f in 1:6
-    cubed_sphere_surface_gravity_waves(face_number=f)
-end
-
 include("animate_on_map_projection.jl")
 
-projections = [
-    ccrs.NearsidePerspective(central_longitude=0,   central_latitude=30),
-    ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
-]
+function run_cubed_sphere_surface_gravity_waves_validation()
 
-for f in 1:6
-    animate_surface_gravity_waves(face_number=f, projections=projections)
+    for f in 1:6
+        cubed_sphere_surface_gravity_waves(face_number=f)
+    end
+
+    projections = [
+        ccrs.NearsidePerspective(central_longitude=0,   central_latitude=30),
+        ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
+    ]
+
+    for f in 1:6
+        animate_surface_gravity_waves(face_number=f, projections=projections)
+    end
 end

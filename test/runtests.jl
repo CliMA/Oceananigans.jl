@@ -54,8 +54,7 @@ Logging.global_logger(OceananigansLogger())
 
 float_types = (Float32, Float64)
 
-         archs = (CPU(),)
-@hascuda archs = (GPU(),)
+archs = CUDA.has_cuda() ? (GPU(),) : (CPU(),)
 
 closures = (
     :IsotropicDiffusivity,
