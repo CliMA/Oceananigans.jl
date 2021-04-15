@@ -64,13 +64,13 @@ end
 """ Set the GPU field `u` to the CuArray `v`. """
 function set!(u::AbstractGPUField, v::CuArray)
 
-    launch!(GPU(), u.grid, :xyz, _set_gpu!, u.data, v, u.grid,
+    launch!(GPU(), u.grid, :xyz, _set_gpu!, u.data, v,
             include_right_boundaries=true, location=location(u))
 
     return nothing
 end
 
-@kernel function _set_gpu!(u, v, grid)
+@kernel function _set_gpu!(u, v)
     i, j, k = @index(Global, NTuple)
     @inbounds u[i, j, k] = v[i, j, k]
 end
