@@ -36,7 +36,7 @@ using Oceananigans.Fields
 using Oceananigans.BuoyancyModels
 using Oceananigans.Utils
 
-using Oceananigans.Architectures: AbstractArchitecture, device, @hascuda
+using Oceananigans.Architectures: AbstractArchitecture, device
 
 #####
 ##### Molecular viscosity and thermal diffusivity definitions

@@ -35,7 +35,7 @@ using Oceananigans
 # Below, we build a regular rectilinear grid with 128 grid points in the `z`-direction,
 # where `z` spans from `z = -0.5` to `z = 0.5`,
 
-grid = RegularRectilinearGrid(size=(128), z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
+grid = RegularRectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 
 # The default topology is `(Periodic, Periodic, Bounded)` but since we only want to solve
 # a one-dimensional problem, we assign the `x` and `y` dimensions to `Flat`.  

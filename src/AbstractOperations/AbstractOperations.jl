@@ -7,8 +7,6 @@ using Base: @propagate_inbounds
 import Adapt
 using CUDA
 
-using Oceananigans.Architectures: @hascuda
-
 using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Grids
