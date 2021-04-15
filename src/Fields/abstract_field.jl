@@ -23,7 +23,7 @@ of type `A`. The field is defined on a grid `G`.
 """
 abstract type AbstractField{X, Y, Z,
                             A <: Union{AbstractArchitecture, Nothing},
-                            G <: Union{AbstractGrid, Nothing}} end
+                            G <: Union{AbstractGrid{FT}, Nothing}} <: AbstractArray{FT, 3} end
 
 function validate_field_data(X, Y, Z, data, grid)
     Tx, Ty, Tz = total_size((X, Y, Z), grid)
