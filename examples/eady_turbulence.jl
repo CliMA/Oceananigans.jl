@@ -95,7 +95,7 @@
 #
 # ### Vertical and horizontal viscosity and diffusivity
 #
-# Vertical and horizontal viscosties and diffusivities are required
+# Vertical and horizontal viscosities and diffusivities are required
 # to stabilize the Eady problem and can be idealized as modeling the effect of
 # turbulent mixing below the grid scale. For both tracers and velocities we use
 # a Laplacian vertical diffusivity ``κ_z ∂_z^2 c`` and a horizontal
@@ -249,7 +249,7 @@ nothing # hide
 ## background velocity.
 Ū = basic_state_parameters.α * grid.Lz
 
-max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z, 0.2/coriolis.f)
+max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z, 1/basic_state_parameters.N)
 
 wizard = TimeStepWizard(cfl=0.85, Δt=max_Δt, max_change=1.1, max_Δt=max_Δt)
 
