@@ -39,7 +39,7 @@ end
 
 Returns a PreconditionedConjugateGradientSolver that solves the linear equation
 ``A*x = b`` using a iterative conjugate gradient method with optional preconditioning.
-preconditioned. The solver is used by calling
+The solver is used by calling
 
 ```
 solve!(x, solver::PreconditionedConjugateGradientOperator, b, args...)
