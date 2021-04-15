@@ -53,8 +53,8 @@ function similar_cpu_field(u)
     return FieldType(location(u), CPU(), u.grid, nothing)
 end
 
-""" Set the GPU field `u` to the array `v`. """
-function set!(u::AbstractGPUField, v::Array)
+""" Set the GPU field `u` to the array or function `v`. """
+function set!(u::AbstractGPUField, v::Union{Array, Function})
     v_field = similar_cpu_field(u)
     set!(v_field, v)
     set!(u, v_field)
