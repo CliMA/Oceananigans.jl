@@ -184,7 +184,6 @@ two_dimensional_topologies = [
 @testset "Poisson solvers" begin
     @info "Testing Poisson solvers..."
 
-    #=
     for arch in archs
         @testset "Poisson solver instantiation [$(typeof(arch))]" begin
             @info "  Testing Poisson solver instantiation [$(typeof(arch))]..."
@@ -263,7 +262,6 @@ two_dimensional_topologies = [
             end
         end
     end
-    =#
 
     # Vertically stretched topologies to test.
     vs_topos = [
