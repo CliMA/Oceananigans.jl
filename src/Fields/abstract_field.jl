@@ -146,9 +146,7 @@ total_size(f::AbstractField) = total_size(location(f), f.grid)
 
 @inline cpudata(a) = data(a)
 
-const OffsetCuArray = OffsetArray{T, D, <:CuArray} where {T, D}
-
-@inline cpudata(f::AbstractField{X, Y, Z, <:OffsetCuArray}) where {X, Y, Z} =
+@inline cpudata(f::AbstractField{X, Y, Z, <:AbstractGPUArchitecture}) where {X, Y, Z} =
     offset_data(Array(parent(f)), f.grid, location(f))
 
 "Returns `f.data.parent` for `f::Field`."
