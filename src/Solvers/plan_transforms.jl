@@ -31,12 +31,12 @@ function plan_backward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PA
     return FFTW.plan_r2r!(A, FFTW.REDFT01, dims, flags=planner_flag)
 end
 
-function plan_forward_transform(A::CuArray, topo, dims, planner_flag)
+function plan_forward_transform(A::CuArray, ::Union{Bounded, Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return CUDA.CUFFT.plan_fft!(A, dims)
 end
 
-function plan_backward_transform(A::CuArray, topo, dims, planner_flag)
+function plan_backward_transform(A::CuArray, ::Union{Bounded, Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
     return CUDA.CUFFT.plan_ifft!(A, dims)
 end
