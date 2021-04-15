@@ -102,6 +102,8 @@ function cell_diffusion_timescale(closure::HorizontallyCurvilinearAnisotropicDif
 end
 
 function cell_diffusion_timescale(closure::HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity, diffusivities, grid)
+    topo = topology(grid)
+
     Δx = minimum_grid_spacing(grid.Δx, topo[1])
     Δy = minimum_grid_spacing(grid.Δy, topo[2])
     Δz = minimum_grid_spacing(grid.Δz, topo[3])
