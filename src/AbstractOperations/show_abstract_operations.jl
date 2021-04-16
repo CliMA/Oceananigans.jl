@@ -9,7 +9,7 @@ for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Der
     end
 end
 
-function interp_string(op)
+function show_interp(op)
     op_str = string(op)
     if op_str[1:8] == "identity"
         return "identity"
@@ -40,7 +40,7 @@ get_tree_padding(depth, nesting) = "    "^(depth-nesting) * "│   "^nesting
 function tree_show(unary::UnaryOperation{X, Y, Z}, depth, nesting)  where {X, Y, Z}
     padding = get_tree_padding(depth, nesting)
 
-    return string(unary.op, " at ", show_location(X, Y, Z), " via ", interp_str(unary.▶), '\n',
+    return string(unary.op, " at ", show_location(X, Y, Z), " via ", show_interp(unary.▶), '\n',
                   padding, "└── ", tree_show(unary.arg, depth+1, nesting))
 end
 
@@ -48,7 +48,7 @@ end
 function tree_show(binary::BinaryOperation{X, Y, Z}, depth, nesting) where {X, Y, Z}
     padding = get_tree_padding(depth, nesting)
 
-    return string(binary.op, " at ", show_location(X, Y, Z), " via ", interp_str(binary.▶op), '\n',
+    return string(binary.op, " at ", show_location(X, Y, Z), " via ", show_interp(binary.▶op), '\n',
                   padding, "├── ", tree_show(binary.a, depth+1, nesting+1), '\n',
                   padding, "└── ", tree_show(binary.b, depth+1, nesting))
 end
@@ -68,6 +68,6 @@ end
 function tree_show(deriv::Derivative{X, Y, Z}, depth, nesting)  where {X, Y, Z}
     padding = get_tree_padding(depth, nesting)
 
-    return string(deriv.∂, " at ", show_location(X, Y, Z), " via ", interp_str(deriv.▶), '\n',
+    return string(deriv.∂, " at ", show_location(X, Y, Z), " via ", show_interp(deriv.▶), '\n',
                   padding, "└── ", tree_show(deriv.arg, depth+1, nesting))
 end
