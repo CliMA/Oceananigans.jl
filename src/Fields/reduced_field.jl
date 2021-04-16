@@ -72,8 +72,9 @@ end
 Representation of a field at the location `(X, Y, Z)` with data of type `A`
 on a grid of type `G` that is 'reduced' over `N` dimensions.
 """
-struct ReducedField{X, Y, Z, A, G, N, B} <: AbstractReducedField{X, Y, Z, A, G, N}
-                   data :: A
+struct ReducedField{X, Y, Z, A, D, G, N, B} <: AbstractReducedField{X, Y, Z, A, G, N}
+                   data :: D
+           architecture :: A
                    grid :: G
                    dims :: NTuple{N, Int}
     boundary_conditions :: B
@@ -84,7 +85,7 @@ struct ReducedField{X, Y, Z, A, G, N, B} <: AbstractReducedField{X, Y, Z, A, G, 
     Returns a `ReducedField` at location `(X, Y, Z)` with `data` on `grid`
     that is reduced over the dimensions in `dims`.
     """
-    function ReducedField{X, Y, Z}(data::A, grid::G, dims, bcs::B) where {X, Y, Z, A, G, B}
+    function ReducedField{X, Y, Z}(data::D, arch::A, grid::G, dims, bcs::B) where {X, Y, Z, A, D, G, B}
 
         dims = validate_reduced_dims(dims)
         validate_reduced_locations(X, Y, Z, dims)
@@ -92,11 +93,7 @@ struct ReducedField{X, Y, Z, A, G, N, B} <: AbstractReducedField{X, Y, Z, A, G, 
 
         N = length(dims)
 
-        return new{X, Y, Z, A, G, N, B}(data, grid, dims, bcs)
-    end
-    function ReducedField{X, Y, Z}(data::A, dims) where {X, Y, Z, A}
-        N = length(dims)
-        return new{X, Y, Z, A, Nothing, N, Nothing}(data, nothing, dims, nothing)
+        return new{X, Y, Z, A, D, G, N, B}(data, arch, grid, dims, bcs)
     end
 end
 
@@ -129,15 +126,13 @@ function ReducedField(Xr, Yr, Zr, arch, grid; dims, data=nothing,
         boundary_conditions = FieldBoundaryConditions(grid, (X, Y, Z))
     end
 
-    return ReducedField{X, Y, Z}(data, grid, dims, boundary_conditions)
+    return ReducedField{X, Y, Z}(data, arch, grid, dims, boundary_conditions)
 end
 
 ReducedField(Lr, arch, grid; dims, kwargs...) = ReducedField(Lr..., arch, grid; dims=dims, kwargs...)
 
-function Base.similar(r::ReducedField{X, Y, Z}) where {X, Y, Z}
-    arch = architecture(r.data)
-    return ReducedField(X, Y, Z, arch, r.grid; dims=r.dims, boundary_conditions=r.boundary_conditions)
-end
+Base.similar(r::ReducedField{X, Y, Z, Arch}) where {X, Y, Z, Arch} =
+    ReducedField(X, Y, Z, Arch(), r.grid; dims=r.dims, boundary_conditions=r.boundary_conditions)
 
 #####
 ##### ReducedField utils
@@ -146,4 +141,4 @@ end
 reduced_location(loc; dims) = Tuple(i ∈ dims ? Nothing : loc[i] for i in 1:3)
 
 Adapt.adapt_structure(to, reduced_field::ReducedField{X, Y, Z}) where {X, Y, Z} =
-    ReducedField{X, Y, Z}(adapt(to, reduced_field.data), adapt(to, reduced_field.grid), reduced_field.dims, nothing)
+    ReducedField{X, Y, Z}(adapt(to, reduced_field.data), nothing, adapt(to, reduced_field.grid), reduced_field.dims, nothing)

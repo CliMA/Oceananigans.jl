@@ -119,8 +119,8 @@ function can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz
     return Array(ϕ) ≈ ϕ_correct
 end
 
-@testset "Solvers" begin
-    @info "Testing Solvers..."
+@testset "Batched tridiagonal solvers" begin
+    @info "Testing BatchedTridiagonalSolver..."
 
     for arch in archs
         @testset "Batched tridiagonal solver [$arch]" begin

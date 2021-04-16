@@ -1,6 +1,9 @@
 module Models
 
-export IncompressibleModel, NonDimensionalIncompressibleModel, HydrostaticFreeSurfaceModel, ShallowWaterModel
+export
+    IncompressibleModel, NonDimensionalIncompressibleModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
+    ExplicitFreeSurface, VectorInvariant, HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
+    PrescribedVelocityFields
 
 using Oceananigans: AbstractModel
 
@@ -11,7 +14,11 @@ include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
 include("ShallowWaterModels/ShallowWaterModels.jl")
 
 using .IncompressibleModels: IncompressibleModel, NonDimensionalIncompressibleModel
-using .HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
 using .ShallowWaterModels: ShallowWaterModel
+
+using .HydrostaticFreeSurfaceModels:
+    HydrostaticFreeSurfaceModel, ExplicitFreeSurface, VectorInvariant,
+    HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
+    PrescribedVelocityFields
 
 end

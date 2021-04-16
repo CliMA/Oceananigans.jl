@@ -1,8 +1,8 @@
 # Turbulence closures
 
 The turbulence closure selected by the user determines the form of stress divergence
-``\bm{\nabla} \bm{\cdot} \bm{\tau}`` and diffusive flux divergence
-``\bm{\nabla} \bm{\cdot} \bm{q}_c`` in the momentum and tracer conservation equations.
+``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}`` and diffusive flux divergence
+``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c`` in the momentum and tracer conservation equations.
 
 ## Constant isotropic diffusivity
 
@@ -12,31 +12,31 @@ In a constant isotropic diffusivity model, the kinematic stress tensor is define
 ```
 where ``\nu`` is a constant viscosity and
 ``\Sigma_{ij} \equiv \tfrac{1}{2} \left ( u_{i, j} + u_{j, i} \right )`` is the strain-rate
-tensor. The divergence of ``\bm{\tau}`` is then
+tensor. The divergence of ``\boldsymbol{\tau}`` is then
 ```math
-\bm{\nabla} \bm{\cdot} \bm{\tau} = -\nu \bm{\nabla}^2 \bm{u} \, .
+\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = -\nu \nabla^2 \boldsymbol{u} \, .
 ```
-Similarly, the diffusive tracer flux is ``\bm{q}_c = - \kappa \bm{\nabla} c`` for tracer
+Similarly, the diffusive tracer flux is ``\boldsymbol{q}_c = - \kappa \boldsymbol{\nabla} c`` for tracer
 diffusivity ``\kappa``, and the diffusive tracer flux divergence is
 ```math
-\bm{\nabla} \bm{\cdot} \bm{q}_c = - \kappa \bm{\nabla}^2 c \, .
+\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c = - \kappa \nabla^2 c \, .
 ```
 Each tracer may have a unique diffusivity ``\kappa``.
 
 ## Constant anisotropic diffusivity
 
 In Oceananigans.jl, a constant anisotropic diffusivity implies a constant tensor
-diffusivity ``\nu_{j k}`` and stress ``\bm{\tau}_{ij} = \nu_{j k} u_{i, k}`` with non-zero
+diffusivity ``\nu_{j k}`` and stress ``\boldsymbol{\tau}_{ij} = \nu_{j k} u_{i, k}`` with non-zero
 components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_v``.
 With this form the kinematic stress divergence becomes
 ```math
-\bm{\nabla} \bm{\cdot} \bm{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )
-                                    + \nu_v \partial_z^2 \right ] \bm{u} \, ,
+\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )
+                                    + \nu_v \partial_z^2 \right ] \boldsymbol{u} \, ,
 ```
 and diffusive flux divergence
 ```math
-\bm{\nabla} \bm{\cdot} \bm{q}_c = - \left [ \kappa_{h} \left ( \partial_x^2 + \partial_y^2 \right )
-                                    + \kappa_{v} \partial_z^2 \right ] c \, .
+\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c = - \left [ \kappa_{h} \left ( \partial_x^2 + \partial_y^2 \right )
+                                    + \kappa_{v} \partial_z^2 \right ] c \, ,
 ```
 in terms of the horizontal viscosities and diffusivities ``\nu_h`` and ``\kappa_{h}`` and the
 vertical viscosity and diffusivities ``\nu_v`` and ``\kappa_{v}``.
@@ -45,17 +45,17 @@ Each tracer may have a unique diffusivity components ``\kappa_h`` and ``\kappa_v
 ## Constant anisotropic biharmonic diffusivity
 
 In Oceananigans.jl, a constant anisotropic biharmonic diffusivity implies a constant tensor
-diffusivity ``\nu_{j k}`` and stress ``\bm{\tau}_{ij} = \nu_{j k} \partial_k^3 u_i`` with non-zero
+diffusivity ``\nu_{j k}`` and stress ``\boldsymbol{\tau}_{ij} = \nu_{j k} \partial_k^3 u_i`` with non-zero
 components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_v``.
 With this form the kinematic stress divergence becomes
 ```math
-\bm{\nabla} \bm{\cdot} \bm{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )^2
-                                    + \nu_v \partial_z^4 \right ] \bm{u} \, ,
+\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )^2
+                                    + \nu_v \partial_z^4 \right ] \boldsymbol{u} \, ,
 ```
 and diffusive flux divergence
 ```math
-\bm{\nabla} \bm{\cdot} \bm{q}_c = - \left [ \kappa_{h} \left ( \partial_x^2 + \partial_y^2 \right )^2
-                                    + \kappa_{v} \partial_z^4 \right ] c \, .
+\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c = - \left [ \kappa_{h} \left ( \partial_x^2 + \partial_y^2 \right )^2
+                                    + \kappa_{v} \partial_z^4 \right ] c \, ,
 ```
 in terms of the horizontal biharmonic viscosities and diffusivities ``\nu_h`` and ``\kappa_{h}`` and the
 vertical biharmonic viscosity and diffusivities ``\nu_v`` and ``\kappa_{v}``.
@@ -63,7 +63,7 @@ Each tracer may have a unique diffusivity components ``\kappa_h`` and ``\kappa_v
 
 ## Smagorinsky-Lilly turbulence closure
 
-In the turbulence closure proposed by Lilly (1962) and Smagorinsky (1963),
+In the turbulence closure proposed by Lilly (1962) and [Smagorinsky63](@cite),
 the subgrid stress associated with unresolved turbulent motions is modeled diffusively via
 ```math
 \tau_{ij} = \nu_e \Sigma_{ij} \, ,
@@ -72,11 +72,13 @@ where ``\Sigma_{ij} = \tfrac{1}{2} \left ( u_{i, j} + u_{j, i} \right )`` is the
 strain rate.
 The eddy viscosity is given by
 ```math
+    \begin{align}
     \nu_e = \left ( C \Delta_f \right )^2 \sqrt{ \Sigma^2 } \, \Upsilon(Ri) + \nu \, ,
-    \tag{eq:smagorinsky-viscosity}
+    \label{eq:smagorinsky-viscosity}
+    \end{align}
 ```
 where ``\Delta_f`` is the "filter width" associated with the finite volume grid spacing,
-``C`` is a user-specified model constant, ``\Sigma^2 \equiv \Sigma_{ij} \Sigma{ij}``, and
+``C`` is a user-specified model constant, ``\Sigma^2 \equiv \Sigma_{ij} \Sigma_{ij}``, and
 ``\nu`` is a constant isotropic background viscosity.
 The factor ``\Upsilon(Ri)`` reduces ``\nu_e`` in regions of
 strong stratification where the resolved gradient Richardson number
@@ -88,14 +90,14 @@ where ``N^2 = \max \left (0, \partial_z b \right )`` is the squared buoyancy fre
 stratification with ``\partial_z b > 0`` and ``C_b`` is a user-specified constant.
 Roughly speaking, the filter width for the Smagorinsky-Lilly closure is taken as
 ```math
-\Delta_f(\bm{x}) = \left ( \Delta x \Delta y \Delta z \right)^{1/3} \, ,
+\Delta_f(\boldsymbol{x}) = \left ( \Delta x \Delta y \Delta z \right)^{1/3} \, ,
 ```
 where ``\Delta x``, ``\Delta y``, and ``\Delta z`` are the grid spacing in the
-``\bm{\hat x}``, ``\bm{\hat y}``, and ``\bm{\hat z}`` directions at location ``\bm{x} = (x, y, z)``.
+``\boldsymbol{\hat x}``, ``\boldsymbol{\hat y}``, and ``\boldsymbol{\hat z}`` directions at location ``\boldsymbol{x} = (x, y, z)``.
 
 The effect of subgrid turbulence on tracer mixing is also modeled diffusively via
 ```math
-\bm{q}_c = \kappa_e \bm{\nabla} c \, ,
+\boldsymbol{q}_c = \kappa_e \boldsymbol{\nabla} c \, ,
 ```
 where the eddy diffusivity ``\kappa_e`` is
 ```math
@@ -118,23 +120,27 @@ of eddy viscosity and diffusivity *predictors*
     \kappa_e = \max \left ( 0, \kappa_e^\dagger \right ) + \kappa \, ,
 ```
 to ensure that ``\nu_e \ge 0`` and ``\kappa_e \ge 0``, where ``\nu`` and ``\kappa`` are the
-constant isotropic background viscosity and diffusivities for each tracer.
-The eddy viscosity predictor is
+constant isotropic background viscosity and diffusivities for each tracer. The eddy viscosity 
+predictor is
 ```math
-    \tag{eq:nu-dagger}
+    \begin{equation}
     \nu_e^\dagger = -(C \Delta_f)^2
     \frac
-        {\left( \hat{\partial}_k \hat{u}_i \right) \left( \hat{\partial}_k \hat{u}_j \right) \hat{\Sigma}_{ij}
-        + C_b \hat{\delta}_{i3} \left( \hat{\partial}_k \hat{u_i} \right) \hat{\partial}_k b}
-        {\left( \hat{\partial}_l \hat{u}_m \right) \left( \hat{\partial}_l \hat{u}_m \right)}
+        {(\hat{\partial}_k \hat{u}_i) (\hat{\partial}_k \hat{u}_j) \hat{\Sigma}_{ij}
+        + C_b \hat{\delta}_{i3} (\hat{\partial}_k \hat{u_i}) (\hat{\partial}_k b)}
+        {(\hat{\partial}_l \hat{u}_m) (\hat{\partial}_l \hat{u}_m)} \, ,
+    \label{eq:nu-dagger}
+    \end{equation}
 ```
 while the eddy diffusivity predictor for tracer ``c`` is
 ```math
-    \tag{eq:kappa-dagger}
+    \begin{equation}
+    \label{eq:kappa-dagger}
     \kappa_e^\dagger = -(C \Delta_f)^2
     \frac
-        {\left( \hat{\partial}_k \hat{u}_i \right) \left( \hat{\partial}_k c \right) \hat{\partial}_i c}
-        {\left( \hat{\partial}_l c \right) \left( \hat{\partial}_l c \right)} \, .
+        {(\hat{\partial}_k \hat{u}_i) (\hat{\partial}_k c) (\hat{\partial}_i c)}
+        {(\hat{\partial}_l c) (\hat{\partial}_l c)} \, .
+    \end{equation}
 ```
 In the definitions of the eddy viscosity and eddy diffusivity predictor, ``C`` and ``C_b`` are
 user-specified model constants, ``\Delta_f`` is a "filter width" associated with the finite volume
