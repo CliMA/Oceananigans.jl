@@ -1,9 +1,9 @@
 
-function random_divergent_source_term(FT, arch, grid)
+function random_divergent_source_term(arch, grid)
     # Generate right hand side from a random (divergent) velocity field.
-    Ru = CenterField(FT, arch, grid, UVelocityBoundaryConditions(grid))
-    Rv = CenterField(FT, arch, grid, VVelocityBoundaryConditions(grid))
-    Rw = CenterField(FT, arch, grid, WVelocityBoundaryConditions(grid))
+    Ru = CenterField(arch, grid, UVelocityBoundaryConditions(grid))
+    Rv = CenterField(arch, grid, VVelocityBoundaryConditions(grid))
+    Rw = CenterField(arch, grid, WVelocityBoundaryConditions(grid))
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
@@ -35,7 +35,7 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     local_grid = model.grid
     solver = DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
 
-    R = random_divergent_source_term(Float64, child_architecture(arch), local_grid)
+    R = random_divergent_source_term(child_architecture(arch), local_grid)
     first(solver.storage) .= R
 
     solve_poisson_equation!(solver)
@@ -43,8 +43,8 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     p_bcs = PressureBoundaryConditions(local_grid)
     p_bcs = inject_halo_communication_boundary_conditions(p_bcs, arch.local_rank, arch.connectivity)
 
-    ϕ   = CenterField(Float64, child_architecture(arch), local_grid, p_bcs)  # "pressure"
-    ∇²ϕ = CenterField(Float64, child_architecture(arch), local_grid, p_bcs)
+    ϕ   = CenterField(child_architecture(arch), local_grid, p_bcs)  # "pressure"
+    ∇²ϕ = CenterField(child_architecture(arch), local_grid, p_bcs)
 
     interior(ϕ) .= real(first(solver.storage))
     compute_∇²!(∇²ϕ, ϕ, arch, local_grid)

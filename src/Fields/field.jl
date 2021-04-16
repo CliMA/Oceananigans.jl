@@ -14,8 +14,10 @@ struct Field{X, Y, Z, A, D, G, T, B} <: AbstractDataField{X, Y, Z, A, G, T}
 end
 
 """
-    Field(X, Y, Z, arch, grid, [  bcs = FieldBoundaryConditions(grid, (X, Y, Z)),
-                                 data = new_data(arch, grid, (X, Y, Z)) ] )
+    Field(X, Y, Z, [arch = CPU()],
+          grid,
+          [ bcs = FieldBoundaryConditions(grid, (X, Y, Z)),
+           data = new_data(eltype(grid), arch, grid, (X, Y, Z))])
 
 Construct a `Field` on `grid` with `data` on architecture `arch` with
 boundary conditions `bcs`. Each of `(X, Y, Z)` is either `Center` or `Face` and determines
@@ -34,12 +36,17 @@ Field located at (Face, Face, Center)
 └── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=ZeroFlux, top=ZeroFlux)
 ```
 """
-function Field(X, Y, Z, arch, grid,
-                bcs = FieldBoundaryConditions(grid, (X, Y, Z)),
+function Field(X, Y, Z,
+               arch::AbstractArchitecture,
+               grid::AbstractGrid,
+               bcs = FieldBoundaryConditions(grid, (X, Y, Z)),
                data = new_data(eltype(grid), arch, grid, (X, Y, Z)))
 
     return Field{X, Y, Z}(data, arch, grid, bcs)
 end
+
+# Default CPU architecture
+Field(X, Y, Z, grid::AbstractGrid, args...) = Field(X, Y, Z, CPU(), grid, args...)
 
 # Canonical `similar` for AbstractField (doesn't transfer boundary conditions)
 Base.similar(f::AbstractField{X, Y, Z, Arch}) where {X, Y, Z, Arch} = Field(X, Y, Z, Arch(), f.grid)
@@ -124,7 +131,7 @@ function ZFaceField(arch::AbstractArchitecture,
     return Field(Center, Center, Face, arch, grid, bcs, data)
 end
 
-# Default architectures...
+# Default CPU architectures...
 CenterField(grid::AbstractGrid, args...) = CenterField(CPU(), grid, args...)
  XFaceField(grid::AbstractGrid, args...) =  XFaceField(CPU(), grid, args...)
  YFaceField(grid::AbstractGrid, args...) =  YFaceField(CPU(), grid, args...)
