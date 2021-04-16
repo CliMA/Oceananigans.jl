@@ -1,3 +1,4 @@
+using Random
 using Oceananigans.Utils: instantiate
 using Oceananigans.Grids: Face, Center
 
@@ -25,8 +26,8 @@ for ξ in ("x", "y", "z")
     end
 end
 
-# If this isn't shenanigans I don't know what is
-count = 0
+# It's not oceananigans for nothing
+rng = MersenneTwister(0)
 
 """
     interpolation_operator(from, to)
@@ -39,8 +40,9 @@ function interpolation_operator(from, to)
     x, y, z = (interpolation_code(X, Y) for (X, Y) in zip(from, to))
 
     # This is crazy, but here's my number...
-    global count += 1
-    identity = Symbol(:identity, count)
+    global rng
+    number = rand(rng, 1:999)
+    identity = Symbol(:identity, number)
 
     @eval begin
         @inline $identity(i, j, k, grid, c) = @inbounds c[i, j, k]
@@ -62,8 +64,9 @@ Return the `identity` interpolator function. This is needed to obtain the interp
 operator for fields that have no intrinsic location, like numbers or functions.
 """
 function interpolation_operator(::Nothing, to)
-    global count += 1
-    identity = Symbol(:identity, count)
+    global rng
+    number = rand(rng, 1:999)
+    identity = Symbol(:identity, number)
 
     @eval begin
         @inline $identity(i, j, k, grid, c) = @inbounds c[i, j, k]
