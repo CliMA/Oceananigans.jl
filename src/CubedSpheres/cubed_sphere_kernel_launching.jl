@@ -19,7 +19,7 @@ maybe_replace_with_face(free_surface::ExplicitFreeSurface, cubed_sphere_grid, fa
     ExplicitFreeSurface(face(free_surface.η, face_number), free_surface.gravitational_acceleration)
 
 maybe_replace_with_face(velocities::PrescribedVelocityFields, cubed_sphere_grid, face_number) =
-    PrescribedVelocityFields(velocities.u.faces[face_number], velocities.v.faces[face_number], velocities.w.faces[face_number], velocities.parameters)
+    PrescribedVelocityFields(face(velocities.u, face_number), face(velocities.v, face_number), face(velocities.w, face_number), velocities.parameters)
 
 function launch!(arch, grid::ConformalCubedSphereGrid, args...; kwargs...)
 

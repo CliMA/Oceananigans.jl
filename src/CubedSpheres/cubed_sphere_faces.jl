@@ -15,7 +15,7 @@ end
 
 const CubedSphereData = CubedSphereFaces{<:OffsetArray}
 
-const CubedSphereField = AbstractField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
+const CubedSphereField = AbstractField{X, Y, Z, <:Union{Nothing, AbstractArchitecture}, <:ConformalCubedSphereGrid} where {X, Y, Z}
 const CubedSphereFaceField = AbstractField{X, Y, Z, A, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A}
 const CubedSphereReducedField = ReducedField{X, Y, Z, A, D, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A, D}
 
@@ -56,18 +56,15 @@ face(field::CubedSphereField{X, Y, Z}, face_number) where {X, Y, Z} =
 
 faces(field::CubedSphereField) = Tuple(face(field, face_number) for face_number in 1:length(field.data.faces))
 
-# Base.minimum(field::CubedSphereField; dims=:) = minimum(minimum(face; dims) for field_face in field.data.faces)
-# Base.maximum(field::CubedSphereField; dims=:) = maximum(maximum(field_face; dims) for field_face in field.data.faces)
-# Statistics.mean(field::CubedSphereField; dims=:) = mean(mean(field_face; dims) for field_face in field.data.faces)
+Base.minimum(field::CubedSphereField; dims=:) = minimum(minimum(face_field; dims) for face_field in faces(field))
+Base.maximum(field::CubedSphereField; dims=:) = maximum(maximum(face_field; dims) for face_field in faces(field))
+Statistics.mean(field::CubedSphereField; dims=:) = mean(mean(face_field; dims) for face_field in faces(field))
 
-# Base.minimum(f, field::CubedSphereField; dims=:) = minimum(minimum(f, field_face; dims) for field_face in field.data.faces)
-# Base.maximum(f, field::CubedSphereField; dims=:) = maximum(maximum(f, field_face; dims) for field_face in field.data.faces)
-# Statistics.mean(f, field::CubedSphereField; dims=:) = mean(mean(f, field_face; dims) for field_face in field.data.faces)
+Base.minimum(f, field::CubedSphereField; dims=:) = minimum(minimum(f, face_field; dims) for face_field in faces(field))
+Base.maximum(f, field::CubedSphereField; dims=:) = maximum(maximum(f, face_field; dims) for face_field in faces(field))
+Statistics.mean(f, field::CubedSphereField; dims=:) = mean(mean(f, face_field; dims) for face_field in faces(field))
 
 # interior(field::AbstractCubedSphereField) = cat(Tuple(interior(field_face) for field_face in field.data.faces)..., dims=4)
 
-# λnodes(field::CubedSphereFaceField{LX, LY, LZ}) where {LX, LY, LZ} = λnodes(LX(), LY(), LZ(), field.grid)
-# φnodes(field::CubedSphereFaceField{LX, LY, LZ}) where {LX, LY, LZ} = φnodes(LX(), LY(), LZ(), field.grid)
-
-# λnodes(field::CubedSphereFaceField{LX, LY, LZ}) where {LX, LY, LZ} = λnodes(LX(), LY(), LZ(), field.grid)
-# φnodes(field::CubedSphereFaceField{LX, LY, LZ}) where {LX, LY, LZ} = φnodes(LX(), LY(), LZ(), field.grid)
+λnodes(field::CubedSphereFaceField{LX, LY, LZ}) where {LX, LY, LZ} = λnodes(LX(), LY(), LZ(), field.grid)
+φnodes(field::CubedSphereFaceField{LX, LY, LZ}) where {LX, LY, LZ} = φnodes(LX(), LY(), LZ(), field.grid)

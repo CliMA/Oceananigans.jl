@@ -8,7 +8,7 @@ include("cubed_sphere_utils.jl")
 include("conformal_cubed_sphere_grid.jl")
 include("cubed_sphere_exchange_bcs.jl")
 include("cubed_sphere_faces.jl")
-# include("cubed_sphere_set!.jl")
+include("cubed_sphere_set!.jl")
 include("cubed_sphere_halo_filling.jl")
 include("cubed_sphere_kernel_launching.jl")
 
@@ -49,8 +49,8 @@ apply_flux_bcs!(Gcⁿ::CubedSphereField, events, c::CubedSphereField, arch, barr
 import Oceananigans.Diagnostics: error_if_nan_in_field
 
 function error_if_nan_in_field(field::CubedSphereField, name, clock)
-    for (face_number, field_face) in enumerate(field.faces)
-        error_if_nan_in_field(field_face, string(name) * " (face $face_number)", clock)
+    for (face_number, face_field) in enumerate(faces(field))
+        error_if_nan_in_field(face_field, string(name) * " (face $face_number)", clock)
     end
 end
 
@@ -80,7 +80,7 @@ end
 import Oceananigans.OutputWriters: fetch_output
 
 fetch_output(field::CubedSphereField, model, field_slicer) =
-    Tuple(fetch_output(field_face, model, field_slicer) for field_face in field.faces)
+    Tuple(fetch_output(face_field, model, field_slicer) for face_field in faces(field))
 
 #####
 ##### StateChecker for each face is useful for debugging

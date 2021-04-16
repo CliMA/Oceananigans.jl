@@ -128,7 +128,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     diffusivities = DiffusivityFields(diffusivities, architecture, grid,
                                       tracernames(tracers), boundary_conditions, closure)
 
-    validate_vertical_velocity_boundary_conditions(velocities.w)
+    validate_velocity_boundary_conditions(velocities)
 
     # Instantiate timestepper if not already instantiated
     timestepper = TimeStepper(:QuasiAdamsBashforth2, architecture, grid, tracernames(tracers);
@@ -156,6 +156,8 @@ function HydrostaticFreeSurfaceModel(; grid,
                                        free_surface, forcing, closure, particles, velocities, tracers,
                                        pressure, diffusivities, timestepper)
 end
+
+validate_velocity_boundary_conditions(velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
 
 function validate_vertical_velocity_boundary_conditions(w)
     w.boundary_conditions.top === nothing || error("Top boundary condition for HydrostaticFreeSurfaceModel velocities.w
