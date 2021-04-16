@@ -26,8 +26,9 @@ for ξ in ("x", "y", "z")
     end
 end
 
-# It's not oceananigans for nothing
-const number_of_identities = 30
+# It's not Oceananigans for nothing
+const number_of_identities = 30 # hopefully enough for Oceananigans (most need just one)
+
 for i = 1:number_of_identities
     identity = Symbol(:identity, number)
 
@@ -39,8 +40,8 @@ for i = 1:number_of_identities
 end
  
 torus(x, lower, upper) = lower + rem(x - lower, upper - lower, RoundDown)
-an_identity(count) = Symbol(:identity, torus(count, 1, number_of_identities))
-count = 0
+identify_an_identity(number) = Symbol(:identity, torus(number, 1, number_of_identities))
+identity_counter = 0
 
 """
     interpolation_operator(from, to)
@@ -53,8 +54,8 @@ function interpolation_operator(from, to)
     x, y, z = (interpolation_code(X, Y) for (X, Y) in zip(from, to))
 
     # This is crazy, but here's my number...
-    global count += 1
-    identity = an_identity(count)
+    global identity_counter = 0
+    identity = identify_an_identity(count)
 
     if all(ξ === :ᵃ for ξ in (x, y, z))
         return @eval $identity
@@ -70,8 +71,8 @@ Return the `identity` interpolator function. This is needed to obtain the interp
 operator for fields that have no intrinsic location, like numbers or functions.
 """
 function interpolation_operator(::Nothing, to)
-    global count += 1
-    identity = an_identity(count)
+    global identity_counter = 0
+    identity = identify_an_identity(count)
     return @eval $identity
 end
 
