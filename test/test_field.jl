@@ -227,6 +227,32 @@ end
         end
     end
 
+    @testset "Field broadcasting" begin
+        @info "  Testing broadcasting with fields..."
+
+        for arch in archs
+            grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+            a, b, c = [CenterField(arch, grid) for i = 1:3]
+
+            a .= 1
+            @test all(a .== 1) 
+
+            b .= 2
+            c .= a .+ b .+ 1
+            @test all(c .== 4) 
+
+            r, p, q = [ReducedField(Center, Center, Nothing, arch, grid) for i = 1:3]
+
+            r .= 2 
+            @test all(r .== 1) 
+
+            p .= 3 
+            q .= r .* p
+            @test all(q .== 6) 
+        end
+    end
+
+
     @testset "Field utils" begin
         @info "  Testing field utils..."
 
