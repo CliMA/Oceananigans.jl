@@ -112,7 +112,7 @@ function accurate_advective_cfl_on_stretched_grid(arch, FT)
     Δy = model.grid.Δy
 
     # At k = 1, w = 0 so the CFL constraint happens at the second face (k = 2).
-    CUDA.@allowscalar Δz_min = Oceananigans.Operators.Δzᵃᵃᶠ(1, 1, 2, grid)
+    Δz_min = CUDA.@allowscalar Oceananigans.Operators.Δzᵃᵃᶠ(1, 1, 2, grid)
 
     u₀ = FT(1.2)
     v₀ = FT(-2.5)
