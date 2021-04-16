@@ -33,7 +33,7 @@ struct KernelComputedField{X, Y, Z, A, S, D, G, T, K, C, F, P} <: AbstractDataFi
         S = typeof(status)
         F = typeof(computed_dependencies)
         C = typeof(boundary_conditions)
-        T = typeo(grid)
+        T = eltype(grid)
 
         return new{X, Y, Z, A, S,
                    D, G, T, K, C, F, P}(data, arch, grid, kernel, boundary_conditions,
