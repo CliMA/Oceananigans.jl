@@ -150,7 +150,7 @@ function plan_transforms(arch, grid::VerticallyStretchedRectilinearGrid, storage
     periodic_dims = findall(t -> t == Periodic, (TX, TY))
     bounded_dims = findall(t -> t == Bounded, (TX, TY))
 
-    if arch isa GPU && topo in non_batched_topologies
+    if arch isa GPU && !(topo in batchable_GPU_topologies)
         if (TX, TY) == (Periodic, Bounded)
             forward_plan_x = plan_forward_transform(storage, Periodic(), [1], planner_flag)
             forward_plan_y = plan_forward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(), [1], planner_flag)
