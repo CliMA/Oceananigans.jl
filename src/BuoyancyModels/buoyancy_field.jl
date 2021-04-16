@@ -40,6 +40,12 @@ struct BuoyancyField{B, S, A, D, G, T, C} <: AbstractField{Center, Center, Cente
 
         return new{B, S, A, D, G, T, C}(data, arch, grid, buoyancy, tracers, status)
     end
+
+    function BuoyancyField(data::D, arch::A, grid::G, buoyancy::B, tracers::C, status::S) where {D, A, G, B, C, S}
+        validate_field_data(Center, Center, Center, data, grid)
+        T = eltype(grid)
+        return new{B, S, A, D, G, T, C}(data, grid, buoyancy, tracers, status)
+    end
 end
 
 """

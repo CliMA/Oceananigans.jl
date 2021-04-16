@@ -62,7 +62,8 @@ closures = (
     :TwoDimensionalLeith,
     :SmagorinskyLilly,
     :AnisotropicMinimumDissipation,
-    :HorizontallyCurvilinearAnisotropicDiffusivity
+    :HorizontallyCurvilinearAnisotropicDiffusivity,
+    :HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
 )
 
 #####
@@ -96,10 +97,9 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
     if group == :solvers || group == :all
         @testset "Solvers" begin
-            include("test_solvers.jl")
-            include("test_poisson_solvers.jl")
+            include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
-            include("test_implicit_free_surface_solver.jl")
+            include("test_poisson_solvers.jl")
         end
     end
 
@@ -126,6 +126,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
     if group == :hydrostatic_free_surface || group == :all
         include("test_hydrostatic_free_surface_models.jl")
         include("test_vertical_vorticity_field.jl")
+        include("test_implicit_free_surface_solver.jl")
     end
 
     if group == :simulation || group == :all

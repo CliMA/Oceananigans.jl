@@ -25,15 +25,15 @@
 ##### Operators of the form A*δ(q) where A is an area and q is some quantity.
 #####
 
-@inline Ax_∂xᶜᶜᶜ(i, j, k, grid::ARG, u) = Axᶜᶜᶜ(i, j, k, grid) * ∂xᶜᶜᵃ(i, j, k, grid, u)
-@inline Ax_∂xᶠᶠᶜ(i, j, k, grid::ARG, v) = Axᶠᶠᶜ(i, j, k, grid) * ∂xᶠᶠᵃ(i, j, k, grid, v)
-@inline Ax_∂xᶠᶜᶜ(i, j, k, grid::ARG, c) = Axᶠᶜᶜ(i, j, k, grid) * ∂xᶠᶜᵃ(i, j, k, grid, c)
+@inline Ax_∂xᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}, c) = Axᶠᶜᶜ(i, j, k, grid) * ∂xᶠᶜᵃ(i, j, k, grid, c)
+@inline Ax_∂xᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}, u) = Axᶜᶜᶜ(i, j, k, grid) * ∂xᶜᶜᵃ(i, j, k, grid, u)
+@inline Ax_∂xᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}, v) = Axᶠᶠᶜ(i, j, k, grid) * ∂xᶠᶠᵃ(i, j, k, grid, v)
 
-@inline Ay_∂yᶠᶠᶜ(i, j, k, grid::ARG, u) = Ayᶠᶠᶜ(i, j, k, grid) * ∂yᶠᶠᵃ(i, j, k, grid, u)
-@inline Ay_∂yᶜᶜᶜ(i, j, k, grid::ARG, v) = Ayᶜᶜᶜ(i, j, k, grid) * ∂yᶜᶜᵃ(i, j, k, grid, v)
-@inline Ay_∂yᶜᶠᶜ(i, j, k, grid::ARG, c) = Ayᶜᶠᶜ(i, j, k, grid) * ∂yᶜᶠᵃ(i, j, k, grid, c)
+@inline Ay_∂yᶜᶠᶜ(i, j, k, grid::Union{ARG, AHCG}, c) = Ayᶜᶠᶜ(i, j, k, grid) * ∂yᶜᶠᵃ(i, j, k, grid, c)
+@inline Ay_∂yᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}, u) = Ayᶠᶠᶜ(i, j, k, grid) * ∂yᶠᶠᵃ(i, j, k, grid, u)
+@inline Ay_∂yᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}, v) = Ayᶜᶜᶜ(i, j, k, grid) * ∂yᶜᶜᵃ(i, j, k, grid, v)
 
-@inline Az_∂zᶜᶜᶠ(i, j, k, grid::ARG, c) = Azᶜᶜᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, c)
+@inline Az_∂zᶜᶜᶠ(i, j, k, grid::Union{ARG, AHCG}, c) = Azᶜᶜᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, c)
 
 #####
 ##### Second derivatives
@@ -57,6 +57,13 @@
 
 @inline ∂²zᵃᵃᶜ(i, j, k, grid::Union{ARG, AHCG}, f::F, args...) where F<:Function = ∂zᵃᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, f, args...)
 @inline ∂²zᵃᵃᶠ(i, j, k, grid::Union{ARG, AHCG}, f::F, args...) where F<:Function = ∂zᵃᵃᶠ(i, j, k, grid, ∂zᵃᵃᶜ, f, args...)
+
+#####
+##### Third derivatives
+#####
+
+@inline ∂³zᵃᵃᶜ(i, j, k, grid::Union{ARG, AHCG}, w) = ∂zᵃᵃᶜ(i, j, k, grid, ∂²zᵃᵃᶠ, w)
+@inline ∂³zᵃᵃᶠ(i, j, k, grid::Union{ARG, AHCG}, c) = ∂zᵃᵃᶠ(i, j, k, grid, ∂²zᵃᵃᶜ, c)
 
 #####
 ##### Fourth derivatives

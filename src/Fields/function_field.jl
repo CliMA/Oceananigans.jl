@@ -1,3 +1,4 @@
+
 struct FunctionField{X, Y, Z, C, P, F, G, T} <: AbstractField{X, Y, Z, Nothing, G, T}
           func :: F
           grid :: G

@@ -150,6 +150,7 @@ function vertically_stretched_poisson_solver_correct_answer(FT, arch, topo, Nx, 
     set_source_term!(solver, R)
     solve_poisson_equation!(solver)
 
+    # interior(ϕ) = solution(solver) or solution!(interior(ϕ), solver)
     CUDA.@allowscalar interior(ϕ) .= real.(solver.storage)
     compute_∇²!(∇²ϕ, ϕ, arch, vs_grid)
 

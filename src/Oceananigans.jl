@@ -60,6 +60,7 @@ export
 
     # Hydrostatic free surface model
     ExplicitFreeSurface, VectorInvariant, HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
+    PrescribedVelocityFields,
 
     # Time stepping
     Clock, TimeStepWizard, time_step!,

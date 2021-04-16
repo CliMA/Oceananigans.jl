@@ -124,6 +124,9 @@ end
 "Returns the architecture of on which `f` is defined."
 architecture(f::AbstractField) = f.architecture
 
+"Returns the length of a field's `data`."
+@inline Base.length(f::AbstractField) = length(f.data)
+
 "Returns the topology of a fields' `grid`."
 @inline topology(f, args...) = topology(f.grid, args...)
 

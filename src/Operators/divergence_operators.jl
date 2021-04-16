@@ -20,16 +20,18 @@ end
 """
     div_xyᶜᶜᵃ(i, j, k, grid, u, v)
 
-Calculates the 2D divergence ∂x u + ∂y v via
+Returns the discrete `div_xy = ∂x u + ∂y v` of velocity field `u, v` defined as
 
-    1/Azᶜᶜᵃ * [δxᶜᵃᵃ(Δy * u) + δyᵃᶜᵃ(Δx * v)]
+```
+1 / Azᶜᶜᵃ * [δxᶜᵃᵃ(Δy * u) + δyᵃᶜᵃ(Δx * v)]
+```
 
-where `Azᶜᶜᵃ` is the area of the cell centered on (Center, Center, Any) --- a tracer cell,
+at `i, j, k`, where `Azᶜᶜᵃ` is the area of the cell centered on (Center, Center, Any) --- a tracer cell,
 `Δy` is the length of the cell centered on (Face, Center, Any) in `y` (a `u` cell),
 and `Δx` is the length of the cell centered on (Center, Face, Any) in `x` (a `v` cell).
 `div_xyᶜᶜᵃ` ends up at the location `cca`.
 """
 @inline function div_xyᶜᶜᵃ(i, j, k, grid, u, v)
-    return 1 / Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_uᶠᶜᶜ, u) +
-                                      δyᵃᶜᵃ(i, j, k, grid, Ay_vᶜᶠᶜ, v))
+    return 1 / Azᶜᶜᵃ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_uᶠᶜᵃ, u) +
+                                       δyᵃᶜᵃ(i, j, k, grid, Δx_vᶜᶠᵃ, v))
 end
