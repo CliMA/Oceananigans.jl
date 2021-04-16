@@ -129,7 +129,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     test_fields = (u = Array(interior(model.velocities.u)),
                    v = Array(interior(model.velocities.v)),
-                   w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
+                   w = CUDA @allowscalar Array(interior(model.velocities.w)[:, :, 1:Nz]),
                    b = Array(interior(model.tracers.b)),
                    c = Array(interior(model.tracers.c)))
 
