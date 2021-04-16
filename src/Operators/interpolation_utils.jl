@@ -25,6 +25,9 @@ for ξ in ("x", "y", "z")
     end
 end
 
+# If this isn't shenanigans I don't know what is
+count = 0
+
 """
     interpolation_operator(from, to)
 
@@ -35,12 +38,18 @@ function interpolation_operator(from, to)
     from, to = instantiate.(from), instantiate.(to)
     x, y, z = (interpolation_code(X, Y) for (X, Y) in zip(from, to))
 
-    @inline identity(i, j, k, grid, c) = @inbounds c[i, j, k]
-    @inline identity(i, j, k, grid, a::Number) = a
-    @inline identity(i, j, k, grid, F::TF, args...) where TF<:Function = F(i, j, k, grid, args...)
+    # This is crazy, but here's my number...
+    global count += 1
+    identity = Symbol(:identity, count)
+
+    @eval begin
+        @inline $identity(i, j, k, grid, c) = @inbounds c[i, j, k]
+        @inline $identity(i, j, k, grid, a::Number) = a
+        @inline $identity(i, j, k, grid, F::TF, args...) where TF<:Function = F(i, j, k, grid, args...)
+    end
     
     if all(ξ === :ᵃ for ξ in (x, y, z))
-        return identity
+        return @eval $identity
     else
         return eval(Symbol(:ℑ, ℑxsym(x), ℑysym(y), ℑzsym(z), x, y, z))
     end
@@ -53,10 +62,16 @@ Return the `identity` interpolator function. This is needed to obtain the interp
 operator for fields that have no intrinsic location, like numbers or functions.
 """
 function interpolation_operator(::Nothing, to)
-    @inline identity(i, j, k, grid, c) = @inbounds c[i, j, k]
-    @inline identity(i, j, k, grid, a::Number) = a
-    @inline identity(i, j, k, grid, F::TF, args...) where TF<:Function = F(i, j, k, grid, args...)
-    return identity
+    global count += 1
+    identity = Symbol(:identity, count)
+
+    @eval begin
+        @inline $identity(i, j, k, grid, c) = @inbounds c[i, j, k]
+        @inline $identity(i, j, k, grid, a::Number) = a
+        @inline $identity(i, j, k, grid, F::TF, args...) where TF<:Function = F(i, j, k, grid, args...)
+    end
+
+    return @eval $identity
 end
 
 assumed_field_location(name) = name === :u  ? (Face, Center, Center) :
