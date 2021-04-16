@@ -203,7 +203,6 @@ nodes(ψ::AbstractField; kwargs...) = nodes(location(ψ), ψ.grid; kwargs...)
 
 Base.iterate(f::AbstractDataField, state=1) = iterate(f.data, state)
 
-#=
 #####
 ##### Field reductions
 #####
@@ -255,4 +254,3 @@ Apply the function `f` to each element of an Oceananigans `field` and take the m
 (not including halo points). By default all dimensions are included.
 """
 mean(f::Function, field::AbstractField; dims=:) = mean(f, interiorparent(field); dims=dims)
-=#
