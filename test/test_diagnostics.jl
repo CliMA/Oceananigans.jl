@@ -136,10 +136,10 @@ function accurate_advective_cfl_on_lat_lon_grid(arch, FT)
     Nx, Ny, Nz = size(grid)
 
     # Will be the smallest at higher latitudes.
-    CUDA.@allowscalar Δx_min = Oceananigans.Operators.Δxᶠᶜᵃ(1, Ny, 1, grid)
+    Δx_min = CUDA.@allowscalar Oceananigans.Operators.Δxᶠᶜᵃ(1, Ny, 1, grid)
 
     # Will be the same at every grid point.
-    CUDA.@allowscalar Δy_min = Oceananigans.Operators.Δyᶜᶠᵃ(1, 1, 1, grid)
+    Δy_min = CUDA.@allowscalar Oceananigans.Operators.Δyᶜᶠᵃ(1, 1, 1, grid)
 
     Δz = model.grid.Δz
 
