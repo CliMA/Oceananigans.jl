@@ -46,7 +46,9 @@ plan_forward_transform(A::Union{Array, CuArray}, ::Flat, args...) = nothing
 
 batchable_GPU_topologies = ((Periodic, Periodic, Periodic),
                             (Periodic, Periodic, Bounded),
-                            (Bounded, Periodic, Periodic))
+                            (Bounded, Periodic, Periodic),
+                            (Periodic, Periodic, Flat),
+                            (Flat, Periodic, Periodic))
 
 # In principle the order in which the transforms are applied does not matter of course,
 # but in practice we want to perform the `Bounded` forward transforms first because on
