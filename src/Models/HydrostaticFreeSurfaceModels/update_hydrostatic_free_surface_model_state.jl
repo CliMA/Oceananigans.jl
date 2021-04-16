@@ -14,6 +14,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel)
 
     # Fill halos for velocities and tracers
     fill_halo_regions!(fields(model), model.architecture, model.clock, fields(model))
+    fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
     compute_w_from_continuity!(model)
 

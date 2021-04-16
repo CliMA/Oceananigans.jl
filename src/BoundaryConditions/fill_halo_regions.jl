@@ -35,7 +35,7 @@ function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...; kwa
 
     # Wait at the end
     events = [west_event, east_event, south_event, north_event, bottom_event, top_event]
-    events = filter(e -> typeof(e) <: Event, events)
+    events = filter(e -> e isa Event, events)
     wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
@@ -47,7 +47,7 @@ end
 
   fill_west_halo!(c, ::Nothing, args...; kwargs...) = nothing
   fill_east_halo!(c, ::Nothing, args...; kwargs...) = nothing
- fill_south_halo!(c, ::Nothing, args...; kwargs...) = nothing 
+ fill_south_halo!(c, ::Nothing, args...; kwargs...) = nothing
  fill_north_halo!(c, ::Nothing, args...; kwargs...) = nothing
    fill_top_halo!(c, ::Nothing, args...; kwargs...) = nothing
 fill_bottom_halo!(c, ::Nothing, args...; kwargs...) = nothing

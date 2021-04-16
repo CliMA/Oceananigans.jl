@@ -22,26 +22,26 @@ To have any hope of simulating high Reynolds number flows we need some way of re
 
 ## Reynolds-averaged Navier–Stokes equations
 
-Following [Reynolds1895](@cite) we can decompose flow variables such as velocity ``\bm{u}`` into the mean component
-``\overline{\bm{u}}`` and the fluctuating component ``\bm{u}^\prime`` so that ``\bm{u} = \overline{\bm{u}} + \bm{u}^\prime``
+Following [Reynolds1895](@cite) we can decompose flow variables such as velocity ``\boldsymbol{u}`` into the mean component
+``\overline{\boldsymbol{u}}`` and the fluctuating component ``\boldsymbol{u}^\prime`` so that ``\boldsymbol{u} = \overline{\boldsymbol{u}} + \boldsymbol{u}^\prime``
 [see §4 of [Pope00](@cite) for a modern discussion].
 
 Expressing the Navier-Stokes equations in tensor notation
 ```math
-\begin{aligned}
+\begin{align}
     \partial_i u_i &= 0  \, ,\\
     \partial_t u_i + u_j \partial_j u_i &= f_i - \alpha\partial_i p + \nu \partial_j \partial_j u_i \, ,
-\end{aligned}
+\end{align}
 ```
 where ``\alpha = \rho^{-1}`` is the specific volume and ``f_i`` represents external forces. We can plug in the Reynolds
-decomposition for ``\bm{u}`` and after some manipulation arrive at the following form for the *Reynolds-averaged
+decomposition for ``\boldsymbol{u}`` and after some manipulation arrive at the following form for the *Reynolds-averaged
 Navier-Stokes equations*
 ```math
-\begin{aligned}
+\begin{align}
     \partial_i \overline{u}_i &= 0  \, ,\\
     \partial_t \overline{u}_i + \overline{u}_j \partial_j \overline{u}_i &= \overline{f}_i -
     \partial_j \left(-\alpha\overline{p}\delta_{ij} + 2\nu \overline{S}_{ij} - \overline{u_i^\prime u_j^\prime}\right) \, ,
-\end{aligned}
+\end{align}
 ```
 where
 ```math
@@ -63,18 +63,18 @@ This is kind of hopeless so we will have to find some way to model the Reynolds 
 ## Gradient-diffusion hypothesis and eddy viscosity models
 
 The *gradient-diffusion hypothesis*, due to [Boussinesq1877](@cite), assumes that the transport of scalar fluxes
-such as ``\overline{\bm{u}^\prime c^\prime}`` and ``\overline{u_i^\prime u_j^\prime}`` occurs down the mean scalar gradient
+such as ``\overline{\boldsymbol{u}^\prime c^\prime}`` and ``\overline{u_i^\prime u_j^\prime}`` occurs down the mean scalar gradient
 ``\grad c`` as if they are being diffused (§4.4) [Pope00](@cite). This is in analogy with how momentum transfer by
 molecular motion in a gas can be described by a molecular viscosity.
 
 Taking this assumption we can express the Reynolds stresses and turbulent tracer fluxes in terms of the mean variables
 and close the equations
 ```math
-\overline{\bm{u}^\prime c^\prime} = -\kappa_e \nabla \overline{c}
+\overline{\boldsymbol{u}^\prime c^\prime} = -\kappa_e \boldsymbol{\nabla} \overline{c}
 \quad \text{and} \quad
 \overline{u_i^\prime u_j^\prime} = -2\nu_e \overline{S}_{ij} \, ,
 ```
-where ``\nu_e = \nu_e(\bm{x}, t)`` is the turbulent or *eddy viscosity* and ``\kappa_e = \kappa_e(\bm{x}, t)``
+where ``\nu_e = \nu_e(\boldsymbol{x}, t)`` is the turbulent or *eddy viscosity* and ``\kappa_e = \kappa_e(\boldsymbol{x}, t)``
 is the *eddy diffusivity*.
 
 The effective diffusivity ends up being the sum of the molecular and eddy diffusivities. So just by using an elevated

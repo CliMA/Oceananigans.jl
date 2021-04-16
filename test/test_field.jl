@@ -240,7 +240,7 @@ end
         ϕ = CenterField(CPU(), grid)
         @test cpudata(ϕ).parent isa Array
 
-        @hascuda begin
+        if CUDA.has_cuda()
             ϕ = CenterField(GPU(), grid)
             @test cpudata(ϕ).parent isa Array
         end
