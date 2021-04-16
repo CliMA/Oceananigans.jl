@@ -17,16 +17,8 @@ end
                                     δyᵃᶠᵃ(i, j, k, grid, Ay_∂yᶜᶜᶜ, v))
 end
 
-@inline ∇²hᶜᶜᵃ(i, j, k, grid, F::FU, args...) where FU <: Function = ∂²xᶜᵃᵃ(i, j, k, grid, F, args...) + ∂²yᵃᶜᵃ(i, j, k, grid, F, args...)
-@inline ∇²hᶠᶜᵃ(i, j, k, grid, F::FU, args...) where FU <: Function = ∂²xᶠᵃᵃ(i, j, k, grid, F, args...) + ∂²yᵃᶜᵃ(i, j, k, grid, F, args...)
-@inline ∇²hᶜᶠᵃ(i, j, k, grid, F::FU, args...) where FU <: Function = ∂²xᶜᵃᵃ(i, j, k, grid, F, args...) + ∂²yᵃᶠᵃ(i, j, k, grid, F, args...)
-
-#####
-##### 3D Laplacian
-#####
-
 """
-    ∇²(i, j, k, grid, c)
+    ∇²ᶜᶜᶜ(i, j, k, grid, c)
 
 Calculates the Laplacian of c via
 

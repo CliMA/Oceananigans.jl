@@ -62,7 +62,8 @@ closures = (
     :TwoDimensionalLeith,
     :SmagorinskyLilly,
     :AnisotropicMinimumDissipation,
-    :HorizontallyCurvilinearAnisotropicDiffusivity
+    :HorizontallyCurvilinearAnisotropicDiffusivity,
+    :HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
 )
 
 #####
