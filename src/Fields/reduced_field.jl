@@ -10,26 +10,42 @@ abstract type AbstractReducedField{X, Y, Z, A, G, T, N} <: AbstractDataField{X, 
 
 const ARF = AbstractReducedField
 
+# Two-dimensional fields
 @inline Base.getindex( r::ARF{Nothing, Y, Z},    i::Int, j::Int, k::Int) where {Y, Z} = @inbounds r.data[1, j, k]
 @inline Base.setindex!(r::ARF{Nothing, Y, Z}, d, i::Int, j::Int, k::Int) where {Y, Z} = @inbounds r.data[1, j, k] = d
-
 @inline Base.getindex( r::ARF{X, Nothing, Z},    i::Int, j::Int, k::Int) where {X, Z} = @inbounds r.data[i, 1, k]
 @inline Base.setindex!(r::ARF{X, Nothing, Z}, d, i::Int, j::Int, k::Int) where {X, Z} = @inbounds r.data[i, 1, k] = d
-
 @inline Base.getindex( r::ARF{X, Y, Nothing},    i::Int, j::Int, k::Int) where {X, Y} = @inbounds r.data[i, j, 1]
 @inline Base.setindex!(r::ARF{X, Y, Nothing}, d, i::Int, j::Int, k::Int) where {X, Y} = @inbounds r.data[i, j, 1] = d
 
+@inline Base.getindex( r::ARF{Nothing, Y, Z},    j::Int, k::Int) where {Y, Z} = @inbounds r.data[1, j, k]
+@inline Base.setindex!(r::ARF{Nothing, Y, Z}, d, j::Int, k::Int) where {Y, Z} = @inbounds r.data[1, j, k] = d
+@inline Base.getindex( r::ARF{X, Nothing, Z},    i::Int, k::Int) where {X, Z} = @inbounds r.data[i, 1, k]
+@inline Base.setindex!(r::ARF{X, Nothing, Z}, d, i::Int, k::Int) where {X, Z} = @inbounds r.data[i, 1, k] = d
+@inline Base.getindex( r::ARF{X, Y, Nothing},    i::Int, j::Int) where {X, Y} = @inbounds r.data[i, j, 1]
+@inline Base.setindex!(r::ARF{X, Y, Nothing}, d, i::Int, j::Int) where {X, Y} = @inbounds r.data[i, j, 1] = d
+
+# One-dimensional fields
 @inline Base.getindex( r::ARF{X, Nothing, Nothing},    i::Int, j::Int, k::Int) where X = @inbounds r.data[i, 1, 1]
 @inline Base.setindex!(r::ARF{X, Nothing, Nothing}, d, i::Int, j::Int, k::Int) where X = @inbounds r.data[i, 1, 1] = d
-
 @inline Base.getindex( r::ARF{Nothing, Y, Nothing},    i::Int, j::Int, k::Int) where Y = @inbounds r.data[1, j, 1]
 @inline Base.setindex!(r::ARF{Nothing, Y, Nothing}, d, i::Int, j::Int, k::Int) where Y = @inbounds r.data[1, j, 1] = d
-
 @inline Base.getindex( r::ARF{Nothing, Nothing, Z},    i::Int, j::Int, k::Int) where Z = @inbounds r.data[1, 1, k]
 @inline Base.setindex!(r::ARF{Nothing, Nothing, Z}, d, i::Int, j::Int, k::Int) where Z = @inbounds r.data[1, 1, k] = d
 
+@inline Base.getindex( r::ARF{X, Nothing, Nothing},    i::Int) where X = @inbounds r.data[i, 1, 1]
+@inline Base.setindex!(r::ARF{X, Nothing, Nothing}, d, i::Int) where X = @inbounds r.data[i, 1, 1] = d
+@inline Base.getindex( r::ARF{Nothing, Y, Nothing},    j::Int) where Y = @inbounds r.data[1, j, 1]
+@inline Base.setindex!(r::ARF{Nothing, Y, Nothing}, d, j::Int) where Y = @inbounds r.data[1, j, 1] = d
+@inline Base.getindex( r::ARF{Nothing, Nothing, Z},    k::Int) where Z = @inbounds r.data[1, 1, k]
+@inline Base.setindex!(r::ARF{Nothing, Nothing, Z}, d, k::Int) where Z = @inbounds r.data[1, 1, k] = d
+
+# Zero-dimensional fields
 @inline Base.getindex( r::ARF{Nothing, Nothing, Nothing},    i::Int, j::Int, k::Int) = @inbounds r.data[1, 1, 1]
 @inline Base.setindex!(r::ARF{Nothing, Nothing, Nothing}, d, i::Int, j::Int, k::Int) = @inbounds r.data[1, 1, 1] = d
+
+@inline Base.getindex( r::ARF{Nothing, Nothing, Nothing},  ) = @inbounds r.data[1, 1, 1]
+@inline Base.setindex!(r::ARF{Nothing, Nothing, Nothing}, d) = @inbounds r.data[1, 1, 1] = d
 
 fill_halo_regions!(field::AbstractReducedField, arch, args...) =
     fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...; reduced_dimensions=field.dims)

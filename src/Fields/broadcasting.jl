@@ -11,7 +11,7 @@ end
 
 @kernel function broadcast_2d!(dest, bc)
     i, j = @index(Global, NTuple)
-    @inbounds dest[i, j, 1] = bc[i, j, 1]
+    @inbounds dest[i, j] = bc[i, j]
 end
 
 # Three-dimensional general case
