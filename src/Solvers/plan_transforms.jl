@@ -93,8 +93,8 @@ function plan_transforms(arch, grid::RegularRectilinearGrid, storage, planner_fl
         forward_plans = (forward_plan_x, forward_plan_y, forward_plan_z)
         backward_plans = (backward_plan_x, backward_plan_y, backward_plan_z)
 
-        # Convert Flat to Periodic for ordering purposes (transforms are omitted in Flat directions anyways)
-        unflattened_topo = (T() isa Flat ? Periodic : T for T in topo)
+        # Convert Flat to Bounded for ordering purposes (transforms are omitted in Flat directions anyways)
+        unflattened_topo = (T() isa Flat ? Bounded : T for T in topo)
 
         f_order = forward_orders(unflattened_topo...)
         b_order = backward_orders(unflattened_topo...)
