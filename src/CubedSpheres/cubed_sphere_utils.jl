@@ -101,7 +101,6 @@ underlying_bottom_boundary(f, grid, location) =
 underlying_top_boundary(f, grid, location) =
     view(f.parent, :, :, underlying_right_boundary_indices(location, topology(grid, 3), grid.Nz, grid.Hz))
 
-
 #####
 ##### Convinience functions
 #####
@@ -118,7 +117,7 @@ end
 
 function cubed_sphere_halo(cubed_sphere_field, location, face_number, side)
     LX, LY, LZ = location
-    src_field = cubed_sphere_field.faces[face_number]
+    src_field = face(cubed_sphere_field, face_number)
     side == :west  && return  underlying_west_halo(src_field.data, src_field.grid, LX)
     side == :east  && return  underlying_east_halo(src_field.data, src_field.grid, LX)
     side == :south && return underlying_south_halo(src_field.data, src_field.grid, LY)
@@ -127,7 +126,7 @@ end
 
 function cubed_sphere_boundary(cubed_sphere_field, location, face_number, side)
     LX, LY, LZ = location
-    src_field = cubed_sphere_field.faces[face_number]
+    src_field = face(cubed_sphere_field, face_number)
     side == :west  && return  underlying_west_boundary(src_field.data, src_field.grid, LX)
     side == :east  && return  underlying_east_boundary(src_field.data, src_field.grid, LX)
     side == :south && return underlying_south_boundary(src_field.data, src_field.grid, LY)

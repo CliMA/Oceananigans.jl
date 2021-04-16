@@ -2,28 +2,45 @@ module CubedSpheres
 
 export
     ConformalCubedSphereGrid,
-    ConformalCubedSphereField,
     λnodes, φnodes
 
 include("cubed_sphere_utils.jl")
 include("conformal_cubed_sphere_grid.jl")
 include("cubed_sphere_exchange_bcs.jl")
-include("cubed_sphere_fields.jl")
-include("cubed_sphere_set!.jl")
+include("cubed_sphere_faces.jl")
+# include("cubed_sphere_set!.jl")
 include("cubed_sphere_halo_filling.jl")
 include("cubed_sphere_kernel_launching.jl")
 
 #####
-##### Proper launch! when `ExplicitFreeSurface` is an argument
+##### Validating cubed sphere stuff
 #####
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, PrescribedVelocityFields
+import Oceananigans.Fields: validate_field_data
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_vertical_velocity_boundary_conditions
 
-maybe_replace_with_face(free_surface::ExplicitFreeSurface, cubed_sphere_grid, face_number) =
-    ExplicitFreeSurface(free_surface.η.faces[face_number], free_surface.gravitational_acceleration)
+function validate_field_data(X, Y, Z, data, grid::ConformalCubedSphereGrid)
 
-maybe_replace_with_face(velocities::PrescribedVelocityFields, cubed_sphere_grid, face_number) =
-    PrescribedVelocityFields(velocities.u.faces[face_number], velocities.v.faces[face_number], velocities.w.faces[face_number], velocities.parameters)
+    for (face_data, face_grid) in zip(data.faces, grid.faces)
+        validate_field_data(X, Y, Z, face_data, face_grid)
+    end
+
+    return nothing
+end
+
+validate_vertical_velocity_boundary_conditions(w::CubedSphereField) =
+    [validate_vertical_velocity_boundary_conditions(w_face) for w_face in faces(w)]
+
+#####
+##### Applying flux boundary conditions
+#####
+
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: apply_flux_bcs!
+
+apply_flux_bcs!(Gcⁿ::CubedSphereField, events, c::CubedSphereField, arch, barrier, clock, model_fields) = [
+    apply_flux_bcs!(face(Gcⁿ, face_number), events, face(c, face_number), arch, barrier, clock, model_fields)
+    for face_number in 1:length(Gcⁿ.data.faces)
+]
 
 #####
 ##### NaN checker for cubed sphere fields
@@ -31,7 +48,7 @@ maybe_replace_with_face(velocities::PrescribedVelocityFields, cubed_sphere_grid,
 
 import Oceananigans.Diagnostics: error_if_nan_in_field
 
-function error_if_nan_in_field(field::AbstractCubedSphereField, name, clock)
+function error_if_nan_in_field(field::CubedSphereField, name, clock)
     for (face_number, field_face) in enumerate(field.faces)
         error_if_nan_in_field(field_face, string(name) * " (face $face_number)", clock)
     end
@@ -62,7 +79,7 @@ end
 
 import Oceananigans.OutputWriters: fetch_output
 
-fetch_output(field::AbstractCubedSphereField, model, field_slicer) =
+fetch_output(field::CubedSphereField, model, field_slicer) =
     Tuple(fetch_output(field_face, model, field_slicer) for field_face in field.faces)
 
 #####
@@ -71,7 +88,7 @@ fetch_output(field::AbstractCubedSphereField, model, field_slicer) =
 
 import Oceananigans.Diagnostics: state_check
 
-function state_check(field::AbstractCubedSphereField, name, pad)
+function state_check(field::CubedSphereField, name, pad)
     Nf = length(field.faces)
     for (face_number, field_face) in enumerate(field.faces)
         face_str = " face $face_number"
