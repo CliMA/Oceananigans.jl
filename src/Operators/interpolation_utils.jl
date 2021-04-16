@@ -27,7 +27,20 @@ for ξ in ("x", "y", "z")
 end
 
 # It's not oceananigans for nothing
-random_number_generator = MersenneTwister(0)
+const number_of_identities = 30
+for i = 1:number_of_identities
+    identity = Symbol(:identity, number)
+
+    @eval begin
+        @inline $identity(i, j, k, grid, c) = @inbounds c[i, j, k]
+        @inline $identity(i, j, k, grid, a::Number) = a
+        @inline $identity(i, j, k, grid, F::TF, args...) where TF<:Function = F(i, j, k, grid, args...)
+    end
+end
+ 
+torus(x, lower, upper) = lower + rem(x - lower, upper - lower, RoundDown)
+an_identity(count) = Symbol(:identity, torus(count, 1, number_of_identities))
+count = 0
 
 """
     interpolation_operator(from, to)
@@ -39,17 +52,10 @@ function interpolation_operator(from, to)
     from, to = instantiate.(from), instantiate.(to)
     x, y, z = (interpolation_code(X, Y) for (X, Y) in zip(from, to))
 
-    # This is crazy, but here's my random number...
-    global random_number_generator
-    number = rand(random_number_generator, 1:999)
-    identity = Symbol(:identity, number)
+    # This is crazy, but here's my number...
+    global count += 1
+    identity = an_identity(count)
 
-    @eval begin
-        @inline $identity(i, j, k, grid, c) = @inbounds c[i, j, k]
-        @inline $identity(i, j, k, grid, a::Number) = a
-        @inline $identity(i, j, k, grid, F::TF, args...) where TF<:Function = F(i, j, k, grid, args...)
-    end
-    
     if all(ξ === :ᵃ for ξ in (x, y, z))
         return @eval $identity
     else
@@ -64,16 +70,8 @@ Return the `identity` interpolator function. This is needed to obtain the interp
 operator for fields that have no intrinsic location, like numbers or functions.
 """
 function interpolation_operator(::Nothing, to)
-    global random_number_generator
-    number = rand(random_number_generator, 1000:1999)
-    identity = Symbol(:identity, number)
-
-    @eval begin
-        @inline $identity(i, j, k, grid, c) = @inbounds c[i, j, k]
-        @inline $identity(i, j, k, grid, a::Number) = a
-        @inline $identity(i, j, k, grid, F::TF, args...) where TF<:Function = F(i, j, k, grid, args...)
-    end
-
+    global count += 1
+    identity = an_identity(count)
     return @eval $identity
 end
 
