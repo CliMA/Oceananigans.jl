@@ -22,7 +22,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
     j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
-    model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+    CUDA.@allowscalar model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
     regression_data_filepath = joinpath(dirname(@__FILE__), "data", "thermal_bubble_regression.nc")
 
