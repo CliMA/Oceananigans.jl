@@ -1,3 +1,5 @@
+using OffsetArrays: OffsetArray
+
 #####
 ##### General halo filling functions
 #####
@@ -19,10 +21,10 @@ function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)
     return nothing
 end
 
-fill_halo_regions!(field, arch, args...) = fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...)
+fill_halo_regions!(field::AbstractField, arch, args...) = fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...)
 
-"Fill halo regions in x, y, and z for a given field."
-function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...; kwargs...)
+"Fill halo regions in x, y, and z for a given field's data."
+function fill_halo_regions!(c::OffsetArray, fieldbcs, arch, grid, args...; kwargs...)
 
     barrier = Event(device(arch))
 
