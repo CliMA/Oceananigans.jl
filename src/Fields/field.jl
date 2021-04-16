@@ -130,6 +130,4 @@ CenterField(grid::AbstractGrid, args...) = CenterField(CPU(), grid, args...)
  YFaceField(grid::AbstractGrid, args...) =  YFaceField(CPU(), grid, args...)
  ZFaceField(grid::AbstractGrid, args...) =  ZFaceField(CPU(), grid, args...)
 
-@propagate_inbounds Base.setindex!(f::Field, v, inds...) = @inbounds setindex!(f.data, v, inds...)
-
 Adapt.adapt_structure(to, field::Field) = Adapt.adapt(to, field.data)
