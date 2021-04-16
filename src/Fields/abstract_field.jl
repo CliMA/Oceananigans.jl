@@ -208,49 +208,49 @@ Base.iterate(f::AbstractDataField, state=1) = iterate(f.data, state)
 #####
 
 """
-    minimum(field::AbstractField; dims=:)
+    minimum(field::AbstractDataField; dims=:)
 
 Compute the minimum value of an Oceananigans `field` over the given dimensions (not including halo points).
 By default all dimensions are included.
 """
-minimum(field::AbstractField; dims=:) = minimum(interiorparent(field); dims=dims)
+minimum(field::AbstractDataField; dims=:) = minimum(interiorparent(field); dims=dims)
 
 """
-    minimum(f, field::AbstractField; dims=:)
+    minimum(f, field::AbstractDataField; dims=:)
 
 Returns the smallest result of calling the function `f` on each element of an Oceananigans `field`
 (not including halo points) over the given dimensions. By default all dimensions are included.
 """
-minimum(f, field::AbstractField; dims=:) = minimum(f, interiorparent(field); dims=dims)
+minimum(f, field::AbstractDataField; dims=:) = minimum(f, interiorparent(field); dims=dims)
 
 """
-    maximum(field::AbstractField; dims=:)
+    maximum(field::AbstractDataField; dims=:)
 
 Compute the maximum value of an Oceananigans `field` over the given dimensions (not including halo points).
 By default all dimensions are included.
 """
-maximum(field::AbstractField; dims=:) = maximum(interiorparent(field); dims=dims)
+maximum(field::AbstractDataField; dims=:) = maximum(interiorparent(field); dims=dims)
 
 """
-    maximum(f, field::AbstractField; dims=:)
+    maximum(f, field::AbstractDataField; dims=:)
 
 Returns the largest result of calling the function `f` on each element of an Oceananigans `field`
 (not including halo points) over the given dimensions. By default all dimensions are included.
 """
-maximum(f, field::AbstractField; dims=:) = maximum(f, interiorparent(field); dims=dims)
+maximum(f, field::AbstractDataField; dims=:) = maximum(f, interiorparent(field); dims=dims)
 
 """
-    mean(field::AbstractField; dims=:)
+    mean(field::AbstractDataField; dims=:)
 
 Compute the mean of an Oceananigans `field` over the given dimensions (not including halo points).
 By default all dimensions are included.
 """
-mean(field::AbstractField; dims=:) = mean(interiorparent(field); dims=dims)
+mean(field::AbstractDataField; dims=:) = mean(interiorparent(field); dims=dims)
 
 """
-    mean(f::Function, field::AbstractField; dims=:)
+    mean(f::Function, field::AbstractDataField; dims=:)
 
 Apply the function `f` to each element of an Oceananigans `field` and take the mean over dimensions `dims`
 (not including halo points). By default all dimensions are included.
 """
-mean(f::Function, field::AbstractField; dims=:) = mean(f, interiorparent(field); dims=dims)
+mean(f::Function, field::AbstractDataField; dims=:) = mean(f, interiorparent(field); dims=dims)
