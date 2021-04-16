@@ -30,7 +30,7 @@ end
 const number_of_identities = 30 # hopefully enough for Oceananigans (most need just one)
 
 for i = 1:number_of_identities
-    identity = Symbol(:identity, number)
+    identity = Symbol(:identity, i)
 
     @eval begin
         @inline $identity(i, j, k, grid, c) = @inbounds c[i, j, k]
@@ -55,7 +55,7 @@ function interpolation_operator(from, to)
 
     # This is crazy, but here's my number...
     global identity_counter = 0
-    identity = identify_an_identity(count)
+    identity = identify_an_identity(identity_counter)
 
     if all(ξ === :ᵃ for ξ in (x, y, z))
         return @eval $identity
@@ -72,7 +72,7 @@ operator for fields that have no intrinsic location, like numbers or functions.
 """
 function interpolation_operator(::Nothing, to)
     global identity_counter = 0
-    identity = identify_an_identity(count)
+    identity = identify_an_identity(identity_counter)
     return @eval $identity
 end
 
