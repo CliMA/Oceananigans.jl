@@ -60,20 +60,17 @@ batchable_GPU_topologies = ((Periodic, Periodic, Periodic),
 # Note that `Flat` "transforms" have no effect. To avoid defining forward_orders and `backward_orders`
 # for Flat we reuse the orderings that apply to combinations of Periodic and Bounded.
 
-const PeriodicOrFlatType = Union{Type{Periodic}, Type{Flat}}
-const BoundedOrFlatType = Union{Type{Bounded}, Type{Flat}}
+forward_orders(::Type{Periodic}, ::Type{Bounded},  ::Type{Bounded})  = (3, 2, 1)
+forward_orders(::Type{Periodic}, ::Type{Bounded},  ::Type{Periodic}) = (2, 1, 3)
+forward_orders(::Type{Bounded},  ::Type{Periodic}, ::Type{Bounded})  = (1, 3, 2)
+forward_orders(::Type{Bounded},  ::Type{Bounded},  ::Type{Periodic}) = (1, 2, 3)
+forward_orders(::Type{Bounded},  ::Type{Bounded},  ::Type{Bounded})  = (1, 2, 3)
 
-forward_orders(::PeriodicOrFlatType, ::BoundedOrFlatType,  ::BoundedOrFlatType)  = (3, 2, 1)
-forward_orders(::PeriodicOrFlatType, ::BoundedOrFlatType,  ::PeriodicOrFlatType) = (2, 1, 3)
-forward_orders(::BoundedOrFlatType,  ::PeriodicOrFlatType, ::BoundedOrFlatType)  = (1, 3, 2)
-forward_orders(::BoundedOrFlatType,  ::BoundedOrFlatType,  ::PeriodicOrFlatType) = (1, 2, 3)
-forward_orders(::BoundedOrFlatType,  ::BoundedOrFlatType,  ::BoundedOrFlatType)  = (1, 2, 3)
-
-backward_orders(::PeriodicOrFlatType, ::BoundedOrFlatType,  ::BoundedOrFlatType)  = (1, 2, 3)
-backward_orders(::PeriodicOrFlatType, ::BoundedOrFlatType,  ::PeriodicOrFlatType) = (3, 1, 2)
-backward_orders(::BoundedOrFlatType,  ::PeriodicOrFlatType, ::BoundedOrFlatType)  = (2, 1, 3)
-backward_orders(::BoundedOrFlatType,  ::BoundedOrFlatType,  ::PeriodicOrFlatType) = (3, 1, 2)
-backward_orders(::BoundedOrFlatType,  ::BoundedOrFlatType,  ::BoundedOrFlatType)  = (1, 2, 3)
+backward_orders(::Type{Periodic}, ::Type{Bounded},  ::Type{Bounded})  = (1, 2, 3)
+backward_orders(::Type{Periodic}, ::Type{Bounded},  ::Type{Periodic}) = (3, 1, 2)
+backward_orders(::Type{Bounded},  ::Type{Periodic}, ::Type{Bounded})  = (2, 1, 3)
+backward_orders(::Type{Bounded},  ::Type{Bounded},  ::Type{Periodic}) = (3, 1, 2)
+backward_orders(::Type{Bounded},  ::Type{Bounded},  ::Type{Bounded})  = (1, 2, 3)
 
 " Used by FFTBasedPoissonSolver "
 function plan_transforms(arch, grid::RegularRectilinearGrid, storage, planner_flag)
@@ -95,8 +92,12 @@ function plan_transforms(arch, grid::RegularRectilinearGrid, storage, planner_fl
 
         forward_plans = (forward_plan_x, forward_plan_y, forward_plan_z)
         backward_plans = (backward_plan_x, backward_plan_y, backward_plan_z)
-        f_order = forward_orders(topo...)
-        b_order = backward_orders(topo...)
+
+        # Convert Flat to Periodic for ordering purposes (transforms are omitted in Flat directions anyways)
+        unflattened_topo = (T() isa Flat ? Periodic : T for T in topo)
+
+        f_order = forward_orders(unflattened_topo...)
+        b_order = backward_orders(unflattened_topo...)
 
         forward_transforms = (
             DiscreteTransform(forward_plans[f_order[1]], Forward(), arch, grid, [f_order[1]]),
@@ -140,16 +141,20 @@ function plan_transforms(arch, grid::RegularRectilinearGrid, storage, planner_fl
     return transforms
 end
 
-# For the FourierTridiagonal 
-forward_orders(::PeriodicOrFlatType, ::BoundedOrFlatType)  = (2, 1)
-forward_orders(::BoundedOrFlatType,  ::PeriodicOrFlatType) = (1, 2)
-forward_orders(::BoundedOrFlatType,  ::BoundedOrFlatType)  = (1, 2)
-forward_orders(::PeriodicOrFlatType, ::PeriodicOrFlatType) = (1, 2)
+# Two-dimensional orderings for the FourierTridiagonalPoissonSolver
+forward_orders(::Type{Periodic}, ::Type{Bounded})  = (2, 1)
+forward_orders(::Type{Bounded},  ::Type{Periodic}) = (1, 2)
+forward_orders(::Type{Bounded},  ::Type{Bounded})  = (1, 2)
+forward_orders(::Type{Periodic}, ::Type{Periodic}) = (1, 2)
 
-backward_orders(::BoundedOrFlatType,  ::PeriodicOrFlatType) = (2, 1)
-backward_orders(::PeriodicOrFlatType, ::PeriodicOrFlatType) = (1, 2)
-backward_orders(::PeriodicOrFlatType, ::BoundedOrFlatType)  = (1, 2)
-backward_orders(::BoundedOrFlatType,  ::BoundedOrFlatType)  = (1, 2)
+backward_orders(::Type{Bounded},  ::Type{Periodic}) = (2, 1)
+backward_orders(::Type{Periodic}, ::Type{Periodic}) = (1, 2)
+backward_orders(::Type{Periodic}, ::Type{Bounded})  = (1, 2)
+backward_orders(::Type{Bounded},  ::Type{Bounded})  = (1, 2)
+
+# Flat orderings
+forward_orders(::Type{Flat}, TY) = (1, 2)
+forward_orders(TX, ::Type{Flat}) = (1, 2)
 
 " Used by FourierTridiagonalPoissonSolver "
 function plan_transforms(arch, grid::VerticallyStretchedRectilinearGrid, storage, planner_flag)
