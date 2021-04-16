@@ -1,10 +1,4 @@
-"""
-    FunctionField{X, Y, Z, C, F, G} <: AbstractField{X, Y, Z, F, G}
-
-An `AbstractField` that returns a function evaluated at location `(X, Y, Z)` (and time, if
-`C` is not `Nothing`) when indexed at `i, j, k`.
-"""
-struct FunctionField{X, Y, Z, C, P, F, G} <: AbstractField{X, Y, Z, Nothing, G}
+struct FunctionField{X, Y, Z, C, P, F, G, T} <: AbstractField{X, Y, Z, Nothing, G, T}
           func :: F
           grid :: G
          clock :: C
@@ -22,9 +16,9 @@ struct FunctionField{X, Y, Z, C, P, F, G} <: AbstractField{X, Y, Z, Nothing, G}
     A FunctionField will return the result of `func(x, y, z [, t])` at `X, Y, Z` on
     `grid` when indexed at `i, j, k`.
     """
-    function FunctionField{X, Y, Z}(func, grid; clock=nothing, parameters=nothing) where {X, Y, Z}
-        return new{X, Y, Z, typeof(clock),
-                   typeof(parameters), typeof(func), typeof(grid)}(func, grid, clock, parameters)
+    function FunctionField{X, Y, Z}(func::F, grid::G; clock::C=nothing, parameters::P=nothing) where {X, Y, Z, F, G, C, P}
+        T = eltype(grid)
+        return new{X, Y, Z, C, P, F, G, T}(func, grid, clock, parameters)
     end
 
     """
@@ -32,9 +26,11 @@ struct FunctionField{X, Y, Z, C, P, F, G} <: AbstractField{X, Y, Z, Nothing, G}
 
     Adds `clock` to an existing `FunctionField` and relocates it to `(X, Y, Z)` on `grid`.
     """
-    function FunctionField{X, Y, Z}(f::FunctionField, grid; clock=nothing) where {X, Y, Z}
-        return new{X, Y, Z, typeof(clock),
-                   typeof(f.parameters), typeof(f.func), typeof(grid)}(f.func, grid, clock, f.parameters)
+    function FunctionField{X, Y, Z}(f::FunctionField, grid::G; clock::C=nothing) where {X, Y, Z, G, C}
+        P = typeof(f.parameters)
+        T = eltype(grid)
+        F = typeof(f.func)
+        return new{X, Y, Z, C, P, F, G, T}(f.func, grid, clock, f.parameters)
     end
 end
 

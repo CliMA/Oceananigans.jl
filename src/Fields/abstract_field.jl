@@ -15,15 +15,26 @@ import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_in
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, xnode, ynode, znode
 import Oceananigans.Utils: datatuple
 
-"""
-    AbstractField{X, Y, Z, A, G}
+const ArchOrNothing = Union{AbstractArchitecture, Nothing}
+const GridOrNothing = Union{AbstractGrid, Nothing}
 
-Abstract supertype for fields located at `(X, Y, Z)` with data stored in a container
-of type `A`. The field is defined on a grid `G`.
 """
-abstract type AbstractField{X, Y, Z,
-                            A <: Union{AbstractArchitecture, Nothing},
-                            G <: Union{AbstractGrid{FT}, Nothing}} <: AbstractArray{FT, 3} end
+    AbstractField{X, Y, Z, A, G, T}
+
+Abstract supertype for fields located at `(X, Y, Z)` on architecture `A`
+and defined on a grid `G` with eltype `T`.
+"""
+abstract type AbstractField{X, Y, Z, A <: ArchOrNothing, G <: GridOrNothing, T} <: AbstractArray{T, 3} end
+
+"""
+    AbstractDataField{X, Y, Z, A, G}
+
+Abstract supertype for fields with concrete data in settable underlying arrays,
+located at `(X, Y, Z)` on architecture `A` and defined on a grid `G` with eltype `T`.
+"""
+abstract type AbstractDataField{X, Y, Z, A, G, T} <: AbstractField{X, Y, Z, A, G, T} end
+
+Base.IndexStyle(::AbstractField) = IndexCartesian()
 
 function validate_field_data(X, Y, Z, data, grid)
     Tx, Ty, Tz = total_size((X, Y, Z), grid)
@@ -110,11 +121,8 @@ end
 
 @inline instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
 
-"Returns the architecture where the field data `f.data` is stored."
+"Returns the architecture of on which `f` is defined."
 architecture(f::AbstractField) = f.architecture
-
-"Returns the length of a field's `data`."
-@inline Base.length(f::AbstractField) = length(f.data)
 
 "Returns the topology of a fields' `grid`."
 @inline topology(f, args...) = topology(f.grid, args...)
@@ -168,13 +176,13 @@ total_size(f::AbstractField) = total_size(location(f), f.grid)
 ##### getindex
 #####
 
-@propagate_inbounds Base.getindex(f::AbstractField, inds...) = @inbounds getindex(f.data, inds...)
+@propagate_inbounds Base.getindex(f::AbstractDataField, i::Int, j::Int, k::Int) = @inbounds getindex(f.data, i, j, k)
 
 #####
 ##### setindex
 #####
 
-@propagate_inbounds Base.setindex!(f::AbstractField, a, inds...) = @inbounds setindex!(f.data, a, inds...)
+@propagate_inbounds Base.setindex!(f::AbstractDataField, a, i::Int, j::Int, k::Int) = @inbounds setindex!(f.data, a, i, j, k)
 
 #####
 ##### Coordinates of fields
@@ -184,8 +192,8 @@ total_size(f::AbstractField) = total_size(location(f), f.grid)
 @inline ynode(j, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = ynode(Y, j, ψ.grid)
 @inline znode(k, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = znode(Z, k, ψ.grid)
 
-@inline Base.lastindex(f::AbstractField) = lastindex(f.data)
-@inline Base.lastindex(f::AbstractField, dim) = lastindex(f.data, dim)
+@inline Base.lastindex(f::AbstractDataField) = lastindex(f.data)
+@inline Base.lastindex(f::AbstractDataField, dim) = lastindex(f.data, dim)
 
 xnodes(ψ::AbstractField) = xnodes(location(ψ, 1), ψ.grid)
 ynodes(ψ::AbstractField) = ynodes(location(ψ, 2), ψ.grid)
@@ -193,8 +201,9 @@ znodes(ψ::AbstractField) = znodes(location(ψ, 3), ψ.grid)
 
 nodes(ψ::AbstractField; kwargs...) = nodes(location(ψ), ψ.grid; kwargs...)
 
-Base.iterate(f::AbstractField, state=1) = iterate(f.data, state)
+Base.iterate(f::AbstractDataField, state=1) = iterate(f.data, state)
 
+#=
 #####
 ##### Field reductions
 #####
@@ -246,3 +255,4 @@ Apply the function `f` to each element of an Oceananigans `field` and take the m
 (not including halo points). By default all dimensions are included.
 """
 mean(f::Function, field::AbstractField; dims=:) = mean(f, interiorparent(field); dims=dims)
+=#

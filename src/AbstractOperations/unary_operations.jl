@@ -1,16 +1,11 @@
 const unary_operators = Set()
 
-"""
-    UnaryOperation{X, Y, Z, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
-
-An abstract representation of a unary operation on an `AbstractField`; or a function
-`f(x)` with on argument acting on `x::AbstractField`.
-"""
-struct UnaryOperation{X, Y, Z, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
-      op :: O
-     arg :: A
-       ▶ :: I
-    grid :: G
+struct UnaryOperation{X, Y, Z, O, A, I, R, G, T} <: AbstractOperation{X, Y, Z, R, G, T}
+              op :: O
+             arg :: A
+               ▶ :: I
+    architecture :: R
+            grid :: G
 
     """
         UnaryOperation{X, Y, Z}(op, arg, ▶, grid)
@@ -18,8 +13,11 @@ struct UnaryOperation{X, Y, Z, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
     Returns an abstract `UnaryOperation` representing the action of `op` on `arg`,
     and subsequent interpolation by `▶` on `grid`.
     """
-    function UnaryOperation{X, Y, Z}(op, arg, ▶, grid) where {X, Y, Z}
-        return new{X, Y, Z, typeof(op), typeof(arg), typeof(▶), typeof(grid)}(op, arg, ▶, grid)
+    function UnaryOperation{X, Y, Z}(op::O, arg::A, ▶::I, grid::G) where {X, Y, Z, O, A, I, G}
+        arch = architecture(arg)
+        T = eltype(grid)
+        R = typeof(arch)
+        return new{X, Y, Z, O, A, I, R, G, T}(op, arg, ▶, arch, grid)
     end
 end
 
@@ -116,7 +114,7 @@ end
 ##### Architecture inference for UnaryOperation
 #####
 
-architecture(υ::UnaryOperation) = architecture(υ.arg)
+architecture(υ::UnaryOperation) = υ.architecture
 
 #####
 ##### Nested computations

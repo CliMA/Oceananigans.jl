@@ -1,15 +1,11 @@
 using Oceananigans.Operators: interpolation_code
 
-"""
-    Derivative{X, Y, Z, D, A, I, G} <: AbstractOperation{X, Y, Z, G}
-
-An abstract representation of a derivative of an `AbstractField`.
-"""
-struct Derivative{X, Y, Z, D, A, I, G} <: AbstractOperation{X, Y, Z, G}
-       ∂ :: D
-     arg :: A
-       ▶ :: I
-    grid :: G
+struct Derivative{X, Y, Z, D, A, I, R, G, T} <: AbstractOperation{X, Y, Z, R, G, T}
+               ∂ :: D
+             arg :: A
+               ▶ :: I
+    architecture :: R
+            grid :: G
 
     """
         Derivative{X, Y, Z}(∂, arg, ▶, grid)
@@ -17,8 +13,11 @@ struct Derivative{X, Y, Z, D, A, I, G} <: AbstractOperation{X, Y, Z, G}
     Returns an abstract representation of the derivative `∂` on `arg`,
     and subsequent interpolation by `▶` on `grid`.
     """
-    function Derivative{X, Y, Z}(∂, arg, ▶, grid) where {X, Y, Z}
-        return new{X, Y, Z, typeof(∂), typeof(arg), typeof(▶), typeof(grid)}(∂, arg, ▶, grid)
+    function Derivative{X, Y, Z}(∂::D, arg::A, ▶::I, grid::G) where {X, Y, Z, D, A, I, G}
+        arch = architecture(arg)
+        T = eltype(grid)
+        R = typeof(arch)
+        return new{X, Y, Z, D, A, I, R, G, T}(∂, arg, ▶, arch, grid)
     end
 end
 
@@ -105,7 +104,7 @@ Return an abstract representation of a z-derivative acting on `a`.
 ##### Architecture inference for derivatives
 #####
 
-architecture(∂::Derivative) = architecture(∂.arg)
+architecture(∂::Derivative) = ∂.architecture
 
 #####
 ##### Nested computations

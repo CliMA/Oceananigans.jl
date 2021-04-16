@@ -2,7 +2,7 @@ using Oceananigans: AbstractModel
 using Oceananigans.Grids
 using Oceananigans.Utils: tupleit
 
-struct KernelComputedField{X, Y, Z, A, S, D, G, K, C, F, P} <: AbstractField{X, Y, Z, A, G}
+struct KernelComputedField{X, Y, Z, A, S, D, G, T, K, C, F, P} <: AbstractDataField{X, Y, Z, A, G, T}
                      data :: D
              architecture :: A
                      grid :: G
@@ -33,10 +33,11 @@ struct KernelComputedField{X, Y, Z, A, S, D, G, K, C, F, P} <: AbstractField{X, 
         S = typeof(status)
         F = typeof(computed_dependencies)
         C = typeof(boundary_conditions)
+        T = typeo(grid)
 
         return new{X, Y, Z, A, S,
-                   D, G, K, C, F, P}(data, arch, grid, kernel, boundary_conditions,
-                                     computed_dependencies, parameters)
+                   D, G, T, K, C, F, P}(data, arch, grid, kernel, boundary_conditions,
+                                        computed_dependencies, parameters)
     end
 end
 

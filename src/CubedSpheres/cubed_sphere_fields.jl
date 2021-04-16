@@ -7,9 +7,9 @@ import Statistics: mean
 import Oceananigans.Fields: Field, CenterField, XFaceField, YFaceField, ZFaceField, FunctionField, ReducedField, interior
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-abstract type AbstractCubedSphereField{X, Y, Z, A, G} <: AbstractField{X, Y, Z, A, G} end
+abstract type AbstractCubedSphereField{X, Y, Z, A, G, T} <: AbstractField{X, Y, Z, A, G, T} end
 
-struct ConformalCubedSphereField{X, Y, Z, A, G, F, B} <: AbstractCubedSphereField{X, Y, Z, A, G}
+struct ConformalCubedSphereField{X, Y, Z, A, G, T, F, B} <: AbstractCubedSphereField{X, Y, Z, A, G, T}
                    grid :: G
                   faces :: F
     boundary_conditions :: B
@@ -22,7 +22,7 @@ end
 Field(X, Y, Z, arch, grid::ConformalCubedSphereGrid, ::Nothing, data) =
     Field(X, Y, Z, arch, grid, FieldBoundaryConditions(grid, (X, Y, Z)), data)
 
-function Field(X, Y, Z, arch, grid::ConformalCubedSphereGrid, bcs, data)
+function Field(X, Y, Z, arch::A, grid::G, bcs, data::D) where {A, G <: ConformalCubedSphereGrid, D}
 
     faces = Tuple(
         Field(X, Y, Z, arch, face_grid, inject_cubed_sphere_exchange_boundary_conditions(bcs, face_number, grid.face_connectivity))
@@ -33,7 +33,11 @@ function Field(X, Y, Z, arch, grid::ConformalCubedSphereGrid, bcs, data)
     # the same boundary conditions. A very bad assumption...
     cubed_sphere_bcs = faces[1].boundary_conditions
 
-    return ConformalCubedSphereField{X, Y, Z, typeof(arch), typeof(grid), typeof(faces), typeof(cubed_sphere_bcs)}(grid, faces, cubed_sphere_bcs)
+    B = typeof(cubed_sphere_bcs)
+    F = typeof(faces)
+    T = eltype(grid)
+
+    return ConformalCubedSphereField{X, Y, Z, A, G, T, F, B}(grid, faces, cubed_sphere_bcs)
 end
 
 #####
@@ -76,15 +80,16 @@ const ConformalCubedSphereFaceField{LX, LY, LZ, A} = AbstractField{LX, LY, LZ, A
 ##### Function fields
 #####
 
-struct ConformalCubedSphereFunctionField{X, Y, Z, F, G} <: AbstractCubedSphereField{X, Y, Z, F, G}
+struct ConformalCubedSphereFunctionField{X, Y, Z, F, G, T} <: AbstractCubedSphereField{X, Y, Z, F, G, T}
     faces :: F
 end
 
 function FunctionField{X, Y, Z}(func, grid::ConformalCubedSphereGrid; clock=nothing, parameters=nothing) where {X, Y, Z}
 
     faces = Tuple(FunctionField{X, Y, Z}(func, face_grid; clock, parameters) for face_grid in grid.faces)
+    T = eltype(grid)
 
-    return ConformalCubedSphereFunctionField{X, Y, Z, typeof(faces), typeof(grid)}(faces)
+    return ConformalCubedSphereFunctionField{X, Y, Z, typeof(faces), typeof(grid), T}(faces)
 end
 
 const ConformalCubedSphereFaceFunctionField = FunctionField{X, Y, Z, C, P, F, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, C, P, F}
@@ -101,7 +106,7 @@ fill_halo_regions!(::ConformalCubedSphereFunctionField, args...) = nothing
 ##### Reduced fields
 #####
 
-struct ConformalCubedSphereReducedField{X, Y, Z, A, G, F, B} <: AbstractCubedSphereField{X, Y, Z, A, G}
+struct ConformalCubedSphereReducedField{X, Y, Z, A, G, T, F, B} <: AbstractCubedSphereField{X, Y, Z, A, G, T}
                    grid :: G
                   faces :: F
     boundary_conditions :: B
@@ -118,7 +123,9 @@ function ReducedField(X, Y, Z, arch, grid::ConformalCubedSphereGrid; dims, data=
     # the same boundary conditions. A very bad assumption...
     cubed_sphere_bcs = faces[1].boundary_conditions
 
-    return ConformalCubedSphereReducedField{X, Y, Z, typeof(arch), typeof(grid), typeof(faces), typeof(cubed_sphere_bcs)}(grid, faces, cubed_sphere_bcs)
+    T = eltype(grid)
+
+    return ConformalCubedSphereReducedField{X, Y, Z, typeof(arch), typeof(grid), T, typeof(faces), typeof(cubed_sphere_bcs)}(grid, faces, cubed_sphere_bcs)
 end
 
 #####

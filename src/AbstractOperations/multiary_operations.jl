@@ -1,13 +1,18 @@
 const multiary_operators = Set()
 
-struct MultiaryOperation{X, Y, Z, N, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
-      op :: O
-    args :: A
-       ▶ :: I
-    grid :: G
+struct MultiaryOperation{X, Y, Z, N, O, A, I, R, G, T} <: AbstractOperation{X, Y, Z, R, G, T}
+              op :: O
+            args :: A
+               ▶ :: I
+    architecture :: R
+            grid :: G
 
-    function MultiaryOperation{X, Y, Z}(op, args, ▶, grid) where {X, Y, Z}
-        return new{X, Y, Z, length(args), typeof(op), typeof(args), typeof(▶), typeof(grid)}(op, args, ▶, grid)
+    function MultiaryOperation{X, Y, Z}(op::O, args::A, ▶::I, grid::G) where {X, Y, Z, O, A, I, G}
+        arch = architecture(args...)
+        T = eltype(grid)
+        N = length(args)
+        R = typeof(arch)
+        return new{X, Y, Z, N, O, A, I, R, G, T}(op, args, ▶, arch, grid)
     end
 end
 
@@ -127,7 +132,7 @@ end
 ##### Architecture inference for MultiaryOperation
 #####
 
-architecture(Π::MultiaryOperation) = architecture(Π.args...)
+architecture(Π::MultiaryOperation) = Π.architecture
 
 function architecture(a, b, c, d...)
 

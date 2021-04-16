@@ -1,18 +1,14 @@
 const binary_operators = Set()
 
-"""
-    BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X, Y, Z, G}
-
-An abstract representation of a binary operation on `AbstractField`s.
-"""
-struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X, Y, Z, G}
-      op :: O
-       a :: A
-       b :: B
-      ▶a :: IA
-      ▶b :: IB
-     ▶op :: IΩ
-    grid :: G
+struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, R, G, T} <: AbstractOperation{X, Y, Z, R, G, T}
+              op :: O
+               a :: A
+               b :: B
+              ▶a :: IA
+              ▶b :: IB
+             ▶op :: IΩ
+    architecture :: R
+            grid :: G
 
     """
         BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, ▶op, grid)
@@ -21,13 +17,17 @@ struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X,
     followed by interpolation by `▶op` to `(X, Y, Z)`, where `▶a` and `▶b` interpolate
     `a` and `b` to a common location.
     """
-    function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, ▶op, grid) where {X, Y, Z}
+    function BinaryOperation{X, Y, Z}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, ▶op::IΩ,
+                                      grid::G) where {X, Y, Z, O, A, B, IA, IB, IΩ, G}
 
         any((X, Y, Z) .=== Nothing) && throw(ArgumentError("Nothing locations are invalid! " *
                                                            "Cannot construct BinaryOperation at ($X, $Y, $Z)."))
 
-        return new{X, Y, Z, typeof(op), typeof(a), typeof(b), typeof(▶a), typeof(▶b),
-                   typeof(▶op), typeof(grid)}(op, a, b, ▶a, ▶b, ▶op, grid)
+        arch = architecture(a, b)
+        T = eltype(grid)
+        R = typeof(arch)
+
+        return new{X, Y, Z, O, A, B, IA, IB, IΩ, R, G, T}(op, a, b, ▶a, ▶b, ▶op, arch, grid)
     end
 end
 
@@ -152,7 +152,7 @@ end
 ##### Architecture inference for BinaryOperation
 #####
 
-architecture(β::BinaryOperation) = architecture(β.a, β.b)
+architecture(β::BinaryOperation) = β.architecture
 
 function architecture(a, b)
     arch_a = architecture(a)

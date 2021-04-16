@@ -14,12 +14,12 @@ import Oceananigans: short_show
 
 Type representing buoyancy computed on the model grid.
 """
-struct BuoyancyField{B, S, A, D, G, T} <: AbstractField{Center, Center, Center, A, G}
+struct BuoyancyField{B, S, A, D, G, T, C} <: AbstractField{Center, Center, Center, A, G, T}
             data :: D
     architecture :: A
             grid :: G
         buoyancy :: B
-         tracers :: T
+         tracers :: C
           status :: S
     
     """
@@ -36,14 +36,9 @@ struct BuoyancyField{B, S, A, D, G, T} <: AbstractField{Center, Center, Center, 
         status = recompute_safely ? nothing : FieldStatus(zero(eltype(grid)))
 
         S = typeof(status)
+        T = eltype(grid)
 
-        return new{B, S, A, D, G, C}(data, arch, grid, buoyancy, tracers, status)
-    end
-
-    function BuoyancyField(data::D, arch::A, grid::G,
-                           buoyancy::B, tracers::C, status::S) where {D, A, G, B, C, S}
-        validate_field_data(Center, Center, Center, data, grid)
-        return new{B, S, A, D, G, T}(data, grid, buoyancy, tracers, status)
+        return new{B, S, A, D, G, T, C}(data, arch, grid, buoyancy, tracers, status)
     end
 end
 

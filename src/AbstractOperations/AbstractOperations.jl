@@ -25,12 +25,7 @@ import Oceananigans.Fields: data, compute_at!
 ##### Basic functionality
 #####
 
-"""
-    AbstractOperation{X, Y, Z, G} <: AbstractField{X, Y, Z, Nothing, G}
-
-Represents an operation performed on grid of type `G` at locations `X`, `Y`, and `Z`.
-"""
-abstract type AbstractOperation{X, Y, Z, G} <: AbstractField{X, Y, Z, Nothing, G} end
+abstract type AbstractOperation{X, Y, Z, A, G, T} <: AbstractField{X, Y, Z, A, G, T} end
 
 const AF = AbstractField
 
