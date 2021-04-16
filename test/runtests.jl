@@ -76,6 +76,8 @@ include("utils_for_runtests.jl")
 
 group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
+group = :regression
+
 @testset "Oceananigans" begin
     if group == :unit || group == :all
         @testset "Unit tests" begin
