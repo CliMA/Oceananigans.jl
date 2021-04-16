@@ -142,7 +142,8 @@ end
 
 ReducedField(Lr, arch, grid; dims, kwargs...) = ReducedField(Lr..., arch, grid; dims=dims, kwargs...)
 
-Base.similar(r::ReducedField{X, Y, Z, Arch}) where {X, Y, Z, Arch} =
+# Canonical `similar` for AbstractReducedField
+Base.similar(r::AbstractReducedField{X, Y, Z, Arch}) where {X, Y, Z, Arch} =
     ReducedField(X, Y, Z, Arch(), r.grid; dims=r.dims, boundary_conditions=r.boundary_conditions)
 
 #####

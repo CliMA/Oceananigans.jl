@@ -41,8 +41,13 @@ function Field(X, Y, Z, arch, grid,
     return Field{X, Y, Z}(data, arch, grid, bcs)
 end
 
-Base.similar(f::Field{X, Y, Z, Arch}) where {X, Y, Z, Arch} =
-    Field(X, Y, Z, Arch(), f.grid, f.boundary_conditions)
+boundary_conditions(f::AbstractField) = :boundary_conditions ∈ propertynames(f) ?
+                                        tuple(getproperty(f, :boundary_conditions)) :
+                                        Tuple()
+
+# Canonical `similar` for AbstractField
+Base.similar(f::AbstractField{X, Y, Z, Arch}) where {X, Y, Z, Arch} =
+    Field(X, Y, Z, Arch(), f.grid, boundary_conditions(f)...)
 
 # Type "destantiation": convert Face() to Face and Center() to Center if needed.
 destantiate(X) = typeof(X)
