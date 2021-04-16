@@ -141,21 +141,6 @@ function plan_transforms(arch, grid::RegularRectilinearGrid, storage, planner_fl
     return transforms
 end
 
-# Two-dimensional orderings for the FourierTridiagonalPoissonSolver
-forward_orders(::Type{Periodic}, ::Type{Bounded})  = (2, 1)
-forward_orders(::Type{Bounded},  ::Type{Periodic}) = (1, 2)
-forward_orders(::Type{Bounded},  ::Type{Bounded})  = (1, 2)
-forward_orders(::Type{Periodic}, ::Type{Periodic}) = (1, 2)
-
-backward_orders(::Type{Bounded},  ::Type{Periodic}) = (2, 1)
-backward_orders(::Type{Periodic}, ::Type{Periodic}) = (1, 2)
-backward_orders(::Type{Periodic}, ::Type{Bounded})  = (1, 2)
-backward_orders(::Type{Bounded},  ::Type{Bounded})  = (1, 2)
-
-# Flat orderings
-forward_orders(::Type{Flat}, TY) = (1, 2)
-forward_orders(TX, ::Type{Flat}) = (1, 2)
-
 " Used by FourierTridiagonalPoissonSolver "
 function plan_transforms(arch, grid::VerticallyStretchedRectilinearGrid, storage, planner_flag)
     Nx, Ny, Nz = size(grid)
@@ -165,28 +150,64 @@ function plan_transforms(arch, grid::VerticallyStretchedRectilinearGrid, storage
     periodic_dims = findall(t -> t == Periodic, (TX, TY))
     bounded_dims = findall(t -> t == Bounded, (TX, TY))
 
-    if arch isa GPU && !(topo in batchable_GPU_topologies)
-        forward_plans = (plan_forward_transform(storage, TX(), [1], planner_flag),
-                         plan_forward_transform(reshape(storage, (Ny, Nx, Nz)), TY(), [1], planner_flag))
+    if arch isa GPU && topo in non_batched_topologies
+        if (TX, TY) == (Periodic, Bounded)
+            forward_plan_x = plan_forward_transform(storage, Periodic(), [1], planner_flag)
+            forward_plan_y = plan_forward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(), [1], planner_flag)
 
-        backward_plans = (plan_backward_transform(storage, TX(), [1], planner_flag),
-                          plan_backward_transform(reshape(storage, (Ny, Nx, Nz)), TY(),  [1], planner_flag))
+            backward_plan_x = plan_backward_transform(storage, Periodic(), [1], planner_flag)
+            backward_plan_y = plan_backward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(),  [1], planner_flag)
 
-        # Order matters here!
-        f_order = forward_orders(TX, TY)
-        b_order = backward_orders(TX, TY)
+            forward_transforms = (
+                DiscreteTransform(forward_plan_y, Forward(), arch, grid, [2]),
+                DiscreteTransform(forward_plan_x, Forward(), arch, grid, [1])
+            )
 
-        forward_transforms = (DiscreteTransform(forward_plans[f_order[1]], Forward(), arch, grid, [f_order[1]]),
-                              DiscreteTransform(forward_plans[f_order[2]], Forward(), arch, grid, [f_order[2]]))
+            backward_transforms = (
+                DiscreteTransform(backward_plan_x, Backward(), arch, grid, [1]),
+                DiscreteTransform(backward_plan_y, Backward(), arch, grid, [2])
+            )
 
-        backward_transforms = (DiscreteTransform(backward_plans[b_order[1]], Forward(), arch, grid, [b_order[1]]),
-                               DiscreteTransform(backward_plans[b_order[2]], Forward(), arch, grid, [b_order[2]]))
+        elseif (TX, TY) == (Bounded, Periodic)
+            forward_plan_x = plan_forward_transform(storage, Bounded(), [1], planner_flag)
+            forward_plan_y = plan_forward_transform(reshape(storage, (Ny, Nx, Nz)), Periodic(), [1], planner_flag)
+
+            backward_plan_x = plan_backward_transform(storage, Bounded(), [1], planner_flag)
+            backward_plan_y = plan_backward_transform(reshape(storage, (Ny, Nx, Nz)), Periodic(),  [1], planner_flag)
+
+            forward_transforms = (
+                DiscreteTransform(forward_plan_x, Forward(), arch, grid, [1]),
+                DiscreteTransform(forward_plan_y, Forward(), arch, grid, [2])
+            )
+
+            backward_transforms = (
+                DiscreteTransform(backward_plan_y, Backward(), arch, grid, [2]),
+                DiscreteTransform(backward_plan_x, Backward(), arch, grid, [1])
+            )
+
+        elseif (TX, TY) == (Bounded, Bounded)
+            forward_plan_x = plan_forward_transform(storage, Bounded(), [1], planner_flag)
+            forward_plan_y = plan_forward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(), [1], planner_flag)
+
+            backward_plan_x = plan_backward_transform(storage, Bounded(), [1], planner_flag)
+            backward_plan_y = plan_backward_transform(reshape(storage, (Ny, Nx, Nz)), Bounded(),  [1], planner_flag)
+
+            forward_transforms = (
+                DiscreteTransform(forward_plan_x, Forward(), arch, grid, [1]),
+                DiscreteTransform(forward_plan_y, Forward(), arch, grid, [2])
+            )
+
+            backward_transforms = (
+                DiscreteTransform(backward_plan_x, Backward(), arch, grid, [1]),
+                DiscreteTransform(backward_plan_y, Backward(), arch, grid, [2])
+            )
+        end
     else
         # This is the case where batching transforms is possible. It's always possible on the CPU
         # since FFTW is awesome so it includes all topologies on the CPU.
         #
-        # On the GPU batching is possible when the topology is one of the batchable_GPU_topologies
-        # (where an FFT is needed not along dimension 2). batchable_GPU_topologies include (Periodic, Periodic, Periodic),
+        # On the GPU batching is possible when the topology is not one of non_batched_topologies
+        # (where an FFT is needed along dimension 2), so it includes (Periodic, Periodic, Periodic),
         # (Periodic, Periodic, Bounded), and (Bounded, Periodic, Periodic).
 
         forward_periodic_plan = plan_forward_transform(storage, Periodic(), periodic_dims, planner_flag)
@@ -209,6 +230,4 @@ function plan_transforms(arch, grid::VerticallyStretchedRectilinearGrid, storage
     transforms = (forward = forward_transforms, backward = backward_transforms)
 
     return transforms
-        # (where an FFT is needed along dimension 2), so it includes (Periodic, Periodic, Periodic),
-        # (Periodic, Periodic, Bounded), and (Bounded, Periodic, Periodic).
 end
