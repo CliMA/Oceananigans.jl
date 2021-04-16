@@ -27,7 +27,7 @@ for ξ in ("x", "y", "z")
 end
 
 # It's not oceananigans for nothing
-rng = MersenneTwister(0)
+random_number_generator = MersenneTwister(0)
 
 """
     interpolation_operator(from, to)
@@ -39,9 +39,9 @@ function interpolation_operator(from, to)
     from, to = instantiate.(from), instantiate.(to)
     x, y, z = (interpolation_code(X, Y) for (X, Y) in zip(from, to))
 
-    # This is crazy, but here's my number...
-    global rng
-    number = rand(rng, 1:999)
+    # This is crazy, but here's my random number...
+    global random_number_generator
+    number = rand(random_number_generator, 1:999)
     identity = Symbol(:identity, number)
 
     @eval begin
@@ -64,8 +64,8 @@ Return the `identity` interpolator function. This is needed to obtain the interp
 operator for fields that have no intrinsic location, like numbers or functions.
 """
 function interpolation_operator(::Nothing, to)
-    global rng
-    number = rand(rng, 1:999)
+    global random_number_generator
+    number = rand(random_number_generator, 1000:1999)
     identity = Symbol(:identity, number)
 
     @eval begin
