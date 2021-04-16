@@ -62,22 +62,27 @@ DataDeps.register(dd32)
 DataDeps.register(dd96)
 
 function diagnose_velocities_from_streamfunction(ψ, grid)
-    ψᶠᶠᶜ = Field(Face, Face,   Center, CPU(), grid, nothing, nothing)
-    uᶠᶜᶜ = Field(Face, Center, Center, CPU(), grid, nothing, nothing)
-    vᶜᶠᶜ = Field(Center, Face, Center, CPU(), grid, nothing, nothing)
+    ψᶠᶠᶜ = Field(Face, Face,   Center, CPU(), grid)
+    uᶠᶜᶜ = Field(Face, Center, Center, CPU(), grid)
+    vᶜᶠᶜ = Field(Center, Face, Center, CPU(), grid)
 
     for (f, grid_face) in enumerate(grid.faces)
         Nx, Ny, Nz = size(grid_face)
+
+        ψᶠᶠᶜ_face = ψᶠᶠᶜ.data.faces[f]
+        uᶠᶜᶜ_face = uᶠᶜᶜ.data.faces[f]
+        vᶜᶠᶜ_face = vᶜᶠᶜ.data.faces[f]
+
         for i in 1:Nx+1, j in 1:Ny+1
-            ψᶠᶠᶜ.faces[f][i, j, 1] = ψ(grid_face.λᶠᶠᵃ[i, j], grid_face.φᶠᶠᵃ[i, j])
+            ψᶠᶠᶜ_face[i, j, 1] = ψ(grid_face.λᶠᶠᵃ[i, j], grid_face.φᶠᶠᵃ[i, j])
         end
 
         for i in 1:Nx+1, j in 1:Ny
-            uᶠᶜᶜ.faces[f][i, j, 1] = (ψᶠᶠᶜ.faces[f][i, j, 1] - ψᶠᶠᶜ.faces[f][i, j+1, 1]) / grid.faces[f].Δyᶠᶜᵃ[i, j]
+            uᶠᶜᶜ_face[i, j, 1] = (ψᶠᶠᶜ_face[i, j, 1] - ψᶠᶠᶜ_face[i, j+1, 1]) / grid.faces[f].Δyᶠᶜᵃ[i, j]
         end
 
         for i in 1:Nx, j in 1:Ny+1
-            vᶜᶠᶜ.faces[f][i, j, 1] = (ψᶠᶠᶜ.faces[f][i+1, j, 1] - ψᶠᶠᶜ.faces[f][i, j, 1]) / grid.faces[f].Δxᶜᶠᵃ[i, j]
+            vᶜᶠᶜ_face[i, j, 1] = (ψᶠᶠᶜ_face[i+1, j, 1] - ψᶠᶠᶜ_face[i, j, 1]) / grid.faces[f].Δxᶜᶠᵃ[i, j]
         end
     end
 

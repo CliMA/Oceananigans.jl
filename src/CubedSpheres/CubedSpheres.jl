@@ -89,10 +89,11 @@ fetch_output(field::CubedSphereField, model, field_slicer) =
 import Oceananigans.Diagnostics: state_check
 
 function state_check(field::CubedSphereField, name, pad)
-    Nf = length(field.faces)
-    for (face_number, field_face) in enumerate(field.faces)
+    face_fields = faces(field)
+    Nf = length(face_fields)
+    for (face_number, face_field) in enumerate(face_fields)
         face_str = " face $face_number"
-        state_check(field_face, string(name) * face_str, pad + length(face_str))
+        state_check(face_field, string(name) * face_str, pad + length(face_str))
 
         # Leave empty line between fields for easier visual inspection.
         face_number == Nf && @info ""
