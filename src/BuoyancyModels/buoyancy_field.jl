@@ -9,12 +9,7 @@ import Oceananigans.Fields: compute!, compute_at!
 
 import Oceananigans: short_show
 
-"""
-    struct BuoyancyField{B, A, G, T} <: AbstractField{X, Y, Z, A, G}
-
-Type representing buoyancy computed on the model grid.
-"""
-struct BuoyancyField{B, S, A, D, G, T, C} <: AbstractField{Center, Center, Center, A, G, T}
+struct BuoyancyField{B, S, A, D, G, T, C} <: AbstractDataField{Center, Center, Center, A, G, T}
             data :: D
     architecture :: A
             grid :: G
