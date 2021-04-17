@@ -46,6 +46,12 @@ function _binary_operation(Lc, op, a, b, La, Lb, Lab, grid)
     return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, ▶op, grid)
 end
 
+const LocationType = Union{Type{Face}, Type{Center}}
+
+choose_location(L1::LocationType, L2::LocationType) = L1
+choose_location(L1::LocationType, L2) = L1
+choose_location(L1, L2::LocationType) = L2
+
 """Return an expression that defines an abstract `BinaryOperator` named `op` for `AbstractField`."""
 function define_binary_operator(op)
     return quote
@@ -72,10 +78,18 @@ function define_binary_operator(op)
             return Oceananigans.AbstractOperations._binary_operation(Lc, $op, a, b, La, Lb, Lop, grid)
         end
 
-        $op(Lc::Tuple, a, b) = $op(Lc, Lc, a, b)
-        $op(Lc::Tuple, a::Number, b) = $op(Lc, location(b), a, b)
-        $op(Lc::Tuple, a, b::Number) = $op(Lc, location(a), a, b)
-        $op(Lc::Tuple, a::AF{X, Y, Z}, b::AF{X, Y, Z}) where {X, Y, Z} = $op(Lc, location(a), a, b)
+        function $op(Lc::Tuple, a, b)
+            La = location(a)
+            Lb = location(b)
+
+            LX = choose_location(La[1], Lb[1])
+            LY = choose_location(La[2], Lb[2])
+            LZ = choose_location(La[3], Lb[3])
+
+            Lab = (LX, LY, LZ)
+
+            return $op(Lc, Lab, a, b)
+        end
 
         # Sugar for mixing in functions of (x, y, z)
         $op(Lc::Tuple, a::Function, b::AbstractField) = $op(Lc, FunctionField(Lc, a, b.grid), b)
