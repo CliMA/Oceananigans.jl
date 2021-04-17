@@ -185,6 +185,16 @@ Base.fill!(f::AbstractDataField, val) = fill!(parent(f), val)
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::AbstractField, I...) = Base.checkbounds(f.data, I...)
 
+#=
+# Get this to work...
+parentaxes(f::AbstractField) = ...
+
+function Base.checkbounds(::Type{Bool}, A::AbstractField, I...)
+    @_inline_meta
+    checkbounds_indices(Bool, parentaxes(A), I)
+end
+=#
+
 @propagate_inbounds Base.getindex(f::AbstractDataField, i::Int, j::Int, k::Int) = f.data[i, j, k]
 
 # Linear indexing
