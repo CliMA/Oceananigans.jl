@@ -14,8 +14,7 @@ struct Field{X, Y, Z, A, D, G, T, B} <: AbstractDataField{X, Y, Z, A, G, T}
 end
 
 """
-    Field(X, Y, Z, [arch = CPU()],
-          grid,
+    Field(X, Y, Z, [arch = CPU()], grid,
           [ bcs = FieldBoundaryConditions(grid, (X, Y, Z)),
            data = new_data(eltype(grid), arch, grid, (X, Y, Z))])
 
