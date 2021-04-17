@@ -4,14 +4,24 @@
 
 using Base.Broadcast: Broadcasted
 
-@kernel function broadcast_3d!(dest, bc)
+@kernel function broadcast_xyz!(dest, bc)
     i, j, k = @index(Global, NTuple)
     @inbounds dest[i, j, k] = bc[i, j, k]
 end
 
-@kernel function broadcast_2d!(dest, bc)
+@kernel function broadcast_xy!(dest, bc)
     i, j = @index(Global, NTuple)
-    @inbounds dest[i, j] = bc[i, j]
+    @inbounds dest[i, j] = bc[i, j, 1]
+end
+
+@kernel function broadcast_xz!(dest, bc)
+    i, k = @index(Global, NTuple)
+    @inbounds dest[i, k] = bc[i, 1, k]
+end
+
+@kernel function broadcast_yz!(dest, bc)
+    j, k = @index(Global, NTuple)
+    @inbounds dest[j, k] = bc[1, j, k]
 end
 
 # Three-dimensional general case
@@ -23,11 +33,9 @@ broadcast_kernel(::AbstractField) = broadcast_3d!
 
 const Loc = Union{Center, Face}
 
-const TwoDimensionalReducedField = Union{AbstractReducedField{Nothing, <:Loc, <:Loc},
-                                         AbstractReducedField{<:Loc, Nothing, <:Loc},
-                                         AbstractReducedField{<:Loc, <:Loc, Nothing}}
-
-broadcast_kernel(::TwoDimensionalReducedField) = broadcast_2d!
+broadcast_kernel(::AbstractReducedField{Nothing, <:Loc, <:Loc}) = broadcast_yz!
+broadcast_kernel(::AbstractReducedField{<:Loc, Nothing, <:Loc}) = broadcast_xz!
+broadcast_kernel(::AbstractReducedField{<:Loc, <:Loc, Nothing}) = broadcast_xy!
 
 launch_configuration(::AbstractReducedField{Nothing, <:Loc, <:Loc}) = :yz
 launch_configuration(::AbstractReducedField{<:Loc, Nothing, <:Loc}) = :xz
