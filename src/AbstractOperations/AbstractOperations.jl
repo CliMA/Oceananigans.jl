@@ -54,9 +54,9 @@ include("averages_of_operations.jl")
 # Make some operators!
 
 # Some unaries:
-import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
+import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *, identity
 
-@unary sqrt sin cos exp tanh
+@unary sqrt sin cos exp tanh identity
 @unary -
 
 @binary +
