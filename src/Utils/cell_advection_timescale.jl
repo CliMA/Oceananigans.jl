@@ -1,6 +1,6 @@
 using Oceananigans.Grids: topology
 
-minimum_grid_spacing(Δx, TX          ) = minimum(Δx)
+minimum_grid_spacing(Δx, TX          ) = CUDA.@allowscalar minimum(Δx)
 minimum_grid_spacing(Δx, ::Type{Flat}) = Inf
 
 "Returns the time-scale for advection on a regular grid across a single grid cell."
