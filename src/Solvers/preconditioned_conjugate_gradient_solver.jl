@@ -73,8 +73,8 @@ See `solve!` for more information about the preconditioned conjugate-gradient al
 """
 function PreconditionedConjugateGradientSolver(linear_operation;
                                                template_field::AbstractField,
-                                               maximum_iterations = prod(size(template_field.grid)),
-                                               tolerance = 1e-13,
+                                               maximum_iterations = prod(size(template_field)),
+                                               tolerance = 1e-13, #sqrt(eps(eltype(template_field.grid))),
                                                precondition = nothing)
 
     arch = architecture(template_field)
@@ -179,7 +179,7 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
     solver.linear_operation!(q, x, args...)
 
     # r = b - A*x
-    parent(solver.residual) .= parent(b) .- parent(q)
+    solver.residual .= b .- q
 
     @debug "PreconditionedConjugateGradientSolver, |b|: $(norm(b))"
     @debug "PreconditionedConjugateGradientSolver, |A(x)|: $(norm(q))"
