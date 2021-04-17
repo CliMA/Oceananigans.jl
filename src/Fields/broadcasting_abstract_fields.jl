@@ -7,7 +7,15 @@ using Base.Broadcast: Broadcasted
 
 struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 
+#=
+# This code defines BroadcastStyle for AbstractField and associated paraphernalia.
+# It causes problems for simple cases so it's commented out right now.
+# However, we need to use this machinery to ensure proper interpolation between
+# fields at different locations on the staggered grid, so we keep it here, commented out,
+# in the hope that it will be employed someday.
+
 Base.Broadcast.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
+Base.Broadcast.BroadcastStyle(::Type{<:AbstractReducedField}) = DefaultArrayStyle{3}()
 Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) where N = FieldBroadcastStyle()  
 
 "`A = find_field(As)` returns the first AbstractField among the arguments."
@@ -24,6 +32,7 @@ function Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{<:AbstractFlo
     field = find_field(bc)
     return similar(field)
 end
+=#
 
 using Base.Broadcast: Broadcasted
 
@@ -71,17 +80,17 @@ insert_destination_location(loc, args::Tuple) = Tuple(insert_destination_locatio
 @inline function Base.copyto!(dest::AbstractField{X, Y, Z}, bc::Broadcasted{Nothing}) where {X, Y, Z}
 
     # Is this needed?
-    #bc′ = Broadcast.preprocess(dest, bc)
+    bc′ = Broadcast.preprocess(dest, bc)
 
     # This is definitely needed
-    bc′′ = insert_destination_location(location(dest), bc)
+    #bc′ = insert_destination_location(location(dest), bc)
 
     grid = dest.grid
     arch = architecture(dest)
     config = launch_configuration(dest)
     kernel = broadcast_kernel(dest)
 
-    event = launch!(arch, grid, config, kernel, dest, bc′′,
+    event = launch!(arch, grid, config, kernel, dest, bc′,
                     include_right_boundaries = true,
                     location = (X, Y, Z))
 
