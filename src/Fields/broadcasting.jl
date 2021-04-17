@@ -5,6 +5,8 @@
 struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 
 Base.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
+Base.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) where N = FieldBroadcastStyle()  
+Base.BroadcastStyle(::DefaultArrayStyle{N}, ::FieldBroadcastStyle) where N = FieldBroadcastStyle()  
 
 using Base.Broadcast: Broadcasted
 
