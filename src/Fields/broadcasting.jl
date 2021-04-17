@@ -2,11 +2,12 @@
 ##### Broadcasting utilities
 #####
 
+using Base.Broadcast: DefaultArrayStyle
+
 struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 
-Base.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
-Base.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) where N = FieldBroadcastStyle()  
-Base.BroadcastStyle(::DefaultArrayStyle{N}, ::FieldBroadcastStyle) where N = FieldBroadcastStyle()  
+Base.Broadcast.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
+Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) where N = FieldBroadcastStyle()  
 
 using Base.Broadcast: Broadcasted
 
@@ -47,10 +48,16 @@ launch_configuration(::AbstractReducedField{Nothing, <:Loc, <:Loc}) = :yz
 launch_configuration(::AbstractReducedField{<:Loc, Nothing, <:Loc}) = :xz
 launch_configuration(::AbstractReducedField{<:Loc, <:Loc, Nothing}) = :xy
 
+#insert_destination_location(loc, op::AbstractOperation) = at(loc, bc)
+#insert_destination_location(loc, bc::Broadcasted)
+
 @inline function Base.copyto!(dest::AbstractField{X, Y, Z}, bc::Broadcasted{Nothing}) where {X, Y, Z}
 
     # Is this needed?
     bc′ = Broadcast.preprocess(dest, bc)
+
+    # This is definitely needed
+    bc′′ = insert_destination_location(location(dest), bc′)
 
     grid = dest.grid
     arch = architecture(dest)
