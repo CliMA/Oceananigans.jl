@@ -244,7 +244,7 @@ end
             r, p, q = [ReducedField(Center, Center, Nothing, arch, grid, dims=3) for i = 1:3]
 
             r .= 2 
-            @test all(r .== 1) 
+            @test all(r .== 2) 
 
             p .= 3 
             q .= r .* p
