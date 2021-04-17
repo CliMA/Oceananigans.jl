@@ -73,4 +73,6 @@ eval(define_multiary_operator(:*))
 push!(operators, :*)
 push!(multiary_operators, :*)
 
+include("broadcasting_abstract_operations.jl")
+
 end # module

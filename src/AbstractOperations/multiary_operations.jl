@@ -32,10 +32,10 @@ end
 function define_multiary_operator(op)
     return quote
         function $op(Lop::Tuple,
-                     a::Union{Function, Oceananigans.Fields.AbstractField},
-                     b::Union{Function, Oceananigans.Fields.AbstractField},
-                     c::Union{Function, Oceananigans.Fields.AbstractField},
-                     d::Union{Function, Oceananigans.Fields.AbstractField}...)
+                     a::Union{Function, Number, Oceananigans.Fields.AbstractField},
+                     b::Union{Function, Number, Oceananigans.Fields.AbstractField},
+                     c::Union{Function, Number, Oceananigans.Fields.AbstractField},
+                     d::Union{Function, Number, Oceananigans.Fields.AbstractField}...)
 
             args = tuple(a, b, c, d...)
             grid = Oceananigans.AbstractOperations.validate_grid(args...)
@@ -47,7 +47,7 @@ function define_multiary_operator(op)
             return Oceananigans.AbstractOperations._multiary_operation(Lop, $op, args, Largs, grid)
         end
 
-        $op(a::Union{Function, Oceananigans.Fields.AbstractField},
+        $op(a::Oceananigans.Fields.AbstractField,
             b::Union{Function, Oceananigans.Fields.AbstractField},
             c::Union{Function, Oceananigans.Fields.AbstractField},
             d::Union{Function, Oceananigans.Fields.AbstractField}...) = $op(Oceananigans.Fields.location(a), a, b, c, d...)

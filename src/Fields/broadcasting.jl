@@ -2,6 +2,10 @@
 ##### Broadcasting utilities
 #####
 
+struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
+
+Base.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
+
 using Base.Broadcast: Broadcasted
 
 @kernel function broadcast_xyz!(dest, bc)
@@ -11,23 +15,23 @@ end
 
 @kernel function broadcast_xy!(dest, bc)
     i, j = @index(Global, NTuple)
-    @inbounds dest[i, j] = bc[i, j, 1]
+    @inbounds dest[i, j, 1] = bc[i, j, 1]
 end
 
 @kernel function broadcast_xz!(dest, bc)
     i, k = @index(Global, NTuple)
-    @inbounds dest[i, k] = bc[i, 1, k]
+    @inbounds dest[i, 1, k] = bc[i, 1, k]
 end
 
 @kernel function broadcast_yz!(dest, bc)
     j, k = @index(Global, NTuple)
-    @inbounds dest[j, k] = bc[1, j, k]
+    @inbounds dest[1, j, k] = bc[1, j, k]
 end
 
 # Three-dimensional general case
 
 launch_configuration(::AbstractField) = :xyz
-broadcast_kernel(::AbstractField) = broadcast_3d!
+broadcast_kernel(::AbstractField) = broadcast_xyz!
 
 # Two dimensional reduced field
 
