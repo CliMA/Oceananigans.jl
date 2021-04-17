@@ -28,6 +28,9 @@ function _multiary_operation(L, op, args, Largs, grid) where {X, Y, Z}
     return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(a for a in args), ▶, grid)
 end
 
+# Recompute location of multiary operation
+@inline at(loc, Π::MultiaryOperation) = Π.op(loc, Π.args...)
+
 """Return an expression that defines an abstract `MultiaryOperator` named `op` for `AbstractField`."""
 function define_multiary_operator(op)
     return quote

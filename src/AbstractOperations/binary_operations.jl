@@ -46,6 +46,9 @@ function _binary_operation(Lc, op, a, b, La, Lb, Lab, grid)
     return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, ▶op, grid)
 end
 
+# Recompute location of binary operation
+@inline at(loc, β::BinaryOperation) = β.op(loc, β.a, β.b)
+
 """Return an expression that defines an abstract `BinaryOperator` named `op` for `AbstractField`."""
 function define_binary_operator(op)
     return quote

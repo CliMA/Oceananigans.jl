@@ -34,6 +34,9 @@ function _unary_operation(L, operator, arg, Larg, grid)
     return UnaryOperation{L[1], L[2], L[3]}(operator, arg, ▶, grid)
 end
 
+# Recompute location of unary operation
+@inline at(loc, υ::UnaryOperation) = υ.op(loc, υ.arg)
+
 """
     @unary op1 op2 op3...
 
