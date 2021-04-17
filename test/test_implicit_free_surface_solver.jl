@@ -41,7 +41,7 @@ function run_implicit_free_surface_solver_tests(arch, grid)
 
     # Compare
     extrema_tolerance = 1e-10
-    std_tolerance = 1e-11
+    std_tolerance = 1e-10
 
     CUDA.@allowscalar begin
         @test abs(minimum(left_hand_side[1:Nx, 1:Ny, 1] .- right_hand_side[1:Nx, 1:Ny, 1])) < extrema_tolerance
