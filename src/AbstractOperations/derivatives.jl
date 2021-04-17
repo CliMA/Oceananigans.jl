@@ -13,10 +13,8 @@ struct Derivative{X, Y, Z, D, A, I, R, G, T} <: AbstractOperation{X, Y, Z, R, G,
     Returns an abstract representation of the derivative `∂` on `arg`,
     and subsequent interpolation by `▶` on `grid`.
     """
-    function Derivative{X, Y, Z}(∂::D, arg::A, ▶::I, grid::G) where {X, Y, Z, D, A, I, G}
-        arch = architecture(arg)
+    function Derivative{X, Y, Z}(∂::D, arg::A, ▶::I, arch::R, grid::G) where {X, Y, Z, D, A, I, R, G}
         T = eltype(grid)
-        R = typeof(arch)
         return new{X, Y, Z, D, A, I, R, G, T}(∂, arg, ▶, arch, grid)
     end
 end
@@ -31,7 +29,8 @@ end
 interpolation to `L` on `grid`."""
 function _derivative(L, ∂, arg, L∂, grid) where {X, Y, Z}
     ▶ = interpolation_operator(L∂, L)
-    return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, grid)
+    arch = architecture(arg)
+    return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, arch, grid)
 end
 
 # Recompute location of derivative
@@ -124,4 +123,4 @@ compute_at!(∂::Derivative, time) = compute_at!(∂.arg, time)
 "Adapt `Derivative` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, deriv::Derivative{X, Y, Z}) where {X, Y, Z} =
     Derivative{X, Y, Z}(Adapt.adapt(to, deriv.∂), Adapt.adapt(to, deriv.arg),
-                        Adapt.adapt(to, deriv.▶), deriv.grid)
+                        Adapt.adapt(to, deriv.▶), nothing, Adapt.adapt(to, deriv.grid))

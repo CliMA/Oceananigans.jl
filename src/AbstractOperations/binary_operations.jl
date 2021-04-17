@@ -18,14 +18,12 @@ struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, R, G, T} <: AbstractOperat
     `a` and `b` to a common location.
     """
     function BinaryOperation{X, Y, Z}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, ▶op::IΩ,
-                                      grid::G) where {X, Y, Z, O, A, B, IA, IB, IΩ, G}
+                                      arch::R, grid::G) where {X, Y, Z, O, A, B, IA, IB, IΩ, R, G}
 
         any((X, Y, Z) .=== Nothing) && throw(ArgumentError("Nothing locations are invalid! " *
                                                            "Cannot construct BinaryOperation at ($X, $Y, $Z)."))
 
-        arch = architecture(a, b)
         T = eltype(grid)
-        R = typeof(arch)
 
         return new{X, Y, Z, O, A, B, IA, IB, IΩ, R, G, T}(op, a, b, ▶a, ▶b, ▶op, arch, grid)
     end
@@ -40,10 +38,11 @@ end
 """Create a binary operation for `op` acting on `a` and `b` with locations `La` and `Lb`.
 The operator acts at `Lab` and the result is interpolated to `Lc`."""
 function _binary_operation(Lc, op, a, b, La, Lb, Lab, grid)
-     ▶a = interpolation_operator(La, Lab)
-     ▶b = interpolation_operator(Lb, Lab)
-    ▶op = interpolation_operator(Lab, Lc)
-    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, ▶op, grid)
+      ▶a = interpolation_operator(La, Lab)
+      ▶b = interpolation_operator(Lb, Lab)
+     ▶op = interpolation_operator(Lab, Lc)
+    arch = architecture(a, b)
+    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, ▶op, arch, grid)
 end
 
 # Recompute location of binary operation
@@ -188,4 +187,4 @@ end
 Adapt.adapt_structure(to, binary::BinaryOperation{X, Y, Z}) where {X, Y, Z} =
     BinaryOperation{X, Y, Z}(Adapt.adapt(to, binary.op), Adapt.adapt(to, binary.a),  Adapt.adapt(to, binary.b),
                              Adapt.adapt(to, binary.▶a), Adapt.adapt(to, binary.▶b), Adapt.adapt(to, binary.▶op),
-                             binary.grid)
+                             nothing, Adapt.adapt(to, binary.grid))

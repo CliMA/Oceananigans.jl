@@ -7,11 +7,9 @@ struct MultiaryOperation{X, Y, Z, N, O, A, I, R, G, T} <: AbstractOperation{X, Y
     architecture :: R
             grid :: G
 
-    function MultiaryOperation{X, Y, Z}(op::O, args::A, ▶::I, grid::G) where {X, Y, Z, O, A, I, G}
-        arch = architecture(args...)
+    function MultiaryOperation{X, Y, Z}(op::O, args::A, ▶::I, arch::R, grid::G) where {X, Y, Z, O, A, I, R, G}
         T = eltype(grid)
         N = length(args)
-        R = typeof(arch)
         return new{X, Y, Z, N, O, A, I, R, G, T}(op, args, ▶, arch, grid)
     end
 end
@@ -25,7 +23,8 @@ end
 
 function _multiary_operation(L, op, args, Largs, grid) where {X, Y, Z}
     ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
-    return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(a for a in args), ▶, grid)
+    arch = architecture(args...)
+    return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(a for a in args), ▶, arch, grid)
 end
 
 # Recompute location of multiary operation
@@ -170,4 +169,4 @@ end
 "Adapt `MultiaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, multiary::MultiaryOperation{X, Y, Z}) where {X, Y, Z} =
     MultiaryOperation{X, Y, Z}(Adapt.adapt(to, multiary.op), Adapt.adapt(to, multiary.args),
-                               Adapt.adapt(to, multiary.▶),  multiary.grid)
+                               Adapt.adapt(to, multiary.▶),  nothing, Adapt.adapt(to, multiary.grid))

@@ -13,10 +13,8 @@ struct UnaryOperation{X, Y, Z, O, A, I, R, G, T} <: AbstractOperation{X, Y, Z, R
     Returns an abstract `UnaryOperation` representing the action of `op` on `arg`,
     and subsequent interpolation by `▶` on `grid`.
     """
-    function UnaryOperation{X, Y, Z}(op::O, arg::A, ▶::I, grid::G) where {X, Y, Z, O, A, I, G}
-        arch = architecture(arg)
+    function UnaryOperation{X, Y, Z}(op::O, arg::A, ▶::I, arch::R, grid::G) where {X, Y, Z, O, A, I, R, G}
         T = eltype(grid)
-        R = typeof(arch)
         return new{X, Y, Z, O, A, I, R, G, T}(op, arg, ▶, arch, grid)
     end
 end
@@ -31,7 +29,8 @@ end
 result from `Larg` to `L`."""
 function _unary_operation(L, operator, arg, Larg, grid)
     ▶ = interpolation_operator(Larg, L)
-    return UnaryOperation{L[1], L[2], L[3]}(operator, arg, ▶, grid)
+    arch = architecture(arg)
+    return UnaryOperation{L[1], L[2], L[3]}(operator, arg, ▶, arch, grid)
 end
 
 # Recompute location of unary operation
@@ -132,4 +131,4 @@ compute_at!(υ::UnaryOperation, time) = compute_at!(υ.arg, time)
 "Adapt `UnaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, unary::UnaryOperation{X, Y, Z}) where {X, Y, Z} =
     UnaryOperation{X, Y, Z}(Adapt.adapt(to, unary.op), Adapt.adapt(to, unary.arg),
-                            Adapt.adapt(to, unary.▶), unary.grid)
+                            Adapt.adapt(to, unary.▶), nothing, Adapt.adapt(to, unary.grid))

@@ -16,4 +16,4 @@ for op in multiary_operators
     @eval broadcasted(::FieldBroadcastStyle, op::$O, a, b, c, d...) = op(a, b, c, d...)
 end
 
-insert_destination_location(loc, op::AbstractOperation) = at(loc, bc)
+insert_destination_location(loc, op::AbstractOperation) = at(loc, op)
