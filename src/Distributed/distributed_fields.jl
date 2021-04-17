@@ -1,6 +1,6 @@
 import Oceananigans.Fields: Field
 
-function Field(X, Y, Z, arch::AbstractMultiArchitecture, grid,
+function Field(X, Y, Z, arch::AbstractMultiArchitecture, grid::AbstractGrid,
                 bcs = FieldBoundaryConditions(grid, (X, Y, Z)),
                data = new_data(eltype(grid), arch, grid, (X, Y, Z)))
 
