@@ -8,9 +8,9 @@ const ArrayOrField = Union{AbstractArray, AbstractField}
 @inline κᶜᶠᶜ(i, j, k, grid, clock, κ::Number) = κ
 @inline κᶜᶜᶠ(i, j, k, grid, clock, κ::Number) = κ
 
-@inline κᶠᶜᶜ(i, j, k, grid, clock, κ::Function) = κ(xnode(Face,   i, grid), ynode(Center, j, grid), znode(Center, k, grid), clock.time)
-@inline κᶜᶠᶜ(i, j, k, grid, clock, κ::Function) = κ(xnode(Center, i, grid), ynode(Face,   j, grid), znode(Center, k, grid), clock.time)
-@inline κᶜᶜᶠ(i, j, k, grid, clock, κ::Function) = κ(xnode(Center, i, grid), ynode(Center, j, grid), znode(Face,   k, grid), clock.time)
+@inline κᶠᶜᶜ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Face,   i, grid), ynode(Center, j, grid), znode(Center, k, grid), clock.time)
+@inline κᶜᶠᶜ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Center, i, grid), ynode(Face,   j, grid), znode(Center, k, grid), clock.time)
+@inline κᶜᶜᶠ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Center, i, grid), ynode(Center, j, grid), znode(Face,   k, grid), clock.time)
 
 # Assumes that `κ` is located at cell centers
 @inline κᶠᶜᶜ(i, j, k, grid, clock, κ::ArrayOrField) = ℑxᶠᵃᵃ(i, j, k, grid, κ)

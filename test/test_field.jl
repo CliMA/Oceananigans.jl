@@ -64,7 +64,6 @@ function run_field_reduction_tests(FT, arch)
             @test minimum(ϕ) == minimum(ϕ_vals)
             @test maximum(ϕ) == maximum(ϕ_vals)
             @test mean(ϕ) == mean(ϕ_vals)
-
             @test minimum(∛, ϕ) == minimum(∛, ϕ_vals)
             @test maximum(abs, ϕ) == maximum(abs, ϕ_vals)
             @test mean(abs2, ϕ) == mean(abs2, ϕ)
