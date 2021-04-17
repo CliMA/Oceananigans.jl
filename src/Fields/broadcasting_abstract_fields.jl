@@ -3,11 +3,27 @@
 #####
 
 using Base.Broadcast: DefaultArrayStyle
+using Base.Broadcast: Broadcasted
 
 struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 
 Base.Broadcast.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
 Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) where N = FieldBroadcastStyle()  
+
+"`A = find_field(As)` returns the first AbstractField among the arguments."
+find_field(bc::Broadcasted) = find_field(bc.args)
+find_field(args::Tuple) = find_field(find_field(args[1]), Base.tail(args))
+find_field(x) = x
+find_field(::Tuple{}) = nothing
+find_field(a::AbstractField, rest) = a
+find_field(::Any, rest) = find_field(rest)
+
+Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}) where ElType = similar(Array{ElType}, axes(bc))
+
+function Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{<:AbstractFloat})
+    field = find_field(bc)
+    return similar(field)
+end
 
 using Base.Broadcast: Broadcasted
 
@@ -55,17 +71,17 @@ insert_destination_location(loc, args::Tuple) = Tuple(insert_destination_locatio
 @inline function Base.copyto!(dest::AbstractField{X, Y, Z}, bc::Broadcasted{Nothing}) where {X, Y, Z}
 
     # Is this needed?
-    bc′ = Broadcast.preprocess(dest, bc)
+    #bc′ = Broadcast.preprocess(dest, bc)
 
     # This is definitely needed
-    bc′′ = insert_destination_location(location(dest), bc′)
+    bc′′ = insert_destination_location(location(dest), bc)
 
     grid = dest.grid
     arch = architecture(dest)
     config = launch_configuration(dest)
     kernel = broadcast_kernel(dest)
 
-    event = launch!(arch, grid, config, kernel, dest, bc′,
+    event = launch!(arch, grid, config, kernel, dest, bc′′,
                     include_right_boundaries = true,
                     location = (X, Y, Z))
 
