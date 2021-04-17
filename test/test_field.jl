@@ -241,7 +241,7 @@ end
             c .= a .+ b .+ 1
             @test all(c .== 4) 
 
-            r, p, q = [ReducedField(Center, Center, Nothing, arch, grid) for i = 1:3]
+            r, p, q = [ReducedField(Center, Center, Nothing, arch, grid, dims=3) for i = 1:3]
 
             r .= 2 
             @test all(r .== 1) 
