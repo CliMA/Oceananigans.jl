@@ -148,6 +148,8 @@ both interior points and halo points.
 """
 total_size(f::AbstractField) = total_size(location(f), f.grid)
 
+Base.fill!(f::AbstractDataField, val) = fill!(parent(f), val)
+
 #####
 ##### Accessing wrapped arrays
 #####
@@ -180,24 +182,36 @@ total_size(f::AbstractField) = total_size(location(f), f.grid)
 ##### getindex
 #####
 
-@propagate_inbounds Base.getindex(f::AbstractDataField, i::Int, j::Int, k::Int) = @inbounds getindex(f.data, i, j, k)
+@propagate_inbounds Base.getindex(f::AbstractDataField, i::Int, j::Int, k::Int) = f.data[i, j, k]
+
+# Linear indexing
+@propagate_inbounds Base.getindex(f::AbstractDataField, i::Int)  = parent(f)[i]
 
 #####
 ##### setindex
 #####
 
-@propagate_inbounds Base.setindex!(f::AbstractDataField, a, i::Int, j::Int, k::Int) = @inbounds setindex!(f.data, a, i, j, k)
+@propagate_inbounds function Base.setindex!(f::AbstractDataField, val, i::Int, j::Int, k::Int)
+    f.data[i, j, k] = val
+    return f
+end
+
+# Linear indexing
+@propagate_inbounds function Base.setindex!(f::AbstractDataField, val, i::Int)
+    parent(f)[i] = val
+    return f
+end
 
 #####
 ##### Coordinates of fields
 #####
 
-@inline xnode(i, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = xnode(X, i, ψ.grid)
-@inline ynode(j, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = ynode(Y, j, ψ.grid)
-@inline znode(k, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = znode(Z, k, ψ.grid)
+@propagate_inbounds xnode(i, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = xnode(X, i, ψ.grid)
+@propagate_inbounds ynode(j, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = ynode(Y, j, ψ.grid)
+@propagate_inbounds znode(k, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = znode(Z, k, ψ.grid)
 
-@inline Base.lastindex(f::AbstractDataField) = lastindex(f.data)
-@inline Base.lastindex(f::AbstractDataField, dim) = lastindex(f.data, dim)
+@propagate_inbounds Base.lastindex(f::AbstractDataField) = lastindex(f.data)
+@propagate_inbounds Base.lastindex(f::AbstractDataField, dim) = lastindex(f.data, dim)
 
 xnodes(ψ::AbstractField) = xnodes(location(ψ, 1), ψ.grid)
 ynodes(ψ::AbstractField) = ynodes(location(ψ, 2), ψ.grid)
