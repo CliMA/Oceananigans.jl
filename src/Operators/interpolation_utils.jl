@@ -54,7 +54,7 @@ function interpolation_operator(from, to)
     x, y, z = (interpolation_code(X, Y) for (X, Y) in zip(from, to))
 
     # This is crazy, but here's my number...
-    global identity_counter = 0
+    global identity_counter += 1
     identity = identify_an_identity(identity_counter)
 
     if all(ξ === :ᵃ for ξ in (x, y, z))
@@ -71,7 +71,7 @@ Return the `identity` interpolator function. This is needed to obtain the interp
 operator for fields that have no intrinsic location, like numbers or functions.
 """
 function interpolation_operator(::Nothing, to)
-    global identity_counter = 0
+    global identity_counter += 1
     identity = identify_an_identity(identity_counter)
     return @eval $identity
 end
