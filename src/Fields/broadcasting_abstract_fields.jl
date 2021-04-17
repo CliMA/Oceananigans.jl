@@ -48,8 +48,9 @@ launch_configuration(::AbstractReducedField{Nothing, <:Loc, <:Loc}) = :yz
 launch_configuration(::AbstractReducedField{<:Loc, Nothing, <:Loc}) = :xz
 launch_configuration(::AbstractReducedField{<:Loc, <:Loc, Nothing}) = :xy
 
-#insert_destination_location(loc, op::AbstractOperation) = at(loc, bc)
-#insert_destination_location(loc, bc::Broadcasted)
+# Insert locations into AbstractOperations embedded in Broadcasted trees
+insert_destination_location(loc, bc::Broadcasted{S}) where S = Broadcasted{S}(bc.f, insert_destination_location(loc, bc.args), bc.axes)
+insert_destination_location(loc, args::Tuple) = Tuple(insert_destination_location(loc, a) for a in args)
 
 @inline function Base.copyto!(dest::AbstractField{X, Y, Z}, bc::Broadcasted{Nothing}) where {X, Y, Z}
 

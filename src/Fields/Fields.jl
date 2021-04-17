@@ -39,6 +39,6 @@ include("background_fields.jl")
 include("interpolate.jl")
 include("field_slicer.jl")
 include("show_fields.jl")
-include("broadcasting.jl")
+include("broadcasting_abstract_fields.jl")
 
 end
