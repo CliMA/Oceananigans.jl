@@ -30,5 +30,8 @@ Modify the `abstract_operation` so that it returns values at
 """
 macro at(location, abstract_operation)
     insert_location!(abstract_operation, location)
-    return esc(abstract_operation)
+
+    # We wrap it all in an interpolator to help "stubborn" binary operations
+    # arrive in the right place.
+    return :(interpolate_operation($(esc(location)), $(esc(abstract_operation))))
 end

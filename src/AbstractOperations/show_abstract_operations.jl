@@ -48,7 +48,7 @@ end
 function tree_show(binary::BinaryOperation{X, Y, Z}, depth, nesting) where {X, Y, Z}
     padding = get_tree_padding(depth, nesting)
 
-    return string(binary.op, " at ", show_location(X, Y, Z), " via ", show_interp(binary.▶op), '\n',
+    return string(binary.op, " at ", show_location(X, Y, Z), '\n',
                   padding, "├── ", tree_show(binary.a, depth+1, nesting+1), '\n',
                   padding, "└── ", tree_show(binary.b, depth+1, nesting))
 end

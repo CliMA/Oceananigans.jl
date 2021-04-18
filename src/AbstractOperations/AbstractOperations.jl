@@ -40,7 +40,6 @@ Base.parent(op::AbstractOperation) = op
 # AbstractOperation macros add their associated functions to this list
 const operators = Set()
 
-include("at.jl")
 include("grid_validation.jl")
 
 include("unary_operations.jl")
@@ -54,9 +53,12 @@ include("averages_of_operations.jl")
 # Make some operators!
 
 # Some unaries:
-import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *, identity
+import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
 
-@unary sqrt sin cos exp tanh identity
+# A very special UnaryOperation
+@inline interpolate_operation(x) = x
+
+@unary sqrt sin cos exp tanh interpolate_operation
 @unary -
 
 @binary +
@@ -78,4 +80,7 @@ eval(define_multiary_operator(:*))
 push!(operators, :*)
 push!(multiary_operators, :*)
 
+include("at.jl")
+
 end # module
+
