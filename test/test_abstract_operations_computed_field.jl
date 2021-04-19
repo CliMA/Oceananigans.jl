@@ -693,25 +693,29 @@ end
                 @testset "Computations with AveragedFields [$FT, $(typeof(arch))]" begin
                     @info "      Testing computations with AveragedField [$FT, $(typeof(arch))]..."
 
+                    @test computations_with_averaged_field_derivative(model)
+
                     # These don't work on the GPU right now
                     if arch isa CPU
                         @test computations_with_averaged_fields(model)
-                        @test computations_with_averaged_field_derivative(model)
                     else
                         @test_skip computations_with_averaged_fields(model)
-                        @test_skip computations_with_averaged_field_derivative(model)
                     end
                 end
 
                 @testset "Computations with ComputedFields [$FT, $(typeof(arch))]" begin
                     @info "      Testing computations with ComputedField [$FT, $(typeof(arch))]..."
 
-                    # These don't work on the GPU right now
-                    if arch isa CPU
-                        @test computations_with_computed_fields(model)
-                    else
-                        @test_skip computations_with_computed_fields(model)
+                    # Basic compilation test...
+                    u, v, w = model.velocities
+                    @test try
+                        compute!(ComputedField(u + v - w))
+                        true
+                    catch
+                        false
                     end
+
+                    @test computations_with_computed_fields(model)
                 end
 
                 @testset "Conditional computation of ComputedField and BuoyancyField [$FT, $(typeof(arch))]" begin

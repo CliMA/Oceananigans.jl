@@ -34,8 +34,8 @@ end
 
 """
     RegularRectilinearGrid([FT=Float64]; size,
-                         extent = nothing, x = nothing, y = nothing, z = nothing,
-                         topology = (Periodic, Periodic, Bounded), halo = (1, 1, 1))
+                           extent = nothing, x = nothing, y = nothing, z = nothing,
+                           topology = (Periodic, Periodic, Bounded), halo = (1, 1, 1))
 
 Creates a `RegularRectilinearGrid` with `size = (Nx, Ny, Nz)` grid points.
 
@@ -84,7 +84,7 @@ Grid properties
 
 - `(Lx, Ly, Lz)::FT`: Physical extent of the grid in the (x, y, z)-direction
 
-- `(Δx, Δy, Δz)::FT`: Center width in the (x, y, z)-direction
+- `(Δx, Δy, Δz)::FT`: Grid spacing (distance between grid nodes) in the (x, y, z)-direction
 
 - `(xC, yC, zC)`: (x, y, z) coordinates of cell centers.
 
