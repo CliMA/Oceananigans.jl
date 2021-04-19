@@ -111,11 +111,11 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
 
-    test_fields = (u = Array(interior(model.velocities.u)),
-                   v = Array(interior(model.velocities.v)),
-                   w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
-                   T = Array(interior(model.tracers.T)),
-                   S = Array(interior(model.tracers.S)))
+    test_fields = CUDA.@allowscalar (u = Array(interior(model.velocities.u)),
+                                     v = Array(interior(model.velocities.v)),
+                                     w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
+                                     T = Array(interior(model.tracers.T)),
+                                     S = Array(interior(model.tracers.S)))
 
     correct_fields = (u = Array(interior(solution₁.u, model.grid)),
                       v = Array(interior(solution₁.v, model.grid)),
