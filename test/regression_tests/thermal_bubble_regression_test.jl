@@ -51,11 +51,11 @@ function run_thermal_bubble_regression_test(arch, grid_type)
 
     ds = Dataset(regression_data_filepath, "r")
 
-    test_fields = (u = Array(interior(model.velocities.u)),
-                   v = Array(interior(model.velocities.v)),
-                   w = Array(interior(model.velocities.w)),
-                   T = Array(interior(model.tracers.T)),
-                   S = Array(interior(model.tracers.S)))
+    test_fields = CUDA.@allowscalar (u = Array(interior(model.velocities.u)),
+                                     v = Array(interior(model.velocities.v)),
+                                     w = Array(interior(model.velocities.w)),
+                                     T = Array(interior(model.tracers.T)),
+                                     S = Array(interior(model.tracers.S)))
 
     correct_fields = CUDA.@allowscalar (u = ds["u"][:, :, :, end],
                                         v = ds["v"][:, :, :, end],
