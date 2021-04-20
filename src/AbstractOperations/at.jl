@@ -33,5 +33,10 @@ macro at(location, abstract_operation)
 
     # We wrap it all in an interpolator to help "stubborn" binary operations
     # arrive in the right place.
-    return :(interpolate_operation($(esc(location)), $(esc(abstract_operation))))
+    wrapped_operation = quote
+        local interpolate = Oceananigans.AbstractOperations.interpolate_operation
+        interpolate($(esc(location)), $(esc(abstract_operation)))
+    end
+
+    return wrapped_operation
 end
