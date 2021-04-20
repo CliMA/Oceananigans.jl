@@ -22,6 +22,12 @@ end
 "Fallback for when `insert_location` is called on objects other than expressions."
 insert_location!(anything, location) = nothing
 
+# A very special UnaryOperation
+@inbounds identity(i, j, k, grid, a::Number) = a
+@inbounds identity(i, j, k, grid, a::AbstractField) = @inbounds a[i, j, k]
+
+interpolate_operation(L, x::AbstractField) = _unary_operation(L, identity, x, location(x), x.grid)
+
 """
     @at location abstract_operation
 
@@ -33,9 +39,11 @@ macro at(location, abstract_operation)
 
     # We wrap it all in an interpolator to help "stubborn" binary operations
     # arrive in the right place.
+    #expr = Expr(:block)
+    #push!(expr.args, :(interpolate_operation($(esc(location)), $(esc(abstract_operation)))))
+
     wrapped_operation = quote
-        local interpolate = Oceananigans.AbstractOperations.interpolate_operation
-        interpolate($(esc(location)), $(esc(abstract_operation)))
+        interpolate_operation($(esc(location)), $(esc(abstract_operation)))
     end
 
     return wrapped_operation

@@ -55,10 +55,7 @@ include("averages_of_operations.jl")
 # Some unaries:
 import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
 
-# A very special UnaryOperation
-@inline interpolate_operation(x) = x
-
-@unary sqrt sin cos exp tanh interpolate_operation
+@unary sqrt sin cos exp tanh
 @unary -
 
 @binary +
