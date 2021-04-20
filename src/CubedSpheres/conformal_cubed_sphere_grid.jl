@@ -272,28 +272,36 @@ function fill_grid_metric_halos!(grid)
         if sides_in_the_same_dimension(side, src_side)
             grid_metric_halo(grid_face.Δxᶜᶜᵃ, grid_face, loc_cc, side) .= grid_metric_boundary(grid_face.Δxᶜᶜᵃ, src_grid_face, loc_cc, src_side)
             grid_metric_halo(grid_face.Δyᶜᶜᵃ, grid_face, loc_cc, side) .= grid_metric_boundary(grid_face.Δyᶜᶜᵃ, src_grid_face, loc_cc, src_side)
+            grid_metric_halo(grid_face.Azᶜᶜᵃ, grid_face, loc_cc, side) .= grid_metric_boundary(grid_face.Azᶜᶜᵃ, src_grid_face, loc_cc, src_side)
 
             grid_metric_halo(grid_face.Δxᶜᶠᵃ, grid_face, loc_cf, side) .= grid_metric_boundary(grid_face.Δxᶜᶠᵃ, src_grid_face, loc_cf, src_side)
             grid_metric_halo(grid_face.Δyᶜᶠᵃ, grid_face, loc_cf, side) .= grid_metric_boundary(grid_face.Δyᶜᶠᵃ, src_grid_face, loc_cf, src_side)
+            grid_metric_halo(grid_face.Azᶜᶠᵃ, grid_face, loc_cc, side) .= grid_metric_boundary(grid_face.Azᶜᶠᵃ, src_grid_face, loc_cc, src_side)
 
             grid_metric_halo(grid_face.Δxᶠᶜᵃ, grid_face, loc_fc, side) .= grid_metric_boundary(grid_face.Δxᶠᶜᵃ, src_grid_face, loc_fc, src_side)
             grid_metric_halo(grid_face.Δyᶠᶜᵃ, grid_face, loc_fc, side) .= grid_metric_boundary(grid_face.Δyᶠᶜᵃ, src_grid_face, loc_fc, src_side)
+            grid_metric_halo(grid_face.Azᶠᶜᵃ, grid_face, loc_cc, side) .= grid_metric_boundary(grid_face.Azᶠᶜᵃ, src_grid_face, loc_cc, src_side)
 
             grid_metric_halo(grid_face.Δxᶠᶠᵃ, grid_face, loc_ff, side) .= grid_metric_boundary(grid_face.Δxᶠᶠᵃ, src_grid_face, loc_ff, src_side)
             grid_metric_halo(grid_face.Δyᶠᶠᵃ, grid_face, loc_ff, side) .= grid_metric_boundary(grid_face.Δyᶠᶠᵃ, src_grid_face, loc_ff, src_side)
+            grid_metric_halo(grid_face.Azᶠᶠᵃ, grid_face, loc_cc, side) .= grid_metric_boundary(grid_face.Azᶠᶠᵃ, src_grid_face, loc_cc, src_side)
         else
             reverse_dim = src_side in (:west, :east) ? 1 : 2
             grid_metric_halo(grid_face.Δxᶜᶜᵃ, grid_face, loc_cc, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δyᶜᶜᵃ, src_grid_face, loc_cc, src_side), (2, 1, 3)), dims=reverse_dim)
             grid_metric_halo(grid_face.Δyᶜᶜᵃ, grid_face, loc_cc, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δxᶜᶜᵃ, src_grid_face, loc_cc, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_face.Azᶜᶜᵃ, grid_face, loc_cc, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Azᶜᶜᵃ, src_grid_face, loc_cc, src_side), (2, 1, 3)), dims=reverse_dim)
 
             grid_metric_halo(grid_face.Δxᶜᶠᵃ, grid_face, loc_cf, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δyᶠᶜᵃ, src_grid_face, loc_fc, src_side), (2, 1, 3)), dims=reverse_dim)
             grid_metric_halo(grid_face.Δyᶜᶠᵃ, grid_face, loc_cf, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δxᶠᶜᵃ, src_grid_face, loc_fc, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_face.Azᶜᶠᵃ, grid_face, loc_cc, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Azᶠᶜᵃ, src_grid_face, loc_cc, src_side), (2, 1, 3)), dims=reverse_dim)
 
             grid_metric_halo(grid_face.Δxᶠᶜᵃ, grid_face, loc_fc, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δyᶜᶠᵃ, src_grid_face, loc_cf, src_side), (2, 1, 3)), dims=reverse_dim)
             grid_metric_halo(grid_face.Δyᶠᶜᵃ, grid_face, loc_fc, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δxᶜᶠᵃ, src_grid_face, loc_cf, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_face.Azᶠᶜᵃ, grid_face, loc_cc, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Azᶜᶠᵃ, src_grid_face, loc_cc, src_side), (2, 1, 3)), dims=reverse_dim)
 
             grid_metric_halo(grid_face.Δxᶠᶠᵃ, grid_face, loc_ff, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δyᶠᶠᵃ, src_grid_face, loc_ff, src_side), (2, 1, 3)), dims=reverse_dim)
             grid_metric_halo(grid_face.Δyᶠᶠᵃ, grid_face, loc_ff, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Δxᶠᶠᵃ, src_grid_face, loc_ff, src_side), (2, 1, 3)), dims=reverse_dim)
+            grid_metric_halo(grid_face.Azᶠᶠᵃ, grid_face, loc_cc, side) .= reverse(permutedims(grid_metric_boundary(grid_face.Azᶠᶠᵃ, src_grid_face, loc_cc, src_side), (2, 1, 3)), dims=reverse_dim)
         end
     end
 
