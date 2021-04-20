@@ -1,8 +1,4 @@
-using DataDeps
-
 using Oceananigans.Grids: total_extent, halo_size
-
-ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
 #####
 ##### Regular rectilinear grids
