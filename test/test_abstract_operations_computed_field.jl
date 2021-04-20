@@ -687,7 +687,35 @@ end
                     @info "      Testing computations with AveragedField [$FT, $(typeof(arch))]..."
 
                     @test computations_with_averaged_field_derivative(model)
-                    @test computations_with_averaged_fields(model)
+
+                    u, v, w = model.velocities
+
+                    set!(model, enforce_incompressibility = false, u = (x, y, z) -> z, v = 2, w = 3)
+
+                    # Two ways to compute turbulent kinetic energy
+                    U = AveragedField(u, dims=(1, 2))
+                    V = AveragedField(v, dims=(1, 2))
+
+                    # Build up compilation tests incrementally...
+                    u_prime              = u - U
+                    u_prime_squared      = (u - U)^2
+                    horizontal_twice_tke = (u - U)^2 + (v - V)^2
+                    horizontal_tke       = ((u - U)^2 + (v - V)^2) / 2
+                    horizontal_tke_ccc   = @at (Center, Center, Center) ((u - U)^2 + (v - V)^2) / 2
+                    tke                  = ((u - U)^2  + (v - V)^2 + w^2) / 2
+                    tke_ccc_1            = @at (Center, Center, Center) ((u - U)^2  + (v - V)^2 + w^2) / 2
+                    tke_ccc_2            = +((Center, Center, Center), (u - U)^2, (v - V)^2, w^2) / 2
+
+                    @test try compute!(ComputedField(u_prime             )); true; catch; false; end
+                    @test try compute!(ComputedField(u_prime_squared     )); true; catch; false; end
+                    @test try compute!(ComputedField(horizontal_twice_tke)); true; catch; false; end
+                    @test try compute!(ComputedField(horizontal_tke      )); true; catch; false; end
+                    @test try compute!(ComputedField(horizontal_tke_ccc  )); true; catch; false; end
+                    @test try compute!(ComputedField(tke                 )); true; catch; false; end
+                    @test try compute!(ComputedField(tke_ccc_1           )); true; catch; false; end
+                    @test try compute!(ComputedField(tke_ccc_2           )); true; catch; false; end
+
+                    @test all(interior(tke_ccc_2)[2:3, 2:3, 2:3] .== 9/2)
                 end
 
                 @testset "Computations with ComputedFields [$FT, $(typeof(arch))]" begin
