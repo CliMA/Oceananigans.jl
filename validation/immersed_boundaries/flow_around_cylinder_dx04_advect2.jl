@@ -11,6 +11,7 @@ using Oceananigans.Grids
 using Oceananigans.Fields
 using Oceananigans.AbstractOperations
 using Oceananigans.OutputWriters
+using Oceananigans.BoundaryConditions
 
 # setting boundary condition topology
 topology=(Periodic, Bounded, Bounded)

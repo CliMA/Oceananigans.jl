@@ -62,7 +62,7 @@ end
     z = znode(Center, k, grid)
     
     @inbounds begin
-	immersed_update(i, j, k, x, y, z, immersed, grid, velocities, dirichZero, 2, max_neighbor)
+    	immersed_update(i, j, k, x, y, z, immersed, grid, velocities, dirichZero, 2, max_neighbor)
     end
     
     # (x,y,z) for w velocity grid
@@ -79,10 +79,10 @@ end
 max_neighbor(x, y, z, Δx, Δy, Δz, immersed_distance)= max(immersed_distance([x+Δx y z]),
                     immersed_distance([x-Δx y z]), immersed_distance([x y+Δy z]),
                     immersed_distance([x y-Δy z]), immersed_distance([x y z+Δz]),
-                    immersed_distance([x y z-Δz]),immersed_distance([x+2*Δx y z]),
-                    immersed_distance([x-2*Δx y z]), immersed_distance([x y+2*Δy z]),
-                    immersed_distance([x y-2*Δy z]), immersed_distance([x y z+2*Δz]),
-                    immersed_distance([x y z-2*Δz]))  
+                    immersed_distance([x y z-Δz]),immersed_distance([x+(2*Δx) y z]),
+                    immersed_distance([x-(2*Δx) y z]), immersed_distance([x y+(2*Δy) z]),
+                    immersed_distance([x y-(2*Δy) z]), immersed_distance([x y z+(2*Δz)]),
+                    immersed_distance([x y z-(2*Δz)]))  
 
 # function to find the tangential plane to the point for rotation to tangential and normal
 function projection_matrix(N)
