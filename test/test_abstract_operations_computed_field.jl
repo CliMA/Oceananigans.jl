@@ -544,8 +544,6 @@ end
 
                     u, v, w, T, S = fields(model)
 
-                    @test_throws ArgumentError @at (Nothing, Nothing, Center) T * S
-
                     for ϕ in (u, v, w, T, S)
                         for op in (sin, cos, sqrt, exp, tanh)
                             @test op(ϕ) isa UnaryOperation
@@ -661,12 +659,7 @@ end
                     @info "      Testing operations with AveragedField..."
 
                     T, S = model.tracers
-
                     TS = AveragedField(T * S, dims=(1, 2))
-
-                    @test_throws ArgumentError @at (Nothing, Nothing, Center) T * S
-                    @test_throws ArgumentError TS * S
-
                     @test operations_with_averaged_field(model)
                 end
 
