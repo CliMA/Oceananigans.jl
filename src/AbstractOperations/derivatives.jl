@@ -34,7 +34,7 @@ function _derivative(L, ∂, arg, L∂, grid) where {X, Y, Z}
 end
 
 # Recompute location of derivative
-@inline at(loc, d::Derivative) = d.∂(loc, d.arg)
+@inline at(loc, d::Derivative) = d.∂(loc, at(loc, d.arg))
 
 """Return `Center` if given `Face` or `Face` if given `Center`."""
 flip(::Type{Face}) = Center

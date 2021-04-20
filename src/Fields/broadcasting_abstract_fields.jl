@@ -7,7 +7,6 @@ using Base.Broadcast: Broadcasted
 
 struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 
-#=
 # This code defines BroadcastStyle for AbstractField and associated paraphernalia.
 # It causes problems for simple cases so it's commented out right now.
 # However, we need to use this machinery to ensure proper interpolation between
@@ -15,8 +14,8 @@ struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 # in the hope that it will be employed someday.
 
 Base.Broadcast.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
-Base.Broadcast.BroadcastStyle(::Type{<:AbstractReducedField}) = DefaultArrayStyle{3}()
-Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) where N = FieldBroadcastStyle()  
+Base.Broadcast.BroadcastStyle(::Type{<:AbstractReducedField}) = FieldBroadcastStyle()
+Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, b::DefaultArrayStyle{N}) where N = DefaultArrayStyle{3}()
 
 "`A = find_field(As)` returns the first AbstractField among the arguments."
 find_field(bc::Broadcasted) = find_field(bc.args)
@@ -32,7 +31,6 @@ function Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{<:AbstractFlo
     field = find_field(bc)
     return similar(field)
 end
-=#
 
 using Base.Broadcast: Broadcasted
 
@@ -74,27 +72,34 @@ launch_configuration(::AbstractReducedField{<:Loc, Nothing, <:Loc}) = :xz
 launch_configuration(::AbstractReducedField{<:Loc, <:Loc, Nothing}) = :xy
 
 # Insert locations into AbstractOperations embedded in Broadcasted trees
-insert_destination_location(loc, bc::Broadcasted{S}) where S = Broadcasted{S}(bc.f, insert_destination_location(loc, bc.args), bc.axes)
+insert_destination_location(loc, bc::Broadcasted) where S = Broadcasted{S}(bc.f, insert_destination_location(loc, bc.args), bc.axes)
 insert_destination_location(loc, args::Tuple) = Tuple(insert_destination_location(loc, a) for a in args)
+
+broadcasted_to_abstract_operation(loc, grid, a) = a
+
+broadcasted_to_abstract_operation(loc, grid, bc::Broadcasted{<:Any, <:Any, <:Any, <:Any}) =
+    bc.f(loc, Tuple(broadcasted_to_abstract_operation(loc, grid, a) for a in bc.args)...)
 
 @inline function Base.copyto!(dest::AbstractField{X, Y, Z}, bc::Broadcasted{Nothing}) where {X, Y, Z}
 
     # Is this needed?
-    bc′ = Broadcast.preprocess(dest, bc)
-
-    # This is definitely needed
-    #bc′ = insert_destination_location(location(dest), bc)
+    # bc′ = Broadcast.preprocess(dest, bc)
 
     grid = dest.grid
     arch = architecture(dest)
     config = launch_configuration(dest)
     kernel = broadcast_kernel(dest)
 
-    event = launch!(arch, grid, config, kernel, dest, bc′,
+    # Convert Broadcasted to AbstractOperation
+    op = broadcasted_to_abstract_operation(location(dest), grid, bc)
+
+    event = launch!(arch, grid, config, kernel, dest, op,
                     include_right_boundaries = true,
                     location = (X, Y, Z))
 
     wait(device(arch), event)
+
+    fill_halo_regions!(dest, arch)
 
     return nothing
 end

@@ -34,7 +34,7 @@ function _unary_operation(L, operator, arg, Larg, grid)
 end
 
 # Recompute location of unary operation
-@inline at(loc, υ::UnaryOperation) = υ.op(loc, υ.arg)
+@inline at(loc, υ::UnaryOperation) = υ.op(loc, at(loc, υ.arg))
 
 """
     @unary op1 op2 op3...

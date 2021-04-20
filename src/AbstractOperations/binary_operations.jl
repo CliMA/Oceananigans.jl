@@ -20,8 +20,8 @@ struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, R, G, T} <: AbstractOperat
     function BinaryOperation{X, Y, Z}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, ▶op::IΩ,
                                       arch::R, grid::G) where {X, Y, Z, O, A, B, IA, IB, IΩ, R, G}
 
-        any((X, Y, Z) .=== Nothing) && throw(ArgumentError("Nothing locations are invalid! " *
-                                                           "Cannot construct BinaryOperation at ($X, $Y, $Z)."))
+        #any((X, Y, Z) .=== Nothing) && throw(ArgumentError("Nothing locations are invalid! " *
+        #                                                   "Cannot construct BinaryOperation at ($X, $Y, $Z)."))
 
         T = eltype(grid)
 
@@ -46,7 +46,7 @@ function _binary_operation(Lc, op, a, b, La, Lb, Lab, grid)
 end
 
 # Recompute location of binary operation
-@inline at(loc, β::BinaryOperation) = β.op(loc, β.a, β.b)
+@inline at(loc, β::BinaryOperation) = β.op(loc, at(loc, β.a), at(loc, β.b))
 
 """Return an expression that defines an abstract `BinaryOperator` named `op` for `AbstractField`."""
 function define_binary_operator(op)

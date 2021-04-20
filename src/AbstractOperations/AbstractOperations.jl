@@ -35,6 +35,8 @@ Base.parent(op::AbstractOperation) = op
 # AbstractOperation macros add their associated functions to this list
 const operators = Set()
 
+at(loc, f) = f
+
 include("at.jl")
 include("grid_validation.jl")
 
@@ -51,7 +53,9 @@ include("averages_of_operations.jl")
 # Some unaries:
 import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
 
-@unary sqrt sin cos exp tanh
+interpolate_operation(x) = x
+
+@unary sqrt sin cos exp tanh interpolate_operation
 @unary -
 
 @binary +

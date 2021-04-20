@@ -1,19 +1,11 @@
+import Oceananigans.Fields: broadcasted_to_abstract_operation
+
 using Base.Broadcast: Broadcasted
+using Base: identity
 
-using Oceananigans.Fields: FieldBroadcastStyle
+const BroadcastedIdentity = Broadcasted{<:Any, <:Any, typeof(identity), <:Any}
 
-import Base.Broadcast: broadcasted
+broadcasted_to_abstract_operation(loc, grid, bc::BroadcastedIdentity) =
+    interpolate_operation(loc, Tuple(broadcasted_to_abstract_operation(loc, grid, a) for a in bc.args)...)
 
-import Oceananigans.Fields: insert_destination_location
-
-for op in binary_operators
-    O = typeof(eval(op))
-    @eval broadcasted(::FieldBroadcastStyle, op::$O, a, b) = op(a, b)
-end
-
-for op in multiary_operators
-    O = typeof(eval(op))
-    @eval broadcasted(::FieldBroadcastStyle, op::$O, a, b, c, d...) = op(a, b, c, d...)
-end
-
-insert_destination_location(loc, op::AbstractOperation) = at(loc, op)
+broadcasted_to_abstract_operation(loc, grid, op::AbstractOperation) = at(loc, op)
