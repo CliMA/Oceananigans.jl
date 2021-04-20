@@ -114,7 +114,7 @@ end
 ##### AbstractField functionality
 #####
 
-@inline location(a) = nothing
+@inline location(a) = (Nothing, Nothing, Nothing)
 
 "Returns the location `(X, Y, Z)` of an `AbstractField{X, Y, Z}`."
 @inline location(::AbstractField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z) # note no instantiation

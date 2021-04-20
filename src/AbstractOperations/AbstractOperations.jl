@@ -35,15 +35,20 @@ Base.parent(op::AbstractOperation) = op
 # AbstractOperation macros add their associated functions to this list
 const operators = Set()
 
-at(loc, f) = f
+"""
+    at(loc, abstract_operation)
 
-include("at.jl")
+Returns `abstract_operation` relocated to `loc`ation.
+"""
+at(loc, f) = f # fallback
+
 include("grid_validation.jl")
 
 include("unary_operations.jl")
 include("binary_operations.jl")
 include("multiary_operations.jl")
 include("derivatives.jl")
+include("at.jl")
 
 include("show_abstract_operations.jl")
 include("averages_of_operations.jl")
@@ -80,3 +85,4 @@ push!(multiary_operators, :*)
 include("broadcasting_abstract_operations.jl")
 
 end # module
+

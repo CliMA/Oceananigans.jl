@@ -170,3 +170,4 @@ end
 Adapt.adapt_structure(to, multiary::MultiaryOperation{X, Y, Z}) where {X, Y, Z} =
     MultiaryOperation{X, Y, Z}(Adapt.adapt(to, multiary.op), Adapt.adapt(to, multiary.args),
                                Adapt.adapt(to, multiary.▶),  nothing, Adapt.adapt(to, multiary.grid))
+

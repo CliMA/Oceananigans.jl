@@ -132,3 +132,4 @@ compute_at!(υ::UnaryOperation, time) = compute_at!(υ.arg, time)
 Adapt.adapt_structure(to, unary::UnaryOperation{X, Y, Z}) where {X, Y, Z} =
     UnaryOperation{X, Y, Z}(Adapt.adapt(to, unary.op), Adapt.adapt(to, unary.arg),
                             Adapt.adapt(to, unary.▶), nothing, Adapt.adapt(to, unary.grid))
+
