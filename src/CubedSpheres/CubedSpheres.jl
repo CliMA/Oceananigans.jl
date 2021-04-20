@@ -1,8 +1,6 @@
 module CubedSpheres
 
-export
-    ConformalCubedSphereGrid,
-    λnodes, φnodes
+export ConformalCubedSphereGrid, face, faces, λnodes, φnodes
 
 include("cubed_sphere_utils.jl")
 include("conformal_cubed_sphere_grid.jl")
