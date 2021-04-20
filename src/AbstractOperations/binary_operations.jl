@@ -1,10 +1,5 @@
 const binary_operators = Set()
 
-"""
-    BinaryOperation{X, Y, Z, O, A, B, IA, IB, G} <: AbstractOperation{X, Y, Z, G}
-
-An abstract representation of a binary operation on `AbstractField`s.
-"""
 struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, G} <: AbstractOperation{X, Y, Z, G}
       op :: O
        a :: A

@@ -1,10 +1,5 @@
 using Oceananigans.Operators: interpolation_code
 
-"""
-    Derivative{X, Y, Z, D, A, I, G} <: AbstractOperation{X, Y, Z, G}
-
-An abstract representation of a derivative of an `AbstractField`.
-"""
 struct Derivative{X, Y, Z, D, A, I, G} <: AbstractOperation{X, Y, Z, G}
        ∂ :: D
      arg :: A
@@ -122,4 +117,4 @@ compute_at!(∂::Derivative, time) = compute_at!(∂.arg, time)
 "Adapt `Derivative` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, deriv::Derivative{X, Y, Z}) where {X, Y, Z} =
     Derivative{X, Y, Z}(Adapt.adapt(to, deriv.∂), Adapt.adapt(to, deriv.arg),
-                        Adapt.adapt(to, deriv.▶), deriv.grid)
+                        Adapt.adapt(to, deriv.▶), Adapt.adapt(to, deriv.grid))
