@@ -595,6 +595,15 @@ end
                     @test compute_plus(model)
                     @test compute_minus(model)
                     @test compute_times(model)
+
+                    # Basic compilation test for nested BinaryOperations...
+                    u, v, w = model.velocities
+                    @test try
+                        compute!(ComputedField(u + v - w))
+                        true
+                    catch
+                        false
+                    end
                 end
 
                 @testset "Multiary computations [$FT, $(typeof(arch))]" begin
@@ -698,38 +707,43 @@ end
 
                     # Build up compilation tests incrementally...
                     u_prime              = u - U
+                    u_prime_ccc          = @at (Center, Center, Center) u - U
                     u_prime_squared      = (u - U)^2
+                    u_prime_squared_ccc  = @at (Center, Center, Center) (u - U)^2
                     horizontal_twice_tke = (u - U)^2 + (v - V)^2
                     horizontal_tke       = ((u - U)^2 + (v - V)^2) / 2
                     horizontal_tke_ccc   = @at (Center, Center, Center) ((u - U)^2 + (v - V)^2) / 2
+                    twice_tke            = (u - U)^2  + (v - V)^2 + w^2
                     tke                  = ((u - U)^2  + (v - V)^2 + w^2) / 2
-                    tke_ccc_1            = @at (Center, Center, Center) ((u - U)^2  + (v - V)^2 + w^2) / 2
-                    tke_ccc_2            = +((Center, Center, Center), (u - U)^2, (v - V)^2, w^2) / 2
+                    tke_ccc              = @at (Center, Center, Center) ((u - U)^2  + (v - V)^2 + w^2) / 2
 
                     @test try compute!(ComputedField(u_prime             )); true; catch; false; end
+                    @test try compute!(ComputedField(u_prime_ccc         )); true; catch; false; end
                     @test try compute!(ComputedField(u_prime_squared     )); true; catch; false; end
+                    @test try compute!(ComputedField(u_prime_squared_ccc )); true; catch; false; end
                     @test try compute!(ComputedField(horizontal_twice_tke)); true; catch; false; end
                     @test try compute!(ComputedField(horizontal_tke      )); true; catch; false; end
-                    @test try compute!(ComputedField(horizontal_tke_ccc  )); true; catch; false; end
-                    @test try compute!(ComputedField(tke                 )); true; catch; false; end
-                    @test try compute!(ComputedField(tke_ccc_1           )); true; catch; false; end
-                    @test try compute!(ComputedField(tke_ccc_2           )); true; catch; false; end
+                    @test try compute!(ComputedField(twice_tke           )); true; catch; false; end
 
-                    @test all(interior(tke_ccc_2)[2:3, 2:3, 2:3] .== 9/2)
+                    if arch isa CPU
+                        @test try compute!(ComputedField(horizontal_tke_ccc  )); true; catch; false; end
+                        @test try compute!(ComputedField(tke                 )); true; catch; false; end
+                        @test try compute!(ComputedField(tke_ccc             )); true; catch; false; end
+
+                        computed_tke = ComputedField(tke_ccc)
+                        @test (compute!(computed_tke); all(interior(computed_tke)[2:3, 2:3, 2:3] .== 9/2))
+                    else
+                        @test_skip try compute!(ComputedField(horizontal_tke_ccc  )); true; catch; false; end
+                        @test_skip try compute!(ComputedField(tke                 )); true; catch; false; end
+                        @test_skip try compute!(ComputedField(tke_ccc             )); true; catch; false; end
+
+                        computed_tke = ComputedField(tke_ccc)
+                        @test_skip (compute!(computed_tke); all(interior(computed_tke)[2:3, 2:3, 2:3] .== 9/2))
+                    end
                 end
 
                 @testset "Computations with ComputedFields [$FT, $(typeof(arch))]" begin
                     @info "      Testing computations with ComputedField [$FT, $(typeof(arch))]..."
-
-                    # Basic compilation test...
-                    u, v, w = model.velocities
-                    @test try
-                        compute!(ComputedField(u + v - w))
-                        true
-                    catch
-                        false
-                    end
-
                     @test computations_with_computed_fields(model)
                 end
 
