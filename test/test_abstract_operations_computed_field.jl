@@ -687,13 +687,7 @@ end
                     @info "      Testing computations with AveragedField [$FT, $(typeof(arch))]..."
 
                     @test computations_with_averaged_field_derivative(model)
-
-                    # These don't work on the GPU right now
-                    if arch isa CPU
-                        @test computations_with_averaged_fields(model)
-                    else
-                        @test_skip computations_with_averaged_fields(model)
-                    end
+                    @test computations_with_averaged_fields(model)
                 end
 
                 @testset "Computations with ComputedFields [$FT, $(typeof(arch))]" begin
