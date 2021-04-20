@@ -72,7 +72,7 @@ DiffusiveCFL(Δt) = CFL(Δt, cell_diffusion_timescale)
 ##### Accurate CFL via reduction
 #####
 
-using CUDA, KernelAbstractions, Tullio
+using CUDA, CUDAKernels, KernelAbstractions, Tullio
 
 using Oceananigans.Models
 using Oceananigans.Grids: halo_size
