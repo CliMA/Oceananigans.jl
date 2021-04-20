@@ -57,7 +57,7 @@ function animate_tracer_advection(; face_number, α, projections=[ccrs.Robinson(
 
     ## Extract data
 
-    file = jldopen("tracer_advection_over_the_poles_face$(face_number)_alpha$α.jld2")
+    file = jldopen("cubed_sphere_tracer_advection_face$(face_number)_alpha$α.jld2")
 
     iterations = parse.(Int, keys(file["timeseries/t"]))
 

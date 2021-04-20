@@ -12,9 +12,7 @@ function set!(Φ::NamedTuple; kwargs...)
 end
 
 set!(u::AbstractField, v::Number) = parent(u) .= v
-
-set!(u::AbstractField{X, Y, Z, A}, v::AbstractField{X, Y, Z, A}) where {X, Y, Z, A} =
-    parent(u) .= parent(v)
+set!(u::AbstractField, v::AbstractField) = parent(u) .= parent(v)
 
 # Niceties
 const AbstractCPUField = AbstractField{X, Y, Z, <:AbstractCPUArchitecture} where {X, Y, Z}

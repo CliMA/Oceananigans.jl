@@ -56,13 +56,13 @@ central_longitude = (0, 90,  0, 180, -90,   0)
 central_latitude  = (0,  0, 90,   0,   0, -90)
 
 """
-    tracer_advection_over_the_poles(; face_number, α)
+    cubed_sphere_tracer_advection(; face_number, α)
 
 Run a tracer advection experiment that initializes a cosine bell on face `face_number`
 and advects it around the sphere over 12 days. `α` is the angle between the axis of
 solid body rotation and the polar axis (degrees).
 """
-function tracer_advection_over_the_poles(; face_number, α)
+function cubed_sphere_tracer_advection(; face_number, α)
 
     grid = ConformalCubedSphereGrid(cs32_filepath, Nz=1, z=(-1, 0))
 
@@ -77,23 +77,28 @@ function tracer_advection_over_the_poles(; face_number, α)
 
     Ψ(λ, φ, z) = - R * u₀ * (sind(φ) * cosd(α) - cosd(λ) * cosd(φ) * sind(α))
 
-    Ψᶠᶠᶜ = Field(Face, Face,   Center, CPU(), grid, nothing, nothing)
-    Uᶠᶜᶜ = Field(Face, Center, Center, CPU(), grid, nothing, nothing)
-    Vᶜᶠᶜ = Field(Center, Face, Center, CPU(), grid, nothing, nothing)
-    Wᶜᶜᶠ = Field(Center, Center, Face, CPU(), grid, nothing, nothing)  # So we can use CFL
+    Ψᶠᶠᶜ = Field(Face, Face,   Center, CPU(), grid)
+    Uᶠᶜᶜ = Field(Face, Center, Center, CPU(), grid)
+    Vᶜᶠᶜ = Field(Center, Face, Center, CPU(), grid)
+    Wᶜᶜᶠ = Field(Center, Center, Face, CPU(), grid)  # So we can use CFL
 
     for (f, grid_face) in enumerate(grid.faces)
         for i in 1:grid_face.Nx+1, j in 1:grid_face.Ny+1
-            Ψᶠᶠᶜ.faces[f][i, j, 1] = Ψ(grid_face.λᶠᶠᵃ[i, j], grid_face.φᶠᶠᵃ[i, j], 0)
+            Ψᶠᶠᶜ.data.faces[f][i, j, 1] = Ψ(grid_face.λᶠᶠᵃ[i, j], grid_face.φᶠᶠᵃ[i, j], 0)
         end
     end
 
     for (f, grid_face) in enumerate(grid.faces)
+        Ψᶠᶠᶜ_face = Ψᶠᶠᶜ.data.faces[f]
+        Uᶠᶜᶜ_face = Uᶠᶜᶜ.data.faces[f]
+        Vᶜᶠᶜ_face = Vᶜᶠᶜ.data.faces[f]
+
         for i in 1:grid_face.Nx+1, j in 1:grid_face.Ny
-            Uᶠᶜᶜ.faces[f][i, j, 1] = (Ψᶠᶠᶜ.faces[f][i, j, 1] - Ψᶠᶠᶜ.faces[f][i, j+1, 1]) / grid.faces[f].Δyᶠᶜᵃ[i, j]
+            Uᶠᶜᶜ_face[i, j, 1] = (Ψᶠᶠᶜ_face[i, j, 1] - Ψᶠᶠᶜ_face[i, j+1, 1]) / grid.faces[f].Δyᶠᶜᵃ[i, j]
         end
+
         for i in 1:grid_face.Nx, j in 1:grid_face.Ny+1
-            Vᶜᶠᶜ.faces[f][i, j, 1] = (Ψᶠᶠᶜ.faces[f][i+1, j, 1] - Ψᶠᶠᶜ.faces[f][i, j, 1]) / grid.faces[f].Δxᶜᶠᵃ[i, j]
+            Vᶜᶠᶜ_face[i, j, 1] = (Ψᶠᶠᶜ_face[i+1, j, 1] - Ψᶠᶠᶜ_face[i, j, 1]) / grid.faces[f].Δxᶜᶠᵃ[i, j]
         end
     end
 
@@ -144,7 +149,7 @@ function tracer_advection_over_the_poles(; face_number, α)
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, outputs,
             schedule = TimeInterval(1hour),
-              prefix = "tracer_advection_over_the_poles_face$(face_number)_alpha$α",
+              prefix = "cubed_sphere_tracer_advection_face$(face_number)_alpha$α",
               force = true)
 
     run!(simulation)
@@ -163,7 +168,7 @@ function run_cubed_sphere_tracer_advection_validation()
     αs = (0, 45, 90)
 
     for f in 1:6, α in αs
-        tracer_advection_over_the_poles(face_number=f, α=α)
+        cubed_sphere_tracer_advection(face_number=f, α=α)
     end
 
     projections = [
