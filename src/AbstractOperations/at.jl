@@ -26,7 +26,10 @@ insert_location!(anything, location) = nothing
 @inbounds identity(i, j, k, grid, a::Number) = a
 @inbounds identity(i, j, k, grid, a::AbstractField) = @inbounds a[i, j, k]
 
-interpolate_operation(L, x::AbstractField) = _unary_operation(L, identity, x, location(x), x.grid)
+function interpolate_operation(L, x::AbstractField)
+    L == location(x) && return x # Don't interpolate unecessarily
+    return _unary_operation(L, identity, x, location(x), x.grid)
+end
 
 """
     @at location abstract_operation
@@ -39,9 +42,6 @@ macro at(location, abstract_operation)
 
     # We wrap it all in an interpolator to help "stubborn" binary operations
     # arrive in the right place.
-    #expr = Expr(:block)
-    #push!(expr.args, :(interpolate_operation($(esc(location)), $(esc(abstract_operation)))))
-
     wrapped_operation = quote
         interpolate_operation($(esc(location)), $(esc(abstract_operation)))
     end
