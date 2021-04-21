@@ -7,10 +7,10 @@ function poisson_solver_instantiates(arch, grid, planner_flag)
     return true  # Just making sure the FFTBasedPoissonSolver does not error/crash.
 end
 
-function random_divergent_source_term(FT, arch, grid)
-    Ru = CenterField(FT, arch, grid, UVelocityBoundaryConditions(grid))
-    Rv = CenterField(FT, arch, grid, VVelocityBoundaryConditions(grid))
-    Rw = CenterField(FT, arch, grid, WVelocityBoundaryConditions(grid))
+function random_divergent_source_term(arch, grid)
+    Ru = CenterField(arch, grid, UVelocityBoundaryConditions(grid))
+    Rv = CenterField(arch, grid, VVelocityBoundaryConditions(grid))
+    Rw = CenterField(arch, grid, WVelocityBoundaryConditions(grid))
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
@@ -33,11 +33,11 @@ function random_divergent_source_term(FT, arch, grid)
     return R, U
 end
 
-function random_divergence_free_source_term(FT, arch, grid)
+function random_divergence_free_source_term(arch, grid)
     # Random right hand side
-    Ru = CenterField(FT, arch, grid, UVelocityBoundaryConditions(grid))
-    Rv = CenterField(FT, arch, grid, VVelocityBoundaryConditions(grid))
-    Rw = CenterField(FT, arch, grid, WVelocityBoundaryConditions(grid))
+    Ru = CenterField(arch, grid, UVelocityBoundaryConditions(grid))
+    Rv = CenterField(arch, grid, VVelocityBoundaryConditions(grid))
+    Rw = CenterField(arch, grid, WVelocityBoundaryConditions(grid))
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
@@ -74,11 +74,11 @@ function divergence_free_poisson_solution(arch, grid, planner_flag=FFTW.MEASURE)
     FT = eltype(grid)
 
     solver = FFTBasedPoissonSolver(arch, grid, planner_flag)
-    R, U = random_divergent_source_term(FT, arch, grid)
+    R, U = random_divergent_source_term(arch, grid)
 
     p_bcs = PressureBoundaryConditions(grid)
-    ϕ   = CenterField(FT, arch, grid, p_bcs)  # "kinematic pressure"
-    ∇²ϕ = CenterField(FT, arch, grid, p_bcs)
+    ϕ   = CenterField(arch, grid, p_bcs)  # "kinematic pressure"
+    ∇²ϕ = CenterField(arch, grid, p_bcs)
 
     # Using Δt = 1 but it doesn't matter since velocities = 0.
     solve_for_pressure!(ϕ.data, solver, arch, grid, 1, datatuple(U))
@@ -151,10 +151,10 @@ function vertically_stretched_poisson_solver_correct_answer(FT, arch, topo, Nx, 
     solver = FourierTridiagonalPoissonSolver(arch, vs_grid)
 
     p_bcs = PressureBoundaryConditions(vs_grid)
-    ϕ   = CenterField(FT, arch, vs_grid, p_bcs)  # "kinematic pressure"
-    ∇²ϕ = CenterField(FT, arch, vs_grid, p_bcs)
+    ϕ   = CenterField(arch, vs_grid, p_bcs)  # "kinematic pressure"
+    ∇²ϕ = CenterField(arch, vs_grid, p_bcs)
 
-    R = random_divergence_free_source_term(FT, arch, vs_grid)
+    R = random_divergence_free_source_term(arch, vs_grid)
 
     set_source_term!(solver, R)
     solve_poisson_equation!(solver)

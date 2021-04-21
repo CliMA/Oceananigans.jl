@@ -410,8 +410,7 @@ end
 
         @testset "Unary operations and derivatives [$FT]" begin
             for ψ in (u, v, w, c)
-                for op_symbol in Oceananigans.AbstractOperations.unary_operators
-                    op = eval(op_symbol)
+                for op in (sqrt, sin, cos, exp, tanh)
                     @test typeof(op(ψ)[2, 2, 2]) <: Number
                 end
 
@@ -585,8 +584,8 @@ end
 
                 @testset "Unary computations [$FT, $(typeof(arch))]" begin
                     @info "      Testing compute! unary operations..."
-                    for unary in Oceananigans.AbstractOperations.unary_operators
-                        @test compute_unary(eval(unary), model)
+                    for unary in (sqrt, sin, cos, exp, tanh)
+                        @test compute_unary(unary, model)
                     end
                 end
 

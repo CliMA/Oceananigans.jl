@@ -23,12 +23,14 @@ end
 insert_location!(anything, location) = nothing
 
 # A very special UnaryOperation
-@inbounds identity(i, j, k, grid, a::Number) = a
-@inbounds identity(i, j, k, grid, a::AbstractField) = @inbounds a[i, j, k]
+@inline interpolate_identity(x) = x
+@unary interpolate_identity
+
+interpolate_operation(L, x) = x
 
 function interpolate_operation(L, x::AbstractField)
     L == location(x) && return x # Don't interpolate unecessarily
-    return _unary_operation(L, identity, x, location(x), x.grid)
+    return interpolate_identity(L, x)
 end
 
 """

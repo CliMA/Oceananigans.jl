@@ -26,7 +26,7 @@ cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 @testset "Cubed sphere halo exchange" begin
     arch = CPU()
     grid = ConformalCubedSphereGrid(cs32_filepath, Nz=1, z=(-1, 0))
-    field = CenterField(Float64, arch, grid)
+    field = CenterField(arch, grid)
 
     ## We will fill each grid point with a 5-digit integer "fiijj" where
     ## the f digit is the face number, the ii digits are the i index, and
@@ -371,8 +371,8 @@ end
     arch = CPU()
     grid = ConformalCubedSphereGrid(cs32_filepath, Nz=1, z=(-1, 0))
 
-    u_field = XFaceField(Float64, arch, grid)
-    v_field = YFaceField(Float64, arch, grid)
+    u_field = XFaceField(arch, grid)
+    v_field = YFaceField(arch, grid)
 
     ## We will fill each grid point with a 6-digit integer "ufiijj" where
     ## the u digit is 1 for u and 2 for v, the f digit is the face number,

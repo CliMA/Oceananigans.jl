@@ -3,12 +3,7 @@ using Statistics
 using Oceananigans.Grids
 using Oceananigans.Grids: interior_parent_indices
 
-"""
-    struct AveragedField{X, Y, Z, A, G, N, O} <: AbstractReducedField{X, Y, Z, A, G, N}
-
-Type representing an average over a field-like object.
-"""
-struct AveragedField{X, Y, Z, S, A, D, G, N, O} <: AbstractReducedField{X, Y, Z, A, G, N}
+struct AveragedField{X, Y, Z, S, A, D, G, T, N, O} <: AbstractReducedField{X, Y, Z, A, G, T, N}
             data :: D
     architecture :: A
             grid :: G
@@ -27,12 +22,13 @@ struct AveragedField{X, Y, Z, S, A, D, G, N, O} <: AbstractReducedField{X, Y, Z,
 
         S = typeof(status)
         N = length(dims)
+        T = eltype(grid)
 
-        return new{X, Y, Z, S, A, D, G, N, O}(data, arch, grid, dims, operand, status)
+        return new{X, Y, Z, S, A, D, G, T, N, O}(data, arch, grid, dims, operand, status)
     end
 
     function AveragedField{X, Y, Z}(data::D, arch::A, grid::G, dims, operand::O, status::S) where {X, Y, Z, D, A, G, O, S}
-        return new{X, Y, Z, S, A, D, G, length(dims), O}(data, arch, grid, dims, operand, status)
+        return new{X, Y, Z, S, A, D, G, eltype(grid), length(dims), O}(data, arch, grid, dims, operand, status)
     end
 end
 

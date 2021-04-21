@@ -1,22 +1,23 @@
 const binary_operators = Set()
 
-struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, G} <: AbstractOperation{X, Y, Z, G}
-      op :: O
-       a :: A
-       b :: B
-      ▶a :: IA
-      ▶b :: IB
-    grid :: G
+struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, R, G, T} <: AbstractOperation{X, Y, Z, R, G, T}
+              op :: O
+               a :: A
+               b :: B
+              ▶a :: IA
+              ▶b :: IB
+    architecture :: R
+            grid :: G
 
     """
-        BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, grid)
+        BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, arch, grid)
 
     Returns an abstract representation of the binary operation `op(▶a(a), ▶b(b))`.
-    where `▶a` and `▶b` interpolate `a` and `b` to (X, Y, Z).
+    on `grid` and `arch`itecture, where `▶a` and `▶b` interpolate `a` and `b` to (X, Y, Z).
     """
-    function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, grid) where {X, Y, Z}
-        return new{X, Y, Z, typeof(op), typeof(a), typeof(b), typeof(▶a), typeof(▶b),
-                   typeof(grid)}(op, a, b, ▶a, ▶b, grid)
+    function BinaryOperation{X, Y, Z}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, arch::R, grid::G) where {X, Y, Z, O, A, B, IA, IB, R, G}
+        T = eltype(grid)
+        return new{X, Y, Z, O, A, B, IA, IB, R, G, T}(op, a, b, ▶a, ▶b, arch, grid)
     end
 end
 
@@ -26,12 +27,16 @@ end
 ##### BinaryOperation construction
 #####
 
-"""Create a binary operation for `op` acting on `a` and `b` with locations `La` and `Lb`.
-The operator acts at `Lab` and the result is interpolated to `Lc`."""
+# Recompute location of binary operation
+@inline at(loc, β::BinaryOperation) = β.op(loc, at(loc, β.a), at(loc, β.b))
+
+"""Create a binary operation for `op` acting on `a` and `b` at `Lc`, where
+`a` and `b` have location `La` and `Lb`."""
 function _binary_operation(Lc, op, a, b, La, Lb, grid)
      ▶a = interpolation_operator(La, Lc)
      ▶b = interpolation_operator(Lb, Lc)
-    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, grid)
+    arch = architecture(a, b)
+    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, arch, grid)
 end
 
 const ConcreteLocationType = Union{Type{Face}, Type{Center}}
@@ -55,6 +60,34 @@ function define_binary_operator(op)
 
         @inline $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, a, b) =
             @inbounds $op(▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
+
+        # These shenanigans seem to help / encourage the compiler to infer types of objects
+        # buried in deep AbstractOperations trees.
+        @inline function $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, A::BinaryOperation, B::BinaryOperation)
+            @inline a(ii, jj, kk, grid) = A.op(A.▶a(ii, jj, kk, grid, A.a), A.▶b(ii, jj, kk, grid, A.b))
+            @inline b(ii, jj, kk, grid) = B.op(B.▶a(ii, jj, kk, grid, B.a), B.▶b(ii, jj, kk, grid, B.b))
+            return @inbounds $op(▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
+        end
+
+        @inline function $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, A::BinaryOperation, B::AbstractField)
+            @inline a(ii, jj, kk, grid) = A.op(A.▶a(ii, jj, kk, grid, A.a), A.▶b(ii, jj, kk, grid, A.b))
+            return @inbounds $op(▶a(i, j, k, grid, a), ▶b(i, j, k, grid, B))
+        end
+
+        @inline function $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, A::AbstractField, B::BinaryOperation)
+            @inline b(ii, jj, kk, grid) = B.op(B.▶a(ii, jj, kk, grid, B.a), B.▶b(ii, jj, kk, grid, B.b))
+            return @inbounds $op(▶a(i, j, k, grid, A), ▶b(i, j, k, grid, b))
+        end
+
+        @inline function $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, A::BinaryOperation, B::Number)
+            @inline a(ii, jj, kk, grid) = A.op(A.▶a(ii, jj, kk, grid, A.a), A.▶b(ii, jj, kk, grid, A.b))
+            return @inbounds $op(▶a(i, j, k, grid, a), B)
+        end
+
+        @inline function $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, A::Number, B::BinaryOperation)
+            @inline b(ii, jj, kk, grid) = B.op(B.▶a(ii, jj, kk, grid, B.a), B.▶b(ii, jj, kk, grid, B.b))
+            return @inbounds $op(A, ▶b(i, j, k, grid, b))
+        end
 
         """
             $($op)(Lc, a, b)
@@ -152,7 +185,7 @@ end
 ##### Architecture inference for BinaryOperation
 #####
 
-architecture(β::BinaryOperation) = architecture(β.a, β.b)
+architecture(β::BinaryOperation) = β.architecture
 
 function architecture(a, b)
     arch_a = architecture(a)
@@ -184,5 +217,5 @@ end
 "Adapt `BinaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, binary::BinaryOperation{X, Y, Z}) where {X, Y, Z} =
     BinaryOperation{X, Y, Z}(Adapt.adapt(to, binary.op), Adapt.adapt(to, binary.a),  Adapt.adapt(to, binary.b),
-                             Adapt.adapt(to, binary.▶a), Adapt.adapt(to, binary.▶b), Adapt.adapt(to, binary.grid))
-                             
+                             Adapt.adapt(to, binary.▶a), Adapt.adapt(to, binary.▶b), nothing, Adapt.adapt(to, binary.grid))
+

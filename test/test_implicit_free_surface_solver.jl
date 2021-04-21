@@ -23,7 +23,7 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     u, v, w = model.velocities
     imid = Int(floor(grid.Nx / 2)) + 1
     jmid = Int(floor(grid.Ny / 2)) + 1
-    CUDA.@allowscalar u.data[imid, jmid, 1] = 1
+    CUDA.@allowscalar u[imid, jmid, 1] = 1
 
     implicit_free_surface_step!(model.free_surface, Event(device(arch)), model, Δt, 1.5)
 

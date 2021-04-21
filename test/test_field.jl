@@ -11,8 +11,7 @@ correct_field_size(a, g, FieldType, Tx, Ty, Tz) = size(parent(FieldType(a, g))) 
 function run_similar_field_tests(f)
     g = similar(f)
     @test typeof(f) == typeof(g)
-    @test typeof(f) == typeof(g)
-    @test f.boundary_conditions == g.boundary_conditions
+    @test f.grid == g.grid
     return nothing
 end
 

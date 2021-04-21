@@ -6,32 +6,46 @@ import Oceananigans.BoundaryConditions: fill_halo_regions!
 ##### AbstractReducedField stuff
 #####
 
-abstract type AbstractReducedField{X, Y, Z, A, G, N} <: AbstractField{X, Y, Z, A, G} end
+abstract type AbstractReducedField{X, Y, Z, A, G, T, N} <: AbstractDataField{X, Y, Z, A, G, T} end
 
 const ARF = AbstractReducedField
 
-const Loc = Union{Face, Center}
+# Two-dimensional fields
+@inline Base.getindex( r::ARF{Nothing, Y, Z},    i, j, k) where {Y, Z} = @inbounds r.data[1, j, k]
+@inline Base.setindex!(r::ARF{Nothing, Y, Z}, d, i, j, k) where {Y, Z} = @inbounds r.data[1, j, k] = d
+@inline Base.getindex( r::ARF{X, Nothing, Z},    i, j, k) where {X, Z} = @inbounds r.data[i, 1, k]
+@inline Base.setindex!(r::ARF{X, Nothing, Z}, d, i, j, k) where {X, Z} = @inbounds r.data[i, 1, k] = d
+@inline Base.getindex( r::ARF{X, Y, Nothing},    i, j, k) where {X, Y} = @inbounds r.data[i, j, 1]
+@inline Base.setindex!(r::ARF{X, Y, Nothing}, d, i, j, k) where {X, Y} = @inbounds r.data[i, j, 1] = d
 
-@propagate_inbounds Base.getindex( r::ARF{Nothing, <:Loc, <:Loc},    i, j, k) = @inbounds r.data[1, j, k]
-@propagate_inbounds Base.setindex!(r::ARF{Nothing, <:Loc, <:Loc}, d, i, j, k) = @inbounds r.data[1, j, k] = d
+@inline Base.getindex( r::ARF{Nothing, Y, Z},    j, k) where {Y, Z} = @inbounds r.data[1, j, k]
+@inline Base.setindex!(r::ARF{Nothing, Y, Z}, d, j, k) where {Y, Z} = @inbounds r.data[1, j, k] = d
+@inline Base.getindex( r::ARF{X, Nothing, Z},    i, k) where {X, Z} = @inbounds r.data[i, 1, k]
+@inline Base.setindex!(r::ARF{X, Nothing, Z}, d, i, k) where {X, Z} = @inbounds r.data[i, 1, k] = d
+@inline Base.getindex( r::ARF{X, Y, Nothing},    i, j) where {X, Y} = @inbounds r.data[i, j, 1]
+@inline Base.setindex!(r::ARF{X, Y, Nothing}, d, i, j) where {X, Y} = @inbounds r.data[i, j, 1] = d
 
-@propagate_inbounds Base.getindex( r::ARF{<:Loc, Nothing, <:Loc},    i, j, k) = @inbounds r.data[i, 1, k]
-@propagate_inbounds Base.setindex!(r::ARF{<:Loc, Nothing, <:Loc}, d, i, j, k) = @inbounds r.data[i, 1, k] = d
+# One-dimensional fields
+@inline Base.getindex( r::ARF{X, Nothing, Nothing},    i, j, k) where X = @inbounds r.data[i, 1, 1]
+@inline Base.setindex!(r::ARF{X, Nothing, Nothing}, d, i, j, k) where X = @inbounds r.data[i, 1, 1] = d
+@inline Base.getindex( r::ARF{Nothing, Y, Nothing},    i, j, k) where Y = @inbounds r.data[1, j, 1]
+@inline Base.setindex!(r::ARF{Nothing, Y, Nothing}, d, i, j, k) where Y = @inbounds r.data[1, j, 1] = d
+@inline Base.getindex( r::ARF{Nothing, Nothing, Z},    i, j, k) where Z = @inbounds r.data[1, 1, k]
+@inline Base.setindex!(r::ARF{Nothing, Nothing, Z}, d, i, j, k) where Z = @inbounds r.data[1, 1, k] = d
 
-@propagate_inbounds Base.getindex( r::ARF{<:Loc, <:Loc, Nothing},    i, j, k) = @inbounds r.data[i, j, 1]
-@propagate_inbounds Base.setindex!(r::ARF{<:Loc, <:Loc, Nothing}, d, i, j, k) = @inbounds r.data[i, j, 1] = d
+@inline Base.getindex( r::ARF{X, Nothing, Nothing},    i) where X = @inbounds r.data[i, 1, 1]
+@inline Base.setindex!(r::ARF{X, Nothing, Nothing}, d, i) where X = @inbounds r.data[i, 1, 1] = d
+@inline Base.getindex( r::ARF{Nothing, Y, Nothing},    j) where Y = @inbounds r.data[1, j, 1]
+@inline Base.setindex!(r::ARF{Nothing, Y, Nothing}, d, j) where Y = @inbounds r.data[1, j, 1] = d
+@inline Base.getindex( r::ARF{Nothing, Nothing, Z},    k) where Z = @inbounds r.data[1, 1, k]
+@inline Base.setindex!(r::ARF{Nothing, Nothing, Z}, d, k) where Z = @inbounds r.data[1, 1, k] = d
 
-@propagate_inbounds Base.getindex( r::ARF{<:Loc, Nothing, Nothing},    i, j, k) = @inbounds r.data[i, 1, 1]
-@propagate_inbounds Base.setindex!(r::ARF{<:Loc, Nothing, Nothing}, d, i, j, k) = @inbounds r.data[i, 1, 1] = d
+# Zero-dimensional fields
+@inline Base.getindex( r::ARF{Nothing, Nothing, Nothing},    i, j, k) = @inbounds r.data[1, 1, 1]
+@inline Base.setindex!(r::ARF{Nothing, Nothing, Nothing}, d, i, j, k) = @inbounds r.data[1, 1, 1] = d
 
-@propagate_inbounds Base.getindex( r::ARF{Nothing, <:Loc, Nothing},    i, j, k) = @inbounds r.data[1, j, 1]
-@propagate_inbounds Base.setindex!(r::ARF{Nothing, <:Loc, Nothing}, d, i, j, k) = @inbounds r.data[1, j, 1] = d
-
-@propagate_inbounds Base.getindex( r::ARF{Nothing, Nothing, <:Loc},    i, j, k) = @inbounds r.data[1, 1, k]
-@propagate_inbounds Base.setindex!(r::ARF{Nothing, Nothing, <:Loc}, d, i, j, k) = @inbounds r.data[1, 1, k] = d
-
-@propagate_inbounds Base.getindex( r::ARF{Nothing, Nothing, Nothing},    i, j, k) = @inbounds r.data[1, 1, 1]
-@propagate_inbounds Base.setindex!(r::ARF{Nothing, Nothing, Nothing}, d, i, j, k) = @inbounds r.data[1, 1, 1] = d
+@inline Base.getindex( r::ARF{Nothing, Nothing, Nothing},  ) = @inbounds r.data[1, 1, 1]
+@inline Base.setindex!(r::ARF{Nothing, Nothing, Nothing}, d) = @inbounds r.data[1, 1, 1] = d
 
 fill_halo_regions!(field::AbstractReducedField, arch, args...) =
     fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...; reduced_dimensions=field.dims)
@@ -68,13 +82,7 @@ end
 ##### Concrete ReducedField
 #####
 
-"""
-    struct ReducedField{X, Y, Z, A, G, N} <: AbstractField{X, Y, Z, A, G}
-
-Representation of a field at the location `(X, Y, Z)` with data of type `A`
-on a grid of type `G` that is 'reduced' over `N` dimensions.
-"""
-struct ReducedField{X, Y, Z, A, D, G, N, B} <: AbstractReducedField{X, Y, Z, A, G, N}
+struct ReducedField{X, Y, Z, A, D, G, T, N, B} <: AbstractReducedField{X, Y, Z, A, G, T, N}
                    data :: D
            architecture :: A
                    grid :: G
@@ -94,8 +102,9 @@ struct ReducedField{X, Y, Z, A, D, G, N, B} <: AbstractReducedField{X, Y, Z, A, 
         validate_field_data(X, Y, Z, data, grid)
 
         N = length(dims)
+        T = eltype(grid)
 
-        return new{X, Y, Z, A, D, G, N, B}(data, arch, grid, dims, bcs)
+        return new{X, Y, Z, A, D, G, T, N, B}(data, arch, grid, dims, bcs)
     end
 end
 
@@ -133,7 +142,8 @@ end
 
 ReducedField(Lr, arch, grid; dims, kwargs...) = ReducedField(Lr..., arch, grid; dims=dims, kwargs...)
 
-Base.similar(r::ReducedField{X, Y, Z, Arch}) where {X, Y, Z, Arch} =
+# Canonical `similar` for AbstractReducedField
+Base.similar(r::AbstractReducedField{X, Y, Z, Arch}) where {X, Y, Z, Arch} =
     ReducedField(X, Y, Z, Arch(), r.grid; dims=r.dims, boundary_conditions=r.boundary_conditions)
 
 #####

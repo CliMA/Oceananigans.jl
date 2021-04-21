@@ -1,6 +1,6 @@
 using Adapt
 using KernelAbstractions
-using Oceananigans.Fields: AbstractField, FieldStatus, validate_field_data, new_data, conditional_compute!
+using Oceananigans.Fields: AbstractDataField, FieldStatus, validate_field_data, new_data, conditional_compute!
 using Oceananigans.Fields: architecture, tracernames
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: work_layout
@@ -9,17 +9,12 @@ import Oceananigans.Fields: compute!, compute_at!
 
 import Oceananigans: short_show
 
-"""
-    struct BuoyancyField{B, A, G, T} <: AbstractField{X, Y, Z, A, G}
-
-Type representing buoyancy computed on the model grid.
-"""
-struct BuoyancyField{B, S, A, D, G, T} <: AbstractField{Center, Center, Center, A, G}
+struct BuoyancyField{B, S, A, D, G, T, C} <: AbstractDataField{Center, Center, Center, A, G, T}
             data :: D
     architecture :: A
             grid :: G
         buoyancy :: B
-         tracers :: T
+         tracers :: C
           status :: S
     
     """
@@ -36,14 +31,15 @@ struct BuoyancyField{B, S, A, D, G, T} <: AbstractField{Center, Center, Center, 
         status = recompute_safely ? nothing : FieldStatus(zero(eltype(grid)))
 
         S = typeof(status)
+        T = eltype(grid)
 
-        return new{B, S, A, D, G, C}(data, arch, grid, buoyancy, tracers, status)
+        return new{B, S, A, D, G, T, C}(data, arch, grid, buoyancy, tracers, status)
     end
 
-    function BuoyancyField(data::D, arch::A, grid::G,
-                           buoyancy::B, tracers::C, status::S) where {D, A, G, B, C, S}
+    function BuoyancyField(data::D, arch::A, grid::G, buoyancy::B, tracers::C, status::S) where {D, A, G, B, C, S}
         validate_field_data(Center, Center, Center, data, grid)
-        return new{B, S, A, D, G, T}(data, grid, buoyancy, tracers, status)
+        T = eltype(grid)
+        return new{B, S, A, D, G, T, C}(data, grid, buoyancy, tracers, status)
     end
 end
 
