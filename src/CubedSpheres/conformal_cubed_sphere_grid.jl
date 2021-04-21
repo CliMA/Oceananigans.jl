@@ -182,18 +182,18 @@ end
 ##### Nodes for ConformalCubedSphereFaceGrid
 #####
 
-λnode(LX::Face,   LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.λᶠᶠᵃ[i, j]
-λnode(LX::Face,   LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.λᶠᶜᵃ[i, j]
-λnode(LX::Center, LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.λᶜᶠᵃ[i, j]
-λnode(LX::Center, LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.λᶜᶜᵃ[i, j]
+@inline λnode(LX::Face,   LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶠᶠᵃ[i, j]
+@inline λnode(LX::Face,   LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶠᶜᵃ[i, j]
+@inline λnode(LX::Center, LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶜᶠᵃ[i, j]
+@inline λnode(LX::Center, LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶜᶜᵃ[i, j]
 
-φnode(LX::Face,   LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.φᶠᶠᵃ[i, j]
-φnode(LX::Face,   LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.φᶠᶜᵃ[i, j]
-φnode(LX::Center, LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.φᶜᶠᵃ[i, j]
-φnode(LX::Center, LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.φᶜᶜᵃ[i, j]
+@inline φnode(LX::Face,   LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶠᶠᵃ[i, j]
+@inline φnode(LX::Face,   LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶠᶜᵃ[i, j]
+@inline φnode(LX::Center, LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶜᶠᵃ[i, j]
+@inline φnode(LX::Center, LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶜᶜᵃ[i, j]
 
-znode(LX, LY, LZ::Face,   i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.zᵃᵃᶠ[k]
-znode(LX, LY, LZ::Center, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.zᵃᵃᶜ[k]
+@inline znode(LX, LY, LZ::Face,   i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶠ[k]
+@inline znode(LX, LY, LZ::Center, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶜ[k]
 
 λnodes(LX::Face, LY::Face, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
     view(grid.λᶠᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
