@@ -30,6 +30,22 @@ validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
     [validate_vertical_velocity_boundary_conditions(w_face) for w_face in faces(w)]
 
 #####
+##### Regularizing field boundary conditions
+#####
+
+import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+
+function regularize_field_boundary_conditions(bcs::CubedSphereFaces, grid, model_field_names, field_name)
+
+    faces = Tuple(
+        regularize_field_boundary_conditions(face_bcs, face_grid, model_field_names, field_name)
+        for (face_bcs, face_grid) in zip(bcs.faces, grid.faces)
+    )
+
+    return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
+end
+
+#####
 ##### Applying flux boundary conditions
 #####
 
