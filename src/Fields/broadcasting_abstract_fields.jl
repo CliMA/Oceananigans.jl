@@ -62,21 +62,7 @@ launch_configuration(::AbstractReducedField{<:Loc, <:Loc, Nothing}) = :xy
 
 broadcasted_to_abstract_operation(loc, grid, a) = a
 
-#####
-##### Hopefully we don't need to interpolate, but if we do...
-#####
-
-needs_interpolation(Xa, Xb) = false
-needs_interpolation(::Type{Center}, ::Type{Face}) = true
-needs_interpolation(::Type{Face}, ::Type{Center}) = true
-
-needs_interpolation(La::Tuple, Lb::Tuple) = any(needs_interpolation.(La, Lb))
-needs_interpolation(La::Tuple, b::AbstractField) = needs_interpolation(La, location(b))
-needs_interpolation(La::Tuple, ::Number) = false
-needs_interpolation(La::Tuple, ::AbstractArray) = false
-needs_interpolation(La::Tuple, bc::Broadcasted) = any(needs_interpolation(La, b) for b in bc.args)
-
-# Broadcasting with interpolation breaks Base's default rules for ABroBbstractOperations 
+# Broadcasting with interpolation breaks Base's default rules for AbstractOperations 
 @inline Base.Broadcast.materialize!(::Base.Broadcast.BroadcastStyle,
                                     dest::AbstractField,
                                     bc::Broadcasted{<:FieldBroadcastStyle}) = copyto!(dest, convert(Broadcasted{Nothing}, bc))
