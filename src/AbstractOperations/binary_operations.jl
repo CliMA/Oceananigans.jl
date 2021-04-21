@@ -1,37 +1,26 @@
 const binary_operators = Set()
 
-"""
-    BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X, Y, Z, G}
-
-An abstract representation of a binary operation on `AbstractField`s.
-"""
-struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, IΩ, G} <: AbstractOperation{X, Y, Z, G}
+struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, G} <: AbstractOperation{X, Y, Z, G}
       op :: O
        a :: A
        b :: B
       ▶a :: IA
       ▶b :: IB
-     ▶op :: IΩ
     grid :: G
 
     """
-        BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, ▶op, grid)
+        BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, grid)
 
-    Returns an abstract representation of the binary operation `op(▶a(a), ▶b(b))`,
-    followed by interpolation by `▶op` to `(X, Y, Z)`, where `▶a` and `▶b` interpolate
-    `a` and `b` to a common location.
+    Returns an abstract representation of the binary operation `op(▶a(a), ▶b(b))`.
+    where `▶a` and `▶b` interpolate `a` and `b` to (X, Y, Z).
     """
-    function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, ▶op, grid) where {X, Y, Z}
-
-        any((X, Y, Z) .=== Nothing) && throw(ArgumentError("Nothing locations are invalid! " *
-                                                           "Cannot construct BinaryOperation at ($X, $Y, $Z)."))
-
+    function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, grid) where {X, Y, Z}
         return new{X, Y, Z, typeof(op), typeof(a), typeof(b), typeof(▶a), typeof(▶b),
-                   typeof(▶op), typeof(grid)}(op, a, b, ▶a, ▶b, ▶op, grid)
+                   typeof(grid)}(op, a, b, ▶a, ▶b, grid)
     end
 end
 
-@inline Base.getindex(β::BinaryOperation, i, j, k) = β.▶op(i, j, k, β.grid, β.op, β.▶a, β.▶b, β.a, β.b)
+@inline Base.getindex(β::BinaryOperation, i, j, k) = β.op(i, j, k, β.grid, β.▶a, β.▶b, β.a, β.b)
 
 #####
 ##### BinaryOperation construction
@@ -39,12 +28,20 @@ end
 
 """Create a binary operation for `op` acting on `a` and `b` with locations `La` and `Lb`.
 The operator acts at `Lab` and the result is interpolated to `Lc`."""
-function _binary_operation(Lc, op, a, b, La, Lb, Lab, grid)
-     ▶a = interpolation_operator(La, Lab)
-     ▶b = interpolation_operator(Lb, Lab)
-    ▶op = interpolation_operator(Lab, Lc)
-    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, ▶op, grid)
+function _binary_operation(Lc, op, a, b, La, Lb, grid)
+     ▶a = interpolation_operator(La, Lc)
+     ▶b = interpolation_operator(Lb, Lc)
+    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, grid)
 end
+
+const ConcreteLocationType = Union{Type{Face}, Type{Center}}
+
+# Precedence rules for choosing operation location:
+choose_location(La, Lb, Lc) = Lc                                    # Fallback to the specification Lc, but also...
+choose_location(::Type{Face},   ::Type{Face},   Lc) = Face          # keep common locations; and
+choose_location(::Type{Center}, ::Type{Center}, Lc) = Center        #
+choose_location(La::ConcreteLocationType, ::Type{Nothing}, Lc) = La # don't interpolate unspecified locations.
+choose_location(::Type{Nothing}, Lb::ConcreteLocationType, Lc) = Lb #
 
 """Return an expression that defines an abstract `BinaryOperator` named `op` for `AbstractField`."""
 function define_binary_operator(op)
@@ -60,26 +57,29 @@ function define_binary_operator(op)
             @inbounds $op(▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
 
         """
-            $($op)(Lc, Lab, a, b)
+            $($op)(Lc, a, b)
 
-        Returns an abstract representation of the operator `$($op)` acting on `a` and `b` at
-        location `Lab`, and subsequently interpolated to location `Lc`.
+        Returns an abstract representation of the operator `$($op)` acting on `a` and `b`.
+        The operation occurs at location(a) except for Nothing dimensions. In that case,
+        the location of the dimension in question is supplied either by location(b) or
+        if that is also Nothing, Lc.
         """
-        function $op(Lc::Tuple, Lop::Tuple, a, b)
+        function $op(Lc::Tuple, a, b)
             La = location(a)
             Lb = location(b)
+            Lab = choose_location.(La, Lb, Lc)
+
             grid = Oceananigans.AbstractOperations.validate_grid(a, b)
-            return Oceananigans.AbstractOperations._binary_operation(Lc, $op, a, b, La, Lb, Lop, grid)
+
+            return Oceananigans.AbstractOperations._binary_operation(Lab, $op, a, b, La, Lb, grid)
         end
 
-        $op(Lc::Tuple, a, b) = $op(Lc, Lc, a, b)
-        $op(Lc::Tuple, a::Number, b) = $op(Lc, location(b), a, b)
-        $op(Lc::Tuple, a, b::Number) = $op(Lc, location(a), a, b)
-        $op(Lc::Tuple, a::AF{X, Y, Z}, b::AF{X, Y, Z}) where {X, Y, Z} = $op(Lc, location(a), a, b)
+        # Numbers are not fields...
+        $op(Lc::Tuple, a::Number, b::Number) = $op(a, b)
 
         # Sugar for mixing in functions of (x, y, z)
-        $op(Lc::Tuple, a::Function, b::AbstractField) = $op(Lc, FunctionField(Lc, a, b.grid), b)
-        $op(Lc::Tuple, a::AbstractField, b::Function) = $op(Lc, a, FunctionField(Lc, b, a.grid))
+        $op(Lc::Tuple, f::Function, b::AbstractField) = $op(Lc, FunctionField(location(b), f, b.grid), b)
+        $op(Lc::Tuple, a::AbstractField, f::Function) = $op(Lc, a, FunctionField(location(a), f, a.grid))
 
         # Sugary versions with default locations
         $op(a::AF, b::AF) = $op(location(a), a, b)
@@ -184,5 +184,5 @@ end
 "Adapt `BinaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, binary::BinaryOperation{X, Y, Z}) where {X, Y, Z} =
     BinaryOperation{X, Y, Z}(Adapt.adapt(to, binary.op), Adapt.adapt(to, binary.a),  Adapt.adapt(to, binary.b),
-                             Adapt.adapt(to, binary.▶a), Adapt.adapt(to, binary.▶b), Adapt.adapt(to, binary.▶op),
-                             binary.grid)
+                             Adapt.adapt(to, binary.▶a), Adapt.adapt(to, binary.▶b), Adapt.adapt(to, binary.grid))
+                             

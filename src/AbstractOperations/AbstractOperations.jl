@@ -40,7 +40,6 @@ Base.parent(op::AbstractOperation) = op
 # AbstractOperation macros add their associated functions to this list
 const operators = Set()
 
-include("at.jl")
 include("grid_validation.jl")
 
 include("unary_operations.jl")
@@ -78,4 +77,7 @@ eval(define_multiary_operator(:*))
 push!(operators, :*)
 push!(multiary_operators, :*)
 
+include("at.jl")
+
 end # module
+

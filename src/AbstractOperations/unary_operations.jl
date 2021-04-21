@@ -1,11 +1,5 @@
 const unary_operators = Set()
 
-"""
-    UnaryOperation{X, Y, Z, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
-
-An abstract representation of a unary operation on an `AbstractField`; or a function
-`f(x)` with on argument acting on `x::AbstractField`.
-"""
 struct UnaryOperation{X, Y, Z, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
       op :: O
      arg :: A
@@ -131,4 +125,4 @@ compute_at!(υ::UnaryOperation, time) = compute_at!(υ.arg, time)
 "Adapt `UnaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, unary::UnaryOperation{X, Y, Z}) where {X, Y, Z} =
     UnaryOperation{X, Y, Z}(Adapt.adapt(to, unary.op), Adapt.adapt(to, unary.arg),
-                            Adapt.adapt(to, unary.▶), unary.grid)
+                            Adapt.adapt(to, unary.▶), Adapt.adapt(to, unary.grid))
