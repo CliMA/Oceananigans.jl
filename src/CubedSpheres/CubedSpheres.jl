@@ -57,6 +57,24 @@ apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCubedSphereF
 ]
 
 #####
+##### Forcing functions on the cubed sphere
+#####
+
+using Oceananigans.Forcings: user_function_arguments
+import Oceananigans.Forcings: ContinuousForcing
+
+@inline function (forcing::ContinuousForcing{LX, LY, LZ})(i, j, k, grid::ConformalCubedSphereFaceGrid, clock, model_fields) where {LX, LY, LZ}
+
+    args = user_function_arguments(i, j, k, grid, model_fields, forcing.parameters, forcing)
+
+    λ = λnode(LX(), LY(), LZ(), i, j, k, grid)
+    φ = φnode(LX(), LY(), LZ(), i, j, k, grid)
+    z = znode(LX(), LY(), LZ(), i, j, k, grid)
+
+    return @inbounds forcing.func(λ, φ, z, clock.time, args...)
+end
+
+#####
 ##### NaN checker for cubed sphere fields
 #####
 
