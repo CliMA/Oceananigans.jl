@@ -585,8 +585,8 @@ end
 
                 @testset "Unary computations [$FT, $(typeof(arch))]" begin
                     @info "      Testing compute! unary operations..."
-                    for unary in Oceananigans.AbstractOperations.unary_operators
-                        @test compute_unary(eval(unary), model)
+                    for unary in (sqrt, sin, cos, exp, tanh)
+                        @test compute_unary(unary, model)
                     end
                 end
 
