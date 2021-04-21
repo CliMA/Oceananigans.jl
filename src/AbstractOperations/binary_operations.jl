@@ -20,7 +20,7 @@ struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, G} <: AbstractOperation{X, Y, Z
     end
 end
 
-@inline Base.getindex(β::BinaryOperation, i, j, k) = @inbounds β.op(β.▶a(i, j, k, β.grid, β.a), β.▶b(i, j, k, β.grid, β.b))
+@inline Base.getindex(β::BinaryOperation, i, j, k) = β.op(i, j, k, β.grid, β.▶a, β.▶b, β.a, β.b)
 
 #####
 ##### BinaryOperation construction
@@ -52,6 +52,9 @@ function define_binary_operator(op)
         local location = Oceananigans.Fields.location
         local FunctionField = Oceananigans.Fields.FunctionField
         local AF = AbstractField
+
+        @inline $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, a, b) =
+            @inbounds $op(▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
 
         """
             $($op)(Lc, a, b)
