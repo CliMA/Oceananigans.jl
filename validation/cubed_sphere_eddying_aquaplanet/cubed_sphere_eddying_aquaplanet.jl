@@ -8,6 +8,7 @@ using JLD2
 using Oceananigans
 using Oceananigans.Units
 
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 using Oceananigans.CubedSpheres: CubedSphereFaces, inject_cubed_sphere_exchange_boundary_conditions
 
@@ -95,7 +96,12 @@ function diagnose_velocities_from_streamfunction(ψ, grid)
     return uᶠᶜᶜ, vᶜᶠᶜ, ψᶠᶠᶜ
 end
 
-function cubed_sphere_surface_momentum_flux_bcs(τx, τy, grid)
+function cubed_sphere_surface_momentum_flux_bcs(τx, τy, grid; ε=0.01)
+
+    for f in 1:length(grid.faces)
+        @. τx.data.faces[f] += ε * randn()
+        @. τy.data.faces[f] += ε * randn()
+    end
 
     Nx, Ny, Nz = size(grid.faces[1])
 
@@ -154,24 +160,40 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
 
     u_top_flux, v_top_flux, ψ₀ = diagnose_velocities_from_streamfunction(ψ, grid)
 
-    u_bcs, v_bcs = cubed_sphere_surface_momentum_flux_bcs(u_top_flux, v_top_flux, grid)
+    u_bcs, v_bcs = cubed_sphere_surface_momentum_flux_bcs(u_top_flux, v_top_flux, grid, ε=0)
+
+    # Linear damping so the wind stress doesn't keep accelerating the fluid.
+    # @inline linear_damping(λ, φ, z, t, u, μ) = - μ * u
+
+    # μ = 1e-3
+    # u_forcing = Forcing(linear_damping, parameters=μ, field_dependencies=:u)
+    # v_forcing = Forcing(linear_damping, parameters=μ, field_dependencies=:v)
+
+    # Since the continuous forcing seems to slow down the model by a factor of ~2x.
+    @inline linear_damping_u(i, j, k, grid, clock, model_fields, μ) = @inbounds - μ * model_fields.u[i, j, k]
+    @inline linear_damping_v(i, j, k, grid, clock, model_fields, μ) = @inbounds - μ * model_fields.v[i, j, k]
+
+    μ = 1e-3
+    u_forcing = Forcing(linear_damping_u, parameters=μ, discrete_form=true)
+    v_forcing = Forcing(linear_damping_v, parameters=μ, discrete_form=true)
 
     ## Model setup
 
     model = HydrostaticFreeSurfaceModel(
                architecture = CPU(),
                        grid = grid,
-         momentum_advection = nothing,
+         momentum_advection = VectorInvariant(),
                free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
                    coriolis = coriolis,
-        boundary_conditions = (u=u_bcs, v=v_bcs),
                     closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=1000),
+        boundary_conditions = (u=u_bcs, v=v_bcs),
+                    forcing = (u=u_forcing, v=v_forcing),
                     tracers = nothing,
                    buoyancy = nothing
     )
 
     # Some random noise to get things going.
-    ε(λ, φ, z) = 1e-8 * randn()
+    ε(λ, φ, z) = 1e-3 * randn()
     Oceananigans.set!(model, u=ε, v=ε)
 
     ## Simulation setup
@@ -189,7 +211,7 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
 
     simulation = Simulation(model,
                         Δt = Δt,
-                 stop_time = 7days,
+                 stop_time = 10days,
         iteration_interval = 20,
                   progress = Progress(time_ns()),
                 parameters = (; cfl)
@@ -204,7 +226,6 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     simulation.diagnostics[:state_checker] =
         StateChecker(model, fields=fields_to_check, schedule=IterationInterval(20))
 
-    using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
     ζ = VerticalVorticityField(model)
     output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=ζ))
 
