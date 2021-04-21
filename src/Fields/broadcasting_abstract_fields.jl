@@ -91,7 +91,7 @@ needs_interpolation(La::Tuple, ::AbstractArray) = false
 needs_interpolation(La::Tuple, bc::Broadcasted) = any(needs_interpolation(La, b) for b in bc.args)
 
 # Broadcasting with interpolation breaks Base's default rules for ABroBbstractOperations 
-@inline Base.Broadcast.materialize!(::BroadcastStyle, dest::AbstractField, bc::Broadcasted) =
+@inline Base.Broadcast.materialize!(::Base.Broadcast.BroadcastStyle, dest::AbstractField, bc::Broadcasted) =
     copyto!(dest, convert(Broadcasted{Nothing}, bc))
 
 # Non-interpolated broadcasting to Field
