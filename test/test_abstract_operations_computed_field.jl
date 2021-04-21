@@ -725,21 +725,12 @@ end
                     @test try compute!(ComputedField(horizontal_tke      )); true; catch; false; end
                     @test try compute!(ComputedField(twice_tke           )); true; catch; false; end
 
-                    if arch isa CPU
-                        @test try compute!(ComputedField(horizontal_tke_ccc  )); true; catch; false; end
-                        @test try compute!(ComputedField(tke                 )); true; catch; false; end
-                        @test try compute!(ComputedField(tke_ccc             )); true; catch; false; end
+                    @test try compute!(ComputedField(horizontal_tke_ccc  )); true; catch; false; end
+                    @test try compute!(ComputedField(tke                 )); true; catch; false; end
+                    @test try compute!(ComputedField(tke_ccc             )); true; catch; false; end
 
-                        computed_tke = ComputedField(tke_ccc)
-                        @test (compute!(computed_tke); all(interior(computed_tke)[2:3, 2:3, 2:3] .== 9/2))
-                    else
-                        @test_skip try compute!(ComputedField(horizontal_tke_ccc  )); true; catch; false; end
-                        @test_skip try compute!(ComputedField(tke                 )); true; catch; false; end
-                        @test_skip try compute!(ComputedField(tke_ccc             )); true; catch; false; end
-
-                        computed_tke = ComputedField(tke_ccc)
-                        @test_skip (compute!(computed_tke); all(interior(computed_tke)[2:3, 2:3, 2:3] .== 9/2))
-                    end
+                    computed_tke = ComputedField(tke_ccc)
+                    @test (compute!(computed_tke); all(interior(computed_tke)[2:3, 2:3, 2:3] .== 9/2))
                 end
 
                 @testset "Computations with ComputedFields [$FT, $(typeof(arch))]" begin
