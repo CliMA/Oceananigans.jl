@@ -61,6 +61,7 @@ Set{Any} with 7 elements:
   :square_it
   :cos
   :exp
+  :interpolate_identity
   :-
   :tanh
   :sin
