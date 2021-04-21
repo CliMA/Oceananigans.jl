@@ -332,7 +332,7 @@ nothing # hide
 
 using Random, Statistics
 
-mean_perturbation_kinetic_energy = mean(1/2 * (u^2 + w^2), dims=(1, 2, 3))
+mean_perturbation_kinetic_energy = AveragedField(1/2 * (u^2 + w^2), dims=(1, 2, 3))
 
 noise(x, y, z) = randn()
 
