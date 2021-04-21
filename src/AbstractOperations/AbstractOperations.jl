@@ -81,6 +81,7 @@ push!(operators, :*)
 push!(multiary_operators, :*)
 
 include("broadcasting_abstract_operations.jl")
+include("at.jl")
 
 end # module
 
