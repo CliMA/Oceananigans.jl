@@ -7,11 +7,13 @@ using Base.Broadcast: Broadcasted
 
 struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 
-# Preserve location for broadcast style
+# The below needs to be uncommented when FieldBroadcastStyle shenanigans
+# and result array inference for allocating broadcast operations is figured out.
 Base.Broadcast.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
 
 # Precedence rules
 Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) where N = DefaultArrayStyle{3}()
+Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::FieldBroadcastStyle) = FieldBroadcastStyle()
 
 "`A = find_field(As)` returns the first AbstractField among the arguments."
 find_field(bc::Broadcasted) = find_field(bc.args)
@@ -69,10 +71,6 @@ launch_configuration(::AbstractReducedField{Nothing, <:Loc, <:Loc}) = :yz
 launch_configuration(::AbstractReducedField{<:Loc, Nothing, <:Loc}) = :xz
 launch_configuration(::AbstractReducedField{<:Loc, <:Loc, Nothing}) = :xy
 
-# Insert locations into AbstractOperations embedded in Broadcasted trees
-insert_destination_location(loc, bc::Broadcasted) where S = Broadcasted{S}(bc.f, insert_destination_location(loc, bc.args), bc.axes)
-insert_destination_location(loc, args::Tuple) = Tuple(insert_destination_location(loc, a) for a in args)
-
 broadcasted_to_abstract_operation(loc, grid, a) = a
 
 broadcasted_to_abstract_operation(loc, grid, bc::Broadcasted{<:Any, <:Any, <:Any, <:Any}) =
@@ -92,17 +90,23 @@ needs_interpolation(La::Tuple, ::Number) = false
 needs_interpolation(La::Tuple, ::AbstractArray) = false
 needs_interpolation(La::Tuple, bc::Broadcasted) = any(needs_interpolation(La, b) for b in bc.args)
 
+# Broadcasting with interpolation breaks Base's default rules for ABroBbstractOperations 
+@inline Base.Broadcast.materialize!(::BroadcastStyle, dest::AbstractField, bc::Broadcasted) =
+    copyto!(dest, convert(Broadcasted{Nothing}, bc))
+
 # Non-interpolated broadcasting to Field
 @inline function Base.copyto!(dest::AbstractField{X, Y, Z}, bc::Broadcasted{Nothing}) where {X, Y, Z}
 
     # It's probably best if you don't need interpolation, but anyways...
-    bc′ = needs_interpolation(dest, bc) ? broadcasted_to_abstract_operation(location(dest), grid, bc) :
-                                          Base.Broadcast.preprocess(dest, bc)
-
+    #bc′ = needs_interpolation(dest, bc) ? broadcasted_to_abstract_operation(location(dest), grid, bc) :
+    #                                      Base.Broadcast.preprocess(dest, bc)
+                                            
     grid = dest.grid
     arch = architecture(dest)
     config = launch_configuration(dest)
     kernel = broadcast_kernel(dest)
+
+    @show bc′ = broadcasted_to_abstract_operation(location(dest), grid, bc)
 
     event = launch!(arch, grid, config, kernel, dest, bc′,
                     include_right_boundaries = true,
