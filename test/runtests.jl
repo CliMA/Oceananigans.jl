@@ -132,7 +132,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
     end
 
     if group == :abstract_operations || group == :all
-        @testset "AbstractOperations tests" begin
+        @testset "AbstractOperations and broadcasting tests" begin
             include("test_abstract_operations_computed_field.jl")
             include("test_broadcasting.jl")
         end
