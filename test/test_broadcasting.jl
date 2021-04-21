@@ -11,28 +11,34 @@
         @test all(a .== 1) 
 
         b .= 2
+
+        c .= a .+ b
+        @test all(c .== 3)
+
         c .= a .+ b .+ 1
-        @test all(c .== 4) 
+        @test all(c .== 4)
 
         # Halo regions
-        @test c[1:Nx, 1:Ny, 0] == 4
-        @test c[1:Nx, 1:Ny, Nz+1] == 4
+        @test c[1, 1, 0] == 4
+        @test c[1, 1, Nz+1] == 4
 
         # Broadcasting with interpolation
         three_point_grid = RegularRectilinearGrid(size=(1, 1, 3), extent=(1, 1, 1))
-        a2 = CenterField(arch, grid)
-        b2 = ZFaceField(arch, grid)
+
+        a2 = CenterField(arch, three_point_grid)
+        b2 = ZFaceField(arch, three_point_grid)
         b2 .= 1
         fill_halo_regions!(b2, arch)
-        @test b2[1, 1, 1] == 0
-        @test b2[1, 1, 2] == 1
-        @test b2[1, 1, 3] == 1
-        @test b2[1, 1, 4] == 0
+
+        @test b2.data[1, 1, 1] == 0
+        @test b2.data[1, 1, 2] == 1
+        @test b2.data[1, 1, 3] == 1
+        @test b2.data[1, 1, 4] == 0
 
         a2 .= b2
-        @test a2[1, 1, 1] = 0.5
-        @test a2[1, 1, 2] = 1.0
-        @test a2[1, 1, 3] = 0.5
+        @test a2.data[1, 1, 1] = 0.5
+        @test a2.data[1, 1, 2] = 1.0
+        @test a2.data[1, 1, 3] = 0.5
 
         r, p, q = [ReducedField(Center, Center, Nothing, arch, grid, dims=3) for i = 1:3]
 
