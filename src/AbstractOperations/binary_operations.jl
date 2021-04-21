@@ -15,7 +15,7 @@ struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, R, G, T} <: AbstractOperation{X
     Returns an abstract representation of the binary operation `op(▶a(a), ▶b(b))`.
     on `grid` and `arch`itecture, where `▶a` and `▶b` interpolate `a` and `b` to (X, Y, Z).
     """
-    function BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, arch, grid) where {X, Y, Z}
+    function BinaryOperation{X, Y, Z}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, arch::R, grid::G) where {X, Y, Z, O, A, B, IA, IB, R, G}
         T = eltype(grid)
         return new{X, Y, Z, O, A, B, IA, IB, R, G, T}(op, a, b, ▶a, ▶b, arch, grid)
     end
