@@ -43,13 +43,12 @@ Returns `abstract_operation` relocated to `loc`ation.
 at(loc, f) = f # fallback
 
 include("grid_validation.jl")
-
 include("unary_operations.jl")
 include("binary_operations.jl")
 include("multiary_operations.jl")
 include("derivatives.jl")
 include("at.jl")
-
+include("broadcasting_abstract_operations.jl")
 include("show_abstract_operations.jl")
 include("averages_of_operations.jl")
 
@@ -79,8 +78,6 @@ push!(binary_operators, :*)
 eval(define_multiary_operator(:*))
 push!(operators, :*)
 push!(multiary_operators, :*)
-
-include("broadcasting_abstract_operations.jl")
 
 end # module
 
