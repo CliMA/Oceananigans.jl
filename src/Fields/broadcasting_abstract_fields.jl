@@ -7,8 +7,6 @@ using Base.Broadcast: Broadcasted
 
 struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 
-# The below needs to be uncommented when FieldBroadcastStyle shenanigans
-# and result array inference for allocating broadcast operations is figured out.
 Base.Broadcast.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
 
 # Precedence rule
@@ -83,7 +81,6 @@ needs_interpolation(La::Tuple, bc::Broadcasted) = any(needs_interpolation(La, b)
                                     dest::AbstractField,
                                     bc::Broadcasted{<:FieldBroadcastStyle}) = copyto!(dest, convert(Broadcasted{Nothing}, bc))
 
-# Non-interpolated broadcasting to Field
 @inline function Base.copyto!(dest::AbstractField{X, Y, Z}, bc::Broadcasted{Nothing}) where {X, Y, Z}
 
     grid = dest.grid
