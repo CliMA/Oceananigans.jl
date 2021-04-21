@@ -204,7 +204,9 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     simulation.diagnostics[:state_checker] =
         StateChecker(model, fields=fields_to_check, schedule=IterationInterval(20))
 
-    output_fields = merge(model.velocities, (η=model.free_surface.η,))
+    using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
+    ζ = VerticalVorticityField(model)
+    output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=ζ))
 
     simulation.output_writers[:fields] =
     JLD2OutputWriter(model, output_fields,
