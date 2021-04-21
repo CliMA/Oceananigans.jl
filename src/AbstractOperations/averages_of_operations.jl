@@ -25,10 +25,3 @@ function AveragedField(op::AbstractOperation; dims, data=nothing, operand_data=n
     return AveragedField(computed, dims=dims, data=data, recompute_safely=recompute_safely)
 end
 
-"""
-    mean(op::AbstractOperation; kwargs...)
-
-Returns an Oceananigans.AveragedField representing the an average over `op`eration.
-See `Oceananigans.Fields.AveragedField`.
-"""
-Statistics.mean(op::AbstractOperation; kwargs...) = AveragedField(op; kwargs...)

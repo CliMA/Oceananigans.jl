@@ -12,8 +12,10 @@ conservation equation and is used directly in the momentum equations in the mome
 For seawater buoyancy is, in general, modeled as a function of conservative temperature
 ``\theta``, absolute salinity ``S``, and depth below the ocean surface ``d`` via
 ```math
+    \begin{equation}
     b = - \frac{g}{\rho_0} \rho' \left (\theta, S, d \right ) \, ,
-    \tag{eq:seawater-buoyancy}
+    \label{eq:seawater-buoyancy}
+    \end{equation}
 ```
 where ``g`` is gravitational acceleration, ``\rho_0`` is the reference density.
 The function ``\rho'(\theta, S, d)`` in the seawater buoyancy relationship that links conservative temperature,
@@ -31,4 +33,4 @@ and ``\beta_S`` is the haline contraction coefficient.
 
 ### Nonlinear equation of state
 
-Buoyancy is determined by the simplified equations of state introduced by Roquet et al (2015).
+Buoyancy is determined by the simplified equations of state introduced by [Roquet15TEOS](@cite).

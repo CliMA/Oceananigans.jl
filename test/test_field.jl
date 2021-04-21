@@ -11,8 +11,7 @@ correct_field_size(a, g, FieldType, Tx, Ty, Tz) = size(parent(FieldType(a, g))) 
 function run_similar_field_tests(f)
     g = similar(f)
     @test typeof(f) == typeof(g)
-    @test typeof(f) == typeof(g)
-    @test f.boundary_conditions == g.boundary_conditions
+    @test f.grid == g.grid
     return nothing
 end
 
@@ -65,7 +64,6 @@ function run_field_reduction_tests(FT, arch)
             @test minimum(ϕ) == minimum(ϕ_vals)
             @test maximum(ϕ) == maximum(ϕ_vals)
             @test mean(ϕ) == mean(ϕ_vals)
-
             @test minimum(∛, ϕ) == minimum(∛, ϕ_vals)
             @test maximum(abs, ϕ) == maximum(abs, ϕ_vals)
             @test mean(abs2, ϕ) == mean(abs2, ϕ)
@@ -240,7 +238,7 @@ end
         ϕ = CenterField(CPU(), grid)
         @test cpudata(ϕ).parent isa Array
 
-        @hascuda begin
+        if CUDA.has_cuda()
             ϕ = CenterField(GPU(), grid)
             @test cpudata(ϕ).parent isa Array
         end

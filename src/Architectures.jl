@@ -1,7 +1,6 @@
 module Architectures
 
 export
-    @hascuda,
     AbstractArchitecture, AbstractCPUArchitecture, AbstractGPUArchitecture, CPU, GPU,
     device, architecture, array_type, arch_array
 
@@ -45,16 +44,6 @@ struct CPU <: AbstractCPUArchitecture end
 Run Oceananigans on a single NVIDIA CUDA GPU.
 """
 struct GPU <: AbstractGPUArchitecture end
-
-"""
-    @hascuda expr
-
-A macro to compile and execute `expr` only if CUDA is installed and available. Generally used to
-wrap expressions that can only be compiled if `CuArrays` and `CUDAnative` can be loaded.
-"""
-macro hascuda(expr)
-    return has_cuda() ? :($(esc(expr))) : :(nothing)
-end
 
 device(::AbstractCPUArchitecture) = KernelAbstractions.CPU()
 device(::AbstractGPUArchitecture) = KernelAbstractions.CUDADevice()

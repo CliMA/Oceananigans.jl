@@ -1,11 +1,3 @@
-"""
-    VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
-
-A rectilinear grid with with constant horizontal grid spacings `Δx` and `Δy`, and
-non-uniform or stretched vertical grid spacing `Δz` between cell centers and cell faces,
-topology `{TX, TY, TZ}`, and coordinate ranges of type `R` (where a range can be used) and
-`A` (where an array is needed).
-"""
 struct VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
 
     # Number of grid points in (x,y,z).
@@ -41,14 +33,86 @@ struct VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A} <: AbstractRecti
     zᵃᵃᶠ :: A
 end
 
-function VerticallyStretchedRectilinearGrid(FT=Float64; architecture = CPU(),
-                                              size, x, y, zF,
-                                              halo = (1, 1, 1),
-                                          topology = (Periodic, Periodic, Bounded))
+"""
+    VerticallyStretchedRectilinearGrid([FT=Float64]; architecture=CPU(), size, zF,
+                                        x = nothing, y = nothing,
+                                        topology = (Periodic, Periodic, Bounded), halo = nothing)
+
+Creates a `VerticallyStretchedRectilinearGrid` with `size = (Nx, Ny, Nz)` grid points and
+a vertical grid specified by `zF`.
+
+Keyword arguments
+=================
+
+- `size` (required): A tuple prescribing the number of grid points in non-`Flat` directions.
+                     `size` is a 3-tuple for 3D models, a 2-tuple for 2D models, and either a
+                     scalar or 1-tuple for 1D models.
+
+- `topology`: A 3-tuple `(Tx, Ty, Tz)` specifying the topology of the domain.
+              `Tz` must be `Bounded` for `VerticallyStretchedRectilinearGrid`.
+              `Tx` and `Ty` specify whether the `x`- and `y`-` directions are
+              `Periodic`, `Bounded`, or `Flat`. The topology `Flat` indicates that a model does
+              not vary in that directions so that derivatives and interpolation are zero.
+              The default is `topology=(Periodic, Periodic, Bounded)`.
+
+- `architecture`: Specifies whether the array of vertical coordinates, interfaces, and spacings
+                  are stored on the CPU or GPU. Default: `architecture = CPU()`.
+
+- `zF`: An array or function of vertical index `k` that specifies the location of cell faces
+        in the `z-`direction for indices `k=1` through `k=Nz+1`, where `Nz` is the third element
+        of `size`.
+
+- `x`, `y`: Each of `x, y` are 2-tuples that specify the end points of the domain
+            in their respect directions. Scalar values may be used in `Flat` directions.
+
+- `halo`: A tuple of integers that specifies the size of the halo region of cells surrounding
+          the physical interior for each non-`Flat` direction.
+
+The physical extent of the domain can be specified via `x` and `y` keyword arguments
+indicating the left and right endpoints of each dimensions, e.g. `x=(-π, π)`.
+
+A grid topology may be specified via a tuple assigning one of `Periodic`, `Bounded, and `Flat`
+to each dimension. By default, a horizontally periodic grid topology `(Periodic, Periodic, Bounded)`
+is assumed.
+
+Constants are stored using floating point values of type `FT`. By default this is `Float64`.
+Make sure to specify the desired `FT` if not using `Float64`.
+
+Grid properties
+===============
+
+- `(Nx, Ny, Nz)::Int`: Number of physical points in the (x, y, z)-direction
+
+- `(Hx, Hy, Hz)::Int`: Number of halo points in the (x, y, z)-direction
+
+- `(Lx, Ly, Lz)::FT`: Physical extent of the grid in the (x, y, z)-direction
+
+- `(Δx, Δy)::FT`: Grid spacing (distance between grid nodes) in the (x, y)-direction
+
+- `Δzᵃᵃᶜ`: Grid spacing in the z-direction between cell faces.
+           Defined at cell centers in `z` and independent of cell location in (x, y).
+
+- `Δzᵃᵃᶠ`: Grid spacing in the z-direction between cell centers, and defined at cell faces in z.
+           Defined at cell faces in `z` and independent of cell location in (x, y).
+
+- `(xᶜᵃᵃ, yᵃᶜᵃ, zᵃᵃᶜ)`: (x, y, z) coordinates of cell centers.
+
+- `(xᶠᵃᵃ, yᵃᶠᵃ, zᵃᵃᶠ)`: (x, y, z) coordinates of cell faces.
+"""
+function VerticallyStretchedRectilinearGrid(FT = Float64;
+                                            architecture = CPU(),
+                                            size,
+                                            zF,
+                                            x = nothing,
+                                            y = nothing,
+                                            halo = nothing,
+                                            topology = (Periodic, Periodic, Bounded))
 
     TX, TY, TZ = validate_topology(topology)
     size = validate_size(TX, TY, TZ, size)
     halo = validate_halo(TX, TY, TZ, halo)
+    x = validate_dimension_specification(TX, x, :x)
+    y = validate_dimension_specification(TY, y, :y)
     Lx, Ly, x, y = validate_vertically_stretched_grid_xy(TX, TY, FT, x, y)
 
     Nx, Ny, Nz = size
@@ -210,15 +274,12 @@ Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, T
 @inline znode(::Type{Center}, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶜ[k]
 @inline znode(::Type{Face}, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶠ[k]
 
-
 all_x_nodes(::Type{Center}, grid::VerticallyStretchedRectilinearGrid) = grid.xᶜᵃᵃ
 all_x_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.xᶠᵃᵃ
 all_y_nodes(::Type{Center}, grid::VerticallyStretchedRectilinearGrid) = grid.yᵃᶜᵃ
 all_y_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.yᵃᶠᵃ
 all_z_nodes(::Type{Center}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃᵃᶜ
 all_z_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃᵃᶠ
-
-
 
 #
 # Get minima of grid
@@ -227,4 +288,3 @@ all_z_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃ�
 min_Δx(grid::VerticallyStretchedRectilinearGrid) = grid.Δx
 min_Δy(grid::VerticallyStretchedRectilinearGrid) = grid.Δy
 min_Δz(grid::VerticallyStretchedRectilinearGrid) = minimum(view(grid.Δzᵃᵃᶜ, 1:grid.Nz))
-

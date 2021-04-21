@@ -22,6 +22,17 @@ end
 "Fallback for when `insert_location` is called on objects other than expressions."
 insert_location!(anything, location) = nothing
 
+# A very special UnaryOperation
+@inline interpolate_identity(x) = x
+@unary interpolate_identity
+
+interpolate_operation(L, x) = x
+
+function interpolate_operation(L, x::AbstractField)
+    L == location(x) && return x # Don't interpolate unecessarily
+    return interpolate_identity(L, x)
+end
+
 """
     @at location abstract_operation
 
@@ -30,5 +41,12 @@ Modify the `abstract_operation` so that it returns values at
 """
 macro at(location, abstract_operation)
     insert_location!(abstract_operation, location)
-    return esc(abstract_operation)
+
+    # We wrap it all in an interpolator to help "stubborn" binary operations
+    # arrive in the right place.
+    wrapped_operation = quote
+        interpolate_operation($(esc(location)), $(esc(abstract_operation)))
+    end
+
+    return wrapped_operation
 end

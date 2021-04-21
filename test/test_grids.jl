@@ -629,14 +629,6 @@ end
     @testset "Conformal cubed sphere face grid from file" begin
         @info "  Testing conformal cubed sphere face grid construction from file..."
 
-        dd = DataDep("cubed_sphere_32_grid",
-            "Conformal cubed sphere grid with 32×32 grid points on each face",
-            "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
-            "b1dafe4f9142c59a2166458a2def743cd45b20a4ed3a1ae84ad3a530e1eff538" # sha256sum
-        )
-
-        DataDeps.register(dd)
-
         cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 
         for face in 1:6

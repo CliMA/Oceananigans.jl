@@ -52,8 +52,8 @@ using Oceananigans.Grids: halo_size
         @testset "Conditional computation of AveragedFields [$(typeof(arch))]" begin
             @info "  Testing conditional computation of AveragedFields [$(typeof(arch))]"
             for FT in float_types
-                grid = RegularRectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-                c = CenterField(FT, arch, grid)
+                grid = RegularRectilinearGrid(FT, size=(2, 2, 2), extent=(1, 1, 1))
+                c = CenterField(arch, grid)
 
                 for dims in (1, 2, 3, (1, 2), (2, 3), (1, 3), (1, 2, 3))
                     C = AveragedField(c, dims=dims)

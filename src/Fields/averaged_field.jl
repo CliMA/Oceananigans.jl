@@ -3,20 +3,16 @@ using Statistics
 using Oceananigans.Grids
 using Oceananigans.Grids: interior_parent_indices
 
-"""
-    struct AveragedField{X, Y, Z, A, G, N, O} <: AbstractReducedField{X, Y, Z, A, G, N}
+struct AveragedField{X, Y, Z, S, A, D, G, T, N, O} <: AbstractReducedField{X, Y, Z, A, G, T, N}
+            data :: D
+    architecture :: A
+            grid :: G
+            dims :: NTuple{N, Int}
+         operand :: O
+          status :: S
 
-Type representing an average over a field-like object.
-"""
-struct AveragedField{X, Y, Z, S, A, G, N, O} <: AbstractReducedField{X, Y, Z, A, G, N}
-       data :: A
-       grid :: G
-       dims :: NTuple{N, Int}
-    operand :: O
-     status :: S
-
-    function AveragedField{X, Y, Z}(data::A, grid::G, dims, operand::O;
-                                    recompute_safely=true) where {X, Y, Z, A, G, O}
+    function AveragedField{X, Y, Z}(data::D, arch::A, grid::G, dims, operand::O;
+                                    recompute_safely=true) where {X, Y, Z, D, A, G, O}
 
         dims = validate_reduced_dims(dims)
         validate_reduced_locations(X, Y, Z, dims)
@@ -26,12 +22,13 @@ struct AveragedField{X, Y, Z, S, A, G, N, O} <: AbstractReducedField{X, Y, Z, A,
 
         S = typeof(status)
         N = length(dims)
+        T = eltype(grid)
 
-        return new{X, Y, Z, S, A, G, N, O}(data, grid, dims, operand, status)
+        return new{X, Y, Z, S, A, D, G, T, N, O}(data, arch, grid, dims, operand, status)
     end
 
-    function AveragedField{X, Y, Z}(data::A, grid::G, dims, operand::O, status::S) where {X, Y, Z, A, G, O, S}
-        return new{X, Y, Z, S, A, G, length(dims), O}(data, grid, dims, operand, status)
+    function AveragedField{X, Y, Z}(data::D, arch::A, grid::G, dims, operand::O, status::S) where {X, Y, Z, D, A, G, O, S}
+        return new{X, Y, Z, S, A, D, G, eltype(grid), length(dims), O}(data, arch, grid, dims, operand, status)
     end
 end
 
@@ -54,7 +51,7 @@ function AveragedField(operand::AbstractField; dims, data=nothing, recompute_saf
         recompute_safely = false
     end
 
-    return AveragedField{loc[1], loc[2], loc[3]}(data, grid, dims, operand,
+    return AveragedField{loc[1], loc[2], loc[3]}(data, arch, grid, dims, operand,
                                                  recompute_safely=recompute_safely)
 end
 
@@ -91,5 +88,5 @@ compute_at!(avg::AveragedField{X, Y, Z, <:FieldStatus}, time) where {X, Y, Z} =
 #####
 
 Adapt.adapt_structure(to, averaged_field::AveragedField{X, Y, Z}) where {X, Y, Z} =
-    AveragedField{X, Y, Z}(Adapt.adapt(to, averaged_field.data),
+    AveragedField{X, Y, Z}(Adapt.adapt(to, averaged_field.data), nothing,
                            nothing, averaged_field.dims, nothing, nothing)
