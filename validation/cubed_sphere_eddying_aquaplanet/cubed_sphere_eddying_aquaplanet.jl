@@ -165,14 +165,18 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
                free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
                    coriolis = coriolis,
         boundary_conditions = (u=u_bcs, v=v_bcs),
-                    closure = nothing,
+                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=1000),
                     tracers = nothing,
                    buoyancy = nothing
     )
 
+    # Some random noise to get things going.
+    ε(λ, φ, z) = 1e-8 * randn()
+    Oceananigans.set!(model, u=ε, v=ε)
+
     ## Simulation setup
 
-    Δt = 10minutes
+    Δt = 2minutes
 
     g = model.free_surface.gravitational_acceleration
     gravity_wave_speed = sqrt(g * H)
@@ -185,7 +189,7 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
 
     simulation = Simulation(model,
                         Δt = Δt,
-                 stop_time = 30days,
+                 stop_time = 7days,
         iteration_interval = 20,
                   progress = Progress(time_ns()),
                 parameters = (; cfl)
@@ -213,17 +217,16 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     return simulation
 end
 
-# include("animate_on_map_projection.jl")
+include("animate_on_map_projection.jl")
 
-# function run_cubed_sphere_rossby_haurwitz_validation()
+function run_cubed_sphere_eddying_aquaplanet()
 
-#     cubed_sphere_rossby_haurwitz(datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2")
-#     # cubed_sphere_rossby_haurwitz(datadep"cubed_sphere_96_grid/cubed_sphere_96_grid.jld2")
+    cubed_sphere_rossby_haurwitz(datadep"cubed_sphere_96_grid/cubed_sphere_96_grid.jld2")
 
-#     projections = [
-#         ccrs.NearsidePerspective(central_longitude=0, central_latitude=30),
-#         ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
-#     ]
+    projections = [
+        ccrs.NearsidePerspective(central_longitude=0, central_latitude=30),
+        ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
+    ]
 
-#     animate_rossby_haurwitz(projections=projections)
-# end
+    animate_rossby_haurwitz(projections=projections)
+end
