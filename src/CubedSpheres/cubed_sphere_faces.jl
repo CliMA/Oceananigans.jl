@@ -13,6 +13,8 @@ struct CubedSphereFaces{E, F}
     faces :: F
 end
 
+@inline Base.getindex(f::CubedSphereFaces, i::Int) = @inbounds f.faces[i]
+
 const CubedSphereData = CubedSphereFaces{<:OffsetArray}
 
 const CubedSphereField = AbstractField{X, Y, Z, <:Union{Nothing, AbstractArchitecture}, <:ConformalCubedSphereGrid} where {X, Y, Z}

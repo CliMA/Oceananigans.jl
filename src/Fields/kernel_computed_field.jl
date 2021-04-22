@@ -107,16 +107,12 @@ function compute!(kcf::KernelComputedField{X, Y, Z}) where {X, Y, Z}
 
     arch = architecture(kcf)
 
-    workgroup, worksize = work_layout(kcf.grid,
-                                      :xyz,
-                                      location=(X, Y, Z),
-                                      include_right_boundaries=true)
+    args = isnothing(kcf.parameters) ?
+        tuple(kcf.data, kcf.grid, kcf.computed_dependencies...) :
+        tuple(kcf.data, kcf.grid, kcf.computed_dependencies..., kcf.parameters)
 
-    compute_kernel! = kcf.kernel(device(arch), workgroup, worksize)
-
-    event = isnothing(kcf.parameters) ?
-        compute_kernel!(kcf.data, kcf.grid, kcf.computed_dependencies...) :
-        compute_kernel!(kcf.data, kcf.grid, kcf.computed_dependencies..., kcf.parameters)
+    event = launch!(arch, kcf.grid, :xyz, kcf.kernel, args...;   
+                    location=(X, Y, Z), include_right_boundaries=true)
 
     wait(device(arch), event)
 
