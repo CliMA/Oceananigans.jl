@@ -12,7 +12,7 @@ mticker = pyimport("matplotlib.ticker")
 ccrs = pyimport("cartopy.crs")
 cmocean = pyimport("cmocean")
 
-function plot_cubed_sphere_tracer_field!(fig, ax, var, grid; add_colorbar, transform, cmap, vmin, vmax)
+function plot_cubed_sphere_field!(fig, ax, grid, var, loc; add_colorbar, kwargs...)
 
     Nf = grid["faces"] |> keys |> length
     Nx = grid["faces/1/Nx"]
@@ -20,15 +20,18 @@ function plot_cubed_sphere_tracer_field!(fig, ax, var, grid; add_colorbar, trans
     Hx = grid["faces/1/Hx"]
     Hy = grid["faces/1/Hy"]
 
+    ii = 1+Hx:Nx+2Hx
+    jj = 1+Hy:Ny+2Hy
+
     for face in 1:Nf
-        λᶠᶠᵃ = grid["faces/$face/λᶠᶠᵃ"][1+Hx:Nx+2Hx, 1+Hy:Ny+2Hy]
-        φᶠᶠᵃ = grid["faces/$face/φᶠᶠᵃ"][1+Hx:Nx+2Hx, 1+Hy:Ny+2Hy]
 
-        var_face = var[face][:, :, 1]
+        # λ and φ will be the cell boundaries (so there are N+1 of them) for pcolormesh.
+        # Technically these coordinates are wrong for anything but (Center, Center) but
+        # the plots look wonky otherwise so we'll leave these here for now...
+        λ = grid["faces/$face/λᶠᶠᵃ"][ii, jj]
+        φ = grid["faces/$face/φᶠᶠᵃ"][ii, jj]
 
-        var_face_masked = ma.masked_where(np.isnan(var_face), var_face)
-
-        im = ax.pcolormesh(λᶠᶠᵃ, φᶠᶠᵃ, var_face_masked; transform, cmap, vmin, vmax)
+        im = ax.pcolormesh(λ, φ, var[face][:, :, 1]; kwargs...)
 
         # Add colorbar below all the subplots.
         if add_colorbar && face == Nf
@@ -58,17 +61,21 @@ function animate_eddying_aquaplanet(; projections=[ccrs.Robinson()])
         u = file["timeseries/u/$i"]
         v = file["timeseries/v/$i"]
         η = file["timeseries/η/$i"]
+        ζ = file["timeseries/ζ/$i"]
 
         t = prettytime(file["timeseries/t/$i"])
-        plot_title = "Eddying aquaplanet: sea surface height η(λ, φ) at t = $t"
+        plot_title = "Eddying aquaplanet: ζ(λ, φ) at t = $t"
 
         fig = plt.figure(figsize=(16, 9))
         n_subplots = length(projections)
-        subplot_kwargs = (transform=ccrs.PlateCarree(), cmap=cmocean.cm.balance, vmin=-1, vmax=1)
+        subplot_kwargs = (transform=ccrs.PlateCarree(), cmap=cmocean.cm.balance)
 
         for (n, projection) in enumerate(projections)
             ax = fig.add_subplot(1, n_subplots, n, projection=projection)
-            plot_cubed_sphere_tracer_field!(fig, ax, η, file["grid"]; add_colorbar = (n == n_subplots), subplot_kwargs...)
+
+            # plot_cubed_sphere_field!(fig, ax, file["grid"], η, (Center, Center); add_colorbar = (n == n_subplots), subplot_kwargs...)
+            plot_cubed_sphere_field!(fig, ax, file["grid"], ζ, (Face, Face); add_colorbar = (n == n_subplots), vmin=-1e-7, vmax=1e-7, subplot_kwargs...)
+
             n_subplots == 1 && ax.set_title(plot_title)
 
             gl = ax.gridlines(color="gray", alpha=0.5, linestyle="--")

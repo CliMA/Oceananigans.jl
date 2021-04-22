@@ -26,7 +26,7 @@ function (p::Progress)(sim)
     wall_time = (time_ns() - p.interval_start_time) * 1e-9
     progress = 100 * (sim.model.clock.time / sim.stop_time)
 
-    @info @sprintf("[%06.2f%%] Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e, Δ(wall time): %s",
+    @info @sprintf("[%06.2f%%] Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e, Δ(wall time): %s / iteration",
                    progress,
                    prettytime(sim.model.clock.time),
                    sim.model.clock.iteration,
@@ -35,7 +35,7 @@ function (p::Progress)(sim)
                    minimum(sim.model.free_surface.η),
                    maximum(sim.model.free_surface.η),
                    sim.parameters.cfl(sim.model),
-                   prettytime(wall_time))
+                   prettytime(wall_time / sim.iteration_interval))
 
     p.interval_start_time = time_ns()
 
@@ -152,7 +152,7 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     # Minus sign because a negative flux drives currents in the positive x-direction.
     # Hmmm, I think I messed up the magnitude but the resulting wind stress patterns should do the trick for now. It's a little too strong (stronger than the 0.1 N/m² we expect from τx).
     # I'm further scaling it down by a factor of 0.1 so the wind stress is even weaker (for stability/debugging).
-    ψ̃(λ, φ) = - 0.1 * Ω^2 * R^2 * sin(φ) * (-0.02802495608 * erf(1.054092553 * (π - 3φ)) - 0.06266570687 * erf(2.828427125φ) + 0.03765160933 * erf(4.472135955φ) + 0.02802495608 * erf(1.054092553 * (π + 3φ)))
+    ψ̃(λ, φ) = - 0.01 * Ω^2 * R^2 * sin(φ) * (-0.02802495608 * erf(1.054092553 * (π - 3φ)) - 0.06266570687 * erf(2.828427125φ) + 0.03765160933 * erf(4.472135955φ) + 0.02802495608 * erf(1.054092553 * (π + 3φ)))
 
     λ̃(λ) = (λ + 180)/ 360 * 2π
     φ̃(φ) = φ / 180 * π
@@ -173,7 +173,7 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     @inline linear_damping_u(i, j, k, grid, clock, model_fields, μ) = @inbounds - μ * model_fields.u[i, j, k]
     @inline linear_damping_v(i, j, k, grid, clock, model_fields, μ) = @inbounds - μ * model_fields.v[i, j, k]
 
-    μ = 1e-3
+    μ = 1e-4
     u_forcing = Forcing(linear_damping_u, parameters=μ, discrete_form=true)
     v_forcing = Forcing(linear_damping_v, parameters=μ, discrete_form=true)
 
@@ -185,9 +185,10 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
          momentum_advection = VectorInvariant(),
                free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
                    coriolis = coriolis,
-                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=1000),
-        boundary_conditions = (u=u_bcs, v=v_bcs),
-                    forcing = (u=u_forcing, v=v_forcing),
+                    closure = nothing,
+                  # closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=100),
+      # boundary_conditions = (u=u_bcs, v=v_bcs),
+      #             forcing = (u=u_forcing, v=v_forcing),
                     tracers = nothing,
                    buoyancy = nothing
     )
@@ -226,14 +227,13 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     simulation.diagnostics[:state_checker] =
         StateChecker(model, fields=fields_to_check, schedule=IterationInterval(20))
 
-    ζ = VerticalVorticityField(model)
-    output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=ζ))
+    output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=VerticalVorticityField(model)))
 
     simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, output_fields,
-        schedule = TimeInterval(1hour),
-          prefix = "cubed_sphere_eddying_aquaplanet",
-           force = true)
+        JLD2OutputWriter(model, output_fields,
+            schedule = TimeInterval(1hour),
+              prefix = "cubed_sphere_eddying_aquaplanet",
+               force = true)
 
     run!(simulation)
 
