@@ -4,7 +4,6 @@ import Oceananigans.BoundaryConditions:
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_horizontal_velocity_halos!
 
 # These filling functions won't work so let's not use them.
-
  fill_west_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
  fill_east_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 fill_south_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing

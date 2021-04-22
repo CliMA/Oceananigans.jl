@@ -35,7 +35,6 @@ const AbstractCubedSphereField = Union{CubedSphereAbstractField,
 # Just a single face
 const CubedSphereFaceField = AbstractField{X, Y, Z, A, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A}
 
-
 # There must be a way to dispatch in one function without ambiguity with `new_data.jl`...
 
 function new_data(FT, arch::AbstractCPUArchitecture, grid::ConformalCubedSphereGrid, (X, Y, Z))
