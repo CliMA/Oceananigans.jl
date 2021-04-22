@@ -9,7 +9,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_horizontal_velocit
 fill_south_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 fill_north_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 
-function fill_halo_regions!(field::Union{CubedSphereField, CubedSphereReducedField}, arch, args...; kwargs...)
+function fill_halo_regions!(field::AbstractCubedSphereField, arch, args...; kwargs...)
 
     for face_field in faces(field)
         # Fill the top and bottom halos the usual way.

@@ -7,7 +7,6 @@ struct Field{X, Y, Z, A, D, G, T, B} <: AbstractDataField{X, Y, Z, A, G, T}
     boundary_conditions :: B
 
     function Field{X, Y, Z}(data::D, arch::A, grid::G, bcs::B) where {X, Y, Z, D, A, G, B}
-        validate_field_data(X, Y, Z, data, grid)
         T = eltype(grid)
         return new{X, Y, Z, A, D, G, T, B}(data, arch, grid, bcs)
     end
@@ -40,6 +39,8 @@ function Field(X, Y, Z,
                grid::AbstractGrid,
                bcs = FieldBoundaryConditions(grid, (X, Y, Z)),
                data = new_data(eltype(grid), arch, grid, (X, Y, Z)))
+
+    validate_field_data(X, Y, Z, data, grid)
 
     return Field{X, Y, Z}(data, arch, grid, bcs)
 end

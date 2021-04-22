@@ -26,7 +26,7 @@ function validate_field_data(X, Y, Z, data, grid::ConformalCubedSphereGrid)
     return nothing
 end
 
-validate_vertical_velocity_boundary_conditions(w::CubedSphereField) =
+validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
     [validate_vertical_velocity_boundary_conditions(w_face) for w_face in faces(w)]
 
 #####
@@ -35,9 +35,9 @@ validate_vertical_velocity_boundary_conditions(w::CubedSphereField) =
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: apply_flux_bcs!
 
-apply_flux_bcs!(Gcⁿ::CubedSphereField, events, c::CubedSphereField, arch, barrier, clock, model_fields) = [
-    apply_flux_bcs!(face(Gcⁿ, face_number), events, face(c, face_number), arch, barrier, clock, model_fields)
-    for face_number in 1:length(Gcⁿ.data.faces)
+apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCubedSphereField, arch, barrier, clock, model_fields) = [
+    apply_flux_bcs!(get_face(Gcⁿ, face_index), events, get_face(c, face_index), arch, barrier, clock, model_fields)
+    for face_index in 1:length(Gcⁿ.data.faces)
 ]
 
 #####
@@ -46,9 +46,9 @@ apply_flux_bcs!(Gcⁿ::CubedSphereField, events, c::CubedSphereField, arch, barr
 
 import Oceananigans.Diagnostics: error_if_nan_in_field
 
-function error_if_nan_in_field(field::CubedSphereField, name, clock)
-    for (face_number, face_field) in enumerate(faces(field))
-        error_if_nan_in_field(face_field, string(name) * " (face $face_number)", clock)
+function error_if_nan_in_field(field::AbstractCubedSphereField, name, clock)
+    for (face_index, face_field) in enumerate(faces(field))
+        error_if_nan_in_field(face_field, string(name) * " (face $face_index)", clock)
     end
 end
 
@@ -62,8 +62,8 @@ function accurate_cell_advection_timescale(grid::ConformalCubedSphereGrid, veloc
 
     min_timescale_on_faces = []
 
-    for (face_number, grid_face) in enumerate(grid.faces)
-        velocities_face = maybe_replace_with_face(velocities, grid, face_number)
+    for (face_index, grid_face) in enumerate(grid.faces)
+        velocities_face = get_face(velocities, face_index)
         min_timescale_on_face = accurate_cell_advection_timescale(grid_face, velocities_face)
         push!(min_timescale_on_faces, min_timescale_on_face)
     end
@@ -77,7 +77,7 @@ end
 
 import Oceananigans.OutputWriters: fetch_output
 
-fetch_output(field::CubedSphereField, model, field_slicer) =
+fetch_output(field::AbstractCubedSphereField, model, field_slicer) =
     Tuple(fetch_output(face_field, model, field_slicer) for face_field in faces(field))
 
 #####
@@ -86,15 +86,15 @@ fetch_output(field::CubedSphereField, model, field_slicer) =
 
 import Oceananigans.Diagnostics: state_check
 
-function state_check(field::CubedSphereField, name, pad)
+function state_check(field::AbstractCubedSphereField, name, pad)
     face_fields = faces(field)
     Nf = length(face_fields)
-    for (face_number, face_field) in enumerate(face_fields)
-        face_str = " face $face_number"
+    for (face_index, face_field) in enumerate(face_fields)
+        face_str = " face $face_index"
         state_check(face_field, string(name) * face_str, pad + length(face_str))
 
         # Leave empty line between fields for easier visual inspection.
-        face_number == Nf && @info ""
+        face_index == Nf && @info ""
     end
 end
 
