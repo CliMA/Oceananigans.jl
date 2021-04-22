@@ -1,21 +1,21 @@
 using Oceananigans.Architectures: AbstractCPUArchitecture
-using Oceananigans.Fields: AbstractField
+using Oceananigans.Fields: AbstractField, ReducedField
 
 import Oceananigans.Fields: set!
 
-const CPUCubedSphereField = AbstractField{X, Y, Z, <:CPU, <:ConformalCubedSphereGrid} where {X, Y, Z}
-const CPUCubedSphereFaceField = AbstractField{X, Y, Z, <:CPU, <:ConformalCubedSphereFaceGrid} where {X, Y, Z}
-
-function set!(u::CPUCubedSphereField, v::CPUCubedSphereField)
+function set!(u::AbstractCubedSphereField, v::AbstractCubedSphereField)
     for (u_face, v_face) in zip(faces(u), faces(v))
         @. u_face.data.parent = v_face.data.parent
     end
     return nothing
 end
 
-set!(field::CPUCubedSphereField, f::Function) = [set!(field_face, f) for field_face in faces(field)]
+set!(field::AbstractCubedSphereField, f) = [set_face_field!(field_face, f) for field_face in faces(field)]
 
-function set!(field::CPUCubedSphereFaceField{LX, LY, LZ}, f::Function) where {LX, LY, LZ}
+set_face_field!(field, a) = set!(field, a)
+
+function set_face_field!(field, f::Function)
+    LX, LY, LZ = location(field)
     grid = field.grid
 
     for i in 1:grid.Nx, j in 1:grid.Ny, k in 1:grid.Nz
@@ -28,7 +28,8 @@ function set!(field::CPUCubedSphereFaceField{LX, LY, LZ}, f::Function) where {LX
     return nothing
 end
 
-function set!(field::CPUCubedSphereFaceField{LX, LY, Nothing}, f::Function) where {LX, LY}
+
+function set_face_field!(field::ReducedField{LX, LY, Nothing}, f::Function) where {LX, LY}
     grid = field.grid
 
     for i in 1:grid.Nx, j in 1:grid.Ny

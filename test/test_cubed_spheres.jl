@@ -1,6 +1,13 @@
+using Test
+
+using Statistics: mean
+
+using Oceananigans
 using Oceananigans.CubedSpheres
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
+
+include("data_dependencies.jl")
 
 @testset "Cubed spheres" begin
 
@@ -33,10 +40,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
     end
 
     @testset "CubedSphereData and CubedSphereFields" begin
-        c = model.tracers
+        c = model.tracers.c
+        set!(c, 0)
 
-        @test try fill_halo_regions!(c, arch); true; catch; false; end
-        @test try set!(c, 0); true; catch; false; end
+        @test all(face_c for face_c in faces(c))
         @test maximum(abs, c) == 0
         @test minimum(abs, c) == 0
         @test mean(c) == 0
