@@ -27,7 +27,7 @@ grids = Dict(
 
 free_surfaces = Dict(
     :ExplicitFreeSurface => ExplicitFreeSurface(),
-    :ImplicitFreeSurface => ImplicitFreeSurface()
+    :ImplicitFreeSurface => ImplicitFreeSurface(maximum_iterations=1, tolerance=-Inf)  # Force it to take exactly 1 iteration.
 )
 
 function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
@@ -42,7 +42,7 @@ function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
     time_step!(model, 1) # warmup
 
     trial = @benchmark begin
-        time_step!($model, 1)
+        CUDA.@sync blocking=true time_step!($model, 1)
     end samples=10
 
     return trial
@@ -55,13 +55,13 @@ Architectures = has_cuda() ? [CPU, GPU] : [CPU]
 grid_types = [
     :RegularRectilinearGrid,
     :RegularLatitudeLongitudeGrid,
-    # ConformalCubedSphereFaceGrid,
+    :ConformalCubedSphereFaceGrid,
     :ConformalCubedSphereGrid
 ]
 
 free_surface_types = [
     :ExplicitFreeSurface,
-    # :ImplicitFreeSurface
+    :ImplicitFreeSurface
 ]
 
 # Run and summarize benchmarks
