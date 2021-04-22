@@ -3,14 +3,17 @@ using Oceananigans.Fields: AbstractField, ReducedField
 
 import Oceananigans.Fields: set!
 
-function set!(u::AbstractCubedSphereField, v::AbstractCubedSphereField)
+const CubedSphereCPUField = CubedSphereField{X, Y, Z, <:AbstractCPUArchitecture} where {X, Y, Z}
+
+function set!(u::CubedSphereCPUField , v::CubedSphereCPUField)
     for (u_face, v_face) in zip(faces(u), faces(v))
         @. u_face.data.parent = v_face.data.parent
     end
     return nothing
 end
 
-set!(field::AbstractCubedSphereField, f) = [set_face_field!(field_face, f) for field_face in faces(field)]
+set!(field::CubedSphereCPUField, f::Function) = [set_face_field!(field_face, f) for field_face in faces(field)]
+set!(field::CubedSphereCPUField, f::Number) = [set_face_field!(field_face, f) for field_face in faces(field)]
 
 set_face_field!(field, a) = set!(field, a)
 
@@ -27,7 +30,6 @@ function set_face_field!(field, f::Function)
 
     return nothing
 end
-
 
 function set_face_field!(field::ReducedField{LX, LY, Nothing}, f::Function) where {LX, LY}
     grid = field.grid

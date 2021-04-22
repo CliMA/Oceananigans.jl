@@ -43,7 +43,7 @@ include("data_dependencies.jl")
         c = model.tracers.c
         set!(c, 0)
 
-        @test all(face_c for face_c in faces(c))
+        @test all(all(face_c .== 0) for face_c in faces(c))
         @test maximum(abs, c) == 0
         @test minimum(abs, c) == 0
         @test mean(c) == 0
