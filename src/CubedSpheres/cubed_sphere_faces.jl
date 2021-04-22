@@ -17,7 +17,7 @@ const CubedSphereData = CubedSphereFaces{<:OffsetArray}
 
 const CubedSphereField = AbstractField{X, Y, Z, <:Union{Nothing, AbstractArchitecture}, <:ConformalCubedSphereGrid} where {X, Y, Z}
 const CubedSphereFaceField = AbstractField{X, Y, Z, A, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A}
-const CubedSphereReducedField = ReducedField{X, Y, Z, A, D, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A, D}
+const CubedSphereReducedField = ReducedField{X, Y, Z, A, D, <:ConformalCubedSphereGrid} where {X, Y, Z, A, D}
 
 # There must be a way to dispatch in one function without ambiguity with `new_data.jl`...
 

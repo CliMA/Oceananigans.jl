@@ -58,8 +58,9 @@ export
     # Models
     IncompressibleModel, NonDimensionalIncompressibleModel, HydrostaticFreeSurfaceModel, fields,
 
-    # Hydrostatic free surface model
-    ExplicitFreeSurface, VectorInvariant, HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
+    # Hydrostatic free surface model stuff
+    VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface,
+    HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
     PrescribedVelocityFields,
 
     # Time stepping
