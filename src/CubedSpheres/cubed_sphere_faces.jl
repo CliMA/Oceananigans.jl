@@ -38,10 +38,10 @@ function FieldBoundaryConditions(grid::ConformalCubedSphereGrid, (X, Y, Z); user
     faces = Tuple(
         inject_cubed_sphere_exchange_boundary_conditions(
             FieldBoundaryConditions(face_grid, (X, Y, Z); user_defined_bcs...),
-            face_number,
+            face_index,
             grid.face_connectivity
         )
-        for (face_number, face_grid) in enumerate(grid.faces)
+        for (face_index, face_grid) in enumerate(grid.faces)
     )
 
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
@@ -53,10 +53,10 @@ end
 
 Base.size(data::CubedSphereData) = (size(data.faces[1])..., length(data.faces))
 
-face(field::CubedSphereField{X, Y, Z}, face_number) where {X, Y, Z} =
-    Field(X, Y, Z, field.architecture, field.grid.faces[face_number], field.boundary_conditions.faces[face_number], field.data.faces[face_number])
+get_face(field::CubedSphereField{X, Y, Z}, face_index) where {X, Y, Z} =
+    Field(X, Y, Z, field.architecture, field.grid.faces[face_index], field.boundary_conditions.faces[face_index], field.data.faces[face_index])
 
-faces(field::CubedSphereField) = Tuple(face(field, face_number) for face_number in 1:length(field.data.faces))
+faces(field::CubedSphereField) = Tuple(get_face(field, face_index) for face_index in 1:length(field.data.faces))
 
 Base.minimum(field::CubedSphereField; dims=:) = minimum(minimum(face_field; dims) for face_field in faces(field))
 Base.maximum(field::CubedSphereField; dims=:) = maximum(maximum(face_field; dims) for face_field in faces(field))

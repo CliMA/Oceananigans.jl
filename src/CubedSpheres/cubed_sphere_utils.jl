@@ -115,18 +115,18 @@ function sides_in_the_same_dimension(side1, side2)
     return false
 end
 
-function cubed_sphere_halo(cubed_sphere_field, location, face_number, side)
+function cubed_sphere_halo(cubed_sphere_field, location, face_index, side)
     LX, LY, LZ = location
-    src_field = face(cubed_sphere_field, face_number)
+    src_field = get_face(cubed_sphere_field, face_index)
     side == :west  && return  underlying_west_halo(src_field.data, src_field.grid, LX)
     side == :east  && return  underlying_east_halo(src_field.data, src_field.grid, LX)
     side == :south && return underlying_south_halo(src_field.data, src_field.grid, LY)
     side == :north && return underlying_north_halo(src_field.data, src_field.grid, LY)
 end
 
-function cubed_sphere_boundary(cubed_sphere_field, location, face_number, side)
+function cubed_sphere_boundary(cubed_sphere_field, location, face_index, side)
     LX, LY, LZ = location
-    src_field = face(cubed_sphere_field, face_number)
+    src_field = get_face(cubed_sphere_field, face_index)
     side == :west  && return  underlying_west_boundary(src_field.data, src_field.grid, LX)
     side == :east  && return  underlying_east_boundary(src_field.data, src_field.grid, LX)
     side == :south && return underlying_south_boundary(src_field.data, src_field.grid, LY)
