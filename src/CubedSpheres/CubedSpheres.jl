@@ -109,10 +109,13 @@ end
 ##### Output writing for cubed sphere fields
 #####
 
+using Oceananigans.Fields: compute!
 import Oceananigans.OutputWriters: fetch_output
 
-fetch_output(field::AbstractCubedSphereField, model, field_slicer) =
-    Tuple(fetch_output(face_field, model, field_slicer) for face_field in faces(field))
+function fetch_output(field::AbstractCubedSphereField, model, field_slicer)
+    compute!(field)
+    return Tuple(fetch_output(face_field, model, field_slicer) for face_field in faces(field))
+end
 
 #####
 ##### StateChecker for each face is useful for debugging
