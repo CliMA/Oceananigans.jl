@@ -228,8 +228,17 @@ function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, z_faces)
     return Lz, zF, zC, ΔzF, ΔzC
 end
 
-# We cannot reconstruct a VerticallyStretchedRectilinearGrid without the zF_generator.
-# So the best we can do is tell the user what they should have done.
+"""
+    with_halo(new_halo, old_grid::VerticallyStretchedRectilinearGrid)
+
+Returns a new `VerticallyStretchedRectilinearGrid` with the same properties as
+`old_grid` but with halos set to `new_halo`.
+
+Note that in contrast to the constructor for `VerticallyStretchedRectilinearGrid`,
+`new_halo` is expected to be a 3-`Tuple` by `with_halo`. The elements
+of `new_halo` corresponding to `Flat` directions are removed (and are
+therefore ignored) prior to constructing the new `VerticallyStretchedRectilinearGrid`.
+"""
 function with_halo(new_halo, old_grid::VerticallyStretchedRectilinearGrid)
 
     Nx, Ny, Nz = size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
