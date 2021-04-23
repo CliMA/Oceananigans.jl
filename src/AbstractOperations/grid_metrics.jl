@@ -44,7 +44,7 @@ metric_function_prefix(::ZAreaMetric) = :Az
 
 struct VolumeMetric <: AbstractGridMetric end 
 
-metric_function_prefix(::Volume) = :V
+metric_function_prefix(::VolumeMetric) = :V
 
 # Convenient instances for users
 const Δx = XSpacingMetric()
