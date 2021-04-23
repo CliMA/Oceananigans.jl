@@ -9,7 +9,7 @@ for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Der
     end
 end
 
-operation_name(::GridMetricOperation) = "GridMetric"
+operation_name(op::GridMetricOperation) = string(op.metric)
 
 function show_interp(op)
     op_str = string(op)
