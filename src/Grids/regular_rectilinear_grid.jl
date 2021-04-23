@@ -215,7 +215,6 @@ therefore ignored) prior to constructing the new `RegularRectilinearGrid`.
 """
 function with_halo(new_halo, old_grid::RegularRectilinearGrid)
 
-    FT = eltype(old_grid)
     Nx, Ny, Nz = size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
@@ -229,7 +228,7 @@ function with_halo(new_halo, old_grid::RegularRectilinearGrid)
     new_halo = pop_flat_elements(new_halo, topo)
 
     new_grid = RegularRectilinearGrid(eltype(old_grid); size=size, x=x, y=y, z=z,
-                                    topology=topo, halo=new_halo)
+                                      topology=topo, halo=new_halo)
 
     return new_grid
 end
