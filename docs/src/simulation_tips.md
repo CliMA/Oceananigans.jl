@@ -191,11 +191,66 @@ to achieve this
 ### Arrays in GPUs are usually different from arrays in CPUs
 
 On the CPU Oceananigans.jl uses regular `Array`s, but on the GPU it has to use `CuArray`s
-from the CUDA.jl package. You might need to keep this difference in mind when using arrays
-to `set!` initial conditions or when using arrays to provide boundary conditions and
-forcing functions.
+from the CUDA.jl package. While deep down both are arrays, their implementations are different
+and both can behave very differently. For example if can be difficult just view a `CuArray`.
+Consider the example below:
 
-To learn more about working with `CuArray`s, see the
+```julia
+julia> using Oceananigans; using Adapt
+
+julia> grid = RegularRectilinearGrid(size=(1,1,1), extent=(1,1,1))
+RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}
+                   domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
+                 topology: (Periodic, Periodic, Bounded)
+  resolution (Nx, Ny, Nz): (1, 1, 1)
+   halo size (Hx, Hy, Hz): (1, 1, 1)
+grid spacing (Δx, Δy, Δz): (1.0, 1.0, 1.0)
+
+julia> model = IncompressibleModel(grid=grid, architecture=GPU())
+IncompressibleModel{GPU, Float64}(time = 0 seconds, iteration = 0) 
+├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── tracers: (:T, :S)
+├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
+├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+└── coriolis: Nothing
+
+julia> typeof(model.velocities.u.data)
+OffsetArrays.OffsetArray{Float64,3,CUDA.CuArray{Float64,3}}
+
+julia> adapt(Array, model.velocities.u.data)
+3×3×3 OffsetArray(::Array{Float64,3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+[:, :, 0] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+
+[:, :, 1] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+
+[:, :, 2] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+```
+
+Notice that in order to view the `CuArray` that stores values for `u` we needed to transform
+it into a regular `Array` first using `Adapt.adapt`. If we naively try to view the `CuArray`
+without that step we get an error:
+
+```julia
+julia> model.velocities.u.data
+3×3×3 OffsetArray(::CUDA.CuArray{Float64,3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+[:, :, 0] =
+Error showing value of type OffsetArrays.OffsetArray{Float64,3,CUDA.CuArray{Float64,3}}:
+ERROR: scalar getindex is disallowed
+```
+
+
+You might also need to keep this difference in mind when using arrays
+to `set!` initial conditions or when using arrays to provide boundary conditions and
+forcing functions. To learn more about working with `CuArray`s, see the
 [array programming](https://juliagpu.github.io/CUDA.jl/dev/usage/array/) section
 of the CUDA.jl documentation.
 
