@@ -125,9 +125,6 @@ end
 "Returns the architecture of on which `f` is defined."
 architecture(f::AbstractField) = f.architecture
 
-"Returns the length of a field's `data`."
-@inline Base.length(f::AbstractField) = length(f.data)
-
 "Returns the topology of a fields' `grid`."
 @inline topology(f, args...) = topology(f.grid, args...)
 
@@ -139,6 +136,9 @@ This is a 3-tuple of integers corresponding to the number of interior nodes
 of `f` along `x, y, z`.
 """
 Base.size(f::AbstractField) = size(location(f), f.grid)
+
+"Returns the length of a field's `data`."
+@inline Base.length(f::AbstractField) = prod(size(f))
 
 """
     total_size(field::AbstractField)

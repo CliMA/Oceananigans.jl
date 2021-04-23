@@ -2,8 +2,9 @@
 ##### Convinience functions
 #####
 
-Base.length(loc, topo, N) = N
+Base.length(::Type{Face}, topo, N) = N
 Base.length(::Type{Face}, ::Type{Bounded}, N) = N+1
+Base.length(::Type{Periodic}, topo, N) = N
 Base.length(::Type{Nothing}, topo, N) = 1
 
 function Base.size(loc, grid::AbstractGrid)
