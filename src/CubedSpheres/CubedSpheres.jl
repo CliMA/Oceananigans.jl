@@ -1,29 +1,44 @@
 module CubedSpheres
 
-export
-    ConformalCubedSphereGrid,
-    ConformalCubedSphereField,
-    λnodes, φnodes
+export ConformalCubedSphereGrid, face, faces, λnodes, φnodes
 
 include("cubed_sphere_utils.jl")
 include("conformal_cubed_sphere_grid.jl")
 include("cubed_sphere_exchange_bcs.jl")
-include("cubed_sphere_fields.jl")
+include("cubed_sphere_faces.jl")
 include("cubed_sphere_set!.jl")
 include("cubed_sphere_halo_filling.jl")
 include("cubed_sphere_kernel_launching.jl")
 
 #####
-##### Proper launch! when `ExplicitFreeSurface` is an argument
+##### Validating cubed sphere stuff
 #####
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, PrescribedVelocityFields
+import Oceananigans.Fields: validate_field_data
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_vertical_velocity_boundary_conditions
 
-maybe_replace_with_face(free_surface::ExplicitFreeSurface, cubed_sphere_grid, face_number) =
-    ExplicitFreeSurface(free_surface.η.faces[face_number], free_surface.gravitational_acceleration)
+function validate_field_data(X, Y, Z, data, grid::ConformalCubedSphereGrid)
 
-maybe_replace_with_face(velocities::PrescribedVelocityFields, cubed_sphere_grid, face_number) =
-    PrescribedVelocityFields(velocities.u.faces[face_number], velocities.v.faces[face_number], velocities.w.faces[face_number], velocities.parameters)
+    for (face_data, face_grid) in zip(data.faces, grid.faces)
+        validate_field_data(X, Y, Z, face_data, face_grid)
+    end
+
+    return nothing
+end
+
+validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
+    [validate_vertical_velocity_boundary_conditions(w_face) for w_face in faces(w)]
+
+#####
+##### Applying flux boundary conditions
+#####
+
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: apply_flux_bcs!
+
+apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCubedSphereField, arch, barrier, clock, model_fields) = [
+    apply_flux_bcs!(get_face(Gcⁿ, face_index), events, get_face(c, face_index), arch, barrier, clock, model_fields)
+    for face_index in 1:length(Gcⁿ.data.faces)
+]
 
 #####
 ##### NaN checker for cubed sphere fields
@@ -32,8 +47,8 @@ maybe_replace_with_face(velocities::PrescribedVelocityFields, cubed_sphere_grid,
 import Oceananigans.Diagnostics: error_if_nan_in_field
 
 function error_if_nan_in_field(field::AbstractCubedSphereField, name, clock)
-    for (face_number, field_face) in enumerate(field.faces)
-        error_if_nan_in_field(field_face, string(name) * " (face $face_number)", clock)
+    for (face_index, face_field) in enumerate(faces(field))
+        error_if_nan_in_field(face_field, string(name) * " (face $face_index)", clock)
     end
 end
 
@@ -47,8 +62,8 @@ function accurate_cell_advection_timescale(grid::ConformalCubedSphereGrid, veloc
 
     min_timescale_on_faces = []
 
-    for (face_number, grid_face) in enumerate(grid.faces)
-        velocities_face = maybe_replace_with_face(velocities, grid, face_number)
+    for (face_index, grid_face) in enumerate(grid.faces)
+        velocities_face = get_face(velocities, face_index)
         min_timescale_on_face = accurate_cell_advection_timescale(grid_face, velocities_face)
         push!(min_timescale_on_faces, min_timescale_on_face)
     end
@@ -63,7 +78,7 @@ end
 import Oceananigans.OutputWriters: fetch_output
 
 fetch_output(field::AbstractCubedSphereField, model, field_slicer) =
-    Tuple(fetch_output(field_face, model, field_slicer) for field_face in field.faces)
+    Tuple(fetch_output(face_field, model, field_slicer) for face_field in faces(field))
 
 #####
 ##### StateChecker for each face is useful for debugging
@@ -72,13 +87,14 @@ fetch_output(field::AbstractCubedSphereField, model, field_slicer) =
 import Oceananigans.Diagnostics: state_check
 
 function state_check(field::AbstractCubedSphereField, name, pad)
-    Nf = length(field.faces)
-    for (face_number, field_face) in enumerate(field.faces)
-        face_str = " face $face_number"
-        state_check(field_face, string(name) * face_str, pad + length(face_str))
+    face_fields = faces(field)
+    Nf = length(face_fields)
+    for (face_index, face_field) in enumerate(face_fields)
+        face_str = " face $face_index"
+        state_check(face_field, string(name) * face_str, pad + length(face_str))
 
         # Leave empty line between fields for easier visual inspection.
-        face_number == Nf && @info ""
+        face_index == Nf && @info ""
     end
 end
 

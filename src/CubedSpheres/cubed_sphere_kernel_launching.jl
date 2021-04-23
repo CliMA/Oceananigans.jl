@@ -1,31 +1,37 @@
 using KernelAbstractions: Event, MultiEvent
-using Oceananigans.Architectures: device
 
-using Oceananigans.Utils: launch!
+using Oceananigans.Architectures: device
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, PrescribedVelocityFields
 
 import Oceananigans.Utils: launch!
 
-maybe_replace_with_face(elem, cubed_sphere_grid, face_number) = elem
+get_face(obj, face_index) = obj
+get_face(t::Tuple, face_index) = Tuple(get_face(t_elem, face_index) for t_elem in t)
+get_face(nt::NamedTuple, face_index) = NamedTuple{keys(nt)}(get_face(nt_elem, face_index) for nt_elem in nt)
 
-maybe_replace_with_face(grid::ConformalCubedSphereGrid, cubed_sphere_grid, face_number) = grid.faces[face_number]
-maybe_replace_with_face(field::AbstractCubedSphereField, cubed_sphere_grid, face_number) = field.faces[face_number]
+get_face(grid::ConformalCubedSphereGrid, face_index) = grid.faces[face_index]
+get_face(faces::CubedSphereFaces, face_index) = faces[face_index]
 
-maybe_replace_with_face(t::Tuple, cubed_sphere_grid, face_number) = Tuple(maybe_replace_with_face(t_elem, cubed_sphere_grid, face_number) for t_elem in t)
-maybe_replace_with_face(nt::NamedTuple, cubed_sphere_grid, face_number) = NamedTuple{keys(nt)}(maybe_replace_with_face(nt_elem, cubed_sphere_grid, face_number) for nt_elem in nt)
+get_face(free_surface::ExplicitFreeSurface, face_index) =
+    ExplicitFreeSurface(get_face(free_surface.η, face_index), free_surface.gravitational_acceleration)
 
-function launch!(arch, grid::ConformalCubedSphereGrid, args...; kwargs...)
+get_face(velocities::PrescribedVelocityFields, face_index) =
+    PrescribedVelocityFields(get_face(velocities.u, face_index),
+                             get_face(velocities.v, face_index),
+                             get_face(velocities.w, face_index),
+                             velocities.parameters)
+
+function launch!(arch, grid::ConformalCubedSphereGrid, dims, kernel!, args...; kwargs...)
 
     events = []
-    for (face_number, grid_face) in enumerate(grid.faces)
-        new_args = Tuple(maybe_replace_with_face(elem, grid, face_number) for elem in args)
-        event = launch!(arch, grid_face, new_args...; kwargs...)
+
+    for (face_index, face_grid) in enumerate(grid.faces)
+        face_args = Tuple(get_face(arg, face_index) for arg in args)
+        event = launch!(arch, face_grid, dims, kernel!, face_args...; kwargs...)
         push!(events, event)
     end
 
-    # We should return the events but let's just wait here because errors.
     events = filter(e -> e isa Event, events)
-    wait(device(arch), MultiEvent(Tuple(events)))
 
-    # TODO: Other function expect an `event` to be returned.
-    return events[1]
+    return MultiEvent(Tuple(events))
 end

@@ -1,8 +1,10 @@
 module Models
 
 export
-    IncompressibleModel, NonDimensionalIncompressibleModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
-    ExplicitFreeSurface, VectorInvariant, HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
+    IncompressibleModel, NonDimensionalIncompressibleModel, ShallowWaterModel,
+    HydrostaticFreeSurfaceModel, VectorInvariant,
+    ExplicitFreeSurface, ImplicitFreeSurface,
+    HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
     PrescribedVelocityFields
 
 using Oceananigans: AbstractModel
@@ -17,7 +19,8 @@ using .IncompressibleModels: IncompressibleModel, NonDimensionalIncompressibleMo
 using .ShallowWaterModels: ShallowWaterModel
 
 using .HydrostaticFreeSurfaceModels:
-    HydrostaticFreeSurfaceModel, ExplicitFreeSurface, VectorInvariant,
+    HydrostaticFreeSurfaceModel, VectorInvariant,
+    ExplicitFreeSurface, ImplicitFreeSurface,
     HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
     PrescribedVelocityFields
 

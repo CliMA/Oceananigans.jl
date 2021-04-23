@@ -410,8 +410,7 @@ end
 
         @testset "Unary operations and derivatives [$FT]" begin
             for ψ in (u, v, w, c)
-                for op_symbol in Oceananigans.AbstractOperations.unary_operators
-                    op = eval(op_symbol)
+                for op in (sqrt, sin, cos, exp, tanh)
                     @test typeof(op(ψ)[2, 2, 2]) <: Number
                 end
 
@@ -544,8 +543,6 @@ end
 
                     u, v, w, T, S = fields(model)
 
-                    @test_throws ArgumentError @at (Nothing, Nothing, Center) T * S
-
                     for ϕ in (u, v, w, T, S)
                         for op in (sin, cos, sqrt, exp, tanh)
                             @test op(ϕ) isa UnaryOperation
@@ -587,8 +584,8 @@ end
 
                 @testset "Unary computations [$FT, $(typeof(arch))]" begin
                     @info "      Testing compute! unary operations..."
-                    for unary in Oceananigans.AbstractOperations.unary_operators
-                        @test compute_unary(eval(unary), model)
+                    for unary in (sqrt, sin, cos, exp, tanh)
+                        @test compute_unary(unary, model)
                     end
                 end
 
@@ -597,6 +594,15 @@ end
                     @test compute_plus(model)
                     @test compute_minus(model)
                     @test compute_times(model)
+
+                    # Basic compilation test for nested BinaryOperations...
+                    u, v, w = model.velocities
+                    @test try
+                        compute!(ComputedField(u + v - w))
+                        true
+                    catch
+                        false
+                    end
                 end
 
                 @testset "Multiary computations [$FT, $(typeof(arch))]" begin
@@ -661,12 +667,7 @@ end
                     @info "      Testing operations with AveragedField..."
 
                     T, S = model.tracers
-
                     TS = AveragedField(T * S, dims=(1, 2))
-
-                    @test_throws ArgumentError @at (Nothing, Nothing, Center) T * S
-                    @test_throws ArgumentError TS * S
-
                     @test operations_with_averaged_field(model)
                 end
 
@@ -695,26 +696,44 @@ end
 
                     @test computations_with_averaged_field_derivative(model)
 
-                    # These don't work on the GPU right now
-                    if arch isa CPU
-                        @test computations_with_averaged_fields(model)
-                    else
-                        @test_skip computations_with_averaged_fields(model)
-                    end
+                    u, v, w = model.velocities
+
+                    set!(model, enforce_incompressibility = false, u = (x, y, z) -> z, v = 2, w = 3)
+
+                    # Two ways to compute turbulent kinetic energy
+                    U = AveragedField(u, dims=(1, 2))
+                    V = AveragedField(v, dims=(1, 2))
+
+                    # Build up compilation tests incrementally...
+                    u_prime              = u - U
+                    u_prime_ccc          = @at (Center, Center, Center) u - U
+                    u_prime_squared      = (u - U)^2
+                    u_prime_squared_ccc  = @at (Center, Center, Center) (u - U)^2
+                    horizontal_twice_tke = (u - U)^2 + (v - V)^2
+                    horizontal_tke       = ((u - U)^2 + (v - V)^2) / 2
+                    horizontal_tke_ccc   = @at (Center, Center, Center) ((u - U)^2 + (v - V)^2) / 2
+                    twice_tke            = (u - U)^2  + (v - V)^2 + w^2
+                    tke                  = ((u - U)^2  + (v - V)^2 + w^2) / 2
+                    tke_ccc              = @at (Center, Center, Center) ((u - U)^2  + (v - V)^2 + w^2) / 2
+
+                    @test try compute!(ComputedField(u_prime             )); true; catch; false; end
+                    @test try compute!(ComputedField(u_prime_ccc         )); true; catch; false; end
+                    @test try compute!(ComputedField(u_prime_squared     )); true; catch; false; end
+                    @test try compute!(ComputedField(u_prime_squared_ccc )); true; catch; false; end
+                    @test try compute!(ComputedField(horizontal_twice_tke)); true; catch; false; end
+                    @test try compute!(ComputedField(horizontal_tke      )); true; catch; false; end
+                    @test try compute!(ComputedField(twice_tke           )); true; catch; false; end
+
+                    @test try compute!(ComputedField(horizontal_tke_ccc  )); true; catch; false; end
+                    @test try compute!(ComputedField(tke                 )); true; catch; false; end
+                    @test try compute!(ComputedField(tke_ccc             )); true; catch; false; end
+
+                    computed_tke = ComputedField(tke_ccc)
+                    @test (compute!(computed_tke); all(interior(computed_tke)[2:3, 2:3, 2:3] .== 9/2))
                 end
 
                 @testset "Computations with ComputedFields [$FT, $(typeof(arch))]" begin
                     @info "      Testing computations with ComputedField [$FT, $(typeof(arch))]..."
-
-                    # Basic compilation test...
-                    u, v, w = model.velocities
-                    @test try
-                        compute!(ComputedField(u + v - w))
-                        true
-                    catch
-                        false
-                    end
-
                     @test computations_with_computed_fields(model)
                 end
 

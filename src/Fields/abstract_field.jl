@@ -11,19 +11,31 @@ import Base: minimum, maximum, extrema
 import Statistics: mean
 import Oceananigans: location, instantiated_location
 import Oceananigans.Architectures: architecture
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, xnode, ynode, znode
 import Oceananigans.Utils: datatuple
 
-"""
-    AbstractField{X, Y, Z, A, G}
+const ArchOrNothing = Union{AbstractArchitecture, Nothing}
+const GridOrNothing = Union{AbstractGrid, Nothing}
 
-Abstract supertype for fields located at `(X, Y, Z)` with data stored in a container
-of type `A`. The field is defined on a grid `G`.
 """
-abstract type AbstractField{X, Y, Z,
-                            A <: Union{AbstractArchitecture, Nothing},
-                            G <: Union{AbstractGrid, Nothing}} end
+    AbstractField{X, Y, Z, A, G, T}
+
+Abstract supertype for fields located at `(X, Y, Z)` on architecture `A`
+and defined on a grid `G` with eltype `T`.
+"""
+abstract type AbstractField{X, Y, Z, A <: ArchOrNothing, G <: GridOrNothing, T} <: AbstractArray{T, 3} end
+
+"""
+    AbstractDataField{X, Y, Z, A, G}
+
+Abstract supertype for fields with concrete data in settable underlying arrays,
+located at `(X, Y, Z)` on architecture `A` and defined on a grid `G` with eltype `T`.
+"""
+abstract type AbstractDataField{X, Y, Z, A, G, T} <: AbstractField{X, Y, Z, A, G, T} end
+
+Base.IndexStyle(::AbstractField) = IndexCartesian()
 
 function validate_field_data(X, Y, Z, data, grid)
     Tx, Ty, Tz = total_size((X, Y, Z), grid)
@@ -102,7 +114,7 @@ end
 ##### AbstractField functionality
 #####
 
-@inline location(a) = nothing
+@inline location(a) = (Nothing, Nothing, Nothing)
 
 "Returns the location `(X, Y, Z)` of an `AbstractField{X, Y, Z}`."
 @inline location(::AbstractField{X, Y, Z}) where {X, Y, Z} = (X, Y, Z) # note no instantiation
@@ -110,7 +122,7 @@ end
 
 @inline instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
 
-"Returns the architecture where the field data `f.data` is stored."
+"Returns the architecture of on which `f` is defined."
 architecture(f::AbstractField) = f.architecture
 
 "Returns the length of a field's `data`."
@@ -135,6 +147,8 @@ Returns a 3-tuple that gives the "total" size of a field including
 both interior points and halo points.
 """
 total_size(f::AbstractField) = total_size(location(f), f.grid)
+
+Base.fill!(f::AbstractDataField, val) = fill!(parent(f), val)
 
 #####
 ##### Accessing wrapped arrays
@@ -168,24 +182,39 @@ total_size(f::AbstractField) = total_size(location(f), f.grid)
 ##### getindex
 #####
 
-@propagate_inbounds Base.getindex(f::AbstractField, inds...) = @inbounds getindex(f.data, inds...)
+# Don't use axes(f) to checkbounds; use axes(f.data)
+Base.checkbounds(f::AbstractField, I...) = Base.checkbounds(f.data, I...)
+
+@propagate_inbounds Base.getindex(f::AbstractDataField, i, j, k) = f.data[i, j, k]
+
+# Linear indexing
+@propagate_inbounds Base.getindex(f::AbstractDataField, i::Int)  = parent(f)[i]
 
 #####
 ##### setindex
 #####
 
-@propagate_inbounds Base.setindex!(f::AbstractField, a, inds...) = @inbounds setindex!(f.data, a, inds...)
+@propagate_inbounds function Base.setindex!(f::AbstractDataField, val, i, j, k)
+    f.data[i, j, k] = val
+    return f
+end
+
+# Linear indexing
+@propagate_inbounds function Base.setindex!(f::AbstractDataField, val, i::Int)
+    parent(f)[i] = val
+    return f
+end
 
 #####
 ##### Coordinates of fields
 #####
 
-@inline xnode(i, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = xnode(X, i, ψ.grid)
-@inline ynode(j, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = ynode(Y, j, ψ.grid)
-@inline znode(k, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = znode(Z, k, ψ.grid)
+@propagate_inbounds xnode(i, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = xnode(X, i, ψ.grid)
+@propagate_inbounds ynode(j, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = ynode(Y, j, ψ.grid)
+@propagate_inbounds znode(k, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = znode(Z, k, ψ.grid)
 
-@inline Base.lastindex(f::AbstractField) = lastindex(f.data)
-@inline Base.lastindex(f::AbstractField, dim) = lastindex(f.data, dim)
+@propagate_inbounds Base.lastindex(f::AbstractDataField) = lastindex(f.data)
+@propagate_inbounds Base.lastindex(f::AbstractDataField, dim) = lastindex(f.data, dim)
 
 xnodes(ψ::AbstractField) = xnodes(location(ψ, 1), ψ.grid)
 ynodes(ψ::AbstractField) = ynodes(location(ψ, 2), ψ.grid)
@@ -193,56 +222,62 @@ znodes(ψ::AbstractField) = znodes(location(ψ, 3), ψ.grid)
 
 nodes(ψ::AbstractField; kwargs...) = nodes(location(ψ), ψ.grid; kwargs...)
 
-Base.iterate(f::AbstractField, state=1) = iterate(f.data, state)
+Base.iterate(f::AbstractDataField, state=1) = iterate(f.data, state)
+
+#####
+##### fill_halo_regions!
+#####
+
+fill_halo_regions!(field::AbstractField, arch, args...) = fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...)
 
 #####
 ##### Field reductions
 #####
 
 """
-    minimum(field::AbstractField; dims=:)
+    minimum(field::AbstractDataField; dims=:)
 
 Compute the minimum value of an Oceananigans `field` over the given dimensions (not including halo points).
 By default all dimensions are included.
 """
-minimum(field::AbstractField; dims=:) = minimum(interiorparent(field); dims=dims)
+minimum(field::AbstractDataField; dims=:) = minimum(interiorparent(field); dims=dims)
 
 """
-    minimum(f, field::AbstractField; dims=:)
+    minimum(f, field::AbstractDataField; dims=:)
 
 Returns the smallest result of calling the function `f` on each element of an Oceananigans `field`
 (not including halo points) over the given dimensions. By default all dimensions are included.
 """
-minimum(f, field::AbstractField; dims=:) = minimum(f, interiorparent(field); dims=dims)
+minimum(f, field::AbstractDataField; dims=:) = minimum(f, interiorparent(field); dims=dims)
 
 """
-    maximum(field::AbstractField; dims=:)
+    maximum(field::AbstractDataField; dims=:)
 
 Compute the maximum value of an Oceananigans `field` over the given dimensions (not including halo points).
 By default all dimensions are included.
 """
-maximum(field::AbstractField; dims=:) = maximum(interiorparent(field); dims=dims)
+maximum(field::AbstractDataField; dims=:) = maximum(interiorparent(field); dims=dims)
 
 """
-    maximum(f, field::AbstractField; dims=:)
+    maximum(f, field::AbstractDataField; dims=:)
 
 Returns the largest result of calling the function `f` on each element of an Oceananigans `field`
 (not including halo points) over the given dimensions. By default all dimensions are included.
 """
-maximum(f, field::AbstractField; dims=:) = maximum(f, interiorparent(field); dims=dims)
+maximum(f, field::AbstractDataField; dims=:) = maximum(f, interiorparent(field); dims=dims)
 
 """
-    mean(field::AbstractField; dims=:)
+    mean(field::AbstractDataField; dims=:)
 
 Compute the mean of an Oceananigans `field` over the given dimensions (not including halo points).
 By default all dimensions are included.
 """
-mean(field::AbstractField; dims=:) = mean(interiorparent(field); dims=dims)
+mean(field::AbstractDataField; dims=:) = mean(interiorparent(field); dims=dims)
 
 """
-    mean(f::Function, field::AbstractField; dims=:)
+    mean(f::Function, field::AbstractDataField; dims=:)
 
 Apply the function `f` to each element of an Oceananigans `field` and take the mean over dimensions `dims`
 (not including halo points). By default all dimensions are included.
 """
-mean(f::Function, field::AbstractField; dims=:) = mean(f, interiorparent(field); dims=dims)
+mean(f::Function, field::AbstractDataField; dims=:) = mean(f, interiorparent(field); dims=dims)

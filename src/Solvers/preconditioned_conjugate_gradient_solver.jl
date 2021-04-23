@@ -73,8 +73,8 @@ See `solve!` for more information about the preconditioned conjugate-gradient al
 """
 function PreconditionedConjugateGradientSolver(linear_operation;
                                                template_field::AbstractField,
-                                               maximum_iterations = prod(size(template_field.grid)),
-                                               tolerance = 1e-13,
+                                               maximum_iterations = prod(size(template_field)),
+                                               tolerance = 1e-13, #sqrt(eps(eltype(template_field.grid))),
                                                precondition = nothing)
 
     arch = architecture(template_field)
@@ -179,7 +179,7 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
     solver.linear_operation!(q, x, args...)
 
     # r = b - A*x
-    parent(solver.residual) .= parent(b) .- parent(q)
+    solver.residual .= b .- q
 
     @debug "PreconditionedConjugateGradientSolver, |b|: $(norm(b))"
     @debug "PreconditionedConjugateGradientSolver, |A(x)|: $(norm(q))"
@@ -209,10 +209,10 @@ function iterate!(x, solver, b, args...)
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |z|: $(norm(z))"
 
     if solver.iteration == 0
-        parent(p) .= parent(z)
+        p .= z
     else
         β = ρ / solver.ρⁱ⁻¹
-        parent(p) .= parent(z) .+ β .* parent(p)
+        p .= z .+ β .* p
 
         @debug "PreconditionedConjugateGradientSolver $(solver.iteration), β: $β"
     end
@@ -224,8 +224,8 @@ function iterate!(x, solver, b, args...)
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
     @debug "PreconditionedConjugateGradientSolver $(solver.iteration), α: $α"
         
-    parent(x) .+= α .* parent(p)
-    parent(r) .-= α .* parent(q)
+    x .+= α .* p
+    r .-= α .* q
 
     solver.iteration += 1
     solver.ρⁱ⁻¹ = ρ

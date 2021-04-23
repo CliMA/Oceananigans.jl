@@ -4,12 +4,7 @@ using KernelAbstractions: @kernel, @index, Event
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 
-"""
-    struct ComputedField{X, Y, Z, A, G, O} <: AbstractField{X, Y, Z, A, G}
-
-Type representing a field computed from an operand.
-"""
-struct ComputedField{X, Y, Z, S, A, D, G, O, C} <: AbstractField{X, Y, Z, A, G}
+struct ComputedField{X, Y, Z, S, A, D, G, T, O, C} <: AbstractDataField{X, Y, Z, A, G, T}
                    data :: D
            architecture :: A
                    grid :: G
@@ -29,7 +24,10 @@ struct ComputedField{X, Y, Z, S, A, D, G, O, C} <: AbstractField{X, Y, Z, A, G}
         # Use FieldStatus if we want to avoid always recomputing
         status = recompute_safely ? nothing : FieldStatus(0.0)
 
-        return new{X, Y, Z, typeof(status), A, D, G, O, C}(data, arch, grid, operand, boundary_conditions, status)
+        S = typeof(status)
+        T = eltype(grid)
+
+        return new{X, Y, Z, S, A, D, G, T, O, C}(data, arch, grid, operand, boundary_conditions, status)
     end
 end
 

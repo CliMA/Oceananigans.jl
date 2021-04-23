@@ -307,14 +307,14 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                                                     size = (Nx, Ny, Nz),
                                                                     x = (0, 1),
                                                                     y = (0, 1),
-                                                                    zF = hyperbolically_spaced_nodes)
+                                                                    z_faces = hyperbolically_spaced_nodes)
 
             regular_vs_grid = VerticallyStretchedRectilinearGrid(FT,
                                                                  architecture = arch,
                                                                  size = (Nx, Ny, Nz),
                                                                  x = (0, 1),
                                                                  y = (0, 1),
-                                                                 zF = collect(range(0, stop=1, length=Nz+1)))
+                                                                 z_faces = collect(range(0, stop=1, length=Nz+1)))
 
             for grid in (regular_grid, hyperbolic_vs_grid, regular_vs_grid)
                 @info "  Testing incompressibility [$FT, $(typeof(grid).name.wrapper)]..."

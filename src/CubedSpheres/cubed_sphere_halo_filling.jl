@@ -4,29 +4,28 @@ import Oceananigans.BoundaryConditions:
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_horizontal_velocity_halos!
 
 # These filling functions won't work so let's not use them.
-
  fill_west_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
  fill_east_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 fill_south_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 fill_north_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 
-function fill_halo_regions!(field::AbstractCubedSphereField{LX, LY, LZ}, arch, args...) where {LX, LY, LZ}
+function fill_halo_regions!(field::AbstractCubedSphereField, arch, args...; kwargs...)
 
-    for field_face in field.faces
+    for face_field in faces(field)
         # Fill the top and bottom halos the usual way.
-        fill_halo_regions!(field_face, arch, args...)
+        fill_halo_regions!(face_field, arch, args...; kwargs...)
 
         # Deal with halo exchanges.
-        fill_west_halo!(field_face, field)
-        fill_east_halo!(field_face, field)
-        fill_south_halo!(field_face, field)
-        fill_north_halo!(field_face, field)
+        fill_west_halo!(face_field, field)
+        fill_east_halo!(face_field, field)
+        fill_south_halo!(face_field, field)
+        fill_north_halo!(face_field, field)
     end
 
     return nothing
 end
 
-function fill_west_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed_sphere_field) where {LX, LY, LZ}
+function fill_west_halo!(field::CubedSphereFaceField{LX, LY, LZ}, cubed_sphere_field) where {LX, LY, LZ}
     location = (LX, LY, LZ)
     dest_halo = underlying_west_halo(field.data, field.grid, LX)
 
@@ -44,7 +43,7 @@ function fill_west_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed
     return nothing
 end
 
-function fill_east_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed_sphere_field) where {LX, LY, LZ}
+function fill_east_halo!(field::CubedSphereFaceField{LX, LY, LZ}, cubed_sphere_field) where {LX, LY, LZ}
     location = (LX, LY, LZ)
     dest_halo = underlying_east_halo(field.data, field.grid, LX)
 
@@ -62,7 +61,7 @@ function fill_east_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed
     return nothing
 end
 
-function fill_south_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed_sphere_field) where {LX, LY, LZ}
+function fill_south_halo!(field::CubedSphereFaceField{LX, LY, LZ}, cubed_sphere_field) where {LX, LY, LZ}
     location = (LX, LY, LZ)
     dest_halo = underlying_south_halo(field.data, field.grid, LY)
 
@@ -80,7 +79,7 @@ function fill_south_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cube
     return nothing
 end
 
-function fill_north_halo!(field::ConformalCubedSphereFaceField{LX, LY, LZ}, cubed_sphere_field) where {LX, LY, LZ}
+function fill_north_halo!(field::CubedSphereFaceField{LX, LY, LZ}, cubed_sphere_field) where {LX, LY, LZ}
     location = (LX, LY, LZ)
     dest_halo = underlying_north_halo(field.data, field.grid, LY)
 
@@ -101,7 +100,7 @@ end
 # Don't worry about this when not on a cubed sphere.
 fill_horizontal_velocity_halos!(u, v, arch) = nothing
 
-function fill_horizontal_velocity_halos!(u::ConformalCubedSphereField, v::ConformalCubedSphereField, arch)
+function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereField, arch)
 
     ## Fill them like they're tracers to get the top and bottom filled.
     fill_halo_regions!(u, arch)
@@ -113,7 +112,7 @@ function fill_horizontal_velocity_halos!(u::ConformalCubedSphereField, v::Confor
     v_loc = (Center, Face, Center)
 
     for face_number in 1:6, side in (:west, :east, :south, :north)
-        exchange_info = getproperty(u.faces[face_number].boundary_conditions, side).condition
+        exchange_info = getproperty(u.boundary_conditions.faces[face_number], side).condition
         src_face_number = exchange_info.to_face
         src_side = exchange_info.to_side
 
