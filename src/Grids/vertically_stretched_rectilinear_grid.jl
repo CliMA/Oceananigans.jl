@@ -276,7 +276,7 @@ end
 Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ,
                                        typeof(grid.xᶠᵃᵃ),
-                                       typeof(Adapt.adapt(to, grid.zᵃᵃᶠ))
+                                       typeof(Adapt.adapt(to, grid.zᵃᵃᶠ)),
                                        Nothing}(
         nothing,
         grid.Nx, grid.Ny, grid.Nz,
