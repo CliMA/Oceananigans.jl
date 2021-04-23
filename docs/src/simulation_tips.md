@@ -195,8 +195,16 @@ to achieve this
 
 On the CPU Oceananigans.jl uses regular `Array`s, but on the GPU it has to use `CuArray`s
 from the CUDA.jl package. While deep down both are arrays, their implementations are different
-and both can behave very differently. For example if can be difficult just view a `CuArray`.
-Consider the example below:
+and both can behave very differently. Something to keep in mind when working with `CuArray`s is that you do not want to
+access elements of a `CuArray` outside of a kernel. Doing so invokes scalar operations
+in which individual elements are copied from or to the GPU for processing. This is very
+slow and can result in huge slowdowns. For this reason, Oceananigans.jl disables CUDA
+scalar operations by default. See the [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
+section of the CUDA.jl documentation for more information on scalar indexing.
+
+
+For example if can be difficult to just view a `CuArray` since Julia needs to access 
+its elements to do that. Consider the example below:
 
 ```julia
 julia> using Oceananigans; using Adapt
@@ -250,8 +258,10 @@ Error showing value of type OffsetArrays.OffsetArray{Float64,3,CUDA.CuArray{Floa
 ERROR: scalar getindex is disallowed
 ```
 
-Here `CUDA.jl` throws an error because scalar `getindex` is not `allowed`. Another way
-around this limitation is to allow scalar operations:
+Here `CUDA.jl` throws an error because scalar `getindex` is not `allowed`. Another way around 
+this limitation is to allow scalar operations on `CuArray`s. We can temporarily
+do that with the `CUDA.@allowscalar` macro or by calling `CUDA.allowscalar(true)`.
+
 
 ```julia
 julia> using CUDA; CUDA.allowscalar(true)
@@ -287,15 +297,4 @@ forcing functions. To learn more about working with `CuArray`s, see the
 [array programming](https://juliagpu.github.io/CUDA.jl/dev/usage/array/) section
 of the CUDA.jl documentation.
 
-Something to keep in mind when working with `CuArray`s is that you do not want to set or
-get/access elements of a `CuArray` outside of a kernel. Doing so invokes scalar operations
-in which individual elements are copied from or to the GPU for processing. This is very
-slow and can result in huge slowdowns. For this reason, Oceananigans.jl disables CUDA
-scalar operations by default.
 
-See the [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
-section of the CUDA.jl documentation for more information on scalar indexing.
-
-Sometimes you need to perform scalar operations on `CuArray`s in which case you may want
-to temporarily allow scalar operations with the `CUDA.@allowscalar` macro or by calling
-`CUDA.allowscalar(true)`.
