@@ -248,8 +248,8 @@ Error showing value of type OffsetArrays.OffsetArray{Float64,3,CUDA.CuArray{Floa
 ERROR: scalar getindex is disallowed
 ```
 
-Here Julia is telling us that using scalar `getindex` is not `allowed`. So another way to go
-around this limitation is to simply allow scalar operations:
+Here `CUDA.jl` throws an error because scalar `getindex` is not `allowed`. Another way
+around this limitation is to allow scalar operations:
 
 ```julia
 julia> using CUDA; CUDA.allowscalar(true)
