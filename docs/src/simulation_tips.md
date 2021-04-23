@@ -248,8 +248,38 @@ Error showing value of type OffsetArrays.OffsetArray{Float64,3,CUDA.CuArray{Floa
 ERROR: scalar getindex is disallowed
 ```
 
+Here Julia is telling us that using scalar `getindex` is not `allowed`. So another way to go
+around this limitation is to simply allow scalar operations:
 
-You might also need to keep this difference in mind when using arrays
+```julia
+julia> using CUDA; CUDA.allowscalar(true)
+
+julia> model.velocities.u.data
+3×3×3 OffsetArray(::CuArray{Float64,3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+[:, :, 0] =
+┌ Warning: Performing scalar operations on GPU arrays: This is very slow, consider disallowing these operations with `allowscalar(false)`
+└ @ GPUArrays ~/.julia/packages/GPUArrays/WV76E/src/host/indexing.jl:43
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+
+[:, :, 1] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+
+[:, :, 2] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+```
+
+Notice the warning we get when we do this. Scalar operations on GPUs can be very slow, so it is
+advised to only use this last method when using the REPL or prototyping --- never in
+production-ready scripts.
+
+
+You might also need to keep these differences in mind when using arrays
 to `set!` initial conditions or when using arrays to provide boundary conditions and
 forcing functions. To learn more about working with `CuArray`s, see the
 [array programming](https://juliagpu.github.io/CUDA.jl/dev/usage/array/) section
