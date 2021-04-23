@@ -153,7 +153,7 @@ end
 
 It may be useful to know that there are some kernels already defined for commonly-used diagnostics
 in packages that are companions to Oceananigans. For example
-[Oceanostics.jl](https://github.com/tomchor/Oceanostics.jl/blob/13d2ba5c48d349c5fce292b86785ce600cc19a88/src/TurbulentKineticEnergyTerms.jl#L23-L30)
+[Oceanostics.jl](https://github.com/tomchor/Oceanostics.jl/blob/3b8f67338656557877ef8ef5ebe3af9e7b2974e2/src/TurbulentKineticEnergyTerms.jl#L35-L57)
 and
 [LESbrary.jl](https://github.com/CliMA/LESbrary.jl/blob/master/src/TurbulenceStatistics/shear_production.jl).
 Users should first look there before writing any kernel by hand and are always welcome to [start an
