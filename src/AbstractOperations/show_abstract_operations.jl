@@ -2,12 +2,14 @@ import Oceananigans: short_show
 using Oceananigans.Grids: domain_string
 using Oceananigans.Fields: show_location
 
-for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Derivative", "GridMetric")
+for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Derivative")
     op = eval(Symbol(op_string))
     @eval begin
         operation_name(::$op) = $op_string
     end
 end
+
+operation_name(::GridMetricOperation) = "GridMetric"
 
 function show_interp(op)
     op_str = string(op)

@@ -2,7 +2,7 @@ module Operators
 
 export
     Δx, Δy, Δz, Ax, Ay, Az, volume,
-    ΔzF, ΔzC,
+    ΔzF, ΔzC, Δzᵃᵃᶜ, Δzᵃᵃᶠ,
     Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶠᶠᵃ, Δxᶜᶠᵃ,
     Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δyᶜᶠᵃ,
     Axᵃᵃᶜ, Axᵃᵃᶠ, Axᶜᶜᶜ, Axᶠᶜᶜ, Axᶠᶠᶜ, Axᶠᶜᶠ,
