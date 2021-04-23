@@ -149,7 +149,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
     if group == :cubed_sphere || group == :all
         include("test_cubed_spheres.jl")
-        include("test_cubed_sphere_halo_exchange.jl")
+        #include("test_cubed_sphere_halo_exchange.jl")
     end
 
     if group == :distributed || group == :all

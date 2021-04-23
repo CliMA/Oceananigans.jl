@@ -1,3 +1,5 @@
+using Adapt
+
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions: BCType
 
@@ -68,3 +70,6 @@ function inject_cubed_sphere_exchange_boundary_conditions(field_bcs, face_number
 
     return FieldBoundaryConditions(x_bcs, y_bcs, field_bcs.z)
 end
+
+Adapt.adapt_structure(to, ::CubedSphereExchangeInformation) = nothing
+Adapt.adapt_structure(to, ::CubedSphereExchangeBC) = nothing

@@ -147,6 +147,31 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 @inline znode(::Type{Center}, k, grid) = @inbounds grid.zC[k]
 @inline znode(::Type{Face}, k, grid) = @inbounds grid.zF[k]
 
+@inline xnode(::Center, i, grid) = @inbounds grid.xC[i]
+@inline xnode(::Face, i, grid) = @inbounds grid.xF[i]
+
+@inline ynode(::Center, j, grid) = @inbounds grid.yC[j]
+@inline ynode(::Face, j, grid) = @inbounds grid.yF[j]
+
+@inline znode(::Center, k, grid) = @inbounds grid.zC[k]
+@inline znode(::Face, k, grid) = @inbounds grid.zF[k]
+
+@inline xnode(LX, LY, LZ, i, j, k, grid::AbstractRectilinearGrid) = xnode(LX, i, grid)
+@inline ynode(LX, LY, LZ, i, j, k, grid::AbstractRectilinearGrid) = ynode(LY, j, grid)
+@inline znode(LX, LY, LZ, i, j, k, grid::AbstractRectilinearGrid) = znode(LZ, k, grid)
+
+@inline node(LX, LY, LZ, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid),
+                                           ynode(LX, LY, LZ, i, j, k, grid),
+                                           znode(LX, LY, LZ, i, j, k, grid))
+
+@inline node(::Nothing, LY, LZ, i, j, k, grid) = (ynode(LX, LY, LZ, i, j, k, grid), znode(LX, LY, LZ, i, j, k, grid))
+@inline node(LX, ::Nothing, LZ, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid), znode(LX, LY, LZ, i, j, k, grid))
+@inline node(LX, LY, ::Nothing, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid), ynode(LX, LY, LZ, i, j, k, grid))
+
+@inline node(LX, ::Nothing, ::Nothing, i, j, k, grid) = tuple(xnode(LX, LY, LZ, i, j, k, grid))
+@inline node(::Nothing, LY, ::Nothing, i, j, k, grid) = tuple(ynode(LX, LY, LZ, i, j, k, grid))
+@inline node(::Nothing, ::Nothing, LZ, i, j, k, grid) = tuple(znode(LX, LY, LZ, i, j, k, grid))
+
 # Convenience is king
 @inline xC(i, grid) = xnode(Center, i, grid)
 @inline xF(i, grid) = xnode(Face, i, grid)
