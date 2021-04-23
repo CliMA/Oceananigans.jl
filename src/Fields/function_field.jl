@@ -52,10 +52,14 @@ architecture(f::FunctionField) = nothing
 Base.parent(f::FunctionField) = f
 
 # Various possibilities for calling FunctionField.func:
-@inline call_func(clock, parameters, func, x...)     = func(x..., clock.time, parameters)
-@inline call_func(::Nothing, parameters, func, x...) = func(x..., parameters)
-@inline call_func(clock, ::Nothing, func, x...)      = func(x..., clock.time)
-@inline call_func(::Nothing, ::Nothing, func, x...)  = func(x...)
+@inline call_func(clock, parameters, func, x, y, z)     = func(x, y, z, clock.time, parameters)
+@inline call_func(::Nothing, parameters, func, x, y, z) = func(x, y, z, parameters)
+@inline call_func(clock, ::Nothing, func, x, y, z)      = func(x, y, z, clock.time)
+@inline call_func(::Nothing, ::Nothing, func, x, y, z)  = func(x, y, z)
+
+# For setting ReducedField
+@inline call_func(::Nothing, ::Nothing, func, x, y)     = func(x, y)
+@inline call_func(::Nothing, ::Nothing, func, x)        = func(x)
 
 @inline Base.getindex(f::FunctionField{LX, LY, LZ}, i, j, k) where {LX, LY, LZ} =
     call_func(f.clock, f.parameters, f.func, node(LX(), LY(), LZ(), i, j, k, f.grid)...)
