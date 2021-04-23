@@ -93,7 +93,7 @@ always work on CPUs, but when their complexity is high (in terms of number of ab
 the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is discussed 
 in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1241) and contributors are welcome.)
 For example, in the example below, calculating `u²` works in both CPUs and GPUs, but calculating 
-`KE` only works on CPUs:
+`KE` may not work in some GPUs:
 
 ```julia
 u, v, w = model.velocities
@@ -103,7 +103,8 @@ compute!(u²)
 compute!(KE)
 ```
 
-There are two approaches to bypass this issue. The first is to nest `ComputedField`s. For example,
+Assuming `compute!(KE)` fails for your GPU, there are two approaches to 
+bypass this issue. The first is to nest `ComputedField`s. For example,
 we can make `KE` be successfully computed on GPUs by defining it as
 ```julia
 u, v, w = model.velocities
