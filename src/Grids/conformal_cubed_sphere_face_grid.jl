@@ -5,7 +5,6 @@ using Adapt
 using Adapt: adapt_structure
 
 using Oceananigans
-import Oceananigans.Architectures: on_architecture
 
 struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
         Nx :: Int
