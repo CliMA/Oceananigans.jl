@@ -121,6 +121,9 @@ function define_binary_operator(op)
         $op(a::AF, b::AF) = $op(location(a), a, b)
         $op(a::AF, b) = $op(location(a), a, b)
         $op(a, b::AF) = $op(location(b), a, b)
+
+        $op(a::AF, b::Number) = $op(location(a), a, b)
+        $op(a::Number, b::AF) = $op(location(b), a, b)
     end
 end
 
