@@ -164,16 +164,6 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 @inline node(::Nothing, LY, ::Nothing, i, j, k, grid) = tuple(ynode(LX, LY, LZ, i, j, k, grid))
 @inline node(::Nothing, ::Nothing, LZ, i, j, k, grid) = tuple(znode(LX, LY, LZ, i, j, k, grid))
 
-# Convenience is king
-@inline xC(i, grid) = xnode(Center, i, grid)
-@inline xF(i, grid) = xnode(Face, i, grid)
-
-@inline yC(j, grid) = ynode(Center, j, grid)
-@inline yF(j, grid) = ynode(Face, j, grid)
-
-@inline zC(k, grid) = znode(Center, k, grid)
-@inline zF(k, grid) = znode(Face, k, grid)
-
 all_x_nodes(::Type{Center}, grid) = grid.xC
 all_x_nodes(::Type{Face}, grid) = grid.xF
 all_y_nodes(::Type{Center}, grid) = grid.yC

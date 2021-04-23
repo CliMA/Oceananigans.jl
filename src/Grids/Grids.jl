@@ -7,7 +7,6 @@ export AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRecti
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export RegularLatitudeLongitudeGrid, ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
 export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
-export xC, xF, yC, yF, zC, zF
 export offset_data, new_data
 
 using Adapt
