@@ -1,11 +1,11 @@
 using CUDA: CuArray
-using Oceananigans.Architectures: CPU, GPU
+using Oceananigans.Architectures: AbstractCPUArchitecture, AbstractGPUArchitecture
 
 import Base: zeros
 
-zeros(FT, ::CPU, N...) = zeros(FT, N...)
+zeros(FT, ::AbstractCPUArchitecture, N...) = zeros(FT, N...)
 
-function zeros(FT, ::GPU, N...)
+function zeros(FT, ::AbstractGPUArchitecture, N...)
     a = CuArray{FT}(undef, N...)
     a .= 0
     return a
