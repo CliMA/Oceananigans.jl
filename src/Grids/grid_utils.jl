@@ -156,13 +156,13 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
                                            ynode(LX, LY, LZ, i, j, k, grid),
                                            znode(LX, LY, LZ, i, j, k, grid))
 
-@inline node(::Nothing, LY, LZ, i, j, k, grid) = (ynode(LX, LY, LZ, i, j, k, grid), znode(LX, LY, LZ, i, j, k, grid))
-@inline node(LX, ::Nothing, LZ, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid), znode(LX, LY, LZ, i, j, k, grid))
-@inline node(LX, LY, ::Nothing, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid), ynode(LX, LY, LZ, i, j, k, grid))
+@inline node(LX::Nothing, LY, LZ, i, j, k, grid) = (ynode(LX, LY, LZ, i, j, k, grid), znode(LX, LY, LZ, i, j, k, grid))
+@inline node(LX, LY::Nothing, LZ, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid), znode(LX, LY, LZ, i, j, k, grid))
+@inline node(LX, LY, LZ::Nothing, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid), ynode(LX, LY, LZ, i, j, k, grid))
 
-@inline node(LX, ::Nothing, ::Nothing, i, j, k, grid) = tuple(xnode(LX, LY, LZ, i, j, k, grid))
-@inline node(::Nothing, LY, ::Nothing, i, j, k, grid) = tuple(ynode(LX, LY, LZ, i, j, k, grid))
-@inline node(::Nothing, ::Nothing, LZ, i, j, k, grid) = tuple(znode(LX, LY, LZ, i, j, k, grid))
+@inline node(LX, LY::Nothing, LZ::Nothing, i, j, k, grid) = tuple(xnode(LX, LY, LZ, i, j, k, grid))
+@inline node(LX::Nothing, LY, LZ::Nothing, i, j, k, grid) = tuple(ynode(LX, LY, LZ, i, j, k, grid))
+@inline node(LX::Nothing, LY::Nothing, LZ, i, j, k, grid) = tuple(znode(LX, LY, LZ, i, j, k, grid))
 
 all_x_nodes(::Type{Center}, grid) = grid.xC
 all_x_nodes(::Type{Face}, grid) = grid.xF
