@@ -168,15 +168,9 @@ Base.fill!(f::AbstractDataField, val) = fill!(parent(f), val)
 
 "Returns a view of `f` that excludes halo points."
 @inline interior(f::AbstractField{X, Y, Z}) where {X, Y, Z} =
-    view(f.data, interior_indices(X, topology(f, 1), f.grid.Nx),
-                 interior_indices(Y, topology(f, 2), f.grid.Ny),
-                 interior_indices(Z, topology(f, 3), f.grid.Nz))
-
-"Returns a reference (not a view) to the interior points of `field.data.parent.`"
-@inline interiorparent(f::AbstractField{X, Y, Z}) where {X, Y, Z} =
-    @inbounds f.data.parent[interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
-                            interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
-                            interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz)]
+    view(parent(f), interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
+                    interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
+                    interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz))
 
 #####
 ##### getindex
@@ -240,7 +234,7 @@ fill_halo_regions!(field::AbstractField, arch, args...) = fill_halo_regions!(fie
 Compute the minimum value of an Oceananigans `field` over the given dimensions (not including halo points).
 By default all dimensions are included.
 """
-minimum(field::AbstractDataField; dims=:) = minimum(interiorparent(field); dims=dims)
+minimum(field::AbstractDataField; dims=:) = minimum(interior(field); dims=dims)
 
 """
     minimum(f, field::AbstractDataField; dims=:)
@@ -248,7 +242,7 @@ minimum(field::AbstractDataField; dims=:) = minimum(interiorparent(field); dims=
 Returns the smallest result of calling the function `f` on each element of an Oceananigans `field`
 (not including halo points) over the given dimensions. By default all dimensions are included.
 """
-minimum(f, field::AbstractDataField; dims=:) = minimum(f, interiorparent(field); dims=dims)
+minimum(f, field::AbstractDataField; dims=:) = minimum(f, interior(field); dims=dims)
 
 """
     maximum(field::AbstractDataField; dims=:)
@@ -256,7 +250,7 @@ minimum(f, field::AbstractDataField; dims=:) = minimum(f, interiorparent(field);
 Compute the maximum value of an Oceananigans `field` over the given dimensions (not including halo points).
 By default all dimensions are included.
 """
-maximum(field::AbstractDataField; dims=:) = maximum(interiorparent(field); dims=dims)
+maximum(field::AbstractDataField; dims=:) = maximum(interior(field); dims=dims)
 
 """
     maximum(f, field::AbstractDataField; dims=:)
@@ -264,7 +258,7 @@ maximum(field::AbstractDataField; dims=:) = maximum(interiorparent(field); dims=
 Returns the largest result of calling the function `f` on each element of an Oceananigans `field`
 (not including halo points) over the given dimensions. By default all dimensions are included.
 """
-maximum(f, field::AbstractDataField; dims=:) = maximum(f, interiorparent(field); dims=dims)
+maximum(f, field::AbstractDataField; dims=:) = maximum(f, interior(field); dims=dims)
 
 """
     mean(field::AbstractDataField; dims=:)
@@ -272,7 +266,7 @@ maximum(f, field::AbstractDataField; dims=:) = maximum(f, interiorparent(field);
 Compute the mean of an Oceananigans `field` over the given dimensions (not including halo points).
 By default all dimensions are included.
 """
-mean(field::AbstractDataField; dims=:) = mean(interiorparent(field); dims=dims)
+mean(field::AbstractDataField; dims=:) = mean(interior(field); dims=dims)
 
 """
     mean(f::Function, field::AbstractDataField; dims=:)
@@ -280,4 +274,8 @@ mean(field::AbstractDataField; dims=:) = mean(interiorparent(field); dims=dims)
 Apply the function `f` to each element of an Oceananigans `field` and take the mean over dimensions `dims`
 (not including halo points). By default all dimensions are included.
 """
-mean(f::Function, field::AbstractDataField; dims=:) = mean(f, interiorparent(field); dims=dims)
+mean(f::Function, field::AbstractDataField; dims=:) = mean(f, interior(field); dims=dims)
+
+# Risky to use these without tests. Docs would also be nice.
+Statistics.norm(a::AbstractField) = sqrt(mapreduce(x -> x * x, +, interior(a)))
+Statistics.dot(a::AbstractField, b::AbstractField) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
