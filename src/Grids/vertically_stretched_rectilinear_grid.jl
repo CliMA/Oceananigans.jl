@@ -1,4 +1,6 @@
-struct VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
+struct VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A, Arch} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
+
+    architecture :: Arch
 
     # Number of grid points in (x,y,z).
     Nx :: Int
@@ -34,12 +36,12 @@ struct VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A} <: AbstractRecti
 end
 
 """
-    VerticallyStretchedRectilinearGrid([FT=Float64]; architecture=CPU(), size, zF,
+    VerticallyStretchedRectilinearGrid([FT=Float64]; architecture=CPU(), size, z_faces,
                                         x = nothing, y = nothing,
                                         topology = (Periodic, Periodic, Bounded), halo = nothing)
 
 Creates a `VerticallyStretchedRectilinearGrid` with `size = (Nx, Ny, Nz)` grid points and
-a vertical grid specified by `zF`.
+a vertical grid specified by `z_faces`.
 
 Keyword arguments
 =================
@@ -58,7 +60,7 @@ Keyword arguments
 - `architecture`: Specifies whether the array of vertical coordinates, interfaces, and spacings
                   are stored on the CPU or GPU. Default: `architecture = CPU()`.
 
-- `zF`: An array or function of vertical index `k` that specifies the location of cell faces
+- `z_faces`: An array or function of vertical index `k` that specifies the location of cell faces
         in the `z-`direction for indices `k=1` through `k=Nz+1`, where `Nz` is the third element
         of `size`.
 
@@ -102,7 +104,7 @@ Grid properties
 function VerticallyStretchedRectilinearGrid(FT = Float64;
                                             architecture = CPU(),
                                             size,
-                                            zF,
+                                            z_faces,
                                             x = nothing,
                                             y = nothing,
                                             halo = nothing,
@@ -119,7 +121,7 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
     Hx, Hy, Hz = halo
 
     # Initialize vertically-stretched arrays on CPU
-    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ = generate_stretched_vertical_grid(FT, topology[3], Nz, Hz, zF)
+    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ = generate_stretched_vertical_grid(FT, topology[3], Nz, Hz, z_faces)
 
     # Construct uniform horizontal grid
     Lh, Nh, Hh, X₁ = (Lx, Ly), size[1:2], halo[1:2], (x[1], y[1])
@@ -169,7 +171,11 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
     Δzᵃᵃᶜ = OffsetArray(arch_array(architecture, Δzᵃᵃᶜ.parent), Δzᵃᵃᶜ.offsets...)
     Δzᵃᵃᶠ = OffsetArray(arch_array(architecture, Δzᵃᵃᶠ.parent), Δzᵃᵃᶠ.offsets...)
 
-    return VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, typeof(xᶠᵃᵃ), typeof(zᵃᵃᶠ)}(
+    R = typeof(xᶠᵃᵃ)
+    A = typeof(zᵃᵃᶠ)
+    Arch = typeof(architecture)
+
+    return VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A, Arch}(architecture,
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δzᵃᵃᶜ, Δzᵃᵃᶠ, xᶜᵃᵃ, yᵃᶜᵃ, zᵃᵃᶜ, xᶠᵃᵃ, yᵃᶠᵃ, zᵃᵃᶠ)
 end
 
@@ -186,13 +192,13 @@ lower_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[2]  - zFi[1] for k 
 upper_exterior_Δzᵃᵃᶜ(z_topo,          zFi, Hz) = [zFi[k + 1] - zFi[k] for k = 1:Hz]
 upper_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[end]   - zFi[end - 1] for k = 1:Hz]
 
-function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, zF_generator)
+function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, z_faces)
 
     # Ensure correct type for zF and derived quantities
     interior_zF = zeros(FT, Nz+1)
 
     for k = 1:Nz+1
-        interior_zF[k] = get_z_face(zF_generator, k)
+        interior_zF[k] = get_z_face(z_faces, k)
     end
 
     Lz = interior_zF[Nz+1] - interior_zF[1]
@@ -222,12 +228,40 @@ function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, zF_generator)
     return Lz, zF, zC, ΔzF, ΔzC
 end
 
-# We cannot reconstruct a VerticallyStretchedRectilinearGrid without the zF_generator.
-# So the best we can do is tell the user what they should have done.
+"""
+    with_halo(new_halo, old_grid::VerticallyStretchedRectilinearGrid)
+
+Returns a new `VerticallyStretchedRectilinearGrid` with the same properties as
+`old_grid` but with halos set to `new_halo`.
+
+Note that in contrast to the constructor for `VerticallyStretchedRectilinearGrid`,
+`new_halo` is expected to be a 3-`Tuple` by `with_halo`. The elements
+of `new_halo` corresponding to `Flat` directions are removed (and are
+therefore ignored) prior to constructing the new `VerticallyStretchedRectilinearGrid`.
+"""
 function with_halo(new_halo, old_grid::VerticallyStretchedRectilinearGrid)
-    new_halo != halo_size(old_grid) &&
-        @error "You need to construct your VerticallyStretchedRectilinearGrid with the keyword argument halo=$new_halo"
-    return old_grid
+
+    Nx, Ny, Nz = size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
+    topo = topology(old_grid)
+
+    x = x_domain(old_grid)
+    y = y_domain(old_grid)
+    z = z_domain(old_grid)
+
+    # Remove elements of size and new_halo in Flat directions as expected by grid
+    # constructor
+    size = pop_flat_elements(size, topo)
+    new_halo = pop_flat_elements(new_halo, topo)
+
+    new_grid = VerticallyStretchedRectilinearGrid(eltype(old_grid);
+                                                  architecture = old_grid.architecture,
+                                                  size = size,
+                                                  x = x, y = y,
+                                                  z_faces = old_grid.zᵃᵃᶠ,
+                                                  topology = topo,
+                                                  halo = new_halo)
+
+    return new_grid
 end
 
 @inline x_domain(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.xᶠᵃᵃ)
@@ -249,7 +283,11 @@ function show(io::IO, g::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) whe
 end
 
 Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, typeof(grid.xᶠᵃᵃ), typeof(Adapt.adapt(to, grid.zᵃᵃᶠ))}(
+    VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ,
+                                       typeof(grid.xᶠᵃᵃ),
+                                       typeof(Adapt.adapt(to, grid.zᵃᵃᶠ)),
+                                       Nothing}(
+        nothing,
         grid.Nx, grid.Ny, grid.Nz,
         grid.Hx, grid.Hy, grid.Hz,
         grid.Lx, grid.Ly, grid.Lz,

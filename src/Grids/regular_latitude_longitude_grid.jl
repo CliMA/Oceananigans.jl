@@ -1,3 +1,5 @@
+import Oceananigans.Architectures: architecture
+
 const R_Earth = 6371.0e3    # Mean radius of the Earth [m] https://en.wikipedia.org/wiki/Earth
 
 struct RegularLatitudeLongitudeGrid{FT, TX, TY, TZ, A} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
@@ -120,3 +122,5 @@ all_y_nodes(::Type{Center}, grid::RegularLatitudeLongitudeGrid) = grid.φᵃᶜ�
 all_y_nodes(::Type{Face},   grid::RegularLatitudeLongitudeGrid) = grid.φᵃᶠᵃ
 all_z_nodes(::Type{Center}, grid::RegularLatitudeLongitudeGrid) = grid.zᵃᵃᶜ
 all_z_nodes(::Type{Face},   grid::RegularLatitudeLongitudeGrid) = grid.zᵃᵃᶠ
+
+architecture(::RegularLatitudeLongitudeGrid) = nothing
