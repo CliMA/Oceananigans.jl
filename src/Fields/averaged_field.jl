@@ -32,9 +32,6 @@ struct AveragedField{X, Y, Z, S, A, D, G, T, N, O} <: AbstractReducedField{X, Y,
     end
 end
 
-operand_averaging_indices(avg_loc, op_loc, topo, N, H) = Colon() # fallback when dimension is non-reduced
-operand_averaging_indices(::Type{Nothing}, op_loc, topo, N, H) = interior_parent_indices(op_loc, topo, N, H)
-
 """
     AveragedField(operand::AbstractField; dims, data=nothing, recompute_safely=false)
 
