@@ -19,7 +19,7 @@ include("data_dependencies.jl")
         @test try show(grid); println(); true; catch; false; end
     end
 
-    for arch in [CPU(), GPU()]
+    for arch in archs
 
         @info "Constructing a ConformalCubedSphereGrid from file [$(typeof(arch))]..."
 
