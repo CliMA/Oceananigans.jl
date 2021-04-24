@@ -26,7 +26,7 @@ export
 using Oceananigans.Grids
 using Oceananigans.Operators
 
-import Oceananigans.Utils: required_halo_size
+import Oceananigans.Grids: required_halo_size
 
 abstract type AbstractAdvectionScheme end
 abstract type AbstractCenteredAdvectionScheme <: AbstractAdvectionScheme end
@@ -38,6 +38,7 @@ include("topologically_conditional_interpolation.jl")
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
+include("flat_advective_fluxes.jl")
 
 include("centered_second_order.jl")
 include("upwind_biased_third_order.jl")

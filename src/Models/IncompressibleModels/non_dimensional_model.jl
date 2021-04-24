@@ -1,7 +1,7 @@
 using Oceananigans.BuoyancyModels
 
 """
-    NonDimensionalImcompressibleModel(; N, L, Re, Pr=0.7, Ro=Inf, float_type=Float64, kwargs...)
+    NonDimensionalIncompressibleModel(; N, L, Re, Pr=0.7, Ro=Inf, float_type=Float64, kwargs...)
 
 Construct a "Non-dimensional" `Model` with resolution `N`, domain extent `L`,
 precision `float_type`, and the four non-dimensional numbers:
@@ -20,7 +20,7 @@ Note that `N`, `L`, and `Re` are required.
 
 Additional `kwargs` are passed to the regular `IncompressibleModel` constructor.
 """
-function NonDimensionalImcompressibleModel(; grid, float_type=Float64, Re, Pr=0.7, Ro=Inf,
+function NonDimensionalIncompressibleModel(; grid, float_type=Float64, Re, Pr=0.7, Ro=Inf,
     buoyancy = BuoyancyTracer(),
     coriolis = FPlane(float_type, f=1/Ro),
      closure = IsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re)),

@@ -1,8 +1,9 @@
-using Oceananigans.Models: ShallowWaterModel
-using Oceananigans.Grids: Periodic, Bounded
+using Oceananigans
+using Oceananigans.Models
+using Oceananigans.Grids
 
 function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection; timestepper=:RungeKutta3)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(2π, 2π, 2π), topology=topo)
+    grid = RegularRectilinearGrid(size=(1, 1), extent=(2π, 2π), topology=topo)
     model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch, coriolis=coriolis,
                               advection=advection, timestepper=:RungeKutta3)
     set!(model, h=1)
@@ -14,7 +15,7 @@ function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection
 end
 
 function time_step_wizard_shallow_water_model_works(arch, topo, coriolis)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(2π, 2π, 2π), topology=topo)
+    grid = RegularRectilinearGrid(size=(1, 1), extent=(2π, 2π), topology=topo)
     model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch, coriolis=coriolis)
     set!(model, h=1)
 
@@ -27,7 +28,7 @@ function time_step_wizard_shallow_water_model_works(arch, topo, coriolis)
 end
 
 function shallow_water_model_tracers_and_forcings_work(arch)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(2π, 2π, 2π))
+    grid = RegularRectilinearGrid(size=(1, 1), extent=(2π, 2π), topology=((Periodic, Periodic, Flat)))
     model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch, tracers=(:c, :d))
     set!(model, h=1)
 
@@ -52,46 +53,69 @@ end
     @info "Testing shallow water models..."
 
     @testset "Model constructor errors" begin
-        grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        grid = RegularRectilinearGrid(size=(1, 1), extent=(1, 1), topology=((Periodic,Periodic,Flat)))
         @test_throws TypeError ShallowWaterModel(architecture=CPU, grid=grid, gravitational_acceleration=1)
         @test_throws TypeError ShallowWaterModel(architecture=GPU, grid=grid, gravitational_acceleration=1)
     end
 
+    topo = ( Flat,      Flat,     Flat )
+   
+    @testset "$topo model construction" begin
+    @info "  Testing $topo model construction..."
+        for arch in archs, FT in float_types                
+            grid = RegularRectilinearGrid(FT, topology=topo, size=(), extent=())
+            model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch) 
+            
+            @test model isa ShallowWaterModel
+        end
+    end
+
     topos = (
-             (Periodic, Periodic,  Bounded),
-             (Periodic,  Bounded,  Bounded),
-             (Bounded,   Bounded,  Bounded),
+             (Bounded,   Flat,     Flat),    
+             (Flat,      Bounded,  Flat),
             )
 
     for topo in topos
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
-		        arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
+                #arch isa GPU && topo == (Flat, Bounded, Flat) && continue
+        
+                grid = RegularRectilinearGrid(FT, topology=topo, size=(1), extent=(1))
+                model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch) 
+                
+                @test model isa ShallowWaterModel
+            end
+        end
+    end
 
-                grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
+    topos = (
+             (Periodic, Periodic,  Flat),
+             (Periodic,  Bounded,  Flat),
+             (Bounded,   Bounded,  Flat),
+            )
+
+    for topo in topos
+        @testset "$topo model construction" begin
+            @info "  Testing $topo model construction..."
+            for arch in archs, FT in float_types
+		        arch isa GPU && topo == (Bounded, Bounded, Flat) && continue
+
+                grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1), extent=(1, 2))
                 model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)
 
-                # Just testing that the model was constructed with no errors/crashes.
                 @test model isa ShallowWaterModel
-
-                # Test that the grid didn't get mangled (sort of)
-                @test size(grid) === size(model.grid)
-
-                too_big_grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1, 2), extent=(1, 2, 3))
-
-                @test_throws ArgumentError ShallowWaterModel(grid=too_big_grid, gravitational_acceleration=1, architecture=arch)
             end
         end
     end
 
     @testset "Setting ShallowWaterModel fields" begin
-        @info "  Testing setting shallow water model fields..."
+    @info "  Testing setting shallow water model fields..."
         for arch in archs, FT in float_types
-            N = (4, 4, 1)
-            L = (2π, 3π, 5π)
+            N = (4,   4)
+            L = (2π, 3π)
 
-            grid = RegularRectilinearGrid(FT, size=N, extent=L)
+            grid = RegularRectilinearGrid(FT, size=N, extent=L, topology=((Periodic, Periodic, Flat)))
             model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)
 
             x, y, z = nodes((Face, Center, Center), model.grid, reshape=true)
@@ -131,6 +155,7 @@ end
             @test time_step_wizard_shallow_water_model_works(archs[1], topos[1], nothing)
         end
 
+        # Advection = nothing is broken as halo does not have a maximum
         for advection in (nothing, CenteredSecondOrder(), WENO5())
             @testset "Time-stepping ShallowWaterModels [$arch, $(typeof(advection))]" begin
                 @info "  Testing time-stepping ShallowWaterModels [$arch, $(typeof(advection))]..."

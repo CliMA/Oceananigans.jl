@@ -9,12 +9,12 @@ using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, Seawa
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, TracerBoundaryConditions
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
+using Oceananigans.Grids: inflate_halo_size, with_halo, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 using Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
-using Oceananigans.Utils: inflate_halo_size, tupleit
+using Oceananigans.Utils: tupleit
 
 struct VectorInvariant end
 
@@ -157,9 +157,11 @@ function HydrostaticFreeSurfaceModel(; grid,
                                        pressure, diffusivities, timestepper)
 end
 
-function validate_velocity_boundary_conditions(velocities)
-    velocities.w.boundary_conditions.top === nothing || error("Top boundary condition for HydrostaticFreeSurfaceModel velocities.w
-                                                              must be `nothing`!")
+validate_velocity_boundary_conditions(velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
+
+function validate_vertical_velocity_boundary_conditions(w)
+    w.boundary_conditions.top === nothing || error("Top boundary condition for HydrostaticFreeSurfaceModel velocities.w
+                                                    must be `nothing`!")
     return nothing
 end
 

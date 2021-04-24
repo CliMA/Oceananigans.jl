@@ -1,7 +1,6 @@
 using CubedSphere
 using JLD2
 using OffsetArrays
-using Rotations
 
 using Oceananigans
 using Oceananigans.Grids
@@ -9,7 +8,7 @@ using Oceananigans.Grids: AbstractGrid, R_Earth
 
 import Base: show
 
-struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R} <: AbstractGrid{FT, TX, TY, TZ}
+struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
         Nx :: Int
         Ny :: Int
         Nz :: Int
@@ -150,16 +149,28 @@ function ConformalCubedSphereFaceGrid(FT = Float64; size, z,
 
     return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, typeof(λᶜᶜᵃ), typeof(zᵃᵃᶠ)}(
         Nξ, Nη, Nz, Hx, Hy, Hz,
-         λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,  φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶠ, zᵃᵃᶜ,
-        Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ, Δz,
+         λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,  φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
+        Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δz,
         Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
-function offset_data(data, Hx, Hy)
-    Nx, Ny = size(data) .- 1  # Just count cell centers
-    offset_data = OffsetArray(zeros(Nx + 1 + 2Hx, Ny + 1 + 2Hy), -Hx, -Hy)
-    offset_data[1:Nx+1, 1:Ny+1] .= data
-    return OffsetArray(offset_data, -Hx, -Hy)
+function offset_data_2d(data, loc, topo, N, H)
+    LX, LY = loc
+    TX, TY = topo
+    Nx, Ny = N
+    Hx, Hy = H
+
+    Tx = total_length(LX, TX, Nx, Hx)
+    Ty = total_length(LY, TY, Ny, Hy)
+
+    new_data = zeros(Tx, Ty)
+
+    ii = interior_parent_indices(LX, TX, Nx, Hx)
+    jj = interior_parent_indices(LY, TY, Ny, Hy)
+
+    new_data[ii, jj] .= data
+
+    return OffsetArray(new_data, -Hx, -Hy)
 end
 
 function ConformalCubedSphereFaceGrid(filepath::AbstractString, FT = Float64; face, Nz, z,
@@ -167,7 +178,8 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, FT = Float64; fa
                                         radius = R_Earth,
                                           halo = (1, 1, 1),
                                       rotation = nothing)
-    TX, TY, TZ = topology
+
+    TX, TY, TZ = topo = topology
     Hx, Hy, Hz = halo
 
     ## Use a regular rectilinear grid for the vertical grid
@@ -186,26 +198,39 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, FT = Float64; fa
 
     Nξ, Nη = size(cubed_sphere_data["λᶠᶠᵃ"]) .- 1
 
-    λᶜᶜᵃ = offset_data(cubed_sphere_data["λᶜᶜᵃ"], Hx, Hy)
-    λᶠᶠᵃ = offset_data(cubed_sphere_data["λᶠᶠᵃ"], Hx, Hy)
+    N = (Nξ, Nη, Nz)
+    H = halo
 
-    φᶜᶜᵃ = offset_data(cubed_sphere_data["φᶜᶜᵃ"], Hx, Hy)
-    φᶠᶠᵃ = offset_data(cubed_sphere_data["φᶠᶠᵃ"], Hx, Hy)
+    loc_cc = (Center, Center)
+    loc_cf = (Center, Face)
+    loc_fc = (Face, Center)
+    loc_ff = (Face, Face)
 
-    Δxᶜᶜᵃ = offset_data(cubed_sphere_data["Δxᶜᶜᵃ"], Hx, Hy)
-    Δxᶠᶜᵃ = offset_data(cubed_sphere_data["Δxᶠᶜᵃ"], Hx, Hy)
-    Δxᶜᶠᵃ = offset_data(cubed_sphere_data["Δxᶜᶠᵃ"], Hx, Hy)
-    Δxᶠᶠᵃ = offset_data(cubed_sphere_data["Δxᶠᶠᵃ"], Hx, Hy)
+    c_inds = 1:Nξ
+    f_inds = 1:Nξ+1
 
-    Δyᶜᶜᵃ = offset_data(cubed_sphere_data["Δyᶜᶜᵃ"], Hx, Hy)
-    Δyᶠᶜᵃ = offset_data(cubed_sphere_data["Δyᶠᶜᵃ"], Hx, Hy)
-    Δyᶜᶠᵃ = offset_data(cubed_sphere_data["Δyᶜᶠᵃ"], Hx, Hy)
-    Δyᶠᶠᵃ = offset_data(cubed_sphere_data["Δyᶠᶠᵃ"], Hx, Hy)
+    topo_2d = (Bounded, Bounded)
 
-    Azᶜᶜᵃ = offset_data(cubed_sphere_data["Azᶜᶜᵃ"], Hx, Hy)
-    Azᶠᶜᵃ = offset_data(cubed_sphere_data["Azᶠᶜᵃ"], Hx, Hy)
-    Azᶜᶠᵃ = offset_data(cubed_sphere_data["Azᶜᶠᵃ"], Hx, Hy)
-    Azᶠᶠᵃ = offset_data(cubed_sphere_data["Azᶠᶠᵃ"], Hx, Hy)
+    λᶜᶜᵃ = offset_data_2d(cubed_sphere_data["λᶜᶜᵃ"][c_inds, c_inds], loc_cc, topo_2d, N, H)
+    λᶠᶠᵃ = offset_data_2d(cubed_sphere_data["λᶠᶠᵃ"][f_inds, f_inds], loc_ff, topo_2d, N, H)
+
+    φᶜᶜᵃ = offset_data_2d(cubed_sphere_data["φᶜᶜᵃ"][c_inds, c_inds], loc_cc, topo_2d, N, H)
+    φᶠᶠᵃ = offset_data_2d(cubed_sphere_data["φᶠᶠᵃ"][f_inds, f_inds], loc_ff, topo_2d, N, H)
+
+    Δxᶜᶜᵃ = offset_data_2d(cubed_sphere_data["Δxᶜᶜᵃ"][c_inds, c_inds], loc_cc, topo_2d, N, H)
+    Δxᶠᶜᵃ = offset_data_2d(cubed_sphere_data["Δxᶠᶜᵃ"][f_inds, c_inds], loc_fc, topo_2d, N, H)
+    Δxᶜᶠᵃ = offset_data_2d(cubed_sphere_data["Δxᶜᶠᵃ"][c_inds, f_inds], loc_cf, topo_2d, N, H)
+    Δxᶠᶠᵃ = offset_data_2d(cubed_sphere_data["Δxᶠᶠᵃ"][f_inds, f_inds], loc_ff, topo_2d, N, H)
+
+    Δyᶜᶜᵃ = offset_data_2d(cubed_sphere_data["Δyᶜᶜᵃ"][c_inds, c_inds], loc_cc, topo_2d, N, H)
+    Δyᶠᶜᵃ = offset_data_2d(cubed_sphere_data["Δyᶠᶜᵃ"][f_inds, c_inds], loc_fc, topo_2d, N, H)
+    Δyᶜᶠᵃ = offset_data_2d(cubed_sphere_data["Δyᶜᶠᵃ"][c_inds, f_inds], loc_cf, topo_2d, N, H)
+    Δyᶠᶠᵃ = offset_data_2d(cubed_sphere_data["Δyᶠᶠᵃ"][f_inds, f_inds], loc_ff, topo_2d, N, H)
+
+    Azᶜᶜᵃ = offset_data_2d(cubed_sphere_data["Azᶜᶜᵃ"][c_inds, c_inds], loc_cc, topo_2d, N, H)
+    Azᶠᶜᵃ = offset_data_2d(cubed_sphere_data["Azᶠᶜᵃ"][f_inds, c_inds], loc_fc, topo_2d, N, H)
+    Azᶜᶠᵃ = offset_data_2d(cubed_sphere_data["Azᶜᶠᵃ"][c_inds, f_inds], loc_cf, topo_2d, N, H)
+    Azᶠᶠᵃ = offset_data_2d(cubed_sphere_data["Azᶠᶠᵃ"][f_inds, f_inds], loc_ff, topo_2d, N, H)
 
     ## Maybe we won't need these?
 
@@ -217,8 +242,8 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, FT = Float64; fa
 
     return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, typeof(λᶜᶜᵃ), typeof(zᵃᵃᶠ)}(
         Nξ, Nη, Nz, Hx, Hy, Hz,
-         λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,  φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶠ, zᵃᵃᶜ,
-        Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ, Δz,
+         λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,  φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
+        Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δz,
         Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 

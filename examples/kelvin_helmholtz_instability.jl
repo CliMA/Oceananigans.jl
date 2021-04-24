@@ -12,12 +12,13 @@
 
 # ## The physical domain
 #
-# We simulate Kelvin-Helmholtz instability in two-dimensions in ``x, z``,
+# We simulate Kelvin-Helmholtz instability in two-dimensions in ``x, z``
+# and therefore assign `Flat` to the `y` direction,
 
 using Oceananigans
 
-grid = RegularRectilinearGrid(size=(64, 1, 64), x=(-5, 5), y=(0, 1), z=(-5, 5),
-                                  topology=(Periodic, Periodic, Bounded))
+grid = RegularRectilinearGrid(size=(64, 64), x=(-5, 5), z=(-5, 5),
+                              topology=(Periodic, Flat, Bounded))
 
 # # The basic state
 #
@@ -331,7 +332,7 @@ nothing # hide
 
 using Random, Statistics
 
-mean_perturbation_kinetic_energy = mean(1/2 * (u^2 + w^2), dims=(1, 2, 3))
+mean_perturbation_kinetic_energy = AveragedField(1/2 * (u^2 + w^2), dims=(1, 2, 3))
 
 noise(x, y, z) = randn()
 

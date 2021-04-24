@@ -28,7 +28,6 @@ short_show(f::Function) = string(Symbol(f))
 ##### Include utils
 #####
 
-include("automatic_halo_sizing.jl")
 include("kernel_launching.jl")
 include("cell_advection_timescale.jl")
 include("pretty_time.jl")

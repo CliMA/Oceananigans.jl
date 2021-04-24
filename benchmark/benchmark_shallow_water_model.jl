@@ -14,7 +14,7 @@ function benchmark_shallow_water_model(Arch, FT, N)
     time_step!(model, 1) # warmup
 
     trial = @benchmark begin
-        @sync_gpu time_step!($model, 1)
+        CUDA.@sync blocking=true time_step!($model, 1)
     end samples=10
 
     return trial
@@ -24,7 +24,7 @@ end
 
 Architectures = has_cuda() ? [CPU, GPU] : [CPU]
 Float_types = [Float64]
-Ns = [32, 64, 128, 256, 512, 1024]
+Ns = [32, 64, 128, 256, 512, 1024, 2048, 4096]
 
 # Run and summarize benchmarks
 

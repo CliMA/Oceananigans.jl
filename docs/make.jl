@@ -1,4 +1,4 @@
-push!(LOAD_PATH, "..")
+push!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
 
 using Documenter
 using DocumenterCitations
@@ -13,6 +13,8 @@ using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
+
+using Oceananigans.BoundaryConditions: Flux, Value, Gradient, NormalFlow
 
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
 bib = CitationBibliography(bib_filepath)
@@ -116,6 +118,7 @@ appendix_pages = [
 
 pages = [
     "Home" => "index.md",
+    "Publications" => "publications.md",
     "Installation instructions" => "installation_instructions.md",
     "Using GPUs" => "using_gpus.md",
     "Examples" => example_pages,
@@ -123,6 +126,7 @@ pages = [
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
     "Validation experiments" => validation_pages,
+    "Simulation tips" => "simulation_tips.md",
     "Gallery" => "gallery.md",
     "Performance benchmarks" => "benchmarks.md",
     "Contributor's guide" => "contributing.md",
@@ -139,7 +143,8 @@ pages = [
 format = Documenter.HTML(
     collapselevel = 1,
        prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://clima.github.io/OceananigansDocumentation/stable/"
+        canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
+       mathengine = MathJax3()
 )
 
 makedocs(bib,

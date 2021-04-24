@@ -9,7 +9,7 @@ export
     xnode, ynode, znode, location,
     set!, compute!, @compute,
     VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields,
-    interpolate
+    interpolate, FieldSlicer
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -37,6 +37,8 @@ include("validate_field_tuple_grid.jl")
 include("field_tuples.jl")
 include("background_fields.jl")
 include("interpolate.jl")
+include("field_slicer.jl")
 include("show_fields.jl")
+include("broadcasting_abstract_fields.jl")
 
 end

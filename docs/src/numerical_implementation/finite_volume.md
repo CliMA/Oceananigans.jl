@@ -20,7 +20,7 @@ so that each cell encloses a volume ``V = \Delta x \Delta y \Delta z``.
 
 A finite volume method discretizes a continuous quantity ``c`` by considering its average over a finite volume:
 ```math
-    c_{i, j, k} \equiv \frac{1}{V_{i, j, k}} \int c(\bm{x}) \, \rm{d} V_{i, j, k} \, .
+    c_{i, j, k} \equiv \frac{1}{V_{i, j, k}} \int c(\boldsymbol{x}) \, \mathrm{d} V_{i, j, k} \, .
 ```
 The finite volumes that discretize each of ``u``, ``v``, and ``w`` are located on a grid which is "staggered" 
 with respect to the grid that defines tracer finite volumes. 

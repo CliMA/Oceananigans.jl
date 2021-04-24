@@ -1,9 +1,18 @@
-# Timescale for diffusion across one cell
-using Oceananigans.Grids: min_Δx, min_Δy, min_Δz
+#####
+##### Timescale for diffusion across one cell
+#####
 
-min_Δxyz(grid) = min(min_Δx(grid), min_Δy(grid), min_Δz(grid))
-min_Δxy(grid) = min(min_Δx(grid), min_Δy(grid))
+using Oceananigans.Grids: topology
 
+function min_Δxyz(grid)
+    topo = topology(grid)
+
+    Δx = minimum_grid_spacing(grid.Δx, topo[1])
+    Δy = minimum_grid_spacing(grid.Δy, topo[2])
+    Δz = minimum_grid_spacing(grid.Δz, topo[3])
+
+    return min(Δx, Δy, Δy)
+end
 
 cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.diffusivities, model.grid)
 cell_diffusion_timescale(::Nothing, diffusivities, grid) = Inf
@@ -15,6 +24,8 @@ maximum_numeric_diffusivity(κ::NamedTuple{()}) = 0 # tracers=nothing means empt
 # As the name suggests, we give up in the case of a function diffusivity
 maximum_numeric_diffusivity(κ::Function) = 0
 
+minimum_grid_spacing(Δx, TX)           = minimum(Δx)
+minimum_grid_spacing(Δx, ::Type{Flat}) = Inf
 
 function cell_diffusion_timescale(closure::IsotropicDiffusivity, diffusivities, grid)
     Δ = min_Δxyz(grid)
@@ -24,10 +35,11 @@ function cell_diffusion_timescale(closure::IsotropicDiffusivity, diffusivities, 
 end
 
 function cell_diffusion_timescale(closure::AnisotropicDiffusivity, diffusivities, grid)
+    topo = topology(grid)
 
-    Δx = min_Δx(grid)
-    Δy = min_Δy(grid)
-    Δz = min_Δz(grid)
+    Δx = minimum_grid_spacing(grid.Δx, topo[1])
+    Δy = minimum_grid_spacing(grid.Δy, topo[2])
+    Δz = minimum_grid_spacing(grid.Δz, topo[3])
 
     max_νx = maximum_numeric_diffusivity(closure.νx)
     max_νy = maximum_numeric_diffusivity(closure.νy)
@@ -46,9 +58,11 @@ function cell_diffusion_timescale(closure::AnisotropicDiffusivity, diffusivities
 end
 
 function cell_diffusion_timescale(closure::AnisotropicBiharmonicDiffusivity, diffusivities, grid)
-    Δx = min_Δx(grid)
-    Δy = min_Δy(grid)
-    Δz = min_Δz(grid)
+    topo = topology(grid)
+
+    Δx = minimum_grid_spacing(grid.Δx, topo[1])
+    Δy = minimum_grid_spacing(grid.Δy, topo[2])
+    Δz = minimum_grid_spacing(grid.Δz, topo[3])
 
     max_νx = maximum_numeric_diffusivity(closure.νx)
     max_νy = maximum_numeric_diffusivity(closure.νy)
@@ -58,18 +72,20 @@ function cell_diffusion_timescale(closure::AnisotropicBiharmonicDiffusivity, dif
     max_κy = maximum_numeric_diffusivity(closure.κy)
     max_κz = maximum_numeric_diffusivity(closure.κz)
 
-    return min(Δx^2 / max_νx,
-               Δy^2 / max_νy,
-               Δz^2 / max_νz,
-               Δx^2 / max_κx,
-               Δy^2 / max_κy,
-               Δz^2 / max_κz)
+    return min(Δx^4 / max_νx,
+               Δy^4 / max_νy,
+               Δz^4 / max_νz,
+               Δx^4 / max_κx,
+               Δy^4 / max_κy,
+               Δz^4 / max_κz)
 end
 
 function cell_diffusion_timescale(closure::HorizontallyCurvilinearAnisotropicDiffusivity, diffusivities, grid)
-    Δx = min_Δx(grid)
-    Δy = min_Δy(grid)
-    Δz = min_Δz(grid)
+    topo = topology(grid)
+
+    Δx = minimum_grid_spacing(grid.Δx, topo[1])
+    Δy = minimum_grid_spacing(grid.Δy, topo[2])
+    Δz = minimum_grid_spacing(grid.Δz, topo[3])
 
     max_νh = maximum_numeric_diffusivity(closure.νh)
     max_νz = maximum_numeric_diffusivity(closure.νz)
@@ -83,6 +99,27 @@ function cell_diffusion_timescale(closure::HorizontallyCurvilinearAnisotropicDif
                Δx^2 / max_κh,
                Δy^2 / max_κh,
                Δz^2 / max_κz)
+end
+
+function cell_diffusion_timescale(closure::HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity, diffusivities, grid)
+    topo = topology(grid)
+
+    Δx = minimum_grid_spacing(grid.Δx, topo[1])
+    Δy = minimum_grid_spacing(grid.Δy, topo[2])
+    Δz = minimum_grid_spacing(grid.Δz, topo[3])
+
+    max_νh = maximum_numeric_diffusivity(closure.νh)
+    max_νz = maximum_numeric_diffusivity(closure.νz)
+
+    max_κh = maximum_numeric_diffusivity(closure.κh)
+    max_κz = maximum_numeric_diffusivity(closure.κz)
+
+    return min(Δx^4 / max_νh,
+               Δy^4 / max_νh,
+               Δz^4 / max_νz,
+               Δx^4 / max_κh,
+               Δy^4 / max_κh,
+               Δz^4 / max_κz)
 end
 
 function cell_diffusion_timescale(closure::SmagorinskyLilly{FT, P, <:NamedTuple{()}},
