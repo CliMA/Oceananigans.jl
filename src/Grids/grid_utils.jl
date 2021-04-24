@@ -139,24 +139,31 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 #####
 
 # Node by node
-@inline xnode(::Type{Center}, i, grid) = @inbounds grid.xC[i]
-@inline xnode(::Type{Face}, i, grid) = @inbounds grid.xF[i]
+@inline xnode(::Center, i, grid) = @inbounds grid.xC[i]
+@inline xnode(::Face,   i, grid) = @inbounds grid.xF[i]
 
-@inline ynode(::Type{Center}, j, grid) = @inbounds grid.yC[j]
-@inline ynode(::Type{Face}, j, grid) = @inbounds grid.yF[j]
+@inline ynode(::Center, j, grid) = @inbounds grid.yC[j]
+@inline ynode(::Face,   j, grid) = @inbounds grid.yF[j]
 
-@inline znode(::Type{Center}, k, grid) = @inbounds grid.zC[k]
-@inline znode(::Type{Face}, k, grid) = @inbounds grid.zF[k]
+@inline znode(::Center, k, grid) = @inbounds grid.zC[k]
+@inline znode(::Face,   k, grid) = @inbounds grid.zF[k]
 
-# Convenience is king
-@inline xC(i, grid) = xnode(Center, i, grid)
-@inline xF(i, grid) = xnode(Face, i, grid)
+# Fallback
+@inline xnode(LX, LY, LZ, i, j, k, grid) = xnode(LX, i, grid)
+@inline ynode(LX, LY, LZ, i, j, k, grid) = ynode(LY, j, grid)
+@inline znode(LX, LY, LZ, i, j, k, grid) = znode(LZ, k, grid)
 
-@inline yC(j, grid) = ynode(Center, j, grid)
-@inline yF(j, grid) = ynode(Face, j, grid)
+@inline node(LX, LY, LZ, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid),
+                                           ynode(LX, LY, LZ, i, j, k, grid),
+                                           znode(LX, LY, LZ, i, j, k, grid))
 
-@inline zC(k, grid) = znode(Center, k, grid)
-@inline zF(k, grid) = znode(Face, k, grid)
+@inline node(LX::Nothing, LY, LZ, i, j, k, grid) = (ynode(LX, LY, LZ, i, j, k, grid), znode(LX, LY, LZ, i, j, k, grid))
+@inline node(LX, LY::Nothing, LZ, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid), znode(LX, LY, LZ, i, j, k, grid))
+@inline node(LX, LY, LZ::Nothing, i, j, k, grid) = (xnode(LX, LY, LZ, i, j, k, grid), ynode(LX, LY, LZ, i, j, k, grid))
+
+@inline node(LX, LY::Nothing, LZ::Nothing, i, j, k, grid) = tuple(xnode(LX, LY, LZ, i, j, k, grid))
+@inline node(LX::Nothing, LY, LZ::Nothing, i, j, k, grid) = tuple(ynode(LX, LY, LZ, i, j, k, grid))
+@inline node(LX::Nothing, LY::Nothing, LZ, i, j, k, grid) = tuple(znode(LX, LY, LZ, i, j, k, grid))
 
 all_x_nodes(::Type{Center}, grid) = grid.xC
 all_x_nodes(::Type{Face}, grid) = grid.xF

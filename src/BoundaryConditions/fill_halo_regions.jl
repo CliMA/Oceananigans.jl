@@ -21,6 +21,8 @@ function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)
     return nothing
 end
 
+fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
+
 "Fill halo regions in x, y, and z for a given field's data."
 function fill_halo_regions!(c::OffsetArray, fieldbcs, arch, grid, args...; kwargs...)
 

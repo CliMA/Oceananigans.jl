@@ -204,9 +204,9 @@ end
 ##### Coordinates of fields
 #####
 
-@propagate_inbounds xnode(i, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = xnode(X, i, ψ.grid)
-@propagate_inbounds ynode(j, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = ynode(Y, j, ψ.grid)
-@propagate_inbounds znode(k, ψ::AbstractField{X, Y, Z}) where {X, Y, Z} = znode(Z, k, ψ.grid)
+@propagate_inbounds xnode(i, ψ::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = xnode(LX(), i, ψ.grid)
+@propagate_inbounds ynode(j, ψ::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = ynode(LY(), j, ψ.grid)
+@propagate_inbounds znode(k, ψ::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = znode(LZ(), k, ψ.grid)
 
 @propagate_inbounds Base.lastindex(f::AbstractDataField) = lastindex(f.data)
 @propagate_inbounds Base.lastindex(f::AbstractDataField, dim) = lastindex(f.data, dim)

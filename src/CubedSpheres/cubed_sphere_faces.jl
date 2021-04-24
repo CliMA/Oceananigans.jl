@@ -6,7 +6,8 @@ using OffsetArrays: OffsetArray
 import Base: getindex, size, show, minimum, maximum
 import Statistics: mean
 
-import Oceananigans.Fields: AbstractField, AbstractDataField, AbstractReducedField, Field, new_data, minimum, maximum, mean, location
+import Oceananigans.Fields: AbstractField, AbstractDataField, AbstractReducedField, Field, minimum, maximum, mean, location
+import Oceananigans.Grids: new_data
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 
 struct CubedSphereFaces{E, F}

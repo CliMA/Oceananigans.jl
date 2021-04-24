@@ -61,6 +61,11 @@ function run_field_reduction_tests(FT, arch)
     # Important to make sure no CUDA scalar operations occur!
     CUDA.@disallowscalar begin
         for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
+
+            CUDA.allowscalar(true)
+            @test all(ϕ .== ϕ_vals) # if this isn't true, reduction tests can't pass
+            CUDA.allowscalar(false)
+
             @test minimum(ϕ) == minimum(ϕ_vals)
             @test maximum(ϕ) == maximum(ϕ_vals)
             @test mean(ϕ) == mean(ϕ_vals)
@@ -203,10 +208,29 @@ end
             for FieldType in FieldTypes
                 field = FieldType(arch, grid)
                 sz = size(field)
-                A = rand(FT, sz...) |> ArrayType
+                A = rand(FT, sz...)
                 set!(field, A)
                 @test field.data[2, 4, 6] == A[2, 4, 6]
             end
+
+            Nx = 8
+            topo = (Bounded, Bounded, Bounded)
+            grid = RegularRectilinearGrid(FT, topology=topo, size=(Nx, Nx, Nx), x=(-1, 1), y=(0, 2π), z=(-1, 1))
+
+            u = XFaceField(arch, grid)
+            v = YFaceField(arch, grid)
+            w = ZFaceField(arch, grid)
+            c = CenterField(arch, grid)
+
+            f(x, y, z) = exp(x) * sin(y) * tanh(z)
+
+            ϕs = (u, v, w, c)
+            [set!(ϕ, f) for ϕ in ϕs]
+
+            @test u[1, 2, 3] == f(grid.xF[1], grid.yC[2], grid.zC[3])
+            @test v[1, 2, 3] == f(grid.xC[1], grid.yF[2], grid.zC[3])
+            @test w[1, 2, 3] == f(grid.xC[1], grid.yC[2], grid.zF[3])
+            @test c[1, 2, 3] == f(grid.xC[1], grid.yC[2], grid.zC[3])
         end
     end
 

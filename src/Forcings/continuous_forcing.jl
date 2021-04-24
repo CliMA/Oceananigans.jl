@@ -1,18 +1,18 @@
 import Adapt
 
 using Oceananigans: short_show
-using Oceananigans.Utils: user_function_arguments
+using Oceananigans.Grids: node
 using Oceananigans.Operators: assumed_field_location, index_and_interp_dependencies
 using Oceananigans.Fields: show_location
-using Oceananigans.Utils: tupleit
+using Oceananigans.Utils: user_function_arguments, tupleit
 
 """
-    ContinuousForcing{X, Y, Z, P, F, D, I}
+    ContinuousForcing{LX, LY, LZ, P, F, D, I}
 
 A callable object that implements a "continuous form" forcing function
-on a field at the location `X, Y, Z` with optional parameters.
+on a field at the location `LX, LY, LZ` with optional parameters.
 """
-struct ContinuousForcing{X, Y, Z, P, F, D, I, ℑ}
+struct ContinuousForcing{LX, LY, LZ, P, F, D, I, ℑ}
                           func :: F
                     parameters :: P
             field_dependencies :: D
@@ -33,9 +33,9 @@ struct ContinuousForcing{X, Y, Z, P, F, D, I, ℑ}
     end
 
     # Non-public "final" constructor.
-    function ContinuousForcing{X, Y, Z}(func, parameters=nothing, field_dependencies=(),
-                                        field_dependencies_indices=(), field_dependencies_interp=()) where {X, Y, Z}
-        return new{X, Y, Z,
+    function ContinuousForcing{LX, LY, LZ}(func, parameters=nothing, field_dependencies=(),
+                                        field_dependencies_indices=(), field_dependencies_interp=()) where {LX, LY, LZ}
+        return new{LX, LY, LZ,
                    typeof(parameters),
                    typeof(func),
                    typeof(field_dependencies),
@@ -92,30 +92,30 @@ time-stepping `IncompressibleModel`.
 """
 function regularize_forcing(forcing::ContinuousForcing, field, field_name, model_field_names)
 
-    X, Y, Z = location(field)
+    LX, LY, LZ = location(field)
 
-    indices, interps = index_and_interp_dependencies(X, Y, Z,
+    indices, interps = index_and_interp_dependencies(LX, LY, LZ,
                                                      forcing.field_dependencies,
                                                      model_field_names)
 
-    return ContinuousForcing{X, Y, Z}(forcing.func, forcing.parameters, forcing.field_dependencies,
-                                      indices, interps)
+    return ContinuousForcing{LX, LY, LZ}(forcing.func, forcing.parameters,
+                                         forcing.field_dependencies, indices, interps)
 end
 
 #####
 ##### Functions for calling ContinuousForcing in a time-stepping kernel
 #####
 
-@inline function (forcing::ContinuousForcing{X, Y, Z, F})(i, j, k, grid, clock, model_fields) where {X, Y, Z, F}
+@inline function (forcing::ContinuousForcing{LX, LY, LZ, F})(i, j, k, grid, clock, model_fields) where {LX, LY, LZ, F}
 
     args = user_function_arguments(i, j, k, grid, model_fields, forcing.parameters, forcing)
 
-    return @inbounds forcing.func(xnode(X, i, grid), ynode(Y, j, grid), znode(Z, k, grid), clock.time, args...)
+    return @inbounds forcing.func(node(LX(), LY(), LZ(), i, j, k, grid)..., clock.time, args...)
 end
 
 """Show the innards of a `ContinuousForcing` in the REPL."""
-Base.show(io::IO, forcing::ContinuousForcing{X, Y, Z, P}) where {X, Y, Z, P} =
-    print(io, "ContinuousForcing{$P} at ", show_location(X, Y, Z), '\n',
+Base.show(io::IO, forcing::ContinuousForcing{LX, LY, LZ, P}) where {LX, LY, LZ, P} =
+    print(io, "ContinuousForcing{$P} at ", show_location(LX, LY, LZ), '\n',
         "├── func: $(short_show(forcing.func))", '\n',
         "├── parameters: $(forcing.parameters)", '\n',
         "└── field dependencies: $(forcing.field_dependencies)")
@@ -127,8 +127,8 @@ Base.show(io::IO, forcing::ContinuousForcing{Nothing, Nothing, Nothing, P}) wher
         "├── parameters: $(forcing.parameters)", '\n',
         "└── field dependencies: $(forcing.field_dependencies)")
 
-Adapt.adapt_structure(to, forcing::ContinuousForcing{X, Y, Z}) where {X, Y, Z} =
-    ContinuousForcing{X, Y, Z}(Adapt.adapt(to, forcing.func),
+Adapt.adapt_structure(to, forcing::ContinuousForcing{LX, LY, LZ}) where {LX, LY, LZ} =
+    ContinuousForcing{LX, LY, LZ}(Adapt.adapt(to, forcing.func),
                                Adapt.adapt(to, forcing.parameters),
                                nothing,
                                Adapt.adapt(to, forcing.field_dependencies_indices),

@@ -35,10 +35,15 @@ validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: apply_flux_bcs!
 
-apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCubedSphereField, arch, barrier, clock, model_fields) = [
-    apply_flux_bcs!(get_face(Gcⁿ, face_index), events, get_face(c, face_index), arch, barrier, clock, model_fields)
-    for face_index in 1:length(Gcⁿ.data.faces)
-]
+function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCubedSphereField, arch, barrier, clock, model_fields)
+
+    for (face_index, Gcⁿ_face) in enumerate(faces(Gcⁿ))
+        apply_flux_bcs!(Gcⁿ_face, events, get_face(c, face_index), arch, barrier,
+                        clock, get_face(model_fields, face_index))
+    end
+
+    return nothing
+end
 
 #####
 ##### NaN checker for cubed sphere fields
