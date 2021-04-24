@@ -5,11 +5,11 @@ using Oceananigans.Operators: Δzᵃᵃᶠ, Δzᵃᵃᶜ
 """ Return the geopotential height at `i, j, k` at cell centers. """
 @inline function Zᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT}) where FT
     if k < 1
-        return zC(1, grid) + (1 - k) * Δzᵃᵃᶠ(i, j, 1, grid)
+        return znode(Center(), 1, grid) + (1 - k) * Δzᵃᵃᶠ(i, j, 1, grid)
     elseif k > grid.Nz
-        return zC(grid.Nz, grid) - (k - grid.Nz) * Δzᵃᵃᶠ(i, j, grid.Nz, grid)
+        return znode(Center(), grid.Nz, grid) - (k - grid.Nz) * Δzᵃᵃᶠ(i, j, grid.Nz, grid)
     else
-        return zC(k, grid)
+        return znode(Center(), k, grid)
     end
 end
 
