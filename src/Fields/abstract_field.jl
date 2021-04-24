@@ -2,6 +2,7 @@ using Base: @propagate_inbounds
 using CUDA
 using Adapt
 using OffsetArrays
+using Statistics
 
 using Oceananigans.Architectures
 using Oceananigans.Utils
