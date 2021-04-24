@@ -20,5 +20,12 @@ for (function_name, reduction_operation) in ((:sum,     :(Base.add_sum)),
 
             return Base.$(function_name!)(f, $(reduction_operation), interior(result), operand)
         end
+
+        function Base.$(function_name!)(result::AbstractReducedField{LX, LY, LZ, A, G, T},
+                                        operand::AbstractArray{T}) where {LX, LY, LZ, A, G, T}
+
+            return Base.$(function_name!)(identity, $(reduction_operation), interior(result), operand)
+        end
+
     end
 end
