@@ -2,7 +2,7 @@ using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperati
 using Oceananigans.Fields: PressureField, compute_at!
 using Oceananigans.BuoyancyModels: BuoyancyField
 
-using Oceananigans.AbstractOperations: Δx, Δy, Δz, Ax, Ay, Az, Volume
+using Oceananigans.AbstractOperations: Δx, Δy, Δz, Ax, Ay, Az, volume
 
 function simple_binary_operation(op, a, b, num1, num2)
     a_b = op(a, b)
@@ -175,6 +175,8 @@ for arch in archs
             # ccc: b * ∂x(a) = [             4.5,      4.5      -4.5,            ]
             # fcc: b * ∂x(a) = [         3,        6,        3,       -6         ]
 
+            C = Center
+            F = Face
 
             @test times_x_derivative(a, b, (C, C, C), 1, 2, 2, 4.5)
             @test times_x_derivative(a, b, (F, C, C), 1, 2, 2, 3)
@@ -223,7 +225,7 @@ for arch in archs
                     end
                 end
 
-                for metric in (Δx, Δy, Δz, Ax, Ay, Az, Volume)
+                for metric in (Δx, Δy, Δz, Ax, Ay, Az, volume)
                     @test location(metric * ϕ) == location(ϕ)
                 end
             end
@@ -250,7 +252,7 @@ for arch in archs
             op = c * Ax;     @test op[1, 1, 1] == 12
             op = c * Ay;     @test op[1, 1, 1] == 8
             op = c * Az;     @test op[1, 1, 1] == 6
-            op = c * Volume; @test op[1, 1, 1] == 24
+            op = c * volume; @test op[1, 1, 1] == 24
         end
     end
 end

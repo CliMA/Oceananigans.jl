@@ -52,44 +52,35 @@ const Δy = YSpacingMetric()
 """
     Δz = ZSpacingMetric()
 
-An instance of `AbstractGridMetric` that can be used to create
-`BinaryOperation`s between `AbstractField`s and the vertical grid
-spacing evaluated at the same location as the `AbstractField`. 
+Instance of `ZSpacingMetric` that generates `BinaryOperation`s
+between `AbstractField`s and the vertical grid spacing evaluated
+at the same location as the `AbstractField`. 
+
+`Δx` and `Δy` play a similar role for horizontal grid spacings.
 
 Example
 =======
 
-```julia
+```jldoctest
 julia> using Oceananigans
-
-julia> grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(2, 2, 2))
-RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}
-                   domain: x ∈ [0.0, 2.0], y ∈ [0.0, 2.0], z ∈ [-2.0, 0.0]
-                 topology: (Periodic, Periodic, Bounded)
-  resolution (Nx, Ny, Nz): (1, 1, 1)
-   halo size (Hx, Hy, Hz): (1, 1, 1)
-grid spacing (Δx, Δy, Δz): (2.0, 2.0, 2.0)
-
-julia> c = CenterField(CPU(), grid);
 
 julia> using Oceananigans.AbstractOperations: Δz
 
-julia> c_dz = c * Δz
+julia> grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)); c = CenterField(CPU(), grid);
+
+julia> c_dz = c * Δz # returns BinaryOperation between Field and GridMetricOperation
 BinaryOperation at (Center, Center, Center)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
-│   └── domain: x ∈ [0.0, 2.0], y ∈ [0.0, 2.0], z ∈ [-2.0, 0.0]
-└── tree: 
+│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [-3.0, 0.0]
+└── tree:
     * at (Center, Center, Center)
-    ├── Field located at (Center, Center, Center)
-    └── Δzᵃᵃᶜ at (Center, Center, Center)
+    ├── Field located at (Center, Center, Center)
+    └── Δzᵃᵃᶜ at (Center, Center, Center)
 
-julia> set!(c, (x, y, z) -> rand())
-1×1×1 view(OffsetArray(::Array{Float64,3}, 0:2, 0:2, 0:2), 1:1, 1:1, 1:1) with eltype Float64:
-[:, :, 1] =
- 0.1308337558599868
+julia> c .= 1;
 
 julia> c_dz[1, 1, 1]
-0.2616675117199736
+3.0
 ```
 """
 const Δz = ZSpacingMetric()
@@ -98,7 +89,43 @@ const Ax = XAreaMetric()
 const Ay = YAreaMetric()
 const Az = ZAreaMetric()
 
-const Volume = VolumeMetric()
+"""
+    volume = VolumeMetric()
+
+Instance of `VolumeMetric` that generates `BinaryOperation`s
+between `AbstractField`s and their cell volumes. Summing
+this `BinaryOperation` yields an integral of `AbstractField`
+over the domain.
+
+Example
+=======
+
+```jldoctest
+julia> using Oceananigans
+
+julia> using Oceananigans.AbstractOperations: volume
+
+julia> grid = RegularRectilinearGrid(size=(2, 2, 2), extent=(1, 2, 3)); c = CenterField(CPU(), grid);
+
+julia> c .= 1;
+
+julia> c_dV = c * volume
+BinaryOperation at (Center, Center, Center)
+├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
+│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [-3.0, 0.0]
+└── tree:
+    * at (Center, Center, Center)
+    ├── Field located at (Center, Center, Center)
+    └── Vᶜᶜᶜ at (Center, Center, Center)
+
+julia> c_dV[1, 1, 1]
+0.75
+
+julia> sum(c_dV)
+6.0
+```
+"""
+const volume = VolumeMetric()
 
 """
     metric_function(loc, metric::AbstractGridMetric)
