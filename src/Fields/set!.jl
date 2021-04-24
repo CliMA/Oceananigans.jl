@@ -54,7 +54,10 @@ function set!(u::AbstractGPUField, v::Union{Array, Function})
 end
 
 """ Set the CPU field `u` data to the GPU field data of `v`. """
-set!(u::AbstractCPUField, v::AbstractGPUField) = u.data.parent .= Array(v.data.parent)
+set!(u::AbstractCPUField, v::AbstractGPUField) = parent(u) .= Array(parent(v))
 
 """ Set the GPU field `u` data to the CPU field data of `v`. """
-set!(u::AbstractGPUField, v::AbstractCPUField) = copyto!(u.data.parent, v.data.parent)
+set!(u::AbstractGPUField, v::AbstractCPUField) = copyto!(parent(u), parent(v))
+
+set!(u::AbstractCPUField, v::AbstractCPUField) = parent(u) .= parent(v)
+set!(u::AbstractGPUField, v::AbstractGPUField) = parent(u) .= parent(v)
