@@ -114,13 +114,16 @@ function define_binary_operator(op)
         $op(Lc::Tuple, f::Function, b::AbstractField) = $op(Lc, FunctionField(location(b), f, b.grid), b)
         $op(Lc::Tuple, a::AbstractField, f::Function) = $op(Lc, a, FunctionField(location(a), f, a.grid))
 
+        $op(Lc::Tuple, m::AbstractGridMetric, b::AbstractField) = $op(Lc, GridMetricOperation(location(b), m, b.grid), b)
+        $op(Lc::Tuple, a::AbstractField, m::AbstractGridMetric) = $op(Lc, a, GridMetricOperation(location(a), m, a.grid))
+
         # Sugary versions with default locations
         $op(a::AF, b::AF) = $op(location(a), a, b)
+        $op(a::AF, b) = $op(location(a), a, b)
+        $op(a, b::AF) = $op(location(b), a, b)
+
         $op(a::AF, b::Number) = $op(location(a), a, b)
         $op(a::Number, b::AF) = $op(location(b), a, b)
-
-        $op(a::AF, b::Function) = $op(location(a), a, FunctionField(location(a), b, a.grid))
-        $op(a::Function, b::AF) = $op(location(b), FunctionField(location(b), a, b.grid), b)
     end
 end
 

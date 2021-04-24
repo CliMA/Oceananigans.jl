@@ -43,6 +43,7 @@ Returns `abstract_operation` relocated to `loc`ation.
 at(loc, f) = f # fallback
 
 include("grid_validation.jl")
+include("grid_metrics.jl")
 include("unary_operations.jl")
 include("binary_operations.jl")
 include("multiary_operations.jl")

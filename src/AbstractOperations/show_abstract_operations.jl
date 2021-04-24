@@ -9,6 +9,8 @@ for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Der
     end
 end
 
+operation_name(op::GridMetricOperation) = string(op.metric)
+
 function show_interp(op)
     op_str = string(op)
     if op_str[1:8] == "identity"
