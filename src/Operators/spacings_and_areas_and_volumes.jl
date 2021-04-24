@@ -111,11 +111,13 @@ using Oceananigans.Grids: Flat
 @inline Axᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # u
 @inline Axᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # ζ
 @inline Axᶠᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid) # η
+@inline Axᶜᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid) # η
 
 @inline Ayᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # c
 @inline Ayᶜᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # v
 @inline Ayᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # ζ
 @inline Ayᶜᶠᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid) # ξ
+@inline Ayᶜᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid) # ξ
 
 #####
 ##### Volumes for three-dimensionally curvilinear algorithms
