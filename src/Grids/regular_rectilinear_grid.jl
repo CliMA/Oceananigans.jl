@@ -1,3 +1,5 @@
+import Oceananigans.Architectures: architecture
+
 """
     RegularRectilinearGrid{FT, TX, TY, TZ, R} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
 
@@ -260,3 +262,6 @@ end
 min_Δx(grid::RegularRectilinearGrid) = grid.Δx
 min_Δy(grid::RegularRectilinearGrid) = grid.Δy
 min_Δz(grid::RegularRectilinearGrid) = grid.Δz
+
+# All grid metrics are constants / functions / ranges, so there's no architecture.
+architecture(::RegularRectilinearGrid) = nothing
