@@ -23,7 +23,6 @@ for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
     end
 end
 
-# Prototype functionality with x, y, z spacings
 abstract type AbstractGridMetric end
 
 struct XSpacingMetric <: AbstractGridMetric end 
@@ -60,6 +59,7 @@ spacing evaluated at the same location as the `AbstractField`.
 Example
 =======
 
+```julia
 julia> using Oceananigans
 
 julia> grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(2, 2, 2))
@@ -90,6 +90,7 @@ julia> set!(c, (x, y, z) -> rand())
 
 julia> c_dz[1, 1, 1]
 0.2616675117199736
+```
 """
 const Δz = ZSpacingMetric()
 
