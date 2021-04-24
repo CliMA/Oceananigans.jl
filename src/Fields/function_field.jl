@@ -68,7 +68,7 @@ Base.parent(f::FunctionField) = f
 
 Adapt.adapt_structure(to, f::FunctionField{X, Y, Z}) where {X, Y, Z} =
     FunctionField{X, Y, Z}(Adapt.adapt(to, f.func),
-                           f.grid,
+                           Adapt.adapt(to, f.grid),
                            clock = Adapt.adapt(to, f.clock),
                            parameters = Adapt.adapt(to, f.parameters))
 
