@@ -62,7 +62,9 @@ function run_field_reduction_tests(FT, arch)
     CUDA.@disallowscalar begin
         for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
 
+            CUDA.allowscalar(true)
             @test all(ϕ .== ϕ_vals) # if this isn't true, reduction tests can't pass
+            CUDA.allowscalar(false)
 
             @test minimum(ϕ) == minimum(ϕ_vals)
             @test maximum(ϕ) == maximum(ϕ_vals)
