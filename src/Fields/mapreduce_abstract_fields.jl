@@ -1,5 +1,3 @@
-using GPUArrays
-
 using Oceananigans.Architectures: AbstractGPUArchitecture
 
 #####
@@ -16,14 +14,11 @@ for (function_name, reduction_operation) in ((:sum,     :(Base.add_sum)),
     function_name! = Symbol(function_name, '!')
 
     @eval begin
-
         function Base.$(function_name!)(f::Function,
-                                        result::AbstractReducedField{LX, LY, LZ, <:AbstractGPUArchitecture, G, T},
-                                        operand::AbstractArray{T}) where {LX, LY, LZ, G, T}
+                                        result::AbstractReducedField{LX, LY, LZ, A, G, T},
+                                        operand::AbstractArray{T}) where {LX, LY, LZ, A, G, T}
 
-            return Base.mapreducedim!(f, $(reduction_operation), interior(result), operand;
-                                      init = GPUArrays.neutral_element($(reduction_operation), T))
+            return Base.$(function_name!)(f, $(reduction_operation), interior(result), operand)
         end
-
     end
 end
