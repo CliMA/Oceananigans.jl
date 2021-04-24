@@ -4,28 +4,13 @@ using Oceananigans.Architectures: AbstractGPUArchitecture
 ##### In place reductions!
 #####
 
-for (function_name, reduction_operation) in ((:sum,     :(Base.add_sum)),
-                                             (:prod,    :(Base.mul_prod)),
-                                             (:maximum, :(Base.max)),
-                                             (:minimum, :(Base.min)),
-                                             (:all,     :&),
-                                             (:any,     :|))
+for function_name in (:sum, :prod, :maximum, :minimum, :all, :any)
 
     function_name! = Symbol(function_name, '!')
 
+    # Unwrap ReducedField to a view over interior nodes:
     @eval begin
-        function Base.$(function_name!)(f::Function,
-                                        result::AbstractReducedField{LX, LY, LZ, A, G, T},
-                                        operand::AbstractArray{T}) where {LX, LY, LZ, A, G, T}
-
-            return Base.$(function_name!)(f, $(reduction_operation), interior(result), operand)
-        end
-
-        function Base.$(function_name!)(result::AbstractReducedField{LX, LY, LZ, A, G, T},
-                                        operand::AbstractArray{T}) where {LX, LY, LZ, A, G, T}
-
-            return Base.$(function_name!)(identity, $(reduction_operation), interior(result), operand)
-        end
-
+        Base.$(function_name!)(f::Function, r::AbstractReducedField, a::AbstractArray; kwargs...) = Base.$(function_name!)(f, interior(r), a; kwargs...)
+        Base.$(function_name!)(r::AbstractReducedField, a::AbstractArray; kwargs...) = Base.$(function_name!)(identity, interior(r), a; kwargs...)
     end
 end
