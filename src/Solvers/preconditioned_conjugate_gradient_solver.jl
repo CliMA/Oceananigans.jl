@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: interior_parent_indices
-using Statistics
+using Statistics: norm, dot
 using LinearAlgebra
 
 mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P}
