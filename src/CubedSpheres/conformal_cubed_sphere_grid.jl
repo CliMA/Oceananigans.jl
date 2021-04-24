@@ -2,38 +2,13 @@ using Rotations
 using Oceananigans.Grids
 using Oceananigans.Grids: R_Earth, interior_indices
 
-import Base: show, size, eltype
-import Oceananigans.Grids: topology, domain_string
+"""
+    default_conformal_cubed_sphere_connectivity()
 
-struct CubedSphereFaceConnectivityDetails{F, S}
-    face :: F
-    side :: S
-end
-
-short_string(deets::CubedSphereFaceConnectivityDetails) = "face $(deets.face) $(deets.side) side"
-
-Base.show(io::IO, deets::CubedSphereFaceConnectivityDetails) =
-    print(io, "CubedSphereFaceConnectivityDetails: $(short_string(deets))")
-
-struct CubedSphereFaceConnectivity{W, E, S, N}
-     west :: W
-     east :: E
-    south :: S
-    north :: N
-end
-
-CubedSphereFaceConnectivity(; west, east, south, north) =
-    CubedSphereFaceConnectivity(west, east, south, north)
-
-function Base.show(io::IO, connectivity::CubedSphereFaceConnectivity)
-    print(io, "CubedSphereFaceConnectivity:\n",
-              "├── west: $(short_string(connectivity.west))\n",
-              "├── east: $(short_string(connectivity.east))\n",
-              "├── south: $(short_string(connectivity.south))\n",
-              "└── north: $(short_string(connectivity.north))")
-end
-
-function default_face_connectivity()
+Default connectivity of the Oceananigans' MultiRegionGrid composed of six cube
+faces conformally mapped to the surface of the sphere.
+"""
+function default_conformal_cubed_sphere_connectivity()
     # See figure 8.4 of https://mitgcm.readthedocs.io/en/latest/phys_pkgs/exch2.html?highlight=cube%20sphere#fig-6tile
     #
     #                         face  F5   face  F6
@@ -58,50 +33,50 @@ function default_face_connectivity()
     # +----------+----------+
     #   face  F1   face  F2
 
-    face1_connectivity = CubedSphereFaceConnectivity(
-        west  = CubedSphereFaceConnectivityDetails(5, :north),
-        east  = CubedSphereFaceConnectivityDetails(2, :west),
-        south = CubedSphereFaceConnectivityDetails(6, :north),
-        north = CubedSphereFaceConnectivityDetails(3, :west),
+    face1_connectivity = RegionConnectivity(
+        west  = RegionConnectivityDetails(5, :north),
+        east  = RegionConnectivityDetails(2, :west),
+        south = RegionConnectivityDetails(6, :north),
+        north = RegionConnectivityDetails(3, :west),
     )
 
-    face2_connectivity = CubedSphereFaceConnectivity(
-        west  = CubedSphereFaceConnectivityDetails(1, :east),
-        east  = CubedSphereFaceConnectivityDetails(4, :south),
-        south = CubedSphereFaceConnectivityDetails(6, :east),
-        north = CubedSphereFaceConnectivityDetails(3, :south),
+    face2_connectivity = RegionConnectivity(
+        west  = RegionConnectivityDetails(1, :east),
+        east  = RegionConnectivityDetails(4, :south),
+        south = RegionConnectivityDetails(6, :east),
+        north = RegionConnectivityDetails(3, :south),
     )
 
-    face3_connectivity = CubedSphereFaceConnectivity(
-        west  = CubedSphereFaceConnectivityDetails(1, :north),
-        east  = CubedSphereFaceConnectivityDetails(4, :west),
-        south = CubedSphereFaceConnectivityDetails(2, :north),
-        north = CubedSphereFaceConnectivityDetails(5, :west),
+    face3_connectivity = RegionConnectivity(
+        west  = RegionConnectivityDetails(1, :north),
+        east  = RegionConnectivityDetails(4, :west),
+        south = RegionConnectivityDetails(2, :north),
+        north = RegionConnectivityDetails(5, :west),
     )
 
-    face4_connectivity = CubedSphereFaceConnectivity(
-        west  = CubedSphereFaceConnectivityDetails(3, :east),
-        east  = CubedSphereFaceConnectivityDetails(6, :south),
-        south = CubedSphereFaceConnectivityDetails(2, :east),
-        north = CubedSphereFaceConnectivityDetails(5, :south),
+    face4_connectivity = RegionConnectivity(
+        west  = RegionConnectivityDetails(3, :east),
+        east  = RegionConnectivityDetails(6, :south),
+        south = RegionConnectivityDetails(2, :east),
+        north = RegionConnectivityDetails(5, :south),
     )
 
-    face5_connectivity = CubedSphereFaceConnectivity(
-        west  = CubedSphereFaceConnectivityDetails(3, :north),
-        east  = CubedSphereFaceConnectivityDetails(6, :west),
-        south = CubedSphereFaceConnectivityDetails(4, :north),
-        north = CubedSphereFaceConnectivityDetails(1, :west),
+    face5_connectivity = RegionConnectivity(
+        west  = RegionConnectivityDetails(3, :north),
+        east  = RegionConnectivityDetails(6, :west),
+        south = RegionConnectivityDetails(4, :north),
+        north = RegionConnectivityDetails(1, :west),
     )
 
 
-    face6_connectivity = CubedSphereFaceConnectivity(
-        west  = CubedSphereFaceConnectivityDetails(5, :east),
-        east  = CubedSphereFaceConnectivityDetails(2, :south),
-        south = CubedSphereFaceConnectivityDetails(4, :east),
-        north = CubedSphereFaceConnectivityDetails(1, :south),
+    face6_connectivity = RegionConnectivity(
+        west  = RegionConnectivityDetails(5, :east),
+        east  = RegionConnectivityDetails(2, :south),
+        south = RegionConnectivityDetails(4, :east),
+        north = RegionConnectivityDetails(1, :south),
     )
 
-    face_connectivity = (
+    connectivity = (
         face1_connectivity,
         face2_connectivity,
         face3_connectivity,
@@ -110,15 +85,7 @@ function default_face_connectivity()
         face6_connectivity
     )
 
-    return face_connectivity
-end
-
-# Note: I think we want to keep faces and face_connectivity tuples
-# so it's easy to support an arbitrary number of faces.
-
-struct ConformalCubedSphereGrid{FT, F, C} <: AbstractHorizontallyCurvilinearGrid{FT, Connected, Connected, Bounded}
-                faces :: F
-    face_connectivity :: C
+    return connectivity
 end
 
 function ConformalCubedSphereGrid(FT=Float64; face_size, z, radius=R_Earth)
@@ -151,9 +118,9 @@ function ConformalCubedSphereGrid(FT=Float64; face_size, z, radius=R_Earth)
         z⁻_face_grid
     )
 
-    face_connectivity = default_face_connectivity()
+    connectivity = default_conformal_cubed_sphere_connectivity()
 
-    return ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity)}(faces, face_connectivity)
+    return MultiRegionGrid(faces, connectivity)
 end
 
 function ConformalCubedSphereGrid(filepath::AbstractString, FT=Float64; Nz, z, architecture = CPU(), radius = R_Earth, halo = (1, 1, 1))
@@ -164,74 +131,14 @@ function ConformalCubedSphereGrid(filepath::AbstractString, FT=Float64; Nz, z, a
 
     faces = Tuple(ConformalCubedSphereFaceGrid(filepath, FT; face=n, face_kwargs...) for n in 1:6)
 
-    face_connectivity = default_face_connectivity()
+    connectivity = default_conformal_cubed_sphere_connectivity()
 
-    grid = ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity)}(faces, face_connectivity)
+    grid = MultiRegionGrid(faces, connectivity)
 
     fill_grid_metric_halos!(grid)
 
     return grid
 end
-
-function Base.show(io::IO, grid::ConformalCubedSphereGrid{FT}) where FT
-    Nx, Ny, Nz, Nf = size(grid)
-    print(io, "ConformalCubedSphereGrid{$FT}: $Nf faces with size = ($Nx, $Ny, $Nz)")
-end
-
-#####
-##### Nodes for ConformalCubedSphereFaceGrid
-#####
-
-λnode(LX::Face,   LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.λᶠᶠᵃ[i, j]
-λnode(LX::Face,   LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.λᶠᶜᵃ[i, j]
-λnode(LX::Center, LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.λᶜᶠᵃ[i, j]
-λnode(LX::Center, LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.λᶜᶜᵃ[i, j]
-
-φnode(LX::Face,   LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.φᶠᶠᵃ[i, j]
-φnode(LX::Face,   LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.φᶠᶜᵃ[i, j]
-φnode(LX::Center, LY::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.φᶜᶠᵃ[i, j]
-φnode(LX::Center, LY::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.φᶜᶜᵃ[i, j]
-
-znode(LX, LY, LZ::Face,   i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.zᵃᵃᶠ[k]
-znode(LX, LY, LZ::Center, i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.zᵃᵃᶜ[k]
-
-λnodes(LX::Face, LY::Face, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.λᶠᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
-
-λnodes(LX::Face, LY::Center, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.λᶠᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
-
-λnodes(LX::Center, LY::Face, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.λᶜᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
-
-λnodes(LX::Center, LY::Center, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.λᶜᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
-
-φnodes(LX::Face, LY::Face, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.φᶠᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
-
-φnodes(LX::Face, LY::Center, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.φᶠᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
-
-φnodes(LX::Center, LY::Face, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.φᶜᶠᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
-
-φnodes(LX::Center, LY::Center, LZ, grid::ConformalCubedSphereFaceGrid{TX, TY}) where {TX, TY} =
-    view(grid.φᶜᶜᵃ, interior_indices(LX, TX, grid.Nx), interior_indices(LY, TY, grid.Ny))
-
-#####
-##### Grid utils
-#####
-
-Base.size(grid::ConformalCubedSphereGrid) = (size(grid.faces[1])..., length(grid.faces))
-
-Base.eltype(grid::ConformalCubedSphereGrid{FT}) where FT = FT
-
-topology(::ConformalCubedSphereGrid) = (Bounded, Bounded, Bounded)
-
-# Not sure what to put. Gonna leave it blank so that Base.show(io::IO, operation::AbstractOperation) doesn't error.
-domain_string(grid::ConformalCubedSphereFaceGrid) = ""
-domain_string(grid::ConformalCubedSphereGrid) = ""
 
 #####
 ##### filling grid halos
@@ -262,12 +169,12 @@ function fill_grid_metric_halos!(grid)
 
     for face_number in 1:6, side in (:west, :east, :south, :north)
 
-        connectivity_info = getproperty(grid.face_connectivity[face_number], side)
+        connectivity_info = getproperty(grid.connectivity[face_number], side)
         src_face_number = connectivity_info.face
         src_side = connectivity_info.side
 
-        grid_face = grid.faces[face_number]
-        src_grid_face = grid.faces[src_face_number]
+        grid_face = get_region(grid, face_number)
+        src_grid_face = get_region(grid, src_face_number)
 
         if sides_in_the_same_dimension(side, src_side)
             grid_metric_halo(grid_face.Δxᶜᶜᵃ, grid_face, loc_cc, side) .= grid_metric_boundary(grid_face.Δxᶜᶜᵃ, src_grid_face, loc_cc, src_side)

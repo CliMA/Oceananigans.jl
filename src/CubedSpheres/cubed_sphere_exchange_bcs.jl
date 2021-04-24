@@ -30,34 +30,34 @@ Base.show(io::IO, ex::CubedSphereExchangeInformation) =
 print_condition(info::CubedSphereExchangeInformation) =
     "(from: face $(info.from_face) $(info.from_side) side, to: face $(info.to_face) $(info.to_side) side)"
 
-function inject_cubed_sphere_exchange_boundary_conditions(field_bcs, face_number, face_connectivity)
+function inject_cubed_sphere_exchange_boundary_conditions(field_bcs, face_number, connectivity)
 
     west_exchange_info = CubedSphereExchangeInformation(
         from_face = face_number,
         from_side = :west,
-          to_face = face_connectivity[face_number].west.face,
-          to_side = face_connectivity[face_number].west.side
+          to_face = connectivity[face_number].west.face,
+          to_side = connectivity[face_number].west.side
     )
 
     east_exchange_info = CubedSphereExchangeInformation(
         from_face = face_number,
         from_side = :east,
-          to_face = face_connectivity[face_number].east.face,
-          to_side = face_connectivity[face_number].east.side
+          to_face = connectivity[face_number].east.face,
+          to_side = connectivity[face_number].east.side
     )
 
     south_exchange_info = CubedSphereExchangeInformation(
         from_face = face_number,
         from_side = :south,
-          to_face = face_connectivity[face_number].south.face,
-          to_side = face_connectivity[face_number].south.side
+          to_face = connectivity[face_number].south.face,
+          to_side = connectivity[face_number].south.side
     )
 
     north_exchange_info = CubedSphereExchangeInformation(
         from_face = face_number,
         from_side = :north,
-          to_face = face_connectivity[face_number].north.face,
-          to_side = face_connectivity[face_number].north.side
+          to_face = connectivity[face_number].north.face,
+          to_side = connectivity[face_number].north.side
     )
 
     west_exchange_bc = CubedSphereExchangeBoundaryCondition(west_exchange_info)

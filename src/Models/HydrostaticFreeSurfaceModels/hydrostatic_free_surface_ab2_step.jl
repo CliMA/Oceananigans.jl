@@ -13,8 +13,6 @@ combine_events(::Nothing, ::Nothing, tracer_events) = MultiEvent(tuple(tracer_ev
 
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
-
     barrier = Event(device(model.architecture))
 
     # Launch velocity update kernels

@@ -307,3 +307,5 @@ end
 
 @inline znode(LX, LY, ::Face,   i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶠ[k]
 @inline znode(LX, LY, ::Center, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶜ[k]
+
+domain_string(grid::ConformalCubedSphereFaceGrid) = ""

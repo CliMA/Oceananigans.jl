@@ -9,12 +9,12 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_horizontal_velocit
 fill_south_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 fill_north_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 
-function fill_halo_regions!(field::AbstractCubedSphereField, arch, args...; kwargs...)
+function fill_halo_regions!(field::AbstractMultiRegionField, arch, args...; kwargs...)
 
     # Fill the top and bottom halos the usual way.
     #fill_halo_regions!(field, arch, args...; kwargs...)
 
-    for face_field in faces(field)
+    for face_field in regions(field)
         # Deal with halo exchanges.
         fill_west_halo!(face_field, field)
         fill_east_halo!(face_field, field)
@@ -24,6 +24,8 @@ function fill_halo_regions!(field::AbstractCubedSphereField, arch, args...; kwar
 
     return nothing
 end
+
+const CubedSphereFaceField = AbstractField{LX, LY, LZ, A, <:ConformalCubedSphereFaceGrid} where {LX, LY, LZ, A}
 
 function fill_west_halo!(field::CubedSphereFaceField{LX, LY, LZ}, cubed_sphere_field) where {LX, LY, LZ}
     location = (LX, LY, LZ)
@@ -100,7 +102,7 @@ end
 # Don't worry about this when not on a cubed sphere.
 fill_horizontal_velocity_halos!(u, v, arch) = nothing
 
-function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereField, arch)
+function fill_horizontal_velocity_halos!(u::MultiRegionField, v::MultiRegionField, arch)
 
     ## Fill them like they're tracers to get the top and bottom filled.
     fill_halo_regions!(u, arch)
@@ -112,7 +114,7 @@ function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereFiel
     v_loc = (Center, Face, Center)
 
     for face_number in 1:6, side in (:west, :east, :south, :north)
-        exchange_info = getproperty(u.boundary_conditions.faces[face_number], side).condition
+        exchange_info = getproperty(get_region(u.boundary_conditions, face_number), side).condition
         src_face_number = exchange_info.to_face
         src_side = exchange_info.to_side
 

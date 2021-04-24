@@ -16,7 +16,7 @@ include("data_dependencies.jl")
         @info "  Testing conformal cubed sphere grid..."
 
         grid = ConformalCubedSphereGrid(face_size=(10, 10, 1), z=(-1, 0))
-        @test try show(grid); println(); true; catch; false; end
+        @test try show(grid); println(); true; catch err; showerror(err); false; end
     end
 
     for arch in archs
@@ -41,7 +41,7 @@ include("data_dependencies.jl")
         )
 
         @testset "Constructing a grid from file [$(typeof(arch))]" begin
-            @test grid isa ConformalCubedSphereGrid
+            @test grid isa MultiRegionGrid
         end
 
         @testset "CubedSphereData and CubedSphereFields [$(typeof(arch))]" begin
@@ -50,7 +50,7 @@ include("data_dependencies.jl")
             set!(c, 0)
 
             CUDA.allowscalar(true)
-            @test all(all(face_c .== 0) for face_c in faces(c))
+            @test all(all(region_c .== 0) for region_c in regions(c))
             CUDA.allowscalar(false)
             @test maximum(abs, c) == 0
             @test minimum(abs, c) == 0
