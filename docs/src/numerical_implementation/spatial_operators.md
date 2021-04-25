@@ -102,7 +102,7 @@ as, e.g,
 ```math
 \renewcommand{\div}[1] {\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( #1 \right )}
 \begin{align}
-\boldsymbol{u} \cdot \nabla u & = \div{u \boldsymbol{u}} - u ( \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u} ) \nonumber \\
+\boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} u & = \div{u \boldsymbol{u}} - u ( \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u} ) \nonumber \\
     & = \div{u \boldsymbol{u}} \, ,
 \end{align}
 ```
@@ -111,7 +111,7 @@ be discretized differently for each direction.
 
 For example, the ``x``-momentum advection operator is discretized as
 ```math
-\boldsymbol{u} \cdot \nabla u
+\boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} u
 = \frac{1}{\overline{V}^x} \left[
     \delta_x^{faa} \left( \overline{A_x u}^{caa} \overline{u}^{caa} \right)
   + \delta_y^{afa} \left( \overline{A_y v}^{aca} \overline{u}^{aca} \right)
@@ -129,7 +129,7 @@ back onto the cell faces.
 
 An isotropic viscosity operator acting on vertical momentum is discretized via
 ```math
-    \boldsymbol{\nabla} \left ( \nu_e \boldsymbol{\nabla} w \right )
+    \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \nu_e \boldsymbol{\nabla} w \right )
     = \frac{1}{V} \left[
           \delta_x^{faa} \left( \nu_e \overline{A_x}^{caa} \partial_x^{caa} w \right)
         + \delta_y^{afa} \left( \nu_e \overline{A_y}^{aca} \partial_y^{aca} w \right)
