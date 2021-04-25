@@ -25,7 +25,7 @@ function.
 function correct_field_value_was_set(arch, grid, FieldType, val::Number)
     f = FieldType(arch, grid)
     set!(f, val)
-    CUDA.@allowscalar return all(interior(f) .≈ val * arch_array(arch, ones(size(f))))
+    return all(interior(f) .≈ val * arch_array(arch, ones(size(f))))
 end
 
 function run_field_reduction_tests(FT, arch)
@@ -58,14 +58,12 @@ function run_field_reduction_tests(FT, arch)
 
     dims_to_test = (1, 2, 3, (1, 2), (1, 3), (2, 3))
 
-    # Important to make sure no CUDA scalar operations occur!
-    CUDA.@disallowscalar begin
-        for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
+    for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
 
-            CUDA.allowscalar(true)
-            @test all(ϕ .== ϕ_vals) # if this isn't true, reduction tests can't pass
-            CUDA.allowscalar(false)
+        @test all(ϕ .== ϕ_vals) # if this isn't true, reduction tests can't pass
 
+        # Important to make sure no CUDA scalar operations occur!
+        CUDA.@disallowscalar begin
             @test minimum(ϕ) == minimum(ϕ_vals)
             @test maximum(ϕ) == maximum(ϕ_vals)
             @test mean(ϕ) == mean(ϕ_vals)

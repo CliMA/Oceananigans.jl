@@ -64,8 +64,6 @@ end
                 A = rand(FT, sz...)
                 set!(reduced_field, A)
                 
-                CUDA.allowscalar(true)
-
                 @test reduced_field[1, 1, 1] == A[1, 1, 1]
 
                 fill_halo_regions!(reduced_field, arch)
@@ -80,8 +78,6 @@ end
 
                 @test reduced_field[0, 1, 1] == A[end, 1, 1]
                 @test reduced_field[grid.Nx+1, 1, 1] == A[1, 1, 1]
-
-                CUDA.allowscalar(false)
             end
         end
     end
