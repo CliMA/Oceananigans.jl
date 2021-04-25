@@ -30,7 +30,7 @@ pressure projection operator with eigenvalue zero and are thus indistinguishable
 [Sani81](@cite).
 
 The staggered grid was first introduced by [Harlow65](@cite) with their *marker and cell* method. In meteorology
-and oceanography, this particulare staggered grid configuration is referred to as the Arakawa C-grid after [Arakawa77](@cite), who
+and oceanography, this particular staggered grid configuration is referred to as the Arakawa C-grid after [Arakawa77](@cite), who
 investigated four different staggered grids and the unstaggered A-grid for use in an atmospheric model.
 
 [Arakawa77](@cite) investigated the dispersion relation of inertia-gravity waves[^2] traveling in the ``x``-direction
