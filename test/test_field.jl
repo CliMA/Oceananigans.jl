@@ -1,4 +1,4 @@
-using Oceananigans.Fields: cpudata, FieldSlicer
+using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy
 
 """
     correct_field_size(arch, grid, FieldType, Tx, Ty, Tz)
@@ -25,7 +25,7 @@ function.
 function correct_field_value_was_set(arch, grid, FieldType, val::Number)
     f = FieldType(arch, grid)
     set!(f, val)
-    CUDA.@allowscalar return interior(f) ≈ val * ones(size(f))
+    CUDA.@allowscalar return all(interior(f) .≈ val * arch_array(arch, ones(size(f))))
 end
 
 function run_field_reduction_tests(FT, arch)
@@ -118,10 +118,10 @@ function run_field_interpolation_tests(arch, FT)
     ℑw = interpolate.(Ref(w), nodes(w, reshape=true)...)
     ℑc = interpolate.(Ref(c), nodes(c, reshape=true)...)
 
-    @test all(isapprox.(ℑu, interior(u), atol=ε_max))
-    @test all(isapprox.(ℑv, interior(v), atol=ε_max))
-    @test all(isapprox.(ℑw, interior(w), atol=ε_max))
-    @test all(isapprox.(ℑc, interior(c), atol=ε_max))
+    @test all(isapprox.(ℑu, Array(interior(u)), atol=ε_max))
+    @test all(isapprox.(ℑv, Array(interior(v)), atol=ε_max))
+    @test all(isapprox.(ℑw, Array(interior(w)), atol=ε_max))
+    @test all(isapprox.(ℑc, Array(interior(c)), atol=ε_max))
 
     # Check that interpolating between grid points works as expected.
 
@@ -129,12 +129,12 @@ function run_field_interpolation_tests(arch, FT)
     ys = reshape([-π/6, 0, 1+1e-7], (1, 3, 1))
     zs = reshape([-1.3, 1.23, 2.1], (1, 1, 3))
 
-    F = f.(xs, ys, zs)
-
     ℑu = interpolate.(Ref(u), xs, ys, zs)
     ℑv = interpolate.(Ref(v), xs, ys, zs)
     ℑw = interpolate.(Ref(w), xs, ys, zs)
     ℑc = interpolate.(Ref(c), xs, ys, zs)
+
+    F = f.(xs, ys, zs)
 
     @test all(isapprox.(ℑu, F, atol=ε_max))
     @test all(isapprox.(ℑv, F, atol=ε_max))
