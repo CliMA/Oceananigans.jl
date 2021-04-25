@@ -193,9 +193,11 @@ end
 
 Planes = (FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane)
 
+BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipation(FT, Cb=1.0)
+
 Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
-            SmagorinskyLilly, AnisotropicMinimumDissipation)
+            SmagorinskyLilly, AnisotropicMinimumDissipation, BuoyancyModifiedAnisotropicMinimumDissipation)
 
 advection_schemes = (nothing,
                      CenteredSecondOrder(),
