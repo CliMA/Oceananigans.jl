@@ -61,9 +61,9 @@ function x_derivative_cell(arch)
     dx_a = ∂x(a)
 
     for k in 1:3
-        Array(interior(a)[:, 1, k]) .= [1, 4, 4]
-        Array(interior(a)[:, 2, k]) .= [1, 4, 4]
-        Array(interior(a)[:, 3, k]) .= [1, 4, 4]
+        interior(a)[:, 1, k] .= arch_array(arch, [1, 4, 4])
+        interior(a)[:, 2, k] .= arch_array(arch, [1, 4, 4])
+        interior(a)[:, 3, k] .= arch_array(arch, [1, 4, 4])
     end
 
     return dx_a[2, 2, 2] == 3
