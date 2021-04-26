@@ -53,7 +53,7 @@ function AveragedField(operand::AbstractField; dims, data=nothing, recompute_saf
 end
 
 """
-    compute!(avg::AveragedField)
+    compute!(avg::AveragedField, time=nothing)
 
 Compute the average of `avg.operand` and store the result in `avg.data`.
 """

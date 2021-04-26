@@ -130,8 +130,8 @@ end
 
             uh, vh, h = model.solution
 
-            @test all(interior(uh) .≈ uh_answer)
-            @test all(interior(h) .≈ h_answer)
+            @test all(Array(interior(uh)) .≈ uh_answer)
+            @test all(Array(interior(h)) .≈ h_answer)
         end
     end
 
