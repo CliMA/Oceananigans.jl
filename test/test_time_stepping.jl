@@ -22,7 +22,7 @@ function time_stepping_works_with_coriolis(arch, FT, Coriolis)
 end
 
 function time_stepping_works_with_closure(arch, FT, Closure;
-                                          buoyancy=Buoyancy(model=SeawaterBuoyancy(float_type)))
+                                          buoyancy=Buoyancy(model=SeawaterBuoyancy(FT)))
 
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
     grid = RegularRectilinearGrid(FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
