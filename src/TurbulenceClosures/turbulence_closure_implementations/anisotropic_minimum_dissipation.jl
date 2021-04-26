@@ -44,7 +44,10 @@ Keyword arguments
     - `Cκ` : Poincaré constant for tracer eddy diffusivities. If one number or function, the same
              number or function is applied to all tracers. If a `NamedTuple`, it must possess
              a field specifying the Poncaré constant for every tracer.
-    - `Cb` : Buoyancy modification multiplier (`Cb = nothing` turns it off, `Cb = 1` was used by [Abkar16](@cite))
+    - `Cb` : Buoyancy modification multiplier (`Cb = nothing` turns it off, `Cb = 1` was used by [Abkar16](@cite)).
+             *Note*: that we _do not_ subtract the horizontally-average component before computing this
+             buoyancy modification term. This implementation differs from [Abkar16](@cite)'s proposal
+             and the impact of this approximation has not been tested or validated.
     - `ν`  : Constant background viscosity for momentum.
     - `κ`  : Constant background diffusivity for tracer. If a single number, the same background
              diffusivity is applied to all tracers. If a `NamedTuple`, it must possess a field
@@ -104,6 +107,8 @@ function AnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=noth
                                        Cb=nothing, ν=ν₀, κ=κ₀)
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
+    
+    !isnothing(Cb) && warn("AnisotropicMinimumDissipation with buoyancy modification is unvalidated.")
 
     return AnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ)
 end
