@@ -1,3 +1,5 @@
+using CUDA
+
 #####
 ##### Convinience functions
 #####
