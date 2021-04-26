@@ -11,10 +11,10 @@ fill_north_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 
 function fill_halo_regions!(field::AbstractCubedSphereField, arch, args...; kwargs...)
 
-    # Fill the top and bottom halos the usual way.
-    fill_halo_regions!(field, arch, args...; kwargs...)
-
     for face_field in faces(field)
+        # Fill the top and bottom halos the usual way.
+        fill_halo_regions!(face_field, arch, args...; kwargs...)
+
         # Deal with halo exchanges.
         fill_west_halo!(face_field, field)
         fill_east_halo!(face_field, field)
