@@ -3,6 +3,8 @@
 using Oceananigans
 using Oceananigans.Grids
 
+using Oceananigans.Fields: FunctionField
+
 using Oceananigans.Coriolis:
     HydrostaticSphericalCoriolis,
     VectorInvariantEnergyConserving,
@@ -23,8 +25,10 @@ using Statistics
 using JLD2
 using Printf
 
-Nx = 60
-Ny = 60
+using Oceananigans.AbstractOperations: AbstractGridMetric, _unary_operation
+
+Nx = 3600
+Ny = 3600
 
 # A spherical domain
 grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
@@ -42,13 +46,11 @@ coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserv
 variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    architecture = CPU(),
+                                    architecture = GPU(),
                                     momentum_advection = VectorInvariant(),
                                     free_surface = free_surface,
                                     coriolis = coriolis,
                                     closure = variable_horizontal_diffusivity,
-                                    tracers = nothing,
-                                    buoyancy = nothing)
 
 g = model.free_surface.gravitational_acceleration
 
@@ -93,14 +95,19 @@ function (p::Progress)(sim)
     return nothing
 end
 
-
 ζ = VerticalVorticityField(model)
 compute!(ζ)
+
+@inline f_func(λ, φ, z, Ω) = 2Ω * sin(π * φ / 180)
+f = FunctionField((Face, Face, Center), f_func, parameters=model.coriolis.rotation_rate)
+Ro = ComputedField(ζ / f)
+compute!(Ro)
 
 Δt = 0.1wave_propagation_time_scale
 
 @info """
     Maximum vertical vorticity: $(maximum(ζ))
+    Polar Rossby number: $(maximum(Ro))
     Inverse maximum vertical vorticity: $(prettytime(1/maximum(ζ)))
     Minimum wave propagation time scale: $(prettytime(wave_propagation_time_scale))
     Time step: $(prettytime(Δt))
@@ -108,16 +115,16 @@ compute!(ζ)
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 1years,
+                        stop_time = 60days,
                         iteration_interval = 100,
                         progress = Progress(time_ns()))
 
-output_fields = merge(model.velocities, (η=model.free_surface.η,))
+output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=ζ))
 
 output_prefix = "barotropic_gyre_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(10day),
+                                                      schedule = TimeInterval(1day),
                                                       prefix = output_prefix,
                                                       field_slicer = nothing,
                                                       force = true)
