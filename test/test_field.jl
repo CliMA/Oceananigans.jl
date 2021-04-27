@@ -182,6 +182,8 @@ end
     @testset "Setting fields" begin
         @info "  Testing field setting..."
 
+        CUDA.allowscalar(true)
+
         FieldTypes = (CenterField, XFaceField, YFaceField, ZFaceField)
 
         N = (4, 6, 8)
