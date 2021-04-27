@@ -60,7 +60,7 @@ export
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface,
-    HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
+    HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving, VectorInvariantEnergyConserving,
     PrescribedVelocityFields,
 
     # Time stepping
