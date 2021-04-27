@@ -6,7 +6,7 @@ using OffsetArrays: OffsetArray
 import Base: getindex, size, show, minimum, maximum
 import Statistics: mean
 
-import Oceananigans.Fields: AbstractField, AbstractDataField, AbstractReducedField, Field, minimum, maximum, mean, location
+import Oceananigans.Fields: AbstractField, AbstractDataField, AbstractReducedField, Field, ReducedField, minimum, maximum, mean, location
 import Oceananigans.Grids: new_data
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 
@@ -24,6 +24,7 @@ const CubedSphereData = CubedSphereFaces{<:OffsetArray}
 
 # Flavors of CubedSphereField
 const CubedSphereField = Field{X, Y, Z, A, <:CubedSphereData} where {X, Y, Z, A}
+const CubedSphereReducedField = ReducedField{X, Y, Z, A, <:CubedSphereData} where {X, Y, Z, A}
 const CubedSphereAbstractField = AbstractField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
 const CubedSphereAbstractDataField = AbstractDataField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
 const CubedSphereAbstractReducedField = AbstractReducedField{X, Y, Z, A, D, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A, D}
