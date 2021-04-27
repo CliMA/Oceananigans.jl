@@ -63,25 +63,24 @@ function run_field_reduction_tests(FT, arch)
         @test all(ϕ .== ϕ_vals) # if this isn't true, reduction tests can't pass
 
         # Important to make sure no CUDA scalar operations occur!
-        CUDA.@disallowscalar begin
+        CUDA.allowscalar(false)
+        @test minimum(ϕ) == minimum(ϕ_vals)
+        @test maximum(ϕ) == maximum(ϕ_vals)
+        @test mean(ϕ) == mean(ϕ_vals)
+        @test minimum(∛, ϕ) == minimum(∛, ϕ_vals)
+        @test maximum(abs, ϕ) == maximum(abs, ϕ_vals)
+        @test mean(abs2, ϕ) == mean(abs2, ϕ)
 
-            @test minimum(ϕ) == minimum(ϕ_vals)
-            @test maximum(ϕ) == maximum(ϕ_vals)
-            @test mean(ϕ) == mean(ϕ_vals)
-            @test minimum(∛, ϕ) == minimum(∛, ϕ_vals)
-            @test maximum(abs, ϕ) == maximum(abs, ϕ_vals)
-            @test mean(abs2, ϕ) == mean(abs2, ϕ)
+        for dims in dims_to_test
+            @test minimum(ϕ, dims=dims) == minimum(ϕ_vals, dims=dims)
+            @test maximum(ϕ, dims=dims) == maximum(ϕ_vals, dims=dims)
+            @test mean(ϕ, dims=dims) == mean(ϕ_vals, dims=dims)
 
-            for dims in dims_to_test
-                @test minimum(ϕ, dims=dims) == minimum(ϕ_vals, dims=dims)
-                @test maximum(ϕ, dims=dims) == maximum(ϕ_vals, dims=dims)
-                @test mean(ϕ, dims=dims) == mean(ϕ_vals, dims=dims)
-
-                @test minimum(sin, ϕ, dims=dims) == minimum(sin, ϕ_vals, dims=dims)
-                @test maximum(cos, ϕ, dims=dims) == maximum(cos, ϕ_vals, dims=dims)
-                @test mean(cosh, ϕ, dims=dims) == mean(cosh, ϕ, dims=dims)
-            end
+            @test minimum(sin, ϕ, dims=dims) == minimum(sin, ϕ_vals, dims=dims)
+            @test maximum(cos, ϕ, dims=dims) == maximum(cos, ϕ_vals, dims=dims)
+            @test mean(cosh, ϕ, dims=dims) == mean(cosh, ϕ, dims=dims)
         end
+        CUDA.allowscalar(true)
     end
 
     return nothing
