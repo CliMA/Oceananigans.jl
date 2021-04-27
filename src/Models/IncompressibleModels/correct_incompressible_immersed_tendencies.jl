@@ -1,7 +1,7 @@
 using Oceananigans.Grids: xnode, ynode, znode, Face, Center, AbstractGrid
 using ForwardDiff
 using LinearAlgebra
-using Oceananigans.Fields: interpolate
+using Oceananigans.Fields: interpolate, location
 
 import Oceananigans.TimeSteppers: correct_immersed_tendencies!
 
@@ -33,7 +33,7 @@ function correct_immersed_tendencies!(model, immersed_boundary)
     correct_tendencies_event =
         correct_immersed_tendencies_kernel!(model.grid,
                                             immersed_boundary,
-                                            model.velocities,
+                                            model.velocities, model.tracers,
                                             model.grid.Δx, 
                                             model.grid.Δy, model.grid.Δz,
                                             dependencies=barrier)
@@ -43,35 +43,28 @@ function correct_immersed_tendencies!(model, immersed_boundary)
     return nothing
 end
 
-@kernel function _correct_immersed_tendencies!(grid::AbstractGrid{FT}, immersed, velocities, Δx, Δy, Δz) where FT
+@kernel function _correct_immersed_tendencies!(grid::AbstractGrid{FT}, immersed, velocities, tracers, Δx, Δy, Δz) where FT
     
     i, j, k = @index(Global, NTuple)
     
-    # (x,y,z) for u velocity grid
-    x = xnode(Face, i, grid)
+    # for velocities
+    for (q, velocity) in enumerate(velocities)
+        LX, LY, LZ = location(velocity)
+        x = xnode(LX, i, grid)
+        y = ynode(LY, j, grid)
+        z = znode(LZ, k, grid)
+        @inbounds begin
+            immersed_update_vel(i, j, k, x, y, z, immersed, grid, velocities, dirichZero, q, max_neighbor)
+        end
+    end
+    
+    # (x,y,z) for tracer grid
+    x = xnode(Center, i, grid)
     y = ynode(Center, j, grid)
     z = znode(Center, k, grid)
     
     @inbounds begin
-        immersed_update(i, j, k, x, y, z, immersed, grid, velocities, dirichZero, 1, max_neighbor)
-    end
-   
-    # (x,y,z) for v velocity grid
-    x = xnode(Center, i, grid)
-    y = ynode(Face, j, grid)
-    z = znode(Center, k, grid)
-    
-    @inbounds begin
-    	immersed_update(i, j, k, x, y, z, immersed, grid, velocities, dirichZero, 2, max_neighbor)
-    end
-    
-    # (x,y,z) for w velocity grid
-    x = xnode(Center, i, grid)
-    y = ynode(Center, j, grid)
-    z = znode(Face, k, grid)
-    
-    @inbounds begin
-        immersed_update(i, j, k, x, y, z, immersed, grid, velocities, dirichZero, 3, max_neighbor)
+        immersed_update_trac(i, j, k, x, y, z, immersed, grid, tracers, neumannZero, max_neighbor)
     end
 end
 
@@ -105,15 +98,22 @@ end
 
 # dirichlet bc Vb to find enforced pt vel u1 given the value at u2 and the sfc normal distances 
 # assume boundary is at dist = 0 and fluid is negative d,so if reflected equidistant : d1 = -d2 
-function interp_bc(u2, d2, Vb)
-    u1 = 2*Vb-u2
+function interp_bc(q2, qb)
+    q1 = 2*qb-q2
+end
+
+function interp_bc(q2, d2, qb)
+    q1 = q2 - 2*d2*qb
 end
         
 # hard coding dirichlet zero bc for now
-dirichZero(x) = 0.        
+dirichZero(x) = 0.     
+
+# hard coding Neumann zero bc for now
+neumannZero(x) = 0.        
     
 # function to find the value to enforce at a given immersed node         
-function immersed_value(xvec, im_dist, grid, velocities, b_conds, needed_idx)
+function immersed_value_vel(xvec, im_dist, velocities, b_conds, needed_idx)
     # a function that finds the gradient of the distance function, ie. the sfc normal vectors
     # requires function have vector input, not what we want in the long run
 
@@ -136,9 +136,9 @@ function immersed_value(xvec, im_dist, grid, velocities, b_conds, needed_idx)
     
     # velocities at forced point from interpolation and BCs
     # need some kind of thing to separate out boundary conditions into what we have
-    VF¹ = interp_bc(V_rot[1], d2, b_conds(xF));
-    VF² = interp_bc(V_rot[2], d2, b_conds(xF));
-    VFⁿ = interp_bc(V_rot[3], d2, b_conds(xF));
+    VF¹ = interp_bc(V_rot[1], b_conds(x₀));
+    VF² = interp_bc(V_rot[2], b_conds(x₀));
+    VFⁿ = interp_bc(V_rot[3], b_conds(x₀));
     
     # now we need to return to cartesian coordinate system
     VF = inv(matrix)*[VF¹;VF²;VFⁿ];
@@ -148,15 +148,53 @@ function immersed_value(xvec, im_dist, grid, velocities, b_conds, needed_idx)
 end
 
 # function to update a particular velocity
-function immersed_update(i, j, k, x, y, z, im_dist, grid, velocities, b_conds, needed_idx, max_neighbor)
+function immersed_update_vel(i, j, k, x, y, z, im_dist, grid, velocities, b_conds, needed_idx, max_neighbor)
     # a function that takes in a location, checks if immersed node, and forces velocities accordingly
     spc = [x, y, z]
     if im_dist(spc) < 0 # solid node
         if max_neighbor(x, y, z, grid.Δx, grid.Δy, grid.Δz, im_dist) > 0 # fluid neighbor
-            velI = immersed_value(spc, im_dist, grid, velocities, b_conds, needed_idx)
+            velI = immersed_value_vel(spc, im_dist, velocities, b_conds, needed_idx)
             velocities[needed_idx][i, j, k] = velI
         else
             velocities[needed_idx][i, j, k] = 0.    
         end
     end
  end
+
+function immersed_value_trac(xI, x₀, d2, tracer, b_conds)
+   
+    #interpolated tracers with trilinear interpolation 
+    qI = interpolate(tracer, xI[1], xI[2], xI[3])
+    
+    # tracers at forced point from interpolation and BCs
+    qF = interp_bc(qI, d2, b_conds(x₀));
+end
+
+
+# function to update a particular velocity
+function immersed_update_trac(i, j, k, x, y, z, im_dist, grid, tracers, b_conds, max_neighbor)
+    # a function that takes in a location, checks if immersed node, and forces velocities accordingly
+    spc = [x, y, z]
+    if im_dist(spc) < 0 # solid node
+        if max_neighbor(x, y, z, grid.Δx, grid.Δy, grid.Δz, im_dist) > 0 # fluid neighbor
+            
+            normalDist = x-> ForwardDiff.gradient(im_dist,x)   
+            xF = spc; # forced node is the x argument
+            n = normalDist(xF); # sfc normal vector
+            d2 = abs(im_dist(xF)) # distance to surface
+            x₀ = xF + d2*n #closest point on boundary
+            xI = x₀ + d2*n #reflected point over boundary
+            
+            for (q, tracer) in enumerate(tracers)
+                tracer[i, j, k] = immersed_value_trac(xI, x₀, d2, tracer, b_conds)
+            end
+        else
+            for (q, tracer) in enumerate(tracers)
+                tracer[i, j, k] = 0
+            end    
+        end
+    end
+ end
+
+immersed_update_trac(i, j, k, x, y, z, im_dist, grid, ::Nothing, b_conds, max_neighbor) = nothing
+
