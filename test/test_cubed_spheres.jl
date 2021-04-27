@@ -47,15 +47,23 @@ include("data_dependencies.jl")
         @testset "CubedSphereData and CubedSphereFields [$(typeof(arch))]" begin
             @info "Testing CubedSphereData and CubedSphereFields [$(typeof(arch))]..."
             c = model.tracers.c
+            η = model.free_surface.η
+
             set!(c, 0)
+            set!(η, 0)
 
             CUDA.allowscalar(true)
             @test all(all(face_c .== 0) for face_c in faces(c))
+            @test all(all(face_η .== 0) for face_η in faces(η))
             CUDA.allowscalar(false)
 
             @test maximum(abs, c) == 0
             @test minimum(abs, c) == 0
             @test mean(c) == 0
+
+            @test maximum(abs, η) == 0
+            @test minimum(abs, η) == 0
+            @test mean(η) == 0
         end
 
         @testset "Constructing a HydrostaticFreeSurfaceModel [$(typeof(arch))]" begin
@@ -72,7 +80,7 @@ include("data_dependencies.jl")
             @info "Testing KernelComputedField on a ConformalCubedSphereGrid [$(typeof(arch))]..."
             ζ = VerticalVorticityField(model)
 
-            @test ζ isa KernelComputedField    
+            @test ζ isa KernelComputedField
 
             set!(model, u = (x, y, z) -> rand())
 
