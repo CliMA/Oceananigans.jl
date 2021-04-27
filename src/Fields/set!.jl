@@ -1,5 +1,6 @@
 using CUDA
-using KernelAbstractions: @kernel, @index, CUDADevice
+using CUDAKernels
+using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
 using Oceananigans.Architectures: device, GPU, AbstractCPUArchitecture, AbstractGPUArchitecture

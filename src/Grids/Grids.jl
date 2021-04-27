@@ -9,6 +9,7 @@ export RegularLatitudeLongitudeGrid, ConformalCubedSphereFaceGrid, ConformalCube
 export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
 export offset_data, new_data
 
+using CUDA
 using Adapt
 using OffsetArrays
 
