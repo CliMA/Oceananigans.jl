@@ -6,7 +6,7 @@ using Statistics
 using Oceananigans
 using Oceananigans.Grids
 using Oceananigans.Advection
-using Oceananigans.Fields: interiorparent
+using Oceananigans.Fields: interior
 
 using ConvergenceTests: compute_error
 
@@ -46,13 +46,13 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
     c_analytical = c.(x, 0, 0, model.clock.time, U, κ)
 
     # Calculate errors
-    vx_simulation = interiorparent(model.velocities.v)[:, 1, 1] |> Array
+    vx_simulation = interior(model.velocities.v)[:, 1, 1] |> Array
     vx_errors = compute_error(vx_simulation, c_analytical)
 
-    wx_simulation = interiorparent(model.velocities.w)[:, 1, 1] |> Array
+    wx_simulation = interior(model.velocities.w)[:, 1, 1] |> Array
     wx_errors = compute_error(wx_simulation, c_analytical)
 
-    cx_simulation = interiorparent(model.tracers.c)[:, 1, 1] |> Array
+    cx_simulation = interior(model.tracers.c)[:, 1, 1] |> Array
     cx_errors = compute_error(cx_simulation, c_analytical)
 
     #####
@@ -82,13 +82,13 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
     run!(simulation)
 
     # Calculate errors
-    uy_simulation = interiorparent(model.velocities.u)[1, :, 1] |> Array
+    uy_simulation = interior(model.velocities.u)[1, :, 1] |> Array
     uy_errors = compute_error(uy_simulation, c_analytical)
 
-    wy_simulation = interiorparent(model.velocities.w)[1, :, 1] |> Array
+    wy_simulation = interior(model.velocities.w)[1, :, 1] |> Array
     wy_errors = compute_error(wy_simulation, c_analytical)
 
-    cy_simulation = interiorparent(model.tracers.c)[1, :, 1] |> Array
+    cy_simulation = interior(model.tracers.c)[1, :, 1] |> Array
     cy_errors = compute_error(cy_simulation, c_analytical)
 
     #####
@@ -118,13 +118,13 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
     run!(simulation)
 
     # Calculate errors
-    uz_simulation = interiorparent(model.velocities.u)[1, 1, :] |> Array
+    uz_simulation = interior(model.velocities.u)[1, 1, :] |> Array
     uz_errors = compute_error(uz_simulation, c_analytical)
 
-    vz_simulation = interiorparent(model.velocities.v)[1, 1, :] |> Array
+    vz_simulation = interior(model.velocities.v)[1, 1, :] |> Array
     vz_errors = compute_error(vz_simulation, c_analytical)
 
-    cz_simulation = interiorparent(model.tracers.c)[1, 1, :] |> Array
+    cz_simulation = interior(model.tracers.c)[1, 1, :] |> Array
     cz_errors = compute_error(cz_simulation, c_analytical)
 
     return (
