@@ -64,6 +64,7 @@ function run_field_reduction_tests(FT, arch)
 
         # Important to make sure no CUDA scalar operations occur!
         CUDA.@disallowscalar begin
+
             @test minimum(ϕ) == minimum(ϕ_vals)
             @test maximum(ϕ) == maximum(ϕ_vals)
             @test mean(ϕ) == mean(ϕ_vals)
