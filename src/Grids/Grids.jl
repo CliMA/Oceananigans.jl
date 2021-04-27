@@ -1,14 +1,13 @@
 module Grids
 
-export
-    Center, Face,
-    AbstractTopology, Periodic, Bounded, Flat, Connected, topology,
-    AbstractGrid, halo_size,
-    AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid,
-    AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid,
-    RegularLatitudeLongitudeGrid, ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid,
-    xnode, ynode, znode, xnodes, ynodes, znodes, nodes,
-    xC, xF, yC, yF, zC, zF
+export Center, Face
+export AbstractTopology, Periodic, Bounded, Flat, Connected, topology
+export AbstractGrid, halo_size
+export AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid
+export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
+export RegularLatitudeLongitudeGrid, ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
+export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
+export offset_data, new_data
 
 using Adapt
 using OffsetArrays
@@ -112,6 +111,8 @@ topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
 topology(grid, dim) = topology(grid)[dim]
 
 include("grid_utils.jl")
+include("zeros.jl")
+include("new_data.jl")
 include("automatic_halo_sizing.jl")
 include("input_validation.jl")
 include("regular_rectilinear_grid.jl")

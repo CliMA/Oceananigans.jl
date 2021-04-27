@@ -162,21 +162,13 @@ function test_xnode_ynode_znode_are_correct(FT)
     grid = RegularRectilinearGrid(FT, size=(N, N, N), x=(0, π), y=(0, π), z=(0, π),
                                   topology=(Periodic, Periodic, Bounded))
 
-    @test xnode(Center, 2, grid) ≈ FT(π/2)
-    @test ynode(Center, 2, grid) ≈ FT(π/2)
-    @test znode(Center, 2, grid) ≈ FT(π/2)
+    @test xnode(Center(), 2, grid) ≈ FT(π/2)
+    @test ynode(Center(), 2, grid) ≈ FT(π/2)
+    @test znode(Center(), 2, grid) ≈ FT(π/2)
 
-    @test xnode(Face, 2, grid) ≈ FT(π/3)
-    @test ynode(Face, 2, grid) ≈ FT(π/3)
-    @test znode(Face, 2, grid) ≈ FT(π/3)
-
-    @test xC(2, grid) == xnode(Center, 2, grid)
-    @test yC(2, grid) == ynode(Center, 2, grid)
-    @test zC(2, grid) == znode(Center, 2, grid)
-
-    @test xF(2, grid) == xnode(Face, 2, grid)
-    @test yF(2, grid) == ynode(Face, 2, grid)
-    @test zF(2, grid) == znode(Face, 2, grid)
+    @test xnode(Face(), 2, grid) ≈ FT(π/3)
+    @test ynode(Face(), 2, grid) ≈ FT(π/3)
+    @test znode(Face(), 2, grid) ≈ FT(π/3)
 
     return nothing
 end

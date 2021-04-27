@@ -93,37 +93,37 @@ always work on CPUs, but when their complexity is high (in terms of number of ab
 the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is discussed 
 in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1241) and contributors are welcome.)
 For example, in the example below, calculating `u²` works in both CPUs and GPUs, but calculating 
-`KE` only works on CPUs:
+`ε` will not compile on GPUs when we call the command `compute!`:
 
 ```julia
 u, v, w = model.velocities
+ν = model.closure.ν
 u² = ComputedField(u^2)
-KE = ComputedField((u^2 + v^2 + w^2)/2)
+ε = ComputedField(ν*(∂x(u)^2 + ∂x(v)^2 + ∂x(w)^2 + ∂y(u)^2 + ∂y(v)^2 + ∂y(w)^2 + ∂z(u)^2 + ∂z(v)^2 + ∂z(w)^2))
 compute!(u²)
-compute!(KE)
+compute!(ε)
 ```
 
-There are two approaches to bypass this issue. The first is to nest `ComputedField`s. For example,
+There are two approaches to 
+bypass this issue. The first is to nest `ComputedField`s. For example,
 we can make `KE` be successfully computed on GPUs by defining it as
 ```julia
-u, v, w = model.velocities
-u² = ComputedField(u^2)
-v² = ComputedField(v^2)
-w² = ComputedField(w^2)
-u²plusv² = ComputedField(u² + v²)
-KE = ComputedField((u²plusv² + w²)/2)
-compute!(KE)
+ddx² = ComputedField(∂x(u)^2 + ∂x(v)^2 + ∂x(w)^2)
+ddy² = ComputedField(∂y(u)^2 + ∂y(v)^2 + ∂y(w)^2)
+ddz² = ComputedField(∂z(u)^2 + ∂z(v)^2 + ∂z(w)^2)
+ε = ComputedField(ν*(ddx² + ddy² + ddz²))
+compute!(ε)
 ```
 
 This is a simple workaround that is especially suited for the development stage of a simulation.
-However, when running this, the code will iterate over the whole domain 5 times to calculate `KE`
+However, when running this, the code will iterate over the whole domain 4 times to calculate `ε`
 (one for each computed field defined), which is not very efficient.
 
-A different way to calculate `KE` is by using `KernelComputedField`s, where the
+A different way to calculate `ε` is by using `KernelComputedField`s, where the
 user manually specifies the computing kernel to the compiler. The advantage of this method is that
-it's more efficient (the code will only iterate once over the domain in order to calculate `KE`),
+it's more efficient (the code will only iterate once over the domain in order to calculate `ε`),
 but the disadvantage is that this requires that the has some knowledge of Oceananigans operations
-and how they should be performed on a C-grid. For example calculating `KE` with this approach would
+and how they should be performed on a C-grid. For example calculating `ε` with this approach would
 look like this:
 
 ```julia
@@ -132,25 +132,28 @@ using KernelAbstractions: @index, @kernel
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: KernelComputedField
 
-@inline ψ²(i, j, k, grid, ψ) = @inbounds ψ[i, j, k]^2
-
-@kernel function kinetic_energy_ccc!(tke, grid, u, v, w)
+@inline fψ_plus_gφ²(i, j, k, grid, f, ψ, g, φ) = @inbounds (f(i, j, k, grid, ψ) + g(i, j, k, grid, φ))^2
+@kernel function isotropic_viscous_dissipation_rate_ccc!(ϵ, grid, u, v, w, ν)
     i, j, k = @index(Global, NTuple)
-    @inbounds tke[i, j, k] = (
-                              ℑxᶜᵃᵃ(i, j, k, grid, ψ², u) + # Calculates u^2 using function ψ² and then interpolates in x to grid center
-                              ℑyᵃᶜᵃ(i, j, k, grid, ψ², v) + # Calculates v^2 using function ψ² and then interpolates in y to grid center
-                              ℑzᵃᵃᶜ(i, j, k, grid, ψ², w)   # Calculates w^2 using function ψ² and then interpolates in z to grid center
-                             ) / 2
-end
 
-KE = KernelComputedField(Center, Center, Center, kinetic_energy_ccc!, model;
-                         computed_dependencies=(u, v, w))
+    Σˣˣ² = ∂xᶜᵃᵃ(i, j, k, grid, u)^2
+    Σʸʸ² = ∂yᵃᶜᵃ(i, j, k, grid, v)^2
+    Σᶻᶻ² = ∂zᵃᵃᶜ(i, j, k, grid, w)^2
+
+    Σˣʸ² = ℑxyᶜᶜᵃ(i, j, k, grid, fψ_plus_gφ², ∂yᵃᶠᵃ, u, ∂xᶠᵃᵃ, v) / 4
+    Σˣᶻ² = ℑxzᶜᵃᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᵃᵃᶠ, u, ∂xᶠᵃᵃ, w) / 4
+    Σʸᶻ² = ℑyzᵃᶜᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᵃᵃᶠ, v, ∂yᵃᶠᵃ, w) / 4
+
+    @inbounds ϵ[i, j, k] = ν[i, j, k] * 2 * (Σˣˣ² + Σʸʸ² + Σᶻᶻ² + 2 * (Σˣʸ² + Σˣᶻ² + Σʸᶻ²))
+end
+ε = KernelComputedField(Center, Center, Center, isotropic_viscous_dissipation_rate_ccc!, model;
+                         computed_dependencies=(u, v, w, ν))
 ```
 
 
 It may be useful to know that there are some kernels already defined for commonly-used diagnostics
 in packages that are companions to Oceananigans. For example
-[Oceanostics.jl](https://github.com/tomchor/Oceanostics.jl/blob/13d2ba5c48d349c5fce292b86785ce600cc19a88/src/TurbulentKineticEnergyTerms.jl#L23-L30)
+[Oceanostics.jl](https://github.com/tomchor/Oceanostics.jl/blob/3b8f67338656557877ef8ef5ebe3af9e7b2974e2/src/TurbulentKineticEnergyTerms.jl#L35-L57)
 and
 [LESbrary.jl](https://github.com/CliMA/LESbrary.jl/blob/master/src/TurbulenceStatistics/shear_production.jl).
 Users should first look there before writing any kernel by hand and are always welcome to [start an
@@ -191,23 +194,107 @@ to achieve this
 ### Arrays in GPUs are usually different from arrays in CPUs
 
 On the CPU Oceananigans.jl uses regular `Array`s, but on the GPU it has to use `CuArray`s
-from the CUDA.jl package. You might need to keep this difference in mind when using arrays
-to `set!` initial conditions or when using arrays to provide boundary conditions and
-forcing functions.
+from the CUDA.jl package. While deep down both are arrays, their implementations are different
+and both can behave very differently. Something to keep in mind when working with `CuArray`s is that you do not want to
+access elements of a `CuArray` outside of a kernel. Doing so invokes scalar operations
+in which individual elements are copied from or to the GPU for processing. This is very
+slow and can result in huge slowdowns. For this reason, Oceananigans.jl disables CUDA
+scalar operations by default. See the [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
+section of the CUDA.jl documentation for more information on scalar indexing.
 
-To learn more about working with `CuArray`s, see the
+
+For example if can be difficult to just view a `CuArray` since Julia needs to access 
+its elements to do that. Consider the example below:
+
+```julia
+julia> using Oceananigans; using Adapt
+
+julia> grid = RegularRectilinearGrid(size=(1,1,1), extent=(1,1,1))
+RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}
+                   domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
+                 topology: (Periodic, Periodic, Bounded)
+  resolution (Nx, Ny, Nz): (1, 1, 1)
+   halo size (Hx, Hy, Hz): (1, 1, 1)
+grid spacing (Δx, Δy, Δz): (1.0, 1.0, 1.0)
+
+julia> model = IncompressibleModel(grid=grid, architecture=GPU())
+IncompressibleModel{GPU, Float64}(time = 0 seconds, iteration = 0) 
+├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── tracers: (:T, :S)
+├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
+├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+└── coriolis: Nothing
+
+julia> typeof(model.velocities.u.data)
+OffsetArrays.OffsetArray{Float64,3,CUDA.CuArray{Float64,3}}
+
+julia> adapt(Array, model.velocities.u.data)
+3×3×3 OffsetArray(::Array{Float64,3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+[:, :, 0] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+
+[:, :, 1] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+
+[:, :, 2] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+```
+
+Notice that in order to view the `CuArray` that stores values for `u` we needed to transform
+it into a regular `Array` first using `Adapt.adapt`. If we naively try to view the `CuArray`
+without that step we get an error:
+
+```julia
+julia> model.velocities.u.data
+3×3×3 OffsetArray(::CUDA.CuArray{Float64,3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+[:, :, 0] =
+Error showing value of type OffsetArrays.OffsetArray{Float64,3,CUDA.CuArray{Float64,3}}:
+ERROR: scalar getindex is disallowed
+```
+
+Here `CUDA.jl` throws an error because scalar `getindex` is not `allowed`. Another way around 
+this limitation is to allow scalar operations on `CuArray`s. We can temporarily
+do that with the `CUDA.@allowscalar` macro or by calling `CUDA.allowscalar(true)`.
+
+
+```julia
+julia> using CUDA; CUDA.allowscalar(true)
+
+julia> model.velocities.u.data
+3×3×3 OffsetArray(::CuArray{Float64,3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2:
+[:, :, 0] =
+┌ Warning: Performing scalar operations on GPU arrays: This is very slow, consider disallowing these operations with `allowscalar(false)`
+└ @ GPUArrays ~/.julia/packages/GPUArrays/WV76E/src/host/indexing.jl:43
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+
+[:, :, 1] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+
+[:, :, 2] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+```
+
+Notice the warning we get when we do this. Scalar operations on GPUs can be very slow, so it is
+advised to only use this last method when using the REPL or prototyping --- never in
+production-ready scripts.
+
+
+You might also need to keep these differences in mind when using arrays
+to define initial conditions, boundary conditions or
+forcing functions on a GPU. To learn more about working with `CuArray`s, see the
 [array programming](https://juliagpu.github.io/CUDA.jl/dev/usage/array/) section
 of the CUDA.jl documentation.
 
-Something to keep in mind when working with `CuArray`s is that you do not want to set or
-get/access elements of a `CuArray` outside of a kernel. Doing so invokes scalar operations
-in which individual elements are copied from or to the GPU for processing. This is very
-slow and can result in huge slowdowns. For this reason, Oceananigans.jl disables CUDA
-scalar operations by default.
 
-See the [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
-section of the CUDA.jl documentation for more information on scalar indexing.
-
-Sometimes you need to perform scalar operations on `CuArray`s in which case you may want
-to temporarily allow scalar operations with the `CUDA.@allowscalar` macro or by calling
-`CUDA.allowscalar(true)`.
