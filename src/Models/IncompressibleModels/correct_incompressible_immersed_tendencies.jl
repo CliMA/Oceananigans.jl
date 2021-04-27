@@ -196,5 +196,5 @@ function immersed_update_trac(i, j, k, x, y, z, im_dist, grid, tracers, b_conds,
     end
  end
 
-immersed_update_trac(i, j, k, x, y, z, im_dist, grid, ::Nothing, b_conds, max_neighbor) = nothing
+immersed_update_trac(i, j, k, x, y, z, im_dist, grid, ::NamedTuple{(), Tuple{}}, b_conds, max_neighbor) = nothing
 
