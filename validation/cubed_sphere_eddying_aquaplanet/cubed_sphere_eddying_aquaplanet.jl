@@ -137,7 +137,7 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
 
     ## Grid setup
 
-    H = 8kilometers
+    H = 100meters
     grid = ConformalCubedSphereGrid(grid_filepath, Nz=1, z=(-H, 0))
 
     ## "Tradewind-like" zonal wind stress pattern where -π/2 ≤ φ ≤ π/2
@@ -183,10 +183,9 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
                architecture = CPU(),
                        grid = grid,
          momentum_advection = VectorInvariant(),
-               free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
+               free_surface = ExplicitFreeSurface(gravitational_acceleration=0.5),
                    coriolis = coriolis,
-                    closure = nothing,
-                  # closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=100),
+                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=10000),
       # boundary_conditions = (u=u_bcs, v=v_bcs),
       #             forcing = (u=u_forcing, v=v_forcing),
                     tracers = nothing,
@@ -194,25 +193,28 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     )
 
     # Some random noise to get things going.
-    ε(λ, φ, z) = 1e-3 * randn()
+    ε(λ, φ, z) = 1e-1 * randn()
     Oceananigans.set!(model, u=ε, v=ε)
 
     ## Simulation setup
 
-    Δt = 2minutes
+    Δt = 5minutes
 
     g = model.free_surface.gravitational_acceleration
-    gravity_wave_speed = sqrt(g * H)
+    gravity_wave_speed = √(g * H)
     min_spacing = filter(!iszero, grid.faces[1].Δyᶠᶠᵃ) |> minimum
     wave_propagation_time_scale = min_spacing / gravity_wave_speed
     gravity_wave_cfl = Δt / wave_propagation_time_scale
-    @info "Gravity wave CFL = $gravity_wave_cfl"
+    @info @sprintf("Gravity wave CFL = %.4f", gravity_wave_cfl)
+
+    deformation_radius_45°N = √(g * H) / (2Ω*sind(45))
+    @info @sprintf("Deformation radius @ 45°N: %.2f km", deformation_radius_45°N / 1000)
 
     cfl = CFL(Δt, accurate_cell_advection_timescale)
 
     simulation = Simulation(model,
                         Δt = Δt,
-                 stop_time = 10days,
+                 stop_time = 30days,
         iteration_interval = 20,
                   progress = Progress(time_ns()),
                 parameters = (; cfl)
