@@ -21,11 +21,15 @@ function time_stepping_works_with_coriolis(arch, FT, Coriolis)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
-function time_stepping_works_with_closure(arch, FT, Closure)
+function time_stepping_works_with_closure(arch, FT, Closure;
+                                          buoyancy=Buoyancy(model=SeawaterBuoyancy(FT)))
+
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
     grid = RegularRectilinearGrid(FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
 
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, closure=Closure(FT))
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT,
+                                closure=Closure(FT), buoyancy=buoyancy)
+
     time_step!(model, 1, euler=true)
 
     return true  # Test that no errors/crashes happen when time stepping.
@@ -96,7 +100,7 @@ function incompressible_in_time(arch, grid, Nt, timestepper)
     div_U = CenterField(arch, grid, TracerBoundaryConditions(grid))
 
     # Just add a temperature perturbation so we get some velocity field.
-    @. model.tracers.T.data[8:24, 8:24, 8:24] += 0.01
+    interior(model.tracers.T)[8:24, 8:24, 8:24] .+= 0.01
 
     for n in 1:Nt
         ab2_or_rk3_time_step!(model, 0.05, n)
@@ -189,9 +193,11 @@ end
 
 Planes = (FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane)
 
+BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipation(FT, Cb=1.0)
+
 Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
-            SmagorinskyLilly, AnisotropicMinimumDissipation)
+            SmagorinskyLilly, AnisotropicMinimumDissipation, BuoyancyModifiedAnisotropicMinimumDissipation)
 
 advection_schemes = (nothing,
                      CenteredSecondOrder(),
@@ -274,6 +280,9 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     @test time_stepping_works_with_closure(arch, FT, Closure)
                 end
             end
+
+            # AnisotropicMinimumDissipation can depend on buoyancy...
+            @test time_stepping_works_with_closure(arch, FT, AnisotropicMinimumDissipation; buoyancy=nothing)
         end
     end
 

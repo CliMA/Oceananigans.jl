@@ -5,15 +5,17 @@ Parameters for the "anisotropic minimum dissipation" turbulence closure for larg
 proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
 by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
 """
-struct AnisotropicMinimumDissipation{FT, PK, PN, K} <: AbstractEddyViscosityClosure
+struct AnisotropicMinimumDissipation{FT, PK, PN, K, PB} <: AbstractEddyViscosityClosure
     Cν :: PN
     Cκ :: PK
-    Cb :: FT
+    Cb :: PB
      ν :: FT
      κ :: K
 
-    function AnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ) where FT
-        return new{FT, typeof(Cκ), typeof(Cν), typeof(κ)}(Cν, Cκ, Cb, ν, convert_diffusivity(FT, κ))
+    function AnisotropicMinimumDissipation{FT}(Cν::PN, Cκ::PK, Cb::PB, ν, κ) where {FT, PN, PK, PB}
+        κ = convert_diffusivity(FT, κ)
+        K = typeof(κ)
+        return new{FT, PK, PN, K, PB}(Cν, Cκ, Cb, ν, κ)
     end
 end
 
@@ -42,14 +44,17 @@ Keyword arguments
     - `Cκ` : Poincaré constant for tracer eddy diffusivities. If one number or function, the same
              number or function is applied to all tracers. If a `NamedTuple`, it must possess
              a field specifying the Poncaré constant for every tracer.
-    - `Cb` : Buoyancy modification multiplier (`Cb = 0` turns it off, `Cb = 1` turns it on)
+    - `Cb` : Buoyancy modification multiplier (`Cb = nothing` turns it off, `Cb = 1` was used by [Abkar16](@cite)).
+             *Note*: that we _do not_ subtract the horizontally-average component before computing this
+             buoyancy modification term. This implementation differs from [Abkar16](@cite)'s proposal
+             and the impact of this approximation has not been tested or validated.
     - `ν`  : Constant background viscosity for momentum.
     - `κ`  : Constant background diffusivity for tracer. If a single number, the same background
              diffusivity is applied to all tracers. If a `NamedTuple`, it must possess a field
              specifying a background diffusivity for every tracer.
 
 By default: `C = Cν = Cκ` = 1/12, which is appropriate for a finite-volume method employing a
-second-order advection scheme, `Cb` = 0, which terms off the buoyancy modification term,
+second-order advection scheme, `Cb = nothing`, which terms off the buoyancy modification term,
 the molecular viscosity of seawater at 20 deg C and 35 psu is used for `ν`, and
 the molecular diffusivity of heat in seawater at 20 deg C and 35 psu is used for `κ`.
 
@@ -58,11 +63,12 @@ the molecular diffusivity of heat in seawater at 20 deg C and 35 psu is used for
 Example
 =======
 
+```julia
 julia> pretty_diffusive_closure = AnisotropicMinimumDissipation(C=1/2)
 AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.5
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.5
-                        Buoyancy modification multiplier Cb: 0.0
+                        Buoyancy modification multiplier Cb: nothing
                 Background diffusivit(ies) for tracer(s), κ: 1.46e-7
              Background kinematic viscosity for momentum, ν: 1.05e-6
 
@@ -75,7 +81,7 @@ julia> fancy_closure = AnisotropicMinimumDissipation(Cκ=surface_enhanced_tracer
 AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: surface_enhanced_tracer_C
-                        Buoyancy modification multiplier Cb: 0.0
+                        Buoyancy modification multiplier Cb: nothing
                 Background diffusivit(ies) for tracer(s), κ: 1.46e-7
              Background kinematic viscosity for momentum, ν: 1.05e-6
 
@@ -83,9 +89,10 @@ julia> tracer_specific_closure = AnisotropicMinimumDissipation(Cκ=(c₁=1/12, c
 AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: (c₁ = 0.08333333333333333, c₂ = 0.16666666666666666)
-                        Buoyancy modification multiplier Cb: 0.0
+                        Buoyancy modification multiplier Cb: nothing
                 Background diffusivit(ies) for tracer(s), κ: 1.46e-7
              Background kinematic viscosity for momentum, ν: 1.05e-6
+```
 
 References
 ==========
@@ -97,9 +104,11 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     Computers & Fluids 176, pp. 276-284.
 """
 function AnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
-                                                 Cb=0.0, ν=ν₀, κ=κ₀)
+                                       Cb=nothing, ν=ν₀, κ=κ₀)
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
+    
+    !isnothing(Cb) && @warn "AnisotropicMinimumDissipation with buoyancy modification is unvalidated."
 
     return AnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ)
 end
@@ -143,19 +152,24 @@ end
 # Only numbers, arrays, and functions supported now.
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Number) = C
 @inline Cᴾᵒⁱⁿ(i, j, k, grid, C::AbstractArray) = @inbounds C[i, j, k]
-@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(Center, i, grid), ynode(Center, j, grid), znode(Center, k, grid))
+@inline Cᴾᵒⁱⁿ(i, j, k, grid, C::Function) = C(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Center(), k, grid))
 
 @inline function νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, closure::AMD, buoyancy, U, C) where FT
     ijk = (i, j, k, grid)
     q = norm_tr_∇uᶜᶜᶜ(ijk..., U.u, U.v, U.w)
+    Cb = closure.Cb
 
     if q == 0 # SGS viscosity is zero when strain is 0
         νˢᵍˢ = zero(FT)
     else
         r = norm_uᵢₐ_uⱼₐ_Σᵢⱼᶜᶜᶜ(ijk..., closure, U.u, U.v, U.w)
-        ζ = norm_wᵢ_bᵢᶜᶜᶜ(ijk..., closure, buoyancy, U.w, C) / Δᶠzᶜᶜᶜ(ijk...)
+
+        # So-called buoyancy modification term:
+        Cb_ζ = Cb_norm_wᵢ_bᵢᶜᶜᶜ(ijk..., Cb, closure, buoyancy, U.w, C) / Δᶠzᶜᶜᶜ(ijk...)
+
         δ² = 3 / (1 / Δᶠxᶜᶜᶜ(ijk...)^2 + 1 / Δᶠyᶜᶜᶜ(ijk...)^2 + 1 / Δᶠzᶜᶜᶜ(ijk...)^2)
-        νˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, closure.Cν) * δ² * (r - closure.Cb * ζ) / q
+
+        νˢᵍˢ = - Cᴾᵒⁱⁿ(i, j, k, grid, closure.Cν) * δ² * (r - Cb_ζ) / q
     end
 
     return max(zero(FT), νˢᵍˢ) + closure.ν
@@ -304,7 +318,9 @@ end
     )
 end
 
-@inline function norm_wᵢ_bᵢᶜᶜᶜ(i, j, k, grid, closure, buoyancy, w, C)
+@inline Cb_norm_wᵢ_bᵢᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, ::Nothing, args...) where FT = zero(FT)
+
+@inline function Cb_norm_wᵢ_bᵢᶜᶜᶜ(i, j, k, grid, Cb, closure, buoyancy, w, C)
     ijk = (i, j, k, grid)
 
     wx_bx = (ℑxzᶜᵃᶜ(ijk..., norm_∂x_w, w)
@@ -316,7 +332,7 @@ end
     wz_bz = (norm_∂z_w(ijk..., w)
              * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᵃᵃᶠ, buoyancy_perturbation, buoyancy.model, C))
 
-    return wx_bx + wy_by + wz_bz
+    return Cb * (wx_bx + wy_by + wz_bz)
 end
 
 @inline function norm_uᵢⱼ_cⱼ_cᵢᶜᶜᶜ(i, j, k, grid, closure, u, v, w, c)

@@ -1,9 +1,11 @@
 using Adapt
 using KernelAbstractions
-using Oceananigans.Fields: AbstractDataField, FieldStatus, validate_field_data, new_data, conditional_compute!
+
+using Oceananigans.Fields: AbstractDataField, FieldStatus, validate_field_data, conditional_compute!
 using Oceananigans.Fields: architecture, tracernames
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: work_layout
+using Oceananigans.Grids: new_data
 
 import Oceananigans.Fields: compute!, compute_at!
 

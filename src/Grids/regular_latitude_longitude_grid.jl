@@ -107,14 +107,14 @@ end
 #####
 
 # Node by node
-@inline xnode(::Type{Center}, i, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.λᶜᵃᵃ[i]
-@inline xnode(::Type{Face},   i, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.λᶠᵃᵃ[i]
+@inline xnode(::Center, i, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.λᶜᵃᵃ[i]
+@inline xnode(::Face,   i, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.λᶠᵃᵃ[i]
 
-@inline ynode(::Type{Center}, j, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.φᵃᶜᵃ[j]
-@inline ynode(::Type{Face},   j, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.φᵃᶠᵃ[j]
+@inline ynode(::Center, j, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.φᵃᶜᵃ[j]
+@inline ynode(::Face,   j, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.φᵃᶠᵃ[j]
 
-@inline znode(::Type{Center}, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶠ[k]
-@inline znode(::Type{Face},   k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶜ[k]
+@inline znode(::Center, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶠ[k]
+@inline znode(::Face,   k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶜ[k]
 
 all_x_nodes(::Type{Center}, grid::RegularLatitudeLongitudeGrid) = grid.λᶜᵃᵃ
 all_x_nodes(::Type{Face},   grid::RegularLatitudeLongitudeGrid) = grid.λᶠᵃᵃ
