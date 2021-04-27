@@ -100,7 +100,7 @@ function incompressible_in_time(arch, grid, Nt, timestepper)
     div_U = CenterField(arch, grid, TracerBoundaryConditions(grid))
 
     # Just add a temperature perturbation so we get some velocity field.
-    @. model.tracers.T.data[8:24, 8:24, 8:24] += 0.01
+    interior(model.tracers.T)[8:24, 8:24, 8:24] .+= 0.01
 
     for n in 1:Nt
         ab2_or_rk3_time_step!(model, 0.05, n)

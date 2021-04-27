@@ -52,6 +52,7 @@ include("data_dependencies.jl")
             CUDA.allowscalar(true)
             @test all(all(face_c .== 0) for face_c in faces(c))
             CUDA.allowscalar(false)
+
             @test maximum(abs, c) == 0
             @test minimum(abs, c) == 0
             @test mean(c) == 0
@@ -79,5 +80,4 @@ include("data_dependencies.jl")
             @test maximum(abs, ζ) > 0 # fingers crossed
         end
     end
-
 end
