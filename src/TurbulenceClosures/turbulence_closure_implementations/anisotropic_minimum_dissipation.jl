@@ -108,7 +108,7 @@ function AnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=noth
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
     
-    !isnothing(Cb) && warn("AnisotropicMinimumDissipation with buoyancy modification is unvalidated.")
+    !isnothing(Cb) && @warn "AnisotropicMinimumDissipation with buoyancy modification is unvalidated."
 
     return AnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ)
 end
