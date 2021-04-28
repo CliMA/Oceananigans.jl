@@ -5,6 +5,12 @@ using Statistics
 using JLD2
 using Printf
 
+Nx = 1440
+Ny = 640
+
+output_prefix = "eddying_strip_Nx$(Nx)_Ny$(Ny)"
+filepath = output_prefix * ".jld2"
+
 #=
 using Makie
 using GLMakie
@@ -85,6 +91,7 @@ function visualize_makie(filepath)
 end
 =#
 
+#=
 using Plots
 
 function visualize_plots(filepath)
@@ -106,24 +113,82 @@ function visualize_plots(filepath)
     iterations = parse.(Int, keys(file["timeseries/t"]))
 
     anim = @animate for (i, iter) in enumerate(iterations)
-        u = file["timeseries/u/$iter"][:, :, 1]
-        Plots.heatmap(u')
+        ζ = file["timeseries/ζ/$iter"][:, :, 1]
+        Plots.heatmap(ζ')
     end
 
     close(file)
 
-    mp4(anim, "eddying_strip.mp4", fps = 8) # hide
+    mp4(anim, "eddying_strip_$(Nx)_$Ny.mp4", fps = 8) # hide
 
     return nothing
 end
 
-#Nx = 720
-#Ny = 720
-
-Nx = 3600
-Ny = 3600
-
-output_prefix = "barotropic_gyre_Nx$(Nx)_Ny$(Ny)"
-filepath = output_prefix * ".jld2"
-
 visualize_plots(filepath)
+=#
+
+using GLMakie
+
+function visualize_makie(filepath)
+
+    file = jldopen(filepath)
+
+    Nx = file["grid/Nx"]
+    Ny = file["grid/Ny"]
+    Lλ = file["grid/Lx"]
+    Lφ = file["grid/Ly"]
+    Lz = file["grid/Lz"]
+
+    # A spherical domain
+    grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                                        longitude = (-180, 180),
+                                        latitude = (-Lφ/2, Lφ/2),
+                                        z = (-Lz, 0))
+
+    iterations = parse.(Int, keys(file["timeseries/t"]))
+
+    λ, ϕ, r = nodes((Face, Face, Center), grid, reshape=true)
+
+    λ = λ .+ 180  # Convert to λ ∈ [0°, 360°]
+    ϕ = 90 .- ϕ   # Convert to ϕ ∈ [0°, 180°] (0° at north pole)
+
+    iter = Node(0)
+
+    plot_title = @lift @sprintf("Free decay of barotropic turbulence: ζ at time = %s", prettytime(file["timeseries/t/" * string($iter)]))
+
+    ζp = @lift file["timeseries/ζ/" * string($iter)][:, :, 1]
+
+    ζp0 = file["timeseries/ζ/" * string(0)][:, :, 1]
+
+    # Plot on the unit sphere to align with the spherical wireframe.
+    # Multiply by 1.01 so the η field is a bit above the wireframe.
+    x = @. 1.01 * cosd(λ) * sind(ϕ)
+    y = @. 1.01 * sind(λ) * sind(ϕ)
+    z = @. 1.01 * cosd(ϕ) * λ ./ λ
+
+    x = x[:, :, 1]
+    y = y[:, :, 1]
+    z = z[:, :, 1]
+
+    fig = Figure(resolution = (2000, 2000))
+
+    clims = extrema(ζp0) ./ 100
+
+    ax = fig[1, :] = LScene(fig) # make plot area wider
+    wireframe!(ax, Sphere(Point3f0(0), 1f0), show_axis=false)
+    surface!(ax, x, y, z, color=ζp, colormap=:balance, colorrange=clims)
+    rotate_cam!(ax.scene, (π/2, π/6, 0))
+    zoom!(ax.scene, (0, 0, 0), 5, false)
+
+    supertitle = fig[0, :] = Label(fig, plot_title, textsize=50)
+    display(fig)
+
+    record(fig, "eddying_spherical_strip_Nx$(Nx)_Ny$(Ny).mp4", iterations, framerate=12) do i
+        @show "Plotting iteration $i of $(iterations[end])..."
+        iter[] = i
+    end
+
+    return nothing
+end
+
+visualize_makie(filepath)
