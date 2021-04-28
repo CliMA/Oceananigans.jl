@@ -9,7 +9,8 @@ Nx = 360
 Ny = 160
 
 #output_prefix = "freely_decaying_barotropic_turbulence_Nx$(Nx)_Ny$(Ny)"
-output_prefix = "biharmonic_freely_decaying_barotropic_turbulence_Nx1440_Ny640"
+#output_prefix = "biharmonic_freely_decaying_barotropic_turbulence_Nx1440_Ny640"
+output_prefix = "biharmonic_freely_decaying_barotropic_turbulence_Nx720_Ny320"
 #output_prefix = "freely_decaying_barotropic_turbulence_Nx2160_Ny960"
 
 #=
