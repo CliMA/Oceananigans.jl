@@ -1,3 +1,4 @@
+using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
 
 using Oceananigans.Utils: launch!
@@ -13,7 +14,7 @@ function store_tendencies!(model)
 
     barrier = Event(device(model.architecture))
 
-    model_fields = fields(model)
+    model_fields = prognostic_fields(model)
 
     events = []
 

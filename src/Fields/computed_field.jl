@@ -77,14 +77,14 @@ end
 function ComputedField(LX, LY, LZ, operand, arch, grid;
                        data = nothing,
                        recompute_safely = true,
-                       boundary_conditions = ComputedFieldBoundaryConditions(operand.grid, location(operand)))
+                       boundary_conditions = ComputedFieldBoundaryConditions(grid, (LX, LY, LZ)))
     
     if isnothing(data)
-        data = new_data(arch, grid, loc)
+        data = new_data(arch, grid, (LX, LY, LZ))
         recompute_safely = false
     end
 
-    return ComputedField{loc[1], loc[2], loc[3]}(data, arch, grid, operand, boundary_conditions; recompute_safely=recompute_safely)
+    return ComputedField{LX, LY, LZ}(data, arch, grid, operand, boundary_conditions; recompute_safely=recompute_safely)
 end
 
 """
