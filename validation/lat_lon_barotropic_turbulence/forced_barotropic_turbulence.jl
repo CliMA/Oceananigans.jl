@@ -48,13 +48,13 @@ free_surface = ExplicitFreeSurface(gravitational_acceleration=0.2)
 coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving())
 
 equator_Δx = grid.radius * deg2rad(grid.Δλ)
-polar_Δx = grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(grid.Δλ),
+polar_Δx = grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(grid.Δλ)
 diffusive_time_scale = 60days
 
 #@show const νh₀ = 5e3 * (60 / grid.Nx)^2
 
 @show const νh₂₀ = equator_Δx^2 / diffusive_time_scale
-@show const νh₄₀ = 1e-3 * equator_Δx^4 / diffusive_time_scale
+@show const νh₄₀ = 1e-5 * equator_Δx^4 / diffusive_time_scale
 @inline νh₂(λ, φ, z, t) = νh₀ * cos(π * φ / 180)
 @inline νh₄(λ, φ, z, t) = νh₄₀ * cos(π * φ / 180)
 
@@ -63,11 +63,14 @@ variable_horizontal_biharmonic_diffusivity = HorizontallyCurvilinearAnisotropicB
 
 # Set up forcing
 using CUDA
+using Oceananigans.Architectures: architecture
 using Oceananigans.Operators: ∂yᶠᶜᵃ, ∂xᶜᶠᵃ
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.Fields: compute!
 
-forcing_timescale = 10day
-forcing_amplitude = polar_Δx^2 / forcing_timescale
-drag_timescale = 100day
+forcing_timescale = 10days
+forcing_amplitude = polar_Δx^2 / forcing_timescale^2
+drag_timescale = 60days
 
 struct RandomOperand
     amplitude :: Float64
@@ -75,15 +78,21 @@ end
 
 const RandomComputedField = ComputedField{X, Y, Z, S, <:RandomOperand} where {X, Y, Z, S}
 
-compute!(ψ::RandomComputedField) = ψ .= ψ.amplitude * CUDA.rand(size(ψ)...)
+function compute!(ψ::RandomComputedField)
+    arch = architecture(ψ)
+    ψ .= 0
+    ψ .= ψ.operand.amplitude * CUDA.rand(size(ψ)...)
+    fill_halo_regions!(ψ, arch)
+    return nothing
+end
 
 # Build random streamfunction
 arch = GPU()
-ψ = ComputedField(Face, Face, Center, RandomOperand(forcing_amplitude), arch, grid)
+dψdt = ComputedField(Face, Face, Center, RandomOperand(forcing_amplitude), arch, grid)
 
 # Forcing by random streamfunction and bottom drag
-@inline u_forcing_func(i, j, k, grid, clock, fields, μ) = @inbounds + ∂yᶠᶜᵃ(i, j, k, grid, fields.ψ) - μ * fields.u[i, j, k]
-@inline v_forcing_func(i, j, k, grid, clock, fields, μ) = @inbounds - ∂xᶜᶠᵃ(i, j, k, grid, fields.ψ) - μ * fields.v[i, j, k]
+@inline u_forcing_func(i, j, k, grid, clock, fields, μ) = @inbounds + ∂yᶠᶜᵃ(i, j, k, grid, fields.dψdt) - μ * fields.u[i, j, k]
+@inline v_forcing_func(i, j, k, grid, clock, fields, μ) = @inbounds - ∂xᶜᶠᵃ(i, j, k, grid, fields.dψdt) - μ * fields.v[i, j, k]
 
 u_forcing = Forcing(u_forcing_func; discrete_form=true, parameters=1/drag_timescale)
 v_forcing = Forcing(v_forcing_func; discrete_form=true, parameters=1/drag_timescale)
@@ -95,8 +104,8 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = nothing, # coriolis,
                                     tracers = nothing,
                                     buoyancy = nothing,
-                                    auxiliary_fields = (ψ=ψ,),
-                                    forcing = (u=u, v=v),
+                                    auxiliary_fields = (dψdt=dψdt,),
+                                    forcing = (u=u_forcing, v=v_forcing),
                                     closure = variable_horizontal_biharmonic_diffusivity)
                                     #closure = variable_horizontal_diffusivity)
 
