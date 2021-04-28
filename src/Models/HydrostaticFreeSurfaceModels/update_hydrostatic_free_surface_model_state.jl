@@ -17,7 +17,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel)
     fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
     # Testing to see if filling velocity halos twice fixes numerical artifacts.
-    fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
+    # fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
     compute_w_from_continuity!(model)
 
