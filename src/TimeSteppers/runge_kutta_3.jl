@@ -135,7 +135,7 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     substep_field_kernel! = rk3_substep_field!(device(model.architecture), workgroup, worksize)
 
-    model_fields = fields(model)
+    model_fields = prognostic_fields(model)
 
     events = []
 
