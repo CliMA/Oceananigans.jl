@@ -5,11 +5,12 @@ using Statistics
 using JLD2
 using Printf
 
-Nx = 1440
-Ny = 640
+Nx = 360
+Ny = 160
 
-output_prefix = "eddying_strip_Nx$(Nx)_Ny$(Ny)"
-filepath = output_prefix * ".jld2"
+#output_prefix = "freely_decaying_barotropic_turbulence_Nx$(Nx)_Ny$(Ny)"
+output_prefix = "biharmonic_freely_decaying_barotropic_turbulence_Nx1440_Ny640"
+#output_prefix = "freely_decaying_barotropic_turbulence_Nx2160_Ny960"
 
 #=
 using Makie
@@ -129,7 +130,9 @@ visualize_plots(filepath)
 
 using GLMakie
 
-function visualize_makie(filepath)
+function visualize_makie(output_prefix)
+
+    filepath = output_prefix * ".jld2"
 
     file = jldopen(filepath)
 
@@ -172,7 +175,7 @@ function visualize_makie(filepath)
 
     fig = Figure(resolution = (2000, 2000))
 
-    clims = extrema(ζp0) ./ 100
+    clims = extrema(ζp0) ./ 1000
 
     ax = fig[1, :] = LScene(fig) # make plot area wider
     wireframe!(ax, Sphere(Point3f0(0), 1f0), show_axis=false)
@@ -183,7 +186,7 @@ function visualize_makie(filepath)
     supertitle = fig[0, :] = Label(fig, plot_title, textsize=50)
     display(fig)
 
-    record(fig, "eddying_spherical_strip_Nx$(Nx)_Ny$(Ny).mp4", iterations, framerate=12) do i
+    record(fig, output_prefix * ".mp4", iterations, framerate=12) do i
         @show "Plotting iteration $i of $(iterations[end])..."
         iter[] = i
     end
@@ -191,4 +194,4 @@ function visualize_makie(filepath)
     return nothing
 end
 
-visualize_makie(filepath)
+visualize_makie(output_prefix)
