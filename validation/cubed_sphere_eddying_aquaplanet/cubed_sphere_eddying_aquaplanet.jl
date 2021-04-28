@@ -1,13 +1,14 @@
 using Statistics
-using SpecialFunctions
 using Logging
 using Printf
+using SpecialFunctions
 using DataDeps
 using JLD2
 
 using Oceananigans
 using Oceananigans.Units
 
+using Dates: now, Second
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 using Oceananigans.CubedSpheres: CubedSphereFaces, inject_cubed_sphere_exchange_boundary_conditions
@@ -24,10 +25,12 @@ end
 
 function (p::Progress)(sim)
     wall_time = (time_ns() - p.interval_start_time) * 1e-9
-    progress = 100 * (sim.model.clock.time / sim.stop_time)
+    progress = sim.model.clock.time / sim.stop_time
+    ETA = (1 - progress) / progress * sim.run_time
+    ETA_datetime = now() + Second(round(Int, ETA))
 
-    @info @sprintf("[%06.2f%%] Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e, Δ(wall time): %s / iteration",
-                   progress,
+    @info @sprintf("[%06.2f%%] Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e, Δ(wall time): %s / iteration, ETA: %s",
+                   100 * progress,
                    prettytime(sim.model.clock.time),
                    sim.model.clock.iteration,
                    maximum(abs, sim.model.velocities.u),
@@ -35,7 +38,8 @@ function (p::Progress)(sim)
                    minimum(sim.model.free_surface.η),
                    maximum(sim.model.free_surface.η),
                    sim.parameters.cfl(sim.model),
-                   prettytime(wall_time / sim.iteration_interval))
+                   prettytime(wall_time / sim.iteration_interval),
+                   prettytime(ETA))
 
     p.interval_start_time = time_ns()
 
@@ -137,7 +141,7 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
 
     ## Grid setup
 
-    H = 100meters
+    H = 4kilometers
     grid = ConformalCubedSphereGrid(grid_filepath, Nz=1, z=(-H, 0))
 
     ## "Tradewind-like" zonal wind stress pattern where -π/2 ≤ φ ≤ π/2
@@ -183,9 +187,9 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
                architecture = CPU(),
                        grid = grid,
          momentum_advection = VectorInvariant(),
-               free_surface = ExplicitFreeSurface(gravitational_acceleration=0.5),
-                   coriolis = coriolis,
-                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=10000),
+               free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
+                   coriolis = nothing,
+                    closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=200),
       # boundary_conditions = (u=u_bcs, v=v_bcs),
       #             forcing = (u=u_forcing, v=v_forcing),
                     tracers = nothing,
@@ -193,12 +197,12 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     )
 
     # Some random noise to get things going.
-    ε(λ, φ, z) = 1e-1 * randn()
+    ε(λ, φ, z) = 0.1 * randn()
     Oceananigans.set!(model, u=ε, v=ε)
 
     ## Simulation setup
 
-    Δt = 5minutes
+    Δt = 3minutes
 
     g = model.free_surface.gravitational_acceleration
     gravity_wave_speed = √(g * H)
@@ -214,26 +218,26 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
 
     simulation = Simulation(model,
                         Δt = Δt,
-                 stop_time = 30days,
+                 stop_time = 2years,
         iteration_interval = 20,
                   progress = Progress(time_ns()),
                 parameters = (; cfl)
     )
 
-    fields_to_check = (
-        u = model.velocities.u,
-        v = model.velocities.v,
-        η = model.free_surface.η
-    )
+    # fields_to_check = (
+    #     u = model.velocities.u,
+    #     v = model.velocities.v,
+    #     η = model.free_surface.η
+    # )
 
-    simulation.diagnostics[:state_checker] =
-        StateChecker(model, fields=fields_to_check, schedule=IterationInterval(20))
+    # simulation.diagnostics[:state_checker] =
+    #     StateChecker(model, fields=fields_to_check, schedule=IterationInterval(20))
 
     output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=VerticalVorticityField(model)))
 
     simulation.output_writers[:fields] =
         JLD2OutputWriter(model, output_fields,
-            schedule = TimeInterval(1hour),
+            schedule = TimeInterval(1day),
               prefix = "cubed_sphere_eddying_aquaplanet",
                force = true)
 
@@ -242,16 +246,16 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     return simulation
 end
 
-include("animate_on_map_projection.jl")
+# include("animate_on_map_projection.jl")
 
-function run_cubed_sphere_eddying_aquaplanet()
+# function run_cubed_sphere_eddying_aquaplanet()
 
-    cubed_sphere_rossby_haurwitz(datadep"cubed_sphere_96_grid/cubed_sphere_96_grid.jld2")
+#     cubed_sphere_rossby_haurwitz(datadep"cubed_sphere_96_grid/cubed_sphere_96_grid.jld2")
 
-    projections = [
-        ccrs.NearsidePerspective(central_longitude=0, central_latitude=30),
-        ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
-    ]
+#     projections = [
+#         ccrs.NearsidePerspective(central_longitude=0, central_latitude=30),
+#         ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
+#     ]
 
-    animate_rossby_haurwitz(projections=projections)
-end
+#     animate_rossby_haurwitz(projections=projections)
+# end

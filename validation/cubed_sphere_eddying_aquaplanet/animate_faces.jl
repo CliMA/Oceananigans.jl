@@ -57,7 +57,9 @@ function animate_faces(filepath, var, loc; filename_pattern, cmap, vmin, vmax, i
             is = is.start : is.stop+1
             js = js.start : js.stop+1
 
-            ax.pcolormesh(is, js, data; cmap, vmin, vmax)
+            pcm = ax.pcolormesh(is, js, data; cmap, vmin, vmax)
+
+            f == Nf && fig.colorbar(pcm, ax=ax)
         end
 
         t = prettytime(file["timeseries/t/$i"])
@@ -87,6 +89,19 @@ end
 function animate_eddying_aquaplanet_faces()
     filepath = "cubed_sphere_eddying_aquaplanet.jld2"
 
+    animate_faces("cubed_sphere_eddying_aquaplanet.jld2", "u", (Center(), Center()), filename_pattern = "eddying_aquaplanet_u", cmap = cmocean.cm.balance, vmin = -1, vmax = +1, make_movie = true, delete_pngs = true)
+
+    for u in ("u", "v")
+        animate_faces(filepath, u, (Center(), Center()),
+            filename_pattern = "eddying_aquaplanet_$u",
+                        cmap = cmocean.cm.balance,
+                        vmin = -1,
+                        vmax = +1,
+                  make_movie = true,
+                 delete_pngs = true
+        )
+    end
+
     animate_faces(filepath, "η", (Center(), Center()),
         filename_pattern = "eddying_aquaplanet_eta",
                     cmap = cmocean.cm.balance,
@@ -99,7 +114,7 @@ function animate_eddying_aquaplanet_faces()
     # TODO: Fix (Face(), Face()) plotting by saving all (N+1)×(N+1) values.
     animate_faces(filepath, "ζ", (Center(), Center()),
         filename_pattern = "eddying_aquaplanet_vorticity",
-                   iters = 1:6:634,
+                 # iters = 1:6:634,
                     cmap = cmocean.cm.balance,
                     vmin = -1e-5,
                     vmax = +1e-5,
