@@ -4,7 +4,7 @@ using KernelAbstractions: @kernel, @index, Event
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 
-struct ComputedField{X, Y, Z, S, A, D, G, T, O, C} <: AbstractDataField{X, Y, Z, A, G, T}
+struct ComputedField{X, Y, Z, S, O, A, D, G, T, C} <: AbstractDataField{X, Y, Z, A, G, T}
                    data :: D
            architecture :: A
                    grid :: G
@@ -27,7 +27,7 @@ struct ComputedField{X, Y, Z, S, A, D, G, T, O, C} <: AbstractDataField{X, Y, Z,
         S = typeof(status)
         T = eltype(grid)
 
-        return new{X, Y, Z, S, A, D, G, T, O, C}(data, arch, grid, operand, boundary_conditions, status)
+        return new{X, Y, Z, S, O, A, D, G, T, C}(data, arch, grid, operand, boundary_conditions, status)
     end
 end
 
@@ -50,6 +50,7 @@ function ComputedFieldBoundaryConditions(grid, loc;
     return FieldBoundaryConditions(grid, loc; east=east, west=west, south=south, north=north, bottom=bottom, top=top)
 end
 
+
 """
     ComputedField(operand; data = nothing, recompute_safely = true,
                   boundary_conditions = ComputedFieldBoundaryConditions(operand.grid, location(operand))
@@ -64,13 +65,20 @@ is avoided if possible.
 
 `boundary_conditions` are set to 
 """
-function ComputedField(operand; data = nothing, recompute_safely = true,
-                       boundary_conditions = ComputedFieldBoundaryConditions(operand.grid, location(operand)))
-    
+function ComputedField(operand; kwargs...)
+
     loc = location(operand)
     arch = architecture(operand)
     grid = operand.grid
 
+    return ComputedField(loc..., operand, arch, grid; kwargs...)
+end
+
+function ComputedField(LX, LY, LZ, operand, arch, grid;
+                       data = nothing,
+                       recompute_safely = true,
+                       boundary_conditions = ComputedFieldBoundaryConditions(operand.grid, location(operand)))
+    
     if isnothing(data)
         data = new_data(arch, grid, loc)
         recompute_safely = false
