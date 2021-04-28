@@ -145,7 +145,7 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
 
     ## Grid setup
 
-    H = 4kilometers
+    H = 100meters
     grid = ConformalCubedSphereGrid(grid_filepath, Nz=1, z=(-H, 0))
 
     ## "Tradewind-like" zonal wind stress pattern where -π/2 ≤ φ ≤ π/2
@@ -191,7 +191,7 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
                architecture = CPU(),
                        grid = grid,
          momentum_advection = VectorInvariant(),
-               free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
+               free_surface = ExplicitFreeSurface(gravitational_acceleration=0.5),
                    coriolis = nothing,
                     closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=200),
       # boundary_conditions = (u=u_bcs, v=v_bcs),
@@ -206,7 +206,7 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
 
     ## Simulation setup
 
-    Δt = 3minutes
+    Δt = 10minutes
 
     g = model.free_surface.gravitational_acceleration
     gravity_wave_speed = √(g * H)
