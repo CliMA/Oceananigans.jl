@@ -51,7 +51,6 @@ include("derivatives.jl")
 include("at.jl")
 include("broadcasting_abstract_operations.jl")
 include("show_abstract_operations.jl")
-include("averages_of_operations.jl")
 
 # Make some operators!
 

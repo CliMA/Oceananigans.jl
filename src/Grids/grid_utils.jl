@@ -1,9 +1,12 @@
+using CUDA
+
 #####
 ##### Convinience functions
 #####
 
-Base.length(loc, topo, N) = N
+Base.length(::Type{Face}, topo, N) = N
 Base.length(::Type{Face}, ::Type{Bounded}, N) = N+1
+Base.length(::Type{Center}, topo, N) = N
 Base.length(::Type{Nothing}, topo, N) = 1
 
 function Base.size(loc, grid::AbstractGrid)
@@ -79,8 +82,8 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 @inline total_length(::Type{Nothing}, topo, N, H=0) = 1
 
 # Grid domains
-@inline domain(topo, N, ξ) = ξ[1], ξ[N+1]
-@inline domain(::Type{Flat}, N, ξ) = ξ[1], ξ[1]
+@inline domain(topo, N, ξ) = CUDA.@allowscalar return ξ[1], ξ[N+1]
+@inline domain(::Type{Flat}, N, ξ) = CUDA.@allowscalar ξ[1], ξ[1]
 
 @inline x_domain(grid) = domain(topology(grid, 1), grid.Nx, grid.xF)
 @inline y_domain(grid) = domain(topology(grid, 2), grid.Ny, grid.yF)

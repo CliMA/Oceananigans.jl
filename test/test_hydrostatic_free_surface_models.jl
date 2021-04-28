@@ -142,8 +142,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
             u, v, w = model.velocities
             η = model.free_surface.η
 
-            @test all(interior(u) .≈ u_answer)
-            @test all(interior(η) .≈ η_answer)
+            @test all(Array(interior(u)) .≈ u_answer)
+            @test all(Array(interior(η)) .≈ η_answer)
         end
     end
 
