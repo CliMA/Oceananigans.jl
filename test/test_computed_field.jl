@@ -386,7 +386,7 @@ for arch in archs
                 ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᵃ, grid, computed_dependencies=(u, v))
                 ζ = ComputedField(ζ_op) # identical to `VerticalVorticityField`
                 compute!(ζ)
-                ζ isa ComputedField && ζ.operand === ζ₃ᶠᶠᵃ
+                ζ isa ComputedField && ζ.operand.kernel_function === ζ₃ᶠᶠᵃ
             end
         end
 
