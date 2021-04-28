@@ -1,4 +1,6 @@
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
+using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
 using Oceananigans.Fields: PressureField, compute_at!
 using Oceananigans.BuoyancyModels: BuoyancyField
 
@@ -360,6 +362,32 @@ for arch in archs
 
             @info "      Testing compute! kinetic energy..."
             @test compute_kinetic_energy(model)
+        end
+
+        @testset "Computations with KernelComputedField [$(typeof(arch))]" begin
+            @test begin
+                @inline trivial_kernel_function(i, j, k, grid) = 1
+                op = KernelFunctionOperation{Center, Center, Center}(trivial_kernel_function, grid)
+                f = ComputedField(op, arch)
+                compute!(f)
+                f isa ComputedField && f.operand === op
+            end
+
+            @test begin
+                @inline trivial_parameterized_kernel_function(i, j, k, grid, μ) = μ
+                op = KernelFunctionOperation{Center, Center, Center}(trivial_parameterized_kernel_function, grid, parameters=0.1)
+                f = ComputedField(op, arch)
+                compute!(f)
+                f isa ComputedField && f.operand === op
+            end
+
+            @test begin
+                u, v, w = model.velocities
+                ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᵃ, grid, computed_dependencies=(u, v))
+                ζ = ComputedField(ζ_op) # identical to `VerticalVorticityField`
+                compute!(ζ)
+                ζ isa ComputedField && ζ.operand.kernel_function === ζ₃ᶠᶠᵃ
+            end
         end
 
         @testset "Operations with ComputedField and PressureField [$(typeof(arch))]" begin
