@@ -41,7 +41,7 @@ CUDA.math_mode!(CUDA.FAST_MATH)
 latitude = (-80, 80)
 Δφ = latitude[2] - latitude[1]
 
-resolution = 1/2 # degree
+resolution = 1 # degree
 Nx = round(Int, 360 / resolution)
 Ny = round(Int, Δφ / resolution)
 
@@ -58,11 +58,11 @@ Ny = round(Int, Δφ / resolution)
 
 free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
 
-equator_Δx = grid.radius * deg2rad(grid.Δλ)
+equatorial_Δx = grid.radius * deg2rad(grid.Δλ)
 diffusive_time_scale = 60days
 
-@show const νh₂₀ =        equator_Δx^2 / diffusive_time_scale
-@show const νh₄₀ = 1e-6 * equator_Δx^4 / diffusive_time_scale
+@show const νh₂₀ =        equatorial_Δx^2 / diffusive_time_scale
+@show const νh₄₀ = 2e-6 * equatorial_Δx^4 / diffusive_time_scale
 
 @inline νh₂(λ, φ, z, t) = νh₂₀ * cos(π * φ / 180)
 @inline νh₄(λ, φ, z, t) = νh₄₀ * cos(π * φ / 180)
@@ -81,21 +81,34 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     closure = variable_horizontal_biharmonic_diffusivity)
 
 #####
-##### Initial condition
+##### Initial condition: two streamfunction
 #####
 
-ψ = Field(Face, Face, Center, model.architecture, model.grid)
-set!(ψ, (x, y, z) -> rand())
-fill_halo_regions!(ψ, model.architecture)
+# Random noise
+ψ★ = Field(Face, Face, Center, model.architecture, model.grid)
+set!(ψ★, (x, y, z) -> rand())
+fill_halo_regions!(ψ★, model.architecture)
+
+# Zonal wind
+step(x, d, c) = 1/2 * (1 + tanh((x - c) / d))
+polar_mask(y) = step(y, -5, 60) * step(y, 5, -60)
+zonal_ψ(y) = (cosd(4y) + 0.5 * exp(-y^2 / 200)) * polar_mask(y)
+
+ψ̄ = Field(Face, Face, Center, model.architecture, model.grid)
+set!(ψ̄, (x, y, z) -> zonal_ψ(y))
+
+ψ_total = ψ★ + 0.2 * ψ̄
 
 u, v, w = model.velocities
 
-u .= - ∂y(ψ)
-v .= + ∂x(ψ)
-
+u .= - ∂y(ψ_total)
+v .= + ∂x(ψ_total)
 
 #####
-##### Rescale velocity to fraction of free surface velocity
+##### Shenanigans for rescaling the velocity field to
+#####   1. Have a magnitude (ish) that's a fixed fraction of
+#####      the surface gravity wave speed;
+#####   2. Zero volume mean on the curvilinear RegularLatitudeLongitudeGrid.
 #####
 
 # Time-scale for gravity wave propagation across the smallest grid cell
@@ -106,17 +119,17 @@ minimum_Δx = grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(grid.
 minimum_Δy = grid.radius * deg2rad(grid.Δφ)
 wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
 
+@info "Max speeds prior to rescaling:"
 @show max_u = maximum(u)
 @show max_v = maximum(v)
 max_speed_ish = sqrt(max_u^2 + max_v^2)
 
-@show target_speed = 0.5 * gravity_wave_speed
+target_speed = 0.5 * gravity_wave_speed
 u .*= target_speed / max_speed_ish
 v .*= target_speed / max_speed_ish
 
 # Zero out mean motion
 using Oceananigans.AbstractOperations: volume
-using Oceananigans.Fields: ReducedField
 
 u_cpu = XFaceField(CPU(), grid)
 v_cpu = YFaceField(CPU(), grid)
@@ -137,7 +150,7 @@ v_reduced = AveragedField(v_dV, dims=(1, 2, 3))
 mean!(v_reduced, v_dV)
 integrated_v = v_reduced[1, 1, 1]
 
-# Total volume
+# Calculate total volume
 u_cpu .= 1
 v_cpu .= 1
 compute!(u_reduced)
@@ -146,12 +159,14 @@ compute!(v_reduced)
 u_volume = u_reduced[1, 1, 1]
 v_volume = v_reduced[1, 1, 1]
 
+@info "Max speeds prior zeroing out volume mean:"
 @show maximum(u)
 @show maximum(v)
 
 u .-= integrated_u / u_volume
 v .-= integrated_v / v_volume
 
+@info "Initial max speeds:"
 @show maximum(u)
 @show maximum(v)
 
@@ -161,7 +176,7 @@ v .-= integrated_v / v_volume
 
 ζ = VerticalVorticityField(model)
 compute!(ζ)
-Δt = 0.1 * minimum_Δx / target_speed
+Δt = 0.5 * minimum_Δx / gravity_wave_speed
 
 @info """
     Maximum vertical vorticity: $(maximum(ζ))
@@ -177,7 +192,7 @@ function (p::Progress)(sim)
 
     compute!(ζ)
 
-    @info @sprintf("Time: %s, iteration: %d, max(u): %.2e m s⁻¹, wall time: %s",
+    @info @sprintf("Time: %s, iteration: %d, max(|ζ|): %.2e s⁻¹, wall time: %s",
                    prettytime(sim.model.clock.time),
                    sim.model.clock.iteration,
                    maximum(abs, ζ),
@@ -191,7 +206,7 @@ end
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 2year,
+                        stop_time = 5year,
                         iteration_interval = 1000,
                         progress = Progress(time_ns()))
 
