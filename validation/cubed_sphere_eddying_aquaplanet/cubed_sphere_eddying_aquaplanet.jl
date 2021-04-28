@@ -29,7 +29,7 @@ function (p::Progress)(sim)
     ETA = (1 - progress) / progress * sim.run_time
     ETA_datetime = now() + Second(round(Int, ETA))
 
-    @info @sprintf("[%06.2f%%] Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e, Δ(wall time): %s / iteration, ETA: %s",
+    @info @sprintf("[%06.2f%%] Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e, Δ(wall time): %s / it, ETA: %s (%s)",
                    100 * progress,
                    prettytime(sim.model.clock.time),
                    sim.model.clock.iteration,
@@ -39,7 +39,8 @@ function (p::Progress)(sim)
                    maximum(sim.model.free_surface.η),
                    sim.parameters.cfl(sim.model),
                    prettytime(wall_time / sim.iteration_interval),
-                   prettytime(ETA))
+                   prettytime(ETA),
+                   ETA_datetime)
 
     p.interval_start_time = time_ns()
 
