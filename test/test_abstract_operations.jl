@@ -1,5 +1,6 @@
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
 using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
 using Oceananigans.Fields: PressureField, compute_at!
 using Oceananigans.BuoyancyModels: BuoyancyField
 
@@ -118,15 +119,16 @@ for arch in archs
 
         @testset "KernelFunctionOperations [$(typeof(arch))]" begin
             trivial_kernel_function(i, j, k, grid) = 1
-            op = KernelFunctionOperation(trivial_kernel_function, grid)
+            op = KernelFunctionOperation{Center, Center, Center}(trivial_kernel_function, grid)
             @test op isa KernelFunctionOperation
 
-            less_trivial_kernel_function(i, j, k, grid, u, v) = @inbounds u[i, j, k] * v[i, j, k]
-            op = KernelFunctionOperation(less_trivial_kernel_function, grid, computed_dependencies=(u, v))
+            less_trivial_kernel_function(i, j, k, grid, u, v) = @inbounds u[i, j, k] * ℑxyᶠᶜᵃ(i, j, k, grid, v)
+            op = KernelFunctionOperation{Face, Center, Center}(less_trivial_kernel_function, grid, computed_dependencies=(u, v))
             @test op isa KernelFunctionOperation
 
-            still_fairly_trivial_kernel_function(i, j, k, grid, u, v, μ) = @inbounds μ * u[i, j, k] * v[i, j, k]
-            op = KernelFunctionOperation(still_fairly_trivial_kernel_function, grid, computed_dependencies=(u, v), parameters=0.1)
+            still_fairly_trivial_kernel_function(i, j, k, grid, u, v, μ) = @inbounds μ * ℑxyᶜᶠᵃ(i, j, k, grid, u) * v[i, j, k]
+            op = KernelFunctionOperation{Center, Face, Center}(still_fairly_trivial_kernel_function, grid,
+                                                               computed_dependencies=(u, v), parameters=0.1)
             @test op isa KernelFunctionOperation
         end
 

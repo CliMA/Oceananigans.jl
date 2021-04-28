@@ -1,5 +1,6 @@
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
 using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
 using Oceananigans.Fields: PressureField, compute_at!
 using Oceananigans.BuoyancyModels: BuoyancyField
 
@@ -364,25 +365,29 @@ for arch in archs
         end
 
         @testset "Computations with KernelComputedField [$(typeof(arch))]" begin
-            trivial_kernel_function(i, j, k, grid) = 1
-            op = KernelFunctionOperation(trivial_kernel_function, grid)
-            f = ComputedField(op, arch)
-            compute!(f)
-            @test f isa ComputedField
-            @test f.operand === op
+            @test begin
+                @inline trivial_kernel_function(i, j, k, grid) = 1
+                op = KernelFunctionOperation{Center, Center, Center}(trivial_kernel_function, grid)
+                f = ComputedField(op, arch)
+                compute!(f)
+                f isa ComputedField && f.operand === op
+            end
 
-            trivial_parameterized_kernel_function(i, j, k, grid, μ) = μ
-            op = KernelFunctionOperation(trivial_kernel_function, grid, parameters=0.1)
-            f = ComputedField(op, arch)
-            compute!(f)
-            @test f isa ComputedField
-            @test f.operand === op
+            @test begin
+                @inline trivial_parameterized_kernel_function(i, j, k, grid, μ) = μ
+                op = KernelFunctionOperation{Center, Center, Center}(trivial_parameterized_kernel_function, grid, parameters=0.1)
+                f = ComputedField(op, arch)
+                compute!(f)
+                f isa ComputedField && f.operand === op
+            end
 
-            ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᵃ, grid, computed_dependencies=(u, v))
-            ζ = ComputedField(ζ_op) # identical to `VerticalVorticityField`
-            compute!(ζ)
-            @test ζ isa ComputedField
-            @test ζ.operand === ζ₃ᶠᶠᵃ
+            @test begin
+                u, v, w = model.velocities
+                ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᵃ, grid, computed_dependencies=(u, v))
+                ζ = ComputedField(ζ_op) # identical to `VerticalVorticityField`
+                compute!(ζ)
+                ζ isa ComputedField && ζ.operand === ζ₃ᶠᶠᵃ
+            end
         end
 
         @testset "Operations with ComputedField and PressureField [$(typeof(arch))]" begin
