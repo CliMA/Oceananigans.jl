@@ -60,7 +60,7 @@ diffusive_time_scale = 60days
 @show const νh₂₀ =        equator_Δx^2 / diffusive_time_scale
 @show const νh₄₀ = 5e-6 * equator_Δx^4 / diffusive_time_scale
 
-@inline νh₂(λ, φ, z, t) = νh₀ * cos(π * φ / 180)
+@inline νh₂(λ, φ, z, t) = νh₂₀ * cos(π * φ / 180)
 @inline νh₄(λ, φ, z, t) = νh₄₀ * cos(π * φ / 180)
 
 variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₂)
