@@ -8,7 +8,7 @@ using JLD2
 using Oceananigans
 using Oceananigans.Units
 
-using Dates: now, Second
+using Dates: now, Second, format
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 using Oceananigans.CubedSpheres: CubedSphereFaces, inject_cubed_sphere_exchange_boundary_conditions
@@ -29,7 +29,7 @@ function (p::Progress)(sim)
     ETA = (1 - progress) / progress * sim.run_time
     ETA_datetime = now() + Second(round(Int, ETA))
 
-    @info @sprintf("[%06.2f%%] Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e, Δ(wall time): %s / it, ETA: %s (%s)",
+    @info @sprintf("[%06.2f%%] Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e",
                    100 * progress,
                    prettytime(sim.model.clock.time),
                    sim.model.clock.iteration,
@@ -37,10 +37,13 @@ function (p::Progress)(sim)
                    maximum(abs, sim.model.velocities.v),
                    minimum(sim.model.free_surface.η),
                    maximum(sim.model.free_surface.η),
-                   sim.parameters.cfl(sim.model),
-                   prettytime(wall_time / sim.iteration_interval),
+                   sim.parameters.cfl(sim.model))
+
+    @info @sprintf("[%06.2f%%] ETA: %s (%s), Δ(wall time): %s / iteration",
+                   100 * progress,
                    prettytime(ETA),
-                   ETA_datetime)
+                   format(ETA_datetime, "yyyy-mm-dd HH:MM:SS"),
+                   prettytime(wall_time / sim.iteration_interval))
 
     p.interval_start_time = time_ns()
 
