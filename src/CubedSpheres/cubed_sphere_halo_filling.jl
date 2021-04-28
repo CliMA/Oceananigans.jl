@@ -15,11 +15,14 @@ function fill_halo_regions!(field::AbstractCubedSphereField, arch, args...; kwar
         # Fill the top and bottom halos the usual way.
         fill_halo_regions!(face_field, arch, get_face(args, i)...; kwargs...)
 
-        # Deal with halo exchanges.
-        fill_west_halo!(face_field, field)
-        fill_east_halo!(face_field, field)
-        fill_south_halo!(face_field, field)
-        fill_north_halo!(face_field, field)
+        # Testing to see if filling halos twice fixes numerical artifacts.
+        for _ in 1:2
+            # Deal with halo exchanges.
+            fill_west_halo!(face_field, field)
+            fill_east_halo!(face_field, field)
+            fill_south_halo!(face_field, field)
+            fill_north_halo!(face_field, field)
+        end
     end
 
     return nothing
