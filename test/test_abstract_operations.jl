@@ -1,4 +1,5 @@
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Fields: PressureField, compute_at!
 using Oceananigans.BuoyancyModels: BuoyancyField
 
@@ -113,6 +114,20 @@ for arch in archs
                     @test typeof(op((Center, Center, Center), ψ, ϕ, σ)[2, 2, 2]) <: Number
                 end
             end
+        end
+
+        @testset "KernelFunctionOperations [$(typeof(arch))]" begin
+            trivial_kernel_function(i, j, k, grid) = 1
+            op = KernelFunctionOperation(trivial_kernel_function, grid)
+            @test op isa KernelFunctionOperation
+
+            less_trivial_kernel_function(i, j, k, grid, u, v) = @inbounds u[i, j, k] * v[i, j, k]
+            op = KernelFunctionOperation(less_trivial_kernel_function, grid, computed_dependencies=(u, v))
+            @test op isa KernelFunctionOperation
+
+            still_fairly_trivial_kernel_function(i, j, k, grid, u, v, μ) = @inbounds μ * u[i, j, k] * v[i, j, k]
+            op = KernelFunctionOperation(still_fairly_trivial_kernel_function, grid, computed_dependencies=(u, v), parameters=0.1)
+            @test op isa KernelFunctionOperation
         end
 
         @testset "Fidelity of simple binary operations" begin
