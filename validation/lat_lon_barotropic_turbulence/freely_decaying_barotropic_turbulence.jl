@@ -114,23 +114,46 @@ max_speed_ish = sqrt(max_u^2 + max_v^2)
 u .*= target_speed / max_speed_ish
 v .*= target_speed / max_speed_ish
 
-@show maximum(u)
-@show maximum(v)
-
 # Zero out mean motion
 using Oceananigans.AbstractOperations: volume
 using Oceananigans.Fields: ReducedField
 
-u_dV = u * volume
-mean_u = ReducedField(nothing, nothing, nothing, model.architecture, model.grid, dims=(1, 2, 3))
-mean!(mean_u, u_dV)
+u_cpu = XFaceField(CPU(), grid)
+v_cpu = YFaceField(CPU(), grid)
+set!(u_cpu, u)
+set!(v_cpu, v)
 
-v_dV = v * volume
-mean_v = ReducedField(nothing, nothing, nothing, model.architecture, model.grid, dims=(1, 2, 3))
-mean!(mean_v, v_dV)
+@show max_u = maximum(u)
+@show max_v = maximum(v)
 
-model.velocities.u .-= mean_u
-model.velocities.v .-= mean_v
+u_dV = u_cpu * volume
+u_reduced = AveragedField(u_dV, dims=(1, 2, 3))
+compute!(u_reduced)
+mean!(u_reduced, u_dV)
+integrated_u = u_reduced[1, 1, 1]
+
+v_dV = v_cpu * volume
+v_reduced = AveragedField(v_dV, dims=(1, 2, 3))
+mean!(v_reduced, v_dV)
+integrated_v = v_reduced[1, 1, 1]
+
+# Total volume
+u_cpu .= 1
+v_cpu .= 1
+compute!(u_reduced)
+compute!(v_reduced)
+
+u_volume = u_reduced[1, 1, 1]
+v_volume = v_reduced[1, 1, 1]
+
+@show maximum(u)
+@show maximum(v)
+
+u .-= integrated_u / u_volume
+v .-= integrated_v / v_volume
+
+@show maximum(u)
+@show maximum(v)
 
 #####
 ##### Simulation setup
