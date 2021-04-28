@@ -39,10 +39,9 @@ function (p::Progress)(sim)
                    maximum(sim.model.free_surface.η),
                    sim.parameters.cfl(sim.model))
 
-    @info @sprintf("[%06.2f%%] ETA: %s (%s), Δ(wall time): %s / iteration",
-                   100 * progress,
-                   prettytime(ETA),
+    @info @sprintf("           ETA: %s (%s), Δ(wall time): %s / iteration",
                    format(ETA_datetime, "yyyy-mm-dd HH:MM:SS"),
+                   prettytime(ETA),
                    prettytime(wall_time / sim.iteration_interval))
 
     p.interval_start_time = time_ns()
