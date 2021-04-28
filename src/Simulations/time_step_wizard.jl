@@ -10,7 +10,7 @@ mutable struct TimeStepWizard{FT, C, D}
     cell_diffusion_timescale :: D
 end
 
-infinite_diffusive_timescale(args...) = Inf # its not very limiting
+infinite_diffusion_timescale(args...) = Inf # its not very limiting
 
 """
     TimeStepWizard(cfl=0.1, max_change=2.0, min_change=0.5, max_Δt=Inf, min_Δt=0.0, Δt=0.01)
