@@ -93,11 +93,6 @@ u, v, w = model.velocities
 u .= - ∂y(ψ)
 v .= + ∂x(ψ)
 
-#=
-# Zero out mean motion
-model.velocities.u .-= mean(model.velocities.u)
-model.velocities.v .-= mean(model.velocities.v)
-=#
 
 #####
 ##### Rescale velocity to fraction of free surface velocity
@@ -121,6 +116,21 @@ v .*= target_speed / max_speed_ish
 
 @show maximum(u)
 @show maximum(v)
+
+# Zero out mean motion
+using Oceananigans.AbstractOperations: volume
+using Oceananigans.Fields: ReducedField
+
+u_dV = u * volume
+mean_u = ReducedField(nothing, nothing, nothing, model.architecture, model.grid, dims=(1, 2, 3))
+mean!(mean_u, u_dV)
+
+v_dV = v * volume
+mean_v = ReducedField(nothing, nothing, nothing, model.architecture, model.grid, dims=(1, 2, 3))
+mean!(mean_v, v_dV)
+
+model.velocities.u .-= mean_u
+model.velocities.v .-= mean_v
 
 #####
 ##### Simulation setup
@@ -159,7 +169,7 @@ end
 simulation = Simulation(model,
                         Δt = Δt,
                         stop_time = 2year,
-                        iteration_interval = 100,
+                        iteration_interval = 1000,
                         progress = Progress(time_ns()))
 
 output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=ζ))
