@@ -10,7 +10,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils: launch!
 
-import Oceananigans: fields
+import Oceananigans: fields, prognostic_fields
 
 # This is only used by the cubed sphere for now.
 fill_horizontal_velocity_halos!(args...) = nothing
@@ -47,13 +47,16 @@ include("set_hydrostatic_free_surface_model.jl")
 
 Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.tracers`.
 """
-fields(model::HydrostaticFreeSurfaceModel) = hydrostatic_prognostic_fields(model.velocities, model.free_surface, model.tracers)
+fields(model::HydrostaticFreeSurfaceModel) = merge(prognostic_fields(model), model.auxiliary_fields)
 
 """
-    fields(model::HydrostaticFreeSurfaceModel)
+    prognostic_fields(model::HydrostaticFreeSurfaceModel)
 
-Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.tracers`.
+Returns a flattened `NamedTuple` of the prognostic fields associated with `HydrostaticFreeSurfaceModel`.
 """
+prognostic_fields(model::HydrostaticFreeSurfaceModel) =
+    hydrostatic_prognostic_fields(model.velocities, model.free_surface, model.tracers)
+
 hydrostatic_prognostic_fields(velocities, free_surface, tracers) = merge((u = velocities.u,
                                                                           v = velocities.v,
                                                                           η = free_surface.η),

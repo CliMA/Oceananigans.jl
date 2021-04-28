@@ -148,6 +148,7 @@ function tupleit end
 function short_show end
 
 function fields end
+function prognostic_fields end
 
 #####
 ##### Include all the submodules

@@ -1,6 +1,6 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
 
-using Oceananigans: fields
+using Oceananigans: fields, prognostic_fields
 using Oceananigans.Utils: work_layout
 
 """
