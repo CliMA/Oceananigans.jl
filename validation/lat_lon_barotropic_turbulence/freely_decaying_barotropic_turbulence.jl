@@ -33,7 +33,7 @@ using Oceananigans.AbstractOperations: AbstractGridMetric, _unary_operation
 latitude = (-80, 80)
 Δφ = latitude[2] - latitude[1]
 
-resolution = 1 # degree
+resolution = 1/4 # degree
 Nx = round(Int, 360 / resolution)
 Ny = round(Int, Δφ / resolution)
 
@@ -41,6 +41,7 @@ Ny = round(Int, Δφ / resolution)
 @show grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
                                           longitude = (-180, 180),
                                           latitude = latitude,
+                                          halo = (2, 2, 2),
                                           z = (-100, 0))
 
 free_surface = ExplicitFreeSurface(gravitational_acceleration=0.2)
@@ -53,7 +54,7 @@ diffusive_time_scale = 60days
 #@show const νh₀ = 5e3 * (60 / grid.Nx)^2
 
 @show const νh₂₀ = equator_Δx^2 / diffusive_time_scale
-@show const νh₄₀ = 1e-6 * equator_Δx^4 / diffusive_time_scale
+@show const νh₄₀ = 1e-5 * equator_Δx^4 / diffusive_time_scale
 @inline νh₂(λ, φ, z, t) = νh₀ * cos(π * φ / 180)
 @inline νh₄(λ, φ, z, t) = νh₄₀ * cos(π * φ / 180)
 
@@ -134,7 +135,7 @@ compute!(ζ)
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 2year,
+                        stop_time = 20year,
                         iteration_interval = 100,
                         progress = Progress(time_ns()))
 
@@ -143,7 +144,7 @@ output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=ζ))
 output_prefix = "freely_decaying_barotropic_turbulence_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ = ζ,),
-                                                      schedule = TimeInterval(20day),
+                                                      schedule = TimeInterval(30day),
                                                       prefix = output_prefix,
                                                       force = true)
 
