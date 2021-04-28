@@ -1,4 +1,4 @@
-# # Barotropic gyre
+# # Freely decaying barotropic turbulence on a latitude-longitude strip
 
 using Oceananigans
 using Oceananigans.Grids
@@ -17,7 +17,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ExplicitFreeSurface,
     ImplicitFreeSurface
 
-using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
+using Oceananigans.TurbulenceClosures:
+    HorizontallyCurvilinearAnisotropicDiffusivity,
+    HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
+
 using Oceananigans.Utils: prettytime, hours, day, days, years, year
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
@@ -27,10 +30,10 @@ using Printf
 
 using Oceananigans.AbstractOperations: AbstractGridMetric, _unary_operation
 
-latitude = (-60, 60)
+latitude = (-80, 80)
 Δφ = latitude[2] - latitude[1]
 
-resolution = 1/6 # degree
+resolution = 1/2 # degree
 Nx = round(Int, 360 / resolution)
 Ny = round(Int, Δφ / resolution)
 
@@ -40,14 +43,22 @@ Ny = round(Int, Δφ / resolution)
                                           latitude = latitude,
                                           z = (-100, 0))
 
-#free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
 free_surface = ExplicitFreeSurface(gravitational_acceleration=0.2)
 
 coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving())
 
-@show const νh₀ = 5e3 * (60 / grid.Nx)^2
-@inline νh(λ, φ, z, t) = νh₀ * cos(π * φ / 180)
-variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh)
+equator_Δx = grid.radius * deg2rad(grid.Δλ)
+diffusive_time_scale = 60days
+
+#@show const νh₀ = 5e3 * (60 / grid.Nx)^2
+
+@show const νh₂₀ = equator_Δx^2 / diffusive_time_scale
+@show const νh₄₀ = 1e-3 * equator_Δx^4 / diffusive_time_scale
+@inline νh₂(λ, φ, z, t) = νh₀ * cos(π * φ / 180)
+@inline νh₄(λ, φ, z, t) = νh₄₀ * cos(π * φ / 180)
+
+variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₂)
+variable_horizontal_biharmonic_diffusivity = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(νh=νh₄)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = GPU(),
@@ -56,7 +67,8 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = nothing, # coriolis,
                                     tracers = nothing,
                                     buoyancy = nothing,
-                                    closure = variable_horizontal_diffusivity)
+                                    closure = variable_horizontal_biharmonic_diffusivity)
+                                    #closure = variable_horizontal_diffusivity)
 
 g = model.free_surface.gravitational_acceleration
 
@@ -103,13 +115,6 @@ end
 compute!(ζ)
 
 #=
-@inline f_func(λ, φ, z, Ω) = ifelse(φ == 0, Inf, 2Ω * sin(π * φ / 180))
-f = FunctionField{Face, Face, Center}(f_func, grid, parameters=model.coriolis.rotation_rate)
-Ro = ComputedField(ζ / f)
-compute!(Ro)
-=#
-
-#=
 Δt = TimeStepWizard(cfl = 0.2,
                     max_Δt = 0.2wave_propagation_time_scale, 
                     Δt = 0.2wave_propagation_time_scale,
@@ -135,7 +140,7 @@ simulation = Simulation(model,
 
 output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=ζ))
 
-output_prefix = "eddying_strip_$(grid.Nx)_Ny$(grid.Ny)"
+output_prefix = "freely_decaying_barotropic_turbulence_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ = ζ,),
                                                       schedule = TimeInterval(60day),
@@ -143,10 +148,3 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ = ζ,),
                                                       force = true)
 
 run!(simulation)
-
-#####
-##### Animation!
-#####
-
-#include("visualize.jl")
-#visualize_plots(simulation.output_writers[:fields].filepath)
