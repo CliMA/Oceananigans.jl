@@ -13,8 +13,6 @@ using Oceananigans.OutputWriters
 using Oceananigans.TimeSteppers
 using Oceananigans.Utils
 
-using Oceananigans.TurbulenceClosures: cell_diffusion_timescale
-
 include("time_step_wizard.jl")
 include("simulation.jl")
 include("run.jl")
