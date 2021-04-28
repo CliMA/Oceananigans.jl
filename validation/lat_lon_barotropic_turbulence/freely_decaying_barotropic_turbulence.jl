@@ -30,10 +30,14 @@ using Printf
 
 using Oceananigans.AbstractOperations: AbstractGridMetric, _unary_operation
 
+#####
+##### Grid
+#####
+
 latitude = (-80, 80)
 Δφ = latitude[2] - latitude[1]
 
-resolution = 1/4 # degree
+resolution = 1/2 # degree
 Nx = round(Int, 360 / resolution)
 Ny = round(Int, Δφ / resolution)
 
@@ -44,17 +48,18 @@ Ny = round(Int, Δφ / resolution)
                                           halo = (2, 2, 2),
                                           z = (-100, 0))
 
-free_surface = ExplicitFreeSurface(gravitational_acceleration=0.2)
+#####
+##### Physics and model setup
+#####
 
-coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving())
+free_surface = ExplicitFreeSurface(gravitational_acceleration=0.2)
 
 equator_Δx = grid.radius * deg2rad(grid.Δλ)
 diffusive_time_scale = 60days
 
-#@show const νh₀ = 5e3 * (60 / grid.Nx)^2
+@show const νh₂₀ =        equator_Δx^2 / diffusive_time_scale
+@show const νh₄₀ = 5e-6 * equator_Δx^4 / diffusive_time_scale
 
-@show const νh₂₀ = equator_Δx^2 / diffusive_time_scale
-@show const νh₄₀ = 1e-5 * equator_Δx^4 / diffusive_time_scale
 @inline νh₂(λ, φ, z, t) = νh₀ * cos(π * φ / 180)
 @inline νh₄(λ, φ, z, t) = νh₄₀ * cos(π * φ / 180)
 
@@ -65,11 +70,15 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = GPU(),
                                     momentum_advection = VectorInvariant(),
                                     free_surface = free_surface,
-                                    coriolis = nothing, # coriolis,
+                                    coriolis = nothing,
                                     tracers = nothing,
                                     buoyancy = nothing,
-                                    closure = variable_horizontal_biharmonic_diffusivity)
                                     #closure = variable_horizontal_diffusivity)
+                                    closure = variable_horizontal_biharmonic_diffusivity)
+
+#####
+##### Initial condition
+#####
 
 g = model.free_surface.gravitational_acceleration
 
@@ -92,9 +101,13 @@ max_u = maximum(model.velocities.u)
 max_v = maximum(model.velocities.v)
 max_speed = sqrt(max_u^2 + max_v^2)
 
-target_speed = 0.5 * gravity_wave_speed
+target_speed = 0.1 * gravity_wave_speed
 model.velocities.u ./= target_speed / max_speed
 model.velocities.v ./= target_speed / max_speed
+
+#####
+##### Simulation setup
+#####
 
 mutable struct Progress; interval_start_time::Float64; end
 
@@ -115,14 +128,8 @@ end
 ζ = VerticalVorticityField(model)
 compute!(ζ)
 
-#=
-Δt = TimeStepWizard(cfl = 0.2,
-                    max_Δt = 0.2wave_propagation_time_scale, 
-                    Δt = 0.2wave_propagation_time_scale,
-                    cell_advection_timescale = Oceananigans.Diagnostics.accurate_cell_advection_timescale)
-=#
-
-Δt = 0.2wave_propagation_time_scale
+polar_Δx = grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(grid.Δλ)
+Δt = 0.1 * polar_Δx / target_speed
 
 # Max Rossby number: $(maximum(abs, Ro))
 
@@ -141,11 +148,12 @@ simulation = Simulation(model,
 
 output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=ζ))
 
-output_prefix = "freely_decaying_barotropic_turbulence_Nx$(grid.Nx)_Ny$(grid.Ny)"
+output_prefix = "implicit_freely_decaying_barotropic_turbulence_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ = ζ,),
                                                       schedule = TimeInterval(30day),
                                                       prefix = output_prefix,
                                                       force = true)
 
+# Let's goo!
 run!(simulation)

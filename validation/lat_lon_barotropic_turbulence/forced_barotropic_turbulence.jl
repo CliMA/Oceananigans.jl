@@ -51,10 +51,8 @@ equator_Δx = grid.radius * deg2rad(grid.Δλ)
 polar_Δx = grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(grid.Δλ)
 diffusive_time_scale = 60days
 
-#@show const νh₀ = 5e3 * (60 / grid.Nx)^2
-
 @show const νh₂₀ = equator_Δx^2 / diffusive_time_scale
-@show const νh₄₀ = 1e-5 * equator_Δx^4 / diffusive_time_scale
+@show const νh₄₀ = 2e-5 * equator_Δx^4 / diffusive_time_scale
 @inline νh₂(λ, φ, z, t) = νh₀ * cos(π * φ / 180)
 @inline νh₄(λ, φ, z, t) = νh₄₀ * cos(π * φ / 180)
 
@@ -68,9 +66,9 @@ using Oceananigans.Operators: ∂yᶠᶜᵃ, ∂xᶜᶠᵃ
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: compute!
 
-forcing_timescale = 10days
+forcing_timescale = 1days
 forcing_amplitude = polar_Δx^2 / forcing_timescale^2
-drag_timescale = 60days
+drag_timescale = 2years
 
 struct RandomOperand
     amplitude :: Float64
@@ -153,13 +151,6 @@ end
 ζ = VerticalVorticityField(model)
 compute!(ζ)
 
-#=
-Δt = TimeStepWizard(cfl = 0.2,
-                    max_Δt = 0.2wave_propagation_time_scale, 
-                    Δt = 0.2wave_propagation_time_scale,
-                    cell_advection_timescale = Oceananigans.Diagnostics.accurate_cell_advection_timescale)
-=#
-
 Δt = 0.2wave_propagation_time_scale
 
 # Max Rossby number: $(maximum(abs, Ro))
@@ -179,7 +170,7 @@ simulation = Simulation(model,
 
 output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=ζ))
 
-output_prefix = "freely_decaying_barotropic_turbulence_Nx$(grid.Nx)_Ny$(grid.Ny)"
+output_prefix = "forced_barotropic_turbulence_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ = ζ,),
                                                       schedule = TimeInterval(60day),
