@@ -62,10 +62,17 @@ equatorial_Δx = grid.radius * deg2rad(grid.Δλ)
 diffusive_time_scale = 60days
 
 @show const νh₂₀ =        equatorial_Δx^2 / diffusive_time_scale
-@show const νh₄₀ = 2e-6 * equatorial_Δx^4 / diffusive_time_scale
+@show const νh₄₀ = 5e-6 * equatorial_Δx^4 / diffusive_time_scale
 
-@inline νh₂(λ, φ, z, t) = νh₂₀ * cos(π * φ / 180)
-@inline νh₄(λ, φ, z, t) = νh₄₀ * cos(π * φ / 180)
+using Oceananigans.AbstractOperations: Az, GridMetricOperation
+
+A = GridMetricOperation((Center, Center, Center), Az, grid) # horizontal cell areas at (Center, Center, Center)
+@show A₀  = A[1, round(Int, grid.Ny/2), 1]
+@show νh₂ = (νh₂₀ / A₀)   * A
+@show νh₄ = (νh₄₀ / A₀^2) * A^2
+
+#@inline νh₂(λ, φ, z, t) = νh₂₀ * cos(π * φ / 180)
+#@inline νh₄(λ, φ, z, t) = νh₄₀ * cos(π * φ / 180)
 
 variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₂)
 variable_horizontal_biharmonic_diffusivity = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(νh=νh₄)
@@ -92,17 +99,17 @@ fill_halo_regions!(ψ★, model.architecture)
 # Zonal wind
 step(x, d, c) = 1/2 * (1 + tanh((x - c) / d))
 polar_mask(y) = step(y, -5, 60) * step(y, 5, -60)
-zonal_ψ(y) = (cosd(4y) + 0.5 * exp(-y^2 / 200)) * polar_mask(y)
+zonal_ψ(y) = (cosd(4y)^3 + 0.5 * exp(-y^2 / 200)) * polar_mask(y)
 
 ψ̄ = Field(Face, Face, Center, model.architecture, model.grid)
 set!(ψ̄, (x, y, z) -> zonal_ψ(y))
 
-ψ_total = ψ★ + 0.2 * ψ̄
+ψ_total = 0.1 * ψ★ + ψ̄
 
 u, v, w = model.velocities
 
-u .= - ∂y(ψ_total)
-v .= + ∂x(ψ_total)
+u .= + ∂y(ψ_total)
+v .= - ∂x(ψ_total)
 
 #####
 ##### Shenanigans for rescaling the velocity field to
@@ -176,7 +183,7 @@ v .-= integrated_v / v_volume
 
 ζ = VerticalVorticityField(model)
 compute!(ζ)
-Δt = 0.5 * minimum_Δx / gravity_wave_speed
+Δt = 0.2 * minimum_Δx / gravity_wave_speed
 
 @info """
     Maximum vertical vorticity: $(maximum(ζ))
@@ -206,7 +213,7 @@ end
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 5year,
+                        stop_time = 20year,
                         iteration_interval = 1000,
                         progress = Progress(time_ns()))
 
