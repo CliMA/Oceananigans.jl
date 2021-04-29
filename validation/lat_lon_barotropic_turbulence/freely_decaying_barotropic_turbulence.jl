@@ -41,7 +41,7 @@ CUDA.math_mode!(CUDA.FAST_MATH)
 latitude = (-80, 80)
 Δφ = latitude[2] - latitude[1]
 
-resolution = 1 # degree
+resolution = 1/2 # degree
 Nx = round(Int, 360 / resolution)
 Ny = round(Int, Δφ / resolution)
 
@@ -67,12 +67,11 @@ diffusive_time_scale = 60days
 using Oceananigans.AbstractOperations: Az, GridMetricOperation
 
 A = GridMetricOperation((Center, Center, Center), Az, grid) # horizontal cell areas at (Center, Center, Center)
-@show A₀  = A[1, round(Int, grid.Ny/2), 1]
-@show νh₂ = (νh₂₀ / A₀)   * A
-@show νh₄ = (νh₄₀ / A₀^2) * A^2
+A₀ = A[1, round(Int, grid.Ny/2), 1] # reference area
 
-#@inline νh₂(λ, φ, z, t) = νh₂₀ * cos(π * φ / 180)
-#@inline νh₄(λ, φ, z, t) = νh₄₀ * cos(π * φ / 180)
+# Horizontal viscosities scaled with cell area
+νh₂ = (νh₂₀ / sqrt(A₀))   * sqrt(A)
+νh₄ = (νh₄₀ / A₀) * A
 
 variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₂)
 variable_horizontal_biharmonic_diffusivity = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(νh=νh₄)
@@ -210,10 +209,9 @@ function (p::Progress)(sim)
     return nothing
 end
 
-
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 20year,
+                        stop_time = 1year,
                         iteration_interval = 1000,
                         progress = Progress(time_ns()))
 
