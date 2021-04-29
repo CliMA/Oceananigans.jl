@@ -33,7 +33,7 @@ end
 
 # We define special default boundary conditions for ComputedField, because currently
 # `DefaultBoundaryCondition` uses ImpenetrableBoundaryCondition() in bounded directions
-# and for fields on Faces, which is not what we want in general for ComputedFields
+# and for fields on Faces, which is not what we want in general for ComputedFields.
 DefaultComputedFieldBoundaryCondition(::Type{Grids.Periodic}, loc) = PeriodicBoundaryCondition()
 DefaultComputedFieldBoundaryCondition(::Type{Flat}, loc) = nothing
 DefaultComputedFieldBoundaryCondition(::Type{Bounded}, ::Type{Center}) = NoFluxBoundaryCondition()
@@ -63,10 +63,8 @@ the result. The `arch`itecture of `data` is inferred from `operand`.
 
 If `data` is provided and `recompute_safely=false`, then "recomputation" of the `ComputedField`
 is avoided if possible.
-
-`boundary_conditions` are set to 
 """
-function ComputedField(operand; kwargs...)
+function ComputedField(operand, arch=nothing; kwargs...)
 
     loc = location(operand)
     grid = operand.grid
@@ -97,7 +95,7 @@ end
 
 Compute `comp.operand` and store the result in `comp.data`.
 """
-function compute!(comp::ComputedField{X, Y, Z}, time=nothing) where {X, Y, Z}
+function compute!(comp::ComputedField{LX, LY, LZ}, time=nothing) where {LX, LY, LZ}
     compute_at!(comp.operand, time) # ensures any 'dependencies' of the computation are computed first
 
     arch = architecture(comp)
@@ -105,7 +103,7 @@ function compute!(comp::ComputedField{X, Y, Z}, time=nothing) where {X, Y, Z}
     workgroup, worksize = work_layout(comp.grid,
                                       :xyz,
                                       include_right_boundaries=true,
-                                      location=(X, Y, Z))
+                                      location=(LX, LY, LZ))
 
     compute_kernel! = _compute!(device(arch), workgroup, worksize) 
 
@@ -118,7 +116,7 @@ function compute!(comp::ComputedField{X, Y, Z}, time=nothing) where {X, Y, Z}
     return nothing
 end
 
-compute_at!(field::ComputedField{X, Y, Z, <:FieldStatus}, time) where {X, Y, Z} =
+compute_at!(field::ComputedField{LX, LY, LZ, <:FieldStatus}, time) where {LX, LY, LZ} =
     conditional_compute!(field, time)
 
 """Compute an `operand` and store in `data`."""
