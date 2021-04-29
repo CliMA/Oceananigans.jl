@@ -1,7 +1,7 @@
 using CUDA
 
 using Oceananigans.Fields: AbstractField, compute_at!, slice_parent
-using Oceananigans.LagrangianParticleTracking: LagrangianParticles'
+using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 
 # Needed to support `fetch_output` with `model::Nothing`.
 time(model) = model.clock.time
