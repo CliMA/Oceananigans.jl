@@ -158,8 +158,8 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     # Scale by Ω^2 * R^2 * sin(φ) to get units of momentum flux (m²/s²) on the sphere.
     # Minus sign because a negative flux drives currents in the positive x-direction.
     # Hmmm, I think I messed up the magnitude but the resulting wind stress patterns should do the trick for now. It's a little too strong (stronger than the 0.1 N/m² we expect from τx).
-    # I'm further scaling it down by a factor of 0.1 so the wind stress is even weaker (for stability/debugging).
-    ψ̃(λ, φ) = - 0.01 * Ω^2 * R^2 * sin(φ) * (-0.02802495608 * erf(1.054092553 * (π - 3φ)) - 0.06266570687 * erf(2.828427125φ) + 0.03765160933 * erf(4.472135955φ) + 0.02802495608 * erf(1.054092553 * (π + 3φ)))
+    # I'm further scaling it down by a factor so the wind stress is even weaker (for stability/debugging).
+    ψ̃(λ, φ) = - 1e-4 * Ω^2 * R^2 * sin(φ) * (-0.02802495608 * erf(1.054092553 * (π - 3φ)) - 0.06266570687 * erf(2.828427125φ) + 0.03765160933 * erf(4.472135955φ) + 0.02802495608 * erf(1.054092553 * (π + 3φ)))
 
     λ̃(λ) = (λ + 180)/ 360 * 2π
     φ̃(φ) = φ / 180 * π
@@ -180,7 +180,7 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     @inline linear_damping_u(i, j, k, grid, clock, model_fields, μ) = @inbounds - μ * model_fields.u[i, j, k]
     @inline linear_damping_v(i, j, k, grid, clock, model_fields, μ) = @inbounds - μ * model_fields.v[i, j, k]
 
-    μ = 1e-4
+    μ = 1/year
     u_forcing = Forcing(linear_damping_u, parameters=μ, discrete_form=true)
     v_forcing = Forcing(linear_damping_v, parameters=μ, discrete_form=true)
 
@@ -193,8 +193,8 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
                free_surface = ExplicitFreeSurface(gravitational_acceleration=0.5),
                    coriolis = nothing,
                     closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=200),
-      # boundary_conditions = (u=u_bcs, v=v_bcs),
-      #             forcing = (u=u_forcing, v=v_forcing),
+        boundary_conditions = (u=u_bcs, v=v_bcs),
+                  # forcing = (u=u_forcing, v=v_forcing),
                     tracers = nothing,
                    buoyancy = nothing
     )
@@ -221,7 +221,7 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
 
     simulation = Simulation(model,
                         Δt = Δt,
-                 stop_time = 2years,
+                 stop_time = 5years,
         iteration_interval = 20,
                   progress = Progress(time_ns()),
                 parameters = (; cfl)
