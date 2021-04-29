@@ -1,6 +1,6 @@
-using Oceananigans.Operators: Δy_uᶠᶜᵃ, Δx_vᶜᶠᵃ, Δx_uᶠᶜᵃ, Δy_vᶜᶠᵃ
+using Oceananigans.Operators: Δy_uᶠᶜᵃ, Δx_vᶜᶠᵃ, Δx_uᶠᶜᵃ, Δy_vᶜᶠᵃ, ℑxyᶠᶠᵃ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ
 
-#####
+#####                                                            
 ##### Viscous flux divergences
 #####
 
@@ -30,6 +30,11 @@ end
 @inline νᶠᶠᶜ(i, j, k, grid, clock, ν::Number) = ν
 @inline νᶠᶜᶠ(i, j, k, grid, clock, ν::Number) = ν
 @inline νᶜᶠᶠ(i, j, k, grid, clock, ν::Number) = ν
+
+@inline νᶜᶜᶜ(i, j, k, grid, clock, ν::AbstractArray) = @inbounds ν[i, j, k]
+@inline νᶠᶠᶜ(i, j, k, grid, clock, ν::AbstractArray) = @inbounds ℑxyᶠᶠᵃ(i, j, k, grid, ν)
+@inline νᶠᶜᶠ(i, j, k, grid, clock, ν::AbstractArray) = @inbounds ℑxzᶠᵃᶠ(i, j, k, grid, ν)
+@inline νᶜᶠᶠ(i, j, k, grid, clock, ν::AbstractArray) = @inbounds ℑyzᵃᶠᶠ(i, j, k, grid, ν)
 
 @inline νᶜᶜᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Center(), k, grid), clock.time)
 @inline νᶠᶠᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Face(),   i, grid), ynode(Face(),   j, grid), znode(Center(), k, grid), clock.time)
