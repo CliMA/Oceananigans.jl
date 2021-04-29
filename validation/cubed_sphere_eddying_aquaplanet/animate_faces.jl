@@ -57,7 +57,7 @@ function animate_faces(filepath, var, loc; filename_pattern, cmap, vmin, vmax, i
             is = is.start : is.stop+1
             js = js.start : js.stop+1
 
-            pcm = ax.pcolormesh(is, js, data; cmap, vmin, vmax)
+            pcm = ax.pcolormesh(is, js, data'; cmap, vmin, vmax)
 
             f == Nf && fig.colorbar(pcm, ax=ax)
         end
