@@ -16,9 +16,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel)
     fill_halo_regions!(fields(model), model.architecture, model.clock, fields(model))
     fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
 
-    # Testing to see if filling velocity halos twice fixes numerical artifacts.
-    fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
-
     compute_w_from_continuity!(model)
 
     fill_halo_regions!(model.velocities.w, model.architecture, model.clock, fields(model))
