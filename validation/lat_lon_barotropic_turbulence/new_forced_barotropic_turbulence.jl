@@ -63,6 +63,44 @@ coriolis = HydrostaticSphericalCoriolis()
 Ω = coriolis.rotation_rate / 20
 coriolis = HydrostaticSphericalCoriolis(rotation_rate=Ω)
 
+# Set up forcing
+using CUDA
+using Oceananigans.Architectures: architecture
+using Oceananigans.Operators: ∂yᶠᶜᵃ, ∂xᶜᶠᵃ
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.Fields: compute!
+
+forcing_timescale = 10seconds
+forcing_amplitude = polar_Δx^2 / forcing_timescale^2
+drag_timescale = 10years
+
+struct RandomOperand
+    amplitude :: Float64
+end
+
+const RandomComputedField = ComputedField{X, Y, Z, S, <:RandomOperand} where {X, Y, Z, S}
+
+function compute!(ψ::RandomComputedField)
+    arch = architecture(ψ)
+    ψ .= 0
+    ψ .= ψ.operand.amplitude * CUDA.rand(size(ψ)...)
+    fill_halo_regions!(ψ, arch)
+    return nothing
+end
+
+# Build random streamfunction
+arch = GPU()
+dψdt = ComputedField(Face, Face, Center, RandomOperand(forcing_amplitude), arch, grid)
+
+# Forcing by random streamfunction and bottom drag
+@inline u_forcing_func(i, j, k, grid, clock, fields, μ) = @inbounds + ∂yᶠᶜᵃ(i, j, k, grid, fields.dψdt) - μ * fields.u[i, j, k]
+@inline v_forcing_func(i, j, k, grid, clock, fields, μ) = @inbounds - ∂xᶜᶠᵃ(i, j, k, grid, fields.dψdt) - μ * fields.v[i, j, k]
+
+u_forcing = Forcing(u_forcing_func; discrete_form=true, parameters=1/drag_timescale)
+v_forcing = Forcing(v_forcing_func; discrete_form=true, parameters=1/drag_timescale)
+
+
+
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = GPU(),
                                     momentum_advection = VectorInvariant(),

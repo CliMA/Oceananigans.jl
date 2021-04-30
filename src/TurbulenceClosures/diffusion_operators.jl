@@ -1,5 +1,3 @@
-const ArrayOrField = Union{AbstractArray, AbstractField}
-
 #####
 ##### Diffusivities
 #####
@@ -13,9 +11,9 @@ const ArrayOrField = Union{AbstractArray, AbstractField}
 @inline κᶜᶜᶠ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Face(),   k, grid), clock.time)
 
 # Assumes that `κ` is located at cell centers
-@inline κᶠᶜᶜ(i, j, k, grid, clock, κ::ArrayOrField) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
-@inline κᶜᶠᶜ(i, j, k, grid, clock, κ::ArrayOrField) = ℑyᵃᶠᵃ(i, j, k, grid, κ)
-@inline κᶜᶜᶠ(i, j, k, grid, clock, κ::ArrayOrField) = ℑzᵃᵃᶠ(i, j, k, grid, κ)
+@inline κᶠᶜᶜ(i, j, k, grid, clock, κ::AbstractArray) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
+@inline κᶜᶠᶜ(i, j, k, grid, clock, κ::AbstractArray) = ℑyᵃᶠᵃ(i, j, k, grid, κ)
+@inline κᶜᶜᶠ(i, j, k, grid, clock, κ::AbstractArray) = ℑzᵃᵃᶠ(i, j, k, grid, κ)
 
 #####
 ##### Diffusive fluxes

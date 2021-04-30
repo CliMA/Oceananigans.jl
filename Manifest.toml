@@ -14,9 +14,10 @@ version = "3.2.0"
 
 [[ArrayInterface]]
 deps = ["IfElse", "LinearAlgebra", "Requires", "SparseArrays", "Static"]
-git-tree-sha1 = "da557609446152beb6ee134683d7b79ece129eae"
+git-tree-sha1 = "ce17bad65d0842b34a15fffc8879a9f68f08a67f"
+pinned = true
 uuid = "4fba245c-0d91-5ea0-9b3e-6abc04ee57a9"
-version = "3.1.5"
+version = "3.1.6"
 
 [[Artifacts]]
 deps = ["Pkg"]

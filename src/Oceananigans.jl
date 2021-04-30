@@ -31,7 +31,7 @@ export
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     AveragedField, ComputedField, KernelComputedField, BackgroundField,
-    interior, interiorparent, set!, compute!,
+    interior, set!, compute!,
 
     # Forcing functions
     Forcing, Relaxation, LinearTarget, GaussianMask,

@@ -48,10 +48,10 @@ include("unary_operations.jl")
 include("binary_operations.jl")
 include("multiary_operations.jl")
 include("derivatives.jl")
+include("kernel_function_operation.jl")
 include("at.jl")
 include("broadcasting_abstract_operations.jl")
 include("show_abstract_operations.jl")
-include("averages_of_operations.jl")
 
 # Make some operators!
 
