@@ -4,12 +4,8 @@ using Oceananigans
 using Oceananigans.Grids
 
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: FunctionField
 
-using Oceananigans.Coriolis:
-    HydrostaticSphericalCoriolis,
-    VectorInvariantEnergyConserving,
-    VectorInvariantEnstrophyConserving
+using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
@@ -24,15 +20,11 @@ using Oceananigans.TurbulenceClosures:
 
 using Oceananigans.Utils: prettytime, hours, day, days, years, year
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 
 using Statistics
 using JLD2
 using Printf
-
-using Oceananigans.AbstractOperations: AbstractGridMetric, _unary_operation
-
-using CUDA
-CUDA.math_mode!(CUDA.FAST_MATH)
 
 #####
 ##### Grid
@@ -41,7 +33,7 @@ CUDA.math_mode!(CUDA.FAST_MATH)
 latitude = (-80, 80)
 Δφ = latitude[2] - latitude[1]
 
-resolution = 1/2 # degree
+resolution = 1/3 # degree
 Nx = round(Int, 360 / resolution)
 Ny = round(Int, Δφ / resolution)
 
@@ -59,32 +51,26 @@ Ny = round(Int, Δφ / resolution)
 free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
 
 equatorial_Δx = grid.radius * deg2rad(grid.Δλ)
-diffusive_time_scale = 60days
+diffusive_time_scale = 120days
 
-@show const νh₂₀ =        equatorial_Δx^2 / diffusive_time_scale
-@show const νh₄₀ = 5e-6 * equatorial_Δx^4 / diffusive_time_scale
+@show const νh₂ =        equatorial_Δx^2 / diffusive_time_scale
+@show const νh₄ = 1e-5 * equatorial_Δx^4 / diffusive_time_scale
 
-using Oceananigans.AbstractOperations: Az, GridMetricOperation
+#closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₂)
+closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(νh=νh₄)
 
-A = GridMetricOperation((Center, Center, Center), Az, grid) # horizontal cell areas at (Center, Center, Center)
-A₀ = A[1, round(Int, grid.Ny/2), 1] # reference area
-
-# Horizontal viscosities scaled with cell area
-νh₂ = (νh₂₀ / sqrt(A₀))   * sqrt(A)
-νh₄ = (νh₄₀ / A₀) * A
-
-variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₂)
-variable_horizontal_biharmonic_diffusivity = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(νh=νh₄)
+coriolis = HydrostaticSphericalCoriolis()
+Ω = coriolis.rotation_rate / 20
+coriolis = HydrostaticSphericalCoriolis(rotation_rate=Ω)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = GPU(),
                                     momentum_advection = VectorInvariant(),
                                     free_surface = free_surface,
-                                    coriolis = nothing,
+                                    coriolis = coriolis,
                                     tracers = nothing,
                                     buoyancy = nothing,
-                                    #closure = variable_horizontal_diffusivity)
-                                    closure = variable_horizontal_biharmonic_diffusivity)
+                                    closure = closure)
 
 #####
 ##### Initial condition: two streamfunction
@@ -102,13 +88,22 @@ zonal_ψ(y) = (cosd(4y)^3 + 0.5 * exp(-y^2 / 200)) * polar_mask(y)
 
 ψ̄ = Field(Face, Face, Center, model.architecture, model.grid)
 set!(ψ̄, (x, y, z) -> zonal_ψ(y))
+fill_halo_regions!(ψ̄, model.architecture)
 
-ψ_total = 0.1 * ψ★ + ψ̄
+ψ_total = 40 * ψ★ + Ny * ψ̄
 
 u, v, w = model.velocities
+η = model.free_surface.η
 
-u .= + ∂y(ψ_total)
-v .= - ∂x(ψ_total)
+if !isnothing(model.coriolis)
+    using Oceananigans.Coriolis: fᶠᶠᵃ
+    f = KernelFunctionOperation{Face, Face, Center}(fᶠᶠᵃ, model.grid, parameters=model.coriolis)
+    g = model.free_surface.gravitational_acceleration
+    η .= f * ψ_total / g
+end
+
+u .= - ∂y(ψ_total)
+v .= + ∂x(ψ_total)
 
 #####
 ##### Shenanigans for rescaling the velocity field to
@@ -211,16 +206,16 @@ end
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 1year,
+                        stop_time = 100year,
                         iteration_interval = 1000,
                         progress = Progress(time_ns()))
 
 output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=ζ))
 
-output_prefix = "freely_decaying_barotropic_turbulence_Nx$(grid.Nx)_Ny$(grid.Ny)"
+output_prefix = "rotating_freely_decaying_barotropic_turbulence_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ = ζ,),
-                                                      schedule = TimeInterval(30day),
+                                                      schedule = TimeInterval(10day),
                                                       prefix = output_prefix,
                                                       force = true)
 
