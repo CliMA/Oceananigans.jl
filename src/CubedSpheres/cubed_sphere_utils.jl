@@ -132,3 +132,8 @@ function cubed_sphere_boundary(cubed_sphere_field, location, face_index, side)
     side == :south && return underlying_south_boundary(src_field.data, src_field.grid, LY)
     side == :north && return underlying_north_boundary(src_field.data, src_field.grid, LY)
 end
+
+function shifted_fill!(dest, src; i_shift=0, j_shift=0)
+    dest[1+i_shift:end, 1+j_shift:end, :] .= src[1:end-i_shift, 1:end-j_shift, :]
+    return nothing
+end

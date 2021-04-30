@@ -106,8 +106,8 @@ fill_horizontal_velocity_halos!(u, v, arch) = nothing
 function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereField, arch)
 
     ## Fill them like they're tracers to get the top and bottom filled.
-    fill_halo_regions!(u, arch)
-    fill_halo_regions!(v, arch)
+    # fill_halo_regions!(u, arch)
+    # fill_halo_regions!(v, arch)
 
     ## Now fill the horizontal halos.
 
@@ -127,11 +127,32 @@ function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereFiel
             v_sign = (isodd(face_number) && side == :north) || (iseven(face_number) && side == :south) ? +1 : -1
 
             reverse_dim = src_side in (:west, :east) ? 1 : 2
+            shift = side in (:west, :east) ? (j_shift=1,) : (i_shift=1,)
 
-            cubed_sphere_halo(u, u_loc, face_number, side) .= u_sign * reverse(permutedims(cubed_sphere_boundary(v, v_loc, src_face_number, src_side), (2, 1, 3)), dims=reverse_dim)
-            cubed_sphere_halo(v, v_loc, face_number, side) .= v_sign * reverse(permutedims(cubed_sphere_boundary(u, u_loc, src_face_number, src_side), (2, 1, 3)), dims=reverse_dim)
+            u_halo = cubed_sphere_halo(u, u_loc, face_number, side)
+            u_boundary = u_sign * reverse(permutedims(cubed_sphere_boundary(v, v_loc, src_face_number, src_side), (2, 1, 3)), dims=reverse_dim)
+            shifted_fill!(u_halo, u_boundary; shift...)
+
+            v_halo = cubed_sphere_halo(v, v_loc, face_number, side)
+            v_boundary = v_sign * reverse(permutedims(cubed_sphere_boundary(u, u_loc, src_face_number, src_side), (2, 1, 3)), dims=reverse_dim)
+            shifted_fill!(v_halo, v_boundary; shift...)
         end
     end
 
     return nothing
 end
+
+# function shifted_fill_x!(dest, src; j_shift)
+#     dest[:, 1+j_shift:end, :] .= src[:, 1:end-j_shift, :]
+#     return nothing
+# end
+
+# function shifted_fill_y!(dest, src; i_shift)
+#     dest[1+i_shift:end, :, :] .= src[1:end-i_shift, :, :]
+#     return nothing
+# end
+
+# function shifted_fill!(dest, src; i_shift=0, j_shift=0)
+#     dest[1+i_shift:end, 1+j_shift:end, :] .= src[1:end-i_shift, 1:end-j_shift, :]
+#     return nothing
+# end
