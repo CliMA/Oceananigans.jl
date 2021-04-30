@@ -24,8 +24,6 @@ end
 
 cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 
-#=
-
 @testset "Cubed sphere halo exchange" begin
     arch = CPU()
     grid = ConformalCubedSphereGrid(cs32_filepath, Nz=1, z=(-1, 0))
@@ -370,8 +368,6 @@ cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 
 end
 
-=#
-
 @testset "Cubed sphere velocity halo exchange" begin
     arch = CPU()
     grid = ConformalCubedSphereGrid(cs32_filepath, Nz=1, z=(-1, 0))
@@ -406,8 +402,6 @@ end
     end
 
     fill_horizontal_velocity_halos!(u_field, v_field, arch)
-
-    #=
 
     @testset "Source and destination faces are correct" begin
         for field in (u_field, v_field), (face_number, field_face) in enumerate(faces(field))
@@ -616,61 +610,5 @@ end
     end
 
     ## TODO: Test the other faces, especially face 2. I hope we can generalize this...
-
-    =#
-
-    grid_faces = [grid.faces[f] for f in 1:6]
-    u_faces = [get_face(u_field, f) for f in 1:6]
-    v_faces = [get_face(v_field, f) for f in 1:6]
-
-    circulation(i, j, f) = Γᶠᶠᵃ(i, j, 1, grid_faces[f], u_faces[f], v_faces[f])
-
-    @testset "Face 1-2 boundary" begin
-        Γ1 = circulation(33, 16, 1)
-        Γ2 = circulation(1,  16, 2)
-        @test Γ1 == Γ2
-    end
-
-    @testset "Face 1-3 boundary" begin
-        Γ1 = circulation(16, 33, 1)
-        Γ3 = circulation(1,  16, 3)
-        @test Γ1 == Γ3
-    end
-
-    @testset "Face 1-5 boundary" begin
-        Γ1 = circulation(1,  16, 1)
-        Γ5 = circulation(16, 33, 5)
-        @test Γ1 == Γ5
-    end
-
-    @testset "Face 1-6 boundary" begin
-        Γ1 = circulation(16, 1, 1)
-        Γ6 = circulation(16, 33, 6)
-        @test Γ1 == Γ6
-    end
-
-    @testset "Face 1-2-3 corner" begin
-        Γ1 = circulation(33, 33, 1)
-        Γ2 = circulation(1,  33, 2)
-        Γ3 = circulation(1,  1,  3)
-        @test Γ1 == Γ2 == Γ3
-    end
-
-    @testset "Face 1-3-5 corner" begin
-        Γ1, Γ3, Γ5 = [circulation(1, 33, f) for f in (1, 3, 5)]
-        @test Γ1 == Γ3 == Γ5
-    end
-
-    @testset "Face 2-3-4 corner" begin
-        Γ2 = circulation(33, 33, 2)
-        Γ3 = circulation(33, 1,  3)
-        Γ4 = circulation(1,  1,  4)
-        @test Γ2 == Γ3 == Γ4
-    end
-
-    @testset "Face 2-4-6 corner" begin
-        Γ2, Γ4, Γ6 = [circulation(33, 1, f) for f in (2, 4, 6)]
-        @test Γ2 == Γ4 == Γ6
-    end
 
 end
