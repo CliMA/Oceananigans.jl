@@ -49,12 +49,6 @@ end
     set_velocities_from_streamfunction!(u_field, v_field, ψ, grid)
 
     fill_horizontal_velocity_halos!(u_field, v_field, arch)
-    # fill_horizontal_velocity_halos!(u_field, v_field, arch)
-
-    for grid_face in grid.faces
-        grid_face.Δxᶠᶜᵃ .= 1
-        grid_face.Δyᶜᶠᵃ .= 1
-    end
 
     grid_faces = [grid.faces[f] for f in 1:Nf]
     u_faces = [get_face(u_field, f) for f in 1:Nf]
@@ -79,23 +73,27 @@ end
     @testset "Face 1-3 boundary" begin
         Γ1 = circulation(16, 33, 1)
         Γ3 = circulation(1,  16, 3)
-        @test Γ1 == Γ3
+
+        # We expect a truncation error of around 3ϵ here.
+        ϵ = eps(maximum(abs, [Γ1, Γ3]))
+        @test isapprox(Γ1, Γ3, atol=3ϵ)
 
         # ffc locations are shifted by one along this boundary (and go in reverse).
         Γ1 = [circulation(i, 33, 1) for i in 1:Nx]
         Γ3 = [circulation(1,  j, 3) for j in Ny+1:-1:2]
 
-        # Possible truncation errors at this boundary.
+        # We expect truncation errors at this boundary.
         ϵ = eps(maximum(abs, [Γ1; Γ3]))
-        @test all(isapprox(Γ1, Γ3, atol=10ϵ))
+        @test all(isapprox.(Γ1, Γ3, atol=4ϵ))
     end
 
     @testset "Face 1-5 boundary" begin
         Γ1 = [circulation(1,  j, 1) for j in 1:Ny]
         Γ5 = [circulation(i, 33, 5) for i in Nx+1:-1:2]
 
+        # Hmmm there's more truncation error here.
         ϵ = eps(maximum(abs, [Γ1; Γ5]))
-        @test all(isapprox(Γ1, Γ5, atol=10ϵ))
+        @test all(isapprox.(Γ1, Γ5, atol=32ϵ))
     end
 
     @testset "Face 1-6 boundary" begin
@@ -112,8 +110,11 @@ end
     end
 
     @testset "Face 1-3-5 corner" begin
-        Γ1, Γ3, Γ5 = [circulation(1, 33, f) for f in (1, 3, 5)]
-        @test Γ1 == Γ3 == Γ5
+        Γ1, Γ3, Γ5 = Γ = [circulation(1, 33, f) for f in (1, 3, 5)]
+        ϵ = eps(maximum(abs, Γ))
+        @test isapprox(Γ1, Γ3, atol=32ϵ)
+        @test isapprox(Γ1, Γ5, atol=32ϵ)
+        @test isapprox(Γ3, Γ5, atol=32ϵ)
     end
 
     @testset "Face 1-5-6 corner" begin
@@ -134,12 +135,20 @@ end
         Γ2 = circulation(33, 33, 2)
         Γ3 = circulation(33, 1,  3)
         Γ4 = circulation(1,  1,  4)
-        @test Γ2 == Γ3 == Γ4
+        Γ = [Γ2, Γ3, Γ4]
+
+        ϵ = eps(maximum(abs, Γ))
+        @test isapprox(Γ2, Γ3, atol=32ϵ)
+        @test isapprox(Γ2, Γ4, atol=32ϵ)
+        @test isapprox(Γ3, Γ4, atol=32ϵ)
     end
 
     @testset "Face 2-4-6 corner" begin
-        Γ2, Γ4, Γ6 = [circulation(33, 1, f) for f in (2, 4, 6)]
-        @test Γ2 == Γ4 == Γ6
+        Γ2, Γ4, Γ6 = Γ = [circulation(33, 1, f) for f in (2, 4, 6)]
+        @show ϵ = eps(maximum(abs, Γ))
+        @test isapprox(Γ2, Γ4, atol=32ϵ)
+        @test isapprox(Γ2, Γ6, atol=32ϵ)
+        @test isapprox(Γ4, Γ6, atol=32ϵ)
     end
 
 end
