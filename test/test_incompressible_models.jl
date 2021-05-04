@@ -110,7 +110,7 @@
 
             set!(model; enforce_incompressibility=false, T=T₀)
 
-            @test interior(T) ≈ T_answer
+            @test Array(interior(T)) ≈ T_answer
 
             # Test setting functions
             u₀(x, y, z) = 1 + x + y + z

@@ -48,7 +48,7 @@ viscous_flux_uz(i, j, k, grid, clock, closure::HCAD, U, args...) = + ν_uzᶠᶜ
 
 viscous_flux_vx(i, j, k, grid, clock, closure::HCAD, U, args...) = ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)
 viscous_flux_vy(i, j, k, grid, clock, closure::HCAD, U, args...) = ν_δᶜᶜᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)
-viscous_flux_vz(i, j, k, grid, clock, closure::HCAD, U, args...) = ν_uzᶠᶜᶠ(i, j, k, grid, clock, closure.νz, U.v)
+viscous_flux_vz(i, j, k, grid, clock, closure::HCAD, U, args...) = ν_vzᶜᶠᶠ(i, j, k, grid, clock, closure.νz, U.v)
 
 @inline function diffusive_flux_x(i, j, k, grid, clock, closure::HCAD, c, ::Val{tracer_index}, args...) where tracer_index
     @inbounds κh = closure.κh[tracer_index]

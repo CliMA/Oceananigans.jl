@@ -50,8 +50,9 @@ struct GPU <: AbstractGPUArchitecture end
 device(::AbstractCPUArchitecture) = KernelAbstractions.CPU()
 device(::AbstractGPUArchitecture) = CUDAKernels.CUDADevice()
 
-architecture(::Number)  = nothing
-architecture(::Array)   = CPU()
+architecture() = nothing
+architecture(::Number) = nothing
+architecture(::Array) = CPU()
 architecture(::CuArray) = GPU()
 
 array_type(::CPU) = Array

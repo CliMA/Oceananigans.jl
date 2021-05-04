@@ -51,10 +51,11 @@ function ComputedFieldBoundaryConditions(grid, loc;
 end
 
 """
-    ComputedField(operand; data = nothing, recompute_safely = true,
+    ComputedField(operand [, arch=nothing]; data = nothing, recompute_safely = true,
                   boundary_conditions = ComputedFieldBoundaryConditions(operand.grid, location(operand))
 
-Returns a field whose data is `computed` from `operand`.
+Returns a field whose data is `computed` from `operand`. If `arch`itecture is not supplied it
+is inferred from `operand`.
 
 If the keyword argument `data` is not provided, memory is allocated to store
 the result. The `arch`itecture of `data` is inferred from `operand`.
@@ -64,12 +65,19 @@ is avoided if possible.
 
 `boundary_conditions` are set to 
 """
-function ComputedField(operand; data = nothing, recompute_safely = true,
+function ComputedField(operand, arch = nothing;
+                       data = nothing,
+                       recompute_safely = true,
+                       
                        boundary_conditions = ComputedFieldBoundaryConditions(operand.grid, location(operand)))
     
     loc = location(operand)
-    arch = architecture(operand)
     grid = operand.grid
+
+    # Architecturanigans
+    operand_arch = architecture(operand)
+    arch = isnothing(operand_arch) ? arch : operand_arch
+    isnothing(arch) && error("The architecture must be provided, or inferrable from `operand`!")
 
     if isnothing(data)
         data = new_data(arch, grid, loc)

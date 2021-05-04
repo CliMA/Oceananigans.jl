@@ -32,9 +32,6 @@ struct AveragedField{X, Y, Z, S, A, D, G, T, N, O} <: AbstractReducedField{X, Y,
     end
 end
 
-operand_averaging_indices(avg_loc, op_loc, topo, N, H) = Colon() # fallback when dimension is non-reduced
-operand_averaging_indices(::Type{Nothing}, op_loc, topo, N, H) = interior_parent_indices(op_loc, topo, N, H)
-
 """
     AveragedField(operand::AbstractField; dims, data=nothing, recompute_safely=false)
 
@@ -56,27 +53,14 @@ function AveragedField(operand::AbstractField; dims, data=nothing, recompute_saf
 end
 
 """
-    compute!(avg::AveragedField)
+    compute!(avg::AveragedField, time=nothing)
 
 Compute the average of `avg.operand` and store the result in `avg.data`.
 """
 function compute!(avg::AveragedField, time=nothing)
     compute_at!(avg.operand, time)
-
-    # Omit halo regions from operand on averaged dimension
-    operand_parent = parent(avg.operand)
-
-    Xa, Ya, Za = location(avg)
-    Xo, Yo, Zo = location(avg.operand)
-
-    i = operand_averaging_indices(Xa, Xo, topology(avg.grid, 1), avg.grid.Nx, avg.grid.Hx)
-    j = operand_averaging_indices(Ya, Yo, topology(avg.grid, 2), avg.grid.Ny, avg.grid.Hy)
-    k = operand_averaging_indices(Za, Zo, topology(avg.grid, 3), avg.grid.Nz, avg.grid.Hz)
-
-    operand_sans_halos = view(operand_parent, i, j, k)
-
-    mean!(avg.data.parent, operand_sans_halos)
-
+    avg .= 0 # should we have to do this?
+    mean!(avg, avg.operand)
     return nothing
 end
 

@@ -19,3 +19,4 @@ set!(field::CubedSphereGPUField, f::Function) = [set_face_field!(field_face, f) 
 set!(field::CubedSphereGPUField, f::Number) = [set_face_field!(field_face, f) for field_face in faces(field)]
 
 set_face_field!(field, a) = set!(field, a)
+

@@ -13,7 +13,7 @@ function uτ(model, Uavg, U_wall)
     ν = model.closure.ν
 
     compute!(Uavg)
-    U = Array(Uavg.data[1, 1, 1:model.grid.Nz])  # Exclude average of halo region.
+    U = Array(interior(Uavg))  # Exclude average of halo region.
 
     # Use a finite difference to calculate dU/dz at the top and bottomtom walls.
     # The distance between the center of the cell adjacent to the wall and the
@@ -32,7 +32,7 @@ function q_wall(model, Tavg, Θ_wall)
     κ = model.closure.κ.T
 
     compute!(Tavg)
-    Θ = Array(Tavg.data[1, 1, 1:model.grid.Nz]) # Exclude average of halo region.
+    Θ = Array(interior(Tavg)) # Exclude average of halo region.
 
     # Use a finite difference to calculate dθ/dz at the top and bottomtom walls.
     # The distance between the center of the cell adjacent to the wall and the
