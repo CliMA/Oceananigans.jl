@@ -5,7 +5,7 @@ export
     AbstractField, Field,
     CenterField, XFaceField, YFaceField, ZFaceField,
     ReducedField, AveragedField, ComputedField, KernelComputedField, BackgroundField,
-    interior, interiorparent, data,
+    interior, data,
     xnode, ynode, znode, location,
     set!, compute!, @compute,
     VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields,
@@ -33,5 +33,6 @@ include("interpolate.jl")
 include("field_slicer.jl")
 include("show_fields.jl")
 include("broadcasting_abstract_fields.jl")
+include("mapreduce_abstract_fields.jl")
 
 end
