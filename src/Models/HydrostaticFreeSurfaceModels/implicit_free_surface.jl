@@ -65,10 +65,10 @@ end
 """
 Implicitly step forward η.
 """
-ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_update, model, Δt, χ) =
-    implicit_free_surface_step!(free_surface::ImplicitFreeSurface, velocities_update, model, Δt, χ)
+ab2_step_free_surface!(free_surface::ImplicitFreeSurface, model, Δt, χ, velocities_update) =
+    implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ, velocities_update)
 
-function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, velocities_update, model, Δt, χ)
+function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, Δt, χ, velocities_update)
 
     η = free_surface.η
     g = free_surface.gravitational_acceleration
@@ -78,7 +78,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, velociti
 
     #=
     # Take an explicit step first to produce an improved initial guess for η for the iterative solver.
-    event = explicit_ab2_step_free_surface!(free_surface, nothing, model, Δt, χ)
+    event = explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
     wait(device(model.architecture), event)
     =#
 
