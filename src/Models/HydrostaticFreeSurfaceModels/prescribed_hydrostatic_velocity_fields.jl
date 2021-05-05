@@ -56,7 +56,8 @@ end
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
 
-ab2_step_free_surface!(::Nothing, args...) = nothing
+ab2_step_velocities!(::PrescribedVelocityFields, args...) = [NoneEvent()]
+ab2_step_free_surface!(::Nothing, args...) = NoneEvent()
 compute_w_from_continuity!(::PrescribedVelocityFields, args...) = nothing
 
 validate_velocity_boundary_conditions(::PrescribedVelocityFields) = nothing
