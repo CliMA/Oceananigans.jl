@@ -126,6 +126,7 @@ include("turbulence_closure_utils.jl")
 include("diffusion_operators.jl")
 include("viscous_dissipation_operators.jl")
 include("velocity_tracer_gradients.jl")
+include("abstract_isotropic_diffusivity_closures.jl")
 include("abstract_eddy_viscosity_closures.jl")
 
 include("closure_tuples.jl")

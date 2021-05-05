@@ -102,48 +102,15 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
     return νₑ_deardorff(ς, clo.C, Δᶠ, Σ²) + clo.ν
 end
 
-#####
-##### Abstract Smagorinsky functionality
-#####
-
-@inline function diffusive_flux_x(i, j, k, grid, clock, closure::SmagorinskyLilly,
-                                  c, ::Val{tracer_index}, diffusivities, args...) where tracer_index
-
+@inline function diffusivity(i, j, k, grid, closure, diffusivities, ::Val{tracer_index}) where tracer_index
     @inbounds Pr = closure.Pr[tracer_index]
     @inbounds κ = closure.κ[tracer_index]
 
     νₑ = diffusivities.νₑ
     νₑ = ℑxᶠᵃᵃ(i, j, k, grid, νₑ, closure)
     κₑ = (νₑ - closure.ν) / Pr + κ
-    ∂x_c = ∂xᶠᵃᵃ(i, j, k, grid, c)
 
-    return κₑ * ∂x_c
-end
-
-@inline function diffusive_flux_y(i, j, k, grid, clock, closure::SmagorinskyLilly,
-                                  c, ::Val{tracer_index}, diffusivities, args...) where tracer_index
-
-    @inbounds Pr = closure.Pr[tracer_index]
-    @inbounds κ = closure.κ[tracer_index]
-
-    νₑ = diffusivities.νₑ
-    νₑ = ℑyᵃᶠᵃ(i, j, k, grid, νₑ, closure)
-    κₑ = (νₑ - closure.ν) / Pr + κ
-    ∂y_c = ∂yᵃᶠᵃ(i, j, k, grid, c)
-    return κₑ * ∂y_c
-end
-
-@inline function diffusive_flux_z(i, j, k, grid, clock, closure::SmagorinskyLilly,
-                                  c, ::Val{tracer_index}, diffusivities, args...) where tracer_index
-
-    @inbounds Pr = closure.Pr[tracer_index]
-    @inbounds κ = closure.κ[tracer_index]
-
-    νₑ = diffusivities.νₑ
-    νₑ = ℑzᵃᵃᶠ(i, j, k, grid, νₑ, closure)
-    κₑ = (νₑ - closure.ν) / Pr + κ
-    ∂z_c = ∂zᵃᵃᶠ(i, j, k, grid, c)
-    return κₑ * ∂z_c
+    return κₑ
 end
 
 function calculate_diffusivities!(K, arch, grid, closure::SmagorinskyLilly, buoyancy, U, C)

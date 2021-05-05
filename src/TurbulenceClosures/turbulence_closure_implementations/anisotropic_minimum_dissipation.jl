@@ -120,29 +120,10 @@ function with_tracers(tracers, closure::AnisotropicMinimumDissipation{FT}) where
 end
 
 #####
-##### Diffusive fluxes
+##### diffusivity
 #####
 
-function diffusive_flux_x(i, j, k, grid, clock, closure::AnisotropicMinimumDissipation, c,
-                          ::Val{tracer_index}, diffusivities, args...) where tracer_index
-
-    κₑ = diffusivities.κₑ[tracer_index]
-    return diffusive_flux_x(i, j, k, grid, clock, κₑ, c)
-end
-
-function diffusive_flux_y(i, j, k, grid, clock, closure::AnisotropicMinimumDissipation, c,
-                          ::Val{tracer_index}, diffusivities, args...) where tracer_index
-
-    κₑ = diffusivities.κₑ[tracer_index]
-    return diffusive_flux_y(i, j, k, grid, clock, κₑ, c)
-end
-
-function diffusive_flux_z(i, j, k, grid, clock, closure::AnisotropicMinimumDissipation, c,
-                          ::Val{tracer_index}, diffusivities, args...) where tracer_index
-
-    κₑ = diffusivities.κₑ[tracer_index]
-    return diffusive_flux_z(i, j, k, grid, clock, κₑ, c)
-end
+@inline diffusivity(i, j, k, grid, ::AnisotropicMinimumDissipation, diffusivities, ::Val{tracer_index}) where tracer_index = diffusivities.κₑ[tracer_index]
 
 #####
 ##### Kernel functions
