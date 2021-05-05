@@ -18,7 +18,7 @@ const ArrayOrField = Union{AbstractArray, AbstractField}
 @inline κᶜᶜᶠ(i, j, k, grid, clock, κ::ArrayOrField) = ℑzᵃᵃᶠ(i, j, k, grid, κ)
 
 #####
-##### Diffusive fluxes
+##### Diffusive fluxes for closures with isotropic diffusivities
 #####
 
 @inline diffusive_flux_x(i, j, k, grid, clock, κ, c) = κᶠᶜᶜ(i, j, k, grid, clock, κ) * ∂xᶠᶜᵃ(i, j, k, grid, c)
@@ -51,3 +51,4 @@ end
 
 @inline ∂x_∇²h_cᶠᶜᶜ(i, j, k, grid, c) = 1 / Azᶠᶜᵃ(i, j, k, grid) * δxᶠᵃᵃ(i, j, k, Δy_cᶜᶜᵃ, ∇²hᶜᶜᶜ, c)
 @inline ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c) = 1 / Azᶜᶠᵃ(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, Δx_cᶜᶜᵃ, ∇²hᶜᶜᶜ, c)
+
