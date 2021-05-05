@@ -121,6 +121,7 @@ with_tracers(tracers, closure_tuple::Tuple) =
 ##### Include module code
 #####
 
+include("time_discretization.jl")
 include("turbulence_closure_utils.jl")
 include("diffusion_operators.jl")
 include("viscous_dissipation_operators.jl")
