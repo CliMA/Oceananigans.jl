@@ -1,5 +1,3 @@
-using Oceananigans.Operators: Δzᵃᵃᶜ
-
 """
     HorizontallyCurvilinearAnisotropicDiffusivity{N, K}
 
@@ -15,16 +13,22 @@ end
 const HCAD = HorizontallyCurvilinearAnisotropicDiffusivity
 
 """
-    HorizontallyCurvilinearAnisotropicDiffusivity(; ν=0, κ=0)
+    HorizontallyCurvilinearAnisotropicDiffusivity(; νh=0, κh=0, νz=0, κz=0)
 
-Returns parameters for an horizontal diffusivity model on
-curvilinear grids with viscosity `ν` and diffusivities `κ` for each tracer
-field in `tracers`. `ν` and the fields of `κ` may be constants or functions
-of `(x, y, z, t)`, and may represent molecular diffusivities in cases that all flow
-features are explicitly resovled, or turbulent eddy diffusivities that model the effect of
-unresolved, subgrid-scale turbulence.
-`κ` may be a `NamedTuple` with fields corresponding
-to each tracer, or a single number to be a applied to all tracers.
+Returns parameters for an anisotropic diffusivity model on curvilinear grids.
+
+Keyword args
+============
+
+    * `νh`: Horizontal viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
+
+    * `νz`: Vertical viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
+
+    * `κh`: Horizontal diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
+            `NamedTuple` of diffusivities with entries for each tracer.
+
+    * `κz`: Vertical diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
+            `NamedTuple` of diffusivities with entries for each tracer.
 """
 function HorizontallyCurvilinearAnisotropicDiffusivity(FT=Float64; νh=0, κh=0, νz=0, κz=0)
     νh = convert_diffusivity(FT, νh)
@@ -66,6 +70,6 @@ end
 end
 
 Base.show(io::IO, closure::HorizontallyCurvilinearAnisotropicDiffusivity) =
-    print(io, "AnisotropicDiffusivity: " *
+    print(io, "HorizontallyCurvilinearAnisotropicDiffusivity: " *
               "(νh=$(closure.νh), νz=$(closure.νz)), " *
               "(κh=$(closure.κh), κz=$(closure.κz))")
