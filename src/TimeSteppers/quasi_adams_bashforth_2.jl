@@ -73,7 +73,7 @@ function ab2_step!(model, Δt, χ)
 
     step_field_kernel! = ab2_step_field!(device(model.architecture), workgroup, worksize)
 
-    model_fields = fields(model)
+    model_fields = prognostic_fields(model)
 
     events = []
 
