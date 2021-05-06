@@ -1,12 +1,16 @@
-mutable struct TimeStepWizard{T}
-              cfl :: T
-    diffusive_cfl :: T
-       max_change :: T
-       min_change :: T
-           max_Δt :: T
-           min_Δt :: T
-               Δt :: T
+mutable struct TimeStepWizard{FT, C, D}
+                         cfl :: FT
+               diffusive_cfl :: FT
+                  max_change :: FT
+                  min_change :: FT
+                      max_Δt :: FT
+                      min_Δt :: FT
+                          Δt :: FT
+    cell_advection_timescale :: C
+    cell_diffusion_timescale :: D
 end
+
+infinite_diffusion_timescale(args...) = Inf # its not very limiting
 
 """
     TimeStepWizard(cfl=0.1, max_change=2.0, min_change=0.5, max_Δt=Inf, min_Δt=0.0, Δt=0.01)
@@ -20,8 +24,26 @@ between model velocity and along-velocity grid spacing anywhere on the model gri
 less than `min_change` from the previous `Δt`, and to be no greater in absolute magnitude
 than `max_Δt` and no less than `min_Δt`.
 """
-TimeStepWizard(; cfl=0.1, diffusive_cfl=Inf, max_change=2.0, min_change=0.5, max_Δt=Inf, min_Δt=0.0, Δt=0.01) =
-        TimeStepWizard{typeof(Δt)}(cfl, diffusive_cfl, max_change, min_change, max_Δt, min_Δt, Δt)
+function TimeStepWizard(FT=Float64; cfl = 0.1,
+                                    diffusive_cfl = Inf,
+                                    max_change = 2.0,
+                                    min_change = 0.5,
+                                    max_Δt = Inf,
+                                    min_Δt = 0.0,
+                                    Δt = 0.01,
+                                    cell_advection_timescale = cell_advection_timescale,
+                                    cell_diffusion_timescale = infinite_diffusion_timescale)
+
+    isfinite(diffusive_cfl) && # user wants to limit by diffusive CFL
+    !(cell_diffusion_timescale === infinite_diffusion_timescale) && # user did not provide custom timescale
+        (cell_diffusion_timescale = Oceananigans.TurbulenceClosures.cell_diffusion_timescale)
+
+    C = typeof(cell_advection_timescale)
+    D = typeof(cell_diffusion_timescale)
+
+    return TimeStepWizard{FT, C, D}(cfl, diffusive_cfl, max_change, min_change, max_Δt, min_Δt, Δt,
+                                    cell_advection_timescale, cell_diffusion_timescale)
+end
 
 using Oceananigans.Grids: topology
 
@@ -34,8 +56,8 @@ of `wizard`.
 function update_Δt!(wizard, model)
 
     Δt = min(
-             wizard.cfl * cell_advection_timescale(model),          # advective
-             wizard.diffusive_cfl * cell_diffusion_timescale(model) # diffusive
+             wizard.cfl * wizard.cell_advection_timescale(model),          # advective
+             wizard.diffusive_cfl * wizard.cell_diffusion_timescale(model) # diffusive
             )
 
     # Put the kibosh on if needed
