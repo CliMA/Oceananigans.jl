@@ -45,7 +45,7 @@ function jld2_field_output(model)
     return FT(u₀) == u₁ && FT(v₀) == v₁ && FT(w₀) == w₁
 end
 
-function jld2_sliced_field_output(model)
+function jld2_sliced_field_output(model, outputs=model.velocities)
 
     model.clock.iteration = 0
     model.clock.time = 0.0
@@ -57,12 +57,12 @@ function jld2_sliced_field_output(model)
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
 
     simulation.output_writers[:velocities] =
-        JLD2OutputWriter(model, model.velocities,
-                                      schedule = TimeInterval(1),
-                                 field_slicer = FieldSlicer(i=1:2, j=1:2:4, k=:),
-                                          dir = ".",
-                                       prefix = "test",
-                                        force = true)
+        JLD2OutputWriter(model, outputs,
+                             schedule = TimeInterval(1),
+                         field_slicer = FieldSlicer(i=1:2, j=1:2:4, k=:),
+                                  dir = ".",
+                               prefix = "test",
+                                force = true)
 
     run!(simulation)
 
@@ -174,6 +174,9 @@ for arch in archs
 
         @test jld2_field_output(model)
         @test jld2_sliced_field_output(model)
+        @test jld2_sliced_field_output(model, (u = model -> model.velocities.u,
+                                               v = model -> model.velocities.v,
+                                               w = model -> model.velocities.w))
 
         run_jld2_file_splitting_tests(arch)
 
