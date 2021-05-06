@@ -84,4 +84,3 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 
     return tracer_events
 end
-
