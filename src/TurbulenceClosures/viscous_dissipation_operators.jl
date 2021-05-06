@@ -46,17 +46,17 @@ end
 ##### Vanilla viscous fluxes
 #####
 
-@inline viscous_flux_ux(i, j, k, grid, clock, ν, u) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * ∂xᶜᶜᵃ(i, j, k, grid, u)
-@inline viscous_flux_uy(i, j, k, grid, clock, ν, u) = νᶠᶠᶜ(i, j, k, grid, clock, ν) * ∂yᶠᶠᵃ(i, j, k, grid, u)
-@inline viscous_flux_uz(i, j, k, grid, clock, ν, u) = νᶠᶜᶠ(i, j, k, grid, clock, ν) * ∂zᵃᵃᶠ(i, j, k, grid, u)
+@inline viscous_flux_ux(i, j, k, grid, clock, ν, u) = - νᶜᶜᶜ(i, j, k, grid, clock, ν) * ∂xᶜᶜᵃ(i, j, k, grid, u)
+@inline viscous_flux_uy(i, j, k, grid, clock, ν, u) = - νᶠᶠᶜ(i, j, k, grid, clock, ν) * ∂yᶠᶠᵃ(i, j, k, grid, u)
+@inline viscous_flux_uz(i, j, k, grid, clock, ν, u) = - νᶠᶜᶠ(i, j, k, grid, clock, ν) * ∂zᵃᵃᶠ(i, j, k, grid, u)
 
-@inline viscous_flux_vx(i, j, k, grid, clock, ν, v) = νᶠᶠᶜ(i, j, k, grid, clock, ν) * ∂xᶠᶠᵃ(i, j, k, grid, v)
-@inline viscous_flux_vy(i, j, k, grid, clock, ν, v) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * ∂yᶜᶜᵃ(i, j, k, grid, v)
-@inline viscous_flux_vz(i, j, k, grid, clock, ν, v) = νᶜᶠᶠ(i, j, k, grid, clock, ν) * ∂zᵃᵃᶠ(i, j, k, grid, v)
+@inline viscous_flux_vx(i, j, k, grid, clock, ν, v) = - νᶠᶠᶜ(i, j, k, grid, clock, ν) * ∂xᶠᶠᵃ(i, j, k, grid, v)
+@inline viscous_flux_vy(i, j, k, grid, clock, ν, v) = - νᶜᶜᶜ(i, j, k, grid, clock, ν) * ∂yᶜᶜᵃ(i, j, k, grid, v)
+@inline viscous_flux_vz(i, j, k, grid, clock, ν, v) = - νᶜᶠᶠ(i, j, k, grid, clock, ν) * ∂zᵃᵃᶠ(i, j, k, grid, v)
 
-@inline viscous_flux_wx(i, j, k, grid, clock, ν, w) = νᶠᶜᶠ(i, j, k, grid, clock, ν) * ∂xᶠᶜᵃ(i, j, k, grid, w)
-@inline viscous_flux_wy(i, j, k, grid, clock, ν, w) = νᶜᶠᶠ(i, j, k, grid, clock, ν) * ∂yᶜᶠᵃ(i, j, k, grid, w)
-@inline viscous_flux_wz(i, j, k, grid, clock, ν, w) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * ∂zᵃᵃᶜ(i, j, k, grid, w)
+@inline viscous_flux_wx(i, j, k, grid, clock, ν, w) = - νᶠᶜᶠ(i, j, k, grid, clock, ν) * ∂xᶠᶜᵃ(i, j, k, grid, w)
+@inline viscous_flux_wy(i, j, k, grid, clock, ν, w) = - νᶜᶠᶠ(i, j, k, grid, clock, ν) * ∂yᶜᶠᵃ(i, j, k, grid, w)
+@inline viscous_flux_wz(i, j, k, grid, clock, ν, w) = - νᶜᶜᶜ(i, j, k, grid, clock, ν) * ∂zᵃᵃᶜ(i, j, k, grid, w)
 
 #####
 ##### Products of viscosity and divergence, vorticity, vertical momentum gradients

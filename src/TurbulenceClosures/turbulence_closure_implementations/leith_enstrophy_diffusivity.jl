@@ -142,8 +142,8 @@ end
 
     R₁₃ = Redi_tensor_xz_fcc(i, j, k, grid, buoyancy, C)
 
-    return νₑⁱʲᵏ * (                 C_Redi * ∂x_c
-                    + (C_Redi - C_GM) * R₁₃ * ∂z_c)
+    return - νₑⁱʲᵏ * (                 C_Redi * ∂x_c
+                      + (C_Redi - C_GM) * R₁₃ * ∂z_c)
 end
 
 @inline function diffusive_flux_y(i, j, k, grid, clock, closure::TwoDimensionalLeith,
@@ -160,8 +160,8 @@ end
     ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
 
     R₂₃ = Redi_tensor_yz_cfc(i, j, k, grid, buoyancy, C)
-    return νₑⁱʲᵏ * (                  C_Redi * ∂y_c
-                     + (C_Redi - C_GM) * R₂₃ * ∂z_c)
+    return - νₑⁱʲᵏ * (                  C_Redi * ∂y_c
+                             + (C_Redi - C_GM) * R₂₃ * ∂z_c)
 end
 
 @inline function diffusive_flux_z(i, j, k, grid, clock, closure::TwoDimensionalLeith,
@@ -182,7 +182,7 @@ end
     R₃₂ = Redi_tensor_yz_ccf(i, j, k, grid, buoyancy, C)
     R₃₃ = Redi_tensor_zz_ccf(i, j, k, grid, buoyancy, C)
 
-    return νₑⁱʲᵏ * (
+    return - νₑⁱʲᵏ * (
           (C_Redi + C_GM) * R₃₁ * ∂x_c
         + (C_Redi + C_GM) * R₃₂ * ∂y_c
                  + C_Redi * R₃₃ * ∂z_c)
