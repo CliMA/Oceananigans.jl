@@ -4,46 +4,47 @@
 A batched solver for large numbers of triadiagonal systems.
 """
 struct BatchedTridiagonalSolver{A, B, C, F, T, G, P}
-       a :: A
-       b :: B
-       c :: C
-       f :: F
-       t :: T
-    grid :: G
-  params :: P
+             a :: A
+             b :: B
+             c :: C
+             f :: F
+             t :: T
+          grid :: G
+    parameters :: P
 end
 
 """
-    BatchedTridiagonalSolver(; dl, d, du, f, grid, params=nothing)
+    BatchedTridiagonalSolver(; dl, d, du, f, grid, parameters=nothing)
 
-Construct a solver for batched tridiagonal systems of the form
+Construct a solver for batched tridiagonal systems on `grid` of the form
 
-                               b(i, j, 1)ϕ(i, j, 1) + c(i, j,   2)ϕ(i, j,   2) = f(i, j, 1),  k = 1
-    a(i, j, k-1)ϕ(i, j, k-1) + b(i, j, k)ϕ(i, j, k) + c(i, j, k+1)ϕ(i, j, k+1) = f(i, j, k),  k = 2, ..., N-1
-    a(i, j, N-1)ϕ(i, j, N-1) + b(i, j, N)ϕ(i, j, N)                            = f(i, j, N),  k = N
+                           bⁱʲ¹ ϕⁱʲ¹ + cⁱʲ²   ϕⁱʲ²   = fⁱʲ¹,  k = 1
+           aⁱʲᵏ⁻¹ ϕⁱʲᵏ⁻¹ + bⁱʲᵏ ϕⁱʲᵏ + cⁱʲᵏ⁺¹ ϕⁱʲᵏ⁺¹ = fⁱʲᵏ,  k = 2, ..., N-1
+           aⁱʲᴺ⁻¹ ϕⁱʲᴺ⁻¹ + bⁱʲᴺ ϕⁱʲᴺ                 = fⁱʲᴺ,  k = N
 
-where `dl` stores the lower diagonal coefficients `a(i, j, k)`, `d` stores the diagonal coefficients `b(i, j, k)`,
-`du` stores the upper diagonal coefficients `c(i, j, k)`, and `f` stores the right-hand-side terms `f(i, j, k)`. A
-`grid` must be passed in.
+where `a` is the lower diagonal, `b` is the diagonal, `c` is the upper diagonal`, and `f` is the right hand side.
 
-`dl`, `d`, `du`, and `f` can be specified in three ways to describe different batched systems:
-1. A 1D array indicates that the coefficients only depend on `k` and are the same for all the tridiagonal systems, i.e.
-   `a(i, j, k) = a(k)`.
-2. A 3D array indicates that the coefficients are different for each tridiagonal systems and depend on `(i, j, k)`.
-3. A function with the signature `b(i, j, k, grid, params)` that returns the coefficient `b(i, j, k)`.
+The coefficients `a`, `b`, `c`, and `f` can be specified in three ways:
 
-`params` is an optional named tuple of parameters that is accessible to functions.
+1. A 1D array means that `aⁱʲᵏ = a[k]`.
+
+2. A 3D array means that `aⁱʲᵏ = a[i, j, k]`.
+
+3. Otherwise, `a` is assumed to be callable:
+    * If `isnothing(parameters)` then `aⁱʲᵏ = a(i, j, k, grid)`.
+    * If `!isnothing(parameters)` then `aⁱʲᵏ = a(i, j, k, grid, parameters)`.
 """
-function BatchedTridiagonalSolver(arch=CPU(), FT=Float64; dl, d, du, f, grid, params=nothing)
+function BatchedTridiagonalSolver(arch=CPU(), FT=Float64; dl, d, du, f, grid, parameters=nothing)
     ArrayType = array_type(arch)
     t = zeros(FT, grid.Nx, grid.Ny, grid.Nz) |> ArrayType
 
-    return BatchedTridiagonalSolver(dl, d, du, f, t, grid, params)
+    return BatchedTridiagonalSolver(dl, d, du, f, t, grid, parameters)
 end
 
 @inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p) where {T} = @inbounds a[k]
 @inline get_coefficient(a::AbstractArray{T, 3}, i, j, k, grid, p) where {T} = @inbounds a[i, j, k]
-@inline get_coefficient(a::Function, i, j, k, grid, p) = a(i, j, k, grid, p)
+@inline get_coefficient(a, i, j, k, grid, p) = a(i, j, k, grid, p)
+@inline get_coefficient(a, i, j, k, grid, ::Nothing) = a(i, j, k, grid)
 
 """
     solve_batched_tridiagonal_system!(ϕ, arch, solver)
@@ -56,17 +57,20 @@ The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 
 Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 """
-function solve_batched_tridiagonal_system!(ϕ, arch, solver)
-    a, b, c, f, t, grid, params = solver.a, solver.b, solver.c, solver.f, solver.t, solver.grid, solver.params
+function solve_batched_tridiagonal_system!(ϕ, arch, solver; dependencies = Event(device(arch)))
+    a, b, c, f, t, grid, parameters = solver.a, solver.b, solver.c, solver.f, solver.t, solver.grid, solver.parameters
 
     event = launch!(arch, grid, :xy,
-                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, f, t, grid, params,
-                    dependencies=Event(device(arch)))
+                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, f, t, grid, parameters,
+                    dependencies = dependencies)
 
     wait(device(arch), event)
 
     return nothing
 end
+
+float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
+float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
 @kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
@@ -79,20 +83,22 @@ end
         ϕ[i, j, 1] = f₁ / β
 
         @unroll for k = 2:Nz
-            cₖ₋₁ = get_coefficient(c, i, j, k-1, grid, p)
-            bₖ   = get_coefficient(b, i, j, k,   grid, p)
-            aₖ₋₁ = get_coefficient(a, i, j, k-1, grid, p)
+            cᵏ⁻¹ = get_coefficient(c, i, j, k-1, grid, p)
+            bᵏ   = get_coefficient(b, i, j, k,   grid, p)
+            aᵏ⁻¹ = get_coefficient(a, i, j, k-1, grid, p)
 
-            t[i, j, k] = cₖ₋₁ / β
-            β    = bₖ - aₖ₋₁ * t[i, j, k]
+            t[i, j, k] = cᵏ⁻¹ / β
+            β = bᵏ- aᵏ⁻¹ * t[i, j, k]
+
+            fᵏ = get_coefficient(f, i, j, k, grid, p)
 
             # This should only happen on last element of forward pass for problems
             # with zero eigenvalue. In that case the algorithmn is still stable.
-            abs(β) < 1e-12 && break
-
-            fₖ = get_coefficient(f, i, j, k, grid, p)
-
-            ϕ[i, j, k] = (fₖ - aₖ₋₁ * ϕ[i, j, k-1]) / β
+            if abs(β) < 1000 * eps(float_eltype(ϕ))
+                ϕ[i, j, k] = 0
+            else
+                ϕ[i, j, k] = (fᵏ- aᵏ⁻¹ * ϕ[i, j, k-1]) / β
+            end
         end
 
         @unroll for k = Nz-1:-1:1
