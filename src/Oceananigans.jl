@@ -79,6 +79,9 @@ export
     FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval,
 
+    # Output readers
+    FieldTimeSeries,
+
     # Abstract operations
     ∂x, ∂y, ∂z, @at,
 
@@ -181,6 +184,7 @@ include("Models/Models.jl")
 # Output and Physics, time-stepping, and models
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
+include("OutputReaders/OutputReaders.jl")
 include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
@@ -209,6 +213,7 @@ using .Models
 using .TimeSteppers
 using .Diagnostics
 using .OutputWriters
+using .OutputReaders
 using .Simulations
 using .AbstractOperations
 using .CubedSpheres
