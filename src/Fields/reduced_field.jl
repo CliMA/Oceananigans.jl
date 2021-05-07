@@ -6,7 +6,7 @@ import Oceananigans.BoundaryConditions: fill_halo_regions!
 ##### AbstractReducedField stuff
 #####
 
-abstract type AbstractReducedField{X, Y, Z, A, G, T, N} <: AbstractDataField{X, Y, Z, A, G, T} end
+abstract type AbstractReducedField{X, Y, Z, A, G, T, N} <: AbstractDataField{X, Y, Z, A, G, T, 3} end
 
 const ARF = AbstractReducedField
 
@@ -57,7 +57,7 @@ function validate_reduced_dims(dims)
 
     # Check type
     dims isa DimsType || error("Reduced dims must be an integer or tuple of integers.")
-    
+
     # Check length
     length(dims) > 3  && error("Models are 3-dimensional. Cannot reduce over 4+ dimensions.")
 
