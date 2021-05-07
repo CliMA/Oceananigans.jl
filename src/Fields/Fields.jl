@@ -1,15 +1,14 @@
 module Fields
 
-export
-    Face, Center,
-    AbstractField, Field,
-    CenterField, XFaceField, YFaceField, ZFaceField,
-    ReducedField, AveragedField, ComputedField, KernelComputedField, BackgroundField,
-    interior, data,
-    xnode, ynode, znode, location,
-    set!, compute!, @compute,
-    VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields,
-    interpolate, FieldSlicer
+export Face, Center
+export AbstractField, AbstractDataField, Field
+export CenterField, XFaceField, YFaceField, ZFaceField
+export ReducedField, AveragedField, ComputedField, KernelComputedField, BackgroundField
+export interior, data
+export xnode, ynode, znode, location
+export set!, compute!, @compute
+export VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
+export interpolate, FieldSlice
 
 using Oceananigans.Architectures
 using Oceananigans.Grids

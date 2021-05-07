@@ -73,3 +73,18 @@ function generate_some_interesting_simulation_data(; architecture=CPU())
 
     return nothing
 end
+
+@testset "OutputReaders" begin
+
+    @testset "FieldTimeSeries" begin
+
+        filepath = "test_3d_output_with_halos.jld2"
+
+        T = FieldTimeSeries(filepath, "T")
+
+        @test size(T) == (32, 32, 32, 5)
+        @test size(T.data) == (34, 34, 34, 5)
+
+    end
+
+end

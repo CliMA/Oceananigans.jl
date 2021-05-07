@@ -2,75 +2,41 @@ module OutputReaders
 
 export FieldTimeSeries
 
+using Base: @propagate_inbounds
+
 using OffsetArrays
 using JLD2
 
 using Oceananigans.Architectures
+using Oceananigans.Grids
+using Oceananigans.Fields
+using Oceananigans.Fields: show_location
 
-using DimensionalData: AbstractDimArray, XDim, YDim, ZDim, X, Y, Z, Ti, formatdims
-using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_nodes, interior_indices
+import Oceananigans: short_show
 
-import DimensionalData
+abstract type AbstractDataBackend end
 
-struct FieldTimeSeries{X, Y, Z, A, D, Δ, R, G, FT, N, B, M} <: AbstractDimArray{FT, N, Δ, D}
+struct InMemory <: AbstractDataBackend end
+struct OnDisk <: AbstractDataBackend end
+
+struct FieldTimeSeries{X, Y, Z, K, A, T, N, D, G, B} <: AbstractDataField{X, Y, Z, A, G, T, N}
                    data :: D
-                   dims :: Δ
-                refdims :: R
            architecture :: A
                    grid :: G
     boundary_conditions :: B
-               metadata :: M
 
-    function FieldTimeSeries{X, Y, Z}(data::D, dims::Δ, refdims::R, arch::A, grid::G, bcs::B, metadata::M) where {X, Y, Z, D, Δ, R, A, G, B, M}
-        FT = eltype(grid)
+    function FieldTimeSeries{X, Y, Z}(backend::K, data::D, arch::A, grid::G, bcs::B) where {X, Y, Z, K, D, A, G, B}
+        T = eltype(grid)
         N = ndims(data)
-        return new{X, Y, Z, A, D, Δ, R, G, FT, N, B, M}(data, dims, refdims, arch, grid, bcs, metadata)
+        return new{X, Y, Z, K, A, T, N, D, G, B}(data, arch, grid, bcs)
     end
 end
 
-infer_indices(dim, default_is, loc, topo, N) = default_is
+@inline Base.size(fts::FieldTimeSeries) = (size(location(fts), fts.grid)..., size(fts.data, 4))
 
-function infer_indices(dim::Union{XDim, YDim, ZDim}, default_is, loc, topo, N)
-    @show typeof(dim)
-    is = interior_indices(loc, topo, N)
-    is = length(dim) > length(is) ? is : default_is
-    return is
-end
+@propagate_inbounds Base.getindex(f::FieldTimeSeries, i, j, k, n) = f.data[i, j, k, n]
 
-function DimensionalData.data(f::FieldTimeSeries{LX, LY, LZ, A, <:OffsetArray}) where {LX, LY, LZ, A}
-    TX, TY, TZ = topology(f.grid)
-    Nx, Ny, Nz = size(f.grid)
-
-    inds = []
-
-    for (d, dim) in enumerate(f.dims)
-        if dim isa XDim
-            is = interior_indices(LX, TX, Nx)
-            is = length(dim) > length(is) ? is : axes(f.data, d)
-            push!(inds, is)
-        elseif dim isa YDim
-            js = interior_indices(LY, TY, Ny)
-            js = length(dim) > length(js) ? js : axes(f.data, d)
-            push!(inds, js)
-        elseif dim isa ZDim
-            ks = interior_indices(LZ, TZ, Nz)
-            ks = length(dim) > length(ks) ? ks : axes(f.data, d)
-            push!(inds, ks)
-        else
-            push!(inds, axes(f.data, d))
-        end
-    end
-
-    return view(f.data, inds...)
-end
-
-DimensionalData.data(f::FieldTimeSeries{LX, LY, LZ, A, <:SubArray}) where {LX, LY, LZ, A} = f.data
-DimensionalData.name(f::FieldTimeSeries) = f.metadata[:name]
-
-@inline DimensionalData.rebuild(f::FieldTimeSeries{X, Y, Z}, data, dims, refdims, name, metadata) where {X, Y, Z} =
-    FieldTimeSeries{X, Y, Z}(data, dims, refdims, f.architecture, f.grid, f.boundary_conditions, f.metadata)
-
-function FieldTimeSeries(filepath, name; architecture=CPU())
+function FieldTimeSeries(filepath, name; architecture=CPU(), backend=InMemory())
     file = jldopen(filepath)
 
     grid = file["serialized/grid"]
@@ -92,23 +58,17 @@ function FieldTimeSeries(filepath, name; architecture=CPU())
         data.parent[:, :, :, n] .= file["timeseries/$name/$iter"]
     end
 
-    xs = all_x_nodes(LX, grid)
-    ys = all_y_nodes(LY, grid)
-    zs = all_z_nodes(LZ, grid)
-
-    x_dim = X(xs)
-    y_dim = Y(ys)
-    z_dim = Z(zs)
-    t_dim = Ti(times)
-    dims = (x_dim, y_dim, z_dim, t_dim)
-
-    refdims = ()
     bcs = file["timeseries/$name/metadata/boundary_conditions"]
-    metadata = Dict(:name => name)
 
     close(file)
 
-    return FieldTimeSeries{LX, LY, LZ}(data, formatdims(data, dims), refdims, architecture, grid, bcs, metadata)
+    return FieldTimeSeries{LX, LY, LZ}(backend, data, architecture, grid, bcs)
 end
+
+backend_str(::InMemory) = "InMemory"
+backend_str(::OnDisk) = "OnDisk"
+
+short_show(fts::FieldTimeSeries{X, Y, Z, K}) where {X, Y, Z, K} =
+    string("$(join(size(fts), "×")) FieldTimeSeries{$(backend_str(K()))} located at $(show_location(fts))")
 
 end # module
