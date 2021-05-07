@@ -176,8 +176,15 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
             init(file, model)
             saveproperties!(file, model, including)
 
+            # Serialize properties in `including`.
             for property in including
                 file["serialized/$property"] = getproperty(model, property)
+            end
+
+            # Serialize the location and boundary conditions of each output.
+            for (i, (field_name, field)) in enumerate(pairs(outputs))
+                file["timeseries/$field_name/metadata/location"] = location(field)
+                file["timeseries/$field_name/metadata/boundary_conditions"] = field.boundary_conditions
             end
         end
     catch
