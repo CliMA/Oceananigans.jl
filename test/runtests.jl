@@ -144,6 +144,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_simulations.jl")
             include("test_diagnostics.jl")
             include("test_output_writers.jl")
+            include("test_output_readers.jl")
             include("test_lagrangian_particle_tracking.jl")
         end
     end

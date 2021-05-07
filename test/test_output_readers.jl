@@ -75,14 +75,17 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
 end
 
 @testset "OutputReaders" begin
+    @info "Testing output readers..."
 
     Nx, Ny, Nz = 16, 10, 5
-    # generate_some_interesting_simulation_data(Nx, Ny, Nz)
+    generate_some_interesting_simulation_data(Nx, Ny, Nz)
     Nt = 5
 
     filepath = "test_3d_output_with_halos.jld2"
 
     @testset "FieldTimeSeries{InMemory}" begin
+        @info "  Testing FieldTimeSeries{InMemory}..."
+
         u = FieldTimeSeries(filepath, "u")
         v = FieldTimeSeries(filepath, "v")
         w = FieldTimeSeries(filepath, "w")
@@ -103,9 +106,24 @@ end
     end
 
     @testset "FieldTimeSeries{OnDisk}" begin
+        @info "  Testing FieldTimeSeries{OnDisk}..."
+
         ζ = FieldTimeSeries(filepath, "ζ", backend=OnDisk())
         @test ζ[1] isa Field
         @test ζ[2] isa Field
     end
 
+    for Backend in [InMemory, OnDisk]
+        @testset "FieldDataset{$Backend}" begin
+            @info "  Testing FieldDataset{$Backend}..."
+
+            ds = FieldDataset(filepath, backend=Backend())
+
+            @test ds isa Dict
+            @test length(keys(ds)) == 8
+            @test ds["u"] isa FieldTimeSeries
+            @test ds["v"][1] isa Field
+            @test ds["T"][2] isa Field
+        end
+    end
 end
