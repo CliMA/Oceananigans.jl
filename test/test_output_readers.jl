@@ -4,8 +4,8 @@ using JLD2
 using Oceananigans
 using Oceananigans.Units
 
-function generate_some_interesting_simulation_data(; architecture=CPU())
-    grid = RegularRectilinearGrid(size=(32, 32, 32), extent=(64, 64, 32))
+function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
+    grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(64, 64, 32))
 
     Qʰ = 200
     ρₒ = 1026
@@ -76,15 +76,36 @@ end
 
 @testset "OutputReaders" begin
 
-    @testset "FieldTimeSeries" begin
+    Nx, Ny, Nz = 16, 10, 5
+    # generate_some_interesting_simulation_data(Nx, Ny, Nz)
+    Nt = 5
 
-        filepath = "test_3d_output_with_halos.jld2"
+    filepath = "test_3d_output_with_halos.jld2"
 
+    @testset "FieldTimeSeries{InMemory}" begin
+        u = FieldTimeSeries(filepath, "u")
+        v = FieldTimeSeries(filepath, "v")
+        w = FieldTimeSeries(filepath, "w")
         T = FieldTimeSeries(filepath, "T")
+        b = FieldTimeSeries(filepath, "b")
+        ζ = FieldTimeSeries(filepath, "ζ")
 
-        @test size(T) == (32, 32, 32, 5)
-        @test size(T.data) == (34, 34, 34, 5)
+        @test size(u) == (Nx, Ny, Nz, Nt)
+        @test size(v) == (Nx, Ny, Nz, Nt)
+        @test size(w) == (Nx, Ny, Nz+1, Nt)
+        @test size(T) == (Nx, Ny, Nz, Nt)
+        @test size(b) == (Nx, Ny, Nz, Nt)
+        @test size(ζ) == (Nx, Ny, Nz, Nt)
 
+        @test u[1, 2, 3, 4] isa Number
+        @test u[1] isa Field
+        @test u[2] isa Field
+    end
+
+    @testset "FieldTimeSeries{OnDisk}" begin
+        ζ = FieldTimeSeries(filepath, "ζ", backend=OnDisk())
+        @test ζ[1] isa Field
+        @test ζ[2] isa Field
     end
 
 end

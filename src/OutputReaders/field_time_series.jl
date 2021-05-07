@@ -42,12 +42,12 @@ function FieldTimeSeries(filepath, name, architecture, backend::InMemory)
     iterations = parse.(Int, keys(file["timeseries/t"]))
     times = [file["timeseries/t/$i"] for i in iterations]
 
-    LX, LY, LZ = file["timeseries/$name/serialized/location"]
+    LX, LY, LZ = location = file["timeseries/$name/serialized/location"]
 
     Nt = length(times)
     data_size = size(file["timeseries/$name/0"])
-    underlying_data = zeros(data_size..., Nt)
-    data = OffsetArray(underlying_data, -Hx, -Hy, -Hz, 0)
+    raw_data = zeros(data_size..., Nt)
+    data = offset_data(raw_data, grid, location)
 
     for (n, iter) in enumerate(iterations)
         data.parent[:, :, :, n] .= file["timeseries/$name/$iter"]
@@ -79,13 +79,14 @@ end
 Base.getindex(fts::FieldTimeSeries{X, Y, Z, InMemory}, n::Int) where {X, Y, Z} =
     Field((X, Y, Z), fts.architecture, fts.grid, fts.boundary_conditions, fts.data[:, :, :, n])
 
-function Base.getindex(fts::FieldTimeSeries{X, Y, Z, OnDisk}, n::Int) where {X, Y, Z} =
+function Base.getindex(fts::FieldTimeSeries{X, Y, Z, OnDisk}, n::Int) where {X, Y, Z}
     file = jldopen(fts.filepath)
     iter = keys(file["timeseries/t"])[n]
     raw_data = file["timeseries/$(fts.name)/$iter"]
     close(file)
 
-    return Field((X, Y, Z), fts.architecture, fts.grid, fts.boundary_conditions, offset_data(raw_data, fts.grid, fts.location))
+    loc = (X, Y, Z)
+    return Field(loc, fts.architecture, fts.grid, fts.boundary_conditions, offset_data(raw_data, fts.grid, loc))
 end
 
 backend_str(::InMemory) = "InMemory"
