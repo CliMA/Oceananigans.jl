@@ -2,9 +2,8 @@ using Oceananigans.TimeSteppers: ab2_step_field!
 using KernelAbstractions: NoneEvent
 
 import Oceananigans.TimeSteppers: ab2_step!
+using Oceananigans.TurbulenceClosures: implicit_velocity_step!, implicit_tracer_step!
 
-implicit_vertical_viscosity_step!(u, closure, model; kwargs...) = NoneEvent()
-implicit_vertical_diffusivity_step!(c, closure, model; kwargs...) = NoneEvent()
 
 #####
 ##### Step everything
@@ -45,8 +44,8 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                                                ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻,
                                                dependencies = barrier)
 
-        implicit_velocity_step_event = implicit_vertical_viscosity_step!(velocity_field, model.closure, model;
-                                                                         dependencies = explicit_velocity_step_event)
+        implicit_velocity_step_event = implicit_velocity_step!(velocity_field, model.timestepper.implicit_solver, model;
+                                                               dependencies = explicit_velocity_step_event)
 
         push!(velocities_events, explicit_velocity_step_event, implicit_velocity_step_event)
     end
@@ -76,8 +75,8 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                                              ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻,
                                              dependencies = barrier)
 
-        implicit_tracer_step_event = implicit_vertical_diffusivity_step!(tracer_field, model.closure, model;
-                                                                         dependencies = explicit_tracer_step_event)
+        implicit_tracer_step_event = implicit_tracer_step!(tracer_field, model.timesteppper.implicit_solver, model;
+                                                           dependencies = explicit_tracer_step_event)
 
         push!(tracer_events, explicit_tracer_step_event, implicit_tracer_step_event)
     end

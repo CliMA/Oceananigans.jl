@@ -1,19 +1,16 @@
 using Oceananigans.Fields: FunctionField
+using Oceananigans.TurbulenceClosures: ExplicitDiscretization
 
-"""
-    QuasiAdamsBashforth2TimeStepper{T, TG} <: AbstractTimeStepper
-
-Holds tendency fields and the parameter `χ` for a modified second-order
-Adams-Bashforth timestepping method.
-"""
-struct QuasiAdamsBashforth2TimeStepper{T, TG} <: AbstractTimeStepper
-     χ :: T
-    Gⁿ :: TG
-    G⁻ :: TG
+struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
+                  χ :: FT
+                 Gⁿ :: GT
+                 G⁻ :: GT
+    implicit_solver :: IT
 end
 
 """
     QuasiAdamsBashforth2TimeStepper(arch, grid, tracers, χ=0.1;
+                                    time_discretization = ExplicitDiscretization(),
                                     Gⁿ = TendencyFields(arch, grid, tracers),
                                     G⁻ = TendencyFields(arch, grid, tracers))
 
@@ -21,11 +18,16 @@ Return an QuasiAdamsBashforth2TimeStepper object with tendency fields on `arch` 
 `grid` with AB2 parameter `χ`. The tendency fields can be specified via optional
 kwargs.
 """
-function QuasiAdamsBashforth2TimeStepper(arch, grid, tracers, χ=0.1;
+function QuasiAdamsBashforth2TimeStepper(arch, grid, tracers,
+                                         χ = 0.1;
+                                         implicit_solver::IT = nothing,
                                          Gⁿ = TendencyFields(arch, grid, tracers),
-                                         G⁻ = TendencyFields(arch, grid, tracers))
+                                         G⁻ = TendencyFields(arch, grid, tracers)) where IT
 
-    return QuasiAdamsBashforth2TimeStepper{eltype(grid), typeof(Gⁿ)}(χ, Gⁿ, G⁻)
+    FT = eltype(grid)
+    GT = typeof(Gⁿ)
+
+    return QuasiAdamsBashforth2TimeStepper{FT GT, IT}(χ, Gⁿ, G⁻, implicit_solver)
 end
 
 #####

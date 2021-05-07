@@ -4,9 +4,9 @@ using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Utils: launch!
 
 """ Store source terms for `u`, `v`, and `w`. """
-@kernel function store_field_tendencies!(G⁻, grid::AbstractGrid{FT}, G⁰) where FT
+@kernel function store_field_tendencies!(G⁻, grid, G⁰)
     i, j, k = @index(Global, NTuple)
-    G⁻[i, j, k] = G⁰[i, j, k]
+    @inbounds G⁻[i, j, k] = G⁰[i, j, k]
 end
 
 """ Store previous source terms before updating them. """

@@ -57,14 +57,13 @@ function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
     wait(device(arch), event)
 
     # Set up batched tridiagonal solver
-    rhs_storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
+    rhs = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
 
-    btsolver = BatchedTridiagonalSolver(arch,
-                                        grid = grid,
-                                          dl = lower_diagonal,
-                                           d = diagonal,
-                                          du = upper_diagonal,
-                                           f = rhs_storage)
+    btsolver = BatchedTridiagonalSolver(arch, grid;
+                                         lower_diagonal = lower_diagonal,
+                                               diagonal = diagonal,
+                                         upper_diagonal = upper_diagonal,
+                                        right_hand_side = rhs)
 
     # Need buffer for index permutations and transposes.
     buffer_needed = arch isa GPU && Bounded in (TX, TY) ? true : false
@@ -81,7 +80,7 @@ function solve_poisson_equation!(solver::FourierTridiagonalPoissonSolver)
     [transform!(RHS, solver.buffer) for transform! in solver.transforms.forward]
 
     # Solve tridiagonal system of linear equations in z at every column.
-    solve_batched_tridiagonal_system!(ϕ, solver.architecture, solver.batched_tridiagonal_solver)
+    solve_batched_tridiagonal_system!(ϕ, solver.batched_tridiagonal_solver)
 
     # Apply backward transforms in order
     [transform!(ϕ, solver.buffer) for transform! in solver.transforms.backward]

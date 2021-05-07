@@ -3,18 +3,19 @@
 
 A batched solver for large numbers of triadiagonal systems.
 """
-struct BatchedTridiagonalSolver{A, B, C, F, T, G, P}
-             a :: A
-             b :: B
-             c :: C
-             f :: F
-             t :: T
-          grid :: G
-    parameters :: P
+struct BatchedTridiagonalSolver{A, B, C, F, T, G, R, P}
+               a :: A
+               b :: B
+               c :: C
+               f :: F
+               t :: T
+            grid :: G
+    architecture :: R
+      parameters :: P
 end
 
 """
-    BatchedTridiagonalSolver(; dl, d, du, f, grid, parameters=nothing)
+    BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, right_hand_side, parameters=nothing)
 
 Construct a solver for batched tridiagonal systems on `grid` of the form
 
@@ -22,7 +23,8 @@ Construct a solver for batched tridiagonal systems on `grid` of the form
            aⁱʲᵏ⁻¹ ϕⁱʲᵏ⁻¹ + bⁱʲᵏ ϕⁱʲᵏ + cⁱʲᵏ⁺¹ ϕⁱʲᵏ⁺¹ = fⁱʲᵏ,  k = 2, ..., N-1
            aⁱʲᴺ⁻¹ ϕⁱʲᴺ⁻¹ + bⁱʲᴺ ϕⁱʲᴺ                 = fⁱʲᴺ,  k = N
 
-where `a` is the lower diagonal, `b` is the diagonal, `c` is the upper diagonal`, and `f` is the right hand side.
+where `a` is the `lower_diagonal`, `b` is the `diagonal`, `c` is the `upper_diagonal`,
+and `f` is the `right_hand_side`.
 
 The coefficients `a`, `b`, `c`, and `f` can be specified in three ways:
 
@@ -31,23 +33,32 @@ The coefficients `a`, `b`, `c`, and `f` can be specified in three ways:
 2. A 3D array means that `aⁱʲᵏ = a[i, j, k]`.
 
 3. Otherwise, `a` is assumed to be callable:
-    * If `isnothing(parameters)` then `aⁱʲᵏ = a(i, j, k, grid)`.
-    * If `!isnothing(parameters)` then `aⁱʲᵏ = a(i, j, k, grid, parameters)`.
+    * If `isnothing(parameters)` then `aⁱʲᵏ = a(i, j, k, grid, args...)`.
+    * If `!isnothing(parameters)` then `aⁱʲᵏ = a(i, j, k, grid, parameters, args...)`.
+    where `args...` are `Varargs` passed to `solve_batched_tridiagonal_system!(ϕ, solver, args...)`.
 """
-function BatchedTridiagonalSolver(arch=CPU(), FT=Float64; dl, d, du, f, grid, parameters=nothing)
-    ArrayType = array_type(arch)
-    t = zeros(FT, grid.Nx, grid.Ny, grid.Nz) |> ArrayType
+function BatchedTridiagonalSolver(arch, grid;
+                                  lower_diagonal,
+                                  diagonal,
+                                  upper_diagonal,
+                                  right_hand_side,
+                                  parameters = nothing)
 
-    return BatchedTridiagonalSolver(dl, d, du, f, t, grid, parameters)
+    ArrayType = array_type(arch)
+    scratch = zeros(eltype(grid), grid.Nx, grid.Ny, grid.Nz) |> ArrayType
+
+    return BatchedTridiagonalSolver(lower_diagonal, diagonal, upper_diagonal,
+                                    right_hand_side, scratch, grid, arch, parameters)
 end
 
 @inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p) where {T} = @inbounds a[k]
 @inline get_coefficient(a::AbstractArray{T, 3}, i, j, k, grid, p) where {T} = @inbounds a[i, j, k]
-@inline get_coefficient(a, i, j, k, grid, p) = a(i, j, k, grid, p)
-@inline get_coefficient(a, i, j, k, grid, ::Nothing) = a(i, j, k, grid)
+@inline get_coefficient(a, i, j, k, grid, p, args...) = a(i, j, k, grid, p, args...)
+@inline get_coefficient(a, i, j, k, grid, ::Nothing, args...) = a(i, j, k, grid, args...)
 
 """
-    solve_batched_tridiagonal_system!(ϕ, arch, solver)
+    solve_batched_tridiagonal_system!(ϕ, solver, args...;
+                                      dependencies = Event(device(solver.architecture)))
 
 Solve the batched tridiagonal system of linear equations described by the
 `BatchedTridiagonalSolver` `solver` using a modified TriDiagonal Matrix Algorithm (TDMA)
@@ -57,11 +68,12 @@ The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 
 Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 """
-function solve_batched_tridiagonal_system!(ϕ, arch, solver; dependencies = Event(device(arch)))
+function solve_batched_tridiagonal_system!(ϕ, solver, args...; dependencies = Event(device(solver.architecture)))
+    arch = solver.architecture
     a, b, c, f, t, grid, parameters = solver.a, solver.b, solver.c, solver.f, solver.t, solver.grid, solver.parameters
 
     event = launch!(arch, grid, :xy,
-                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, f, t, grid, parameters,
+                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, f, t, grid, parameters, args...,
                     dependencies = dependencies)
 
     wait(device(arch), event)
@@ -69,28 +81,28 @@ function solve_batched_tridiagonal_system!(ϕ, arch, solver; dependencies = Even
     return nothing
 end
 
-float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
-float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
+@inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
+@inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p)
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args...)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
     i, j = @index(Global, NTuple)
 
     @inbounds begin
-        β  = get_coefficient(b, i, j, 1, grid, p)
-        f₁ = get_coefficient(f, i, j, 1, grid, p)
+        β  = get_coefficient(b, i, j, 1, grid, p, args...)
+        f₁ = get_coefficient(f, i, j, 1, grid, p, args...)
         ϕ[i, j, 1] = f₁ / β
 
         @unroll for k = 2:Nz
-            cᵏ⁻¹ = get_coefficient(c, i, j, k-1, grid, p)
-            bᵏ   = get_coefficient(b, i, j, k,   grid, p)
-            aᵏ⁻¹ = get_coefficient(a, i, j, k-1, grid, p)
+            cᵏ⁻¹ = get_coefficient(c, i, j, k-1, grid, p, args...)
+            bᵏ   = get_coefficient(b, i, j, k,   grid, p, args...)
+            aᵏ⁻¹ = get_coefficient(a, i, j, k-1, grid, p, args...)
 
             t[i, j, k] = cᵏ⁻¹ / β
             β = bᵏ- aᵏ⁻¹ * t[i, j, k]
 
-            fᵏ = get_coefficient(f, i, j, k, grid, p)
+            fᵏ = get_coefficient(f, i, j, k, grid, p, args...)
 
             # This should only happen on last element of forward pass for problems
             # with zero eigenvalue. In that case the algorithmn is still stable.
