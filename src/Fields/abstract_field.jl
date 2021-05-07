@@ -26,7 +26,7 @@ const GridOrNothing = Union{AbstractGrid, Nothing}
 Abstract supertype for fields located at `(X, Y, Z)` on architecture `A`
 and defined on a grid `G` with eltype `T`.
 """
-abstract type AbstractField{X, Y, Z, A <: ArchOrNothing, G <: GridOrNothing, T} <: AbstractArray{T, 3} end
+abstract type AbstractField{X, Y, Z, A <: ArchOrNothing, G <: GridOrNothing, T, N} <: AbstractArray{T, N} end
 
 """
     AbstractDataField{X, Y, Z, A, G}
@@ -34,7 +34,10 @@ abstract type AbstractField{X, Y, Z, A <: ArchOrNothing, G <: GridOrNothing, T} 
 Abstract supertype for fields with concrete data in settable underlying arrays,
 located at `(X, Y, Z)` on architecture `A` and defined on a grid `G` with eltype `T`.
 """
-abstract type AbstractDataField{X, Y, Z, A, G, T} <: AbstractField{X, Y, Z, A, G, T} end
+abstract type AbstractDataField{X, Y, Z, A, G, T, N} <: AbstractField{X, Y, Z, A, G, T, N} end
+
+const AbstractField{X, Y, Z, A, G, T} <: AbstractField{X, Y, Z, A, G, T, 3}
+const AbstractDataField{X, Y, Z, A, G, T} <: AbstractDataField{X, Y, Z, A, G, T, 3}
 
 Base.IndexStyle(::AbstractField) = IndexCartesian()
 
