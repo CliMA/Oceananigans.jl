@@ -8,7 +8,7 @@ export interior, data
 export xnode, ynode, znode, location
 export set!, compute!, @compute
 export VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
-export interpolate, FieldSlice
+export interpolate, FieldSlicer
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -33,5 +33,9 @@ include("field_slicer.jl")
 include("show_fields.jl")
 include("broadcasting_abstract_fields.jl")
 include("mapreduce_abstract_fields.jl")
+
+# Fallback: cannot infer boundary conditions.
+boundary_conditions(field) = nothing
+boundary_conditions(f::Union{Field, ReducedField, ComputedField, KernelComputedField}) = f.boundary_conditions
 
 end

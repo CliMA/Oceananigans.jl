@@ -3,6 +3,8 @@ using JLD2
 using Oceananigans.Utils
 using Oceananigans.Utils: TimeInterval, pretty_filesize
 
+using Oceananigans.Fields: boundary_conditions
+
 """
     JLD2OutputWriter{I, T, O, IF, IN, KW} <: AbstractOutputWriter
 
@@ -183,8 +185,8 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
 
             # Serialize the location and boundary conditions of each output.
             for (i, (field_name, field)) in enumerate(pairs(outputs))
-                file["timeseries/$field_name/metadata/location"] = location(field)
-                file["timeseries/$field_name/metadata/boundary_conditions"] = field.boundary_conditions
+                file["timeseries/$field_name/serialized/location"] = location(field)
+                file["timeseries/$field_name/serialized/boundary_conditions"] = boundary_conditions(field)
             end
         end
     catch
