@@ -80,7 +80,7 @@ export
     TimeInterval, IterationInterval, AveragedTimeInterval,
 
     # Output readers
-    FieldTimeSeries, InMemory, OnDisk,
+    FieldTimeSeries, FieldDataset, InMemory, OnDisk,
 
     # Abstract operations
     ∂x, ∂y, ∂z, @at,
