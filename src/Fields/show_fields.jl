@@ -14,7 +14,7 @@ short_show(field::AbstractField) = string(typeof(field).name.wrapper, " located 
 short_show(field::AveragedField) = string("AveragedField over dims=$(field.dims) located at ", show_location(field), " of ", short_show(field.operand))
 short_show(field::ComputedField) = string("ComputedField located at ", show_location(field), " of ", short_show(field.operand))
 
-Base.show(io::IO, field::AbstractField{X, Y, Z, A, G}) where {X, Y, Z, A, G} =
+Base.show(io::IO, field::AbstractField{X, Y, Z, A}) where {X, Y, Z, A} =
     print(io, "$(short_show(field))\n",
           "├── architecture: $A\n",
           "└── grid: $(short_show(field.grid))")
