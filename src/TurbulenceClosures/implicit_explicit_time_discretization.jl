@@ -27,7 +27,8 @@ at time step `n`.
 """
 struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization end
 
-time_discretization(::AbstractTurbulenceClosure{TimeDiscretization}) where TimeDiscretization = TimeDiscretization()
+@inline time_discretization(::AbstractTurbulenceClosure{TimeDiscretization}) where TimeDiscretization = TimeDiscretization()
+@inline time_discretization(::Nothing) = ExplicitTimeDiscretization() # placeholder for closure::Nothing
 
 #####
 ##### ExplicitTimeDiscretization: move along, nothing to worry about here (use fallbacks).
