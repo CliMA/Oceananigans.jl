@@ -28,10 +28,8 @@ c_plot = plot(c_implicit, z, linewidth = 2, label = "t = 0", xlabel = "Tracer co
 diffusion_time_scale = implicit_model.grid.Δz^2 / implicit_model.closure.κz.c
 stop_time = 100diffusion_time_scale
 
-simulations = [
-               Simulation(explicit_model, Δt = 1e-1 * diffusion_time_scale, stop_time = stop_time),
-               Simulation(implicit_model, Δt = 1e0  * diffusion_time_scale, stop_time = stop_time),
-              ]
+simulations = [Simulation(explicit_model, Δt = 1e-1 * diffusion_time_scale, stop_time = stop_time),
+               Simulation(implicit_model, Δt = 1e0  * diffusion_time_scale, stop_time = stop_time)]
 
 [run!(simulation) for simulation in simulations]
 
