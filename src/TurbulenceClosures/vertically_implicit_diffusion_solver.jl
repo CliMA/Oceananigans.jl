@@ -81,13 +81,23 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, arch,
 end
 
 """
-    implicit_step!(field, solver::VerticallyImplicitDiffusionSolver, Δt, κ⁻⁻ᶠ, κ; dependencies)
+    implicit_step!(field, solver::VerticallyImplicitDiffusionSolver, clock, Δt, κ⁻⁻ᶠ, κ; dependencies)
 
+Initialize the right hand side array `solver.batched_tridiagonal_solver.f`, and then solve the
+tridiagonal system for vertically-implicit diffusion, passing the arguments
+`clock, Δt, κ⁻⁻ᶠ, κ` into the coefficient functions that return coefficients of the
+lower diagonal, diagonal, and upper diagonal of the resulting tridiagonal system.
 """
-function implicit_step!(field, solver::VerticallyImplicitDiffusionSolver, args...; dependencies = Event(device(model.architecture)))
+function implicit_step!(field, solver::VerticallyImplicitDiffusionSolver,
+                        clock, Δt, κ⁻⁻ᶠ, κ;
+                        dependencies = Event(device(model.architecture)))
+
     field_interior = interior(field)
     solver.batched_tridiagonal_solver.f .= field_interior
-    return solve_batched_tridiagonal_system!(field, solver.batched_tridiagonal_solver, args...; dependencies = dependencies)
+
+    return solve_batched_tridiagonal_system!(field, solver.batched_tridiagonal_solver,
+                                             clock, Δt, κ⁻⁻ᶠ, κ;
+                                             dependencies = dependencies)
 end
                                              
 function implicit_velocity_step!(velocity_field, solver::VerticallyImplicitDiffusionSolver, clock, Δt,
