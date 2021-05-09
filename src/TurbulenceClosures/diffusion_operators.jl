@@ -27,6 +27,8 @@
 ##### Diffusive flux divergence
 #####
 
+const ClosureOrNothing = Union{AbstractTurbulenceClosure, Nothing}
+
 """
     ∇_κ_∇c(i, j, k, grid, clock, closure::AbstractTurbulenceClosure, c, ::Val{tracer_index}, args...)
 
@@ -36,7 +38,7 @@ Calculates diffusion for a tracer c via
 
 which will end up at the location `ccc`.
 """
-@inline function ∇_dot_qᶜ(i, j, k, grid, clock, closure::AbstractTurbulenceClosure, c, ::Val{tracer_index}, args...) where tracer_index
+@inline function ∇_dot_qᶜ(i, j, k, grid, clock, closure::ClosureOrNothing, c, ::Val{tracer_index}, args...) where tracer_index
 
     disc = time_discretization(closure)
 
