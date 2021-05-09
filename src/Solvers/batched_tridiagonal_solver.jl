@@ -19,9 +19,9 @@ end
 
 Construct a solver for batched tridiagonal systems on `grid` of the form
 
-                           bⁱʲ¹ ϕⁱʲ¹ + cⁱʲ²   ϕⁱʲ²   = fⁱʲ¹,  k = 1
-           aⁱʲᵏ⁻¹ ϕⁱʲᵏ⁻¹ + bⁱʲᵏ ϕⁱʲᵏ + cⁱʲᵏ⁺¹ ϕⁱʲᵏ⁺¹ = fⁱʲᵏ,  k = 2, ..., N-1
-           aⁱʲᴺ⁻¹ ϕⁱʲᴺ⁻¹ + bⁱʲᴺ ϕⁱʲᴺ                 = fⁱʲᴺ,  k = N
+                           bⁱʲ¹ ϕⁱʲ¹ + cⁱʲ¹ ϕⁱʲ²   = fⁱʲ¹,  k = 1
+           aⁱʲᵏ⁻¹ ϕⁱʲᵏ⁻¹ + bⁱʲᵏ ϕⁱʲᵏ + cⁱʲᵏ ϕⁱʲᵏ⁺¹ = fⁱʲᵏ,  k = 2, ..., N-1
+           aⁱʲᴺ⁻¹ ϕⁱʲᴺ⁻¹ + bⁱʲᴺ ϕⁱʲᴺ               = fⁱʲᴺ,  k = N
 
 where `a` is the `lower_diagonal`, `b` is the `diagonal`, `c` is the `upper_diagonal`,
 and `f` is the `right_hand_side`.
@@ -51,10 +51,10 @@ function BatchedTridiagonalSolver(arch, grid;
                                     right_hand_side, scratch, grid, arch, parameters)
 end
 
-@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p) where {T} = @inbounds a[k]
-@inline get_coefficient(a::AbstractArray{T, 3}, i, j, k, grid, p) where {T} = @inbounds a[i, j, k]
-@inline get_coefficient(a, i, j, k, grid, p, args...) = a(i, j, k, grid, p, args...)
-@inline get_coefficient(a, i, j, k, grid, ::Nothing, args...) = a(i, j, k, grid, args...)
+@inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, args...) where {T} = @inbounds a[k]
+@inline get_coefficient(a::AbstractArray{T, 3}, i, j, k, grid, p, args...) where {T} = @inbounds a[i, j, k]
+@inline get_coefficient(a::Base.Callable, i, j, k, grid, p, args...) = a(i, j, k, grid, p, args...)
+@inline get_coefficient(a::Base.Callable, i, j, k, grid, ::Nothing, args...) = a(i, j, k, grid, args...)
 
 """
     solve_batched_tridiagonal_system!(ϕ, solver, args...;
@@ -69,14 +69,15 @@ The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 """
 function solve_batched_tridiagonal_system!(ϕ, solver, args...; dependencies = Event(device(solver.architecture)))
-    arch = solver.architecture
-    a, b, c, f, t, grid, parameters = solver.a, solver.b, solver.c, solver.f, solver.t, solver.grid, solver.parameters
 
-    event = launch!(arch, grid, :xy,
+    a, b, c, f, t, parameters = solver.a, solver.b, solver.c, solver.f, solver.t, solver.parameters
+    grid = solver.grid
+
+    event = launch!(solver.architecture, grid, :xy,
                     solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, f, t, grid, parameters, args...,
                     dependencies = dependencies)
 
-    wait(device(arch), event)
+    wait(device(solver.architecture), event)
 
     return nothing
 end
@@ -100,21 +101,19 @@ end
             aᵏ⁻¹ = get_coefficient(a, i, j, k-1, grid, p, args...)
 
             t[i, j, k] = cᵏ⁻¹ / β
-            β = bᵏ- aᵏ⁻¹ * t[i, j, k]
+            β = bᵏ - aᵏ⁻¹ * t[i, j, k]
 
             fᵏ = get_coefficient(f, i, j, k, grid, p, args...)
 
-            # This should only happen on last element of forward pass for problems
-            # with zero eigenvalue. In that case the algorithmn is still stable.
-            if abs(β) < 1000 * eps(float_eltype(ϕ))
-                ϕ[i, j, k] = 0
-            else
-                ϕ[i, j, k] = (fᵏ- aᵏ⁻¹ * ϕ[i, j, k-1]) / β
-            end
+            # If the problem is not diagonally-dominant such that `β ≈ 0`,
+            # the algorithm is unstable and we elide the forward pass update of ϕ.
+            definitely_diagonally_dominant = abs(β) > 1000 * eps(float_eltype(ϕ))
+            !definitely_diagonally_dominant && break
+            ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
         end
 
         @unroll for k = Nz-1:-1:1
-            ϕ[i, j, k] = ϕ[i, j, k] - t[i, j, k+1] * ϕ[i, j, k+1]
+            ϕ[i, j, k] -= t[i, j, k+1] * ϕ[i, j, k+1]
         end
     end
 end

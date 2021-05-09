@@ -16,7 +16,7 @@
 @inline κᶜᶜᶠ(i, j, k, grid, clock, κ::AbstractArray) = ℑzᵃᵃᶠ(i, j, k, grid, κ)
 
 #####
-##### Diffusive fluxes for closures with isotropic diffusivities
+##### Convenience diffusive flux function
 #####
 
 @inline diffusive_flux_x(i, j, k, grid, clock, κ, c) = - κᶠᶜᶜ(i, j, k, grid, clock, κ) * ∂xᶠᶜᵃ(i, j, k, grid, c)

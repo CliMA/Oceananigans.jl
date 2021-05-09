@@ -9,7 +9,7 @@ using Oceananigans.Fields: AbstractField
 
 Parameters for the 2D Leith turbulence closure.
 """
-struct TwoDimensionalLeith{FT, CR, GM} <: AbstractEddyViscosityClosure
+struct TwoDimensionalLeith{FT, CR, GM} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
          C :: FT
     C_Redi :: CR
       C_GM :: GM
@@ -187,6 +187,20 @@ end
         + (C_Redi + C_GM) * R₃₂ * ∂y_c
                  + C_Redi * R₃₃ * ∂z_c)
 end
+
+const L2D = TwoDimensionalLeith
+
+@inline viscous_flux_ux(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, closure, K.νₑ, Σ₁₁, U.u, U.v, U.w)
+@inline viscous_flux_uy(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, closure, K.νₑ, Σ₁₂, U.u, U.v, U.w)
+@inline viscous_flux_uz(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, closure, K.νₑ, Σ₁₃, U.u, U.v, U.w)
+
+@inline viscous_flux_vx(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, closure, K.νₑ, Σ₂₁, U.u, U.v, U.w)
+@inline viscous_flux_vy(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, closure, K.νₑ, Σ₂₂, U.u, U.v, U.w)
+@inline viscous_flux_vz(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, closure, K.νₑ, Σ₂₃, U.u, U.v, U.w)
+
+@inline viscous_flux_wx(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, closure, K.νₑ, Σ₃₁, U.u, U.v, U.w)
+@inline viscous_flux_wy(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, closure, K.νₑ, Σ₃₂, U.u, U.v, U.w)
+@inline viscous_flux_wz(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, closure, K.νₑ, Σ₃₃, U.u, U.v, U.w)
 
 function calculate_diffusivities!(K, arch, grid, closure::TwoDimensionalLeith, buoyancy, U, C)
     event = launch!(arch, grid, :xyz, calculate_nonlinear_viscosity!, K.νₑ, grid, closure, buoyancy, U, C,

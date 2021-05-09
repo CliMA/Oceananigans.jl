@@ -1,5 +1,4 @@
 using Oceananigans.Fields: FunctionField
-using Oceananigans.TurbulenceClosures: ExplicitDiscretization
 
 struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
@@ -9,8 +8,7 @@ struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
 end
 
 """
-    QuasiAdamsBashforth2TimeStepper(arch, grid, tracers, χ=0.1;
-                                    time_discretization = ExplicitDiscretization(),
+    QuasiAdamsBashforth2TimeStepper(arch, grid, tracers, χ=0.1; implicit_solver = nothing,
                                     Gⁿ = TendencyFields(arch, grid, tracers),
                                     G⁻ = TendencyFields(arch, grid, tracers))
 
@@ -27,7 +25,7 @@ function QuasiAdamsBashforth2TimeStepper(arch, grid, tracers,
     FT = eltype(grid)
     GT = typeof(Gⁿ)
 
-    return QuasiAdamsBashforth2TimeStepper{FT GT, IT}(χ, Gⁿ, G⁻, implicit_solver)
+    return QuasiAdamsBashforth2TimeStepper{FT, GT, IT}(χ, Gⁿ, G⁻, implicit_solver)
 end
 
 #####

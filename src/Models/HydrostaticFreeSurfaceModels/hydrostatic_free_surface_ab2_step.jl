@@ -1,9 +1,9 @@
 using Oceananigans.TimeSteppers: ab2_step_field!
+using Oceananigans.TurbulenceClosures: implicit_velocity_step!, implicit_tracer_step!
+
 using KernelAbstractions: NoneEvent
 
 import Oceananigans.TimeSteppers: ab2_step!
-using Oceananigans.TurbulenceClosures: implicit_velocity_step!, implicit_tracer_step!
-
 
 #####
 ##### Step everything
@@ -13,13 +13,11 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
 
-    barrier = Event(device(model.architecture))
+    explicit_velocity_step_events = ab2_step_velocities!(model.velocities, model, Δt, χ)
+    explicit_tracer_step_events = ab2_step_tracers!(model.tracers, model, Δt, χ)
+    free_surface_event = ab2_step_free_surface!(model.free_surface, model, Δt, χ, MultiEvent(Tuple(explicit_velocity_step_events)))
 
-    velocities_events = ab2_step_velocities!(model.velocities, model, Δt, χ)
-    tracers_events = ab2_step_tracers!(model.tracers, model, Δt, χ)
-    free_surface_event = ab2_step_free_surface!(model.free_surface, model, Δt, χ, MultiEvent(Tuple(velocities_events)))
-
-    prognostic_field_events = MultiEvent(tuple(free_surface_event, velocities_events..., tracer_events...))
+    prognostic_field_events = MultiEvent(tuple(free_surface_event, explicit_velocity_step_events..., explicit_tracer_step_events...))
 
     wait(device(model.architecture), prognostic_field_events)
 
@@ -32,25 +30,40 @@ end
 
 function ab2_step_velocities!(velocities, model, Δt, χ)
 
+    barrier = Event(device(model.architecture))
+
     # Launch velocity update kernels
-    velocities_events = []
+    explicit_velocity_step_events = []
 
     for name in (:u, :v)
         Gⁿ = model.timestepper.Gⁿ[name]
         G⁻ = model.timestepper.G⁻[name]
         velocity_field = model.velocities[name]
 
-        explicit_velocity_step_event = launch!(model.architecture, model.grid, :xyz,
-                                               ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻,
-                                               dependencies = barrier)
+        event = launch!(model.architecture, model.grid, :xyz,
+                        ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻,
+                        dependencies = barrier)
 
-        implicit_velocity_step_event = implicit_velocity_step!(velocity_field, model.timestepper.implicit_solver, model;
-                                                               dependencies = explicit_velocity_step_event)
-
-        push!(velocities_events, explicit_velocity_step_event, implicit_velocity_step_event)
+        push!(explicit_velocity_step_events, event)
     end
 
-    return velocities_events
+    for (i, name) in enumerate((:u, :v))
+        velocity_field = model.velocities[name]
+
+        # TODO: let next implicit solve depend on previous solve + explicit velocity step
+        # Need to distinguish between solver events and tendency calculation events.
+        # Note that BatchedTridiagonalSolver has a hard `wait`; this must be solved first.
+        implicit_velocity_step!(velocity_field,
+                                model.timestepper.implicit_solver,
+                                model.clock,
+                                Δt,
+                                location(velocity_field),
+                                model.closure,
+                                model.diffusivities,
+                                dependencies = explicit_velocity_step_events[i])
+    end
+
+    return explicit_velocity_step_events
 end
 
 #####
@@ -63,23 +76,36 @@ ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = [NoneEvent()]
 
 function ab2_step_tracers!(tracers, model, Δt, χ)
 
+    barrier = Event(device(model.architecture))
+
     # Tracer update kernels
-    tracer_events = []
+    explicit_tracer_step_events = []
 
-    for name in tracernames(tracers)
-        Gⁿ = model.timestepper.Gⁿ[name]
-        G⁻ = model.timestepper.G⁻[name]
-        tracer_field = tracers[name]
+    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
+        Gⁿ = model.timestepper.Gⁿ[tracer_name]
+        G⁻ = model.timestepper.G⁻[tracer_name]
+        tracer_field = tracers[tracer_name]
 
-        explicit_tracer_step_event = launch!(model.architecture, model.grid, :xyz,
-                                             ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻,
-                                             dependencies = barrier)
+        event = launch!(model.architecture, model.grid, :xyz,
+                        ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻,
+                        dependencies = barrier)
 
-        implicit_tracer_step_event = implicit_tracer_step!(tracer_field, model.timesteppper.implicit_solver, model;
-                                                           dependencies = explicit_tracer_step_event)
-
-        push!(tracer_events, explicit_tracer_step_event, implicit_tracer_step_event)
+        push!(explicit_tracer_step_events, event)
     end
 
-    return tracer_events
+    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
+        tracer_field = tracers[tracer_name]
+
+        implicit_tracer_step!(tracer_field,
+                              model.timestepper.implicit_solver,
+                              model.clock,
+                              Δt,
+                              model.closure,
+                              model.diffusivities,
+                              tracer_index,
+                              dependencies = explicit_tracer_step_events[tracer_index])
+
+    end
+
+    return explicit_tracer_step_events
 end

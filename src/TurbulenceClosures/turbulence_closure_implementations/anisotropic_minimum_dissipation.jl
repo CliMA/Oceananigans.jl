@@ -5,7 +5,7 @@ Parameters for the "anisotropic minimum dissipation" turbulence closure for larg
 proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
 by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
 """
-struct AnisotropicMinimumDissipation{FT, PK, PN, K, PB} <: AbstractEddyViscosityClosure
+struct AnisotropicMinimumDissipation{FT, PK, PN, K, PB} <: AbstractEddyViscosityClosure{ExplicitTimeDiscretization}
     Cν :: PN
     Cκ :: PK
     Cb :: PB
@@ -118,12 +118,6 @@ function with_tracers(tracers, closure::AnisotropicMinimumDissipation{FT}) where
     Cκ = tracer_diffusivities(tracers, closure.Cκ)
     return AnisotropicMinimumDissipation{FT}(closure.Cν, Cκ, closure.Cb, closure.ν, κ)
 end
-
-#####
-##### diffusivity
-#####
-
-@inline diffusivity(i, j, k, grid, ::AnisotropicMinimumDissipation, diffusivities, ::Val{tracer_index}) where tracer_index = diffusivities.κₑ[tracer_index]
 
 #####
 ##### Kernel functions
@@ -345,3 +339,46 @@ end
     + ℑyᵃᶜᵃ(i, j, k, grid, norm_∂y_c², c)
     + ℑzᵃᵃᶜ(i, j, k, grid, norm_∂z_c², c)
 )
+
+#####
+##### DiffusivityFields
+#####
+
+function DiffusivityFields(arch, grid, tracer_names, ::AMD;
+                           νₑ = CenterField(arch, grid, DiffusivityBoundaryConditions(grid)),
+                           kwargs...)
+
+    κₑ = TracerDiffusivityFields(arch, grid, tracer_names; kwargs...)
+
+    return (νₑ=νₑ, κₑ=κₑ)
+end
+
+function DiffusivityFields(arch, grid, tracer_names, bcs, ::AMD)
+
+    νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
+    νₑ = CenterField(arch, grid, νₑ_bcs)
+
+    κₑ = :κₑ ∈ keys(bcs) ? TracerDiffusivityFields(arch, grid, tracer_names, bcs[:κₑ]) :
+                           TracerDiffusivityFields(arch, grid, tracer_names)
+
+    return (νₑ=νₑ, κₑ=κₑ)
+end
+
+function TracerDiffusivityFields(arch, grid, tracer_names; kwargs...)
+
+    κ_fields = Tuple(c ∈ keys(kwargs) ?
+                     kwargs[c] :
+                     CenterField(arch, grid, DiffusivityBoundaryConditions(grid))
+                     for c in tracer_names)
+
+    return NamedTuple{tracer_names}(κ_fields)
+end
+
+function TracerDiffusivityFields(arch, grid, tracer_names, bcs)
+
+    κ_fields = Tuple(c ∈ keys(bcs) ? CenterField(arch, grid, bcs[c]) :
+                                     CenterField(arch, grid, DiffusivityBoundaryConditions(grid))
+                     for c in tracer_names)
+
+    return NamedTuple{tracer_names}(κ_fields)
+end

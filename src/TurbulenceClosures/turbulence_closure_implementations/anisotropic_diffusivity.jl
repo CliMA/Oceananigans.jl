@@ -3,7 +3,7 @@
 
 Parameters for anisotropic diffusivity models.
 """
-struct AnisotropicDiffusivity{NX, NY, NZ, KX, KY, KZ} <: AbstractTensorDiffusivity
+struct AnisotropicDiffusivity{NX, NY, NZ, KX, KY, KZ} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
     νx :: NX
     νy :: NY
     νz :: NZ

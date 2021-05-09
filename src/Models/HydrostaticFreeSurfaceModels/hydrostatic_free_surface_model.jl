@@ -12,7 +12,8 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 using Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper
-using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
+using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields
+using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 
@@ -88,7 +89,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                           coriolis = nothing,
                                       free_surface = ExplicitFreeSurface(gravitational_acceleration=g_Earth),
                                forcing::NamedTuple = NamedTuple(),
-                                           closure = IsotropicDiffusivity(eltype(grid), ν=ν₀, κ=κ₀),
+                                           closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
                                            tracers = (:T, :S),
     particles::Union{Nothing, LagrangianParticles} = nothing,
@@ -134,9 +135,9 @@ function HydrostaticFreeSurfaceModel(; grid,
     validate_velocity_boundary_conditions(velocities)
 
     # Instantiate timestepper if not already instantiated
-    implicit_solver = implicit_diffusion_solver(closure, diffusivities, architecture, grid)
+    implicit_solver = implicit_diffusion_solver(time_discretization(closure), architecture, grid)
     timestepper = TimeStepper(:QuasiAdamsBashforth2, architecture, grid, tracernames(tracers);
-                              implicit_solver = implicit_diffusion_solver,
+                              implicit_solver = implicit_solver,
                               Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)),
                               G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)))
 

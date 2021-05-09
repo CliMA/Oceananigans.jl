@@ -5,7 +5,7 @@ import Oceananigans.Grids: required_halo_size
 
 Parameters for anisotropic biharmonic diffusivity models.
 """
-struct AnisotropicBiharmonicDiffusivity{FT, KX, KY, KZ} <: AbstractTensorDiffusivity
+struct AnisotropicBiharmonicDiffusivity{FT, KX, KY, KZ} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
     νx :: FT
     νy :: FT
     νz :: FT

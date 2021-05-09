@@ -5,7 +5,7 @@ import Oceananigans.Grids: required_halo_size
 
 Holds viscosity and diffusivities for models with prescribed isotropic diffusivities.
 """
-struct IsotropicDiffusivity{N, K} <: AbstractTurbulenceClosure
+struct IsotropicDiffusivity{N, K} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
     ν :: N
     κ :: K
 end
@@ -61,17 +61,19 @@ end
     return diffusive_flux_z(i, j, k, grid, clock, κ, c)
 end
 
-viscous_flux_ux(i, j, k, grid, clock, closure::IsotropicDiffusivity, U, args...) = viscous_flux_ux(i, j, k, grid, clock, closure.ν, U[1])
-viscous_flux_uy(i, j, k, grid, clock, closure::IsotropicDiffusivity, U, args...) = viscous_flux_uy(i, j, k, grid, clock, closure.ν, U[1])  
-viscous_flux_uz(i, j, k, grid, clock, closure::IsotropicDiffusivity, U, args...) = viscous_flux_uz(i, j, k, grid, clock, closure.ν, U[1])
+const ID = IsotropicDiffusivity
 
-viscous_flux_vx(i, j, k, grid, clock, closure::IsotropicDiffusivity, U, args...) = viscous_flux_vx(i, j, k, grid, clock, closure.ν, U[2])
-viscous_flux_vy(i, j, k, grid, clock, closure::IsotropicDiffusivity, U, args...) = viscous_flux_vy(i, j, k, grid, clock, closure.ν, U[2])  
-viscous_flux_vz(i, j, k, grid, clock, closure::IsotropicDiffusivity, U, args...) = viscous_flux_vz(i, j, k, grid, clock, closure.ν, U[2])
+@inline viscous_flux_ux(i, j, k, grid, clock, closure::ID, U, args...) = @inbounds viscous_flux_ux(i, j, k, grid, clock, closure.ν, U[1])
+@inline viscous_flux_uy(i, j, k, grid, clock, closure::ID, U, args...) = @inbounds viscous_flux_uy(i, j, k, grid, clock, closure.ν, U[1])  
+@inline viscous_flux_uz(i, j, k, grid, clock, closure::ID, U, args...) = @inbounds viscous_flux_uz(i, j, k, grid, clock, closure.ν, U[1])
 
-viscous_flux_wx(i, j, k, grid, clock, closure::IsotropicDiffusivity, U, args...) = viscous_flux_wx(i, j, k, grid, clock, closure.ν, U[3])
-viscous_flux_wy(i, j, k, grid, clock, closure::IsotropicDiffusivity, U, args...) = viscous_flux_wy(i, j, k, grid, clock, closure.ν, U[3])  
-viscous_flux_wz(i, j, k, grid, clock, closure::IsotropicDiffusivity, U, args...) = viscous_flux_wz(i, j, k, grid, clock, closure.ν, U[3])
+@inline viscous_flux_vx(i, j, k, grid, clock, closure::ID, U, args...) = @inbounds viscous_flux_vx(i, j, k, grid, clock, closure.ν, U[2])
+@inline viscous_flux_vy(i, j, k, grid, clock, closure::ID, U, args...) = @inbounds viscous_flux_vy(i, j, k, grid, clock, closure.ν, U[2])  
+@inline viscous_flux_vz(i, j, k, grid, clock, closure::ID, U, args...) = @inbounds viscous_flux_vz(i, j, k, grid, clock, closure.ν, U[2])
+
+@inline viscous_flux_wx(i, j, k, grid, clock, closure::ID, U, args...) = @inbounds viscous_flux_wx(i, j, k, grid, clock, closure.ν, U[3])
+@inline viscous_flux_wy(i, j, k, grid, clock, closure::ID, U, args...) = @inbounds viscous_flux_wy(i, j, k, grid, clock, closure.ν, U[3])  
+@inline viscous_flux_wz(i, j, k, grid, clock, closure::ID, U, args...) = @inbounds viscous_flux_wz(i, j, k, grid, clock, closure.ν, U[3])
                         
 Base.show(io::IO, closure::IsotropicDiffusivity) =
     print(io, "IsotropicDiffusivity: ν=$(closure.ν), κ=$(closure.κ)")

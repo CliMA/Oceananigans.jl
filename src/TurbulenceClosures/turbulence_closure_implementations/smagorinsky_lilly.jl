@@ -8,7 +8,7 @@
 
 Parameters for the Smagorinsky-Lilly turbulence closure.
 """
-struct SmagorinskyLilly{FT, P, K} <: AbstractEddyViscosityClosure
+struct SmagorinskyLilly{FT, P, K} <: AbstractEddyViscosityClosure{ExplicitTimeDiscretization}
      C :: FT
     Cb :: FT
     Pr :: P
@@ -102,17 +102,6 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
     return νₑ_deardorff(ς, clo.C, Δᶠ, Σ²) + clo.ν
 end
 
-@inline function diffusivity(i, j, k, grid, closure, diffusivities, ::Val{tracer_index}) where tracer_index
-    @inbounds Pr = closure.Pr[tracer_index]
-    @inbounds κ = closure.κ[tracer_index]
-
-    νₑ = diffusivities.νₑ
-    νₑ = ℑxᶠᵃᵃ(i, j, k, grid, νₑ, closure)
-    κₑ = (νₑ - closure.ν) / Pr + κ
-
-    return κₑ
-end
-
 function calculate_diffusivities!(K, arch, grid, closure::SmagorinskyLilly, buoyancy, U, C)
 
     event = launch!(arch, grid, :xyz, calculate_nonlinear_viscosity!, K.νₑ, grid, closure, buoyancy, U, C,
@@ -193,3 +182,35 @@ end
 
 Base.show(io::IO, closure::SmagorinskyLilly) =
     print(io, "SmagorinskyLilly: C=$(closure.C), Cb=$(closure.Cb), Pr=$(closure.Pr), ν=$(closure.ν), κ=$(closure.κ)")
+
+#####
+##### For closures that only require an eddy viscosity νₑ field.
+#####
+
+const ViscosityClosures = Union{SmagorinskyLilly, TwoDimensionalLeith}
+
+DiffusivityFields(arch, grid, tracer_names, ::ViscosityClosures;
+                  νₑ = CenterField(arch, grid, DiffusivityBoundaryConditions(grid))) = 
+
+function DiffusivityFields(arch, grid, tracer_names, bcs, closure::SmagorinskyLilly)
+    νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
+
+    νₑ = CenterField(arch, grid, νₑ_bcs)
+
+    # Use AbstractOperations to write eddy diffusivities in terms of
+    # eddy viscosity
+    κₑ_ops = []
+
+    for i = 1:length(tracer_names)
+        Pr = closure.Pr[i]
+        κ = closure.κ[i]
+        ν = closure.ν
+        κₑ_op = (νₑ - ν) / Pr + κ
+        push!(κ_ops, κₑ_op)
+    end
+
+    κₑ = NamedTuple{tracer_names}(Tuple(κₑ_ops))
+
+    return (νₑ=νₑ, κₑ=κₑ)
+end
+

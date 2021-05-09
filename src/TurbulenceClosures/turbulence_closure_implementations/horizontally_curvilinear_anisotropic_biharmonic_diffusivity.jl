@@ -3,7 +3,7 @@
 
 Holds viscosity and diffusivities for models with prescribed isotropic diffusivities.
 """
-struct HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity{NH, NZ, KH, KZ} <: AbstractTurbulenceClosure
+struct HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity{NH, NZ, KH, KZ} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
     νh :: NH
     νz :: NZ
     κh :: KH

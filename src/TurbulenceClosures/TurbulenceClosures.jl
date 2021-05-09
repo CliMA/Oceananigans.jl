@@ -57,94 +57,36 @@ const κ₀ = 1.46e-7
 
 Abstract supertype for turbulence closures.
 """
-abstract type AbstractTurbulenceClosure end
-
-
-"""
-    AbstractTensorDiffusivity <: AbstractTurbulenceClosure
-
-Abstract supertype for turbulence closures that are defined by a tensor viscosity and
-tensor diffusivities.
-"""
-abstract type AbstractTensorDiffusivity <: AbstractTurbulenceClosure end
-
-#####
-##### 'Tupled closure' implementation
-#####
-
-for stress_div in (:∂ⱼ_2ν_Σ₁ⱼ, :∂ⱼ_2ν_Σ₂ⱼ, :∂ⱼ_2ν_Σ₃ⱼ)
-    @eval begin
-        @inline function $stress_div(i, j, k, grid::AbstractGrid{FT}, clock, closure_tuple::Tuple, U,
-                                     K_tuple, args...) where FT
-
-            stress_div_ijk = zero(FT)
-
-            ntuple(Val(length(closure_tuple))) do α
-                @inbounds closure = closure_tuple[α]
-                @inbounds K = K_tuple[α]
-                stress_div_ijk += $stress_div(i, j, k, grid, clock, closure, U, K, args...)
-            end
-
-            return stress_div_ijk
-        end
-    end
-end
-
-@inline function ∇_κ_∇c(i, j, k, grid::AbstractGrid{FT}, clock, closure_tuple::Tuple,
-                        c, tracer_index, K_tuple, args...) where FT
-
-    flux_div_ijk = zero(FT)
-
-    ntuple(Val(length(closure_tuple))) do α
-        @inbounds closure = closure_tuple[α]
-        @inbounds K = K_tuple[α]
-        flux_div_ijk +=  ∇_κ_∇c(i, j, k, grid, clock, closure, c, tracer_index, K, args...)
-    end
-
-    return flux_div_ijk
-end
-
-function calculate_diffusivities!(K_tuple::Tuple, arch, grid, closure_tuple::Tuple, args...)
-    ntuple(Val(length(closure_tuple))) do α
-        @inbounds closure = closure_tuple[α]
-        @inbounds K = K_tuple[α]
-        calculate_diffusivities!(K, arch, grid, closure, args...)
-    end
-
-    return nothing
-end
-
-with_tracers(tracers, closure_tuple::Tuple) =
-    Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
+abstract type AbstractTurbulenceClosure{TimeDiscretization} end
 
 #####
 ##### Include module code
 #####
 
-include("time_discretization.jl")
+include("implicit_explicit_time_discretization.jl")
 include("turbulence_closure_utils.jl")
 include("diffusion_operators.jl")
 include("viscous_dissipation_operators.jl")
 include("velocity_tracer_gradients.jl")
-include("abstract_isotropic_diffusivity_closures.jl")
-include("abstract_eddy_viscosity_closures.jl")
-
+include("abstract_isotropic_diffusivity_closure.jl")
+include("abstract_eddy_viscosity_closure.jl")
 include("closure_tuples.jl")
 
+# Implementations:
 include("turbulence_closure_implementations/nothing_closure.jl")
 include("turbulence_closure_implementations/isotropic_diffusivity.jl")
 include("turbulence_closure_implementations/anisotropic_diffusivity.jl")
 include("turbulence_closure_implementations/horizontally_curvilinear_anisotropic_diffusivity.jl")
 include("turbulence_closure_implementations/horizontally_curvilinear_anisotropic_biharmonic_diffusivity.jl")
 include("turbulence_closure_implementations/anisotropic_biharmonic_diffusivity.jl")
-
-# Eddy viscosity closures
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 include("turbulence_closure_implementations/smagorinsky_lilly.jl")
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
 
+# Miscellaneous utilities
 include("diffusivity_fields.jl")
 include("turbulence_closure_diagnostics.jl")
+include("vertically_implicit_diffusion_solver.jl")
 
 #####
 ##### Some value judgements here
