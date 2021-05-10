@@ -23,7 +23,7 @@ struct SmagorinskyLilly{FT, P, K} <: AbstractEddyViscosityClosure{ExplicitTimeDi
 end
 
 """
-    SmagorinskyLilly([FT=Float64;] C=0.23, Pr=1, ν=1.05e-6, κ=1.46e-7)
+    SmagorinskyLilly([FT=Float64;] C=0.23, Pr=1, ν=0, κ=0)
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
 Lilly (1962) and Smagorinsky (1958, 1963), which has an eddy viscosity of the form
@@ -61,7 +61,7 @@ Lilly, D. K. "On the numerical simulation of buoyant convection." Tellus (1962)
 Smagorinsky, J. "General circulation experiments with the primitive equations: I.
     The basic experiment." Monthly weather review (1963)
 """
-SmagorinskyLilly(FT=Float64; C=0.23, Cb=1.0, Pr=1.0, ν=ν₀, κ=κ₀) =
+SmagorinskyLilly(FT=Float64; C=0.23, Cb=1.0, Pr=1.0, ν=0, κ=0) =
     SmagorinskyLilly{FT}(C, Cb, Pr, ν, κ)
 
 function with_tracers(tracers, closure::SmagorinskyLilly{FT}) where FT

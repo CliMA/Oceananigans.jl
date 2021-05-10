@@ -31,7 +31,7 @@ Base.show(io::IO, closure::AMD{FT}) where FT =
 
 """
     AnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
-                                            Cb=0.0, ν=ν₀, κ=κ₀)
+                                              Cb=0.0, ν=0, κ=0)
 
 Returns parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
@@ -54,9 +54,7 @@ Keyword arguments
              specifying a background diffusivity for every tracer.
 
 By default: `C = Cν = Cκ` = 1/12, which is appropriate for a finite-volume method employing a
-second-order advection scheme, `Cb = nothing`, which terms off the buoyancy modification term,
-the molecular viscosity of seawater at 20 deg C and 35 psu is used for `ν`, and
-the molecular diffusivity of heat in seawater at 20 deg C and 35 psu is used for `κ`.
+second-order advection scheme, `Cb = nothing`, which terms off the buoyancy modification term.
 
 `Cν` or `Cκ` may be constant numbers, or functions of `x, y, z`.
 
@@ -69,8 +67,8 @@ AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.5
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.5
                         Buoyancy modification multiplier Cb: nothing
-                Background diffusivit(ies) for tracer(s), κ: 1.46e-7
-             Background kinematic viscosity for momentum, ν: 1.05e-6
+                Background diffusivit(ies) for tracer(s), κ: 0.0
+             Background kinematic viscosity for momentum, ν: 0.0
 
 julia> const Δz = 0.5; # grid resolution at surface
 
@@ -82,16 +80,16 @@ AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: surface_enhanced_tracer_C
                         Buoyancy modification multiplier Cb: nothing
-                Background diffusivit(ies) for tracer(s), κ: 1.46e-7
-             Background kinematic viscosity for momentum, ν: 1.05e-6
+                Background diffusivit(ies) for tracer(s), κ: 0.0
+             Background kinematic viscosity for momentum, ν: 0.0
 
 julia> tracer_specific_closure = AnisotropicMinimumDissipation(Cκ=(c₁=1/12, c₂=1/6))
 AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: (c₁ = 0.08333333333333333, c₂ = 0.16666666666666666)
                         Buoyancy modification multiplier Cb: nothing
-                Background diffusivit(ies) for tracer(s), κ: 1.46e-7
-             Background kinematic viscosity for momentum, ν: 1.05e-6
+                Background diffusivit(ies) for tracer(s), κ: 0.0
+             Background kinematic viscosity for momentum, ν: 0.0
 ```
 
 References
@@ -104,7 +102,7 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     Computers & Fluids 176, pp. 276-284.
 """
 function AnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
-                                       Cb=nothing, ν=ν₀, κ=κ₀)
+                                       Cb=nothing, ν=0, κ=0)
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
     

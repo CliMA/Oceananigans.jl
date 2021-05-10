@@ -39,16 +39,6 @@ using Oceananigans.Utils
 using Oceananigans.Architectures: AbstractArchitecture, device
 
 #####
-##### Molecular viscosity and thermal diffusivity definitions
-##### Approximate viscosities and thermal diffusivities for seawater at 20ᵒC and 35 psu,
-##### according to Sharqawy et al., "Thermophysical properties of seawater: A review of
-##### existing correlations and data" (2010).
-#####
-
-const ν₀ = 1.05e-6
-const κ₀ = 1.46e-7
-
-#####
 ##### Abstract types
 #####
 
