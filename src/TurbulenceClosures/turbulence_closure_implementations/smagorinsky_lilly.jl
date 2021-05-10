@@ -3,11 +3,6 @@
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
-"""
-    SmagorinskyLilly{FT} <: AbstractEddyViscosityClosure
-
-Parameters for the Smagorinsky-Lilly turbulence closure.
-"""
 struct SmagorinskyLilly{FT, P, K} <: AbstractEddyViscosityClosure{ExplicitTimeDiscretization}
      C :: FT
     Cb :: FT
@@ -187,10 +182,6 @@ Base.show(io::IO, closure::SmagorinskyLilly) =
 ##### For closures that only require an eddy viscosity νₑ field.
 #####
 
-const ViscosityClosures = Union{SmagorinskyLilly, TwoDimensionalLeith}
-
-DiffusivityFields(arch, grid, tracer_names, ::ViscosityClosures;
-                  νₑ = CenterField(arch, grid, DiffusivityBoundaryConditions(grid))) = 
 
 function DiffusivityFields(arch, grid, tracer_names, bcs, closure::SmagorinskyLilly)
     νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
