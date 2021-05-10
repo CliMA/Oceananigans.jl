@@ -106,24 +106,15 @@ end
 """
     set_source_term!(solver, source_term)
 
-Sets the `source_term` ``R`` in the discrete Poisson equation `solver`.
-The Poisson equation is
-
-```math
-\\nabla^2 \\phi = R
-```
-
-where ``\\nabla^2`` is the Laplacian, ``R`` is the Poisson `source_term`,
-and ``\\phi`` is the solution to the Poisson equation.
+Sets the source term in the discrete Poisson equation `solver`
+to `source_term` by multiplying it by the vertical grid spacing at z cell centers.
 """
-function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
+function regularize_source_term!(source_term, solver::FourierTridiagonalPoissonSolver)
     grid = solver.grid
     arch = solver.architecture
+    solver.source_term .= source_term
 
-    solver_rhs = solver.batched_tridiagonal_solver.f
-    solver_rhs .= source_term
-
-    event = launch!(arch, grid, :xyz, multiply_by_Δzᵃᵃᶜ!, solver_rhs, grid, dependencies=Event(device(arch)))
+    event = launch!(arch, grid, :xyz, multiply_by_Δzᵃᵃᶜ!, solver.source_term, grid, dependencies=Event(device(arch)))
     wait(device(arch), event)
                     
     return nothing
