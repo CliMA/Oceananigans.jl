@@ -6,7 +6,7 @@ using Oceananigans: fields
 Holds parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
 time-stepping scheme described by Le and Moin (1991).
 """
-struct RungeKutta3TimeStepper{FT, TG, IT} <: AbstractTimeStepper
+struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
                  γ¹ :: FT
                  γ² :: FT
                  γ³ :: FT
@@ -14,7 +14,7 @@ struct RungeKutta3TimeStepper{FT, TG, IT} <: AbstractTimeStepper
                  ζ³ :: FT
                  Gⁿ :: TG
                  G⁻ :: TG
-    implicit_solver :: IT
+    implicit_solver :: TI
 end
 
 """
@@ -26,9 +26,9 @@ Return an `RungeKutta3TimeStepper` object with tendency fields on `arch` and
 `grid`. The tendency fields can be specified via optional kwargs.
 """
 function RungeKutta3TimeStepper(arch, grid, tracers;
-                                implicit_solver = nothing,
-                                Gⁿ = TendencyFields(arch, grid, tracers),
-                                G⁻ = TendencyFields(arch, grid, tracers))
+                                implicit_solver::TI = nothing,
+                                Gⁿ::TG = TendencyFields(arch, grid, tracers),
+                                G⁻ = TendencyFields(arch, grid, tracers)) where {TI, TG}
 
     !isnothing(implicit_solver) &&
         @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
@@ -41,7 +41,9 @@ function RungeKutta3TimeStepper(arch, grid, tracers;
     ζ² = -17 // 60
     ζ³ = -5 // 12
 
-    return RungeKutta3TimeStepper{eltype(grid), typeof(Gⁿ)}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, implicit_solver)
+    FT = typeof(grid)
+
+    return RungeKutta3TimeStepper{FT, TG, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, implicit_solver)
 end
 
 #####
