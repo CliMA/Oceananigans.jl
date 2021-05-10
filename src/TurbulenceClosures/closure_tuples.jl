@@ -81,7 +81,6 @@ const VIC = AbstractTurbulenceClosure{<:VerticallyImplicitTimeDiscretization}
 @inline z_viscosity(clo::Tuple, Ks) = tuple(z_viscosity(clo[1:2],   Ks[1:2])...,
                                             z_viscosity(clo[3:end], Ks[3:end])...)
 
-
 for coeff in (:νᶜᶜᶜ, :νᶠᶠᶜ, :νᶠᶜᶠ, :νᶜᶠᶠ, :κᶜᶜᶠ, :κᶜᶠᶜ, :κᶠᶜᶜ)
     @eval begin
         @inline $coeff(i, j, k, grid, clock, ν::Tuple{C1})     where C1       = $coeff(i, j, k, grid, clock, ν[1])
