@@ -6,6 +6,7 @@ using Oceananigans.Solvers: solve!
 using Oceananigans.Fields
 
 using Adapt
+using KernelAbstractions: NoneEvent
 
 struct ImplicitFreeSurface{E, G, B, V, R, I, S}
     η :: E
@@ -93,7 +94,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     # solve!(x, solver, b, args...) solves A*x = b for x.
     solve!(η, free_surface.implicit_step_solver, rhs, ∫ᶻ_A.xᶠᶜᶜ, ∫ᶻ_A.yᶜᶠᶜ, g, Δt)
 
-    return nothing
+    return NoneEvent()
 end
 
 function compute_implicit_free_surface_right_hand_side!(rhs, model, g, Δt, ∫ᶻ_Q, η)
