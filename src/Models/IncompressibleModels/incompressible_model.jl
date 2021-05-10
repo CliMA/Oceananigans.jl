@@ -135,12 +135,14 @@ function IncompressibleModel(;    grid,
     model_field_names = (:u, :v, :w, tracernames(tracers)...)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, model_field_names)
 
+    # Ensure `closure` describes all tracers
+    closure = with_tracers(tracernames(tracers), closure)
+
     # Either check grid-correctness, or construct tuples of fields
     velocities    = VelocityFields(velocities, architecture, grid, boundary_conditions)
     tracers       = TracerFields(tracers,      architecture, grid, boundary_conditions)
     pressures     = PressureFields(pressures,  architecture, grid, boundary_conditions)
-    diffusivities = DiffusivityFields(diffusivities, architecture, grid,
-                                      tracernames(tracers), boundary_conditions, closure)
+    diffusivities = DiffusivityFields(diffusivities, architecture, grid, tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
         pressure_solver = PressureSolver(architecture, grid)
@@ -155,7 +157,6 @@ function IncompressibleModel(;    grid,
     # Regularize forcing and closure for model tracer and velocity fields.
     model_fields = merge(velocities, tracers)
     forcing = model_forcing(model_fields; forcing...)
-    closure = with_tracers(tracernames(tracers), closure)
 
     return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                forcing, closure, background_fields, particles, velocities, tracers,
