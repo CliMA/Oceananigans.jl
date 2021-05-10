@@ -68,7 +68,7 @@ end
 
 @inline function ivd_lower_diagonalᵃᵃᶠ(i, j, k, grid, clock, Δt, νᶜᶜᶜ, ν)
     k′ = k + 1 # Shift to adjust for Tridiagonal indexing convenction
-    νᵏ⁻¹ = νᶜᶜᶜ(i, j, k′ - 1, grid, clock, κ)
+    νᵏ⁻¹ = νᶜᶜᶜ(i, j, k′ - 1, grid, clock, ν)
     return - Δt * κ_Δz²(i, j, k′, k′-1, grid, νᵏ⁻¹)
 end
 
