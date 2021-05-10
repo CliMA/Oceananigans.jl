@@ -102,4 +102,4 @@ const ExplicitOrNothing = Union{ExplicitTimeDiscretization, Nothing}
 @inline combine_time_discretizations(disc1, disc2, other_discs...) =
     combine_time_discretizations(combine_time_discretizations(disc1, disc2), other_discs...)
 
-@inline time_discretization(closures::Tuple) = combine_time_discretization(time_discretization.(closures)...)
+@inline time_discretization(closures::Tuple) = combine_time_discretizations(time_discretization.(closures)...)
