@@ -37,7 +37,7 @@ To use the Smagorinsky-Lilly LES closure, no parameters are required
 julia> using Oceananigans.TurbulenceClosures
 
 julia> closure = SmagorinskyLilly()
-SmagorinskyLilly: C=0.23, Cb=1.0, Pr=1.0, ν=1.05e-6, κ=1.46e-7
+SmagorinskyLilly: C=0.23, Cb=1.0, Pr=1.0, ν=0.0, κ=0.0
 ```
 
 although they may be specified. By default, the background viscosity and diffusivity are assumed to be the molecular
