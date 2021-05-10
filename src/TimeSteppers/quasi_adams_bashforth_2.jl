@@ -96,7 +96,6 @@ function ab2_step!(model, Δt, χ)
                        model.timestepper.implicit_solver,
                        model.clock,
                        Δt,
-                       location(field),
                        model.closure,
                        model.diffusivities,
                        tracer_index,
@@ -126,5 +125,3 @@ end
 
 @kernel ab2_step_field!(::FunctionField, args...) = nothing
 
-# Needed for use with `HydrostaticFreeSurfaceModel` + `PrescribedVelocities` + prescribed `Field` (not `FunctionField`).
-# @kernel ab2_step_field!(::Nothing, args...) = nothing
