@@ -130,6 +130,11 @@ end
 ##### Implicit step functions
 #####
 
+is_c_location(loc) = loc === (Center, Center, Center)
+is_u_location(loc) = loc === (Face, Center, Center)
+is_v_location(loc) = loc === (Center, Face, Center)
+is_w_location(loc) = loc === (Center, Center, Face)
+
 """
     implicit_step!(field, solver::VerticallyImplicitDiffusionSolver, clock, Δt, κ⁻⁻ᶠ, κ; dependencies)
 
@@ -138,56 +143,47 @@ tridiagonal system for vertically-implicit diffusion, passing the arguments
 `clock, Δt, κ⁻⁻ᶠ, κ` into the coefficient functions that return coefficients of the
 lower diagonal, diagonal, and upper diagonal of the resulting tridiagonal system.
 """
-function implicit_step!(field,
-                        tridiagonal_solver,
-                        clock, Δt, κ⁻⁻ᶠ, κ;
+function implicit_step!(velocity_field,
+                        implicit_solver::VerticallyImplicitDiffusionSolver,
+                        clock,
+                        Δt,
+                        field_location,
+                        closure,
+                        diffusivities;
                         dependencies = Event(device(model.architecture)))
 
-    field_interior = interior(field)
-    tridiagonal_solver.f .= field_interior
+    if is_c_location(field_location)
 
-    return solve_batched_tridiagonal_system!(field,
-                                             tridiagonal_solver, clock, Δt, κ⁻⁻ᶠ, κ;
-                                             dependencies = dependencies)
-end
-                                             
-function implicit_velocity_step!(velocity_field,
-                                 implicit_solver::VerticallyImplicitDiffusionSolver,
-                                 clock,
-                                 Δt,
-                                 field_location,
-                                 closure,
-                                 diffusivities;
-                                 dependencies = Event(device(model.architecture)))
-
-    vertical_viscous_flux_location = (field_location[1], field_location[2], flip(field_location[3]))
-    ν⁻⁻ᶠ = eval(Symbol(:ν, interpolation_code.(vertical_viscous_flux_location)...)) 
-    ν = z_viscosity(closure, diffusivities)
-
-    if field_location === (Center, Center, Face) # w velocity
-        solver = implicit_solver.w_velocity_solver
-    else
+        coeff = z_diffusivity(closure, diffusivities, Val(tracer_index))
+        locate_coeff = κᶜᶜᶠ
         solver = implicit_solver.tracer_solver
+
+    elseif is_u_location(field_location)
+
+        locate_coeff = νᶠᶜᶠ
+        coeff = z_viscosity(closure, diffusivities)
+        solver = implicit_solver.tracer_solver
+
+    elseif is_v_location(field_location)
+
+        locate_coeff = νᶜᶠᶠ
+        coeff = z_viscosity(closure, diffusivities)
+        solver = implicit_solver.tracer_solver
+
+    elseif is_w_location(field_location)
+
+        locate_coeff = νᶜᶜᶜ
+        coeff = z_viscosity(closure, diffusivities)
+        solver = implicit_solver.w_velocity_solver
+
+    else
+        error("Cannot take an implicit_step! for a field at $field_location")
     end
 
-    return implicit_step!(velocity_field,
-                          solver, clock, Δt, ν⁻⁻ᶠ, ν;
-                          dependencies = dependencies)
+    field_interior = interior(field)
+    solver.f .= field_interior
+
+    return solve_batched_tridiagonal_system!(field,
+                                             solver, clock, Δt, locate_coeff, coeff;
+                                             dependencies = dependencies)
 end
-
-function implicit_tracer_step!(tracer_field,
-                               implicit_solver::VerticallyImplicitDiffusionSolver,
-                               clock,
-                               Δt,
-                               closure,
-                               diffusivities,
-                               tracer_index;
-                               dependencies = Event(device(model.architecture)))
-
-    κ = z_diffusivity(closure, diffusivities, Val(tracer_index))
-
-    return implicit_step!(tracer_field,
-                          implicit_solver.tracer_solver, clock, Δt, κᶜᶜᶠ, κ;
-                          dependencies = dependencies)
-end
-
