@@ -164,7 +164,7 @@ function implicit_velocity_step!(velocity_field,
     ν⁻⁻ᶠ = eval(Symbol(:ν, interpolation_code.(vertical_viscous_flux_location)...)) 
     ν = z_viscosity(closure, diffusivities)
 
-    if field_location = (Center, Center, Face) # w velocity
+    if field_location === (Center, Center, Face) # w velocity
         solver = implicit_solver.w_velocity_solver
     else
         solver = implicit_solver.tracer_solver
