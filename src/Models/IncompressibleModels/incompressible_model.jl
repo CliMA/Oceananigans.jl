@@ -12,7 +12,7 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper
-using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
+using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
@@ -51,7 +51,7 @@ end
                coriolis = nothing,
            stokes_drift = nothing,
                 forcing = NamedTuple(),
-                closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
+                closure = nothing,
     boundary_conditions = NamedTuple(),
                 tracers = (:T, :S),
             timestepper = :QuasiAdamsBashforth2,
@@ -93,7 +93,7 @@ function IncompressibleModel(;
                coriolis = nothing,
            stokes_drift = nothing,
                 forcing::NamedTuple = NamedTuple(),
-                closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
+                closure = nothing,
     boundary_conditions::NamedTuple = NamedTuple(),
                 tracers = (:T, :S),
             timestepper = :QuasiAdamsBashforth2,
