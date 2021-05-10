@@ -6,9 +6,10 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver, solve_batched_tridiagonal_
 ##### Vertically implicit solver
 #####
 
-struct VerticallyImplicitDiffusionSolver{H, Z}
-    tracer_solver :: H # also used for horizontal velocities
-    w_velocity_solver :: Z
+struct VerticallyImplicitDiffusionSolver{A, H, Z}
+    architecture :: A
+    z_center_solver :: H # also used for horizontal velocities
+    z_face_solver :: Z
 end
 
 """
@@ -25,14 +26,13 @@ Returns the "vertical" (z-direction) diffusivity associated with `closure` and `
 """
 function z_diffusivity end
 
-implicit_velocity_step!(u, ::Nothing, args...; kwargs...) = NoneEvent()
-implicit_tracer_step!(c, ::Nothing, args...; kwargs...) = NoneEvent()
-
+implicit_step!(field, ::Nothing, args...; kwargs...) = NoneEvent()
 implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = nothing
 
 #####
 ##### Solver kernel functions for tracers / horizontal velocities and for vertical velocities
 ##### Note: "ivd" stands for implicit vertical diffusion.
+#####
 
 @inline κ_Δz²(i, j, kᶠ, kᶜ, grid, κ) = κ / Δzᵃᵃᶜ(i, j, kᶜ, grid) / Δzᵃᵃᶠ(i, j, kᶠ, grid)
 
@@ -88,15 +88,20 @@ end
 """
     implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, arch, grid)
 
-Build a tridiagonal solver for the elliptic equation
+Build tridiagonal solvers for the elliptic equation
 
 ```math
 (1 + Δt ∂z κ ∂z) cⁿ⁺¹ = c★
 ```
 
-where `cⁿ⁺¹` and `c★` live at cell `Center`s in the vertical.
+```math
+(1 + Δt ∂z ν ∂z) wⁿ⁺¹ = w★
+```
+
+where `cⁿ⁺¹` and `c★` live at cell `Center`s in the vertical,
+and `wⁿ⁺¹` and `w★` lives at cell `Face`s in the vertical.
 """
-function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, arch, grid; with_w_velocity_solver)
+function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, arch, grid; with_z_face_solver)
 
     topo = topology(grid)
 
@@ -106,23 +111,24 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, arch,
     # Scratch memory for right_hand_side
     right_hand_side = arch_array(arch, zeros(grid.Nx, grid.Ny, grid.Nz))
 
-    tracer_solver = BatchedTridiagonalSolver(arch, grid;
-                                             lower_diagonal = ivd_lower_diagonalᵃᵃᶜ,
-                                             diagonal = ivd_diagonalᵃᵃᶜ,
-                                             upper_diagonal = ivd_upper_diagonalᵃᵃᶜ,
-                                             right_hand_side = right_hand_side)
+    z_center_solver = BatchedTridiagonalSolver(arch, grid;
+                                               lower_diagonal = ivd_lower_diagonalᵃᵃᶜ,
+                                               diagonal = ivd_diagonalᵃᵃᶜ,
+                                               upper_diagonal = ivd_upper_diagonalᵃᵃᶜ,
+                                               right_hand_side = right_hand_side)
 
-    if with_w_velocity_solver
-        w_velocity_solver = BatchedTridiagonalSolver(arch, grid;
-                                                     lower_diagonal = ivd_lower_diagonalᵃᵃᶠ,
-                                                     diagonal = ivd_diagonalᵃᵃᶠ,
-                                                     upper_diagonal = ivd_upper_diagonalᵃᵃᶠ,
-                                                     right_hand_side = right_hand_side)
+    # Needed for non hydrostatic models:
+    if with_z_face_solver
+        z_face_solver = BatchedTridiagonalSolver(arch, grid;
+                                                 lower_diagonal = ivd_lower_diagonalᵃᵃᶠ,
+                                                 diagonal = ivd_diagonalᵃᵃᶠ,
+                                                 upper_diagonal = ivd_upper_diagonalᵃᵃᶠ,
+                                                 right_hand_side = right_hand_side)
     else
-        w_velocity_solver = nothing
+        z_face_solver = nothing
     end
 
-    return VerticallyImplicitDiffusionSolver(tracer_solver, w_velocity_solver)
+    return VerticallyImplicitDiffusionSolver(arch, z_center_solver, z_face_solver)
 end
 
 #####
@@ -135,46 +141,46 @@ is_v_location(loc) = loc === (Center, Face, Center)
 is_w_location(loc) = loc === (Center, Center, Face)
 
 """
-    implicit_step!(field, solver::VerticallyImplicitDiffusionSolver, clock, Δt, κ⁻⁻ᶠ, κ; dependencies)
+    implicit_step!(field, solver::VerticallyImplicitDiffusionSolver, clock, Δt,
+                   closure, diffusivities, tracer_index; dependencies = Event
 
 Initialize the right hand side array `solver.batched_tridiagonal_solver.f`, and then solve the
 tridiagonal system for vertically-implicit diffusion, passing the arguments
 `clock, Δt, κ⁻⁻ᶠ, κ` into the coefficient functions that return coefficients of the
 lower diagonal, diagonal, and upper diagonal of the resulting tridiagonal system.
 """
-function implicit_step!(velocity_field,
+function implicit_step!(field::AbstractField{X, Y, Z},
                         implicit_solver::VerticallyImplicitDiffusionSolver,
                         clock,
                         Δt,
-                        field_location,
                         closure,
                         diffusivities,
                         tracer_index = nothing;
-                        dependencies = Event(device(model.architecture)))
+                        dependencies) where {X, Y, Z}
+                        
+    if is_c_location((X, Y, Z))
 
-    if is_c_location(field_location)
-
-        coeff = z_diffusivity(closure, diffusivities, Val(tracer_index))
         locate_coeff = κᶜᶜᶠ
-        solver = implicit_solver.tracer_solver
+        coeff = z_diffusivity(closure, diffusivities, Val(tracer_index))
+        solver = implicit_solver.z_center_solver
 
-    elseif is_u_location(field_location)
+    elseif is_u_location((X, Y, Z))
 
         locate_coeff = νᶠᶜᶠ
         coeff = z_viscosity(closure, diffusivities)
-        solver = implicit_solver.tracer_solver
+        solver = implicit_solver.z_center_solver
 
-    elseif is_v_location(field_location)
+    elseif is_v_location((X, Y, Z))
 
         locate_coeff = νᶜᶠᶠ
         coeff = z_viscosity(closure, diffusivities)
-        solver = implicit_solver.tracer_solver
+        solver = implicit_solver.z_center_solver
 
-    elseif is_w_location(field_location)
+    elseif is_w_location((X, Y, Z))
 
         locate_coeff = νᶜᶜᶜ
         coeff = z_viscosity(closure, diffusivities)
-        solver = implicit_solver.w_velocity_solver
+        solver = implicit_solver.z_face_solver
 
     else
         error("Cannot take an implicit_step! for a field at $field_location")
@@ -183,7 +189,7 @@ function implicit_step!(velocity_field,
     field_interior = interior(field)
     solver.f .= field_interior
 
-    return solve_batched_tridiagonal_system!(field,
-                                             solver, clock, Δt, locate_coeff, coeff;
+    return solve_batched_tridiagonal_system!(field, solver, clock, Δt, locate_coeff, coeff;
                                              dependencies = dependencies)
 end
+

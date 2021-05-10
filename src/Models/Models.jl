@@ -8,6 +8,7 @@ export
     PrescribedVelocityFields
 
 using Oceananigans: AbstractModel
+import Oceananigans.Architectures: device_event
 
 abstract type AbstractIncompressibleModel{TS} <: AbstractModel{TS} end
 
@@ -23,5 +24,7 @@ using .HydrostaticFreeSurfaceModels:
     ExplicitFreeSurface, ImplicitFreeSurface,
     HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
     PrescribedVelocityFields
+
+device_event(model::AbstractModel) = device_event(model.architecture)
 
 end
