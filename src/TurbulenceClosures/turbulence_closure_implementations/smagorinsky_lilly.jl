@@ -197,7 +197,7 @@ function DiffusivityFields(arch, grid, tracer_names, bcs, closure::SmagorinskyLi
         κ = closure.κ[i]
         ν = closure.ν
         κₑ_op = (νₑ - ν) / Pr + κ
-        push!(κ_ops, κₑ_op)
+        push!(κₑ_ops, κₑ_op)
     end
 
     κₑ = NamedTuple{tracer_names}(Tuple(κₑ_ops))
