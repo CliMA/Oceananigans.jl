@@ -182,7 +182,6 @@ Base.show(io::IO, closure::SmagorinskyLilly) =
 ##### For closures that only require an eddy viscosity νₑ field.
 #####
 
-
 function DiffusivityFields(arch, grid, tracer_names, bcs, closure::SmagorinskyLilly)
     νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
 
