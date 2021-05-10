@@ -100,8 +100,7 @@ function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
        velocities = VelocityFields(arch, grid)
           tracers = TracerFields(tracernames, arch, grid)
 
-    U, C, K = datatuples(velocities, tracers, diffusivities)
-    calculate_diffusivities!(K, arch, grid, closure, buoyancy, U, C)
+    calculate_diffusivities!(diffusivities, arch, grid, closure, buoyancy, velocities, tracers)
 
     return true
 end
