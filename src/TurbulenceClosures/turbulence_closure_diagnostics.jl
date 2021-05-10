@@ -122,8 +122,8 @@ function cell_diffusion_timescale(closure::HorizontallyCurvilinearAnisotropicBih
                Δz^4 / max_κz)
 end
 
-function cell_diffusion_timescale(closure::SmagorinskyLilly{FT, P, <:NamedTuple{()}},
-                                  diffusivities, grid) where {FT, P}
+function cell_diffusion_timescale(closure::SmagorinskyLilly{FT, TD, P, <:NamedTuple{()}},
+                                  diffusivities, grid) where {FT, TD, P}
     Δ = min_Δxyz(grid)
     max_ν = maximum(diffusivities.νₑ.data.parent)
     return Δ^2 / max_ν
@@ -137,8 +137,8 @@ function cell_diffusion_timescale(closure::SmagorinskyLilly, diffusivities, grid
     return min(Δ^2 / max_νκ, Δ^2 / max_κ)
 end
 
-function cell_diffusion_timescale(closure::AnisotropicMinimumDissipation{FT, PK, PN, <:NamedTuple{()}},
-                                  diffusivities, grid) where {FT, PK, PN}
+function cell_diffusion_timescale(closure::AnisotropicMinimumDissipation{FT, TD, PK, PN, <:NamedTuple{()}},
+                                  diffusivities, grid) where {FT, TD, PK, PN}
     Δ = min_Δxyz(grid)
     max_ν = maximum(diffusivities.νₑ.data.parent)
     return Δ^2 / max_ν
