@@ -1,4 +1,4 @@
-using Oceananigans.Fields: FunctionField
+using Oceananigans.Fields: FunctionField, location
 
 struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
