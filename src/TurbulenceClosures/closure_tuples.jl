@@ -59,16 +59,16 @@ const EC = AbstractTurbulenceClosure{<:ExplicitTimeDiscretization}
 const VIC = AbstractTurbulenceClosure{<:VerticallyImplicitTimeDiscretization}
 
 # Filter explicitly-discretized closures.
-@inline z_diffusivity(clo::Tuple{<:EC},        Ks, ::Val{c_idx}) = where {c_idx} = tuple(0)
-@inline z_diffusivity(clo::Tuple{<:VIC},       Ks, ::Val{c_idx}) = where {c_idx} = tuple(z_diffusivity(clo[1], Ks[1], Val(c_idx)))
-@inline z_diffusivity(clo::Tuple{<:VIC, <:EC}, Ks, ::Val{c_idx}) = where {c_idx} = tuple(z_diffusivity(clo[1], Ks[1], Val(c_idx)))
-@inline z_diffusivity(clo::Tuple{<:EC, <:VIC}, Ks, ::Val{c_idx}) = where {c_idx} = tuple(z_diffusivity(clo[2], Ks[2], Val(c_idx)))
+@inline z_diffusivity(clo::Tuple{<:EC},        Ks, ::Val{c_idx}) where {c_idx} = tuple(0)
+@inline z_diffusivity(clo::Tuple{<:VIC},       Ks, ::Val{c_idx}) where {c_idx} = tuple(z_diffusivity(clo[1], Ks[1], Val(c_idx)))
+@inline z_diffusivity(clo::Tuple{<:VIC, <:EC}, Ks, ::Val{c_idx}) where {c_idx} = tuple(z_diffusivity(clo[1], Ks[1], Val(c_idx)))
+@inline z_diffusivity(clo::Tuple{<:EC, <:VIC}, Ks, ::Val{c_idx}) where {c_idx} = tuple(z_diffusivity(clo[2], Ks[2], Val(c_idx)))
 
-@inline z_diffusivity(clo::Tuple{<:VIC, <:VIC}, Ks, ::Val{c_idx}) = where {c_idx} = tuple(z_diffusivity(clo[1], Ks[1], Val(c_idx)),
-                                                                                          z_diffusivity(clo[2], Ks[2], Val(c_idx)))
+@inline z_diffusivity(clo::Tuple{<:VIC, <:VIC}, Ks, ::Val{c_idx}) where {c_idx} = tuple(z_diffusivity(clo[1], Ks[1], Val(c_idx)),
+                                                                                        z_diffusivity(clo[2], Ks[2], Val(c_idx)))
 
-@inline z_diffusivity(clo::Tuple, Ks, ::Val{c_idx}) = where c_idx = tuple(z_diffusivity(clo[1:2],   Ks[1:2], Val(c_idx))...,
-                                                                          z_diffusivity(clo[3:end], Ks[3:end], Val(c_idx))...)
+@inline z_diffusivity(clo::Tuple, Ks, ::Val{c_idx}) where c_idx = tuple(z_diffusivity(clo[1:2],   Ks[1:2], Val(c_idx))...,
+                                                                        z_diffusivity(clo[3:end], Ks[3:end], Val(c_idx))...)
 
 @inline z_viscosity(clo::Tuple{<:EC},         Ks) = tuple(0)
 @inline z_viscosity(clo::Tuple{<:VIC},        Ks) = tuple(z_viscosity(clo[1], Ks[1]))
