@@ -78,8 +78,8 @@ const AG = AbstractGrid
 @inline ivd_viscous_flux_vz(i, j, k, grid, clock, closure, U, K) = - ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, K), ∂yᶜᶠᵃ, U.v)
 
 # General functions (eg for vertically periodic)
-@inline viscous_flux_uz(i, j, k, grid::AG, ::VITD, clock, closure::AID, U, K) = ivd_viscous_flux_uz(i, j, k, grid, clock, closure, U, K)
-@inline viscous_flux_vz(i, j, k, grid::AG, ::VITD, clock, closure::AID, U, K) = ivd_viscous_flux_vz(i, j, k, grid, clock, closure, U, K)
+@inline viscous_flux_uz(i, j, k, grid::AG,     ::VITD, clock, closure::AID, U, K) = ivd_viscous_flux_uz(i, j, k, grid, clock, closure, U, K)
+@inline viscous_flux_vz(i, j, k, grid::AG,     ::VITD, clock, closure::AID, U, K) = ivd_viscous_flux_vz(i, j, k, grid, clock, closure, U, K)
 @inline viscous_flux_wz(i, j, k, grid::AG{FT}, ::VITD, clock, closure::AID, U, K) where FT = zero(FT)
 @inline diffusive_flux_z(i, j, k, grid::AG{FT}, ::VITD, clock, closure::AID, args...) where FT = zero(FT)
                   
