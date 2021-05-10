@@ -72,8 +72,8 @@ const VIC = AbstractTurbulenceClosure{<:VerticallyImplicitTimeDiscretization}
 
 @inline z_viscosity(clo::Tuple{<:EC},         Ks) = tuple(0)
 @inline z_viscosity(clo::Tuple{<:VIC},        Ks) = tuple(z_viscosity(clo[1], Ks[1]))
-@inline z_viscosity(clo::Tuple{<:VIC, <:EC},  Ks) = tuple(z_viscosity(clo[1], Ks[1]),
-@inline z_viscosity(clo::Tuple{<:EC, <:VIC},  Ks) = tuple(z_viscosity(clo[2], Ks[2]),
+@inline z_viscosity(clo::Tuple{<:VIC, <:EC},  Ks) = tuple(z_viscosity(clo[1], Ks[1]))
+@inline z_viscosity(clo::Tuple{<:EC, <:VIC},  Ks) = tuple(z_viscosity(clo[2], Ks[2]))
 
 @inline z_viscosity(clo::Tuple{<:VIC, <:VIC}, Ks) = tuple(z_viscosity(clo[1], Ks[1]),
                                                           z_viscosity(clo[2], Ks[2]))
