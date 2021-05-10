@@ -40,6 +40,9 @@ end
 ##### Utilities
 #####
 
+with_tracers(tracers, closure_tuple::Tuple) =
+    Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
+
 function calculate_diffusivities!(Ks, arch, grid, closures::Tuple, args...)
     for (α, closure) in enumerate(closures)
         @inbounds K = Ks[α]
