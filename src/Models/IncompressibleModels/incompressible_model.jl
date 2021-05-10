@@ -12,7 +12,7 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper
-using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields, time_discretization
+using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
