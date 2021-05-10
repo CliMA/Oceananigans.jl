@@ -89,9 +89,23 @@ const VITD = VerticallyImplicitTimeDiscretization
 z_viscosity(closure::HorizontallyCurvilinearAnisotropicDiffusivity, diffusivities) = closure.νz
 z_diffusivity(closure::HorizontallyCurvilinearAnisotropicDiffusivity, diffusivities, ::Val{tracer_index}) where tracer_index = @inbounds closure.κz[tracer_index]
 
-@inline diffusive_flux_z(i, j, k, grid::AG{FT}, ::VITD, clock, ::HCAD, args...) where FT = zero(FT)
-@inline viscous_flux_uz(i, j, k, grid::AG{FT}, ::VITD, clock, ::HCAD, args...) where FT = zero(FT)
-@inline viscous_flux_vz(i, j, k, grid::AG{FT}, ::VITD, clock, ::HCAD, args...) where FT = zero(FT)
+@inline function diffusive_flux_z(i, j, k, grid::AG{FT}, ::VITD, clock, closure::HCAD, args...) where FT
+    return ifelse(k == 1 || k == grid.Nz+1, 
+                  diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, args...), # on boundaries, calculate fluxes explicitly
+                  zero(FT))
+end
+
+@inline function viscous_flux_uz(i, j, k, grid::AG{FT}, ::VITD, clock, closure::HCAD, args...) where FT
+    return ifelse(k == 1 || k == grid.Nz+1, 
+                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, U, K), # on boundaries, calculate fluxes explicitly
+                  zero(FT))
+end
+
+@inline function viscous_flux_vz(i, j, k, grid::AG{FT}, ::VITD, clock, closure::HCAD, args...) where FT
+    return ifelse(k == 1 || k == grid.Nz+1, 
+                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, U, K), # on boundaries, calculate fluxes explicitly
+                  zero(FT))
+end
 
 Base.show(io::IO, closure::HorizontallyCurvilinearAnisotropicDiffusivity) =
     print(io, "HorizontallyCurvilinearAnisotropicDiffusivity: " *

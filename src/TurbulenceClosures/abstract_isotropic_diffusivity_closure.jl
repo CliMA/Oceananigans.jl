@@ -72,8 +72,26 @@ const VITD = VerticallyImplicitTimeDiscretization
 @inline z_viscosity(closure::AID, diffusivities) = viscosity(closure, diffusivities)
 @inline z_diffusivity(closure::AID, diffusivities, ::Val{c_idx}) where c_idx = diffusivity(closure, diffusivities, Val(c_idx))
 
-@inline viscous_flux_uz(i, j, k, grid, ::VITD, clock, closure::AID, U, K) = - ν_σᶠᶜᶠ(i, j, k, grid, viscosity(closure, K), ∂xᶠᶜᵃ, U.w) # neglecting ∂z ν ∂z u
-@inline viscous_flux_vz(i, j, k, grid, ::VITD, clock, closure::AID, U, K) = - ν_σᶜᶠᶠ(i, j, k, grid, viscosity(closure, K), ∂yᶜᶠᵃ, U.v) # neglecting ∂z ν ∂z u
-@inline viscous_flux_wz(i, j, k, grid::AbstractGrid{FT}, ::VITD, clock, closure::AID, U, K) where FT = zero(FT)
+@inline function viscous_flux_uz(i, j, k, grid, ::VITD, clock, closure::AID, U, K)
+    return ifelse(k == 1 || k == grid.Nz+1, 
+                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, U, K), # on boundaries, calculate fluxes explicitly
+                  - ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, K), ∂xᶠᶜᵃ, U.w))                  # neglecting ∂z ν ∂z u
+end
 
-@inline diffusive_flux_z(i, j, k, grid::AbstractGrid{FT}, ::VITD, clock, closure::AID, args...) where FT = zero(FT)
+@inline function viscous_flux_vz(i, j, k, grid, ::VITD, clock, closure::AID, U, K)
+    return ifelse(k == 1 || k == grid.Nz+1, 
+                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, U, K), # on boundaries, calculate fluxes explicitly
+                  - ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, K), ∂yᶜᶠᵃ, U.v))                  # neglecting ∂z ν ∂z u
+end
+
+@inline function viscous_flux_wz(i, j, k, grid::AbstractGrid{FT}, ::VITD, clock, closure::AID, U, K) where FT
+    return ifelse(k == 1 || k == grid.Nz+1, 
+                  viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, U, K), # on boundaries, calculate fluxes explicitly
+                  zero(FT))
+end
+
+@inline function diffusive_flux_z(i, j, k, grid::AbstractGrid{FT}, ::VITD, clock, closure::AID, args...) where FT
+    return ifelse(k == 1 || k == grid.Nz+1, 
+                  diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, args...), # on boundaries, calculate fluxes explicitly
+                  zero(FT))
+end
