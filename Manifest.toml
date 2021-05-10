@@ -57,9 +57,11 @@ uuid = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
 version = "0.2.0"
 
 [[Cassette]]
-git-tree-sha1 = "742fbff99a2798f02bd37d25087efb5615b5a207"
+git-tree-sha1 = "f80b4da0c926dc96f946628757a5926ff5a42e28"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaLabs/Cassette.jl.git"
 uuid = "7057c7e9-c182-5462-911a-8362d720325c"
-version = "0.3.5"
+version = "0.3.6"
 
 [[ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
