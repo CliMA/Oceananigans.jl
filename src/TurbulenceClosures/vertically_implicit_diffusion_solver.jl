@@ -149,7 +149,8 @@ function implicit_step!(velocity_field,
                         Δt,
                         field_location,
                         closure,
-                        diffusivities;
+                        diffusivities,
+                        tracer_index = nothing;
                         dependencies = Event(device(model.architecture)))
 
     if is_c_location(field_location)

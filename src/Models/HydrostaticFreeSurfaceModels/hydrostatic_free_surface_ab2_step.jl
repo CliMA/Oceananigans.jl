@@ -53,14 +53,14 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         # TODO: let next implicit solve depend on previous solve + explicit velocity step
         # Need to distinguish between solver events and tendency calculation events.
         # Note that BatchedTridiagonalSolver has a hard `wait`; this must be solved first.
-        implicit_velocity_step!(velocity_field,
-                                model.timestepper.implicit_solver,
-                                model.clock,
-                                Δt,
-                                location(velocity_field),
-                                model.closure,
-                                model.diffusivities,
-                                dependencies = explicit_velocity_step_events[i])
+        implicit_step!(velocity_field,
+                       model.timestepper.implicit_solver,
+                       model.clock,
+                       Δt,
+                       location(velocity_field),
+                       model.closure,
+                       model.diffusivities,
+                       dependencies = explicit_velocity_step_events[i])
     end
 
     return explicit_velocity_step_events
@@ -96,15 +96,15 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         tracer_field = tracers[tracer_name]
 
-        implicit_tracer_step!(tracer_field,
-                              model.timestepper.implicit_solver,
-                              model.clock,
-                              Δt,
-                              model.closure,
-                              model.diffusivities,
-                              tracer_index,
-                              dependencies = explicit_tracer_step_events[tracer_index])
-
+        implicit_step!(tracer_field,
+                       model.timestepper.implicit_solver,
+                       model.clock,
+                       Δt,
+                       location(tracer_field),
+                       model.closure,
+                       model.diffusivities,
+                       tracer_index,
+                       dependencies = explicit_tracer_step_events[tracer_index])
     end
 
     return explicit_tracer_step_events

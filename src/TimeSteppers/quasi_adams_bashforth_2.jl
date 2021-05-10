@@ -87,6 +87,19 @@ function ab2_step!(model, Δt, χ)
                                          dependencies=Event(device(model.architecture)))
 
         push!(events, field_event)
+
+        # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
+        tracer_index = i - 3 # assumption
+
+        implicit_step!(field,
+                       model.timestepper.implicit_solver,
+                       model.clock,
+                       Δt,
+                       location(field),
+                       model.closure,
+                       model.diffusivities,
+                       tracer_index,
+                       dependencies = field_event)
     end
 
     wait(device(model.architecture), MultiEvent(Tuple(events)))
