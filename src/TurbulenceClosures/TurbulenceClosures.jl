@@ -14,12 +14,10 @@ export
     DiffusivityFields,
     calculate_diffusivities!,
 
-    ∇_κ_∇c,
-    ∇_κ_∇T,
-    ∇_κ_∇S,
-    ∂ⱼ_2ν_Σ₁ⱼ,
-    ∂ⱼ_2ν_Σ₂ⱼ,
-    ∂ⱼ_2ν_Σ₃ⱼ,
+    ∇_dot_qᶜ,
+    ∂ⱼ_τ₁ⱼ,
+    ∂ⱼ_τ₂ⱼ,
+    ∂ⱼ_τ₃ⱼ,
 
     cell_diffusion_timescale
 
