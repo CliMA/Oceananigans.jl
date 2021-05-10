@@ -1,4 +1,5 @@
 using Oceananigans.Fields: FunctionField, location
+using Oceananigans.TurbulenceClosures: implicit_step!
 
 struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
