@@ -24,7 +24,7 @@ julia> model = IncompressibleModel(grid=grid, buoyancy=nothing)
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
+├── closure: Nothing
 ├── buoyancy: Nothing
 └── coriolis: Nothing
 ```
@@ -38,7 +38,7 @@ julia> model = IncompressibleModel(grid=grid, buoyancy=nothing, tracers=())
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: ()
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(),Tuple{}}}
+├── closure: Nothing
 ├── buoyancy: Nothing
 └── coriolis: Nothing
 ```
@@ -53,7 +53,7 @@ julia> model = IncompressibleModel(grid=grid, buoyancy=BuoyancyTracer(), tracers
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:b,)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:b,),Tuple{Float64}}}
+├── closure: Nothing
 ├── buoyancy: BuoyancyTracer
 └── coriolis: Nothing
 ```
@@ -68,7 +68,7 @@ julia> model = IncompressibleModel(grid=grid, buoyancy=SeawaterBuoyancy())
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
+├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
 └── coriolis: Nothing
 ```
@@ -89,7 +89,7 @@ julia> model = IncompressibleModel(grid=grid, buoyancy=buoyancy)
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
+├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
 └── coriolis: Nothing
 ```
