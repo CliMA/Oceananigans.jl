@@ -25,8 +25,12 @@ Return an `RungeKutta3TimeStepper` object with tendency fields on `arch` and
 `grid`. The tendency fields can be specified via optional kwargs.
 """
 function RungeKutta3TimeStepper(arch, grid, tracers;
+                                implicit_solver = nothing,
                                 Gⁿ = TendencyFields(arch, grid, tracers),
                                 G⁻ = TendencyFields(arch, grid, tracers))
+
+    !isnothing(implicit_solver) &&
+        error("Implicit time discretization is not yet supported for RungeKutta3TimeStepper")
 
     γ¹ = 8 // 15
     γ² = 5 // 12

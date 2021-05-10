@@ -8,7 +8,8 @@ struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
 end
 
 """
-    QuasiAdamsBashforth2TimeStepper(arch, grid, tracers, χ=0.1; implicit_solver = nothing,
+    QuasiAdamsBashforth2TimeStepper(arch, grid, tracers, χ=0.1;
+                                    implicit_solver = nothing,
                                     Gⁿ = TendencyFields(arch, grid, tracers),
                                     G⁻ = TendencyFields(arch, grid, tracers))
 
@@ -65,6 +66,7 @@ end
 ##### Time stepping in each step
 #####
 
+""" Generic implementation. """
 function ab2_step!(model, Δt, χ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)

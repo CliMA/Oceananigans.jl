@@ -17,6 +17,8 @@ using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
+const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
+
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
                                    V, S, K, BG, P, I} <: AbstractModel{TS}
 
@@ -83,27 +85,26 @@ Keyword arguments
     - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
                      `:RungeKutta3`.
 """
-function IncompressibleModel(;
-                   grid,
-           architecture::AbstractArchitecture = CPU(),
-             float_type = Float64,
-                  clock = Clock{float_type}(0, 0, 1),
-              advection = CenteredSecondOrder(),
-               buoyancy = Buoyancy(model=SeawaterBuoyancy(float_type)),
-               coriolis = nothing,
-           stokes_drift = nothing,
-                forcing::NamedTuple = NamedTuple(),
-                closure = nothing,
-    boundary_conditions::NamedTuple = NamedTuple(),
-                tracers = (:T, :S),
-            timestepper = :QuasiAdamsBashforth2,
-      background_fields::NamedTuple = NamedTuple(),
-              particles::Union{Nothing,LagrangianParticles} = nothing,
-             velocities = nothing,
-              pressures = nothing,
-          diffusivities = nothing,
-        pressure_solver = nothing,
-      immersed_boundary = nothing
+function IncompressibleModel(;    grid,
+    architecture::AbstractArchitecture = CPU(),
+                            float_type = Float64,
+                                 clock = Clock{float_type}(0, 0, 1),
+                             advection = CenteredSecondOrder(),
+                              buoyancy = Buoyancy(model=SeawaterBuoyancy(float_type)),
+                              coriolis = nothing,
+                          stokes_drift = nothing,
+                   forcing::NamedTuple = NamedTuple(),
+                               closure = nothing,
+       boundary_conditions::NamedTuple = NamedTuple(),
+                               tracers = (:T, :S),
+                           timestepper = :QuasiAdamsBashforth2,
+         background_fields::NamedTuple = NamedTuple(),
+         particles::ParticlesOrNothing = nothing,
+                            velocities = nothing,
+                             pressures = nothing,
+                         diffusivities = nothing,
+                       pressure_solver = nothing,
+                     immersed_boundary = nothing
     )
 
     if architecture == GPU() && !has_cuda()
@@ -148,7 +149,9 @@ function IncompressibleModel(;
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
 
     # Instantiate timestepper if not already instantiated
-    timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers))
+    implicit_solver = nothing #implicit_diffusion_solver(time_discretization(closure), architecture, grid; with_w_velocity_solver=true)
+    timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers);
+                              implicit_solver=implicit_solver)
 
     # Regularize forcing and closure for model tracer and velocity fields.
     model_fields = merge(velocities, tracers)
