@@ -28,8 +28,7 @@ function z_diffusivity end
 implicit_velocity_step!(u, ::Nothing, args...; kwargs...) = NoneEvent()
 implicit_tracer_step!(c, ::Nothing, args...; kwargs...) = NoneEvent()
 
-implicit_diffusion_solver(closure::AbstractTurbulenceClosure, args...) = implicit_solver(time_discretization(closure), closure, args...)
-implicit_diffusion_solver(::ExplicitTimeDiscretization, args...) = nothing
+implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = nothing
 
 #####
 ##### Solver kernel functions for tracers / horizontal velocities and for vertical velocities
