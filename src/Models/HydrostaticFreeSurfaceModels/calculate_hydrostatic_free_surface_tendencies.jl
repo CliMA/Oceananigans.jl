@@ -1,6 +1,6 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
 
-using Oceananigans: fields
+using Oceananigans: fields, prognostic_fields
 using Oceananigans.Utils: work_layout
 
 """
@@ -25,6 +25,7 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
                                                                         model.tracers,
                                                                         model.pressure.pHY′,
                                                                         model.diffusivities,
+                                                                        model.auxiliary_fields,
                                                                         model.forcing,
                                                                         model.clock)
 
@@ -43,21 +44,21 @@ end
 
 function calculate_hydrostatic_momentum_tendencies!(tendencies, velocities, arch, grid, advection, coriolis, closure,
                                                     free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
-                                                    forcings, clock, barrier)
+                                                    auxiliary_fields, forcings, clock, barrier)
 
     Gu_event = launch!(arch, grid, :xyz, calculate_hydrostatic_free_surface_Gu!,
                        tendencies.u, grid, advection.momentum, coriolis, closure,
                        velocities, free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
-                       forcings, clock; dependencies = barrier)
+                       auxiliary_fields, forcings, clock; dependencies = barrier)
 
     Gv_event = launch!(arch, grid, :xyz, calculate_hydrostatic_free_surface_Gv!,
                        tendencies.v, grid, advection.momentum, coriolis, closure,
                        velocities, free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
-                       forcings, clock; dependencies = barrier)
+                       auxiliary_fields, forcings, clock; dependencies = barrier)
 
     Gη_event = launch!(arch, grid, :xy, calculate_hydrostatic_free_surface_Gη!,
                        tendencies.η, grid, velocities, free_surface, tracers,
-                       forcings, clock; dependencies = barrier)
+                       auxiliary_fields, forcings, clock; dependencies = barrier)
 
     events = [Gu_event, Gv_event, Gη_event]
 
@@ -77,6 +78,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(ten
                                                                              tracers,
                                                                              hydrostatic_pressure_anomaly,
                                                                              diffusivities,
+                                                                             auxiliary_fields,
                                                                              forcings,
                                                                              clock)
 
@@ -84,7 +86,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(ten
 
     events = calculate_hydrostatic_momentum_tendencies!(tendencies, velocities, arch, grid, advection, coriolis, closure,
                                                         free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
-                                                        forcings, clock, barrier)
+                                                        auxiliary_fields, forcings, clock, barrier)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
         @inbounds c_tendency = tendencies[tracer_name]
@@ -95,7 +97,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(ten
                            c_tendency, grid, Val(tracer_index),
                            c_advection, closure, buoyancy,
                            velocities, free_surface, tracers, diffusivities,
-                           forcing, clock;
+                           auxiliary_fields, forcing, clock;
                            dependencies=barrier)
 
         push!(events, Gc_event)

@@ -7,17 +7,7 @@ using Oceananigans.TurbulenceClosures: ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ,
 using Oceananigans.Advection: div_Uc
 
 """
-    hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid,
-                                                 advection,
-                                                 coriolis,
-                                                 closure,
-                                                 velocities,
-                                                 free_surface_displacement,
-                                                 tracers,
-                                                 diffusivities,
-                                                 forcings,
-                                                 hydrostatic_pressure_anomaly,
-                                                 clock)
+    hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
 
 Return the tendency for the horizontal velocity in the x-direction, or the east-west 
 direction, ``u``, at grid point `i, j, k` for a HydrostaticFreeSurfaceModel.
@@ -38,29 +28,22 @@ implicitly during time-stepping.
                                                               tracers,
                                                               diffusivities,
                                                               hydrostatic_pressure_anomaly,
+                                                              auxiliary_fields,
                                                               forcings,
                                                               clock)
+
+    model_fields = merge(hydrostatic_prognostic_fields(velocities, free_surface, tracers), auxiliary_fields)
  
     return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
              + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
-             + forcings.u(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+             + forcings.u(i, j, k, grid, clock, model_fields))
 end
 
 """
-    hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid,
-                                                 advection,
-                                                 coriolis,
-                                                 closure,
-                                                 velocities,
-                                                 free_surface_displacement,
-                                                 tracers,
-                                                 diffusivities,
-                                                 forcings,
-                                                 hydrostatic_pressure_anomaly,
-                                                 clock)
+    hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
 
 Return the tendency for the horizontal velocity in the y-direction, or the east-west 
 direction, ``v``, at grid point `i, j, k` for a HydrostaticFreeSurfaceModel.
@@ -81,29 +64,22 @@ implicitly during time-stepping.
                                                               tracers,
                                                               diffusivities,
                                                               hydrostatic_pressure_anomaly,
+                                                              auxiliary_fields,
                                                               forcings,
                                                               clock)
+
+    model_fields = merge(hydrostatic_prognostic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     return ( - U_dot_∇v(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
              + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
-             + forcings.v(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+             + forcings.v(i, j, k, grid, clock, model_fields))
 end
 
 """
-     hydrostatic_free_surface_tracer_tendency(i, j, k, grid, 
-                                                           val_tracer_index::Val{tracer_index},
-                                                           advection,
-                                                           closure,
-                                                           buoyancy,
-                                                           velocities,
-                                                           free_surface_displacement,
-                                                           tracers,
-                                                           diffusivities,
-                                                           forcing,
-                                                           clock)
+    hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
 
 Return the tendency for a tracer field with index `tracer_index` 
 at grid point `i, j, k`.
@@ -123,14 +99,17 @@ where `c = C[tracer_index]`.
                                                           free_surface,
                                                           tracers,
                                                           diffusivities,
+                                                          auxiliary_fields,
                                                           forcing,
                                                           clock) where tracer_index
 
     @inbounds c = tracers[tracer_index]
 
+    model_fields = merge(hydrostatic_prognostic_fields(velocities, free_surface, tracers), auxiliary_fields)
+
     return ( - div_Uc(i, j, k, grid, advection, velocities, c)
              + ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, buoyancy)
-             + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+             + forcing(i, j, k, grid, clock, model_fields))
 end
 
 """
@@ -151,11 +130,13 @@ The tendency is called ``G_η`` and defined via
                                        velocities,
                                        free_surface,
                                        tracers,
+                                       auxiliary_fields,
                                        forcings,
                                        clock)
 
     k_surface = grid.Nz + 1
+    model_fields = merge(hydrostatic_prognostic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     return @inbounds (   velocities.w[i, j, k_surface]
-                       + forcings.η(i, j, k_surface, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+                       + forcings.η(i, j, k_surface, grid, clock, model_fields))
 end
