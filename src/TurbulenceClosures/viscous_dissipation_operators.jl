@@ -45,7 +45,7 @@ end
 @inline νᶜᶠᶠ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Center(), i, grid), ynode(Face(),   j, grid), znode(Face(),   k, grid), clock.time)
 
 #####
-##### Convvenience "vanilla" viscous flux functions
+##### Convenience "vanilla" viscous flux functions
 #####
 
 @inline viscous_flux_ux(i, j, k, grid, clock, ν, u) = - νᶜᶜᶜ(i, j, k, grid, clock, ν) * ∂xᶜᶜᵃ(i, j, k, grid, u)
