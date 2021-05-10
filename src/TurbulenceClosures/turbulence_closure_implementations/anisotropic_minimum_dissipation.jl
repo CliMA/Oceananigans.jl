@@ -5,23 +5,23 @@ Parameters for the "anisotropic minimum dissipation" turbulence closure for larg
 proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
 by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
 """
-struct AnisotropicMinimumDissipation{FT, PK, PN, K, PB} <: AbstractEddyViscosityClosure{ExplicitTimeDiscretization}
+struct AnisotropicMinimumDissipation{TD, FT, PK, PN, K, PB} <: AbstractEddyViscosityClosure{TD}
     Cν :: PN
     Cκ :: PK
     Cb :: PB
      ν :: FT
      κ :: K
 
-    function AnisotropicMinimumDissipation{FT}(Cν::PN, Cκ::PK, Cb::PB, ν, κ) where {FT, PN, PK, PB}
+    function AnisotropicMinimumDissipation{TD, FT}(Cν::PN, Cκ::PK, Cb::PB, ν, κ) where {TD, FT, PN, PK, PB}
         κ = convert_diffusivity(FT, κ)
         K = typeof(κ)
-        return new{FT, PK, PN, K, PB}(Cν, Cκ, Cb, ν, κ)
+        return new{TD, FT, PK, PN, K, PB}(Cν, Cκ, Cb, ν, κ)
     end
 end
 
 const AMD = AnisotropicMinimumDissipation
 
-Base.show(io::IO, closure::AMD{FT}) where FT =
+Base.show(io::IO, closure::AMD{TD, FT}) where {TD, FT} =
     print(io, "AnisotropicMinimumDissipation{$FT} turbulence closure with:\n",
               "           Poincaré constant for momentum eddy viscosity Cν: ", closure.Cν, '\n',
               "    Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: ", closure.Cκ, '\n',
@@ -31,15 +31,16 @@ Base.show(io::IO, closure::AMD{FT}) where FT =
 
 """
     AnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
-                                              Cb=0.0, ν=0, κ=0)
-
+                                              Cb=0.0, ν=0, κ=0,
+                                              time_discretization=ExplicitTimeDiscretization())
+                                       
 Returns parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
 
 Keyword arguments
 =================
-    - `C`  : Poincaré constant for both eddy viscosity and eddy diffusivities. `C` is overridden
-             for eddy viscosity or eddy diffusivity if `Cν` or `Cκ` are set, respecitvely.
+    - `C` : Poincaré constant for both eddy viscosity and eddy diffusivities. `C` is overridden
+            for eddy viscosity or eddy diffusivity if `Cν` or `Cκ` are set, respecitvely.
     - `Cν` : Poincaré constant for momentum eddy viscosity.
     - `Cκ` : Poincaré constant for tracer eddy diffusivities. If one number or function, the same
              number or function is applied to all tracers. If a `NamedTuple`, it must possess
@@ -48,10 +49,13 @@ Keyword arguments
              *Note*: that we _do not_ subtract the horizontally-average component before computing this
              buoyancy modification term. This implementation differs from [Abkar16](@cite)'s proposal
              and the impact of this approximation has not been tested or validated.
-    - `ν`  : Constant background viscosity for momentum.
-    - `κ`  : Constant background diffusivity for tracer. If a single number, the same background
-             diffusivity is applied to all tracers. If a `NamedTuple`, it must possess a field
-             specifying a background diffusivity for every tracer.
+    - `ν` : Constant background viscosity for momentum.
+    - `κ` : Constant background diffusivity for tracer. If a single number, the same background
+            diffusivity is applied to all tracers. If a `NamedTuple`, it must possess a field
+            specifying a background diffusivity for every tracer.
+    - `time_discretization` : Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+                              which integrates the terms involving only z-derivatives in the
+                              viscous and diffusive fluxes with an implicit time discretization.
 
 By default: `C = Cν = Cκ` = 1/12, which is appropriate for a finite-volume method employing a
 second-order advection scheme, `Cb = nothing`, which terms off the buoyancy modification term.
@@ -101,20 +105,26 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     production of small, unresolved scales in a large-eddy simulation of turbulence?",
     Computers & Fluids 176, pp. 276-284.
 """
-function AnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
-                                       Cb=nothing, ν=0, κ=0)
+function AnisotropicMinimumDissipation(FT = Float64;
+                                       C = 1/12,
+                                       Cν = nothing,
+                                       Cκ = nothing,
+                                       Cb = nothing,
+                                       ν = 0,
+                                       κ = 0;
+                                       time_discretization::TD = ExplicitTimeDiscretization()) where TD
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
     
     !isnothing(Cb) && @warn "AnisotropicMinimumDissipation with buoyancy modification is unvalidated."
 
-    return AnisotropicMinimumDissipation{FT}(Cν, Cκ, Cb, ν, κ)
+    return AnisotropicMinimumDissipation{TD, FT}(Cν, Cκ, Cb, ν, κ)
 end
 
-function with_tracers(tracers, closure::AnisotropicMinimumDissipation{FT}) where FT
+function with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD, FT}) where {TD, FT}
     κ = tracer_diffusivities(tracers, closure.κ)
     Cκ = tracer_diffusivities(tracers, closure.Cκ)
-    return AnisotropicMinimumDissipation{FT}(closure.Cν, Cκ, closure.Cb, closure.ν, κ)
+    return AnisotropicMinimumDissipation{TD, FT}(closure.Cν, Cκ, closure.Cb, closure.ν, κ)
 end
 
 #####

@@ -3,22 +3,23 @@
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
-struct SmagorinskyLilly{FT, P, K} <: AbstractEddyViscosityClosure{ExplicitTimeDiscretization}
+struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD}
      C :: FT
     Cb :: FT
     Pr :: P
      ν :: FT
      κ :: K
 
-    function SmagorinskyLilly{FT}(C, Cb, Pr, ν, κ) where FT
+    function SmagorinskyLilly{TD, FT}(C, Cb, Pr, ν, κ) where {TD, FT}
         Pr = convert_diffusivity(FT, Pr)
          κ = convert_diffusivity(FT, κ)
-        return new{FT, typeof(Pr), typeof(κ)}(C, Cb, Pr, ν, κ)
+        return new{TD, FT, typeof(Pr), typeof(κ)}(C, Cb, Pr, ν, κ)
     end
 end
 
 """
-    SmagorinskyLilly([FT=Float64;] C=0.23, Pr=1, ν=0, κ=0)
+    SmagorinskyLilly([FT=Float64;] C=0.23, Pr=1, ν=0, κ=0,
+                                   time_discretization=ExplicitTimeDiscretization())
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
 Lilly (1962) and Smagorinsky (1958, 1963), which has an eddy viscosity of the form
@@ -45,6 +46,9 @@ Keyword arguments
     - `κ`  : Constant background diffusivity for tracer. Can either be a single number
              applied to all tracers, or `NamedTuple` of diffusivities corresponding to each
              tracer.
+    - `time_discretization` : Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+                              which integrates the terms involving only z-derivatives in the
+                              viscous and diffusive fluxes with an implicit time discretization.
 
 References
 ==========
@@ -56,13 +60,14 @@ Lilly, D. K. "On the numerical simulation of buoyant convection." Tellus (1962)
 Smagorinsky, J. "General circulation experiments with the primitive equations: I.
     The basic experiment." Monthly weather review (1963)
 """
-SmagorinskyLilly(FT=Float64; C=0.23, Cb=1.0, Pr=1.0, ν=0, κ=0) =
-    SmagorinskyLilly{FT}(C, Cb, Pr, ν, κ)
+SmagorinskyLilly(FT=Float64; C=0.23, Cb=1.0, Pr=1.0, ν=0, κ=0,
+                             time_discretization::TD=ExplicitTimeDiscretization()) where TD =
+    SmagorinskyLilly{TD, FT}(C, Cb, Pr, ν, κ)
 
-function with_tracers(tracers, closure::SmagorinskyLilly{FT}) where FT
+function with_tracers(tracers, closure::SmagorinskyLilly{TD, FT}) where {TD, FT}
     Pr = tracer_diffusivities(tracers, closure.Pr)
      κ = tracer_diffusivities(tracers, closure.κ)
-    return SmagorinskyLilly{FT}(closure.C, closure.Cb, Pr, closure.ν, κ)
+    return SmagorinskyLilly{TD, FT}(closure.C, closure.Cb, Pr, closure.ν, κ)
 end
 
 """
@@ -88,7 +93,7 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 """
 @inline νₑ_deardorff(ς, C, Δᶠ, Σ²) = ς * (C*Δᶠ)^2 * sqrt(2Σ²)
 
-@inline function νᶜᶜᶜ(i, j, k, grid, clo::SmagorinskyLilly{FT}, buoyancy, U, C) where FT
+@inline function νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, clo::SmagorinskyLilly, buoyancy, U, C) where FT
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w)
     N² = max(zero(FT), ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, C))
     Δᶠ = Δᶠ_ccc(i, j, k, grid, clo)
