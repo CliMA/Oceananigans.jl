@@ -30,9 +30,9 @@
 const ClosureOrNothing = Union{AbstractTurbulenceClosure, Nothing}
 
 """
-    ∇_κ_∇c(i, j, k, grid, clock, closure::AbstractTurbulenceClosure, c, ::Val{tracer_index}, args...)
+    ∇_dot_qᶜ(i, j, k, grid, clock, closure::AbstractTurbulenceClosure, c, ::Val{tracer_index}, args...)
 
-Calculates diffusion for a tracer c via
+Calculates the divergence of the diffusive flux `qᶜ` for a tracer `c` via
 
     1/V * [δxᶜᵃᵃ(Ax * diffusive_flux_x) + δyᵃᶜᵃ(Ay * diffusive_flux_y) + δzᵃᵃᶜ(Az * diffusive_flux_z)]
 
