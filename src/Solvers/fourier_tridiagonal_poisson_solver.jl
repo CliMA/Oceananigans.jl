@@ -4,7 +4,7 @@ struct FourierTridiagonalPoissonSolver{A, G, B, R, S, β, T}
                   architecture :: A
                           grid :: G
     batched_tridiagonal_solver :: B
-               right_hand_side :: R
+                   source_term :: R
                        storage :: S
                         buffer :: β
                     transforms :: T
@@ -75,7 +75,7 @@ end
 
 function solve_poisson_equation!(solver::FourierTridiagonalPoissonSolver)
     ϕ = solver.storage
-    RHS = solver.right_hand_side
+    RHS = solver.source_term
 
     # Apply forward transforms in order
     [transform!(RHS, solver.buffer) for transform! in solver.transforms.forward]

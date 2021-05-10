@@ -22,7 +22,7 @@ end
 end
 
 source_term_storage(solver::FFTBasedPoissonSolver) = solver.storage
-source_term_storage(solver::FourierTridiagonalPoissonSolver) = solver.batched_tridiagonal_solver.f
+source_term_storage(solver::FourierTridiagonalPoissonSolver) = solver.source_term
 
 source_term_kernel(::FFTBasedPoissonSolver) = calculate_pressure_source_term_fft_based_solver!
 source_term_kernel(::FourierTridiagonalPoissonSolver) = calculate_pressure_source_term_fourier_tridiagonal_solver!
