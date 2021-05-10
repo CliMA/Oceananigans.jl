@@ -111,7 +111,7 @@ function AnisotropicMinimumDissipation(FT = Float64;
                                        Cκ = nothing,
                                        Cb = nothing,
                                        ν = 0,
-                                       κ = 0;
+                                       κ = 0,
                                        time_discretization::TD = ExplicitTimeDiscretization()) where TD
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
