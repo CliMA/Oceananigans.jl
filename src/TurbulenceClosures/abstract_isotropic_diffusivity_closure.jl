@@ -68,29 +68,41 @@ at index `i, j, k` and location `ᶜᶜᶜ`.
 #####
 
 const VITD = VerticallyImplicitTimeDiscretization
+const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
+const AG = AbstractGrid
 
 @inline z_viscosity(closure::AID, diffusivities) = viscosity(closure, diffusivities)
 @inline z_diffusivity(closure::AID, diffusivities, ::Val{c_idx}) where c_idx = diffusivity(closure, diffusivities, Val(c_idx))
 
-@inline function viscous_flux_uz(i, j, k, grid, ::VITD, clock, closure::AID, U, K)
+@inline ivd_viscous_flux_uz(i, j, k, grid, clock, closure, U, K) = - ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, K), ∂xᶠᶜᵃ, U.w)
+@inline ivd_viscous_flux_vz(i, j, k, grid, clock, closure, U, K) = - ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, K), ∂yᶜᶠᵃ, U.v)
+
+# General functions (eg for vertically periodic)
+@inline viscous_flux_uz(i, j, k, grid::AG, ::VITD, clock, closure::AID, U, K) = ivd_viscous_flux_uz(i, j, k, grid, clock, closure, U, K)
+@inline viscous_flux_vz(i, j, k, grid::AG, ::VITD, clock, closure::AID, U, K) = ivd_viscous_flux_vz(i, j, k, grid, clock, closure, U, K)
+@inline viscous_flux_wz(i, j, k, grid::AG{FT}, ::VITD, clock, closure::AID, U, K) where FT = zero(FT)
+@inline diffusive_flux_z(i, j, k, grid::AG{FT}, ::VITD, clock, closure::AID, args...) where FT = zero(FT)
+                  
+# Vertically bounded grids
+@inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, clock, closure::AID, U, K)
     return ifelse(k == 1 || k == grid.Nz+1, 
                   viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, U, K), # on boundaries, calculate fluxes explicitly
-                  - ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, K), ∂xᶠᶜᵃ, U.w))                  # neglecting ∂z ν ∂z u
+                  ivd_viscous_flux_uz(i, j, k, grid, clock, closure, U, K))
 end
 
-@inline function viscous_flux_vz(i, j, k, grid, ::VITD, clock, closure::AID, U, K)
+@inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, clock, closure::AID, U, K)
     return ifelse(k == 1 || k == grid.Nz+1, 
                   viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, U, K), # on boundaries, calculate fluxes explicitly
-                  - ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, K), ∂yᶜᶠᵃ, U.v))                  # neglecting ∂z ν ∂z u
+                  ivd_viscous_flux_vz(i, j, k, grid, clock, closure, U, K))
 end
 
-@inline function viscous_flux_wz(i, j, k, grid::AbstractGrid{FT}, ::VITD, clock, closure::AID, U, K) where FT
+@inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, clock, closure::AID, U, K) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
                   viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, U, K), # on boundaries, calculate fluxes explicitly
                   zero(FT))
 end
 
-@inline function diffusive_flux_z(i, j, k, grid::AbstractGrid{FT}, ::VITD, clock, closure::AID, args...) where FT
+@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, clock, closure::AID, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
                   diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, args...), # on boundaries, calculate fluxes explicitly
                   zero(FT))

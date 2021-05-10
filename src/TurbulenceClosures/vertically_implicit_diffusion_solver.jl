@@ -1,6 +1,6 @@
 using Oceananigans.Operators: interpolation_code
 using Oceananigans.AbstractOperations: flip
-using Oceananigans.Solvers: BatchedTridiagonalSolver, solve_batched_tridiagonal_system!
+using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
 #####
 ##### Vertically implicit solver
@@ -49,7 +49,7 @@ end
     return - Δt * κ_Δz²(i, j, k′, k′, grid, κᵏ)
 end
 
-@inline function ivd_diagonalᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT}, clock, Δt, κ⁻⁻ᶠ, κ) where FT
+@inline function ivd_diagonalᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT}, clock, Δt, κ⁻⁻ᶠ, κ) where FT
     κᵏ   = κ⁻⁻ᶠ(i, j, k,   grid, clock, κ)
     κᵏ⁺¹ = κ⁻⁻ᶠ(i, j, k+1, grid, clock, κ)
 
@@ -72,7 +72,7 @@ end
     return - Δt * κ_Δz²(i, j, k′, k′-1, grid, νᵏ⁻¹)
 end
 
-@inline function ivd_diagonalᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT}, clock, Δt, νᶜᶜᶜ, ν) where FT
+@inline function ivd_diagonalᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT}, clock, Δt, νᶜᶜᶜ, ν) where FT
     νᵏ⁻¹ = νᶜᶜᶜ(i, j, k-1, grid, clock, ν)
     νᵏ   = νᶜᶜᶜ(i, j, k,   grid, clock, ν)
 
@@ -88,45 +88,38 @@ end
 """
     implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, arch, grid)
 
-Build tridiagonal solvers for the elliptic equation
+Build tridiagonal solvers for the elliptic equations
 
 ```math
-(1 + Δt ∂z κ ∂z) cⁿ⁺¹ = c★
+(1 - Δt ∂z κ ∂z) cⁿ⁺¹ = c★
 ```
 
+and
+
 ```math
-(1 + Δt ∂z ν ∂z) wⁿ⁺¹ = w★
+(1 - Δt ∂z ν ∂z) wⁿ⁺¹ = w★
 ```
 
 where `cⁿ⁺¹` and `c★` live at cell `Center`s in the vertical,
 and `wⁿ⁺¹` and `w★` lives at cell `Face`s in the vertical.
 """
-function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, arch, grid; with_z_face_solver)
+function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, arch, grid)
 
     topo = topology(grid)
 
     topo[3] == Periodic && error("VerticallyImplicitTimeDiscretization can only be specified on " *
                                  "grids that are Bounded in the z-direction.")
 
-    # Scratch memory for right_hand_side
-    right_hand_side = arch_array(arch, zeros(grid.Nx, grid.Ny, grid.Nz))
-
     z_center_solver = BatchedTridiagonalSolver(arch, grid;
                                                lower_diagonal = ivd_lower_diagonalᵃᵃᶜ,
                                                diagonal = ivd_diagonalᵃᵃᶜ,
-                                               upper_diagonal = ivd_upper_diagonalᵃᵃᶜ,
-                                               right_hand_side = right_hand_side)
+                                               upper_diagonal = ivd_upper_diagonalᵃᵃᶜ)
 
-    # Needed for non hydrostatic models:
-    if with_z_face_solver
-        z_face_solver = BatchedTridiagonalSolver(arch, grid;
-                                                 lower_diagonal = ivd_lower_diagonalᵃᵃᶠ,
-                                                 diagonal = ivd_diagonalᵃᵃᶠ,
-                                                 upper_diagonal = ivd_upper_diagonalᵃᵃᶠ,
-                                                 right_hand_side = right_hand_side)
-    else
-        z_face_solver = nothing
-    end
+    z_face_solver = BatchedTridiagonalSolver(arch, grid;
+                                             lower_diagonal = ivd_lower_diagonalᵃᵃᶠ,
+                                             diagonal = ivd_diagonalᵃᵃᶠ,
+                                             upper_diagonal = ivd_upper_diagonalᵃᵃᶠ,
+                                             scratch = z_center_solver.t)
 
     return VerticallyImplicitDiffusionSolver(arch, z_center_solver, z_face_solver)
 end
@@ -186,10 +179,7 @@ function implicit_step!(field::AbstractField{X, Y, Z},
         error("Cannot take an implicit_step! for a field at $field_location")
     end
 
-    field_interior = interior(field)
-    solver.f .= field_interior
-
-    return solve_batched_tridiagonal_system!(field, solver, clock, Δt, locate_coeff, coeff;
-                                             dependencies = dependencies)
+    return solve!(field, solver, field,
+                  clock, Δt, locate_coeff, coeff; dependencies = dependencies)
 end
 

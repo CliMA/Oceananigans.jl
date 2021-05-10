@@ -33,7 +33,7 @@ simulations = [Simulation(explicit_model, Δt = 1e-1 * diffusion_time_scale, sto
 
 [run!(simulation) for simulation in simulations]
 
-plot!(c_plot, c_implicit, z, linewidth = 3, alpha = 0.6, label = @sprintf("implicit model, t = %.3e", model.clock.time))
-plot!(c_plot, c_explicit, z, linewidth = 2, linestyle = :dash, label = @sprintf("explicit model, t = %.3e", model.clock.time))
+plot!(c_plot, c_implicit, z, linewidth = 3, alpha = 0.6, label = @sprintf("implicit model, t = %.3e", implicit_model.clock.time))
+plot!(c_plot, c_explicit, z, linewidth = 2, linestyle = :dash, label = @sprintf("explicit model, t = %.3e", explicit_model.clock.time))
 
 display(c_plot)

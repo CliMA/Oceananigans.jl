@@ -1,9 +1,10 @@
 using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
 
-struct FourierTridiagonalPoissonSolver{A, G, B, S, β, T}
+struct FourierTridiagonalPoissonSolver{A, G, B, R, S, β, T}
                   architecture :: A
                           grid :: G
     batched_tridiagonal_solver :: B
+               right_hand_side :: R
                        storage :: S
                         buffer :: β
                     transforms :: T
@@ -57,30 +58,30 @@ function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
     wait(device(arch), event)
 
     # Set up batched tridiagonal solver
-    rhs = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
-
     btsolver = BatchedTridiagonalSolver(arch, grid;
                                          lower_diagonal = lower_diagonal,
                                                diagonal = diagonal,
-                                         upper_diagonal = upper_diagonal,
-                                        right_hand_side = rhs)
+                                         upper_diagonal = upper_diagonal)
 
     # Need buffer for index permutations and transposes.
     buffer_needed = arch isa GPU && Bounded in (TX, TY) ? true : false
     buffer = buffer_needed ? similar(sol_storage) : nothing
 
-    return FourierTridiagonalPoissonSolver(arch, grid, btsolver, sol_storage, buffer, transforms)
+    # Storage space for right hand side of Poisson equation
+    rhs = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
+
+    return FourierTridiagonalPoissonSolver(arch, grid, btsolver, rhs, sol_storage, buffer, transforms)
 end
 
 function solve_poisson_equation!(solver::FourierTridiagonalPoissonSolver)
     ϕ = solver.storage
-    RHS = solver.batched_tridiagonal_solver.f
+    RHS = solver.right_hand_side
 
     # Apply forward transforms in order
     [transform!(RHS, solver.buffer) for transform! in solver.transforms.forward]
 
     # Solve tridiagonal system of linear equations in z at every column.
-    solve_batched_tridiagonal_system!(ϕ, solver.batched_tridiagonal_solver)
+    solve!(ϕ, solver.batched_tridiagonal_solver, RHS)
 
     # Apply backward transforms in order
     [transform!(ϕ, solver.buffer) for transform! in solver.transforms.backward]

@@ -149,7 +149,7 @@ function IncompressibleModel(;    grid,
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
 
     # Instantiate timestepper if not already instantiated
-    implicit_solver = implicit_diffusion_solver(time_discretization(closure), architecture, grid; with_z_face_solver=true)
+    implicit_solver = implicit_diffusion_solver(time_discretization(closure), architecture, grid)
     timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers), implicit_solver=implicit_solver)
 
     # Regularize forcing and closure for model tracer and velocity fields.

@@ -20,13 +20,13 @@ function can_solve_single_tridiagonal_system(arch, N)
     ϕ = reshape(zeros(N), (1, 1, N)) |> ArrayType
 
     grid = RegularRectilinearGrid(size=(1, 1, N), extent=(1, 1, 1))
+
     btsolver = BatchedTridiagonalSolver(arch, grid;
                                         lower_diagonal = a,
                                         diagonal = b,
-                                        upper_diagonal = c,
-                                        right_hand_side = f)
+                                        upper_diagonal = c)
 
-    solve_batched_tridiagonal_system!(ϕ, btsolver)
+    solve!(ϕ, btsolver, f)
 
     return Array(ϕ[:]) ≈ ϕ_correct
 end
@@ -57,10 +57,9 @@ function can_solve_single_tridiagonal_system_with_functions(arch, N)
     btsolver = BatchedTridiagonalSolver(arch, grid;
                                         lower_diagonal = a,
                                         diagonal = b,
-                                        upper_diagonal = c,
-                                        right_hand_side = f)
+                                        upper_diagonal = c)
 
-    solve_batched_tridiagonal_system!(ϕ, btsolver)
+    solve!(ϕ, btsolver, f)
 
     return Array(ϕ[:]) ≈ ϕ_correct
 end
@@ -88,12 +87,11 @@ function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz)
     btsolver = BatchedTridiagonalSolver(arch, grid;
                                         lower_diagonal = a,
                                         diagonal = b,
-                                        upper_diagonal = c,
-                                        right_hand_side = f)
+                                        upper_diagonal = c)
 
     ϕ = zeros(Nx, Ny, Nz) |> ArrayType
 
-    solve_batched_tridiagonal_system!(ϕ, btsolver)
+    solve!(ϕ, btsolver, f)
 
     return Array(ϕ) ≈ ϕ_correct
 end
@@ -126,11 +124,10 @@ function can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz
     btsolver = BatchedTridiagonalSolver(arch, grid;
                                         lower_diagonal = a,
                                         diagonal = b,
-                                        upper_diagonal = c,
-                                        right_hand_side = f)
+                                        upper_diagonal = c)
 
     ϕ = zeros(Nx, Ny, Nz) |> ArrayType
-    solve_batched_tridiagonal_system!(ϕ, btsolver)
+    solve!(ϕ, btsolver, f)
 
     return Array(ϕ) ≈ ϕ_correct
 end

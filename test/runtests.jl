@@ -98,8 +98,8 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
     if group == :solvers || group == :all
         @testset "Solvers" begin
             include("test_batched_tridiagonal_solver.jl")
-            include("test_preconditioned_conjugate_gradient_solver.jl")
-            include("test_poisson_solvers.jl")
+            #include("test_preconditioned_conjugate_gradient_solver.jl")
+            #include("test_poisson_solvers.jl")
         end
     end
 

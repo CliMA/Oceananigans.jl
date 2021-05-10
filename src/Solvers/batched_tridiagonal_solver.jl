@@ -1,13 +1,14 @@
+using Oceananigans.Architectures: device_event, arch_array
+
 """
     BatchedTridiagonalSolver
 
 A batched solver for large numbers of triadiagonal systems.
 """
-struct BatchedTridiagonalSolver{A, B, C, F, T, G, R, P}
+struct BatchedTridiagonalSolver{A, B, C, T, G, R, P}
                a :: A
                b :: B
                c :: C
-               f :: F
                t :: T
             grid :: G
     architecture :: R
@@ -15,7 +16,7 @@ struct BatchedTridiagonalSolver{A, B, C, F, T, G, R, P}
 end
 
 """
-    BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, right_hand_side, parameters=nothing)
+    BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, parameters=nothing)
 
 Construct a solver for batched tridiagonal systems on `grid` of the form
 
@@ -23,10 +24,10 @@ Construct a solver for batched tridiagonal systems on `grid` of the form
            aⁱʲᵏ⁻¹ ϕⁱʲᵏ⁻¹ + bⁱʲᵏ ϕⁱʲᵏ + cⁱʲᵏ ϕⁱʲᵏ⁺¹ = fⁱʲᵏ,  k = 2, ..., N-1
            aⁱʲᴺ⁻¹ ϕⁱʲᴺ⁻¹ + bⁱʲᴺ ϕⁱʲᴺ               = fⁱʲᴺ,  k = N
 
-where `a` is the `lower_diagonal`, `b` is the `diagonal`, `c` is the `upper_diagonal`,
-and `f` is the `right_hand_side`.
+where `a` is the `lower_diagonal`, `b` is the `diagonal`, and `c` is the `upper_diagonal`.
+`ϕ` is the solution and `f` is the right hand side source term passed to `solve!(ϕ, tridiagonal_solver, f)`
 
-The coefficients `a`, `b`, `c`, and `f` can be specified in three ways:
+`a`, `b`, `c`, and `f` can be specified in three ways:
 
 1. A 1D array means that `aⁱʲᵏ = a[k]`.
 
@@ -41,14 +42,11 @@ function BatchedTridiagonalSolver(arch, grid;
                                   lower_diagonal,
                                   diagonal,
                                   upper_diagonal,
-                                  right_hand_side,
+                                  scratch = arch_array(arch, zeros(eltype(grid), grid.Nx, grid.Ny, grid.Nz)),
                                   parameters = nothing)
 
-    ArrayType = array_type(arch)
-    scratch = zeros(eltype(grid), grid.Nx, grid.Ny, grid.Nz) |> ArrayType
-
     return BatchedTridiagonalSolver(lower_diagonal, diagonal, upper_diagonal,
-                                    right_hand_side, scratch, grid, arch, parameters)
+                                    scratch, grid, arch, parameters)
 end
 
 @inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, args...) where {T} = @inbounds a[k]
@@ -57,24 +55,25 @@ end
 @inline get_coefficient(a::Base.Callable, i, j, k, grid, ::Nothing, args...) = a(i, j, k, grid, args...)
 
 """
-    solve_batched_tridiagonal_system!(ϕ, solver, args...;
-                                      dependencies = Event(device(solver.architecture)))
+    solve!(ϕ, solver, rhs, args...; dependencies = device_event(solver.architecture))
+                                      
 
-Solve the batched tridiagonal system of linear equations described by the
-`BatchedTridiagonalSolver` `solver` using a modified TriDiagonal Matrix Algorithm (TDMA)
-that is still capable of solving singular systems with a zero eigenvalue.
+Solve the batched tridiagonal system of linear equations with right hand side
+`rhs` and lower diagonal, diagonal, and upper diagonal coefficients described by the
+`BatchedTridiagonalSolver` `solver`. `BatchedTridiagonalSolver` uses a modified
+TriDiagonal Matrix Algorithm (TDMA).
 
 The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 
 Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 """
-function solve_batched_tridiagonal_system!(ϕ, solver, args...; dependencies = Event(device(solver.architecture)))
+function solve!(ϕ, solver, rhs, args...; dependencies = device_event(solver.architecture))
 
-    a, b, c, f, t, parameters = solver.a, solver.b, solver.c, solver.f, solver.t, solver.parameters
+    a, b, c, t, parameters = solver.a, solver.b, solver.c, solver.t, solver.parameters
     grid = solver.grid
 
     event = launch!(solver.architecture, grid, :xy,
-                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, f, t, grid, parameters, args...,
+                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, t, grid, parameters, args...,
                     dependencies = dependencies)
 
     wait(device(solver.architecture), event)
@@ -107,7 +106,7 @@ end
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
-            definitely_diagonally_dominant = abs(β) > 1000 * eps(float_eltype(ϕ))
+            definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             !definitely_diagonally_dominant && break
             ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
         end
