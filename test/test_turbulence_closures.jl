@@ -22,7 +22,7 @@ function anisotropic_diffusivity_convenience_kwarg(T=Float64; νh=T(0.3), κh=T(
     return closure.νx == νh && closure.νy == νh && closure.κy.T == κh && closure.κx.T == κh
 end
 
-function constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.7))
+function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3), κ=FT(0.7))
           arch = CPU()
        closure = IsotropicDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
           grid = RegularRectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
@@ -45,10 +45,12 @@ function constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.
 
     U, C = datatuples(velocities, tracers)
 
-    return (∇_dot_qᶜ(2, 1, 3, grid, clock, closure, C.T, Val(1), nothing) == - 2κ &&
-              ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, clock, closure, U, nothing) == - 2ν &&
-              ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, clock, closure, U, nothing) == - 4ν &&
-              ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, clock, closure, U, nothing) == - 6ν )
+    @test ∇_dot_qᶜ(2, 1, 3, grid, clock, closure, C.T, Val(1), nothing) == - 2κ
+    @test ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, clock, closure, U, nothing) == - 2ν
+    @test ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, clock, closure, U, nothing) == - 4ν
+    @test ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, clock, closure, U, nothing) == - 6ν
+
+    return nothing
 end
 
 function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νz=FT(0.1), κz=FT(0.5))
@@ -183,7 +185,7 @@ end
         @info "  Testing constant isotropic diffusivity..."
         for T in float_types
             @test constant_isotropic_diffusivity_basic(T)
-            @test constant_isotropic_diffusivity_fluxdiv(T)
+            run_constant_isotropic_diffusivity_fluxdiv_tests(T)
         end
     end
 
