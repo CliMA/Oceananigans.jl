@@ -41,7 +41,7 @@ function RungeKutta3TimeStepper(arch, grid, tracers;
     ζ² = -17 // 60
     ζ³ = -5 // 12
 
-    FT = typeof(grid)
+    FT = eltype(grid)
 
     return RungeKutta3TimeStepper{FT, TG, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, implicit_solver)
 end
