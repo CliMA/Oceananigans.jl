@@ -154,7 +154,7 @@ function IncompressibleModel(;    grid,
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), architecture, grid)
     timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers), implicit_solver=implicit_solver)
 
-    # Regularize forcing and closure for model tracer and velocity fields.
+    # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(velocities, tracers)
     forcing = model_forcing(model_fields; forcing...)
 
