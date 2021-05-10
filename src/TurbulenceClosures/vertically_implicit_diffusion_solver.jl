@@ -97,25 +97,30 @@ Build a tridiagonal solver for the elliptic equation
 
 where `cⁿ⁺¹` and `c★` live at cell `Center`s in the vertical.
 """
-function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, arch, grid; with_vertical_velocity)
+function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, arch, grid; with_w_velocity_solver)
 
-    # Share scratch memory
+    topo = topology(grid)
+
+    topo[3] == Periodic && error("VerticallyImplicitTimeDiscretization can only be specified on " *
+                                 "grids that are Bounded in the z-direction.")
+
+    # Scratch memory for right_hand_side
     right_hand_side = arch_array(arch, zeros(grid.Nx, grid.Ny, grid.Nz))
 
-    z_center_solver = BatchedTridiagonalSolver(arch, grid;
-                                                             lower_diagonal = ivd_lower_diagonalᵃᵃᶜ,
-                                                                   diagonal = ivd_diagonalᵃᵃᶜ,
-                                                             upper_diagonal = ivd_upper_diagonalᵃᵃᶜ,
-                                                            right_hand_side = right_hand_side)
+    tracer_solver = BatchedTridiagonalSolver(arch, grid;
+                                             lower_diagonal = ivd_lower_diagonalᵃᵃᶜ,
+                                             diagonal = ivd_diagonalᵃᵃᶜ,
+                                             upper_diagonal = ivd_upper_diagonalᵃᵃᶜ,
+                                             right_hand_side = right_hand_side)
 
-    if with_vertical_velocity
-        z_face_solver = BatchedTridiagonalSolver(arch, grid;
-                                                  lower_diagonal = ivd_lower_diagonalᵃᵃᶠ,
-                                                        diagonal = ivd_diagonalᵃᵃᶠ,
-                                                  upper_diagonal = ivd_upper_diagonalᵃᵃᶠ,
-                                                 right_hand_side = right_hand_side)
+    if with_w_velocity_solver
+        w_velocity_solver = BatchedTridiagonalSolver(arch, grid;
+                                                     lower_diagonal = ivd_lower_diagonalᵃᵃᶠ,
+                                                     diagonal = ivd_diagonalᵃᵃᶠ,
+                                                     upper_diagonal = ivd_upper_diagonalᵃᵃᶠ,
+                                                     right_hand_side = right_hand_side)
     else
-        z_face_solver = nothing
+        w_velocity_solver = nothing
     end
 
     return VerticallyImplicitDiffusionSolver(tracer_solver, w_velocity_solver)
