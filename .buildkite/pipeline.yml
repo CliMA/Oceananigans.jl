@@ -1,7 +1,7 @@
 env:
   JULIA_VERSION: "1.6.1"
   JULIA_MINOR_VERSION: "1.6"
-  SVERDRUP_HOME: "/storage7/buildkite-agent"
+  SVERDRUP_HOME: "/storage7/buildkite-agent/sverdrup"
   TARTARUS_HOME: "/storage7/buildkite-agent"
   GKSwstype: "100" # See: https://github.com/jheinen/GR.jl/issues/278
 
