@@ -52,9 +52,12 @@ version = "3.2.0"
 
 [[CUDAKernels]]
 deps = ["Adapt", "CUDA", "Cassette", "KernelAbstractions", "SpecialFunctions", "StaticArrays"]
-git-tree-sha1 = "6182689d8c99e232da2833ea0f4471a92c617a1f"
+git-tree-sha1 = "1cde0e531028208bc7d1810186f28bb645a0ace2"
+repo-rev = "patch-1"
+repo-subdir = "lib/CUDAKernels"
+repo-url = "https://github.com/ali-ramadhan/KernelAbstractions.jl#patch-1"
 uuid = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
-version = "0.2.0"
+version = "0.3.0"
 
 [[Cassette]]
 git-tree-sha1 = "f80b4da0c926dc96f946628757a5926ff5a42e28"
@@ -223,9 +226,11 @@ version = "1.8.1"
 
 [[KernelAbstractions]]
 deps = ["Adapt", "Cassette", "InteractiveUtils", "MacroTools", "SpecialFunctions", "StaticArrays", "UUIDs"]
-git-tree-sha1 = "c8af4c8843a11df23cc8b4111b130664fc391dcf"
+git-tree-sha1 = "fa4ce7eb6cbbaf0ff40fce1f0ebfd98c33ca9bed"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaGPU/KernelAbstractions.jl.git"
 uuid = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
-version = "0.6.2"
+version = "0.7.0"
 
 [[LLVM]]
 deps = ["CEnum", "Libdl", "Printf", "Unicode"]
