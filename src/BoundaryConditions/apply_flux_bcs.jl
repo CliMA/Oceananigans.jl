@@ -72,11 +72,6 @@ Apply a top and/or bottom boundary condition to variable `c`.
        apply_z_top_bc!(Gc, loc, top_bc,    i, j, grid, args...)
 end
 
-# Avoid some computation / memory accesses for Value, Gradient, Periodic, NormalFlow,
-# and zero-flux boundary conditions --- every boundary condition that does *not* prescribe
-# a non-trivial flux.
-const NotFluxBC = Union{VBC, GBC, PBC, NFBC, ZFBC}
-
 # Fall back functions for boundary conditions that are not of type Flux.
 @inline apply_x_east_bc!(  Gc, args...) = nothing
 @inline apply_x_west_bc!(  Gc, args...) = nothing

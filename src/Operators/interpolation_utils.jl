@@ -53,11 +53,12 @@ function interpolation_operator(from, to)
     from, to = instantiate.(from), instantiate.(to)
     x, y, z = (interpolation_code(X, Y) for (X, Y) in zip(from, to))
 
-    # This is crazy, but here's my number...
-    global identity_counter += 1
-    identity = identify_an_identity(identity_counter)
-
     if all(ξ === :ᵃ for ξ in (x, y, z))
+
+        # This is crazy, but here's my number...
+        global identity_counter += 1
+        identity = identify_an_identity(identity_counter)
+
         return @eval $identity
     else
         return eval(Symbol(:ℑ, ℑxsym(x), ℑysym(y), ℑzsym(z), x, y, z))

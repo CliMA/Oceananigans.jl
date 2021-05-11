@@ -154,6 +154,7 @@ function prognostic_fields end
 ##### Include all the submodules
 #####
 
+# Basics
 include("Architectures.jl")
 include("Units.jl")
 include("Grids/Grids.jl")
@@ -163,19 +164,25 @@ include("Operators/Operators.jl")
 include("Advection/Advection.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
+include("AbstractOperations/AbstractOperations.jl")
+include("Solvers/Solvers.jl")
+
+# Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
 include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
-include("Solvers/Solvers.jl")
 include("Forcings/Forcings.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
+
+# Output and Physics, time-stepping, and models
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
 include("Simulations/Simulations.jl")
-include("AbstractOperations/AbstractOperations.jl")
+
+# Abstractions for distributed and multi-region models
 include("CubedSpheres/CubedSpheres.jl")
 include("Distributed/Distributed.jl")
 

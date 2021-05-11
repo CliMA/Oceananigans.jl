@@ -1,7 +1,7 @@
 using Oceananigans.Advection
 using Oceananigans.Coriolis
 using Oceananigans.Operators
-using Oceananigans.TurbulenceClosures: ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
+using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ
 
 @inline squared(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
 
@@ -85,7 +85,7 @@ end
 
     return ( -  div_Uc(i, j, k, grid, advection, solution, c) 
              + c_div_U(i, j, k, grid, solution, c)         
-             +  ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, nothing)
+             - ∇_dot_qᶜ(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, nothing)
              + forcing(i, j, k, grid, clock, merge(solution, tracers)) 
             )
 end

@@ -19,6 +19,7 @@ using Oceananigans.Architectures: device
 using Oceananigans: AbstractModel
 
 import Oceananigans.Architectures: architecture
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: data, compute_at!
 
 #####
@@ -31,6 +32,9 @@ const AF = AbstractField
 
 # We (informally) require that all field-like objects define `parent`:
 Base.parent(op::AbstractOperation) = op
+
+# We have no halos to fill
+fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
 
 # AbstractOperation macros add their associated functions to this list
 const operators = Set()

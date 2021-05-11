@@ -71,4 +71,6 @@ Adapt.adapt_structure(::GPU, a::OffsetGPUArray) = a
 Adapt.adapt_structure(::GPU, a::OffsetCPUArray) = OffsetArray(CuArray(a.parent), a.offsets...)
 Adapt.adapt_structure(::CPU, a::OffsetGPUArray) = OffsetArray(Array(a.parent), a.offsets...)
 
+device_event(arch) = Event(device(arch))
+
 end
