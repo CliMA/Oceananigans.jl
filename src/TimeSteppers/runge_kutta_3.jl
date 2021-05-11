@@ -6,14 +6,15 @@ using Oceananigans: fields
 Holds parameters and tendency fields for a low storage, third-order Runge-Kutta-Wray
 time-stepping scheme described by Le and Moin (1991).
 """
-struct RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
-    γ¹ :: FT
-    γ² :: FT
-    γ³ :: FT
-    ζ² :: FT
-    ζ³ :: FT
-    Gⁿ :: TG
-    G⁻ :: TG
+struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
+                 γ¹ :: FT
+                 γ² :: FT
+                 γ³ :: FT
+                 ζ² :: FT
+                 ζ³ :: FT
+                 Gⁿ :: TG
+                 G⁻ :: TG
+    implicit_solver :: TI
 end
 
 """
@@ -25,8 +26,13 @@ Return an `RungeKutta3TimeStepper` object with tendency fields on `arch` and
 `grid`. The tendency fields can be specified via optional kwargs.
 """
 function RungeKutta3TimeStepper(arch, grid, tracers;
-                                Gⁿ = TendencyFields(arch, grid, tracers),
-                                G⁻ = TendencyFields(arch, grid, tracers))
+                                implicit_solver::TI = nothing,
+                                Gⁿ::TG = TendencyFields(arch, grid, tracers),
+                                G⁻ = TendencyFields(arch, grid, tracers)) where {TI, TG}
+
+    !isnothing(implicit_solver) &&
+        @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
+              "\n implicit_solver: $implicit_solver")
 
     γ¹ = 8 // 15
     γ² = 5 // 12
@@ -35,7 +41,9 @@ function RungeKutta3TimeStepper(arch, grid, tracers;
     ζ² = -17 // 60
     ζ³ = -5 // 12
 
-    return RungeKutta3TimeStepper{eltype(grid), typeof(Gⁿ)}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻)
+    FT = eltype(grid)
+
+    return RungeKutta3TimeStepper{FT, TG, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, implicit_solver)
 end
 
 #####
@@ -127,6 +135,9 @@ end
 ##### Time stepping in each substep
 #####
 
+stage_Δt(Δt, γⁿ, ζⁿ) = Δt * (γⁿ + ζⁿ)
+stage_Δt(Δt, γⁿ, ::Nothing) = Δt * γⁿ
+
 function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
@@ -145,6 +156,18 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
                                             model.timestepper.Gⁿ[i],
                                             model.timestepper.G⁻[i],
                                             dependencies=barrier)
+
+        # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
+        tracer_index = i - 3 # assumption
+
+        implicit_step!(field,
+                       model.timestepper.implicit_solver,
+                       model.clock,
+                       stage_Δt(Δt, γⁿ, ζⁿ),
+                       model.closure,
+                       model.diffusivities,
+                       tracer_index,
+                       dependencies = field_event)
 
         push!(events, field_event)
     end

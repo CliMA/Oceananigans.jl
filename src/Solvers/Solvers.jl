@@ -1,7 +1,7 @@
 module Solvers
 
 export
-    BatchedTridiagonalSolver, solve_batched_tridiagonal_system!,
+    BatchedTridiagonalSolver, solve!,
     FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, PreconditionedConjugateGradientSolver, PressureSolver,
     solve_for_pressure!, solve_poisson_equation!
 

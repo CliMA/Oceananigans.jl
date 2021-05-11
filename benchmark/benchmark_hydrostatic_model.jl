@@ -8,26 +8,26 @@ using Benchmarks
 
 ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
-dd = DataDep("cubed_sphere_32_grid",
-    "Conformal cubed sphere grid with 32×32 grid points on each face",
-    "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2"
+dd = DataDep("cubed_sphere_510_grid",
+    "Conformal cubed sphere grid with 510×510 grid points on each face",
+    "https://engaging-web.mit.edu/~alir/cubed_sphere_grids/cs510/cubed_sphere_510_grid.jld2"
 )
 
 DataDeps.register(dd)
 
 # Benchmark function
 
-# All grids have 6 * 32^2 = 6144 grid points.
+# All grids have 6 * 510^2 = 1,560,600 grid points.
 grids = Dict(
-     (CPU, :RegularRectilinearGrid)       => RegularRectilinearGrid(size=(128, 48, 1), extent=(1, 1, 1)),
-     (CPU, :RegularLatitudeLongitudeGrid) => RegularLatitudeLongitudeGrid(size=(128, 48, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0)),
-     (CPU, :ConformalCubedSphereFaceGrid) => ConformalCubedSphereFaceGrid(size=(128, 48, 1), z=(-1, 0)),
-     (CPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2", Nz=1, z=(-1, 0)),
-     (GPU, :RegularRectilinearGrid)       => RegularRectilinearGrid(size=(128, 48, 1), extent=(1, 1, 1)),
-     (GPU, :RegularLatitudeLongitudeGrid) => RegularLatitudeLongitudeGrid(size=(128, 48, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0)),
+     (CPU, :RegularRectilinearGrid)       => RegularRectilinearGrid(size=(1445, 1080, 1), extent=(1, 1, 1)),
+     (CPU, :RegularLatitudeLongitudeGrid) => RegularLatitudeLongitudeGrid(size=(1445, 1080, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0)),
+     (CPU, :ConformalCubedSphereFaceGrid) => ConformalCubedSphereFaceGrid(size=(1445, 1080, 1), z=(-1, 0)),
+     (CPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_510_grid/cubed_sphere_510_grid.jld2", Nz=1, z=(-1, 0)),
+     (GPU, :RegularRectilinearGrid)       => RegularRectilinearGrid(size=(1445, 1080, 1), extent=(1, 1, 1)),
+     (GPU, :RegularLatitudeLongitudeGrid) => RegularLatitudeLongitudeGrid(size=(1445, 1080, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0)),
      # Uncomment when ConformalCubedSphereFaceGrids of any size can be built natively without loading from file:
-     # (GPU, :ConformalCubedSphereFaceGrid) => ConformalCubedSphereFaceGrid(size=(128, 48, 1), z=(-1, 0), architecture=GPU()),
-     (GPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2", Nz=1, z=(-1, 0), architecture=GPU()),
+     # (GPU, :ConformalCubedSphereFaceGrid) => ConformalCubedSphereFaceGrid(size=(1445, 1080, 1), z=(-1, 0), architecture=GPU()),
+     (GPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_510_grid/cubed_sphere_510_grid.jld2", Nz=1, z=(-1, 0), architecture=GPU()),
 )
 
 free_surfaces = Dict(

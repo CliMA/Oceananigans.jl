@@ -16,7 +16,7 @@ julia> model = IncompressibleModel(grid=grid)
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64, NamedTuple{(:T, :S), Tuple{Float64, Float64}}}
+├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
 └── coriolis: Nothing
 ```
@@ -46,7 +46,7 @@ julia> model = IncompressibleModel(grid=grid, tracers=(:T, :S, :C₁, :CO₂, :n
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S, :C₁, :CO₂, :nitrogen)
-├── closure: IsotropicDiffusivity{Float64, NamedTuple{(:T, :S, :C₁, :CO₂, :nitrogen), NTuple{5, Float64}}}
+├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
 └── coriolis: Nothing
 ```

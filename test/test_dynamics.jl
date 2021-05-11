@@ -1,14 +1,16 @@
+using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, z_viscosity
+
 function relative_error(u_num, u, time)
     u_ans = Field(location(u_num), architecture(u_num), u_num.grid, nothing)
     set!(u_ans, (x, y, z) -> u(x, y, z, time))
     return mean((interior(u_num) .- interior(u_ans)).^2 ) / mean(interior(u_ans).^2)
 end
 
-function test_diffusion_simple(fieldname, timestepper)
+function test_diffusion_simple(fieldname, timestepper, time_discretization)
 
     model = IncompressibleModel(timestepper = timestepper,
                                        grid = RegularRectilinearGrid(size=(1, 1, 16), extent=(1, 1, 1)),
-                                    closure = IsotropicDiffusivity(ν=1, κ=1),
+                                    closure = IsotropicDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
                                    coriolis = nothing,
                                     tracers = :c,
                                    buoyancy = nothing)
@@ -33,7 +35,9 @@ function test_isotropic_diffusion_budget(fieldname, model)
 
     field = get_model_field(fieldname, model)
 
-    return test_diffusion_budget(fieldname, field, model, model.closure.ν, model.grid.Δz)
+    ν = z_viscosity(model.closure, nothing) # for generalizing to isotropic AnisotropicDiffusivity
+
+    return test_diffusion_budget(fieldname, field, model, ν, model.grid.Δz)
 end
 
 function test_biharmonic_diffusion_budget(fieldname, model)
@@ -61,14 +65,14 @@ function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
     return isapprox(init_mean, final_mean)
 end
 
-function test_diffusion_cosine(fieldname, timestepper)
+function test_diffusion_cosine(fieldname, timestepper, time_discretization)
     Nz, Lz, κ, m = 128, π/2, 1, 2
 
     grid = RegularRectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
 
     model = IncompressibleModel(timestepper = timestepper,
                                        grid = grid,
-                                    closure = IsotropicDiffusivity(ν=κ, κ=κ),
+                                    closure = IsotropicDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
                                    buoyancy = nothing)
 
     field = get_model_field(fieldname, model)
@@ -193,7 +197,7 @@ See: https://en.wikipedia.org/wiki/Taylor%E2%80%93Green_vortex#Taylor%E2%80%93Gr
      and p. 310 of "Nodal Discontinuous Galerkin Methods: Algorithms, Analysis, and Application"
      by Hesthaven & Warburton.
 """
-function taylor_green_vortex_test(arch, timestepper; FT=Float64, N=64, Nt=10)
+function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Float64, N=64, Nt=10)
     Nx, Ny, Nz = N, N, 2
     Lx, Ly, Lz = 1, 1, 1
     ν = 1
@@ -210,7 +214,7 @@ function taylor_green_vortex_test(arch, timestepper; FT=Float64, N=64, Nt=10)
         architecture = arch,
          timestepper = timestepper,
                 grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
-             closure = IsotropicDiffusivity(FT, ν=1, κ=0),  # Turn off diffusivity.
+             closure = IsotropicDiffusivity(FT, ν=1, time_discretization=time_discretization),
              tracers = nothing,
             buoyancy = nothing)
 
@@ -360,7 +364,9 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     @testset "Simple diffusion" begin
         @info "  Testing simple diffusion..."
         for fieldname in (:u, :v, :c), timestepper in timesteppers
-            @test test_diffusion_simple(fieldname, timestepper)
+            for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+                @test test_diffusion_simple(fieldname, timestepper, time_discretization)
+            end
         end
     end
 
@@ -372,24 +378,40 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                              (Periodic, Bounded, Bounded),
                              (Bounded, Bounded, Bounded))
 
-                fieldnames = [:c]
+                if topology !== (Periodic, Periodic, Periodic) # can't use implicit time-stepping in vertically-periodic domains right now
+                    time_discretizations = (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+                else
+                    time_discretizations = (ExplicitTimeDiscretization(),)
+                end
 
-                topology[1] === Periodic && push!(fieldnames, :u)
-                topology[2] === Periodic && push!(fieldnames, :v)
-                topology[3] === Periodic && push!(fieldnames, :w)
+                for time_discretization in time_discretizations
 
-                grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
+                    for closure in (IsotropicDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
+                                    AnisotropicDiffusivity(νh=1, νz=1, κh=1, κz=1, time_discretization=time_discretization))
 
-                model = IncompressibleModel(timestepper = timestepper,
-                                                   grid = grid,
-                                                closure = IsotropicDiffusivity(ν=1, κ=1),
-                                               coriolis = nothing,
-                                                tracers = :c,
-                                               buoyancy = nothing)
+                        fieldnames = [:c]
 
-                for fieldname in fieldnames
-                    @info "    [$timestepper] Testing $fieldname budget in a $topology domain with isotropic diffusion..."
-                    @test test_isotropic_diffusion_budget(fieldname, model)
+                        topology[1] === Periodic && push!(fieldnames, :u)
+                        topology[2] === Periodic && push!(fieldnames, :v)
+                        topology[3] === Periodic && push!(fieldnames, :w)
+
+                        grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
+
+                        model = IncompressibleModel(timestepper = timestepper,
+                                                           grid = grid,
+                                                        closure = closure,
+                                                        tracers = :c,
+                                                       coriolis = nothing,
+                                                       buoyancy = nothing)
+
+                        td = typeof(time_discretization).name.wrapper
+                        closurename = typeof(closure).name.wrapper
+
+                        for fieldname in fieldnames
+                            @info "    [$timestepper, $td, $closurename] Testing $fieldname budget in a $topology domain with isotropic diffusion..."
+                            @test test_isotropic_diffusion_budget(fieldname, model)
+                        end
+                    end
                 end
             end
         end
@@ -430,7 +452,9 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
             @info "  Testing diffusion cosine [$timestepper]..."
             for fieldname in (:u, :v, :T, :S)
-                @test test_diffusion_cosine(fieldname, timestepper)
+                for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+                    @test test_diffusion_cosine(fieldname, timestepper, time_discretization)
+                end
             end
         end
     end
@@ -451,8 +475,11 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
     @testset "Taylor-Green vortex" begin
         for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            @info "  Testing Taylor-Green vortex [$timestepper]..."
-            @test taylor_green_vortex_test(CPU(), timestepper)
+            for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+                td = typeof(time_discretization).name.wrapper
+                @info "  Testing Taylor-Green vortex [$timestepper, $td]..."
+                @test taylor_green_vortex_test(CPU(), timestepper, time_discretization)
+            end
         end
     end
 

@@ -43,8 +43,7 @@ PrescribedVelocityFields(; u=zerofunc, v=zerofunc, w=zerofunc, parameters=nothin
 PrescribedField(X, Y, Z, f::Function,      grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
 PrescribedField(X, Y, Z, f::AbstractField, grid; kwargs...) = f
 
-function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields,
-                                              arch, grid, clock, bcs)
+function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields, arch, grid, clock, bcs)
 
     u = PrescribedField(Face, Center, Center, velocities.u, grid; clock=clock, parameters=velocities.parameters)
     v = PrescribedField(Center, Face, Center, velocities.v, grid; clock=clock, parameters=velocities.parameters)
@@ -56,7 +55,8 @@ end
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
 
-ab2_step_free_surface!(::Nothing, args...) = nothing
+ab2_step_velocities!(::PrescribedVelocityFields, args...) = [NoneEvent()]
+ab2_step_free_surface!(::Nothing, args...) = NoneEvent()
 compute_w_from_continuity!(::PrescribedVelocityFields, args...) = nothing
 
 validate_velocity_boundary_conditions(::PrescribedVelocityFields) = nothing

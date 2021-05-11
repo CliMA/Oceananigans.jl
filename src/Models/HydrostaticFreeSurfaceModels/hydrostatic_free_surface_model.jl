@@ -12,7 +12,8 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 using Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper
-using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
+using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
+using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 
@@ -88,7 +89,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                           coriolis = nothing,
                                       free_surface = ExplicitFreeSurface(gravitational_acceleration=g_Earth),
                                forcing::NamedTuple = NamedTuple(),
-                                           closure = IsotropicDiffusivity(eltype(grid), ν=ν₀, κ=κ₀),
+                                           closure = nothing,
                    boundary_conditions::NamedTuple = NamedTuple(),
                                            tracers = (:T, :S),
     particles::Union{Nothing, LagrangianParticles} = nothing,
@@ -124,26 +125,29 @@ function HydrostaticFreeSurfaceModel(; grid,
     model_field_names = (:u, :v, :w, tracernames(tracers)...)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, model_field_names)
 
+    # Ensure `closure` describes all tracers
+    closure = with_tracers(tracernames(tracers), closure)
+
     # Either check grid-correctness, or construct tuples of fields
     velocities    = HydrostaticFreeSurfaceVelocityFields(velocities, architecture, grid, clock, boundary_conditions)
-    tracers       = TracerFields(tracers,      architecture, grid, boundary_conditions)
+    tracers       = TracerFields(tracers, architecture, grid, boundary_conditions)
     pressure      = (pHY′ = CenterField(architecture, grid, TracerBoundaryConditions(grid)),)
-    diffusivities = DiffusivityFields(diffusivities, architecture, grid,
-                                      tracernames(tracers), boundary_conditions, closure)
+    diffusivities = DiffusivityFields(diffusivities, architecture, grid, tracernames(tracers), boundary_conditions, closure)
 
     validate_velocity_boundary_conditions(velocities)
 
     # Instantiate timestepper if not already instantiated
+    implicit_solver = implicit_diffusion_solver(time_discretization(closure), architecture, grid)
     timestepper = TimeStepper(:QuasiAdamsBashforth2, architecture, grid, tracernames(tracers);
+                              implicit_solver = implicit_solver,
                               Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)),
                               G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)))
 
     free_surface = FreeSurface(free_surface, velocities, architecture, grid)
 
-    # Regularize forcing and closure for model tracer and velocity fields.
+    # Regularize forcing for model tracer and velocity fields.
     model_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
     forcing = model_forcing(model_fields; forcing...)
-    closure = with_tracers(tracernames(tracers), closure)
 
     default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
 

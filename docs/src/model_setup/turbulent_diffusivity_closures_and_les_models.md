@@ -37,7 +37,7 @@ To use the Smagorinsky-Lilly LES closure, no parameters are required
 julia> using Oceananigans.TurbulenceClosures
 
 julia> closure = SmagorinskyLilly()
-SmagorinskyLilly: C=0.23, Cb=1.0, Pr=1.0, ν=1.05e-6, κ=1.46e-7
+SmagorinskyLilly: C=0.23, Cb=1.0, Pr=1.0, ν=0.0, κ=0.0
 ```
 
 although they may be specified. By default, the background viscosity and diffusivity are assumed to be the molecular
@@ -55,8 +55,8 @@ AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
     Poincaré constant for tracer(s) eddy diffusivit(ies) Cκ: 0.08333333333333333
                         Buoyancy modification multiplier Cb: nothing
-                Background diffusivit(ies) for tracer(s), κ: 1.46e-7
-             Background kinematic viscosity for momentum, ν: 1.05e-6
+                Background diffusivit(ies) for tracer(s), κ: 0.0
+             Background kinematic viscosity for momentum, ν: 0.0
 ```
 
 no parameters are required although they may be specified. By default, the background viscosity and diffusivity

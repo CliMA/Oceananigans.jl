@@ -4,12 +4,7 @@ using Oceananigans.Fields: AbstractField
 ##### The turbulence closure proposed by Leith
 #####
 
-"""
-    TwoDimensionalLeith{FT} <: TwoDimensionalLeith{FT}
-
-Parameters for the 2D Leith turbulence closure.
-"""
-struct TwoDimensionalLeith{FT, CR, GM} <: AbstractEddyViscosityClosure
+struct TwoDimensionalLeith{FT, CR, GM} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
          C :: FT
     C_Redi :: CR
       C_GM :: GM
@@ -142,8 +137,8 @@ end
 
     R₁₃ = Redi_tensor_xz_fcc(i, j, k, grid, buoyancy, C)
 
-    return νₑⁱʲᵏ * (                 C_Redi * ∂x_c
-                    + (C_Redi - C_GM) * R₁₃ * ∂z_c)
+    return - νₑⁱʲᵏ * (                 C_Redi * ∂x_c
+                      + (C_Redi - C_GM) * R₁₃ * ∂z_c)
 end
 
 @inline function diffusive_flux_y(i, j, k, grid, clock, closure::TwoDimensionalLeith,
@@ -160,8 +155,8 @@ end
     ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
 
     R₂₃ = Redi_tensor_yz_cfc(i, j, k, grid, buoyancy, C)
-    return νₑⁱʲᵏ * (                  C_Redi * ∂y_c
-                     + (C_Redi - C_GM) * R₂₃ * ∂z_c)
+    return - νₑⁱʲᵏ * (                  C_Redi * ∂y_c
+                             + (C_Redi - C_GM) * R₂₃ * ∂z_c)
 end
 
 @inline function diffusive_flux_z(i, j, k, grid, clock, closure::TwoDimensionalLeith,
@@ -182,11 +177,25 @@ end
     R₃₂ = Redi_tensor_yz_ccf(i, j, k, grid, buoyancy, C)
     R₃₃ = Redi_tensor_zz_ccf(i, j, k, grid, buoyancy, C)
 
-    return νₑⁱʲᵏ * (
+    return - νₑⁱʲᵏ * (
           (C_Redi + C_GM) * R₃₁ * ∂x_c
         + (C_Redi + C_GM) * R₃₂ * ∂y_c
                  + C_Redi * R₃₃ * ∂z_c)
 end
+
+const L2D = TwoDimensionalLeith
+
+@inline viscous_flux_ux(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, closure, K.νₑ, Σ₁₁, U.u, U.v, U.w)
+@inline viscous_flux_uy(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, closure, K.νₑ, Σ₁₂, U.u, U.v, U.w)
+@inline viscous_flux_uz(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, closure, K.νₑ, Σ₁₃, U.u, U.v, U.w)
+
+@inline viscous_flux_vx(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, closure, K.νₑ, Σ₂₁, U.u, U.v, U.w)
+@inline viscous_flux_vy(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, closure, K.νₑ, Σ₂₂, U.u, U.v, U.w)
+@inline viscous_flux_vz(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, closure, K.νₑ, Σ₂₃, U.u, U.v, U.w)
+
+@inline viscous_flux_wx(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, closure, K.νₑ, Σ₃₁, U.u, U.v, U.w)
+@inline viscous_flux_wy(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, closure, K.νₑ, Σ₃₂, U.u, U.v, U.w)
+@inline viscous_flux_wz(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, closure, K.νₑ, Σ₃₃, U.u, U.v, U.w)
 
 function calculate_diffusivities!(K, arch, grid, closure::TwoDimensionalLeith, buoyancy, U, C)
     event = launch!(arch, grid, :xyz, calculate_nonlinear_viscosity!, K.νₑ, grid, closure, buoyancy, U, C,
@@ -199,3 +208,9 @@ end
 
 "Return the filter width for a Leith Diffusivity on a regular rectilinear grid."
 @inline Δᶠ(i, j, k, grid::RegularRectilinearGrid, ::TwoDimensionalLeith) = sqrt(grid.Δx * grid.Δy)
+
+function DiffusivityFields(arch, grid, tracer_names, bcs, ::L2D)
+    νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
+    νₑ = CenterField(arch, grid, νₑ_bcs)
+    return (νₑ = νₑ,)
+end
