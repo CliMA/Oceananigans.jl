@@ -13,7 +13,7 @@ const H_jet = Lz/10
 grid = RegularRectilinearGrid(size = (1, 128, 128), 
                                  x = (0, 1), y = (-Ly/2, Ly/2), z=(-Lz, 0),
                           topology = (Periodic, Bounded, Bounded),
-                              halo = (1, 3, 3))
+                              halo = (3, 3, 3))
 
    const f  = 7.3e-5
    const N² = 1e-2
@@ -39,7 +39,7 @@ model = IncompressibleModel(
            buoyancy = BuoyancyTracer(),
             closure = AnisotropicDiffusivity(νh=0, νz=1.27e-2),
 #boundary_conditions = (b=buoyancy_bcs,)
-          )
+          ) 
 
 ū(x, y, z) = U_max * sech(y/L_jet)^2 * exp( - (z + D)^2/H_jet^2 )
 b̄(x, y, z) = U_max * tanh(y/L_jet)   * exp( - (z + D)^2/H_jet^2 ) * 2 * f * L_jet / H_jet^2 * (z + D) #+ N² * (z + D)
