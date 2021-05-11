@@ -4,9 +4,17 @@
 
 @inline Δx_uᶠᶜᵃ(i, j, k, grid, u) = @inbounds Δxᶠᶜᵃ(i, j, k, grid) * u[i, j, k]
 @inline Δx_vᶜᶠᵃ(i, j, k, grid, v) = @inbounds Δxᶜᶠᵃ(i, j, k, grid) * v[i, j, k]
+@inline Δx_cᶜᶜᵃ(i, j, k, grid, c) = @inbounds Δxᶜᶜᵃ(i, j, k, grid) * c[i, j, k]
 
 @inline Δy_uᶠᶜᵃ(i, j, k, grid, u) = @inbounds Δyᶠᶜᵃ(i, j, k, grid) * u[i, j, k]
 @inline Δy_vᶜᶠᵃ(i, j, k, grid, v) = @inbounds Δyᶜᶠᵃ(i, j, k, grid) * v[i, j, k]
+@inline Δy_cᶜᶜᵃ(i, j, k, grid, c) = @inbounds Δyᶜᶜᵃ(i, j, k, grid) * c[i, j, k]
+
+@inline Δy_uᶠᶜᵃ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Δyᶠᶜᵃ(i, j, k, grid) * f(i, j, k, grid, args...)
+@inline Δy_vᶜᶠᵃ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Δyᶜᶠᵃ(i, j, k, grid) * f(i, j, k, grid, args...)
+
+@inline Δx_uᶠᶜᵃ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Δxᶠᶜᵃ(i, j, k, grid) * f(i, j, k, grid, args...)
+@inline Δx_vᶜᶠᵃ(i, j, k, grid, f::F, args...) where F <: Function = @inbounds Δxᶜᶠᵃ(i, j, k, grid) * f(i, j, k, grid, args...)
 
 #####
 ##### Products between fields and grid areas

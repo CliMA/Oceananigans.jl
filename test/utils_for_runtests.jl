@@ -4,14 +4,27 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 ##### Useful kernels
 #####
 
-@kernel function ∇²!(grid, f, ∇²f)
+@kernel function ∇²!(∇²f, grid, f)
     i, j, k = @index(Global, NTuple)
-    @inbounds ∇²f[i, j, k] = ∇²(i, j, k, grid, f)
+    @inbounds ∇²f[i, j, k] = ∇²ᶜᶜᶜ(i, j, k, grid, f)
 end
 
 @kernel function divergence!(grid, u, v, w, div)
     i, j, k = @index(Global, NTuple)
     @inbounds div[i, j, k] = divᶜᶜᶜ(i, j, k, grid, u, v, w)
+end
+
+function compute_∇²!(∇²ϕ, ϕ, arch, grid)
+    fill_halo_regions!(ϕ, arch)
+    child_arch = child_architecture(arch)
+
+    event = launch!(child_arch, grid, :xyz, ∇²!, ∇²ϕ, grid, ϕ, dependencies=Event(device(child_arch)))
+
+    wait(device(child_arch), event)
+
+    fill_halo_regions!(∇²ϕ, arch)
+
+    return nothing
 end
 
 #####

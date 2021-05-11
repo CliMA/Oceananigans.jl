@@ -31,7 +31,7 @@ export
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     AveragedField, ComputedField, KernelComputedField, BackgroundField,
-    interior, interiorparent, set!, compute!,
+    interior, set!, compute!,
 
     # Forcing functions
     Forcing, Relaxation, LinearTarget, GaussianMask,
@@ -50,12 +50,18 @@ export
     IsotropicDiffusivity, AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
     ConstantSmagorinsky, AnisotropicMinimumDissipation,
+    HorizontallyCurvilinearAnisotropicDiffusivity,
 
     # Lagrangian particle tracking
     LagrangianParticles,
 
     # Models
     IncompressibleModel, NonDimensionalIncompressibleModel, HydrostaticFreeSurfaceModel, fields,
+
+    # Hydrostatic free surface model stuff
+    VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface,
+    HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
+    PrescribedVelocityFields,
 
     # Time stepping
     Clock, TimeStepWizard, time_step!,
@@ -65,7 +71,7 @@ export
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics
-    NaNChecker, FieldMaximum,
+    NaNChecker, StateChecker,
     CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
@@ -74,6 +80,9 @@ export
 
     # Abstract operations
     ∂x, ∂y, ∂z, @at,
+
+    # Cubed sphere
+    ConformalCubedSphereGrid,
 
     # Utils
     prettytime
@@ -139,6 +148,7 @@ function tupleit end
 function short_show end
 
 function fields end
+function prognostic_fields end
 
 #####
 ##### Include all the submodules
@@ -166,6 +176,7 @@ include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
 include("Simulations/Simulations.jl")
 include("AbstractOperations/AbstractOperations.jl")
+include("CubedSpheres/CubedSpheres.jl")
 include("Distributed/Distributed.jl")
 
 #####
@@ -192,6 +203,7 @@ using .Diagnostics
 using .OutputWriters
 using .Simulations
 using .AbstractOperations
+using .CubedSpheres
 using .Distributed
 
 function __init__()
@@ -203,7 +215,7 @@ function __init__()
         FFTW.set_num_threads(4*threads)
     end
 
-    @hascuda begin
+    if CUDA.has_cuda()
         @debug "CUDA-enabled GPU(s) detected:"
         for (gpu, dev) in enumerate(CUDA.devices())
             @debug "$dev: $(CUDA.name(dev))"

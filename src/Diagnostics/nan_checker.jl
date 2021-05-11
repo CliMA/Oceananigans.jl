@@ -13,9 +13,12 @@ NaNChecker(model=nothing; schedule, fields) = NaNChecker(schedule, fields)
 
 function run_diagnostic!(nc::NaNChecker, model)
     for (name, field) in pairs(nc.fields)
-        if any(isnan, field.data.parent)
-            t, i = model.clock.time, model.clock.iteration
-            error("time = $t, iteration = $i: NaN found in $name. Aborting simulation.")
-        end
+        error_if_nan_in_field(field, name, model.clock)
+    end
+end
+
+function error_if_nan_in_field(field, name, clock)
+    if any(isnan, field.data.parent)
+        error("time = $(clock.time), iteration = $(clock.iteration): NaN found in field $name. Aborting simulation.")
     end
 end

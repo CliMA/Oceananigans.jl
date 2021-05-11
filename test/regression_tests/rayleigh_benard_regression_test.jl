@@ -29,12 +29,12 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
         grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     elseif grid_type == :vertically_unstretched
         zF = range(-Lz, 0, length=Nz+1)
-        grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), zF=zF)
+        grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z_faces=zF)
     end
 
     # Force salinity as a passive tracer (βS=0)
     c★(x, z) = exp(4z) * sin(2π/Lx * x)
-    Fc(i, j, k, grid, clock, model_fields) = 1/10 * (c★(xnode(Center, i, grid), znode(Center, k, grid)) - model_fields.c[i, j, k])
+    Fc(i, j, k, grid, clock, model_fields) = 1/10 * (c★(xnode(Center(), i, grid), znode(Center(), k, grid)) - model_fields.c[i, j, k])
 
     bbcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Value, 0.0),
                                           bottom = BoundaryCondition(Value, Δb))

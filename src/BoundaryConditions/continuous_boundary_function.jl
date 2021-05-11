@@ -76,14 +76,14 @@ The regularization of `bc.condition::ContinuousBoundaryFunction` requries
    of the boundary.
 """
 function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                       X, Y, Z, I, model_field_names) where C
+                                       LX, LY, LZ, I, model_field_names) where C
     boundary_func = bc.condition
 
-    indices, interps = index_and_interp_dependencies(X, Y, Z,
+    indices, interps = index_and_interp_dependencies(LX, LY, LZ,
                                                      boundary_func.field_dependencies,
                                                      model_field_names)
 
-    regularized_boundary_func = ContinuousBoundaryFunction{X, Y, Z, I}(boundary_func.func,
+    regularized_boundary_func = ContinuousBoundaryFunction{LX, LY, LZ, I}(boundary_func.func,
                                                                        boundary_func.parameters,
                                                                        boundary_func.field_dependencies,
                                                                        indices, interps)
@@ -95,19 +95,19 @@ end
 ##### Kernel functions
 #####
 
-@inline function (bc::ContinuousBoundaryFunction{Nothing, Y, Z, i})(j, k, grid, clock, model_fields) where {Y, Z, i}
+@inline function (bc::ContinuousBoundaryFunction{Nothing, LY, LZ, i})(j, k, grid, clock, model_fields) where {LY, LZ, i}
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
-    return bc.func(ynode(Y, j, grid), znode(Z, k, grid), clock.time, args...)
+    return bc.func(ynode(LY(), j, grid), znode(LZ(), k, grid), clock.time, args...)
 end
 
-@inline function (bc::ContinuousBoundaryFunction{X, Nothing, Z, j})(i, k, grid, clock, model_fields) where {X, Z, j}
+@inline function (bc::ContinuousBoundaryFunction{LX, Nothing, LZ, j})(i, k, grid, clock, model_fields) where {LX, LZ, j}
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
-    return bc.func(xnode(X, i, grid), znode(Z, k, grid), clock.time, args...)
+    return bc.func(xnode(LX(), i, grid), znode(LZ(), k, grid), clock.time, args...)
 end
 
-@inline function (bc::ContinuousBoundaryFunction{X, Y, Nothing, k})(i, j, grid, clock, model_fields) where {X, Y, k}
+@inline function (bc::ContinuousBoundaryFunction{LX, LY, Nothing, k})(i, j, grid, clock, model_fields) where {LX, LY, k}
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
-    return bc.func(xnode(X, i, grid), ynode(Y, j, grid), clock.time, args...)
+    return bc.func(xnode(LX(), i, grid), ynode(LY(), j, grid), clock.time, args...)
 end
 
 # Don't re-convert ContinuousBoundaryFunctions passed to BoundaryCondition constructor
@@ -117,8 +117,8 @@ BoundaryCondition(TBC, condition::ContinuousBoundaryFunction) =
 Adapt.adapt_structure(to, bc::BoundaryCondition{C, <:ContinuousBoundaryFunction}) where C =
     BoundaryCondition(C, Adapt.adapt(to, bc.condition))
 
-Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{X, Y, Z, I}) where {X, Y, Z, I} =
-    ContinuousBoundaryFunction{X, Y, Z, I}(Adapt.adapt(to, bf.func),
+Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, I}) where {LX, LY, LZ, I} =
+    ContinuousBoundaryFunction{LX, LY, LZ, I}(Adapt.adapt(to, bf.func),
                                            Adapt.adapt(to, bf.parameters),
                                            nothing,
                                            Adapt.adapt(to, bf.field_dependencies_indices),

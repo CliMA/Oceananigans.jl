@@ -3,10 +3,10 @@ function halo_regions_initalized_correctly(arch, FT, Nx, Ny, Nz)
     Lx, Ly, Lz = 10, 20, 30
 
     grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    field = CenterField(FT, arch, grid)
+    field = CenterField(arch, grid)
 
     # Fill the interior with random numbers.
-    interior(field) .= rand(FT, Nx, Ny, Nz)
+    set!(field, rand(FT, Nx, Ny, Nz))
 
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
 
@@ -25,7 +25,7 @@ function halo_regions_correctly_filled(arch, FT, Nx, Ny, Nz)
 
     grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), 
                                   topology=(Periodic, Periodic, Bounded))
-    field = CenterField(FT, arch, grid)
+    field = CenterField(arch, grid)
 
     set!(field, rand(FT, Nx, Ny, Nz))
     fill_halo_regions!(field, arch)

@@ -1,3 +1,5 @@
+import Adapt
+
 using Oceananigans: short_show
 
 """
@@ -51,3 +53,7 @@ Base.show(io::IO, forcing::DiscreteForcing{P}) where P =
     print(io, "DiscreteForcing{$P}", '\n',
         "├── func: $(short_show(forcing.func))", '\n',
         "└── parameters: $(forcing.parameters)")
+
+Adapt.adapt_structure(to, forcing::DiscreteForcing) =
+    DiscreteForcing(Adapt.adapt(to, forcing.func),
+                    Adapt.adapt(to, forcing.parameters))

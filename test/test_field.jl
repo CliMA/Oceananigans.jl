@@ -1,4 +1,4 @@
-using Oceananigans.Fields: cpudata, FieldSlicer
+using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy
 
 """
     correct_field_size(arch, grid, FieldType, Tx, Ty, Tz)
@@ -7,6 +7,13 @@ Test that the field initialized by the FieldType constructor on `arch` and `grid
 has size `(Tx, Ty, Tz)`.
 """
 correct_field_size(a, g, FieldType, Tx, Ty, Tz) = size(parent(FieldType(a, g))) == (Tx, Ty, Tz)
+
+function run_similar_field_tests(f)
+    g = similar(f)
+    @test typeof(f) == typeof(g)
+    @test f.grid == g.grid
+    return nothing
+end
 
 """
      correct_field_value_was_set(N, L, ftf, val)
@@ -18,7 +25,7 @@ function.
 function correct_field_value_was_set(arch, grid, FieldType, val::Number)
     f = FieldType(arch, grid)
     set!(f, val)
-    CUDA.@allowscalar return interior(f) ≈ val * ones(size(f))
+    return all(interior(f) .≈ val * arch_array(arch, ones(size(f))))
 end
 
 function run_field_reduction_tests(FT, arch)
@@ -51,27 +58,29 @@ function run_field_reduction_tests(FT, arch)
 
     dims_to_test = (1, 2, 3, (1, 2), (1, 3), (2, 3))
 
-    # Important to make sure no CUDA scalar operations occur!
-    CUDA.@disallowscalar begin
-        for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
-            @test minimum(ϕ) == minimum(ϕ_vals)
-            @test maximum(ϕ) == maximum(ϕ_vals)
-            @test mean(ϕ) == mean(ϕ_vals)
+    for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
 
-            @test minimum(∛, ϕ) == minimum(∛, ϕ_vals)
-            @test maximum(abs, ϕ) == maximum(abs, ϕ_vals)
-            @test mean(abs2, ϕ) == mean(abs2, ϕ)
+        @test all(ϕ .== ϕ_vals) # if this isn't true, reduction tests can't pass
 
-            for dims in dims_to_test
-                @test minimum(ϕ, dims=dims) == minimum(ϕ_vals, dims=dims)
-                @test maximum(ϕ, dims=dims) == maximum(ϕ_vals, dims=dims)
-                @test mean(ϕ, dims=dims) == mean(ϕ_vals, dims=dims)
+        # Important to make sure no CUDA scalar operations occur!
+        CUDA.allowscalar(false)
+        @test minimum(ϕ) == minimum(ϕ_vals)
+        @test maximum(ϕ) == maximum(ϕ_vals)
+        @test mean(ϕ) == mean(ϕ_vals)
+        @test minimum(∛, ϕ) == minimum(∛, ϕ_vals)
+        @test maximum(abs, ϕ) == maximum(abs, ϕ_vals)
+        @test mean(abs2, ϕ) == mean(abs2, ϕ)
 
-                @test minimum(sin, ϕ, dims=dims) == minimum(sin, ϕ_vals, dims=dims)
-                @test maximum(cos, ϕ, dims=dims) == maximum(cos, ϕ_vals, dims=dims)
-                @test mean(cosh, ϕ, dims=dims) == mean(cosh, ϕ, dims=dims)
-            end
+        for dims in dims_to_test
+            @test minimum(ϕ, dims=dims) == minimum(ϕ_vals, dims=dims)
+            @test maximum(ϕ, dims=dims) == maximum(ϕ_vals, dims=dims)
+            @test mean(ϕ, dims=dims) == mean(ϕ_vals, dims=dims)
+
+            @test minimum(sin, ϕ, dims=dims) == minimum(sin, ϕ_vals, dims=dims)
+            @test maximum(cos, ϕ, dims=dims) == maximum(cos, ϕ_vals, dims=dims)
+            @test mean(cosh, ϕ, dims=dims) == mean(cosh, ϕ, dims=dims)
         end
+        CUDA.allowscalar(true)
     end
 
     return nothing
@@ -107,10 +116,10 @@ function run_field_interpolation_tests(arch, FT)
     ℑw = interpolate.(Ref(w), nodes(w, reshape=true)...)
     ℑc = interpolate.(Ref(c), nodes(c, reshape=true)...)
 
-    @test all(isapprox.(ℑu, interior(u), atol=ε_max))
-    @test all(isapprox.(ℑv, interior(v), atol=ε_max))
-    @test all(isapprox.(ℑw, interior(w), atol=ε_max))
-    @test all(isapprox.(ℑc, interior(c), atol=ε_max))
+    @test all(isapprox.(ℑu, Array(interior(u)), atol=ε_max))
+    @test all(isapprox.(ℑv, Array(interior(v)), atol=ε_max))
+    @test all(isapprox.(ℑw, Array(interior(w)), atol=ε_max))
+    @test all(isapprox.(ℑc, Array(interior(c)), atol=ε_max))
 
     # Check that interpolating between grid points works as expected.
 
@@ -118,12 +127,12 @@ function run_field_interpolation_tests(arch, FT)
     ys = reshape([-π/6, 0, 1+1e-7], (1, 3, 1))
     zs = reshape([-1.3, 1.23, 2.1], (1, 1, 3))
 
-    F = f.(xs, ys, zs)
-
     ℑu = interpolate.(Ref(u), xs, ys, zs)
     ℑv = interpolate.(Ref(v), xs, ys, zs)
     ℑw = interpolate.(Ref(w), xs, ys, zs)
     ℑc = interpolate.(Ref(c), xs, ys, zs)
+
+    F = f.(xs, ys, zs)
 
     @test all(isapprox.(ℑu, F, atol=ε_max))
     @test all(isapprox.(ℑv, F, atol=ε_max))
@@ -173,6 +182,8 @@ end
     @testset "Setting fields" begin
         @info "  Testing field setting..."
 
+        CUDA.allowscalar(true)
+
         FieldTypes = (CenterField, XFaceField, YFaceField, ZFaceField)
 
         N = (4, 6, 8)
@@ -197,10 +208,29 @@ end
             for FieldType in FieldTypes
                 field = FieldType(arch, grid)
                 sz = size(field)
-                A = rand(FT, sz...) |> ArrayType
+                A = rand(FT, sz...)
                 set!(field, A)
                 @test field.data[2, 4, 6] == A[2, 4, 6]
             end
+
+            Nx = 8
+            topo = (Bounded, Bounded, Bounded)
+            grid = RegularRectilinearGrid(FT, topology=topo, size=(Nx, Nx, Nx), x=(-1, 1), y=(0, 2π), z=(-1, 1))
+
+            u = XFaceField(arch, grid)
+            v = YFaceField(arch, grid)
+            w = ZFaceField(arch, grid)
+            c = CenterField(arch, grid)
+
+            f(x, y, z) = exp(x) * sin(y) * tanh(z)
+
+            ϕs = (u, v, w, c)
+            [set!(ϕ, f) for ϕ in ϕs]
+
+            @test u[1, 2, 3] == f(grid.xF[1], grid.yC[2], grid.zC[3])
+            @test v[1, 2, 3] == f(grid.xC[1], grid.yF[2], grid.zC[3])
+            @test w[1, 2, 3] == f(grid.xC[1], grid.yC[2], grid.zF[3])
+            @test c[1, 2, 3] == f(grid.xC[1], grid.yC[2], grid.zC[3])
         end
     end
 
@@ -232,11 +262,27 @@ end
         ϕ = CenterField(CPU(), grid)
         @test cpudata(ϕ).parent isa Array
 
-        @hascuda begin
+        if CUDA.has_cuda()
             ϕ = CenterField(GPU(), grid)
             @test cpudata(ϕ).parent isa Array
         end
 
         @test FieldSlicer() isa FieldSlicer
+
+        @info "    Testing similar(f) for f::Union(Field, ReducedField)..."
+
+        grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+
+        for X in (Center, Face), Y in (Center, Face), Z in (Center, Face)
+            for arch in archs
+                f = Field(X, Y, Z, arch, grid)
+                run_similar_field_tests(f)
+
+                for dims in (3, (1, 2), (1, 2, 3))
+                    f = ReducedField(X, Y, Z, arch, grid, dims=dims)
+                    run_similar_field_tests(f)
+                end
+            end
+        end
     end
 end

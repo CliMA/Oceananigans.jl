@@ -166,21 +166,13 @@ function test_xnode_ynode_znode_are_correct(FT)
     grid = RegularRectilinearGrid(FT, size=(N, N, N), x=(0, π), y=(0, π), z=(0, π),
                                   topology=(Periodic, Periodic, Bounded))
 
-    @test xnode(Center, 2, grid) ≈ FT(π/2)
-    @test ynode(Center, 2, grid) ≈ FT(π/2)
-    @test znode(Center, 2, grid) ≈ FT(π/2)
+    @test xnode(Center(), 2, grid) ≈ FT(π/2)
+    @test ynode(Center(), 2, grid) ≈ FT(π/2)
+    @test znode(Center(), 2, grid) ≈ FT(π/2)
 
-    @test xnode(Face, 2, grid) ≈ FT(π/3)
-    @test ynode(Face, 2, grid) ≈ FT(π/3)
-    @test znode(Face, 2, grid) ≈ FT(π/3)
-
-    @test xC(2, grid) == xnode(Center, 2, grid)
-    @test yC(2, grid) == ynode(Center, 2, grid)
-    @test zC(2, grid) == znode(Center, 2, grid)
-
-    @test xF(2, grid) == xnode(Face, 2, grid)
-    @test yF(2, grid) == ynode(Face, 2, grid)
-    @test zF(2, grid) == znode(Face, 2, grid)
+    @test xnode(Face(), 2, grid) ≈ FT(π/3)
+    @test ynode(Face(), 2, grid) ≈ FT(π/3)
+    @test znode(Face(), 2, grid) ≈ FT(π/3)
 
     return nothing
 end
@@ -295,7 +287,7 @@ end
 #####
 
 function test_vertically_stretched_grid_properties_are_same_type(FT, arch)
-    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, 16), x=(0,1), y=(0,1), zF=collect(0:16))
+    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, 16), x=(0,1), y=(0,1), z_faces=collect(0:16))
 
     @test grid.Lx isa FT
     @test grid.Ly isa FT
@@ -317,7 +309,7 @@ function test_vertically_stretched_grid_properties_are_same_type(FT, arch)
 end
 
 function test_architecturally_correct_stretched_grid(FT, arch, zF)
-    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, length(zF)-1), x=(0, 1), y=(0, 1), zF=zF)
+    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, length(zF)-1), x=(0, 1), y=(0, 1), z_faces=zF)
 
     ArrayType = array_type(arch)
     @test grid.zᵃᵃᶠ  isa OffsetArray{FT, 1, <:ArrayType}
@@ -329,7 +321,7 @@ function test_architecturally_correct_stretched_grid(FT, arch, zF)
 end
 
 function test_correct_constant_grid_spacings(FT, Nz)
-    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz))
+    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z_faces=collect(0:Nz))
 
     @test all(grid.Δzᵃᵃᶜ .== 1)
     @test all(grid.Δzᵃᵃᶠ .== 1)
@@ -338,7 +330,7 @@ function test_correct_constant_grid_spacings(FT, Nz)
 end
 
 function test_correct_quadratic_grid_spacings(FT, Nz)
-    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
+    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z_faces=collect(0:Nz).^2)
 
      zF(k) = (k-1)^2
      zC(k) = (k^2 + (k-1)^2) / 2
@@ -360,7 +352,7 @@ function test_correct_tanh_grid_spacings(FT, Nz)
     S = 3  # Stretching factor
     zF(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
 
-    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=zF)
+    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z_faces=zF)
 
      zC(k) = (zF(k) + zF(k+1)) / 2
     ΔzF(k) = zF(k+1) - zF(k)
@@ -593,7 +585,7 @@ end
 
             # Testing show function
             Nz = 20
-            grid = VerticallyStretchedRectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
+            grid = VerticallyStretchedRectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z_faces=collect(0:Nz).^2)
             show(grid); println();
             @test grid isa VerticallyStretchedRectilinearGrid
         end
@@ -628,14 +620,6 @@ end
 
     @testset "Conformal cubed sphere face grid from file" begin
         @info "  Testing conformal cubed sphere face grid construction from file..."
-
-        dd = DataDep("cubed_sphere_32_grid",
-            "Conformal cubed sphere grid with 32×32 grid points on each face",
-            "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
-            "3cc5d86290c3af028cddfa47e61e095ee470fe6f8d779c845de09da2f1abeb15" # sha256sum
-        )
-
-        DataDeps.register(dd)
 
         cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 

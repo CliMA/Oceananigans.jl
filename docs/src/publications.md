@@ -2,7 +2,7 @@
 
 If you have work using Oceananigans.jl that you would like to have listed here, please open a pull request to add it or let us know!
 
-1. Wagner, G. L., Chini, G. P., Ramadhan, A., Gallet, B., & Ferrari, R. (2021). [Near-inertial waves and turbulence driven by the growth of swell](https://doi.org/10.1175/JPO-D-20-0178.1), Journal of Physical Oceanography, in press. DOI: [10.1175/JPO-D-20-0178.1](https://doi.org/10.1175/JPO-D-20-0178.1)
+1. Wagner, G. L., Chini, G. P., Ramadhan, A., Gallet, B., & Ferrari, R. (2021). [Near-inertial waves and turbulence driven by the growth of swell](https://doi.org/10.1175/JPO-D-20-0178.1), Journal of Physical Oceanography, 51(5), 1337-1351. DOI: [10.1175/JPO-D-20-0178.1](https://doi.org/10.1175/JPO-D-20-0178.1)
 
 1. Buffett, B. A. (2021). [Conditions for turbulent Ekman layers in precessionally driven flow](https://doi.org/10.1093/gji/ggab088), Geophysical Journal International, 226, 1, pp. 56–65. DOI: [10.1093/gji/ggab088](https://doi.org/10.1093/gji/ggab088)
 

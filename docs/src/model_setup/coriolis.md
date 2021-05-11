@@ -41,7 +41,7 @@ in which case the value of ``f`` is given by ``2\Omega\sin\varphi``.
 ## Non-traditional ``f``-plane
 
 To set up an ``f``-plane with non-traditional Coriolis terms, for example, with
-``\bm{f} = (0, f_y, f_z) = (0, 2, 1) \times 10^{-4} \text{s}^{-1}``,
+``\boldsymbol{f} = (0, f_y, f_z) = (0, 2, 1) \times 10^{-4} \text{s}^{-1}``,
 
 ```jldoctest
 julia> coriolis = NonTraditionalFPlane(fz=1e-4, fy=2e-4)

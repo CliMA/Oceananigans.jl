@@ -35,8 +35,8 @@ Lx, Ly, Lz = 2π, 20, 1
 Nx, Ny = 128, 128
 
 grid = RegularRectilinearGrid(size = (Nx, Ny),
-                            x = (0, Lx), y = (-Ly/2, Ly/2),
-                            topology = (Periodic, Bounded, Flat))
+                              x = (0, Lx), y = (-Ly/2, Ly/2),
+                              topology = (Periodic, Bounded, Flat))
 
 # ## Physical parameters
 #
@@ -74,10 +74,10 @@ model = ShallowWaterModel(
 # free-surface deformation of ``Δη``, i.e.,
 #
 # ```math
-# \begin{aligned}
+# \begin{align}
 # η̄(y) & = - Δη \tanh(y) , \\
 # ū(y) & = U \mathrm{sech}^2(y) .
-# \end{aligned}
+# \end{align}
 # ```
 #
 # The total height of the fluid is ``h = L_z + \eta``. Linear stability theory predicts that 
@@ -133,7 +133,7 @@ using LinearAlgebra: norm
 
 function perturbation_norm(model)
     compute!(v)
-    return norm(interiorparent(v))
+    return norm(interior(v))
 end
 nothing # hide
 

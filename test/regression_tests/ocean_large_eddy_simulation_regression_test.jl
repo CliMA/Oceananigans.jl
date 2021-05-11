@@ -19,7 +19,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
         grid = RegularRectilinearGrid(size=(N, N, N), extent=(L, L, L))
     elseif grid_type == :vertically_unstretched
         zF = range(-L, 0, length=N+1)
-        grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(N, N, N), x=(0, L), y=(0, L), zF=zF)
+        grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(N, N, N), x=(0, L), y=(0, L), z_faces=zF)
     end
 
     # Boundary conditions

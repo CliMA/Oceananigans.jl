@@ -5,7 +5,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils: launch!
 
-import Oceananigans: fields
+import Oceananigans: fields, prognostic_fields
 import Oceananigans.LagrangianParticleTracking: update_particle_properties!
 
 #####
@@ -26,6 +26,7 @@ include("show_shallow_water_model.jl")
 Returns a flattened `NamedTuple` of the fields in `model.solution` and `model.tracers`.
 """
 fields(model::ShallowWaterModel) = merge(model.solution, model.tracers)
+prognostic_fields(model::ShallowWaterModel) = fields(model)
 
 include("solution_and_tracer_tendencies.jl")
 include("calculate_shallow_water_tendencies.jl")

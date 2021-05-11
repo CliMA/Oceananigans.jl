@@ -158,11 +158,11 @@ function test_thermal_bubble_netcdf_output(arch)
 
     close(ds3)
 
-    @test all(u .≈ Array(interiorparent(model.velocities.u)))
-    @test all(v .≈ Array(interiorparent(model.velocities.v)))
-    @test all(w .≈ Array(interiorparent(model.velocities.w)))
-    @test all(T .≈ Array(interiorparent(model.tracers.T)))
-    @test all(S .≈ Array(interiorparent(model.tracers.S)))
+    @test all(u .≈ Array(interior(model.velocities.u)))
+    @test all(v .≈ Array(interior(model.velocities.v)))
+    @test all(w .≈ Array(interior(model.velocities.w)))
+    @test all(T .≈ Array(interior(model.tracers.T)))
+    @test all(S .≈ Array(interior(model.tracers.S)))
 
     ds2 = Dataset(nc_sliced_filepath)
 
@@ -217,11 +217,11 @@ function test_thermal_bubble_netcdf_output(arch)
 
     close(ds2)
 
-    @test all(u_sliced .≈ Array(interiorparent(model.velocities.u))[i_slice, j_slice, k_slice])
-    @test all(v_sliced .≈ Array(interiorparent(model.velocities.v))[i_slice, j_slice, k_slice])
-    @test all(w_sliced .≈ Array(interiorparent(model.velocities.w))[i_slice, j_slice, k_slice])
-    @test all(T_sliced .≈ Array(interiorparent(model.tracers.T))[i_slice, j_slice, k_slice])
-    @test all(S_sliced .≈ Array(interiorparent(model.tracers.S))[i_slice, j_slice, k_slice])
+    @test all(u_sliced .≈ Array(interior(model.velocities.u))[i_slice, j_slice, k_slice])
+    @test all(v_sliced .≈ Array(interior(model.velocities.v))[i_slice, j_slice, k_slice])
+    @test all(w_sliced .≈ Array(interior(model.velocities.w))[i_slice, j_slice, k_slice])
+    @test all(T_sliced .≈ Array(interior(model.tracers.T))[i_slice, j_slice, k_slice])
+    @test all(S_sliced .≈ Array(interior(model.tracers.S))[i_slice, j_slice, k_slice])
 
     rm(nc_filepath)
     rm(nc_sliced_filepath)
@@ -604,7 +604,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     Nx = Ny = 8
     Nz = 16
     zF = [k^2 for k in 0:Nz]
-    grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), zF=zF)
+    grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z_faces=zF)
 
     model = IncompressibleModel(architecture=arch, grid=grid)
 

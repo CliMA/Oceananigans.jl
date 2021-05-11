@@ -24,22 +24,23 @@ validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSe
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, U, C, Φ, K} <: AbstractModel{TS}
-     architecture :: A        # Computer `Architecture` on which `Model` is run
-             grid :: G        # Grid of physical points on which `Model` is solved
-            clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
-        advection :: V        # Advection scheme for tracers
-         buoyancy :: B        # Set of parameters for buoyancy model
-         coriolis :: R        # Set of parameters for the background rotation rate of `Model`
-     free_surface :: S        # Free surface parameters and fields
-          forcing :: F        # Container for forcing functions defined by the user
-          closure :: E        # Diffusive 'turbulence closure' for all model fields
-        particles :: P        # Particle set for Lagrangian tracking
-       velocities :: U        # Container for velocity fields `u`, `v`, and `w`
-          tracers :: C        # Container for tracer fields
-         pressure :: Φ        # Container for hydrostatic pressure
-    diffusivities :: K        # Container for turbulent diffusivities
-      timestepper :: TS       # Object containing timestepper fields and parameters
+                                           G, T, V, B, R, F, P, U, C, Φ, K, AF} <: AbstractModel{TS}
+        architecture :: A        # Computer `Architecture` on which `Model` is run
+                grid :: G        # Grid of physical points on which `Model` is solved
+               clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
+           advection :: V        # Advection scheme for tracers
+            buoyancy :: B        # Set of parameters for buoyancy model
+            coriolis :: R        # Set of parameters for the background rotation rate of `Model`
+        free_surface :: S        # Free surface parameters and fields
+             forcing :: F        # Container for forcing functions defined by the user
+             closure :: E        # Diffusive 'turbulence closure' for all model fields
+           particles :: P        # Particle set for Lagrangian tracking
+          velocities :: U        # Container for velocity fields `u`, `v`, and `w`
+             tracers :: C        # Container for tracer fields
+            pressure :: Φ        # Container for hydrostatic pressure
+       diffusivities :: K        # Container for turbulent diffusivities
+         timestepper :: TS       # Object containing timestepper fields and parameters
+    auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
 end
 
 """
@@ -58,6 +59,7 @@ end
              velocities = nothing,
                pressure = nothing,
           diffusivities = nothing,
+       auxiliary_fields = NamedTuple(),
     )
 
 Construct an hydrostatic `Oceananigans.jl` model with a free surface on `grid`.
@@ -93,6 +95,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                         velocities = nothing,
                                           pressure = nothing,
                                      diffusivities = nothing,
+                                  auxiliary_fields = NamedTuple(),
     )
 
     @warn "HydrostaticFreeSurfaceModel is experimental. Use with caution!"
@@ -154,12 +157,14 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     return HydrostaticFreeSurfaceModel(architecture, grid, clock, advection, buoyancy, coriolis,
                                        free_surface, forcing, closure, particles, velocities, tracers,
-                                       pressure, diffusivities, timestepper)
+                                       pressure, diffusivities, timestepper, auxiliary_fields)
 end
 
-function validate_velocity_boundary_conditions(velocities)
-    velocities.w.boundary_conditions.top === nothing || error("Top boundary condition for HydrostaticFreeSurfaceModel velocities.w
-                                                              must be `nothing`!")
+validate_velocity_boundary_conditions(velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
+
+function validate_vertical_velocity_boundary_conditions(w)
+    w.boundary_conditions.top === nothing || error("Top boundary condition for HydrostaticFreeSurfaceModel velocities.w
+                                                    must be `nothing`!")
     return nothing
 end
 

@@ -6,7 +6,7 @@ The `Oceananigans.jl` staggered grid is defined by a rectilinear array of cuboid
 Note that the indices ``(i, j, k)`` increase with increasing coordinate ``(x, y, z)``.
 
 ![Schematic of staggered grid](assets/staggered_grid.png)
-*A schematic of \texttt{Oceananigans.jl} finite volumes for a two-dimensional staggered grid in ``(x, z)``.
+*A schematic of `Oceananigans.jl` finite volumes for a two-dimensional staggered grid in ``(x, z)``.
 Tracers ``c`` and pressure ``p`` are defined at the center of the control volume. The ``u`` control volumes are 
 centered on the left and right edges of the pressure control volume while the ``w`` control volumes are centered 
 on the top and bottom edges of the pressure control volumes. The indexing convention places the ``i^{\rm{th}}`` 
@@ -20,7 +20,7 @@ so that each cell encloses a volume ``V = \Delta x \Delta y \Delta z``.
 
 A finite volume method discretizes a continuous quantity ``c`` by considering its average over a finite volume:
 ```math
-    c_{i, j, k} \equiv \frac{1}{V_{i, j, k}} \int c(\bm{x}) \, \rm{d} V_{i, j, k} \, .
+    c_{i, j, k} \equiv \frac{1}{V_{i, j, k}} \int c(\boldsymbol{x}) \, \mathrm{d} V_{i, j, k} \, .
 ```
 The finite volumes that discretize each of ``u``, ``v``, and ``w`` are located on a grid which is "staggered" 
 with respect to the grid that defines tracer finite volumes. 

@@ -1,3 +1,5 @@
+using OffsetArrays: OffsetArray
+
 #####
 ##### General halo filling functions
 #####
@@ -19,10 +21,11 @@ function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)
     return nothing
 end
 
-fill_halo_regions!(field, arch, args...) = fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...)
+# Some fields have `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
+fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
-"Fill halo regions in x, y, and z for a given field."
-function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...; kwargs...)
+"Fill halo regions in x, y, and z for a given field's data."
+function fill_halo_regions!(c::OffsetArray, fieldbcs, arch, grid, args...; kwargs...)
 
     barrier = Event(device(arch))
 
@@ -35,7 +38,7 @@ function fill_halo_regions!(c::AbstractArray, fieldbcs, arch, grid, args...; kwa
 
     # Wait at the end
     events = [west_event, east_event, south_event, north_event, bottom_event, top_event]
-    events = filter(e -> typeof(e) <: Event, events)
+    events = filter(e -> e isa Event, events)
     wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
@@ -47,7 +50,7 @@ end
 
   fill_west_halo!(c, ::Nothing, args...; kwargs...) = nothing
   fill_east_halo!(c, ::Nothing, args...; kwargs...) = nothing
- fill_south_halo!(c, ::Nothing, args...; kwargs...) = nothing 
+ fill_south_halo!(c, ::Nothing, args...; kwargs...) = nothing
  fill_north_halo!(c, ::Nothing, args...; kwargs...) = nothing
    fill_top_halo!(c, ::Nothing, args...; kwargs...) = nothing
 fill_bottom_halo!(c, ::Nothing, args...; kwargs...) = nothing

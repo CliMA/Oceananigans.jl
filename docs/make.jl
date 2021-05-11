@@ -1,4 +1,4 @@
-push!(LOAD_PATH, "..")
+push!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
 
 using Documenter
 using DocumenterCitations
@@ -126,6 +126,7 @@ pages = [
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
     "Validation experiments" => validation_pages,
+    "Simulation tips" => "simulation_tips.md",
     "Gallery" => "gallery.md",
     "Performance benchmarks" => "benchmarks.md",
     "Contributor's guide" => "contributing.md",
@@ -142,7 +143,8 @@ pages = [
 format = Documenter.HTML(
     collapselevel = 1,
        prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://clima.github.io/OceananigansDocumentation/stable/"
+        canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
+       mathengine = MathJax3()
 )
 
 makedocs(bib,

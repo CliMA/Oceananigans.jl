@@ -1,46 +1,47 @@
 using Adapt
 using KernelAbstractions
-using Oceananigans.Fields: AbstractField, FieldStatus, validate_field_data, new_data, conditional_compute!
+
+using Oceananigans.Fields: AbstractDataField, FieldStatus, validate_field_data, conditional_compute!
 using Oceananigans.Fields: architecture, tracernames
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: work_layout
+using Oceananigans.Grids: new_data
 
 import Oceananigans.Fields: compute!, compute_at!
 
 import Oceananigans: short_show
 
-"""
-    struct BuoyancyField{B, A, G, T} <: AbstractField{X, Y, Z, A, G}
-
-Type representing buoyancy computed on the model grid.
-"""
-struct BuoyancyField{B, S, A, G, T} <: AbstractField{Center, Center, Center, A, G}
-        data :: A
-        grid :: G
-    buoyancy :: B
-     tracers :: T
-      status :: S
-
+struct BuoyancyField{B, S, A, D, G, T, C} <: AbstractDataField{Center, Center, Center, A, G, T}
+            data :: D
+    architecture :: A
+            grid :: G
+        buoyancy :: B
+         tracers :: C
+          status :: S
+    
     """
         BuoyancyField(data, grid, buoyancy, tracers)
 
     Returns a `BuoyancyField` with `data` on `grid` corresponding to
     `buoyancy` computed from `tracers`.
     """
-    function BuoyancyField(data, grid, buoyancy, tracers, recompute_safely::Bool)
+    function BuoyancyField(data::D, arch::A, grid::G, buoyancy::B, tracers::C,
+                           recompute_safely::Bool) where {D, A, G, B, C}
 
         validate_field_data(Center, Center, Center, data, grid)
 
         status = recompute_safely ? nothing : FieldStatus(zero(eltype(grid)))
 
-        return new{typeof(buoyancy), typeof(status), typeof(data),
-                   typeof(grid), typeof(tracers)}(data, grid, buoyancy, tracers, status)
+        S = typeof(status)
+        T = eltype(grid)
+
+        return new{B, S, A, D, G, T, C}(data, arch, grid, buoyancy, tracers, status)
     end
 
-    function BuoyancyField(data, grid, buoyancy, tracers, status)
+    function BuoyancyField(data::D, arch::A, grid::G, buoyancy::B, tracers::C, status::S) where {D, A, G, B, C, S}
         validate_field_data(Center, Center, Center, data, grid)
-        return new{typeof(buoyancy), typeof(status), typeof(data),
-                   typeof(grid), typeof(tracers)}(data, grid, buoyancy, tracers, status)
+        T = eltype(grid)
+        return new{B, S, A, D, G, T, C}(data, grid, buoyancy, tracers, status)
     end
 end
 
@@ -62,7 +63,7 @@ _buoyancy_field(::Nothing, args...; kwargs...) = nothing
 #####
 
 _buoyancy_field(buoyancy::BuoyancyTracerModel, tracers, arch, grid, args...) =
-    BuoyancyField(tracers.b.data, grid, buoyancy, tracers, true)
+    BuoyancyField(tracers.b.data, arch, grid, buoyancy, tracers, true)
 
 compute!(::BuoyancyField{<:BuoyancyTracerModel}, time=nothing) = nothing
 
@@ -78,7 +79,7 @@ function _buoyancy_field(buoyancy::Buoyancy, tracers, arch, grid,
         recompute_safely = false
     end
 
-    return BuoyancyField(data, grid, buoyancy, tracers, recompute_safely)
+    return BuoyancyField(data, arch, grid, buoyancy, tracers, recompute_safely)
 end
 
 """
@@ -93,7 +94,7 @@ function compute!(buoyancy_field::BuoyancyField, time=nothing)
     grid = buoyancy_field.grid
     tracers = buoyancy_field.tracers
     buoyancy = buoyancy_field.buoyancy
-    arch = architecture(data)
+    arch = architecture(buoyancy_field)
 
     workgroup, worksize = work_layout(grid, :xyz)
 

@@ -1,4 +1,7 @@
+using Oceananigans: prognostic_fields
 using Oceananigans.Grids: AbstractGrid
+
+using Oceananigans.Utils: launch!
 
 """ Store source terms for `u`, `v`, and `w`. """
 @kernel function store_field_tendencies!(G⁻, grid::AbstractGrid{FT}, G⁰) where FT
@@ -11,20 +14,17 @@ function store_tendencies!(model)
 
     barrier = Event(device(model.architecture))
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
-
-    model_fields = fields(model)
-
-    store_field_tendencies_kernel! = store_field_tendencies!(device(model.architecture), workgroup, worksize)
+    model_fields = prognostic_fields(model)
 
     events = []
 
     for field_name in keys(model_fields)
 
-        field_event = store_field_tendencies_kernel!(model.timestepper.G⁻[field_name],
-                                                     model.grid,
-                                                     model.timestepper.Gⁿ[field_name],
-                                                     dependencies=barrier)
+        field_event = launch!(model.architecture, model.grid, :xyz, store_field_tendencies!,
+                              model.timestepper.G⁻[field_name],
+                              model.grid,
+                              model.timestepper.Gⁿ[field_name],
+                              dependencies = barrier)
 
         push!(events, field_event)
     end

@@ -1,21 +1,19 @@
-const ArrayOrField = Union{AbstractArray, AbstractField}
-
 #####
 ##### Diffusivities
 #####
 
-κᶠᶜᶜ(i, j, k, grid, clock, κ::Number) = κ
-κᶜᶠᶜ(i, j, k, grid, clock, κ::Number) = κ
-κᶜᶜᶠ(i, j, k, grid, clock, κ::Number) = κ
+@inline κᶠᶜᶜ(i, j, k, grid, clock, κ::Number) = κ
+@inline κᶜᶠᶜ(i, j, k, grid, clock, κ::Number) = κ
+@inline κᶜᶜᶠ(i, j, k, grid, clock, κ::Number) = κ
 
-κᶠᶜᶜ(i, j, k, grid, clock, κ::Function) = κ(xnode(Face,   i, grid), ynode(Center, j, grid), znode(Center, k, grid), clock.time)
-κᶜᶠᶜ(i, j, k, grid, clock, κ::Function) = κ(xnode(Center, i, grid), ynode(Face,   j, grid), znode(Center, k, grid), clock.time)
-κᶜᶜᶠ(i, j, k, grid, clock, κ::Function) = κ(xnode(Center, i, grid), ynode(Center, j, grid), znode(Face,   k, grid), clock.time)
+@inline κᶠᶜᶜ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Face(),   i, grid), ynode(Center(), j, grid), znode(Center(), k, grid), clock.time)
+@inline κᶜᶠᶜ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Center(), i, grid), ynode(Face(),   j, grid), znode(Center(), k, grid), clock.time)
+@inline κᶜᶜᶠ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Face(),   k, grid), clock.time)
 
 # Assumes that `κ` is located at cell centers
-κᶠᶜᶜ(i, j, k, grid, clock, κ::ArrayOrField) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
-κᶜᶠᶜ(i, j, k, grid, clock, κ::ArrayOrField) = ℑyᵃᶠᵃ(i, j, k, grid, κ)
-κᶜᶜᶠ(i, j, k, grid, clock, κ::ArrayOrField) = ℑzᵃᵃᶠ(i, j, k, grid, κ)
+@inline κᶠᶜᶜ(i, j, k, grid, clock, κ::AbstractArray) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
+@inline κᶜᶠᶜ(i, j, k, grid, clock, κ::AbstractArray) = ℑyᵃᶠᵃ(i, j, k, grid, κ)
+@inline κᶜᶜᶠ(i, j, k, grid, clock, κ::AbstractArray) = ℑzᵃᵃᶠ(i, j, k, grid, κ)
 
 #####
 ##### Diffusive fluxes
@@ -43,3 +41,10 @@ which will end up at the location `ccc`.
                                     δyᵃᶜᵃ(i, j, k, grid, Ay_vᶜᶠᶜ, diffusive_flux_y, clock, closure, c, Val(tracer_index), args...) +
                                     δzᵃᵃᶜ(i, j, k, grid, Az_wᶜᶜᵃ, diffusive_flux_z, clock, closure, c, Val(tracer_index), args...))
 end
+
+#####
+##### Gradients of Laplacians
+#####
+
+@inline ∂x_∇²h_cᶠᶜᶜ(i, j, k, grid, c) = 1 / Azᶠᶜᵃ(i, j, k, grid) * δxᶠᵃᵃ(i, j, k, Δy_cᶜᶜᵃ, ∇²hᶜᶜᶜ, c)
+@inline ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c) = 1 / Azᶜᶠᵃ(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, Δx_cᶜᶜᵃ, ∇²hᶜᶜᶜ, c)

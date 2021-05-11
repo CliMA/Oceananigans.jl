@@ -251,8 +251,10 @@ for arch in archs
         test_thermal_bubble_checkpointer_output(arch)
         test_checkpoint_output_with_function_bcs(arch)
 
-        @hascuda run_cross_architecture_checkpointer_tests(CPU(), GPU())
-        @hascuda run_cross_architecture_checkpointer_tests(GPU(), CPU())
+        if CUDA.has_cuda()
+            run_cross_architecture_checkpointer_tests(CPU(), GPU())
+            run_cross_architecture_checkpointer_tests(GPU(), CPU())
+        end
 
         run_checkpointer_cleanup_tests(arch)
     end

@@ -21,11 +21,15 @@ function time_stepping_works_with_coriolis(arch, FT, Coriolis)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
-function time_stepping_works_with_closure(arch, FT, Closure)
+function time_stepping_works_with_closure(arch, FT, Closure;
+                                          buoyancy=Buoyancy(model=SeawaterBuoyancy(FT)))
+
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
     grid = RegularRectilinearGrid(FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
 
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, closure=Closure(FT))
+    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT,
+                                closure=Closure(FT), buoyancy=buoyancy)
+
     time_step!(model, 1, euler=true)
 
     return true  # Test that no errors/crashes happen when time stepping.
@@ -88,20 +92,15 @@ end
     stepped. It just initializes a cube shaped hot bubble perturbation in the center of the 3D domain to induce a
     velocity field.
 """
-function incompressible_in_time(arch, FT, Nt, timestepper)
-    Nx, Ny, Nz = 32, 32, 32
-    Lx, Ly, Lz = 10, 10, 10
-
-    grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, timestepper=timestepper)
-
+function incompressible_in_time(arch, grid, Nt, timestepper)
+    model = IncompressibleModel(grid=grid, architecture=arch, timestepper=timestepper)
     grid = model.grid
     u, v, w = model.velocities
 
-    div_U = CenterField(FT, arch, grid, TracerBoundaryConditions(grid))
+    div_U = CenterField(arch, grid, TracerBoundaryConditions(grid))
 
     # Just add a temperature perturbation so we get some velocity field.
-    @. model.tracers.T.data[8:24, 8:24, 8:24] += 0.01
+    interior(model.tracers.T)[8:24, 8:24, 8:24] .+= 0.01
 
     for n in 1:Nt
         ab2_or_rk3_time_step!(model, 0.05, n)
@@ -115,12 +114,14 @@ function incompressible_in_time(arch, FT, Nt, timestepper)
     max_abs_div = maximum(abs, interior(div_U))
     sum_div = sum(interior(div_U))
     sum_abs_div = sum(abs, interior(div_U))
-    @info "Velocity divergence after $Nt time steps [$(typeof(arch)), $FT, $timestepper]: " *
+
+    @info "Velocity divergence after $Nt time steps [$(typeof(arch)), $(typeof(grid)), $timestepper]: " *
           "min=$min_div, max=$max_div, max_abs_div=$max_abs_div, sum=$sum_div, abs_sum=$sum_abs_div"
 
     # We are comparing with 0 so we use absolute tolerances. They are a bit larger than eps(Float64) and eps(Float32)
     # because we are summing over the absolute value of many machine epsilons. A better atol value may be
-    # Nx*Ny*Nz*eps(FT) but it's much higher than the observed abs_sum_div.
+    # Nx*Ny*Nz*eps(eltype(grid)) but it's much higher than the observed max_abs_div, so out of a general abundance of caution
+    # we manually insert a smaller tolerance than we might need for this test.
     return isapprox(max_abs_div, 0, atol=5e-8)
 end
 
@@ -192,9 +193,11 @@ end
 
 Planes = (FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane)
 
+BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipation(FT, Cb=1.0)
+
 Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
-            SmagorinskyLilly, AnisotropicMinimumDissipation)
+            SmagorinskyLilly, AnisotropicMinimumDissipation, BuoyancyModifiedAnisotropicMinimumDissipation)
 
 advection_schemes = (nothing,
                      CenteredSecondOrder(),
@@ -277,6 +280,9 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     @test time_stepping_works_with_closure(arch, FT, Closure)
                 end
             end
+
+            # AnisotropicMinimumDissipation can depend on buoyancy...
+            @test time_stepping_works_with_closure(arch, FT, AnisotropicMinimumDissipation; buoyancy=nothing)
         end
     end
 
@@ -298,9 +304,34 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "Incompressibility" begin
-        @info "  Testing incompressibility..."
-        for arch in archs, FT in float_types, Nt in [1, 10, 100], timestepper in timesteppers
-            @test incompressible_in_time(arch, FT, Nt, timestepper)
+        for FT in float_types, arch in archs
+            Nx, Ny, Nz = 32, 32, 32
+
+            regular_grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(-1, 1))
+
+            S = 1.3 # Stretching factor
+            hyperbolically_spaced_nodes(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
+            hyperbolic_vs_grid = VerticallyStretchedRectilinearGrid(FT,
+                                                                    architecture = arch,
+                                                                    size = (Nx, Ny, Nz),
+                                                                    x = (0, 1),
+                                                                    y = (0, 1),
+                                                                    z_faces = hyperbolically_spaced_nodes)
+
+            regular_vs_grid = VerticallyStretchedRectilinearGrid(FT,
+                                                                 architecture = arch,
+                                                                 size = (Nx, Ny, Nz),
+                                                                 x = (0, 1),
+                                                                 y = (0, 1),
+                                                                 z_faces = collect(range(0, stop=1, length=Nz+1)))
+
+            for grid in (regular_grid, hyperbolic_vs_grid, regular_vs_grid)
+                @info "  Testing incompressibility [$FT, $(typeof(grid).name.wrapper)]..."
+
+                for Nt in [1, 10, 100], timestepper in timesteppers
+                    @test incompressible_in_time(arch, grid, Nt, timestepper)
+                end
+            end
         end
     end
 

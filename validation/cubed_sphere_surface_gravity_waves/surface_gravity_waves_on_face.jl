@@ -17,7 +17,7 @@ Logging.global_logger(OceananigansLogger())
 dd = DataDep("cubed_sphere_32_grid",
     "Conformal cubed sphere grid with 32×32 grid points on each face",
     "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/cubed_sphere_grids/cubed_sphere_32_grid.jld2",
-    "3cc5d86290c3af028cddfa47e61e095ee470fe6f8d779c845de09da2f1abeb15" # sha256sum
+    "b1dafe4f9142c59a2166458a2def743cd45b20a4ed3a1ae84ad3a530e1eff538" # sha256sum
 )
 
 DataDeps.register(dd)
@@ -68,13 +68,7 @@ A  = 1e-5 * H  # Amplitude of the perturbation
 
 η′(λ, φ, z) = A * exp(- (λ - λ₀)^2 / Δλ^2) * exp(- (φ - φ₀)^2 / Δφ^2)
 
-## set! doesn't work for ConformalCubedSphereFaceGrid yet!
-
-# set!(model, η=η′)
-
-for i in 1:grid.Nx, j in 1:grid.Ny
-    model.free_surface.η[i, j, 1] = η′(grid.λᶜᶜᵃ[i, j], grid.φᶜᶜᵃ[i, j], 0)
-end
+set!(model, η=η′)
 
 # g = model.free_surface.gravitational_acceleration
 # gravity_wave_speed = sqrt(g * H) # hydrostatic (shallow water) gravity wave speed

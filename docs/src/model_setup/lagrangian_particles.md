@@ -5,7 +5,7 @@ advected with the flow field using forward Euler time-stepping at every model it
 
 ## Simple particles
 
-If you just need to keep of particle locations (x, y, z) then you can construct some Lagrangian particles
+If you just need to keep of particle locations ``(x, y, z)`` then you can construct some Lagrangian particles
 using the regular `LagrangianParticles` constructor
 
 ```@meta

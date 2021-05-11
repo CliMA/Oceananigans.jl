@@ -40,23 +40,27 @@ using Oceananigans.Grids: halo_size
                 Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
                 @test T̃[1, 1, 1] ≈ 3
-                @test Array(parent(T̅)[1, 1, :]) ≈ [2.5, 2.5, 3.5, 3.5]
-                @test Array(parent(T̂)[1, :, :]) ≈ [[3, 2, 3, 2] [3, 2, 3, 2] [4, 3, 4, 3] [4, 3, 4, 3]]
+
+                @test Array(interior(T̅))[1, 1, :] ≈ [2.5, 3.5]
+                @test Array(interior(T̂))[1, :, :] ≈ [[2, 3] [3, 4]]
 
                 @test w̃[1, 1, 1] ≈ 3
-                @test Array(w̅[1, 1, 1:Nz+1]) ≈ [2, 3, 4]
-                @test Array(ŵ[1, 1:Ny, 1:Nz+1]) ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
+
+                @test Array(interior(w̅))[1, 1, :] ≈ [2, 3, 4]
+                @test Array(interior(ŵ))[1, :, :] ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
             end
         end
 
         @testset "Conditional computation of AveragedFields [$(typeof(arch))]" begin
             @info "  Testing conditional computation of AveragedFields [$(typeof(arch))]"
             for FT in float_types
-                grid = RegularRectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-                c = CenterField(FT, arch, grid)
+                grid = RegularRectilinearGrid(FT, size=(2, 2, 2), extent=(1, 1, 1))
+                c = CenterField(arch, grid)
 
                 for dims in (1, 2, 3, (1, 2), (2, 3), (1, 3), (1, 2, 3))
                     C = AveragedField(c, dims=dims)
+
+                    @test !isnothing(C.status)
 
                     # Test conditional computation
                     set!(c, 1)

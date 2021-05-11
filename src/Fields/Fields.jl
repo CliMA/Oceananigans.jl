@@ -5,7 +5,7 @@ export
     AbstractField, Field,
     CenterField, XFaceField, YFaceField, ZFaceField,
     ReducedField, AveragedField, ComputedField, KernelComputedField, BackgroundField,
-    interior, interiorparent, data,
+    interior, data,
     xnode, ynode, znode, location,
     set!, compute!, @compute,
     VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields,
@@ -15,13 +15,6 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 
-import Base: zeros
-
-zeros(FT, ::CPU, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz)
-zeros(FT, ::GPU, Nx, Ny, Nz) = zeros(FT, Nx, Ny, Nz) |> CuArray
-zeros(arch, grid, Nx, Ny, Nz) = zeros(eltype(grid), arch, Nx, Ny, Nz)
-
-include("new_data.jl")
 include("abstract_field.jl")
 include("field.jl")
 include("zero_field.jl")
@@ -39,5 +32,7 @@ include("background_fields.jl")
 include("interpolate.jl")
 include("field_slicer.jl")
 include("show_fields.jl")
+include("broadcasting_abstract_fields.jl")
+include("mapreduce_abstract_fields.jl")
 
 end

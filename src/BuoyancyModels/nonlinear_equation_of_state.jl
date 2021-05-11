@@ -1,26 +1,26 @@
 using Oceananigans.Fields: AbstractField
-using Oceananigans.Grids: zF, zC
+using Oceananigans.Grids: znode
 using Oceananigans.Operators: Δzᵃᵃᶠ, Δzᵃᵃᶜ
 
 """ Return the geopotential height at `i, j, k` at cell centers. """
 @inline function Zᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT}) where FT
     if k < 1
-        return zC(1, grid) + (1 - k) * Δzᵃᵃᶠ(i, j, 1, grid)
+        return znode(Center(), 1, grid) + (1 - k) * Δzᵃᵃᶠ(i, j, 1, grid)
     elseif k > grid.Nz
-        return zC(grid.Nz, grid) - (k - grid.Nz) * Δzᵃᵃᶠ(i, j, grid.Nz, grid)
+        return znode(Center(), grid.Nz, grid) - (k - grid.Nz) * Δzᵃᵃᶠ(i, j, grid.Nz, grid)
     else
-        return zC(k, grid)
+        return znode(Center(), k, grid)
     end
 end
 
 """ Return the geopotential height at `i, j, k` at cell z-interfaces. """
 @inline function Zᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT}) where FT
     if k < 1
-        return zF(1, grid) + (1 - k) * Δzᵃᵃᶜ(i, j, 1, grid)
+        return znode(Face(), 1, grid) + (1 - k) * Δzᵃᵃᶜ(i, j, 1, grid)
     elseif k > grid.Nz + 1
-        return zF(grid.Nz + 1, grid) - (k - grid.Nz + 1) * Δzᵃᵃᶜ(i, j, k, grid)
+        return znode(Face(), grid.Nz + 1, grid) - (k - grid.Nz + 1) * Δzᵃᵃᶜ(i, j, k, grid)
     else
-        return zF(k, grid)
+        return znode(Face(), k, grid)
     end
 end
 

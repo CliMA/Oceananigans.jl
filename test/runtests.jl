@@ -53,8 +53,7 @@ Logging.global_logger(OceananigansLogger())
 
 float_types = (Float32, Float64)
 
-         archs = (CPU(),)
-@hascuda archs = (GPU(),)
+archs = CUDA.has_cuda() ? (GPU(),) : (CPU(),)
 
 closures = (
     :IsotropicDiffusivity,
@@ -63,7 +62,8 @@ closures = (
     :TwoDimensionalLeith,
     :SmagorinskyLilly,
     :AnisotropicMinimumDissipation,
-    :HorizontallyCurvilinearAnisotropicDiffusivity
+    :HorizontallyCurvilinearAnisotropicDiffusivity,
+    :HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
 )
 
 #####
@@ -72,6 +72,7 @@ closures = (
 
 CUDA.allowscalar(true)
 
+include("data_dependencies.jl")
 include("utils_for_runtests.jl")
 
 group = get(ENV, "TEST_GROUP", :all) |> Symbol
@@ -96,10 +97,9 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
     if group == :solvers || group == :all
         @testset "Solvers" begin
-            include("test_solvers.jl")
-            include("test_poisson_solvers.jl")
+            include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
-            include("test_implicit_free_surface_solver.jl")
+            include("test_poisson_solvers.jl")
         end
     end
 
@@ -124,8 +124,19 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
     end
 
     if group == :hydrostatic_free_surface || group == :all
-        include("test_hydrostatic_free_surface_models.jl")
-        include("test_vertical_vorticity_field.jl")
+        @testset "HydrostaticFreeSurfaceModel tests" begin
+            include("test_hydrostatic_free_surface_models.jl")
+            include("test_vertical_vorticity_field.jl")
+            include("test_implicit_free_surface_solver.jl")
+        end
+    end
+
+    if group == :abstract_operations || group == :all
+        @testset "AbstractOperations and broadcasting tests" begin
+            include("test_abstract_operations.jl")
+            include("test_computed_field.jl")
+            include("test_broadcasting.jl")
+        end
     end
 
     if group == :simulation || group == :all
@@ -133,8 +144,14 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_simulations.jl")
             include("test_diagnostics.jl")
             include("test_output_writers.jl")
-            include("test_abstract_operations_computed_field.jl")
             include("test_lagrangian_particle_tracking.jl")
+        end
+    end
+
+    if group == :cubed_sphere || group == :all
+        @testset "Cubed sphere tests" begin
+            include("test_cubed_spheres.jl")
+            include("test_cubed_sphere_halo_exchange.jl")
         end
     end
 

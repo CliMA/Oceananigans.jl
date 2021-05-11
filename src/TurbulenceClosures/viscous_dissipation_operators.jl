@@ -1,4 +1,6 @@
-#####
+using Oceananigans.Operators: Δy_uᶠᶜᵃ, Δx_vᶜᶠᵃ, Δx_uᶠᶜᵃ, Δy_vᶜᶠᵃ, ℑxyᶠᶠᵃ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ
+
+#####                                                            
 ##### Viscous flux divergences
 #####
 
@@ -29,10 +31,15 @@ end
 @inline νᶠᶜᶠ(i, j, k, grid, clock, ν::Number) = ν
 @inline νᶜᶠᶠ(i, j, k, grid, clock, ν::Number) = ν
 
-@inline νᶜᶜᶜ(i, j, k, grid, clock, ν::Function) = ν(xnode(Center, i, grid), ynode(Center, j, grid), znode(Center, k, grid), clock.time)
-@inline νᶠᶠᶜ(i, j, k, grid, clock, ν::Function) = ν(xnode(Face,   i, grid), ynode(Face,   j, grid), znode(Center, k, grid), clock.time)
-@inline νᶠᶜᶠ(i, j, k, grid, clock, ν::Function) = ν(xnode(Face,   i, grid), ynode(Center, j, grid), znode(Face,   k, grid), clock.time)
-@inline νᶜᶠᶠ(i, j, k, grid, clock, ν::Function) = ν(xnode(Center, i, grid), ynode(Face,   j, grid), znode(Face,   k, grid), clock.time)
+@inline νᶜᶜᶜ(i, j, k, grid, clock, ν::AbstractArray) = @inbounds ν[i, j, k]
+@inline νᶠᶠᶜ(i, j, k, grid, clock, ν::AbstractArray) = @inbounds ℑxyᶠᶠᵃ(i, j, k, grid, ν)
+@inline νᶠᶜᶠ(i, j, k, grid, clock, ν::AbstractArray) = @inbounds ℑxzᶠᵃᶠ(i, j, k, grid, ν)
+@inline νᶜᶠᶠ(i, j, k, grid, clock, ν::AbstractArray) = @inbounds ℑyzᵃᶠᶠ(i, j, k, grid, ν)
+
+@inline νᶜᶜᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Center(), k, grid), clock.time)
+@inline νᶠᶠᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Face(),   i, grid), ynode(Face(),   j, grid), znode(Center(), k, grid), clock.time)
+@inline νᶠᶜᶠ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Face(),   i, grid), ynode(Center(), j, grid), znode(Face(),   k, grid), clock.time)
+@inline νᶜᶠᶠ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Center(), i, grid), ynode(Face(),   j, grid), znode(Face(),   k, grid), clock.time)
 
 #####
 ##### Viscous fluxes
@@ -51,11 +58,40 @@ end
 @inline viscous_flux_wz(i, j, k, grid, clock, ν, w) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * ∂zᵃᵃᶜ(i, j, k, grid, w)
 
 #####
-##### Products of viscosity and divergence, vorticity, and vertical momentum gradients
+##### Products of viscosity and divergence, vorticity, vertical momentum gradients
 #####
 
-@inline ν_δᶜᶜᶜ(i, j, k, grid, clock, ν, u, v) = @inbounds νᶜᶜᶜ(i, j, k, grid, clock, ν) * div_xyᶜᶜᵃ(i, j, k, grid, u, v)
-@inline ν_ζᶠᶠᶜ(i, j, k, grid, clock, ν, u, v) = @inbounds νᶠᶠᶜ(i, j, k, grid, clock, ν) * ζ₃ᶠᶠᵃ(i, j, k, grid, u, v)
+@inline ν_δᶜᶜᶜ(i, j, k, grid, clock, ν, u, v) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * div_xyᶜᶜᵃ(i, j, k, grid, u, v)
+@inline ν_ζᶠᶠᶜ(i, j, k, grid, clock, ν, u, v) = νᶠᶠᶜ(i, j, k, grid, clock, ν) * ζ₃ᶠᶠᵃ(i, j, k, grid, u, v)
 
-@inline ν_uzᶠᶜᶠ(i, j, k, grid, clock, ν, u) = @inbounds νᶠᶜᶠ(i, j, k, grid, clock, ν) * ∂zᵃᵃᶠ(i, j, k, grid, u)
-@inline ν_vzᶜᶠᶠ(i, j, k, grid, clock, ν, v) = @inbounds νᶜᶠᶠ(i, j, k, grid, clock, ν) * ∂zᵃᵃᶠ(i, j, k, grid, v)
+@inline ν_uzᶠᶜᶠ(i, j, k, grid, clock, ν, u) = νᶠᶜᶠ(i, j, k, grid, clock, ν) * ∂zᵃᵃᶠ(i, j, k, grid, u)
+@inline ν_vzᶜᶠᶠ(i, j, k, grid, clock, ν, v) = νᶜᶠᶠ(i, j, k, grid, clock, ν) * ∂zᵃᵃᶠ(i, j, k, grid, v)
+
+@inline ν_uzzzᶠᶜᶠ(i, j, k, grid, clock, ν, u) = νᶠᶜᶠ(i, j, k, grid, clock, ν) * ∂³zᵃᵃᶠ(i, j, k, grid, u)
+@inline ν_vzzzᶜᶠᶠ(i, j, k, grid, clock, ν, v) = νᶜᶠᶠ(i, j, k, grid, clock, ν) * ∂³zᵃᵃᶠ(i, j, k, grid, v)
+
+# See https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#horizontal-dissipation
+@inline function δ★ᶜᶜᶜ(i, j, k, grid, u, v)
+
+    # These closures seem to be needed to help the compiler infer types
+    # (either of u and v or of the function arguments)
+    @inline Δy_∇²u(i, j, k, grid, u) = Δy_uᶠᶜᵃ(i, j, k, grid, ∇²hᶠᶜᶜ, u)
+    @inline Δx_∇²v(i, j, k, grid, v) = Δx_vᶜᶠᵃ(i, j, k, grid, ∇²hᶜᶠᶜ, v)
+
+    return 1 / Azᶜᶜᵃ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, Δy_∇²u, u) +
+                                       δyᵃᶜᵃ(i, j, k, Δx_∇²v, v))
+end
+
+@inline function ζ★ᶠᶠᶜ(i, j, k, grid, u, v)
+
+    # These closures seem to be needed to help the compiler infer types
+    # (either of u and v or of the function arguments)
+    @inline Δy_∇²v(i, j, k, grid, v) = Δy_vᶜᶠᵃ(i, j, k, grid, ∇²hᶜᶠᶜ, v)
+    @inline Δx_∇²u(i, j, k, grid, u) = Δx_uᶠᶜᵃ(i, j, k, grid, ∇²hᶠᶜᶜ, u)
+
+    return 1 / Azᶠᶠᵃ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, Δy_∇²v, v) -
+                                       δyᵃᶠᵃ(i, j, k, Δx_∇²u, u))
+end
+
+@inline ν_δ★ᶜᶜᶜ(i, j, k, grid, clock, ν, u, v) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * δ★ᶜᶜᶜ(i, j, k, grid, u, v)
+@inline ν_ζ★ᶠᶠᶜ(i, j, k, grid, clock, ν, u, v) = νᶠᶠᶜ(i, j, k, grid, clock, ν) * ζ★ᶠᶠᶜ(i, j, k, grid, u, v)
