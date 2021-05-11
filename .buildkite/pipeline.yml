@@ -29,7 +29,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
 
   - label: "🏕️ initialize cpu environment"
     key: "init_cpu"
@@ -66,7 +66,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     depends_on: "init_gpu"
 
   - label: "🐇 cpu unit tests"
@@ -93,7 +93,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     depends_on: "init_gpu"
 
   - label: "🕊️ cpu solver tests"
@@ -120,7 +120,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     depends_on: "init_gpu"
 
   - label: "🦞 cpu time stepping tests 1"
@@ -147,7 +147,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     depends_on: "init_gpu"
 
   - label: "🐬 cpu time stepping tests 2"
@@ -174,7 +174,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     depends_on: "init_gpu"
 
   - label: "🦑 cpu hydrostatic free surface model tests"
@@ -201,7 +201,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     depends_on: "init_gpu"
 
   - label: "🦆 cpu shallow water model tests"
@@ -228,7 +228,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     depends_on: "init_gpu"
 
   - label: "🐋 cpu simulation tests"
@@ -255,7 +255,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     depends_on: "init_gpu"
 
   - label: "🤖 cpu abstract operations tests"
@@ -282,7 +282,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     depends_on: "init_gpu"
 
   - label: "🦔 cpu cubed sphere tests"
@@ -326,7 +326,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     depends_on: "init_gpu"
 
   - label: "🐪 cpu regression tests"
@@ -353,7 +353,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
     depends_on: "init_gpu"
 
   - label: "🦍 cpu scripts"
@@ -397,7 +397,7 @@ steps:
     command: "rm -rf $SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
     agents:
       queue: Oceananigans
-      architecture: GPU
+      architecture: CPU
 
   - label: "🧹 clean up cpu environment"
     command: "rm -rf $TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
