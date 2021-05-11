@@ -58,16 +58,14 @@ version = "0.2.0"
 
 [[Cassette]]
 git-tree-sha1 = "f80b4da0c926dc96f946628757a5926ff5a42e28"
-repo-rev = "master"
-repo-url = "https://github.com/JuliaLabs/Cassette.jl.git"
 uuid = "7057c7e9-c182-5462-911a-8362d720325c"
 version = "0.3.6"
 
 [[ChainRulesCore]]
 deps = ["Compat", "LinearAlgebra", "SparseArrays"]
-git-tree-sha1 = "bd0cc939d94b8bd736dce5bbbe0d635db9f94af7"
+git-tree-sha1 = "e6b23566e025d3b0d9ccc397f5c7a134af552e27"
 uuid = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
-version = "0.9.41"
+version = "0.9.42"
 
 [[Compat]]
 deps = ["Base64", "Dates", "DelimitedFiles", "Distributed", "InteractiveUtils", "LibGit2", "Libdl", "LinearAlgebra", "Markdown", "Mmap", "Pkg", "Printf", "REPL", "Random", "SHA", "Serialization", "SharedArrays", "Sockets", "SparseArrays", "Statistics", "Test", "UUIDs", "Unicode"]
@@ -360,9 +358,9 @@ uuid = "efe28fd5-8261-553b-a9e1-b2916fc3738e"
 version = "0.5.4+0"
 
 [[OrderedCollections]]
-git-tree-sha1 = "4fa2ba51070ec13fcc7517db714445b4ab986bdf"
+git-tree-sha1 = "85f8e6578bf1f9ee0d11e7bb1b1456435479d47c"
 uuid = "bac558e1-5e72-5ebc-8fee-abe8a469f55d"
-version = "1.4.0"
+version = "1.4.1"
 
 [[Parsers]]
 deps = ["Dates"]
