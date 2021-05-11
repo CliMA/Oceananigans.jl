@@ -115,13 +115,13 @@ const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
                   zero(FT))
 end
 
-@inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, clock, closure::AD, args...) where FT
+@inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, clock, closure::AD, U, K) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
                   viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, U, K), # on boundaries, calculate fluxes explicitly
                   zero(FT))
 end
 
-@inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, clock, closure::AD, args...) where FT
+@inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, clock, closure::AD, U, K) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
                   viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, U, K), # on boundaries, calculate fluxes explicitly
                   zero(FT))

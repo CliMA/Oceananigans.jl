@@ -95,19 +95,19 @@ const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 @inline viscous_flux_uz(i, j, k, grid::AG{FT}, ::VITD, clock, closure::HCAD, args...) where FT = zero(FT)
 @inline viscous_flux_vz(i, j, k, grid::AG{FT}, ::VITD, clock, closure::HCAD, args...) where FT = zero(FT)
 
-@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, clock, closure::HCAD, args...) where FT
+@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, clock, closure::HCAD, U, K) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
                   diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, args...), # on boundaries, calculate fluxes explicitly
                   zero(FT))
 end
 
-@inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, clock, closure::HCAD, args...) where FT
+@inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, clock, closure::HCAD, U, K) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
                   viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, U, K), # on boundaries, calculate fluxes explicitly
                   zero(FT))
 end
 
-@inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, clock, closure::HCAD, args...) where FT
+@inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, clock, closure::HCAD, U, K) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
                   viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), clock, closure, U, K), # on boundaries, calculate fluxes explicitly
                   zero(FT))
