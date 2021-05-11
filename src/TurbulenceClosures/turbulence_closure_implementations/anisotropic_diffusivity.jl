@@ -12,7 +12,7 @@ struct AnisotropicDiffusivity{TD, NX, NY, NZ, KX, KY, KZ} <: AbstractTurbulenceC
     κz :: KZ
 
     function AnisotropicDiffusivity{TD}(νx::NX, νy::NY, νz::NZ,
-                                        κx::KH, κy::KY, κz::KZ) where {TD, NX, NY, NZ, KX, KY, KZ}
+                                        κx::KX, κy::KY, κz::KZ) where {TD, NX, NY, NZ, KX, KY, KZ}
 
         return new{TD, NX, NY, NZ, KX, KY, KZ}(νx, νy, νz, κx, κy, κz)
     end
