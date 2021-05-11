@@ -34,10 +34,10 @@ function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3)
        T, S = tracers
 
     for k in 1:4
-        interior(u)[:, 1, k] .= [0, -1, 0]
-        interior(v)[:, 1, k] .= [0, -2, 0]
-        interior(w)[:, 1, k] .= [0, -3, 0]
-        interior(T)[:, 1, k] .= [0, -1, 0]
+        interior(u)[:, 1, k] .= [0, -1/2, 0]
+        interior(v)[:, 1, k] .= [0, -2,   0]
+        interior(w)[:, 1, k] .= [0, -3,   0]
+        interior(T)[:, 1, k] .= [0, -1,   0]
     end
 
     model_fields = merge(datatuple(velocities), datatuple(tracers))
