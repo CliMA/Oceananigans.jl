@@ -21,7 +21,8 @@ using .ShallowWaterModels: ShallowWaterModel
 using .HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel, VectorInvariant,
     ExplicitFreeSurface, ImplicitFreeSurface,
-    HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
+    HydrostaticSphericalCoriolis,
+    VectorInvariantEnstrophyConserving, VectorInvariantEnergyConserving,
     PrescribedVelocityFields
 
 end

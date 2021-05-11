@@ -30,6 +30,22 @@ validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
     [validate_vertical_velocity_boundary_conditions(w_face) for w_face in faces(w)]
 
 #####
+##### Regularizing field boundary conditions
+#####
+
+import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+
+function regularize_field_boundary_conditions(bcs::CubedSphereFaces, grid, model_field_names, field_name)
+
+    faces = Tuple(
+        regularize_field_boundary_conditions(face_bcs, face_grid, model_field_names, field_name)
+        for (face_bcs, face_grid) in zip(bcs.faces, grid.faces)
+    )
+
+    return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
+end
+
+#####
 ##### Applying flux boundary conditions
 #####
 
@@ -43,6 +59,24 @@ function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCub
     end
 
     return nothing
+end
+
+#####
+##### Forcing functions on the cubed sphere
+#####
+
+using Oceananigans.Forcings: user_function_arguments
+import Oceananigans.Forcings: ContinuousForcing
+
+@inline function (forcing::ContinuousForcing{LX, LY, LZ})(i, j, k, grid::ConformalCubedSphereFaceGrid, clock, model_fields) where {LX, LY, LZ}
+
+    args = user_function_arguments(i, j, k, grid, model_fields, forcing.parameters, forcing)
+
+    λ = λnode(LX(), LY(), LZ(), i, j, k, grid)
+    φ = φnode(LX(), LY(), LZ(), i, j, k, grid)
+    z = znode(LX(), LY(), LZ(), i, j, k, grid)
+
+    return @inbounds forcing.func(λ, φ, z, clock.time, args...)
 end
 
 #####
@@ -80,10 +114,13 @@ end
 ##### Output writing for cubed sphere fields
 #####
 
+using Oceananigans.Fields: compute!
 import Oceananigans.OutputWriters: fetch_output
 
-fetch_output(field::AbstractCubedSphereField, model, field_slicer) =
-    Tuple(fetch_output(face_field, model, field_slicer) for face_field in faces(field))
+function fetch_output(field::AbstractCubedSphereField, model, field_slicer)
+    compute!(field)
+    return Tuple(fetch_output(face_field, model, field_slicer) for face_field in faces(field))
+end
 
 #####
 ##### StateChecker for each face is useful for debugging

@@ -9,17 +9,18 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: fill_horizontal_velocit
 fill_south_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 fill_north_halo!(c, bc::CubedSphereExchangeBC, args...; kwargs...) = nothing
 
-function fill_halo_regions!(field::AbstractCubedSphereField, arch, args...; kwargs...)
+function fill_halo_regions!(field::AbstractCubedSphereField, arch, args...; cubed_sphere_exchange=true, kwargs...)
 
     for (i, face_field) in enumerate(faces(field))
         # Fill the top and bottom halos the usual way.
         fill_halo_regions!(face_field, arch, get_face(args, i)...; kwargs...)
 
-        # Deal with halo exchanges.
-        fill_west_halo!(face_field, field)
-        fill_east_halo!(face_field, field)
-        fill_south_halo!(face_field, field)
-        fill_north_halo!(face_field, field)
+        if cubed_sphere_exchange
+            fill_west_halo!(face_field, field)
+            fill_east_halo!(face_field, field)
+            fill_south_halo!(face_field, field)
+            fill_north_halo!(face_field, field)
+        end
     end
 
     return nothing
@@ -102,9 +103,9 @@ fill_horizontal_velocity_halos!(u, v, arch) = nothing
 
 function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereField, arch)
 
-    ## Fill them like they're tracers to get the top and bottom filled.
-    fill_halo_regions!(u, arch)
-    fill_halo_regions!(v, arch)
+    ## Fill the top and bottom halos.
+    fill_halo_regions!(u, arch, cubed_sphere_exchange=false)
+    fill_halo_regions!(v, arch, cubed_sphere_exchange=false)
 
     ## Now fill the horizontal halos.
 
@@ -125,8 +126,20 @@ function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereFiel
 
             reverse_dim = src_side in (:west, :east) ? 1 : 2
 
-            cubed_sphere_halo(u, u_loc, face_number, side) .= u_sign * reverse(permutedims(cubed_sphere_boundary(v, v_loc, src_face_number, src_side), (2, 1, 3)), dims=reverse_dim)
-            cubed_sphere_halo(v, v_loc, face_number, side) .= v_sign * reverse(permutedims(cubed_sphere_boundary(u, u_loc, src_face_number, src_side), (2, 1, 3)), dims=reverse_dim)
+            u_halo = cubed_sphere_halo(u, u_loc, face_number, side)
+            u_boundary = u_sign * reverse(permutedims(cubed_sphere_boundary(v, v_loc, src_face_number, src_side), (2, 1, 3)), dims=reverse_dim)
+
+            v_halo = cubed_sphere_halo(v, v_loc, face_number, side)
+            v_boundary = v_sign * reverse(permutedims(cubed_sphere_boundary(u, u_loc, src_face_number, src_side), (2, 1, 3)), dims=reverse_dim)
+
+            for (sign, halo, boundary) in zip((u_sign, v_sign), (u_halo, v_halo), (u_boundary, v_boundary))
+                if sign == +1
+                    halo .= boundary
+                elseif sign == -1
+                    shift = side in (:west, :east) ? (j_shift=1,) : (i_shift=1,)
+                    shifted_fill!(halo, boundary; shift...)
+                end
+            end
         end
     end
 
