@@ -37,7 +37,7 @@ function diagnostic_windowed_spatial_average(arch, FT)
     set!(model.velocities.u, 7)
     slicer = FieldSlicer(i=model.grid.Nx÷2:model.grid.Nx, k=1)
     u_mean = WindowedSpatialAverage(model.velocities.u; dims=(1, 2), field_slicer=slicer)
-    return u_mean(model)[1] == 7
+    return CUDA.@allowscalar u_mean(model)[1] == 7
 end
 
 function diffusive_cfl_diagnostic_is_correct(arch, FT)
