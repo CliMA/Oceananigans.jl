@@ -2,50 +2,9 @@ using Adapt
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-#####
-##### AbstractReducedField stuff
-#####
-
 abstract type AbstractReducedField{X, Y, Z, A, G, T, N} <: AbstractDataField{X, Y, Z, A, G, T} end
 
 const ARF = AbstractReducedField
-
-# Two-dimensional fields
-@inline Base.getindex( r::ARF{Nothing, Y, Z},    i, j, k) where {Y, Z} = @inbounds r.data[1, j, k]
-@inline Base.setindex!(r::ARF{Nothing, Y, Z}, d, i, j, k) where {Y, Z} = @inbounds r.data[1, j, k] = d
-@inline Base.getindex( r::ARF{X, Nothing, Z},    i, j, k) where {X, Z} = @inbounds r.data[i, 1, k]
-@inline Base.setindex!(r::ARF{X, Nothing, Z}, d, i, j, k) where {X, Z} = @inbounds r.data[i, 1, k] = d
-@inline Base.getindex( r::ARF{X, Y, Nothing},    i, j, k) where {X, Y} = @inbounds r.data[i, j, 1]
-@inline Base.setindex!(r::ARF{X, Y, Nothing}, d, i, j, k) where {X, Y} = @inbounds r.data[i, j, 1] = d
-
-@inline Base.getindex( r::ARF{Nothing, Y, Z},    j, k) where {Y, Z} = @inbounds r.data[1, j, k]
-@inline Base.setindex!(r::ARF{Nothing, Y, Z}, d, j, k) where {Y, Z} = @inbounds r.data[1, j, k] = d
-@inline Base.getindex( r::ARF{X, Nothing, Z},    i, k) where {X, Z} = @inbounds r.data[i, 1, k]
-@inline Base.setindex!(r::ARF{X, Nothing, Z}, d, i, k) where {X, Z} = @inbounds r.data[i, 1, k] = d
-@inline Base.getindex( r::ARF{X, Y, Nothing},    i, j) where {X, Y} = @inbounds r.data[i, j, 1]
-@inline Base.setindex!(r::ARF{X, Y, Nothing}, d, i, j) where {X, Y} = @inbounds r.data[i, j, 1] = d
-
-# One-dimensional fields
-@inline Base.getindex( r::ARF{X, Nothing, Nothing},    i, j, k) where X = @inbounds r.data[i, 1, 1]
-@inline Base.setindex!(r::ARF{X, Nothing, Nothing}, d, i, j, k) where X = @inbounds r.data[i, 1, 1] = d
-@inline Base.getindex( r::ARF{Nothing, Y, Nothing},    i, j, k) where Y = @inbounds r.data[1, j, 1]
-@inline Base.setindex!(r::ARF{Nothing, Y, Nothing}, d, i, j, k) where Y = @inbounds r.data[1, j, 1] = d
-@inline Base.getindex( r::ARF{Nothing, Nothing, Z},    i, j, k) where Z = @inbounds r.data[1, 1, k]
-@inline Base.setindex!(r::ARF{Nothing, Nothing, Z}, d, i, j, k) where Z = @inbounds r.data[1, 1, k] = d
-
-@inline Base.getindex( r::ARF{X, Nothing, Nothing},    i) where X = @inbounds r.data[i, 1, 1]
-@inline Base.setindex!(r::ARF{X, Nothing, Nothing}, d, i) where X = @inbounds r.data[i, 1, 1] = d
-@inline Base.getindex( r::ARF{Nothing, Y, Nothing},    j) where Y = @inbounds r.data[1, j, 1]
-@inline Base.setindex!(r::ARF{Nothing, Y, Nothing}, d, j) where Y = @inbounds r.data[1, j, 1] = d
-@inline Base.getindex( r::ARF{Nothing, Nothing, Z},    k) where Z = @inbounds r.data[1, 1, k]
-@inline Base.setindex!(r::ARF{Nothing, Nothing, Z}, d, k) where Z = @inbounds r.data[1, 1, k] = d
-
-# Zero-dimensional fields
-@inline Base.getindex( r::ARF{Nothing, Nothing, Nothing},    i, j, k) = @inbounds r.data[1, 1, 1]
-@inline Base.setindex!(r::ARF{Nothing, Nothing, Nothing}, d, i, j, k) = @inbounds r.data[1, 1, 1] = d
-
-@inline Base.getindex( r::ARF{Nothing, Nothing, Nothing},  ) = @inbounds r.data[1, 1, 1]
-@inline Base.setindex!(r::ARF{Nothing, Nothing, Nothing}, d) = @inbounds r.data[1, 1, 1] = d
 
 fill_halo_regions!(field::AbstractReducedField, arch, args...) =
     fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...; reduced_dimensions=field.dims)
