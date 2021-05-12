@@ -239,7 +239,6 @@ function flat_extent_regular_rectilinear_grid(FT; topology, size, extent)
     return grid.Lx, grid.Ly, grid.Lz
 end
 
-
 function test_flat_size_regular_rectilinear_grid(FT)
     @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
     @test flat_size_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
@@ -598,11 +597,11 @@ end
             
             @test try
                 CUDA.@disallowscalar show(grid)
-                return true
+                true
             catch err
                 println("error in show(::VerticallyStretchedRectilinearGrid)")
                 println(sprint(showerror, err))
-                return false
+                false
             end
             
             @test grid isa VerticallyStretchedRectilinearGrid
@@ -622,11 +621,11 @@ end
     
         @test try
             CUDA.@disallowscalar show(grid)
-            return true
+            true
         catch err
             println("error in show(::RegularLatitudeLongitudeGrid)")
             println(sprint(showerror, err))
-            return false
+            false
         end
 
         @test grid isa RegularLatitudeLongitudeGrid
@@ -644,11 +643,11 @@ end
     
         @test try
             CUDA.@disallowscalar show(grid)
-            return true
+            true
         catch err
             println("error in show(::ConformalCubedSphereFaceGrid)")
             println(sprint(showerror, err))
-            return false
+            false
         end
 
         @test grid isa ConformalCubedSphereFaceGrid
