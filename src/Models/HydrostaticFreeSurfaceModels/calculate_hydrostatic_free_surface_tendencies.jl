@@ -59,7 +59,7 @@ function calculate_hydrostatic_momentum_tendencies!(tendencies, velocities, arch
 
     Gη_event = launch!(arch, grid, :xy, calculate_hydrostatic_free_surface_Gη!,
                        tendencies.η, grid, velocities, free_surface, tracers,
-                       auxiliary_fields, forcings, immersed_boundary, clock; dependencies = barrier)
+                       auxiliary_fields, forcings, clock; dependencies = barrier)
 
     events = [Gu_event, Gv_event, Gη_event]
 
