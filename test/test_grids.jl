@@ -585,7 +585,7 @@ end
 
             # Testing show function
             Nz = 20
-            grid = VerticallyStretchedRectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z_faces=collect(0:Nz).^2)
+            grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z_faces=collect(0:Nz).^2)
             show(grid); println();
             @test grid isa VerticallyStretchedRectilinearGrid
         end
