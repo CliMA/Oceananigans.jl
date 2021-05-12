@@ -34,6 +34,6 @@ const ADF = AbstractDataField
 @inline Base.getindex( r::ADF{Nothing, Nothing, Nothing},    i, j, k) = @inbounds r.data[1, 1, 1]
 @inline Base.setindex!(r::ADF{Nothing, Nothing, Nothing}, d, i, j, k) = @inbounds r.data[1, 1, 1] = d
 
-@inline Base.getindex( r::ADF{Nothing, Nothing, Nothing},  ) = @inbounds r.data[1, 1, 1]
+@inline Base.getindex( r::ADF{Nothing, Nothing, Nothing}   ) = @inbounds r.data[1, 1, 1]
 @inline Base.setindex!(r::ADF{Nothing, Nothing, Nothing}, d) = @inbounds r.data[1, 1, 1] = d
 
