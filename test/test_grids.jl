@@ -558,10 +558,10 @@ end
 
         @test try
             show(grid)
-            true
+            return true
         catch err
             println("error in show(::RegularRectilinearGrid)")
-            false
+            return false
         end
 
         @test grid isa RegularRectilinearGrid
@@ -640,20 +640,18 @@ end
         end
 
         # Testing show function
-        for arch in archs
-            grid = ConformalCubedSphereFaceGrid(architecture=arch, size=(10, 10, 1), z=(0, 1))
-        
-            @test try
-                show(grid)
-                return true
-            catch err
-                println("error in show(::ConformalCubedSphereFaceGrid)")
-                println(sprint(showerror, err))
-                return false
-            end
-
-            @test grid isa ConformalCubedSphereFaceGrid
+        grid = ConformalCubedSphereFaceGrid(architecture=arch, size=(10, 10, 1), z=(0, 1))
+    
+        @test try
+            show(grid)
+            return true
+        catch err
+            println("error in show(::ConformalCubedSphereFaceGrid)")
+            println(sprint(showerror, err))
+            return false
         end
+
+        @test grid isa ConformalCubedSphereFaceGrid
     end
 
     @testset "Conformal cubed sphere face grid from file" begin
