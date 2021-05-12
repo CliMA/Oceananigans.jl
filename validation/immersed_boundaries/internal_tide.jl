@@ -3,25 +3,32 @@ using Oceananigans, Plots
 grid = RegularRectilinearGrid(size=(128, 128), x=(-5, 5), z=(0, 5), topology=(Periodic, Flat, Bounded))
 
 # Gaussian bump
-solid(x, y, z) = z < exp(-x^2)
+bump(x, y, z) = z < exp(-x^2)
 
 # Tidal forcing
-tidal_forcing(x, y, z, t) = 0.001 * cos(t)
+tidal_forcing(x, y, z, t) = 1e-2 * cos(t)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    closure = IsotropicDiffusivity(ν = 1e-4, κ = 1e-4),
+                                    momentum_advection = UpwindBiasedThirdOrder(),
+                                    closure = IsotropicDiffusivity(ν = 1e-6, κ = 1e-6),
                                     tracers = :b,
                                     buoyancy = BuoyancyTracer(),
+                                    immersed_boundary = bump,
                                     forcing = (u = tidal_forcing,))
                                     
 # Linear stratification with N² = 1
 set!(model, b = (x, y, z) -> z)
               
-simulation = Simulation(model, Δt = 1e-1, stop_time = 20π)
+simulation = Simulation(model, Δt = 2e-3, stop_iteration=10000)
 run!(simulation)
 
-xw, yw, zw = nodes(model.velocities.w)
-w = interior(model.velocities.w)[:, 1, :]
-pl = contourf(xw, zw, w)
+xu, yu, zu = nodes(model.velocities.u)
+u = interior(model.velocities.u)[:, 1, :]
+u_plot = heatmap(xu, zu, u', title="u velocity")
 
-display(pl)
+xb, yb, zb = nodes(model.tracers.b)
+b = interior(model.tracers.b)[:, 1, :]
+b_plot = heatmap(xb, zb, b', title="buoyancy")
+
+ub_plot = plot(u_plot, b_plot, layout=(2, 1))
+display(ub_plot)

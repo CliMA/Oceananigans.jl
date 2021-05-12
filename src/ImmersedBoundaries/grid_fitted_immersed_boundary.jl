@@ -8,15 +8,15 @@ const f = Face()
 
 @inline solid_cell(i, j, k, grid, ib) = ib.solid(node(c, c, c, i, j, k, grid)...)
 
-@inline solid_node(::Center, ::Center, ::Center, i, j, k, grid, ib) = solid_cell(i, j, k, grid, ib)
+@inline solid_node(LX, LY, LZ, i, j, k, grid, ib) = solid_cell(i, j, k, grid, ib)
 
-@inline solid_node(::Face, ::Center, ::Center, i, j, k, grid, ib) = solid_cell(i, j, k, grid, ib) || solid_cell(i-1, j, k, grid, ib)
-@inline solid_node(::Center, ::Face, ::Center, i, j, k, grid, ib) = solid_cell(i, j, k, grid, ib) || solid_cell(i, j-1, k, grid, ib)
-@inline solid_node(::Center, ::Center, ::Face, i, j, k, grid, ib) = solid_cell(i, j, k, grid, ib) || solid_cell(i, j, k-1, grid, ib)
+@inline solid_node(::Face, LX, LY, i, j, k, grid, ib) = solid_cell(i, j, k, grid, ib) || solid_cell(i-1, j, k, grid, ib)
+@inline solid_node(LX, ::Face, LZ, i, j, k, grid, ib) = solid_cell(i, j, k, grid, ib) || solid_cell(i, j-1, k, grid, ib)
+@inline solid_node(LX, LY, ::Face, i, j, k, grid, ib) = solid_cell(i, j, k, grid, ib) || solid_cell(i, j, k-1, grid, ib)
 
-@inline solid_node(::Face, ::Face, ::Center, i, j, k, grid, ib) = solid_node(c, f, c, i, j, k, grid, ib) || solid_node(c, f, c, i-1, j, k, grid, ib)
-@inline solid_node(::Face, ::Center, ::Face, i, j, k, grid, ib) = solid_node(c, c, f, i, j, k, grid, ib) || solid_node(c, c, f, i-1, j, k, grid, ib)
-@inline solid_node(::Center, ::Face, ::Face, i, j, k, grid, ib) = solid_node(c, f, c, i, j, k, grid, ib) || solid_node(c, f, c, i, j, k-1, grid, ib)
+@inline solid_node(::Face, ::Face, LZ, i, j, k, grid, ib) = solid_node(c, f, c, i, j, k, grid, ib) || solid_node(c, f, c, i-1, j, k, grid, ib)
+@inline solid_node(::Face, LY, ::Face, i, j, k, grid, ib) = solid_node(c, c, f, i, j, k, grid, ib) || solid_node(c, c, f, i-1, j, k, grid, ib)
+@inline solid_node(LX, ::Face, ::Face, i, j, k, grid, ib) = solid_node(c, f, c, i, j, k, grid, ib) || solid_node(c, f, c, i, j, k-1, grid, ib)
 
 @inline solid_node(::Face, ::Face, ::Face, i, j, k, grid, ib) = solid_node(c, f, f, i, j, k, grid, ib) || solid_node(c, f, f, i-1, j, k, grid, ib)
 
