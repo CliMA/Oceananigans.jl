@@ -556,15 +556,13 @@ end
         
         grid = RegularRectilinearGrid(topology=topo, size=(3, 7, 9), x=(0, 1), y=(-π, π), z=(0, 2π))
 
-        CUDA.allowscalar(false)
         @test try
-            show(grid)
+            CUDA.@disallowscalar show(grid)
             return true
         catch err
             println("error in show(::RegularRectilinearGrid)")
             return false
         end
-        CUDA.allowscalar(true)
         
         @test grid isa RegularRectilinearGrid
     end
@@ -598,16 +596,14 @@ end
             Nz = 20
             grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(1, 1, Nz-1), x=(0, 1), y=(0, 1), z_faces=collect(0:Nz).^2)
             
-            CUDA.allowscalar(false)
             @test try
-                show(grid)
+                CUDA.@disallowscalar show(grid)
                 return true
             catch err
                 println("error in show(::VerticallyStretchedRectilinearGrid)")
                 println(sprint(showerror, err))
                 return false
             end
-            CUDA.allowscalar(true)
             
             @test grid isa VerticallyStretchedRectilinearGrid
         end
@@ -624,16 +620,14 @@ end
         # Testing show function
         grid = RegularLatitudeLongitudeGrid(size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
     
-        CUDA.allowscalar(false)
         @test try
-            show(grid)
+            CUDA.@disallowscalar show(grid)
             return true
         catch err
             println("error in show(::RegularLatitudeLongitudeGrid)")
             println(sprint(showerror, err))
             return false
         end
-        CUDA.allowscalar(true)
 
         @test grid isa RegularLatitudeLongitudeGrid
     end
@@ -648,16 +642,14 @@ end
         # Testing show function
         grid = ConformalCubedSphereFaceGrid(architecture=arch, size=(10, 10, 1), z=(0, 1))
     
-        CUDA.allowscalar(false)
         @test try
-            show(grid)
+            CUDA.@disallowscalar show(grid)
             return true
         catch err
             println("error in show(::ConformalCubedSphereFaceGrid)")
             println(sprint(showerror, err))
             return false
         end
-        CUDA.allowscalar(true)
 
         @test grid isa ConformalCubedSphereFaceGrid
     end
