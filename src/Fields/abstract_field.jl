@@ -187,7 +187,7 @@ Base.fill!(f::AbstractDataField, val) = fill!(parent(f), val)
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::AbstractField, I...) = Base.checkbounds(f.data, I...)
 
-@propagate_inbounds Base.getindex(f::AbstractDataField, i, j, k) = f.data[i, j, k]
+@propagate_inbounds Base.getindex(f::AbstractDataField, inds...) = getindex(f.data, inds...)
 
 # Linear indexing
 @propagate_inbounds Base.getindex(f::AbstractDataField, i::Int)  = parent(f)[i]
@@ -223,8 +223,6 @@ ynodes(ψ::AbstractField) = ynodes(location(ψ, 2), ψ.grid)
 znodes(ψ::AbstractField) = znodes(location(ψ, 3), ψ.grid)
 
 nodes(ψ::AbstractField; kwargs...) = nodes(location(ψ), ψ.grid; kwargs...)
-
-Base.iterate(f::AbstractDataField, state=1) = iterate(f.data, state)
 
 #####
 ##### fill_halo_regions!
