@@ -93,12 +93,12 @@ end
         b = FieldTimeSeries(filepath, "b")
         ζ = FieldTimeSeries(filepath, "ζ")
 
-        @test size(u) == (Nx, Ny, Nz, Nt)
-        @test size(v) == (Nx, Ny, Nz, Nt)
+        @test size(u) == (Nx, Ny, Nz,   Nt)
+        @test size(v) == (Nx, Ny, Nz,   Nt)
         @test size(w) == (Nx, Ny, Nz+1, Nt)
-        @test size(T) == (Nx, Ny, Nz, Nt)
-        @test size(b) == (Nx, Ny, Nz, Nt)
-        @test size(ζ) == (Nx, Ny, Nz, Nt)
+        @test size(T) == (Nx, Ny, Nz,   Nt)
+        @test size(b) == (Nx, Ny, Nz,   Nt)
+        @test size(ζ) == (Nx, Ny, Nz,   Nt)
 
         @test u[1, 2, 3, 4] isa Number
         @test u[1] isa Field
@@ -111,6 +111,21 @@ end
         ζ = FieldTimeSeries(filepath, "ζ", backend=OnDisk())
         @test ζ[1] isa Field
         @test ζ[2] isa Field
+    end
+
+    @testset "FieldTimeSeries{InMemory} reductions" begin
+        @info "  Testing FieldTimeSeries{InMemory} reductions..."
+
+        for name in ("u", "v", "w", "T", "b", "ζ"), fun in (sum, mean, maximum, minimum)
+            f = FieldTimeSeries(filepath, name)
+
+            ε = eps(maximum(f.data.parent))
+
+            val1 = fun(f)
+            val2 = fun([fun(f[n]) for n in 1:Nt])
+
+            @test val1 ≈ val2 atol=ε
+        end
     end
 
     for Backend in [InMemory, OnDisk]
