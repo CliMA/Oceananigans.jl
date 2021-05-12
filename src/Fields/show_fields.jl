@@ -21,7 +21,7 @@ Base.show(io::IO, field::AbstractField{X, Y, Z, A}) where {X, Y, Z, A} =
 
 Base.show(io::IO, field::Field) =
     print(io, "$(short_show(field))\n",
-          "├── data: $(typeof(field.data)), size: $(size(field.data))\n",
+          "├── data: $(typeof(field.data)), size: $(size(field))\n",
           "├── grid: $(short_show(field.grid))\n",
           "└── boundary conditions: $(short_show(field.boundary_conditions))")
 
@@ -30,26 +30,26 @@ show_status(status) = "time=$(status.time)"
 
 Base.show(io::IO, field::AveragedField) =
     print(io, "$(short_show(field))\n",
-          "├── data: $(typeof(field.data)), size: $(size(field.data))\n",
-          "├── grid: $(short_show(field.grid))", '\n',
-          "├── dims: $(field.dims)", '\n',
-          "├── operand: $(short_show(field.operand))", '\n',
-          "└── status: ", show_status(field.status), '\n')
+          "├── data: $(typeof(field.data)), size: $(size(field))\n",
+          "├── grid: $(short_show(field.grid))\n",
+          "├── dims: $(field.dims)\n",
+          "├── operand: $(short_show(field.operand))\n",
+          "└── status: ", show_status(field.status))
 
 Base.show(io::IO, field::ComputedField) =
     print(io, "$(short_show(field))\n",
-          "├── data: $(typeof(field.data)), size: $(size(field.data))\n",
-          "├── grid: $(short_show(field.grid))", '\n',
-          "├── operand: $(short_show(field.operand))", '\n',
-          "└── status: ", show_status(field.status), '\n')
+          "├── data: $(typeof(field.data)), size: $(size(field))\n",
+          "├── grid: $(short_show(field.grid))\n",
+          "├── operand: $(short_show(field.operand))\n",
+          "└── status: $(show_status(field.status))")
 
 Base.show(io::IO, field::KernelComputedField) =
     print(io, "$(short_show(field))\n",
-          "├── data: $(typeof(field.data)), size: $(size(field.data))\n",
-          "├── grid: $(short_show(field.grid))", '\n',
-          "├── computed_dependencies: $(Tuple(short_show(d) for d in field.computed_dependencies))", '\n',
-          "├── kernel: $(short_show(field.kernel))", '\n',
-          "└── status: ", show_status(field.status), '\n')
+          "├── data: $(typeof(field.data)), size: $(size(field))\n",
+          "├── grid: $(short_show(field.grid))\n",
+          "├── computed_dependencies: $(Tuple(short_show(d) for d in field.computed_dependencies))"\n,
+          "├── kernel: $(short_show(field.kernel))\n",
+          "└── status: $(show_status(field.status))")
 
 short_show(array::OffsetArray{T, D, A}) where {T, D, A} = string("OffsetArray{$T, $D, $A}")
 
