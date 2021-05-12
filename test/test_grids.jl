@@ -600,10 +600,11 @@ end
             
             @test try
                 show(grid)
-                true
+                return true
             catch err
                 println("error in show(::VerticallyStretchedRectilinearGrid)")
-                false
+                println(sprint(showerror, err))
+                return false
             end
             
             @test grid isa VerticallyStretchedRectilinearGrid
@@ -624,10 +625,11 @@ end
         
             @test try
                 show(grid)
-                true
+                return true
             catch err
                 println("error in show(::RegularLatitudeLongitudeGrid)")
-                false
+                println(sprint(showerror, err))
+                return false
             end
 
             @test grid isa RegularLatitudeLongitudeGrid
@@ -647,10 +649,11 @@ end
         
             @test try
                 show(grid)
-                true
+                return true
             catch err
                 println("error in show(::ConformalCubedSphereFaceGrid)")
-                false
+                println(sprint(showerror, err))
+                return false
             end
 
             @test grid isa ConformalCubedSphereFaceGrid
