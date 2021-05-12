@@ -4,6 +4,8 @@ using JLD2
 using Oceananigans
 using Oceananigans.Units
 
+using Oceananigans.Fields: location
+
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(64, 64, 32))
 
@@ -62,12 +64,14 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
                 schedule = TimeInterval(30seconds),
                    force = true)
 
-    simulation.output_writers[:jld2_3d_without_halos] =
-        JLD2OutputWriter(model, fields_to_output,
-              prefix = "test_3d_output_without_halos",
-        field_slicer = FieldSlicer(with_halos=false),
-            schedule = TimeInterval(30seconds),
-               force = true)
+    profiles = NamedTuple{keys(fields_to_output)}(AveragedField(f, dims=(1, 2)) for f in fields_to_output)
+
+    simulation.output_writers[:jld2_1d_with_halos] =
+        JLD2OutputWriter(model, profiles,
+                  prefix = "test_1d_output_with_halos",
+            field_slicer = FieldSlicer(with_halos=true),
+                schedule = TimeInterval(30seconds),
+                   force = true)
 
     run!(simulation)
 
@@ -81,43 +85,88 @@ end
     generate_some_interesting_simulation_data(Nx, Ny, Nz)
     Nt = 5
 
-    filepath = "test_3d_output_with_halos.jld2"
+    filepath3d = "test_3d_output_with_halos.jld2"
+    filepath1d = "test_1d_output_with_halos.jld2"
 
     @testset "FieldTimeSeries{InMemory}" begin
         @info "  Testing FieldTimeSeries{InMemory}..."
 
-        u = FieldTimeSeries(filepath, "u")
-        v = FieldTimeSeries(filepath, "v")
-        w = FieldTimeSeries(filepath, "w")
-        T = FieldTimeSeries(filepath, "T")
-        b = FieldTimeSeries(filepath, "b")
-        ζ = FieldTimeSeries(filepath, "ζ")
+        ## 3D Fields
 
-        @test size(u) == (Nx, Ny, Nz,   Nt)
-        @test size(v) == (Nx, Ny, Nz,   Nt)
-        @test size(w) == (Nx, Ny, Nz+1, Nt)
-        @test size(T) == (Nx, Ny, Nz,   Nt)
-        @test size(b) == (Nx, Ny, Nz,   Nt)
-        @test size(ζ) == (Nx, Ny, Nz,   Nt)
+        u3 = FieldTimeSeries(filepath3d, "u")
+        v3 = FieldTimeSeries(filepath3d, "v")
+        w3 = FieldTimeSeries(filepath3d, "w")
+        T3 = FieldTimeSeries(filepath3d, "T")
+        b3 = FieldTimeSeries(filepath3d, "b")
+        ζ3 = FieldTimeSeries(filepath3d, "ζ")
 
-        @test u[1, 2, 3, 4] isa Number
-        @test u[1] isa Field
-        @test u[2] isa Field
+        @test location(u3) == (Face, Center, Center)
+        @test location(v3) == (Center, Face, Center)
+        @test location(w3) == (Center, Center, Face)
+        @test location(T3) == (Center, Center, Center)
+        @test location(b3) == (Center, Center, Center)
+        @test location(ζ3) == (Face, Face, Center)
+
+        @test size(u3) == (Nx, Ny, Nz,   Nt)
+        @test size(v3) == (Nx, Ny, Nz,   Nt)
+        @test size(w3) == (Nx, Ny, Nz+1, Nt)
+        @test size(T3) == (Nx, Ny, Nz,   Nt)
+        @test size(b3) == (Nx, Ny, Nz,   Nt)
+        @test size(ζ3) == (Nx, Ny, Nz,   Nt)
+
+        @test u3[1, 2, 3, 4] isa Number
+        @test u3[1] isa Field
+        @test v3[2] isa Field
+
+        ## 1D AveragedFields
+
+        u1 = FieldTimeSeries(filepath1d, "u")
+        v1 = FieldTimeSeries(filepath1d, "v")
+        w1 = FieldTimeSeries(filepath1d, "w")
+        T1 = FieldTimeSeries(filepath1d, "T")
+        b1 = FieldTimeSeries(filepath1d, "b")
+        ζ1 = FieldTimeSeries(filepath1d, "ζ")
+
+        @test location(u1) == (Nothing, Nothing, Center)
+        @test location(v1) == (Nothing, Nothing, Center)
+        @test location(w1) == (Nothing, Nothing, Face)
+        @test location(T1) == (Nothing, Nothing, Center)
+        @test location(b1) == (Nothing, Nothing, Center)
+        @test location(ζ1) == (Nothing, Nothing, Center)
+
+        @test size(u1) == (1, 1, Nz,   Nt)
+        @test size(v1) == (1, 1, Nz,   Nt)
+        @test size(w1) == (1, 1, Nz+1, Nt)
+        @test size(T1) == (1, 1, Nz,   Nt)
+        @test size(b1) == (1, 1, Nz,   Nt)
+        @test size(ζ1) == (1, 1, Nz,   Nt)
+
+        @test u1[1, 1, 3, 4] isa Number
+        @test u1[1] isa Field
+        @test v1[2] isa Field
     end
 
     @testset "FieldTimeSeries{OnDisk}" begin
         @info "  Testing FieldTimeSeries{OnDisk}..."
 
-        ζ = FieldTimeSeries(filepath, "ζ", backend=OnDisk())
+        ζ = FieldTimeSeries(filepath3d, "ζ", backend=OnDisk())
+        @test location(ζ) == (Face, Face, Center)
+        @test size(ζ) == (Nx, Ny, Nz, Nt)
         @test ζ[1] isa Field
         @test ζ[2] isa Field
+
+        b = FieldTimeSeries(filepath1d, "b", backend=OnDisk())
+        @test location(b) == (Nothing, Nothing, Center)
+        @test size(b) == (1, 1, Nz, Nt)
+        @test b[1] isa Field
+        @test b[2] isa Field
     end
 
     @testset "FieldTimeSeries{InMemory} reductions" begin
         @info "  Testing FieldTimeSeries{InMemory} reductions..."
 
         for name in ("u", "v", "w", "T", "b", "ζ"), fun in (sum, mean, maximum, minimum)
-            f = FieldTimeSeries(filepath, name)
+            f = FieldTimeSeries(filepath3d, name)
 
             ε = eps(maximum(f.data.parent))
 
@@ -132,7 +181,7 @@ end
         @testset "FieldDataset{$Backend}" begin
             @info "  Testing FieldDataset{$Backend}..."
 
-            ds = FieldDataset(filepath, backend=Backend())
+            ds = FieldDataset(filepath3d, backend=Backend())
 
             @test ds isa Dict
             @test length(keys(ds)) == 8
@@ -141,4 +190,7 @@ end
             @test ds["T"][2] isa Field
         end
     end
+
+    rm("test_3d_output_with_halos.jld2")
+    rm("test_1d_output_with_halos.jld2")
 end
