@@ -12,7 +12,13 @@ Update peripheral aspects of the model (auxiliary fields, halo regions, diffusiv
 hydrostatic pressure) to the current model state.
 """
 function update_state!(model::HydrostaticFreeSurfaceModel)
-    
+
+    # Mask immersed fields
+    masking_events = Tuple(mask_immersed_field!(field, model.immersed_boundary)
+                           for field in merge(model.auxiliary_fields, prognostic_fields(model)))
+
+    wait(device(model.architecture), MultiEvent(masking_events))
+
     # Fill halos for velocities and tracers
     fill_halo_regions!(prognostic_fields(model), model.architecture, model.clock, fields(model))
     fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
