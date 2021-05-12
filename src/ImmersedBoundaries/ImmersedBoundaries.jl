@@ -1,9 +1,10 @@
 module ImmersedBoundaries
 
 using Oceananigans.Grids
+using Oceananigans.Operators
 using Oceananigans.Fields
 using Oceananigans.Utils
-using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
+using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, time_discretization
 
 import Oceananigans.TurbulenceClosures:
     viscous_flux_ux,
@@ -18,6 +19,10 @@ import Oceananigans.TurbulenceClosures:
     diffusive_flux_x,
     diffusive_flux_y,
     diffusive_flux_z,
+    ∂ⱼ_τ₁ⱼ,
+    ∂ⱼ_τ₂ⱼ,
+    ∂ⱼ_τ₃ⱼ,
+    ∇_dot_qᶜ,
     κᶠᶜᶜ,
     κᶜᶠᶜ,
     κᶜᶜᶠ,
@@ -30,8 +35,7 @@ export AbstractImmersedBoundary
 
 abstract type AbstractImmersedBoundary end
 
-struct NoImmersedBoundary <: AbstractImmersedBoundary end
-
+include("immersed_flux_divergences.jl")
 include("no_immersed_boundary.jl")
 include("grid_fitted_immersed_boundary.jl")
 include("mask_immersed_field.jl")
@@ -55,5 +59,8 @@ for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
             ifelse(solid_cell(loc..., i, j, k, grid, ib), $locate_coeff(i, j, k, grid, coeff), zero(FT))
     end
 end
+
+regularize_immersed_boundary(ib, grid) = ib
+regularize_immersed_boundary(f::Function, grid) = GridFittedImmersedBoundary(f, grid)
 
 end # module

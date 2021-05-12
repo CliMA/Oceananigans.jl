@@ -15,6 +15,7 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
+using Oceananigans.ImmersedBoundaries: NoImmersedBoundary, regularize_immersed_boundary
 using Oceananigans.Utils: tupleit
 
 struct VectorInvariant end

@@ -30,23 +30,23 @@ const c = Center()
 const f = Face()
 
 # ccc, ffc, fcf
-@inline viscous_flux_ux(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(c, c, c, i, j, k, grid, ib), viscous_flux_ux(i, j, k, grid, args...), zero(FT))
-@inline viscous_flux_uy(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(f, f, c, i, j, k, grid, ib), viscous_flux_uy(i, j, k, grid, args...), zero(FT))
-@inline viscous_flux_uz(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(f, c, f, i, j, k, grid, ib), viscous_flux_uz(i, j, k, grid, args...), zero(FT))
+@inline viscous_flux_ux(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(c, c, c, i, j, k, grid, ib), zero(FT), viscous_flux_ux(i, j, k, grid, args...))
+@inline viscous_flux_uy(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(f, f, c, i, j, k, grid, ib), zero(FT), viscous_flux_uy(i, j, k, grid, args...))
+@inline viscous_flux_uz(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(f, c, f, i, j, k, grid, ib), zero(FT), viscous_flux_uz(i, j, k, grid, args...))
 
 # ffc, ccc, cff
-@inline viscous_flux_vx(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(f, f, c, i, j, k, grid, ib), viscous_flux_vx(i, j, k, grid, args...), zero(FT))
-@inline viscous_flux_vy(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(c, c, c, i, j, k, grid, ib), viscous_flux_vy(i, j, k, grid, args...), zero(FT))
-@inline viscous_flux_vz(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(c, f, f, i, j, k, grid, ib), viscous_flux_vz(i, j, k, grid, args...), zero(FT))
+@inline viscous_flux_vx(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(f, f, c, i, j, k, grid, ib), zero(FT), viscous_flux_vx(i, j, k, grid, args...))
+@inline viscous_flux_vy(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(c, c, c, i, j, k, grid, ib), zero(FT), viscous_flux_vy(i, j, k, grid, args...))
+@inline viscous_flux_vz(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(c, f, f, i, j, k, grid, ib), zero(FT), viscous_flux_vz(i, j, k, grid, args...))
 
 # fcf, cff, ccc
-@inline viscous_flux_wx(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(f, c, f, i, j, k, grid, ib), viscous_flux_wx(i, j, k, grid, args...), zero(FT))
-@inline viscous_flux_wy(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(c, f, f, i, j, k, grid, ib), viscous_flux_wy(i, j, k, grid, args...), zero(FT))
-@inline viscous_flux_wz(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(c, c, c, i, j, k, grid, ib), viscous_flux_wz(i, j, k, grid, args...), zero(FT))
+@inline viscous_flux_wx(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(f, c, f, i, j, k, grid, ib), zero(FT), viscous_flux_wx(i, j, k, grid, args...))
+@inline viscous_flux_wy(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(c, f, f, i, j, k, grid, ib), zero(FT), viscous_flux_wy(i, j, k, grid, args...))
+@inline viscous_flux_wz(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(c, c, c, i, j, k, grid, ib), zero(FT), viscous_flux_wz(i, j, k, grid, args...))
 
 # fcc, cfc, ccf
-@inline diffusive_flux_x(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(f, c, c, i, j, k, grid, ib), diffusive_flux_x(i, j, k, grid, args...), zero(FT))
-@inline diffusive_flux_y(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(c, f, c, i, j, k, grid, ib), diffusive_flux_y(i, j, k, grid, args...), zero(FT))
-@inline diffusive_flux_z(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(c, c, f, i, j, k, grid, ib), diffusive_flux_z(i, j, k, grid, args...), zero(FT))
+@inline diffusive_flux_x(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(f, c, c, i, j, k, grid, ib), zero(FT), diffusive_flux_x(i, j, k, grid, args...))
+@inline diffusive_flux_y(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(c, f, c, i, j, k, grid, ib), zero(FT), diffusive_flux_y(i, j, k, grid, args...))
+@inline diffusive_flux_z(i, j, k, grid::AG{FT}, ib::GFIB, args...) where FT = ifelse(solid_node(c, c, f, i, j, k, grid, ib), zero(FT), diffusive_flux_z(i, j, k, grid, args...))
 
 
