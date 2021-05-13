@@ -8,7 +8,7 @@ import Oceananigans.TimeSteppers: correct_immersed_tendencies!
 """
     correct_immersed_tendencies!(model)
     
-Correct the tendency terms to implement no-slip boundary conditions on an immersed boundary
+Correct the tendency terms to implement boundary conditions on an immersed boundary
  without the contribution from the non-hydrostatic pressure. 
 Makes velocity vanish within the immersed surface.
 """
@@ -54,7 +54,7 @@ end
         y = ynode(LY, j, grid)
         z = znode(LZ, k, grid)
         @inbounds begin
-            immersed_update_vel(i, j, k, x, y, z, immersed, grid, velocities, dirichZero, q, max_neighbor)
+            immersed_update_vel(i, j, k, x, y, z, immersed, grid, velocities, dirichBC, q, max_neighbor)
         end
     end
     
@@ -64,7 +64,7 @@ end
     z = znode(Center, k, grid)
     
     @inbounds begin
-        immersed_update_trac(i, j, k, x, y, z, immersed, grid, tracers, neumannZero, max_neighbor)
+        immersed_update_trac(i, j, k, x, y, z, immersed, grid, tracers, neumannBC, max_neighbor)
     end
 end
 
@@ -72,15 +72,12 @@ end
 max_neighbor(x, y, z, Δx, Δy, Δz, immersed_distance)= max(immersed_distance([x+Δx y z]),
                     immersed_distance([x-Δx y z]), immersed_distance([x y+Δy z]),
                     immersed_distance([x y-Δy z]), immersed_distance([x y z+Δz]),
-                    immersed_distance([x y z-Δz]),immersed_distance([x+(2*Δx) y z]),
-                    immersed_distance([x-(2*Δx) y z]), immersed_distance([x y+(2*Δy) z]),
-                    immersed_distance([x y-(2*Δy) z]), immersed_distance([x y z+(2*Δz)]),
-                    immersed_distance([x y z-(2*Δz)]))  
+                    immersed_distance([x y z-Δz]))  
 
 # function to find the tangential plane to the point for rotation to tangential and normal
 function projection_matrix(N)
     if abs(N[1]) ==1 # if normal vector is entirely in the x direction
-        v1 = [0; -sign(N[1]); 1]  # we want v1 = [0,0,1]
+        v1 = [0; -sign(N[1]); 0]  # we want v1 = [0,-1,0]
         v1 = v1./norm(v1); # normalizing vector
         v2 = [0; 0; -1];
     elseif abs(N[2]) == 1 || N[3]==0 # if normal vector is entirely in the y direction or 0 z comp
@@ -106,11 +103,11 @@ function interp_bc(q2, d2, qb)
     q1 = q2 - 2*d2*qb
 end
         
-# hard coding dirichlet zero bc for now
-dirichZero(x) = 0.     
+# hard coding dirichlet bc for now
+dirichBC(x) = 0.     
 
-# hard coding Neumann zero bc for now
-neumannZero(x) = 0.        
+# hard coding Neumann bc for now
+neumannBC(x) = 1.        
     
 # function to find the value to enforce at a given immersed node         
 function immersed_value_vel(xvec, im_dist, velocities, b_conds, needed_idx)
@@ -140,6 +137,12 @@ function immersed_value_vel(xvec, im_dist, velocities, b_conds, needed_idx)
     VF² = interp_bc(V_rot[2], b_conds(x₀));
     VFⁿ = interp_bc(V_rot[3], b_conds(x₀));
     
+    if d2 == 0
+        VF¹ = b_conds(x₀);
+        VF² = b_conds(x₀);
+        VFⁿ = b_conds(x₀);
+    end
+    
     # now we need to return to cartesian coordinate system
     VF = inv(matrix)*[VF¹;VF²;VFⁿ];
     
@@ -151,7 +154,7 @@ end
 function immersed_update_vel(i, j, k, x, y, z, im_dist, grid, velocities, b_conds, needed_idx, max_neighbor)
     # a function that takes in a location, checks if immersed node, and forces velocities accordingly
     spc = [x, y, z]
-    if im_dist(spc) < 0 # solid node
+    if im_dist(spc) <= 0 # solid node or boundary node
         if max_neighbor(x, y, z, grid.Δx, grid.Δy, grid.Δz, im_dist) > 0 # fluid neighbor
             velI = immersed_value_vel(spc, im_dist, velocities, b_conds, needed_idx)
             velocities[needed_idx][i, j, k] = velI
@@ -171,20 +174,27 @@ function immersed_value_trac(xI, x₀, d2, tracer, b_conds)
 end
 
 
+
+@inline immersed_update_trac(i, j, k, x, y, z, im_dist, grid, ::NamedTuple{(), Tuple{}}, b_conds, max_neighbor) = nothing
+
 # function to update a particular velocity
 function immersed_update_trac(i, j, k, x, y, z, im_dist, grid, tracers, b_conds, max_neighbor)
     # a function that takes in a location, checks if immersed node, and forces velocities accordingly
     spc = [x, y, z]
-    if im_dist(spc) < 0 # solid node
+    if im_dist(spc) <= 0 # solid node
         if max_neighbor(x, y, z, grid.Δx, grid.Δy, grid.Δz, im_dist) > 0 # fluid neighbor
             
-            normalDist = x-> ForwardDiff.gradient(im_dist,x)   
+            normalDist = x-> ForwardDiff.gradient(im_dist, x)   
             xF = spc; # forced node is the x argument
             n = normalDist(xF); # sfc normal vector
             d2 = abs(im_dist(xF)) # distance to surface
             x₀ = xF + d2*n #closest point on boundary
             xI = x₀ + d2*n #reflected point over boundary
-            
+            if d2 == 0
+                d2 = .01 #half the distance so that in interpolation it's correct for d2*2
+                xI = x₀ + 2*d2*n  #reflected point over boundary
+            end
+
             for (q, tracer) in enumerate(tracers)
                 tracer[i, j, k] = immersed_value_trac(xI, x₀, d2, tracer, b_conds)
             end
@@ -196,5 +206,4 @@ function immersed_update_trac(i, j, k, x, y, z, im_dist, grid, tracers, b_conds,
     end
  end
 
-immersed_update_trac(i, j, k, x, y, z, im_dist, grid, ::NamedTuple{(), Tuple{}}, b_conds, max_neighbor) = nothing
 
