@@ -143,5 +143,27 @@ function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereFiel
         end
     end
 
+    NCS=size(u.data)[1]-2
+    u.data[1][1,NCS+1,1] = -u.data[5][1,NCS  ,1]
+    v.data[1][0,NCS+1,1] = -u.data[5][1,NCS  ,1]
+
+    u.data[3][1,NCS+1,1] = -u.data[1][1,NCS  ,1]
+    v.data[3][0,NCS+1,1] = -u.data[1][1,NCS  ,1]
+
+    v.data[5][0,NCS+1,1] = -u.data[3][1,NCS  ,1]
+
+    ## Key tests
+    ## uu=sh.model.velocities.u.data
+    ## vv=sh.model.velocities.v.data
+    ## uu[1][1,NCS+1,1]==-uu[5][1,NCS  ,1]==-vv[3][1,NCS+1,1]  # Pass
+    ## vv[1][0,NCS+1,1]==-uu[5][1,NCS  ,1]==-vv[3][1,NCS+1,1]  # Fail
+    ## 
+    ## uu[3][1,NCS+1,1]==-uu[1][1,NCS  ,1]==-vv[5][1,NCS+1,1]  # Fail
+    ## vv[3][0,NCS+1,1]==-uu[1][1,NCS  ,1]==-vv[5][1,NCS+1,1]  # Fail
+    ## 
+    ## uu[5][1,NCS+1,1]==-vv[1][1,NCS+1,1]==-uu[3][1,NCS  ,1]  # Pass
+    ## vv[5][0,NCS+1,1]==-vv[1][1,NCS+1,1]==-uu[3][1,NCS  ,1]  # Pass
+
+
     return nothing
 end
