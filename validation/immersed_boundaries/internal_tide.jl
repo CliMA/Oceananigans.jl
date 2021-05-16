@@ -46,6 +46,11 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocit
                         
 run!(simulation)
 
+@show """
+    Simulation complete.
+    Output: $(abspath(simulation.output_writers[:fields].filepath))
+"""
+
 using JLD2
 
 function nice_divergent_levels(c, clim; nlevels=20)
