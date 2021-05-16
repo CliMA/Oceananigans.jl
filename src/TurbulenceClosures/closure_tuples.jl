@@ -11,11 +11,11 @@ for stress_div in (:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ)
         @inline $stress_div(i, j, k, grid::AbstractGrid, closures::Tuple{C1}, clock, U, Ks) where {C1} =
                     $stress_div(i, j, k, grid, closures[1], clock, U, Ks[1])
 
-        @inline $stress_div(i, j, k, grid::AbstractGrid, clock, closures::Tuple{C1, C2}, U, Ks) where {C1, C2} = (
+        @inline $stress_div(i, j, k, grid::AbstractGrid, closures::Tuple{C1, C2}, clock, U, Ks) where {C1, C2} = (
                     $stress_div(i, j, k, grid, closures[1], clock, U, Ks[1])
                   + $stress_div(i, j, k, grid, closures[2], clock, U, Ks[2]))
 
-        @inline $stress_div(i, j, k, grid::AbstractGrid, clock, closures::Tuple, U, Ks, args...) = (
+        @inline $stress_div(i, j, k, grid::AbstractGrid, closures::Tuple, clock, U, Ks, args...) = (
                     $stress_div(i, j, k, grid, closures[1:2], clock, U, Ks[1:2], args...)
                   + $stress_div(i, j, k, grid, closures[3:end], clock, U, K[3:end], args...))
     end
@@ -32,7 +32,7 @@ end
         ∇_dot_qᶜ(i, j, k, grid, closures[1], c, iᶜ, clock, Ks[1], C, buoyancy)
       + ∇_dot_qᶜ(i, j, k, grid, closures[2], c, iᶜ, clock, Ks[2], C, buoyancy))
 
-@inline ∇_dot_qᶜ(i, j, k, grid::AbstractGrid, clock, closures::Tuple, c, iᶜ, Ks, C, buoyancy) = (
+@inline ∇_dot_qᶜ(i, j, k, grid::AbstractGrid, closures::Tuple, c, iᶜ, clock, Ks, C, buoyancy) = (
         ∇_dot_qᶜ(i, j, k, grid, closures[1:2], c, iᶜ, clock, Ks[1:2], C, buoyancy)
       + ∇_dot_qᶜ(i, j, k, grid, closures[3:end], c, iᶜ, clock, Ks[3:end], C, buoyancy))
 
