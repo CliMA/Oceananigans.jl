@@ -1,6 +1,4 @@
 using Printf
-using Plots
-
 using Oceananigans
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
@@ -25,7 +23,7 @@ model = HydrostaticFreeSurfaceModel(architecture = GPU(),
                                     forcing = (u = tidal_forcing,))
 
 # Linear stratification
-set!(model, b = (x, y, z) -> 10 * z)
+set!(model, b = (x, y, z) -> 4 * z)
 
 progress(s) = @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",
                              100 * s.model.clock.time / s.stop_time, s.model.clock.iteration,
@@ -52,6 +50,7 @@ run!(simulation)
 """
 
 using JLD2
+using Plots
 
 function nice_divergent_levels(c, clim; nlevels=20)
     levels = range(-clim, stop=clim, length=nlevels)
@@ -93,8 +92,8 @@ function visualize_internal_tide_simulation(prefix)
         nan_solid(xu, zu, u, bump) 
         nan_solid(xw, zw, w, bump) 
 
-        u_plot = contourf(xu, zu, u'; title = "x velocity", color = :balance, linewidth = 0, levels = ulevels, clims = (-ulim, ulim))
-        w_plot = contourf(xw, zw, w'; title = "z velocity", color = :balance, linewidth = 0, levels = wlevels, clims = (-wlim, wlim))
+        u_plot = contourf(xu, zu, u'; title = "x velocity", color = :balance, linewidth = 0, levels = ulevels, clims = ulims)
+        w_plot = contourf(xw, zw, w'; title = "z velocity", color = :balance, linewidth = 0, levels = wlevels, clims = wlims)
 
         plot(u_plot, w_plot, layout = (2, 1))
     end
