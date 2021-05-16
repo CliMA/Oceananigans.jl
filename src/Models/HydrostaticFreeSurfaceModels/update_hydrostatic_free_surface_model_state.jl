@@ -15,8 +15,7 @@ hydrostatic pressure) to the current model state.
 function update_state!(model::HydrostaticFreeSurfaceModel)
 
     # Mask immersed fields
-    masking_events = Tuple(mask_immersed_field!(field, model.immersed_boundary)
-                           for field in merge(model.auxiliary_fields, prognostic_fields(model)))
+    masking_events = Tuple(mask_immersed_field!(field) for field in merge(model.auxiliary_fields, prognostic_fields(model)))
 
     wait(device(model.architecture), MultiEvent(masking_events))
 

@@ -122,8 +122,8 @@ end
 
 # Diffusive fluxes for Leith diffusivities
 
-@inline function diffusive_flux_x(i, j, k, grid, clock, closure::TwoDimensionalLeith,
-                                  c, ::Val{tracer_index}, diffusivities, C, buoyancy) where tracer_index
+@inline function diffusive_flux_x(i, j, k, grid, closure::TwoDimensionalLeith,
+                                  c, ::Val{tracer_index}, clock, diffusivities, C, buoyancy) where tracer_index
 
     νₑ = diffusivities.νₑ
 
@@ -141,8 +141,8 @@ end
                       + (C_Redi - C_GM) * R₁₃ * ∂z_c)
 end
 
-@inline function diffusive_flux_y(i, j, k, grid, clock, closure::TwoDimensionalLeith,
-                                  c, ::Val{tracer_index}, diffusivities, C, buoyancy) where tracer_index
+@inline function diffusive_flux_y(i, j, k, grid, closure::TwoDimensionalLeith,
+                                  c, ::Val{tracer_index}, clock, diffusivities, C, buoyancy) where tracer_index
 
     νₑ = diffusivities.νₑ
 
@@ -159,8 +159,8 @@ end
                              + (C_Redi - C_GM) * R₂₃ * ∂z_c)
 end
 
-@inline function diffusive_flux_z(i, j, k, grid, clock, closure::TwoDimensionalLeith,
-                                  c, ::Val{tracer_index}, diffusivities, C, buoyancy) where tracer_index
+@inline function diffusive_flux_z(i, j, k, grid, closure::TwoDimensionalLeith,
+                                  c, ::Val{tracer_index}, clock, diffusivities, C, buoyancy) where tracer_index
 
     νₑ = diffusivities.νₑ
 
@@ -185,17 +185,17 @@ end
 
 const L2D = TwoDimensionalLeith
 
-@inline viscous_flux_ux(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, closure, K.νₑ, Σ₁₁, U.u, U.v, U.w)
-@inline viscous_flux_uy(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, closure, K.νₑ, Σ₁₂, U.u, U.v, U.w)
-@inline viscous_flux_uz(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, closure, K.νₑ, Σ₁₃, U.u, U.v, U.w)
-
-@inline viscous_flux_vx(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, closure, K.νₑ, Σ₂₁, U.u, U.v, U.w)
-@inline viscous_flux_vy(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, closure, K.νₑ, Σ₂₂, U.u, U.v, U.w)
-@inline viscous_flux_vz(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, closure, K.νₑ, Σ₂₃, U.u, U.v, U.w)
-
-@inline viscous_flux_wx(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, closure, K.νₑ, Σ₃₁, U.u, U.v, U.w)
-@inline viscous_flux_wy(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, closure, K.νₑ, Σ₃₂, U.u, U.v, U.w)
-@inline viscous_flux_wz(i, j, k, grid, clock, closure::L2D, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, closure, K.νₑ, Σ₃₃, U.u, U.v, U.w)
+@inline viscous_flux_ux(i, j, k, grid, closure::L2D, clock, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, closure, K.νₑ, Σ₁₁, U.u, U.v, U.w)
+@inline viscous_flux_uy(i, j, k, grid, closure::L2D, clock, U, K) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, closure, K.νₑ, Σ₁₂, U.u, U.v, U.w)
+@inline viscous_flux_uz(i, j, k, grid, closure::L2D, clock, U, K) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, closure, K.νₑ, Σ₁₃, U.u, U.v, U.w)
+                                                            
+@inline viscous_flux_vx(i, j, k, grid, closure::L2D, clock, U, K) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, closure, K.νₑ, Σ₂₁, U.u, U.v, U.w)
+@inline viscous_flux_vy(i, j, k, grid, closure::L2D, clock, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, closure, K.νₑ, Σ₂₂, U.u, U.v, U.w)
+@inline viscous_flux_vz(i, j, k, grid, closure::L2D, clock, U, K) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, closure, K.νₑ, Σ₂₃, U.u, U.v, U.w)
+                                                            
+@inline viscous_flux_wx(i, j, k, grid, closure::L2D, clock, U, K) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, closure, K.νₑ, Σ₃₁, U.u, U.v, U.w)
+@inline viscous_flux_wy(i, j, k, grid, closure::L2D, clock, U, K) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, closure, K.νₑ, Σ₃₂, U.u, U.v, U.w)
+@inline viscous_flux_wz(i, j, k, grid, closure::L2D, clock, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, closure, K.νₑ, Σ₃₃, U.u, U.v, U.w)
 
 function calculate_diffusivities!(K, arch, grid, closure::TwoDimensionalLeith, buoyancy, U, C)
     event = launch!(arch, grid, :xyz, calculate_nonlinear_viscosity!, K.νₑ, grid, closure, buoyancy, U, C,

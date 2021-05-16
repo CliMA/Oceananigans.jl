@@ -1,15 +1,17 @@
 using KernelAbstractions
 using Oceananigans.Architectures: architecture, device_event
 
-mask_immersed_field!(field, ib) = NoneEvent()
+mask_immersed_field!(field) = mask_immersed_field!(field, field.grid)
 
-function mask_immersed_field!(field::AbstractField{X, Y, Z}, ib::GridFittedImmersedBoundary) where {X, Y, Z}
+mask_immersed_field!(field, grid) = NoneEvent()
+
+function mask_immersed_field!(field::AbstractField{LX, LY, LZ}, grid::ImmersedBoundaryGrid) where {LX, LY, LZ}
     arch = architecture(field)
-    loc = (X(), Y(), Z())
-    return launch!(arch, field.grid, :xyz, _mask_immersed_field!, field, loc, ib; dependencies = device_event(arch))
+    loc = (LX(), LY(), LZ())
+    return launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid; dependencies = device_event(arch))
 end
 
-@kernel function _mask_immersed_field!(field, loc, ib)
+@kernel function _mask_immersed_field!(field, loc, grid)
     i, j, k = @index(Global, NTuple)
-    @inbounds field[i, j, k] = ifelse(solid_node(loc..., i, j, k, ib.grid, ib), 0, field[i, j, k])
+    @inbounds field[i, j, k] = ifelse(solid_node(loc..., i, j, k, grid), 0, field[i, j, k])
 end

@@ -19,10 +19,6 @@ import Oceananigans.TurbulenceClosures:
     diffusive_flux_x,
     diffusive_flux_y,
     diffusive_flux_z,
-    ∂ⱼ_τ₁ⱼ,
-    ∂ⱼ_τ₂ⱼ,
-    ∂ⱼ_τ₃ⱼ,
-    ∇_dot_qᶜ,
     κᶠᶜᶜ,
     κᶜᶠᶜ,
     κᶜᶜᶠ,
@@ -35,11 +31,29 @@ export AbstractImmersedBoundary
 
 abstract type AbstractImmersedBoundary end
 
-include("immersed_flux_divergences.jl")
-include("no_immersed_boundary.jl")
+struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I} <: AbstractGrid{FT, TX, TY, TZ}
+    grid :: G
+    immersed_boundary :: I
+
+    function ImmersedBoundaryGrid(grid::G, ib::I) where {G <: AbstractGrid, I}
+        FT = eltype(grid)
+        TX, TY, TZ = topology(grid)
+        new{FT, TX, TY, TZ, G, I}(grid, ib)
+    end
+end
+
+const IBG = ImmersedBoundaryGrid
+
+@inline Base.getproperty(ibg::IBG, property::Symbol) = get_ibg_property(ibg, Val(property))
+@inline get_ibg_property(ibg::IBG, ::Val{property}) where property = getfield(ibg.grid, property)
+@inline get_ibg_property(ibg::IBG, ::Val{:immersed_boundary}) = getfield(ibg, :immersed_boundary)
+@inline get_ibg_property(ibg::IBG, ::Val{:grid}) = getfield(ibg, :grid)
+
+include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundary.jl")
 include("mask_immersed_field.jl")
 
+#=
 #####
 ##### Diffusivities (for VerticallyImplicitTimeDiscretization)
 #####
@@ -59,8 +73,6 @@ for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
             ifelse(solid_cell(loc..., i, j, k, grid, ib), $locate_coeff(i, j, k, grid, coeff), zero(FT))
     end
 end
-
-regularize_immersed_boundary(ib, grid) = ib
-regularize_immersed_boundary(f::Function, grid) = GridFittedImmersedBoundary(f, grid)
+=#
 
 end # module

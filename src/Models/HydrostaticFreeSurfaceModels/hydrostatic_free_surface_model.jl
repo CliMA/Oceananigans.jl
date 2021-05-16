@@ -15,7 +15,6 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
-using Oceananigans.ImmersedBoundaries: NoImmersedBoundary, regularize_immersed_boundary
 using Oceananigans.Utils: tupleit
 
 struct VectorInvariant end
@@ -26,7 +25,7 @@ validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSe
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, U, C, Φ, K, AF, IB} <: AbstractModel{TS}
+                                           G, T, V, B, R, F, P, U, C, Φ, K, AF} <: AbstractModel{TS}
         architecture :: A        # Computer `Architecture` on which `Model` is run
                 grid :: G        # Grid of physical points on which `Model` is solved
                clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
@@ -43,7 +42,6 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
        diffusivities :: K        # Container for turbulent diffusivities
          timestepper :: TS       # Object containing timestepper fields and parameters
     auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
-   immersed_boundary :: IB       # User-specified auxiliary fields for forcing functions and boundary conditions
 end
 
 """
@@ -99,7 +97,6 @@ function HydrostaticFreeSurfaceModel(; grid,
                                           pressure = nothing,
                                      diffusivities = nothing,
                                   auxiliary_fields = NamedTuple(),
-                                 immersed_boundary = NoImmersedBoundary(),
     )
 
     @warn "HydrostaticFreeSurfaceModel is experimental. Use with caution!"
@@ -162,11 +159,9 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     advection = merge((momentum=momentum_advection,), tracer_advection_tuple)
 
-    immersed_boundary = regularize_immersed_boundary(immersed_boundary, grid)
-
     return HydrostaticFreeSurfaceModel(architecture, grid, clock, advection, buoyancy, coriolis,
                                        free_surface, forcing, closure, particles, velocities, tracers,
-                                       pressure, diffusivities, timestepper, auxiliary_fields, immersed_boundary)
+                                       pressure, diffusivities, timestepper, auxiliary_fields)
 end
 
 validate_velocity_boundary_conditions(velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
