@@ -4,7 +4,7 @@ using Plots
 using Oceananigans
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
-grid = RegularRectilinearGrid(size=(1024, 512), x=(-10, 10), z=(0, 5), topology=(Periodic, Flat, Bounded))
+grid = RegularRectilinearGrid(size=(512, 256), x=(-10, 10), z=(0, 5), topology=(Periodic, Flat, Bounded))
 
 # Gaussian bump of width "1"
 bump(x, y, z) = z < exp(-x^2)
@@ -39,14 +39,14 @@ simulation = Simulation(model, Δt = Δt, stop_time = 10, progress = progress, i
 serialize_grid(file, model) = file["serialized/grid"] = model.grid.grid
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                      schedule = TimeInterval(0.02),
+                                                      schedule = TimeInterval(0.1),
                                                       prefix = "internal_tide",
                                                       init = serialize_grid,
                                                       force = true)
                         
 run!(simulation)
 
-@show """
+@info """
     Simulation complete.
     Output: $(abspath(simulation.output_writers[:fields].filepath))
 """
@@ -68,7 +68,7 @@ function nan_solid(x, z, u, bump)
     return nothing
 end
 
-function visualize_internal_tide(prefix)
+function visualize_internal_tide_simulation(prefix)
 
     filename = prefix * ".jld2"
     file = jldopen(filename)
@@ -103,3 +103,5 @@ function visualize_internal_tide(prefix)
 
     close(file)
 end
+
+visualize_internal_tide_simulation("internal_tide")
