@@ -1,8 +1,10 @@
-using Oceananigans
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+using Printf
 using Plots
 
-grid = RegularRectilinearGrid(size=(1024, 1024), x=(-10, 10), z=(0, 5), topology=(Periodic, Flat, Bounded))
+using Oceananigans
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+
+grid = RegularRectilinearGrid(size=(1024, 512), x=(-10, 10), z=(0, 5), topology=(Periodic, Flat, Bounded))
 
 # Gaussian bump of width "1"
 bump(x, y, z) = z < exp(-x^2)
@@ -25,11 +27,12 @@ model = HydrostaticFreeSurfaceModel(architecture = GPU(),
 # Linear stratification
 set!(model, b = (x, y, z) -> 10 * z)
 
-progress(s) = @info @sprintf("Progress: %.2f \%, max|w|: %.2e",
-                             s.model.clock.time / s.stop_time, maximum(abs, model.velocities.w))
+progress(s) = @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",
+                             100 * s.model.clock.time / s.stop_time, s.model.clock.iteration,
+                             s.model.clock.time, maximum(abs, model.velocities.w))
 
 gravity_wave_speed = sqrt(model.free_surface.gravitational_acceleration * grid.Lz)
-Δt = 0.2 * grid.Δx / gravity_wave_speed
+Δt = 0.1 * grid.Δx / gravity_wave_speed
               
 simulation = Simulation(model, Δt = Δt, stop_time = 10, progress = progress, iteration_interval = 100)
 
