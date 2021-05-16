@@ -32,7 +32,7 @@ function RungeKutta3TimeStepper(arch, grid, tracers;
 
     !isnothing(implicit_solver) &&
         @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
-              "\n implicit_solver: $implicit_solver")
+              "\n implicit_solver: $(typeof(implicit_solver))")
 
     γ¹ = 8 // 15
     γ² = 5 // 12

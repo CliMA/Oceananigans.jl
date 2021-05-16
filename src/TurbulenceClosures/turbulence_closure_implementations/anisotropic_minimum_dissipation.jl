@@ -1,3 +1,5 @@
+using Oceananigans.Operators
+
 """
     AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure
 
@@ -217,9 +219,9 @@ end
 #####
 
 # Recall that filter widths are 2x the grid spacing in AMD
-@inline Δᶠxᶜᶜᶜ(i, j, k, grid) = 2 * Oceananigans.Operators.Δx(i, j, k, grid)
-@inline Δᶠyᶜᶜᶜ(i, j, k, grid) = 2 * Oceananigans.Operators.Δy(i, j, k, grid)
-@inline Δᶠzᶜᶜᶜ(i, j, k, grid) = 2 * Oceananigans.Operators.ΔzC(i, j, k, grid)
+@inline Δᶠxᶜᶜᶜ(i, j, k, grid) = 2 * Δxᶜᶜᵃ(i, j, k, grid)
+@inline Δᶠyᶜᶜᶜ(i, j, k, grid) = 2 * Δyᶜᶜᵃ(i, j, k, grid)
+@inline Δᶠzᶜᶜᶜ(i, j, k, grid) = 2 * Δzᵃᵃᶜ(i, j, k, grid)
 
 for loc in (:ccf, :fcc, :cfc, :ffc, :cff, :fcf), ξ in (:x, :y, :z)
     Δ_loc = Symbol(:Δᶠ, ξ, :_, loc)

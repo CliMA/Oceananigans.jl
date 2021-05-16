@@ -2,7 +2,6 @@ using Printf
 using Oceananigans
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
-#=
 grid = RegularRectilinearGrid(size=(512, 256), x=(-10, 10), z=(0, 5), topology=(Periodic, Flat, Bounded))
 
 # Gaussian bump of width "1"
@@ -49,7 +48,6 @@ run!(simulation)
     Simulation complete.
     Output: $(abspath(simulation.output_writers[:fields].filepath))
 """
-=#
 
 using JLD2
 using Plots
