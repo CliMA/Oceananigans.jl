@@ -2,6 +2,7 @@ using Printf
 using Oceananigans
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
+#=
 grid = RegularRectilinearGrid(size=(512, 256), x=(-10, 10), z=(0, 5), topology=(Periodic, Flat, Bounded))
 
 # Gaussian bump of width "1"
@@ -48,6 +49,7 @@ run!(simulation)
     Simulation complete.
     Output: $(abspath(simulation.output_writers[:fields].filepath))
 """
+=#
 
 using JLD2
 using Plots
@@ -79,6 +81,9 @@ function visualize_internal_tide_simulation(prefix)
 
     xu, yu, zu = nodes((Face, Center, Center), grid)
     xw, yw, zw = nodes((Center, Center, Face), grid)
+    xb, yb, zb = nodes((Center, Center, Center), grid)
+
+    b₀ = file["timeseries/b/0"][:, 1, :]
 
     iterations = parse.(Int, keys(file["timeseries/t"]))    
 
@@ -88,20 +93,29 @@ function visualize_internal_tide_simulation(prefix)
 
         u = file["timeseries/u/$iter"][:, 1, :]
         w = file["timeseries/w/$iter"][:, 1, :]
+        b = file["timeseries/b/$iter"][:, 1, :]
+        t = file["timeseries/t/$iter"]
 
-        wlims, wlevels = nice_divergent_levels(w, 1e-3)
+        b′ = b .- b₀
+
+        wlims, wlevels = nice_divergent_levels(w, 1e-4)
         ulims, ulevels = nice_divergent_levels(u, 1e-3)
+        blims, blevels = nice_divergent_levels(b′, 1e-4)
         
-        nan_solid(xu, zu, u, bump) 
-        nan_solid(xw, zw, w, bump) 
+        nan_solid(xu, zu, u, bump)
+        nan_solid(xw, zw, w, bump)
+        nan_solid(xb, zb, b, bump) 
 
-        u_plot = contourf(xu, zu, u'; title = "x velocity", color = :balance, linewidth = 0, levels = ulevels, clims = ulims)
-        w_plot = contourf(xw, zw, w'; title = "z velocity", color = :balance, linewidth = 0, levels = wlevels, clims = wlims)
+        u_title = @sprintf("x velocity, t = %.2f", t)
 
-        plot(u_plot, w_plot, layout = (2, 1))
+        u_plot = contourf(xu, zu, u'; title = u_title,                  color = :balance, aspectratio = :equal, linewidth = 0, levels = ulevels, clims = ulims)
+        w_plot = contourf(xw, zw, w'; title = "z velocity",             color = :balance, aspectratio = :equal, linewidth = 0, levels = wlevels, clims = wlims)
+        b_plot = contourf(xb, zb, b′'; title = "buoyancy perturbation", color = :balance, aspectratio = :equal, linewidth = 0, levels = blevels, clims = blims)
+
+        plot(u_plot, w_plot, b_plot, layout = (3, 1), size = (1200, 1200))
     end
 
-    mp4(anim, "internal_tide.mp4", fps = 8)
+    mp4(anim, "internal_tide.mp4", fps = 16)
 
     close(file)
 end
