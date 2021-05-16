@@ -33,7 +33,7 @@ gravity_wave_speed = sqrt(model.free_surface.gravitational_acceleration * grid.L
               
 simulation = Simulation(model, Δt = Δt, stop_time = 10, progress = progress, iteration_interval = 100)
 
-serialize_grid(file, model) = file["serialized/grid"] = model.grid
+serialize_grid(file, model) = file["serialized/grid"] = model.grid.grid
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                       schedule = TimeInterval(0.02),
@@ -43,27 +43,55 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocit
                         
 run!(simulation)
 
-#=
+using JLD2
+
+function nice_divergent_levels(c, clim; nlevels=20)
+    levels = range(-clim, stop=clim, length=nlevels)
+    cmax = maximum(abs, c)
+    clim < cmax && (levels = vcat([-cmax], levels, [cmax]))
+    return (-clim, clim), levels
+end
+
+function nan_solid(x, z, u, bump)
+    Nx, Nz = size(u)
+    x2 = reshape(x, Nx, 1)
+    z2 = reshape(z, 1, Nz)
+    u[bump.(x2, 0, z2)] .= NaN
+    return nothing
+end
+
 function visualize_internal_tide(prefix)
 
     filename = prefix * ".jld2"
-#* =
-xu, yu, zu = nodes(model.velocities.u)
-xw, yw, zw = nodes(model.velocities.w)
+    file = jldopen(filename)
 
-u = interior(model.velocities.u)[:, 1, :]
-w = interior(model.velocities.w)[:, 1, :]
+    grid = file["serialized/grid"]
 
-umax = maximum(abs, u)
-ulim = umax / 10
-ulevels = vcat(-[umax], range(-ulim, stop=ulim, length=30), [umax]) 
+    bump(x, y, z) = z < exp(-x^2)
 
-xu2 = reshape(xu, grid.Nx, 1)
-zu2 = reshape(zu, 1, grid.Nz)
-u[bump.(xu2, 0, zu2)] .= NaN
+    xu, yu, zu = nodes((Face, Center, Center), grid)
+    xw, yw, zw = nodes((Center, Center, Face), grid)
 
-#u_plot = contourf(xu, zu, u'; title = "x velocity", color = :balance, linewidth = 0, clims = (-ulim, ulim))
-u_plot = heatmap(xu, zu, u'; title = "x velocity", color = :balance, linewidth = 0, clims = (-ulim, ulim))
+    iterations = parse.(Int, keys(file["timeseries/t"]))    
 
-display(u_plot)
-=#
+    anim = @animate for (i, iter) in enumerate(iterations)
+
+        u = file["timeseries/u/$iter"][:, 1, :]
+        w = file["timeseries/w/$iter"][:, 1, :]
+
+        wlims, wlevels = nice_divergent_levels(w, 1e-3)
+        ulims, ulevels = nice_divergent_levels(u, 1e-3)
+        
+        nan_solid(xu, zu, u, bump) 
+        nan_solid(xw, zw, w, bump) 
+
+        u_plot = contourf(xu, zu, u'; title = "x velocity", color = :balance, linewidth = 0, levels = ulevels, clims = (-ulim, ulim))
+        w_plot = contourf(xw, zw, w'; title = "z velocity", color = :balance, linewidth = 0, levels = wlevels, clims = (-wlim, wlim))
+
+        plot(u_plot, w_plot, layout = (2, 1))
+    end
+
+    mp4(anim, "internal_tide.mp4", fps = 8)
+
+    close(file)
+end
