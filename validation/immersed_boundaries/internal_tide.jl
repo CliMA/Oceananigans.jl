@@ -26,7 +26,7 @@ set!(model, b = (x, y, z) -> 2 * z)
 
 progress(s) = @info "Time = $(s.model.clock.time), max|w|: $(maximum(abs, model.velocities.w))"
               
-simulation = Simulation(model, Δt = 1e-3, stop_time = 10, progress = progress, iteration_interval = 10)
+simulation = Simulation(model, Δt = 1e-3, stop_time = 2, progress = progress, iteration_interval = 10)
                         
 run!(simulation)
 
@@ -41,6 +41,6 @@ xu2 = reshape(xu, grid.Nx, 1)
 zu2 = reshape(zu, 1, grid.Nz)
 u[bump.(xu2, 0, zu2)] .= NaN
 
-u_plot = heatmap(xu, zu, u'; title = "x velocity", color = :balance, clims = (-ulim, ulim))
+u_plot = contourf(xu, zu, u'; title = "x velocity", color = :balance, linewidth = 0, clims = (-ulim, ulim))
 
 display(u_plot)
