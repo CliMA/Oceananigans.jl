@@ -33,7 +33,7 @@ progress(s) = @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e"
 gravity_wave_speed = sqrt(model.free_surface.gravitational_acceleration * grid.Lz)
 Δt = 0.1 * grid.Δx / gravity_wave_speed
               
-simulation = Simulation(model, Δt = Δt, stop_time = 10, progress = progress, iteration_interval = 100)
+simulation = Simulation(model, Δt = Δt, stop_time = 100, progress = progress, iteration_interval = 100)
 
 serialize_grid(file, model) = file["serialized/grid"] = model.grid.grid
 
@@ -53,6 +53,7 @@ run!(simulation)
 
 using JLD2
 using Plots
+ENV["GKSwstype"] = "100"
 
 function nice_divergent_levels(c, clim; nlevels=20)
     levels = range(-clim, stop=clim, length=nlevels)
@@ -84,6 +85,8 @@ function visualize_internal_tide_simulation(prefix)
     iterations = parse.(Int, keys(file["timeseries/t"]))    
 
     anim = @animate for (i, iter) in enumerate(iterations)
+
+        @info "Plotting iteration $iter of $(iterations[end])..."
 
         u = file["timeseries/u/$iter"][:, 1, :]
         w = file["timeseries/w/$iter"][:, 1, :]
