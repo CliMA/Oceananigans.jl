@@ -12,6 +12,7 @@ grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
 # Tidal forcing
 tidal_forcing(x, y, z, t) = 1e-4 * cos(t)
 
+#=
 model = HydrostaticFreeSurfaceModel(architecture = GPU(),
                                     grid = grid_with_bump,
                                     momentum_advection = CenteredSecondOrder(),
@@ -48,6 +49,7 @@ run!(simulation)
     Simulation complete.
     Output: $(abspath(simulation.output_writers[:fields].filepath))
 """
+=#
 
 using JLD2
 using Plots
@@ -85,8 +87,9 @@ function visualize_internal_tide_simulation(prefix)
 
         u = file["timeseries/u/$iter"][:, 1, :]
         w = file["timeseries/w/$iter"][:, 1, :]
+        t = file["timeseries/t/$iter"]
 
-        wlims, wlevels = nice_divergent_levels(w, 1e-3)
+        wlims, wlevels = nice_divergent_levels(w, 1e-4)
         ulims, ulevels = nice_divergent_levels(u, 1e-3)
         
         nan_solid(xu, zu, u, bump) 
@@ -95,10 +98,12 @@ function visualize_internal_tide_simulation(prefix)
         u_plot = contourf(xu, zu, u'; title = "x velocity", color = :balance, linewidth = 0, levels = ulevels, clims = ulims)
         w_plot = contourf(xw, zw, w'; title = "z velocity", color = :balance, linewidth = 0, levels = wlevels, clims = wlims)
 
-        plot(u_plot, w_plot, layout = (2, 1))
+        title = @sprintf("Oscillatring stratified flow over a bump at t = %.2f", t)
+
+        plot(u_plot, w_plot, layout = (2, 1), title = title)
     end
 
-    mp4(anim, "internal_tide.mp4", fps = 8)
+    mp4(anim, "internal_tide.mp4", fps = 16)
 
     close(file)
 end
