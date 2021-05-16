@@ -22,7 +22,7 @@ const Centered = AbstractCenteredAdvectionScheme
 
 @inline momentum_flux_wu(i, j, k, grid, scheme::Centered, U, w) = Axᶠᶜᶠ(i, j, k, grid) * _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, U) * _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, w)
 @inline momentum_flux_wv(i, j, k, grid, scheme::Centered, V, w) = Ayᶜᶠᶠ(i, j, k, grid) * _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, V) * _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, w)
-@inline momentum_flux_ww(i, j, k, grid, scheme::Centered, W, w) = Azᶜᶜᶜ(i, j, k, grid) * _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, W) * _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w)
+@inline momentum_flux_ww(i, j, k, grid, scheme::Centered, W, w) = Azᶜᶜᵃ(i, j, k, grid) * _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, W) * _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w)
 
 #####
 ##### Advective tracer flux operators
