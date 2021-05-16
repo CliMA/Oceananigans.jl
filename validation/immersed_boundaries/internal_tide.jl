@@ -33,14 +33,21 @@ gravity_wave_speed = sqrt(model.free_surface.gravitational_acceleration * grid.L
               
 simulation = Simulation(model, Δt = Δt, stop_time = 10, progress = progress, iteration_interval = 100)
 
+serialize_grid(file, model) = file["serialized/grid"] = model.grid
+
 simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
                                                       schedule = TimeInterval(0.02),
-                                                      prefix = "internal_tide"
+                                                      prefix = "internal_tide",
+                                                      init = serialize_grid,
                                                       force = true)
                         
 run!(simulation)
 
 #=
+function visualize_internal_tide(prefix)
+
+    filename = prefix * ".jld2"
+#* =
 xu, yu, zu = nodes(model.velocities.u)
 xw, yw, zw = nodes(model.velocities.w)
 
