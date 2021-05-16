@@ -12,7 +12,8 @@ grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
 # Tidal forcing
 tidal_forcing(x, y, z, t) = 1e-4 * cos(t)
 
-model = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
+model = HydrostaticFreeSurfaceModel(architecture = GPU(),
+                                    grid = grid_with_bump,
                                     momentum_advection = CenteredSecondOrder(),
                                     free_surface = ExplicitFreeSurface(gravitational_acceleration=4),
                                     closure = IsotropicDiffusivity(ν=1e-4, κ=1e-4),

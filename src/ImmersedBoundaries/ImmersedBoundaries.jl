@@ -1,5 +1,7 @@
 module ImmersedBoundaries
 
+using Adapt
+
 using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.Fields
@@ -45,9 +47,11 @@ end
 const IBG = ImmersedBoundaryGrid
 
 @inline Base.getproperty(ibg::IBG, property::Symbol) = get_ibg_property(ibg, Val(property))
-@inline get_ibg_property(ibg::IBG, ::Val{property}) where property = getfield(ibg.grid, property)
+@inline get_ibg_property(ibg::IBG, ::Val{property}) where property = getfield(getfield(ibg, :grid), property)
 @inline get_ibg_property(ibg::IBG, ::Val{:immersed_boundary}) = getfield(ibg, :immersed_boundary)
 @inline get_ibg_property(ibg::IBG, ::Val{:grid}) = getfield(ibg, :grid)
+
+Adapt.adapt_structure(to, ibg::IBG) = ImmersedBoundaryGrid(adapt(to, ibg.grid), adapt(to, ibg.immersed_boundary))
 
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundary.jl")
