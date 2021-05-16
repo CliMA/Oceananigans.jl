@@ -101,7 +101,7 @@ function visualize_internal_tide_simulation(prefix)
         u_plot = contourf(xu, zu, u'; title = "x velocity", color = :balance, linewidth = 0, levels = ulevels, clims = ulims)
         w_plot = contourf(xw, zw, w'; title = "z velocity", color = :balance, linewidth = 0, levels = wlevels, clims = wlims)
 
-        title = @sprintf("Oscillatring stratified flow over a bump at t = %.2f", t)
+        title = @sprintf("Oscillating stratified flow over a bump at t = %.2f", t)
 
         plot(u_plot, w_plot, layout = (2, 1), title = title)
     end
