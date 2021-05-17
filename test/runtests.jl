@@ -126,6 +126,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
     if group == :hydrostatic_free_surface || group == :all
         @testset "HydrostaticFreeSurfaceModel tests" begin
             include("test_hydrostatic_free_surface_models.jl")
+            include("test_hydrostatic_free_surface_immersed_boundaries.jl")
             include("test_vertical_vorticity_field.jl")
             include("test_implicit_free_surface_solver.jl")
         end
