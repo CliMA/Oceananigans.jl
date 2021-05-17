@@ -10,7 +10,7 @@ using Oceananigans.BoundaryConditions: UVelocityBoundaryConditions,
 
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size
+using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size, Flat
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.Utils: tupleit
@@ -73,6 +73,8 @@ function ShallowWaterModel(;
                  timestepper::Symbol = :RungeKutta3)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
+
+    @assert topology(grid)[3] == Flat "ShallowWaterModel must be Flat in the vertical.  Please fix and rerun."
 
     Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, topology(grid), advection, closure)
     grid = with_halo((Hx, Hy, Hz), grid)
