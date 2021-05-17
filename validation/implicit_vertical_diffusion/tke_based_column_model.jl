@@ -1,13 +1,18 @@
 using Plots
 using Printf
 using Oceananigans
+using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, time_discretization, TKEBasedVerticalDiffusivity
 
 grid = RegularRectilinearGrid(size=128, z=(-128, 0), topology=(Flat, Flat, Bounded))
 
 closure = TKEBasedVerticalDiffusivity()
 
-convection_bcs = TracerBoundaryConditions(grid; top = FluxBoundaryCondition(1e-8))
+Qᵇ = 1e-8
+Qᵉ = - closure.dissipation_constant * closure.surface_model.CᵂwΔ * Qᵇ * grid.Δz
+
+convection_bcs = TracerBoundaryConditions(grid; top = FluxBoundaryCondition(Qᵇ))
+tke_bcs = TracerBoundaryConditions(grid; top = FluxBoundaryCondition(Qᵉ))
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     tracers = (:b, :e),
@@ -23,9 +28,9 @@ z = znodes(model.tracers.b)
 
 b = view(interior(model.tracers.b), 1, 1, :)
 
-b_plot = plot(b, z, linewidth = 2, label = "t = 0", xlabel = "Buoyancy", ylabel = "z")
+b_plot = plot(b, z, linewidth = 2, label = "t = 0", xlabel = "Buoyancy", ylabel = "z", legend=:bottomright)
               
-simulation = Simulation(model, Δt = 1.0, stop_time = 10.0)
+simulation = Simulation(model, Δt = 1.0, stop_time = 4hour)
 
 run!(simulation)
 

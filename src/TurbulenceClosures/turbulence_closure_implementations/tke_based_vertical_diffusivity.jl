@@ -22,17 +22,20 @@ and ``step`` is a smooth step function defined by
     ``step(x, c, w) = (1 + tanh((x - c) / w)) / 2``.
 """
 Base.@kwdef struct RiDependentDiffusivityScales{FT}
-    Cᴷu⁻  :: FT = 0.02
-    Cᴷu⁺  :: FT = 0.01
-    Cᴷc⁻  :: FT = 0.04
-    Cᴷc⁺  :: FT = 0.01
-    Cᴷe⁻  :: FT = 0.02
-    Cᴷe⁺  :: FT = 0.01
-    CᴷRiʷ :: FT = 0.1
-    CᴷRiᶜ :: FT = 0.1
+    Cᴷu⁻  :: FT = 0.15
+    Cᴷu⁺  :: FT = 0.73
+    Cᴷc⁻  :: FT = 0.40
+    Cᴷc⁺  :: FT = 1.77
+    Cᴷe⁻  :: FT = 0.13
+    Cᴷe⁺  :: FT = 1.22
+    CᴷRiʷ :: FT = 0.72
+    CᴷRiᶜ :: FT = 0.76
 end
 
-struct TKESurfaceFlux end
+Base.@kwdef struct TKESurfaceFlux{FT}
+    Cᵂu★ :: FT = 3.62
+    CᵂwΔ :: FT = 1.31
+end
 
 """
     TKEBasedVerticalDiffusivity <: AbstractTurbulenceClosure{TD}
@@ -59,8 +62,8 @@ end
 
 function TKEBasedVerticalDiffusivity(FT=Float64;
                                       diffusivity_scales = RiDependentDiffusivityScales(),
-                                      dissipation_constant = 2.0,
-                                      mixing_length_constant = 0.7,
+                                      dissipation_constant = 2.91,
+                                      mixing_length_constant = 1.16,
                                       surface_model = TKESurfaceFlux(),
                                       time_discretization::TD = ExplicitTimeDiscretization()) where TD
 
@@ -215,11 +218,14 @@ end
 @inline function dissipation(i, j, k, grid, closure, tracers, buoyancy)
     e = tracers.e
     FT = eltype(grid)
+    three_halves = FT(3/2)
+    @inbounds eⁱʲᵏ = e[i, j, k]
+    ẽ³² = max(zero(FT), eⁱʲᵏ)^three_halves
+
     ℓ = dissipation_mixing_length(i, j, k, grid, closure, e, tracers, buoyancy)
     Cᴰ = closure.dissipation_constant
-    @inbounds ẽ = max(zero(FT), e[i, j, k])
-    three_halves = FT(3/2)
-    return Cᴰ * ẽ^three_halves / ℓ
+
+    return Cᴰ * ẽ³² / ℓ
 end
 
 #####
