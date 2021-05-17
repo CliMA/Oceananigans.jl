@@ -494,8 +494,8 @@ end
     end
 
     @testset "Time stepping ShallowWaterModel" begin
-        topo = (Periodic, Periodic, Bounded)
-        full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 1), extent=(1, 2, 3))
+        topo = (Periodic, Periodic, Flat)
+        full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8), extent=(1, 2))
         arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
         model = DistributedShallowWaterModel(architecture=arch, grid=full_grid, gravitational_acceleration=1)
 
