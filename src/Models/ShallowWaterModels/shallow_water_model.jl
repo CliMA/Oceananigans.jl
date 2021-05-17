@@ -74,7 +74,7 @@ function ShallowWaterModel(;
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
-    @assert topology(grid)[3] == Flat "ShallowWaterModel must be Flat in the vertical.  Please fix and rerun."
+    @assert topology(grid, 3) === Flat "ShallowWaterModel requires `topology(grid, 3) === Flat`. Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` when constructing `grid`."
 
     Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, topology(grid), advection, closure)
     grid = with_halo((Hx, Hy, Hz), grid)
