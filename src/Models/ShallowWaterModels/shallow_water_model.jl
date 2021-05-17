@@ -13,6 +13,7 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
+using Oceananigans.ImmersedBoundaries: NoImmersedBoundary, regularize_immersed_boundary
 using Oceananigans.Utils: tupleit
 
 function ShallowWaterTendencyFields(arch, grid, tracer_names)
@@ -38,7 +39,7 @@ function ShallowWaterSolutionFields(arch, grid, bcs)
     return (uh=uh, vh=vh, h=h)
 end
 
-struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, TS} <: AbstractModel{TS}
+struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, TS, IB} <: AbstractModel{TS}
 
                           grid :: G         # Grid of physical points on which `Model` is solved
                   architecture :: A         # Computer `Architecture` on which `Model` is run
@@ -53,6 +54,7 @@ struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, 
                        tracers :: C         # Container for tracer fields
                  diffusivities :: K         # Container for turbulent diffusivities
                    timestepper :: TS        # Object containing timestepper fields and parameters
+             immersed_boundary :: IB       # User-specified auxiliary fields for forcing functions and boundary conditions
 
 end
 
@@ -70,7 +72,9 @@ function ShallowWaterModel(;
                              tracers = (),
                        diffusivities = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
-                 timestepper::Symbol = :RungeKutta3)
+                 timestepper::Symbol = :RungeKutta3
+                   immersed_boundary = NoImmersedBoundary(),
+                 )
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
@@ -95,6 +99,8 @@ function ShallowWaterModel(;
     forcing = model_forcing(model_fields; forcing...)
     closure = with_tracers(tracernames(tracers), closure)
 
+    immersed_boundary = regularize_immersed_boundary(immersed_boundary, grid)
+
     return ShallowWaterModel(grid,
                              architecture,
                              clock,
@@ -107,5 +113,6 @@ function ShallowWaterModel(;
                              solution,
                              tracers,
                              diffusivities,
-                             timestepper)
+                             timestepper,
+                             immersed_boundary)
 end
