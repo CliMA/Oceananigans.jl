@@ -135,12 +135,15 @@ is_w_location(loc) = loc === (Center, Center, Face)
 
 """
     implicit_step!(field, solver::VerticallyImplicitDiffusionSolver, clock, Δt,
-                   closure, diffusivities, tracer_index; dependencies = Event
+                   closure, tracer_index, args...; dependencies = Event
 
 Initialize the right hand side array `solver.batched_tridiagonal_solver.f`, and then solve the
 tridiagonal system for vertically-implicit diffusion, passing the arguments
 `clock, Δt, κ⁻⁻ᶠ, κ` into the coefficient functions that return coefficients of the
 lower diagonal, diagonal, and upper diagonal of the resulting tridiagonal system.
+
+`args...` are passed into `z_diffusivity` and `z_viscosity` appropriately for the purpose of retrieving
+the diffusivities / viscosities associated with `closure`.
 """
 function implicit_step!(field::AbstractField{X, Y, Z},
                         implicit_solver::VerticallyImplicitDiffusionSolver,
@@ -160,19 +163,19 @@ function implicit_step!(field::AbstractField{X, Y, Z},
     elseif is_u_location((X, Y, Z))
 
         locate_coeff = νᶠᶜᶠ
-        coeff = z_viscosity(closure, diffusivities, args...)
+        coeff = z_viscosity(closure, args...)
         solver = implicit_solver.z_center_solver
 
     elseif is_v_location((X, Y, Z))
 
         locate_coeff = νᶜᶠᶠ
-        coeff = z_viscosity(closure, diffusivities, args...)
+        coeff = z_viscosity(closure, args...)
         solver = implicit_solver.z_center_solver
 
     elseif is_w_location((X, Y, Z))
 
         locate_coeff = νᶜᶜᶜ
-        coeff = z_viscosity(closure, diffusivities, args...)
+        coeff = z_viscosity(closure, args...)
         solver = implicit_solver.z_face_solver
 
     else
