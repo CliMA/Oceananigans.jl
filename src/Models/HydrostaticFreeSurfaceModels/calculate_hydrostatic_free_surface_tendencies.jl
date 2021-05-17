@@ -73,7 +73,7 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
 end
 
 # Fallback
-@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure, tracer_name) = calculate_hydrostatic_free_surface_Gc!
+@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure, tracer_name) = hydrostatic_free_surface_tracer_tendency
 
 """ Store previous value of the source term and calculate current source term. """
 function calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)

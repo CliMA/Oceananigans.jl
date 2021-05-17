@@ -3,8 +3,13 @@ using Oceananigans.Coriolis
 using Oceananigans.Operators
 using Oceananigans.Operators: ∂xᶠᶜᵃ, ∂yᶜᶠᵃ
 using Oceananigans.StokesDrift
-using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
+using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 using Oceananigans.Advection: div_Uc
+
+using Oceananigans.TurbulenceClosures: ∇_dot_qᵉ, shear_production, buoyancy_flux, dissipation
+import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_tendency
+
+
 
 """
     hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
@@ -140,3 +145,30 @@ The tendency is called ``G_η`` and defined via
     return @inbounds (   velocities.w[i, j, k_surface]
                        + forcings.η(i, j, k_surface, grid, clock, model_fields))
 end
+
+
+@inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid
+                                                               val_tracer_index::Val{tracer_index},
+                                                               advection,
+                                                               closure,
+                                                               buoyancy,
+                                                               velocities,
+                                                               free_surface,
+                                                               tracers,
+                                                               diffusivities,
+                                                               auxiliary_fields,
+                                                               forcing,
+                                                               clock) where tracer_index
+
+    @inbounds c = tracers[tracer_index]
+
+    model_fields = merge(hydrostatic_prognostic_fields(velocities, free_surface, tracers), auxiliary_fields)
+
+    return ( - div_Uc(i, j, k, grid, advection, velocities, c)
+             - ∇_dot_qᵉ(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, buoyancy)
+             + shear_production(i, j, k, grid, clock, closure, e, velocities, tracers, buoyancy)
+             + buoyancy_flux(i, j, k, grid, clock, closure, e, velocities, tracers, buoyancy)
+             - dissipation(i, j, k, grid, clock, closure, e, velocities, tracers, buoyancy)
+             + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
+end
+
