@@ -39,7 +39,7 @@ function ShallowWaterSolutionFields(arch, grid, bcs)
     return (uh=uh, vh=vh, h=h)
 end
 
-struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, TS, IB} <: AbstractModel{TS}
+struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, TS} <: AbstractModel{TS}
 
                           grid :: G         # Grid of physical points on which `Model` is solved
                   architecture :: A         # Computer `Architecture` on which `Model` is run
