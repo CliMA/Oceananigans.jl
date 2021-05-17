@@ -102,8 +102,8 @@ viscous_flux_wz(i, j, k, grid::APG, closure::AD, clock, U, args...) = viscous_fl
 
 const VITD = VerticallyImplicitTimeDiscretization
 
-z_viscosity(closure::AD, diffusivities) = closure.νz
-z_diffusivity(closure::AD, diffusivities, ::Val{tracer_index}) where tracer_index = @inbounds closure.κz[tracer_index]
+z_viscosity(closure::AD, args...) = closure.νz
+z_diffusivity(closure::AD, ::Val{tracer_index}, args...) where tracer_index = @inbounds closure.κz[tracer_index]
 
 const VerticallyBoundedGrid{FT} = AbstractPrimaryGrid{FT, <:Any, <:Any, <:Bounded}
 

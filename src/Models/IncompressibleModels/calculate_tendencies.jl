@@ -84,7 +84,7 @@ function calculate_interior_tendency_contributions!(tendencies,
                                     forcings, hydrostatic_pressure, clock, dependencies=barrier)
 
     Gw_event = calculate_Gw_kernel!(tendencies.w, grid, advection, coriolis, stokes_drift, closure,
-                                    background_fields, velocities, tracers, diffusivities,
+                                    buoyancy, background_fields, velocities, tracers, diffusivities,
                                     forcings, clock, dependencies=barrier)
 
     events = [Gu_event, Gv_event, Gw_event]

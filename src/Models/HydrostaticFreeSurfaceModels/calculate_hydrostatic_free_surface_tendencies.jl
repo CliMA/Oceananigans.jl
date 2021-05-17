@@ -42,6 +42,7 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
                             velocities,
                             model.free_surface,
                             model.tracers,
+                            model.buoyancy,
                             model.diffusivities,
                             model.pressure.pHY′,
                             model.auxiliary_fields,

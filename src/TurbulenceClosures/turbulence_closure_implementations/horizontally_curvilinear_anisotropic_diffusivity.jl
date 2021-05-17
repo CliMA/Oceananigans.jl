@@ -86,8 +86,8 @@ end
 
 const VITD = VerticallyImplicitTimeDiscretization
 
-z_viscosity(closure::HorizontallyCurvilinearAnisotropicDiffusivity, diffusivities) = closure.νz
-z_diffusivity(closure::HorizontallyCurvilinearAnisotropicDiffusivity, diffusivities, ::Val{tracer_index}) where tracer_index = @inbounds closure.κz[tracer_index]
+z_viscosity(closure::HorizontallyCurvilinearAnisotropicDiffusivity, args...) = closure.νz
+z_diffusivity(closure::HorizontallyCurvilinearAnisotropicDiffusivity, ::Val{tracer_index}, args...) where tracer_index = @inbounds closure.κz[tracer_index]
 
 const VerticallyBoundedGrid{FT} = AbstractPrimaryGrid{FT, <:Any, <:Any, <:Bounded}
 

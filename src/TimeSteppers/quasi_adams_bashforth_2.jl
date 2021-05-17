@@ -97,8 +97,8 @@ function ab2_step!(model, Δt, χ)
                        model.clock,
                        Δt,
                        model.closure,
-                       model.diffusivities,
                        tracer_index,
+                       model.diffusivities,
                        dependencies = field_event)
     end
 

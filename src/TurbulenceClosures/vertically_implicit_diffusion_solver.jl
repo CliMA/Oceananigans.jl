@@ -13,14 +13,14 @@ struct VerticallyImplicitDiffusionSolver{A, H, Z}
 end
 
 """
-    z_viscosity(closure, diffusivities)
+    z_viscosity(closure, args...)
 
 Returns the "vertical" (z-direction) viscosity associated with `closure`.
 """
 function z_viscosity end
 
 """
-    z_diffusivity(closure, diffusivities, ::Val{tracer_index}) where tracer_index
+    z_diffusivity(closure, ::Val{tracer_index}, args...) where tracer_index
 
 Returns the "vertical" (z-direction) diffusivity associated with `closure` and `tracer_index`.
 """
@@ -147,32 +147,32 @@ function implicit_step!(field::AbstractField{X, Y, Z},
                         clock,
                         Δt,
                         closure,
-                        diffusivities,
-                        tracer_index = nothing;
+                        tracer_index,
+                        args...;
                         dependencies) where {X, Y, Z}
                         
     if is_c_location((X, Y, Z))
 
         locate_coeff = κᶜᶜᶠ
-        coeff = z_diffusivity(closure, diffusivities, Val(tracer_index))
+        coeff = z_diffusivity(closure, Val(tracer_index), args...)
         solver = implicit_solver.z_center_solver
 
     elseif is_u_location((X, Y, Z))
 
         locate_coeff = νᶠᶜᶠ
-        coeff = z_viscosity(closure, diffusivities)
+        coeff = z_viscosity(closure, diffusivities, args...)
         solver = implicit_solver.z_center_solver
 
     elseif is_v_location((X, Y, Z))
 
         locate_coeff = νᶜᶠᶠ
-        coeff = z_viscosity(closure, diffusivities)
+        coeff = z_viscosity(closure, diffusivities, args...)
         solver = implicit_solver.z_center_solver
 
     elseif is_w_location((X, Y, Z))
 
         locate_coeff = νᶜᶜᶜ
-        coeff = z_viscosity(closure, diffusivities)
+        coeff = z_viscosity(closure, diffusivities, args...)
         solver = implicit_solver.z_face_solver
 
     else

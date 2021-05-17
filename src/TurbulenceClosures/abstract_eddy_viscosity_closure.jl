@@ -6,6 +6,6 @@ and isotropic diffusivities.
 """
 abstract type AbstractEddyViscosityClosure{TD} <: AbstractIsotropicDiffusivity{TD} end
 
-@inline viscosity(closure::AbstractEddyViscosityClosure, diffusivities) = diffusivities.νₑ
-@inline diffusivity(::AbstractEddyViscosityClosure, diffusivities, ::Val{tracer_index}) where tracer_index = diffusivities.κₑ[tracer_index]
+@inline viscosity(closure::AbstractEddyViscosityClosure, diffusivities, args...) = diffusivities.νₑ
+@inline diffusivity(::AbstractEddyViscosityClosure, ::Val{tracer_index}, diffusivities, args...) where tracer_index = diffusivities.κₑ[tracer_index]
     

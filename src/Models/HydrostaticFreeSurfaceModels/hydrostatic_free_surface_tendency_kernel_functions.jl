@@ -12,8 +12,6 @@ import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_ten
 
 
 """
-    hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
-
 Return the tendency for the horizontal velocity in the x-direction, or the east-west 
 direction, ``u``, at grid point `i, j, k` for a HydrostaticFreeSurfaceModel.
 
@@ -31,6 +29,7 @@ implicitly during time-stepping.
                                                               velocities,
                                                               free_surface,
                                                               tracers,
+                                                              buoyancy,
                                                               diffusivities,
                                                               hydrostatic_pressure_anomaly,
                                                               auxiliary_fields,
@@ -43,13 +42,11 @@ implicitly during time-stepping.
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
-             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, clock, velocities, diffusivities)
+             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, clock, velocities, diffusivities, tracers, buoyancy)
              + forcings.u(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
 """
-    hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
-
 Return the tendency for the horizontal velocity in the y-direction, or the east-west 
 direction, ``v``, at grid point `i, j, k` for a HydrostaticFreeSurfaceModel.
 
@@ -67,6 +64,7 @@ implicitly during time-stepping.
                                                               velocities,
                                                               free_surface,
                                                               tracers,
+                                                              buoyancy,
                                                               diffusivities,
                                                               hydrostatic_pressure_anomaly,
                                                               auxiliary_fields,
@@ -79,13 +77,11 @@ implicitly during time-stepping.
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
-             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, clock, velocities, diffusivities)
+             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, clock, velocities, diffusivities, tracers, buoyancy)
              + forcings.v(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
 """
-    hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
-
 Return the tendency for a tracer field with index `tracer_index` 
 at grid point `i, j, k`.
 
@@ -113,18 +109,11 @@ where `c = C[tracer_index]`.
     model_fields = merge(hydrostatic_prognostic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, c)
-             - ∇_dot_qᶜ(i, j, k, grid, closure, c, val_tracer_index, clock, diffusivities, tracers, buoyancy)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, c, val_tracer_index, clock, diffusivities, tracers, buoyancy, velocities)
              + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
 """
-     free_surface_tendency(i, j, grid, 
-                           velocities,
-                           free_surface,
-                           tracers,
-                           forcing,
-                           clock)
-
 Return the tendency for an explicit free surface at horizontal grid point `i, j`.
 
 The tendency is called ``G_η`` and defined via

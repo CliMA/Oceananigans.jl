@@ -37,8 +37,8 @@ end
 
 calculate_diffusivities!(K, arch, grid, closure::IsotropicDiffusivity, args...) = nothing
 
-@inline diffusivity(closure::IsotropicDiffusivity, diffusivities, ::Val{tracer_index}) where tracer_index = closure.κ[tracer_index]
-@inline viscosity(closure::IsotropicDiffusivity, diffusivities) = closure.ν
+@inline diffusivity(closure::IsotropicDiffusivity, ::Val{tracer_index}, args...) where tracer_index = closure.κ[tracer_index]
+@inline viscosity(closure::IsotropicDiffusivity, args...) = closure.ν
                         
 Base.show(io::IO, closure::IsotropicDiffusivity) = print(io, "IsotropicDiffusivity: ν=$(closure.ν), κ=$(closure.κ)")
     
