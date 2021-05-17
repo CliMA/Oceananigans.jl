@@ -34,6 +34,8 @@ Base.@kwdef struct RiDependentDiffusivityScales{FT}
     CᴷRiᶜ :: FT = 0.1
 end
 
+struct TKESurfaceFlux end
+
 """
     TKEBasedDiapycnalDiffusivity <: AbstractTurbulenceClosure{TD}
 
