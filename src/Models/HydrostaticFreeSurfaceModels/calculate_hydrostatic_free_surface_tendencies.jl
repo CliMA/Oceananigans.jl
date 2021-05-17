@@ -3,6 +3,7 @@ import Oceananigans: tracer_tendency_kernel_function
 
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Utils: work_layout
+using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity
 
 """
     calculate_tendencies!(model::IncompressibleModel)
@@ -75,6 +76,10 @@ end
 
 # Fallback
 @inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure, tracer_name) = hydrostatic_free_surface_tracer_tendency
+@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::TKEBasedVerticalDiffusivity, ::Val{:e}) = hydrostatic_turbulent_kinetic_energy_tendency
+
+# Hack for closure tuples
+tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closures::Tuple, ::Val{:e}) = tracer_tendency_kernel_function(model, closures[1], Val(:e))
 
 """ Store previous value of the source term and calculate current source term. """
 function calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)
@@ -84,12 +89,12 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
 
     barrier = device_event(model)
 
-    events = calculate_hydrostatic_momentum_tendencies!(model, velocities; dependencies = dependencies)
+    events = calculate_hydrostatic_momentum_tendencies!(model, model.velocities; dependencies = barrier)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
         @inbounds c_tendency = model.timestepper.Gⁿ[tracer_name]
         @inbounds c_advection = model.advection[tracer_name]
-        @inbounds forcing = model.forcing[tracer_name]
+        @inbounds c_forcing = model.forcing[tracer_name]
         c_kernel_function = tracer_tendency_kernel_function(model, model.closure, Val(tracer_name))
 
         Gc_event = launch!(arch, grid, :xyz,

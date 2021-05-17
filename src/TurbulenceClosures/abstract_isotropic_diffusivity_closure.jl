@@ -13,7 +13,7 @@ Returns the isotropic viscosity associated with `closure`.
 function viscosity end 
 
 """
-    diffusivity(closure, diffusivities, ::Val{c_idx}) where c_idx
+    diffusivity(closure, diffusivities, tracer_indedx) where tracer_index
 
 Returns the isotropic diffusivity associated with `closure` and tracer index `c_idx`.
 """
@@ -60,9 +60,9 @@ const APG = AbstractPrimaryGrid # as opposed to a grid containing an immersed bo
 ##### Diffusive fluxes
 #####
 
-@inline diffusive_flux_x(i, j, k, grid::APG, closure::AID, c, ::Val{c_idx}, clock, args...) where c_idx = diffusive_flux_x(i, j, k, grid, clock, diffusivity(closure, Val(c_idx), args...), c)
-@inline diffusive_flux_y(i, j, k, grid::APG, closure::AID, c, ::Val{c_idx}, clock, args...) where c_idx = diffusive_flux_y(i, j, k, grid, clock, diffusivity(closure, Val(c_idx), args...), c)
-@inline diffusive_flux_z(i, j, k, grid::APG, closure::AID, c, ::Val{c_idx}, clock, args...) where c_idx = diffusive_flux_z(i, j, k, grid, clock, diffusivity(closure, Val(c_idx), args...), c)
+@inline diffusive_flux_x(i, j, k, grid::APG, closure::AID, c, c_idx, clock, args...) = diffusive_flux_x(i, j, k, grid, clock, diffusivity(closure, c_idx, args...), c)
+@inline diffusive_flux_y(i, j, k, grid::APG, closure::AID, c, c_idx, clock, args...) = diffusive_flux_y(i, j, k, grid, clock, diffusivity(closure, c_idx, args...), c)
+@inline diffusive_flux_z(i, j, k, grid::APG, closure::AID, c, c_idx, clock, args...) = diffusive_flux_z(i, j, k, grid, clock, diffusivity(closure, c_idx, args...), c)
 
 #####
 ##### Support for VerticallyImplicitTimeDiscretization
@@ -72,7 +72,7 @@ const VITD = VerticallyImplicitTimeDiscretization
 const VerticallyBoundedGrid{FT} = APG{FT, <:Any, <:Any, <:Bounded}
 
 @inline z_viscosity(closure::AID, args...) = viscosity(closure, args...)
-@inline z_diffusivity(closure::AID, ::Val{c_idx}, args...) where c_idx = diffusivity(closure, Val(c_idx), args...)
+@inline z_diffusivity(closure::AID, c_idx, args...) = diffusivity(closure, c_idx, args...)
 
 @inline ivd_viscous_flux_uz(i, j, k, grid, closure, clock, U, args...) = - ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂xᶠᶜᵃ, U.w)
 @inline ivd_viscous_flux_vz(i, j, k, grid, closure, clock, U, args...) = - ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂yᶜᶠᵃ, U.v)
