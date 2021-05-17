@@ -36,13 +36,13 @@ Calculates the divergence of the diffusive flux `qᶜ` for a tracer `c` via
 
 which will end up at the location `ccc`.
 """
-@inline function ∇_dot_qᶜ(i, j, k, grid, clock, closure::AbstractTurbulenceClosure, c, ::Val{tracer_index}, args...) where tracer_index
+@inline function ∇_dot_qᶜ(i, j, k, grid, closure::AbstractTurbulenceClosure, c, ::Val{tracer_index}, args...) where tracer_index
 
     disc = time_discretization(closure)
 
-    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_uᶠᶜᶜ, diffusive_flux_x, disc, clock, closure, c, Val(tracer_index), args...) +
-                                    δyᵃᶜᵃ(i, j, k, grid, Ay_vᶜᶠᶜ, diffusive_flux_y, disc, clock, closure, c, Val(tracer_index), args...) +
-                                    δzᵃᵃᶜ(i, j, k, grid, Az_wᶜᶜᵃ, diffusive_flux_z, disc, clock, closure, c, Val(tracer_index), args...))
+    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_uᶠᶜᶜ, diffusive_flux_x, disc, closure, c, Val(tracer_index), args...) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_vᶜᶠᶜ, diffusive_flux_y, disc, closure, c, Val(tracer_index), args...) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_wᶜᶜᵃ, diffusive_flux_z, disc, closure, c, Val(tracer_index), args...))
 end
 
 #####

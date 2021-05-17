@@ -38,7 +38,7 @@ implicitly during time-stepping.
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
-             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
+             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, clock, velocities, diffusivities)
              + forcings.u(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
@@ -74,7 +74,7 @@ implicitly during time-stepping.
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
-             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
+             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, clock, velocities, diffusivities)
              + forcings.v(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
@@ -108,7 +108,7 @@ where `c = C[tracer_index]`.
     model_fields = merge(hydrostatic_prognostic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, c)
-             - ∇_dot_qᶜ(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, buoyancy)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, c, val_tracer_index, clock, diffusivities, tracers, buoyancy)
              + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 
