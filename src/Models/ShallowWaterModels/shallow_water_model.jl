@@ -73,7 +73,6 @@ function ShallowWaterModel(;
                        diffusivities = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
                  timestepper::Symbol = :RungeKutta3
-                   immersed_boundary = NoImmersedBoundary(),
                  )
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
