@@ -7,7 +7,9 @@ This allows for `Flat` in any direction and can generate the same grids from
 regular_rectilinear_grid.jl and vertially_stretched_rectilinear_grid.jl.
 """
 
-struct StretchedRectilinearGrid{FT, TX, TY, TZ, X, Y, Z, DX, DY, DZ} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
+struct StretchedRectilinearGrid{FT, TX, TY, TZ, X, Y, Z, DX, DY, DZ, Arch} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
+
+    architecture :: Arch
 
     # Number of grid points in (x,y,z).
     Nx :: Int
@@ -43,60 +45,119 @@ struct StretchedRectilinearGrid{FT, TX, TY, TZ, X, Y, Z, DX, DY, DZ} <: Abstract
     Δzᵃᵃᶠ :: DZ
 end
 
-# FJP: How to deal with periodic domains? Depends on how halos are extended
-generate_grid(FT, ::Type{Flat}, Lx, x, N, H, stretch) = 0., 0., 1, 0
+function generate_stretched_grid(FT, x_topo, Nx, Hx, x_faces)
 
-function generate_grid(FT, topo, L, x, N, H, stretch)
+    # Ensure correct type for xF and derived quantities
+    interior_xF = zeros(FT, Nx+1)
+
+    for i = 1:Nx+1
+        interior_xF[i] = get_x_face(x_faces, i)
+    end
+
+    Lx = interior_xF[Nx+1] - interior_xF[1]
+
+    # Build halo regions
+    ΔxF₋ = lower_exterior_Δxᵃᵃᶜ(x_topo, interior_xF, Hx)
+    ΔxF₊ = lower_exterior_Δxᵃᵃᶜ(x_topo, interior_xF, Hx)
+
+    x¹, xᴺ⁺¹ = interior_xF[1], interior_xF[Nx+1]
+
+    xF₋ = [x¹   - sum(ΔxF₋[i:Hx]) for i = 1:Hx] # locations of faces in lower halo
+    xF₊ = [xᴺ⁺¹ + ΔxF₊[i]         for i = 1:Hx] # locations of faces in width of top halo region
+
+    xF = vcat(xF₋, interior_xF, xF₊)
+
+    # Build cell centers, cell center spacings, and cell interface spacings
+    TCx = total_length(Center, x_topo, Nx, Hx)
+     xC = [ (xF[i + 1] + xF[i]) / 2 for i = 1:TCx ]
+    ΔxC = [  xC[i] - zC[i - 1]      for i = 2:TCx ]
+
+    # Trim face locations for periodic domains
+    TFx = total_length(Face, x_topo, Nx, Hx)
+    xF = xF[1:TFx]
+
+    ΔxF = [xF[i + 1] - xF[i] for i = 1:TFx-1]
+
+    return Lx, xF, xC, ΔxF, ΔxC
+end
+
+get_x_face(x::Function, i) = x(i)
+get_x_face(x::AbstractVector, i) = x[i]
+
+lower_exterior_Δxᵃᵃᶜ(x_topo,          xFi, Hx) = [xFi[end - Hx + i] - xFi[end - Hx + i - 1] for i = 1:Hx]
+lower_exterior_Δxᵃᵃᶜ(::Type{Bounded}, xFi, Hx) = [xFi[2]  - xFi[1] for i = 1:Hx]
+
+# FJP: How to deal with periodic domains? Depends on how halos are extended
+#generate_grid(FT, ::Type{Flat}, Lx, x, N, H, stretch) = 0., 0., 1, 0
+
+#function generate_grid(FT, topo, L, x, N, H, stretch)
+function generate_grid(FT, x_topo, Nx, Hx, x_faces)
+
+    interior_xᶠ = zeros(FT, Nx+1)
+
+    for i = 1:Nx+1
+        interior_xᶠ[i] = get_x_face(x_faces, i)
+    end
+
+    Lx = interior_xᶠ[Nx+1] - interior_xᶠ[1]
+
+    # Build halo regions
+    Δxᶠ⁻ = lower_exterior_Δxᵃᵃᶜ(x_topo, interior_xᶠ, Hx)
+    Δxᶠ⁺ = lower_exterior_Δxᵃᵃᶜ(x_topo, interior_xᶠ, Hx)
 
     Txᶠ = total_length(Face,   topo, N, H) 
     Txᶜ = total_length(Center, topo, N, H)
 
-    interior_xᶠ = stretch(x[1], L, N) 
+    #interior_xᶠ = stretch(x[1], L, N) 
 
     Δxᶠ₋ = interior_xᶠ[2]   - interior_xᶠ[1]
     Δxᶠ₊ = interior_xᶠ[end] - interior_xᶠ[end-1]
 
-    xᶠ₋ = [x[1]   - Δxᶠ₋ * sum(i) for i=1:H]
-    xᶠ₊ = [x[end] + Δxᶠ₊ * sum(i) for i=1:H]
+    xᶠ₋ = [interior_xᶠ[1]   - sum(Δxᶠ₋[i:Hx]) for i=1:Hx]
+    xᶠ₊ = [interior_xᶠ[end] + Δxᶠ₊[i]         for i=1:Hx]
 
-     xᶠ = OffsetArray(vcat(xᶠ₋, interior_xᶠ, xᶠ₊),                      -H)
-     xᶜ = OffsetArray([(xᶠ[i + 1] + xᶠ[i]) / 2 for i = (1-H):(Txᶜ-H)],  -H)
-    Δxᶜ = OffsetArray([xᶜ[i]     - xᶜ[i - 1]  for i = (2-H):(Txᶜ-H)],   -H)
-    Δxᶠ = OffsetArray([xᶠ[i+1]   - xᶠ[i]      for i = (1-H):(Txᶠ-1-H)], -H)
+     xᶠ = OffsetArray(vcat(xᶠ₋, interior_xᶠ, xᶠ₊),                       -H)
+     xᶜ = OffsetArray([(xᶠ[i + 1] + xᶠ[i]) / 2 for i = (1-H):(Txᶜ-H)],   -H)
+    Δxᶜ = OffsetArray([xᶜ[i]     - xᶜ[i - 1]   for i = (2-H):(Txᶜ-H)],   -H)
+    Δxᶠ = OffsetArray([xᶠ[i+1]   - xᶠ[i]       for i = (1-H):(Txᶠ-1-H)], -H)
 
    return xᶜ, xᶠ, Δxᶜ, Δxᶠ
 end
 
 function StretchedRectilinearGrid(FT=Float64; 
-                                  size, 
-                       architecture = CPU(),
-                                  x = nothing, 
-                                  y = nothing, 
-                                  z = nothing,
-                             extent = nothing,
-                           topology = (Bounded, Periodic, Flat),
-                               halo = nothing,
-                            stretch = nothing
-                            )
+                                architecture = CPU(),
+                                size, 
+                                x = nothing, 
+                                y = nothing, 
+                                z = nothing,
+                                extent = nothing,
+                                topology = (Bounded, Periodic, Flat),
+                                halo = nothing,
+                                stretch = nothing)
 
-             TX, TY, TZ = validate_topology(topology)
-                   size = validate_size(TX, TY, TZ, size)
-                   halo = validate_halo(TX, TY, TZ, halo)
+    TX, TY, TZ = validate_topology(topology)
+    size = validate_size(TX, TY, TZ, size)
+    halo = validate_halo(TX, TY, TZ, halo)
     Lx, Ly, Lz, x, y, z = validate_stretched_grid(TX, TY, TZ, FT, extent, x, y, z)
 
-             Nx, Ny, Nz = size
-             Hx, Hy, Hz  = halo
-                      L = (Lx, Ly, Lz)
+    Nx, Ny, Nz = size
+    Hx, Hy, Hz  = halo
+    L = (Lx, Ly, Lz)
 
-        # What if stretch is nothing????  set default to linear
-    
-       xᶜᵃᵃ, xᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᵃᵃ = generate_grid(FT, topology[1], Lx, x, Nx, Hx, stretch["x"])
-       yᵃᶜᵃ, yᵃᶠᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ = generate_grid(FT, topology[2], Ly, y, Ny, Hy, stretch["y"])
-       zᵃᵃᶜ, zᵃᵃᶠ, Δzᵃᵃᶜ, Δzᵃᵃᶠ = generate_grid(FT, topology[3], Lz, z, Nz, Hz, stretch["z"])
+    # What if stretch is nothing????  set default to linear
+    #FJP: mimic generate_stretched_vertical_grid
+    xᶜᵃᵃ, xᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᵃᵃ = generate_grid(FT, topology[1], Lx, x, Nx, Hx, stretch["x"])
+    yᵃᶜᵃ, yᵃᶠᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ = generate_grid(FT, topology[2], Ly, y, Ny, Hy, stretch["y"])
+    zᵃᵃᶜ, zᵃᵃᶠ, Δzᵃᵃᶜ, Δzᵃᵃᶠ = generate_grid(FT, topology[3], Lz, z, Nz, Hz, stretch["z"])
 
-       return StretchedRectilinearGrid{FT, TX, TY, TZ, typeof(xᶜᵃᵃ),  typeof(yᵃᶜᵃ),  typeof(zᵃᵃᶜ), 
-                                                       typeof(Δxᶜᵃᵃ), typeof(Δyᵃᶜᵃ), typeof(Δzᵃᵃᶜ)}(
-        Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, xᶜᵃᵃ, yᵃᶜᵃ, zᵃᵃᶜ, xᶠᵃᵃ, yᵃᶠᵃ, zᵃᵃᶠ, Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ)
+    Arch = typeof(architecture)
+
+    return StretchedRectilinearGrid{FT, TX, TY, TZ, 
+        typeof(xᶜᵃᵃ),  typeof(yᵃᶜᵃ),  typeof(zᵃᵃᶜ), 
+        typeof(Δxᶜᵃᵃ), typeof(Δyᵃᶜᵃ), typeof(Δzᵃᵃᶜ), Arch}(
+        architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, 
+        xᶜᵃᵃ, yᵃᶜᵃ, zᵃᵃᶜ, xᶠᵃᵃ, yᵃᶠᵃ, zᵃᵃᶠ, 
+        Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ)
 end
 
 function Base.show(io::IO, grid::StretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}

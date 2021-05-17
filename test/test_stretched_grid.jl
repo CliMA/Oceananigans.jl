@@ -21,6 +21,7 @@ label4 = ()
 #end
 
 grid1 = StretchedRectilinearGrid(size=(8, 8, 8), 
+#                              architecture = CPU(),
                                     x=(0, 8), y=(0, 8), z=(0, 8), 
                                     halo = (3, 3, 3),
                              topology=(Bounded, Bounded, Bounded),
