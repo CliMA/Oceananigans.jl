@@ -54,7 +54,6 @@ struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, 
                        tracers :: C         # Container for tracer fields
                  diffusivities :: K         # Container for turbulent diffusivities
                    timestepper :: TS        # Object containing timestepper fields and parameters
-             immersed_boundary :: IB       # User-specified auxiliary fields for forcing functions and boundary conditions
 
 end
 
