@@ -16,6 +16,7 @@ docs/src/generated
 
 # Model output
 *.dat
+*.data
 *.nc
 *.jld2
 
