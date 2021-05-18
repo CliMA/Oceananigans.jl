@@ -96,8 +96,6 @@ function ShallowWaterModel(;
     forcing = model_forcing(model_fields; forcing...)
     closure = with_tracers(tracernames(tracers), closure)
 
-    immersed_boundary = regularize_immersed_boundary(immersed_boundary, grid)
-
     return ShallowWaterModel(grid,
                              architecture,
                              clock,
