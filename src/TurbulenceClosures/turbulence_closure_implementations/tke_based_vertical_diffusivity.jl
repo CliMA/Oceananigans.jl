@@ -92,8 +92,9 @@ function hydrostatic_turbulent_kinetic_energy_tendency end
 ##### Mixing length
 #####
 
+@inline surface(i, j, k, grid)             = znode(Center(), Center(), Face(), i, j, grid.Nz+1, grid)
 @inline bottom(i, j, k, grid)              = znode(Center(), Center(), Face(), i, j, 1, grid)
-@inline depth(i, j, k, grid)               = znode(Center(), Center(), Face(), i, j, grid.Nz+1, grid) - znode(Center(), Center(), Center(), i, j, k, grid)
+@inline depth(i, j, k, grid)               = surface(i, j, k, grid) - znode(Center(), Center(), Center(), i, j, k, grid)
 @inline height_above_bottom(i, j, k, grid) = znode(Center(), Center(), Center(), i, j, k, grid) - bottom(i, j, k, grid)
 
 @inline wall_vertical_distance(i, j, k, grid) = min(depth(i, j, k, grid), height_above_bottom(i, j, k, grid))
@@ -107,7 +108,7 @@ function hydrostatic_turbulent_kinetic_energy_tendency end
     @inbounds eⁱʲᵏ = e[i, j, k]
     ẽ = max(zero(FT), eⁱʲᵏ)
 
-    return @inbounds ifelse(Ñ² <= 0, zero(FT), Cᵇ * sqrt(ẽ / Ñ²))
+    return @inbounds ifelse(Ñ² <= 0, FT(Inf), Cᵇ * sqrt(ẽ / Ñ²))
 end
 
 @inline function dissipation_mixing_length(i, j, k, grid, closure, e, tracers, buoyancy)
@@ -190,43 +191,29 @@ end
 end
 
 #####
-##### Shear production
+##### Terms in the turbulent kinetic energy equation, all at cell centers
 #####
 
-@inline function u_shear_productionᶠᶜᶠ(i, j, k, grid, closure, clock, velocities, tracers, buoyancy, diffusivities)
-    ∂z_u = ∂zᵃᵃᶠ(i, j, k, grid, velocities.u)
-    w′u′ = viscous_flux_uz(i, j, k, grid, closure, clock, velocities, diffusivities, tracers, buoyancy)
-    return - w′u′ * ∂z_u
-end
+@inline ϕ²(i, j, k, grid, ϕ) = ϕ(i, j, k, grid)^2
 
-@inline function v_shear_productionᶜᶠᶠ(i, j, k, grid, closure, clock, velocities, tracers, buoyancy, diffusivities)
-    ∂z_v = ∂zᵃᵃᶠ(i, j, k, grid, velocities.v)
-    w′v′ = viscous_flux_vz(i, j, k, grid, closure, clock, velocities, diffusivities, tracers, buoyancy)
-    return - w′v′ * ∂z_v
-end
-
-# At ccc
 @inline function shear_production(i, j, k, grid, closure, clock, velocities, tracers, buoyancy, diffusivities)
-    return ℑxzᶜᵃᶜ(i, j, k, grid, u_shear_productionᶠᶜᶠ, closure, clock, velocities, tracers, buoyancy, diffusivities) +
-           ℑyzᵃᶜᶜ(i, j, k, grid, v_shear_productionᶜᶠᶠ, closure, clock, velocities, tracers, buoyancy, diffusivities)
+    ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᵃᵃᶠ, velocities.u)
+    ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᵃᵃᶠ, velocities.v)
+    Ku = Kuᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
+    return Ku * (∂z_u² + ∂z_v²)
 end
 
-@inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, closure, velocities, tracers, buoyancy)
-    Kc = ℑzᵃᵃᶠ(i, j, k, grid, Kcᶜᶜᶜ, closure, tracers.e, velocities, tracers, buoyancy)
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+@inline function buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy)
+    Kc = Kcᶜᶜᶜ(i, j, k, grid, closure, tracers.e, velocities, tracers, buoyancy)
+    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     return - Kc * N²
 end
 
-# at ccc
-@inline buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy) =
-    ℑzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, closure, velocities, tracers, buoyancy)
-    
 @inline function dissipation(i, j, k, grid, closure, tracers, buoyancy)
     e = tracers.e
     FT = eltype(grid)
     three_halves = FT(3/2)
-    @inbounds eⁱʲᵏ = e[i, j, k]
-    ẽ³² = max(zero(FT), eⁱʲᵏ)^three_halves
+    @inbounds ẽ³² = abs(e[i, j, k])^three_halves
 
     ℓ = dissipation_mixing_length(i, j, k, grid, closure, e, tracers, buoyancy)
     Cᴰ = closure.dissipation_constant
@@ -254,13 +241,13 @@ end
 
 @inline function diffusive_flux_z(i, j, k, grid, closure::TKEVD, c, tracer_index, clock, diffusivities, tracers, buoyancy, velocities)
     κᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, Kcᶜᶜᶜ, closure, tracers.e, velocities, tracers, buoyancy)
-    return  κᶜᶜᶠ * ∂zᵃᵃᶠ(i, j, k, grid, c)
+    return - κᶜᶜᶠ * ∂zᵃᵃᶠ(i, j, k, grid, c)
 end
 
 # Diffusive flux of TKE!
 @inline function diffusive_flux_z(i, j, k, grid, closure::TKEVD, e, ::TKETracerIndex, clock, diffusivities, tracers, buoyancy, velocities)
     κᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, Keᶜᶜᶜ, closure, e, velocities, tracers, buoyancy)
-    return κᶜᶜᶠ * ∂zᵃᵃᶠ(i, j, k, grid, e)
+    return - κᶜᶜᶠ * ∂zᵃᵃᶠ(i, j, k, grid, e)
 end
 
 # "Translations" for diffusive transport by non-TKEVD closures
