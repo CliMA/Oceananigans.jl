@@ -76,8 +76,8 @@ function ShallowWaterModel(;
 
     @assert topology(grid, 3) === Flat "ShallowWaterModel requires `topology(grid, 3) === Flat`. Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` when constructing `grid`."
 
-    Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, topology(grid), advection, closure)
-    grid = with_halo((Hx, Hy, Hz), grid)
+    Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, 0, topology(grid), advection, closure)
+    grid = with_halo((Hx, Hy, 0), grid)
 
     model_field_names = (:uh, :vh, :h, tracers...)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, model_field_names)
