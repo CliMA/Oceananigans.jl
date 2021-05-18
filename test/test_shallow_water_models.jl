@@ -123,7 +123,7 @@ end
             N = (4,   4)
             L = (2π, 3π)
 
-            grid = RegularRectilinearGrid(FT, size=N, extent=L, topology=(Periodic, Periodic, Flat), halo=(3,3))
+            grid = RegularRectilinearGrid(FT, size=N, extent=L, topology=(Periodic, Periodic, Flat), halo=(3, 3))
             model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)
 
             x, y, z = nodes((Face, Center, Center), model.grid, reshape=true)
