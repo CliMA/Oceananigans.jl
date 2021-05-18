@@ -362,8 +362,8 @@ function test_triply_periodic_halo_communication_with_411_ranks(halo)
         @test all(top_halo(field, include_corners=false) .== arch.local_rank)
         @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
 
-    @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
-    @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
+        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
 end
 
 
