@@ -1,4 +1,5 @@
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
 @testset "Immersed boundaries with hydrostatic free surface models" begin
     @info "Testing immersed boundaries with hydrostatic free surface models..."
