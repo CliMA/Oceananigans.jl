@@ -38,9 +38,14 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I} <: AbstractGrid{FT, TX, TY, TZ
     immersed_boundary :: I
 
     function ImmersedBoundaryGrid(grid::G, ib::I) where {G <: AbstractGrid, I}
+        
+        @warn "ImmersedBoundaryGrid is unvalidated and may produce incorrect results. \n" *
+              "Don't hesitate to help validate ImmersedBoundaryGrid by reporting any bugs \n" *
+              "or unexpected behavior to https://github.com/CliMA/Oceananigans.jl/issues"
+        
         FT = eltype(grid)
         TX, TY, TZ = topology(grid)
-        new{FT, TX, TY, TZ, G, I}(grid, ib)
+        return new{FT, TX, TY, TZ, G, I}(grid, ib)
     end
 end
 
