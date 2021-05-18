@@ -362,6 +362,11 @@ function test_triply_periodic_halo_communication_with_411_ranks(halo)
         @test all(top_halo(field, include_corners=false) .== arch.local_rank)
         @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
     end
+    @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
+    @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
+    @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
+    @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
+
 
     return nothing
 end
@@ -499,7 +504,7 @@ end
         arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
         model = DistributedShallowWaterModel(architecture=arch, grid=full_grid, gravitational_acceleration=1)
 
-        set!(model, h=model.grid.Lz)
+        set!(model, h=1)
         time_step!(model, 1)
         @test model isa ShallowWaterModel
         @test model.clock.time ≈ 1
