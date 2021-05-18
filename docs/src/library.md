@@ -131,7 +131,8 @@ Private = false
 Pages   = [
     "Grids/Grids.jl",
     "Grids/grid_utils.jl",
-    "Grids/regular_rectilinear_grid.jl"
+    "Grids/regular_rectilinear_grid.jl",
+    "Grids/vertically_stretched_rectilinear_grid.jl"
 ]
 ```
 
