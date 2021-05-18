@@ -57,7 +57,6 @@ include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundary.jl")
 include("mask_immersed_field.jl")
 
-#=
 #####
 ##### Diffusivities (for VerticallyImplicitTimeDiscretization)
 #####
@@ -71,12 +70,9 @@ for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
                             (:νᶜᶠᶠ, (c, f, f)))
 
     @eval begin
-        @inline $locate_coeff(i, j, k, grid, ib::NoImmersedBoundary, coeff) = $locate_coeff(i, j, k, grid, coeff)
-
-        @inline $locate_coeff(i, j, k, grid::AG{FT}, ib::GFIB, coeff) where FT =
-            ifelse(solid_cell(loc..., i, j, k, grid, ib), $locate_coeff(i, j, k, grid, coeff), zero(FT))
+        @inline $locate_coeff(i, j, k, ibg::IBG{FT}, coeff) where FT =
+            ifelse(solid_cell(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.grid, coeff), zero(FT))
     end
 end
-=#
 
 end # module
