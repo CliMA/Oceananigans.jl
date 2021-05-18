@@ -107,9 +107,9 @@ end
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
-		        arch isa GPU && topo == (Bounded, Bounded, Flat) && continue
+		        #arch isa GPU && topo == (Bounded, Bounded, Flat) && continue
 
-                grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1), extent=(1, 2), halo=(3,3,0))
+                grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1), extent=(1, 2), halo=(3,3))
                 model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)
 
                 @test model isa ShallowWaterModel
@@ -123,7 +123,7 @@ end
             N = (4,   4)
             L = (2π, 3π)
 
-            grid = RegularRectilinearGrid(FT, size=N, extent=L, topology=(Periodic, Periodic, Flat), halo=(3,3,0))
+            grid = RegularRectilinearGrid(FT, size=N, extent=L, topology=(Periodic, Periodic, Flat), halo=(3,3))
             model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)
 
             x, y, z = nodes((Face, Center, Center), model.grid, reshape=true)
