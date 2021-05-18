@@ -112,7 +112,8 @@ function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereFiel
     u_loc = (Face, Center, Center)
     v_loc = (Center, Face, Center)
 
-    for face_number in 1:6, side in (:west, :east, :south, :north)
+    for _ in 1:2
+    for face_number in [1, 3, 5, 2, 4, 6], side in (:west, :east, :south, :north)
         exchange_info = getproperty(u.boundary_conditions.faces[face_number], side).condition
         src_face_number = exchange_info.to_face
         src_side = exchange_info.to_side
@@ -143,27 +144,27 @@ function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereFiel
         end
     end
 
-    NCS=size(u.data)[1]-2
-    u.data[1][1,NCS+1,1] = -u.data[5][1,NCS  ,1]
-    v.data[1][0,NCS+1,1] = -u.data[5][1,NCS  ,1]
+    N = NCS = size(u.data)[1] - 2
 
-    u.data[3][1,NCS+1,1] = -u.data[1][1,NCS  ,1]
-    v.data[3][0,NCS+1,1] = -u.data[1][1,NCS  ,1]
+    # Fix 1-3-5 corner
+    v.data[1][0, N+1, 1] = -u.data[5][1, N, 1]
+    v.data[3][0, N+1, 1] = -u.data[1][1, N, 1]
+    v.data[5][0, N+1, 1] = -u.data[3][1, N, 1]
 
-    v.data[5][0,NCS+1,1] = -u.data[3][1,NCS  ,1]
+    # Fix 1-2-3 corner
+    v.data[1][N+1, N+1, 1] = -v.data[2][1, N+1, 1]
+    v.data[2][0,   N+1, 1] =  v.data[1][N, N+1, 1]
 
-    ## Key tests
-    ## uu=sh.model.velocities.u.data
-    ## vv=sh.model.velocities.v.data
-    ## uu[1][1,NCS+1,1]==-uu[5][1,NCS  ,1]==-vv[3][1,NCS+1,1]  # Pass
-    ## vv[1][0,NCS+1,1]==-uu[5][1,NCS  ,1]==-vv[3][1,NCS+1,1]  # Fail
-    ## 
-    ## uu[3][1,NCS+1,1]==-uu[1][1,NCS  ,1]==-vv[5][1,NCS+1,1]  # Fail
-    ## vv[3][0,NCS+1,1]==-uu[1][1,NCS  ,1]==-vv[5][1,NCS+1,1]  # Fail
-    ## 
-    ## uu[5][1,NCS+1,1]==-vv[1][1,NCS+1,1]==-uu[3][1,NCS  ,1]  # Pass
-    ## vv[5][0,NCS+1,1]==-vv[1][1,NCS+1,1]==-uu[3][1,NCS  ,1]  # Pass
+    # Fix 1-2-6 corner
+    v.data[1][N+1, 0,   1] =  u.data[6][33, 32, 1]
+    v.data[2][0,   0,   1] =  v.data[6][32, 33, 1]
+    v.data[6][N+1, N+1, 1] = -u.data[2][1,  1,  1]
+    v.data[1][N, 0, 1] = v.data[2][0, 0, 1]
 
+    # Fix 1-5-6 corner
+    v.data[5][33, 32, 1] = u.data[6][1, 32, 1]
+    u.data[5][32, 33, 1] = u.data[1][1,  1, 1]
+    end
 
     return nothing
 end
