@@ -77,12 +77,20 @@ Base.@kwdef struct TKESurfaceFlux{FT}
     CᵂwΔ :: FT = 1.31
 end
 
-
 #####
 ##### Utilities
 #####
 
-with_tracers(tracers, closure::TKEVD) = closure
+#
+# TODO: figure out how to calculate the current buoyancy flux and momentum flux...
+# function validate_closure_dependent_boundary_conditions(closure::TKEVD, boundary_conditions)
+#
+# end
+
+function with_tracers(tracer_names, closure::TKEVD)
+    :e ∈ tracer_names || error("Tracers must contain :e to represent turbulent kinetic energy for `TKEBasedVerticalDiffusivity`.")
+    return closure
+end
 
 calculate_diffusivities!(K, arch, grid, closure::TKEVD, args...) = nothing
 

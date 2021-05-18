@@ -126,7 +126,10 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     boundary_conditions = merge(embedded_boundary_conditions, boundary_conditions)
 
-    model_field_names = (:u, :v, :w, tracernames(tracers)...)
+    # TKEBasedVerticalDiffusivity will enforce boundary conditions on TKE eventually:
+    # boundary_conditions = validate_closure_dependent_boundary_conditions(closure, boundary_conditions)
+
+    model_field_names = (:u, :v, :w, :η, tracernames(tracers)...)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, model_field_names)
 
     # Ensure `closure` describes all tracers
