@@ -1,3 +1,5 @@
+using Oceananigans.Architectures: architecture
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
@@ -101,7 +103,11 @@ function hydrostatic_turbulent_kinetic_energy_tendency end
     Cᵇ = closure.mixing_length_constant
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     Ñ² = max(zero(FT), N²)
-    return @inbounds ifelse(Ñ² <= 0, zero(FT), Cᵇ * sqrt(e[i, j, k] / Ñ²))
+
+    @inbounds eⁱʲᵏ = e[i, j, k]
+    ẽ = max(zero(FT), eⁱʲᵏ)
+
+    return @inbounds ifelse(Ñ² <= 0, zero(FT), Cᵇ * sqrt(ẽ / Ñ²))
 end
 
 @inline function dissipation_mixing_length(i, j, k, grid, closure, e, tracers, buoyancy)
@@ -265,4 +271,61 @@ end
 # Shortcuts --- TKEVD incurs no horizontal transport
 @inline diffusive_flux_x(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
 @inline diffusive_flux_y(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+
+#####
+##### Support for VerticallyImplicitTimeDiscretization
+#####
+
+const VITD = VerticallyImplicitTimeDiscretization
+
+@inline Kuᶜᶜᶜ(i, j, k, grid, args::Tuple) = Kuᶜᶜᶜ(i, j, k, grid, args...) 
+@inline Kcᶜᶜᶜ(i, j, k, grid, args::Tuple) = Kcᶜᶜᶜ(i, j, k, grid, args...) 
+@inline Keᶜᶜᶜ(i, j, k, grid, args::Tuple) = Keᶜᶜᶜ(i, j, k, grid, args...) 
+
+@inline function z_viscosity(closure::TKEVD, diffusivities, velocities, tracers, buoyancy)
+    e = tracers.e
+    arch = architecture(e)
+    grid = e.grid
+    args = (closure, e, velocities, tracers, buoyancy)
+    return KernelFunctionOperation{Center, Center, Center}(Kuᶜᶜᶜ, grid; architecture=arch, parameters=args)
+end
+
+@inline function z_diffusivity(closure::TKEVD, ::Val{tracer_index}, diffusivities, velocities, tracers, buoyancy) where tracer_index
+    e = tracers.e
+    arch = architecture(e)
+    grid = e.grid
+    args = (closure, e, velocities, tracers, buoyancy)
+
+    tke_index = findfirst(name -> name === :e, keys(tracers))
+
+    if tracer_index === tke_index
+        return KernelFunctionOperation{Center, Center, Center}(Keᶜᶜᶜ, grid; architecture=arch, parameters=args)
+    else
+        return KernelFunctionOperation{Center, Center, Center}(Kcᶜᶜᶜ, grid; architecture=arch, parameters=args)
+    end
+end
+
+const VerticallyBoundedGrid{FT} = AbstractPrimaryGrid{FT, <:Any, <:Any, <:Bounded}
+
+@inline diffusive_flux_z(i, j, k, grid::APG{FT}, ::VITD, closure::TKEVD, args...) where FT = zero(FT)
+@inline viscous_flux_uz(i, j, k, grid::APG{FT}, ::VITD, closure::TKEVD, args...) where FT = zero(FT)
+@inline viscous_flux_vz(i, j, k, grid::APG{FT}, ::VITD, closure::TKEVD, args...) where FT = zero(FT)
+
+@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::TKEVD, args...) where FT
+    return ifelse(k == 1 || k == grid.Nz+1, 
+                  diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
+                  zero(FT))
+end
+
+@inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::TKEVD, args...) where FT
+    return ifelse(k == 1 || k == grid.Nz+1, 
+                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
+                  zero(FT))
+end
+
+@inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::TKEVD, args...) where FT
+    return ifelse(k == 1 || k == grid.Nz+1, 
+                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
+                  zero(FT))
+end
 
