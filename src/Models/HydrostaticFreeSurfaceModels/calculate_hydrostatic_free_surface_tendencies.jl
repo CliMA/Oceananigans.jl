@@ -58,7 +58,7 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
                        calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, momentum_kernel_args...;
                        dependencies = dependencies)
 
-    Gη_event = launch!(arch, grid, :xy,
+    Gη_event = launch!(arch, grid, Val(:xy),
                        calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
                        grid,
                        model.velocities,

@@ -51,7 +51,7 @@ compute!(tke_diffusivity)
 
 plot!(b_plot, b, z, linewidth = 2, label = @sprintf("t = %s", prettytime(model.clock.time)))
 plot!(e_plot, e, z, linewidth = 2, label = @sprintf("t = %s", prettytime(model.clock.time)))
-K_plot = plot(Kc, z, linewidth = 2, linestyle=:dash, label = @sprintf("Kᶜ, t = %s", prettytime(model.clock.time)), legend=:bottomright)
+K_plot = plot(Kc, z, linewidth = 2, linestyle=:dash, label = @sprintf("Kᶜ, t = %s", prettytime(model.clock.time)), legend=:bottomright, title="Diffusivities")
 plot!(K_plot, Ke, z, linewidth = 3, alpha=0.6, label = @sprintf("Kᵉ, t = %s", prettytime(model.clock.time)))
 
 eb_plot = plot(b_plot, e_plot, K_plot, layout=(1, 3))
