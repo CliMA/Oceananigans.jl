@@ -13,7 +13,6 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
-using Oceananigans.ImmersedBoundaries: NoImmersedBoundary, regularize_immersed_boundary
 using Oceananigans.Utils: tupleit
 
 function ShallowWaterTendencyFields(arch, grid, tracer_names)
