@@ -112,6 +112,5 @@ function ShallowWaterModel(;
                              solution,
                              tracers,
                              diffusivities,
-                             timestepper,
-                             immersed_boundary)
+                             timestepper)
 end
