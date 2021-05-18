@@ -33,10 +33,10 @@ function inflate_halo_size(Hx, Hy, Hz, topology, tendency_terms...)
     old_halo = (Hx, Hy, Hz)
 
     for term in tendency_terms
-        Hreq = required_halo_size(term)
-        Hx = inflate_halo_size_one_dimension(H, Hx, topology[1])
-        Hy = inflate_halo_size_one_dimension(H, Hy, topology[2])
-        Hz = inflate_halo_size_one_dimension(H, Hz, topology[3])
+        required_H = required_halo_size(term)
+        Hx = inflate_halo_size_one_dimension(required_H, Hx, topology[1])
+        Hy = inflate_halo_size_one_dimension(required_H, Hy, topology[2])
+        Hz = inflate_halo_size_one_dimension(required_H, Hz, topology[3])
     end
 
     new_halo = (Hx, Hy, Hz)
