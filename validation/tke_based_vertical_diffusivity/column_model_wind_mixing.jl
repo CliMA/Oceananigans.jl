@@ -49,16 +49,21 @@ compute!(tke_diffusivity)
 
 z = znodes(model.tracers.b)
 
+u = view(interior(model.velocities.u), 1, 1, :)
+v = view(interior(model.velocities.v), 1, 1, :)
 b = view(interior(model.tracers.b), 1, 1, :)
 e = view(interior(model.tracers.e), 1, 1, :)
 Ku = view(interior(viscosity), 1, 1, :)
 Kc = view(interior(tracer_diffusivity), 1, 1, :)
 Ke = view(interior(tke_diffusivity), 1, 1, :)
 
+u_plot = plot(u, z, linewidth = 2, label = "u, t = 0", xlabel = "Velocities", ylabel = "z", legend=:bottomright)
+plot!(u_plot, v, z, linewidth = 2, linestyle=:dash, label = "v, t = 0", xlabel = "Buoyancy", ylabel = "z")
+
 b_plot = plot(b, z, linewidth = 2, label = "t = 0", xlabel = "Buoyancy", ylabel = "z", legend=:bottomright)
 e_plot = plot(e, z, linewidth = 2, label = "t = 0", xlabel = "TKE", ylabel = "z", legend=:bottomright)
               
-simulation = Simulation(model, Δt = 1.0, stop_time = 24hours)
+simulation = Simulation(model, Δt = 1.0, stop_time = 12hours)
 
 run!(simulation)
 
@@ -66,13 +71,16 @@ compute!(viscosity)
 compute!(tracer_diffusivity)
 compute!(tke_diffusivity)
 
+plot!(u_plot, u, z, linewidth = 2, label = @sprintf("u, t = %s", prettytime(model.clock.time)))
+plot!(u_plot, v, z, linewidth = 2, linestyle=:dash, label = @sprintf("v, t = %s", prettytime(model.clock.time)))
 plot!(b_plot, b, z, linewidth = 2, label = @sprintf("t = %s", prettytime(model.clock.time)))
 plot!(e_plot, e, z, linewidth = 2, label = @sprintf("t = %s", prettytime(model.clock.time)))
 
 K_plot = plot(Kc, z, linewidth = 2, linestyle=:dash, label = @sprintf("Kᶜ, t = %s", prettytime(model.clock.time)), legend=:bottomright, xlabel="Diffusivities")
 plot!(K_plot, Ke, z, linewidth = 3, alpha=0.6, label = @sprintf("Kᵉ, t = %s", prettytime(model.clock.time)))
-plot!(K_plot, Ku, z, linewidth = 2, linestyle=:dotted, label = @sprintf("Kᵘ, t = %s", prettytime(model.clock.time)))
+plot!(K_plot, Ku, z, linewidth = 2, linestyle=:dot, label = @sprintf("Kᵘ, t = %s", prettytime(model.clock.time)))
 
 eb_plot = plot(b_plot, e_plot, K_plot, layout=(1, 3))
 
 display(eb_plot)
+
