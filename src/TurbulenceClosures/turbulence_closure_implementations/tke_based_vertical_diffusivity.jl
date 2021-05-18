@@ -3,8 +3,46 @@ using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
+struct TKEBasedVerticalDiffusivity{TD, CK, CD, CL, CQ} <: AbstractTurbulenceClosure{TD}
+    diffusivity_scaling :: CK
+    dissipation_parameter :: CD
+    mixing_length_parameter :: CL
+    surface_model :: CQ
+
+    function TKEBasedVerticalDiffusivity{TD}(
+        diffusivity_scaling :: CK,
+        dissipation_parameter :: CD,
+        mixing_length_parameter :: CL,
+        surface_model :: CQ) where {TD, CK, CD, CL, CQ}
+
+        return new{TD, CK, CD, CL, CQ}(diffusivity_scaling, dissipation_parameter, mixing_length_parameter, surface_model)
+    end
+end
+
 """
-    struct RiDependentDiffusivityScales{FT}
+    TKEBasedVerticalDiffusivity <: AbstractTurbulenceClosure{TD}
+
+Parameters for the "anisotropic minimum dissipation" turbulence closure for large eddy simulation
+proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
+by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
+"""
+function TKEBasedVerticalDiffusivity(FT=Float64;
+                                     diffusivity_scaling = RiDependentDiffusivityScaling(),
+                                     dissipation_parameter = 2.91,
+                                     mixing_length_parameter = 1.16,
+                                     surface_model = TKESurfaceFlux(),
+                                     time_discretization::TD = ExplicitTimeDiscretization()) where TD
+
+    return TKEBasedVerticalDiffusivity{TD}(diffusivity_scaling,
+                                           dissipation_parameter,
+                                           mixing_length_parameter,
+                                           surface_model)
+end
+
+const TKEVD = TKEBasedVerticalDiffusivity
+
+"""
+    struct RiDependentDiffusivityScaling{FT}
 
 A diffusivity model in which momentum, tracers, and TKE
 each have Richardson-number-dependent diffusivities.
@@ -23,7 +61,7 @@ and ``step`` is a smooth step function defined by
 
     ``step(x, c, w) = (1 + tanh((x - c) / w)) / 2``.
 """
-Base.@kwdef struct RiDependentDiffusivityScales{FT}
+Base.@kwdef struct RiDependentDiffusivityScaling{FT}
     Cᴷu⁻  :: FT = 0.15
     Cᴷu⁺  :: FT = 0.73
     Cᴷc⁻  :: FT = 0.40
@@ -39,43 +77,6 @@ Base.@kwdef struct TKESurfaceFlux{FT}
     CᵂwΔ :: FT = 1.31
 end
 
-"""
-    TKEBasedVerticalDiffusivity <: AbstractTurbulenceClosure{TD}
-
-Parameters for the "anisotropic minimum dissipation" turbulence closure for large eddy simulation
-proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
-by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
-"""
-struct TKEBasedVerticalDiffusivity{TD, CK, CD, CL, CQ} <: AbstractTurbulenceClosure{TD}
-        diffusivity_scales :: CK
-      dissipation_constant :: CD
-    mixing_length_constant :: CL
-             surface_model :: CQ
-
-    function TKEBasedVerticalDiffusivity{TD}(
-            diffusivity_scales :: CK,
-          dissipation_constant :: CD,
-        mixing_length_constant :: CL,
-                 surface_model :: CQ) where {TD, CK, CD, CL, CQ}
-
-        return new{TD, CK, CD, CL, CQ}(diffusivity_scales, dissipation_constant, mixing_length_constant, surface_model)
-    end
-end
-
-function TKEBasedVerticalDiffusivity(FT=Float64;
-                                      diffusivity_scales = RiDependentDiffusivityScales(),
-                                      dissipation_constant = 2.91,
-                                      mixing_length_constant = 1.16,
-                                      surface_model = TKESurfaceFlux(),
-                                      time_discretization::TD = ExplicitTimeDiscretization()) where TD
-
-    return TKEBasedVerticalDiffusivity{TD}(diffusivity_scales,
-                                            dissipation_constant,
-                                            mixing_length_constant,
-                                            surface_model)
-end
-
-const TKEVD = TKEBasedVerticalDiffusivity
 
 #####
 ##### Utilities
@@ -92,28 +93,33 @@ function hydrostatic_turbulent_kinetic_energy_tendency end
 ##### Mixing length
 #####
 
-@inline surface(i, j, k, grid)             = znode(Center(), Center(), Face(), i, j, grid.Nz+1, grid)
-@inline bottom(i, j, k, grid)              = znode(Center(), Center(), Face(), i, j, 1, grid)
-@inline depth(i, j, k, grid)               = surface(i, j, k, grid) - znode(Center(), Center(), Center(), i, j, k, grid)
-@inline height_above_bottom(i, j, k, grid) = znode(Center(), Center(), Center(), i, j, k, grid) - bottom(i, j, k, grid)
+@inline surface(i, j, k, grid)                = znode(Center(), Center(), Face(), i, j, grid.Nz+1, grid)
+@inline bottom(i, j, k, grid)                 = znode(Center(), Center(), Face(), i, j, 1, grid)
+@inline depthᶜᶜᶜ(i, j, k, grid)               = surface(i, j, k, grid) - znode(Center(), Center(), Center(), i, j, k, grid)
+@inline height_above_bottomᶜᶜᶜ(i, j, k, grid) = znode(Center(), Center(), Center(), i, j, k, grid) - bottom(i, j, k, grid)
 
-@inline wall_vertical_distance(i, j, k, grid) = min(depth(i, j, k, grid), height_above_bottom(i, j, k, grid))
+@inline wall_vertical_distanceᶜᶜᶜ(i, j, k, grid) = min(depthᶜᶜᶜ(i, j, k, grid), height_above_bottomᶜᶜᶜ(i, j, k, grid))
 
-@inline function buoyancy_mixing_length(i, j, k, grid, closure, e, tracers, buoyancy)
+function sqrt_∂z_b(i, j, k, grid, buoyancy, tracers)
     FT = eltype(grid)
-    Cᵇ = closure.mixing_length_constant
-    N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    Ñ² = max(zero(FT), N²)
-
-    @inbounds eⁱʲᵏ = e[i, j, k]
-    ẽ = max(zero(FT), eⁱʲᵏ)
-
-    return @inbounds ifelse(Ñ² <= 0, FT(Inf), Cᵇ * sqrt(ẽ / Ñ²))
+    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    N²⁺ = max(zero(FT), N²)
+    return sqrt(N²⁺)  
 end
 
-@inline function dissipation_mixing_length(i, j, k, grid, closure, e, tracers, buoyancy)
-    ℓᶻ = wall_vertical_distance(i, j, k, grid)
-    ℓᵇ = buoyancy_mixing_length(i, j, k, grid, closure, e, tracers, buoyancy)
+@inline function buoyancy_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
+    FT = eltype(grid)
+    Cᵇ = closure.mixing_length_parameter
+    N⁺ = ℑzᵃᵃᶜ(i, j, k, grid, sqrt_∂z_b, buoyancy, tracers)
+
+    @inbounds e⁺ = max(zero(FT), e[i, j, k])
+
+    return @inbounds ifelse(N⁺ == 0, FT(Inf), Cᵇ * sqrt(e⁺) / N⁺)
+end
+
+@inline function dissipation_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
+    ℓᶻ = wall_vertical_distanceᶜᶜᶜ(i, j, k, grid)
+    ℓᵇ = buoyancy_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
     ℓ = min(ℓᶻ, ℓᵇ)
     ℓ_min = Δzᵃᵃᶜ(i, j, k, grid) / 2 # minimum mixing length...
     return max(ℓ_min, ℓ)
@@ -140,34 +146,34 @@ end
 @inline function momentum_diffusivity_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     return scale(Ri,
-                 closure.diffusivity_scales.Cᴷu⁻,
-                 closure.diffusivity_scales.Cᴷu⁺,
-                 closure.diffusivity_scales.CᴷRiᶜ,
-                 closure.diffusivity_scales.CᴷRiʷ)
+                 closure.diffusivity_scaling.Cᴷu⁻,
+                 closure.diffusivity_scaling.Cᴷu⁺,
+                 closure.diffusivity_scaling.CᴷRiᶜ,
+                 closure.diffusivity_scaling.CᴷRiʷ)
 end
 
 @inline function tracer_diffusivity_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     return scale(Ri,
-                 closure.diffusivity_scales.Cᴷc⁻,
-                 closure.diffusivity_scales.Cᴷc⁺,
-                 closure.diffusivity_scales.CᴷRiᶜ,
-                 closure.diffusivity_scales.CᴷRiʷ)
+                 closure.diffusivity_scaling.Cᴷc⁻,
+                 closure.diffusivity_scaling.Cᴷc⁺,
+                 closure.diffusivity_scaling.CᴷRiᶜ,
+                 closure.diffusivity_scaling.CᴷRiʷ)
 end
 
 @inline function TKE_diffusivity_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     return scale(Ri,
-                 closure.diffusivity_scales.Cᴷe⁻,
-                 closure.diffusivity_scales.Cᴷe⁺,
-                 closure.diffusivity_scales.CᴷRiᶜ,
-                 closure.diffusivity_scales.CᴷRiʷ)
+                 closure.diffusivity_scaling.Cᴷe⁻,
+                 closure.diffusivity_scaling.Cᴷe⁺,
+                 closure.diffusivity_scaling.CᴷRiᶜ,
+                 closure.diffusivity_scaling.CᴷRiʷ)
 end
 
 @inline turbulent_velocity(i, j, k, grid, e) = @inbounds sqrt(max(zero(eltype(grid)), e[i, j, k]))
 
 @inline function unscaled_eddy_diffusivityᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
-    ℓ = dissipation_mixing_length(i, j, k, grid, closure, e, tracers, buoyancy)
+    ℓ = dissipation_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
     u★ = turbulent_velocity(i, j, k, grid, e)
     return ℓ * u★
 end
@@ -215,8 +221,8 @@ end
     three_halves = FT(3/2)
     @inbounds ẽ³² = abs(e[i, j, k])^three_halves
 
-    ℓ = dissipation_mixing_length(i, j, k, grid, closure, e, tracers, buoyancy)
-    Cᴰ = closure.dissipation_constant
+    ℓ = dissipation_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
+    Cᴰ = closure.dissipation_parameter
 
     return Cᴰ * ẽ³² / ℓ
 end
