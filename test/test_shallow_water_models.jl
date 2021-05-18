@@ -109,7 +109,7 @@ end
             for arch in archs, FT in float_types
 		        #arch isa GPU && topo == (Bounded, Bounded, Flat) && continue
 
-                grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1), extent=(1, 2), halo=(3,3))
+                grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1), extent=(1, 2), halo=(3, 3))
                 model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)
 
                 @test model isa ShallowWaterModel
