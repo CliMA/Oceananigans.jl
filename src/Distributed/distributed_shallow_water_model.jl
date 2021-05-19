@@ -19,7 +19,7 @@ function DistributedShallowWaterModel(; architecture, grid, boundary_conditions=
     # Pull out endpoints for full grid.
     xL, xR = grid.xF[1], grid.xF[Nx+1]
     yL, yR = grid.yF[1], grid.yF[Ny+1]
-    zL, zR = grid.zF[1], grid.zF[Nz+1]
+    #zL, zR = grid.zF[1], grid.zF[Nz+1]
 
     # Make sure we can put an integer number of grid points in each rank.
     # Will generalize in the future.
@@ -33,7 +33,7 @@ function DistributedShallowWaterModel(; architecture, grid, boundary_conditions=
     y₁, y₂ = yL + (j-1)*ly, yL + j*ly
 
     # FIXME: local grid might have different topology!
-    my_grid = RegularRectilinearGrid(topology=topology(grid), size=(nx, ny, Nz), x=(x₁, x₂), y=(y₁, y₂), z=(zL, zR), halo=halo_size(grid))
+    my_grid = RegularRectilinearGrid(topology=topology(grid), size=(nx, ny), x=(x₁, x₂), y=(y₁, y₂), halo=halo_size(grid)[1:2])
 
     ## Construct local model
 
