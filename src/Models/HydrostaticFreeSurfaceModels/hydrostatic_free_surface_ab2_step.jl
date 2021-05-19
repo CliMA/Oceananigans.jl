@@ -24,7 +24,7 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
                                                explicit_velocity_step_events...,
                                                explicit_tracer_step_events...))
 
-    wait(device_event(model), prognostic_field_events)
+    wait(device(model.architecture), prognostic_field_events)
 
     return nothing
 end

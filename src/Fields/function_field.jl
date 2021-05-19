@@ -1,5 +1,5 @@
 
-struct FunctionField{X, Y, Z, C, P, F, G, T} <: AbstractField{X, Y, Z, Nothing, G, T}
+struct FunctionField{X, Y, Z, C, P, F, G, T} <: AbstractField{X, Y, Z, Nothing, G, T, 3}
           func :: F
           grid :: G
          clock :: C

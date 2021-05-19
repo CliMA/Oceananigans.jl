@@ -4,7 +4,7 @@ using KernelAbstractions: @kernel, @index, Event
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 
-struct ComputedField{X, Y, Z, S, O, A, D, G, T, C} <: AbstractDataField{X, Y, Z, A, G, T}
+struct ComputedField{X, Y, Z, S, O, A, D, G, T, C} <: AbstractDataField{X, Y, Z, A, G, T, 3}
                    data :: D
            architecture :: A
                    grid :: G
@@ -76,7 +76,7 @@ function ComputedField(LX, LY, LZ, operand, arch, grid;
                        data = nothing,
                        recompute_safely = true,
                        boundary_conditions = ComputedFieldBoundaryConditions(grid, (LX, LY, LZ)))
-    
+
     # Architecturanigans
     operand_arch = architecture(operand)
     arch = isnothing(operand_arch) ? arch : operand_arch
@@ -105,7 +105,7 @@ function compute!(comp::ComputedField{LX, LY, LZ}, time=nothing) where {LX, LY, 
                                       include_right_boundaries=true,
                                       location=(LX, LY, LZ))
 
-    compute_kernel! = _compute!(device(arch), workgroup, worksize) 
+    compute_kernel! = _compute!(device(arch), workgroup, worksize)
 
     event = compute_kernel!(comp.data, comp.operand; dependencies=Event(device(arch)))
 

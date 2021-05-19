@@ -52,6 +52,14 @@ end
 @testset "Shallow Water Models" begin
     @info "Testing shallow water models..."
 
+    @testset "Must be Flat in the vertical" begin
+        grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=(Periodic,Periodic,Bounded))
+        @test_throws TypeError ShallowWaterModel(architecture=CPU, grid=grid, gravitational_acceleration=1)        
+
+        grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=(Periodic,Periodic,Periodic))
+        @test_throws TypeError ShallowWaterModel(architecture=CPU, grid=grid, gravitational_acceleration=1)        
+    end
+
     @testset "Model constructor errors" begin
         grid = RegularRectilinearGrid(size=(1, 1), extent=(1, 1), topology=((Periodic,Periodic,Flat)))
         @test_throws TypeError ShallowWaterModel(architecture=CPU, grid=grid, gravitational_acceleration=1)
@@ -65,7 +73,7 @@ end
         for arch in archs, FT in float_types                
             grid = RegularRectilinearGrid(FT, topology=topo, size=(), extent=())
             model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch) 
-            
+
             @test model isa ShallowWaterModel
         end
     end
@@ -81,7 +89,7 @@ end
             for arch in archs, FT in float_types
                 #arch isa GPU && topo == (Flat, Bounded, Flat) && continue
         
-                grid = RegularRectilinearGrid(FT, topology=topo, size=(1), extent=(1))
+                grid = RegularRectilinearGrid(FT, topology=topo, size=1, extent=1, halo=3)
                 model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch) 
                 
                 @test model isa ShallowWaterModel
@@ -99,9 +107,9 @@ end
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
-		        arch isa GPU && topo == (Bounded, Bounded, Flat) && continue
+		        #arch isa GPU && topo == (Bounded, Bounded, Flat) && continue
 
-                grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1), extent=(1, 2))
+                grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1), extent=(1, 2), halo=(3, 3))
                 model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)
 
                 @test model isa ShallowWaterModel
@@ -115,7 +123,7 @@ end
             N = (4,   4)
             L = (2π, 3π)
 
-            grid = RegularRectilinearGrid(FT, size=N, extent=L, topology=((Periodic, Periodic, Flat)))
+            grid = RegularRectilinearGrid(FT, size=N, extent=L, topology=(Periodic, Periodic, Flat), halo=(3, 3))
             model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch)
 
             x, y, z = nodes((Face, Center, Center), model.grid, reshape=true)

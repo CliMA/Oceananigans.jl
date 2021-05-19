@@ -45,10 +45,10 @@ function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3)
 
     U, C = datatuples(velocities, tracers)
 
-    @test ∇_dot_qᶜ(2, 1, 3, grid, clock, closure, C.T, Val(1), nothing) == - 2κ
-    @test ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, clock, closure, U, nothing) == - 2ν
-    @test ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, clock, closure, U, nothing) == - 4ν
-    @test ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, clock, closure, U, nothing) == - 6ν
+    @test ∇_dot_qᶜ(2, 1, 3, grid, closure, C.T, Val(1), clock, nothing) == - 2κ
+    @test ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - 2ν
+    @test ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - 4ν
+    @test ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - 6ν
 
     return nothing
 end
@@ -86,10 +86,10 @@ function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), �
 
     U, C = datatuples(velocities, tracers)
 
-    return (∇_dot_qᶜ(2, 1, 3, grid, clock, closure, C.T, Val(1), nothing) == - (8κh + 10κz) &&
-              ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, clock, closure, U, nothing) == - (2νh + 4νz) &&
-              ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, clock, closure, U, nothing) == - (4νh + 6νz) &&
-              ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, clock, closure, U, nothing) == - (6νh + 8νz))
+    return (∇_dot_qᶜ(2, 1, 3, grid, closure, C.T, Val(1), clock, nothing) == - (8κh + 10κz) &&
+              ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - (2νh + 4νz) &&
+              ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - (4νh + 6νz) &&
+              ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - (6νh + 8νz))
 end
 
 function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
