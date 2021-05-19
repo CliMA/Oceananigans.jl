@@ -4,7 +4,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, TKEBasedVerticalDiffusivity
 
-grid = RegularRectilinearGrid(size=64, z=(-64, 0), topology=(Flat, Flat, Bounded))
+grid = RegularRectilinearGrid(size=8, z=(-64, 0), topology=(Flat, Flat, Bounded))
 
 closure = TKEBasedVerticalDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization())
                                       
@@ -51,7 +51,7 @@ plot!(u_plot, v, z, linewidth = 2, linestyle=:dash, label = "v, t = 0")
 b_plot = plot(b, z, linewidth = 2, label = "t = 0", xlabel = "Buoyancy", ylabel = "z", legend=:bottomright)
 e_plot = plot(e, z, linewidth = 2, label = "t = 0", xlabel = "TKE", ylabel = "z", legend=:bottomright)
               
-simulation = Simulation(model, Δt = 10.0, stop_time=6hour)
+simulation = Simulation(model, Δt = 10.0, stop_time=12hour)
 
 run!(simulation)
 

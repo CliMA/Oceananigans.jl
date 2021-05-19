@@ -43,7 +43,7 @@ Ke = view(interior(model.diffusivities.Kᵉ), 1, 1, :)
 b_plot = plot(b, z, linewidth = 2, label = "t = 0", xlabel = "Buoyancy", ylabel = "z", legend=:bottomright)
 e_plot = plot(e, z, linewidth = 2, label = "t = 0", xlabel = "TKE", ylabel = "z", legend=:bottomright)
               
-simulation = Simulation(model, Δt = 10.0, stop_time = 24hours)
+simulation = Simulation(model, Δt = 20.0, stop_time = 48hours)
 
 run!(simulation)
 
