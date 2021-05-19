@@ -134,12 +134,6 @@ function test_checkpoint_output_with_function_bcs(arch)
     restored_model = IncompressibleModel(architecture=arch, grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
     set!(restored_model, "checkpoint_iteration0.jld2")
 
-    @test  ismissing(restored_model.velocities.u.boundary_conditions)
-    @test !ismissing(restored_model.velocities.v.boundary_conditions)
-    @test !ismissing(restored_model.velocities.w.boundary_conditions)
-    @test  ismissing(restored_model.tracers.T.boundary_conditions)
-    @test !ismissing(restored_model.tracers.S.boundary_conditions)
-
     CUDA.@allowscalar begin
         @test all(interior(restored_model.velocities.u) .≈ π/2)
         @test all(interior(restored_model.velocities.v) .≈ ℯ)
@@ -159,12 +153,6 @@ function test_checkpoint_output_with_function_bcs(arch)
         @test all(interior(properly_restored_model.tracers.T) .≈ Base.MathConstants.γ)
         @test all(interior(properly_restored_model.tracers.S) .≈ Base.MathConstants.φ)
     end
-
-    @test !ismissing(properly_restored_model.velocities.u.boundary_conditions)
-    @test !ismissing(properly_restored_model.velocities.v.boundary_conditions)
-    @test !ismissing(properly_restored_model.velocities.w.boundary_conditions)
-    @test !ismissing(properly_restored_model.tracers.T.boundary_conditions)
-    @test !ismissing(properly_restored_model.tracers.S.boundary_conditions)
 
     u, v, w = properly_restored_model.velocities
     T, S = properly_restored_model.tracers
