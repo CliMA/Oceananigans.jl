@@ -1,6 +1,6 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.57.3"
+version = "0.58.0"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -33,15 +33,15 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 Tullio = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
 
 [compat]
-Adapt = "^2, ^3"
+Adapt = "^3"
 CUDA = "3"
-CUDAKernels = "0.2, 0.3"
+CUDAKernels = "0.2"
 Crayons = "^4"
 CubedSphere = "0.1"
 FFTW = "^1"
 Glob = "1.3"
-JLD2 = "^0.2, ^0.3, 0.4"
-KernelAbstractions = "0.6, 0.7"
+JLD2 = "^0.4"
+KernelAbstractions = "0.6"
 MPI = "0.16, 0.17"
 NCDatasets = "^0.10, ^0.11"
 OffsetArrays = "^1.4"
