@@ -29,7 +29,7 @@ julia> using Oceananigans, Oceananigans.Grids
 
 julia> ω = Field(Face, Face, Center, CPU(), RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 Field located at (Face, Face, Center)
-├── data: OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}, size: (3, 3, 3)
+├── data: OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}, size: (1, 1, 1)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 └── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=ZeroFlux, top=ZeroFlux)
 ```
