@@ -174,6 +174,7 @@ include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 include("Forcings/Forcings.jl")
+include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
 
