@@ -30,6 +30,14 @@ end
 
 @propagate_inbounds Base.getindex(f::FieldTimeSeries{X, Y, Z, InMemory}, i, j, k, n) where {X, Y, Z} = f.data[i, j, k, n]
 
+"""
+    FieldTimeSeries(filepath, name; architecture=CPU(), backend=InMemory())
+
+Returns a `FieldTimeSeries` for the field `name` describing a field's time history from a JLD2 file
+located at `filepath`. Note that model output must have been saved with halos. The `InMemory` backend
+will store the data fully in memory as a 4D multi-dimensional array while the `OnDisk` backend will
+lazily load field time snapshots when the `FieldTimeSeries` is indexed linearly.
+"""
 FieldTimeSeries(filepath, name; architecture=CPU(), backend=InMemory()) =
     FieldTimeSeries(filepath, name, architecture, backend)
 
