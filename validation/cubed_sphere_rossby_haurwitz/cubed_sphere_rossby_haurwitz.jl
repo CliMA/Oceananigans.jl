@@ -89,7 +89,7 @@ function diagnose_velocities_from_streamfunction(ψ, grid)
     return uᶠᶜᶜ, vᶜᶠᶜ, ψᶠᶠᶜ
 end
 
-function cubed_sphere_rossby_haurwitz(grid_filepath)
+function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false)
 
     ## Grid setup
 
@@ -101,8 +101,7 @@ function cubed_sphere_rossby_haurwitz(grid_filepath)
     model = HydrostaticFreeSurfaceModel(
               architecture = CPU(),
                       grid = grid,
-        momentum_advection = nothing,
-        # momentum_advection = VectorInvariant(),
+        momentum_advection = VectorInvariant(),
               free_surface = ExplicitFreeSurface(gravitational_acceleration=100),
                   coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
                    closure = nothing,
@@ -156,9 +155,7 @@ function cubed_sphere_rossby_haurwitz(grid_filepath)
 
     # Compute amount of time needed for a 45° rotation.
     angular_velocity = (n * (3+n) * ω - 2Ω) / ((1+n) * (2+n))
-    stop_time = deg2rad(45) / abs(angular_velocity)
-    stop_time = stop_time*20 
-    # stop_time = 200
+    stop_time = deg2rad(360) / abs(angular_velocity)
     @info "Stop time = $(prettytime(stop_time))"
 
     Δt = 20seconds
@@ -185,20 +182,22 @@ function cubed_sphere_rossby_haurwitz(grid_filepath)
                 parameters = (; cfl)
     )
 
-    fields_to_check = (
-        u = model.velocities.u,
-        v = model.velocities.v,
-        η = model.free_surface.η
-    )
+    if check_fields
+        fields_to_check = (
+            u = model.velocities.u,
+            v = model.velocities.v,
+            η = model.free_surface.η
+        )
 
-    simulation.diagnostics[:state_checker] =
-        StateChecker(model, fields=fields_to_check, schedule=IterationInterval(20))
+        simulation.diagnostics[:state_checker] =
+            StateChecker(model, fields=fields_to_check, schedule=IterationInterval(20))
+    end
 
     output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
     simulation.output_writers[:fields] =
     JLD2OutputWriter(model, output_fields,
-        schedule = TimeInterval(5minutes),
+        schedule = TimeInterval(1hour),
           prefix = "cubed_sphere_rossby_haurwitz",
            force = true)
 
@@ -210,10 +209,9 @@ end
 
 include("animate_on_map_projection.jl")
 
-function run_cubed_sphere_rossby_haurwitz_validation()
+function run_cubed_sphere_rossby_haurwitz_validation(grid_filepath=datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2")
 
-    simhandle=cubed_sphere_rossby_haurwitz(datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2")
-    # cubed_sphere_rossby_haurwitz(datadep"cubed_sphere_96_grid/cubed_sphere_96_grid.jld2")
+    simulation = cubed_sphere_rossby_haurwitz(grid_filepath)
 
     projections = [
         ccrs.NearsidePerspective(central_longitude=0, central_latitude=30),
@@ -221,50 +219,6 @@ function run_cubed_sphere_rossby_haurwitz_validation()
     ]
 
     animate_rossby_haurwitz(projections=projections)
-    return simhandle
+
+    return simulation
 end
-
-
-sh=run_cubed_sphere_rossby_haurwitz_validation()
-
-NCS=32
-N=NCS
-
-# 1:3 tests
-# Northern edge of face 1 V with western edge of face 3 U flipped by 180
-sh.model.velocities.v.data[1][1:N,N+1,1]-sh.model.velocities.u.data[3][1,N:-1:1,1]
-
-# 1:5 tests
-# Westmost u of face 1 with 180 flip Northern edge (overlap) of face 5 v
-sh.model.velocities.u.data[1][1,0:N+1,1]-sh.model.velocities.v.data[5][N+1:-1:0,N+1,1]
-
-# Western edge of face 1 v with northern edge face 5 -u flipped by 180
-sh.model.velocities.v.data[1][1,1:N+1,1]+sh.model.velocities.u.data[5][N+1:-1:1,N+1,1]
-
-# weird point
-sh.model.velocities.u.data[1][1,N+1,1]
-sh.model.velocities.v.data[5][0,N+1,1]  # matches this
--sh.model.velocities.u.data[5][1,N,1]   # does not match this
-
-# 3:5 tests
-# Western edge of face 5 U with 180 flip Northern edge of face 3 v
-sh.model.velocities.u.data[5][1,0:N+1,1]-sh.model.velocities.v.data[3][N+1:-1:0,N+1,1]
-
-
-
-## Key tests
-uu=sh.model.velocities.u.data
-vv=sh.model.velocities.v.data
-
-uu[1][1,NCS+1,1]==-uu[5][1,NCS  ,1]==-vv[3][1,NCS+1,1] 
-vv[1][0,NCS+1,1]==-uu[5][1,NCS  ,1]==-vv[3][1,NCS+1,1] 
-
-uu[3][1,NCS+1,1]==-uu[1][1,NCS  ,1]==-vv[5][1,NCS+1,1]
-vv[3][0,NCS+1,1]==-uu[1][1,NCS  ,1]==-vv[5][1,NCS+1,1]
-
-uu[5][1,NCS+1,1]==-vv[1][1,NCS+1,1]==-uu[3][1,NCS  ,1]
-vv[5][0,NCS+1,1]==-vv[1][1,NCS+1,1]==-uu[3][1,NCS  ,1]
-
-
-
-#
