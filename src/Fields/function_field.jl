@@ -61,7 +61,7 @@ Base.parent(f::FunctionField) = f
 @inline call_func(::Nothing, ::Nothing, func, x, y)     = func(x, y)
 @inline call_func(::Nothing, ::Nothing, func, x)        = func(x)
 
-@inline Base.getindex(f::FunctionField{LX, LY, LZ}, i, j, k) where {LX, LY, LZ} =
+@inline Base.getindex(f::FunctionField{LX, LY, LZ}, i::Integer, j::Integer, k::Integer) where {LX, LY, LZ} =
     call_func(f.clock, f.parameters, f.func, node(LX(), LY(), LZ(), i, j, k, f.grid)...)
 
 @inline (f::FunctionField)(x...) = call_func(f.clock, f.parameters, f.func, x...)

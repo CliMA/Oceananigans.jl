@@ -199,7 +199,7 @@ Base.checkbounds(f::AbstractField, I...) = Base.checkbounds(f.data, I...)
 ##### setindex
 #####
 
-@propagate_inbounds function Base.setindex!(f::AbstractDataField, val, i, j, k)
+@propagate_inbounds function Base.setindex!(f::AbstractDataField, val, i::Integer, j::Integer, k::Integer)
     f.data[i, j, k] = val
     return f
 end
