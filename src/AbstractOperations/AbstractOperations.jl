@@ -26,7 +26,7 @@ import Oceananigans.Fields: data, compute_at!
 ##### Basic functionality
 #####
 
-abstract type AbstractOperation{X, Y, Z, A, G, T} <: AbstractField{X, Y, Z, A, G, T} end
+abstract type AbstractOperation{X, Y, Z, A, G, T} <: AbstractField{X, Y, Z, A, G, T, 3} end
 
 const AF = AbstractField
 

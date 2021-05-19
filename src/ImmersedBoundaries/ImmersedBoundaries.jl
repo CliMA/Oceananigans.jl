@@ -38,9 +38,13 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I} <: AbstractGrid{FT, TX, TY, TZ
     immersed_boundary :: I
 
     function ImmersedBoundaryGrid(grid::G, ib::I) where {G <: AbstractGrid, I}
+        @warn "ImmersedBoundaryGrid is unvalidated and may produce incorrect results. \n" *
+              "Don't hesitate to help validate ImmersedBoundaryGrid by reporting any bugs \n" *
+              "or unexpected behavior to https://github.com/CliMA/Oceananigans.jl/issues"
+        
         FT = eltype(grid)
         TX, TY, TZ = topology(grid)
-        new{FT, TX, TY, TZ, G, I}(grid, ib)
+        return new{FT, TX, TY, TZ, G, I}(grid, ib)
     end
 end
 
@@ -57,7 +61,6 @@ include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundary.jl")
 include("mask_immersed_field.jl")
 
-#=
 #####
 ##### Diffusivities (for VerticallyImplicitTimeDiscretization)
 #####
@@ -71,12 +74,9 @@ for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
                             (:νᶜᶠᶠ, (c, f, f)))
 
     @eval begin
-        @inline $locate_coeff(i, j, k, grid, ib::NoImmersedBoundary, coeff) = $locate_coeff(i, j, k, grid, coeff)
-
-        @inline $locate_coeff(i, j, k, grid::AG{FT}, ib::GFIB, coeff) where FT =
-            ifelse(solid_cell(loc..., i, j, k, grid, ib), $locate_coeff(i, j, k, grid, coeff), zero(FT))
+        @inline $locate_coeff(i, j, k, ibg::IBG{FT}, coeff) where FT =
+            ifelse(solid_cell(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.grid, coeff), zero(FT))
     end
 end
-=#
 
 end # module
