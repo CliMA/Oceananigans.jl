@@ -7,7 +7,7 @@ using Benchmarks
 # Benchmark function
 
 function benchmark_shallow_water_model(Arch, FT, N)
-    grid = RegularRectilinearGrid(FT, size=(N, N), extent=(1, 1), topology=(Periodic, Periodic, Flat), halo=(3, 3, 0))
+    grid = RegularRectilinearGrid(FT, size=(N, N), extent=(1, 1), topology=(Periodic, Periodic, Flat), halo=(3, 3))
     model = ShallowWaterModel(architecture=Arch(), grid=grid, gravitational_acceleration=1.0)
     set!(model, h=1)
 
@@ -24,7 +24,8 @@ end
 
 Architectures = has_cuda() ? [CPU, GPU] : [CPU]
 Float_types = [Float64]
-Ns = [32, 64, 128, 256, 512, 1024, 2048, 4096]
+#Ns = [32, 64, 128, 256, 512, 1024, 2048, 4096]
+Ns = [32, 64, 128, 256, 512]
 
 # Run and summarize benchmarks
 
