@@ -1,12 +1,4 @@
-using Logging
-using Printf
-using Test
-using DataDeps
-
-using Oceananigans
 using Oceananigans.CubedSpheres
-
-using Oceananigans.Operators: Γᶠᶠᵃ
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.CubedSpheres: west_halo, east_halo, south_halo, north_halo, fill_horizontal_velocity_halos!, get_face
 

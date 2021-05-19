@@ -104,9 +104,11 @@ end
                 @test fts.data.parent isa ArrayType
             end
 
-            @test u3[1, 2, 3, 4] isa Number
-            @test u3[1] isa Field
-            @test v3[2] isa Field
+            if arch isa CPU
+                @test u3[1, 2, 3, 4] isa Number
+                @test u3[1] isa Field
+                @test v3[2] isa Field
+            end
 
             ## 1D AveragedFields
 
@@ -135,9 +137,11 @@ end
                 @test fts.data.parent isa ArrayType
             end
 
-            @test u1[1, 1, 3, 4] isa Number
-            @test u1[1] isa Field
-            @test v1[2] isa Field
+            if arch isa CPU
+                @test u1[1, 1, 3, 4] isa Number
+                @test u1[1] isa Field
+                @test v1[2] isa Field
+            end
         end
     end
 

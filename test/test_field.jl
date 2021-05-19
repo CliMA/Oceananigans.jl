@@ -75,12 +75,12 @@ function run_field_reduction_tests(FT, arch)
         @test mean(abs2, ϕ) ≈ mean(abs2, ϕ) atol=ε
 
         for dims in dims_to_test
-            @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=2ε))
+            @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(maximum(ϕ, dims=dims), maximum(ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(   mean(ϕ, dims=dims),    mean(ϕ_vals, dims=dims), atol=4ε))
 
-            @test all(isapprox(minimum(sin,  ϕ, dims=dims), minimum(sin,  ϕ_vals, dims=dims), atol=2ε))
-            @test all(isapprox(maximum(cos,  ϕ, dims=dims), maximum(cos,  ϕ_vals, dims=dims), atol=2ε))
+            @test all(isapprox(minimum(sin,  ϕ, dims=dims), minimum(sin,  ϕ_vals, dims=dims), atol=4ε))
+            @test all(isapprox(maximum(cos,  ϕ, dims=dims), maximum(cos,  ϕ_vals, dims=dims), atol=4ε))
             @test all(isapprox(   mean(cosh, ϕ, dims=dims),    mean(cosh, ϕ_vals, dims=dims), atol=5ε))
         end
 
@@ -194,8 +194,8 @@ end
         L = (2π, 3π, 5π)
         H = (1, 1, 1)
 
-        int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
-        uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
+        int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4)]
+        uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10)]
         float_vals = Any[0.0, -0.0, 6e-34, 1.0f10]
         rational_vals = Any[1//11, -23//7]
         other_vals = Any[π]

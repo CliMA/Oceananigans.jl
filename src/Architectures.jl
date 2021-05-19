@@ -6,6 +6,7 @@ export device, architecture, array_type, arch_array
 
 using CUDA
 using KernelAbstractions
+using CUDAKernels
 using Adapt
 using OffsetArrays
 
@@ -47,7 +48,7 @@ Run Oceananigans on a single NVIDIA CUDA GPU.
 struct GPU <: AbstractGPUArchitecture end
 
 device(::AbstractCPUArchitecture) = KernelAbstractions.CPU()
-device(::AbstractGPUArchitecture) = KernelAbstractions.CUDADevice()
+device(::AbstractGPUArchitecture) = CUDAKernels.CUDADevice()
 
 architecture() = nothing
 architecture(::Number) = nothing

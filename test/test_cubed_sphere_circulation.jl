@@ -1,3 +1,5 @@
+using Oceananigans.Operators: Γᶠᶠᵃ
+
 function diagnose_velocities_from_streamfunction(ψ, grid)
     ψᶠᶠᶜ = Field(Face, Face,   Center, CPU(), grid)
     uᶠᶜᶜ = Field(Face, Center, Center, CPU(), grid)

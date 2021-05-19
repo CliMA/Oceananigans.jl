@@ -23,9 +23,9 @@ function jld2_field_output(model)
                                                                      prefix = "test",
                                                                       force = true)
 
-    u₀ = data(model.velocities.u)[3, 3, 3]
-    v₀ = data(model.velocities.v)[3, 3, 3]
-    w₀ = data(model.velocities.w)[3, 3, 3]
+    u₀ = CUDA.@allowscalar data(model.velocities.u)[3, 3, 3]
+    v₀ = CUDA.@allowscalar data(model.velocities.v)[3, 3, 3]
+    w₀ = CUDA.@allowscalar data(model.velocities.w)[3, 3, 3]
 
     run!(simulation)
 
