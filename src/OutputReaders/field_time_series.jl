@@ -86,10 +86,10 @@ function FieldTimeSeries(filepath, name, architecture, backend::OnDisk)
     return FieldTimeSeries{LX, LY, LZ}(backend, data, architecture, grid, bcs, times, name, abspath(filepath), 4)
 end
 
-Base.getindex(fts::FieldTimeSeries{X, Y, Z, InMemory}, n::Int) where {X, Y, Z} =
+Base.getindex(fts::FieldTimeSeries{X, Y, Z, InMemory}, n::Integer) where {X, Y, Z} =
     Field((X, Y, Z), fts.architecture, fts.grid, fts.boundary_conditions, fts.data[:, :, :, n])
 
-function Base.getindex(fts::FieldTimeSeries{X, Y, Z, OnDisk}, n::Int) where {X, Y, Z}
+function Base.getindex(fts::FieldTimeSeries{X, Y, Z, OnDisk}, n::Integer) where {X, Y, Z}
     file = jldopen(fts.filepath)
     iter = keys(file["timeseries/t"])[n]
     raw_data = file["timeseries/$(fts.name)/$iter"] |> array_type(fts.architecture)

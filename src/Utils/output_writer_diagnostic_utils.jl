@@ -18,8 +18,8 @@ function push!(container::DiagOrWriterDict, elem)
     return nothing
 end
 
-getindex(container::DiagOrWriterDict, inds::Integer...) = getindex(container.vals, inds...)
-setindex!(container::DiagOrWriterDict, newvals, inds::Integer...) = setindex!(container.vals, newvals, inds...)
+getindex(container::DiagOrWriterDict, inds::Integereger...) = getindex(container.vals, inds...)
+setindex!(container::DiagOrWriterDict, newvals, inds::Integereger...) = setindex!(container.vals, newvals, inds...)
 
 function push!(container::DiagOrWriterDict, elems...)
     for elem in elems

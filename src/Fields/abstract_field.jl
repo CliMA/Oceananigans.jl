@@ -193,7 +193,7 @@ Base.checkbounds(f::AbstractField, I...) = Base.checkbounds(f.data, I...)
 @propagate_inbounds Base.getindex(f::AbstractDataField, inds...) = getindex(f.data, inds...)
 
 # Linear indexing
-@propagate_inbounds Base.getindex(f::AbstractDataField, i::Int)  = parent(f)[i]
+@propagate_inbounds Base.getindex(f::AbstractDataField, i::Integer)  = parent(f)[i]
 
 #####
 ##### setindex
@@ -205,7 +205,7 @@ Base.checkbounds(f::AbstractField, I...) = Base.checkbounds(f.data, I...)
 end
 
 # Linear indexing
-@propagate_inbounds function Base.setindex!(f::AbstractDataField, val, i::Int)
+@propagate_inbounds function Base.setindex!(f::AbstractDataField, val, i::Integer)
     parent(f)[i] = val
     return f
 end
