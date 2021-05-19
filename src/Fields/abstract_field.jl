@@ -1,11 +1,14 @@
 using Base: @propagate_inbounds
+using Statistics
+
 using CUDA
 using Adapt
 using OffsetArrays
-using Statistics
 
 using Oceananigans.Architectures
 using Oceananigans.Utils
+
+using DimensionalData: AbstractDimArray
 using Oceananigans.Grids: interior_indices, interior_parent_indices
 
 import Base: minimum, maximum, extrema
@@ -21,21 +24,21 @@ const ArchOrNothing = Union{AbstractArchitecture, Nothing}
 const GridOrNothing = Union{AbstractGrid, Nothing}
 
 """
-    AbstractField{X, Y, Z, A, G, T, N}
+    AbstractField{X, Y, Z, A, G, T, N, D}
 
 Abstract supertype for fields located at `(X, Y, Z)` on architecture `A`
-and defined on a grid `G` with eltype `T` and `N` dimensions.
+and defined on a grid `G` with data `D` of eltype `T` and `N` dimensions.
 """
-abstract type AbstractField{X, Y, Z, A <: ArchOrNothing, G <: GridOrNothing, T, N} <: AbstractArray{T, N} end
+abstract type AbstractField{X, Y, Z, A <: ArchOrNothing, G <: GridOrNothing, T, N, D} <: AbstractDimArray{T, N, Tuple{}, D} end
 
 """
-    AbstractDataField{X, Y, Z, A, G, T, N}
+    AbstractDataField{X, Y, Z, A, G, T, N, D}
 
 Abstract supertype for fields with concrete data in settable underlying arrays,
-located at `(X, Y, Z)` on architecture `A` and defined on a grid `G` with eltype `T`
-and `N` dimensions.
+located at `(X, Y, Z)` on architecture `A` and defined on a grid `G` with data `D`
+of eltype `T` and `N` dimensions.
 """
-abstract type AbstractDataField{X, Y, Z, A, G, T, N} <: AbstractField{X, Y, Z, A, G, T, N} end
+abstract type AbstractDataField{X, Y, Z, A, G, T, N, D} <: AbstractField{X, Y, Z, A, G, T, N, D} end
 
 Base.IndexStyle(::AbstractField) = IndexCartesian()
 

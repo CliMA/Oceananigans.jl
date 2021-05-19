@@ -10,7 +10,7 @@ using Oceananigans.Fields: show_location
 
 import Oceananigans: short_show
 
-struct FieldTimeSeries{X, Y, Z, K, A, T, N, D, G, B, χ} <: AbstractDataField{X, Y, Z, A, G, T, N}
+struct FieldTimeSeries{X, Y, Z, K, A, T, N, D, G, B, χ} <: AbstractDataField{X, Y, Z, A, G, T, N, D}
                    data :: D
            architecture :: A
                    grid :: G
