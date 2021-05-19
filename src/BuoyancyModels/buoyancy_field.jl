@@ -11,14 +11,14 @@ import Oceananigans.Fields: compute!, compute_at!
 
 import Oceananigans: short_show
 
-struct BuoyancyField{B, S, A, D, G, T, C} <: AbstractDataField{Center, Center, Center, A, G, T}
+struct BuoyancyField{B, S, A, D, G, T, C} <: AbstractDataField{Center, Center, Center, A, G, T, 3}
             data :: D
     architecture :: A
             grid :: G
         buoyancy :: B
          tracers :: C
           status :: S
-    
+
     """
         BuoyancyField(data, grid, buoyancy, tracers)
 

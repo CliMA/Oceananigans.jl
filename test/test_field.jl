@@ -38,7 +38,7 @@ function run_field_reduction_tests(FT, arch)
     w = ZFaceField(arch, grid)
     c = CenterField(arch, grid)
 
-    f(x, y, z) = exp(x) * sin(y) * tanh(z)
+    f(x, y, z) = 1 + exp(x) * sin(y) * tanh(z)
 
     ϕs = (u, v, w, c)
     [set!(ϕ, f) for ϕ in ϕs]
@@ -60,26 +60,30 @@ function run_field_reduction_tests(FT, arch)
 
     for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
 
-        @test all(ϕ .== ϕ_vals) # if this isn't true, reduction tests can't pass
+        ε = eps(maximum(ϕ_vals))
+
+        @test all(isapprox.(ϕ, ϕ_vals, atol=ε)) # if this isn't true, reduction tests can't pass
 
         # Important to make sure no CUDA scalar operations occur!
         CUDA.allowscalar(false)
-        @test minimum(ϕ) == minimum(ϕ_vals)
-        @test maximum(ϕ) == maximum(ϕ_vals)
-        @test mean(ϕ) == mean(ϕ_vals)
-        @test minimum(∛, ϕ) == minimum(∛, ϕ_vals)
-        @test maximum(abs, ϕ) == maximum(abs, ϕ_vals)
-        @test mean(abs2, ϕ) == mean(abs2, ϕ)
+
+        @test minimum(ϕ) ≈ minimum(ϕ_vals) atol=ε
+        @test maximum(ϕ) ≈ maximum(ϕ_vals) atol=ε
+        @test mean(ϕ) ≈ mean(ϕ_vals) atol=2ε
+        @test minimum(∛, ϕ) ≈ minimum(∛, ϕ_vals) atol=ε
+        @test maximum(abs, ϕ) ≈ maximum(abs, ϕ_vals) atol=ε
+        @test mean(abs2, ϕ) ≈ mean(abs2, ϕ) atol=ε
 
         for dims in dims_to_test
-            @test minimum(ϕ, dims=dims) == minimum(ϕ_vals, dims=dims)
-            @test maximum(ϕ, dims=dims) == maximum(ϕ_vals, dims=dims)
-            @test mean(ϕ, dims=dims) == mean(ϕ_vals, dims=dims)
+            @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=2ε))
+            @test all(isapprox(maximum(ϕ, dims=dims), maximum(ϕ_vals, dims=dims), atol=4ε))
+            @test all(isapprox(   mean(ϕ, dims=dims),    mean(ϕ_vals, dims=dims), atol=4ε))
 
-            @test minimum(sin, ϕ, dims=dims) == minimum(sin, ϕ_vals, dims=dims)
-            @test maximum(cos, ϕ, dims=dims) == maximum(cos, ϕ_vals, dims=dims)
-            @test mean(cosh, ϕ, dims=dims) == mean(cosh, ϕ, dims=dims)
+            @test all(isapprox(minimum(sin,  ϕ, dims=dims), minimum(sin,  ϕ_vals, dims=dims), atol=2ε))
+            @test all(isapprox(maximum(cos,  ϕ, dims=dims), maximum(cos,  ϕ_vals, dims=dims), atol=2ε))
+            @test all(isapprox(   mean(cosh, ϕ, dims=dims),    mean(cosh, ϕ_vals, dims=dims), atol=5ε))
         end
+
         CUDA.allowscalar(true)
     end
 

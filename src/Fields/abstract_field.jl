@@ -21,20 +21,21 @@ const ArchOrNothing = Union{AbstractArchitecture, Nothing}
 const GridOrNothing = Union{AbstractGrid, Nothing}
 
 """
-    AbstractField{X, Y, Z, A, G, T}
+    AbstractField{X, Y, Z, A, G, T, N}
 
 Abstract supertype for fields located at `(X, Y, Z)` on architecture `A`
-and defined on a grid `G` with eltype `T`.
+and defined on a grid `G` with eltype `T` and `N` dimensions.
 """
-abstract type AbstractField{X, Y, Z, A <: ArchOrNothing, G <: GridOrNothing, T} <: AbstractArray{T, 3} end
+abstract type AbstractField{X, Y, Z, A <: ArchOrNothing, G <: GridOrNothing, T, N} <: AbstractArray{T, N} end
 
 """
-    AbstractDataField{X, Y, Z, A, G}
+    AbstractDataField{X, Y, Z, A, G, T, N}
 
 Abstract supertype for fields with concrete data in settable underlying arrays,
-located at `(X, Y, Z)` on architecture `A` and defined on a grid `G` with eltype `T`.
+located at `(X, Y, Z)` on architecture `A` and defined on a grid `G` with eltype `T`
+and `N` dimensions.
 """
-abstract type AbstractDataField{X, Y, Z, A, G, T} <: AbstractField{X, Y, Z, A, G, T} end
+abstract type AbstractDataField{X, Y, Z, A, G, T, N} <: AbstractField{X, Y, Z, A, G, T, N} end
 
 Base.IndexStyle(::AbstractField) = IndexCartesian()
 
@@ -186,7 +187,7 @@ Base.fill!(f::AbstractDataField, val) = fill!(parent(f), val)
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::AbstractField, I...) = Base.checkbounds(f.data, I...)
 
-@propagate_inbounds Base.getindex(f::AbstractDataField, i, j, k) = f.data[i, j, k]
+@propagate_inbounds Base.getindex(f::AbstractDataField, inds...) = getindex(f.data, inds...)
 
 # Linear indexing
 @propagate_inbounds Base.getindex(f::AbstractDataField, i::Int)  = parent(f)[i]
@@ -223,8 +224,6 @@ znodes(ψ::AbstractField) = znodes(location(ψ, 3), ψ.grid)
 
 nodes(ψ::AbstractField; kwargs...) = nodes(location(ψ), ψ.grid; kwargs...)
 
-Base.iterate(f::AbstractDataField, state=1) = iterate(f.data, state)
-
 #####
 ##### fill_halo_regions!
 #####
@@ -235,53 +234,49 @@ fill_halo_regions!(field::AbstractField, arch, args...) = fill_halo_regions!(fie
 ##### Field reductions
 #####
 
+const AbstractGPUDataField = AbstractDataField{X, Y, Z, GPU} where {X, Y, Z}
+
 """
     minimum(field::AbstractDataField; dims=:)
-
 Compute the minimum value of an Oceananigans `field` over the given dimensions (not including halo points).
 By default all dimensions are included.
 """
-minimum(field::AbstractDataField; dims=:) = minimum(interior_copy(field); dims=dims)
+minimum(field::AbstractGPUDataField; dims=:) = minimum(interior_copy(field); dims=dims)
 
 """
     minimum(f, field::AbstractDataField; dims=:)
-
 Returns the smallest result of calling the function `f` on each element of an Oceananigans `field`
 (not including halo points) over the given dimensions. By default all dimensions are included.
 """
-minimum(f, field::AbstractDataField; dims=:) = minimum(f, interior_copy(field); dims=dims)
+minimum(f, field::AbstractGPUDataField; dims=:) = minimum(f, interior_copy(field); dims=dims)
 
 """
     maximum(field::AbstractDataField; dims=:)
-
 Compute the maximum value of an Oceananigans `field` over the given dimensions (not including halo points).
 By default all dimensions are included.
 """
-maximum(field::AbstractDataField; dims=:) = maximum(interior_copy(field); dims=dims)
+maximum(field::AbstractGPUDataField; dims=:) = maximum(interior_copy(field); dims=dims)
 
 """
     maximum(f, field::AbstractDataField; dims=:)
-
 Returns the largest result of calling the function `f` on each element of an Oceananigans `field`
 (not including halo points) over the given dimensions. By default all dimensions are included.
 """
-maximum(f, field::AbstractDataField; dims=:) = maximum(f, interior_copy(field); dims=dims)
+maximum(f, field::AbstractGPUDataField; dims=:) = maximum(f, interior_copy(field); dims=dims)
 
 """
     mean(field::AbstractDataField; dims=:)
-
 Compute the mean of an Oceananigans `field` over the given dimensions (not including halo points).
 By default all dimensions are included.
 """
-mean(field::AbstractDataField; dims=:) = mean(interior_copy(field); dims=dims)
+mean(field::AbstractGPUDataField; dims=:) = mean(interior_copy(field); dims=dims)
 
 """
     mean(f::Function, field::AbstractDataField; dims=:)
-
 Apply the function `f` to each element of an Oceananigans `field` and take the mean over dimensions `dims`
 (not including halo points). By default all dimensions are included.
 """
-mean(f::Function, field::AbstractDataField; dims=:) = mean(f, interior_copy(field); dims=dims)
+mean(f::Function, field::AbstractGPUDataField; dims=:) = mean(f, interior_copy(field); dims=dims)
 
 # Risky to use these without tests. Docs would also be nice.
 Statistics.norm(a::AbstractField) = sqrt(mapreduce(x -> x * x, +, interior(a)))

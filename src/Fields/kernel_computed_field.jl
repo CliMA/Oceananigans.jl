@@ -2,7 +2,7 @@ using Oceananigans: AbstractModel
 using Oceananigans.Grids
 using Oceananigans.Utils: tupleit
 
-struct KernelComputedField{X, Y, Z, A, S, D, G, T, K, B, F, P} <: AbstractDataField{X, Y, Z, A, G, T}
+struct KernelComputedField{X, Y, Z, A, S, D, G, T, K, B, F, P} <: AbstractDataField{X, Y, Z, A, G, T, 3}
                      data :: D
              architecture :: A
                      grid :: G
@@ -34,10 +34,10 @@ struct KernelComputedField{X, Y, Z, A, S, D, G, T, K, B, F, P} <: AbstractDataFi
 end
 
 """
-    KernelComputedField(X, Y, Z, kernel, model; 
-                        boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)), 
-                        computed_dependencies = (), 
-                        parameters = nothing, 
+    KernelComputedField(X, Y, Z, kernel, model;
+                        boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)),
+                        computed_dependencies = (),
+                        parameters = nothing,
                         data = nothing,
                         recompute_safely = true)
 
@@ -45,7 +45,7 @@ Builds a `KernelComputedField` at `X, Y, Z` computed with `kernel` and `model.ar
 
 `computed_dependencies` are an iterable of `AbstractField`s or other objects on which `compute!` is called prior to launching `kernel`.
 
-`data` is a three-dimensional `OffsetArray` of scratch space where the kernel computation is stored. 
+`data` is a three-dimensional `OffsetArray` of scratch space where the kernel computation is stored.
 
 If `data=nothing` (the default) then additional memory will be allocated to store the `data` of `KernelComputedField`.
 
@@ -57,10 +57,10 @@ Otherwise, `kernel` is launched with the function signature
 
 `kernel(data, grid, computed_dependencies..., parameters)`
 
-`recompute_safely` (default: `true`) determines whether the `KernelComputedField` is "recomputed" if embedded in the expression 
-tree of another operation. 
-    - If `recompute_safely=true`, the `KernelComputedField` is always recomputed. 
-    - If `recompute_safely=false`, the `KernelComputedField` will not be recomputed if its status is up-to-date. 
+`recompute_safely` (default: `true`) determines whether the `KernelComputedField` is "recomputed" if embedded in the expression
+tree of another operation.
+    - If `recompute_safely=true`, the `KernelComputedField` is always recomputed.
+    - If `recompute_safely=false`, the `KernelComputedField` will not be recomputed if its status is up-to-date.
 
 Example
 =======
@@ -111,7 +111,7 @@ function compute!(kcf::KernelComputedField{X, Y, Z}) where {X, Y, Z}
         tuple(kcf.data, kcf.grid, kcf.computed_dependencies...) :
         tuple(kcf.data, kcf.grid, kcf.computed_dependencies..., kcf.parameters)
 
-    event = launch!(arch, kcf.grid, :xyz, kcf.kernel, args...;   
+    event = launch!(arch, kcf.grid, :xyz, kcf.kernel, args...;
                     location=(X, Y, Z), include_right_boundaries=true)
 
     wait(device(arch), event)

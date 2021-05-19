@@ -3,6 +3,8 @@ using JLD2
 using Oceananigans.Utils
 using Oceananigans.Utils: TimeInterval, pretty_filesize
 
+using Oceananigans.Fields: boundary_conditions
+
 """
     JLD2OutputWriter{I, T, O, IF, IN, KW} <: AbstractOutputWriter
 
@@ -52,14 +54,14 @@ Keyword arguments
     ## Filenaming
 
     - `prefix` (required): Descriptive filename prefixed to all output files.
-    
+
     - `dir`: Directory to save output to.
              Default: "." (current working directory).
 
     ## Output frequency and time-averaging
-    
+
     - `schedule` (required): `AbstractSchedule` that determines when output is saved.
-    
+
     ## Slicing and type conversion prior to output
 
     - `field_slicer`: An object for slicing field output in ``(x, y, z)``, including omitting halos.
@@ -75,15 +77,15 @@ Keyword arguments
     - `max_filesize`: The writer will stop writing to the output file once the file size exceeds `max_filesize`,
                       and write to a new one with a consistent naming scheme ending in `part1`, `part2`, etc.
                       Defaults to `Inf`.
-    
+
     - `force`: Remove existing files if their filenames conflict.
                Default: `false`.
 
     ## Output file metadata management
-    
+
     - `init`: A function of the form `init(file, model)` that runs when a JLD2 output file is initialized.
               Default: `noinit(args...) = nothing`.
-    
+
     - `including`: List of model properties to save with every file.
                    Default: `[:grid, :coriolis, :buoyancy, :closure]`
 
@@ -91,10 +93,10 @@ Keyword arguments
 
     - `verbose`: Log what the output writer is doing with statistics on compute/write times and file sizes.
                  Default: `false`.
-    
+
     - `part`: The starting part number used if `max_filesize` is finite.
               Default: 1.
-    
+
     - `jld2_kw`: Dict of kwargs to be passed to `jldopen` when data is written.
 
 Example
@@ -166,7 +168,7 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
     schedule, outputs = time_average_outputs(schedule, outputs, model, field_slicer)
-    
+
     mkpath(dir)
     filepath = joinpath(dir, prefix * ".jld2")
     force && isfile(filepath) && rm(filepath, force=true)
@@ -175,6 +177,17 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
         jldopen(filepath, "a+"; jld2_kw...) do file
             init(file, model)
             saveproperties!(file, model, including)
+
+            # Serialize properties in `including`.
+            for property in including
+                file["serialized/$property"] = getproperty(model, property)
+            end
+
+            # Serialize the location and boundary conditions of each output.
+            for (i, (field_name, field)) in enumerate(pairs(outputs))
+                file["timeseries/$field_name/serialized/location"] = location(field)
+                file["timeseries/$field_name/serialized/boundary_conditions"] = boundary_conditions(field)
+            end
         end
     catch
         @warn "Could not initialize $filepath: data may already be initialized."

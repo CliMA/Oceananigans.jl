@@ -42,6 +42,7 @@ export
     # BuoyancyModels and equations of state
     Buoyancy, BuoyancyTracer, SeawaterBuoyancy,
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
+    BuoyancyField,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
     UniformStokesDrift,
@@ -77,6 +78,9 @@ export
     # Output writers
     FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval,
+
+    # Output readers
+    FieldTimeSeries, FieldDataset, InMemory, OnDisk,
 
     # Abstract operations
     ∂x, ∂y, ∂z, @at,
@@ -181,6 +185,7 @@ include("Models/Models.jl")
 # Output and Physics, time-stepping, and models
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
+include("OutputReaders/OutputReaders.jl")
 include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
@@ -209,6 +214,7 @@ using .Models
 using .TimeSteppers
 using .Diagnostics
 using .OutputWriters
+using .OutputReaders
 using .Simulations
 using .AbstractOperations
 using .CubedSpheres
