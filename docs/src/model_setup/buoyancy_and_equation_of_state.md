@@ -69,7 +69,7 @@ IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
 ├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
 └── coriolis: Nothing
 ```
 
@@ -90,7 +90,7 @@ IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
 ├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
 └── coriolis: Nothing
 ```
 
@@ -136,5 +136,5 @@ Boussinesq models as described by [Roquet15TEOS](@cite) is implemented in the
 julia> using SeawaterPolynomials.TEOS10
 
 julia> eos = TEOS10EquationOfState()
-SeawaterPolynomials.BoussinesqEquationOfState{TEOS10SeawaterPolynomial{Float64},Int64}(TEOS10SeawaterPolynomial{Float64}(), 1020)
+SeawaterPolynomials.BoussinesqEquationOfState{TEOS10SeawaterPolynomial{Float64}, Int64}(TEOS10SeawaterPolynomial{Float64}(), 1020)
 ```

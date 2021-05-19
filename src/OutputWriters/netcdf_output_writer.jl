@@ -324,7 +324,7 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
         for (dim_name, dim_array) in dims
-            defVar(dataset, dim_name, dim_array, (dim_name,),
+            defVar(dataset, dim_name, array_type(dim_array), (dim_name,),
                    compression=compression, attrib=default_dimension_attributes[dim_name])
         end
 
