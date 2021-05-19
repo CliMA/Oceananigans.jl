@@ -119,7 +119,7 @@ Adapt.adapt_structure(to, bc::BoundaryCondition{C, <:ContinuousBoundaryFunction}
 
 Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, I}) where {LX, LY, LZ, I} =
     ContinuousBoundaryFunction{LX, LY, LZ, I}(Adapt.adapt(to, bf.func),
-                                           Adapt.adapt(to, bf.parameters),
-                                           nothing,
-                                           Adapt.adapt(to, bf.field_dependencies_indices),
-                                           Adapt.adapt(to, bf.field_dependencies_interp))
+                                              Adapt.adapt(to, bf.parameters),
+                                              nothing,
+                                              Adapt.adapt(to, bf.field_dependencies_indices),
+                                              Adapt.adapt(to, bf.field_dependencies_interp))
