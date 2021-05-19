@@ -34,6 +34,7 @@ Tullio = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
 
 [compat]
 Adapt = "^3"
+ArrayInterface = "3.1"
 CUDA = "3"
 CUDAKernels = "0.2"
 Crayons = "^4"
