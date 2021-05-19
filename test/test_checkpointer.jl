@@ -70,7 +70,7 @@ function test_thermal_bubble_checkpointer_output(arch)
         time_step!(restored_model, Δt, euler=false) # time-step for 4 iterations
     end
 
-    # test_model_equality(restored_model, true_model)
+    test_model_equality(restored_model, true_model)
 
     #####
     ##### Test `set!(model, checkpoint_file)`
