@@ -1,4 +1,4 @@
-using Oceananigans.Architectures: architecture
+using Oceananigans.Architectures: architecture, device_event
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators: ℑzᵃᵃᶜ
@@ -87,15 +87,47 @@ end
 #
 # end
 
+function DiffusivityFields(arch, grid, tracer_names, bcs, closure::TKEVD)
+
+    Kᵘ_bcs = :Kᵘ ∈ keys(bcs) ? bcs[:Kᵘ] : DiffusivityBoundaryConditions(grid)
+    Kᶜ_bcs = :Kᶜ ∈ keys(bcs) ? bcs[:Kᶜ] : DiffusivityBoundaryConditions(grid)
+    Kᵉ_bcs = :Kᵉ ∈ keys(bcs) ? bcs[:Kᵉ] : DiffusivityBoundaryConditions(grid)
+
+    Kᵘ = CenterField(arch, grid, Kᵘ_bcs)
+    Kᶜ = CenterField(arch, grid, Kᶜ_bcs)
+    Kᵉ = CenterField(arch, grid, Kᵉ_bcs)
+
+    return (; Kᵘ, Kᶜ, Kᵉ)
+end        
+            
 function with_tracers(tracer_names, closure::TKEVD)
     :e ∈ tracer_names || error("Tracers must contain :e to represent turbulent kinetic energy for `TKEBasedVerticalDiffusivity`.")
     return closure
 end
 
-calculate_diffusivities!(K, arch, grid, closure::TKEVD, args...) = nothing
+function calculate_diffusivities!(diffusivities, arch, grid, closure::TKEVD, buoyancy, velocities, tracers)
+
+    e = tracers.e
+
+    event = launch!(arch, grid, :xyz,
+                    calculate_tke_diffusivities!, diffusivities, grid, closure, e, velocities, tracers, buoyancy,
+                    dependencies=device_event(arch))
+
+    wait(device(arch), event)
+
+    return nothing
+end
+
+@kernel function calculate_tke_diffusivities!(diffusivities, grid, closure, e, velocities, tracers, buoyancy)
+    i, j, k, = @index(Global, NTuple)
+    @inbounds begin
+        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
+        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
+        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
+    end
+end
 
 function hydrostatic_turbulent_kinetic_energy_tendency end
-
 
 #####
 ##### Mixing length
@@ -108,7 +140,7 @@ function hydrostatic_turbulent_kinetic_energy_tendency end
 
 @inline wall_vertical_distanceᶜᶜᶜ(i, j, k, grid) = min(depthᶜᶜᶜ(i, j, k, grid), height_above_bottomᶜᶜᶜ(i, j, k, grid))
 
-function sqrt_∂z_b(i, j, k, grid, buoyancy, tracers)
+@inline function sqrt_∂z_b(i, j, k, grid, buoyancy, tracers)
     FT = eltype(grid)
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     N²⁺ = max(zero(FT), N²)
@@ -244,24 +276,24 @@ struct TKETracerIndex{N} end
 @inline TKETracerIndex(N) = TKETracerIndex{N}()
 
 @inline function viscous_flux_uz(i, j, k, grid, closure::TKEVD, clock, velocities, diffusivities, tracers, buoyancy)
-    νᶠᶜᶠ = ℑxzᶠᵃᶠ(i, j, k, grid, Kuᶜᶜᶜ, closure, tracers.e, velocities, tracers, buoyancy)
-    return - νᶠᶜᶠ * ∂zᵃᵃᶠ(i, j, k, grid, velocities.u)
+    Kuᶠᶜᶠ = ℑxzᶠᵃᶠ(i, j, k, grid, diffusivities.Kᵘ)
+    return - Kuᶠᶜᶠ * ∂zᵃᵃᶠ(i, j, k, grid, velocities.u)
 end
 
 @inline function viscous_flux_vz(i, j, k, grid, closure::TKEVD, clock, velocities, diffusivities, tracers, buoyancy)
-    νᶜᶠᶠ = ℑyzᵃᶠᶠ(i, j, k, grid, Kuᶜᶜᶜ, closure, tracers.e, velocities, tracers, buoyancy)
-    return - νᶜᶠᶠ * ∂zᵃᵃᶠ(i, j, k, grid, velocities.v)
+    Kuᶜᶠᶠ = ℑyzᵃᶠᶠ(i, j, k, grid, diffusivities.Kᵘ)
+    return - Kuᶜᶠᶠ * ∂zᵃᵃᶠ(i, j, k, grid, velocities.v)
 end
 
 @inline function diffusive_flux_z(i, j, k, grid, closure::TKEVD, c, tracer_index, clock, diffusivities, tracers, buoyancy, velocities)
-    κᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, Kcᶜᶜᶜ, closure, tracers.e, velocities, tracers, buoyancy)
-    return - κᶜᶜᶠ * ∂zᵃᵃᶠ(i, j, k, grid, c)
+    Kcᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, diffusivities.Kᶜ)
+    return - Kcᶜᶜᶠ * ∂zᵃᵃᶠ(i, j, k, grid, c)
 end
 
 # Diffusive flux of TKE!
 @inline function diffusive_flux_z(i, j, k, grid, closure::TKEVD, e, ::TKETracerIndex, clock, diffusivities, tracers, buoyancy, velocities)
-    κᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, Keᶜᶜᶜ, closure, e, velocities, tracers, buoyancy)
-    return - κᶜᶜᶠ * ∂zᵃᵃᶠ(i, j, k, grid, e)
+    Keᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, diffusivities.Kᵉ)
+    return - Keᶜᶜᶠ * ∂zᵃᵃᶠ(i, j, k, grid, e)
 end
 
 # "Translations" for diffusive transport by non-TKEVD closures
@@ -279,30 +311,15 @@ end
 
 const VITD = VerticallyImplicitTimeDiscretization
 
-@inline Kuᶜᶜᶜ(i, j, k, grid, args::Tuple) = Kuᶜᶜᶜ(i, j, k, grid, args...) 
-@inline Kcᶜᶜᶜ(i, j, k, grid, args::Tuple) = Kcᶜᶜᶜ(i, j, k, grid, args...) 
-@inline Keᶜᶜᶜ(i, j, k, grid, args::Tuple) = Keᶜᶜᶜ(i, j, k, grid, args...) 
-
-@inline function z_viscosity(closure::TKEVD, diffusivities, velocities, tracers, buoyancy)
-    e = tracers.e
-    arch = architecture(e)
-    grid = e.grid
-    args = (closure, e, velocities, tracers, buoyancy)
-    return KernelFunctionOperation{Center, Center, Center}(Kuᶜᶜᶜ, grid; architecture=arch, parameters=args)
-end
+@inline z_viscosity(closure::TKEVD, diffusivities, velocities, tracers, buoyancy) = diffusivities.Kᵘ
 
 @inline function z_diffusivity(closure::TKEVD, ::Val{tracer_index}, diffusivities, velocities, tracers, buoyancy) where tracer_index
-    e = tracers.e
-    arch = architecture(e)
-    grid = e.grid
-    args = (closure, e, velocities, tracers, buoyancy)
-
     tke_index = findfirst(name -> name === :e, keys(tracers))
 
     if tracer_index === tke_index
-        return KernelFunctionOperation{Center, Center, Center}(Keᶜᶜᶜ, grid; architecture=arch, parameters=args)
+        return diffusivities.Kᵉ
     else
-        return KernelFunctionOperation{Center, Center, Center}(Kcᶜᶜᶜ, grid; architecture=arch, parameters=args)
+        return diffusivities.Kᶜ
     end
 end
 
