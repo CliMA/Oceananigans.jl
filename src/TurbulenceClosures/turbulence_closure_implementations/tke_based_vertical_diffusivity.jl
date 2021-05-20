@@ -51,10 +51,15 @@ where `ℓᵇ = Cᵇ * √e / N` and `ℓᶻ` is the distance to the nearest bou
 ocean surface due to unstable buoyancy forcing and wind stress.
 
 The `TKEBasedVerticalDiffusivity` is formulated in terms of 12 free parameters. These parameters
-are calibrated against large eddy simulations of ocean surface boundary layer turbulence
+are calibrated _experimentally_ against large eddy simulations of ocean surface boundary layer turbulence
 in idealized scenarios involving monotonic boundary layer deepening into variable stratification
 due to constant surface momentum fluxes and/or destabilizing surface buoyancy flux.
+This calibration has not been peer-reviewed, may be inaccurate and imperfect, and may not
+be appropriate for three-dimensional ocean simulations.
+
 See https://github.com/CliMA/LESbrary.jl for more information about the large eddy simulations.
+
+The calibration procedure is not documented and is part of ongoing research.
 The calibration was performed using a combination of Markov Chain Monte Carlo (MCMC)-based simulated
 annealing and noisy Ensemble Kalman Inversion methods.
 
@@ -86,6 +91,12 @@ function TKEBasedVerticalDiffusivity(FT=Float64;
                                      mixing_length_parameter = 1.16,
                                      surface_model = TKESurfaceFlux{FT}(),
                                      time_discretization::TD = ExplicitTimeDiscretization()) where TD
+
+    @warn "TKEBasedVerticalDiffusivity is an experimental turbulence closure that " *
+          "is unvalidated and whose default parameters are not calibrated for " * 
+          "realistic ocean conditions or for use in a three-dimensional " *
+          "simulation. Use with caution and report bugs and problems with physics " *
+          "to https://github.com/CliMA/Oceananigans.jl/issues." 
 
     dissipation_parameter = convert(FT, dissipation_parameter)
     mixing_length_parameter = convert(FT, mixing_length_parameter)
