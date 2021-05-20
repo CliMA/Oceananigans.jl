@@ -47,7 +47,7 @@ Base.show(io::IO, field::KernelComputedField) =
     print(io, "$(short_show(field))\n",
           "├── data: $(typeof(field.data)), size: $(size(field))\n",
           "├── grid: $(short_show(field.grid))\n",
-          "├── computed_dependencies: $(Tuple(short_show(d) for d in field.computed_dependencies))"\n,
+          "├── computed_dependencies: $(Tuple(short_show(d) for d in field.computed_dependencies))\n",
           "├── kernel: $(short_show(field.kernel))\n",
           "└── status: $(show_status(field.status))")
 
