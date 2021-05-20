@@ -51,6 +51,8 @@ Base.show(io::IO, field::KernelComputedField) =
           "├── kernel: $(short_show(field.kernel))\n",
           "└── status: $(show_status(field.status))")
 
+Base.show(io::IO, field::ZeroField) = print(io, "ZeroField")
+
 short_show(array::OffsetArray{T, D, A}) where {T, D, A} = string("OffsetArray{$T, $D, $A}")
 
 Base.show(io::IO, ::MIME"text/plain", f::AbstractField) = show(io, f)
