@@ -295,7 +295,7 @@ end
     return - Kv * ∂zᵃᵃᶠ(i, j, k, grid, velocities.v)
 end
 
-@inline function viscous_flux_vz(i, j, k, grid, closure::TKEVD, clock, velocities, diffusivities, tracers, buoyancy)
+@inline function viscous_flux_wz(i, j, k, grid, closure::TKEVD, clock, velocities, diffusivities, tracers, buoyancy)
     Kw = diffusivities.Kᵘ
     return - Kw * ∂zᵃᵃᶜ(i, j, k, grid, velocities.w)
 end
