@@ -41,6 +41,14 @@ of eltype `T` and `N` dimensions.
 abstract type AbstractDataField{X, Y, Z, A, G, T, N, D} <: AbstractField{X, Y, Z, A, G, T, N, D} end
 
 Base.IndexStyle(::AbstractField) = IndexCartesian()
+Base.axes(field::AbstractField) = map(Base.oneto, size(field))
+
+# We want iterate to work like it does for AbstractArray, not like AbstractDimArray.
+function Base.iterate(A::AbstractField, state=(eachindex(A),))
+    y = iterate(state...)
+    y === nothing && return nothing
+    A[y[1]], (state[1], Base.tail(y)...)
+end
 
 function validate_field_data(X, Y, Z, data, grid)
     Tx, Ty, Tz = total_size((X, Y, Z), grid)
@@ -190,7 +198,7 @@ Base.fill!(f::AbstractDataField, val) = fill!(parent(f), val)
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::AbstractField, I...) = Base.checkbounds(f.data, I...)
 
-@propagate_inbounds Base.getindex(f::AbstractDataField, inds...) = getindex(f.data, inds...)
+@propagate_inbounds Base.getindex(f::AbstractDataField, inds::Integer...) = getindex(f.data, inds...)
 
 # Linear indexing
 @propagate_inbounds Base.getindex(f::AbstractDataField, i::Integer)  = parent(f)[i]
