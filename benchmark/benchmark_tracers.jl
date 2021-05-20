@@ -37,7 +37,7 @@ function benchmark_tracers(Arch, N, n_tracers)
     trial = @benchmark begin
         @sync_gpu time_step!($model, 1)
     end samples=10
-    
+
     return trial
 end
 
@@ -61,7 +61,7 @@ benchmarks_pretty_table(df, title="Arbitrary tracers benchmarks")
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df_Δ, [:tracers, :Ns])
-    benchmarks_pretty_table(df_Δ, title="Arbitrary tracers CPU -> GPU speedup")
+    benchmarks_pretty_table(df_Δ, title="Arbitrary tracers CPU to GPU speedup")
 end
 
 for Arch in Architectures
@@ -70,4 +70,3 @@ for Arch in Architectures
     sort!(df_arch, [:tracers, :Ns], by=(string, identity))
     benchmarks_pretty_table(df_arch, title="Arbitrary tracers relative performance ($Arch)")
 end
-
