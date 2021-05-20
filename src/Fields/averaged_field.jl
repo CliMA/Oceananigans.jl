@@ -59,7 +59,6 @@ Compute the average of `avg.operand` and store the result in `avg.data`.
 """
 function compute!(avg::AveragedField, time=nothing)
     compute_at!(avg.operand, time)
-    avg .= 0 # should we have to do this?
     mean!(avg, avg.operand)
     return nothing
 end
