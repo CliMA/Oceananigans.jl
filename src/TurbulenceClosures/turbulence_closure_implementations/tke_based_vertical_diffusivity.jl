@@ -27,11 +27,16 @@ proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
 by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
 """
 function TKEBasedVerticalDiffusivity(FT=Float64;
-                                     diffusivity_scaling = RiDependentDiffusivityScaling(),
+                                     diffusivity_scaling = RiDependentDiffusivityScaling{FT}(),
                                      dissipation_parameter = 2.91,
                                      mixing_length_parameter = 1.16,
-                                     surface_model = TKESurfaceFlux(),
+                                     surface_model = TKESurfaceFlux{FT}(),
                                      time_discretization::TD = ExplicitTimeDiscretization()) where TD
+
+    dissipation_parameter = convert(FT, dissipation_parameter)
+    mixing_length_parameter = convert(FT, mixing_length_parameter)
+    diffusivity_scaling = convert_eltype(FT, diffusivity_scaling)
+    surface_model = convert_eltype(FT, surface_model)
 
     return TKEBasedVerticalDiffusivity{TD}(diffusivity_scaling,
                                            dissipation_parameter,
@@ -75,6 +80,11 @@ end
 Base.@kwdef struct TKESurfaceFlux{FT}
     Cᵂu★ :: FT = 3.62
     CᵂwΔ :: FT = 1.31
+end
+
+for S in (:RiDependentDiffusivityScaling, :TKESurfaceFlux)
+    @eval @inline convert_eltype(::Type{FT}, s::$S) where FT = $S{FT}(; Dict(p => getproperty(s, p) for p in propertynames(s))...)
+    @eval @inline convert_eltype(::Type{FT}, s::$S{FT}) where FT = s
 end
 
 #####
