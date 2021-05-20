@@ -276,13 +276,18 @@ struct TKETracerIndex{N} end
 @inline TKETracerIndex(N) = TKETracerIndex{N}()
 
 @inline function viscous_flux_uz(i, j, k, grid, closure::TKEVD, clock, velocities, diffusivities, tracers, buoyancy)
-    Kuᶠᶜᶠ = ℑxzᶠᵃᶠ(i, j, k, grid, diffusivities.Kᵘ)
-    return - Kuᶠᶜᶠ * ∂zᵃᵃᶠ(i, j, k, grid, velocities.u)
+    Ku = ℑxzᶠᵃᶠ(i, j, k, grid, diffusivities.Kᵘ)
+    return - Ku * ∂zᵃᵃᶠ(i, j, k, grid, velocities.u)
 end
 
 @inline function viscous_flux_vz(i, j, k, grid, closure::TKEVD, clock, velocities, diffusivities, tracers, buoyancy)
-    Kuᶜᶠᶠ = ℑyzᵃᶠᶠ(i, j, k, grid, diffusivities.Kᵘ)
-    return - Kuᶜᶠᶠ * ∂zᵃᵃᶠ(i, j, k, grid, velocities.v)
+    Kv = ℑyzᵃᶠᶠ(i, j, k, grid, diffusivities.Kᵘ)
+    return - Kv * ∂zᵃᵃᶠ(i, j, k, grid, velocities.v)
+end
+
+@inline function viscous_flux_vz(i, j, k, grid, closure::TKEVD, clock, velocities, diffusivities, tracers, buoyancy)
+    Kw = diffusivities.Kᵘ
+    return - Kw * ∂zᵃᵃᶜ(i, j, k, grid, velocities.w)
 end
 
 @inline function diffusive_flux_z(i, j, k, grid, closure::TKEVD, c, tracer_index, clock, diffusivities, tracers, buoyancy, velocities)
@@ -337,13 +342,19 @@ end
 
 @inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::TKEVD, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
+                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
                   zero(FT))
 end
 
 @inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::TKEVD, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
+                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
+                  zero(FT))
+end
+
+@inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::TKEVD, args...) where FT
+    return ifelse(k == 1 || k == grid.Nz+1, 
+                  viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
                   zero(FT))
 end
 
