@@ -21,8 +21,8 @@ function required_halo_size end
 
 required_halo_size(nothing) = 1
 
-inflate_halo_size_one_dimension(requied_Hx, current_Hx, TX          ) = max(required_Hx, current_Hx)
-inflate_halo_size_one_dimension(requied_Hx, current_Hx, ::Type{Flat}) = 0
+inflate_halo_size_one_dimension(required_Hx, current_Hx, TX          ) = max(required_Hx, current_Hx)
+inflate_halo_size_one_dimension(required_Hx, current_Hx, ::Type{Flat}) = 0
 
 halo_size_string(Hx, TX) = "$Hx, "
 halo_size_string(Hx, ::Type{Flat}) = ""
