@@ -20,11 +20,65 @@ struct TKEBasedVerticalDiffusivity{TD, CK, CD, CL, CQ} <: AbstractTurbulenceClos
 end
 
 """
-    TKEBasedVerticalDiffusivity <: AbstractTurbulenceClosure{TD}
+    TKEBasedVerticalDiffusivity(FT=Float64;
+                                diffusivity_scaling = RiDependentDiffusivityScaling{FT}(),
+                                dissipation_parameter = 2.91,
+                                mixing_length_parameter = 1.16,
+                                surface_model = TKESurfaceFlux{FT}(),
+                                time_discretization::TD = ExplicitTimeDiscretization())
 
-Parameters for the "anisotropic minimum dissipation" turbulence closure for large eddy simulation
-proposed originally by [Rozema15](@cite) and [Abkar16](@cite), and then modified
-by [Verstappen18](@cite), and finally described and validated for by [Vreugdenhil18](@cite).
+Returns the `TKEBasedVerticalDiffusivity` turbulence closure for vertical mixing by
+small-scale ocean turbulence based on the prognostic evolution of subgrid
+Turbulent Kinetic Energy (TKE). `TKEBasedVerticalDiffusivity` is a downgradient, diffusive
+closure formulated with three different eddy diffusivities for momentum, tracers, and TKE.
+Each eddy diffusivity is the product of a diffusivity "scaling", a mixing length, and a turbulent
+velocity scale which is the square root of the local TKE, such that
+
+```math
+Kᵠ = Cᵠ ℓ √e
+```
+
+where `Kᵠ` is the eddy diffusivity of `ϕ` where `ϕ` is either `u` (for momentum) `c` (for tracers), or
+`e` (for TKE). `Cᵠ` is the diffusivity scaling for `ϕ`, `ℓ` is the mixing length
+and `√e` is the turbulent velocity scale. The mixing length `ℓ` is modeled as
+
+```math
+ℓ = min(ℓᵇ, ℓᶻ)
+```
+
+where `ℓᵇ = Cᵇ * √e / N` and `ℓᶻ` is the distance to the nearest boundary.
+`TKEBasedVerticalDiffusivity` also invokes a model for the flux of TKE across the numerical
+ocean surface due to unstable buoyancy forcing and wind stress.
+
+The `TKEBasedVerticalDiffusivity` is formulated in terms of 12 free parameters. These parameters
+are calibrated against large eddy simulations of ocean surface boundary layer turbulence
+in idealized scenarios involving monotonic boundary layer deepening into variable stratification
+due to constant surface momentum fluxes and/or destabilizing surface buoyancy flux.
+See https://github.com/CliMA/LESbrary.jl for more information about the large eddy simulations.
+The calibration was performed using a combination of Markov Chain Monte Carlo (MCMC)-based simulated
+annealing and noisy Ensemble Kalman Inversion methods.
+
+The one positional argument determines the floating point type of the free parameters
+of `TKEBasedVerticalDiffusivity`. The default is `Float64`.
+
+Keyword arguments
+=================
+
+* `diffusivity_scaling` : A group of parameters that scale the eddy diffusivity for momentum, tracers, and TKE.
+                          The default is `RiDependentDiffusivityScaling{FT}()`, which represents a group of
+                          parameters that implement a "smoothed step function" scaling that varies with the
+                          local gradient Richardson number `Ri = ∂z(b) / (∂z(u)² + ∂z(v)²)`.
+
+* `dissipation_parameter` : Parameter `Cᴰ` in the closure `ϵ = Cᴰ * e^3/2 / ℓ` that models the dissipation of TKE,
+                          `ϵ`, appearing in the TKE evolution equation. The default is 2.91 via calibration
+                          against large eddy simulations.
+                          
+* `mixing_length_parameter` : Parameter `Cᵇ` that multiplies the "buoyancy mixing length" `ℓᵇ = Cᵇ * √e / N`,
+                            that appears in `TKEBasedVerticalDiffusivity`'s mixing length model.
+                            The default is 1.16 via calibration against large eddy simulations.
+
+* `time_discretization` : Either `ExplicitTimeDiscretization` or `VerticallyImplicitTimeDiscretization`.
+
 """
 function TKEBasedVerticalDiffusivity(FT=Float64;
                                      diffusivity_scaling = RiDependentDiffusivityScaling{FT}(),
@@ -50,7 +104,9 @@ const TKEVD = TKEBasedVerticalDiffusivity
     struct RiDependentDiffusivityScaling{FT}
 
 A diffusivity model in which momentum, tracers, and TKE
-each have Richardson-number-dependent diffusivities.
+each have Richardson-number-dependent diffusivities with
+free parameter of type `FT`.
+
 The Richardson number is
 
     ``Ri = ∂z B / ( (∂z U)² + (∂z V)² )`` ,
@@ -65,6 +121,14 @@ where ``σ⁰``, ``σᵟ``, ``Riᶜ``, and ``Riʷ`` are free parameters,
 and ``step`` is a smooth step function defined by
 
     ``step(x, c, w) = (1 + tanh((x - c) / w)) / 2``.
+
+The 8 free parameters in `RiDependentDiffusivityScaling`
+are calibrated against large eddy simulations of ocean surface boundary layer turbulence
+in idealized scenarios involving monotonic boundary layer deepening into variable stratification
+due to constant surface momentum fluxes and/or destabilizing surface buoyancy flux.
+See https://github.com/CliMA/LESbrary.jl for more information about the large eddy simulations.
+The calibration was performed using a combination of Markov Chain Monte Carlo (MCMC)-based simulated
+annealing and noisy Ensemble Kalman Inversion methods.
 """
 Base.@kwdef struct RiDependentDiffusivityScaling{FT}
     Cᴷu⁻  :: FT = 0.15
@@ -77,6 +141,30 @@ Base.@kwdef struct RiDependentDiffusivityScaling{FT}
     CᴷRiᶜ :: FT = 0.76
 end
 
+"""
+    struct TKESurfaceFlux{FT}
+
+A model for the flux of TKE across the numerical ocean surface with
+free parameters of type `FT`, parameterized in
+terms of the kinematic surface stress and buoyancy flux:
+
+```math
+Qᵉ = - Cᴰ * (Cᵂu★ * u★³ + CᵂwΔ * w★³)
+```
+
+where `Qᵉ` is the surface flux of TKE, `Cᴰ = TKEBasedVerticalDiffusivity.dissipation_parameter`,
+`u★ = (Qᵘ^2 + Qᵛ^2)^(1/4)` is the friction velocity and `w★ = (Qᵇ * Δz)^(1/3)` is the
+turbulent velocity scale associated with the surface vertical grid spacing `Δz` and the
+surface buoyancy flux `Qᵇ`.
+             
+The 2 free parameters in `TKESurfaceFlux`
+are calibrated against large eddy simulations of ocean surface boundary layer turbulence
+in idealized scenarios involving monotonic boundary layer deepening into variable stratification
+due to constant surface momentum fluxes and/or destabilizing surface buoyancy flux.
+See https://github.com/CliMA/LESbrary.jl for more information about the large eddy simulations.
+The calibration was performed using a combination of Markov Chain Monte Carlo (MCMC)-based simulated
+annealing and noisy Ensemble Kalman Inversion methods.
+"""
 Base.@kwdef struct TKESurfaceFlux{FT}
     Cᵂu★ :: FT = 3.62
     CᵂwΔ :: FT = 1.31
