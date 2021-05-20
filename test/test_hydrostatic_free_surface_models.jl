@@ -2,6 +2,7 @@ using Oceananigans: CPU, GPU
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, ExplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.Grids: Periodic, Bounded
 
 function time_step_hydrostatic_model_works(arch, grid;
@@ -157,11 +158,14 @@ topos_3d = ((Periodic, Periodic, Bounded),
             end
         end
 
+        z_face_generator(; Nz=1, p=1, H=1) = k -> -H + (k / (Nz+1))^p # returns a generating function
+
         rectilinear_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), halo=(3, 3, 3))
+        vertically_stretched_grid = VerticallyStretchedRectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z_faces=z_face_generator(), halo=(3, 3, 3))
         lat_lon_sector_grid = RegularLatitudeLongitudeGrid(size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=(-1, 0))
         lat_lon_strip_grid = RegularLatitudeLongitudeGrid(size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0))
 
-        grids = (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid)
+        grids = (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid, vertically_stretched_grid)
         free_surfaces = (ExplicitFreeSurface(), ImplicitFreeSurface())
 
         for grid in grids
@@ -207,9 +211,15 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, momentum_advection=momentum_advection)
         end
 
-        for closure in (IsotropicDiffusivity(), HorizontallyCurvilinearAnisotropicDiffusivity())
+        for closure in (IsotropicDiffusivity(),
+                        HorizontallyCurvilinearAnisotropicDiffusivity(),
+                        HorizontallyCurvilinearAnisotropicDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization()),
+                        TKEBasedVerticalDiffusivity(),
+                        TKEBasedVerticalDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization()))
+
             @testset "Time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
                 @info "  Testing time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
+                @test time_step_hydrostatic_model_works(arch, vertically_stretched_grid, closure=closure)
                 @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, closure=closure)
                 @test time_step_hydrostatic_model_works(arch, lat_lon_strip_grid, closure=closure)
             end
