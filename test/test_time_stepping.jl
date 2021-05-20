@@ -1,6 +1,7 @@
 using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.Fields: BackgroundField
 using Oceananigans.TimeSteppers: Clock
+using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
@@ -197,7 +198,8 @@ BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipatio
 
 Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
-            SmagorinskyLilly, AnisotropicMinimumDissipation, BuoyancyModifiedAnisotropicMinimumDissipation)
+            SmagorinskyLilly, AnisotropicMinimumDissipation, BuoyancyModifiedAnisotropicMinimumDissipation,
+            TKEBasedVerticalDiffusivity)
 
 advection_schemes = (nothing,
                      CenteredSecondOrder(),
