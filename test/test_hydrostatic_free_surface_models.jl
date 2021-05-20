@@ -12,11 +12,15 @@ function time_step_hydrostatic_model_works(arch, grid;
                                            closure = nothing,
                                            velocities = nothing)
 
+    tracers = [:T, :S]
+    closure isa TKEBasedVerticalDiffusivity && push!(tracers, :e)
+
     model = HydrostaticFreeSurfaceModel(grid = grid,
                                         architecture = arch,
                                         momentum_advection = momentum_advection,
                                         free_surface = free_surface,
                                         coriolis = coriolis,
+                                        tracers = tracers,
                                         velocities = velocities,
                                         closure = closure)
 

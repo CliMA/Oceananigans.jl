@@ -22,14 +22,18 @@ function time_stepping_works_with_coriolis(arch, FT, Coriolis)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
-function time_stepping_works_with_closure(arch, FT, Closure;
+function time_stepping_works_with_closure(arch, FT, Closure,
                                           buoyancy=Buoyancy(model=SeawaterBuoyancy(FT)))
+
+    # Add TKE tracer "e" to tracers when using TKEBasedVerticalDiffusivity
+    tracers = [:T, :S]
+    Closure === TKEBasedVerticalDiffusivity && push!(tracers, :e)
 
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
     grid = RegularRectilinearGrid(FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
 
     model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT,
-                                closure=Closure(FT), buoyancy=buoyancy)
+                                closure=Closure(FT), tracers=tracers, buoyancy=buoyancy)
 
     time_step!(model, 1, euler=true)
 
