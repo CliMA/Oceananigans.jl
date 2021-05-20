@@ -1,6 +1,5 @@
 using Pkg
 using InteractiveUtils
-using CUDA
 using Oceananigans.Architectures
 
 function versioninfo_with_gpu()
