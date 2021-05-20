@@ -132,9 +132,9 @@ version = "0.26.3"
 
 [[DocumenterCitations]]
 deps = ["Bibliography", "Documenter", "Markdown", "Unicode"]
-git-tree-sha1 = "e8f1cf4d6c23d1fac65faca1932940d9edb4602e"
+git-tree-sha1 = "3e772279d248a9ab10050ca2d4fbeef6c8a29869"
 uuid = "daee34ce-89f3-4625-b898-19384cb65244"
-version = "0.2.1"
+version = "0.2.2"
 
 [[Downloads]]
 deps = ["ArgTools", "LibCURL", "NetworkOptions"]
