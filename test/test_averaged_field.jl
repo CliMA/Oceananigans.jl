@@ -12,7 +12,7 @@ using Oceananigans.Grids: halo_size
             for FT in float_types
 
                 grid = RegularRectilinearGrid(topology = (Periodic, Periodic, Bounded),
-                                                size = (32, 32, 32),
+                                                size = (2, 2, 2),
                                                    x = (0, 2), y = (0, 2), z = (0, 2))
 
                 w = ZFaceField(arch, grid)
@@ -48,6 +48,15 @@ using Oceananigans.Grids: halo_size
 
                 @test Array(interior(w̅))[1, 1, :] ≈ [2, 3, 4]
                 @test Array(interior(ŵ))[1, :, :] ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
+
+                bigger_grid = RegularRectilinearGrid(topology = (Periodic, Periodic, Bounded),
+                                                     size = (32, 32, 32),
+                                                        x = (0, 2), y = (0, 2), z = (0, 2))
+
+                # https://github.com/CliMA/Oceananigans.jl/issues/1684
+                c = CenterField(arch, bigger_grid)
+                C = AveragedField(c, dims=(1, 2))
+                compute!(C)
             end
         end
 
