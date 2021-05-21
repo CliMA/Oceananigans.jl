@@ -36,6 +36,8 @@ using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
 
+add_closure_dependent_boundary_conditions(closure, boundary_conditions, args...) = boundary_conditions
+
 #####
 ##### Abstract types
 #####

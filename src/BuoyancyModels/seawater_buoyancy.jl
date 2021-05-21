@@ -1,3 +1,5 @@
+using Oceananigans.BoundaryConditions: NoFluxBoundaryCondition
+
 """
     SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancyModel{EOS}
 
@@ -57,6 +59,16 @@ const SalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing} 
 @inline get_temperature_and_salinity(::SeawaterBuoyancy, C) = C.T, C.S
 @inline get_temperature_and_salinity(b::TemperatureSeawaterBuoyancy, C) = C.T, b.constant_salinity
 @inline get_temperature_and_salinity(b::SalinitySeawaterBuoyancy, C) = b.constant_temperature, C.S
+
+@inline function buoyancy_perturbation(i, j, k, grid, b::SeawaterBuoyancy, C)
+    Θ, sᴬ = get_temperature_and_salinity(b, C)
+    return - (b.gravitational_acceleration * ρ′(i, j, k, grid, b.equation_of_state, Θ, sᴬ)
+              / b.equation_of_state.reference_density)
+end
+
+#####
+##### Buoyancy gradient components
+#####
 
 """
     ∂x_b(i, j, k, grid, b::SeawaterBuoyancy, C)
@@ -136,8 +148,26 @@ and cell centers in `x` and `y`.
         - haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂zᵃᵃᶠ(i, j, k, grid, sᴬ) )
 end
 
-@inline function buoyancy_perturbation(i, j, k, grid, b::SeawaterBuoyancy, C)
-    Θ, sᴬ = get_temperature_and_salinity(b, C)
-    return - (b.gravitational_acceleration * ρ′(i, j, k, grid, b.equation_of_state, Θ, sᴬ)
-              / b.equation_of_state.reference_density)
+#####
+##### top buoyancy flux
+#####
+
+@inline get_temperature_and_salinity_flux(::SeawaterBuoyancy, bcs) = bcs.T, bcs.S
+@inline get_temperature_and_salinity_flux(::TemperatureSeawaterBuoyancy, bcs) = bcs.T, NoFluxBoundaryCondition()
+@inline get_temperature_and_salinity_flux(::SalinitySeawaterBuoyancy, bcs) = NoFluxBoundaryCondition(), bcs.S
+
+@inline function top_bottom_buoyancy_flux(i, j, k, grid, b::SeawaterBuoyancy, top_bottom_tracer_bcs, clock, fields)
+    Θ, sᴬ = get_temperature_and_salinity(b, fields)
+    Θ_flux_bc, sᴬ_flux_bc = get_temperature_and_salinity_flux(b, top_bottom_tracer_bcs)
+
+    θ_flux = get_bc(θ_flux_bc, i, j, grid, clock, fields)
+    sᴬ_flux = get_bc(sᴬ_flux_bc, i, j, grid, clock, fields)
+
+    return b.gravitational_acceleration * (
+              thermal_expansionᶜᶜᶜ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * θ_flux
+           - haline_contractionᶜᶜᶜ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * sᴬ_flux)
 end
+
+@inline    top_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, grid.Nz, grid, b, args...)
+@inline bottom_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, 1, grid, b, args...)
+    

@@ -1,7 +1,9 @@
 using Oceananigans.Architectures: architecture, device_event
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.BuoyancyModels: ∂z_b
+using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators: ℑzᵃᵃᶜ
+
+function hydrostatic_turbulent_kinetic_energy_tendency end
 
 struct TKEBasedVerticalDiffusivity{TD, CK, CD, CL, CQ} <: AbstractTurbulenceClosure{TD}
     diffusivity_scaling :: CK
@@ -29,7 +31,9 @@ end
 
 Returns the `TKEBasedVerticalDiffusivity` turbulence closure for vertical mixing by
 small-scale ocean turbulence based on the prognostic evolution of subgrid
-Turbulent Kinetic Energy (TKE). `TKEBasedVerticalDiffusivity` is a downgradient, diffusive
+Turbulent Kinetic Energy (TKE).
+
+`TKEBasedVerticalDiffusivity` is a downgradient, diffusive
 closure formulated with three different eddy diffusivities for momentum, tracers, and TKE.
 Each eddy diffusivity is the product of a diffusivity "scaling", a mixing length, and a turbulent
 velocity scale which is the square root of the local TKE, such that
@@ -51,7 +55,7 @@ where `ℓᵇ = Cᵇ * √e / N` and `ℓᶻ` is the distance to the nearest bou
 ocean surface due to unstable buoyancy forcing and wind stress.
 
 The `TKEBasedVerticalDiffusivity` is formulated in terms of 12 free parameters. These parameters
-are calibrated _experimentally_ against large eddy simulations of ocean surface boundary layer turbulence
+are _experimentally_ calibrated against large eddy simulations of ocean surface boundary layer turbulence
 in idealized scenarios involving monotonic boundary layer deepening into variable stratification
 due to constant surface momentum fluxes and/or destabilizing surface buoyancy flux.
 This calibration has not been peer-reviewed, may be inaccurate and imperfect, and may not
@@ -75,8 +79,8 @@ Keyword arguments
                           local gradient Richardson number `Ri = ∂z(b) / (∂z(u)² + ∂z(v)²)`.
 
 * `dissipation_parameter` : Parameter `Cᴰ` in the closure `ϵ = Cᴰ * e^3/2 / ℓ` that models the dissipation of TKE,
-                          `ϵ`, appearing in the TKE evolution equation. The default is 2.91 via calibration
-                          against large eddy simulations.
+                            `ϵ`, appearing in the TKE evolution equation. The default is 2.91 via calibration
+                            against large eddy simulations.
                           
 * `mixing_length_parameter` : Parameter `Cᵇ` that multiplies the "buoyancy mixing length" `ℓᵇ = Cᵇ * √e / N`,
                             that appears in `TKEBasedVerticalDiffusivity`'s mixing length model.
@@ -96,7 +100,11 @@ function TKEBasedVerticalDiffusivity(FT=Float64;
           "is unvalidated and whose default parameters are not calibrated for " * 
           "realistic ocean conditions or for use in a three-dimensional " *
           "simulation. Use with caution and report bugs and problems with physics " *
-          "to https://github.com/CliMA/Oceananigans.jl/issues." 
+          "to https://github.com/CliMA/Oceananigans.jl/issues.\n\n" *
+
+          "Note: `TKEBasedVerticalDiffusivity` will generally produce " *
+          "incorrect results if its parameters are altered _after_ " *
+          "model instantiation."
 
     dissipation_parameter = convert(FT, dissipation_parameter)
     mixing_length_parameter = convert(FT, mixing_length_parameter)
@@ -133,9 +141,9 @@ and ``step`` is a smooth step function defined by
 
     ``step(x, c, w) = (1 + tanh((x - c) / w)) / 2``.
 
-The 8 free parameters in `RiDependentDiffusivityScaling`
-are calibrated against large eddy simulations of ocean surface boundary layer turbulence
-in idealized scenarios involving monotonic boundary layer deepening into variable stratification
+The 8 free parameters in `RiDependentDiffusivityScaling` have been _experimentally_ calibrated
+against large eddy simulations of ocean surface boundary layer turbulence in idealized
+scenarios involving monotonic boundary layer deepening into variable stratification
 due to constant surface momentum fluxes and/or destabilizing surface buoyancy flux.
 See https://github.com/CliMA/LESbrary.jl for more information about the large eddy simulations.
 The calibration was performed using a combination of Markov Chain Monte Carlo (MCMC)-based simulated
@@ -168,9 +176,9 @@ where `Qᵉ` is the surface flux of TKE, `Cᴰ = TKEBasedVerticalDiffusivity.dis
 turbulent velocity scale associated with the surface vertical grid spacing `Δz` and the
 surface buoyancy flux `Qᵇ`.
              
-The 2 free parameters in `TKESurfaceFlux`
-are calibrated against large eddy simulations of ocean surface boundary layer turbulence
-in idealized scenarios involving monotonic boundary layer deepening into variable stratification
+The 2 free parameters in `TKESurfaceFlux` have been _experimentally_ calibrated
+against large eddy simulations of ocean surface boundary layer turbulence in idealized
+scenarios involving monotonic boundary layer deepening into variable stratification
 due to constant surface momentum fluxes and/or destabilizing surface buoyancy flux.
 See https://github.com/CliMA/LESbrary.jl for more information about the large eddy simulations.
 The calibration was performed using a combination of Markov Chain Monte Carlo (MCMC)-based simulated
@@ -187,14 +195,110 @@ for S in (:RiDependentDiffusivityScaling, :TKESurfaceFlux)
 end
 
 #####
-##### Utilities
+##### TKE top boundary condition
 #####
 
-#
-# TODO: figure out how to calculate the current buoyancy flux and momentum flux...
-# function validate_closure_dependent_boundary_conditions(closure::TKEVD, boundary_conditions)
-#
-# end
+""" Computes the friction velocity based on fluxes of u and v. """
+@inline function friction_velocity(i, j, grid, clock, fields, velocity_bcs)
+    FT = eltype(grid)
+    Qᵘ = getbc(velocity_bcs.u, i, j, grid, clock, fields) 
+    Qᵛ = getbc(velocity_bcs.v, i, j, grid, clock, fields) 
+    return sqrt(sqrt(Qᵘ^2 + Qᵛ^2))
+end
+
+@inline function top_convective_turbulent_velocity³(i, j, grid, clock, fields, buoyancy, tracer_bcs)
+    FT = eltype(grid)
+    Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields)
+    Δz = Δzᵃᵃᶜ(i, j, grid.Nz, grid)
+    return max(zero(FT), Qᵇ) * Δz   
+end
+
+@inline function top_tke_flux(i, j, grid, clock, fields, parameters)
+    buoyancy = parameters.buoyancy
+    top_velocity_bcs = parameters.tracer_top_boundary_conditions
+    top_tracer_bcs = parameters.velocity_top_boundary_conditions
+    closure = parameters.closure # problematic because model.closure can be changed.
+
+    return top_tke_flux(i, j, grid, closure.surface_model, closure,
+                        buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock, fields)
+end
+
+@inline function top_tke_flux(i, j, grid, surface_model::TKESurfaceFlux, closure, buoyancy, fields, tracer_bcs, velocity_bcs, clock)
+
+    w★³ = top_convective_turbulent_velocityᵉ(i, j, grid, clock, fields, buoyancy, tracers, top_tracer_bcs)
+    u★ = friction_velocity(i, j, grid, clock, fields, top_velocity_bcs)
+
+    Cᴰ = closure.dissipation_parameter
+    Cᵂu★ = surface_model.Cᵂu★
+    Cᵂw★ = surface_model.Cᵂw★
+
+    return - Cᴰ * (Cᵂu★ * u★^3 + Cᵂw★ * w★³)
+end
+
+#####
+##### Utilities for model constructors
+#####
+
+""" Infer tracer boundary conditions from user_bcs and tracer_names. """
+function top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
+    user_bc_names = keys(user_bcs)
+    default_top_bc = DefaultBoundaryCondition(topology(grid, 3), Center)
+
+    tracer_bcs = Tuple(name ∈ user_bc_names ? user_bcs[name].top : default_top_bc
+                       for name in tracer_names)
+
+    return NamedTuple{tracer_names}(tracer_bcs)
+end
+
+""" Infer velocity boundary conditions from user_bcs and tracer_names. """
+function top_velocity_boundary_conditions(grid, user_bcs)
+
+    u_top_bc = :u ∈ user_bc_names ? user_bcs.u.top : DefaultBoundaryCondition(topology(grid, 3), Center)
+    v_top_bc = :v ∈ user_bc_names ? user_bcs.v.top : DefaultBoundaryCondition(topology(grid, 3), Center)
+
+    return (u=u_top_bc, v=v_top_bc)
+end
+
+""" Add TKE boundary conditions specific to TKEBasedVerticalDiffusivity. """
+function add_closure_specific_boundary_conditions(closure::TKEVD,
+                                                  boundary_conditions,
+                                                  grid,
+                                                  tracer_names,
+                                                  buoyancy)
+
+    top_velocity_bcs = velocity_top_boundary_conditions(grid, user_bcs)
+    top_tracer_bcs = tracer_top_boundary_conditions(grid, tracer_name, user_bcs)
+
+    parameters = (buoyancy = buoyancy,
+                  top_tracer_boundary_conditions = top_tracer_bcs,
+                  top_velocity_boundary_conditions = top_velocity_bcs,
+                  closure = closure)
+
+    top_tke_flux = BoundaryCondition(top_tke_flux, parameters=parameters)
+    top_tke_bc = FluxBoundaryCondition(top_tke_flux)
+
+    if :e ∈ keys(boundary_conditions)
+        @warn "Replacing top boundary conditions for tracer `e` with " *
+              "boundary condition specific to $(typeof(closure).name.wrapper)"
+
+        e_bcs = boundary_conditions[:e]
+        
+        tke_bcs = TracerBoundaryConditions(grid,
+                                           top = top_tke_bc,
+                                           bottom = e_bcs.bottom,
+                                           north = e_bcs.north,
+                                           south = e_bcs.south,
+                                           east = e_bcs.east,
+                                           west = e_bcs.west)
+
+    else
+        tke_bcs = TracerBoundaryConditions(grid, top=top_tke_bc)
+    end
+
+    new_boundary_conditions = merge(boundary_conditions, (e = tke_bcs,))
+
+    return new_boundary_conditions
+end
 
 function DiffusivityFields(arch, grid, tracer_names, bcs, closure::TKEVD)
 
@@ -213,6 +317,10 @@ function with_tracers(tracer_names, closure::TKEVD)
     :e ∈ tracer_names || error("Tracers must contain :e to represent turbulent kinetic energy for `TKEBasedVerticalDiffusivity`.")
     return closure
 end
+
+#####
+##### Diffusivity field utilities
+#####
 
 function calculate_diffusivities!(diffusivities, arch, grid, closure::TKEVD, buoyancy, velocities, tracers)
 
@@ -235,8 +343,6 @@ end
         diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
     end
 end
-
-function hydrostatic_turbulent_kinetic_energy_tendency end
 
 #####
 ##### Mixing length
