@@ -12,7 +12,7 @@ using Oceananigans.Grids: halo_size
             for FT in float_types
 
                 grid = RegularRectilinearGrid(topology = (Periodic, Periodic, Bounded),
-                                                size = (2, 2, 2),
+                                                size = (32, 32, 32),
                                                    x = (0, 2), y = (0, 2), z = (0, 2))
 
                 w = ZFaceField(arch, grid)
