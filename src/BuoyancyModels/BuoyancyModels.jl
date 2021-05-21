@@ -11,6 +11,7 @@ export
 using Printf
 using Oceananigans.Grids
 using Oceananigans.Operators
+using Oceananigans.BoundaryConditions: getbc
 
 import SeawaterPolynomials: ρ′, thermal_expansion, haline_contraction
 

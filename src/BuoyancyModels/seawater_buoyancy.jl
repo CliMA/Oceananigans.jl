@@ -160,8 +160,8 @@ end
     Θ, sᴬ = get_temperature_and_salinity(b, fields)
     Θ_flux_bc, sᴬ_flux_bc = get_temperature_and_salinity_flux(b, top_bottom_tracer_bcs)
 
-    θ_flux = get_bc(θ_flux_bc, i, j, grid, clock, fields)
-    sᴬ_flux = get_bc(sᴬ_flux_bc, i, j, grid, clock, fields)
+    θ_flux = getbc(θ_flux_bc, i, j, grid, clock, fields)
+    sᴬ_flux = getbc(sᴬ_flux_bc, i, j, grid, clock, fields)
 
     return b.gravitational_acceleration * (
               thermal_expansionᶜᶜᶜ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * θ_flux

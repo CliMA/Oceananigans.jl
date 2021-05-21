@@ -36,8 +36,6 @@ using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
 
-add_closure_dependent_boundary_conditions(closure, boundary_conditions, args...) = boundary_conditions
-
 #####
 ##### Abstract types
 #####
@@ -50,6 +48,8 @@ Abstract supertype for turbulence closures.
 abstract type AbstractTurbulenceClosure{TimeDiscretization} end
 
 # Fallbacks
+add_closure_specific_boundary_conditions(closure, boundary_conditions, args...) = boundary_conditions
+
 viscous_flux_ux(i, j, k, grid, args...) = zero(eltype(grid))
 viscous_flux_uy(i, j, k, grid, args...) = zero(eltype(grid))
 viscous_flux_uz(i, j, k, grid, args...) = zero(eltype(grid))

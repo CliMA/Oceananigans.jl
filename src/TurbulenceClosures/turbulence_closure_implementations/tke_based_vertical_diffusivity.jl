@@ -1,4 +1,5 @@
 using Oceananigans.Architectures: architecture, device_event
+using Oceananigans.BoundaryConditions: DefaultBoundaryCondition
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators: ℑzᵃᵃᶜ
@@ -96,14 +97,14 @@ function TKEBasedVerticalDiffusivity(FT=Float64;
                                      surface_model = TKESurfaceFlux{FT}(),
                                      time_discretization::TD = ExplicitTimeDiscretization()) where TD
 
-    @warn "TKEBasedVerticalDiffusivity is an experimental turbulence closure that " *
-          "is unvalidated and whose default parameters are not calibrated for " * 
-          "realistic ocean conditions or for use in a three-dimensional " *
-          "simulation. Use with caution and report bugs and problems with physics " *
-          "to https://github.com/CliMA/Oceananigans.jl/issues.\n\n" *
+    @warn "TKEBasedVerticalDiffusivity is an experimental turbulence closure that \n" *
+          "is unvalidated and whose default parameters are not calibrated for \n" * 
+          "realistic ocean conditions or for use in a three-dimensional \n" *
+          "simulation. Use with caution and report bugs and problems with physics \n" *
+          "to https://github.com/CliMA/Oceananigans.jl/issues. \n\n" *
 
-          "Note: `TKEBasedVerticalDiffusivity` will generally produce " *
-          "incorrect results if its parameters are altered _after_ " *
+          "Note: `TKEBasedVerticalDiffusivity` will generally produce \n" *
+          "incorrect results if its parameters are altered _after_ \n" *
           "model instantiation."
 
     dissipation_parameter = convert(FT, dissipation_parameter)
@@ -189,6 +190,20 @@ Base.@kwdef struct TKESurfaceFlux{FT}
     CᵂwΔ :: FT = 1.31
 end
 
+@inline function top_tke_flux(i, j, grid, surface_model::TKESurfaceFlux, closure,
+                              buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
+
+    wΔ³ = top_convective_turbulent_velocity³(i, j, grid, clock, fields, buoyancy, top_tracer_bcs)
+    u★ = friction_velocity(i, j, grid, clock, fields, top_velocity_bcs)
+
+    Cᴰ = closure.dissipation_parameter
+    Cᵂu★ = surface_model.Cᵂu★
+    CᵂwΔ = surface_model.CᵂwΔ
+
+    return - Cᴰ * (Cᵂu★ * u★^3 + CᵂwΔ * wΔ³)
+end
+
+
 for S in (:RiDependentDiffusivityScaling, :TKESurfaceFlux)
     @eval @inline convert_eltype(::Type{FT}, s::$S) where FT = $S{FT}(; Dict(p => getproperty(s, p) for p in propertynames(s))...)
     @eval @inline convert_eltype(::Type{FT}, s::$S{FT}) where FT = s
@@ -215,24 +230,12 @@ end
 
 @inline function top_tke_flux(i, j, grid, clock, fields, parameters)
     buoyancy = parameters.buoyancy
-    top_velocity_bcs = parameters.tracer_top_boundary_conditions
-    top_tracer_bcs = parameters.velocity_top_boundary_conditions
+    top_tracer_bcs = parameters.top_tracer_boundary_conditions
+    top_velocity_bcs = parameters.top_velocity_boundary_conditions
     closure = parameters.closure # problematic because model.closure can be changed.
 
     return top_tke_flux(i, j, grid, closure.surface_model, closure,
-                        buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock, fields)
-end
-
-@inline function top_tke_flux(i, j, grid, surface_model::TKESurfaceFlux, closure, buoyancy, fields, tracer_bcs, velocity_bcs, clock)
-
-    w★³ = top_convective_turbulent_velocityᵉ(i, j, grid, clock, fields, buoyancy, tracers, top_tracer_bcs)
-    u★ = friction_velocity(i, j, grid, clock, fields, top_velocity_bcs)
-
-    Cᴰ = closure.dissipation_parameter
-    Cᵂu★ = surface_model.Cᵂu★
-    Cᵂw★ = surface_model.Cᵂw★
-
-    return - Cᴰ * (Cᵂu★ * u★^3 + Cᵂw★ * w★³)
+                        buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
 end
 
 #####
@@ -253,6 +256,8 @@ end
 """ Infer velocity boundary conditions from user_bcs and tracer_names. """
 function top_velocity_boundary_conditions(grid, user_bcs)
 
+    user_bc_names = keys(user_bcs)
+
     u_top_bc = :u ∈ user_bc_names ? user_bcs.u.top : DefaultBoundaryCondition(topology(grid, 3), Center)
     v_top_bc = :v ∈ user_bc_names ? user_bcs.v.top : DefaultBoundaryCondition(topology(grid, 3), Center)
 
@@ -261,27 +266,26 @@ end
 
 """ Add TKE boundary conditions specific to TKEBasedVerticalDiffusivity. """
 function add_closure_specific_boundary_conditions(closure::TKEVD,
-                                                  boundary_conditions,
+                                                  user_bcs,
                                                   grid,
                                                   tracer_names,
                                                   buoyancy)
 
-    top_velocity_bcs = velocity_top_boundary_conditions(grid, user_bcs)
-    top_tracer_bcs = tracer_top_boundary_conditions(grid, tracer_name, user_bcs)
+    top_tracer_bcs = top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
+    top_velocity_bcs = top_velocity_boundary_conditions(grid, user_bcs)
 
     parameters = (buoyancy = buoyancy,
                   top_tracer_boundary_conditions = top_tracer_bcs,
                   top_velocity_boundary_conditions = top_velocity_bcs,
                   closure = closure)
 
-    top_tke_flux = BoundaryCondition(top_tke_flux, parameters=parameters)
-    top_tke_bc = FluxBoundaryCondition(top_tke_flux)
+    top_tke_bc = FluxBoundaryCondition(top_tke_flux, discrete_form=true, parameters=parameters)
 
-    if :e ∈ keys(boundary_conditions)
+    if :e ∈ keys(user_bcs)
         @warn "Replacing top boundary conditions for tracer `e` with " *
               "boundary condition specific to $(typeof(closure).name.wrapper)"
 
-        e_bcs = boundary_conditions[:e]
+        e_bcs = user_bcs[:e]
         
         tke_bcs = TracerBoundaryConditions(grid,
                                            top = top_tke_bc,
@@ -295,7 +299,7 @@ function add_closure_specific_boundary_conditions(closure::TKEVD,
         tke_bcs = TracerBoundaryConditions(grid, top=top_tke_bc)
     end
 
-    new_boundary_conditions = merge(boundary_conditions, (e = tke_bcs,))
+    new_boundary_conditions = merge(user_bcs, (e = tke_bcs,))
 
     return new_boundary_conditions
 end
