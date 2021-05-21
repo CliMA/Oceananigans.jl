@@ -89,7 +89,7 @@ BoundaryCondition: type=Flux, condition=-7.789678675754625e-5
 ```
 
 A constant [`Flux`](@ref) boundary condition can be imposed on tracers and tangential velocity components
-can can be used, for example, to specify cooling, heating, evaporation, or wind stress at the ocean surface.
+that can be used, for example, to specify cooling, heating, evaporation, or wind stress at the ocean surface.
 
 !!! info "The flux convention in Oceananigans"
     `Oceananigans` uses the convention that positive fluxes produce transport in the
