@@ -178,7 +178,7 @@ end
                 val1 = fun(f)
                 val2 = fun([fun(f[n]) for n in 1:Nt])
 
-                @test val1 ≈ val2 atol=ε
+                @test val1 ≈ val2 atol=4ε
             end
         end
     end
