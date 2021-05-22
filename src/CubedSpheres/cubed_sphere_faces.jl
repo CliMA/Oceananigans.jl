@@ -34,10 +34,14 @@ const AbstractCubedSphereField = Union{CubedSphereAbstractField,
                                        CubedSphereAbstractReducedField,
                                        CubedSphereField}
 
-Base.show(io::IO, field::AbstractCubedSphereField{X, Y, Z, A}) where {X, Y, Z, A} =
-    print(io, "$(typeof(field).name.wrapper) at ($X, $Y, $Z)\n",
+function Base.show(io::IO, field::AbstractCubedSphereField)
+    LX, LY, LZ = location(field)
+    arch = architecture(field)
+    A = typeof(arch)
+    return print(io, "$(typeof(field).name.wrapper) at ($LX, $LY, $LZ)\n",
           "├── architecture: $A\n",
           "└── grid: $(short_show(field.grid))")
+end
 
 # Just a single face
 const CubedSphereFaceField = AbstractField{X, Y, Z, A, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A}
