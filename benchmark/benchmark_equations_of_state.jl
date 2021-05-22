@@ -17,7 +17,7 @@ function benchmark_equation_of_state(Arch, EOS)
     trial = @benchmark begin
         @sync_gpu time_step!($model, 1)
     end samples=10
-    
+
     return trial
 end
 
@@ -38,7 +38,7 @@ benchmarks_pretty_table(df, title="Equation of state benchmarks")
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df_Δ, :EquationsOfState, by=string)
-    benchmarks_pretty_table(df_Δ, title="Equation of state CPU -> GPU speedup")
+    benchmarks_pretty_table(df_Δ, title="Equation of state CPU to GPU speedup")
 end
 
 for Arch in Architectures
@@ -47,4 +47,3 @@ for Arch in Architectures
     sort!(df_arch, :EquationsOfState, by=string)
     benchmarks_pretty_table(df_arch, title="Equation of state relative performance ($Arch)")
 end
-

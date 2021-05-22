@@ -2,7 +2,6 @@
 ##### Utilities for launching kernels
 #####
 
-using CUDA
 using KernelAbstractions
 using Oceananigans.Architectures
 using Oceananigans.Grids
