@@ -529,6 +529,10 @@ end
 @inline diffusive_flux_x(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
 @inline diffusive_flux_y(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
 
+# Disambiguate
+@inline diffusive_flux_x(i, j, k, grid, ::TKEVD, e, ::TKETracerIndex, args...) = zero(eltype(grid))
+@inline diffusive_flux_y(i, j, k, grid, ::TKEVD, e, ::TKETracerIndex, args...) = zero(eltype(grid))
+
 #####
 ##### Support for VerticallyImplicitTimeDiscretization
 #####
