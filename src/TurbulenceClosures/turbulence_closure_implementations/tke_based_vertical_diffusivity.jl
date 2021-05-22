@@ -505,7 +505,7 @@ end
 end
 
 @inline function viscous_flux_wz(i, j, k, grid, closure::TKEVD, clock, velocities, diffusivities, tracers, buoyancy)
-    Kw = diffusivities.Kᵘ
+    @inbounds Kw = diffusivities.Kᵘ[i, j, k]
     return - Kw * ∂zᵃᵃᶜ(i, j, k, grid, velocities.w)
 end
 
