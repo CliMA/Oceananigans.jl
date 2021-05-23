@@ -223,7 +223,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             @testset "Time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
                 @info "  Testing time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
-                @test time_step_hydrostatic_model_works(arch, vertically_stretched_grid, closure=closure)
+                @test_skip time_step_hydrostatic_model_works(arch, vertically_stretched_grid, closure=closure)
                 @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, closure=closure)
                 @test time_step_hydrostatic_model_works(arch, lat_lon_strip_grid, closure=closure)
             end
