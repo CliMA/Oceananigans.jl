@@ -33,6 +33,16 @@ struct VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A, Arch} <: Abstrac
     xᶠᵃᵃ :: R
     yᵃᶠᵃ :: R
     zᵃᵃᶠ :: A
+
+    function VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}(arch::Arch,
+                                                                Nx, Ny, Nz,
+                                                                Lx, Ly, Lz,
+                                                                Δx, Δy, Δzᵃᵃᶜ::A, Δzᵃᵃᶠ,
+                                                                xᶜᵃᵃ::R, yᵃᶜᵃ, zᵃᵃᶜ,
+                                                                xᶠᵃᵃ::R, yᵃᶠᵃ, zᵃᵃᶠ) where {FT, TX, TY, TZ, A, R, Arch}
+        return new{FT, TX, TY, TZ, A, R, Arch}(arch, Nx, Ny, Nz, Lx, Ly, Lz,
+                                               Δx, Δy, Δzᵃᵃᶜ, Δzᵃᵃᶠ, xᶜᵃᵃ, yᵃᶜᵃ, zᵃᵃᶜ, xᶠᵃᵃ, yᵃᶠᵃ, zᵃᵃᶠ)
+    end
 end
 
 """
@@ -171,11 +181,7 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
     Δzᵃᵃᶜ = OffsetArray(arch_array(architecture, Δzᵃᵃᶜ.parent), Δzᵃᵃᶜ.offsets...)
     Δzᵃᵃᶠ = OffsetArray(arch_array(architecture, Δzᵃᵃᶠ.parent), Δzᵃᵃᶠ.offsets...)
 
-    R = typeof(xᶠᵃᵃ)
-    A = typeof(zᵃᵃᶠ)
-    Arch = typeof(architecture)
-
-    return VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A, Arch}(architecture,
+    return VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}(architecture,
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δzᵃᵃᶜ, Δzᵃᵃᶠ, xᶜᵃᵃ, yᵃᶜᵃ, zᵃᵃᶜ, xᶠᵃᵃ, yᵃᶠᵃ, zᵃᵃᶠ)
 end
 
@@ -283,21 +289,17 @@ function show(io::IO, g::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) whe
 end
 
 Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ,
-                                       typeof(grid.xᶠᵃᵃ),
-                                       typeof(Adapt.adapt(to, grid.zᵃᵃᶠ)),
-                                       Nothing}(
-        nothing,
-        grid.Nx, grid.Ny, grid.Nz,
-        grid.Hx, grid.Hy, grid.Hz,
-        grid.Lx, grid.Ly, grid.Lz,
-        grid.Δx, grid.Δy,
-        Adapt.adapt(to, grid.Δzᵃᵃᶜ),
-        Adapt.adapt(to, grid.Δzᵃᵃᶠ),
-        grid.xᶜᵃᵃ, grid.yᵃᶜᵃ,
-        Adapt.adapt(to, grid.zᵃᵃᶜ),
-        grid.xᶠᵃᵃ, grid.yᵃᶠᵃ,
-        Adapt.adapt(to, grid.zᵃᵃᶠ))
+    VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}(nothing,
+                                                       grid.Nx, grid.Ny, grid.Nz,
+                                                       grid.Hx, grid.Hy, grid.Hz,
+                                                       grid.Lx, grid.Ly, grid.Lz,
+                                                       grid.Δx, grid.Δy,
+                                                       Adapt.adapt(to, grid.Δzᵃᵃᶜ),
+                                                       Adapt.adapt(to, grid.Δzᵃᵃᶠ),
+                                                       grid.xᶜᵃᵃ, grid.yᵃᶜᵃ,
+                                                       Adapt.adapt(to, grid.zᵃᵃᶜ),
+                                                       grid.xᶠᵃᵃ, grid.yᵃᶠᵃ,
+                                                       Adapt.adapt(to, grid.zᵃᵃᶠ))
 
 #####
 ##### Should merge with grid_utils.jl at some point
