@@ -169,7 +169,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
         lat_lon_sector_grid = RegularLatitudeLongitudeGrid(size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=(-1, 0))
         lat_lon_strip_grid = RegularLatitudeLongitudeGrid(size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0))
 
-        grids = (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid, vertically_stretched_grid)
+        grids = (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid) #, vertically_stretched_grid)
         free_surfaces = (ExplicitFreeSurface(), ImplicitFreeSurface())
 
         for grid in grids
