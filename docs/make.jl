@@ -92,7 +92,8 @@ physics_pages = [
     "Coriolis forces" => "physics/coriolis_forces.md",
     "Buoyancy models and equations of state" => "physics/buoyancy_and_equations_of_state.md",
     "Turbulence closures" => "physics/turbulence_closures.md",
-    "Surface gravity waves and the Craik-Leibovich approximation" => "physics/surface_gravity_waves.md"
+    "Surface gravity waves and the Craik-Leibovich approximation" => "physics/surface_gravity_waves.md",
+    "Shallow water dynamics" => "physics/shallow_water.md"
 ]
 
 numerical_pages = [
