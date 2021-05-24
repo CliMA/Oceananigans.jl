@@ -11,6 +11,8 @@ export with_tracers
 export versioninfo_with_gpu, oceananigans_versioninfo
 export instantiate
 
+import CUDA  # To avoid name conflicts
+
 import Oceananigans: short_show
 
 #####

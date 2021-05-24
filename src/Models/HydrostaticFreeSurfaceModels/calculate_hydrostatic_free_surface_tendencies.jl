@@ -1,7 +1,9 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
+import Oceananigans: tracer_tendency_kernel_function
 
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Utils: work_layout
+using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity
 
 """
     calculate_tendencies!(model::IncompressibleModel)
@@ -13,21 +15,7 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
-    calculate_hydrostatic_free_surface_interior_tendency_contributions!(model.timestepper.Gⁿ,
-                                                                        model.architecture,
-                                                                        model.grid,
-                                                                        model.advection,
-                                                                        model.coriolis,
-                                                                        model.buoyancy,
-                                                                        model.closure,
-                                                                        model.velocities,
-                                                                        model.free_surface,
-                                                                        model.tracers,
-                                                                        model.pressure.pHY′,
-                                                                        model.diffusivities,
-                                                                        model.auxiliary_fields,
-                                                                        model.forcing,
-                                                                        model.clock)
+    calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)
 
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
@@ -42,63 +30,90 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
     return nothing
 end
 
-function calculate_hydrostatic_momentum_tendencies!(tendencies, velocities, arch, grid, advection, coriolis, closure,
-                                                    free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
-                                                    auxiliary_fields, forcings, clock, barrier)
+""" Calculate momentum tendencies if momentum is not prescribed. `velocities` argument eases dispatch on `PrescribedVelocityFields`."""
+function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependencies = device_event(model))
 
-    Gu_event = launch!(arch, grid, :xyz, calculate_hydrostatic_free_surface_Gu!,
-                       tendencies.u, grid, advection.momentum, coriolis, closure,
-                       velocities, free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
-                       auxiliary_fields, forcings, clock; dependencies = barrier)
+    arch = model.architecture
+    grid = model.grid
 
-    Gv_event = launch!(arch, grid, :xyz, calculate_hydrostatic_free_surface_Gv!,
-                       tendencies.v, grid, advection.momentum, coriolis, closure,
-                       velocities, free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
-                       auxiliary_fields, forcings, clock; dependencies = barrier)
+    momentum_kernel_args = (grid,
+                            model.advection.momentum,
+                            model.coriolis,
+                            model.closure,
+                            velocities,
+                            model.free_surface,
+                            model.tracers,
+                            model.buoyancy,
+                            model.diffusivities,
+                            model.pressure.pHY′,
+                            model.auxiliary_fields,
+                            model.forcing,
+                            model.clock)
 
-    Gη_event = launch!(arch, grid, :xy, calculate_hydrostatic_free_surface_Gη!,
-                       tendencies.η, grid, velocities, free_surface, tracers,
-                       auxiliary_fields, forcings, clock; dependencies = barrier)
+    Gu_event = launch!(arch, grid, :xyz,
+                       calculate_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, momentum_kernel_args...;
+                       dependencies = dependencies)
+
+    Gv_event = launch!(arch, grid, :xyz,
+                       calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, momentum_kernel_args...;
+                       dependencies = dependencies)
+
+    Gη_event = launch!(arch, grid, Val(:xy),
+                       calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
+                       grid,
+                       model.velocities,
+                       model.free_surface,
+                       model.tracers,
+                       model.auxiliary_fields,
+                       model.forcing,
+                       model.clock;
+                       dependencies = dependencies)
 
     events = [Gu_event, Gv_event, Gη_event]
 
     return events
 end
 
+# Fallback
+@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure, tracer_name) = hydrostatic_free_surface_tracer_tendency
+@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::TKEBasedVerticalDiffusivity, ::Val{:e}) = hydrostatic_turbulent_kinetic_energy_tendency
+
+# Hack for closure tuples
+tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closures::Tuple, ::Val{:e}) = tracer_tendency_kernel_function(model, closures[1], Val(:e))
+
 """ Store previous value of the source term and calculate current source term. """
-function calculate_hydrostatic_free_surface_interior_tendency_contributions!(tendencies,
-                                                                             arch,
-                                                                             grid,
-                                                                             advection,
-                                                                             coriolis,
-                                                                             buoyancy,
-                                                                             closure,
-                                                                             velocities,
-                                                                             free_surface,
-                                                                             tracers,
-                                                                             hydrostatic_pressure_anomaly,
-                                                                             diffusivities,
-                                                                             auxiliary_fields,
-                                                                             forcings,
-                                                                             clock)
+function calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)
 
-    barrier = Event(device(arch))
+    arch = model.architecture
+    grid = model.grid
 
-    events = calculate_hydrostatic_momentum_tendencies!(tendencies, velocities, arch, grid, advection, coriolis, closure,
-                                                        free_surface, tracers, diffusivities, hydrostatic_pressure_anomaly,
-                                                        auxiliary_fields, forcings, clock, barrier)
+    barrier = device_event(model)
 
-    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-        @inbounds c_tendency = tendencies[tracer_name]
-        @inbounds c_advection = advection[tracer_name]
-        @inbounds forcing = forcings[tracer_name]
+    events = calculate_hydrostatic_momentum_tendencies!(model, model.velocities; dependencies = barrier)
 
-        Gc_event = launch!(arch, grid, :xyz, calculate_hydrostatic_free_surface_Gc!,
-                           c_tendency, grid, Val(tracer_index),
-                           c_advection, closure, buoyancy,
-                           velocities, free_surface, tracers, diffusivities,
-                           auxiliary_fields, forcing, clock;
-                           dependencies=barrier)
+    for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
+        @inbounds c_tendency = model.timestepper.Gⁿ[tracer_name]
+        @inbounds c_advection = model.advection[tracer_name]
+        @inbounds c_forcing = model.forcing[tracer_name]
+        c_kernel_function = tracer_tendency_kernel_function(model, model.closure, Val(tracer_name))
+
+        Gc_event = launch!(arch, grid, :xyz,
+                           calculate_hydrostatic_free_surface_Gc!,
+                           c_tendency,
+                           c_kernel_function,
+                           grid,
+                           Val(tracer_index),
+                           c_advection,
+                           model.closure,
+                           model.buoyancy,
+                           model.velocities,
+                           model.free_surface,
+                           model.tracers,
+                           model.diffusivities,
+                           model.auxiliary_fields,
+                           c_forcing,
+                           model.clock;
+                           dependencies = barrier)
 
         push!(events, Gc_event)
     end
@@ -129,9 +144,9 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function calculate_hydrostatic_free_surface_Gc!(Gc, grid, args...)
+@kernel function calculate_hydrostatic_free_surface_Gc!(Gc, tendency_kernel_function, grid, args...)
     i, j, k = @index(Global, NTuple)
-    @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
+    @inbounds Gc[i, j, k] = tendency_kernel_function(i, j, k, grid, args...)
 end
 
 #####

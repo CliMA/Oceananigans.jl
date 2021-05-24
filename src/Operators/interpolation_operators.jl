@@ -30,12 +30,12 @@ using Oceananigans.Grids: Flat
 ##### Convenience operators for "interpolating constants"
 #####
 
-@inline ℑxᶠᵃᵃ(i, j, k, grid, f::Number, args...) = f
-@inline ℑxᶜᵃᵃ(i, j, k, grid, f::Number, args...) = f
-@inline ℑyᵃᶠᵃ(i, j, k, grid, f::Number, args...) = f
-@inline ℑyᵃᶜᵃ(i, j, k, grid, f::Number, args...) = f
-@inline ℑzᵃᵃᶠ(i, j, k, grid, f::Number, args...) = f
-@inline ℑzᵃᵃᶜ(i, j, k, grid, f::Number, args...) = f
+@inline ℑxᶠᵃᵃ(i, j, k, grid::AG, f::Number, args...) = f
+@inline ℑxᶜᵃᵃ(i, j, k, grid::AG, f::Number, args...) = f
+@inline ℑyᵃᶠᵃ(i, j, k, grid::AG, f::Number, args...) = f
+@inline ℑyᵃᶜᵃ(i, j, k, grid::AG, f::Number, args...) = f
+@inline ℑzᵃᵃᶠ(i, j, k, grid::AG, f::Number, args...) = f
+@inline ℑzᵃᵃᶜ(i, j, k, grid::AG, f::Number, args...) = f
 
 #####
 ##### Double interpolation

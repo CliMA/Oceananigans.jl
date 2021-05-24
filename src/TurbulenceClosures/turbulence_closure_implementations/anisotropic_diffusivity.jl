@@ -102,8 +102,8 @@ viscous_flux_wz(i, j, k, grid::APG, closure::AD, clock, U, args...) = viscous_fl
 
 const VITD = VerticallyImplicitTimeDiscretization
 
-z_viscosity(closure::AD, diffusivities) = closure.νz
-z_diffusivity(closure::AD, diffusivities, ::Val{tracer_index}) where tracer_index = @inbounds closure.κz[tracer_index]
+z_viscosity(closure::AD, args...) = closure.νz
+z_diffusivity(closure::AD, ::Val{tracer_index}, args...) where tracer_index = @inbounds closure.κz[tracer_index]
 
 const VerticallyBoundedGrid{FT} = AbstractPrimaryGrid{FT, <:Any, <:Any, <:Bounded}
 
@@ -119,13 +119,13 @@ end
 
 @inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::AD, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
+                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
                   zero(FT))
 end
 
 @inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::AD, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
+                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
                   zero(FT))
 end
 

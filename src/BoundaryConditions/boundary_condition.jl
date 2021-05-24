@@ -91,8 +91,10 @@ ImpenetrableBoundaryCondition() = BoundaryCondition(NormalFlow, nothing)
 NormalFlowBoundaryCondition(val; kwargs...) = BoundaryCondition(NormalFlow, val; kwargs...)
 
 # Support for various types of boundary conditions
-@inline getbc(bc::BC{<:NormalFlow, Nothing}, args...) = 0
-@inline getbc(bc::BC{C, <:Number},        args...)                  where C = bc.condition
+@inline getbc(bc::BC{<:NormalFlow, Nothing}, i, j, grid, args...) = zero(eltype(grid))
+@inline getbc(bc::BC{<:Flux, Nothing}, i, j, grid, args...) = zero(eltype(grid))
+
+@inline getbc(bc::BC{C, <:Number},        args...)                         where C = bc.condition
 @inline getbc(bc::BC{C, <:AbstractArray}, i, j, grid, clock, model_fields) where C = @inbounds bc.condition[i, j]
 @inline getbc(bc::BC{C, <:Function},      i, j, grid, clock, model_fields) where C = bc.condition(i, j, grid, clock, model_fields)
 

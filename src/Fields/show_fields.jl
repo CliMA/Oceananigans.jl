@@ -47,9 +47,11 @@ Base.show(io::IO, field::KernelComputedField) =
     print(io, "$(short_show(field))\n",
           "├── data: $(typeof(field.data)), size: $(size(field))\n",
           "├── grid: $(short_show(field.grid))\n",
-          "├── computed_dependencies: $(Tuple(short_show(d) for d in field.computed_dependencies))"\n,
+          "├── computed_dependencies: $(Tuple(short_show(d) for d in field.computed_dependencies))\n",
           "├── kernel: $(short_show(field.kernel))\n",
           "└── status: $(show_status(field.status))")
+
+Base.show(io::IO, field::ZeroField) = print(io, "ZeroField")
 
 short_show(array::OffsetArray{T, D, A}) where {T, D, A} = string("OffsetArray{$T, $D, $A}")
 

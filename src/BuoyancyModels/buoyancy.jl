@@ -23,26 +23,26 @@ grid = RegularRectilinearGrid(size=(1, 8, 8), extent=(1, 1000, 100))
 g̃ = (0, sind(θ), cosd(θ))
 
 buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃)
-model = IncompressibleModel(
-                   grid = grid,
-               buoyancy = buoyancy,
-                tracers = :b,
-)
+
+model = IncompressibleModel(grid=grid, buoyancy=buoyancy, tracers=:b)
 ```
 """
 function Buoyancy(; model, vertical_unit_vector=ZDirection())
-    ĝ = vertical_unit_vector
-    ĝ isa ZDirection || length(ĝ) == 3 ||
-        throw(ArgumentError("vertical_unit_vector must have length 3"))
+    vertical_unit_vector = validate_vertical_unit_vector(vertical_unit_vector)
+    return Buoyancy(model, vertical_unit_vector)
+end
 
-    if !isa(ĝ, ZDirection)
-        gx, gy, gz = ĝ
+validate_vertical_unit_vector(ĝ::ZDirection) = ĝ
 
-        gx^2 + gy^2 + gz^2 ≈ 1 ||
-            throw(ArgumentError("vertical_unit_vector must be a unit vector with g[1]² + g[2]² + g[3]² = 1"))
-    end
+function validate_vertical_unit_vector(ĝ)
+    length(ĝ) == 3 || throw(ArgumentError("`vertical_unit_vector` must have length 3"))
 
-    return Buoyancy(model, ĝ)
+    gx, gy, gz = ĝ
+
+    gx^2 + gy^2 + gz^2 ≈ 1 ||
+        throw(ArgumentError("`vertical_unit_vector` must be a unit vector with g[1]² + g[2]² + g[3]² ≈ 1"))
+
+    return tuple(ĝ...)
 end
 
 @inline ĝ_x(buoyancy) = @inbounds buoyancy.vertical_unit_vector[1]
@@ -54,7 +54,7 @@ end
 @inline ĝ_z(::Buoyancy{M, ZDirection}) where M = 1
 
 #####
-##### For convinience
+##### For convenience
 #####
 
 @inline required_tracers(bm::Buoyancy) = required_tracers(bm.model)
@@ -64,6 +64,8 @@ end
 @inline ∂x_b(i, j, k, grid, b::Buoyancy, C) = ∂x_b(i, j, k, grid, b.model, C)
 @inline ∂y_b(i, j, k, grid, b::Buoyancy, C) = ∂y_b(i, j, k, grid, b.model, C)
 @inline ∂z_b(i, j, k, grid, b::Buoyancy, C) = ∂z_b(i, j, k, grid, b.model, C)
+
+@inline top_buoyancy_flux(i, j, grid, b::Buoyancy, args...) = top_buoyancy_flux(i, j, grid, b.model, args...)
 
 regularize_buoyancy(b) = b
 regularize_buoyancy(b::AbstractBuoyancyModel) = Buoyancy(model=b)
