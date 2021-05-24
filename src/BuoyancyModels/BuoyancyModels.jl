@@ -4,12 +4,14 @@ export
     Buoyancy, BuoyancyTracer, SeawaterBuoyancy, buoyancy_perturbation,
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
     ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbation, x_dot_g_b, y_dot_g_b, z_dot_g_b,
+    top_buoyancy_flux,
     buoyancy_frequency_squared,
     BuoyancyField
 
 using Printf
 using Oceananigans.Grids
 using Oceananigans.Operators
+using Oceananigans.BoundaryConditions: getbc
 
 import SeawaterPolynomials: ρ′, thermal_expansion, haline_contraction
 

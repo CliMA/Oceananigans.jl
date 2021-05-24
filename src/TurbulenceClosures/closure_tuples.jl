@@ -8,12 +8,12 @@
 
 for stress_div in (:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ)
     @eval begin
-        @inline $stress_div(i, j, k, grid::AbstractGrid, closures::Tuple{C1}, clock, U, Ks) where {C1} =
-                    $stress_div(i, j, k, grid, closures[1], clock, U, Ks[1])
+        @inline $stress_div(i, j, k, grid::AbstractGrid, closures::Tuple{C1}, clock, U, Ks, args...) where {C1} =
+                    $stress_div(i, j, k, grid, closures[1], clock, U, Ks[1], args...)
 
-        @inline $stress_div(i, j, k, grid::AbstractGrid, closures::Tuple{C1, C2}, clock, U, Ks) where {C1, C2} = (
-                    $stress_div(i, j, k, grid, closures[1], clock, U, Ks[1])
-                  + $stress_div(i, j, k, grid, closures[2], clock, U, Ks[2]))
+        @inline $stress_div(i, j, k, grid::AbstractGrid, closures::Tuple{C1, C2}, clock, U, Ks, args...) where {C1, C2} = (
+                    $stress_div(i, j, k, grid, closures[1], clock, U, Ks[1], args...)
+                  + $stress_div(i, j, k, grid, closures[2], clock, U, Ks[2], args...))
 
         @inline $stress_div(i, j, k, grid::AbstractGrid, closures::Tuple, clock, U, Ks, args...) = (
                     $stress_div(i, j, k, grid, closures[1:2], clock, U, Ks[1:2], args...)
@@ -25,16 +25,16 @@ end
 ##### Tracer flux divergences
 #####
 
-@inline ∇_dot_qᶜ(i, j, k, grid::AbstractGrid, closures::Tuple{C1}, c, iᶜ, clock, Ks, C, buoyancy) where {C1} =
-        ∇_dot_qᶜ(i, j, k, grid, closures[1], c, iᶜ, clock, Ks[1], C, buoyancy)
+@inline ∇_dot_qᶜ(i, j, k, grid::AbstractGrid, closures::Tuple{C1}, c, iᶜ, clock, Ks, args...) where {C1} =
+        ∇_dot_qᶜ(i, j, k, grid, closures[1], c, iᶜ, clock, Ks[1], args...)
 
-@inline ∇_dot_qᶜ(i, j, k, grid::AbstractGrid, closures::Tuple{C1, C2}, c, iᶜ, clock, Ks, C, buoyancy) where {C1, C2} = (
-        ∇_dot_qᶜ(i, j, k, grid, closures[1], c, iᶜ, clock, Ks[1], C, buoyancy)
-      + ∇_dot_qᶜ(i, j, k, grid, closures[2], c, iᶜ, clock, Ks[2], C, buoyancy))
+@inline ∇_dot_qᶜ(i, j, k, grid::AbstractGrid, closures::Tuple{C1, C2}, c, iᶜ, clock, Ks, args...) where {C1, C2} = (
+        ∇_dot_qᶜ(i, j, k, grid, closures[1], c, iᶜ, clock, Ks[1], args...)
+      + ∇_dot_qᶜ(i, j, k, grid, closures[2], c, iᶜ, clock, Ks[2], args...))
 
-@inline ∇_dot_qᶜ(i, j, k, grid::AbstractGrid, closures::Tuple, c, iᶜ, clock, Ks, C, buoyancy) = (
-        ∇_dot_qᶜ(i, j, k, grid, closures[1:2], c, iᶜ, clock, Ks[1:2], C, buoyancy)
-      + ∇_dot_qᶜ(i, j, k, grid, closures[3:end], c, iᶜ, clock, Ks[3:end], C, buoyancy))
+@inline ∇_dot_qᶜ(i, j, k, grid::AbstractGrid, closures::Tuple, c, iᶜ, clock, Ks, args...) = (
+        ∇_dot_qᶜ(i, j, k, grid, closures[1:2], c, iᶜ, clock, Ks[1:2], args...)
+      + ∇_dot_qᶜ(i, j, k, grid, closures[3:end], c, iᶜ, clock, Ks[3:end], args...))
 
 #####
 ##### Utilities

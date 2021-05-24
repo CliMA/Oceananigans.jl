@@ -24,13 +24,11 @@ end
     end
 end
 
-const ArrayOrField = Union{AbstractArray, AbstractField}
-
 # Dispatch shenanigans
-@inline θ_and_sᴬ(i, j, k, θ::ArrayOrField, sᴬ::ArrayOrField) = @inbounds θ[i, j, k], sᴬ[i, j, k]
-@inline θ_and_sᴬ(i, j, k, θ::Number,       sᴬ::ArrayOrField) = @inbounds θ, sᴬ[i, j, k]
-@inline θ_and_sᴬ(i, j, k, θ::ArrayOrField, sᴬ::Number)       = @inbounds θ[i, j, k], sᴬ
-@inline θ_and_sᴬ(i, j, k, θ::Number,       sᴬ::Number)       = @inbounds θ, sᴬ
+@inline θ_and_sᴬ(i, j, k, θ::AbstractArray, sᴬ::AbstractArray) = @inbounds θ[i, j, k], sᴬ[i, j, k]
+@inline θ_and_sᴬ(i, j, k, θ::Number,        sᴬ::AbstractArray) = @inbounds θ, sᴬ[i, j, k]
+@inline θ_and_sᴬ(i, j, k, θ::AbstractArray, sᴬ::Number)        = @inbounds θ[i, j, k], sᴬ
+@inline θ_and_sᴬ(i, j, k, θ::Number,        sᴬ::Number)        = @inbounds θ, sᴬ
 
 # Basic functionality
 @inline ρ′(i, j, k, grid, eos, θ, sᴬ) = @inbounds ρ′(θ_and_sᴬ(i, j, k, θ, sᴬ)..., Zᵃᵃᶜ(i, j, k, grid), eos)

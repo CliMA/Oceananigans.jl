@@ -13,7 +13,7 @@ Returns the isotropic viscosity associated with `closure`.
 function viscosity end 
 
 """
-    diffusivity(closure, diffusivities, ::Val{c_idx}) where c_idx
+    diffusivity(closure, diffusivities, tracer_indedx) where tracer_index
 
 Returns the isotropic diffusivity associated with `closure` and tracer index `c_idx`.
 """
@@ -44,25 +44,25 @@ at index `i, j, k` and location `ᶜᶜᶜ`.
 const AID = AbstractIsotropicDiffusivity
 const APG = AbstractPrimaryGrid # as opposed to a grid containing an immersed boundary
 
-@inline viscous_flux_ux(i, j, k, grid::APG, closure::AID, clock, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, K), Σ₁₁, U.u, U.v, U.w)
-@inline viscous_flux_uy(i, j, k, grid::APG, closure::AID, clock, U, K) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, K), Σ₁₂, U.u, U.v, U.w)
-@inline viscous_flux_uz(i, j, k, grid::APG, closure::AID, clock, U, K) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, K), Σ₁₃, U.u, U.v, U.w)
+@inline viscous_flux_ux(i, j, k, grid::APG, closure::AID, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₁₁, U.u, U.v, U.w)
+@inline viscous_flux_uy(i, j, k, grid::APG, closure::AID, clock, U, args...) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₁₂, U.u, U.v, U.w)
+@inline viscous_flux_uz(i, j, k, grid::APG, closure::AID, clock, U, args...) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₁₃, U.u, U.v, U.w)
 
-@inline viscous_flux_vx(i, j, k, grid::APG, closure::AID, clock, U, K) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, K), Σ₂₁, U.u, U.v, U.w)
-@inline viscous_flux_vy(i, j, k, grid::APG, closure::AID, clock, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, K), Σ₂₂, U.u, U.v, U.w)
-@inline viscous_flux_vz(i, j, k, grid::APG, closure::AID, clock, U, K) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, K), Σ₂₃, U.u, U.v, U.w)
+@inline viscous_flux_vx(i, j, k, grid::APG, closure::AID, clock, U, args...) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₂₁, U.u, U.v, U.w)
+@inline viscous_flux_vy(i, j, k, grid::APG, closure::AID, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₂₂, U.u, U.v, U.w)
+@inline viscous_flux_vz(i, j, k, grid::APG, closure::AID, clock, U, args...) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₂₃, U.u, U.v, U.w)
 
-@inline viscous_flux_wx(i, j, k, grid::APG, closure::AID, clock, U, K) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, K), Σ₃₁, U.u, U.v, U.w)
-@inline viscous_flux_wy(i, j, k, grid::APG, closure::AID, clock, U, K) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, K), Σ₃₂, U.u, U.v, U.w)
-@inline viscous_flux_wz(i, j, k, grid::APG, closure::AID, clock, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, K), Σ₃₃, U.u, U.v, U.w)
+@inline viscous_flux_wx(i, j, k, grid::APG, closure::AID, clock, U, args...) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₃₁, U.u, U.v, U.w)
+@inline viscous_flux_wy(i, j, k, grid::APG, closure::AID, clock, U, args...) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₃₂, U.u, U.v, U.w)
+@inline viscous_flux_wz(i, j, k, grid::APG, closure::AID, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₃₃, U.u, U.v, U.w)
 
 #####
 ##### Diffusive fluxes
 #####
 
-@inline diffusive_flux_x(i, j, k, grid::APG, closure::AID, c, ::Val{c_idx}, clock, K, args...) where c_idx = diffusive_flux_x(i, j, k, grid, clock, diffusivity(closure, K, Val(c_idx)), c)
-@inline diffusive_flux_y(i, j, k, grid::APG, closure::AID, c, ::Val{c_idx}, clock, K, args...) where c_idx = diffusive_flux_y(i, j, k, grid, clock, diffusivity(closure, K, Val(c_idx)), c)
-@inline diffusive_flux_z(i, j, k, grid::APG, closure::AID, c, ::Val{c_idx}, clock, K, args...) where c_idx = diffusive_flux_z(i, j, k, grid, clock, diffusivity(closure, K, Val(c_idx)), c)
+@inline diffusive_flux_x(i, j, k, grid::APG, closure::AID, c, c_idx, clock, args...) = diffusive_flux_x(i, j, k, grid, clock, diffusivity(closure, c_idx, args...), c)
+@inline diffusive_flux_y(i, j, k, grid::APG, closure::AID, c, c_idx, clock, args...) = diffusive_flux_y(i, j, k, grid, clock, diffusivity(closure, c_idx, args...), c)
+@inline diffusive_flux_z(i, j, k, grid::APG, closure::AID, c, c_idx, clock, args...) = diffusive_flux_z(i, j, k, grid, clock, diffusivity(closure, c_idx, args...), c)
 
 #####
 ##### Support for VerticallyImplicitTimeDiscretization
@@ -71,11 +71,11 @@ const APG = AbstractPrimaryGrid # as opposed to a grid containing an immersed bo
 const VITD = VerticallyImplicitTimeDiscretization
 const VerticallyBoundedGrid{FT} = APG{FT, <:Any, <:Any, <:Bounded}
 
-@inline z_viscosity(closure::AID, diffusivities) = viscosity(closure, diffusivities)
-@inline z_diffusivity(closure::AID, diffusivities, ::Val{c_idx}) where c_idx = diffusivity(closure, diffusivities, Val(c_idx))
+@inline z_viscosity(closure::AID, args...) = viscosity(closure, args...)
+@inline z_diffusivity(closure::AID, c_idx, args...) = diffusivity(closure, c_idx, args...)
 
-@inline ivd_viscous_flux_uz(i, j, k, grid, closure, clock, U, K) = - ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, K), ∂xᶠᶜᵃ, U.w)
-@inline ivd_viscous_flux_vz(i, j, k, grid, closure, clock, U, K) = - ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, K), ∂yᶜᶠᵃ, U.v)
+@inline ivd_viscous_flux_uz(i, j, k, grid, closure, clock, U, args...) = - ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂xᶠᶜᵃ, U.w)
+@inline ivd_viscous_flux_vz(i, j, k, grid, closure, clock, U, args...) = - ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂yᶜᶠᵃ, U.v)
 
 # General functions (eg for vertically periodic)
 @inline viscous_flux_uz(i, j, k, grid::APG,     ::VITD, closure::AID, args...) = ivd_viscous_flux_uz(i, j, k, grid, closure, args...)
