@@ -51,7 +51,7 @@ a = 0.01 # splash amplitude
 L = 10 # degree
 φ₀ = 5 # degrees
 
-splash(λ, φ, z) = a * Gaussian(λ, φ - φ₀, L)
+splash(λ, φ) = a * Gaussian(λ, φ - φ₀, L)
 
 set!(model, η=splash)
 
