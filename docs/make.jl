@@ -88,12 +88,17 @@ model_setup_pages = [
 ]
 
 physics_pages = [
-    "Navier-Stokes and tracer conservation equations" => "physics/navier_stokes_and_tracer_conservation.md",
+    "Coordinate system and notation" => "physics/notation.md",
+    "`IncompressibleModel` Equations" => [
+        "Navier-Stokes and tracer conservation equations" => "physics/navier_stokes_and_tracer_conservation.md",
+        "Buoyancy models and equations of state" => "physics/buoyancy_and_equations_of_state.md",
+        "Surface gravity waves and the Craik-Leibovich approximation" => "physics/surface_gravity_waves.md",
+        ],
+    "`ShallowWaterModel` Equations" => [
+        "Shallow water dynamics" => "physics/shallow_water.md"
+        ],
     "Coriolis forces" => "physics/coriolis_forces.md",
-    "Buoyancy models and equations of state" => "physics/buoyancy_and_equations_of_state.md",
-    "Turbulence closures" => "physics/turbulence_closures.md",
-    "Surface gravity waves and the Craik-Leibovich approximation" => "physics/surface_gravity_waves.md",
-    "Shallow water dynamics" => "physics/shallow_water.md"
+    "Turbulence closures" => "physics/turbulence_closures.md"
 ]
 
 numerical_pages = [
