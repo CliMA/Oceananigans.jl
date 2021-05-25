@@ -157,7 +157,7 @@ function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereFiel
         v.data[1][0,    Ny+1, :] .= -u.data[5][1,  Ny, :]
         v.data[1][Nx+1, Ny+1, :] .=  v.data[3][1,  1,  :]
 
-        # Face 3
+        # Face 2
         u.data[2][1,    0,    :] .= -v.data[1][Nx, 1,  :]
         u.data[2][Nx+1, Ny+1, :] .=  u.data[4][1,  1,  :]
 
@@ -182,6 +182,7 @@ function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereFiel
         v.data[5][0,    Ny+1, :] .= -u.data[3][1,  Ny, :]
         v.data[5][Nx+1, Ny+1, :] .=  v.data[1][1,  1,  :]
 
+        # Face 6
         v.data[6][0,    Ny+1, :] .=  u.data[1][1,  1,  :]
         v.data[6][Nx+1, Ny+1, :] .= -u.data[2][1,  1,  :]
     end

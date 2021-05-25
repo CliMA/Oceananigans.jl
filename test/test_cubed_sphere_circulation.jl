@@ -158,37 +158,4 @@ end
         @test isapprox(Γ2, Γ6, atol=32ϵ)
         @test isapprox(Γ4, Γ6, atol=32ϵ)
     end
-
-    u(i, j, f) = u_faces[f][i, j, 1]
-    v(i, j, f) = v_faces[f][i, j, 1]
-
-    # # East-west velocity at all corners should be ≈ -0.821167551490615
-    # @test u(1, 1, 1) == u(1, 1, 1) == v(32, 1, 4) == v(32, 1, 5) == u(1, 32, 1) == u(1, 32, 1)
-
-    # # North-south velocity at all corners should be ≈ -0.40371827996821835
-
-    @testset "Face 1-3-5 corner velocities" begin
-        @test u_faces[1][1, 33, 1] == v_faces[1][0, 33, 1] == -v_faces[3][1, 33, 1] == -u_faces[5][1, 32, 1]
-        @test u_faces[3][1, 33, 1] == v_faces[3][0, 33, 1] == -u_faces[1][1, 32, 1] == -v_faces[5][1, 33, 1]
-        @test u_faces[5][1, 33, 1] == v_faces[5][0, 33, 1] == -v_faces[1][1, 33, 1] == -u_faces[3][1, 32, 1]
-    end
-
-    @testset "Face 1-2-3 corner velocities" begin
-        @test u_faces[1][33, 33, 1] ==  v_faces[1][33, 33, 1] == -v_faces[2][1,  33, 1] == -v_faces[3][1, 1,  1]
-        @test u_faces[2][1,  33, 1] ==  v_faces[2][0,  33, 1] ==  v_faces[1][32, 33, 1] ==  u_faces[3][1, 1,  1]
-        @test u_faces[3][1,  1,  1] == -v_faces[3][1,  1,  1] ==  u_faces[1][33, 33, 1] ==  u_faces[2][1, 33, 1]
-    end
-
-    @testset "Face 1-2-6 corner velocities" begin
-        @test  u(33, 0,  1) == v(33, 1,  1) ==  v(1,  1, 2) ==  u(33, 32, 6) # Should be ≈ -0.404
-        @test -u(1,  0,  2) == v(0,  1,  2) ==  v(32, 1, 1) ==  v(32, 33, 6) # Should be ≈ -0.404
-        @test -u(33, 33, 6) == v(33, 33, 6) == -u(33, 1, 1) == -u(1,  1,  2) # Should be ≈ -0.821
-    end
-
-    @testset "Face 1-5-6 corner velocities" begin
-        @test -u(1, 0, 1) == v(0, 1, 1) == -v(33, 32, 5) == -u(1, 32, 6)
-        @test u(33, 33, 5) == v(33, 33, 5) == v(1, 1, 1) == -v(1, 33, 6)
-        @test u(1, 33, 6) == v(0, 33, 6) == u(1, 1, 1) == u(32, 33, 5)
-    end
-
 end
