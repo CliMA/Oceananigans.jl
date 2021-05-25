@@ -76,7 +76,7 @@ function animate_faces(filepath, var, loc; filename_pattern, cmap, vmin, vmax, i
     if make_movie
         png_filename_pattern = "$(filename_pattern)_%04d.png"
         mp4_filename = "$filename_pattern.mp4"
-        run(`ffmpeg -y -i $png_filename_pattern -c:v libx264 -vf fps=10 -pix_fmt yuv420p $mp4_filename`)
+        run(`ffmpeg -y -i $png_filename_pattern -c:v libx264 -vf fps=30 -pix_fmt yuv420p $mp4_filename`)
     end
 
     if delete_pngs
@@ -116,9 +116,9 @@ function animate_eddying_aquaplanet_faces()
         filename_pattern = "eddying_aquaplanet_vorticity",
                  # iters = 1:6:634,
                     cmap = cmocean.cm.balance,
-                    vmin = -1e-5,
-                    vmax = +1e-5,
+                    vmin = -2e-7,
+                    vmax = +2e-7,
               make_movie = true,
-             delete_pngs = true
+             delete_pngs = false
     )
 end

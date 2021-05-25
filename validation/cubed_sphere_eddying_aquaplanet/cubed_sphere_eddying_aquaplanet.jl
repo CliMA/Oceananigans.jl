@@ -227,15 +227,6 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
                 parameters = (; cfl)
     )
 
-    # fields_to_check = (
-    #     u = model.velocities.u,
-    #     v = model.velocities.v,
-    #     η = model.free_surface.η
-    # )
-
-    # simulation.diagnostics[:state_checker] =
-    #     StateChecker(model, fields=fields_to_check, schedule=IterationInterval(20))
-
     output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=VerticalVorticityField(model)))
 
     simulation.output_writers[:fields] =
@@ -249,16 +240,18 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     return simulation
 end
 
-# include("animate_on_map_projection.jl")
+include("animate_on_map_projection.jl")
 
-# function run_cubed_sphere_eddying_aquaplanet()
+function run_cubed_sphere_eddying_aquaplanet()
 
-#     cubed_sphere_rossby_haurwitz(datadep"cubed_sphere_96_grid/cubed_sphere_96_grid.jld2")
+    simulation = cubed_sphere_eddying_aquaplanet(datadep"cubed_sphere_96_grid/cubed_sphere_96_grid.jld2")
 
-#     projections = [
-#         ccrs.NearsidePerspective(central_longitude=0, central_latitude=30),
-#         ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
-#     ]
+    projections = [
+        ccrs.NearsidePerspective(central_longitude=0, central_latitude=30),
+        ccrs.NearsidePerspective(central_longitude=180, central_latitude=-30)
+    ]
 
-#     animate_rossby_haurwitz(projections=projections)
-# end
+    animate_eddying_aquaplanet(projections=projections)
+
+    return simulation
+end

@@ -1,3 +1,5 @@
+import CUDA
+
 import Oceananigans.BoundaryConditions:
     fill_halo_regions!, fill_top_halo!, fill_bottom_halo!, fill_west_halo!, fill_east_halo!, fill_south_halo!, fill_north_halo!
 
@@ -141,6 +143,50 @@ function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereFiel
                 end
             end
         end
+    end
+
+    # Manually handle corners to exactly match MITgcm halo filling algorithm.
+    # Not sure whether every single one of these is needed though.
+
+    Nx, Ny, Nz, Nf = size(u.grid)
+
+    CUDA.@allowscalar @inbounds begin
+        # Face 1
+        u.data[1][1,    Ny+1, :] .= -u.data[5][1,  Ny, :]
+        u.data[1][Nx+1, 0,    :] .=  v.data[2][1,  1,  :]
+
+        v.data[1][0,    1,    :] .= -u.data[6][1,  Ny, :]
+        v.data[1][0,    Ny+1, :] .= -u.data[5][1,  Ny, :]
+        v.data[1][Nx+1, Ny+1, :] .=  v.data[3][1,  1,  :]
+
+        # Face 2
+        u.data[2][1,    0,    :] .= -v.data[1][Nx, 1,  :]
+        u.data[2][Nx+1, Ny+1, :] .=  u.data[4][1,  1,  :]
+
+        v.data[2][Nx+1, 1,    :] .= -v.data[6][Nx, 1,  :]
+        v.data[2][0,    Ny+1, :] .=  u.data[3][1,  1,  :]
+        v.data[2][Nx+1, Ny+1, :] .= -u.data[4][1,  1,  :]
+
+        # Face 3
+        u.data[3][1,    Ny+1, :] .= -u.data[1][1,  Ny, :]
+
+        v.data[3][0,    Ny+1, :] .= -u.data[1][1,  Ny, :]
+        v.data[3][Nx+1, Ny+1, :] .=  v.data[5][1,  1,  :]
+
+        # Face 4
+        u.data[4][Nx+1, Ny+1, :] .=  u.data[6][1,  1,  :]
+
+        v.data[4][Nx+1, 1,    :] .= -v.data[2][Nx, 1,  :]
+        v.data[4][0,    Ny+1, :] .=  u.data[5][1,  1,  :]
+        v.data[4][Nx+1, Ny+1, :] .= -u.data[6][1,  1,  :]
+
+        # Face 5
+        v.data[5][0,    Ny+1, :] .= -u.data[3][1,  Ny, :]
+        v.data[5][Nx+1, Ny+1, :] .=  v.data[1][1,  1,  :]
+
+        # Face 6
+        v.data[6][0,    Ny+1, :] .=  u.data[1][1,  1,  :]
+        v.data[6][Nx+1, Ny+1, :] .= -u.data[2][1,  1,  :]
     end
 
     return nothing
