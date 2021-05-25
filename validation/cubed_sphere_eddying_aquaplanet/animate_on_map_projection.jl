@@ -73,8 +73,7 @@ function animate_eddying_aquaplanet(; projections=[ccrs.Robinson()])
         for (n, projection) in enumerate(projections)
             ax = fig.add_subplot(1, n_subplots, n, projection=projection)
 
-            # plot_cubed_sphere_field!(fig, ax, file["grid"], η, (Center, Center); add_colorbar = (n == n_subplots), subplot_kwargs...)
-            plot_cubed_sphere_field!(fig, ax, file["grid"], ζ, (Face, Face); add_colorbar = (n == n_subplots), vmin=-1e-7, vmax=1e-7, subplot_kwargs...)
+            plot_cubed_sphere_field!(fig, ax, file["grid"], ζ, (Face, Face); add_colorbar = (n == n_subplots), vmin=-2e-7, vmax=2e-7, subplot_kwargs...)
 
             n_subplots == 1 && ax.set_title(plot_title)
 
