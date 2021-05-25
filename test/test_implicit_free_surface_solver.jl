@@ -40,8 +40,8 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     # Compare
-    extrema_tolerance = 1e-10
-    std_tolerance = 1e-10
+    extrema_tolerance = 1e-9
+    std_tolerance = 1e-9
 
     CUDA.@allowscalar begin
         @test minimum(abs, interior(left_hand_side) .- interior(right_hand_side)) < extrema_tolerance

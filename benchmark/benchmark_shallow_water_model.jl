@@ -7,7 +7,7 @@ using Benchmarks
 # Benchmark function
 
 function benchmark_shallow_water_model(Arch, FT, N)
-    grid = RegularRectilinearGrid(FT, size=(N, N, 1), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(FT, size=(N, N), extent=(1, 1), topology=(Periodic, Periodic, Flat), halo=(3, 3, 0))
     model = ShallowWaterModel(architecture=Arch(), grid=grid, gravitational_acceleration=1.0)
     set!(model, h=1)
 
@@ -38,5 +38,5 @@ benchmarks_pretty_table(df, title="Shallow water model benchmarks")
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df_Δ, [:Float_types, :Ns], by=(string, identity))
-    benchmarks_pretty_table(df_Δ, title="Shallow water model CPU -> GPU speedup")
+    benchmarks_pretty_table(df_Δ, title="Shallow water model CPU to GPU speedup")
 end

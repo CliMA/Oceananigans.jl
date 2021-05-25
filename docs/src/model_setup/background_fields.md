@@ -80,7 +80,7 @@ U_field = BackgroundField(U, parameters=parameters.α)
 B_field = BackgroundField(B, parameters=parameters)
 
 # output
-BackgroundField{typeof(B), NamedTuple{(:α, :N, :f),Tuple{Float64,Float64,Float64}}}
+BackgroundField{typeof(B), NamedTuple{(:α, :N, :f), Tuple{Float64, Float64, Float64}}}
 ├── func: B
 └── parameters: (α = 3.14, N = 1.0, f = 0.1)
 ```

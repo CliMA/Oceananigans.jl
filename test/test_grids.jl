@@ -1,8 +1,4 @@
-using DataDeps
-
 using Oceananigans.Grids: total_extent, halo_size
-
-ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
 
 #####
 ##### Regular rectilinear grids
@@ -238,7 +234,6 @@ function flat_extent_regular_rectilinear_grid(FT; topology, size, extent)
     grid = RegularRectilinearGrid(FT; size=size, topology=topology, extent=extent)
     return grid.Lx, grid.Ly, grid.Lz
 end
-
 
 function test_flat_size_regular_rectilinear_grid(FT)
     @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
@@ -553,8 +548,18 @@ end
 
         # Testing show function
         topo = (Periodic, Periodic, Periodic)
+        
         grid = RegularRectilinearGrid(topology=topo, size=(3, 7, 9), x=(0, 1), y=(-π, π), z=(0, 2π))
-        show(grid); println();
+
+        @test try
+            CUDA.@disallowscalar show(grid); println()
+            true
+        catch err
+            println("error in show(::RegularRectilinearGrid)")
+            println(sprint(showerror, err))
+            false
+        end
+        
         @test grid isa RegularRectilinearGrid
     end
 
@@ -585,8 +590,17 @@ end
 
             # Testing show function
             Nz = 20
-            grid = VerticallyStretchedRectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z_faces=collect(0:Nz).^2)
-            show(grid); println();
+            grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(1, 1, Nz-1), x=(0, 1), y=(0, 1), z_faces=collect(0:Nz).^2)
+            
+            @test try
+                CUDA.@disallowscalar show(grid); println()
+                true
+            catch err
+                println("error in show(::VerticallyStretchedRectilinearGrid)")
+                println(sprint(showerror, err))
+                false
+            end
+            
             @test grid isa VerticallyStretchedRectilinearGrid
         end
     end
@@ -601,7 +615,16 @@ end
 
         # Testing show function
         grid = RegularLatitudeLongitudeGrid(size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
-        show(grid); println();
+    
+        @test try
+            CUDA.@disallowscalar show(grid); println()
+            true
+        catch err
+            println("error in show(::RegularLatitudeLongitudeGrid)")
+            println(sprint(showerror, err))
+            false
+        end
+
         @test grid isa RegularLatitudeLongitudeGrid
     end
 
@@ -614,7 +637,16 @@ end
 
         # Testing show function
         grid = ConformalCubedSphereFaceGrid(size=(10, 10, 1), z=(0, 1))
-        show(grid); println();
+    
+        @test try
+            CUDA.@disallowscalar show(grid); println()
+            true
+        catch err
+            println("error in show(::ConformalCubedSphereFaceGrid)")
+            println(sprint(showerror, err))
+            false
+        end
+
         @test grid isa ConformalCubedSphereFaceGrid
     end
 

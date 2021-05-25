@@ -36,5 +36,5 @@ benchmarks_pretty_table(df, title="Vertically-stretched incompressible model ben
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df_Δ, [:Float_types, :Ns], by=(string, identity))
-    benchmarks_pretty_table(df_Δ, title="Vertically-stretched incompressible model CPU -> GPU speedup")
+    benchmarks_pretty_table(df_Δ, title="Vertically-stretched incompressible model CPU to GPU speedup")
 end

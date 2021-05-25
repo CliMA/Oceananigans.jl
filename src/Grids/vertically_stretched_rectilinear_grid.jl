@@ -184,7 +184,7 @@ end
 #####
 
 get_z_face(z::Function, k) = z(k)
-get_z_face(z::AbstractVector, k) = z[k]
+get_z_face(z::AbstractVector, k) = CUDA.@allowscalar z[k]
 
 lower_exterior_Δzᵃᵃᶜ(z_topo,          zFi, Hz) = [zFi[end - Hz + k] - zFi[end - Hz + k - 1] for k = 1:Hz]
 lower_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[2]  - zFi[1] for k = 1:Hz]
@@ -272,8 +272,8 @@ short_show(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, 
     "VerticallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
 
 function show(io::IO, g::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    Δz_min = minimum(view(g.Δzᵃᵃᶜ, 1:g.Nz))
-    Δz_max = maximum(view(g.Δzᵃᵃᶜ, 1:g.Nz))
+    Δz_min = minimum(view(parent(g.Δzᵃᵃᶜ), g.Hz+1:g.Nz+g.Hz))
+    Δz_max = maximum(view(parent(g.Δzᵃᵃᶜ), g.Hz+1:g.Nz+g.Hz))
     print(io, "VerticallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',

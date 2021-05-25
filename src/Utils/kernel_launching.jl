@@ -2,7 +2,6 @@
 ##### Utilities for launching kernels
 #####
 
-using CUDA
 using KernelAbstractions
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -89,3 +88,6 @@ function launch!(arch, grid, dims, kernel!, args...;
 
     return event
 end
+
+# When dims::Val
+@inline launch!(arch, grid, ::Val{dims}, args...; kwargs...) where dims = launch!(arch, grid, dims, args...; kwargs...)

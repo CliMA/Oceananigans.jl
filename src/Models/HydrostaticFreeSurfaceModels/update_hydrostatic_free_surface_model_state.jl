@@ -1,6 +1,7 @@
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models.IncompressibleModels: update_hydrostatic_pressure!
 
 import Oceananigans.TimeSteppers: update_state!
@@ -12,7 +13,12 @@ Update peripheral aspects of the model (auxiliary fields, halo regions, diffusiv
 hydrostatic pressure) to the current model state.
 """
 function update_state!(model::HydrostaticFreeSurfaceModel)
-    
+
+    # Mask immersed fields
+    masking_events = Tuple(mask_immersed_field!(field) for field in merge(model.auxiliary_fields, prognostic_fields(model)))
+
+    wait(device(model.architecture), MultiEvent(masking_events))
+
     # Fill halos for velocities and tracers
     fill_halo_regions!(prognostic_fields(model), model.architecture, model.clock, fields(model))
     fill_horizontal_velocity_halos!(model.velocities.u, model.velocities.v, model.architecture)
@@ -33,7 +39,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel)
     fill_halo_regions!(model.diffusivities, model.architecture, model.clock, fields(model))
 
     # Calculate hydrostatic pressure
-    pressure_calculation = launch!(model.architecture, model.grid, :xy, update_hydrostatic_pressure!,
+    pressure_calculation = launch!(model.architecture, model.grid, Val(:xy), update_hydrostatic_pressure!,
                                    model.pressure.pHY′, model.grid, model.buoyancy, model.tracers,
                                    dependencies=Event(device(model.architecture)))
 

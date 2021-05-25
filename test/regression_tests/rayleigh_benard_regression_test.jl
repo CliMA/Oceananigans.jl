@@ -127,11 +127,11 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
 
-    test_fields = (u = Array(interior(model.velocities.u)),
-                   v = Array(interior(model.velocities.v)),
-                   w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
-                   b = Array(interior(model.tracers.b)),
-                   c = Array(interior(model.tracers.c)))
+    test_fields =  CUDA.@allowscalar (u = Array(interior(model.velocities.u)),
+                                      v = Array(interior(model.velocities.v)),
+                                      w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
+                                      b = Array(interior(model.tracers.b)),
+                                      c = Array(interior(model.tracers.c)))
 
     correct_fields = (u = Array(interior(solution₁.u, model.grid)),
                       v = Array(interior(solution₁.v, model.grid)),
@@ -141,11 +141,13 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     summarize_regression_test(test_fields, correct_fields)
 
+    CUDA.allowscalar(true)
     @test all(test_fields.u .≈ correct_fields.u)
     @test all(test_fields.v .≈ correct_fields.v)
     @test all(test_fields.w .≈ correct_fields.w)
     @test all(test_fields.b .≈ correct_fields.b)
     @test all(test_fields.c .≈ correct_fields.c)
+    CUDA.allowscalar(false)
 
     return nothing
 end

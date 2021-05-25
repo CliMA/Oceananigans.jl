@@ -14,7 +14,7 @@ function benchmark_incompressible_model(Arch, FT, N)
     trial = @benchmark begin
         @sync_gpu time_step!($model, 1)
     end samples=10
-    
+
     return trial
 end
 
@@ -36,5 +36,5 @@ benchmarks_pretty_table(df, title="Incompressible model benchmarks")
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df_Δ, [:Float_types, :Ns], by=(string, identity))
-    benchmarks_pretty_table(df_Δ, title="Incompressible model CPU -> GPU speedup")
+    benchmarks_pretty_table(df_Δ, title="Incompressible model CPU to GPU speedup")
 end

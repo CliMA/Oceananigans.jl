@@ -24,7 +24,7 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
                                                explicit_velocity_step_events...,
                                                explicit_tracer_step_events...))
 
-    wait(device_event(model), prognostic_field_events)
+    wait(device(model.architecture), prognostic_field_events)
 
     return nothing
 end
@@ -63,7 +63,11 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        model.clock,
                        Δt,
                        model.closure,
-                       model.diffusivities;
+                       nothing,
+                       model.diffusivities,
+                       model.velocities,
+                       model.tracers,
+                       model.buoyancy,
                        dependencies = explicit_velocity_step_events[i])
     end
 
@@ -103,8 +107,11 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                        model.clock,
                        Δt,
                        model.closure,
+                       tracer_index,
                        model.diffusivities,
-                       tracer_index;
+                       model.velocities,
+                       model.tracers,
+                       model.buoyancy,
                        dependencies = explicit_tracer_step_events[tracer_index])
     end
 

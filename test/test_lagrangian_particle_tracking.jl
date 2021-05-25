@@ -34,7 +34,7 @@ function run_simple_particle_tracking_tests(arch, timestepper)
 
     velocities = VelocityFields(arch, grid)
     u, v, w = velocities
-    speed = ComputedField(√(u^2 + v^2 + w^2))
+    speed = ComputedField(√(u*u + v*v + w*w))
 
     tracked_fields = merge(velocities, (s=speed,))
 

@@ -6,7 +6,7 @@ using OffsetArrays: OffsetArray
 import Base: getindex, size, show, minimum, maximum
 import Statistics: mean
 
-import Oceananigans.Fields: AbstractField, AbstractDataField, AbstractReducedField, Field, ReducedField, minimum, maximum, mean, location
+import Oceananigans.Fields: AbstractField, AbstractDataField, AbstractReducedField, Field, ReducedField, minimum, maximum, mean, location, short_show
 import Oceananigans.Grids: new_data
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 
@@ -33,6 +33,15 @@ const AbstractCubedSphereField = Union{CubedSphereAbstractField,
                                        CubedSphereAbstractDataField,
                                        CubedSphereAbstractReducedField,
                                        CubedSphereField}
+
+function Base.show(io::IO, field::AbstractCubedSphereField)
+    LX, LY, LZ = location(field)
+    arch = architecture(field)
+    A = typeof(arch)
+    return print(io, "$(typeof(field).name.wrapper) at ($LX, $LY, $LZ)\n",
+          "├── architecture: $A\n",
+          "└── grid: $(short_show(field.grid))")
+end
 
 # Just a single face
 const CubedSphereFaceField = AbstractField{X, Y, Z, A, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A}
