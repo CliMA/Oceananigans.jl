@@ -9,22 +9,29 @@ const CubedSphereGPUField = CubedSphereField{X, Y, Z, <:AbstractGPUArchitecture}
 const CubedSphereCPUReducedField = CubedSphereReducedField{X, Y, Z, <:AbstractCPUArchitecture} where {X, Y, Z}
 const CubedSphereGPUReducedField = CubedSphereReducedField{X, Y, Z, <:AbstractGPUArchitecture} where {X, Y, Z}
 
-function set!(u::CubedSphereCPUField , v::CubedSphereCPUField)
+const CubedSphereCPUFields = Union{CubedSphereCPUField, CubedSphereCPUReducedField}
+const CubedSphereGPUFields = Union{CubedSphereGPUField, CubedSphereGPUReducedField}
+
+# We need to define the function once for CPU fields then again for GPU fields to avoid the method
+# ambiguity with Fields.set!.
+
+function set!(u::CubedSphereCPUFields , v::CubedSphereCPUFields)
     for (u_face, v_face) in zip(faces(u), faces(v))
         @. u_face.data.parent = v_face.data.parent
     end
     return nothing
 end
 
-set!(field::CubedSphereCPUField, f::Function) = [set_face_field!(field_face, f) for field_face in faces(field)]
-set!(field::CubedSphereCPUField, f::Number) = [set_face_field!(field_face, f) for field_face in faces(field)]
-set!(field::CubedSphereGPUField, f::Function) = [set_face_field!(field_face, f) for field_face in faces(field)]
-set!(field::CubedSphereGPUField, f::Number) = [set_face_field!(field_face, f) for field_face in faces(field)]
+function set!(u::CubedSphereGPUField , v::CubedSphereGPUField)
+    for (u_face, v_face) in zip(faces(u), faces(v))
+        @. u_face.data.parent = v_face.data.parent
+    end
+    return nothing
+end
 
-set!(field::CubedSphereCPUReducedField, f::Function) = [set_face_field!(field_face, f) for field_face in faces(field)]
-set!(field::CubedSphereCPUReducedField, f::Number) = [set_face_field!(field_face, f) for field_face in faces(field)]
-set!(field::CubedSphereGPUReducedField, f::Function) = [set_face_field!(field_face, f) for field_face in faces(field)]
-set!(field::CubedSphereGPUReducedField, f::Number) = [set_face_field!(field_face, f) for field_face in faces(field)]
+set!(field::CubedSphereCPUFields, f::Function) = [set_face_field!(field_face, f) for field_face in faces(field)]
+set!(field::CubedSphereCPUFields, f::Number) = [set_face_field!(field_face, f) for field_face in faces(field)]
+set!(field::CubedSphereGPUFields, f::Function) = [set_face_field!(field_face, f) for field_face in faces(field)]
+set!(field::CubedSphereGPUFields, f::Number) = [set_face_field!(field_face, f) for field_face in faces(field)]
 
 set_face_field!(field, a) = set!(field, a)
-

@@ -1,3 +1,5 @@
+import CUDA
+
 import Oceananigans.BoundaryConditions:
     fill_halo_regions!, fill_top_halo!, fill_bottom_halo!, fill_west_halo!, fill_east_halo!, fill_south_halo!, fill_north_halo!
 
@@ -148,7 +150,7 @@ function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereFiel
 
     Nx, Ny, Nz, Nf = size(u.grid)
 
-    @inbounds begin
+    CUDA.@allowscalar @inbounds begin
         # Face 1
         u.data[1][1,    Ny+1, :] .= -u.data[5][1,  Ny, :]
         u.data[1][Nx+1, 0,    :] .=  v.data[2][1,  1,  :]
