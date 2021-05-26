@@ -8,7 +8,7 @@ each direction by ``\boldsymbol{U} = \boldsymbol{u} h``,  as our dynamical varia
 
 ```math
   \begin{align}
-    \partial_t \boldsumbol{U} + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{U} \frac{\boldsymbol{U}}{h} \right ) + \boldsymbol{f} \times \boldsymbol{U} = - \boldsymbol{\nabla} \left ( \frac1{2} g h^2 \right ) \, ,\\
+    \partial_t \boldsymbol{U} + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{U} \frac{\boldsymbol{U}}{h} \right ) + \boldsymbol{f} \times \boldsymbol{U} = - \boldsymbol{\nabla} \left ( \frac1{2} g h^2 \right ) \, ,\\
     \partial_t h + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{U} & = 0 \, .
   \end{align}
 ```
