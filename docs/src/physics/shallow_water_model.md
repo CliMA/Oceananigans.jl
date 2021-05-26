@@ -1,8 +1,9 @@
-# Shallow Water Dynamics
+# Shallow water model
 
-The shallow water dynamics evolve the two-dimensional flow ``\boldsymbol{u}(x, y, t) = 
-u(x, y, t) \boldsymbol{\hat x} + v(x, y, t) \boldsymbol{\hat y}`` together with the fluid's 
-height ``h(x, y, t)`` according to:
+The `ShallowWaterModel` solves the shallow water dynamics for a fluid of constant density but 
+with varying fluid depth ``h(x, y, t)``. The dynamics for the evolution of the two-dimensional 
+flow ``\boldsymbol{u}(x, y, t) = u(x, y, t) \boldsymbol{\hat x} + v(x, y, t) \boldsymbol{\hat y}`` 
+and the fluid's height ``h(x, y, t)`` is:
 ```math
   \begin{align}
     \partial_t \boldsymbol{u} + \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \boldsymbol{u} 

@@ -1,6 +1,6 @@
-# Hydrostatic Model with a Free Surface
+# Hydrostatic model with a free surface
 
-`HydrostaticFreeSurfaceModel` solves the incompressible Navier-Stokes equations under the 
+The `HydrostaticFreeSurfaceModel` solves the incompressible Navier-Stokes equations under the 
 Boussinesq and hydrostatic approximations and with an arbitrary number of tracer conservation 
 equations. Physics associated with individual terms in the momentum and tracer conservation
 equations --- the background rotation rate of the equation's reference frame,

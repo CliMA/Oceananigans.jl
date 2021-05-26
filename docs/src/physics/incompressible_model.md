@@ -1,4 +1,4 @@
-# The Boussinesq Navier-Stokes equations and tracer conservation equations
+# Incompressible model
 
 The `IncompressibleModel` solves the incompressible Navier-Stokes equations under the Boussinesq
 approximation and an arbitrary number of tracer conservation equations.
