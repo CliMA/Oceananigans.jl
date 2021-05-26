@@ -21,7 +21,7 @@ at the top of the domain via the Craik-Leibovich approximation are
                         - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{V} \nonumber \\
                         & \qquad
                         - \left ( \boldsymbol{f} - \boldsymbol{\nabla} \times \boldsymbol{u}^S \right ) \times \boldsymbol{v} 
-                        - \boldsymbol{\nabla} \phi
+                        - \boldsymbol{\nabla} p
                         + b \boldsymbol{\hat z}
                         - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}
                         + \partial_t \boldsymbol{v}^S
@@ -30,11 +30,10 @@ at the top of the domain via the Craik-Leibovich approximation are
     \end{align}
 ```
 where ``b`` the is buoyancy, ``\boldsymbol{\tau}`` is the kinematic stress tensor, ``\boldsymbol{F_v}``
-denotes an internal forcing of the velocity field ``\boldsymbol{v}``, ``\phi`` is the potential
-associated with kinematic and constant hydrostatic contributions to pressure, ``\boldsymbol{u}^S`` 
-is the 'Stokes drift' velocity field associated with surface gravity waves, and ``\boldsymbol{f}`` 
-is the *Coriolis parameter*, or the background vorticity associated with the specified rate of 
-rotation of the frame of reference.
+denotes an internal forcing of the velocity field ``\boldsymbol{v}``, ``p`` is the kinematic 
+pressure, ``\boldsymbol{u}^S``is the 'Stokes drift' velocity field associated with surface gravity 
+waves, and ``\boldsymbol{f}`` is the *Coriolis parameter*, or the background vorticity associated 
+with the specified rate of rotation of the frame of reference.
 
 The terms that appear on the right-hand side of the momentum conservation equation are (in order):
 
@@ -47,7 +46,7 @@ The terms that appear on the right-hand side of the momentum conservation equati
 * Coriolis: ``\boldsymbol{f} \times \boldsymbol{v}``,
 * the effective background rotation rate due to surface waves: ``\left ( \boldsymbol{\nabla} \times 
   \boldsymbol{u}^S \right ) \times \boldsymbol{v}``,
-* pressure gradient: ``\boldsymbol{\nabla} \phi``,
+* kinematic pressure gradient: ``\boldsymbol{\nabla} p``,
 * buoyant acceleration: ``b \boldsymbol{\hat z}``,
 * molecular or turbulence viscous stress: ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}``,
 * a source of momentum due to forcing or damping of surface waves: ``\partial_t \boldsymbol{v}^S``, and
