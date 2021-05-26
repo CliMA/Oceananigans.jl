@@ -54,7 +54,7 @@ at the top of the domain via the Craik-Leibovich approximation are
                         - \left ( \boldsymbol{V} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v}
                         - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{V} \nonumber \\
                         & \qquad
-                        - \left ( \boldsymbol{f} - \boldsymbol{\nabla} \times \boldsymbol{v}^S \right ) \times \boldsymbol{v} 
+                        - \left ( \boldsymbol{f} - \boldsymbol{\nabla} \times \boldsymbol{u}^S \right ) \times \boldsymbol{v} 
                         - \boldsymbol{\nabla} \phi
                         + b \boldsymbol{\hat z}
                         - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}
@@ -65,7 +65,7 @@ at the top of the domain via the Craik-Leibovich approximation are
 ```
 where ``b`` the is buoyancy, ``\boldsymbol{\tau}`` is the kinematic stress tensor, ``\boldsymbol{F_v}``
 denotes an internal forcing of the velocity field ``\boldsymbol{v}``, ``\phi`` is the potential
-associated with kinematic and constant hydrostatic contributions to pressure, ``\boldsymbol{v}^S`` 
+associated with kinematic and constant hydrostatic contributions to pressure, ``\boldsymbol{u}^S`` 
 is the 'Stokes drift' velocity field associated with surface gravity waves, and ``\boldsymbol{f}`` 
 is the *Coriolis parameter*, or the background vorticity associated with the specified rate of 
 rotation of the frame of reference.
@@ -80,7 +80,7 @@ The terms that appear on the right-hand side of the momentum conservation equati
   \boldsymbol{\nabla} \right ) \boldsymbol{V}``,
 * coriolis: ``\boldsymbol{f} \times \boldsymbol{v}``,
 * the effective background rotation rate due to surface waves: ``\left ( \boldsymbol{\nabla} \times 
-  \boldsymbol{v}^S \right ) \times \boldsymbol{v}``,
+  \boldsymbol{u}^S \right ) \times \boldsymbol{v}``,
 * pressure gradient: ``\boldsymbol{\nabla} \phi``,
 * buoyant acceleration: ``b \boldsymbol{\hat z}``,
 * molecular or turbulence viscous stress: ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}``,

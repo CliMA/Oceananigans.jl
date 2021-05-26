@@ -52,41 +52,40 @@ via the Boussinesq approximation and including the averaged effects of surface g
 at the top of the domain via the Craik-Leibovich approximation are
 ```math
     \begin{align}
-    \partial_t \boldsymbol{v} & = - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v}
-                        - \left ( \boldsymbol{V} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v}
-                        - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{V} \nonumber \\
+    \partial_t \boldsymbol{u} & = - \left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}
+                        - \left ( \boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}
+                        - \left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{U} \nonumber \\
                         & \qquad
-                        - \left ( \boldsymbol{f} - \boldsymbol{\nabla} \times \boldsymbol{v}^S \right ) \times \boldsymbol{v} 
+                        - \left ( \boldsymbol{f} - \boldsymbol{\nabla} \times \boldsymbol{u}^S \right ) \times \boldsymbol{u} 
                         - \boldsymbol{\nabla} \phi
-                        + b \boldsymbol{\hat z}
                         - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}
-                        + \partial_t \boldsymbol{v}^S
-                        + \boldsymbol{F_v} \, ,
-    \label{eq:momentum}
+                        + \partial_t \boldsymbol{u}^S
+                        + \boldsymbol{F_u} \, , \label{eq:momentum}\\
+                        0 & = b - \partial_z p \, , \label{eq:hydrostatic}
     \end{align}
 ```
-where ``b`` the is buoyancy, ``\boldsymbol{\tau}`` is the kinematic stress tensor, ``\boldsymbol{F_v}``
-denotes an internal forcing of the velocity field ``\boldsymbol{v}``, ``\phi`` is the potential
-associated with kinematic and constant hydrostatic contributions to pressure, ``\boldsymbol{v}^S`` 
+where ``b`` the is buoyancy, ``\boldsymbol{\tau}`` is the kinematic stress tensor, ``\boldsymbol{F_u}``
+denotes an internal forcing of the velocity field ``\boldsymbol{u}``, ``\phi`` is the potential
+associated with kinematic and constant hydrostatic contributions to pressure, ``\boldsymbol{u}^S`` 
 is the 'Stokes drift' velocity field associated with surface gravity waves, and ``\boldsymbol{f}`` 
 is the *Coriolis parameter*, or the background vorticity associated with the specified rate of 
 rotation of the frame of reference.
 
 The terms that appear on the right-hand side of the momentum conservation equation are (in order):
 
-* momentum advection: ``\left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) 
-  \boldsymbol{v}``,
-* advection of resolved momentum by the background velocity field ``\boldsymbol{V}``: 
-  ``\left ( \boldsymbol{V} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v}``,
-* advection of background momentum by resolved velocity: ``\left ( \boldsymbol{v} \boldsymbol{\cdot} 
-  \boldsymbol{\nabla} \right ) \boldsymbol{V}``,
-* coriolis: ``\boldsymbol{f} \times \boldsymbol{v}``,
+* momentum advection: ``\left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) 
+  \boldsymbol{u}``,
+* advection of resolved momentum by the background velocity field ``\boldsymbol{U}``: 
+  ``\left ( \boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}``,
+* advection of background momentum by resolved velocity: ``\left ( \boldsymbol{u} \boldsymbol{\cdot} 
+  \boldsymbol{\nabla} \right ) \boldsymbol{U}``,
+* coriolis: ``\boldsymbol{f} \times \boldsymbol{u}``,
 * the effective background rotation rate due to surface waves: ``\left ( \boldsymbol{\nabla} \times 
-  \boldsymbol{v}^S \right ) \times \boldsymbol{v}``,
+  \boldsymbol{u}^S \right ) \times \boldsymbol{u}``,
 * pressure gradient: ``\boldsymbol{\nabla} \phi``,
 * buoyant acceleration: ``b \boldsymbol{\hat z}``,
 * molecular or turbulence viscous stress: ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}``,
-* a source of momentum due to forcing or damping of surface waves: ``\partial_t \boldsymbol{v}^S``, and
+* a source of momentum due to forcing or damping of surface waves: ``\partial_t \boldsymbol{u}^S``, and
 * an arbitrary internal source of momentum: ``\boldsymbol{F_v}``.
 
 ## The tracer conservation equation
@@ -94,9 +93,9 @@ The terms that appear on the right-hand side of the momentum conservation equati
 The conservation law for tracers in Oceananigans.jl is
 ```math
     \begin{align}
-    \partial_t c = - \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} c
-                   - \boldsymbol{V} \boldsymbol{\cdot} \boldsymbol{\nabla} c
-                   - \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} C
+    \partial_t c = - \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} c
+                   - \boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} c
+                   - \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} C
                    - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c
                    + F_c \, ,
     \label{eq:tracer}
@@ -108,9 +107,9 @@ be solved simultaneously with the momentum equations.
 
 From left to right, the terms that appear on the right-hand side of the tracer conservation equation are
 
-* tracer advection: ``\boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} c``,
-* tracer advection by the background velocity field, ``\boldsymbol{V}``: ``\boldsymbol{V} \boldsymbol{\cdot} \boldsymbol{\nabla} c``,
-* advection of the background tracer field, ``C``, by the resolved velocity field: ``\boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} C``,
+* tracer advection: ``\boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} c``,
+* tracer advection by the background velocity field, ``\boldsymbol{U}``: ``\boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} c``,
+* advection of the background tracer field, ``C``, by the resolved velocity field: ``\boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} C``,
 * molecular or turbulent diffusion: ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c``, and
 * an arbitrary internal source of tracer: ``F_c``.
 
