@@ -4,7 +4,7 @@ In Oceananiagns.jl, users model the effects of surface waves by specifying spati
 temporal gradients of the Stokes drift velocity field.
 At the moment, only uniform unidirectional Stokes drift fields are supported, in which case
 ```math
-    \boldsymbol{v}^S = u^S(z, t) \hat{\boldsymbol{x}} + v^S(z, t) \hat{\boldsymbol{y}} \, .
+    \boldsymbol{u}^S = u^S(z, t) \hat{\boldsymbol{x}} + v^S(z, t) \hat{\boldsymbol{y}} \, .
 ```
 Surface waves are modeled in Oceananigans.jl by the Craik-Leibovich approximation,
 which governs interior motions under a surface gravity wave field that have been time- or
@@ -38,7 +38,7 @@ field ``\boldsymbol{v}^E``, which is the fluid velocity averaged at the fixed Eu
 ``(x, y, z)``. The surface wave Stokes drift field supplied by the user is, in fact, defined
 by the difference between the Eulerian- and Lagrangian-mean velocity:
 ```math
-    \boldsymbol{v}^S \equiv \boldsymbol{v} - \boldsymbol{v}^E \, .
+    \boldsymbol{u}^S \equiv \boldsymbol{v} - \boldsymbol{v}^E \, .
 ```
 The Stokes drift velocity field is typically prescribed for idealized scenarios, or determined
 from a wave model for the evolution of surface waves under time-dependent atmospheric winds
