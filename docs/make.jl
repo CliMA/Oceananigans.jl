@@ -33,16 +33,16 @@ const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
-    # "one_dimensional_diffusion.jl",
-    # "geostrophic_adjustment.jl",
-    # "two_dimensional_turbulence.jl",
-    # "internal_wave.jl",
-    # "convecting_plankton.jl",
-    # "ocean_wind_mixing_and_convection.jl",
-    # "langmuir_turbulence.jl",
-    # "eady_turbulence.jl",
-    # "kelvin_helmholtz_instability.jl",
-    # "shallow_water_Bickley_jet.jl"
+    "one_dimensional_diffusion.jl",
+    "geostrophic_adjustment.jl",
+    "two_dimensional_turbulence.jl",
+    "internal_wave.jl",
+    "convecting_plankton.jl",
+    "ocean_wind_mixing_and_convection.jl",
+    "langmuir_turbulence.jl",
+    "eady_turbulence.jl",
+    "kelvin_helmholtz_instability.jl",
+    "shallow_water_Bickley_jet.jl"
 ]
 
 for example in examples
@@ -55,16 +55,16 @@ end
 #####
 
 example_pages = [
-    # "One-dimensional diffusion"          => "generated/one_dimensional_diffusion.md",
-    # "Geostrophic adjustment"             => "generated/geostrophic_adjustment.md",
-    # "Two-dimensional turbulence"         => "generated/two_dimensional_turbulence.md",
-    # "Internal wave"                      => "generated/internal_wave.md",
-    # "Convecting plankton"                => "generated/convecting_plankton.md",
-    # "Ocean wind mixing and convection"   => "generated/ocean_wind_mixing_and_convection.md",
-    # "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
-    # "Eady turbulence"                    => "generated/eady_turbulence.md",
-    # "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
-    # "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md"
+    "One-dimensional diffusion"          => "generated/one_dimensional_diffusion.md",
+    "Geostrophic adjustment"             => "generated/geostrophic_adjustment.md",
+    "Two-dimensional turbulence"         => "generated/two_dimensional_turbulence.md",
+    "Internal wave"                      => "generated/internal_wave.md",
+    "Convecting plankton"                => "generated/convecting_plankton.md",
+    "Ocean wind mixing and convection"   => "generated/ocean_wind_mixing_and_convection.md",
+    "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
+    "Eady turbulence"                    => "generated/eady_turbulence.md",
+    "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
+    "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md"
  ]
 
 model_setup_pages = [
@@ -174,4 +174,3 @@ deploydocs(
       versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
   push_preview = true
 )
-
