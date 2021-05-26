@@ -1,18 +1,6 @@
-# Coordinate system and notation
-
-Oceananigans.jl is formulated in a Cartesian coordinate system
-``\boldsymbol{x} = (x, y, z)`` with unit vectors ``\boldsymbol{\hat x}``, ``\boldsymbol{\hat y}``, and ``\boldsymbol{\hat z}``,
-where ``\boldsymbol{\hat x}`` points east, ``\boldsymbol{\hat y}`` points north, and ``\boldsymbol{\hat z}`` points 'upward',
-opposite the direction of gravitational acceleration.
-We denote time with ``t``, partial derivatives with respect to time ``t`` or a coordinate ``x``
-with ``\partial_t`` or ``\partial_x``, and denote the gradient operator
-``\boldsymbol{\nabla} \equiv \partial_x \boldsymbol{\hat x} + \partial_y \boldsymbol{\hat y} + \partial_z \boldsymbol{\hat z}``.
-We use ``u``, ``v``, and ``w`` to denote the east, north, and vertical velocity components,
-such that ``\boldsymbol{v} = u \boldsymbol{\hat x} + v \boldsymbol{\hat y} + w \boldsymbol{\hat z}``.
-
 # The Boussinesq Navier-Stokes equations and tracer conservation equations
 
-Oceananigans.jl solves the incompressible Navier-Stokes equations under the Boussinesq
+The `IncompressibleModel` solves the incompressible Navier-Stokes equations under the Boussinesq
 approximation[^1] and an arbitrary number of tracer conservation equations.
 Physics associated with individual terms in the momentum and tracer conservation
 equations --- the background rotation rate of the equation's reference frame,
@@ -29,7 +17,7 @@ user.
       for an asymptotic derivation. See Kundu (2015, Section 4.9) for an engineering
       introduction.
 
-The fluid density ``\rho`` in Oceananigans.jl is, in general, decomposed into three
+The fluid density ``\rho`` is, in general, decomposed into three
 components:
 ```math
     \rho(\boldsymbol{x}, t) = \rho_0 + \rho_*(z) + \rho'(\boldsymbol{x}, t) \, ,
