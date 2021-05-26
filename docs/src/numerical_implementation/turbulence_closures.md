@@ -22,25 +22,25 @@ To have any hope of simulating high Reynolds number flows we need some way of re
 
 ## Reynolds-averaged Navier–Stokes equations
 
-Following [Reynolds1895](@cite) we can decompose flow variables such as velocity ``\boldsymbol{u}`` into the mean component
-``\overline{\boldsymbol{u}}`` and the fluctuating component ``\boldsymbol{u}^\prime`` so that ``\boldsymbol{u} = \overline{\boldsymbol{u}} + \boldsymbol{u}^\prime``
+Following [Reynolds1895](@cite) we can decompose flow variables such as velocity ``\boldsymbol{v}`` into the mean component
+``\overline{\boldsymbol{v}}`` and the fluctuating component ``\boldsymbol{v}^\prime`` so that ``\boldsymbol{v} = \overline{\boldsymbol{v}} + \boldsymbol{v}^\prime``
 [see §4 of [Pope00](@cite) for a modern discussion].
 
 Expressing the Navier-Stokes equations in tensor notation
 ```math
 \begin{align}
-    \partial_i u_i &= 0  \, ,\\
-    \partial_t u_i + u_j \partial_j u_i &= f_i - \alpha\partial_i p + \nu \partial_j \partial_j u_i \, ,
+    \partial_i v_i &= 0  \, ,\\
+    \partial_t v_i + v_j \partial_j v_i &= f_i - \alpha\partial_i p + \nu \partial_j \partial_j v_i \, ,
 \end{align}
 ```
 where ``\alpha = \rho^{-1}`` is the specific volume and ``f_i`` represents external forces. We can plug in the Reynolds
-decomposition for ``\boldsymbol{u}`` and after some manipulation arrive at the following form for the *Reynolds-averaged
+decomposition for ``\boldsymbol{v}`` and after some manipulation arrive at the following form for the *Reynolds-averaged
 Navier-Stokes equations*
 ```math
 \begin{align}
     \partial_i \overline{u}_i &= 0  \, ,\\
     \partial_t \overline{u}_i + \overline{u}_j \partial_j \overline{u}_i &= \overline{f}_i -
-    \partial_j \left(-\alpha\overline{p}\delta_{ij} + 2\nu \overline{S}_{ij} - \overline{u_i^\prime u_j^\prime}\right) \, ,
+    \partial_j \left(-\alpha\overline{p}\delta_{ij} + 2\nu \overline{S}_{ij} - \overline{v_i^\prime v_j^\prime}\right) \, ,
 \end{align}
 ```
 where
@@ -52,10 +52,10 @@ is the mean rate of strain tensor.
 Thanks to the non-linearity of the Navier-Stokes equations, even when averaged we are left with pesky fluctuation
 terms which form the components of the *Reynolds stress tensor*
 ```math
-\tau_{ij} = \rho \overline{u_i^\prime u_j^\prime} \, .
+\tau_{ij} = \rho \overline{v_i^\prime v_j^\prime} \, .
 ```
 Attempting to close the equations leads to the *closure problem*: the time evolution of the Reynolds stresses
-depends on  triple covariances ``\overline{u_i^\prime u_j^\prime u_k^\prime}`` and covariances with pressure, which depend
+depends on  triple covariances ``\overline{v_i^\prime v_j^\prime v_k^\prime}`` and covariances with pressure, which depend
 on quadruple covariances and so on [Chou45](@cite).
 
 This is kind of hopeless so we will have to find some way to model the Reynolds stresses.
@@ -63,16 +63,16 @@ This is kind of hopeless so we will have to find some way to model the Reynolds 
 ## Gradient-diffusion hypothesis and eddy viscosity models
 
 The *gradient-diffusion hypothesis*, due to [Boussinesq1877](@cite), assumes that the transport of scalar fluxes
-such as ``\overline{\boldsymbol{u}^\prime c^\prime}`` and ``\overline{u_i^\prime u_j^\prime}`` occurs down the mean scalar gradient
+such as ``\overline{\boldsymbol{v}^\prime c^\prime}`` and ``\overline{v_i^\prime v_j^\prime}`` occurs down the mean scalar gradient
 ``\grad c`` as if they are being diffused (§4.4) [Pope00](@cite). This is in analogy with how momentum transfer by
 molecular motion in a gas can be described by a molecular viscosity.
 
 Taking this assumption we can express the Reynolds stresses and turbulent tracer fluxes in terms of the mean variables
 and close the equations
 ```math
-\overline{\boldsymbol{u}^\prime c^\prime} = -\kappa_e \boldsymbol{\nabla} \overline{c}
+\overline{\boldsymbol{v}^\prime c^\prime} = -\kappa_e \boldsymbol{\nabla} \overline{c}
 \quad \text{and} \quad
-\overline{u_i^\prime u_j^\prime} = -2\nu_e \overline{S}_{ij} \, ,
+\overline{v_i^\prime v_j^\prime} = -2\nu_e \overline{S}_{ij} \, ,
 ```
 where ``\nu_e = \nu_e(\boldsymbol{x}, t)`` is the turbulent or *eddy viscosity* and ``\kappa_e = \kappa_e(\boldsymbol{x}, t)``
 is the *eddy diffusivity*.

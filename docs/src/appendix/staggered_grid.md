@@ -3,7 +3,7 @@
 Velocities ``u``, ``v``, and ``w`` are defined on the faces of the cells, which are coincident with three orthogonal
 coordinate axes (the Cartesian axes in the case of Oceananigans). Pressure ``p`` and tracers ``c`` are stored at
 the cell  centers as cell averages. See schematic below of the different control
-volumes. Other quantities may be defined at other locations. For example, vorticity ``\boldsymbol{\omega} = \boldsymbol{\nabla} \times \boldsymbol{u}``
+volumes. Other quantities may be defined at other locations. For example, vorticity ``\boldsymbol{\omega} = \boldsymbol{\nabla} \times \boldsymbol{v}``
 is defined at the cell edges.[^1]
 
 [^1]: In 2D it would more correct to say the cell corners. In 3D, variables like vorticity lie at the same vertical

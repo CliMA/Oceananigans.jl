@@ -3,17 +3,17 @@
 Solving the momentum equation \eqref{eq:momentumFV} coupled with the continuity equation can 
 be cumbersome so instead we employ a fractional step method. To approximate the solution of 
 the coupled system we first solve an approximation to the discretized momentum equation for an 
-intermediate velocity field ``\boldsymbol{u}^\star`` without worrying about satisfying the 
-incompressibility constraint. We then project ``\boldsymbol{u}^\star`` onto the space of 
-divergence-free velocity fields to obtain a value for ``\boldsymbol{u}^{n+1}`` that satisfies 
+intermediate velocity field ``\boldsymbol{v}^\star`` without worrying about satisfying the 
+incompressibility constraint. We then project ``\boldsymbol{v}^\star`` onto the space of 
+divergence-free velocity fields to obtain a value for ``\boldsymbol{v}^{n+1}`` that satisfies 
 continuity.
 
 We thus discretize the momentum equation as
 ```math
-  \frac{\boldsymbol{u}^\star - \boldsymbol{u}^n}{\Delta t}
-    = - \left[ \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \boldsymbol{u} \right]^{n+\frac{1}{2}}
-      - 2 \boldsymbol{\Omega} \times \boldsymbol{u}^{n+\frac{1}{2}}
-      + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \nu \boldsymbol{\nabla} \boldsymbol{u}^{n+\frac{1}{2}} \right )
+  \frac{\boldsymbol{v}^\star - \boldsymbol{v}^n}{\Delta t}
+    = - \left[ \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \boldsymbol{v} \right]^{n+\frac{1}{2}}
+      - 2 \boldsymbol{\Omega} \times \boldsymbol{v}^{n+\frac{1}{2}}
+      + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \nu \boldsymbol{\nabla} \boldsymbol{v}^{n+\frac{1}{2}} \right )
       + \boldsymbol{F}^{n+\frac{1}{2}} \, ,
 ```
 where the superscript ``n + \frac{1}{2}`` indicates that these terms are evaluated at time step ``n + \frac{1}{2}``, which
@@ -21,9 +21,9 @@ we compute explicitly (see \S\ref{sec:time-stepping}).
 
 The projection is then performed
 ```math
-   \boldsymbol{u}^{n+1} = \boldsymbol{u}^\star - \Delta t \, \boldsymbol{\nabla} \phi^{n+1} \, ,
+   \boldsymbol{v}^{n+1} = \boldsymbol{v}^\star - \Delta t \, \boldsymbol{\nabla} \phi^{n+1} \, ,
 ```
-to obtain a divergence-free velocity field ``\boldsymbol{u}^{n+1}``. Here the projection is performed by solving an elliptic
+to obtain a divergence-free velocity field ``\boldsymbol{v}^{n+1}``. Here the projection is performed by solving an elliptic
 problem for the pressure ``\phi^{n+1}`` with the boundary condition
 ```math
   \boldsymbol{\hat{n}} \boldsymbol{\cdot} \boldsymbol{\nabla} \phi^{n+1} |_{\partial\Omega} = 0 \, .

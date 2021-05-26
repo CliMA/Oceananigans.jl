@@ -15,7 +15,7 @@
 # ∂_t P + \boldsymbol{u ⋅ ∇} P - κ ∇²P = (μ₀ \exp(z / λ) - m) \, P \, ,
 # ```
 #
-# where ``\boldsymbol{u}`` is the turbulent velocity field, ``κ`` is an isotropic diffusivity,
+# where ``\boldsymbol{v}`` is the turbulent velocity field, ``κ`` is an isotropic diffusivity,
 #  ``μ₀`` is the phytoplankton growth rate at the surface, ``λ`` is the scale over
 # which sunlight attenuates away from the surface, and ``m`` is the mortality rate
 # of phytoplankton due to viruses and grazing by zooplankton. We use Oceananigans'

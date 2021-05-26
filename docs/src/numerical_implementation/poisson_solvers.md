@@ -8,10 +8,10 @@ Poisson equation for the non-hydrostatic kinematic pressure
 ```math
    \begin{equation}
    \label{eq:poisson-pressure}
-   \nabla^2\phi_{NH} = \frac{\nabla \cdot \boldsymbol{u}^n}{\Delta t} + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{G}_{\boldsymbol{u}} \equiv \mathscr{F} \, ,
+   \nabla^2\phi_{NH} = \frac{\nabla \cdot \boldsymbol{v}^n}{\Delta t} + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{G}_{\boldsymbol{v}} \equiv \mathscr{F} \, ,
    \end{equation}
 ```
-along with homogenous Neumann boundary conditions ``\boldsymbol{u} \cdot \boldsymbol{\hat{n}} = 0`` (Neumann on ``\phi`` for wall-bounded
+along with homogenous Neumann boundary conditions ``\boldsymbol{v} \cdot \boldsymbol{\hat{n}} = 0`` (Neumann on ``\phi`` for wall-bounded
 directions and periodic otherwise) and where ``\mathscr{F}`` denotes the source term for the Poisson equation.
 
 For hydrostatic problems the Poisson equation above only needs to be solved for the vertically integrated flow
@@ -237,7 +237,7 @@ and apply the discrete form to the hydrostatic form of the velocity fractional s
 ```math
     \begin{equation}
     \label{eq:hydrostatic-fractional-step}
-    \boldsymbol{u}^{n+1} = \boldsymbol{u}^{\star} - g\Delta t \boldsymbol{\nabla} \eta^{n+1} \, .
+    \boldsymbol{v}^{n+1} = \boldsymbol{v}^{\star} - g\Delta t \boldsymbol{\nabla} \eta^{n+1} \, .
     \end{equation}
 ```
 

@@ -88,9 +88,19 @@ model_setup_pages = [
 ]
 
 physics_pages = [
-    "Navier-Stokes and tracer conservation equations" => "physics/navier_stokes_and_tracer_conservation.md",
-    "Coriolis forces" => "physics/coriolis_forces.md",
+    "Coordinate system and notation" => "physics/notation.md",
+    "Boussinesq approximation" => "physics/boussinesq.md",
+    "`IncompressibleModel`" => [
+        "Incompressible model" => "physics/incompressible_model.md",
+        ],
+    "`HydrostaticFreeSurfaceModel`" => [
+        "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md"
+        ],
+    "`ShallowWaterModel`" => [
+        "Shallow water dynamics" => "physics/shallow_water_model.md"
+        ],
     "Buoyancy models and equations of state" => "physics/buoyancy_and_equations_of_state.md",
+    "Coriolis forces" => "physics/coriolis_forces.md",
     "Turbulence closures" => "physics/turbulence_closures.md",
     "Surface gravity waves and the Craik-Leibovich approximation" => "physics/surface_gravity_waves.md"
 ]
@@ -164,4 +174,3 @@ deploydocs(
       versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
   push_preview = true
 )
-

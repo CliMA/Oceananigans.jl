@@ -36,5 +36,5 @@ c_b \equiv c \, |_{\partial \Omega_b} \, .
 A no penetration boundary condition prescribes the velocity component normal to a boundary to be 0,
 so that
 ```math
-\boldsymbol{\hat{n}} \boldsymbol{\cdot} \boldsymbol{u} \, |_{\partial \Omega_b} = 0 \, .
+\boldsymbol{\hat{n}} \boldsymbol{\cdot} \boldsymbol{v} \, |_{\partial \Omega_b} = 0 \, .
 ```
