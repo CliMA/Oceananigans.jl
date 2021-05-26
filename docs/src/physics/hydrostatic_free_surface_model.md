@@ -30,8 +30,7 @@ The equations governing the conservation of momentum in a rotating fluid, includ
 via the Boussinesq approximation are
 ```math
     \begin{align}
-    \partial_t \boldsymbol{u} & = - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u} \nonumber \\
-                        & \qquad 
+    \partial_t \boldsymbol{u} & = - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}
                         - \boldsymbol{f} \times \boldsymbol{u} 
                         - \boldsymbol{\nabla}_h (p + g \eta)
                         - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}
@@ -51,11 +50,11 @@ approximation.
 
 The terms that appear on the right-hand side of the momentum conservation equation are (in order):
 
-* momentum advection: ``\left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) 
+* momentum advection: ``\left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) 
   \boldsymbol{u}``,
 * Coriolis: ``\boldsymbol{f} \times \boldsymbol{u}``,
 * baroclinic kinematic pressure gradient: ``\boldsymbol{\nabla} p``,
-* barotropic kinematic pressure gradient: ``\boldsymbol{\nabla} g \eta``,
+* barotropic kinematic pressure gradient: ``\boldsymbol{\nabla} (g \eta)``,
 * molecular or turbulence viscous stress: ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}``, and
 * an arbitrary internal source of momentum: ``\boldsymbol{F_u}``.
 
@@ -74,7 +73,8 @@ where ``\boldsymbol{q}_c`` is the diffusive flux of ``c`` and ``F_c`` is an arbi
 Oceananigans.jl permits arbitrary tracers and thus an arbitrary number of tracer equations to 
 be solved simultaneously with the momentum equations.
 
-From left to right, the terms that appear on the right-hand side of the tracer conservation equation are
+From left to right, the terms that appear on the right-hand side of the tracer conservation 
+equation are
 
 * tracer advection: ``\boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} c``,
 * molecular or turbulent diffusion: ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c``, and
