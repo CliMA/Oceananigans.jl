@@ -56,6 +56,42 @@ struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, 
 
 end
 
+"""
+    ShallowWaterModel(;
+                               grid,
+                               gravitational_acceleration,
+      architecture::AbstractArchitecture = CPU(),
+                                   clock = Clock{eltype(grid)}(0, 0, 1),
+                               advection = UpwindBiasedFifthOrder(),
+                                coriolis = nothing,
+                     forcing::NamedTuple = NamedTuple(),
+                                 closure = nothing,
+                              bathymetry = nothing,
+                                 tracers = (),
+                           diffusivities = nothing,
+         boundary_conditions::NamedTuple = NamedTuple(),
+                     timestepper::Symbol = :RungeKutta3)
+
+Construct a shallow water `Oceananigans.jl` model on `grid` with `gravitational_acceleration` constant.
+
+Keyword arguments
+=================
+
+    - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
+    - `gravitational_acceleration`: (required) The gravitational accelaration constant.
+    - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
+    - `clock`: The `clock` for the model
+    - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
+    - `coriolis`: Parameters for the background rotation rate of the model.
+    - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
+    - `bathymetry`: The bottom bathymetry.
+    - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
+                 preallocated `CenterField`s.
+    - `diffusivities`: 
+    - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
+    - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2`,
+                     `:RungeKutta3`.
+"""
 function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
@@ -66,7 +102,6 @@ function ShallowWaterModel(;
                  forcing::NamedTuple = NamedTuple(),
                              closure = nothing,
                           bathymetry = nothing,
-                            solution = nothing,
                              tracers = (),
                        diffusivities = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
