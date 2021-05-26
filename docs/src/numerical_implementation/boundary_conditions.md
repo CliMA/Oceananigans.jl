@@ -72,7 +72,7 @@ volume yields
 ```math
     \begin{equation}
     \label{eq:dc/dt}
-    \partial_t c_{i, j, k} = - \frac{1}{V_{i, j, k}} \oint_{\partial \Omega_{i, j, k}} (\boldsymbol{u} c + \boldsymbol{q}_c) \, \mathrm{d} S
+    \partial_t c_{i, j, k} = - \frac{1}{V_{i, j, k}} \oint_{\partial \Omega_{i, j, k}} (\boldsymbol{v} c + \boldsymbol{q}_c) \, \mathrm{d} S
                              + \frac{1}{V_{i, j, k}} \int_{V_{i, j, k}} F_c \, \mathrm{d} V \, ,
     \end{equation}
 ```
@@ -82,14 +82,14 @@ the six faces of the finite volume. The right-hand-side of \eqref{eq:dc/dt} abov
 
 
 An external boundary of a finite volume is associated with a no-penetration condition such that
-``\hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{u} \, |_{\partial \Omega_b} = 0``, where 
+``\hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{v} \, |_{\partial \Omega_b} = 0``, where 
 ``\hat{\boldsymbol{n}}`` is the vector normal to ``\partial \Omega_b``. Furthermore, the closures 
 currently available in \texttt{Oceananigans.jl} have the property that ``\boldsymbol{q}_c \propto \boldsymbol{\nabla} c``.
 Thus setting ``\hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{\nabla} c \, |_{\partial \Omega_b} = 0`` 
 on the external boundary implies that the total flux of ``c`` across the external boundary is
 ```math
     \begin{equation}
-    \hat{\boldsymbol{n}} \boldsymbol{\cdot} \left ( \boldsymbol{u} c + \boldsymbol{q}_c \right ) |_{\partial \Omega_b} = 0 \, .
+    \hat{\boldsymbol{n}} \boldsymbol{\cdot} \left ( \boldsymbol{v} c + \boldsymbol{q}_c \right ) |_{\partial \Omega_b} = 0 \, .
     \end{equation}
 ```
 `Oceananigans.jl` exploits this fact to define algorithm that prescribe fluxes across external 

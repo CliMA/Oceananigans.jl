@@ -10,7 +10,7 @@ with ``\partial_t`` or ``\partial_x``, and denote the gradient operator ``\bolds
 \partial_x \boldsymbol{\hat x} + \partial_y \boldsymbol{\hat y} + \partial_z \boldsymbol{\hat z}``. 
 
 We use ``u``, ``v``, and ``w`` to denote the east, north, and vertical velocity components,
-such that ``\boldsymbol{u} = u \boldsymbol{\hat x} + v \boldsymbol{\hat y} + w \boldsymbol{\hat z}``.
-The horizontal components of flow are denoted with subscript ``h``, e.g., ``\boldsymbol{u}_h = 
-u \boldsymbol{\hat x} + v \boldsymbol{\hat y}``.
-
+such that ``\boldsymbol{v} = u \boldsymbol{\hat x} + v \boldsymbol{\hat y} + w \boldsymbol{\hat z}``.
+We reserve ``\boldsymbol{v}`` for the three-dimensional velocity field and use ``\boldsymbol{u}``
+to denote the horizontal components of flow, i.e., ``\boldsymbol{u} = u \boldsymbol{\hat x} + 
+v \boldsymbol{\hat y}``.

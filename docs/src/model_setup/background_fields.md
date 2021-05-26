@@ -6,25 +6,25 @@ associated with the interaction between background and resolved fields are inclu
 For example, tracer advection is described by
 
 ```math
-\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{u} c \right ) \, ,
+\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{v} c \right ) \, ,
 ```
 
-where ``\boldsymbol{u}`` is the resolved velocity field and ``c`` is the resolved
+where ``\boldsymbol{v}`` is the resolved velocity field and ``c`` is the resolved
 tracer field corresponding to `model.tracers.c`. 
 
 When a background field ``C`` is provided, the tracer advection term becomes
 
 ```math
-\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{u} c \right ) 
-    + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{u} C \right ) \, .
+\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{v} c \right ) 
+    + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{v} C \right ) \, .
 ```
 
 When both a background field velocity field ``\boldsymbol{U}`` and a background tracer field ``C``
 are provided, then the tracer advection term becomes
 
 ```math
-\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{u} c \right ) 
-    + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{u} C \right )
+\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{v} c \right ) 
+    + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{v} C \right )
     + \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{U} c \right ) \, .
 ```
 

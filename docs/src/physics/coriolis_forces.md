@@ -1,6 +1,6 @@
 # Coriolis forces
 
-The Coriolis model controls the manifestation of the term ``\boldsymbol{f} \times \boldsymbol{u}``
+The Coriolis model controls the manifestation of the term ``\boldsymbol{f} \times \boldsymbol{v}``
 in the momentum equation.
 
 ## ``f``-plane approximation

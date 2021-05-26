@@ -1,3 +1,15 @@
+# Coordinate system and notation
+
+Oceananigans.jl is formulated in a Cartesian coordinate system
+``\boldsymbol{x} = (x, y, z)`` with unit vectors ``\boldsymbol{\hat x}``, ``\boldsymbol{\hat y}``, and ``\boldsymbol{\hat z}``,
+where ``\boldsymbol{\hat x}`` points east, ``\boldsymbol{\hat y}`` points north, and ``\boldsymbol{\hat z}`` points 'upward',
+opposite the direction of gravitational acceleration.
+We denote time with ``t``, partial derivatives with respect to time ``t`` or a coordinate ``x``
+with ``\partial_t`` or ``\partial_x``, and denote the gradient operator
+``\boldsymbol{\nabla} \equiv \partial_x \boldsymbol{\hat x} + \partial_y \boldsymbol{\hat y} + \partial_z \boldsymbol{\hat z}``.
+We use ``u``, ``v``, and ``w`` to denote the east, north, and vertical velocity components,
+such that ``\boldsymbol{v} = u \boldsymbol{\hat x} + v \boldsymbol{\hat y} + w \boldsymbol{\hat z}``.
+
 # The Boussinesq Navier-Stokes equations and tracer conservation equations
 
 Oceananigans.jl solves the incompressible Navier-Stokes equations under the Boussinesq
@@ -38,7 +50,7 @@ fluid is _approximately_ incompressible, and thus does not support acoustic wave
 In this case, the mass conservation equation reduces to the continuity equation
 ```math
     \begin{equation}
-    \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u} = \partial_x u + \partial_y v + \partial_z w = 0 \, .
+    \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v} = \partial_x u + \partial_y v + \partial_z w = 0 \, .
     \label{eq:continuity}
     \end{equation}
 ```
@@ -50,41 +62,41 @@ via the Boussinesq approximation and including the averaged effects of surface g
 at the top of the domain via the Craik-Leibovich approximation are
 ```math
     \begin{align}
-    \partial_t \boldsymbol{u} & = - \left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}
-                        - \left ( \boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}
-                        - \left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{U} \nonumber \\
+    \partial_t \boldsymbol{v} & = - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v}
+                        - \left ( \boldsymbol{V} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v}
+                        - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{V} \nonumber \\
                         & \qquad
-                        - \left ( \boldsymbol{f} - \boldsymbol{\nabla} \times \boldsymbol{u}^S \right ) \times \boldsymbol{u} 
+                        - \left ( \boldsymbol{f} - \boldsymbol{\nabla} \times \boldsymbol{v}^S \right ) \times \boldsymbol{v} 
                         - \boldsymbol{\nabla} \phi
                         + b \boldsymbol{\hat z}
                         - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}
-                        + \partial_t \boldsymbol{u}^S
+                        + \partial_t \boldsymbol{v}^S
                         + \boldsymbol{F_u} \, ,
     \label{eq:momentum}
     \end{align}
 ```
 where ``b`` the is buoyancy, ``\boldsymbol{\tau}`` is the kinematic stress tensor, ``\boldsymbol{F_u}``
-denotes an internal forcing of the velocity field ``\boldsymbol{u}``, ``\phi`` is the potential
-associated with kinematic and constant hydrostatic contributions to pressure, ``\boldsymbol{u}^S`` 
+denotes an internal forcing of the velocity field ``\boldsymbol{v}``, ``\phi`` is the potential
+associated with kinematic and constant hydrostatic contributions to pressure, ``\boldsymbol{v}^S`` 
 is the 'Stokes drift' velocity field associated with surface gravity waves, and ``\boldsymbol{f}`` 
 is the *Coriolis parameter*, or the background vorticity associated with the specified rate of 
 rotation of the frame of reference.
 
 The terms that appear on the right-hand side of the momentum conservation equation are (in order):
 
-* momentum advection, ``\left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) 
-  \boldsymbol{u}``,
-* advection of resolved momentum by the background velocity field ``\boldsymbol{U}``, 
-  ``\left ( \boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u}``,
-* advection of background momentum by resolved velocity, ``\left ( \boldsymbol{u} \boldsymbol{\cdot} 
-  \boldsymbol{\nabla} \right ) \boldsymbol{U}``,
-* coriolis, ``\boldsymbol{f} \times \boldsymbol{u}``,
+* momentum advection, ``\left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) 
+  \boldsymbol{v}``,
+* advection of resolved momentum by the background velocity field ``\boldsymbol{V}``, 
+  ``\left ( \boldsymbol{V} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v}``,
+* advection of background momentum by resolved velocity, ``\left ( \boldsymbol{v} \boldsymbol{\cdot} 
+  \boldsymbol{\nabla} \right ) \boldsymbol{V}``,
+* coriolis, ``\boldsymbol{f} \times \boldsymbol{v}``,
 * the effective background rotation rate due to surface waves, ``\left ( \boldsymbol{\nabla} \times 
-  \boldsymbol{u}^S \right ) \times \boldsymbol{u}``,
+  \boldsymbol{v}^S \right ) \times \boldsymbol{v}``,
 * pressure gradient, ``\boldsymbol{\nabla} \phi``,
 * buoyant acceleration, ``b \boldsymbol{\hat z}``,
 * molecular or turbulence viscous stress, ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}``,
-* a source of momentum due to forcing or damping of surface waves, ``\partial_t \boldsymbol{u}^S``, and
+* a source of momentum due to forcing or damping of surface waves, ``\partial_t \boldsymbol{v}^S``, and
 * an arbitrary internal source of momentum, ``\boldsymbol{F_u}``.
 
 ## The tracer conservation equation
@@ -92,9 +104,9 @@ The terms that appear on the right-hand side of the momentum conservation equati
 The conservation law for tracers in Oceananigans.jl is
 ```math
     \begin{align}
-    \partial_t c = - \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} c
-                   - \boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} c
-                   - \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} C
+    \partial_t c = - \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} c
+                   - \boldsymbol{V} \boldsymbol{\cdot} \boldsymbol{\nabla} c
+                   - \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} C
                    - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c
                    + F_c \, ,
     \label{eq:tracer}
@@ -106,9 +118,9 @@ be solved simultaneously with the momentum equations.
 
 From left to right, the terms that appear on the right-hand side of the tracer conservation equation are
 
-* tracer advection, ``\boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} c``,
-* tracer advection by the background velocity field, ``U``, ``\boldsymbol{U} \boldsymbol{\cdot} \boldsymbol{\nabla} c``,
-* advection of the background tracer field, ``C``, by the resolved velocity field, ``\boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} C``,
+* tracer advection, ``\boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} c``,
+* tracer advection by the background velocity field, ``U``, ``\boldsymbol{V} \boldsymbol{\cdot} \boldsymbol{\nabla} c``,
+* advection of the background tracer field, ``C``, by the resolved velocity field, ``\boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} C``,
 * molecular or turbulent diffusion, ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c``, and
 * an arbitrary internal source of tracer, ``F_c``.
 

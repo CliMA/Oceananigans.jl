@@ -1,10 +1,10 @@
-# Shallow Water Dynamis
+# Shallow Water Dynamics
 
-The shallow water dynamics evolve the two-dimensional flow ``\boldsymbol{u}_h(x, y, t) = 
+The shallow water dynamics evolve the two-dimensional flow ``\boldsymbol{u}(x, y, t) = 
 u \boldsymbol{\hat x} + v \boldsymbol{\hat y}`` together with the fluid height ``h(x, y, t)``. 
 
-By denoting the transport along each direction by ``U = u h`` and ``V = v h `` respectively, 
-the shallow-water dyamics can be written in conservative form:
+The shallow-water dynamics can be expressed in conservative form if we use the transport along 
+each direction by ``U = u h`` and ``V = v h `` respectively,  as our dynamical variables:
 
 ```math
   \begin{align}

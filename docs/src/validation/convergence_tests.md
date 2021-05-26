@@ -139,8 +139,8 @@ where subscript denote derivatives such that ``\psi_y \equiv \partial_y \psi``, 
 With an isotropic Laplacian viscosity ``\nu = 1``, the momentum and continuity equations are
 ```math
     \begin{align}
-    \boldsymbol{u}_t + \left ( \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{u} + \boldsymbol{\nabla} p & = \nabla^2 \boldsymbol{u} + \boldsymbol{F}_u \, , \\
-    \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u} & = 0 \, ,
+    \boldsymbol{v}_t + \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v} + \boldsymbol{\nabla} p & = \nabla^2 \boldsymbol{v} + \boldsymbol{F}_v \, , \\
+    \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v} & = 0 \, ,
     \end{align}
 ```
 while the equation for vorticity, ``\omega = v_x - u_y = \nabla^2 \psi``, is
@@ -149,12 +149,12 @@ while the equation for vorticity, ``\omega = v_x - u_y = \nabla^2 \psi``, is
 ```
 Finally, taking the divergence of the momentum equation, we find a Poisson equation for pressure,
 ```math
-    \nabla^2 p = - u_x^2 - v_y^2 - 2 u_y v_x + \partial_x F_u + \partial_y F_v \, .
+    \nabla^2 p = - u_x^2 - v_y^2 - 2 u_y v_x + \partial_x F_v + \partial_y F_v \, .
 ```
 
 To pose the problem, we first pick a streamfunction ``\psi``. This choice then yields the vorticity 
 forcing ``F_{\omega}`` that satisfies the vorticity equation. We then determine ``F_u`` by solving 
-``\partial_y F_u = - F_{\omega}``, and pick ``F_v`` so that we can solve the Poisson equation 
+``\partial_y F_v = - F_{\omega}``, and pick ``F_v`` so that we can solve the Poisson equation 
 for pressure.
 
 We restrict ourselves to a class of problems in which
@@ -167,13 +167,13 @@ Grinding through the algebra, this particular form implies that ``F_{\omega}`` i
     F_{\omega} = -\xi^\prime f_x (g - g^{\prime\prime}) + f f_x (g g^{\prime\prime\prime} - g^\prime g^{\prime\prime}) + f (g - 2 g^{\prime\prime} + g^{\prime\prime\prime\prime}) \, ,
 ```
 where primes denote derivatives of functions of a single argument. 
-Setting ``\partial_y F_u = F_{\omega}``, we find that if ``F_v`` satisfies
+Setting ``\partial_y F_v = F_{\omega}``, we find that if ``F_v`` satisfies
 ```math
     \partial_y F_v = (g^\prime)^2 + g g^{\prime\prime} \, ,
 ```
 then the pressure Poisson equation becomes
 ```math
-    \nabla^2 p = \cos [2 (x - \xi)] [(g^\prime)^2 - g g^{\prime\prime}] + \partial_x F_u \, .
+    \nabla^2 p = \cos [2 (x - \xi)] [(g^\prime)^2 - g g^{\prime\prime}] + \partial_x F_v \, .
 ```
 This completes the specification of the problem.
 
@@ -205,7 +205,7 @@ which satisfies the boundary conditions ``u_y |_{y=0} = u_y |_{y=\pi} = 0`` and
 ```
 which implies that
 ```math
-    F_u = - 2 \xi^\prime f_x \cos y + 4 f \cos y \, ,
+    F_v = - 2 \xi^\prime f_x \cos y + 4 f \cos y \, ,
 ```
 and ``F_v = \tfrac{1}{2} \sin 2 y``.
 
@@ -230,7 +230,7 @@ The vorticity forcing is
 ```
 which implies that
 ```math
-    F_u = \xi^\prime f_x (\tfrac{1}{4} y^4 - \tfrac{1}{3} y^3 - 3 y^2 + 2y)
+    F_v = \xi^\prime f_x (\tfrac{1}{4} y^4 - \tfrac{1}{3} y^3 - 3 y^2 + 2y)
         + f f_x (3 y^4 - 4 y^3 + 2y^2 ) 
         - f (\tfrac{1}{4} y^4 - \tfrac{1}{3} y^3 - 6 y^2 + 4 y) \, ,
 ```
