@@ -2,6 +2,7 @@
 
 using Oceananigans
 using Oceananigans.Grids
+using Oceananigans.BoundaryConditions
 
 using Oceananigans.Coriolis:
     HydrostaticSphericalCoriolis,
@@ -31,8 +32,8 @@ grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
                                     latitude = (15, 75),
                                     z = (-4000, 0))
 
-#free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
-free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
+free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
+# free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
 
 coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving())
 
