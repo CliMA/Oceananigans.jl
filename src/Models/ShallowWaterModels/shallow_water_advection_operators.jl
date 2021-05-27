@@ -1,5 +1,5 @@
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Operators: Ax_ψᵃᵃᶜ, Ay_ψᵃᵃᶜ
+using Oceananigans.Operators: Ax_uᶠᶜᶜ, Ay_vᶜᶠᶜ
 
 #####
 ##### Momentum flux operators
@@ -22,11 +22,11 @@ using Oceananigans.Operators: Ax_ψᵃᵃᶜ, Ay_ψᵃᵃᶜ
 #####
 
 @inline div_hUu(i, j, k, grid, advection, solution) =
-    1 / Vᵃᵃᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_huu, advection, solution) +
+    1 / Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_huu, advection, solution) +
                                δyᵃᶜᵃ(i, j, k, grid, momentum_flux_huv, advection, solution))
 
 @inline div_hUv(i, j, k, grid, advection, solution) =
-    1 / Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_hvu, advection, solution) +
+    1 / Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_hvu, advection, solution) +
                                δyᵃᶠᵃ(i, j, k, grid, momentum_flux_hvv, advection, solution))
 
 # Support for no advection
@@ -38,7 +38,7 @@ using Oceananigans.Operators: Ax_ψᵃᵃᶜ, Ay_ψᵃᵃᶜ
 #####
 
 """
-    div_uhvh(i, j, k, grid, solution)
+    div_Uh(i, j, k, grid, solution)
 
 Calculates the divergence of the mass flux into a cell,
 
@@ -47,8 +47,8 @@ Calculates the divergence of the mass flux into a cell,
 which will end up at the location `ccc`.
 """
 @inline function div_Uh(i, j, k, grid, solution)
-    1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_ψᵃᵃᶜ, solution.uh) + 
-                             δyᵃᶜᵃ(i, j, k, grid, Ay_ψᵃᵃᶜ, solution.vh))
+    1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_uᶠᶜᶜ, solution.uh) + 
+                             δyᵃᶜᵃ(i, j, k, grid, Ay_vᶜᶠᶜ, solution.vh))
 end
 
 #####
@@ -72,7 +72,7 @@ a velocity field U = (u, v), ∇·(Uc),
 which will end up at the location `ccc`.
 """
 @inline function div_Uc(i, j, k, grid, advection, solution, c)
-    1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, transport_tracer_flux_x, advection, solution.uh, solution.h, c) +        
+    1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, transport_tracer_flux_x, advection, solution.uh, solution.h, c) +        
                              δyᵃᶜᵃ(i, j, k, grid, transport_tracer_flux_y, advection, solution.vh, solution.h, c))
 end
 
@@ -93,7 +93,7 @@ the horizontal divergence of the velocity field U = (u, v), c ∇·(U),
 which will end up at the location `ccc`.
 """
 @inline function c_div_U(i, j, k, grid, solution, c)
-    @inbounds c[i, j, k] * 1/Vᵃᵃᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, u, solution) + δyᵃᶜᵃ(i, j, k, grid, v, solution))
+    @inbounds c[i, j, k] * 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, u, solution) + δyᵃᶜᵃ(i, j, k, grid, v, solution))
 end
 
 # Support for no advection
