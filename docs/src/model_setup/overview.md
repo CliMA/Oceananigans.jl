@@ -22,9 +22,3 @@ IncompressibleModel
 ```@docs
 HydrostaticFreeSurfaceModel
 ```
-
-### `ShallowWaterModel`
-
-```@docs
-ShallowWaterModel
-```
