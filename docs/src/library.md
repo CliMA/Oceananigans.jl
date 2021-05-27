@@ -231,7 +231,8 @@ Pages   = [
     "TurbulenceClosures/turbulence_closure_implementations/isotropic_diffusivity.jl",
     "TurbulenceClosures/turbulence_closure_implementations/anisotropic_diffusivity.jl",
     "TurbulenceClosures/turbulence_closure_implementations/anisotropic_minimum_dissipation.jl",
-    "TurbulenceClosures/turbulence_closure_implementations/leith_enstrophy_diffusivity.jl"
+    "TurbulenceClosures/turbulence_closure_implementations/leith_enstrophy_diffusivity.jl",
+    "TurbulenceClosures/turbulence_closure_implementations/tke_based_vertical_diffusivity.jl"
 ]
 ```
 
@@ -242,10 +243,7 @@ Modules = [Oceananigans.Utils]
 Private = false
 Pages   = [
     "Utils/Utils.jl",
-    "Utils/adapt_structure.jl",
-    "Utils/units.jl",
-    "Utils/loop_macros.jl",
-    "Utils/launch_config.jl",
+    "Utils/kernel_launcing.jl",
     "Utils/pretty_time.jl",
     "Utils/pretty_filesize.jl",
     "Utils/time_step_wizard.jl",
@@ -253,7 +251,8 @@ Pages   = [
     "Utils/ordered_dict_show.jl",
     "Utils/cell_advection_timescale.jl",
     "Utils/output_writer_diagnostic_utils.jl",
-    "Utils/with_tracers.jl"
+    "Utils/with_tracers.jl",
+    "Utils/schedules.jl"
 ]
 ```
 
