@@ -8,6 +8,8 @@ using Oceananigans.Fields
 using Oceananigans.Utils
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, time_discretization
 
+import Oceananigans.Grids: with_halo
+
 import Oceananigans.TurbulenceClosures:
     viscous_flux_ux,
     viscous_flux_uy,
@@ -56,6 +58,8 @@ const IBG = ImmersedBoundaryGrid
 @inline get_ibg_property(ibg::IBG, ::Val{:grid}) = getfield(ibg, :grid)
 
 Adapt.adapt_structure(to, ibg::IBG) = ImmersedBoundaryGrid(adapt(to, ibg.grid), adapt(to, ibg.immersed_boundary))
+
+with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo, ibg.grid), ibg.immersed_boundary)
 
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundary.jl")
