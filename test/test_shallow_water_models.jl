@@ -184,10 +184,10 @@ end
         end
     end
 
-    @testset "ShallowWaterModels with ImmersedBoundaries" begin
+    @testset "ShallowWaterModels with ImmersedBoundaryGrid" begin
         for arch in archs
-            @testset "ShallowWaterModels with ImmersedBoundaries [$arch]" begin
-                @info "Testing ShallowWaterModels with ImmersedBoundaries [$arch]"
+            @testset "ShallowWaterModels with ImmersedBoundaryGrid [$arch]" begin
+                @info "Testing ShallowWaterModels with ImmersedBoundaryGrid [$arch]"
 
                 grid = RegularRectilinearGrid(size=(8, 8), x=(-10, 10), y=(0, 5), topology=(Periodic, Bounded, Flat))
                 
