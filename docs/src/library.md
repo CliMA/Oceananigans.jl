@@ -8,11 +8,14 @@ Documenting the public user interface.
 Modules = [Oceananigans.Advection]
 Private = false
 Pages   = [
-    "Advection.jl",
-    "tracer_advection_operators.jl",
-    "momentum_advection_operators.jl",
-    "centered_second_order.jl",
-    "centered_fourth_order.jl"
+    "Advection/Advection.jl",
+    "Advection/tracer_advection_operators.jl",
+    "Advection/momentum_advection_operators.jl",
+    "Advection/centered_second_order.jl",
+    "Advection/centered_fourth_order.jl",
+    "Advection/upwind_biased_third_order.jl",
+    "Advection/upwind_biased_fifth_order.jl",
+    "Advection/weno_fifth_order.jl"
 ]
 ```
 
@@ -162,10 +165,9 @@ Modules = [Oceananigans.Models]
 Private = false
 Pages   = [
     "Models/Models.jl",
-    "Models/clock.jl",
-    "Models/incompressible_model.jl",
-    "Models/non_dimensional_model.jl",
-    "Models/show_models.jl"
+    "Models/IncompressibleModels/IncompressibleModels.jl",
+    "Models/HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl",
+    "Models/ShallowWaterModels/ShallowWaterModels.jl"
 ]
 ```
 
@@ -191,8 +193,9 @@ Modules = [Oceananigans.TimeSteppers]
 Private = false
 Pages   = [
     "TimeSteppers/TimeSteppers.jl",
-    "TimeSteppers/kernels.jl",
-    "TimeSteppers/adams_bashforth.jl"
+    "TimeSteppers/clock.jl",
+    "TimeSteppers/quasi_adams_bashforth_2.jl",
+    "TimeSteppers/runge_kutta_3.jl
 ]
 ```
 
