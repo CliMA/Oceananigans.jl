@@ -32,6 +32,10 @@ const f = Face()
 
 @inline solid_node(::Face, ::Face, ::Face, i, j, k, ibg) = solid_node(c, f, f, i, j, k, ibg) || solid_node(c, f, f, i-1, j, k, ibg)
 
+#####
+##### Advective fluxes
+#####
+
 # ccc, ffc, fcf
 @inline viscous_flux_ux(i, j, k, ibg::IBG{FT}, disc::ATD, clo::ATC, args...) where FT = ifelse(solid_node(c, c, c, i, j, k, ibg), zero(FT), viscous_flux_ux(i, j, k, ibg.grid, disc, clo, args...))
 @inline viscous_flux_uy(i, j, k, ibg::IBG{FT}, disc::ATD, clo::ATC, args...) where FT = ifelse(solid_node(f, f, c, i, j, k, ibg), zero(FT), viscous_flux_uy(i, j, k, ibg.grid, disc, clo, args...))
@@ -52,3 +56,6 @@ const f = Face()
 @inline diffusive_flux_y(i, j, k, ibg::IBG{FT}, disc::ATD, clo::ATC, args...) where FT = ifelse(solid_node(c, f, c, i, j, k, ibg), zero(FT), diffusive_flux_y(i, j, k, ibg.grid, disc, clo, args...))
 @inline diffusive_flux_z(i, j, k, ibg::IBG{FT}, disc::ATD, clo::ATC, args...) where FT = ifelse(solid_node(c, c, f, i, j, k, ibg), zero(FT), diffusive_flux_z(i, j, k, ibg.grid, disc, clo, args...))
 
+#####
+##### Advective fluxes
+#####
