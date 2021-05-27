@@ -1,6 +1,7 @@
 using Oceananigans
 using Oceananigans.Models
 using Oceananigans.Grids
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection; timestepper=:RungeKutta3)
     grid = RegularRectilinearGrid(size=(1, 1), extent=(2π, 2π), topology=topo)
