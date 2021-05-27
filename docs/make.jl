@@ -97,7 +97,7 @@ physics_pages = [
         "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md"
         ],
     "`ShallowWaterModel`" => [
-        "Shallow water dynamics" => "physics/shallow_water_model.md"
+        "Shallow water model" => "physics/shallow_water_model.md"
         ],
     "Buoyancy models and equations of state" => "physics/buoyancy_and_equations_of_state.md",
     "Coriolis forces" => "physics/coriolis_forces.md",
