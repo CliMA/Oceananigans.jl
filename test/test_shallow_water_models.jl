@@ -183,4 +183,26 @@ end
             shallow_water_model_tracers_and_forcings_work(arch)
         end
     end
+
+    @testset "ShallowWaterModels with ImmersedBoundaries" begin
+        for arch in archs
+            @testset "ShallowWaterModels with ImmersedBoundaries [$arch]" begin
+                @info "Testing ShallowWaterModels with ImmersedBoundaries [$arch]"
+
+                grid = RegularRectilinearGrid(size=(8, 8), x=(-10, 10), y=(0, 5), topology=(Periodic, Bounded, Flat))
+                
+                # Gaussian bump of width "1"
+                bump(x, y, z) = y < exp(-x^2)
+                
+                grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
+                model = ShallowWaterModel(grid=grid_with_bump, gravitational_acceleration=1)
+                
+                set!(model, h=1)
+                simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+                run!(simulation)
+
+                @test model.clock.iteration == 1
+            end
+        end
+    end
 end
