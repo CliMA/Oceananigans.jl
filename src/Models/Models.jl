@@ -20,7 +20,6 @@ include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
 include("ShallowWaterModels/ShallowWaterModels.jl")
 
 using .IncompressibleModels: IncompressibleModel, NonDimensionalIncompressibleModel
-using .ShallowWaterModels: ShallowWaterModel
 
 using .HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel, VectorInvariant,
@@ -28,5 +27,7 @@ using .HydrostaticFreeSurfaceModels:
     HydrostaticSphericalCoriolis,
     VectorInvariantEnstrophyConserving, VectorInvariantEnergyConserving,
     PrescribedVelocityFields
+
+using .ShallowWaterModels: ShallowWaterModel
 
 end
