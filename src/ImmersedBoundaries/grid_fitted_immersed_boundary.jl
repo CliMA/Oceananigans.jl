@@ -69,18 +69,18 @@ const f = Face()
 ##### Advective fluxes
 #####
 
-@inline _advective_momentum_flux_Uu(i, j, k, grid::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, ibg, advective_momentum_flux_Uu, args...)
-@inline _advective_momentum_flux_Vu(i, j, k, grid::IBG, args...) = conditional_flux_ffc(i, j, k, ibg, ibg, advective_momentum_flux_Vu, args...)
-@inline _advective_momentum_flux_Wu(i, j, k, grid::IBG, args...) = conditional_flux_fcf(i, j, k, ibg, ibg, advective_momentum_flux_Wu, args...)
+@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, ibg, advective_momentum_flux_Uu, args...)
+@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, args...) = conditional_flux_ffc(i, j, k, ibg, ibg, advective_momentum_flux_Vu, args...)
+@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, args...) = conditional_flux_fcf(i, j, k, ibg, ibg, advective_momentum_flux_Wu, args...)
 
-@inline _advective_momentum_flux_Uv(i, j, k, grid::IBG, args...) = conditional_flux_ffc(i, j, k, ibg, ibg, advective_momentum_flux_Uv, args...)
-@inline _advective_momentum_flux_Vv(i, j, k, grid::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, ibg, advective_momentum_flux_Vv, args...)
-@inline _advective_momentum_flux_Wv(i, j, k, grid::IBG, args...) = conditional_flux_cff(i, j, k, ibg, ibg, advective_momentum_flux_Wv, args...)
+@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, args...) = conditional_flux_ffc(i, j, k, ibg, ibg, advective_momentum_flux_Uv, args...)
+@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, ibg, advective_momentum_flux_Vv, args...)
+@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, args...) = conditional_flux_cff(i, j, k, ibg, ibg, advective_momentum_flux_Wv, args...)
 
-@inline _advective_momentum_flux_Uw(i, j, k, grid::IBG, args...) = conditional_flux_fcf(i, j, k, ibg, ibg, advective_momentum_flux_Uw, args...)
-@inline _advective_momentum_flux_Vw(i, j, k, grid::IBG, args...) = conditional_flux_cff(i, j, k, ibg, ibg, advective_momentum_flux_Vw, args...)
-@inline _advective_momentum_flux_Ww(i, j, k, grid::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, ibg, advective_momentum_flux_Ww, args...)
+@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, args...) = conditional_flux_fcf(i, j, k, ibg, ibg, advective_momentum_flux_Uw, args...)
+@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, args...) = conditional_flux_cff(i, j, k, ibg, ibg, advective_momentum_flux_Vw, args...)
+@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, ibg, advective_momentum_flux_Ww, args...)
                                                                                                                                            
-@inline _advective_tracer_flux_x(i, j, k, grid::IBG, args...) = conditional_flux_fcc(i, j, k, ibg, ibg, advective_tracer_flux_x, args...)
-@inline _advective_tracer_flux_y(i, j, k, grid::IBG, args...) = conditional_flux_cfc(i, j, k, ibg, ibg, advective_tracer_flux_y, args...)
-@inline _advective_tracer_flux_z(i, j, k, grid::IBG, args...) = conditional_flux_ccf(i, j, k, ibg, ibg, advective_tracer_flux_z, args...)
+@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, args...) = conditional_flux_fcc(i, j, k, ibg, ibg, advective_tracer_flux_x, args...)
+@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, args...) = conditional_flux_cfc(i, j, k, ibg, ibg, advective_tracer_flux_y, args...)
+@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, args...) = conditional_flux_ccf(i, j, k, ibg, ibg, advective_tracer_flux_z, args...)
