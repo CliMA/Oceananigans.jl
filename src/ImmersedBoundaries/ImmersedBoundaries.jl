@@ -11,6 +11,18 @@ using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, time_discretiz
 import Oceananigans.Grids: with_halo
 
 import Oceananigans.TurbulenceClosures:
+    _advective_momentum_flux_Uu,
+    _advective_momentum_flux_Uv,
+    _advective_momentum_flux_Uw,
+    _advective_momentum_flux_Vu,
+    _advective_momentum_flux_Vv,
+    _advective_momentum_flux_Vw,
+    _advective_momentum_flux_Wu,
+    _advective_momentum_flux_Wv,
+    _advective_momentum_flux_Ww,
+    _advective_tracer_flux_x,
+    _advective_tracer_flux_y,
+    _advective_tracer_flux_z,
     viscous_flux_ux,
     viscous_flux_uy,
     viscous_flux_uz,
