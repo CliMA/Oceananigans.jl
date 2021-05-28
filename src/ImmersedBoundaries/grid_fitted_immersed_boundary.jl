@@ -12,7 +12,7 @@ end
 
 GridFittedBoundary(mask; mask_type=nothing) = GridFittedBoundary(mask, mask_type)
 
-@inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary) = ib.mask(node(c, c, c, i, j, k, ibg.grid)...)
+@inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary) = ib.mask(node(c, c, c, i, j, k, underlying_grid)...)
 @inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary{<:RasterDepthMask}) = ib.mask(i, j)
 
 const IBG = ImmersedBoundaryGrid
