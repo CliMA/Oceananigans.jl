@@ -1,3 +1,9 @@
+using Oceananigans.Advection: 
+    _advective_momentum_flux_Uu,
+    _advective_momentum_flux_Uv,
+    _advective_momentum_flux_Vu,
+    _advective_momentum_flux_Vv
+
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Operators: Ax_uᶠᶜᶜ, Ay_vᶜᶠᶜ
 
@@ -6,16 +12,16 @@ using Oceananigans.Operators: Ax_uᶠᶜᶜ, Ay_vᶜᶠᶜ
 #####
 
 @inline momentum_flux_huu(i, j, k, grid, advection, solution) =
-    @inbounds advective_momentum_flux_Uu(i, j, k, grid, advection, solution.uh, solution.uh) / solution.h[i, j, k]
+    @inbounds _advective_momentum_flux_Uu(i, j, k, grid, advection, solution.uh, solution.uh) / solution.h[i, j, k]
 
 @inline momentum_flux_hvu(i, j, k, grid, advection, solution) =
-    @inbounds advective_momentum_flux_Vu(i, j, k, grid, advection, solution.vh, solution.uh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
+    @inbounds _advective_momentum_flux_Vu(i, j, k, grid, advection, solution.vh, solution.uh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
 
 @inline momentum_flux_huv(i, j, k, grid, advection, solution) =
-    @inbounds advective_momentum_flux_Uv(i, j, k, grid, advection, solution.uh, solution.vh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
+    @inbounds _advective_momentum_flux_Uv(i, j, k, grid, advection, solution.uh, solution.vh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
 
 @inline momentum_flux_hvv(i, j, k, grid, advection, solution) =
-    @inbounds advective_momentum_flux_Vv(i, j, k, grid, advection, solution.vh, solution.vh) / solution.h[i, j, k]
+    @inbounds _advective_momentum_flux_Vv(i, j, k, grid, advection, solution.vh, solution.vh) / solution.h[i, j, k]
 
 #####
 ##### Momentum flux divergence operators
