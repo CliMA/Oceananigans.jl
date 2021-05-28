@@ -35,7 +35,7 @@ for bias in (:symmetric, :left_biased, :right_biased)
             # Simple translation for Periodic directions (fallback)
             @eval $alt_interp(i, j, k, grid::APG, scheme, ψ) = $interp(i, j, k, grid, scheme, ψ)
 
-            outside_buffer = Symbol(:outside, bias, :_buffer)
+            outside_buffer = Symbol(:outside_, bias, :_buffer)
 
             # Conditional high-order interpolation in Bounded directions
             if ξ == :x
