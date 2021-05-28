@@ -254,6 +254,22 @@ function show(io::IO, g::RegularRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, 
               "grid spacing (Δx, Δy, Δz): ", (g.Δx, g.Δy, g.Δz))
 end
 
+# Regular nodes
+@inline xnode(::Center, i, grid::RegularRectilinearGrid) = @inbounds grid.xC[i]
+@inline xnode(::Face,   i, grid::RegularRectilinearGrid) = @inbounds grid.xF[i]
+
+@inline ynode(::Center, j, grid::RegularRectilinearGrid) = @inbounds grid.yC[j]
+@inline ynode(::Face,   j, grid::RegularRectilinearGrid) = @inbounds grid.yF[j]
+
+@inline znode(::Center, k, grid::RegularRectilinearGrid) = @inbounds grid.zC[k]
+@inline znode(::Face,   k, grid::RegularRectilinearGrid) = @inbounds grid.zF[k]
+
+all_x_nodes(::Type{Center}, grid::RegularRectilinearGrid) = grid.xC
+all_x_nodes(::Type{Face},   grid::RegularRectilinearGrid) = grid.xF
+all_y_nodes(::Type{Center}, grid::RegularRectilinearGrid) = grid.yC
+all_y_nodes(::Type{Face},   grid::RegularRectilinearGrid) = grid.yF
+all_z_nodes(::Type{Center}, grid::RegularRectilinearGrid) = grid.zC
+all_z_nodes(::Type{Face},   grid::RegularRectilinearGrid) = grid.zF
 
 #
 # Get minima of grid

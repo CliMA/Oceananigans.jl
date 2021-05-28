@@ -18,6 +18,8 @@ using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusi
 using Oceananigans.Utils: prettytime, hours, day, days, years
 using Oceananigans.OutputWriters: JLD2OutputWriter, TimeInterval, IterationInterval
 
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, RasterDepthMask
+
 using Statistics
 using JLD2
 using Printf
@@ -26,10 +28,23 @@ Nx = 60
 Ny = 60
 
 # A spherical domain
-grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                    longitude = (-30, 30),
-                                    latitude = (15, 75),
-                                    z = (-4000, 0))
+underlying_grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                                               longitude = (-30, 30),
+                                               latitude = (15, 75),
+                                               z = (-4000, 0))
+
+@inline raster_depth(i, j) = 30 < i < 35 && 42 < j < 48
+
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(raster_depth, mask_type=RasterDepthMask()))
+
+solid(x, y, z, i, j, k) = (
+                           if i > 30 && i < 35;
+                                   if j > 42 && j < 48;
+                                           return true;
+                                   end;
+                           end;
+                           return false;
+                          )
 
 #free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
 free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
@@ -42,24 +57,21 @@ coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserv
 
 surface_wind_stress(λ, φ, t, p) = p.τ₀ * cos(2π * (φ - p.φ₀) / p.Lφ)
 
-surface_wind_stress_bc = BoundaryCondition(Flux,
-                                           surface_wind_stress,
-                                           parameters = surface_wind_stress_parameters)
+surface_wind_stress_bc = FluxBoundaryCondition(surface_wind_stress,
+                                               parameters = surface_wind_stress_parameters)
 
 μ = 1 / 60days
 
 @inline u_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, 1]
 @inline v_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, 1]
 
-u_bottom_drag_bc = BoundaryCondition(Flux,
-                                     u_bottom_drag,
-                                     discrete_form = true,
-                                     parameters = μ)
+u_bottom_drag_bc = FluxBoundaryCondition(u_bottom_drag,
+                                         discrete_form = true,
+                                         parameters = μ)
 
-v_bottom_drag_bc = BoundaryCondition(Flux,
-                                     v_bottom_drag,
-                                     discrete_form = true,
-                                     parameters = μ)
+v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag,
+                                         discrete_form = true,
+                                         parameters = μ)
 
 u_bcs = UVelocityBoundaryConditions(grid,
                                     top = surface_wind_stress_bc,
