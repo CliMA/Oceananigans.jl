@@ -18,7 +18,7 @@ const APG = AbstractPrimaryGrid
 ##### Note the convention "advective_momentum_flux_AB" corresponds to the advection _of_ B _by_ A.
 #####
 
-@inline function advective_momentum_flux_uu(i, j, k, grid::APG, scheme::Upwind, U, u)
+@inline function advective_momentum_flux_Uu(i, j, k, grid::APG, scheme::Upwind, U, u)
 
     ũ  =    _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, U)
     uᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u)
