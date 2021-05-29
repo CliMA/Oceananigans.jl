@@ -8,9 +8,37 @@ using Oceananigans.Fields
 using Oceananigans.Utils
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, time_discretization
 
+using Oceananigans.Advection:
+    advective_momentum_flux_Uu,
+    advective_momentum_flux_Uv,
+    advective_momentum_flux_Uw,
+    advective_momentum_flux_Vu,
+    advective_momentum_flux_Vv,
+    advective_momentum_flux_Vw,
+    advective_momentum_flux_Wu,
+    advective_momentum_flux_Wv,
+    advective_momentum_flux_Ww,
+    advective_tracer_flux_x,
+    advective_tracer_flux_y,
+    advective_tracer_flux_z
+
 import Oceananigans.Coriolis: φᶠᶠᵃ
 
 import Oceananigans.Grids: with_halo, xnode, ynode, znode
+
+import Oceananigans.Advection:
+    _advective_momentum_flux_Uu,
+    _advective_momentum_flux_Uv,
+    _advective_momentum_flux_Uw,
+    _advective_momentum_flux_Vu,
+    _advective_momentum_flux_Vv,
+    _advective_momentum_flux_Vw,
+    _advective_momentum_flux_Wu,
+    _advective_momentum_flux_Wv,
+    _advective_momentum_flux_Ww,
+    _advective_tracer_flux_x,
+    _advective_tracer_flux_y,
+    _advective_tracer_flux_z
 
 import Oceananigans.TurbulenceClosures:
     viscous_flux_ux,

@@ -1,3 +1,9 @@
+using Oceananigans.Advection: 
+    _advective_momentum_flux_Uu,
+    _advective_momentum_flux_Uv,
+    _advective_momentum_flux_Vu,
+    _advective_momentum_flux_Vv
+
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Operators: Ax_uᶠᶜᶜ, Ay_vᶜᶠᶜ
 
@@ -6,16 +12,16 @@ using Oceananigans.Operators: Ax_uᶠᶜᶜ, Ay_vᶜᶠᶜ
 #####
 
 @inline momentum_flux_huu(i, j, k, grid, advection, solution) =
-    @inbounds momentum_flux_uu(i, j, k, grid, advection, solution.uh, solution.uh) / solution.h[i, j, k]
-
-@inline momentum_flux_huv(i, j, k, grid, advection, solution) =
-    @inbounds momentum_flux_uv(i, j, k, grid, advection, solution.vh, solution.uh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
+    @inbounds _advective_momentum_flux_Uu(i, j, k, grid, advection, solution.uh, solution.uh) / solution.h[i, j, k]
 
 @inline momentum_flux_hvu(i, j, k, grid, advection, solution) =
-    @inbounds momentum_flux_vu(i, j, k, grid, advection, solution.uh, solution.vh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
+    @inbounds _advective_momentum_flux_Vu(i, j, k, grid, advection, solution.vh, solution.uh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
+
+@inline momentum_flux_huv(i, j, k, grid, advection, solution) =
+    @inbounds _advective_momentum_flux_Uv(i, j, k, grid, advection, solution.uh, solution.vh) / ℑxyᶠᶠᵃ(i, j, k, grid, solution.h)
 
 @inline momentum_flux_hvv(i, j, k, grid, advection, solution) =
-    @inbounds momentum_flux_vv(i, j, k, grid, advection, solution.vh, solution.vh) / solution.h[i, j, k]
+    @inbounds _advective_momentum_flux_Vv(i, j, k, grid, advection, solution.vh, solution.vh) / solution.h[i, j, k]
 
 #####
 ##### Momentum flux divergence operators
@@ -23,10 +29,10 @@ using Oceananigans.Operators: Ax_uᶠᶜᶜ, Ay_vᶜᶠᶜ
 
 @inline div_hUu(i, j, k, grid, advection, solution) =
     1 / Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, momentum_flux_huu, advection, solution) +
-                               δyᵃᶜᵃ(i, j, k, grid, momentum_flux_huv, advection, solution))
+                               δyᵃᶜᵃ(i, j, k, grid, momentum_flux_hvu, advection, solution))
 
 @inline div_hUv(i, j, k, grid, advection, solution) =
-    1 / Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_hvu, advection, solution) +
+    1 / Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, momentum_flux_huv, advection, solution) +
                                δyᵃᶠᵃ(i, j, k, grid, momentum_flux_hvv, advection, solution))
 
 # Support for no advection
@@ -85,7 +91,7 @@ end
 """
     c_div_U(i, j, k, grid, advection, U)
 
-Calculates the produce of the tracer concentration c with 
+Calculates the product of the tracer concentration c with 
 the horizontal divergence of the velocity field U = (u, v), c ∇·(U),
 
     1/V * [δxᶜᵃᵃ(Ax * uh / h) + δyᵃᶜᵃ(Ay * vh / h]
