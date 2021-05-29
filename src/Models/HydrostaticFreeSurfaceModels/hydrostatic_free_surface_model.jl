@@ -126,6 +126,9 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     model_field_names = (:u, :v, :w, :η, tracernames(tracers)...)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, model_field_names)
+    
+    # Create clock
+    clock = Clock{eltype(grid)}(0, 0, 1)
 
     # TKEBasedVerticalDiffusivity enforces boundary conditions on TKE:
     boundary_conditions = add_closure_specific_boundary_conditions(closure, boundary_conditions, grid, tracernames(tracers), buoyancy)
@@ -149,9 +152,6 @@ function HydrostaticFreeSurfaceModel(; grid,
                               implicit_solver = implicit_solver,
                               Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)),
                               G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)))
-    
-    # Create clock
-    clock = Clock{eltype(grid)}(0, 0, 1)
                               
     # Regularize forcing for model tracer and velocity fields.
     model_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)

@@ -146,15 +146,15 @@ function IncompressibleModel(;    grid,
         pressure_solver = PressureSolver(architecture, grid)
     end
 
+    # Create clock
+    clock = Clock{float_type}(0, 0, 1)
+    
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
 
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), architecture, grid)
     timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers), implicit_solver=implicit_solver)
 
-    # Create clock
-    clock = Clock{float_type}(0, 0, 1)
-    
     # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(velocities, tracers)
     forcing = model_forcing(model_fields; forcing...)
