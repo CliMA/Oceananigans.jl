@@ -51,7 +51,6 @@ end
     HydrostaticFreeSurfaceModel(;
                    grid,
            architecture = CPU(),
-                  clock = Clock{eltype(grid)}(0, 0, 1),
      momentum_advection = CenteredSecondOrder(),
        tracer_advection = CenteredSecondOrder(),
                buoyancy = SeawaterBuoyancy(eltype(grid)),
@@ -86,7 +85,6 @@ Keyword arguments
 """
 function HydrostaticFreeSurfaceModel(; grid,
                 architecture::AbstractArchitecture = CPU(),
-                                             clock = Clock{eltype(grid)}(0, 0, 1),
                                 momentum_advection = CenteredSecondOrder(),
                                   tracer_advection = CenteredSecondOrder(),
                                           buoyancy = SeawaterBuoyancy(eltype(grid)),
@@ -151,7 +149,10 @@ function HydrostaticFreeSurfaceModel(; grid,
                               implicit_solver = implicit_solver,
                               Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)),
                               G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)))
-
+    
+    # Create clock
+    clock = Clock{eltype(grid)}(0, 0, 1)
+                              
     # Regularize forcing for model tracer and velocity fields.
     model_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
     forcing = model_forcing(model_fields; forcing...)

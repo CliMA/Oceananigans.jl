@@ -61,7 +61,6 @@ end
                                grid,
                                gravitational_acceleration,
       architecture::AbstractArchitecture = CPU(),
-                                   clock = Clock{eltype(grid)}(0, 0, 1),
                                advection = UpwindBiasedFifthOrder(),
                                 coriolis = nothing,
                      forcing::NamedTuple = NamedTuple(),
@@ -80,7 +79,6 @@ Keyword arguments
     - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
     - `gravitational_acceleration`: (required) The gravitational accelaration constant.
     - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
-    - `clock`: The `clock` for the model
     - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
     - `coriolis`: Parameters for the background rotation rate of the model.
     - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
@@ -96,7 +94,6 @@ function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
   architecture::AbstractArchitecture = CPU(),
-                               clock = Clock{eltype(grid)}(0, 0, 1),
                            advection = UpwindBiasedFifthOrder(),
                             coriolis = nothing,
                  forcing::NamedTuple = NamedTuple(),
@@ -127,11 +124,14 @@ function ShallowWaterModel(;
                               Gⁿ = ShallowWaterTendencyFields(architecture, grid, tracernames(tracers)),
                               G⁻ = ShallowWaterTendencyFields(architecture, grid, tracernames(tracers)))
 
+    # Create clock
+    clock = Clock{eltype(grid)}(0, 0, 1)
+    
     # Regularize forcing and closure for model tracer and velocity fields.
     model_fields = merge(solution, tracers)
     forcing = model_forcing(model_fields; forcing...)
     closure = with_tracers(tracernames(tracers), closure)
-
+    
     return ShallowWaterModel(grid,
                              architecture,
                              clock,

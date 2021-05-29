@@ -47,7 +47,6 @@ end
                    grid,
            architecture = CPU(),
              float_type = Float64,
-                  clock = Clock{float_type}(0, 0, 1),
               advection = CenteredSecondOrder(),
                buoyancy = Buoyancy(SeawaterBuoyancy(float_type)),
                coriolis = nothing,
@@ -88,7 +87,6 @@ Keyword arguments
 function IncompressibleModel(;    grid,
     architecture::AbstractArchitecture = CPU(),
                             float_type = Float64,
-                                 clock = Clock{float_type}(0, 0, 1),
                              advection = CenteredSecondOrder(),
                               buoyancy = Buoyancy(model=SeawaterBuoyancy(float_type)),
                               coriolis = nothing,
@@ -154,6 +152,9 @@ function IncompressibleModel(;    grid,
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), architecture, grid)
     timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers), implicit_solver=implicit_solver)
 
+    # Create clock
+    clock = Clock{float_type}(0, 0, 1)
+    
     # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(velocities, tracers)
     forcing = model_forcing(model_fields; forcing...)
