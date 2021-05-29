@@ -1,3 +1,5 @@
+using Oceananigans.Advection: boundary_buffer
+using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
 
 const ATC = AbstractTurbulenceClosure
@@ -84,3 +86,41 @@ const f = Face()
 @inline _advective_tracer_flux_x(i, j, k, ibg::IBG, args...) = conditional_flux_fcc(i, j, k, ibg, ibg, advective_tracer_flux_x, args...)
 @inline _advective_tracer_flux_y(i, j, k, ibg::IBG, args...) = conditional_flux_cfc(i, j, k, ibg, ibg, advective_tracer_flux_y, args...)
 @inline _advective_tracer_flux_z(i, j, k, ibg::IBG, args...) = conditional_flux_ccf(i, j, k, ibg, ibg, advective_tracer_flux_z, args...)
+
+#####
+##### "Boundary-aware" interpolation
+#####
+##### Don't interpolate dead cells.
+#####
+
+@inline near_x_boundary(i, j, k, ibg, buffer) = any(ntuple(δ -> solid_cell(i - buffer - 1 + δ, j, k, ibg), Val(2buffer + 1)))
+@inline near_y_boundary(i, j, k, ibg, buffer) = any(ntuple(δ -> solid_cell(i, j - buffer - 1 + δ, k, ibg), Val(2buffer + 1)))
+@inline near_z_boundary(i, j, k, ibg, buffer) = any(ntuple(δ -> solid_cell(i, j, k - buffer - 1 + δ, ibg), Val(2buffer + 1)))
+
+for bias in (:symmetric, :left_biased, :right_biased)
+
+    for (d, ξ) in enumerate((:x, :y, :z))
+
+        code = [:ᵃ, :ᵃ, :ᵃ]
+
+        for loc in (:ᶜ, :ᶠ)
+            code[d] = loc
+            second_order_interp = Symbol(:ℑ, ξ, code...)
+            interp = Symbol(bias, :_interpolate_, ξ, code...)
+            alt_interp = Symbol(:_, interp)
+
+            near_boundary = Symbol(:near_, ξ, :_boundary)
+
+            # Conditional high-order interpolation in Bounded directions
+            @eval begin
+                import Oceananigans.Advection: $alt_interp
+                using Oceananigans.Advection: $interp
+
+                @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme, ψ) =
+                    ifelse($near_boundary(i, j, k, ibg, boundary_buffer(scheme)),
+                           $second_order_interp(i, j, k, ibg.grid, ψ),
+                           $interp(i, j, k, ibg.grid, scheme, ψ))
+            end
+        end
+    end
+end
