@@ -46,8 +46,8 @@ solid(x, y, z, i, j, k) = (
                            return false;
                           )
 
-#free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
-free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
+free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
+# free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
 
 coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving())
 
@@ -148,4 +148,4 @@ run!(simulation)
 
 include("visualize_barotropic_gyre.jl")
 
-visualize_barotropic_gyre(simulation.output_writers[:fields])
+# visualize_barotropic_gyre(simulation.output_writers[:fields])
