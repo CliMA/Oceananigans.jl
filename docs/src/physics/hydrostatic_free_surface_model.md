@@ -63,7 +63,7 @@ The terms that appear on the right-hand side of the momentum conservation equati
 The conservation law for tracers in Oceananigans.jl is
 ```math
     \begin{align}
-    \partial_t c = - \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{\nabla} c
+    \partial_t c = - \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} c
                    - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c
                    + F_c \, ,
     \label{eq:tracer}
