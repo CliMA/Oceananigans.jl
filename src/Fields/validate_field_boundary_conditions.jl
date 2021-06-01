@@ -1,13 +1,25 @@
-validate_boundary_condition(topo, bc, loc, side) = error("$side boundary condition $bc cannot be applied " *
-                                                          "to a field located at $loc in a $topo dimension.")
+validate_boundary_condition(::Periodic, bc, loc, side) = throw(ArgumentError("$side boundary condition $bc is non-periodic. " *
+                                                                             "Boundary conditions cannot be specified in Periodic directions!")
+
+validate_boundary_condition(::Flat, bc, loc, side) = throw(ArgumentError("$side boundary condition $bc is not nothing. " *
+                                                                         "Boundary conditions cannot be specified in Flat directions!"))
+
+validate_boundary_condition(::Bounded, bc, ::Center, side) = throw(ArgumentError("$side boundary condition $bc is invalid. " *
+                                                                                 "Field at cell Center in Bounded directions must have either \n" *
+                                                                                 "FluxBoundaryCondition, ValueBoundaryCondition, or GradientBoundaryCondition")
+
+validate_boundary_condition(::Bounded, bc, ::Face, side) = throw(ArgumentError("$side boundary condition $bc is invalid. " *
+                                                                               "Field at cell Face in Bounded directions must have either \n" *
+                                                                               "NormalFlowBoundaryCondition or nothing.")
 
 # Whitelist...
 CenterBoundedBCs = Union{BoundaryCondition{<:Value},
                          BoundaryCondition{<:Gradient},
                          BoundaryCondition{<:Flux}}
 
-validate_boundary_condition(::Bounded, ::CenterBoundedBCs, ::Center, side) = nothing # fallback
-validate_boundary_condition(::Bounded, ::Union{nothing, BoundaryCondition{<:NormalFlow}}, ::Face, side) = nothing # fallback
+validate_boundary_condition(::Flat, ::Nothing, loc, side) = nothing
+validate_boundary_condition(::Bounded, ::CenterBoundedBCs, ::Center, side) = nothing
+validate_boundary_condition(::Bounded, ::Union{Nothing, BoundaryCondition{<:NormalFlow}}, ::Face, side) = nothing
 validate_boundary_condition(::Periodic, ::BoundaryCondition{<:Periodic}, loc, side) = nothing
 
 # Validate boundary conditions
