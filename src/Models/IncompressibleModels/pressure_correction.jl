@@ -11,6 +11,11 @@ function calculate_pressure_correction!(model::IncompressibleModel, Δt)
 
     fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model))
 
+    # Mask immersed fields
+    masking_events = Tuple(mask_immersed_field!(velocity_field) for velocity_field in model.velocities)
+
+    wait(device(model.architecture), MultiEvent(masking_events))
+
     solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, model.architecture, model.grid, Δt, model.velocities)
 
     fill_halo_regions!(model.pressures.pNHS, model.architecture)

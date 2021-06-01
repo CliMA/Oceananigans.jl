@@ -11,6 +11,11 @@ Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
 """
 function update_state!(model::IncompressibleModel)
 
+    # Mask immersed fields
+    masking_events = Tuple(mask_immersed_field!(field) for field in fields(model))
+
+    wait(device(model.architecture), MultiEvent(masking_events))
+
     # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture, 
                        model.clock, fields(model))
