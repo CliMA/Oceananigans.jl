@@ -105,9 +105,6 @@ function ReducedField(Xr, Yr, Zr, arch, grid; dims, data=nothing,
         boundary_conditions = FieldBoundaryConditions(grid, (X, Y, Z))
     end
 
-    # Can't apply boundary conditions in reduced directions
-    boundary_conditions = reduced_boundary_conditions(boundary_conditions; dims=dims)
-
     return ReducedField{X, Y, Z}(data, arch, grid, dims, boundary_conditions)
 end
 
@@ -123,10 +120,6 @@ Base.similar(r::AbstractReducedField{X, Y, Z, Arch}) where {X, Y, Z, Arch} =
 
 reduced_location(loc; dims) = Tuple(i ∈ dims ? Nothing : loc[i] for i in 1:3)
 
-function reduced_boundary_conditions(bcs; dims)
-    xbcs, ybcs, zbcs = Tuple(i ∈ dims ? CoordinateBoundaryConditions(nothing, nothing) : bcs[i] for i = 1:3)
-    return FieldBoundaryConditions(xbcs, ybcs, zbcs)
-end
-
 Adapt.adapt_structure(to, reduced_field::ReducedField{X, Y, Z}) where {X, Y, Z} =
     ReducedField{X, Y, Z}(adapt(to, reduced_field.data), nothing, adapt(to, reduced_field.grid), reduced_field.dims, nothing)
+
