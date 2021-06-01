@@ -9,6 +9,14 @@ import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 abstract type AbstractReducedField{X, Y, Z, A, G, T, N} <: AbstractDataField{X, Y, Z, A, G, T, 3} end
 
+fill_halo_regions!(field::AbstractReducedField, args...) = fill_halo_regions!(field.data,
+                                                                              field.boundary_conditions,
+                                                                              architecture(field),
+                                                                              field.grid,
+                                                                              location(field),
+                                                                              args...;
+                                                                              reduced_dimensions=field.dims)
+
 const ARF = AbstractReducedField
 const DimsType = NTuple{N, Int} where N
 
@@ -116,7 +124,7 @@ Base.similar(r::AbstractReducedField{X, Y, Z, Arch}) where {X, Y, Z, Arch} =
 reduced_location(loc; dims) = Tuple(i ∈ dims ? Nothing : loc[i] for i in 1:3)
 
 function reduced_boundary_conditions(bcs; dims)
-    xbcs, ybcs, zbcs = Tuple(i ∈ dims ? CoordinateBoundaryConditions(nothing, nothing) : bcs[i] for i in 1:3)
+    xbcs, ybcs, zbcs = Tuple(i ∈ dims ? CoordinateBoundaryConditions(nothing, nothing) : bcs[i] for i = 1:3)
     return FieldBoundaryConditions(xbcs, ybcs, zbcs)
 end
 
