@@ -10,8 +10,15 @@ abstract type AbstractReducedField{X, Y, Z, A, G, T, N} <: AbstractDataField{X, 
 
 const ARF = AbstractReducedField
 
-fill_halo_regions!(field::AbstractReducedField, arch, args...) =
-    fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...; reduced_dimensions=field.dims)
+#=
+fill_halo_regions!(field::AbstractReducedField, args...) = fill_halo_regions!(field.data,
+                                                                              field.boundary_conditions,
+                                                                              architecture(field),
+                                                                              field.grid,
+                                                                              location(field),
+                                                                              args...;
+                                                                              reduced_dimensions=field.dims)
+=#
 
 const DimsType = NTuple{N, Int} where N
 
