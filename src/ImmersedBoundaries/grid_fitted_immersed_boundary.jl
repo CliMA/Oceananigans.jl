@@ -124,3 +124,17 @@ for bias in (:symmetric, :left_biased, :right_biased)
         end
     end
 end
+
+#####
+##### Masking for GridFittedBoundary
+#####
+
+@inline function scalar_mask(i, j, k, grid, ::GridFittedBoundary, LX, LY, LZ, field)
+    return @inbounds ifelse(solid_node(LX, LY, LZ, i, j, k, grid),
+                            zero(eltype(grid)),
+                            field[i, j, k])
+end
+
+const GridFittedImmersedBoundaryGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:GridFittedBoundary} where {FT, TX, TY, TZ}
+
+mask_immersed_velocities!(U, arch, grid::GridFittedImmersedBoundaryGrid) = Tuple(mask_immersed_field(u) for u in U)
