@@ -1,16 +1,16 @@
 validate_boundary_condition(::Periodic, bc, loc, side) = throw(ArgumentError("$side boundary condition $bc is non-periodic. " *
-                                                                             "Boundary conditions cannot be specified in Periodic directions!")
+                                                                             "Boundary conditions cannot be specified in Periodic directions!"))
 
 validate_boundary_condition(::Flat, bc, loc, side) = throw(ArgumentError("$side boundary condition $bc is not nothing. " *
                                                                          "Boundary conditions cannot be specified in Flat directions!"))
 
 validate_boundary_condition(::Bounded, bc, ::Center, side) = throw(ArgumentError("$side boundary condition $bc is invalid. " *
                                                                                  "Field at cell Center in Bounded directions must have either \n" *
-                                                                                 "FluxBoundaryCondition, ValueBoundaryCondition, or GradientBoundaryCondition")
+                                                                                 "FluxBoundaryCondition, ValueBoundaryCondition, or GradientBoundaryCondition"))
 
 validate_boundary_condition(::Bounded, bc, ::Face, side) = throw(ArgumentError("$side boundary condition $bc is invalid. " *
                                                                                "Field at cell Face in Bounded directions must have either \n" *
-                                                                               "NormalFlowBoundaryCondition or nothing.")
+                                                                               "NormalFlowBoundaryCondition or nothing."))
 
 # Whitelist...
 CenterBoundedBCs = Union{BoundaryCondition{<:Value},
