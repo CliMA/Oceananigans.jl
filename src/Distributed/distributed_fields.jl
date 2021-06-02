@@ -7,5 +7,5 @@ function Field(X, Y, Z, arch::AbstractMultiArchitecture, grid::AbstractGrid,
 
     communicative_bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity)
 
-    return Field(X, Y, Z, child_architecture(arch), grid, communicative_bcs, data)
+    return Field(X, Y, Z, arch, grid, communicative_bcs, data)
 end

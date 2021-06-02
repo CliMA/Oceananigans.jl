@@ -350,6 +350,8 @@ function test_triply_periodic_halo_communication_with_411_ranks(halo)
     model = DistributedIncompressibleModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in merge(fields(model), model.pressures)
+        @test architecture(field) isa AbstractMultiArchitecture
+
         interior(field) .= arch.local_rank
         fill_halo_regions!(field)
 

@@ -25,16 +25,16 @@ end
 fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
 "Fill halo regions in x, y, and z for a given field's data."
-function fill_halo_regions!(c::OffsetArray, boundary_conditions, arch, grid, loc, args...; kwargs...)
+function fill_halo_regions!(c::OffsetArray, bcs, arch, grid, loc, args...; kwargs...)
 
     barrier = Event(device(arch))
 
-      west_event =   fill_west_halo!(c, boundary_conditions.west,   arch, barrier, grid, loc, args...; kwargs...)
-      east_event =   fill_east_halo!(c, boundary_conditions.east,   arch, barrier, grid, loc, args...; kwargs...)
-     south_event =  fill_south_halo!(c, boundary_conditions.south,  arch, barrier, grid, loc, args...; kwargs...)
-     north_event =  fill_north_halo!(c, boundary_conditions.north,  arch, barrier, grid, loc, args...; kwargs...)
-    bottom_event = fill_bottom_halo!(c, boundary_conditions.bottom, arch, barrier, grid, loc, args...; kwargs...)
-       top_event =    fill_top_halo!(c, boundary_conditions.top,    arch, barrier, grid, loc, args...; kwargs...)
+      west_event =   fill_west_halo!(c, bcs.west,   arch, barrier, grid, loc, args...; kwargs...)
+      east_event =   fill_east_halo!(c, bcs.east,   arch, barrier, grid, loc, args...; kwargs...)
+     south_event =  fill_south_halo!(c, bcs.south,  arch, barrier, grid, loc, args...; kwargs...)
+     north_event =  fill_north_halo!(c, bcs.north,  arch, barrier, grid, loc, args...; kwargs...)
+    bottom_event = fill_bottom_halo!(c, bcs.bottom, arch, barrier, grid, loc, args...; kwargs...)
+       top_event =    fill_top_halo!(c, bcs.top,    arch, barrier, grid, loc, args...; kwargs...)
 
     # Wait at the end
     events = [west_event, east_event, south_event, north_event, bottom_event, top_event]
