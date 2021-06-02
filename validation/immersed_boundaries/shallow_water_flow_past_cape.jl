@@ -21,7 +21,7 @@ const dx = 1.0 # sponge width
 smoothed_step_mask(x, y, z) = 1/2 * (1 + tanh((x - x0) / dx))
 
 uh_sponge = Relaxation(rate = damping_rate, mask = smoothed_step_mask, target = (x, y, z, t) -> U(x, y, z))
- h_sponge = Relaxation(rate = damping_rate, mask = smoothed_step_mask, target = (x, y, z, t) -> U(x, y, z))
+ h_sponge = Relaxation(rate = damping_rate, mask = smoothed_step_mask, target = 1)
 
 model = ShallowWaterModel(grid = grid, gravitational_acceleration = 1, forcing = (uh=uh_sponge, h=h_sponge))
 
