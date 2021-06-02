@@ -22,6 +22,8 @@ using Oceananigans.Advection:
     advective_tracer_flux_y,
     advective_tracer_flux_z
 
+import Oceananigans.Solvers: PressureSolver
+
 import Oceananigans.Grids: with_halo
 
 import Oceananigans.Advection:
@@ -67,11 +69,11 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I} <: AbstractGrid{FT, TX, TY, TZ
     grid :: G
     immersed_boundary :: I
 
-    function ImmersedBoundaryGrid(grid::G, ib::I) where {G <: AbstractGrid, I}
-        @warn "ImmersedBoundaryGrid is unvalidated and may produce incorrect results. \n" *
-              "Don't hesitate to help validate ImmersedBoundaryGrid by reporting any bugs \n" *
+    function ImmersedBoundaryGrid(grid::G, ib::I) where {G <: AbstractPrimaryGrid, I}
+        @warn "ImmersedBoundaryGrid is unvalidated and may produce incorrect results. " *
+              "Don't hesitate to help validate ImmersedBoundaryGrid by reporting any bugs " *
               "or unexpected behavior to https://github.com/CliMA/Oceananigans.jl/issues"
-        
+
         FT = eltype(grid)
         TX, TY, TZ = topology(grid)
         return new{FT, TX, TY, TZ, G, I}(grid, ib)
@@ -88,6 +90,9 @@ const IBG = ImmersedBoundaryGrid
 Adapt.adapt_structure(to, ibg::IBG) = ImmersedBoundaryGrid(adapt(to, ibg.grid), adapt(to, ibg.immersed_boundary))
 
 with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo, ibg.grid), ibg.immersed_boundary)
+
+# *Evil grin*
+PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.grid)
 
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundary.jl")

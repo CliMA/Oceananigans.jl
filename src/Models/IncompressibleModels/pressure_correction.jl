@@ -1,5 +1,7 @@
 using Oceananigans.Solvers
 
+using Oceananigans.ImmersedBoundaries: mask_immersed_velocities!, mask_immersed_field!
+
 import Oceananigans.TimeSteppers: calculate_pressure_correction!, pressure_correct_velocities!
 
 """
@@ -34,8 +36,8 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure vi
 @kernel function _pressure_correct_velocities!(U, grid, Δt, pNHS)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds U.u[i, j, k] -= ∂xᶠᵃᵃ(i, j, k, grid, pNHS) * Δt
-    @inbounds U.v[i, j, k] -= ∂yᵃᶠᵃ(i, j, k, grid, pNHS) * Δt
+    @inbounds U.u[i, j, k] -= ∂xᶠᶜᵃ(i, j, k, grid, pNHS) * Δt
+    @inbounds U.v[i, j, k] -= ∂yᶜᶠᵃ(i, j, k, grid, pNHS) * Δt
     @inbounds U.w[i, j, k] -= ∂zᵃᵃᶠ(i, j, k, grid, pNHS) * Δt
 end
 

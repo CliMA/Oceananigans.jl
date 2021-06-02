@@ -6,15 +6,11 @@ using Statistics
 using CUDA
 
 using Oceananigans
-using Oceananigans.Advection
-using Oceananigans.AbstractOperations
-using Oceananigans.OutputWriters
-using Oceananigans.Grids
-using Oceananigans.Fields
-using Oceananigans.Utils: prettytime
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, ExplicitFreeSurface
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
+include("disk_time_series.jl")
+
+using .DiskTimeSerieses: DiskTimeSeries
 
 #####
 ##### The Bickley jet
@@ -33,6 +29,9 @@ C(y, L) = sin(2π * y / L)
 ũ(x, y, ℓ, k) = + ψ̃(x, y, ℓ, k) * (k * tan(k * y) + y / ℓ^2) 
 ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x) 
 
+serialize_grid!(file, grid) = file["serialized/grid"] = grid
+serialize_grid!(file, ibg::ImmersedBoundaryGrid) = file["serialized/grid"] = ibg.grid
+
 """
     run_bickley_jet(output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0,
                     momentum_advection = VectorInvariant())
@@ -40,20 +39,35 @@ ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x)
 Run the Bickley jet validation experiment until `stop_time` using `momentum_advection`
 scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch`itecture.
 """
-function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0, advection = WENO5())
+function run_bickley_jet(; output_time_interval = 2, stop_time = 50, arch = CPU(), Nh = 64, ν = 0, advection = WENO5())
 
     grid = RegularRectilinearGrid(size=(Nh, Nh, 1),
                                 x = (-2π, 2π), y=(-2π, 2π), z=(0, 1),
-                                topology = (Periodic, Periodic, Bounded))
+                                topology = (Periodic, Bounded, Bounded))
 
+    regular_model = IncompressibleModel(architecture = arch,
+                                        advection = advection,
+                                        grid = grid,
+                                        tracers = :c,
+                                        closure = IsotropicDiffusivity(ν=ν, κ=ν),
+                                        coriolis = nothing,
+                                        buoyancy = nothing)
 
-    model = IncompressibleModel(architecture = arch,
-                                advection = advection,
-                                grid = grid,
-                                tracers = :c,
-                                closure = IsotropicDiffusivity(ν=ν, κ=ν),
-                                coriolis = nothing,
-                                buoyancy = nothing)
+    solid(x, y, z) = y <= -2π
+
+    expanded_grid = RegularRectilinearGrid(size=(Nh, Nh, 1),
+                                           x = (-2π, 2π), y=(-3π, 2π), z=(0, 1),
+                                           topology = (Periodic, Bounded, Bounded))
+
+    immersed_grid = ImmersedBoundaryGrid(expanded_grid, GridFittedBoundary(solid))
+
+    immersed_model = IncompressibleModel(architecture = arch,
+                                         advection = advection,
+                                         grid = immersed_grid,
+                                         tracers = :c,
+                                         closure = IsotropicDiffusivity(ν=ν, κ=ν),
+                                         coriolis = nothing,
+                                         buoyancy = nothing)
 
     # ** Initial conditions **
     #
@@ -70,55 +84,60 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     vᵢ(x, y, z) = ϵ * ṽ(x, y, ℓ, k)
     cᵢ(x, y, z) = C(y, grid.Ly)
 
-    set!(model, u=uᵢ, v=vᵢ, c=cᵢ)
+    set!(regular_model, u=uᵢ, v=vᵢ, c=cᵢ)
+    set!(immersed_model, u=uᵢ, v=vᵢ, c=cᵢ)
 
-    progress(sim) = @info(@sprintf("Iter: %d, time: %.1f, Δt: %.3f, max|u|: %.2f",
-                                   sim.model.clock.iteration, sim.model.clock.time,
-                                   sim.Δt, maximum(abs, u.data.parent)))
+    wall_clock = [time_ns()]
 
-    wizard = TimeStepWizard(cfl=0.1, Δt=1e-4, max_change=1.1, max_Δt=10.0)
+    function progress(sim)
+        @info(@sprintf("Iter: %d, time: %.1f, Δt: %.3f, wall time: %s, max|u|: %.2f",
+                       sim.model.clock.iteration,
+                       sim.model.clock.time,
+                       sim.Δt,
+                       prettytime(1e-9 * (time_ns() - wall_clock[1])),
+                       maximum(abs, sim.model.velocities.u.data.parent)))
 
-    simulation = Simulation(model, Δt=0.1, stop_time=stop_time,
-                            iteration_interval=100, progress=progress)
-
-    # Output: primitive fields + computations
-    u, v, w, c = merge(model.velocities, model.tracers)
-
-    ζ = ComputedField(∂x(v) - ∂y(u))
-
-    outputs = merge(model.velocities, model.tracers, (ζ=ζ,))
-
-    function init_grid_and_fields!(file, model)
-        file["serialized/grid"] = model.grid
-
-        for (i, field) in enumerate(outputs)
-            field_name = keys(outputs)[i]
-            file["timeseries/$field_name/meta/location"] = location(field)
-        end
+        wall_clock[1] = time_ns()
 
         return nothing
     end
 
-    @show experiment_name = "bickley_jet_Nh_$(Nh)_$(typeof(model.advection).name.wrapper)"
+    models = (immersed_model, regular_model)
+    @show experiment_name = "bickley_jet_Nh_$(Nh)_$(typeof(regular_model.advection).name.wrapper)"
 
-    simulation.output_writers[:fields] =
-        JLD2OutputWriter(model, outputs,
-                                schedule = TimeInterval(output_time_interval),
-                                init = init_grid_and_fields!,
-                                prefix = experiment_name,
-                                field_slicer = nothing,
-                                force = true)
+    for m in models
+        wizard = TimeStepWizard(cfl=0.1, Δt=1e-4, max_change=1.1, max_Δt=10.0)
 
-    @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
+        simulation = Simulation(m, Δt=0.1, stop_time=stop_time, iteration_interval=100, progress=progress)
 
-    start_time = time_ns()
+        # Output: primitive fields + computations
+        u, v, w, c = merge(m.velocities, m.tracers)
+        ζ = ComputedField(∂x(v) - ∂y(u))
+        outputs = merge(m.velocities, m.tracers, (ζ=ζ,))
 
-    run!(simulation)
+        output_name = m.grid isa ImmersedBoundaryGrid ?
+                            "immersed_" * experiment_name :
+                            "regular_" * experiment_name
+
+        @show output_name
+
+        simulation.output_writers[:fields] =
+            JLD2OutputWriter(m, outputs,
+                             schedule = TimeInterval(output_time_interval),
+                             prefix = output_name,
+                             field_slicer = nothing,
+                             force = true)
+
+        @info "Running a simulation of an unstable Bickley jet with $(Nh)² degrees of freedom..."
+
+        start_time = time_ns()
+
+        run!(simulation)
+    end
 
     return experiment_name 
 end
     
-#=
 """
     visualize_bickley_jet(experiment_name)
 
@@ -170,9 +189,9 @@ function visualize_bickley_jet(experiment_name)
 
     mp4(anim, experiment_name * ".mp4", fps = 8)
 end
-=#
 
-for advection in (WENO5(), CenteredSecondOrder(), VectorInvariant())
+for advection in (WENO5(), CenteredSecondOrder())
     experiment_name = run_bickley_jet(advection=advection, Nh=64)
-    #visualize_bickley_jet(experiment_name)
+    visualize_bickley_jet("immersed_" * experiment_name)
+    visualize_bickley_jet("regular_" * experiment_name)
 end

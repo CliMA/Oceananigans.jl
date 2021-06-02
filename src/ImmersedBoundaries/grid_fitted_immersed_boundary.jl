@@ -1,4 +1,4 @@
-using Oceananigans.Advection: boundary_buffer
+using Oceananigans.Advection: AbstractAdvectionScheme
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
 
@@ -93,12 +93,24 @@ const f = Face()
 ##### Don't interpolate dead cells.
 #####
 
-@inline near_x_boundary(i, j, k, ibg, buffer) = any(ntuple(δ -> solid_cell(i - buffer - 1 + δ, j, k, ibg), Val(2buffer + 1)))
-@inline near_y_boundary(i, j, k, ibg, buffer) = any(ntuple(δ -> solid_cell(i, j - buffer - 1 + δ, k, ibg), Val(2buffer + 1)))
-@inline near_z_boundary(i, j, k, ibg, buffer) = any(ntuple(δ -> solid_cell(i, j, k - buffer - 1 + δ, ibg), Val(2buffer + 1)))
+@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
+@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
+@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
+
+@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_cell(i - 1, j, k, ibg) || solid_cell(i, j, k, ibg) || solid_cell(i + 1, j, k, ibg)
+@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_cell(i, j - 1, k, ibg) || solid_cell(i, j, k, ibg) || solid_cell(i, j + 1, k, ibg)
+@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_cell(i, j, k - 1, ibg) || solid_cell(i, j, k, ibg) || solid_cell(i, j, k + 1, ibg)
+
+@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_cell(i - 2, j, k, ibg) || solid_cell(i - 1, j, k, ibg) || solid_cell(i, j, k, ibg) || solid_cell(i + 1, j, k, ibg) || solid_cell(i + 2, j, k, ibg)
+@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_cell(i, j - 2, k, ibg) || solid_cell(i, j - 1, k, ibg) || solid_cell(i, j, k, ibg) || solid_cell(i, j + 1, k, ibg) || solid_cell(i, j + 2, k, ibg)
+@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_cell(i, j, k - 2, ibg) || solid_cell(i, j, k - 1, ibg) || solid_cell(i, j, k, ibg) || solid_cell(i, j, k + 1, ibg) || solid_cell(i, j, k + 2, ibg)
+
+# Takes forever to compile, but works.
+# @inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> solid_cell(i - buffer - 1 + δ, j, k, ibg), Val(2buffer + 1)))
+# @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> solid_cell(i, j - buffer - 1 + δ, k, ibg), Val(2buffer + 1)))
+# @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> solid_cell(i, j, k - buffer - 1 + δ, ibg), Val(2buffer + 1)))
 
 for bias in (:symmetric, :left_biased, :right_biased)
-
     for (d, ξ) in enumerate((:x, :y, :z))
 
         code = [:ᵃ, :ᵃ, :ᵃ]
@@ -117,9 +129,11 @@ for bias in (:symmetric, :left_biased, :right_biased)
                 using Oceananigans.Advection: $interp
 
                 @inline $alt_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme, ψ) =
-                    ifelse($near_boundary(i, j, k, ibg, boundary_buffer(scheme)),
+                    ifelse($near_boundary(i, j, k, ibg, scheme),
                            $second_order_interp(i, j, k, ibg.grid, ψ),
                            $interp(i, j, k, ibg.grid, scheme, ψ))
+
+                # @inline $alt_interp(i, j, k, ibg::IBG, scheme, ψ) = $interp(i, j, k, ibg.grid, scheme, ψ)
             end
         end
     end
@@ -129,9 +143,9 @@ end
 ##### Masking for GridFittedBoundary
 #####
 
-@inline function scalar_mask(i, j, k, grid, ::GridFittedBoundary, LX, LY, LZ, field)
+@inline function scalar_mask(i, j, k, grid, ::GridFittedBoundary, LX, LY, LZ, value, field)
     return @inbounds ifelse(solid_node(LX, LY, LZ, i, j, k, grid),
-                            zero(eltype(grid)),
+                            value,
                             field[i, j, k])
 end
 

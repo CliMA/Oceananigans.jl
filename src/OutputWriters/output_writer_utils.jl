@@ -1,5 +1,6 @@
 using StructArrays: StructArray, replace_storage
 using Oceananigans.Fields: AbstractField
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.BoundaryConditions: bctype, CoordinateBoundaryConditions, FieldBoundaryConditions
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
@@ -48,6 +49,12 @@ saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(st
 serializeproperty!(file, location, p) = (file[location] = p)
 serializeproperty!(file, location, p::AbstractArray) = saveproperty!(file, location, p)
 serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
+
+function serializeproperty!(file, location, p::ImmersedBoundaryGrid)
+    @warn "Cannot serialize ImmersedBoundaryGrid; serializing underlying grid instead."
+    file[location] = p.grid
+    return nothing
+end
 
 function serializeproperty!(file, location, p::FieldBoundaryConditions)
     if has_reference(Function, p)
