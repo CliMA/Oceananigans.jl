@@ -12,7 +12,6 @@ function update_state!(model::ShallowWaterModel)
 
     # Mask immersed fields
     masking_events = Tuple(mask_immersed_field!(field) for field in merge((uh=model.solution.uh, vh=model.solution.vh), model.tracers))
-    height_masking_event = mask_immersed_height_field!(model.solution.h)
 
     wait(device(model.architecture), MultiEvent(tuple(masking_events..., height_masking_event)))
 

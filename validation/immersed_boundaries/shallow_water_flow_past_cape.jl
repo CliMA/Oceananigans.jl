@@ -23,7 +23,8 @@ smoothed_step_mask(x, y, z) = 1/2 * (1 + tanh((x - x0) / dx))
 uh_sponge = Relaxation(rate = damping_rate, mask = smoothed_step_mask, target = (x, y, z, t) -> U(x, y, z))
  h_sponge = Relaxation(rate = damping_rate, mask = smoothed_step_mask, target = 1)
 
-model = ShallowWaterModel(grid = grid, gravitational_acceleration = 1, forcing = (uh=uh_sponge, h=h_sponge))
+#model = ShallowWaterModel(grid = grid, gravitational_acceleration = 1, forcing = (uh=uh_sponge, h=h_sponge))
+model = ShallowWaterModel(grid = grid, gravitational_acceleration = 1) #, forcing = (uh=uh_sponge, h=h_sponge))
 
 set!(model, h = 1, uh = U)
 
@@ -42,7 +43,7 @@ function progress(sim)
     return nothing
 end
 
-wizard = TimeStepWizard(cfl=0.5, Δt=0.001*grid.Δx, max_change=1.1, max_Δt=0.5)
+wizard = TimeStepWizard(cfl=0.5, Δt=0.01*grid.Δx, max_change=1.1, max_Δt=2e-3)
 
 simulation = Simulation(model, Δt=wizard, stop_time=1, progress=progress, iteration_interval=10)
 

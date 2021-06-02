@@ -6,12 +6,14 @@ using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Models
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
-underlying_grid = RegularRectilinearGrid(size=(256, 64), x=(-5, 15), y=(-3, 3), topology=(Periodic, Bounded, Flat), halo = (3, 3))
+experiment_name = "shallow_water_flow_past_cylinder"
+
+underlying_grid = RegularRectilinearGrid(size=(128, 64), x=(-5, 10), y=(-3, 3), topology=(Periodic, Bounded, Flat), halo = (3, 3))
                               
 cylinder(x, y, z)  = (x^2 + y^2) < 1
-
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(cylinder))
 
+#=
 damping_rate = 0.01 # relax fields on a 100 second time-scale
 const x0 = -13.0 # center point of sponge
 const dx = 1.0 # sponge width
@@ -20,7 +22,9 @@ smoothed_step_mask(x, y, z) = 1/2 * (1 + tanh((x - x0) / dx))
 uh_sponge = Relaxation(rate = damping_rate, mask = smoothed_step_mask, target = 1)
  h_sponge = Relaxation(rate = damping_rate, mask = smoothed_step_mask, target = 1)
 
-#model = ShallowWaterModel(grid = grid, gravitational_acceleration = 1, forcing = (uh=uh_sponge, h=h_sponge))
+model = ShallowWaterModel(grid = grid, gravitational_acceleration = 1, forcing = (uh=uh_sponge, h=h_sponge))
+=#
+
 model = ShallowWaterModel(grid = grid, gravitational_acceleration = 1) #, forcing = (uh=uh_sponge, h=h_sponge))
 
 set!(model, h = 1, uh = 1)
@@ -40,7 +44,9 @@ function progress(sim)
     return nothing
 end
 
-wizard = TimeStepWizard(cfl=0.5, Δt=0.01*grid.Δx, max_change=1.1, max_Δt=2e-3)
+Δmin = min(grid.Δx, grid.Δy)
+
+wizard = TimeStepWizard(cfl = 0.5, Δt = 0.01Δmin, max_change = 1.1, max_Δt = 0.05Δmin)
 
 simulation = Simulation(model, Δt=wizard, stop_time=1, progress=progress, iteration_interval=10)
 
@@ -53,13 +59,13 @@ outputs = merge(model.solution, (ζ=ζ,))
 simulation.output_writers[:fields] =
     JLD2OutputWriter(model, outputs,
                      schedule = TimeInterval(0.1),
-                     prefix = "flow_past_cylinder",
+                     prefix = experiment_name,
                      field_slicer = nothing,
                      force = true)
 
 run!(simulation)
 
-filepath = "flow_past_cape.jld2"
+filepath = experiment_name * ".jld2"
 
 ζ_timeseries = FieldTimeSeries(filepath, "ζ")
 u_timeseries = FieldTimeSeries(filepath, "uh")
@@ -98,4 +104,4 @@ anim = @animate for (n, t) in enumerate(ζ_timeseries.times)
     plot(ζ_plot, u_plot, title = [ζ_title u_title], size = (4000, 2000))
 end
 
-mp4(anim, "flow_past_cape.mp4", fps = 8)
+mp4(anim, experiment_name * ".mp4", fps = 8)
