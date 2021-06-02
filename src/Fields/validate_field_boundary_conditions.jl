@@ -1,3 +1,5 @@
+import Oceananigans.BoundaryConditions
+
 validate_boundary_condition(::Periodic, bc, loc, side) = throw(ArgumentError("$side boundary condition $bc is non-periodic. " *
                                                                              "Boundary conditions cannot be specified in Periodic directions!"))
 
@@ -20,7 +22,7 @@ CenterBoundedBCs = Union{BoundaryCondition{<:Value},
 validate_boundary_condition(::Flat, ::Nothing, loc, side) = nothing
 validate_boundary_condition(::Bounded, ::CenterBoundedBCs, ::Center, side) = nothing
 validate_boundary_condition(::Bounded, ::Union{Nothing, BoundaryCondition{<:NormalFlow}}, ::Face, side) = nothing
-validate_boundary_condition(::Periodic, ::BoundaryCondition{<:Periodic}, loc, side) = nothing
+validate_boundary_condition(::Periodic, ::BoundaryCondition{<:BoundaryConditions.Periodic}, loc, side) = nothing
 
 # Validate boundary conditions
 validate_field_boundary_conditions(::Nothing, grid, LX, LY, LZ) = nothing
