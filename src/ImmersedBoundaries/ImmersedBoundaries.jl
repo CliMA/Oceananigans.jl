@@ -22,10 +22,16 @@ using Oceananigans.Advection:
     advective_tracer_flux_y,
     advective_tracer_flux_z
 
+<<<<<<< HEAD
 import Oceananigans.Utils: cell_advection_timescale
 import Oceananigans.Solvers: PressureSolver
 
 import Oceananigans.Grids: with_halo
+=======
+import Oceananigans.Coriolis: φᶠᶠᵃ
+
+import Oceananigans.Grids: with_halo, xnode, ynode, znode
+>>>>>>> master
 
 import Oceananigans.Advection:
     _advective_momentum_flux_Uu,
@@ -96,6 +102,11 @@ with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo
 PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.grid)
 
 @inline cell_advection_timescale(u, v, w, ibg::ImmersedBoundaryGrid) = cell_advection_timescale(u, v, w, ibg.grid)
+@inline φᶠᶠᵃ(i, j, k, ibg::ImmersedBoundaryGrid) = φᶠᶠᵃ(i, j, k, ibg.grid)
+
+@inline xnode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = xnode(LX, LY, LZ, i, j, k, ibg.grid)
+@inline ynode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = ynode(LX, LY, LZ, i, j, k, ibg.grid)
+@inline znode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = znode(LX, LY, LZ, i, j, k, ibg.grid)
 
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundary.jl")

@@ -29,8 +29,8 @@ function visualize_barotropic_gyre(filepath)
 
     file = jldopen(filepath)
 
-    Nx = file["grid/Nx"]
-    Ny = file["grid/Ny"]
+    Nx = file["grid/grid/Nx"]
+    Ny = file["grid/grid/Ny"]
 
     # A spherical domain
     grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
@@ -83,8 +83,11 @@ end
 #Nx = 720
 #Ny = 720
 
-Nx = 360
-Ny = 360
+#Nx = 360
+#Ny = 360
+
+Nx = 60
+Ny = 60
 
 output_prefix = "barotropic_gyre_Nx$(Nx)_Ny$(Ny)"
 filepath = output_prefix * ".jld2"
