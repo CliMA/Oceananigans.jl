@@ -25,16 +25,21 @@ const CubedSphereData = CubedSphereFaces{<:OffsetArray}
 
 # Some dispatch foo to make a type union for CubedSphereFaceField...
 #
-# Grids:
+# Conformal cubed sphere grid wrapped in ImmersedBoundaryGrid:
 const ImmersedConformalCubedSphereFaceGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:ConformalCubedSphereFaceGrid} where {FT, TX, TY, TZ}
-const ImmersedConformalCubedSphereGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:ConformalCubedSphereGrid} where {FT, TX, TY, TZ}
 
-# Face Fields:
-const ImmersedCubedSphereFaceField    = AbstractField{X, Y, Z, A, <:ImmersedConformalCubedSphereFaceGrid} where {X, Y, Z, A}
+# CubedSphereFaceField:
 const NonImmersedCubedSphereFaceField = AbstractField{X, Y, Z, A, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A}
+const ImmersedCubedSphereFaceField    = AbstractField{X, Y, Z, A, <:ImmersedConformalCubedSphereFaceGrid} where {X, Y, Z, A}
 
 const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{X, Y, Z, A},
                                       ImmersedCubedSphereFaceField{X, Y, Z, A}} where {X, Y, Z, A}
+
+const NonImmersedCubedSphereAbstractReducedFaceField = {AbstractReducedField{X, Y, Z, A, D, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A, D}
+const ImmersedCubedSphereAbstractReducedFaceField = {AbstractReducedField{X, Y, Z, A, D, <:ImmersedConformalCubedSphereFaceGrid} where {X, Y, Z, A, D}
+
+const CubedSphereAbstractReducedFaceField = Union{NonImmersedCubedSphereAbstractReducedFaceField{X, Y, Z, A},
+                                                     ImmersedCubedSphereAbstractReducedFaceField{X, Y, Z, A}} where {X, Y, Z, A}
 
 # CubedSphereField
 
@@ -43,15 +48,10 @@ const CubedSphereField                     = Field{X, Y, Z, A, <:CubedSphereData
 const CubedSphereReducedField              = ReducedField{X, Y, Z, A, <:CubedSphereData} where {X, Y, Z, A}
 const CubedSphereAbstractField             = AbstractField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
 const CubedSphereAbstractDataField         = AbstractDataField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
-const ImmersedCubedSphereAbstractDataField = AbstractDataField{X, Y, Z, A, <:ImmersedConformalCubedSphereGrid} where {X, Y, Z, A}
-
-# Why is this here?
-const CubedSphereAbstractReducedField = AbstractReducedField{X, Y, Z, A, D, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A, D}
 
 const AbstractCubedSphereField{X, Y, Z, A} = Union{            CubedSphereAbstractField{X, Y, Z, A},
                                                            CubedSphereAbstractDataField{X, Y, Z, A},
                                                    ImmersedCubedSphereAbstractDataField{X, Y, Z, A},
-                                                        CubedSphereAbstractReducedField{X, Y, Z, A},
                                                                        CubedSphereField{X, Y, Z, A},
                                                   } where {X, Y, Z, A}
 
@@ -59,12 +59,12 @@ const AbstractCubedSphereField{X, Y, Z, A} = Union{            CubedSphereAbstra
 ##### new data
 #####
 
-function new_data(FT, arch::AbstractCPUArchitecture, grid::Union{ConformalCubedSphereGrid, ImmersedConformalCubedSphereGrid}, (X, Y, Z))
+function new_data(FT, arch::AbstractCPUArchitecture, grid::ConformalCubedSphereGrid, (X, Y, Z))
     faces = Tuple(new_data(FT, arch, face_grid, (X, Y, Z)) for face_grid in grid.faces)
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
 end
 
-function new_data(FT, arch::AbstractGPUArchitecture, grid::Union{ConformalCubedSphereGrid, ImmersedConformalCubedSphereGrid}, (X, Y, Z))
+function new_data(FT, arch::AbstractGPUArchitecture, grid::ConformalCubedSphereGrid, (X, Y, Z))
     faces = Tuple(new_data(FT, arch, face_grid, (X, Y, Z)) for face_grid in grid.faces)
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
 end
