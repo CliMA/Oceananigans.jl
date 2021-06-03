@@ -2,6 +2,7 @@ using Statistics
 using Oceananigans.Architectures
 
 using OffsetArrays: OffsetArray
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 import Base: getindex, size, show, minimum, maximum
 import Statistics: mean
@@ -17,46 +18,60 @@ end
 @inline Base.getindex(f::CubedSphereFaces, i::Int) = @inbounds f.faces[i]
 
 #####
-##### Dispatch the world
+##### Dispatch the world / insane type unions
 #####
 
 const CubedSphereData = CubedSphereFaces{<:OffsetArray}
 
+# Some dispatch foo to make a type union for CubedSphereFaceField...
+#
+# Grids:
+const ImmersedConformalCubedSphereFaceGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:ConformalCubedSphereFaceGrid} where {FT, TX, TY, TZ}
+const ImmersedConformalCubedSphereGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:ConformalCubedSphereGrid} where {FT, TX, TY, TZ}
+
+# Face Fields:
+const ImmersedCubedSphereFaceField    = AbstractField{X, Y, Z, A, <:ImmersedConformalCubedSphereFaceGrid} where {X, Y, Z, A}
+const NonImmersedCubedSphereFaceField = AbstractField{X, Y, Z, A, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A}
+
+const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{X, Y, Z, A},
+                                      ImmersedCubedSphereFaceField{X, Y, Z, A}} where {X, Y, Z, A}
+
+# CubedSphereField
+
 # Flavors of CubedSphereField
-const CubedSphereField = Field{X, Y, Z, A, <:CubedSphereData} where {X, Y, Z, A}
-const CubedSphereReducedField = ReducedField{X, Y, Z, A, <:CubedSphereData} where {X, Y, Z, A}
-const CubedSphereAbstractField = AbstractField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
-const CubedSphereAbstractDataField = AbstractDataField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
+const CubedSphereField                     = Field{X, Y, Z, A, <:CubedSphereData} where {X, Y, Z, A}
+const CubedSphereReducedField              = ReducedField{X, Y, Z, A, <:CubedSphereData} where {X, Y, Z, A}
+const CubedSphereAbstractField             = AbstractField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
+const CubedSphereAbstractDataField         = AbstractDataField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
+const ImmersedCubedSphereAbstractDataField = AbstractDataField{X, Y, Z, A, <:ImmersedConformalCubedSphereGrid} where {X, Y, Z, A}
+
+# Why is this here?
 const CubedSphereAbstractReducedField = AbstractReducedField{X, Y, Z, A, D, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A, D}
 
-const AbstractCubedSphereField = Union{CubedSphereAbstractField,
-                                       CubedSphereAbstractDataField,
-                                       CubedSphereAbstractReducedField,
-                                       CubedSphereField}
+const AbstractCubedSphereField{X, Y, Z, A} = Union{            CubedSphereAbstractField{X, Y, Z, A},
+                                                           CubedSphereAbstractDataField{X, Y, Z, A},
+                                                   ImmersedCubedSphereAbstractDataField{X, Y, Z, A},
+                                                        CubedSphereAbstractReducedField{X, Y, Z, A},
+                                                                       CubedSphereField{X, Y, Z, A},
+                                                  } where {X, Y, Z, A}
 
-function Base.show(io::IO, field::AbstractCubedSphereField)
-    LX, LY, LZ = location(field)
-    arch = architecture(field)
-    A = typeof(arch)
-    return print(io, "$(typeof(field).name.wrapper) at ($LX, $LY, $LZ)\n",
-          "├── architecture: $A\n",
-          "└── grid: $(short_show(field.grid))")
-end
+#####
+##### new data
+#####
 
-# Just a single face
-const CubedSphereFaceField = AbstractField{X, Y, Z, A, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A}
-
-# There must be a way to dispatch in one function without ambiguity with `new_data.jl`...
-
-function new_data(FT, arch::AbstractCPUArchitecture, grid::ConformalCubedSphereGrid, (X, Y, Z))
+function new_data(FT, arch::AbstractCPUArchitecture, grid::Union{ConformalCubedSphereGrid, ImmersedConformalCubedSphereGrid}, (X, Y, Z))
     faces = Tuple(new_data(FT, arch, face_grid, (X, Y, Z)) for face_grid in grid.faces)
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
 end
 
-function new_data(FT, arch::AbstractGPUArchitecture, grid::ConformalCubedSphereGrid, (X, Y, Z))
+function new_data(FT, arch::AbstractGPUArchitecture, grid::Union{ConformalCubedSphereGrid, ImmersedConformalCubedSphereGrid}, (X, Y, Z))
     faces = Tuple(new_data(FT, arch, face_grid, (X, Y, Z)) for face_grid in grid.faces)
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
 end
+
+#####
+##### FieldBoundaryConditions
+#####
 
 function FieldBoundaryConditions(grid::ConformalCubedSphereGrid, (X, Y, Z); user_defined_bcs...)
 
@@ -75,6 +90,17 @@ end
 #####
 ##### Utils
 #####
+
+function Base.show(io::IO, field::AbstractCubedSphereField)
+    LX, LY, LZ = location(field)
+    arch = architecture(field)
+    A = typeof(arch)
+    return print(io, "$(typeof(field).name.wrapper) at ($LX, $LY, $LZ)\n",
+          "├── architecture: $A\n",
+          "└── grid: $(short_show(field.grid))")
+end
+
+
 
 @inline function interior(field::AbstractCubedSphereField)
     faces = Tuple(interior(face_field_face) for face_field in faces(field))
