@@ -10,3 +10,9 @@ function ImmersedBoundaryGrid(grid::ConformalCubedSphereGrid, immersed_boundary)
     return cubed_sphere_immersed_grid 
 end
 
+import Oceananigans.Grids: new_data
+
+function new_data(FT, arch, ibg::ImmersedBoundaryGrid{F,TX,TY,TZ,G}, loc ) where {F,TX,TY,TZ,G<:ConformalCubedSphereGrid}
+         println("Hello from IBG cube sphere new_data")
+         return new_data(FT, arch, ibg.grid, loc )
+end
