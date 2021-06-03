@@ -34,6 +34,7 @@ function correct_immersed_tendencies!(model, immersed_boundary, Δt, γⁿ, ζ�
                                             model.velocities,
                                             Δt, γⁿ, ζⁿ,
                                             dependencies=barrier)
+
     # wait for these things to happen before continuing in calculations
     wait(device(model.architecture), correct_tendencies_event)
 

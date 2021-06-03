@@ -41,6 +41,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
 
     regular_model = IncompressibleModel(architecture = arch,
                                         advection = advection,
+                                        timestepper = :RungeKutta3,
                                         grid = grid,
                                         tracers = :c,
                                         closure = IsotropicDiffusivity(ν=ν, κ=ν),
@@ -48,7 +49,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
                                         buoyancy = nothing)
 
     # Non-regular model
-    solid(x, y, z) = y >= 2π
+    solid(x, y, z) = y > 2π
 
     expanded_grid = RegularRectilinearGrid(size=(Nh, Int(5Nh/4)), halo=(3, 3),
                                            x = (-2π, 2π), y=(-2π, 3π),
@@ -58,6 +59,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
 
     immersed_model = IncompressibleModel(architecture = arch,
                                          advection = advection,
+                                         timestepper = :RungeKutta3,
                                          grid = immersed_grid,
                                          tracers = :c,
                                          closure = IsotropicDiffusivity(ν=ν, κ=ν),
@@ -144,11 +146,15 @@ function visualize_bickley_jet(output_name)
 
     filepath = output_name * ".jld2"
 
+    u_timeseries = FieldTimeSeries(filepath, "u")
+    v_timeseries = FieldTimeSeries(filepath, "v")
     ζ_timeseries = FieldTimeSeries(filepath, "ζ")
     c_timeseries = FieldTimeSeries(filepath, "c")
 
     grid = c_timeseries.grid
 
+    xu, yu, zu = nodes(u_timeseries)
+    xv, yv, zv = nodes(v_timeseries)
     xζ, yζ, zζ = nodes(ζ_timeseries)
     xc, yc, zc = nodes(c_timeseries)
 
@@ -156,9 +162,13 @@ function visualize_bickley_jet(output_name)
 
         @info "    Plotting frame $i of $(length(c_timeseries.times))..."
 
+        u = u_timeseries[i]
+        v = v_timeseries[i]
         ζ = ζ_timeseries[i]
         c = c_timeseries[i]
 
+        ui = interior(u)[:, :, 1]
+        vi = interior(v)[:, :, 1]
         ζi = interior(ζ)[:, :, 1]
         ci = interior(c)[:, :, 1]
 
@@ -170,13 +180,17 @@ function visualize_bickley_jet(output_name)
                       :xlims => (-grid.Lx/2, grid.Lx/2),
                       :ylims => (-grid.Ly/2, grid.Ly/2))
 
+        u_plot = heatmap(xu, yu, clamp.(ui, -1, 1)'; color = :balance, kwargs...)
+        v_plot = heatmap(xv, yv, clamp.(vi, -1, 1)'; color = :balance, kwargs...)
         ζ_plot = heatmap(xζ, yζ, clamp.(ζi, -1, 1)'; color = :balance, kwargs...)
         c_plot = heatmap(xc, yc, clamp.(ci, -1, 1)'; color = :thermal, kwargs...)
 
+        u_title = @sprintf("u at t = %.1f", t)
+        v_title = @sprintf("v at t = %.1f", t)
         ζ_title = @sprintf("ζ at t = %.1f", t)
         c_title = @sprintf("c at t = %.1f", t)
 
-        plot(ζ_plot, c_plot, title = [ζ_title c_title], size = (4000, 2000))
+        plot(u_plot, v_plot, ζ_plot, c_plot, title = [u_title v_title ζ_title c_title], layout = (1, 4), size = (2000, 1000))
     end
 
     mp4(anim, output_name * ".mp4", fps = 8)
@@ -235,7 +249,6 @@ function visualize_differences(experiment_name)
 end
 
 advection = WENO5()
-experiment_name = run_bickley_jet(advection=advection, Nh=128, stop_time=55)
-experiment_name = "bickley_jet_Nh_128_WENO5"
+experiment_name = run_bickley_jet(advection=advection, Nh=32, stop_time=50)
 visualize_bickley_jet("immersed_" * experiment_name)
 visualize_bickley_jet("regular_" * experiment_name)
