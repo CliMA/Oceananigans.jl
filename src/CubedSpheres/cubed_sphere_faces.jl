@@ -35,8 +35,8 @@ const ImmersedCubedSphereFaceField    = AbstractField{X, Y, Z, A, <:ImmersedConf
 const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{X, Y, Z, A},
                                       ImmersedCubedSphereFaceField{X, Y, Z, A}} where {X, Y, Z, A}
 
-const NonImmersedCubedSphereAbstractReducedFaceField = {AbstractReducedField{X, Y, Z, A, D, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A, D}
-const ImmersedCubedSphereAbstractReducedFaceField = {AbstractReducedField{X, Y, Z, A, D, <:ImmersedConformalCubedSphereFaceGrid} where {X, Y, Z, A, D}
+const NonImmersedCubedSphereAbstractReducedFaceField = AbstractReducedField{X, Y, Z, A, D, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A, D}
+const ImmersedCubedSphereAbstractReducedFaceField = AbstractReducedField{X, Y, Z, A, D, <:ImmersedConformalCubedSphereFaceGrid} where {X, Y, Z, A, D}
 
 const CubedSphereAbstractReducedFaceField = Union{NonImmersedCubedSphereAbstractReducedFaceField{X, Y, Z, A},
                                                      ImmersedCubedSphereAbstractReducedFaceField{X, Y, Z, A}} where {X, Y, Z, A}
@@ -48,6 +48,7 @@ const CubedSphereField                     = Field{X, Y, Z, A, <:CubedSphereData
 const CubedSphereReducedField              = ReducedField{X, Y, Z, A, <:CubedSphereData} where {X, Y, Z, A}
 const CubedSphereAbstractField             = AbstractField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
 const CubedSphereAbstractDataField         = AbstractDataField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
+const ImmersedCubedSphereAbstractDataField = AbstractDataField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
 
 const AbstractCubedSphereField{X, Y, Z, A} = Union{            CubedSphereAbstractField{X, Y, Z, A},
                                                            CubedSphereAbstractDataField{X, Y, Z, A},
