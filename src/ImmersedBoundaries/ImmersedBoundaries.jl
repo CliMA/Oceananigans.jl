@@ -22,16 +22,11 @@ using Oceananigans.Advection:
     advective_tracer_flux_y,
     advective_tracer_flux_z
 
-<<<<<<< HEAD
 import Oceananigans.Utils: cell_advection_timescale
 import Oceananigans.Solvers: PressureSolver
-
 import Oceananigans.Grids: with_halo
-=======
 import Oceananigans.Coriolis: φᶠᶠᵃ
-
 import Oceananigans.Grids: with_halo, xnode, ynode, znode
->>>>>>> master
 
 import Oceananigans.Advection:
     _advective_momentum_flux_Uu,
