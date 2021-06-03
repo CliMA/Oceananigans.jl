@@ -148,12 +148,32 @@ function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false)
     vᵢ(λ, ϕ, z) = v(rescale²(ϕ), rescale¹(λ))
     ηᵢ(λ, ϕ)    = h(rescale²(ϕ), rescale¹(λ))
 
-    # set!(model, u=uᵢ, v=vᵢ, η = ηᵢ)
+    #=
+    #TODO: get this to work.
+    ψ₀(λ, φ, z) = ψ(rescale²(φ), rescale¹(λ))
+
+    u, v, w = model.velocities
+    ψ = Field(Face, Face, Center, model.architecture, grid)
+    u .= - ∂y(ψ)
+    v .= + ∂x(ψ)
+
+    # Note: this does _not_ fill halos!
+    for i = 1:6
+        face_ψ = Field(Face, Face, Center, model.architecture, get_face(grid, i))
+        set!(face_ψ, ψ₀)
+
+        face_u = get_face(model.velocities.u, i)
+        face_v = get_face(model.velocities.v, i)
+
+        face_u .= - ∂y(face_ψ)
+        face_v .= + ∂x(face_ψ)
+    end
+    =#
 
     ψ₀(λ, φ) = ψ(rescale²(φ), rescale¹(λ))
-
     u₀, v₀, _ = diagnose_velocities_from_streamfunction(ψ₀, grid)
 
+    # _Now_ we fill halos:
     Oceananigans.set!(model, u=u₀, v=v₀, η=ηᵢ)
 
     ## Simulation setup
