@@ -48,13 +48,11 @@ const CubedSphereField                     = Field{X, Y, Z, A, <:CubedSphereData
 const CubedSphereReducedField              = ReducedField{X, Y, Z, A, <:CubedSphereData} where {X, Y, Z, A}
 const CubedSphereAbstractField             = AbstractField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
 const CubedSphereAbstractDataField         = AbstractDataField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
-const ImmersedCubedSphereAbstractDataField = AbstractDataField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
 
-const AbstractCubedSphereField{X, Y, Z, A} = Union{            CubedSphereAbstractField{X, Y, Z, A},
-                                                           CubedSphereAbstractDataField{X, Y, Z, A},
-                                                   ImmersedCubedSphereAbstractDataField{X, Y, Z, A},
-                                                                       CubedSphereField{X, Y, Z, A},
-                                                  } where {X, Y, Z, A}
+const AbstractCubedSphereField{X, Y, Z, A} = Union{    CubedSphereAbstractField{X, Y, Z, A},
+                                                   CubedSphereAbstractDataField{X, Y, Z, A},
+                                                        CubedSphereReducedField{X, Y, Z, A},
+                                                               CubedSphereField{X, Y, Z, A}} where {X, Y, Z, A}
 
 #####
 ##### new data
