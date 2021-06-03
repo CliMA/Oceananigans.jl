@@ -109,7 +109,7 @@ end
 
 Base.size(data::CubedSphereData) = (size(data.faces[1])..., length(data.faces))
 
-@inline function get_face(field::AbstractCubedSphereField, face_index)
+@inline function get_face(field::CubedSphereField, face_index)
     X, Y, Z = location(field)
 
     # Should we define a new lower-level constructor for Field that doesn't call validate_field_data?
@@ -119,7 +119,7 @@ Base.size(data::CubedSphereData) = (size(data.faces[1])..., length(data.faces))
                           get_face(field.boundary_conditions, face_index))
 end
 
-@inline function get_face(reduced_field::CubedSphereAbstractReducedField, face_index)
+@inline function get_face(reduced_field::CubedSphereReducedField, face_index)
     X, Y, Z = location(reduced_field)
 
     return ReducedField{X, Y, Z}(get_face(reduced_field.data, face_index),
