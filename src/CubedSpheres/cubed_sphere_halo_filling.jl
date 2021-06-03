@@ -105,8 +105,6 @@ fill_horizontal_velocity_halos!(u, v) = nothing
 
 function fill_horizontal_velocity_halos!(u::CubedSphereField, v::CubedSphereField)
 
-    arch = u.architecture
-
     ## Fill the top and bottom halos.
     fill_halo_regions!(u, cubed_sphere_exchange=false)
     fill_halo_regions!(v, cubed_sphere_exchange=false)
