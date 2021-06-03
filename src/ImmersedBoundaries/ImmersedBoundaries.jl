@@ -8,6 +8,20 @@ using Oceananigans.Fields
 using Oceananigans.Utils
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, time_discretization
 
+using Oceananigans.TurbulenceClosures:
+    viscous_flux_ux,
+    viscous_flux_uy,
+    viscous_flux_uz,
+    viscous_flux_vx,
+    viscous_flux_vy,
+    viscous_flux_vz,
+    viscous_flux_wx,
+    viscous_flux_wy,
+    viscous_flux_wz,
+    diffusive_flux_x,
+    diffusive_flux_y,
+    diffusive_flux_z
+
 using Oceananigans.Advection:
     advective_momentum_flux_Uu,
     advective_momentum_flux_Uv,
@@ -43,18 +57,18 @@ import Oceananigans.Advection:
     _advective_tracer_flux_z
 
 import Oceananigans.TurbulenceClosures:
-    viscous_flux_ux,
-    viscous_flux_uy,
-    viscous_flux_uz,
-    viscous_flux_vx,
-    viscous_flux_vy,
-    viscous_flux_vz,
-    viscous_flux_wx,
-    viscous_flux_wy,
-    viscous_flux_wz,
-    diffusive_flux_x,
-    diffusive_flux_y,
-    diffusive_flux_z,
+    _viscous_flux_ux,
+    _viscous_flux_uy,
+    _viscous_flux_uz,
+    _viscous_flux_vx,
+    _viscous_flux_vy,
+    _viscous_flux_vz,
+    _viscous_flux_wx,
+    _viscous_flux_wy,
+    _viscous_flux_wz,
+    _diffusive_flux_x,
+    _diffusive_flux_y,
+    _diffusive_flux_z,
     κᶠᶜᶜ,
     κᶜᶠᶜ,
     κᶜᶜᶠ,

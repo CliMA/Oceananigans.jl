@@ -252,5 +252,5 @@ function visualize_immersed_bickley_jet(experiment_name)
 end
 
 advection = WENO5()
-#experiment_name = run_bickley_jet(advection=advection, Nh=32, stop_time=50)
+experiment_name = run_bickley_jet(advection=advection, Nh=32, stop_time=200)
 visualize_immersed_bickley_jet(experiment_name)

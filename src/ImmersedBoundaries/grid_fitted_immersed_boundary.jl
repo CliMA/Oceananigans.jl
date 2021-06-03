@@ -23,8 +23,10 @@ const c = Center()
 const f = Face()
 
 #####
-##### ImmersedBoundaryGrid
+##### GridFittedImmersedBoundaryGrid
 #####
+
+const GFIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ, G, <:GridFittedBoundary} where {FT, TX, TY, TZ, G}
 
 @inline solid_cell(i, j, k, ibg) = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary)
 
@@ -40,58 +42,64 @@ const f = Face()
 
 @inline solid_node(::Face, ::Face, ::Face, i, j, k, ibg) = solid_node(c, f, f, i, j, k, ibg) || solid_node(c, f, f, i-1, j, k, ibg)
 
-@inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, grid, flux, args...) where FT = ifelse(solid_node(c, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, grid, args...))
-@inline conditional_flux_ffc(i, j, k, ibg::IBG{FT}, grid, flux, args...) where FT = ifelse(solid_node(f, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, grid, args...))
-@inline conditional_flux_fcf(i, j, k, ibg::IBG{FT}, grid, flux, args...) where FT = ifelse(solid_node(f, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, grid, args...))
-@inline conditional_flux_cff(i, j, k, ibg::IBG{FT}, grid, flux, args...) where FT = ifelse(solid_node(c, f, f, i, j, k, ibg), zero(FT), flux(i, j, k, grid, args...))
+@inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(c, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_flux_ffc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(f, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_flux_fcf(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(f, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_flux_cff(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(c, f, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
 
-@inline conditional_flux_fcc(i, j, k, ibg::IBG{FT}, grid, flux, args...) where FT = ifelse(solid_node(f, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, grid, args...))
-@inline conditional_flux_cfc(i, j, k, ibg::IBG{FT}, grid, flux, args...) where FT = ifelse(solid_node(c, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, grid, args...))
-@inline conditional_flux_ccf(i, j, k, ibg::IBG{FT}, grid, flux, args...) where FT = ifelse(solid_node(c, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, grid, args...))
+@inline conditional_flux_fcc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(f, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_flux_cfc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(c, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline conditional_flux_ccf(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(c, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
 
 #####
 ##### Advective fluxes
 #####
 
 # ccc, ffc, fcf
- @inline viscous_flux_ux(i, j, k, ibg::IBG, disc::ATD, clo::ATC, args...) = conditional_flux_ccc(i, j, k, ibg, ibg.grid, viscous_flux_ux, disc, clo, args...)
- @inline viscous_flux_uy(i, j, k, ibg::IBG, disc::ATD, clo::ATC, args...) = conditional_flux_ffc(i, j, k, ibg, ibg.grid, viscous_flux_uy, disc, clo, args...)
- @inline viscous_flux_uz(i, j, k, ibg::IBG, disc::ATD, clo::ATC, args...) = conditional_flux_fcf(i, j, k, ibg, ibg.grid, viscous_flux_uz, disc, clo, args...)
+ @inline _viscous_flux_ux(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_ux, args...)
+ @inline _viscous_flux_uy(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_uy, args...)
+ @inline _viscous_flux_uz(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_uz, args...)
  
  # ffc, ccc, cff
- @inline viscous_flux_vx(i, j, k, ibg::IBG, disc::ATD, clo::ATC, args...) = conditional_flux_ffc(i, j, k, ibg, ibg.grid, viscous_flux_vx, disc, clo, args...)
- @inline viscous_flux_vy(i, j, k, ibg::IBG, disc::ATD, clo::ATC, args...) = conditional_flux_ccc(i, j, k, ibg, ibg.grid, viscous_flux_vy, disc, clo, args...)
- @inline viscous_flux_vz(i, j, k, ibg::IBG, disc::ATD, clo::ATC, args...) = conditional_flux_cff(i, j, k, ibg, ibg.grid, viscous_flux_vz, disc, clo, args...)
+ @inline _viscous_flux_vx(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_vx, args...)
+ @inline _viscous_flux_vy(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_vy, args...)
+ @inline _viscous_flux_vz(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_vz, args...)
  
  # fcf, cff, ccc
- @inline viscous_flux_wx(i, j, k, ibg::IBG, disc::ATD, clo::ATC, args...) = conditional_flux_fcf(i, j, k, ibg, ibg.grid, viscous_flux_wx, disc, clo, args...)
- @inline viscous_flux_wy(i, j, k, ibg::IBG, disc::ATD, clo::ATC, args...) = conditional_flux_cff(i, j, k, ibg, ibg.grid, viscous_flux_wy, disc, clo, args...)
- @inline viscous_flux_wz(i, j, k, ibg::IBG, disc::ATD, clo::ATC, args...) = conditional_flux_ccc(i, j, k, ibg, ibg.grid, viscous_flux_wz, disc, clo, args...)
+ @inline _viscous_flux_wx(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_wx, args...)
+ @inline _viscous_flux_wy(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_wy, args...)
+ @inline _viscous_flux_wz(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_wz, args...)
 
 # fcc, cfc, ccf
-@inline diffusive_flux_x(i, j, k, ibg::IBG, disc::ATD, clo::ATC, args...) = conditional_flux_fcc(i, j, k, ibg, ibg.grid, diffusive_flux_x, disc, clo, args...)
-@inline diffusive_flux_y(i, j, k, ibg::IBG, disc::ATD, clo::ATC, args...) = conditional_flux_cfc(i, j, k, ibg, ibg.grid, diffusive_flux_y, disc, clo, args...)
-@inline diffusive_flux_z(i, j, k, ibg::IBG, disc::ATD, clo::ATC, args...) = conditional_flux_ccf(i, j, k, ibg, ibg.grid, diffusive_flux_z, disc, clo, args...)
+@inline _diffusive_flux_x(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcc(i, j, k, ibg, diffusive_flux_x, args...)
+@inline _diffusive_flux_y(i, j, k, ibg::GFIBG, args...) = conditional_flux_cfc(i, j, k, ibg, diffusive_flux_y, args...)
+@inline _diffusive_flux_z(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccf(i, j, k, ibg, diffusive_flux_z, args...)
 
 #####
 ##### Advective fluxes
 #####
 
-@inline _advective_momentum_flux_Uu(i, j, k, ibg::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, ibg, advective_momentum_flux_Uu, args...)
-@inline _advective_momentum_flux_Vu(i, j, k, ibg::IBG, args...) = conditional_flux_ffc(i, j, k, ibg, ibg, advective_momentum_flux_Vu, args...)
-@inline _advective_momentum_flux_Wu(i, j, k, ibg::IBG, args...) = conditional_flux_fcf(i, j, k, ibg, ibg, advective_momentum_flux_Wu, args...)
+# dx(uu), dy(vu), dz(wu)
+# ccc,    ffc,    fcf
+@inline _advective_momentum_flux_Uu(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, advective_momentum_flux_Uu, args...)
+@inline _advective_momentum_flux_Vu(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, advective_momentum_flux_Vu, args...)
+@inline _advective_momentum_flux_Wu(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, advective_momentum_flux_Wu, args...)
 
-@inline _advective_momentum_flux_Uv(i, j, k, ibg::IBG, args...) = conditional_flux_ffc(i, j, k, ibg, ibg, advective_momentum_flux_Uv, args...)
-@inline _advective_momentum_flux_Vv(i, j, k, ibg::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, ibg, advective_momentum_flux_Vv, args...)
-@inline _advective_momentum_flux_Wv(i, j, k, ibg::IBG, args...) = conditional_flux_cff(i, j, k, ibg, ibg, advective_momentum_flux_Wv, args...)
+# dx(uv), dy(vv), dz(wv)
+# ffc,    ccc,    cff
+@inline _advective_momentum_flux_Uv(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, advective_momentum_flux_Uv, args...)
+@inline _advective_momentum_flux_Vv(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, advective_momentum_flux_Vv, args...)
+@inline _advective_momentum_flux_Wv(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, advective_momentum_flux_Wv, args...)
 
-@inline _advective_momentum_flux_Uw(i, j, k, ibg::IBG, args...) = conditional_flux_fcf(i, j, k, ibg, ibg, advective_momentum_flux_Uw, args...)
-@inline _advective_momentum_flux_Vw(i, j, k, ibg::IBG, args...) = conditional_flux_cff(i, j, k, ibg, ibg, advective_momentum_flux_Vw, args...)
-@inline _advective_momentum_flux_Ww(i, j, k, ibg::IBG, args...) = conditional_flux_ccc(i, j, k, ibg, ibg, advective_momentum_flux_Ww, args...)
-                                                                                                                                           
-@inline _advective_tracer_flux_x(i, j, k, ibg::IBG, args...) = conditional_flux_fcc(i, j, k, ibg, ibg, advective_tracer_flux_x, args...)
-@inline _advective_tracer_flux_y(i, j, k, ibg::IBG, args...) = conditional_flux_cfc(i, j, k, ibg, ibg, advective_tracer_flux_y, args...)
-@inline _advective_tracer_flux_z(i, j, k, ibg::IBG, args...) = conditional_flux_ccf(i, j, k, ibg, ibg, advective_tracer_flux_z, args...)
+# dx(uw), dy(vw), dz(ww)
+# fcf,    cff,    ccc
+@inline _advective_momentum_flux_Uw(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, advective_momentum_flux_Uw, args...)
+@inline _advective_momentum_flux_Vw(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, advective_momentum_flux_Vw, args...)
+@inline _advective_momentum_flux_Ww(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, advective_momentum_flux_Ww, args...)
+
+   @inline _advective_tracer_flux_x(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcc(i, j, k, ibg, advective_tracer_flux_x, args...)
+   @inline _advective_tracer_flux_y(i, j, k, ibg::GFIBG, args...) = conditional_flux_cfc(i, j, k, ibg, advective_tracer_flux_y, args...)
+   @inline _advective_tracer_flux_z(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccf(i, j, k, ibg, advective_tracer_flux_z, args...)
 
 #####
 ##### "Boundary-aware" interpolation
@@ -155,7 +163,4 @@ end
                             field[i, j, k])
 end
 
-const GridFittedImmersedBoundaryGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:GridFittedBoundary} where {FT, TX, TY, TZ}
-
-mask_immersed_velocities!(U, arch, grid::GridFittedImmersedBoundaryGrid) = Tuple(mask_immersed_field!(q, (Center, Center, Center)) for q in U)
-# mask_immersed_velocities!(U, arch, grid::GridFittedImmersedBoundaryGrid) = Tuple(mask_immersed_field!(q) for q in U)
+mask_immersed_velocities!(U, arch, grid::GFIBG) = Tuple(mask_immersed_field!(q) for q in U)
