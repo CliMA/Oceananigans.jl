@@ -5,11 +5,17 @@ using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDi
 const ATC = AbstractTurbulenceClosure
 const ATD = AbstractTimeDiscretization
 
-struct GridFittedBoundary{S} <: AbstractImmersedBoundary
-    solid :: S
+struct RasterDepthMask end
+
+struct GridFittedBoundary{M, S} <: AbstractImmersedBoundary
+    mask :: S
+    mask_type :: M
 end
 
-@inline (gfib::GridFittedBoundary)(x, y, z) = gfib.solid(x, y, z)
+GridFittedBoundary(mask; mask_type=nothing) = GridFittedBoundary(mask, mask_type)
+
+@inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary) = ib.mask(node(c, c, c, i, j, k, underlying_grid)...)
+@inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary{<:RasterDepthMask}) = ib.mask(i, j)
 
 const IBG = ImmersedBoundaryGrid
 
@@ -20,7 +26,7 @@ const f = Face()
 ##### ImmersedBoundaryGrid
 #####
 
-@inline solid_cell(i, j, k, ibg) = ibg.immersed_boundary(node(c, c, c, i, j, k, ibg.grid)...)
+@inline solid_cell(i, j, k, ibg) = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary)
 
 @inline solid_node(LX, LY, LZ, i, j, k, ibg) = solid_cell(i, j, k, ibg) # fallback (for Center or Nothing LX, LY, LZ)
 
