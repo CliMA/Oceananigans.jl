@@ -1,14 +1,17 @@
 using KernelAbstractions
 using Statistics
 using Oceananigans.Architectures: architecture, device_event
+using Oceananigans.Fields: location
 
-mask_immersed_field!(field) = mask_immersed_field!(field, field.grid)
-mask_immersed_field!(field, grid) = NoneEvent()
+mask_immersed_field!(field::AbstractField, loc=location(field)) = mask_immersed_field!(field, field.grid, loc)
+mask_immersed_field!(field, grid, loc) = NoneEvent()
+instantiate(X) = X()
 
-function mask_immersed_field!(field::AbstractField{LX, LY, LZ}, grid::ImmersedBoundaryGrid) where {LX, LY, LZ}
+function mask_immersed_field!(field, grid::ImmersedBoundaryGrid, loc)
     arch = architecture(field)
-    loc = (LX(), LY(), LZ())
-    return launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, 0; dependencies = device_event(arch))
+    loc = instantiate.(loc)
+    mask_value = zero(eltype(grid))
+    return launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, mask_value; dependencies = device_event(arch))
 end
 
 @kernel function _mask_immersed_field!(field, loc, grid, value)
@@ -21,4 +24,3 @@ end
 #####
 
 mask_immersed_velocities!(U, arch, grid) = tuple(NoneEvent())
-

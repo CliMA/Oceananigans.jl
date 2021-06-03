@@ -22,6 +22,7 @@ using Oceananigans.Advection:
     advective_tracer_flux_y,
     advective_tracer_flux_z
 
+import Oceananigans.Utils: cell_advection_timescale
 import Oceananigans.Solvers: PressureSolver
 
 import Oceananigans.Grids: with_halo
@@ -93,6 +94,8 @@ with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo
 
 # *Evil grin*
 PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.grid)
+
+@inline cell_advection_timescale(u, v, w, ibg::ImmersedBoundaryGrid) = cell_advection_timescale(u, v, w, ibg.grid)
 
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundary.jl")

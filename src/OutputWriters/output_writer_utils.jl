@@ -27,6 +27,8 @@ saveproperty!(file, location, p::Tuple) =
 saveproperty!(file, location, p) =
     [saveproperty!(file, location * "/$subp", getproperty(p, subp)) for subp in propertynames(p)]
 
+saveproperty!(file, location, p::ImmersedBoundaryGrid) = saveproperty!(file, location, p.grid)
+
 # Special saveproperty! so boundary conditions are easily readable outside julia.
 function saveproperty!(file, location, cbcs::CoordinateBoundaryConditions)
     for endpoint in propertynames(cbcs)
@@ -51,6 +53,7 @@ serializeproperty!(file, location, p::AbstractArray) = saveproperty!(file, locat
 serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
 
 function serializeproperty!(file, location, p::ImmersedBoundaryGrid)
+    # Note: when we support array representations of immersed boundaries, we should save those too.
     @warn "Cannot serialize ImmersedBoundaryGrid; serializing underlying grid instead."
     file[location] = p.grid
     return nothing

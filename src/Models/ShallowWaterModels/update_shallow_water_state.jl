@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_height_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 import Oceananigans.TimeSteppers: update_state!
 

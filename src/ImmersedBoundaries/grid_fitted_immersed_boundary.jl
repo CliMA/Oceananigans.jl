@@ -151,4 +151,4 @@ end
 
 const GridFittedImmersedBoundaryGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:GridFittedBoundary} where {FT, TX, TY, TZ}
 
-mask_immersed_velocities!(U, arch, grid::GridFittedImmersedBoundaryGrid) = Tuple(mask_immersed_field(u) for u in U)
+mask_immersed_velocities!(U, arch, grid::GridFittedImmersedBoundaryGrid) = Tuple(mask_immersed_field(u, (Center, Center, Center)) for u in U)
