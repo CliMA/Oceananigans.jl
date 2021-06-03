@@ -167,9 +167,9 @@ function visualize_immersed_bickley_jet(experiment_name)
     xζ, yζ, zζ = nodes(regular_ζ_timeseries)
     xc, yc, zc = nodes(regular_c_timeseries)
 
-    anim = @animate for (i, t) in enumerate(c_timeseries.times)
+    anim = @animate for (i, t) in enumerate(regular_c_timeseries.times)
 
-        @info "    Plotting frame $i of $(length(c_timeseries.times))..."
+        @info "    Plotting frame $i of $(length(regular_c_timeseries.times))..."
 
         Nx, Ny, Nz = size(regular_grid)
 
@@ -195,18 +195,18 @@ function visualize_immersed_bickley_jet(experiment_name)
         immersed_ζi = interior(immersed_ζ)[1:Nx, 1:Ny+1, 1]
         immersed_ci = interior(immersed_c)[1:Nx, 1:Ny, 1]
 
-        difference_ui = immersed_u .- regular_u
-        difference_vi = immersed_v .- regular_v
-        difference_ζi = immersed_ζ .- regular_ζ
-        difference_ci = immersed_c .- regular_c
+        difference_ui = immersed_ui .- regular_ui 
+        difference_vi = immersed_vi .- regular_vi
+        difference_ζi = immersed_ζi .- regular_ζi
+        difference_ci = immersed_ci .- regular_ci
 
         kwargs = Dict(:aspectratio => 1,
                       :linewidth => 0,
                       :colorbar => :none,
                       :ticks => nothing,
                       :clims => (-1, 1),
-                      :xlims => (-grid.Lx/2, grid.Lx/2),
-                      :ylims => (-grid.Ly/2, grid.Ly/2))
+                      :xlims => (-regular_grid.Lx/2, regular_grid.Lx/2),
+                      :ylims => (-regular_grid.Ly/2, regular_grid.Ly/2))
 
         regular_u_plot = heatmap(xu, yu, clamp.(regular_ui, -1, 1)'; color = :balance, kwargs...)
         regular_v_plot = heatmap(xv, yv, clamp.(regular_vi, -1, 1)'; color = :balance, kwargs...)
@@ -226,15 +226,25 @@ function visualize_immersed_bickley_jet(experiment_name)
         difference_ζ_plot = heatmap(xζ, yζ, clamp.(difference_ζi, -δlim, δlim)'; color = :balance, kwargs...)
         difference_c_plot = heatmap(xc, yc, clamp.(difference_ci, -δlim, δlim)'; color = :thermal, kwargs...)
 
-        u_title = @sprintf("u at t = %.1f", t)
-        v_title = @sprintf("v at t = %.1f", t)
-        ζ_title = @sprintf("ζ at t = %.1f", t)
-        c_title = @sprintf("c at t = %.1f", t)
+        r_u_title = @sprintf("regular u at t = %.1f", t)
+        r_v_title = @sprintf("regular v at t = %.1f", t)
+        r_ζ_title = @sprintf("regular ζ at t = %.1f", t)
+        r_c_title = @sprintf("regular c at t = %.1f", t)
+
+        i_u_title = @sprintf("immersed u at t = %.1f", t)
+        i_v_title = @sprintf("immersed v at t = %.1f", t)
+        i_ζ_title = @sprintf("immersed ζ at t = %.1f", t)
+        i_c_title = @sprintf("immersed c at t = %.1f", t)
+
+        d_u_title = @sprintf("Δu at t = %.1f", t)
+        d_v_title = @sprintf("Δv at t = %.1f", t)
+        d_ζ_title = @sprintf("Δζ at t = %.1f", t)
+        d_c_title = @sprintf("Δc at t = %.1f", t)
 
         plot(regular_u_plot, regular_v_plot, regular_ζ_plot, regular_c_plot,
              immersed_u_plot, immersed_v_plot, immersed_ζ_plot, immersed_c_plot,
              difference_u_plot, difference_v_plot, difference_ζ_plot, difference_c_plot,
-             title = [u_title v_title ζ_title c_title "" "" "" "" "" "" "" ""],
+             title = [r_u_title r_v_title r_ζ_title r_c_title i_u_title i_v_title i_ζ_title i_c_title d_u_title d_v_title d_ζ_title d_c_title],
              layout = (3, 4), size = (2000, 1000))
     end
 
@@ -242,5 +252,5 @@ function visualize_immersed_bickley_jet(experiment_name)
 end
 
 advection = WENO5()
-experiment_name = run_bickley_jet(advection=advection, Nh=32, stop_time=50)
+#experiment_name = run_bickley_jet(advection=advection, Nh=32, stop_time=50)
 visualize_immersed_bickley_jet(experiment_name)
