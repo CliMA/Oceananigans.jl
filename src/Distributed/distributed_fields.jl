@@ -1,5 +1,7 @@
+using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Fields: validate_field_data
+
 import Oceananigans.Fields: Field
-import Oceananigans.Grids: AbstractGrid
 
 function Field(X, Y, Z, arch::AbstractMultiArchitecture, grid::AbstractGrid,
                 bcs = FieldBoundaryConditions(grid, (X, Y, Z)),
