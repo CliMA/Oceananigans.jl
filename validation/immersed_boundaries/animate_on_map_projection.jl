@@ -15,14 +15,14 @@ cmocean = pyimport("cmocean")
 function plot_cubed_sphere_tracer_field!(fig, ax, var, grid; add_colorbar, transform, cmap, vmin, vmax)
 
     Nf = grid["faces"] |> keys |> length
-    Nx = grid["faces/1/Nx"]
-    Ny = grid["faces/1/Ny"]
-    Hx = grid["faces/1/Hx"]
-    Hy = grid["faces/1/Hy"]
+    Nx = grid["faces/1/grid/Nx"]
+    Ny = grid["faces/1/grid/Ny"]
+    Hx = grid["faces/1/grid/Hx"]
+    Hy = grid["faces/1/grid/Hy"]
 
     for face in 1:Nf
-        λᶠᶠᵃ = grid["faces/$face/λᶠᶠᵃ"][1+Hx:Nx+2Hx, 1+Hy:Ny+2Hy]
-        φᶠᶠᵃ = grid["faces/$face/φᶠᶠᵃ"][1+Hx:Nx+2Hx, 1+Hy:Ny+2Hy]
+        λᶠᶠᵃ = grid["faces/$face/grid/λᶠᶠᵃ"][1+Hx:Nx+Hx+1, 1+Hy:Ny+Hy+1]
+        φᶠᶠᵃ = grid["faces/$face/grid/φᶠᶠᵃ"][1+Hx:Nx+Hx+1, 1+Hy:Ny+Hy+1]
 
         var_face = var[face][:, :, 1]
 
