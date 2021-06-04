@@ -90,16 +90,20 @@ function diagnose_velocities_from_streamfunction(ψ, grid)
     return uᶠᶜᶜ, vᶜᶠᶜ, ψᶠᶠᶜ
 end
 
-function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false)
+function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false, nsteps=nothing, immersed=false)
 
     ## Grid setup
 
     H = 8kilometers
     underlying_grid = ConformalCubedSphereGrid(grid_filepath, Nz=1, z=(-H, 0))
 
-    #solid(x, y, z) = false
-    #grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(solid))
-    grid = underlying_grid
+    solid(x, y, z) = false
+
+    if immersed
+        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(solid))
+    else
+        grid = underlying_grid
+    end
 
     ## Model setup
 
@@ -184,6 +188,10 @@ function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false)
     @info "Stop time = $(prettytime(stop_time))"
 
     Δt = 20seconds
+    stop_time = 23900*Δt
+    if nsteps != nothing
+        stop_time=nsteps*Δt
+    end
 
     gravity_wave_speed = sqrt(g * H)
     min_spacing = filter(!iszero, grid.faces[1].Δyᶠᶠᵃ) |> minimum
@@ -211,11 +219,14 @@ function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false)
         fields_to_check = (
             u = model.velocities.u,
             v = model.velocities.v,
-            η = model.free_surface.η
+            η = model.free_surface.η,
+           Gu = model.timestepper.Gⁿ.u,
+           Gv = model.timestepper.Gⁿ.v,
+           Gη = model.timestepper.Gⁿ.η
         )
 
         simulation.diagnostics[:state_checker] =
-            StateChecker(model, fields=fields_to_check, schedule=IterationInterval(20))
+            StateChecker(model, fields=fields_to_check, schedule=IterationInterval(1))
     end
 
     output_fields = merge(model.velocities, (η=model.free_surface.η,))
@@ -247,3 +258,7 @@ function run_cubed_sphere_rossby_haurwitz_validation(grid_filepath=datadep"cubed
 
     return simulation
 end
+
+grid_filepath=datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
+simulation_1 = cubed_sphere_rossby_haurwitz(grid_filepath,check_fields=true,nsteps=1,immersed=true)
+simulation_2 = cubed_sphere_rossby_haurwitz(grid_filepath,check_fields=true,nsteps=1,immersed=false)
