@@ -22,14 +22,14 @@ at the top of the domain via the Craik-Leibovich approximation are
                         & \qquad
                         - \left ( \boldsymbol{f} - \boldsymbol{\nabla} \times \boldsymbol{u}^S \right ) \times \boldsymbol{v} 
                         - \boldsymbol{\nabla} p
-                        + \boldsymbol{b}
+                        + b \boldsymbol{\hat g}
                         - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}
                         + \partial_t \boldsymbol{v}^S
                         + \boldsymbol{F_v} \, ,
     \label{eq:momentum}
     \end{align}
 ```
-where ``\boldsymbol{b}`` the is the buoyancy (a vector whose default direction is upward), 
+where ``b \boldsymbol{\hat g}`` the is the buoyancy (a vector whose default direction is upward), 
 ``\boldsymbol{\tau}`` is the kinematic stress tensor, ``\boldsymbol{F_v}``
 denotes an internal forcing of the velocity field ``\boldsymbol{v}``, ``p`` is the kinematic 
 pressure, ``\boldsymbol{u}^S``is the 'Stokes drift' velocity field associated with surface gravity 
@@ -48,7 +48,8 @@ The terms that appear on the right-hand side of the momentum conservation equati
 * the effective background rotation rate due to surface waves: ``\left ( \boldsymbol{\nabla} \times 
   \boldsymbol{u}^S \right ) \times \boldsymbol{v}``,
 * kinematic pressure gradient: ``\boldsymbol{\nabla} p``,
-* buoyant acceleration: ``\boldsymbol{b}``,
+* buoyant acceleration: ``b``,
+* vertical unit vector (pointing to the direction opposite to gravity): ``\boldsymbol{\hat g}``,
 * molecular or turbulence viscous stress: ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}``,
 * a source of momentum due to forcing or damping of surface waves: ``\partial_t \boldsymbol{v}^S``, and
 * an arbitrary internal source of momentum: ``\boldsymbol{F_v}``.
