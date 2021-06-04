@@ -90,6 +90,7 @@ include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 include("turbulence_closure_implementations/smagorinsky_lilly.jl")
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
 include("turbulence_closure_implementations/tke_based_vertical_diffusivity.jl")
+include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
 
 # Miscellaneous utilities
 include("diffusivity_fields.jl")
