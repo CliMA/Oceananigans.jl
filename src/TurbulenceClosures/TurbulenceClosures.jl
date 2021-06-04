@@ -10,6 +10,7 @@ export
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     HorizontallyCurvilinearAnisotropicDiffusivity,
+    ConvectiveAdjustmentVerticalDiffusivity,
 
     DiffusivityFields,
     calculate_diffusivities!,

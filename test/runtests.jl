@@ -64,6 +64,7 @@ closures = (
     :AnisotropicMinimumDissipation,
     :HorizontallyCurvilinearAnisotropicDiffusivity,
     :HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
+    :ConvectiveAdjustmentVerticalDiffusivity
 )
 
 #####
