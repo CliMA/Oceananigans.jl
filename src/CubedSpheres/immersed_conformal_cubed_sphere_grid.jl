@@ -16,3 +16,10 @@ function new_data(FT, arch, ibg::ImmersedBoundaryGrid{F,TX,TY,TZ,G}, loc ) where
          println("Hello from IBG cube sphere new_data")
          return new_data(FT, arch, ibg.grid, loc )
 end
+
+import Oceananigans.Operators: Γᶠᶠᵃ
+
+@inline function Γᶠᶠᵃ(i, j, k, ibg::ImmersedBoundaryGrid{F, TX, TY, TZ, G}, u, v) where {F,TX,TY,TZ,G<:ConformalCubedSphereGrid}
+    println("Hello from immersed cube specific Γᶠᶠᵃ")
+    Γᶠᶠᵃ(i, j, k, ibg.grid, u, v)
+end
