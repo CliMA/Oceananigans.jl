@@ -90,7 +90,7 @@ function diagnose_velocities_from_streamfunction(ψ, grid)
     return uᶠᶜᶜ, vᶜᶠᶜ, ψᶠᶠᶜ
 end
 
-function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false, nsteps=nothing, immersed=false)
+function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false, nsteps=nothing, immersed=false, momvi=false)
 
     ## Grid setup
 
@@ -107,10 +107,16 @@ function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false, nsteps=
 
     ## Model setup
 
+    if momvi
+        momentum_advection = VectorInvariant()
+    else
+        momentum_advection = nothing
+    end
+
     model = HydrostaticFreeSurfaceModel(
               architecture = CPU(),
                       grid = grid,
-        momentum_advection = VectorInvariant(),
+        momentum_advection = momentum_advection,
               free_surface = ExplicitFreeSurface(gravitational_acceleration=100),
                   coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving()),
                    closure = nothing,
@@ -260,5 +266,5 @@ function run_cubed_sphere_rossby_haurwitz_validation(grid_filepath=datadep"cubed
 end
 
 grid_filepath=datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
-simulation_1 = cubed_sphere_rossby_haurwitz(grid_filepath,check_fields=true,nsteps=1,immersed=true)
-simulation_2 = cubed_sphere_rossby_haurwitz(grid_filepath,check_fields=true,nsteps=1,immersed=false)
+s1 = cubed_sphere_rossby_haurwitz(grid_filepath,check_fields=true,nsteps=1,immersed=true,momvi=false)
+s2 = cubed_sphere_rossby_haurwitz(grid_filepath,check_fields=true,nsteps=1,immersed=false,momvi=false)
