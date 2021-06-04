@@ -7,7 +7,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 import Base: getindex, size, show, minimum, maximum
 import Statistics: mean
 
-import Oceananigans.Fields: AbstractField, AbstractDataField, AbstractReducedField, Field, ReducedField, minimum, maximum, mean, location, short_show
+import Oceananigans.Fields: AbstractField, AbstractDataField, AbstractReducedField, Field, ReducedField, minimum, maximum, mean, location, short_show, KernelComputedField
 import Oceananigans.Grids: new_data
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 
@@ -53,6 +53,9 @@ const AbstractCubedSphereField{X, Y, Z, A} = Union{    CubedSphereAbstractField{
                                                    CubedSphereAbstractDataField{X, Y, Z, A},
                                                         CubedSphereReducedField{X, Y, Z, A},
                                                                CubedSphereField{X, Y, Z, A}} where {X, Y, Z, A}
+
+# KernelComputedCubedSphereField
+const KernelComputedCubedSphereField = KernelComputedField{X, Y, Z, A, S, D, G, T, K, B, F, P} where {X, Y, Z, A, S, D<:CubedSphereFaces, G, T, K, B, F, P}
 
 #####
 ##### new data
@@ -126,6 +129,15 @@ end
                                  get_face(reduced_field.grid, face_index),
                                  reduced_field.dims,
                                  get_face(reduced_field.boundary_conditions, face_index))
+end
+
+@inline function get_face(kernel_field::KernelComputedCubedSphereField, face_index)
+    X, Y, Z = location(kernel_field)
+
+    return Field{X, Y, Z}(get_face(kernel_field.data, face_index),
+                                 kernel_field.architecture,
+                                 get_face(kernel_field.grid, face_index),
+                                 get_face(kernel_field.boundary_conditions, face_index))
 end
 
 faces(field::AbstractCubedSphereField) = Tuple(get_face(field, face_index) for face_index in 1:length(field.data.faces))
