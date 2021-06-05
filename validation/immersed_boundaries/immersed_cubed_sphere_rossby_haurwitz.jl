@@ -191,13 +191,11 @@ function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false, nsteps=
     # Compute amount of time needed for a 45° rotation.
     angular_velocity = (n * (3+n) * ω - 2Ω) / ((1+n) * (2+n))
     stop_time = deg2rad(360) / abs(angular_velocity)
-    @info "Stop time = $(prettytime(stop_time))"
-
     Δt = 20seconds
-    stop_time = 23900*Δt
     if nsteps != nothing
         stop_time=nsteps*Δt
     end
+    @info "Stop time = $(prettytime(stop_time))"
 
     gravity_wave_speed = sqrt(g * H)
     min_spacing = filter(!iszero, grid.faces[1].Δyᶠᶠᵃ) |> minimum
@@ -266,5 +264,6 @@ function run_cubed_sphere_rossby_haurwitz_validation(grid_filepath=datadep"cubed
 end
 
 grid_filepath=datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
-s1 = cubed_sphere_rossby_haurwitz(grid_filepath,check_fields=true,nsteps=1,immersed=true,momvi=false)
-s2 = cubed_sphere_rossby_haurwitz(grid_filepath,check_fields=true,nsteps=1,immersed=false,momvi=false)
+s1 = cubed_sphere_rossby_haurwitz(grid_filepath,check_fields=true,nsteps=1,immersed=true,momvi=true)
+s2 = cubed_sphere_rossby_haurwitz(grid_filepath,check_fields=true,nsteps=1,immersed=false,momvi=true)
+display([ s1.model.timestepper.Gⁿ.v.data[1][:,1,1]  s2.model.timestepper.Gⁿ.v.data[1][:,1,1] ] )
