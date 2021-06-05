@@ -97,7 +97,7 @@ end
 
 # u
 @inline function νᶠᶜᶠ(i, j, k, grid, clock, closure::CAVD, stable_buoyancy_gradient)
-    @inbounds stableᶠᶜᶠ = stable_buoyancy_gradient[i, j, k] || stable_buoyancy_gradient[i+1, j, k]
+    @inbounds stableᶠᶜᶠ = stable_buoyancy_gradient[i, j, k] || stable_buoyancy_gradient[i-1, j, k]
 
     ν = ifelse(stableᶠᶜᶠ,
                νᶠᶜᶠ(i, j, k, grid, clock, closure.background_νz),
@@ -113,7 +113,7 @@ end
 
 # v
 @inline function νᶜᶠᶠ(i, j, k, grid, clock, closure::CAVD, stable_buoyancy_gradient)
-    @inbounds stableᶜᶠᶠ = stable_buoyancy_gradient[i, j, k] || stable_buoyancy_gradient[i, j+1, k]
+    @inbounds stableᶜᶠᶠ = stable_buoyancy_gradient[i, j, k] || stable_buoyancy_gradient[i, j-1, k]
 
     ν = ifelse(stableᶜᶠᶠ,
                νᶜᶠᶠ(i, j, k, grid, clock, closure.background_νz),
