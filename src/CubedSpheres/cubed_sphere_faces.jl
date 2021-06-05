@@ -54,9 +54,6 @@ const AbstractCubedSphereField{X, Y, Z, A} = Union{    CubedSphereAbstractField{
                                                         CubedSphereReducedField{X, Y, Z, A},
                                                                CubedSphereField{X, Y, Z, A}} where {X, Y, Z, A}
 
-# KernelComputedCubedSphereField
-const KernelComputedCubedSphereField = KernelComputedField{X, Y, Z, A, S, D, G, T, K, B, F, P} where {X, Y, Z, A, S, D<:CubedSphereFaces, G, T, K, B, F, P}
-
 #####
 ##### new data
 #####
@@ -131,7 +128,7 @@ end
                                  get_face(reduced_field.boundary_conditions, face_index))
 end
 
-@inline function get_face(kernel_field::KernelComputedCubedSphereField, face_index)
+@inline function get_face(kernel_field::CubedSphereAbstractDataField, face_index)
     X, Y, Z = location(kernel_field)
 
     return Field{X, Y, Z}(get_face(kernel_field.data, face_index),
