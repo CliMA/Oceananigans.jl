@@ -28,8 +28,17 @@ of `ConvectiveAdjustmentVerticalDiffusivity`. The default is `Float64`.
 Keyword arguments
 =================
 
-* `time_discretization` : Either `ExplicitTimeDiscretization` or `VerticallyImplicitTimeDiscretization`.
+* `convective_κz` : Vertical tracer diffusivity in regions with unstable buoyancy gradients. Either
+                    a single number, function, array, field, or tuple of diffusivities for each tracer.
 
+* `background_κz` : Vertical tracer diffusivity in regions with stable buoyancy gradients.
+
+* `convective_νz` : Vertical viscosity in regions with unstable buoyancy gradients. Either
+                    a number, function, array, or field.
+
+* `background_κz` : Vertical viscosity in regions with stable buoyancy gradients.
+
+* `time_discretization` : Either `ExplicitTimeDiscretization` or `VerticallyImplicitTimeDiscretization`.
 """
 function ConvectiveAdjustmentVerticalDiffusivity(FT=Float64;
                                                  convective_κz = zero(FT),
