@@ -44,10 +44,6 @@ for i in 1:plot_num
     gpu_times[i] = mean(suite[plot_keys[i+plot_num]].times)
 end
 
-df = benchmarks_dataframe(suite)
-sort!(df, [:Architectures, :Float_types, :Ns], by=(string, string, identity))
-benchmarks_pretty_table(df, title="Shallow water model benchmarks")
-
 plt = plot(Ns, cpu_times, lw=4, label="cpu", xaxis=:log2, yaxis=:log, legend=:topleft,
           xlabel="Nx", ylabel="Times (ms)", title="Shallow Water Benchmarks: CPU vs GPU")
 plot!(plt, Ns, gpu_times, lw=4, label="gpu")
@@ -59,6 +55,10 @@ plt2 = plot(Ns, cpu_times./gpu_times, lw=4, xaxis=:log2, legend=:none,
             xlabel="Nx", ylabel="Speedup Ratio", title="Shallow Water Benchmarks: CPU/GPU")
 display(plt2)
 savefig(plt2, "shallow_water_speedup.png")
+
+df = benchmarks_dataframe(suite)
+sort!(df, [:Architectures, :Float_types, :Ns], by=(string, string, identity))
+benchmarks_pretty_table(df, title="Shallow water model benchmarks")
 
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
