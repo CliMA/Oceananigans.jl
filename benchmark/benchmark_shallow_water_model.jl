@@ -3,6 +3,8 @@ using CUDA
 using Oceananigans
 using Oceananigans.Models: ShallowWaterModel
 using Benchmarks
+using Plots
+pyplot()
 
 # Benchmark function
 
@@ -31,10 +33,6 @@ Ns = [32, 64]
 print_system_info()
 suite = run_benchmarks(benchmark_shallow_water_model; Architectures, Float_types, Ns)
 
-df = benchmarks_dataframe(suite)
-sort!(df, [:Architectures, :Float_types, :Ns], by=(string, string, identity))
-benchmarks_pretty_table(df, title="Shallow water model benchmarks")
-
 plot_num = length(Ns)
 cpu_times = zeros(Float64, plot_num)
 gpu_times = zeros(Float64, plot_num)
@@ -46,8 +44,9 @@ for i in 1:plot_num
     gpu_times[i] = mean(suite[plot_keys[i+plot_num]].times)
 end
 
-using Plots
-pyplot()
+df = benchmarks_dataframe(suite)
+sort!(df, [:Architectures, :Float_types, :Ns], by=(string, string, identity))
+benchmarks_pretty_table(df, title="Shallow water model benchmarks")
 
 plt = plot(Ns, cpu_times, lw=4, label="cpu", xaxis=:log2, yaxis=:log, legend=:topleft,
           xlabel="Nx", ylabel="Times (ms)", title="Shallow Water Benchmarks: CPU vs GPU")
