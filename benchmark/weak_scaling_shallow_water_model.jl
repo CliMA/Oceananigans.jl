@@ -6,9 +6,9 @@ using Benchmarks
 
 decomposition = Slab()
 # decomposition = Pencil()
-
+#, 8, 16
 ranks = Dict(
-    Slab() => (1, 2, 4, 8, 16),
+    Slab() => (1, 2, 4),
     Pencil() => (1, 4, 16)
 )[decomposition]
 
@@ -54,6 +54,17 @@ for R in ranks
     end
 end
 
+plot_keys = collect(keys(suite))
+sort!(plot_keys, by = v -> v[2][2])
+plot_num = length(plot_keys)
+rank_num = zeros(Int64, plot_num)
+run_times = zeros(Float64, plot_num)
+eff_ratios = zeros(Float64, plot_num)
+for i in 1:plot_num
+    rank_num[i] = plot_keys[i][2][2]
+    run_times[i] = mean(suite[plot_keys[i]].times)
+    eff_ratios = median(suite[plot_keys[1]]) / median(suite[plot_keys[i]])
+end
 # Summarize benchmarks
 
 df = benchmarks_dataframe(suite)
