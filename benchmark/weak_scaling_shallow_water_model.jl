@@ -1,7 +1,8 @@
 using JLD2
 using BenchmarkTools
 using Benchmarks
-
+using Plots
+pyplot()
 # Benchmark parameters
 
 decomposition = Slab()
