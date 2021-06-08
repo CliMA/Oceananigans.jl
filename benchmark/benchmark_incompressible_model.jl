@@ -2,7 +2,8 @@ using BenchmarkTools
 using CUDA
 using Oceananigans
 using Benchmarks
-
+using Plots
+pyplot()
 # Benchmark function
 
 function benchmark_incompressible_model(Arch, FT, N)
