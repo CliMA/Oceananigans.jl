@@ -75,7 +75,7 @@ display(plt)
 savefig(plt, "ss_shallow_water_times.png")
 
 
-plt2 = plot(rank_num, eff_ratio, lw=4, xaxis=:log2, legend=:none, ylims=(0,1),
+plt2 = plot(rank_num, eff_ratio, lw=4, xaxis=:log2, legend=:none, ylims=(0,1.1),
             xlabel="Cores", ylabel="Efficiency", title="Strong Scaling Shallow Water Efficiency")
 display(plt2)
 savefig(plt2, "ss_shallow_water_efficiency.png")
