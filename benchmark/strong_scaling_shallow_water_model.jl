@@ -65,7 +65,7 @@ run_times = zeros(Float64, plot_num)
 eff_ratio = zeros(Float64, plot_num)
 for i in 1:plot_num
     rank_num[i] = plot_keys[i][2][2]
-    run_times[i] = mean(suite[plot_keys[i]].times) / 10e6
+    run_times[i] = mean(suite[plot_keys[i]].times) / 1.0e6
     eff_ratio[i] = median(suite[plot_keys[1]].times) /(rank_num[i] * median(suite[plot_keys[i]].times))
 end
 
