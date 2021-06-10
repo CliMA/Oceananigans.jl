@@ -40,8 +40,8 @@ plot_keys = collect(keys(suite))
 sort!(plot_keys, by = v -> [Symbol(v[1]), v[3]])
 
 for i in 1:plot_num
-    cpu_times[i] = mean(suite[plot_keys[i]].times) / 10e6
-    gpu_times[i] = mean(suite[plot_keys[i+plot_num]].times) / 10e6
+    cpu_times[i] = mean(suite[plot_keys[i]].times) / 1.0e6
+    gpu_times[i] = mean(suite[plot_keys[i+plot_num]].times) / 1.0e6
 end
 
 plt = plot(Ns, cpu_times, lw=4, label="cpu", xaxis=:log2, yaxis=:log, legend=:topleft,
