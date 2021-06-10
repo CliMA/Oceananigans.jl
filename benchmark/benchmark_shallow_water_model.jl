@@ -23,11 +23,11 @@ function benchmark_shallow_water_model(Arch, FT, N)
 end
 
 # Benchmark parameters
-
+#
+#
 Architectures = has_cuda() ? [CPU, GPU] : [CPU]
 Float_types = [Float64]
 Ns = [32, 64, 128, 256, 512, 1024, 2048, 4096]
-#
 # Run and summarize benchmarks
 
 print_system_info()
@@ -40,8 +40,8 @@ plot_keys = collect(keys(suite))
 sort!(plot_keys, by = v -> [Symbol(v[1]), v[3]])
 
 for i in 1:plot_num
-    cpu_times[i] = mean(suite[plot_keys[i]].times)
-    gpu_times[i] = mean(suite[plot_keys[i+plot_num]].times)
+    cpu_times[i] = mean(suite[plot_keys[i]].times) / 10e6
+    gpu_times[i] = mean(suite[plot_keys[i+plot_num]].times) / 10e6
 end
 
 plt = plot(Ns, cpu_times, lw=4, label="cpu", xaxis=:log2, yaxis=:log, legend=:topleft,

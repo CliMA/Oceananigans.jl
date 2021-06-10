@@ -39,10 +39,10 @@ plot_keys = collect(keys(suite))
 sort!(plot_keys, by = v -> [Symbol(v[1]), Symbol(v[2]), v[3]])
 
 for i in 1:plot_num
-    CPU_Float32[i] = mean(suite[plot_keys[i]].times)
-    CPU_Float64[i] = mean(suite[plot_keys[i+plot_num]].times)
-    GPU_Float32[i] = mean(suite[plot_keys[i+2plot_num]].times)
-    GPU_Float64[i] = mean(suite[plot_keys[i+3plot_num]].times)
+    CPU_Float32[i] = mean(suite[plot_keys[i]].times) / 10e6
+    CPU_Float64[i] = mean(suite[plot_keys[i+plot_num]].times) / 10e6
+    GPU_Float32[i] = mean(suite[plot_keys[i+2plot_num]].times) / 10e6
+    GPU_Float64[i] = mean(suite[plot_keys[i+3plot_num]].times) / 10e6
 end
 
 plt = plot(Ns, CPU_Float32, lw=4, label="CPU Float32", xaxis=:log2, yaxis=:log, legend=:topleft,
