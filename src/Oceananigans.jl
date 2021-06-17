@@ -52,6 +52,7 @@ export
     AnisotropicBiharmonicDiffusivity,
     ConstantSmagorinsky, AnisotropicMinimumDissipation,
     HorizontallyCurvilinearAnisotropicDiffusivity,
+    ConvectiveAdjustmentVerticalDiffusivity,
 
     # Lagrangian particle tracking
     LagrangianParticles,

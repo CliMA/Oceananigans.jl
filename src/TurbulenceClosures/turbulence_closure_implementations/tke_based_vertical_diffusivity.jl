@@ -1,6 +1,5 @@
 using Oceananigans.Architectures: architecture, device_event
 using Oceananigans.BoundaryConditions: DefaultBoundaryCondition
-using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
