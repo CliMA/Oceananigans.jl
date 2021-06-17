@@ -595,7 +595,9 @@ end
             grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(1, 1, Nz-1), x=(0, 1), y=(0, 1), z_faces=collect(0:Nz).^2)
             
             @test try
-                show(grid); println()
+            CUDA.allowscalar(false)           
+            show(grid); println()
+            CUDA.allowscalar(true)
                 true
             catch err
                 println("error in show(::VerticallyStretchedRectilinearGrid)")
