@@ -552,7 +552,9 @@ end
         grid = RegularRectilinearGrid(topology=topo, size=(3, 7, 9), x=(0, 1), y=(-π, π), z=(0, 2π))
 
         @test try
+            CUDA.allowscalar(false)           
             show(grid); println()
+            CUDA.allowscalar(true)
             true
         catch err
             println("error in show(::RegularRectilinearGrid)")
