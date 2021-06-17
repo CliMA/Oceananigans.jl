@@ -157,5 +157,9 @@ function cell_diffusion_timescale(closure::TwoDimensionalLeith, diffusivities, g
     return Δ^2 / max_ν
 end
 
+# Vertically-implicit treatment of vertical diffusivity has no time-step restriction
+cell_diffusion_timescale(::ConvectiveAdjustmentVerticalDiffusivity{<:VerticallyImplicitTimeDiscretization},
+                         diffusivities, grid) = Inf
+
 cell_diffusion_timescale(closure::Tuple, diffusivities, grid) =
     min(Tuple(cell_diffusion_timescale(c, diffusivities, grid) for c in closure)...)
