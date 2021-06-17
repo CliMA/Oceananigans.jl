@@ -8,7 +8,7 @@ decomposition = Slab()
 # decomposition = Pencil()
 
 ranks = Dict(
-      Slab() => (1, 2, 4, 8, 16),
+    Slab() => (1, 2, 4, 8, 16),
     Pencil() => (1, 4, 16)
 )[decomposition]
 
