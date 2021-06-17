@@ -645,7 +645,9 @@ end
         grid = ConformalCubedSphereFaceGrid(size=(10, 10, 1), z=(0, 1))
     
         @test try
+            CUDA.allowscalar(false)           
             show(grid); println()
+            CUDA.allowscalar(true)
             true
         catch err
             println("error in show(::ConformalCubedSphereFaceGrid)")
