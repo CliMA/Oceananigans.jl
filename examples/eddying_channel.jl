@@ -1,3 +1,6 @@
+# using Pkg
+# pkg"add Oceananigans GLMakie"
+
 using Printf
 using Statistics
 using Oceananigans
@@ -46,7 +49,7 @@ v_drag_bc = FluxBoundaryCondition(v_drag, field_dependencies=:v, parameters=μ)
 # To summarize,
 
 b_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc)
-u_bcs = UVelocityBoundaryConditions(grid, top = u_stress_bc)
+u_bcs = UVelocityBoundaryConditions(grid)
 v_bcs = VVelocityBoundaryConditions(grid)
 
 #u_bcs = UVelocityBoundaryConditions(grid, top = u_stress_bc, bottom = u_drag_bc)
@@ -139,7 +142,28 @@ print_progress(sim) = @printf("[%05.2f%%] i: %d, t: %s, max(u): (%6.3e, %6.3e, %
 
 simulation = Simulation(model, Δt=wizard, stop_time=1day, progress=print_progress, iteration_interval=1)
 
+u, v, w = model.velocities
+b = model.tracers.b
+
+ζ = ComputedField(∂x(v) - ∂y(u))
+∇b² = ComputedField(∂x(b)^2 + ∂y(b)^2)
+
+simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                        schedule = TimeInterval(100days),
+                                                        prefix = "eddying_channel",
+                                                        force = true)
+
+simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ=ζ, ∇b²=∇b²),
+                                                      schedule = TimeInterval(4hours),
+                                                      prefix = "eddying_channel",
+                                                      field_slicer = nothing,
+                                                      force = true)
+
 @show simulation
 
 run!(simulation)
 
+using GLMakie
+using Oceananigans.OutputReaders: FieldTimeSeries
+
+# scene = volume(0..x, 0..y, 0..z, T, colorrange=clims, algorithm=:absorption, absorption=10.0f0, colormap=cmapa2, show_axis=false)
