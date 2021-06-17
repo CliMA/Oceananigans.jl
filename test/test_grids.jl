@@ -621,7 +621,9 @@ end
         grid = RegularLatitudeLongitudeGrid(size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
     
         @test try
+            CUDA.allowscalar(false)           
             show(grid); println()
+            CUDA.allowscalar(true)
             true
         catch err
             println("error in show(::RegularLatitudeLongitudeGrid)")
