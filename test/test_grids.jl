@@ -552,7 +552,7 @@ end
         grid = RegularRectilinearGrid(topology=topo, size=(3, 7, 9), x=(0, 1), y=(-π, π), z=(0, 2π))
 
         @test try
-            CUDA.@disallowscalar show(grid); println()
+            show(grid); println()
             true
         catch err
             println("error in show(::RegularRectilinearGrid)")
@@ -593,7 +593,7 @@ end
             grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(1, 1, Nz-1), x=(0, 1), y=(0, 1), z_faces=collect(0:Nz).^2)
             
             @test try
-                CUDA.@disallowscalar show(grid); println()
+                show(grid); println()
                 true
             catch err
                 println("error in show(::VerticallyStretchedRectilinearGrid)")
@@ -617,7 +617,7 @@ end
         grid = RegularLatitudeLongitudeGrid(size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
     
         @test try
-            CUDA.@disallowscalar show(grid); println()
+            show(grid); println()
             true
         catch err
             println("error in show(::RegularLatitudeLongitudeGrid)")
@@ -639,7 +639,7 @@ end
         grid = ConformalCubedSphereFaceGrid(size=(10, 10, 1), z=(0, 1))
     
         @test try
-            CUDA.@disallowscalar show(grid); println()
+            show(grid); println()
             true
         catch err
             println("error in show(::ConformalCubedSphereFaceGrid)")
