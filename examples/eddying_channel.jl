@@ -3,8 +3,10 @@
 
 using Printf
 using Statistics
+using GLMakie
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.OutputReaders: FieldTimeSeries
 
 grid = RegularRectilinearGrid(topology = (Periodic, Bounded, Bounded),
                               size = (64, 64, 32),
@@ -28,7 +30,7 @@ y_shutoff = 5/6 * grid.Ly # shutoff location for buoyancy flux [m]
 
 # The buoyancy flux has a sinusoidal pattern in `y`,
 
-@inline buoyancy_flux(x, y, t, p) = p.Qᵇ * cos(3π * y / p.Ly) * max(0, y - p.y_shutoff)
+@inline buoyancy_flux(x, y, t, p) = ifelse(y < p.y_shutoff, p.Qᵇ * cos(3π * y / p.Ly), 0)
 
 buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, parameters=(Ly=grid.Ly, y_shutoff=y_shutoff, Qᵇ=Qᵇ))
 
@@ -49,11 +51,8 @@ v_drag_bc = FluxBoundaryCondition(v_drag, field_dependencies=:v, parameters=μ)
 # To summarize,
 
 b_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc)
-u_bcs = UVelocityBoundaryConditions(grid)
-v_bcs = VVelocityBoundaryConditions(grid)
-
-#u_bcs = UVelocityBoundaryConditions(grid, top = u_stress_bc, bottom = u_drag_bc)
-#v_bcs = VVelocityBoundaryConditions(grid, bottom = v_drag_bc)
+u_bcs = UVelocityBoundaryConditions(grid, top = u_stress_bc, bottom = u_drag_bc)
+v_bcs = VVelocityBoundaryConditions(grid, bottom = v_drag_bc)
 
 # # Sponge layer
 #
@@ -63,11 +62,11 @@ v_bcs = VVelocityBoundaryConditions(grid)
 # We declare parameters as `const` so we can reference them as global variables
 # in our forcing functions.
 
-const Δb = 0.02                # cross-channel buoyancy jump [m s⁻²]
-const h = 1kilometer           # decay scale of stable stratification (N² ≈ Δb / h) [m]
-const y_sponge = 1900kilometer # southern boundary of sponge layer [m]
-const Ly = grid.Ly             # channel width [m]
-const Lz = grid.Lz             # channel depth [m]
+const Δb = 0.02                 # cross-channel buoyancy jump [m s⁻²]
+const h = 1kilometer            # decay scale of stable stratification (N² ≈ Δb / h) [m]
+const y_sponge = 1980kilometers # southern boundary of sponge layer [m]
+const Ly = grid.Ly              # channel width [m]
+const Lz = grid.Lz              # channel depth [m]
 
 @inline b_target(x, y, z, t) = Δb * (y / Ly + exp(z / h))
 @inline northern_mask(x, y, z) = max(0, y - y_sponge) / (Ly - y_sponge)
@@ -80,12 +79,12 @@ b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=7days)
 # created by mesoscale turbulence, while a convective adjustment scheme creates
 # a surface mixed layer due to surface cooling.
 
-horizontal_diffusivity = AnisotropicDiffusivity(νh=0)
+horizontal_diffusivity = AnisotropicDiffusivity(νh=100)
 
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=0.1,
-                                                                convective_νz=0.1,
-                                                                background_κz=1e-3,
-                                                                background_νz=1e-3)
+convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
+                                                                convective_νz = 1.0,
+                                                                background_κz = 1e-4,
+                                                                background_νz = 1e-4)
 
 # # Model building
 #
@@ -101,7 +100,7 @@ model = HydrostaticFreeSurfaceModel(architecture = CPU(),
                                     closure = (convective_adjustment, horizontal_diffusivity),
                                     tracers = :b,
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
-                                    #forcing = (b=b_forcing,),
+                                    forcing = (b=b_forcing,),
                                     )
 
 @show model
@@ -119,8 +118,8 @@ u★, h★ = sqrt(τ), h / 10
 f = model.coriolis.f₀
 β = model.coriolis.β
 
-uᵢ(x, y, z) = (z + Lz) / (f + β * y) * (Δb / Ly) + 1e-2 * ϵ(z)
-vᵢ(x, y, z) = 1e-2 * ϵ(z)
+uᵢ(x, y, z) = (z + Lz) / (f + β * y) * (Δb / Ly) + 1e-3 * ϵ(z)
+vᵢ(x, y, z) = 1e-3 * ϵ(z)
 bᵢ(x, y, z) = b_target(x, y, z, 0)
 
 set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
@@ -129,7 +128,7 @@ set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 #
 # We set up a simulation with adaptive time-stepping and a simple progress message.
 
-wizard = TimeStepWizard(cfl=0.2, Δt=1e-9, max_change=1.1, max_Δt=1minutes)
+wizard = TimeStepWizard(cfl=0.2, Δt=10minutes, max_change=1.1, max_Δt=20minutes)
 
 print_progress(sim) = @printf("[%05.2f%%] i: %d, t: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
                               100 * (sim.model.clock.time / sim.stop_time),
@@ -140,20 +139,24 @@ print_progress(sim) = @printf("[%05.2f%%] i: %d, t: %s, max(u): (%6.3e, %6.3e, %
                               maximum(abs, sim.model.velocities.w),
                               prettytime(sim.Δt.Δt))
 
-simulation = Simulation(model, Δt=wizard, stop_time=1day, progress=print_progress, iteration_interval=1)
+simulation = Simulation(model, Δt=wizard, stop_time=10day, progress=print_progress, iteration_interval=10)
 
 u, v, w = model.velocities
 b = model.tracers.b
 
 ζ = ComputedField(∂x(v) - ∂y(u))
-∇b² = ComputedField(∂x(b)^2 + ∂y(b)^2)
+
+Γ_op = @at (Center, Center, Center) ∂x(b)^2 + ∂y(b)^2
+Γ = ComputedField(Γ_op)
+
+outputs = merge(model.velocities, model.tracers, (ζ=ζ, Γ=Γ))
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(100days),
                                                         prefix = "eddying_channel",
                                                         force = true)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ=ζ, ∇b²=∇b²),
+simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(4hours),
                                                       prefix = "eddying_channel",
                                                       field_slicer = nothing,
@@ -163,7 +166,44 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ=ζ, ∇b²=∇b
 
 run!(simulation)
 
-using GLMakie
-using Oceananigans.OutputReaders: FieldTimeSeries
+u_timeseries = FieldTimeSeries("eddying_channel.jld2", "u")
+b_timeseries = FieldTimeSeries("eddying_channel.jld2", "b")
+ζ_timeseries = FieldTimeSeries("eddying_channel.jld2", "ζ")
+Γ_timeseries = FieldTimeSeries("eddying_channel.jld2", "Γ")
 
-# scene = volume(0..x, 0..y, 0..z, T, colorrange=clims, algorithm=:absorption, absorption=10.0f0, colormap=cmapa2, show_axis=false)
+xζ, yζ, zζ = nodes((Face, Face, Center), grid)
+xu, yu, zu = nodes((Face, Center, Center), grid)
+xc, yc, zc = nodes((Center, Center, Center), grid)
+
+kwargs = (algorithm=:absorption, absorption=10.0f0, colormap=:balance, show_axis=false)
+
+iter = Node(1)
+
+u′ = @lift interior(u_timeseries[$iter])
+b′ = @lift interior(b_timeseries[$iter])
+ζ′ = @lift interior(ζ_timeseries[$iter])
+Γ′ = @lift interior(Γ_timeseries[$iter])
+
+u_clims = @lift extrema(interior(u_timeseries[$iter]))
+b_clims = @lift extrema(interior(b_timeseries[$iter]))
+ζ_clims = @lift extrema(interior(ζ_timeseries[$iter]))
+Γ_clims = @lift extrema(interior(Γ_timeseries[$iter]))
+
+fig = Figure(resolution = (2000, 1600))
+
+ax_u = fig[1, 1] = LScene(fig)
+ax_b = fig[1, 2] = LScene(fig)
+ax_ζ = fig[2, 1] = LScene(fig)
+ax_Γ = fig[2, 2] = LScene(fig)
+
+volume!(ax_u, xζ, yζ, zζ * 100, u′; colorrange=u_clims, kwargs...) 
+volume!(ax_b, xζ, yζ, zζ * 100, b′; colorrange=b_clims, kwargs...) 
+volume!(ax_ζ, xζ, yζ, zζ * 100, ζ′; colorrange=ζ_clims, kwargs...) 
+volume!(ax_Γ, xc, yc, zc * 100, Γ′; colorrange=Γ_clims, kwargs...) 
+
+nframes = length(ζ_timeseries.times)
+
+record(fig, "eddying_channel.mp4", 1:nframes, framerate=12) do i
+    @info "Plotting frame $i of $nframes..."
+    iter[] = i
+end
