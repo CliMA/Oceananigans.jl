@@ -12,17 +12,16 @@ using Oceananigans.OutputReaders: FieldTimeSeries
 #
 # We build a vertically stretched grid...
 
-Nx = 32
-Ny = 64
+Nx = 48
+Ny = 2Nx
 Nz = 32
 
 const Lx = 1000kilometers # channel east-west width [m]
 const Ly = 2000kilometers # channel north-south width [m]
 const Lz = 3kilometers    # channel depth [m]
 
-#=
 ## Stretching function
-z_faces(k) = - Lz * (1 - ((k - 1) / Nz)^(3/4))
+z_faces(k) = - Lz * (1 - sqrt((k - 1) / Nz))
 
 grid = VerticallyStretchedRectilinearGrid(topology = (Periodic, Bounded, Bounded),
                                           size = (Nx, Ny, Nz),
@@ -31,10 +30,11 @@ grid = VerticallyStretchedRectilinearGrid(topology = (Periodic, Bounded, Bounded
                                           y = (0, Ly),
                                           z_faces = z_faces)
 
+#=
 fig = Figure(resolution=(200, 600))
 ax = Axis(fig[1, 1])
 scatter!(ax, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
-=#
+display(fig)
 
 grid = RegularRectilinearGrid(topology = (Periodic, Bounded, Bounded),
                               size = (Nx, Ny, Nz),
@@ -42,6 +42,7 @@ grid = RegularRectilinearGrid(topology = (Periodic, Bounded, Bounded),
                               x = (0, Lx),
                               y = (0, Ly),
                               z = (-Lz, 0))
+=#
 
 ## Visualize grid
 @show grid
@@ -52,9 +53,9 @@ grid = RegularRectilinearGrid(topology = (Periodic, Bounded, Bounded),
 # and an alternating pattern of surface cooling and surface heating with
 # parameters
 
-Qᵇ = 0 # 1e-9            # buoyancy flux magnitude [m² s⁻³]
+Qᵇ = 5e-9            # buoyancy flux magnitude [m² s⁻³]
 y_shutoff = 5/6 * Ly # shutoff location for buoyancy flux [m]
-τ = 0 # 1e-4             # surface kinematic wind stress [m² s⁻²]
+τ = 2e-4             # surface kinematic wind stress [m² s⁻²]
 μ = 1 / 100days      # bottom drag damping time-scale [s⁻¹]
 
 # The buoyancy flux has a sinusoidal pattern in `y`,
@@ -91,10 +92,10 @@ v_bcs = VVelocityBoundaryConditions(grid, bottom = v_drag_bc)
 # We declare parameters as `const` so we can reference them as global variables
 # in our forcing functions.
 
-const Δb = 0.01                 # cross-channel buoyancy jump [m s⁻²]
-const N² = 1e-5                 # cross-channel buoyancy jump [m s⁻²]
-const h = 1kilometer            # decay scale of stable stratification (N² ≈ Δb / h) [m]
-const y_sponge = 1900kilometers # southern boundary of sponge layer [m]
+const Δb = 0.02               # cross-channel buoyancy jump [m s⁻²]
+const N² = 1e-5               # surface vertical buoyancy gradient [s⁻²]
+const h = 1kilometer          # decay scale of stable stratification [m]
+const y_sponge = 19 / 20 * Ly # southern boundary of sponge layer [m]
 
 ## Target (and initial) buoyancy profile
 @inline b_target(x, y, z, t) = Δb * y / Ly + N² * h * exp(z / h)
@@ -102,7 +103,7 @@ const y_sponge = 1900kilometers # southern boundary of sponge layer [m]
 ## Mask that limits sponge layer to a thin region near the northern boundary
 @inline northern_mask(x, y, z) = max(0, y - y_sponge) / (Ly - y_sponge)
 
-b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/7days)
+b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/100days)
 
 # # Turbulence closures
 #
@@ -110,56 +111,59 @@ b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/7days)
 # created by mesoscale turbulence, while a convective adjustment scheme creates
 # a surface mixed layer due to surface cooling.
 
-horizontal_diffusivity = AnisotropicDiffusivity(νh=10)
+horizontal_diffusivity = AnisotropicDiffusivity(νh = 100, κh = 100)
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 1.0,
-                                                                background_κz = 1e-4,
-                                                                background_νz = 1e-4)
+                                                                background_κz = 1e-3,
+                                                                background_νz = 1e-3)
 
 # # Model building
 #
 # We build a model on a BetaPlane with an ImplicitFreeSurface.
 
-model = HydrostaticFreeSurfaceModel(architecture = CPU(),                                           
-                                    grid = grid,
-                                    free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
-                                    momentum_advection = WENO5(),
-                                    tracer_advection = WENO5(),
-                                    buoyancy = BuoyancyTracer(),
-                                    coriolis = BetaPlane(latitude=-45),
-                                    closure = (convective_adjustment, horizontal_diffusivity),
-                                    tracers = :b,
-                                    boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
-                                    forcing = (b=b_forcing,),
-                                    )
+model = HydrostaticFreeSurfaceModel(
+           architecture = CPU(),                                           
+                   grid = grid,
+           free_surface = ImplicitFreeSurface(),
+     momentum_advection = UpwindBiasedThirdOrder(),
+       tracer_advection = UpwindBiasedThirdOrder(),
+               buoyancy = BuoyancyTracer(),
+               coriolis = BetaPlane(latitude=-45),
+                closure = (convective_adjustment, horizontal_diffusivity),
+                tracers = :b,
+    boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
+                forcing = (b=b_forcing,),
+)
 
 # # Initial Conditions
 #
-# Our initial condition is an unstable, geostrophically-balanced shear flow
-# and stable buoyancy stratification superposed with surface-concentrated
-# random noise.
+# Our initial condition superposes an geostrophically-balanced shear flow
+# unstable to baroclinic instability, a stable buoyancy stratification,
+# and surface-concentrated random noise.
 #
 # The geostrophic streamfunction is
 #
 # ```math
-# ψ(y, z) = Δb (z + L_z) y / (f L_y) \, ,
+# ψ(y, z) = f⁻¹ Δb (z + L_z) y / L_y \, ,
 # ```
 #
-# where ``f(y) = f₀ + β y``. The geostrophic buoyancy field is then
+# where within the ``β``-plane approximation, ``f(y) = f₀ + β y``.
+# The kinematic pressure is ``p = f⁻¹ ψ = Δb (z + L_z) y / L_y``.
+# The geostrophic buoyancy field is
 #
 # ```math
-# b(y) = f ∂_z ψ = Δb y / L_y \, ,
+# b(y) = ∂_z p = f ∂_z ψ = Δb y / L_y \, ,
 # ```
 #
 # consistent with the ``y``-dependent part of `b_target`, and the
 # geostrophic zonal velocity is
 #
 # ```math
-# u = - ∂_y ψ = - Δb (z + L_z) / (f L_y) \, .
+# u = - f⁻¹ ∂_y p = - ∂_y ψ = Δb (z + L_z) (β y f⁻² - f⁻¹) / L_y \, .
 # ```
 #
-# Recall that our austral focus implies that f < 0.
+# Note our austral focus implies f < 0, and generally ``f₀ ≫ β y``.
 #
 # We scale the initial noise with the friction velocity implied by wind stress,
 # and concentrate the noise in the upper tenth of the domain.
@@ -169,14 +173,15 @@ u★ = 1e-3 * sqrt(τ)
 h★ = Lz / 10
 ϵ(z) = u★ * exp(z / h★)
 
-f(y, c::BetaPlane) = c.f₀ + c.β * y
-f(y, c::FPlane) = c.f
+## Coriolis force
+f₀ = model.coriolis.f₀
+β = model.coriolis.β
+f(y) = f₀ + β * y
 
-uᵢ(x, y, z) = - Δb * (z + Lz) / (f(y, model.coriolis) * Ly)
-vᵢ(x, y, z) = 0
+uᵢ(x, y, z) = Δb * (z + Lz) / Ly * (β * y / f(y)^2 - 1 / f(y)) + ϵ(z)
 bᵢ(x, y, z) = b_target(x, y, z, 0)
 
-set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
+set!(model, u=uᵢ, b=bᵢ)
 
 # # Simulation setup
 #
@@ -184,7 +189,7 @@ set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 
-wizard = TimeStepWizard(cfl=0.2, Δt=1minutes, max_change=1.1, max_Δt=10minutes, min_Δt=1minute,
+wizard = TimeStepWizard(cfl=0.1, Δt=20minutes, max_change=1.1, max_Δt=1hour, min_Δt=1minute,
                         cell_advection_timescale = accurate_cell_advection_timescale)
 
 print_progress(sim) = @printf("[%05.2f%%] i: %d, t: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
@@ -196,7 +201,7 @@ print_progress(sim) = @printf("[%05.2f%%] i: %d, t: %s, max(u): (%6.3e, %6.3e, %
                               maximum(abs, sim.model.velocities.w),
                               prettytime(sim.Δt.Δt))
 
-simulation = Simulation(model, Δt=wizard, stop_time=1day, progress=print_progress, iteration_interval=1)
+simulation = Simulation(model, Δt=wizard, stop_time=4days, progress=print_progress, iteration_interval=10)
 
 u, v, w = model.velocities
 b = model.tracers.b
