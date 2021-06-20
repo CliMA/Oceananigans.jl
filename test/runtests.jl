@@ -63,7 +63,8 @@ closures = (
     :SmagorinskyLilly,
     :AnisotropicMinimumDissipation,
     :HorizontallyCurvilinearAnisotropicDiffusivity,
-    :HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
+    :HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity,
+    :ConvectiveAdjustmentVerticalDiffusivity
 )
 
 #####
