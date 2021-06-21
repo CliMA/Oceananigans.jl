@@ -84,12 +84,12 @@ u_bcs = UVelocityBoundaryConditions(grid, top = FluxBoundaryCondition(Qᵘ))
 
 # For salinity, `S`, we impose an evaporative flux of the form
 
-@inline Qˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S
+@inline Qˢ(x, y, t, S, evaporation_rate) = - evaporation_rate * S # [salinity unit] m s⁻¹
 nothing # hide
 
 # where `S` is salinity. We use an evporation rate of 1 millimeter per hour,
 
-evaporation_rate = 1e-3 / hour
+evaporation_rate = 1e-3 / hour # m s⁻¹
 
 # We build the `Flux` evaporation `BoundaryCondition` with the function `Qˢ`,
 # indicating that `Qˢ` depends on salinity `S` and passing
