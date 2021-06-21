@@ -13,7 +13,7 @@ end
 
 Returns parameters for a linear equation of state for seawater with
 thermal expansion coefficient `α` [K⁻¹] and haline contraction coefficient
-`β` [ppt⁻¹]. The buoyancy perturbation associated with a linear equation of state is
+`β` [psu⁻¹]. The buoyancy perturbation associated with a linear equation of state is
 
 ```math
     b = g (α T - β S)
