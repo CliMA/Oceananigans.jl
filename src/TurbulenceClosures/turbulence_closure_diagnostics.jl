@@ -2,7 +2,7 @@
 ##### Timescale for diffusion across one cell
 #####
 
-using Oceananigans.Grids: topology
+using Oceananigans.Grids: topology, min_Δx, min_Δy, min_Δz
 
 function min_Δxyz(grid)
     topo = topology(grid)
@@ -11,8 +11,19 @@ function min_Δxyz(grid)
     Δy = minimum_grid_spacing(grid.Δy, topo[2])
     Δz = minimum_grid_spacing(grid.Δz, topo[3])
 
-    return min(Δx, Δy, Δy)
+    return min(Δx, Δy, Δz)
 end
+
+function min_Δxyz(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+
+    Δx = min_Δx(grid)
+    Δy = min_Δy(grid)
+    Δz = min_Δz(grid)
+
+    return min(Δx, Δy, Δz)
+end
+
 
 cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.diffusivities, model.grid)
 cell_diffusion_timescale(::Nothing, diffusivities, grid) = Inf
