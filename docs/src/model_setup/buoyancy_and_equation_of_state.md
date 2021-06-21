@@ -100,13 +100,13 @@ can be accomplished by passing `tracers = (:T, :S)` to a model constructor.
 ### Linear equation of state
 
 To use non-default thermal expansion and haline contraction coefficients, say
-``\alpha = 2 \times 10^{-3} \; \text{K}^{-1}`` and ``\beta = 5 \times 10^{-4} \text{ppt}^{-1}`` corresponding to some other
+``\alpha = 2 \times 10^{-3} \; \text{K}^{-1}`` and ``\beta = 5 \times 10^{-4} \text{psu}^{-1}`` corresponding to some other
 fluid, then use
 
 ```jldoctest
-julia> buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=1.67e-4, β=7.80e-4))
+julia> buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-3, β=5e-4))
 SeawaterBuoyancy{Float64}: g = 9.80665
-└── equation of state: LinearEquationOfState{Float64}: α = 1.67e-04, β = 7.80e-04
+└── equation of state: LinearEquationOfState{Float64}: α = 2.00e-03, β = 5.00e-04
 ```
 
 ### Idealized nonlinear equations of state
