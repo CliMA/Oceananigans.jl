@@ -323,6 +323,29 @@ all_z_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃ�
 # Get minima of grid
 #
 
-min_Δx(grid::VerticallyStretchedRectilinearGrid) = grid.Δx
-min_Δy(grid::VerticallyStretchedRectilinearGrid) = grid.Δy
-min_Δz(grid::VerticallyStretchedRectilinearGrid) = minimum(view(grid.Δzᵃᵃᶜ, 1:grid.Nz))
+function min_Δx(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+    if topo[1] == Flat
+        return Inf
+    else
+        return grid.Δx
+    end
+end
+
+function min_Δy(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+    if topo[2] == Flat
+        return Inf
+    else
+        return grid.Δy
+    end
+end
+
+function min_Δz(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+    if topo[3] == Flat
+        return Inf
+    else
+        return minimum(view(grid.Δzᵃᵃᶜ, 1:grid.Nz))
+    end
+end
