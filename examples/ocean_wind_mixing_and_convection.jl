@@ -50,7 +50,7 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=
 
 Qʰ = 200  # W m⁻², surface _heat_ flux
 ρₒ = 1026 # kg m⁻³, average density at the surface of the world ocean
-cᴾ = 3991 # J K⁻¹ Kg⁻¹, typical heat capacity for seawater
+cᴾ = 3991 # J K⁻¹ kg⁻¹, typical heat capacity for seawater
 
 Qᵀ = Qʰ / (ρₒ * cᴾ) # K m s⁻¹, surface _temperature_ flux
 
