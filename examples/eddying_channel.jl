@@ -4,48 +4,64 @@
 using Printf
 using Statistics
 using GLMakie
+
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 
 # # Vertically-stretched grid
 #
-# We build a vertically stretched grid...
+# We build a vertically stretched grid with cell interfaces
+# clustered near the surface, where mesoscale eddies are most vigorous.
+#
+# The domain is rectangular and twice as wide north-south as east-west.
 
-Nx = 48
+const Lx = 1000kilometers # east-west extent [m]
+const Ly = 2000kilometers # north-south extent [m]
+const Lz = 3kilometers    # depth [m]
+
+# We use a resolution that implies O(10 km) grid spacing in the horizontal
+# and a vertical grid spacing that varies from O(10 m) to O(100 m),
+
+Nx = 32
 Ny = 2Nx
-Nz = 32
-
-const Lx = 1000kilometers # channel east-west width [m]
-const Ly = 2000kilometers # channel north-south width [m]
-const Lz = 3kilometers    # channel depth [m]
-
-## Stretching function
-z_faces(k) = - Lz * (1 - sqrt((k - 1) / Nz))
-
-grid = VerticallyStretchedRectilinearGrid(topology = (Periodic, Bounded, Bounded),
-                                          size = (Nx, Ny, Nz),
-                                          halo = (3, 3, 3),
-                                          x = (0, Lx),
-                                          y = (0, Ly),
-                                          z_faces = z_faces)
+Nz = 16
 
 #=
-fig = Figure(resolution=(200, 600))
-ax = Axis(fig[1, 1])
-scatter!(ax, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
-display(fig)
+# Vertical stretching is accomplished with an exponential "stretching function",
 
-grid = RegularRectilinearGrid(topology = (Periodic, Bounded, Bounded),
-                              size = (Nx, Ny, Nz),
-                              halo = (3, 3, 3),
-                              x = (0, Lx),
-                              y = (0, Ly),
-                              z = (-Lz, 0))
+s = 1.5 # stretching factor
+z_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
+
+@show grid = VerticallyStretchedRectilinearGrid(topology = (Periodic, Bounded, Bounded),
+                                                size = (Nx, Ny, Nz),
+                                                halo = (3, 3, 3),
+                                                x = (-Lx/2, Lx/2),
+                                                y = (0, Ly),
+                                                z_faces = z_faces)
+
+# We visualize the cell interfaces by plotting the cell height
+# as a function of depth,
+
+fig = Figure(resolution=(400, 600))
+
+ax = Axis(fig[1, 1],
+          xlabel = "Cell height Δz (m)",
+          ylabel = "z (m)",
+          xscale = log10,
+          xticks = [20, 50, 100, 200, 500])
+
+scatter!(ax, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
+
+display(fig)
 =#
 
-## Visualize grid
-@show grid
+@show grid = RegularRectilinearGrid(topology = (Periodic, Bounded, Bounded),
+                                    size = (Nx, Ny, Nz),
+                                    halo = (3, 3, 3),
+                                    x = (-Lx/2, Lx/2),
+                                    y = (0, Ly),
+                                    z = (-Lz, 0))
 
 # # Boundary conditions
 #
@@ -53,9 +69,9 @@ grid = RegularRectilinearGrid(topology = (Periodic, Bounded, Bounded),
 # and an alternating pattern of surface cooling and surface heating with
 # parameters
 
-Qᵇ = 5e-9            # buoyancy flux magnitude [m² s⁻³]
-y_shutoff = 5/6 * Ly # shutoff location for buoyancy flux [m]
-τ = 2e-4             # surface kinematic wind stress [m² s⁻²]
+Qᵇ = 0.0 #1e-8            # buoyancy flux magnitude [m² s⁻³]
+y_shutoff = 1/2 * Ly # shutoff location for buoyancy flux [m]
+τ = 1e-4             # surface kinematic wind stress [m² s⁻²]
 μ = 1 / 100days      # bottom drag damping time-scale [s⁻¹]
 
 # The buoyancy flux has a sinusoidal pattern in `y`,
@@ -84,34 +100,91 @@ b_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc)
 u_bcs = UVelocityBoundaryConditions(grid, top = u_stress_bc, bottom = u_drag_bc)
 v_bcs = VVelocityBoundaryConditions(grid, bottom = v_drag_bc)
 
-# # Sponge layer
+# # Coriolis
 #
-# A forcing term that relaxes the buoyancy field to a prescribed stratification
-# at the northern wall produces an overturning circulation.
-#
-# We declare parameters as `const` so we can reference them as global variables
-# in our forcing functions.
+# We use a ``β``-plane model to capture the effect of meridional
+# variations in the planetary vorticity,
 
-const Δb = 0.02               # cross-channel buoyancy jump [m s⁻²]
+#coriolis = BetaPlane(latitude=-45)
+coriolis = FPlane(latitude=-45)
+
+# # Sponge layer and initial condition
+#
+# We use a geostrophically-balanced initial condition with a
+# linear meridional buoyancy gradient and linear vertical shear.
+#
+# The geostrophic streamfunction is
+#
+# ```math
+# ψ(y, z) = - α y (z + L_z) \, ,
+# ```
+#
+# with parameters
+#
+const α = 1e-3         # geostrophic shear [s⁻¹]
+#
+# corresponding to a barotropic streamfunction ``Ψ = - α y L_z / 2``,
+# a free surface displacement
+#
+# ```math
+# η = - \frac{α y L_z}{2 f₀ g) \, ,
+# ```
+#
+# with
+
+#const f₀ = coriolis.f₀ # background planetary vorticity [s⁻¹]
+const f₀ = coriolis.f # background planetary vorticity [s⁻¹]
+g = 9.81 # m s⁻²
+
+# The coriolis parameter
+
+@show f₀ 
+
+# is < 0 due to our austral focus.
+# The geostrophic buoyancy field ``b = f₀ ∂_z ψ′``, where ``ψ′``
+# is the baroclinic component of ``ψ``, is then
+
+@inline b_geostrophic(y) = - α * f₀ * y
+
+# and the zonal velocity ``u = - ∂_y ψ`` is
+
+u_geostrophic(z) = α * (z + Lz/2)
+
+# We also impose an initial stratification with surface buoyancy gradient
+# and scale height
+
 const N² = 1e-5               # surface vertical buoyancy gradient [s⁻²]
 const h = 1kilometer          # decay scale of stable stratification [m]
-const y_sponge = 19 / 20 * Ly # southern boundary of sponge layer [m]
 
-## Target (and initial) buoyancy profile
-@inline b_target(x, y, z, t) = Δb * y / Ly + N² * h * exp(z / h)
+@inline b_stratification(z) = N² * h * exp(z / h)
+
+# We introduce a sponge layer adjacent the northern boundary to restore
+# the buoyancy field on a time-scale of 30 days to the initial condition.
+# The sponge layer, surface forcing, and net transport by the eddy field
+# leads to the development of a diabatic overturning circulation.
+# We impose the sponge layer with a ramp function that decays to zero within
+# `y_sponge` of the northern boundary.
+
+const y_sponge = 9/10 * Ly # southern boundary of sponge layer [m]
 
 ## Mask that limits sponge layer to a thin region near the northern boundary
 @inline northern_mask(x, y, z) = max(0, y - y_sponge) / (Ly - y_sponge)
 
-b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/100days)
+## Target and initial buoyancy profile
+@inline b_target(x, y, z, t) = b_geostrophic(y) + b_stratification(z)
 
+b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/10days)
+
+# The annotations `const` on global variables above ensure that our forcing functions
+# compile on the GPU, while the annotation `@inline` ensures efficient execution.
+#
 # # Turbulence closures
 #
 # A horizontally Laplacian diffusivity destroys enstrophy and buoyancy variance
 # created by mesoscale turbulence, while a convective adjustment scheme creates
 # a surface mixed layer due to surface cooling.
 
-horizontal_diffusivity = AnisotropicDiffusivity(νh = 100, κh = 100)
+horizontal_diffusivity = AnisotropicDiffusivity(νh = 10, κh = 10)
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 1.0,
@@ -125,63 +198,51 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 model = HydrostaticFreeSurfaceModel(
            architecture = CPU(),                                           
                    grid = grid,
-           free_surface = ImplicitFreeSurface(),
+           free_surface = ImplicitFreeSurface(gravitational_acceleration=g),
      momentum_advection = UpwindBiasedThirdOrder(),
        tracer_advection = UpwindBiasedThirdOrder(),
                buoyancy = BuoyancyTracer(),
-               coriolis = BetaPlane(latitude=-45),
+               coriolis = coriolis,
                 closure = (convective_adjustment, horizontal_diffusivity),
                 tracers = :b,
-    boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
-                forcing = (b=b_forcing,),
+    #boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
+    #            forcing = (b=b_forcing,),
 )
 
-# # Initial Conditions
-#
-# Our initial condition superposes an geostrophically-balanced shear flow
-# unstable to baroclinic instability, a stable buoyancy stratification,
-# and surface-concentrated random noise.
-#
-# The geostrophic streamfunction is
-#
-# ```math
-# ψ(y, z) = f⁻¹ Δb (z + L_z) y / L_y \, ,
-# ```
-#
-# where within the ``β``-plane approximation, ``f(y) = f₀ + β y``.
-# The kinematic pressure is ``p = f⁻¹ ψ = Δb (z + L_z) y / L_y``.
-# The geostrophic buoyancy field is
-#
-# ```math
-# b(y) = ∂_z p = f ∂_z ψ = Δb y / L_y \, ,
-# ```
-#
-# consistent with the ``y``-dependent part of `b_target`, and the
-# geostrophic zonal velocity is
-#
-# ```math
-# u = - f⁻¹ ∂_y p = - ∂_y ψ = Δb (z + L_z) (β y f⁻² - f⁻¹) / L_y \, .
-# ```
-#
-# Note our austral focus implies f < 0, and generally ``f₀ ≫ β y``.
-#
-# We scale the initial noise with the friction velocity implied by wind stress,
-# and concentrate the noise in the upper tenth of the domain.
+#=
+model = IncompressibleModel(
+           architecture = CPU(),                                           
+                   grid = grid,
+              advection = UpwindBiasedThirdOrder(),
+               buoyancy = BuoyancyTracer(),
+               coriolis = coriolis,
+                closure = horizontal_diffusivity,
+                tracers = :b,
+    #boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
+    #            forcing = (b=b_forcing,),
+)
+=#
 
-## Random noise concentrated at the top
-u★ = 1e-3 * sqrt(τ)
-h★ = Lz / 10
-ϵ(z) = u★ * exp(z / h★)
+# # InitiaL conditions
+#
+# Our initial condition superposes the previously discussed geostrophic flow
+# with surface-concentrated random noise scaled by the total velocity
+# jump in the vertical and concentrated in the upper tenth of the domain.
 
-## Coriolis force
-f₀ = model.coriolis.f₀
-β = model.coriolis.β
-f(y) = f₀ + β * y
+## Random noise
+u★ = 1e-3 * α * Lz
+ϵ(x, y, z) = u★ * exp(- (y - Ly/2)^2 / (2 * (0.1Ly)^2)) * randn()
 
-uᵢ(x, y, z) = Δb * (z + Lz) / Ly * (β * y / f(y)^2 - 1 / f(y)) + ϵ(z)
-bᵢ(x, y, z) = b_target(x, y, z, 0)
+ηᵢ(x, y) = - α * y * Lz / 2g
+uᵢ(x, y, z) = u_geostrophic(z) + ϵ(x, y, z)
+bᵢ(x, y, z) = b_geostrophic(y) + b_stratification(z)
+set!(model, u=uᵢ, b=bᵢ, η=ηᵢ)
 
+#=
+uᵢ(x, y, z) = ϵ(x, y, z)
+bᵢ(x, y, z) = b_stratification(z)
 set!(model, u=uᵢ, b=bᵢ)
+=#
 
 # # Simulation setup
 #
@@ -189,7 +250,7 @@ set!(model, u=uᵢ, b=bᵢ)
 
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 
-wizard = TimeStepWizard(cfl=0.1, Δt=20minutes, max_change=1.1, max_Δt=1hour, min_Δt=1minute,
+wizard = TimeStepWizard(cfl=0.1, Δt=5minutes, max_change=1.1, max_Δt=30minutes, min_Δt=1minute,
                         cell_advection_timescale = accurate_cell_advection_timescale)
 
 print_progress(sim) = @printf("[%05.2f%%] i: %d, t: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
@@ -220,7 +281,7 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         force = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(10minutes),
+                                                      schedule = TimeInterval(1hour),
                                                       prefix = "eddying_channel",
                                                       field_slicer = nothing,
                                                       force = true)
@@ -265,7 +326,6 @@ function symmetric_lims(q, iter)
 end
 
 u_lims = @lift symmetric_lims(u_timeseries, $iter)
-v_lims = @lift symmetric_lims(v_timeseries, $iter)
 w_lims = @lift symmetric_lims(w_timeseries, $iter)
 b_lims = @lift symmetric_lims(b_timeseries, $iter)
 ζ_lims = @lift symmetric_lims(ζ_timeseries, $iter)
