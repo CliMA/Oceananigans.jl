@@ -275,9 +275,33 @@ all_z_nodes(::Type{Face},   grid::RegularRectilinearGrid) = grid.zF
 # Get minima of grid
 #
 
-min_Δx(grid::RegularRectilinearGrid) = grid.Δx
-min_Δy(grid::RegularRectilinearGrid) = grid.Δy
-min_Δz(grid::RegularRectilinearGrid) = grid.Δz
+function min_Δx(grid::RegularRectilinearGrid)
+    topo = topology(grid)
+    if topo[1] == Flat
+        return Inf
+    else
+        return grid.Δx
+    end
+end
+
+function min_Δy(grid::RegularRectilinearGrid)
+    topo = topology(grid)
+    if topo[2] == Flat
+        return Inf
+    else
+        return grid.Δy
+    end
+end
+
+
+function min_Δz(grid::RegularRectilinearGrid)
+    topo = topology(grid)
+    if topo[3] == Flat
+        return Inf
+    else
+        return grid.Δz
+    end
+end
 
 # All grid metrics are constants / functions / ranges, so there's no architecture.
 architecture(::RegularRectilinearGrid) = nothing
