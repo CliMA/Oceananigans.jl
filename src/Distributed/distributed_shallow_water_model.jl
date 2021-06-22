@@ -6,7 +6,7 @@ using Oceananigans.Models
 ##### Distributed shallow water model constructor
 #####
 
-function DistributedShallowWaterModel(; architecture, grid, boundary_conditions=nothing, model_kwargs...)
+function DistributedShallowWaterModel(; architecture, grid, model_kwargs...)
     i, j, k = architecture.local_index
     Rx, Ry, Rz = architecture.ranks
     my_connectivity = architecture.connectivity
