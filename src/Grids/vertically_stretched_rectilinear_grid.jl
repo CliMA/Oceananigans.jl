@@ -157,10 +157,6 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
     Δzᵃᵃᶠ = OffsetArray(Δzᵃᵃᶠ, -Hz)
     Δzᵃᵃᶜ = OffsetArray(Δzᵃᵃᶜ, -Hz)
 
-    # Needed for pressure solver solution to be divergence-free.
-    # Will figure out why later...
-    Δzᵃᵃᶠ[Nz] = Δzᵃᵃᶠ[Nz-1]
-
     # Seems needed to avoid out-of-bounds error in viscous dissipation
     # operators wanting to access Δzᵃᵃᶠ[Nz+2].
     Δzᵃᵃᶠ = OffsetArray(cat(Δzᵃᵃᶠ[0], Δzᵃᵃᶠ..., Δzᵃᵃᶠ[Nz], dims=1), -Hz-1)
@@ -323,6 +319,29 @@ all_z_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃ�
 # Get minima of grid
 #
 
-min_Δx(grid::VerticallyStretchedRectilinearGrid) = grid.Δx
-min_Δy(grid::VerticallyStretchedRectilinearGrid) = grid.Δy
-min_Δz(grid::VerticallyStretchedRectilinearGrid) = minimum(view(grid.Δzᵃᵃᶜ, 1:grid.Nz))
+function min_Δx(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+    if topo[1] == Flat
+        return Inf
+    else
+        return grid.Δx
+    end
+end
+
+function min_Δy(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+    if topo[2] == Flat
+        return Inf
+    else
+        return grid.Δy
+    end
+end
+
+function min_Δz(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+    if topo[3] == Flat
+        return Inf
+    else
+        return minimum(view(grid.Δzᵃᵃᶜ, 1:grid.Nz))
+    end
+end

@@ -7,7 +7,7 @@ using Benchmarks
 # Benchmark function
 
 function benchmark_shallow_water_model(Arch, FT, N)
-    grid = RegularRectilinearGrid(FT, size=(N, N), extent=(1, 1), topology=(Periodic, Periodic, Flat), halo=(3, 3, 0))
+    grid = RegularRectilinearGrid(FT, size=(N, N), extent=(1, 1), topology=(Periodic, Periodic, Flat), halo=(3, 3))
     model = ShallowWaterModel(architecture=Arch(), grid=grid, gravitational_acceleration=1.0)
     set!(model, h=1)
 
