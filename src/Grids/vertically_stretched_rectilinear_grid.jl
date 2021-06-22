@@ -157,10 +157,6 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
     Δzᵃᵃᶠ = OffsetArray(Δzᵃᵃᶠ, -Hz)
     Δzᵃᵃᶜ = OffsetArray(Δzᵃᵃᶜ, -Hz)
 
-    # Needed for pressure solver solution to be divergence-free.
-    # Will figure out why later...
-    Δzᵃᵃᶠ[Nz] = Δzᵃᵃᶠ[Nz-1]
-
     # Seems needed to avoid out-of-bounds error in viscous dissipation
     # operators wanting to access Δzᵃᵃᶠ[Nz+2].
     Δzᵃᵃᶠ = OffsetArray(cat(Δzᵃᵃᶠ[0], Δzᵃᵃᶠ..., Δzᵃᵃᶠ[Nz], dims=1), -Hz-1)
