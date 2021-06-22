@@ -57,11 +57,11 @@ display(fig)
 =#
 
 @show grid = RegularRectilinearGrid(topology = (Periodic, Bounded, Bounded),
-                                    size = (Nx, Ny, Nz),
-                                    halo = (3, 3, 3),
-                                    x = (-Lx/2, Lx/2),
-                                    y = (0, Ly),
-                                    z = (-Lz, 0))
+                                        size = (Nx, Ny, Nz),
+                                        halo = (3, 3, 3),
+                                           x = (-Lx/2, Lx/2),
+                                           y = (0, Ly),
+                                           z = (-Lz, 0))
 
 # # Boundary conditions
 #
@@ -69,8 +69,8 @@ display(fig)
 # and an alternating pattern of surface cooling and surface heating with
 # parameters
 
-Qᵇ = 0.0 #1e-8            # buoyancy flux magnitude [m² s⁻³]
-y_shutoff = 1/2 * Ly # shutoff location for buoyancy flux [m]
+Qᵇ = 0.0 #1e-8       # buoyancy flux magnitude [m² s⁻³]
+y_shutoff = 5/6 * Ly # shutoff location for buoyancy flux [m]
 τ = 1e-4             # surface kinematic wind stress [m² s⁻²]
 μ = 1 / 100days      # bottom drag damping time-scale [s⁻¹]
 
@@ -127,7 +127,7 @@ const α = 1e-3         # geostrophic shear [s⁻¹]
 # a free surface displacement
 #
 # ```math
-# η = - \frac{α y L_z}{2 f₀ g) \, ,
+# η = - \frac{f₀ α y L_z}{2 g} \, ,
 # ```
 #
 # with
@@ -198,7 +198,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 model = HydrostaticFreeSurfaceModel(
            architecture = CPU(),                                           
                    grid = grid,
-           free_surface = ImplicitFreeSurface(gravitational_acceleration=g),
+           free_surface = ImplicitFreeSurface(gravitational_acceleration = g),
      momentum_advection = UpwindBiasedThirdOrder(),
        tracer_advection = UpwindBiasedThirdOrder(),
                buoyancy = BuoyancyTracer(),
@@ -233,7 +233,7 @@ model = IncompressibleModel(
 u★ = 1e-3 * α * Lz
 ϵ(x, y, z) = u★ * exp(- (y - Ly/2)^2 / (2 * (0.1Ly)^2)) * randn()
 
-ηᵢ(x, y) = - α * y * Lz / 2g
+ηᵢ(x, y) = - f₀ * α * y * Lz / (2g)
 uᵢ(x, y, z) = u_geostrophic(z) + ϵ(x, y, z)
 bᵢ(x, y, z) = b_geostrophic(y) + b_stratification(z)
 set!(model, u=uᵢ, b=bᵢ, η=ηᵢ)
