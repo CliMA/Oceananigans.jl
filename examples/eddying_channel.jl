@@ -233,7 +233,7 @@ model = IncompressibleModel(
 u★ = 1e-3 * α * Lz
 ϵ(x, y, z) = u★ * exp(- (y - Ly/2)^2 / (2 * (0.1Ly)^2)) * randn()
 
-ηᵢ(x, y) = - f₀ * α * y * Lz / (2g)
+ηᵢ(x, y) = - f₀ * α * (y - Ly/2) * Lz / (2g)
 uᵢ(x, y, z) = u_geostrophic(z) + ϵ(x, y, z)
 bᵢ(x, y, z) = b_geostrophic(y) + b_stratification(z)
 set!(model, u=uᵢ, b=bᵢ, η=ηᵢ)
@@ -262,7 +262,7 @@ print_progress(sim) = @printf("[%05.2f%%] i: %d, t: %s, max(u): (%6.3e, %6.3e, %
                               maximum(abs, sim.model.velocities.w),
                               prettytime(sim.Δt.Δt))
 
-simulation = Simulation(model, Δt=wizard, stop_time=4days, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=10days, progress=print_progress, iteration_interval=10)
 
 u, v, w = model.velocities
 b = model.tracers.b
