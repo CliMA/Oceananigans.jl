@@ -1,3 +1,5 @@
+push!(LOAD_PATH, joinpath(@__DIR__, ".."))
+
 using Logging
 using MPI
 using JLD2
