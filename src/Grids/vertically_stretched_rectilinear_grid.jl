@@ -342,6 +342,6 @@ function min_Δz(grid::VerticallyStretchedRectilinearGrid)
     if topo[3] == Flat
         return Inf
     else
-        return minimum(view(parent(grid.Δzᵃᵃᶜ), 1:grid.Nz))
+        return minimum(parent(grid.Δzᵃᵃᶜ))
     end
 end
