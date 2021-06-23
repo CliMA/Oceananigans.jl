@@ -34,14 +34,16 @@ using Oceananigans.Units: minute, minutes, hour
 # varying spacing in the vertical, with higher resolution closer to the
 # surface
 
-S = 1.1 # stretching factor
+σ = 1.1 # stretching factor
 Nz = 24
 Lz = 32
-hyperbolically_spaced_faces(k) = Lz*(-1 + (1 + tanh(S * ( (k - 1) / Nz - 1)) / tanh(S)))
-grid = VerticallyStretchedRectilinearGrid(size=(32, 32, Nz), 
-                                          x=(0, 64), y=(0, 64), z_faces=hyperbolically_spaced_faces,
-                                          halo=(3,3,3),
-                                          )
+
+hyperbolically_spaced_faces(k) = - Lz * (1 - (1 + tanh(σ * (k - 1) / Nz - 1) / tanh(σ)))
+
+grid = VerticallyStretchedRectilinearGrid(size = (32, 32, Nz), 
+                                          x = (0, 64),
+                                          y = (0, 64),
+                                          z_faces = hyperbolically_spaced_faces)
 
 
 # ## Buoyancy that depends on temperature and salinity
