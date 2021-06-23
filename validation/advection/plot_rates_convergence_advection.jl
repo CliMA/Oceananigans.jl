@@ -46,7 +46,7 @@ pnorm = 1
 
 c(x, y, z, t, U, W) = exp( - (x - U * t)^2 / W^2 )
    h(x, y, z) = 1
-  uh(x, y, z) = 1 * U
+  uh(x, y, z) = U * h(x, y, z)
 
 schemes = (
  CenteredSecondOrder(), 
