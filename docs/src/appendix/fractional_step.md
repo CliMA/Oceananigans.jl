@@ -18,7 +18,7 @@ surface waves, we thus discretize the momentum equation as
       + \boldsymbol{F}_{\boldsymbol{v}}^{n+\frac{1}{2}} \, ,
 ```
 where the superscript ``n + \frac{1}{2}`` indicates that these terms are evaluated at time step 
-``n + \frac{1}{2}``, which we compute explicitly (see [Time Stepping](../time_stepping/)).
+``n + \frac{1}{2}``, which we compute explicitly (see [Time Stepping section](../numerical_implementation/time_stepping)).
 
 The projection is then performed
 ```math
