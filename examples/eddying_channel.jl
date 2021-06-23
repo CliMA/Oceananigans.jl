@@ -25,7 +25,7 @@ const Lz = 3kilometers    # depth [m]
 
 Nx = 32
 Ny = 2Nx
-Nz = 16
+Nz = 32
 
 #=
 # Vertical stretching is accomplished with an exponential "stretching function",
@@ -69,7 +69,7 @@ display(fig)
 # and an alternating pattern of surface cooling and surface heating with
 # parameters
 
-Qᵇ = 0.0 #1e-8       # buoyancy flux magnitude [m² s⁻³]
+Qᵇ = 0e-8            # buoyancy flux magnitude [m² s⁻³]
 y_shutoff = 5/6 * Ly # shutoff location for buoyancy flux [m]
 τ = 1e-4             # surface kinematic wind stress [m² s⁻²]
 μ = 1 / 100days      # bottom drag damping time-scale [s⁻¹]
@@ -134,15 +134,14 @@ const α = 1e-3         # geostrophic shear [s⁻¹]
 
 const f₀ = coriolis.f # background planetary vorticity [s⁻¹]
 
-# the coriolis parameter
-
-@show f₀ 
-
-# and ``g`` the gravitational acceleration,
+# the Coriolis parameter and ``g`` the gravitational acceleration,
 
 g = 9.81 # m s⁻²
 
-# is < 0 due to our austral focus.
+# With the Southern Ocean in mind, we take the Coriolis parameter negative,
+
+@show f₀ 
+
 # The geostrophic buoyancy field ``b = f₀ ∂_z ψ′``, where ``ψ′``
 # is the baroclinic component of ``ψ``, is then
 
@@ -208,8 +207,8 @@ model = HydrostaticFreeSurfaceModel(
                closure = (horizontal_diffusivity),
                # closure = (convective_adjustment, horizontal_diffusivity),
                 tracers = :b,
-    #boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
-    #            forcing = (b=b_forcing,),
+    # boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
+    #             forcing = (b=b_forcing,),
 )
 
 #=
@@ -253,7 +252,7 @@ set!(model, u=uᵢ, b=bᵢ)
 
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 
-wizard = TimeStepWizard(cfl=0.1, Δt=5minutes, max_change=1.1, max_Δt=30minutes, min_Δt=1minute,
+wizard = TimeStepWizard(cfl=0.15, Δt=5minutes, max_change=1.1, max_Δt=2hours, min_Δt=1minute,
                         cell_advection_timescale = accurate_cell_advection_timescale)
 
 print_progress(sim) = @printf("[%05.2f%%] i: %d, t: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
@@ -284,7 +283,7 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         force = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(1hour),
+                                                      schedule = TimeInterval(2hour),
                                                       prefix = "eddying_channel",
                                                       field_slicer = nothing,
                                                       force = true)
