@@ -38,13 +38,14 @@ using Oceananigans.Units: minute, minutes, hour
 Nz = 24
 Lz = 32
 
-hyperbolically_spaced_faces(k) = - Lz * (1 - (1 + tanh(σ * (k - 1) / Nz - 1) / tanh(σ)))
+hyperbolically_spaced_faces(k) = - Lz * (1 + (tanh(σ * ( (1-k+Nz) / Nz - 1)) / tanh(σ)))
 
 grid = VerticallyStretchedRectilinearGrid(size = (32, 32, Nz), 
                                           x = (0, 64),
                                           y = (0, 64),
                                           z_faces = hyperbolically_spaced_faces)
 
+plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz], marker=:circle, ylabel="Depth (m)", xlabel="Vertical spacing (m)", legend=nothing)
 
 # ## Buoyancy that depends on temperature and salinity
 #
