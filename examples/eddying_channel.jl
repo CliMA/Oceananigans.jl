@@ -269,7 +269,10 @@ b = model.tracers.b
 χ_op = @at (Center, Center, Center) ∂x(b)^2 + ∂y(b)^2
 χ = ComputedField(χ_op)
 
-outputs = (b=b, ζ=ζ, χ=χ)
+B = AveragedField(b, dims=(1, 2))
+b′² = (b - B)^2
+
+outputs = (b=b, b′²=b′², ζ=ζ, χ=χ)
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(100days),
@@ -297,9 +300,6 @@ b_timeseries = FieldTimeSeries("eddying_channel.jld2", "b")
 χ_timeseries = FieldTimeSeries("eddying_channel.jld2", "χ")
 
 xζ, yζ, zζ = nodes((Face, Face, Center), grid)
-xu, yu, zu = nodes((Face, Center, Center), grid)
-xv, yv, zv = nodes((Center, Face, Center), grid)
-xw, yw, zw = nodes((Center, Center, Face), grid)
 xc, yc, zc = nodes((Center, Center, Center), grid)
 
 kwargs = (algorithm = :absorption,
@@ -323,8 +323,6 @@ function sequential_lims(q, iter, scale=1)
     return (0, q_max*scale)
 end
 
-u_lims = @lift symmetric_lims(u_timeseries, $iter)
-w_lims = @lift symmetric_lims(w_timeseries, $iter)
 b_lims = @lift symmetric_lims(b_timeseries, $iter)
 ζ_lims = @lift symmetric_lims(ζ_timeseries, $iter)
 χ_lims = @lift sequential_lims(χ_timeseries, $iter, 0.001)
