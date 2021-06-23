@@ -69,7 +69,7 @@ display(fig)
 # and an alternating pattern of surface cooling and surface heating with
 # parameters
 
-Qᵇ = 0e-8            # buoyancy flux magnitude [m² s⁻³]
+Qᵇ = 1e-8            # buoyancy flux magnitude [m² s⁻³]
 y_shutoff = 5/6 * Ly # shutoff location for buoyancy flux [m]
 τ = 1e-4             # surface kinematic wind stress [m² s⁻²]
 μ = 1 / 100days      # bottom drag damping time-scale [s⁻¹]
@@ -119,37 +119,38 @@ coriolis = FPlane(latitude=-45)
 # ψ(y, z) = - α y (z + L_z) \, ,
 # ```
 #
-# with parameters
-#
-const α = 1e-3         # geostrophic shear [s⁻¹]
-#
-# corresponding to a barotropic streamfunction ``Ψ = - α y L_z / 2``,
-# a free surface displacement
+# with geostrophic shear
+
+const α = 1e-3 # [s⁻¹]
+
+# ``ψ`` is comprised of a baroclinic component ``ψ′ = - α y (z + Lz/2)``
+# and a barotropic component ``Ψ = - α y L_z / 2``.
+# The barotropic component of the streamfunction is balanced by
+# a geostrophic free surface displacement
 #
 # ```math
-# η = - \frac{f₀ α y L_z}{2 g} \, ,
+# η = - \frac{f₀ α L_z}{2 g} \left (y - \frac{Ly}{2} \right ) \, ,
 # ```
 #
-# with
+# where
 
-const f₀ = coriolis.f # background planetary vorticity [s⁻¹]
+const f₀ = coriolis.f # [s⁻¹]
 
-# the Coriolis parameter and ``g`` the gravitational acceleration,
+# the Coriolis parameter, and
 
 g = 9.81 # m s⁻²
 
-# With the Southern Ocean in mind, we take the Coriolis parameter negative,
+# is gravitational acceleration. Our austral focus means that ``f₀ < 0``:
 
 @show f₀ 
 
-# The geostrophic buoyancy field ``b = f₀ ∂_z ψ′``, where ``ψ′``
-# is the baroclinic component of ``ψ``, is then
+# The geostrophic buoyancy field is ``b = f₀ ∂_z ψ′``, such that
 
 @inline b_geostrophic(y) = - α * f₀ * y
 
 # and the zonal velocity ``u = - ∂_y ψ`` is
 
-u_geostrophic(z) = α * (z + Lz/2)
+u_geostrophic(z) = α * (z + Lz)
 
 # We also impose an initial stratification with surface buoyancy gradient
 # and scale height
@@ -160,13 +161,13 @@ const h = 1kilometer          # decay scale of stable stratification [m]
 @inline b_stratification(z) = N² * h * exp(z / h)
 
 # We introduce a sponge layer adjacent the northern boundary to restore
-# the buoyancy field on a time-scale of 30 days to the initial condition.
+# the buoyancy field on a time-scale of 10 days to the initial condition.
 # The sponge layer, surface forcing, and net transport by the eddy field
 # leads to the development of a diabatic overturning circulation.
 # We impose the sponge layer with a ramp function that decays to zero within
 # `y_sponge` of the northern boundary.
 
-const y_sponge = 9/10 * Ly # southern boundary of sponge layer [m]
+const y_sponge = 19/20 * Ly # southern boundary of sponge layer [m]
 
 ## Mask that limits sponge layer to a thin region near the northern boundary
 @inline northern_mask(x, y, z) = max(0, y - y_sponge) / (Ly - y_sponge)
@@ -199,16 +200,15 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 model = HydrostaticFreeSurfaceModel(
            architecture = CPU(),                                           
                    grid = grid,
-           free_surface = ImplicitFreeSurface(gravitational_acceleration = g),
-     momentum_advection = UpwindBiasedThirdOrder(),
-       tracer_advection = UpwindBiasedThirdOrder(),
+           free_surface = ImplicitFreeSurface(gravitational_acceleration=g),
+     momentum_advection = WENO5(),
+       tracer_advection = WENO5(),
                buoyancy = BuoyancyTracer(),
                coriolis = coriolis,
-               closure = (horizontal_diffusivity),
-               # closure = (convective_adjustment, horizontal_diffusivity),
+                closure = (convective_adjustment, horizontal_diffusivity),
                 tracers = :b,
-    # boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
-    #             forcing = (b=b_forcing,),
+    boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
+                forcing = (b=b_forcing,),
 )
 
 #=
@@ -233,18 +233,13 @@ model = IncompressibleModel(
 
 ## Random noise
 u★ = 1e-3 * α * Lz
-ϵ(x, y, z) = u★ * exp(- (y - Ly/2)^2 / (2 * (0.1Ly)^2)) * randn()
+δ = 0.1 * Ly
+ϵ(x, y, z) = u★ * exp(-(y - Ly/2)^2 / 2δ^2) * randn()
 
-ηᵢ(x, y) = - f₀ * α * (y - Ly/2) * Lz / (2g)
+ηᵢ(x, y) = - f₀ * α * Lz / 2g * (y - Ly/2) 
 uᵢ(x, y, z) = u_geostrophic(z) + ϵ(x, y, z)
 bᵢ(x, y, z) = b_geostrophic(y) + b_stratification(z)
 set!(model, u=uᵢ, b=bᵢ, η=ηᵢ)
-
-#=
-uᵢ(x, y, z) = ϵ(x, y, z)
-bᵢ(x, y, z) = b_stratification(z)
-set!(model, u=uᵢ, b=bᵢ)
-=#
 
 # # Simulation setup
 #
@@ -311,7 +306,10 @@ xv, yv, zv = nodes((Center, Face, Center), grid)
 xw, yw, zw = nodes((Center, Center, Face), grid)
 xc, yc, zc = nodes((Center, Center, Center), grid)
 
-kwargs = (algorithm=:absorption, absorption=0.5, colormap=:balance, show_axis=true)
+kwargs = (algorithm = :absorption,
+          absorption = 10f0,
+          colormap = :balance,
+          show_axis = true)
 
 iter = Node(1)
 
