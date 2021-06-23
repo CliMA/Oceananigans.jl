@@ -132,13 +132,15 @@ const α = 1e-3         # geostrophic shear [s⁻¹]
 #
 # with
 
-#const f₀ = coriolis.f₀ # background planetary vorticity [s⁻¹]
 const f₀ = coriolis.f # background planetary vorticity [s⁻¹]
-g = 9.81 # m s⁻²
 
-# The coriolis parameter
+# the coriolis parameter
 
 @show f₀ 
+
+# and ``g`` the gravitational acceleration,
+
+g = 9.81 # m s⁻²
 
 # is < 0 due to our austral focus.
 # The geostrophic buoyancy field ``b = f₀ ∂_z ψ′``, where ``ψ′``
@@ -203,7 +205,8 @@ model = HydrostaticFreeSurfaceModel(
        tracer_advection = UpwindBiasedThirdOrder(),
                buoyancy = BuoyancyTracer(),
                coriolis = coriolis,
-                closure = (convective_adjustment, horizontal_diffusivity),
+               closure = (horizontal_diffusivity),
+               # closure = (convective_adjustment, horizontal_diffusivity),
                 tracers = :b,
     #boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
     #            forcing = (b=b_forcing,),
@@ -262,7 +265,7 @@ print_progress(sim) = @printf("[%05.2f%%] i: %d, t: %s, max(u): (%6.3e, %6.3e, %
                               maximum(abs, sim.model.velocities.w),
                               prettytime(sim.Δt.Δt))
 
-simulation = Simulation(model, Δt=wizard, stop_time=10days, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=20days, progress=print_progress, iteration_interval=10)
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -335,16 +338,17 @@ fig = Figure(resolution = (2000, 1600))
 
 ax_u = fig[1, 1] = LScene(fig)
 ax_v = fig[1, 2] = LScene(fig)
-ax_w = fig[2, 1] = LScene(fig)
-ax_b = fig[2, 2] = LScene(fig)
+ax_w = fig[1, 3] = LScene(fig)
+ax_b = fig[2, 1] = LScene(fig)
+ax_ζ = fig[2, 2] = LScene(fig)
+ax_χ = fig[2, 3] = LScene(fig)
 
 volume!(ax_u, xu * 1e-3, yu * 1e-3, zu / 10, u′; colorrange=u_lims, kwargs...) 
 volume!(ax_v, xv * 1e-3, yv * 1e-3, zu / 10, v′; colorrange=u_lims, kwargs...) 
 volume!(ax_w, xw * 1e-3, yw * 1e-3, zu / 10, w′; colorrange=w_lims, kwargs...) 
 volume!(ax_b, xc * 1e-3, yc * 1e-3, zc / 10, b′; colorrange=b_lims, kwargs...) 
-
-#volume!(ax_ζ, xζ * 1e-3, yζ * 1e-3, zζ / 10, ζ′; colorrange=ζ_lims, kwargs...) 
-#volume!(ax_χ, xc * 1e-3, yc * 1e-3, zc / 10, χ′; colorrange=χ_lims, kwargs...) 
+volume!(ax_ζ, xζ * 1e-3, yζ * 1e-3, zζ / 10, ζ′; colorrange=ζ_lims, kwargs...) 
+volume!(ax_χ, xc * 1e-3, yc * 1e-3, zc / 10, χ′; colorrange=χ_lims, kwargs...) 
 
 nframes = length(ζ_timeseries.times)
 
