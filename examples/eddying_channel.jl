@@ -266,11 +266,10 @@ b = model.tracers.b
 
 ζ = ComputedField(∂x(v) - ∂y(u))
 
-B = AveragedField(b, dims=(1, 2))
-χ_op = @at (Center, Center, Center) ∂x(b - B)^2 + ∂y(b - B)^2 + ∂z(b - B)^2
+χ_op = @at (Center, Center, Center) ∂x(b)^2 + ∂y(b)^2
 χ = ComputedField(χ_op)
 
-outputs = merge(model.velocities, model.tracers, (ζ=ζ, χ=χ))
+outputs = (b=b, ζ=ζ, χ=χ)
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(100days),
@@ -293,9 +292,6 @@ end
 #
 # We make a volume rendering of the solution using GLMakie.
 
-u_timeseries = FieldTimeSeries("eddying_channel.jld2", "u")
-v_timeseries = FieldTimeSeries("eddying_channel.jld2", "v")
-w_timeseries = FieldTimeSeries("eddying_channel.jld2", "w")
 b_timeseries = FieldTimeSeries("eddying_channel.jld2", "b")
 ζ_timeseries = FieldTimeSeries("eddying_channel.jld2", "ζ")
 χ_timeseries = FieldTimeSeries("eddying_channel.jld2", "χ")
@@ -313,9 +309,6 @@ kwargs = (algorithm = :absorption,
 
 iter = Node(1)
 
-u′ = @lift interior(u_timeseries[$iter])
-v′ = @lift interior(v_timeseries[$iter])
-w′ = @lift interior(w_timeseries[$iter])
 b′ = @lift interior(b_timeseries[$iter]) .- mean(interior(b_timeseries[$iter]))
 ζ′ = @lift interior(ζ_timeseries[$iter])
 χ′ = @lift interior(χ_timeseries[$iter])
@@ -325,27 +318,34 @@ function symmetric_lims(q, iter)
     return (-q_max, q_max)
 end
 
+function sequential_lims(q, iter, scale=1)
+    q_max = maximum(abs, interior(q[iter]))
+    return (0, q_max*scale)
+end
+
 u_lims = @lift symmetric_lims(u_timeseries, $iter)
 w_lims = @lift symmetric_lims(w_timeseries, $iter)
 b_lims = @lift symmetric_lims(b_timeseries, $iter)
 ζ_lims = @lift symmetric_lims(ζ_timeseries, $iter)
-χ_lims = @lift symmetric_lims(χ_timeseries, $iter)
+χ_lims = @lift sequential_lims(χ_timeseries, $iter, 0.001)
 
-fig = Figure(resolution = (2000, 1600))
+fig = Figure(resolution = (2400, 800))
 
-ax_u = fig[1, 1] = LScene(fig)
-ax_v = fig[1, 2] = LScene(fig)
-ax_w = fig[1, 3] = LScene(fig)
-ax_b = fig[2, 1] = LScene(fig)
-ax_ζ = fig[2, 2] = LScene(fig)
-ax_χ = fig[2, 3] = LScene(fig)
+ax_b = fig[1, 1] = LScene(fig, title="b")
+ax_ζ = fig[1, 2] = LScene(fig, title="ζ")
+ax_χ = fig[1, 3] = LScene(fig, title="χ")
 
-volume!(ax_u, xu * 1e-3, yu * 1e-3, zu / 10, u′; colorrange=u_lims, kwargs...) 
-volume!(ax_v, xv * 1e-3, yv * 1e-3, zu / 10, v′; colorrange=u_lims, kwargs...) 
-volume!(ax_w, xw * 1e-3, yw * 1e-3, zu / 10, w′; colorrange=w_lims, kwargs...) 
-volume!(ax_b, xc * 1e-3, yc * 1e-3, zc / 10, b′; colorrange=b_lims, kwargs...) 
-volume!(ax_ζ, xζ * 1e-3, yζ * 1e-3, zζ / 10, ζ′; colorrange=ζ_lims, kwargs...) 
-volume!(ax_χ, xc * 1e-3, yc * 1e-3, zc / 10, χ′; colorrange=χ_lims, kwargs...) 
+function make_title(iter, timeseries)
+    t = timeseries.times[iter]
+    return @sprintf("b, ζ, χ at t = %s", prettytime(t))
+end
+
+title = @lift make_title($iter, ζ_timeseries)
+Label(fig[0, :], title, textsize=60)
+
+volume!(ax_b, xc * 1e-3, yc * 1e-3, zc / 10, b′; colorrange=b_lims, algorithm=:absorption, adsorption=10f0, colormap=:balance)
+volume!(ax_ζ, xζ * 1e-3, yζ * 1e-3, zζ / 10, ζ′; colorrange=ζ_lims, algorithm=:absorption, adsorption=10f0, colormap=:balance)
+volume!(ax_χ, xc * 1e-3, yc * 1e-3, zc / 10, χ′; colorrange=χ_lims, algorithm=:absorption, adsorption=100f0, colormap=:thermal)
 
 nframes = length(ζ_timeseries.times)
 
