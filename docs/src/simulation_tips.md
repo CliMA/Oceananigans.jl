@@ -128,8 +128,7 @@ look like this:
 
 ```julia
 using Oceananigans.Operators
-using Oceananigans.Grids: Center, Face
-using Oceananigans.Fields: KernelFunctionOperation
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 
 @inline fψ_plus_gφ²(i, j, k, grid, f, ψ, g, φ) = @inbounds (f(i, j, k, grid, ψ) + g(i, j, k, grid, φ))^2
 function isotropic_viscous_dissipation_rate_ccc(i, j, k, grid, u, v, w, ν)
@@ -143,7 +142,7 @@ function isotropic_viscous_dissipation_rate_ccc(i, j, k, grid, u, v, w, ν)
 
     ϵ[i, j, k] = ν[i, j, k] * 2 * (Σˣˣ² + Σʸʸ² + Σᶻᶻ² + 2 * (Σˣʸ² + Σˣᶻ² + Σʸᶻ²))
 end
-ε = ComputedField(KernelFunctionOperation(Center, Center, Center, isotropic_viscous_dissipation_rate_ccc, grid;
+ε = ComputedField(KernelFunctionOperation{Center, Center, Center}(isotropic_viscous_dissipation_rate_ccc, grid;
                          computed_dependencies=(u, v, w, ν)))
 ```
 
