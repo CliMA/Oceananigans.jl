@@ -119,8 +119,8 @@ This is a simple workaround that is especially suited for the development stage 
 However, when running this, the code will iterate over the whole domain 4 times to calculate `ε`
 (one for each computed field defined), which is not very efficient.
 
-A different way to calculate `ε` is by using `KernelComputedField`s, where the
-user manually specifies the computing kernel to the compiler. The advantage of this method is that
+A different way to calculate `ε` is by using `KernelFunctionOperations`s, where the
+user manually specifies the computing kernel function to the compiler. The advantage of this method is that
 it's more efficient (the code will only iterate once over the domain in order to calculate `ε`),
 but the disadvantage is that this requires that the has some knowledge of Oceananigans operations
 and how they should be performed on a C-grid. For example calculating `ε` with this approach would
@@ -128,14 +128,11 @@ look like this:
 
 ```julia
 using Oceananigans.Operators
-using KernelAbstractions: @index, @kernel
 using Oceananigans.Grids: Center, Face
-using Oceananigans.Fields: KernelComputedField
+using Oceananigans.Fields: KernelFunctionOperation
 
 @inline fψ_plus_gφ²(i, j, k, grid, f, ψ, g, φ) = @inbounds (f(i, j, k, grid, ψ) + g(i, j, k, grid, φ))^2
-@kernel function isotropic_viscous_dissipation_rate_ccc!(ϵ, grid, u, v, w, ν)
-    i, j, k = @index(Global, NTuple)
-
+function isotropic_viscous_dissipation_rate_ccc(i, j, k, grid, u, v, w, ν)
     Σˣˣ² = ∂xᶜᵃᵃ(i, j, k, grid, u)^2
     Σʸʸ² = ∂yᵃᶜᵃ(i, j, k, grid, v)^2
     Σᶻᶻ² = ∂zᵃᵃᶜ(i, j, k, grid, w)^2
@@ -144,10 +141,10 @@ using Oceananigans.Fields: KernelComputedField
     Σˣᶻ² = ℑxzᶜᵃᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᵃᵃᶠ, u, ∂xᶠᵃᵃ, w) / 4
     Σʸᶻ² = ℑyzᵃᶜᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᵃᵃᶠ, v, ∂yᵃᶠᵃ, w) / 4
 
-    @inbounds ϵ[i, j, k] = ν[i, j, k] * 2 * (Σˣˣ² + Σʸʸ² + Σᶻᶻ² + 2 * (Σˣʸ² + Σˣᶻ² + Σʸᶻ²))
+    ϵ[i, j, k] = ν[i, j, k] * 2 * (Σˣˣ² + Σʸʸ² + Σᶻᶻ² + 2 * (Σˣʸ² + Σˣᶻ² + Σʸᶻ²))
 end
-ε = KernelComputedField(Center, Center, Center, isotropic_viscous_dissipation_rate_ccc!, model;
-                         computed_dependencies=(u, v, w, ν))
+ε = ComputedField(KernelFunctionOperation(Center, Center, Center, isotropic_viscous_dissipation_rate_ccc, grid;
+                         computed_dependencies=(u, v, w, ν)))
 ```
 
 
