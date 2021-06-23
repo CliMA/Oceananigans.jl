@@ -32,7 +32,7 @@ using Oceananigans.Units: minute, minutes, hour
 #
 # We use 32³ grid points with 2 m grid spacing in the horizontal and
 # varying spacing in the vertical, with higher resolution closer to the
-# surface
+# surface,
 
 σ = 1.1 # stretching factor
 Nz = 24
