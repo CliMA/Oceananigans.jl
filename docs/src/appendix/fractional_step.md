@@ -21,12 +21,12 @@ we compute explicitly (see \S\ref{sec:time-stepping}).
 
 The projection is then performed
 ```math
-   \boldsymbol{v}^{n+1} = \boldsymbol{v}^\star - \Delta t \, \boldsymbol{\nabla} \phi^{n+1} \, ,
+   \boldsymbol{v}^{n+1} = \boldsymbol{v}^\star - \Delta t \, \boldsymbol{\nabla} p^{n+1} \, ,
 ```
 to obtain a divergence-free velocity field ``\boldsymbol{v}^{n+1}``. Here the projection is performed by solving an elliptic
-problem for the pressure ``\phi^{n+1}`` with the boundary condition
+problem for the pressure ``p^{n+1}`` with the boundary condition
 ```math
-  \boldsymbol{\hat{n}} \boldsymbol{\cdot} \boldsymbol{\nabla} \phi^{n+1} |_{\partial\Omega} = 0 \, .
+  \boldsymbol{\hat{n}} \boldsymbol{\cdot} \boldsymbol{\nabla} p^{n+1} |_{\partial\Omega} = 0 \, .
 ```
 
 [Orszag86](@cite) and [Brown01](@cite) raise an important issue regarding these fractional step 
