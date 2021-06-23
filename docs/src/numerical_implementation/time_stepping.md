@@ -14,16 +14,16 @@ to time step ``n+1`` at ``t_{n+1}`` is
                                     + \boldsymbol{F}_{\boldsymbol{v}} \Big ] \, \mathrm{d} t \, ,
     \end{equation}
 ```
-where the superscript ``n`` and ``n+1`` imply evaluation at ``t_n`` and ``t_{n+1}``, 
-such that ``\boldsymbol{v}^n \equiv \boldsymbol{v}(t=t_n)``.
-The crux of the fractional step method is to treat the pressure term 
-``\boldsymbol{\nabla} p_{\rm{non}}`` implicitly using the approximation
+where the superscript ``n`` and ``n+1`` imply evaluation at ``t_n`` and ``t_{n+1}``, such that 
+``\boldsymbol{v}^n \equiv \boldsymbol{v}(t=t_n)``. The crux of the fractional step method is 
+to treat the pressure term ``\boldsymbol{\nabla} p_{\rm{non}}`` implicitly using the approximation
 ```math
 \int_{t_n}^{t_{n+1}} \boldsymbol{\nabla} p_{\rm{non}} \, \mathrm{d} t \approx 
     \Delta t \boldsymbol{\nabla} p_{\rm{non}}^{n+1} \, ,
 ```
-while treating the rest of the terms on the right hand side of \eqref{eq:momentum-time-integral} explicitly.
-The implicit treatment of pressure ensures that the velocity field obtained at time step ``n+1`` is divergence-free.
+while treating the rest of the terms on the right hand side of \eqref{eq:momentum-time-integral} 
+explicitly. The implicit treatment of pressure ensures that the velocity field obtained at 
+time step ``n+1`` is divergence-free.
 
 To effect such a fractional step method, we define an intermediate velocity field ``\boldsymbol{v}^\star`` such that
 ```math
@@ -59,8 +59,8 @@ for any time-dependent function ``G(t)``, while a second-order Adams-Bashforth m
         - \left ( \tfrac{1}{2} + \chi \right ) G^{n-1} \right ] \, ,
     \end{equation}
 ```
-where ``\chi`` is a parameter. Ascher et al. (1995) claim that ``\chi = \tfrac{1}{8}`` is optimal; 
-``\chi=-\tfrac{1}{2}`` yields the forward Euler scheme.
+where ``\chi`` is a parameter. [Ascher95](@cite) claim that ``\chi = \tfrac{1}{8}`` is optimal; 
+``\chi = -\tfrac{1}{2}`` yields the forward Euler scheme.
 
 Combining the equations for ``\boldsymbol{v}^\star`` and the time integral of the momentum equation yields
 ```math
