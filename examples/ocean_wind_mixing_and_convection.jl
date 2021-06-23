@@ -3,6 +3,7 @@
 # This example simulates mixing by three-dimensional turbulence in an ocean surface
 # boundary layer driven by atmospheric winds and convection. It demonstrates:
 #
+#   * How to set-up a grid with varying spacing in the vertical direction
 #   * How to use the `SeawaterBuoyancy` model for buoyancy with a linear equation of state.
 #   * How to use a turbulence closure for large eddy simulation.
 #   * How to use a function to impose a boundary condition.
@@ -30,9 +31,18 @@ using Oceananigans.Units: minute, minutes, hour
 # ## The grid
 #
 # We use 32³ grid points with 2 m grid spacing in the horizontal and
-# 1 m spacing in the vertical,
+# varying spacing in the vertical, with higher resolution closer to the
+# surface
 
-grid = RegularRectilinearGrid(size=(32, 32, 32), extent=(64, 64, 32))
+S = 1.1 # stretching factor
+Nz = 24
+Lz = 32
+hyperbolically_spaced_faces(k) = Lz*(-1 + (1 + tanh(S * ( (k - 1) / Nz - 1)) / tanh(S)))
+grid = VerticallyStretchedRectilinearGrid(size=(32, 32, Nz), 
+                                          x=(0, 64), y=(0, 64), z_faces=hyperbolically_spaced_faces,
+                                          halo=(3,3,3),
+                                          )
+
 
 # ## Buoyancy that depends on temperature and salinity
 #
