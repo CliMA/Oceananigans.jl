@@ -23,7 +23,7 @@ const Lz = 3kilometers    # depth [m]
 # We use a resolution that implies O(10 km) grid spacing in the horizontal
 # and a vertical grid spacing that varies from O(10 m) to O(100 m),
 
-Nx = 32
+Nx = 64
 Ny = 2Nx
 Nz = 32
 
@@ -198,7 +198,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 # We build a model on a BetaPlane with an ImplicitFreeSurface.
 
 model = HydrostaticFreeSurfaceModel(
-           architecture = CPU(),                                           
+           architecture = CPU(),
                    grid = grid,
            free_surface = ImplicitFreeSurface(gravitational_acceleration=g),
      momentum_advection = WENO5(),
@@ -210,20 +210,6 @@ model = HydrostaticFreeSurfaceModel(
     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                 forcing = (b=b_forcing,),
 )
-
-#=
-model = IncompressibleModel(
-           architecture = CPU(),                                           
-                   grid = grid,
-              advection = UpwindBiasedThirdOrder(),
-               buoyancy = BuoyancyTracer(),
-               coriolis = coriolis,
-                closure = horizontal_diffusivity,
-                tracers = :b,
-    #boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
-    #            forcing = (b=b_forcing,),
-)
-=#
 
 # # InitiaL conditions
 #
@@ -250,14 +236,23 @@ using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 wizard = TimeStepWizard(cfl=0.15, Δt=5minutes, max_change=1.1, max_Δt=2hours, min_Δt=1minute,
                         cell_advection_timescale = accurate_cell_advection_timescale)
 
-print_progress(sim) = @printf("[%05.2f%%] i: %d, t: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
-                              100 * (sim.model.clock.time / sim.stop_time),
-                              sim.model.clock.iteration,
-                              prettytime(sim.model.clock.time),
-                              maximum(abs, sim.model.velocities.u),
-                              maximum(abs, sim.model.velocities.v),
-                              maximum(abs, sim.model.velocities.w),
-                              prettytime(sim.Δt.Δt))
+wall_clock = [time_ns()]
+
+function print_progress(sim)
+    @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
+            100 * (sim.model.clock.time / sim.stop_time),
+            sim.model.clock.iteration,
+            prettytime(sim.model.clock.time),
+            prettytime(1e-9 * (time_ns() - wall_clock[1])),
+            maximum(abs, sim.model.velocities.u),
+            maximum(abs, sim.model.velocities.v),
+            maximum(abs, sim.model.velocities.w),
+            prettytime(sim.Δt.Δt))
+
+    wall_clock[1] = time_ns()
+    
+    return nothing
+end
 
 simulation = Simulation(model, Δt=wizard, stop_time=20days, progress=print_progress, iteration_interval=10)
 
