@@ -98,9 +98,8 @@ then added to ``G_T`` which also lives at the cell centers.
 
 ## Momentum advection
 
-The advection terms that make up the ``\mathbf{G}`` terms in equations \eqref{eq:horizontalMomentum} and
-\eqref{eq:verticalMomentum} can be rewritten using the incompressibility (``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v} = 0``) 
-as, e.g,
+The advection terms that appear in model equations can be rewritten using the incompressibility 
+(``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v} = 0``) as, e.g,
 ```math
 \renewcommand{\div}[1] {\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( #1 \right )}
 \begin{align}
@@ -121,9 +120,9 @@ For example, the ``x``-momentum advection operator is discretized as
 \right] \, ,
 ```
 where ``\overline{V}^x`` is the average of the volumes of the cells on either side of the face 
-in question. Calculating ``\partial(uu)/\partial x`` can be performed by interpolating ``A_x u`` 
-and ``u`` onto the cell centers then multiplying them and differencing them back onto the faces. 
-However, in the case of the the two other terms, ``\partial(vu)/\partial y`` and ``\partial(wu)/\partial z``, 
+in question. Calculating ``\partial_x (uu)`` can be performed by interpolating ``A_x u`` and 
+``u`` onto the cell centers then multiplying them and differencing them back onto the faces. 
+However, in the case of the the two other terms, ``\partial_y (vu)`` and ``\partial_z (wu)``, 
 the two variables must be interpolated onto the cell edges to be multiplied then differenced 
 back onto the cell faces.
 
