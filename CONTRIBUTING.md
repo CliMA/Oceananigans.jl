@@ -2,17 +2,47 @@
 
 Thank you for considering contributing to Oceananigans! 
 
-Please feel free to ask us questions and chat with us at any time if you're
-unsure about anything.
+Feel free to ask us questions and chat with us at any time about any topic at all
+by 
 
-Best way to get in touch is to either just open a GitHub issue (don't be shy!) or
-to drop by the #oceananigans channel on the Julia Slack (see
-[https://julialang.org/slack/](https://julialang.org/slack/)).
+* [Opening a GitHub issue](https://github.com/CliMA/Oceananigans.jl/issues/new/choose)
+ 
+* [Creating a GitHub discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new)
+
+* Sending a message to the [#oceananigans channel](https://julialang.slack.com/archives/C01D24C0CAH) on [Julia Slack](https://julialang.org/slack/).
 
 We follow the [ColPrac guide](https://github.com/SciML/ColPrac) for collaborative
-practices. New contributors should make sure to read that guide.
+practices. We ask that new contributors read that guide before submitting a pull request.
 
-## What can I do?
+## Creating issues
+
+The simplest way to contribute to Oceananigans is to create or comment on issues and discussions.
+
+The most useful bug reports
+
+* Provide an explicit copy (not just a link) to a small code snippet that reproduces the bug in the latest tagged version of Oceananigans
+
+* Paste the entire error (even when it's super long) received when running the code snippet
+
+* Report the Oceananigans version, machine, and other details of the computational environment in which the bug was created
+
+Discussions are recommended for asking questions about, for example, the user interface, implementation details, science, and life in general.
+
+## But I want to write _code_!
+
+* New users help write Oceananigans code and documentation by [forking the Oceananigans repository](https://docs.github.com/en/github/collaborating-with-pull-requests/working-with-forks), [using git](https://guides.github.com/introduction/git-handbook/) to edit code and docs, and then creating a [pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork). Pull requests are reviewed by Oceananigans collaborators.
+
+* Once a pull request is reviewed and approved by collaborators, the pull request author has the responsibility of merging the pull request into the Oceananigans main branch.
+
+* Note: for small or minor changes (such as fixing a typo in documentation), the [GitHub editor](https://docs.github.com/en/github/managing-files-in-a-repository/managing-files-on-github/editing-files-in-your-repository) is super useful for forking and opening a pull request with a single click.
+
+## What is a "collaborator" and how can I become one?
+
+* Collaborators have permissions to review pull requests and  status allows a contributor to review pull requests in addition to opening them. Collaborators can also create branches in the main Oceananigans repository.
+
+* We ask that new contributors try their hand at forking Oceananigans, and opening and merging a pull request before requesting collaborator status.
+
+## What's a good way to start developing Oceananigans?
 
 * Tackle an existing issue. We keep a list of [good first issues](https://github.com/CLiMA/Oceananigans.jl/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
   that are self-contained and suitable for a newcomer to try and work on.
