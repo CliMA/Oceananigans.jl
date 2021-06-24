@@ -120,7 +120,8 @@ compute!(ε)
 
 This is a simple workaround that is especially suited for the development stage of a simulation.
 However, when running this, the code will iterate over the whole domain 4 times to calculate `ε`
-(one for each computed field defined), which is not very efficient.
+(one for each computed field defined), which is not very efficient and may slow down your simulation
+if this diagnostic is being calculated very often.
 
 A different way to calculate `ε` is by using `KernelFunctionOperations`s, where the
 user manually specifies the computing kernel function to the compiler. The advantage of this method is that
@@ -143,10 +144,11 @@ function isotropic_viscous_dissipation_rate_ccc(i, j, k, grid, u, v, w, ν)
     Σˣᶻ² = ℑxzᶜᵃᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᵃᵃᶠ, u, ∂xᶠᵃᵃ, w) / 4
     Σʸᶻ² = ℑyzᵃᶜᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᵃᵃᶠ, v, ∂yᵃᶠᵃ, w) / 4
 
-    return ν[i, j, k] * 2 * (Σˣˣ² + Σʸʸ² + Σᶻᶻ² + 2 * (Σˣʸ² + Σˣᶻ² + Σʸᶻ²))
+    return ν * 2 * (Σˣˣ² + Σʸʸ² + Σᶻᶻ² + 2 * (Σˣʸ² + Σˣᶻ² + Σʸᶻ²))
 end
 ε = ComputedField(KernelFunctionOperation{Center, Center, Center}(isotropic_viscous_dissipation_rate_ccc, grid;
                          computed_dependencies=(u, v, w, ν)))
+compute!(ε)
 ```
 
 
@@ -157,8 +159,14 @@ and
 [LESbrary.jl](https://github.com/CliMA/LESbrary.jl/blob/master/src/TurbulenceStatistics/shear_production.jl).
 Users should first look there before writing any kernel by hand and are always welcome to [start an
 issue on Github](https://github.com/CliMA/Oceananigans.jl/issues/new) if they need help to write a
-different kernel.
+different kernel. As an illustration, the calculation of `ε` using Oceanostics.jl (after installing the package)
+which works on both CPUs and GPUs is simply
 
+```julia
+using Oceanostics: IsotropicPseudoViscousDissipationRate
+ε = IsotropicViscousDissipationRate(model, u, v, w, ν)
+compute!(ε)
+```
 
 
 ### Try to decrease the memory-use of your runs
