@@ -43,11 +43,13 @@ and another for taking the difference of a face-centered variable and projecting
 In order to add or multiply variables that are defined at different points they are interpolated. 
 In our case, linear interpolation or averaging is employed. Once again, there are two averaging 
 operators, one for each direction,
+```math
 \begin{equation}
   \overline{f}^x = \frac{f_E + f_W}{2} \, , \quad
   \overline{f}^y = \frac{f_N + f_S}{2} \, , \quad
   \overline{f}^z = \frac{f_T + f_B}{2} \, .
 \end{equation}
+```
 
 Additionally, three averaging operators must be defined for each direction. One for taking the 
 average of a cell-centered  variable and projecting it onto the cell faces
