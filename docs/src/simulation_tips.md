@@ -96,6 +96,9 @@ For example, in the example below, calculating `u²` works in both CPUs and GPUs
 `ε` will not compile on GPUs when we call the command `compute!`:
 
 ```julia
+using Oceananigans
+grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+model = IncompressibleModel(grid=grid, closure=IsotropicDiffusivity(ν=1e-6))
 u, v, w = model.velocities
 ν = model.closure.ν
 u² = ComputedField(u^2)
@@ -140,7 +143,7 @@ function isotropic_viscous_dissipation_rate_ccc(i, j, k, grid, u, v, w, ν)
     Σˣᶻ² = ℑxzᶜᵃᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᵃᵃᶠ, u, ∂xᶠᵃᵃ, w) / 4
     Σʸᶻ² = ℑyzᵃᶜᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᵃᵃᶠ, v, ∂yᵃᶠᵃ, w) / 4
 
-    ϵ[i, j, k] = ν[i, j, k] * 2 * (Σˣˣ² + Σʸʸ² + Σᶻᶻ² + 2 * (Σˣʸ² + Σˣᶻ² + Σʸᶻ²))
+    return ν[i, j, k] * 2 * (Σˣˣ² + Σʸʸ² + Σᶻᶻ² + 2 * (Σˣʸ² + Σˣᶻ² + Σʸᶻ²))
 end
 ε = ComputedField(KernelFunctionOperation{Center, Center, Center}(isotropic_viscous_dissipation_rate_ccc, grid;
                          computed_dependencies=(u, v, w, ν)))
