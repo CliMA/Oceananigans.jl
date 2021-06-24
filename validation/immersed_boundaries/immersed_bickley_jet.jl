@@ -82,7 +82,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     cᵢ(x, y, z) = C(y, grid.Ly)
 
     set!(regular_model, u=uᵢ, v=vᵢ, c=cᵢ)
-    set!(immersed_model, u=uᵢ, v=vᵢ, c=cᵢ)
+    set!(immersed_model, u=uᵢ, v=vᵢ, c=cᵢ, mass=1)
 
     wall_clock = [time_ns()]
 
