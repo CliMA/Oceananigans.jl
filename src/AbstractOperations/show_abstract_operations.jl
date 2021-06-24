@@ -2,7 +2,7 @@ import Oceananigans: short_show
 using Oceananigans.Grids: domain_string
 using Oceananigans.Fields: show_location
 
-for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Derivative")
+for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Derivative", "KernelFunctionOperation")
     op = eval(Symbol(op_string))
     @eval begin
         operation_name(::$op) = $op_string
