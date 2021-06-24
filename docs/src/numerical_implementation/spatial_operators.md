@@ -82,9 +82,9 @@ where ``\boldsymbol{f} = (f_x, f_y, f_z)`` is the flux with components defined n
 faces, and ``V`` is the volume of the cell. The presence of a solid boundary is indicated by 
 setting the appropriate flux normal to the boundary to zero.
 
-A similar divergence operator can be defined for a face-centered quantity. The divergence of 
-the flux of ``T`` over a cell,  ``\boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{v} T)``, 
-required in the evaluation of ``G_T``, for example, is then
+A similar divergence operator can be defined for a face-centered quantity. The divergence of,
+e.g., the flux of ``T`` over a cell, ``\boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{v} T)``, 
+is then
 ```math
 \renewcommand{\div}[1] {\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( #1 \right )}
 \div{\boldsymbol{v} T}
@@ -93,8 +93,7 @@ required in the evaluation of ``G_T``, for example, is then
                    + \delta_z^{aac} (A_z w \overline{T}^{aaf}) \right] \, ,
 ```
 where ``T`` is interpolated onto the cell faces where it can be multiplied by the velocities, 
-which are then differenced and  projected onto the cell centers where they added together and 
-then added to ``G_T`` which also lives at the cell centers.
+which are then differenced and projected onto the cell centers where they added together.
 
 ## Momentum advection
 
