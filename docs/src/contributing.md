@@ -1,12 +1,49 @@
 # Contributors Guide
 
-Thank you for considering contributing to Oceananigans! This short guide will
-give you ideas on how you can contribute and help you make a contribution.
+Thank you for considering contributions to Oceananigans! We hope this guide
+helps you make a contribution.
 
-Please feel free to ask us questions and chat with us at any time if you're
-unsure about anything.
+Feel free to ask us questions and chat with us at any time about any topic at all
+by 
 
-## What can I do?
+* [Opening a GitHub issue](https://github.com/CliMA/Oceananigans.jl/issues/new/choose)
+ 
+* [Creating a GitHub discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new)
+
+* Sending a message to the [#oceananigans channel](https://julialang.slack.com/archives/C01D24C0CAH) on [Julia Slack](https://julialang.org/slack/).
+
+## Creating issues
+
+The simplest way to contribute to Oceananigans is to create or comment on issues and discussions.
+
+The most useful bug reports:
+
+* Provide an explicit code snippet --- not just a link --- that reproduces the bug in the latest tagged version of Oceananigans. This is sometimes called the ["minimal working example"](https://en.wikipedia.org/wiki/Minimal_working_example). Reducing bug-producing code to a minimal example can dramatically decrease the time it takes to resolve an issue.
+
+* Paste the _entire_ error received when running the code snippet, even if it's unbelievably long.
+
+* Use triple backticks (```` ``` ````) to enclose code snippets, and other [markdown formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax) to make your issue easy and quick to read.
+
+* Report the Oceananigans version, Julia version, machine (especially if using a GPU) and any other possibly useful details of the computational environment in which the bug was created.
+
+Discussions are recommended for asking questions about (for example) the user interface, implementation details, science, and life in general.
+
+## But I want to _code_!
+
+* New users help write Oceananigans code and documentation by [forking the Oceananigans repository](https://docs.github.com/en/github/collaborating-with-pull-requests/working-with-forks), [using git](https://guides.github.com/introduction/git-handbook/) to edit code and docs, and then creating a [pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork). Pull requests are reviewed by Oceananigans collaborators.
+
+* Once a pull request is reviewed and approved by collaborators, the pull request author has the responsibility of merging the pull request into the Oceananigans main branch.
+
+* Note: for small or minor changes (such as fixing a typo in documentation), the [GitHub editor](https://docs.github.com/en/github/managing-files-in-a-repository/managing-files-on-github/editing-files-in-your-repository) is super useful for forking and opening a pull request with a single click.
+
+## What is a "collaborator" and how can I become one?
+
+* Collaborators have permissions to review pull requests and  status allows a contributor to review pull requests in addition to opening them. Collaborators can also create branches in the main Oceananigans repository.
+
+* We ask that new contributors try their hand at forking Oceananigans, and opening and merging a pull request before requesting collaborator status.
+
+
+## What's a good way to start developing Oceananigans?
 
 * Tackle an existing issue. We keep a list of [good first issues](https://github.com/CLiMA/Oceananigans.jl/issues?q=is%3Aissue+is%3Aopen+label%3A%22good+first+issue%22)
   that are self-contained and suitable for a newcomer to try and work on.
@@ -33,7 +70,7 @@ is anything you need to know beforehand.
   include multiple bug fixes in a single pull request, but they should be related.
   For unrelated changes, please submit multiple pull requests.
 * Do not commit changes to files that are irrelevant to your feature or bugfix
-  (eg: .gitignore).
+  (eg: `.gitignore`).
 * Be willing to accept criticism and work on improving your code; we don't want
   to break other users' code, so care must be taken not to introduce bugs. We
   discuss pull requests and keep working on them until we believe we've done a
@@ -81,6 +118,9 @@ Oceananigans or by requesting something you think is missing.
 Your development environment is now ready!
 
 ## Pull Requests
+
+We follow the [ColPrac guide](https://github.com/SciML/ColPrac) for collaborative
+practices. We ask that new contributors read that guide before submitting a pull request.
 
 Changes and contributions should be made via GitHub pull requests against the ``master`` branch.
 
