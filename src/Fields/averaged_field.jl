@@ -3,6 +3,8 @@ using Statistics
 using Oceananigans.Grids
 using Oceananigans.Grids: interior_parent_indices
 
+import CUDA
+
 struct AveragedField{X, Y, Z, S, A, D, G, T, N, O} <: AbstractReducedField{X, Y, Z, A, G, T, N}
             data :: D
     architecture :: A
@@ -59,7 +61,7 @@ Compute the average of `avg.operand` and store the result in `avg.data`.
 """
 function compute!(avg::AveragedField, time=nothing)
     compute_at!(avg.operand, time)
-    mean!(avg, avg.operand)
+    CUDA.@sync blocking=true mean!(avg, avg.operand)
     return nothing
 end
 
