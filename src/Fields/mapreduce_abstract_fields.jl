@@ -16,6 +16,7 @@ for function_name in (:sum, :prod, :maximum, :minimum, :all, :any)
     end
 end
 
+# For the reason why this dispatch is needed, see: https://github.com/CliMA/Oceananigans.jl/issues/1767
 function Statistics.mean!(R::AbstractReducedField, A::AbstractArray)
     sum!(R, A; init=true)
     x = max(1, length(R)) // length(A)
