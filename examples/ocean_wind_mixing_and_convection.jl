@@ -236,6 +236,7 @@ function sequential_levels(c, clims, nlevels=20)
     cmax > clims[2] && (levels = vcat(levels, [cmax]))
     return clims, levels
 end
+nothing # hide
 
 # We start the animation at `t = 10minutes` since things are pretty boring till then:
 
