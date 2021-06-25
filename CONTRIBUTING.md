@@ -18,17 +18,19 @@ practices. We ask that new contributors read that guide before submitting a pull
 
 The simplest way to contribute to Oceananigans is to create or comment on issues and discussions.
 
-The most useful bug reports
+The most useful bug reports:
 
-* Provide an explicit copy (not just a link) to a small code snippet that reproduces the bug in the latest tagged version of Oceananigans
+* Provide an explicit code snippet --- not just a link --- that reproduces the bug in the latest tagged version of Oceananigans. This is sometimes called the ["minimal working example"](https://en.wikipedia.org/wiki/Minimal_working_example#:~:text=In%20computing%2C%20a%20minimal%20working,to%20be%20demonstrated%20and%20reproduced.&text=A%20minimal%20working%20example%20may,short%20self%2Dcontained%20correct%20example.). Reducing bug-producing code to a minimal example can dramatically decrease the time it takes to resolve an issue.
 
-* Paste the entire error (even when it's super long) received when running the code snippet
+* Paste the _entire_ error received when running the code snippet, even if it's unbelievably long.
 
-* Report the Oceananigans version, machine, and other details of the computational environment in which the bug was created
+* Use triple backticks (```) to enclose code snippets, and other [markdown formatting syntax](https://docs.github.com/en/github/writing-on-github/getting-started-with-writing-and-formatting-on-github/basic-writing-and-formatting-syntax) to make your issue easy and quick to read.
 
-Discussions are recommended for asking questions about, for example, the user interface, implementation details, science, and life in general.
+* Report the Oceananigans version, Julia version, machine (especially if using a GPU) and any other possibly useful details of the computational environment in which the bug was created.
 
-## But I want to write _code_!
+Discussions are recommended for asking questions about (for example) the user interface, implementation details, science, and life in general.
+
+## But I want to _code_!
 
 * New users help write Oceananigans code and documentation by [forking the Oceananigans repository](https://docs.github.com/en/github/collaborating-with-pull-requests/working-with-forks), [using git](https://guides.github.com/introduction/git-handbook/) to edit code and docs, and then creating a [pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork). Pull requests are reviewed by Oceananigans collaborators.
 
