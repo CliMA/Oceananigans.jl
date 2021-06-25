@@ -1,10 +1,12 @@
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "..")) 
+
+
 ENV["GKSwstype"] = "nul"
 using Plots
 using Measures
 
 using Printf
 using Statistics
-using CUDA
 
 using Oceananigans
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
