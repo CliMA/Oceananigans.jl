@@ -1,5 +1,6 @@
 ENV["GKSwstype"] = "nul"
 using Plots
+using Measures
 
 using Printf
 using Statistics
@@ -21,9 +22,9 @@ C(y, L) = sin(2π * y / L)
 # Slightly off-center vortical perturbations
 ψ̃(x, y, ℓ, k) = exp(-(y + ℓ/10)^2 / 2ℓ^2) * cos(k * x) * cos(k * y)
 
-# Vortical velocity fields (ũ, ṽ) = (-∂_y, +∂_x) ψ̃
-ũ(x, y, ℓ, k) = + ψ̃(x, y, ℓ, k) * (k * tan(k * y) + y / ℓ^2) 
-ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x) 
+# Vortical velocity fields (ũ, ṽ) = (-∂_y, +∂_x) ψ̃
+ũ(x, y, ℓ, k) = + ψ̃(x, y, ℓ, k) * (k * tan(k * y) + y / ℓ^2) 
+ṽ(x, y, ℓ, k) = - ψ̃(x, y, ℓ, k) * k * tan(k * x) 
 
 """
     run_bickley_jet(output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0,
@@ -77,8 +78,8 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     k = 0.5 # Sinusoidal wavenumber
 
     # Total initial conditions
-    uᵢ(x, y, z) = U(y) + ϵ * ũ(x, y, ℓ, k)
-    vᵢ(x, y, z) = ϵ * ṽ(x, y, ℓ, k)
+    uᵢ(x, y, z) = U(y) + ϵ * ũ(x, y, ℓ, k)
+    vᵢ(x, y, z) = ϵ * ṽ(x, y, ℓ, k)
     cᵢ(x, y, z) = C(y, grid.Ly)
 
     set!(regular_model, u=uᵢ, v=vᵢ, c=cᵢ)
@@ -147,16 +148,16 @@ function visualize_immersed_bickley_jet(experiment_name)
     regular_filepath = "regular_" * experiment_name * ".jld2"
     immersed_filepath = "immersed_" * experiment_name * ".jld2"
 
-     regular_u_timeseries = FieldTimeSeries(regular_filepath,  "u")
+    regular_u_timeseries = FieldTimeSeries(regular_filepath,  "u")
     immersed_u_timeseries = FieldTimeSeries(immersed_filepath, "u")
 
-     regular_v_timeseries = FieldTimeSeries(regular_filepath,  "v")
+    regular_v_timeseries = FieldTimeSeries(regular_filepath,  "v")
     immersed_v_timeseries = FieldTimeSeries(immersed_filepath, "v")
 
-     regular_ζ_timeseries = FieldTimeSeries(regular_filepath,  "ζ")
+    regular_ζ_timeseries = FieldTimeSeries(regular_filepath,  "ζ")
     immersed_ζ_timeseries = FieldTimeSeries(immersed_filepath, "ζ")
 
-     regular_c_timeseries = FieldTimeSeries(regular_filepath,  "c")
+    regular_c_timeseries = FieldTimeSeries(regular_filepath,  "c")
     immersed_c_timeseries = FieldTimeSeries(immersed_filepath, "c")
 
     regular_grid = regular_c_timeseries.grid
@@ -251,6 +252,85 @@ function visualize_immersed_bickley_jet(experiment_name)
     mp4(anim, "differences_" * experiment_name * ".mp4", fps = 8)
 end
 
+"""
+    analyze_bickley_jet(experiment_name)
+
+Analyze the Bickley jet data associated with `experiment_name`.
+"""
+
+function analyze_immersed_bickley_jet(experiment_name)
+
+    @info "    Analyzing IBM Results for Velocity and Tracer Concentration... "
+
+    regular_filepath = "regular_" * experiment_name * ".jld2"
+    immersed_filepath = "immersed_" * experiment_name * ".jld2"
+
+    regular_v_timeseries = FieldTimeSeries(regular_filepath,  "v")
+    immersed_v_timeseries = FieldTimeSeries(immersed_filepath, "v")
+
+    immersed_m_timeseries = FieldTimeSeries(immersed_filepath, "mass")
+    regular_c_timeseries = FieldTimeSeries(regular_filepath,  "c")
+    
+    xv, yv, zv = nodes(regular_v_timeseries)
+    xm, ym, zm = nodes(immersed_m_timeseries)
+        
+    # Finding the rms surface normal velocity (should be zero)
+    function rms_normal(r_v_series, im_v_series)
+        
+        time_amt = length(r_v_series.times);
+        last_y_fluid = size(r_v_series)[2];
+        
+        r_norm_rms = sqrt.(sum(r_v_series[:,last_y_fluid,1,:].^2, dims = 2)./time_amt)
+        im_norm_rms = sqrt.(sum(im_v_series[:,last_y_fluid,1,:].^2, dims = 2)./time_amt)
+        
+        return r_norm_rms, im_norm_rms
+    end
+
+    regular_norm_rms, immersed_norm_rms = rms_normal(regular_v_timeseries, immersed_v_timeseries);
+    
+    # largest value for plotting
+    max_norm = round(maximum(immersed_norm_rms), sigdigits = 2, RoundUp);
+    
+    @info "    Plotting the surface normal velocity..."
+
+    norm_plot = plot(regular_v_timeseries.grid.xC, regular_norm_rms, label = "regular", yformatter = :scientific,
+    color = :red, lw = 3, xlabel = "x", ylabel = "Vⁿ", legend = :bottomright)
+    plot!(regular_v_timeseries.grid.xC, immersed_norm_rms, label = "immersed", color = :blue, lw = 3)
+    plot!(yticks = 0:max_norm/5:max_norm, guidefontsize = 14, titlefont=14,legendfont = 10, 
+        tickfont = 8)
+        
+    # Finding the area integrated concentration in time
+
+    function area_int_concentration(r_m_series, im_m_series, xm, ym)
+        
+        last_y = size(r_m_series)[2];
+        
+        im_C = (sum(im_m_series[1:last_y,1:last_y,1,:], dims = 1:2)[1,1,:])*(ym[2]-ym[1])*(xm[2]-xm[1]);
+        
+        return im_C
+    end
+
+    immersed_concent = area_int_concentration(regular_c_timeseries, immersed_m_timeseries, xm, ym);
+    
+    #taking the percent leakage between IBM and nonIBM (which does not change from initial)
+    percent_leakage_m = (abs.(immersed_concent[1] .- immersed_concent) ./ immersed_concent[1]) * 100;
+    
+    @info "    Plotting the tracer concentration leakage..."
+    
+    concent_diff = plot(immersed_m_timeseries.times, percent_leakage_m, yformatter = :scientific,
+        color = :blue, xlabel = "t", ylabel = "% Concentration Leakage", legend = false, lw = 3,
+        guidefontsize = 14, titlefont=14,legendfont = 10, tickfont = 8)
+        
+    results_plot = plot(norm_plot, concent_diff,
+             title = ["Normal Velocity" "% Change in Area Integrated Concentration"],
+             layout = (1, 2), size = (1400, 500), left_margin=10mm, bottom_margin=10mm)
+    
+    Plots.savefig(results_plot, "Analysis_" * experiment_name * ".png")
+    
+end
+
+
 advection = WENO5()
-experiment_name = run_bickley_jet(advection=advection, Nh=32, stop_time=200)
+experiment_name = run_bickley_jet(advection=advection, Nh=64, stop_time=200)
 visualize_immersed_bickley_jet(experiment_name)
+analyze_immersed_bickley_jet(experiment_name)
