@@ -20,7 +20,7 @@ The simplest way to contribute to Oceananigans is to create or comment on issues
 
 The most useful bug reports:
 
-* Provide an explicit code snippet --- not just a link --- that reproduces the bug in the latest tagged version of Oceananigans. This is sometimes called the ["minimal working example"](https://en.wikipedia.org/wiki/Minimal_working_example#:~:text=In%20computing%2C%20a%20minimal%20working,to%20be%20demonstrated%20and%20reproduced.&text=A%20minimal%20working%20example%20may,short%20self%2Dcontained%20correct%20example.). Reducing bug-producing code to a minimal example can dramatically decrease the time it takes to resolve an issue.
+* Provide an explicit code snippet --- not just a link --- that reproduces the bug in the latest tagged version of Oceananigans. This is sometimes called the ["minimal working example"](https://en.wikipedia.org/wiki/Minimal_working_example). Reducing bug-producing code to a minimal example can dramatically decrease the time it takes to resolve an issue.
 
 * Paste the _entire_ error received when running the code snippet, even if it's unbelievably long.
 
@@ -68,4 +68,3 @@ is anything you need to know beforehand.
 We also hang out on the #oceananigans channel on Julia Slack, which is a great
 place to discuss anything Oceananigans-related, especially contributions! To
 join the Julia Slack, go to [https://julialang.org/slack/](https://julialang.org/slack/).
-
