@@ -1,7 +1,7 @@
 # Contributors Guide
 
-Thank you for considering contributing to Oceananigans! This short guide will
-give you ideas on how you can contribute and help you make a contribution.
+Thank you for considering contributions to Oceananigans! We hope this guide
+helps you make a contribution.
 
 Feel free to ask us questions and chat with us at any time about any topic at all
 by 
