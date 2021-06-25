@@ -45,6 +45,9 @@ grid = VerticallyStretchedRectilinearGrid(size = (32, 32, Nz),
                                           y = (0, 64),
                                           z_faces = hyperbolically_spaced_faces)
 
+# We can plot the vertical spacing against the depth to have an idea of how the vertical
+# resolution is varying.
+
 plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz], marker=:circle, ylabel="Depth (m)", xlabel="Vertical spacing (m)", legend=nothing)
 
 # ## Buoyancy that depends on temperature and salinity
