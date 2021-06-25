@@ -61,7 +61,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
                                          advection = advection,
                                          timestepper = :RungeKutta3,
                                          grid = immersed_grid,
-                                         tracers = :c,
+                                         tracers = (:c, :mass),
                                          closure = IsotropicDiffusivity(ν=ν, κ=ν),
                                          coriolis = nothing,
                                          buoyancy = nothing)
