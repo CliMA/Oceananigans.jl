@@ -47,7 +47,11 @@ grid = VerticallyStretchedRectilinearGrid(size = (32, 32, Nz),
 
 # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
 
-plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz], marker=:circle, ylabel="Depth (m)", xlabel="Vertical spacing (m)", legend=nothing)
+plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
+      marker = :circle,
+      ylabel = "Depth (m)",
+      xlabel = "Vertical spacing (m)",
+      legend = nothing)
 
 # ## Buoyancy that depends on temperature and salinity
 #
