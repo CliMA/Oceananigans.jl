@@ -1,3 +1,4 @@
+using Statistics
 using Oceananigans.Architectures: AbstractGPUArchitecture
 
 #####
@@ -13,4 +14,11 @@ for function_name in (:sum, :prod, :maximum, :minimum, :all, :any)
         Base.$(function_name!)(f::Function, r::AbstractReducedField, a::AbstractArray; kwargs...) = Base.$(function_name!)(f, interior(r), a; kwargs...)
         Base.$(function_name!)(r::AbstractReducedField, a::AbstractArray; kwargs...) = Base.$(function_name!)(identity, interior(r), a; kwargs...)
     end
+end
+
+function Statistics.mean!(R::AbstractReducedField, A::AbstractArray)
+    sum!(R, A; init=true)
+    x = max(1, length(R)) // length(A)
+    parent(R) .= parent(R) .* x 
+    return R
 end
