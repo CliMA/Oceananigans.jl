@@ -51,7 +51,7 @@ RegularRectilinearGrid{Float64, Periodic, Bounded, Bounded}
 grid spacing (Δx, Δy, Δz): (156.25, 156.25, 31.25)
 ```
 
-The `Flat` topology is useful when running problems wiht fewer than 3 dimensions. As an example,
+The `Flat` topology is useful when running problems with fewer than 3 dimensions. As an example,
 to use a 2D doubly periodic domain one would define the topology as `(Periodic, Periodic, Flat)`.
 
 
