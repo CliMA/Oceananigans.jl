@@ -160,7 +160,14 @@ julia --project=docs/ -e 'using Pkg; Pkg.instantiate()'
 julia --project=docs/ docs/make.jl
 ```
  
-and then open `docs/build/index.html` in your favorite browser.
+and then open `docs/build/index.html` in your favorite browser. The building of the documentation
+performs some basic tests (`doctests`), which create some temporary `.nc` and `.jld2` files.
+Make sure you delete those files before rebuilding the documentation, e.g.,
+
+```
+rm docs/*.jld2
+rm docs/*.nc
+```
 
 ## Credits
 
