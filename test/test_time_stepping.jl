@@ -39,9 +39,9 @@ function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(m
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
-function time_stepping_works_with_advection_scheme(arch, advection_scheme)
+function time_stepping_works_with_advection_scheme(arch, advection_scheme, FT=Float64)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
-    grid = RegularRectilinearGrid(size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
+    grid = RegularRectilinearGrid(FT, size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
     model = IncompressibleModel(grid=grid, architecture=arch, advection=advection_scheme)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
@@ -256,9 +256,9 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "Advection schemes" begin
-        for arch in archs, advection_scheme in advection_schemes
-            @info "  Testing time stepping with advection schemes [$(typeof(arch)), $(typeof(advection_scheme))]"
-            @test time_stepping_works_with_advection_scheme(arch, advection_scheme)
+        for arch in archs, advection_scheme in advection_schemes, FT in float_types
+            @info "  Testing time stepping with advection schemes [$(typeof(arch)), $FT, $(typeof(advection_scheme))]"
+            @test time_stepping_works_with_advection_scheme(arch, advection_scheme, FT)
         end
     end
 
