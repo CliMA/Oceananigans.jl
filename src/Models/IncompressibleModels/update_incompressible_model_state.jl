@@ -12,8 +12,7 @@ Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
 function update_state!(model::IncompressibleModel)
 
     # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture, 
-                       model.clock, fields(model))
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture,  model.clock, fields(model))
 
     # Calculate diffusivities
     calculate_diffusivities!(model.diffusivities, model.architecture, model.grid, model.closure,
