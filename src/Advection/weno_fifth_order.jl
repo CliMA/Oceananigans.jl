@@ -46,7 +46,9 @@ struct WENO5 <: AbstractUpwindBiasedAdvectionScheme end
 ##### Jiang & Shu (1996) WENO smoothness indicators. See also Equation 2.63 in Shu (1998).
 #####
 
-const two_32 = Int32(2) # hut, hut...
+# We use 32-bit integer to represent the exponent "2" for fast exponentiation.
+# See https://github.com/CliMA/Oceananigans.jl/pull/1770 for more information.
+const two_32 = Int32(2) 
 
 @inline left_biased_βx₀(i, j, k, ψ) = @inbounds 13/12 * (ψ[i-1, j, k] - 2ψ[i,   j, k] + ψ[i+1, j, k])^two_32 + 1/4 * (3ψ[i-1, j, k] - 4ψ[i,   j, k] +  ψ[i+1, j, k])^two_32
 @inline left_biased_βx₁(i, j, k, ψ) = @inbounds 13/12 * (ψ[i-2, j, k] - 2ψ[i-1, j, k] + ψ[i,   j, k])^two_32 + 1/4 * ( ψ[i-2, j, k]                 -  ψ[i,   j, k])^two_32
@@ -88,8 +90,10 @@ const C3₂ = 1/10
 #####
 
 # Note: these constants may need to be changed for smooth solutions and/or fine grid.
-const ε = 1e-6
+# Note note: we use 32-bit integer to represent the exponent "2" for fast exponentiation.
+# see https://github.com/CliMA/Oceananigans.jl/pull/1770 for more information.
 const ƞ = Int32(2) # WENO exponent
+const ε = 1e-6
 
 @inline left_biased_αx₀(i, j, k, ψ) = C3₀ / (left_biased_βx₀(i, j, k, ψ) + ε)^ƞ
 @inline left_biased_αx₁(i, j, k, ψ) = C3₁ / (left_biased_βx₁(i, j, k, ψ) + ε)^ƞ
