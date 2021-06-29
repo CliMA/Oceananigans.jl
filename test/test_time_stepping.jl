@@ -41,7 +41,7 @@ end
 
 function time_stepping_works_with_advection_scheme(arch, advection_scheme, FT, topo)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
-    grid = RegularRectilinearGrid(FT, topo, size=(8, 8, 8), halo=(3, 3, 3), extent=(1, 2, 3))
+    grid = RegularRectilinearGrid(FT, topology=topo, size=(8, 8, 8), halo=(3, 3, 3), extent=(1, 2, 3))
     model = IncompressibleModel(grid=grid, architecture=arch, advection=advection_scheme)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
