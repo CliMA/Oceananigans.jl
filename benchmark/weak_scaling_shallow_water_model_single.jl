@@ -1,3 +1,5 @@
+push!(LOAD_PATH, joinpath(@__DIR__, ".."))
+
 using Logging
 using MPI
 using JLD2
@@ -37,9 +39,13 @@ time_step!(model, 1) # warmup
 
 @info "Benchmarking distributed shallow water model on rank $local_rank..."
 
+MPI.Barrier(comm)
+
 trial = @benchmark begin
     @sync_gpu time_step!($model, 1)
-end samples=10
+end samples=10 evals=1
+
+MPI.Barrier(comm)
 
 t_median = BenchmarkTools.prettytime(median(trial).time)
 @info "Done benchmarking on rank $(local_rank). Median time: $t_median"

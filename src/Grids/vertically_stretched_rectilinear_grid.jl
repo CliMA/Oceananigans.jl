@@ -201,12 +201,12 @@ function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, z_faces)
 
     # Build halo regions
     ΔzF₋ = lower_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
-    ΔzF₊ = lower_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
+    ΔzF₊ = upper_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
 
     z¹, zᴺ⁺¹ = interior_zF[1], interior_zF[Nz+1]
 
     zF₋ = [z¹   - sum(ΔzF₋[k:Hz]) for k = 1:Hz] # locations of faces in lower halo
-    zF₊ = [zᴺ⁺¹ + ΔzF₊[k]         for k = 1:Hz] # locations of faces in width of top halo region
+    zF₊ = reverse([zᴺ⁺¹ + sum(ΔzF₊[k:Hz]) for k = 1:Hz]) # locations of faces in width of top halo region
 
     zF = vcat(zF₋, interior_zF, zF₊)
 
@@ -342,6 +342,6 @@ function min_Δz(grid::VerticallyStretchedRectilinearGrid)
     if topo[3] == Flat
         return Inf
     else
-        return minimum(view(grid.Δzᵃᵃᶜ, 1:grid.Nz))
+        return minimum(parent(grid.Δzᵃᵃᶜ))
     end
 end

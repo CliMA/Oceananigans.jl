@@ -2,7 +2,7 @@
 ##### Weighted Essentially Non-Oscillatory (WENO) scheme of order 5
 #####
 
-struct WENO5 <: AbstractUpwindBiasedAdvectionScheme end
+struct WENO5 <: AbstractUpwindBiasedAdvectionScheme{2} end
 
 @inline boundary_buffer(::WENO5) = 2
 

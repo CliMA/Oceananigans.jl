@@ -128,13 +128,12 @@ appendix_pages = [
 
 pages = [
     "Home" => "index.md",
-    "Publications" => "publications.md",
     "Installation instructions" => "installation_instructions.md",
     "Using GPUs" => "using_gpus.md",
     "Examples" => example_pages,
-    "Model setup" => model_setup_pages,
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
+    "Model setup" => model_setup_pages,
     "Validation experiments" => validation_pages,
     "Simulation tips" => "simulation_tips.md",
     "Gallery" => "gallery.md",
