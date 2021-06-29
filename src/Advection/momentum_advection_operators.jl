@@ -1,3 +1,5 @@
+using Oceananigans.Fields: ZeroField
+
 #####
 ##### Momentum advection operators
 #####
@@ -18,6 +20,17 @@
 @inline _advective_tracer_flux_x(i, j, k, grid::APG, args...) = _advective_tracer_flux_x(i, j, k, grid, args...)
 @inline _advective_tracer_flux_y(i, j, k, grid::APG, args...) = _advective_tracer_flux_y(i, j, k, grid, args...)
 @inline _advective_tracer_flux_z(i, j, k, grid::APG, args...) = _advective_tracer_flux_z(i, j, k, grid, args...)
+
+const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
+
+# Compiler hints
+@inline div_Uu(i, j, k, grid, advection, ::ZeroU, u) = zero(eltype(grid))
+@inline div_Uv(i, j, k, grid, advection, ::ZeroU, v) = zero(eltype(grid))
+@inline div_Uw(i, j, k, grid, advection, ::ZeroU, w) = zero(eltype(grid))
+
+@inline div_Uu(i, j, k, grid, advection, U, ::ZeroField) = zero(eltype(grid))
+@inline div_Uv(i, j, k, grid, advection, U, ::ZeroField) = zero(eltype(grid))
+@inline div_Uw(i, j, k, grid, advection, U, ::ZeroField) = zero(eltype(grid))
 
 """
     div_Uu(i, j, k, grid, advection, U, u)
