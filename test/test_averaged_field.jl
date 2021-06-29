@@ -60,8 +60,10 @@ using Oceananigans.Grids: halo_size
                 big_T̅ = AveragedField(big_T, dims=(1, 2))
                     
                 # Test that the mean consistently returns 1 at every z for many evaluations
-                mean([all(interior(mean!(big_T̅, big_T̅.operand)) .== 1) for i = 1:10]) # warm up...
-                @test mean([all(interior(mean!(big_T̅, big_T̅.operand)) .== 1) for i = 1:10]) == 1.0              
+                a = mean([all(interior(mean!(big_T̅, big_T̅.operand)) .== 1) for i = 1:2]) # warm up...
+                b = mean([all(interior(mean!(big_T̅, big_T̅.operand)) .== 1) for i = 1:2]) # warm up... ?
+                c = mean([all(interior(mean!(big_T̅, big_T̅.operand)) .== 1) for i = 1:10]) # the real deal
+                @test c == 1.0              
             end
         end
 
