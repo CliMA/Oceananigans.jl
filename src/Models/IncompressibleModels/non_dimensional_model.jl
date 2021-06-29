@@ -27,7 +27,7 @@ function NonDimensionalIncompressibleModel(; grid, Re, Pr=0.7, Ro=Inf,
                                            closure = IsotropicDiffusivity(eltype(grid), ν=1/Re, κ=1/(Pr*Re)),
                                            kwargs...)
 
-    return IncompressibleModel(grid=grid,
+    return IncompressibleModel(; grid=grid,
                                closure=closure,
                                coriolis=coriolis,
                                tracers=:b,
