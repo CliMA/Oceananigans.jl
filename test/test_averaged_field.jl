@@ -58,7 +58,7 @@ using Oceananigans.Grids: halo_size
                 big_T .= 1
                 
                 @compute big_T̅ = AveragedField(big_T, dims=(1, 2))
-                @test all(big_T̅ .== 1)                
+                @test all(interior(big_T̅) .== 1)                
             end
         end
 
