@@ -146,10 +146,8 @@ end
 function time_step_with_tupled_closure(FT, arch)
     closure_tuple = (AnisotropicMinimumDissipation(FT), AnisotropicDiffusivity(FT))
 
-    model = IncompressibleModel(
-        architecture=arch, float_type=FT, closure=closure_tuple,
-        grid=RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, 2, 3))
-    )
+    model = IncompressibleModel(architecture=arch, closure=closure_tuple,
+                                grid=RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, 2, 3)))
 
     time_step!(model, 1, euler=true)
     return true
