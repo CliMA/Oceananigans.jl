@@ -2,10 +2,10 @@ using Oceananigans.TurbulenceClosures: IsotropicDiffusivity
 using Oceananigans.BuoyancyModels
 
 """
-    NonDimensionalIncompressibleModel(; N, L, Re, Pr=0.7, Ro=Inf, float_type=Float64, kwargs...)
+    NonDimensionalIncompressibleModel(; grid, Re, Pr=0.7, Ro=Inf, kwargs...)
 
-Construct a "Non-dimensional" `Model` with resolution `N`, domain extent `L`,
-precision `float_type`, and the four non-dimensional numbers:
+Construct a "Non-dimensional" `Model` on `grid` with the four non-dimensional numbers:
+
 
     * `Re = U λ / ν` (Reynolds number)
     * `Pr = U λ / κ` (Prandtl number)
@@ -21,12 +21,16 @@ Note that `N`, `L`, and `Re` are required.
 
 Additional `kwargs` are passed to the regular `IncompressibleModel` constructor.
 """
-function NonDimensionalIncompressibleModel(; grid, float_type=Float64, Re, Pr=0.7, Ro=Inf,
-    buoyancy = BuoyancyTracer(),
-    coriolis = FPlane(float_type, f=1/Ro),
-     closure = IsotropicDiffusivity(float_type, ν=1/Re, κ=1/(Pr*Re)),
-    kwargs...)
+function NonDimensionalIncompressibleModel(; grid, Re, Pr=0.7, Ro=Inf,
+                                           buoyancy = BuoyancyTracer(),
+                                           coriolis = FPlane(eltype(grid), f=1/Ro),
+                                           closure = IsotropicDiffusivity(eltype(grid), ν=1/Re, κ=1/(Pr*Re)),
+                                           kwargs...)
 
-    return IncompressibleModel(; float_type=float_type, grid=grid, closure=closure,
-                               coriolis=coriolis, tracers=(:b,), buoyancy=buoyancy, kwargs...)
+    return IncompressibleModel(grid=grid,
+                               closure=closure,
+                               coriolis=coriolis,
+                               tracers=:b,
+                               buoyancy=buoyancy,
+                               kwargs...)
 end

@@ -7,7 +7,7 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
     field_boundary_conditions = TracerBoundaryConditions(grid; boundary_condition_kwarg...)
     bcs = NamedTuple{(field_name,)}((field_boundary_conditions,))
 
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT,
+    model = IncompressibleModel(grid=grid, architecture=arch,
                                 boundary_conditions=bcs)
 
     success = try
@@ -82,7 +82,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
     model = IncompressibleModel(
-        grid=grid, architecture=arch, float_type=FT, tracers=:b, buoyancy=BuoyancyTracer(),
+        grid=grid, architecture=arch, tracers=:b, buoyancy=BuoyancyTracer(),
         closure=AnisotropicMinimumDissipation(), boundary_conditions=model_bcs
     )
 
@@ -178,7 +178,6 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
         model = IncompressibleModel(architecture = arch,
                                     grid = grid,
-                                    float_type = FT,
                                     boundary_conditions = boundary_conditions)
 
         @test location(model.velocities.u.boundary_conditions.bottom.condition) == (Face, Center, Nothing)
