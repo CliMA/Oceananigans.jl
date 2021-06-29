@@ -51,7 +51,7 @@ Keyword arguments
 - `topology`: A 3-tuple `(Tx, Ty, Tz)` specifying the topology of the domain.
               `Tx`, `Ty`, and `Tz` specify whether the `x`-, `y`-, and `z` directions are
               `Periodic`, `Bounded`, or `Flat`. The topology `Flat` indicates that a model does
-              not vary in that directions so that derivatives and interpolation are zero.
+              not vary in those directions so that derivatives and interpolation are zero.
               The default is `topology=(Periodic, Periodic, Bounded)`.
 
 - `extent`: A tuple prescribing the physical extent of the grid in non-`Flat` directions.
