@@ -33,8 +33,9 @@ grid spacing (Δx, Δy, Δz): (4.0, 4.0, 2.0)
 ## Specifying the grid's topology
 
 Another crucial keyword is a 3-`Tuple` that specifies the grid's `topology`.
-In each direction the grid may be `Periodic` or `Bounded`.
-By default, the `RegularRectilinearGrid` constructor assumes the grid topology is horizontally-periodic
+In each direction the grid may be `Periodic`, `Bounded` or `Flat`.
+By default, both the `RegularRectilinearGrid` and the `VerticallyStretchedRectilinearGrid` constructors 
+assume the grid topology is horizontally-periodic
 and bounded in the vertical, such that `topology = (Periodic, Periodic, Bounded)`.
 
 A "channel" model that is periodic in the ``x``-direction and wall-bounded
@@ -49,6 +50,10 @@ RegularRectilinearGrid{Float64, Periodic, Bounded, Bounded}
    halo size (Hx, Hy, Hz): (1, 1, 1)
 grid spacing (Δx, Δy, Δz): (156.25, 156.25, 31.25)
 ```
+
+The `Flat` topology is useful when running problems with fewer than 3 dimensions. As an example,
+to use a 2D doubly periodic domain one would define the topology as `(Periodic, Periodic, Flat)`.
+
 
 ## Specifying domain end points
 

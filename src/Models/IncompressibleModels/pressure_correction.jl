@@ -1,5 +1,7 @@
 using Oceananigans.Solvers
 
+using Oceananigans.ImmersedBoundaries: mask_immersed_velocities!, mask_immersed_field!
+
 import Oceananigans.TimeSteppers: calculate_pressure_correction!, pressure_correct_velocities!
 
 """
@@ -8,6 +10,10 @@ import Oceananigans.TimeSteppers: calculate_pressure_correction!, pressure_corre
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
 function calculate_pressure_correction!(model::IncompressibleModel, Δt)
+
+    # Mask immersed velocities
+    velocity_masking_events = mask_immersed_velocities!(model.velocities, model.architecture, model.grid)
+    wait(device(model.architecture), MultiEvent(velocity_masking_events))
 
     fill_halo_regions!(model.velocities, model.clock, fields(model))
 
@@ -30,8 +36,8 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure vi
 @kernel function _pressure_correct_velocities!(U, grid, Δt, pNHS)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds U.u[i, j, k] -= ∂xᶠᵃᵃ(i, j, k, grid, pNHS) * Δt
-    @inbounds U.v[i, j, k] -= ∂yᵃᶠᵃ(i, j, k, grid, pNHS) * Δt
+    @inbounds U.u[i, j, k] -= ∂xᶠᶜᵃ(i, j, k, grid, pNHS) * Δt
+    @inbounds U.v[i, j, k] -= ∂yᶜᶠᵃ(i, j, k, grid, pNHS) * Δt
     @inbounds U.w[i, j, k] -= ∂zᵃᵃᶠ(i, j, k, grid, pNHS) * Δt
 end
 

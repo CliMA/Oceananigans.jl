@@ -1,9 +1,14 @@
 using Printf
 using JLD2
 using Oceananigans.Utils
+using Oceananigans.Models
 using Oceananigans.Utils: TimeInterval, pretty_filesize
 
 using Oceananigans.Fields: boundary_conditions
+
+default_included_properties(::IncompressibleModel) = [:grid, :coriolis, :buoyancy, :closure]
+default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
+default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
 """
     JLD2OutputWriter{I, T, O, IF, IN, KW} <: AbstractOutputWriter
@@ -161,7 +166,7 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
                           max_filesize = Inf,
                                  force = false,
                                   init = noinit,
-                             including = [:grid, :coriolis, :buoyancy, :closure],
+                             including = default_included_properties(model),
                                verbose = false,
                                   part = 1,
                                jld2_kw = Dict{Symbol, Any}())
@@ -180,7 +185,7 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
 
             # Serialize properties in `including`.
             for property in including
-                file["serialized/$property"] = getproperty(model, property)
+                serializeproperty!(file, "serialized/$property", getproperty(model, property))
             end
 
             # Serialize the location and boundary conditions of each output.
@@ -189,8 +194,9 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
                 file["timeseries/$field_name/serialized/boundary_conditions"] = boundary_conditions(field)
             end
         end
-    catch
-        @warn "Could not initialize $filepath: data may already be initialized."
+    catch err
+        @warn """Initialization of JLD2OutputWriter at $filepath threw $(typeof(err)): $(sprint(showerror, err))."
+                 Could not initialize $filepath."""
     end
 
     return JLD2OutputWriter(filepath, outputs, schedule, field_slicer,

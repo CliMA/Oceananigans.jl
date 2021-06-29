@@ -157,10 +157,6 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
     Δzᵃᵃᶠ = OffsetArray(Δzᵃᵃᶠ, -Hz)
     Δzᵃᵃᶜ = OffsetArray(Δzᵃᵃᶜ, -Hz)
 
-    # Needed for pressure solver solution to be divergence-free.
-    # Will figure out why later...
-    Δzᵃᵃᶠ[Nz] = Δzᵃᵃᶠ[Nz-1]
-
     # Seems needed to avoid out-of-bounds error in viscous dissipation
     # operators wanting to access Δzᵃᵃᶠ[Nz+2].
     Δzᵃᵃᶠ = OffsetArray(cat(Δzᵃᵃᶠ[0], Δzᵃᵃᶠ..., Δzᵃᵃᶠ[Nz], dims=1), -Hz-1)
@@ -205,12 +201,12 @@ function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, z_faces)
 
     # Build halo regions
     ΔzF₋ = lower_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
-    ΔzF₊ = lower_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
+    ΔzF₊ = upper_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
 
     z¹, zᴺ⁺¹ = interior_zF[1], interior_zF[Nz+1]
 
     zF₋ = [z¹   - sum(ΔzF₋[k:Hz]) for k = 1:Hz] # locations of faces in lower halo
-    zF₊ = [zᴺ⁺¹ + ΔzF₊[k]         for k = 1:Hz] # locations of faces in width of top halo region
+    zF₊ = reverse([zᴺ⁺¹ + sum(ΔzF₊[k:Hz]) for k = 1:Hz]) # locations of faces in width of top halo region
 
     zF = vcat(zF₋, interior_zF, zF₊)
 
@@ -323,6 +319,29 @@ all_z_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃ�
 # Get minima of grid
 #
 
-min_Δx(grid::VerticallyStretchedRectilinearGrid) = grid.Δx
-min_Δy(grid::VerticallyStretchedRectilinearGrid) = grid.Δy
-min_Δz(grid::VerticallyStretchedRectilinearGrid) = minimum(view(grid.Δzᵃᵃᶜ, 1:grid.Nz))
+function min_Δx(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+    if topo[1] == Flat
+        return Inf
+    else
+        return grid.Δx
+    end
+end
+
+function min_Δy(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+    if topo[2] == Flat
+        return Inf
+    else
+        return grid.Δy
+    end
+end
+
+function min_Δz(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+    if topo[3] == Flat
+        return Inf
+    else
+        return minimum(parent(grid.Δzᵃᵃᶜ))
+    end
+end

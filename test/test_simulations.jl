@@ -10,7 +10,6 @@ function run_time_step_wizard_tests(arch)
     CFL = 0.45
     u₀ = 7
     Δt = 2.5
-
     model.velocities.u[1, 1, 1] = u₀
 
     wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0)
@@ -34,6 +33,23 @@ function run_time_step_wizard_tests(arch)
     wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0, max_Δt=3.99)
     update_Δt!(wizard, model)
     @test wizard.Δt ≈ 3.99
+
+
+    grid_stretched = VerticallyStretchedRectilinearGrid(size=(1,1,1), x=(0,1), y=(0,1), z_faces=z->z, 
+                                                        halo=(1,1,1), architecture=arch)
+    model = IncompressibleModel(architecture=arch, grid=grid_stretched)
+
+    Δx = grid_stretched.Δx
+    CFL = 0.45
+    u₀ = 7
+    Δt = 2.5
+    model.velocities.u[1, 1, 1] = u₀
+
+    CUDA.allowscalar(false)
+    wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0)
+    update_Δt!(wizard, model)
+    @test wizard.Δt ≈ CFL * Δx / u₀
+    CUDA.allowscalar(true)
 
     return nothing
 end

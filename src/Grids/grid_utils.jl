@@ -140,16 +140,6 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 ##### << Nodes >>
 #####
 
-# Node by node
-@inline xnode(::Center, i, grid) = @inbounds grid.xC[i]
-@inline xnode(::Face,   i, grid) = @inbounds grid.xF[i]
-
-@inline ynode(::Center, j, grid) = @inbounds grid.yC[j]
-@inline ynode(::Face,   j, grid) = @inbounds grid.yF[j]
-
-@inline znode(::Center, k, grid) = @inbounds grid.zC[k]
-@inline znode(::Face,   k, grid) = @inbounds grid.zF[k]
-
 # Fallback
 @inline xnode(LX, LY, LZ, i, j, k, grid) = xnode(LX, i, grid)
 @inline ynode(LX, LY, LZ, i, j, k, grid) = ynode(LY, j, grid)
@@ -166,13 +156,6 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 @inline node(LX, LY::Nothing, LZ::Nothing, i, j, k, grid) = tuple(xnode(LX, LY, LZ, i, j, k, grid))
 @inline node(LX::Nothing, LY, LZ::Nothing, i, j, k, grid) = tuple(ynode(LX, LY, LZ, i, j, k, grid))
 @inline node(LX::Nothing, LY::Nothing, LZ, i, j, k, grid) = tuple(znode(LX, LY, LZ, i, j, k, grid))
-
-all_x_nodes(::Type{Center}, grid) = grid.xC
-all_x_nodes(::Type{Face}, grid) = grid.xF
-all_y_nodes(::Type{Center}, grid) = grid.yC
-all_y_nodes(::Type{Face}, grid) = grid.yF
-all_z_nodes(::Type{Center}, grid) = grid.zC
-all_z_nodes(::Type{Face}, grid) = grid.zF
 
 all_x_nodes(::Type{Nothing}, grid) = 1:1
 all_y_nodes(::Type{Nothing}, grid) = 1:1

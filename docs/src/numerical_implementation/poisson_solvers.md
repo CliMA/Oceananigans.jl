@@ -2,21 +2,22 @@
 
 ## The elliptic problem for the pressure
 
-The 3d non-hydrostatic pressure field is obtained by taking the divergence of the horizontal 
+The 3D non-hydrostatic pressure field is obtained by taking the divergence of the horizontal 
 component of the momentum equation and invoking the vertical component to yield an elliptic 
 Poisson equation for the non-hydrostatic kinematic pressure
 ```math
    \begin{equation}
    \label{eq:poisson-pressure}
-   \nabla^2\phi_{NH} = \frac{\nabla \cdot \boldsymbol{v}^n}{\Delta t} + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{G}_{\boldsymbol{v}} \equiv \mathscr{F} \, ,
+   \nabla^2 p_{NH} = \frac{\nabla \cdot \boldsymbol{v}^n}{\Delta t} + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{G}_{\boldsymbol{v}} \equiv \mathscr{F} \, ,
    \end{equation}
 ```
-along with homogenous Neumann boundary conditions ``\boldsymbol{v} \cdot \boldsymbol{\hat{n}} = 0`` (Neumann on ``\phi`` for wall-bounded
-directions and periodic otherwise) and where ``\mathscr{F}`` denotes the source term for the Poisson equation.
+along with homogenous Neumann boundary conditions ``\boldsymbol{v} \cdot \boldsymbol{\hat{n}} = 0`` 
+(Neumann on ``p`` for wall-bounded directions and periodic otherwise) and where ``\mathscr{F}`` 
+denotes the source term for the Poisson equation.
 
-For hydrostatic problems the Poisson equation above only needs to be solved for the vertically integrated flow
-and the pressure field is a two dimensional term ``\phi_{S}``. In this case a fully three-dimensional solve 
-is not needed.
+For hydrostatic problems the Poisson equation above only needs to be solved for the vertically 
+integrated flow and the pressure field is a two dimensional term ``p_{S}``. In this case a fully 
+three-dimensional solve is not needed.
 
 ## Direct method
 
@@ -32,20 +33,20 @@ The method can be explained easily by taking the Fourier transform of both sides
 ```math
     \begin{equation}
     \label{eq:poisson-spectral}
-    -(k_x^2 + k_y^2 + k_z^2) \widehat{\phi}_{NH} = \widehat{\mathscr{F}}
+    -(k_x^2 + k_y^2 + k_z^2) \widehat{p}_{NH} = \widehat{\mathscr{F}}
     \quad \implies \quad
-    \widehat{\phi}_{NH} = - \frac{\widehat{\mathscr{F}}}{k_x^2 + k_y^2 + k_z^2} \, ,
+    \widehat{p}_{NH} = - \frac{\widehat{\mathscr{F}}}{k_x^2 + k_y^2 + k_z^2} \, ,
     \end{equation}
 ```
 where ``\widehat{\cdot}`` denotes the Fourier component. Here ``k_x``, ``k_y``, and ``k_z`` are the wavenumbers. However, when
-solving the equation on a staggered grid we require a solution for ``\phi_{NH}`` that is second-order accurate such that
-when when its Laplacian is computed, ``\nabla^2\phi_{NH}`` matches ``\mathscr{F}`` to machine precision. This is crucial to
+solving the equation on a staggered grid we require a solution for ``p_{NH}`` that is second-order accurate such that
+when when its Laplacian is computed, ``\nabla^2 p_{NH}`` matches ``\mathscr{F}`` to machine precision. This is crucial to
 ensure that the projection step in §\ref{sec:fractional-step} works. To do this, the wavenumbers are replaced by
 eigenvalues ``\lambda_x``, ``\lambda_y``, and ``\lambda_z`` satisfying the discrete form of Poisson's equation with
-appropriate boundary conditions. Thus, Poisson's equation's is diagonalized in Fourier space and the Fourier
+appropriate boundary conditions. Thus, Poisson's equation is diagonalized in Fourier space and the Fourier
 coefficients of the solution are easily solved for
 ```math
-\widehat{\phi}_{NH}(i, j, k) = - \frac{\widehat{\mathscr{F}}(i, j, k)}{\lambda^x_i + \lambda^y_j + \lambda^z_k} \, .
+\widehat{p}_{NH}(i, j, k) = - \frac{\widehat{\mathscr{F}}(i, j, k)}{\lambda^x_i + \lambda^y_j + \lambda^z_k} \, .
 ```
 
 The eigenvalues are given by [Schumann88](@cite) and can also be tediously derived by plugging in the definition of the
@@ -61,7 +62,7 @@ where ``\lambda_x`` and ``\lambda_y`` correspond to periodic boundary conditions
 Neumann boundary conditions in the vertical.
 
 There is also an ambiguity in the solution to Poisson's equation as it's only defined up to a constant. To resolve this
-we choose the solution with zero mean by setting the zeroth Fourier coefficient ``\phi_{000}`` (corresponding to
+we choose the solution with zero mean by setting the zeroth Fourier coefficient ``p_{000}`` (corresponding to
 ``k_x = k_y = k_z = 0``) to zero. This also has the added benefit of discarding the zero eigenvalue so we don't divide by
 it.
 
@@ -85,36 +86,36 @@ Furthermore, the FACR algorithm removes the restriction that the grid is uniform
 be utilized to implement a fast Poisson solver for vertically stretched grids if the cyclic reduction is applied in the
 along the vertical dimension.
 
-Expanding ``\phi_{NH}`` and ``\mathscr{F}`` into Fourier modes along the ``x`` and ``y`` directions
+Expanding ``p_{NH}`` and ``\mathscr{F}`` into Fourier modes along the ``x`` and ``y`` directions
 ```math
-\phi_{ijk} = \sum_{m=1}^{N_x} \sum_{n=1}^{N_y} \tilde{\phi}_{mnk} \; e^{-\mathrm{i} 2\pi i m / N_x} \;  e^{-\mathrm{i} 2\pi j n / N_y} \, ,
+p_{ijk} = \sum_{m=1}^{N_x} \sum_{n=1}^{N_y} \tilde{p}_{mnk} \; e^{-\mathrm{i} 2\pi i m / N_x} \;  e^{-\mathrm{i} 2\pi j n / N_y} \, ,
 ```
 and recalling that Fourier transforms do ``\partial_x \rightarrow \mathrm{i} k_x`` and ``\partial_y \rightarrow \mathrm{i} k_y`` we can write
 \eqref{eq:poisson-pressure} as
 ```math
 \sum_{m=1}^{N_x} \sum_{n=1}^{N_y}
 \left\lbrace
-    \partial_z^2 \tilde{\phi}_{mnk} - (k_x^2 + k_y^2) \tilde{\phi}_{mnk} - \tilde{\mathscr{F}}_{mnk}
+    \partial_z^2 \tilde{p}_{mnk} - (k_x^2 + k_y^2) \tilde{p}_{mnk} - \tilde{\mathscr{F}}_{mnk}
 \right\rbrace e^{-\mathrm{i} 2 \pi i m / N_x}  e^{-\mathrm{i} 2 \pi j n / N_y} = 0 \, .
 ```
 Discretizing the ``\partial_z^2`` derivative and equating the term inside the brackets to zero we arrive at
 ``N_x\times N_y`` symmetric tridiagonal systems of ``N_z`` linear equations for the Fourier modes:
 ```math
-\frac{\tilde{\phi}_{mn,k-1}}{\Delta z^C_k}
+\frac{\tilde{p}_{mn,k-1}}{\Delta z^C_k}
 - \left\lbrace \frac{1}{\Delta z^C_k} + \frac{1}{\Delta z^C_{k+1}} + \Delta z^F_k (k_x^2 + k_y^2) \right\rbrace
-  \tilde{\phi}_{mnk}
-+ \frac{\tilde{\phi}_{mn,k+1}}{\Delta z^C_{k+1}}
+  \tilde{p}_{mnk}
++ \frac{\tilde{p}_{mn,k+1}}{\Delta z^C_{k+1}}
 = \Delta z^F_k \tilde{\mathscr{F}}_{mnk} \, .
 ```
 
 ## Cosine transforms on the GPU
 
-Unfortunately cuFFT does not provide cosine transforms and so we must write our own fast cosine transforms for the GPU.
-We implemented the fast 1D and 2D cosine transforms described by [Makhoul80](@cite) which compute it by applying the
-regular Fourier transform to a permuted version of the array.
+Unfortunately cuFFT does not provide cosine transforms and so we must write our own fast cosine 
+transforms for the GPU. We implemented the fast 1D and 2D cosine transforms described by [Makhoul80](@cite) 
+which compute it by applying the regular Fourier transform to a permuted version of the array.
 
-In this section we will be using the DCT-II as the definition of the forward cosine transform for a real signal of
-length ``N``
+In this section we will be using the DCT-II as the definition of the forward cosine transform 
+for a real signal of length ``N``
 ```math
     \begin{equation}
     \label{eq:FCT}
@@ -161,9 +162,9 @@ The inverse \eqref{eq:IFCT} can be computed using
 after which the inverse permutation of \eqref{eq:permutation} must be applied.
 
 ### 2D fast cosine transform
-Unfortunately, the 1D algorithm cannot be applied dimension-wise so the 2D algorithm is  more complicated. Thankfully
-though, the permutation \eqref{eq:permutation} can be applied dimension-wise. The forward cosine transform for a real
-signal of length ``N_1 \times N_2`` is then given by
+Unfortunately, the 1D algorithm cannot be applied dimension-wise so the 2D algorithm is more 
+complicated. Thankfully, the permutation \eqref{eq:permutation} can be applied dimension-wise. 
+The forward cosine transform for a real signal of length ``N_1 \times N_2`` is then given by
 ```math
 Y_{k_1, k_2} = \text{DCT}(X_{n_1, n_2}) =
 2 \text{Re} \left\lbrace
@@ -187,9 +188,9 @@ where ``\tilde{X} = \text{IFFT}(X)`` here, ``\tilde{X}^{-+}`` is indexed in reve
 ``N_1`` and ``N_2`` respectively, both containing ones except at the first element where ``M_0 = 0``. Afterwards, the inverse
 permutation of \eqref{eq:permutation} must be applied.
 
-Due to the extra steps involved in calculating the cosine transform in 2D, running with two wall-bounded dimensions
-typically slows the model down by a factor of 2. Switching to the FACR algorithm may help here as a 2D cosine transform
-won't be necessary anymore.
+Due to the extra steps involved in calculating the cosine transform in 2D, running with two 
+wall-bounded dimensions typically slows the model down by a factor of 2. Switching to the FACR 
+algorithm may help here as a 2D cosine transform won't be necessary anymore.
 
 ## Iterative Solvers
 

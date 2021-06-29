@@ -1,3 +1,5 @@
+push!(LOAD_PATH, joinpath(@__DIR__, ".."))
+
 using PkgBenchmark
 using Oceananigans
 using Benchmarks

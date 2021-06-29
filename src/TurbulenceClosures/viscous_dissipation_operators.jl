@@ -1,28 +1,38 @@
 using Oceananigans.Operators: Δy_uᶠᶜᵃ, Δx_vᶜᶠᵃ, Δx_uᶠᶜᵃ, Δy_vᶜᶠᵃ, ℑxyᶠᶠᵃ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ
 
+@inline _viscous_flux_ux(args...) = viscous_flux_ux(args...)
+@inline _viscous_flux_uy(args...) = viscous_flux_uy(args...)
+@inline _viscous_flux_uz(args...) = viscous_flux_uz(args...)
+@inline _viscous_flux_vx(args...) = viscous_flux_vx(args...)
+@inline _viscous_flux_vy(args...) = viscous_flux_vy(args...)
+@inline _viscous_flux_vz(args...) = viscous_flux_vz(args...)
+@inline _viscous_flux_wx(args...) = viscous_flux_wx(args...)
+@inline _viscous_flux_wy(args...) = viscous_flux_wy(args...)
+@inline _viscous_flux_wz(args...) = viscous_flux_wz(args...)
+
 #####                                                            
 ##### Viscous flux divergences
 #####
 
 @inline function ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure::AbstractTurbulenceClosure, args...)
     disc = time_discretization(closure)
-    return 1/Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Ax_cᶜᶜᶜ, viscous_flux_ux, disc, closure, args...) +
-                                    δyᵃᶜᵃ(i, j, k, grid, Ay_ζᶠᶠᶜ, viscous_flux_uy, disc, closure, args...) +
-                                    δzᵃᵃᶜ(i, j, k, grid, Az_ηᶠᶜᵃ, viscous_flux_uz, disc, closure, args...))
+    return 1/Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Ax_cᶜᶜᶜ, _viscous_flux_ux, disc, closure, args...) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_ζᶠᶠᶜ, _viscous_flux_uy, disc, closure, args...) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_ηᶠᶜᵃ, _viscous_flux_uz, disc, closure, args...))
 end
 
 @inline function ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure::AbstractTurbulenceClosure, args...)
     disc = time_discretization(closure)
-    return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_ζᶠᶠᶜ, viscous_flux_vx, disc, closure, args...) +
-                                    δyᵃᶠᵃ(i, j, k, grid, Ay_cᶜᶜᶜ, viscous_flux_vy, disc, closure, args...) +
-                                    δzᵃᵃᶜ(i, j, k, grid, Az_ξᶜᶠᵃ, viscous_flux_vz, disc, closure, args...))
+    return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_ζᶠᶠᶜ, _viscous_flux_vx, disc, closure, args...) +
+                                    δyᵃᶠᵃ(i, j, k, grid, Ay_cᶜᶜᶜ, _viscous_flux_vy, disc, closure, args...) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_ξᶜᶠᵃ, _viscous_flux_vz, disc, closure, args...))
 end
 
 @inline function ∂ⱼ_τ₃ⱼ(i, j, k, grid, closure::AbstractTurbulenceClosure, args...)
     disc = time_discretization(closure)
-    return 1/Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_ηᶠᶜᶠ, viscous_flux_wx, disc, closure, args...) +
-                                    δyᵃᶜᵃ(i, j, k, grid, Ay_ξᶜᶠᶠ, viscous_flux_wy, disc, closure, args...) +
-                                    δzᵃᵃᶠ(i, j, k, grid, Az_cᶜᶜᵃ, viscous_flux_wz, disc, closure, args...))
+    return 1/Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_ηᶠᶜᶠ, _viscous_flux_wx, disc, closure, args...) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_ξᶜᶠᶠ, _viscous_flux_wy, disc, closure, args...) +
+                                    δzᵃᵃᶠ(i, j, k, grid, Az_cᶜᶜᵃ, _viscous_flux_wz, disc, closure, args...))
 end
 
 #####

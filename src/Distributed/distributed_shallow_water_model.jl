@@ -1,11 +1,12 @@
 using Oceananigans.Grids
-using Oceananigans.Grids: halo_size
+using Oceananigans.Grids: halo_size, topology
+using Oceananigans.Models
 
 #####
 ##### Distributed shallow water model constructor
 #####
 
-function DistributedShallowWaterModel(; architecture, grid, boundary_conditions=nothing, model_kwargs...)
+function DistributedShallowWaterModel(; architecture, grid, model_kwargs...)
     i, j, k = architecture.local_index
     Rx, Ry, Rz = architecture.ranks
     my_connectivity = architecture.connectivity
@@ -36,7 +37,6 @@ function DistributedShallowWaterModel(; architecture, grid, boundary_conditions=
     my_model = ShallowWaterModel(;
                architecture = architecture,
                        grid = my_grid,
-    #    boundary_conditions = communicative_bcs,
                        model_kwargs...
     )
 

@@ -43,11 +43,13 @@ and another for taking the difference of a face-centered variable and projecting
 In order to add or multiply variables that are defined at different points they are interpolated. 
 In our case, linear interpolation or averaging is employed. Once again, there are two averaging 
 operators, one for each direction,
+```math
 \begin{equation}
   \overline{f}^x = \frac{f_E + f_W}{2} \, , \quad
   \overline{f}^y = \frac{f_N + f_S}{2} \, , \quad
   \overline{f}^z = \frac{f_T + f_B}{2} \, .
 \end{equation}
+```
 
 Additionally, three averaging operators must be defined for each direction. One for taking the 
 average of a cell-centered  variable and projecting it onto the cell faces
@@ -80,9 +82,9 @@ where ``\boldsymbol{f} = (f_x, f_y, f_z)`` is the flux with components defined n
 faces, and ``V`` is the volume of the cell. The presence of a solid boundary is indicated by 
 setting the appropriate flux normal to the boundary to zero.
 
-A similar divergence operator can be defined for a face-centered quantity. The divergence of 
-the flux of ``T`` over a cell,  ``\boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{v} T)``, 
-required in the evaluation of ``G_T``, for example, is then
+A similar divergence operator can be defined for a face-centered quantity. The divergence of,
+e.g., the flux of ``T`` over a cell, ``\boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{v} T)``, 
+is then
 ```math
 \renewcommand{\div}[1] {\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( #1 \right )}
 \div{\boldsymbol{v} T}
@@ -91,14 +93,12 @@ required in the evaluation of ``G_T``, for example, is then
                    + \delta_z^{aac} (A_z w \overline{T}^{aaf}) \right] \, ,
 ```
 where ``T`` is interpolated onto the cell faces where it can be multiplied by the velocities, 
-which are then differenced and  projected onto the cell centers where they added together and 
-then added to ``G_T`` which also lives at the cell centers.
+which are then differenced and projected onto the cell centers where they added together.
 
 ## Momentum advection
 
-The advection terms that make up the ``\mathbf{G}`` terms in equations \eqref{eq:horizontalMomentum} and
-\eqref{eq:verticalMomentum} can be rewritten using the incompressibility (``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v} = 0``) 
-as, e.g,
+The advection terms that appear in model equations can be rewritten using the incompressibility 
+(``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v} = 0``) as, e.g,
 ```math
 \renewcommand{\div}[1] {\boldsymbol{\nabla} \boldsymbol{\cdot} \left ( #1 \right )}
 \begin{align}
@@ -119,9 +119,9 @@ For example, the ``x``-momentum advection operator is discretized as
 \right] \, ,
 ```
 where ``\overline{V}^x`` is the average of the volumes of the cells on either side of the face 
-in question. Calculating ``\partial(uu)/\partial x`` can be performed by interpolating ``A_x u`` 
-and ``u`` onto the cell centers then multiplying them and differencing them back onto the faces. 
-However, in the case of the the two other terms, ``\partial(vu)/\partial y`` and ``\partial(wu)/\partial z``, 
+in question. Calculating ``\partial_x (uu)`` can be performed by interpolating ``A_x u`` and 
+``u`` onto the cell centers then multiplying them and differencing them back onto the faces. 
+However, in the case of the the two other terms, ``\partial_y (vu)`` and ``\partial_z (wu)``, 
 the two variables must be interpolated onto the cell edges to be multiplied then differenced 
 back onto the cell faces.
 
