@@ -10,7 +10,7 @@ is defined at the cell edges.[^1]
     levels as the cell-centered variables and so they really lie at the cell edges.
 
 ![Schematic of control volumes](../numerical_implementation/assets/staggered_grid.png)
-A schematic of `Oceananigans.jl` finite volumes for a two-dimensional staggered grid in ``(x, z)``.
+*A schematic of `Oceananigans.jl` finite volumes for a two-dimensional staggered grid in ``(x, z)``.
 Tracers ``c`` and pressure ``p`` are defined at the center of the control volume. The ``u`` control volumes are 
 centered on the left and right edges of the pressure control volume while the ``w`` control volumes are centered 
 on the top and bottom edges of the pressure control volumes. The indexing convention places the ``i^{\rm{th}}`` 
