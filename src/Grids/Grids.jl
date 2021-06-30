@@ -54,8 +54,7 @@ struct Periodic <: AbstractTopology end
 """
     Bounded
 
-Grid topology for bounded dimensions. These could be wall-bounded dimensions
-or dimensions
+Grid topology for bounded dimensions, e.g., wall-bounded dimensions.
 """
 struct Bounded <: AbstractTopology end
 
