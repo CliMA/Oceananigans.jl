@@ -50,7 +50,7 @@ Rotations = "1.0"
 SafeTestsets = "0.0.1"
 SeawaterPolynomials = "^0.2"
 StructArrays = "0.4, 0.5"
-Tullio = "0.2"
+Tullio = "0.2, 0.3"
 julia = "^1.6"
 
 [extras]
