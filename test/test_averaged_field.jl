@@ -51,7 +51,7 @@ using Oceananigans.Grids: halo_size
                 
                 # Test whether a race condition gets hit for averages over large fields
                 big_grid = RegularRectilinearGrid(topology = (Periodic, Periodic, Bounded),
-                                                  size = (256, 256, 128),
+                                                  size = (512, 512, 128),
                                                      x = (0, 2), y = (0, 2), z = (0, 2))
                 
                 big_T = CenterField(arch, big_grid)
