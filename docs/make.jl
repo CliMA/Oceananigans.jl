@@ -1,4 +1,4 @@
-push!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
 
 using Documenter
 using DocumenterCitations
