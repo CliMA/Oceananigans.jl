@@ -14,7 +14,7 @@ is defined at the cell edges.[^1]
 Tracers ``c`` and pressure ``p`` are defined at the center of the control volume. The ``u`` control volumes are 
 centered on the left and right edges of the pressure control volume while the ``w`` control volumes are centered 
 on the top and bottom edges of the pressure control volumes. The indexing convention places the ``i^{\rm{th}}`` 
-``u``-node on cell ``x``-faces to the left of the ``i`` tracer point at cell centers. Figure credit: [Kumar16](@cite)*
+``u``-node on cell ``x``-faces to the left of the ``i`` tracer point at cell centers.*
 
 This staggered arrangement of variables is more complicated than the collocated grid arrangement but is greatly
 beneficial as it avoids the odd-even decoupling between the pressure and velocity if they are stored at the same
