@@ -1,6 +1,6 @@
 env:
-  JULIA_VERSION: "1.5.4"
-  JULIA_MINOR_VERSION: "1.5"
+  JULIA_VERSION: "1.6.1"
+  JULIA_MINOR_VERSION: "1.6"
   SVERDRUP_HOME: "/data5/glwagner"
   TARTARUS_HOME: "/storage7/buildkite-agent"
   GKSwstype: "100" # See: https://github.com/jheinen/GR.jl/issues/278
@@ -11,6 +11,7 @@ steps:
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "init"
+      JULIA_CUDA_USE_BINARYBUILDER: "true"
     commands:
       # Download julia binaries
       - "wget -N -P $SVERDRUP_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"

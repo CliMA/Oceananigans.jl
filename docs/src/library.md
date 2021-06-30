@@ -8,11 +8,14 @@ Documenting the public user interface.
 Modules = [Oceananigans.Advection]
 Private = false
 Pages   = [
-    "Advection.jl",
-    "tracer_advection_operators.jl",
-    "momentum_advection_operators.jl",
-    "centered_second_order.jl",
-    "centered_fourth_order.jl"
+    "Advection/Advection.jl",
+    "Advection/tracer_advection_operators.jl",
+    "Advection/momentum_advection_operators.jl",
+    "Advection/centered_second_order.jl",
+    "Advection/centered_fourth_order.jl",
+    "Advection/upwind_biased_third_order.jl",
+    "Advection/upwind_biased_fifth_order.jl",
+    "Advection/weno_fifth_order.jl"
 ]
 ```
 
@@ -131,7 +134,8 @@ Private = false
 Pages   = [
     "Grids/Grids.jl",
     "Grids/grid_utils.jl",
-    "Grids/regular_rectilinear_grid.jl"
+    "Grids/regular_rectilinear_grid.jl",
+    "Grids/vertically_stretched_rectilinear_grid.jl"
 ]
 ```
 
@@ -161,10 +165,9 @@ Modules = [Oceananigans.Models]
 Private = false
 Pages   = [
     "Models/Models.jl",
-    "Models/clock.jl",
-    "Models/incompressible_model.jl",
-    "Models/non_dimensional_model.jl",
-    "Models/show_models.jl"
+    "Models/IncompressibleModels/incompressible_model.jl",
+    "Models/HydrostaticFreeSurfaceModels/hydrostatic_free_surface_model.jl",
+    "Models/ShallowWaterModels/shallow_water_model.jl"
 ]
 ```
 
@@ -190,8 +193,9 @@ Modules = [Oceananigans.TimeSteppers]
 Private = false
 Pages   = [
     "TimeSteppers/TimeSteppers.jl",
-    "TimeSteppers/kernels.jl",
-    "TimeSteppers/adams_bashforth.jl"
+    "TimeSteppers/clock.jl",
+    "TimeSteppers/quasi_adams_bashforth_2.jl",
+    "TimeSteppers/runge_kutta_3.jl
 ]
 ```
 
@@ -227,7 +231,8 @@ Pages   = [
     "TurbulenceClosures/turbulence_closure_implementations/isotropic_diffusivity.jl",
     "TurbulenceClosures/turbulence_closure_implementations/anisotropic_diffusivity.jl",
     "TurbulenceClosures/turbulence_closure_implementations/anisotropic_minimum_dissipation.jl",
-    "TurbulenceClosures/turbulence_closure_implementations/leith_enstrophy_diffusivity.jl"
+    "TurbulenceClosures/turbulence_closure_implementations/leith_enstrophy_diffusivity.jl",
+    "TurbulenceClosures/turbulence_closure_implementations/tke_based_vertical_diffusivity.jl"
 ]
 ```
 
@@ -238,10 +243,7 @@ Modules = [Oceananigans.Utils]
 Private = false
 Pages   = [
     "Utils/Utils.jl",
-    "Utils/adapt_structure.jl",
-    "Utils/units.jl",
-    "Utils/loop_macros.jl",
-    "Utils/launch_config.jl",
+    "Utils/kernel_launcing.jl",
     "Utils/pretty_time.jl",
     "Utils/pretty_filesize.jl",
     "Utils/time_step_wizard.jl",
@@ -249,7 +251,8 @@ Pages   = [
     "Utils/ordered_dict_show.jl",
     "Utils/cell_advection_timescale.jl",
     "Utils/output_writer_diagnostic_utils.jl",
-    "Utils/with_tracers.jl"
+    "Utils/with_tracers.jl",
+    "Utils/schedules.jl"
 ]
 ```
 

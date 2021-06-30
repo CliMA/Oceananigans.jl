@@ -1,3 +1,5 @@
+push!(LOAD_PATH, joinpath(@__DIR__, ".."))
+
 using BenchmarkTools
 using CUDA
 using Oceananigans
@@ -38,7 +40,7 @@ benchmarks_pretty_table(df, title="Fourier-tridiagonal Poisson solver benchmarks
 if GPU in Architectures
     df = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df, [:Topologies, :Ns], by=(string, identity))
-    benchmarks_pretty_table(df, title="Fourier-tridiagonal Poisson solver CPU -> GPU speedup")
+    benchmarks_pretty_table(df, title="Fourier-tridiagonal Poisson solver CPU to GPU speedup")
 end
 
 for Arch in Architectures

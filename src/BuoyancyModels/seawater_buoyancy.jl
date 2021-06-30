@@ -1,3 +1,5 @@
+using Oceananigans.BoundaryConditions: NoFluxBoundaryCondition
+
 """
     SeawaterBuoyancy{FT, EOS, T, S} <: AbstractBuoyancyModel{EOS}
 
@@ -58,30 +60,40 @@ const SalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing} 
 @inline get_temperature_and_salinity(b::TemperatureSeawaterBuoyancy, C) = C.T, b.constant_salinity
 @inline get_temperature_and_salinity(b::SalinitySeawaterBuoyancy, C) = b.constant_temperature, C.S
 
+@inline function buoyancy_perturbation(i, j, k, grid, b::SeawaterBuoyancy, C)
+    θ, sᴬ = get_temperature_and_salinity(b, C)
+    return - (b.gravitational_acceleration * ρ′(i, j, k, grid, b.equation_of_state, θ, sᴬ)
+              / b.equation_of_state.reference_density)
+end
+
+#####
+##### Buoyancy gradient components
+#####
+
 """
     ∂x_b(i, j, k, grid, b::SeawaterBuoyancy, C)
 
 Returns the x-derivative of buoyancy for temperature and salt-stratified water,
 
 ```math
-∂_x b = g ( α ∂_x Θ - β ∂_x sᴬ ) ,
+∂_x b = g ( α ∂_x θ - β ∂_x sᴬ ) ,
 ```
 
 where `g` is gravitational acceleration, `α` is the thermal expansion
-coefficient, `β` is the haline contraction coefficient, `Θ` is
+coefficient, `β` is the haline contraction coefficient, `θ` is
 conservative temperature, and `sᴬ` is absolute salinity.
 
 Note: In Oceananigans, `model.tracers.T` is conservative temperature and
 `model.tracers.S` is absolute salinity.
 
-Note that `∂x_Θ`, `∂x_sᴬ`, `α`, and `β` are all evaluated at cell interfaces in `x`
+Note that `∂x_θ`, `∂x_sᴬ`, `α`, and `β` are all evaluated at cell interfaces in `x`
 and cell centers in `y` and `z`.
 """
 @inline function ∂x_b(i, j, k, grid, b::SeawaterBuoyancy, C)
-    Θ, sᴬ = get_temperature_and_salinity(b, C)
+    θ, sᴬ = get_temperature_and_salinity(b, C)
     return b.gravitational_acceleration * (
-           thermal_expansionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂xᶠᵃᵃ(i, j, k, grid, Θ)
-        - haline_contractionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂xᶠᵃᵃ(i, j, k, grid, sᴬ) )
+           thermal_expansionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, θ, sᴬ) * ∂xᶠᵃᵃ(i, j, k, grid, θ)
+        - haline_contractionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, θ, sᴬ) * ∂xᶠᵃᵃ(i, j, k, grid, sᴬ) )
 end
 
 """
@@ -90,24 +102,24 @@ end
 Returns the y-derivative of buoyancy for temperature and salt-stratified water,
 
 ```math
-∂_y b = g ( α ∂_y Θ - β ∂_y sᴬ ) ,
+∂_y b = g ( α ∂_y θ - β ∂_y sᴬ ) ,
 ```
 
 where `g` is gravitational acceleration, `α` is the thermal expansion
-coefficient, `β` is the haline contraction coefficient, `Θ` is
+coefficient, `β` is the haline contraction coefficient, `θ` is
 conservative temperature, and `sᴬ` is absolute salinity.
 
 Note: In Oceananigans, `model.tracers.T` is conservative temperature and
 `model.tracers.S` is absolute salinity.
 
-Note that `∂y_Θ`, `∂y_sᴬ`, `α`, and `β` are all evaluated at cell interfaces in `y`
+Note that `∂y_θ`, `∂y_sᴬ`, `α`, and `β` are all evaluated at cell interfaces in `y`
 and cell centers in `x` and `z`.
 """
 @inline function ∂y_b(i, j, k, grid, b::SeawaterBuoyancy, C)
-    Θ, sᴬ = get_temperature_and_salinity(b, C)
+    θ, sᴬ = get_temperature_and_salinity(b, C)
     return b.gravitational_acceleration * (
-           thermal_expansionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂yᵃᶠᵃ(i, j, k, grid, Θ)
-        - haline_contractionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂yᵃᶠᵃ(i, j, k, grid, sᴬ) )
+           thermal_expansionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, θ, sᴬ) * ∂yᵃᶠᵃ(i, j, k, grid, θ)
+        - haline_contractionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, θ, sᴬ) * ∂yᵃᶠᵃ(i, j, k, grid, sᴬ) )
 end
 
 """
@@ -116,28 +128,46 @@ end
 Returns the vertical derivative of buoyancy for temperature and salt-stratified water,
 
 ```math
-∂_z b = N^2 = g ( α ∂_z Θ - β ∂_z sᴬ ) ,
+∂_z b = N^2 = g ( α ∂_z θ - β ∂_z sᴬ ) ,
 ```
 
 where `g` is gravitational acceleration, `α` is the thermal expansion
-coefficient, `β` is the haline contraction coefficient, `Θ` is
+coefficient, `β` is the haline contraction coefficient, `θ` is
 conservative temperature, and `sᴬ` is absolute salinity.
 
 Note: In Oceananigans, `model.tracers.T` is conservative temperature and
 `model.tracers.S` is absolute salinity.
 
-Note that `∂z_Θ`, `∂z_sᴬ`, `α`, and `β` are all evaluated at cell interfaces in `z`
+Note that `∂z_θ`, `∂z_sᴬ`, `α`, and `β` are all evaluated at cell interfaces in `z`
 and cell centers in `x` and `y`.
 """
 @inline function ∂z_b(i, j, k, grid, b::SeawaterBuoyancy, C)
-    Θ, sᴬ = get_temperature_and_salinity(b, C)
+    θ, sᴬ = get_temperature_and_salinity(b, C)
     return b.gravitational_acceleration * (
-           thermal_expansionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂zᵃᵃᶠ(i, j, k, grid, Θ)
-        - haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, Θ, sᴬ) * ∂zᵃᵃᶠ(i, j, k, grid, sᴬ) )
+           thermal_expansionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, θ, sᴬ) * ∂zᵃᵃᶠ(i, j, k, grid, θ)
+        - haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, θ, sᴬ) * ∂zᵃᵃᶠ(i, j, k, grid, sᴬ) )
 end
 
-@inline function buoyancy_perturbation(i, j, k, grid, b::SeawaterBuoyancy, C)
-    Θ, sᴬ = get_temperature_and_salinity(b, C)
-    return - (b.gravitational_acceleration * ρ′(i, j, k, grid, b.equation_of_state, Θ, sᴬ)
-              / b.equation_of_state.reference_density)
+#####
+##### top buoyancy flux
+#####
+
+@inline get_temperature_and_salinity_flux(::SeawaterBuoyancy, bcs) = bcs.T, bcs.S
+@inline get_temperature_and_salinity_flux(::TemperatureSeawaterBuoyancy, bcs) = bcs.T, NoFluxBoundaryCondition()
+@inline get_temperature_and_salinity_flux(::SalinitySeawaterBuoyancy, bcs) = NoFluxBoundaryCondition(), bcs.S
+
+@inline function top_bottom_buoyancy_flux(i, j, k, grid, b::SeawaterBuoyancy, top_bottom_tracer_bcs, clock, fields)
+    θ, sᴬ = get_temperature_and_salinity(b, fields)
+    θ_flux_bc, sᴬ_flux_bc = get_temperature_and_salinity_flux(b, top_bottom_tracer_bcs)
+
+    θ_flux = getbc(θ_flux_bc, i, j, grid, clock, fields)
+    sᴬ_flux = getbc(sᴬ_flux_bc, i, j, grid, clock, fields)
+
+    return b.gravitational_acceleration * (
+              thermal_expansionᶜᶜᶜ(i, j, k, grid, b.equation_of_state, θ, sᴬ) * θ_flux
+           - haline_contractionᶜᶜᶜ(i, j, k, grid, b.equation_of_state, θ, sᴬ) * sᴬ_flux)
 end
+
+@inline    top_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, grid.Nz, grid, b, args...)
+@inline bottom_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, 1, grid, b, args...)
+    

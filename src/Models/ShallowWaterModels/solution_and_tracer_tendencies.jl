@@ -1,7 +1,7 @@
 using Oceananigans.Advection
 using Oceananigans.Coriolis
 using Oceananigans.Operators
-using Oceananigans.TurbulenceClosures: ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
+using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ
 
 @inline squared(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
 
@@ -25,7 +25,7 @@ Compute the tendency for the x-directional transport, uh
     g = gravitational_acceleration
 
     return ( - div_hUu(i, j, k, grid, advection, solution)
-             - ∂xᶠᵃᵃ(i, j, k, grid, gh2, solution.h, gravitational_acceleration)
+             - ∂xᶠᶜᵃ(i, j, k, grid, gh2, solution.h, gravitational_acceleration)
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
              + forcings.uh(i, j, k, grid, clock, merge(solution, tracers)))
 end
@@ -48,7 +48,7 @@ Compute the tendency for the y-directional transport, vh.
      g = gravitational_acceleration
 
     return ( - div_hUv(i, j, k, grid, advection, solution)
-             - ∂yᵃᶠᵃ(i, j, k, grid, gh2, solution.h, gravitational_acceleration)
+             - ∂yᶜᶠᵃ(i, j, k, grid, gh2, solution.h, gravitational_acceleration)
              - y_f_cross_U(i, j, k, grid, coriolis, solution)
              + forcings.vh(i, j, k, grid, clock, merge(solution, tracers)))
 end
@@ -85,7 +85,7 @@ end
 
     return ( -  div_Uc(i, j, k, grid, advection, solution, c) 
              + c_div_U(i, j, k, grid, solution, c)         
-             +  ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, nothing)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, c, val_tracer_index, clock, diffusivities, tracers, nothing)
              + forcing(i, j, k, grid, clock, merge(solution, tracers)) 
             )
 end

@@ -101,7 +101,7 @@ function animate_rossby_haurwitz(; projections=[ccrs.Robinson()])
 
     # Need extra crop video filter in case we end up with odd number of pixels in width or height.
     # See: https://stackoverflow.com/a/29582287
-    run(`ffmpeg -y -i $filename_pattern -c:v libx264 -vf "fps=10, crop=trunc(iw/2)*2:trunc(ih/2)*2" -pix_fmt yuv420p $output_filename`)
+    run(`ffmpeg -y -i $filename_pattern -c:v libx264 -vf "fps=30, crop=trunc(iw/2)*2:trunc(ih/2)*2" -pix_fmt yuv420p $output_filename`)
 
     [rm(f) for f in glob("cubed_sphere_rossby_haurwitz_*.png")]
 

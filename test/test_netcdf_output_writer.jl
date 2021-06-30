@@ -99,7 +99,7 @@ function test_thermal_bubble_netcdf_output(arch)
 
     nc_sliced_filepath = "test_dump_sliced_$(typeof(arch)).nc"
     nc_sliced_writer = NetCDFOutputWriter(model, outputs, filepath=nc_sliced_filepath, schedule=IterationInterval(10),
-                                          field_slicer=field_slicer, verbose=true)
+                                          array_type=Array{Float32}, field_slicer=field_slicer, verbose=true)
 
     push!(simulation.output_writers, nc_sliced_writer)
 
@@ -116,12 +116,12 @@ function test_thermal_bubble_netcdf_output(arch)
 
     @test eltype(ds3["time"]) == eltype(model.clock.time)
 
-    @test eltype(ds3["xC"]) == Float64
-    @test eltype(ds3["xF"]) == Float64
-    @test eltype(ds3["yC"]) == Float64
-    @test eltype(ds3["yF"]) == Float64
-    @test eltype(ds3["zC"]) == Float64
-    @test eltype(ds3["zF"]) == Float64
+    @test eltype(ds3["xC"]) == Float32
+    @test eltype(ds3["xF"]) == Float32
+    @test eltype(ds3["yC"]) == Float32
+    @test eltype(ds3["yF"]) == Float32
+    @test eltype(ds3["zC"]) == Float32
+    @test eltype(ds3["zF"]) == Float32
 
     @test length(ds3["xC"]) == Nx
     @test length(ds3["yC"]) == Ny
@@ -158,11 +158,11 @@ function test_thermal_bubble_netcdf_output(arch)
 
     close(ds3)
 
-    @test all(u .≈ Array(interiorparent(model.velocities.u)))
-    @test all(v .≈ Array(interiorparent(model.velocities.v)))
-    @test all(w .≈ Array(interiorparent(model.velocities.w)))
-    @test all(T .≈ Array(interiorparent(model.tracers.T)))
-    @test all(S .≈ Array(interiorparent(model.tracers.S)))
+    @test all(u .≈ Array(interior(model.velocities.u)))
+    @test all(v .≈ Array(interior(model.velocities.v)))
+    @test all(w .≈ Array(interior(model.velocities.w)))
+    @test all(T .≈ Array(interior(model.tracers.T)))
+    @test all(S .≈ Array(interior(model.tracers.S)))
 
     ds2 = Dataset(nc_sliced_filepath)
 
@@ -175,12 +175,12 @@ function test_thermal_bubble_netcdf_output(arch)
 
     @test eltype(ds2["time"]) == eltype(model.clock.time)
 
-    @test eltype(ds2["xC"]) == Float64
-    @test eltype(ds2["xF"]) == Float64
-    @test eltype(ds2["yC"]) == Float64
-    @test eltype(ds2["yF"]) == Float64
-    @test eltype(ds2["zC"]) == Float64
-    @test eltype(ds2["zF"]) == Float64
+    @test eltype(ds2["xC"]) == Float32
+    @test eltype(ds2["xF"]) == Float32
+    @test eltype(ds2["yC"]) == Float32
+    @test eltype(ds2["yF"]) == Float32
+    @test eltype(ds2["zC"]) == Float32
+    @test eltype(ds2["zF"]) == Float32
 
     @test length(ds2["xC"]) == length(i_slice)
     @test length(ds2["xF"]) == length(i_slice)
@@ -217,11 +217,11 @@ function test_thermal_bubble_netcdf_output(arch)
 
     close(ds2)
 
-    @test all(u_sliced .≈ Array(interiorparent(model.velocities.u))[i_slice, j_slice, k_slice])
-    @test all(v_sliced .≈ Array(interiorparent(model.velocities.v))[i_slice, j_slice, k_slice])
-    @test all(w_sliced .≈ Array(interiorparent(model.velocities.w))[i_slice, j_slice, k_slice])
-    @test all(T_sliced .≈ Array(interiorparent(model.tracers.T))[i_slice, j_slice, k_slice])
-    @test all(S_sliced .≈ Array(interiorparent(model.tracers.S))[i_slice, j_slice, k_slice])
+    @test all(u_sliced .≈ Array(interior(model.velocities.u))[i_slice, j_slice, k_slice])
+    @test all(v_sliced .≈ Array(interior(model.velocities.v))[i_slice, j_slice, k_slice])
+    @test all(w_sliced .≈ Array(interior(model.velocities.w))[i_slice, j_slice, k_slice])
+    @test all(T_sliced .≈ Array(interior(model.tracers.T))[i_slice, j_slice, k_slice])
+    @test all(S_sliced .≈ Array(interior(model.tracers.S))[i_slice, j_slice, k_slice])
 
     rm(nc_filepath)
     rm(nc_sliced_filepath)
@@ -267,12 +267,12 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
 
     @test eltype(ds["time"]) == eltype(model.clock.time)
 
-    @test eltype(ds["xC"]) == Float64
-    @test eltype(ds["xF"]) == Float64
-    @test eltype(ds["yC"]) == Float64
-    @test eltype(ds["yF"]) == Float64
-    @test eltype(ds["zC"]) == Float64
-    @test eltype(ds["zF"]) == Float64
+    @test eltype(ds["xC"]) == Float32
+    @test eltype(ds["xF"]) == Float32
+    @test eltype(ds["yC"]) == Float32
+    @test eltype(ds["yF"]) == Float32
+    @test eltype(ds["zC"]) == Float32
+    @test eltype(ds["zF"]) == Float32
 
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
     @test length(ds["xC"]) == Nx+2Hx
@@ -637,15 +637,17 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     @test ds["xF"][1] == grid.xᶠᵃᵃ[1]
     @test ds["yC"][1] == grid.yᵃᶜᵃ[1]
     @test ds["yF"][1] == grid.yᵃᶠᵃ[1]
-    @test ds["zC"][1] == grid.zᵃᵃᶜ[1]
-    @test ds["zF"][1] == grid.zᵃᵃᶠ[1]
+
+    @test CUDA.@allowscalar ds["zC"][1] == grid.zᵃᵃᶜ[1]
+    @test CUDA.@allowscalar ds["zF"][1] == grid.zᵃᵃᶠ[1]
 
     @test ds["xC"][end] == grid.xᶜᵃᵃ[Nx]
     @test ds["xF"][end] == grid.xᶠᵃᵃ[Nx]
     @test ds["yC"][end] == grid.yᵃᶜᵃ[Ny]
     @test ds["yF"][end] == grid.yᵃᶠᵃ[Ny]
-    @test ds["zC"][end] == grid.zᵃᵃᶜ[Nz]
-    @test ds["zF"][end] == grid.zᵃᵃᶠ[Nz+1]  # z is Bounded
+
+    @test CUDA.@allowscalar  ds["zC"][end] == grid.zᵃᵃᶜ[Nz]
+    @test CUDA.@allowscalar  ds["zF"][end] == grid.zᵃᵃᶠ[Nz+1]  # z is Bounded
 
     close(ds)
     rm(nc_filepath)

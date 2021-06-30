@@ -9,6 +9,7 @@ include("cubed_sphere_faces.jl")
 include("cubed_sphere_set!.jl")
 include("cubed_sphere_halo_filling.jl")
 include("cubed_sphere_kernel_launching.jl")
+include("immersed_conformal_cubed_sphere_grid.jl")
 
 #####
 ##### Validating cubed sphere stuff
@@ -30,15 +31,54 @@ validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
     [validate_vertical_velocity_boundary_conditions(w_face) for w_face in faces(w)]
 
 #####
+##### Regularizing field boundary conditions
+#####
+
+import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+
+function regularize_field_boundary_conditions(bcs::CubedSphereFaces, grid, model_field_names, field_name)
+
+    faces = Tuple(
+        regularize_field_boundary_conditions(face_bcs, face_grid, model_field_names, field_name)
+        for (face_bcs, face_grid) in zip(bcs.faces, grid.faces)
+    )
+
+    return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
+end
+
+#####
 ##### Applying flux boundary conditions
 #####
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: apply_flux_bcs!
 
-apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCubedSphereField, arch, barrier, clock, model_fields) = [
-    apply_flux_bcs!(get_face(Gcⁿ, face_index), events, get_face(c, face_index), arch, barrier, clock, model_fields)
-    for face_index in 1:length(Gcⁿ.data.faces)
-]
+function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCubedSphereField, arch, barrier, clock, model_fields)
+
+    for (face_index, Gcⁿ_face) in enumerate(faces(Gcⁿ))
+        apply_flux_bcs!(Gcⁿ_face, events, get_face(c, face_index), arch, barrier,
+                        clock, get_face(model_fields, face_index))
+    end
+
+    return nothing
+end
+
+#####
+##### Forcing functions on the cubed sphere
+#####
+
+using Oceananigans.Forcings: user_function_arguments
+import Oceananigans.Forcings: ContinuousForcing
+
+@inline function (forcing::ContinuousForcing{LX, LY, LZ})(i, j, k, grid::ConformalCubedSphereFaceGrid, clock, model_fields) where {LX, LY, LZ}
+
+    args = user_function_arguments(i, j, k, grid, model_fields, forcing.parameters, forcing)
+
+    λ = λnode(LX(), LY(), LZ(), i, j, k, grid)
+    φ = φnode(LX(), LY(), LZ(), i, j, k, grid)
+    z = znode(LX(), LY(), LZ(), i, j, k, grid)
+
+    return @inbounds forcing.func(λ, φ, z, clock.time, args...)
+end
 
 #####
 ##### NaN checker for cubed sphere fields
@@ -75,10 +115,13 @@ end
 ##### Output writing for cubed sphere fields
 #####
 
+using Oceananigans.Fields: compute!
 import Oceananigans.OutputWriters: fetch_output
 
-fetch_output(field::AbstractCubedSphereField, model, field_slicer) =
-    Tuple(fetch_output(face_field, model, field_slicer) for face_field in faces(field))
+function fetch_output(field::AbstractCubedSphereField, model, field_slicer)
+    compute!(field)
+    return Tuple(fetch_output(face_field, model, field_slicer) for face_field in faces(field))
+end
 
 #####
 ##### StateChecker for each face is useful for debugging

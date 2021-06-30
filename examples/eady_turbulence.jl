@@ -75,8 +75,8 @@
 # the flux is negative (downwards) when the velocity at the bottom boundary is positive, and
 # positive (upwards) with the velocity at the bottom boundary is negative.
 # This drag term is "quadratic" because the rate at which momentum is removed is proportional
-# to ``\boldsymbol{u}_h |\boldsymbol{u}_h|``, where ``\boldsymbol{u}_h = u \boldsymbol{\hat{x}} + v \boldsymbol{\hat{y}}`` is
-# the horizontal velocity.
+# to ``\boldsymbol{u} |\boldsymbol{u}|``, where ``\boldsymbol{u} = u \boldsymbol{\hat{x}} + 
+# v \boldsymbol{\hat{y}}`` is the horizontal velocity.
 #
 # The ``x``-component of the quadratic bottom drag is thus
 #

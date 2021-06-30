@@ -1,7 +1,7 @@
 module Oceananigans
 
-if VERSION < v"1.5"
-    error("This version of Oceananigans.jl requires Julia v1.5 or newer.")
+if VERSION < v"1.6"
+    error("This version of Oceananigans.jl requires Julia v1.6 or newer.")
 end
 
 export
@@ -31,7 +31,7 @@ export
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     AveragedField, ComputedField, KernelComputedField, BackgroundField,
-    interior, interiorparent, set!, compute!,
+    interior, set!, compute!,
 
     # Forcing functions
     Forcing, Relaxation, LinearTarget, GaussianMask,
@@ -42,6 +42,7 @@ export
     # BuoyancyModels and equations of state
     Buoyancy, BuoyancyTracer, SeawaterBuoyancy,
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
+    BuoyancyField,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
     UniformStokesDrift,
@@ -51,16 +52,20 @@ export
     AnisotropicBiharmonicDiffusivity,
     ConstantSmagorinsky, AnisotropicMinimumDissipation,
     HorizontallyCurvilinearAnisotropicDiffusivity,
+    ConvectiveAdjustmentVerticalDiffusivity,
 
     # Lagrangian particle tracking
     LagrangianParticles,
 
     # Models
-    IncompressibleModel, NonDimensionalIncompressibleModel, HydrostaticFreeSurfaceModel, fields,
+    IncompressibleModel, NonDimensionalIncompressibleModel,
+    HydrostaticFreeSurfaceModel,
+    ShallowWaterModel,
+    fields,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface,
-    HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
+    HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving, VectorInvariantEnergyConserving,
     PrescribedVelocityFields,
 
     # Time stepping
@@ -77,6 +82,9 @@ export
     # Output writers
     FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval,
+
+    # Output readers
+    FieldTimeSeries, FieldDataset, InMemory, OnDisk,
 
     # Abstract operations
     ∂x, ∂y, ∂z, @at,
@@ -148,11 +156,14 @@ function tupleit end
 function short_show end
 
 function fields end
+function prognostic_fields end
+function tracer_tendency_kernel_function end
 
 #####
 ##### Include all the submodules
 #####
 
+# Basics
 include("Architectures.jl")
 include("Units.jl")
 include("Grids/Grids.jl")
@@ -162,19 +173,28 @@ include("Operators/Operators.jl")
 include("Advection/Advection.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
+include("AbstractOperations/AbstractOperations.jl")
+include("Solvers/Solvers.jl")
+
+# Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
 include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
-include("Solvers/Solvers.jl")
 include("Forcings/Forcings.jl")
+
+include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
+
+# Output and Physics, time-stepping, and models
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
+include("OutputReaders/OutputReaders.jl")
 include("Simulations/Simulations.jl")
-include("AbstractOperations/AbstractOperations.jl")
+
+# Abstractions for distributed and multi-region models
 include("CubedSpheres/CubedSpheres.jl")
 include("Distributed/Distributed.jl")
 
@@ -200,6 +220,7 @@ using .Models
 using .TimeSteppers
 using .Diagnostics
 using .OutputWriters
+using .OutputReaders
 using .Simulations
 using .AbstractOperations
 using .CubedSpheres

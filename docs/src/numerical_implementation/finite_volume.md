@@ -6,7 +6,7 @@ The `Oceananigans.jl` staggered grid is defined by a rectilinear array of cuboid
 Note that the indices ``(i, j, k)`` increase with increasing coordinate ``(x, y, z)``.
 
 ![Schematic of staggered grid](assets/staggered_grid.png)
-*A schematic of \texttt{Oceananigans.jl} finite volumes for a two-dimensional staggered grid in ``(x, z)``.
+*A schematic of `Oceananigans.jl` finite volumes for a two-dimensional staggered grid in ``(x, z)``.
 Tracers ``c`` and pressure ``p`` are defined at the center of the control volume. The ``u`` control volumes are 
 centered on the left and right edges of the pressure control volume while the ``w`` control volumes are centered 
 on the top and bottom edges of the pressure control volumes. The indexing convention places the ``i^{\rm{th}}`` 

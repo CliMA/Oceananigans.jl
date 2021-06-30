@@ -84,7 +84,7 @@ function calculate_interior_tendency_contributions!(tendencies,
                                     forcings, hydrostatic_pressure, clock, dependencies=barrier)
 
     Gw_event = calculate_Gw_kernel!(tendencies.w, grid, advection, coriolis, stokes_drift, closure,
-                                    background_fields, velocities, tracers, diffusivities,
+                                    buoyancy, background_fields, velocities, tracers, diffusivities,
                                     forcings, clock, dependencies=barrier)
 
     events = [Gu_event, Gv_event, Gw_event]
@@ -110,70 +110,21 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function calculate_Gu!(Gu,
-                               grid,
-                               advection,
-                               coriolis,
-                               stokes_drift,
-                               closure,
-                               buoyancy,
-                               background_fields,
-                               velocities,
-                               tracers,
-                               diffusivities,
-                               forcings,
-                               hydrostatic_pressure,
-                               clock)
-
+@kernel function calculate_Gu!(Gu, args...)
     i, j, k = @index(Global, NTuple)
-
-    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, advection, coriolis, stokes_drift,
-                                                closure, buoyancy, background_fields, velocities, tracers,
-                                                diffusivities, forcings, hydrostatic_pressure, clock)
+    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, args...)
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function calculate_Gv!(Gv,
-                               grid,
-                               advection,
-                               coriolis,
-                               stokes_drift,
-                               closure,
-                               buoyancy,
-                               background_fields,
-                               velocities,
-                               tracers,
-                               diffusivities,
-                               forcings,
-                               hydrostatic_pressure,
-                               clock)
-
+@kernel function calculate_Gv!(Gv, args...)
     i, j, k = @index(Global, NTuple)
-
-    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, advection, coriolis, stokes_drift,
-                                                closure, buoyancy, background_fields, velocities, tracers,
-                                                diffusivities, forcings, hydrostatic_pressure, clock)
+    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, args...)
 end
 
 """ Calculate the right-hand-side of the w-velocity equation. """
-@kernel function calculate_Gw!(Gw,
-                               grid,
-                               advection,
-                               coriolis,
-                               stokes_drift,
-                               closure,
-                               background_fields,
-                               velocities,
-                               tracers,
-                               diffusivities,
-                               forcings,
-                               clock)
-
+@kernel function calculate_Gw!(Gw, args...)
     i, j, k = @index(Global, NTuple)
-
-    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, advection, coriolis, stokes_drift,
-                                                closure, background_fields, velocities, tracers,
-                                                diffusivities, forcings, clock)
+    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, args...)
 end
 
 #####
@@ -181,24 +132,9 @@ end
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function calculate_Gc!(Gc,
-                               grid,
-                               tracer_index,
-                               advection,
-                               closure,
-                               buoyancy,
-                               background_fields,
-                               velocities,
-                               tracers,
-                               diffusivities,
-                               forcing,
-                               clock)
-
+@kernel function calculate_Gc!(Gc, args...)
     i, j, k = @index(Global, NTuple)
-
-    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, tracer_index, advection, closure,
-                                            buoyancy, background_fields, velocities, tracers,
-                                            diffusivities, forcing, clock)
+    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, args...)
 end
 
 #####

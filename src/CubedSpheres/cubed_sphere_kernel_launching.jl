@@ -35,3 +35,5 @@ function launch!(arch, grid::ConformalCubedSphereGrid, dims, kernel!, args...; k
 
     return MultiEvent(Tuple(events))
 end
+
+@inline launch!(arch, grid::ConformalCubedSphereGrid, ::Val{dims}, args...; kwargs...) where dims = launch!(arch, grid, dims, args...; kwargs...)

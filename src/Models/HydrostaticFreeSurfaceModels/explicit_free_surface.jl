@@ -20,7 +20,7 @@ Adapt.adapt_structure(to, free_surface::ExplicitFreeSurface) =
 #####
 
 function FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, velocities, arch, grid)
-    η = FreeSurfaceDisplacementField(velocities, arch, grid)
+    η = FreeSurfaceDisplacementField(velocities, free_surface, arch, grid)
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
     return ExplicitFreeSurface(η, g)
 end
@@ -39,13 +39,18 @@ end
 ##### Time stepping
 #####
 
-ab2_step_free_surface!(free_surface::ExplicitFreeSurface, velocities_update, model, Δt, χ) =
-    explicit_ab2_step_free_surface!(free_surface::ExplicitFreeSurface, velocities_update, model, Δt, χ)
+ab2_step_free_surface!(free_surface::ExplicitFreeSurface, model, Δt, χ, velocities_update) =
+    explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
 
-explicit_ab2_step_free_surface!(free_surface, velocities_update, model, Δt, χ) =
-    launch!(model.architecture, model.grid, :xy, _explicit_ab2_step_free_surface!, free_surface.η,
-            Δt, χ, model.timestepper.Gⁿ.η, model.timestepper.G⁻.η,
-            dependencies=Event(device(model.architecture)))
+explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
+    launch!(model.architecture, model.grid, :xy,
+            _explicit_ab2_step_free_surface!, free_surface.η, Δt, χ,
+            model.timestepper.Gⁿ.η, model.timestepper.G⁻.η,
+            dependencies = Event(device(model.architecture)))
+
+#####
+##### Kernel
+#####
 
 @kernel function _explicit_ab2_step_free_surface!(η, Δt, χ::FT, Gηⁿ, Gη⁻) where FT
     i, j = @index(Global, NTuple)

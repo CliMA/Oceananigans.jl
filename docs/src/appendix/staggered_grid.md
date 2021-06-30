@@ -2,18 +2,19 @@
 
 Velocities ``u``, ``v``, and ``w`` are defined on the faces of the cells, which are coincident with three orthogonal
 coordinate axes (the Cartesian axes in the case of Oceananigans). Pressure ``p`` and tracers ``c`` are stored at
-the cell  centers as cell averages. See figure \ref{fig:staggered_grid} for a schematic of the different control
-volumes. Other quantities may be defined at other locations. For example, vorticity ``\boldsymbol{\omega} = \boldsymbol{\nabla} \times \boldsymbol{u}``
+the cell  centers as cell averages. See schematic below of the different control
+volumes. Other quantities may be defined at other locations. For example, vorticity ``\boldsymbol{\omega} = \boldsymbol{\nabla} \times \boldsymbol{v}``
 is defined at the cell edges.[^1]
 
 [^1]: In 2D it would more correct to say the cell corners. In 3D, variables like vorticity lie at the same vertical
     levels as the cell-centered variables and so they really lie at the cell edges.
 
-![Schematic of control volumes](assets/staggered_grid_control_volumes.png)
-*Figure 1: A schematic of the control volumes in a two-dimensional staggered grid. Note that pressure ``p``
-(and tracers) is defined at the center of the control volume. The ``u`` control volumes are centered on the
-left and right edges of the pressure control volume while the ``v`` control volumes are centered on the top
-and bottom edges of the pressure control volumes. Figure credit: [Kumar16](@cite)*
+![Schematic of control volumes](../numerical_implementation/assets/staggered_grid_control_volumes.png)
+*A schematic of `Oceananigans.jl` finite volumes for a two-dimensional staggered grid in ``(x, z)``.
+Tracers ``c`` and pressure ``p`` are defined at the center of the control volume. The ``u`` control volumes are 
+centered on the left and right edges of the pressure control volume while the ``w`` control volumes are centered 
+on the top and bottom edges of the pressure control volumes. The indexing convention places the ``i^{\rm{th}}`` 
+``u``-node on cell ``x``-faces to the left of the ``i`` tracer point at cell centers. Figure credit: [Kumar16](@cite)*
 
 This staggered arrangement of variables is more complicated than the collocated grid arrangement but is greatly
 beneficial as it avoids the odd-even decoupling between the pressure and velocity if they are stored at the same
@@ -29,7 +30,7 @@ pressure projection operator with eigenvalue zero and are thus indistinguishable
 [Sani81](@cite).
 
 The staggered grid was first introduced by [Harlow65](@cite) with their *marker and cell* method. In meteorology
-and oceanography, the staggered grid is usually referred to as the Arakawa C-grid after [Arakawa77](@cite), who
+and oceanography, this particular staggered grid configuration is referred to as the Arakawa C-grid after [Arakawa77](@cite), who
 investigated four different staggered grids and the unstaggered A-grid for use in an atmospheric model.
 
 [Arakawa77](@cite) investigated the dispersion relation of inertia-gravity waves[^2] traveling in the ``x``-direction

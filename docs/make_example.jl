@@ -28,8 +28,8 @@ using Oceananigans.AbstractOperations
 ##### Generate examples
 #####
 
-# Gotta set this environment variable when using the GR run-time on Travis CI.
-# This happens as examples will use Plots.jl to make plots and movies.
+# Gotta set this environment variable when using the GR run-time on CI machines.
+# This is needed as examples use Plots.jl to make plots and movies.
 # See: https://github.com/jheinen/GR.jl/issues/278
 
 ENV["GKSwstype"] = "100"

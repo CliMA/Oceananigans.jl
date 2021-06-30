@@ -19,6 +19,7 @@
         @test all(c .== 4)
 
         # Halo regions
+        fill_halo_regions!(c, arch) # Does not happen by default in broadcasting now
         @test c[1, 1, 0] == 4
         @test c[1, 1, Nz+1] == 4
 

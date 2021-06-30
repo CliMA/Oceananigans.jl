@@ -8,20 +8,20 @@ Much of the early work on LES was motivated by the study of atmospheric boundary
 by [Smagorinsky63](@cite) and [Lilly66](@cite), then first implemented by [Deardorff70](@cite) and [Deardorff74](@cite).
 
 In the LES framework, the Navier-Stokes equations are averaged in the same way as [Reynolds1895](@cite) except that the
-mean field ``\overline{\boldsymbol{u}}`` is obtained via convolution with a filter convolution kernel ``G``
+mean field ``\overline{\boldsymbol{v}}`` is obtained via convolution with a filter convolution kernel ``G``
 ```math
-\overline{\boldsymbol{u}(\boldsymbol{x}, t)} = G \star \boldsymbol{u} =
+\overline{\boldsymbol{v}(\boldsymbol{x}, t)} = G \star \boldsymbol{v} =
   \int_{-\infty}^\infty \int_{-\infty}^\infty
-  \boldsymbol{u}(\boldsymbol{x}^\prime, t) G(\boldsymbol{x} - \boldsymbol{x}^\prime, t - \tau) \, d\boldsymbol{x}^\prime \, \mathrm{d} \tau \, ,
+  \boldsymbol{v}(\boldsymbol{x}^\prime, t) G(\boldsymbol{x} - \boldsymbol{x}^\prime, t - \tau) \, d\boldsymbol{x}^\prime \, \mathrm{d} \tau \, ,
 ```
 as described by [Leonard75](@cite) who introduced the general filtering formalism.
 
-The ``\overline{u_i^\prime u_j^\prime}`` terms are now components of what is called the sub-grid scale (SGS) stress
+The ``\overline{v_i^\prime v_j^\prime}`` terms are now components of what is called the sub-grid scale (SGS) stress
 tensor ``\tau^\text{SGS}_{ij}``, which looks the same as the Reynolds stress tensor so we will drop the SGS superscript.
 
 It is probably important to note that the large eddy simulation filtering operation does not satisfy the properties
 of a Reynolds operator (§2.1)[sagaut06](@cite) and that in general, the filtered residual is not zero:
-``\overline{\boldsymbol{u}^\prime(\boldsymbol{x}, t)} \ne 0``.
+``\overline{\boldsymbol{v}^\prime(\boldsymbol{x}, t)} \ne 0``.
 
 §13.2 of [Pope00](@cite) lists a number of popular choices for the filter function ``G``. For practical reasons we
 simply employ the box kernel
@@ -34,12 +34,12 @@ simply employ the box kernel
 where ``H`` is the Heaviside function, ``\Delta`` is the grid spacing, and ``t_n`` is the current time step. With
 \eqref{eq:box-kernel} we get back the averaging operator originally used by [Deardorff70](@cite)
 ```math
-\overline{\boldsymbol{u}(x, y, z, t)} =
+\overline{\boldsymbol{v}(x, y, z, t)} =
   \frac{1}{\Delta x \Delta y \Delta z}
   \int_{x - \frac{1}{2}\Delta x}^{x + \frac{1}{2}\Delta x}
   \int_{y - \frac{1}{2}\Delta y}^{y + \frac{1}{2}\Delta y}
   \int_{z - \frac{1}{2}\Delta z}^{z + \frac{1}{2}\Delta z}
-  \boldsymbol{u}(\xi, \eta, \zeta, t) \, \mathrm{d} \xi \, \mathrm{d} \eta \, \mathrm{d} \zeta \, ,
+  \boldsymbol{v}(\xi, \eta, \zeta, t) \, \mathrm{d} \xi \, \mathrm{d} \eta \, \mathrm{d} \zeta \, ,
 ```
 which if evaluated at the cell centers just returns the cell averages we already compute in the finite volume method.
 
@@ -50,7 +50,7 @@ which if evaluated at the cell centers just returns the cell averages we already
 scale given by ``\Delta |\overline{S}|`` where ``|\overline{S}| = \sqrt{2\overline{S}_{ij}\overline{S}_{ij}}``. Thus the
 SGS stress tensor is given by
 ```math
-\tau_{ij} = -2\nu_e \overline{S}_{ij} = -2 (C_s \Delta)^2 |\overline{S}| \overline{S}_{ij} \, ,
+\tau_{ij} = -2 \nu_e \overline{S}_{ij} = -2 (C_s \Delta)^2 |\overline{S}| \overline{S}_{ij} \, ,
 ```
 where ``C_s`` is a dimensionless constant. The grid spacing is usually used for the characteristic length scale ``\Delta``.
 The eddy diffusivities are calculated via ``\kappa_e = \nu_e / \text{Pr}_t`` where the turbulent Prandtl number
@@ -99,9 +99,9 @@ represent the resolved/filtered variables, the eddy viscosity predictor is given
     \label{eq:nu-dagger}
     \nu_e^\dagger = -(C\Delta)^2
       \frac
-        {\left( \hat{\partial}_k \hat{u}_i \right) \left( \hat{\partial}_k \hat{u}_j \right) \hat{S}_{ij}
-        + C_b\hat{\delta}_{i3} \alpha g \left( \hat{\partial}_k \hat{u_i} \right) \hat{\partial}_k \theta}
-        {\left( \hat{\partial}_l \hat{u}_m \right) \left( \hat{\partial}_l \hat{u}_m \right)} \, ,
+        {\left( \hat{\partial}_k \hat{v}_i \right) \left( \hat{\partial}_k \hat{v}_j \right) \hat{S}_{ij}
+        + C_b\hat{\delta}_{i3} \alpha g \left( \hat{\partial}_k \hat{v_i} \right) \hat{\partial}_k \theta}
+        {\left( \hat{\partial}_l \hat{v}_m \right) \left( \hat{\partial}_l \hat{v}_m \right)} \, ,
     \end{equation}
 ```
 and the eddy diffusivity predictor by
@@ -109,7 +109,7 @@ and the eddy diffusivity predictor by
     \begin{equation}
     \kappa_e^\dagger = -(C\Delta)^2
     \frac
-        {\left( \hat{\partial}_k \hat{u}_i \right) \left( \hat{\partial}_k \hat{\theta} \right) \hat{\partial}_i \theta}
+        {\left( \hat{\partial}_k \hat{v}_i \right) \left( \hat{\partial}_k \hat{\theta} \right) \hat{\partial}_i \theta}
         {\left( \hat{\partial}_l \hat{\theta} \right) \left( \hat{\partial}_l \hat{\theta} \right)} \, ,
     \end{equation}
 ```
@@ -117,8 +117,8 @@ where
 ```math
   \begin{equation}
   \hat{x}_i = \frac{x_i}{\Delta_i}, \quad
-  \hat{u}_i(\hat{x}, t) = \frac{u_i(x, t)}{\Delta_i}, \quad
-  \hat{\partial}_i \hat{u}_j(\hat{x}, t) = \frac{\Delta_i}{\Delta_j} \partial_i u_j(x, t), \quad
+  \hat{v}_i(\hat{x}, t) = \frac{v_i(x, t)}{\Delta_i}, \quad
+  \hat{\partial}_i \hat{v}_j(\hat{x}, t) = \frac{\Delta_i}{\Delta_j} \partial_i v_j(x, t), \quad
   \hat{\delta}_{i3} = \frac{\delta_{i3}}{\Delta_3} \, ,
   \end{equation}
 ```
@@ -127,7 +127,7 @@ so that the normalized rate of strain tensor is
     \begin{equation}
     \label{eq:S-hat}
     \hat{S}_{ij} =
-      \frac{1}{2} \left[ \hat{\partial}_i \hat{u}_j(\hat{x}, t) + \hat{\partial}_j \hat{u}_i(\hat{x}, t) \right] \, .
+      \frac{1}{2} \left[ \hat{\partial}_i \hat{v}_j(\hat{x}, t) + \hat{\partial}_j \hat{v}_i(\hat{x}, t) \right] \, .
     \end{equation}
 ```
 

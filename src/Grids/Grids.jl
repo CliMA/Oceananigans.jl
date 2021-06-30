@@ -1,15 +1,15 @@
 module Grids
 
-export
-    Center, Face,
-    AbstractTopology, Periodic, Bounded, Flat, Connected, topology,
-    AbstractGrid, halo_size,
-    AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid,
-    AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid,
-    RegularLatitudeLongitudeGrid, ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid,
-    xnode, ynode, znode, xnodes, ynodes, znodes, nodes,
-    xC, xF, yC, yF, zC, zF
+export Center, Face
+export AbstractTopology, Periodic, Bounded, Flat, Connected, topology
+export AbstractGrid, AbstractPrimaryGrid, halo_size
+export AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid
+export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
+export RegularLatitudeLongitudeGrid, ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
+export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
+export offset_data, new_data
 
+using CUDA
 using Adapt
 using OffsetArrays
 
@@ -82,18 +82,26 @@ Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, T
 abstract type AbstractGrid{FT, TX, TY, TZ} end
 
 """
+    AbstractPrimaryGrid{FT, TX, TY, TZ}
+
+Abstract supertype for "primary" grids (as opposed to grids with immersed boundaries)
+with elements of type `FT` and topology `{TX, TY, TZ}`.
+"""
+abstract type AbstractPrimaryGrid{FT, TX, TY, TZ} <: AbstractGrid{FT, TX, TY, TZ} end
+
+"""
     AbstractRectilinearGrid{FT, TX, TY, TZ}
 
 Abstract supertype for rectilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
-abstract type AbstractRectilinearGrid{FT, TX, TY, TZ} <: AbstractGrid{FT, TX, TY, TZ} end
+abstract type AbstractRectilinearGrid{FT, TX, TY, TZ} <: AbstractPrimaryGrid{FT, TX, TY, TZ} end
 
 """
     AbstractCurvilinearGrid{FT, TX, TY, TZ}
 
 Abstract supertype for curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
-abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ} <: AbstractGrid{FT, TX, TY, TZ} end
+abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ} <: AbstractPrimaryGrid{FT, TX, TY, TZ} end
 
 """
     AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
@@ -112,6 +120,8 @@ topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
 topology(grid, dim) = topology(grid)[dim]
 
 include("grid_utils.jl")
+include("zeros.jl")
+include("new_data.jl")
 include("automatic_halo_sizing.jl")
 include("input_validation.jl")
 include("regular_rectilinear_grid.jl")

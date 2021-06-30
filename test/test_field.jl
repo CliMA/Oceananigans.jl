@@ -1,4 +1,4 @@
-using Oceananigans.Fields: cpudata, FieldSlicer
+using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy
 
 """
     correct_field_size(arch, grid, FieldType, Tx, Ty, Tz)
@@ -25,7 +25,7 @@ function.
 function correct_field_value_was_set(arch, grid, FieldType, val::Number)
     f = FieldType(arch, grid)
     set!(f, val)
-    CUDA.@allowscalar return interior(f) ≈ val * ones(size(f))
+    return all(interior(f) .≈ val * arch_array(arch, ones(size(f))))
 end
 
 function run_field_reduction_tests(FT, arch)
@@ -38,7 +38,7 @@ function run_field_reduction_tests(FT, arch)
     w = ZFaceField(arch, grid)
     c = CenterField(arch, grid)
 
-    f(x, y, z) = exp(x) * sin(y) * tanh(z)
+    f(x, y, z) = 1 + exp(x) * sin(y) * tanh(z)
 
     ϕs = (u, v, w, c)
     [set!(ϕ, f) for ϕ in ϕs]
@@ -58,26 +58,33 @@ function run_field_reduction_tests(FT, arch)
 
     dims_to_test = (1, 2, 3, (1, 2), (1, 3), (2, 3))
 
-    # Important to make sure no CUDA scalar operations occur!
-    CUDA.@disallowscalar begin
-        for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
-            @test minimum(ϕ) == minimum(ϕ_vals)
-            @test maximum(ϕ) == maximum(ϕ_vals)
-            @test mean(ϕ) == mean(ϕ_vals)
-            @test minimum(∛, ϕ) == minimum(∛, ϕ_vals)
-            @test maximum(abs, ϕ) == maximum(abs, ϕ_vals)
-            @test mean(abs2, ϕ) == mean(abs2, ϕ)
+    for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
 
-            for dims in dims_to_test
-                @test minimum(ϕ, dims=dims) == minimum(ϕ_vals, dims=dims)
-                @test maximum(ϕ, dims=dims) == maximum(ϕ_vals, dims=dims)
-                @test mean(ϕ, dims=dims) == mean(ϕ_vals, dims=dims)
+        ε = eps(maximum(ϕ_vals))
 
-                @test minimum(sin, ϕ, dims=dims) == minimum(sin, ϕ_vals, dims=dims)
-                @test maximum(cos, ϕ, dims=dims) == maximum(cos, ϕ_vals, dims=dims)
-                @test mean(cosh, ϕ, dims=dims) == mean(cosh, ϕ, dims=dims)
-            end
+        @test all(isapprox.(ϕ, ϕ_vals, atol=ε)) # if this isn't true, reduction tests can't pass
+
+        # Important to make sure no CUDA scalar operations occur!
+        CUDA.allowscalar(false)
+
+        @test minimum(ϕ) ≈ minimum(ϕ_vals) atol=ε
+        @test maximum(ϕ) ≈ maximum(ϕ_vals) atol=ε
+        @test mean(ϕ) ≈ mean(ϕ_vals) atol=2ε
+        @test minimum(∛, ϕ) ≈ minimum(∛, ϕ_vals) atol=ε
+        @test maximum(abs, ϕ) ≈ maximum(abs, ϕ_vals) atol=ε
+        @test mean(abs2, ϕ) ≈ mean(abs2, ϕ) atol=ε
+
+        for dims in dims_to_test
+            @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
+            @test all(isapprox(maximum(ϕ, dims=dims), maximum(ϕ_vals, dims=dims), atol=4ε))
+            @test all(isapprox(   mean(ϕ, dims=dims),    mean(ϕ_vals, dims=dims), atol=4ε))
+
+            @test all(isapprox(minimum(sin,  ϕ, dims=dims), minimum(sin,  ϕ_vals, dims=dims), atol=4ε))
+            @test all(isapprox(maximum(cos,  ϕ, dims=dims), maximum(cos,  ϕ_vals, dims=dims), atol=4ε))
+            @test all(isapprox(   mean(cosh, ϕ, dims=dims),    mean(cosh, ϕ_vals, dims=dims), atol=5ε))
         end
+
+        CUDA.allowscalar(true)
     end
 
     return nothing
@@ -113,10 +120,10 @@ function run_field_interpolation_tests(arch, FT)
     ℑw = interpolate.(Ref(w), nodes(w, reshape=true)...)
     ℑc = interpolate.(Ref(c), nodes(c, reshape=true)...)
 
-    @test all(isapprox.(ℑu, interior(u), atol=ε_max))
-    @test all(isapprox.(ℑv, interior(v), atol=ε_max))
-    @test all(isapprox.(ℑw, interior(w), atol=ε_max))
-    @test all(isapprox.(ℑc, interior(c), atol=ε_max))
+    @test all(isapprox.(ℑu, Array(interior(u)), atol=ε_max))
+    @test all(isapprox.(ℑv, Array(interior(v)), atol=ε_max))
+    @test all(isapprox.(ℑw, Array(interior(w)), atol=ε_max))
+    @test all(isapprox.(ℑc, Array(interior(c)), atol=ε_max))
 
     # Check that interpolating between grid points works as expected.
 
@@ -124,12 +131,12 @@ function run_field_interpolation_tests(arch, FT)
     ys = reshape([-π/6, 0, 1+1e-7], (1, 3, 1))
     zs = reshape([-1.3, 1.23, 2.1], (1, 1, 3))
 
-    F = f.(xs, ys, zs)
-
     ℑu = interpolate.(Ref(u), xs, ys, zs)
     ℑv = interpolate.(Ref(v), xs, ys, zs)
     ℑw = interpolate.(Ref(w), xs, ys, zs)
     ℑc = interpolate.(Ref(c), xs, ys, zs)
+
+    F = f.(xs, ys, zs)
 
     @test all(isapprox.(ℑu, F, atol=ε_max))
     @test all(isapprox.(ℑv, F, atol=ε_max))
@@ -179,14 +186,16 @@ end
     @testset "Setting fields" begin
         @info "  Testing field setting..."
 
+        CUDA.allowscalar(true)
+
         FieldTypes = (CenterField, XFaceField, YFaceField, ZFaceField)
 
         N = (4, 6, 8)
         L = (2π, 3π, 5π)
         H = (1, 1, 1)
 
-        int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
-        uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
+        int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4)]
+        uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10)]
         float_vals = Any[0.0, -0.0, 6e-34, 1.0f10]
         rational_vals = Any[1//11, -23//7]
         other_vals = Any[π]
@@ -203,10 +212,29 @@ end
             for FieldType in FieldTypes
                 field = FieldType(arch, grid)
                 sz = size(field)
-                A = rand(FT, sz...) |> ArrayType
+                A = rand(FT, sz...)
                 set!(field, A)
                 @test field.data[2, 4, 6] == A[2, 4, 6]
             end
+
+            Nx = 8
+            topo = (Bounded, Bounded, Bounded)
+            grid = RegularRectilinearGrid(FT, topology=topo, size=(Nx, Nx, Nx), x=(-1, 1), y=(0, 2π), z=(-1, 1))
+
+            u = XFaceField(arch, grid)
+            v = YFaceField(arch, grid)
+            w = ZFaceField(arch, grid)
+            c = CenterField(arch, grid)
+
+            f(x, y, z) = exp(x) * sin(y) * tanh(z)
+
+            ϕs = (u, v, w, c)
+            [set!(ϕ, f) for ϕ in ϕs]
+
+            @test u[1, 2, 3] == f(grid.xF[1], grid.yC[2], grid.zC[3])
+            @test v[1, 2, 3] == f(grid.xC[1], grid.yF[2], grid.zC[3])
+            @test w[1, 2, 3] == f(grid.xC[1], grid.yC[2], grid.zF[3])
+            @test c[1, 2, 3] == f(grid.xC[1], grid.yC[2], grid.zC[3])
         end
     end
 

@@ -1,4 +1,6 @@
 using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
+using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
 using Oceananigans.Fields: PressureField, compute_at!
 using Oceananigans.BuoyancyModels: BuoyancyField
 
@@ -22,10 +24,13 @@ end
 function x_derivative(a)
     dx_a = ∂x(a)
 
+    arch = architecture(a)
+    one_two_three = arch_array(arch, [1, 2, 3])
+
     for k in 1:3
-        interior(a)[:, 1, k] .= [1, 2, 3]
-        interior(a)[:, 2, k] .= [1, 2, 3]
-        interior(a)[:, 3, k] .= [1, 2, 3]
+        interior(a)[:, 1, k] .= one_two_three
+        interior(a)[:, 2, k] .= one_two_three
+        interior(a)[:, 3, k] .= one_two_three
     end
 
     return dx_a[2, 2, 2] == 1
@@ -34,10 +39,13 @@ end
 function y_derivative(a)
     dy_a = ∂y(a)
 
+    arch = architecture(a)
+    one_three_five = arch_array(arch, [1, 3, 5])
+
     for k in 1:3
-        interior(a)[1, :, k] .= [1, 3, 5]
-        interior(a)[2, :, k] .= [1, 3, 5]
-        interior(a)[3, :, k] .= [1, 3, 5]
+        interior(a)[1, :, k] .= one_three_five
+        interior(a)[2, :, k] .= one_three_five
+        interior(a)[3, :, k] .= one_three_five
     end
 
     return dy_a[2, 2, 2] == 2
@@ -46,10 +54,13 @@ end
 function z_derivative(a)
     dz_a = ∂z(a)
 
+    arch = architecture(a)
+    one_four_seven = arch_array(arch, [1, 4, 7])
+
     for k in 1:3
-        interior(a)[1, k, :] .= [1, 4, 7]
-        interior(a)[2, k, :] .= [1, 4, 7]
-        interior(a)[3, k, :] .= [1, 4, 7]
+        interior(a)[1, k, :] .= one_four_seven
+        interior(a)[2, k, :] .= one_four_seven
+        interior(a)[3, k, :] .= one_four_seven
     end
 
     return dz_a[2, 2, 2] == 3
@@ -60,10 +71,12 @@ function x_derivative_cell(arch)
     a = Field(Center, Center, Center, arch, grid, nothing)
     dx_a = ∂x(a)
 
+    one_four_four = arch_array(arch, [1, 4, 4])
+
     for k in 1:3
-        interior(a)[:, 1, k] .= [1, 4, 4]
-        interior(a)[:, 2, k] .= [1, 4, 4]
-        interior(a)[:, 3, k] .= [1, 4, 4]
+        interior(a)[:, 1, k] .= one_four_four 
+        interior(a)[:, 2, k] .= one_four_four 
+        interior(a)[:, 3, k] .= one_four_four 
     end
 
     return dx_a[2, 2, 2] == 3
@@ -113,6 +126,21 @@ for arch in archs
                     @test typeof(op((Center, Center, Center), ψ, ϕ, σ)[2, 2, 2]) <: Number
                 end
             end
+        end
+
+        @testset "KernelFunctionOperations [$(typeof(arch))]" begin
+            trivial_kernel_function(i, j, k, grid) = 1
+            op = KernelFunctionOperation{Center, Center, Center}(trivial_kernel_function, grid)
+            @test op isa KernelFunctionOperation
+
+            less_trivial_kernel_function(i, j, k, grid, u, v) = @inbounds u[i, j, k] * ℑxyᶠᶜᵃ(i, j, k, grid, v)
+            op = KernelFunctionOperation{Face, Center, Center}(less_trivial_kernel_function, grid, computed_dependencies=(u, v))
+            @test op isa KernelFunctionOperation
+
+            still_fairly_trivial_kernel_function(i, j, k, grid, u, v, μ) = @inbounds μ * ℑxyᶜᶠᵃ(i, j, k, grid, u) * v[i, j, k]
+            op = KernelFunctionOperation{Center, Face, Center}(still_fairly_trivial_kernel_function, grid,
+                                                               computed_dependencies=(u, v), parameters=0.1)
+            @test op isa KernelFunctionOperation
         end
 
         @testset "Fidelity of simple binary operations" begin

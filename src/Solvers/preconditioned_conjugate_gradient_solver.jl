@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: interior_parent_indices
-using Statistics
+using Statistics: norm, dot
 using LinearAlgebra
 
 mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P}
@@ -100,22 +100,6 @@ function PreconditionedConjugateGradientSolver(linear_operation;
                                                  residual,
                                                  precondition,
                                                  precondition_product)
-end
-
-function Statistics.norm(a::AbstractField)
-    ii = interior_parent_indices(location(a, 1), topology(a.grid, 1), a.grid.Nx, a.grid.Hx)
-    ji = interior_parent_indices(location(a, 2), topology(a.grid, 2), a.grid.Ny, a.grid.Hy)
-    ki = interior_parent_indices(location(a, 3), topology(a.grid, 3), a.grid.Nz, a.grid.Hz)
-    return sqrt(mapreduce(x -> x * x, +, view(parent(a), ii, ji, ki)))
-end
-
-function Statistics.dot(a::AbstractField, b::AbstractField)
-    ii = interior_parent_indices(location(a, 1), topology(a.grid, 1), a.grid.Nx, a.grid.Hx)
-    ji = interior_parent_indices(location(a, 2), topology(a.grid, 2), a.grid.Ny, a.grid.Hy)
-    ki = interior_parent_indices(location(a, 3), topology(a.grid, 3), a.grid.Nz, a.grid.Hz)
-    return mapreduce((x, y) -> x * y, +,
-                     view(parent(a), ii, ji, ki),
-                     view(parent(b), ii, ji, ki))
 end
 
 """

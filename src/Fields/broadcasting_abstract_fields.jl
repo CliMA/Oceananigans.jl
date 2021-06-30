@@ -82,7 +82,5 @@ broadcasted_to_abstract_operation(loc, grid, a) = a
 
     wait(device(arch), event)
 
-    fill_halo_regions!(dest, arch)
-
     return nothing
 end

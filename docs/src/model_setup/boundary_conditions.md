@@ -89,7 +89,7 @@ BoundaryCondition: type=Flux, condition=-7.789678675754625e-5
 ```
 
 A constant [`Flux`](@ref) boundary condition can be imposed on tracers and tangential velocity components
-can can be used, for example, to specify cooling, heating, evaporation, or wind stress at the ocean surface.
+that can be used, for example, to specify cooling, heating, evaporation, or wind stress at the ocean surface.
 
 !!! info "The flux convention in Oceananigans"
     `Oceananigans` uses the convention that positive fluxes produce transport in the
@@ -224,7 +224,7 @@ julia> Nx = Ny = 16;  # Number of grid points.
 julia> Q = randn(Nx, Ny); # temperature flux
 
 julia> white_noise_T_bc = FluxBoundaryCondition(Q)
-BoundaryCondition: type=Flux, condition=16×16 Array{Float64,2}
+BoundaryCondition: type=Flux, condition=16×16 Matrix{Float64}
 ```
 
 When running on the GPU, `Q` must be converted to a `CuArray`.
@@ -241,9 +241,9 @@ julia> grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1), topolo
 julia> T_bcs = TracerBoundaryConditions(grid,    top = ValueBoundaryCondition(20),
                                               bottom = GradientBoundaryCondition(0.01))
 Oceananigans.FieldBoundaryConditions (NamedTuple{(:x, :y, :z)}), with boundary conditions
-├── x: CoordinateBoundaryConditions{BoundaryCondition{Oceananigans.BoundaryConditions.Periodic,Nothing},BoundaryCondition{Oceananigans.BoundaryConditions.Periodic,Nothing}}
-├── y: CoordinateBoundaryConditions{BoundaryCondition{Oceananigans.BoundaryConditions.Periodic,Nothing},BoundaryCondition{Oceananigans.BoundaryConditions.Periodic,Nothing}}
-└── z: CoordinateBoundaryConditions{BoundaryCondition{Gradient,Float64},BoundaryCondition{Value,Int64}}
+├── x: CoordinateBoundaryConditions{BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing}, BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing}}
+├── y: CoordinateBoundaryConditions{BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing}, BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing}}
+└── z: CoordinateBoundaryConditions{BoundaryCondition{Gradient, Float64}, BoundaryCondition{Value, Int64}}
 ```
 
 `T_bcs` is a [`FieldBoundaryConditions`](@ref) object for temperature `T` appropriate
@@ -277,19 +277,19 @@ julia> model = IncompressibleModel(grid=grid, boundary_conditions=(u=u_bcs, T=T_
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 ├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+├── closure: Nothing
+├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
 └── coriolis: Nothing
 
 julia> model.velocities.u
 Field located at (Face, Center, Center)
-├── data: OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}, size: (18, 18, 18)
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (16, 16, 16)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 └── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=Value, top=Value)
 
 julia> model.tracers.T
 Field located at (Center, Center, Center)
-├── data: OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}, size: (18, 18, 18)
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (16, 16, 16)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 └── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=Gradient, top=Value)
 ```

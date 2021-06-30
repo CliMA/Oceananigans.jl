@@ -43,8 +43,7 @@ PrescribedVelocityFields(; u=zerofunc, v=zerofunc, w=zerofunc, parameters=nothin
 PrescribedField(X, Y, Z, f::Function,      grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
 PrescribedField(X, Y, Z, f::AbstractField, grid; kwargs...) = f
 
-function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields,
-                                              arch, grid, clock, bcs)
+function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields, arch, grid, clock, bcs)
 
     u = PrescribedField(Face, Center, Center, velocities.u, grid; clock=clock, parameters=velocities.parameters)
     v = PrescribedField(Center, Face, Center, velocities.v, grid; clock=clock, parameters=velocities.parameters)
@@ -56,18 +55,19 @@ end
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
 @inline fill_halo_regions!(::FunctionField, args...) = nothing
 
-ab2_step_free_surface!(::Nothing, args...) = nothing
+ab2_step_velocities!(::PrescribedVelocityFields, args...) = [NoneEvent()]
+ab2_step_free_surface!(::Nothing, args...) = NoneEvent()
 compute_w_from_continuity!(::PrescribedVelocityFields, args...) = nothing
 
 validate_velocity_boundary_conditions(::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 
-FreeSurfaceDisplacementField(::PrescribedVelocityFields, arch, grid) = nothing
+FreeSurfaceDisplacementField(::PrescribedVelocityFields, ::Nothing, arch, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, arch, grid) = nothing, nothing
 FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, arch, grid) = nothing
 
-hydrostatic_prognostic_fields(::PrescribedVelocityFields, free_surface, tracers) = tracers
-calculate_hydrostatic_momentum_tendencies!(tendencies, ::PrescribedVelocityFields, args...) = []
+hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
+calculate_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields; kwargs...) = []
 
 apply_flux_bcs!(::Nothing, c, arch, events, barrier, clock, model_fields) = nothing
 

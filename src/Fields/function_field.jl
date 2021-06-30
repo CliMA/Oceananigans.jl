@@ -1,5 +1,5 @@
 
-struct FunctionField{X, Y, Z, C, P, F, G, T} <: AbstractField{X, Y, Z, Nothing, G, T}
+struct FunctionField{X, Y, Z, C, P, F, G, T} <: AbstractField{X, Y, Z, Nothing, G, T, 3}
           func :: F
           grid :: G
          clock :: C
@@ -51,27 +51,24 @@ FunctionField(L::Tuple, func, grid) = FunctionField{L[1], L[2], L[3]}(func, grid
 architecture(f::FunctionField) = nothing
 Base.parent(f::FunctionField) = f
 
-# Various possibilities
+# Various possibilities for calling FunctionField.func:
 @inline call_func(clock, parameters, func, x, y, z)     = func(x, y, z, clock.time, parameters)
 @inline call_func(::Nothing, parameters, func, x, y, z) = func(x, y, z, parameters)
 @inline call_func(clock, ::Nothing, func, x, y, z)      = func(x, y, z, clock.time)
 @inline call_func(::Nothing, ::Nothing, func, x, y, z)  = func(x, y, z)
 
-@inline Base.getindex(f::FunctionField{X, Y, Z}, i, j, k) where {X, Y, Z} =
-    call_func(f.clock, f.parameters, f.func,
-              xnode(X, i, f.grid), ynode(Y, j, f.grid), znode(Z, k, f.grid))
+# For setting ReducedField
+@inline call_func(::Nothing, ::Nothing, func, x, y)     = func(x, y)
+@inline call_func(::Nothing, ::Nothing, func, x)        = func(x)
 
-@inline (f::FunctionField)(x, y, z) = call_func(f.clock, f.parameters, f.func, x, y, z)
+@inline Base.getindex(f::FunctionField{LX, LY, LZ}, i, j, k) where {LX, LY, LZ} =
+    call_func(f.clock, f.parameters, f.func, node(LX(), LY(), LZ(), i, j, k, f.grid)...)
 
-# set! for function fields
-set!(u, f::FunctionField) = set!(u, (x, y, z) -> f.func(x, y, z, f.clock.time, f.parameters))
-set!(u, f::FunctionField{X, Y, Z, <:Nothing}) where {X, Y, Z} = set!(u, (x, y, z) -> f.func(x, y, z, f.parameters))
-set!(u, f::FunctionField{X, Y, Z, C, <:Nothing}) where {X, Y, Z, C} = set!(u, (x, y, z) -> f.func(x, y, z, f.clock.time))
-set!(u, f::FunctionField{X, Y, Z, <:Nothing, <:Nothing}) where {X, Y, Z} = set!(u, (x, y, z) -> f.func(x, y, z))
+@inline (f::FunctionField)(x...) = call_func(f.clock, f.parameters, f.func, x...)
 
 Adapt.adapt_structure(to, f::FunctionField{X, Y, Z}) where {X, Y, Z} =
     FunctionField{X, Y, Z}(Adapt.adapt(to, f.func),
-                           f.grid,
+                           Adapt.adapt(to, f.grid),
                            clock = Adapt.adapt(to, f.clock),
                            parameters = Adapt.adapt(to, f.parameters))
 

@@ -11,10 +11,10 @@ In a constant isotropic diffusivity model, the kinematic stress tensor is define
 \tau_{ij} = - \nu \Sigma_{ij} \, ,
 ```
 where ``\nu`` is a constant viscosity and
-``\Sigma_{ij} \equiv \tfrac{1}{2} \left ( u_{i, j} + u_{j, i} \right )`` is the strain-rate
+``\Sigma_{ij} \equiv \tfrac{1}{2} \left ( v_{i, j} + v_{j, i} \right )`` is the strain-rate
 tensor. The divergence of ``\boldsymbol{\tau}`` is then
 ```math
-\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = -\nu \nabla^2 \boldsymbol{u} \, .
+\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = -\nu \nabla^2 \boldsymbol{v} \, .
 ```
 Similarly, the diffusive tracer flux is ``\boldsymbol{q}_c = - \kappa \boldsymbol{\nabla} c`` for tracer
 diffusivity ``\kappa``, and the diffusive tracer flux divergence is
@@ -31,7 +31,7 @@ components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_v``.
 With this form the kinematic stress divergence becomes
 ```math
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )
-                                    + \nu_v \partial_z^2 \right ] \boldsymbol{u} \, ,
+                                    + \nu_v \partial_z^2 \right ] \boldsymbol{v} \, ,
 ```
 and diffusive flux divergence
 ```math
@@ -50,7 +50,7 @@ components ``\nu_{11} = \nu_{22} = \nu_h`` and ``\nu_{33} = \nu_v``.
 With this form the kinematic stress divergence becomes
 ```math
 \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau} = - \left [ \nu_h \left ( \partial_x^2 + \partial_y^2 \right )^2
-                                    + \nu_v \partial_z^4 \right ] \boldsymbol{u} \, ,
+                                    + \nu_v \partial_z^4 \right ] \boldsymbol{v} \, ,
 ```
 and diffusive flux divergence
 ```math
@@ -68,7 +68,7 @@ the subgrid stress associated with unresolved turbulent motions is modeled diffu
 ```math
 \tau_{ij} = \nu_e \Sigma_{ij} \, ,
 ```
-where ``\Sigma_{ij} = \tfrac{1}{2} \left ( u_{i, j} + u_{j, i} \right )`` is the resolved
+where ``\Sigma_{ij} = \tfrac{1}{2} \left ( v_{i, j} + v_{j, i} \right )`` is the resolved
 strain rate.
 The eddy viscosity is given by
 ```math
@@ -126,9 +126,9 @@ predictor is
     \begin{equation}
     \nu_e^\dagger = -(C \Delta_f)^2
     \frac
-        {(\hat{\partial}_k \hat{u}_i) (\hat{\partial}_k \hat{u}_j) \hat{\Sigma}_{ij}
-        + C_b \hat{\delta}_{i3} (\hat{\partial}_k \hat{u_i}) (\hat{\partial}_k b)}
-        {(\hat{\partial}_l \hat{u}_m) (\hat{\partial}_l \hat{u}_m)} \, ,
+        {(\hat{\partial}_k \hat{v}_i) (\hat{\partial}_k \hat{v}_j) \hat{\Sigma}_{ij}
+        + C_b \hat{\delta}_{i3} (\hat{\partial}_k \hat{v_i}) (\hat{\partial}_k b)}
+        {(\hat{\partial}_l \hat{v}_m) (\hat{\partial}_l \hat{v}_m)} \, ,
     \label{eq:nu-dagger}
     \end{equation}
 ```
@@ -138,7 +138,7 @@ while the eddy diffusivity predictor for tracer ``c`` is
     \label{eq:kappa-dagger}
     \kappa_e^\dagger = -(C \Delta_f)^2
     \frac
-        {(\hat{\partial}_k \hat{u}_i) (\hat{\partial}_k c) (\hat{\partial}_i c)}
+        {(\hat{\partial}_k \hat{v}_i) (\hat{\partial}_k c) (\hat{\partial}_i c)}
         {(\hat{\partial}_l c) (\hat{\partial}_l c)} \, .
     \end{equation}
 ```
@@ -148,15 +148,15 @@ grid spacing, and the hat decorators on partial derivatives, velocities, and the
 delta ``\hat \delta_{i3}`` are defined such that
 ```math
     \hat \partial_i \equiv \Delta_i \partial_i, \qquad
-    \hat{u}_i(x, t) \equiv \frac{u_i(x, t)}{\Delta_i}, \quad \text{and} \quad
+    \hat{v}_i(x, t) \equiv \frac{v_i(x, t)}{\Delta_i}, \quad \text{and} \quad
     \hat{\delta}_{i3} \equiv \frac{\delta_{i3}}{\Delta_3} \, .
 ```
 A velocity gradient, for example, is therefore
-``\hat{\partial}_i \hat{u}_j(x, t) = \frac{\Delta_i}{\Delta_j} \partial_i u_j(x, t)``,
+``\hat{\partial}_i \hat{v}_j(x, t) = \frac{\Delta_i}{\Delta_j} \partial_i v_j(x, t)``,
 while the normalized strain tensor is
 ```math
     \hat{\Sigma}_{ij} =
-        \frac{1}{2} \left[ \hat{\partial}_i \hat{u}_j(x, t) + \hat{\partial}_j \hat{u}_i(x, t) \right] \, .
+        \frac{1}{2} \left[ \hat{\partial}_i \hat{v}_j(x, t) + \hat{\partial}_j \hat{v}_i(x, t) \right] \, .
 ```
 The filter width ``\Delta_f`` in that appears in the viscosity and diffusivity predictors
 is taken as the square root of the harmonic mean of the squares of the filter widths in

@@ -1,9 +1,10 @@
 using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
 
-struct FourierTridiagonalPoissonSolver{A, G, B, S, β, T}
+struct FourierTridiagonalPoissonSolver{A, G, B, R, S, β, T}
                   architecture :: A
                           grid :: G
     batched_tridiagonal_solver :: B
+                   source_term :: R
                        storage :: S
                         buffer :: β
                     transforms :: T
@@ -46,10 +47,11 @@ function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
     transforms = plan_transforms(arch, grid, sol_storage, planner_flag)
 
     # Lower and upper diagonals are the same
-    CUDA.@allowscalar begin
-        lower_diagonal = arch_array(arch, [1 / Δzᵃᵃᶠ(1, 1, k, grid) for k in 2:Nz])
-        upper_diagonal = lower_diagonal
-    end
+    CUDA.allowscalar(true)
+    lower_diagonal = CUDA.@allowscalar [1 / Δzᵃᵃᶠ(1, 1, k, grid) for k in 2:Nz]
+    lower_diagonal = arch_array(arch, lower_diagonal)
+    upper_diagonal = lower_diagonal
+    CUDA.allowscalar(false)
 
     # Compute diagonal coefficients for each grid point
     diagonal = arch_array(arch, zeros(Nx, Ny, Nz))
@@ -58,31 +60,30 @@ function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
     wait(device(arch), event)
 
     # Set up batched tridiagonal solver
-    rhs_storage = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
-
-    btsolver = BatchedTridiagonalSolver(arch,
-                                        grid = grid,
-                                          dl = lower_diagonal,
-                                           d = diagonal,
-                                          du = upper_diagonal,
-                                           f = rhs_storage)
+    btsolver = BatchedTridiagonalSolver(arch, grid;
+                                         lower_diagonal = lower_diagonal,
+                                               diagonal = diagonal,
+                                         upper_diagonal = upper_diagonal)
 
     # Need buffer for index permutations and transposes.
     buffer_needed = arch isa GPU && Bounded in (TX, TY) ? true : false
     buffer = buffer_needed ? similar(sol_storage) : nothing
 
-    return FourierTridiagonalPoissonSolver(arch, grid, btsolver, sol_storage, buffer, transforms)
+    # Storage space for right hand side of Poisson equation
+    rhs = arch_array(arch, zeros(complex(eltype(grid)), size(grid)...))
+
+    return FourierTridiagonalPoissonSolver(arch, grid, btsolver, rhs, sol_storage, buffer, transforms)
 end
 
 function solve_poisson_equation!(solver::FourierTridiagonalPoissonSolver)
     ϕ = solver.storage
-    RHS = solver.batched_tridiagonal_solver.f
+    RHS = solver.source_term
 
     # Apply forward transforms in order
     [transform!(RHS, solver.buffer) for transform! in solver.transforms.forward]
 
     # Solve tridiagonal system of linear equations in z at every column.
-    solve_batched_tridiagonal_system!(ϕ, solver.architecture, solver.batched_tridiagonal_solver)
+    solve!(ϕ, solver.batched_tridiagonal_solver, RHS)
 
     # Apply backward transforms in order
     [transform!(ϕ, solver.buffer) for transform! in solver.transforms.backward]
@@ -107,26 +108,17 @@ end
 """
     set_source_term!(solver, source_term)
 
-Sets the `source_term` ``R`` in the discrete Poisson equation `solver`.
-The Poisson equation is
-
-```math
-\\nabla^2 \\phi = R
-```
-
-where ``\\nabla^2`` is the Laplacian, ``R`` is the Poisson `source_term`,
-and ``\\phi`` is the solution to the Poisson equation.
+Sets the source term in the discrete Poisson equation `solver`
+to `source_term` by multiplying it by the vertical grid spacing at z cell centers.
 """
 function set_source_term!(solver::FourierTridiagonalPoissonSolver, source_term)
     grid = solver.grid
     arch = solver.architecture
+    solver.source_term .= source_term
 
-    solver_rhs = solver.batched_tridiagonal_solver.f
-    solver_rhs .= source_term
-
-    event = launch!(arch, grid, :xyz, multiply_by_Δzᵃᵃᶜ!, solver_rhs, grid, dependencies=Event(device(arch)))
+    event = launch!(arch, grid, :xyz, multiply_by_Δzᵃᵃᶜ!, solver.source_term, grid, dependencies=Event(device(arch)))
     wait(device(arch), event)
-                    
+
     return nothing
 end
 

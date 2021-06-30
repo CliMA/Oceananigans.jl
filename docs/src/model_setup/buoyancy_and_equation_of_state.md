@@ -24,7 +24,7 @@ julia> model = IncompressibleModel(grid=grid, buoyancy=nothing)
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
+├── closure: Nothing
 ├── buoyancy: Nothing
 └── coriolis: Nothing
 ```
@@ -38,7 +38,7 @@ julia> model = IncompressibleModel(grid=grid, buoyancy=nothing, tracers=())
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: ()
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(),Tuple{}}}
+├── closure: Nothing
 ├── buoyancy: Nothing
 └── coriolis: Nothing
 ```
@@ -53,7 +53,7 @@ julia> model = IncompressibleModel(grid=grid, buoyancy=BuoyancyTracer(), tracers
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:b,)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:b,),Tuple{Float64}}}
+├── closure: Nothing
 ├── buoyancy: BuoyancyTracer
 └── coriolis: Nothing
 ```
@@ -68,8 +68,8 @@ julia> model = IncompressibleModel(grid=grid, buoyancy=SeawaterBuoyancy())
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+├── closure: Nothing
+├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
 └── coriolis: Nothing
 ```
 
@@ -89,8 +89,8 @@ julia> model = IncompressibleModel(grid=grid, buoyancy=buoyancy)
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+├── closure: Nothing
+├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
 └── coriolis: Nothing
 ```
 
@@ -100,13 +100,13 @@ can be accomplished by passing `tracers = (:T, :S)` to a model constructor.
 ### Linear equation of state
 
 To use non-default thermal expansion and haline contraction coefficients, say
-``\alpha = 2 \times 10^{-3} \; \text{K}^{-1}`` and ``\beta = 5 \times 10^{-4} \text{ppt}^{-1}`` corresponding to some other
+``\alpha = 2 \times 10^{-3} \; \text{K}^{-1}`` and ``\beta = 5 \times 10^{-4} \text{psu}^{-1}`` corresponding to some other
 fluid, then use
 
 ```jldoctest
-julia> buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=1.67e-4, β=7.80e-4))
+julia> buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-3, β=5e-4))
 SeawaterBuoyancy{Float64}: g = 9.80665
-└── equation of state: LinearEquationOfState{Float64}: α = 1.67e-04, β = 7.80e-04
+└── equation of state: LinearEquationOfState{Float64}: α = 2.00e-03, β = 5.00e-04
 ```
 
 ### Idealized nonlinear equations of state
@@ -136,5 +136,5 @@ Boussinesq models as described by [Roquet15TEOS](@cite) is implemented in the
 julia> using SeawaterPolynomials.TEOS10
 
 julia> eos = TEOS10EquationOfState()
-SeawaterPolynomials.BoussinesqEquationOfState{TEOS10SeawaterPolynomial{Float64},Int64}(TEOS10SeawaterPolynomial{Float64}(), 1020)
+SeawaterPolynomials.BoussinesqEquationOfState{TEOS10SeawaterPolynomial{Float64}, Int64}(TEOS10SeawaterPolynomial{Float64}(), 1020)
 ```

@@ -54,6 +54,9 @@ function run_benchmarks(benchmark_fun; kwargs...)
     for (n, case) in enumerate(cases)
         @info "Benchmarking $n/$n_cases: $case..."
         suite[case] = benchmark_fun(case...)
+        GC.gc()
+        GC.gc(true)
+        GC.gc()
     end
     return suite
 end

@@ -1,22 +1,24 @@
 using Adapt
 using KernelAbstractions
-using Oceananigans.Fields: AbstractDataField, FieldStatus, validate_field_data, new_data, conditional_compute!
+
+using Oceananigans.Fields: AbstractDataField, FieldStatus, validate_field_data, conditional_compute!
 using Oceananigans.Fields: architecture, tracernames
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: work_layout
+using Oceananigans.Grids: new_data
 
 import Oceananigans.Fields: compute!, compute_at!
 
 import Oceananigans: short_show
 
-struct BuoyancyField{B, S, A, D, G, T, C} <: AbstractDataField{Center, Center, Center, A, G, T}
+struct BuoyancyField{B, S, A, D, G, T, C} <: AbstractDataField{Center, Center, Center, A, G, T, 3}
             data :: D
     architecture :: A
             grid :: G
         buoyancy :: B
          tracers :: C
           status :: S
-    
+
     """
         BuoyancyField(data, grid, buoyancy, tracers)
 

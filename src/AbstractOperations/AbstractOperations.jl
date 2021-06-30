@@ -19,18 +19,22 @@ using Oceananigans.Architectures: device
 using Oceananigans: AbstractModel
 
 import Oceananigans.Architectures: architecture
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: data, compute_at!
 
 #####
 ##### Basic functionality
 #####
 
-abstract type AbstractOperation{X, Y, Z, A, G, T} <: AbstractField{X, Y, Z, A, G, T} end
+abstract type AbstractOperation{X, Y, Z, A, G, T} <: AbstractField{X, Y, Z, A, G, T, 3} end
 
 const AF = AbstractField
 
 # We (informally) require that all field-like objects define `parent`:
 Base.parent(op::AbstractOperation) = op
+
+# We have no halos to fill
+fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
 
 # AbstractOperation macros add their associated functions to this list
 const operators = Set()
@@ -48,10 +52,10 @@ include("unary_operations.jl")
 include("binary_operations.jl")
 include("multiary_operations.jl")
 include("derivatives.jl")
+include("kernel_function_operation.jl")
 include("at.jl")
 include("broadcasting_abstract_operations.jl")
 include("show_abstract_operations.jl")
-include("averages_of_operations.jl")
 
 # Make some operators!
 

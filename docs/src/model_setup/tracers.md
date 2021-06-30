@@ -16,8 +16,8 @@ julia> model = IncompressibleModel(grid=grid)
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+├── closure: Nothing
+├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
 └── coriolis: Nothing
 ```
 
@@ -26,13 +26,13 @@ whose fields can be accessed via `model.tracers.T` and `model.tracers.S`.
 ```jldoctest tracers
 julia> model.tracers.T
 Field located at (Center, Center, Center)
-├── data: OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}, size: (66, 66, 66)
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (64, 64, 64)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 └── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=ZeroFlux, top=ZeroFlux)
 
 julia> model.tracers.S
 Field located at (Center, Center, Center)
-├── data: OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}, size: (66, 66, 66)
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (64, 64, 64)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 └── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=ZeroFlux, top=ZeroFlux)
 
@@ -46,8 +46,8 @@ julia> model = IncompressibleModel(grid=grid, tracers=(:T, :S, :C₁, :CO₂, :n
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S, :C₁, :CO₂, :nitrogen)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S, :C₁, :CO₂, :nitrogen),NTuple{5,Float64}}}
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+├── closure: Nothing
+├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
 └── coriolis: Nothing
 ```
 

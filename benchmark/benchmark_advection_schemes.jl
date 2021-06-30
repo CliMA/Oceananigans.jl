@@ -1,3 +1,5 @@
+push!(LOAD_PATH, joinpath(@__DIR__, ".."))
+
 using BenchmarkTools
 using CUDA
 using Oceananigans
@@ -15,7 +17,7 @@ function benchmark_advection_scheme(Arch, Scheme)
     trial = @benchmark begin
         @sync_gpu time_step!($model, 1)
     end samples=10
-    
+
     return trial
 end
 
@@ -36,7 +38,7 @@ benchmarks_pretty_table(df, title="Advection scheme benchmarks")
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df_Δ, :Schemes, by=string)
-    benchmarks_pretty_table(df_Δ, title="Advection schemes CPU -> GPU speedup")
+    benchmarks_pretty_table(df_Δ, title="Advection schemes CPU to GPU speedup")
 end
 
 for Arch in Architectures

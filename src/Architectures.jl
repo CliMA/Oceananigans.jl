@@ -1,12 +1,14 @@
 module Architectures
 
-export
-    AbstractArchitecture, AbstractCPUArchitecture, AbstractGPUArchitecture, CPU, GPU,
-    device, architecture, array_type, arch_array
+export AbstractArchitecture, AbstractCPUArchitecture, AbstractGPUArchitecture
+export CPU, GPU
+export device, architecture, array_type, arch_array
 
 using CUDA
-
 using KernelAbstractions
+using CUDAKernels
+using Adapt
+using OffsetArrays
 
 """
     AbstractArchitecture
@@ -46,10 +48,11 @@ Run Oceananigans on a single NVIDIA CUDA GPU.
 struct GPU <: AbstractGPUArchitecture end
 
 device(::AbstractCPUArchitecture) = KernelAbstractions.CPU()
-device(::AbstractGPUArchitecture) = KernelAbstractions.CUDADevice()
+device(::AbstractGPUArchitecture) = CUDAKernels.CUDADevice()
 
-architecture(::Number)  = nothing
-architecture(::Array)   = CPU()
+architecture() = nothing
+architecture(::Number) = nothing
+architecture(::Array) = CPU()
 architecture(::CuArray) = GPU()
 
 array_type(::CPU) = Array
@@ -59,5 +62,16 @@ arch_array(::AbstractCPUArchitecture, A::Array) = A
 arch_array(::AbstractCPUArchitecture, A::CuArray) = Array(A)
 arch_array(::AbstractGPUArchitecture, A::Array) = CuArray(A)
 arch_array(::AbstractGPUArchitecture, A::CuArray) = A
+
+const OffsetCPUArray = OffsetArray{FT, N, <:Array} where {FT, N}
+const OffsetGPUArray = OffsetArray{FT, N, <:CuArray} where {FT, N}
+
+Adapt.adapt_structure(::CPU, a::OffsetCPUArray) = a
+Adapt.adapt_structure(::GPU, a::OffsetGPUArray) = a
+
+Adapt.adapt_structure(::GPU, a::OffsetCPUArray) = OffsetArray(CuArray(a.parent), a.offsets...)
+Adapt.adapt_structure(::CPU, a::OffsetGPUArray) = OffsetArray(Array(a.parent), a.offsets...)
+
+device_event(arch) = Event(device(arch))
 
 end

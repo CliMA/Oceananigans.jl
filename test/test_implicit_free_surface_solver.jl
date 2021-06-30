@@ -25,7 +25,7 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     jmid = Int(floor(grid.Ny / 2)) + 1
     CUDA.@allowscalar u[imid, jmid, 1] = 1
 
-    implicit_free_surface_step!(model.free_surface, Event(device(arch)), model, Δt, 1.5)
+    implicit_free_surface_step!(model.free_surface, model, Δt, 1.5, Event(device(arch)))
 
     # Extract right hand side "truth"
     right_hand_side = model.free_surface.implicit_step_right_hand_side
@@ -40,13 +40,13 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     # Compare
-    extrema_tolerance = 1e-10
-    std_tolerance = 1e-10
+    extrema_tolerance = 1e-9
+    std_tolerance = 1e-9
 
     CUDA.@allowscalar begin
-        @test abs(minimum(left_hand_side[1:Nx, 1:Ny, 1] .- right_hand_side[1:Nx, 1:Ny, 1])) < extrema_tolerance
-        @test abs(maximum(left_hand_side[1:Nx, 1:Ny, 1] .- right_hand_side[1:Nx, 1:Ny, 1])) < extrema_tolerance
-        @test std(left_hand_side[1:Nx, 1:Ny, 1] .- right_hand_side[1:Nx, 1:Ny, 1]) < std_tolerance
+        @test minimum(abs, interior(left_hand_side) .- interior(right_hand_side)) < extrema_tolerance
+        @test maximum(abs, interior(left_hand_side) .- interior(right_hand_side)) < extrema_tolerance
+        @test std(interior(left_hand_side) .- interior(right_hand_side)) < std_tolerance
     end
 
     return nothing

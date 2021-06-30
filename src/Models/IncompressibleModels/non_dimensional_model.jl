@@ -1,3 +1,4 @@
+using Oceananigans.TurbulenceClosures: IsotropicDiffusivity
 using Oceananigans.BuoyancyModels
 
 """

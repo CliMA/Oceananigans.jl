@@ -157,10 +157,6 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
     Δzᵃᵃᶠ = OffsetArray(Δzᵃᵃᶠ, -Hz)
     Δzᵃᵃᶜ = OffsetArray(Δzᵃᵃᶜ, -Hz)
 
-    # Needed for pressure solver solution to be divergence-free.
-    # Will figure out why later...
-    Δzᵃᵃᶠ[Nz] = Δzᵃᵃᶠ[Nz-1]
-
     # Seems needed to avoid out-of-bounds error in viscous dissipation
     # operators wanting to access Δzᵃᵃᶠ[Nz+2].
     Δzᵃᵃᶠ = OffsetArray(cat(Δzᵃᵃᶠ[0], Δzᵃᵃᶠ..., Δzᵃᵃᶠ[Nz], dims=1), -Hz-1)
@@ -184,7 +180,7 @@ end
 #####
 
 get_z_face(z::Function, k) = z(k)
-get_z_face(z::AbstractVector, k) = z[k]
+get_z_face(z::AbstractVector, k) = CUDA.@allowscalar z[k]
 
 lower_exterior_Δzᵃᵃᶜ(z_topo,          zFi, Hz) = [zFi[end - Hz + k] - zFi[end - Hz + k - 1] for k = 1:Hz]
 lower_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[2]  - zFi[1] for k = 1:Hz]
@@ -205,12 +201,12 @@ function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, z_faces)
 
     # Build halo regions
     ΔzF₋ = lower_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
-    ΔzF₊ = lower_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
+    ΔzF₊ = upper_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
 
     z¹, zᴺ⁺¹ = interior_zF[1], interior_zF[Nz+1]
 
     zF₋ = [z¹   - sum(ΔzF₋[k:Hz]) for k = 1:Hz] # locations of faces in lower halo
-    zF₊ = [zᴺ⁺¹ + ΔzF₊[k]         for k = 1:Hz] # locations of faces in width of top halo region
+    zF₊ = reverse([zᴺ⁺¹ + sum(ΔzF₊[k:Hz]) for k = 1:Hz]) # locations of faces in width of top halo region
 
     zF = vcat(zF₋, interior_zF, zF₊)
 
@@ -272,8 +268,8 @@ short_show(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, 
     "VerticallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
 
 function show(io::IO, g::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    Δz_min = minimum(view(g.Δzᵃᵃᶜ, 1:g.Nz))
-    Δz_max = maximum(view(g.Δzᵃᵃᶜ, 1:g.Nz))
+    Δz_min = minimum(view(parent(g.Δzᵃᵃᶜ), g.Hz+1:g.Nz+g.Hz))
+    Δz_max = maximum(view(parent(g.Δzᵃᵃᶜ), g.Hz+1:g.Nz+g.Hz))
     print(io, "VerticallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
@@ -303,14 +299,14 @@ Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, T
 ##### Should merge with grid_utils.jl at some point
 #####
 
-@inline xnode(::Type{Center}, i, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
-@inline xnode(::Type{Face}, i, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
+@inline xnode(::Center, i, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
+@inline xnode(::Face, i, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
 
-@inline ynode(::Type{Center}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᶜᵃ[j]
-@inline ynode(::Type{Face}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᶠᵃ[j]
+@inline ynode(::Center, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᶜᵃ[j]
+@inline ynode(::Face, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᶠᵃ[j]
 
-@inline znode(::Type{Center}, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶜ[k]
-@inline znode(::Type{Face}, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶠ[k]
+@inline znode(::Center, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶜ[k]
+@inline znode(::Face, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶠ[k]
 
 all_x_nodes(::Type{Center}, grid::VerticallyStretchedRectilinearGrid) = grid.xᶜᵃᵃ
 all_x_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.xᶠᵃᵃ
@@ -323,6 +319,29 @@ all_z_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃ�
 # Get minima of grid
 #
 
-min_Δx(grid::VerticallyStretchedRectilinearGrid) = grid.Δx
-min_Δy(grid::VerticallyStretchedRectilinearGrid) = grid.Δy
-min_Δz(grid::VerticallyStretchedRectilinearGrid) = minimum(view(grid.Δzᵃᵃᶜ, 1:grid.Nz))
+function min_Δx(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+    if topo[1] == Flat
+        return Inf
+    else
+        return grid.Δx
+    end
+end
+
+function min_Δy(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+    if topo[2] == Flat
+        return Inf
+    else
+        return grid.Δy
+    end
+end
+
+function min_Δz(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+    if topo[3] == Flat
+        return Inf
+    else
+        return minimum(parent(grid.Δzᵃᵃᶜ))
+    end
+end

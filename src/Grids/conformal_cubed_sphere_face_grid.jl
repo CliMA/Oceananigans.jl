@@ -1,12 +1,10 @@
 using CubedSphere
 using JLD2
 using OffsetArrays
+using Adapt
+using Adapt: adapt_structure
 
 using Oceananigans
-using Oceananigans.Grids
-using Oceananigans.Grids: AbstractGrid, R_Earth
-
-import Base: show
 
 struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
         Nx :: Int
@@ -154,26 +152,28 @@ function ConformalCubedSphereFaceGrid(FT = Float64; size, z,
         Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
-function offset_data_2d(data, loc, topo, N, H)
-    LX, LY = loc
-    TX, TY = topo
-    Nx, Ny = N
-    Hx, Hy = H
+function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo, N, H)
 
-    Tx = total_length(LX, TX, Nx, Hx)
-    Ty = total_length(LY, TY, Ny, Hy)
+    ii = interior_indices(loc[1], topo[1], N[1])
+    jj = interior_indices(loc[2], topo[2], N[2])
 
-    new_data = zeros(Tx, Ty)
+    interior_data = arch_array(arch, file[field_name][ii, jj])
 
-    ii = interior_parent_indices(LX, TX, Nx, Hx)
-    jj = interior_parent_indices(LY, TY, Ny, Hy)
+    underlying_data = zeros(FT, arch,
+                            total_length(loc[1], topo[1], N[1], H[1]),
+                            total_length(loc[2], topo[2], N[2], H[2]))
 
-    new_data[ii, jj] .= data
+    ip = interior_parent_indices(loc[1], topo[1], N[1], H[1])
+    jp = interior_parent_indices(loc[2], topo[2], N[2], H[2])
 
-    return OffsetArray(new_data, -Hx, -Hy)
+    view(underlying_data, ip, jp) .= interior_data
+
+    return offset_data(underlying_data, loc, topo, N, H)
 end
 
-function ConformalCubedSphereFaceGrid(filepath::AbstractString, FT = Float64; face, Nz, z,
+function ConformalCubedSphereFaceGrid(filepath::AbstractString, FT = Float64;
+                                      face, Nz, z,
+                                      architecture = CPU(),
                                       topology = (Bounded, Bounded, Bounded),
                                         radius = R_Earth,
                                           halo = (1, 1, 1),
@@ -193,10 +193,8 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, FT = Float64; fa
 
     ## Read everything else from the file
 
-    file = jldopen(filepath, "r")
-    cubed_sphere_data = file["face$face"]
-
-    Nξ, Nη = size(cubed_sphere_data["λᶠᶠᵃ"]) .- 1
+    file = jldopen(filepath, "r")["face$face"]
+    Nξ, Nη = size(file["λᶠᶠᵃ"]) .- 1
 
     N = (Nξ, Nη, Nz)
     H = halo
@@ -206,39 +204,39 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, FT = Float64; fa
     loc_fc = (Face, Center)
     loc_ff = (Face, Face)
 
-    c_inds = 1:Nξ
-    f_inds = 1:Nξ+1
+    topo_bbb = (Bounded, Bounded, Bounded)
 
-    topo_2d = (Bounded, Bounded)
+    λᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶜᶜᵃ", loc_cc, topo_bbb, N, H)
+    λᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "λᶠᶠᵃ", loc_ff, topo_bbb, N, H)
 
-    λᶜᶜᵃ = offset_data_2d(cubed_sphere_data["λᶜᶜᵃ"][c_inds, c_inds], loc_cc, topo_2d, N, H)
-    λᶠᶠᵃ = offset_data_2d(cubed_sphere_data["λᶠᶠᵃ"][f_inds, f_inds], loc_ff, topo_2d, N, H)
+    φᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "φᶜᶜᵃ", loc_cc, topo_bbb, N, H)
+    φᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "φᶠᶠᵃ", loc_ff, topo_bbb, N, H)
 
-    φᶜᶜᵃ = offset_data_2d(cubed_sphere_data["φᶜᶜᵃ"][c_inds, c_inds], loc_cc, topo_2d, N, H)
-    φᶠᶠᵃ = offset_data_2d(cubed_sphere_data["φᶠᶠᵃ"][f_inds, f_inds], loc_ff, topo_2d, N, H)
+    Δxᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δxᶜᶜᵃ", loc_cc, topo_bbb, N, H)
+    Δxᶠᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δxᶠᶜᵃ", loc_fc, topo_bbb, N, H)
+    Δxᶜᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δxᶜᶠᵃ", loc_cf, topo_bbb, N, H)
+    Δxᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δxᶠᶠᵃ", loc_ff, topo_bbb, N, H)
 
-    Δxᶜᶜᵃ = offset_data_2d(cubed_sphere_data["Δxᶜᶜᵃ"][c_inds, c_inds], loc_cc, topo_2d, N, H)
-    Δxᶠᶜᵃ = offset_data_2d(cubed_sphere_data["Δxᶠᶜᵃ"][f_inds, c_inds], loc_fc, topo_2d, N, H)
-    Δxᶜᶠᵃ = offset_data_2d(cubed_sphere_data["Δxᶜᶠᵃ"][c_inds, f_inds], loc_cf, topo_2d, N, H)
-    Δxᶠᶠᵃ = offset_data_2d(cubed_sphere_data["Δxᶠᶠᵃ"][f_inds, f_inds], loc_ff, topo_2d, N, H)
+    Δyᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δyᶜᶜᵃ", loc_cc, topo_bbb, N, H)
+    Δyᶠᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δyᶠᶜᵃ", loc_fc, topo_bbb, N, H)
+    Δyᶜᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δyᶜᶠᵃ", loc_cf, topo_bbb, N, H)
+    Δyᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Δyᶠᶠᵃ", loc_ff, topo_bbb, N, H)
 
-    Δyᶜᶜᵃ = offset_data_2d(cubed_sphere_data["Δyᶜᶜᵃ"][c_inds, c_inds], loc_cc, topo_2d, N, H)
-    Δyᶠᶜᵃ = offset_data_2d(cubed_sphere_data["Δyᶠᶜᵃ"][f_inds, c_inds], loc_fc, topo_2d, N, H)
-    Δyᶜᶠᵃ = offset_data_2d(cubed_sphere_data["Δyᶜᶠᵃ"][c_inds, f_inds], loc_cf, topo_2d, N, H)
-    Δyᶠᶠᵃ = offset_data_2d(cubed_sphere_data["Δyᶠᶠᵃ"][f_inds, f_inds], loc_ff, topo_2d, N, H)
-
-    Azᶜᶜᵃ = offset_data_2d(cubed_sphere_data["Azᶜᶜᵃ"][c_inds, c_inds], loc_cc, topo_2d, N, H)
-    Azᶠᶜᵃ = offset_data_2d(cubed_sphere_data["Azᶠᶜᵃ"][f_inds, c_inds], loc_fc, topo_2d, N, H)
-    Azᶜᶠᵃ = offset_data_2d(cubed_sphere_data["Azᶜᶠᵃ"][c_inds, f_inds], loc_cf, topo_2d, N, H)
-    Azᶠᶠᵃ = offset_data_2d(cubed_sphere_data["Azᶠᶠᵃ"][f_inds, f_inds], loc_ff, topo_2d, N, H)
+    Azᶜᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Azᶜᶜᵃ", loc_cc, topo_bbb, N, H)
+    Azᶠᶜᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Azᶠᶜᵃ", loc_fc, topo_bbb, N, H)
+    Azᶜᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Azᶜᶠᵃ", loc_cf, topo_bbb, N, H)
+    Azᶠᶠᵃ = load_and_offset_cubed_sphere_data(file, FT, architecture, "Azᶠᶠᵃ", loc_ff, topo_bbb, N, H)
 
     ## Maybe we won't need these?
+    Txᶠᶜ = total_length(loc_fc[1], topology[1], N[1], H[1])
+    Txᶜᶠ = total_length(loc_cf[1], topology[1], N[1], H[1])
+    Tyᶠᶜ = total_length(loc_fc[2], topology[2], N[2], H[2])
+    Tyᶜᶠ = total_length(loc_cf[2], topology[2], N[2], H[2])
 
-    λᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
-    λᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
-
-    φᶠᶜᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy    ), -Hx, -Hy)
-    φᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
+    λᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology, N, H)
+    λᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology, N, H)
+    φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology, N, H)
+    φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology, N, H)
 
     return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, typeof(λᶜᶜᵃ), typeof(zᵃᵃᶠ)}(
         Nξ, Nη, Nz, Hx, Hy, Hz,
@@ -247,8 +245,67 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, FT = Float64; fa
         Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
-function show(io::IO, g::ConformalCubedSphereFaceGrid{FT}) where FT
+function _adapt_structure(to, grid::ConformalCubedSphereFaceGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    horizontal_coordinates = (:λᶜᶜᵃ,
+                              :λᶠᶜᵃ,
+                              :λᶜᶠᵃ,
+                              :λᶠᶠᵃ,
+                              :φᶜᶜᵃ,
+                              :φᶠᶜᵃ,
+                              :φᶜᶠᵃ,
+                              :φᶠᶠᵃ)
+
+    horizontal_coordinate_data = Tuple(adapt_structure(to, getproperty(grid, name)) for name in horizontal_coordinates)
+
+    horizontal_grid_spacings = (:Δxᶜᶜᵃ,
+                                :Δxᶠᶜᵃ,
+                                :Δxᶜᶠᵃ,
+                                :Δxᶠᶠᵃ,
+                                :Δyᶜᶜᵃ,
+                                :Δyᶜᶠᵃ,
+                                :Δyᶠᶜᵃ,
+                                :Δyᶠᶠᵃ)
+
+    horizontal_grid_spacing_data = Tuple(adapt_structure(to, getproperty(grid, name)) for name in horizontal_grid_spacings)
+
+    horizontal_areas = (:Azᶜᶜᵃ,
+                        :Azᶠᶜᵃ,
+                        :Azᶜᶠᵃ,
+                        :Azᶠᶠᵃ)
+
+    horizontal_area_data = Tuple(adapt_structure(to, getproperty(grid, name)) for name in horizontal_areas)
+
+    zᵃᵃᶜ = adapt_structure(to, grid.zᵃᵃᶜ)
+    zᵃᵃᶠ = adapt_structure(to, grid.zᵃᵃᶠ)
+
+    A = typeof(horizontal_coordinate_data[1])
+    R = typeof(grid.zᵃᵃᶜ)
+
+    return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R}(grid.Nx, grid.Ny, grid.Nz, grid.Hx, grid.Hy, grid.Hz,
+                                                              horizontal_coordinate_data..., zᵃᵃᶜ, zᵃᵃᶠ,
+                                                              horizontal_grid_spacing_data..., grid.Δz,
+                                                              horizontal_area_data..., grid.radius)
+end
+
+Adapt.adapt_structure(::CPU, grid::ConformalCubedSphereFaceGrid) = _adapt_structure(CPU(), grid)
+Adapt.adapt_structure(to, grid::ConformalCubedSphereFaceGrid) = _adapt_structure(to, grid)
+
+
+function Base.show(io::IO, g::ConformalCubedSphereFaceGrid{FT}) where FT
     print(io, "ConformalCubedSphereFaceGrid{$FT}\n",
               "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
               "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
 end
+
+@inline xnode(::Face,   ::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶠᶠᵃ[i, j]
+@inline xnode(::Face,   ::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶠᶜᵃ[i, j]
+@inline xnode(::Center, ::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶜᶠᵃ[i, j]
+@inline xnode(::Center, ::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶜᶜᵃ[i, j]
+
+@inline ynode(::Face,   ::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶠᶠᵃ[i, j]
+@inline ynode(::Face,   ::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶠᶜᵃ[i, j]
+@inline ynode(::Center, ::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶜᶠᵃ[i, j]
+@inline ynode(::Center, ::Center, LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶜᶜᵃ[i, j]
+
+@inline znode(LX, LY, ::Face,   i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶠ[k]
+@inline znode(LX, LY, ::Center, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶜ[k]
