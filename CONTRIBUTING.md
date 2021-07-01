@@ -34,7 +34,7 @@ Discussions are recommended for asking questions about (for example) the user in
 
 * New users help write Oceananigans code and documentation by [forking the Oceananigans repository](https://docs.github.com/en/github/collaborating-with-pull-requests/working-with-forks), [using git](https://guides.github.com/introduction/git-handbook/) to edit code and docs, and then creating a [pull request](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request-from-a-fork). Pull requests are reviewed by Oceananigans collaborators.
 
-* Once a pull request is reviewed and approved by collaborators, the pull request author has the responsibility of merging the pull request into the Oceananigans main branch.
+* A pull request can be merged once it is reviewed and approved by collaborators. If the pull request author has write access, they have the reponsibility of merging their pull request. Otherwise, Oceananigans.jl collabators will execute the merge with permission from the pull request author.
 
 * Note: for small or minor changes (such as fixing a typo in documentation), the [GitHub editor](https://docs.github.com/en/github/managing-files-in-a-repository/managing-files-on-github/editing-files-in-your-repository) is super useful for forking and opening a pull request with a single click.
 
