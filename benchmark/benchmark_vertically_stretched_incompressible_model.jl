@@ -1,3 +1,5 @@
+push!(LOAD_PATH, joinpath(@__DIR__, ".."))
+
 using BenchmarkTools
 using CUDA
 using Oceananigans
@@ -7,7 +9,7 @@ using Benchmarks
 
 function benchmark_vertically_stretched_incompressible_model(Arch, FT, N)
     grid = VerticallyStretchedRectilinearGrid(architecture=Arch(), size=(N, N, N), x=(0, 1), y=(0, 1), z_faces=collect(0:N))
-    model = IncompressibleModel(architecture=Arch(), float_type=FT, grid=grid)
+    model = IncompressibleModel(architecture=Arch(), grid=grid)
 
     time_step!(model, 1) # warmup
 

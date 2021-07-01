@@ -28,11 +28,11 @@ using Oceananigans.Operators
 
 import Oceananigans.Grids: required_halo_size
 
-abstract type AbstractAdvectionScheme end
-abstract type AbstractCenteredAdvectionScheme <: AbstractAdvectionScheme end
-abstract type AbstractUpwindBiasedAdvectionScheme <: AbstractAdvectionScheme end
+abstract type AbstractAdvectionScheme{Buffer} end
+abstract type AbstractCenteredAdvectionScheme{Buffer} <: AbstractAdvectionScheme{Buffer} end
+abstract type AbstractUpwindBiasedAdvectionScheme{Buffer} <: AbstractAdvectionScheme{Buffer} end
 
-required_halo_size(scheme::AbstractAdvectionScheme) = boundary_buffer(scheme) + 1
+required_halo_size(scheme::AbstractAdvectionScheme{Buffer}) where Buffer = Buffer + 1
 
 include("topologically_conditional_interpolation.jl")
 

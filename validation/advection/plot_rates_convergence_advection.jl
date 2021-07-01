@@ -39,7 +39,6 @@ halos(::UpwindBiasedFifthOrder) = 3
 halos(::WENO5)                  = 3 
 
 U  = 1
-L  = 2.5
 W  = 0.1
 Ns = 2 .^ (6:10)
 Δt = 0.01 * minimum(L/Ns) / U
@@ -47,7 +46,7 @@ pnorm = 1
 
 c(x, y, z, t, U, W) = exp( - (x - U * t)^2 / W^2 )
    h(x, y, z) = 1
-  uh(x, y, z) = 1 
+  uh(x, y, z) = U * h(x, y, z)
 
 schemes = (
  CenteredSecondOrder(), 
@@ -63,7 +62,7 @@ ROC   = Dict()
 for N in Ns, scheme in schemes
 
     grid = RegularRectilinearGrid(Float64; size=N, 
-                                x=(-1, -1+L), 
+                                x=(-1, 1), 
                                 halo=(halos(scheme)),
                                 topology=(Periodic, Flat, Flat))
 
@@ -81,7 +80,7 @@ for N in Ns, scheme in schemes
 
     c₁  = c.(grid.xC[:,1,1], 0, 0, Δt, U, W);
 
-    error[(N, scheme)] = norm(abs.(model.tracers.c[1:N] .- c₁[1:N]), pnorm)/N^(1/pnorm)   
+    error[(N, scheme)] = norm(abs.(model.tracers.c[1:N, 1, 1] .- c₁[1:N]), pnorm)/N^(1/pnorm)   
 
 end
 
@@ -156,3 +155,4 @@ plt = plot_solutions!(
     pnorm,
     ROC)
 savefig(plt, "convergence_rates")
+

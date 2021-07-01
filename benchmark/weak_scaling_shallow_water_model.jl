@@ -1,14 +1,17 @@
+push!(LOAD_PATH, joinpath(@__DIR__, ".."))
+
 using JLD2
 using BenchmarkTools
 using Benchmarks
-
+using Plots
+pyplot()
 # Benchmark parameters
 
 decomposition = Slab()
 # decomposition = Pencil()
 
 ranks = Dict(
-    Slab() => (1, 2, 4, 8, 16),
+    Slab() => (1, 2, 4, 8, 16, 32, 64, 128),
     Pencil() => (1, 4, 16)
 )[decomposition]
 
@@ -53,6 +56,29 @@ for R in ranks
         end
     end
 end
+
+plot_keys = collect(keys(suite))
+sort!(plot_keys, by = v -> v[2][2])
+plot_num = length(plot_keys)
+rank_num = zeros(Int64, plot_num)
+run_times = zeros(Float64, plot_num)
+eff_ratio = zeros(Float64, plot_num)
+for i in 1:plot_num
+    rank_num[i] = plot_keys[i][2][2]
+    run_times[i] = mean(suite[plot_keys[i]].times) / 1.0e6
+    eff_ratio[i] = median(suite[plot_keys[1]].times) / median(suite[plot_keys[i]].times)
+end
+
+plt = plot(rank_num, run_times, lw=4, xaxis=:log2, legend=:none,
+          xlabel="Cores", ylabel="Times (ms)", title="Weak Scaling Shallow Water Times")
+display(plt)
+savefig(plt, "ws_shallow_water_times.png")
+
+
+plt2 = plot(rank_num, eff_ratio, lw=4, xaxis=:log2, legend=:none, ylims=(0,1.1),
+            xlabel="Cores", ylabel="Efficiency", title="Weak Scaling Shallow Water Efficiency")
+display(plt2)
+savefig(plt2, "ws_shallow_water_efficiency.png")
 
 # Summarize benchmarks
 
