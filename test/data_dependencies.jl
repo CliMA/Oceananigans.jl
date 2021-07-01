@@ -8,3 +8,7 @@ dd = DataDep("cubed_sphere_32_grid",
 )
 
 DataDeps.register(dd)
+
+# Trigger datadep download to avoid race condition in CI.
+# See: https://github.com/oxinabox/DataDeps.jl/issues/141
+datadep"cubed_sphere_32_grid"
