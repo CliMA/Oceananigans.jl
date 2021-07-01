@@ -139,6 +139,10 @@ function test_windowed_time_averaging_simulation(model)
     simulation.Δt = π - 3 + 0.01 # ≈ 0.15 < 1.0
     simulation.stop_iteration = 3
     run!(simulation) # model.clock.time ≈ 3.15, after output
+    
+    # The next collection integral starts at t = 2π - 1 ≈ 5.28, so we should not be collecting yet.
+    @test !(jld2_u_windowed_time_average.schedule.collecting)
+    @test !(nc_w_windowed_time_average.schedule.collecting)
 
     @test jld2_u_windowed_time_average.schedule.previous_interval_stop_time ==
         model.clock.time - rem(model.clock.time, jld2_u_windowed_time_average.schedule.interval)
