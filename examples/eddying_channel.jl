@@ -73,7 +73,7 @@ bump(x, y) = bump_amplitude * exp(-x^2 / 2bump_x_width^2 - (y - Ly/2)^2 / 2bump_
 
 below_bottom(x, y, z) = z < -Lz + bump(x, y)
 
-grid = underlying_grid #ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(below_bottom))
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(below_bottom))
 
 x, y, z = nodes((Face, Face, Face), grid)
 
@@ -139,7 +139,7 @@ coriolis = FPlane(latitude=-45) # BetaPlane(latitude=-45)
 #
 # with geostrophic shear
 
-const α = 1e-3 # [s⁻¹]
+const α = 1e-4 # [s⁻¹]
 
 # ``ψ`` is comprised of a baroclinic component ``ψ′ = - α y (z + Lz/2)``
 # and a barotropic component ``Ψ = - α y L_z / 2``.
@@ -274,7 +274,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=1days, progress=print_progress, iteration_interval=1)
+simulation = Simulation(model, Δt=wizard, stop_time=1days, progress=print_progress, iteration_interval=10)
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -295,7 +295,7 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         force = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(2hour),
+                                                      schedule = TimeInterval(1hour),
                                                       prefix = "eddying_channel",
                                                       field_slicer = nothing,
                                                       force = true)
