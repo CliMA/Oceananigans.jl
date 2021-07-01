@@ -11,7 +11,6 @@ steps:
     env:
       JULIA_DEPOT_PATH: "$SVERDRUP_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "init"
-      JULIA_CUDA_USE_BINARYBUILDER: "true"
     commands:
       # Download julia binaries
       - "wget -N -P $SVERDRUP_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
@@ -24,7 +23,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
 
       # Force the initialization of the CUDA runtime as it is lazily loaded by default
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using CUDA; CUDA.versioninfo()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using CUDA; try CUDA.versioninfo(); catch; end'"
 
       # Download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
