@@ -1,3 +1,5 @@
+push!(LOAD_PATH, joinpath(@__DIR__, ".."))
+
 using BenchmarkTools
 using CUDA
 using OrderedCollections
@@ -24,7 +26,7 @@ for Arch in Archs
     N = Arch == CPU ? (32, 32, 32) : (256, 256, 256)
 
     grid = RegularRectilinearGrid(FT, size=N, extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=Arch(), float_type=FT, grid=grid,
+    model = IncompressibleModel(architecture=Arch(), grid=grid,
                                 buoyancy=nothing, tracers=(:α, :β, :γ, :δ, :ζ))
 
     ε(x, y, z) = randn()

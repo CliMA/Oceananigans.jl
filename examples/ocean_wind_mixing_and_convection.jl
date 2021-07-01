@@ -3,6 +3,7 @@
 # This example simulates mixing by three-dimensional turbulence in an ocean surface
 # boundary layer driven by atmospheric winds and convection. It demonstrates:
 #
+#   * How to set-up a grid with varying spacing in the vertical direction
 #   * How to use the `SeawaterBuoyancy` model for buoyancy with a linear equation of state.
 #   * How to use a turbulence closure for large eddy simulation.
 #   * How to use a function to impose a boundary condition.
@@ -30,9 +31,27 @@ using Oceananigans.Units: minute, minutes, hour
 # ## The grid
 #
 # We use 32³ grid points with 2 m grid spacing in the horizontal and
-# 1 m spacing in the vertical,
+# varying spacing in the vertical, with higher resolution closer to the
+# surface,
 
-grid = RegularRectilinearGrid(size=(32, 32, 32), extent=(64, 64, 32))
+σ = 1.1 # stretching factor
+Nz = 24
+Lz = 32
+
+hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
+
+grid = VerticallyStretchedRectilinearGrid(size = (32, 32, Nz), 
+                                          x = (0, 64),
+                                          y = (0, 64),
+                                          z_faces = hyperbolically_spaced_faces)
+
+# We plot vertical spacing versus depth to inspect the prescribed grid stretching:
+
+plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
+      marker = :circle,
+      ylabel = "Depth (m)",
+      xlabel = "Vertical spacing (m)",
+      legend = nothing)
 
 # ## Buoyancy that depends on temperature and salinity
 #
@@ -113,6 +132,7 @@ model = IncompressibleModel(architecture = CPU(),
                             advection = UpwindBiasedFifthOrder(),
                             timestepper = :RungeKutta3,
                             grid = grid,
+                            tracers = (:T, :S),
                             coriolis = FPlane(f=1e-4),
                             buoyancy = buoyancy,
                             closure = AnisotropicMinimumDissipation(),
@@ -220,6 +240,7 @@ function sequential_levels(c, clims, nlevels=20)
     cmax > clims[2] && (levels = vcat(levels, [cmax]))
     return clims, levels
 end
+nothing # hide
 
 # We start the animation at `t = 10minutes` since things are pretty boring till then:
 

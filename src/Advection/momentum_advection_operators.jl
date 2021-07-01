@@ -1,3 +1,5 @@
+using Oceananigans.Fields: ZeroField
+
 #####
 ##### Momentum advection operators
 #####
@@ -18,6 +20,29 @@
 @inline _advective_tracer_flux_x(i, j, k, grid::APG, args...) = _advective_tracer_flux_x(i, j, k, grid, args...)
 @inline _advective_tracer_flux_y(i, j, k, grid::APG, args...) = _advective_tracer_flux_y(i, j, k, grid, args...)
 @inline _advective_tracer_flux_z(i, j, k, grid::APG, args...) = _advective_tracer_flux_z(i, j, k, grid, args...)
+
+const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
+
+# Compiler hints
+@inline div_Uu(i, j, k, grid, advection, ::ZeroU, u) = zero(eltype(grid))
+@inline div_Uv(i, j, k, grid, advection, ::ZeroU, v) = zero(eltype(grid))
+@inline div_Uw(i, j, k, grid, advection, ::ZeroU, w) = zero(eltype(grid))
+
+@inline div_Uu(i, j, k, grid, advection, U, ::ZeroField) = zero(eltype(grid))
+@inline div_Uv(i, j, k, grid, advection, U, ::ZeroField) = zero(eltype(grid))
+@inline div_Uw(i, j, k, grid, advection, U, ::ZeroField) = zero(eltype(grid))
+
+@inline div_Uu(i, j, k, grid, ::Nothing, U, u) = zero(eltype(grid))
+@inline div_Uv(i, j, k, grid, ::Nothing, U, v) = zero(eltype(grid))
+@inline div_Uw(i, j, k, grid, ::Nothing, U, w) = zero(eltype(grid))
+
+@inline div_Uu(i, j, k, grid, ::Nothing, ::ZeroU, u) = zero(eltype(grid))
+@inline div_Uv(i, j, k, grid, ::Nothing, ::ZeroU, v) = zero(eltype(grid))
+@inline div_Uw(i, j, k, grid, ::Nothing, ::ZeroU, w) = zero(eltype(grid))
+
+@inline div_Uu(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(eltype(grid))
+@inline div_Uv(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(eltype(grid))
+@inline div_Uw(i, j, k, grid, ::Nothing, U, ::ZeroField) = zero(eltype(grid))
 
 """
     div_Uu(i, j, k, grid, advection, U, u)
@@ -63,7 +88,3 @@ which will end up at the location `ccf`.
                                     δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vw, advection, U[2], w) +
                                     δzᵃᵃᶠ(i, j, k, grid, _advective_momentum_flux_Ww, advection, U[3], w))
 end
-
-@inline div_Uu(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, u) where FT = zero(FT)
-@inline div_Uv(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, v) where FT = zero(FT)
-@inline div_Uw(i, j, k, grid::AbstractGrid{FT}, ::Nothing, U, w) where FT = zero(FT)
