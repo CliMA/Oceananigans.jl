@@ -74,9 +74,9 @@ bump(x, y) = bump_amplitude * exp(-x^2 / 2bump_x_width^2 - (y - Ly/2)^2 / 2bump_
 
 below_bottom(x, y, z) = z < -Lz + bump(x, y)
 
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(below_bottom))
+grid = underlying_grid #ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(below_bottom))
 
-x, y, z = nodes((Face, Face, Face), underlying_grid)
+x, y, z = nodes((Face, Face, Face), grid)
 
 x = reshape(x, Nx, 1)
 y = reshape(y, 1, Ny+1)
@@ -117,9 +117,7 @@ v_drag_bc = FluxBoundaryCondition(v_drag, field_dependencies=:v, parameters=μ)
 # To summarize,
 
 b_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc)
-# u_bcs = UVelocityBoundaryConditions(grid, top = u_stress_bc, bottom = u_drag_bc)
 u_bcs = UVelocityBoundaryConditions(grid, top = u_stress_bc)
-# v_bcs = VVelocityBoundaryConditions(grid, bottom = v_drag_bc)
 v_bcs = VVelocityBoundaryConditions(grid, bottom = v_drag_bc)
 
 # # Coriolis
@@ -127,8 +125,7 @@ v_bcs = VVelocityBoundaryConditions(grid, bottom = v_drag_bc)
 # We use a ``β``-plane model to capture the effect of meridional
 # variations in the planetary vorticity,
 
-#coriolis = BetaPlane(latitude=-45)
-coriolis = FPlane(latitude=-45)
+coriolis = FPlane(latitude=-45) # BetaPlane(latitude=-45)
 
 # # Sponge layer and initial condition
 #
@@ -228,7 +225,7 @@ model = HydrostaticFreeSurfaceModel(
        tracer_advection = WENO5(),
                buoyancy = BuoyancyTracer(),
                coriolis = coriolis,
-                closure = (convective_adjustment, horizontal_diffusivity),
+                closure = horizontal_diffusivity,
                 tracers = :b,
     # boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                 # forcing = (b=b_forcing,),
@@ -254,11 +251,6 @@ set!(model, u=uᵢ, b=bᵢ, η=ηᵢ)
 #
 # We set up a simulation with adaptive time-stepping and a simple progress message.
 
-using Oceananigans.Diagnostics: accurate_cell_advection_timescale
-
-#wizard = TimeStepWizard(cfl=0.15, Δt=5minutes, max_change=1.1, max_Δt=2hours, min_Δt=1minute,
-#                        cell_advection_timescale = accurate_cell_advection_timescale)
-
 min_Δ = min(grid.Δx, grid.Δy)
 gravity_wave_speed = sqrt(g * grid.Lz)
 gravity_wave_Δt = min_Δ / gravity_wave_speed
@@ -283,7 +275,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=1days, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=1days, progress=print_progress, iteration_interval=1)
 
 u, v, w = model.velocities
 b = model.tracers.b
