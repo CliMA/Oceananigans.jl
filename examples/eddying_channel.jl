@@ -1,6 +1,8 @@
 # using Pkg
 # pkg"add Oceananigans GLMakie"
 
+pushfirst!(LOAD_PATH, @__DIR__)
+
 using Printf
 using Statistics
 using GLMakie
@@ -62,6 +64,18 @@ display(fig)
                                            x = (-Lx/2, Lx/2),
                                            y = (0, Ly),
                                            z = (-Lz, 0))
+
+
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+
+bump_amplitude = 300meters
+bump_width = 50kilometers
+
+bump(x, y, z) = z < bump_amplitude * exp(-x^2/(2bump_width^2) - (y - Ly/2)^2)/(2(4*bump_width)^2) )
+
+grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
+
+Plots.heatmap(grid.xF[1:grid.Nx], grid.yF[1:grid.Ny], [bump(grid.xF[i], grid.yF[j], 0) for i in 1:grid.Nx, j in 1:grid.Ny]')
 
 # # Boundary conditions
 #
@@ -199,7 +213,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 model = HydrostaticFreeSurfaceModel(
            architecture = CPU(),
-                   grid = grid,
+                   grid = grid_with_bump,
            free_surface = ImplicitFreeSurface(gravitational_acceleration=g),
      momentum_advection = WENO5(),
        tracer_advection = WENO5(),
