@@ -5,7 +5,7 @@
 using Base.Broadcast: DefaultArrayStyle
 using Base.Broadcast: Broadcasted
 
-using Oceananigans.Utils: device_event
+using Oceananigans.Architectures: device_event
 
 struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 
