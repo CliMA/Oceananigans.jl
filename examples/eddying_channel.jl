@@ -21,6 +21,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 const Lx = 1000kilometers # east-west extent [m]
 const Ly = 2000kilometers # north-south extent [m]
+const Ly = 1000kilometers # north-south extent [m]
 const Lz = 3kilometers    # depth [m]
 
 # We use a resolution that implies O(10 km) grid spacing in the horizontal
@@ -28,6 +29,7 @@ const Lz = 3kilometers    # depth [m]
 
 Nx = 64
 Ny = 2Nx
+Ny = Nx
 Nz = 32
 
 #=
@@ -71,7 +73,7 @@ bump_width = 50kilometers
 
 bump(x, y) = bump_amplitude * exp(-x^2/(2bump_width^2) - (y - Ly/2)^2/(2(4*bump_width)^2) )
 
-boundary(x, y, z) = z < bump(x, y)
+boundary(x, y, z) = z < -Lz + bump(x, y)
 
 grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(boundary))
 
@@ -110,9 +112,11 @@ v_drag_bc = FluxBoundaryCondition(v_drag, field_dependencies=:v, parameters=μ)
 
 # To summarize,
 
-b_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc)
-u_bcs = UVelocityBoundaryConditions(grid, top = u_stress_bc, bottom = u_drag_bc)
-v_bcs = VVelocityBoundaryConditions(grid, bottom = v_drag_bc)
+b_bcs = TracerBoundaryConditions(grid_with_bump, top = buoyancy_flux_bc)
+# u_bcs = UVelocityBoundaryConditions(grid, top = u_stress_bc, bottom = u_drag_bc)
+u_bcs = UVelocityBoundaryConditions(grid_with_bump, top = u_stress_bc)
+# v_bcs = VVelocityBoundaryConditions(grid, bottom = v_drag_bc)
+v_bcs = VVelocityBoundaryConditions(grid_with_bump, bottom = v_drag_bc)
 
 # # Coriolis
 #
@@ -221,8 +225,8 @@ model = HydrostaticFreeSurfaceModel(
                coriolis = coriolis,
                 closure = (convective_adjustment, horizontal_diffusivity),
                 tracers = :b,
-    boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
-                forcing = (b=b_forcing,),
+    # boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
+                # forcing = (b=b_forcing,),
 )
 
 # # InitiaL conditions
@@ -232,7 +236,7 @@ model = HydrostaticFreeSurfaceModel(
 # jump in the vertical and concentrated in the upper tenth of the domain.
 
 ## Random noise
-u★ = 1e-3 * α * Lz
+u★ = 1e-4 * α * Lz
 δ = 0.1 * Ly
 ϵ(x, y, z) = u★ * exp(-(y - Ly/2)^2 / 2δ^2) * randn()
 
