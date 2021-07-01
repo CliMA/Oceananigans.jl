@@ -5,6 +5,8 @@
 using Base.Broadcast: DefaultArrayStyle
 using Base.Broadcast: Broadcasted
 
+using Oceananigans.Utils: device_event
+
 struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 
 Base.Broadcast.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
@@ -78,6 +80,7 @@ broadcasted_to_abstract_operation(loc, grid, a) = a
 
     event = launch!(arch, grid, config, kernel, dest, bc′,
                     include_right_boundaries = true,
+                    dependencies = device_event(arch),
                     location = (X, Y, Z))
 
     wait(device(arch), event)
