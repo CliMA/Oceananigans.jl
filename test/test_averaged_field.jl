@@ -51,7 +51,7 @@ using Oceananigans.Grids: halo_size
                 
                 # Test whether a race condition gets hit for averages over large fields
                 big_grid = RegularRectilinearGrid(topology = (Periodic, Periodic, Bounded),
-                                                  size = (512, 512, 256),
+                                                  size = (256, 256, 128),
                                                      x = (0, 2), y = (0, 2), z = (0, 2))
                 
                 c = CenterField(arch, big_grid)
@@ -61,7 +61,7 @@ using Oceananigans.Grids: halo_size
                     
                 # Test that the mean consistently returns 1 at every z for many evaluations
                 results = [all(interior(mean!(C, C.operand)) .== 1) for i = 1:10] # warm up...
-                results = [all(interior(mean!(C, C.operand)) .== 1) for i = 1:100] # the real deal
+                results = [all(interior(mean!(C, C.operand)) .== 1) for i = 1:10] # the real deal
                 @test mean(results) == 1.0              
             end
         end
