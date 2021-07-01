@@ -157,7 +157,7 @@ const f₀ = coriolis.f # [s⁻¹]
 
 # the Coriolis parameter, and
 
-g = 0.1 # m s⁻²
+g = 1.0 # m s⁻²
 
 # is gravitational acceleration. Our austral focus means that ``f₀ < 0``:
 
