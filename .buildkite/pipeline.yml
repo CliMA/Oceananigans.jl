@@ -23,7 +23,7 @@ steps:
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.status()'"
 
       # Force the initialization of the CUDA runtime as it is lazily loaded by default
-      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using CUDA; CUDA.versioninfo()'"
+      - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using CUDA; try CUDA.versioninfo(); catch; end'"
 
       # Download artifacts by running an empty testgroup and thereby executing /test/runtests.jl
       - "$SVERDRUP_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
