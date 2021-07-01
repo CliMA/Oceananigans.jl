@@ -10,6 +10,7 @@ using GLMakie
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 # # Vertically-stretched grid
 #
@@ -65,17 +66,16 @@ display(fig)
                                            y = (0, Ly),
                                            z = (-Lz, 0))
 
-
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
-
 bump_amplitude = 300meters
 bump_width = 50kilometers
 
-bump(x, y, z) = z < bump_amplitude * exp(-x^2/(2bump_width^2) - (y - Ly/2)^2)/(2(4*bump_width)^2) )
+bump(x, y) = bump_amplitude * exp(-x^2/(2bump_width^2) - (y - Ly/2)^2/(2(4*bump_width)^2) )
 
-grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
+boundary(x, y, z) = z < bump(x, y)
 
-Plots.heatmap(grid.xF[1:grid.Nx], grid.yF[1:grid.Ny], [bump(grid.xF[i], grid.yF[j], 0) for i in 1:grid.Nx, j in 1:grid.Ny]')
+grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(boundary))
+
+heatmap(grid.xF[1:grid.Nx], grid.yF[1:grid.Ny], [bump(grid.xF[i], grid.yF[j]) for i in 1:grid.Nx, j in 1:grid.Ny]')
 
 # # Boundary conditions
 #
@@ -268,7 +268,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=20days, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=1days, progress=print_progress, iteration_interval=10)
 
 u, v, w = model.velocities
 b = model.tracers.b
