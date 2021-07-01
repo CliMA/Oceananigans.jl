@@ -15,9 +15,9 @@ direction, ``u``, at grid point `i, j, k` for a HydrostaticFreeSurfaceModel.
 
 The tendency for ``u`` is called ``G_u`` and defined via
 
-    ``∂_t u = G_u - ∂_x ϕ_n``
+    ``∂_t u = G_u - ∂_x p_n``
 
-where ϕ_n is the part of the barotropic pressure that's treated
+where p_n is the part of the barotropic kinematic pressure that's treated
 implicitly during time-stepping.
 """
 @inline function hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid,
@@ -50,9 +50,9 @@ direction, ``v``, at grid point `i, j, k` for a HydrostaticFreeSurfaceModel.
 
 The tendency for ``v`` is called ``G_v`` and defined via
 
-    ``∂_t v = G_v - ∂_y ϕ_n``
+    ``∂_t v = G_v - ∂_y p_n``
 
-where ϕ_n is the part of the barotropic pressure that's treated
+where p_n is the part of the barotropic kinematic pressure that's treated
 implicitly during time-stepping.
 """
 @inline function hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid,
