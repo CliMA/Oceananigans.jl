@@ -254,7 +254,7 @@ min_Δ = min(grid.Δx, grid.Δy)
 gravity_wave_speed = sqrt(g * grid.Lz)
 gravity_wave_Δt = min_Δ / gravity_wave_speed
 
-wizard = TimeStepWizard(cfl=0.15, Δt=0.1min_Δ, max_change=1.1, max_Δt=0.1min_Δ)
+wizard = TimeStepWizard(cfl=0.2, Δt=1minute, max_change=1.1, max_Δt=0.1min_Δ)
 
 wall_clock = [time_ns()]
 
