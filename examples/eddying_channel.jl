@@ -5,7 +5,6 @@ pushfirst!(LOAD_PATH, @__DIR__)
 
 using Printf
 using Statistics
-using GLMakie
 
 using Oceananigans
 using Oceananigans.Units
@@ -81,7 +80,7 @@ x, y, z = nodes((Face, Face, Face), grid)
 x = reshape(x, Nx, 1)
 y = reshape(y, 1, Ny+1)
 
-heatmap(x, y, bump.(x, y))
+# heatmap(x, y, bump.(x, y))
 
 # # Boundary conditions
 #
@@ -310,6 +309,8 @@ end
 # # Visualizing the solution with GLMakie
 #
 # We make a volume rendering of the solution using GLMakie.
+
+using GLMakie
 
 b_timeseries = FieldTimeSeries("eddying_channel.jld2", "b")
 ζ_timeseries = FieldTimeSeries("eddying_channel.jld2", "ζ")
