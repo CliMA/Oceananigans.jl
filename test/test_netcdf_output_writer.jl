@@ -478,17 +478,21 @@ function test_netcdf_time_averaging(arch)
     domain = (x=(0, 1), y=(0, 1), z=(0, 1))
     grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 4); domain...)
 
-    λ(x, y, z) = x + (1 - y)^2 + tanh(z)
-    Fc(x, y, z, t, c) = - λ(x, y, z) * c
+    λ1(x, y, z) = x + (1 - y)^2 + tanh(z)
+    λ2(x, y, z) = x + (1 - y)^2 + tanh(4z)
 
-    c_forcing = Forcing(Fc, field_dependencies=(:c,))
+    Fc1(x, y, z, t, c1) = - λ1(x, y, z) * c1
+    Fc2(x, y, z, t, c2) = - λ2(x, y, z) * c2
+    
+    c1_forcing = Forcing(Fc1, field_dependencies=:c1)
+    c2_forcing = Forcing(Fc2, field_dependencies=:c2)
 
     model = IncompressibleModel(
                 grid = grid,
         architecture = arch,
          timestepper = :RungeKutta3,
-             tracers = :c,
-             forcing = (c=c_forcing,),
+             tracers = (:c1, :c2)
+             forcing = (c1=c1_forcing, c2=c2_forcing),
             coriolis = nothing,
             buoyancy = nothing,
              closure = nothing
@@ -499,10 +503,11 @@ function test_netcdf_time_averaging(arch)
     Δt = 1/512  # Nice floating-point number
     simulation = Simulation(model, Δt=Δt, stop_time=50Δt)
 
-    ∫c_dxdy = AveragedField(model.tracers.c, dims=(1, 2))
-
-    nc_outputs = Dict("c" => ∫c_dxdy)
-    nc_dimensions = Dict("c" => ("zC",))
+    ∫c1_dxdy = AveragedField(model.tracers.c1, dims=(1, 2))
+    ∫c2_dxdy = AveragedField(model.tracers.c2, dims=(1, 2))
+        
+    nc_outputs = Dict("c1" => ∫c1_dxdy, "c2" => ∫c2_dxdy)
+    nc_dimensions = Dict("c1" => ("zC",), "c2" => ("zC",))
 
     horizontal_average_nc_filepath = "decay_averaged_field_test.nc"
     simulation.output_writers[:horizontal_average] =
@@ -531,10 +536,13 @@ function test_netcdf_time_averaging(arch)
     Nx, Ny, Nz = size(grid)
     xs, ys, zs = nodes(model.tracers.c)
 
-    c̄(z, t) = 1 / (Nx * Ny) * sum(exp(-λ(x, y, z) * t) for x in xs for y in ys)
+    c̄1(z, t) = 1 / (Nx * Ny) * sum(exp(-λ1(x, y, z) * t) for x in xs for y in ys)
+    c̄2(z, t) = 1 / (Nx * Ny) * sum(exp(-λ2(x, y, z) * t) for x in xs for y in ys)
 
+    
     for (n, t) in enumerate(ds["time"])
-        @test ds["c"][:, n] ≈ c̄.(zs, t)
+        @test ds["c1"][:, n] ≈ c̄1.(zs, t)
+        @test ds["c2"][:, n] ≈ c̄2.(zs, t)
     end
 
     close(ds)
@@ -553,12 +561,14 @@ function test_netcdf_time_averaging(arch)
         @test haskey(ds.attrib, name) && !isnothing(ds.attrib[name])
     end
 
-    c̄(ts) = 1/length(ts) * sum(c̄.(zs, t) for t in ts)
+    c̄1(ts) = 1/length(ts) * sum(c̄1.(zs, t) for t in ts)
+    c̄2(ts) = 1/length(ts) * sum(c̄2.(zs, t) for t in ts)
 
     window_size = Int(window/Δt)
     for (n, t) in enumerate(ds["time"][2:end])
         averaging_times = [t - n*Δt for n in 0:stride:window_size-1]
-        @test ds["c"][:, n+1] ≈ c̄(averaging_times)
+        @test ds["c1"][:, n+1] ≈ c̄1(averaging_times)
+        @test ds["c2"][:, n+1] ≈ c̄2(averaging_times)
     end
 
     close(ds)
