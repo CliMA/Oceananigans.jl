@@ -491,7 +491,7 @@ function test_netcdf_time_averaging(arch)
                 grid = grid,
         architecture = arch,
          timestepper = :RungeKutta3,
-             tracers = (:c1, :c2)
+             tracers = (:c1, :c2),
              forcing = (c1=c1_forcing, c2=c2_forcing),
             coriolis = nothing,
             buoyancy = nothing,
