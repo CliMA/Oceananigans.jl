@@ -87,6 +87,8 @@ AveragedTimeInterval(interval; window=interval, stride=1) =
 
 TimeInterval(schedule::AveragedTimeInterval) = TimeInterval(schedule.interval)
 
+Base.copy(schedule::AveragedTimeInterval) = AveragedTimeInterval(schedule.interval, window=schedule.window, stride=schedule.stride)
+
 """
     WindowedTimeAverage{OP, R, FS} <: AbstractDiagnostic
 
