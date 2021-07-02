@@ -11,9 +11,9 @@ direction, ``u``, at grid point `i, j, k`.
 
 The tendency for ``u`` is called ``G_u`` and defined via
 
-    ``∂_t u = G_u - ∂_x ϕ_n``
+    ``∂_t u = G_u - ∂_x p_n``
 
-where ∂_x ϕ_n is the non-hydrostatic pressure gradient in the x-direction.
+where ∂_x p_n is the non-hydrostatic kinematic pressure gradient in the x-direction.
 
 `coriolis`, `stokes_drift`, and `closure` are types encoding information about Coriolis
 forces, surface waves, and the prescribed turbulence closure.
@@ -60,9 +60,9 @@ direction, ``v``, at grid point `i, j, k`.
 
 The tendency for ``v`` is called ``G_v`` and defined via
 
-    ``∂_t v = G_v - ∂_y ϕ_n``
+    ``∂_t v = G_v - ∂_y p_n``
 
-where ∂_y ϕ_n is the non-hydrostatic pressure gradient in the y-direction.
+where ∂_y p_n is the non-hydrostatic kinematic pressure gradient in the y-direction.
 
 `coriolis`, `stokes_drift`, and `closure` are types encoding information about Coriolis
 forces, surface waves, and the prescribed turbulence closure.
@@ -107,9 +107,9 @@ end
 Return the tendency for the vertical velocity ``w`` at grid point `i, j, k`.
 The tendency for ``w`` is called ``G_w`` and defined via
 
-    ``∂_t w = G_w - ∂_z ϕ_n``
+    ``∂_t w = G_w - ∂_z p_n``
 
-where ∂_z ϕ_n is the non-hydrostatic pressure gradient in the z-direction.
+where ∂_z p_n is the non-hydrostatic kinematic pressure gradient in the z-direction.
 
 `coriolis`, `stokes_drift`, and `closure` are types encoding information about Coriolis
 forces, surface waves, and the prescribed turbulence closure.
