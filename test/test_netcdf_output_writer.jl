@@ -498,7 +498,7 @@ function test_netcdf_time_averaging(arch)
              closure = nothing
     )
 
-    set!(model, c=1)
+    set!(model, c1=1, c2=1)
 
     Δt = 1/512  # Nice floating-point number
     simulation = Simulation(model, Δt=Δt, stop_time=50Δt)
