@@ -534,7 +534,7 @@ function test_netcdf_time_averaging(arch)
     ds = NCDataset(horizontal_average_nc_filepath)
 
     Nx, Ny, Nz = size(grid)
-    xs, ys, zs = nodes(model.tracers.c)
+    xs, ys, zs = nodes(model.tracers.c1)
 
     c̄1(z, t) = 1 / (Nx * Ny) * sum(exp(-λ1(x, y, z) * t) for x in xs for y in ys)
     c̄2(z, t) = 1 / (Nx * Ny) * sum(exp(-λ2(x, y, z) * t) for x in xs for y in ys)
