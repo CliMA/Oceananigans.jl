@@ -29,22 +29,22 @@ Nx = 32
 Ny = 2Nx
 Nz = 32
 
-#=
 # Vertical stretching is accomplished with an exponential "stretching function",
 
 s = 1.5 # stretching factor
 z_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
 
-@show grid = VerticallyStretchedRectilinearGrid(topology = (Periodic, Bounded, Bounded),
-                                                size = (Nx, Ny, Nz),
-                                                halo = (3, 3, 3),
-                                                x = (-Lx/2, Lx/2),
-                                                y = (0, Ly),
-                                                z_faces = z_faces)
+@show underlying_grid = VerticallyStretchedRectilinearGrid(topology = (Periodic, Bounded, Bounded),
+                                                           size = (Nx, Ny, Nz),
+                                                           halo = (3, 3, 3),
+                                                           x = (-Lx/2, Lx/2),
+                                                           y = (0, Ly),
+                                                           z_faces = z_faces)
 
 # We visualize the cell interfaces by plotting the cell height
 # as a function of depth,
 
+#=
 fig = Figure(resolution=(400, 600))
 
 ax = Axis(fig[1, 1],
@@ -58,20 +58,23 @@ scatter!(ax, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
 display(fig)
 =#
 
+#=
 @show underlying_grid = RegularRectilinearGrid(topology = (Periodic, Bounded, Bounded),
                                                size = (Nx, Ny, Nz),
                                                halo = (3, 3, 3),
                                                   x = (-Lx/2, Lx/2),
                                                   y = (0, Ly),
                                                   z = (-Lz, 0))
+=#
 
-bump_amplitude = 300meters
-bump_x_width = 50kilometers
-bump_y_width = 200kilometers
+const bump_amplitude = 300meters
+const bump_x_width = 50kilometers
+const bump_y_width = 200kilometers
 
-bump(x, y) = bump_amplitude * exp(-x^2 / 2bump_x_width^2 - (y - Ly/2)^2 / 2bump_y_width^2)
+@inline pow2(x) = x * x
+@inline bump(x, y) = bump_amplitude * exp(-pow2(x) / (2 * pow2(bump_x_width)) - pow2(y - Ly/2) / (2 * pow2(bump_y_width)))
 
-below_bottom(x, y, z) = z < -Lz + bump(x, y)
+@inline below_bottom(x, y, z) = z < -Lz + bump(x, y)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(below_bottom))
 
@@ -216,9 +219,8 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 # We build a model on a BetaPlane with an ImplicitFreeSurface.
 
 model = HydrostaticFreeSurfaceModel(
-           architecture = CPU(),
+           architecture = GPU(),
                    grid = grid,
-           #free_surface = ImplicitFreeSurface(gravitational_acceleration=g),
            free_surface = ExplicitFreeSurface(gravitational_acceleration=g),
      momentum_advection = WENO5(),
        tracer_advection = WENO5(),
@@ -254,7 +256,7 @@ min_Δ = min(grid.Δx, grid.Δy)
 gravity_wave_speed = sqrt(g * grid.Lz)
 gravity_wave_Δt = min_Δ / gravity_wave_speed
 
-wizard = TimeStepWizard(cfl=0.2, Δt=1minute, max_change=1.1, max_Δt=0.1min_Δ)
+wizard = TimeStepWizard(cfl=0.2, Δt=1minute, max_change=1.1, max_Δt=0.1gravity_wave_Δt)
 
 wall_clock = [time_ns()]
 
@@ -274,7 +276,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=1days, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=30days, progress=print_progress, iteration_interval=10)
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -306,6 +308,7 @@ catch err
     showerror(stdout, err)
 end
 
+#=
 # # Visualizing the solution with GLMakie
 #
 # We make a volume rendering of the solution using GLMakie.
@@ -368,3 +371,4 @@ record(fig, "eddying_channel.mp4", 1:nframes, framerate=12) do i
     @info "Plotting frame $i of $nframes..."
     iter[] = i
 end
+=#

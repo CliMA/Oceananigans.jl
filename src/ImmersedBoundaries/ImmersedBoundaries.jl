@@ -85,12 +85,13 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I} <: AbstractGrid{FT, TX, TY, TZ
     grid :: G
     immersed_boundary :: I
 
-    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {G <: AbstractPrimaryGrid, I}
+    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {TX, TY, TZ, G <: AbstractPrimaryGrid, I}
         FT = eltype(grid)
         return new{FT, TX, TY, TZ, G, I}(grid, ib)
     end
 end
 
+# Outer constructor to support warning
 function ImmersedBoundaryGrid(grid::AbstractPrimaryGrid, ib)
 
     @warn "ImmersedBoundaryGrid is unvalidated and may produce incorrect results. " *
