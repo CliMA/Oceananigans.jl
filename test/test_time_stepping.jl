@@ -39,9 +39,9 @@ function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(m
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
-function time_stepping_works_with_advection_scheme(arch, advection_scheme, FT=Float64)
+function time_stepping_works_with_advection_scheme(arch, advection_scheme, FT, topo)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
-    grid = RegularRectilinearGrid(FT, size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
+    grid = RegularRectilinearGrid(FT, topology=topo, size=(8, 8, 8), halo=(3, 3, 3), extent=(1, 2, 3))
     model = IncompressibleModel(grid=grid, architecture=arch, advection=advection_scheme)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
@@ -199,9 +199,13 @@ Planes = (FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane)
 
 BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipation(FT, Cb=1.0)
 
-Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
-            AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
-            SmagorinskyLilly, AnisotropicMinimumDissipation, BuoyancyModifiedAnisotropicMinimumDissipation,
+Closures = (IsotropicDiffusivity, 
+            AnisotropicDiffusivity,
+            AnisotropicBiharmonicDiffusivity, 
+            TwoDimensionalLeith,
+            SmagorinskyLilly, 
+            AnisotropicMinimumDissipation, 
+            BuoyancyModifiedAnisotropicMinimumDissipation,
             TKEBasedVerticalDiffusivity)
 
 advection_schemes = (nothing,
@@ -249,16 +253,18 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "Coriolis" begin
-        for arch in archs, FT in [Float64], Coriolis in Planes
+        for arch in archs, Coriolis in Planes
+            FT = Float64
             @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Coriolis]..."
             @test time_stepping_works_with_coriolis(arch, FT, Coriolis)
         end
     end
 
     @testset "Advection schemes" begin
-        for arch in archs, advection_scheme in advection_schemes, FT in float_types
-            @info "  Testing time stepping with advection schemes [$(typeof(arch)), $FT, $(typeof(advection_scheme))]"
-            @test time_stepping_works_with_advection_scheme(arch, advection_scheme, FT)
+        topologies = [(Periodic, Periodic, Bounded), (Periodic, Periodic, Periodic)]
+        for arch in archs, advection_scheme in advection_schemes, FT in float_types, topo in topologies
+            @info "  Testing time stepping with advection schemes [$(typeof(arch)), $FT, vertically $(topo[3]), $(typeof(advection_scheme))]"
+            @test time_stepping_works_with_advection_scheme(arch, advection_scheme, FT, topo)
         end
     end
 
@@ -270,8 +276,8 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "Turbulence closures" begin
-        for arch in archs, FT in [Float64]
-
+        for arch in archs
+            FT = Float64
             @info "  Testing that time stepping works [$(typeof(arch)), $FT, nothing]..."
             @test time_stepping_works_with_nothing_closure(arch, FT)
 
