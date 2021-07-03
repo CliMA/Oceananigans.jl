@@ -108,6 +108,8 @@ Generate a horizontally-periodic grid with cell interfaces stretched
 hyperbolically near the top:
 
 ```jldoctest
+using Oceananigans
+
 σ = 1.1 # stretching factor
 Nz = 24 # vertical resolution
 Lz = 32 # depth (m)
