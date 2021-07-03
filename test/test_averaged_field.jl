@@ -48,6 +48,21 @@ using Oceananigans.Grids: halo_size
 
                 @test Array(interior(w̅))[1, 1, :] ≈ [2, 3, 4]
                 @test Array(interior(ŵ))[1, :, :] ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
+                
+                # Test whether a race condition gets hit for averages over large fields
+                big_grid = RegularRectilinearGrid(topology = (Periodic, Periodic, Bounded),
+                                                  size = (256, 256, 128),
+                                                     x = (0, 2), y = (0, 2), z = (0, 2))
+
+                c = CenterField(arch, big_grid)
+                c .= 1
+
+                C = AveragedField(c, dims=(1, 2))
+
+                # Test that the mean consistently returns 1 at every z for many evaluations
+                results = [all(interior(mean!(C, C.operand)) .== 1) for i = 1:10] # warm up...
+                results = [all(interior(mean!(C, C.operand)) .== 1) for i = 1:10] # the real deal
+                @test mean(results) == 1.0              
             end
         end
 
