@@ -20,9 +20,11 @@ end
 """
     ∇²ᶜᶜᶜ(i, j, k, grid, c)
 
-Calculates the Laplacian of c via
+Calculates the Laplacian of `c` via
 
-    1/V * [δxᶜᵃᵃ(Ax * ∂xᶠᵃᵃ(c)) + δyᵃᶜᵃ(Ay * ∂yᵃᶠᵃ(c)) + δzᵃᵃᶜ(Az * ∂zᵃᵃᶠ(c))]
+```
+1/V * [δxᶜᵃᵃ(Ax * ∂xᶠᵃᵃ(c)) + δyᵃᶜᵃ(Ay * ∂yᵃᶠᵃ(c)) + δzᵃᵃᶜ(Az * ∂zᵃᵃᶠ(c))]
+```
 
 which will end up at the location `ccc`.
 """
