@@ -35,7 +35,7 @@ using Oceananigans.Units: minute, minutes, hour
 # surface. We use a two-parameter generating function to specify the
 # vertical cell interfaces:
 
-Nz = 24 # vertical resolution
+Nz = 24 # number of points in the vertical direction
 Lz = 32 # domain depth
 refinement = 1.2 # controls spacing near surface (higher means finer spaced)
 stretching = 8   # controls rate of stretching at bottom 
