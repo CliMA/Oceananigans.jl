@@ -30,8 +30,7 @@ ic_name(::typeof(ϕ_Square))   = "Square"
 
 function setup_model(N, L, U, ϕₐ, time_stepper, advection_scheme)
     topology = (Periodic, Flat, Flat)
-    domain = (x=(-L/2, L/2), y=(0, 1), z=(0, 1))
-    grid = RegularRectilinearGrid(topology=topology, size=(N, 1, 1), halo=(9, 9, 9); domain...)
+    grid = RegularRectilinearGrid(topology=topology, size=(N, ), halo=(9, ), x=(-L/2, L/2))
 
     model = IncompressibleModel(
                grid = grid,
@@ -52,8 +51,6 @@ function short_name(ts)
     ts == :RungeKutta3 && return "RK3"
 end
 
-weno_order(::WENO{K}) where K = 2K-1
-
 function create_animation(N, L, CFL, ϕₐ, time_stepper, advection_scheme; U=1.0, T=2.0)
     model = setup_model(N, L, U, ϕₐ, time_stepper, advection_scheme)
     
@@ -69,7 +66,7 @@ function create_animation(N, L, CFL, ϕₐ, time_stepper, advection_scheme; U=1.
         512 < n        && return 8
     end
 
-    scheme_name = advection_scheme isa WENO ? "WENO$(weno_order(advection_scheme))" : typeof(advection_scheme)
+    scheme_name = typeof(advection_scheme)
 
     anim_filename = @sprintf("%s_%s_%s_N%d_CFL%.2f_U%+d.gif", ic_name(ϕₐ), time_stepper, scheme_name, N, CFL, U)
 
@@ -108,7 +105,7 @@ CFLs = (0.5, 1.7)
 Us = [+1, -1]
 
 for ϕ in ϕs, ts in time_steppers, scheme in advection_schemes, N in Ns, CFL in CFLs, U in Us
-    scheme_name = scheme isa WENO ? "WENO$(weno_order(scheme))" : typeof(scheme)
+    scheme_name = typeof(scheme)
     @info @sprintf("Creating two-revolution animation [%s, %s, %s, N=%d, CFL=%.2f, U=%+d]...", ic_name(ϕ), ts, scheme_name, N, CFL, U)
     create_animation(N, L, CFL, ϕ, ts, scheme, U=U)
 end
