@@ -1,10 +1,12 @@
 # using Pkg
 # pkg"add Oceananigans GLMakie"
 
+#=
 pushfirst!(LOAD_PATH, @__DIR__)
 
 using Printf
 using Statistics
+using Plots
 
 using Oceananigans
 using Oceananigans.Units
@@ -31,7 +33,7 @@ Nz = 32
 
 # Vertical stretching is accomplished with an exponential "stretching function",
 
-s = 1.5 # stretching factor
+s = 1.2 # stretching factor
 z_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
 
 @show underlying_grid = VerticallyStretchedRectilinearGrid(topology = (Periodic, Bounded, Bounded),
@@ -44,28 +46,11 @@ z_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
 # We visualize the cell interfaces by plotting the cell height
 # as a function of depth,
 
-#=
-fig = Figure(resolution=(400, 600))
-
-ax = Axis(fig[1, 1],
-          xlabel = "Cell height Δz (m)",
-          ylabel = "z (m)",
-          xscale = log10,
-          xticks = [20, 50, 100, 200, 500])
-
-scatter!(ax, grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz])
-
-display(fig)
-=#
-
-#=
-@show underlying_grid = RegularRectilinearGrid(topology = (Periodic, Bounded, Bounded),
-                                               size = (Nx, Ny, Nz),
-                                               halo = (3, 3, 3),
-                                                  x = (-Lx/2, Lx/2),
-                                                  y = (0, Ly),
-                                                  z = (-Lz, 0))
-=#
+plot(underlying_grid.Δzᵃᵃᶜ[1:Nz], underlying_grid.zᵃᵃᶜ[1:Nz],
+     marker = :circle,
+     ylabel = "Depth (m)",
+     xlabel = "Vertical spacing (m)",
+     legend = nothing)
 
 const bump_amplitude = 300meters
 const bump_x_width = 50kilometers
@@ -219,9 +204,9 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 # We build a model on a BetaPlane with an ImplicitFreeSurface.
 
 model = HydrostaticFreeSurfaceModel(
-           architecture = GPU(),
+           architecture = CPU(),
                    grid = grid,
-           free_surface = ExplicitFreeSurface(gravitational_acceleration=g),
+           free_xy = ExplicitFreeSurface(gravitational_acceleration=g),
      momentum_advection = WENO5(),
        tracer_advection = WENO5(),
                buoyancy = BuoyancyTracer(),
@@ -276,7 +261,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=30days, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=1days, progress=print_progress, iteration_interval=10)
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -297,7 +282,7 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         force = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(1hour),
+                                                      schedule = TimeInterval(6hour),
                                                       prefix = "eddying_channel",
                                                       field_slicer = nothing,
                                                       force = true)
@@ -307,68 +292,52 @@ try
 catch err
     showerror(stdout, err)
 end
+=#
 
-#=
-# # Visualizing the solution with GLMakie
-#
-# We make a volume rendering of the solution using GLMakie.
-
-using GLMakie
+# # Visualizing the solution with Plots
 
 b_timeseries = FieldTimeSeries("eddying_channel.jld2", "b")
 ζ_timeseries = FieldTimeSeries("eddying_channel.jld2", "ζ")
-χ_timeseries = FieldTimeSeries("eddying_channel.jld2", "χ")
 
 xζ, yζ, zζ = nodes((Face, Face, Center), grid)
 xc, yc, zc = nodes((Center, Center, Center), grid)
 
-kwargs = (algorithm = :absorption,
-          absorption = 10f0,
-          colormap = :balance,
-          show_axis = true)
+grid = b_timeseries.grid
 
-iter = Node(1)
+anim = @animate for i in 1:length(b_timeseries.times)
 
-b′ = @lift interior(b_timeseries[$iter]) .- mean(interior(b_timeseries[$iter]))
-ζ′ = @lift interior(ζ_timeseries[$iter])
-χ′ = @lift interior(χ_timeseries[$iter])
+    b_xy = interior(b_timeseries[i])[:, :, grid.Nz]
+    ζ_xy = interior(ζ_timeseries[i])[:, :, grid.Nz]
 
-function symmetric_lims(q, iter)
-    q_max = maximum(abs, interior(q[iter]))
-    return (-q_max, q_max)
+    j_mid = round(Int, grid.Ny / 2)
+    ζ_xz = interior(ζ_timeseries[i])[:, j_mid, :]
+
+    blims = (-0.03, 0.03)
+    ζlims = (-1e-5, 1e-5)
+    
+    @show bmax = maximum(abs, b_xy)
+    @show ζmax = maximum(abs, ζ_xy)
+
+    blevels = vcat([-bmax], range(blims[1], blims[2], length=31), [bmax])
+    ζlevels = vcat([-ζmax], range(ζlims[1], ζlims[2], length=31), [ζmax])
+
+    xlims = (-grid.Lx/2, grid.Lx/2) .* 1e-3
+    ylims = (0, grid.Ly) .* 1e-3
+    zlims = (-grid.Lz, 0)
+
+    ζ_xz_plot = contourf(xζ * 1e-3, zζ, ζ_xz',   xlabel = "x (km)", ylabel = "z (m)", aspectratio=0.05, linewidth=0, levels=ζlevels, clims=ζlims, xlims=xlims, ylims=zlims, color=:balance)
+    ζ_xy_plot = contourf(xζ * 1e-3, yζ * 1e-3, ζ_xy', xlabel = "x (km)", ylabel = "y (km)", aspectratio=:equal, linewidth=0, levels=ζlevels, clims=ζlims, xlims=xlims, ylims=ylims, color=:balance)
+    b_xy_plot = contourf(xc * 1e-3, yc * 1e-3, b_xy', xlabel = "x (km)", ylabel = "y (km)", aspectratio=:equal, linewidth=0, levels=blevels, clims=blims, xlims=xlims, ylims=ylims, color=:balance)
+
+    ζ_xz_title = @sprintf("ζ(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
+    ζ_xy_title = "ζ(x, y)"
+    b_xy_title = "b(x, y)"
+
+    layout = @layout [upper_slice_plot{0.2h}
+                      Plots.grid(1, 2)]
+
+    plot(ζ_xz_plot, ζ_xy_plot,  b_xy_plot, layout = layout, size = (1200, 1200), title = [ζ_xz_title ζ_xy_title b_xy_title])
 end
 
-function sequential_lims(q, iter, scale=1)
-    q_max = maximum(abs, interior(q[iter]))
-    return (0, q_max*scale)
-end
+mp4(anim, "eddying_channel.mp4", fps = 8) # hide
 
-b_lims = @lift symmetric_lims(b_timeseries, $iter)
-ζ_lims = @lift symmetric_lims(ζ_timeseries, $iter)
-χ_lims = @lift sequential_lims(χ_timeseries, $iter, 0.001)
-
-fig = Figure(resolution = (2400, 800))
-
-ax_b = fig[1, 1] = LScene(fig, title="b")
-ax_ζ = fig[1, 2] = LScene(fig, title="ζ")
-ax_χ = fig[1, 3] = LScene(fig, title="χ")
-
-function make_title(iter, timeseries)
-    t = timeseries.times[iter]
-    return @sprintf("b, ζ, χ at t = %s", prettytime(t))
-end
-
-title = @lift make_title($iter, ζ_timeseries)
-Label(fig[0, :], title, textsize=60)
-
-volume!(ax_b, xc * 1e-3, yc * 1e-3, zc / 10, b′; colorrange=b_lims, algorithm=:absorption, adsorption=10f0, colormap=:balance)
-volume!(ax_ζ, xζ * 1e-3, yζ * 1e-3, zζ / 10, ζ′; colorrange=ζ_lims, algorithm=:absorption, adsorption=10f0, colormap=:balance)
-volume!(ax_χ, xc * 1e-3, yc * 1e-3, zc / 10, χ′; colorrange=χ_lims, algorithm=:absorption, adsorption=100f0, colormap=:thermal)
-
-nframes = length(ζ_timeseries.times)
-
-record(fig, "eddying_channel.mp4", 1:nframes, framerate=12) do i
-    @info "Plotting frame $i of $nframes..."
-    iter[] = i
-end
-=#
