@@ -30,7 +30,7 @@ using Oceananigans.Units: minute, minutes, hour
 
 # ## A vertically-stretched grid
 #
-# We use 32³ grid points with 2 m grid spacing in the horizontal and
+# We use 32³ grid points with 2 meter grid spacing in the horizontal and
 # varying spacing in the vertical, with higher resolution closer to the
 # surface. We use a two-parameter generating function to specify the
 # vertical cell interfaces:
@@ -38,7 +38,7 @@ using Oceananigans.Units: minute, minutes, hour
 Nz = 24 # vertical resolution
 Lz = 32 # domain depth
 refinement = 1.2 # controls spacing near surface (higher means finer spaced)
-stretching = 8 # controls rate of stretching at bottom 
+stretching = 8   # controls rate of stretching at bottom 
 
 ## Normalized height ranging from 0 to 1
 h(k) = (k - 1) / Nz
@@ -71,19 +71,19 @@ plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4))
 
-# where $α$ and $β$ are the thermal expansion and haline contraction
+# where ``α`` and ``β`` are the thermal expansion and haline contraction
 # coefficients for temperature and salinity.
 #
 # ## Boundary conditions
 #
 # We calculate the surface temperature flux associated with surface heating of
-# 200 W m⁻², reference density `ρ`, and heat capacity `cᴾ`,
+# 200 W m⁻², reference density `ρₒ`, and heat capacity `cᴾ`,
 
-Qʰ = 200  # W m⁻², surface _heat_ flux
+Qʰ = 200  # W m⁻², surface heat flux
 ρₒ = 1026 # kg m⁻³, average density at the surface of the world ocean
 cᴾ = 3991 # J K⁻¹ kg⁻¹, typical heat capacity for seawater
 
-Qᵀ = Qʰ / (ρₒ * cᴾ) # K m s⁻¹, surface _temperature_ flux
+Qᵀ = Qʰ / (ρₒ * cᴾ) # K m s⁻¹, surface temperature flux
 
 # Finally, we impose a temperature gradient `dTdz` both initially and at the
 # bottom of the domain, culminating in the boundary conditions on temperature,
@@ -156,7 +156,7 @@ model = IncompressibleModel(architecture = CPU(),
 #   `AnisotropicMinimumDissipation`, use `closure = ConstantSmagorinsky()` in the model constructor.
 #
 # * To change the `architecture` to `GPU`, replace `architecture = CPU()` with
-#   `architecture = GPU()``
+#   `architecture = GPU()`.
 
 # ## Initial conditions
 #

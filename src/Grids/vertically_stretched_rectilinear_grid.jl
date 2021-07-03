@@ -73,7 +73,7 @@ Keyword arguments
 The physical extent of the domain can be specified via `x` and `y` keyword arguments
 indicating the left and right endpoints of each dimensions, e.g. `x=(-π, π)`.
 
-A grid topology may be specified via a tuple assigning one of `Periodic`, `Bounded, and `Flat`
+A grid topology may be specified via a tuple assigning one of `Periodic`, `Bounded`, and `Flat`
 to each dimension. By default, a horizontally periodic grid topology `(Periodic, Periodic, Bounded)`
 is assumed.
 
@@ -108,6 +108,8 @@ Generate a horizontally-periodic grid with cell interfaces stretched
 hyperbolically near the top:
 
 ```jldoctest
+using Oceananigans
+
 σ = 1.1 # stretching factor
 Nz = 24 # vertical resolution
 Lz = 32 # depth (m)
