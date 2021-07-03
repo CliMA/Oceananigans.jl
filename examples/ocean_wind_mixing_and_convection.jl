@@ -30,13 +30,13 @@ using Oceananigans.Units: minute, minutes, hour
 
 # ## A vertically-stretched grid
 #
-# We use 32³ grid points with 2 m grid spacing in the horizontal and
+# We use 32³ grid points with 2 meter grid spacing in the horizontal and
 # varying spacing in the vertical, with higher resolution closer to the
 # surface. We use a two-parameter generating function to specify the
 # vertical cell interfaces:
 
 Nz = 24 # vertical resolution
-Lz = 32 # domain depth
+Lz = 32 # domain depth (m)
 refinement = 1.5 # controls spacing near surface (higher means finer spaced)
 stretching = 10  # controls rate of stretching at bottom 
 
@@ -71,7 +71,7 @@ plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4))
 
-# where $α$ and $β$ are the thermal expansion and haline contraction
+# where ``α`` and ``β`` are the thermal expansion and haline contraction
 # coefficients for temperature and salinity.
 #
 # ## Boundary conditions
@@ -156,7 +156,7 @@ model = IncompressibleModel(architecture = CPU(),
 #   `AnisotropicMinimumDissipation`, use `closure = ConstantSmagorinsky()` in the model constructor.
 #
 # * To change the `architecture` to `GPU`, replace `architecture = CPU()` with
-#   `architecture = GPU()``
+#   `architecture = GPU()`.
 
 # ## Initial conditions
 #
