@@ -32,9 +32,9 @@ Base.show(io::IO, closure::AMD{TD, FT}) where {TD, FT} =
               "             Background kinematic viscosity for momentum, ν: ", closure.ν)
 
 """
-    AnisotropicMinimumDissipation(FT=Float64; C=1/12, Cν=nothing, Cκ=nothing,
-                                              Cb=0.0, ν=0, κ=0,
-                                              time_discretization=ExplicitTimeDiscretization())
+    AnisotropicMinimumDissipation([FT=Float64;] C=1/12, Cν=nothing, Cκ=nothing,
+                                                Cb=nothing, ν=0, κ=0,
+                                                time_discretization=ExplicitTimeDiscretization())
                                        
 Returns parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.

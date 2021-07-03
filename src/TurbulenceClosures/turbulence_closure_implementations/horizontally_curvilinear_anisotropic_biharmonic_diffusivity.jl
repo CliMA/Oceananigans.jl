@@ -13,7 +13,7 @@ end
 const HCABD = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
 
 """
-    HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(; νh=0, κh=0, νz=0, κz=0)
+    HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity([FT=Float64;] νh=0, κh=0, νz=0, κz=0)
 
 Returns parameters for an anisotropic biharmonic diffusivity model on curvilinear grids.
 
