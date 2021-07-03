@@ -80,7 +80,7 @@ JLD2OutputWriter scheduled on TimeInterval(4 years):
 """
 function AveragedTimeInterval(interval; window=interval, stride=1)
     
-    interval > window && throw(ArgumentError("Averaging window must be less than or equal to the output interval."))
+    window > interval && throw(ArgumentError("Averaging window must be less than or equal to the output interval."))
     
     return AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, false)
 end
