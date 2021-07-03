@@ -37,8 +37,8 @@ using Oceananigans.Units: minute, minutes, hour
 
 Nz = 24 # vertical resolution
 Lz = 32 # domain depth
-refinement = 1.5 # controls spacing near surface (higher means finer spaced)
-stretching = 10 # controls rate of stretching at bottom 
+refinement = 1.2 # controls spacing near surface (higher means finer spaced)
+stretching = 8 # controls rate of stretching at bottom 
 
 ## Normalized height ranging from 0 to 1
 h(k) = (k - 1) / Nz
