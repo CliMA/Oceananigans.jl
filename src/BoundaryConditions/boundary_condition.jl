@@ -35,14 +35,15 @@ If `parameters` is not `nothing`, then function boundary conditions have the for
 `func(ξ, η, t, parameters)`, where `ξ` and `η` are spatial coordinates varying along
 the boundary as explained above.
 
-If `discrete_form=true`, the function `condition` is assumed to have the "discrete form",
-
-    `condition(i, j, grid, clock, model_fields)`,
-
-where `i`, and `j` are indices that vary along the boundary. If `discrete_form=true` and
+If `discrete_form = true`, the function `condition` is assumed to have the "discrete form",
+```
+condition(i, j, grid, clock, model_fields)
+```
+where `i`, and `j` are indices that vary along the boundary. If `discrete_form = true` and
 `parameters` is not `nothing`, the function `condition` is called with
-
-    `condition(i, j, grid, clock, model_fields, parameters)`.
+```
+condition(i, j, grid, clock, model_fields, parameters)
+```
 """
 function BoundaryCondition(TBC, condition::Function;
                            parameters = nothing,
