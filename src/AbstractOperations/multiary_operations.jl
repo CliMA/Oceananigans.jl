@@ -71,7 +71,7 @@ Example
 =======
 
 ```jldoctest
-julia> using Oceananigans, Oceananigans.Grids, Oceananigans.AbstractOperations
+julia> using Oceananigans, Oceananigans.AbstractOperations
 
 julia> harmonic_plus(a, b, c) = 1/3 * (1/a + 1/b + 1/c)
 harmonic_plus(generic function with 1 method)
@@ -111,6 +111,7 @@ MultiaryOperation at (Center, Center, Center)
     ├── Field located at (Center, Center, Center)
     ├── Field located at (Center, Center, Center)
     └── Field located at (Center, Center, Center)
+```
 """
 macro multiary(ops...)
     expr = Expr(:block)
