@@ -141,7 +141,7 @@ Example
 =======
 
 ```jldoctest
-julia> using Oceananigans, Oceananigans.AbstractOperations, Oceananigans.Grids
+julia> using Oceananigans, Oceananigans.AbstractOperations
 
 julia> plus_or_times(x, y) = x < 0 ? x + y : x * y
 plus_or_times (generic function with 1 method)
@@ -162,9 +162,10 @@ BinaryOperation at (Center, Center, Center)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 │   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
 └── tree:
-    plus_or_times at (Center, Center, Center) via identity
+    plus_or_times at (Center, Center, Center)
     ├── Field located at (Center, Center, Center)
     └── Field located at (Center, Center, Center)
+```
 """
 macro binary(ops...)
     expr = Expr(:block)
