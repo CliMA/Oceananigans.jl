@@ -1,7 +1,6 @@
 # using Pkg
 # pkg"add Oceananigans GLMakie"
 
-#=
 pushfirst!(LOAD_PATH, @__DIR__)
 
 using Printf
@@ -206,7 +205,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 model = HydrostaticFreeSurfaceModel(
            architecture = CPU(),
                    grid = grid,
-           free_xy = ExplicitFreeSurface(gravitational_acceleration=g),
+           free_surface = ExplicitFreeSurface(gravitational_acceleration=g),
      momentum_advection = WENO5(),
        tracer_advection = WENO5(),
                buoyancy = BuoyancyTracer(),
@@ -261,7 +260,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=1days, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=10days, progress=print_progress, iteration_interval=10)
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -282,7 +281,7 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         force = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(6hour),
+                                                      schedule = TimeInterval(4hour),
                                                       prefix = "eddying_channel",
                                                       field_slicer = nothing,
                                                       force = true)
@@ -292,7 +291,7 @@ try
 catch err
     showerror(stdout, err)
 end
-=#
+
 
 # # Visualizing the solution with Plots
 
@@ -302,15 +301,20 @@ b_timeseries = FieldTimeSeries("eddying_channel.jld2", "b")
 xζ, yζ, zζ = nodes((Face, Face, Center), grid)
 xc, yc, zc = nodes((Center, Center, Center), grid)
 
+bathymetry = [zζ[1] + bump(xζ[i], yζ[j_mid]) for i=1:Nx]
+
+j_mid = round(Int, grid.Ny / 2)
+mask = [below_bottom.(xζ[i], yζ[j_mid], zζ[j]) for i=1:Nx, j=1:Nz]
+
 grid = b_timeseries.grid
 
 anim = @animate for i in 1:length(b_timeseries.times)
 
     b_xy = interior(b_timeseries[i])[:, :, grid.Nz]
-    ζ_xy = interior(ζ_timeseries[i])[:, :, grid.Nz]
-
-    j_mid = round(Int, grid.Ny / 2)
+    ζ_xy = interior(ζ_timeseries[i])[:, :, grid.Nz]    
     ζ_xz = interior(ζ_timeseries[i])[:, j_mid, :]
+    
+    ζ_xz[mask.==1] .= 0
 
     blims = (-0.03, 0.03)
     ζlims = (-1e-5, 1e-5)
@@ -326,6 +330,7 @@ anim = @animate for i in 1:length(b_timeseries.times)
     zlims = (-grid.Lz, 0)
 
     ζ_xz_plot = contourf(xζ * 1e-3, zζ, ζ_xz',   xlabel = "x (km)", ylabel = "z (m)", aspectratio=0.05, linewidth=0, levels=ζlevels, clims=ζlims, xlims=xlims, ylims=zlims, color=:balance)
+    plot!(ζ_xz_plot, xζ * 1e-3, bathymetry, color=:grey, linewidth=2, legend=:none, fillrange =[zζ[1].+0*bathymetry, bathymetry])
     ζ_xy_plot = contourf(xζ * 1e-3, yζ * 1e-3, ζ_xy', xlabel = "x (km)", ylabel = "y (km)", aspectratio=:equal, linewidth=0, levels=ζlevels, clims=ζlims, xlims=xlims, ylims=ylims, color=:balance)
     b_xy_plot = contourf(xc * 1e-3, yc * 1e-3, b_xy', xlabel = "x (km)", ylabel = "y (km)", aspectratio=:equal, linewidth=0, levels=blevels, clims=blims, xlims=xlims, ylims=ylims, color=:balance)
 
@@ -341,3 +346,48 @@ end
 
 mp4(anim, "eddying_channel.mp4", fps = 8) # hide
 
+
+#=
+
+
+i = 2#length(b_timeseries.times)
+
+b_xy = interior(b_timeseries[i])[:, :, grid.Nz]
+ζ_xy = interior(ζ_timeseries[i])[:, :, grid.Nz]
+
+j_mid = round(Int, grid.Ny / 2)
+ζ_xz = interior(ζ_timeseries[i])[:, j_mid, :]
+
+mask = [below_bottom.(xζ[i], yζ[j_mid], zζ[j]) for i=1:Nx, j=1:Nz]
+ζ_xz[mask.==1] .= 0
+
+
+blims = (-0.03, 0.03)
+ζlims = (-1e-5, 1e-5)
+
+@show bmax = maximum(abs, b_xy)
+@show ζmax = maximum(abs, ζ_xz)
+
+blevels = vcat([-bmax], range(blims[1], blims[2], length=31), [bmax])
+ζlevels = vcat([-ζmax], range(ζlims[1], ζlims[2], length=31), [ζmax])
+
+xlimits = (-grid.Lx/2, grid.Lx/2) .* 1e-3
+ylimits = (0, grid.Ly) .* 1e-3
+zlimits = (-grid.Lz, 0)
+
+ζ_xz_plot = contourf(xζ * 1e-3, zζ, ζ_xz',   xlabel = "x (km)", ylabel = "z (m)", aspectratio=0.05, linewidth=0, levels=ζlevels, clims=ζlims, xlims=xlimits, ylims=zlimits, color=:balance)
+plot!(ζ_xz_plot, xζ * 1e-3, bathymetry, color=:grey, linewidth=2, legend=:none, fillrange =[zζ[1].+0*bathymetry, bathymetry])
+ζ_xy_plot = contourf(xζ * 1e-3, yζ * 1e-3, ζ_xy', xlabel = "x (km)", ylabel = "y (km)", aspectratio=:equal, linewidth=0, levels=ζlevels, clims=ζlims, xlims=xlimits, ylims=ylimits, color=:balance)
+b_xy_plot = contourf(xc * 1e-3, yc * 1e-3, b_xy', xlabel = "x (km)", ylabel = "y (km)", aspectratio=:equal, linewidth=0, levels=blevels, clims=blims, xlims=xlimits, ylims=ylimits, color=:balance)
+
+ζ_xz_title = @sprintf("ζ(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
+ζ_xy_title = "ζ(x, y)"
+b_xy_title = "b(x, y)"
+
+layout = @layout [upper_slice_plot{0.2h}
+                  Plots.grid(1, 2)]
+
+
+# plot(ζ_xz_plot, ζ_xy_plot,  b_xy_plot, layout = layout, size = (1200, 1200), title = [ζ_xz_title ζ_xy_title b_xy_title])
+plot(ζ_xz_plot)
+=#
