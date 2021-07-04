@@ -40,8 +40,8 @@ lazily load field time snapshots when the `FieldTimeSeries` is indexed linearly.
 
 If `grid` is not supplied, it will be reconstructed from file.
 """
-FieldTimeSeries(filepath, name; architecture=CPU(), backend=InMemory(); grid=nothing) =
-    FieldTimeSeries(filepath, name, architecture, backend; grid)
+FieldTimeSeries(filepath, name; architecture=CPU(), backend=InMemory(), kwargs...) =
+    FieldTimeSeries(filepath, name, architecture, backend; kwargs...)
 
 function FieldTimeSeries(filepath, name, architecture, backend::InMemory; grid=nothing)
     file = jldopen(filepath)
