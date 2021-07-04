@@ -30,7 +30,7 @@ function RegularLatitudeLongitudeGrid(FT=Float64; size, latitude, longitude, z, 
     @assert length(z) == 2
 
     λ₁, λ₂ = longitude
-    @assert -180 <= λ₁ < λ₂ <= 180
+    @assert λ₁ < λ₂ && λ₂ - λ₁ ≤ 360
 
     φ₁, φ₂ = latitude
     @assert -90 <= φ₁ < φ₂ <= 90
@@ -41,17 +41,17 @@ function RegularLatitudeLongitudeGrid(FT=Float64; size, latitude, longitude, z, 
     z₁, z₂ = z
     @assert z₁ < z₂
 
-    TX = λ₁ == -180 && λ₂ == 180 ? Periodic : Bounded
+    Lλ = λ₂ - λ₁
+    Lφ = φ₂ - φ₁
+    Lz = z₂ - z₁
+
+    TX = Lλ == 360 ? Periodic : Bounded
     TY = Bounded
     TZ = Bounded
     topo = (TX, TY, TZ)
 
     Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
     Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
-
-    Lλ = λ₂ - λ₁
-    Lφ = φ₂ - φ₁
-    Lz = z₂ - z₁
 
             Λ₁ = (λ₁, φ₁, z₁)
             L  = (Lλ, Lφ, Lz)
