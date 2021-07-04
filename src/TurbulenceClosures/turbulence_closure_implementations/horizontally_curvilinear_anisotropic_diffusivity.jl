@@ -18,7 +18,8 @@ end
 const HCAD = HorizontallyCurvilinearAnisotropicDiffusivity
 
 """
-    HorizontallyCurvilinearAnisotropicDiffusivity(; νh=0, κh=0, νz=0, κz=0)
+    HorizontallyCurvilinearAnisotropicDiffusivity([FT=Float64;] νh=0, κh=0, νz=0, κz=0,
+                                                  time_discretization = ExplicitTimeDiscretization())
 
 Returns parameters for an anisotropic diffusivity model on curvilinear grids.
 

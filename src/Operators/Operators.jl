@@ -30,13 +30,13 @@ export ∇²ᶜᶜᶜ, ∇²hᶜᶜᶜ, ∇²hᶠᶜᶜ, ∇²hᶜᶠᶜ
 using Oceananigans.Grids
 
 #####
-##### Convinient aliases
+##### Convenient aliases
 #####
 
-const AG  = AbstractGrid
-const ARG = AbstractRectilinearGrid
-const RCG = RegularRectilinearGrid
-const ACG = AbstractCurvilinearGrid
+const AG   = AbstractGrid
+const ARG  = AbstractRectilinearGrid
+const RCG  = RegularRectilinearGrid
+const ACG  = AbstractCurvilinearGrid
 const AHCG = AbstractHorizontallyCurvilinearGrid
 
 include("difference_operators.jl")

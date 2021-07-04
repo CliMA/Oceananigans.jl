@@ -15,7 +15,7 @@ struct AnisotropicBiharmonicDiffusivity{FT, KX, KY, KZ} <: AbstractTurbulenceClo
 end
 
 """
-    AnisotropicBiharmonicDiffusivity(FT=Float64; νx=0, νy=0, νz=0, νh=nothing, κx=0, κy=0, κz=0, κh=nothing)
+    AnisotropicBiharmonicDiffusivity([FT=Float64;] νx=0, νy=0, νz=0, κx=0, κy=0, κz=0, νh=nothing, κh=nothing)
 
 Returns parameters for a fourth-order, anisotropic biharmonic diffusivity closure with
 constant x-, y, and z-direction biharmonic viscosities `νx`, `νy`, and `νz`,
