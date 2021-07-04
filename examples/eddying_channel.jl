@@ -1,9 +1,9 @@
 # using Pkg
 # pkg"add Oceananigans GLMakie"
 
-pushfirst!(LOAD_PATH, @__DIR__)
+# ENV["GKSwstype"] = "100"
 
-ENV["GKSwstype"] = "100"
+pushfirst!(LOAD_PATH, @__DIR__)
 
 using Printf
 using Statistics
@@ -54,7 +54,7 @@ plot(underlying_grid.Δzᵃᵃᶜ[1:Nz], underlying_grid.zᵃᵃᶜ[1:Nz],
      ylabel = "Depth (m)",
      xlabel = "Vertical spacing (m)",
      legend = nothing)
-     =#
+=#
 
 const bump_amplitude = 300meters
 const bump_x_width = 50kilometers
@@ -283,7 +283,7 @@ b = model.tracers.b
 B = AveragedField(b, dims=(1, 2))
 b′² = (b - B)^2
 
-outputs = (b=b, b′²=b′², ζ=ζ, χ=χ)
+outputs = (b=b, b′²=b′², ζ=ζ, χ=χ, w=model.velocities.w)
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(100days),
@@ -317,6 +317,7 @@ grid = ImmersedBoundaryGrid(underlying_cpu_grid, GridFittedBoundary(below_bottom
 
 xζ, yζ, zζ = nodes((Face, Face, Center), grid)
 xc, yc, zc = nodes((Center, Center, Center), grid)
+xw, yw, zw = nodes((Center, Center, Face), grid)
 
 j′ = round(Int, grid.Ny / 2)
 y′ = yζ[j′]
@@ -325,54 +326,56 @@ y′ = yζ[j′]
 
 b_timeseries = FieldTimeSeries("eddying_channel.jld2", "b", grid=grid)
 ζ_timeseries = FieldTimeSeries("eddying_channel.jld2", "ζ", grid=grid)
+w_timeseries = FieldTimeSeries("eddying_channel.jld2", "w", grid=grid)
 
 @show b_timeseries
 
-#anim = @animate for i in 1:length(b_timeseries.times)
-i = 2
+anim = @animate for i in 1:length(b_timeseries.times)
 
     b = b_timeseries[i]
     ζ = ζ_timeseries[i]
+    w = w_timeseries[i]
 
     b′ = interior(b) .- mean(b)
 
     b_xy = b′[:, :, grid.Nz]
     ζ_xy = interior(ζ)[:, :, grid.Nz]
     ζ_xz = interior(ζ)[:, j′, :]
+    w_xz = interior(w)[:, j′, :]
     
     @show bmax = maximum(abs, b_xy)
     @show ζmax = maximum(abs, ζ_xy)
+    @show wmax = maximum(abs, w_xz)
 
     blims = (-bmax, bmax) .* 0.8
     ζlims = (-ζmax, ζmax) .* 0.8
+    wlims = (-wmax, wmax) .* 0.8
     
-    blevels = range(blims[1], blims[2], length=31)
-    ζlevels = range(ζlims[1], ζlims[2], length=31)
-
     blevels = vcat([-bmax], range(blims[1], blims[2], length=31), [bmax])
     ζlevels = vcat([-ζmax], range(ζlims[1], ζlims[2], length=31), [ζmax])
+    wlevels = vcat([-wmax], range(wlims[1], wlims[2], length=31), [wmax])
 
     xlims = (-grid.Lx/2, grid.Lx/2) .* 1e-3
     ylims = (0, grid.Ly) .* 1e-3
     zlims = (-grid.Lz, 0)
 
-    ζ_xz_plot = contourf(xζ * 1e-3, zζ, ζ_xz',
+    w_xz_plot = contourf(xw * 1e-3, zw, w_xz',
                          xlabel = "x (km)",
                          ylabel = "z (m)",
                          aspectratio = 0.05,
                          linewidth = 0,
-                         levels = ζlevels,
-                         clims=ζlims,
-                         xlims=xlims,
-                         ylims=zlims,
-                         color=:balance)
+                         levels = wlevels,
+                         clims = wlims,
+                         xlims = xlims,
+                         ylims = zlims,
+                         color = :balance)
 
     plot!(ζ_xz_plot,
           xζ * 1e-3, ζ_xz_bathymetry,
           color = :grey,
           linewidth = 2,
-          legend = :none,
-          fillrange = [-grid.Lz .+ 0ζ_xz_bathymetry, ζ_xz_bathymetry])
+          legend = :none)
+          #fillrange = [-grid.Lz .+ 0ζ_xz_bathymetry, ζ_xz_bathymetry])
 
     ζ_xy_plot = contourf(xζ * 1e-3, yζ * 1e-3, ζ_xy',
                          xlabel = "x (km)",
@@ -406,4 +409,4 @@ i = 2
     plot(ζ_xz_plot, ζ_xy_plot,  b_xy_plot, layout = layout, size = (1200, 1200), title = [ζ_xz_title ζ_xy_title b_xy_title])
 end
 
-#mp4(anim, "eddying_channel.mp4", fps = 8) # hide
+mp4(anim, "eddying_channel.mp4", fps = 8) # hide
