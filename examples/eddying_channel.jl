@@ -4,6 +4,7 @@
 pushfirst!(LOAD_PATH, @__DIR__)
 
 ENV["GKSwstype"] = "100"
+
 using Printf
 using Statistics
 using Plots
@@ -36,7 +37,7 @@ Nz = 32
 s = 1.2 # stretching factor
 z_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
 
-@show underlying_grid = VerticallyStretchedRectilinearGrid(architecture = GPU(),
+@show underlying_grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
                                                            topology = (Periodic, Bounded, Bounded),
                                                            size = (Nx, Ny, Nz),
                                                            halo = (3, 3, 3),
@@ -212,7 +213,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 # We build a model on a BetaPlane with an ImplicitFreeSurface.
 
 model = HydrostaticFreeSurfaceModel(
-           architecture = GPU(),
+           architecture = CPU(),
                    grid = grid,
            free_surface = ExplicitFreeSurface(gravitational_acceleration=g),
      momentum_advection = WENO5(),
@@ -269,7 +270,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=1year, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=6hours, progress=print_progress, iteration_interval=10)
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -290,7 +291,7 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         force = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(6hour),
+                                                      schedule = TimeInterval(4hour),
                                                       prefix = "eddying_channel",
                                                       field_slicer = nothing,
                                                       force = true)
@@ -303,33 +304,42 @@ end
 
 # # Visualizing the solution with Plots
 
-b_timeseries = FieldTimeSeries("eddying_channel.jld2", "b")
-ζ_timeseries = FieldTimeSeries("eddying_channel.jld2", "ζ")
+underlying_cpu_grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
+                                                         topology = (Periodic, Bounded, Bounded),
+                                                         size = (grid.Nx, grid.Ny, grid.Nz),
+                                                         halo = (3, 3, 3),
+                                                         x = (-grid.Lx/2, grid.Lx/2),
+                                                         y = (0, grid.Ly),
+                                                         z_faces = z_faces)
+
+# Redefine grid on CPU
+grid = ImmersedBoundaryGrid(underlying_cpu_grid, GridFittedBoundary(below_bottom))
+
+xζ, yζ, zζ = nodes((Face, Face, Center), grid)
+xc, yc, zc = nodes((Center, Center, Center), grid)
+
+j′ = round(Int, grid.Ny / 2)
+y′ = yζ[j′]
+
+ζ_xz_bathymetry = @. grid.Lz + bump(xζ, y′)
+
+b_timeseries = FieldTimeSeries("eddying_channel.jld2", "b", grid=grid)
+ζ_timeseries = FieldTimeSeries("eddying_channel.jld2", "ζ", grid=grid)
 
 @show b_timeseries
 
-cpu_grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
-                                              topology = (Periodic, Bounded, Bounded),
-                                              size = (grid.Nx, grid.Ny, grid.Nz),
-                                              halo = (3, 3, 3),
-                                              x = (-grid.Lx/2, grid.Lx/2),
-                                              y = (0, grid.Ly),
-                                              z_faces = z_faces)
+#anim = @animate for i in 1:length(b_timeseries.times)
+i = 2
 
-xζ, yζ, zζ = nodes((Face, Face, Center), cpu_grid)
-xc, yc, zc = nodes((Center, Center, Center), cpu_grid)
+    b = b_timeseries[i]
+    ζ = ζ_timeseries[i]
 
-anim = @animate for i in 1:length(b_timeseries.times)
+    b′ = interior(b) .- mean(b)
 
-    b = interior(b_timeseries[i])
-    b′ = b .- mean(b)
-    b_xy = b′[:, :, cpu_grid.Nz]
-
-    ζ_xy = interior(ζ_timeseries[i])[:, :, cpu_grid.Nz]
-
-    j_mid = round(Int, cpu_grid.Ny / 2)
-    ζ_xz = interior(ζ_timeseries[i])[:, j_mid, :]
-
+    b_xy = b′[:, :, grid.Nz]
+    ζ_xy = interior(ζ)[:, :, grid.Nz]
+    ζ_xz = interior(ζ)[:, j′, :]
+    
     @show bmax = maximum(abs, b_xy)
     @show ζmax = maximum(abs, ζ_xy)
 
@@ -342,13 +352,49 @@ anim = @animate for i in 1:length(b_timeseries.times)
     blevels = vcat([-bmax], range(blims[1], blims[2], length=31), [bmax])
     ζlevels = vcat([-ζmax], range(ζlims[1], ζlims[2], length=31), [ζmax])
 
-    xlims = (-cpu_grid.Lx/2, cpu_grid.Lx/2) .* 1e-3
-    ylims = (0, cpu_grid.Ly) .* 1e-3
-    zlims = (-cpu_grid.Lz, 0)
+    xlims = (-grid.Lx/2, grid.Lx/2) .* 1e-3
+    ylims = (0, grid.Ly) .* 1e-3
+    zlims = (-grid.Lz, 0)
 
-    ζ_xz_plot = contourf(xζ * 1e-3, zζ, ζ_xz',   xlabel = "x (km)", ylabel = "z (m)", aspectratio=0.05, linewidth=0, levels=ζlevels, clims=ζlims, xlims=xlims, ylims=zlims, color=:balance)
-    ζ_xy_plot = contourf(xζ * 1e-3, yζ * 1e-3, ζ_xy', xlabel = "x (km)", ylabel = "y (km)", aspectratio=:equal, linewidth=0, levels=ζlevels, clims=ζlims, xlims=xlims, ylims=ylims, color=:balance)
-    b_xy_plot = contourf(xc * 1e-3, yc * 1e-3, b_xy', xlabel = "x (km)", ylabel = "y (km)", aspectratio=:equal, linewidth=0, levels=blevels, clims=blims, xlims=xlims, ylims=ylims, color=:balance)
+    ζ_xz_plot = contourf(xζ * 1e-3, zζ, ζ_xz',
+                         xlabel = "x (km)",
+                         ylabel = "z (m)",
+                         aspectratio = 0.05,
+                         linewidth = 0,
+                         levels = ζlevels,
+                         clims=ζlims,
+                         xlims=xlims,
+                         ylims=zlims,
+                         color=:balance)
+
+    plot!(ζ_xz_plot,
+          xζ * 1e-3, ζ_xz_bathymetry,
+          color = :grey,
+          linewidth = 2,
+          legend = :none,
+          fillrange = [-grid.Lz .+ 0ζ_xz_bathymetry, ζ_xz_bathymetry])
+
+    ζ_xy_plot = contourf(xζ * 1e-3, yζ * 1e-3, ζ_xy',
+                         xlabel = "x (km)",
+                         ylabel = "y (km)",
+                         aspectratio = :equal,
+                         linewidth = 0,
+                         levels = ζlevels,
+                         clims = ζlims,
+                         xlims = xlims,
+                         ylims = ylims,
+                         color = :balance)
+
+    b_xy_plot = contourf(xc * 1e-3, yc * 1e-3, b_xy',
+                         xlabel = "x (km)",
+                         ylabel = "y (km)",
+                         aspectratio = :equal,
+                         linewidth = 0,
+                         levels = blevels,
+                         clims = blims,
+                         xlims = xlims,
+                         ylims = ylims,
+                         color = :balance)
 
     ζ_xz_title = @sprintf("ζ(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
     ζ_xy_title = "ζ(x, y)"
@@ -360,5 +406,4 @@ anim = @animate for i in 1:length(b_timeseries.times)
     plot(ζ_xz_plot, ζ_xy_plot,  b_xy_plot, layout = layout, size = (1200, 1200), title = [ζ_xz_title ζ_xy_title b_xy_title])
 end
 
-mp4(anim, "eddying_channel.mp4", fps = 8) # hide
-
+#mp4(anim, "eddying_channel.mp4", fps = 8) # hide
