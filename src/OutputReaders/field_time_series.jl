@@ -41,10 +41,13 @@ lazily load field time snapshots when the `FieldTimeSeries` is indexed linearly.
 FieldTimeSeries(filepath, name; architecture=CPU(), backend=InMemory()) =
     FieldTimeSeries(filepath, name, architecture, backend)
 
-function FieldTimeSeries(filepath, name, architecture, backend::InMemory)
+function FieldTimeSeries(filepath, name, architecture, backend::InMemory; grid=nothing)
     file = jldopen(filepath)
 
-    grid = file["serialized/grid"]
+    if isnothing(grid)
+        grid = file["serialized/grid"]
+    end
+
     Hx, Hy, Hz = halo_size(grid)
 
     iterations = parse.(Int, keys(file["timeseries/t"]))
