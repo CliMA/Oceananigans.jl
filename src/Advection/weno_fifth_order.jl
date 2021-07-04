@@ -50,7 +50,7 @@ const AG = AbstractGrid
 
 # We use 32-bit integer to represent the exponent "2" for fast exponentiation.
 # See https://github.com/CliMA/Oceananigans.jl/pull/1770 for more information.
-const two_32 where FT = Int32(2) 
+const two_32 = Int32(2)
 
 @inline left_biased_βx₀(i, j, k, grid::AG{FT}, ψ) where FT = @inbounds FT(13//12) * (ψ[i-1, j, k] - 2ψ[i,   j, k] + ψ[i+1, j, k])^two_32 + FT(1//4) * (3ψ[i-1, j, k] - 4ψ[i,   j, k] +  ψ[i+1, j, k])^two_32
 @inline left_biased_βx₁(i, j, k, grid::AG{FT}, ψ) where FT = @inbounds FT(13//12) * (ψ[i-2, j, k] - 2ψ[i-1, j, k] + ψ[i,   j, k])^two_32 + FT(1//4) * ( ψ[i-2, j, k]                 -  ψ[i,   j, k])^two_32
