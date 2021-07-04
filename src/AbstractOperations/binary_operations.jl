@@ -143,17 +143,19 @@ Example
 ```jldoctest
 julia> using Oceananigans, Oceananigans.AbstractOperations
 
+julia> using Oceananigans.AbstractOperations: BinaryOperation, AbstractGridMetric, choose_location
+
 julia> plus_or_times(x, y) = x < 0 ? x + y : x * y
 plus_or_times (generic function with 1 method)
 
 julia> @binary plus_or_times
-6-element Array{Any,1}:
- :+
- :-
- :/
- :^
- :*
- :plus_or_times
+Set{Any} with 6 elements:
+  :+
+  :/
+  :^
+  :-
+  :*
+  :plus_or_times
 
 julia> c, d = (Field(Center, Center, Center, CPU(), RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:2);
 
