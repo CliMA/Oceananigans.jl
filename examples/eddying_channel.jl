@@ -1,9 +1,9 @@
 # using Pkg
 # pkg"add Oceananigans GLMakie"
 
-#=
 pushfirst!(LOAD_PATH, @__DIR__)
 
+ENV["GKSwstype"] = "100"
 using Printf
 using Statistics
 using Plots
@@ -27,7 +27,7 @@ const Lz = 3kilometers    # depth [m]
 # We use a resolution that implies O(10 km) grid spacing in the horizontal
 # and a vertical grid spacing that varies from O(10 m) to O(100 m),
 
-Nx = 32
+Nx = 64
 Ny = 2Nx
 Nz = 32
 
@@ -36,7 +36,8 @@ Nz = 32
 s = 1.2 # stretching factor
 z_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
 
-@show underlying_grid = VerticallyStretchedRectilinearGrid(topology = (Periodic, Bounded, Bounded),
+@show underlying_grid = VerticallyStretchedRectilinearGrid(architecture = GPU(),
+                                                           topology = (Periodic, Bounded, Bounded),
                                                            size = (Nx, Ny, Nz),
                                                            halo = (3, 3, 3),
                                                            x = (-Lx/2, Lx/2),
@@ -46,11 +47,13 @@ z_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
 # We visualize the cell interfaces by plotting the cell height
 # as a function of depth,
 
+#=
 plot(underlying_grid.Δzᵃᵃᶜ[1:Nz], underlying_grid.zᵃᵃᶜ[1:Nz],
      marker = :circle,
      ylabel = "Depth (m)",
      xlabel = "Vertical spacing (m)",
      legend = nothing)
+     =#
 
 const bump_amplitude = 300meters
 const bump_x_width = 50kilometers
@@ -112,7 +115,7 @@ v_bcs = VVelocityBoundaryConditions(grid, bottom = v_drag_bc)
 # We use a ``β``-plane model to capture the effect of meridional
 # variations in the planetary vorticity,
 
-coriolis = FPlane(latitude=-45) # BetaPlane(latitude=-45)
+coriolis = BetaPlane(latitude=-45)
 
 # # Sponge layer and initial condition
 #
@@ -140,7 +143,7 @@ const α = 1e-4 # [s⁻¹]
 #
 # where
 
-const f₀ = coriolis.f # [s⁻¹]
+const f₀ = coriolis.f₀ # [s⁻¹]
 
 # the Coriolis parameter, and
 
@@ -192,7 +195,12 @@ b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/10days)
 # created by mesoscale turbulence, while a convective adjustment scheme creates
 # a surface mixed layer due to surface cooling.
 
-horizontal_diffusivity = AnisotropicDiffusivity(νh = 10, κh = 10)
+#κ₄h = 1e-1 / day * grid.Δx^4 # [m⁴ s⁻¹] horizontal hyperviscosity and hyperdiffusivity
+
+#horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
+
+@show κ₂h = 1e-1 / day * grid.Δx^2 # [m⁴ s⁻¹] horizontal viscosity and diffusivity
+horizontal_diffusivity = AnisotropicDiffusivity(νh=κ₂h, κh=κ₂h)
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 1.0,
@@ -204,9 +212,9 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 # We build a model on a BetaPlane with an ImplicitFreeSurface.
 
 model = HydrostaticFreeSurfaceModel(
-           architecture = CPU(),
+           architecture = GPU(),
                    grid = grid,
-           free_xy = ExplicitFreeSurface(gravitational_acceleration=g),
+           free_surface = ExplicitFreeSurface(gravitational_acceleration=g),
      momentum_advection = WENO5(),
        tracer_advection = WENO5(),
                buoyancy = BuoyancyTracer(),
@@ -261,7 +269,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=1days, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=1year, progress=print_progress, iteration_interval=10)
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -292,38 +300,51 @@ try
 catch err
     showerror(stdout, err)
 end
-=#
 
 # # Visualizing the solution with Plots
 
 b_timeseries = FieldTimeSeries("eddying_channel.jld2", "b")
 ζ_timeseries = FieldTimeSeries("eddying_channel.jld2", "ζ")
 
-xζ, yζ, zζ = nodes((Face, Face, Center), grid)
-xc, yc, zc = nodes((Center, Center, Center), grid)
+@show b_timeseries
 
-grid = b_timeseries.grid
+cpu_grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
+                                              topology = (Periodic, Bounded, Bounded),
+                                              size = (grid.Nx, grid.Ny, grid.Nz),
+                                              halo = (3, 3, 3),
+                                              x = (-grid.Lx/2, grid.Lx/2),
+                                              y = (0, grid.Ly),
+                                              z_faces = z_faces)
+
+xζ, yζ, zζ = nodes((Face, Face, Center), cpu_grid)
+xc, yc, zc = nodes((Center, Center, Center), cpu_grid)
 
 anim = @animate for i in 1:length(b_timeseries.times)
 
-    b_xy = interior(b_timeseries[i])[:, :, grid.Nz]
-    ζ_xy = interior(ζ_timeseries[i])[:, :, grid.Nz]
+    b = interior(b_timeseries[i])
+    b′ = b .- mean(b)
+    b_xy = b′[:, :, cpu_grid.Nz]
 
-    j_mid = round(Int, grid.Ny / 2)
+    ζ_xy = interior(ζ_timeseries[i])[:, :, cpu_grid.Nz]
+
+    j_mid = round(Int, cpu_grid.Ny / 2)
     ζ_xz = interior(ζ_timeseries[i])[:, j_mid, :]
 
-    blims = (-0.03, 0.03)
-    ζlims = (-1e-5, 1e-5)
-    
     @show bmax = maximum(abs, b_xy)
     @show ζmax = maximum(abs, ζ_xy)
+
+    blims = (-bmax, bmax) .* 0.8
+    ζlims = (-ζmax, ζmax) .* 0.8
+    
+    blevels = range(blims[1], blims[2], length=31)
+    ζlevels = range(ζlims[1], ζlims[2], length=31)
 
     blevels = vcat([-bmax], range(blims[1], blims[2], length=31), [bmax])
     ζlevels = vcat([-ζmax], range(ζlims[1], ζlims[2], length=31), [ζmax])
 
-    xlims = (-grid.Lx/2, grid.Lx/2) .* 1e-3
-    ylims = (0, grid.Ly) .* 1e-3
-    zlims = (-grid.Lz, 0)
+    xlims = (-cpu_grid.Lx/2, cpu_grid.Lx/2) .* 1e-3
+    ylims = (0, cpu_grid.Ly) .* 1e-3
+    zlims = (-cpu_grid.Lz, 0)
 
     ζ_xz_plot = contourf(xζ * 1e-3, zζ, ζ_xz',   xlabel = "x (km)", ylabel = "z (m)", aspectratio=0.05, linewidth=0, levels=ζlevels, clims=ζlims, xlims=xlims, ylims=zlims, color=:balance)
     ζ_xy_plot = contourf(xζ * 1e-3, yζ * 1e-3, ζ_xy', xlabel = "x (km)", ylabel = "y (km)", aspectratio=:equal, linewidth=0, levels=ζlevels, clims=ζlims, xlims=xlims, ylims=ylims, color=:balance)
