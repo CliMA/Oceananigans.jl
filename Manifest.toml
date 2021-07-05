@@ -277,9 +277,9 @@ version = "2021.1.1+1"
 
 [[MPI]]
 deps = ["Distributed", "DocStringExtensions", "Libdl", "MPICH_jll", "MicrosoftMPI_jll", "OpenMPI_jll", "Pkg", "Random", "Requires", "Serialization", "Sockets"]
-git-tree-sha1 = "714909d6b8dd4287bdf1a21ae1ffe3da1a873ace"
+git-tree-sha1 = "494d99052881a83f36f5ef08b23de07cc7c03a96"
 uuid = "da04e1cc-30fd-572f-bb4f-1f8673147195"
-version = "0.18.0"
+version = "0.18.1"
 
 [[MPICH_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
