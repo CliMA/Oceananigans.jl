@@ -542,10 +542,10 @@ uuid = "3bb67fe8-82b1-5028-8e26-92a6c54297fa"
 version = "0.9.5"
 
 [[Tullio]]
-deps = ["DiffRules", "LinearAlgebra", "Requires"]
-git-tree-sha1 = "7201bbb4c138c18bf14511c4cc8daeac6a52c148"
+deps = ["ChainRulesCore", "DiffRules", "LinearAlgebra", "Requires"]
+git-tree-sha1 = "15e50b2c24b1d472f1480f5eeeefb2c66901927a"
 uuid = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
-version = "0.2.14"
+version = "0.3.0"
 
 [[UUIDs]]
 deps = ["Random", "SHA"]
