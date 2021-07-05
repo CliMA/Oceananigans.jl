@@ -98,3 +98,6 @@ GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient, val; kwa
 @inline getbc(bc::BC{C, <:Function},      i, j, grid, clock, model_fields) where C = bc.condition(i, j, grid, clock, model_fields)
 
 @inline Base.getindex(bc::BC{C, <:AbstractArray}, i, j) where C = getindex(bc.condition, i, j)
+
+Adapt.adapt_structure(to, bc::BoundaryCondition) = BoundaryCondition(Adapt.adapt(to, bc.classification),
+                                                                     Adapt.adapt(to, bc.condition))
