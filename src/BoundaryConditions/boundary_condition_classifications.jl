@@ -8,7 +8,7 @@ abstract type AbstractBoundaryConditionClassification end
 """
     Periodic
 
-A type specifying a periodic boundary condition.
+A classification specifying a periodic boundary condition.
 
 A condition may not be specified with a `Periodic` boundary condition.
 """
@@ -17,7 +17,7 @@ struct Periodic <: AbstractBoundaryConditionClassification end
 """
     Flux
 
-A type specifying a boundary condition on the flux of a field.
+A classification specifying a boundary condition on the flux of a field.
 
 The sign convention is such that a positive flux represents the flux of a quantity in the
 positive direction. For example, a positive vertical flux implies a quantity is fluxed
@@ -36,7 +36,7 @@ struct Flux <: AbstractBoundaryConditionClassification end
 """
     Gradient
 
-A type specifying a boundary condition on the derivative or gradient of a field. Also
+A classification specifying a boundary condition on the derivative or gradient of a field. Also
 called a Neumann boundary condition.
 """
 struct Gradient <: AbstractBoundaryConditionClassification end
@@ -44,27 +44,19 @@ struct Gradient <: AbstractBoundaryConditionClassification end
 """
     Value
 
-A type specifying a boundary condition on the value of a field. Also called a Dirchlet
+A classification specifying a boundary condition on the value of a field. Also called a Dirchlet
 boundary condition.
 """
 struct Value <: AbstractBoundaryConditionClassification end
 
 """
-    NormalFlow
+    Open
 
-A type specifying the component of a velocity field normal to a boundary.
+A classification that specifies the halo regions of a field directly.
 
-Thus `NormalFlow` can only be applied to `u` along x, `v` along y, or `w` along z.
-For all other cases --- fields located at (Center, Center, Center), or `u`, `v`,
-and `w` in (y, z), (x, z), and (x, y), respectively, either `Value`,
-`Gradient`, or `Flux` conditions must be used.
+For fields located at Faces, Open also specifies field value _on_ the boundary.
 
-Note that `NormalFlow` differs from a zero `Value` boundary condition: 
-`Value` imposes values at cell centers, while `NormalFlow` imposes values
-_on_ a boundary, at cell faces. Only wall-normal components of the velocity field are defined
-on cell faces with respect to the wall-normal direction, and therefore only wall-normal
-components of the velocity field are defined on boundaries. 
-Both tracers and wall-tangential components of velocity fields
-are defined at cell centers with respect to the wall-normal direction.
+Open boundary conditions are used to specify the component of a velocity field normal to a boundary
+and can also be used to describe nested or linked simulation domains.
 """
-struct NormalFlow <: AbstractBoundaryConditionClassification end
+struct Open <: AbstractBoundaryConditionClassification end

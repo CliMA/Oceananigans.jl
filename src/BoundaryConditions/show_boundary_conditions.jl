@@ -3,7 +3,7 @@ import Oceananigans: short_show
 
 bcclassification_str(::FBC)  = "Flux"
 bcclassification_str(::PBC)  = "Periodic"
-bcclassification_str(::NFBC) = "NormalFlow"
+bcclassification_str(::OBC)  = "Open"
 bcclassification_str(::VBC)  = "Value"
 bcclassification_str(::GBC)  = "Gradient"
 bcclassification_str(::ZFBC) = "ZeroFlux"

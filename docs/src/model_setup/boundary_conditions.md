@@ -15,7 +15,7 @@ See [Numerical implementation of boundary conditions](@ref numerical_bcs) for mo
 2. [`Flux`](@ref)
 3. [`Value`](@ref) (Dirchlet)
 4. [`Gradient`](@ref) (Neumann)
-5. [`NormalFlow`](@ref)
+5. [`Open`](@ref)
 
 To construct a `Flux` boundary condition use the `FluxBoundaryCondition` constructor and so on.
 
@@ -73,7 +73,7 @@ BoundaryCondition: type=Value, condition=20.0
 
 A constant [`Value`](@ref) boundary condition can be used to specify constant tracer (such as temperature),
 or a constant _tangential_ velocity component at a boundary. Note that boundary conditions on the
-_normal_ velocity component must use the [`NormalFlow`](@ref) boundary condition type.
+_normal_ velocity component must use the [`Open`](@ref) boundary condition type.
 
 Finally, note that `ValueBoundaryCondition(condition)` is an alias for `BoundaryCondition(Value, condition)`.
 

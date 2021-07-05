@@ -15,7 +15,7 @@ end
 
 Construct a boundary condition of type `BC` with a number or array as a `condition`.
 
-Boundary condition types include `Periodic`, `Flux`, `Value`, `Gradient`, and `NormalFlow`.
+Boundary condition types include `Periodic`, `Flux`, `Value`, `Gradient`, and `Open`.
 """
 BoundaryCondition(Classification::DataType, condition) = BoundaryCondition{Classification, typeof(condition)}(Classification(), condition)
 
@@ -55,8 +55,7 @@ function BoundaryCondition(Classification::DataType, condition::Function;
         field_dependencies != () && error("Cannot set `field_dependencies` when `discrete_form=true`!")
         condition = DiscreteBoundaryFunction(condition, parameters)
     else
-        # Note that the boundary :x and location Center, Center are in general incorrect.
-        # These are corrected in the FieldBoundaryConditions constructor.
+        # The `ContinuousBoundaryFunction` is "regularized" for field location in the FieldBoundaryConditions constructor.
         condition = ContinuousBoundaryFunction(condition, parameters, field_dependencies)
     end
 
@@ -75,23 +74,23 @@ Adapt.adapt_structure(to, b::BoundaryCondition{C, A}) where {C<:AbstractBoundary
 const BC   = BoundaryCondition
 const FBC  = BoundaryCondition{<:Flux}
 const PBC  = BoundaryCondition{<:Periodic}
-const NFBC = BoundaryCondition{<:NormalFlow}
+const OBC  = BoundaryCondition{<:Open}
 const VBC  = BoundaryCondition{<:Value}
 const GBC  = BoundaryCondition{<:Gradient}
 const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
 
 # More readable BC constructors for the public API.
-    PeriodicBoundaryCondition() = BoundaryCondition(Periodic,   nothing)
-      NoFluxBoundaryCondition() = BoundaryCondition(Flux,       nothing)
-ImpenetrableBoundaryCondition() = BoundaryCondition(NormalFlow, nothing)
+    PeriodicBoundaryCondition() = BoundaryCondition(Periodic, nothing)
+      NoFluxBoundaryCondition() = BoundaryCondition(Flux,     nothing)
+ImpenetrableBoundaryCondition() = BoundaryCondition(Open,     nothing)
 
-      FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux, val; kwargs...)
-     ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value, val; kwargs...)
-  GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient, val; kwargs...)
-NormalFlowBoundaryCondition(val; kwargs...) = BoundaryCondition(NormalFlow, val; kwargs...)
+    FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux, val; kwargs...)
+   ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value, val; kwargs...)
+GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient, val; kwargs...)
+    OpenBoundaryCondition(val; kwargs...) = BoundaryCondition(Open, val; kwargs...)
 
 # Support for various types of boundary conditions
-@inline getbc(bc::BC{<:NormalFlow, Nothing}, i, j, grid, args...) = zero(eltype(grid))
+@inline getbc(bc::BC{<:Open, Nothing}, i, j, grid, args...) = zero(eltype(grid))
 @inline getbc(bc::BC{<:Flux, Nothing}, i, j, grid, args...) = zero(eltype(grid))
 
 @inline getbc(bc::BC{C, <:Number},        args...)                         where C = bc.condition

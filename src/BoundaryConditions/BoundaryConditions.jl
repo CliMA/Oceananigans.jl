@@ -1,11 +1,11 @@
 module BoundaryConditions
 
 export
-    BCType, Flux, Gradient, Value, NormalFlow,
+    BCType, Flux, Gradient, Value, Open,
 
     BoundaryCondition, getbc, setbc!,
 
-    PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition,
+    PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
 
     CoordinateBoundaryConditions,

@@ -19,18 +19,17 @@ topology=(Periodic, Bounded, Bounded)
 grid = RegularCartesianGrid(topology=topology, size=(350, 350, 1), x=(20, 40), y=(10, 30), z=(0, 1))
 #grid = RegularCartesianGrid(topology=topology, size=(1500, 1500, 1), x=(0, 60), y=(0, 60), z=(0, 1))
 
-
 # reynolds number
 Re = 40
 
 #cylinder with center at (30,20)
 const R = 1 # radius
-inside_cylinder(x, y, z) = ((x-30)^2 + (y-20)^2) <= R # immersed solid
+inside_cylinder(x, y, z) = ((x - 30)^2 + (y - 20)^2) <= R # immersed solid
 
 # boundary conditions: inflow and outflow in y
 v_bcs = VVelocityBoundaryConditions(grid,
-                                    north = BoundaryCondition(NormalFlow,1.0),
-                                    south = BoundaryCondition(NormalFlow,1.0))
+                                    north = OpenBoundaryCondition(1),
+                                    south = OpenBoundaryCondition(1))
 
 # setting up incompressible model with immersed boundary
 model = IncompressibleModel(timestepper = :RungeKutta3, 
@@ -40,8 +39,7 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
                                 tracers = nothing,
                                 closure = IsotropicDiffusivity(ν=1/Re),
                     boundary_conditions = (v=v_bcs,),
-                      immersed_boundary = inside_cylinder
-                           )
+                      immersed_boundary = inside_cylinder)
 
 # initial condition
 # setting velocitiy to zero inside the cylinder and 1 everywhere else
