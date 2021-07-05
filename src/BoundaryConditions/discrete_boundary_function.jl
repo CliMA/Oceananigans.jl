@@ -36,5 +36,5 @@ end
     bc.func(i, j, grid, clock, model_fields, bc.parameters)
 
 # Don't re-convert DiscreteBoundaryFunctions passed to BoundaryCondition constructor
-BoundaryCondition(TBC, condition::DiscreteBoundaryFunction) =
-    BoundaryCondition{TBC, typeof(condition)}(condition)
+BoundaryCondition(Classification::DataType{<:AbstractBoundaryConditionClassification}, condition::DiscreteBoundaryFunction) =
+    BoundaryCondition(Classification(), condition)
