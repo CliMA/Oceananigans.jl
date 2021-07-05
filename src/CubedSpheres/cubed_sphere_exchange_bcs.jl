@@ -1,16 +1,16 @@
 using Adapt
 
 using Oceananigans.BoundaryConditions
-using Oceananigans.BoundaryConditions: BCType
+using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification
 
 import Base: show
-import Oceananigans.BoundaryConditions: bctype_str, print_condition
+import Oceananigans.BoundaryConditions: bcclassification_str, print_condition
 
-struct CubedSphereExchange <: BCType end
+struct CubedSphereExchange <: AbstractBoundaryConditionClassification end
 
 const CubedSphereExchangeBC = BoundaryCondition{<:CubedSphereExchange}
 
-bctype_str(::CubedSphereExchangeBC) ="CubedSphereExchange"
+bcclassification_str(::CubedSphereExchangeBC) ="CubedSphereExchange"
 
 CubedSphereExchangeBoundaryCondition(val; kwargs...) = BoundaryCondition(CubedSphereExchange, val; kwargs...)
 

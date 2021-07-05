@@ -1,9 +1,9 @@
 """
-    BCType
+    AbstractBoundaryConditionClassification
 
 Abstract supertype for boundary condition types.
 """
-abstract type BCType end
+abstract type AbstractBoundaryConditionClassification end
 
 """
     Periodic
@@ -12,7 +12,7 @@ A type specifying a periodic boundary condition.
 
 A condition may not be specified with a `Periodic` boundary condition.
 """
-struct Periodic <: BCType end
+struct Periodic <: AbstractBoundaryConditionClassification end
 
 """
     Flux
@@ -31,7 +31,7 @@ the interior of the domain. Conversely, a positive flux applied to the bottom bo
 to an increase of the quantity in the interior of the domain. The same logic holds for east,
 west, north, and south boundaries.
 """
-struct Flux <: BCType end
+struct Flux <: AbstractBoundaryConditionClassification end
 
 """
     Gradient
@@ -39,7 +39,7 @@ struct Flux <: BCType end
 A type specifying a boundary condition on the derivative or gradient of a field. Also
 called a Neumann boundary condition.
 """
-struct Gradient <: BCType end
+struct Gradient <: AbstractBoundaryConditionClassification end
 
 """
     Value
@@ -47,7 +47,7 @@ struct Gradient <: BCType end
 A type specifying a boundary condition on the value of a field. Also called a Dirchlet
 boundary condition.
 """
-struct Value <: BCType end
+struct Value <: AbstractBoundaryConditionClassification end
 
 """
     NormalFlow
@@ -67,4 +67,4 @@ components of the velocity field are defined on boundaries.
 Both tracers and wall-tangential components of velocity fields
 are defined at cell centers with respect to the wall-normal direction.
 """
-struct NormalFlow <: BCType end
+struct NormalFlow <: AbstractBoundaryConditionClassification end

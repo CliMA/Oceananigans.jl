@@ -1,11 +1,12 @@
 import Adapt
 
 """
-    struct BoundaryCondition{C<:BCType, T}
+    struct BoundaryCondition{C<:AbstractBoundaryConditionClassification, T}
 
 Container for boundary conditions.
 """
-struct BoundaryCondition{C<:BCType, T}
+struct BoundaryCondition{C<:AbstractBoundaryConditionClassification, T}
+    classification :: C
     condition :: T
 end
 
@@ -16,7 +17,7 @@ Construct a boundary condition of type `BC` with a number or array as a `conditi
 
 Boundary condition types include `Periodic`, `Flux`, `Value`, `Gradient`, and `NormalFlow`.
 """
-BoundaryCondition(BC, condition) = BoundaryCondition{BC, typeof(condition)}(condition)
+BoundaryCondition(Classification::DataType, condition) = BoundaryCondition{Classification, typeof(condition)}(Classification(), condition)
 
 """
     BoundaryCondition(BC, condition::Function; parameters=nothing, discrete_form=false)
@@ -45,7 +46,7 @@ where `i`, and `j` are indices that vary along the boundary. If `discrete_form =
 condition(i, j, grid, clock, model_fields, parameters)
 ```
 """
-function BoundaryCondition(TBC, condition::Function;
+function BoundaryCondition(Classification::DataType, condition::Function;
                            parameters = nothing,
                            discrete_form = false,
                            field_dependencies=())
@@ -59,13 +60,11 @@ function BoundaryCondition(TBC, condition::Function;
         condition = ContinuousBoundaryFunction(condition, parameters, field_dependencies)
     end
 
-    return BoundaryCondition{TBC, typeof(condition)}(condition)
+    return BoundaryCondition{Classification, typeof(condition)}(Classification(), condition)
 end
 
-bctype(bc::BoundaryCondition{C}) where C = C
-
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
-Adapt.adapt_structure(to, b::BoundaryCondition{C, A}) where {C<:BCType, A<:AbstractArray} =
+Adapt.adapt_structure(to, b::BoundaryCondition{C, A}) where {C<:AbstractBoundaryConditionClassification, A<:AbstractArray} =
     BoundaryCondition(C, Adapt.adapt(to, parent(b.condition)))
 
 #####
