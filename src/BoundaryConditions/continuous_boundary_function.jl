@@ -120,8 +120,7 @@ end
 end
 
 # Don't re-convert ContinuousBoundaryFunctions passed to BoundaryCondition constructor
-BoundaryCondition(Classification::DataType{<:AbstractBoundaryConditionClassification}, condition::ContinuousBoundaryFunction) =
-    BoundaryCondition(Classification(), condition)
+BoundaryCondition(Classification::DataType, condition::ContinuousBoundaryFunction) = BoundaryCondition(Classification(), condition)
     
 Adapt.adapt_structure(to, bf::ContinuousBoundaryFunction{LX, LY, LZ, I}) where {LX, LY, LZ, I} =
     ContinuousBoundaryFunction{LX, LY, LZ, I}(Adapt.adapt(to, bf.func),

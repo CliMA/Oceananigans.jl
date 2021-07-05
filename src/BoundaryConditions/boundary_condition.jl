@@ -17,8 +17,7 @@ Construct a boundary condition of type `BC` with a number or array as a `conditi
 
 Boundary condition types include `Periodic`, `Flux`, `Value`, `Gradient`, and `Open`.
 """
-BoundaryCondition(Classification::DataType{<:AbstractBoundaryConditionClassification}, condition) =
-    BoundaryCondition(Classificaiton(), condition)
+BoundaryCondition(Classification::DataType, condition) = BoundaryCondition(Classificaiton(), condition)
 
 """
     BoundaryCondition(BC, condition::Function; parameters=nothing, discrete_form=false)
