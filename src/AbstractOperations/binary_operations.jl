@@ -141,19 +141,21 @@ Example
 =======
 
 ```jldoctest
-julia> using Oceananigans, Oceananigans.AbstractOperations, Oceananigans.Grids
+julia> using Oceananigans, Oceananigans.AbstractOperations
+
+julia> using Oceananigans.AbstractOperations: BinaryOperation, AbstractGridMetric, choose_location
 
 julia> plus_or_times(x, y) = x < 0 ? x + y : x * y
 plus_or_times (generic function with 1 method)
 
 julia> @binary plus_or_times
-6-element Array{Any,1}:
- :+
- :-
- :/
- :^
- :*
- :plus_or_times
+Set{Any} with 6 elements:
+  :+
+  :/
+  :^
+  :-
+  :*
+  :plus_or_times
 
 julia> c, d = (Field(Center, Center, Center, CPU(), RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:2);
 
@@ -162,9 +164,10 @@ BinaryOperation at (Center, Center, Center)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 │   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
 └── tree:
-    plus_or_times at (Center, Center, Center) via identity
+    plus_or_times at (Center, Center, Center)
     ├── Field located at (Center, Center, Center)
     └── Field located at (Center, Center, Center)
+```
 """
 macro binary(ops...)
     expr = Expr(:block)

@@ -21,8 +21,8 @@ end
 const AD = AnisotropicDiffusivity
 
 """
-    AnisotropicDiffusivity(; νx=0, νy=0, νz=0, κx=0, κy=0, κz=0,
-                             νh=nothing, κh=nothing)
+    AnisotropicDiffusivity(([FT=Float64;] νx=0, νy=0, νz=0, κx=0, κy=0, κz=0, νh=nothing, κh=nothing,
+                                    time_discretization = ExplicitTimeDiscretization()) 
 
 Returns parameters for a closure with a diagonal diffusivity tensor with heterogeneous
 'anisotropic' components labeled by `x`, `y`, `z`.

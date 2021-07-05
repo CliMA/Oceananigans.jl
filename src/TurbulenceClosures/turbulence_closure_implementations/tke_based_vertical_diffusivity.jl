@@ -139,7 +139,7 @@ function
 where ``σ⁰``, ``σᵟ``, ``Riᶜ``, and ``Riʷ`` are free parameters,
 and ``step`` is a smooth step function defined by
 
-    ``step(x, c, w) = (1 + tanh((x - c) / w)) / 2``.
+    ``step(x, c, w) = (1 + \tanh((x - c) / w)) / 2``.
 
 The 8 free parameters in `RiDependentDiffusivityScaling` have been _experimentally_ calibrated
 against large eddy simulations of ocean surface boundary layer turbulence in idealized
@@ -252,7 +252,7 @@ function top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
     return NamedTuple{tracer_names}(tracer_bcs)
 end
 
-""" Infer velocity boundary conditions from user_bcs and tracer_names. """
+""" Infer velocity boundary conditions from `user_bcs` and `tracer_names`. """
 function top_velocity_boundary_conditions(grid, user_bcs)
 
     user_bc_names = keys(user_bcs)
@@ -263,7 +263,7 @@ function top_velocity_boundary_conditions(grid, user_bcs)
     return (u=u_top_bc, v=v_top_bc)
 end
 
-""" Add TKE boundary conditions specific to TKEBasedVerticalDiffusivity. """
+""" Add TKE boundary conditions specific to `TKEBasedVerticalDiffusivity`. """
 function add_closure_specific_boundary_conditions(closure::TKEVD,
                                                   user_bcs,
                                                   grid,
