@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: PBC, ZFBC, NFBC, ContinuousBoundaryFunction, DiscreteBoundaryFunction
+using Oceananigans.BoundaryConditions: PBC, ZFBC, OBC, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 
 using Oceananigans.Fields: Face, Center
 
@@ -115,8 +115,8 @@ end
         @test w_bcs.x.right isa PBC
         @test w_bcs.y.left  isa PBC
         @test w_bcs.y.right isa PBC
-        @test w_bcs.z.left  isa NFBC
-        @test w_bcs.z.right isa NFBC
+        @test w_bcs.z.left  isa OBC
+        @test w_bcs.z.right isa OBC
 
         @test T_bcs isa FieldBoundaryConditions
         @test T_bcs.x.left  isa PBC
@@ -146,8 +146,8 @@ end
         @test v_bcs isa FieldBoundaryConditions
         @test v_bcs.x.left  isa PBC
         @test v_bcs.x.right isa PBC
-        @test v_bcs.y.left  isa NFBC
-        @test v_bcs.y.right isa NFBC
+        @test v_bcs.y.left  isa OBC
+        @test v_bcs.y.right isa OBC
         @test v_bcs.z.left  isa ZFBC
         @test v_bcs.z.right isa ZFBC
 
@@ -156,8 +156,8 @@ end
         @test w_bcs.x.right isa PBC
         @test w_bcs.y.left  isa ZFBC
         @test w_bcs.y.right isa ZFBC
-        @test w_bcs.z.left  isa NFBC
-        @test w_bcs.z.right isa NFBC
+        @test w_bcs.z.left  isa OBC
+        @test w_bcs.z.right isa OBC
 
         @test T_bcs isa FieldBoundaryConditions
         @test T_bcs.x.left  isa PBC
@@ -177,8 +177,8 @@ end
         T_bcs = TracerBoundaryConditions(bbb_grid)
 
         @test u_bcs isa FieldBoundaryConditions
-        @test u_bcs.x.left  isa NFBC
-        @test u_bcs.x.right isa NFBC
+        @test u_bcs.x.left  isa OBC
+        @test u_bcs.x.right isa OBC
         @test u_bcs.y.left  isa ZFBC
         @test u_bcs.y.right isa ZFBC
         @test u_bcs.z.left  isa ZFBC
@@ -187,8 +187,8 @@ end
         @test v_bcs isa FieldBoundaryConditions
         @test v_bcs.x.left  isa ZFBC
         @test v_bcs.x.right isa ZFBC
-        @test v_bcs.y.left  isa NFBC
-        @test v_bcs.y.right isa NFBC
+        @test v_bcs.y.left  isa OBC
+        @test v_bcs.y.right isa OBC
         @test v_bcs.z.left  isa ZFBC
         @test v_bcs.z.right isa ZFBC
 
@@ -197,8 +197,8 @@ end
         @test w_bcs.x.right isa ZFBC
         @test w_bcs.y.left  isa ZFBC
         @test w_bcs.y.right isa ZFBC
-        @test w_bcs.z.left  isa NFBC
-        @test w_bcs.z.right isa NFBC
+        @test w_bcs.z.left  isa OBC
+        @test w_bcs.z.right isa OBC
 
         @test T_bcs isa FieldBoundaryConditions
         @test T_bcs.x.left  isa ZFBC

@@ -3,7 +3,7 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environmen
 using Documenter
 using DocumenterCitations
 using Literate
-using Plots  # to avoid capturing precompilation output by Literate
+using Plots # to avoid capturing precompilation output by Literate
 
 using Oceananigans
 using Oceananigans.Operators
@@ -14,7 +14,7 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
 
-using Oceananigans.BoundaryConditions: Flux, Value, Gradient, NormalFlow
+using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
 
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
 bib = CitationBibliography(bib_filepath)
