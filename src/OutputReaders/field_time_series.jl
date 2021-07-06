@@ -40,13 +40,13 @@ located at `filepath`. Note that model output must have been saved with halos. T
 will store the data fully in memory as a 4D multi-dimensional array while the `OnDisk` backend will
 lazily load field time snapshots when the `FieldTimeSeries` is indexed linearly.
 """
-FieldTimeSeries(filepath, name; architecture=CPU(), ArrayType=array_type(architecture), backend=InMemory()) =
-    FieldTimeSeries(filepath, name, architecture, ArrayType, backend)
+FieldTimeSeries(filepath, name; architecture=CPU(), grid=nothing, ArrayType=array_type(architecture), backend=InMemory()) =
+    FieldTimeSeries(filepath, name, architecture, grid, ArrayType, backend)
 
-function FieldTimeSeries(filepath, name, architecture, ArrayType, backend::InMemory)
+function FieldTimeSeries(filepath, name, architecture, grid, ArrayType, backend::InMemory)
     file = jldopen(filepath)
 
-    grid = file["serialized/grid"]
+    grid = isnothing(grid) ? file["serialized/grid"] : grid
     Hx, Hy, Hz = halo_size(grid)
 
     iterations = parse.(Int, keys(file["timeseries/t"]))
@@ -71,10 +71,10 @@ function FieldTimeSeries(filepath, name, architecture, ArrayType, backend::InMem
     return FieldTimeSeries{LX, LY, LZ}(backend, data, architecture, grid, bcs, times, name, abspath(filepath), ndims(data))
 end
 
-function FieldTimeSeries(filepath, name, architecture, ArrayType, backend::OnDisk)
+function FieldTimeSeries(filepath, name, architecture, grid, ArrayType, backend::OnDisk)
     file = jldopen(filepath)
 
-    grid = file["serialized/grid"]
+    grid = isnothing(grid) ? file["serialized/grid"] : grid
     iterations = parse.(Int, keys(file["timeseries/t"]))
     times = [file["timeseries/t/$i"] for i in iterations]
 
