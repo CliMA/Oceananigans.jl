@@ -1,7 +1,7 @@
 module Solvers
 
 export
-    BatchedTridiagonalSolver, solve_batched_tridiagonal_system!,
+    BatchedTridiagonalSolver, solve!,
     FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, PreconditionedConjugateGradientSolver, PressureSolver,
     solve_for_pressure!, solve_poisson_equation!
 
@@ -12,7 +12,7 @@ using CUDA
 using KernelAbstractions
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-using Oceananigans.Architectures: device, @hascuda, CPU, GPU, array_type, arch_array
+using Oceananigans.Architectures: device, CPU, GPU, array_type, arch_array
 using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions

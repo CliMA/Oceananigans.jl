@@ -1,13 +1,16 @@
 const multiary_operators = Set()
 
-struct MultiaryOperation{X, Y, Z, N, O, A, I, G} <: AbstractOperation{X, Y, Z, G}
-      op :: O
-    args :: A
-       ▶ :: I
-    grid :: G
+struct MultiaryOperation{X, Y, Z, N, O, A, I, R, G, T} <: AbstractOperation{X, Y, Z, R, G, T}
+              op :: O
+            args :: A
+               ▶ :: I
+    architecture :: R
+            grid :: G
 
-    function MultiaryOperation{X, Y, Z}(op, args, ▶, grid) where {X, Y, Z}
-        return new{X, Y, Z, length(args), typeof(op), typeof(args), typeof(▶), typeof(grid)}(op, args, ▶, grid)
+    function MultiaryOperation{X, Y, Z}(op::O, args::A, ▶::I, arch::R, grid::G) where {X, Y, Z, O, A, I, R, G}
+        T = eltype(grid)
+        N = length(args)
+        return new{X, Y, Z, N, O, A, I, R, G, T}(op, args, ▶, arch, grid)
     end
 end
 
@@ -20,17 +23,21 @@ end
 
 function _multiary_operation(L, op, args, Largs, grid) where {X, Y, Z}
     ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
-    return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(a for a in args), ▶, grid)
+    arch = architecture(args...)
+    return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(a for a in args), ▶, arch, grid)
 end
+
+# Recompute location of multiary operation
+@inline at(loc, Π::MultiaryOperation) = Π.op(loc, Tuple(at(loc, a) for a in Π.args)...)
 
 """Return an expression that defines an abstract `MultiaryOperator` named `op` for `AbstractField`."""
 function define_multiary_operator(op)
     return quote
         function $op(Lop::Tuple,
-                     a::Union{Function, Oceananigans.Fields.AbstractField},
-                     b::Union{Function, Oceananigans.Fields.AbstractField},
-                     c::Union{Function, Oceananigans.Fields.AbstractField},
-                     d::Union{Function, Oceananigans.Fields.AbstractField}...)
+                     a::Union{Function, Number, Oceananigans.Fields.AbstractField},
+                     b::Union{Function, Number, Oceananigans.Fields.AbstractField},
+                     c::Union{Function, Number, Oceananigans.Fields.AbstractField},
+                     d::Union{Function, Number, Oceananigans.Fields.AbstractField}...)
 
             args = tuple(a, b, c, d...)
             grid = Oceananigans.AbstractOperations.validate_grid(args...)
@@ -42,7 +49,7 @@ function define_multiary_operator(op)
             return Oceananigans.AbstractOperations._multiary_operation(Lop, $op, args, Largs, grid)
         end
 
-        $op(a::Union{Function, Oceananigans.Fields.AbstractField},
+        $op(a::Oceananigans.Fields.AbstractField,
             b::Union{Function, Oceananigans.Fields.AbstractField},
             c::Union{Function, Oceananigans.Fields.AbstractField},
             d::Union{Function, Oceananigans.Fields.AbstractField}...) = $op(Oceananigans.Fields.location(a), a, b, c, d...)
@@ -64,10 +71,10 @@ Example
 =======
 
 ```jldoctest
-julia> using Oceananigans, Oceananigans.Grids, Oceananigans.AbstractOperations
+julia> using Oceananigans, Oceananigans.AbstractOperations
 
 julia> harmonic_plus(a, b, c) = 1/3 * (1/a + 1/b + 1/c)
-harmonic_plus(generic function with 1 method)
+harmonic_plus (generic function with 1 method)
 
 julia> c, d, e = Tuple(Field(Center, Center, Center, CPU(), RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:3);
 
@@ -76,16 +83,16 @@ BinaryOperation at (Center, Center, Center)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 │   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
 └── tree:
-    * at (Center, Center, Center) via identity
+    * at (Center, Center, Center)
     ├── 0.3333333333333333
     └── + at (Center, Center, Center)
-        ├── / at (Center, Center, Center) via identity
+        ├── / at (Center, Center, Center)
         │   ├── 1
         │   └── Field located at (Center, Center, Center)
-        ├── / at (Center, Center, Center) via identity
+        ├── / at (Center, Center, Center)
         │   ├── 1
         │   └── Field located at (Center, Center, Center)
-        └── / at (Center, Center, Center) via identity
+        └── / at (Center, Center, Center)
             ├── 1
             └── Field located at (Center, Center, Center)
 
@@ -104,6 +111,7 @@ MultiaryOperation at (Center, Center, Center)
     ├── Field located at (Center, Center, Center)
     ├── Field located at (Center, Center, Center)
     └── Field located at (Center, Center, Center)
+```
 """
 macro multiary(ops...)
     expr = Expr(:block)
@@ -127,7 +135,7 @@ end
 ##### Architecture inference for MultiaryOperation
 #####
 
-architecture(Π::MultiaryOperation) = architecture(Π.args...)
+architecture(Π::MultiaryOperation) = Π.architecture
 
 function architecture(a, b, c, d...)
 
@@ -162,4 +170,5 @@ end
 "Adapt `MultiaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
 Adapt.adapt_structure(to, multiary::MultiaryOperation{X, Y, Z}) where {X, Y, Z} =
     MultiaryOperation{X, Y, Z}(Adapt.adapt(to, multiary.op), Adapt.adapt(to, multiary.args),
-                               Adapt.adapt(to, multiary.▶),  multiary.grid)
+                               Adapt.adapt(to, multiary.▶),  nothing, Adapt.adapt(to, multiary.grid))
+

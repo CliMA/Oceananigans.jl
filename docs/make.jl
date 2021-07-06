@@ -1,9 +1,9 @@
-push!(LOAD_PATH, "..")
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environment stack
 
 using Documenter
 using DocumenterCitations
 using Literate
-using Plots  # to avoid capturing precompilation output by Literate
+using Plots # to avoid capturing precompilation output by Literate
 
 using Oceananigans
 using Oceananigans.Operators
@@ -13,6 +13,8 @@ using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
+
+using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
 
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
 bib = CitationBibliography(bib_filepath)
@@ -40,7 +42,7 @@ examples = [
     "langmuir_turbulence.jl",
     "eady_turbulence.jl",
     "kelvin_helmholtz_instability.jl",
-    "Bickley_jet_shallow_water.jl"
+    "shallow_water_Bickley_jet.jl"
 ]
 
 for example in examples
@@ -62,7 +64,7 @@ example_pages = [
     "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
     "Eady turbulence"                    => "generated/eady_turbulence.md",
     "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
-    "Bickley jet in shallow water model" => "generated/Bickley_jet_shallow_water.md"
+    "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md"
  ]
 
 model_setup_pages = [
@@ -73,7 +75,7 @@ model_setup_pages = [
     "Clock" => "model_setup/clock.md",
     "Coriolis (rotation)" => "model_setup/coriolis.md",
     "Tracers" => "model_setup/tracers.md",
-    "Buoyancy and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
+    "Buoyancy models and equation of state" => "model_setup/buoyancy_and_equation_of_state.md",
     "Boundary conditions" => "model_setup/boundary_conditions.md",
     "Forcing functions" => "model_setup/forcing_functions.md",
     "Background fields" => "model_setup/background_fields.md",
@@ -86,9 +88,19 @@ model_setup_pages = [
 ]
 
 physics_pages = [
-    "Navier-Stokes and tracer conservation equations" => "physics/navier_stokes_and_tracer_conservation.md",
+    "Coordinate system and notation" => "physics/notation.md",
+    "Boussinesq approximation" => "physics/boussinesq.md",
+    "`IncompressibleModel`" => [
+        "Incompressible model" => "physics/incompressible_model.md",
+        ],
+    "`HydrostaticFreeSurfaceModel`" => [
+        "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md"
+        ],
+    "`ShallowWaterModel`" => [
+        "Shallow water model" => "physics/shallow_water_model.md"
+        ],
+    "Buoyancy models and equations of state" => "physics/buoyancy_and_equations_of_state.md",
     "Coriolis forces" => "physics/coriolis_forces.md",
-    "Buoyancy model and equations of state" => "physics/buoyancy_and_equations_of_state.md",
     "Turbulence closures" => "physics/turbulence_closures.md",
     "Surface gravity waves and the Craik-Leibovich approximation" => "physics/surface_gravity_waves.md"
 ]
@@ -119,10 +131,11 @@ pages = [
     "Installation instructions" => "installation_instructions.md",
     "Using GPUs" => "using_gpus.md",
     "Examples" => example_pages,
-    "Model setup" => model_setup_pages,
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
+    "Model setup" => model_setup_pages,
     "Validation experiments" => validation_pages,
+    "Simulation tips" => "simulation_tips.md",
     "Gallery" => "gallery.md",
     "Performance benchmarks" => "benchmarks.md",
     "Contributor's guide" => "contributing.md",
@@ -139,7 +152,8 @@ pages = [
 format = Documenter.HTML(
     collapselevel = 1,
        prettyurls = get(ENV, "CI", nothing) == "true",
-        canonical = "https://clima.github.io/OceananigansDocumentation/stable/"
+        canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
+       mathengine = MathJax3()
 )
 
 makedocs(bib,
@@ -159,4 +173,3 @@ deploydocs(
       versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
   push_preview = true
 )
-

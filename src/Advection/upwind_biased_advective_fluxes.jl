@@ -1,3 +1,5 @@
+using Oceananigans.Grids: AbstractPrimaryGrid
+
 #####
 ##### Momentum and tracer advective flux operators for upwind-biased advection schemes
 #####
@@ -12,88 +14,88 @@ const Upwind = AbstractUpwindBiasedAdvectionScheme
 #####
 ##### Momentum advection operators
 #####
-##### Note the convention "momentum_flux_AB" corresponds to the advection _of_ B _by_ A.
+##### Note the convention "advective_momentum_flux_AB" corresponds to the advection _of_ B _by_ A.
 #####
 
-@inline function momentum_flux_uu(i, j, k, grid, scheme::Upwind, U, u)
+@inline function advective_momentum_flux_Uu(i, j, k, grid, scheme::Upwind, U, u)
 
     ũ  =    _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, U)
     uᴸ =  _left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u)
     uᴿ = _right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, u)
 
-    return Axᵃᵃᶠ(i, j, k, grid) * upwind_biased_product(ũ, uᴸ, uᴿ)
+    return Axᶜᶜᶜ(i, j, k, grid) * upwind_biased_product(ũ, uᴸ, uᴿ)
 end
 
-@inline function momentum_flux_uv(i, j, k, grid, scheme::Upwind, V, u)
+@inline function advective_momentum_flux_Vu(i, j, k, grid, scheme::Upwind, V, u)
 
     ṽ  =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, V)
     uᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, u)
     uᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, u)
 
-    return Ayᵃᵃᶠ(i, j, k, grid) * upwind_biased_product(ṽ, uᴸ, uᴿ)
+    return Ayᶠᶠᶜ(i, j, k, grid) * upwind_biased_product(ṽ, uᴸ, uᴿ)
 end
 
-@inline function momentum_flux_uw(i, j, k, grid, scheme::Upwind, W, u)
+@inline function advective_momentum_flux_Wu(i, j, k, grid, scheme::Upwind, W, u)
 
     w̃  =    _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
     uᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, u)
     uᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, u)
 
-    return Azᵃᵃᵃ(i, j, k, grid) * upwind_biased_product(w̃, uᴸ, uᴿ)
+    return Azᶠᶜᵃ(i, j, k, grid) * upwind_biased_product(w̃, uᴸ, uᴿ)
 end
 
-@inline function momentum_flux_vu(i, j, k, grid, scheme::Upwind, U, v)
+@inline function advective_momentum_flux_Uv(i, j, k, grid, scheme::Upwind, U, v)
 
     ũ  =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, U)
     vᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, v)
     vᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, v)
  
-    return Axᵃᵃᶠ(i, j, k, grid) * upwind_biased_product(ũ, vᴸ, vᴿ)
+    return Axᶠᶠᶜ(i, j, k, grid) * upwind_biased_product(ũ, vᴸ, vᴿ)
 end
 
-@inline function momentum_flux_vv(i, j, k, grid, scheme::Upwind, V, v)
+@inline function advective_momentum_flux_Vv(i, j, k, grid, scheme::Upwind, V, v)
 
     ṽ  =    _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, V)
     vᴸ =  _left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, v)
     vᴿ = _right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, v)
 
-    return Ayᵃᵃᶠ(i, j, k, grid) * upwind_biased_product(ṽ, vᴸ, vᴿ)
+    return Ayᶜᶜᶜ(i, j, k, grid) * upwind_biased_product(ṽ, vᴸ, vᴿ)
 end
 
-@inline function momentum_flux_vw(i, j, k, grid, scheme::Upwind, W, v)
+@inline function advective_momentum_flux_Wv(i, j, k, grid, scheme::Upwind, W, v)
 
     w̃  =    _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
     vᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, v)
     vᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, v)
 
-    return Azᵃᵃᵃ(i, j, k, grid) * upwind_biased_product(w̃, vᴸ, vᴿ)
+    return Azᶜᶠᵃ(i, j, k, grid) * upwind_biased_product(w̃, vᴸ, vᴿ)
 end
 
-@inline function momentum_flux_wu(i, j, k, grid, scheme::Upwind, U, w)
+@inline function advective_momentum_flux_Uw(i, j, k, grid, scheme::Upwind, U, w)
 
     ũ  =    _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, U)
     wᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, w)
     wᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, w)
 
-    return Axᵃᵃᶠ(i, j, k, grid) * upwind_biased_product(ũ, wᴸ, wᴿ)
+    return Axᶠᶜᶠ(i, j, k, grid) * upwind_biased_product(ũ, wᴸ, wᴿ)
 end
 
-@inline function momentum_flux_wv(i, j, k, grid, scheme::Upwind, V, w)
+@inline function advective_momentum_flux_Vw(i, j, k, grid, scheme::Upwind, V, w)
 
     ṽ  =    _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, V)
     wᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, w)
     wᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, w)
 
-    return Ayᵃᵃᶠ(i, j, k, grid) * upwind_biased_product(ṽ, wᴸ, wᴿ)
+    return Ayᶜᶠᶠ(i, j, k, grid) * upwind_biased_product(ṽ, wᴸ, wᴿ)
 end
 
-@inline function momentum_flux_ww(i, j, k, grid, scheme::Upwind, W, w)
+@inline function advective_momentum_flux_Ww(i, j, k, grid, scheme::Upwind, W, w)
 
     w̃  =    _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, W)
     wᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w)
     wᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w)
 
-    return Azᵃᵃᵃ(i, j, k, grid) * upwind_biased_product(w̃, wᴸ, wᴿ)
+    return Azᶜᶠᵃ(i, j, k, grid) * upwind_biased_product(w̃, wᴸ, wᴿ)
 end
 
 #####
@@ -106,7 +108,7 @@ end
     cᴸ =  _left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c)
     cᴿ = _right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, c)
 
-    return Axᵃᵃᶠ(i, j, k, grid) * upwind_biased_product(ũ, cᴸ, cᴿ)
+    return Axᶠᶜᶜ(i, j, k, grid) * upwind_biased_product(ũ, cᴸ, cᴿ)
 end
 
 @inline function advective_tracer_flux_y(i, j, k, grid, scheme::Upwind, V, c)
@@ -115,7 +117,7 @@ end
     cᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c)
     cᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, c)
 
-    return Ayᵃᵃᶠ(i, j, k, grid) * upwind_biased_product(ṽ, cᴸ, cᴿ)
+    return Ayᶜᶠᶜ(i, j, k, grid) * upwind_biased_product(ṽ, cᴸ, cᴿ)
 end
 
 @inline function advective_tracer_flux_z(i, j, k, grid, scheme::Upwind, W, c)
@@ -124,5 +126,5 @@ end
     cᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c)
     cᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c)
 
-    return Azᵃᵃᵃ(i, j, k, grid) * upwind_biased_product(w̃, cᴸ, cᴿ) 
+    return Azᶜᶜᵃ(i, j, k, grid) * upwind_biased_product(w̃, cᴸ, cᴿ) 
 end

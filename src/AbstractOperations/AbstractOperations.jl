@@ -7,8 +7,6 @@ using Base: @propagate_inbounds
 import Adapt
 using CUDA
 
-using Oceananigans.Architectures: @hascuda
-
 using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -21,37 +19,43 @@ using Oceananigans.Architectures: device
 using Oceananigans: AbstractModel
 
 import Oceananigans.Architectures: architecture
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: data, compute_at!
 
 #####
 ##### Basic functionality
 #####
 
-"""
-    AbstractOperation{X, Y, Z, G} <: AbstractField{X, Y, Z, Nothing, G}
-
-Represents an operation performed on grid of type `G` at locations `X`, `Y`, and `Z`.
-"""
-abstract type AbstractOperation{X, Y, Z, G} <: AbstractField{X, Y, Z, Nothing, G} end
+abstract type AbstractOperation{X, Y, Z, A, G, T} <: AbstractField{X, Y, Z, A, G, T, 3} end
 
 const AF = AbstractField
 
 # We (informally) require that all field-like objects define `parent`:
 Base.parent(op::AbstractOperation) = op
 
+# We have no halos to fill
+fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
+
 # AbstractOperation macros add their associated functions to this list
 const operators = Set()
 
-include("at.jl")
-include("grid_validation.jl")
+"""
+    at(loc, abstract_operation)
 
+Returns `abstract_operation` relocated to `loc`ation.
+"""
+at(loc, f) = f # fallback
+
+include("grid_validation.jl")
+include("grid_metrics.jl")
 include("unary_operations.jl")
 include("binary_operations.jl")
 include("multiary_operations.jl")
 include("derivatives.jl")
-
+include("kernel_function_operation.jl")
+include("at.jl")
+include("broadcasting_abstract_operations.jl")
 include("show_abstract_operations.jl")
-include("averages_of_operations.jl")
 
 # Make some operators!
 
@@ -81,3 +85,4 @@ push!(operators, :*)
 push!(multiary_operators, :*)
 
 end # module
+

@@ -10,10 +10,10 @@ using Oceananigans.BoundaryConditions: UVelocityBoundaryConditions,
 
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo
+using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size, Flat
 using Oceananigans.TimeSteppers: Clock, TimeStepper
-using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
-using Oceananigans.Utils: inflate_halo_size, tupleit
+using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
+using Oceananigans.Utils: tupleit
 
 function ShallowWaterTendencyFields(arch, grid, tracer_names)
 
@@ -38,7 +38,7 @@ function ShallowWaterSolutionFields(arch, grid, bcs)
     return (uh=uh, vh=vh, h=h)
 end
 
-struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, TS} <: AbstractModel{TS}
+mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, TS} <: AbstractModel{TS}
 
                           grid :: G         # Grid of physical points on which `Model` is solved
                   architecture :: A         # Computer `Architecture` on which `Model` is run
@@ -56,6 +56,42 @@ struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, 
 
 end
 
+"""
+    ShallowWaterModel(;
+                               grid,
+                               gravitational_acceleration,
+      architecture::AbstractArchitecture = CPU(),
+                                   clock = Clock{eltype(grid)}(0, 0, 1),
+                               advection = UpwindBiasedFifthOrder(),
+                                coriolis = nothing,
+                     forcing::NamedTuple = NamedTuple(),
+                                 closure = nothing,
+                              bathymetry = nothing,
+                                 tracers = (),
+                           diffusivities = nothing,
+         boundary_conditions::NamedTuple = NamedTuple(),
+                     timestepper::Symbol = :RungeKutta3)
+
+Construct a shallow water `Oceananigans.jl` model on `grid` with `gravitational_acceleration` constant.
+
+Keyword arguments
+=================
+
+    - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
+    - `gravitational_acceleration`: (required) The gravitational accelaration constant.
+    - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
+    - `clock`: The `clock` for the model
+    - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
+    - `coriolis`: Parameters for the background rotation rate of the model.
+    - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
+    - `bathymetry`: The bottom bathymetry.
+    - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
+                 preallocated `CenterField`s.
+    - `diffusivities`: 
+    - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
+    - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2`,
+                     `:RungeKutta3`.
+"""
 function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
@@ -66,20 +102,20 @@ function ShallowWaterModel(;
                  forcing::NamedTuple = NamedTuple(),
                              closure = nothing,
                           bathymetry = nothing,
-                            solution = nothing,
                              tracers = (),
                        diffusivities = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
                  timestepper::Symbol = :RungeKutta3)
 
-    grid.Nz == 1 || throw(ArgumentError("ShallowWaterModel must be constructed with Nz=1!"))
-
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
-    Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, advection)
-    grid = with_halo((Hx, Hy, Hz), grid)
+    @assert topology(grid, 3) === Flat "ShallowWaterModel requires `topology(grid, 3) === Flat`. Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` when constructing `grid`."
 
-    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, nothing)
+    Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, 0, topology(grid), advection, closure)
+    grid = with_halo((Hx, Hy, 0), grid)
+
+    model_field_names = (:uh, :vh, :h, tracers...)
+    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, model_field_names)
 
     solution = ShallowWaterSolutionFields(architecture, grid, boundary_conditions)
     tracers  = TracerFields(tracers, architecture, grid, boundary_conditions)

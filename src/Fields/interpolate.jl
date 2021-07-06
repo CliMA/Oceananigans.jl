@@ -81,4 +81,3 @@ Note that this is a lower-level `interpolate` method defined for use in CPU/GPU 
 
     return _interpolate(field, ξ, η, ζ, i+1, j+1, k+1)
 end
-

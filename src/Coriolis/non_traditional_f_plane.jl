@@ -23,8 +23,8 @@ are perpendicular and parallel to the ocean surface in a domain in which `x, y, 
 correspond to the directions east, north, and up.
 
 If `fz` and `fy` are not specified, they are calculated from `rotation_rate` and `latitude`
-according to the relations `fz = 2*rotation_rate*sind(latitude)` and
-`fy = 2*rotation_rate*cosd(latitude)`, respectively. By default, `rotation_rate`
+according to the relations `fz = 2 * rotation_rate * sind(latitude)` and
+`fy = 2 * rotation_rate * cosd(latitude)`, respectively. By default, `rotation_rate`
 is assumed to be Earth's.
 """
 function NonTraditionalFPlane(FT=Float64; fz=nothing, fy=nothing, rotation_rate=Ω_Earth, latitude=nothing)

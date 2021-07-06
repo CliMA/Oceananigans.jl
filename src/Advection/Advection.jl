@@ -26,18 +26,19 @@ export
 using Oceananigans.Grids
 using Oceananigans.Operators
 
-import Oceananigans.Utils: required_halo_size
+import Oceananigans.Grids: required_halo_size
 
-abstract type AbstractAdvectionScheme end
-abstract type AbstractCenteredAdvectionScheme <: AbstractAdvectionScheme end
-abstract type AbstractUpwindBiasedAdvectionScheme <: AbstractAdvectionScheme end
+abstract type AbstractAdvectionScheme{Buffer} end
+abstract type AbstractCenteredAdvectionScheme{Buffer} <: AbstractAdvectionScheme{Buffer} end
+abstract type AbstractUpwindBiasedAdvectionScheme{Buffer} <: AbstractAdvectionScheme{Buffer} end
 
-required_halo_size(scheme::AbstractAdvectionScheme) = boundary_buffer(scheme) + 1
+required_halo_size(scheme::AbstractAdvectionScheme{Buffer}) where Buffer = Buffer + 1
 
 include("topologically_conditional_interpolation.jl")
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
+include("flat_advective_fluxes.jl")
 
 include("centered_second_order.jl")
 include("upwind_biased_third_order.jl")

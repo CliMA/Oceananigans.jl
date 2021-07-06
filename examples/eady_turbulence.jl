@@ -75,8 +75,8 @@
 # the flux is negative (downwards) when the velocity at the bottom boundary is positive, and
 # positive (upwards) with the velocity at the bottom boundary is negative.
 # This drag term is "quadratic" because the rate at which momentum is removed is proportional
-# to ``\bm{u}_h |\bm{u}_h|``, where ``\bm{u}_h = u \bm{\hat{x}} + v \bm{\hat{y}}`` is
-# the horizontal velocity.
+# to ``\boldsymbol{u} |\boldsymbol{u}|``, where ``\boldsymbol{u} = u \boldsymbol{\hat{x}} + 
+# v \boldsymbol{\hat{y}}`` is the horizontal velocity.
 #
 # The ``x``-component of the quadratic bottom drag is thus
 #
@@ -95,7 +95,7 @@
 #
 # ### Vertical and horizontal viscosity and diffusivity
 #
-# Vertical and horizontal viscosties and diffusivities are required
+# Vertical and horizontal viscosities and diffusivities are required
 # to stabilize the Eady problem and can be idealized as modeling the effect of
 # turbulent mixing below the grid scale. For both tracers and velocities we use
 # a Laplacian vertical diffusivity ``κ_z ∂_z^2 c`` and a horizontal
@@ -164,8 +164,8 @@ cᴰ = 1e-4 # quadratic drag coefficient
 @inline drag_u(x, y, t, u, v, cᴰ) = - cᴰ * u * sqrt(u^2 + v^2)
 @inline drag_v(x, y, t, u, v, cᴰ) = - cᴰ * v * sqrt(u^2 + v^2)
 
-drag_bc_u = BoundaryCondition(Flux, drag_u, field_dependencies=(:u, :v), parameters=cᴰ)
-drag_bc_v = BoundaryCondition(Flux, drag_v, field_dependencies=(:u, :v), parameters=cᴰ)
+drag_bc_u = FluxBoundaryCondition(drag_u, field_dependencies=(:u, :v), parameters=cᴰ)
+drag_bc_v = FluxBoundaryCondition(drag_v, field_dependencies=(:u, :v), parameters=cᴰ)
 
 u_bcs = UVelocityBoundaryConditions(grid, bottom = drag_bc_u)
 v_bcs = VVelocityBoundaryConditions(grid, bottom = drag_bc_v)
@@ -249,7 +249,7 @@ nothing # hide
 ## background velocity.
 Ū = basic_state_parameters.α * grid.Lz
 
-max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z, 0.2/coriolis.f)
+max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z, 1/basic_state_parameters.N)
 
 wizard = TimeStepWizard(cfl=0.85, Δt=max_Δt, max_change=1.1, max_Δt=max_Δt)
 

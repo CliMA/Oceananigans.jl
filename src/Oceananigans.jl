@@ -1,7 +1,7 @@
 module Oceananigans
 
-if VERSION < v"1.5"
-    error("This version of Oceananigans.jl requires Julia v1.5 or newer.")
+if VERSION < v"1.6"
+    error("This version of Oceananigans.jl requires Julia v1.6 or newer.")
 end
 
 export
@@ -15,6 +15,7 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RegularLatitudeLongitudeGrid,
+    ConformalCubedSphereFaceGrid,
     xnodes, ynodes, znodes, nodes,
 
     # Advection schemes
@@ -22,8 +23,7 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    Flux, Value, Gradient, NormalFlow,
-    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
     CoordinateBoundaryConditions, FieldBoundaryConditions,
     UVelocityBoundaryConditions, VVelocityBoundaryConditions, WVelocityBoundaryConditions,
     TracerBoundaryConditions, PressureBoundaryConditions,
@@ -31,7 +31,7 @@ export
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     AveragedField, ComputedField, KernelComputedField, BackgroundField,
-    interior, interiorparent, set!, compute!,
+    interior, set!, compute!,
 
     # Forcing functions
     Forcing, Relaxation, LinearTarget, GaussianMask,
@@ -39,9 +39,10 @@ export
     # Coriolis forces
     FPlane, BetaPlane, NonTraditionalFPlane, NonTraditionalBetaPlane,
 
-    # Buoyancy and equations of state
-    BuoyancyTracer, SeawaterBuoyancy,
+    # BuoyancyModels and equations of state
+    Buoyancy, BuoyancyTracer, SeawaterBuoyancy,
     LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
+    BuoyancyField,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
     UniformStokesDrift,
@@ -50,12 +51,22 @@ export
     IsotropicDiffusivity, AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
     ConstantSmagorinsky, AnisotropicMinimumDissipation,
+    HorizontallyCurvilinearAnisotropicDiffusivity,
+    ConvectiveAdjustmentVerticalDiffusivity,
 
     # Lagrangian particle tracking
     LagrangianParticles,
 
     # Models
-    IncompressibleModel, NonDimensionalIncompressibleModel, HydrostaticFreeSurfaceModel, fields,
+    IncompressibleModel, NonDimensionalIncompressibleModel,
+    HydrostaticFreeSurfaceModel,
+    ShallowWaterModel,
+    fields,
+
+    # Hydrostatic free surface model stuff
+    VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface,
+    HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving, VectorInvariantEnergyConserving,
+    PrescribedVelocityFields,
 
     # Time stepping
     Clock, TimeStepWizard, time_step!,
@@ -65,15 +76,21 @@ export
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics
-    NaNChecker, FieldMaximum,
+    NaNChecker, StateChecker,
     CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
     FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval,
 
+    # Output readers
+    FieldTimeSeries, FieldDataset, InMemory, OnDisk,
+
     # Abstract operations
     ∂x, ∂y, ∂z, @at,
+
+    # Cubed sphere
+    ConformalCubedSphereGrid,
 
     # Utils
     prettytime
@@ -134,37 +151,51 @@ abstract type AbstractOutputWriter end
 function run_diagnostic! end
 function write_output! end
 function location end
+function instantiated_location end
 function tupleit end
 function short_show end
 
 function fields end
+function prognostic_fields end
+function tracer_tendency_kernel_function end
 
 #####
 ##### Include all the submodules
 #####
 
+# Basics
 include("Architectures.jl")
 include("Units.jl")
 include("Grids/Grids.jl")
 include("Utils/Utils.jl")
 include("Logger.jl")
 include("Operators/Operators.jl")
-include("Advection/Advection.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
+include("Advection/Advection.jl")
+include("AbstractOperations/AbstractOperations.jl")
+include("Solvers/Solvers.jl")
+
+# Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
-include("Buoyancy/Buoyancy.jl")
+include("BuoyancyModels/BuoyancyModels.jl")
 include("StokesDrift.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
-include("Solvers/Solvers.jl")
 include("Forcings/Forcings.jl")
+
+include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("TimeSteppers/TimeSteppers.jl")
 include("Models/Models.jl")
+
+# Output and Physics, time-stepping, and models
 include("Diagnostics/Diagnostics.jl")
 include("OutputWriters/OutputWriters.jl")
+include("OutputReaders/OutputReaders.jl")
 include("Simulations/Simulations.jl")
-include("AbstractOperations/AbstractOperations.jl")
+
+# Abstractions for distributed and multi-region models
+include("CubedSpheres/CubedSpheres.jl")
 include("Distributed/Distributed.jl")
 
 #####
@@ -179,7 +210,7 @@ using .Grids
 using .BoundaryConditions
 using .Fields
 using .Coriolis
-using .Buoyancy
+using .BuoyancyModels
 using .StokesDrift
 using .TurbulenceClosures
 using .LagrangianParticleTracking
@@ -189,8 +220,10 @@ using .Models
 using .TimeSteppers
 using .Diagnostics
 using .OutputWriters
+using .OutputReaders
 using .Simulations
 using .AbstractOperations
+using .CubedSpheres
 using .Distributed
 
 function __init__()
@@ -202,7 +235,7 @@ function __init__()
         FFTW.set_num_threads(4*threads)
     end
 
-    @hascuda begin
+    if CUDA.has_cuda()
         @debug "CUDA-enabled GPU(s) detected:"
         for (gpu, dev) in enumerate(CUDA.devices())
             @debug "$dev: $(CUDA.name(dev))"

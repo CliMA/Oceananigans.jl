@@ -49,6 +49,9 @@ function validate_size(TX, TY, TZ, size)
     return inflate_tuple(TX, TY, TZ, size, default=1)
 end
 
+# Note that the default halo size is specified to be 1 in the following function.
+# This is easily changed but many of the tests will fail so this situation needs to be 
+# cleaned up.
 function validate_halo(TX, TY, TZ, ::Nothing)
     halo = Tuple(1 for i = 1:topological_tuple_length(TX, TY, TZ))
     return validate_halo(TX, TY, TZ, halo)

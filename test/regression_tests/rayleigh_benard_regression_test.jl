@@ -29,12 +29,12 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
         grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     elseif grid_type == :vertically_unstretched
         zF = range(-Lz, 0, length=Nz+1)
-        grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), zF=zF)
+        grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z_faces=zF)
     end
 
     # Force salinity as a passive tracer (βS=0)
     c★(x, z) = exp(4z) * sin(2π/Lx * x)
-    Fc(i, j, k, grid, clock, model_fields) = 1/10 * (c★(xnode(Center, i, grid), znode(Center, k, grid)) - model_fields.c[i, j, k])
+    Fc(i, j, k, grid, clock, model_fields) = 1/10 * (c★(xnode(Center(), i, grid), znode(Center(), k, grid)) - model_fields.c[i, j, k])
 
     bbcs = TracerBoundaryConditions(grid,    top = BoundaryCondition(Value, 0.0),
                                           bottom = BoundaryCondition(Value, Δb))
@@ -44,7 +44,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
                        grid = grid,
                     closure = IsotropicDiffusivity(ν=ν, κ=κ),
                     tracers = (:b, :c),
-                   buoyancy = BuoyancyTracer(),
+                   buoyancy = Buoyancy(model=BuoyancyTracer()),
         boundary_conditions = (b=bbcs,),
                     forcing = (c=Forcing(Fc, discrete_form=true),)
     )
@@ -127,11 +127,11 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
 
-    test_fields = (u = Array(interior(model.velocities.u)),
-                   v = Array(interior(model.velocities.v)),
-                   w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
-                   b = Array(interior(model.tracers.b)),
-                   c = Array(interior(model.tracers.c)))
+    test_fields =  CUDA.@allowscalar (u = Array(interior(model.velocities.u)),
+                                      v = Array(interior(model.velocities.v)),
+                                      w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
+                                      b = Array(interior(model.tracers.b)),
+                                      c = Array(interior(model.tracers.c)))
 
     correct_fields = (u = Array(interior(solution₁.u, model.grid)),
                       v = Array(interior(solution₁.v, model.grid)),
@@ -141,11 +141,13 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
 
     summarize_regression_test(test_fields, correct_fields)
 
+    CUDA.allowscalar(true)
     @test all(test_fields.u .≈ correct_fields.u)
     @test all(test_fields.v .≈ correct_fields.v)
     @test all(test_fields.w .≈ correct_fields.w)
     @test all(test_fields.b .≈ correct_fields.b)
     @test all(test_fields.c .≈ correct_fields.c)
+    CUDA.allowscalar(false)
 
     return nothing
 end

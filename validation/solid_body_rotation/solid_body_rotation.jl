@@ -37,9 +37,9 @@ using GLMakie
 # # The geostrophic flow
 #
 # ```math
-# u = U \cos ϕ
+# u = U \cos φ
 # v = 0
-# η = - g^{-1} \left (R Ω U + \frac{U^2}{2} \right ) \sin^2 ϕ
+# η = - g^{-1} \left (R Ω U + \frac{U^2}{2} \right ) \sin^2 φ
 # ```
 #
 # is a steady nonlinear flow on a sphere of radius ``R`` with gravitational
@@ -49,8 +49,8 @@ using GLMakie
 
 const U = 0.1
 
-solid_body_rotation(ϕ) = U * cosd(ϕ)
-solid_body_geostrophic_height(ϕ, R, Ω, g) = (R * Ω * U + U^2 / 2) * sind(ϕ)^2 / g
+solid_body_rotation(φ) = U * cosd(φ)
+solid_body_geostrophic_height(φ, R, Ω, g) = (R * Ω * U + U^2 / 2) * sind(φ)^2 / g
 
 # In addition to the solid body rotation solution, we paint a Gaussian tracer patch
 # on the spherical strip to visualize the rotation.
@@ -86,25 +86,25 @@ function run_solid_body_rotation(; architecture = CPU(),
     R = model.grid.radius
     Ω = model.coriolis.rotation_rate
 
-    uᵢ(λ, ϕ, z) = solid_body_rotation(ϕ)
-    ηᵢ(λ, ϕ, z) = solid_body_geostrophic_height(ϕ, R, Ω, g)
+    uᵢ(λ, φ, z) = solid_body_rotation(φ)
+    ηᵢ(λ, φ, z) = solid_body_geostrophic_height(φ, R, Ω, g)
 
     # Tracer patch for visualization
-    Gaussian(λ, ϕ, L) = exp(-(λ^2 + ϕ^2) / 2L^2)
+    Gaussian(λ, φ, L) = exp(-(λ^2 + φ^2) / 2L^2)
 
     # Tracer patch parameters
     L = 10 # degree
-    ϕ₀ = 5 # degrees
+    φ₀ = 5 # degrees
 
-    cᵢ(λ, ϕ, z) = Gaussian(λ, ϕ - ϕ₀, L)
+    cᵢ(λ, φ, z) = Gaussian(λ, φ - φ₀, L)
 
     set!(model, u=uᵢ, η=ηᵢ, c=cᵢ)
 
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
     # Time-scale for gravity wave propagation across the smallest grid cell
-    wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.ϕᵃᶜᵃ)) * deg2rad(grid.Δλ),
-                                      grid.radius * deg2rad(grid.Δϕ)) / gravity_wave_speed
+    wave_propagation_time_scale = min(grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(grid.Δλ),
+                                      grid.radius * deg2rad(grid.Δφ)) / gravity_wave_speed
 
     super_rotation_period = 2π * grid.radius / U
 
@@ -113,7 +113,7 @@ function run_solid_body_rotation(; architecture = CPU(),
                             stop_time = super_rotations * super_rotation_period,
                             iteration_interval = 100,
                             progress = s -> @info "Time = $(s.model.clock.time) / $(s.stop_time)")
-                                                             
+
     output_fields = merge(model.velocities, model.tracers, (η=model.free_surface.η,))
 
     output_prefix = "solid_body_rotation_Nx$(grid.Nx)"
@@ -149,26 +149,26 @@ function visualize_solid_body_rotation(filepath)
     super_rotation_period = 2π * grid.radius / U
 
     λ = xnodes(Face, grid)
-    ϕ = ynodes(Center, grid)
-    
+    φ = ynodes(Center, grid)
+
     λ = repeat(reshape(λ, Nx, 1), 1, Ny)
-    ϕ = repeat(reshape(ϕ, 1, Ny), Nx, 1)
+    φ = repeat(reshape(φ, 1, Ny), Nx, 1)
 
     λ_azimuthal = λ .+ 180  # Convert to λ ∈ [0°, 360°]
-    ϕ_azimuthal = 90 .- ϕ   # Convert to ϕ ∈ [0°, 180°] (0° at north pole)
+    φ_azimuthal = 90 .- φ   # Convert to φ ∈ [0°, 180°] (0° at north pole)
 
     iter = Node(0)
 
     plot_title = @lift @sprintf("Zonal velocity error in solid body rotation: rotations = %.3f",
                                 file["timeseries/t/" * string($iter)] / super_rotation_period)
 
-    spatial_error = @lift abs.(file["timeseries/u/" * string($iter)][2:Nx+1, 2:Ny+1, 1] .- solid_body_rotation.(ϕ)) / U
-    maximum_error = @lift maximum(abs, (file["timeseries/u/" * string($iter)][2:Nx+1, 2:Ny+1, 1] .- solid_body_rotation.(ϕ)) / U)
+    spatial_error = @lift abs.(file["timeseries/u/" * string($iter)][2:Nx+1, 2:Ny+1, 1] .- solid_body_rotation.(φ)) / U
+    maximum_error = @lift maximum(abs, (file["timeseries/u/" * string($iter)][2:Nx+1, 2:Ny+1, 1] .- solid_body_rotation.(φ)) / U)
 
     # Plot on the unit sphere to align with the spherical wireframe.
-    x = @. cosd(λ_azimuthal) * sind(ϕ_azimuthal)
-    y = @. sind(λ_azimuthal) * sind(ϕ_azimuthal)
-    z = @. cosd(ϕ_azimuthal)
+    x = @. cosd(λ_azimuthal) * sind(φ_azimuthal)
+    y = @. sind(λ_azimuthal) * sind(φ_azimuthal)
+    z = @. cosd(φ_azimuthal)
 
     fig = Figure(resolution = (1080, 1080))
 
@@ -206,7 +206,7 @@ function plot_zonal_average_solid_body_rotation(filepath)
 
     super_rotation_period = 2π * grid.radius / U
 
-    ϕ = ynodes(Center, grid)
+    φ = ynodes(Center, grid)
 
     iter = Node(0)
 
@@ -217,14 +217,14 @@ function plot_zonal_average_solid_body_rotation(filepath)
 
     fig = Figure(resolution = (1080, 1080))
 
-    ax = fig[1, 1] = Axis(fig, xlabel = "U(ϕ)", ylabel = "ϕ")
+    ax = fig[1, 1] = Axis(fig, xlabel = "U(φ)", ylabel = "φ")
 
-    theory = lines!(ax, solid_body_rotation.(ϕ), ϕ, color=:black)
-    simulation = lines!(ax, zonal_average_u, ϕ, color=:blue)
+    theory = lines!(ax, solid_body_rotation.(φ), φ, color=:black)
+    simulation = lines!(ax, zonal_average_u, φ, color=:blue)
 
     supertitle = fig[0, :] = Label(fig, plot_title, textsize=30)
 
-    leg = Legend(fig, [theory, simulation], ["U cos(ϕ)", "Simulation"], markersize = 7,
+    leg = Legend(fig, [theory, simulation], ["U cos(φ)", "Simulation"], markersize = 7,
                  halign = :right, valign = :top, bgcolor = :transparent)
 
     record(fig, "zonally_averaged_solid_body_rotation_Nx$Nx.mp4", iterations, framerate=30) do i
@@ -255,12 +255,12 @@ function analyze_solid_body_rotation(filepath)
     super_rotation_period = 2π * grid.radius / U
 
     λ = xnodes(Face, grid)
-    ϕ = ynodes(Center, grid)
-    
-    λ = repeat(reshape(λ, Nx, 1), 1, Ny)
-    ϕ = repeat(reshape(ϕ, 1, Ny), Nx, 1)
+    φ = ynodes(Center, grid)
 
-    maximum_error = [maximum(abs, (file["timeseries/u/$i"][:, :, 1] .- solid_body_rotation.(ϕ)) / U)
+    λ = repeat(reshape(λ, Nx, 1), 1, Ny)
+    φ = repeat(reshape(φ, 1, Ny), Nx, 1)
+
+    maximum_error = [maximum(abs, (file["timeseries/u/$i"][:, :, 1] .- solid_body_rotation.(φ)) / U)
                      for i in iterations]
 
     return iterations, maximum_error

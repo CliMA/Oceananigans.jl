@@ -22,13 +22,9 @@
 		        arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
 
                 grid = RegularRectilinearGrid(FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
-                model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT)
+                model = IncompressibleModel(grid=grid, architecture=arch)
 
-                # Just testing that the model was constructed with no errors/crashes.
                 @test model isa IncompressibleModel
-
-                # Test that the grid didn't get mangled
-                @test grid === model.grid
             end
         end
     end
@@ -89,9 +85,9 @@
         @info "  Testing non-dimensional model construction..."
         for arch in archs, FT in float_types
             grid = RegularRectilinearGrid(FT, size=(16, 16, 2), extent=(3, 2, 1))
-            model = NonDimensionalImcompressibleModel(architecture=arch, float_type=FT, grid=grid, Re=1, Pr=1, Ro=Inf)
+            model = NonDimensionalIncompressibleModel(architecture=arch, grid=grid, Re=1, Pr=1, Ro=Inf)
 
-            # Just testing that a NonDimensionalImcompressibleModel was constructed with no errors/crashes.
+            # Just testing that a NonDimensionalIncompressibleModel was constructed with no errors/crashes.
             @test model isa IncompressibleModel
         end
     end
@@ -103,7 +99,7 @@
             L = (2π, 3π, 5π)
 
             grid = RegularRectilinearGrid(FT, size=N, extent=L)
-            model = IncompressibleModel(architecture=arch, float_type=eltype(grid), grid=grid)
+            model = IncompressibleModel(architecture=arch, grid=grid)
 
             u, v, w = model.velocities
             T, S = model.tracers
@@ -114,7 +110,7 @@
 
             set!(model; enforce_incompressibility=false, T=T₀)
 
-            @test interior(T) ≈ T_answer
+            @test Array(interior(T)) ≈ T_answer
 
             # Test setting functions
             u₀(x, y, z) = 1 + x + y + z

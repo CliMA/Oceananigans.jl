@@ -1,3 +1,5 @@
+push!(LOAD_PATH, joinpath(@__DIR__, ".."))
+
 using BenchmarkTools
 using CUDA
 using Oceananigans
@@ -8,7 +10,7 @@ using Oceananigans.Solvers
 # Benchmark function
 
 function benchmark_fourier_tridiagonal_poisson_solver(Arch, N, topo)
-    grid = VerticallyStretchedRectilinearGrid(architecture=Arch(), topology=topo, size=(N, N, N), x=(0, 1), y=(0, 1), zF=collect(0:N))
+    grid = VerticallyStretchedRectilinearGrid(architecture=Arch(), topology=topo, size=(N, N, N), x=(0, 1), y=(0, 1), z_faces=collect(0:N))
     solver = FourierTridiagonalPoissonSolver(Arch(), grid)
 
     solve_poisson_equation!(solver) # warmup
@@ -38,7 +40,7 @@ benchmarks_pretty_table(df, title="Fourier-tridiagonal Poisson solver benchmarks
 if GPU in Architectures
     df = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df, [:Topologies, :Ns], by=(string, identity))
-    benchmarks_pretty_table(df, title="Fourier-tridiagonal Poisson solver CPU -> GPU speedup")
+    benchmarks_pretty_table(df, title="Fourier-tridiagonal Poisson solver CPU to GPU speedup")
 end
 
 for Arch in Architectures

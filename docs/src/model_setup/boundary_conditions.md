@@ -15,7 +15,9 @@ See [Numerical implementation of boundary conditions](@ref numerical_bcs) for mo
 2. [`Flux`](@ref)
 3. [`Value`](@ref) (Dirchlet)
 4. [`Gradient`](@ref) (Neumann)
-5. [`NormalFlow`](@ref)
+5. [`Open`](@ref)
+
+To construct a `Flux` boundary condition use the `FluxBoundaryCondition` constructor and so on.
 
 Notice that open boundary conditions and radiation boundary conditions can be imposed via flux or value boundary
 conditions defined by a function or array. Or alternatively, through a forcing function if more flexibility is
@@ -60,9 +62,9 @@ end
 ```
 
 Boundary conditions may be specified with constants, functions, or arrays.
-In this section we illustrate usage of the [`BoundaryCondition`](@ref) constructor.
+In this section we illustrate usage of the different [`BoundaryCondition`](@ref) constructors.
 
-##### 1. Constant `Value` (Dirchlet) boundary condition
+### 1. Constant `Value` (Dirchlet) boundary condition
 
 ```jldoctest
 julia> constant_T_bc = ValueBoundaryCondition(20.0)
@@ -71,11 +73,11 @@ BoundaryCondition: type=Value, condition=20.0
 
 A constant [`Value`](@ref) boundary condition can be used to specify constant tracer (such as temperature),
 or a constant _tangential_ velocity component at a boundary. Note that boundary conditions on the
-_normal_ velocity component must use the [`NormalFlow`](@ref) boundary condition type.
+_normal_ velocity component must use the [`Open`](@ref) boundary condition type.
 
 Finally, note that `ValueBoundaryCondition(condition)` is an alias for `BoundaryCondition(Value, condition)`.
 
-##### 2. Constant `Flux` boundary condition
+### 2. Constant `Flux` boundary condition
 
 ```jldoctest
 julia> ρ₀ = 1027;  # Reference density [kg/m³]
@@ -87,7 +89,7 @@ BoundaryCondition: type=Flux, condition=-7.789678675754625e-5
 ```
 
 A constant [`Flux`](@ref) boundary condition can be imposed on tracers and tangential velocity components
-can can be used, for example, to specify cooling, heating, evaporation, or wind stress at the ocean surface.
+that can be used, for example, to specify cooling, heating, evaporation, or wind stress at the ocean surface.
 
 !!! info "The flux convention in Oceananigans"
     `Oceananigans` uses the convention that positive fluxes produce transport in the
@@ -100,7 +102,7 @@ can can be used, for example, to specify cooling, heating, evaporation, or wind 
     Conversely, a positive flux at a _bottom_ boundary acts to increase the interior
     values of a quantity.
 
-##### 3. Spatially- and temporally-varying flux
+### 3. Spatially- and temporally-varying flux
 
 Boundary conditions may be specified by functions,
 
@@ -123,7 +125,7 @@ BoundaryCondition: type=Flux, condition=surface_flux(x, y, t) in Main at none:1
     Alternative function signatures are specified by keyword arguments to
     `BoundaryCondition`, as illustrated in subsequent examples.
 
-##### 4. Spatially- and temporally-varying flux with parameters
+### 4. Spatially- and temporally-varying flux with parameters
 
 Boundary condition functions may be 'parameterized',
 
@@ -140,7 +142,7 @@ BoundaryCondition: type=Flux, condition=wind_stress(x, y, t, p) in Main at none:
     However, relatively simple objects such as floating point numbers or `NamedTuple`s must be used
     when running on the GPU.
 
-##### 5. 'Field-dependent' boundary conditions
+### 5. 'Field-dependent' boundary conditions
 
 Boundary conditions may also depend on model fields. For example, a linear drag boundary condition
 is implemented with
@@ -153,7 +155,7 @@ julia> u_bottom_bc = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
 BoundaryCondition: type=Flux, condition=linear_drag(x, y, z, t, u) in Main at none:1
 ```
 
-##### 6. 'Field-dependent' boundary conditions with parameters
+### 6. 'Field-dependent' boundary conditions with parameters
 
 When boundary conditions depends on fields _and_ parameters, their functions take the form
 
@@ -168,7 +170,7 @@ BoundaryCondition: type=Flux, condition=quadratic_drag(x, y, z, t, u, v, drag_co
 Put differently, field dependencies follow `ξ, η, t` come first in the function signature,
 which are in turn followed by `parameters`.
 
-##### 7. Discrete-form boundary condition with parameters
+### 7. Discrete-form boundary condition with parameters
 
 Discrete field data may also be accessed directly from boundary condition functions
 using the `discrete_form`. For example:
@@ -186,7 +188,7 @@ BoundaryCondition: type=Flux, condition=filtered_drag(i, j, grid, clock, model_f
 !!! info "The 'discrete form' for boundary condition functions"
     The argument `discrete_form=true` indicates to [`BoundaryCondition`](@ref) that `filtered_drag`
     uses the 'discrete form'. Boundary condition functions that use the 'discrete form'
-    are called with the signature 
+    are called with the signature
     ```julia
     f(i, j, grid, clock, model_fields)
     ```
@@ -196,7 +198,7 @@ BoundaryCondition: type=Flux, condition=filtered_drag(i, j, grid, clock, model_f
     The signature is similar for ``x`` and ``y`` boundary conditions expect that `i, j` is replaced
     with `j, k` and `i, k` respectively.
 
-##### 8. Discrete-form boundary condition with parameters
+### 8. Discrete-form boundary condition with parameters
 
 ```jldoctest
 julia> Cd = 0.2;  # drag coefficient
@@ -214,7 +216,7 @@ BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, model_fie
     in a boundary condition function (such as `model_fields.u[i, j, 1]` in the above example).
     Using `@inbounds` will avoid a relatively expensive check that the index `i, j, 1` is 'in bounds'.
 
-##### 9. A random, spatially-varying, constant-in-time temperature flux specified by an array
+### 9. A random, spatially-varying, constant-in-time temperature flux specified by an array
 
 ```jldoctest
 julia> Nx = Ny = 16;  # Number of grid points.
@@ -222,7 +224,7 @@ julia> Nx = Ny = 16;  # Number of grid points.
 julia> Q = randn(Nx, Ny); # temperature flux
 
 julia> white_noise_T_bc = FluxBoundaryCondition(Q)
-BoundaryCondition: type=Flux, condition=16×16 Array{Float64,2}
+BoundaryCondition: type=Flux, condition=16×16 Matrix{Float64}
 ```
 
 When running on the GPU, `Q` must be converted to a `CuArray`.
@@ -239,18 +241,18 @@ julia> grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1), topolo
 julia> T_bcs = TracerBoundaryConditions(grid,    top = ValueBoundaryCondition(20),
                                               bottom = GradientBoundaryCondition(0.01))
 Oceananigans.FieldBoundaryConditions (NamedTuple{(:x, :y, :z)}), with boundary conditions
-├── x: CoordinateBoundaryConditions{BoundaryCondition{Oceananigans.BoundaryConditions.Periodic,Nothing},BoundaryCondition{Oceananigans.BoundaryConditions.Periodic,Nothing}}
-├── y: CoordinateBoundaryConditions{BoundaryCondition{Oceananigans.BoundaryConditions.Periodic,Nothing},BoundaryCondition{Oceananigans.BoundaryConditions.Periodic,Nothing}}
-└── z: CoordinateBoundaryConditions{BoundaryCondition{Gradient,Float64},BoundaryCondition{Value,Int64}}
+├── x: CoordinateBoundaryConditions{BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing}, BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing}}
+├── y: CoordinateBoundaryConditions{BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing}, BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing}}
+└── z: CoordinateBoundaryConditions{BoundaryCondition{Gradient, Float64}, BoundaryCondition{Value, Int64}}
 ```
 
 `T_bcs` is a [`FieldBoundaryConditions`](@ref) object for temperature `T` appropriate
 for horizontally periodic grid topologies.
 The default `Periodic` boundary conditions in ``x`` and ``y`` are inferred from the `topology` of `grid`.
 
-For ``u``, ``v``, and ``w``, use the 
+For ``u``, ``v``, and ``w``, use the
 `UVelocityBoundaryConditions`
-`VVelocityBoundaryConditions`, and 
+`VVelocityBoundaryConditions`, and
 `WVelocityBoundaryConditions` constructors, respectively.
 
 ## Specifying model boundary conditions
@@ -275,19 +277,19 @@ julia> model = IncompressibleModel(grid=grid, boundary_conditions=(u=u_bcs, T=T_
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 ├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+├── closure: Nothing
+├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
 └── coriolis: Nothing
 
 julia> model.velocities.u
 Field located at (Face, Center, Center)
-├── data: OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}, size: (18, 18, 18)
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (16, 16, 16)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 └── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=Value, top=Value)
 
 julia> model.tracers.T
 Field located at (Center, Center, Center)
-├── data: OffsetArrays.OffsetArray{Float64,3,Array{Float64,3}}, size: (18, 18, 18)
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (16, 16, 16)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 └── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=Gradient, top=Value)
 ```

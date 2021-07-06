@@ -1,32 +1,19 @@
 using Oceananigans.Advection
-using Oceananigans.Buoyancy
+using Oceananigans.BuoyancyModels
 using Oceananigans.Coriolis
 using Oceananigans.Operators
 using Oceananigans.StokesDrift
-using Oceananigans.TurbulenceClosures: ∂ⱼ_2ν_Σ₁ⱼ, ∂ⱼ_2ν_Σ₂ⱼ, ∂ⱼ_2ν_Σ₃ⱼ, ∇_κ_∇c
+using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 
 """
-    u_velocity_tendency(i, j, k, grid,
-                        advection,
-                        coriolis,
-                        stokes_drift,
-                        closure,
-                        background_fields,
-                        velocities,
-                        tracers,
-                        diffusivities,
-                        forcings,
-                        hydrostatic_pressure,
-                        clock)
-
-Return the tendency for the horizontal velocity in the x-direction, or the east-west 
+Return the tendency for the horizontal velocity in the x-direction, or the east-west
 direction, ``u``, at grid point `i, j, k`.
 
 The tendency for ``u`` is called ``G_u`` and defined via
 
-    ``∂_t u = G_u - ∂_x ϕ_n``
+    ``∂_t u = G_u - ∂_x p_n``
 
-where ∂_x ϕ_n is the non-hydrostatic pressure gradient in the x-direction.
+where ∂_x p_n is the non-hydrostatic kinematic pressure gradient in the x-direction.
 
 `coriolis`, `stokes_drift`, and `closure` are types encoding information about Coriolis
 forces, surface waves, and the prescribed turbulence closure.
@@ -46,6 +33,7 @@ pressure anomaly.
                                      coriolis,
                                      stokes_drift,
                                      closure,
+                                     buoyancy,
                                      background_fields,
                                      velocities,
                                      tracers,
@@ -53,40 +41,28 @@ pressure anomaly.
                                      forcings,
                                      hydrostatic_pressure,
                                      clock)
- 
+
     return ( - div_Uu(i, j, k, grid, advection, velocities, velocities.u)
              - div_Uu(i, j, k, grid, advection, background_fields.velocities, velocities.u)
              - div_Uu(i, j, k, grid, advection, velocities, background_fields.velocities.u)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
-             - ∂xᶠᵃᵃ(i, j, k, grid, hydrostatic_pressure)
-             + ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
+             - ∂xᶠᶜᵃ(i, j, k, grid, hydrostatic_pressure)
+             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, clock, velocities, diffusivities, tracers, buoyancy)
              + x_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_uˢ(i, j, k, grid, stokes_drift, clock.time)
+             + x_dot_g_b(i, j, k, grid, buoyancy, tracers)
              + forcings.u(i, j, k, grid, clock, merge(velocities, tracers)))
 end
 
 """
-    v_velocity_tendency(i, j, k, grid,
-                        advection,
-                        coriolis,
-                        stokes_drift,
-                        closure,
-                        background_fields,
-                        velocities,
-                        tracers,
-                        diffusivities,
-                        forcings,
-                        hydrostatic_pressure,
-                        clock)
-
-Return the tendency for the horizontal velocity in the y-direction, or the north-south 
+Return the tendency for the horizontal velocity in the y-direction, or the north-south
 direction, ``v``, at grid point `i, j, k`.
 
 The tendency for ``v`` is called ``G_v`` and defined via
 
-    ``∂_t v = G_v - ∂_y ϕ_n``
+    ``∂_t v = G_v - ∂_y p_n``
 
-where ∂_y ϕ_n is the non-hydrostatic pressure gradient in the y-direction.
+where ∂_y p_n is the non-hydrostatic kinematic pressure gradient in the y-direction.
 
 `coriolis`, `stokes_drift`, and `closure` are types encoding information about Coriolis
 forces, surface waves, and the prescribed turbulence closure.
@@ -106,6 +82,7 @@ pressure anomaly.
                                      coriolis,
                                      stokes_drift,
                                      closure,
+                                     buoyancy,
                                      background_fields,
                                      velocities,
                                      tracers,
@@ -118,32 +95,21 @@ pressure anomaly.
              - div_Uv(i, j, k, grid, advection, background_fields.velocities, velocities.v)
              - div_Uv(i, j, k, grid, advection, velocities, background_fields.velocities.v)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
-             - ∂yᵃᶠᵃ(i, j, k, grid, hydrostatic_pressure)
-             + ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
+             - ∂yᶜᶠᵃ(i, j, k, grid, hydrostatic_pressure)
+             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, clock, velocities, diffusivities, tracers, buoyancy)
              + y_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_vˢ(i, j, k, grid, stokes_drift, clock.time)
+             + y_dot_g_b(i, j, k, grid, buoyancy, tracers)
              + forcings.v(i, j, k, grid, clock, merge(velocities, tracers)))
 end
 
 """
-    w_velocity_tendency(i, j, k, grid,
-                        advection,
-                        coriolis,
-                        stokes_drift, 
-                        closure,
-                        background_fields,
-                        velocities,
-                        tracers,
-                        diffusivities,
-                        forcings,
-                        clock)
-                        
 Return the tendency for the vertical velocity ``w`` at grid point `i, j, k`.
 The tendency for ``w`` is called ``G_w`` and defined via
 
-    ``∂_t w = G_w - ∂_z ϕ_n``
+    ``∂_t w = G_w - ∂_z p_n``
 
-where ∂_z ϕ_n is the non-hydrostatic pressure gradient in the z-direction.
+where ∂_z p_n is the non-hydrostatic kinematic pressure gradient in the z-direction.
 
 `coriolis`, `stokes_drift`, and `closure` are types encoding information about Coriolis
 forces, surface waves, and the prescribed turbulence closure.
@@ -160,8 +126,9 @@ velocity components, tracer fields, and precalculated diffusivities where applic
 @inline function w_velocity_tendency(i, j, k, grid,
                                      advection,
                                      coriolis,
-                                     stokes_drift, 
+                                     stokes_drift,
                                      closure,
+                                     buoyancy,
                                      background_fields,
                                      velocities,
                                      tracers,
@@ -173,33 +140,21 @@ velocity components, tracer fields, and precalculated diffusivities where applic
              - div_Uw(i, j, k, grid, advection, background_fields.velocities, velocities.w)
              - div_Uw(i, j, k, grid, advection, velocities, background_fields.velocities.w)
              - z_f_cross_U(i, j, k, grid, coriolis, velocities)
-             + ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, clock, closure, velocities, diffusivities)
+             - ∂ⱼ_τ₃ⱼ(i, j, k, grid, closure, clock, velocities, diffusivities, tracers, buoyancy)
              + z_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
              + ∂t_wˢ(i, j, k, grid, stokes_drift, clock.time)
              + forcings.w(i, j, k, grid, clock, merge(velocities, tracers)))
 end
 
 """
-    tracer_tendency(i, j, k, grid, 
-                    val_tracer_index::Val{tracer_index},
-                    advection,
-                    closure,
-                    buoyancy,
-                    background_fields,
-                    velocities,
-                    tracers,
-                    diffusivities,
-                    forcing,
-                    clock)
-
-Return the tendency for a tracer field with index `tracer_index` 
+Return the tendency for a tracer field with index `tracer_index`
 at grid point `i, j, k`.
 
 The tendency is called ``G_c`` and defined via
 
     ``∂_t c = G_c``
 
-where `c = C[tracer_index]`. 
+where `c = C[tracer_index]`.
 
 `closure` and `buoyancy` are types encoding information about the prescribed
 turbulence closure and buoyancy model.
@@ -231,6 +186,6 @@ velocity components, tracer fields, and precalculated diffusivities where applic
     return ( - div_Uc(i, j, k, grid, advection, velocities, c)
              - div_Uc(i, j, k, grid, advection, background_fields.velocities, c)
              - div_Uc(i, j, k, grid, advection, velocities, background_fields_c)
-             + ∇_κ_∇c(i, j, k, grid, clock, closure, c, val_tracer_index, diffusivities, tracers, buoyancy)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, c, val_tracer_index, clock, diffusivities, tracers, buoyancy, velocities)
              + forcing(i, j, k, grid, clock, merge(velocities, tracers)))
 end

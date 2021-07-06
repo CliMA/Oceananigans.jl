@@ -1,3 +1,5 @@
+import Oceananigans.Architectures: architecture
+
 const R_Earth = 6371.0e3    # Mean radius of the Earth [m] https://en.wikipedia.org/wiki/Earth
 
 struct RegularLatitudeLongitudeGrid{FT, TX, TY, TZ, A} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
@@ -11,12 +13,12 @@ struct RegularLatitudeLongitudeGrid{FT, TX, TY, TZ, A} <: AbstractHorizontallyCu
         Ly :: FT
         Lz :: FT
         Δλ :: FT
-        Δϕ :: FT
+        Δφ :: FT
         Δz :: FT
       λᶠᵃᵃ :: A
       λᶜᵃᵃ :: A
-      ϕᵃᶠᵃ :: A
-      ϕᵃᶜᵃ :: A
+      φᵃᶠᵃ :: A
+      φᵃᶜᵃ :: A
       zᵃᵃᶠ :: A
       zᵃᵃᶜ :: A
     radius :: FT
@@ -28,67 +30,67 @@ function RegularLatitudeLongitudeGrid(FT=Float64; size, latitude, longitude, z, 
     @assert length(z) == 2
 
     λ₁, λ₂ = longitude
-    @assert -180 <= λ₁ < λ₂ <= 180
+    @assert λ₁ < λ₂ && λ₂ - λ₁ ≤ 360
 
-    ϕ₁, ϕ₂ = latitude
-    @assert -90 <= ϕ₁ < ϕ₂ <= 90
+    φ₁, φ₂ = latitude
+    @assert -90 <= φ₁ < φ₂ <= 90
 
-    (ϕ₁ == -90 || ϕ₂ == 90) &&
+    (φ₁ == -90 || φ₂ == 90) &&
         @warn "Are you sure you want to use a latitude-longitude grid with a grid point at the pole?"
 
     z₁, z₂ = z
     @assert z₁ < z₂
 
-    TX = λ₁ == -180 && λ₂ == 180 ? Periodic : Bounded
+    Lλ = λ₂ - λ₁
+    Lφ = φ₂ - φ₁
+    Lz = z₂ - z₁
+
+    TX = Lλ == 360 ? Periodic : Bounded
     TY = Bounded
     TZ = Bounded
     topo = (TX, TY, TZ)
 
-    Nλ, Nϕ, Nz = N = validate_size(TX, TY, TZ, size)
-    Hλ, Hϕ, Hz = H = validate_halo(TX, TY, TZ, halo)
+    Nλ, Nφ, Nz = N = validate_size(TX, TY, TZ, size)
+    Hλ, Hφ, Hz = H = validate_halo(TX, TY, TZ, halo)
 
-    Lλ = λ₂ - λ₁
-    Lϕ = ϕ₂ - ϕ₁
-    Lz = z₂ - z₁
-
-            Λ₁ = (λ₁, ϕ₁, z₁)
-            L  = (Lλ, Lϕ, Lz)
-    Δλ, Δϕ, Δz = Δ = @. L / N
+            Λ₁ = (λ₁, φ₁, z₁)
+            L  = (Lλ, Lφ, Lz)
+    Δλ, Δφ, Δz = Δ = @. L / N
 
     # Calculate end points for cell faces and centers
-    λF₋, ϕF₋, zF₋ = ΛF₋ = @. Λ₁ - H * Δ
-    λF₊, ϕF₊, zF₊ = ΛF₊ = @. ΛF₋ + total_extent(topo, H, Δ, L)
+    λF₋, φF₋, zF₋ = ΛF₋ = @. Λ₁ - H * Δ
+    λF₊, φF₊, zF₊ = ΛF₊ = @. ΛF₋ + total_extent(topo, H, Δ, L)
 
-    λC₋, ϕC₋, zC₋ = ΛC₋ = @. ΛF₋ + Δ / 2
-    λC₊, ϕC₊, zC₊ = ΛC₊ = @. ΛC₋ + L + Δ * (2H - 1)
+    λC₋, φC₋, zC₋ = ΛC₋ = @. ΛF₋ + Δ / 2
+    λC₊, φC₊, zC₊ = ΛC₊ = @. ΛC₋ + L + Δ * (2H - 1)
 
-    TFλ, TFϕ, TFz = total_length.(Face, topo, N, H)
-    TCλ, TCϕ, TCz = total_length.(Center, topo, N, H)
+    TFλ, TFφ, TFz = total_length.(Face, topo, N, H)
+    TCλ, TCφ, TCz = total_length.(Center, topo, N, H)
 
     λᶠᵃᵃ = range(λF₋, λF₊, length = TFλ)
-    ϕᵃᶠᵃ = range(ϕF₋, ϕF₊, length = TFϕ)
+    φᵃᶠᵃ = range(φF₋, φF₊, length = TFφ)
     zᵃᵃᶠ = range(zF₋, zF₊, length = TFz)
 
     λᶜᵃᵃ = range(λC₋, λC₊, length = TCλ)
-    ϕᵃᶜᵃ = range(ϕC₋, ϕC₊, length = TCϕ)
+    φᵃᶜᵃ = range(φC₋, φC₊, length = TCφ)
     zᵃᵃᶜ = range(zC₋, zC₊, length = TCz)
 
     λᶠᵃᵃ = OffsetArray(λᶠᵃᵃ, -Hλ)
-    ϕᵃᶠᵃ = OffsetArray(ϕᵃᶠᵃ, -Hϕ)
+    φᵃᶠᵃ = OffsetArray(φᵃᶠᵃ, -Hφ)
     zᵃᵃᶠ = OffsetArray(zᵃᵃᶠ, -Hz)
 
     λᶜᵃᵃ = OffsetArray(λᶜᵃᵃ, -Hλ)
-    ϕᵃᶜᵃ = OffsetArray(ϕᵃᶜᵃ, -Hϕ)
+    φᵃᶜᵃ = OffsetArray(φᵃᶜᵃ, -Hφ)
     zᵃᵃᶜ = OffsetArray(zᵃᵃᶜ, -Hz)
 
-    return RegularLatitudeLongitudeGrid{FT, TX, TY, TZ, typeof(λᶠᵃᵃ)}(Nλ, Nϕ, Nz, Hλ, Hϕ, Hz, Lλ, Lϕ, Lz, Δλ, Δϕ, Δz, λᶠᵃᵃ, λᶜᵃᵃ, ϕᵃᶠᵃ, ϕᵃᶜᵃ, zᵃᵃᶠ, zᵃᵃᶜ, radius)
+    return RegularLatitudeLongitudeGrid{FT, TX, TY, TZ, typeof(λᶠᵃᵃ)}(Nλ, Nφ, Nz, Hλ, Hφ, Hz, Lλ, Lφ, Lz, Δλ, Δφ, Δz, λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ, φᵃᶜᵃ, zᵃᵃᶠ, zᵃᵃᶜ, radius)
 end
 
 function domain_string(grid::RegularLatitudeLongitudeGrid)
     λ₁, λ₂ = domain(topology(grid, 1), grid.Nx, grid.λᶠᵃᵃ)
-    ϕ₁, ϕ₂ = domain(topology(grid, 2), grid.Ny, grid.ϕᵃᶠᵃ)
+    φ₁, φ₂ = domain(topology(grid, 2), grid.Ny, grid.φᵃᶠᵃ)
     z₁, z₂ = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
-    return "longitude λ ∈ [$λ₁, $λ₂], latitude ∈ [$ϕ₁, $ϕ₂], z ∈ [$z₁, $z₂]"
+    return "longitude λ ∈ [$λ₁, $λ₂], latitude ∈ [$φ₁, $φ₂], z ∈ [$z₁, $z₂]"
 end
 
 function show(io::IO, g::RegularLatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
@@ -97,7 +99,7 @@ function show(io::IO, g::RegularLatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT
               "                 topology: ", (TX, TY, TZ), '\n',
               "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
               "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
-              "grid spacing (Δλ, Δϕ, Δz): ", (g.Δλ, g.Δϕ, g.Δz))
+              "grid spacing (Δλ, Δφ, Δz): ", (g.Δλ, g.Δφ, g.Δz))
 end
 
 #####
@@ -105,18 +107,20 @@ end
 #####
 
 # Node by node
-@inline xnode(::Type{Center}, i, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.λᶜᵃᵃ[i]
-@inline xnode(::Type{Face},   i, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.λᶠᵃᵃ[i]
+@inline xnode(::Center, i, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.λᶜᵃᵃ[i]
+@inline xnode(::Face,   i, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.λᶠᵃᵃ[i]
 
-@inline ynode(::Type{Center}, j, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.ϕᵃᶜᵃ[j]
-@inline ynode(::Type{Face},   j, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.ϕᵃᶠᵃ[j]
+@inline ynode(::Center, j, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.φᵃᶜᵃ[j]
+@inline ynode(::Face,   j, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.φᵃᶠᵃ[j]
 
-@inline znode(::Type{Center}, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶠ[k]
-@inline znode(::Type{Face},   k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶜ[k]
+@inline znode(::Center, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶠ[k]
+@inline znode(::Face,   k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶜ[k]
 
 all_x_nodes(::Type{Center}, grid::RegularLatitudeLongitudeGrid) = grid.λᶜᵃᵃ
 all_x_nodes(::Type{Face},   grid::RegularLatitudeLongitudeGrid) = grid.λᶠᵃᵃ
-all_y_nodes(::Type{Center}, grid::RegularLatitudeLongitudeGrid) = grid.ϕᵃᶜᵃ
-all_y_nodes(::Type{Face},   grid::RegularLatitudeLongitudeGrid) = grid.ϕᵃᶠᵃ
+all_y_nodes(::Type{Center}, grid::RegularLatitudeLongitudeGrid) = grid.φᵃᶜᵃ
+all_y_nodes(::Type{Face},   grid::RegularLatitudeLongitudeGrid) = grid.φᵃᶠᵃ
 all_z_nodes(::Type{Center}, grid::RegularLatitudeLongitudeGrid) = grid.zᵃᵃᶜ
 all_z_nodes(::Type{Face},   grid::RegularLatitudeLongitudeGrid) = grid.zᵃᵃᶠ
+
+architecture(::RegularLatitudeLongitudeGrid) = nothing

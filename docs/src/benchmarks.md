@@ -233,3 +233,64 @@ Platform Info:
  256×256×128 VerstappenAnisotropicMinimumDissipation [GPU, Float64]       10    289ms  0.33%  28.9ms   14.0MiB  11.6%  1.40MiB
  ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
 ```
+## Shallow Water Model
+
+This benchmark tests the performance of the shallow water model run in a doubly periodic domain (`topology = (Periodic, Periodic, Flat)`)
+on CPUs versus GPUs.  We find that we get a speed up of over 100 with `1024^2` and this almost doubles by `4096^2`.
+```
+Oceananigans v0.53.2
+Julia Version 1.5.2
+Commit 539f3ce943* (2020-09-23 23:17 UTC)
+Platform Info:
+  OS: Linux (x86_64-pc-linux-gnu)
+  CPU: Intel(R) Xeon(R) Silver 4216 CPU @ 2.10GHz
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-9.0.1 (ORCJIT, cascadelake)
+Environment:
+  EBVERSIONJULIA = 1.5.2
+  GPU: Tesla V100-SXM2-32GB
+
+                                              Shallow water model benchmarks
+┌───────────────┬─────────────┬───────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────┬─────────┐
+│ Architectures │ Float_types │    Ns │        min │     median │       mean │        max │     memory │ allocs │ samples │
+├───────────────┼─────────────┼───────┼────────────┼────────────┼────────────┼────────────┼────────────┼────────┼─────────┤
+│           CPU │     Float64 │    32 │   1.968 ms │   2.201 ms │   2.180 ms │   2.418 ms │ 304.19 KiB │   1879 │      10 │
+│           CPU │     Float64 │    64 │   3.323 ms │   3.403 ms │   3.438 ms │   3.662 ms │ 304.28 KiB │   1885 │      10 │
+│           CPU │     Float64 │   128 │   8.024 ms │   8.106 ms │   8.128 ms │   8.443 ms │ 304.28 KiB │   1885 │      10 │
+│           CPU │     Float64 │   256 │  24.693 ms │  24.877 ms │  24.975 ms │  25.452 ms │ 304.28 KiB │   1885 │      10 │
+│           CPU │     Float64 │   512 │  96.451 ms │  97.999 ms │  97.824 ms │  99.195 ms │ 305.09 KiB │   1937 │      10 │
+│           CPU │     Float64 │  1024 │ 402.754 ms │ 404.855 ms │ 404.871 ms │ 407.238 ms │ 305.09 KiB │   1937 │      10 │
+│           CPU │     Float64 │  2048 │    1.621 s │    1.625 s │    1.624 s │    1.626 s │ 305.09 KiB │   1937 │       4 │
+│           CPU │     Float64 │  4096 │    6.519 s │    6.519 s │    6.519 s │    6.519 s │ 305.09 KiB │   1937 │       1 │
+│           CPU │     Float64 │  8192 │   26.404 s │   26.404 s │   26.404 s │   26.404 s │ 305.09 KiB │   1937 │       1 │
+│           CPU │     Float64 │ 16384 │  105.359 s │  105.359 s │  105.359 s │  105.359 s │ 305.09 KiB │   1937 │       1 │
+│           GPU │     Float64 │    32 │   2.937 ms │   3.157 ms │   3.186 ms │   3.556 ms │ 637.95 KiB │   5599 │      10 │
+│           GPU │     Float64 │    64 │   3.083 ms │   3.306 ms │   3.298 ms │   3.648 ms │ 657.08 KiB │   5599 │      10 │
+│           GPU │     Float64 │   128 │   3.100 ms │   3.340 ms │   3.319 ms │   3.591 ms │ 691.95 KiB │   5599 │      10 │
+│           GPU │     Float64 │   256 │   3.170 ms │   3.398 ms │   3.463 ms │   4.453 ms │ 767.33 KiB │   5599 │      10 │
+│           GPU │     Float64 │   512 │   3.244 ms │   3.476 ms │   3.523 ms │   4.268 ms │ 912.14 KiB │   5651 │      10 │
+│           GPU │     Float64 │  1024 │   3.417 ms │   3.604 ms │   3.666 ms │   4.532 ms │   1.17 MiB │   5685 │      10 │
+│           GPU │     Float64 │  2048 │   9.201 ms │   9.246 ms │   9.243 ms │   9.317 ms │   1.73 MiB │   5775 │      10 │
+│           GPU │     Float64 │  4096 │  35.143 ms │  35.438 ms │  35.395 ms │  35.573 ms │   2.86 MiB │   5739 │      10 │
+│           GPU │     Float64 │  8192 │ 139.050 ms │ 139.118 ms │ 139.136 ms │ 139.285 ms │   5.11 MiB │   5739 │      10 │
+│           GPU │     Float64 │ 16384 │ 563.804 ms │ 563.922 ms │ 563.931 ms │ 564.081 ms │   9.61 MiB │   5761 │       9 │
+└───────────────┴─────────────┴───────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────┴─────────┘
+
+        Shallow water model CPU -> GPU speedup
+┌─────────────┬───────┬──────────┬─────────┬─────────┐
+│ Float_types │    Ns │  speedup │  memory │  allocs │
+├─────────────┼───────┼──────────┼─────────┼─────────┤
+│     Float64 │    32 │ 0.697116 │ 2.09724 │ 2.97978 │
+│     Float64 │    64 │  1.02927 │ 2.15944 │ 2.97029 │
+│     Float64 │   128 │  2.42711 │ 2.27406 │ 2.97029 │
+│     Float64 │   256 │  7.32025 │ 2.52177 │ 2.97029 │
+│     Float64 │   512 │  28.1914 │ 2.98971 │  2.9174 │
+│     Float64 │  1024 │  112.326 │ 3.93542 │ 2.93495 │
+│     Float64 │  2048 │  175.735 │ 5.81322 │ 2.98141 │
+│     Float64 │  4096 │  183.947 │ 9.58727 │ 2.96283 │
+│     Float64 │  8192 │  189.795 │  17.139 │ 2.96283 │
+│     Float64 │ 16384 │  186.833 │ 32.2437 │ 2.97419 │
+└─────────────┴───────┴──────────┴─────────┴─────────┘
+
+```

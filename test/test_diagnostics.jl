@@ -1,4 +1,7 @@
+using Oceananigans.Fields: FieldSlicer
 using Oceananigans.Diagnostics
+
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 
 function nan_checker_aborts_simulation(arch)
     grid = RegularRectilinearGrid(size=(4, 2, 1), extent=(1, 1, 1))
@@ -12,42 +15,27 @@ function nan_checker_aborts_simulation(arch)
     return nothing
 end
 
-TestModel(::GPU, FT, ν=1.0, Δx=0.5) =
+TestModel_VerticallyStrectedRectGrid(arch, FT, ν=1.0, Δx=0.5) =
     IncompressibleModel(
-          grid = RegularRectilinearGrid(FT, size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
+          grid = VerticallyStretchedRectilinearGrid(FT, architecture = arch, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), z_faces=0:Δx:3Δx,),
        closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
-  architecture = GPU(),
-    float_type = FT
+  architecture = arch
 )
 
-TestModel(::CPU, FT, ν=1.0, Δx=0.5) =
+
+TestModel_RegularRectGrid(arch, FT, ν=1.0, Δx=0.5) =
     IncompressibleModel(
-          grid = RegularRectilinearGrid(FT, size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
+          grid = RegularRectilinearGrid(FT, topology=(Periodic, Periodic, Periodic), size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
        closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
-  architecture = CPU(),
-    float_type = FT
+  architecture = arch
 )
 
 function diagnostic_windowed_spatial_average(arch, FT)
-    model = TestModel(arch, FT)
+    model = TestModel_RegularRectGrid(arch, FT)
     set!(model.velocities.u, 7)
     slicer = FieldSlicer(i=model.grid.Nx÷2:model.grid.Nx, k=1)
     u_mean = WindowedSpatialAverage(model.velocities.u; dims=(1, 2), field_slicer=slicer)
-    return u_mean(model)[1] == 7
-end
-
-function advective_cfl_diagnostic_is_correct(arch, FT)
-    model = TestModel(arch, FT)
-
-    Δt = FT(1.3e-6)
-    Δx = FT(model.grid.Δx)
-    u₀ = FT(1.2)
-    CFL_by_hand = Δt * u₀ / Δx
-
-    model.velocities.u.data.parent .= u₀
-    cfl = AdvectiveCFL(FT(Δt))
-
-    return cfl(model) ≈ CFL_by_hand
+    return CUDA.@allowscalar u_mean(model)[1] == 7
 end
 
 function diffusive_cfl_diagnostic_is_correct(arch, FT)
@@ -56,8 +44,115 @@ function diffusive_cfl_diagnostic_is_correct(arch, FT)
     ν = FT(1.2)
     CFL_by_hand = Δt * ν / Δx^2
 
-    model = TestModel(arch, FT, ν, Δx)
+    model = TestModel_RegularRectGrid(arch, FT, ν, Δx)
     cfl = DiffusiveCFL(FT(Δt))
+
+    return cfl(model) ≈ CFL_by_hand
+end
+
+function advective_cfl_diagnostic_is_correct_on_regular_grid(arch, FT)
+    model = TestModel_RegularRectGrid(arch, FT)
+
+    Δt = FT(1.3e-6)
+    Δx = FT(model.grid.Δx)
+    u₀ = FT(1.2)
+    CFL_by_hand = Δt * u₀ / Δx
+
+    set!(model, u=u₀)
+    cfl = AdvectiveCFL(FT(Δt))
+
+    return cfl(model) ≈ CFL_by_hand
+end
+
+function advective_cfl_diagnostic_is_correct_on_vertically_stretched_grid(arch, FT)
+    model = TestModel_VerticallyStrectedRectGrid(arch, FT)
+
+    Δt = FT(1.3e-6)
+    Δx = FT(model.grid.Δx)
+    u₀ = FT(1.2)
+    CFL_by_hand = Δt * u₀ / Δx
+
+    set!(model, u=u₀)
+    cfl = AdvectiveCFL(FT(Δt))
+
+    return cfl(model) ≈ CFL_by_hand
+end
+
+function accurate_advective_cfl_on_regular_grid(arch, FT)
+    model = TestModel_RegularRectGrid(arch, FT)
+
+    Δt = FT(1.7)
+
+    Δx = model.grid.Δx
+    Δy = model.grid.Δy
+    Δz = model.grid.Δz
+
+    u₀ = FT(1.2)
+    v₀ = FT(-2.5)
+    w₀ = FT(3.9)
+
+    set!(model, u=u₀, v=v₀, w=w₀)
+
+    CFL_by_hand = Δt * (abs(u₀) / Δx + abs(v₀) / Δy + abs(w₀) / Δz)
+
+    cfl = CFL(FT(Δt), Oceananigans.Diagnostics.accurate_cell_advection_timescale)
+
+    return cfl(model) ≈ CFL_by_hand
+end
+
+function accurate_advective_cfl_on_stretched_grid(arch, FT)
+    grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(4, 4, 8), x=(0, 100), y=(0, 100), z_faces=[k^2 for k in 0:8])
+    model = IncompressibleModel(grid=grid, architecture=arch)
+
+    Δt = FT(15.5)
+
+    Δx = model.grid.Δx
+    Δy = model.grid.Δy
+
+    # At k = 1, w = 0 so the CFL constraint happens at the second face (k = 2).
+    Δz_min = CUDA.@allowscalar Oceananigans.Operators.Δzᵃᵃᶠ(1, 1, 2, grid)
+
+    u₀ = FT(1.2)
+    v₀ = FT(-2.5)
+    w₀ = FT(3.9)
+
+    set!(model, u=u₀, v=v₀, w=w₀, enforce_incompressibility=false)
+
+    CFL_by_hand = Δt * (abs(u₀) / Δx + abs(v₀) / Δy + abs(w₀) / Δz_min)
+
+    cfl = CFL(FT(Δt), Oceananigans.Diagnostics.accurate_cell_advection_timescale)
+
+    return cfl(model) ≈ CFL_by_hand
+end
+
+function accurate_advective_cfl_on_lat_lon_grid(arch, FT)
+    grid = RegularLatitudeLongitudeGrid(size=(8, 8, 8), longitude=(-10, 10), latitude=(0, 45), z=(-1000, 0))
+    model = HydrostaticFreeSurfaceModel(architecture=arch, grid=grid, momentum_advection=VectorInvariant())
+
+    Δt = FT(1000)
+
+    Nx, Ny, Nz = size(grid)
+
+    # Will be the smallest at higher latitudes.
+    Δx_min = CUDA.@allowscalar Oceananigans.Operators.Δxᶠᶜᵃ(1, Ny, 1, grid)
+
+    # Will be the same at every grid point.
+    Δy_min = CUDA.@allowscalar Oceananigans.Operators.Δyᶜᶠᵃ(1, 1, 1, grid)
+
+    Δz = model.grid.Δz
+
+    u₀ = FT(1.2)
+    v₀ = FT(-2.5)
+    w₀ = FT(-0.1)
+
+    # Avoid recomputation of w
+    set!(model.velocities.u, u₀)
+    set!(model.velocities.v, v₀)
+    set!(model.velocities.w, w₀)
+
+    CFL_by_hand = Δt * (abs(u₀) / Δx_min + abs(v₀) / Δy_min + abs(w₀) / Δz)
+
+    cfl = CFL(FT(Δt), Oceananigans.Diagnostics.accurate_cell_advection_timescale)
 
     return cfl(model) ≈ CFL_by_hand
 end
@@ -66,7 +161,7 @@ get_iteration(model) = model.clock.iteration
 get_time(model) = model.clock.time
 
 function diagnostics_getindex(arch, FT)
-    model = TestModel(arch, FT)
+    model = TestModel_RegularRectGrid(arch, FT)
     simulation = Simulation(model, Δt=0, stop_iteration=0)
     nc = NaNChecker(model, schedule=IterationInterval(1), fields=model.velocities)
     simulation.diagnostics[:nc] = nc
@@ -76,7 +171,7 @@ function diagnostics_getindex(arch, FT)
 end
 
 function diagnostics_setindex(arch, FT)
-    model = TestModel(arch, FT)
+    model = TestModel_RegularRectGrid(arch, FT)
     simulation = Simulation(model, Δt=0, stop_iteration=0)
 
     nc1 = NaNChecker(model, schedule=IterationInterval(1), fields=model.velocities)
@@ -94,17 +189,29 @@ end
 
     for arch in archs
         @testset "NaN Checker [$(typeof(arch))]" begin
-            @info "  Testing NaN Checker [$(typeof(arch))]"
+            @info "  Testing NaN Checker [$(typeof(arch))]..."
             @test_throws ErrorException nan_checker_aborts_simulation(arch)
         end
     end
 
     for arch in archs
-        @testset "Miscellaneous timeseries diagnostics [$(typeof(arch))]" begin
-            @info "  Testing miscellaneous timeseries diagnostics [$(typeof(arch))]"
+        @testset "CFL [$(typeof(arch))]" begin
+            @info "  Testing CFL diagnostics [$(typeof(arch))]..."
             for FT in float_types
                 @test diffusive_cfl_diagnostic_is_correct(arch, FT)
-                @test advective_cfl_diagnostic_is_correct(arch, FT)
+                @test advective_cfl_diagnostic_is_correct_on_regular_grid(arch, FT)
+                @test advective_cfl_diagnostic_is_correct_on_vertically_stretched_grid(arch, FT)
+                @test accurate_advective_cfl_on_regular_grid(arch, FT)
+                @test accurate_advective_cfl_on_stretched_grid(arch, FT)
+                @test accurate_advective_cfl_on_lat_lon_grid(arch, FT)
+            end
+        end
+    end
+
+    for arch in archs
+        @testset "Miscellaneous timeseries diagnostics [$(typeof(arch))]" begin
+            @info "  Testing miscellaneous timeseries diagnostics [$(typeof(arch))]..."
+            for FT in float_types
                 @test diagnostic_windowed_spatial_average(arch, FT)
                 @test diagnostics_getindex(arch, FT)
                 @test diagnostics_setindex(arch, FT)

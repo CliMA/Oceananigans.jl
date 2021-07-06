@@ -5,7 +5,7 @@ advected with the flow field using forward Euler time-stepping at every model it
 
 ## Simple particles
 
-If you just need to keep of particle locations (x, y, z) then you can construct some Lagrangian particles
+If you just need to keep of particle locations ``(x, y, z)`` then you can construct some Lagrangian particles
 using the regular `LagrangianParticles` constructor
 
 ```@meta
@@ -42,8 +42,8 @@ model = IncompressibleModel(grid=grid, particles=lagrangian_particles)
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=10, Ny=10, Nz=10)
 ├── tracers: (:T, :S)
-├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
-├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}
+├── closure: Nothing
+├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
 ├── coriolis: Nothing
 └── particles: 10 Lagrangian particles with 3 properties: (:x, :y, :z)
 ```

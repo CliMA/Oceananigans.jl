@@ -10,7 +10,7 @@ correct_reduced_field_size(loc, arch, grid, dims, Tx, Ty, Tz) =
 function correct_reduced_field_value_was_set(arch, grid, loc, dims, val::Number)
     f = ReducedField(loc, arch, grid; dims=dims)
     set!(f, val)
-    CUDA.@allowscalar return interior(f) ≈ val * ones(size(f))
+    return all(interior(f) .≈ val * arch_array(arch, ones(size(f))))
 end
 
 @testset "ReducedFields" begin
@@ -41,8 +41,8 @@ end
 
     reduced_dims = (1, 2, 3, (1, 2), (2, 3), (1, 3), (1, 2, 3))
 
-    int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4), Int128(-5)]
-    uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10), UInt128(11)]
+    int_vals = Any[0, Int8(-1), Int16(2), Int32(-3), Int64(4)]
+    uint_vals = Any[6, UInt8(7), UInt16(8), UInt32(9), UInt64(10)]
     float_vals = Any[0.0, -0.0, 6e-34, 1.0f10]
     rational_vals = Any[1//11, -23//7]
     other_vals = Any[π]
@@ -61,8 +61,9 @@ end
             for dims in reduced_dims
                 reduced_field = ReducedField((Center, Center, Center), arch, grid, dims=dims)
                 sz = size(reduced_field)
-                A = rand(FT, sz...) |> array_type(arch)
+                A = rand(FT, sz...)
                 set!(reduced_field, A)
+                
                 @test reduced_field[1, 1, 1] == A[1, 1, 1]
 
                 fill_halo_regions!(reduced_field, arch)
@@ -81,5 +82,4 @@ end
         end
     end
 end
-
 

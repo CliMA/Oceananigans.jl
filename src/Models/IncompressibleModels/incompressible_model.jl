@@ -5,16 +5,19 @@ using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Advection: CenteredSecondOrder
-using Oceananigans.Buoyancy: validate_buoyancy, SeawaterBuoyancy
+using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo
+using Oceananigans.Grids: inflate_halo_size, with_halo
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper
-using Oceananigans.TurbulenceClosures: ν₀, κ₀, with_tracers, DiffusivityFields, IsotropicDiffusivity
+using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
-using Oceananigans.Utils: inflate_halo_size, tupleit
+using Oceananigans.Utils: tupleit
+using Oceananigans.Grids: topology
+
+const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
                                    V, S, K, BG, P, I} <: AbstractModel{TS}
@@ -43,14 +46,13 @@ end
     IncompressibleModel(;
                    grid,
            architecture = CPU(),
-             float_type = Float64,
-                  clock = Clock{float_type}(0, 0, 1),
+                  clock = Clock{eltype(grid)}(0, 0, 1),
               advection = CenteredSecondOrder(),
-               buoyancy = SeawaterBuoyancy(float_type),
+               buoyancy = Buoyancy(SeawaterBuoyancy(eltype(grid))),
                coriolis = nothing,
            stokes_drift = nothing,
                 forcing = NamedTuple(),
-                closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
+                closure = nothing,
     boundary_conditions = NamedTuple(),
                 tracers = (:T, :S),
             timestepper = :QuasiAdamsBashforth2,
@@ -70,9 +72,8 @@ Keyword arguments
 
     - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
     - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
-    - `float_type`: `Float32` or `Float64`. The floating point type used for `model` data.
     - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
-    - `buoyancy`: The buoyancy model. See `Oceananigans.Buoyancy`.
+    - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
     - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
     - `coriolis`: Parameters for the background rotation rate of the model.
     - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
@@ -82,27 +83,25 @@ Keyword arguments
     - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
                      `:RungeKutta3`.
 """
-function IncompressibleModel(;
-                   grid,
-           architecture::AbstractArchitecture = CPU(),
-             float_type = Float64,
-                  clock = Clock{float_type}(0, 0, 1),
-              advection = CenteredSecondOrder(),
-               buoyancy = SeawaterBuoyancy(float_type),
-               coriolis = nothing,
-          stokes_drift = nothing,
-                forcing::NamedTuple = NamedTuple(),
-                closure = IsotropicDiffusivity(float_type, ν=ν₀, κ=κ₀),
-    boundary_conditions::NamedTuple = NamedTuple(),
-                tracers = (:T, :S),
-            timestepper = :QuasiAdamsBashforth2,
-      background_fields::NamedTuple = NamedTuple(),
-              particles::Union{Nothing,LagrangianParticles} = nothing,
-             velocities = nothing,
-              pressures = nothing,
-          diffusivities = nothing,
-        pressure_solver = nothing,
-      immersed_boundary = nothing
+function IncompressibleModel(;    grid,
+    architecture::AbstractArchitecture = CPU(),
+                                 clock = Clock{eltype(grid)}(0, 0, 1),
+                             advection = CenteredSecondOrder(),
+                              buoyancy = Buoyancy(model=SeawaterBuoyancy(eltype(grid))),
+                              coriolis = nothing,
+                          stokes_drift = nothing,
+                   forcing::NamedTuple = NamedTuple(),
+                               closure = nothing,
+       boundary_conditions::NamedTuple = NamedTuple(),
+                               tracers = (:T, :S),
+                           timestepper = :QuasiAdamsBashforth2,
+         background_fields::NamedTuple = NamedTuple(),
+         particles::ParticlesOrNothing = nothing,
+                            velocities = nothing,
+                             pressures = nothing,
+                         diffusivities = nothing,
+                       pressure_solver = nothing,
+                     immersed_boundary = nothing
     )
 
     if architecture == GPU() && !has_cuda()
@@ -112,10 +111,12 @@ function IncompressibleModel(;
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
     validate_buoyancy(buoyancy, tracernames(tracers))
 
+    buoyancy = regularize_buoyancy(buoyancy)
+
     # Adjust halos when the advection scheme or turbulence closure requires it.
     # Note that halos are isotropic by default; however we respect user-input here
     # by adjusting each (x, y, z) halo individually.
-    Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, advection, closure)
+    Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, topology(grid), advection, closure)
     grid = with_halo((Hx, Hy, Hz), grid)
 
     # Recursively "regularize" field-dependent boundary conditions by supplying list of tracer names.
@@ -128,14 +129,17 @@ function IncompressibleModel(;
 
     boundary_conditions = merge(embedded_boundary_conditions, boundary_conditions)
 
-    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, tracernames(tracers), nothing)
+    model_field_names = (:u, :v, :w, tracernames(tracers)...)
+    boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, model_field_names)
+
+    # Ensure `closure` describes all tracers
+    closure = with_tracers(tracernames(tracers), closure)
 
     # Either check grid-correctness, or construct tuples of fields
     velocities    = VelocityFields(velocities, architecture, grid, boundary_conditions)
     tracers       = TracerFields(tracers,      architecture, grid, boundary_conditions)
     pressures     = PressureFields(pressures,  architecture, grid, boundary_conditions)
-    diffusivities = DiffusivityFields(diffusivities, architecture, grid,
-                                      tracernames(tracers), boundary_conditions, closure)
+    diffusivities = DiffusivityFields(diffusivities, architecture, grid, tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
         pressure_solver = PressureSolver(architecture, grid)
@@ -144,12 +148,12 @@ function IncompressibleModel(;
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
 
     # Instantiate timestepper if not already instantiated
-    timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers))
+    implicit_solver = implicit_diffusion_solver(time_discretization(closure), architecture, grid)
+    timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers), implicit_solver=implicit_solver)
 
-    # Regularize forcing and closure for model tracer and velocity fields.
+    # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(velocities, tracers)
     forcing = model_forcing(model_fields; forcing...)
-    closure = with_tracers(tracernames(tracers), closure)
 
     return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                forcing, closure, background_fields, particles, velocities, tracers,

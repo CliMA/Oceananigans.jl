@@ -1,4 +1,5 @@
 using Oceananigans.Diagnostics: AbstractDiagnostic
+using Oceananigans.Fields: FieldSlicer
 using Oceananigans.OutputWriters: fetch_output
 using Oceananigans.Utils: AbstractSchedule, prettytime
 
@@ -77,14 +78,20 @@ JLD2OutputWriter scheduled on TimeInterval(4 years):
 └── max filesize: Inf YiB
 ```
 """
-AveragedTimeInterval(interval; window=interval, stride=1) =
-    AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, false)
+function AveragedTimeInterval(interval; window=interval, stride=1)
+    
+    window > interval && throw(ArgumentError("Averaging window $window is greater than the output interval $interval."))
+    
+    return AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, false)
+end
 
 # Determines whether or not to call run_diagnostic
 (schedule::AveragedTimeInterval)(model) =
     schedule.collecting || model.clock.time >= schedule.previous_interval_stop_time + schedule.interval - schedule.window
 
 TimeInterval(schedule::AveragedTimeInterval) = TimeInterval(schedule.interval)
+
+Base.copy(schedule::AveragedTimeInterval) = AveragedTimeInterval(schedule.interval, window=schedule.window, stride=schedule.stride)
 
 """
     WindowedTimeAverage{OP, R, FS} <: AbstractDiagnostic

@@ -3,27 +3,23 @@
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
-"""
-    SmagorinskyLilly{FT} <: AbstractEddyViscosityClosure
-
-Parameters for the Smagorinsky-Lilly turbulence closure.
-"""
-struct SmagorinskyLilly{FT, P, K} <: AbstractEddyViscosityClosure
+struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD}
      C :: FT
     Cb :: FT
     Pr :: P
      ν :: FT
      κ :: K
 
-    function SmagorinskyLilly{FT}(C, Cb, Pr, ν, κ) where FT
+    function SmagorinskyLilly{TD, FT}(C, Cb, Pr, ν, κ) where {TD, FT}
         Pr = convert_diffusivity(FT, Pr)
          κ = convert_diffusivity(FT, κ)
-        return new{FT, typeof(Pr), typeof(κ)}(C, Cb, Pr, ν, κ)
+        return new{TD, FT, typeof(Pr), typeof(κ)}(C, Cb, Pr, ν, κ)
     end
 end
 
 """
-    SmagorinskyLilly([FT=Float64;] C=0.23, Pr=1, ν=1.05e-6, κ=1.46e-7)
+    SmagorinskyLilly([FT=Float64;] C=0.23, Pr=1, ν=0, κ=0,
+                                   time_discretization=ExplicitTimeDiscretization())
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
 Lilly (1962) and Smagorinsky (1958, 1963), which has an eddy viscosity of the form
@@ -50,6 +46,9 @@ Keyword arguments
     - `κ`  : Constant background diffusivity for tracer. Can either be a single number
              applied to all tracers, or `NamedTuple` of diffusivities corresponding to each
              tracer.
+    - `time_discretization` : Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+                              which integrates the terms involving only z-derivatives in the
+                              viscous and diffusive fluxes with an implicit time discretization.
 
 References
 ==========
@@ -61,13 +60,14 @@ Lilly, D. K. "On the numerical simulation of buoyant convection." Tellus (1962)
 Smagorinsky, J. "General circulation experiments with the primitive equations: I.
     The basic experiment." Monthly weather review (1963)
 """
-SmagorinskyLilly(FT=Float64; C=0.23, Cb=1.0, Pr=1.0, ν=ν₀, κ=κ₀) =
-    SmagorinskyLilly{FT}(C, Cb, Pr, ν, κ)
+SmagorinskyLilly(FT=Float64; C=0.23, Cb=1.0, Pr=1.0, ν=0, κ=0,
+                             time_discretization::TD=ExplicitTimeDiscretization()) where TD =
+    SmagorinskyLilly{TD, FT}(C, Cb, Pr, ν, κ)
 
-function with_tracers(tracers, closure::SmagorinskyLilly{FT}) where FT
+function with_tracers(tracers, closure::SmagorinskyLilly{TD, FT}) where {TD, FT}
     Pr = tracer_diffusivities(tracers, closure.Pr)
      κ = tracer_diffusivities(tracers, closure.κ)
-    return SmagorinskyLilly{FT}(closure.C, closure.Cb, Pr, closure.ν, κ)
+    return SmagorinskyLilly{TD, FT}(closure.C, closure.Cb, Pr, closure.ν, κ)
 end
 
 """
@@ -85,7 +85,7 @@ when ``N^2 > 0``, and 1 otherwise.
 @inline stability_factor(N²::FT, Σ²::FT, Cb::FT) where FT = min(one(FT), Cb * N² / Σ²)
 
 """
-    νₑ(ς, C, Δᶠ, Σ²)
+    νₑ_deardorff(ς, C, Δᶠ, Σ²)
 
 Return the eddy viscosity for constant Smagorinsky
 given the stability `ς`, model constant `C`,
@@ -93,57 +93,13 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
 """
 @inline νₑ_deardorff(ς, C, Δᶠ, Σ²) = ς * (C*Δᶠ)^2 * sqrt(2Σ²)
 
-@inline function νᶜᶜᶜ(i, j, k, grid, clo::SmagorinskyLilly{FT}, buoyancy, U, C) where FT
+@inline function νᶜᶜᶜ(i, j, k, grid::AbstractGrid{FT}, clo::SmagorinskyLilly, buoyancy, U, C) where FT
     Σ² = ΣᵢⱼΣᵢⱼᶜᶜᶜ(i, j, k, grid, U.u, U.v, U.w)
     N² = max(zero(FT), ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, C))
     Δᶠ = Δᶠ_ccc(i, j, k, grid, clo)
      ς = stability(N², Σ², clo.Cb) # Use unity Prandtl number.
 
     return νₑ_deardorff(ς, clo.C, Δᶠ, Σ²) + clo.ν
-end
-
-#####
-##### Abstract Smagorinsky functionality
-#####
-
-@inline function diffusive_flux_x(i, j, k, grid, clock, closure::SmagorinskyLilly,
-                                  c, ::Val{tracer_index}, diffusivities, args...) where tracer_index
-
-    @inbounds Pr = closure.Pr[tracer_index]
-    @inbounds κ = closure.κ[tracer_index]
-
-    νₑ = diffusivities.νₑ
-    νₑ = ℑxᶠᵃᵃ(i, j, k, grid, νₑ, closure)
-    κₑ = (νₑ - closure.ν) / Pr + κ
-    ∂x_c = ∂xᶠᵃᵃ(i, j, k, grid, c)
-
-    return κₑ * ∂x_c
-end
-
-@inline function diffusive_flux_y(i, j, k, grid, clock, closure::SmagorinskyLilly,
-                                  c, ::Val{tracer_index}, diffusivities, args...) where tracer_index
-
-    @inbounds Pr = closure.Pr[tracer_index]
-    @inbounds κ = closure.κ[tracer_index]
-
-    νₑ = diffusivities.νₑ
-    νₑ = ℑyᵃᶠᵃ(i, j, k, grid, νₑ, closure)
-    κₑ = (νₑ - closure.ν) / Pr + κ
-    ∂y_c = ∂yᵃᶠᵃ(i, j, k, grid, c)
-    return κₑ * ∂y_c
-end
-
-@inline function diffusive_flux_z(i, j, k, grid, clock, closure::SmagorinskyLilly,
-                                  c, ::Val{tracer_index}, diffusivities, args...) where tracer_index
-
-    @inbounds Pr = closure.Pr[tracer_index]
-    @inbounds κ = closure.κ[tracer_index]
-
-    νₑ = diffusivities.νₑ
-    νₑ = ℑzᵃᵃᶠ(i, j, k, grid, νₑ, closure)
-    κₑ = (νₑ - closure.ν) / Pr + κ
-    ∂z_c = ∂zᵃᵃᶠ(i, j, k, grid, c)
-    return κₑ * ∂z_c
 end
 
 function calculate_diffusivities!(K, arch, grid, closure::SmagorinskyLilly, buoyancy, U, C)
@@ -226,3 +182,30 @@ end
 
 Base.show(io::IO, closure::SmagorinskyLilly) =
     print(io, "SmagorinskyLilly: C=$(closure.C), Cb=$(closure.Cb), Pr=$(closure.Pr), ν=$(closure.ν), κ=$(closure.κ)")
+
+#####
+##### For closures that only require an eddy viscosity νₑ field.
+#####
+
+function DiffusivityFields(arch, grid, tracer_names, bcs, closure::SmagorinskyLilly)
+    νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
+
+    νₑ = CenterField(arch, grid, νₑ_bcs)
+
+    # Use AbstractOperations to write eddy diffusivities in terms of
+    # eddy viscosity
+    κₑ_ops = []
+
+    for i = 1:length(tracer_names)
+        Pr = closure.Pr[i]
+        κ = closure.κ[i]
+        ν = closure.ν
+        κₑ_op = (νₑ - ν) / Pr + κ
+        push!(κₑ_ops, κₑ_op)
+    end
+
+    κₑ = NamedTuple{tracer_names}(Tuple(κₑ_ops))
+
+    return (νₑ=νₑ, κₑ=κₑ)
+end
+

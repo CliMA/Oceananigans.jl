@@ -7,7 +7,7 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
     field_boundary_conditions = TracerBoundaryConditions(grid; boundary_condition_kwarg...)
     bcs = NamedTuple{(field_name,)}((field_boundary_conditions,))
 
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT,
+    model = IncompressibleModel(grid=grid, architecture=arch,
                                 boundary_conditions=bcs)
 
     success = try
@@ -21,41 +21,52 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
     return success
 end
 
-function test_flux_budget(arch, FT, fldname)
-    N, κ, Lz = 16, 1, 0.7
-    grid = RegularRectilinearGrid(FT, size=(N, N, N), extent=(1, 1, Lz))
+function test_incompressible_flux_budget(arch, name, side, topo)
 
-    bottom_flux = FT(0.3)
-    flux_bc = BoundaryCondition(Flux, bottom_flux)
+    FT = Float64
+    Lx = 0.3
+    Ly = 0.4
+    Lz = 0.5
 
-    if fldname == :u
-        field_bcs = UVelocityBoundaryConditions(grid, bottom=flux_bc)
-    elseif fldname == :v
-        field_bcs = VVelocityBoundaryConditions(grid, bottom=flux_bc)
-    else
-        field_bcs = TracerBoundaryConditions(grid, bottom=flux_bc)
-    end
+    grid = RegularRectilinearGrid(FT,
+                                  size = (1, 1, 1),
+                                  x = (0, Lx),
+                                  y = (0, Ly),
+                                  z = (0, Lz),
+                                  topology = topo)
 
-    model_bcs = NamedTuple{(fldname,)}((field_bcs,))
+    flux = FT(π)
+    direction = side ∈ (:west, :south, :bottom) ? 1 : -1
+    bc_kwarg = Dict(side => BoundaryCondition(Flux, flux * direction))
 
-    closure = IsotropicDiffusivity(FT, ν=κ, κ=κ)
-    model = IncompressibleModel(grid=grid, closure=closure, architecture=arch, tracers=(:T, :S),
-                                float_type=FT, buoyancy=nothing, boundary_conditions=model_bcs)
+    FieldBoundaryConditions = name === :u ? UVelocityBoundaryConditions :
+                              name === :v ? VVelocityBoundaryConditions :
+                              name === :w ? WVelocityBoundaryConditions : TracerBoundaryConditions
 
-    field = get_model_field(fldname, model)
-    @. field.data = 0
+    field_bcs = FieldBoundaryConditions(grid; bc_kwarg...)
 
-    τκ = Lz^2 / κ   # Diffusion time-scale
-    Δt = 1e-6 * τκ  # Time step much less than diffusion time-scale
-    Nt = 10         # Number of time steps
+    model_bcs = NamedTuple{(name,)}((field_bcs,))
 
-    for n in 1:Nt
-        time_step!(model, Δt, euler= n==1)
-    end
+    model = IncompressibleModel(grid=grid, buoyancy=nothing, boundary_conditions=model_bcs,
+                                closure=nothing, architecture=arch, tracers=:c)
+                                
+    is_velocity_field = name ∈ (:u, :v, :w)
+    field = is_velocity_field ? getproperty(model.velocities, name) : getproperty(model.tracers, name)
+    set!(field, 0)
 
-    # budget: Lz*∂<ϕ>/∂t = -Δflux = -top_flux/Lz (left) + bottom_flux/Lz (right)
-    # therefore <ϕ> = bottom_flux * t / Lz
-    return mean(interior(field)) ≈ bottom_flux * model.clock.time / Lz
+    simulation = Simulation(model, Δt = 1.0, stop_iteration = 1)
+    run!(simulation)
+
+    mean_ϕ = CUDA.@allowscalar field[1, 1, 1]
+
+    L = side ∈ (:west, :east) ? Lx :
+        side ∈ (:south, :north) ? Ly : Lz
+
+    # budget: L * ∂<ϕ>/∂t = -Δflux = -flux / L (left) + flux / L (right)
+    # therefore <ϕ> = flux * t / L
+    #
+    # Note \approx, because velocity budgets are off by machine precision (due to pressure solve?)
+    return mean_ϕ ≈ flux * model.clock.time / L
 end
 
 function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
@@ -71,7 +82,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
     model = IncompressibleModel(
-        grid=grid, architecture=arch, float_type=FT, tracers=:b, buoyancy=BuoyancyTracer(),
+        grid=grid, architecture=arch, tracers=:b, buoyancy=BuoyancyTracer(),
         closure=AnisotropicMinimumDissipation(), boundary_conditions=model_bcs
     )
 
@@ -144,13 +155,13 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         v_boundary_conditions = VVelocityBoundaryConditions(grid;
                                                             bottom = simple_function_bc(Value),
                                                             top    = simple_function_bc(Value),
-                                                            north  = simple_function_bc(NormalFlow),
-                                                            south  = simple_function_bc(NormalFlow))
+                                                            north  = simple_function_bc(Open),
+                                                            south  = simple_function_bc(Open))
 
 
         w_boundary_conditions = VVelocityBoundaryConditions(grid;
-                                                            bottom = simple_function_bc(NormalFlow),
-                                                            top    = simple_function_bc(NormalFlow),
+                                                            bottom = simple_function_bc(Open),
+                                                            top    = simple_function_bc(Open),
                                                             north  = simple_function_bc(Value),
                                                             south  = simple_function_bc(Value))
 
@@ -167,7 +178,6 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
         model = IncompressibleModel(architecture = arch,
                                     grid = grid,
-                                    float_type = FT,
                                     boundary_conditions = boundary_conditions)
 
         @test location(model.velocities.u.boundary_conditions.bottom.condition) == (Face, Center, Nothing)
@@ -204,7 +214,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                 @test test_boundary_condition(arch, FT, topo, :top, :T, boundary_condition)
             end
 
-            for boundary_condition in test_boundary_conditions(NormalFlow, FT, array_type(arch))
+            for boundary_condition in test_boundary_conditions(Open, FT, array_type(arch))
                  arch isa CPU && @test test_boundary_condition(arch, FT, topo, :east, :u, boundary_condition)
 
                 @test test_boundary_condition(arch, FT, topo, :south, :v, boundary_condition)
@@ -214,10 +224,25 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
     end
 
     @testset "Budgets with Flux boundary conditions" begin
-        for arch in archs, FT in float_types
-            @info "  Testing budgets with Flux boundary conditions on u, v, T [$(typeof(arch)), $FT]..."
-            for field_name in (:u, :v, :T)
-                @test test_flux_budget(arch, FT, field_name)
+        for arch in archs
+            @info "  Testing budgets with Flux boundary conditions [$(typeof(arch))]..."
+
+            topo = (Periodic, Bounded, Bounded)
+            for name in (:u, :c), side in (:north, :south, :top, :bottom)
+                @info "    Testing budgets with Flux boundary conditions [$(typeof(arch)), $topo, $name, $side]..."
+                @test test_incompressible_flux_budget(arch, name, side, topo)
+            end
+
+            topo = (Bounded, Periodic, Bounded)
+            for name in (:v, :c), side in (:east, :west, :top, :bottom)
+                @info "    Testing budgets with Flux boundary conditions [$(typeof(arch)), $topo, $name, $side]..."
+                @test test_incompressible_flux_budget(arch, name, side, topo)
+            end
+
+            topo = (Bounded, Bounded, Periodic)
+            for name in (:w, :c), side in (:east, :west, :north, :south)
+                @info "    Testing budgets with Flux boundary conditions [$(typeof(arch)), $topo, $name, $side]..."
+                @test test_incompressible_flux_budget(arch, name, side, topo)
             end
         end
     end

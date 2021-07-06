@@ -2,10 +2,21 @@ import Oceananigans: short_show
 using Oceananigans.Grids: domain_string
 using Oceananigans.Fields: show_location
 
-for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Derivative")
+for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Derivative", "KernelFunctionOperation")
     op = eval(Symbol(op_string))
     @eval begin
         operation_name(::$op) = $op_string
+    end
+end
+
+operation_name(op::GridMetricOperation) = string(op.metric)
+
+function show_interp(op)
+    op_str = string(op)
+    if op_str[1:8] == "identity"
+        return "identity"
+    else
+        return op_str
     end
 end
 
@@ -31,7 +42,7 @@ get_tree_padding(depth, nesting) = "    "^(depth-nesting) * "│   "^nesting
 function tree_show(unary::UnaryOperation{X, Y, Z}, depth, nesting)  where {X, Y, Z}
     padding = get_tree_padding(depth, nesting)
 
-    return string(unary.op, " at ", show_location(X, Y, Z), " via ", unary.▶, '\n',
+    return string(unary.op, " at ", show_location(X, Y, Z), " via ", show_interp(unary.▶), '\n',
                   padding, "└── ", tree_show(unary.arg, depth+1, nesting))
 end
 
@@ -39,7 +50,7 @@ end
 function tree_show(binary::BinaryOperation{X, Y, Z}, depth, nesting) where {X, Y, Z}
     padding = get_tree_padding(depth, nesting)
 
-    return string(binary.op, " at ", show_location(X, Y, Z), " via ", binary.▶op, '\n',
+    return string(binary.op, " at ", show_location(X, Y, Z), '\n',
                   padding, "├── ", tree_show(binary.a, depth+1, nesting+1), '\n',
                   padding, "└── ", tree_show(binary.b, depth+1, nesting))
 end
@@ -59,6 +70,6 @@ end
 function tree_show(deriv::Derivative{X, Y, Z}, depth, nesting)  where {X, Y, Z}
     padding = get_tree_padding(depth, nesting)
 
-    return string(deriv.∂, " at ", show_location(X, Y, Z), " via ", deriv.▶, '\n',
+    return string(deriv.∂, " at ", show_location(X, Y, Z), " via ", show_interp(deriv.▶), '\n',
                   padding, "└── ", tree_show(deriv.arg, depth+1, nesting))
 end

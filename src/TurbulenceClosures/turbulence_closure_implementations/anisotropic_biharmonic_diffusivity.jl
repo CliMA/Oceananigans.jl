@@ -1,11 +1,11 @@
-import Oceananigans.Utils: required_halo_size
+import Oceananigans.Grids: required_halo_size
 
 """
     AnisotropicBiharmonicDiffusivity{FT, KH, KZ}
 
 Parameters for anisotropic biharmonic diffusivity models.
 """
-struct AnisotropicBiharmonicDiffusivity{FT, KX, KY, KZ} <: AbstractTensorDiffusivity
+struct AnisotropicBiharmonicDiffusivity{FT, KX, KY, KZ} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
     νx :: FT
     νy :: FT
     νz :: FT
@@ -15,7 +15,7 @@ struct AnisotropicBiharmonicDiffusivity{FT, KX, KY, KZ} <: AbstractTensorDiffusi
 end
 
 """
-    AnisotropicBiharmonicDiffusivity(FT=Float64; νx=0, νy=0, νz=0, νh=nothing, κx=0, κy=0, κz=0, κh=nothing)
+    AnisotropicBiharmonicDiffusivity([FT=Float64;] νx=0, νy=0, νz=0, κx=0, κy=0, κz=0, νh=nothing, κh=nothing)
 
 Returns parameters for a fourth-order, anisotropic biharmonic diffusivity closure with
 constant x-, y, and z-direction biharmonic viscosities `νx`, `νy`, and `νz`,
@@ -50,7 +50,7 @@ function AnisotropicBiharmonicDiffusivity(FT=Float64; νx=0, νy=0, νz=0, κx=0
     return AnisotropicBiharmonicDiffusivity(FT(νx), FT(νy), FT(νz), κx, κy, κz)
 end
 
-required_halo_size(::AnisotropicBiharmonicDiffusivity) = 2
+required_halo_size(closure::AnisotropicBiharmonicDiffusivity) = 2
                                             
 function with_tracers(tracers, closure::AnisotropicBiharmonicDiffusivity)
     κx = tracer_diffusivities(tracers, closure.κx)
@@ -61,33 +61,33 @@ end
 
 calculate_diffusivities!(K, arch, grid, closure::AnisotropicBiharmonicDiffusivity, args...) = nothing
 
-@inline ∂ⱼ_2ν_Σ₁ⱼ(i, j, k, grid, clock, closure::AnisotropicBiharmonicDiffusivity, U, args...) = (
-    - closure.νx * ∂⁴xᶠᵃᵃ(i, j, k, grid, U.u)
-    - closure.νy * ∂⁴yᵃᶜᵃ(i, j, k, grid, U.u)
-    - closure.νz * ∂⁴zᵃᵃᶜ(i, j, k, grid, U.u)
+@inline ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, clock, U, args...) = (
+      closure.νx * ∂⁴xᶠᵃᵃ(i, j, k, grid, U.u)
+    + closure.νy * ∂⁴yᵃᶜᵃ(i, j, k, grid, U.u)
+    + closure.νz * ∂⁴zᵃᵃᶜ(i, j, k, grid, U.u)
     )
 
-@inline ∂ⱼ_2ν_Σ₂ⱼ(i, j, k, grid, clock, closure::AnisotropicBiharmonicDiffusivity, U, args...) = (
-    - closure.νx * ∂⁴xᶜᵃᵃ(i, j, k, grid, U.v)
-    - closure.νy * ∂⁴yᵃᶠᵃ(i, j, k, grid, U.v)
-    - closure.νz * ∂⁴zᵃᵃᶜ(i, j, k, grid, U.v)
+@inline ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, clock, U, args...) = (
+      closure.νx * ∂⁴xᶜᵃᵃ(i, j, k, grid, U.v)
+    + closure.νy * ∂⁴yᵃᶠᵃ(i, j, k, grid, U.v)
+    + closure.νz * ∂⁴zᵃᵃᶜ(i, j, k, grid, U.v)
     )
 
-@inline ∂ⱼ_2ν_Σ₃ⱼ(i, j, k, grid, clock, closure::AnisotropicBiharmonicDiffusivity, U, args...) = (
-    - closure.νx * ∂⁴xᶜᵃᵃ(i, j, k, grid, U.w)
-    - closure.νy * ∂⁴yᵃᶜᵃ(i, j, k, grid, U.w)
-    - closure.νz * ∂⁴zᵃᵃᶠ(i, j, k, grid, U.w)
+@inline ∂ⱼ_τ₃ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, clock, U, args...) = (
+      closure.νx * ∂⁴xᶜᵃᵃ(i, j, k, grid, U.w)
+    + closure.νy * ∂⁴yᵃᶜᵃ(i, j, k, grid, U.w)
+    + closure.νz * ∂⁴zᵃᵃᶠ(i, j, k, grid, U.w)
     )
 
-@inline function ∇_κ_∇c(i, j, k, grid, clock, closure::AnisotropicBiharmonicDiffusivity,
-                        c, ::Val{tracer_index}, args...) where tracer_index
+@inline function ∇_dot_qᶜ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity,
+                          c, ::Val{tracer_index}, args...) where tracer_index
 
     @inbounds κx = closure.κx[tracer_index]
     @inbounds κy = closure.κy[tracer_index]
     @inbounds κz = closure.κz[tracer_index]
 
-    return (- κx * ∂⁴xᶜᵃᵃ(i, j, k, grid, c)
-            - κy * ∂⁴yᵃᶜᵃ(i, j, k, grid, c)
-            - κz * ∂⁴zᵃᵃᶜ(i, j, k, grid, c)
+    return (  κx * ∂⁴xᶜᵃᵃ(i, j, k, grid, c)
+            + κy * ∂⁴yᵃᶜᵃ(i, j, k, grid, c)
+            + κz * ∂⁴zᵃᵃᶜ(i, j, k, grid, c)
            )
 end

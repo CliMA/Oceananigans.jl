@@ -1,8 +1,5 @@
-using MPI
-
-using Oceananigans
 using Oceananigans.Grids
-using Oceananigans.Grids: halo_size
+using Oceananigans.Fields
 
 #####
 ##### Distributed incompressible model constructor

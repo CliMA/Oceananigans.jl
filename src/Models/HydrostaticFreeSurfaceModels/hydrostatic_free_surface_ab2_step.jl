@@ -1,136 +1,119 @@
+using Oceananigans.Architectures: device_event
+using Oceananigans.Fields: location
 using Oceananigans.TimeSteppers: ab2_step_field!
+using Oceananigans.TurbulenceClosures: implicit_step!
+
+using KernelAbstractions: NoneEvent
 
 import Oceananigans.TimeSteppers: ab2_step!
 
-combine_events(::Nothing, tracer_events) = MultiEvent(tuple(tracer_events...))
-combine_events(free_surface_event, tracer_events) = MultiEvent(tuple(free_surface_event, tracer_events...))
+#####
+##### Step everything
+#####
 
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
 
-    barrier = Event(device(model.architecture))
+    explicit_velocity_step_events = ab2_step_velocities!(model.velocities, model, Δt, χ)
+    explicit_tracer_step_events = ab2_step_tracers!(model.tracers, model, Δt, χ)
+    free_surface_event = ab2_step_free_surface!(model.free_surface, model, Δt, χ,
+                                                MultiEvent(Tuple(explicit_velocity_step_events)))
 
-    step_field_kernel! = ab2_step_field!(device(model.architecture), workgroup, worksize)
+    prognostic_field_events = MultiEvent(tuple(free_surface_event,
+                                               explicit_velocity_step_events...,
+                                               explicit_tracer_step_events...))
+
+    wait(device(model.architecture), prognostic_field_events)
+
+    return nothing
+end
+
+#####
+##### Step velocities
+#####
+
+function ab2_step_velocities!(velocities, model, Δt, χ)
+
+    barrier = device_event(model)
 
     # Launch velocity update kernels
-
-    velocities_events = []
+    explicit_velocity_step_events = []
 
     for name in (:u, :v)
         Gⁿ = model.timestepper.Gⁿ[name]
         G⁻ = model.timestepper.G⁻[name]
         velocity_field = model.velocities[name]
 
-        event = step_field_kernel!(velocity_field, Δt, χ, Gⁿ, G⁻,
-                                   dependencies=Event(device(model.architecture)))
+        event = launch!(model.architecture, model.grid, :xyz,
+                        ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻,
+                        dependencies = device_event(model))
 
-        push!(velocities_events, event)
+        push!(explicit_velocity_step_events, event)
     end
 
-    # Launch tracer update kernels
+    for (i, name) in enumerate((:u, :v))
+        velocity_field = model.velocities[name]
 
-    tracer_events = []
-
-    for name in tracernames(model.tracers)
-        Gⁿ = model.timestepper.Gⁿ[name]
-        G⁻ = model.timestepper.G⁻[name]
-        tracer_field = model.tracers[name]
-
-        event = step_field_kernel!(tracer_field, Δt, χ, Gⁿ, G⁻,
-                                   dependencies=Event(device(model.architecture)))
-
-        push!(tracer_events, event)
+        # TODO: let next implicit solve depend on previous solve + explicit velocity step
+        # Need to distinguish between solver events and tendency calculation events.
+        # Note that BatchedTridiagonalSolver has a hard `wait`; this must be solved first.
+        implicit_step!(velocity_field,
+                       model.timestepper.implicit_solver,
+                       model.clock,
+                       Δt,
+                       model.closure,
+                       nothing,
+                       model.diffusivities,
+                       model.velocities,
+                       model.tracers,
+                       model.buoyancy,
+                       dependencies = explicit_velocity_step_events[i])
     end
 
-    velocities_update = MultiEvent(Tuple(velocities_events))
-
-    # Update the free surface if not using a rigid lid once the velocities have finished updating.
-    free_surface_event = ab2_step_free_surface!(model.free_surface, velocities_update, model, χ, Δt)
-
-    tracer_and_free_surface_events = combine_events(free_surface_event, tracer_events)
-
-    wait(device(model.architecture), tracer_and_free_surface_events)
-
-    return nothing
+    return explicit_velocity_step_events
 end
 
 #####
-##### Free surface time-stepping: explicit, implicit, rigid lid ?
+##### Step velocities
 #####
 
-ab2_step_free_surface!(free_surface::ExplicitFreeSurface, velocities_update, model, χ, Δt) =
-    explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
+const EmptyNamedTuple = NamedTuple{(),Tuple{}}
 
-function explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
+ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = [NoneEvent()]
 
-    event = launch!(model.architecture, model.grid, :xy,
-                    _ab2_step_free_surface!,
-                    model.free_surface.η,
-                    χ,
-                    Δt,
-                    model.timestepper.Gⁿ.η,
-                    model.timestepper.G⁻.η,
-                    dependencies=Event(device(model.architecture)))
+function ab2_step_tracers!(tracers, model, Δt, χ)
 
-    return event
-end
+    # Tracer update kernels
+    explicit_tracer_step_events = []
 
-@kernel function _ab2_step_free_surface!(η, χ::FT, Δt, Gηⁿ, Gη⁻) where FT
-    i, j = @index(Global, NTuple)
+    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
+        Gⁿ = model.timestepper.Gⁿ[tracer_name]
+        G⁻ = model.timestepper.G⁻[tracer_name]
+        tracer_field = tracers[tracer_name]
 
-    @inbounds begin
-        η[i, j, 1] += Δt * ((FT(1.5) + χ) * Gηⁿ[i, j, 1] - (FT(0.5) + χ) * Gη⁻[i, j, 1])
+        event = launch!(model.architecture, model.grid, :xyz,
+                        ab2_step_field!, tracer_field, Δt, χ, Gⁿ, G⁻,
+                        dependencies = device_event(model))
+
+        push!(explicit_tracer_step_events, event)
     end
-end
 
+    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
+        tracer_field = tracers[tracer_name]
 
-function ab2_step_free_surface!(free_surface::ImplicitFreeSurface, velocities_update, model, χ, Δt)
+        implicit_step!(tracer_field,
+                       model.timestepper.implicit_solver,
+                       model.clock,
+                       Δt,
+                       model.closure,
+                       tracer_index,
+                       model.diffusivities,
+                       model.velocities,
+                       model.tracers,
+                       model.buoyancy,
+                       dependencies = explicit_tracer_step_events[tracer_index])
+    end
 
-    ##### Implicit solver for η
-    
-    ## Need to wait for u* and v* to finish
-    wait(device(model.architecture), velocities_update)
-    fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model) )
-
-    ## Leaving this here for now. There may be some scenarios where stepping forward η and then using
-    ## the stepped forward value as a guess is helpful.
-    ## η_save = deepcopy(free_surface.η)
-    ## event = explicit_ab2_step_free_surface!(free_surface, velocities_update, model, χ, Δt)
-    ## wait(device(model.architecture), event)
-
-    ## We need vertically integrated U,V
-    event = compute_vertically_integrated_volume_flux!(free_surface, model)
-    wait(device(model.architecture), event)
-    u=free_surface.barotropic_volume_flux.u
-    v=free_surface.barotropic_volume_flux.v
-    fill_halo_regions!(u.data ,u.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
-    fill_halo_regions!(v.data ,v.boundary_conditions, model.architecture, model.grid, model.clock, fields(model) )
-
-    ## Compute volume scaled divergence of the barotropic transport and put into solver RHS
-    event = compute_volume_scaled_divergence!(free_surface, model)
-    wait(device(model.architecture), event)
-    
-    ## Include surface pressure term into RHS
-    RHS = free_surface.implicit_step_solver.solver.settings.RHS
-    RHS .= RHS/(model.free_surface.gravitational_acceleration*Δt)
-    η = free_surface.η
-    fill_halo_regions!(RHS   , η.boundary_conditions, model.architecture, model.grid)
-    fill_halo_regions!(η.data, η.boundary_conditions, model.architecture, model.grid)
-    ##  need to subtract Azᵃᵃᵃ(i, j, 1, grid)*η[i,j, 1]/(g*Δt^2)
-    event = add_previous_free_surface_contribution(free_surface, model, Δt )
-    wait(device(model.architecture), event)
-    fill_halo_regions!(RHS   , η.boundary_conditions, model.architecture, model.grid)
-    ## RHS .= RHS .+ free_surface.η.data/Δt
-
-    ## Then we can invoke solve_for_pressure! on the right type via calculate_pressure_correction!
-    x  = free_surface.implicit_step_solver.solver.settings.x
-    x .= η.data
-    fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
-    solve_poisson_equation!(free_surface.implicit_step_solver.solver, RHS, x; Δt=Δt, g=free_surface.gravitational_acceleration)
-    fill_halo_regions!(x ,η.boundary_conditions, model.architecture, model.grid)
-    free_surface.η.data .= x
-
-    ## The explicit form of this function defaults to returning an event, we do the same for now.
-    return event
+    return explicit_tracer_step_events
 end

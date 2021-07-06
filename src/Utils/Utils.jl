@@ -1,16 +1,17 @@
 module Utils
 
-export
-    launch_config, work_layout, launch!,
-    cell_advection_timescale,
-    TimeStepWizard, update_Δt!,
-    prettytime, pretty_filesize,
-    tupleit, parenttuple, datatuple, datatuples,
-    validate_intervals, time_to_run,
-    ordered_dict_show,
-    with_tracers,
-    versioninfo_with_gpu, oceananigans_versioninfo,
-    instantiate
+export launch_config, work_layout, launch!
+export cell_advection_timescale
+export TimeStepWizard, update_Δt!
+export prettytime, pretty_filesize
+export tupleit, parenttuple, datatuple, datatuples
+export validate_intervals, time_to_run
+export ordered_dict_show
+export with_tracers
+export versioninfo_with_gpu, oceananigans_versioninfo
+export instantiate
+
+import CUDA  # To avoid name conflicts
 
 import Oceananigans: short_show
 
@@ -28,7 +29,6 @@ short_show(f::Function) = string(Symbol(f))
 ##### Include utils
 #####
 
-include("automatic_halo_sizing.jl")
 include("kernel_launching.jl")
 include("cell_advection_timescale.jl")
 include("pretty_time.jl")

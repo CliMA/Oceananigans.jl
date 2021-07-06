@@ -8,12 +8,8 @@ function HorizontalVelocityFields(velocities, arch, grid)
 end
 
 function HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, arch, grid, tracer_names)
-
     u, v = HorizontalVelocityFields(velocities, arch, grid)
-    η = CenterField(arch, grid, TracerBoundaryConditions(grid))
+    η = FreeSurfaceDisplacementField(velocities, free_surface, arch, grid)
     tracers = TracerFields(tracer_names, arch, grid)
-
     return merge((u=u, v=v, η=η), tracers)
 end
-
-

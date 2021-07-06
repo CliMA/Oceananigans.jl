@@ -353,15 +353,16 @@ function test_triply_periodic_halo_communication_with_411_ranks(halo)
         interior(field) .= arch.local_rank
         fill_halo_regions!(field, arch)
 
-        @test all(east_halo(field) .== arch.connectivity.east)
-        @test all(west_halo(field) .== arch.connectivity.west)
+        @test all(east_halo(field, include_corners=false) .== arch.connectivity.east)
+        @test all(west_halo(field, include_corners=false) .== arch.connectivity.west)
 
         @test all(interior(field) .== arch.local_rank)
         @test all(north_halo(field, include_corners=false) .== arch.local_rank)
         @test all(south_halo(field, include_corners=false) .== arch.local_rank)
         @test all(top_halo(field, include_corners=false) .== arch.local_rank)
         @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
-    end
+end
+
 
     return nothing
 end
@@ -376,8 +377,8 @@ function test_triply_periodic_halo_communication_with_141_ranks(halo)
         interior(field) .= arch.local_rank
         fill_halo_regions!(field, arch)
 
-        @test all(north_halo(field) .== arch.connectivity.north)
-        @test all(south_halo(field) .== arch.connectivity.south)
+        @test all(north_halo(field, include_corners=false) .== arch.connectivity.north)
+        @test all(south_halo(field, include_corners=false) .== arch.connectivity.south)
 
         @test all(interior(field) .== arch.local_rank)
         @test all(east_halo(field, include_corners=false) .== arch.local_rank)
@@ -399,8 +400,8 @@ function test_triply_periodic_halo_communication_with_114_ranks(halo)
         interior(field) .= arch.local_rank
         fill_halo_regions!(field, arch)
 
-        @test all(top_halo(field) .== arch.connectivity.top)
-        @test all(bottom_halo(field) .== arch.connectivity.bottom)
+        @test all(top_halo(field, include_corners=false) .== arch.connectivity.top)
+        @test all(bottom_halo(field, include_corners=false) .== arch.connectivity.bottom)
 
         @test all(interior(field) .== arch.local_rank)
         @test all(east_halo(field, include_corners=false) .== arch.local_rank)
@@ -440,6 +441,7 @@ end
 #####
 
 @testset "Distributed MPI Oceananigans" begin
+
     @info "Testing distributed MPI Oceananigans..."
 
     @testset "Multi architectures rank connectivity" begin
@@ -476,7 +478,7 @@ end
         end
     end
 
-    @testset "Time stepping" begin
+    @testset "Time stepping IncompressibleModel" begin
         topo = (Periodic, Periodic, Periodic)
         full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
         arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
@@ -484,11 +486,28 @@ end
 
         time_step!(model, 1)
         @test model isa IncompressibleModel
-        @test model.clock.time == 1
+        @test model.clock.time ≈ 1
 
         simulation = Simulation(model, Δt=1, stop_iteration=2)
         run!(simulation)
         @test model isa IncompressibleModel
-        @test model.clock.time == 2
+        @test model.clock.time ≈ 2
+    end
+
+    @testset "Time stepping ShallowWaterModel" begin
+        topo = (Periodic, Periodic, Flat)
+        full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8), extent=(1, 2), halo=(3,3))
+        arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
+        model = DistributedShallowWaterModel(architecture=arch, grid=full_grid, gravitational_acceleration=1)
+
+        set!(model, h=1)
+        time_step!(model, 1)
+        @test model isa ShallowWaterModel
+        @test model.clock.time ≈ 1
+
+        simulation = Simulation(model, Δt=1, stop_iteration=2)
+        run!(simulation)
+        @test model isa ShallowWaterModel
+        @test model.clock.time ≈ 2
     end
 end

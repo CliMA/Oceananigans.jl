@@ -2,47 +2,42 @@ using Oceananigans: AbstractModel
 using Oceananigans.Grids
 using Oceananigans.Utils: tupleit
 
-struct KernelComputedField{X, Y, Z, S, A, G, K, C, F, P} <: AbstractField{X, Y, Z, A, G}
-                     data :: A
+struct KernelComputedField{X, Y, Z, A, S, D, G, T, K, B, F, P} <: AbstractDataField{X, Y, Z, A, G, T, 3}
+                     data :: D
+             architecture :: A
                      grid :: G
                    kernel :: K
-      boundary_conditions :: C
+      boundary_conditions :: B
     computed_dependencies :: F
                parameters :: P
                    status :: S
 
-    function KernelComputedField{X, Y, Z}(kernel::K, arch, grid;
-                                          boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)),
-                                          computed_dependencies = (),
-                                          parameters::P = nothing,
-                                          data = nothing,
-                                          recompute_safely = true) where {X, Y, Z, K, P}
+    function KernelComputedField{X, Y, Z}(kernel::K, arch::A, grid::G;
+                                          boundary_conditions::B = ComputedFieldBoundaryConditions(grid, (X, Y, Z)),
+                                           computed_dependencies = (),
+                                                   parameters::P = nothing,
+                                                         data::D = new_data(arch, grid, (X, Y, Z)),
+                                                recompute_safely = true) where {X, Y, Z, A, D, B, G, K, P}
 
         computed_dependencies = tupleit(computed_dependencies)
-
-        if isnothing(data)
-            data = new_data(arch, grid, (X, Y, Z))
-        end
 
         # Use FieldStatus if we want to avoid always recomputing
         status = recompute_safely ? nothing : FieldStatus(0.0)
 
-        G = typeof(grid)
-        A = typeof(data)
         S = typeof(status)
         F = typeof(computed_dependencies)
-        C = typeof(boundary_conditions)
+        T = eltype(grid)
 
-        return new{X, Y, Z, S,
-                   A, G, K, C, F, P}(data, grid, kernel, boundary_conditions, computed_dependencies, parameters)
+        return new{X, Y, Z, A, S, D, G, T, K, B, F, P}(
+            data, arch, grid, kernel, boundary_conditions, computed_dependencies, parameters, status)
     end
 end
 
 """
-    KernelComputedField(X, Y, Z, kernel, model; 
-                        boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)), 
-                        computed_dependencies = (), 
-                        parameters = nothing, 
+    KernelComputedField(X, Y, Z, kernel, model;
+                        boundary_conditions = ComputedFieldBoundaryConditions(grid, (X, Y, Z)),
+                        computed_dependencies = (),
+                        parameters = nothing,
                         data = nothing,
                         recompute_safely = true)
 
@@ -50,7 +45,7 @@ Builds a `KernelComputedField` at `X, Y, Z` computed with `kernel` and `model.ar
 
 `computed_dependencies` are an iterable of `AbstractField`s or other objects on which `compute!` is called prior to launching `kernel`.
 
-`data` is a three-dimensional `OffsetArray` of scratch space where the kernel computation is stored. 
+`data` is a three-dimensional `OffsetArray` of scratch space where the kernel computation is stored.
 
 If `data=nothing` (the default) then additional memory will be allocated to store the `data` of `KernelComputedField`.
 
@@ -62,11 +57,10 @@ Otherwise, `kernel` is launched with the function signature
 
 `kernel(data, grid, computed_dependencies..., parameters)`
 
-`recompute_safely` (default: `true`) determines whether the `KernelComputedField` is "recomputed" if embedded in the expression 
-tree of another operation. 
-    - If `recompute_safely=true`, the `KernelComputedField` is always recomputed. 
-    - If `recompute_safely=false`, the `KernelComputedField` will not be recomputed if its status is up-to-date. 
-    - If `data=nothing`, then `recompute_safely` is switched to `false`.
+`recompute_safely` (default: `true`) determines whether the `KernelComputedField` is "recomputed" if embedded in the expression
+tree of another operation.
+    - If `recompute_safely=true`, the `KernelComputedField` is always recomputed.
+    - If `recompute_safely=false`, the `KernelComputedField` will not be recomputed if its status is up-to-date.
 
 Example
 =======
@@ -76,7 +70,9 @@ using KernelAbstractions: @index, @kernel
 using Oceananigans.Fields: AveragedField, KernelComputedField, compute!
 using Oceananigans.Grids: Center, Face
 
-@inline ψ²(i, j, k, grid, ψ, Ψ) = @inbounds (ψ[i, j, k] - Ψ[i, j, k])^2
+@inline ψ′²(i, j, k, grid, ψ, Ψ) = @inbounds (ψ[i, j, k] - Ψ[i, j, k])^2
+@inline ψ′²(i, j, k, grid, ψ, Ψ::Number) = @inbounds (ψ[i, j, k] - Ψ)^2
+
 @kernel function compute_variance!(var, grid, ϕ, Φ)
     i, j, k = @index(Global, NTuple)
 
@@ -88,9 +84,9 @@ u, v, w = model.velocities
 U = AveragedField(u, dims=(1, 2))
 V = AveragedField(v, dims=(1, 2))
 
-u′² = KernelComputedField(Face, Center, Center, compute_variance!, model; computed_dependencies=(u, U,))
-v′² = KernelComputedField(Center, Face, Center, compute_variance!, model; computed_dependencies=(v, V,))
-w′² = KernelComputedField(Center, Center, Face, compute_variance!, model; computed_dependencies=(w, 0,))
+u′² = KernelComputedField(Face, Center, Center, compute_variance!, model; computed_dependencies=(u, U))
+v′² = KernelComputedField(Center, Face, Center, compute_variance!, model; computed_dependencies=(v, V))
+w′² = KernelComputedField(Center, Center, Face, compute_variance!, model; computed_dependencies=(w, 0))
 
 compute!(u′²)
 compute!(v′²)
@@ -109,18 +105,14 @@ function compute!(kcf::KernelComputedField{X, Y, Z}) where {X, Y, Z}
         compute!(dependency)
     end
 
-    arch = architecture(kcf.data)
+    arch = architecture(kcf)
 
-    workgroup, worksize = work_layout(kcf.grid,
-                                      :xyz,
-                                      location=(X, Y, Z),
-                                      include_right_boundaries=true)
+    args = isnothing(kcf.parameters) ?
+        tuple(kcf.data, kcf.grid, kcf.computed_dependencies...) :
+        tuple(kcf.data, kcf.grid, kcf.computed_dependencies..., kcf.parameters)
 
-    compute_kernel! = kcf.kernel(device(arch), workgroup, worksize)
-
-    event = isnothing(kcf.parameters) ?
-        compute_kernel!(kcf.data, kcf.grid, kcf.computed_dependencies...) :
-        compute_kernel!(kcf.data, kcf.grid, kcf.computed_dependencies..., kcf.parameters)
+    event = launch!(arch, kcf.grid, :xyz, kcf.kernel, args...;
+                    location=(X, Y, Z), include_right_boundaries=true)
 
     wait(device(arch), event)
 

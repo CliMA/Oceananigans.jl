@@ -162,21 +162,13 @@ function test_xnode_ynode_znode_are_correct(FT)
     grid = RegularRectilinearGrid(FT, size=(N, N, N), x=(0, π), y=(0, π), z=(0, π),
                                   topology=(Periodic, Periodic, Bounded))
 
-    @test xnode(Center, 2, grid) ≈ FT(π/2)
-    @test ynode(Center, 2, grid) ≈ FT(π/2)
-    @test znode(Center, 2, grid) ≈ FT(π/2)
+    @test xnode(Center(), 2, grid) ≈ FT(π/2)
+    @test ynode(Center(), 2, grid) ≈ FT(π/2)
+    @test znode(Center(), 2, grid) ≈ FT(π/2)
 
-    @test xnode(Face, 2, grid) ≈ FT(π/3)
-    @test ynode(Face, 2, grid) ≈ FT(π/3)
-    @test znode(Face, 2, grid) ≈ FT(π/3)
-
-    @test xC(2, grid) == xnode(Center, 2, grid)
-    @test yC(2, grid) == ynode(Center, 2, grid)
-    @test zC(2, grid) == znode(Center, 2, grid)
-
-    @test xF(2, grid) == xnode(Face, 2, grid)
-    @test yF(2, grid) == ynode(Face, 2, grid)
-    @test zF(2, grid) == znode(Face, 2, grid)
+    @test xnode(Face(), 2, grid) ≈ FT(π/3)
+    @test ynode(Face(), 2, grid) ≈ FT(π/3)
+    @test znode(Face(), 2, grid) ≈ FT(π/3)
 
     return nothing
 end
@@ -243,7 +235,6 @@ function flat_extent_regular_rectilinear_grid(FT; topology, size, extent)
     return grid.Lx, grid.Ly, grid.Lz
 end
 
-
 function test_flat_size_regular_rectilinear_grid(FT)
     @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
     @test flat_size_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
@@ -291,7 +282,7 @@ end
 #####
 
 function test_vertically_stretched_grid_properties_are_same_type(FT, arch)
-    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, 16), x=(0,1), y=(0,1), zF=collect(0:16))
+    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, 16), x=(0,1), y=(0,1), z_faces=collect(0:16))
 
     @test grid.Lx isa FT
     @test grid.Ly isa FT
@@ -313,7 +304,7 @@ function test_vertically_stretched_grid_properties_are_same_type(FT, arch)
 end
 
 function test_architecturally_correct_stretched_grid(FT, arch, zF)
-    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, length(zF)-1), x=(0, 1), y=(0, 1), zF=zF)
+    grid = VerticallyStretchedRectilinearGrid(FT, architecture=arch, size=(1, 1, length(zF)-1), x=(0, 1), y=(0, 1), z_faces=zF)
 
     ArrayType = array_type(arch)
     @test grid.zᵃᵃᶠ  isa OffsetArray{FT, 1, <:ArrayType}
@@ -325,7 +316,7 @@ function test_architecturally_correct_stretched_grid(FT, arch, zF)
 end
 
 function test_correct_constant_grid_spacings(FT, Nz)
-    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz))
+    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z_faces=collect(0:Nz))
 
     @test all(grid.Δzᵃᵃᶜ .== 1)
     @test all(grid.Δzᵃᵃᶠ .== 1)
@@ -334,7 +325,7 @@ function test_correct_constant_grid_spacings(FT, Nz)
 end
 
 function test_correct_quadratic_grid_spacings(FT, Nz)
-    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
+    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z_faces=collect(0:Nz).^2)
 
      zF(k) = (k-1)^2
      zC(k) = (k^2 + (k-1)^2) / 2
@@ -356,7 +347,7 @@ function test_correct_tanh_grid_spacings(FT, Nz)
     S = 3  # Stretching factor
     zF(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
 
-    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=zF)
+    grid = VerticallyStretchedRectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z_faces=zF)
 
      zC(k) = (zF(k) + zF(k+1)) / 2
     ΔzF(k) = zF(k+1) - zF(k)
@@ -378,15 +369,15 @@ end
 #####
 
 function test_basic_lat_lon_bounded_domain(FT)
-    Nλ = Nϕ = 18
-    Hλ = Hϕ = 1
+    Nλ = Nφ = 18
+    Hλ = Hφ = 1
 
-    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nϕ, 1), longitude=(-90, 90), latitude=(-45, 45), z=(0, 1), halo=(Hλ, Hϕ, 1))
+    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nφ, 1), longitude=(-90, 90), latitude=(-45, 45), z=(0, 1), halo=(Hλ, Hφ, 1))
 
     @test topology(grid) == (Bounded, Bounded, Bounded)
 
     @test grid.Nx == Nλ
-    @test grid.Ny == Nϕ
+    @test grid.Ny == Nφ
     @test grid.Nz == 1
 
     @test grid.Lx == 180
@@ -394,47 +385,47 @@ function test_basic_lat_lon_bounded_domain(FT)
     @test grid.Lz == 1
 
     @test grid.Δλ == 10
-    @test grid.Δϕ == 5
+    @test grid.Δφ == 5
     @test grid.Δz == 1
 
     @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ + 1
     @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
 
-    @test length(grid.ϕᵃᶠᵃ) == Nϕ + 2Hϕ + 1
-    @test length(grid.ϕᵃᶜᵃ) == Nϕ + 2Hϕ
+    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ
 
     @test grid.λᶠᵃᵃ[1] == -90
     @test grid.λᶠᵃᵃ[Nλ+1] == 90
 
-    @test grid.ϕᵃᶠᵃ[1] == -45
-    @test grid.ϕᵃᶠᵃ[Nϕ+1] == 45
+    @test grid.φᵃᶠᵃ[1] == -45
+    @test grid.φᵃᶠᵃ[Nφ+1] == 45
 
     @test grid.λᶠᵃᵃ[0] == -90 - grid.Δλ
     @test grid.λᶠᵃᵃ[Nλ+2] == 90 + grid.Δλ
 
-    @test grid.ϕᵃᶠᵃ[0] == -45 - grid.Δϕ
-    @test grid.ϕᵃᶠᵃ[Nϕ+2] == 45 + grid.Δϕ
+    @test grid.φᵃᶠᵃ[0] == -45 - grid.Δφ
+    @test grid.φᵃᶠᵃ[Nφ+2] == 45 + grid.Δφ
 
     @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλ)
     @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλ)
 
-    @test all(diff(grid.ϕᵃᶠᵃ.parent) .== grid.Δϕ)
-    @test all(diff(grid.ϕᵃᶜᵃ.parent) .== grid.Δϕ)
+    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφ)
+    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφ)
 
     return nothing
 end
 
 function test_basic_lat_lon_periodic_domain(FT)
     Nλ = 36
-    Nϕ = 32
-    Hλ = Hϕ = 1
+    Nφ = 32
+    Hλ = Hφ = 1
 
-    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nϕ, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1), halo=(Hλ, Hϕ, 1))
+    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nφ, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1), halo=(Hλ, Hφ, 1))
 
     @test topology(grid) == (Periodic, Bounded, Bounded)
 
     @test grid.Nx == Nλ
-    @test grid.Ny == Nϕ
+    @test grid.Ny == Nφ
     @test grid.Nz == 1
 
     @test grid.Lx == 360
@@ -442,32 +433,64 @@ function test_basic_lat_lon_periodic_domain(FT)
     @test grid.Lz == 1
 
     @test grid.Δλ == 10
-    @test grid.Δϕ == 5
+    @test grid.Δφ == 5
     @test grid.Δz == 1
 
     @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ
     @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
 
-    @test length(grid.ϕᵃᶠᵃ) == Nϕ + 2Hϕ + 1
-    @test length(grid.ϕᵃᶜᵃ) == Nϕ + 2Hϕ
+    @test length(grid.φᵃᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ
 
     @test grid.λᶠᵃᵃ[1] == -180
     @test grid.λᶠᵃᵃ[Nλ] == 180 - grid.Δλ
 
-    @test grid.ϕᵃᶠᵃ[1] == -80
-    @test grid.ϕᵃᶠᵃ[Nϕ+1] == 80
+    @test grid.φᵃᶠᵃ[1] == -80
+    @test grid.φᵃᶠᵃ[Nφ+1] == 80
 
     @test grid.λᶠᵃᵃ[0] == -180 - grid.Δλ
     @test grid.λᶠᵃᵃ[Nλ+1] == 180
 
-    @test grid.ϕᵃᶠᵃ[0] == -80 - grid.Δϕ
-    @test grid.ϕᵃᶠᵃ[Nϕ+2] == 80 + grid.Δϕ
+    @test grid.φᵃᶠᵃ[0] == -80 - grid.Δφ
+    @test grid.φᵃᶠᵃ[Nφ+2] == 80 + grid.Δφ
 
     @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλ)
     @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλ)
 
-    @test all(diff(grid.ϕᵃᶠᵃ.parent) .== grid.Δϕ)
-    @test all(diff(grid.ϕᵃᶜᵃ.parent) .== grid.Δϕ)
+    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφ)
+    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφ)
+
+    return nothing
+end
+
+#####
+##### Conformal cubed sphere face grid
+#####
+
+function test_cubed_sphere_face_array_size(FT)
+    grid = ConformalCubedSphereFaceGrid(FT, size=(10, 10, 1), z=(0, 1))
+
+    Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
+
+    @test grid.λᶜᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶠᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶜᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.λᶠᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶜᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶠᶜᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶜᶠᵃ isa OffsetArray{FT, 2, <:Array}
+    @test grid.φᶠᶠᵃ isa OffsetArray{FT, 2, <:Array}
+
+    @test size(grid.λᶜᶜᵃ) == (Nx + 2Hx,     Ny + 2Hy    )
+    @test size(grid.λᶠᶜᵃ) == (Nx + 2Hx + 1, Ny + 2Hy    )
+    @test size(grid.λᶜᶠᵃ) == (Nx + 2Hx,     Ny + 2Hy + 1)
+    @test size(grid.λᶠᶠᵃ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
+
+    @test size(grid.φᶜᶜᵃ) == (Nx + 2Hx,     Ny + 2Hy    )
+    @test size(grid.φᶠᶜᵃ) == (Nx + 2Hx + 1, Ny + 2Hy    )
+    @test size(grid.φᶜᶠᵃ) == (Nx + 2Hx,     Ny + 2Hy + 1)
+    @test size(grid.φᶠᶠᵃ) == (Nx + 2Hx + 1, Ny + 2Hy + 1)
 
     return nothing
 end
@@ -525,8 +548,20 @@ end
 
         # Testing show function
         topo = (Periodic, Periodic, Periodic)
+        
         grid = RegularRectilinearGrid(topology=topo, size=(3, 7, 9), x=(0, 1), y=(-π, π), z=(0, 2π))
-        show(grid); println();
+
+        @test try
+            CUDA.allowscalar(false)           
+            show(grid); println()
+            CUDA.allowscalar(true)
+            true
+        catch err
+            println("error in show(::RegularRectilinearGrid)")
+            println(sprint(showerror, err))
+            false
+        end
+        
         @test grid isa RegularRectilinearGrid
     end
 
@@ -557,8 +592,19 @@ end
 
             # Testing show function
             Nz = 20
-            grid = VerticallyStretchedRectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), zF=collect(0:Nz).^2)
-            show(grid); println();
+            grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(1, 1, Nz-1), x=(0, 1), y=(0, 1), z_faces=collect(0:Nz).^2)
+            
+            @test try
+            CUDA.allowscalar(false)           
+            show(grid); println()
+            CUDA.allowscalar(true)
+                true
+            catch err
+                println("error in show(::VerticallyStretchedRectilinearGrid)")
+                println(sprint(showerror, err))
+                false
+            end
+            
             @test grid isa VerticallyStretchedRectilinearGrid
         end
     end
@@ -573,7 +619,53 @@ end
 
         # Testing show function
         grid = RegularLatitudeLongitudeGrid(size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
-        show(grid); println();
+    
+        @test try
+            CUDA.allowscalar(false)           
+            show(grid); println()
+            CUDA.allowscalar(true)
+            true
+        catch err
+            println("error in show(::RegularLatitudeLongitudeGrid)")
+            println(sprint(showerror, err))
+            false
+        end
+
         @test grid isa RegularLatitudeLongitudeGrid
+    end
+
+    @testset "Conformal cubed sphere face grid" begin
+        @info "  Testing conformal cubed sphere face grid..."
+
+        for FT in float_types
+            test_cubed_sphere_face_array_size(Float64)
+        end
+
+        # Testing show function
+        grid = ConformalCubedSphereFaceGrid(size=(10, 10, 1), z=(0, 1))
+    
+        @test try
+            CUDA.allowscalar(false)           
+            show(grid); println()
+            CUDA.allowscalar(true)
+            true
+        catch err
+            println("error in show(::ConformalCubedSphereFaceGrid)")
+            println(sprint(showerror, err))
+            false
+        end
+
+        @test grid isa ConformalCubedSphereFaceGrid
+    end
+
+    @testset "Conformal cubed sphere face grid from file" begin
+        @info "  Testing conformal cubed sphere face grid construction from file..."
+
+        cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
+
+        for face in 1:6
+            grid = ConformalCubedSphereFaceGrid(cs32_filepath, face=face, Nz=1, z=(-1, 0))
+            @test grid isa ConformalCubedSphereFaceGrid
+        end
     end
 end

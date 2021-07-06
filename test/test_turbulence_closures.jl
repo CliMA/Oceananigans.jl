@@ -22,7 +22,7 @@ function anisotropic_diffusivity_convenience_kwarg(T=Float64; νh=T(0.3), κh=T(
     return closure.νx == νh && closure.νy == νh && closure.κy.T == κh && closure.κx.T == κh
 end
 
-function constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.7))
+function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3), κ=FT(0.7))
           arch = CPU()
        closure = IsotropicDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
           grid = RegularRectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
@@ -34,10 +34,10 @@ function constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.
        T, S = tracers
 
     for k in 1:4
-        interior(u)[:, 1, k] .= [0, -1, 0]
-        interior(v)[:, 1, k] .= [0, -2, 0]
-        interior(w)[:, 1, k] .= [0, -3, 0]
-        interior(T)[:, 1, k] .= [0, -1, 0]
+        interior(u)[:, 1, k] .= [0, -1/2, 0]
+        interior(v)[:, 1, k] .= [0, -2,   0]
+        interior(w)[:, 1, k] .= [0, -3,   0]
+        interior(T)[:, 1, k] .= [0, -1,   0]
     end
 
     model_fields = merge(datatuple(velocities), datatuple(tracers))
@@ -45,10 +45,12 @@ function constant_isotropic_diffusivity_fluxdiv(FT=Float64; ν=FT(0.3), κ=FT(0.
 
     U, C = datatuples(velocities, tracers)
 
-    return (   ∇_κ_∇c(2, 1, 3, grid, clock, closure, C.T, Val(1)) == 2κ &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, clock, closure, U) == 2ν &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, clock, closure, U) == 4ν &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, clock, closure, U) == 6ν )
+    @test ∇_dot_qᶜ(2, 1, 3, grid, closure, C.T, Val(1), clock, nothing) == - 2κ
+    @test ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - 2ν
+    @test ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - 4ν
+    @test ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - 6ν
+
+    return nothing
 end
 
 function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νz=FT(0.1), κz=FT(0.5))
@@ -84,10 +86,10 @@ function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), �
 
     U, C = datatuples(velocities, tracers)
 
-    return (   ∇_κ_∇c(2, 1, 3, grid, clock, closure, C.T, Val(1)) == 8κh + 10κz &&
-            ∂ⱼ_2ν_Σ₁ⱼ(2, 1, 3, grid, clock, closure, U) == 2νh + 4νz &&
-            ∂ⱼ_2ν_Σ₂ⱼ(2, 1, 3, grid, clock, closure, U) == 4νh + 6νz &&
-            ∂ⱼ_2ν_Σ₃ⱼ(2, 1, 3, grid, clock, closure, U) == 6νh + 8νz)
+    return (∇_dot_qᶜ(2, 1, 3, grid, closure, C.T, Val(1), clock, nothing) == - (8κh + 10κz) &&
+              ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - (2νh + 4νz) &&
+              ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - (4νh + 6νz) &&
+              ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - (6νh + 8νz))
 end
 
 function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
@@ -96,12 +98,11 @@ function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
           closure = with_tracers(tracernames, closure)
              grid = RegularRectilinearGrid(FT, size=(3, 3, 3), extent=(3, 3, 3))
     diffusivities = DiffusivityFields(arch, grid, tracernames, NamedTuple(), closure)
-         buoyancy = BuoyancyTracer()
+         buoyancy = Buoyancy(model=BuoyancyTracer())
        velocities = VelocityFields(arch, grid)
           tracers = TracerFields(tracernames, arch, grid)
 
-    U, C, K = datatuples(velocities, tracers, diffusivities)
-    calculate_diffusivities!(K, arch, grid, closure, buoyancy, U, C)
+    calculate_diffusivities!(diffusivities, arch, grid, closure, buoyancy, velocities, tracers)
 
     return true
 end
@@ -145,10 +146,8 @@ end
 function time_step_with_tupled_closure(FT, arch)
     closure_tuple = (AnisotropicMinimumDissipation(FT), AnisotropicDiffusivity(FT))
 
-    model = IncompressibleModel(
-        architecture=arch, float_type=FT, closure=closure_tuple,
-        grid=RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, 2, 3))
-    )
+    model = IncompressibleModel(architecture=arch, closure=closure_tuple,
+                                grid=RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, 2, 3)))
 
     time_step!(model, 1, euler=true)
     return true
@@ -184,7 +183,7 @@ end
         @info "  Testing constant isotropic diffusivity..."
         for T in float_types
             @test constant_isotropic_diffusivity_basic(T)
-            @test constant_isotropic_diffusivity_fluxdiv(T)
+            run_constant_isotropic_diffusivity_fluxdiv_tests(T)
         end
     end
 

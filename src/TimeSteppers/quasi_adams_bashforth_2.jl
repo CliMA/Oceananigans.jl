@@ -1,19 +1,16 @@
-using Oceananigans.Fields: FunctionField
+using Oceananigans.Fields: FunctionField, location
+using Oceananigans.TurbulenceClosures: implicit_step!
 
-"""
-    QuasiAdamsBashforth2TimeStepper{T, TG} <: AbstractTimeStepper
-
-Holds tendency fields and the parameter `χ` for a modified second-order
-Adams-Bashforth timestepping method.
-"""
-struct QuasiAdamsBashforth2TimeStepper{T, TG} <: AbstractTimeStepper
-     χ :: T
-    Gⁿ :: TG
-    G⁻ :: TG
+struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
+                  χ :: FT
+                 Gⁿ :: GT
+                 G⁻ :: GT
+    implicit_solver :: IT
 end
 
 """
     QuasiAdamsBashforth2TimeStepper(arch, grid, tracers, χ=0.1;
+                                    implicit_solver = nothing,
                                     Gⁿ = TendencyFields(arch, grid, tracers),
                                     G⁻ = TendencyFields(arch, grid, tracers))
 
@@ -21,11 +18,16 @@ Return an QuasiAdamsBashforth2TimeStepper object with tendency fields on `arch` 
 `grid` with AB2 parameter `χ`. The tendency fields can be specified via optional
 kwargs.
 """
-function QuasiAdamsBashforth2TimeStepper(arch, grid, tracers, χ=0.1;
+function QuasiAdamsBashforth2TimeStepper(arch, grid, tracers,
+                                         χ = 0.1;
+                                         implicit_solver::IT = nothing,
                                          Gⁿ = TendencyFields(arch, grid, tracers),
-                                         G⁻ = TendencyFields(arch, grid, tracers))
+                                         G⁻ = TendencyFields(arch, grid, tracers)) where IT
 
-    return QuasiAdamsBashforth2TimeStepper{eltype(grid), typeof(Gⁿ)}(χ, Gⁿ, G⁻)
+    FT = eltype(grid)
+    GT = typeof(Gⁿ)
+
+    return QuasiAdamsBashforth2TimeStepper{FT, GT, IT}(χ, Gⁿ, G⁻, implicit_solver)
 end
 
 #####
@@ -65,6 +67,7 @@ end
 ##### Time stepping in each step
 #####
 
+""" Generic implementation. """
 function ab2_step!(model, Δt, χ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
@@ -73,7 +76,7 @@ function ab2_step!(model, Δt, χ)
 
     step_field_kernel! = ab2_step_field!(device(model.architecture), workgroup, worksize)
 
-    model_fields = fields(model)
+    model_fields = prognostic_fields(model)
 
     events = []
 
@@ -85,6 +88,18 @@ function ab2_step!(model, Δt, χ)
                                          dependencies=Event(device(model.architecture)))
 
         push!(events, field_event)
+
+        # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
+        tracer_index = i - 3 # assumption
+
+        implicit_step!(field,
+                       model.timestepper.implicit_solver,
+                       model.clock,
+                       Δt,
+                       model.closure,
+                       tracer_index,
+                       model.diffusivities,
+                       dependencies = field_event)
     end
 
     wait(device(model.architecture), MultiEvent(Tuple(events)))
@@ -108,4 +123,5 @@ Time step via
     end
 end
 
-@kernel ab2_step_field!(ϕ::FunctionField, args...) = nothing
+@kernel ab2_step_field!(::FunctionField, args...) = nothing
+

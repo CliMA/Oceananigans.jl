@@ -45,7 +45,7 @@ grid = RegularRectilinearGrid(size=(32, 32, 48), extent=(128, 128, 96))
 # (half the distance from wave crest to wave trough), which determine the wave
 # frequency and the vertical scale of the Stokes drift profile.
 
-using Oceananigans.Buoyancy: g_Earth
+using Oceananigans.BuoyancyModels: g_Earth
 
  amplitude = 0.8 # m
 wavelength = 60 # m
@@ -95,7 +95,7 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 
 Qᵘ = -3.72e-5 # m² s⁻², surface kinematic momentum flux
 
-u_boundary_conditions = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
+u_boundary_conditions = UVelocityBoundaryConditions(grid, top = FluxBoundaryCondition(Qᵘ))
 
 # McWilliams et al. (1997) impose a linear buoyancy gradient `N²` at the bottom
 # along with a weak, destabilizing flux of buoyancy at the surface to faciliate
@@ -104,8 +104,8 @@ u_boundary_conditions = UVelocityBoundaryConditions(grid, top = BoundaryConditio
 Qᵇ = 2.307e-9 # m³ s⁻², surface buoyancy flux
 N² = 1.936e-5 # s⁻², initial and bottom buoyancy gradient
 
-b_boundary_conditions = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵇ),
-                                                       bottom = BoundaryCondition(Gradient, N²))
+b_boundary_conditions = TracerBoundaryConditions(grid, top = FluxBoundaryCondition(Qᵇ),
+                                                       bottom = GradientBoundaryCondition(N²))
 
 # !!! info "The flux convention in Oceananigans"
 #     Note that Oceananigans uses "positive upward" conventions for all fluxes. In consequence,

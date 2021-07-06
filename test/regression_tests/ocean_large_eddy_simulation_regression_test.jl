@@ -19,7 +19,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
         grid = RegularRectilinearGrid(size=(N, N, N), extent=(L, L, L))
     elseif grid_type == :vertically_unstretched
         zF = range(-L, 0, length=N+1)
-        grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(N, N, N), x=(0, L), y=(0, L), zF=zF)
+        grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(N, N, N), x=(0, L), y=(0, L), z_faces=zF)
     end
 
     # Boundary conditions
@@ -33,7 +33,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
              architecture = arch,
                      grid = grid,
                  coriolis = FPlane(f=1e-4),
-                 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4)),
+                 buoyancy = Buoyancy(model=SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4))),
                   closure = closure,
       boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)
     )
@@ -111,11 +111,11 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
 
-    test_fields = (u = Array(interior(model.velocities.u)),
-                   v = Array(interior(model.velocities.v)),
-                   w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
-                   T = Array(interior(model.tracers.T)),
-                   S = Array(interior(model.tracers.S)))
+    test_fields = CUDA.@allowscalar (u = Array(interior(model.velocities.u)),
+                                     v = Array(interior(model.velocities.v)),
+                                     w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
+                                     T = Array(interior(model.tracers.T)),
+                                     S = Array(interior(model.tracers.S)))
 
     correct_fields = (u = Array(interior(solution₁.u, model.grid)),
                       v = Array(interior(solution₁.v, model.grid)),

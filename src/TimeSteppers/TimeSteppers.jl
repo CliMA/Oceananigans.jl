@@ -9,8 +9,8 @@ export
 
 using CUDA
 using KernelAbstractions
-using Oceananigans: AbstractModel
-using Oceananigans.Architectures: @hascuda, device
+using Oceananigans: AbstractModel, prognostic_fields
+using Oceananigans.Architectures: device
 using Oceananigans.Fields: TendencyFields
 using Oceananigans.LagrangianParticleTracking: update_particle_properties!
 using Oceananigans.Utils: work_layout
@@ -38,7 +38,7 @@ function TimeStepper(name::Symbol, args...; kwargs...)
 end
 
 # Fallback
-TimeStepper(stepper::AbstractTimeStepper, args...) = stepper
+TimeStepper(stepper::AbstractTimeStepper, args...; kwargs...) = stepper
 
 function update_state! end
 function calculate_tendencies! end

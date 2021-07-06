@@ -7,7 +7,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
         grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     elseif grid_type == :vertically_unstretched
         zF = range(-Lz, 0, length=Nz+1)
-        grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), zF=zF)
+        grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z_faces=zF)
     end
 
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
@@ -22,7 +22,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     i1, i2 = round(Int, Nx/4), round(Int, 3Nx/4)
     j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
-    model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+    CUDA.@allowscalar model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
     regression_data_filepath = joinpath(dirname(@__FILE__), "data", "thermal_bubble_regression.nc")
 
@@ -51,25 +51,27 @@ function run_thermal_bubble_regression_test(arch, grid_type)
 
     ds = Dataset(regression_data_filepath, "r")
 
-    test_fields = (u = Array(interior(model.velocities.u)),
-                   v = Array(interior(model.velocities.v)),
-                   w = Array(interior(model.velocities.w)),
-                   T = Array(interior(model.tracers.T)),
-                   S = Array(interior(model.tracers.S)))
+    test_fields = CUDA.@allowscalar (u = Array(interior(model.velocities.u)),
+                                     v = Array(interior(model.velocities.v)),
+                                     w = Array(interior(model.velocities.w)),
+                                     T = Array(interior(model.tracers.T)),
+                                     S = Array(interior(model.tracers.S)))
 
-    correct_fields = (u = ds["u"][:, :, :, end],
-                      v = ds["v"][:, :, :, end],
-                      w = ds["w"][:, :, :, end],
-                      T = ds["T"][:, :, :, end],
-                      S = ds["S"][:, :, :, end])
+    correct_fields = CUDA.@allowscalar (u = ds["u"][:, :, :, end],
+                                        v = ds["v"][:, :, :, end],
+                                        w = ds["w"][:, :, :, end],
+                                        T = ds["T"][:, :, :, end],
+                                        S = ds["S"][:, :, :, end])
 
     summarize_regression_test(test_fields, correct_fields)
-
+    
+    CUDA.allowscalar(true)
     @test all(test_fields.u .≈ correct_fields.u)
     @test all(test_fields.v .≈ correct_fields.v)
     @test all(test_fields.w .≈ correct_fields.w)
     @test all(test_fields.T .≈ correct_fields.T)
     @test all(test_fields.S .≈ correct_fields.S)
-
+    CUDA.allowscalar(false)
+    
     return nothing
 end

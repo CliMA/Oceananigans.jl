@@ -21,11 +21,12 @@
 # We use a one-dimensional domain of geophysical proportions,
 
 using Oceananigans
-using Oceananigans.Units: hours, meters, kilometers
+using Oceananigans.Units
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
 
 grid = RegularRectilinearGrid(size = (128, 1, 1),
-                            x = (0, 1000kilometers), y = (0, 1), z = (-400meters, 0),
-                            topology = (Bounded, Periodic, Bounded))
+                              x = (0, 1000kilometers), y = (0, 1), z = (-400meters, 0),
+                              topology = (Bounded, Periodic, Bounded))
 
 # and Coriolis parameter appropriate for the mid-latitudes on Earth,
 
@@ -35,7 +36,9 @@ coriolis = FPlane(f=1e-4)
 #
 # We use `grid` and `coriolis` to build a simple `HydrostaticFreeSurfaceModel`,
 
-model = HydrostaticFreeSurfaceModel(grid=grid, coriolis=coriolis)
+model = HydrostaticFreeSurfaceModel(grid = grid,
+                                    coriolis = coriolis,
+                                    free_surface=ImplicitFreeSurface())
 
 # ## A geostrophic adjustment initial value problem
 #
@@ -54,13 +57,13 @@ g = model.free_surface.gravitational_acceleration
 
 η₀ = coriolis.f * U * L / g # geostrohpic free surface amplitude
 
-ηᵍ(x, y, z) = η₀ * Gaussian(x - x₀, L)
+ηᵍ(x) = η₀ * Gaussian(x - x₀, L)
 
 # We use an initial height field that's twice the geostrophic solution,
 # thus superimposing a geostrophic and ageostrophic component in the free
 # surface displacement field:
 
-ηⁱ(x, y, z) = 2 * ηᵍ(x, y, z)
+ηⁱ(x, y) = 2 * ηᵍ(x)
 
 # We set the initial condition to ``vᵍ`` and ``ηⁱ``,
 

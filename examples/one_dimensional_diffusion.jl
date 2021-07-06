@@ -35,8 +35,14 @@ using Oceananigans
 # Below, we build a regular rectilinear grid with 128 grid points in the `z`-direction,
 # where `z` spans from `z = -0.5` to `z = 0.5`,
 
-grid = RegularRectilinearGrid(size=(1, 1, 128), x=(0, 1), y=(0, 1), z=(-0.5, 0.5))
+grid = RegularRectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 
+# The default topology is `(Periodic, Periodic, Bounded)` but since we only want to solve
+# a one-dimensional problem, we assign the `x` and `y` dimensions to `Flat`.  
+# We could specify each of them to be either `Periodic` or `Bounded` but that will define
+# a halo in each of those directions, and that is numerically more costly.  
+# Note that we only specify the extent and size for the `Bounded` dimension.
+#
 # We next specify a model with an `IsotropicDiffusivity`, which models either
 # molecular or turbulent diffusion,
 

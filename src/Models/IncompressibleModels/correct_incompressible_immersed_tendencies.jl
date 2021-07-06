@@ -34,6 +34,7 @@ function correct_immersed_tendencies!(model, immersed_boundary, Δt, γⁿ, ζ�
                                             model.velocities,
                                             Δt, γⁿ, ζⁿ,
                                             dependencies=barrier)
+
     # wait for these things to happen before continuing in calculations
     wait(device(model.architecture), correct_tendencies_event)
 
@@ -43,10 +44,10 @@ end
 @kernel function _correct_immersed_tendencies!(Gⁿ, grid::AbstractGrid{FT}, immersed, G⁻, velocities, Δt, γⁿ, ζⁿ) where FT
     i, j, k = @index(Global, NTuple)
     
-    # evaluating x,y,z at cell centers to determine if boundary or not
-    x = xnode(Center, i, grid)
-    y = ynode(Center, j, grid)
-    z = znode(Center, k, grid)
+    # Evaluate x, y, z at cell centers to determine if node is immersed
+    x = xnode(Center(), i, grid)
+    y = ynode(Center(), j, grid)
+    z = znode(Center(), k, grid)
 
     @inbounds begin
         # correcting velocity tendency terms: if immersd boundary gives true then correct tendency, otherwise don't (it's a fluid node)

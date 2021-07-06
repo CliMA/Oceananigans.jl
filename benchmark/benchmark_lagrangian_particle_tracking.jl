@@ -1,3 +1,5 @@
+push!(LOAD_PATH, joinpath(@__DIR__, ".."))
+
 using BenchmarkTools
 using CUDA
 using Oceananigans
@@ -25,7 +27,7 @@ function benchmark_particle_tracking(Arch, N_particles)
     trial = @benchmark begin
         @sync_gpu time_step!($model, 1)
     end samples=10
-    
+
     return trial
 end
 
@@ -46,7 +48,7 @@ benchmarks_pretty_table(df, title="Lagrangian particle tracking benchmarks")
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df_Δ, :N_particles)
-    benchmarks_pretty_table(df_Δ, title="Lagrangian particle tracking CPU -> GPU speedup")
+    benchmarks_pretty_table(df_Δ, title="Lagrangian particle tracking CPU to GPU speedup")
 end
 
 for Arch in Architectures
@@ -55,4 +57,3 @@ for Arch in Architectures
     sort!(df_arch, :N_particles)
     benchmarks_pretty_table(df_arch, title="Lagrangian particle tracking relative performance ($Arch)")
 end
-

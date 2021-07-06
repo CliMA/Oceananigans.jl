@@ -1,27 +1,22 @@
 using Printf
 using Logging
-
 using Oceananigans
-using Oceananigans: Face, Center
-using Oceananigans.Diagnostics
-using Oceananigans.OutputWriters
-using Oceananigans.AbstractOperations
 
 Logging.global_logger(OceananigansLogger())
 
 function simulate_lid_driven_cavity(; Re, N, end_time)
     topology = (Flat, Bounded, Bounded)
-    domain = (x=(0, 1), y=(0, 1), z=(0, 1))
-    grid = RegularRectilinearGrid(topology=topology, size=(1, N, N); domain...)
+    domain = (y=(0, 1), z=(0, 1))
+    grid = RegularRectilinearGrid(topology=topology, size=(N, N); domain...)
 
     v_bcs = VVelocityBoundaryConditions(grid,
-           top = ValueBoundaryCondition(1.0),
-        bottom = ValueBoundaryCondition(0.0)
+           top = ValueBoundaryCondition(1),
+        bottom = ValueBoundaryCondition(0)
     )
 
     w_bcs = WVelocityBoundaryConditions(grid,
-        north = ValueBoundaryCondition(0.0),
-        south = ValueBoundaryCondition(0.0)
+        north = ValueBoundaryCondition(0),
+        south = ValueBoundaryCondition(0)
     )
 
     model = IncompressibleModel(
@@ -34,24 +29,14 @@ function simulate_lid_driven_cavity(; Re, N, end_time)
     )
 
     u, v, w = model.velocities
-    ζ_op = ∂y(w) - ∂z(v)
-    ζ = Field(Center, Face, Face, model.architecture, model.grid, TracerBoundaryConditions(grid))
-    ζ_computation = Computation(ζ_op, ζ)
+    ζ = ComputedField(∂y(w) - ∂z(v))
 
-    fields = Dict(
-        "v" => model.velocities.v,
-        "w" => model.velocities.w,
-        "ζ" => model -> ζ_computation(model)
-    )
-
-    dims = Dict("ζ" => ("xC", "yF", "zF"))
+    fields = (; v, w, ζ)
     global_attributes = Dict("Re" => Re)
     output_attributes = Dict("ζ" => Dict("longname" => "vorticity", "units" => "1/s"))
-
     field_output_writer =
-        NetCDFOutputWriter(model, fields, filename="lid_driven_cavity_Re$Re.nc", schedule=TimeInterval(0.1),
-                           global_attributes=global_attributes, output_attributes=output_attributes,
-                           dimensions=dims)
+        NetCDFOutputWriter(model, fields, filepath="lid_driven_cavity_Re$Re.nc", schedule=TimeInterval(0.1),
+                           global_attributes=global_attributes, output_attributes=output_attributes)
 
     max_Δt = 0.25 * model.grid.Δy^2 * Re / 2  # Make sure not to violate diffusive CFL.
     wizard = TimeStepWizard(cfl=0.1, Δt=1e-6, max_change=1.1, max_Δt=max_Δt)
@@ -77,8 +62,8 @@ function print_progress(simulation)
     progress = 100 * (model.clock.time / simulation.stop_time)
 
     # Find maximum velocities.
-    vmax = maximum(abs, interior(model.velocities.v))
-    wmax = maximum(abs, interior(model.velocities.w))
+    vmax = maximum(abs, model.velocities.v)
+    wmax = maximum(abs, model.velocities.w)
 
     i, t = model.clock.iteration, model.clock.time
     @info @sprintf("[%06.2f%%] i: %d, t: %.3f, U_max: (%.2e, %.2e), CFL: %.2e, dCFL: %.2e, next Δt: %.2e",
@@ -87,11 +72,11 @@ function print_progress(simulation)
     return nothing
 end
 
- simulate_lid_driven_cavity(Re=100,   N=128, end_time=15)
- simulate_lid_driven_cavity(Re=400,   N=128, end_time=20)
- simulate_lid_driven_cavity(Re=1000,  N=128, end_time=25)
- simulate_lid_driven_cavity(Re=3200,  N=128, end_time=50)
- simulate_lid_driven_cavity(Re=5000,  N=256, end_time=50)
- simulate_lid_driven_cavity(Re=7500,  N=256, end_time=75)
- simulate_lid_driven_cavity(Re=10000, N=256, end_time=100)
+simulate_lid_driven_cavity(Re=100,   N=128, end_time=15)
+simulate_lid_driven_cavity(Re=400,   N=128, end_time=20)
+simulate_lid_driven_cavity(Re=1000,  N=128, end_time=25)
+simulate_lid_driven_cavity(Re=3200,  N=128, end_time=50)
+simulate_lid_driven_cavity(Re=5000,  N=256, end_time=50)
+simulate_lid_driven_cavity(Re=7500,  N=256, end_time=75)
+simulate_lid_driven_cavity(Re=10000, N=256, end_time=100)
 

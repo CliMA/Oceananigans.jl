@@ -1,3 +1,5 @@
+import Oceananigans.Architectures: architecture
+
 """
     RegularRectilinearGrid{FT, TX, TY, TZ, R} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
 
@@ -34,8 +36,8 @@ end
 
 """
     RegularRectilinearGrid([FT=Float64]; size,
-                         extent = nothing, x = nothing, y = nothing, z = nothing,
-                         topology = (Periodic, Periodic, Bounded), halo = (1, 1, 1))
+                           extent = nothing, x = nothing, y = nothing, z = nothing,
+                           topology = (Periodic, Periodic, Bounded), halo = (1, 1, 1))
 
 Creates a `RegularRectilinearGrid` with `size = (Nx, Ny, Nz)` grid points.
 
@@ -49,7 +51,7 @@ Keyword arguments
 - `topology`: A 3-tuple `(Tx, Ty, Tz)` specifying the topology of the domain.
               `Tx`, `Ty`, and `Tz` specify whether the `x`-, `y`-, and `z` directions are
               `Periodic`, `Bounded`, or `Flat`. The topology `Flat` indicates that a model does
-              not vary in that directions so that derivatives and interpolation are zero.
+              not vary in those directions so that derivatives and interpolation are zero.
               The default is `topology=(Periodic, Periodic, Bounded)`.
 
 - `extent`: A tuple prescribing the physical extent of the grid in non-`Flat` directions.
@@ -68,7 +70,7 @@ indicating the left and right endpoints of each dimensions, e.g. `x=(-π, π)` o
 the `extent` argument, e.g. `extent=(Lx, Ly, Lz)` which specifies the extent of each dimension
 in which case 0 ≤ x ≤ Lx, 0 ≤ y ≤ Ly, and -Lz ≤ z ≤ 0.
 
-A grid topology may be specified via a tuple assigning one of `Periodic`, `Bounded, and `Flat`
+A grid topology may be specified via a tuple assigning one of `Periodic`, `Bounded`, and `Flat`
 to each dimension. By default, a horizontally periodic grid topology `(Periodic, Periodic, Bounded)`
 is assumed.
 
@@ -84,7 +86,7 @@ Grid properties
 
 - `(Lx, Ly, Lz)::FT`: Physical extent of the grid in the (x, y, z)-direction
 
-- `(Δx, Δy, Δz)::FT`: Center width in the (x, y, z)-direction
+- `(Δx, Δy, Δz)::FT`: Grid spacing (distance between grid nodes) in the (x, y, z)-direction
 
 - `(xC, yC, zC)`: (x, y, z) coordinates of cell centers.
 
@@ -215,7 +217,6 @@ therefore ignored) prior to constructing the new `RegularRectilinearGrid`.
 """
 function with_halo(new_halo, old_grid::RegularRectilinearGrid)
 
-    FT = eltype(old_grid)
     Nx, Ny, Nz = size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
@@ -229,7 +230,7 @@ function with_halo(new_halo, old_grid::RegularRectilinearGrid)
     new_halo = pop_flat_elements(new_halo, topo)
 
     new_grid = RegularRectilinearGrid(eltype(old_grid); size=size, x=x, y=y, z=z,
-                                    topology=topo, halo=new_halo)
+                                      topology=topo, halo=new_halo)
 
     return new_grid
 end
@@ -252,3 +253,55 @@ function show(io::IO, g::RegularRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, 
               "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
               "grid spacing (Δx, Δy, Δz): ", (g.Δx, g.Δy, g.Δz))
 end
+
+# Regular nodes
+@inline xnode(::Center, i, grid::RegularRectilinearGrid) = @inbounds grid.xC[i]
+@inline xnode(::Face,   i, grid::RegularRectilinearGrid) = @inbounds grid.xF[i]
+
+@inline ynode(::Center, j, grid::RegularRectilinearGrid) = @inbounds grid.yC[j]
+@inline ynode(::Face,   j, grid::RegularRectilinearGrid) = @inbounds grid.yF[j]
+
+@inline znode(::Center, k, grid::RegularRectilinearGrid) = @inbounds grid.zC[k]
+@inline znode(::Face,   k, grid::RegularRectilinearGrid) = @inbounds grid.zF[k]
+
+all_x_nodes(::Type{Center}, grid::RegularRectilinearGrid) = grid.xC
+all_x_nodes(::Type{Face},   grid::RegularRectilinearGrid) = grid.xF
+all_y_nodes(::Type{Center}, grid::RegularRectilinearGrid) = grid.yC
+all_y_nodes(::Type{Face},   grid::RegularRectilinearGrid) = grid.yF
+all_z_nodes(::Type{Center}, grid::RegularRectilinearGrid) = grid.zC
+all_z_nodes(::Type{Face},   grid::RegularRectilinearGrid) = grid.zF
+
+#
+# Get minima of grid
+#
+
+function min_Δx(grid::RegularRectilinearGrid)
+    topo = topology(grid)
+    if topo[1] == Flat
+        return Inf
+    else
+        return grid.Δx
+    end
+end
+
+function min_Δy(grid::RegularRectilinearGrid)
+    topo = topology(grid)
+    if topo[2] == Flat
+        return Inf
+    else
+        return grid.Δy
+    end
+end
+
+
+function min_Δz(grid::RegularRectilinearGrid)
+    topo = topology(grid)
+    if topo[3] == Flat
+        return Inf
+    else
+        return grid.Δz
+    end
+end
+
+# All grid metrics are constants / functions / ranges, so there's no architecture.
+architecture(::RegularRectilinearGrid) = nothing

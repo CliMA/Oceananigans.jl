@@ -37,6 +37,7 @@ DefaultBoundaryCondition(::Type{Grids.Periodic}, loc) = PeriodicBoundaryConditio
 Returns `nothing`.
 """
 DefaultBoundaryCondition(::Type{Flat}, loc) = nothing
+DefaultBoundaryCondition(::Type{Flat}, ::Type{Nothing}) = nothing
 
 """
     DefaultBoundaryCondition(::Type{Bounded}, ::Type{Center})
@@ -212,9 +213,7 @@ setbc!(bcs::FieldBoundaryConditions, ::Val{:top},    bc) = setfield!(bcs.z, :rig
 @inline getbc(bcs::FieldBoundaryConditions, ::Val{:bottom}) = getfield(bcs.z, :left)
 @inline getbc(bcs::FieldBoundaryConditions, ::Val{:top})    = getfield(bcs.z, :right)
 
-function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid, tracer_names, field_name)
-
-    model_field_names = tuple(:u, :v, :w, tracer_names...)
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid, model_field_names, field_name)
 
     X, Y, Z = assumed_field_location(field_name)
 
@@ -232,12 +231,12 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid
     return FieldBoundaryConditions(x, y, z)
 end
 
-function regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, tracer_names, field_name=nothing)
-    boundary_conditions_names = propertynames(boundary_conditions) 
-    boundary_conditions_tuple = Tuple(regularize_field_boundary_conditions(bcs, grid, tracer_names, name)
+function regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, model_field_names, field_name=nothing)
+    boundary_conditions_names = propertynames(boundary_conditions)
+    boundary_conditions_tuple = Tuple(regularize_field_boundary_conditions(bcs, grid, model_field_names, name)
                                       for (name, bcs) in zip(boundary_conditions_names, boundary_conditions))
     boundary_conditions = NamedTuple{boundary_conditions_names}(boundary_conditions_tuple)
     return boundary_conditions
 end
 
-regularize_field_boundary_conditions(::Missing, grid, tracer_names, field_name=nothing) = missing
+regularize_field_boundary_conditions(::Missing, grid, model_field_names, field_name=nothing) = missing

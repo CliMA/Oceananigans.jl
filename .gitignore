@@ -10,13 +10,13 @@ deps/deps.jl
 *~
 
 # Documenter.jl and MkDocs
-docs/Manifest.toml
 docs/build
 docs/site
 docs/src/generated
 
 # Model output
 *.dat
+*.data
 *.nc
 *.jld2
 
@@ -33,6 +33,14 @@ docs/src/generated
 *.html
 *.json
 *.bson
+
+# Profiler output
+*.qdrep
+
+# Grid files
+*.tgz
+*.bin
+*.m
 
 # Jupyter Lab stuff and notebooks
 *.ipynb
