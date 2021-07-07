@@ -42,7 +42,7 @@ Here's a short list of useful tips for defining and prescribing boundary conditi
 
 4. `FluxBoundaryCondition` _directly_ prescribes the flux of a quantity across a boundary rather than calculating it given a viscosity or diffusivity.
    For example, sunlight absorbed at the ocean surface imparts a temperature flux that heats near-surface fluid.
-   If you have a known diffusivity, you can express `FluxBoundaryCondition(flux)` using `GradientBoundaryCondition(-flux / diffusivity)` (aka "Neumann" boundary condition).
+   If there is a known `diffusivity`, you can express `FluxBoundaryCondition(flux)` using `GradientBoundaryCondition(-flux / diffusivity)` (aka "Neumann" boundary condition).
    But when `diffusivity` is not known or is variable (as for large eddy simulation, for example), it's convenient and more straightforward to apply `FluxBoundaryCondition`.
 
 ## Specifying boundary conditions for a model
