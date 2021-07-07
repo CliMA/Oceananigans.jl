@@ -85,15 +85,19 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I} <: AbstractGrid{FT, TX, TY, TZ
     grid :: G
     immersed_boundary :: I
 
-    function ImmersedBoundaryGrid(grid::G, ib::I) where {G <: AbstractPrimaryGrid, I}
-        @warn "ImmersedBoundaryGrid is unvalidated and may produce incorrect results. " *
-              "Don't hesitate to help validate ImmersedBoundaryGrid by reporting any bugs " *
-              "or unexpected behavior to https://github.com/CliMA/Oceananigans.jl/issues"
-
+    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {TX, TY, TZ, G <: AbstractPrimaryGrid, I}
         FT = eltype(grid)
-        TX, TY, TZ = topology(grid)
         return new{FT, TX, TY, TZ, G, I}(grid, ib)
     end
+end
+
+function ImmersedBoundaryGrid(grid, ib)
+    @warn "ImmersedBoundaryGrid is unvalidated and may produce incorrect results. " *
+              "Don't hesitate to help validate ImmersedBoundaryGrid by reporting any bugs " *
+              "or unexpected behavior to https://github.com/CliMA/Oceananigans.jl/issues"
+    
+    TX, TY, TZ = topology(grid)
+    return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end
 
 const IBG = ImmersedBoundaryGrid
@@ -103,7 +107,8 @@ const IBG = ImmersedBoundaryGrid
 @inline get_ibg_property(ibg::IBG, ::Val{:immersed_boundary}) = getfield(ibg, :immersed_boundary)
 @inline get_ibg_property(ibg::IBG, ::Val{:grid}) = getfield(ibg, :grid)
 
-Adapt.adapt_structure(to, ibg::IBG) = ImmersedBoundaryGrid(adapt(to, ibg.grid), adapt(to, ibg.immersed_boundary))
+Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+    ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.grid), adapt(to, ibg.immersed_boundary))
 
 with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo, ibg.grid), ibg.immersed_boundary)
 
