@@ -85,7 +85,7 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I} <: AbstractGrid{FT, TX, TY, TZ
     grid :: G
     immersed_boundary :: I
 
-    function ImmersedBoundaryGrid(grid::G, ib::I) where {G <: AbstractPrimaryGrid, I}
+    function ImmersedBoundaryGrid(grid::G, ib::I) where {G <: AbstractUnderlyingGrid, I}
         @warn "ImmersedBoundaryGrid is unvalidated and may produce incorrect results. " *
               "Don't hesitate to help validate ImmersedBoundaryGrid by reporting any bugs " *
               "or unexpected behavior to https://github.com/CliMA/Oceananigans.jl/issues"

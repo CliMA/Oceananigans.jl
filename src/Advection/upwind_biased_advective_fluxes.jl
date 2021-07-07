@@ -1,5 +1,3 @@
-using Oceananigans.Grids: AbstractPrimaryGrid
-
 #####
 ##### Momentum and tracer advective flux operators for upwind-biased advection schemes
 #####
