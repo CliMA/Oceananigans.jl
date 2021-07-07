@@ -67,34 +67,32 @@ calculate_diffusivities!(K, arch, grid, closure::AnisotropicDiffusivity, args...
 ##### Diffusive fluxes
 #####
 
-const APG = AbstractPrimaryGrid
-
-@inline function diffusive_flux_x(i, j, k, grid::APG, closure::AD, c, ::Val{tracer_index}, clock, args...) where tracer_index
+@inline function diffusive_flux_x(i, j, k, grid, closure::AD, c, ::Val{tracer_index}, clock, args...) where tracer_index
     @inbounds κx = closure.κx[tracer_index]
     return diffusive_flux_x(i, j, k, grid, clock, κx, c)
 end
 
-@inline function diffusive_flux_y(i, j, k, grid::APG, closure::AD, c, ::Val{tracer_index}, clock, args...) where tracer_index
+@inline function diffusive_flux_y(i, j, k, grid, closure::AD, c, ::Val{tracer_index}, clock, args...) where tracer_index
     @inbounds κy = closure.κy[tracer_index]
     return diffusive_flux_y(i, j, k, grid, clock, κy, c)
 end
 
-@inline function diffusive_flux_z(i, j, k, grid::APG, closure::AD, c, ::Val{tracer_index}, clock, args...) where tracer_index
+@inline function diffusive_flux_z(i, j, k, grid, closure::AD, c, ::Val{tracer_index}, clock, args...) where tracer_index
     @inbounds κz = closure.κz[tracer_index]
     return diffusive_flux_z(i, j, k, grid, clock, κz, c)
 end
 
-viscous_flux_ux(i, j, k, grid::APG, closure::AD, clock, U, args...) = viscous_flux_ux(i, j, k, grid, clock, closure.νx, U[1])
-viscous_flux_uy(i, j, k, grid::APG, closure::AD, clock, U, args...) = viscous_flux_uy(i, j, k, grid, clock, closure.νy, U[1])  
-viscous_flux_uz(i, j, k, grid::APG, closure::AD, clock, U, args...) = viscous_flux_uz(i, j, k, grid, clock, closure.νz, U[1])
+viscous_flux_ux(i, j, k, grid, closure::AD, clock, U, args...) = viscous_flux_ux(i, j, k, grid, clock, closure.νx, U[1])
+viscous_flux_uy(i, j, k, grid, closure::AD, clock, U, args...) = viscous_flux_uy(i, j, k, grid, clock, closure.νy, U[1])  
+viscous_flux_uz(i, j, k, grid, closure::AD, clock, U, args...) = viscous_flux_uz(i, j, k, grid, clock, closure.νz, U[1])
 
-viscous_flux_vx(i, j, k, grid::APG, closure::AD, clock, U, args...) = viscous_flux_vx(i, j, k, grid, clock, closure.νx, U[2])
-viscous_flux_vy(i, j, k, grid::APG, closure::AD, clock, U, args...) = viscous_flux_vy(i, j, k, grid, clock, closure.νy, U[2])  
-viscous_flux_vz(i, j, k, grid::APG, closure::AD, clock, U, args...) = viscous_flux_vz(i, j, k, grid, clock, closure.νz, U[2])
+viscous_flux_vx(i, j, k, grid, closure::AD, clock, U, args...) = viscous_flux_vx(i, j, k, grid, clock, closure.νx, U[2])
+viscous_flux_vy(i, j, k, grid, closure::AD, clock, U, args...) = viscous_flux_vy(i, j, k, grid, clock, closure.νy, U[2])  
+viscous_flux_vz(i, j, k, grid, closure::AD, clock, U, args...) = viscous_flux_vz(i, j, k, grid, clock, closure.νz, U[2])
 
-viscous_flux_wx(i, j, k, grid::APG, closure::AD, clock, U, args...) = viscous_flux_wx(i, j, k, grid, clock, closure.νx, U[3])
-viscous_flux_wy(i, j, k, grid::APG, closure::AD, clock, U, args...) = viscous_flux_wy(i, j, k, grid, clock, closure.νy, U[3])  
-viscous_flux_wz(i, j, k, grid::APG, closure::AD, clock, U, args...) = viscous_flux_wz(i, j, k, grid, clock, closure.νz, U[3])
+viscous_flux_wx(i, j, k, grid, closure::AD, clock, U, args...) = viscous_flux_wx(i, j, k, grid, clock, closure.νx, U[3])
+viscous_flux_wy(i, j, k, grid, closure::AD, clock, U, args...) = viscous_flux_wy(i, j, k, grid, clock, closure.νy, U[3])  
+viscous_flux_wz(i, j, k, grid, closure::AD, clock, U, args...) = viscous_flux_wz(i, j, k, grid, clock, closure.νz, U[3])
 
 #####
 ##### Support for vertically implicit time integration
@@ -107,9 +105,9 @@ z_diffusivity(closure::AD, ::Val{tracer_index}, args...) where tracer_index = @i
 
 const VerticallyBoundedGrid{FT} = AbstractPrimaryGrid{FT, <:Any, <:Any, <:Bounded}
 
-@inline diffusive_flux_z(i, j, k, grid::APG{FT}, ::VITD, closure::AD, args...) where FT = zero(FT)
-@inline viscous_flux_uz(i, j, k, grid::APG{FT}, ::VITD, closure::AD, args...) where FT = zero(FT)
-@inline viscous_flux_vz(i, j, k, grid::APG{FT}, ::VITD, closure::AD, args...) where FT = zero(FT)
+@inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::AD, args...) = zero(eltype(grid))
+@inline viscous_flux_uz(i, j, k, grid, ::VITD, closure::AD, args...) = zero(eltype(grid))
+@inline viscous_flux_vz(i, j, k, grid, ::VITD, closure::AD, args...) = zero(eltype(grid))
 
 @inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::AD, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
