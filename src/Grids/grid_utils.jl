@@ -214,7 +214,7 @@ Examples
 ========
 
 ```jldoctest znodes
-julia> using Oceananigans, Oceananigans.Grids
+julia> using Oceananigans
 
 julia> horz_periodic_grid = RegularRectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1),
                                                  topology=(Periodic, Periodic, Bounded));

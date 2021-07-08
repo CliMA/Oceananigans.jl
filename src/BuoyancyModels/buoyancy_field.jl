@@ -83,7 +83,7 @@ function _buoyancy_field(buoyancy::Buoyancy, tracers, arch, grid,
 end
 
 """
-    compute!(buoyancy_field::BuoyancyField)
+    compute!(buoyancy_field::BuoyancyField, time=nothing)
 
 Compute the current `buoyancy_field` associated with `buoyancy_field.tracers` and store
 the result in `buoyancy_field.data`.

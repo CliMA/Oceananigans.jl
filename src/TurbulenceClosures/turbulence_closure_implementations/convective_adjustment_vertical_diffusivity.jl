@@ -19,7 +19,7 @@ struct ConvectiveAdjustmentVerticalDiffusivity{TD, CK, CN, BK, BN} <: AbstractTu
 end
                                        
 """
-    ConvectiveAdjustmentVerticalDiffusivity(FT=Float64; convective_κz=0, convective_νz=0, background_κz=0, background_νz=0,
+    ConvectiveAdjustmentVerticalDiffusivity([FT=Float64;] convective_κz=0, convective_νz=0, background_κz=0, background_νz=0,
                                             time_discretization = VerticallyImplicitTimeDiscretization())
 
 The one positional argument determines the floating point type of the free parameters

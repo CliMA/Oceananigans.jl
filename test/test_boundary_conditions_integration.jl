@@ -155,13 +155,13 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         v_boundary_conditions = VVelocityBoundaryConditions(grid;
                                                             bottom = simple_function_bc(Value),
                                                             top    = simple_function_bc(Value),
-                                                            north  = simple_function_bc(NormalFlow),
-                                                            south  = simple_function_bc(NormalFlow))
+                                                            north  = simple_function_bc(Open),
+                                                            south  = simple_function_bc(Open))
 
 
         w_boundary_conditions = VVelocityBoundaryConditions(grid;
-                                                            bottom = simple_function_bc(NormalFlow),
-                                                            top    = simple_function_bc(NormalFlow),
+                                                            bottom = simple_function_bc(Open),
+                                                            top    = simple_function_bc(Open),
                                                             north  = simple_function_bc(Value),
                                                             south  = simple_function_bc(Value))
 
@@ -214,7 +214,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                 @test test_boundary_condition(arch, FT, topo, :top, :T, boundary_condition)
             end
 
-            for boundary_condition in test_boundary_conditions(NormalFlow, FT, array_type(arch))
+            for boundary_condition in test_boundary_conditions(Open, FT, array_type(arch))
                  arch isa CPU && @test test_boundary_condition(arch, FT, topo, :east, :u, boundary_condition)
 
                 @test test_boundary_condition(arch, FT, topo, :south, :v, boundary_condition)

@@ -10,7 +10,7 @@ struct IsotropicDiffusivity{TD, N, K} <: AbstractIsotropicDiffusivity{TD}
 end
 
 """
-    IsotropicDiffusivity(; ν=0, κ=0)
+    IsotropicDiffusivity([FT=Float64;] ν=0, κ=0, time_discretization = ExplicitTimeDiscretization())
 
 Returns parameters for an isotropic diffusivity model with viscosity `ν`
 and thermal diffusivities `κ` for each tracer field in `tracers`
