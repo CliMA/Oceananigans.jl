@@ -525,6 +525,12 @@ end
 @inline diffusive_flux_z(i, j, k, grid, closure, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, closure, e, Val(N), args...)
 
 # Shortcuts --- TKEVD incurs no horizontal transport
+@inline viscous_flux_ux(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_uy(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vx(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vy(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wx(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wy(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
 @inline diffusive_flux_x(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
 @inline diffusive_flux_y(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
 
