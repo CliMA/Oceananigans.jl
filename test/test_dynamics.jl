@@ -1,4 +1,5 @@
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, z_viscosity
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 function relative_error(u_num, u, time)
     u_ans = Field(location(u_num), architecture(u_num), u_num.grid, nothing)
@@ -81,7 +82,7 @@ function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization
     diffusing_cosine(κ, m, z, t) = exp(-κ * m^2 * t) * cos(m * z)
 
     # Step forward with small time-step relative to diff. time-scale
-    Δt = 1e-6 * Lz^2 / κ
+    Δt = 1e-6 * grid.Lz^2 / κ
     for n in 1:10
         ab2_or_rk3_time_step!(model, Δt, n)
     end
