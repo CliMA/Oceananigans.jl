@@ -115,15 +115,11 @@ numerical_pages = [
     "Large eddy simulation" => "numerical_implementation/large_eddy_simulation.md"
 ]
 
-validation_pages = [
-    "Convergence tests" => "validation/convergence_tests.md",
-    "Lid-driven cavity" => "validation/lid_driven_cavity.md",
-    "Stratified Couette flow" => "validation/stratified_couette_flow.md"
-]
 
 appendix_pages = [
     "Staggered grid" => "appendix/staggered_grid.md",
-    "Fractional step method" => "appendix/fractional_step.md"
+    "Fractional step method" => "appendix/fractional_step.md",
+    "Convergence tests" => "appendix/convergence_tests.md",
 ]
 
 pages = [
@@ -134,7 +130,6 @@ pages = [
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
     "Model setup" => model_setup_pages,
-    "Validation experiments" => validation_pages,
     "Simulation tips" => "simulation_tips.md",
     "Gallery" => "gallery.md",
     "Performance benchmarks" => "benchmarks.md",
