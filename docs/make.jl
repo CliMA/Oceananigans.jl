@@ -120,9 +120,9 @@ appendix_pages = [
     "Staggered grid" => "appendix/staggered_grid.md",
     "Fractional step method" => "appendix/fractional_step.md",
     "Convergence tests" => "appendix/convergence_tests.md",
-    "Performance benchmarks" => "benchmarks.md",
-    "Library" => "library.md",
-    "Function index" => "function_index.md",
+    "Performance benchmarks" => "appendix/benchmarks.md",
+    "Library" => "appendix/library.md",
+    "Function index" => "appendix/function_index.md",
 ]
 
 pages = [
