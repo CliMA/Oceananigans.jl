@@ -77,8 +77,8 @@ const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 @inline ivd_viscous_flux_vz(i, j, k, grid, closure, clock, U, args...) = - ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂yᶜᶠᵃ, U.v)
 
 # General functions (eg for vertically periodic)
-@inline viscous_flux_uz(i, j, k, grid   ::VITD, closure::AID, args...) = ivd_viscous_flux_uz(i, j, k, grid, closure, args...)
-@inline viscous_flux_vz(i, j, k, grid   ::VITD, closure::AID, args...) = ivd_viscous_flux_vz(i, j, k, grid, closure, args...)
+@inline viscous_flux_uz(i, j, k, grid,  ::VITD, closure::AID, args...) = ivd_viscous_flux_uz(i, j, k, grid, closure, args...)
+@inline viscous_flux_vz(i, j, k, grid,  ::VITD, closure::AID, args...) = ivd_viscous_flux_vz(i, j, k, grid, closure, args...)
 @inline viscous_flux_wz(i, j, k, grid,  ::VITD, closure::AID, args...) = zero(eltype(grid))
 @inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::AID, clock, args...) = zero(eltype(grid))
                   
