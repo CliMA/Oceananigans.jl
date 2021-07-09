@@ -211,7 +211,7 @@ end
 
         grid = bbb_grid
         
-        T_bcs = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center),
+        T_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
                                                    east = ValueBoundaryCondition(simple_bc),
                                                    west = ValueBoundaryCondition(simple_bc),
                                                  bottom = ValueBoundaryCondition(simple_bc),

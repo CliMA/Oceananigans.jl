@@ -55,7 +55,7 @@ end
 function ComputedField(LX, LY, LZ, operand, arch, grid;
                        data = nothing,
                        recompute_safely = true,
-                       boundary_conditions = AuxiliaryFieldBoundaryConditions(grid, (LX, LY, LZ)))
+                       boundary_conditions = FieldBoundaryConditions(grid, (LX, LY, LZ)))
 
     # Architecturanigans
     operand_arch = architecture(operand)

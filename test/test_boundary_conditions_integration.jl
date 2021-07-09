@@ -74,7 +74,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     grid = RegularRectilinearGrid(FT, size=(16, 16, 16), extent=(1, 1, Lz))
 
     buoyancy_bcs = FieldBoundaryConditions(bottom=BoundaryCondition(Gradient, bz))
-    κₑ_bcs = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center), bottom=BoundaryCondition(Value, κ₀))
+    κₑ_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), bottom=BoundaryCondition(Value, κ₀))
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
     model = IncompressibleModel(

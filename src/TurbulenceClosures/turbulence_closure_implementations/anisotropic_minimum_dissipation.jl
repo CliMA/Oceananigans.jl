@@ -356,7 +356,7 @@ end
 
 function DiffusivityFields(arch, grid, tracer_names, bcs, ::AMD)
 
-    default_bcs = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center))
+    default_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
     default_diffusivity_bcs = (; νₑ = default_bcs, κₑ = NamedTuple{tracer_names}(Tuple(default_bcs for c in tracer_names)))
     bcs = merge(default_diffusivity_bcs, bcs)
 

@@ -73,7 +73,7 @@ function divergence_free_poisson_solution(arch, grid, planner_flag=FFTW.MEASURE)
     solver = FFTBasedPoissonSolver(arch, grid, planner_flag)
     R, U = random_divergent_source_term(arch, grid)
 
-    p_bcs = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center))
+    p_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
     ϕ   = CenterField(arch, grid, p_bcs)  # "kinematic pressure"
     ∇²ϕ = CenterField(arch, grid, p_bcs)
 
@@ -147,7 +147,7 @@ function vertically_stretched_poisson_solver_correct_answer(FT, arch, topo, Nx, 
     vs_grid = VerticallyStretchedRectilinearGrid(FT; architecture=arch, topology=topo, size=sz, z_faces=zF, xy_intervals...)
     solver = FourierTridiagonalPoissonSolver(arch, vs_grid)
 
-    p_bcs = AuxiliaryFieldBoundaryConditions(vs_grid, (Center, Center, Center))
+    p_bcs = FieldBoundaryConditions(vs_grid, (Center, Center, Center))
     ϕ   = CenterField(arch, vs_grid, p_bcs)  # "kinematic pressure"
     ∇²ϕ = CenterField(arch, vs_grid, p_bcs)
 

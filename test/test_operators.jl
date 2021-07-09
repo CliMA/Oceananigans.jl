@@ -132,7 +132,7 @@ end
 
         arch = CPU()
         grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-        bcs = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center))
+        bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
 
         Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
         Tx, Ty, Tz = Nx+2Hx, Ny+2Hy, Nz+2Hz

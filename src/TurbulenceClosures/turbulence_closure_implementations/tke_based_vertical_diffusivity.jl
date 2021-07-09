@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: architecture, device_event
-using Oceananigans.BoundaryConditions: default_prognostic_field_boundary_condition, AuxiliaryFieldBoundaryConditions
+using Oceananigans.BoundaryConditions: default_prognostic_field_boundary_condition, FieldBoundaryConditions
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
@@ -286,7 +286,7 @@ function add_closure_specific_boundary_conditions(closure::TKEVD,
 
         e_bcs = user_bcs[:e]
         
-        tke_bcs = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center),
+        tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
                                                    top = top_tke_bc,
                                                    bottom = e_bcs.bottom,
                                                    north = e_bcs.north,
@@ -294,7 +294,7 @@ function add_closure_specific_boundary_conditions(closure::TKEVD,
                                                    east = e_bcs.east,
                                                    west = e_bcs.west)
     else
-        tke_bcs = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center), top=top_tke_bc)
+        tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), top=top_tke_bc)
     end
 
     new_boundary_conditions = merge(user_bcs, (e = tke_bcs,))
@@ -304,9 +304,9 @@ end
 
 function DiffusivityFields(arch, grid, tracer_names, bcs, closure::TKEVD)
 
-    default_diffusivity_bcs = (Kᵘ = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center)),
-                               Kᶜ = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center)),
-                               Kᵉ = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center)))
+    default_diffusivity_bcs = (Kᵘ = FieldBoundaryConditions(grid, (Center, Center, Center)),
+                               Kᶜ = FieldBoundaryConditions(grid, (Center, Center, Center)),
+                               Kᵉ = FieldBoundaryConditions(grid, (Center, Center, Center)))
 
     bcs = merge(default_diffusivity_bcs, bcs)
 

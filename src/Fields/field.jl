@@ -14,7 +14,7 @@ end
 
 """
     Field(LX, LY, LZ, [arch = CPU()], grid,
-          [ bcs = AuxiliaryFieldBoundaryConditions(grid, (LX, LY, LZ)),
+          [ bcs = FieldBoundaryConditions(grid, (LX, LY, LZ)),
            data = new_data(eltype(grid), arch, grid, (LX, LY, LZ))])
 
 Construct a `Field` on `grid` with `data` on architecture `arch` with
@@ -37,7 +37,7 @@ Field located at (Face, Face, Center)
 function Field(LX, LY, LZ,
                arch::AbstractArchitecture,
                grid::AbstractGrid,
-               bcs = AuxiliaryFieldBoundaryConditions(grid, (LX, LY, LZ)),
+               bcs = FieldBoundaryConditions(grid, (LX, LY, LZ)),
                data = new_data(eltype(grid), arch, grid, (LX, LY, LZ)))
 
     validate_field_data(LX, LY, LZ, data, grid)

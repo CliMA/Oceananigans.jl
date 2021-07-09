@@ -68,10 +68,11 @@ function FieldBoundaryConditions(;     west = DefaultPrognosticFieldBoundaryCond
 end
 
 """
-    AuxiliaryFieldBoundaryConditions(; kwargs...)
+    FieldBoundaryConditions(grid, location; kwargs...)
 
-Returns a template for boundary conditions on auxiliary fields (fields
-whose values are derived from a model's prognostic fields).
+Returns boundary conditions for auxiliary fields (fields
+whose values are derived from a model's prognostic fields) on `grid`
+and at `location`.
 
 Keyword arguments specify boundary conditions on the 7 possible boundaries:
 
@@ -90,13 +91,13 @@ and the topology in the boundary-normal direction is used:
     * `nothing` for `Bounded` directions and `Face`-located fields
     * `nothing` for `Flat` directions and/or `Nothing`-located fields)
 """
-function AuxiliaryFieldBoundaryConditions(grid, loc;
-                                              east = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
-                                              west = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
-                                             south = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
-                                             north = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
-                                            bottom = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()),
-                                               top = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()))
+function FieldBoundaryConditions(grid, loc;
+                                   east = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
+                                   west = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
+                                  south = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
+                                  north = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
+                                 bottom = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()),
+                                    top = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()))
 
    return FieldBoundaryConditions(east, west, south, north, bottom, top, nothing)
 end

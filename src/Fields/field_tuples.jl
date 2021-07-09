@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: AuxiliaryFieldBoundaryConditions
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions
 
 #####
 ##### Velocity fields tuples
@@ -70,8 +70,8 @@ be specified via a named tuple of `FieldBoundaryCondition`s.
 function PressureFields(arch, grid, bcs=NamedTuple())
 
     default_pressure_boundary_conditions =
-        (pHY′ = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center)),
-         pNHS = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center)))
+        (pHY′ = FieldBoundaryConditions(grid, (Center, Center, Center)),
+         pNHS = FieldBoundaryConditions(grid, (Center, Center, Center)))
 
     bcs = merge(default_pressure_boundary_conditions, bcs)
 
