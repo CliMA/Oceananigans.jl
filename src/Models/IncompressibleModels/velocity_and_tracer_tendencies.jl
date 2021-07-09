@@ -42,9 +42,9 @@ pressure anomaly.
                                      hydrostatic_pressure,
                                      clock)
 
-    return ( - div_Uu(i, j, k, grid, advection, velocities, velocities.u)
-             - div_Uu(i, j, k, grid, advection, background_fields.velocities, velocities.u)
-             - div_Uu(i, j, k, grid, advection, velocities, background_fields.velocities.u)
+    return ( - div_𝐯u(i, j, k, grid, advection, velocities, velocities.u)
+             - div_𝐯u(i, j, k, grid, advection, background_fields.velocities, velocities.u)
+             - div_𝐯u(i, j, k, grid, advection, velocities, background_fields.velocities.u)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᵃ(i, j, k, grid, hydrostatic_pressure)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, clock, velocities, diffusivities, tracers, buoyancy)
@@ -91,9 +91,9 @@ pressure anomaly.
                                      hydrostatic_pressure,
                                      clock)
 
-    return ( - div_Uv(i, j, k, grid, advection, velocities, velocities.v)
-             - div_Uv(i, j, k, grid, advection, background_fields.velocities, velocities.v)
-             - div_Uv(i, j, k, grid, advection, velocities, background_fields.velocities.v)
+    return ( - div_𝐯v(i, j, k, grid, advection, velocities, velocities.v)
+             - div_𝐯v(i, j, k, grid, advection, background_fields.velocities, velocities.v)
+             - div_𝐯v(i, j, k, grid, advection, velocities, background_fields.velocities.v)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᵃ(i, j, k, grid, hydrostatic_pressure)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, clock, velocities, diffusivities, tracers, buoyancy)
@@ -136,9 +136,9 @@ velocity components, tracer fields, and precalculated diffusivities where applic
                                      forcings,
                                      clock)
 
-    return ( - div_Uw(i, j, k, grid, advection, velocities, velocities.w)
-             - div_Uw(i, j, k, grid, advection, background_fields.velocities, velocities.w)
-             - div_Uw(i, j, k, grid, advection, velocities, background_fields.velocities.w)
+    return ( - div_𝐯w(i, j, k, grid, advection, velocities, velocities.w)
+             - div_𝐯w(i, j, k, grid, advection, background_fields.velocities, velocities.w)
+             - div_𝐯w(i, j, k, grid, advection, velocities, background_fields.velocities.w)
              - z_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂ⱼ_τ₃ⱼ(i, j, k, grid, closure, clock, velocities, diffusivities, tracers, buoyancy)
              + z_curl_Uˢ_cross_U(i, j, k, grid, stokes_drift, velocities, clock.time)
