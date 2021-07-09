@@ -170,7 +170,7 @@ deploydocs(
   push_preview = true
 )
 
-# Clean up temporary .jld2 and .nc files created by doctests
+@info "Cleaning up temporary .jld2 and .nc files created by doctests..."
 for file in vcat(glob("docs/*.jld2"), glob("docs/*.nc"))
     rm(file)
 end
