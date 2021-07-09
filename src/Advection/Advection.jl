@@ -2,7 +2,6 @@ module Advection
 
 export 
     div_𝐯u, div_𝐯v, div_𝐯w, div_Uc,
-    U_grad_u, U_grad_v, U_grad_w, U_grad_c,
 
     momentum_flux_uu,
     momentum_flux_uv,
