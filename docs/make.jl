@@ -7,7 +7,6 @@ using Plots # to avoid capturing precompilation output by Literate
 
 using Oceananigans
 using Oceananigans.Operators
-using Oceananigans.Grids
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
@@ -120,9 +119,6 @@ appendix_pages = [
     "Staggered grid" => "appendix/staggered_grid.md",
     "Fractional step method" => "appendix/fractional_step.md",
     "Convergence tests" => "appendix/convergence_tests.md",
-    "Performance benchmarks" => "appendix/benchmarks.md",
-    "Library" => "appendix/library.md",
-    "Function index" => "appendix/function_index.md",
 ]
 
 pages = [
@@ -134,10 +130,13 @@ pages = [
     "Numerical implementation" => numerical_pages,
     "Model setup" => model_setup_pages,
     "Simulation tips" => "simulation_tips.md",
-    "Contributor's guide" => "contributing.md",
     "Gallery" => "gallery.md",
-    "References" => "references.md",
+    "Performance benchmarks" => "benchmarks.md",
+    "Contributor's guide" => "contributing.md",
     "Appendix" => appendix_pages,
+    "References" => "references.md",
+    "Library" => "library.md",
+    "Function index" => "function_index.md"
 ]
 
 #####
