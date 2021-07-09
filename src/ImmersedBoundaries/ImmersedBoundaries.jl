@@ -91,13 +91,11 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I} <: AbstractGrid{FT, TX, TY, TZ
     end
 end
 
-# Outer constructor to support warning
-function ImmersedBoundaryGrid(grid::AbstractPrimaryGrid, ib)
-
+function ImmersedBoundaryGrid(grid, ib)
     @warn "ImmersedBoundaryGrid is unvalidated and may produce incorrect results. " *
-          "Don't hesitate to help validate ImmersedBoundaryGrid by reporting any bugs " *
-          "or unexpected behavior to https://github.com/CliMA/Oceananigans.jl/issues"
-
+              "Don't hesitate to help validate ImmersedBoundaryGrid by reporting any bugs " *
+              "or unexpected behavior to https://github.com/CliMA/Oceananigans.jl/issues"
+    
     TX, TY, TZ = topology(grid)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
 end

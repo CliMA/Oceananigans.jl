@@ -78,8 +78,12 @@ JLD2OutputWriter scheduled on TimeInterval(4 years):
 └── max filesize: Inf YiB
 ```
 """
-AveragedTimeInterval(interval; window=interval, stride=1) =
-    AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, false)
+function AveragedTimeInterval(interval; window=interval, stride=1)
+    
+    window > interval && throw(ArgumentError("Averaging window $window is greater than the output interval $interval."))
+    
+    return AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, false)
+end
 
 # Determines whether or not to call run_diagnostic
 (schedule::AveragedTimeInterval)(model) =

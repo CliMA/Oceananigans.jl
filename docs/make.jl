@@ -3,7 +3,8 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..")) # add Oceananigans to environmen
 using Documenter
 using DocumenterCitations
 using Literate
-using Plots  # to avoid capturing precompilation output by Literate
+using Plots # to avoid capturing precompilation output by Literate
+using Glob
 
 using Oceananigans
 using Oceananigans.Operators
@@ -14,7 +15,7 @@ using Oceananigans.TurbulenceClosures
 using Oceananigans.TimeSteppers
 using Oceananigans.AbstractOperations
 
-using Oceananigans.BoundaryConditions: Flux, Value, Gradient, NormalFlow
+using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
 
 bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
 bib = CitationBibliography(bib_filepath)
@@ -115,15 +116,14 @@ numerical_pages = [
     "Large eddy simulation" => "numerical_implementation/large_eddy_simulation.md"
 ]
 
-validation_pages = [
-    "Convergence tests" => "validation/convergence_tests.md",
-    "Lid-driven cavity" => "validation/lid_driven_cavity.md",
-    "Stratified Couette flow" => "validation/stratified_couette_flow.md"
-]
 
 appendix_pages = [
     "Staggered grid" => "appendix/staggered_grid.md",
-    "Fractional step method" => "appendix/fractional_step.md"
+    "Fractional step method" => "appendix/fractional_step.md",
+    "Convergence tests" => "appendix/convergence_tests.md",
+    "Performance benchmarks" => "appendix/benchmarks.md",
+    "Library" => "appendix/library.md",
+    "Function index" => "appendix/function_index.md",
 ]
 
 pages = [
@@ -134,15 +134,11 @@ pages = [
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
     "Model setup" => model_setup_pages,
-    "Validation experiments" => validation_pages,
     "Simulation tips" => "simulation_tips.md",
-    "Gallery" => "gallery.md",
-    "Performance benchmarks" => "benchmarks.md",
     "Contributor's guide" => "contributing.md",
-    "Appendix" => appendix_pages,
+    "Gallery" => "gallery.md",
     "References" => "references.md",
-    "Library" => "library.md",
-    "Function index" => "function_index.md"
+    "Appendix" => appendix_pages,
 ]
 
 #####
@@ -173,3 +169,8 @@ deploydocs(
       versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
   push_preview = true
 )
+
+@info "Cleaning up temporary .jld2 and .nc files created by doctests..."
+for file in vcat(glob("docs/*.jld2"), glob("docs/*.nc"))
+    rm(file)
+end

@@ -9,44 +9,49 @@ y-dimension, left and right are called south and north. For the z-dimension, lef
 
 See [Numerical implementation of boundary conditions](@ref numerical_bcs) for more details.
 
-## Types of boundary conditions
+## Boundary condition classifications
 
 1. [`Periodic`](@ref)
 2. [`Flux`](@ref)
 3. [`Value`](@ref) (Dirchlet)
 4. [`Gradient`](@ref) (Neumann)
-5. [`NormalFlow`](@ref)
+5. [`Open`](@ref)
 
-To construct a `Flux` boundary condition use the `FluxBoundaryCondition` constructor and so on.
+Boundary conditions are constructed using the classification as a prefix: `FluxBoundaryCondition`, `ValueBoundaryCondition`, and so on.
 
-Notice that open boundary conditions and radiation boundary conditions can be imposed via flux or value boundary
-conditions defined by a function or array. Or alternatively, through a forcing function if more flexibility is
-desired.
+## Starter tips
 
-## Default boundary conditions
+Here's a short list of useful tips for defining and prescribing boundary conditions on a model:
 
-By default, periodic boundary conditions are applied on all fields along periodic dimensions. Otherwise tracers
-get no-flux boundary conditions and velocities get free-slip and no normal flow boundary conditions.
+1. Boundary conditions depend on the grid topology and can only be non-default or non-`Periodic` in `Bounded` directions.
+   Tracer boundary conditions are no flux by default in `Bounded` directions.
+   Momentum boundary conditions are free-slip for tangential components and impenetrable for wall-normal components in `Bounded` directions.
+   
+2. Another way to say point 1 is that you'll never need to set:
+    * `Periodic` boundary conditions (default for `Periodic` directions);
+    * Impenetrable / "no normal flow" boundary conditions (default for wall-normal momentum components in `Bounded` directions);
+    * "No flux" or "free slip" boundary conditions (default for tracers and wall-tangential momentum components in `Bounded` directions).
 
-## Boundary condition structures
+3. `ValueBoundaryCondition` (aka "Dirichlet" boundary conditions) models boundary fluxes given a field's diffusive flux model, and assuming that a field has the prescribed value on the boundary.
+   _Note_: You cannot use `ValueBoundaryCondition` on a wall-normal velocity component; you must use `Open` for that.
+   Examples where you might use `ValueBoundaryCondition`:
+   * Prescribe a surface to have a constant temperature, like 20 degrees.
+     Heat will then flux in and out of the domain depending on the temperature difference between the surface and the interior, and the temperature diffusivity.
+   * Prescribe a velocity tangent to a boundary as in a driven-cavity flow (for example), where the top boundary is moving.
+     Momentum will flux into the domain do the difference between the top boundary velocity and the interior velocity, and the prescribed viscosity.
 
-Oceananigans uses a hierarchical structure to express boundary conditions.
+4. `FluxBoundaryCondition` _directly_ prescribes the flux of a quantity across a boundary rather than calculating it given a viscosity or diffusivity.
+   For example, sunlight absorbed at the ocean surface imparts a temperature flux that heats near-surface fluid.
+   If there is a known `diffusivity`, you can express `FluxBoundaryCondition(flux)` using `GradientBoundaryCondition(-flux / diffusivity)` (aka "Neumann" boundary condition).
+   But when `diffusivity` is not known or is variable (as for large eddy simulation, for example), it's convenient and more straightforward to apply `FluxBoundaryCondition`.
 
-1. A [`BoundaryCondition`](@ref) is associated with every field, dimension, and endpoint.
-2. Boundary conditions specifying the condition at the left and right endpoints are
-   grouped into [`CoordinateBoundaryConditions`](@ref).
-3. A set of three `CoordinateBoundaryConditions` specifying the boundary conditions along the ``x``-, ``y``-,
-   and ``z``-dimensions.
-   for a single field are grouped into a [`FieldBoundaryConditions`](@ref) `NamedTuple`.
-4. A set of `FieldBoundaryConditions`, up to one for each field, are grouped into a `NamedTuple` and passed
-   to the model constructor.
+## Specifying boundary conditions for a model
 
 Boundary conditions are defined at model construction time by passing a `NamedTuple` of `FieldBoundaryConditions`
-specifying non-default boundary conditions for fields such as velocities (``u``, ``v``, ``w``) and tracers.
+specifying non-default boundary conditions for velocities (``u``, ``v``, ``w``) and tracers.
 Fields for which boundary conditions are not specified are assigned a default boundary conditions.
-Note that default boundary conditions depend on the grid topology.
 
-A few illustrations are provided below. See the validation experiments and examples for
+A few illustrations are provided below. See the examples for
 further illustrations of boundary condition specification.
 
 ## Creating individual boundary conditions with `BoundaryCondition`
@@ -73,7 +78,7 @@ BoundaryCondition: type=Value, condition=20.0
 
 A constant [`Value`](@ref) boundary condition can be used to specify constant tracer (such as temperature),
 or a constant _tangential_ velocity component at a boundary. Note that boundary conditions on the
-_normal_ velocity component must use the [`NormalFlow`](@ref) boundary condition type.
+_normal_ velocity component must use the [`Open`](@ref) boundary condition type.
 
 Finally, note that `ValueBoundaryCondition(condition)` is an alias for `BoundaryCondition(Value, condition)`.
 
@@ -148,27 +153,29 @@ Boundary conditions may also depend on model fields. For example, a linear drag 
 is implemented with
 
 ```jldoctest
-julia> @inline linear_drag(x, y, z, t, u) = - 0.2 * u
+julia> @inline linear_drag(x, y, t, u) = - 0.2 * u
 linear_drag (generic function with 1 method)
 
 julia> u_bottom_bc = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
-BoundaryCondition: type=Flux, condition=linear_drag(x, y, z, t, u) in Main at none:1
+BoundaryCondition: type=Flux, condition=linear_drag(x, y, t, u) in Main at none:1
 ```
+
+`field_dependencies` specifies the name of the dependent fields either with a `Symbol` or `Tuple` of `Symbol`s.
 
 ### 6. 'Field-dependent' boundary conditions with parameters
 
 When boundary conditions depends on fields _and_ parameters, their functions take the form
 
 ```jldoctest
-julia> @inline quadratic_drag(x, y, z, t, u, v, drag_coeff) = - drag_coeff * u * sqrt(u^2 + v^2)
+julia> @inline quadratic_drag(x, y, t, u, v, drag_coeff) = - drag_coeff * u * sqrt(u^2 + v^2)
 quadratic_drag (generic function with 1 method)
 
 julia> u_bottom_bc = FluxBoundaryCondition(quadratic_drag, field_dependencies=(:u, :v), parameters=1e-3)
-BoundaryCondition: type=Flux, condition=quadratic_drag(x, y, z, t, u, v, drag_coeff) in Main at none:1
+BoundaryCondition: type=Flux, condition=quadratic_drag(x, y, t, u, v, drag_coeff) in Main at none:1
 ```
 
-Put differently, field dependencies follow `ξ, η, t` come first in the function signature,
-which are in turn followed by `parameters`.
+Put differently, `ξ, η, t` come first in the function signature, followed by field dependencies,
+followed by `parameters` is `!isnothing(parameters)`.
 
 ### 7. Discrete-form boundary condition with parameters
 
