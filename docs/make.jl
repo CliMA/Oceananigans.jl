@@ -4,6 +4,7 @@ using Documenter
 using DocumenterCitations
 using Literate
 using Plots # to avoid capturing precompilation output by Literate
+using Glob
 
 using Oceananigans
 using Oceananigans.Operators
@@ -168,3 +169,8 @@ deploydocs(
       versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
   push_preview = true
 )
+
+@info "Cleaning up temporary .jld2 and .nc files created by doctests..."
+for file in vcat(glob("docs/*.jld2"), glob("docs/*.nc"))
+    rm(file)
+end
