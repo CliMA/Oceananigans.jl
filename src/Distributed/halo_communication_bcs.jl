@@ -1,13 +1,13 @@
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification
 
-import Oceananigans.BoundaryConditions: bcclassification_str, print_condition
+import Oceananigans.BoundaryConditions: bc_str, print_condition
 
 struct HaloCommunication <: AbstractBoundaryConditionClassification end
 
 const HaloCommunicationBC = BoundaryCondition{<:HaloCommunication}
 
-bcclassification_str(::HaloCommunicationBC) = "HaloCommunication"
+bc_str(::HaloCommunicationBC) = "HaloCommunication"
 
 HaloCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(HaloCommunication, val; kwargs...)
 

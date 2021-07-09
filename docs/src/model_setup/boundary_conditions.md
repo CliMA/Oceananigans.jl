@@ -32,17 +32,14 @@ get no-flux boundary conditions and velocities get free-slip and no normal flow 
 
 Oceananigans uses a hierarchical structure to express boundary conditions.
 
-1. A [`BoundaryCondition`](@ref) is associated with every field, dimension, and endpoint.
-2. Boundary conditions specifying the condition at the left and right endpoints are
-   grouped into [`CoordinateBoundaryConditions`](@ref).
-3. A set of three `CoordinateBoundaryConditions` specifying the boundary conditions along the ``x``-, ``y``-,
-   and ``z``-dimensions.
-   for a single field are grouped into a [`FieldBoundaryConditions`](@ref) `NamedTuple`.
-4. A set of `FieldBoundaryConditions`, up to one for each field, are grouped into a `NamedTuple` and passed
+1. Each boundary has one [`BoundaryCondition`](@ref)
+2. Each field has seven [`BoundaryCondition`](@ref) (`west`, `east`, `south`, `north`, `bottom`, `top` and
+   and an additional experimental condition for `immersed` boundaries)
+3. A set of `FieldBoundaryConditions`, up to one for each field, are grouped into a `NamedTuple` and passed
    to the model constructor.
 
 Boundary conditions are defined at model construction time by passing a `NamedTuple` of `FieldBoundaryConditions`
-specifying non-default boundary conditions for fields such as velocities (``u``, ``v``, ``w``) and tracers.
+specifying non-default boundary conditions for fields such as velocities and tracers.
 Fields for which boundary conditions are not specified are assigned a default boundary conditions.
 Note that default boundary conditions depend on the grid topology.
 
@@ -54,7 +51,6 @@ further illustrations of boundary condition specification.
 ```@meta
 DocTestSetup = quote
    using Oceananigans
-   using Oceananigans.BoundaryConditions
 
    using Random
    Random.seed!(1234)
@@ -234,12 +230,8 @@ When running on the GPU, `Q` must be converted to a `CuArray`.
 To create, for example, a set of horizontally-periodic field boundary conditions, write
 
 ```jldoctest
-julia> topology = (Periodic, Periodic, Bounded);
-
-julia> grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology);
-
-julia> T_bcs = TracerBoundaryConditions(grid,    top = ValueBoundaryCondition(20),
-                                              bottom = GradientBoundaryCondition(0.01))
+julia> T_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20),
+                                       bottom = GradientBoundaryCondition(0.01))
 Oceananigans.FieldBoundaryConditions (NamedTuple{(:x, :y, :z)}), with boundary conditions
 ├── x: CoordinateBoundaryConditions{BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing}, BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing}}
 ├── y: CoordinateBoundaryConditions{BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing}, BoundaryCondition{Oceananigans.BoundaryConditions.Periodic, Nothing}}
@@ -248,12 +240,8 @@ Oceananigans.FieldBoundaryConditions (NamedTuple{(:x, :y, :z)}), with boundary c
 
 `T_bcs` is a [`FieldBoundaryConditions`](@ref) object for temperature `T` appropriate
 for horizontally periodic grid topologies.
-The default `Periodic` boundary conditions in ``x`` and ``y`` are inferred from the `topology` of `grid`.
 
-For ``u``, ``v``, and ``w``, use the
-`UVelocityBoundaryConditions`
-`VVelocityBoundaryConditions`, and
-`WVelocityBoundaryConditions` constructors, respectively.
+`Default` boundary conditions are inferred from the field location and `topology(grid)`.
 
 ## Specifying model boundary conditions
 
@@ -267,11 +255,11 @@ julia> topology = (Periodic, Periodic, Bounded);
 
 julia> grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology);
 
-julia> u_bcs = UVelocityBoundaryConditions(grid, top = ValueBoundaryCondition(+0.1),
-                                              bottom = ValueBoundaryCondition(-0.1));
+julia> u_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(+0.1),
+                                       bottom = ValueBoundaryCondition(-0.1));
 
-julia> T_bcs = TracerBoundaryConditions(grid, top = ValueBoundaryCondition(20),
-                                           bottom = GradientBoundaryCondition(0.01));
+julia> T_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20),
+                                       bottom = GradientBoundaryCondition(0.01));
 
 julia> model = IncompressibleModel(grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
 IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)

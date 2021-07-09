@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: architecture, device_event
-using Oceananigans.BoundaryConditions: DefaultBoundaryCondition
+using Oceananigans.BoundaryConditions: default_prognostic_field_boundary_condition, AuxiliaryFieldBoundaryConditions
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
@@ -244,7 +244,7 @@ end
 """ Infer tracer boundary conditions from user_bcs and tracer_names. """
 function top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
     user_bc_names = keys(user_bcs)
-    default_top_bc = DefaultBoundaryCondition(topology(grid, 3), Center)
+    default_top_bc = default_prognostic_field_boundary_condition(topology(grid, 3), Center())
 
     tracer_bcs = Tuple(name ∈ user_bc_names ? user_bcs[name].top : default_top_bc
                        for name in tracer_names)
@@ -286,16 +286,15 @@ function add_closure_specific_boundary_conditions(closure::TKEVD,
 
         e_bcs = user_bcs[:e]
         
-        tke_bcs = TracerBoundaryConditions(grid,
-                                           top = top_tke_bc,
-                                           bottom = e_bcs.bottom,
-                                           north = e_bcs.north,
-                                           south = e_bcs.south,
-                                           east = e_bcs.east,
-                                           west = e_bcs.west)
-
+        tke_bcs = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center),
+                                                   top = top_tke_bc,
+                                                   bottom = e_bcs.bottom,
+                                                   north = e_bcs.north,
+                                                   south = e_bcs.south,
+                                                   east = e_bcs.east,
+                                                   west = e_bcs.west)
     else
-        tke_bcs = TracerBoundaryConditions(grid, top=top_tke_bc)
+        tke_bcs = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center), top=top_tke_bc)
     end
 
     new_boundary_conditions = merge(user_bcs, (e = tke_bcs,))
@@ -305,13 +304,15 @@ end
 
 function DiffusivityFields(arch, grid, tracer_names, bcs, closure::TKEVD)
 
-    Kᵘ_bcs = :Kᵘ ∈ keys(bcs) ? bcs[:Kᵘ] : DiffusivityBoundaryConditions(grid)
-    Kᶜ_bcs = :Kᶜ ∈ keys(bcs) ? bcs[:Kᶜ] : DiffusivityBoundaryConditions(grid)
-    Kᵉ_bcs = :Kᵉ ∈ keys(bcs) ? bcs[:Kᵉ] : DiffusivityBoundaryConditions(grid)
+    default_diffusivity_bcs = (Kᵘ = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center)),
+                               Kᶜ = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center)),
+                               Kᵉ = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center)))
 
-    Kᵘ = CenterField(arch, grid, Kᵘ_bcs)
-    Kᶜ = CenterField(arch, grid, Kᶜ_bcs)
-    Kᵉ = CenterField(arch, grid, Kᵉ_bcs)
+    bcs = merge(default_diffusivity_bcs, bcs)
+
+    Kᵘ = CenterField(arch, grid, bcs.Kᵘ)
+    Kᶜ = CenterField(arch, grid, bcs.Kᶜ)
+    Kᵉ = CenterField(arch, grid, bcs.Kᵉ)
 
     return (; Kᵘ, Kᶜ, Kᵉ)
 end        
