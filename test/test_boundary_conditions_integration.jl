@@ -4,11 +4,11 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
     grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
 
     boundary_condition_kwarg = Dict(side => boundary_condition)
-    field_boundary_conditions = TracerBoundaryConditions(grid; boundary_condition_kwarg...)
-    bcs = NamedTuple{(field_name,)}((field_boundary_conditions,))
+    field_boundary_conditions = FieldBoundaryConditions(boundary_condition_kwarg...)
 
-    model = IncompressibleModel(grid=grid, architecture=arch,
-                                boundary_conditions=bcs)
+    bcs = NamedTuple{tuple(field_name)}(tuple(field_boundary_conditions))
+
+    model = IncompressibleModel(grid=grid, architecture=arch, boundary_conditions=bcs)
 
     success = try
         time_step!(model, 1e-16, euler=true)
@@ -39,13 +39,9 @@ function test_incompressible_flux_budget(arch, name, side, topo)
     direction = side ∈ (:west, :south, :bottom) ? 1 : -1
     bc_kwarg = Dict(side => BoundaryCondition(Flux, flux * direction))
 
-    FieldBoundaryConditions = name === :u ? UVelocityBoundaryConditions :
-                              name === :v ? VVelocityBoundaryConditions :
-                              name === :w ? WVelocityBoundaryConditions : TracerBoundaryConditions
+    field_bcs = FieldBoundaryConditions(bc_kwarg...)
 
-    field_bcs = FieldBoundaryConditions(grid; bc_kwarg...)
-
-    model_bcs = NamedTuple{(name,)}((field_bcs,))
+    model_bcs = NamedTuple{tuple(name)}(tuple(field_bcs))
 
     model = IncompressibleModel(grid=grid, buoyancy=nothing, boundary_conditions=model_bcs,
                                 closure=nothing, architecture=arch, tracers=:c)
@@ -77,8 +73,8 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
 
     grid = RegularRectilinearGrid(FT, size=(16, 16, 16), extent=(1, 1, Lz))
 
-    buoyancy_bcs = TracerBoundaryConditions(grid, bottom=BoundaryCondition(Gradient, bz))
-    κₑ_bcs = DiffusivityBoundaryConditions(grid, bottom=BoundaryCondition(Value, κ₀))
+    buoyancy_bcs = FieldBoundaryConditions(bottom=BoundaryCondition(Gradient, bz))
+    κₑ_bcs = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center), bottom=BoundaryCondition(Value, κ₀))
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
     model = IncompressibleModel(
@@ -146,30 +142,26 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         # yet.
         grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=(Periodic, Bounded, Bounded))
 
-        u_boundary_conditions = UVelocityBoundaryConditions(grid; 
-                                                            bottom = simple_function_bc(Value),
-                                                            top    = simple_function_bc(Value),
-                                                            north  = simple_function_bc(Value),
-                                                            south  = simple_function_bc(Value))
+        u_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
+                                                        top    = simple_function_bc(Value),
+                                                        north  = simple_function_bc(Value),
+                                                        south  = simple_function_bc(Value))
 
-        v_boundary_conditions = VVelocityBoundaryConditions(grid;
-                                                            bottom = simple_function_bc(Value),
-                                                            top    = simple_function_bc(Value),
-                                                            north  = simple_function_bc(Open),
-                                                            south  = simple_function_bc(Open))
+        v_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
+                                                        top    = simple_function_bc(Value),
+                                                        north  = simple_function_bc(Open),
+                                                        south  = simple_function_bc(Open))
 
 
-        w_boundary_conditions = VVelocityBoundaryConditions(grid;
-                                                            bottom = simple_function_bc(Open),
-                                                            top    = simple_function_bc(Open),
-                                                            north  = simple_function_bc(Value),
-                                                            south  = simple_function_bc(Value))
+        w_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Open),
+                                                        top    = simple_function_bc(Open),
+                                                        north  = simple_function_bc(Value),
+                                                        south  = simple_function_bc(Value))
 
-        T_boundary_conditions = TracerBoundaryConditions(grid;
-                                                         bottom = simple_function_bc(Value),
-                                                         top    = simple_function_bc(Value),
-                                                         north  = simple_function_bc(Value),
-                                                         south  = simple_function_bc(Value))
+        T_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
+                                                        top    = simple_function_bc(Value),
+                                                        north  = simple_function_bc(Value),
+                                                        south  = simple_function_bc(Value))
 
         boundary_conditions = (u=u_boundary_conditions,
                                v=v_boundary_conditions,

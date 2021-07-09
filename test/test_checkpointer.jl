@@ -62,18 +62,12 @@ function test_thermal_bubble_checkpointer_output(arch)
     # Checkpoint should be saved as "checkpoint_iteration5.jld" after the 5th iteration.
     run!(checkpointed_simulation) # for 5 iterations
 
-    # model_kwargs = Dict{Symbol, Any}(:boundary_conditions => SolutionBoundaryConditions(grid))
     restored_model = restore_from_checkpoint("checkpoint_iteration5.jld2")
-
-    #restored_simulation = Simulation(restored_model, Δt=Δt, stop_iteration=9)
-    #run!(restored_simulation)
 
     for n in 1:4
         update_state!(restored_model)
         time_step!(restored_model, Δt, euler=false) # time-step for 4 iterations
     end
-
-    # test_model_equality(restored_model, true_model)
 
     #####
     ##### Test `set!(model, checkpoint_file)`
@@ -124,8 +118,8 @@ function test_checkpoint_output_with_function_bcs(arch)
 
     @inline some_flux(x, y, t) = 2x + exp(y)
     top_u_bc = top_T_bc = FluxBoundaryCondition(some_flux)
-    u_bcs = UVelocityBoundaryConditions(grid, top=top_u_bc)
-    T_bcs = TracerBoundaryConditions(grid, top=top_T_bc)
+    u_bcs = FieldBoundaryConditions(top=top_u_bc)
+    T_bcs = FieldBoundaryConditions(top=top_T_bc)
 
     model = IncompressibleModel(architecture=arch, grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
     set!(model, u=π/2, v=ℯ, T=Base.MathConstants.γ, S=Base.MathConstants.φ)

@@ -1,5 +1,4 @@
-using Oceananigans.BoundaryConditions: PBC, ZFBC, OBC, ContinuousBoundaryFunction, DiscreteBoundaryFunction
-
+using Oceananigans.BoundaryConditions: PBC, ZFBC, OBC, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
 using Oceananigans.Fields: Face, Center
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
@@ -48,10 +47,12 @@ end
         ppp_topology = (Periodic, Periodic, Periodic)
         ppp_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=ppp_topology)
 
-        u_bcs = UVelocityBoundaryConditions(ppp_grid)
-        v_bcs = VVelocityBoundaryConditions(ppp_grid)
-        w_bcs = WVelocityBoundaryConditions(ppp_grid)
-        T_bcs = TracerBoundaryConditions(ppp_grid)
+        default_bcs = FieldBoundaryConditions()
+
+        u_bcs = regularize_field_boundary_conditions(default_bcs, ppp_grid, :u)
+        v_bcs = regularize_field_boundary_conditions(default_bcs, ppp_grid, :v)
+        w_bcs = regularize_field_boundary_conditions(default_bcs, ppp_grid, :w)
+        T_bcs = regularize_field_boundary_conditions(default_bcs, ppp_grid, :T)
 
         @test u_bcs isa FieldBoundaryConditions
         @test u_bcs.x.left  isa PBC
@@ -89,10 +90,10 @@ end
         ppb_topology = (Periodic, Periodic, Bounded)
         ppb_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=ppb_topology)
 
-        u_bcs = UVelocityBoundaryConditions(ppb_grid)
-        v_bcs = VVelocityBoundaryConditions(ppb_grid)
-        w_bcs = WVelocityBoundaryConditions(ppb_grid)
-        T_bcs = TracerBoundaryConditions(ppb_grid)
+        u_bcs = regularize_field_boundary_conditions(default_bcs, ppb_grid, :u)
+        v_bcs = regularize_field_boundary_conditions(default_bcs, ppb_grid, :v)
+        w_bcs = regularize_field_boundary_conditions(default_bcs, ppb_grid, :w)
+        T_bcs = regularize_field_boundary_conditions(default_bcs, ppb_grid, :T)
 
         @test u_bcs isa FieldBoundaryConditions
         @test u_bcs.x.left  isa PBC
@@ -130,10 +131,10 @@ end
         pbb_topology = (Periodic, Bounded, Bounded)
         pbb_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=pbb_topology)
 
-        u_bcs = UVelocityBoundaryConditions(pbb_grid)
-        v_bcs = VVelocityBoundaryConditions(pbb_grid)
-        w_bcs = WVelocityBoundaryConditions(pbb_grid)
-        T_bcs = TracerBoundaryConditions(pbb_grid)
+        u_bcs = regularize_field_boundary_conditions(default_bcs, pbb_grid, :u)
+        v_bcs = regularize_field_boundary_conditions(default_bcs, pbb_grid, :v)
+        w_bcs = regularize_field_boundary_conditions(default_bcs, pbb_grid, :w)
+        T_bcs = regularize_field_boundary_conditions(default_bcs, pbb_grid, :T)
 
         @test u_bcs isa FieldBoundaryConditions
         @test u_bcs.x.left  isa PBC
@@ -171,10 +172,10 @@ end
         bbb_topology = (Bounded, Bounded, Bounded)
         bbb_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=bbb_topology)
 
-        u_bcs = UVelocityBoundaryConditions(bbb_grid)
-        v_bcs = VVelocityBoundaryConditions(bbb_grid)
-        w_bcs = WVelocityBoundaryConditions(bbb_grid)
-        T_bcs = TracerBoundaryConditions(bbb_grid)
+        u_bcs = regularize_field_boundary_conditions(default_bcs, bbb_grid, :u)
+        v_bcs = regularize_field_boundary_conditions(default_bcs, bbb_grid, :v)
+        w_bcs = regularize_field_boundary_conditions(default_bcs, bbb_grid, :w)
+        T_bcs = regularize_field_boundary_conditions(default_bcs, bbb_grid, :T)
 
         @test u_bcs isa FieldBoundaryConditions
         @test u_bcs.x.left  isa OBC
@@ -210,29 +211,31 @@ end
 
         grid = bbb_grid
         
-        T_bcs = TracerBoundaryConditions(grid;
-                                           east = BoundaryCondition(Value, simple_bc),
-                                           west = BoundaryCondition(Value, simple_bc),
-                                         bottom = BoundaryCondition(Value, simple_bc),
-                                            top = BoundaryCondition(Value, simple_bc),
-                                          north = BoundaryCondition(Value, simple_bc),
-                                          south = BoundaryCondition(Value, simple_bc)
-                                         )
+        T_bcs = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center),
+                                                   east = ValueBoundaryCondition(simple_bc),
+                                                   west = ValueBoundaryCondition(simple_bc),
+                                                 bottom = ValueBoundaryCondition(simple_bc),
+                                                    top = ValueBoundaryCondition(simple_bc),
+                                                  north = ValueBoundaryCondition(simple_bc),
+                                                  south = ValueBoundaryCondition(simple_bc))
 
-        # Note that boundary condition setting is valid only in cases where
-        # boundary conditionsare same type
-        
+        @test T_bcs.east.condition === simple_bc
+        @test T_bcs.west.condition === simple_bc
+        @test T_bcs.north.condition === simple_bc
+        @test T_bcs.south.condition === simple_bc
+        @test T_bcs.top.condition === simple_bc
+        @test T_bcs.bottom.condition === simple_bc
+
         one_bc = BoundaryCondition(Value, 1.0)
-        two_bc = BoundaryCondition(Value, 2.0)
 
-        T_bcs = TracerBoundaryConditions(grid;
-                                           east = one_bc,
+        T_bcs = FieldBoundaryConditions(   east = one_bc,
                                            west = one_bc,
                                          bottom = one_bc,
                                             top = one_bc,
                                           north = one_bc,
-                                          south = one_bc,
-                                         )
+                                          south = one_bc)
+
+        T_bcs = regularize_field_boundary_conditions(T_bcs, grid, :T)
 
         @test T_bcs.east   === one_bc
         @test T_bcs.west   === one_bc
@@ -240,19 +243,5 @@ end
         @test T_bcs.south  === one_bc
         @test T_bcs.top    === one_bc
         @test T_bcs.bottom === one_bc
-
-        T_bcs.east   = two_bc
-        T_bcs.west   = two_bc
-        T_bcs.north  = two_bc
-        T_bcs.south  = two_bc
-        T_bcs.top    = two_bc
-        T_bcs.bottom = two_bc
-
-        @test T_bcs.east   === two_bc
-        @test T_bcs.west   === two_bc
-        @test T_bcs.north  === two_bc
-        @test T_bcs.south  === two_bc
-        @test T_bcs.top    === two_bc
-        @test T_bcs.bottom === two_bc
     end
 end

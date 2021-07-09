@@ -117,7 +117,7 @@ boundary conditions for prognostic model field boundary conditions.
 Note: don't regularize immersed boundary conditions: we don't support ContinuousBoundaryFunction
 for immersed boundary conditions.
 """
-function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid, model_field_names, field_name)
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid, field_name, model_field_names=nothing)
 
     topo = topology(grid)
     loc = assumed_field_location(field_name)
@@ -137,11 +137,11 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid
     return FieldBoundaryConditions(east, west, north, south, top, bottom, immersed)
 end
 
-function regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, model_field_names, field_name=nothing)
+function regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, model_field_names)
 
     boundary_conditions_names = propertynames(boundary_conditions)
 
-    boundary_conditions_tuple = Tuple(regularize_field_boundary_conditions(bcs, grid, model_field_names, name)
+    boundary_conditions_tuple = Tuple(regularize_field_boundary_conditions(bcs, grid, name, model_field_names)
                                       for (name, bcs) in zip(boundary_conditions_names, boundary_conditions))
 
     boundary_conditions = NamedTuple{boundary_conditions_names}(boundary_conditions_tuple)
@@ -149,4 +149,4 @@ function regularize_field_boundary_conditions(boundary_conditions::NamedTuple, g
     return boundary_conditions
 end
 
-regularize_field_boundary_conditions(::Missing, grid, model_field_names, field_name=nothing) = missing
+regularize_field_boundary_conditions(::Missing, grid, field_name, model_field_names=nothing) = missing
