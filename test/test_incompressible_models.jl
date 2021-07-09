@@ -171,9 +171,9 @@
             U_field = XFaceField(arch, grid)
             U_field .= 1
             model = IncompressibleModel(grid=grid, architecture=arch, background_fields = (u=U_field,))
+            @test model.background_fields.u isa Field
             
         end
     end
 end
-
 
