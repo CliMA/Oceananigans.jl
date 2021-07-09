@@ -166,14 +166,6 @@ and then open `docs/build/index.html` in your favorite browser. Providing the en
 `JULIA_DEBUG=Documenter` will provide with more information in the documentation build process and
 thus help figuring out a potential bug.
 
-The building of the documentation performs some basic tests (`doctests`), which create some temporary
-`.nc` and `.jld2` files. Make sure you delete those files before rebuilding the documentation, e.g.,
-
-```
-rm docs/*.jld2
-rm docs/*.nc
-```
-
 ## Credits
 
 This contributor's guide is heavily based on the excellent [MetPy contributor's guide](https://github.com/Unidata/MetPy/blob/master/CONTRIBUTING.md).
