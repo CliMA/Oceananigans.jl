@@ -40,7 +40,7 @@ import Oceananigans.Utils: cell_advection_timescale
 import Oceananigans.Solvers: PressureSolver
 import Oceananigans.Grids: with_halo
 import Oceananigans.Coriolis: φᶠᶠᵃ
-import Oceananigans.Grids: with_halo, xnode, ynode, znode
+import Oceananigans.Grids: with_halo, xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
 
 import Oceananigans.Advection:
     _advective_momentum_flux_Uu,
@@ -85,7 +85,7 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I} <: AbstractGrid{FT, TX, TY, TZ
     grid :: G
     immersed_boundary :: I
 
-    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {TX, TY, TZ, G <: AbstractPrimaryGrid, I}
+    function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I}
         FT = eltype(grid)
         return new{FT, TX, TY, TZ, G, I}(grid, ib)
     end
@@ -121,6 +121,10 @@ PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.grid)
 @inline xnode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = xnode(LX, LY, LZ, i, j, k, ibg.grid)
 @inline ynode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = ynode(LX, LY, LZ, i, j, k, ibg.grid)
 @inline znode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = znode(LX, LY, LZ, i, j, k, ibg.grid)
+
+all_x_nodes(loc, ibg::ImmersedBoundaryGrid) = all_x_nodes(loc, ibg.grid)
+all_y_nodes(loc, ibg::ImmersedBoundaryGrid) = all_y_nodes(loc, ibg.grid)
+all_z_nodes(loc, ibg::ImmersedBoundaryGrid) = all_z_nodes(loc, ibg.grid)
 
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundary.jl")

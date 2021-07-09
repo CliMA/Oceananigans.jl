@@ -526,6 +526,12 @@ end
 @inline diffusive_flux_z(i, j, k, grid, closure, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, closure, e, Val(N), args...)
 
 # Shortcuts --- TKEVD incurs no horizontal transport
+@inline viscous_flux_ux(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_uy(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vx(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vy(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wx(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wy(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
 @inline diffusive_flux_x(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
 @inline diffusive_flux_y(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
 
@@ -551,11 +557,11 @@ const VITD = VerticallyImplicitTimeDiscretization
     end
 end
 
-const VerticallyBoundedGrid{FT} = AbstractPrimaryGrid{FT, <:Any, <:Any, <:Bounded}
+const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
-@inline diffusive_flux_z(i, j, k, grid::APG{FT}, ::VITD, closure::TKEVD, args...) where FT = zero(FT)
-@inline viscous_flux_uz(i, j, k, grid::APG{FT}, ::VITD, closure::TKEVD, args...) where FT = zero(FT)
-@inline viscous_flux_vz(i, j, k, grid::APG{FT}, ::VITD, closure::TKEVD, args...) where FT = zero(FT)
+@inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_uz(i, j, k, grid, ::VITD, closure::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vz(i, j, k, grid, ::VITD, closure::TKEVD, args...) = zero(eltype(grid))
 
 @inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::TKEVD, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 

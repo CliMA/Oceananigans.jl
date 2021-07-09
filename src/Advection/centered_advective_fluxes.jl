@@ -1,5 +1,3 @@
-using Oceananigans.Grids: AbstractPrimaryGrid
-
 #####
 ##### Momentum and advective tracer flux operators for centered advection schemes
 #####

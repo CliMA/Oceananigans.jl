@@ -2,7 +2,7 @@ module Grids
 
 export Center, Face
 export AbstractTopology, Periodic, Bounded, Flat, Connected, topology
-export AbstractGrid, AbstractPrimaryGrid, halo_size
+export AbstractGrid, AbstractUnderlyingGrid, halo_size
 export AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export RegularLatitudeLongitudeGrid, ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
@@ -81,26 +81,26 @@ Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, T
 abstract type AbstractGrid{FT, TX, TY, TZ} end
 
 """
-    AbstractPrimaryGrid{FT, TX, TY, TZ}
+    AbstractUnderlyingGrid{FT, TX, TY, TZ}
 
 Abstract supertype for "primary" grids (as opposed to grids with immersed boundaries)
 with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
-abstract type AbstractPrimaryGrid{FT, TX, TY, TZ} <: AbstractGrid{FT, TX, TY, TZ} end
+abstract type AbstractUnderlyingGrid{FT, TX, TY, TZ} <: AbstractGrid{FT, TX, TY, TZ} end
 
 """
     AbstractRectilinearGrid{FT, TX, TY, TZ}
 
 Abstract supertype for rectilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
-abstract type AbstractRectilinearGrid{FT, TX, TY, TZ} <: AbstractPrimaryGrid{FT, TX, TY, TZ} end
+abstract type AbstractRectilinearGrid{FT, TX, TY, TZ} <: AbstractUnderlyingGrid{FT, TX, TY, TZ} end
 
 """
     AbstractCurvilinearGrid{FT, TX, TY, TZ}
 
 Abstract supertype for curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
-abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ} <: AbstractPrimaryGrid{FT, TX, TY, TZ} end
+abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ} <: AbstractUnderlyingGrid{FT, TX, TY, TZ} end
 
 """
     AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}

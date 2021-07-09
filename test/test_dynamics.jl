@@ -1,4 +1,5 @@
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, z_viscosity
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 function relative_error(u_num, u, time)
     u_ans = Field(location(u_num), architecture(u_num), u_num.grid, nothing)
@@ -65,10 +66,8 @@ function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
     return isapprox(init_mean, final_mean)
 end
 
-function test_diffusion_cosine(fieldname, timestepper, time_discretization)
-    Nz, Lz, κ, m = 128, π/2, 1, 2
-
-    grid = RegularRectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
+function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization)
+    κ, m = 1, 2 # diffusivity and cosine wavenumber
 
     model = IncompressibleModel(timestepper = timestepper,
                                        grid = grid,
@@ -83,7 +82,7 @@ function test_diffusion_cosine(fieldname, timestepper, time_discretization)
     diffusing_cosine(κ, m, z, t) = exp(-κ * m^2 * t) * cos(m * z)
 
     # Step forward with small time-step relative to diff. time-scale
-    Δt = 1e-6 * Lz^2 / κ
+    Δt = 1e-6 * grid.Lz^2 / κ
     for n in 1:10
         ab2_or_rk3_time_step!(model, Δt, n)
     end
@@ -450,10 +449,18 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
     @testset "Diffusion cosine" begin
         for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            @info "  Testing diffusion cosine [$timestepper]..."
             for fieldname in (:u, :v, :T, :S)
                 for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
-                    @test test_diffusion_cosine(fieldname, timestepper, time_discretization)
+                    Nz, Lz = 128, π/2
+                    grid = RegularRectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
+
+                    @info "  Testing diffusion cosine [$fieldname, $timestepper, $time_discretization]..."
+                    @test test_diffusion_cosine(fieldname, timestepper, grid, time_discretization)
+
+                    @info "  Testing diffusion cosine on ImmersedBoundaryGrid [$fieldname, $timestepper, $time_discretization]..."
+                    solid(x, y, z) = false
+                    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBoundary(solid))
+                    @test test_diffusion_cosine(fieldname, timestepper, immersed_grid, time_discretization)
                 end
             end
         end
