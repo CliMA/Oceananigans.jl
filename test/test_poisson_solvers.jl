@@ -8,15 +8,14 @@ function poisson_solver_instantiates(arch, grid, planner_flag)
 end
 
 function random_divergent_source_term(arch, grid)
-    Ru = CenterField(arch, grid, UVelocityBoundaryConditions(grid))
-    Rv = CenterField(arch, grid, VVelocityBoundaryConditions(grid))
-    Rw = CenterField(arch, grid, WVelocityBoundaryConditions(grid))
+    Ru = XFaceField(arch, grid)
+    Rv = YFaceField(arch, grid)
+    Rw = ZFaceField(arch, grid)
     U = (u=Ru, v=Rv, w=Rw)
 
-    Nx, Ny, Nz = size(grid)
-    set!(Ru, rand(Nx, Ny, Nz))
-    set!(Rv, rand(Nx, Ny, Nz))
-    set!(Rw, rand(Nx, Ny, Nz))
+    set!(Ru, (x, y, z) -> rand())
+    set!(Rv, (x, y, z) -> rand())
+    set!(Rw, (x, y, z) -> rand())
 
     fill_halo_regions!(Ru, arch)
     fill_halo_regions!(Rv, arch)
@@ -34,25 +33,24 @@ end
 
 function random_divergence_free_source_term(arch, grid)
     # Random right hand side
-    Ru = CenterField(arch, grid, UVelocityBoundaryConditions(grid))
-    Rv = CenterField(arch, grid, VVelocityBoundaryConditions(grid))
-    Rw = CenterField(arch, grid, WVelocityBoundaryConditions(grid))
+    Ru = XFaceField(arch, grid)
+    Rv = YFaceField(arch, grid)
+    Rw = ZFaceField(arch, grid)
     U = (u=Ru, v=Rv, w=Rw)
 
-    Nx, Ny, Nz = size(grid)
-    set!(Ru, rand(Nx, Ny, Nz))
-    set!(Rv, rand(Nx, Ny, Nz))
-    set!(Rw, zeros(Nx, Ny, Nz))
+    set!(Ru, (x, y, z) -> rand())
+    set!(Rv, (x, y, z) -> rand())
+    set!(Rw, (x, y, z) -> rand())
 
-    fill_halo_regions!(Ru, arch, nothing, nothing)
-    fill_halo_regions!(Rv, arch, nothing, nothing)
-    fill_halo_regions!(Rw, arch, nothing, nothing)
+    fill_halo_regions!(Ru, arch)
+    fill_halo_regions!(Rv, arch)
+    fill_halo_regions!(Rw, arch)
 
     event = launch!(arch, grid, :xy, _compute_w_from_continuity!, U, grid,
                     dependencies=Event(device(arch)))
     wait(device(arch), event)
 
-    fill_halo_regions!(Rw, arch, nothing, nothing)
+    fill_halo_regions!(Rw, arch)
 
     # Compute the right hand side R = ∇⋅U
     ArrayType = array_type(arch)
@@ -75,7 +73,7 @@ function divergence_free_poisson_solution(arch, grid, planner_flag=FFTW.MEASURE)
     solver = FFTBasedPoissonSolver(arch, grid, planner_flag)
     R, U = random_divergent_source_term(arch, grid)
 
-    p_bcs = PressureBoundaryConditions(grid)
+    p_bcs = AuxiliaryFieldBoundaryConditions(grid, (Center, Center, Center))
     ϕ   = CenterField(arch, grid, p_bcs)  # "kinematic pressure"
     ∇²ϕ = CenterField(arch, grid, p_bcs)
 
@@ -149,7 +147,7 @@ function vertically_stretched_poisson_solver_correct_answer(FT, arch, topo, Nx, 
     vs_grid = VerticallyStretchedRectilinearGrid(FT; architecture=arch, topology=topo, size=sz, z_faces=zF, xy_intervals...)
     solver = FourierTridiagonalPoissonSolver(arch, vs_grid)
 
-    p_bcs = PressureBoundaryConditions(vs_grid)
+    p_bcs = AuxiliaryFieldBoundaryConditions(vs_grid, (Center, Center, Center))
     ϕ   = CenterField(arch, vs_grid, p_bcs)  # "kinematic pressure"
     ∇²ϕ = CenterField(arch, vs_grid, p_bcs)
 
