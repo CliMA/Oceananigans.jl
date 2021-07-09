@@ -51,22 +51,6 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization} end
 # Fallbacks
 add_closure_specific_boundary_conditions(closure, boundary_conditions, args...) = boundary_conditions
 
-viscous_flux_ux(i, j, k, grid, args...) = zero(eltype(grid))
-viscous_flux_uy(i, j, k, grid, args...) = zero(eltype(grid))
-viscous_flux_uz(i, j, k, grid, args...) = zero(eltype(grid))
-
-viscous_flux_vx(i, j, k, grid, args...) = zero(eltype(grid))
-viscous_flux_vy(i, j, k, grid, args...) = zero(eltype(grid))
-viscous_flux_vz(i, j, k, grid, args...) = zero(eltype(grid))
-
-viscous_flux_wx(i, j, k, grid, args...) = zero(eltype(grid))
-viscous_flux_wy(i, j, k, grid, args...) = zero(eltype(grid))
-viscous_flux_wz(i, j, k, grid, args...) = zero(eltype(grid))
-
-diffusive_flux_x(i, j, k, grid, args...) = zero(eltype(grid))
-diffusive_flux_y(i, j, k, grid, args...) = zero(eltype(grid))
-diffusive_flux_z(i, j, k, grid, args...) = zero(eltype(grid))
-
 #####
 ##### Include module code
 #####

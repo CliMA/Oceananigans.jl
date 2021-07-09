@@ -5,21 +5,21 @@ using Oceananigans.Fields: ZeroField
 #####
 
 # Alternate names for advective fluxes
-@inline _advective_momentum_flux_Uu(i, j, k, grid::APG, args...) = advective_momentum_flux_Uu(i, j, k, grid, args...)
-@inline _advective_momentum_flux_Vu(i, j, k, grid::APG, args...) = advective_momentum_flux_Vu(i, j, k, grid, args...)
-@inline _advective_momentum_flux_Wu(i, j, k, grid::APG, args...) = advective_momentum_flux_Wu(i, j, k, grid, args...)
+@inline _advective_momentum_flux_Uu(args...) = advective_momentum_flux_Uu(args...)
+@inline _advective_momentum_flux_Vu(args...) = advective_momentum_flux_Vu(args...)
+@inline _advective_momentum_flux_Wu(args...) = advective_momentum_flux_Wu(args...)
 
-@inline _advective_momentum_flux_Uv(i, j, k, grid::APG, args...) = advective_momentum_flux_Uv(i, j, k, grid, args...)
-@inline _advective_momentum_flux_Vv(i, j, k, grid::APG, args...) = advective_momentum_flux_Vv(i, j, k, grid, args...)
-@inline _advective_momentum_flux_Wv(i, j, k, grid::APG, args...) = advective_momentum_flux_Wv(i, j, k, grid, args...)
+@inline _advective_momentum_flux_Uv(args...) = advective_momentum_flux_Uv(args...)
+@inline _advective_momentum_flux_Vv(args...) = advective_momentum_flux_Vv(args...)
+@inline _advective_momentum_flux_Wv(args...) = advective_momentum_flux_Wv(args...)
 
-@inline _advective_momentum_flux_Uw(i, j, k, grid::APG, args...) = advective_momentum_flux_Uw(i, j, k, grid, args...)
-@inline _advective_momentum_flux_Vw(i, j, k, grid::APG, args...) = advective_momentum_flux_Vw(i, j, k, grid, args...)
-@inline _advective_momentum_flux_Ww(i, j, k, grid::APG, args...) = advective_momentum_flux_Ww(i, j, k, grid, args...)
+@inline _advective_momentum_flux_Uw(args...) = advective_momentum_flux_Uw(args...)
+@inline _advective_momentum_flux_Vw(args...) = advective_momentum_flux_Vw(args...)
+@inline _advective_momentum_flux_Ww(args...) = advective_momentum_flux_Ww(args...)
 
-@inline _advective_tracer_flux_x(i, j, k, grid::APG, args...) = _advective_tracer_flux_x(i, j, k, grid, args...)
-@inline _advective_tracer_flux_y(i, j, k, grid::APG, args...) = _advective_tracer_flux_y(i, j, k, grid, args...)
-@inline _advective_tracer_flux_z(i, j, k, grid::APG, args...) = _advective_tracer_flux_z(i, j, k, grid, args...)
+@inline _advective_tracer_flux_x(args...) = _advective_tracer_flux_x(args...)
+@inline _advective_tracer_flux_y(args...) = _advective_tracer_flux_y(args...)
+@inline _advective_tracer_flux_z(args...) = _advective_tracer_flux_z(args...)
 
 const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
 
