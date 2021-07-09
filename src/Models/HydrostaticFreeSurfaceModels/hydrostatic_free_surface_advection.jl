@@ -1,7 +1,7 @@
 using Oceananigans.Operators
 
 using Oceananigans.Operators: Δx_vᶜᶠᵃ, Δy_uᶠᶜᵃ, Δxᶠᶜᵃ, Δyᶜᶠᵃ, Az_wᶜᶜᵃ
-using Oceananigans.Advection: div_Uu, div_Uv
+using Oceananigans.Advection: div_𝐯u, div_𝐯v
 
 ######
 ###### Horizontally-vector-invariant formulation of momentum advection
@@ -29,8 +29,8 @@ using Oceananigans.Advection: div_Uu, div_Uv
 ###### Conservative formulation of momentum advection
 ######
 
-@inline U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U) = div_Uu(i, j, k, grid, advection, U, U.u)
-@inline U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, U) = div_Uv(i, j, k, grid, advection, U, U.v)
+@inline U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U) = div_𝐯u(i, j, k, grid, advection, U, U.u)
+@inline U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, U) = div_𝐯v(i, j, k, grid, advection, U, U.v)
 
 ######
 ###### No advection
