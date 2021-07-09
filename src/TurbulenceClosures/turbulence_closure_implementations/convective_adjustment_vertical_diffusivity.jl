@@ -187,12 +187,11 @@ end
 @inline κᶜᶜᶠ(i, j, k, grid, clock, c::ConvectiveAdjustmentCoeff{I}) where I = κᶜᶜᶠ(i, j, k, grid, clock, c.closure, c.stable_buoyancy_gradient, Val(I))
 
 const VITD = VerticallyImplicitTimeDiscretization
-const APG = AbstractPrimaryGrid
-const VerticallyBoundedGrid{FT} = AbstractPrimaryGrid{FT, <:Any, <:Any, <:Bounded}
+const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
-@inline diffusive_flux_z(i, j, k, grid::APG{FT}, ::VITD, closure::CAVD, args...) where FT = zero(FT)
-@inline viscous_flux_uz(i, j, k, grid::APG{FT}, ::VITD, closure::CAVD, args...) where FT = zero(FT)
-@inline viscous_flux_vz(i, j, k, grid::APG{FT}, ::VITD, closure::CAVD, args...) where FT = zero(FT)
+@inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_uz(i, j, k, grid, ::VITD, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vz(i, j, k, grid, ::VITD, closure::CAVD, args...) = zero(eltype(grid))
 
 @inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CAVD, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
