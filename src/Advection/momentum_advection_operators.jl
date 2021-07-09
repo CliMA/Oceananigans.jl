@@ -47,11 +47,11 @@ const ZeroU = NamedTuple{(:u, :v, :w), Tuple{ZeroField, ZeroField, ZeroField}}
 """
     div_Uu(i, j, k, grid, advection, U, u)
 
-Calculate the advection of momentum in the x-direction using the conservative form, ∇·(Uu)
+Calculate the advection of momentum in the ``x``-direction using the conservative form, ``𝛁⋅(𝐯 u)``,
 
     1/Vᵘ * [δxᶠᵃᵃ(ℑxᶜᵃᵃ(Ax * u) * ℑxᶜᵃᵃ(u)) + δy_fca(ℑxᶠᵃᵃ(Ay * v) * ℑyᵃᶠᵃ(u)) + δz_fac(ℑxᶠᵃᵃ(Az * w) * ℑzᵃᵃᶠ(u))]
 
-which will end up at the location `fcc`.
+which ends up at the location `fcc`.
 """
 @inline function div_Uu(i, j, k, grid, advection, U, u)
     return 1/Vᶠᶜᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uu, advection, U[1], u) +
@@ -62,11 +62,11 @@ end
 """
     div_Uv(i, j, k, grid, advection, U, v)
 
-Calculate the advection of momentum in the y-direction using the conservative form, ∇·(Uv)
+Calculate the advection of momentum in the ``y``-direction using the conservative form, ``𝛁⋅(𝐯 v)``,
 
     1/Vʸ * [δx_cfa(ℑyᵃᶠᵃ(Ax * u) * ℑxᶠᵃᵃ(v)) + δyᵃᶠᵃ(ℑyᵃᶜᵃ(Ay * v) * ℑyᵃᶜᵃ(v)) + δz_afc(ℑxᶠᵃᵃ(Az * w) * ℑzᵃᵃᶠ(w))]
 
-which will end up at the location `cfc`.
+which ends up at the location `cfc`.
 """
 @inline function div_Uv(i, j, k, grid, advection, U, v)
     return 1/Vᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uv, advection, U[1], v) +
@@ -77,11 +77,11 @@ end
 """
     div_Uw(i, j, k, grid, advection, U, w)
 
-Calculate the advection of momentum in the z-direction using the conservative form, ∇·(Uw)
+Calculate the advection of momentum in the ``z``-direction using the conservative form, ``𝛁⋅(𝐯 w)``,
 
     1/Vʷ * [δx_caf(ℑzᵃᵃᶠ(Ax * u) * ℑxᶠᵃᵃ(w)) + δy_acf(ℑzᵃᵃᶠ(Ay * v) * ℑyᵃᶠᵃ(w)) + δzᵃᵃᶠ(ℑzᵃᵃᶜ(Az * w) * ℑzᵃᵃᶜ(w))]
 
-which will end up at the location `ccf`.
+which ends up at the location `ccf`.
 """
 @inline function div_Uw(i, j, k, grid, advection, U, w)
     return 1/Vᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uw, advection, U[1], w) +
