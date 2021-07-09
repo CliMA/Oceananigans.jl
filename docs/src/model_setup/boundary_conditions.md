@@ -269,8 +269,8 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 └── immersed: BoundaryCondition{Oceananigans.BoundaryConditions.Flux, Nothing}
 ```
 
-If the grid is horizontally-periodic, then each horizontal `DefaultPrognosticFieldBoundaryCondition`
-is converted to `PeriodicBoundaryCondition` inside the model constructor, before assigning the
+If the grid is, e.g., horizontally-periodic, then each horizontal `DefaultPrognosticFieldBoundaryCondition`
+is converted to `PeriodicBoundaryCondition` inside the model's constructor, before assigning the
 boundary conditions to temperature `T`.
 
 In general, boundary condition defaults are inferred from the field location and `topology(grid)`.
