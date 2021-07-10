@@ -108,10 +108,10 @@ grid = RegularRectilinearGrid(size = (Nx, Nz),
 
 b★ = 1.0
 
-@inline bₛ(x, y, t, p) = - p.b★ * cos(2π * x / p.Lx)
+@inline bₛ(x, y, t) = - cos(π * x)
 
 b_bcs = TracerBoundaryConditions(grid,
-                                 top = ValueBoundaryCondition(bₛ, parameters = (b★=b★, Lx=Lx)))
+                                 top = ValueBoundaryCondition(bₛ))
 
 # ## Turbulence closures
 #
@@ -178,14 +178,14 @@ nothing # hide
 # every 100 iterations,
 
 simulation = Simulation(model, Δt = wizard, iteration_interval = 50,
-                                                     stop_time = 1.05,
+                                                     stop_time = 40.05,
                                                       progress = progress)
 
 # ### Output
 #
-# We use `ComputedField`s to diagnose and output the total flow speed, the vorticity, ``ζ``,
-# and the buoyancy dissipation, ``\chi``. Note that `ComputedField`s take "AbstractOperations"
-# on `Field`s as input:
+# We use `ComputedField`s to diagnose and output the total flow speed, the vorticity, ``\zeta``,
+# and the buoyancy dissipation, ``\chi = \kappa |\boldsymbol{\nabla}b|^2``. Note that 
+# `ComputedField`s take "AbstractOperations"on `Field`s as input:
 
 u, v, w = model.velocities # unpack velocity `Field`s
 b = model.tracers.b        # unpack buoyancy `Field`
@@ -237,7 +237,14 @@ file = jldopen(simulation.output_writers[:fields].filepath)
 ## Extract a vector of iterations
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
-# This utility is handy for calculating nice contour intervals:
+# The utilities below come handy for calculating nice contour intervals:
+
+function nice_levels(c, clim, nlevels=41)
+    levels = range(0, stop=clim, length=nlevels)
+    cmax = maximum(abs, c)
+    clim < cmax && (levels = vcat(levels, [cmax]))
+    return levels
+end
 
 function nice_divergent_levels(c, clim, nlevels=41)
     levels = range(-clim, stop=clim, length=nlevels)
@@ -246,12 +253,6 @@ function nice_divergent_levels(c, clim, nlevels=41)
     return levels
 end
 
-function nice_levels(c, clim, nlevels=41)
-    levels = range(0, stop=clim, length=nlevels)
-    cmax = maximum(abs, c)
-    clim < cmax && (levels = vcat(levels, [cmax]))
-    return levels
-end
 nothing # hide
 
 # Now we're ready to animate.
@@ -290,27 +291,31 @@ anim = @animate for (i, iter) in enumerate(iterations)
                 linewidth = 0)
 
     s_plot = contourf(xs, zs, s_snapshot';
-                      clims=(0, slim), levels=slevels,
+                      clims = (0, slim), levels = slevels,
                       color = :speed, kwargs...)
-
+    s_title = @sprintf("speed √[(u²+w²)/(b⋆H)] @ t=%1.2f", t)
+    
     b_plot = contourf(xb, zb, b_snapshot';
-                      clims=(-blim, blim), levels=blevels,
+                      clims = (-blim, blim), levels = blevels,
                       color = :thermal, kwargs...)
-
+    b_title = @sprintf("buoyancy, b/b⋆ @ t=%1.2f", t)
+    
     ζ_plot = contourf(xζ, zζ, ζ_snapshot';
-                      clims=(-ζlim, ζlim), levels=ζlevels,
+                      clims=(-ζlim, ζlim), levels = ζlevels,
                       color = :balance, kwargs...)
-
+    ζ_title = @sprintf("vorticity, (∂u/∂z - ∂w/∂x) √(H/b⋆) @ t=%1.2f", t)
+    
     χ_plot = contourf(xχ, zχ, χ_snapshot';
-                      clims=(0, χlim), levels=χlevels,
+                      clims = (0, χlim), levels = χlevels,
                       color = :dense, kwargs...)
-
+    χ_title = @sprintf("buoyancy dissipation, κ|∇b|² √(H/b⋆⁵) @ t=%1.2f", t)
+    
     plot(s_plot, b_plot, ζ_plot, χ_plot,
             dpi = 120,
            size = (700.25, 1200.25),
            link = :x,
-          layout = Plots.grid(4, 1),
-          title = [@sprintf("speed √[(u²+w²)/(b⋆H)] @ t=%1.2f", t) @sprintf("buoyancy, b/b⋆ @ t=%1.2f", t) @sprintf("vorticity, (∂u/∂z - ∂w/∂x) √(H/b⋆) @ t=%1.2f", t) @sprintf("buoyancy dissipation, κ|∇b|² √(H/b⋆⁵) @ t=%1.2f", t)])
+         layout = Plots.grid(4, 1),
+          title = [s_title, b_title, ζ_title, χ_title])
 
     iter == iterations[end] && close(file)
 end
