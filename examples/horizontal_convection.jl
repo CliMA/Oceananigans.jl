@@ -197,7 +197,7 @@ speed = ComputedField(sqrt(u^2 + w^2))
 ζ = ComputedField(∂z(u) - ∂x(w))
 
 ## buoyancy dissipation
-χ_op = @at (Center, Center, Center) (∂x(b)^2 + ∂z(b)^2)
+χ_op = @at (Center, Center, Center) κ * (∂x(b)^2 + ∂z(b)^2)
 χ = ComputedField(χ_op)
 
 outputs = (s = speed, b = b, ζ = ζ, χ = χ)
