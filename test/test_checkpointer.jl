@@ -164,23 +164,23 @@ function test_checkpoint_output_with_function_bcs(arch)
     u, v, w = properly_restored_model.velocities
     T, S = properly_restored_model.tracers
 
-    @test u.boundary_conditions.x.left  isa PBC
-    @test u.boundary_conditions.x.right isa PBC
-    @test u.boundary_conditions.y.left  isa PBC
-    @test u.boundary_conditions.y.right isa PBC
-    @test u.boundary_conditions.z.left  isa ZFBC
-    @test u.boundary_conditions.z.right isa FBC
-    @test u.boundary_conditions.z.right.condition isa ContinuousBoundaryFunction
-    @test u.boundary_conditions.z.right.condition.func(1, 2, 3) == some_flux(1, 2, 3)
+    @test u.boundary_conditions.west  isa PBC
+    @test u.boundary_conditions.east isa PBC
+    @test u.boundary_conditions.south  isa PBC
+    @test u.boundary_conditions.north isa PBC
+    @test u.boundary_conditions.bottom  isa ZFBC
+    @test u.boundary_conditions.top isa FBC
+    @test u.boundary_conditions.top.condition isa ContinuousBoundaryFunction
+    @test u.boundary_conditions.top.condition.func(1, 2, 3) == some_flux(1, 2, 3)
 
-    @test T.boundary_conditions.x.left  isa PBC
-    @test T.boundary_conditions.x.right isa PBC
-    @test T.boundary_conditions.y.left  isa PBC
-    @test T.boundary_conditions.y.right isa PBC
-    @test T.boundary_conditions.z.left  isa ZFBC
-    @test T.boundary_conditions.z.right isa FBC
-    @test T.boundary_conditions.z.right.condition isa ContinuousBoundaryFunction
-    @test T.boundary_conditions.z.right.condition.func(1, 2, 3) == some_flux(1, 2, 3)
+    @test T.boundary_conditions.west  isa PBC
+    @test T.boundary_conditions.east isa PBC
+    @test T.boundary_conditions.south  isa PBC
+    @test T.boundary_conditions.north isa PBC
+    @test T.boundary_conditions.bottom  isa ZFBC
+    @test T.boundary_conditions.top isa FBC
+    @test T.boundary_conditions.top.condition isa ContinuousBoundaryFunction
+    @test T.boundary_conditions.top.condition.func(1, 2, 3) == some_flux(1, 2, 3)
 
     # Test that the restored model can be time stepped
     time_step!(properly_restored_model, 1)

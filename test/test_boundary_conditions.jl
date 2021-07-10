@@ -55,36 +55,36 @@ end
         T_bcs = regularize_field_boundary_conditions(default_bcs, ppp_grid, :T)
 
         @test u_bcs isa FieldBoundaryConditions
-        @test u_bcs.x.left  isa PBC
-        @test u_bcs.x.right isa PBC
-        @test u_bcs.y.left  isa PBC
-        @test u_bcs.y.right isa PBC
-        @test u_bcs.z.left  isa PBC
-        @test u_bcs.z.right isa PBC
+        @test u_bcs.west  isa PBC
+        @test u_bcs.east isa PBC
+        @test u_bcs.south  isa PBC
+        @test u_bcs.north isa PBC
+        @test u_bcs.bottom  isa PBC
+        @test u_bcs.top isa PBC
 
         @test v_bcs isa FieldBoundaryConditions
-        @test v_bcs.x.left  isa PBC
-        @test v_bcs.x.right isa PBC
-        @test v_bcs.y.left  isa PBC
-        @test v_bcs.y.right isa PBC
-        @test v_bcs.z.left  isa PBC
-        @test v_bcs.z.right isa PBC
+        @test v_bcs.west  isa PBC
+        @test v_bcs.east isa PBC
+        @test v_bcs.south  isa PBC
+        @test v_bcs.north isa PBC
+        @test v_bcs.bottom  isa PBC
+        @test v_bcs.top isa PBC
 
         @test w_bcs isa FieldBoundaryConditions
-        @test w_bcs.x.left  isa PBC
-        @test w_bcs.x.right isa PBC
-        @test w_bcs.y.left  isa PBC
-        @test w_bcs.y.right isa PBC
-        @test w_bcs.z.left  isa PBC
-        @test w_bcs.z.right isa PBC
+        @test w_bcs.west  isa PBC
+        @test w_bcs.east isa PBC
+        @test w_bcs.south  isa PBC
+        @test w_bcs.north isa PBC
+        @test w_bcs.bottom  isa PBC
+        @test w_bcs.top isa PBC
 
         @test T_bcs isa FieldBoundaryConditions
-        @test T_bcs.x.left  isa PBC
-        @test T_bcs.x.right isa PBC
-        @test T_bcs.y.left  isa PBC
-        @test T_bcs.y.right isa PBC
-        @test T_bcs.z.left  isa PBC
-        @test T_bcs.z.right isa PBC
+        @test T_bcs.west  isa PBC
+        @test T_bcs.east isa PBC
+        @test T_bcs.south  isa PBC
+        @test T_bcs.north isa PBC
+        @test T_bcs.bottom  isa PBC
+        @test T_bcs.top isa PBC
 
         # Doubly periodic. Engineers call this a "Channel geometry".
         ppb_topology = (Periodic, Periodic, Bounded)
@@ -96,36 +96,36 @@ end
         T_bcs = regularize_field_boundary_conditions(default_bcs, ppb_grid, :T)
 
         @test u_bcs isa FieldBoundaryConditions
-        @test u_bcs.x.left  isa PBC
-        @test u_bcs.x.right isa PBC
-        @test u_bcs.y.left  isa PBC
-        @test u_bcs.y.right isa PBC
-        @test u_bcs.z.left  isa ZFBC
-        @test u_bcs.z.right isa ZFBC
+        @test u_bcs.west  isa PBC
+        @test u_bcs.east isa PBC
+        @test u_bcs.south  isa PBC
+        @test u_bcs.north isa PBC
+        @test u_bcs.bottom  isa ZFBC
+        @test u_bcs.top isa ZFBC
 
         @test v_bcs isa FieldBoundaryConditions
-        @test v_bcs.x.left  isa PBC
-        @test v_bcs.x.right isa PBC
-        @test v_bcs.y.left  isa PBC
-        @test v_bcs.y.right isa PBC
-        @test v_bcs.z.left  isa ZFBC
-        @test v_bcs.z.right isa ZFBC
+        @test v_bcs.west  isa PBC
+        @test v_bcs.east isa PBC
+        @test v_bcs.south  isa PBC
+        @test v_bcs.north isa PBC
+        @test v_bcs.bottom  isa ZFBC
+        @test v_bcs.top isa ZFBC
 
         @test w_bcs isa FieldBoundaryConditions
-        @test w_bcs.x.left  isa PBC
-        @test w_bcs.x.right isa PBC
-        @test w_bcs.y.left  isa PBC
-        @test w_bcs.y.right isa PBC
-        @test w_bcs.z.left  isa OBC
-        @test w_bcs.z.right isa OBC
+        @test w_bcs.west  isa PBC
+        @test w_bcs.east isa PBC
+        @test w_bcs.south  isa PBC
+        @test w_bcs.north isa PBC
+        @test w_bcs.bottom  isa OBC
+        @test w_bcs.top isa OBC
 
         @test T_bcs isa FieldBoundaryConditions
-        @test T_bcs.x.left  isa PBC
-        @test T_bcs.x.right isa PBC
-        @test T_bcs.y.left  isa PBC
-        @test T_bcs.y.right isa PBC
-        @test T_bcs.z.left  isa ZFBC
-        @test T_bcs.z.right isa ZFBC
+        @test T_bcs.west  isa PBC
+        @test T_bcs.east isa PBC
+        @test T_bcs.south  isa PBC
+        @test T_bcs.north isa PBC
+        @test T_bcs.bottom  isa ZFBC
+        @test T_bcs.top isa ZFBC
 
         # Singly periodic. Oceanographers call this a "Channel", engineers call it a "Pipe"
         pbb_topology = (Periodic, Bounded, Bounded)
@@ -137,36 +137,36 @@ end
         T_bcs = regularize_field_boundary_conditions(default_bcs, pbb_grid, :T)
 
         @test u_bcs isa FieldBoundaryConditions
-        @test u_bcs.x.left  isa PBC
-        @test u_bcs.x.right isa PBC
-        @test u_bcs.y.left  isa ZFBC
-        @test u_bcs.y.right isa ZFBC
-        @test u_bcs.z.left  isa ZFBC
-        @test u_bcs.z.right isa ZFBC
+        @test u_bcs.west  isa PBC
+        @test u_bcs.east isa PBC
+        @test u_bcs.south  isa ZFBC
+        @test u_bcs.north isa ZFBC
+        @test u_bcs.bottom  isa ZFBC
+        @test u_bcs.top isa ZFBC
 
         @test v_bcs isa FieldBoundaryConditions
-        @test v_bcs.x.left  isa PBC
-        @test v_bcs.x.right isa PBC
-        @test v_bcs.y.left  isa OBC
-        @test v_bcs.y.right isa OBC
-        @test v_bcs.z.left  isa ZFBC
-        @test v_bcs.z.right isa ZFBC
+        @test v_bcs.west  isa PBC
+        @test v_bcs.east isa PBC
+        @test v_bcs.south  isa OBC
+        @test v_bcs.north isa OBC
+        @test v_bcs.bottom  isa ZFBC
+        @test v_bcs.top isa ZFBC
 
         @test w_bcs isa FieldBoundaryConditions
-        @test w_bcs.x.left  isa PBC
-        @test w_bcs.x.right isa PBC
-        @test w_bcs.y.left  isa ZFBC
-        @test w_bcs.y.right isa ZFBC
-        @test w_bcs.z.left  isa OBC
-        @test w_bcs.z.right isa OBC
+        @test w_bcs.west  isa PBC
+        @test w_bcs.east isa PBC
+        @test w_bcs.south  isa ZFBC
+        @test w_bcs.north isa ZFBC
+        @test w_bcs.bottom  isa OBC
+        @test w_bcs.top isa OBC
 
         @test T_bcs isa FieldBoundaryConditions
-        @test T_bcs.x.left  isa PBC
-        @test T_bcs.x.right isa PBC
-        @test T_bcs.y.left  isa ZFBC
-        @test T_bcs.y.right isa ZFBC
-        @test T_bcs.z.left  isa ZFBC
-        @test T_bcs.z.right isa ZFBC
+        @test T_bcs.west  isa PBC
+        @test T_bcs.east isa PBC
+        @test T_bcs.south  isa ZFBC
+        @test T_bcs.north isa ZFBC
+        @test T_bcs.bottom  isa ZFBC
+        @test T_bcs.top isa ZFBC
 
         # Triply bounded. Oceanographers call this a "Basin", engineers call it a "Box"
         bbb_topology = (Bounded, Bounded, Bounded)
@@ -178,36 +178,36 @@ end
         T_bcs = regularize_field_boundary_conditions(default_bcs, bbb_grid, :T)
 
         @test u_bcs isa FieldBoundaryConditions
-        @test u_bcs.x.left  isa OBC
-        @test u_bcs.x.right isa OBC
-        @test u_bcs.y.left  isa ZFBC
-        @test u_bcs.y.right isa ZFBC
-        @test u_bcs.z.left  isa ZFBC
-        @test u_bcs.z.right isa ZFBC
+        @test u_bcs.west  isa OBC
+        @test u_bcs.east isa OBC
+        @test u_bcs.south  isa ZFBC
+        @test u_bcs.north isa ZFBC
+        @test u_bcs.bottom  isa ZFBC
+        @test u_bcs.top isa ZFBC
 
         @test v_bcs isa FieldBoundaryConditions
-        @test v_bcs.x.left  isa ZFBC
-        @test v_bcs.x.right isa ZFBC
-        @test v_bcs.y.left  isa OBC
-        @test v_bcs.y.right isa OBC
-        @test v_bcs.z.left  isa ZFBC
-        @test v_bcs.z.right isa ZFBC
+        @test v_bcs.west  isa ZFBC
+        @test v_bcs.east isa ZFBC
+        @test v_bcs.south  isa OBC
+        @test v_bcs.north isa OBC
+        @test v_bcs.bottom  isa ZFBC
+        @test v_bcs.top isa ZFBC
 
         @test w_bcs isa FieldBoundaryConditions
-        @test w_bcs.x.left  isa ZFBC
-        @test w_bcs.x.right isa ZFBC
-        @test w_bcs.y.left  isa ZFBC
-        @test w_bcs.y.right isa ZFBC
-        @test w_bcs.z.left  isa OBC
-        @test w_bcs.z.right isa OBC
+        @test w_bcs.west  isa ZFBC
+        @test w_bcs.east isa ZFBC
+        @test w_bcs.south  isa ZFBC
+        @test w_bcs.north isa ZFBC
+        @test w_bcs.bottom  isa OBC
+        @test w_bcs.top isa OBC
 
         @test T_bcs isa FieldBoundaryConditions
-        @test T_bcs.x.left  isa ZFBC
-        @test T_bcs.x.right isa ZFBC
-        @test T_bcs.y.left  isa ZFBC
-        @test T_bcs.y.right isa ZFBC
-        @test T_bcs.z.left  isa ZFBC
-        @test T_bcs.z.right isa ZFBC
+        @test T_bcs.west  isa ZFBC
+        @test T_bcs.east isa ZFBC
+        @test T_bcs.south  isa ZFBC
+        @test T_bcs.north isa ZFBC
+        @test T_bcs.bottom  isa ZFBC
+        @test T_bcs.top isa ZFBC
 
         grid = bbb_grid
         
