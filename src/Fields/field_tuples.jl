@@ -11,7 +11,10 @@ Return a NamedTuple with fields `u`, `v`, `w` initialized on the architecture `a
 and `grid`. Boundary conditions `bcs` may be specified via a named tuple of
 `FieldBoundaryCondition`s.
 """
-function VelocityFields(arch, grid, bcs=NamedTuple())
+function VelocityFields(arch, grid, bcs = (u=FieldBoundaryConditions(),
+                                           v=FieldBoundaryConditions(),
+                                           w=FieldBoundaryConditions()))
+
     u = XFaceField(arch, grid, bcs.u)
     v = YFaceField(arch, grid, bcs.v)
     w = ZFaceField(arch, grid, bcs.w)
@@ -30,7 +33,8 @@ Returns a `NamedTuple` with tracer fields specified by `tracer_names` initialize
 `CenterField`s on the architecture `arch` and `grid`. Boundary conditions `bcs` may
 be specified via a named tuple of `FieldBoundaryCondition`s.
 """
-function TracerFields(tracer_names, arch, grid, bcs)
+function TracerFields(tracer_names, arch, grid,
+                      bcs = NamedTuple{tracer_names}(FieldBoundaryConditions() for name in tracer_names))
     tracer_fields = Tuple(CenterField(arch, grid, bcs[c]) for c in tracer_names)
     return NamedTuple{tracer_names}(tracer_fields)
 end
