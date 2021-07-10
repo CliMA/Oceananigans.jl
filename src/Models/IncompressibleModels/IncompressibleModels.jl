@@ -12,7 +12,6 @@ import Oceananigans: fields, prognostic_fields
 #####
 
 include("incompressible_model.jl")
-include("non_dimensional_model.jl")
 include("show_incompressible_model.jl")
 include("set_incompressible_model.jl")
 
