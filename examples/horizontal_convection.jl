@@ -140,8 +140,11 @@ Lz = 1.0 # depth (m)
 #                                           x=(-Lx/2, Lx/2),
 #                                           z_faces = hyperbolically_spaced_faces)
 
-grid = RegularRectilinearGrid(size=(Nx, Nz), x=(-Lx/2, Lx/2), z=(0, 1),
-                              topology=(Periodic, Flat, Bounded))
+grid = RegularRectilinearGrid(size = (Nx, Nz),
+                                 x = (-Lx/2, Lx/2),
+                                 z = (0, 1),
+                              halo = (3, 3),
+                          topology = (Periodic, Flat, Bounded))
                               
                               
 # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
@@ -175,7 +178,7 @@ Pr = 1.0   # The Prandtl number
 Ra = 1e8   # The Rayleigh number
 
 ν = sqrt(Pr * b★ * Lx^3 / Ra)  # [m² s⁻¹] Laplacian viscosity
-κ = ν * Pr # [m² s⁻¹] Laplacian diffusivity
+κ = ν * Pr                     # [m² s⁻¹] Laplacian diffusivity
 
 # ## Model instantiation
 #
@@ -210,7 +213,7 @@ model = IncompressibleModel(
 ## background velocity.
 max_Δt = 4e-2
 
-wizard = TimeStepWizard(cfl=0.75, Δt=1e-3, max_change=1.2, max_Δt=max_Δt)
+wizard = TimeStepWizard(cfl=0.75, Δt=5e-3, max_change=1.2, max_Δt=max_Δt)
 
 # ### A progress messenger
 #
@@ -248,10 +251,14 @@ u, v, w = model.velocities # unpack velocity `Field`s
 ## y-component of vorticity [s⁻¹]
 ζ = ComputedField(∂z(u) - ∂x(w))
 
+b = model.tracers.b
+χ_op = @at (Center, Center, Center) ∂x(b)^2 + ∂z(b)^2
+χ = ComputedField(χ_op)
+
 ## total flow speed [m s⁻¹]
 speed = ComputedField(sqrt(u^2 + w^2))
 
-outputs = (b = model.tracers.b, ζ = ζ, s = speed)
+outputs = (b = model.tracers.b, ζ = ζ, s = speed, χ = χ)
 
 # With the vertical vorticity, `ζ`, and the horizontal divergence, `δ` in hand,
 # we create a `JLD2OutputWriter` that saves `ζ` and `δ` and add them to
@@ -281,6 +288,7 @@ using JLD2, Plots
 xs, ys, zs = nodes(speed)
 xb, yb, zb = nodes(model.tracers.b)
 xζ, yζ, zζ = nodes(ζ)
+xχ, yχ, zχ = nodes(χ)
 
 ## Open the file with our data
 file = jldopen(simulation.output_writers[:fields].filepath)
@@ -296,6 +304,13 @@ function nice_divergent_levels(c, clim, nlevels=41)
     clim < cmax && (levels = vcat([-cmax], levels, [cmax]))
     return levels
 end
+
+function nice_levels(c, clim, nlevels=41)
+    levels = range(0, stop=clim, length=nlevels)
+    cmax = maximum(abs, c)
+    clim < cmax && (levels = vcat(levels, [cmax]))
+    return levels
+end
 nothing # hide
 
 # Now we're ready to animate.
@@ -309,8 +324,9 @@ anim = @animate for (i, iter) in enumerate(iterations)
     s_snapshot = file["timeseries/s/$iter"][:, 1, :]
     b_snapshot = file["timeseries/b/$iter"][:, 1, :]
     ζ_snapshot = file["timeseries/ζ/$iter"][:, 1, :]
+    χ_snapshot = file["timeseries/χ/$iter"][:, 1, :]
     
-    slim = 0.5
+    slim = 0.6
     slevels = vcat(range(0, stop=slim, length=31), [0.6])
 
     blim = 0.6
@@ -319,37 +335,45 @@ anim = @animate for (i, iter) in enumerate(iterations)
     ζlim = 9
     ζlevels = nice_divergent_levels(ζ_snapshot, ζlim)
 
+    χlim = 100
+    χlevels = nice_levels(χ_snapshot, χlim)
+
     @info @sprintf("Drawing frame %d from iteration %d: max(ζ) = %.3f \n",
                    i, iter, maximum(abs, ζ_snapshot))
 
-    xz_kwargs = (xlims = (-grid.Lx/2, grid.Lx/2), ylims = (0, grid.Lz),
-                 xlabel = "x/h", ylabel = "z/h",
-                 aspectratio = 2 * grid.Lz / grid.Lx,
-                 linewidth = 0)
+    kwargs = (xlims = (-grid.Lx/2, grid.Lx/2), ylims = (0, grid.Lz),
+              xlabel = "x/h", ylabel = "z/h",
+              aspectratio = 2 * grid.Lz / grid.Lx,
+              linewidth = 0)
 
-       speed = contourf(xs, zs, s_snapshot';
-                        clims=(0, slim), levels=slevels,
-                        color = :speed,
-                        xz_kwargs...)
+    s_plot = contourf(xs, zs, s_snapshot';
+                      clims=(0, slim), levels=slevels,
+                      color = :speed,
+                      kwargs...)
 
-    buoyancy = contourf(xb, zb, b_snapshot';
-                        clims=(-blim, blim), levels=blevels,
-                        color = :thermal,
-                        xz_kwargs...)
+    b_plot = contourf(xb, zb, b_snapshot';
+                      clims=(-blim, blim), levels=blevels,
+                      color = :thermal,
+                      kwargs...)
 
-    vorticity = contourf(xζ, zζ, ζ_snapshot';
-                         clims=(-ζlim, ζlim), levels=ζlevels,
-                         color = :balance,
-                         xz_kwargs...)
+    ζ_plot = contourf(xζ, zζ, ζ_snapshot';
+                      clims=(-ζlim, ζlim), levels=ζlevels,
+                      color = :balance,
+                      kwargs...)
 
-    plot(speed, buoyancy, vorticity,
+    χ_plot = contourf(xχ, zχ, χ_snapshot';
+                      clims=(0, χlim), levels=χlevels,
+                      color = :dense,
+                      kwargs...)
+
+    plot(s_plot, b_plot, ζ_plot, χ_plot,
             dpi = 120,
-           size = (700.25, 1000.25),
+           size = (700.25, 1200.25),
            link = :x,
-          layout = Plots.grid(3, 1),
-          title = [@sprintf("√(u²+w²) @ t=%1.2f", t) @sprintf("buoyancy @ t=%1.2f", t) @sprintf("∂u/∂z - ∂w/∂x @ t=%1.2f", t)])
+          layout = Plots.grid(4, 1),
+          title = [@sprintf("speed √[(u²+w²)/(b⋆h)] @ t=%1.2f", t) @sprintf("buoyancy, b/b⋆ @ t=%1.2f", t) @sprintf("vorticity, (∂u/∂z - ∂w/∂x) √(h/b⋆) @ t=%1.2f", t) @sprintf("buoyancy dissipation, |∇b|² (h/b⋆)² @ t=%1.2f", t)])
 
     iter == iterations[end] && close(file)
 end
 
-mp4(anim, "horizontal_convection.mp4", fps = 12) # hide
+mp4(anim, "horizontal_convection.mp4", fps = 16) # hide
