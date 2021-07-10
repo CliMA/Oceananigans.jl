@@ -130,40 +130,46 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 Lx = 2
 Nx = 128 # vertical resolution
 Nz = 64  # vertical resolution
-σ = 1.3  # stretching factor
 Lz = 1.0 # depth (m)
 
-# hyperbolically_spaced_faces(k) = Lz - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
-# 
-# grid = VerticallyStretchedRectilinearGrid(size = (Nx, Nz),
-#                                           topology = (Bounded, Flat, Bounded),
-#                                           x=(-Lx/2, Lx/2),
-#                                           z_faces = hyperbolically_spaced_faces)
+#=
+σ = 0.2  # stretching factor
+
+hyperbolically_spaced_faces(k) = Lz - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
+
+grid = VerticallyStretchedRectilinearGrid(size = (Nx, Nz),
+                                          topology = (Bounded, Flat, Bounded),
+                                          x=(-Lx/2, Lx/2),
+                                          halo = (3, 3),
+                                          z_faces = hyperbolically_spaced_faces)
+
+# We plot vertical spacing versus depth to inspect the prescribed grid stretching:
+using Plots
+
+plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
+     marker = :circle,
+     ylabel = "Depth",
+     xlabel = "Vertical spacing",
+     legend = nothing)
+=#
 
 grid = RegularRectilinearGrid(size = (Nx, Nz),
                                  x = (-Lx/2, Lx/2),
                                  z = (0, 1),
                               halo = (3, 3),
                           topology = (Periodic, Flat, Bounded))
-                              
-                              
-# We plot vertical spacing versus depth to inspect the prescribed grid stretching:
-# using Plots
-# 
-# plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
-#      marker = :circle,
-#      ylabel = "Depth",
-#      xlabel = "Vertical spacing",
-#      legend = nothing)
 
 # ## Boundary conditions
 #
-# The boundary conditions prescribe a quadratic drag at the bottom as a flux
-# condition.
+# We impose a buoyancy boundary condition
+#
+# ```math
+# b(x, z=h, t) = b_★ \cos(2π/L_x x)\, .
+# ```
 
 b★ = 1.0
 
-@inline bₛ(x, y, t, p) = - p.b★ * cos(2π / p.Lx * x)
+@inline bₛ(x, z, t, p) = - p.b★ * cos(2π / p.Lx * x)
 
 b_bcs = TracerBoundaryConditions(grid, top = ValueBoundaryCondition(bₛ, parameters = (b★=b★, Lx=grid.Lx)))
 
