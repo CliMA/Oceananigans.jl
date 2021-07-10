@@ -65,7 +65,8 @@ using Oceananigans
 #
 # We use a two-dimensional grid with an aspect ratio ``A = L_x / L_z = 2``.
 
-Lx, Lz = 2, 1    # domain extent
+Lz = 1.0         # vertical domain extent
+Lx = 2Lz         # horizontal domain extent
 Nx, Nz = 128, 64 # horizontal, vertical resolution
 
 grid = RegularRectilinearGrid(size = (Nx, Nz),
@@ -106,10 +107,11 @@ grid = RegularRectilinearGrid(size = (Nx, Nz),
 # ```
 
 b★ = 1.0
-@inline bₛ(x, z, t, p) = - p.b★ * cos(2π * x / p.Lx)
+
+@inline bₛ(x, y, t, p) = - p.b★ * cos(2π * x / p.Lx)
 
 b_bcs = TracerBoundaryConditions(grid,
-                                 top = ValueBoundaryCondition(bₛ, parameters = (b★=b★, Lx=grid.Lx)))
+                                 top = ValueBoundaryCondition(bₛ, parameters = (b★=b★, Lx=Lx)))
 
 # ## Turbulence closures
 #
@@ -119,8 +121,8 @@ b_bcs = TracerBoundaryConditions(grid,
 Pr = 1.0   # The Prandtl number
 Ra = 1e8   # The Rayleigh number
 
-ν = sqrt(Pr * b★ * grid.Lx^3 / Ra)  # Laplacian viscosity
-κ = ν * Pr                          # Laplacian diffusivity
+ν = sqrt(Pr * b★ * Lx^3 / Ra)  # Laplacian viscosity
+κ = ν * Pr                     # Laplacian diffusivity
 nothing # hide
 
 # ## Model instantiation
@@ -195,10 +197,10 @@ speed = ComputedField(sqrt(u^2 + w^2))
 ζ = ComputedField(∂z(u) - ∂x(w))
 
 ## buoyancy dissipation
-χ_op = @at (Center, Center, Center) ∂x(b)^2 + ∂z(b)^2
-χ = ComputedField(κ * χ_op)
+χ_op = @at (Center, Center, Center) κ * (∂x(b)^2 + ∂z(b)^2)
+χ = ComputedField(χ_op)
 
-outputs = (b = model.tracers.b, ζ = ζ, s = speed, χ = χ)
+outputs = (s = speed, b = b, ζ = ζ, χ = χ)
 nothing # hide
 
 # We create a `JLD2OutputWriter` that saves the speed, the vorticity, and the buoyancy dissipation.
@@ -225,7 +227,7 @@ using JLD2, Plots
 
 ## Coordinate arrays
 xs, ys, zs = nodes(speed)
-xb, yb, zb = nodes(model.tracers.b)
+xb, yb, zb = nodes(b)
 xζ, yζ, zζ = nodes(ζ)
 xχ, yχ, zχ = nodes(χ)
 
@@ -278,8 +280,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
     χlim = 0.025
     χlevels = nice_levels(χ_snapshot, χlim)
 
-    @info @sprintf("Drawing frame %d from iteration %d: max(ζ) = %.3f \n",
-                   i, iter, maximum(abs, ζ_snapshot))
+    @info @sprintf("Drawing frame %d from iteration %d:", i, iter)
 
     kwargs = (      xlims = (-grid.Lx/2, grid.Lx/2),
                     ylims = (-grid.Lz, 0),
@@ -309,12 +310,10 @@ anim = @animate for (i, iter) in enumerate(iterations)
            size = (700.25, 1200.25),
            link = :x,
           layout = Plots.grid(4, 1),
-          title = [@sprintf("speed √[(u²+w²)/(b⋆h)] @ t=%1.2f", t)
-                   @sprintf("buoyancy, b/b⋆ @ t=%1.2f", t)
-                   @sprintf("vorticity, (∂u/∂z - ∂w/∂x) √(h/b⋆) @ t=%1.2f", t)
-                   @sprintf("buoyancy dissipation, |∇b|² (h/b⋆)² @ t=%1.2f", t)])
+          title = [@sprintf("speed √[(u²+w²)/(b⋆h)] @ t=%1.2f", t) @sprintf("buoyancy, b/b⋆ @ t=%1.2f", t) @sprintf("vorticity, (∂u/∂z - ∂w/∂x) √(h/b⋆) @ t=%1.2f", t) @sprintf("buoyancy dissipation, κ|∇b|² √(h/b⋆⁵) @ t=%1.2f", t)])
 
     iter == iterations[end] && close(file)
 end
 
 mp4(anim, "horizontal_convection.mp4", fps = 16) # hide
+  
