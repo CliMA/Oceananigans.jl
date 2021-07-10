@@ -32,7 +32,7 @@
 # \end{gather}
 # ```
 # 
-# The domain here is ``-L_x/2 \le x \le L_x/2`` and ``-L_z \le z \le 0``.
+# The domain here is ``-L_x/2 \le x \le L_x/2`` and ``-H \le z \le 0``.
 #
 # ### Boundary conditions
 #
@@ -43,7 +43,7 @@
 # ### Non-dimensional control parameters
 #
 # The problem is characterized by three non-dimensional parameters. The first is the domain's
-# aspect ratio, ``A = \frac{L_x}{L_z}`` and the rest two are the Rayleigh and Prandtl numbers:
+# aspect ratio, ``A = \frac{L_x}{H}`` and the rest two are the Rayleigh and Prandtl numbers:
 #
 # ```math
 # Ra = \frac{L_x^3 b_*}{\nu \kappa} \, , \quad \text{and}\, \quad Pr = \frac{\nu}{\kappa} \, .
@@ -63,24 +63,24 @@ using Oceananigans
 
 # ## The grid
 #
-# We use a two-dimensional grid with an aspect ratio ``A = L_x / L_z = 2``.
+# We use a two-dimensional grid with an aspect ratio ``A = L_x / H = 2``.
 
-Lz = 1.0         # vertical domain extent
-Lx = 2Lz         # horizontal domain extent
+H = 1.0         # vertical domain extent
+Lx = 2H         # horizontal domain extent
 Nx, Nz = 128, 64 # horizontal, vertical resolution
 
 grid = RegularRectilinearGrid(size = (Nx, Nz),
                                  x = (-Lx/2, Lx/2),
-                                 z = (-Lz, 0),
+                                 z = (-H, 0),
                               halo = (3, 3),
-                          topology = (Periodic, Flat, Bounded))
+                          topology = (Bounded, Flat, Bounded))
 
 # Any attempts for `VerticallyStretchedRectilinearGrid` failed...
 # 
 # ```
 # σ = 0.2  # stretching factor
 # 
-# hyperbolically_spaced_faces(k) = Lz - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
+# hyperbolically_spaced_faces(k) = H - H * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
 # 
 # grid = VerticallyStretchedRectilinearGrid(size = (Nx, Nz),
 #                                           topology = (Bounded, Flat, Bounded),
@@ -177,8 +177,8 @@ nothing # hide
 # We're ready to build and run the simulation. We ask for a progress message and time-step update
 # every 100 iterations,
 
-simulation = Simulation(model, Δt = wizard, iteration_interval = 100,
-                                                     stop_time = 40.05,
+simulation = Simulation(model, Δt = wizard, iteration_interval = 50,
+                                                     stop_time = 1.05,
                                                       progress = progress)
 
 # ### Output
@@ -197,7 +197,7 @@ speed = ComputedField(sqrt(u^2 + w^2))
 ζ = ComputedField(∂z(u) - ∂x(w))
 
 ## buoyancy dissipation
-χ_op = @at (Center, Center, Center) κ * (∂x(b)^2 + ∂z(b)^2)
+χ_op = @at (Center, Center, Center) (∂x(b)^2 + ∂z(b)^2)
 χ = ComputedField(χ_op)
 
 outputs = (s = speed, b = b, ζ = ζ, χ = χ)
@@ -282,10 +282,10 @@ anim = @animate for (i, iter) in enumerate(iterations)
 
     @info @sprintf("Drawing frame %d from iteration %d:", i, iter)
 
-    kwargs = (      xlims = (-grid.Lx/2, grid.Lx/2),
-                    ylims = (-grid.Lz, 0),
-                   xlabel = "x / L_z",
-                   ylabel = "z / L_z",
+    kwargs = (      xlims = (-Lx/2, Lx/2),
+                    ylims = (-H, 0),
+                   xlabel = "x / H",
+                   ylabel = "z / H",
               aspectratio = 1,
                 linewidth = 0)
 
@@ -310,10 +310,9 @@ anim = @animate for (i, iter) in enumerate(iterations)
            size = (700.25, 1200.25),
            link = :x,
           layout = Plots.grid(4, 1),
-          title = [@sprintf("speed √[(u²+w²)/(b⋆h)] @ t=%1.2f", t) @sprintf("buoyancy, b/b⋆ @ t=%1.2f", t) @sprintf("vorticity, (∂u/∂z - ∂w/∂x) √(h/b⋆) @ t=%1.2f", t) @sprintf("buoyancy dissipation, κ|∇b|² √(h/b⋆⁵) @ t=%1.2f", t)])
+          title = [@sprintf("speed √[(u²+w²)/(b⋆H)] @ t=%1.2f", t) @sprintf("buoyancy, b/b⋆ @ t=%1.2f", t) @sprintf("vorticity, (∂u/∂z - ∂w/∂x) √(H/b⋆) @ t=%1.2f", t) @sprintf("buoyancy dissipation, κ|∇b|² √(H/b⋆⁵) @ t=%1.2f", t)])
 
     iter == iterations[end] && close(file)
 end
 
 mp4(anim, "horizontal_convection.mp4", fps = 16) # hide
-  
