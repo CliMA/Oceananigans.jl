@@ -219,12 +219,19 @@ end
                                                   north = ValueBoundaryCondition(simple_bc),
                                                   south = ValueBoundaryCondition(simple_bc))
 
-        @test T_bcs.east.condition === simple_bc
-        @test T_bcs.west.condition === simple_bc
-        @test T_bcs.north.condition === simple_bc
-        @test T_bcs.south.condition === simple_bc
-        @test T_bcs.top.condition === simple_bc
-        @test T_bcs.bottom.condition === simple_bc
+        @test T_bcs.east.condition isa ContinuousBoundaryFunction
+        @test T_bcs.west.condition isa ContinuousBoundaryFunction 
+        @test T_bcs.north.condition isa ContinuousBoundaryFunction
+        @test T_bcs.south.condition isa ContinuousBoundaryFunction
+        @test T_bcs.top.condition isa ContinuousBoundaryFunction
+        @test T_bcs.bottom.condition isa ContinuousBoundaryFunction
+
+        @test T_bcs.east.condition.func === simple_bc
+        @test T_bcs.west.condition.func === simple_bc
+        @test T_bcs.north.condition.func === simple_bc
+        @test T_bcs.south.condition.func === simple_bc
+        @test T_bcs.top.condition.func === simple_bc
+        @test T_bcs.bottom.condition.func === simple_bc
 
         one_bc = BoundaryCondition(Value, 1.0)
 
