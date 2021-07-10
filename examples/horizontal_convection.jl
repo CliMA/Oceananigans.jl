@@ -36,27 +36,31 @@
 #
 # ### Boundary conditions
 #
-# At the surface (``z = 0``), the imposed buoyancy is ``b_s(x, z = 0, t) = - b_* \cos(2 \pi x / L_x)``
-# while buoyancy satisfies zero-flux boundary conditions on all other boundaries. We use 
-# free-slip boundary conditions on ``u`` and ``w`` at all boundaries.
+# At the surface, the imposed buoyancy is ``b_s(x, z = 0, t) = - b_* \cos(2 \pi x / L_x)``
+# while zero-flux boundary conditions are imposed on all other boundaries. We use free-slip 
+# boundary conditions on ``u`` and ``w`` at all boundaries.
 #
 # ### Non-dimensional control parameters
 #
 # The problem is characterized by three non-dimensional parameters. The first is the domain's
-# aspect ratio, ``A = \frac{L_x}{H}`` and the rest two are the Rayleigh and Prandtl numbers:
+# aspect ratio, ``A = L_x / H`` and the other two are the Rayleigh (``Ra``) and Prandtl (``Pr``)
+# numbers:
 #
 # ```math
 # Ra = \frac{L_x^3 b_*}{\nu \kappa} \, , \quad \text{and}\, \quad Pr = \frac{\nu}{\kappa} \, .
 # ```
 #
+# The Prandtl number expresses the ratio of momentum over heat diffusion; the Rayleigh number
+# is a measure of the relative importance of gravity over viscosity in the momentum equation.
+#
 # For a domain with a given extent, the nondimensional values of ``Ra`` and ``Pr`` uniquely
-# prescribe the viscosity and diffusivity,
+# determine the viscosity and diffusivity, i.e.,
 # 
 # ```math
 # \nu = \sqrt{\frac{Pr b_* L_x^3}{Ra}} \quad \text{and} \quad \kappa = \sqrt{\frac{b_* L_x^3}{Pr Ra}} \, .
 # ```
 #
-# We start off by importing `Oceananigans` and `Printf`.
+# Now let's code these things up! We start off by importing `Oceananigans` and `Printf`.
 
 using Printf
 using Oceananigans
@@ -65,8 +69,8 @@ using Oceananigans
 #
 # We use a two-dimensional grid with an aspect ratio ``A = L_x / H = 2``.
 
-H = 1.0         # vertical domain extent
-Lx = 2H         # horizontal domain extent
+H = 1.0          # vertical domain extent
+Lx = 2H          # horizontal domain extent
 Nx, Nz = 128, 64 # horizontal, vertical resolution
 
 grid = RegularRectilinearGrid(size = (Nx, Nz),
@@ -100,7 +104,7 @@ grid = RegularRectilinearGrid(size = (Nx, Nz),
 
 # ## Boundary conditions
 #
-# We impose a buoyancy boundary condition
+# We impose a surface buoyancy boundary condition,
 #
 # ```math
 # b(x, z=0, t) = - b_* \cos (2π x / L_x) \, .
@@ -144,7 +148,7 @@ model = IncompressibleModel(
 # ## Simulation set-up
 #
 # We set up a simulation that runs up to ``t = 40`` with a `JLD2OutputWriter` that saves the
-# flowspeed, ``\sqrt{u^2 + w^2}``, the vorticity, ``\partial_z u - \partial_x w``, and the 
+# flow speed, ``\sqrt{u^2 + w^2}``, the vorticity, ``\partial_z u - \partial_x w``, and the 
 # buoyancy dissipation, ``\kappa |\boldsymbol{\nabla} b|^2``.
 #
 # ### The `TimeStepWizard`
@@ -164,11 +168,11 @@ CFL = AdvectiveCFL(wizard)
 
 start_time = time_ns()
 
-progress(sim) = @printf("i: % 6d, sim time: % 10s, wall time: % 10s, Δt: % 10s, CFL: %.2e\n",
+progress(sim) = @printf("i: % 6d, sim time: % 1.3f, wall time: % 10s, Δt: % 1.4f, CFL: %.2e\n",
                         sim.model.clock.iteration,
-                        prettytime(sim.model.clock.time),
+                        sim.model.clock.time,
                         prettytime(1e-9 * (time_ns() - start_time)),
-                        prettytime(sim.Δt.Δt),
+                        sim.Δt.Δt,
                         CFL(sim.model))
 nothing # hide
 
@@ -321,3 +325,23 @@ anim = @animate for (i, iter) in enumerate(iterations)
 end
 
 mp4(anim, "horizontal_convection.mp4", fps = 16) # hide
+
+# ### The Nusselt number
+#
+# We are often interested on how much the flow enhances the mixing. This is quantified by the
+# Nusselt number, which measure how much the fluid flow enhances mixing occurs compared if only
+# diffusion was in operation. The Nusselt number is given by
+#
+# ```math
+# Nu = \frac{\langle \chi \rangle}{\langle \chi_{\rm diff} \rangle} \, ,
+# ```
+#
+# where angle brackets above denote a spatial and time average and  ``\chi_{\rm diff}`` is
+# the buoyancy dissipation without any flow, i.e., it's the buoyancy dissipation associated
+# with the buoyancy distribution that satisfies
+#
+# ```math
+# \kappa \nabla^2 b_{\rm diff} = 0 \, ,
+# ```
+#
+# with the same boundary conditions same as our setup.
