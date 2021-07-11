@@ -139,7 +139,7 @@ function
 where ``σ⁰``, ``σᵟ``, ``Riᶜ``, and ``Riʷ`` are free parameters,
 and ``step`` is a smooth step function defined by
 
-    ``step(x, c, w) = (1 + tanh((x - c) / w)) / 2``.
+    ``step(x, c, w) = (1 + \tanh((x - c) / w)) / 2``.
 
 The 8 free parameters in `RiDependentDiffusivityScaling` have been _experimentally_ calibrated
 against large eddy simulations of ocean surface boundary layer turbulence in idealized
@@ -252,7 +252,7 @@ function top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
     return NamedTuple{tracer_names}(tracer_bcs)
 end
 
-""" Infer velocity boundary conditions from user_bcs and tracer_names. """
+""" Infer velocity boundary conditions from `user_bcs` and `tracer_names`. """
 function top_velocity_boundary_conditions(grid, user_bcs)
 
     user_bc_names = keys(user_bcs)
@@ -263,7 +263,7 @@ function top_velocity_boundary_conditions(grid, user_bcs)
     return (u=u_top_bc, v=v_top_bc)
 end
 
-""" Add TKE boundary conditions specific to TKEBasedVerticalDiffusivity. """
+""" Add TKE boundary conditions specific to `TKEBasedVerticalDiffusivity`. """
 function add_closure_specific_boundary_conditions(closure::TKEVD,
                                                   user_bcs,
                                                   grid,
@@ -525,6 +525,12 @@ end
 @inline diffusive_flux_z(i, j, k, grid, closure, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, closure, e, Val(N), args...)
 
 # Shortcuts --- TKEVD incurs no horizontal transport
+@inline viscous_flux_ux(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_uy(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vx(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vy(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wx(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wy(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
 @inline diffusive_flux_x(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
 @inline diffusive_flux_y(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
 
@@ -550,11 +556,11 @@ const VITD = VerticallyImplicitTimeDiscretization
     end
 end
 
-const VerticallyBoundedGrid{FT} = AbstractPrimaryGrid{FT, <:Any, <:Any, <:Bounded}
+const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
-@inline diffusive_flux_z(i, j, k, grid::APG{FT}, ::VITD, closure::TKEVD, args...) where FT = zero(FT)
-@inline viscous_flux_uz(i, j, k, grid::APG{FT}, ::VITD, closure::TKEVD, args...) where FT = zero(FT)
-@inline viscous_flux_vz(i, j, k, grid::APG{FT}, ::VITD, closure::TKEVD, args...) where FT = zero(FT)
+@inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_uz(i, j, k, grid, ::VITD, closure::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vz(i, j, k, grid, ::VITD, closure::TKEVD, args...) = zero(eltype(grid))
 
 @inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::TKEVD, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 

@@ -7,7 +7,7 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
     field_boundary_conditions = TracerBoundaryConditions(grid; boundary_condition_kwarg...)
     bcs = NamedTuple{(field_name,)}((field_boundary_conditions,))
 
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT,
+    model = IncompressibleModel(grid=grid, architecture=arch,
                                 boundary_conditions=bcs)
 
     success = try
@@ -82,7 +82,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
     model = IncompressibleModel(
-        grid=grid, architecture=arch, float_type=FT, tracers=:b, buoyancy=BuoyancyTracer(),
+        grid=grid, architecture=arch, tracers=:b, buoyancy=BuoyancyTracer(),
         closure=AnisotropicMinimumDissipation(), boundary_conditions=model_bcs
     )
 
@@ -155,13 +155,13 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         v_boundary_conditions = VVelocityBoundaryConditions(grid;
                                                             bottom = simple_function_bc(Value),
                                                             top    = simple_function_bc(Value),
-                                                            north  = simple_function_bc(NormalFlow),
-                                                            south  = simple_function_bc(NormalFlow))
+                                                            north  = simple_function_bc(Open),
+                                                            south  = simple_function_bc(Open))
 
 
         w_boundary_conditions = VVelocityBoundaryConditions(grid;
-                                                            bottom = simple_function_bc(NormalFlow),
-                                                            top    = simple_function_bc(NormalFlow),
+                                                            bottom = simple_function_bc(Open),
+                                                            top    = simple_function_bc(Open),
                                                             north  = simple_function_bc(Value),
                                                             south  = simple_function_bc(Value))
 
@@ -178,7 +178,6 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
         model = IncompressibleModel(architecture = arch,
                                     grid = grid,
-                                    float_type = FT,
                                     boundary_conditions = boundary_conditions)
 
         @test location(model.velocities.u.boundary_conditions.bottom.condition) == (Face, Center, Nothing)
@@ -215,7 +214,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                 @test test_boundary_condition(arch, FT, topo, :top, :T, boundary_condition)
             end
 
-            for boundary_condition in test_boundary_conditions(NormalFlow, FT, array_type(arch))
+            for boundary_condition in test_boundary_conditions(Open, FT, array_type(arch))
                  arch isa CPU && @test test_boundary_condition(arch, FT, topo, :east, :u, boundary_condition)
 
                 @test test_boundary_condition(arch, FT, topo, :south, :v, boundary_condition)

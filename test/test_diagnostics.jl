@@ -19,8 +19,7 @@ TestModel_VerticallyStrectedRectGrid(arch, FT, ν=1.0, Δx=0.5) =
     IncompressibleModel(
           grid = VerticallyStretchedRectilinearGrid(FT, architecture = arch, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), z_faces=0:Δx:3Δx,),
        closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
-  architecture = arch,
-    float_type = FT
+  architecture = arch
 )
 
 
@@ -28,8 +27,7 @@ TestModel_RegularRectGrid(arch, FT, ν=1.0, Δx=0.5) =
     IncompressibleModel(
           grid = RegularRectilinearGrid(FT, topology=(Periodic, Periodic, Periodic), size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
        closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
-  architecture = arch,
-    float_type = FT
+  architecture = arch
 )
 
 function diagnostic_windowed_spatial_average(arch, FT)

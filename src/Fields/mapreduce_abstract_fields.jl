@@ -1,3 +1,4 @@
+using Statistics
 using Oceananigans.Architectures: AbstractGPUArchitecture
 
 #####

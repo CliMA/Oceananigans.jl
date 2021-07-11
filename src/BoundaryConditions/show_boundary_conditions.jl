@@ -1,13 +1,13 @@
 import Base: show
 import Oceananigans: short_show
 
-bctype_str(::FBC)  = "Flux"
-bctype_str(::PBC)  = "Periodic"
-bctype_str(::NFBC) = "NormalFlow"
-bctype_str(::VBC)  = "Value"
-bctype_str(::GBC)  = "Gradient"
-bctype_str(::ZFBC) = "ZeroFlux"
-bctype_str(::Nothing) = "Nothing"
+bcclassification_str(::FBC)  = "Flux"
+bcclassification_str(::PBC)  = "Periodic"
+bcclassification_str(::OBC)  = "Open"
+bcclassification_str(::VBC)  = "Value"
+bcclassification_str(::GBC)  = "Gradient"
+bcclassification_str(::ZFBC) = "ZeroFlux"
+bcclassification_str(::Nothing) = "Nothing"
 
 #####
 ##### BoundaryCondition
@@ -24,16 +24,16 @@ function print_condition(f::Function)
 end
 
 show(io::IO, bc::BoundaryCondition) =
-    print(io, "BoundaryCondition: type=$(bctype_str(bc)), condition=$(print_condition(bc.condition))")
+    print(io, "BoundaryCondition: type=$(bcclassification_str(bc)), condition=$(print_condition(bc.condition))")
 
 #####
 ##### FieldBoundaryConditions
 #####
 
 short_show(fbcs::FieldBoundaryConditions) =
-    string("x=(west=$(bctype_str(fbcs.x.left)), east=$(bctype_str(fbcs.x.right))), ",
-           "y=(south=$(bctype_str(fbcs.y.left)), north=$(bctype_str(fbcs.y.right))), ",
-           "z=(bottom=$(bctype_str(fbcs.z.left)), top=$(bctype_str(fbcs.z.right)))")
+    string("x=(west=$(bcclassification_str(fbcs.x.left)), east=$(bcclassification_str(fbcs.x.right))), ",
+           "y=(south=$(bcclassification_str(fbcs.y.left)), north=$(bcclassification_str(fbcs.y.right))), ",
+           "z=(bottom=$(bcclassification_str(fbcs.z.left)), top=$(bcclassification_str(fbcs.z.right)))")
 
 show_field_boundary_conditions(bcs::FieldBoundaryConditions, padding="") =
     string("Oceananigans.FieldBoundaryConditions (NamedTuple{(:x, :y, :z)}), with boundary conditions", '\n',

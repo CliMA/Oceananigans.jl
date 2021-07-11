@@ -25,7 +25,7 @@ Example
 =======
 
 ```jldoctest
-julia> using Oceananigans, Oceananigans.Grids
+julia> using Oceananigans
 
 julia> ω = Field(Face, Face, Center, CPU(), RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 Field located at (Face, Face, Center)

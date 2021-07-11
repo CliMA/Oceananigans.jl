@@ -85,7 +85,7 @@ when ``N^2 > 0``, and 1 otherwise.
 @inline stability_factor(N²::FT, Σ²::FT, Cb::FT) where FT = min(one(FT), Cb * N² / Σ²)
 
 """
-    νₑ(ς, C, Δᶠ, Σ²)
+    νₑ_deardorff(ς, C, Δᶠ, Σ²)
 
 Return the eddy viscosity for constant Smagorinsky
 given the stability `ς`, model constant `C`,

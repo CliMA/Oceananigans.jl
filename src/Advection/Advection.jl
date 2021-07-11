@@ -1,8 +1,7 @@
 module Advection
 
 export 
-    div_Uu, div_Uv, div_Uw, div_Uc,
-    U_grad_u, U_grad_v, U_grad_w, U_grad_c,
+    div_𝐯u, div_𝐯v, div_𝐯w, div_Uc,
 
     momentum_flux_uu,
     momentum_flux_uv,
@@ -28,11 +27,11 @@ using Oceananigans.Operators
 
 import Oceananigans.Grids: required_halo_size
 
-abstract type AbstractAdvectionScheme end
-abstract type AbstractCenteredAdvectionScheme <: AbstractAdvectionScheme end
-abstract type AbstractUpwindBiasedAdvectionScheme <: AbstractAdvectionScheme end
+abstract type AbstractAdvectionScheme{Buffer} end
+abstract type AbstractCenteredAdvectionScheme{Buffer} <: AbstractAdvectionScheme{Buffer} end
+abstract type AbstractUpwindBiasedAdvectionScheme{Buffer} <: AbstractAdvectionScheme{Buffer} end
 
-required_halo_size(scheme::AbstractAdvectionScheme) = boundary_buffer(scheme) + 1
+required_halo_size(scheme::AbstractAdvectionScheme{Buffer}) where Buffer = Buffer + 1
 
 include("topologically_conditional_interpolation.jl")
 

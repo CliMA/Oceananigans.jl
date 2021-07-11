@@ -62,6 +62,14 @@ regularize_background_field(X, Y, Z, f::BackgroundField{<:Function}, grid, clock
 regularize_background_field(X, Y, Z, func::Function, grid, clock) =
     FunctionField{X, Y, Z}(func, grid; clock=clock)
 
+function regularize_background_field(X, Y, Z, field::AbstractField, grid, clock)
+    if location(field) != (X, Y, Z)
+        throw(ArgumentError("Cannot use field at $(location(field)) as a background field at $((X, Y, Z))"))
+    end
+    
+    return field
+end
+
 Base.show(io::IO, field::BackgroundField{F, P}) where {F, P} =
     print(io, "BackgroundField{$F, $P}", '\n',
           "├── func: $(short_show(field.func))", '\n',

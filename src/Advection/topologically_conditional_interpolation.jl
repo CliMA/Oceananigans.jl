@@ -10,15 +10,15 @@
 #####        close to the boundary, or a second-order interpolation if i is close to a boundary.
 #####
 
-using Oceananigans.Grids: AbstractPrimaryGrid, Bounded
+using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded
 
-const APG = AbstractPrimaryGrid
+const AUG = AbstractUnderlyingGrid
 
 # Left-biased buffers are smaller by one grid point on the right side; vice versa for right-biased buffers
-                                                    # outside left buffer          outside right buffer
-@inline outside_symmetric_buffer(i, N, scheme)    = i > boundary_buffer(scheme)     && i < N + 1 - boundary_buffer(scheme)
-@inline outside_left_biased_buffer(i, N, scheme)  = i > boundary_buffer(scheme)     && i < N + 1 - (boundary_buffer(scheme) - 1)
-@inline outside_right_biased_buffer(i, N, scheme) = i > boundary_buffer(scheme) - 1 && i < N + 1 - boundary_buffer(scheme)
+                                                                              # outside left | outside right buffer
+@inline    outside_symmetric_buffer(i, N, ::AbstractAdvectionScheme{Nᴮ}) where Nᴮ = i > Nᴮ     && i < N + 1 - Nᴮ
+@inline  outside_left_biased_buffer(i, N, ::AbstractAdvectionScheme{Nᴮ}) where Nᴮ = i > Nᴮ     && i < N + 1 - (Nᴮ - 1)
+@inline outside_right_biased_buffer(i, N, ::AbstractAdvectionScheme{Nᴮ}) where Nᴮ = i > Nᴮ - 1 && i < N + 1 - Nᴮ
 
 for bias in (:symmetric, :left_biased, :right_biased)
 
@@ -33,25 +33,31 @@ for bias in (:symmetric, :left_biased, :right_biased)
             alt_interp = Symbol(:_, interp)
 
             # Simple translation for Periodic directions (fallback)
-            @eval $alt_interp(i, j, k, grid::APG, scheme, ψ) = $interp(i, j, k, grid, scheme, ψ)
+            @eval $alt_interp(i, j, k, grid::AUG, scheme, ψ) = $interp(i, j, k, grid, scheme, ψ)
 
             outside_buffer = Symbol(:outside_, bias, :_buffer)
 
             # Conditional high-order interpolation in Bounded directions
             if ξ == :x
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::APG{FT, <:Bounded}, scheme, ψ) where FT =
-                        ifelse($outside_buffer(i, grid.Nx, scheme), $interp(i, j, k, grid, scheme, ψ), $second_order_interp(i, j, k, grid, ψ))
+                    @inline $alt_interp(i, j, k, grid::AUG{FT, <:Bounded}, scheme, ψ) where FT =
+                        ifelse($outside_buffer(i, grid.Nx, scheme),
+                               $interp(i, j, k, grid, scheme, ψ),
+                               $second_order_interp(i, j, k, grid, ψ))
                 end
             elseif ξ == :y
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::APG{FT, TX, <:Bounded}, scheme, ψ) where {FT, TX} =
-                        ifelse($outside_buffer(j, grid.Ny, scheme), $interp(i, j, k, grid, scheme, ψ), $second_order_interp(i, j, k, grid, ψ))
+                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, <:Bounded}, scheme, ψ) where {FT, TX} =
+                        ifelse($outside_buffer(j, grid.Ny, scheme),
+                               $interp(i, j, k, grid, scheme, ψ),
+                               $second_order_interp(i, j, k, grid, ψ))
                 end
             elseif ξ == :z
                 @eval begin
-                    @inline $alt_interp(i, j, k, grid::APG{FT, TX, TY, <:Bounded}, scheme, ψ) where {FT, TX, TY} =
-                        ifelse($outside_buffer(k, grid.Nz, scheme), $interp(i, j, k, grid, scheme, ψ), $second_order_interp(i, j, k, grid, ψ))
+                    @inline $alt_interp(i, j, k, grid::AUG{FT, TX, TY, <:Bounded}, scheme, ψ) where {FT, TX, TY} =
+                        ifelse($outside_buffer(k, grid.Nz, scheme),
+                               $interp(i, j, k, grid, scheme, ψ),
+                               $second_order_interp(i, j, k, grid, ψ))
                 end
             end
         end

@@ -15,7 +15,7 @@ end
 function time_stepping_works_with_coriolis(arch, FT, Coriolis)
     grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, 2, 3))
     c = Coriolis(FT, latitude=45)
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, coriolis=c)
+    model = IncompressibleModel(grid=grid, architecture=arch, coriolis=c)
 
     time_step!(model, 1, euler=true)
 
@@ -31,7 +31,7 @@ function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(m
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
     grid = RegularRectilinearGrid(FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
 
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT,
+    model = IncompressibleModel(grid=grid, architecture=arch,
                                 closure=Closure(FT), tracers=tracers, buoyancy=buoyancy)
 
     time_step!(model, 1, euler=true)
@@ -49,7 +49,7 @@ end
 
 function time_stepping_works_with_nothing_closure(arch, FT)
     grid = RegularRectilinearGrid(FT; size=(1, 1, 1), extent=(1, 2, 3))
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, closure=nothing)
+    model = IncompressibleModel(grid=grid, architecture=arch, closure=nothing)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
 end
@@ -60,7 +60,7 @@ function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
     eos = EOS()
     b = SeawaterBuoyancy(equation_of_state=eos)
 
-    model = IncompressibleModel(architecture=arch, float_type=FT, grid=grid, buoyancy=b)
+    model = IncompressibleModel(architecture=arch, grid=grid, buoyancy=b)
     time_step!(model, 1, euler=true)
 
     return true  # Test that no errors/crashes happen when time stepping.
@@ -72,7 +72,7 @@ function run_first_AB2_time_step_tests(arch, FT)
     # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
     grid = RegularRectilinearGrid(FT, size=(13, 17, 19), extent=(1, 2, 3))
 
-    model = IncompressibleModel(grid=grid, architecture=arch, float_type=FT, forcing=(T=add_ones,))
+    model = IncompressibleModel(grid=grid, architecture=arch, forcing=(T=add_ones,))
     time_step!(model, 1, euler=true)
 
     # Test that GT = 1, T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
@@ -145,7 +145,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     topology = (Periodic, Bounded, Bounded)
     grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model = IncompressibleModel(architecture = arch, float_type = FT, grid = grid,
+    model = IncompressibleModel(architecture = arch, grid = grid,
                                 closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
@@ -277,8 +277,8 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
             for Closure in Closures
                 @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
-                if Closure === TwoDimensionalLeith && arch isa CPU
-                    # This test is extremely slow so we skip.
+                if Closure === TwoDimensionalLeith
+                    # TwoDimensionalLeith is slow on the CPU and doesn't compile right now on the GPU.
                     # See: https://github.com/CliMA/Oceananigans.jl/pull/1074
                     @test_skip time_stepping_works_with_closure(arch, FT, Closure)
                 else

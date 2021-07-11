@@ -23,7 +23,7 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
     CoordinateBoundaryConditions, FieldBoundaryConditions,
     UVelocityBoundaryConditions, VVelocityBoundaryConditions, WVelocityBoundaryConditions,
     TracerBoundaryConditions, PressureBoundaryConditions,
@@ -58,7 +58,7 @@ export
     LagrangianParticles,
 
     # Models
-    IncompressibleModel, NonDimensionalIncompressibleModel,
+    IncompressibleModel,
     HydrostaticFreeSurfaceModel,
     ShallowWaterModel,
     fields,
@@ -170,9 +170,9 @@ include("Grids/Grids.jl")
 include("Utils/Utils.jl")
 include("Logger.jl")
 include("Operators/Operators.jl")
-include("Advection/Advection.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
+include("Advection/Advection.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("Solvers/Solvers.jl")
 

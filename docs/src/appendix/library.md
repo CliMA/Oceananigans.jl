@@ -34,7 +34,7 @@ Modules = [Oceananigans.BoundaryConditions]
 Private = false
 Pages   = [
     "BoundaryConditions/BoundaryConditions.jl",
-    "BoundaryConditions/boundary_condition_types.jl",
+    "BoundaryConditions/boundary_condition_classifications.jl",
     "BoundaryConditions/boundary_condition.jl",
     "BoundaryConditions/coordinate_boundary_conditions.jl",
     "BoundaryConditions/field_boundary_conditions.jl",

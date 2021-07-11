@@ -1,5 +1,3 @@
-using Oceananigans.Grids: AbstractPrimaryGrid
-
 #####
 ##### Momentum and tracer advective flux operators for upwind-biased advection schemes
 #####
@@ -86,7 +84,7 @@ end
     wᴸ =  _left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, w)
     wᴿ = _right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, w)
 
-    return Ayᵃᵃᶠ(i, j, k, grid) * upwind_biased_product(ṽ, wᴸ, wᴿ)
+    return Ayᶜᶠᶠ(i, j, k, grid) * upwind_biased_product(ṽ, wᴸ, wᴿ)
 end
 
 @inline function advective_momentum_flux_Ww(i, j, k, grid, scheme::Upwind, W, w)

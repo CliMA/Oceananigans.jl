@@ -27,6 +27,10 @@
 ##### Diffusive flux divergence
 #####
 
+@inline _diffusive_flux_x(args...) = diffusive_flux_x(args...)
+@inline _diffusive_flux_y(args...) = diffusive_flux_y(args...)
+@inline _diffusive_flux_z(args...) = diffusive_flux_z(args...)
+
 """
     ∇_dot_qᶜ(i, j, k, grid, clock, closure::AbstractTurbulenceClosure, c, ::Val{tracer_index}, args...)
 

@@ -478,48 +478,63 @@ function test_netcdf_time_averaging(arch)
     domain = (x=(0, 1), y=(0, 1), z=(0, 1))
     grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 4); domain...)
 
-    λ(x, y, z) = x + (1 - y)^2 + tanh(z)
-    Fc(x, y, z, t, c) = - λ(x, y, z) * c
+    λ1(x, y, z) = x + (1 - y)^2 + tanh(z)
+    λ2(x, y, z) = x + (1 - y)^2 + tanh(4z)
 
-    c_forcing = Forcing(Fc, field_dependencies=(:c,))
+    Fc1(x, y, z, t, c1) = - λ1(x, y, z) * c1
+    Fc2(x, y, z, t, c2) = - λ2(x, y, z) * c2
+    
+    c1_forcing = Forcing(Fc1, field_dependencies=:c1)
+    c2_forcing = Forcing(Fc2, field_dependencies=:c2)
 
     model = IncompressibleModel(
                 grid = grid,
         architecture = arch,
          timestepper = :RungeKutta3,
-             tracers = :c,
-             forcing = (c=c_forcing,),
+             tracers = (:c1, :c2),
+             forcing = (c1=c1_forcing, c2=c2_forcing),
             coriolis = nothing,
             buoyancy = nothing,
              closure = nothing
     )
 
-    set!(model, c=1)
+    set!(model, c1=1, c2=1)
 
     Δt = 1/512  # Nice floating-point number
     simulation = Simulation(model, Δt=Δt, stop_time=50Δt)
 
-    ∫c_dxdy = AveragedField(model.tracers.c, dims=(1, 2))
-
-    nc_outputs = Dict("c" => ∫c_dxdy)
-    nc_dimensions = Dict("c" => ("zC",))
+    ∫c1_dxdy = AveragedField(model.tracers.c1, dims=(1, 2))
+    ∫c2_dxdy = AveragedField(model.tracers.c2, dims=(1, 2))
+        
+    nc_outputs = Dict("c1" => ∫c1_dxdy, "c2" => ∫c2_dxdy)
+    nc_dimensions = Dict("c1" => ("zC",), "c2" => ("zC",))
 
     horizontal_average_nc_filepath = "decay_averaged_field_test.nc"
     simulation.output_writers[:horizontal_average] =
         NetCDFOutputWriter(model, nc_outputs, filepath=horizontal_average_nc_filepath, schedule=TimeInterval(10Δt),
                            dimensions=nc_dimensions, array_type=Array{Float64}, verbose=true)
 
-    time_average_nc_filepath = "decay_windowed_time_average_test.nc"
+    multiple_time_average_nc_filepath = "decay_windowed_time_average_test.nc"
+    single_time_average_nc_filepath = "single_decay_windowed_time_average_test.nc"
     window = 6Δt
     stride = 2
-    simulation.output_writers[:time_average] =
-        NetCDFOutputWriter(model, nc_outputs, filepath=time_average_nc_filepath, array_type=Array{Float64},
+
+    single_nc_output = Dict("c1" => ∫c1_dxdy)
+    single_nc_dimension = Dict("c1" => ("zC",))
+
+    simulation.output_writers[:single_output_time_average] =
+        NetCDFOutputWriter(model, single_nc_output, filepath=single_time_average_nc_filepath, array_type=Array{Float64},
+                           schedule=AveragedTimeInterval(10Δt, window=window, stride=stride),
+                           dimensions=single_nc_dimension, verbose=true)
+
+    simulation.output_writers[:multiple_output_time_average] =
+        NetCDFOutputWriter(model, nc_outputs, filepath=multiple_time_average_nc_filepath, array_type=Array{Float64},
                            schedule=AveragedTimeInterval(10Δt, window=window, stride=stride),
                            dimensions=nc_dimensions, verbose=true)
 
     run!(simulation)
 
-    ##### Horizontal average should evaluate to
+    ##### For each λ, horizontal average should evaluate to
     #####
     #####     c̄(z, t) = ∫₀¹ ∫₀¹ exp{- λ(x, y, z) * t} dx dy
     #####             = 1 / (Nx*Ny) * Σᵢ₌₁ᴺˣ Σⱼ₌₁ᴺʸ exp{- λ(i, j, k) * t}
@@ -529,42 +544,67 @@ function test_netcdf_time_averaging(arch)
     ds = NCDataset(horizontal_average_nc_filepath)
 
     Nx, Ny, Nz = size(grid)
-    xs, ys, zs = nodes(model.tracers.c)
+    xs, ys, zs = nodes(model.tracers.c1)
 
-    c̄(z, t) = 1 / (Nx * Ny) * sum(exp(-λ(x, y, z) * t) for x in xs for y in ys)
+    c̄1(z, t) = 1 / (Nx * Ny) * sum(exp(-λ1(x, y, z) * t) for x in xs for y in ys)
+    c̄2(z, t) = 1 / (Nx * Ny) * sum(exp(-λ2(x, y, z) * t) for x in xs for y in ys)
 
     for (n, t) in enumerate(ds["time"])
-        @test ds["c"][:, n] ≈ c̄.(zs, t)
+        @test ds["c1"][:, n] ≈ c̄1.(zs, t)
+        @test ds["c2"][:, n] ≈ c̄2.(zs, t)
     end
 
     close(ds)
 
+    # Compute time averages...
+    c̄1(ts) = 1/length(ts) * sum(c̄1.(zs, t) for t in ts)
+    c̄2(ts) = 1/length(ts) * sum(c̄2.(zs, t) for t in ts)
+
     #####
     ##### Test strided windowed time average against analytic solution
+    ##### for *single* NetCDF output
     #####
-
-    ds = NCDataset(time_average_nc_filepath)
+    
+    single_ds = NCDataset(single_time_average_nc_filepath)
 
     attribute_names = ("schedule", "interval", "output time interval",
                        "time_averaging_window", "time averaging window",
                        "time_averaging_stride", "time averaging stride")
 
     for name in attribute_names
-        @test haskey(ds.attrib, name) && !isnothing(ds.attrib[name])
+        @test haskey(single_ds.attrib, name) && !isnothing(single_ds.attrib[name])
     end
 
-    c̄(ts) = 1/length(ts) * sum(c̄.(zs, t) for t in ts)
-
     window_size = Int(window/Δt)
+
+    @info "    Testing time-averaging of a single NetCDF output [$(typeof(arch))]..."
+
+    for (n, t) in enumerate(single_ds["time"][2:end])
+        averaging_times = [t - n*Δt for n in 0:stride:window_size-1]
+        @test single_ds["c1"][:, n+1] ≈ c̄1(averaging_times)
+    end
+
+    close(single_ds)
+
+    #####
+    ##### Test strided windowed time average against analytic solution
+    ##### for *multiple* NetCDF outputs
+    #####
+
+    ds = NCDataset(multiple_time_average_nc_filepath)
+
+    @info "    Testing time-averaging of multiple NetCDF outputs [$(typeof(arch))]..."
+
     for (n, t) in enumerate(ds["time"][2:end])
         averaging_times = [t - n*Δt for n in 0:stride:window_size-1]
-        @test ds["c"][:, n+1] ≈ c̄(averaging_times)
+        @test ds["c1"][:, n+1] ≈ c̄1(averaging_times)
+        @test ds["c2"][:, n+1] ≈ c̄2(averaging_times)
     end
 
     close(ds)
 
     rm(horizontal_average_nc_filepath)
-    rm(time_average_nc_filepath)
+    rm(multiple_time_average_nc_filepath)
 
     return nothing
 end
