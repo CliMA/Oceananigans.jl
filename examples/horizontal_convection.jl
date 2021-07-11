@@ -112,10 +112,10 @@ grid = RegularRectilinearGrid(size = (Nx, Nz),
 
 b★ = 1.0
 
-@inline bₛ(x, y, t) = - cos(π * x)
+@inline bₛ(x, y, t) = - p.b★ * cos(2π * x / p.Lx)
 
 b_bcs = TracerBoundaryConditions(grid,
-                                 top = ValueBoundaryCondition(bₛ))
+                                 top = ValueBoundaryCondition(bₛ, parameters=(b★=b★, Lx=Lx)))
 
 # ## Turbulence closures
 #
