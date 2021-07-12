@@ -110,12 +110,13 @@ grid = RegularRectilinearGrid(size = (Nx, Nz),
 # b(x, z=0, t) = - b_* \cos (2π x / L_x) \, .
 # ```
 
-b★ = 1.0
+const b★ = 1.0
 
-@inline bₛ(x, y, t) = - cos(π * x)
+@inline bˢ(x, y, t) = - b★ * cos(π * x)
 
-b_bcs = TracerBoundaryConditions(grid,
-                                 top = ValueBoundaryCondition(bₛ))
+top_bc = ValueBoundaryCondition(bˢ)
+
+b_bcs = TracerBoundaryConditions(grid, top = ValueBoundaryCondition(bˢ))
 
 # ## Turbulence closures
 #
@@ -349,15 +350,46 @@ mp4(anim, "horizontal_convection.mp4", fps = 16) # hide
 #
 # with the same boundary conditions same as our setup.
 
+#=
+using Plots
+using Oceananigans
+using Oceananigans.Grids: xnode
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Solvers: PreconditionedConjugateGradientSolver, solve!
+
+bˢ_discrete(i, j, grid) = - cos(π * xnode(Center(), i, grid))
+bᵈⁱᶠᶠ_bcs = TracerBoundaryConditions(grid, top = ValueBoundaryCondition(bˢ_discrete, discrete_form=true))
+bᵈⁱᶠᶠ = CenterField(grid, bᵈⁱᶠᶠ_bcs)
+
+function laplacian!(∇²b, b)
+    fill_halo_regions!(b, b.architecture)
+    ∇²b .= ∂x(∂x(b)) + ∂z(∂z(b))
+    return nothing
+end
+
+poisson_solver = PreconditionedConjugateGradientSolver(laplacian!, template_field=bᵈⁱᶠᶠ)
+solve!(bᵈⁱᶠᶠ, poisson_solver, 0)
+
+pl = heatmap(interior(bᵈⁱᶠᶠ)[:, 1, :])
+=#
+
 χ_timeseries = FieldTimeSeries("horizontal_convection.jld2", "χ")
-nx, ny, nz, nt = size(χ_timeseries)
 
-Nu = reshape(sum(χ_timeseries, dims=(1, 2, 3))*grid.Δx*grid.Δz, (nt,))
+t = χ_timeseries.times
+grid = χ_timeseries.grid
 
-t  = χ_timeseries.times
+∫ⱽ_χ = ReducedField(Nothing, Nothing, Nothing, grid, dims=(1, 2, 3))
+Nu = zeros(length(t))
+
+## Can we broadcast over the time dimension?
+for i = 1:length(t)
+    χ = χ_timeseries[i]
+    sum!(∫ⱽ_χ,  χ * volume)
+    Nu[i] = ∫ⱽ_χ[1, 1, 1]
+end
 
 plot(t, Nu,
-     title = "a measure for Nu(t)",
-    xlabel = "time",
+     title = "A measure for Nu(t)",
+    xlabel = "Time",
     ylabel = "Nu(t)",
     legend = :none)
