@@ -138,14 +138,8 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid
     return FieldBoundaryConditions(east, west, north, south, top, bottom, immersed)
 end
 
-function regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, prognostic_field_names)
-
-    boundary_conditions_tuple = Tuple(regularize_field_boundary_conditions(field_bcs, grid, field_name, prognostic_field_names)
-                                      for (field_name, field_bcs) in pairs(boundary_conditions))
-
-    boundary_conditions = NamedTuple{boundary_conditions_names}(boundary_conditions_tuple)
-
-    return boundary_conditions
-end
+regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, prognostic_field_names) =
+    NamedTuple(field_name => regularize_field_boundary_conditions(field_bcs, grid, field_name, prognostic_field_names)
+               for (field_name, field_bcs) in pairs(boundary_conditions))
 
 regularize_field_boundary_conditions(::Missing, grid, field_name, prognostic_field_names=nothing) = missing
