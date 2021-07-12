@@ -133,7 +133,7 @@ function IncompressibleModel(;    grid,
 
     # Next, we form a list of default boundary conditions:
     prognostic_field_names = (:u, :v, :w, tracernames(tracers)...)
-    default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions() for name in prognostic_field_names))
+    default_boundary_conditions = NamedTuple{prognostic_field_names}(FieldBoundaryConditions() for name in prognostic_field_names)
 
     # Finally, we merge specified, embedded, and default boundary conditions. Specified boundary conditions
     # have precedence, followed by embedded, followed by default.
