@@ -3,11 +3,9 @@ using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction
 function test_boundary_condition(arch, FT, topo, side, field_name, boundary_condition)
     grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
 
-    boundary_condition_kwarg = Dict(side => boundary_condition)
-    field_boundary_conditions = FieldBoundaryConditions(boundary_condition_kwarg...)
-
-    bcs = NamedTuple{tuple(field_name)}(tuple(field_boundary_conditions))
-
+    boundary_condition_kwarg = (; side => boundary_condition)
+    field_boundary_conditions = FieldBoundaryConditions(; boundary_condition_kwarg...)
+    bcs = (; field_name => field_boundary_conditions)
     model = IncompressibleModel(grid=grid, architecture=arch, boundary_conditions=bcs)
 
     success = try
@@ -39,7 +37,7 @@ function test_incompressible_flux_budget(arch, name, side, topo)
     direction = side ∈ (:west, :south, :bottom) ? 1 : -1
     bc_kwarg = Dict(side => BoundaryCondition(Flux, flux * direction))
 
-    field_bcs = FieldBoundaryConditions(bc_kwarg...)
+    field_bcs = FieldBoundaryConditions(; bc_kwarg...)
 
     model_bcs = NamedTuple{tuple(name)}(tuple(field_bcs))
 
@@ -73,8 +71,8 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
 
     grid = RegularRectilinearGrid(FT, size=(16, 16, 16), extent=(1, 1, Lz))
 
-    buoyancy_bcs = FieldBoundaryConditions(bottom=BoundaryCondition(Gradient, bz))
-    κₑ_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), bottom=BoundaryCondition(Value, κ₀))
+    buoyancy_bcs = FieldBoundaryConditions(bottom=GradientBoundaryCondition(bz))
+    κₑ_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), bottom=ValueBoundaryCondition(κ₀))
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
     model = IncompressibleModel(
