@@ -135,7 +135,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid
     # But for now we don't regularize the immersed boundary condition.
     immersed = bcs.immersed
 
-    return FieldBoundaryConditions(east, west, north, south, top, bottom, immersed)
+    return FieldBoundaryConditions(east, west, north, south, bottom, top, immersed)
 end
 
 regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, prognostic_field_names) =
