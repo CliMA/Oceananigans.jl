@@ -182,7 +182,7 @@ to achieve this
 
 - Use the [`nvidia-smi`](https://developer.nvidia.com/nvidia-system-management-interface) command
   line utility to monitor the memory usage of the GPU. It should tell you how much memory there is
-  on your GPU and how much of it you're using. You can run it from Julia with the command ``run(`nvidia-smi`)``.
+  on your GPU and how much of it you're using and you can run it from Julia with the command ``run(`nvidia-smi`)``.
 - Try to use higher-order advection schemes. In general when you use a higher-order scheme you need
   fewer grid points to achieve the same accuracy that you would with a lower-order one. Oceananigans
   provides two high-order advection schemes: 5th-order WENO method (WENO5) and 3rd-order upwind.
