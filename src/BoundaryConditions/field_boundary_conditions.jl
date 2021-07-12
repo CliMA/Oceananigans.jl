@@ -16,7 +16,7 @@ default_prognostic_field_boundary_condition(::Flat,           loc)       = nothi
 default_prognostic_field_boundary_condition(::Flat,           ::Nothing) = nothing
 
 default_auxiliary_field_boundary_condition(topo, loc) = default_prognostic_field_boundary_condition(topo, loc)
-default_auxiliary_field_boundary_condition(::Bounded, ::Center) = GradientBoundaryCondition(0)
+default_auxiliary_field_boundary_condition(::Bounded, ::Center) = NoFluxBoundaryCondition()
 default_auxiliary_field_boundary_condition(::Bounded, ::Face) = nothing
 
 #####
