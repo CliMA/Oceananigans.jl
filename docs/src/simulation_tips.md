@@ -201,10 +201,7 @@ to achieve this
 
 ### Arrays in GPUs are usually different from arrays in CPUs
 
-Oceananigans.jl uses regular `Array`s when running on the CPU, but on the GPU it has to use `CuArray`s
-from the CUDA.jl package. While deep down both are arrays, their implementations are different
-and both can behave very differently. Something to keep in mind when working with `CuArray`s is that you do not want to
-access elements of a `CuArray` outside of a kernel. Doing so invokes scalar operations
+Oceananigans.jl uses [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/) to store data for GPU computations. One limitation of `CuArray`s compared to the `Array`s used for CPU computations is that `CuArray` elements cannot be accessed outside kernels (a process called ["scalar iteration"](https://cuda.juliagpu.org/stable/usage/workflow/#UsageWorkflowScalar)) launched through CUDA.jl or KernelAbstractions.jl.
 in which individual elements are copied from or to the GPU for processing. This is very
 slow and can result in huge slowdowns. For this reason, Oceananigans.jl disables CUDA
 scalar operations by default. See the [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
@@ -304,5 +301,4 @@ to define initial conditions, boundary conditions or
 forcing functions on a GPU. To learn more about working with `CuArray`s, see the
 [array programming](https://juliagpu.github.io/CUDA.jl/dev/usage/array/) section
 of the CUDA.jl documentation.
-
 
