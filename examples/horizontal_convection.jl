@@ -201,8 +201,7 @@ speed = ComputedField(sqrt(u^2 + w^2))
 ζ = ComputedField(∂z(u) - ∂x(w))
 
 ## buoyancy dissipation
-χ_op = @at (Center, Center, Center) κ * (∂x(b)^2 + ∂z(b)^2)
-χ = ComputedField(χ_op)
+χ = ComputedField(κ * (∂x(b)^2 + ∂z(b)^2))
 
 outputs = (s = speed, b = b, ζ = ζ, χ = χ)
 nothing # hide
@@ -210,10 +209,13 @@ nothing # hide
 # We create a `JLD2OutputWriter` that saves the speed, the vorticity, and the buoyancy dissipation.
 # We then add the `JLD2OutputWriter` to the `simulation`.
 
+saved_output_prefix = "horizontal_convection"
+saved_output_filename = saved_output_prefix * ".jld2"
+
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                   field_slicer = nothing,
                                                       schedule = TimeInterval(0.1),
-                                                        prefix = "horizontal_convection",
+                                                        prefix = saved_output_prefix,
                                                          force = true)
 nothing # hide
 
@@ -237,7 +239,7 @@ xζ, yζ, zζ = nodes(ζ)
 xχ, yχ, zχ = nodes(χ)
 
 ## Open the file with our data
-file = jldopen(simulation.output_writers[:fields].filepath)
+file = jldopen(saved_output_filename)
 
 ## Extract a vector of iterations
 iterations = parse.(Int, keys(file["timeseries/t"]))
@@ -351,6 +353,11 @@ mp4(anim, "horizontal_convection.mp4", fps = 16) # hide
 nx, ny, nz, nt = size(χ_timeseries)
 
 Nu = reshape(sum(χ_timeseries, dims=(1, 2, 3))*grid.Δx*grid.Δz, (nt,))
+
 t  = χ_timeseries.times
 
-plot(t, Nu, title="a measure for Nu(t)", xlabel="time", ylabel="Nu(t)")
+plot(t, Nu,
+     title = "a measure for Nu(t)",
+    xlabel = "time",
+    ylabel = "Nu(t)",
+    legend = :none)
