@@ -73,8 +73,7 @@ end
 
 const rate = 1/1minutes
 full_sponge_0 = Relaxation(rate=rate, mask=top_mask, target=0)
-#forcing = (u=full_sponge_0, v=full_sponge_0, w=full_sponge_0)
-forcing = (b=full_sponge_0, w=full_sponge_0)
+forcing = (u=full_sponge_0, v=full_sponge_0, w=full_sponge_0, b=full_sponge_0)
 #----
 
 #++++ Model and ICs
