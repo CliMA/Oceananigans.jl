@@ -112,7 +112,7 @@ grid = RegularRectilinearGrid(size = (Nx, Nz),
 
 b★ = 1.0
 
-@inline bₛ(x, y, t) = - cos(2π * x)
+@inline bₛ(x, y, t) = - cos(π * x)
 
 b_bcs = TracerBoundaryConditions(grid,
                                  top = ValueBoundaryCondition(bₛ))
