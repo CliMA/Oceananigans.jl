@@ -62,8 +62,8 @@
 #
 # Now let's code these things up! We start off by importing `Oceananigans` and `Printf`.
 
-using Printf
 using Oceananigans
+using Printf
 
 # ## The grid
 #
@@ -86,11 +86,11 @@ grid = RegularRectilinearGrid(size = (Nx, Nz),
 # 
 # hyperbolically_spaced_faces(k) = H - H * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
 # 
-# grid = VerticallyStretchedRectilinearGrid(size = (Nx, Nz),
-#                                           topology = (Bounded, Flat, Bounded),
-#                                           x=(-Lx/2, Lx/2),
-#                                           halo = (3, 3),
-#                                           z_faces = hyperbolically_spaced_faces)
+# grid_stretched = VerticallyStretchedRectilinearGrid(size = (Nx, Nz),
+#                                                 topology = (Bounded, Flat, Bounded),
+#                                                        x = (-Lx/2, Lx/2),
+#                                                     halo = (3, 3),
+#                                                  z_faces = hyperbolically_spaced_faces)
 # 
 # # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
 # using Plots
@@ -112,10 +112,10 @@ grid = RegularRectilinearGrid(size = (Nx, Nz),
 
 b★ = 1.0
 
-@inline bₛ(x, y, t) = - p.b★ * cos(2π * x / p.Lx)
+@inline bₛ(x, y, t) = - cos(2π * x)
 
 b_bcs = TracerBoundaryConditions(grid,
-                                 top = ValueBoundaryCondition(bₛ, parameters=(b★=b★, Lx=Lx)))
+                                 top = ValueBoundaryCondition(bₛ))
 
 # ## Turbulence closures
 #
@@ -181,7 +181,7 @@ nothing # hide
 # We're ready to build and run the simulation. We ask for a progress message and time-step update
 # every 100 iterations,
 
-simulation = Simulation(model, Δt = wizard, iteration_interval = 50,
+simulation = Simulation(model, Δt = wizard, iteration_interval = 100,
                                                      stop_time = 40.05,
                                                       progress = progress)
 
@@ -211,6 +211,7 @@ nothing # hide
 # We then add the `JLD2OutputWriter` to the `simulation`.
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
+                                                  field_slicer = nothing,
                                                       schedule = TimeInterval(0.1),
                                                         prefix = "horizontal_convection",
                                                          force = true)
@@ -267,10 +268,10 @@ anim = @animate for (i, iter) in enumerate(iterations)
 
     ## Load fields from file
     t = file["timeseries/t/$iter"]
-    s_snapshot = file["timeseries/s/$iter"][:, 1, :]
-    b_snapshot = file["timeseries/b/$iter"][:, 1, :]
-    ζ_snapshot = file["timeseries/ζ/$iter"][:, 1, :]
-    χ_snapshot = file["timeseries/χ/$iter"][:, 1, :]
+    s_snapshot = file["timeseries/s/$iter"][3:end-3, 1, 4:end-3]
+    b_snapshot = file["timeseries/b/$iter"][4:end-3, 1, 4:end-3]
+    ζ_snapshot = file["timeseries/ζ/$iter"][4:end-3, 1, 4:end-3]
+    χ_snapshot = file["timeseries/χ/$iter"][4:end-3, 1, 4:end-3]
     
     ## determine colorbar limits and contour levels
     slim = 0.6
@@ -345,3 +346,11 @@ mp4(anim, "horizontal_convection.mp4", fps = 16) # hide
 # ```
 #
 # with the same boundary conditions same as our setup.
+
+χ_timeseries = FieldTimeSeries("horizontal_convection.jld2", "χ")
+nx, ny, nz, nt = size(χ_timeseries)
+
+Nu = reshape(sum(χ_timeseries, dims=(1, 2, 3))*grid.Δx*grid.Δz, (nt,))
+t  = χ_timeseries.times
+
+plot(t, Nu, title="a measure for Nu(t)", xlabel="time", ylabel="Nu(t)")
