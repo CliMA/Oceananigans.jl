@@ -3,8 +3,8 @@ using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
 using CUDA
 
-const Nx = 450; const Lx = 1000
-const Nz = 64; const Lz = 100
+const Nx = 256; const Lx = 1000
+const Nz = 32; const Lz = 100
 const θ_rad = 0.05 # radians
 const θ_deg = rad2deg(θ_rad) # degrees
 const N²∞ = 1e-5
@@ -12,21 +12,21 @@ const V∞ = 0.1
 const g̃ = (sin(θ_rad), 0, cos(θ_rad))
 
 #++++ Grid
-topo = (Periodic, Periodic, Bounded)
+topo = (Periodic, Flat, Bounded)
 
 S = 1.3
-zF(k) = Lz*(1 + tanh(S * ( (k - 1) / Nz - 1)) / tanh(S))
+z_faces(k) = Lz*(1 + tanh(S * ( (k - 1) / Nz - 1)) / tanh(S))
 grid = VerticallyStretchedRectilinearGrid(topology=topo,
                                           architecture = CUDA.has_cuda() ? GPU() : CPU(), 
-                                          size=(Nx, 1, Nz), 
-                                          x=(0, Lx), y=(0, 6*Lx/Nx), zF=zF,
-                                          halo=(3,1,3),
+                                          size=(Nx, Nz),
+                                          x=(0, Lx), z_faces=z_faces,
+                                          halo=(3,3),
                                          )
 println(); println(grid); println()
 #----
 
 #++++ Buoyancy model and background
-buoyancy = Buoyancy(model=BuoyancyTracer(), gravitational_unit_vector=g̃)
+buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃)
 tracers = :b
 
 b∞(x, y, z, t) = N²∞ * (x*g̃[1] + z*g̃[3])
@@ -65,9 +65,24 @@ bcs = (u=u_bcs,
 #-----
 
 
+#++++ Sponge layer definition
+@inline heaviside(X) = ifelse(X < 0, zero(X), one(X))
+@inline mask2nd(X) = heaviside(X) * X^2
+const frac = 1/12
+
+function top_mask(x, y, z)
+    z₁ = +Hz; z₀ = z₁ - Hz*frac
+    return mask2nd((z - z₀)/(z₁ - z₀))
+end
+
+const rate = 1/10minutes
+full_sponge_0 = Relaxation(rate=rate, mask=top_mask, target=0)
+forcing = (u=full_sponge_0, v=full_sponge_0, w=full_sponge_0)
+#----
+
 #++++ Model and ICs
 model = IncompressibleModel(grid = grid, timestepper = :RungeKutta3,
-                            advection = WENO5(),
+                            advection = UpwindBiasedFifthOrder(),
                             buoyancy = buoyancy,
                             coriolis = FPlane(f=1e-4),
                             tracers = tracers,
@@ -93,7 +108,7 @@ model.velocities.v.data.parent .-= v̄
 wizard = TimeStepWizard(Δt=0.1*grid.Δzᵃᵃᶜ[1]/V∞, max_change=1.05, cfl=0.2)
 print_progress(sim) = @info "iteration: $(sim.model.clock.iteration), time: $(prettytime(sim.model.clock.time))"
 simulation = Simulation(model, Δt=wizard, 
-                        stop_time=10days, 
+                        stop_time=12hours, 
                         progress=print_progress, 
                         iteration_interval=10,
                         stop_iteration=Inf,
