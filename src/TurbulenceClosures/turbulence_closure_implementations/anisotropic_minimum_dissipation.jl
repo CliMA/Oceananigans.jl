@@ -43,18 +43,24 @@ Keyword arguments
 =================
     - `C` : Poincaré constant for both eddy viscosity and eddy diffusivities. `C` is overridden
             for eddy viscosity or eddy diffusivity if `Cν` or `Cκ` are set, respecitvely.
+
     - `Cν` : Poincaré constant for momentum eddy viscosity.
+
     - `Cκ` : Poincaré constant for tracer eddy diffusivities. If one number or function, the same
              number or function is applied to all tracers. If a `NamedTuple`, it must possess
              a field specifying the Poncaré constant for every tracer.
+
     - `Cb` : Buoyancy modification multiplier (`Cb = nothing` turns it off, `Cb = 1` was used by [Abkar16](@cite)).
              *Note*: that we _do not_ subtract the horizontally-average component before computing this
              buoyancy modification term. This implementation differs from [Abkar16](@cite)'s proposal
              and the impact of this approximation has not been tested or validated.
+
     - `ν` : Constant background viscosity for momentum.
+
     - `κ` : Constant background diffusivity for tracer. If a single number, the same background
             diffusivity is applied to all tracers. If a `NamedTuple`, it must possess a field
             specifying a background diffusivity for every tracer.
+
     - `time_discretization` : Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
                               which integrates the terms involving only z-derivatives in the
                               viscous and diffusive fluxes with an implicit time discretization.
@@ -344,24 +350,22 @@ end
     return cx_ux + cy_uy + cz_uz
 end
 
-@inline norm_θᵢ²ᶜᶜᶜ(i, j, k, grid, c) = (
-      ℑxᶜᵃᵃ(i, j, k, grid, norm_∂x_c², c)
-    + ℑyᵃᶜᵃ(i, j, k, grid, norm_∂y_c², c)
-    + ℑzᵃᵃᶜ(i, j, k, grid, norm_∂z_c², c)
-)
+@inline norm_θᵢ²ᶜᶜᶜ(i, j, k, grid, c) = ℑxᶜᵃᵃ(i, j, k, grid, norm_∂x_c², c) +
+                                        ℑyᵃᶜᵃ(i, j, k, grid, norm_∂y_c², c) +
+                                        ℑzᵃᵃᶜ(i, j, k, grid, norm_∂z_c², c)
 
 #####
 ##### DiffusivityFields
 #####
 
-function DiffusivityFields(arch, grid, tracer_names, bcs, ::AMD)
+function DiffusivityFields(arch, grid, tracer_names, user_bcs, ::AMD)
 
-    default_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
-    default_diffusivity_bcs = (; νₑ = default_bcs, κₑ = NamedTuple{tracer_names}(Tuple(default_bcs for c in tracer_names)))
-    bcs = merge(default_diffusivity_bcs, bcs)
+    default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
+    default_amd_bcs = (; νₑ = default_diffusivity_bcs, κₑ = NamedTuple(c => default_diffusivity_bcs for c in tracer_names))
+    bcs = merge(default_amd_bcs, user_bcs)
 
     νₑ = CenterField(arch, grid, bcs.νₑ)
-    κₑ = NamedTuple{tracer_names}(Tuple(CenterField(arch, grid, bcs[c]) for c in tracer_names))
+    κₑ = NamedTuple(c => CenterField(arch, grid, bcs[c]) for c in tracer_names)
 
     return (; νₑ, κₑ)
 end
