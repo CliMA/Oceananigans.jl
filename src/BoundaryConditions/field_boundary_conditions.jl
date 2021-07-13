@@ -64,7 +64,7 @@ function FieldBoundaryConditions(;     west = DefaultPrognosticFieldBoundaryCond
                                         top = DefaultPrognosticFieldBoundaryCondition(),
                                    immersed = FluxBoundaryCondition(nothing))
 
-   return FieldBoundaryConditions(east, west, south, north, bottom, top, immersed)
+   return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
 """
@@ -92,14 +92,14 @@ and the topology in the boundary-normal direction is used:
     * `nothing` for `Flat` directions and/or `Nothing`-located fields)
 """
 function FieldBoundaryConditions(grid, loc;
-                                   east = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
                                    west = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
+                                   east = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
                                   south = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
                                   north = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
                                  bottom = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()),
                                     top = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()))
 
-   return FieldBoundaryConditions(east, west, south, north, bottom, top, nothing)
+   return FieldBoundaryConditions(west, east, south, north, bottom, top, nothing)
 end
 
 #####
@@ -123,8 +123,8 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid
     topo = topology(grid)
     loc = assumed_field_location(field_name)
     
-    east     = regularize_boundary_condition(bcs.east,   topo, loc, 1, 1,       prognostic_field_names)
-    west     = regularize_boundary_condition(bcs.west,   topo, loc, 1, grid.Nx, prognostic_field_names)
+    west     = regularize_boundary_condition(bcs.west,   topo, loc, 1, 1,       prognostic_field_names)
+    east     = regularize_boundary_condition(bcs.east,   topo, loc, 1, grid.Nx, prognostic_field_names)
     south    = regularize_boundary_condition(bcs.south,  topo, loc, 2, 1,       prognostic_field_names)
     north    = regularize_boundary_condition(bcs.north,  topo, loc, 2, grid.Ny, prognostic_field_names)
     bottom   = regularize_boundary_condition(bcs.bottom, topo, loc, 3, 1,       prognostic_field_names)
@@ -135,7 +135,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid
     # But for now we don't regularize the immersed boundary condition.
     immersed = bcs.immersed
 
-    return FieldBoundaryConditions(east, west, north, south, bottom, top, immersed)
+    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
 regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, prognostic_field_names) =
