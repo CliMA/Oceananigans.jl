@@ -28,7 +28,7 @@
 
         a2 = CenterField(arch, three_point_grid)
 
-        b2_bcs = FieldBoundaryConditions(top=OpenBoundaryCondition(0), bottom=OpenBoundaryCondition(0))
+        b2_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), top=OpenBoundaryCondition(0), bottom=OpenBoundaryCondition(0))
         b2 = ZFaceField(arch, three_point_grid, b2_bcs)
 
         b2 .= 1
