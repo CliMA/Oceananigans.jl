@@ -8,14 +8,20 @@ function poisson_solver_instantiates(arch, grid, planner_flag)
 end
 
 function random_divergent_source_term(arch, grid)
-    Ru = XFaceField(arch, grid)
-    Rv = YFaceField(arch, grid)
-    Rw = ZFaceField(arch, grid)
+    default_bcs = FieldBoundaryConditions()
+    u_bcs = regularize_field_boundary_conditions(default_bcs, grid, :u)
+    v_bcs = regularize_field_boundary_conditions(default_bcs, grid, :v)
+    w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
+
+    Ru = CenterField(arch, grid, u_bcs)
+    Rv = CenterField(arch, grid, v_bcs)
+    Rw = CenterField(arch, grid, w_bcs)
     U = (u=Ru, v=Rv, w=Rw)
 
-    set!(Ru, (x, y, z) -> rand())
-    set!(Rv, (x, y, z) -> rand())
-    set!(Rw, (x, y, z) -> rand())
+    Nx, Ny, Nz = size(grid)
+    set!(Ru, rand(Nx, Ny, Nz))
+    set!(Rv, rand(Nx, Ny, Nz))
+    set!(Rw, rand(Nx, Ny, Nz))
 
     fill_halo_regions!(Ru, arch)
     fill_halo_regions!(Rv, arch)
@@ -23,7 +29,7 @@ function random_divergent_source_term(arch, grid)
 
     # Compute the right hand side R = ∇⋅U
     ArrayType = array_type(arch)
-    R = zeros(size(grid)...) |> ArrayType
+    R = zeros(Nx, Ny, Nz) |> ArrayType
     event = launch!(arch, grid, :xyz, divergence!, grid, U.u.data, U.v.data, U.w.data, R,
                     dependencies=Event(device(arch)))
     wait(device(arch), event)
@@ -32,29 +38,35 @@ function random_divergent_source_term(arch, grid)
 end
 
 function random_divergence_free_source_term(arch, grid)
+    default_bcs = FieldBoundaryConditions()
+    u_bcs = regularize_field_boundary_conditions(default_bcs, grid, :u)
+    v_bcs = regularize_field_boundary_conditions(default_bcs, grid, :v)
+    w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
+
     # Random right hand side
-    Ru = XFaceField(arch, grid)
-    Rv = YFaceField(arch, grid)
-    Rw = ZFaceField(arch, grid)
+    Ru = CenterField(arch, grid, u_bcs)
+    Rv = CenterField(arch, grid, v_bcs)
+    Rw = CenterField(arch, grid, w_bcs)
     U = (u=Ru, v=Rv, w=Rw)
 
-    set!(Ru, (x, y, z) -> rand())
-    set!(Rv, (x, y, z) -> rand())
-    set!(Rw, (x, y, z) -> rand())
+    Nx, Ny, Nz = size(grid)
+    set!(Ru, rand(Nx, Ny, Nz))
+    set!(Rv, rand(Nx, Ny, Nz))
+    set!(Rw, zeros(Nx, Ny, Nz))
 
-    fill_halo_regions!(Ru, arch)
-    fill_halo_regions!(Rv, arch)
-    fill_halo_regions!(Rw, arch)
+    fill_halo_regions!(Ru, arch, nothing, nothing)
+    fill_halo_regions!(Rv, arch, nothing, nothing)
+    fill_halo_regions!(Rw, arch, nothing, nothing)
 
     event = launch!(arch, grid, :xy, _compute_w_from_continuity!, U, grid,
                     dependencies=Event(device(arch)))
     wait(device(arch), event)
 
-    fill_halo_regions!(Rw, arch)
+    fill_halo_regions!(Rw, arch, nothing, nothing)
 
     # Compute the right hand side R = ∇⋅U
     ArrayType = array_type(arch)
-    R = zeros(size(grid)...) |> ArrayType
+    R = zeros(Nx, Ny, Nz) |> ArrayType
     event = launch!(arch, grid, :xyz, divergence!, grid, Ru.data, Rv.data, Rw.data, R,
                     dependencies=Event(device(arch)))
     wait(device(arch), event)
