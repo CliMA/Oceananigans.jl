@@ -152,7 +152,7 @@ Boundary condition functions may be 'parameterized',
 ```jldoctest
 julia> @inline wind_stress(x, y, t, p) = - p.τ * cos(p.k * x) * cos(p.ω * t); # function with parameters
 
-julia> top_u_bc = BoundaryCondition(Flux, wind_stress, parameters=(k=4π, ω=3.0, τ=1e-4))
+julia> top_u_bc = FluxBoundaryCondition(wind_stress, parameters=(k=4π, ω=3.0, τ=1e-4))
 BoundaryCondition: classification=Flux, condition=wind_stress(x, y, t, p) in Main at none:1
 ```
 
@@ -227,7 +227,7 @@ julia> Cd = 0.2;  # drag coefficient
 
 julia> @inline linear_drag(i, j, grid, clock, model_fields, Cd) = @inbounds - Cd * model_fields.u[i, j, 1];
 
-julia> u_bottom_bc = BoundaryCondition(Flux, linear_drag, discrete_form=true, parameters=Cd)
+julia> u_bottom_bc = FluxBoundaryCondition(linear_drag, discrete_form=true, parameters=Cd)
 BoundaryCondition: classification=Flux, condition=linear_drag(i, j, grid, clock, model_fields, Cd) in Main at none:1
 ```
 
