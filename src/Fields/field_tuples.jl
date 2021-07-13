@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 
 #####
 ##### Velocity fields tuples
@@ -11,9 +11,17 @@ Return a NamedTuple with fields `u`, `v`, `w` initialized on the architecture `a
 and `grid`. Boundary conditions `bcs` may be specified via a named tuple of
 `FieldBoundaryCondition`s.
 """
-function VelocityFields(arch, grid, bcs = (u=FieldBoundaryConditions(),
-                                           v=FieldBoundaryConditions(),
-                                           w=FieldBoundaryConditions()))
+function VelocityFields(arch, grid, user_bcs = NamedTuple())
+
+    template = FieldBoundaryConditions()
+
+    default_bcs = (
+        u = regularize_field_boundary_conditions(template, grid, :u),
+        v = regularize_field_boundary_conditions(template, grid, :v),
+        w = regularize_field_boundary_conditions(template, grid, :w)
+    )
+
+    bcs = merge(default_bcs, user_bcs)
 
     u = XFaceField(arch, grid, bcs.u)
     v = YFaceField(arch, grid, bcs.v)
@@ -33,10 +41,10 @@ Returns a `NamedTuple` with tracer fields specified by `tracer_names` initialize
 `CenterField`s on the architecture `arch` and `grid`. Boundary conditions `bcs` may
 be specified via a named tuple of `FieldBoundaryCondition`s.
 """
-function TracerFields(tracer_names, arch, grid,
-                      bcs = NamedTuple{tracer_names}(FieldBoundaryConditions() for name in tracer_names))
-    tracer_fields = Tuple(CenterField(arch, grid, bcs[c]) for c in tracer_names)
-    return NamedTuple{tracer_names}(tracer_fields)
+function TracerFields(tracer_names, arch, grid, user_bcs)
+    default_bcs = NamedTuple(name => FieldBoundaryConditions(grid, (Center, Center, Center)) for name in tracer_names)
+    bcs = merge(default_bcs, user_bcs) # provided bcs overwrite defaults
+    return NamedTuple(c => CenterField(arch, grid, bcs[c]) for c in tracer_names)
 end
 
 """
@@ -49,10 +57,8 @@ keyword arguments `kwargs` for each field.
 This function is used by `OutputWriters.Checkpointer` and `TendencyFields`.
 ```
 """
-function TracerFields(tracer_names, arch, grid; kwargs...)
-    tracer_fields = Tuple(c ∈ keys(kwargs) ? kwargs[c] : CenterField(arch, grid) for c in tracer_names)
-    return NamedTuple{tracer_names}(tracer_fields)
-end
+TracerFields(tracer_names, arch, grid; kwargs...) =
+    NamedTuple(c => c ∈ keys(kwargs) ? kwargs[c] : CenterField(arch, grid) for c in tracer_names)
 
 # 'Nothing', or empty tracer fields
 TracerFields(::Union{Tuple{}, Nothing}, arch, grid, bcs) = NamedTuple()

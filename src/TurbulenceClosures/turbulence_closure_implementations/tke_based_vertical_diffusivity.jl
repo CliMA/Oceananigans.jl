@@ -243,22 +243,19 @@ end
 
 """ Infer tracer boundary conditions from user_bcs and tracer_names. """
 function top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
-    user_bc_names = keys(user_bcs)
-    default_top_bc = default_prognostic_field_boundary_condition(topology(grid, 3), Center())
-
-    tracer_bcs = Tuple(name ∈ user_bc_names ? user_bcs[name].top : default_top_bc
-                       for name in tracer_names)
-
-    return NamedTuple{tracer_names}(tracer_bcs)
+    default_tracer_bcs = NamedTuple(c => FieldBoundaryConditions(grid, (Center, Center, Center)) for c in tracer_names)
+    bcs = merge(default_tracer_bcs, user_bcs)
+    return NamedTuple(c => bcs[c].top for c in tracer_names)
 end
 
 """ Infer velocity boundary conditions from `user_bcs` and `tracer_names`. """
 function top_velocity_boundary_conditions(grid, user_bcs)
 
-    user_bc_names = keys(user_bcs)
+    default_top_bc = default_prognostic_field_boundary_condition(topology(grid, 3)(), Center())
 
-    u_top_bc = :u ∈ user_bc_names ? user_bcs.u.top : DefaultBoundaryCondition(topology(grid, 3), Center)
-    v_top_bc = :v ∈ user_bc_names ? user_bcs.v.top : DefaultBoundaryCondition(topology(grid, 3), Center)
+    user_bc_names = keys(user_bcs)
+    u_top_bc = :u ∈ user_bc_names ? user_bcs.u.top : default_top_bc
+    v_top_bc = :v ∈ user_bc_names ? user_bcs.v.top : default_top_bc
 
     return (u=u_top_bc, v=v_top_bc)
 end

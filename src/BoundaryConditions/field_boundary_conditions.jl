@@ -11,12 +11,11 @@ default_prognostic_field_boundary_condition(::Bounded,        ::Center)  = NoFlu
 default_prognostic_field_boundary_condition(::Bounded,        ::Face)    = ImpenetrableBoundaryCondition()
 
 default_prognostic_field_boundary_condition(::Bounded,        ::Nothing) = nothing
-default_prognostic_field_boundary_condition(::Grids.Periodic, ::Nothing) = nothing
-default_prognostic_field_boundary_condition(::Flat,           loc)       = nothing
 default_prognostic_field_boundary_condition(::Flat,           ::Nothing) = nothing
+default_prognostic_field_boundary_condition(::Grids.Periodic, ::Nothing) = nothing
+default_prognostic_field_boundary_condition(::Flat, loc) = nothing
 
 default_auxiliary_field_boundary_condition(topo, loc) = default_prognostic_field_boundary_condition(topo, loc)
-default_auxiliary_field_boundary_condition(::Bounded, ::Center) = GradientBoundaryCondition(0)
 default_auxiliary_field_boundary_condition(::Bounded, ::Face) = nothing
 
 #####
@@ -62,9 +61,9 @@ function FieldBoundaryConditions(;     west = DefaultPrognosticFieldBoundaryCond
                                       north = DefaultPrognosticFieldBoundaryCondition(),
                                      bottom = DefaultPrognosticFieldBoundaryCondition(),
                                         top = DefaultPrognosticFieldBoundaryCondition(),
-                                   immersed = FluxBoundaryCondition(nothing))
+                                   immersed = NoFluxBoundaryCondition())
 
-   return FieldBoundaryConditions(east, west, south, north, bottom, top, immersed)
+   return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
 """
@@ -92,24 +91,25 @@ and the topology in the boundary-normal direction is used:
     * `nothing` for `Flat` directions and/or `Nothing`-located fields)
 """
 function FieldBoundaryConditions(grid, loc;
-                                   east = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
                                    west = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
+                                   east = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
                                   south = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
                                   north = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
                                  bottom = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()),
-                                    top = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()))
+                                    top = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()),
+                               immersed = NoFluxBoundaryCondition())
 
-   return FieldBoundaryConditions(east, west, south, north, bottom, top, nothing)
+   return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
 #####
 ##### Boundary condition "regularization"
 #####
 
-regularize_boundary_condition(::DefaultPrognosticFieldBoundaryCondition, topo, loc, dim, i, model_field_names) =
+regularize_boundary_condition(::DefaultPrognosticFieldBoundaryCondition, topo, loc, dim, args...) =
     default_prognostic_field_boundary_condition(topo[dim](), loc[dim]())
 
-regularize_boundary_condition(bc, X, Y, Z, I, model_field_names) = bc # fallback
+regularize_boundary_condition(bc, args...) = bc # fallback
 
 """ 
 Compute default boundary conditions and attach field locations to ContinuousBoundaryFunction
@@ -118,36 +118,33 @@ boundary conditions for prognostic model field boundary conditions.
 Note: don't regularize immersed boundary conditions: we don't support ContinuousBoundaryFunction
 for immersed boundary conditions.
 """
-function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid, field_name, model_field_names=nothing)
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid, field_name, prognostic_field_names=nothing)
 
     topo = topology(grid)
     loc = assumed_field_location(field_name)
     
-    east     = regularize_boundary_condition(bcs.east,   topo, loc, 1, 1,       model_field_names)
-    west     = regularize_boundary_condition(bcs.west,   topo, loc, 1, grid.Nx, model_field_names)
-    south    = regularize_boundary_condition(bcs.south,  topo, loc, 2, 1,       model_field_names)
-    north    = regularize_boundary_condition(bcs.north,  topo, loc, 2, grid.Ny, model_field_names)
-    bottom   = regularize_boundary_condition(bcs.bottom, topo, loc, 3, 1,       model_field_names)
-    top      = regularize_boundary_condition(bcs.top,    topo, loc, 3, grid.Nz, model_field_names)
+    west     = regularize_boundary_condition(bcs.west,   topo, loc, 1, 1,       prognostic_field_names)
+    east     = regularize_boundary_condition(bcs.east,   topo, loc, 1, grid.Nx, prognostic_field_names)
+    south    = regularize_boundary_condition(bcs.south,  topo, loc, 2, 1,       prognostic_field_names)
+    north    = regularize_boundary_condition(bcs.north,  topo, loc, 2, grid.Ny, prognostic_field_names)
+    bottom   = regularize_boundary_condition(bcs.bottom, topo, loc, 3, 1,       prognostic_field_names)
+    top      = regularize_boundary_condition(bcs.top,    topo, loc, 3, grid.Nz, prognostic_field_names)
 
     # Eventually we could envision supporting ContinuousForcing-style boundary conditions
     # for the immersed boundary condition, which would benefit from regularization.
     # But for now we don't regularize the immersed boundary condition.
     immersed = bcs.immersed
 
-    return FieldBoundaryConditions(east, west, north, south, top, bottom, immersed)
+    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
-function regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, model_field_names)
+regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, prognostic_field_names) =
+    NamedTuple(field_name => regularize_field_boundary_conditions(field_bcs, grid, field_name, prognostic_field_names)
+               for (field_name, field_bcs) in pairs(boundary_conditions))
 
-    boundary_conditions_names = propertynames(boundary_conditions)
+# For nested NamedTuples of boundary conditions (eg diffusivity boundary conditions)
+regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, ::Symbol, prognostic_field_names) =
+    NamedTuple(field_name => regularize_field_boundary_conditions(field_bcs, grid, field_name, prognostic_field_names)
+               for (field_name, field_bcs) in pairs(boundary_conditions))
 
-    boundary_conditions_tuple = Tuple(regularize_field_boundary_conditions(bcs, grid, name, model_field_names)
-                                      for (name, bcs) in zip(boundary_conditions_names, boundary_conditions))
-
-    boundary_conditions = NamedTuple{boundary_conditions_names}(boundary_conditions_tuple)
-
-    return boundary_conditions
-end
-
-regularize_field_boundary_conditions(::Missing, grid, field_name, model_field_names=nothing) = missing
+regularize_field_boundary_conditions(::Missing, grid, field_name, prognostic_field_names=nothing) = missing

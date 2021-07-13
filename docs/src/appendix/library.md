@@ -109,7 +109,6 @@ Pages   = [
     "Fields/field.jl",
     "Fields/set!.jl",
     "Fields/show_fields.jl",
-    "Fields/field_utils.jl"
 ]
 ```
 
