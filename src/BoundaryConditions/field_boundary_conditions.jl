@@ -11,12 +11,11 @@ default_prognostic_field_boundary_condition(::Bounded,        ::Center)  = NoFlu
 default_prognostic_field_boundary_condition(::Bounded,        ::Face)    = ImpenetrableBoundaryCondition()
 
 default_prognostic_field_boundary_condition(::Bounded,        ::Nothing) = nothing
-default_prognostic_field_boundary_condition(::Grids.Periodic, ::Nothing) = nothing
-default_prognostic_field_boundary_condition(::Flat,           loc)       = nothing
 default_prognostic_field_boundary_condition(::Flat,           ::Nothing) = nothing
+default_prognostic_field_boundary_condition(::Grids.Periodic, ::Nothing) = nothing
+default_prognostic_field_boundary_condition(::Flat, loc) = nothing
 
 default_auxiliary_field_boundary_condition(topo, loc) = default_prognostic_field_boundary_condition(topo, loc)
-default_auxiliary_field_boundary_condition(::Bounded, ::Center) = NoFluxBoundaryCondition()
 default_auxiliary_field_boundary_condition(::Bounded, ::Face) = nothing
 
 #####
@@ -62,7 +61,7 @@ function FieldBoundaryConditions(;     west = DefaultPrognosticFieldBoundaryCond
                                       north = DefaultPrognosticFieldBoundaryCondition(),
                                      bottom = DefaultPrognosticFieldBoundaryCondition(),
                                         top = DefaultPrognosticFieldBoundaryCondition(),
-                                   immersed = FluxBoundaryCondition(nothing))
+                                   immersed = NoFluxBoundaryCondition())
 
    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
@@ -97,9 +96,10 @@ function FieldBoundaryConditions(grid, loc;
                                   south = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
                                   north = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
                                  bottom = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()),
-                                    top = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()))
+                                    top = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()),
+                               immersed = NoFluxBoundaryCondition())
 
-   return FieldBoundaryConditions(west, east, south, north, bottom, top, nothing)
+   return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
 #####
