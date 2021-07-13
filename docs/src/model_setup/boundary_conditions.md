@@ -88,7 +88,7 @@ In this section we illustrate usage of the different [`BoundaryCondition`](@ref)
 
 ```jldoctest
 julia> constant_T_bc = ValueBoundaryCondition(20.0)
-BoundaryCondition: type=Value, condition=20.0
+BoundaryCondition: classification=Value, condition=20.0
 ```
 
 A constant [`Value`](@ref) boundary condition can be used to specify constant tracer (such as temperature),
@@ -105,7 +105,7 @@ julia> ρ₀ = 1027;  # Reference density [kg/m³]
 julia> τₓ = 0.08;  # Wind stress [N/m²]
 
 julia> wind_stress_bc = FluxBoundaryCondition(-τₓ/ρ₀)
-BoundaryCondition: type=Flux, condition=-7.789678675754625e-5
+BoundaryCondition: classification=Flux, condition=-7.789678675754625e-5
 ```
 
 A constant [`Flux`](@ref) boundary condition can be imposed on tracers and tangential velocity components
@@ -130,7 +130,7 @@ Boundary conditions may be specified by functions,
 julia> @inline surface_flux(x, y, t) = cos(2π * x) * cos(t);
 
 julia> top_tracer_bc = FluxBoundaryCondition(surface_flux)
-BoundaryCondition: type=Flux, condition=surface_flux(x, y, t) in Main at none:1
+BoundaryCondition: classification=Flux, condition=surface_flux(x, y, t) in Main at none:1
 ```
 
 !!! info "Boundary condition functions"
@@ -153,7 +153,7 @@ Boundary condition functions may be 'parameterized',
 julia> @inline wind_stress(x, y, t, p) = - p.τ * cos(p.k * x) * cos(p.ω * t); # function with parameters
 
 julia> top_u_bc = BoundaryCondition(Flux, wind_stress, parameters=(k=4π, ω=3.0, τ=1e-4))
-BoundaryCondition: type=Flux, condition=wind_stress(x, y, t, p) in Main at none:1
+BoundaryCondition: classification=Flux, condition=wind_stress(x, y, t, p) in Main at none:1
 ```
 
 !!! info "Boundary condition functions with parameters"
@@ -172,7 +172,7 @@ julia> @inline linear_drag(x, y, t, u) = - 0.2 * u
 linear_drag (generic function with 1 method)
 
 julia> u_bottom_bc = FluxBoundaryCondition(linear_drag, field_dependencies=:u)
-BoundaryCondition: type=Flux, condition=linear_drag(x, y, t, u) in Main at none:1
+BoundaryCondition: classification=Flux, condition=linear_drag(x, y, t, u) in Main at none:1
 ```
 
 `field_dependencies` specifies the name of the dependent fields either with a `Symbol` or `Tuple` of `Symbol`s.
@@ -186,7 +186,7 @@ julia> @inline quadratic_drag(x, y, t, u, v, drag_coeff) = - drag_coeff * u * sq
 quadratic_drag (generic function with 1 method)
 
 julia> u_bottom_bc = FluxBoundaryCondition(quadratic_drag, field_dependencies=(:u, :v), parameters=1e-3)
-BoundaryCondition: type=Flux, condition=quadratic_drag(x, y, t, u, v, drag_coeff) in Main at none:1
+BoundaryCondition: classification=Flux, condition=quadratic_drag(x, y, t, u, v, drag_coeff) in Main at none:1
 ```
 
 Put differently, `ξ, η, t` come first in the function signature, followed by field dependencies,
@@ -204,7 +204,7 @@ using the `discrete_form`. For example:
 u_bottom_bc = FluxBoundaryCondition(filtered_drag, discrete_form=true)
 
 # output
-BoundaryCondition: type=Flux, condition=filtered_drag(i, j, grid, clock, model_fields) in Main at none:1
+BoundaryCondition: classification=Flux, condition=filtered_drag(i, j, grid, clock, model_fields) in Main at none:1
 ```
 
 !!! info "The 'discrete form' for boundary condition functions"
@@ -228,7 +228,7 @@ julia> Cd = 0.2;  # drag coefficient
 julia> @inline linear_drag(i, j, grid, clock, model_fields, Cd) = @inbounds - Cd * model_fields.u[i, j, 1];
 
 julia> u_bottom_bc = BoundaryCondition(Flux, linear_drag, discrete_form=true, parameters=Cd)
-BoundaryCondition: type=Flux, condition=linear_drag(i, j, grid, clock, model_fields, Cd) in Main at none:1
+BoundaryCondition: classification=Flux, condition=linear_drag(i, j, grid, clock, model_fields, Cd) in Main at none:1
 ```
 
 !!! info "Inlining and avoiding bounds-checking in boundary condition functions"
@@ -246,7 +246,7 @@ julia> Nx = Ny = 16;  # Number of grid points.
 julia> Q = randn(Nx, Ny); # temperature flux
 
 julia> white_noise_T_bc = FluxBoundaryCondition(Q)
-BoundaryCondition: type=Flux, condition=16×16 Matrix{Float64}
+BoundaryCondition: classification=Flux, condition=16×16 Matrix{Float64}
 ```
 
 When running on the GPU, `Q` must be converted to a `CuArray`.
