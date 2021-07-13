@@ -81,17 +81,6 @@
         end
     end
 
-    @testset "Non-dimensional model" begin
-        @info "  Testing non-dimensional model construction..."
-        for arch in archs, FT in float_types
-            grid = RegularRectilinearGrid(FT, size=(16, 16, 2), extent=(3, 2, 1))
-            model = NonDimensionalIncompressibleModel(architecture=arch, grid=grid, Re=1, Pr=1, Ro=Inf)
-
-            # Just testing that a NonDimensionalIncompressibleModel was constructed with no errors/crashes.
-            @test model isa IncompressibleModel
-        end
-    end
-
     @testset "Setting model fields" begin
         @info "  Testing setting model fields..."
         for arch in archs, FT in float_types
@@ -166,6 +155,16 @@
             ϵ = 10 * eps(FT)
             set!(w_cpu, w)
             @test all(abs.(interior(w_cpu)) .< ϵ)
+
+            # Test setting the background_fields to a Field
+            U_field = XFaceField(arch, grid)
+            U_field .= 1
+            model = IncompressibleModel(grid=grid, architecture=arch, background_fields = (u=U_field,))
+            @test model.background_fields.velocities.u isa Field
+			
+	    U_field = CenterField(arch, grid)            
+	    @test_throws ArgumentError IncompressibleModel(grid=grid, architecture=arch, background_fields = (u=U_field,))            
         end
     end
 end
+
