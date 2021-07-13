@@ -1,3 +1,4 @@
+
 # Simulation tips
 
 In Oceananigans we try to do most of the optimizing behind the scenes, that way the average user
@@ -109,7 +110,7 @@ compute!(ε)
 
 There are two approaches to 
 bypass this issue. The first is to nest `ComputedField`s. For example,
-we can make `KE` be successfully computed on GPUs by defining it as
+we can make `ε` be successfully computed on GPUs by defining it as
 ```julia
 ddx² = ComputedField(∂x(u)^2 + ∂x(v)^2 + ∂x(w)^2)
 ddy² = ComputedField(∂y(u)^2 + ∂y(v)^2 + ∂y(w)^2)
@@ -126,7 +127,7 @@ if this diagnostic is being calculated very often.
 A different way to calculate `ε` is by using `KernelFunctionOperations`s, where the
 user manually specifies the computing kernel function to the compiler. The advantage of this method is that
 it's more efficient (the code will only iterate once over the domain in order to calculate `ε`),
-but the disadvantage is that this requires that the has some knowledge of Oceananigans operations
+but the disadvantage is that this method requires some knowledge of Oceananigans operations
 and how they should be performed on a C-grid. For example calculating `ε` with this approach would
 look like this:
 
@@ -181,7 +182,7 @@ to achieve this
 
 - Use the [`nvidia-smi`](https://developer.nvidia.com/nvidia-system-management-interface) command
   line utility to monitor the memory usage of the GPU. It should tell you how much memory there is
-  on your GPU and how much of it you're using.
+  on your GPU and how much of it you're using and you can run it from Julia with the command ``run(`nvidia-smi`)``.
 - Try to use higher-order advection schemes. In general when you use a higher-order scheme you need
   fewer grid points to achieve the same accuracy that you would with a lower-order one. Oceananigans
   provides two high-order advection schemes: 5th-order WENO method (WENO5) and 3rd-order upwind.
@@ -190,7 +191,7 @@ to achieve this
   called scratch space. In general, the more diagnostics, the more scratch space needed and the bigger
   the memory requirements. However, if you explicitly create a scratch space and pass that same
   scratch space for as many diagnostics as you can, you minimize the memory requirements of your
-  calculations by reusing the same memory chunk. As an example, you can see scratch space being
+  calculations by reusing the same chunk of memory. As an example, you can see scratch space being
   created
   [here](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_ constant_fluxes.jl#L380-L383)
   and then being used in calculations
@@ -200,13 +201,15 @@ to achieve this
 
 ### Arrays in GPUs are usually different from arrays in CPUs
 
-On the CPU Oceananigans.jl uses regular `Array`s, but on the GPU it has to use `CuArray`s
-from the CUDA.jl package. While deep down both are arrays, their implementations are different
-and both can behave very differently. Something to keep in mind when working with `CuArray`s is that you do not want to
-access elements of a `CuArray` outside of a kernel. Doing so invokes scalar operations
-in which individual elements are copied from or to the GPU for processing. This is very
-slow and can result in huge slowdowns. For this reason, Oceananigans.jl disables CUDA
-scalar operations by default. See the [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
+Oceananigans.jl uses [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/) to store 
+data for GPU computations. One limitation of `CuArray`s compared to the `Array`s used for 
+CPU computations is that `CuArray` elements in general cannot be accessed outside kernels
+launched through CUDA.jl or KernelAbstractions.jl. (You can learn more about GPU kernels 
+[here](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and 
+[here](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
+Doing so requires individual elements to be copied from or to the GPU for processing,
+which is very slow and can result in huge slowdowns. For this reason, Oceananigans.jl disables CUDA
+scalar indexing by default. See the [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
 section of the CUDA.jl documentation for more information on scalar indexing.
 
 
@@ -303,5 +306,4 @@ to define initial conditions, boundary conditions or
 forcing functions on a GPU. To learn more about working with `CuArray`s, see the
 [array programming](https://juliagpu.github.io/CUDA.jl/dev/usage/array/) section
 of the CUDA.jl documentation.
-
 
