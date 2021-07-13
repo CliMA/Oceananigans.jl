@@ -54,7 +54,7 @@ end
 
 function HydrostaticFreeSurfaceTendencyFields(::PrescribedVelocityFields, free_surface, arch, grid, tracer_names)
     tracers = TracerFields(tracer_names, arch, grid)
-    return merge((u = nothing, v = nothing, w = nothing), tracers)
+    return merge((u = nothing, v = nothing, η = nothing), tracers)
 end
 
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
