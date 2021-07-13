@@ -305,13 +305,13 @@ julia> model.velocities.u
 Field located at (Face, Center, Center)
 ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (16, 16, 16)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
-└── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=Value, top=Value)
+└── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=Value, top=Value, immersed=ZeroFlux
 
 julia> model.tracers.T
 Field located at (Center, Center, Center)
 ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (16, 16, 16)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
-└── boundary conditions: x=(west=Periodic, east=Periodic), y=(south=Periodic, north=Periodic), z=(bottom=Gradient, top=Value)
+└── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=Gradient, top=Value, immersed=ZeroFlux
 ```
 
 Notice that the specified non-default boundary conditions have been applied at
