@@ -201,10 +201,15 @@ to achieve this
 
 ### Arrays in GPUs are usually different from arrays in CPUs
 
-Oceananigans.jl uses [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/) to store data for GPU computations. One limitation of `CuArray`s compared to the `Array`s used for CPU computations is that `CuArray` elements cannot be accessed outside kernels (a process called ["scalar iteration"](https://cuda.juliagpu.org/stable/usage/workflow/#UsageWorkflowScalar)) launched through CUDA.jl or KernelAbstractions.jl.
-in which individual elements are copied from or to the GPU for processing. This is very
-slow and can result in huge slowdowns. For this reason, Oceananigans.jl disables CUDA
-scalar operations by default. See the [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
+Oceananigans.jl uses [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/) to store 
+data for GPU computations. One limitation of `CuArray`s compared to the `Array`s used for 
+CPU computations is that `CuArray` elements in general cannot be accessed outside kernels
+launched through CUDA.jl or KernelAbstractions.jl. (You can learn more about GPU kernels 
+[here](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and 
+[here](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
+Doing so requires individual elements to be copied from or to the GPU for processing,
+which is very slow and can result in huge slowdowns. For this reason, Oceananigans.jl disables CUDA
+scalar indexing by default. See the [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
 section of the CUDA.jl documentation for more information on scalar indexing.
 
 
