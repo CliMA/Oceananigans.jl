@@ -106,10 +106,10 @@ end
 ##### Boundary condition "regularization"
 #####
 
-regularize_boundary_condition(::DefaultPrognosticFieldBoundaryCondition, topo, loc, dim, i, prognostic_field_names) =
+regularize_boundary_condition(::DefaultPrognosticFieldBoundaryCondition, topo, loc, dim, args...) =
     default_prognostic_field_boundary_condition(topo[dim](), loc[dim]())
 
-regularize_boundary_condition(bc, X, Y, Z, I, prognostic_field_names) = bc # fallback
+regularize_boundary_condition(bc, args...) = bc # fallback
 
 """ 
 Compute default boundary conditions and attach field locations to ContinuousBoundaryFunction

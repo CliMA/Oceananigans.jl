@@ -37,7 +37,7 @@ struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
     end
 end
 
-location(bc::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
+location(::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
 
 #####
 ##### "Regularization" for IncompressibleModel setup
@@ -45,9 +45,9 @@ location(bc::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
 
 """
     regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                  LX, LY, LZ, I, model_field_names) where C
+                                  LX, LY, LZ, I, prognostic_field_names) where C
 
-Regularizes `bc.condition` for location `LX, LY, LZ`, boundary index `I`, and `model_field_names`,
+Regularizes `bc.condition` for location `LX, LY, LZ`, boundary index `I`, and `prognostic_field_names`,
 returning `BoundaryCondition(C, regularized_condition)`.
 
 The regularization of `bc.condition::ContinuousBoundaryFunction` requries
@@ -66,7 +66,7 @@ The regularization of `bc.condition::ContinuousBoundaryFunction` requries
    of the boundary.
 """
 function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                       topo, loc, dim, I, model_field_names) where C
+                                       topo, loc, dim, I, prognostic_field_names) where C
 
     boundary_func = bc.condition
 
@@ -75,7 +75,7 @@ function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoun
 
     indices, interps = index_and_interp_dependencies(LX, LY, LZ,
                                                      boundary_func.field_dependencies,
-                                                     model_field_names)
+                                                     prognostic_field_names)
 
     regularized_boundary_func = ContinuousBoundaryFunction{LX, LY, LZ, I}(boundary_func.func,
                                                                           boundary_func.parameters,
