@@ -39,7 +39,7 @@ short_show(fbcs::FieldBoundaryConditions) =
            "south=$(bc_str(fbcs.south)), ",
            "north=$(bc_str(fbcs.north)), ",
            "bottom=$(bc_str(fbcs.bottom)), ",
-           "top=$(bc_str(fbcs.top)) ",
+           "top=$(bc_str(fbcs.top)), ",
            "immersed=$(bc_str(fbcs.immersed))")
 
 show_field_boundary_conditions(bcs::FieldBoundaryConditions, padding="") =
