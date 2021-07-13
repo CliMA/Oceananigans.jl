@@ -43,8 +43,6 @@ Pages   = [
     "BoundaryConditions/show_boundary_conditions.jl",
     "BoundaryConditions/fill_halo_regions.jl",
     "BoundaryConditions/apply_flux_bcs.jl",
-    "BoundaryConditions/apply_value_gradient_bcs.jl",
-    "BoundaryConditions/apply_normal_flow_bcs.jl"
 ]
 ```
 
