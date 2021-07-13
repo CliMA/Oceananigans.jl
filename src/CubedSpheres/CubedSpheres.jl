@@ -46,8 +46,14 @@ end
 
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid::ConformalCubedSphereGrid, field_name, prognostic_field_names)
 
-    faces = Tuple(regularize_field_boundary_conditions(bcs, face_grid, field_name, prognostic_field_names)
-                  for face_grid in grid.faces)
+    faces = Tuple(
+        inject_cubed_sphere_exchange_boundary_conditions(
+            regularize_field_boundary_conditions(bcs, face_grid, field_name, prognostic_field_names),
+            face_index,
+            grid.face_connectivity
+        )
+        for (face_index, face_grid) in enumerate(grid.faces)
+    )
 
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
 end
