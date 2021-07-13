@@ -142,4 +142,9 @@ regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, prog
     NamedTuple(field_name => regularize_field_boundary_conditions(field_bcs, grid, field_name, prognostic_field_names)
                for (field_name, field_bcs) in pairs(boundary_conditions))
 
+# For nested NamedTuples of boundary conditions (eg diffusivity boundary conditions)
+regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, ::Symbol, prognostic_field_names) =
+    NamedTuple(field_name => regularize_field_boundary_conditions(field_bcs, grid, field_name, prognostic_field_names)
+               for (field_name, field_bcs) in pairs(boundary_conditions))
+
 regularize_field_boundary_conditions(::Missing, grid, field_name, prognostic_field_names=nothing) = missing
