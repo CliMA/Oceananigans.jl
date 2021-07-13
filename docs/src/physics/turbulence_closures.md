@@ -124,7 +124,7 @@ constant isotropic background viscosity and diffusivities for each tracer. The e
 predictor is
 ```math
     \begin{equation}
-    \nu_e^\dagger = -(C \Delta_f)^2
+    \nu_e^\dagger = -C \Delta_f^2
     \frac
         {(\hat{\partial}_k \hat{v}_i) (\hat{\partial}_k \hat{v}_j) \hat{\Sigma}_{ij}
         + C_b \hat{\delta}_{i3} (\hat{\partial}_k \hat{v_i}) (\hat{\partial}_k b)}
@@ -136,7 +136,7 @@ while the eddy diffusivity predictor for tracer ``c`` is
 ```math
     \begin{equation}
     \label{eq:kappa-dagger}
-    \kappa_e^\dagger = -(C \Delta_f)^2
+    \kappa_e^\dagger = -C \Delta_f^2
     \frac
         {(\hat{\partial}_k \hat{v}_i) (\hat{\partial}_k c) (\hat{\partial}_i c)}
         {(\hat{\partial}_l c) (\hat{\partial}_l c)} \, .
