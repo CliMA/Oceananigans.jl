@@ -121,7 +121,7 @@ appendix_pages = [
     "Fractional step method" => "appendix/fractional_step.md",
     "Convergence tests" => "appendix/convergence_tests.md",
     "Performance benchmarks" => "appendix/benchmarks.md",
-    "Library" => "appendix/library.md",
+    # "Library" => "appendix/library.md",
     "Function index" => "appendix/function_index.md",
 ]
 
@@ -160,7 +160,7 @@ makedocs(bib,
    doctest = true,
     strict = true,
      clean = true,
- checkdocs = :none  # Should fix our docstring so we can use checkdocs=:exports with strict=true.
+ checkdocs = :none # Should fix our docstring so we can use checkdocs=:exports with strict=true.
 )
 
 deploydocs(
