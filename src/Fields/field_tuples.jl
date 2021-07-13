@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 
 #####
 ##### Velocity fields tuples
