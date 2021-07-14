@@ -116,16 +116,14 @@ numerical_pages = [
     "Large eddy simulation" => "numerical_implementation/large_eddy_simulation.md"
 ]
 
-#=
 appendix_pages = [
-    #"Staggered grid" => "appendix/staggered_grid.md",
-    #"Fractional step method" => "appendix/fractional_step.md",
-    #"Convergence tests" => "appendix/convergence_tests.md",
-    #"Performance benchmarks" => "appendix/benchmarks.md",
-    # "Library" => "appendix/library.md",
-    # "Function index" => "appendix/function_index.md",
+    "Staggered grid" => "appendix/staggered_grid.md",
+    "Fractional step method" => "appendix/fractional_step.md",
+    "Convergence tests" => "appendix/convergence_tests.md",
+    "Performance benchmarks" => "appendix/benchmarks.md",
+    "Library" => "appendix/library.md",
+    "Function index" => "appendix/function_index.md",
 ]
-=#
 
 pages = [
     "Home" => "index.md",
@@ -139,7 +137,7 @@ pages = [
     "Contributor's guide" => "contributing.md",
     "Gallery" => "gallery.md",
     "References" => "references.md",
-    # "Appendix" => appendix_pages,
+    "Appendix" => appendix_pages,
 ]
 
 #####
