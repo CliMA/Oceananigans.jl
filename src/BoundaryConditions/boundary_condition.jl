@@ -11,7 +11,7 @@ struct BoundaryCondition{C<:AbstractBoundaryConditionClassification, T}
 end
 
 """
-    BoundaryCondition(Classification, condition)
+    BoundaryCondition(Classification::DataType, condition)
 
 Construct a boundary condition of type `BC` with a number or array as a `condition`.
 
@@ -20,7 +20,10 @@ Boundary condition types include `Periodic`, `Flux`, `Value`, `Gradient`, and `O
 BoundaryCondition(Classification::DataType, condition) = BoundaryCondition(Classification(), condition)
 
 """
-    BoundaryCondition(Classification, condition::Function; parameters=nothing, discrete_form=false)
+    BoundaryCondition(Classification::DataType, condition::Function;
+                      parameters = nothing,
+                      discrete_form = false,
+                      field_dependencies=())
 
 Construct a boundary condition of type `Classification` with a function boundary `condition`.
 

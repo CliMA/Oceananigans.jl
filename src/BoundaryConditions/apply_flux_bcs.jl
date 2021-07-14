@@ -92,7 +92,7 @@ end
 @inline flip(::Face) = Center()
 
 """
-    apply_x_west_bc!(Gc, west_flux::BC{<:Flux}, j, k, grid, args...)
+    apply_x_west_bc!(Gc, loc, west_flux::BC{<:Flux}, j, k, grid, args...)
 
 Add the flux divergence associated with a west flux boundary condition on `c`.
 Note that because
@@ -125,7 +125,7 @@ end
 end
 
 """
-    apply_x_east_bc!(Gc, top_flux::BC{<:Flux}, j, k, grid, args...)
+    apply_x_east_bc!(Gc, loc, east_flux::BC{<:Flux}, j, k, grid, args...)
 
 Add the part of flux divergence associated with a east boundary condition on `c`.
 Note that because

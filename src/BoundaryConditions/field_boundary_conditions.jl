@@ -73,7 +73,7 @@ Returns boundary conditions for auxiliary fields (fields
 whose values are derived from a model's prognostic fields) on `grid`
 and at `location`.
 
-Keyword arguments specify boundary conditions on the 7 possible boundaries:
+Keyword arguments specify boundary conditions on the 6 possible boundaries:
 
     * `west`, left end point in the `x`-direction where `i=1`
     * `east`, right end point in the `x`-direction where `i=grid.Nx`
