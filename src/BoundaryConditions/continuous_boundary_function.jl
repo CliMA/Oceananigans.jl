@@ -4,7 +4,7 @@ using Oceananigans.Utils: tupleit, user_function_arguments
 import Oceananigans: location
 
 """
-    ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
+    struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
 
 A wrapper for the user-defined boundary condition function `func` at location
 `X, Y, Z`. `I` denotes the boundary-normal index (`I=1` at western boundaries,
@@ -45,9 +45,9 @@ location(::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
 
 """
     regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                  LX, LY, LZ, I, prognostic_field_names) where C
+                                  topo, loc, dim, I, prognostic_field_names) where C
 
-Regularizes `bc.condition` for location `LX, LY, LZ`, boundary index `I`, and `prognostic_field_names`,
+Regularizes `bc.condition` for location `loc`, boundary index `I`, and `prognostic_field_names`,
 returning `BoundaryCondition(C, regularized_condition)`.
 
 The regularization of `bc.condition::ContinuousBoundaryFunction` requries
@@ -91,7 +91,7 @@ end
 ##### Kernel functions
 #####
 
-""" Return ContinuousBoundaryFunction on east or west boundaries. """
+# Return ContinuousBoundaryFunction on east or west boundaries.
 @inline function (bc::ContinuousBoundaryFunction{Nothing, LY, LZ, i})(j, k, grid, clock, model_fields) where {LY, LZ, i}
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
 
@@ -102,7 +102,7 @@ end
                    clock.time, args...)
 end
 
-""" Return ContinuousBoundaryFunction on south or north boundaries. """
+# Return ContinuousBoundaryFunction on south or north boundaries.
 @inline function (bc::ContinuousBoundaryFunction{LX, Nothing, LZ, j})(i, k, grid, clock, model_fields) where {LX, LZ, j}
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
 
@@ -113,7 +113,7 @@ end
                    clock.time, args...)
 end
 
-""" Return ContinuousBoundaryFunction on bottom or top boundaries. """
+# Return ContinuousBoundaryFunction on bottom or top boundaries.
 @inline function (bc::ContinuousBoundaryFunction{LX, LY, Nothing, k})(i, j, grid, clock, model_fields) where {LX, LY, k}
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
 
