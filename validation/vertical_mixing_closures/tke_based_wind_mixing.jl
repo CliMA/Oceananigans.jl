@@ -25,7 +25,6 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     tracers = (:b, :e),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = FPlane(f=1e-4),
-                                    #boundary_conditions = (b=b_bcs, e=tke_bcs, u=u_bcs, v=v_bcs),
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                     closure = closure)
                                     

@@ -25,7 +25,7 @@ b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     tracers = (:b, :e),
                                     buoyancy = BuoyancyTracer(),
-                                    boundary_conditions = (b=b_bcs, e=tke_bcs),
+                                    boundary_conditions = (; b=b_bcs),
                                     closure = closure)
                                     
 N² = 1e-5
