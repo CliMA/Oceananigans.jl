@@ -18,10 +18,9 @@ w★ = Qᵇ * grid.Δz
 
 Qᵉ = - closure.dissipation_parameter * (closure.surface_model.CᵂwΔ * w★ + closure.surface_model.Cᵂu★ * u★)
 
-u_bcs = UVelocityBoundaryConditions(grid; top = FluxBoundaryCondition(Qᵘ))
-v_bcs = VVelocityBoundaryConditions(grid; top = FluxBoundaryCondition(Qᵛ))
-b_bcs = TracerBoundaryConditions(grid; top = FluxBoundaryCondition(Qᵇ))
-tke_bcs = TracerBoundaryConditions(grid; top = FluxBoundaryCondition(Qᵉ))
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
+v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵛ))
+b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     tracers = (:b, :e),
