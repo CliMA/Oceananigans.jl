@@ -85,44 +85,73 @@ function regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoun
     return BoundaryCondition(C, regularized_boundary_func)
 end
 
+#####
+##### Functionality for calling ContinuousBoundaryFunction in kernels
+#####
+
+const CBF = ContinuousBoundaryFunction
+
 @inline boundary_index(i) = ifelse(i == 1, 1, i + 1) # convert near-boundary Center() index into boundary Face() index
 
-#####
-##### Kernel functions
-#####
+@inline function _boundary_node_yz(i, j, k, grid, LY, LZ)
+    i′ = boundary_index(i) # shift right index
+    x, y, z = node(Face(), LY(), LZ(), i′, j, k, grid) # calculate node
+    return y, z
+end
+
+@inline function _boundary_node_xz(i, j, k, grid, LY, LZ)
+    j′ = boundary_index(j)
+    x, y, z = node(LX(), Face(), LZ(), i, j′, k, grid)
+    return x, z
+end
+
+@inline function _boundary_node_xy(i, j, k, grid, LX, LY)
+    k′ = boundary_index(k)
+    x, y, z = node(LX(), LY(), Face(), i, j, k′, grid)
+    return x, y
+end
+
+@inline boundary_node_yz(i, j, k, grid, LY, LZ)        = _boundary_node_yz(i, j, k, grid, LY, LZ)
+@inline boundary_node_yz(i, j, k, grid, ::Nothing, LZ) = tuple(_boundary_node_yz(i, j, k, grid, LY, LZ)[1])
+@inline boundary_node_yz(i, j, k, grid, LY, ::Nothing) = tuple(_boundary_node_yz(i, j, k, grid, LY, LZ)[2])
+
+@inline boundary_node_xz(i, j, k, grid, LX, LZ)        = _boundary_node_xz(i, j, k, grid, LX, LZ)
+@inline boundary_node_xz(i, j, k, grid, ::Nothing, LZ) = tuple(_boundary_node_xz(i, j, k, grid, LX, LZ)[1])
+@inline boundary_node_xz(i, j, k, grid, LX, ::Nothing) = tuple(_boundary_node_xz(i, j, k, grid, LX, LZ)[2])
+
+@inline boundary_node_xy(i, j, k, grid, LX, LY)        = _boundary_node_xy(i, j, k, grid, LX, LY)
+@inline boundary_node_xy(i, j, k, grid, ::Nothing, LY) = tuple(_boundary_node_xy(i, j, k, grid, LX, LY)[1])
+@inline boundary_node_xy(i, j, k, grid, LY, ::Nothing) = tuple(_boundary_node_xy(i, j, k, grid, LX, LY)[2])
 
 # Return ContinuousBoundaryFunction on east or west boundaries.
-@inline function (bc::ContinuousBoundaryFunction{Nothing, LY, LZ, i})(j, k, grid, clock, model_fields) where {LY, LZ, i}
+@inline function (bc::CBF{Nothing, LY, LZ, i})(j, k, grid, clock, model_fields) where {LY, LZ, i}
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
-
-    i′ = boundary_index(i)
-
-    return bc.func(ynode(Face(), LY(), LZ(), i′, j, k, grid),
-                   znode(Face(), LY(), LZ(), i′, j, k, grid),
-                   clock.time, args...)
+    yz = boundary_node_yz(i, j, k, grid, LY(), LZ())
+    return bc.func(yz..., clock.time, args...)
 end
 
 # Return ContinuousBoundaryFunction on south or north boundaries.
-@inline function (bc::ContinuousBoundaryFunction{LX, Nothing, LZ, j})(i, k, grid, clock, model_fields) where {LX, LZ, j}
+@inline function (bc::CBF{LX, Nothing, LZ, j})(i, k, grid, clock, model_fields) where {LX, LZ, j}
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
-
-    j′ = boundary_index(j)
-
-    return bc.func(xnode(LX(), Face(), LZ(), i, j′, k, grid),
-                   znode(LX(), Face(), LZ(), i, j′, k, grid),
-                   clock.time, args...)
+    xz = boundary_node_xz(i, j, k, grid, LY(), LZ())
+    return bc.func(xz..., clock.time, args...)
 end
 
 # Return ContinuousBoundaryFunction on bottom or top boundaries.
-@inline function (bc::ContinuousBoundaryFunction{LX, LY, Nothing, k})(i, j, grid, clock, model_fields) where {LX, LY, k}
+@inline function (bc::CBF{LX, LY, Nothing, k})(i, j, grid, clock, model_fields) where {LX, LY, k}
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
-
-    k′ = boundary_index(k)
-
-    return bc.func(xnode(LX(), LY(), Face(), i, j, k′, grid),
-                   ynode(LY(), LY(), Face(), i, j, k′, grid),
-                   clock.time, args...)
+    xy = boundary_node_xy(i, j, k, grid, LY(), LZ())
+    return bc.func(xy..., clock.time, args...)
 end
+
+# Signatures for ContinuousBounaryFunction called as auxiliary boundary functions with no clock or model_fields
+@inline (bc::CBF{Nothing, LY, LZ, i, <:Any, <:Nothing})(j, k, grid) where {LY, LZ, i} = bc.func(boundary_node_yz(i, j, k, grid, LY(), LZ())...)
+@inline (bc::CBF{LX, Nothing, LZ, j, <:Any, <:Nothing})(i, k, grid) where {LX, LZ, j} = bc.func(boundary_node_xz(i, j, k, grid, LX(), LZ())...)
+@inline (bc::CBF{LX, LY, Nothing, k, <:Any, <:Nothing})(i, j, grid) where {LX, LY, k} = bc.func(boundary_node_xy(i, j, k, grid, LX(), LY())...)
+
+@inline (bc::CBF{Nothing, LY, LZ, i})(j, k, grid) where {LY, LZ, i} = bc.func(boundary_node_yz(i, j, k, grid, LY(), LZ())..., bc.parameters)
+@inline (bc::CBF{LX, Nothing, LZ, j})(i, k, grid) where {LX, LZ, j} = bc.func(boundary_node_xz(i, j, k, grid, LX(), LZ())..., bc.parameters)
+@inline (bc::CBF{LX, LY, Nothing, k})(i, j, grid) where {LX, LY, k} = bc.func(boundary_node_xy(i, j, k, grid, LX(), LY())..., bc.parameters)
 
 # Don't re-convert ContinuousBoundaryFunctions passed to BoundaryCondition constructor
 BoundaryCondition(Classification::DataType, condition::ContinuousBoundaryFunction) = BoundaryCondition(Classification(), condition)
