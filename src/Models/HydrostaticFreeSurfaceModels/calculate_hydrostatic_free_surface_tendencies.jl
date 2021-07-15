@@ -117,7 +117,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                            model.tracers,
                            model.diffusivities,
                            model.auxiliary_fields,
-                           c_forcing,
+                           tracer_forcing,
                            model.clock;
                            dependencies = barrier)
 
