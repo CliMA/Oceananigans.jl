@@ -161,7 +161,9 @@
             U_field .= 1
             model = IncompressibleModel(grid=grid, architecture=arch, background_fields = (u=U_field,))
             @test model.background_fields.velocities.u isa Field
-            
+			
+	    U_field = CenterField(arch, grid)            
+	    @test_throws ArgumentError IncompressibleModel(grid=grid, architecture=arch, background_fields = (u=U_field,))            
         end
     end
 end
