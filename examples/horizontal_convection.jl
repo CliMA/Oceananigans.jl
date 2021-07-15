@@ -112,11 +112,10 @@ grid = RegularRectilinearGrid(size = (Nx, Nz),
 
 const b★ = 1.0
 
-@inline bˢ(x, y, t) = - b★ * cos(π * x)
+@inline bˢ(x, y, t) = - cos(π * x)
 
 top_bc = ValueBoundaryCondition(bˢ)
-
-b_bcs = TracerBoundaryConditions(grid, top = ValueBoundaryCondition(bˢ))
+b_bcs = FieldBoundaryConditions(top = top_bc)
 
 # ## Turbulence closures
 #
@@ -350,46 +349,34 @@ mp4(anim, "horizontal_convection.mp4", fps = 16) # hide
 #
 # with the same boundary conditions same as our setup.
 
-#=
-using Plots
+using JLD2, Plots
 using Oceananigans
-using Oceananigans.Grids: xnode
-using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Solvers: PreconditionedConjugateGradientSolver, solve!
+using Oceananigans.AbstractOperations: volume
+using Oceananigans.Fields
 
-bˢ_discrete(i, j, grid) = - cos(π * xnode(Center(), i, grid))
-bᵈⁱᶠᶠ_bcs = TracerBoundaryConditions(grid, top = ValueBoundaryCondition(bˢ_discrete, discrete_form=true))
-bᵈⁱᶠᶠ = CenterField(grid, bᵈⁱᶠᶠ_bcs)
+saved_output_prefix = "horizontal_convection"
+saved_output_filename = saved_output_prefix * ".jld2"
 
-function laplacian!(∇²b, b)
-    fill_halo_regions!(b, b.architecture)
-    ∇²b .= ∂x(∂x(b)) + ∂z(∂z(b))
-    return nothing
-end
+file = jldopen(saved_output_filename)
+κ = file["closure/κ/b"]
 
-poisson_solver = PreconditionedConjugateGradientSolver(laplacian!, template_field=bᵈⁱᶠᶠ)
-solve!(bᵈⁱᶠᶠ, poisson_solver, 0)
+b_timeseries = FieldTimeSeries(saved_output_filename, "b")
 
-pl = heatmap(interior(bᵈⁱᶠᶠ)[:, 1, :])
-=#
+t = b_timeseries.times
+grid = b_timeseries.grid
 
-χ_timeseries = FieldTimeSeries("horizontal_convection.jld2", "χ")
-
-t = χ_timeseries.times
-grid = χ_timeseries.grid
-
-∫ⱽ_χ = ReducedField(Nothing, Nothing, Nothing, grid, dims=(1, 2, 3))
-Nu = zeros(length(t))
+∫ⱽ_mod_∇b = ReducedField(Nothing, Nothing, Nothing, CPU(), grid, dims=(1, 2, 3))
+Nu_from_b = zeros(length(t))
 
 ## Can we broadcast over the time dimension?
 for i = 1:length(t)
-    χ = χ_timeseries[i]
-    sum!(∫ⱽ_χ,  χ * volume)
-    Nu[i] = ∫ⱽ_χ[1, 1, 1]
+    b = b_timeseries[i]
+    sum!(∫ⱽ_mod_∇b,  κ * (∂x(b)^2+∂z(b)^2) * volume)
+    Nu_from_b[i] = ∫ⱽ_mod_∇b[1, 1, 1] / (κ * π * 2π/Lx * tanh(π))
 end
 
-plot(t, Nu,
-     title = "A measure for Nu(t)",
-    xlabel = "Time",
-    ylabel = "Nu(t)",
-    legend = :none)
+plot(t, Nu_from_b,
+       xlabel = "time",
+       ylabel = "Nu(t)",
+    linewidth = 3,
+       legend = :none)
