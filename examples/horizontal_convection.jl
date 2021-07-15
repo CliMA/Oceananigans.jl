@@ -158,7 +158,7 @@ model = IncompressibleModel(
 # maximum allowable value for numerical stability.
 
 max_Δt = 4e-2
-wizard = TimeStepWizard(cfl=0.75, Δt=5e-3, max_change=1.2, max_Δt=max_Δt)
+wizard = TimeStepWizard(cfl=0.75, Δt=1e-2, max_change=1.2, max_Δt=max_Δt)
 
 # ### A progress messenger
 #
@@ -200,10 +200,7 @@ speed = ComputedField(sqrt(u^2 + w^2))
 ## y-component of vorticity
 ζ = ComputedField(∂z(u) - ∂x(w))
 
-## buoyancy dissipation
-χ = ComputedField(κ * (∂x(b)^2 + ∂z(b)^2))
-
-outputs = (s = speed, b = b, ζ = ζ, χ = χ)
+outputs = (s = speed, b = b, ζ = ζ)
 nothing # hide
 
 # We create a `JLD2OutputWriter` that saves the speed, the vorticity, and the buoyancy dissipation.
@@ -214,7 +211,7 @@ saved_output_filename = saved_output_prefix * ".jld2"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                   field_slicer = nothing,
-                                                      schedule = TimeInterval(0.1),
+                                                      schedule = TimeInterval(0.2),
                                                         prefix = saved_output_prefix,
                                                          force = true)
 nothing # hide
@@ -232,14 +229,21 @@ run!(simulation)
 
 using JLD2, Plots
 
-## Coordinate arrays
-xs, ys, zs = nodes(speed)
-xb, yb, zb = nodes(b)
-xζ, yζ, zζ = nodes(ζ)
-xχ, yχ, zχ = nodes(χ)
-
 ## Open the file with our data
 file = jldopen(saved_output_filename)
+κ = file["closure/κ/b"]
+
+s_timeseries = FieldTimeSeries(saved_output_filename, "s")
+b_timeseries = FieldTimeSeries(saved_output_filename, "b")
+ζ_timeseries = FieldTimeSeries(saved_output_filename, "ζ")
+
+times = b_timeseries.times
+
+## Coordinate arrays
+xs, ys, zs = nodes(s_timeseries[1])
+xb, yb, zb = nodes(b_timeseries[1])
+xζ, yζ, zζ = nodes(ζ_timeseries[1])
+
 
 ## Extract a vector of iterations
 iterations = parse.(Int, keys(file["timeseries/t"]))
@@ -255,8 +259,6 @@ end
 
 function nice_divergent_levels(c, clim, nlevels=41)
     levels = range(-clim, stop=clim, length=nlevels)
-    cmax = maximum(abs, c)
-    clim < cmax && (levels = vcat([-cmax], levels, [cmax]))
     return levels
 end
 
@@ -266,18 +268,23 @@ nothing # hide
 
 @info "Making an animation from saved data..."
 
-anim = @animate for (i, iter) in enumerate(iterations)
+anim = @animate for i in 1:length(times)
 
     ## Load fields from file
-    t = file["timeseries/t/$iter"]
-    s_snapshot = file["timeseries/s/$iter"][3:end-3, 1, 4:end-3]
-    b_snapshot = file["timeseries/b/$iter"][4:end-3, 1, 4:end-3]
-    ζ_snapshot = file["timeseries/ζ/$iter"][4:end-3, 1, 4:end-3]
-    χ_snapshot = file["timeseries/χ/$iter"][4:end-3, 1, 4:end-3]
+    t = times[i]
+    s_snapshot = interior(s_timeseries[i])[:, 1, :]
+    ζ_snapshot = interior(ζ_timeseries[i])[:, 1, :]
+    
+    b = b_timeseries[i]
+    χ = ComputedField(κ * (∂x(b)^2 + ∂z(b)^2))
+    compute!(χ)
+    
+    b_snapshot = interior(b)[:, 1, :]
+    χ_snapshot = interior(χ)[:, 1, :]
     
     ## determine colorbar limits and contour levels
     slim = 0.6
-    slevels = vcat(range(0, stop=slim, length=31), [0.6])
+    slevels = vcat(range(0, stop=slim, length=31), [slim])
 
     blim = 0.6
     blevels = vcat([-1], range(-blim, stop=blim, length=51), [1])
@@ -288,7 +295,7 @@ anim = @animate for (i, iter) in enumerate(iterations)
     χlim = 0.025
     χlevels = nice_levels(χ_snapshot, χlim)
 
-    @info @sprintf("Drawing frame %d from iteration %d:", i, iter)
+    @info @sprintf("Drawing frame %d:", i)
 
     kwargs = (      xlims = (-Lx/2, Lx/2),
                     ylims = (-H, 0),
@@ -307,12 +314,12 @@ anim = @animate for (i, iter) in enumerate(iterations)
                       color = :thermal, kwargs...)
     b_title = @sprintf("buoyancy, b/b⋆ @ t=%1.2f", t)
     
-    ζ_plot = contourf(xζ, zζ, ζ_snapshot';
+    ζ_plot = contourf(xζ, zζ, clamp.(ζ_snapshot', -ζlim, ζlim);
                       clims=(-ζlim, ζlim), levels = ζlevels,
                       color = :balance, kwargs...)
     ζ_title = @sprintf("vorticity, (∂u/∂z - ∂w/∂x) √(H/b⋆) @ t=%1.2f", t)
     
-    χ_plot = contourf(xχ, zχ, χ_snapshot';
+    χ_plot = contourf(xs, zs, χ_snapshot';
                       clims = (0, χlim), levels = χlevels,
                       color = :dense, kwargs...)
     χ_title = @sprintf("buoyancy dissipation, κ|∇b|² √(H/b⋆⁵) @ t=%1.2f", t)
@@ -323,8 +330,6 @@ anim = @animate for (i, iter) in enumerate(iterations)
            link = :x,
          layout = Plots.grid(4, 1),
           title = [s_title, b_title, ζ_title, χ_title])
-
-    iter == iterations[end] && close(file)
 end
 
 mp4(anim, "horizontal_convection.mp4", fps = 16) # hide
