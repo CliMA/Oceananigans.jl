@@ -2,15 +2,15 @@ using Oceananigans.Operators: Δy_uᶠᶜᵃ, Δx_vᶜᶠᵃ, Δx_uᶠᶜᵃ, Δ
 using Oceananigans.BoundaryConditions: BoundaryCondition
 
 # Throw away immersed boundary condition when calculating "intrinsic" fluxes
-@inline _viscous_flux_ux(i, j, k, grid, disc, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_ux(i, j, k, grid, disc, closure, args...)
-@inline _viscous_flux_uy(i, j, k, grid, disc, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_uy(i, j, k, grid, disc, closure, args...)
-@inline _viscous_flux_uz(i, j, k, grid, disc, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_uz(i, j, k, grid, disc, closure, args...)
-@inline _viscous_flux_vx(i, j, k, grid, disc, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_vx(i, j, k, grid, disc, closure, args...)
-@inline _viscous_flux_vy(i, j, k, grid, disc, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_vy(i, j, k, grid, disc, closure, args...)
-@inline _viscous_flux_vz(i, j, k, grid, disc, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_vz(i, j, k, grid, disc, closure, args...)
-@inline _viscous_flux_wx(i, j, k, grid, disc, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_wx(i, j, k, grid, disc, closure, args...)
-@inline _viscous_flux_wy(i, j, k, grid, disc, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_wy(i, j, k, grid, disc, closure, args...)
-@inline _viscous_flux_wz(i, j, k, grid, disc, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_wz(i, j, k, grid, disc, closure, args...)
+@inline _viscous_flux_ux(i, j, k, grid, disc::ATD, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_ux(i, j, k, grid, disc, closure, args...)
+@inline _viscous_flux_uy(i, j, k, grid, disc::ATD, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_uy(i, j, k, grid, disc, closure, args...)
+@inline _viscous_flux_uz(i, j, k, grid, disc::ATD, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_uz(i, j, k, grid, disc, closure, args...)
+@inline _viscous_flux_vx(i, j, k, grid, disc::ATD, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_vx(i, j, k, grid, disc, closure, args...)
+@inline _viscous_flux_vy(i, j, k, grid, disc::ATD, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_vy(i, j, k, grid, disc, closure, args...)
+@inline _viscous_flux_vz(i, j, k, grid, disc::ATD, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_vz(i, j, k, grid, disc, closure, args...)
+@inline _viscous_flux_wx(i, j, k, grid, disc::ATD, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_wx(i, j, k, grid, disc, closure, args...)
+@inline _viscous_flux_wy(i, j, k, grid, disc::ATD, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_wy(i, j, k, grid, disc, closure, args...)
+@inline _viscous_flux_wz(i, j, k, grid, disc::ATD, closure, immersed_bc::BoundaryCondition, args...) = viscous_flux_wz(i, j, k, grid, disc, closure, args...)
 
 # Functions for models that do not support immersed boundaries
 @inline _viscous_flux_ux(args...) = viscous_flux_ux(args...)

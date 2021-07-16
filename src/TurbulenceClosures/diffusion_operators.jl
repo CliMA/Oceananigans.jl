@@ -27,10 +27,12 @@
 ##### Diffusive flux divergence
 #####
 
+const ATD = AbstractTimeDiscretization
+
 # Throw away immersed boundary condition when calculating "intrinsic" fluxes
-@inline _diffusive_flux_x(i, j, k, grid, disc, closure, immersed_bc::BoundaryCondition, args...) = diffusive_flux_x(i, j, k, grid, disc, closure, args...)
-@inline _diffusive_flux_y(i, j, k, grid, disc, closure, immersed_bc::BoundaryCondition, args...) = diffusive_flux_y(i, j, k, grid, disc, closure, args...)
-@inline _diffusive_flux_z(i, j, k, grid, disc, closure, immersed_bc::BoundaryCondition, args...) = diffusive_flux_z(i, j, k, grid, disc, closure, args...)
+@inline _diffusive_flux_x(i, j, k, grid, disc::ATD, closure, immersed_bc::BoundaryCondition, args...) = diffusive_flux_x(i, j, k, grid, disc, closure, args...)
+@inline _diffusive_flux_y(i, j, k, grid, disc::ATD, closure, immersed_bc::BoundaryCondition, args...) = diffusive_flux_y(i, j, k, grid, disc, closure, args...)
+@inline _diffusive_flux_z(i, j, k, grid, disc::ATD, closure, immersed_bc::BoundaryCondition, args...) = diffusive_flux_z(i, j, k, grid, disc, closure, args...)
 
 # Functions for models that do not support immersed boundaries
 @inline _diffusive_flux_x(args...) = diffusive_flux_x(args...)
