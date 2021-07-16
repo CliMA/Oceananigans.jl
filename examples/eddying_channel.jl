@@ -1,7 +1,7 @@
 # using Pkg
 # pkg"add Oceananigans GLMakie"
 
-# ENV["GKSwstype"] = "100"
+ENV["GKSwstype"] = "100"
 
 pushfirst!(LOAD_PATH, @__DIR__)
 
@@ -28,7 +28,7 @@ const Lz = 3kilometers    # depth [m]
 # We use a resolution that implies O(10 km) grid spacing in the horizontal
 # and a vertical grid spacing that varies from O(10 m) to O(100 m),
 
-Nx = 64
+Nx = 128
 Ny = 2Nx
 Nz = 32
 
@@ -37,7 +37,7 @@ Nz = 32
 s = 1.2 # stretching factor
 z_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
 
-@show underlying_grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
+@show underlying_grid = VerticallyStretchedRectilinearGrid(architecture = GPU(),
                                                            topology = (Periodic, Bounded, Bounded),
                                                            size = (Nx, Ny, Nz),
                                                            halo = (3, 3, 3),
@@ -107,9 +107,9 @@ v_drag_bc = FluxBoundaryCondition(v_drag, field_dependencies=:v, parameters=μ)
 
 # To summarize,
 
-b_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc)
-u_bcs = UVelocityBoundaryConditions(grid, top = u_stress_bc)
-v_bcs = VVelocityBoundaryConditions(grid, bottom = v_drag_bc)
+b_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc)
+u_bcs = FieldBoundaryConditions(top = u_stress_bc)
+v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
 
 # # Coriolis
 #
@@ -131,7 +131,7 @@ coriolis = BetaPlane(latitude=-45)
 #
 # with geostrophic shear
 
-const α = 1e-4 # [s⁻¹]
+const α = 1e-5 # [s⁻¹]
 
 # ``ψ`` is comprised of a baroclinic component ``ψ′ = - α y (z + Lz/2)``
 # and a barotropic component ``Ψ = - α y L_z / 2``.
@@ -148,7 +148,7 @@ const f₀ = coriolis.f₀ # [s⁻¹]
 
 # the Coriolis parameter, and
 
-g = 1.0 # m s⁻²
+g = 0.1 # m s⁻²
 
 # is gravitational acceleration. Our austral focus means that ``f₀ < 0``:
 
@@ -200,8 +200,13 @@ b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/10days)
 
 #horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
 
-@show κ₂h = 1e-1 / day * grid.Δx^2 # [m⁴ s⁻¹] horizontal viscosity and diffusivity
-horizontal_diffusivity = AnisotropicDiffusivity(νh=κ₂h, κh=κ₂h)
+@show κ₂h = 1e2 / day * grid.Δx^2 # [m⁴ s⁻¹] horizontal viscosity and diffusivity
+@show κ₄h = 1e-1 / day * grid.Δx^4 # [m⁴ s⁻¹] horizontal viscosity and diffusivity
+
+using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
+
+horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=κ₂h, κh=κ₂h)
+#horizontal_diffusivity = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 1.0,
@@ -213,7 +218,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 # We build a model on a BetaPlane with an ImplicitFreeSurface.
 
 model = HydrostaticFreeSurfaceModel(
-           architecture = CPU(),
+           architecture = GPU(),
                    grid = grid,
            free_surface = ExplicitFreeSurface(gravitational_acceleration=g),
      momentum_advection = WENO5(),
@@ -270,7 +275,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=1hour, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=1year, progress=print_progress, iteration_interval=10)
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -291,7 +296,7 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         force = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(simulation.stop_time),
+                                                      schedule = TimeInterval(10day),
                                                       prefix = "eddying_channel",
                                                       field_slicer = nothing,
                                                       force = true)
@@ -323,6 +328,7 @@ j′ = round(Int, grid.Ny / 2)
 y′ = yζ[j′]
 
 ζ_xz_bathymetry = @. grid.Lz + bump(xζ, y′)
+w_xz_bathymetry = @. grid.Lz + bump(xw, y′)
 
 b_timeseries = FieldTimeSeries("eddying_channel.jld2", "b", grid=grid)
 ζ_timeseries = FieldTimeSeries("eddying_channel.jld2", "ζ", grid=grid)
@@ -370,8 +376,8 @@ anim = @animate for i in 1:length(b_timeseries.times)
                          ylims = zlims,
                          color = :balance)
 
-    plot!(ζ_xz_plot,
-          xζ * 1e-3, ζ_xz_bathymetry,
+    plot!(w_xz_plot,
+          xw * 1e-3, w_xz_bathymetry,
           color = :grey,
           linewidth = 2,
           legend = :none)
@@ -399,6 +405,7 @@ anim = @animate for i in 1:length(b_timeseries.times)
                          ylims = ylims,
                          color = :balance)
 
+    w_xz_title = @sprintf("w(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
     ζ_xz_title = @sprintf("ζ(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
     ζ_xy_title = "ζ(x, y)"
     b_xy_title = "b(x, y)"
@@ -406,7 +413,7 @@ anim = @animate for i in 1:length(b_timeseries.times)
     layout = @layout [upper_slice_plot{0.2h}
                       Plots.grid(1, 2)]
 
-    plot(ζ_xz_plot, ζ_xy_plot,  b_xy_plot, layout = layout, size = (1200, 1200), title = [ζ_xz_title ζ_xy_title b_xy_title])
+    plot(w_xz_plot, ζ_xy_plot,  b_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title ζ_xy_title b_xy_title])
 end
 
 mp4(anim, "eddying_channel.mp4", fps = 8) # hide
