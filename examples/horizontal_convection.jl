@@ -1,8 +1,6 @@
 # # Horizontal convection example
 #
-# In this example, we initialize flow at rest under the effect of gravity and in which a 
-# non-uniform buoyancy along the top surface is imposed. This problems setup is referred to 
-# as "horizontal convection".
+# In "horizontal convection", a non-uniform buoyancy is imposed on top of an initially resting fluid.
 #
 # This example demonstrates:
 #
