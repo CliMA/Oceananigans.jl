@@ -321,7 +321,7 @@ mp4(anim, "horizontal_convection.mp4", fps = 16) # hide
 # with the same boundary conditions same as our setup. In this case we can readily find that
 #
 # ```math
-# b_{\rm diff}(x, z) = b_s(x) \frac{\cosh \left [2 \pi (H + z) / L_x \right ]}{\cosh(2 \pi H)} \, ,
+# b_{\rm diff}(x, z) = b_s(x) \frac{\cosh \left [2 \pi (H + z) / L_x \right ]}{\cosh(2 \pi H / L_x)} \, ,
 # ```
 # which implies ``\langle \chi_{\rm diff} \rangle = \kappa b_*^2 \pi \tanh(2 \pi Η /Lx)``.
 #
