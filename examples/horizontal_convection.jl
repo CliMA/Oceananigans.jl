@@ -18,27 +18,45 @@
 
 # ## Horizontal convection
 #
-# We'll consider here the two-dimensional verion of horizontal convection in which a flow
-# ``\boldsymbol{u} = (u, w)`` on the ``(x, z)``-plane is evolved under the effect of gravity
-# and with a prescribed, non-uniform buoyancy at the top-surface of the domain.
+# We consider here two-dimensional horizontal convection of an incompressible flow ```\boldsymbol{u} = (u, w)``
+# on the ``(x, z)``-plane (``-L_x/2 \le x \le L_x/2`` and ``-H \le z \le 0``). The flow evolves
+# under the effect of gravity. The only forcing on the fluid comes from a prescribed, non-uniform
+# buoyancy at the top-surface of the domain.
 #
-# ```math
-# \begin{gather}
-# \partial_t \boldsymbol{u} + \boldsymbol{u \cdot \nabla} \boldsymbol{u} + \boldsymbol{\nabla}p = b \hat{\boldsymbol{z}} + \nu \nabla^2 \boldsymbol{u} \, , \\
-# \partial_t b + \boldsymbol{u \cdot \nabla} b = \kappa \nabla^2 b \, , \\
-# \boldsymbol{\nabla \cdot u} = 0 \, .
-# \end{gather}
-# ```
-# 
-# The domain here is ``-L_x/2 \le x \le L_x/2`` and ``-H \le z \le 0``.
-#
+# We start by importing `Oceananigans` and `Printf`.
+
+using Oceananigans
+using Printf
+
+# ### The grid
+
+H = 1.0          # vertical domain extent
+Lx = 2H          # horizontal domain extent
+Nx, Nz = 128, 64 # horizontal, vertical resolution
+
+grid = RegularRectilinearGrid(size = (Nx, Nz),
+                                 x = (-Lx/2, Lx/2),
+                                 z = (-H, 0),
+                              halo = (3, 3),
+                          topology = (Bounded, Flat, Bounded))
+
 # ### Boundary conditions
 #
-# At the surface, the imposed buoyancy is ``b(x, z = 0, t) = - b_* \cos(2 \pi x / L_x)``
+# At the surface, the imposed buoyancy is
+# ```math
+# b(x, z = 0, t) = - b_* \cos (2 \pi x / L_x) \, ,
+# ```
 # while zero-flux boundary conditions are imposed on all other boundaries. We use free-slip 
-# boundary conditions on ``u`` and ``w`` at all boundaries.
-#
-# ### Non-dimensional control parameters
+# boundary conditions on ``u`` and ``w`` everywhere.
+
+b★ = 1.0q
+k = 2π / Lx
+
+@inline bˢ(x, y, t, p) = - p.b★ * cos(p.k * x)
+
+b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ, parameters=(; b★, k)))
+
+# ### Non-dimensional control parameters and Turbulence closure
 #
 # The problem is characterized by three non-dimensional parameters. The first is the domain's
 # aspect ratio, ``A = L_x / H`` and the other two are the Rayleigh (``Ra``) and Prandtl (``Pr``)
@@ -57,42 +75,6 @@
 # ```math
 # \nu = \sqrt{\frac{Pr b_* L_x^3}{Ra}} \quad \text{and} \quad \kappa = \sqrt{\frac{b_* L_x^3}{Pr Ra}} \, .
 # ```
-#
-# Now let's code these things up! We start off by importing `Oceananigans` and `Printf`.
-
-using Oceananigans
-using Printf
-
-# ## The grid
-#
-# We use a two-dimensional grid with an aspect ratio ``A = L_x / H = 2``.
-
-H = 1.0          # vertical domain extent
-Lx = 2H          # horizontal domain extent
-Nx, Nz = 128, 64 # horizontal, vertical resolution
-
-grid = RegularRectilinearGrid(size = (Nx, Nz),
-                                 x = (-Lx/2, Lx/2),
-                                 z = (-H, 0),
-                              halo = (3, 3),
-                          topology = (Bounded, Flat, Bounded))
-
-# ## Boundary conditions
-#
-# We impose a surface buoyancy boundary condition,
-#
-# ```math
-# b(x, z = 0, t) = - b_* \cos (2 \pi x / L_x) \, .
-# ```
-
-b★ = 1.0
-k = 2π / Lx
-
-@inline bˢ(x, y, t, p) = - p.b★ * cos(p.k * x)
-
-b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ, parameters=(; b★, k)))
-
-# ## Turbulence closures
 #
 # We use isotropic viscosity and diffusivities, `ν` and `κ` whose values are obtain from the
 # prescribed ``Ra`` and ``Pr`` numbers. Here, we use ``Pr = 1`` and ``Ra = 10^8``:
@@ -329,8 +311,9 @@ mp4(anim, "horizontal_convection.mp4", fps = 16) # hide
 # First we compute the diffusive buoyancy dissipation, ``\chi_{\rm diff}`` (which is just a
 # scalar):
 
-H, Lx = file["grid/Lz"], file["grid/Lx"]
-κ = file["closure/κ/b"]
+H  = file["grid/Lz"]
+Lx = file["grid/Lx"]
+κ  = file["closure/κ/b"]
 
 χ_diff = κ * b★^2 * π * tanh(2π * H / Lx)
 nothing # hide
@@ -349,7 +332,7 @@ grid = b_timeseries.grid
 
 t = b_timeseries.times
 
-kinetic_energy, nusselt = zeros(length(t)), zeros(length(t))
+kinetic_energy, Nu = zeros(length(t)), zeros(length(t))
 nothing # hide
 
 # Now we can loop over the fields in the `FieldTimeSeries`, compute `KineticEnergy` and `Nu`,
@@ -362,7 +345,7 @@ for i = 1:length(t)
     
     b = b_timeseries[i]
     sum!(∫ⱽ_mod²_∇b, (∂x(b)^2 + ∂z(b)^2) * volume)
-    nusselt[i] = (κ *  ∫ⱽ_mod²_∇b[1, 1, 1]) / χ_diff
+    Nu[i] = (κ *  ∫ⱽ_mod²_∇b[1, 1, 1]) / χ_diff
 end
 
 p1 = plot(t, kinetic_energy,
@@ -371,7 +354,7 @@ p1 = plot(t, kinetic_energy,
        linewidth = 3,
           legend = :none)
 
-p2 = plot(t, nusselt,
+p2 = plot(t, Nu,
           xlabel = "time",
           ylabel = "Nu",
        linewidth = 3,
