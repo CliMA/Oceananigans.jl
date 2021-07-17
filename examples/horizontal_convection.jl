@@ -343,7 +343,7 @@ nothing # hide
 
 grid = b_timeseries.grid
 
-∫ⱽ_½s² = ReducedField(Nothing, Nothing, Nothing, CPU(), grid, dims=(1, 2, 3))
+∫ⱽ_s² = ReducedField(Nothing, Nothing, Nothing, CPU(), grid, dims=(1, 2, 3))
 ∫ⱽ_mod²_∇b = ReducedField(Nothing, Nothing, Nothing, CPU(), grid, dims=(1, 2, 3))
 
 # We recover the time from the saved `FieldTimeSeries` and construct two empty arrays to store
@@ -359,12 +359,12 @@ nothing # hide
 
 for i = 1:length(t)
     s = s_timeseries[i]
-    sum!(∫ⱽ_½s², 0.5 * s^2 * volume) / (Lx * H)
-    KineticEnergy[i] = ∫ⱽ_½s²[1, 1, 1]
+    sum!(∫ⱽ_s², s^2 * volume)
+    KineticEnergy[i] = 0.5 * ∫ⱽ_s²[1, 1, 1]  / (Lx * H)
     
     b = b_timeseries[i]
-    sum!(∫ⱽ_mod²_∇b,  κ * (∂x(b)^2 + ∂z(b)^2) * volume)
-    Nu[i] = ∫ⱽ_mod²_∇b[1, 1, 1] / χ_diff
+    sum!(∫ⱽ_mod²_∇b, (∂x(b)^2 + ∂z(b)^2) * volume)
+    Nu[i] = (κ *  ∫ⱽ_mod²_∇b[1, 1, 1]) / χ_diff
 end
 
 p1 = plot(t, KineticEnergy,
