@@ -38,9 +38,7 @@ const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
 const OUTPUT_DIR   = joinpath(@__DIR__, "src/generated")
 
 examples = [
-           # "internal_wave.jl",
-           # "geostrophic_adjustment.jl"
-            "shallow_water_Bickley_jet.jl"
+            "horizontal_convection.jl"
             ]
 
 for example in examples
@@ -53,9 +51,7 @@ end
 #####
 
 example_pages = [
-                 #"Internal wave"            => "generated/internal_wave.md",
-                 #"Geostrophic adjustment"   => "generated/geostrophic_adjustment.md",
-                 "Shallow water Bickley jet" => "generated/shallow_water_Bickley_jet.md"
+                 "Horizontal convection" => "generated/horizontal_convection.md"
                  ]
 
 pages = [
@@ -72,7 +68,7 @@ format = Documenter.HTML(collapselevel = 1,
                         )
 
 makedocs(sitename = "Oceananigans.jl",
-          authors = "Ali Ramadhan, Gregory Wagner, John Marshall, Jean-Michel Campin, Chris Hill",
+          authors = "Ali Ramadhan, Gregory Wagner, John Marshall, Jean-Michel Campin, Chris Hill, Navid Constantinou",
            format = format,
             pages = pages,
           modules = [Oceananigans],
