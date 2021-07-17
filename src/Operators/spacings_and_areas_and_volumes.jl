@@ -51,30 +51,53 @@ The operators in this file fall into three categories:
 ##### Here we dispatch all spacings to `one`. This abuse of notation
 ##### makes volumes and areas correct.
 #####
+##### Note: Vertical metrics are specific to each rectilinear grid type; therefore
+##### we must dispatch on Flat vertical directions for each grid independently.
+#####
 
 using Oceananigans.Grids: Flat
 
-const XFlatRectilinearGrid = AbstractRectilinearGrid{<:Any, Flat}
-const YFlatRectilinearGrid = AbstractRectilinearGrid{<:Any, <:Any, Flat}
-const ZFlatRectilinearGrid = AbstractRectilinearGrid{<:Any, <:Any, <:Any, Flat}
+#####
+##### Horizontal metrics for AbstractRectilinearGrid
+#####
 
-@inline Δx(   i, j, k, grid::XFlatRectilinearGrid) = one(eltype(grid))
-@inline Δy(   i, j, k, grid::YFlatRectilinearGrid) = one(eltype(grid))
+const XFlatARG = AbstractRectilinearGrid{<:Any, <:Flat}
+const YFlatARG = AbstractRectilinearGrid{<:Any, <:Any, <:Flat}
 
-@inline Δxᶜᶜᵃ(i, j, k, grid::XFlatRectilinearGrid) = one(eltype(grid))
-@inline Δxᶜᶠᵃ(i, j, k, grid::XFlatRectilinearGrid) = one(eltype(grid))
-@inline Δxᶠᶠᵃ(i, j, k, grid::XFlatRectilinearGrid) = one(eltype(grid))
-@inline Δxᶠᶜᵃ(i, j, k, grid::XFlatRectilinearGrid) = one(eltype(grid))
+@inline Δx(i, j, k, grid::XFlatARG) = one(eltype(grid))
+@inline Δy(i, j, k, grid::YFlatARG) = one(eltype(grid))
 
-@inline Δyᶜᶜᵃ(i, j, k, grid::YFlatRectilinearGrid) = one(eltype(grid))
-@inline Δyᶠᶜᵃ(i, j, k, grid::YFlatRectilinearGrid) = one(eltype(grid))
-@inline Δyᶜᶠᵃ(i, j, k, grid::YFlatRectilinearGrid) = one(eltype(grid))
-@inline Δyᶠᶠᵃ(i, j, k, grid::YFlatRectilinearGrid) = one(eltype(grid))
+@inline Δxᶜᶜᵃ(i, j, k, grid::XFlatARG) = one(eltype(grid))
+@inline Δxᶜᶠᵃ(i, j, k, grid::XFlatARG) = one(eltype(grid))
+@inline Δxᶠᶠᵃ(i, j, k, grid::XFlatARG) = one(eltype(grid))
+@inline Δxᶠᶜᵃ(i, j, k, grid::XFlatARG) = one(eltype(grid))
 
-@inline ΔzC(  i, j, k, grid::ZFlatRectilinearGrid) = one(eltype(grid))
-@inline ΔzF(  i, j, k, grid::ZFlatRectilinearGrid) = one(eltype(grid))
-@inline Δzᵃᵃᶠ(i, j, k, grid::ZFlatRectilinearGrid) = one(eltype(grid))
-@inline Δzᵃᵃᶜ(i, j, k, grid::ZFlatRectilinearGrid) = one(eltype(grid))
+@inline Δyᶜᶜᵃ(i, j, k, grid::YFlatARG) = one(eltype(grid))
+@inline Δyᶠᶜᵃ(i, j, k, grid::YFlatARG) = one(eltype(grid))
+@inline Δyᶜᶠᵃ(i, j, k, grid::YFlatARG) = one(eltype(grid))
+@inline Δyᶠᶠᵃ(i, j, k, grid::YFlatARG) = one(eltype(grid))
+
+##### 
+##### Vertical metrics for RegularRectilinearGrid
+##### 
+
+const ZFlatRRG = RegularRectilinearGrid{<:Any, <:Any, <:Any, <:Flat}
+
+@inline ΔzC(  i, j, k, grid::ZFlatRRG) = one(eltype(grid))
+@inline ΔzF(  i, j, k, grid::ZFlatRRG) = one(eltype(grid))
+@inline Δzᵃᵃᶠ(i, j, k, grid::ZFlatRRG) = one(eltype(grid))
+@inline Δzᵃᵃᶜ(i, j, k, grid::ZFlatRRG) = one(eltype(grid))
+
+##### 
+##### Vertical metrics for VerticallyStretchedRectilinearGrid
+##### 
+
+const ZFlatVSRG = VerticallyStretchedRectilinearGrid{<:Any, <:Any, <:Any, <:Flat}
+
+@inline ΔzC(  i, j, k, grid::ZFlatVSRG) = one(eltype(grid))
+@inline ΔzF(  i, j, k, grid::ZFlatVSRG) = one(eltype(grid))
+@inline Δzᵃᵃᶠ(i, j, k, grid::ZFlatVSRG) = one(eltype(grid))
+@inline Δzᵃᵃᶜ(i, j, k, grid::ZFlatVSRG) = one(eltype(grid))
 
 #####
 ##### Areas for horizontally-regular algorithms
