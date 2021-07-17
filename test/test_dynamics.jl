@@ -427,7 +427,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                                                      size=(Nx, Nz), x=(0, Lx), z=(-Lz, 0))
 
         # Vertically stretched grid with regular spacing and no flat dimension
-        z_faces = collect(znodes(Face, regular_grid))
+        z_faces = collect(znodes(Face, y_periodic_regular_grid))
         y_periodic_regularly_spaced_vertically_stretched_grid = VerticallyStretchedRectilinearGrid(topology=(Periodic, Periodic, Bounded),
                                                                                                    size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z_faces=z_faces)
 
