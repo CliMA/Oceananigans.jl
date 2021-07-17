@@ -49,7 +49,7 @@ grid = RegularRectilinearGrid(size = (Nx, Nz),
 # while zero-flux boundary conditions are imposed on all other boundaries. We use free-slip 
 # boundary conditions on ``u`` and ``w`` everywhere.
 
-b★ = 1.0q
+b★ = 1.0
 
 @inline bˢ(x, y, t, p) = - p.b★ * cos(2π * x / p.Lx)
 
