@@ -84,7 +84,7 @@ grid = RegularRectilinearGrid(size = (Nx, Nz),
 # We impose a surface buoyancy boundary condition,
 #
 # ```math
-# b(x, z = 0, t) = - b_* \cos (2π x / L_x) \, .
+# b(x, z = 0, t) = - b_* \cos (2 \pi x / L_x) \, .
 # ```
 
 const b★ = 1.0
@@ -321,9 +321,9 @@ mp4(anim, "horizontal_convection.mp4", fps = 16) # hide
 # with the same boundary conditions same as our setup. In this case we can readily find that
 #
 # ```math
-# b_{\rm diff}(x, z) = \frac{b_s(x)}{L_x} \frac{\cosh \left [2π (H + z) / L_x \right ]}{\cosh(2 π H)} \, ,
+# b_{\rm diff}(x, z) = b_s(x) \frac{\cosh \left [2 \pi (H + z) / L_x \right ]}{\cosh(2 \pi H)} \, ,
 # ```
-# which implies ``\langle \chi_{\rm diff} \rangle = \kappa b_*^2 π \tanh(2 π Η /Lx)``.
+# which implies ``\langle \chi_{\rm diff} \rangle = \kappa b_*^2 \pi \tanh(2 \pi Η /Lx)``.
 #
 # We use the loaded `FieldTimeSeries` to compute the Nusselt number from buoyancy and the volume
 # average kinetic energy of the fluid.
@@ -369,13 +369,13 @@ end
 
 p1 = plot(t, KineticEnergy,
           xlabel = "time",
-          ylabel = "KE(t)",
+          ylabel = "KE / (b⋆H)",
        linewidth = 3,
           legend = :none)
 
 p2 = plot(t, Nu,
           xlabel = "time",
-          ylabel = "Nu(t)",
+          ylabel = "Nu",
        linewidth = 3,
           legend = :none)
 
