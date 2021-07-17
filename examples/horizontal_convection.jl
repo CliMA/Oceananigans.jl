@@ -36,7 +36,7 @@
 #
 # ### Boundary conditions
 #
-# At the surface, the imposed buoyancy is ``b_s(x, z = 0, t) = - b_* \cos(2 \pi x / L_x)``
+# At the surface, the imposed buoyancy is ``b(x, z = 0, t) = - b_* \cos(2 \pi x / L_x)``
 # while zero-flux boundary conditions are imposed on all other boundaries. We use free-slip 
 # boundary conditions on ``u`` and ``w`` at all boundaries.
 #
@@ -351,7 +351,7 @@ grid = b_timeseries.grid
 
 t = b_timeseries.times
 
-KineticEnergy, Nu = zeros(length(t)), zeros(length(t))
+kinetic_energy, nusselt = zeros(length(t)), zeros(length(t))
 nothing # hide
 
 # Now we can loop over the fields in the `FieldTimeSeries`, compute `KineticEnergy` and `Nu`,
@@ -360,27 +360,23 @@ nothing # hide
 for i = 1:length(t)
     s = s_timeseries[i]
     sum!(∫ⱽ_s², s^2 * volume)
-    KineticEnergy[i] = 0.5 * ∫ⱽ_s²[1, 1, 1]  / (Lx * H)
+    kinetic_energy[i] = 0.5 * ∫ⱽ_s²[1, 1, 1]  / (Lx * H)
     
     b = b_timeseries[i]
     sum!(∫ⱽ_mod²_∇b, (∂x(b)^2 + ∂z(b)^2) * volume)
-    Nu[i] = (κ *  ∫ⱽ_mod²_∇b[1, 1, 1]) / χ_diff
+    nusselt[i] = (κ *  ∫ⱽ_mod²_∇b[1, 1, 1]) / χ_diff
 end
 
-p1 = plot(t, KineticEnergy,
+p1 = plot(t, kinetic_energy,
           xlabel = "time",
           ylabel = "KE / (b⋆H)",
        linewidth = 3,
           legend = :none)
 
-p2 = plot(t, Nu,
+p2 = plot(t, nusselt,
           xlabel = "time",
           ylabel = "Nu",
        linewidth = 3,
           legend = :none)
 
-plot(p1, p2,
-    size = (700, 600),
-    link = :x,
-    layout = Plots.grid(2, 1),
-)
+plot(p1, p2, layout = Plots.grid(2, 1))
