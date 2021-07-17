@@ -7,14 +7,15 @@ using OffsetArrays: OffsetArray
 #####
 
 """
-Return a range of indices for a field located at `Center` centers
-`along a grid dimension of length `N` and with halo points `H`.
+Return a range of indices for a field located at either cell `Center`s or `Face`s along a 
+grid dimension which is `Periodic`, or cell `Center`s for a grid dimension which is `Bounded`.
+The dimension has length `N` and `H` halo points.
 """
 offset_indices(loc, topo, N, H=0) = 1 - H : N + H
 
 """
-Return a range of indices for a field located at cell `Face`s
-`along a grid dimension of length `N` and with halo points `H`.
+Return a range of indices for a field located at cell `Face`s along a grid dimension which
+is `Bounded` and has length `N` and with halo points `H`.
 """
 offset_indices(::Type{Face}, ::Type{Bounded}, N, H=0) = 1 - H : N + H + 1
 
