@@ -7,7 +7,7 @@ using OffsetArrays: OffsetArray
 #####
 
 """
-Return a range of indices for a field located at either cell `Center`s or `Face`s along a 
+Return a range of indices for a field located at either cell `Center`s or `Face`s along a
 grid dimension which is `Periodic`, or cell `Center`s for a grid dimension which is `Bounded`.
 The dimension has length `N` and `H` halo points.
 """
