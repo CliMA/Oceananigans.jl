@@ -4,8 +4,8 @@
 #
 # This example demonstrates:
 #
-#   * How to use `ComputedField`s for output
-#   * How to post-process saved output
+#   * How to use `ComputedField`s for output.
+#   * How to post-process saved output using `FieldTimeSeries`.
 #
 # ## Install dependencies
 #
@@ -58,11 +58,11 @@ b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ, parameters=(; 
 # ### Non-dimensional control parameters and Turbulence closure
 #
 # The problem is characterized by three non-dimensional parameters. The first is the domain's
-# aspect ratio, ``A = L_x / H`` and the other two are the Rayleigh (``Ra``) and Prandtl (``Pr``)
+# aspect ratio, ``L_x / H`` and the other two are the Rayleigh (``Ra``) and Prandtl (``Pr``)
 # numbers:
 #
 # ```math
-# Ra = \frac{L_x^3 b_*}{\nu \kappa} \, , \quad \text{and}\, \quad Pr = \frac{\nu}{\kappa} \, .
+# Ra = \frac{b_* L_x^3}{\nu \kappa} \, , \quad \text{and}\, \quad Pr = \frac{\nu}{\kappa} \, .
 # ```
 #
 # The Prandtl number expresses the ratio of momentum over heat diffusion; the Rayleigh number
@@ -142,9 +142,9 @@ simulation = Simulation(model, Δt = wizard, iteration_interval = 50,
 
 # ### Output
 #
-# We use `ComputedField`s to diagnose and output the total flow speed, the vorticity, ``ζ``,
-# and the buoyancy dissipation, ``χ = κ |∇b|²``. Note that 
-# `ComputedField`s take "AbstractOperations" on `Field`s as input:
+# We use `ComputedField`s to diagnose and output the total flow speed, the vorticity, ``\zeta``,
+# and the buoyancy, ``b``. Note that `ComputedField`s take "AbstractOperations" on `Field`s as
+# input:
 
 u, v, w = model.velocities # unpack velocity `Field`s
 b = model.tracers.b        # unpack buoyancy `Field`
@@ -178,8 +178,12 @@ run!(simulation)
 # ## Load saved output, process, visualize
 #
 # We animate the results by opening the JLD2 file, extracting data for the iterations we ended
-# up saving at, and ploting the saved fields. We prepare for animating the flow by creating 
-# coordinate arrays, opening the file, building a vector of the iterations that we saved data at.
+# up saving at, and ploting the saved fields. From the saved buoyancy field we compute the 
+# buoyancy dissipation, ``\chi = \kappa |\boldsymbol{\nabla} b|^2``, and plot that also.
+#
+# To start we load the saved fields are `FieldTimeSeries` and prepare for animating the flow by
+# creating coordinate arrays that each field lives on.
+
 
 using JLD2, Plots
 using Oceananigans
