@@ -280,11 +280,10 @@ two_dimensional_topologies = [
         (Periodic, Bounded,  Bounded),
         (Bounded,  Periodic, Bounded),
         (Bounded,  Bounded,  Bounded),
-    # Note: FourierTridiagonalPoissonSolver doesn't appear to work with Flat
-    #    (Flat,     Bounded,  Bounded),
-    #    (Flat,     Periodic, Bounded),
-    #    (Bounded,  Flat,     Bounded),
-    #    (Periodic, Flat,     Bounded)
+        (Flat,     Bounded,  Bounded),
+        (Flat,     Periodic, Bounded),
+        (Bounded,  Flat,     Bounded),
+        (Periodic, Flat,     Bounded)
     ]
 
     for arch in archs, topo in vs_topos
