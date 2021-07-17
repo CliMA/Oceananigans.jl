@@ -419,38 +419,31 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         Lx = Lz = 2π
 
         # Regular grid with no flat dimension
-        regular_grid = RegularRectilinearGrid(topology=(Periodic, Periodic, Bounded),
-                                              size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
+        y_periodic_regular_grid = RegularRectilinearGrid(topology=(Periodic, Periodic, Bounded),
+                                                         size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
 
         # Regular grid with a flat y-dimension
-        flat_grid = RegularRectilinearGrid(topology=(Periodic, Flat, Bounded),
-                                           size=(Nx, Nz), x=(0, Lx), z=(-Lz, 0))
+        y_flat_regular_grid = RegularRectilinearGrid(topology=(Periodic, Flat, Bounded),
+                                                     size=(Nx, Nz), x=(0, Lx), z=(-Lz, 0))
 
         # Vertically stretched grid with regular spacing and no flat dimension
         z_faces = collect(znodes(Face, regular_grid))
-        unstretched_grid = VerticallyStretchedRectilinearGrid(topology=(Periodic, Periodic, Bounded),
-                                                              size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z_faces=z_faces)
+        y_periodic_regularly_spaced_vertically_stretched_grid = VerticallyStretchedRectilinearGrid(topology=(Periodic, Periodic, Bounded),
+                                                                                                   size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z_faces=z_faces)
 
         # Vertically stretched grid with regular spacing and no flat dimension
-        flat_unstretched_grid = VerticallyStretchedRectilinearGrid(topology=(Periodic, Flat, Bounded),
-                                                                   size=(Nx, Nz), x=(0, Lx), z_faces=z_faces)
+        y_flat_regularly_spaced_vertically_stretched_grid = VerticallyStretchedRectilinearGrid(topology=(Periodic, Flat, Bounded),
+                                                                                               size=(Nx, Nz), x=(0, Lx), z_faces=z_faces)
 
         solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=false)
 
-        @testset "Internal wave with IncompressibleModel" begin
-            for grid in (regular_grid, flat_grid, unstretched_grid, flat_unstretched_grid)
-                grid_name = typeof(grid).name.wrapper
-                topo = topology(grid)
-
-                model = IncompressibleModel(; grid=grid, kwargs...)
-
-                @info "  Testing internal wave [IncompressibleModel, $grid_name, $topo]..."
-                internal_wave_dynamics_test(model, solution, Δt)
-            end
-        end
+        test_grids = (y_periodic_regular_grid,
+                      y_flat_regular_grid,
+                      y_periodic_regularly_spaced_vertically_stretched_grid,
+                      y_flat_regularly_spaced_vertically_stretched_grid)
 
         @testset "Internal wave with HydrostaticFreeSurfaceModel" begin
-            for grid in (regular_grid, flat_grid, unstretched_grid, flat_unstretched_grid)
+            for grid in test_grids
                 grid_name = typeof(grid).name.wrapper
                 topo = topology(grid)
 
@@ -462,6 +455,24 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo]..."
                 internal_wave_dynamics_test(model, solution, Δt)
             end
+        end
+
+        @testset "Internal wave with IncompressibleModel" begin
+            for grid in test_grids
+                grid_name = typeof(grid).name.wrapper
+                topo = topology(grid)
+
+                model = IncompressibleModel(; grid=grid, kwargs...)
+
+                @info "  Testing internal wave [IncompressibleModel, $grid_name, $topo]..."
+                internal_wave_dynamics_test(model, solution, Δt)
+            end
+
+            solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=true)
+
+            @info "  Testing internal wave with background stratification [IncompressibleModel, $grid_name, $topo]..."
+            model = IncompressibleModel(; grid=y_periodic_regular_grid, background_fields=background_fields, kwargs...)
+            internal_wave_dynamics_test(model, solution, Δt)
         end
     end
 
