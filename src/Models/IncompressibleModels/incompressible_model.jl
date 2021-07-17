@@ -20,7 +20,7 @@ using Oceananigans.Grids: topology
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 
 mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
-                                   V, S, K, BG, P, I} <: AbstractModel{TS}
+                                   V, S, K, BG, P, I, AF} <: AbstractModel{TS}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
@@ -40,6 +40,7 @@ mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
           timestepper :: TS       # Object containing timestepper fields and parameters
       pressure_solver :: S        # Pressure/Poisson solver
     immersed_boundary :: I        # Models the physics of immersed boundaries within the grid
+     auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
 end
 
 """
@@ -101,7 +102,8 @@ function IncompressibleModel(;    grid,
                              pressures = nothing,
                          diffusivities = nothing,
                        pressure_solver = nothing,
-                     immersed_boundary = nothing
+                     immersed_boundary = nothing,
+                      auxiliary_fields = NamedTuple(),
     )
 
     if architecture == GPU() && !has_cuda()
@@ -166,7 +168,7 @@ function IncompressibleModel(;    grid,
 
     return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                forcing, closure, background_fields, particles, velocities, tracers,
-                               pressures, diffusivities, timestepper, pressure_solver, immersed_boundary)
+                               pressures, diffusivities, timestepper, pressure_solver, immersed_boundary, auxiliary_fields)
 end
 
 #####
