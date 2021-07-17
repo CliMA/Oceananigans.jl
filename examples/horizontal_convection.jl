@@ -18,7 +18,7 @@
 
 # ## Horizontal convection
 #
-# We consider here two-dimensional horizontal convection of an incompressible flow ```\boldsymbol{u} = (u, w)``
+# We consider here two-dimensional horizontal convection of an incompressible flow ``\boldsymbol{u} = (u, w)``
 # on the ``(x, z)``-plane (``-L_x/2 \le x \le L_x/2`` and ``-H \le z \le 0``). The flow evolves
 # under the effect of gravity. The only forcing on the fluid comes from a prescribed, non-uniform
 # buoyancy at the top-surface of the domain.
@@ -50,11 +50,10 @@ grid = RegularRectilinearGrid(size = (Nx, Nz),
 # boundary conditions on ``u`` and ``w`` everywhere.
 
 b★ = 1.0q
-k = 2π / Lx
 
-@inline bˢ(x, y, t, p) = - p.b★ * cos(p.k * x)
+@inline bˢ(x, y, t, p) = - p.b★ * cos(2π * x / p.Lx)
 
-b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ, parameters=(; b★, k)))
+b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ, parameters=(; b★, Lx)))
 
 # ### Non-dimensional control parameters and Turbulence closure
 #
