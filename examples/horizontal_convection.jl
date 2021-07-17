@@ -85,12 +85,12 @@ grid = RegularRectilinearGrid(size = (Nx, Nz),
 # b(x, z = 0, t) = - b_* \cos (2 \pi x / L_x) \, .
 # ```
 
-const b★ = 1.0
-const k = 2π / Lx
+b★ = 1.0
+k = 2π / Lx
 
-@inline bˢ(x, y, t) = - cos(π * x)
+@inline bˢ(x, y, t, p) = - p.b★ * cos(p.k * x)
 
-b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ))
+b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ, parameters=(; b★, k)))
 
 # ## Turbulence closures
 #
@@ -161,9 +161,9 @@ simulation = Simulation(model, Δt = wizard, iteration_interval = 50,
 
 # ### Output
 #
-# We use `ComputedField`s to diagnose and output the total flow speed, the vorticity, ``\zeta``,
-# and the buoyancy dissipation, ``\chi = \kappa |\boldsymbol{\nabla}b|^2``. Note that 
-# `ComputedField`s take "AbstractOperations"on `Field`s as input:
+# We use `ComputedField`s to diagnose and output the total flow speed, the vorticity, ``ζ``,
+# and the buoyancy dissipation, ``χ = κ |∇b|²``. Note that 
+# `ComputedField`s take "AbstractOperations" on `Field`s as input:
 
 u, v, w = model.velocities # unpack velocity `Field`s
 b = model.tracers.b        # unpack buoyancy `Field`
