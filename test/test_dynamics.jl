@@ -93,67 +93,6 @@ function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization
     return !any(@. !isapprox(numerical, analytical, atol=1e-6, rtol=1e-6))
 end
 
-function internal_wave_test(timestepper; N=128, Nt=10, background_stratification=false)
-    # Internal wave parameters
-     ν = κ = 1e-9
-     L = 2π
-    z₀ = -L/3
-     δ = L/20
-    a₀ = 1e-3
-     m = 16
-     k = 1
-     f = 0.2
-     ℕ = 1.0
-     σ = sqrt( (ℕ^2*k^2 + f^2*m^2) / (k^2 + m^2) )
-
-    # Numerical parameters
-     N = 128
-    Δt = 0.01 * 1/σ
-
-    cᵍ = m * σ / (k^2 + m^2) * (f^2/σ^2 - 1)
-     U = a₀ * k * σ   / (σ^2 - f^2)
-     V = a₀ * k * f   / (σ^2 - f^2)
-     W = a₀ * m * σ   / (σ^2 - ℕ^2)
-     B = a₀ * m * ℕ^2 / (σ^2 - ℕ^2)
-
-    a(x, y, z, t) = exp( -(z - cᵍ*t - z₀)^2 / (2*δ)^2 )
-
-    u(x, y, z, t) = a(x, y, z, t) * U * cos(k*x + m*z - σ*t)
-    v(x, y, z, t) = a(x, y, z, t) * V * sin(k*x + m*z - σ*t)
-    w(x, y, z, t) = a(x, y, z, t) * W * cos(k*x + m*z - σ*t)
-
-    b(x, y, z, t) = ℕ^2 * z + a(x, y, z, t) * B * sin(k*x + m*z - σ*t)
-    background_fields = NamedTuple()
-
-    if background_stratification # Move stratification to a background field
-        b(x, y, z, t) = a(x, y, z, t) * B * sin(k*x + m*z - σ*t)
-        background_b(x, y, z, t) = ℕ^2 * z
-        background_fields = (b=background_b,)
-    end
-
-    u₀(x, y, z) = u(x, y, z, 0)
-    v₀(x, y, z) = v(x, y, z, 0)
-    w₀(x, y, z) = w(x, y, z, 0)
-    b₀(x, y, z) = b(x, y, z, 0)
-
-    model = IncompressibleModel(timestepper = timestepper,
-                                       grid = RegularRectilinearGrid(size=(N, 1, N), extent=(L, L, L)),
-                                    closure = IsotropicDiffusivity(ν=ν, κ=κ),
-                                   buoyancy = BuoyancyTracer(),
-                          background_fields = background_fields,
-                                    tracers = :b,
-                                   coriolis = FPlane(f=f))
-
-    set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
-
-    for n in 1:Nt
-        ab2_or_rk3_time_step!(model, Δt, n)
-    end
-
-    # Tolerance was found by trial and error...
-    return relative_error(model.velocities.u, u, model.clock.time) < 1e-4
-end
-
 function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, background_velocity_field=false)
     L, U, V = 1.0, 0.5, 0.8
     δ, x₀, y₀ = L/15, L/2, L/2
@@ -474,9 +413,55 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "Internal wave" begin
-        for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            @info "  Testing internal wave [$timestepper]..."
-            @test internal_wave_test(timestepper)
+        include("test_internal_wave_dynamics.jl")
+
+        Nx = Nz = 128
+        Lx = Lz = 2π
+
+        # Regular grid with no flat dimension
+        regular_grid = RegularRectilinearGrid(topology=(Periodic, Periodic, Bounded),
+                                              size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
+
+        # Regular grid with a flat y-dimension
+        flat_grid = RegularRectilinearGrid(topology=(Periodic, Flat, Bounded),
+                                           size=(Nx, Nz), x=(0, Lx), z=(-Lz, 0))
+
+        # Vertically stretched grid with regular spacing and no flat dimension
+        z_faces = collect(znodes(Face, regular_grid))
+        unstretched_grid = VerticallyStretchedRectilinearGrid(topology=(Periodic, Periodic, Bounded),
+                                                              size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z_faces=z_faces)
+
+        # Vertically stretched grid with regular spacing and no flat dimension
+        flat_unstretched_grid = VerticallyStretchedRectilinearGrid(topology=(Periodic, Flat, Bounded),
+                                                                   size=(Nx, Nz), x=(0, Lx), z_faces=z_faces)
+
+        solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=false)
+
+        @testset "Internal wave with IncompressibleModel" begin
+            for grid in (regular_grid, flat_grid, unstretched_grid, flat_unstretched_grid)
+                grid_name = typeof(grid).name.wrapper
+                topo = topology(grid)
+
+                model = IncompressibleModel(; grid=grid, kwargs...)
+
+                @info "  Testing internal wave [IncompressibleModel, $grid_name, $topo]..."
+                internal_wave_dynamics_test(model, solution, Δt)
+            end
+        end
+
+        @testset "Internal wave with HydrostaticFreeSurfaceModel" begin
+            for grid in (regular_grid, flat_grid, unstretched_grid, flat_unstretched_grid)
+                grid_name = typeof(grid).name.wrapper
+                topo = topology(grid)
+
+                # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
+                g = (10σ)^2 / Lx
+
+                model = HydrostaticFreeSurfaceModel(; free_surface=ImplicitFreeSurface(gravitational_acceleration=g), grid=grid, kwargs...)
+
+                @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo]..."
+                internal_wave_dynamics_test(model, solution, Δt)
+            end
         end
     end
 
