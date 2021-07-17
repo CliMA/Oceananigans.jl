@@ -79,51 +79,28 @@ grid = RegularRectilinearGrid(size = (Nx, Nz),
                               halo = (3, 3),
                           topology = (Bounded, Flat, Bounded))
 
-# Any attempts for `VerticallyStretchedRectilinearGrid` failed...
-# 
-# ```
-# σ = 0.2  # stretching factor
-# 
-# hyperbolically_spaced_faces(k) = H - H * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
-# 
-# grid_stretched = VerticallyStretchedRectilinearGrid(size = (Nx, Nz),
-#                                                 topology = (Bounded, Flat, Bounded),
-#                                                        x = (-Lx/2, Lx/2),
-#                                                     halo = (3, 3),
-#                                                  z_faces = hyperbolically_spaced_faces)
-# 
-# # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
-# using Plots
-# 
-# plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
-#      marker = :circle,
-#      ylabel = "Depth",
-#      xlabel = "Vertical spacing",
-#      legend = nothing)
-# ```
-
 # ## Boundary conditions
 #
 # We impose a surface buoyancy boundary condition,
 #
 # ```math
-# b(x, z=0, t) = - b_* \cos (2π x / L_x) \, .
+# b(x, z = 0, t) = - b_* \cos (2π x / L_x) \, .
 # ```
 
 const b★ = 1.0
+const k = 2π / Lx
 
 @inline bˢ(x, y, t) = - cos(π * x)
 
-top_bc = ValueBoundaryCondition(bˢ)
-b_bcs = FieldBoundaryConditions(top = top_bc)
+b_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(bˢ))
 
 # ## Turbulence closures
 #
 # We use isotropic viscosity and diffusivities, `ν` and `κ` whose values are obtain from the
 # prescribed ``Ra`` and ``Pr`` numbers. Here, we use ``Pr = 1`` and ``Ra = 10^8``:
 
-Pr = 1.0   # The Prandtl number
-Ra = 1e8   # The Rayleigh number
+Pr = 1.0    # Prandtl number
+Ra = 1e8    # Rayleigh number
 
 ν = sqrt(Pr * b★ * Lx^3 / Ra)  # Laplacian viscosity
 κ = ν * Pr                     # Laplacian diffusivity
@@ -147,9 +124,8 @@ model = IncompressibleModel(
 
 # ## Simulation set-up
 #
-# We set up a simulation that runs up to ``t = 40`` with a `JLD2OutputWriter` that saves the
-# flow speed, ``\sqrt{u^2 + w^2}``, the vorticity, ``\partial_z u - \partial_x w``, and the 
-# buoyancy dissipation, ``\kappa |\boldsymbol{\nabla} b|^2``.
+# We set up a simulation that runs up to ``t = 40`` with a `JLD2OutputWriter` that saves the flow
+# speed, ``\sqrt{u^2 + w^2}``, the buoyancy, ``b``, andthe vorticity, ``\partial_z u - \partial_x w``.
 #
 # ### The `TimeStepWizard`
 #
@@ -157,7 +133,7 @@ model = IncompressibleModel(
 # (CFL) number close to `0.75` while ensuring the time-step does not increase beyond the 
 # maximum allowable value for numerical stability.
 
-max_Δt = 4e-2
+max_Δt = 1e-1
 wizard = TimeStepWizard(cfl=0.75, Δt=1e-2, max_change=1.2, max_Δt=max_Δt)
 
 # ### A progress messenger
@@ -179,10 +155,10 @@ nothing # hide
 # ### Build the simulation
 #
 # We're ready to build and run the simulation. We ask for a progress message and time-step update
-# every 100 iterations,
+# every 50 iterations,
 
-simulation = Simulation(model, Δt = wizard, iteration_interval = 100,
-                                                     stop_time = 40.05,
+simulation = Simulation(model, Δt = wizard, iteration_interval = 50,
+                                                     stop_time = 40.0,
                                                       progress = progress)
 
 # ### Output
@@ -195,15 +171,15 @@ u, v, w = model.velocities # unpack velocity `Field`s
 b = model.tracers.b        # unpack buoyancy `Field`
 
 ## total flow speed
-speed = ComputedField(sqrt(u^2 + w^2))
+s = ComputedField(sqrt(u^2 + w^2))
 
 ## y-component of vorticity
 ζ = ComputedField(∂z(u) - ∂x(w))
 
-outputs = (s = speed, b = b, ζ = ζ)
+outputs = (s = s, b = b, ζ = ζ)
 nothing # hide
 
-# We create a `JLD2OutputWriter` that saves the speed, the vorticity, and the buoyancy dissipation.
+# We create a `JLD2OutputWriter` that saves the speed, and the vorticity.
 # We then add the `JLD2OutputWriter` to the `simulation`.
 
 saved_output_prefix = "horizontal_convection"
@@ -211,7 +187,7 @@ saved_output_filename = saved_output_prefix * ".jld2"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                   field_slicer = nothing,
-                                                      schedule = TimeInterval(0.2),
+                                                      schedule = TimeInterval(0.5),
                                                         prefix = saved_output_prefix,
                                                          force = true)
 nothing # hide
@@ -220,17 +196,23 @@ nothing # hide
 
 run!(simulation)
 
-# ## Visualizing horizontal convection
+# ## Load saved output, process, visualize
 #
 # We animate the results by opening the JLD2 file, extracting data for the iterations we ended
 # up saving at, and ploting the saved fields. We prepare for animating the flow by creating 
-# coordinate arrays, opening the file, building a vector of the iterations that we saved data at,
-# and defining a function for computing colorbar limits:
+# coordinate arrays, opening the file, building a vector of the iterations that we saved data at.
 
 using JLD2, Plots
+using Oceananigans
+using Oceananigans.Fields
+using Oceananigans.AbstractOperations: volume
+
+saved_output_prefix = "horizontal_convection"
+saved_output_filename = saved_output_prefix * ".jld2"
 
 ## Open the file with our data
 file = jldopen(saved_output_filename)
+
 κ = file["closure/κ/b"]
 
 s_timeseries = FieldTimeSeries(saved_output_filename, "s")
@@ -243,25 +225,6 @@ times = b_timeseries.times
 xs, ys, zs = nodes(s_timeseries[1])
 xb, yb, zb = nodes(b_timeseries[1])
 xζ, yζ, zζ = nodes(ζ_timeseries[1])
-
-
-## Extract a vector of iterations
-iterations = parse.(Int, keys(file["timeseries/t"]))
-
-# The utilities below come handy for calculating nice contour intervals:
-
-function nice_levels(c, clim, nlevels=41)
-    levels = range(0, stop=clim, length=nlevels)
-    cmax = maximum(abs, c)
-    clim < cmax && (levels = vcat(levels, [cmax]))
-    return levels
-end
-
-function nice_divergent_levels(c, clim, nlevels=41)
-    levels = range(-clim, stop=clim, length=nlevels)
-    return levels
-end
-
 nothing # hide
 
 # Now we're ready to animate.
@@ -270,8 +233,9 @@ nothing # hide
 
 anim = @animate for i in 1:length(times)
 
-    ## Load fields from file
+    ## Load fields from `FieldTimeSeries` and compute χ
     t = times[i]
+    
     s_snapshot = interior(s_timeseries[i])[:, 1, :]
     ζ_snapshot = interior(ζ_timeseries[i])[:, 1, :]
     
@@ -290,10 +254,10 @@ anim = @animate for i in 1:length(times)
     blevels = vcat([-1], range(-blim, stop=blim, length=51), [1])
     
     ζlim = 9
-    ζlevels = nice_divergent_levels(ζ_snapshot, ζlim)
+    ζlevels = range(-ζlim, stop=ζlim, length=41)
 
     χlim = 0.025
-    χlevels = nice_levels(χ_snapshot, χlim)
+    χlevels = range(0, stop=χlim, length=41)
 
     @info @sprintf("Drawing frame %d:", i)
 
@@ -325,63 +289,98 @@ anim = @animate for i in 1:length(times)
     χ_title = @sprintf("buoyancy dissipation, κ|∇b|² √(H/b⋆⁵) @ t=%1.2f", t)
     
     plot(s_plot, b_plot, ζ_plot, χ_plot,
-            dpi = 120,
-           size = (700.25, 1200.25),
+           size = (700, 1200),
            link = :x,
          layout = Plots.grid(4, 1),
-          title = [s_title, b_title, ζ_title, χ_title])
+          title = [s_title b_title ζ_title χ_title])
 end
 
 mp4(anim, "horizontal_convection.mp4", fps = 16) # hide
 
+# At higher Rayleigh numbers the flow becomes much more vigorous. See, for example, an animation
+# of the voricity of the fluid at ``Ra = 10^{12}`` on [vimeo](https://vimeo.com/573730711). 
+
 # ### The Nusselt number
 #
-# We are often interested on how much the flow enhances the mixing. This is quantified by the
-# Nusselt number, which measure how much the fluid flow enhances mixing occurs compared if only
-# diffusion was in operation. The Nusselt number is given by
+# Often we are interested on how much the flow enhances mixing. This is quantified by the
+# Nusselt number, which measures how much the flow enhances mixing compared if only diffusion
+# was in operation. The Nusselt number is given by
 #
 # ```math
 # Nu = \frac{\langle \chi \rangle}{\langle \chi_{\rm diff} \rangle} \, ,
 # ```
 #
-# where angle brackets above denote a spatial and time average and  ``\chi_{\rm diff}`` is
-# the buoyancy dissipation without any flow, i.e., it's the buoyancy dissipation associated
+# where angle brackets above denote both a volume and time average and  ``\chi_{\rm diff}`` is
+# the buoyancy dissipation that we get without any flow, i.e., the buoyancy dissipation associated
 # with the buoyancy distribution that satisfies
 #
 # ```math
 # \kappa \nabla^2 b_{\rm diff} = 0 \, ,
 # ```
 #
-# with the same boundary conditions same as our setup.
+# with the same boundary conditions same as our setup. In this case we can readily find that
+#
+# ```math
+# b_{\rm diff}(x, z) = \frac{b_s(x)}{L_x} \frac{\cosh \left [2π (H + z) / L_x \right ]}{\cosh(2 π H)} \, ,
+# ```
+# which implies ``\langle \chi_{\rm diff} \rangle = \kappa b_*^2 π \tanh(2 π Η /Lx)``.
+#
+# We use the loaded `FieldTimeSeries` to compute the Nusselt number from buoyancy and the volume
+# average kinetic energy of the fluid.
+#
+# First we compute the diffusive buoyancy dissipation, ``\chi_{\rm diff}`` (which is just a
+# scalar):
 
-using JLD2, Plots
-using Oceananigans
-using Oceananigans.AbstractOperations: volume
-using Oceananigans.Fields
-
-saved_output_prefix = "horizontal_convection"
-saved_output_filename = saved_output_prefix * ".jld2"
-
-file = jldopen(saved_output_filename)
+H, Lx = file["grid/Lz"], file["grid/Lx"]
 κ = file["closure/κ/b"]
 
-b_timeseries = FieldTimeSeries(saved_output_filename, "b")
+χ_diff = κ * b★^2 * π * tanh(2π * H / Lx)
+nothing # hide
 
-t = b_timeseries.times
+# We then create two `ReducedField`s to store the volume integrals of the kinetic energy density
+# and the buoyancy dissipation. We need the `grid` to do so; the `grid` can be recoverd from
+# any `FieldTimeSeries`, e.g.,
+
 grid = b_timeseries.grid
 
-∫ⱽ_mod_∇b = ReducedField(Nothing, Nothing, Nothing, CPU(), grid, dims=(1, 2, 3))
-Nu_from_b = zeros(length(t))
+∫ⱽ_½s² = ReducedField(Nothing, Nothing, Nothing, CPU(), grid, dims=(1, 2, 3))
+∫ⱽ_mod²_∇b = ReducedField(Nothing, Nothing, Nothing, CPU(), grid, dims=(1, 2, 3))
 
-## Can we broadcast over the time dimension?
+# We recover the time from the saved `FieldTimeSeries` and construct two empty arrays to store
+# the volume-averaged kinetic energy and the instantaneous Nusselt number,
+
+t = b_timeseries.times
+
+KineticEnergy, Nu = zeros(length(t)), zeros(length(t))
+nothing # hide
+
+# Now we can loop over the fields in the `FieldTimeSeries`, compute `KineticEnergy` and `Nu`,
+# and plot.
+
 for i = 1:length(t)
+    s = s_timeseries[i]
+    sum!(∫ⱽ_½s², 0.5 * s^2 * volume) / (Lx * H)
+    KineticEnergy[i] = ∫ⱽ_½s²[1, 1, 1]
+    
     b = b_timeseries[i]
-    sum!(∫ⱽ_mod_∇b,  κ * (∂x(b)^2+∂z(b)^2) * volume)
-    Nu_from_b[i] = ∫ⱽ_mod_∇b[1, 1, 1] / (κ * π * 2π/Lx * tanh(π))
+    sum!(∫ⱽ_mod²_∇b,  κ * (∂x(b)^2 + ∂z(b)^2) * volume)
+    Nu[i] = ∫ⱽ_mod²_∇b[1, 1, 1] / χ_diff
 end
 
-plot(t, Nu_from_b,
-       xlabel = "time",
-       ylabel = "Nu(t)",
-    linewidth = 3,
-       legend = :none)
+p1 = plot(t, KineticEnergy,
+          xlabel = "time",
+          ylabel = "KE(t)",
+       linewidth = 3,
+          legend = :none)
+
+p2 = plot(t, Nu,
+          xlabel = "time",
+          ylabel = "Nu(t)",
+       linewidth = 3,
+          legend = :none)
+
+plot(p1, p2,
+    size = (700, 600),
+    link = :x,
+    layout = Plots.grid(2, 1),
+)
