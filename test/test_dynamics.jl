@@ -467,12 +467,6 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 @info "  Testing internal wave [IncompressibleModel, $grid_name, $topo]..."
                 internal_wave_dynamics_test(model, solution, Δt)
             end
-
-            solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=true)
-
-            @info "  Testing internal wave with background stratification [IncompressibleModel, $grid_name, $topo]..."
-            model = IncompressibleModel(; grid=y_periodic_regular_grid, background_fields=background_fields, kwargs...)
-            internal_wave_dynamics_test(model, solution, Δt)
         end
     end
 
@@ -490,7 +484,18 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
             @info "  Testing dynamics with background fields [$timestepper]..."
             @test_skip passive_tracer_advection_test(timestepper, background_velocity_field=true)
-            @test internal_wave_test(timestepper, background_stratification=true)
+                        
+            Nx = Nz = 128
+            Lx = Lz = 2π
+
+            # Regular grid with no flat dimension
+            y_periodic_regular_grid = RegularRectilinearGrid(topology=(Periodic, Periodic, Bounded),
+                                                             size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
+                        
+            solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=true)
+
+            model = IncompressibleModel(; grid=y_periodic_regular_grid, background_fields=background_fields, kwargs...)
+            internal_wave_dynamics_test(model, solution, Δt)
         end
     end
 
