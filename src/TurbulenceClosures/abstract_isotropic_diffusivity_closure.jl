@@ -59,9 +59,9 @@ const AID = AbstractIsotropicDiffusivity
 ##### Diffusive fluxes
 #####
 
-@inline diffusive_flux_x(i, j, k, grid, closure::AID, c, c_idx, clock, args...) = diffusive_flux_x(i, j, k, grid, clock, diffusivity(closure, c_idx, args...), c)
-@inline diffusive_flux_y(i, j, k, grid, closure::AID, c, c_idx, clock, args...) = diffusive_flux_y(i, j, k, grid, clock, diffusivity(closure, c_idx, args...), c)
-@inline diffusive_flux_z(i, j, k, grid, closure::AID, c, c_idx, clock, args...) = diffusive_flux_z(i, j, k, grid, clock, diffusivity(closure, c_idx, args...), c)
+@inline diffusive_flux_x(i, j, k, grid, closure::AID, c, c_idx, clock, K, C, buoyancy, U) = diffusive_flux_x(i, j, k, grid, clock, diffusivity(closure, c_idx, K), c)
+@inline diffusive_flux_y(i, j, k, grid, closure::AID, c, c_idx, clock, K, C, buoyancy, U) = diffusive_flux_y(i, j, k, grid, clock, diffusivity(closure, c_idx, K), c)
+@inline diffusive_flux_z(i, j, k, grid, closure::AID, c, c_idx, clock, K, C, buoyancy, U) = diffusive_flux_z(i, j, k, grid, clock, diffusivity(closure, c_idx, K), c)
 
 #####
 ##### Support for VerticallyImplicitTimeDiscretization
