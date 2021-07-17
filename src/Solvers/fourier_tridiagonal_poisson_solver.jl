@@ -28,11 +28,6 @@ function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
     TX, TY, TZ = topology(grid)
     TZ != Bounded && error("FourierTridiagonalPoissonSolver can only be used with a Bounded z topology.")
 
-    if grid isa VerticallyStretchedRectilinearGrid && any([T() isa Flat for T in (TX, TY)])
-        @warn "FourierTridiagonalPoissonSolver is probably wrong for topologies that contain " *
-              "Flat dimensions."
-    end
-
     Nx, Ny, Nz = size(grid)
 
     # Compute discrete Poisson eigenvalues
