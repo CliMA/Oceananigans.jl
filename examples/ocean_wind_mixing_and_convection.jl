@@ -65,7 +65,7 @@ buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=
 # ## Boundary conditions
 #
 # We calculate the surface temperature flux associated with surface heating of
-# 200 W m⁻², reference density `ρ`, and heat capacity `cᴾ`,
+# 200 W m⁻², reference density `ρₒ`, and heat capacity `cᴾ`,
 
 Qʰ = 200  # W m⁻², surface _heat_ flux
 ρₒ = 1026 # kg m⁻³, average density at the surface of the world ocean
