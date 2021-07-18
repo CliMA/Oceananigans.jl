@@ -143,7 +143,7 @@ model = IncompressibleModel(architecture = CPU(),
 #   `AnisotropicMinimumDissipation`, use `closure = ConstantSmagorinsky()` in the model constructor.
 #
 # * To change the `architecture` to `GPU`, replace `architecture = CPU()` with
-#   `architecture = GPU()``
+#   `architecture = GPU()`.
 
 # ## Initial conditions
 #
