@@ -1,4 +1,4 @@
-# ENV["GKSwstype"] = "100"
+ENV["GKSwstype"] = "100"
 
 using Printf
 using Statistics
@@ -13,8 +13,8 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 ##### Grid
 #####
 
+arch = GPU()
 const Ly = 2000kilometers # north-south extent [m]
-const Lz = 3kilometers    # depth [m]
 
 Ny = 400
 Nz = 35
@@ -28,20 +28,14 @@ const Lz = sum(Δz_center)
 z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
 z_faces[Nz+1] = 0
 
-#=
-grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
-                                          topology = (Flat, Bounded, Bounded),
-                                          size = (Ny, Nz),
-                                          halo = (3, 3),
+grid = VerticallyStretchedRectilinearGrid(architecture = arch,
+                                          topology = (Periodic, Bounded, Bounded),
+                                          size = (1, Ny, Nz),
+                                          halo = (3, 3, 3),
+                                          x = (0, Ly),
                                           y = (0, Ly),
                                           z_faces = z_faces)
-=#
 
-grid = RegularRectilinearGrid(topology = (Flat, Bounded, Bounded),
-                              size = (Ny, Nz),
-                              halo = (3, 3),
-                              y = (0, Ly),
-                              z = (-Lz, 0))
 
 @show grid
 
@@ -99,7 +93,7 @@ v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
 
 coriolis = BetaPlane(latitude=-45)
 
-const N²₀ = 1.6e-5    # surface vertical buoyancy gradient [s⁻²]
+const N²₀ = 1.6e-5   # surface vertical buoyancy gradient [s⁻²]
 const h = 1kilometer # decay scale of stable stratification [m]
 
 #####
@@ -121,7 +115,7 @@ b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/7days)
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.Fields: TracerFields, FunctionField
 
-tracers = TracerFields(tuple(:b), CPU(), grid)
+tracers = TracerFields(tuple(:b), arch, grid)
 
 b = tracers.b
 
@@ -129,37 +123,60 @@ const f₀ = coriolis.f₀
 const β = coriolis.β
 const K₀ = 100
 
-K = FunctionField{Center, Center, Center}((x, y, z) -> K₀ + 3000 * sin(π * y / Ly), grid)
-f² = FunctionField{Center, Center, Center}((x, y, z) -> (f₀ + β * y)^2, grid)
+K_func(x, y, z) = K₀ + 3000 * sin(π * y / Ly)
+f²_func(x, y, z) = (f₀ + β * y)^2
+
+K = FunctionField{Center, Center, Center}(K_func, grid)
+f² = FunctionField{Center, Center, Center}(f²_func, grid)
 
 ν_op = @at (Center, Center, Center) K * f² / ∂z(b)
 ν = ComputedField(ν_op)
 
-closure = AnisotropicDiffusivity(νh = 100, νz = 100, κh = 10, κz = 0,
+closure = AnisotropicDiffusivity(νh = 100, νz = 10, κh = 10, κz = 10,
                                  time_discretization = VerticallyImplicitTimeDiscretization())
 
-model = HydrostaticFreeSurfaceModel(architecture = CPU(),
-                                    grid = grid,
-                                    free_surface = ImplicitFreeSurface(),
-                                    momentum_advection = UpwindBiasedFifthOrder(),
-                                    tracer_advection = UpwindBiasedFifthOrder(),
-                                    buoyancy = BuoyancyTracer(),
-                                    coriolis = coriolis,
-                                    closure = closure,
-                                    tracers = tracers,
-                                    boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
-                                    auxiliary_fields = (; ν=ν),
-                                    forcing = (b=b_forcing,))
+model = IncompressibleModel(architecture = arch,
+                            grid = grid,
+                            advection = UpwindBiasedFifthOrder(),
+                            buoyancy = BuoyancyTracer(),
+                            coriolis = coriolis,
+                            closure = closure,
+                            tracers = tracers,
+                            boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
+                            auxiliary_fields = (; ν=ν),
+                            forcing = (b=b_forcing,))
 
 @show grid === model.grid
-@show grid model.grid
 
 bᵢ(x, y, z) = b_stratification(z)
 uᵢ(x, y, z) = 0.0 #0.1 * (1 - z / Lz)
 
 set!(model, u=uᵢ, b=bᵢ)
 
-function channel_plot(u, b)
+using Oceananigans.Fields: similar_cpu_field
+using Oceananigans.Grids: topology, halo_size
+
+cpu_grid(grid::RegularRectilinearGrid) = grid
+
+cpu_grid(grid::VerticallyStretchedRectilinearGrid) =
+    VerticallyStretchedRectilinearGrid(architecture = CPU(),
+                                       topology = topology(grid),
+                                       size = size(grid),
+                                       halo = halo_size(grid),
+                                       x = (0, grid.Ly),
+                                       y = (0, grid.Ly),
+                                       z_faces = grid.zᵃᵃᶠ)
+
+function channel_plot(u_device, b_device)
+
+    grid = cpu_grid(u_device.grid)
+
+    u = XFaceField(CPU(), grid)
+    b = CenterField(CPU(), grid)
+
+    copyto!(parent(u), parent(u_device))
+    copyto!(parent(b), parent(b_device))
+
     grid = u.grid
 
     xb, yb, zb = nodes(b)
@@ -168,8 +185,8 @@ function channel_plot(u, b)
     ui = interior(u)[1, :, :]
     bi = interior(b)[1, :, :]
 
-    ulim = 1
     umax = maximum(abs, ui)
+    ulim = max(0.001, 0.5 * umax)
     ulevels = range(-ulim, ulim, length=31)
     umax > ulim && (ulevels = vcat([-umax], ulevels, [umax]))
 
@@ -203,7 +220,7 @@ display(p)
 #
 # We set up a simulation with adaptive time-stepping and a simple progress message.
 
-wizard = TimeStepWizard(cfl=0.2, Δt=10minutes, max_change=1.1, max_Δt=2hours)
+#wizard = TimeStepWizard(cfl=0.2, Δt=10minutes, max_change=1.1, max_Δt=2hours)
 
 wall_clock = [time_ns()]
 
@@ -216,27 +233,32 @@ function print_progress(sim)
             maximum(abs, sim.model.velocities.u),
             maximum(abs, sim.model.velocities.v),
             maximum(abs, sim.model.velocities.w),
-            prettytime(sim.Δt.Δt))
+            prettytime(sim.Δt))
+            #prettytime(sim.Δt.Δt))
 
     wall_clock[1] = time_ns()
     
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=30days, progress=print_progress, iteration_interval=10)
+diffusion_Δt = grid.Δy^2 / closure.νy
+@show Δt = min(10minutes, diffusion_Δt)
+
+simulation = Simulation(model, Δt=Δt, stop_time=10years, progress=print_progress, iteration_interval=1000)
 
 u, v, w = model.velocities
 b = model.tracers.b
 
 outputs = merge(model.velocities, model.tracers)
 
+#=
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(100days),
                                                         prefix = "eddying_channel",
                                                         force = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(1day),
+                                                      schedule = TimeInterval(10day),
                                                       prefix = "eddying_channel",
                                                       field_slicer = nothing,
                                                       force = true)
@@ -246,13 +268,15 @@ try
 catch err
     showerror(stdout, err)
 end
+=#
 
-u_timeseries = FieldTimeSeries("eddying_channel.jld2", "u", grid=grid)
-b_timeseries = FieldTimeSeries("eddying_channel.jld2", "b", grid=grid)
+u_timeseries = FieldTimeSeries("eddying_channel.jld2", "u", grid=cpu_grid(grid))
+b_timeseries = FieldTimeSeries("eddying_channel.jld2", "b", grid=cpu_grid(grid))
 
 @show b_timeseries
 
-anim = @animate for i in 1:length(b_timeseries.times)
+anim = @animate for i in 5:120
+    @info "Animating frame $i of $(length(b_timeseries.times))..."
     u = b_timeseries[i]
     b = b_timeseries[i]
     channel_plot(u, b)

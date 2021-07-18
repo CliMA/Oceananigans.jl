@@ -57,7 +57,7 @@ plot(underlying_grid.Δzᵃᵃᶜ[1:Nz], underlying_grid.zᵃᵃᶜ[1:Nz],
 =#
 
 const bump_amplitude = 300meters
-const bump_x_width = 50kilometers
+const bump_x_width = 100kilometers
 const bump_y_width = 200kilometers
 
 @inline pow2(x) = x * x
@@ -131,7 +131,7 @@ coriolis = BetaPlane(latitude=-45)
 #
 # with geostrophic shear
 
-const α = 1e-5 # [s⁻¹]
+const α = 2e-5 # [s⁻¹]
 
 # ``ψ`` is comprised of a baroclinic component ``ψ′ = - α y (z + Lz/2)``
 # and a barotropic component ``Ψ = - α y L_z / 2``.
@@ -148,7 +148,7 @@ const f₀ = coriolis.f₀ # [s⁻¹]
 
 # the Coriolis parameter, and
 
-g = 0.1 # m s⁻²
+g = 1e-2 # m s⁻²
 
 # is gravitational acceleration. Our austral focus means that ``f₀ < 0``:
 
@@ -185,7 +185,7 @@ const y_sponge = 19/20 * Ly # southern boundary of sponge layer [m]
 ## Target and initial buoyancy profile
 @inline b_target(x, y, z, t) = b_geostrophic(y) + b_stratification(z)
 
-b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/10days)
+b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/7days)
 
 # The annotations `const` on global variables above ensure that our forcing functions
 # compile on the GPU, while the annotation `@inline` ensures efficient execution.
@@ -200,12 +200,15 @@ b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/10days)
 
 #horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
 
-@show κ₂h = 1e2 / day * grid.Δx^2 # [m⁴ s⁻¹] horizontal viscosity and diffusivity
+@show κ₂h = 5e-1 / day * grid.Δx^2 # [m⁴ s⁻¹] horizontal viscosity and diffusivity
 @show κ₄h = 1e-1 / day * grid.Δx^4 # [m⁴ s⁻¹] horizontal viscosity and diffusivity
 
-using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
+using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity,
+                                       VerticallyImplicitTimeDiscretization
 
-horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=κ₂h, κh=κ₂h)
+horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=κ₂h, κh=κ₂h, νz=1e-2, κz=1e-2,
+                                                                       time_discretization=VerticallyImplicitTimeDiscretization())
+
 #horizontal_diffusivity = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
@@ -275,7 +278,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=1year, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=10year, progress=print_progress, iteration_interval=100)
 
 u, v, w = model.velocities
 b = model.tracers.b

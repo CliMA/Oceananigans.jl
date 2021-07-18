@@ -63,7 +63,8 @@ end
               pressures = nothing,
           diffusivities = nothing,
         pressure_solver = nothing,
-      immersed_boundary = nothing
+      immersed_boundary = nothing,
+       auxiliary_fields = NamedTuple(),
     )
 
 Construct an incompressible `Oceananigans.jl` model on `grid`.
@@ -118,8 +119,9 @@ function IncompressibleModel(;    grid,
     # Adjust halos when the advection scheme or turbulence closure requires it.
     # Note that halos are isotropic by default; however we respect user-input here
     # by adjusting each (x, y, z) halo individually.
-    Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, topology(grid), advection, closure)
-    grid = with_halo((Hx, Hy, Hz), grid)
+    user_halo = grid.Hx, grid.Hy, grid.Hz
+    required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., topology(grid), advection, closure)
+    user_halo != required_halo && (grid = with_halo((Hx, Hy, Hz), grid)) # Don't replace grid unless needed.
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
