@@ -81,7 +81,7 @@ function plan_transforms(arch, grid::RegularRectilinearGrid, storage, planner_fl
 
     # Convert Flat to Bounded for inferring batchability and transform ordering
     # Note that transforms are omitted in Flat directions.
-    unflattened_topo = (T() isa Flat ? Bounded : T for T in topo)
+    unflattened_topo = Tuple(T() isa Flat ? Bounded : T for T in topo)
 
     if arch isa GPU && !(unflattened_topo in batchable_GPU_topologies)
 
@@ -151,7 +151,7 @@ function plan_transforms(arch, grid::VerticallyStretchedRectilinearGrid, storage
     bounded_dims = findall(t -> t == Bounded, (TX, TY))
 
     # Convert Flat to Bounded for ordering purposes (transforms are omitted in Flat directions anyways)
-    unflattened_topo = (T() isa Flat ? Bounded : T for T in topo)
+    unflattened_topo = Tuple(T() isa Flat ? Bounded : T for T in topo)
 
     if arch isa CPU || topo == (Periodic, Periodic, Bounded)
         # This is the case where batching transforms is possible. It's always possible on the CPU
