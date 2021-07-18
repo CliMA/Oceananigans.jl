@@ -25,7 +25,7 @@ function FFTBasedPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
     transforms = plan_transforms(arch, grid, storage, planner_flag)
 
     # Need buffer for index permutations and transposes.
-    buffer_needed = arch isa GPU && Bounded in topo ? true : false
+    buffer_needed = arch isa GPU && Bounded in topo
     buffer = buffer_needed ? similar(storage) : nothing
 
     return FFTBasedPoissonSolver(arch, grid, eigenvalues, storage, buffer, transforms)
