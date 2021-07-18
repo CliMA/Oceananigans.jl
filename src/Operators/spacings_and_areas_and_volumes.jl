@@ -49,7 +49,7 @@ The operators in this file fall into three categories:
 #####
 ##### "Spacings" in Flat directions for rectilinear grids.
 ##### Here we dispatch all spacings to `one`. This abuse of notation
-##### makes volumes and areas correct.
+##### makes volumes and areas correct. E.g., with `z` Flat we have `v = dx * dy * 1`.
 #####
 ##### Note: Vertical metrics are specific to each rectilinear grid type; therefore
 ##### we must dispatch on Flat vertical directions for each grid independently.
