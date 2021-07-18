@@ -2,7 +2,7 @@ module Solvers
 
 export
     BatchedTridiagonalSolver, solve!, solve_for_pressure!,
-    FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, PreconditionedConjugateGradientSolver, PressureSolver,
+    FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, PreconditionedConjugateGradientSolver, PressureSolver
 
 using Statistics
 using FFTW

@@ -19,13 +19,9 @@ end
 ##### Solve for pressure
 #####
 
-function solve_for_pressure!(pressure, solver, Δt, U★)
-    rhs = calculate_pressure_poisson_rhs!(solver, Δt, U★)
-    solve!(pressure, solver, rhs)
-    return nothing
-end
+function solve_for_pressure!(pressure, solver::FFTBasedPoissonSolver, Δt, U★)
 
-function calculate_pressure_poisson_rhs!(solver::FFTBasedPoissonSolver, Δt, U★)
+    # Calculate right hand side:
     rhs = solver.storage
     arch = solver.architecture
     grid = solver.grid
@@ -35,10 +31,15 @@ function calculate_pressure_poisson_rhs!(solver::FFTBasedPoissonSolver, Δt, U�
 
     wait(device(arch), rhs_event)
 
-    return rhs
+    # Solve pressure Poisson given for pressure, given rhs
+    solve!(pressure, solver, rhs)
+
+    return nothing
 end
 
-function calculate_pressure_poisson_rhs!(solver::FourierTridiagonalPoissonSolver, Δt, U★)
+function solve_for_pressure!(pressure, solver::FourierTridiagonalPoissonSolver, Δt, U★)
+
+    # Calculate right hand side:
     rhs = solver.source_term
     arch = solver.architecture
     grid = solver.grid
@@ -48,6 +49,9 @@ function calculate_pressure_poisson_rhs!(solver::FourierTridiagonalPoissonSolver
 
     wait(device(arch), rhs_event)
 
-    return rhs
+    # Pressure Poisson rhs, scaled by Δzᵃᵃᶜ, is stored in solver.source_term:
+    solve!(pressure, solver)
+
+    return nothing
 end
 

@@ -75,22 +75,16 @@ function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
 end
 
 function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
-    # If b is provided, use it to set the source term.
-    # Otherwise, assume that solver.source_term has been calculated correctly.
-    if isnothing(b)
-        source_term = b
-    else
-        source_term = solver.source_term
-    end
+    !isnothing(b) && set_source_term!(solver, b) # otherwise, assume source term is set correctly
 
     arch = solver.architecture
     ϕ = solver.storage
 
     # Apply forward transforms in order
-    [transform!(source_term, solver.buffer) for transform! in solver.transforms.forward]
+    [transform!(solver.source_term, solver.buffer) for transform! in solver.transforms.forward]
 
     # Solve tridiagonal system of linear equations in z at every column.
-    solve!(ϕ, solver.batched_tridiagonal_solver, source_term)
+    solve!(ϕ, solver.batched_tridiagonal_solver, solver.source_term)
 
     # Apply backward transforms in order
     [transform!(ϕ, solver.buffer) for transform! in solver.transforms.backward]
