@@ -1,4 +1,5 @@
 using Oceananigans.Advection: AbstractAdvectionScheme
+using Oceananigans.BoundaryConditions: BoundaryCondition
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
 
@@ -148,8 +149,6 @@ for bias in (:symmetric, :left_biased, :right_biased)
                     ifelse($near_boundary(i, j, k, ibg, scheme),
                            $second_order_interp(i, j, k, ibg.grid, ψ),
                            $interp(i, j, k, ibg.grid, scheme, ψ))
-
-                # @inline $alt_interp(i, j, k, ibg::IBG, scheme, ψ) = $interp(i, j, k, ibg.grid, scheme, ψ)
             end
         end
     end
