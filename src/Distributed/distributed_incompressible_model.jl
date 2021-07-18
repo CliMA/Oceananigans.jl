@@ -5,7 +5,7 @@ using Oceananigans.Fields
 ##### Distributed incompressible model constructor
 #####
 
-function DistributedIncompressibleModel(; architecture, grid, model_kwargs...)
+function DistributedNonhydrostaticModel(; architecture, grid, model_kwargs...)
     i, j, k = architecture.local_index
     Rx, Ry, Rz = architecture.ranks
     my_connectivity = architecture.connectivity
@@ -40,7 +40,7 @@ function DistributedIncompressibleModel(; architecture, grid, model_kwargs...)
     pressure_solver = haskey(model_kwargs, :pressure_solver) ? Dict(model_kwargs)[:pressure_solver] :
                                                                DistributedFFTBasedPoissonSolver(architecture, grid, my_grid)
 
-    my_model = IncompressibleModel(;
+    my_model = NonhydrostaticModel(;
            architecture = architecture,
                    grid = my_grid,
         pressure_solver = pressure_solver,

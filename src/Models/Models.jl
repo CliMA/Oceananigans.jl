@@ -1,7 +1,7 @@
 module Models
 
 export
-    IncompressibleModel, NonDimensionalIncompressibleModel, ShallowWaterModel,
+    NonhydrostaticModel, NonDimensionalNonhydrostaticModel, ShallowWaterModel,
     HydrostaticFreeSurfaceModel, VectorInvariant,
     ExplicitFreeSurface, ImplicitFreeSurface,
     HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
@@ -13,13 +13,13 @@ import Oceananigans.Architectures: device_event
 
 device_event(model::AbstractModel) = device_event(model.architecture)
 
-abstract type AbstractIncompressibleModel{TS} <: AbstractModel{TS} end
+abstract type AbstractNonhydrostaticModel{TS} <: AbstractModel{TS} end
 
-include("IncompressibleModels/IncompressibleModels.jl")
+include("NonhydrostaticModels/NonhydrostaticModels.jl")
 include("HydrostaticFreeSurfaceModels/HydrostaticFreeSurfaceModels.jl")
 include("ShallowWaterModels/ShallowWaterModels.jl")
 
-using .IncompressibleModels: IncompressibleModel
+using .NonhydrostaticModels: NonhydrostaticModel
 
 using .HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel, VectorInvariant,

@@ -9,7 +9,7 @@ end
 
 function test_diffusion_simple(fieldname, timestepper, time_discretization)
 
-    model = IncompressibleModel(timestepper = timestepper,
+    model = NonhydrostaticModel(timestepper = timestepper,
                                        grid = RegularRectilinearGrid(size=(1, 1, 16), extent=(1, 1, 1)),
                                     closure = IsotropicDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
                                    coriolis = nothing,
@@ -69,7 +69,7 @@ end
 function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization)
     κ, m = 1, 2 # diffusivity and cosine wavenumber
 
-    model = IncompressibleModel(timestepper = timestepper,
+    model = NonhydrostaticModel(timestepper = timestepper,
                                        grid = grid,
                                     closure = IsotropicDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
                                    buoyancy = nothing)
@@ -136,7 +136,7 @@ function internal_wave_test(timestepper; N=128, Nt=10, background_stratification
     w₀(x, y, z) = w(x, y, z, 0)
     b₀(x, y, z) = b(x, y, z, 0)
 
-    model = IncompressibleModel(timestepper = timestepper,
+    model = NonhydrostaticModel(timestepper = timestepper,
                                        grid = RegularRectilinearGrid(size=(N, 1, N), extent=(L, L, L)),
                                     closure = IsotropicDiffusivity(ν=ν, κ=κ),
                                    buoyancy = BuoyancyTracer(),
@@ -177,7 +177,7 @@ function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, bac
 
     grid = RegularRectilinearGrid(size=(N, N, 2), extent=(L, L, L))
     closure = IsotropicDiffusivity(ν=κ, κ=κ)
-    model = IncompressibleModel(timestepper=timestepper, grid=grid, closure=closure,
+    model = NonhydrostaticModel(timestepper=timestepper, grid=grid, closure=closure,
                                 background_fields=background_fields)
 
     set!(model, u=u₀, v=v₀, T=T₀)
@@ -209,7 +209,7 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
     @inline u(x, y, z, t) = -sin(2π*y) * exp(-4π^2 * ν * t)
     @inline v(x, y, z, t) =  sin(2π*x) * exp(-4π^2 * ν * t)
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
         architecture = arch,
          timestepper = timestepper,
                 grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
@@ -258,7 +258,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     z_bc = GradientBoundaryCondition(N² * g̃[3])
     b_bcs = FieldBoundaryConditions(bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
                architecture = arch,
                        grid = grid,
                    buoyancy = buoyancy,
@@ -314,7 +314,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     z_bc = GradientBoundaryCondition(∂T∂z * g̃[3])
     T_bcs = FieldBoundaryConditions(bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
                architecture = arch,
                        grid = grid,
                    buoyancy = buoyancy,
@@ -396,7 +396,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                         grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
 
-                        model = IncompressibleModel(timestepper = timestepper,
+                        model = NonhydrostaticModel(timestepper = timestepper,
                                                            grid = grid,
                                                         closure = closure,
                                                         tracers = :c,
@@ -432,7 +432,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                 grid = RegularRectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
 
-                model = IncompressibleModel(timestepper = timestepper,
+                model = NonhydrostaticModel(timestepper = timestepper,
                                                    grid = grid,
                                                 closure = AnisotropicBiharmonicDiffusivity(νh=1, νz=1, κh=1, κz=1),
                                                coriolis = nothing,

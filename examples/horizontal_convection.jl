@@ -90,7 +90,7 @@ nothing # hide
 # We instantiate the model with the fifth-order WENO advection scheme, a 3rd order
 # Runge-Kutta time-stepping scheme, and a `BuoyancyTracer`.
 
-model = IncompressibleModel(
+model = NonhydrostaticModel(
            architecture = CPU(),
                    grid = grid,
               advection = WENO5(),

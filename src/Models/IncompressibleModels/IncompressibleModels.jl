@@ -1,4 +1,4 @@
-module IncompressibleModels
+module NonhydrostaticModels
 
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
@@ -8,7 +8,7 @@ using Oceananigans.Utils: launch!
 import Oceananigans: fields, prognostic_fields
 
 #####
-##### IncompressibleModel definition
+##### NonhydrostaticModel definition
 #####
 
 include("incompressible_model.jl")
@@ -16,16 +16,16 @@ include("show_incompressible_model.jl")
 include("set_incompressible_model.jl")
 
 #####
-##### Time-stepping IncompressibleModels
+##### Time-stepping NonhydrostaticModels
 #####
 
 """
-    fields(model::IncompressibleModel)
+    fields(model::NonhydrostaticModel)
 
 Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.tracers`.
 """
-fields(model::IncompressibleModel) = merge(model.velocities, model.tracers)
-prognostic_fields(model::IncompressibleModel) = fields(model)
+fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers)
+prognostic_fields(model::NonhydrostaticModel) = fields(model)
 
 include("update_hydrostatic_pressure.jl")
 include("update_incompressible_model_state.jl")

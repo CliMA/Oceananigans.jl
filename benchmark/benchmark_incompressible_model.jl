@@ -10,7 +10,7 @@ pyplot()
 
 function benchmark_incompressible_model(Arch, FT, N)
     grid = RegularRectilinearGrid(FT, size=(N, N, N), extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=Arch(), grid=grid)
+    model = NonhydrostaticModel(architecture=Arch(), grid=grid)
 
     time_step!(model, 1) # warmup
 

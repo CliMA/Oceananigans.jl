@@ -14,7 +14,7 @@ a function with arguments `(x, y, z)`, or any data type for which a
 Example
 =======
 ```julia
-model = IncompressibleModel(grid=RegularRectilinearGrid(size=(32, 32, 32), length=(1, 1, 1))
+model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(32, 32, 32), length=(1, 1, 1))
 
 # Set u to a parabolic function of z, v to random numbers damped
 # at top and bottom, and T to some silly array of half zeros,
@@ -29,7 +29,7 @@ T₀[T₀ .< 0.5] .= 0
 set!(model, u=u₀, v=v₀, T=T₀)
 ```
 """
-function set!(model::IncompressibleModel; enforce_incompressibility=true, kwargs...)
+function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs...)
     for (fldname, value) in kwargs
         if fldname ∈ propertynames(model.velocities)
             ϕ = getproperty(model.velocities, fldname)

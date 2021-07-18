@@ -5,7 +5,7 @@ export
     HaloCommunication, HaloCommunicationBC,
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver,
-    DistributedIncompressibleModel, DistributedShallowWaterModel
+    DistributedNonhydrostaticModel, DistributedShallowWaterModel
 
 using MPI
 

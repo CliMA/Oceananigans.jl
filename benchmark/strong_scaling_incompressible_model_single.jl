@@ -32,7 +32,7 @@ Rz = parse(Int, ARGS[7])
 topo = (Periodic, Periodic, Periodic)
 distributed_grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
 arch = MultiCPU(grid=distributed_grid, ranks=(Rx, Ry, Rz))
-model = DistributedIncompressibleModel(architecture=arch, grid=distributed_grid)
+model = DistributedNonhydrostaticModel(architecture=arch, grid=distributed_grid)
 
 @info "Warming up distributed incompressible model on rank $local_rank..."
 

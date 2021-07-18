@@ -112,7 +112,7 @@ function TendencyFields(arch, grid, tracer_names;
 end
 
 #####
-##### Helper functions for IncompressibleModel constructor
+##### Helper functions for NonhydrostaticModel constructor
 #####
 
 VelocityFields(::Nothing, arch, grid, bcs) = VelocityFields(arch, grid, bcs)

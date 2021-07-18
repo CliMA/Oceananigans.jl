@@ -6,7 +6,7 @@ using Oceananigans.Utils: TimeInterval, pretty_filesize
 
 using Oceananigans.Fields: boundary_conditions
 
-default_included_properties(::IncompressibleModel) = [:grid, :coriolis, :buoyancy, :closure]
+default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
 default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
@@ -113,7 +113,7 @@ Write out 3D fields for w and T and a horizontal average:
 using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Fields
 using Oceananigans.Utils: hour, minute
 
-model = IncompressibleModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)

@@ -15,7 +15,7 @@ function simulate_lid_driven_cavity(; Re, N, end_time)
     w_bcs = FieldBoundaryConditions(north = ValueBoundaryCondition(0),
                                     south = ValueBoundaryCondition(0))
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
                        grid = grid,
                    buoyancy = nothing,
                     tracers = nothing,

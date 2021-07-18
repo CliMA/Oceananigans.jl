@@ -26,7 +26,7 @@ julia> using Oceananigans.Diagnostics: WindowedSpatialAverage
 
 julia> grid = RegularRectilinearGrid(size=(4, 6, 4), extent=(1, 1, 1));
 
-julia> model = IncompressibleModel(grid=grid);
+julia> model = NonhydrostaticModel(grid=grid);
 
 julia> set!(model.velocities.u, 1);
 

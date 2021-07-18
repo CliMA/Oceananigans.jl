@@ -56,7 +56,7 @@ export
     LagrangianParticles,
 
     # Models
-    IncompressibleModel,
+    NonhydrostaticModel,
     HydrostaticFreeSurfaceModel,
     ShallowWaterModel,
     fields,
