@@ -136,12 +136,12 @@ function plan_transforms(arch, grid::RegularRectilinearGrid, storage, planner_fl
         )
     end
 
-    transforms = (forward = forward_transforms, backward = backward_transforms)
+    transforms = (forward=forward_transforms, backward=backward_transforms)
 
     return transforms
 end
 
-" Used by FourierTridiagonalPoissonSolver "
+""" Used by FourierTridiagonalPoissonSolver. """
 function plan_transforms(arch, grid::VerticallyStretchedRectilinearGrid, storage, planner_flag)
     Nx, Ny, Nz = size(grid)
     TX, TY, TZ = topo = topology(grid)
@@ -151,14 +151,16 @@ function plan_transforms(arch, grid::VerticallyStretchedRectilinearGrid, storage
     bounded_dims = findall(t -> t == Bounded, (TX, TY))
 
     # Convert Flat to Bounded for ordering purposes (transforms are omitted in Flat directions anyways)
-    unflattened_topo = Tuple(T() isa Flat ? Bounded : T for T in topo)
 
-    if arch isa CPU || topo == (Periodic, Periodic, Bounded)
+    !(topo[3] === Bounded) && error("Cannot plan transforms on z-periodic VerticallyStretchedRectilinearGrids.")
+
+    if arch isa CPU
         # This is the case where batching transforms is possible. It's always possible on the CPU
         # since FFTW is awesome so it includes all topologies on the CPU.
         #
-        # On the GPU and for vertically Bounded grids, batching is possible when topo == (Periodic, Periodic, Bounded).
-
+        # On the GPU and for vertically Bounded grids, batching is possible either in horizontally-periodic
+        # domains, or for domains that are `Bounded, Periodic, Bounded`.
+        
         forward_periodic_plan = plan_forward_transform(storage, Periodic(), periodic_dims, planner_flag)
         forward_bounded_plan = plan_forward_transform(storage, Bounded(), bounded_dims, planner_flag)
 
@@ -171,7 +173,16 @@ function plan_transforms(arch, grid::VerticallyStretchedRectilinearGrid, storage
         backward_transforms = (DiscreteTransform(backward_periodic_plan, Backward(), arch, grid, periodic_dims),
                                DiscreteTransform(backward_bounded_plan, Backward(), arch, grid, bounded_dims))
 
-    else # we are on the GPU and we cannot / should not batch
+    elseif !(Bounded in (TX, TY))
+        # We're on the GPU and either (Periodic, Periodic), (Flat, Periodic), or (Periodic, Flat) in xy.
+        # So, we pretend like we need a 2D doubly-periodic transform (even if one dimension is Flat).
+        forward_periodic_plan = plan_forward_transform(storage, Periodic(), [1, 2], planner_flag)
+        backward_periodic_plan = plan_backward_transform(storage, Periodic(), [1, 2], planner_flag)
+
+        forward_transforms = tuple(DiscreteTransform(forward_periodic_plan, Forward(), arch, grid, [1, 2]))
+        backward_transforms = tuple(DiscreteTransform(backward_periodic_plan, Backward(), arch, grid, [1, 2]))
+
+    else # we are on the GPU and we cannot / should not batch!
         rs_storage = reshape(storage, (Ny, Nx, Nz))
 
         forward_plan_x = plan_forward_transform(storage,    topo[1](), [1], planner_flag)
@@ -183,6 +194,7 @@ function plan_transforms(arch, grid::VerticallyStretchedRectilinearGrid, storage
         forward_plans = (forward_plan_x, forward_plan_y)
         backward_plans = (backward_plan_x, backward_plan_y)
 
+        unflattened_topo = Tuple(T() isa Flat ? Bounded : T for T in topo)
         f_order = forward_orders(unflattened_topo...)
         b_order = backward_orders(unflattened_topo...)
 
