@@ -19,7 +19,7 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
     return success
 end
 
-function test_incompressible_flux_budget(arch, name, side, topo)
+function test_nonhydrostatic_flux_budget(arch, name, side, topo)
 
     FT = Float64
     Lx = 0.3
@@ -220,19 +220,19 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             topo = (Periodic, Bounded, Bounded)
             for name in (:u, :c), side in (:north, :south, :top, :bottom)
                 @info "    Testing budgets with Flux boundary conditions [$(typeof(arch)), $topo, $name, $side]..."
-                @test test_incompressible_flux_budget(arch, name, side, topo)
+                @test test_nonhydrostatic_flux_budget(arch, name, side, topo)
             end
 
             topo = (Bounded, Periodic, Bounded)
             for name in (:v, :c), side in (:east, :west, :top, :bottom)
                 @info "    Testing budgets with Flux boundary conditions [$(typeof(arch)), $topo, $name, $side]..."
-                @test test_incompressible_flux_budget(arch, name, side, topo)
+                @test test_nonhydrostatic_flux_budget(arch, name, side, topo)
             end
 
             topo = (Bounded, Bounded, Periodic)
             for name in (:w, :c), side in (:east, :west, :north, :south)
                 @info "    Testing budgets with Flux boundary conditions [$(typeof(arch)), $topo, $name, $side]..."
-                @test test_incompressible_flux_budget(arch, name, side, topo)
+                @test test_nonhydrostatic_flux_budget(arch, name, side, topo)
             end
         end
     end

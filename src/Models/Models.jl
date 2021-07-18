@@ -1,7 +1,7 @@
 module Models
 
 export
-    NonhydrostaticModel, NonDimensionalNonhydrostaticModel, ShallowWaterModel,
+    NonhydrostaticModel, ShallowWaterModel,
     HydrostaticFreeSurfaceModel, VectorInvariant,
     ExplicitFreeSurface, ImplicitFreeSurface,
     HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,

@@ -69,13 +69,13 @@ end
 plt = plot(rank_num, run_times, lw=4, xaxis=:log2, legend=:none,
           xlabel="Cores", ylabel="Times (ms)", title="Strong Scaling Incompressible Times")
 display(plt)
-savefig(plt, "ss_incompressible_times.png")
+savefig(plt, "ss_nonhydrostatic_times.png")
 
 
 plt2 = plot(rank_num, eff_ratio, lw=4, xaxis=:log2, legend=:none, ylims=(0,1.1),
             xlabel="Cores", ylabel="Efficiency", title="Strong Scaling Incompressible Efficiency")
 display(plt2)
-savefig(plt2, "ss_incompressible_efficiency.png")
+savefig(plt2, "ss_nonhydrostatic_efficiency.png")
 
 df = benchmarks_dataframe(suite)
 sort!(df, :ranks)
