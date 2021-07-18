@@ -8,7 +8,7 @@ using Plots
 pyplot()
 # Benchmark function
 
-function benchmark_incompressible_model(Arch, FT, N)
+function benchmark_nonhydrostatic_model(Arch, FT, N)
     grid = RegularRectilinearGrid(FT, size=(N, N, N), extent=(1, 1, 1))
     model = NonhydrostaticModel(architecture=Arch(), grid=grid)
 
@@ -30,7 +30,7 @@ Ns = [32, 64, 128, 256]
 # Run and summarize benchmarks
 
 print_system_info()
-suite = run_benchmarks(benchmark_incompressible_model; Architectures, Float_types, Ns)
+suite = run_benchmarks(benchmark_nonhydrostatic_model; Architectures, Float_types, Ns)
 
 plot_num = length(Ns)
 CPU_Float32 = zeros(Float64, plot_num)

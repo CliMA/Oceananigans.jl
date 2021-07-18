@@ -25,7 +25,7 @@ for R in ranks
     Rx, Ry, Rz = rank_size(R, decomposition)
     @info "Benchmarking distributed incompressible model strong scaling with $(typeof(decomposition)) decomposition [N=($Nx, $Ny, $Nz), ranks=($Rx, $Ry, $Rz)]..."
     julia = Base.julia_cmd()
-    run(`mpiexec -np $R $julia --project strong_scaling_incompressible_model_single.jl $(typeof(decomposition)) $Nx $Ny $Nz $Rx $Ry $Rz`)
+    run(`mpiexec -np $R $julia --project strong_scaling_nonhydrostatic_model_single.jl $(typeof(decomposition)) $Nx $Ny $Nz $Rx $Ry $Rz`)
 end
 
 # Collect and merge benchmarks from all ranks
@@ -38,7 +38,7 @@ for R in ranks
     case = ((Nx, Ny, Nz), (Rx, Ry, Rz))
 
     for local_rank in 0:R-1
-        filename = string("strong_scaling_incompressible_model_$(R)ranks_$(typeof(decomposition))_$local_rank.jld2")
+        filename = string("strong_scaling_nonhydrostatic_model_$(R)ranks_$(typeof(decomposition))_$local_rank.jld2")
         jldopen(filename, "r") do file
             if local_rank == 0
                 suite[case] = file["trial"]

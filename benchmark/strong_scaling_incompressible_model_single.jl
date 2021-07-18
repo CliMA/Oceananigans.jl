@@ -47,6 +47,6 @@ end samples=10
 t_median = BenchmarkTools.prettytime(median(trial).time)
 @info "Done benchmarking on rank $(local_rank). Median time: $t_median"
 
-jldopen("strong_scaling_incompressible_model_$(R)ranks_$(decomposition)_$local_rank.jld2", "w") do file
+jldopen("strong_scaling_nonhydrostatic_model_$(R)ranks_$(decomposition)_$local_rank.jld2", "w") do file
     file["trial"] = trial
 end

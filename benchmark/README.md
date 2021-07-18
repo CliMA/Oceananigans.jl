@@ -11,7 +11,7 @@ julia -e 'using Pkg; Pkg.activate(pwd()); Pkg.instantiate(); Pkg.develop(Package
 Once the environment has been instantiated, benchmarks can be run via, e.g.
 
 ```
-julia --project benchmark_incompressible_model.jl
+julia --project benchmark_nonhydrostatic_model.jl
 ```
 
 Most scripts benchmark one feature (e.g. advection schemes, arbitrary tracers). If your machine contains a CUDA-compatible GPU, benchmarks will also run on the GPU. Tables with benchmark results will be printed (and each table will also be saved to an HTML file).

@@ -11,9 +11,9 @@ import Oceananigans: fields, prognostic_fields
 ##### NonhydrostaticModel definition
 #####
 
-include("incompressible_model.jl")
-include("show_incompressible_model.jl")
-include("set_incompressible_model.jl")
+include("nonhydrostatic_model.jl")
+include("show_nonhydrostatic_model.jl")
+include("set_nonhydrostatic_model.jl")
 
 #####
 ##### Time-stepping NonhydrostaticModels
@@ -28,7 +28,7 @@ fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers)
 prognostic_fields(model::NonhydrostaticModel) = fields(model)
 
 include("update_hydrostatic_pressure.jl")
-include("update_incompressible_model_state.jl")
+include("update_nonhydrostatic_model_state.jl")
 include("pressure_correction.jl")
 include("velocity_and_tracer_tendencies.jl")
 include("calculate_tendencies.jl")
