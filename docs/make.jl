@@ -93,7 +93,7 @@ physics_pages = [
     "Coordinate system and notation" => "physics/notation.md",
     "Boussinesq approximation" => "physics/boussinesq.md",
     "`NonhydrostaticModel`" => [
-        "Incompressible model" => "physics/nonhydrostatic_model.md",
+        "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
         ],
     "`HydrostaticFreeSurfaceModel`" => [
         "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md"
