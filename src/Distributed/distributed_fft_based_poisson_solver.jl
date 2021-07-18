@@ -1,6 +1,7 @@
 import PencilFFTs
 
-import Oceananigans.Solvers: poisson_eigenvalues, solve_poisson_equation!
+import Oceananigans.Solvers: poisson_eigenvalues, solve!
+using Oceananigans.Solvers: copy_real_component!
 
 struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S}
               plan :: P
@@ -30,6 +31,7 @@ function DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
     return DistributedFFTBasedPoissonSolver(plan, full_grid, local_grid, eigenvalues, storage)
 end
 
+#=
 function solve_poisson_equation!(solver::DistributedFFTBasedPoissonSolver)
     λx, λy, λz = solver.eigenvalues
 
@@ -51,4 +53,33 @@ function solve_poisson_equation!(solver::DistributedFFTBasedPoissonSolver)
     solver.plan \ solver.storage
 
     return nothing
+end
+=#
+
+function solve!(x, solver::DistributedFFTBasedPoissonSolver, b, r=0)
+    λx, λy, λz = solver.eigenvalues
+
+    # Apply forward transforms.
+    solver.plan * solver.storage
+
+    # Solve the discrete Poisson equation, storing the solution
+    # temporarily in xc and later extracting the real part into 
+    # the solution, x.
+    xc = solver.storage[2]
+    @. xc = - b / (λx + λy + λz - r)
+
+    # Setting DC component of the solution (the mean) to be zero. This is also
+    # necessary because the source term to the Poisson equation has zero mean
+    # and so the DC component comes out to be ∞.
+    if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+        xc[1, 1, 1] = 0
+    end
+
+    # Apply backward transforms.
+    solver.plan \ solver.storage
+
+    copy_event = launch!(arch, grid, :xyz, copy_real_component!, x, xc, dependencies=device_event(arch))
+    wait(device(arch), copy_event)
+
+    return x
 end

@@ -1,3 +1,5 @@
+using Oceananigans.Architectures: device_event
+
 struct FFTBasedPoissonSolver{A, G, Λ, S, B, T}
     architecture :: A
             grid :: G
@@ -32,24 +34,29 @@ function FFTBasedPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
 end
 
 """
-    solve_poisson_equation!(solver)
+    solve!(x, poisson_solver, b, r=0)
 
-Solves Poisson's equation ∇²ϕ = RHS where `RHS = solver.storage` using periodic or staggered
-Neumann boundary conditions as determined by the `solver.grid`. `solver.storage` will be mutated
-to contain the solution.
+Solves the "screened" poisson equation
+
+```math
+(∇² + r) ϕ = b
+```
+
+using periodic or Neumann boundary conditions.
 """
-function solve_poisson_equation!(solver::FFTBasedPoissonSolver)
+function solve!(x, solver::FFTBasedPoissonSolver, b, r=0)
+    arch = solver.architecture
     topo = TX, TY, TZ = topology(solver.grid)
     λx, λy, λz = solver.eigenvalues
 
-    # We can use the same storage for the RHS and the solution ϕ.
-    RHS = ϕ = solver.storage
+    # Temporarily store the solution in xc
+    xc = solver.storage
 
     # Apply forward transforms in order
-    [transform!(RHS, solver.buffer) for transform! in solver.transforms.forward]
+    [transform!(b, solver.buffer) for transform! in solver.transforms.forward]
 
     # Solve the discrete Poisson equation.
-    @. ϕ = -RHS / (λx + λy + λz)
+    @. xc = - b / (λx + λy + λz - r)
 
     # Set the volume mean of the solution to be zero.
     # λx[1, 1, 1] + λy[1, 1, 1] + λz[1, 1, 1] = 0 so if ϕ[1, 1, 1] = 0 we get NaNs
@@ -60,10 +67,18 @@ function solve_poisson_equation!(solver::FFTBasedPoissonSolver)
     # unique up to a constant (the global mean of the solution), so we need to pick
     # a constant. ϕ[1, 1, 1] = 0 chooses the constant to be zero so that the solution
     # has zero-mean.
-    CUDA.@allowscalar ϕ[1, 1, 1] = 0
+    CUDA.@allowscalar xc[1, 1, 1] = 0
 
     # Apply backward transforms in order
-    [transform!(ϕ, solver.buffer) for transform! in solver.transforms.backward]
+    [transform!(xc, solver.buffer) for transform! in solver.transforms.backward]
 
-    return nothing
+    copy_event = launch!(arch, solver.grid, :xyz, copy_real_component!, x, xc, dependencies=device_event(arch))
+    wait(device(arch), copy_event)
+
+    return x
+end
+
+@kernel function copy_real_component!(x, xc)
+    i, j, k = @index(Global, NTuple)
+    @inbounds x[i, j, k] = real(xc[i, j, k])
 end

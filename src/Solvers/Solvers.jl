@@ -1,10 +1,8 @@
 module Solvers
 
 export
-    BatchedTridiagonalSolver, solve!,
+    BatchedTridiagonalSolver, solve!, solve_for_pressure!,
     FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, PreconditionedConjugateGradientSolver, PressureSolver,
-    solve_for_pressure!, solve_poisson_equation!
-
 
 using Statistics
 using FFTW

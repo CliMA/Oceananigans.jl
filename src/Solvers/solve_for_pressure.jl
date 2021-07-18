@@ -1,58 +1,53 @@
 using Oceananigans.Operators
-
-function solve_for_pressure!(pressure, solver, arch, grid, Δt, U★)
-    
-    calculate_pressure_right_hand_side!(solver, arch, grid, Δt, U★)
-    
-    solve_poisson_equation!(solver)
-
-    copy_pressure!(pressure, solver, arch, grid)
-    
-    return nothing
-end
+using Oceananigans.Architectures: device_event
 
 #####
 ##### Calculate the right-hand-side of the Poisson equation for the non-hydrostatic pressure.
 #####
 
-@kernel function calculate_pressure_source_term_fft_based_solver!(RHS, grid, Δt, U★)
+@kernel function calculate_pressure_source_term_fft_based_solver!(rhs, grid, Δt, U★)
     i, j, k = @index(Global, NTuple)
-
-    @inbounds RHS[i, j, k] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+    @inbounds rhs[i, j, k] = divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
 end
 
-source_term_storage(solver::FFTBasedPoissonSolver) = solver.storage
-source_term_storage(solver::FourierTridiagonalPoissonSolver) = solver.source_term
+@kernel function calculate_pressure_source_term_fourier_tridiagonal_solver!(rhs, grid, Δt, U★)
+    i, j, k = @index(Global, NTuple)
+    @inbounds rhs[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+end
 
-source_term_kernel(::FFTBasedPoissonSolver) = calculate_pressure_source_term_fft_based_solver!
-source_term_kernel(::FourierTridiagonalPoissonSolver) = calculate_pressure_source_term_fourier_tridiagonal_solver!
+#####
+##### Solve for pressure
+#####
 
-function calculate_pressure_right_hand_side!(solver, arch, grid, Δt, U★)
-    RHS = source_term_storage(solver)
-    rhs_event = launch!(arch, grid, :xyz, source_term_kernel(solver), RHS, grid, Δt, U★,
-                        dependencies = Event(device(arch)))
-
-    wait(device(arch), rhs_event)
-
+function solve_for_pressure!(pressure, solver, Δt, U★)
+    rhs = calculate_pressure_poisson_rhs!(solver, Δt, U★)
+    solve!(pressure, solver, rhs)
     return nothing
 end
 
-#####
-##### Copy the non-hydrostatic pressure into `p` from the pressure solver.
-#####
+function calculate_pressure_poisson_rhs!(solver::FFTBasedPoissonSolver, Δt, U★)
+    rhs = solver.storage
+    arch = solver.architecture
+    grid = solver.grid
 
-@kernel function copy_pressure_kernel!(p, ϕ)
-    i, j, k = @index(Global, NTuple)
+    rhs_event = launch!(arch, grid, :xyz, calculate_pressure_source_term_fft_based_solver!,
+                        rhs, grid, Δt, U★, dependencies = device_event(arch))
 
-    @inbounds p[i, j, k] = real(ϕ[i, j, k])
+    wait(device(arch), rhs_event)
+
+    return rhs
 end
 
-solution_storage(solver) = solver.storage
+function calculate_pressure_poisson_rhs!(solver::FourierTridiagonalPoissonSolver, Δt, U★)
+    rhs = solver.source_term
+    arch = solver.architecture
+    grid = solver.grid
 
-function copy_pressure!(p, solver, arch, grid)
-    ϕ = solution_storage(solver)
-    copy_event = launch!(arch, grid, :xyz, copy_pressure_kernel!, p, ϕ,
-                         dependencies = Event(device(arch)))
+    rhs_event = launch!(arch, grid, :xyz, calculate_pressure_source_term_fourier_tridiagonal_solver!,
+                        rhs, grid, Δt, U★, dependencies = device_event(arch))
 
-    wait(device(arch), copy_event)
+    wait(device(arch), rhs_event)
+
+    return rhs
 end
+

@@ -17,7 +17,7 @@ function calculate_pressure_correction!(model::IncompressibleModel, Δt)
 
     fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model))
 
-    solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, model.architecture, model.grid, Δt, model.velocities)
+    solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, Δt, model.velocities)
 
     fill_halo_regions!(model.pressures.pNHS, model.architecture)
 
