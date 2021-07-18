@@ -65,7 +65,8 @@ end
       immersed_boundary = nothing
     )
 
-Construct an incompressible `Oceananigans.jl` model on `grid`.
+Construct a model for a non-hydrostatic, incompressible fluid, using the Boussinesq approximation
+when `buoyancy != nothing`. By default, all Bounded directions are rigid and impenetrable.
 
 Keyword arguments
 =================
