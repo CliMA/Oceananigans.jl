@@ -27,18 +27,18 @@ Rz = parse(Int, ARGS[7])
 
 @assert Rx * Ry * Rz == R
 
-@info "Setting up distributed incompressible model with N=($Nx, $Ny, $Nz) grid points and ranks=($Rx, $Ry, $Rz) ($decomposition decomposition) on rank $local_rank..."
+@info "Setting up distributed nonhydrostatic model with N=($Nx, $Ny, $Nz) grid points and ranks=($Rx, $Ry, $Rz) ($decomposition decomposition) on rank $local_rank..."
 
 topo = (Periodic, Periodic, Periodic)
 distributed_grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
 arch = MultiCPU(grid=distributed_grid, ranks=(Rx, Ry, Rz))
 model = DistributedNonhydrostaticModel(architecture=arch, grid=distributed_grid)
 
-@info "Warming up distributed incompressible model on rank $local_rank..."
+@info "Warming up distributed nonhydrostatic model on rank $local_rank..."
 
 time_step!(model, 1) # warmup
 
-@info "Benchmarking distributed incompressible model on rank $local_rank..."
+@info "Benchmarking distributed nonhydrostatic model on rank $local_rank..."
 
 trial = @benchmark begin
     @sync_gpu time_step!($model, 1)

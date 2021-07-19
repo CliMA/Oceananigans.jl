@@ -1,4 +1,4 @@
-# Incompressible model
+# Nonhydrostatic model
 
 The `NonhydrostaticModel` solves the incompressible Navier-Stokes equations under the Boussinesq
 approximation and an arbitrary number of tracer conservation equations.

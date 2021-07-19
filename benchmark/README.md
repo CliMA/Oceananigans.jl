@@ -22,5 +22,5 @@ The `benchmark_multithreading.jl` script will benchmark multithreaded CPU models
 
 ## Measuring performance regression
 
-Running the `benchmark_regression.jl` script will run the incompressible model tests on the current branch and on the master branch for comparison. This is useful to test whether the current branch slows down the code or introduces any performance regression.
+Running the `benchmark_regression.jl` script will run the nonhydrostatic model tests on the current branch and on the master branch for comparison. This is useful to test whether the current branch slows down the code or introduces any performance regression.
 

@@ -23,7 +23,7 @@ print_system_info()
 for R in ranks
     Nx, Ny, Nz = grid_size(R, decomposition)
     Rx, Ry, Rz = rank_size(R, decomposition)
-    @info "Benchmarking distributed incompressible model strong scaling with $(typeof(decomposition)) decomposition [N=($Nx, $Ny, $Nz), ranks=($Rx, $Ry, $Rz)]..."
+    @info "Benchmarking distributed nonhydrostatic model strong scaling with $(typeof(decomposition)) decomposition [N=($Nx, $Ny, $Nz), ranks=($Rx, $Ry, $Rz)]..."
     julia = Base.julia_cmd()
     run(`mpiexec -np $R $julia --project strong_scaling_nonhydrostatic_model_single.jl $(typeof(decomposition)) $Nx $Ny $Nz $Rx $Ry $Rz`)
 end
@@ -67,22 +67,22 @@ for i in 1:plot_num
 end
 
 plt = plot(rank_num, run_times, lw=4, xaxis=:log2, legend=:none,
-          xlabel="Cores", ylabel="Times (ms)", title="Strong Scaling Incompressible Times")
+          xlabel="Cores", ylabel="Times (ms)", title="Strong Scaling Nonhydrostatic Times")
 display(plt)
 savefig(plt, "ss_nonhydrostatic_times.png")
 
 
 plt2 = plot(rank_num, eff_ratio, lw=4, xaxis=:log2, legend=:none, ylims=(0,1.1),
-            xlabel="Cores", ylabel="Efficiency", title="Strong Scaling Incompressible Efficiency")
+            xlabel="Cores", ylabel="Efficiency", title="Strong Scaling Nonhydrostatic Efficiency")
 display(plt2)
 savefig(plt2, "ss_nonhydrostatic_efficiency.png")
 
 df = benchmarks_dataframe(suite)
 sort!(df, :ranks)
-benchmarks_pretty_table(df, title="Incompressible model strong scaling benchmark")
+benchmarks_pretty_table(df, title="Nonhydrostatic model strong scaling benchmark")
 
 base_case = (grid_size(1, decomposition), rank_size(1, decomposition))
 suite_Δ = speedups_suite(suite, base_case=base_case)
 df_Δ = speedups_dataframe(suite_Δ, efficiency=:strong, base_case=base_case, key2rank=k->prod(k[2]))
 sort!(df_Δ, :ranks)
-benchmarks_pretty_table(df_Δ, title="Incompressible model strong scaling speedup")
+benchmarks_pretty_table(df_Δ, title="Nonhydrostatic model strong scaling speedup")

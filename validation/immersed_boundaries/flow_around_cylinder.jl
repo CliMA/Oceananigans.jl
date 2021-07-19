@@ -31,7 +31,7 @@ v_bcs = VVelocityBoundaryConditions(grid,
                                     north = OpenBoundaryCondition(1),
                                     south = OpenBoundaryCondition(1))
 
-# setting up incompressible model with immersed boundary
+# setting up nonhydrostatic model with immersed boundary
 model = NonhydrostaticModel(timestepper = :RungeKutta3, 
                               advection = UpwindBiasedFifthOrder(),
                                    grid = grid,
