@@ -1,5 +1,3 @@
-using Oceananigans.Solvers
-
 using Oceananigans.ImmersedBoundaries: mask_immersed_velocities!, mask_immersed_field!
 
 import Oceananigans.TimeSteppers: calculate_pressure_correction!, pressure_correct_velocities!
@@ -50,7 +48,7 @@ function pressure_correct_velocities!(model::IncompressibleModel, Δt)
                     model.grid,
                     Δt,
                     model.pressures.pNHS,
-                    dependencies=Event(device(model.architecture))) 
+                    dependencies = device_event(model.architecture)) 
 
     wait(device(model.architecture), event)
 

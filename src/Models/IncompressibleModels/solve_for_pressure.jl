@@ -1,8 +1,9 @@
 using Oceananigans.Operators
+using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, solve!
 using Oceananigans.Architectures: device_event
 
 #####
-##### Calculate the right-hand-side of the Poisson equation for the non-hydrostatic pressure.
+##### Calculate the right-hand-side of the non-hydrostatic pressure Poisson equation.
 #####
 
 @kernel function calculate_pressure_source_term_fft_based_solver!(rhs, grid, Δt, U★)

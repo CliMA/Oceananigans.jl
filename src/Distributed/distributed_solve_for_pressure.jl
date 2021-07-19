@@ -1,6 +1,5 @@
-using Oceananigans.Solvers: calculate_pressure_source_term_fft_based_solver!
-
-import Oceananigans.Solvers: solve_for_pressure!
+using Oceananigans.Models.IncompressibleModels: calculate_pressure_source_term_fft_based_solver!
+import Oceananigans.Models.IncompressibleModels: solve_for_pressure!
 
 function solve_for_pressure!(pressure, solver::DistributedFFTBasedPoissonSolver, Δt, U★)
     rhs = first(solver.storage)
