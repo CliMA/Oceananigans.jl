@@ -15,20 +15,27 @@
 # using Pkg
 # pkg"add Oceananigans, JLD2, Plots"
 # ```
-
-# ## A one-dimensional domain
-#
-# We use a one-dimensional domain of geophysical proportions,
+# 
+# The HydrostaticFreeSurfaceModel is still "experimental". This means some of its features
+# are not exported, such as the ImplicitFreeSurface, and must be brought into scope manually:
 
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
 
-grid = RegularRectilinearGrid(size = (64, 1, 1),
-                              x = (0, 1000kilometers), y = (0, 1), z = (-400meters, 0),
-                              topology = (Bounded, Periodic, Bounded))
+# ## A one-dimensional domain
+#
+# We use a one-dimensional domain of geophysical proportions,
 
-# and Coriolis parameter appropriate for the mid-latitudes on Earth,
+grid = RegularRectilinearGrid(size = (128, 1),
+                              x = (0, 1000kilometers), z = (-400meters, 0),
+                              topology = (Bounded, Flat, Bounded))
+
+# !!! note
+#   We always have to include the z-direction for `HydrostaticFreeSurfaceModel`, even if
+#   the model is "barotropic" with just one grid point in z.
+#
+# We deploy a Coriolis parameter appropriate for the mid-latitudes on Earth,
 
 coriolis = FPlane(f=1e-4)
 

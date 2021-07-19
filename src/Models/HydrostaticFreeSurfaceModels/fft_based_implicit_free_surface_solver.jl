@@ -1,5 +1,5 @@
 using Oceananigans.Grids
-using Oceananigans.Grids: all_x_nodes, all_y_nodes
+using Oceananigans.Grids: x_domain, y_domain
 using Oceananigans.Solvers
 using Oceananigans.Operators
 using Oceananigans.Architectures
@@ -25,17 +25,31 @@ function FFTBasedImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, set
     grid isa RegularRectilinearGrid || grid isa VerticallyStretchedRectilinearGrid ||
         throw(ArgumentError("FFTBasedImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
 
-    topo = topology(grid)
-    x = all_x_nodes(Face, grid)
-    y = all_y_nodes(Face, grid)
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
-    
-    horizontal_grid = RegularRectilinearGrid(topology = (topo[1], topo[2], Flat),
-                                             size = (grid.Nx, grid.Ny),
-                                             x = (x[1], x[Nx+1]),
-                                             y = (y[1], y[Ny+1]),
-                                             halo = (Hx, Hy))
+    # Construct a "horizontal grid". We support either x or y being Flat, but not both.
+    TX, TY, TZ = topology(grid)
+    sz = Nx, Ny = (grid.Nx, grid.Ny)
+    halo = (grid.Hx, grid.Hy)
+
+    domain = (x = x_domain(grid),
+              y = y_domain(grid))
+
+    # Reduce kwargs.
+    # Either [1, 2], [1], or [2]
+    nonflat_dims = findall(T -> !(T() isa Flat), (TX, TY))
+
+    sz = Tuple(sz[i] for i in nonflat_dims)
+    halo = Tuple(halo[i] for i in nonflat_dims)
+    domain = NamedTuple((:x, :y)[i] => domain[i] for i in nonflat_dims)
+
+    # Build a "horizontal grid" with a Flat vertical direction.
+    # Even if the three dimensional grid is vertically stretched, we can only use
+    # FFTBasedImplicitFreeSurfaceSolver with grids that are regularly spaced in the
+    # horizontal direction.
+    #
+    horizontal_grid = RegularRectilinearGrid(; topology = (TX, TY, Flat),
+                                               size = sz,
+                                               halo = halo,
+                                               domain...)
 
     solver = FFTBasedPoissonSolver(arch, horizontal_grid)
     right_hand_side = solver.storage
