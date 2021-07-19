@@ -24,7 +24,7 @@ g̃ = (0, sind(θ), cosd(θ))
 
 buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃)
 
-model = IncompressibleModel(grid=grid, buoyancy=buoyancy, tracers=:b)
+model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=:b)
 ```
 """
 function Buoyancy(; model, vertical_unit_vector=ZDirection())

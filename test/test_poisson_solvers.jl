@@ -185,14 +185,12 @@ end
 PB = (Periodic, Bounded)
 topos = collect(Iterators.product(PB, PB, PB))[:]
 
-two_dimensional_topologies = [
-                              (Flat,     Bounded,  Bounded),
+two_dimensional_topologies = [(Flat,     Bounded,  Bounded),
                               (Bounded,  Flat,     Bounded),
                               (Bounded,  Bounded,  Flat),
                               (Flat,     Periodic, Bounded),
                               (Periodic, Flat,     Bounded),
-                              (Periodic, Bounded,  Flat),
-                             ]
+                              (Periodic, Bounded,  Flat)]
 
 @testset "Poisson solvers" begin
     @info "Testing Poisson solvers..."
@@ -202,12 +200,10 @@ two_dimensional_topologies = [
             @info "  Testing Poisson solver instantiation [$(typeof(arch))]..."
             for FT in float_types
 
-                grids_3d = [
-                            RegularRectilinearGrid(FT, size=(2, 2, 2), extent=(1, 1, 1)),
+                grids_3d = [RegularRectilinearGrid(FT, size=(2, 2, 2), extent=(1, 1, 1)),
                             RegularRectilinearGrid(FT, size=(1, 2, 2), extent=(1, 1, 1)),
                             RegularRectilinearGrid(FT, size=(2, 1, 2), extent=(1, 1, 1)),
-                            RegularRectilinearGrid(FT, size=(2, 2, 1), extent=(1, 1, 1))
-                           ]
+                            RegularRectilinearGrid(FT, size=(2, 2, 1), extent=(1, 1, 1))]
 
                 grids_2d = [RegularRectilinearGrid(FT, size=(2, 2), extent=(1, 1), topology=topo)
                             for topo in two_dimensional_topologies]
@@ -229,12 +225,10 @@ two_dimensional_topologies = [
             for topo in topos
                 for N in [7, 16]
 
-                    grids_3d = [
-                                RegularRectilinearGrid(topology=topo, size=(N, N, N), extent=(1, 1, 1)),
+                    grids_3d = [RegularRectilinearGrid(topology=topo, size=(N, N, N), extent=(1, 1, 1)),
                                 RegularRectilinearGrid(topology=topo, size=(1, N, N), extent=(1, 1, 1)),
                                 RegularRectilinearGrid(topology=topo, size=(N, 1, N), extent=(1, 1, 1)),
-                                RegularRectilinearGrid(topology=topo, size=(N, N, 1), extent=(1, 1, 1))
-                               ]
+                                RegularRectilinearGrid(topology=topo, size=(N, N, 1), extent=(1, 1, 1))]
 
                     grids_2d = [RegularRectilinearGrid(size=(N, N), extent=(1, 1), topology=topo)
                                 for topo in two_dimensional_topologies]
@@ -260,7 +254,7 @@ two_dimensional_topologies = [
 
             # Do a couple at Float32 (since its too expensive to repeat all tests...)
             Float32_grids = [RegularRectilinearGrid(Float32, topology=(Periodic, Bounded, Bounded), size=(16, 16, 16), extent=(1, 1, 1)),
-                     RegularRectilinearGrid(Float32, topology=(Bounded, Bounded, Periodic), size=(7, 11, 13), extent=(1, 1, 1))]
+                             RegularRectilinearGrid(Float32, topology=(Bounded, Bounded, Periodic), size=(7, 11, 13), extent=(1, 1, 1))]
 
             for grid in Float32_grids
                 @test divergence_free_poisson_solution(arch, grid)
@@ -282,11 +276,10 @@ two_dimensional_topologies = [
         (Periodic, Bounded,  Bounded),
         (Bounded,  Periodic, Bounded),
         (Bounded,  Bounded,  Bounded),
-    # Note: FourierTridiagonalPoissonSolver doesn't appear to work with Flat
-    #    (Flat,     Bounded,  Bounded),
-    #    (Flat,     Periodic, Bounded),
-    #    (Bounded,  Flat,     Bounded),
-    #    (Periodic, Flat,     Bounded)
+        (Flat,     Bounded,  Bounded),
+        (Flat,     Periodic, Bounded),
+        (Bounded,  Flat,     Bounded),
+        (Periodic, Flat,     Bounded)
     ]
 
     for arch in archs, topo in vs_topos

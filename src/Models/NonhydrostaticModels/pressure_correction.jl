@@ -3,11 +3,11 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_velocities!, mask_immersed_
 import Oceananigans.TimeSteppers: calculate_pressure_correction!, pressure_correct_velocities!
 
 """
-    calculate_pressure_correction!(model::IncompressibleModel, Δt)
+    calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
 
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
-function calculate_pressure_correction!(model::IncompressibleModel, Δt)
+function calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
 
     # Mask immersed velocities
     velocity_masking_events = mask_immersed_velocities!(model.velocities, model.architecture, model.grid)
@@ -40,7 +40,7 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure vi
 end
 
 "Update the solution variables (velocities and tracers)."
-function pressure_correct_velocities!(model::IncompressibleModel, Δt)
+function pressure_correct_velocities!(model::NonhydrostaticModel, Δt)
 
     event = launch!(model.architecture, model.grid, :xyz,
                     _pressure_correct_velocities!,

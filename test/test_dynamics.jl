@@ -9,7 +9,7 @@ end
 
 function test_diffusion_simple(fieldname, timestepper, time_discretization)
 
-    model = IncompressibleModel(timestepper = timestepper,
+    model = NonhydrostaticModel(timestepper = timestepper,
                                        grid = RegularRectilinearGrid(size=(1, 1, 16), extent=(1, 1, 1)),
                                     closure = IsotropicDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
                                    coriolis = nothing,
@@ -69,7 +69,7 @@ end
 function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization)
     κ, m = 1, 2 # diffusivity and cosine wavenumber
 
-    model = IncompressibleModel(timestepper = timestepper,
+    model = NonhydrostaticModel(timestepper = timestepper,
                                        grid = grid,
                                     closure = IsotropicDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
                                    buoyancy = nothing)
@@ -91,67 +91,6 @@ function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization
     analytical = diffusing_cosine.(κ, m, zC, model.clock.time)
 
     return !any(@. !isapprox(numerical, analytical, atol=1e-6, rtol=1e-6))
-end
-
-function internal_wave_test(timestepper; N=128, Nt=10, background_stratification=false)
-    # Internal wave parameters
-     ν = κ = 1e-9
-     L = 2π
-    z₀ = -L/3
-     δ = L/20
-    a₀ = 1e-3
-     m = 16
-     k = 1
-     f = 0.2
-     ℕ = 1.0
-     σ = sqrt( (ℕ^2*k^2 + f^2*m^2) / (k^2 + m^2) )
-
-    # Numerical parameters
-     N = 128
-    Δt = 0.01 * 1/σ
-
-    cᵍ = m * σ / (k^2 + m^2) * (f^2/σ^2 - 1)
-     U = a₀ * k * σ   / (σ^2 - f^2)
-     V = a₀ * k * f   / (σ^2 - f^2)
-     W = a₀ * m * σ   / (σ^2 - ℕ^2)
-     B = a₀ * m * ℕ^2 / (σ^2 - ℕ^2)
-
-    a(x, y, z, t) = exp( -(z - cᵍ*t - z₀)^2 / (2*δ)^2 )
-
-    u(x, y, z, t) = a(x, y, z, t) * U * cos(k*x + m*z - σ*t)
-    v(x, y, z, t) = a(x, y, z, t) * V * sin(k*x + m*z - σ*t)
-    w(x, y, z, t) = a(x, y, z, t) * W * cos(k*x + m*z - σ*t)
-
-    b(x, y, z, t) = ℕ^2 * z + a(x, y, z, t) * B * sin(k*x + m*z - σ*t)
-    background_fields = NamedTuple()
-
-    if background_stratification # Move stratification to a background field
-        b(x, y, z, t) = a(x, y, z, t) * B * sin(k*x + m*z - σ*t)
-        background_b(x, y, z, t) = ℕ^2 * z
-        background_fields = (b=background_b,)
-    end
-
-    u₀(x, y, z) = u(x, y, z, 0)
-    v₀(x, y, z) = v(x, y, z, 0)
-    w₀(x, y, z) = w(x, y, z, 0)
-    b₀(x, y, z) = b(x, y, z, 0)
-
-    model = IncompressibleModel(timestepper = timestepper,
-                                       grid = RegularRectilinearGrid(size=(N, 1, N), extent=(L, L, L)),
-                                    closure = IsotropicDiffusivity(ν=ν, κ=κ),
-                                   buoyancy = BuoyancyTracer(),
-                          background_fields = background_fields,
-                                    tracers = :b,
-                                   coriolis = FPlane(f=f))
-
-    set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
-
-    for n in 1:Nt
-        ab2_or_rk3_time_step!(model, Δt, n)
-    end
-
-    # Tolerance was found by trial and error...
-    return relative_error(model.velocities.u, u, model.clock.time) < 1e-4
 end
 
 function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, background_velocity_field=false)
@@ -177,7 +116,7 @@ function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, bac
 
     grid = RegularRectilinearGrid(size=(N, N, 2), extent=(L, L, L))
     closure = IsotropicDiffusivity(ν=κ, κ=κ)
-    model = IncompressibleModel(timestepper=timestepper, grid=grid, closure=closure,
+    model = NonhydrostaticModel(timestepper=timestepper, grid=grid, closure=closure,
                                 background_fields=background_fields)
 
     set!(model, u=u₀, v=v₀, T=T₀)
@@ -209,7 +148,7 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
     @inline u(x, y, z, t) = -sin(2π*y) * exp(-4π^2 * ν * t)
     @inline v(x, y, z, t) =  sin(2π*x) * exp(-4π^2 * ν * t)
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
         architecture = arch,
          timestepper = timestepper,
                 grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
@@ -258,7 +197,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     z_bc = GradientBoundaryCondition(N² * g̃[3])
     b_bcs = FieldBoundaryConditions(bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
                architecture = arch,
                        grid = grid,
                    buoyancy = buoyancy,
@@ -314,7 +253,7 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     z_bc = GradientBoundaryCondition(∂T∂z * g̃[3])
     T_bcs = FieldBoundaryConditions(bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
                architecture = arch,
                        grid = grid,
                    buoyancy = buoyancy,
@@ -396,7 +335,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                         grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
 
-                        model = IncompressibleModel(timestepper = timestepper,
+                        model = NonhydrostaticModel(timestepper = timestepper,
                                                            grid = grid,
                                                         closure = closure,
                                                         tracers = :c,
@@ -432,7 +371,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
                 grid = RegularRectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
 
-                model = IncompressibleModel(timestepper = timestepper,
+                model = NonhydrostaticModel(timestepper = timestepper,
                                                    grid = grid,
                                                 closure = AnisotropicBiharmonicDiffusivity(νh=1, νz=1, κh=1, κz=1),
                                                coriolis = nothing,
@@ -474,9 +413,60 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "Internal wave" begin
-        for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            @info "  Testing internal wave [$timestepper]..."
-            @test internal_wave_test(timestepper)
+        include("test_internal_wave_dynamics.jl")
+
+        Nx = Nz = 128
+        Lx = Lz = 2π
+
+        # Regular grid with no flat dimension
+        y_periodic_regular_grid = RegularRectilinearGrid(topology=(Periodic, Periodic, Bounded),
+                                                         size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
+
+        # Regular grid with a flat y-dimension
+        y_flat_regular_grid = RegularRectilinearGrid(topology=(Periodic, Flat, Bounded),
+                                                     size=(Nx, Nz), x=(0, Lx), z=(-Lz, 0))
+
+        # Vertically stretched grid with regular spacing and no flat dimension
+        z_faces = collect(znodes(Face, y_periodic_regular_grid))
+        y_periodic_regularly_spaced_vertically_stretched_grid = VerticallyStretchedRectilinearGrid(topology=(Periodic, Periodic, Bounded),
+                                                                                                   size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z_faces=z_faces)
+
+        # Vertically stretched grid with regular spacing and no flat dimension
+        y_flat_regularly_spaced_vertically_stretched_grid = VerticallyStretchedRectilinearGrid(topology=(Periodic, Flat, Bounded),
+                                                                                               size=(Nx, Nz), x=(0, Lx), z_faces=z_faces)
+
+        solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=false)
+
+        test_grids = (y_periodic_regular_grid,
+                      y_flat_regular_grid,
+                      y_periodic_regularly_spaced_vertically_stretched_grid,
+                      y_flat_regularly_spaced_vertically_stretched_grid)
+
+        @testset "Internal wave with HydrostaticFreeSurfaceModel" begin
+            for grid in test_grids
+                grid_name = typeof(grid).name.wrapper
+                topo = topology(grid)
+
+                # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
+                g = (10σ)^2 / Lx
+
+                model = HydrostaticFreeSurfaceModel(; free_surface=ImplicitFreeSurface(gravitational_acceleration=g), grid=grid, kwargs...)
+
+                @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo]..."
+                internal_wave_dynamics_test(model, solution, Δt)
+            end
+        end
+
+        @testset "Internal wave with NonhydrostaticModel" begin
+            for grid in test_grids
+                grid_name = typeof(grid).name.wrapper
+                topo = topology(grid)
+
+                model = NonhydrostaticModel(; grid=grid, kwargs...)
+
+                @info "  Testing internal wave [NonhydrostaticModel, $grid_name, $topo]..."
+                internal_wave_dynamics_test(model, solution, Δt)
+            end
         end
     end
 
@@ -494,7 +484,18 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
             @info "  Testing dynamics with background fields [$timestepper]..."
             @test_skip passive_tracer_advection_test(timestepper, background_velocity_field=true)
-            @test internal_wave_test(timestepper, background_stratification=true)
+                        
+            Nx = Nz = 128
+            Lx = Lz = 2π
+
+            # Regular grid with no flat dimension
+            y_periodic_regular_grid = RegularRectilinearGrid(topology=(Periodic, Periodic, Bounded),
+                                                             size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
+                        
+            solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=true)
+
+            model = NonhydrostaticModel(; grid=y_periodic_regular_grid, background_fields=background_fields, kwargs...)
+            internal_wave_dynamics_test(model, solution, Δt)
         end
     end
 

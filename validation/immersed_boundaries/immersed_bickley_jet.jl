@@ -42,7 +42,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
                                   x = (-2π, 2π), y=(-2π, 2π),
                                   topology = (Periodic, Bounded, Flat))
 
-    regular_model = IncompressibleModel(architecture = arch,
+    regular_model = NonhydrostaticModel(architecture = arch,
                                         advection = advection,
                                         timestepper = :RungeKutta3,
                                         grid = grid,
@@ -60,7 +60,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
 
     immersed_grid = ImmersedBoundaryGrid(expanded_grid, GridFittedBoundary(solid))
 
-    immersed_model = IncompressibleModel(architecture = arch,
+    immersed_model = NonhydrostaticModel(architecture = arch,
                                          advection = advection,
                                          timestepper = :RungeKutta3,
                                          grid = immersed_grid,

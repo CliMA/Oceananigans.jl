@@ -1,4 +1,5 @@
 using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
+using Oceananigans.Architectures: device_event
 
 struct FourierTridiagonalPoissonSolver{A, G, B, R, S, β, T}
                   architecture :: A
@@ -10,7 +11,7 @@ struct FourierTridiagonalPoissonSolver{A, G, B, R, S, β, T}
                     transforms :: T
 end
 
-@kernel function compute_diagonals!(D, grid, λx, λy)
+@kernel function compute_main_diagonals!(D, grid, λx, λy)
     i, j = @index(Global, NTuple)
     Nz = grid.Nz
 
@@ -28,11 +29,6 @@ function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
     TX, TY, TZ = topology(grid)
     TZ != Bounded && error("FourierTridiagonalPoissonSolver can only be used with a Bounded z topology.")
 
-    if grid isa VerticallyStretchedRectilinearGrid && any([T() isa Flat for T in (TX, TY)])
-        @warn "FourierTridiagonalPoissonSolver is probably wrong for topologies that contain " *
-              "Flat dimensions."
-    end
-
     Nx, Ny, Nz = size(grid)
 
     # Compute discrete Poisson eigenvalues
@@ -47,15 +43,13 @@ function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
     transforms = plan_transforms(arch, grid, sol_storage, planner_flag)
 
     # Lower and upper diagonals are the same
-    CUDA.allowscalar(true)
     lower_diagonal = CUDA.@allowscalar [1 / Δzᵃᵃᶠ(1, 1, k, grid) for k in 2:Nz]
     lower_diagonal = arch_array(arch, lower_diagonal)
     upper_diagonal = lower_diagonal
-    CUDA.allowscalar(false)
 
     # Compute diagonal coefficients for each grid point
     diagonal = arch_array(arch, zeros(Nx, Ny, Nz))
-    event = launch!(arch, grid, :xy, compute_diagonals!, diagonal, grid, λx, λy, dependencies=device_event(arch))
+    event = launch!(arch, grid, :xy, compute_main_diagonals!, diagonal, grid, λx, λy, dependencies=device_event(arch))
     wait(device(arch), event)
 
     # Set up batched tridiagonal solver
@@ -65,7 +59,7 @@ function FourierTridiagonalPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
                                         upper_diagonal = upper_diagonal)
 
     # Need buffer for index permutations and transposes.
-    buffer_needed = arch isa GPU && Bounded in (TX, TY) ? true : false
+    buffer_needed = arch isa GPU && Bounded in (TX, TY)
     buffer = buffer_needed ? similar(sol_storage) : nothing
 
     # Storage space for right hand side of Poisson equation

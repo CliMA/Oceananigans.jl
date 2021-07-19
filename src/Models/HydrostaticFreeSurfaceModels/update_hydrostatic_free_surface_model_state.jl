@@ -2,7 +2,7 @@ using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
-using Oceananigans.Models.IncompressibleModels: update_hydrostatic_pressure!
+using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
 import Oceananigans.TimeSteppers: update_state!
 

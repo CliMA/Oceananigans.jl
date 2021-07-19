@@ -6,7 +6,7 @@ using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: AbstractField, FunctionField
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
+import Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 
 using Adapt
 

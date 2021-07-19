@@ -5,7 +5,7 @@ function time_step_with_forcing_functions(arch)
     @inline Fw(x, y, z, t) = 1.0
 
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = IncompressibleModel(grid=grid, architecture=arch, forcing=(u=Fu, v=Fv, w=Fw))
+    model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=(u=Fu, v=Fv, w=Fw))
     time_step!(model, 1, euler=true)
 
     return true
@@ -21,7 +21,7 @@ function time_step_with_discrete_forcing(arch)
     Fu = Forcing(Fu_discrete_func, discrete_form=true)
 
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = IncompressibleModel(grid=grid, architecture=arch, forcing=(u=Fu,))
+    model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=(u=Fu,))
     time_step!(model, 1, euler=true)
 
     return true
@@ -34,7 +34,7 @@ function time_step_with_parameterized_discrete_forcing(arch)
     Fw = Forcing(Fw_discrete_func, parameters=(τ=60,), discrete_form=true)
 
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = IncompressibleModel(grid=grid, architecture=arch, forcing=(v=Fv, w=Fw))
+    model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=(v=Fv, w=Fw))
     time_step!(model, 1, euler=true)
 
     return true
@@ -46,7 +46,7 @@ function time_step_with_parameterized_continuous_forcing(arch)
     u_forcing = Forcing((x, y, z, t, ω) -> sin(ω * x), parameters=π)
 
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = IncompressibleModel(grid=grid, architecture=arch, forcing=(u=u_forcing,))
+    model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=(u=u_forcing,))
     time_step!(model, 1, euler=true)
 
     return true
@@ -58,7 +58,7 @@ function time_step_with_single_field_dependent_forcing(arch, fld)
     forcing = NamedTuple{(fld,)}((Forcing((x, y, z, t, u) -> -u, field_dependencies=:u),))
 
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = IncompressibleModel(grid=grid, architecture=arch, forcing=forcing)
+    model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=forcing)
     time_step!(model, 1, euler=true)
 
     return true
@@ -70,7 +70,7 @@ function time_step_with_multiple_field_dependent_forcing(arch)
     u_forcing = Forcing((x, y, z, t, v, w, T) -> sin(v) * exp(w) * T, field_dependencies=(:v, :w, :T))
 
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = IncompressibleModel(grid=grid, architecture=arch, forcing=(u=u_forcing,))
+    model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=(u=u_forcing,))
     time_step!(model, 1, euler=true)
 
     return true
@@ -84,7 +84,7 @@ function time_step_with_parameterized_field_dependent_forcing(arch)
     u_forcing = Forcing((x, y, z, t, u, p) -> sin(p.ω * x) * u, parameters=(ω=π,), field_dependencies=:u)
 
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = IncompressibleModel(grid=grid, architecture=arch, forcing=(u=u_forcing,))
+    model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=(u=u_forcing,))
     time_step!(model, 1, euler=true)
 
     return true
@@ -101,7 +101,7 @@ function relaxed_time_stepping(arch)
                                       target = π)
 
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = IncompressibleModel(grid=grid, architecture=arch, forcing=(u=x_relax, v=y_relax, w=z_relax))
+    model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=(u=x_relax, v=y_relax, w=z_relax))
     time_step!(model, 1, euler=true)
 
     return true

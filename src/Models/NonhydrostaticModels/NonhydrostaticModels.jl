@@ -1,4 +1,4 @@
-module IncompressibleModels
+module NonhydrostaticModels
 
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
@@ -17,31 +17,31 @@ PressureSolver(arch, grid::VerticallyStretchedRectilinearGrid) = FourierTridiago
 PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.grid)
 
 #####
-##### IncompressibleModel definition
+##### NonhydrostaticModel definition
 #####
 
-include("incompressible_model.jl")
-include("show_incompressible_model.jl")
-include("set_incompressible_model.jl")
+include("nonhydrostatic_model.jl")
+include("show_nonhydrostatic_model.jl")
+include("set_nonhydrostatic_model.jl")
 
 #####
-##### Time-stepping IncompressibleModels
+##### Time-stepping NonhydrostaticModels
 #####
 
 """
-    fields(model::IncompressibleModel)
+    fields(model::NonhydrostaticModel)
 
 Returns a flattened `NamedTuple` of the fields in `model.velocities` and `model.tracers`.
 """
-fields(model::IncompressibleModel) = merge(model.velocities, model.tracers)
-prognostic_fields(model::IncompressibleModel) = fields(model)
+fields(model::NonhydrostaticModel) = merge(model.velocities, model.tracers)
+prognostic_fields(model::NonhydrostaticModel) = fields(model)
 
 include("solve_for_pressure.jl")
 include("update_hydrostatic_pressure.jl")
-include("update_incompressible_model_state.jl")
+include("update_nonhydrostatic_model_state.jl")
 include("pressure_correction.jl")
 include("velocity_and_tracer_tendencies.jl")
 include("calculate_tendencies.jl")
-include("correct_incompressible_immersed_tendencies.jl")
+include("correct_nonhydrostatic_immersed_tendencies.jl")
 
 end # module

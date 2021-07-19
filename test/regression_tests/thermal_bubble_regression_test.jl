@@ -11,7 +11,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     end
 
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
-    model = IncompressibleModel(architecture=arch, grid=grid, closure=closure, coriolis=FPlane(f=1e-4))
+    model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure, coriolis=FPlane(f=1e-4))
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     model.tracers.T.data.parent .= 9.85

@@ -2,8 +2,8 @@ using Oceananigans: short_show
 using Oceananigans.Utils: prettytime, ordered_dict_show
 
 """Show the innards of a `Model` in the REPL."""
-function Base.show(io::IO, model::IncompressibleModel{TS, C, A}) where {TS, C, A}
-    print(io, "IncompressibleModel{"*string(Base.nameof(A))*", $(eltype(model.grid))}",
+function Base.show(io::IO, model::NonhydrostaticModel{TS, C, A}) where {TS, C, A}
+    print(io, "NonhydrostaticModel{"*string(Base.nameof(A))*", $(eltype(model.grid))}",
         "(time = $(prettytime(model.clock.time)), iteration = $(model.clock.iteration)) \n",
         "├── grid: $(short_show(model.grid))\n",
         "├── tracers: $(tracernames(model.tracers))\n",
