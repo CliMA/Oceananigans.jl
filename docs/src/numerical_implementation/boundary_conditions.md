@@ -84,7 +84,7 @@ the six faces of the finite volume. The right-hand-side of \eqref{eq:dc/dt} abov
 An external boundary of a finite volume is associated with a no-penetration condition such that
 ``\hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{v} \, |_{\partial \Omega_b} = 0``, where 
 ``\hat{\boldsymbol{n}}`` is the vector normal to ``\partial \Omega_b``. Furthermore, the closures 
-currently available in \texttt{Oceananigans.jl} have the property that ``\boldsymbol{q}_c \propto \boldsymbol{\nabla} c``.
+currently available in `Oceananigans.jl` have the property that ``\boldsymbol{q}_c \propto \boldsymbol{\nabla} c``.
 Thus setting ``\hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{\nabla} c \, |_{\partial \Omega_b} = 0`` 
 on the external boundary implies that the total flux of ``c`` across the external boundary is
 ```math
