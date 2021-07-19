@@ -17,7 +17,7 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     model = HydrostaticFreeSurfaceModel(architecture = arch,
                                         grid = grid,
                                         momentum_advection = nothing,
-                                        free_surface=ImplicitFreeSurface())
+                                        free_surface = ImplicitFreeSurface())
     
     # Create a divergent velocity
     u, v, w = model.velocities
@@ -28,7 +28,7 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     implicit_free_surface_step!(model.free_surface, model, Δt, 1.5, Event(device(arch)))
 
     # Extract right hand side "truth"
-    right_hand_side = real.(model.free_surface.right_hand_side)
+    right_hand_side = real.(model.free_surface.implicit_step_solver.right_hand_side)
 
     # Compute left hand side "solution"
     g = g_Earth
