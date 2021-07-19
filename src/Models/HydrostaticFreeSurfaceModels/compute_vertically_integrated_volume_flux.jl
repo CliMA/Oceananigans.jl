@@ -27,8 +27,6 @@ function compute_vertically_integrated_volume_flux!(∫ᶻ_U, model, velocities_
     # We included right boundaries
     fill_halo_regions!(∫ᶻ_U, model.architecture, model.clock, fields(model))
 
-    wait(device(model.architecture), device_event(model.architecture))
-
     return nothing
 end
 
