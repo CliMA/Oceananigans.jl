@@ -3,7 +3,8 @@ import PencilFFTs
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 using Oceananigans.Solvers: copy_real_component!
 
-struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S}
+struct DistributedFFTBasedPoissonSolver{A, P, F, L, λ, S}
+      architecture :: A
               plan :: P
          full_grid :: F
            my_grid :: L
@@ -28,7 +29,7 @@ function DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
     plan = PencilFFTs.PencilFFTPlan(size(full_grid), transform, proc_dims, MPI.COMM_WORLD)
     storage = PencilFFTs.allocate_input(plan)
 
-    return DistributedFFTBasedPoissonSolver(plan, full_grid, local_grid, eigenvalues, storage)
+    return DistributedFFTBasedPoissonSolver(arch, plan, full_grid, local_grid, eigenvalues, storage)
 end
 
 #=
