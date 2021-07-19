@@ -28,7 +28,7 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     implicit_free_surface_step!(model.free_surface, model, Δt, 1.5, Event(device(arch)))
 
     # Extract right hand side "truth"
-    right_hand_side = model.free_surface.implicit_step_right_hand_side
+    right_hand_side = real.(model.free_surface.right_hand_side)
 
     # Compute left hand side "solution"
     g = g_Earth
