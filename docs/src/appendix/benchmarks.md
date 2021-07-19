@@ -1,3 +1,4 @@
+
 # [Performance benchmarks](@id performance_benchmarks)
 
 The performance benchmarking scripts in the
@@ -5,6 +6,8 @@ The performance benchmarking scripts in the
 directory of the git repository can be run to benchmark Oceananigans.jl on your machine.
 They use [TimerOutputs.jl](https://github.com/KristofferC/TimerOutputs.jl) to nicely
 format the benchmark results.
+
+![shallow_water_speedup](https://user-images.githubusercontent.com/45054739/126176169-d865a689-847e-4b67-8b11-221f2f63cd3b.png)
 
 ## Static ocean
 
