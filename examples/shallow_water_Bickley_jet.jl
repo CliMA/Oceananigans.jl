@@ -133,7 +133,7 @@ using LinearAlgebra: norm
 
 function perturbation_norm(model)
     compute!(v)
-    return norm(interior(v))
+    return norm(v)
 end
 nothing # hide
 
