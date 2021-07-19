@@ -33,10 +33,10 @@ suite = run_benchmarks(benchmark_vertically_stretched_nonhydrostatic_model; Arch
 
 df = benchmarks_dataframe(suite)
 sort!(df, [:Architectures, :Float_types, :Ns], by=(string, string, identity))
-benchmarks_pretty_table(df, title="Vertically-stretched incompressible model benchmarks")
+benchmarks_pretty_table(df, title="Vertically-stretched nonhydrostatic model benchmarks")
 
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df_Δ, [:Float_types, :Ns], by=(string, identity))
-    benchmarks_pretty_table(df_Δ, title="Vertically-stretched incompressible model CPU to GPU speedup")
+    benchmarks_pretty_table(df_Δ, title="Vertically-stretched nonhydrostatic model CPU to GPU speedup")
 end
