@@ -53,14 +53,14 @@ plot!(plt, Ns, CPU_Float64, lw=4, label="CPU Float64")
 plot!(plt, Ns, GPU_Float32, lw=4, label="GPU Float32")
 plot!(plt, Ns, GPU_Float64, lw=4, label="GPU Float64")
 display(plt)
-savefig(plt, "incompressible_times.png")
+savefig(plt, "nonhydrostatic_times.png")
 
 
 plt2 = plot(Ns, CPU_Float32./GPU_Float32, lw=4, xaxis=:log2, legend=:topleft, label="Float32",
             xlabel="Nx", ylabel="Speedup Ratio", title="Nonhydrostatic Model Benchmarks: CPU/GPU")
 plot!(plt2, Ns, CPU_Float64./GPU_Float64, lw=4, label="Float64")
 display(plt2)
-savefig(plt2, "incompressible_speedup.png")
+savefig(plt2, "nonhydrostatic_speedup.png")
 
 df = benchmarks_dataframe(suite)
 sort!(df, [:Architectures, :Float_types, :Ns], by=(string, string, identity))

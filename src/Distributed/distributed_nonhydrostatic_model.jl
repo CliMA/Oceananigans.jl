@@ -2,7 +2,7 @@ using Oceananigans.Grids
 using Oceananigans.Fields
 
 #####
-##### Distributed incompressible model constructor
+##### Distributed Nonhydrostatic model constructor
 #####
 
 function DistributedNonhydrostaticModel(; architecture, grid, model_kwargs...)

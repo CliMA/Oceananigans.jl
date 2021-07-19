@@ -457,14 +457,14 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             end
         end
 
-        @testset "Internal wave with IncompressibleModel" begin
+        @testset "Internal wave with NonhydrostaticModel" begin
             for grid in test_grids
                 grid_name = typeof(grid).name.wrapper
                 topo = topology(grid)
 
-                model = IncompressibleModel(; grid=grid, kwargs...)
+                model = NonhydrostaticModel(; grid=grid, kwargs...)
 
-                @info "  Testing internal wave [IncompressibleModel, $grid_name, $topo]..."
+                @info "  Testing internal wave [NonhydrostaticModel, $grid_name, $topo]..."
                 internal_wave_dynamics_test(model, solution, Δt)
             end
         end
@@ -494,7 +494,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                         
             solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=true)
 
-            model = IncompressibleModel(; grid=y_periodic_regular_grid, background_fields=background_fields, kwargs...)
+            model = NonhydrostaticModel(; grid=y_periodic_regular_grid, background_fields=background_fields, kwargs...)
             internal_wave_dynamics_test(model, solution, Δt)
         end
     end
