@@ -28,7 +28,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     S_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux, 5e-8))
 
     # Model instantiation
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
              architecture = arch,
                      grid = grid,
                  coriolis = FPlane(f=1e-4),

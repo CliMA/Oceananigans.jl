@@ -61,7 +61,7 @@ const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
 
 # The `const` declarations ensure that Stokes drift functions compile on the GPU.
 # To run this example on the GPU, write `architecture = GPU()` in the constructor
-# for `IncompressibleModel` below.
+# for `NonhydrostaticModel` below.
 #
 # The Stokes drift profile is
 
@@ -127,7 +127,7 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 # model for large eddy simulation. Because our Stokes drift does not vary in ``x, y``,
 # we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
-model = IncompressibleModel(
+model = NonhydrostaticModel(
            architecture = CPU(),
               advection = WENO5(),
             timestepper = :RungeKutta3,

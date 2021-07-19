@@ -90,7 +90,7 @@ Let's initialize a 3D horizontally periodic model with 100×100×50 grid points 
 ```julia
 using Oceananigans
 grid = RegularRectilinearGrid(size=(100, 100, 50), extent=(2π, 2π, 1))
-model = IncompressibleModel(grid=grid)
+model = NonhydrostaticModel(grid=grid)
 simulation = Simulation(model, Δt=60, stop_time=3600)
 run!(simulation)
 ```
@@ -108,7 +108,7 @@ N = Nx = Ny = Nz = 128   # Number of grid points in each dimension.
 L = Lx = Ly = Lz = 2000  # Length of each dimension.
 topology = (Periodic, Periodic, Bounded)
 
-model = IncompressibleModel(
+model = NonhydrostaticModel(
     architecture = CPU(),
             grid = RegularRectilinearGrid(topology=topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
          closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)

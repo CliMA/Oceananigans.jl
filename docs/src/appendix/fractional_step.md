@@ -1,6 +1,6 @@
 # Fractional step method
 
-In some models (e.g., `IncompressibleModel` or `HydrostaticFreeSurfaceModel`) solving the momentum 
+In some models (e.g., `NonhydrostaticModel` or `HydrostaticFreeSurfaceModel`) solving the momentum 
 coupled with the continuity equation can be cumbersome so instead we employ a fractional step 
 method. To approximate the solution of the coupled system we first solve an approximation to 
 the discretized momentum equation for an intermediate velocity field ``\boldsymbol{v}^\star`` 
@@ -8,7 +8,7 @@ without worrying about satisfying the incompressibility constraint. We then proj
 onto the space of divergence-free velocity fields to obtain a value for ``\boldsymbol{v}^{n+1}`` 
 that satisfies continuity.
 
-For example, for the `IncompressibleModel`, if we ignore the background velocity fields and the
+For example, for the `NonhydrostaticModel`, if we ignore the background velocity fields and the
 surface waves, we thus discretize the momentum equation as
 ```math
   \frac{\boldsymbol{v}^\star - \boldsymbol{v}^n}{\Delta t}

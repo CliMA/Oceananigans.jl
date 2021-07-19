@@ -12,8 +12,8 @@ end
 ```jldoctest tracers
 julia> grid = RegularRectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
 
-julia> model = IncompressibleModel(grid=grid)
-IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
+julia> model = NonhydrostaticModel(grid=grid)
+NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
 ├── closure: Nothing
@@ -41,8 +41,8 @@ Any number of arbitrary tracers can be appended to this list and passed to a mod
 quantities ``C_1``, CO₂, and nitrogen as additional passive tracers you could set them up as
 
 ```jldoctest tracers
-julia> model = IncompressibleModel(grid=grid, tracers=(:T, :S, :C₁, :CO₂, :nitrogen))
-IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
+julia> model = NonhydrostaticModel(grid=grid, tracers=(:T, :S, :C₁, :CO₂, :nitrogen))
+NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S, :C₁, :CO₂, :nitrogen)
 ├── closure: Nothing

@@ -32,7 +32,7 @@ function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DAT
 
     grid = RegularRectilinearGrid(size=(Nx, Nx, 1), x=(0, Lx(topo)), y=(0, Ly(topo)), z=(0, 1), topology=topo)
 
-    model = IncompressibleModel(architecture = architecture,
+    model = NonhydrostaticModel(architecture = architecture,
                                         grid = grid,
                                     coriolis = nothing,
                                     buoyancy = nothing,

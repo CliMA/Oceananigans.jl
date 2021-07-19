@@ -345,7 +345,7 @@ function restore_from_checkpoint(filepath; kwargs...)
 
     close(file)
 
-    model = IncompressibleModel(; kwargs...)
+    model = NonhydrostaticModel(; kwargs...)
 
     return model
 end
