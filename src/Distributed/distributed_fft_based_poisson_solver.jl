@@ -33,6 +33,7 @@ function DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
 end
 
 function solve!(x, solver::DistributedFFTBasedPoissonSolver, b, r=0)
+    arch = solver.architecture
     λx, λy, λz = solver.eigenvalues
 
     # Apply forward transforms.
@@ -54,7 +55,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver, b, r=0)
     # Apply backward transforms.
     solver.plan \ solver.storage
 
-    copy_event = launch!(arch, grid, :xyz, copy_real_component!, x, xc, dependencies=device_event(arch))
+    copy_event = launch!(arch, solver.my_grid, :xyz, copy_real_component!, x, xc, dependencies=device_event(arch))
     wait(device(arch), copy_event)
 
     return x
