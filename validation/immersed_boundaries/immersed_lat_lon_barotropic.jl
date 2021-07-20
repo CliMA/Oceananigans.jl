@@ -27,6 +27,9 @@ using Statistics
 using JLD2
 using Printf
 
+import Oceananigans.Architectures: architecture
+architecture(ibg::ImmersedBoundaryGrid) = architecture(ibg.grid)
+
 #####
 ##### Grid
 #####
@@ -37,9 +40,10 @@ latitude = (-30, 30)
 resolution = 4 # degree
 Nx = round(Int, 360 / resolution)
 Ny = round(Int, Δφ / resolution)
+Nz = 10
 
 # A spherical domain
-underlying_grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
+underlying_grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, Nz),
                                           longitude = (-180, 180),
                                           latitude = latitude,
                                           halo = (2, 2, 2),
@@ -48,10 +52,11 @@ underlying_grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
 
 const ridge_height = 500.0  # [m]
 const ridge_base = -3000.0  # [m]
-@inline ridge_shape(x,z,L) = -z + ridge_base + ridge_height * exp(-40 *(x-L/2)^2 / L^2)
-@inline ridge(x, y, z) = 0 < ridge_shape(x, z, 1e6) 
+@inline height(x, y, L) = ridge_base + ridge_height * exp(-40 *(x-L/2)^2 / L^2)
+@inline ridge(x, y, z) = z < height(x, y, 1e6) 
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(ridge))
+# grid = underlying_grid
 
 #####
 ##### Physics and model setup
@@ -62,11 +67,11 @@ free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
 equatorial_Δx = grid.radius * deg2rad(grid.Δλ)
 diffusive_time_scale = 120days
 
-@show const νh₂ =        equatorial_Δx^2 / diffusive_time_scale
+@show const νh₂ = 1e2 * equatorial_Δx^2 / diffusive_time_scale
 @show const νh₄ = 1e-5 * equatorial_Δx^4 / diffusive_time_scale
 
-#closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₂)
-closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(νh=νh₄)
+closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₂)
+# closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(νh=νh₄)
 
 coriolis = HydrostaticSphericalCoriolis()
 Ω = coriolis.rotation_rate / 20
