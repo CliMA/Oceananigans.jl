@@ -55,7 +55,7 @@ g = 9.8         # Gravitational acceleration
 # We build a `ShallowWaterModel` with the `WENO5` advection scheme and
 # 3rd-order Runge-Kutta time-stepping,
 
-model = ShallowWaterModel(architecture = GPU(),
+model = ShallowWaterModel(architecture = CPU(),
                           timestepper = :RungeKutta3,
                           advection = WENO5(),
                           grid = grid,
