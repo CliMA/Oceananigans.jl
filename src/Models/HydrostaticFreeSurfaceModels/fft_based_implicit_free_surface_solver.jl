@@ -8,7 +8,7 @@ using Statistics
 
 import Oceananigans.Solvers: solve!
 
-struct FFTBasedImplicitFreeSurfaceSolver{S, G3, G2, R}
+struct FFTImplicitFreeSurfaceSolver{S, G3, G2, R}
     fft_based_poisson_solver :: S
     three_dimensional_grid :: G3
     horizontal_grid :: G2
@@ -20,10 +20,10 @@ end
 (∇² - Az / (g H Δt²)) ηⁿ⁺¹ = 1 / (g H Δt) * (∇ʰ ⋅ Q★ - Az ηⁿ / Δt)
 ```
 """
-function FFTBasedImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
+function FFTImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
 
     grid isa RegularRectilinearGrid || grid isa VerticallyStretchedRectilinearGrid ||
-        throw(ArgumentError("FFTBasedImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
+        throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
 
     # Construct a "horizontal grid". We support either x or y being Flat, but not both.
     TX, TY, TZ = topology(grid)
@@ -43,7 +43,7 @@ function FFTBasedImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, set
 
     # Build a "horizontal grid" with a Flat vertical direction.
     # Even if the three dimensional grid is vertically stretched, we can only use
-    # FFTBasedImplicitFreeSurfaceSolver with grids that are regularly spaced in the
+    # FFTImplicitFreeSurfaceSolver with grids that are regularly spaced in the
     # horizontal direction.
     #
     horizontal_grid = RegularRectilinearGrid(; topology = (TX, TY, Flat),
@@ -54,17 +54,17 @@ function FFTBasedImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, set
     solver = FFTBasedPoissonSolver(arch, horizontal_grid)
     right_hand_side = solver.storage
 
-    return FFTBasedImplicitFreeSurfaceSolver(solver, grid, horizontal_grid, right_hand_side)
+    return FFTImplicitFreeSurfaceSolver(solver, grid, horizontal_grid, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:FFTBased}, arch, grid, settings) =
-    FFTBasedImplicitFreeSurfaceSolver(arch, grid, settings)
+build_implicit_step_solver(::Val{:FastFourierTransform}, arch, grid, settings) =
+    FFTImplicitFreeSurfaceSolver(arch, grid, settings)
 
 #####
 ##### Solve...
 #####
 
-function solve!(η, implicit_free_surface_solver::FFTBasedImplicitFreeSurfaceSolver, rhs, g, Δt)
+function solve!(η, implicit_free_surface_solver::FFTImplicitFreeSurfaceSolver, rhs, g, Δt)
     solver = implicit_free_surface_solver.fft_based_poisson_solver
     grid = implicit_free_surface_solver.three_dimensional_grid
     H = grid.Lz
@@ -80,7 +80,7 @@ function solve!(η, implicit_free_surface_solver::FFTBasedImplicitFreeSurfaceSol
 end
 
 function compute_implicit_free_surface_right_hand_side!(rhs,
-                                                        implicit_solver::FFTBasedImplicitFreeSurfaceSolver,
+                                                        implicit_solver::FFTImplicitFreeSurfaceSolver,
                                                         g, Δt, ∫ᶻQ, η)
 
     solver = implicit_solver.fft_based_poisson_solver

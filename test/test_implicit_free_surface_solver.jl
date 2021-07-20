@@ -1,11 +1,24 @@
 using Statistics
 using Oceananigans.BuoyancyModels: g_Earth
+using Oceananigans.Architectures: device_event
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     ImplicitFreeSurface,
     FreeSurface,
+    FFTImplicitFreeSurfaceSolver,
+    PCGImplicitFreeSurfaceSolver,
     implicit_free_surface_step!,
     implicit_free_surface_linear_operation!
+
+function set_simple_divergent_velocity!(model)
+    # Create a divergent velocity
+    grid = model.grid
+    u, v, w = model.velocities
+    imid = Int(floor(grid.Nx / 2)) + 1
+    jmid = Int(floor(grid.Ny / 2)) + 1
+    CUDA.@allowscalar u[imid, jmid, 1] = 1
+    return nothing
+end
 
 function run_pcg_implicit_free_surface_solver_tests(arch, grid)
 
@@ -19,22 +32,18 @@ function run_pcg_implicit_free_surface_solver_tests(arch, grid)
                                         momentum_advection = nothing,
                                         free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient))
     
-    # Create a divergent velocity
-    u, v, w = model.velocities
-    imid = Int(floor(grid.Nx / 2)) + 1
-    jmid = Int(floor(grid.Ny / 2)) + 1
-    CUDA.@allowscalar u[imid, jmid, 1] = 1
-
+    set_simple_divergent_velocity!(model)
+    
     implicit_free_surface_step!(model.free_surface, model, Δt, 1.5, Event(device(arch)))
 
     # Extract right hand side "truth"
-    right_hand_side = real.(model.free_surface.implicit_step_solver.right_hand_side)
+    right_hand_side = model.free_surface.implicit_step_solver.right_hand_side
 
     # Compute left hand side "solution"
     g = g_Earth
     η = model.free_surface.η
-    ∫ᶻ_Axᶠᶜᶜ = model.free_surface.implicit_step_solver.vertically_integrated_lateral_face_areas.xᶠᶜᶜ
-    ∫ᶻ_Ayᶜᶠᶜ = model.free_surface.implicit_step_solver.vertically_integrated_lateral_face_areas.yᶜᶠᶜ
+    ∫ᶻ_Axᶠᶜᶜ = model.free_surface.implicit_step_solver.vertically_integrated_lateral_areas.xᶠᶜᶜ
+    ∫ᶻ_Ayᶜᶠᶜ = model.free_surface.implicit_step_solver.vertically_integrated_lateral_areas.yᶜᶠᶜ
 
     left_hand_side = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
@@ -49,16 +58,6 @@ function run_pcg_implicit_free_surface_solver_tests(arch, grid)
         @test std(interior(left_hand_side) .- interior(right_hand_side)) < std_tolerance
     end
 
-    return nothing
-end
-
-function set_simple_divergent_velocity!(model)
-    # Create a divergent velocity
-    grid = model.grid
-    u, v, w = model.velocities
-    imid = Int(floor(grid.Nx / 2)) + 1
-    jmid = Int(floor(grid.Ny / 2)) + 1
-    CUDA.@allowscalar u[imid, jmid, 1] = 1
     return nothing
 end
 
@@ -90,7 +89,10 @@ end
         fft_model = HydrostaticFreeSurfaceModel(architecture = arch,
                                                 grid = rectilinear_grid,
                                                 momentum_advection = nothing,
-                                                free_surface = ImplicitFreeSurface(solver_method=:FFTBased))
+                                                free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform))
+
+        @test fft_model.free_surface.implicit_step_solver isa FFTImplicitFreeSurfaceSolver
+        @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
         
         Δt = 900
         for model in (pcg_model, fft_model)
@@ -101,6 +103,10 @@ end
         pcg_η = pcg_model.free_surface.η
         fft_η = fft_model.free_surface.η
 
-        @test all(interior(pcg_η) .≈ interior(fft_η))
+        Δη = interior(pcg_η) .- interior(fft_η)
+
+        @info "FFT/PCG implicit free surface solver comparison, maximum(abs, Δη): $(maximum(abs, Δη))"
+
+        @test all(isapprox.(Δη, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
     end
 end

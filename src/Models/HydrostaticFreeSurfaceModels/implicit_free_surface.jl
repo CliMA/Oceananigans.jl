@@ -35,7 +35,7 @@ In the case that ``H`` is constant, we divide through to obtain
 (∇² - 1 / (g H Δt²)) ηⁿ⁺¹ = 1 / (g H Δt) * (∇ʰ ⋅ Q - ηⁿ / Δt)
 ```
 
-The above can be solved with the `FFTBasedPoissonSolver` on grids with regular spacing in x and y.
+The above can be solved with the `FastFourierTransformPoissonSolver` on grids with regular spacing in x and y.
 """
 ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...) =
     ImplicitFreeSurface(nothing, gravitational_acceleration, nothing, nothing, solver_method, solver_settings)
@@ -69,7 +69,7 @@ is_horizontally_regular(::RegularRectilinearGrid) = true
 is_horizontally_regular(::VerticallyStretchedRectilinearGrid) = true
 
 function build_implicit_step_solver(::Val{:Default}, arch, grid, settings)
-    default_method = is_horizontally_regular(grid) ? :FFTBased : :PreconditionedConjugateGradient
+    default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :PreconditionedConjugateGradient
     return build_implicit_step_solver(Val(default_method), arch, grid, settings)
 end
 
@@ -106,5 +106,4 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     
     return NoneEvent()
 end
-
 
