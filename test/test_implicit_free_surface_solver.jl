@@ -17,7 +17,7 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     model = HydrostaticFreeSurfaceModel(architecture = arch,
                                         grid = grid,
                                         momentum_advection = nothing,
-                                        free_surface = ImplicitFreeSurface())
+                                        free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient))
     
     # Create a divergent velocity
     u, v, w = model.velocities
@@ -33,8 +33,8 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     # Compute left hand side "solution"
     g = g_Earth
     η = model.free_surface.η
-    ∫ᶻ_Axᶠᶜᶜ = model.free_surface.vertically_integrated_lateral_face_areas.xᶠᶜᶜ
-    ∫ᶻ_Ayᶜᶠᶜ = model.free_surface.vertically_integrated_lateral_face_areas.yᶜᶠᶜ
+    ∫ᶻ_Axᶠᶜᶜ = model.free_surface.implicit_step_solver.vertically_integrated_lateral_face_areas.xᶠᶜᶜ
+    ∫ᶻ_Ayᶜᶠᶜ = model.free_surface.implicit_step_solver.vertically_integrated_lateral_face_areas.yᶜᶠᶜ
 
     left_hand_side = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
