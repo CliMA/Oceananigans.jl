@@ -7,7 +7,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     implicit_free_surface_step!,
     implicit_free_surface_linear_operation!
 
-function run_implicit_free_surface_solver_tests(arch, grid)
+function run_pcg_implicit_free_surface_solver_tests(arch, grid)
 
     Δt = 900
     Nx = grid.Nx
@@ -52,6 +52,17 @@ function run_implicit_free_surface_solver_tests(arch, grid)
     return nothing
 end
 
+function set_simple_divergent_velocity!(model)
+    # Create a divergent velocity
+    grid = model.grid
+    u, v, w = model.velocities
+    imid = Int(floor(grid.Nx / 2)) + 1
+    jmid = Int(floor(grid.Ny / 2)) + 1
+    CUDA.@allowscalar u[imid, jmid, 1] = 1
+    return nothing
+end
+
+
 @testset "Implicit free surface solver tests" begin
     for arch in archs
 
@@ -65,8 +76,31 @@ end
                                                     z = (-4000, 0))
 
         for grid in (rectilinear_grid, lat_lon_grid)
-            @info "Testing implicit free surface solver [$(typeof(arch)), $(typeof(grid).name.wrapper)]..."
-            run_implicit_free_surface_solver_tests(arch, grid)
+            @info "Testing PreconditionedConjugateGradient implicit free surface solver [$(typeof(arch)), $(typeof(grid).name.wrapper)]..."
+            run_pcg_implicit_free_surface_solver_tests(arch, grid)
         end
+
+        @info "Testing FFT-based implicit free surface solver [$(typeof(arch))]..."
+
+        pcg_model = HydrostaticFreeSurfaceModel(architecture = arch,
+                                                grid = rectilinear_grid,
+                                                momentum_advection = nothing,
+                                                free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient))
+
+        fft_model = HydrostaticFreeSurfaceModel(architecture = arch,
+                                                grid = rectilinear_grid,
+                                                momentum_advection = nothing,
+                                                free_surface = ImplicitFreeSurface(solver_method=:FFTBased))
+        
+        Δt = 900
+        for model in (pcg_model, fft_model)
+            set_simple_divergent_velocity!(model)
+            implicit_free_surface_step!(model.free_surface, model, Δt, 1.5, device_event(arch))
+        end
+
+        pcg_η = pcg_model.free_surface.η
+        fft_η = fft_model.free_surface.η
+
+        @test all(interior(pcg_η) .≈ interior(fft_η))
     end
 end
