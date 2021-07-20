@@ -1,4 +1,5 @@
 using Oceananigans.Models.NonhydrostaticModels: calculate_pressure_source_term_fft_based_solver!
+using Oceananigans.Architectures: device_event
 import Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
 
 function solve_for_pressure!(pressure, solver::DistributedFFTBasedPoissonSolver, Δt, U★)
