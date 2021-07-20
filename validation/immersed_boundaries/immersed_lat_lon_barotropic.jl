@@ -50,10 +50,10 @@ underlying_grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, Nz),
                                           z = (-3000, 0))
 
 
-const ridge_height = 500.0  # [m]
-const ridge_base = -3000.0  # [m]
-@inline height(x, y, L) = ridge_base + ridge_height * exp(-40 *(x-L/2)^2 / L^2)
-@inline ridge(x, y, z) = z < height(x, y, 1e6) 
+const ridge_height = 500.0    # [m]
+const ridge_base   = -3000.0  # [m]
+@inline height(x, y, L) = ridge_base + ridge_height * exp(-L * (x/180)^2)
+@inline ridge(x, y, z) = z < height(x, y, 30) 
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(ridge))
 # grid = underlying_grid
