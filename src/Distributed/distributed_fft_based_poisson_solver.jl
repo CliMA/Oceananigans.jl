@@ -32,7 +32,7 @@ function DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
     return DistributedFFTBasedPoissonSolver(arch, plan, full_grid, local_grid, eigenvalues, storage)
 end
 
-function solve!(x, solver::DistributedFFTBasedPoissonSolver, b, r=0)
+function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     arch = solver.architecture
     λx, λy, λz = solver.eigenvalues
 
@@ -42,8 +42,8 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver, b, r=0)
     # Solve the discrete Poisson equation, storing the solution
     # temporarily in xc and later extracting the real part into 
     # the solution, x.
-    xc = solver.storage[2]
-    @. xc = - b / (λx + λy + λz - r)
+    xc = b = solver.storage[2]
+    @. xc = - b / (λx + λy + λz)
 
     # Setting DC component of the solution (the mean) to be zero. This is also
     # necessary because the source term to the Poisson equation has zero mean
@@ -54,8 +54,9 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver, b, r=0)
 
     # Apply backward transforms.
     solver.plan \ solver.storage
-
-    copy_event = launch!(arch, solver.my_grid, :xyz, copy_real_component!, x, xc, dependencies=device_event(arch))
+    xc_transposed = first(solver.storage)
+	
+    copy_event = launch!(arch, solver.my_grid, :xyz, copy_real_component!, x, xc_transposed, dependencies=device_event(arch))
     wait(device(arch), copy_event)
 
     return x

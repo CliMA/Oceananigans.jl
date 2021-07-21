@@ -13,7 +13,7 @@ function solve_for_pressure!(pressure, solver::DistributedFFTBasedPoissonSolver,
     wait(device(arch), rhs_event)
 
     # Solve pressure Poisson given for pressure, given rhs
-    solve!(pressure, solver, solver.storage[2])
+    solve!(pressure, solver)
 
     return nothing
 end
