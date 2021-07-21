@@ -42,7 +42,7 @@ ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth
 
 Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
     ImplicitFreeSurface(Adapt.adapt(to, free_surface.η), free_surface.gravitational_acceleration,
-                        nothing, nothing, nothing, nothing, nothing, nothing)
+                        nothing, nothing, nothing, nothing)
 
 # Internal function for HydrostaticFreeSurfaceModel
 function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arch, grid)
