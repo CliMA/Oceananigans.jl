@@ -16,7 +16,7 @@ of `OffsetArray`s depending on the turbulence closure) of field data.
 When `parameters` is not `nothing`, the boundary condition `func` is called with
 the signature
 
-    `func(i, j, grid, clock, model_fields)`
+    `func(i, j, grid, clock, model_fields, parameters)`
 
 *Note* that the index `end` does *not* access the final physical grid point of
 a model field in any direction. The final grid point must be explictly specified, as
@@ -27,8 +27,9 @@ struct DiscreteBoundaryFunction{P, F}
     parameters :: P
 end
 
+const ParameterizedDBF = DiscreteBoundaryFunction{<:Nothing}
+const ParameterizedDBFBC = BoundaryCondition{<:Any, <:ParameterizedDBF}
 const DBFBC = BoundaryCondition{<:Any, <:DiscreteBoundaryFunction}
-const ParameterizedDBFBC = BoundaryCondition{<:Any, <:DiscreteBoundaryFunction{<:Nothing}}
 
 @inline getbc(bc::DBFBC, i, j, grid, clock, model_fields, args...) =
     bc.condition.func(i, j, grid, clock, model_fields)
