@@ -22,18 +22,19 @@ the signature
 a model field in any direction. The final grid point must be explictly specified, as
 in `model_fields.u[i, j, grid.Nz]`.
 """
-struct DiscreteBoundaryFunction{P, F} <: Function
+struct DiscreteBoundaryFunction{P, F}
     func :: F
     parameters :: P
 end
 
-# Un-parameterized
-@inline (bc::DiscreteBoundaryFunction{<:Nothing})(i, j, grid, clock, model_fields) =
-    bc.func(i, j, grid, clock, model_fields)
+const DBFBC = BoundaryCondition{<:Any, <:DiscreteBoundaryFunction}
+const ParameterizedDBFBC = BoundaryCondition{<:Any, <:DiscreteBoundaryFunction{<:Nothing}}
 
-# Parameterized
-@inline (bc::DiscreteBoundaryFunction)(i, j, grid, clock, model_fields) =
-    bc.func(i, j, grid, clock, model_fields, bc.parameters)
+@inline getbc(bc::DBFBC, i, j, grid, clock, model_fields, args...) =
+    bc.condition.func(i, j, grid, clock, model_fields)
+
+@inline getbc(bc::ParameterizedDBFBC, i, j, grid, clock, model_fields, args...) =
+    bc.condition.func(i, j, grid, clock, model_fields, bc.condition.parameters)
 
 # Don't re-convert DiscreteBoundaryFunctions passed to BoundaryCondition constructor
 BoundaryCondition(Classification::DataType, condition::DiscreteBoundaryFunction) = BoundaryCondition(Classification(), condition)
