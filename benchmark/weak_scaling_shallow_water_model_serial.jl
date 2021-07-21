@@ -30,8 +30,7 @@ time_step!(model, 1) # warmup
 @info "Benchmarking serial shallow water model..."
 
 trial = @benchmark begin
-    time_step!($model, 1)
-    #CUDA.@sync blocking=true time_step!($model, 1)
+    CUDA.@sync blocking=true time_step!($model, 1)
 end samples=10 evals=1
 
 t_median = BenchmarkTools.prettytime(median(trial).time)
