@@ -46,8 +46,8 @@ function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, a
     immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(inside_cylinder))
     
     # boundary conditions: inflow and outflow in y
-    v_bcs = VVelocityBoundaryConditions(immersed_grid, north = BoundaryCondition(Open,1.0), 
-                                              south = BoundaryCondition(Open,1.0))
+    v_bc = OpenBoundaryCondition(1.0)
+    v_bcs = FieldBoundaryConditions(north = v_bc, south = v_bc)
 
     immersed_model = NonhydrostaticModel(architecture = arch,
                                          advection = advection,
@@ -173,26 +173,30 @@ function visualize_cylinder_steadystate(experiment_name)
                       :xlims => (-regular_grid.Lx/2, regular_grid.Lx/2),
                       :ylims => (-regular_grid.Ly/3, 2*regular_grid.Ly/3))
 
-        u_plot = heatmap(xu, yu, clamp.(ui, -1, 1)'; color = :balance, kwargs...)
+        u_plot = heatmap(xu, yu, clamp.(ui, -1, 1)'; color = :balance, size = (500,700), 
+                            guidefontsize = 14, titlefont=14, top_margin = -10.0mm, bottom_margin = -10.0mm,
+                            legendfont = 10, tickfont = 8, kwargs...)
         plot!(circle_shape(0,0,1),seriestype=[:shape,],linecolor=:black,
-                            legend=false, fillalpha=0, guidefontsize = 14, 
-                            titlefont=14, legendfont = 10, tickfont = 8)
+                            legend=false, fillalpha=0)
         
-        v_plot = heatmap(xv, yv, clamp.(vi, -1, 1)'; color = :balance, kwargs...)
+        v_plot = heatmap(xv, yv, clamp.(vi, -1, 1)'; color = :balance, size = (500,700), 
+                            guidefontsize = 14, titlefont=14, top_margin = -10.0mm, bottom_margin = -10.0mm,
+                            legendfont = 10, tickfont = 8, kwargs...)
         plot!(circle_shape(0,0,1),seriestype=[:shape,],linecolor=:black,
-                            legend=false,fillalpha=0, guidefontsize = 14, 
-                            titlefont=14, legendfont = 10, tickfont = 8)
+                            legend=false, fillalpha=0)
         
-        p_plot = heatmap(xp, yp, clamp.(pin, -1, 1)'; color = :balance, kwargs...)
+        p_plot = heatmap(xp, yp, clamp.(pin, -1, 1)'; color = :balance, size = (500,700), 
+                            guidefontsize = 14, titlefont=14, top_margin = -10.0mm, bottom_margin = -10.0mm,
+                            legendfont = 10, tickfont = 8, kwargs...)
         plot!(circle_shape(0,0,1),seriestype=[:shape,],linecolor=:black,
-                            legend=false,fillalpha=0, guidefontsize = 14,
-                            titlefont=14, legendfont = 10, tickfont = 8)
+                            legend=false, fillalpha=0)
 
-        m_plot = heatmap(xm, ym, clamp.(mi, -1, 1)'; color = :thermal, kwargs...)
+        m_plot = heatmap(xm, ym, clamp.(mi, -1, 1)'; color = :thermal, size = (500,700), 
+                            guidefontsize = 14, titlefont=14, top_margin = -10.0mm, bottom_margin = -10.0mm,
+                            legendfont = 10, tickfont = 8, kwargs...)
         plot!(circle_shape(0,0,1),seriestype=[:shape,],linecolor=:black,
-                            legend=false,fillalpha=0, guidefontsize = 14,
-                            titlefont=16, legendfont = 10, tickfont = 8)
-
+                            legend=false, fillalpha=0)
+  
         δlim = 1.0
         kwargs[:clims] = (-δlim, δlim)
 
@@ -203,7 +207,7 @@ function visualize_cylinder_steadystate(experiment_name)
 
         plot(u_plot, v_plot, p_plot, m_plot,
              title = [u_title v_title p_title m_title],
-             layout = (2, 2), size = (1350, 1500), top_margin=5mm)
+             layout = (2, 2))
     end
     mp4(anim, "contours_" * experiment_name * ".mp4", fps = 8)
 end
@@ -211,7 +215,8 @@ end
 function analyze_cylinder_steadystate(experiment_name)
 
     @info "Analyzing data from steady state cylinder flow..."
-    
+    @warn "Analysis is for no slip cylinder BC."
+
     # distance function for solid cylinder
     @inline dist_cylinder(v) = sqrt((v[1])^2+(v[2])^2)-R
     # finding the sfc normal vector
@@ -292,7 +297,7 @@ function analyze_cylinder_steadystate(experiment_name)
     end
     
     # get data
-    filepath = path_name * experiment_name * ".jld2"
+    filepath = experiment_name * ".jld2"
     
     u_timeseries = FieldTimeSeries(filepath,  "u")
     v_timeseries = FieldTimeSeries(filepath,  "v")
@@ -360,9 +365,8 @@ function analyze_cylinder_steadystate(experiment_name)
     
     @info "Plotting Concentration Leakage"
     mConcent = plot(m_timeseries.times, percent_leakage, xlabel="t", ylabel= "% Leakage", 
-        seriestype=:scatter, guidefontsize = 14, titlefont=14,legendfont = 10, 
-        tickfont = 8, xticks = [-90,0,90,180,275], markersize = 3, 
-        legend = false, size = (700,500))
+        seriestype=:scatter, guidefontsize = 14, titlefont=14, legendfont = 10, 
+        tickfont = 8, markersize = 3, legend = false, size = (700,500))
     
     Vnt_title = @sprintf("||Vⁿ||₂  = %.3f, ||Vᵗ||₂  = %.3f", norm(Vⁿ,2), norm(Vᵗ,2))
     psfc_title = "Pressure Coefficient"
@@ -376,8 +380,8 @@ function analyze_cylinder_steadystate(experiment_name)
     Plots.savefig(analysisplot, "analysis_" * experiment_name * ".png")
 end
 
-advection = UpwindBiasedFifthOrder()
-experiment_name = run_cylinder_steadystate(Nh = 500, advection = advection, radius = R, stop_time = 100, ν = nu)
+advection = CenteredSecondOrder()
+experiment_name = run_cylinder_steadystate(Nh = 200, advection = advection, radius = R, stop_time = 50, ν = nu)
 visualize_cylinder_steadystate(experiment_name)
 analyze_cylinder_steadystate(experiment_name)
 
