@@ -73,8 +73,6 @@ function solve!(η, implicit_free_surface_solver::FFTImplicitFreeSurfaceSolver, 
 
     # solve! is blocking:
     solve!(η, solver, rhs, m)
-
-    fill_halo_regions!(η, solver.architecture)
     
     return nothing
 end
