@@ -98,8 +98,8 @@ _variable_ `T₀` that must be declared `const`.
 
 `ComputedField`s are the most convenient way to calculate diagnostics for your simulation. They will
 always work on CPUs, but when their complexity is high (in terms of number of abstract operations)
-the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is discussed 
-in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1241) and contributors are welcome.)
+the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is summarized 
+in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1886) and contributors are welcome.)
 For example, in the example below, calculating `u²` works in both CPUs and GPUs, but calculating 
 `ε` will not compile on GPUs when we call the command `compute!`:
 
