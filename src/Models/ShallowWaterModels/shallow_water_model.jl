@@ -42,7 +42,7 @@ mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q
                     bathymetry :: B         # Bathymetry/Topography for the model
                       solution :: Q         # Container for transports `uh`, `vh`, and height `h`
                        tracers :: C         # Container for tracer fields
-                 diffusivities :: K         # Container for turbulent diffusivities
+            diffusivity_fields :: K         # Container for turbulent diffusivities
                    timestepper :: TS        # Object containing timestepper fields and parameters
 
 end
@@ -59,7 +59,7 @@ end
                                  closure = nothing,
                               bathymetry = nothing,
                                  tracers = (),
-                           diffusivities = nothing,
+                      diffusivity_fields = nothing,
          boundary_conditions::NamedTuple = NamedTuple(),
                      timestepper::Symbol = :RungeKutta3)
 
@@ -78,7 +78,8 @@ Keyword arguments
     - `bathymetry`: The bottom bathymetry.
     - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                  preallocated `CenterField`s.
-    - `diffusivities`: 
+    - `diffusivity_fields`: Stores diffusivity fields when the closures require a diffusivity to be
+                            calculated at each timestep.
     - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
     - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2`,
                      `:RungeKutta3`.
@@ -94,7 +95,7 @@ function ShallowWaterModel(;
                              closure = nothing,
                           bathymetry = nothing,
                              tracers = (),
-                       diffusivities = nothing,
+                  diffusivity_fields = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
                  timestepper::Symbol = :RungeKutta3)
 
@@ -111,9 +112,9 @@ function ShallowWaterModel(;
 
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
 
-    solution = ShallowWaterSolutionFields(architecture, grid, boundary_conditions)
-    tracers  = TracerFields(tracers, architecture, grid, boundary_conditions)
-    diffusivities = DiffusivityFields(diffusivities, architecture, grid,
+    solution           = ShallowWaterSolutionFields(architecture, grid, boundary_conditions)
+    tracers            = TracerFields(tracers, architecture, grid, boundary_conditions)
+    diffusivity_fields = DiffusivityFields(diffusivity_fields, architecture, grid,
                                       tracernames(tracers), boundary_conditions, closure)
 
     # Instantiate timestepper if not already instantiated
@@ -137,6 +138,6 @@ function ShallowWaterModel(;
                              bathymetry,
                              solution,
                              tracers,
-                             diffusivities,
+                             diffusivity_fields,
                              timestepper)
 end

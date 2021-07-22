@@ -33,7 +33,7 @@ function calculate_tendencies!(model::NonhydrostaticModel)
                                                model.velocities,
                                                model.tracers,
                                                model.pressures.pHY′,
-                                               model.diffusivities,
+                                               model.diffusivity_fields,
                                                model.forcing,
                                                model.clock)
 

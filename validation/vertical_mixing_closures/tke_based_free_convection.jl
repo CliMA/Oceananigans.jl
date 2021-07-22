@@ -36,8 +36,8 @@ z = znodes(model.tracers.b)
 
 b = view(interior(model.tracers.b), 1, 1, :)
 e = view(interior(model.tracers.e), 1, 1, :)
-Kc = view(interior(model.diffusivities.Kᶜ), 1, 1, :)
-Ke = view(interior(model.diffusivities.Kᵉ), 1, 1, :)
+Kc = view(interior(model.diffusivity_fields.Kᶜ), 1, 1, :)
+Ke = view(interior(model.diffusivity_fields.Kᵉ), 1, 1, :)
 
 b_plot = plot(b, z, linewidth = 2, label = "t = 0", xlabel = "Buoyancy", ylabel = "z", legend=:bottomright)
 e_plot = plot(e, z, linewidth = 2, label = "t = 0", xlabel = "TKE", ylabel = "z", legend=:bottomright)
