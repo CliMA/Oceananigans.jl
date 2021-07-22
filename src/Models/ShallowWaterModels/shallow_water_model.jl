@@ -78,7 +78,8 @@ Keyword arguments
     - `bathymetry`: The bottom bathymetry.
     - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                  preallocated `CenterField`s.
-    - `diffusivity_fields`: 
+    - `diffusivity_fields`: Stores diffusivity fields when the closures require a diffusivity to be
+                            calculated at each timestep.
     - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
     - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2`,
                      `:RungeKutta3`.
@@ -111,8 +112,8 @@ function ShallowWaterModel(;
 
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
 
-    solution = ShallowWaterSolutionFields(architecture, grid, boundary_conditions)
-    tracers  = TracerFields(tracers, architecture, grid, boundary_conditions)
+    solution           = ShallowWaterSolutionFields(architecture, grid, boundary_conditions)
+    tracers            = TracerFields(tracers, architecture, grid, boundary_conditions)
     diffusivity_fields = DiffusivityFields(diffusivity_fields, architecture, grid,
                                       tracernames(tracers), boundary_conditions, closure)
 
