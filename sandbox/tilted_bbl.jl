@@ -2,6 +2,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
 using CUDA
+using Printf
 
 const Nx = 256; const Lx = 1000
 const Nz = 32; const Lz = 100
@@ -33,7 +34,7 @@ B_field = BackgroundField(b∞)
 
 b_bottom(x, y, t) = -b∞(x, y, 0, t)
 grad_bc_b = GradientBoundaryCondition(b_bottom)
-b_bcs = TracerBoundaryConditions(grid, bottom = grad_bc_b)
+b_bcs = FieldBoundaryConditions(bottom = grad_bc_b)
 #----
 
 #+++++ Boundary Conditions
@@ -48,8 +49,8 @@ const cᴰ = (κ / log(grid.zᵃᵃᶜ[1]))^2 # quadratic drag coefficient
 drag_bc_u = FluxBoundaryCondition(drag_u, field_dependencies=(:u, :v), parameters=cᴰ)
 drag_bc_v = FluxBoundaryCondition(drag_v, field_dependencies=(:u, :v), parameters=cᴰ)
 
-u_bcs = UVelocityBoundaryConditions(grid, bottom = drag_bc_u)
-v_bcs = VVelocityBoundaryConditions(grid, bottom = drag_bc_v)
+u_bcs = FieldBoundaryConditions(bottom = drag_bc_u)
+v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 
 V_bg(x, y, z, t) = V∞
 V_field = BackgroundField(V_bg)
@@ -77,7 +78,7 @@ forcing = (u=full_sponge_0, v=full_sponge_0, w=full_sponge_0, b=full_sponge_0)
 #----
 
 #++++ Model and ICs
-model = IncompressibleModel(grid = grid, timestepper = :RungeKutta3,
+model = NonhydrostaticModel(grid = grid, timestepper = :RungeKutta3,
                             advection = UpwindBiasedFifthOrder(),
                             buoyancy = buoyancy,
                             coriolis = FPlane(f=1e-4),
@@ -103,10 +104,18 @@ model.velocities.v.data.parent .-= v̄
 
 #++++ Create simulation
 wizard = TimeStepWizard(Δt=0.1*grid.Δzᵃᵃᶜ[1]/V∞, max_change=1.05, cfl=0.2)
-print_progress(sim) = @info "iteration: $(sim.model.clock.iteration), time: $(prettytime(sim.model.clock.time))"
+
+# Print a progress message
+progress_message(sim) =
+    @printf("i: %04d, t: %s, Δt: %s, wmax = %.1e ms⁻¹, wall time: %s\n",
+            sim.model.clock.iteration, prettytime(model.clock.time),
+            prettytime(wizard.Δt), maximum(abs, sim.model.velocities.w),
+            prettytime((time_ns() - start_time) * 1e-9))
+
 simulation = Simulation(model, Δt=wizard, 
-                        stop_time=12hours, 
-                        progress=print_progress, 
+                        #stop_time=12hours, 
+                        stop_time=2hours, 
+                        progress=progress_message,
                         iteration_interval=10,
                         stop_iteration=Inf,
                        )
@@ -125,4 +134,5 @@ NetCDFOutputWriter(model, fields, filepath = "out.tilted_bbl.nc",
 
 
 @info "Starting simulation"
+start_time = time_ns() # so we can print the total elapsed wall time
 run!(simulation)
