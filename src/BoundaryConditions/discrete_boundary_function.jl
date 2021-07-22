@@ -16,24 +16,26 @@ of `OffsetArray`s depending on the turbulence closure) of field data.
 When `parameters` is not `nothing`, the boundary condition `func` is called with
 the signature
 
-    `func(i, j, grid, clock, model_fields)`
+    `func(i, j, grid, clock, model_fields, parameters)`
 
 *Note* that the index `end` does *not* access the final physical grid point of
 a model field in any direction. The final grid point must be explictly specified, as
 in `model_fields.u[i, j, grid.Nz]`.
 """
-struct DiscreteBoundaryFunction{P, F} <: Function
+struct DiscreteBoundaryFunction{P, F}
     func :: F
     parameters :: P
 end
 
-# Un-parameterized
-@inline (bc::DiscreteBoundaryFunction{<:Nothing})(i, j, grid, clock, model_fields) =
-    bc.func(i, j, grid, clock, model_fields)
+const UnparameterizedDBF = DiscreteBoundaryFunction{<:Nothing}
+const UnparameterizedDBFBC = BoundaryCondition{<:Any, <:UnparameterizedDBF}
+const DBFBC = BoundaryCondition{<:Any, <:DiscreteBoundaryFunction}
 
-# Parameterized
-@inline (bc::DiscreteBoundaryFunction)(i, j, grid, clock, model_fields) =
-    bc.func(i, j, grid, clock, model_fields, bc.parameters)
+@inline getbc(bc::UnparameterizedDBFBC, i, j, grid, clock, model_fields, args...) =
+    bc.condition.func(i, j, grid, clock, model_fields)
+
+@inline getbc(bc::DBFBC, i, j, grid, clock, model_fields, args...) =
+    bc.condition.func(i, j, grid, clock, model_fields, bc.condition.parameters)
 
 # Don't re-convert DiscreteBoundaryFunctions passed to BoundaryCondition constructor
 BoundaryCondition(Classification::DataType, condition::DiscreteBoundaryFunction) = BoundaryCondition(Classification(), condition)
