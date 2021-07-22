@@ -103,7 +103,7 @@ end
         pcg_η = pcg_model.free_surface.η
         fft_η = fft_model.free_surface.η
 
-        Δη = interior(pcg_η) .- interior(fft_η)
+        Δη = Array(interior(pcg_η) .- interior(fft_η))
 
         @info "FFT/PCG implicit free surface solver comparison, maximum(abs, Δη): $(maximum(abs, Δη))"
 
