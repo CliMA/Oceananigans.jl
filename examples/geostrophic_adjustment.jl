@@ -50,7 +50,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
 # ## A geostrophic adjustment initial value problem
 #
 # We pose a geostrophic adjustment problem that consists of a partially-geostrophic
-# gaussian height field complemented by a geostrophic ``y``-velocity,
+# Gaussian height field complemented by a geostrophic ``y``-velocity,
 
 gaussian(x, L) = exp(-x^2 / 2L^2)
 
