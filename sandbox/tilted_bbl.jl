@@ -22,7 +22,7 @@ grid = VerticallyStretchedRectilinearGrid(topology=topo,
                                           x=(0, Lx), z_faces=z_faces,
                                           halo=(3,3),
                                          )
-println(); println(grid); println()
+@info grid
 #----
 
 #++++ Buoyancy model and background
@@ -32,8 +32,8 @@ tracers = :b
 b∞(x, y, z, t) = N²∞ * (x*g̃[1] + z*g̃[3])
 B_field = BackgroundField(b∞)
 
-b_bottom(x, y, t) = -b∞(x, y, 0, t)
-grad_bc_b = GradientBoundaryCondition(b_bottom)
+db∞dz = N²∞ * g̃[3]
+grad_bc_b = GradientBoundaryCondition(-db∞dz) # db/dz + db∞/dz = 0 @ z=0
 b_bcs = FieldBoundaryConditions(bottom = grad_bc_b)
 #----
 
@@ -93,13 +93,15 @@ println(); println(model); println()
 
 noise(z, kick) = kick * randn() * exp(-z / (Lz/5))
 u_ic(x, y, z) = noise(z, 1e-3)
-set!(model, b=0, u=u_ic, v=u_ic)
+set!(model, b=0, u=u_ic, w=u_ic)
 
 ū = sum(model.velocities.u.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
 v̄ = sum(model.velocities.v.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
+w̄ = sum(model.velocities.w.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
 
 model.velocities.u.data.parent .-= ū
 model.velocities.v.data.parent .-= v̄
+model.velocities.w.data.parent .-= w̄
 #----
 
 #++++ Create simulation
@@ -113,8 +115,8 @@ progress_message(sim) =
             prettytime((time_ns() - start_time) * 1e-9))
 
 simulation = Simulation(model, Δt=wizard, 
-                        #stop_time=12hours, 
-                        stop_time=2hours, 
+                        stop_time=2days, 
+                        #stop_time=2hours, 
                         progress=progress_message,
                         iteration_interval=10,
                         stop_iteration=Inf,
