@@ -28,7 +28,7 @@ struct DiscreteBoundaryFunction{P, F}
 end
 
 const UnparameterizedDBF = DiscreteBoundaryFunction{<:Nothing}
-const UnparameterizedDBFBC = BoundaryCondition{<:Any, <:ParameterizedDBF}
+const UnparameterizedDBFBC = BoundaryCondition{<:Any, <:UnparameterizedDBF}
 const DBFBC = BoundaryCondition{<:Any, <:DiscreteBoundaryFunction}
 
 @inline getbc(bc::UnparameterizedDBFBC, i, j, grid, clock, model_fields, args...) =
