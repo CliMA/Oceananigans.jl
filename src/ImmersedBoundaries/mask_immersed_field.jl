@@ -24,5 +24,3 @@ end
 #####
 
 mask_immersed_velocities!(U, arch, grid) = tuple(NoneEvent())
-mask_immersed_tracers!(tracers, arch, grid) = tuple(NoneEvent())
-
