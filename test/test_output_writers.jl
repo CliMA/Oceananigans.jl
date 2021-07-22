@@ -182,7 +182,7 @@ end
         # Some tests can reuse this same grid and model.
         topo = (Periodic, Periodic, Bounded)
         grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-        model = IncompressibleModel(architecture=arch, grid=grid)
+        model = NonhydrostaticModel(architecture=arch, grid=grid)
 
         @testset "WindowedTimeAverage [$(typeof(arch))]" begin
             @info "  Testing WindowedTimeAverage [$(typeof(arch))]..."
@@ -199,7 +199,7 @@ end
     for arch in archs
         topo =(Periodic, Periodic, Bounded)
         grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-        model = IncompressibleModel(architecture=arch, grid=grid)
+        model = NonhydrostaticModel(architecture=arch, grid=grid)
 
         @testset "Dependency adding [$(typeof(arch))]" begin
             @info "    Testing dependency adding [$(typeof(arch))]..."

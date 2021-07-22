@@ -32,7 +32,7 @@ function setup_model(N, L, U, ϕₐ, time_stepper, advection_scheme)
     topology = (Periodic, Flat, Flat)
     grid = RegularRectilinearGrid(topology=topology, size=(N, ), halo=(9, ), x=(-L/2, L/2))
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
                grid = grid,
         timestepper = time_stepper,
           advection = advection_scheme,

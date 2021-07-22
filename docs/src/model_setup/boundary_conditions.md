@@ -278,7 +278,7 @@ In general, boundary condition defaults are inferred from the field location and
 ## Specifying model boundary conditions
 
 To specify non-default boundary conditions, a named tuple of [`FieldBoundaryConditions`](@ref) objects is
-passed to the keyword argument `boundary_conditions` in the [`IncompressibleModel`](@ref) constructor.
+passed to the keyword argument `boundary_conditions` in the [`NonhydrostaticModel`](@ref) constructor.
 The keys of `boundary_conditions` indicate the field to which the boundary condition is applied.
 Below, non-default boundary conditions are imposed on the ``u``-velocity and temperature.
 
@@ -293,8 +293,8 @@ julia> u_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(+0.1),
 julia> T_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20),
                                        bottom = GradientBoundaryCondition(0.01));
 
-julia> model = IncompressibleModel(grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
-IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
+julia> model = NonhydrostaticModel(grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
+NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 ├── tracers: (:T, :S)
 ├── closure: Nothing

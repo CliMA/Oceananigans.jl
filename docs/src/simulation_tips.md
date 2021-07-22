@@ -106,7 +106,7 @@ For example, in the example below, calculating `u²` works in both CPUs and GPUs
 ```julia
 using Oceananigans
 grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = IncompressibleModel(grid=grid, closure=IsotropicDiffusivity(ν=1e-6))
+model = NonhydrostaticModel(grid=grid, closure=IsotropicDiffusivity(ν=1e-6))
 u, v, w = model.velocities
 ν = model.closure.ν
 u² = ComputedField(u^2)
@@ -234,8 +234,8 @@ RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}
    halo size (Hx, Hy, Hz): (1, 1, 1)
 grid spacing (Δx, Δy, Δz): (1.0, 1.0, 1.0)
 
-julia> model = IncompressibleModel(grid=grid, architecture=GPU())
-IncompressibleModel{GPU, Float64}(time = 0 seconds, iteration = 0) 
+julia> model = NonhydrostaticModel(grid=grid, architecture=GPU())
+NonhydrostaticModel{GPU, Float64}(time = 0 seconds, iteration = 0) 
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 ├── tracers: (:T, :S)
 ├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}

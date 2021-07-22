@@ -1,7 +1,7 @@
 using StructArrays: StructArray, replace_storage
 using Oceananigans.Fields: AbstractField
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions
+using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 
@@ -35,7 +35,7 @@ function saveproperty!(file, location, bcs::FieldBoundaryConditions)
         bc = getproperty(bcs, endpoint)
         file[location * "/$endpoint/type"] = bc_str(bc)
 
-        if bc.condition isa Function
+        if bc.condition isa Function || bc.condition isa ContinuousBoundaryFunction
             @warn "$field.$coord.$endpoint boundary is of type Function and cannot be saved to disk!"
             file[location * "/$boundary/condition"] = missing
         else
@@ -51,6 +51,7 @@ saveproperties!(file, structure, ps) = [saveproperty!(file, "$p", getproperty(st
 serializeproperty!(file, location, p) = (file[location] = p)
 serializeproperty!(file, location, p::AbstractArray) = saveproperty!(file, location, p)
 serializeproperty!(file, location, p::Function) = @warn "Cannot serialize Function property into $location"
+serializeproperty!(file, location, p::ContinuousBoundaryFunction) = @warn "Cannot serialize ContinuousBoundaryFunction property into $location"
 
 function serializeproperty!(file, location, p::ImmersedBoundaryGrid)
     # Note: when we support array representations of immersed boundaries, we should save those too.

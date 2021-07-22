@@ -7,7 +7,7 @@ using Benchmarks
 
 N = parse(Int, ARGS[1])
 grid = RegularRectilinearGrid(size=(N, N, N), extent=(1, 1, 1))
-model = IncompressibleModel(architecture=CPU(), grid=grid)
+model = NonhydrostaticModel(architecture=CPU(), grid=grid)
 
 time_step!(model, 1) # warmup
 

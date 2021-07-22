@@ -41,7 +41,7 @@ function test_thermal_bubble_checkpointer_output(arch)
 
     grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
-    true_model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
+    true_model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
@@ -73,7 +73,7 @@ function test_thermal_bubble_checkpointer_output(arch)
     ##### Test `set!(model, checkpoint_file)`
     #####
 
-    new_model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
+    new_model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure)
 
     set!(new_model, "checkpoint_iteration5.jld2")
 
@@ -121,7 +121,7 @@ function test_checkpoint_output_with_function_bcs(arch)
     u_bcs = FieldBoundaryConditions(top=top_u_bc)
     T_bcs = FieldBoundaryConditions(top=top_T_bc)
 
-    model = IncompressibleModel(architecture=arch, grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
+    model = NonhydrostaticModel(architecture=arch, grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
     set!(model, u=π/2, v=ℯ, T=Base.MathConstants.γ, S=Base.MathConstants.φ)
 
     checkpointer = Checkpointer(model, schedule=IterationInterval(1))
@@ -184,14 +184,14 @@ function test_checkpoint_output_with_function_bcs(arch)
 
     # Test that the restored model can be time stepped
     time_step!(properly_restored_model, 1)
-    @test properly_restored_model isa IncompressibleModel
+    @test properly_restored_model isa NonhydrostaticModel
 
     return nothing
 end
 
 function run_cross_architecture_checkpointer_tests(arch1, arch2)
     grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=arch1, grid=grid)
+    model = NonhydrostaticModel(architecture=arch1, grid=grid)
     set!(model, u=π/2, v=ℯ, T=Base.MathConstants.γ, S=Base.MathConstants.φ)
 
     checkpointer = Checkpointer(model, schedule=IterationInterval(1))
@@ -219,14 +219,14 @@ function run_cross_architecture_checkpointer_tests(arch1, arch2)
 
     # Test that the restored model can be time stepped
     time_step!(restored_model, 1)
-    @test restored_model isa IncompressibleModel
+    @test restored_model isa NonhydrostaticModel
 
     return nothing
 end
 
 function run_checkpointer_cleanup_tests(arch)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=arch, grid=grid)
+    model = NonhydrostaticModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=0.2, stop_iteration=10)
 
     simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(3), cleanup=true)

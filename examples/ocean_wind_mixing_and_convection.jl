@@ -139,7 +139,7 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 # for large eddy simulation to model the effect of turbulent motions at
 # scales smaller than the grid scale that we cannot explicitly resolve.
 
-model = IncompressibleModel(architecture = CPU(),
+model = NonhydrostaticModel(architecture = CPU(),
                             advection = UpwindBiasedFifthOrder(),
                             timestepper = :RungeKutta3,
                             grid = grid,

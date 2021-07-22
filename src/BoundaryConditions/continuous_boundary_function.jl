@@ -40,7 +40,7 @@ end
 location(::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
 
 #####
-##### "Regularization" for IncompressibleModel setup
+##### "Regularization" for NonhydrostaticModel setup
 #####
 
 """
