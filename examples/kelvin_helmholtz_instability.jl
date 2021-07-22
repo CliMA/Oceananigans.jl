@@ -89,7 +89,7 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 # ```math
 # L \, \phi_j = \lambda_j \, \phi_j \quad j=1,2,\dots \, .
 # ```
-# From hereafter we'll use the convention that the eigenvalues are ordered according to their real part, ``\real(\lambda_1) \ge \real(\lambda_2) \ge \dotsb``.
+# From hereafter we'll use the convention that the eigenvalues are ordered according to their real part, ``\mathrm{Re}(\lambda_1) \ge \mathrm{Re}(\lambda_2) \ge \dotsb``.
 #
 # Remarks:
 #
@@ -106,7 +106,7 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 # ```math
 # \lim_{n \to \infty} L^n \Phi \propto \phi_1 \, .
 # ```
-# Of course, if ``\phi_1`` is an unstable mode (i.e., ``\sigma_1 = \real(\lambda_1) > 0``), then successive application
+# Of course, if ``\phi_1`` is an unstable mode (i.e., ``\sigma_1 = \mathrm{Re}(\lambda_1) > 0``), then successive application
 # of ``L`` will lead to exponential amplification. (Similarly, if ``\sigma_1 < 0``, successive application of ``L`` will
 # lead to exponential decay of ``\Phi`` down to machine precision.) Therefore, after each
 # application of the linear operator ``L``, we rescale the output ``L \Phi`` back to a pre-selected amplitude.
@@ -130,7 +130,7 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 
 # # The model
 
-model = IncompressibleModel(timestepper = :RungeKutta3,
+model = NonhydrostaticModel(timestepper = :RungeKutta3,
                               advection = UpwindBiasedFifthOrder(),
                                    grid = grid,
                                coriolis = nothing,

@@ -24,9 +24,7 @@ export
     # Boundary conditions
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
-    CoordinateBoundaryConditions, FieldBoundaryConditions,
-    UVelocityBoundaryConditions, VVelocityBoundaryConditions, WVelocityBoundaryConditions,
-    TracerBoundaryConditions, PressureBoundaryConditions,
+    FieldBoundaryConditions,
 
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
@@ -58,7 +56,7 @@ export
     LagrangianParticles,
 
     # Models
-    IncompressibleModel,
+    NonhydrostaticModel,
     HydrostaticFreeSurfaceModel,
     ShallowWaterModel,
     fields,

@@ -109,7 +109,7 @@ steps:
     depends_on: "init_cpu"
 
 #####
-##### IncompressibleModel and time stepping (part 1)
+##### NonhydrostaticModel and time stepping (part 1)
 #####
 
   - label: "🦀 gpu time stepping tests 1"
@@ -136,7 +136,7 @@ steps:
     depends_on: "init_cpu"
 
 #####
-##### IncompressibleModel and time stepping (part 2)
+##### NonhydrostaticModel and time stepping (part 2)
 #####
 
   - label: "🦈 gpu time stepping tests 2"

@@ -112,7 +112,7 @@ function time_step_with_variable_isotropic_diffusivity(arch)
     closure = IsotropicDiffusivity(ν = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t),
                                    κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
         architecture=arch, closure=closure,
         grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
     )
@@ -133,7 +133,7 @@ function time_step_with_variable_anisotropic_diffusivity(arch)
                                      κz = (x, y, z, t) -> 4 * exp(z) * cos(x) * cos(y) * cos(t)
                                     )
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
         architecture=arch, closure=closure,
         grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
     )
@@ -146,7 +146,7 @@ end
 function time_step_with_tupled_closure(FT, arch)
     closure_tuple = (AnisotropicMinimumDissipation(FT), AnisotropicDiffusivity(FT))
 
-    model = IncompressibleModel(architecture=arch, closure=closure_tuple,
+    model = NonhydrostaticModel(architecture=arch, closure=closure_tuple,
                                 grid=RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, 2, 3)))
 
     time_step!(model, 1, euler=true)
@@ -157,11 +157,11 @@ function compute_closure_specific_diffusive_cfl(closurename)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
     closure = getproperty(TurbulenceClosures, closurename)()
 
-    model = IncompressibleModel(grid=grid, closure=closure)
+    model = NonhydrostaticModel(grid=grid, closure=closure)
     dcfl = DiffusiveCFL(0.1)
     @test dcfl(model) isa Number
 
-    tracerless_model = IncompressibleModel(grid=grid, closure=closure,
+    tracerless_model = NonhydrostaticModel(grid=grid, closure=closure,
                                            buoyancy=nothing, tracers=nothing)
     dcfl = DiffusiveCFL(0.2)
     @test dcfl(tracerless_model) isa Number

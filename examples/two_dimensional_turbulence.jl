@@ -27,7 +27,7 @@ using Oceananigans
 grid = RegularRectilinearGrid(size=(128, 128), extent=(2π, 2π), 
                               topology=(Periodic, Periodic, Flat))
 
-model = IncompressibleModel(timestepper = :RungeKutta3,
+model = NonhydrostaticModel(timestepper = :RungeKutta3,
                               advection = UpwindBiasedFifthOrder(),
                                    grid = grid,
                                buoyancy = nothing,

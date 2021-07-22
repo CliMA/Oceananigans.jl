@@ -48,7 +48,7 @@ U(x, y, z, t) = 0.2 * z
 
 grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
-model = IncompressibleModel(grid = grid, background_fields = (u=U,))
+model = NonhydrostaticModel(grid = grid, background_fields = (u=U,))
 
 model.background_fields.velocities.u
 
@@ -61,7 +61,7 @@ FunctionField located at (Face, Center, Center)
 ```
 
 `BackgroundField`s are specified by passing them to the kwarg `background_fields`
-in the `IncompressibleModel` constructor. The kwarg `background_fields` expects
+in the `NonhydrostaticModel` constructor. The kwarg `background_fields` expects
 a `NamedTuple` of fields, which are internally sorted into `velocities` and `tracers`,
 wrapped in `FunctionField`s, and assigned their appropriate locations.
 
@@ -85,12 +85,12 @@ BackgroundField{typeof(B), NamedTuple{(:α, :N, :f), Tuple{Float64, Float64, Flo
 └── parameters: (α = 3.14, N = 1.0, f = 0.1)
 ```
 
-When inserted into `IncompressibleModel`, we get out
+When inserted into `NonhydrostaticModel`, we get out
 
 ```jldoctest moar_background
 grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
-model = IncompressibleModel(grid = grid, background_fields = (u=U_field, b=B_field),
+model = NonhydrostaticModel(grid = grid, background_fields = (u=U_field, b=B_field),
                             tracers=:b, buoyancy=BuoyancyTracer())
 
 model.background_fields.tracers.b

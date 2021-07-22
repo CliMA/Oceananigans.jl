@@ -39,7 +39,7 @@ end
 """
     BackgroundField(func; parameters=nothing)
 
-Returns a `BackgroundField` to be passed to `IncompressibleModel` for use
+Returns a `BackgroundField` to be passed to `NonhydrostaticModel` for use
 as a background velocity or tracer field.
 
 If `parameters` is not provided, `func` must be callable with the signature

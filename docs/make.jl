@@ -8,7 +8,6 @@ using Glob
 
 using Oceananigans
 using Oceananigans.Operators
-using Oceananigans.Grids
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
@@ -43,7 +42,8 @@ examples = [
     "langmuir_turbulence.jl",
     "eady_turbulence.jl",
     "kelvin_helmholtz_instability.jl",
-    "shallow_water_Bickley_jet.jl"
+    "shallow_water_Bickley_jet.jl",
+    "horizontal_convection.jl"
 ]
 
 for example in examples
@@ -65,7 +65,8 @@ example_pages = [
     "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
     "Eady turbulence"                    => "generated/eady_turbulence.md",
     "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
-    "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md"
+    "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md",
+    "Horizontal convection"              => "generated/horizontal_convection.md"
  ]
 
 model_setup_pages = [
@@ -91,8 +92,8 @@ model_setup_pages = [
 physics_pages = [
     "Coordinate system and notation" => "physics/notation.md",
     "Boussinesq approximation" => "physics/boussinesq.md",
-    "`IncompressibleModel`" => [
-        "Incompressible model" => "physics/incompressible_model.md",
+    "`NonhydrostaticModel`" => [
+        "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
         ],
     "`HydrostaticFreeSurfaceModel`" => [
         "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md"
@@ -115,7 +116,6 @@ numerical_pages = [
     "Poisson solvers" => "numerical_implementation/poisson_solvers.md",
     "Large eddy simulation" => "numerical_implementation/large_eddy_simulation.md"
 ]
-
 
 appendix_pages = [
     "Staggered grid" => "appendix/staggered_grid.md",
@@ -161,7 +161,7 @@ makedocs(bib,
    doctest = true,
     strict = true,
      clean = true,
- checkdocs = :none  # Should fix our docstring so we can use checkdocs=:exports with strict=true.
+ checkdocs = :none # Should fix our docstring so we can use checkdocs=:exports with strict=true.
 )
 
 deploydocs(

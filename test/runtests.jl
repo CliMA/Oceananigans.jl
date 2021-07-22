@@ -106,7 +106,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
     if group == :time_stepping_1 || group == :all
         @testset "Model and time stepping tests (part 1)" begin
-            include("test_incompressible_models.jl")
+            include("test_nonhydrostatic_models.jl")
             include("test_time_stepping.jl")
         end
     end

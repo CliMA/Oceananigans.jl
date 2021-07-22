@@ -88,7 +88,7 @@ ContinuousForcing(func; parameters=nothing, field_dependencies=()) =
 
 Regularize `forcing::ContinuousForcing` by determining the indices of `forcing.field_dependencies`
 in `model_field_names`, and associated interpolation functions so `forcing` can be used during
-time-stepping `IncompressibleModel`.
+time-stepping `NonhydrostaticModel`.
 """
 function regularize_forcing(forcing::ContinuousForcing, field, field_name, model_field_names)
 

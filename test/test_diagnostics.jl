@@ -5,7 +5,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 
 function nan_checker_aborts_simulation(arch)
     grid = RegularRectilinearGrid(size=(4, 2, 1), extent=(1, 1, 1))
-    model = IncompressibleModel(grid=grid, architecture=arch)
+    model = NonhydrostaticModel(grid=grid, architecture=arch)
     simulation = Simulation(model, Δt=1, stop_iteration=1)
 
     model.velocities.u[1, 1, 1] = NaN
@@ -16,7 +16,7 @@ function nan_checker_aborts_simulation(arch)
 end
 
 TestModel_VerticallyStrectedRectGrid(arch, FT, ν=1.0, Δx=0.5) =
-    IncompressibleModel(
+    NonhydrostaticModel(
           grid = VerticallyStretchedRectilinearGrid(FT, architecture = arch, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), z_faces=0:Δx:3Δx,),
        closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = arch
@@ -24,7 +24,7 @@ TestModel_VerticallyStrectedRectGrid(arch, FT, ν=1.0, Δx=0.5) =
 
 
 TestModel_RegularRectGrid(arch, FT, ν=1.0, Δx=0.5) =
-    IncompressibleModel(
+    NonhydrostaticModel(
           grid = RegularRectilinearGrid(FT, topology=(Periodic, Periodic, Periodic), size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
        closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = arch
@@ -102,7 +102,7 @@ end
 
 function accurate_advective_cfl_on_stretched_grid(arch, FT)
     grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(4, 4, 8), x=(0, 100), y=(0, 100), z_faces=[k^2 for k in 0:8])
-    model = IncompressibleModel(grid=grid, architecture=arch)
+    model = NonhydrostaticModel(grid=grid, architecture=arch)
 
     Δt = FT(15.5)
 

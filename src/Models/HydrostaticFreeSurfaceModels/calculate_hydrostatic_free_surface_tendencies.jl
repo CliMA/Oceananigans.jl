@@ -6,7 +6,7 @@ using Oceananigans.Utils: work_layout
 using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity
 
 """
-    calculate_tendencies!(model::IncompressibleModel)
+    calculate_tendencies!(model::NonhydrostaticModel)
 
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.

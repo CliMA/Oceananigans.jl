@@ -205,7 +205,7 @@ end
 function computation_including_boundaries(arch)
     topo = (Periodic, Bounded, Bounded)
     grid = RegularRectilinearGrid(topology=topo, size=(13, 17, 19), extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=arch, grid=grid)
+    model = NonhydrostaticModel(architecture=arch, grid=grid)
 
     u, v, w = model.velocities
     @. u.data = 1 + rand()
@@ -243,7 +243,7 @@ end
 function computations_with_buoyancy_field(arch, buoyancy)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     tracers = buoyancy isa BuoyancyTracer ? :b : (:T, :S)
-    model = IncompressibleModel(architecture=arch, grid=grid,
+    model = NonhydrostaticModel(architecture=arch, grid=grid,
                                 tracers=tracers, buoyancy=buoyancy)
 
     b = BuoyancyField(model)
@@ -327,7 +327,7 @@ for arch in archs
         buoyancy = SeawaterBuoyancy(gravitational_acceleration = 1,
                                              equation_of_state = LinearEquationOfState(α=1, β=1))
 
-        model = IncompressibleModel(architecture = arch,
+        model = NonhydrostaticModel(architecture = arch,
                                             grid = grid,
                                         buoyancy = buoyancy)
 
