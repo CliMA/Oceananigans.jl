@@ -140,6 +140,7 @@ end
 @inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid,
                                                                val_tracer_index::Val{tracer_index},
                                                                advection,
+                                                               tracer_immersed_bc,
                                                                closure,
                                                                buoyancy,
                                                                velocities,
@@ -156,7 +157,7 @@ end
     model_fields = merge(hydrostatic_prognostic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, e)
-             - ∇_dot_qᶜ(i, j, k, grid, closure, e, tke_index, clock, diffusivities, tracers, buoyancy, velocities)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, tracer_immersed_bc, e, tke_index, clock, diffusivities, tracers, buoyancy, velocities)
              + shear_production(i, j, k, grid, closure, clock, velocities, tracers, buoyancy, diffusivities)
              + buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy)
              - dissipation(i, j, k, grid, closure, tracers, buoyancy)

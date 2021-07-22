@@ -74,9 +74,10 @@ const VelocitiesNamedTuple = NamedTuple{(:u, :v, :w)}
  @inline _viscous_flux_wz(i, j, k, ibg::GFIBG, disc, closure, immersed_bcs::VelocitiesNamedTuple, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_wz, disc, closure, args...)
 
 # fcc, cfc, ccf
-@inline _diffusive_flux_x(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::BoundaryCondition, args...) = conditional_flux_fcc(i, j, k, ibg, diffusive_flux_x, disc, closure, args...)
-@inline _diffusive_flux_y(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::BoundaryCondition, args...) = conditional_flux_cfc(i, j, k, ibg, diffusive_flux_y, disc, closure, args...)
-@inline _diffusive_flux_z(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::BoundaryCondition, args...) = conditional_flux_ccf(i, j, k, ibg, diffusive_flux_z, disc, closure, args...)
+const BC = BoundaryCondition
+@inline _diffusive_flux_x(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::BC, c::AbstractArray, args...) = conditional_flux_fcc(i, j, k, ibg, diffusive_flux_x, disc, closure, c, args...)
+@inline _diffusive_flux_y(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::BC, c::AbstractArray, args...) = conditional_flux_cfc(i, j, k, ibg, diffusive_flux_y, disc, closure, c, args...)
+@inline _diffusive_flux_z(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::BC, c::AbstractArray, args...) = conditional_flux_ccf(i, j, k, ibg, diffusive_flux_z, disc, closure, c, args...)
 
 #####
 ##### Advective fluxes
