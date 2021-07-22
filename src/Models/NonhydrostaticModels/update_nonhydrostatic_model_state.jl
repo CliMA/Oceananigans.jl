@@ -13,7 +13,7 @@ Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
 function update_state!(model::NonhydrostaticModel)
     
     # Mask immersed tracers
-    tracer_masking_events = mask_immersed_tracers!(model.tracers, model.architecture, model.grid)
+    tracer_masking_events = Tuple(mask_immersed_field!(c) for c in model.tracers)
 
     wait(device(model.architecture), MultiEvent(tracer_masking_events))
 
