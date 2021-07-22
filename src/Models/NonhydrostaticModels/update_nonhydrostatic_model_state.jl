@@ -1,7 +1,7 @@
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
-using Oceananigans.ImmersedBoundaries: mask_immersed_tracers!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 import Oceananigans.TimeSteppers: update_state!
 
@@ -38,4 +38,3 @@ function update_state!(model::NonhydrostaticModel)
 
     return nothing
 end
-
