@@ -56,19 +56,19 @@ const GFIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ, G, <:GridFittedBoundary} wher
 #####
 
 # ccc, ffc, fcf
- #@inline _viscous_flux_ux(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_ux, args...)
- #@inline _viscous_flux_uy(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_uy, args...)
- #@inline _viscous_flux_uz(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_uz, args...)
+ @inline _viscous_flux_ux(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_ux, args...)
+ @inline _viscous_flux_uy(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_uy, args...)
+ @inline _viscous_flux_uz(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_uz, args...)
  
  # ffc, ccc, cff
- #@inline _viscous_flux_vx(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_vx, args...)
- #@inline _viscous_flux_vy(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_vy, args...)
- #@inline _viscous_flux_vz(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_vz, args...)
+ @inline _viscous_flux_vx(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_vx, args...)
+ @inline _viscous_flux_vy(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_vy, args...)
+ @inline _viscous_flux_vz(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_vz, args...)
  
  # fcf, cff, ccc
- #@inline _viscous_flux_wx(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_wx, args...)
- #@inline _viscous_flux_wy(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_wy, args...)
- #@inline _viscous_flux_wz(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_wz, args...)
+ @inline _viscous_flux_wx(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_wx, args...)
+ @inline _viscous_flux_wy(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_wy, args...)
+ @inline _viscous_flux_wz(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_wz, args...)
 
 # fcc, cfc, ccf
 @inline _diffusive_flux_x(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcc(i, j, k, ibg, diffusive_flux_x, args...)
@@ -164,5 +164,3 @@ end
 end
 
 mask_immersed_velocities!(U, arch, grid::GFIBG) = Tuple(mask_immersed_field!(q) for q in U)
-
-mask_immersed_tracers!(tracers, arch, grid::GFIBG) = Tuple(mask_immersed_field!(c) for c in tracers)
