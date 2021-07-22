@@ -105,7 +105,10 @@ end
 
         Δη = Array(interior(pcg_η) .- interior(fft_η))
 
-        @info "FFT/PCG implicit free surface solver comparison, maximum(abs, Δη): $(maximum(abs, Δη))"
+	@info "FFT/PCG implicit free surface solver comparison, " *
+		"maximum(abs, Δη): $(maximum(abs, Δη)), " *
+		"maximum(abs, η_pcg): $(maximum(abs, pcg_η)) " *
+		"maximum(abs, η_fft): $(maximum(abs, fft_η)) "
 
         @test all(isapprox.(Δη, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
     end
