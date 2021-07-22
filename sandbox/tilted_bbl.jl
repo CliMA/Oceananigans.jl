@@ -15,12 +15,12 @@ const g̃ = (sin(θ_rad), 0, cos(θ_rad))
 #++++ Grid
 S = 1.3
 z_faces(k) = Lz*(1 + tanh(S * ( (k - 1) / Nz - 1)) / tanh(S))
-topo = (Periodic, Periodic, Bounded)
+topo = (Periodic, Flat, Bounded)
 grid = VerticallyStretchedRectilinearGrid(topology=topo,
                                           architecture = CUDA.has_cuda() ? GPU() : CPU(), 
-                                          size=(Nx, 1, Nz),
-                                          x=(0, Lx), y=(0, 6*Lx/Nx), z_faces=z_faces,
-                                          halo=(3,3,3),
+                                          size=(Nx, Nz),
+                                          x=(0, Lx), z_faces=z_faces,
+                                          halo=(3,3),
                                          )
 println(); println(grid); println()
 #----
