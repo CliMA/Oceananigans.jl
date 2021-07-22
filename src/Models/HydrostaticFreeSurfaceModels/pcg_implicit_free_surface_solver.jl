@@ -54,6 +54,8 @@ function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, 
     # solve!(x, solver, b, args...) solves A*x = b for x.
     solve!(η, solver, rhs, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
 
+    fill_halo_regions!(η, solver.architecture)
+
     return nothing
 end
 
@@ -68,7 +70,7 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
     event = launch!(arch, grid, :xy,
                     implicit_free_surface_right_hand_side!,
                     rhs, grid, g, Δt, ∫ᶻQ, η,
-		    dependencies = device_event(arch))
+		            dependencies = device_event(arch))
 
     return event
 end
@@ -100,7 +102,7 @@ function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫�
 
     event = launch!(arch, grid, :xy, _implicit_free_surface_linear_operation!,
                     L_ηⁿ⁺¹, grid,  ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt,
-                    dependencies=Event(device(arch)))
+                    dependencies = device_event(arch))
 
     wait(device(arch), event)
 
