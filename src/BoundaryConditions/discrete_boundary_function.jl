@@ -27,14 +27,14 @@ struct DiscreteBoundaryFunction{P, F}
     parameters :: P
 end
 
-const ParameterizedDBF = DiscreteBoundaryFunction{<:Nothing}
-const ParameterizedDBFBC = BoundaryCondition{<:Any, <:ParameterizedDBF}
+const UnparameterizedDBF = DiscreteBoundaryFunction{<:Nothing}
+const UnparameterizedDBFBC = BoundaryCondition{<:Any, <:ParameterizedDBF}
 const DBFBC = BoundaryCondition{<:Any, <:DiscreteBoundaryFunction}
 
-@inline getbc(bc::DBFBC, i, j, grid, clock, model_fields, args...) =
+@inline getbc(bc::UnparameterizedDBFBC, i, j, grid, clock, model_fields, args...) =
     bc.condition.func(i, j, grid, clock, model_fields)
 
-@inline getbc(bc::ParameterizedDBFBC, i, j, grid, clock, model_fields, args...) =
+@inline getbc(bc::DBFBC, i, j, grid, clock, model_fields, args...) =
     bc.condition.func(i, j, grid, clock, model_fields, bc.condition.parameters)
 
 # Don't re-convert DiscreteBoundaryFunctions passed to BoundaryCondition constructor
