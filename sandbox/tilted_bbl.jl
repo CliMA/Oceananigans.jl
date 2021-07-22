@@ -41,7 +41,8 @@ b_bcs = FieldBoundaryConditions(bottom = grad_bc_b)
 #+++++ Bottom Drag
 const z₀ = 0.01 # roughness length (m)
 const κ = 0.4 # von Karman constant
-const cᴰ = (κ / log(grid.zᵃᵃᶜ[1]))^2 # quadratic drag coefficient
+z₁ = znodes(Center, grid)[1]
+const cᴰ = (κ / log(z₁))^2 # quadratic drag coefficient
 
 @inline drag_u(x, y, t, u, v, cᴰ) = - cᴰ * √(u^2 + (v+V∞)^2) * u
 @inline drag_v(x, y, t, u, v, cᴰ) = - cᴰ * √(u^2 + (v+V∞)^2) * (v + V∞)
