@@ -36,7 +36,7 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
            velocities :: U        # Container for velocity fields `u`, `v`, and `w`
               tracers :: C        # Container for tracer fields
             pressures :: Φ        # Container for hydrostatic and nonhydrostatic pressure
-        diffusivities :: K        # Container for turbulent diffusivities
+   diffusivity_fields :: K        # Container for turbulent diffusivities
           timestepper :: TS       # Object containing timestepper fields and parameters
       pressure_solver :: S        # Pressure/Poisson solver
     immersed_boundary :: I        # Models the physics of immersed boundaries within the grid
@@ -60,7 +60,7 @@ end
               particles = nothing,
              velocities = nothing,
               pressures = nothing,
-          diffusivities = nothing,
+     diffusivity_fields = nothing,
         pressure_solver = nothing,
       immersed_boundary = nothing
     )
@@ -100,7 +100,7 @@ function NonhydrostaticModel(;    grid,
          particles::ParticlesOrNothing = nothing,
                             velocities = nothing,
                              pressures = nothing,
-                         diffusivities = nothing,
+                    diffusivity_fields = nothing,
                        pressure_solver = nothing,
                      immersed_boundary = nothing
     )
@@ -130,7 +130,7 @@ function NonhydrostaticModel(;    grid,
     embedded_boundary_conditions = merge(extract_boundary_conditions(velocities),
                                          extract_boundary_conditions(tracers),
                                          extract_boundary_conditions(pressures),
-                                         extract_boundary_conditions(diffusivities))
+                                         extract_boundary_conditions(diffusivity_fields))
 
     # Next, we form a list of default boundary conditions:
     prognostic_field_names = (:u, :v, :w, tracernames(tracers)...)
@@ -148,7 +148,7 @@ function NonhydrostaticModel(;    grid,
     velocities    = VelocityFields(velocities, architecture, grid, boundary_conditions)
     tracers       = TracerFields(tracers,      architecture, grid, boundary_conditions)
     pressures     = PressureFields(pressures,  architecture, grid, boundary_conditions)
-    diffusivities = DiffusivityFields(diffusivities, architecture, grid, tracernames(tracers), boundary_conditions, closure)
+    diffusivity_fields = DiffusivityFields(diffusivity_fields, architecture, grid, tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
         pressure_solver = PressureSolver(architecture, grid)
@@ -167,7 +167,7 @@ function NonhydrostaticModel(;    grid,
 
     return NonhydrostaticModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                forcing, closure, background_fields, particles, velocities, tracers,
-                               pressures, diffusivities, timestepper, pressure_solver, immersed_boundary)
+                               pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary)
 end
 
 #####

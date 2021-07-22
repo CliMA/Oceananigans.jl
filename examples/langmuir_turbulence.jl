@@ -216,7 +216,7 @@ simulation = Simulation(model, iteration_interval = 10,
 
 output_interval = 5minutes
 
-fields_to_output = merge(model.velocities, model.tracers, (νₑ=model.diffusivities.νₑ,))
+fields_to_output = merge(model.velocities, model.tracers, (νₑ=model.diffusivity_fields.νₑ,))
 
 simulation.output_writers[:fields] =
     JLD2OutputWriter(model, fields_to_output,
