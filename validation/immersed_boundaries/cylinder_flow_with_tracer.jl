@@ -68,9 +68,10 @@ function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, a
     U∞ = 1.0 # uniform flow
     
     # Total initial conditions
-    uᵢ(x, y, z) = 0;
-    vᵢ(x, y, z) = U∞;
-    mᵢ(x, y, z) = ifelse(inside_cylinder(x,y,z), 0., 1.0);
+    uᵢ(x, y, z) = 0
+    vᵢ(x, y, z) = U∞
+    mᵢ(x, y, z) = 1.0
+    #mᵢ(x, y, z) = ifelse(inside_cylinder(x,y,z), 0., 1.0)
     set!(immersed_model, u=uᵢ, v=vᵢ, mass=mᵢ)
 
     wall_clock = [time_ns()]
@@ -215,7 +216,7 @@ end
 function analyze_cylinder_steadystate(experiment_name)
 
     @info "Analyzing data from steady state cylinder flow..."
-    @warn "Analysis is for no slip cylinder BC."
+    # Analysis of coefficients is for no slip cylinder BC
 
     # distance function for solid cylinder
     @inline dist_cylinder(v) = sqrt((v[1])^2+(v[2])^2)-R
@@ -381,7 +382,7 @@ function analyze_cylinder_steadystate(experiment_name)
 end
 
 advection = CenteredSecondOrder()
-experiment_name = run_cylinder_steadystate(Nh = 200, advection = advection, radius = R, stop_time = 50, ν = nu)
+experiment_name = run_cylinder_steadystate(Nh = 350, advection = advection, radius = R, stop_time = 100, ν = nu)
 visualize_cylinder_steadystate(experiment_name)
 analyze_cylinder_steadystate(experiment_name)
 
