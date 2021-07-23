@@ -67,7 +67,6 @@ function run_pcg_implicit_free_surface_solver_tests(arch, grid)
     std_tolerance = 1e-9
 
     CUDA.@allowscalar begin
-        @test minimum(abs, interior(left_hand_side) .- interior(right_hand_side)) < extrema_tolerance
         @test maximum(abs, interior(left_hand_side) .- interior(right_hand_side)) < extrema_tolerance
         @test std(interior(left_hand_side) .- interior(right_hand_side)) < std_tolerance
     end
@@ -124,14 +123,13 @@ end
         fft_η_cpu = Array(interior(fft_η))
 
         @info "FFT/PCG implicit free surface solver comparison, " *
-            "norm(η_pcg - η_fft): $(norm(pcg_η_cpu .- fft_η_cpu)), " *
+            "maximum(abs, η_pcg - η_fft): $(maximum(abs, pcg_η_cpu .- fft_η_cpu)), " *
             "maximum(abs, η_pcg): $(maximum(abs, pcg_η_cpu)), " *
             "maximum(abs, η_fft): $(maximum(abs, fft_η_cpu)), "
-            "norm(η_pcg): $(norm(pcg_η_cpu)) " *
-            "norm(η_fft): $(norm(fft_η_cpu)) "
 
         # GLW says: I have no idea why this tolerance has to be so huge. By all account both solvers are correct,
         # but the PCG solver does not generate consistent results (to within the tolerance used below) on all machines.
-        @test all(isapprox.(pcg_η_cpu, fft_η_cpu, rtol=5e-2))
+        tolerance = 1e-3
+        @test maximum(abs, pcg_η_cpu .- fft_η_cpu) < tolerance
     end
 end
