@@ -6,8 +6,9 @@ the locally horizontal components of the rotation vector. Traditionally
 (see [`FPlane`](@ref)) only the locally vertical component is accounted for.
 """
 struct NonTraditionalFPlane{FT} <: AbstractRotation
-    fz :: FT
+    fx :: FT
     fy :: FT
+    fz :: FT
 end
 
 """
@@ -27,7 +28,7 @@ according to the relations `fz = 2 * rotation_rate * sind(latitude)` and
 `fy = 2 * rotation_rate * cosd(latitude)`, respectively. By default, `rotation_rate`
 is assumed to be Earth's.
 """
-function NonTraditionalFPlane(FT=Float64; fz=nothing, fy=nothing, rotation_rate=Ω_Earth, latitude=nothing)
+function NonTraditionalFPlane(FT=Float64; rotation_rate=Ω_Earth, rotation_axis=ZDirection())
 
     use_f = !isnothing(fz) && !isnothing(fy) && isnothing(latitude)
     use_planet_parameters = !isnothing(latitude) && isnothing(fz) && isnothing(fy)
@@ -36,10 +37,11 @@ function NonTraditionalFPlane(FT=Float64; fz=nothing, fy=nothing, rotation_rate=
         throw(ArgumentError("Either both rotation_rate and latitude must be " *
                             "specified, *or* both f and f′ must be specified."))
     elseif use_planet_parameters
-        fz = 2rotation_rate*sind(latitude)
-        fy = 2rotation_rate*cosd(latitude)
+        fx = rotation_rate * rotation_axis[1]
+        fy = rotation_rate * rotation_axis[2]
+        fz = rotation_rate * rotation_axis[3]
     end
-    return NonTraditionalFPlane{FT}(fz, fy)
+    return NonTraditionalFPlane{FT}(fx, fy, fz)
 end
 
 # This function is eventually interpolated to fcc to contribute to x_f_cross_U.
@@ -57,4 +59,4 @@ end
 @inline z_f_cross_U(i, j, k, grid, coriolis::NonTraditionalFPlane, U) = ℑzᵃᵃᶠ(i, j, k, grid, fˣv_minus_fʸu, coriolis, U)
 
 Base.show(io::IO, f_plane::NonTraditionalFPlane{FT}) where FT =
-    print(io, "NonTraditionalFPlane{$FT}: ", @sprintf("fz = %.2e, fy = %.2e", f_plane.fz, f_plane.fy))
+    print(io, "NonTraditionalFPlane{$FT}: ", @sprintf("fx = %.2e, fy = %.2e, fz = %.2e", f_plane.fx, f_plane.fy, f_plane.fz))
