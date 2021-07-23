@@ -16,9 +16,17 @@ struct FFTImplicitFreeSurfaceSolver{S, G3, G2, R}
 end
 
 """
+    function FFTImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
+
+Return a solver for the screened Poisson equation
+    
 ```math
-(∇² - Az / (g H Δt²)) ηⁿ⁺¹ = 1 / (g H Δt) * (∇ʰ ⋅ Q★ - Az ηⁿ / Δt)
+[∇² - Az / (g H Δt²)] ηⁿ⁺¹ = 1 / (g H Δt) (∇ʰ ⋅ Q★ - Az ηⁿ / Δt)
 ```
+
+representing an implicit time discretization of the linear free surface evolution equation
+for a fluid with constant depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
+step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
 function FFTImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
 
