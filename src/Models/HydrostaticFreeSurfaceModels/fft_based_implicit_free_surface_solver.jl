@@ -16,11 +16,10 @@ struct FFTImplicitFreeSurfaceSolver{S, G3, G2, R}
 end
 
 """
+    function FFTImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
+    
 ```math
-(∇² - Az / (g H Δt²)) ηⁿ⁺¹ = 1 / (g H Δt) * (∇ʰ ⋅ Q★ - Az ηⁿ / Δt)
-```
-"""
-function FFTImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
+[∇² - Az / (g H Δt²)] ηⁿ⁺¹ = 1 / (g H Δt) (∇ʰ ⋅ Q★ - Az ηⁿ / Δt)
 
     grid isa RegularRectilinearGrid || grid isa VerticallyStretchedRectilinearGrid ||
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
