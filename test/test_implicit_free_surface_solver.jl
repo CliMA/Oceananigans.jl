@@ -95,7 +95,7 @@ end
 
         Δt = 900
 
-        pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, tolerance=1e-15, maximum_iterations=128^2)
+        pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, tolerance=1e-15, maximum_iterations=128^3)
         fft_free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
 
         pcg_model = HydrostaticFreeSurfaceModel(architecture = arch,
