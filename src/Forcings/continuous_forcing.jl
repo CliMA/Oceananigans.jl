@@ -7,7 +7,7 @@ using Oceananigans.Fields: show_location
 using Oceananigans.Utils: user_function_arguments, tupleit
 
 """
-    ContinuousForcing{LX, LY, LZ, P, F, D, I}
+    ContinuousForcing{LX, LY, LZ, P, F, D, I, ℑ}
 
 A callable object that implements a "continuous form" forcing function
 on a field at the location `LX, LY, LZ` with optional parameters.
@@ -106,11 +106,9 @@ end
 ##### Functions for calling ContinuousForcing in a time-stepping kernel
 #####
 
-@inline function (forcing::ContinuousForcing{LX, LY, LZ, F})(i, j, k, grid, clock, model_fields) where {LX, LY, LZ, F}
-
+@inline function (forcing::ContinuousForcing{LX, LY, LZ, P, F})(i, j, k, grid, clock, model_fields) where {LX, LY, LZ, P, F}
     args = user_function_arguments(i, j, k, grid, model_fields, forcing.parameters, forcing)
-
-    return @inbounds forcing.func(node(LX(), LY(), LZ(), i, j, k, grid)..., clock.time, args...)
+    return forcing.func(node(LX(), LY(), LZ(), i, j, k, grid)..., clock.time, args...)
 end
 
 """Show the innards of a `ContinuousForcing` in the REPL."""
