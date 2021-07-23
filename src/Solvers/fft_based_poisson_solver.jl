@@ -26,9 +26,7 @@ Base.show(io::IO, solver::FFTBasedPoissonSolver{A, G}) where {A, G}=
           "├── buffer: $(typeof(solver.buffer))\n",
           "└── transforms:\n",
           "    ├── forward: ", transform_list_str(solver.transforms.forward), "\n",
-          "    └── backward: ", transform_list_str(solver.transforms.backward),
-         )
-          #"└── transforms: $(solver.transforms)")
+          "    └── backward: ", transform_list_str(solver.transforms.backward))
 
 function FFTBasedPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
     topo = (TX, TY, TZ) =  topology(grid)
