@@ -18,7 +18,7 @@ julia> using Oceananigans, Oceananigans.Units
 
 julia> model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)));
 
-julia> simulation = Simulation(model, Δt=1);
+julia> simulation = Simulation(model, Δt=1, stop_iteration=1);
 
 julia> simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(5years), prefix="model_checkpoint")
 Checkpointer{TimeInterval, Vector{Symbol}}(TimeInterval(1.5768e8, 0.0), ".", "model_checkpoint", [:architecture, :grid, :clock, :coriolis, :buoyancy, :closure, :velocities, :tracers, :timestepper, :particles], false, false, false)
