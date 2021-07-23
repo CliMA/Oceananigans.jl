@@ -193,5 +193,5 @@ function run!(sim; pickup=false, callbacks=[])
         sim.run_time += time_after - time_before
     end
 
-    return sim
+    return nothing
 end
