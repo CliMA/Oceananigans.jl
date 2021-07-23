@@ -6,11 +6,11 @@ using Oceananigans.Fields: compute!
 import Oceananigans.TimeSteppers: update_state!
 
 """
-    update_state!(model::IncompressibleModel)
+    update_state!(model::NonhydrostaticModel)
 
 Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic pressure) to the current model state.
 """
-function update_state!(model::IncompressibleModel)
+function update_state!(model::NonhydrostaticModel)
 
     # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture,  model.clock, fields(model))

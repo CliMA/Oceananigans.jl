@@ -48,7 +48,7 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     u_bcs = FieldBoundaryConditions(north = ValueBoundaryCondition((x, y, t) -> f(x, t)),
                                     south = ValueBoundaryCondition(0))
 
-    model = IncompressibleModel(architecture = CPU(),
+    model = NonhydrostaticModel(architecture = CPU(),
                                 grid = grid,
                                 coriolis = nothing,
                                 buoyancy = nothing,
@@ -94,7 +94,7 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     u_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition((x, z, t) -> f(x, t)),
                                     bottom = ValueBoundaryCondition(0))
 
-    model = IncompressibleModel(architecture = CPU(),
+    model = NonhydrostaticModel(architecture = CPU(),
                                 grid = grid,
                                 coriolis = nothing,
                                 buoyancy = nothing,

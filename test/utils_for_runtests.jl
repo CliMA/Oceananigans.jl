@@ -31,8 +31,8 @@ end
 ##### Useful utilities
 #####
 
-const AB2Model = IncompressibleModel{<:QuasiAdamsBashforth2TimeStepper}
-const RK3Model = IncompressibleModel{<:RungeKutta3TimeStepper}
+const AB2Model = NonhydrostaticModel{<:QuasiAdamsBashforth2TimeStepper}
+const RK3Model = NonhydrostaticModel{<:RungeKutta3TimeStepper}
 
 # For time-stepping without a Simulation
 function ab2_or_rk3_time_step!(model::AB2Model, Δt, n)

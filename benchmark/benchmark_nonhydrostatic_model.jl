@@ -8,9 +8,9 @@ using Plots
 pyplot()
 # Benchmark function
 
-function benchmark_incompressible_model(Arch, FT, N)
+function benchmark_nonhydrostatic_model(Arch, FT, N)
     grid = RegularRectilinearGrid(FT, size=(N, N, N), extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=Arch(), grid=grid)
+    model = NonhydrostaticModel(architecture=Arch(), grid=grid)
 
     time_step!(model, 1) # warmup
 
@@ -30,7 +30,7 @@ Ns = [32, 64, 128, 256]
 # Run and summarize benchmarks
 
 print_system_info()
-suite = run_benchmarks(benchmark_incompressible_model; Architectures, Float_types, Ns)
+suite = run_benchmarks(benchmark_nonhydrostatic_model; Architectures, Float_types, Ns)
 
 plot_num = length(Ns)
 CPU_Float32 = zeros(Float64, plot_num)
@@ -48,26 +48,26 @@ for i in 1:plot_num
 end
 
 plt = plot(Ns, CPU_Float32, lw=4, label="CPU Float32", xaxis=:log2, yaxis=:log, legend=:topleft,
-          xlabel="Nx", ylabel="Times (ms)", title="Incompressible Model Benchmarks: CPU vs GPU")
+          xlabel="Nx", ylabel="Times (ms)", title="Nonhydrostatic Model Benchmarks: CPU vs GPU")
 plot!(plt, Ns, CPU_Float64, lw=4, label="CPU Float64")
 plot!(plt, Ns, GPU_Float32, lw=4, label="GPU Float32")
 plot!(plt, Ns, GPU_Float64, lw=4, label="GPU Float64")
 display(plt)
-savefig(plt, "incompressible_times.png")
+savefig(plt, "nonhydrostatic_times.png")
 
 
 plt2 = plot(Ns, CPU_Float32./GPU_Float32, lw=4, xaxis=:log2, legend=:topleft, label="Float32",
-            xlabel="Nx", ylabel="Speedup Ratio", title="Incompressible Model Benchmarks: CPU/GPU")
+            xlabel="Nx", ylabel="Speedup Ratio", title="Nonhydrostatic Model Benchmarks: CPU/GPU")
 plot!(plt2, Ns, CPU_Float64./GPU_Float64, lw=4, label="Float64")
 display(plt2)
-savefig(plt2, "incompressible_speedup.png")
+savefig(plt2, "nonhydrostatic_speedup.png")
 
 df = benchmarks_dataframe(suite)
 sort!(df, [:Architectures, :Float_types, :Ns], by=(string, string, identity))
-benchmarks_pretty_table(df, title="Incompressible model benchmarks")
+benchmarks_pretty_table(df, title="Nonhydrostatic model benchmarks")
 
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df_Δ, [:Float_types, :Ns], by=(string, identity))
-    benchmarks_pretty_table(df_Δ, title="Incompressible model CPU to GPU speedup")
+    benchmarks_pretty_table(df_Δ, title="Nonhydrostatic model CPU to GPU speedup")
 end

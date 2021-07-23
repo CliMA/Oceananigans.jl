@@ -130,7 +130,7 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 
 # # The model
 
-model = IncompressibleModel(timestepper = :RungeKutta3,
+model = NonhydrostaticModel(timestepper = :RungeKutta3,
                               advection = UpwindBiasedFifthOrder(),
                                    grid = grid,
                                coriolis = nothing,

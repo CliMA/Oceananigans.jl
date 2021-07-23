@@ -4,7 +4,7 @@ using Oceananigans.Simulations:
 
 function run_time_step_wizard_tests(arch)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=arch, grid=grid)
+    model = NonhydrostaticModel(architecture=arch, grid=grid)
 
     Δx = grid.Δx
     CFL = 0.45
@@ -41,7 +41,7 @@ function run_time_step_wizard_tests(arch)
                                                         halo = (1, 1, 1),
                                                         architecture=arch)
 
-    model = IncompressibleModel(architecture=arch, grid=grid_stretched)
+    model = NonhydrostaticModel(architecture=arch, grid=grid_stretched)
 
     Δx = grid_stretched.Δx
     CFL = 0.45
@@ -58,7 +58,7 @@ end
 
 function run_basic_simulation_tests(arch, Δt)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=arch, grid=grid)
+    model = NonhydrostaticModel(architecture=arch, grid=grid)
 
     model.clock.time = 0.0
     model.clock.iteration = 0
@@ -94,14 +94,14 @@ function run_basic_simulation_tests(arch, Δt)
     @test wall_time_limit_exceeded(simulation) == true
 
     # Test that simulation stops at `stop_iteration`.
-    model = IncompressibleModel(architecture=arch, grid=grid)
+    model = NonhydrostaticModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=Δt, stop_iteration=3, iteration_interval=88)
     run!(simulation)
 
     @test simulation.model.clock.iteration == 3
 
     # Test that simulation stops at `stop_time`.
-    model = IncompressibleModel(architecture=arch, grid=grid)
+    model = NonhydrostaticModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=Δt, stop_time=20.20, iteration_interval=123)
     run!(simulation)
 
@@ -114,7 +114,7 @@ function run_simulation_date_tests(arch, start_time, stop_time, Δt)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
     clock = Clock(time=start_time)
-    model = IncompressibleModel(architecture=arch, grid=grid, clock=clock)
+    model = NonhydrostaticModel(architecture=arch, grid=grid, clock=clock)
 
     simulation = Simulation(model, Δt=Δt, stop_time=stop_time)
 

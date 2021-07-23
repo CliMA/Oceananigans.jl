@@ -166,7 +166,7 @@ Modules = [Oceananigans.Models]
 Private = false
 Pages   = [
     "Models/Models.jl",
-    "Models/IncompressibleModels/incompressible_model.jl",
+    "Models/NonhydrostaticModels/nonhydrostatic_model.jl",
     "Models/HydrostaticFreeSurfaceModels/hydrostatic_free_surface_model.jl",
     "Models/ShallowWaterModels/shallow_water_model.jl"
 ]

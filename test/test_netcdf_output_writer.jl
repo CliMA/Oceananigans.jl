@@ -5,7 +5,7 @@
 function test_DateTime_netcdf_output(arch)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=DateTime(2021, 1, 1))
-    model = IncompressibleModel(architecture=arch, grid=grid, clock=clock)
+    model = NonhydrostaticModel(architecture=arch, grid=grid, clock=clock)
 
     Δt = 5days + 3hours + 44.123seconds
     simulation = Simulation(model, Δt=Δt, stop_time=DateTime(2021, 2, 1))
@@ -36,7 +36,7 @@ end
 function test_TimeDate_netcdf_output(arch)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=TimeDate(2021, 1, 1))
-    model = IncompressibleModel(architecture=arch, grid=grid, clock=clock)
+    model = NonhydrostaticModel(architecture=arch, grid=grid, clock=clock)
 
     Δt = 5days + 3hours + 44.123seconds
     simulation = Simulation(model, Δt=Δt, stop_time=TimeDate(2021, 2, 1))
@@ -71,7 +71,7 @@ function test_thermal_bubble_netcdf_output(arch)
     topo = (Periodic, Periodic, Bounded)
     grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
-    model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
+    model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure)
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
@@ -236,7 +236,7 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
     topo = (Periodic, Periodic, Bounded)
     grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
-    model = IncompressibleModel(architecture=arch, grid=grid, closure=closure)
+    model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure)
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
@@ -328,7 +328,7 @@ function test_netcdf_function_output(arch)
     iters = 3
 
     grid = RegularRectilinearGrid(size=(N, N, N), extent=(L, 2L, 3L))
-    model = IncompressibleModel(architecture=arch, grid=grid)
+    model = NonhydrostaticModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
     grid = model.grid
 
@@ -487,7 +487,7 @@ function test_netcdf_time_averaging(arch)
     c1_forcing = Forcing(Fc1, field_dependencies=:c1)
     c2_forcing = Forcing(Fc2, field_dependencies=:c2)
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
                 grid = grid,
         architecture = arch,
          timestepper = :RungeKutta3,
@@ -611,7 +611,7 @@ end
 
 function test_netcdf_output_alignment(arch)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=arch, grid=grid)
+    model = NonhydrostaticModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=0.2, stop_time=40)
 
     test_filename1 = "test_output_alignment1.nc"
@@ -646,7 +646,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     zF = [k^2 for k in 0:Nz]
     grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z_faces=zF)
 
-    model = IncompressibleModel(architecture=arch, grid=grid)
+    model = NonhydrostaticModel(architecture=arch, grid=grid)
 
     Δt = 1.25
     iters = 3

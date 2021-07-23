@@ -1,6 +1,6 @@
-# Incompressible model
+# Nonhydrostatic model
 
-The `IncompressibleModel` solves the incompressible Navier-Stokes equations under the Boussinesq
+The `NonhydrostaticModel` solves the incompressible Navier-Stokes equations under the Boussinesq
 approximation and an arbitrary number of tracer conservation equations.
 Physics associated with individual terms in the momentum and tracer conservation
 equations --- the background rotation rate of the equation's reference frame,

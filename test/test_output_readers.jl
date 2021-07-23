@@ -17,7 +17,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     evaporation_bc = FluxBoundaryCondition(Qˢ, field_dependencies=:S, parameters=3e-7)
     S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
                architecture = architecture,
                        grid = grid,
         boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)

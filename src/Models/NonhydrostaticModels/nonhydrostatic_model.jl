@@ -19,7 +19,7 @@ using Oceananigans.Grids: topology
 
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 
-mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
+mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
                                    V, S, K, BG, P, I, AF} <: AbstractModel{TS}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
@@ -44,7 +44,7 @@ mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
 end
 
 """
-    IncompressibleModel(;
+    NonhydrostaticModel(;
                    grid,
            architecture = CPU(),
                   clock = Clock{eltype(grid)}(0, 0, 1),
@@ -67,7 +67,8 @@ end
        auxiliary_fields = NamedTuple(),
     )
 
-Construct an incompressible `Oceananigans.jl` model on `grid`.
+Construct a model for a non-hydrostatic, incompressible fluid, using the Boussinesq approximation
+when `buoyancy != nothing`. By default, all Bounded directions are rigid and impenetrable.
 
 Keyword arguments
 =================
@@ -85,7 +86,7 @@ Keyword arguments
     - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
                      `:RungeKutta3`.
 """
-function IncompressibleModel(;    grid,
+function NonhydrostaticModel(;    grid,
     architecture::AbstractArchitecture = CPU(),
                                  clock = Clock{eltype(grid)}(0, 0, 1),
                              advection = CenteredSecondOrder(),
@@ -168,7 +169,7 @@ function IncompressibleModel(;    grid,
     model_fields = merge(velocities, tracers)
     forcing = model_forcing(model_fields; forcing...)
 
-    return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
+    return NonhydrostaticModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                forcing, closure, background_fields, particles, velocities, tracers,
                                pressures, diffusivities, timestepper, pressure_solver, immersed_boundary, auxiliary_fields)
 end

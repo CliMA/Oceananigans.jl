@@ -16,7 +16,7 @@ end
 ```jldoctest
 julia> using Oceananigans, Oceananigans.Units
 
-julia> model = IncompressibleModel(grid=RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)));
+julia> model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)));
 
 julia> checkpointer = Checkpointer(model, schedule=TimeInterval(5years), prefix="model_checkpoint")
 Checkpointer{TimeInterval, Vector{Symbol}}(TimeInterval(1.5768e8, 0.0), ".", "model_checkpoint", [:architecture, :grid, :clock, :coriolis, :buoyancy, :closure, :velocities, :tracers, :timestepper, :particles], false, false, false)

@@ -117,11 +117,11 @@ plankton_dynamics = Forcing(growing_and_grazing, field_dependencies = :P,
 # ## The model
 #
 # The name "`P`" for phytoplankton is specified in the
-# constructor for `IncompressibleModel`. We additionally specify a fifth-order
+# constructor for `NonhydrostaticModel`. We additionally specify a fifth-order
 # advection scheme, third-order Runge-Kutta time-stepping, isotropic viscosity and diffusivities,
 # and Coriolis forces appropriate for planktonic convection at mid-latitudes on Earth.
 
-model = IncompressibleModel(
+model = NonhydrostaticModel(
                    grid = grid,
               advection = UpwindBiasedFifthOrder(),
             timestepper = :RungeKutta3,

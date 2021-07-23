@@ -31,7 +31,7 @@ function setup_simulation(N, advection_scheme)
     topology = (Periodic, Flat, Bounded)
     grid = RegularRectilinearGrid(topology=topology, size=(N, 1, N), halo=(5, 5, 5), extent=(L, L, L))
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
                grid = grid,
         timestepper = :RungeKutta3,
           advection = advection_scheme,

@@ -39,7 +39,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     bbcs = FieldBoundaryConditions(top = BoundaryCondition(Value, 0.0),
                                    bottom = BoundaryCondition(Value, Δb))
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
                architecture = arch,
                        grid = grid,
                     closure = IsotropicDiffusivity(ν=ν, κ=κ),

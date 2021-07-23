@@ -10,7 +10,7 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
-using Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
+using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
