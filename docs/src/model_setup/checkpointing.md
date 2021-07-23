@@ -33,7 +33,7 @@ options and features, see [`Checkpointer`](@ref).
 ## Picking up a simulation from a checkpoint file
 
 Picking up a simulation from a checkpoint requires the original script that was
-used to generate the checkpoint data. Change the first instance of `[run!](@ref)` in the script
+used to generate the checkpoint data. Change the first instance of [`run!`](@ref) in the script
 to take `pickup=true`:
 
 ```@example checkpointing
