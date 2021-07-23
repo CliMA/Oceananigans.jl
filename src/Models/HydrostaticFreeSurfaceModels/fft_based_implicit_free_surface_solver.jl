@@ -16,19 +16,19 @@ struct FFTImplicitFreeSurfaceSolver{S, G3, G2, R}
 end
 
 """
-    function FFTImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
+    function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
 
-Return a solver for the screened Poisson equation
+Return a solver based on the fast Fourier transform for the elliptic equation
     
 ```math
-[∇² - Az / (g H Δt²)] ηⁿ⁺¹ = 1 / (g H Δt) (∇ʰ ⋅ Q★ - Az ηⁿ / Δt)
+[∇² - Az / (g H Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - Az ηⁿ / Δt) / (g H Δt)
 ```
 
 representing an implicit time discretization of the linear free surface evolution equation
 for a fluid with constant depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
-function FFTImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
+function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
 
     grid isa RegularRectilinearGrid || grid isa VerticallyStretchedRectilinearGrid ||
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))

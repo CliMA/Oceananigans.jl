@@ -11,6 +11,19 @@ struct PCGImplicitFreeSurfaceSolver{V, S, R}
     right_hand_side :: R
 end
 
+"""
+    PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
+
+Return a solver based on a preconditioned conjugate gradient method for the elliptic equation
+    
+```math
+[∇ ⋅ H ∇ - Az / (g Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - Az ηⁿ / Δt) / (g Δt) 
+```
+
+representing an implicit time discretization of the linear free surface evolution equation
+for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
+step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
+"""
 function PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
