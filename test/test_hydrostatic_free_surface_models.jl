@@ -58,11 +58,11 @@ function hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
 end
 
 
-topos_1d = ((Flat, Flat, Bounded),)
+topo_1d = (Flat, Flat, Bounded)
 
-topos_2d = ((Periodic, Periodic, Flat),
-            (Periodic, Bounded,  Flat),
-             (Bounded, Bounded,  Flat))
+topos_2d = ((Periodic, Flat, Bounded),
+            (Flat, Bounded,  Bounded),
+            (Bounded, Flat,  Bounded))
 
 topos_3d = ((Periodic, Periodic, Bounded),
             (Periodic, Bounded,  Bounded),
@@ -77,15 +77,13 @@ topos_3d = ((Periodic, Periodic, Bounded),
         @test_throws TypeError HydrostaticFreeSurfaceModel(architecture=GPU, grid=grid)
     end
       
-    for topo in topos_1d
-        @testset "$topo model construction" begin
-            @info "  Testing $topo model construction..."
-            for arch in archs, FT in float_types
-                grid = RegularRectilinearGrid(FT, topology=topo, size=(1), extent=(1))
-                model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)        
+    @testset "$topo_1d model construction" begin
+        @info "  Testing $topo_1d model construction..."
+        for arch in archs, FT in float_types
+            grid = RegularRectilinearGrid(FT, topology=topo_1d, size=(1), extent=(1))
+            model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)        
 
-                @test model isa HydrostaticFreeSurfaceModel
-            end
+            @test model isa HydrostaticFreeSurfaceModel
         end
     end
     
