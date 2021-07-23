@@ -108,7 +108,7 @@ b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/10days)
 
 #horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
 
-@show κ₂h = 1e-1 / day * grid.Δx^2 # [m² s⁻¹] horizontal viscosity and diffusivity
+@show κ₂h = 1e0 / day * grid.Δx^2 # [m² s⁻¹] horizontal viscosity and diffusivity
 @show κ₄h = 1e-1 / day * grid.Δx^4 # [m⁴ s⁻¹] horizontal hyperviscosity and hyperdiffusivity
 
 using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
@@ -177,7 +177,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=10days, progress=print_progress, iteration_interval=100)
+simulation = Simulation(model, Δt=wizard, stop_time=60days, progress=print_progress, iteration_interval=100)
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -198,7 +198,7 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         force = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(60days),
+                                                      schedule = TimeInterval(5days),
                                                       prefix = "eddying_channel",
                                                       field_slicer = nothing,
                                                       force = true)
