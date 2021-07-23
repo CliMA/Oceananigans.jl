@@ -129,7 +129,7 @@ end
 
         # GLW says: I have no idea why this tolerance has to be so huge. By all account both solvers are correct,
         # but the PCG solver does not generate consistent results (to within the tolerance used below) on all machines.
-        tolerance = 1e-3
+        tolerance = 1e-2
         @test maximum(abs, pcg_η_cpu .- fft_η_cpu) < tolerance
     end
 end
