@@ -168,6 +168,7 @@ function NonhydrostaticModel(;    grid,
     model = NonhydrostaticModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, background_fields, particles, velocities, tracers,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary)
+
     update_state!(model)
     
     return model

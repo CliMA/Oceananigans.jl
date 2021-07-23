@@ -178,6 +178,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     model = HydrostaticFreeSurfaceModel(architecture, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, velocities, tracers,
                                         pressure, diffusivity_fields, timestepper, auxiliary_fields)
+
     update_state!(model)
 
     return model

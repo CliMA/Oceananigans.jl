@@ -140,6 +140,7 @@ function ShallowWaterModel(;
                               tracers,
                               diffusivity_fields,
                               timestepper)
+
     update_state!(model)
 
     return model
