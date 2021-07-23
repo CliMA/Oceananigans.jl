@@ -124,7 +124,7 @@ vertically-integrated face areas `∫ᶻ_Axᶠᶜᶜ` and `∫ᶻ_Ayᶜᶠᶜ`.
 """
     _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
-Returns the left hand side of the "implicit η equation"
+Return the left side of the "implicit η equation"
 
 ```math
 (∇ʰ⋅H∇ʰ - 1/gΔt²) ηⁿ⁺¹ = 1 / (gΔt) ∇ʰ ⋅ Q★ - 1 / (gΔt²) ηⁿ
@@ -132,8 +132,8 @@ Returns the left hand side of the "implicit η equation"
         ≡ L_ηⁿ⁺¹
 ```
 
-which is written in a discrete finite volume form in which the equation
-is arranged to ensure a symmtric form by multiplying by horizontal areas Az:
+which is derived from the discretely summed barotropic mass conservation equation,
+and arranged in a symmetric form by multiplying by horizontal areas Az:
 
 ```
 δⁱÂʷ∂ˣηⁿ⁺¹ + δʲÂˢ∂ʸηⁿ⁺¹ - 1/gΔt² Az ηⁿ⁺¹ = 1 / (gΔt) (δⁱÂʷu̅ˢᵗᵃʳ + δʲÂˢv̅ˢᵗᵃʳ) - 1 / gΔt² Az ηⁿ
