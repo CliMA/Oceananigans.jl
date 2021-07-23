@@ -2,7 +2,7 @@
 
 default_progress(simulation) = nothing
 
-mutable struct Simulation{M, Δ, C, I, T, W, R, D, O, P, F, Π}
+mutable struct Simulation{M, Δ, C, I, T, W, R, P, F, Π}
                  model :: M
                     Δt :: Δ
          stop_criteria :: C
@@ -10,8 +10,9 @@ mutable struct Simulation{M, Δ, C, I, T, W, R, D, O, P, F, Π}
              stop_time :: T
        wall_time_limit :: W
               run_time :: R
-           diagnostics :: D
-        output_writers :: O
+           diagnostics :: OrderedDict{Symbol, AbstractDiagnostic}
+        output_writers :: OrderedDict{Symbol, AbstractOutputWriter}
+             callbacks :: OrderedDict{Symbol, Callback}
               progress :: P
     iteration_interval :: F
             parameters :: Π
@@ -25,6 +26,7 @@ end
        wall_time_limit = Inf,
            diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
         output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
+              callback = OrderedDict{Symbol, Callback}(),
               progress = nothing,
     iteration_interval = 1,
             parameters = nothing)
@@ -55,6 +57,7 @@ function Simulation(model; Δt,
       wall_time_limit = Inf,
           diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
        output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
+            callbacks = OrderedDict{Symbol, Callback}(),
              progress = default_progress,
    iteration_interval = 1,
            parameters = nothing)
@@ -78,7 +81,7 @@ function Simulation(model; Δt,
    run_time = 0.0
 
    return Simulation(model, Δt, stop_criteria, stop_iteration, stop_time, wall_time_limit,
-                     run_time, diagnostics, output_writers, progress, iteration_interval,
+                     run_time, diagnostics, output_writers, callbacks, progress, iteration_interval,
                      parameters)
 end
 
