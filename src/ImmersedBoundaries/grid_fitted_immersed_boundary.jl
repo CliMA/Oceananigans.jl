@@ -49,19 +49,19 @@ const GFIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ, G, <:GridFittedBoundary} wher
 @inline solid_node(::Face, ::Face, ::Face, i, j, k, ibg) = solid_node(c, f, f, i, j, k, ibg) || solid_node(c, f, f, i-1, j, k, ibg)
 
 #####
-##### Normals / interface queries
+##### "Scaled" normals / interface queries
 #####
 ##### Return -1, +1, or 0 if not a fluid-solid boundary.
 #####
 
-@inline x_boundary_normal(::Face, ::Center, ::Center, i , j, k, ibg) = ifelse(solid_cell(i, j, k, ibg) && fluid_cell(i-1, j, k, ibg), -1,
-                                                                       ifelse(fluid_cell(i, j, k, ibg) && solid_cell(i-1, j, k, ibg), +1, 0))
+@inline x_scaled_boundary_normal(::Face, ::Center, ::Center, i , j, k, ibg) = ifelse(solid_cell(i, j, k, ibg) && fluid_cell(i-1, j, k, ibg), -1,
+                                                                              ifelse(fluid_cell(i, j, k, ibg) && solid_cell(i-1, j, k, ibg), +1, 0))
 
-@inline y_boundary_normal(::Center, ::Face, ::Center, i , j, k, ibg) = ifelse(solid_cell(i, j, k, ibg) && fluid_cell(i, j-1, k, ibg), -1,    
-                                                                       ifelse(fluid_cell(i, j, k, ibg) && solid_cell(i, j-1, k, ibg), +1, 0))
+@inline y_scaled_boundary_normal(::Center, ::Face, ::Center, i , j, k, ibg) = ifelse(solid_cell(i, j, k, ibg) && fluid_cell(i, j-1, k, ibg), -1,    
+                                                                              ifelse(fluid_cell(i, j, k, ibg) && solid_cell(i, j-1, k, ibg), +1, 0))
 
-@inline z_boundary_normal(::Center, ::Center, ::Face, i , j, k, ibg) = ifelse(solid_cell(i, j, k, ibg) && fluid_cell(i, j, k-1, ibg), -1,
-                                                                       ifelse(fluid_cell(i, j, k, ibg) && solid_cell(i, j, k-1, ibg), +1, 0))
+@inline z_scaled_boundary_normal(::Center, ::Center, ::Face, i , j, k, ibg) = ifelse(solid_cell(i, j, k, ibg) && fluid_cell(i, j, k-1, ibg), -1,
+                                                                              ifelse(fluid_cell(i, j, k, ibg) && solid_cell(i, j, k-1, ibg), +1, 0))
 
 #####
 ##### Conditional fluxes
@@ -111,22 +111,34 @@ const FluxBC = BoundaryCondition{<:Flux}
 @inline _diffusive_flux_y(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::ZeroBC, c::AbstractArray, args...) = conditional_flux_cfc(i, j, k, ibg, zero(eltype(ibg)), diffusive_flux_y, disc, closure, c, args...)
 @inline _diffusive_flux_z(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::ZeroBC, c::AbstractArray, args...) = conditional_flux_ccf(i, j, k, ibg, zero(eltype(ibg)), diffusive_flux_z, disc, closure, c, args...)
 
-@inline function _diffusive_flux_x(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::FluxBC, c::AbstractArray, args...)
-    flux = getbc(i, j, k, immersed_bc, args...)
+@inline function _diffusive_flux_x(i, j, k, ibg::GFIBG, disc::ATD, closure, ibc::FluxBC, c::AbstractArray, c_idx, clock, K, C, buoyancy, U)
+    model_fields = merge(U, C)
+    boundary_flux = getbc(ibc, i, j, k, ibg, clock, model_fields)
+    n̂ = x_scaled_boundary_normal(Face(), Center(), Center(), i, j, k, ibg)
 
-    return conditional_flux_fcc(i, j, k, ibg, zero(eltype(ibg)), diffusive_flux_x, disc, closure, c, args...)
+    return conditional_flux_fcc(i, j, k, ibg,
+                                n̂ * boundary_flux,
+                                diffusive_flux_x, disc, closure, c, c_idx, clock, K, C, buoyancy, U)
 end
 
-@inline function _diffusive_flux_y(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::FluxBC, c::AbstractArray, args...)
-    flux = getbc(i, j, k, immersed_bc, args...)
+@inline function _diffusive_flux_y(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::FluxBC, c::AbstractArray, c_idx, clock, K, C, buoyancy, U)
+    model_fields = merge(U, C)
+    boundary_flux = getbc(ibc, i, j, k, ibg, clock, model_fields)
+    n̂ = y_scaled_boundary_normal(Center(), Face(), Center(), i, j, k, ibg)
 
-    conditional_flux_cfc(i, j, k, ibg, zero(eltype(ibg)), diffusive_flux_y, disc, closure, c, args...)
+    conditional_flux_cfc(i, j, k, ibg,
+                         n̂ * boundary_flux,
+                         diffusive_flux_y, disc, closure, c, c_idx, clock, K, C, buoyancy, U)
 end
 
-@inline function _diffusive_flux_z(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::FluxBC, c::AbstractArray, args...)
-    flux = getbc(i, j, k, immersed_bc, args...)
+@inline function _diffusive_flux_z(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::FluxBC, c::AbstractArray, c_idx, clock, K, C, buoyancy, U)
+    model_fields = merge(U, C)
+    boundary_flux = getbc(ibc, i, j, k, ibg, clock, model_fields)
+    n̂ = z_scaled_boundary_normal(Face(), Center(), Center(), i, j, k, ibg)
 
-    return conditional_flux_ccf(i, j, k, ibg, zero(eltype(ibg)), diffusive_flux_z, disc, closure, c, args...)
+    return conditional_flux_ccf(i, j, k, ibg,
+                                n̂ * boundary_flux,
+                                diffusive_flux_z, disc, closure, c, c_idx, clock, K, C, buoyancy, U)
 end
 
 #####
