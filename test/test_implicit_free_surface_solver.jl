@@ -92,14 +92,12 @@ end
         pcg_model = HydrostaticFreeSurfaceModel(architecture = arch,
                                                 grid = rectilinear_grid,
                                                 momentum_advection = nothing,
-                                                free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient))
+                                                free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient,
+                                                                                   tolerance = 1e-15))
 
         @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
         set_simple_divergent_velocity!(pcg_model)
         implicit_free_surface_step!(pcg_model.free_surface, pcg_model, Δt, 1.5, device_event(arch))
-
-        η = pcg_model.free_surface.η
-	    @info "PCG implicit free surface solver test, maximum(abs, η_pcg): $(maximum(abs, η))"
 
         fft_model = HydrostaticFreeSurfaceModel(architecture = arch,
                                                 grid = rectilinear_grid,
@@ -110,9 +108,6 @@ end
         set_simple_divergent_velocity!(fft_model)
         implicit_free_surface_step!(fft_model.free_surface, fft_model, Δt, 1.5, device_event(arch))
 
-        η = fft_model.free_surface.η
-	    @info "FFT implicit free surface solver test, maximum(abs, η_pcg): $(maximum(abs, η))"
-        
         pcg_η = pcg_model.free_surface.η
         fft_η = fft_model.free_surface.η
 
