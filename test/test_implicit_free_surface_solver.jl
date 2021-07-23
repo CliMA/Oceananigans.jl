@@ -96,7 +96,7 @@ end
 
         Δt = 900
 
-        pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, tolerance=1e-15, maximum_iterations=128*5)
+        pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, tolerance=1e-15, maximum_iterations=128^2)
         fft_free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
 
         pcg_model = HydrostaticFreeSurfaceModel(architecture = arch,
@@ -132,6 +132,6 @@ end
 
         # GLW says: I have no idea why this tolerance has to be so huge. By all account both solvers are correct,
         # but the PCG solver does not generate consistent results (to within the tolerance used below) on all machines.
-        @test all(isapprox.(pcg_η_cpu, fft_η_cpu, rtol=2e-2))
+        @test all(isapprox.(pcg_η_cpu, fft_η_cpu, rtol=5e-2))
     end
 end
