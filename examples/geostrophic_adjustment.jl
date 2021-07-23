@@ -55,8 +55,8 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
 gaussian(x, L) = exp(-x^2 / 2L^2)
 
 U = 0.1 # geostrophic velocity
-L = grid.Lx / 40 # gaussian width
-x₀ = grid.Lx / 4 # gaussian center
+L = grid.Lx / 40 # Gaussian width
+x₀ = grid.Lx / 4 # Gaussian center
 
 vᵍ(x, y, z) = - U * (x - x₀) / L * gaussian(x - x₀, L)
 
