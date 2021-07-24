@@ -13,18 +13,16 @@ DocTestSetup = quote
 end
 ```
 
-```@example checkpointing
-julia> using Oceananigans, Oceananigans.Units
+```@repl checkpointing
+using Oceananigans, Oceananigans.Units
 
-julia> model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
 
-julia> simulation = Simulation(model, Δt=1, stop_iteration=1)
+simulation = Simulation(model, Δt=1, stop_iteration=1)
 
-julia> simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(5years), prefix="model_checkpoint")
-Checkpointer{TimeInterval, Vector{Symbol}}(TimeInterval(1.5768e8, 0.0), ".", "model_checkpoint", [:architecture, :grid, :clock, :coriolis, :buoyancy, :closure, :velocities, :tracers, :timestepper, :particles], false, false, false)
+simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=TimeInterval(5years), prefix="model_checkpoint")
 
-julia> run!(simulation)
-[ Info: Simulation is stopping. Model iteration 1 has hit or exceeded simulation stop iteration 1.
+run!(simulation)
 ```
 
 The default options should provide checkpoint files that are easy to restore from in most cases. For more advanced
@@ -36,12 +34,10 @@ Picking up a simulation from a checkpoint requires the original script that was
 used to generate the checkpoint data. Change the first instance of [`run!`](@ref) in the script
 to take `pickup=true`:
 
-```@example checkpointing
-julia> simulation.stop_iteration = 2
-2
+```@repl checkpointing
+simulation.stop_iteration = 2
 
-julia> run!(simulation, pickup=true)
-[ Info: Simulation is stopping. Model iteration 2 has hit or exceeded simulation stop iteration 2.
+run!(simulation, pickup=true)
 ```
 
 which finds the latest checkpoint file in the current working directory (in this trivial case, this
