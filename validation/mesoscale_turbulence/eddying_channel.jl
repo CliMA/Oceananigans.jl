@@ -171,8 +171,9 @@ model = HydrostaticFreeSurfaceModel(architecture = GPU(),
                                     tracer_advection = WENO5(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = coriolis,
-                                    closure = horizontal_diffusivity,
-                                    #closure = (horizontal_diffusivity, convective_adjustment),
+                                    #closure = horizontal_diffusivity,
+                                    #closure = convective_adjustment,
+                                    closure = (horizontal_diffusivity, convective_adjustment),
                                     tracers = :b,
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                     forcing = (b=b_forcing,),
@@ -181,11 +182,11 @@ model = HydrostaticFreeSurfaceModel(architecture = GPU(),
 @info "Built $model."
 
 #####
-##### Model building
+##### Initial conditions
 #####
 
 g = model.free_surface.gravitational_acceleration # m s⁻²
-u★ = 1e-4 * α * Lz
+u★ = 1e-6 * α * Lz
 δ = 0.1 * Ly
 ϵ(x, y, z) = u★ * exp(-(y - Ly/2)^2 / 2δ^2) * randn()
 
@@ -194,6 +195,10 @@ uᵢ(x, y, z) = u_geostrophic(z) + ϵ(x, y, z)
 bᵢ(x, y, z) = b_geostrophic(y) + b_stratification(z)
 
 set!(model, u=uᵢ, b=bᵢ, η=ηᵢ)
+
+#####
+##### Simulation building
+#####
 
 wizard = TimeStepWizard(cfl=0.1, Δt=1minute, max_change=1.1, max_Δt=10minutes)
 
@@ -221,14 +226,7 @@ u, v, w = model.velocities
 b = model.tracers.b
 
 ζ = ComputedField(∂x(v) - ∂y(u))
-
-χ_op = @at (Center, Center, Center) ∂x(b)^2 + ∂y(b)^2
-χ = ComputedField(χ_op)
-
-B = AveragedField(b, dims=(1, 2))
-b′² = (b - B)^2
-
-outputs = (b=b, b′²=b′², ζ=ζ, χ=χ, w=model.velocities.w)
+outputs = (b=b, ζ=ζ, w=model.velocities.w)
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(100days),
@@ -243,12 +241,10 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
 
 @info "Running the simulation..."
 
-try
-    run!(simulation, pickup=false)
-catch err
-    showerror(stdout, err)
-end
+run!(simulation, pickup=false)
 
+#####
+##### Visualization
 #####
 
 grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
