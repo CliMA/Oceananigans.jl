@@ -1,6 +1,6 @@
 using Glob
 
-using Oceananigans.Utils: initialize_schedule!, align_time_step
+using Oceananigans.Utils: initialize_schedule!, align_time_step, prettytime
 using Oceananigans.Fields: set!
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!, next_time, unit_time
@@ -142,7 +142,10 @@ function run!(sim; pickup=false, callbacks=[])
     end
 
     # Conservatively initialize the model state
+    @info "Updating model auxiliary state before the first time step..."
+    start_time = time_ns()
     update_state!(model)
+    @info "    ... updated in $(prettytime((time_ns() - start_time)*1e-9))."
 
     # Output and diagnostics initialization
     for writer in values(sim.output_writers)
@@ -177,7 +180,11 @@ function run!(sim; pickup=false, callbacks=[])
             end
 
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
+
+
+            clock.iteration == 0 && @info "Executing first time step..."
             ab2_or_rk3_time_step!(model, Δt, euler=euler)
+            clock.iteration == 0 && @info "    ... first time step complete."
 
             # Run diagnostics, then write output
             [  diag.schedule(model)   && run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
