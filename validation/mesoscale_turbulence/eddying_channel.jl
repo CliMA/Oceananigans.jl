@@ -12,6 +12,7 @@ using Plots
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
+using Oceananigans.Grids: xnode, ynode, znode
 
 const Lx = 1000kilometers # east-west extent [m]
 const Ly = 2000kilometers # north-south extent [m]
@@ -49,21 +50,41 @@ plot(underlying_grid.Δzᵃᵃᶜ[1:Nz], underlying_grid.zᵃᵃᶜ[1:Nz],
 Qᵇ = 1e-8            # buoyancy flux magnitude [m² s⁻³]
 y_shutoff = 5/6 * Ly # shutoff location for buoyancy flux [m]
 τ = 1e-4             # surface kinematic wind stress [m² s⁻²]
-μ = 1 / 30days      # bottom drag damping time-scale [s⁻¹]
+μ = 1 / 30days       # bottom drag damping time-scale [s⁻¹]
 
-@inline buoyancy_flux(x, y, t, p) = ifelse(y < p.y_shutoff, p.Qᵇ * cos(3π * y / p.Ly), 0)
+#@inline buoyancy_flux(x, y, t, p) = ifelse(y < p.y_shutoff, p.Qᵇ * cos(3π * y / p.Ly), 0)
+#buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, parameters=(Ly=grid.Ly, y_shutoff=y_shutoff, Qᵇ=Qᵇ))
 
-buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, parameters=(Ly=grid.Ly, y_shutoff=y_shutoff, Qᵇ=Qᵇ))
+@inline function buoyancy_flux(i, j, grid, clock, model_fields, p)
+    y = ynode(Center(), j, grid)
+    return ifelse(y < p.y_shutoff, p.Qᵇ * cos(3π * y / p.Ly), 0.0)
+end
 
-@inline u_stress(x, y, t, p) = - p.τ * sin(π * y / p.Ly)
+buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, discrete_form=true, parameters=(Ly=grid.Ly, y_shutoff=y_shutoff, Qᵇ=Qᵇ))
 
-u_stress_bc = FluxBoundaryCondition(u_stress, parameters=(τ=τ, Ly=grid.Ly))
+# @inline u_stress(x, y, t, p) = - p.τ * sin(π * y / p.Ly)
+# u_stress_bc = FluxBoundaryCondition(u_stress, parameters=(τ=τ, Ly=grid.Ly))
 
+@inline function u_stress(i, j, grid, clock, model_fields, p)
+    y = ynode(Center(), j, grid)
+    return - p.τ * sin(π * y / p.Ly)
+end
+
+u_stress_bc = FluxBoundaryCondition(u_stress, discrete_form=true, parameters=(τ=τ, Ly=grid.Ly))
+
+#=
 @inline u_drag(x, y, t, u, p) = - p.μ * p.Lz * u
 @inline v_drag(x, y, t, v, p) = - p.μ * p.Lz * v
 
-u_drag_bc = FluxBoundaryCondition(u_drag, field_dependencies=:u, parameters=(; μ=μ, Lz = grid.Lz))
-v_drag_bc = FluxBoundaryCondition(v_drag, field_dependencies=:v, parameters=(; μ=μ, Lz = grid.Lz))
+u_drag_bc = FluxBoundaryCondition(u_drag, field_dependencies=:u, parameters=(μ=μ, Lz = grid.Lz))
+v_drag_bc = FluxBoundaryCondition(v_drag, field_dependencies=:v, parameters=(μ=μ, Lz = grid.Lz))
+=#
+
+@inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.u[i, j, 1] 
+@inline v_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.v[i, j, 1]
+
+u_drag_bc = FluxBoundaryCondition(u_drag, discrete_form=true, parameters=(μ=μ, Lz = grid.Lz))
+v_drag_bc = FluxBoundaryCondition(v_drag, discrete_form=true, parameters=(μ=μ, Lz = grid.Lz))
 
 b_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc)
 u_bcs = FieldBoundaryConditions(top = u_stress_bc)
@@ -76,31 +97,48 @@ v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
 coriolis = BetaPlane(latitude=-45)
 
 #####
-##### Initial condition
+##### Forcing and initial condition
 #####
 
 const α = 1e-5 # [s⁻¹]
 const f₀ = coriolis.f₀ # [s⁻¹]
-
-using Oceananigans.BuoyancyModels: g_Earth
-
-g = g_Earth # m s⁻²
-
-@inline b_geostrophic(y) = - α * f₀ * y
-
-u_geostrophic(z) = α * (z + Lz)
-
 const N² = 1e-5               # surface vertical buoyancy gradient [s⁻²]
 const h = 1kilometer          # decay scale of stable stratification [m]
 
+u_geostrophic(z) = α * (z + Lz)
+
+@inline b_geostrophic(y) = - α * f₀ * y
 @inline b_stratification(z) = N² * h * exp(z / h)
 
-const y_sponge = 19/20 * Ly # southern boundary of sponge layer [m]
+y_sponge = 19/20 * Ly # southern boundary of sponge layer [m]
 
-@inline northern_mask(x, y, z) = max(0, y - y_sponge) / (Ly - y_sponge)
-@inline b_target(x, y, z, t) = b_geostrophic(y) + b_stratification(z)
+@inline northern_mask(y, y_sponge, Ly) = max(0.0, y - y_sponge) / (Ly - y_sponge)
+@inline b_target(y, z) = b_geostrophic(y) + b_stratification(z)
 
-b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/10days)
+# We want this "continuous form" to work, but alas our attempts have failed so far.
+#=
+@inline b_relaxation(x, y, z, t, b, p) = - p.rate * northern_mask(y, p.y_sponge, p.Ly) * (b - b_target(y, z))
+
+b_forcing = Forcing(b_relaxation,
+                    field_dependencies = :b,
+                    parameters = (rate=1/10days, y_sponge=y_sponge, Ly=grid.Ly))
+=#
+
+@inline function b_relaxation(i, j, k, grid, clock, model_fields, p)
+    time = clock.time
+    x = xnode(Center(), i, grid)
+    y = ynode(Center(), j, grid)
+    z = znode(Center(), k, grid)
+    @inbounds b = model_fields.b[i, j, k]
+
+    rate = 1 / 10days
+
+    return - p.rate * northern_mask(y, p.y_sponge, p.Ly) * (b - b_target(y, z))
+end
+
+b_forcing = Forcing(b_relaxation,
+                    discrete_form = true,
+                    parameters = (rate=1/10days, y_sponge=y_sponge, Ly=grid.Ly))
 
 #####
 ##### Dissipation
@@ -126,20 +164,19 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(
-           architecture = GPU(),
-                   grid = grid,
-           free_surface = ImplicitFreeSurface(gravitational_acceleration=g),
-     momentum_advection = WENO5(),
-       tracer_advection = WENO5(),
-               buoyancy = BuoyancyTracer(),
-               coriolis = coriolis,
-                closure = horizontal_diffusivity,
-                #closure = (horizontal_diffusivity, convective_adjustment),
-                tracers = :b,
-    # boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
-                # forcing = (b=b_forcing,),
-)
+model = HydrostaticFreeSurfaceModel(architecture = GPU(),
+                                    grid = grid,
+                                    free_surface = ImplicitFreeSurface(),
+                                    momentum_advection = WENO5(),
+                                    tracer_advection = WENO5(),
+                                    buoyancy = BuoyancyTracer(),
+                                    coriolis = coriolis,
+                                    closure = horizontal_diffusivity,
+                                    # closure = (horizontal_diffusivity, convective_adjustment),
+                                    tracers = :b,
+                                    boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
+                                    forcing = (b=b_forcing,),
+                                    )
 
 @info "Built $model."
 
@@ -147,6 +184,7 @@ model = HydrostaticFreeSurfaceModel(
 ##### Model building
 #####
 
+g = model.free_surface.gravitational_acceleration # m s⁻²
 u★ = 1e-4 * α * Lz
 δ = 0.1 * Ly
 ϵ(x, y, z) = u★ * exp(-(y - Ly/2)^2 / 2δ^2) * randn()

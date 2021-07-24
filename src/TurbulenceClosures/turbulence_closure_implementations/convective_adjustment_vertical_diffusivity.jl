@@ -95,6 +95,16 @@ end
 ##### Fluxes
 #####
 
+@inline viscous_flux_ux(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, tracers, buoyancy) = zero(eltype(grid))
+@inline viscous_flux_uy(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, tracers, buoyancy) = zero(eltype(grid))
+@inline viscous_flux_vx(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, tracers, buoyancy) = zero(eltype(grid))
+@inline viscous_flux_vy(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, tracers, buoyancy) = zero(eltype(grid))
+@inline viscous_flux_wx(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, tracers, buoyancy) = zero(eltype(grid))
+@inline viscous_flux_wy(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, tracers, buoyancy) = zero(eltype(grid))
+
+@inline diffusive_flux_x(i, j, k, grid, closure::CAVD, c, tracer_index, clock, diffusivities, tracers, buoyancy, velocities) = zero(eltype(grid))
+@inline diffusive_flux_y(i, j, k, grid, closure::CAVD, c, tracer_index, clock, diffusivities, tracers, buoyancy, velocities) = zero(eltype(grid))
+
 # u
 @inline function νᶠᶜᶠ(i, j, k, grid, clock, closure::CAVD, stable_buoyancy_gradient)
     @inbounds stableᶠᶜᶠ = stable_buoyancy_gradient[i, j, k] || stable_buoyancy_gradient[i-1, j, k]
@@ -187,6 +197,7 @@ end
 @inline κᶜᶜᶠ(i, j, k, grid, clock, c::ConvectiveAdjustmentCoeff{I}) where I = κᶜᶜᶠ(i, j, k, grid, clock, c.closure, c.stable_buoyancy_gradient, Val(I))
 
 const VITD = VerticallyImplicitTimeDiscretization
+const ATD = AbstractTimeDiscretization
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
 @inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::CAVD, args...) = zero(eltype(grid))
@@ -216,4 +227,16 @@ end
                   viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
                   zero(FT))
 end
+
+@inline viscous_flux_ux(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_uy(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vx(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vy(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wx(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wy(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
+
+@inline diffusive_flux_x(i, j, k, grid, ::ATD, closure::CAVD) = zero(eltype(grid))
+@inline diffusive_flux_y(i, j, k, grid, ::ATD, closure::CAVD) = zero(eltype(grid))
+
+
 
