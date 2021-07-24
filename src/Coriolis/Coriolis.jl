@@ -23,6 +23,7 @@ abstract type AbstractRotation end
 include("no_rotation.jl")
 include("f_plane.jl")
 include("non_traditional_f_plane.jl")
+include("general_f_plane.jl")
 include("beta_plane.jl")
 include("non_traditional_beta_plane.jl")
 include("hydrostatic_spherical_coriolis.jl")
