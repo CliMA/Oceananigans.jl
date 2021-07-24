@@ -12,7 +12,7 @@ function min_Δxyz(grid)
 end
 
 
-cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.diffusivities, model.grid)
+cell_diffusion_timescale(model) = cell_diffusion_timescale(model.closure, model.diffusivity_fields, model.grid)
 cell_diffusion_timescale(::Nothing, diffusivities, grid) = Inf
 
 maximum_numeric_diffusivity(κ::Number) = κ

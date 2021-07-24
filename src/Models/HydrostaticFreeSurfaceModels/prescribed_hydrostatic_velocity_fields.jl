@@ -6,7 +6,7 @@ using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: AbstractField, FunctionField
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
+import Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 
 using Adapt
 
@@ -50,6 +50,11 @@ function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFiel
     w = PrescribedField(Center, Center, Face, velocities.w, grid; clock=clock, parameters=velocities.parameters)
 
     return PrescribedVelocityFields(u, v, w, velocities.parameters)
+end
+
+function HydrostaticFreeSurfaceTendencyFields(::PrescribedVelocityFields, free_surface, arch, grid, tracer_names)
+    tracers = TracerFields(tracer_names, arch, grid)
+    return merge((u = nothing, v = nothing, η = nothing), tracers)
 end
 
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing

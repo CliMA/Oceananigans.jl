@@ -36,11 +36,23 @@ validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
 
 import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
-function regularize_field_boundary_conditions(bcs::CubedSphereFaces, grid, model_field_names, field_name)
+function regularize_field_boundary_conditions(bcs::CubedSphereFaces, grid, field_name, prognostic_field_names)
+
+    faces = Tuple(regularize_field_boundary_conditions(face_bcs, face_grid, field_name, prognostic_field_names)
+                  for (face_bcs, face_grid) in zip(bcs.faces, grid.faces))
+
+    return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
+end
+
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid::ConformalCubedSphereGrid, field_name, prognostic_field_names)
 
     faces = Tuple(
-        regularize_field_boundary_conditions(face_bcs, face_grid, model_field_names, field_name)
-        for (face_bcs, face_grid) in zip(bcs.faces, grid.faces)
+        inject_cubed_sphere_exchange_boundary_conditions(
+            regularize_field_boundary_conditions(bcs, face_grid, field_name, prognostic_field_names),
+            face_index,
+            grid.face_connectivity
+        )
+        for (face_index, face_grid) in enumerate(grid.faces)
     )
 
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
@@ -52,11 +64,11 @@ end
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: apply_flux_bcs!
 
-function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCubedSphereField, arch, barrier, clock, model_fields)
+function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCubedSphereField, arch, barrier, args...)
 
     for (face_index, Gcⁿ_face) in enumerate(faces(Gcⁿ))
         apply_flux_bcs!(Gcⁿ_face, events, get_face(c, face_index), arch, barrier,
-                        clock, get_face(model_fields, face_index))
+                        Tuple(get_face(a, face_index) for a in args)...)
     end
 
     return nothing

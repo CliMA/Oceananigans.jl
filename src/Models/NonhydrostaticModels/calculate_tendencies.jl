@@ -4,12 +4,12 @@ using Oceananigans: fields
 using Oceananigans.Utils: work_layout
 
 """
-    calculate_tendencies!(model::IncompressibleModel)
+    calculate_tendencies!(model::NonhydrostaticModel)
 
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function calculate_tendencies!(model::IncompressibleModel)
+function calculate_tendencies!(model::NonhydrostaticModel)
 
     # Note:
     #
@@ -33,7 +33,7 @@ function calculate_tendencies!(model::IncompressibleModel)
                                                model.velocities,
                                                model.tracers,
                                                model.pressures.pHY′,
-                                               model.diffusivities,
+                                               model.diffusivity_fields,
                                                model.forcing,
                                                model.clock)
 

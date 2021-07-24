@@ -1,3 +1,4 @@
+
 # Simulation tips
 
 In Oceananigans we try to do most of the optimizing behind the scenes, that way the average user
@@ -72,33 +73,40 @@ in GPU simulations by following a few simple principles.
 ### Variables that need to be used in GPU computations need to be defined as constants
 
 Any global variable that needs to be accessed by the GPU needs to be a constant or the simulation
-will crash. This includes any variables used in forcing functions and boundary conditions. For
-example, if you define a boundary condition like the example below and run your simulation on a GPU
-you'll get an error.
+will crash. This includes any variables that are referenced as global variables in functions
+used for forcing of boundary conditions. For example,
 
 ```julia
-dTdz = 0.01 # K m⁻¹
-T_bcs = TracerBoundaryConditions(grid,
-                                 bottom = GradientBoundaryCondition(dTdz))
+T₀ = 20 # ᵒC
+surface_temperature(x, y, t) = T₀ * sin(2π / 86400 * t)
+T_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(surface_temperature))
 ```
 
-However, if you define `dTdz` as a constant by replacing the first line with `const dTdz = 0.01`,
-then (provided everything else is done properly) your run will be successful.
+will throw an error if run on the GPU (and will run more slowly than it should on the CPU).
+Replacing the first line above with
 
+```julia
+const T₀ = 20 # ᵒC
+```
+
+fixes the issue by indicating to the compiler that `T₀` will not change.
+
+Note that the _literal_ `2π / 86400` is not an issue -- it's only the
+_variable_ `T₀` that must be declared `const`.
 
 ### Complex diagnostics using `ComputedField`s may not work on GPUs
 
 `ComputedField`s are the most convenient way to calculate diagnostics for your simulation. They will
 always work on CPUs, but when their complexity is high (in terms of number of abstract operations)
-the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is discussed 
-in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1241) and contributors are welcome.)
+the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is summarized 
+in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1886) and contributions are welcome.)
 For example, in the example below, calculating `u²` works in both CPUs and GPUs, but calculating 
 `ε` will not compile on GPUs when we call the command `compute!`:
 
 ```julia
 using Oceananigans
 grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = IncompressibleModel(grid=grid, closure=IsotropicDiffusivity(ν=1e-6))
+model = NonhydrostaticModel(grid=grid, closure=IsotropicDiffusivity(ν=1e-6))
 u, v, w = model.velocities
 ν = model.closure.ν
 u² = ComputedField(u^2)
@@ -109,7 +117,7 @@ compute!(ε)
 
 There are two approaches to 
 bypass this issue. The first is to nest `ComputedField`s. For example,
-we can make `KE` be successfully computed on GPUs by defining it as
+we can make `ε` be successfully computed on GPUs by defining it as
 ```julia
 ddx² = ComputedField(∂x(u)^2 + ∂x(v)^2 + ∂x(w)^2)
 ddy² = ComputedField(∂y(u)^2 + ∂y(v)^2 + ∂y(w)^2)
@@ -126,7 +134,7 @@ if this diagnostic is being calculated very often.
 A different way to calculate `ε` is by using `KernelFunctionOperations`s, where the
 user manually specifies the computing kernel function to the compiler. The advantage of this method is that
 it's more efficient (the code will only iterate once over the domain in order to calculate `ε`),
-but the disadvantage is that this requires that the has some knowledge of Oceananigans operations
+but the disadvantage is that this method requires some knowledge of Oceananigans operations
 and how they should be performed on a C-grid. For example calculating `ε` with this approach would
 look like this:
 
@@ -181,7 +189,7 @@ to achieve this
 
 - Use the [`nvidia-smi`](https://developer.nvidia.com/nvidia-system-management-interface) command
   line utility to monitor the memory usage of the GPU. It should tell you how much memory there is
-  on your GPU and how much of it you're using.
+  on your GPU and how much of it you're using and you can run it from Julia with the command ``run(`nvidia-smi`)``.
 - Try to use higher-order advection schemes. In general when you use a higher-order scheme you need
   fewer grid points to achieve the same accuracy that you would with a lower-order one. Oceananigans
   provides two high-order advection schemes: 5th-order WENO method (WENO5) and 3rd-order upwind.
@@ -190,7 +198,7 @@ to achieve this
   called scratch space. In general, the more diagnostics, the more scratch space needed and the bigger
   the memory requirements. However, if you explicitly create a scratch space and pass that same
   scratch space for as many diagnostics as you can, you minimize the memory requirements of your
-  calculations by reusing the same memory chunk. As an example, you can see scratch space being
+  calculations by reusing the same chunk of memory. As an example, you can see scratch space being
   created
   [here](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_ constant_fluxes.jl#L380-L383)
   and then being used in calculations
@@ -200,13 +208,15 @@ to achieve this
 
 ### Arrays in GPUs are usually different from arrays in CPUs
 
-On the CPU Oceananigans.jl uses regular `Array`s, but on the GPU it has to use `CuArray`s
-from the CUDA.jl package. While deep down both are arrays, their implementations are different
-and both can behave very differently. Something to keep in mind when working with `CuArray`s is that you do not want to
-access elements of a `CuArray` outside of a kernel. Doing so invokes scalar operations
-in which individual elements are copied from or to the GPU for processing. This is very
-slow and can result in huge slowdowns. For this reason, Oceananigans.jl disables CUDA
-scalar operations by default. See the [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
+Oceananigans.jl uses [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/) to store 
+data for GPU computations. One limitation of `CuArray`s compared to the `Array`s used for 
+CPU computations is that `CuArray` elements in general cannot be accessed outside kernels
+launched through CUDA.jl or KernelAbstractions.jl. (You can learn more about GPU kernels 
+[here](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and 
+[here](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
+Doing so requires individual elements to be copied from or to the GPU for processing,
+which is very slow and can result in huge slowdowns. For this reason, Oceananigans.jl disables CUDA
+scalar indexing by default. See the [scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
 section of the CUDA.jl documentation for more information on scalar indexing.
 
 
@@ -224,8 +234,8 @@ RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}
    halo size (Hx, Hy, Hz): (1, 1, 1)
 grid spacing (Δx, Δy, Δz): (1.0, 1.0, 1.0)
 
-julia> model = IncompressibleModel(grid=grid, architecture=GPU())
-IncompressibleModel{GPU, Float64}(time = 0 seconds, iteration = 0) 
+julia> model = NonhydrostaticModel(grid=grid, architecture=GPU())
+NonhydrostaticModel{GPU, Float64}(time = 0 seconds, iteration = 0) 
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 ├── tracers: (:T, :S)
 ├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
@@ -303,5 +313,3 @@ to define initial conditions, boundary conditions or
 forcing functions on a GPU. To learn more about working with `CuArray`s, see the
 [array programming](https://juliagpu.github.io/CUDA.jl/dev/usage/array/) section
 of the CUDA.jl documentation.
-
-

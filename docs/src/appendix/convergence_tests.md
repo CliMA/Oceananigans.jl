@@ -33,7 +33,7 @@ with the initial condition ``c = 1``, which has the analytical solution ``c = \m
 We find the expected first-order convergence with decreasing time-step ``\Delta t`` using our
 first-order accurate, "modified second-order" Adams-Bashforth time-stepping method:
 
-![Point exponential decay](convergence_plots/point_exponential_decay_time_stepper_convergence.png)
+![Point exponential decay](https://raw.githubusercontent.com/CliMA/Oceananigans.jl/v0.35.0/docs/src/verification/convergence_plots/point_exponential_decay_time_stepper_convergence.png)
 
 This result validates the correctness of the `Oceananigans` implementation of Adams-Bashforth time-stepping.
 
@@ -53,11 +53,11 @@ We simulate this problem with advection and diffusion, as well as with ``U=0`` a
 ``\kappa \approx 0`` and thus "advection only".
 The solutions are
 
-![Gaussian advection diffusion solutions](convergence_plots/gaussian_advection_diffusion_solutions.png)
+![Gaussian advection diffusion solutions](https://raw.githubusercontent.com/CliMA/Oceananigans.jl/v0.35.0/docs/src/verification/convergence_plots/gaussian_advection_diffusion_solutions.png)
 
 which exhibit the expected second-order convergence with ``\Delta x^2 \propto 1 / N_x^2``:
 
-![Gaussian advection diffusion convergence](convergence_plots/gaussian_advection_diffusion_error_convergence.png)
+![Gaussian advection diffusion convergence](https://raw.githubusercontent.com/CliMA/Oceananigans.jl/v0.35.0/docs/src/verification/convergence_plots/gaussian_advection_diffusion_error_convergence.png)
 
 These results validate the correctness of time-stepping, constant diffusivity operators, and advection operators.
 
@@ -72,11 +72,11 @@ constant velocity ``U``, a cosine evolves according to
 
 The solutions are
 
-![Cosine advection diffusion solutions](convergence_plots/cosine_advection_diffusion_solutions.png)
+![Cosine advection diffusion solutions](https://raw.githubusercontent.com/CliMA/Oceananigans.jl/v0.35.0/docs/src/verification/convergence_plots/cosine_advection_diffusion_solutions.png)
 
 which exhibit the expected second-order convergence with ``\Delta x^2 \propto 1 / N_x^2``:
 
-![Cosine advection diffusion convergence](convergence_plots/cosine_advection_diffusion_error_convergence.png)
+![Cosine advection diffusion convergence](https://raw.githubusercontent.com/CliMA/Oceananigans.jl/v0.35.0/docs/src/verification/convergence_plots/cosine_advection_diffusion_error_convergence.png)
 
 These results validate the correctness of time-stepping, constant diffusivity operators, and advection operators.
 
@@ -98,7 +98,7 @@ with either periodic boundary conditions, or insulating boundary conditions in e
 
 The expected convergence with ``\Delta x^2 \propto 1 / N_x^2`` is observed:
 
-![Two dimensional diffusion convergence](convergence_plots/two_dimensional_diffusion_convergence.png)
+![Two dimensional diffusion convergence](https://raw.githubusercontent.com/CliMA/Oceananigans.jl/v0.35.0/docs/src/verification/convergence_plots/two_dimensional_diffusion_convergence.png)
 
 This validates the correctness of multi-dimensional diffusion operators.
 
@@ -117,7 +117,7 @@ is a solution to the Navier-Stokes equations with viscosity ``\nu = 1``.
 
 The expected convergence with spatial resolution is observed:
 
-![Decaying advected Taylor Green](convergence_plots/taylor_green_convergence.png)
+![Decaying advected Taylor Green](https://raw.githubusercontent.com/CliMA/Oceananigans.jl/v0.35.0/docs/src/verification/convergence_plots/taylor_green_convergence.png)
 
 This validates the correctness of the advection and diffusion of a velocity field.
 
@@ -184,7 +184,7 @@ analytical solution: the error between the numerical and analytical solutions
 decreases with ``1/N_x^2 \sim \Delta x^2``, where ``N_x`` is the number of grid
 points and ``\Delta x`` is the spatial resolution:
 
-![Forced free slip convergence](convergence_plots/forced_free_slip_convergence.png)
+![Forced free slip convergence](https://raw.githubusercontent.com/CliMA/Oceananigans.jl/v0.35.0/docs/src/verification/convergence_plots/forced_free_slip_convergence.png)
 
 The convergence tests are performed using both ``y`` and ``z`` as the bounded direction.
 
@@ -245,6 +245,6 @@ condition ``u |_{y=1} = f``. As for the free-slip problem, we find that the erro
 numerical and analytical solutions decreases with ``1 / N_x^2 \sim \Delta x^2``, where ``N_x``
 is the number of grid points and ``\Delta x`` is the spatial resolution:
 
-![Forced fixed slip convergence](convergence_plots/forced_fixed_slip_convergence.png)
+![Forced fixed slip convergence](https://raw.githubusercontent.com/CliMA/Oceananigans.jl/v0.35.0/docs/src/verification/convergence_plots/forced_fixed_slip_convergence.png)
 
 The convergence tests are performed using both ``y`` and ``z`` as the bounded direction.

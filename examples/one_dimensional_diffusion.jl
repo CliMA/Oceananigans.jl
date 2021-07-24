@@ -29,7 +29,7 @@ using Oceananigans
 #
 # ## Instantiating and configuring a model
 #
-# A core Oceananigans type is `IncompressibleModel`. We build an `IncompressibleModel`
+# A core Oceananigans type is `NonhydrostaticModel`. We build an `NonhydrostaticModel`
 # by passing it a `grid`, plus information about the equations we would like to solve.
 #
 # Below, we build a regular rectilinear grid with 128 grid points in the `z`-direction,
@@ -48,9 +48,9 @@ grid = RegularRectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bou
 
 closure = IsotropicDiffusivity(κ=1.0)
 
-# We finally pass these two ingredients to `IncompressibleModel`,
+# We finally pass these two ingredients to `NonhydrostaticModel`,
 
-model = IncompressibleModel(grid=grid, closure=closure)
+model = NonhydrostaticModel(grid=grid, closure=closure)
 
 # Our simple `grid` and `model` use a number of defaults:
 #

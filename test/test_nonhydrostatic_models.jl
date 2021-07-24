@@ -3,11 +3,11 @@
 
     @testset "Model constructor errors" begin
         grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-        @test_throws TypeError IncompressibleModel(architecture=CPU, grid=grid)
-        @test_throws TypeError IncompressibleModel(architecture=GPU, grid=grid)
-        @test_throws TypeError IncompressibleModel(grid=grid, boundary_conditions=1)
-        @test_throws TypeError IncompressibleModel(grid=grid, forcing=2)
-        @test_throws TypeError IncompressibleModel(grid=grid, background_fields=3)
+        @test_throws TypeError NonhydrostaticModel(architecture=CPU, grid=grid)
+        @test_throws TypeError NonhydrostaticModel(architecture=GPU, grid=grid)
+        @test_throws TypeError NonhydrostaticModel(grid=grid, boundary_conditions=1)
+        @test_throws TypeError NonhydrostaticModel(grid=grid, forcing=2)
+        @test_throws TypeError NonhydrostaticModel(grid=grid, background_fields=3)
     end
 
     topos = ((Periodic, Periodic, Periodic),
@@ -22,49 +22,49 @@
 		        arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
 
                 grid = RegularRectilinearGrid(FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
-                model = IncompressibleModel(grid=grid, architecture=arch)
+                model = NonhydrostaticModel(grid=grid, architecture=arch)
 
-                @test model isa IncompressibleModel
+                @test model isa NonhydrostaticModel
             end
         end
     end
 
-    @testset "Adjustment of halos in IncompressibleModel constructor" begin
-        @info "  Testing adjustment of halos in IncompressibleModel constructor..."
+    @testset "Adjustment of halos in NonhydrostaticModel constructor" begin
+        @info "  Testing adjustment of halos in NonhydrostaticModel constructor..."
 
         default_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
         funny_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 3, 4))
 
         # Model ensures that halos are at least of size 1
-        model = IncompressibleModel(grid=default_grid)
+        model = NonhydrostaticModel(grid=default_grid)
         @test model.grid.Hx == 1 && model.grid.Hy == 1 && model.grid.Hz == 1
 
-        model = IncompressibleModel(grid=funny_grid)
+        model = NonhydrostaticModel(grid=funny_grid)
         @test model.grid.Hx == 1 && model.grid.Hy == 3 && model.grid.Hz == 4
 
         # Model ensures that halos are at least of size 2
         for scheme in (CenteredFourthOrder(), UpwindBiasedThirdOrder())
-            model = IncompressibleModel(advection=scheme, grid=default_grid)
+            model = NonhydrostaticModel(advection=scheme, grid=default_grid)
             @test model.grid.Hx == 2 && model.grid.Hy == 2 && model.grid.Hz == 2
 
-            model = IncompressibleModel(advection=scheme, grid=funny_grid)
+            model = NonhydrostaticModel(advection=scheme, grid=funny_grid)
             @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
         end
 
         # Model ensures that halos are at least of size 3
         for scheme in (WENO5(), UpwindBiasedFifthOrder())
-            model = IncompressibleModel(advection=scheme, grid=default_grid)
+            model = NonhydrostaticModel(advection=scheme, grid=default_grid)
             @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 3
 
-            model = IncompressibleModel(advection=scheme, grid=funny_grid)
+            model = NonhydrostaticModel(advection=scheme, grid=funny_grid)
             @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 4
         end
 
         # Model ensures that halos are at least of size 2 with AnisotropicBiharmonicDiffusivity
-        model = IncompressibleModel(closure=AnisotropicBiharmonicDiffusivity(), grid=default_grid)
+        model = NonhydrostaticModel(closure=AnisotropicBiharmonicDiffusivity(), grid=default_grid)
         @test model.grid.Hx == 2 && model.grid.Hy == 2 && model.grid.Hz == 2
 
-        model = IncompressibleModel(closure=AnisotropicBiharmonicDiffusivity(), grid=funny_grid)
+        model = NonhydrostaticModel(closure=AnisotropicBiharmonicDiffusivity(), grid=funny_grid)
         @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
     end
 
@@ -73,22 +73,11 @@
         for arch in archs
             grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
 
-            model = IncompressibleModel(grid=grid, architecture=arch, tracers=:c, buoyancy=nothing)
-            @test model isa IncompressibleModel
+            model = NonhydrostaticModel(grid=grid, architecture=arch, tracers=:c, buoyancy=nothing)
+            @test model isa NonhydrostaticModel
 
-            model = IncompressibleModel(grid=grid, architecture=arch, tracers=nothing, buoyancy=nothing)
-            @test model isa IncompressibleModel
-        end
-    end
-
-    @testset "Non-dimensional model" begin
-        @info "  Testing non-dimensional model construction..."
-        for arch in archs, FT in float_types
-            grid = RegularRectilinearGrid(FT, size=(16, 16, 2), extent=(3, 2, 1))
-            model = NonDimensionalIncompressibleModel(architecture=arch, grid=grid, Re=1, Pr=1, Ro=Inf)
-
-            # Just testing that a NonDimensionalIncompressibleModel was constructed with no errors/crashes.
-            @test model isa IncompressibleModel
+            model = NonhydrostaticModel(grid=grid, architecture=arch, tracers=nothing, buoyancy=nothing)
+            @test model isa NonhydrostaticModel
         end
     end
 
@@ -99,7 +88,7 @@
             L = (2π, 3π, 5π)
 
             grid = RegularRectilinearGrid(FT, size=N, extent=L)
-            model = IncompressibleModel(architecture=arch, grid=grid)
+            model = NonhydrostaticModel(architecture=arch, grid=grid)
 
             u, v, w = model.velocities
             T, S = model.tracers
@@ -166,6 +155,16 @@
             ϵ = 10 * eps(FT)
             set!(w_cpu, w)
             @test all(abs.(interior(w_cpu)) .< ϵ)
+
+            # Test setting the background_fields to a Field
+            U_field = XFaceField(arch, grid)
+            U_field .= 1
+            model = NonhydrostaticModel(grid=grid, architecture=arch, background_fields = (u=U_field,))
+            @test model.background_fields.velocities.u isa Field
+			
+	    U_field = CenterField(arch, grid)            
+	    @test_throws ArgumentError NonhydrostaticModel(grid=grid, architecture=arch, background_fields = (u=U_field,))            
         end
     end
 end
+

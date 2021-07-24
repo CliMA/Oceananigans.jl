@@ -3,12 +3,10 @@ using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction
 function test_boundary_condition(arch, FT, topo, side, field_name, boundary_condition)
     grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
 
-    boundary_condition_kwarg = Dict(side => boundary_condition)
-    field_boundary_conditions = TracerBoundaryConditions(grid; boundary_condition_kwarg...)
-    bcs = NamedTuple{(field_name,)}((field_boundary_conditions,))
-
-    model = IncompressibleModel(grid=grid, architecture=arch,
-                                boundary_conditions=bcs)
+    boundary_condition_kwarg = (; side => boundary_condition)
+    field_boundary_conditions = FieldBoundaryConditions(; boundary_condition_kwarg...)
+    bcs = (; field_name => field_boundary_conditions)
+    model = NonhydrostaticModel(grid=grid, architecture=arch, boundary_conditions=bcs)
 
     success = try
         time_step!(model, 1e-16, euler=true)
@@ -21,7 +19,7 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
     return success
 end
 
-function test_incompressible_flux_budget(arch, name, side, topo)
+function test_nonhydrostatic_flux_budget(arch, name, side, topo)
 
     FT = Float64
     Lx = 0.3
@@ -39,15 +37,11 @@ function test_incompressible_flux_budget(arch, name, side, topo)
     direction = side ∈ (:west, :south, :bottom) ? 1 : -1
     bc_kwarg = Dict(side => BoundaryCondition(Flux, flux * direction))
 
-    FieldBoundaryConditions = name === :u ? UVelocityBoundaryConditions :
-                              name === :v ? VVelocityBoundaryConditions :
-                              name === :w ? WVelocityBoundaryConditions : TracerBoundaryConditions
+    field_bcs = FieldBoundaryConditions(; bc_kwarg...)
 
-    field_bcs = FieldBoundaryConditions(grid; bc_kwarg...)
+    model_bcs = NamedTuple{tuple(name)}(tuple(field_bcs))
 
-    model_bcs = NamedTuple{(name,)}((field_bcs,))
-
-    model = IncompressibleModel(grid=grid, buoyancy=nothing, boundary_conditions=model_bcs,
+    model = NonhydrostaticModel(grid=grid, buoyancy=nothing, boundary_conditions=model_bcs,
                                 closure=nothing, architecture=arch, tracers=:c)
                                 
     is_velocity_field = name ∈ (:u, :v, :w)
@@ -77,11 +71,11 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
 
     grid = RegularRectilinearGrid(FT, size=(16, 16, 16), extent=(1, 1, Lz))
 
-    buoyancy_bcs = TracerBoundaryConditions(grid, bottom=BoundaryCondition(Gradient, bz))
-    κₑ_bcs = DiffusivityBoundaryConditions(grid, bottom=BoundaryCondition(Value, κ₀))
+    buoyancy_bcs = FieldBoundaryConditions(bottom=GradientBoundaryCondition(bz))
+    κₑ_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), bottom=ValueBoundaryCondition(κ₀))
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
         grid=grid, architecture=arch, tracers=:b, buoyancy=BuoyancyTracer(),
         closure=AnisotropicMinimumDissipation(), boundary_conditions=model_bcs
     )
@@ -134,10 +128,10 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                              )
 
 @testset "Boundary condition integration tests" begin
-    @info "Testing boundary condition integration into IncompressibleModel..."
+    @info "Testing boundary condition integration into NonhydrostaticModel..."
 
     @testset "Boundary condition regularization" begin
-        @info "  Testing boundary condition regularization in IncompressibleModel constructor..."
+        @info "  Testing boundary condition regularization in NonhydrostaticModel constructor..."
 
         FT = Float64
         arch = first(archs)
@@ -146,37 +140,33 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         # yet.
         grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=(Periodic, Bounded, Bounded))
 
-        u_boundary_conditions = UVelocityBoundaryConditions(grid; 
-                                                            bottom = simple_function_bc(Value),
-                                                            top    = simple_function_bc(Value),
-                                                            north  = simple_function_bc(Value),
-                                                            south  = simple_function_bc(Value))
+        u_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
+                                                        top    = simple_function_bc(Value),
+                                                        north  = simple_function_bc(Value),
+                                                        south  = simple_function_bc(Value))
 
-        v_boundary_conditions = VVelocityBoundaryConditions(grid;
-                                                            bottom = simple_function_bc(Value),
-                                                            top    = simple_function_bc(Value),
-                                                            north  = simple_function_bc(Open),
-                                                            south  = simple_function_bc(Open))
+        v_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
+                                                        top    = simple_function_bc(Value),
+                                                        north  = simple_function_bc(Open),
+                                                        south  = simple_function_bc(Open))
 
 
-        w_boundary_conditions = VVelocityBoundaryConditions(grid;
-                                                            bottom = simple_function_bc(Open),
-                                                            top    = simple_function_bc(Open),
-                                                            north  = simple_function_bc(Value),
-                                                            south  = simple_function_bc(Value))
+        w_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Open),
+                                                        top    = simple_function_bc(Open),
+                                                        north  = simple_function_bc(Value),
+                                                        south  = simple_function_bc(Value))
 
-        T_boundary_conditions = TracerBoundaryConditions(grid;
-                                                         bottom = simple_function_bc(Value),
-                                                         top    = simple_function_bc(Value),
-                                                         north  = simple_function_bc(Value),
-                                                         south  = simple_function_bc(Value))
+        T_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
+                                                        top    = simple_function_bc(Value),
+                                                        north  = simple_function_bc(Value),
+                                                        south  = simple_function_bc(Value))
 
         boundary_conditions = (u=u_boundary_conditions,
                                v=v_boundary_conditions,
                                w=w_boundary_conditions,
                                T=T_boundary_conditions)
 
-        model = IncompressibleModel(architecture = arch,
+        model = NonhydrostaticModel(architecture = arch,
                                     grid = grid,
                                     boundary_conditions = boundary_conditions)
 
@@ -230,19 +220,19 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             topo = (Periodic, Bounded, Bounded)
             for name in (:u, :c), side in (:north, :south, :top, :bottom)
                 @info "    Testing budgets with Flux boundary conditions [$(typeof(arch)), $topo, $name, $side]..."
-                @test test_incompressible_flux_budget(arch, name, side, topo)
+                @test test_nonhydrostatic_flux_budget(arch, name, side, topo)
             end
 
             topo = (Bounded, Periodic, Bounded)
             for name in (:v, :c), side in (:east, :west, :top, :bottom)
                 @info "    Testing budgets with Flux boundary conditions [$(typeof(arch)), $topo, $name, $side]..."
-                @test test_incompressible_flux_budget(arch, name, side, topo)
+                @test test_nonhydrostatic_flux_budget(arch, name, side, topo)
             end
 
             topo = (Bounded, Bounded, Periodic)
             for name in (:w, :c), side in (:east, :west, :north, :south)
                 @info "    Testing budgets with Flux boundary conditions [$(typeof(arch)), $topo, $name, $side]..."
-                @test test_incompressible_flux_budget(arch, name, side, topo)
+                @test test_nonhydrostatic_flux_budget(arch, name, side, topo)
             end
         end
     end

@@ -167,8 +167,8 @@ cᴰ = 1e-4 # quadratic drag coefficient
 drag_bc_u = FluxBoundaryCondition(drag_u, field_dependencies=(:u, :v), parameters=cᴰ)
 drag_bc_v = FluxBoundaryCondition(drag_v, field_dependencies=(:u, :v), parameters=cᴰ)
 
-u_bcs = UVelocityBoundaryConditions(grid, bottom = drag_bc_u)
-v_bcs = VVelocityBoundaryConditions(grid, bottom = drag_bc_v)
+u_bcs = FieldBoundaryConditions(bottom = drag_bc_u)
+v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 
 # ## Turbulence closures
 #
@@ -188,7 +188,7 @@ biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h,
 # We instantiate the model with the fifth-order WENO advection scheme, a 3rd order
 # Runge-Kutta time-stepping scheme, and a `BuoyancyTracer`.
 
-model = IncompressibleModel(
+model = NonhydrostaticModel(
            architecture = CPU(),
                    grid = grid,
               advection = WENO5(),
@@ -222,7 +222,7 @@ set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 # We subtract off any residual mean velocity to avoid exciting domain-scale
 # inertial oscillations. We use a `sum` over the entire `parent` arrays or data
 # to ensure this operation is efficient on the GPU (set `architecture = GPU()`
-# in `IncompressibleModel` constructor to run this problem on the GPU if one
+# in `NonhydrostaticModel` constructor to run this problem on the GPU if one
 # is available).
 
 ū = sum(model.velocities.u.data.parent) / (grid.Nx * grid.Ny * grid.Nz)

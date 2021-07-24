@@ -4,10 +4,10 @@ using Documenter
 using DocumenterCitations
 using Literate
 using Plots # to avoid capturing precompilation output by Literate
+using Glob
 
 using Oceananigans
 using Oceananigans.Operators
-using Oceananigans.Grids
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
@@ -42,12 +42,13 @@ examples = [
     "langmuir_turbulence.jl",
     "eady_turbulence.jl",
     "kelvin_helmholtz_instability.jl",
-    "shallow_water_Bickley_jet.jl"
+    "shallow_water_Bickley_jet.jl",
+    "horizontal_convection.jl"
 ]
 
 for example in examples
     example_filepath = joinpath(EXAMPLES_DIR, example)
-    Literate.markdown(example_filepath, OUTPUT_DIR, documenter=true)
+    Literate.markdown(example_filepath, OUTPUT_DIR; flavor = Literate.DocumenterFlavor())
 end
 
 #####
@@ -64,7 +65,8 @@ example_pages = [
     "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
     "Eady turbulence"                    => "generated/eady_turbulence.md",
     "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
-    "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md"
+    "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md",
+    "Horizontal convection"              => "generated/horizontal_convection.md"
  ]
 
 model_setup_pages = [
@@ -90,8 +92,8 @@ model_setup_pages = [
 physics_pages = [
     "Coordinate system and notation" => "physics/notation.md",
     "Boussinesq approximation" => "physics/boussinesq.md",
-    "`IncompressibleModel`" => [
-        "Incompressible model" => "physics/incompressible_model.md",
+    "`NonhydrostaticModel`" => [
+        "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
         ],
     "`HydrostaticFreeSurfaceModel`" => [
         "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md"
@@ -115,15 +117,13 @@ numerical_pages = [
     "Large eddy simulation" => "numerical_implementation/large_eddy_simulation.md"
 ]
 
-validation_pages = [
-    "Convergence tests" => "validation/convergence_tests.md",
-    "Lid-driven cavity" => "validation/lid_driven_cavity.md",
-    "Stratified Couette flow" => "validation/stratified_couette_flow.md"
-]
-
 appendix_pages = [
     "Staggered grid" => "appendix/staggered_grid.md",
-    "Fractional step method" => "appendix/fractional_step.md"
+    "Fractional step method" => "appendix/fractional_step.md",
+    "Convergence tests" => "appendix/convergence_tests.md",
+    "Performance benchmarks" => "appendix/benchmarks.md",
+    "Library" => "appendix/library.md",
+    "Function index" => "appendix/function_index.md",
 ]
 
 pages = [
@@ -134,15 +134,11 @@ pages = [
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
     "Model setup" => model_setup_pages,
-    "Validation experiments" => validation_pages,
     "Simulation tips" => "simulation_tips.md",
-    "Gallery" => "gallery.md",
-    "Performance benchmarks" => "benchmarks.md",
     "Contributor's guide" => "contributing.md",
-    "Appendix" => appendix_pages,
+    "Gallery" => "gallery.md",
     "References" => "references.md",
-    "Library" => "library.md",
-    "Function index" => "function_index.md"
+    "Appendix" => appendix_pages,
 ]
 
 #####
@@ -165,7 +161,7 @@ makedocs(bib,
    doctest = true,
     strict = true,
      clean = true,
- checkdocs = :none  # Should fix our docstring so we can use checkdocs=:exports with strict=true.
+ checkdocs = :none # Should fix our docstring so we can use checkdocs=:exports with strict=true.
 )
 
 deploydocs(
@@ -173,3 +169,8 @@ deploydocs(
       versions = ["stable" => "v^", "v#.#.#", "dev" => "dev"],
   push_preview = true
 )
+
+@info "Cleaning up temporary .jld2 and .nc files created by doctests..."
+for file in vcat(glob("docs/*.jld2"), glob("docs/*.nc"))
+    rm(file)
+end

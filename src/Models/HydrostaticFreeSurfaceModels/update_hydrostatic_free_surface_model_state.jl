@@ -2,7 +2,7 @@ using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
-using Oceananigans.Models.IncompressibleModels: update_hydrostatic_pressure!
+using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
 import Oceananigans.TimeSteppers: update_state!
 
@@ -36,10 +36,10 @@ function update_state!(model::HydrostaticFreeSurfaceModel)
     end
 
     # Calculate diffusivities
-    calculate_diffusivities!(model.diffusivities, model.architecture, model.grid, model.closure,
+    calculate_diffusivities!(model.diffusivity_fields, model.architecture, model.grid, model.closure,
                              model.buoyancy, model.velocities, model.tracers)
 
-    fill_halo_regions!(model.diffusivities, model.architecture, model.clock, fields(model))
+    fill_halo_regions!(model.diffusivity_fields, model.architecture, model.clock, fields(model))
 
     # Calculate hydrostatic pressure
     pressure_calculation = launch!(model.architecture, model.grid, Val(:xy), update_hydrostatic_pressure!,

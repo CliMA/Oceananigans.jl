@@ -1,7 +1,13 @@
+using Adapt
+
+import Oceananigans.BoundaryConditions: getbc
+
 using Oceananigans.Architectures: architecture, device_event
-using Oceananigans.BoundaryConditions: DefaultBoundaryCondition
+using Oceananigans.BoundaryConditions: default_prognostic_field_boundary_condition
+using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions, DiscreteBoundaryFunction
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators: ℑzᵃᵃᶜ
+
 
 function hydrostatic_turbulent_kinetic_energy_tendency end
 
@@ -100,11 +106,7 @@ function TKEBasedVerticalDiffusivity(FT=Float64;
           "is unvalidated and whose default parameters are not calibrated for \n" * 
           "realistic ocean conditions or for use in a three-dimensional \n" *
           "simulation. Use with caution and report bugs and problems with physics \n" *
-          "to https://github.com/CliMA/Oceananigans.jl/issues. \n\n" *
-
-          "Note: `TKEBasedVerticalDiffusivity` will generally produce \n" *
-          "incorrect results if its parameters are altered _after_ \n" *
-          "model instantiation."
+          "to https://github.com/CliMA/Oceananigans.jl/issues."
 
     dissipation_parameter = convert(FT, dissipation_parameter)
     mixing_length_parameter = convert(FT, mixing_length_parameter)
@@ -134,9 +136,13 @@ where ``B`` is buoyancy and ``∂z`` denotes a vertical derviative.
 The Richardson-number dependent diffusivities are multiplied by the stability
 function
 
-    ``σ(Ri) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, Riᶜ, Riʷ)``
+    1. ``σ(Ri) = σ⁻ * (1 + rσ * step(Ri, Riᶜ, Riʷ))``
+    3. ``σ(Ri) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, Riᶜ, Riʷ)``
 
-where ``σ⁰``, ``σᵟ``, ``Riᶜ``, and ``Riʷ`` are free parameters,
+σ⁻ = σ₀
+rσ = (σ⁺ - σ⁻) / σ₀
+
+where ``σ₀``, ``Δσ``, ``Riᶜ``, and ``Riʷ`` are free parameters,
 and ``step`` is a smooth step function defined by
 
     ``step(x, c, w) = (1 + \tanh((x - c) / w)) / 2``.
@@ -151,11 +157,11 @@ annealing and noisy Ensemble Kalman Inversion methods.
 """
 Base.@kwdef struct RiDependentDiffusivityScaling{FT}
     Cᴷu⁻  :: FT = 0.15
-    Cᴷu⁺  :: FT = 0.73
+    Cᴷuʳ  :: FT = 3.87
     Cᴷc⁻  :: FT = 0.40
-    Cᴷc⁺  :: FT = 1.77
+    Cᴷcʳ  :: FT = 0.77
     Cᴷe⁻  :: FT = 0.13
-    Cᴷe⁺  :: FT = 1.22
+    Cᴷeʳ  :: FT = 1.11
     CᴷRiʷ :: FT = 0.72
     CᴷRiᶜ :: FT = 0.76
 end
@@ -189,7 +195,25 @@ Base.@kwdef struct TKESurfaceFlux{FT}
     CᵂwΔ :: FT = 1.31
 end
 
-@inline function top_tke_flux(i, j, grid, surface_model::TKESurfaceFlux, closure,
+for S in (:RiDependentDiffusivityScaling, :TKESurfaceFlux)
+    @eval @inline convert_eltype(::Type{FT}, s::$S) where FT = $S{FT}(; Dict(p => getproperty(s, p) for p in propertynames(s))...)
+    @eval @inline convert_eltype(::Type{FT}, s::$S{FT}) where FT = s
+end
+
+#####
+##### TKE top boundary condition
+#####
+
+""" Compute the flux of TKE through the surface / top boundary. """
+@inline function top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy)
+    top_tracer_bcs = parameters.top_tracer_boundary_conditions
+    top_velocity_bcs = parameters.top_velocity_boundary_conditions
+
+    return _top_tke_flux(i, j, grid, closure.surface_model, closure,
+                         buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
+end
+
+@inline function _top_tke_flux(i, j, grid, surface_model::TKESurfaceFlux, closure,
                               buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
 
     wΔ³ = top_convective_turbulent_velocity³(i, j, grid, clock, fields, buoyancy, top_tracer_bcs)
@@ -202,17 +226,7 @@ end
     return - Cᴰ * (Cᵂu★ * u★^3 + CᵂwΔ * wΔ³)
 end
 
-
-for S in (:RiDependentDiffusivityScaling, :TKESurfaceFlux)
-    @eval @inline convert_eltype(::Type{FT}, s::$S) where FT = $S{FT}(; Dict(p => getproperty(s, p) for p in propertynames(s))...)
-    @eval @inline convert_eltype(::Type{FT}, s::$S{FT}) where FT = s
-end
-
-#####
-##### TKE top boundary condition
-#####
-
-""" Computes the friction velocity based on fluxes of u and v. """
+""" Computes the friction velocity u★ based on fluxes of u and v. """
 @inline function friction_velocity(i, j, grid, clock, fields, velocity_bcs)
     FT = eltype(grid)
     Qᵘ = getbc(velocity_bcs.u, i, j, grid, clock, fields) 
@@ -220,6 +234,7 @@ end
     return sqrt(sqrt(Qᵘ^2 + Qᵛ^2))
 end
 
+""" Computes the convective velocity w★. """
 @inline function top_convective_turbulent_velocity³(i, j, grid, clock, fields, buoyancy, tracer_bcs)
     FT = eltype(grid)
     Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields)
@@ -227,15 +242,21 @@ end
     return max(zero(FT), Qᵇ) * Δz   
 end
 
-@inline function top_tke_flux(i, j, grid, clock, fields, parameters)
-    buoyancy = parameters.buoyancy
-    top_tracer_bcs = parameters.top_tracer_boundary_conditions
-    top_velocity_bcs = parameters.top_velocity_boundary_conditions
-    closure = parameters.closure # problematic because model.closure can be changed.
-
-    return top_tke_flux(i, j, grid, closure.surface_model, closure,
-                        buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
+struct TKETopBoundaryConditionParameters{C, U}
+    top_tracer_boundary_conditions :: C
+    top_velocity_boundary_conditions :: U
 end
+
+@inline Adapt.adapt_structure(to, p::TKETopBoundaryConditionParameters) =
+    TKETopBoundaryConditionParameters(adapt(to, p.top_tracer_boundary_conditions),
+                                      adapt(to, p.top_velocity_boundary_conditions))
+
+using Oceananigans.BoundaryConditions: Flux
+const TKEBoundaryFunction = DiscreteBoundaryFunction{<:TKETopBoundaryConditionParameters}
+const TKEBoundaryCondition = BoundaryCondition{<:Flux, <:TKEBoundaryFunction}
+
+@inline getbc(bc::TKEBoundaryCondition, i, j, grid, clock, model_fields, closure, buoyancy) =
+    bc.condition.func(i, j, grid, clock, model_fields, bc.condition.parameters, closure, buoyancy)
 
 #####
 ##### Utilities for model constructors
@@ -243,22 +264,19 @@ end
 
 """ Infer tracer boundary conditions from user_bcs and tracer_names. """
 function top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
-    user_bc_names = keys(user_bcs)
-    default_top_bc = DefaultBoundaryCondition(topology(grid, 3), Center)
-
-    tracer_bcs = Tuple(name ∈ user_bc_names ? user_bcs[name].top : default_top_bc
-                       for name in tracer_names)
-
-    return NamedTuple{tracer_names}(tracer_bcs)
+    default_tracer_bcs = NamedTuple(c => FieldBoundaryConditions(grid, (Center, Center, Center)) for c in tracer_names)
+    bcs = merge(default_tracer_bcs, user_bcs)
+    return NamedTuple(c => bcs[c].top for c in tracer_names)
 end
 
 """ Infer velocity boundary conditions from `user_bcs` and `tracer_names`. """
 function top_velocity_boundary_conditions(grid, user_bcs)
 
-    user_bc_names = keys(user_bcs)
+    default_top_bc = default_prognostic_field_boundary_condition(topology(grid, 3)(), Center())
 
-    u_top_bc = :u ∈ user_bc_names ? user_bcs.u.top : DefaultBoundaryCondition(topology(grid, 3), Center)
-    v_top_bc = :v ∈ user_bc_names ? user_bcs.v.top : DefaultBoundaryCondition(topology(grid, 3), Center)
+    user_bc_names = keys(user_bcs)
+    u_top_bc = :u ∈ user_bc_names ? user_bcs.u.top : default_top_bc
+    v_top_bc = :v ∈ user_bc_names ? user_bcs.v.top : default_top_bc
 
     return (u=u_top_bc, v=v_top_bc)
 end
@@ -273,10 +291,7 @@ function add_closure_specific_boundary_conditions(closure::TKEVD,
     top_tracer_bcs = top_tracer_boundary_conditions(grid, tracer_names, user_bcs)
     top_velocity_bcs = top_velocity_boundary_conditions(grid, user_bcs)
 
-    parameters = (buoyancy = buoyancy,
-                  top_tracer_boundary_conditions = top_tracer_bcs,
-                  top_velocity_boundary_conditions = top_velocity_bcs,
-                  closure = closure)
+    parameters = TKETopBoundaryConditionParameters(top_tracer_bcs, top_velocity_bcs)
 
     top_tke_bc = FluxBoundaryCondition(top_tke_flux, discrete_form=true, parameters=parameters)
 
@@ -286,16 +301,15 @@ function add_closure_specific_boundary_conditions(closure::TKEVD,
 
         e_bcs = user_bcs[:e]
         
-        tke_bcs = TracerBoundaryConditions(grid,
-                                           top = top_tke_bc,
-                                           bottom = e_bcs.bottom,
-                                           north = e_bcs.north,
-                                           south = e_bcs.south,
-                                           east = e_bcs.east,
-                                           west = e_bcs.west)
-
+        tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
+                                          top = top_tke_bc,
+                                          bottom = e_bcs.bottom,
+                                          north = e_bcs.north,
+                                          south = e_bcs.south,
+                                          east = e_bcs.east,
+                                          west = e_bcs.west)
     else
-        tke_bcs = TracerBoundaryConditions(grid, top=top_tke_bc)
+        tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), top=top_tke_bc)
     end
 
     new_boundary_conditions = merge(user_bcs, (e = tke_bcs,))
@@ -305,13 +319,15 @@ end
 
 function DiffusivityFields(arch, grid, tracer_names, bcs, closure::TKEVD)
 
-    Kᵘ_bcs = :Kᵘ ∈ keys(bcs) ? bcs[:Kᵘ] : DiffusivityBoundaryConditions(grid)
-    Kᶜ_bcs = :Kᶜ ∈ keys(bcs) ? bcs[:Kᶜ] : DiffusivityBoundaryConditions(grid)
-    Kᵉ_bcs = :Kᵉ ∈ keys(bcs) ? bcs[:Kᵉ] : DiffusivityBoundaryConditions(grid)
+    default_diffusivity_bcs = (Kᵘ = FieldBoundaryConditions(grid, (Center, Center, Center)),
+                               Kᶜ = FieldBoundaryConditions(grid, (Center, Center, Center)),
+                               Kᵉ = FieldBoundaryConditions(grid, (Center, Center, Center)))
 
-    Kᵘ = CenterField(arch, grid, Kᵘ_bcs)
-    Kᶜ = CenterField(arch, grid, Kᶜ_bcs)
-    Kᵉ = CenterField(arch, grid, Kᵉ_bcs)
+    bcs = merge(default_diffusivity_bcs, bcs)
+
+    Kᵘ = CenterField(arch, grid, bcs.Kᵘ)
+    Kᶜ = CenterField(arch, grid, bcs.Kᶜ)
+    Kᵉ = CenterField(arch, grid, bcs.Kᵉ)
 
     return (; Kᵘ, Kᶜ, Kᵉ)
 end        
@@ -399,13 +415,15 @@ end
 
 @inline step(x, c, w) = (1 + tanh((x - c) / w)) / 2
 
-@inline scale(Ri, σ⁻, σ⁺, c, w) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)
+@inline scale(Ri, σ⁻, rσ, c, w) = σ⁻ * (1 + rσ * step(Ri, c, w))
+
+#@inline scale(Ri, σ⁻, rσ, c, w) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)
 
 @inline function momentum_diffusivity_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     return scale(Ri,
                  closure.diffusivity_scaling.Cᴷu⁻,
-                 closure.diffusivity_scaling.Cᴷu⁺,
+                 closure.diffusivity_scaling.Cᴷuʳ,
                  closure.diffusivity_scaling.CᴷRiᶜ,
                  closure.diffusivity_scaling.CᴷRiʷ)
 end
@@ -414,7 +432,7 @@ end
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     return scale(Ri,
                  closure.diffusivity_scaling.Cᴷc⁻,
-                 closure.diffusivity_scaling.Cᴷc⁺,
+                 closure.diffusivity_scaling.Cᴷcʳ,
                  closure.diffusivity_scaling.CᴷRiᶜ,
                  closure.diffusivity_scaling.CᴷRiʷ)
 end
@@ -423,7 +441,7 @@ end
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     return scale(Ri,
                  closure.diffusivity_scaling.Cᴷe⁻,
-                 closure.diffusivity_scaling.Cᴷe⁺,
+                 closure.diffusivity_scaling.Cᴷeʳ,
                  closure.diffusivity_scaling.CᴷRiᶜ,
                  closure.diffusivity_scaling.CᴷRiʷ)
 end
@@ -525,6 +543,12 @@ end
 @inline diffusive_flux_z(i, j, k, grid, closure, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, closure, e, Val(N), args...)
 
 # Shortcuts --- TKEVD incurs no horizontal transport
+@inline viscous_flux_ux(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_uy(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vx(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vy(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wx(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wy(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
 @inline diffusive_flux_x(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
 @inline diffusive_flux_y(i, j, k, grid, ::TKEVD, args...) = zero(eltype(grid))
 
@@ -550,11 +574,11 @@ const VITD = VerticallyImplicitTimeDiscretization
     end
 end
 
-const VerticallyBoundedGrid{FT} = AbstractPrimaryGrid{FT, <:Any, <:Any, <:Bounded}
+const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
-@inline diffusive_flux_z(i, j, k, grid::APG{FT}, ::VITD, closure::TKEVD, args...) where FT = zero(FT)
-@inline viscous_flux_uz(i, j, k, grid::APG{FT}, ::VITD, closure::TKEVD, args...) where FT = zero(FT)
-@inline viscous_flux_vz(i, j, k, grid::APG{FT}, ::VITD, closure::TKEVD, args...) where FT = zero(FT)
+@inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_uz(i, j, k, grid, ::VITD, closure::TKEVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vz(i, j, k, grid, ::VITD, closure::TKEVD, args...) = zero(eltype(grid))
 
 @inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::TKEVD, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 

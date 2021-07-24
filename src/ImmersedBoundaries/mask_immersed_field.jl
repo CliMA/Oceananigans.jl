@@ -20,7 +20,7 @@ end
 end
 
 #####
-##### mask_immersed_velocities for IncompressibleModel
+##### mask_immersed_velocities for NonhydrostaticModel
 #####
 
 mask_immersed_velocities!(U, arch, grid) = tuple(NoneEvent())

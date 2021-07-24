@@ -24,9 +24,7 @@ export
     # Boundary conditions
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
-    CoordinateBoundaryConditions, FieldBoundaryConditions,
-    UVelocityBoundaryConditions, VVelocityBoundaryConditions, WVelocityBoundaryConditions,
-    TracerBoundaryConditions, PressureBoundaryConditions,
+    FieldBoundaryConditions,
 
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
@@ -58,7 +56,7 @@ export
     LagrangianParticles,
 
     # Models
-    IncompressibleModel, NonDimensionalIncompressibleModel,
+    NonhydrostaticModel,
     HydrostaticFreeSurfaceModel,
     ShallowWaterModel,
     fields,
@@ -72,7 +70,7 @@ export
     Clock, TimeStepWizard, time_step!,
 
     # Simulations
-    Simulation, run!,
+    Simulation, run!, Callback, iteration,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics

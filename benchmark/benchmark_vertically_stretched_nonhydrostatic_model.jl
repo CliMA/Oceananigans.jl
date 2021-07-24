@@ -7,9 +7,9 @@ using Benchmarks
 
 # Benchmark function
 
-function benchmark_vertically_stretched_incompressible_model(Arch, FT, N)
+function benchmark_vertically_stretched_nonhydrostatic_model(Arch, FT, N)
     grid = VerticallyStretchedRectilinearGrid(architecture=Arch(), size=(N, N, N), x=(0, 1), y=(0, 1), z_faces=collect(0:N))
-    model = IncompressibleModel(architecture=Arch(), grid=grid)
+    model = NonhydrostaticModel(architecture=Arch(), grid=grid)
 
     time_step!(model, 1) # warmup
 
@@ -29,14 +29,14 @@ Ns = [32, 64, 128, 256]
 # Run and summarize benchmarks
 
 print_system_info()
-suite = run_benchmarks(benchmark_vertically_stretched_incompressible_model; Architectures, Float_types, Ns)
+suite = run_benchmarks(benchmark_vertically_stretched_nonhydrostatic_model; Architectures, Float_types, Ns)
 
 df = benchmarks_dataframe(suite)
 sort!(df, [:Architectures, :Float_types, :Ns], by=(string, string, identity))
-benchmarks_pretty_table(df, title="Vertically-stretched incompressible model benchmarks")
+benchmarks_pretty_table(df, title="Vertically-stretched nonhydrostatic model benchmarks")
 
 if GPU in Architectures
     df_Δ = gpu_speedups_suite(suite) |> speedups_dataframe
     sort!(df_Δ, [:Float_types, :Ns], by=(string, identity))
-    benchmarks_pretty_table(df_Δ, title="Vertically-stretched incompressible model CPU to GPU speedup")
+    benchmarks_pretty_table(df_Δ, title="Vertically-stretched nonhydrostatic model CPU to GPU speedup")
 end
