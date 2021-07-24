@@ -1,4 +1,5 @@
 using Oceananigans: instantiated_location
+using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Grids
 using Oceananigans.Grids: AbstractGrid
 
@@ -22,30 +23,30 @@ apply_z_bcs!(::Nothing, args...) = nothing
 # Not-flux boundary conditions
 const NotFluxBC = Union{PBC, VBC, GBC, OBC, ZFBC}
 
-apply_x_bcs!(Gc, grid, c, ::NotFluxBC, NotFluxBC, args...) = nothing
-apply_y_bcs!(Gc, grid, c, ::NotFluxBC, NotFluxBC, args...) = nothing
-apply_z_bcs!(Gc, grid, c, ::NotFluxBC, NotFluxBC, args...) = nothing
+apply_x_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, NotFluxBC, ::AbstractArchitecture, args...) = nothing
+apply_y_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, NotFluxBC, ::AbstractArchitecture, args...) = nothing
+apply_z_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, NotFluxBC, ::AbstractArchitecture, args...) = nothing
 
 # The real deal
 """
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the left and right.
 """
-apply_x_bcs!(Gc, grid, c, west_bc, east_bc, arch, dep, args...) =
+apply_x_bcs!(Gc, grid::AbstractGrid, c, west_bc, east_bc, arch::AbstractArchitecture, dep, args...) =
     launch!(arch, grid, :yz, _apply_x_bcs!, Gc, instantiated_location(Gc), grid, west_bc, east_bc, args..., dependencies=dep)
 
 """
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the left and right.
 """
-apply_y_bcs!(Gc, grid, c, south_bc, north_bc, arch, dep, args...) =
+apply_y_bcs!(Gc, grid::AbstractGrid, c, south_bc, north_bc, arch::AbstractArchitecture, dep, args...) =
     launch!(arch, grid, :xz, _apply_y_bcs!, Gc, instantiated_location(Gc), grid, south_bc, north_bc, args..., dependencies=dep)
 
 """
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the top and bottom.
 """
-apply_z_bcs!(Gc, grid, c, bottom_bc, top_bc, arch, dep, args...) =
+apply_z_bcs!(Gc, grid::AbstractGrid, c, bottom_bc, top_bc, arch::AbstractArchitecture, dep, args...) =
     launch!(arch, grid, :xy, _apply_z_bcs!, Gc, instantiated_location(Gc), grid, bottom_bc, top_bc, args..., dependencies=dep)
 
 """
