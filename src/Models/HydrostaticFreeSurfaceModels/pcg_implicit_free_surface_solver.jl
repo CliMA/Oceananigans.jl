@@ -11,6 +11,19 @@ struct PCGImplicitFreeSurfaceSolver{V, S, R}
     right_hand_side :: R
 end
 
+"""
+    PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
+
+Return a solver based on a preconditioned conjugate gradient method for the elliptic equation
+    
+```math
+[∇ ⋅ H ∇ - Az / (g Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - Az ηⁿ / Δt) / (g Δt) 
+```
+
+representing an implicit time discretization of the linear free surface evolution equation
+for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
+step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
+"""
 function PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
@@ -43,7 +56,8 @@ build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, arch, grid, 
 
 function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, rhs, g, Δt)
     #=
-    # Take an explicit step first to produce an improved initial guess for η for the iterative solver.
+    # Somehow take an explicit step first to produce an improved initial guess
+    # for η for the iterative solver.
     event = explicit_ab2_step_free_surface!(free_surface, model, Δt, χ)
     wait(device(model.architecture), event)
     =#
@@ -53,8 +67,6 @@ function solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurfaceSolver, 
 
     # solve!(x, solver, b, args...) solves A*x = b for x.
     solve!(η, solver, rhs, ∫ᶻA.xᶠᶜᶜ, ∫ᶻA.yᶜᶠᶜ, g, Δt)
-
-    fill_halo_regions!(η, solver.architecture)
 
     return nothing
 end

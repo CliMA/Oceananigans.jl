@@ -53,15 +53,22 @@ function FFTBasedPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
 end
 
 """
-    solve!(x, poisson_solver, b, r=0)
+    solve!(ϕ, poisson_solver::FFTBasedPoissonSolver, b, m=0)
 
-Solves the "screened" poisson equation
+Solves the "generalized" Poisson equation,
 
 ```math
 (∇² + m) ϕ = b,
 ```
 
-using periodic or Neumann boundary conditions, where ``m`` is a number.
+where ``m`` is a number, using a eigenfunction expansion of the discrete Poisson operator
+on a staggered grid and for periodic or Neumann boundary conditions.
+
+In-place transforms are applied to ``b``, which means ``b`` must have complex-valued
+elements (typically the same type as `poisson_solver.storage`).
+
+Note: ``(∇² + m) ϕ = b`` is sometimes called the "screened Poisson" equation
+when ``m < 0``, or the Helmholtz equation when ``m > 0``.
 """
 function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
     arch = solver.architecture
@@ -76,7 +83,6 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
     [transform!(b, solver.buffer) for transform! in solver.transforms.forward]
 
     # Solve the discrete screened Poisson equation (∇² + m) ϕ = b.
-    #m′ = m * (Nx * Ny * Nz)
     @. ϕc = - b / (λx + λy + λz - m)
 
     # If m === 0, the "zeroth mode" at `i, j, k = 1, 1, 1` is undetermined;
