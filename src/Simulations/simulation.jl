@@ -19,17 +19,17 @@ end
 
 """
     Simulation(model; Δt,
-         stop_criteria = Function[iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded],
+         stop_criteria = Any[iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded],
         stop_iteration = Inf,
              stop_time = Inf,
        wall_time_limit = Inf,
            diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
         output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
-              progress = nothing,
-    iteration_interval = 1,
+              progress = default_progress,
+     iteration_interval = 1,
             parameters = nothing)
 
-Construct an Oceananigans.jl `Simulation` for a `model` with time step `Δt`.
+Construct a `Simulation` for a `model` with time step `Δt`.
 
 Keyword arguments
 =================
