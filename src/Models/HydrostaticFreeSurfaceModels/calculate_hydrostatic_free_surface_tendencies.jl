@@ -1,6 +1,7 @@
 import Oceananigans.TimeSteppers: calculate_tendencies!
 import Oceananigans: tracer_tendency_kernel_function
 
+using Oceananigans.Architectures: device_event
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Utils: work_layout
 using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity
@@ -25,7 +26,9 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
                                                            model.free_surface,
                                                            model.tracers,
                                                            model.clock,
-                                                           fields(model))
+                                                           fields(model),
+                                                           model.closure,
+                                                           model.buoyancy)
 
     return nothing
 end
@@ -44,7 +47,7 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
                             model.free_surface,
                             model.tracers,
                             model.buoyancy,
-                            model.diffusivities,
+                            model.diffusivity_fields,
                             model.pressure.pHY′,
                             model.auxiliary_fields,
                             model.forcing,
@@ -109,7 +112,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                            model.velocities,
                            model.free_surface,
                            model.tracers,
-                           model.diffusivities,
+                           model.diffusivity_fields,
                            model.auxiliary_fields,
                            c_forcing,
                            model.clock;
@@ -163,10 +166,10 @@ end
 ##### Boundary condributions to hydrostatic free surface model
 #####
 
-function apply_flux_bcs!(Gcⁿ, events, c, arch, barrier, clock, model_fields)
-    x_bcs_event = apply_x_bcs!(Gcⁿ, c, arch, barrier, clock, model_fields)
-    y_bcs_event = apply_y_bcs!(Gcⁿ, c, arch, barrier, clock, model_fields)
-    z_bcs_event = apply_z_bcs!(Gcⁿ, c, arch, barrier, clock, model_fields)
+function apply_flux_bcs!(Gcⁿ, events, c, arch, barrier, args...)
+    x_bcs_event = apply_x_bcs!(Gcⁿ, c, arch, barrier, args...)
+    y_bcs_event = apply_y_bcs!(Gcⁿ, c, arch, barrier, args...)
+    z_bcs_event = apply_z_bcs!(Gcⁿ, c, arch, barrier, args...)
 
     push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
 
@@ -174,23 +177,23 @@ function apply_flux_bcs!(Gcⁿ, events, c, arch, barrier, clock, model_fields)
 end
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velocities, free_surface, tracers, clock, model_fields)
+function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velocities, free_surface, tracers, args...)
 
-    barrier = Event(device(arch))
+    barrier = device_event(arch)
 
     events = []
 
     # Velocity fields
     for i in (:u, :v)
-        apply_flux_bcs!(Gⁿ[i], events, velocities[i], arch, barrier, clock, model_fields)
+        apply_flux_bcs!(Gⁿ[i], events, velocities[i], arch, barrier, args...)
     end
 
     # Free surface
-    apply_flux_bcs!(Gⁿ.η, events, displacement(free_surface), arch, barrier, clock, model_fields)
+    apply_flux_bcs!(Gⁿ.η, events, displacement(free_surface), arch, barrier, args...)
 
     # Tracer fields
     for i in propertynames(tracers)
-        apply_flux_bcs!(Gⁿ[i], events, tracers[i], arch, barrier, clock, model_fields)
+        apply_flux_bcs!(Gⁿ[i], events, tracers[i], arch, barrier, args...)
     end
 
     events = filter(e -> typeof(e) <: Event, events)

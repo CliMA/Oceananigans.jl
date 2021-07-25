@@ -40,9 +40,9 @@ v = view(interior(model.velocities.v), 1, 1, :)
 b = view(interior(model.tracers.b), 1, 1, :)
 e = view(interior(model.tracers.e), 1, 1, :)
 
-Ku = view(interior(model.diffusivities.Kᵘ), 1, 1, :)
-Kc = view(interior(model.diffusivities.Kᶜ), 1, 1, :)
-Ke = view(interior(model.diffusivities.Kᵉ), 1, 1, :)
+Ku = view(interior(model.diffusivity_fields.Kᵘ), 1, 1, :)
+Kc = view(interior(model.diffusivity_fields.Kᶜ), 1, 1, :)
+Ke = view(interior(model.diffusivity_fields.Kᵉ), 1, 1, :)
 
 u_plot = plot(u, z, linewidth = 2, label = "u, t = 0", xlabel = "Velocities", ylabel = "z", legend=:bottomright)
 plot!(u_plot, v, z, linewidth = 2, linestyle=:dash, label = "v, t = 0")
