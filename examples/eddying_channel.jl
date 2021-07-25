@@ -45,20 +45,20 @@ z_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
                                                            y = (0, Ly),
                                                            z_faces = z_faces)
 
-# We visualize the cell interfaces by plotting the cell height
-# as a function of depth,
+# We visualize the cell interfaces by plotting the cell height as a function of depth,
 
-#=
 plot(underlying_grid.Δzᵃᵃᶜ[1:Nz], underlying_grid.zᵃᵃᶜ[1:Nz],
      marker = :circle,
      ylabel = "Depth (m)",
      xlabel = "Vertical spacing (m)",
      legend = nothing)
-=#
 
 const bump_amplitude = 300meters
 const bump_x_width = 100kilometers
 const bump_y_width = 200kilometers
+
+# We include some non-trivial batymetry in the form of Gaussian hill elongated in the meridional
+# direction. To do that, we construct an `ImmersedBoundaryGrid`,
 
 @inline pow2(x) = x * x
 @inline bump(x, y) = bump_amplitude * exp(-pow2(x) / (2 * pow2(bump_x_width)) - pow2(y - Ly/2) / (2 * pow2(bump_y_width)))
@@ -67,18 +67,23 @@ const bump_y_width = 200kilometers
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(below_bottom))
 
+# Let's have a look at the bathymetry we've just included.
+
 x, y, z = nodes((Face, Face, Face), grid)
 
-x = reshape(x, Nx, 1)
-y = reshape(y, 1, Ny+1)
-
-# heatmap(x, y, bump.(x, y))
+heatmap(x / kilometers, y / kilometers, [bump(x[i], y[j]) for i=1:Nx, j=1:Ny+1]',
+              color = :deep,
+        aspectratio = 1,
+             xlabel = "x [km]",
+             ylabel = "y [km]",
+     colorbar_title = "bathymetry [m]",
+              xlims = (-Lx/2 / kilometers, Lx/2 / kilometers),
+              ylims = (0, Ly / kilometers))
 
 # # Boundary conditions
 #
-# A channel-centered jet and overturning circulation are driven by wind stress
-# and an alternating pattern of surface cooling and surface heating with
-# parameters
+# A channel-centered jet and overturning circulation are driven by wind stress and an alternating
+# pattern of surface cooling and surface heating with parameters
 
 Qᵇ = 1e-8            # buoyancy flux magnitude [m² s⁻³]
 y_shutoff = 5/6 * Ly # shutoff location for buoyancy flux [m]
@@ -278,7 +283,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=10year, progress=print_progress, iteration_interval=100)
+simulation = Simulation(model, Δt=wizard, stop_time=20year, progress=print_progress, iteration_interval=100)
 
 u, v, w = model.velocities
 b = model.tracers.b
