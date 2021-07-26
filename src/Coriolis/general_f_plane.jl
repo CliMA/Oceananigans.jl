@@ -1,3 +1,5 @@
+using Oceananigans.Grids: ZDirection, validate_unit_vector
+
 """
     GeneralFPlane{FT} <: AbstractRotation
 
@@ -28,10 +30,16 @@ according to the relations `fz = 2 * coriolis_frequency * sind(latitude)` and
 is assumed to be Earth's.
 """
 function GeneralFPlane(FT=Float64; coriolis_frequency=2Ω_Earth, rotation_axis=ZDirection())
+    rotation_axis = validate_unit_vector(rotation_axis)
 
-    fx = coriolis_frequency * rotation_axis[1]
-    fy = coriolis_frequency * rotation_axis[2]
-    fz = coriolis_frequency * rotation_axis[3]
+    if rotation_axis isa ZDirection
+        fx = fy = 0
+        fz = coriolis_frequency
+    else
+        fx = coriolis_frequency * rotation_axis[1]
+        fy = coriolis_frequency * rotation_axis[2]
+        fz = coriolis_frequency * rotation_axis[3]
+    end
 
     return GeneralFPlane{FT}(fx, fy, fz)
 end

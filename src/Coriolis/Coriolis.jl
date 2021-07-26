@@ -1,7 +1,7 @@
 module Coriolis
 
 export
-    FPlane, BetaPlane, NonTraditionalBetaPlane,
+    FPlane, GeneralFPlane, BetaPlane, NonTraditionalBetaPlane,
     HydrostaticSphericalCoriolis, VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving,
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
