@@ -1,7 +1,7 @@
 module Coriolis
 
 export
-    FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane,
+    FPlane, BetaPlane, NonTraditionalBetaPlane,
     HydrostaticSphericalCoriolis, VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving,
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
@@ -22,7 +22,6 @@ abstract type AbstractRotation end
 
 include("no_rotation.jl")
 include("f_plane.jl")
-include("non_traditional_f_plane.jl")
 include("general_f_plane.jl")
 include("beta_plane.jl")
 include("non_traditional_beta_plane.jl")
