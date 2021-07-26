@@ -195,7 +195,7 @@ function time_stepping_with_background_fields(arch)
            location(model.background_fields.tracers.S) === (Center, Center, Center)
 end
 
-Planes = (FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane)
+Planes = (FPlane, GeneralFPlane, BetaPlane, NonTraditionalBetaPlane)
 
 BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipation(FT, Cb=1.0)
 

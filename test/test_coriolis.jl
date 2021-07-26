@@ -12,15 +12,16 @@ function instantiate_fplane_2(FT)
 end
 
 function instantiate_ntfplane_1(FT)
-    coriolis = NonTraditionalFPlane(FT, fz=π, fy=π)
-    @test coriolis.fz == FT(π)
-    @test coriolis.fy == FT(π)
+    coriolis = GeneralFPlane(FT, coriolis_frequency=1, rotation_axis=[0, cosd(45), sind(45)])
+    @test coriolis.fy == FT(cosd(45))
+    @test coriolis.fz == FT(sind(45))
 end
 
 function instantiate_ntfplane_2(FT)
-    coriolis = NonTraditionalFPlane(FT, rotation_rate=2, latitude=30)
-    @test coriolis.fz == FT(2)
-    @test coriolis.fy == FT(2*√3)
+    coriolis = GeneralFPlane(FT, coriolis_frequency=10, rotation_axis=[√(1/3),√(1/3),√(1/3)])
+    @test coriolis.fx == FT(10*√(1/3))
+    @test coriolis.fy == FT(10*√(1/3))
+    @test coriolis.fz == FT(10*√(1/3))
 end
 
 function instantiate_betaplane_1(FT)
@@ -89,15 +90,8 @@ end
             @test_throws ArgumentError FPlane(FT, f=1, latitude=40)
             @test_throws ArgumentError FPlane(FT, f=1, rotation_rate=7e-5, latitude=40)
 
-            # Test that NonTraditionalFPlane throws an ArgumentError
-            @test_throws ArgumentError NonTraditionalFPlane(FT)
-            @test_throws ArgumentError NonTraditionalFPlane(FT, rotation_rate=7e-5)
-            @test_throws ArgumentError NonTraditionalFPlane(FT, fz=1, latitude=40)
-            @test_throws ArgumentError NonTraditionalFPlane(FT, fz=1, rotation_rate=7e-5, latitude=40)
-            @test_throws ArgumentError NonTraditionalFPlane(FT, fy=1, latitude=40)
-            @test_throws ArgumentError NonTraditionalFPlane(FT, fy=1, rotation_rate=7e-5, latitude=40)
-            @test_throws ArgumentError NonTraditionalFPlane(FT, fz=1, fy=2, latitude=40)
-            @test_throws ArgumentError NonTraditionalFPlane(FT, fz=1, fy=2, rotation_rate=7e-5, latitude=40)
+            # Test that GeneralFPlane throws an ArgumentError
+            @test_throws ArgumentError GeneralFPlane(FT, rotation_axis=[0,1,1])
 
             # Non-exhaustively test that BetaPlane throws an ArgumentError
             @test_throws ArgumentError BetaPlane(FT)
@@ -124,9 +118,9 @@ end
             show(✈); println()
             @test ✈ isa FPlane{FT}
 
-            ✈ = NonTraditionalFPlane(FT, latitude=45)
+            ✈ = GeneralFPlane(FT, coriolis_frequency=1e-4)
             show(✈); println()
-            @test ✈ isa NonTraditionalFPlane{FT}
+            @test ✈ isa GeneralFPlane{FT}
 
             ✈ = BetaPlane(FT, latitude=45)
             show(✈); println()

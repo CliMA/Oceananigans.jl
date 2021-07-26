@@ -3,8 +3,8 @@ using Oceananigans.Grids: ZDirection, validate_unit_vector
 """
     GeneralFPlane{FT} <: AbstractRotation
 
-A Coriolis implementation that accounts for both the locally vertical and
-the locally horizontal components of the rotation vector. Traditionally
+A Coriolis implementation that accounts for the locally vertical and
+both local horizontal components of the rotation vector. Traditionally
 (see [`FPlane`](@ref)) only the locally vertical component is accounted for.
 """
 struct GeneralFPlane{FT} <: AbstractRotation
@@ -14,22 +14,21 @@ struct GeneralFPlane{FT} <: AbstractRotation
 end
 
 """
-    GeneralFPlane([FT=Float64;] coriolis_frequency=Ω_Earth, rotation_axis=ZDirection())
+    GeneralFPlane([FT=Float64;] coriolis_frequency=2Ω_Earth, rotation_axis=ZDirection(), latitude=nothing)
 
-Returns a parameter object for constant rotation about an axis in the `y-z` plane
-with `y`- and `z`-components `fy/2` and `fz/2`, and the background vorticity is
-`(0, fy, fz)`.
+Returns a parameter object for constant rotation about an axis `rotation_axis` with
+`coriolis_frequency` decomposed into the `x`, `y` and `z` directions accordingly. In oceanography
+the components `x`, `y`, `z` correspond to the directions east, north, and up.
 
-In oceanography `fz` and `fy` represent the components of planetary voriticity which
-are perpendicular and parallel to the ocean surface in a domain in which `x, y, z`
-correspond to the directions east, north, and up.
-
-If `fz` and `fy` are not specified, they are calculated from `coriolis_frequency` and `latitude`
-according to the relations `fz = 2 * coriolis_frequency * sind(latitude)` and
-`fy = 2 * coriolis_frequency * cosd(latitude)`, respectively. By default, `coriolis_frequency`
-is assumed to be Earth's.
+`latitude` has to be in degrees (not radians!) and if it is specified, the argument for
+`rotation_axis` gets overwritten and the rotation axis is calculated as `[0, cosd(latitude),
+sind(latitude)]`. By default, `coriolis_frequency` is assumed to be the Coriolis frequency at
+Earth's north pole (1.458423e-4 1/s).
 """
-function GeneralFPlane(FT=Float64; coriolis_frequency=2Ω_Earth, rotation_axis=ZDirection())
+function GeneralFPlane(FT=Float64; coriolis_frequency=2Ω_Earth, rotation_axis=ZDirection(), latitude=nothing)
+    if !isnothing(latitude)
+        rotation_axis = [0, cosd(latitude), sind(latitude)]
+    end
     rotation_axis = validate_unit_vector(rotation_axis)
 
     if rotation_axis isa ZDirection
