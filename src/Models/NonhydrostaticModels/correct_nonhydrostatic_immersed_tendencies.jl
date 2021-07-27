@@ -19,7 +19,7 @@ correct_immersed_tendencies!(model, ::Nothing, Δt, γⁿ, ζⁿ) = nothing
 # otherwise, unpack the model
 function correct_immersed_tendencies!(model, immersed_boundary, Δt, γⁿ, ζⁿ)
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
+    workgroup, worksize = work_layout(model.architecture, model.grid, :xyz)
 
     barrier = Event(device(model.architecture))
 

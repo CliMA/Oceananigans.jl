@@ -188,7 +188,7 @@ end
 end
 
 function calculate_diffusivities!(K, arch, grid, closure::AnisotropicMinimumDissipation, buoyancy, U, C)
-    workgroup, worksize = work_layout(grid, :xyz)
+    workgroup, worksize = work_layout(arch, grid, :xyz)
 
     barrier = Event(device(arch))
 

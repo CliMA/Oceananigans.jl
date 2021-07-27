@@ -18,7 +18,7 @@ function store_tendencies!(model::ShallowWaterModel)
 
     barrier = Event(device(model.architecture))
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
+    workgroup, worksize = work_layout(model.architecture, model.grid, :xyz)
 
     store_solution_tendencies_kernel! = store_solution_tendencies!(device(model.architecture), workgroup, worksize)
     store_tracer_tendency_kernel! = store_tracer_tendency!(device(model.architecture), workgroup, worksize)

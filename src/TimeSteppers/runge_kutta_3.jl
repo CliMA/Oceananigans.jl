@@ -140,7 +140,7 @@ stage_Δt(Δt, γⁿ, ::Nothing) = Δt * γⁿ
 
 function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
+    workgroup, worksize = work_layout(model.architecture, model.grid, :xyz)
 
     barrier = Event(device(model.architecture))
 

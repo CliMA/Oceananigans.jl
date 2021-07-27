@@ -70,11 +70,14 @@ end
 """ Generic implementation. """
 function ab2_step!(model, Δt, χ)
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
+    arch = model.architecture
+    grid = model.grid
+
+    workgroup, worksize = work_layout(arch, grid, :xyz)
 
     barrier = Event(device(model.architecture))
 
-    step_field_kernel! = ab2_step_field!(device(model.architecture), workgroup, worksize)
+    step_field_kernel! = ab2_step_field!(device(arch), workgroup, worksize)
 
     model_fields = prognostic_fields(model)
 
@@ -85,7 +88,7 @@ function ab2_step!(model, Δt, χ)
         field_event = step_field_kernel!(field, Δt, χ,
                                          model.timestepper.Gⁿ[i],
                                          model.timestepper.G⁻[i],
-                                         dependencies=Event(device(model.architecture)))
+                                         dependencies = device_event(arch))
 
         push!(events, field_event)
 
@@ -102,7 +105,7 @@ function ab2_step!(model, Δt, χ)
                        dependencies = field_event)
     end
 
-    wait(device(model.architecture), MultiEvent(Tuple(events)))
+    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end

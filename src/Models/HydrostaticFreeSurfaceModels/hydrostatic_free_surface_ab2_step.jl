@@ -13,7 +13,7 @@ import Oceananigans.TimeSteppers: ab2_step!
 
 function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
+    workgroup, worksize = work_layout(model.architecture, model.grid, :xyz)
 
     explicit_velocity_step_events = ab2_step_velocities!(model.velocities, model, Δt, χ)
     explicit_tracer_step_events = ab2_step_tracers!(model.tracers, model, Δt, χ)

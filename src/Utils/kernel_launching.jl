@@ -28,10 +28,10 @@ function heuristic_workgroup(arch, Nx, Ny, Nz)
 end
 
 """
-    work_layout(grid, dims; include_right_boundaries=false, location=nothing)
+    work_layout(arch, grid, dims; include_right_boundaries=false, location=nothing)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
-on `grid`. The `workgroup` is a tuple specifying the threads per block in each
+on `grid` and `arch`itecture. The `workgroup` is a tuple specifying the threads per block in each
 dimension. The `worksize` specifies the range of the loop in each dimension.
 
 Specifying `include_right_boundaries=true` will ensure the work layout includes the
