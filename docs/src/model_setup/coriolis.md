@@ -40,12 +40,13 @@ in which case the value of ``f`` is given by ``2\Omega\sin\varphi``.
 
 ## Non-traditional ``f``-plane
 
-To set up an ``f``-plane with non-traditional Coriolis terms, for example, with
+To set up a Coriolis acceleration term where the Coriolis frequency is constant and the rotation
+axis is arbitrary. For example, with
 ``\boldsymbol{f} = (0, f_y, f_z) = (0, 2, 1) \times 10^{-4} \text{s}^{-1}``,
 
 ```jldoctest
-julia> coriolis = NonTraditionalFPlane(fz=1e-4, fy=2e-4)
-NonTraditionalFPlane{Float64}: fz = 1.00e-04, fy = 2.00e-04
+julia> coriolis = GeneralFPlane(fx=0, fy=2e-4, fz=1e-4)
+GeneralFPlane{Float64}: fx = 0.00e+00, fy = 2.00e-04, fz = 1.00e-04
 ```
 
 An ``f``-plane with non-traditional Coriolis terms can also be specified at some latitude on a spherical planet
@@ -53,8 +54,8 @@ with a planetary rotation rate. For example, to specify an ``f``-plane at a lati
 on Earth which has a rotation rate of ``\Omega = 7.292115 \times 10^{-5} \text{s}^{-1}``
 
 ```jldoctest
-julia> coriolis = NonTraditionalFPlane(rotation_rate=7.292115e-5, latitude=45)
-NonTraditionalFPlane{Float64}: fz = 1.03e-04, fy = 1.03e-04
+julia> coriolis = GeneralFPlane(rotation_rate=7.292115e-5, latitude=45)
+GeneralFPlane{Float64}: fx = 0.00e+00, fy = 1.03e-04, fz = 1.03e-04
 ```
 
 in which case ``f_z = 2\Omega\sin\varphi`` and ``f_y = 2\Omega\cos\varphi``.
