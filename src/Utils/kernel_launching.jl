@@ -10,7 +10,7 @@ flatten_reduced_dimensions(worksize, dims) = Tuple(i ∈ dims ? 1 : worksize[i] 
 
 const MAX_GPU_THREADS_PER_BLOCK = 256
 
-function heuristic_workgroup(arch, Nx, Ny, Nz)
+function heuristic_workgroup(::GPU, Nx, Ny, Nz)
     # One-dimensional column models:
     Nx == 1 && Ny == 1 && return (1, 1)
 
@@ -21,10 +21,25 @@ function heuristic_workgroup(arch, Nx, Ny, Nz)
     Ny == 1 && return (1, min(MAX_GPU_THREADS_PER_BLOCK, Nx))
 
     # Three-dimensional GPU models
-    arch isa GPU && return (Int(√MAX_GPU_THREADS_PER_BLOCK), Int(√MAX_GPU_THREADS_PER_BLOCK))
+    return (Int(√MAX_GPU_THREADS_PER_BLOCK), Int(√MAX_GPU_THREADS_PER_BLOCK))
+end
 
-    # Three-dimensional CPU models
-    return (Nx, Ny)
+function heuristic_workgroup(::CPU, Nx, Ny, Nz)
+    z_group_size = 1 # full partition along outer dimension
+    
+    # We devote Nz threads to the outer loop. If Nz < Nthreads,
+    # we further divide the iteration amongst the second dimension (y).
+    # Example:
+    # ndrange = (Nx, Ny, 2) and nthreads = 4 implies group_size = (Nx, Ny/2, 1)
+    y_residual_threads = max(1, Nthreads - Nz)
+    y_group_size = floor(Int, Ny / y_residual_threads)
+
+    # Further partition the problem along the x direction if the
+    # direction is small.
+    x_residual_threads = max(1, y_residual_threads - Ny)
+    x_group_size = floor(Int, Nx / y_residual_threads)
+
+    return (x_group_size, y_group_size) # padded with 1 by default
 end
 
 """
