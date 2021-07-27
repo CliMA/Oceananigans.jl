@@ -12,7 +12,7 @@ const MAX_GPU_THREADS_PER_BLOCK = 256
 
 function heuristic_workgroup(arch, Nx, Ny, Nz)
     # One-dimensional column models:
-    Nx == 1 && Ny == 1 return (1, 1)
+    Nx == 1 && Ny == 1 && return (1, 1)
 
     # Two-dimensional y-z slice models:
     Nx == 1 && return (1, min(MAX_GPU_THREADS_PER_BLOCK, Ny))
