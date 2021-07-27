@@ -189,7 +189,7 @@ end
 
             ds = FieldDataset(filepath3d, backend=Backend())
 
-            @test ds isa Dict
+            @test ds isa FieldDataset
             @test length(keys(ds)) == 8
             @test ds["u"] isa FieldTimeSeries
             @test ds["v"][1] isa Field
