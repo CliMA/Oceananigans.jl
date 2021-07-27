@@ -3,9 +3,9 @@ using Oceananigans.Grids: ZDirection, validate_unit_vector
 """
     GeneralFPlane{FT} <: AbstractRotation
 
-A Coriolis implementation that accounts for the locally vertical and
-possibly both local horizontal components of the rotation vector. Traditionally
-(see [`FPlane`](@ref)) only the locally vertical component is accounted for.
+A Coriolis implementation that accounts for the locally vertical and possibly both local horizontal
+components of a constant rotation vector. A more general implementation of [`FPlane`](@ref), which only
+accounts for the locally vertical component.
 """
 struct GeneralFPlane{FT} <: AbstractRotation
     fx :: FT
@@ -14,31 +14,50 @@ struct GeneralFPlane{FT} <: AbstractRotation
 end
 
 """
-    GeneralFPlane([FT=Float64;] coriolis_frequency=2Ω_Earth, rotation_axis=ZDirection(), latitude=nothing)
+    GeneralFPlane([FT=Float64;] fx=nothing, fy=nothing, fz=nothing,
+                                f=nothing, rotation_axis=ZDirection(), 
+                                rotation_rate=Ω_Earth, latitude=nothing)
 
-Returns a parameter object for constant rotation about an axis `rotation_axis` with
-`coriolis_frequency` decomposed into the `x`, `y` and `z` directions accordingly. In oceanography
-the components `x`, `y`, `z` correspond to the directions east, north, and up.
+Returns a parameter object for a constant rotation decomposed into the `x`, `y` and `z` directions.
+In oceanography the components `x`, `y`, `z` correspond to the directions east, north, and up. This
+rotation can be specified in three different ways:
 
-`latitude` has to be in degrees (not radians!) and if it is specified, the argument for
-`rotation_axis` gets overwritten and the rotation axis is calculated as `[0, cosd(latitude),
-sind(latitude)]`. By default, `coriolis_frequency` is assumed to be the Coriolis frequency at
-Earth's north pole (1.458423e-4 1/s).
+- Specifying all components `fx`, `fy` and `fz` directly.
+- Specifying the Coriolis frequency `f` and (optionally) a `rotation_axis` (which defaults to the
+  `z` direction if not specified).
+- Specifying `latitude` (in degrees!) and (optionally) a `rotation_rate` in radians per second
+  (which defaults to the Earth's rate of 2π radians / 24hours if not specified).
 """
-function GeneralFPlane(FT=Float64; coriolis_frequency=2Ω_Earth, rotation_axis=ZDirection(), latitude=nothing)
+function GeneralFPlane(FT=Float64; fx=nothing, fy=nothing, fz=nothing,
+                                   f=nothing, rotation_axis=ZDirection(), 
+                                   rotation_rate=Ω_Earth, latitude=nothing)
     if !isnothing(latitude)
-        rotation_axis = [0, cosd(latitude), sind(latitude)]
-    end
-    rotation_axis = validate_unit_vector(rotation_axis)
+        all(isnothing.((fx, fy, fz, f))) || throw(ArgumentError("Only `rotation_rate` can be specified when using `latitude`."))
 
-    if rotation_axis isa ZDirection
-        fx = fy = 0
-        fz = coriolis_frequency
+        fx = 0
+        fy = 2rotation_rate * cosd(latitude)
+        fz = 2rotation_rate * sind(latitude)
+
+    elseif !isnothing(f)
+        all(isnothing.((fx, fy, fz, latitude))) || throw(ArgumentError("Only `rotation_axis` can be specified when using `f`."))
+
+        rotation_axis = validate_unit_vector(rotation_axis)
+        if rotation_axis isa ZDirection
+            fx = fy = 0
+            fz = f
+        else
+            fx = f * rotation_axis[1]
+            fy = f * rotation_axis[2]
+            fz = f * rotation_axis[3]
+        end
+
+    elseif all((!isnothing).((fx, fy, fz)))
+        all(isnothing.((latitude, f))) || throw(ArgumentError("Only `fx`, `fy` and `fz` can be specified when setting ech component directly."))
+
     else
-        fx = coriolis_frequency * rotation_axis[1]
-        fy = coriolis_frequency * rotation_axis[2]
-        fz = coriolis_frequency * rotation_axis[3]
+        throw(ArgumentError("At least `latitude`, or `f`, or `fx`, `fy` and `fz` must be specified."))
     end
+
 
     return GeneralFPlane{FT}(fx, fy, fz)
 end

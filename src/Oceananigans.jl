@@ -35,7 +35,7 @@ export
     Forcing, Relaxation, LinearTarget, GaussianMask,
 
     # Coriolis forces
-    FPlane, BetaPlane, NonTraditionalBetaPlane,
+    FPlane, GeneralFPlane, BetaPlane, NonTraditionalBetaPlane,
 
     # BuoyancyModels and equations of state
     Buoyancy, BuoyancyTracer, SeawaterBuoyancy,
