@@ -11,13 +11,13 @@ function instantiate_fplane_2(FT)
     return coriolis.f == FT(2)
 end
 
-function instantiate_ntfplane_1(FT)
+function instantiate_general_fplane_1(FT)
     coriolis = GeneralFPlane(FT, coriolis_frequency=1, rotation_axis=[0, cosd(45), sind(45)])
     @test coriolis.fy == FT(cosd(45))
     @test coriolis.fz == FT(sind(45))
 end
 
-function instantiate_ntfplane_2(FT)
+function instantiate_general_fplane_2(FT)
     coriolis = GeneralFPlane(FT, coriolis_frequency=10, rotation_axis=[√(1/3),√(1/3),√(1/3)])
     @test coriolis.fx == FT(10*√(1/3))
     @test coriolis.fy == FT(10*√(1/3))
@@ -77,8 +77,8 @@ end
             @test instantiate_fplane_1(FT)
             @test instantiate_fplane_2(FT)
 
-            instantiate_ntfplane_1(FT)
-            instantiate_ntfplane_2(FT)
+            instantiate_general_fplane_1(FT)
+            instantiate_general_fplane_2(FT)
             instantiate_betaplane_1(FT)
             instantiate_betaplane_2(FT)
             instantiate_hydrostatic_spherical_coriolis1(FT)

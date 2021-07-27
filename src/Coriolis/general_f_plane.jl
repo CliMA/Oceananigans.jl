@@ -4,7 +4,7 @@ using Oceananigans.Grids: ZDirection, validate_unit_vector
     GeneralFPlane{FT} <: AbstractRotation
 
 A Coriolis implementation that accounts for the locally vertical and
-both local horizontal components of the rotation vector. Traditionally
+possibly both local horizontal components of the rotation vector. Traditionally
 (see [`FPlane`](@ref)) only the locally vertical component is accounted for.
 """
 struct GeneralFPlane{FT} <: AbstractRotation
