@@ -92,6 +92,9 @@ end
 
             # Test that GeneralFPlane throws an ArgumentError
             @test_throws ArgumentError GeneralFPlane(FT, rotation_axis=[0,1,1])
+            @test_throws ArgumentError GeneralFPlane(FT, f=1, latitude=45,)
+            @test_throws ArgumentError GeneralFPlane(FT, fx=1, latitude=45)
+            @test_throws ArgumentError GeneralFPlane(FT, fx=1, f=1)
 
             # Non-exhaustively test that BetaPlane throws an ArgumentError
             @test_throws ArgumentError BetaPlane(FT)
