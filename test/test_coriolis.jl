@@ -12,13 +12,13 @@ function instantiate_fplane_2(FT)
 end
 
 function instantiate_general_fplane_1(FT)
-    coriolis = GeneralFPlane(FT, coriolis_frequency=1, rotation_axis=[0, cosd(45), sind(45)])
+    coriolis = GeneralFPlane(FT, f=1, rotation_axis=[0, cosd(45), sind(45)])
     @test coriolis.fy == FT(cosd(45))
     @test coriolis.fz == FT(sind(45))
 end
 
 function instantiate_general_fplane_2(FT)
-    coriolis = GeneralFPlane(FT, coriolis_frequency=10, rotation_axis=[√(1/3),√(1/3),√(1/3)])
+    coriolis = GeneralFPlane(FT, f=10, rotation_axis=[√(1/3),√(1/3),√(1/3)])
     @test coriolis.fx == FT(10*√(1/3))
     @test coriolis.fy == FT(10*√(1/3))
     @test coriolis.fz == FT(10*√(1/3))
@@ -121,7 +121,7 @@ end
             show(✈); println()
             @test ✈ isa FPlane{FT}
 
-            ✈ = GeneralFPlane(FT, coriolis_frequency=1e-4)
+            ✈ = GeneralFPlane(FT, f=1e-4)
             show(✈); println()
             @test ✈ isa GeneralFPlane{FT}
 
