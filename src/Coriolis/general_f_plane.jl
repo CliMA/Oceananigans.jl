@@ -26,7 +26,7 @@ rotation can be specified in three different ways:
 - Specifying the Coriolis frequency `f` and (optionally) a `rotation_axis` (which defaults to the
   `z` direction if not specified).
 - Specifying `latitude` (in degrees!) and (optionally) a `rotation_rate` in radians per second
-  (which defaults to the Earth's rate of 2π radians / 24hours if not specified).
+  (which defaults to Earth's rotation rate).
 """
 function GeneralFPlane(FT=Float64; fx=nothing, fy=nothing, fz=nothing,
                                    f=nothing, rotation_axis=ZDirection(), 
