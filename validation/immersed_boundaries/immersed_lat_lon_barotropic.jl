@@ -50,7 +50,7 @@ underlying_grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, Nz),
                                           z = (-3000, 0))
 
 
-const ridge_height = 500.0    # [m]
+const ridge_height =   500.0  # [m]
 const ridge_base   = -3000.0  # [m]
 @inline height(x, y, L) = ridge_base + ridge_height * exp(-L * (x/180)^2)
 @inline ridge(x, y, z) = z < height(x, y, 30) 
@@ -220,7 +220,7 @@ end
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 100year,
+                        stop_time = 15day,
                         iteration_interval = 1000,
                         progress = Progress(time_ns()))
 
@@ -229,9 +229,31 @@ output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=ζ))
 output_prefix = "rotating_freely_decaying_barotropic_turbulence_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ = ζ,),
-                                                      schedule = TimeInterval(10day),
+                                                      schedule = TimeInterval(1day),
                                                       prefix = output_prefix,
                                                       force = true)
 
 # Let's goo!
 run!(simulation)
+##
+file = jldopen("rotating_freely_decaying_barotropic_turbulence_Nx90_Ny15.jld2")
+## 
+using GLMakie
+##
+# uvelocity = simulation.model.free_surface.η[1:Nx,1:Ny]
+timekeys = keys(file["timeseries"]["ζ"])[2:end]
+# ζ = file["timeseries"]["ζ"][timekeys[end]][2:end-1,2:end-1,Nz]
+clims = extrema(file["timeseries"]["ζ"][timekeys[1]][2:end-1,2:end-1,Nz])
+time_node = Node(1)
+ζ = @lift(file["timeseries"]["ζ"][timekeys[$time_node]][2:end-1,2:end-1,Nz])
+plt = heatmap(ζ, colormap = :balance)
+plt.axis.xlabel = "latitude"
+plt.axis.ylabel = "longitude"
+Colorbar(plt.figure[1, 2], plt.plot)
+
+iterations = 1:length(timekeys)
+fig = plt.figure
+record(fig, "BarotropicFluid.mp4", iterations, framerate=30) do i
+    time_node[] = i
+end
+

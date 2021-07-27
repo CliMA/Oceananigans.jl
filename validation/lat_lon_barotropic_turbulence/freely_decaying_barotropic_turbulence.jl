@@ -65,12 +65,13 @@ coriolis = HydrostaticSphericalCoriolis(rotation_rate=Ω)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = GPU(),
+                                    advection = WENO5(),
                                     momentum_advection = VectorInvariant(),
                                     free_surface = free_surface,
                                     coriolis = coriolis,
                                     tracers = nothing,
                                     buoyancy = nothing,
-                                    closure = closure)
+                                    closure = nothing)
 
 #####
 ##### Initial condition: two streamfunction
