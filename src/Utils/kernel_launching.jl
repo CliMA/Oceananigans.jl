@@ -25,19 +25,23 @@ function heuristic_workgroup(::GPU, Nx, Ny, Nz)
 end
 
 function heuristic_workgroup(::CPU, Nx, Ny, Nz)
-    z_group_size = 1 # full partition along outer dimension
-    
+    z_group_size = 1 # full partition along outer dimension by default
+    z_range = Nz === 1 ? 0 : Nz # collapse z range and fully partition along (x, y) if Nz=1
+
     # We devote Nz threads to the outer loop. If Nz < Nthreads,
     # we further divide the iteration amongst the second dimension (y).
-    # Example:
+    # Examples:
+    # ndrange = (Nx, Ny, 8) and nthreads = 4 implies group_size = (Nx, Ny, 1)
     # ndrange = (Nx, Ny, 2) and nthreads = 4 implies group_size = (Nx, Ny/2, 1)
-    y_residual_threads = max(1, Nthreads - Nz)
-    y_group_size = floor(Int, Ny / y_residual_threads)
+    # ndrange = (Nx, Ny, 1) and nthreads = 4 implies group_size = (Nx, Ny/4, 1)
+    y_residual_threads = max(1, Nthreads - z_range)
+    y_group_size = max(1, floor(Int, Ny / y_residual_threads))
+    y_range = Ny === 1 ? 0 : Ny # collapse y-partition partition the remainder of threads in x if Ny=1.
 
     # Further partition the problem along the x direction if the
     # direction is small.
-    x_residual_threads = max(1, y_residual_threads - Ny)
-    x_group_size = floor(Int, Nx / y_residual_threads)
+    x_residual_threads = max(1, y_residual_threads - y_range)
+    x_group_size = max(1, floor(Int, Nx / y_residual_threads))
 
     return (x_group_size, y_group_size) # padded with 1 by default
 end
