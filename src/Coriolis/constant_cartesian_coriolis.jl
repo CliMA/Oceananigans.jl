@@ -1,22 +1,22 @@
 using Oceananigans.Grids: ZDirection, validate_unit_vector
 
 """
-    ConstantCoriolis{FT} <: AbstractRotation
+    ConstantCartesianCoriolis{FT} <: AbstractRotation
 
 A Coriolis implementation that accounts for the locally vertical and possibly both local horizontal
 components of a constant rotation vector. A more general implementation of [`FPlane`](@ref), which only
 accounts for the locally vertical component.
 """
-struct ConstantCoriolis{FT} <: AbstractRotation
+struct ConstantCartesianCoriolis{FT} <: AbstractRotation
     fx :: FT
     fy :: FT
     fz :: FT
 end
 
 """
-    ConstantCoriolis([FT=Float64;] fx=nothing, fy=nothing, fz=nothing,
-                                f=nothing, rotation_axis=ZDirection(), 
-                                rotation_rate=Ω_Earth, latitude=nothing)
+    ConstantCartesianCoriolis([FT=Float64;] fx=nothing, fy=nothing, fz=nothing,
+                                            f=nothing, rotation_axis=ZDirection(), 
+                                            rotation_rate=Ω_Earth, latitude=nothing)
 
 Returns a parameter object for a constant rotation decomposed into the `x`, `y` and `z` directions.
 In oceanography the components `x`, `y`, `z` correspond to the directions east, north, and up. This
@@ -28,9 +28,9 @@ rotation can be specified in three different ways:
 - Specifying `latitude` (in degrees!) and (optionally) a `rotation_rate` in radians per second
   (which defaults to Earth's rotation rate).
 """
-function ConstantCoriolis(FT=Float64; fx=nothing, fy=nothing, fz=nothing,
-                                      f=nothing, rotation_axis=ZDirection(), 
-                                      rotation_rate=Ω_Earth, latitude=nothing)
+function ConstantCartesianCoriolis(FT=Float64; fx=nothing, fy=nothing, fz=nothing,
+                                               f=nothing, rotation_axis=ZDirection(), 
+                                               rotation_rate=Ω_Earth, latitude=nothing)
     if !isnothing(latitude)
         all(isnothing.((fx, fy, fz, f))) || throw(ArgumentError("Only `rotation_rate` can be specified when using `latitude`."))
 
@@ -59,7 +59,7 @@ function ConstantCoriolis(FT=Float64; fx=nothing, fy=nothing, fz=nothing,
     end
 
 
-    return ConstantCoriolis{FT}(fx, fy, fz)
+    return ConstantCartesianCoriolis{FT}(fx, fy, fz)
 end
 
 
@@ -74,9 +74,9 @@ end
 @inline fˣv_minus_fʸu(i, j, k, grid, coriolis, U) =
     coriolis.fx * ℑyᵃᶜᵃ(i, j, k, grid, U.v) - coriolis.fy * ℑxᶜᵃᵃ(i, j, k, grid, U.u)
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::ConstantCoriolis, U) = ℑxᶠᵃᵃ(i, j, k, grid, fʸw_minus_fᶻv, coriolis, U)
-@inline y_f_cross_U(i, j, k, grid, coriolis::ConstantCoriolis, U) = ℑyᵃᶠᵃ(i, j, k, grid, fᶻu_minus_fˣw, coriolis, U)
-@inline z_f_cross_U(i, j, k, grid, coriolis::ConstantCoriolis, U) = ℑzᵃᵃᶠ(i, j, k, grid, fˣv_minus_fʸu, coriolis, U)
+@inline x_f_cross_U(i, j, k, grid, coriolis::ConstantCartesianCoriolis, U) = ℑxᶠᵃᵃ(i, j, k, grid, fʸw_minus_fᶻv, coriolis, U)
+@inline y_f_cross_U(i, j, k, grid, coriolis::ConstantCartesianCoriolis, U) = ℑyᵃᶠᵃ(i, j, k, grid, fᶻu_minus_fˣw, coriolis, U)
+@inline z_f_cross_U(i, j, k, grid, coriolis::ConstantCartesianCoriolis, U) = ℑzᵃᵃᶠ(i, j, k, grid, fˣv_minus_fʸu, coriolis, U)
 
-Base.show(io::IO, f_plane::ConstantCoriolis{FT}) where FT =
-    print(io, "ConstantCoriolis{$FT}: ", @sprintf("fx = %.2e, fy = %.2e, fz = %.2e", f_plane.fx, f_plane.fy, f_plane.fz))
+Base.show(io::IO, f_plane::ConstantCartesianCoriolis{FT}) where FT =
+    print(io, "ConstantCartesianCoriolis{$FT}: ", @sprintf("fx = %.2e, fy = %.2e, fz = %.2e", f_plane.fx, f_plane.fy, f_plane.fz))

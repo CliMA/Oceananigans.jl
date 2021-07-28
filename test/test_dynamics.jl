@@ -306,7 +306,7 @@ function inertial_oscillations_work_with_rotation_in_different_axis(arch, FT)
     stop_time = T_inertial / 2
 
     zcoriolis = FPlane(f=f₀)
-    xcoriolis = ConstantCoriolis(f=f₀, rotation_axis=(1,0,0))
+    xcoriolis = ConstantCartesianCoriolis(f=f₀, rotation_axis=(1,0,0))
 
     model_x =  NonhydrostaticModel(grid=grid, buoyancy=nothing, tracers=nothing, closure=nothing,
                                    timestepper = :RungeKutta3,
