@@ -294,6 +294,56 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     return nothing
 end
 
+
+
+function inertial_oscillations_work_with_rotation_in_different_axis(arch, FT)
+    grid = RegularRectilinearGrid(FT, size=(), topology=(Flat, Flat, Flat))
+
+    f₀ = 1
+    ū = 1
+    Δt = 1e-3
+    T_inertial = 2π/f₀
+    stop_time = T_inertial / 2
+
+    zcoriolis = FPlane(f=f₀)
+    xcoriolis = ConstantCoriolis(f=f₀, rotation_axis=(1,0,0))
+
+    model_x =  NonhydrostaticModel(grid=grid, buoyancy=nothing, tracers=nothing, closure=nothing,
+                                   timestepper = :RungeKutta3,
+                                   coriolis=xcoriolis,
+                                  )
+    set!(model_x, v=ū)
+    simulation_x = Simulation(model_x, Δt=Δt, stop_time=stop_time)
+    run!(simulation_x)
+
+    model_z =  NonhydrostaticModel(grid=grid, buoyancy=nothing, tracers=nothing, closure=nothing,
+                                   timestepper = :RungeKutta3,
+                                   coriolis=zcoriolis,
+                                   )
+    set!(model_z, u=ū)
+    simulation_z = Simulation(model_z, Δt=Δt, stop_time=stop_time)
+    run!(simulation_z)
+
+    u_x = model_x.velocities.u.data[1,1,1]
+    v_x = model_x.velocities.v.data[1,1,1]
+    w_x = model_x.velocities.w.data[1,1,1]
+
+    u_z = model_z.velocities.u.data[1,1,1]
+    v_z = model_z.velocities.v.data[1,1,1]
+    w_z = model_z.velocities.w.data[1,1,1]
+
+    @test w_z == 0
+    @test u_x == 0
+
+    @test √(v_x^2 + w_x^2) ≈ 1
+    @test √(u_z^2 + v_z^2) ≈ 1
+
+    @test u_z ≈ v_x
+    @test v_z ≈ w_x
+
+    return nothing
+end
+
 timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
 @testset "Dynamics" begin
@@ -508,4 +558,12 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             end
         end
     end
+
+    @testset "Background rotation about arbitrary axis" begin
+        for arch in archs
+            @info "  Testing background rotation about arbitrary axis [$(typeof(arch))]..."
+            inertial_oscillations_work_with_rotation_in_different_axis(arch, Float64)
+        end
+    end
+
 end
