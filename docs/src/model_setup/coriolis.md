@@ -40,7 +40,7 @@ in which case the value of ``f`` is given by ``2\Omega\sin\varphi``.
 
 ## Coriolis term for constant rotation in a Cartesian coordinate system
 
-One can use `ConstantCoriolis` to set up a Coriolis acceleration term where the Coriolis frequency
+One can use `ConstantCoriolis` to set up a Coriolis acceleration term where the Coriolis parameter
 is constant and the rotation axis is arbitrary. For example, with
 ``\boldsymbol{f} = (0, f_y, f_z) = (0, 2, 1) \times 10^{-4} \text{s}^{-1}``,
 
