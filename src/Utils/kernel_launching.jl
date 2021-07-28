@@ -24,6 +24,9 @@ function heuristic_workgroup(::GPU, Nx, Ny, Nz)
 end
 
 function heuristic_workgroup(::CPU, Nx, Ny, Nz)
+    
+    Nthreads = Base.Threads.nthreads()
+
     z_group_size = 1 # full partition along outer dimension by default
     z_range = Nz === 1 ? 0 : Nz # collapse z range and fully partition along (x, y) if Nz=1
 
