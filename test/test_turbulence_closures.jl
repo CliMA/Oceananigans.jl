@@ -1,4 +1,5 @@
 using Oceananigans.Diagnostics
+using Oceananigans.BoundaryConditions: BoundaryCondition
 using Oceananigans.TimeSteppers: Clock
 
 for closure in closures
@@ -47,10 +48,17 @@ function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3)
 
     four_nothings = Tuple(nothing for i=1:4)
     three_nothings = Tuple(nothing for i=1:3)
-    @test ∇_dot_qᶜ(2, 1, 3, grid, closure, C.T, Val(1), clock, four_nothings...) == - 2κ
-    @test ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closure, clock, U, three_nothings...) == - 2ν
-    @test ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closure, clock, U, three_nothings...) == - 4ν
-    @test ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closure, clock, U, three_nothings...) == - 6ν
+
+    fake_immersed_bc = FluxBoundaryCondition(nothing)
+
+    fake_velocity_immersed_bcs = (u=fake_immersed_bc,
+                                  v=fake_immersed_bc,
+                                  w=fake_immersed_bc)
+
+    @test ∇_dot_qᶜ(2, 1, 3, grid, closure, fake_immersed_bc, C.T, Val(1), clock, four_nothings...) == - 2κ
+    @test ∂ⱼ_τ₁ⱼ(2, 1, 3, grid, closure, fake_velocity_immersed_bcs, clock, U, three_nothings...) == - 2ν
+    @test ∂ⱼ_τ₂ⱼ(2, 1, 3, grid, closure, fake_velocity_immersed_bcs, clock, U, three_nothings...) == - 4ν
+    @test ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closure, fake_velocity_immersed_bcs, clock, U, three_nothings...) == - 6ν
 
     return nothing
 end
