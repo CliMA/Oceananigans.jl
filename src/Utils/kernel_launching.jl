@@ -2,7 +2,6 @@
 ##### Utilities for launching kernels
 #####
 
-using KernelAbstractions
 using Oceananigans.Architectures
 using Oceananigans.Grids
 
@@ -100,7 +99,7 @@ function launch!(arch, grid, dims, kernel!, args...;
                                       reduced_dimensions = reduced_dimensions,
                                       location = location)
 
-    loop! = kernel!(Architectures.device(arch), workgroup, worksize)
+    loop! = kernel!(device(arch), workgroup, worksize)
 
     @debug "Launching kernel $kernel! with worksize $worksize"
 
