@@ -84,7 +84,7 @@ BetaPlane{Float64}: f₀ = 1.00e-04, β = 1.50e-11
 ```
 
 Alternatively, a ``\beta``-plane can also be set up at some latitude on a spherical planet with a planetary rotation rate
-and planetary radius. For example, to specify a ``\beta``-plane at a latitude of ``\varphi = 10\degree{S}`` on Earth
+and planetary radius. For example, to specify a ``\beta``-plane at a latitude of ``\varphi = 10^\circ{S}`` on Earth
 which has a rotation rate of ``\Omega = 7.292115 \times 10^{-5} \text{s}^{-1}`` and a radius of ``R = 6,371 \text{km}``
 
 ```jldoctest
