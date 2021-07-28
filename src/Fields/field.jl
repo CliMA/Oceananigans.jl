@@ -105,4 +105,6 @@ CenterField(grid::AbstractGrid, args...) = CenterField(CPU(), grid, args...)
  YFaceField(grid::AbstractGrid, args...) =  YFaceField(CPU(), grid, args...)
  ZFaceField(grid::AbstractGrid, args...) =  ZFaceField(CPU(), grid, args...)
 
-Adapt.adapt_structure(to, field::Field) = Adapt.adapt(to, field.data)
+Adapt.adapt_structure(to, field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
+    Field{LX, LY, LZ}(Adapt.adapt(to, field.data), nothing, nothing, nothing)
+
