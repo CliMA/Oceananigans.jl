@@ -38,7 +38,7 @@ FPlane{Float64}: f = 1.03e-04
 
 in which case the value of ``f`` is given by ``2\Omega\sin\varphi``.
 
-## Constant Coriolis
+## Coriolis term for constant rotation in a Cartesian coordinate system
 
 One can use `ConstantCoriolis` to set up a Coriolis acceleration term where the Coriolis frequency
 is constant and the rotation axis is arbitrary. For example, with
