@@ -96,9 +96,9 @@ function compute!(buoyancy_field::BuoyancyField, time=nothing)
     buoyancy = buoyancy_field.buoyancy
     arch = architecture(buoyancy_field)
 
-    event = launch(arch, grid, :xyz,
-                   compute_buoyancy!, data, grid, buoyancy, tracers;
-                   dependencies=Event(device(arch)))
+    event = launch!(arch, grid, :xyz,
+                    compute_buoyancy!, data, grid, buoyancy, tracers;
+                    dependencies=Event(device(arch)))
 
     wait(device(arch), event)
 
