@@ -25,7 +25,9 @@ Nz = 32
 s = 1.2 # stretching factor
 z_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
 
-grid = VerticallyStretchedRectilinearGrid(architecture = GPU(),
+arch = GPU()
+
+grid = VerticallyStretchedRectilinearGrid(architecture = arch,
                                           topology = (Periodic, Bounded, Bounded),
                                           size = (Nx, Ny, Nz),
                                           halo = (3, 3, 3),
@@ -113,7 +115,8 @@ u_geostrophic(z) = α * (z + Lz)
 y_sponge = 19/20 * Ly # southern boundary of sponge layer [m]
 
 @inline northern_mask(y, y_sponge, Ly) = max(0.0, y - y_sponge) / (Ly - y_sponge)
-@inline b_target(y, z) = b_geostrophic(y) + b_stratification(z)
+#@inline b_target(y, z) = b_geostrophic(y) + b_stratification(z)
+@inline b_target(y, z) = b_stratification(z)
 
 # We want this "continuous form" to work, but alas our attempts have failed so far.
 #=
@@ -146,33 +149,32 @@ b_forcing = Forcing(b_relaxation,
 
 #horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
 
-@show κ₂h = 1e0 / day * grid.Δx^2 # [m² s⁻¹] horizontal viscosity and diffusivity
+@show κ₂h = 1 #1e0 / day * grid.Δx^2 # [m² s⁻¹] horizontal viscosity and diffusivity
+@show ν₂h = 30 #1e0 / day * grid.Δx^2 # [m² s⁻¹] horizontal viscosity and diffusivity
 @show κ₄h = 1e-1 / day * grid.Δx^4 # [m⁴ s⁻¹] horizontal hyperviscosity and hyperdiffusivity
 
 using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
 
-horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=κ₂h, κh=κ₂h)
+horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=ν₂h, κh=κ₂h)
 #horizontal_diffusivity = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
-                                                                convective_νz = 1.0,
-                                                                background_κz = 1e-3,
-                                                                background_νz = 1e-3)
+                                                                convective_νz = 0.0,
+                                                                background_κz = 5e-6,
+                                                                background_νz = 3e-4)
 #####
 ##### Model building
 #####
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(architecture = GPU(),
+model = HydrostaticFreeSurfaceModel(architecture = arch,
                                     grid = grid,
                                     free_surface = ImplicitFreeSurface(),
                                     momentum_advection = WENO5(),
                                     tracer_advection = WENO5(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = coriolis,
-                                    #closure = horizontal_diffusivity,
-                                    #closure = convective_adjustment,
                                     closure = (horizontal_diffusivity, convective_adjustment),
                                     tracers = :b,
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
@@ -186,13 +188,21 @@ model = HydrostaticFreeSurfaceModel(architecture = GPU(),
 #####
 
 g = model.free_surface.gravitational_acceleration # m s⁻²
-u★ = 1e-6 * α * Lz
-δ = 0.1 * Ly
-ϵ(x, y, z) = u★ * exp(-(y - Ly/2)^2 / 2δ^2) * randn()
+u★ = 1e-8
+b★ = 1e-9
+δ = 0.2 * Ly
+ϵu(x, y, z) = u★ * exp(-(y - Ly/2)^2 / 2δ^2) * randn()
+ϵb(x, y, z) = b★ * randn()
 
-ηᵢ(x, y) = - f₀ * α * Lz / 2g * (y - Ly/2) 
-uᵢ(x, y, z) = u_geostrophic(z) + ϵ(x, y, z)
-bᵢ(x, y, z) = b_geostrophic(y) + b_stratification(z)
+# geostrophic initial condition
+#ηᵢ(x, y) = - f₀ * α * Lz / 2g * (y - Ly/2) 
+#uᵢ(x, y, z) = u_geostrophic(z) + ϵu(x, y, z)
+#bᵢ(x, y, z) = b_geostrophic(y) + b_stratification(z)
+
+# resting initial condition
+ηᵢ(x, y) = 0
+uᵢ(x, y, z) = 0
+bᵢ(x, y, z) = b_stratification(z) + ϵb(x, y, z)
 
 set!(model, u=uᵢ, b=bᵢ, η=ηᵢ)
 
@@ -200,7 +210,7 @@ set!(model, u=uᵢ, b=bᵢ, η=ηᵢ)
 ##### Simulation building
 #####
 
-wizard = TimeStepWizard(cfl=0.1, Δt=1minute, max_change=1.1, max_Δt=10minutes)
+wizard = TimeStepWizard(cfl=0.1, Δt=1minute, max_change=1.1, max_Δt=20minutes)
 
 wall_clock = [time_ns()]
 
@@ -220,13 +230,35 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=60days, progress=print_progress, iteration_interval=100)
+simulation = Simulation(model, Δt=wizard, stop_time=60days, progress=print_progress, iteration_interval=10)
+
+#####
+##### Diagnostics
+#####
 
 u, v, w = model.velocities
 b = model.tracers.b
 
 ζ = ComputedField(∂x(v) - ∂y(u))
-outputs = (b=b, ζ=ζ, w=model.velocities.w)
+
+B = AveragedField(b, dims=1)
+V = AveragedField(v, dims=1)
+W = AveragedField(w, dims=1)
+
+b′ = b - B
+v′ = v - V
+w′ = w - W
+
+v′b′ = AveragedField(v′ * b′, dims=1)
+w′b′ = AveragedField(w′ * b′, dims=1)
+
+outputs = (; b, ζ, w)
+
+averaged_outputs = (; v′b′, w′b′, B)
+
+#####
+##### Build checkpointer and output writer
+#####
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(100days),
@@ -237,11 +269,21 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(5days),
                                                       prefix = "eddying_channel",
                                                       field_slicer = nothing,
+                                                      verbose = true,
                                                       force = true)
+
+simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
+                                                        schedule = AveragedTimeInterval(1days, window=1days, stride=1),
+                                                        prefix = "eddying_channel_averages",
+                                                        verbose = true,
+                                                        force = true)
 
 @info "Running the simulation..."
 
-run!(simulation, pickup=false)
+try
+    run!(simulation, pickup=false)
+catch
+end
 
 #####
 ##### Visualization
