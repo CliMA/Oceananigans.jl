@@ -11,14 +11,14 @@ function instantiate_fplane_2(FT)
     return coriolis.f == FT(2)
 end
 
-function instantiate_general_fplane_1(FT)
-    coriolis = GeneralFPlane(FT, f=1, rotation_axis=[0, cosd(45), sind(45)])
+function instantiate_constant_coriolis_1(FT)
+    coriolis = ConstantCoriolis(FT, f=1, rotation_axis=[0, cosd(45), sind(45)])
     @test coriolis.fy == FT(cosd(45))
     @test coriolis.fz == FT(sind(45))
 end
 
-function instantiate_general_fplane_2(FT)
-    coriolis = GeneralFPlane(FT, f=10, rotation_axis=[√(1/3),√(1/3),√(1/3)])
+function instantiate_constant_coriolis_2(FT)
+    coriolis = ConstantCoriolis(FT, f=10, rotation_axis=[√(1/3),√(1/3),√(1/3)])
     @test coriolis.fx == FT(10*√(1/3))
     @test coriolis.fy == FT(10*√(1/3))
     @test coriolis.fz == FT(10*√(1/3))
@@ -77,8 +77,8 @@ end
             @test instantiate_fplane_1(FT)
             @test instantiate_fplane_2(FT)
 
-            instantiate_general_fplane_1(FT)
-            instantiate_general_fplane_2(FT)
+            instantiate_constant_coriolis_1(FT)
+            instantiate_constant_coriolis_2(FT)
             instantiate_betaplane_1(FT)
             instantiate_betaplane_2(FT)
             instantiate_hydrostatic_spherical_coriolis1(FT)
@@ -90,11 +90,11 @@ end
             @test_throws ArgumentError FPlane(FT, f=1, latitude=40)
             @test_throws ArgumentError FPlane(FT, f=1, rotation_rate=7e-5, latitude=40)
 
-            # Test that GeneralFPlane throws an ArgumentError
-            @test_throws ArgumentError GeneralFPlane(FT, rotation_axis=[0,1,1])
-            @test_throws ArgumentError GeneralFPlane(FT, f=1, latitude=45,)
-            @test_throws ArgumentError GeneralFPlane(FT, fx=1, latitude=45)
-            @test_throws ArgumentError GeneralFPlane(FT, fx=1, f=1)
+            # Test that ConstantCoriolis throws an ArgumentError
+            @test_throws ArgumentError ConstantCoriolis(FT, rotation_axis=[0,1,1])
+            @test_throws ArgumentError ConstantCoriolis(FT, f=1, latitude=45,)
+            @test_throws ArgumentError ConstantCoriolis(FT, fx=1, latitude=45)
+            @test_throws ArgumentError ConstantCoriolis(FT, fx=1, f=1)
 
             # Non-exhaustively test that BetaPlane throws an ArgumentError
             @test_throws ArgumentError BetaPlane(FT)
@@ -121,9 +121,9 @@ end
             show(✈); println()
             @test ✈ isa FPlane{FT}
 
-            ✈ = GeneralFPlane(FT, f=1e-4)
+            ✈ = ConstantCoriolis(FT, f=1e-4)
             show(✈); println()
-            @test ✈ isa GeneralFPlane{FT}
+            @test ✈ isa ConstantCoriolis{FT}
 
             ✈ = BetaPlane(FT, latitude=45)
             show(✈); println()
