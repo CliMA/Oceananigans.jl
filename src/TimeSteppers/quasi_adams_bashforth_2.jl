@@ -1,3 +1,4 @@
+using Oceananigans.Architectures: device_event
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
 
