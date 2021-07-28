@@ -282,7 +282,9 @@ simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
 
 try
     run!(simulation, pickup=false)
-catch
+catch err
+    @info "run! threw an error! The error message is"
+    showerror(stdout, err)
 end
 
 #####
@@ -323,9 +325,9 @@ anim = @animate for i in 1:length(b_timeseries.times)
     ζ_xz = interior(ζ)[:, j′, :]
     w_xz = interior(w)[:, j′, :]
     
-    @show bmax = maximum(abs, b_xy)
-    @show ζmax = maximum(abs, ζ_xy)
-    @show wmax = maximum(abs, w_xz)
+    @show bmax = max(1e-9, maximum(abs, b_xy))
+    @show ζmax = max(1e-9, maximum(abs, ζ_xy))
+    @show wmax = max(1e-9, maximum(abs, w_xz))
 
     blims = (-bmax, bmax) .* 0.8
     ζlims = (-ζmax, ζmax) .* 0.8
