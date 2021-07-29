@@ -152,7 +152,7 @@ model = NonhydrostaticModel(architecture = CPU(),
 # Notes:
 #
 # * To use the Smagorinsky-Lilly turbulence closure (with a constant model coefficient) rather than
-#   `AnisotropicMinimumDissipation`, use `closure = ConstantSmagorinsky()` in the model constructor.
+#   `AnisotropicMinimumDissipation`, use `closure = SmagorinskyLilly()` in the model constructor.
 #
 # * To change the `architecture` to `GPU`, replace `architecture = CPU()` with
 #   `architecture = GPU()`.
