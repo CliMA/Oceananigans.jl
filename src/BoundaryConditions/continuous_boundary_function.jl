@@ -127,7 +127,8 @@ end
 # 3D ContinuousBoundaryFunction for immersed boundaries...
 @inline function (bc::ContinuousBoundaryFunction{LX, LY, LZ, <:Nothing})(i, j, k, grid, clock, model_fields) where {LX, LY, LZ}
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
-    return bc.func(nodes(LX(), LY(), LZ(), i, j, k, grid)... clock.time, args...)
+    xyz = node(LX(), LY(), LZ(), i, j, k, grid)
+    return bc.func(xyz..., clock.time, args...)
 end
 
 # Don't re-convert ContinuousBoundaryFunctions passed to BoundaryCondition constructor
