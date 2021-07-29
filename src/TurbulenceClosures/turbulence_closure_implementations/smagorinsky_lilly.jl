@@ -60,7 +60,7 @@ Lilly, D. K. "On the numerical simulation of buoyant convection." Tellus (1962)
 Smagorinsky, J. "General circulation experiments with the primitive equations: I.
     The basic experiment." Monthly weather review (1963)
 """
-SmagorinskyLilly(FT=Float64; C=0.23, Cb=1.0, Pr=1.0, ν=0, κ=0,
+SmagorinskyLilly(FT=Float64; C=0.16, Cb=1.0, Pr=1.0, ν=0, κ=0,
                              time_discretization::TD=ExplicitTimeDiscretization()) where TD =
     SmagorinskyLilly{TD, FT}(C, Cb, Pr, ν, κ)
 
