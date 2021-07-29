@@ -86,9 +86,9 @@ strong stratification via
     \varsigma(N^2 / \Sigma^2) = \sqrt{1 - \min \left ( 1, C_b N^2 / \Sigma^2 \right )} \, ,
 ```
 where ``N^2 = \max \left (0, \partial_z b \right )`` is the squared buoyancy frequency for stable
-stratification with ``\partial_z b > 0`` and ``C_b`` is a user-specified constant.  Tipically, and
-according to the original work by Lilly (1962), ``C_b = 1/Pr``, where ``Pr`` is a turbulent Prandtl
-number. Roughly speaking, the filter width for the Smagorinsky-Lilly closure is taken as
+stratification with ``\partial_z b > 0`` and ``C_b`` is a user-specified constant.  Lilly (1962)
+proposed ``C_b = 1/Pr``, where ``Pr`` is a turbulent Prandtl number.
+The filter width for the Smagorinsky-Lilly closure is
 ```math
 \Delta_f(\boldsymbol{x}) = \left ( \Delta x \Delta y \Delta z \right)^{1/3} \, ,
 ```
