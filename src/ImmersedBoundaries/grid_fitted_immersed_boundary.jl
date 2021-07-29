@@ -1,4 +1,5 @@
 using Oceananigans.Advection: AbstractAdvectionScheme
+using Oceananigans.BoundaryConditions: BoundaryCondition
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
 
@@ -28,7 +29,12 @@ const f = Face()
 
 const GFIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ, G, <:GridFittedBoundary} where {FT, TX, TY, TZ, G}
 
+#####
+##### Cell / node queries
+#####
+
 @inline solid_cell(i, j, k, ibg) = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary)
+@inline fluid_cell(i, j, k, ibg) = !(is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary))
 
 @inline solid_node(LX, LY, LZ, i, j, k, ibg) = solid_cell(i, j, k, ibg) # fallback (for Center or Nothing LX, LY, LZ)
 
@@ -42,38 +48,98 @@ const GFIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ, G, <:GridFittedBoundary} wher
 
 @inline solid_node(::Face, ::Face, ::Face, i, j, k, ibg) = solid_node(c, f, f, i, j, k, ibg) || solid_node(c, f, f, i-1, j, k, ibg)
 
-@inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(c, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_ffc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(f, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_fcf(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(f, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_cff(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(c, f, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+#####
+##### "Scaled" normals / interface queries
+#####
+##### Return -1, +1, or 0 if not a fluid-solid boundary.
+#####
 
-@inline conditional_flux_fcc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(f, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_cfc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(c, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
-@inline conditional_flux_ccf(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_node(c, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+@inline x_scaled_boundary_normal(::Face, ::Center, ::Center, i , j, k, ibg) = ifelse(solid_cell(i, j, k, ibg) && fluid_cell(i-1, j, k, ibg), -1,
+                                                                              ifelse(fluid_cell(i, j, k, ibg) && solid_cell(i-1, j, k, ibg), +1, 0))
+
+@inline y_scaled_boundary_normal(::Center, ::Face, ::Center, i , j, k, ibg) = ifelse(solid_cell(i, j, k, ibg) && fluid_cell(i, j-1, k, ibg), -1,    
+                                                                              ifelse(fluid_cell(i, j, k, ibg) && solid_cell(i, j-1, k, ibg), +1, 0))
+
+@inline z_scaled_boundary_normal(::Center, ::Center, ::Face, i , j, k, ibg) = ifelse(solid_cell(i, j, k, ibg) && fluid_cell(i, j, k-1, ibg), -1,
+                                                                              ifelse(fluid_cell(i, j, k, ibg) && solid_cell(i, j, k-1, ibg), +1, 0))
+
+#####
+##### Conditional fluxes
+#####
+
+@inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, boundary_flux, intrinsic_flux, args...) where FT = ifelse(solid_node(c, c, c, i, j, k, ibg), boundary_flux, flux(i, j, k, ibg, args...))
+@inline conditional_flux_ffc(i, j, k, ibg::IBG{FT}, boundary_flux, intrinsic_flux, args...) where FT = ifelse(solid_node(f, f, c, i, j, k, ibg), boundary_flux, flux(i, j, k, ibg, args...))
+@inline conditional_flux_fcf(i, j, k, ibg::IBG{FT}, boundary_flux, intrinsic_flux, args...) where FT = ifelse(solid_node(f, c, f, i, j, k, ibg), boundary_flux, flux(i, j, k, ibg, args...))
+@inline conditional_flux_cff(i, j, k, ibg::IBG{FT}, boundary_flux, intrinsic_flux, args...) where FT = ifelse(solid_node(c, f, f, i, j, k, ibg), boundary_flux, flux(i, j, k, ibg, args...))
+
+@inline conditional_flux_fcc(i, j, k, ibg::IBG{FT}, boundary_flux, intrinsic_flux, args...) where FT = ifelse(solid_node(f, c, c, i, j, k, ibg), boundary_flux, flux(i, j, k, ibg, args...))
+@inline conditional_flux_cfc(i, j, k, ibg::IBG{FT}, boundary_flux, intrinsic_flux, args...) where FT = ifelse(solid_node(c, f, c, i, j, k, ibg), boundary_flux, flux(i, j, k, ibg, args...))
+@inline conditional_flux_ccf(i, j, k, ibg::IBG{FT}, boundary_flux, intrinsic_flux, args...) where FT = ifelse(solid_node(c, c, f, i, j, k, ibg), boundary_flux, flux(i, j, k, ibg, args...))
 
 #####
 ##### Advective fluxes
 #####
 
+const VelocitiesNamedTuple = NamedTuple{(:u, :v, :w)}
+
 # ccc, ffc, fcf
- @inline _viscous_flux_ux(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_ux, args...)
- @inline _viscous_flux_uy(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_uy, args...)
- @inline _viscous_flux_uz(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_uz, args...)
+@inline _viscous_flux_ux(i, j, k, ibg::GFIBG, disc, closure, immersed_bcs::VelocitiesNamedTuple, args...) = conditional_flux_ccc(i, j, k, ibg, zero(eltype(ibg)), viscous_flux_ux, disc, closure, args...)
+@inline _viscous_flux_uy(i, j, k, ibg::GFIBG, disc, closure, immersed_bcs::VelocitiesNamedTuple, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_uy, disc, closure, args...)
+@inline _viscous_flux_uz(i, j, k, ibg::GFIBG, disc, closure, immersed_bcs::VelocitiesNamedTuple, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_uz, disc, closure, args...)
  
  # ffc, ccc, cff
- @inline _viscous_flux_vx(i, j, k, ibg::GFIBG, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_vx, args...)
- @inline _viscous_flux_vy(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_vy, args...)
- @inline _viscous_flux_vz(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_vz, args...)
+@inline _viscous_flux_vx(i, j, k, ibg::GFIBG, disc, closure, immersed_bcs::VelocitiesNamedTuple, args...) = conditional_flux_ffc(i, j, k, ibg, viscous_flux_vx, disc, closure, args...)
+@inline _viscous_flux_vy(i, j, k, ibg::GFIBG, disc, closure, immersed_bcs::VelocitiesNamedTuple, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_vy, disc, closure, args...)
+@inline _viscous_flux_vz(i, j, k, ibg::GFIBG, disc, closure, immersed_bcs::VelocitiesNamedTuple, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_vz, disc, closure, args...)
  
  # fcf, cff, ccc
- @inline _viscous_flux_wx(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_wx, args...)
- @inline _viscous_flux_wy(i, j, k, ibg::GFIBG, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_wy, args...)
- @inline _viscous_flux_wz(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_wz, args...)
+@inline _viscous_flux_wx(i, j, k, ibg::GFIBG, disc, closure, immersed_bcs::VelocitiesNamedTuple, args...) = conditional_flux_fcf(i, j, k, ibg, viscous_flux_wx, disc, closure, args...)
+@inline _viscous_flux_wy(i, j, k, ibg::GFIBG, disc, closure, immersed_bcs::VelocitiesNamedTuple, args...) = conditional_flux_cff(i, j, k, ibg, viscous_flux_wy, disc, closure, args...)
+@inline _viscous_flux_wz(i, j, k, ibg::GFIBG, disc, closure, immersed_bcs::VelocitiesNamedTuple, args...) = conditional_flux_ccc(i, j, k, ibg, viscous_flux_wz, disc, closure, args...)
 
 # fcc, cfc, ccf
-@inline _diffusive_flux_x(i, j, k, ibg::GFIBG, args...) = conditional_flux_fcc(i, j, k, ibg, diffusive_flux_x, args...)
-@inline _diffusive_flux_y(i, j, k, ibg::GFIBG, args...) = conditional_flux_cfc(i, j, k, ibg, diffusive_flux_y, args...)
-@inline _diffusive_flux_z(i, j, k, ibg::GFIBG, args...) = conditional_flux_ccf(i, j, k, ibg, diffusive_flux_z, args...)
+const BC = BoundaryCondition
+const ZeroFluxBC = BoundaryCondition{<:Flux, <:Nothing}
+const NonFluxBC = Union{BC, ZeroFluxBC}
+const FluxBC = BoundaryCondition{<:Flux}
+
+@inline _diffusive_flux_x(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::BC, c::AbstractArray, args...) = conditional_flux_fcc(i, j, k, ibg, zero(eltype(ibg)), diffusive_flux_x, disc, closure, c, args...)
+@inline _diffusive_flux_y(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::BC, c::AbstractArray, args...) = conditional_flux_cfc(i, j, k, ibg, zero(eltype(ibg)), diffusive_flux_y, disc, closure, c, args...)
+@inline _diffusive_flux_z(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::BC, c::AbstractArray, args...) = conditional_flux_ccf(i, j, k, ibg, zero(eltype(ibg)), diffusive_flux_z, disc, closure, c, args...)
+
+@inline _diffusive_flux_x(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::ZeroBC, c::AbstractArray, args...) = conditional_flux_fcc(i, j, k, ibg, zero(eltype(ibg)), diffusive_flux_x, disc, closure, c, args...)
+@inline _diffusive_flux_y(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::ZeroBC, c::AbstractArray, args...) = conditional_flux_cfc(i, j, k, ibg, zero(eltype(ibg)), diffusive_flux_y, disc, closure, c, args...)
+@inline _diffusive_flux_z(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::ZeroBC, c::AbstractArray, args...) = conditional_flux_ccf(i, j, k, ibg, zero(eltype(ibg)), diffusive_flux_z, disc, closure, c, args...)
+
+@inline function _diffusive_flux_x(i, j, k, ibg::GFIBG, disc::ATD, closure, ibc::FluxBC, c::AbstractArray, c_idx, clock, K, C, buoyancy, U)
+    model_fields = merge(U, C)
+    boundary_flux = getbc(ibc, i, j, k, ibg, clock, model_fields)
+    n̂ = x_scaled_boundary_normal(Face(), Center(), Center(), i, j, k, ibg)
+
+    return conditional_flux_fcc(i, j, k, ibg,
+                                n̂ * boundary_flux,
+                                diffusive_flux_x, disc, closure, c, c_idx, clock, K, C, buoyancy, U)
+end
+
+@inline function _diffusive_flux_y(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::FluxBC, c::AbstractArray, c_idx, clock, K, C, buoyancy, U)
+    model_fields = merge(U, C)
+    boundary_flux = getbc(ibc, i, j, k, ibg, clock, model_fields)
+    n̂ = y_scaled_boundary_normal(Center(), Face(), Center(), i, j, k, ibg)
+
+    conditional_flux_cfc(i, j, k, ibg,
+                         n̂ * boundary_flux,
+                         diffusive_flux_y, disc, closure, c, c_idx, clock, K, C, buoyancy, U)
+end
+
+@inline function _diffusive_flux_z(i, j, k, ibg::GFIBG, disc::ATD, closure, immersed_bc::FluxBC, c::AbstractArray, c_idx, clock, K, C, buoyancy, U)
+    model_fields = merge(U, C)
+    boundary_flux = getbc(ibc, i, j, k, ibg, clock, model_fields)
+    n̂ = z_scaled_boundary_normal(Face(), Center(), Center(), i, j, k, ibg)
+
+    return conditional_flux_ccf(i, j, k, ibg,
+                                n̂ * boundary_flux,
+                                diffusive_flux_z, disc, closure, c, c_idx, clock, K, C, buoyancy, U)
+end
 
 #####
 ##### Advective fluxes
@@ -146,8 +212,6 @@ for bias in (:symmetric, :left_biased, :right_biased)
                     ifelse($near_boundary(i, j, k, ibg, scheme),
                            $second_order_interp(i, j, k, ibg.grid, ψ),
                            $interp(i, j, k, ibg.grid, scheme, ψ))
-
-                # @inline $alt_interp(i, j, k, ibg::IBG, scheme, ψ) = $interp(i, j, k, ibg.grid, scheme, ψ)
             end
         end
     end
