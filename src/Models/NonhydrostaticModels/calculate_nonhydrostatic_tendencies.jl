@@ -49,7 +49,7 @@ function calculate_interior_tendency_contributions!(model)
                             model.velocities,
                             velocities_immersed_boundary_conditions,
                             model.tracers,
-                            model.diffusivities,
+                            model.diffusivity_fields,
                             model.forcing,
                             model.pressures.pHY′,
                             model.clock)
@@ -84,7 +84,7 @@ function calculate_interior_tendency_contributions!(model)
                                         model.background_fields,
                                         model.velocities,
                                         model.tracers,
-                                        model.diffusivities,
+                                        model.diffusivity_fields,
                                         tracer_forcing,
                                         model.clock,
                                         dependencies = barrier)

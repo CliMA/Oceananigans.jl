@@ -96,9 +96,9 @@ GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient, val; kwa
 @inline getbc(bc::BC{<:Open, Nothing}, i, j, grid, args...) = zero(eltype(grid))
 @inline getbc(bc::BC{<:Flux, Nothing}, i, j, grid, args...) = zero(eltype(grid))
 
-@inline getbc(bc::BC{C, <:Number},        args...)                         where C = bc.condition
-@inline getbc(bc::BC{C, <:AbstractArray}, i, j, grid, clock, model_fields) where C = @inbounds bc.condition[i, j]
-@inline getbc(bc::BC{C, <:Function},      i, j, grid, clock, model_fields) where C = bc.condition(i, j, grid, clock, model_fields)
+@inline getbc(bc::BC{C, <:Number},        args...)             where C = bc.condition
+@inline getbc(bc::BC{C, <:AbstractArray}, i, j, grid, args...) where C = @inbounds bc.condition[i, j]
+@inline getbc(bc::BC{C, <:Function},      i, j, grid, clock, model_fields, args...) where C = bc.condition(i, j, grid, clock, model_fields, args...)
 
 Adapt.adapt_structure(to, bc::BoundaryCondition) = BoundaryCondition(Adapt.adapt(to, bc.classification),
                                                                      Adapt.adapt(to, bc.condition))

@@ -35,7 +35,7 @@ export
     Forcing, Relaxation, LinearTarget, GaussianMask,
 
     # Coriolis forces
-    FPlane, BetaPlane, NonTraditionalFPlane, NonTraditionalBetaPlane,
+    FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
 
     # BuoyancyModels and equations of state
     Buoyancy, BuoyancyTracer, SeawaterBuoyancy,
@@ -70,7 +70,7 @@ export
     Clock, TimeStepWizard, time_step!,
 
     # Simulations
-    Simulation, run!,
+    Simulation, run!, Callback, iteration,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics

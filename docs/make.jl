@@ -48,7 +48,7 @@ examples = [
 
 for example in examples
     example_filepath = joinpath(EXAMPLES_DIR, example)
-    Literate.markdown(example_filepath, OUTPUT_DIR, documenter=true)
+    Literate.markdown(example_filepath, OUTPUT_DIR; flavor = Literate.DocumenterFlavor())
 end
 
 #####
@@ -108,10 +108,10 @@ physics_pages = [
 ]
 
 numerical_pages = [
-    "Pressure decomposition" => "numerical_implementation/pressure_decomposition.md",
-    "Time stepping" => "numerical_implementation/time_stepping.md",
     "Finite volume method" => "numerical_implementation/finite_volume.md",
     "Spatial operators" => "numerical_implementation/spatial_operators.md",
+    "Pressure decomposition" => "numerical_implementation/pressure_decomposition.md",
+    "Time stepping" => "numerical_implementation/time_stepping.md",
     "Boundary conditions" => "numerical_implementation/boundary_conditions.md",
     "Poisson solvers" => "numerical_implementation/poisson_solvers.md",
     "Large eddy simulation" => "numerical_implementation/large_eddy_simulation.md"
