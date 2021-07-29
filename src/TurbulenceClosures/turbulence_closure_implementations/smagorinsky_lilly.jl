@@ -38,8 +38,8 @@ modification to the eddy viscosity.
 Keyword arguments
 =================
     - `C`  : Smagorinsky constant. Default value is 0.16 as obtained by Lilly (1966).
-    - `Cb` : Buoyancy term multipler (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
-             Typically `Cb=1/Pr`.)
+    - `Cb` : Buoyancy term multipler based on Lilly (1962) (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
+             Typically, and according to the original work by Lilly (1962), `Cb=1/Pr`.)
     - `Pr` : Turbulent Prandtl numbers for each tracer. Either a constant applied to every
              tracer, or a `NamedTuple` with fields for each tracer individually.
     - `ν`  : Constant background viscosity for momentum
