@@ -48,7 +48,7 @@ export
     # Turbulence closures
     IsotropicDiffusivity, AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
-    ConstantSmagorinsky, AnisotropicMinimumDissipation,
+    SmagorinskyLilly, ConstantSmagorinsky, AnisotropicMinimumDissipation,
     HorizontallyCurvilinearAnisotropicDiffusivity,
     ConvectiveAdjustmentVerticalDiffusivity,
 

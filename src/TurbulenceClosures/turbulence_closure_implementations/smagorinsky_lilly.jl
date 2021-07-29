@@ -18,7 +18,7 @@ struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD}
 end
 
 """
-    SmagorinskyLilly([FT=Float64;] C=0.23, Pr=1, ν=0, κ=0,
+    SmagorinskyLilly([FT=Float64;] C=0.16, Pr=1, ν=0, κ=0,
                                    time_discretization=ExplicitTimeDiscretization())
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
