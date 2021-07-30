@@ -1,6 +1,6 @@
 push!(LOAD_PATH, joinpath(@__DIR__, ".."))
 
-#using BenchmarkTools
+using Profile
 using CUDA
 using Oceananigans
 using Benchmarks
