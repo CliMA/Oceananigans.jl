@@ -92,7 +92,7 @@ end
 #####
 
 # Return ContinuousBoundaryFunction on east or west boundaries.
-@inline function (bc::ContinuousBoundaryFunction{Nothing, LY, LZ, i})(j, k, grid, clock, model_fields) where {LY, LZ, i}
+@inline function (bc::ContinuousBoundaryFunction{Nothing, LY, LZ, i})(j, k, grid, clock, model_fields, args...) where {LY, LZ, i}
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
 
     i′ = boundary_index(i)
@@ -103,7 +103,7 @@ end
 end
 
 # Return ContinuousBoundaryFunction on south or north boundaries.
-@inline function (bc::ContinuousBoundaryFunction{LX, Nothing, LZ, j})(i, k, grid, clock, model_fields) where {LX, LZ, j}
+@inline function (bc::ContinuousBoundaryFunction{LX, Nothing, LZ, j})(i, k, grid, clock, model_fields, args...) where {LX, LZ, j}
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
 
     j′ = boundary_index(j)
@@ -114,7 +114,7 @@ end
 end
 
 # Return ContinuousBoundaryFunction on bottom or top boundaries.
-@inline function (bc::ContinuousBoundaryFunction{LX, LY, Nothing, k})(i, j, grid, clock, model_fields) where {LX, LY, k}
+@inline function (bc::ContinuousBoundaryFunction{LX, LY, Nothing, k})(i, j, grid, clock, model_fields, args...) where {LX, LY, k}
     args = user_function_arguments(i, j, k, grid, model_fields, bc.parameters, bc)
 
     k′ = boundary_index(k)
