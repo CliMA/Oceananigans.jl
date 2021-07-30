@@ -7,7 +7,7 @@ pushfirst!(LOAD_PATH, @__DIR__)
 
 using Printf
 using Statistics
-using Plots
+# using Plots
 
 using Oceananigans
 using Oceananigans.Units
