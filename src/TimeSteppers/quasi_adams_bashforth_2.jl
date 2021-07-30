@@ -1,5 +1,6 @@
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
+using Oceananigans.Architectures: device_event
 
 struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
