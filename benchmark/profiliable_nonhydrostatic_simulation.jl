@@ -36,6 +36,10 @@ run!(simulation)
 
 simulation.stop_iteration += 10
 
-CUDA.@profile run!(simulation)
+if model.architecture isa GPU
+    CUDA.@profile run!(simulation)
+else
+    @profile run!(simulation)
+end
 
 @info "done profiling ($Arch, $FT, $N)"
