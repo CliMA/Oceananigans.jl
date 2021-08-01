@@ -2,77 +2,12 @@ using Oceananigans
 using Oceananigans.Units
 using Printf
 using GLMakie
+using Statistics
+
+include("coupled_atmosphere_ocean_model.jl")
 
 #####
-##### Utilities
-#####
-
-using Oceananigans.Models: AbstractModel
-
-import Oceananigans.TimeSteppers: time_step!, update_state!
-import Oceananigans: fields
-
-const ρ_atmos = 1 # kg m⁻³
-const ρ_ocean = 1024 # kg m⁻³
-
-struct CoupledAtmosphereOceanModel{O, A, C} <: AbstractModel{Nothing}
-    atmos :: A
-    ocean :: O
-    clock :: C
-end
-
-function CoupledAtmosphereOceanModel(atmos, ocean)
-    clock = atmos.clock
-    return CoupledAtmosphereOceanModel(atmos, ocean, clock)
-end
-
-fields(model::CoupledAtmosphereOceanModel) = fields(model.atmos) # convenience hack for now
-
-function update_state!(coupled_model::CoupledAtmosphereOceanModel, update_atmos_ocean_state=true)
-    atmos_model = coupled_model.atmos
-    ocean_model = coupled_model.ocean
-
-    if update_atmos_ocean_state
-        update_state!(ocean_model)
-        update_state!(atmos_model)
-    end
-
-    uo, vo, wo = ocean_model.velocities
-    ua, va, wa = atmos_model.velocities
-    atmos_grid = atmos_model.grid
-    atmos_surface_flux_u = ua.boundary_conditions.bottom.condition
-    atmos_surface_flux_v = va.boundary_conditions.bottom.condition
-    ocean_surface_flux_u = uo.boundary_conditions.top.condition
-    ocean_surface_flux_v = vo.boundary_conditions.top.condition
-
-    # Make this cleaner...
-    Nx, Ny, Nz = size(atmos_grid)
-    Hx, Hy, Hz = atmos_grid.Hx, atmos_grid.Hy, atmos_grid.Hz
-    ii = Hx+1:Hx+Nx
-    jj = 1 # Hy+1:Hy+Ny
-    k = atmos_grid.Hz+1
-    ua₁ = view(parent(ua), ii, jj, k:k)
-    va₁ = view(parent(va), ii, jj, k:k)
-
-    cᴰ = 2e-3
-    @. atmos_surface_flux_u = - cᴰ * ua₁ * sqrt(ua₁^2 + va₁^2)
-    @. atmos_surface_flux_v = - cᴰ * va₁ * sqrt(ua₁^2 + va₁^2)
-
-    @. ocean_surface_flux_u = ρ_atmos / ρ_ocean * atmos_surface_flux_u
-    @. ocean_surface_flux_v = ρ_atmos / ρ_ocean * atmos_surface_flux_v
-
-    return nothing
-end
-
-function time_step!(coupled_model::CoupledAtmosphereOceanModel, Δt; euler=false)
-    time_step!(coupled_model.ocean, Δt; euler)
-    time_step!(coupled_model.atmos, Δt; euler)
-    update_state!(coupled_model, false)
-    return nothing
-end
-
-#####
-##### Common settings
+##### Settings common to both atmos and ocean
 #####
 
 arch = CPU()
@@ -97,7 +32,7 @@ atmos_grid = RegularRectilinearGrid(size = (Nx, Nz),
                                     z = (0, Lz_atmos),
                                     topology = (Periodic, Flat, Bounded))
 
-# Store boundary fluxes in arrays
+# Store boundary fluxes in arrays (ReducedField would be even better)
 atmos_surface_flux_u = arch isa CPU ? zeros(atmos_grid.Nx, atmos_grid.Ny) : CUDA.zeros(atmos_grid.Nx, atmos_grid.Ny)
 atmos_surface_flux_v = arch isa CPU ? zeros(atmos_grid.Nx, atmos_grid.Ny) : CUDA.zeros(atmos_grid.Nx, atmos_grid.Ny)
 
@@ -107,17 +42,17 @@ atmos_u_bcs = FieldBoundaryConditions(bottom = FluxBoundaryCondition(atmos_surfa
 
 atmos_v_bcs = FieldBoundaryConditions(bottom = FluxBoundaryCondition(atmos_surface_flux_v))
 
-atmos_equation_of_state = LinearEquationOfState(α=2e-4)
+atmos_equation_of_state = LinearEquationOfState(α = 2e-4)
      
 atmos_model = NonhydrostaticModel(architecture = arch,
                                   grid = atmos_grid,
                                   timestepper = :RungeKutta3,
                                   advection = UpwindBiasedFifthOrder(),
                                   boundary_conditions = (u=atmos_u_bcs, v=atmos_v_bcs),
-                                  closure = IsotropicDiffusivity(ν=1e-2, κ=1e-2),
+                                  closure = IsotropicDiffusivity(ν=1e-3, κ=1e-3),
                                   coriolis = coriolis,
                                   tracers = :T,
-                                  buoyancy = SeawaterBuoyancy(constant_salinity=true,
+                                  buoyancy = SeawaterBuoyancy(constant_salinity = true,
                                                               equation_of_state = atmos_equation_of_state))
 
 uᵢ(x, y, z) = U₀ * (1 + 1e-3 * randn())
@@ -163,7 +98,9 @@ ocean_model = NonhydrostaticModel(architecture = arch,
 
 coupled_model = CoupledAtmosphereOceanModel(atmos_model, ocean_model)
 
-simulation = Simulation(coupled_model, Δt=1, stop_time=12hours)
+simulation = Simulation(coupled_model, Δt=1.0, stop_time=12hours)
+
+# Progress logging callback
 
 function print_progress(sim)
     uo, vo, wo = sim.model.ocean.velocities
@@ -171,27 +108,55 @@ function print_progress(sim)
     iter = sim.model.clock.iteration
     time = sim.model.clock.time
 
-    msg = @sprintf("Iter: %d, time: % 20s, uo: (%.3e, %.3e), wo: (%.3e, %.3e), ua: (%.3e, %.3e), wa: (%.3e, %.3e)",
-                   iter, prettytime(time),
-                   minimum(uo), maximum(uo),
-                   minimum(wo), maximum(wo),
-                   minimum(ua), maximum(ua),
-                   minimum(wa), maximum(wa))
+    atmos_surface_flux_u = ua.boundary_conditions.bottom.condition
+    ocean_surface_flux_u = uo.boundary_conditions.top.condition
 
-    @info msg
+    msg1 = @sprintf("Iter: % 5d, time: % 14s, next Δt: % 14s, <τₓ> (atmos, ocean): (%.2e, %.2e), ",
+                    iter,
+                    prettytime(time),
+                    prettytime(sim.Δt),
+                    mean(atmos_surface_flux_u),
+                    mean(ocean_surface_flux_u))
+
+    msg2 = @sprintf("uo: (%.2e, %.2e), wo: (%.2e, %.2e), ua: (%.2e, %.2e), wa: (%.2e, %.2e)",
+                    minimum(uo), maximum(uo),
+                    minimum(wo), maximum(wo),
+                    minimum(ua), maximum(ua),
+                    minimum(wa), maximum(wa))
+
+    @info msg1 * msg2
 
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(print_progress, schedule=IterationInterval(10))
+# Adaptive time-stepping callback
 
-simulation.output_writers[:atmos] = JLD2OutputWriter(atmos_model, merge(atmos_model.velocities, atmos_model.tracers),
+using Oceananigans.Simulations: update_Δt!
+
+wizard = TimeStepWizard(cfl=0.7, Δt=1second) 
+
+function update_simulation_Δt!(sim)
+    update_Δt!(wizard, sim.model.atmos) # use atmos to set Δt
+    sim.Δt = wizard.Δt
+    return nothing
+end
+
+simulation.callbacks[:progress] = Callback(print_progress, schedule=IterationInterval(100))
+simulation.callbacks[:wizard] = Callback(update_simulation_Δt!, schedule=IterationInterval(10))
+
+#####
+##### Output
+#####
+
+simulation.output_writers[:atmos] = JLD2OutputWriter(atmos_model,
+                                                     merge(atmos_model.velocities, atmos_model.tracers),
                                                      schedule = TimeInterval(10minutes),
                                                      prefix = "coupled_model_atmos",
                                                      force = true,
                                                      field_slicer = nothing)
 
-simulation.output_writers[:ocean] = JLD2OutputWriter(ocean_model, merge(ocean_model.velocities, ocean_model.tracers),
+simulation.output_writers[:ocean] = JLD2OutputWriter(ocean_model,
+                                                     merge(ocean_model.velocities, ocean_model.tracers),
                                                      schedule = TimeInterval(10minutes),
                                                      prefix = "coupled_model_ocean",
                                                      force = true,
@@ -232,5 +197,5 @@ record(fig, "coupled_model.mp4", 1:length(u_ocean.times); framerate = 8) do save
     n[] = save_point
 end
 
-display(fig)
+# display(fig)
 
