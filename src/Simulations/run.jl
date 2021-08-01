@@ -65,9 +65,6 @@ get_Δt(Δt) = Δt
 get_Δt(wizard::TimeStepWizard) = wizard.Δt
 get_Δt(simulation::Simulation) = get_Δt(simulation.Δt)
 
-ab2_or_rk3_time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler) = time_step!(model, Δt, euler=euler)
-ab2_or_rk3_time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; euler) = time_step!(model, Δt)
-
 we_want_to_pickup(pickup::Bool) = pickup
 we_want_to_pickup(pickup) = true
 
@@ -158,7 +155,7 @@ function run!(sim; pickup=false, callbacks=[])
         # Evaluate all diagnostics, and then write all output at first iteration
         if clock.iteration == 0
             [run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
-            [write_output!(writer, sim.model) for writer in values(sim.output_writers)]
+            [write_output!(writer)            for writer in values(sim.output_writers)]
             [callback(sim) for callback in values(sim.callbacks)]
         end
 
@@ -177,11 +174,11 @@ function run!(sim; pickup=false, callbacks=[])
             end
 
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
-            ab2_or_rk3_time_step!(model, Δt, euler=euler)
+            time_step!(model, Δt, euler=euler)
 
             # Run diagnostics, then write output
-            [  diag.schedule(model)   && run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
-            [writer.schedule(model)   && write_output!(writer, sim.model) for writer in values(sim.output_writers)]
+            [    diag.schedule(model) && run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
+            [  writer.schedule(model) && write_output!(writer)            for writer in values(sim.output_writers)]
             [callback.schedule(model) && callback(sim)                    for callback in values(sim.callbacks)]
         end
 

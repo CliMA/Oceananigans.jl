@@ -11,11 +11,12 @@ default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
 """
-    JLD2OutputWriter{I, T, O, IF, IN, KW} <: AbstractOutputWriter
+    JLD2OutputWriter{M, O, T, FS, D, IF, IN, KW} <: AbstractOutputWriter
 
 An output writer for writing to JLD2 files.
 """
-mutable struct JLD2OutputWriter{O, T, FS, D, IF, IN, KW} <: AbstractOutputWriter
+mutable struct JLD2OutputWriter{M, O, T, FS, D, IF, IN, KW} <: AbstractOutputWriter
+                 model :: M
               filepath :: String
                outputs :: O
               schedule :: T
@@ -199,13 +200,14 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
                  Could not initialize $filepath."""
     end
 
-    return JLD2OutputWriter(filepath, outputs, schedule, field_slicer,
+    return JLD2OutputWriter(model, filepath, outputs, schedule, field_slicer,
                             array_type, init, including, part, max_filesize,
                             force, verbose, jld2_kw)
 end
 
-function write_output!(writer::JLD2OutputWriter, model)
+function write_output!(writer::JLD2OutputWriter)
 
+    model = writer.model
     verbose = writer.verbose
 
     # Fetch JLD2 output and store in dictionary `data`

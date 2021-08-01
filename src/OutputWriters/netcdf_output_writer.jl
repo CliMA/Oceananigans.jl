@@ -114,9 +114,10 @@ end
 """
     NetCDFOutputWriter{D, O, I, T, S} <: AbstractOutputWriter
 
-An output writer for writing to NetCDF files.
+An output writer for writing model data to NetCDF files.
 """
-mutable struct NetCDFOutputWriter{D, O, T, S, A} <: AbstractOutputWriter
+mutable struct NetCDFOutputWriter{D, O, T, S, A, M} <: AbstractOutputWriter
+           model :: M
         filepath :: String
          dataset :: D
          outputs :: O
@@ -355,7 +356,7 @@ function NetCDFOutputWriter(model, outputs; filepath, schedule,
 
     close(dataset)
 
-    return NetCDFOutputWriter(filepath, dataset, outputs, schedule, mode, field_slicer, array_type, 0.0, verbose)
+    return NetCDFOutputWriter(model, filepath, dataset, outputs, schedule, mode, field_slicer, array_type, 0.0, verbose)
 end
 
 #####
@@ -429,12 +430,13 @@ function save_output!(ds, output::LagrangianParticles, model, ow, time_index, na
 end
 
 """
-    write_output!(output_writer, model)
+    write_output!(output_writer)
 
 Writes output to netcdf file `output_writer.filepath` at specified intervals. Increments the `time` dimension
 every time an output is written to the file.
 """
-function write_output!(ow::NetCDFOutputWriter, model)
+function write_output!(ow::NetCDFOutputWriter)
+    model = ow.model
     ow.dataset = open(ow)
 
     ds, verbose, filepath = ow.dataset, ow.verbose, ow.filepath

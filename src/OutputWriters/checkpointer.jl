@@ -3,7 +3,8 @@ import Oceananigans.Fields: set!
 
 using Oceananigans.Fields: offset_data
 
-mutable struct Checkpointer{T, P} <: AbstractOutputWriter
+mutable struct Checkpointer{M, T, P} <: AbstractOutputWriter
+         model :: M
       schedule :: T
            dir :: String
         prefix :: String
@@ -93,7 +94,7 @@ function Checkpointer(model; schedule,
 
     mkpath(dir)
 
-    return Checkpointer(schedule, dir, prefix, properties, force, verbose, cleanup)
+    return Checkpointer(model, schedule, dir, prefix, properties, force, verbose, cleanup)
 end
 
 #####
@@ -153,7 +154,8 @@ end
 ##### Writing checkpoints
 #####
 
-function write_output!(c::Checkpointer, model)
+function write_output!(c::Checkpointer)
+    model = c.model
     filepath = checkpoint_path(model.clock.iteration, c)
     c.verbose && @info "Checkpointing to file $filepath..."
 
