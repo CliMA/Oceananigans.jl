@@ -165,8 +165,9 @@ function run!(sim; pickup=false, callbacks=[])
         for n in 1:iterations
             clock.time >= sim.stop_time && break
 
-            # Temporary fix for https://github.com/CliMA/Oceananigans.jl/issues/1280
             aligned_Δt = aligned_time_step(sim)
+
+            # Temporary fix for https://github.com/CliMA/Oceananigans.jl/issues/1280
             if aligned_Δt <= 0
                 Δt = get_Δt(sim)
             else
