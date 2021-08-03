@@ -210,9 +210,10 @@ uuid = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
 version = "0.4.13"
 
 [[JLLWrappers]]
-git-tree-sha1 = "a431f5f2ca3f4feef3bd7a5e94b8b8d4f2f647a0"
+deps = ["Preferences"]
+git-tree-sha1 = "642a199af8b68253517b80bd3bfd17eb4e84df6e"
 uuid = "692b3bcd-3c85-4b1f-b108-f13ce0eb3210"
-version = "1.2.0"
+version = "1.3.0"
 
 [[JSON3]]
 deps = ["Dates", "Mmap", "Parsers", "StructTypes", "UUIDs"]
@@ -282,9 +283,9 @@ version = "2021.1.1+1"
 
 [[MPI]]
 deps = ["Distributed", "DocStringExtensions", "Libdl", "MPICH_jll", "MicrosoftMPI_jll", "OpenMPI_jll", "Pkg", "Random", "Requires", "Serialization", "Sockets"]
-git-tree-sha1 = "714909d6b8dd4287bdf1a21ae1ffe3da1a873ace"
+git-tree-sha1 = "e4549a5ced642a73bd8ba2dd1d3b1d30b3530d94"
 uuid = "da04e1cc-30fd-572f-bb4f-1f8673147195"
-version = "0.18.0"
+version = "0.19.0"
 
 [[MPICH_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
