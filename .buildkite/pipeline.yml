@@ -5,6 +5,7 @@ env:
   TARTARUS_HOME: "/storage5/buildkite-agent"
   GKSwstype: "100" # See: https://github.com/jheinen/GR.jl/issues/278
   JULIA_MPI_BINARY: "OpenMPI_jll"
+  JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
 
 steps:
   - label: "🎪 initialize gpu environment"
