@@ -4,7 +4,6 @@ env:
   SVERDRUP_HOME: "/data5/glwagner"
   TARTARUS_HOME: "/storage5/buildkite-agent"
   GKSwstype: "100" # See: https://github.com/jheinen/GR.jl/issues/278
-  JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
 
 steps:
   - label: "🎪 initialize gpu environment"
@@ -38,6 +37,7 @@ steps:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
       TEST_GROUP: "init"
       CUDA_VISIBLE_DEVICES: "-1"
+      JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
     commands:
       # Download julia binaries
       - "wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
@@ -308,6 +308,7 @@ steps:
       TEST_GROUP: "distributed"
       CUDA_VISIBLE_DEVICES: "-1"
       PATH: "$PATH:$TARTARUS_HOME/julia-$JULIA_VERSION/bin" # Need julia binary in $PATH for mpiexecjl to work.
+      JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
     commands:
       - "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER/bin/mpiexecjl -np 4 $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
