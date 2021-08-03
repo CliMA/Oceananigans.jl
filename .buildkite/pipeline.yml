@@ -307,8 +307,8 @@ steps:
       TEST_GROUP: "distributed"
       CUDA_VISIBLE_DEVICES: "-1"
     commands:
-      - "PATH=$PATH:$TARTARUS_HOME/julia-$JULIA_VERSION/bin"  # Need julia binary in $PATH for mpiexecjl to work.
-      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.build("MPI")'"
+      - "PATH=$PATH:$TARTARUS_HOME/julia-$JULIA_VERSION/bin" # Need julia binary in $PATH for mpiexecjl to work.
+      - "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.build(\"MPI\")'"
       - "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER/bin/mpiexecjl -np 4 $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       queue: Oceananigans
