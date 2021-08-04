@@ -100,7 +100,7 @@ function TKEBasedVerticalDiffusivity(FT=Float64;
                                      dissipation_parameter = 2.91,
                                      mixing_length_parameter = 1.16,
                                      surface_model = TKESurfaceFlux{FT}(),
-                                     time_discretization::TD = ExplicitTimeDiscretization()) where TD
+                                     time_discretization::TD = VerticallyImplicitTimeDiscretization()) where TD
 
     @warn "TKEBasedVerticalDiffusivity is an experimental turbulence closure that \n" *
           "is unvalidated and whose default parameters are not calibrated for \n" * 
