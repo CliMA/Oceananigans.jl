@@ -5,7 +5,9 @@ using Oceananigans.Units
 using Oceananigans.TimeSteppers: time_step!
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, TKEBasedVerticalDiffusivity
 
+using Profile
 using StatProfilerHTML
+using BenchmarkTools
 
 grid = RegularRectilinearGrid(size=64, z=(-64, 0), topology=(Flat, Flat, Bounded))
 
@@ -39,6 +41,9 @@ end
 
 @info "Running one time-step..."
 nsteps!(model, 1) # warmup
+
+@info "Benchmarking..."
+@btime time_step!(model, 1e-9)
 
 n = 100
 @info "Profiling $n time-steps..."
