@@ -33,6 +33,23 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
     return nothing
 end
 
+function calculate_free_surface_tendency!(arch, grid, model, dependencies)
+
+    Gη_event = launch!(arch, grid, :xy,
+                       calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
+                       grid,
+                       model.velocities,
+                       model.free_surface,
+                       model.tracers,
+                       model.auxiliary_fields,
+                       model.forcing,
+                       model.clock;
+                       dependencies = dependencies)
+
+    return Gη_event
+end
+    
+
 """ Calculate momentum tendencies if momentum is not prescribed. `velocities` argument eases dispatch on `PrescribedVelocityFields`."""
 function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependencies = device_event(model))
 
@@ -61,16 +78,7 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
                        calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, momentum_kernel_args...;
                        dependencies = dependencies)
 
-    Gη_event = launch!(arch, grid, Val(:xy),
-                       calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
-                       grid,
-                       model.velocities,
-                       model.free_surface,
-                       model.tracers,
-                       model.auxiliary_fields,
-                       model.forcing,
-                       model.clock;
-                       dependencies = dependencies)
+    Gη_event = calculate_free_surface_tendency!(arch, grid, model, dependencies)
 
     events = [Gu_event, Gv_event, Gη_event]
 

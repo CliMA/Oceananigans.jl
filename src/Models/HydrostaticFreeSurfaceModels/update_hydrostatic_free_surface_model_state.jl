@@ -1,4 +1,5 @@
 using Oceananigans.Architectures
+using Oceananigans.Architectures: device_event
 using Oceananigans.BoundaryConditions
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
@@ -41,10 +42,17 @@ function update_state!(model::HydrostaticFreeSurfaceModel)
 
     fill_halo_regions!(model.diffusivity_fields, model.architecture, model.clock, fields(model))
 
+    calculate_hydrostatic_pressure!(model, model.grid)
+
+    return nothing
+end
+
+function calculate_hydrostatic_pressure!(model, grid)
+
     # Calculate hydrostatic pressure
-    pressure_calculation = launch!(model.architecture, model.grid, Val(:xy), update_hydrostatic_pressure!,
+    pressure_calculation = launch!(model.architecture, model.grid, :xy, update_hydrostatic_pressure!,
                                    model.pressure.pHY′, model.grid, model.buoyancy, model.tracers,
-                                   dependencies=Event(device(model.architecture)))
+                                   dependencies=device_event(model.architecture))
 
     # Fill halo regions for pressure
     wait(device(model.architecture), pressure_calculation)
