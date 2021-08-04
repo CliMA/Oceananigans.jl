@@ -39,7 +39,11 @@ simulation.stop_iteration += 10
 if model.architecture isa GPU
     CUDA.@profile run!(simulation)
 else
+    Profile.clear()
     @profile run!(simulation)
+    open("nonhydrostatic_profile.txt", "w") do io
+        Profile.print(IOContext(io, :displaysize => (1000, 350)), format=:flat, sortedby=:count)
+    end
 end
 
 @info "done profiling ($Arch, $FT, $N)"
