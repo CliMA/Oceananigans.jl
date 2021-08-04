@@ -296,8 +296,8 @@ function add_closure_specific_boundary_conditions(closure::TKEVD,
     top_tke_bc = FluxBoundaryCondition(top_tke_flux, discrete_form=true, parameters=parameters)
 
     if :e ∈ keys(user_bcs)
-        @warn "Replacing top boundary conditions for tracer `e` with " *
-              "boundary condition specific to $(typeof(closure).name.wrapper)"
+        # @warn "Replacing top boundary conditions for tracer `e` with " *
+        #       "boundary condition specific to $(typeof(closure).name.wrapper)"
 
         e_bcs = user_bcs[:e]
         
