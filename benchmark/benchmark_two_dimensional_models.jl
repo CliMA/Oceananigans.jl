@@ -1,4 +1,4 @@
-pushfirst!(LOAD_PATH, joinpath(@__DIR__, ".."))
+#pushfirst!(LOAD_PATH, joinpath(@__DIR__, ".."))
 
 using Oceananigans
 using Oceananigans: short_show
@@ -30,11 +30,12 @@ model_kwargs = (architecture = arch,
 grids = [xy_grid, xz_grid, yz_grid]
 models = [NonhydrostaticModel(; grid = grid, model_kwargs...) for grid in grids]
 xy_model, xz_model, yz_model = models
-                              
     
 for model in models
     time_step!(model, 1e-6) # warmup
 end
 
-# @info "Benchmarking model with $(short_show(grid))..."
-# @btime nsteps!($model, 100)
+for model in models
+    @info "Benchmarking model with $(short_show(model.grid))..."
+    @btime nsteps!($model, 100)
+end
