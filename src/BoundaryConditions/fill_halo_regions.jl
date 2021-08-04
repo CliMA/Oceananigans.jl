@@ -89,9 +89,9 @@ function fill_halo_regions!(c::OffsetArray, bcs, arch, grid, args...; kwargs...)
 
     barrier = device_event(arch)
 
-    west_event, east_event   = fill_west_and_east_halo!(c,   bcs.west,   bcs.east,  arch, barrier, grid, args...; kwargs...)
-    south_event, north_event = fill_south_and_north_halo!(c, bcs.south,  bcs.north, arch, barrier, grid, args...; kwargs...)
-    bottom_event, top_event  = fill_bottom_and_top_halo!(c,  bcs.bottom, bcs.top,   arch, barrier, grid, args...; kwargs...)
+    bt_events = fill_bottom_and_top_halo!(c,  bcs.bottom, bcs.top,   arch, device_event(arch), grid, args...; kwargs...)
+    sn_events = fill_south_and_north_halo!(c, bcs.south,  bcs.north, arch, south_north_events, grid, args...; kwargs...)
+    we_events = fill_west_and_east_halo!(c,   bcs.west,   bcs.east,  arch, west_east_events, grid, args...; kwargs...)
 
     # Wait at the end
     events = (west_event, east_event, south_event, north_event, bottom_event, top_event)
