@@ -1,11 +1,14 @@
 using KernelAbstractions: NoneEvent
 using OffsetArrays: OffsetArray
 
+using Oceananigans.Operators: Δzᵃᵃᶜ
+using Oceananigans.BoundaryConditions: left_gradient, right_gradient, linearly_extrapolate, FBC, VBC, GBC
+using Oceananigans.BoundaryConditions: fill_bottom_halo!, fill_top_halo!, apply_z_bottom_bc!, apply_z_top_bc!
 using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Architectures: device_event
 
-using Oceananigans.BoundaryConditions: fill_bottom_halo!, fill_top_halo!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.Utils: launch!
 
 #####
 ##### Implements a "single column model mode" for HydrostaticFreeSurfaceModel
@@ -31,17 +34,33 @@ validate_tracer_advection(tracer_advection::Nothing, ::SingleColumnGrid) = nothi
 
 calculate_free_surface_tendency!(arch, ::SingleColumnGrid, args...) = NoneEvent()
 
-function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, grid::SingleColumnGrid, arch, velocities, free_surface, tracers, args...)
+@inline function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ,
+                                                                        grid::SingleColumnGrid,
+                                                                        arch::CPU,
+                                                                        velocities,
+                                                                        free_surface,
+                                                                        tracers,
+                                                                        args...)
 
     prognostic_field_names = tuple(:u, :v, propertynames(tracers)...)
     prognostic_fields = merge(velocities, tracers)
-    barrier = device_event(arch)
 
-    # Only apply z bcs
-    events = Tuple(apply_z_bcs!(Gⁿ[i], prognostic_fields[i], arch, barrier, args...) for i in prognostic_field_names)
+    for name in prognostic_field_names
+        @inbounds begin
+            Gcⁿ = Gⁿ[name]
+            c = prognostic_fields[name]
+        end
+        loc = (L() for L in location(c))
+        apply_scm_z_bcs!(Gcⁿ, grid, c.boundary_conditions.bottom, c.boundary_conditions.top, loc, args...)
+    end
 
-    wait(device(arch), MultiEvent(events))
+    return nothing
+end
 
+@inline function apply_scm_z_bcs!(Gc, grid, bottom_bc, top_bc, loc, args...)
+    i = j = 1
+    apply_z_bottom_bc!(Gc, loc, bottom_bc, i, j, grid, args...)
+       apply_z_top_bc!(Gc, loc, top_bc,    i, j, grid, args...)
     return nothing
 end
 
@@ -79,8 +98,6 @@ function fill_halo_regions!(c::OffsetArray, bcs, arch::CPU, grid::SingleColumnGr
     return nothing
 end
 
-using Oceananigans.Operators: Δzᵃᵃᶜ
-using Oceananigans.BoundaryConditions: left_gradient, right_gradient, linearly_extrapolate, FBC, VBC, GBC
     
 @inline fill_scm_bottom_halo!(c, grid, ::FBC, args...) = @inbounds c[1, 1, 0] = c[1, 1, 1]
 @inline fill_scm_top_halo!(c, grid, ::FBC, args...) = @inbounds c[1, 1, grid.Nz+1] = c[1, 1, grid.Nz]
@@ -112,4 +129,16 @@ end
     @inbounds c[i, j, kᴴ] = linearly_extrapolate(c[i, j, kᴵ], ∇c, -Δ) # extrapolate downward in -z direction.
 
     return nothing
+end
+
+@inline function launch!(arch::CPU, grid::SingleColumnGrid, dims, kernel!, args...;
+                         dependencies = nothing,
+                         include_right_boundaries = false,
+                         location = nothing)
+
+    workgroup = (1, 1, grid.Nz)
+    worksize = (1, 1, grid.Nz)
+    loop! = kernel!(Architectures.device(arch), workgroup, worksize)
+    event = loop!(args...; dependencies)
+    return event
 end
