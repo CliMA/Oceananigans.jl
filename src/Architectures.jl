@@ -2,7 +2,7 @@ module Architectures
 
 export AbstractArchitecture, AbstractCPUArchitecture, AbstractGPUArchitecture
 export CPU, GPU
-export device, architecture, array_type, arch_array
+export device, device_event, architecture, array_type, arch_array
 
 using CUDA
 using KernelAbstractions

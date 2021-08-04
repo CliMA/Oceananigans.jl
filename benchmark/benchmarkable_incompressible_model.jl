@@ -1,4 +1,4 @@
-push!(LOAD_PATH, joinpath(@__DIR__, ".."))
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, ".."))
 
 using BenchmarkTools
 using CUDA

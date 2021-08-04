@@ -29,7 +29,7 @@ function update_state!(model::NonhydrostaticModel)
     # Calculate hydrostatic pressure
     pressure_calculation = launch!(model.architecture, model.grid, :xy, update_hydrostatic_pressure!,
                                    model.pressures.pHY′, model.grid, model.buoyancy, model.tracers,
-                                   dependencies=Event(device(model.architecture)))
+                                   dependencies=device_event(model.architecture))
 
     # Fill halo regions for pressure
     wait(device(model.architecture), pressure_calculation)
