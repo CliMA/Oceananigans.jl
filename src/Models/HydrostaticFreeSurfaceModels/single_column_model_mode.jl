@@ -92,7 +92,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
 end
 
 @inline function fill_halo_regions!(c::OffsetArray, bcs, arch::CPU, grid::SingleColumnGrid, args...; kwargs...)
-    #wait(device(arch), device_event(arch))
     fill_scm_bottom_halo!(c, grid, bcs.bottom, args...)
     fill_scm_top_halo!(c, grid, bcs.top, args...)
     return nothing
