@@ -7,13 +7,17 @@ using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
 import Oceananigans.TimeSteppers: update_state!
 
+compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
+
 """
     update_state!(model::HydrostaticFreeSurfaceModel)
 
 Update peripheral aspects of the model (auxiliary fields, halo regions, diffusivities,
 hydrostatic pressure) to the current model state.
 """
-function update_state!(model::HydrostaticFreeSurfaceModel)
+update_state!(model::HydrostaticFreeSurfaceModel) = update_state!(model, model.grid)
+
+function update_state!(model::HydrostaticFreeSurfaceModel, grid)
 
     # Mask immersed fields
     masking_events = Tuple(mask_immersed_field!(field) for field in merge(model.auxiliary_fields, prognostic_fields(model)))
@@ -31,23 +35,13 @@ function update_state!(model::HydrostaticFreeSurfaceModel)
 
     fill_halo_regions!(model.velocities.w, model.architecture, model.clock, fields(model))
 
-    # Compute auxiliary fields
-    for aux_field in model.auxiliary_fields
-        compute!(aux_field)
-    end
+    compute_auxiliary_fields!(model.auxiliary_fields)
 
     # Calculate diffusivities
     calculate_diffusivities!(model.diffusivity_fields, model.architecture, model.grid, model.closure,
                              model.buoyancy, model.velocities, model.tracers)
 
     fill_halo_regions!(model.diffusivity_fields, model.architecture, model.clock, fields(model))
-
-    calculate_hydrostatic_pressure!(model, model.grid)
-
-    return nothing
-end
-
-function calculate_hydrostatic_pressure!(model, grid)
 
     # Calculate hydrostatic pressure
     pressure_calculation = launch!(model.architecture, model.grid, :xy, update_hydrostatic_pressure!,

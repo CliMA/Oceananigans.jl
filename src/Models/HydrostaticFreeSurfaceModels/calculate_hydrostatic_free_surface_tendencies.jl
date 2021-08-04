@@ -21,6 +21,7 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
     calculate_hydrostatic_boundary_tendency_contributions!(model.timestepper.Gⁿ,
+                                                           model.grid,
                                                            model.architecture,
                                                            model.velocities,
                                                            model.free_surface,
@@ -185,7 +186,7 @@ function apply_flux_bcs!(Gcⁿ, events, c, arch, barrier, args...)
 end
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velocities, free_surface, tracers, args...)
+function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, grid, arch, velocities, free_surface, tracers, args...)
 
     barrier = device_event(arch)
 
