@@ -34,6 +34,8 @@ validate_tracer_advection(tracer_advection::Nothing, ::SingleColumnGrid) = nothi
 
 calculate_free_surface_tendency!(arch, ::SingleColumnGrid, args...) = NoneEvent()
 
+# Fast flux calculation
+
 @inline function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ,
                                                                         grid::SingleColumnGrid,
                                                                         arch::CPU,
@@ -64,9 +66,10 @@ end
     return nothing
 end
 
+# Fast state update and halo filling
+
 function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid)
 
-    # Fill halos for velocities and tracers. On the CubedSphere, the halo filling for velocity fields is wrong.
     fill_halo_regions!(prognostic_fields(model), model.architecture, model.clock, fields(model))
 
     compute_auxiliary_fields!(model.auxiliary_fields)
@@ -88,16 +91,12 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     return nothing
 end
 
-function fill_halo_regions!(c::OffsetArray, bcs, arch::CPU, grid::SingleColumnGrid, args...; kwargs...)
-
-    wait(device(arch), device_event(arch))
-
+@inline function fill_halo_regions!(c::OffsetArray, bcs, arch::CPU, grid::SingleColumnGrid, args...; kwargs...)
+    #wait(device(arch), device_event(arch))
     fill_scm_bottom_halo!(c, grid, bcs.bottom, args...)
     fill_scm_top_halo!(c, grid, bcs.top, args...)
-
     return nothing
 end
-
     
 @inline fill_scm_bottom_halo!(c, grid, ::FBC, args...) = @inbounds c[1, 1, 0] = c[1, 1, 1]
 @inline fill_scm_top_halo!(c, grid, ::FBC, args...) = @inbounds c[1, 1, grid.Nz+1] = c[1, 1, grid.Nz]
@@ -105,6 +104,7 @@ end
 @inline function fill_scm_top_halo!(c, grid, bc::Union{VBC, GBC}, args...)
     i = j = 1
 
+                     #  ↑ z ↑
     kᴴ = grid.Nz + 1 #    *    halo cell
     kᴮ = grid.Nz + 1 #  =====  top boundary 
     kᴵ = grid.Nz     #    *    interior cell
@@ -115,10 +115,9 @@ end
 end
 
 @inline function fill_scm_bottom_halo!(c, grid, bc::Union{VBC, GBC}, args...)
-
     i = j = 1
 
-        #  ↑ z ↑  interior
+           #  ↑ z ↑  interior
            #  -----  interior face
     kᴵ = 1 #    *    interior cell
     kᴮ = 1 #  =====  bottom boundary
@@ -130,6 +129,8 @@ end
 
     return nothing
 end
+
+# Fast kernel launching... ?
 
 @inline function launch!(arch::CPU, grid::SingleColumnGrid, dims, kernel!, args...;
                          dependencies = nothing,
