@@ -4,80 +4,88 @@ using Plots
 using Printf
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity, TKESurfaceFlux
-using Oceananigans.TurbulenceClosures: RiDependentDiffusivityScaling
+using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: TKESurfaceFlux, RiDependentDiffusivityScaling
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: EnsembleSize
 
-Nz = 16
+Nz = 64
 Ex, Ey = (1, 3)
 sz = EnsembleSize(Nz=Nz, ensemble=(Ex, Ey))
-ensemble_grid = RegularRectilinearGrid(size=sz, halo=EnsembleSize(Nz=1), z=(-64, 0), topology=(Flat, Flat, Bounded))
-scm_grid = RegularRectilinearGrid(size=Nz, halo=1, z=(-64, 0), topology=(Flat, Flat, Bounded))
+
+ensemble_grid = RegularRectilinearGrid(size = sz,
+                                       halo = EnsembleSize(Nz=1),
+                                       z = (-128, 0),
+                                       topology = (Flat, Flat, Bounded))
 
 default_closure = TKEBasedVerticalDiffusivity()
-
 closure_ensemble = [default_closure for i = 1:Ex, j = 1:Ey]
 
-Qᵇ = 1e-8
-Qᵇ_ensemble = [1e-8 for i = 1:Ex, j = 1:Ey]
+Qᵇ = 1e-7
+Qᵇ_ensemble = [Qᵇ for i = 1:Ex, j = 1:Ey]
 
-closure_ensemble[1, 2] = TKEBasedVerticalDiffusivity(surface_model=TKESurfaceFlux(CᵂwΔ=3.0))
-closure_ensemble[1, 3] = TKEBasedVerticalDiffusivity(surface_model=TKESurfaceFlux(CᵂwΔ=10.0))
+diffusivity_scaling = RiDependentDiffusivityScaling(Cᴷc⁻=1.0)
+
+closure_ensemble[1, 1] = TKEBasedVerticalDiffusivity(diffusivity_scaling=diffusivity_scaling, mixing_length_parameter=0.0)
+closure_ensemble[1, 2] = TKEBasedVerticalDiffusivity(diffusivity_scaling=diffusivity_scaling, mixing_length_parameter=2.0)
+closure_ensemble[1, 3] = TKEBasedVerticalDiffusivity(diffusivity_scaling=diffusivity_scaling, mixing_length_parameter=4.0)
                                       
-Qᵘ = 0.0
-Qᵛ = 0.0
+b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ_ensemble))
 
-u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
-v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵛ))
-ensemble_b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ_ensemble))
-b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
+model = HydrostaticFreeSurfaceModel(grid = ensemble_grid,
+                                    closure = closure_ensemble, 
+                                    boundary_conditions = (; b=b_bcs),
+                                    tracers = (:b, :e),
+                                    buoyancy = BuoyancyTracer())
 
-model_kwargs = (tracers = (:b, :e),
-                buoyancy = BuoyancyTracer())
-
-ensemble_model = HydrostaticFreeSurfaceModel(; grid = ensemble_grid, closure = closure_ensemble,       boundary_conditions = (; b=ensemble_b_bcs), model_kwargs...)
-scm_model      = HydrostaticFreeSurfaceModel(; grid = scm_grid,      closure = closure_ensemble[1, 1], boundary_conditions = (; b=b_bcs),          model_kwargs...)
-
-models = (ensemble_model, scm_model)
-                                    
 N² = 1e-5
 bᵢ(x, y, z) = N² * z
+set!(model, b = bᵢ)
 
-for model in models
-    set!(model, b = bᵢ)
+z = znodes(model.tracers.b)
+
+simulation = Simulation(model, Δt = 1minute/2, stop_time = 0.0)
+
+b = model.tracers.b
+bz = ComputedField(∂z(b))
+
+function column_bz(j)
+    compute!(bz)
+    return view(interior(bz), 1, j, :)
 end
 
-z = znodes(scm_model.tracers.b)
-
-b1 = view(interior(scm_model.tracers.b), 1, 1, :)
-
-b2 = view(interior(ensemble_model.tracers.b), 1, 1, :)
-b3 = view(interior(ensemble_model.tracers.b), 1, 2, :)
-b4 = view(interior(ensemble_model.tracers.b), 1, 3, :)
-
-Kc1 = view(interior(scm_model.diffusivity_fields.Kᶜ), 1, 1, :)
-
-Kc2 = view(interior(ensemble_model.diffusivity_fields.Kᶜ), 1, 1, :)
-Kc3 = view(interior(ensemble_model.diffusivity_fields.Kᶜ), 1, 2, :)
-Kc4 = view(interior(ensemble_model.diffusivity_fields.Kᶜ), 1, 3, :)
-
-for model in models
-    simulation = Simulation(model, Δt = 20.0, stop_iteration = 10)
+Nt = 10
+hs = zeros(Ey, Nt)
+times = zeros(Nt)
+for n = 1:Nt
+    simulation.stop_time += 4hour
     run!(simulation)
+
+    h = [-z[argmax(column_bz(j))] for j = 1:3]
+
+    hs[:, n] .= h
+    times[n] = model.clock.time
 end
 
-time = scm_model.clock.time
+b1 = view(interior(b), 1, 1, :)
+b2 = view(interior(b), 1, 2, :)
+b3 = view(interior(b), 1, 3, :)
 
-b_plot = plot(b1, z, linewidth = 2, label = @sprintf("scm t = %s", prettytime(time)), xlabel = "Buoyancy 1", ylabel = "z", legend=:bottomright)
-plot!(b_plot, b2, z, linewidth = 2, linestyle=:dash, label = @sprintf("ensemble t = %s", prettytime(time)))
-plot!(b_plot, b3, z, linewidth = 2, linestyle=:dash, label = @sprintf("ensemble t = %s", prettytime(time)))
-plot!(b_plot, b4, z, linewidth = 2, linestyle=:dash, label = @sprintf("ensemble t = %s", prettytime(time)))
+compute!(bz)
+zbz = znodes(bz)
 
-K_plot = plot(Kc1, z, linewidth = 2, linestyle=:solid, label = @sprintf("scm Kᶜ, t = %s", prettytime(time)), legend=:bottomright, xlabel="Diffusivities")
-plot!(K_plot, Kc2, z, linewidth = 2, linestyle=:dash, label = @sprintf("ensemble Kᶜ, t = %s", prettytime(time)))
-plot!(K_plot, Kc3, z, linewidth = 2, linestyle=:dash, label = @sprintf("ensemble Kᶜ, t = %s", prettytime(time)))
-plot!(K_plot, Kc4, z, linewidth = 2, linestyle=:dash, label = @sprintf("ensemble Kᶜ, t = %s", prettytime(time)))
+bz1 = view(interior(bz), 1, 1, :)
+bz2 = view(interior(bz), 1, 2, :)
+bz3 = view(interior(bz), 1, 3, :)
 
-bK_plot = plot(b_plot, K_plot, layout=(1, 2), size=(1200, 600))
+t = model.clock.time
+b_plot = plot(b1, z, linewidth = 2, label = @sprintf("b1 t = %s", prettytime(t)), xlabel = "Buoyancy", ylabel = "z", legend=:bottomright)
+plot!(b_plot, b2, z, linewidth = 2, linestyle=:dash, label = @sprintf("b2 t = %s", prettytime(t)))
+plot!(b_plot, b3, z, linewidth = 2, linestyle=:dot, label = @sprintf("b3 t = %s", prettytime(t)))
 
-display(bK_plot)
+bz_plot = plot(bz1, zbz, linewidth = 2, label = @sprintf("bz1 t = %s", prettytime(t)), xlabel = "Buoyancy", ylabel = "z", legend=:bottomright)
+plot!(bz_plot, bz2, zbz, linewidth = 2, linestyle=:dash, label = @sprintf("bz2 t = %s", prettytime(t)))
+plot!(bz_plot, bz3, zbz, linewidth = 2, linestyle=:dot, label = @sprintf("bz3 t = %s", prettytime(t)))
+
+bbz_plot = plot(b_plot, bz_plot, layout=(1, 2), size=(1200, 600))
+
+display(bbz_plot)
