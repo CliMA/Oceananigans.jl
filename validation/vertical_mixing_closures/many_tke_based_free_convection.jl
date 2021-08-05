@@ -17,6 +17,8 @@ scm_grid = RegularRectilinearGrid(size=Nz, halo=1, z=(-64, 0), topology=(Flat, F
 default_closure = TKEBasedVerticalDiffusivity()
 
 closure_ensemble = [default_closure for i = 1:Ex, j = 1:Ey]
+
+Qᵇ = 1e-8
 Qᵇ_ensemble = [1e-8 for i = 1:Ex, j = 1:Ey]
 
 closure_ensemble[1, 2] = TKEBasedVerticalDiffusivity(surface_model=TKESurfaceFlux(CᵂwΔ=3.0))
@@ -27,14 +29,14 @@ Qᵛ = 0.0
 
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵛ))
-b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ_ensemble))
+ensemble_b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ_ensemble))
+b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
 
 model_kwargs = (tracers = (:b, :e),
-                buoyancy = BuoyancyTracer(),
-                boundary_conditions = (; b=b_bcs))
+                buoyancy = BuoyancyTracer())
 
-ensemble_model = HydrostaticFreeSurfaceModel(; grid = ensemble_grid, closure = closure_ensemble, model_kwargs...)
-scm_model = HydrostaticFreeSurfaceModel(; grid = scm_grid, closure = closure_ensemble[1, 1], model_kwargs...)
+ensemble_model = HydrostaticFreeSurfaceModel(; grid = ensemble_grid, closure = closure_ensemble,       boundary_conditions = (; b=ensemble_b_bcs), model_kwargs...)
+scm_model      = HydrostaticFreeSurfaceModel(; grid = scm_grid,      closure = closure_ensemble[1, 1], boundary_conditions = (; b=b_bcs),          model_kwargs...)
 
 models = (ensemble_model, scm_model)
                                     
