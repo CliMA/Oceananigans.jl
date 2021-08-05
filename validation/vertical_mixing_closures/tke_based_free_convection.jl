@@ -5,7 +5,7 @@ using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, TKEBasedVerticalDiffusivity
 using Oceananigans.TurbulenceClosures: RiDependentDiffusivityScaling
 
-grid = RegularRectilinearGrid(size=32, z=(-64, 0), topology=(Flat, Flat, Bounded))
+grid = RegularRectilinearGrid(size=16, z=(-64, 0), topology=(Flat, Flat, Bounded))
 
 closure = TKEBasedVerticalDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization())
                                       

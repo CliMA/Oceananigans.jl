@@ -9,6 +9,7 @@ using Oceananigans.Architectures: device_event
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Utils: launch!
+import Oceananigans.Grids: validate_size, validate_halo
 
 #####
 ##### Implements a "single column model mode" for HydrostaticFreeSurfaceModel
@@ -33,38 +34,6 @@ validate_tracer_advection(tracer_advection::Nothing, ::SingleColumnGrid) = nothi
 #####
 
 calculate_free_surface_tendency!(arch, ::SingleColumnGrid, args...) = NoneEvent()
-
-# Fast flux calculation
-
-@inline function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ,
-                                                                        grid::SingleColumnGrid,
-                                                                        arch::CPU,
-                                                                        velocities,
-                                                                        free_surface,
-                                                                        tracers,
-                                                                        args...)
-
-    prognostic_field_names = tuple(:u, :v, propertynames(tracers)...)
-    prognostic_fields = merge(velocities, tracers)
-
-    for name in prognostic_field_names
-        @inbounds begin
-            Gcⁿ = Gⁿ[name]
-            c = prognostic_fields[name]
-        end
-        loc = (L() for L in location(c))
-        apply_scm_z_bcs!(Gcⁿ, grid, c.boundary_conditions.bottom, c.boundary_conditions.top, loc, args...)
-    end
-
-    return nothing
-end
-
-@inline function apply_scm_z_bcs!(Gc, grid, bottom_bc, top_bc, loc, args...)
-    i = j = 1
-    apply_z_bottom_bc!(Gc, loc, bottom_bc, i, j, grid, args...)
-       apply_z_top_bc!(Gc, loc, top_bc,    i, j, grid, args...)
-    return nothing
-end
 
 # Fast state update and halo filling
 
@@ -91,54 +60,82 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     return nothing
 end
 
-@inline function fill_halo_regions!(c::OffsetArray, bcs, arch::CPU, grid::SingleColumnGrid, args...; kwargs...)
-    fill_scm_bottom_halo!(c, grid, bcs.bottom, args...)
-    fill_scm_top_halo!(c, grid, bcs.top, args...)
-    return nothing
+import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ, calculate_diffusivities
+using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
+
+const ClosureArray = AbstractArray{<:AbstractTurbulenceClosure}
+
+@inline function ∂ⱼ_τ₁ⱼ(i, j, k, grid::SingleColumnGrid, closure_array::ClosureArray, args...)
+    @inbounds closure = closure_array[i, j]
+    return ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, args...)
+end
+
+@inline function ∂ⱼ_τ₂ⱼ(i, j, k, grid::SingleColumnGrid, closure_array::ClosureArray, args...)
+    @inbounds closure = closure_array[i, j]
+    return ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, args...)
+end
+
+@inline function ∇_dot_qᶜ(i, j, k, grid::SingleColumnGrid, closure_array::ClosureArray, c, tracer_index, args...)
+    @inbounds closure = closure_array[i, j]
+    return ∇_dot_qᶜ(i, j, k, grid, closure, c, tracer_index, args...)
 end
     
-@inline fill_scm_bottom_halo!(c, grid, ::FBC, args...) = @inbounds c[1, 1, 0] = c[1, 1, 1]
-@inline fill_scm_top_halo!(c, grid, ::FBC, args...) = @inbounds c[1, 1, grid.Nz+1] = c[1, 1, grid.Nz]
-        
-@inline function fill_scm_top_halo!(c, grid, bc::Union{VBC, GBC}, args...)
-    i = j = 1
-
-                     #  ↑ z ↑
-    kᴴ = grid.Nz + 1 #    *    halo cell
-    kᴮ = grid.Nz + 1 #  =====  top boundary 
-    kᴵ = grid.Nz     #    *    interior cell
-
-    Δ = Δzᵃᵃᶜ(i, j, kᴮ, grid) # Δ between first interior and first top halo point, defined at cell face.
-    @inbounds ∇c = right_gradient(bc, c[i, j, kᴵ], Δ, i, j, grid, args...)
-    @inbounds c[i, j, kᴴ] = linearly_extrapolate(c[i, j, kᴵ], ∇c, Δ) # extrapolate upward in +z direction.
+struct EnsembleSize{C<:Tuple{Int, Int}}
+    ensemble :: C
+    Nz :: Int
 end
 
-@inline function fill_scm_bottom_halo!(c, grid, bc::Union{VBC, GBC}, args...)
-    i = j = 1
+EnsembleSize(; Nz, ensemble=(0, 0)) = EnsembleSize(ensemble, Nz)
 
-           #  ↑ z ↑  interior
-           #  -----  interior face
-    kᴵ = 1 #    *    interior cell
-    kᴮ = 1 #  =====  bottom boundary
-    kᴴ = 0 #    *    halo cell
+validate_size(TX, TY, TZ, e::EnsembleSize) = tuple(e.ensemble[1], e.ensemble[2], e.Nz)
+validate_halo(TX, TY, TZ, e::EnsembleSize) = tuple(e.ensemble[1], e.ensemble[2], e.Nz)
 
-    Δ = Δzᵃᵃᶜ(i, j, kᴮ, grid) # Δ between first interior and first bottom halo point, defined at cell face.
-    @inbounds ∇c = left_gradient(bc, c[i, j, kᴵ], Δ, i, j, grid, args...)
-    @inbounds c[i, j, kᴴ] = linearly_extrapolate(c[i, j, kᴵ], ∇c, -Δ) # extrapolate downward in -z direction.
+ensemble_size(grid::SingleColumnGrid) = (grid.Nx, grid.Nz)
+
+import Oceananigans.TurbulenceClosures: time_discretization
+
+@inline time_discretization(::AbstractArray{<:AbstractTurbulenceClosure{TD}}) where TD = TD()
+
+#####
+##### TKEBasedVerticalDiffusivity helpers
+#####
+
+import Oceananigans.TurbulenceClosures: calculate_diffusivities!, top_tke_flux
+
+using Oceananigans.TurbulenceClosures: TKEVDArray, Kuᶜᶜᶜ, Kcᶜᶜᶜ, Keᶜᶜᶜ, _top_tke_flux
+
+function calculate_diffusivities!(diffusivities, arch, grid, closure_array::TKEVDArray, buoyancy, velocities, tracers)
+
+    event = launch!(arch, grid, :xyz,
+                    calculate_tke_diffusivities_closure_array!,
+                    diffusivities, grid, closure_array, tracers.e, velocities, tracers, buoyancy,
+                    dependencies=device_event(arch))
+
+    wait(device(arch), event)
 
     return nothing
 end
 
-# Fast kernel launching... ?
+@kernel function calculate_tke_diffusivities_closure_array!(diffusivities, grid, closure_array, e, velocities, tracers, buoyancy)
+    i, j, k, = @index(Global, NTuple)
+    @inbounds begin
+        closure = closure_array[i, j]
+        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
+        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
+        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
+    end
+end
 
-@inline function launch!(arch::CPU, grid::SingleColumnGrid, dims, kernel!, args...;
-                         dependencies = nothing,
-                         include_right_boundaries = false,
-                         location = nothing)
+#####
+##### TKE top boundary condition
+#####
 
-    workgroup = (1, 1, grid.Nz)
-    worksize = (1, 1, grid.Nz)
-    loop! = kernel!(Architectures.device(arch), workgroup, worksize)
-    event = loop!(args...; dependencies)
-    return event
+""" Compute the flux of TKE through the surface / top boundary. """
+@inline function top_tke_flux(i, j, grid, clock, fields, parameters, closure_array::TKEVDArray, buoyancy)
+    top_tracer_bcs = parameters.top_tracer_boundary_conditions
+    top_velocity_bcs = parameters.top_velocity_boundary_conditions
+    @inbounds closure = closure_array[i, j]
+
+    return _top_tke_flux(i, j, grid, closure.surface_model, closure,
+                         buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
 end
