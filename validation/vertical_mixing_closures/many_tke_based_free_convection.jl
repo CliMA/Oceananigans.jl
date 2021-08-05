@@ -6,14 +6,14 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity
 using Oceananigans.TurbulenceClosures: TKESurfaceFlux, RiDependentDiffusivityScaling
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: EnsembleSize
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 
 Nz = 64
 Ex, Ey = (1, 3)
-sz = EnsembleSize(Nz=Nz, ensemble=(Ex, Ey))
+sz = ColumnEnsembleSize(Nz=Nz, ensemble=(Ex, Ey))
 
 ensemble_grid = RegularRectilinearGrid(size = sz,
-                                       halo = EnsembleSize(Nz=1),
+                                       halo = ColumnEnsembleSize(Nz=1),
                                        z = (-128, 0),
                                        topology = (Flat, Flat, Bounded))
 

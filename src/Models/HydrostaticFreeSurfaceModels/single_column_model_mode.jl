@@ -83,17 +83,15 @@ end
     return ∇_dot_qᶜ(i, j, k, grid, closure, c, tracer_index, args...)
 end
     
-struct EnsembleSize{C<:Tuple{Int, Int}}
+struct ColumnEnsembleSize{C<:Tuple{Int, Int}}
     ensemble :: C
     Nz :: Int
 end
 
-EnsembleSize(; Nz, ensemble=(0, 0)) = EnsembleSize(ensemble, Nz)
+ColumnEnsembleSize(; Nz, ensemble=(0, 0)) = ColumnEnsembleSize(ensemble, Nz)
 
-validate_size(TX, TY, TZ, e::EnsembleSize) = tuple(e.ensemble[1], e.ensemble[2], e.Nz)
-validate_halo(TX, TY, TZ, e::EnsembleSize) = tuple(e.ensemble[1], e.ensemble[2], e.Nz)
-
-ensemble_size(grid::SingleColumnGrid) = (grid.Nx, grid.Nz)
+validate_size(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemble[2], e.Nz)
+validate_halo(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemble[2], e.Nz)
 
 @inline time_discretization(::AbstractArray{<:AbstractTurbulenceClosure{TD}}) where TD = TD()
 
@@ -103,10 +101,10 @@ ensemble_size(grid::SingleColumnGrid) = (grid.Nx, grid.Nz)
 
 using Oceananigans.TurbulenceClosures: TKEVD, Kuᶜᶜᶜ, Kcᶜᶜᶜ, Keᶜᶜᶜ, _top_tke_flux, TKEVDArray
 
-function calculate_diffusivities!(diffusivities, arch, grid, closure_array::TKEVDArray, buoyancy, velocities, tracers)
+function calculate_diffusivities!(diffusivities, arch, grid::SingleColumnGrid, closure_array::TKEVDArray, buoyancy, velocities, tracers)
 
     event = launch!(arch, grid, :xyz,
-                    calculate_tke_diffusivities_closure_array!,
+                    calculate_tke_diffusivities_scm_ensemble!,
                     diffusivities, grid, closure_array, tracers.e, velocities, tracers, buoyancy,
                     dependencies=device_event(arch))
 
@@ -115,7 +113,7 @@ function calculate_diffusivities!(diffusivities, arch, grid, closure_array::TKEV
     return nothing
 end
 
-@kernel function calculate_tke_diffusivities_closure_array!(diffusivities, grid, closure_array, e, velocities, tracers, buoyancy)
+@kernel function calculate_tke_diffusivities_scm_ensemble!(diffusivities, grid, closure_array, e, velocities, tracers, buoyancy)
     i, j, k, = @index(Global, NTuple)
     @inbounds begin
         closure = closure_array[i, j]
@@ -129,7 +127,7 @@ end
     hydrostatic_turbulent_kinetic_energy_tendency
 
 """ Compute the flux of TKE through the surface / top boundary. """
-@inline function top_tke_flux(i, j, grid, clock, fields, parameters, closure_array::TKEVDArray, buoyancy)
+@inline function top_tke_flux(i, j, grid::SingleColumnGrid, clock, fields, parameters, closure_array::TKEVDArray, buoyancy)
     top_tracer_bcs = parameters.top_tracer_boundary_conditions
     top_velocity_bcs = parameters.top_velocity_boundary_conditions
     @inbounds closure = closure_array[i, j]
@@ -138,7 +136,7 @@ end
                          buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
 end
 
-@inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid,
+@inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid::SingleColumnGrid,
                                                                val_tracer_index::Val{tracer_index},
                                                                advection,
                                                                closure_array::TKEVDArray, args...) where tracer_index

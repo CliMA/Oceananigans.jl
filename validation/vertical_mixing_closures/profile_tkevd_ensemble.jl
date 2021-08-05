@@ -4,15 +4,15 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TimeSteppers: time_step!
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, TKEBasedVerticalDiffusivity
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: EnsembleSize
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 
 using Profile
 using StatProfilerHTML
 using BenchmarkTools
 
 Ex, Ey = (1, 1)
-sz = EnsembleSize(Nz=64, ensemble=(Ex, Ey))
-halo = EnsembleSize(Nz=sz.Nz)
+sz = ColumnEnsembleSize(Nz=64, ensemble=(Ex, Ey))
+halo = ColumnEnsembleSize(Nz=sz.Nz)
 
 grid = RegularRectilinearGrid(size=sz, halo=halo, z=(-64, 0), topology=(Flat, Flat, Bounded))
 
