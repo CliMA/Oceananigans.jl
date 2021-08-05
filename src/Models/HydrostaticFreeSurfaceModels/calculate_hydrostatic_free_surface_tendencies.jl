@@ -86,12 +86,22 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
     return events
 end
 
-# Fallback
-@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure, tracer_name) = hydrostatic_free_surface_tracer_tendency
-@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::TKEBasedVerticalDiffusivity, ::Val{:e}) = hydrostatic_turbulent_kinetic_energy_tendency
+using Oceananigans.TurbulenceClosures: TKEVD
 
-# Hack for closure tuples
-tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closures::Tuple, ::Val{:e}) = tracer_tendency_kernel_function(model, closures[1], Val(:e))
+# Fallback
+@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure, tracer_name) =
+    hydrostatic_free_surface_tracer_tendency
+
+@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::TKEVD, ::Val{:e}) =
+    hydrostatic_turbulent_kinetic_energy_tendency
+
+function tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closures::Tuple, ::Val{:e})
+    if any(c isa TKEVD for c in closures)
+        return hydrostatic_turbulent_kinetic_energy_tendency
+    else
+        return hydrostatic_free_surface_tracer_tendency
+    end
+end
 
 """ Store previous value of the source term and calculate current source term. """
 function calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)

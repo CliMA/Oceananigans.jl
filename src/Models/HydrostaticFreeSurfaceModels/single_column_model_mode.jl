@@ -7,9 +7,11 @@ using Oceananigans.BoundaryConditions: fill_bottom_halo!, fill_top_halo!, apply_
 using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Architectures: device_event
 
-import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Utils: launch!
 import Oceananigans.Grids: validate_size, validate_halo
+import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.TurbulenceClosures: time_discretization
+import Oceananigans.TurbulenceClosures: calculate_diffusivities!, top_tke_flux
 
 #####
 ##### Implements a "single column model mode" for HydrostaticFreeSurfaceModel
@@ -61,6 +63,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
 end
 
 import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ, calculate_diffusivities
+
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 
 const ClosureArray = AbstractArray{<:AbstractTurbulenceClosure}
@@ -92,17 +95,13 @@ validate_halo(TX, TY, TZ, e::EnsembleSize) = tuple(e.ensemble[1], e.ensemble[2],
 
 ensemble_size(grid::SingleColumnGrid) = (grid.Nx, grid.Nz)
 
-import Oceananigans.TurbulenceClosures: time_discretization
-
 @inline time_discretization(::AbstractArray{<:AbstractTurbulenceClosure{TD}}) where TD = TD()
 
 #####
 ##### TKEBasedVerticalDiffusivity helpers
 #####
 
-import Oceananigans.TurbulenceClosures: calculate_diffusivities!, top_tke_flux
-
-using Oceananigans.TurbulenceClosures: TKEVDArray, Kuᶜᶜᶜ, Kcᶜᶜᶜ, Keᶜᶜᶜ, _top_tke_flux
+using Oceananigans.TurbulenceClosures: TKEVD, Kuᶜᶜᶜ, Kcᶜᶜᶜ, Keᶜᶜᶜ, _top_tke_flux, TKEVDArray
 
 function calculate_diffusivities!(diffusivities, arch, grid, closure_array::TKEVDArray, buoyancy, velocities, tracers)
 
@@ -126,9 +125,8 @@ end
     end
 end
 
-#####
-##### TKE top boundary condition
-#####
+@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::TKEVDArray, ::Val{:e}) =
+    hydrostatic_turbulent_kinetic_energy_tendency
 
 """ Compute the flux of TKE through the surface / top boundary. """
 @inline function top_tke_flux(i, j, grid, clock, fields, parameters, closure_array::TKEVDArray, buoyancy)
@@ -139,3 +137,13 @@ end
     return _top_tke_flux(i, j, grid, closure.surface_model, closure,
                          buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
 end
+
+@inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid,
+                                                               val_tracer_index::Val{tracer_index},
+                                                               advection,
+                                                               closure_array::TKEVDArray, args...) where tracer_index
+
+    @inbounds closure = closure_array[i, j]
+    return hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, val_tracer_index, advection, closure, args...)
+end
+

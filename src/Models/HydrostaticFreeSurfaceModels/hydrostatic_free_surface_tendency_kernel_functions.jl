@@ -133,7 +133,6 @@ The tendency is called ``G_η`` and defined via
                        + forcings.η(i, j, k_surface, grid, clock, model_fields))
 end
 
-
 @inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid,
                                                                val_tracer_index::Val{tracer_index},
                                                                advection,
