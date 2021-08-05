@@ -8,7 +8,6 @@ using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryCondition
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
-
 function hydrostatic_turbulent_kinetic_energy_tendency end
 
 struct TKEBasedVerticalDiffusivity{TD, CK, CD, CL, CQ} <: AbstractTurbulenceClosure{TD}
@@ -16,16 +15,16 @@ struct TKEBasedVerticalDiffusivity{TD, CK, CD, CL, CQ} <: AbstractTurbulenceClos
     dissipation_parameter :: CD
     mixing_length_parameter :: CL
     surface_model :: CQ
-
-    function TKEBasedVerticalDiffusivity{TD}(
-        diffusivity_scaling :: CK,
-        dissipation_parameter :: CD,
-        mixing_length_parameter :: CL,
-        surface_model :: CQ) where {TD, CK, CD, CL, CQ}
-
-        return new{TD, CK, CD, CL, CQ}(diffusivity_scaling, dissipation_parameter, mixing_length_parameter, surface_model)
-    end
 end
+
+function TKEBasedVerticalDiffusivity{TD}(diffusivity_scaling :: CK,
+                                         dissipation_parameter :: CD,
+                                         mixing_length_parameter :: CL,
+                                         surface_model :: CQ) where {TD, CK, CD, CL, CQ}
+
+    return TKEBasedVerticalDiffusivity{TD, CK, CD, CL, CQ}(diffusivity_scaling, dissipation_parameter, mixing_length_parameter, surface_model)
+end
+
 
 """
     TKEBasedVerticalDiffusivity(FT=Float64;
