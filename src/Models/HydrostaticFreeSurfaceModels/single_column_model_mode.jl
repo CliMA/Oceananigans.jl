@@ -101,25 +101,15 @@ validate_halo(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemb
 
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVD, Kuᶜᶜᶜ, Kcᶜᶜᶜ, Keᶜᶜᶜ, _top_tke_flux, CATKEVDArray
 
-function calculate_diffusivities!(diffusivities, arch, grid::SingleColumnGrid, closure_array::CATKEVDArray, buoyancy, velocities, tracers)
+import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: calculate_CATKE_diffusivities!
 
-    event = launch!(arch, grid, :xyz,
-                    calculate_tke_diffusivities_scm_ensemble!,
-                    diffusivities, grid, closure_array, tracers.e, velocities, tracers, buoyancy,
-                    dependencies=device_event(arch))
-
-    wait(device(arch), event)
-
-    return nothing
-end
-
-@kernel function calculate_tke_diffusivities_scm_ensemble!(diffusivities, grid, closure_array, e, velocities, tracers, buoyancy)
+@kernel function calculate_CATKE_diffusivities!(diffusivities, grid::SingleColumnGrid, closure::CATKEVDArray, args...)
     i, j, k, = @index(Global, NTuple)
     @inbounds begin
         closure = closure_array[i, j]
-        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
-        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
-        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
+        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure, args...)
+        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶜ(i, j, k, grid, closure, args...)
+        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶜ(i, j, k, grid, closure, args...)
     end
 end
 

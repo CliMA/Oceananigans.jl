@@ -115,7 +115,7 @@ function calculate_diffusivities!(diffusivities, closure::CATKEVD, model)
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
     event = launch!(arch, grid, :xyz,
-                    calculate_tke_diffusivities!,
+                    calculate_CATKE_diffusivities!,
                     diffusivities, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs,
                     dependencies = device_event(arch))
 
@@ -124,12 +124,12 @@ function calculate_diffusivities!(diffusivities, closure::CATKEVD, model)
     return nothing
 end
 
-@kernel function calculate_tke_diffusivities!(diffusivities, grid, closure, velocities, tracers, buoyancy)
+@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, args...)
     i, j, k, = @index(Global, NTuple)
     @inbounds begin
-        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
-        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
+        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure, args...)
+        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶜ(i, j, k, grid, closure, args...)
+        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶜ(i, j, k, grid, closure, args...)
     end
 end
 
