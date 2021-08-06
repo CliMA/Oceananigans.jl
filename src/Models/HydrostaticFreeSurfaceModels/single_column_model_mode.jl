@@ -99,9 +99,9 @@ validate_halo(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemb
 ##### TKEBasedVerticalDiffusivity helpers
 #####
 
-using Oceananigans.TurbulenceClosures: TKEVD, Kuᶜᶜᶜ, Kcᶜᶜᶜ, Keᶜᶜᶜ, _top_tke_flux, TKEVDArray
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVD, Kuᶜᶜᶜ, Kcᶜᶜᶜ, Keᶜᶜᶜ, _top_tke_flux, CATKEVDArray
 
-function calculate_diffusivities!(diffusivities, arch, grid::SingleColumnGrid, closure_array::TKEVDArray, buoyancy, velocities, tracers)
+function calculate_diffusivities!(diffusivities, arch, grid::SingleColumnGrid, closure_array::CATKEVDArray, buoyancy, velocities, tracers)
 
     event = launch!(arch, grid, :xyz,
                     calculate_tke_diffusivities_scm_ensemble!,
@@ -123,11 +123,11 @@ end
     end
 end
 
-@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::TKEVDArray, ::Val{:e}) =
+@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::CATKEVDArray, ::Val{:e}) =
     hydrostatic_turbulent_kinetic_energy_tendency
 
 """ Compute the flux of TKE through the surface / top boundary. """
-@inline function top_tke_flux(i, j, grid::SingleColumnGrid, clock, fields, parameters, closure_array::TKEVDArray, buoyancy)
+@inline function top_tke_flux(i, j, grid::SingleColumnGrid, clock, fields, parameters, closure_array::CATKEVDArray, buoyancy)
     top_tracer_bcs = parameters.top_tracer_boundary_conditions
     top_velocity_bcs = parameters.top_velocity_boundary_conditions
     @inbounds closure = closure_array[i, j]
@@ -139,7 +139,7 @@ end
 @inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid::SingleColumnGrid,
                                                                val_tracer_index::Val{tracer_index},
                                                                advection,
-                                                               closure_array::TKEVDArray, args...) where tracer_index
+                                                               closure_array::CATKEVDArray, args...) where tracer_index
 
     @inbounds closure = closure_array[i, j]
     return hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, val_tracer_index, advection, closure, args...)

@@ -2,7 +2,7 @@ using Oceananigans: CPU, GPU
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, ExplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, TKEBasedVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, ExplicitTimeDiscretization, CATKEVerticalDiffusivity
 using Oceananigans.Grids: Periodic, Bounded
 
 function time_step_hydrostatic_model_works(arch, grid;
@@ -13,7 +13,7 @@ function time_step_hydrostatic_model_works(arch, grid;
                                            velocities = nothing)
 
     tracers = [:T, :S]
-    closure isa TKEBasedVerticalDiffusivity && push!(tracers, :e)
+    closure isa CATKEVerticalDiffusivity && push!(tracers, :e)
 
     model = HydrostaticFreeSurfaceModel(grid = grid,
                                         architecture = arch,
@@ -204,8 +204,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
         for closure in (IsotropicDiffusivity(),
                         HorizontallyCurvilinearAnisotropicDiffusivity(),
                         HorizontallyCurvilinearAnisotropicDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization()),
-                        TKEBasedVerticalDiffusivity(),
-                        TKEBasedVerticalDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization()))
+                        CATKEVerticalDiffusivity(),
+                        CATKEVerticalDiffusivity(time_discretization=ExplicitTimeDiscretization()))
 
             @testset "Time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
                 @info "  Testing time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
