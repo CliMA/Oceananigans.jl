@@ -68,10 +68,10 @@ function CATKEVerticalDiffusivity(FT=Float64;
                                   Cᴰ = 2.91,
                                   mixing_length = MixingLength{FT}(),
                                   surface_tke_flux = SurfaceTKEFlux{FT}(),
-                                  warning = false,
+                                  warning = true,
                                   time_discretization::TD = VerticallyImplicitTimeDiscretization()) where TD
 
-    if !warning
+    if warning
         @warn "CATKEVerticalDiffusivity is an experimental turbulence closure that \n" *
               "is unvalidated and whose default parameters are not calibrated for \n" * 
               "realistic ocean conditions or for use in a three-dimensional \n" *
