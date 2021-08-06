@@ -16,6 +16,7 @@ using Oceananigans.TurbulenceClosures:
     VerticallyImplicitTimeDiscretization
 
 import Oceananigans.BoundaryConditions: getbc
+import Oceananigans.Utils: with_tracers
 
 function hydrostatic_turbulent_kinetic_energy_tendency end
 
