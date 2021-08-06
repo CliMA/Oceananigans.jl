@@ -8,7 +8,6 @@ using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryCondition
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
-
 function hydrostatic_turbulent_kinetic_energy_tendency end
 
 struct TKEBasedVerticalDiffusivity{TD, CK, CD, CL, CQ} <: AbstractTurbulenceClosure{TD}
@@ -16,16 +15,16 @@ struct TKEBasedVerticalDiffusivity{TD, CK, CD, CL, CQ} <: AbstractTurbulenceClos
     dissipation_parameter :: CD
     mixing_length_parameter :: CL
     surface_model :: CQ
-
-    function TKEBasedVerticalDiffusivity{TD}(
-        diffusivity_scaling :: CK,
-        dissipation_parameter :: CD,
-        mixing_length_parameter :: CL,
-        surface_model :: CQ) where {TD, CK, CD, CL, CQ}
-
-        return new{TD, CK, CD, CL, CQ}(diffusivity_scaling, dissipation_parameter, mixing_length_parameter, surface_model)
-    end
 end
+
+function TKEBasedVerticalDiffusivity{TD}(diffusivity_scaling :: CK,
+                                         dissipation_parameter :: CD,
+                                         mixing_length_parameter :: CL,
+                                         surface_model :: CQ) where {TD, CK, CD, CL, CQ}
+
+    return TKEBasedVerticalDiffusivity{TD, CK, CD, CL, CQ}(diffusivity_scaling, dissipation_parameter, mixing_length_parameter, surface_model)
+end
+
 
 """
     TKEBasedVerticalDiffusivity(FT=Float64;
@@ -100,7 +99,7 @@ function TKEBasedVerticalDiffusivity(FT=Float64;
                                      dissipation_parameter = 2.91,
                                      mixing_length_parameter = 1.16,
                                      surface_model = TKESurfaceFlux{FT}(),
-                                     time_discretization::TD = ExplicitTimeDiscretization()) where TD
+                                     time_discretization::TD = VerticallyImplicitTimeDiscretization()) where TD
 
     @warn "TKEBasedVerticalDiffusivity is an experimental turbulence closure that \n" *
           "is unvalidated and whose default parameters are not calibrated for \n" * 
@@ -120,6 +119,9 @@ function TKEBasedVerticalDiffusivity(FT=Float64;
 end
 
 const TKEVD = TKEBasedVerticalDiffusivity
+
+# Support for "ManyIndependentColumnMode"
+const TKEVDArray = AbstractArray{<:TKEVD}
 
 """
     struct RiDependentDiffusivityScaling{FT}
@@ -282,7 +284,7 @@ function top_velocity_boundary_conditions(grid, user_bcs)
 end
 
 """ Add TKE boundary conditions specific to `TKEBasedVerticalDiffusivity`. """
-function add_closure_specific_boundary_conditions(closure::TKEVD,
+function add_closure_specific_boundary_conditions(closure::Union{TKEVD, TKEVDArray},
                                                   user_bcs,
                                                   grid,
                                                   tracer_names,
@@ -296,8 +298,8 @@ function add_closure_specific_boundary_conditions(closure::TKEVD,
     top_tke_bc = FluxBoundaryCondition(top_tke_flux, discrete_form=true, parameters=parameters)
 
     if :e ∈ keys(user_bcs)
-        @warn "Replacing top boundary conditions for tracer `e` with " *
-              "boundary condition specific to $(typeof(closure).name.wrapper)"
+        # @warn "Replacing top boundary conditions for tracer `e` with " *
+        #       "boundary condition specific to $(typeof(closure).name.wrapper)"
 
         e_bcs = user_bcs[:e]
         
@@ -317,7 +319,7 @@ function add_closure_specific_boundary_conditions(closure::TKEVD,
     return new_boundary_conditions
 end
 
-function DiffusivityFields(arch, grid, tracer_names, bcs, closure::TKEVD)
+function DiffusivityFields(arch, grid, tracer_names, bcs, closure::Union{TKEVD, TKEVDArray})
 
     default_diffusivity_bcs = (Kᵘ = FieldBoundaryConditions(grid, (Center, Center, Center)),
                                Kᶜ = FieldBoundaryConditions(grid, (Center, Center, Center)),
@@ -332,7 +334,7 @@ function DiffusivityFields(arch, grid, tracer_names, bcs, closure::TKEVD)
     return (; Kᵘ, Kᶜ, Kᵉ)
 end        
             
-function with_tracers(tracer_names, closure::TKEVD)
+function with_tracers(tracer_names, closure::Union{TKEVD, TKEVDArray})
     :e ∈ tracer_names || error("Tracers must contain :e to represent turbulent kinetic energy for `TKEBasedVerticalDiffusivity`.")
     return closure
 end
@@ -343,10 +345,9 @@ end
 
 function calculate_diffusivities!(diffusivities, arch, grid, closure::TKEVD, buoyancy, velocities, tracers)
 
-    e = tracers.e
-
     event = launch!(arch, grid, :xyz,
-                    calculate_tke_diffusivities!, diffusivities, grid, closure, e, velocities, tracers, buoyancy,
+                    calculate_tke_diffusivities!,
+                    diffusivities, grid, closure, tracers.e, velocities, tracers, buoyancy,
                     dependencies=device_event(arch))
 
     wait(device(arch), event)
@@ -417,8 +418,6 @@ end
 
 @inline scale(Ri, σ⁻, rσ, c, w) = σ⁻ * (1 + rσ * step(Ri, c, w))
 
-#@inline scale(Ri, σ⁻, rσ, c, w) = σ⁻ + (σ⁺ - σ⁻) * step(Ri, c, w)
-
 @inline function momentum_diffusivity_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     return scale(Ri,
@@ -471,6 +470,7 @@ end
     σe = TKE_diffusivity_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     return σe * K
 end
+
 
 #####
 ##### Terms in the turbulent kinetic energy equation, all at cell centers
@@ -538,7 +538,7 @@ end
 end
 
 # "Translations" for diffusive transport by non-TKEVD closures
-@inline diffusive_flux_x(i, j, k, grid, closure, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_x(i, j, k, grid, closure, e, Val(N), args...)
+@inline diffusive_flux_x(i, j, k, grid, closure, e, ::TKETracerIndex{N}, args...) where N =diffusive_flux_x(i, j, k, grid, closure, e, Val(N), args...)
 @inline diffusive_flux_y(i, j, k, grid, closure, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, closure, e, Val(N), args...)
 @inline diffusive_flux_z(i, j, k, grid, closure, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, closure, e, Val(N), args...)
 
@@ -562,9 +562,11 @@ end
 
 const VITD = VerticallyImplicitTimeDiscretization
 
-@inline z_viscosity(closure::TKEVD, diffusivities, velocities, tracers, buoyancy) = diffusivities.Kᵘ
+@inline z_viscosity(closure::Union{TKEVD, TKEVDArray}, diffusivities, args...) = diffusivities.Kᵘ
 
-@inline function z_diffusivity(closure::TKEVD, ::Val{tracer_index}, diffusivities, velocities, tracers, buoyancy) where tracer_index
+@inline function z_diffusivity(closure::Union{TKEVD, TKEVDArray}, ::Val{tracer_index},
+                               diffusivities, tracers, args...) where tracer_index
+
     tke_index = findfirst(name -> name === :e, keys(tracers))
 
     if tracer_index === tke_index

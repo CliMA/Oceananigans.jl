@@ -1,0 +1,5 @@
+[deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
+StatProfilerHTML = "a8a75453-ed82-57c9-9e16-4cd1196ecbf5"
