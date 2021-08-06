@@ -17,6 +17,7 @@ using Oceananigans.TurbulenceClosures:
 
 import Oceananigans.BoundaryConditions: getbc
 import Oceananigans.Utils: with_tracers
+import Oceananigans.TurbulenceClosures: calculate_diffusivities!
 
 function hydrostatic_turbulent_kinetic_energy_tendency end
 
@@ -54,83 +55,29 @@ end
 
 """
     CATKEVerticalDiffusivity(FT=Float64;
-                                diffusivity_scaling = RiDependentDiffusivityScaling{FT}(),
-                                Cᴰ = 2.91,
-                                mixing_length_parameter = 1.16,
-                                surface_tke_flux = SurfaceTKEFlux{FT}(),
-                                time_discretization::TD = ExplicitTimeDiscretization())
+                             Cᴰ = 2.91,
+                             mixing_length = MixingLength{FT}(),
+                             surface_tke_flux = SurfaceTKEFlux{FT}(),
+                             time_discretization::TD = ExplicitTimeDiscretization())
 
 Returns the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
 small-scale ocean turbulence based on the prognostic evolution of subgrid
 Turbulent Kinetic Energy (TKE).
-
-`CATKEVerticalDiffusivity` is a downgradient, diffusive
-closure formulated with three different eddy diffusivities for momentum, tracers, and TKE.
-Each eddy diffusivity is the product of a diffusivity "scaling", a mixing length, and a turbulent
-velocity scale which is the square root of the local TKE, such that
-
-```math
-Kᵠ = Cᵠ ℓ √e
-```
-
-where `Kᵠ` is the eddy diffusivity of `ϕ` where `ϕ` is either `u` (for momentum) `c` (for tracers), or
-`e` (for TKE). `Cᵠ` is the diffusivity scaling for `ϕ`, `ℓ` is the mixing length
-and `√e` is the turbulent velocity scale. The mixing length `ℓ` is modeled as
-
-```math
-ℓ = min(ℓᵇ, ℓᶻ)
-```
-
-where `ℓᵇ = Cᵇ * √e / N` and `ℓᶻ` is the distance to the nearest boundary.
-`CATKEVerticalDiffusivity` also invokes a model for the flux of TKE across the numerical
-ocean surface due to unstable buoyancy forcing and wind stress.
-
-The `CATKEVerticalDiffusivity` is formulated in terms of 12 free parameters. These parameters
-are _experimentally_ calibrated against large eddy simulations of ocean surface boundary layer turbulence
-in idealized scenarios involving monotonic boundary layer deepening into variable stratification
-due to constant surface momentum fluxes and/or destabilizing surface buoyancy flux.
-This calibration has not been peer-reviewed, may be inaccurate and imperfect, and may not
-be appropriate for three-dimensional ocean simulations.
-
-See https://github.com/CliMA/LESbrary.jl for more information about the large eddy simulations.
-
-The calibration procedure is not documented and is part of ongoing research.
-The calibration was performed using a combination of Markov Chain Monte Carlo (MCMC)-based simulated
-annealing and noisy Ensemble Kalman Inversion methods.
-
-The one positional argument determines the floating point type of the free parameters
-of `CATKEVerticalDiffusivity`. The default is `Float64`.
-
-Keyword arguments
-=================
-
-* `diffusivity_scaling` : A group of parameters that scale the eddy diffusivity for momentum, tracers, and TKE.
-                          The default is `RiDependentDiffusivityScaling{FT}()`, which represents a group of
-                          parameters that implement a "smoothed step function" scaling that varies with the
-                          local gradient Richardson number `Ri = ∂z(b) / (∂z(u)² + ∂z(v)²)`.
-
-* `Cᴰ` : Parameter `Cᴰ` in the closure `ϵ = Cᴰ * e^3/2 / ℓ` that models the dissipation of TKE,
-                            `ϵ`, appearing in the TKE evolution equation. The default is 2.91 via calibration
-                            against large eddy simulations.
-                          
-* `mixing_length_parameter` : Parameter `Cᵇ` that multiplies the "buoyancy mixing length" `ℓᵇ = Cᵇ * √e / N`,
-                            that appears in `CATKEVerticalDiffusivity`'s mixing length model.
-                            The default is 1.16 via calibration against large eddy simulations.
-
-* `time_discretization` : Either `ExplicitTimeDiscretization` or `VerticallyImplicitTimeDiscretization`.
-
 """
 function CATKEVerticalDiffusivity(FT=Float64;
                                   Cᴰ = 2.91,
                                   mixing_length = MixingLength{FT}(),
                                   surface_tke_flux = SurfaceTKEFlux{FT}(),
+                                  warning = false,
                                   time_discretization::TD = VerticallyImplicitTimeDiscretization()) where TD
 
-    @warn "CATKEVerticalDiffusivity is an experimental turbulence closure that \n" *
-          "is unvalidated and whose default parameters are not calibrated for \n" * 
-          "realistic ocean conditions or for use in a three-dimensional \n" *
-          "simulation. Use with caution and report bugs and problems with physics \n" *
-          "to https://github.com/CliMA/Oceananigans.jl/issues."
+    if !warning
+        @warn "CATKEVerticalDiffusivity is an experimental turbulence closure that \n" *
+              "is unvalidated and whose default parameters are not calibrated for \n" * 
+              "realistic ocean conditions or for use in a three-dimensional \n" *
+              "simulation. Use with caution and report bugs and problems with physics \n" *
+              "to https://github.com/CliMA/Oceananigans.jl/issues."
+    end
 
     Cᴰ = convert(FT, Cᴰ)
     mixing_length = convert_eltype(FT, mixing_length)
