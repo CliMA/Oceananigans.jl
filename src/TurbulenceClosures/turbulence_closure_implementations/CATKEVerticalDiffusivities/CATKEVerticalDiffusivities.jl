@@ -43,7 +43,7 @@ function with_tracers(tracer_names, closure::Union{CATKEVD, CATKEVDArray})
 end
 
 include("mixing_length.jl")
-include("surface_tke_flux.jl")
+include("surface_TKE_flux.jl")
 include("turbulent_kinetic_energy_equation.jl")
 
 for S in (:MixingLength, :SurfaceTKEFlux)
