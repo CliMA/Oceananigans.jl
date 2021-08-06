@@ -562,14 +562,10 @@ end
 
 const VITD = VerticallyImplicitTimeDiscretization
 
-@inline z_viscosity(closure::Union{TKEVD, TKEVDArray}, diffusivities, velocities, tracers, buoyancy) = diffusivities.Kᵘ
+@inline z_viscosity(closure::Union{TKEVD, TKEVDArray}, diffusivities, args...) = diffusivities.Kᵘ
 
-@inline function z_diffusivity(closure::Union{TKEVD, TKEVDArray},
-                               ::Val{tracer_index},
-                               diffusivities,
-                               velocities,
-                               tracers,
-                               buoyancy) where tracer_index
+@inline function z_diffusivity(closure::Union{TKEVD, TKEVDArray}, ::Val{tracer_index},
+                               diffusivities, args...) where tracer_index
 
     tke_index = findfirst(name -> name === :e, keys(tracers))
 
