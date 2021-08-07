@@ -124,7 +124,7 @@ function DiffusivityFields(arch, grid, tracer_names, bcs, closure::Union{CATKEVD
     return (; Kᵘ, Kᶜ, Kᵉ)
 end        
 
-function calculate_diffusivities!(diffusivities, closure::Union{CATKEVD, CATKEVDArray}, model)
+function calculate_diffusivities!(diffusivities, closure::CATKEVD, model)
 
     arch = model.architecture
     grid = model.grid
