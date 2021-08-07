@@ -1,3 +1,5 @@
+using Oceananigans.Operators
+
 """
     struct MixingLength{FT}
 
@@ -107,7 +109,7 @@ end
 
     @inbounds e⁺ = max(zero(FT), e[i, j, k])
 
-    return @inbounds ifelse(N⁺ == 0, FT(Inf), Cᵇ * sqrt(e⁺) / N⁺)
+    return @inbounds ifelse(N⁺ == 0, FT(Inf), Cᴸᵇ * sqrt(e⁺) / N⁺)
 end
 
 @inline function unscaled_stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, e, tracers, buoyancy)
@@ -119,8 +121,8 @@ end
 @inline function unscaled_convective_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
     Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, merge(velocities, tracers))
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    convecting = N² < 0 & Qᵇ > 0
-    @inbounds eijk = tracers.e[i, j, k]
+    convecting = (N² < 0) & (Qᵇ > 0)
+    @inbounds eijk = max(zero(eltype(grid)), tracers.e[i, j, k])
     return ifelse(convecting, sqrt(eijk^3) / Qᵇ, zero(eltype(grid))) 
 end
 
@@ -141,28 +143,28 @@ end
 @inline function momentum_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     return scale(Ri,
-                 closure.diffusivity_scaling.Cᴷu⁻,
-                 closure.diffusivity_scaling.Cᴷuʳ,
-                 closure.diffusivity_scaling.CᴷRiᶜ,
-                 closure.diffusivity_scaling.CᴷRiʷ)
+                 closure.mixing_length.Cᴷu⁻,
+                 closure.mixing_length.Cᴷuʳ,
+                 closure.mixing_length.CᴷRiᶜ,
+                 closure.mixing_length.CᴷRiʷ)
 end
 
 @inline function tracer_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     return scale(Ri,
-                 closure.diffusivity_scaling.Cᴷc⁻,
-                 closure.diffusivity_scaling.Cᴷcʳ,
-                 closure.diffusivity_scaling.CᴷRiᶜ,
-                 closure.diffusivity_scaling.CᴷRiʷ)
+                 closure.mixing_length.Cᴷc⁻,
+                 closure.mixing_length.Cᴷcʳ,
+                 closure.mixing_length.CᴷRiᶜ,
+                 closure.mixing_length.CᴷRiʷ)
 end
 
 @inline function TKE_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     Ri = Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     return scale(Ri,
-                 closure.diffusivity_scaling.Cᴷe⁻,
-                 closure.diffusivity_scaling.Cᴷeʳ,
-                 closure.diffusivity_scaling.CᴷRiᶜ,
-                 closure.diffusivity_scaling.CᴷRiʷ)
+                 closure.mixing_length.Cᴷe⁻,
+                 closure.mixing_length.Cᴷeʳ,
+                 closure.mixing_length.CᴷRiᶜ,
+                 closure.mixing_length.CᴷRiʷ)
 end
 
 @inline function momentum_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)

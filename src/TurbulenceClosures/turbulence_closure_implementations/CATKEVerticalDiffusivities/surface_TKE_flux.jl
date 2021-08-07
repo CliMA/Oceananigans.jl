@@ -36,19 +36,19 @@ end
     top_tracer_bcs = parameters.top_tracer_boundary_conditions
     top_velocity_bcs = parameters.top_velocity_boundary_conditions
 
-    return _top_tke_flux(i, j, grid, closure.surface_tke_flux, closure,
+    return _top_tke_flux(i, j, grid, closure.surface_TKE_flux, closure,
                          buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
 end
 
-@inline function _top_tke_flux(i, j, grid, surface_tke_flux::SurfaceTKEFlux, closure,
+@inline function _top_tke_flux(i, j, grid, surface_TKE_flux::SurfaceTKEFlux, closure,
                               buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
 
     wΔ³ = top_convective_turbulent_velocity³(i, j, grid, clock, fields, buoyancy, top_tracer_bcs)
     u★ = friction_velocity(i, j, grid, clock, fields, top_velocity_bcs)
 
     Cᴰ = closure.Cᴰ
-    Cᵂu★ = surface_tke_flux.Cᵂu★
-    CᵂwΔ = surface_tke_flux.CᵂwΔ
+    Cᵂu★ = surface_TKE_flux.Cᵂu★
+    CᵂwΔ = surface_TKE_flux.CᵂwΔ
 
     return - Cᴰ * (Cᵂu★ * u★^3 + CᵂwΔ * wΔ³)
 end
@@ -123,9 +123,6 @@ function add_closure_specific_boundary_conditions(closure::Union{CATKEVD, CATKEV
     top_tke_bc = FluxBoundaryCondition(top_tke_flux, discrete_form=true, parameters=parameters)
 
     if :e ∈ keys(user_bcs)
-        # @warn "Replacing top boundary conditions for tracer `e` with " *
-        #       "boundary condition specific to $(typeof(closure).name.wrapper)"
-
         e_bcs = user_bcs[:e]
         
         tke_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),

@@ -5,8 +5,10 @@ using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
+using Oceananigans.Utils
+using Oceananigans.Fields
 using Oceananigans.BoundaryConditions: default_prognostic_field_boundary_condition
-using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions, DiscreteBoundaryFunction
+using Oceananigans.BoundaryConditions: BoundaryCondition, FieldBoundaryConditions, DiscreteBoundaryFunction, FluxBoundaryCondition
 using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
@@ -17,21 +19,38 @@ using Oceananigans.TurbulenceClosures:
 
 import Oceananigans.BoundaryConditions: getbc
 import Oceananigans.Utils: with_tracers
-import Oceananigans.TurbulenceClosures: calculate_diffusivities!
+import Oceananigans.TurbulenceClosures:
+    add_closure_specific_boundary_conditions,
+    calculate_diffusivities!,
+    DiffusivityFields,
+    z_viscosity,
+    z_diffusivity,
+    viscous_flux_ux,
+    viscous_flux_uy,
+    viscous_flux_uz,
+    viscous_flux_vx,
+    viscous_flux_vy,
+    viscous_flux_vz,
+    viscous_flux_vx,
+    viscous_flux_vy,
+    viscous_flux_vz,
+    diffusive_flux_x,
+    diffusive_flux_y,
+    diffusive_flux_z
 
 function hydrostatic_turbulent_kinetic_energy_tendency end
 
 struct CATKEVerticalDiffusivity{TD, CD, CL, CQ} <: AbstractTurbulenceClosure{TD}
     Cᴰ :: CD
     mixing_length :: CL
-    surface_tke_flux :: CQ
+    surface_TKE_flux :: CQ
 end
 
 function CATKEVerticalDiffusivity{TD}(Cᴰ:: CD,
                                       mixing_length :: CL,
-                                      surface_tke_flux :: CQ) where {TD, CD, CL, CQ}
+                                      surface_TKE_flux :: CQ) where {TD, CD, CL, CQ}
 
-    return CATKEVerticalDiffusivity{TD, CD, CL, CQ}(Cᴰ, mixing_length, surface_tke_flux)
+    return CATKEVerticalDiffusivity{TD, CD, CL, CQ}(Cᴰ, mixing_length, surface_TKE_flux)
 end
 
 const CATKEVD = CATKEVerticalDiffusivity
@@ -57,7 +76,7 @@ end
     CATKEVerticalDiffusivity(FT=Float64;
                              Cᴰ = 2.91,
                              mixing_length = MixingLength{FT}(),
-                             surface_tke_flux = SurfaceTKEFlux{FT}(),
+                             surface_TKE_flux = SurfaceTKEFlux{FT}(),
                              time_discretization::TD = ExplicitTimeDiscretization())
 
 Returns the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
@@ -67,7 +86,7 @@ Turbulent Kinetic Energy (TKE).
 function CATKEVerticalDiffusivity(FT=Float64;
                                   Cᴰ = 2.91,
                                   mixing_length = MixingLength{FT}(),
-                                  surface_tke_flux = SurfaceTKEFlux{FT}(),
+                                  surface_TKE_flux = SurfaceTKEFlux{FT}(),
                                   warning = true,
                                   time_discretization::TD = VerticallyImplicitTimeDiscretization()) where TD
 
@@ -81,9 +100,9 @@ function CATKEVerticalDiffusivity(FT=Float64;
 
     Cᴰ = convert(FT, Cᴰ)
     mixing_length = convert_eltype(FT, mixing_length)
-    surface_tke_flux = convert_eltype(FT, surface_tke_flux)
+    surface_TKE_flux = convert_eltype(FT, surface_TKE_flux)
 
-    return CATKEVerticalDiffusivity{TD}(Cᴰ, mixing_length, surface_tke_flux)
+    return CATKEVerticalDiffusivity{TD}(Cᴰ, mixing_length, surface_TKE_flux)
 end
 
 #####
@@ -111,6 +130,7 @@ function calculate_diffusivities!(diffusivities, closure::CATKEVD, model)
     grid = model.grid
     velocities = model.velocities
     tracers = model.tracers
+    buoyancy = model.buoyancy
     clock = model.clock
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
@@ -124,7 +144,7 @@ function calculate_diffusivities!(diffusivities, closure::CATKEVD, model)
     return nothing
 end
 
-@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, args...)
+@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure, args...)
     i, j, k, = @index(Global, NTuple)
     @inbounds begin
         diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure, args...)
