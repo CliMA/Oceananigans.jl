@@ -107,6 +107,7 @@ end
 #####
 
 @inline function (forcing::ContinuousForcing{LX, LY, LZ, P, F})(i, j, k, grid, clock, model_fields) where {LX, LY, LZ, P, F}
+
     args = user_function_arguments(i, j, k, grid, model_fields, forcing.parameters, forcing)
 
     x = xnode(LX(), LY(), LZ(), i, j, k, grid)
