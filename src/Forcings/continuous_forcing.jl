@@ -108,7 +108,12 @@ end
 
 @inline function (forcing::ContinuousForcing{LX, LY, LZ, P, F})(i, j, k, grid, clock, model_fields) where {LX, LY, LZ, P, F}
     args = user_function_arguments(i, j, k, grid, model_fields, forcing.parameters, forcing)
-    return forcing.func(node(LX(), LY(), LZ(), i, j, k, grid)..., clock.time, args...)
+
+    x = xnode(LX(), LY(), LZ(), i, j, k, grid)
+    y = ynode(LX(), LY(), LZ(), i, j, k, grid)
+    z = znode(LX(), LY(), LZ(), i, j, k, grid)
+
+    return forcing.func(x, y, z, clock.time, args...)
 end
 
 """Show the innards of a `ContinuousForcing` in the REPL."""
