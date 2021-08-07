@@ -199,7 +199,7 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 └── max filesize: Inf YiB
 ```
 
-and a time- and horizontal-average of temperature `T` every 1 hour of simulation time
+and a time- and horizontal-average of temperature `T` every 20 minutes of simulation time
 to a file called `some_averaged_data.jld2`
 
 ```jldoctest jld2_output_writer
