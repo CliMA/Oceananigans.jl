@@ -77,7 +77,7 @@ end
                              Cᴰ = 2.91,
                              mixing_length = MixingLength{FT}(),
                              surface_TKE_flux = SurfaceTKEFlux{FT}(),
-                             time_discretization::TD = ExplicitTimeDiscretization())
+                             time_discretization::TD = VerticallyImplicitTimeDiscretization())
 
 Returns the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
 small-scale ocean turbulence based on the prognostic evolution of subgrid
@@ -124,7 +124,7 @@ function DiffusivityFields(arch, grid, tracer_names, bcs, closure::Union{CATKEVD
     return (; Kᵘ, Kᶜ, Kᵉ)
 end        
 
-function calculate_diffusivities!(diffusivities, closure::CATKEVD, model)
+function calculate_diffusivities!(diffusivities, closure::Union{CATKEVD, CATKEVDArray}, model)
 
     arch = model.architecture
     grid = model.grid
@@ -144,7 +144,7 @@ function calculate_diffusivities!(diffusivities, closure::CATKEVD, model)
     return nothing
 end
 
-@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure, args...)
+@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::CATKEVD, args...)
     i, j, k, = @index(Global, NTuple)
     @inbounds begin
         diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure, args...)

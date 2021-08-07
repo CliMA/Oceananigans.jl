@@ -95,9 +95,30 @@ validate_halo(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemb
 
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVD, Kuᶜᶜᶜ, Kcᶜᶜᶜ, Keᶜᶜᶜ, _top_tke_flux, CATKEVDArray
 
-import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: calculate_CATKE_diffusivities!
+import Oceananigans.TurbulenceClosures: calculate_diffusivities!
+import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: top_tke_flux
 
-@kernel function calculate_CATKE_diffusivities!(diffusivities, grid::SingleColumnGrid, closure::CATKEVDArray, args...)
+function calculate_diffusivities!(diffusivities, closure::CATKEVDArray, model)
+
+    arch = model.architecture
+    grid = model.grid
+    velocities = model.velocities
+    tracers = model.tracers
+    buoyancy = model.buoyancy
+    clock = model.clock
+    top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
+
+    event = launch!(arch, grid, :xyz,
+                    calculate_CATKEArray_diffusivities!,
+                    diffusivities, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs,
+                    dependencies = device_event(arch))
+
+    wait(device(arch), event)
+
+    return nothing
+end
+
+@kernel function calculate_CATKEArray_diffusivities!(diffusivities, grid::SingleColumnGrid, closure_array::CATKEVDArray, args...)
     i, j, k, = @index(Global, NTuple)
     @inbounds begin
         closure = closure_array[i, j]
@@ -116,7 +137,7 @@ end
     top_velocity_bcs = parameters.top_velocity_boundary_conditions
     @inbounds closure = closure_array[i, j]
 
-    return _top_tke_flux(i, j, grid, closure.surface_model, closure,
+    return _top_tke_flux(i, j, grid, closure.surface_TKE_flux, closure,
                          buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
 end
 
