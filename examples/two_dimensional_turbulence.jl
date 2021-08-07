@@ -50,7 +50,7 @@ vᵢ = rand(size(v)...)
 uᵢ .-= mean(uᵢ)
 vᵢ .-= mean(vᵢ)
 
-set!(model, u=u₀, v=v₀)
+set!(model, u=uᵢ, v=vᵢ)
 
 # ## Computing vorticity and speed
 
