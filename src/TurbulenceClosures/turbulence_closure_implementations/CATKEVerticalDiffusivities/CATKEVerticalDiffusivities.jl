@@ -31,9 +31,9 @@ import Oceananigans.TurbulenceClosures:
     viscous_flux_vx,
     viscous_flux_vy,
     viscous_flux_vz,
-    viscous_flux_vx,
-    viscous_flux_vy,
-    viscous_flux_vz,
+    viscous_flux_wx,
+    viscous_flux_wy,
+    viscous_flux_wz,
     diffusive_flux_x,
     diffusive_flux_y,
     diffusive_flux_z
