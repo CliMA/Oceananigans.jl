@@ -48,8 +48,6 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
         v_bcs = FieldBoundaryConditions(bottom = v_bottom_drag_bc)
 
         νh₀ = 5e3 * (60 / grid.Nx)^2
-        νh(λ, φ, z, t) = νh₀ * cos(π * φ / 180)
-        variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh)
         constant_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₀)
 
         model = HydrostaticFreeSurfaceModel(grid = grid,
