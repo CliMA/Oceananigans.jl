@@ -1,13 +1,11 @@
 
-# [Performance benchmarks](@id performance_benchmarks)
+# Performance benchmarks
 
 The performance benchmarking scripts in the
 [`benchmarks`](https://github.com/CliMA/Oceananigans.jl/tree/master/benchmark)
 directory of the git repository can be run to benchmark Oceananigans.jl on your machine.
-They use [TimerOutputs.jl](https://github.com/KristofferC/TimerOutputs.jl) to nicely
+They use [BenchmarkTools.jl](https://github.com/JuliaCI/BenchmarkTools.jl) to collect data and [PrettyTables.jl](https://github.com/ronisbr/PrettyTables.jl)  to nicely
 format the benchmark results.
-
-![shallow_water_speedup](https://user-images.githubusercontent.com/45054739/126176169-d865a689-847e-4b67-8b11-221f2f63cd3b.png)
 
 ## Static ocean
 
@@ -154,146 +152,216 @@ CPU -> GPU speedup:
 ## Tracers
 
 This benchmark tests the performance impacts of running with various amounts of active
-and passive tracers.
+and passive tracers and compares the difference in speedup going from CPU to GPU. Number of tracers are listed in the tracers column as such: (active, passive). 
 
 ```
-Oceananigans v0.34.0 (DEVELOPMENT BRANCH)
-Julia Version 1.4.2
-Commit 44fa15b150* (2020-05-23 18:35 UTC)
-Platform Info:
-  OS: Linux (x86_64-pc-linux-gnu)
-  CPU: Intel(R) Xeon(R) Silver 4214 CPU @ 2.20GHz
-  WORD_SIZE: 64
-  LIBM: libopenlibm
-  LLVM: libLLVM-8.0.1 (ORCJIT, skylake)
-  GPU: TITAN V
 
- ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-                      Tracer benchmarks                             Time                   Allocations      
-                                                            ──────────────────────   ───────────────────────
-                      Tot / % measured:                           168s / 1.29%           18.6GiB / 0.77%    
-
- Section                                            ncalls     time   %tot     avg     alloc   %tot      avg
- ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-  32× 32× 32 0 active +  0 passive [CPU, Float64]       10   42.4ms  1.96%  4.24ms   1.89MiB  1.29%   194KiB
-  32× 32× 32 0 active +  1 passive [CPU, Float64]       10   48.3ms  2.23%  4.83ms   2.17MiB  1.49%   223KiB
-  32× 32× 32 0 active +  2 passive [CPU, Float64]       10   53.5ms  2.46%  5.35ms   2.61MiB  1.78%   267KiB
-  32× 32× 32 1 active +  0 passive [CPU, Float64]       10   48.9ms  2.25%  4.89ms   2.17MiB  1.49%   223KiB
-  32× 32× 32 2 active +  0 passive [CPU, Float64]       10   56.0ms  2.58%  5.60ms   2.61MiB  1.78%   267KiB
-  32× 32× 32 2 active +  3 passive [CPU, Float64]       10   77.0ms  3.55%  7.70ms   3.73MiB  2.55%   382KiB
-  32× 32× 32 2 active +  5 passive [CPU, Float64]       10   90.4ms  4.16%  9.04ms   4.46MiB  3.05%   457KiB
-  32× 32× 32 2 active + 10 passive [CPU, Float64]       10    127ms  5.86%  12.7ms   6.36MiB  4.35%   651KiB
- 256×256×128 0 active +  0 passive [GPU, Float64]       10    146ms  6.75%  14.6ms   8.48MiB  5.80%   868KiB
- 256×256×128 0 active +  1 passive [GPU, Float64]       10    162ms  7.45%  16.2ms   9.92MiB  6.78%  0.99MiB
- 256×256×128 0 active +  2 passive [GPU, Float64]       10    174ms  8.03%  17.4ms   11.6MiB  7.92%  1.16MiB
- 256×256×128 1 active +  0 passive [GPU, Float64]       10    160ms  7.39%  16.0ms   9.90MiB  6.77%  0.99MiB
- 256×256×128 2 active +  0 passive [GPU, Float64]       10    177ms  8.18%  17.7ms   11.6MiB  7.93%  1.16MiB
- 256×256×128 2 active +  3 passive [GPU, Float64]       10    222ms  10.2%  22.2ms   17.0MiB  11.6%  1.70MiB
- 256×256×128 2 active +  5 passive [GPU, Float64]       10    255ms  11.8%  25.5ms   20.6MiB  14.1%  2.06MiB
- 256×256×128 2 active + 10 passive [GPU, Float64]       10    328ms  15.1%  32.8ms   31.3MiB  21.4%  3.13MiB
- ───────────────────────────────────────────────────────────────────────────────────────────────────────────
-```
-
-## Turbulence closures
-
-This benchmark tests the performance impacts of various turbulent diffusivity closures
-and large eddy simulation (LES) models.
-
-```
-Oceananigans v0.34.0 (DEVELOPMENT BRANCH)
-Julia Version 1.4.2
-Commit 44fa15b150* (2020-05-23 18:35 UTC)
-Platform Info:
-  OS: Linux (x86_64-pc-linux-gnu)
-  CPU: Intel(R) Xeon(R) Silver 4214 CPU @ 2.20GHz
-  WORD_SIZE: 64
-  LIBM: libopenlibm
-  LLVM: libLLVM-8.0.1 (ORCJIT, skylake)
-  GPU: TITAN V
-
- ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-                         Turbulence closure benchmarks                                Time                   Allocations      
-                                                                              ──────────────────────   ───────────────────────
-                               Tot / % measured:                                    257s / 34.3%           25.0GiB / 0.47%    
-
- Section                                                              ncalls     time   %tot     avg     alloc   %tot      avg
- ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-  32× 32× 32 AnisotropicDiffusivity [CPU, Float64]                        10   52.0ms  0.06%  5.20ms   2.62MiB  2.16%   268KiB
-  32× 32× 32 AnisotropicDiffusivity [GPU, Float64]                        10   52.3ms  0.06%  5.23ms   11.6MiB  9.60%  1.16MiB
-  32× 32× 32 IsotropicDiffusivity [CPU, Float64]                          10   52.7ms  0.06%  5.27ms   2.61MiB  2.15%   267KiB
-  32× 32× 32 IsotropicDiffusivity [GPU, Float64]                          10   49.7ms  0.06%  4.97ms   11.6MiB  9.55%  1.16MiB
-  32× 32× 32 SmagorinskyLilly [CPU, Float64]                              10   88.3ms  0.10%  8.83ms   2.73MiB  2.25%   280KiB
-  32× 32× 32 SmagorinskyLilly [GPU, Float64]                              10   57.1ms  0.06%  5.71ms   12.5MiB  10.3%  1.25MiB
-  32× 32× 32 VerstappenAnisotropicMinimumDissipation [CPU, Float64]       10   85.8ms  0.10%  8.58ms   2.93MiB  2.42%   300KiB
-  32× 32× 32 VerstappenAnisotropicMinimumDissipation [GPU, Float64]       10   67.6ms  0.08%  6.76ms   14.0MiB  11.5%  1.40MiB
- 256×256×128 AnisotropicDiffusivity [CPU, Float64]                        10    16.7s  19.0%   1.67s   2.62MiB  2.16%   268KiB
- 256×256×128 AnisotropicDiffusivity [GPU, Float64]                        10    180ms  0.21%  18.0ms   11.7MiB  9.62%  1.17MiB
- 256×256×128 IsotropicDiffusivity [CPU, Float64]                          10    16.5s  18.7%   1.65s   2.61MiB  2.15%   267KiB
- 256×256×128 IsotropicDiffusivity [GPU, Float64]                          10    179ms  0.20%  17.9ms   11.6MiB  9.59%  1.16MiB
- 256×256×128 SmagorinskyLilly [CPU, Float64]                              10    27.4s  31.1%   2.74s   2.73MiB  2.26%   280KiB
- 256×256×128 SmagorinskyLilly [GPU, Float64]                              10    268ms  0.30%  26.8ms   12.5MiB  10.3%  1.25MiB
- 256×256×128 VerstappenAnisotropicMinimumDissipation [CPU, Float64]       10    26.0s  29.5%   2.60s   2.93MiB  2.42%   300KiB
- 256×256×128 VerstappenAnisotropicMinimumDissipation [GPU, Float64]       10    289ms  0.33%  28.9ms   14.0MiB  11.6%  1.40MiB
- ─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────
-```
-## Shallow Water Model
-
-This benchmark tests the performance of the shallow water model run in a doubly periodic domain (`topology = (Periodic, Periodic, Flat)`)
-on CPUs versus GPUs.  We find that we get a speed up of over 100 with `1024^2` and this almost doubles by `4096^2`.
-```
-Oceananigans v0.53.2
-Julia Version 1.5.2
-Commit 539f3ce943* (2020-09-23 23:17 UTC)
+Oceananigans v0.58.1
+Julia Version 1.6.0
+Commit f9720dc2eb (2021-03-24 12:55 UTC)
 Platform Info:
   OS: Linux (x86_64-pc-linux-gnu)
   CPU: Intel(R) Xeon(R) Silver 4216 CPU @ 2.10GHz
   WORD_SIZE: 64
   LIBM: libopenlibm
-  LLVM: libLLVM-9.0.1 (ORCJIT, cascadelake)
+  LLVM: libLLVM-11.0.1 (ORCJIT, cascadelake)
 Environment:
-  EBVERSIONJULIA = 1.5.2
+  EBVERSIONJULIA = 1.6.0
+  JULIA_DEPOT_PATH = :
+  EBROOTJULIA = /cvmfs/soft.computecanada.ca/easybuild/software/2020/avx2/Core/julia/1.6.0
+  EBDEVELJULIA = /cvmfs/soft.computecanada.ca/easybuild/software/2020/avx2/Core/julia/1.6.0/easybuild/avx2-Core-julia-1.6.0-easybuild-devel
+  JULIA_LOAD_PATH = :
+  GPU: Tesla V100-SXM2-32GB
+
+                                       Arbitrary tracers benchmarks
+┌───────────────┬─────────┬───────────┬───────────┬───────────┬───────────┬────────────┬────────┬─────────┐
+│ Architectures │ tracers │       min │    median │      mean │       max │     memory │ allocs │ samples │
+├───────────────┼─────────┼───────────┼───────────┼───────────┼───────────┼────────────┼────────┼─────────┤
+│           CPU │  (0, 0) │   1.439 s │   1.440 s │   1.440 s │   1.441 s │ 908.03 KiB │   1656 │       4 │
+│           CPU │  (0, 1) │   1.539 s │   1.574 s │   1.575 s │   1.613 s │   1.24 MiB │   1942 │       4 │
+│           CPU │  (0, 2) │   1.668 s │   1.669 s │   1.670 s │   1.671 s │   1.76 MiB │   2291 │       3 │
+│           CPU │  (1, 0) │   1.527 s │   1.532 s │   1.532 s │   1.536 s │   1.24 MiB │   1942 │       4 │
+│           CPU │  (2, 0) │   1.690 s │   1.697 s │   1.695 s │   1.698 s │   1.77 MiB │   2301 │       3 │
+│           CPU │  (2, 3) │   2.234 s │   2.239 s │   2.241 s │   2.251 s │   3.59 MiB │   3928 │       3 │
+│           CPU │  (2, 5) │   2.755 s │   2.838 s │   2.838 s │   2.921 s │   5.18 MiB │   4908 │       2 │
+│           CPU │ (2, 10) │   3.588 s │   3.748 s │   3.748 s │   3.908 s │  10.39 MiB │   7682 │       2 │
+│           GPU │  (0, 0) │  9.702 ms │ 12.755 ms │ 12.458 ms │ 12.894 ms │   1.59 MiB │  12321 │      10 │
+│           GPU │  (0, 1) │ 13.863 ms │ 13.956 ms │ 14.184 ms │ 16.297 ms │   2.20 MiB │  14294 │      10 │
+│           GPU │  (0, 2) │ 15.166 ms │ 15.230 ms │ 15.700 ms │ 19.893 ms │   2.93 MiB │  15967 │      10 │
+│           GPU │  (1, 0) │ 13.740 ms │ 13.838 ms │ 14.740 ms │ 22.940 ms │   2.20 MiB │  14278 │      10 │
+│           GPU │  (2, 0) │ 15.103 ms │ 15.199 ms │ 16.265 ms │ 25.906 ms │   2.93 MiB │  15913 │      10 │
+│           GPU │  (2, 3) │ 13.981 ms │ 18.856 ms │ 18.520 ms │ 20.519 ms │   5.56 MiB │  17974 │      10 │
+│           GPU │  (2, 5) │ 15.824 ms │ 21.211 ms │ 21.064 ms │ 24.897 ms │   7.86 MiB │  23938 │      10 │
+│           GPU │ (2, 10) │ 22.085 ms │ 27.236 ms │ 28.231 ms │ 38.295 ms │  15.02 MiB │  31086 │      10 │
+└───────────────┴─────────┴───────────┴───────────┴───────────┴───────────┴────────────┴────────┴─────────┘
+
+  Arbitrary tracers CPU to GPU speedup
+┌─────────┬─────────┬─────────┬─────────┐
+│ tracers │ speedup │  memory │  allocs │
+├─────────┼─────────┼─────────┼─────────┤
+│  (0, 0) │ 112.881 │ 1.78792 │ 7.44022 │
+│  (0, 1) │ 112.761 │ 1.77743 │ 7.36045 │
+│  (0, 2) │ 109.618 │  1.6627 │ 6.96945 │
+│  (1, 0) │ 110.717 │ 1.77723 │ 7.35221 │
+│  (2, 0) │ 111.678 │ 1.66267 │ 6.91569 │
+│  (2, 3) │ 118.737 │ 1.55043 │ 4.57587 │
+│  (2, 5) │ 133.803 │  1.5155 │ 4.87734 │
+│ (2, 10) │ 137.615 │ 1.44535 │  4.0466 │
+└─────────┴─────────┴─────────┴─────────┘
+
+       Arbitrary tracers relative performance (CPU)
+┌───────────────┬─────────┬──────────┬─────────┬─────────┐
+│ Architectures │ tracers │ slowdown │  memory │  allocs │
+├───────────────┼─────────┼──────────┼─────────┼─────────┤
+│           CPU │  (0, 0) │      1.0 │     1.0 │     1.0 │
+│           CPU │  (0, 1) │  1.09293 │ 1.39873 │ 1.17271 │
+│           CPU │  (0, 2) │  1.15948 │ 1.99019 │ 1.38345 │
+│           CPU │  (1, 0) │  1.06409 │ 1.39873 │ 1.17271 │
+│           CPU │  (2, 0) │  1.17887 │ 1.99054 │ 1.38949 │
+│           CPU │  (2, 3) │  1.55493 │ 4.04677 │ 2.37198 │
+│           CPU │  (2, 5) │  1.97115 │ 5.84537 │ 2.96377 │
+│           CPU │ (2, 10) │   2.6031 │ 11.7179 │ 4.63889 │
+└───────────────┴─────────┴──────────┴─────────┴─────────┘
+
+       Arbitrary tracers relative performance (GPU)
+┌───────────────┬─────────┬──────────┬─────────┬─────────┐
+│ Architectures │ tracers │ slowdown │  memory │  allocs │
+├───────────────┼─────────┼──────────┼─────────┼─────────┤
+│           GPU │  (0, 0) │      1.0 │     1.0 │     1.0 │
+│           GPU │  (0, 1) │   1.0941 │ 1.39053 │ 1.16013 │
+│           GPU │  (0, 2) │  1.19399 │ 1.85081 │ 1.29592 │
+│           GPU │  (1, 0) │  1.08489 │ 1.39037 │ 1.15883 │
+│           GPU │  (2, 0) │  1.19157 │ 1.85109 │ 1.29153 │
+│           GPU │  (2, 3) │  1.47824 │ 3.50924 │ 1.45881 │
+│           GPU │  (2, 5) │  1.66293 │ 4.95474 │ 1.94286 │
+│           GPU │ (2, 10) │  2.13524 │ 9.47276 │ 2.52301 │
+└───────────────┴─────────┴──────────┴─────────┴─────────┘
+```
+
+## Turbulence closures
+
+This benchmark tests the performance impacts of various turbulent diffusivity closures
+and large eddy simulation (LES) models as well as how much speedup they experience going from CPU to GPU.
+
+```
+Oceananigans v0.58.1
+Julia Version 1.6.0
+Commit f9720dc2eb (2021-03-24 12:55 UTC)
+Platform Info:
+  OS: Linux (x86_64-pc-linux-gnu)
+  CPU: Intel(R) Xeon(R) Silver 4216 CPU @ 2.10GHz
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-11.0.1 (ORCJIT, cascadelake)
+Environment:
+  EBVERSIONJULIA = 1.6.0
+  JULIA_DEPOT_PATH = :
+  EBROOTJULIA = /cvmfs/soft.computecanada.ca/easybuild/software/2020/avx2/Core/julia/1.6.0
+  EBDEVELJULIA = /cvmfs/soft.computecanada.ca/easybuild/software/2020/avx2/Core/julia/1.6.0/easybuild/avx2-Core-julia-1.6.0-easybuild-devel
+  JULIA_LOAD_PATH = :
+  GPU: Tesla V100-SXM2-32GB
+
+                                                  Turbulence closure benchmarks
+┌───────────────┬──────────────────────────────────┬───────────┬───────────┬───────────┬───────────┬──────────┬────────┬─────────┐
+│ Architectures │                         Closures │       min │    median │      mean │       max │   memory │ allocs │ samples │
+├───────────────┼──────────────────────────────────┼───────────┼───────────┼───────────┼───────────┼──────────┼────────┼─────────┤
+│           CPU │ AnisotropicBiharmonicDiffusivity │   3.634 s │   3.637 s │   3.637 s │   3.639 s │ 1.77 MiB │   2316 │       2 │
+│           CPU │           AnisotropicDiffusivity │   2.045 s │   2.052 s │   2.059 s │   2.079 s │ 1.77 MiB │   2316 │       3 │
+│           CPU │    AnisotropicMinimumDissipation │   3.240 s │   3.240 s │   3.240 s │   3.241 s │ 2.09 MiB │   2763 │       2 │
+│           CPU │             IsotropicDiffusivity │   2.342 s │   2.344 s │   2.344 s │   2.345 s │ 1.77 MiB │   2316 │       3 │
+│           CPU │                 SmagorinskyLilly │   3.501 s │   3.504 s │   3.504 s │   3.507 s │ 2.03 MiB │   2486 │       2 │
+│           CPU │              TwoDimensionalLeith │   4.813 s │   4.820 s │   4.820 s │   4.828 s │ 1.88 MiB │   2481 │       2 │
+│           GPU │ AnisotropicBiharmonicDiffusivity │ 24.699 ms │ 24.837 ms │ 26.946 ms │ 46.029 ms │ 3.16 MiB │  29911 │      10 │
+│           GPU │           AnisotropicDiffusivity │ 16.115 ms │ 16.184 ms │ 16.454 ms │ 18.978 ms │ 2.97 MiB │  17169 │      10 │
+│           GPU │    AnisotropicMinimumDissipation │ 15.858 ms │ 25.856 ms │ 24.874 ms │ 26.014 ms │ 3.57 MiB │  24574 │      10 │
+│           GPU │             IsotropicDiffusivity │ 14.442 ms │ 17.415 ms │ 17.134 ms │ 17.513 ms │ 2.99 MiB │  19135 │      10 │
+│           GPU │                 SmagorinskyLilly │ 16.315 ms │ 23.969 ms │ 23.213 ms │ 24.059 ms │ 3.86 MiB │  24514 │      10 │
+│           GPU │              TwoDimensionalLeith │ 34.470 ms │ 34.628 ms │ 35.535 ms │ 43.798 ms │ 3.56 MiB │  45291 │      10 │
+└───────────────┴──────────────────────────────────┴───────────┴───────────┴───────────┴───────────┴──────────┴────────┴─────────┘
+
+              Turbulence closure CPU to GPU speedup
+┌──────────────────────────────────┬─────────┬─────────┬─────────┐
+│                         Closures │ speedup │  memory │  allocs │
+├──────────────────────────────────┼─────────┼─────────┼─────────┤
+│ AnisotropicBiharmonicDiffusivity │ 146.428 │ 1.78781 │ 12.9149 │
+│           AnisotropicDiffusivity │ 126.804 │ 1.67787 │ 7.41321 │
+│    AnisotropicMinimumDissipation │ 125.324 │ 1.70856 │ 8.89396 │
+│             IsotropicDiffusivity │ 134.607 │ 1.69269 │ 8.26209 │
+│                 SmagorinskyLilly │ 146.187 │ 1.89602 │ 9.86082 │
+│              TwoDimensionalLeith │ 139.196 │ 1.89218 │ 18.2551 │
+└──────────────────────────────────┴─────────┴─────────┴─────────┘
+
+```
+## Shallow Water Model
+
+This benchmark tests the performance of the shallow water model run in a doubly periodic domain (`topology = (Periodic, Periodic, Flat)`)
+on a CPU versus a GPU.  We find that with the `WENO5` advection scheme we get a maximum speedup of more than 400 times on a '16384^2' grid.
+```
+Oceananigans v0.58.1
+Julia Version 1.6.0
+Commit f9720dc2eb (2021-03-24 12:55 UTC)
+Platform Info:
+  OS: Linux (x86_64-pc-linux-gnu)
+  CPU: Intel(R) Xeon(R) Silver 4216 CPU @ 2.10GHz
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-11.0.1 (ORCJIT, cascadelake)
+Environment:
+  EBVERSIONJULIA = 1.6.0
+  JULIA_DEPOT_PATH = :
+  EBROOTJULIA = /cvmfs/soft.computecanada.ca/easybuild/software/2020/avx2/Core/julia/1.6.0
+  EBDEVELJULIA = /cvmfs/soft.computecanada.ca/easybuild/software/2020/avx2/Core/julia/1.6.0/easybuild/avx2-Core-julia-1.6.0-easybuild-devel
+  JULIA_LOAD_PATH = :
   GPU: Tesla V100-SXM2-32GB
 
                                               Shallow water model benchmarks
-┌───────────────┬─────────────┬───────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────┬─────────┐
-│ Architectures │ Float_types │    Ns │        min │     median │       mean │        max │     memory │ allocs │ samples │
-├───────────────┼─────────────┼───────┼────────────┼────────────┼────────────┼────────────┼────────────┼────────┼─────────┤
-│           CPU │     Float64 │    32 │   1.968 ms │   2.201 ms │   2.180 ms │   2.418 ms │ 304.19 KiB │   1879 │      10 │
-│           CPU │     Float64 │    64 │   3.323 ms │   3.403 ms │   3.438 ms │   3.662 ms │ 304.28 KiB │   1885 │      10 │
-│           CPU │     Float64 │   128 │   8.024 ms │   8.106 ms │   8.128 ms │   8.443 ms │ 304.28 KiB │   1885 │      10 │
-│           CPU │     Float64 │   256 │  24.693 ms │  24.877 ms │  24.975 ms │  25.452 ms │ 304.28 KiB │   1885 │      10 │
-│           CPU │     Float64 │   512 │  96.451 ms │  97.999 ms │  97.824 ms │  99.195 ms │ 305.09 KiB │   1937 │      10 │
-│           CPU │     Float64 │  1024 │ 402.754 ms │ 404.855 ms │ 404.871 ms │ 407.238 ms │ 305.09 KiB │   1937 │      10 │
-│           CPU │     Float64 │  2048 │    1.621 s │    1.625 s │    1.624 s │    1.626 s │ 305.09 KiB │   1937 │       4 │
-│           CPU │     Float64 │  4096 │    6.519 s │    6.519 s │    6.519 s │    6.519 s │ 305.09 KiB │   1937 │       1 │
-│           CPU │     Float64 │  8192 │   26.404 s │   26.404 s │   26.404 s │   26.404 s │ 305.09 KiB │   1937 │       1 │
-│           CPU │     Float64 │ 16384 │  105.359 s │  105.359 s │  105.359 s │  105.359 s │ 305.09 KiB │   1937 │       1 │
-│           GPU │     Float64 │    32 │   2.937 ms │   3.157 ms │   3.186 ms │   3.556 ms │ 637.95 KiB │   5599 │      10 │
-│           GPU │     Float64 │    64 │   3.083 ms │   3.306 ms │   3.298 ms │   3.648 ms │ 657.08 KiB │   5599 │      10 │
-│           GPU │     Float64 │   128 │   3.100 ms │   3.340 ms │   3.319 ms │   3.591 ms │ 691.95 KiB │   5599 │      10 │
-│           GPU │     Float64 │   256 │   3.170 ms │   3.398 ms │   3.463 ms │   4.453 ms │ 767.33 KiB │   5599 │      10 │
-│           GPU │     Float64 │   512 │   3.244 ms │   3.476 ms │   3.523 ms │   4.268 ms │ 912.14 KiB │   5651 │      10 │
-│           GPU │     Float64 │  1024 │   3.417 ms │   3.604 ms │   3.666 ms │   4.532 ms │   1.17 MiB │   5685 │      10 │
-│           GPU │     Float64 │  2048 │   9.201 ms │   9.246 ms │   9.243 ms │   9.317 ms │   1.73 MiB │   5775 │      10 │
-│           GPU │     Float64 │  4096 │  35.143 ms │  35.438 ms │  35.395 ms │  35.573 ms │   2.86 MiB │   5739 │      10 │
-│           GPU │     Float64 │  8192 │ 139.050 ms │ 139.118 ms │ 139.136 ms │ 139.285 ms │   5.11 MiB │   5739 │      10 │
-│           GPU │     Float64 │ 16384 │ 563.804 ms │ 563.922 ms │ 563.931 ms │ 564.081 ms │   9.61 MiB │   5761 │       9 │
-└───────────────┴─────────────┴───────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────┴─────────┘
+┌───────────────┬─────────────┬───────┬────────────┬────────────┬────────────┬────────────┬───────────┬────────┬─────────┐
+│ Architectures │ Float_types │    Ns │        min │     median │       mean │        max │    memory │ allocs │ samples │
+├───────────────┼─────────────┼───────┼────────────┼────────────┼────────────┼────────────┼───────────┼────────┼─────────┤
+│           CPU │     Float64 │    32 │   2.677 ms │   2.876 ms │   3.047 ms │   4.806 ms │  1.36 MiB │   2253 │      10 │
+│           CPU │     Float64 │    64 │   5.795 ms │   5.890 ms │   6.073 ms │   7.770 ms │  1.36 MiB │   2255 │      10 │
+│           CPU │     Float64 │   128 │  16.979 ms │  17.350 ms │  17.578 ms │  19.993 ms │  1.36 MiB │   2255 │      10 │
+│           CPU │     Float64 │   256 │  62.543 ms │  63.222 ms │  63.544 ms │  67.347 ms │  1.36 MiB │   2255 │      10 │
+│           CPU │     Float64 │   512 │ 250.149 ms │ 251.023 ms │ 251.092 ms │ 252.389 ms │  1.36 MiB │   2315 │      10 │
+│           CPU │     Float64 │  1024 │ 990.901 ms │ 993.115 ms │ 993.360 ms │ 996.091 ms │  1.36 MiB │   2315 │       6 │
+│           CPU │     Float64 │  2048 │    4.002 s │    4.004 s │    4.004 s │    4.007 s │  1.36 MiB │   2315 │       2 │
+│           CPU │     Float64 │  4096 │   16.371 s │   16.371 s │   16.371 s │   16.371 s │  1.36 MiB │   2315 │       1 │
+│           CPU │     Float64 │  8192 │   64.657 s │   64.657 s │   64.657 s │   64.657 s │  1.36 MiB │   2315 │       1 │
+│           CPU │     Float64 │ 16384 │  290.423 s │  290.423 s │  290.423 s │  290.423 s │  1.36 MiB │   2315 │       1 │
+│           GPU │     Float64 │    32 │   3.468 ms │   3.656 ms │   3.745 ms │   4.695 ms │  1.82 MiB │   5687 │      10 │
+│           GPU │     Float64 │    64 │   3.722 ms │   3.903 ms │   4.050 ms │   5.671 ms │  1.82 MiB │   5687 │      10 │
+│           GPU │     Float64 │   128 │   3.519 ms │   3.808 ms │   4.042 ms │   6.372 ms │  1.82 MiB │   5687 │      10 │
+│           GPU │     Float64 │   256 │   3.822 ms │   4.153 ms │   4.288 ms │   5.810 ms │  1.82 MiB │   5687 │      10 │
+│           GPU │     Float64 │   512 │   4.637 ms │   4.932 ms │   4.961 ms │   5.728 ms │  1.82 MiB │   5765 │      10 │
+│           GPU │     Float64 │  1024 │   3.240 ms │   3.424 ms │   3.527 ms │   4.553 ms │  1.82 MiB │   5799 │      10 │
+│           GPU │     Float64 │  2048 │  10.783 ms │  10.800 ms │  11.498 ms │  17.824 ms │  1.98 MiB │  16305 │      10 │
+│           GPU │     Float64 │  4096 │  41.880 ms │  41.911 ms │  42.485 ms │  47.627 ms │  2.67 MiB │  61033 │      10 │
+│           GPU │     Float64 │  8192 │ 166.751 ms │ 166.800 ms │ 166.847 ms │ 167.129 ms │  5.21 MiB │ 227593 │      10 │
+│           GPU │     Float64 │ 16384 │ 681.129 ms │ 681.249 ms │ 681.301 ms │ 681.583 ms │ 16.59 MiB │ 973627 │       8 │
+└───────────────┴─────────────┴───────┴────────────┴────────────┴────────────┴────────────┴───────────┴────────┴─────────┘
 
-        Shallow water model CPU -> GPU speedup
+        Shallow water model CPU to GPU speedup
 ┌─────────────┬───────┬──────────┬─────────┬─────────┐
 │ Float_types │    Ns │  speedup │  memory │  allocs │
 ├─────────────┼───────┼──────────┼─────────┼─────────┤
-│     Float64 │    32 │ 0.697116 │ 2.09724 │ 2.97978 │
-│     Float64 │    64 │  1.02927 │ 2.15944 │ 2.97029 │
-│     Float64 │   128 │  2.42711 │ 2.27406 │ 2.97029 │
-│     Float64 │   256 │  7.32025 │ 2.52177 │ 2.97029 │
-│     Float64 │   512 │  28.1914 │ 2.98971 │  2.9174 │
-│     Float64 │  1024 │  112.326 │ 3.93542 │ 2.93495 │
-│     Float64 │  2048 │  175.735 │ 5.81322 │ 2.98141 │
-│     Float64 │  4096 │  183.947 │ 9.58727 │ 2.96283 │
-│     Float64 │  8192 │  189.795 │  17.139 │ 2.96283 │
-│     Float64 │ 16384 │  186.833 │ 32.2437 │ 2.97419 │
+│     Float64 │    32 │ 0.786715 │ 1.33777 │ 2.52419 │
+│     Float64 │    64 │  1.50931 │ 1.33774 │ 2.52195 │
+│     Float64 │   128 │  4.55587 │ 1.33774 │ 2.52195 │
+│     Float64 │   256 │  15.2238 │ 1.33774 │ 2.52195 │
+│     Float64 │   512 │  50.8995 │ 1.33771 │ 2.49028 │
+│     Float64 │  1024 │  290.085 │ 1.33809 │ 2.50497 │
+│     Float64 │  2048 │  370.777 │ 1.45575 │  7.0432 │
+│     Float64 │  4096 │  390.617 │ 1.95667 │ 26.3641 │
+│     Float64 │  8192 │  387.632 │ 3.82201 │ 98.3123 │
+│     Float64 │ 16384 │   426.31 │  12.177 │ 420.573 │
 └─────────────┴───────┴──────────┴─────────┴─────────┘
-
 ```
+As shown in the graph below, speedups increase sharply starting at grid size `512^2` and then plateau off around 400 times at grid size `4096^2` and beyond.
+
+![shallow_water_speedup](https://user-images.githubusercontent.com/45054739/128793049-7bcbabaa-2d66-4209-a311-b02729fb93fa.png)
+
+The time graph below shows that times on GPU are negligebly small up until grid size `1024^2` where it starts to scale similarly to times on CPU.
+
+![shallow_water_times](https://user-images.githubusercontent.com/45054739/128793311-e4bbfd5a-aea8-4cdc-bee8-cb71128ff5fe.png)
+
+
