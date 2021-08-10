@@ -1,7 +1,5 @@
 using Printf
 using Statistics
-using Plots
-
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
@@ -9,7 +7,7 @@ using Oceananigans.Grids: xnode, ynode, znode
 
 # nobs
 const stretched_grid = false
-const hydrostatic = false
+const hydrostatic = true
 
 # domain
 const Lx = 250kilometers # east-west extent [m]
@@ -150,3 +148,45 @@ catch err
     @info "run! threw an error! The error message is"
     showerror(stdout, err)
 end
+
+
+## plotting
+using GLMakie
+
+# plotting 
+xsurf = range(0, Lx,  length = Nx)
+ysurf = range(0, Ly,  length = Ny)
+zsurf = range(-Lz, 0, length = Nz)
+ϕsurf = interior(simulation.model.tracers.b)
+clims = extrema(ϕsurf)
+zscale = 100
+fig = Figure(resolution = (1920, 1080))
+ax = fig[1,1] = LScene(fig, title= "Baroclinic Adjustment")
+
+# edge 1
+ϕedge1 = ϕsurf[:,1,:]
+GLMakie.surface!(ax, xsurf, zsurf .* zscale, ϕedge1, transformation = (:xz, 0),  colorrange = clims, colormap = :balance, show_axis=false)
+
+# edge 2
+ϕedge2 = ϕsurf[:,end,:]
+GLMakie.surface!(ax, xsurf, zsurf .* zscale, ϕedge2, transformation = (:xz, Ly),  colorrange = clims, colormap = :balance)
+
+
+# edge 3
+ϕedge3 = ϕsurf[1,:,:]
+GLMakie.surface!(ax, ysurf, zsurf .* zscale, ϕedge3, transformation = (:yz, 0),  colorrange = clims, colormap = :balance)
+
+# edge 4
+ϕedge4 = ϕsurf[end,:,:]
+GLMakie.surface!(ax, ysurf, zsurf .* zscale, ϕedge4, transformation = (:yz, Lx),  colorrange = clims, colormap = :balance)
+
+# edge 5
+ϕedge5 = ϕsurf[:,:,1]
+GLMakie.surface!(ax, xsurf, ysurf, ϕedge5, transformation = (:xy, -Lz *  zscale), colorrange = clims, colormap = :balance)
+
+
+# edge 6
+ϕedge6 = ϕsurf[:,:,end]
+GLMakie.surface!(ax, xsurf, ysurf, ϕedge6, transformation = (:xy, 0 *  zscale), colorrange = clims, colormap = :balance)
+
+display(fig)
