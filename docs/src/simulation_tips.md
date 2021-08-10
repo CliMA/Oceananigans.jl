@@ -98,15 +98,15 @@ _variable_ `T₀` that must be declared `const`.
 
 `ComputedField`s are the most convenient way to calculate diagnostics for your simulation. They will
 always work on CPUs, but when their complexity is high (in terms of number of abstract operations)
-the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is discussed 
-in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1241) and contributors are welcome.)
+the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is summarized 
+in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1886) and contributions are welcome.)
 For example, in the example below, calculating `u²` works in both CPUs and GPUs, but calculating 
 `ε` will not compile on GPUs when we call the command `compute!`:
 
 ```julia
 using Oceananigans
 grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = IncompressibleModel(grid=grid, closure=IsotropicDiffusivity(ν=1e-6))
+model = NonhydrostaticModel(grid=grid, closure=IsotropicDiffusivity(ν=1e-6))
 u, v, w = model.velocities
 ν = model.closure.ν
 u² = ComputedField(u^2)
@@ -234,8 +234,8 @@ RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}
    halo size (Hx, Hy, Hz): (1, 1, 1)
 grid spacing (Δx, Δy, Δz): (1.0, 1.0, 1.0)
 
-julia> model = IncompressibleModel(grid=grid, architecture=GPU())
-IncompressibleModel{GPU, Float64}(time = 0 seconds, iteration = 0) 
+julia> model = NonhydrostaticModel(grid=grid, architecture=GPU())
+NonhydrostaticModel{GPU, Float64}(time = 0 seconds, iteration = 0) 
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 ├── tracers: (:T, :S)
 ├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
@@ -313,4 +313,3 @@ to define initial conditions, boundary conditions or
 forcing functions on a GPU. To learn more about working with `CuArray`s, see the
 [array programming](https://juliagpu.github.io/CUDA.jl/dev/usage/array/) section
 of the CUDA.jl documentation.
-

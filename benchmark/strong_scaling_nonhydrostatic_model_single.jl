@@ -27,18 +27,18 @@ Rz = parse(Int, ARGS[7])
 
 @assert Rx * Ry * Rz == R
 
-@info "Setting up distributed incompressible model with N=($Nx, $Ny, $Nz) grid points and ranks=($Rx, $Ry, $Rz) ($decomposition decomposition) on rank $local_rank..."
+@info "Setting up distributed nonhydrostatic model with N=($Nx, $Ny, $Nz) grid points and ranks=($Rx, $Ry, $Rz) ($decomposition decomposition) on rank $local_rank..."
 
 topo = (Periodic, Periodic, Periodic)
 distributed_grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
 arch = MultiCPU(grid=distributed_grid, ranks=(Rx, Ry, Rz))
-model = DistributedIncompressibleModel(architecture=arch, grid=distributed_grid)
+model = DistributedNonhydrostaticModel(architecture=arch, grid=distributed_grid)
 
-@info "Warming up distributed incompressible model on rank $local_rank..."
+@info "Warming up distributed nonhydrostatic model on rank $local_rank..."
 
 time_step!(model, 1) # warmup
 
-@info "Benchmarking distributed incompressible model on rank $local_rank..."
+@info "Benchmarking distributed nonhydrostatic model on rank $local_rank..."
 
 trial = @benchmark begin
     @sync_gpu time_step!($model, 1)
@@ -47,6 +47,6 @@ end samples=10
 t_median = BenchmarkTools.prettytime(median(trial).time)
 @info "Done benchmarking on rank $(local_rank). Median time: $t_median"
 
-jldopen("strong_scaling_incompressible_model_$(R)ranks_$(decomposition)_$local_rank.jld2", "w") do file
+jldopen("strong_scaling_nonhydrostatic_model_$(R)ranks_$(decomposition)_$local_rank.jld2", "w") do file
     file["trial"] = trial
 end

@@ -1,15 +1,13 @@
-using Oceananigans.Solvers
-
 using Oceananigans.ImmersedBoundaries: mask_immersed_velocities!, mask_immersed_field!
 
 import Oceananigans.TimeSteppers: calculate_pressure_correction!, pressure_correct_velocities!
 
 """
-    calculate_pressure_correction!(model::IncompressibleModel, Δt)
+    calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
 
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
-function calculate_pressure_correction!(model::IncompressibleModel, Δt)
+function calculate_pressure_correction!(model::NonhydrostaticModel, Δt)
 
     # Mask immersed velocities
     velocity_masking_events = mask_immersed_velocities!(model.velocities, model.architecture, model.grid)
@@ -17,7 +15,7 @@ function calculate_pressure_correction!(model::IncompressibleModel, Δt)
 
     fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model))
 
-    solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, model.architecture, model.grid, Δt, model.velocities)
+    solve_for_pressure!(model.pressures.pNHS, model.pressure_solver, Δt, model.velocities)
 
     fill_halo_regions!(model.pressures.pNHS, model.architecture)
 
@@ -42,7 +40,7 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure vi
 end
 
 "Update the solution variables (velocities and tracers)."
-function pressure_correct_velocities!(model::IncompressibleModel, Δt)
+function pressure_correct_velocities!(model::NonhydrostaticModel, Δt)
 
     event = launch!(model.architecture, model.grid, :xyz,
                     _pressure_correct_velocities!,
@@ -50,7 +48,7 @@ function pressure_correct_velocities!(model::IncompressibleModel, Δt)
                     model.grid,
                     Δt,
                     model.pressures.pNHS,
-                    dependencies=Event(device(model.architecture))) 
+                    dependencies = device_event(model.architecture)) 
 
     wait(device(model.architecture), event)
 

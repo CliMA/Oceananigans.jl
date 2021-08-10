@@ -113,7 +113,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Non-dimensional model setup
     #####
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
                architecture = arch,
                        grid = grid,
                    buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=1.0, β=0.0)),
@@ -180,8 +180,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         :v => model -> Array(model.velocities.v.data.parent),
         :w => model -> Array(model.velocities.w.data.parent),
         :T => model -> Array(model.tracers.T.data.parent),
-   :kappaT => model -> Array(model.diffusivities.κₑ.T.data.parent),
-       :nu => model -> Array(model.diffusivities.νₑ.data.parent))
+   :kappaT => model -> Array(model.diffusivity_fields.κₑ.T.data.parent),
+       :nu => model -> Array(model.diffusivity_fields.νₑ.data.parent))
 
     field_writer =
         JLD2OutputWriter(model, fields, dir=base_dir, prefix=prefix * "_fields",
@@ -192,12 +192,12 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Set up profile output writer
     #####
 
-    Uavg = AveragedField(model.velocities.u,       dims=(1, 2))
-    Vavg = AveragedField(model.velocities.v,       dims=(1, 2))
-    Wavg = AveragedField(model.velocities.w,       dims=(1, 2))
-    Tavg = AveragedField(model.tracers.T,          dims=(1, 2))
-    νavg = AveragedField(model.diffusivities.νₑ,   dims=(1, 2))
-    κavg = AveragedField(model.diffusivities.κₑ.T, dims=(1, 2))
+    Uavg = AveragedField(model.velocities.u,            dims=(1, 2))
+    Vavg = AveragedField(model.velocities.v,            dims=(1, 2))
+    Wavg = AveragedField(model.velocities.w,            dims=(1, 2))
+    Tavg = AveragedField(model.tracers.T,               dims=(1, 2))
+    νavg = AveragedField(model.diffusivity_fields.νₑ,   dims=(1, 2))
+    κavg = AveragedField(model.diffusivity_fields.κₑ.T, dims=(1, 2))
 
     profiles = Dict(
          :u => Uavg,
@@ -251,8 +251,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         CFL = wizard.Δt / cell_advection_timescale(model)
 
         Δ = min(model.grid.Δx, model.grid.Δy, model.grid.Δz)
-        νmax = maximum(model.diffusivities.νₑ.data.parent)
-        κmax = maximum(model.diffusivities.κₑ.T.data.parent)
+        νmax = maximum(model.diffusivity_fields.νₑ.data.parent)
+        κmax = maximum(model.diffusivity_fields.κₑ.T.data.parent)
         νCFL = wizard.Δt / (Δ^2 / νmax)
         κCFL = wizard.Δt / (Δ^2 / κmax)
 

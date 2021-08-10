@@ -52,7 +52,7 @@
 
 Oceananigans.jl is a fast and friendly fluid flow solver written in Julia that can be run in 1-3 dimensions on CPUs and GPUs. It can simulate the incompressible Boussinesq equations, the shallow water equations, or the hydrostatic Boussinesq equations with a free surface. Oceananigans.jl comes with user-friendly features for simulating rotating stratified fluids including user-defined boundary conditions and forcing functions, arbitrary tracers, large eddy simulation turbulence closures, high-order advection schemes, immersed boundaries, Lagrangian particle tracking, and more!
 
-We strive for a user interface that makes Oceananigans.jl`as friendly and intuitive to use as possible, allowing users to focus on the science. Internally, we have attempted to write the underlying algorithm so that the code runs as fast as possible for the configuration chosen by the user --- from simple two-dimensional setups to complex three-dimensional simulations --- and so that as much code as possible is shared between the different architectures, models, and grids.
+We strive for a user interface that makes Oceananigans.jl as friendly and intuitive to use as possible, allowing users to focus on the science. Internally, we have attempted to write the underlying algorithm so that the code runs as fast as possible for the configuration chosen by the user --- from simple two-dimensional setups to complex three-dimensional simulations --- and so that as much code as possible is shared between the different architectures, models, and grids.
 
 ## Contents
 
@@ -90,7 +90,7 @@ Let's initialize a 3D horizontally periodic model with 100×100×50 grid points 
 ```julia
 using Oceananigans
 grid = RegularRectilinearGrid(size=(100, 100, 50), extent=(2π, 2π, 1))
-model = IncompressibleModel(grid=grid)
+model = NonhydrostaticModel(grid=grid)
 simulation = Simulation(model, Δt=60, stop_time=3600)
 run!(simulation)
 ```
@@ -108,7 +108,7 @@ N = Nx = Ny = Nz = 128   # Number of grid points in each dimension.
 L = Lx = Ly = Lz = 2000  # Length of each dimension.
 topology = (Periodic, Periodic, Bounded)
 
-model = IncompressibleModel(
+model = NonhydrostaticModel(
     architecture = CPU(),
             grid = RegularRectilinearGrid(topology=topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
          closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
@@ -151,7 +151,7 @@ If you use Oceananigans.jl as part of your research, teaching, or other activiti
 }
 ```
 
-We also maintain a [list of publication using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/publications/). If you have work using Oceananigans.jl that you would like to have listed there, please open a pull request to add it or let us know!
+We also maintain a [list of publication using Oceananigans.jl](https://clima.github.io/OceananigansDocumentation/stable/#Papers-and-preprints-using-Oceananigans.jl). If you have work using Oceananigans.jl that you would like to have listed there, please open a pull request to add it or let us know!
 
 ## Contributing
 

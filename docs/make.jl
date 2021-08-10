@@ -8,7 +8,6 @@ using Glob
 
 using Oceananigans
 using Oceananigans.Operators
-using Oceananigans.Grids
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
@@ -43,12 +42,13 @@ examples = [
     "langmuir_turbulence.jl",
     "eady_turbulence.jl",
     "kelvin_helmholtz_instability.jl",
-    "shallow_water_Bickley_jet.jl"
+    "shallow_water_Bickley_jet.jl",
+    "horizontal_convection.jl"
 ]
 
 for example in examples
     example_filepath = joinpath(EXAMPLES_DIR, example)
-    Literate.markdown(example_filepath, OUTPUT_DIR, documenter=true)
+    Literate.markdown(example_filepath, OUTPUT_DIR; flavor = Literate.DocumenterFlavor())
 end
 
 #####
@@ -65,7 +65,8 @@ example_pages = [
     "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
     "Eady turbulence"                    => "generated/eady_turbulence.md",
     "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
-    "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md"
+    "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md",
+    "Horizontal convection"              => "generated/horizontal_convection.md"
  ]
 
 model_setup_pages = [
@@ -91,8 +92,8 @@ model_setup_pages = [
 physics_pages = [
     "Coordinate system and notation" => "physics/notation.md",
     "Boussinesq approximation" => "physics/boussinesq.md",
-    "`IncompressibleModel`" => [
-        "Incompressible model" => "physics/incompressible_model.md",
+    "`NonhydrostaticModel`" => [
+        "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
         ],
     "`HydrostaticFreeSurfaceModel`" => [
         "Hydrostatic model with a free surface" => "physics/hydrostatic_free_surface_model.md"
@@ -107,10 +108,10 @@ physics_pages = [
 ]
 
 numerical_pages = [
-    "Pressure decomposition" => "numerical_implementation/pressure_decomposition.md",
-    "Time stepping" => "numerical_implementation/time_stepping.md",
     "Finite volume method" => "numerical_implementation/finite_volume.md",
     "Spatial operators" => "numerical_implementation/spatial_operators.md",
+    "Pressure decomposition" => "numerical_implementation/pressure_decomposition.md",
+    "Time stepping" => "numerical_implementation/time_stepping.md",
     "Boundary conditions" => "numerical_implementation/boundary_conditions.md",
     "Poisson solvers" => "numerical_implementation/poisson_solvers.md",
     "Large eddy simulation" => "numerical_implementation/large_eddy_simulation.md"

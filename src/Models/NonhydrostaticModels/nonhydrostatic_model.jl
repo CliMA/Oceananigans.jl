@@ -11,7 +11,7 @@ using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields,
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo
 using Oceananigans.Solvers: FFTBasedPoissonSolver
-using Oceananigans.TimeSteppers: Clock, TimeStepper
+using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
@@ -19,31 +19,31 @@ using Oceananigans.Grids: topology
 
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 
-mutable struct IncompressibleModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
+mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
                                    V, S, K, BG, P, I} <: AbstractModel{TS}
 
-         architecture :: A        # Computer `Architecture` on which `Model` is run
-                 grid :: G        # Grid of physical points on which `Model` is solved
-                clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
-            advection :: V        # Advection scheme for velocities _and_ tracers
-             buoyancy :: B        # Set of parameters for buoyancy model
-             coriolis :: R        # Set of parameters for the background rotation rate of `Model`
-         stokes_drift :: SD       # Set of parameters for surfaces waves via the Craik-Leibovich approximation
-              forcing :: F        # Container for forcing functions defined by the user
-              closure :: E        # Diffusive 'turbulence closure' for all model fields
-    background_fields :: BG       # Background velocity and tracer fields
-            particles :: P        # Particle set for Lagrangian tracking
-           velocities :: U        # Container for velocity fields `u`, `v`, and `w`
-              tracers :: C        # Container for tracer fields
-            pressures :: Φ        # Container for hydrostatic and nonhydrostatic pressure
-        diffusivities :: K        # Container for turbulent diffusivities
-          timestepper :: TS       # Object containing timestepper fields and parameters
-      pressure_solver :: S        # Pressure/Poisson solver
-    immersed_boundary :: I        # Models the physics of immersed boundaries within the grid
+          architecture :: A        # Computer `Architecture` on which `Model` is run
+                  grid :: G        # Grid of physical points on which `Model` is solved
+                 clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
+             advection :: V        # Advection scheme for velocities _and_ tracers
+              buoyancy :: B        # Set of parameters for buoyancy model
+              coriolis :: R        # Set of parameters for the background rotation rate of `Model`
+          stokes_drift :: SD       # Set of parameters for surfaces waves via the Craik-Leibovich approximation
+               forcing :: F        # Container for forcing functions defined by the user
+               closure :: E        # Diffusive 'turbulence closure' for all model fields
+     background_fields :: BG       # Background velocity and tracer fields
+             particles :: P        # Particle set for Lagrangian tracking
+            velocities :: U        # Container for velocity fields `u`, `v`, and `w`
+               tracers :: C        # Container for tracer fields
+             pressures :: Φ        # Container for hydrostatic and nonhydrostatic pressure
+    diffusivity_fields :: K        # Container for turbulent diffusivities
+           timestepper :: TS       # Object containing timestepper fields and parameters
+       pressure_solver :: S        # Pressure/Poisson solver
+     immersed_boundary :: I        # Models the physics of immersed boundaries within the grid
 end
 
 """
-    IncompressibleModel(;
+    NonhydrostaticModel(;
                    grid,
            architecture = CPU(),
                   clock = Clock{eltype(grid)}(0, 0, 1),
@@ -60,12 +60,13 @@ end
               particles = nothing,
              velocities = nothing,
               pressures = nothing,
-          diffusivities = nothing,
+     diffusivity_fields = nothing,
         pressure_solver = nothing,
       immersed_boundary = nothing
     )
 
-Construct an incompressible `Oceananigans.jl` model on `grid`.
+Construct a model for a non-hydrostatic, incompressible fluid, using the Boussinesq approximation
+when `buoyancy != nothing`. By default, all Bounded directions are rigid and impenetrable.
 
 Keyword arguments
 =================
@@ -83,7 +84,7 @@ Keyword arguments
     - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
                      `:RungeKutta3`.
 """
-function IncompressibleModel(;    grid,
+function NonhydrostaticModel(;    grid,
     architecture::AbstractArchitecture = CPU(),
                                  clock = Clock{eltype(grid)}(0, 0, 1),
                              advection = CenteredSecondOrder(),
@@ -99,7 +100,7 @@ function IncompressibleModel(;    grid,
          particles::ParticlesOrNothing = nothing,
                             velocities = nothing,
                              pressures = nothing,
-                         diffusivities = nothing,
+                    diffusivity_fields = nothing,
                        pressure_solver = nothing,
                      immersed_boundary = nothing
     )
@@ -129,7 +130,7 @@ function IncompressibleModel(;    grid,
     embedded_boundary_conditions = merge(extract_boundary_conditions(velocities),
                                          extract_boundary_conditions(tracers),
                                          extract_boundary_conditions(pressures),
-                                         extract_boundary_conditions(diffusivities))
+                                         extract_boundary_conditions(diffusivity_fields))
 
     # Next, we form a list of default boundary conditions:
     prognostic_field_names = (:u, :v, :w, tracernames(tracers)...)
@@ -144,10 +145,10 @@ function IncompressibleModel(;    grid,
     closure = with_tracers(tracernames(tracers), closure)
 
     # Either check grid-correctness, or construct tuples of fields
-    velocities    = VelocityFields(velocities, architecture, grid, boundary_conditions)
-    tracers       = TracerFields(tracers,      architecture, grid, boundary_conditions)
-    pressures     = PressureFields(pressures,  architecture, grid, boundary_conditions)
-    diffusivities = DiffusivityFields(diffusivities, architecture, grid, tracernames(tracers), boundary_conditions, closure)
+    velocities         = VelocityFields(velocities, architecture, grid, boundary_conditions)
+    tracers            = TracerFields(tracers,      architecture, grid, boundary_conditions)
+    pressures          = PressureFields(pressures,  architecture, grid, boundary_conditions)
+    diffusivity_fields = DiffusivityFields(diffusivity_fields, architecture, grid, tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
         pressure_solver = PressureSolver(architecture, grid)
@@ -164,9 +165,13 @@ function IncompressibleModel(;    grid,
     model_fields = merge(velocities, tracers)
     forcing = model_forcing(model_fields; forcing...)
 
-    return IncompressibleModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
-                               forcing, closure, background_fields, particles, velocities, tracers,
-                               pressures, diffusivities, timestepper, pressure_solver, immersed_boundary)
+    model = NonhydrostaticModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
+                                forcing, closure, background_fields, particles, velocities, tracers,
+                                pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary)
+
+    update_state!(model)
+    
+    return model
 end
 
 #####

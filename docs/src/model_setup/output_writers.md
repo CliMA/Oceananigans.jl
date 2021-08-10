@@ -57,7 +57,7 @@ using Oceananigans, Oceananigans.OutputWriters
 
 grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
-model = IncompressibleModel(grid=grid);
+model = NonhydrostaticModel(grid=grid);
 
 simulation = Simulation(model, Δt=12, stop_time=3600);
 
@@ -113,7 +113,7 @@ using Oceananigans, Oceananigans.OutputWriters
 
 grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
 
-model = IncompressibleModel(grid=grid);
+model = NonhydrostaticModel(grid=grid);
 
 simulation = Simulation(model, Δt=1.25, stop_iteration=3);
 
@@ -170,7 +170,7 @@ Write out 3D fields for w and T and a horizontal average:
 using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Fields
 using Oceananigans.Utils: hour, minute
 
-model = IncompressibleModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
@@ -199,7 +199,7 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 └── max filesize: Inf YiB
 ```
 
-and a time- and horizontal-average of temperature `T` every 1 hour of simulation time
+and a time- and horizontal-average of temperature `T` every 20 minutes of simulation time
 to a file called `some_averaged_data.jld2`
 
 ```jldoctest jld2_output_writer
@@ -255,7 +255,7 @@ using Oceananigans
 using Oceananigans.OutputWriters: JLD2OutputWriter
 using Oceananigans.Utils: minutes
 
-model = IncompressibleModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
 simulation = Simulation(model, Δt=10minutes, stop_time=30years)
 

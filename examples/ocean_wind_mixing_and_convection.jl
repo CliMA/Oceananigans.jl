@@ -139,7 +139,7 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 # for large eddy simulation to model the effect of turbulent motions at
 # scales smaller than the grid scale that we cannot explicitly resolve.
 
-model = IncompressibleModel(architecture = CPU(),
+model = NonhydrostaticModel(architecture = CPU(),
                             advection = UpwindBiasedFifthOrder(),
                             timestepper = :RungeKutta3,
                             grid = grid,
@@ -152,7 +152,7 @@ model = IncompressibleModel(architecture = CPU(),
 # Notes:
 #
 # * To use the Smagorinsky-Lilly turbulence closure (with a constant model coefficient) rather than
-#   `AnisotropicMinimumDissipation`, use `closure = ConstantSmagorinsky()` in the model constructor.
+#   `AnisotropicMinimumDissipation`, use `closure = SmagorinskyLilly()` in the model constructor.
 #
 # * To change the `architecture` to `GPU`, replace `architecture = CPU()` with
 #   `architecture = GPU()`.
@@ -206,7 +206,7 @@ simulation = Simulation(model, Δt=wizard, stop_time=40minutes, iteration_interv
 # `ocean_wind_mixing_and_convection.jld2`.
 
 ## Create a NamedTuple with eddy viscosity
-eddy_viscosity = (νₑ = model.diffusivities.νₑ,)
+eddy_viscosity = (νₑ = model.diffusivity_fields.νₑ,)
 
 simulation.output_writers[:slices] =
     JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_viscosity),

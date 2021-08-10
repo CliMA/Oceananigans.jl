@@ -10,8 +10,8 @@ ivd_closure = IsotropicDiffusivity(κ = 1.0, time_discretization = VerticallyImp
 
 model_kwargs = (grid=grid, tracers=:c, buoyancy=nothing)
 
-implicit_model = IncompressibleModel(; closure=ivd_closure, model_kwargs...)
-explicit_model = IncompressibleModel(; closure=evd_closure, model_kwargs...)
+implicit_model = NonhydrostaticModel(; closure=ivd_closure, model_kwargs...)
+explicit_model = NonhydrostaticModel(; closure=evd_closure, model_kwargs...)
 models = (implicit_model, explicit_model)
                                     
 initial_temperature(x, y, z) = exp(-z^2 / 0.02)

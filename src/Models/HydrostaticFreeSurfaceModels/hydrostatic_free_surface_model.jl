@@ -10,8 +10,8 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
-using Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
-using Oceananigans.TimeSteppers: Clock, TimeStepper
+using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
+using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
@@ -28,23 +28,23 @@ PressureField(arch, grid) = (; pHY′ = CenterField(arch, grid))
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
                                            G, T, V, B, R, F, P, U, C, Φ, K, AF} <: AbstractModel{TS}
-
-        architecture :: A        # Computer `Architecture` on which `Model` is run
-                grid :: G        # Grid of physical points on which `Model` is solved
-               clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
-           advection :: V        # Advection scheme for tracers
-            buoyancy :: B        # Set of parameters for buoyancy model
-            coriolis :: R        # Set of parameters for the background rotation rate of `Model`
-        free_surface :: S        # Free surface parameters and fields
-             forcing :: F        # Container for forcing functions defined by the user
-             closure :: E        # Diffusive 'turbulence closure' for all model fields
-           particles :: P        # Particle set for Lagrangian tracking
-          velocities :: U        # Container for velocity fields `u`, `v`, and `w`
-             tracers :: C        # Container for tracer fields
-            pressure :: Φ        # Container for hydrostatic pressure
-       diffusivities :: K        # Container for turbulent diffusivities
-         timestepper :: TS       # Object containing timestepper fields and parameters
-    auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
+  
+          architecture :: A        # Computer `Architecture` on which `Model` is run
+                  grid :: G        # Grid of physical points on which `Model` is solved
+                 clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
+             advection :: V        # Advection scheme for tracers
+              buoyancy :: B        # Set of parameters for buoyancy model
+              coriolis :: R        # Set of parameters for the background rotation rate of `Model`
+          free_surface :: S        # Free surface parameters and fields
+               forcing :: F        # Container for forcing functions defined by the user
+               closure :: E        # Diffusive 'turbulence closure' for all model fields
+             particles :: P        # Particle set for Lagrangian tracking
+            velocities :: U        # Container for velocity fields `u`, `v`, and `w`
+               tracers :: C        # Container for tracer fields
+              pressure :: Φ        # Container for hydrostatic pressure
+    diffusivity_fields :: K        # Container for turbulent diffusivities
+           timestepper :: TS       # Object containing timestepper fields and parameters
+      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
 end
 
 """
@@ -63,7 +63,7 @@ end
               particles = nothing,
              velocities = nothing,
                pressure = nothing,
-          diffusivities = nothing,
+     diffusivity_fields = nothing,
        auxiliary_fields = NamedTuple(),
     )
 
@@ -99,7 +99,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     particles::Union{Nothing, LagrangianParticles} = nothing,
                                         velocities = nothing,
                                           pressure = nothing,
-                                     diffusivities = nothing,
+                                diffusivity_fields = nothing,
                                   auxiliary_fields = NamedTuple(),
     )
 
@@ -126,7 +126,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     embedded_boundary_conditions = merge(extract_boundary_conditions(velocities),
                                          extract_boundary_conditions(tracers),
                                          extract_boundary_conditions(pressure),
-                                         extract_boundary_conditions(diffusivities))
+                                         extract_boundary_conditions(diffusivity_fields))
 
     # Next, we form a list of default boundary conditions:
     prognostic_field_names = (:u, :v, :η, tracernames(tracers)...)
@@ -145,10 +145,10 @@ function HydrostaticFreeSurfaceModel(; grid,
     closure = with_tracers(tracernames(tracers), closure)
 
     # Either check grid-correctness, or construct tuples of fields
-    velocities    = HydrostaticFreeSurfaceVelocityFields(velocities, architecture, grid, clock, boundary_conditions)
-    tracers       = TracerFields(tracers, architecture, grid, boundary_conditions)
-    pressure      = PressureField(architecture, grid)
-    diffusivities = DiffusivityFields(diffusivities, architecture, grid, tracernames(tracers), boundary_conditions, closure)
+    velocities         = HydrostaticFreeSurfaceVelocityFields(velocities, architecture, grid, clock, boundary_conditions)
+    tracers            = TracerFields(tracers, architecture, grid, boundary_conditions)
+    pressure           = PressureField(architecture, grid)
+    diffusivity_fields = DiffusivityFields(diffusivity_fields, architecture, grid, tracernames(tracers), boundary_conditions, closure)
 
     validate_velocity_boundary_conditions(velocities)
 
@@ -175,9 +175,13 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     advection = merge((momentum=momentum_advection,), tracer_advection_tuple)
 
-    return HydrostaticFreeSurfaceModel(architecture, grid, clock, advection, buoyancy, coriolis,
-                                       free_surface, forcing, closure, particles, velocities, tracers,
-                                       pressure, diffusivities, timestepper, auxiliary_fields)
+    model = HydrostaticFreeSurfaceModel(architecture, grid, clock, advection, buoyancy, coriolis,
+                                        free_surface, forcing, closure, particles, velocities, tracers,
+                                        pressure, diffusivity_fields, timestepper, auxiliary_fields)
+
+    update_state!(model)
+
+    return model
 end
 
 validate_velocity_boundary_conditions(velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
