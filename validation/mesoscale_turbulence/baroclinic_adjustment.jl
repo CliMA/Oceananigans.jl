@@ -42,8 +42,6 @@ else
 
 end
 
-@info "Built a grid: $grid."
-
 #####
 ##### Coriolis
 #####
@@ -51,24 +49,26 @@ end
 coriolis = BetaPlane(latitude=-45)
 
 #####
-##### Dissipation
+##### Closures
 #####
 
-#horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
+Δx, Δy, Δz = Lx/Nx, Ly/Ny, Lz/Nz
 
-@show κ₂h = 1 #1e0 / day * grid.Δx^2 # [m² s⁻¹] horizontal viscosity and diffusivity
-@show ν₂h = 30 #1e0 / day * grid.Δx^2 # [m² s⁻¹] horizontal viscosity and diffusivity
-@show κ₄h = 1e-1 / day * grid.Δx^4 # [m⁴ s⁻¹] horizontal hyperviscosity and hyperdiffusivity
+𝒜 = Δz/Δx # Grid cell aspect ratio.
 
-using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
+κh = 0.25   # [m²/s] horizontal diffusivity
+νh = 0.25   # [m²/s] horizontal viscocity
+κv = 𝒜 * κh # [m²/s] vertical diffusivity
+νv = 𝒜 * νh # [m²/s] vertical viscocity
 
-horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=ν₂h, κh=κ₂h)
-#horizontal_diffusivity = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
+diffusive_closure = AnisotropicDiffusivity(νx = νh, νy = νh, νz =νv, 
+                                 κx = κh, κy = κh, κz=κv)
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0,
                                                                 background_κz = 5e-6,
                                                                 background_νz = 3e-4)
+
 #####
 ##### Model building
 #####
@@ -81,7 +81,7 @@ if hydrostatic
                                         grid = grid,
                                         coriolis = coriolis,
                                         buoyancy = BuoyancyTracer(),
-                                        closure = (horizontal_diffusivity, convective_adjustment),
+                                        closure = (diffusive_closure, convective_adjustment),
                                         tracers = :b,
                                         momentum_advection = WENO5(),
                                         tracer_advection = WENO5(),
@@ -94,7 +94,7 @@ else
                    grid = grid,
                coriolis = coriolis,
                buoyancy = BuoyancyTracer(),
-                closure = closure,
+                closure = diffusive_closure,
                 tracers = (:b,),
               advection = WENO5(),
 )
@@ -119,7 +119,7 @@ set!(model, b=B₀)
 ##### Simulation building
 #####
 
-wizard = TimeStepWizard(cfl=0.1, Δt=1minute, max_change=1.1, max_Δt=20minutes)
+wizard = TimeStepWizard(cfl=0.15, Δt=30.0, max_change=1.5, max_Δt=300.0)
 
 wall_clock = [time_ns()]
 
@@ -139,7 +139,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=60days, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=30days, progress=print_progress, iteration_interval=10)
 
 
 @info "Running the simulation..."
