@@ -1,5 +1,5 @@
 # printing
-using Printf, Statistics
+using Printf, Statistics 
 # Oceananigans
 using Oceananigans
 using Oceananigans.BoundaryConditions
@@ -10,7 +10,9 @@ using Oceananigans.Utils
 using Oceananigans.AbstractOperations
 using Oceananigans.Advection
 
-arch = GPU()
+const hydrostatic = false
+
+arch = CPU()
 FT   = Float64
 
 ## units
@@ -35,9 +37,9 @@ timestepper = :RungeKutta3
 Δx = Δy = 5kilometer # 5km
 Δz = 100meter
 # Multiple of 16 gridpoints
-const Nx = 192
-const Ny = 400
-const Nz = 32
+const Nx = Int(192 * 0.5)
+const Ny = Int(400 * 0.5)
+const Nz = Int(32 * 0.5)
 # Create Grid
 topology = (Periodic, Bounded, Bounded)
 grid = RegularRectilinearGrid(topology=topology, 
@@ -64,7 +66,7 @@ buoyancy = BuoyancyTracer()
 κv = 0.5e-5 # [m²/s] vertical diffusivity
 νv = 3e-4   # [m²/s] vertical viscocity
 
-closure = AnisotropicDiffusivity(νx = νh, νy = νh, νz =νv, 
+diffusive_closure = AnisotropicDiffusivity(νx = νh, νy = νh, νz =νv, 
                                  κx = κh, κy = κh, κz=κv)
 
 parameters = (
@@ -121,19 +123,40 @@ Fb = Forcing(Fb_function, parameters = parameters, discrete_form = true)
 # Record forcings
 forcings = (b = Fb, ) 
 
+# Convective Parameterization
+convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
+                                                                convective_νz = 0.0,
+                                                                background_κz = 5e-6,
+                                                                background_νz = 3e-4)
+
 # Model Setup
-model = NonhydrostaticModel(
-           architecture = arch,
-                   grid = grid,
-               coriolis = coriolis,
-               buoyancy = buoyancy,
-                closure = closure,
-                tracers = (:b,),
-     boundary_conditions = bcs,
-                 forcing = forcings,
-              advection = advection,
-            timestepper = timestepper,
-)
+if hydrostatic 
+    model = HydrostaticFreeSurfaceModel(architecture = arch,
+            grid = grid,
+            free_surface = ImplicitFreeSurface(),
+            momentum_advection = WENO5(),
+            tracer_advection = WENO5(),
+            buoyancy = BuoyancyTracer(),
+            coriolis = coriolis,
+            closure = (diffusive_closure, convective_adjustment),
+            tracers = (:b,),
+            boundary_conditions = bcs,
+            forcing = forcings,
+            )
+else
+    model = NonhydrostaticModel(
+            architecture = arch,
+                    grid = grid,
+                coriolis = coriolis,
+                buoyancy = buoyancy,
+                    closure = diffusive_closure,
+                    tracers = (:b,),
+        boundary_conditions = bcs,
+                    forcing = forcings,
+                advection = advection,
+                timestepper = timestepper,
+    )
+end
 
 # Timestep
 Δt_wizard = TimeStepWizard(cfl = 1.0, Δt = Δt, max_change = 1.05, max_Δt = maxΔt)
