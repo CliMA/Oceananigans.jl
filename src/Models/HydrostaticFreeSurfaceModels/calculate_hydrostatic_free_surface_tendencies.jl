@@ -21,6 +21,7 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
     # Calculate contributions to momentum and tracer tendencies from user-prescribed fluxes across the
     # boundaries of the domain
     calculate_hydrostatic_boundary_tendency_contributions!(model.timestepper.Gⁿ,
+                                                           model.grid,
                                                            model.architecture,
                                                            model.velocities,
                                                            model.free_surface,
@@ -32,6 +33,23 @@ function calculate_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     return nothing
 end
+
+function calculate_free_surface_tendency!(arch, grid, model, dependencies)
+
+    Gη_event = launch!(arch, grid, :xy,
+                       calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
+                       grid,
+                       model.velocities,
+                       model.free_surface,
+                       model.tracers,
+                       model.auxiliary_fields,
+                       model.forcing,
+                       model.clock;
+                       dependencies = dependencies)
+
+    return Gη_event
+end
+    
 
 """ Calculate momentum tendencies if momentum is not prescribed. `velocities` argument eases dispatch on `PrescribedVelocityFields`."""
 function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependencies = device_event(model))
@@ -61,28 +79,29 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
                        calculate_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, momentum_kernel_args...;
                        dependencies = dependencies)
 
-    Gη_event = launch!(arch, grid, Val(:xy),
-                       calculate_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
-                       grid,
-                       model.velocities,
-                       model.free_surface,
-                       model.tracers,
-                       model.auxiliary_fields,
-                       model.forcing,
-                       model.clock;
-                       dependencies = dependencies)
+    Gη_event = calculate_free_surface_tendency!(arch, grid, model, dependencies)
 
     events = [Gu_event, Gv_event, Gη_event]
 
     return events
 end
 
-# Fallback
-@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure, tracer_name) = hydrostatic_free_surface_tracer_tendency
-@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::TKEBasedVerticalDiffusivity, ::Val{:e}) = hydrostatic_turbulent_kinetic_energy_tendency
+using Oceananigans.TurbulenceClosures: TKEVD
 
-# Hack for closure tuples
-tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closures::Tuple, ::Val{:e}) = tracer_tendency_kernel_function(model, closures[1], Val(:e))
+# Fallback
+@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure, tracer_name) =
+    hydrostatic_free_surface_tracer_tendency
+
+@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::TKEVD, ::Val{:e}) =
+    hydrostatic_turbulent_kinetic_energy_tendency
+
+function tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closures::Tuple, ::Val{:e})
+    if any(c isa TKEVD for c in closures)
+        return hydrostatic_turbulent_kinetic_energy_tendency
+    else
+        return hydrostatic_free_surface_tracer_tendency
+    end
+end
 
 """ Store previous value of the source term and calculate current source term. """
 function calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)
@@ -177,7 +196,7 @@ function apply_flux_bcs!(Gcⁿ, events, c, arch, barrier, args...)
 end
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, arch, velocities, free_surface, tracers, args...)
+function calculate_hydrostatic_boundary_tendency_contributions!(Gⁿ, grid, arch, velocities, free_surface, tracers, args...)
 
     barrier = device_event(arch)
 

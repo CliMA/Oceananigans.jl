@@ -27,34 +27,26 @@ end
                diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
                output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
                callback = OrderedDict{Symbol, Callback}(),
-               progress = nothing,
+               progress = default_progress,
                iteration_interval = 1,
                parameters = nothing)
 
-Construct an Oceananigans.jl `Simulation` for a `model` with time step `Δt`.
-
+Construct a `Simulation` for a `model` with time step `Δt`.
 Keyword arguments
 =================
     - `Δt`: Required keyword argument specifying the simulation time step. Can be a `Number`
       for constant time steps or a `TimeStepWizard` for adaptive time-stepping.
-
     - `stop_criteria`: A list of functions or callable objects (each taking a single argument,
       the `simulation`). If any of the functions return `true` when the stop criteria is
       evaluated the simulation will stop.
-
     - `stop_iteration`: Stop the simulation after this many iterations.
-
     - `stop_time`: Stop the simulation once this much model clock time has passed.
-
     - `wall_time_limit`: Stop the simulation if it's been running for longer than this many
        seconds of wall clock time.
-
     - `progress`: A function with a single argument, the `simulation`. Will be called every
       `iteration_interval` iterations. Useful for logging simulation health.
-
     - `iteration_interval`: How often to update the time step, check stop criteria, and call
       `progress` function (in number of iterations).
-
     - `parameters`: Parameters that can be accessed in the `progress` function.
 """
 function Simulation(model; Δt,

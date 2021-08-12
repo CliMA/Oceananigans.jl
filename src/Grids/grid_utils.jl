@@ -1,7 +1,7 @@
 using CUDA
 
 #####
-##### Convinience functions
+##### Convenience functions
 #####
 
 Base.length(::Type{Face}, topo, N) = N
@@ -275,7 +275,7 @@ function nodes(loc, grid::AbstractGrid; reshape=false)
 end
 
 #####
-##### Convinience functions
+##### Convenience functions
 #####
 
 unpack_grid(grid) = grid.Nx, grid.Ny, grid.Nz, grid.Lx, grid.Ly, grid.Lz
@@ -298,3 +298,9 @@ function pop_flat_elements(tup, topo)
     return Tuple(new_tup)
 end
 
+
+#####
+##### Directions (for tilted domains)
+#####
+
+struct ZDirection end
