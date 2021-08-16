@@ -9,7 +9,6 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 const κ = 1
 const ν = 1
-const f = 0.2
 const nz = 3
 const H = nz * 5
 const topo = -H + 5
@@ -27,7 +26,6 @@ model = NonhydrostaticModel(architecture = CPU(),
                                     grid = immersed_grid,
                                  tracers = (:b),
                                  closure = IsotropicDiffusivity(ν=ν, κ=κ),
-                                coriolis = FPlane(f=f),
                                 buoyancy = BuoyancyTracer())
 
 set!(model, b=1.0, u=0, v=0, w=0)
@@ -35,7 +33,7 @@ set!(model, b=1.0, u=0, v=0, w=0)
 wizard = TimeStepWizard(cfl=0.09, Δt=0.09 * underlying_grid.Δz, max_change=1.1, max_Δt=10.0, min_Δt=0.0001)
 
 start_time = time_ns()
-stop_time = 8* π/f
+stop_time = 25.
 
 progress_message(sim) =
            @printf("i: %04d, t: %s, Δt: %s, bmax = %.1e ms⁻¹, wall time: %s\n",
@@ -43,7 +41,7 @@ progress_message(sim) =
                    prettytime(wizard.Δt), maximum(abs, sim.model.tracers.b),
                    prettytime((time_ns() - start_time) * 1e-9))
 
-simulation = Simulation(model, Δt=wizard, stop_time=stop_time, iteration_interval=100, progress= progress_message)
+simulation = Simulation(model, Δt=wizard, stop_time=stop_time, iteration_interval=5, progress= progress_message)
 
 outputs = merge(model.velocities, model.tracers)
 
