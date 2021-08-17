@@ -95,7 +95,8 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
 
     event = launch!(arch, grid, :xy,
                     fft_based_implicit_free_surface_right_hand_side!,
-                    rhs, grid, g, H, Δt, ∫ᶻQ, η)
+                    rhs, grid, g, H, Δt, ∫ᶻQ, η,
+                    dependencies = device_event(arch))
 
     return event
 end
