@@ -8,7 +8,7 @@ Poisson equation for the non-hydrostatic kinematic pressure
 ```math
    \begin{equation}
    \label{eq:poisson-pressure}
-   \nabla^2 p_{NH} = \frac{\nabla \cdot \boldsymbol{v}^n}{\Delta t} + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{G}_{\boldsymbol{v}} \equiv \mathscr{F} \, ,
+   \nabla^2 p_{NH} = \frac{\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v}^n}{\Delta t} + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{G}_{\boldsymbol{v}} \equiv \mathscr{F} \, ,
    \end{equation}
 ```
 along with homogenous Neumann boundary conditions ``\boldsymbol{v} \cdot \boldsymbol{\hat{n}} = 0`` 
@@ -218,18 +218,18 @@ integrated continuity equation
 ```math
     \begin{equation}
     \label{eq:vertically-integrated-continuity}
-    \partial_{t} \eta + \partial_{x} H \hat{u} + \partial_{y} H \hat{v} = M \, ,
+    \partial_t \eta + \partial_x (H \hat{u}) + \partial_y (H \hat{v}) = M \, ,
     \end{equation}
 ```
 
-where M is some surface volume flux (e.g terms such as precipitation, evaporation and runoff), 
+where ``M`` is some surface volume flux (e.g., terms such as precipitation, evaporation and runoff); 
 currently ``M=0`` is assumed. To form a linear system that can be solved implicitly we recast
 the continuity equation into a discrete integral form
 
 ```math
     \begin{equation}
     \label{eq:semi-discrete-integral-continuity}
-    A_{z} \partial_{t} \eta + \delta_{x}^{caa}\sum_{k} A_{x} u +\delta_{y}^{caa}\sum_{k} A_{y} v = A_{z} M \, ,
+    A_z \partial_t \eta + \delta_{x}^{caa} \sum_{k} A_{x} u + \delta_y^{caa} \sum_k A_y v = A_z M \, ,
     \end{equation}
 ```
 
@@ -238,7 +238,7 @@ and apply the discrete form to the hydrostatic form of the velocity fractional s
 ```math
     \begin{equation}
     \label{eq:hydrostatic-fractional-step}
-    \boldsymbol{v}^{n+1} = \boldsymbol{v}^{\star} - g\Delta t \boldsymbol{\nabla} \eta^{n+1} \, .
+    \boldsymbol{v}^{n+1} = \boldsymbol{v}^{\star} - g \Delta t \boldsymbol{\nabla} \eta^{n+1} \, .
     \end{equation}
 ```
 
@@ -247,19 +247,18 @@ as follows.
 Assuming ``M=0`` (for now), for the ``n+1`` timestep velocity we want the following to hold
 
 ```math
-    A_{z}\frac{\eta^{n+1}-\eta^{n}}{\Delta t}=-\delta_{x}^{caa}\sum_{k} A_{x} u^{n+1} - \delta_{y}^{caa}\sum_{k} A_{y} v^{n+1} \, ,
+    A_z \frac{\eta^{n+1} - \eta^{n}}{\Delta t} = -\delta_x^{caa} \sum_k A_x u^{n+1} - \delta_y^{caa} \sum_k A_y v^{n+1} \, .
 ```
 
-substituting for ``u^{n+1}`` and ``v^{n+1}`` from the discrete form of the 
-right-hand-side of \eqref{eq:hydrostatic-fractional-step} then gives an implicit equation
-for ``\eta^{n+1}``.
+Substituting ``u^{n+1}`` and ``v^{n+1}`` from the discrete form of the  right-hand-side of
+\eqref{eq:hydrostatic-fractional-step} then gives an implicit equation for ``\eta^{n+1}``,
 
 ```math
 \begin{align}
-   \delta_{x}^{caa}\sum_{k} A_{x} \partial_{x}^{faa}\eta^{n+1} & + \delta_{y}^{aca}\sum_{k} A_{y} \partial_{y}^{afa}\eta^{n+1} - \frac{1}{g\Delta t^{2}}A_{z} \eta^{n+1} = \\
-   & = \frac{1}{g \Delta t}\left( \delta_{x}^{caa}\sum_{k} A_{x} u^{\star} + \delta_{y}^{aca}\sum_{k} A_{y} v^{\star} \right) - \frac{1}{g\Delta t^{2}}A_{z} \eta^{n} \, .
+   \delta_x^{caa}\sum_k A_x \partial_x^{faa} \eta^{n+1} & + \delta_y^{aca} \sum_k A_y \partial_y^{afa} \eta^{n+1} - \frac{1}{g \, \Delta t^2} A_z \eta^{n+1} = \nonumber \\
+   & = \frac{1}{g \, \Delta t} \left( \delta_x^{caa} \sum_k A_x u^{\star} + \delta_y^{aca} \sum_k A_y v^{\star} \right ) - \frac{1}{g \, \Delta t^{2}} A_z \eta^{n} \, .
 \end{align}
 ```
 
-Formulated in this way, the linear operator will be symmetric and so can be solved using a preconditioned conjugate 
-gradient algorithmn.
+Formulated in this way, the linear operator will be symmetric and so can be solved using a
+preconditioned conjugate gradient algorithmn.

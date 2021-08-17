@@ -6,7 +6,6 @@ export
     AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
     TwoDimensionalLeith,
-    ConstantSmagorinsky,
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     HorizontallyCurvilinearAnisotropicDiffusivity,
@@ -85,12 +84,5 @@ include("vertically_implicit_diffusion_solver.jl")
 #####
 ##### Some value judgements here
 #####
-
-"""
-    ConstantSmagorinsky
-
-An alias for `SmagorinskyLilly`.
-"""
-const ConstantSmagorinsky = SmagorinskyLilly
 
 end # module
