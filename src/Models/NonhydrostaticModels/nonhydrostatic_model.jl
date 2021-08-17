@@ -169,9 +169,10 @@ function NonhydrostaticModel(;    grid,
     model_fields = merge(velocities, tracers)
     forcing = model_forcing(model_fields; forcing...)
 
-    NonhydrostaticModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
-                        forcing, closure, background_fields, particles, velocities, tracers,
-                        pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary, auxiliary_fields)
+    model = NonhydrostaticModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
+                                forcing, closure, background_fields, particles, velocities, tracers,
+                                pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary,
+                                auxiliary_fields)
 
     update_state!(model)
     
