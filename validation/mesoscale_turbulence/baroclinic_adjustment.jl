@@ -4,17 +4,22 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
 # nobs
-const stretched_grid = false
-const hydrostatic = true
-const implicit_free_surface = false
-const stop_time = 30days
+stretched_grid = false
+hydrostatic = true
+implicit_free_surface = true
+stop_time = 30days
 
 # timestep
-Δt_min = 60.0 * 0.5 # 30.0
+Δt_min = 60.0 * 5 # 30.0
 Δt_max = 60.0 * 0.5 # 300.0
 max_Δ = 1.0 # 1.5
+
+if !hydrostatic
+    Δt_min = 300 
+end
 
 if implicit_free_surface
     wizard = Δt_min # TimeStepWizard(cfl=0.15, Δt=Δt_min, max_change=max_Δ, max_Δt=Δt_max)
@@ -30,7 +35,7 @@ const Lz = 1kilometers    # depth [m]
 
 Nx = 64*2  #  * 2
 Ny = 128*2  #  * 2
-Nz = 8  # * 4
+Nz = 8*4 # * 4
 
 s = 1.2 # stretching factor
 z_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
@@ -74,13 +79,11 @@ coriolis = BetaPlane(latitude=-45)
 κv = 𝒜 * κh # [m²/s] vertical diffusivity
 νv = 𝒜 * νh # [m²/s] vertical viscocity
 
-diffusive_closure = AnisotropicDiffusivity(νx = νh, νy = νh, νz =νv, 
-                                 κx = κh, κy = κh, κz=κv)
+diffusive_closure = AnisotropicDiffusivity(νx=νh, νy=νh, νz=νv, κx=κh, κy=κh, κz=κv,
+					                       time_discretization = VerticallyImplicitTimeDiscretization())
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
-                                                                convective_νz = 0.0,
-                                                                background_κz = 5e-6,
-                                                                background_νz = 3e-4)
+                                                                convective_νz = 0.0)
 
 #####
 ##### Model building
@@ -88,12 +91,13 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 @info "Building a model..."
 
+closures = (diffusive_closure, convective_adjustment)
+
 if hydrostatic
-    println("constructing hydrostatic model")
-    closures = (diffusive_closure, convective_adjustment)
-    # closures = diffusive_closure
+    println("Constructing hydrostatic model")
     if implicit_free_surface
         free_surface = ImplicitFreeSurface()
+        #free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
     else
         free_surface = ExplicitFreeSurface()
     end
@@ -108,16 +112,14 @@ if hydrostatic
                                         free_surface = free_surface,
                                         )
 else
-    # closures = (diffusive_closure, convective_adjustment)
-    closures = diffusive_closure
-    println("constructing nonhydrostatic model")
+    println("Constructing nonhydrostatic model")
     model = NonhydrostaticModel(
            architecture = arch,
                    grid = grid,
                coriolis = coriolis,
                buoyancy = BuoyancyTracer(),
                 closure = closures,
-                tracers = (:b,),
+                tracers = :b,
               advection = WENO5(),
 )
 end
@@ -167,7 +169,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=100)
+simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=1)
 
 
 @info "Running the simulation..."
