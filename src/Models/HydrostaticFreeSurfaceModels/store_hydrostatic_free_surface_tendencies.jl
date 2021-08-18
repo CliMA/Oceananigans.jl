@@ -22,9 +22,9 @@ function store_free_surface_tendency!(::ExplicitFreeSurface, model, barrier)
 
     event = launch!(model.architecture, model.grid, :xy,
                     _store_free_surface_tendency!,
-                    model.time_stepper.G⁻.η,
+                    model.timestepper.G⁻.η,
                     model.grid,
-                    model.time_stepper.Gⁿ.η,
+                    model.timestepper.Gⁿ.η,
                     dependencies = barrier)
 
     return event
