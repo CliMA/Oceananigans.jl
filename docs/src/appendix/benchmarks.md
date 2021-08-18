@@ -364,4 +364,290 @@ The time graph below shows that times on GPU are negligebly small up until grid 
 
 ![shallow_water_times](https://user-images.githubusercontent.com/45054739/128793311-e4bbfd5a-aea8-4cdc-bee8-cb71128ff5fe.png)
 
+## Nonhydrostatic Model
+
+Similar to to shallow water model, the nonhydrostatic model benchmark tests for its performance on both a CPU and a GPU. It was also benchmarked with the `WENO5` advection scheme. The nonhydrostatic model is 3-dimensional unlike the 2-dimensional shallow water model. Total number of grid points is Ns cubed.
+```
+Oceananigans v0.58.8
+Julia Version 1.6.1
+Commit 6aaedecc44 (2021-04-23 05:59 UTC)
+Platform Info:
+  OS: Linux (x86_64-pc-linux-gnu)
+  CPU: Intel(R) Xeon(R) Silver 4216 CPU @ 2.10GHz
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-11.0.1 (ORCJIT, cascadelake)
+Environment:
+  EBVERSIONJULIA = 1.6.1
+  JULIA_DEPOT_PATH = :
+  EBROOTJULIA = /cvmfs/soft.computecanada.ca/easybuild/software/2020/avx2/Core/julia/1.6.1
+  EBDEVELJULIA = /cvmfs/soft.computecanada.ca/easybuild/software/2020/avx2/Core/julia/1.6.1/easybuild/avx2-Core-julia-1.6.1-easybuild-devel
+  JULIA_LOAD_PATH = :
+  GPU: Tesla V100-SXM2-32GB
+
+                                            Nonhydrostatic model benchmarks
+┌───────────────┬─────────────┬─────┬────────────┬────────────┬────────────┬────────────┬──────────┬────────┬─────────┐
+│ Architectures │ Float_types │  Ns │        min │     median │       mean │        max │   memory │ allocs │ samples │
+├───────────────┼─────────────┼─────┼────────────┼────────────┼────────────┼────────────┼──────────┼────────┼─────────┤
+│           CPU │     Float32 │  32 │  34.822 ms │  34.872 ms │  35.278 ms │  38.143 ms │ 1.38 MiB │   2302 │      10 │
+│           CPU │     Float32 │  64 │ 265.408 ms │ 265.571 ms │ 265.768 ms │ 267.765 ms │ 1.38 MiB │   2302 │      10 │
+│           CPU │     Float32 │ 128 │    2.135 s │    2.135 s │    2.136 s │    2.138 s │ 1.38 MiB │   2302 │       3 │
+│           CPU │     Float32 │ 256 │   17.405 s │   17.405 s │   17.405 s │   17.405 s │ 1.38 MiB │   2302 │       1 │
+│           CPU │     Float64 │  32 │  37.022 ms │  37.179 ms │  37.335 ms │  39.017 ms │ 1.77 MiB │   2302 │      10 │
+│           CPU │     Float64 │  64 │ 287.944 ms │ 288.154 ms │ 288.469 ms │ 290.838 ms │ 1.77 MiB │   2302 │      10 │
+│           CPU │     Float64 │ 128 │    2.326 s │    2.326 s │    2.326 s │    2.327 s │ 1.77 MiB │   2302 │       3 │
+│           CPU │     Float64 │ 256 │   19.561 s │   19.561 s │   19.561 s │   19.561 s │ 1.77 MiB │   2302 │       1 │
+│           GPU │     Float32 │  32 │   4.154 ms │   4.250 ms │   4.361 ms │   5.557 ms │ 2.13 MiB │   6033 │      10 │
+│           GPU │     Float32 │  64 │   3.383 ms │   3.425 ms │   3.889 ms │   8.028 ms │ 2.13 MiB │   6077 │      10 │
+│           GPU │     Float32 │ 128 │   5.564 ms │   5.580 ms │   6.095 ms │  10.725 ms │ 2.15 MiB │   7477 │      10 │
+│           GPU │     Float32 │ 256 │  38.685 ms │  38.797 ms │  39.548 ms │  46.442 ms │ 2.46 MiB │  27721 │      10 │
+│           GPU │     Float64 │  32 │   3.309 ms │   3.634 ms │   3.802 ms │   5.844 ms │ 2.68 MiB │   6033 │      10 │
+│           GPU │     Float64 │  64 │   3.330 ms │   3.648 ms │   4.008 ms │   7.808 ms │ 2.68 MiB │   6071 │      10 │
+│           GPU │     Float64 │ 128 │   7.209 ms │   7.323 ms │   8.313 ms │  17.259 ms │ 2.71 MiB │   8515 │      10 │
+│           GPU │     Float64 │ 256 │  46.614 ms │  56.444 ms │  55.461 ms │  56.563 ms │ 3.17 MiB │  38253 │      10 │
+└───────────────┴─────────────┴─────┴────────────┴────────────┴────────────┴────────────┴──────────┴────────┴─────────┘
+
+      Nonhydrostatic model CPU to GPU speedup
+┌─────────────┬─────┬─────────┬─────────┬─────────┐
+│ Float_types │  Ns │ speedup │  memory │  allocs │
+├─────────────┼─────┼─────────┼─────────┼─────────┤
+│     Float32 │  32 │ 8.20434 │ 1.53786 │ 2.62076 │
+│     Float32 │  64 │ 77.5308 │ 1.53835 │ 2.63988 │
+│     Float32 │ 128 │ 382.591 │ 1.55378 │ 3.24805 │
+│     Float32 │ 256 │ 448.619 │ 1.77688 │ 12.0421 │
+│     Float64 │  32 │ 10.2308 │ 1.51613 │ 2.62076 │
+│     Float64 │  64 │ 78.9952 │ 1.51646 │ 2.63727 │
+│     Float64 │ 128 │ 317.663 │ 1.53759 │ 3.69896 │
+│     Float64 │ 256 │ 346.554 │ 1.79466 │ 16.6173 │
+└─────────────┴─────┴─────────┴─────────┴─────────┘
+```
+
+Like the shallow water model, it can be seen at what grid resolutions that the GPU is beginning to be saturated and almost fully staturated for which the speedups rose sharply and begins to plateau respectively. 
+
+![incompressible_speedup](https://user-images.githubusercontent.com/45054739/129825248-adb8dfe5-e9ea-4321-bd11-fb415d81e2cb.png)
+
+For both float types, the benchmarked GPU times of the nonhydrostatic model starts to scale like its CPU times when grid size reaches Ns = 128.
+
+![incompressible_times](https://user-images.githubusercontent.com/45054739/129825253-0d5739d9-f0a7-476e-8152-4ee462b71ad5.png)
+
+## Distributed Shallow Water Model
+
+By using `MPI.jl` the shallow water model can be run on multiple CPUs and multiple GPUs. For the benchmark results shown below, each rank is run on one CPU core and uses one GPU if applicable. 
+
+### Weak Scaling
+```
+Oceananigans v0.58.2
+Julia Version 1.6.0
+Commit f9720dc2eb (2021-03-24 12:55 UTC)
+Platform Info:
+  OS: Linux (x86_64-pc-linux-gnu)
+  CPU: Intel(R) Xeon(R) CPU E5-2683 v4 @ 2.10GHz
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-11.0.1 (ORCJIT, broadwell)
+Environment:
+  EBVERSIONJULIA = 1.6.0
+  JULIA_DEPOT_PATH = :
+  EBROOTJULIA = /cvmfs/soft.computecanada.ca/easybuild/software/2020/avx2/Core/julia/1.6.0
+  EBDEVELJULIA = /cvmfs/soft.computecanada.ca/easybuild/software/2020/avx2/Core/julia/1.6.0/easybuild/avx2-Core-julia-1.6.0-easybuild-devel
+  JULIA_LOAD_PATH = :
+
+                                  Shallow water model weak scaling benchmark
+┌───────────────┬──────────┬────────────┬────────────┬────────────┬────────────┬──────────┬────────┬─────────┐
+│          size │    ranks │        min │     median │       mean │        max │   memory │ allocs │ samples │
+├───────────────┼──────────┼────────────┼────────────┼────────────┼────────────┼──────────┼────────┼─────────┤
+│   (4096, 256) │   (1, 1) │ 363.885 ms │ 364.185 ms │ 364.911 ms │ 370.414 ms │ 1.60 MiB │   2774 │      10 │
+│   (4096, 512) │   (1, 2) │ 370.782 ms │ 375.032 ms │ 375.801 ms │ 394.781 ms │ 1.49 MiB │   3116 │      20 │
+│  (4096, 1024) │   (1, 4) │ 369.648 ms │ 369.973 ms │ 371.613 ms │ 399.526 ms │ 1.49 MiB │   3116 │      40 │
+│  (4096, 2048) │   (1, 8) │ 377.386 ms │ 379.982 ms │ 382.732 ms │ 432.787 ms │ 1.49 MiB │   3116 │      80 │
+│  (4096, 4096) │  (1, 16) │ 388.336 ms │ 395.473 ms │ 400.079 ms │ 496.598 ms │ 1.49 MiB │   3116 │     160 │
+│  (4096, 8192) │  (1, 32) │ 403.565 ms │ 447.136 ms │ 449.138 ms │ 545.945 ms │ 1.49 MiB │   3116 │     320 │
+│ (4096, 16384) │  (1, 64) │ 397.965 ms │ 441.627 ms │ 453.465 ms │ 619.493 ms │ 1.49 MiB │   3125 │     640 │
+│ (4096, 32768) │ (1, 128) │ 400.481 ms │ 447.789 ms │ 448.692 ms │ 590.028 ms │ 1.49 MiB │   3125 │    1280 │
+└───────────────┴──────────┴────────────┴────────────┴────────────┴────────────┴──────────┴────────┴─────────┘
+
+                Shallow water model weak scaling speedup
+┌───────────────┬──────────┬──────────┬────────────┬──────────┬─────────┐
+│          size │    ranks │ slowdown │ efficiency │   memory │  allocs │
+├───────────────┼──────────┼──────────┼────────────┼──────────┼─────────┤
+│   (4096, 256) │   (1, 1) │      1.0 │        1.0 │      1.0 │     1.0 │
+│   (4096, 512) │   (1, 2) │  1.02978 │   0.971077 │ 0.930602 │ 1.12329 │
+│  (4096, 1024) │   (1, 4) │  1.01589 │   0.984355 │ 0.930602 │ 1.12329 │
+│  (4096, 2048) │   (1, 8) │  1.04338 │   0.958427 │ 0.930602 │ 1.12329 │
+│  (4096, 4096) │  (1, 16) │  1.08591 │   0.920886 │ 0.930602 │ 1.12329 │
+│  (4096, 8192) │  (1, 32) │  1.22777 │   0.814484 │ 0.930602 │ 1.12329 │
+│ (4096, 16384) │  (1, 64) │  1.21264 │   0.824644 │ 0.930687 │ 1.12653 │
+│ (4096, 32768) │ (1, 128) │  1.22957 │   0.813296 │ 0.930687 │ 1.12653 │
+└───────────────┴──────────┴──────────┴────────────┴──────────┴─────────┘
+```
+
+As seen in the tables above and in the graph below, efficiency drops off to around 80% and remains as such from 16 to 128 ranks.
+
+![ws_shallow_water_efficiency](https://user-images.githubusercontent.com/45054739/129826042-6ed4345b-b53a-49af-b375-6b7f11f53f31.png)
+
+### Strong Scaling
+```
+Oceananigans v0.58.2
+Julia Version 1.6.0
+Commit f9720dc2eb (2021-03-24 12:55 UTC)
+Platform Info:
+  OS: Linux (x86_64-pc-linux-gnu)
+  CPU: Intel(R) Xeon(R) CPU E5-2683 v4 @ 2.10GHz
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-11.0.1 (ORCJIT, broadwell)
+Environment:
+  EBVERSIONJULIA = 1.6.0
+  JULIA_DEPOT_PATH = :
+  EBROOTJULIA = /cvmfs/soft.computecanada.ca/easybuild/software/2020/avx2/Core/julia/1.6.0
+  EBDEVELJULIA = /cvmfs/soft.computecanada.ca/easybuild/software/2020/avx2/Core/julia/1.6.0/easybuild/avx2-Core-julia-1.6.0-easybuild-devel
+  JULIA_LOAD_PATH = :
+
+                                Shallow water model strong scaling benchmark
+┌──────────────┬──────────┬────────────┬────────────┬────────────┬────────────┬──────────┬────────┬─────────┐
+│         size │    ranks │        min │     median │       mean │        max │   memory │ allocs │ samples │
+├──────────────┼──────────┼────────────┼────────────┼────────────┼────────────┼──────────┼────────┼─────────┤
+│ (4096, 4096) │   (1, 1) │    5.694 s │    5.694 s │    5.694 s │    5.694 s │ 1.60 MiB │   2804 │       1 │
+│ (4096, 4096) │   (1, 2) │    2.865 s │    2.865 s │    2.866 s │    2.869 s │ 1.49 MiB │   3146 │       4 │
+│ (4096, 4096) │   (1, 4) │    1.435 s │    1.437 s │    1.441 s │    1.475 s │ 1.49 MiB │   3146 │      16 │
+│ (4096, 4096) │   (1, 8) │ 732.711 ms │ 736.394 ms │ 738.930 ms │ 776.773 ms │ 1.49 MiB │   3146 │      56 │
+│ (4096, 4096) │  (1, 16) │ 389.211 ms │ 395.749 ms │ 396.813 ms │ 433.332 ms │ 1.49 MiB │   3116 │     160 │
+│ (4096, 4096) │  (1, 32) │ 197.894 ms │ 219.211 ms │ 236.780 ms │ 367.188 ms │ 1.49 MiB │   3116 │     320 │
+│ (4096, 4096) │  (1, 64) │ 101.520 ms │ 112.606 ms │ 116.809 ms │ 221.497 ms │ 1.49 MiB │   3125 │     640 │
+│ (4096, 4096) │ (1, 128) │  51.452 ms │  60.256 ms │  70.959 ms │ 232.309 ms │ 1.49 MiB │   3125 │    1280 │
+└──────────────┴──────────┴────────────┴────────────┴────────────┴────────────┴──────────┴────────┴─────────┘
+
+              Shallow water model strong scaling speedup
+┌──────────────┬──────────┬─────────┬────────────┬──────────┬─────────┐
+│         size │    ranks │ speedup │ efficiency │   memory │  allocs │
+├──────────────┼──────────┼─────────┼────────────┼──────────┼─────────┤
+│ (4096, 4096) │   (1, 1) │     1.0 │        1.0 │      1.0 │     1.0 │
+│ (4096, 4096) │   (1, 2) │ 1.98728 │   0.993641 │ 0.930621 │ 1.12197 │
+│ (4096, 4096) │   (1, 4) │ 3.96338 │   0.990845 │ 0.930621 │ 1.12197 │
+│ (4096, 4096) │   (1, 8) │ 7.73237 │   0.966547 │ 0.930621 │ 1.12197 │
+│ (4096, 4096) │  (1, 16) │ 14.3881 │   0.899255 │ 0.930336 │ 1.11127 │
+│ (4096, 4096) │  (1, 32) │ 25.9754 │   0.811731 │ 0.930336 │ 1.11127 │
+│ (4096, 4096) │  (1, 64) │ 50.5666 │   0.790102 │ 0.930421 │ 1.11448 │
+│ (4096, 4096) │ (1, 128) │ 94.4984 │   0.738269 │ 0.930421 │ 1.11448 │
+└──────────────┴──────────┴─────────┴────────────┴──────────┴─────────┘
+```
+
+Slightly differing from the weak scaling results, efficiencies drop below 80% to around 74% at 128 ranks for the strong scaling distributed shallow water benchmark. This is likely caused by the 128 CPU cores not being effectively saturated anymore by the constant 4096 x 4096 grid size thus losing some efficiency.
+
+![ss_shallow_water_efficiency](https://user-images.githubusercontent.com/45054739/129826134-3c526b9f-efd1-436c-9dc1-bde376a035db.png)
+
+### Multi-GPU
+
+While still a work in progress, it is possible to use hybrid and CUDA-aware MPI to run the shallow water model on multiple GPUs. Though efficiencies may not be as high as multi-CPU, the hybrid-MPI architecture is still worthwhile when keeping in mind the default speedups generated by using a single GPU. Note that though it is possible for multiple ranks to share the use of a single GPU, efficiencies would significantly decrease and memory may be insufficient. The results below shows up to three ranks each using a separate GPU.
+
+```
+Julia Version 1.6.2
+Commit 1b93d53fc4 (2021-07-14 15:36 UTC)
+Platform Info:
+  OS: Linux (powerpc64le-unknown-linux-gnu)
+  CPU: unknown
+  WORD_SIZE: 64
+  LIBM: libopenlibm
+  LLVM: libLLVM-11.0.1 (ORCJIT, pwr9)
+Environment:
+  JULIA_MPI_PATH = /home/software/spack/openmpi/3.1.4-nhjzelonyovxks5ydtrxehceqxsbf7ik
+  JULIA_CUDA_USE_BINARYBUILDER = false
+  JULIA_DEPOT_PATH = /nobackup/users/henryguo/projects/henry-test/Oceananigans.jl/benchmark/.julia
+  GPU: Tesla V100-SXM2-32GB
+```
+
+<html>
+<meta charset="UTF-8">
+<body>
+<table>
+  <caption style = "text-align: center;">Shallow water model weak scaling benchmark</caption>
+  <tr class = "header headerLastRow">
+    <th style = "text-align: right;">size</th>
+    <th style = "text-align: right;">ranks</th>
+    <th style = "text-align: right;">min</th>
+    <th style = "text-align: right;">median</th>
+    <th style = "text-align: right;">mean</th>
+    <th style = "text-align: right;">max</th>
+    <th style = "text-align: right;">memory</th>
+    <th style = "text-align: right;">allocs</th>
+    <th style = "text-align: right;">samples</th>
+  </tr>
+  <tr>
+    <td style = "text-align: right;">(4096, 256)</td>
+    <td style = "text-align: right;">(1, 1)</td>
+    <td style = "text-align: right;">2.702 ms</td>
+    <td style = "text-align: right;">2.728 ms</td>
+    <td style = "text-align: right;">2.801 ms</td>
+    <td style = "text-align: right;">3.446 ms</td>
+    <td style = "text-align: right;">2.03 MiB</td>
+    <td style = "text-align: right;">5535</td>
+    <td style = "text-align: right;">10</td>
+  </tr>
+  <tr>
+    <td style = "text-align: right;">(4096, 512)</td>
+    <td style = "text-align: right;">(1, 2)</td>
+    <td style = "text-align: right;">3.510 ms</td>
+    <td style = "text-align: right;">3.612 ms</td>
+    <td style = "text-align: right;">4.287 ms</td>
+    <td style = "text-align: right;">16.546 ms</td>
+    <td style = "text-align: right;">2.03 MiB</td>
+    <td style = "text-align: right;">5859</td>
+    <td style = "text-align: right;">20</td>
+  </tr>
+  <tr>
+    <td style = "text-align: right;">(4096, 768)</td>
+    <td style = "text-align: right;">(1, 3)</td>
+    <td style = "text-align: right;">3.553 ms</td>
+    <td style = "text-align: right;">3.653 ms</td>
+    <td style = "text-align: right;">5.195 ms</td>
+    <td style = "text-align: right;">39.152 ms</td>
+    <td style = "text-align: right;">2.03 MiB</td>
+    <td style = "text-align: right;">5859</td>
+    <td style = "text-align: right;">30</td>
+  </tr>
+</table>
+</body>
+</html>
+
+
+<html>
+<meta charset="UTF-8">
+<body>
+<table>
+  <caption style = "text-align: center;">Shallow water model weak scaling speedup</caption>
+  <tr class = "header headerLastRow">
+    <th style = "text-align: right;">size</th>
+    <th style = "text-align: right;">ranks</th>
+    <th style = "text-align: right;">slowdown</th>
+    <th style = "text-align: right;">efficiency</th>
+    <th style = "text-align: right;">memory</th>
+    <th style = "text-align: right;">allocs</th>
+  </tr>
+  <tr>
+    <td style = "text-align: right;">(4096, 256)</td>
+    <td style = "text-align: right;">(1, 1)</td>
+    <td style = "text-align: right;">1.0</td>
+    <td style = "text-align: right;">1.0</td>
+    <td style = "text-align: right;">1.0</td>
+    <td style = "text-align: right;">1.0</td>
+  </tr>
+  <tr>
+    <td style = "text-align: right;">(4096, 512)</td>
+    <td style = "text-align: right;">(1, 2)</td>
+    <td style = "text-align: right;">1.32399</td>
+    <td style = "text-align: right;">0.755293</td>
+    <td style = "text-align: right;">1.00271</td>
+    <td style = "text-align: right;">1.05854</td>
+  </tr>
+  <tr>
+    <td style = "text-align: right;">(4096, 768)</td>
+    <td style = "text-align: right;">(1, 3)</td>
+    <td style = "text-align: right;">1.33901</td>
+    <td style = "text-align: right;">0.746818</td>
+    <td style = "text-align: right;">1.00271</td>
+    <td style = "text-align: right;">1.05854</td>
+  </tr>
+</table>
+</body>
+</html>
 
