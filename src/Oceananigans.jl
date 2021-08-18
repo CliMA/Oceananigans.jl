@@ -85,7 +85,7 @@ export
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
 
     # Abstract operations
-    ∂x, ∂y, ∂z, @at,
+    ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
     # Cubed sphere
     ConformalCubedSphereGrid,
