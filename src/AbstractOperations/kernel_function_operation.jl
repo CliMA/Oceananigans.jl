@@ -67,7 +67,7 @@ function KernelFunctionOperation{LX, LY, LZ}(kernel_function,
         Oceananigans.Architectures.architecture(computed_dependencies...) :
         architecture
 
-        return KernelFunctionOperation{LX, LY, LZ}(kernel_function, computed_dependencies, parameters, arch, grid)
+    return KernelFunctionOperation{LX, LY, LZ}(kernel_function, computed_dependencies, parameters, arch, grid)
 end
 
 
