@@ -9,7 +9,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 # nobs
 stretched_grid = false
 hydrostatic = true
-implicit_free_surface = true
+implicit_free_surface = false
 stop_time = 30days
 
 # timestep
@@ -24,7 +24,7 @@ end
 if implicit_free_surface
     wizard = Δt_min # TimeStepWizard(cfl=0.15, Δt=Δt_min, max_change=max_Δ, max_Δt=Δt_max)
 else
-    wizard = Δt_min / 10
+    wizard = Δt_min / 3
 end
 
 
@@ -99,7 +99,7 @@ if hydrostatic
         free_surface = ImplicitFreeSurface()
         #free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
     else
-        free_surface = ExplicitFreeSurface()
+        free_surface = ExplicitFreeSurface(gravitational_acceleration = 0.01)
     end
     model = HydrostaticFreeSurfaceModel(architecture = arch,
                                         grid = grid,
@@ -136,7 +136,7 @@ const Tz = 2e-3  # Vertical temperature gradient [K/m].
 using Random
 Random.seed!(1234)
 const temp_adjust = 0
-const noise_amp = 0.0 # 0.0001
+const noise_amp = 0.0001 * 0
 println("the temp adjust is ", temp_adjust)
 # Initial temperature field [°C].
 T₀(x, y, z) = 10 + Ty*min(max(0, y-225e3), 50e3) + Tz*z + noise_amp*rand()
@@ -169,7 +169,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=1)
+simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=100)
 
 
 @info "Running the simulation..."
