@@ -1,4 +1,5 @@
 using Printf
+using Revise
 using Statistics
 using Oceananigans
 using Oceananigans.Units
@@ -9,8 +10,8 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 # nobs
 stretched_grid = false
 hydrostatic = true
-implicit_free_surface = false
-stop_time = 30days
+implicit_free_surface = true
+stop_time = 0.3days
 
 # timestep
 Δt_min = 60.0 * 5 # 30.0
@@ -96,8 +97,8 @@ closures = (diffusive_closure, convective_adjustment)
 if hydrostatic
     println("Constructing hydrostatic model")
     if implicit_free_surface
-        free_surface = ImplicitFreeSurface()
-        #free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
+        # free_surface = ImplicitFreeSurface()
+        free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, maximum_iterations = 1)
     else
         free_surface = ExplicitFreeSurface(gravitational_acceleration = 0.01)
     end
@@ -169,7 +170,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=100)
+simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=1)
 
 
 @info "Running the simulation..."
