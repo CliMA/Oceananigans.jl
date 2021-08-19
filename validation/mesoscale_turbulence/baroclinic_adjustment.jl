@@ -28,7 +28,7 @@ else
     wizard = Δt_min / 3
 end
 
-stop_time = wizard
+stop_time = 30days
 
 
 # domain
@@ -100,7 +100,7 @@ if hydrostatic
     println("Constructing hydrostatic model")
     if implicit_free_surface
         # free_surface = ImplicitFreeSurface()
-        free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, maximum_iterations = 1)
+        free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, maximum_iterations = 10)
     else
         free_surface = ExplicitFreeSurface(gravitational_acceleration = 0.01)
     end
@@ -139,7 +139,7 @@ const Tz = 2e-3  # Vertical temperature gradient [K/m].
 using Random
 Random.seed!(1234)
 const temp_adjust = 0
-const noise_amp = 0.0001 * 0
+const noise_amp = 0.0001 * 1
 println("the temp adjust is ", temp_adjust)
 # Initial temperature field [°C].
 T₀(x, y, z) = 10 + Ty*min(max(0, y-225e3), 50e3) + Tz*z + noise_amp*rand()
@@ -157,7 +157,7 @@ gettime(wizard::TimeStepWizard) = wizard.Δt
 gettime(Δt) = Δt
 
 function print_progress(sim)
-    @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
+    @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.8e, %6.8e, %6.8e) m/s, next Δt: %s\n",
             100 * (sim.model.clock.time / sim.stop_time),
             sim.model.clock.iteration,
             prettytime(sim.model.clock.time),
@@ -172,7 +172,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=1)
+simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=100)
 
 
 @info "Running the simulation..."
@@ -225,3 +225,31 @@ GLMakie.surface!(ax, xsurf, ysurf, ϕedge5, transformation = (:xy, -Lz *  zscale
 GLMakie.surface!(ax, xsurf, ysurf, ϕedge6, transformation = (:xy, 0 *  zscale), colorrange = clims, colormap = :balance)
 
 display(fig)
+
+#=
+using Oceananigans
+using Oceananigans.Solvers
+using Oceananigans.Operators
+using Oceananigans.Architectures
+using Oceananigans.Fields: ReducedField
+
+import Oceananigans.Solvers: solve!
+
+
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integrated_lateral_areas!
+
+    ∫ᶻ_Axᶠᶜᶜ = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
+    ∫ᶻ_Ayᶜᶠᶜ = ReducedField(Center, Face, Nothing, arch, grid; dims=3)
+
+    vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
+
+    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas, grid, arch)
+
+    right_hand_side = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
+
+if arch == GPU()
+    gpu_comp =    Array(interior(vertically_integrated_lateral_areas.xᶠᶜᶜ))[:,:,:]
+else
+    cpu_comp =    Array(interior(vertically_integrated_lateral_areas.xᶠᶜᶜ))[:,:,:]
+end
+=#
