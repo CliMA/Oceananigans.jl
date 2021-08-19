@@ -202,6 +202,7 @@ function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLei
     grid = model.grid
     velocities = model.velocities
     tracers = model.tracers
+    buoyancy = model.buoyancy
 
     event = launch!(arch, grid, :xyz,
                     calculate_nonlinear_viscosity!,
