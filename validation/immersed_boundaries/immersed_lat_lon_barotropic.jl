@@ -6,6 +6,7 @@ using Oceananigans.Grids
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
@@ -26,23 +27,36 @@ using Statistics
 using JLD2
 using Printf
 
+import Oceananigans.Architectures: architecture
+architecture(ibg::ImmersedBoundaryGrid) = architecture(ibg.grid)
+
 #####
 ##### Grid
 #####
 
-latitude = (-80, 80)
+latitude = (-30, 30)
 Δφ = latitude[2] - latitude[1]
 
-resolution = 1/3 # degree
+resolution = 4 # degree
 Nx = round(Int, 360 / resolution)
 Ny = round(Int, Δφ / resolution)
+Nz = 10
 
 # A spherical domain
-@show grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
+underlying_grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, Nz),
                                           longitude = (-180, 180),
                                           latitude = latitude,
                                           halo = (2, 2, 2),
-                                          z = (-100, 0))
+                                          z = (-3000, 0))
+
+
+const ridge_height =   500.0  # [m]
+const ridge_base   = -3000.0  # [m]
+@inline height(x, y, L) = ridge_base + ridge_height * exp(-L * (x/180)^2)
+@inline ridge(x, y, z) = z < height(x, y, 30) 
+
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(ridge))
+# grid = underlying_grid
 
 #####
 ##### Physics and model setup
@@ -53,25 +67,24 @@ free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
 equatorial_Δx = grid.radius * deg2rad(grid.Δλ)
 diffusive_time_scale = 120days
 
-@show const νh₂ =        equatorial_Δx^2 / diffusive_time_scale
+@show const νh₂ = 1e2 * equatorial_Δx^2 / diffusive_time_scale
 @show const νh₄ = 1e-5 * equatorial_Δx^4 / diffusive_time_scale
 
-#closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₂)
-closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(νh=νh₄)
+closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₂)
+# closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(νh=νh₄)
 
 coriolis = HydrostaticSphericalCoriolis()
 Ω = coriolis.rotation_rate / 20
 coriolis = HydrostaticSphericalCoriolis(rotation_rate=Ω)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    architecture = GPU(),
-                                    advection = WENO5(),
+                                    architecture = CPU(),
                                     momentum_advection = VectorInvariant(),
                                     free_surface = free_surface,
                                     coriolis = coriolis,
                                     tracers = nothing,
                                     buoyancy = nothing,
-                                    closure = nothing)
+                                    closure = closure)
 
 #####
 ##### Initial condition: two streamfunction
@@ -207,7 +220,7 @@ end
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 100year,
+                        stop_time = 15day,
                         iteration_interval = 1000,
                         progress = Progress(time_ns()))
 
@@ -216,9 +229,31 @@ output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=ζ))
 output_prefix = "rotating_freely_decaying_barotropic_turbulence_Nx$(grid.Nx)_Ny$(grid.Ny)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ = ζ,),
-                                                      schedule = TimeInterval(10day),
+                                                      schedule = TimeInterval(1day),
                                                       prefix = output_prefix,
                                                       force = true)
 
 # Let's goo!
 run!(simulation)
+##
+file = jldopen("rotating_freely_decaying_barotropic_turbulence_Nx90_Ny15.jld2")
+## 
+using GLMakie
+##
+# uvelocity = simulation.model.free_surface.η[1:Nx,1:Ny]
+timekeys = keys(file["timeseries"]["ζ"])[2:end]
+# ζ = file["timeseries"]["ζ"][timekeys[end]][2:end-1,2:end-1,Nz]
+clims = extrema(file["timeseries"]["ζ"][timekeys[1]][2:end-1,2:end-1,Nz])
+time_node = Node(1)
+ζ = @lift(file["timeseries"]["ζ"][timekeys[$time_node]][2:end-1,2:end-1,Nz])
+plt = heatmap(ζ, colormap = :balance)
+plt.axis.xlabel = "latitude"
+plt.axis.ylabel = "longitude"
+Colorbar(plt.figure[1, 2], plt.plot)
+
+iterations = 1:length(timekeys)
+fig = plt.figure
+record(fig, "BarotropicFluid.mp4", iterations, framerate=30) do i
+    time_node[] = i
+end
+
