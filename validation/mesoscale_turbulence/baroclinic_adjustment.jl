@@ -11,7 +11,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 stretched_grid = false
 hydrostatic = true
 implicit_free_surface = true
-stop_time = 0.3days
+
 
 # timestep
 Δt_min = 60.0 * 5 # 30.0
@@ -27,6 +27,8 @@ if implicit_free_surface
 else
     wizard = Δt_min / 3
 end
+
+stop_time = wizard
 
 
 # domain
