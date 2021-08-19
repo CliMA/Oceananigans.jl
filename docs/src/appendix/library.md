@@ -267,7 +267,6 @@ Pages   = [
     "AbstractOperations/AbstractOperations.jl",
     "AbstractOperations/at.jl",
     "AbstractOperations/binary_operations.jl",
-    "AbstractOperations/broadcasting_abstract_operations.jl",
     "AbstractOperations/derivatives.jl",
     "AbstractOperations/grid_metrics.jl",
     "AbstractOperations/grid_validation.jl",
