@@ -11,7 +11,7 @@ import Oceananigans.Utils: launch!
 import Oceananigans.Grids: validate_size, validate_halo
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.TurbulenceClosures: time_discretization
-import Oceananigans.TurbulenceClosures: calculate_diffusivities!, top_tke_flux
+import Oceananigans.TurbulenceClosures: calculate_diffusivities!
 
 #####
 ##### Implements a "single column model mode" for HydrostaticFreeSurfaceModel
@@ -56,7 +56,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     return nothing
 end
 
-import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ, calculate_diffusivities
+import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 
