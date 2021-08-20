@@ -1,5 +1,5 @@
 
-# Performance benchmarks
+# [Performance benchmarks](@id performance_benchmarks)
 
 The performance benchmarking scripts in the
 [`benchmarks`](https://github.com/CliMA/Oceananigans.jl/tree/master/benchmark)
