@@ -2,6 +2,11 @@
     @info "  Testing broadcasting with fields..."
 
     for arch in archs
+
+        #####
+        ##### Basic functionality tests
+        #####
+        
         grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
         a, b, c = [CenterField(arch, grid) for i = 1:3]
 
@@ -23,7 +28,10 @@
         @test c[1, 1, 0] == 4
         @test c[1, 1, Nz+1] == 4
 
-        # Broadcasting with interpolation
+        #####
+        ##### Broadcasting with interpolation
+        #####
+        
         three_point_grid = RegularRectilinearGrid(size=(1, 1, 3), extent=(1, 1, 1))
 
         a2 = CenterField(arch, three_point_grid)
@@ -49,7 +57,10 @@
         @test a2[1, 1, 2] == 2.0
         @test a2[1, 1, 3] == 1.5
 
-        # Broadcasting with ReducedField
+        #####
+        ##### Broadcasting with ReducedField
+        #####
+        
         r, p, q = [ReducedField(Center, Center, Nothing, arch, grid, dims=3) for i = 1:3]
 
         r .= 2 
@@ -62,6 +73,22 @@
 
         q .= r .* p .+ 1
         @test all(q .== 7) 
+
+        #####
+        ##### Broadcasting with arrays
+        #####
+
+        grid = RegularRectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+
+        c = CenterField(CPU(), grid)
+        random_column = reshape(rand(2), 1, 1, 2)
+
+        c .= random_column # broadcast to every horizontal column in c
+
+        @test c[1, 1, 2:3] .== random_column
+        @test c[2, 1, 2:3] .== random_column
+        @test c[1, 2, 2:3] .== random_column
+        @test c[2, 2, 2:3] .== random_column
     end
 end
 
