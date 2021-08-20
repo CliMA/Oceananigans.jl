@@ -4,6 +4,7 @@
 
 using Base.Broadcast: DefaultArrayStyle
 using Base.Broadcast: Broadcasted
+using CUDA
 
 using Oceananigans.Architectures: device_event
 
@@ -13,12 +14,16 @@ Base.Broadcast.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
 
 # Precedence rule
 Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) where N = FieldBroadcastStyle()
+Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::CUDA.CuArrayStyle{N}) where N = FieldBroadcastStyle()
 
 # For use in Base.copy when broadcasting with numbers and arrays (useful for comparisons like f::AbstractField .== 0)
 Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}) where ElType = similar(Array{ElType}, axes(bc))
 
 # Bypass style combining for in-place broadcasting with arrays / scalars to use built-in broadcasting machinery
-@inline Base.Broadcast.materialize!(dest::AbstractField, bc::Broadcasted{<:DefaultArrayStyle}) =
+const BroadcastedArrayOrCuArray = Union{Broadcasted{<:DefaultArrayStyle},
+                                        Broadcasted{<:CUDA.CuArrayStyle}}
+
+@inline Base.Broadcast.materialize!(dest::AbstractField, bc::BroadcastedArrayOrCuArray) =
     Base.Broadcast.materialize!(interior(dest), bc)
 
 #####
