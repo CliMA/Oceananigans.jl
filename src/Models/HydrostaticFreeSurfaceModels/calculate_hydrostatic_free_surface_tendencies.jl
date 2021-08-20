@@ -102,6 +102,9 @@ function tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, clo
     end
 end
 
+top_tracer_boundary_conditions(grid, tracers) =
+    NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
+
 """ Store previous value of the source term and calculate current source term. """
 function calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)
 
@@ -112,8 +115,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
 
     events = calculate_hydrostatic_momentum_tendencies!(model, model.velocities; dependencies = barrier)
 
-    tracers = model.tracers
-    top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
+    top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
         @inbounds c_tendency = model.timestepper.Gⁿ[tracer_name]
