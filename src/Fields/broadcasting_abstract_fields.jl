@@ -19,7 +19,7 @@ Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}) where ElType 
 
 # Bypass style combining for in-place broadcasting with arrays / scalars to use built-in broadcasting machinery
 @inline Base.Broadcast.materialize!(dest::AbstractField, bc::Broadcasted{<:DefaultArrayStyle}) =
-    Base.Broadcast.materialize!(DefaultArrayStyle{3}(), dest, bc)
+    Base.Broadcast.materialize!(interior(dest), bc)
 
 #####
 ##### Kernels
