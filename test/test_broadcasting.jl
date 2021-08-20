@@ -85,12 +85,13 @@
 
         c .= random_column # broadcast to every horizontal column in c
 
-        CUDA.@allowscalar begin
-            @test all(interior(c)[1, 1, :] .== random_column[:])
-            @test all(interior(c)[2, 1, :] .== random_column[:])
-            @test all(interior(c)[1, 2, :] .== random_column[:])
-            @test all(interior(c)[2, 2, :] .== random_column[:])
-        end
+        c_cpu = Array(interior(c))
+        random_column_cpu = Array(random_column)
+
+        @test all(c_cpu[1, 1, :] .== random_column_cpu[:])
+        @test all(c_cpu[2, 1, :] .== random_column_cpu[:])
+        @test all(c_cpu[1, 2, :] .== random_column_cpu[:])
+        @test all(c_cpu[2, 2, :] .== random_column_cpu[:])
     end
 end
 
