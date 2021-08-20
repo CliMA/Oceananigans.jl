@@ -78,17 +78,19 @@
         ##### Broadcasting with arrays
         #####
 
-        grid = RegularRectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+        two_two_two_grid = RegularRectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
 
-        c = CenterField(CPU(), grid)
-        random_column = reshape(rand(2), 1, 1, 2)
+        c = CenterField(arch, two_two_two_grid)
+        random_column = arch_array(arch, reshape(rand(2), 1, 1, 2))
 
         c .= random_column # broadcast to every horizontal column in c
 
-        @test c[1, 1, 2:3] .== random_column
-        @test c[2, 1, 2:3] .== random_column
-        @test c[1, 2, 2:3] .== random_column
-        @test c[2, 2, 2:3] .== random_column
+        CUDA.@allowscalar begin
+            @test all(interior(c)[1, 1, :] .== random_column[:])
+            @test all(interior(c)[2, 1, :] .== random_column[:])
+            @test all(interior(c)[1, 2, :] .== random_column[:])
+            @test all(interior(c)[2, 2, :] .== random_column[:])
+        end
     end
 end
 
