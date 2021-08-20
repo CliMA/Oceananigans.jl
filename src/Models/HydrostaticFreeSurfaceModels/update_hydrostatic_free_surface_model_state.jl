@@ -38,9 +38,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
     compute_auxiliary_fields!(model.auxiliary_fields)
 
     # Calculate diffusivities
-    calculate_diffusivities!(model.diffusivity_fields, model.architecture, model.grid, model.closure,
-                             model.buoyancy, model.velocities, model.tracers)
-
+    calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
     fill_halo_regions!(model.diffusivity_fields, model.architecture, model.clock, fields(model))
 
     # Calculate hydrostatic pressure

@@ -44,7 +44,7 @@ function with_tracers(tracers, closure::HorizontallyCurvilinearAnisotropicBiharm
     return HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(closure.νh, closure.νz, κh, κz)
 end
 
-calculate_diffusivities!(K, arch, grid, closure::HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity, args...) = nothing
+calculate_diffusivities!(diffusivities, closure::HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity, args...) = nothing
 
 viscous_flux_ux(i, j, k, grid, closure::HCABD, clock, U, args...) = - ν_δ★ᶜᶜᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   
 viscous_flux_uy(i, j, k, grid, closure::HCABD, clock, U, args...) = + ν_ζ★ᶠᶠᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   

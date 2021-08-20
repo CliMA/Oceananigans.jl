@@ -11,7 +11,7 @@ import Oceananigans.Utils: launch!
 import Oceananigans.Grids: validate_size, validate_halo
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.TurbulenceClosures: time_discretization
-import Oceananigans.TurbulenceClosures: calculate_diffusivities!, top_tke_flux
+import Oceananigans.TurbulenceClosures: calculate_diffusivities!
 
 #####
 ##### Implements a "single column model mode" for HydrostaticFreeSurfaceModel
@@ -46,13 +46,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     compute_auxiliary_fields!(model.auxiliary_fields)
 
     # Calculate diffusivities
-    calculate_diffusivities!(model.diffusivity_fields,
-                             model.architecture,
-                             model.grid,
-                             model.closure,
-                             model.buoyancy,
-                             model.velocities,
-                             model.tracers)
+    calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
 
     fill_halo_regions!(model.diffusivity_fields,
                        model.architecture,
@@ -62,7 +56,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     return nothing
 end
 
-import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ, calculate_diffusivities
+import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 
@@ -99,47 +93,58 @@ validate_halo(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemb
 ##### TKEBasedVerticalDiffusivity helpers
 #####
 
-using Oceananigans.TurbulenceClosures: TKEVD, Kuᶜᶜᶜ, Kcᶜᶜᶜ, Keᶜᶜᶜ, _top_tke_flux, TKEVDArray
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVD, Kuᶜᶜᶜ, Kcᶜᶜᶜ, Keᶜᶜᶜ, _top_tke_flux, CATKEVDArray
 
-function calculate_diffusivities!(diffusivities, arch, grid::SingleColumnGrid, closure_array::TKEVDArray, buoyancy, velocities, tracers)
+import Oceananigans.TurbulenceClosures: calculate_diffusivities!
+import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: top_tke_flux
+
+function calculate_diffusivities!(diffusivities, closure::CATKEVDArray, model)
+
+    arch = model.architecture
+    grid = model.grid
+    velocities = model.velocities
+    tracers = model.tracers
+    buoyancy = model.buoyancy
+    clock = model.clock
+    top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
     event = launch!(arch, grid, :xyz,
-                    calculate_tke_diffusivities_scm_ensemble!,
-                    diffusivities, grid, closure_array, tracers.e, velocities, tracers, buoyancy,
-                    dependencies=device_event(arch))
+                    calculate_CATKEArray_diffusivities!,
+                    diffusivities, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs,
+                    dependencies = device_event(arch))
 
     wait(device(arch), event)
 
     return nothing
 end
 
-@kernel function calculate_tke_diffusivities_scm_ensemble!(diffusivities, grid, closure_array, e, velocities, tracers, buoyancy)
+@kernel function calculate_CATKEArray_diffusivities!(diffusivities, grid::SingleColumnGrid, closure_array::CATKEVDArray, args...)
     i, j, k, = @index(Global, NTuple)
     @inbounds begin
         closure = closure_array[i, j]
-        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
-        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
-        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶜ(i, j, k, grid, closure, e, velocities, tracers, buoyancy)
+        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure, args...)
+        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶜ(i, j, k, grid, closure, args...)
+        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶜ(i, j, k, grid, closure, args...)
     end
 end
 
-@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::TKEVDArray, ::Val{:e}) =
+@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::CATKEVDArray, ::Val{:e}) =
     hydrostatic_turbulent_kinetic_energy_tendency
 
 """ Compute the flux of TKE through the surface / top boundary. """
-@inline function top_tke_flux(i, j, grid::SingleColumnGrid, clock, fields, parameters, closure_array::TKEVDArray, buoyancy)
+@inline function top_tke_flux(i, j, grid::SingleColumnGrid, clock, fields, parameters, closure_array::CATKEVDArray, buoyancy)
     top_tracer_bcs = parameters.top_tracer_boundary_conditions
     top_velocity_bcs = parameters.top_velocity_boundary_conditions
     @inbounds closure = closure_array[i, j]
 
-    return _top_tke_flux(i, j, grid, closure.surface_model, closure,
+    return _top_tke_flux(i, j, grid, closure.surface_TKE_flux, closure,
                          buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
 end
 
 @inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid::SingleColumnGrid,
                                                                val_tracer_index::Val{tracer_index},
                                                                advection,
-                                                               closure_array::TKEVDArray, args...) where tracer_index
+                                                               closure_array::CATKEVDArray, args...) where tracer_index
 
     @inbounds closure = closure_array[i, j]
     return hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, val_tracer_index, advection, closure, args...)
