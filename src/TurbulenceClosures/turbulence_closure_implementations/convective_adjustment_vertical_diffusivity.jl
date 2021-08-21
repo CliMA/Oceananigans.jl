@@ -122,7 +122,6 @@ end
 
 const VITD = VerticallyImplicitTimeDiscretization
 const ATD = AbstractTimeDiscretization
-const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
 @inline viscous_flux_ux(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
 @inline viscous_flux_uy(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
