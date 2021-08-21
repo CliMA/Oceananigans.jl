@@ -4,8 +4,7 @@ using Plots
 using Printf
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity
-using Oceananigans.TurbulenceClosures: TKESurfaceFlux, RiDependentDiffusivityScaling
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity, SurfaceTKEFlux, MixingLength
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 
 Nz = 64
@@ -17,17 +16,17 @@ ensemble_grid = RegularRectilinearGrid(size = sz,
                                        z = (-128, 0),
                                        topology = (Flat, Flat, Bounded))
 
-default_closure = TKEBasedVerticalDiffusivity()
+default_closure = CATKEVerticalDiffusivity()
 closure_ensemble = [default_closure for i = 1:Ex, j = 1:Ey]
 
 Qᵇ = 1e-7
 Qᵇ_ensemble = [Qᵇ for i = 1:Ex, j = 1:Ey]
 
-diffusivity_scaling = RiDependentDiffusivityScaling(Cᴷc⁻=1.0)
 
-closure_ensemble[1, 1] = TKEBasedVerticalDiffusivity(diffusivity_scaling=diffusivity_scaling, mixing_length_parameter=0.0)
-closure_ensemble[1, 2] = TKEBasedVerticalDiffusivity(diffusivity_scaling=diffusivity_scaling, mixing_length_parameter=2.0)
-closure_ensemble[1, 3] = TKEBasedVerticalDiffusivity(diffusivity_scaling=diffusivity_scaling, mixing_length_parameter=4.0)
+
+closure_ensemble[1, 1] = CATKEVerticalDiffusivity(mixing_length = MixingLength(Cᴷc⁻=1.0, Cᴸᵇ=0.0))
+closure_ensemble[1, 2] = CATKEVerticalDiffusivity(mixing_length = MixingLength(Cᴷc⁻=1.0, Cᴸᵇ=2.0))
+closure_ensemble[1, 3] = CATKEVerticalDiffusivity(mixing_length = MixingLength(Cᴷc⁻=1.0, Cᴸᵇ=4.0))
                                       
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ_ensemble))
 

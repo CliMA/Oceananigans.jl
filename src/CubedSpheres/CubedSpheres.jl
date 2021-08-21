@@ -74,6 +74,20 @@ function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCub
     return nothing
 end
 
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: top_tracer_boundary_conditions
+
+function face_tracers(tracers, face)
+    tracer_names = propertynames(tracers)
+    return NamedTuple(name => get_face(tracers[name], face) for name in tracer_names)
+end
+
+function top_tracer_boundary_conditions(grid::ConformalCubedSphereGrid, tracers)
+    tracer_names = propertynames(tracers)
+    top_tracer_bcs = Tuple(top_tracer_boundary_conditions(get_face(grid, i), face_tracers(tracers, i))
+                           for i = 1:length(grid.faces))
+    return CubedSphereFaces(top_tracer_bcs)
+end
+
 #####
 ##### Forcing functions on the cubed sphere
 #####

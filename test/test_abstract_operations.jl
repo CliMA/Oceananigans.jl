@@ -201,19 +201,19 @@ for arch in archs
             #        i Center:        0         1         2         3         4
 
             # ccc: b * ∂x(a) = [             4.5,      4.5      -4.5,            ]
-            # fcc: b * ∂x(a) = [         3,        6,        3,       -6         ]
+            # fcc: b * ∂x(a) = [        1.5,       6,        3,       -6         ]
 
             C = Center
             F = Face
 
             @test times_x_derivative(a, b, (C, C, C), 1, 2, 2, 4.5)
-            @test times_x_derivative(a, b, (F, C, C), 1, 2, 2, 3)
-
             @test times_x_derivative(a, b, (C, C, C), 2, 2, 2, 4.5)
-            @test times_x_derivative(a, b, (F, C, C), 2, 2, 2, 6)
-
             @test times_x_derivative(a, b, (C, C, C), 3, 2, 2, -4.5)
+
+            @test times_x_derivative(a, b, (F, C, C), 1, 2, 2, 1.5)
+            @test times_x_derivative(a, b, (F, C, C), 2, 2, 2, 6)
             @test times_x_derivative(a, b, (F, C, C), 3, 2, 2, 3)
+            @test times_x_derivative(a, b, (F, C, C), 4, 2, 2, -6)
         end
 
         grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1),

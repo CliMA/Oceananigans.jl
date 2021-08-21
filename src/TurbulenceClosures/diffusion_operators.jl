@@ -46,9 +46,9 @@ which will end up at the location `ccc`.
 
     disc = time_discretization(closure)
 
-    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_uᶠᶜᶜ, diffusive_flux_x, disc, closure, c, tracer_index, args...) +
-                                    δyᵃᶜᵃ(i, j, k, grid, Ay_vᶜᶠᶜ, diffusive_flux_y, disc, closure, c, tracer_index, args...) +
-                                    δzᵃᵃᶜ(i, j, k, grid, Az_wᶜᶜᵃ, diffusive_flux_z, disc, closure, c, tracer_index, args...))
+    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_uᶠᶜᶜ, _diffusive_flux_x, disc, closure, c, tracer_index, args...) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_vᶜᶠᶜ, _diffusive_flux_y, disc, closure, c, tracer_index, args...) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_wᶜᶜᵃ, _diffusive_flux_z, disc, closure, c, tracer_index, args...))
 end
 
 #####

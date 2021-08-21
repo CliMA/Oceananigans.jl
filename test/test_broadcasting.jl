@@ -2,6 +2,11 @@
     @info "  Testing broadcasting with fields..."
 
     for arch in archs
+
+        #####
+        ##### Basic functionality tests
+        #####
+        
         grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
         a, b, c = [CenterField(arch, grid) for i = 1:3]
 
@@ -23,7 +28,10 @@
         @test c[1, 1, 0] == 4
         @test c[1, 1, Nz+1] == 4
 
-        # Broadcasting with interpolation
+        #####
+        ##### Broadcasting with interpolation
+        #####
+        
         three_point_grid = RegularRectilinearGrid(size=(1, 1, 3), extent=(1, 1, 1))
 
         a2 = CenterField(arch, three_point_grid)
@@ -49,7 +57,10 @@
         @test a2[1, 1, 2] == 2.0
         @test a2[1, 1, 3] == 1.5
 
-        # Broadcasting with ReducedField
+        #####
+        ##### Broadcasting with ReducedField
+        #####
+        
         r, p, q = [ReducedField(Center, Center, Nothing, arch, grid, dims=3) for i = 1:3]
 
         r .= 2 
@@ -62,6 +73,25 @@
 
         q .= r .* p .+ 1
         @test all(q .== 7) 
+
+        #####
+        ##### Broadcasting with arrays
+        #####
+
+        two_two_two_grid = RegularRectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+
+        c = CenterField(arch, two_two_two_grid)
+        random_column = arch_array(arch, reshape(rand(2), 1, 1, 2))
+
+        c .= random_column # broadcast to every horizontal column in c
+
+        c_cpu = Array(interior(c))
+        random_column_cpu = Array(random_column)
+
+        @test all(c_cpu[1, 1, :] .== random_column_cpu[:])
+        @test all(c_cpu[2, 1, :] .== random_column_cpu[:])
+        @test all(c_cpu[1, 2, :] .== random_column_cpu[:])
+        @test all(c_cpu[2, 2, :] .== random_column_cpu[:])
     end
 end
 

@@ -61,7 +61,7 @@ function with_tracers(tracers, closure::AnisotropicDiffusivity{TD}) where TD
     return AnisotropicDiffusivity{TD}(closure.νx, closure.νy, closure.νz, κx, κy, κz)
 end
 
-calculate_diffusivities!(K, arch, grid, closure::AnisotropicDiffusivity, args...) = nothing
+calculate_diffusivities!(diffusivities, closure::AnisotropicDiffusivity, args...) = nothing
 
 #####
 ##### Diffusive fluxes

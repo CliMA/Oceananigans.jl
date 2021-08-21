@@ -75,7 +75,12 @@ function DiffusivityFields(arch, grid, tracer_names, bcs, closure::CAVD)
     return (; κ, ν)
 end       
 
-function calculate_diffusivities!(diffusivities, arch, grid, closure::CAVD, buoyancy, velocities, tracers)
+function calculate_diffusivities!(diffusivities, closure::CAVD, model)
+
+    arch = model.architecture
+    grid = model.grid
+    tracers = model.tracers
+    buoyancy = model.buoyancy
 
     event = launch!(arch, grid, :xyz,
                     #compute_stability!, diffusivities, grid, closure, tracers, buoyancy,
@@ -138,9 +143,6 @@ const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
 @inline diffusive_flux_x(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
 @inline diffusive_flux_y(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
-
-#####
-##### Diffusivity
 
 #####
 ##### Diffusivity

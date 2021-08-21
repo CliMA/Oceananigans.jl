@@ -59,7 +59,7 @@ function with_tracers(tracers, closure::AnisotropicBiharmonicDiffusivity)
     return AnisotropicBiharmonicDiffusivity(closure.νx, closure.νy, closure.νz, κx, κy, κz)
 end
 
-calculate_diffusivities!(K, arch, grid, closure::AnisotropicBiharmonicDiffusivity, args...) = nothing
+calculate_diffusivities!(diffusivities, closure::AnisotropicBiharmonicDiffusivity, args...) = nothing
 
 @inline ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, clock, U, args...) = (
       closure.νx * ∂⁴xᶠᵃᵃ(i, j, k, grid, U.u)

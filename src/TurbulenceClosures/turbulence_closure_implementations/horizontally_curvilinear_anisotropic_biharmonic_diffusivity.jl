@@ -44,7 +44,7 @@ function with_tracers(tracers, closure::HorizontallyCurvilinearAnisotropicBiharm
     return HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(closure.νh, closure.νz, κh, κz)
 end
 
-calculate_diffusivities!(K, arch, grid, closure::HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity, args...) = nothing
+calculate_diffusivities!(diffusivities, closure::HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity, args...) = nothing
 
 const NoVerticalViscHCABD = HCABD{<:Any, <:Nothing}
 const NoVerticalDiffHCABD = HCABD{<:Any, <:Any, <:Any, <:Nothing}
