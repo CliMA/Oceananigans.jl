@@ -126,7 +126,7 @@ run!(simulation)
 
 By changing `architecture = CPU()` to `architecture = GPU()` the example will run on a CUDA-enabled Nvidia GPU!
 
-You can see some movies from GPU simulations below along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).
+You can see some movies from GPU simulations below along with CPU and GPU [performance benchmarks](https://clima.github.io/OceananigansDocumentation/stable/appendix/benchmarks/).
 
 ## Getting help
 
