@@ -21,9 +21,7 @@ function update_state!(model::NonhydrostaticModel)
     fill_halo_regions!(merge(model.velocities, model.tracers), model.architecture,  model.clock, fields(model))
 
     # Calculate diffusivities
-    calculate_diffusivities!(model.diffusivity_fields, model.architecture, model.grid, model.closure,
-                             model.buoyancy, model.velocities, model.tracers)
-
+    calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
     fill_halo_regions!(model.diffusivity_fields, model.architecture, model.clock, fields(model))
 
     # Calculate hydrostatic pressure

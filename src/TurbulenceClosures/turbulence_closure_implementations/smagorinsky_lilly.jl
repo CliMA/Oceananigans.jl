@@ -105,10 +105,18 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
     return νₑ_deardorff(ς, clo.C, Δᶠ, Σ²) + clo.ν
 end
 
-function calculate_diffusivities!(K, arch, grid, closure::SmagorinskyLilly, buoyancy, U, C)
+function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model)
 
-    event = launch!(arch, grid, :xyz, calculate_nonlinear_viscosity!, K.νₑ, grid, closure, buoyancy, U, C,
-                    dependencies=Event(device(arch)))
+    arch = model.architecture
+    grid = model.grid
+    buoyancy = model.buoyancy
+    velocities = model.velocities
+    tracers = model.tracers
+
+    event = launch!(arch, grid, :xyz,
+                    calculate_nonlinear_viscosity!,
+                    diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers,
+                    dependencies = device_event(arch))
 
     wait(device(arch), event)
 

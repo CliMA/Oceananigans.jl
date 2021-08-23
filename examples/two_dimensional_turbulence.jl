@@ -42,10 +42,15 @@ model = NonhydrostaticModel(timestepper = :RungeKutta3,
 
 using Statistics
 
-u₀ = rand(size(model.grid)...)
-u₀ .-= mean(u₀)
+u, v, w = model.velocities
 
-set!(model, u=u₀, v=u₀)
+uᵢ = rand(size(u)...)
+vᵢ = rand(size(v)...)
+
+uᵢ .-= mean(uᵢ)
+vᵢ .-= mean(vᵢ)
+
+set!(model, u=uᵢ, v=vᵢ)
 
 # ## Computing vorticity and speed
 

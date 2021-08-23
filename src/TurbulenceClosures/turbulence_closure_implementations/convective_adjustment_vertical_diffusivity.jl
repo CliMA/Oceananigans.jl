@@ -73,7 +73,12 @@ function DiffusivityFields(arch, grid, tracer_names, bcs, closure::CAVD)
     return (; stable_buoyancy_gradient)
 end       
 
-function calculate_diffusivities!(diffusivities, arch, grid, closure::CAVD, buoyancy, velocities, tracers)
+function calculate_diffusivities!(diffusivities, closure::CAVD, model)
+
+    arch = model.architecture
+    grid = model.grid
+    tracers = model.tracers
+    buoyancy = model.buoyancy
 
     event = launch!(arch, grid, :xyz,
                     compute_stability!, diffusivities, grid, tracers, buoyancy,
@@ -187,7 +192,7 @@ end
 @inline κᶜᶜᶠ(i, j, k, grid, clock, c::ConvectiveAdjustmentCoeff{I}) where I = κᶜᶜᶠ(i, j, k, grid, clock, c.closure, c.stable_buoyancy_gradient, Val(I))
 
 const VITD = VerticallyImplicitTimeDiscretization
-const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
+# const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
 @inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::CAVD, args...) = zero(eltype(grid))
 @inline viscous_flux_uz(i, j, k, grid, ::VITD, closure::CAVD, args...) = zero(eltype(grid))

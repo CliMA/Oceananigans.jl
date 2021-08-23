@@ -1,7 +1,7 @@
 using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.Fields: BackgroundField
 using Oceananigans.TimeSteppers: Clock
-using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
@@ -24,9 +24,9 @@ end
 
 function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(model=SeawaterBuoyancy(FT)))
 
-    # Add TKE tracer "e" to tracers when using TKEBasedVerticalDiffusivity
+    # Add TKE tracer "e" to tracers when using CATKEVerticalDiffusivity
     tracers = [:T, :S]
-    Closure === TKEBasedVerticalDiffusivity && push!(tracers, :e)
+    Closure === CATKEVerticalDiffusivity && push!(tracers, :e)
 
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
     grid = RegularRectilinearGrid(FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
@@ -202,7 +202,7 @@ BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipatio
 Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
             SmagorinskyLilly, AnisotropicMinimumDissipation, BuoyancyModifiedAnisotropicMinimumDissipation,
-            TKEBasedVerticalDiffusivity)
+            CATKEVerticalDiffusivity)
 
 advection_schemes = (nothing,
                      CenteredSecondOrder(),

@@ -54,7 +54,7 @@ function with_tracers(tracers, closure::HorizontallyCurvilinearAnisotropicDiffus
     return HorizontallyCurvilinearAnisotropicDiffusivity{TD}(closure.νh, closure.νz, κh, κz)
 end
 
-calculate_diffusivities!(K, arch, grid, closure::HorizontallyCurvilinearAnisotropicDiffusivity, args...) = nothing
+calculate_diffusivities!(diffusivities, closure::HorizontallyCurvilinearAnisotropicDiffusivity, args...) = nothing
 
 viscous_flux_ux(i, j, k, grid, closure::HCAD, clock, U, args...) = - ν_δᶜᶜᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   
 viscous_flux_uy(i, j, k, grid, closure::HCAD, clock, U, args...) = + ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   
