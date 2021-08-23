@@ -16,16 +16,16 @@ apply_z_bcs!(Gc, c, args...) = apply_z_bcs!(Gc, Gc.grid, c, c.boundary_condition
 # Shortcuts for...
 #
 # Nothing tendencies.
-apply_x_bcs!(::Nothing, args...) = nothing
-apply_y_bcs!(::Nothing, args...) = nothing
-apply_z_bcs!(::Nothing, args...) = nothing
+apply_x_bcs!(::Nothing, args...) = NoneEvent()
+apply_y_bcs!(::Nothing, args...) = NoneEvent()
+apply_z_bcs!(::Nothing, args...) = NoneEvent()
 
 # Not-flux boundary conditions
 const NotFluxBC = Union{PBC, VBC, GBC, OBC, ZFBC}
 
-apply_x_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, NotFluxBC, ::AbstractArchitecture, args...) = nothing
-apply_y_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, NotFluxBC, ::AbstractArchitecture, args...) = nothing
-apply_z_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, NotFluxBC, ::AbstractArchitecture, args...) = nothing
+apply_x_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, ::NotFluxBC, ::AbstractArchitecture, args...) = NoneEvent()
+apply_y_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, ::NotFluxBC, ::AbstractArchitecture, args...) = NoneEvent()
+apply_z_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, ::NotFluxBC, ::AbstractArchitecture, args...) = NoneEvent()
 
 # The real deal
 """
@@ -82,21 +82,13 @@ Apply a top and/or bottom boundary condition to variable `c`.
        apply_z_top_bc!(Gc, loc, top_bc,    i, j, grid, args...)
 end
 
-# Fall back functions for boundary conditions that are not of type Flux.
-@inline apply_x_east_bc!(  Gc, args...) = nothing
-@inline apply_x_west_bc!(  Gc, args...) = nothing
-@inline apply_y_north_bc!( Gc, args...) = nothing
-@inline apply_y_south_bc!( Gc, args...) = nothing
-@inline apply_z_top_bc!(   Gc, args...) = nothing
-@inline apply_z_bottom_bc!(Gc, args...) = nothing
-
-# Shortcuts for 'zero' flux boundary conditions.
-@inline apply_x_east_bc!(  Gc, loc, ::ZFBC, args...) = nothing
-@inline apply_x_west_bc!(  Gc, loc, ::ZFBC, args...) = nothing
-@inline apply_y_north_bc!( Gc, loc, ::ZFBC, args...) = nothing
-@inline apply_y_south_bc!( Gc, loc, ::ZFBC, args...) = nothing
-@inline apply_z_top_bc!(   Gc, loc, ::ZFBC, args...) = nothing
-@inline apply_z_bottom_bc!(Gc, loc, ::ZFBC, args...) = nothing
+# Shortcuts for zero flux or non-flux boundary conditions
+@inline apply_x_east_bc!(  Gc, loc, ::NotFluxBC, args...) = nothing
+@inline apply_x_west_bc!(  Gc, loc, ::NotFluxBC, args...) = nothing
+@inline apply_y_north_bc!( Gc, loc, ::NotFluxBC, args...) = nothing
+@inline apply_y_south_bc!( Gc, loc, ::NotFluxBC, args...) = nothing
+@inline apply_z_top_bc!(   Gc, loc, ::NotFluxBC, args...) = nothing
+@inline apply_z_bottom_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
 
 @inline flip(::Center) = Face()
 @inline flip(::Face) = Center()
