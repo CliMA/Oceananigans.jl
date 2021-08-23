@@ -13,6 +13,7 @@ Pages   = [
     "Advection/momentum_advection_operators.jl",
     "Advection/centered_second_order.jl",
     "Advection/centered_fourth_order.jl",
+    "Advection/upwind_biased_first_order.jl",
     "Advection/upwind_biased_third_order.jl",
     "Advection/upwind_biased_fifth_order.jl",
     "Advection/weno_fifth_order.jl"
