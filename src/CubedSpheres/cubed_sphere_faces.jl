@@ -15,6 +15,11 @@ struct CubedSphereFaces{E, F}
     faces :: F
 end
 
+function CubedSphereFaces(faces::F) where F
+    E = typeof(faces[1])
+    return CubedSphereFaces{E, F}(faces)
+end
+
 @inline Base.getindex(f::CubedSphereFaces, i::Int) = @inbounds f.faces[i]
 
 #####

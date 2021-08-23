@@ -1,4 +1,4 @@
-FROM julia:1.6.1
+FROM julia:1.6.2
 LABEL maintainer="Ali Ramadhan <alir@mit.edu>"
 
 RUN apt-get update && apt-get install -y hdf5-tools

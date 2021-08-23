@@ -1,6 +1,7 @@
 using Oceananigans.Architectures: device_event
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
+using Oceananigans.Architectures: device_event
 
 struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
@@ -76,7 +77,8 @@ function ab2_step!(model, Δt, χ)
 
     workgroup, worksize = work_layout(arch, grid, :xyz)
 
-    barrier = Event(device(model.architecture))
+    arch = model.architecture
+    barrier = device_event(arch)
 
     step_field_kernel! = ab2_step_field!(device(arch), workgroup, worksize)
 
@@ -103,6 +105,7 @@ function ab2_step!(model, Δt, χ)
                        model.closure,
                        tracer_index,
                        model.diffusivity_fields,
+                       model.tracers,
                        dependencies = field_event)
     end
 
@@ -114,17 +117,17 @@ end
 """
 Time step via
 
-    `U^{n+1} = U^n + Δt ( (3/2 + χ) * G^{n} - (1/2 + χ) G^{n-1} )`
+    `U^{n+1} = U^n + Δt ((3/2 + χ) * G^{n} - (1/2 + χ) G^{n-1})`
 
 """
-
-@kernel function ab2_step_field!(U, Δt, χ::FT, Gⁿ, G⁻) where FT
+@kernel function ab2_step_field!(u, Δt, χ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds begin
-        U[i, j, k] += Δt * (  (FT(1.5) + χ) * Gⁿ[i, j, k] - (FT(0.5) + χ) * G⁻[i, j, k] )
+    T = eltype(u)
+    one_point_five = convert(T, 1.5)
+    oh_point_five = convert(T, 0.5)
 
-    end
+    @inbounds u[i, j, k] += Δt * ((one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k])
 end
 
 @kernel ab2_step_field!(::FunctionField, args...) = nothing

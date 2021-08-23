@@ -94,8 +94,7 @@ function launch!(arch, grid, dims, kernel!, args...;
                  dependencies = nothing,
                  include_right_boundaries = false,
                  reduced_dimensions = (),
-                 location = nothing,
-                 kwargs...)
+                 location = nothing)
 
     workgroup, worksize = work_layout(arch, grid, dims,
                                       include_right_boundaries = include_right_boundaries,
@@ -106,7 +105,7 @@ function launch!(arch, grid, dims, kernel!, args...;
 
     @debug "Launching kernel $kernel! with worksize $worksize"
 
-    event = loop!(args...; dependencies=dependencies, kwargs...)
+    event = loop!(args...; dependencies=dependencies)
 
     return event
 end

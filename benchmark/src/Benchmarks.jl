@@ -38,6 +38,7 @@ function print_system_info()
     println()
     println(oceananigans_versioninfo())
     println(versioninfo_with_gpu())
+    CUDA.has_cuda_gpu() && println(CUDA.versioninfo())
     println()
     return nothing
 end
