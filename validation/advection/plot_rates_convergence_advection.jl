@@ -36,7 +36,7 @@ colors(::CenteredFourthOrder)    = :cyan
 colors(::UpwindBiasedFifthOrder) = :magenta
 colors(::WENO5)                  = :purple
 
-halos(::UpwindBiasedFirstOrder) = 1    # should be zero but need > 0
+halos(::UpwindBiasedFirstOrder) = 1
 halos(::CenteredSecondOrder)    = 1
 halos(::UpwindBiasedThirdOrder) = 2
 halos(::CenteredFourthOrder)    = 2
