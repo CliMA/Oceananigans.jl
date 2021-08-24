@@ -1,0 +1,50 @@
+env:
+  JULIA_VERSION: "1.6.0"
+  OPENMPI_VERSION: "4.0.4"
+  CUDA_VERSION: "11.2"
+  OPENBLAS_NUM_THREADS: 1
+
+steps:
+  - label: "init :computer:"
+    key: "init_cpu_env"
+    command:
+      - "julia --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
+      - "julia --project -e 'using Pkg; Pkg.precompile(; strict=true)'"
+      - "julia --project -e 'using Pkg; Pkg.status()'"
+    agents:
+      config: cpu
+      queue: central
+      slurm_ntasks: 1
+
+  - label: "init :flower_playing_cards:"
+    key: "init_gpu_env"
+    command:
+      - "export CUDA_HOME=/usr/local/cuda-$$CUDA_VERSION"
+
+      - "julia --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
+      - "julia --project -e 'using Pkg; Pkg.precompile(; strict=true)'"
+
+      # force the initialization of the CUDA runtime as it is lazily loaded by default
+      - "julia --project -e 'using CUDA; CUDA.precompile_runtime()'"
+      - "julia --project -e 'using CUDA; CUDA.versioninfo()'"
+
+      - "julia --project -e 'using Pkg; Pkg.status()'"
+    agents:
+      config: gpu
+      queue: central
+      slurm_ntasks: 1
+      slurm_gres: "gpu:1"
+
+  - wait
+  
+# "slurm_ntasks: 1" is converted to "-ntasks=1"
+  - label: ":flower_playing_cards: unit tests"
+    key: "gpu_unittests"
+    command:
+      - "export CUDA_HOME=/usr/local/cuda-$$CUDA_VERSION"
+      - "julia --color=yes --project=test test/runtests.jl"
+    agents:
+      config: gpu
+      queue: central
+      slurm_ntasks: 1
+      slurm_gres: "gpu:1"
