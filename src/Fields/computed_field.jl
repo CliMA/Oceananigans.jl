@@ -1,6 +1,7 @@
 using Adapt
 using Statistics
 using KernelAbstractions: @kernel, @index, Event
+using Oceananigans.Architectures: device_event
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 
@@ -75,19 +76,18 @@ end
 
 Compute `comp.operand` and store the result in `comp.data`.
 """
-function compute!(comp::ComputedField{LX, LY, LZ}, time=nothing) where {LX, LY, LZ}
+function compute!(comp::ComputedField, time=nothing)
     compute_at!(comp.operand, time) # ensures any 'dependencies' of the computation are computed first
 
+    grid = comp.grid
     arch = architecture(comp)
+    LX, LY, LZ = location(comp)
 
-    workgroup, worksize = work_layout(comp.grid,
-                                      :xyz,
-                                      include_right_boundaries=true,
-                                      location=(LX, LY, LZ))
-
-    compute_kernel! = _compute!(device(arch), workgroup, worksize)
-
-    event = compute_kernel!(comp.data, comp.operand; dependencies=Event(device(arch)))
+    event = launch!(arch, grid, :xyz,
+                    _compute!, comp.data, comp.operand;
+                    dependencies = device_event(arch),
+                    location = (LX, LY, LZ),
+                    include_right_boundaries = true)
 
     wait(device(arch), event)
 

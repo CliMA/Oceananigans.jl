@@ -6,7 +6,7 @@ import Oceananigans.TimeSteppers: rk3_substep!
 
 function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ)
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
+    workgroup, worksize = work_layout(model.architecture, model.grid, :xyz)
 
     barrier = Event(device(model.architecture))
 

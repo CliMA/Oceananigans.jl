@@ -46,7 +46,7 @@ function update_particle_properties!(lagrangian_particles, model, Δt)
 
     # Update tracked field properties.
 
-    workgroup = min(length(lagrangian_particles), MAX_THREADS_PER_BLOCK)
+    workgroup = min(length(lagrangian_particles), MAX_GPU_THREADS_PER_BLOCK)
     worksize = length(lagrangian_particles)
 
     events = []

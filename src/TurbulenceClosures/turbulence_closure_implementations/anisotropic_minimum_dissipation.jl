@@ -194,7 +194,7 @@ function calculate_diffusivities!(diffusivity_fields, closure::AnisotropicMinimu
     tracers = model.tracers
     buoyancy = model.buoyancy
 
-    workgroup, worksize = work_layout(grid, :xyz)
+    workgroup, worksize = work_layout(arch, grid, :xyz)
     viscosity_kernel! = calculate_viscosity!(device(arch), workgroup, worksize)
     diffusivity_kernel! = calculate_tracer_diffusivity!(device(arch), workgroup, worksize)
 

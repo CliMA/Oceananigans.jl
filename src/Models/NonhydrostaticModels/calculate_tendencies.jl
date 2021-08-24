@@ -66,7 +66,7 @@ function calculate_interior_tendency_contributions!(tendencies,
                                                     forcings,
                                                     clock)
 
-    workgroup, worksize = work_layout(grid, :xyz)
+    workgroup, worksize = work_layout(arch, grid, :xyz)
 
     calculate_Gu_kernel! = calculate_Gu!(device(arch), workgroup, worksize)
     calculate_Gv_kernel! = calculate_Gv!(device(arch), workgroup, worksize)

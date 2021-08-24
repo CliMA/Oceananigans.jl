@@ -68,7 +68,7 @@ function calculate_interior_tendency_contributions!(tendencies,
                                                     forcings,
                                                     clock)
 
-    workgroup, worksize = work_layout(grid, :xyz)
+    workgroup, worksize = work_layout(arch, grid, :xyz)
 
     calculate_Guh_kernel! = calculate_Guh!(device(arch), workgroup, worksize)
     calculate_Gvh_kernel! = calculate_Gvh!(device(arch), workgroup, worksize)

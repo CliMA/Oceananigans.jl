@@ -1,3 +1,4 @@
+using Oceananigans.Architectures: device_event
 using Oceananigans.Fields: FunctionField, location
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.Architectures: device_event
@@ -71,7 +72,10 @@ end
 """ Generic implementation. """
 function ab2_step!(model, Δt, χ)
 
-    workgroup, worksize = work_layout(model.grid, :xyz)
+    arch = model.architecture
+    grid = model.grid
+
+    workgroup, worksize = work_layout(arch, grid, :xyz)
 
     arch = model.architecture
     barrier = device_event(arch)
@@ -105,7 +109,7 @@ function ab2_step!(model, Δt, χ)
                        dependencies = field_event)
     end
 
-    wait(device(model.architecture), MultiEvent(Tuple(events)))
+    wait(device(arch), MultiEvent(Tuple(events)))
 
     return nothing
 end

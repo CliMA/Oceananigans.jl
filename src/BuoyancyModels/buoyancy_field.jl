@@ -4,7 +4,7 @@ using KernelAbstractions
 using Oceananigans.Fields: AbstractDataField, FieldStatus, validate_field_data, conditional_compute!
 using Oceananigans.Fields: architecture, tracernames
 using Oceananigans.Architectures: device
-using Oceananigans.Utils: work_layout
+using Oceananigans.Utils: work_layout, launch!
 using Oceananigans.Grids: new_data
 
 import Oceananigans.Fields: compute!, compute_at!
@@ -96,11 +96,9 @@ function compute!(buoyancy_field::BuoyancyField, time=nothing)
     buoyancy = buoyancy_field.buoyancy
     arch = architecture(buoyancy_field)
 
-    workgroup, worksize = work_layout(grid, :xyz)
-
-    compute_kernel! = compute_buoyancy!(device(arch), workgroup, worksize)
-
-    event = compute_kernel!(data, grid, buoyancy, tracers; dependencies=Event(device(arch)))
+    event = launch!(arch, grid, :xyz,
+                    compute_buoyancy!, data, grid, buoyancy, tracers;
+                    dependencies=Event(device(arch)))
 
     wait(device(arch), event)
 
