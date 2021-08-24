@@ -2,19 +2,19 @@
 ##### Upwind-biased 1rd-order advection scheme
 #####
 
-struct UpwindBiasedFirstOrder <: AbstractUpwindBiasedAdvectionScheme{1} end
+struct UpwindBiasedFirstOrder <: AbstractUpwindBiasedAdvectionScheme{0} end
 
 const U1 = UpwindBiasedFirstOrder
 
 @inline boundary_buffer(::U1) = 0
 
-@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1, c) = 0 
-@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1, c) = 0 
-@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1, c) = 0 
+@inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1, c) = ℑxᶠᵃᵃ(i, j, k, grid, c)
+@inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1, c) = ℑyᵃᶠᵃ(i, j, k, grid, c)
+@inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, ::U1, c) = ℑzᵃᵃᶠ(i, j, k, grid, c)
 
-@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, ::U1, u) = 0
-@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, ::U1, v) = 0
-@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, ::U1, w) = 0
+@inline symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, ::U1, u) = ℑxᶜᵃᵃ(i, j, k, grid, u)
+@inline symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, ::U1, v) = ℑyᵃᶜᵃ(i, j, k, grid, v)
+@inline symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, ::U1, w) = ℑzᵃᵃᶜ(i, j, k, grid, w)
 
 @inline left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1, c) = @inbounds c[i-1, j, k] 
 @inline left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1, c) = @inbounds c[i, j-1, k]
