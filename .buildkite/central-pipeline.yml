@@ -41,7 +41,6 @@ steps:
   - label: ":flower_playing_cards: unit tests"
     key: "gpu_unittests"
     command:
-      - "export CUDA_HOME=/usr/local/cuda-$$CUDA_VERSION"
       - "julia --color=yes --project=test test/runtests.jl"
     agents:
       config: gpu
