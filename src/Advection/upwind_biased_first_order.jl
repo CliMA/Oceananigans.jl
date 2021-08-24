@@ -2,11 +2,11 @@
 ##### Upwind-biased 1rd-order advection scheme
 #####
 
-struct UpwindBiasedFirstOrder <: AbstractUpwindBiasedAdvectionScheme{0} end
+struct UpwindBiasedFirstOrder <: AbstractUpwindBiasedAdvectionScheme{1} end
 
 const U1 = UpwindBiasedFirstOrder
 
-@inline boundary_buffer(::U1) = 0
+@inline boundary_buffer(::U1) = 1
 
 @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, ::U1, c) = ℑxᶠᵃᵃ(i, j, k, grid, c)
 @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, ::U1, c) = ℑyᵃᶠᵃ(i, j, k, grid, c)
