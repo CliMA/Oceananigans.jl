@@ -5,6 +5,7 @@ using Oceananigans.Fields: location
 
 mask_immersed_field!(field::AbstractField, loc=location(field)) = mask_immersed_field!(field, field.grid, loc)
 mask_immersed_field!(field, grid, loc) = NoneEvent()
+mask_immersed_field!(field::FunctionField, args...) = NoneEvent()
 instantiate(X) = X()
 
 function mask_immersed_field!(field, grid::ImmersedBoundaryGrid, loc)
