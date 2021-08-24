@@ -18,6 +18,8 @@ steps:
 
   - label: "init :flower_playing_cards:"
     key: "init_gpu_env"
+    env:
+      - CUDA_VERSION: "10.2"
     command:
       - "export CUDA_HOME=/usr/local/cuda-$$CUDA_VERSION"
 
