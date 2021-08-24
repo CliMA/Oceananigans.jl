@@ -5,7 +5,6 @@ using Oceananigans.Fields: location, AbstractDataField
 
 instantiate(X) = X()
 
-
 mask_immersed_field!(field::AbstractField, loc=location(field)) = mask_immersed_field!(field, field.grid, loc)
 mask_immersed_field!(field, grid, loc) = NoneEvent()
 
