@@ -21,8 +21,6 @@ steps:
     env:
       - CUDA_VERSION: "10.2"
     command:
-      - "export CUDA_HOME=/usr/local/cuda-$$CUDA_VERSION"
-
       - "julia --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
       - "julia --project -e 'using Pkg; Pkg.precompile(; strict=true)'"
 
