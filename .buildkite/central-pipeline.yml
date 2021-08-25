@@ -41,7 +41,7 @@ steps:
   - label: ":flower_playing_cards: unit tests"
     key: "gpu_unittests"
     command:
-      - "julia --color=yes --project=test test/runtests.jl"
+      - "julia --color=yes --project test/runtests.jl"
     agents:
       config: gpu
       queue: central
