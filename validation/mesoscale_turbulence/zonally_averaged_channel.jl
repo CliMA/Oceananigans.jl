@@ -1,7 +1,7 @@
 # using Pkg
 # pkg"add Oceananigans GLMakie"
 
-#ENV["GKSwstype"] = "100"
+ENV["GKSwstype"] = "100"
 
 #pushfirst!(LOAD_PATH, @__DIR__)
 
@@ -39,8 +39,6 @@ grid = VerticallyStretchedRectilinearGrid(architecture = arch,
                                           x = (0, Lx),
                                           y = (0, Ly),
                                           z_faces = z_faces)
-
-
 
 @info "Built a grid: $grid."
 
@@ -209,7 +207,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=50days, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=1days, progress=print_progress, iteration_interval=10)
 
 #####
 ##### Diagnostics
@@ -218,44 +216,18 @@ simulation = Simulation(model, Δt=wizard, stop_time=50days, progress=print_prog
 u, v, w = model.velocities
 b = model.tracers.b
 
-ζ = ComputedField(∂x(v) - ∂y(u))
-
-B = AveragedField(b, dims=1)
-V = AveragedField(v, dims=1)
-W = AveragedField(w, dims=1)
-
-b′ = b - B
-v′ = v - V
-w′ = w - W
-
-v′b′ = AveragedField(v′ * b′, dims=1)
-w′b′ = AveragedField(w′ * b′, dims=1)
-
-outputs = (; b, ζ, w)
-
-averaged_outputs = (; v′b′, w′b′, B)
+outputs = (; b, u)
 
 # #####
 # ##### Build checkpointer and output writer
 # #####
 
-simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                        schedule = TimeInterval(100days),
-                                                        prefix = "zonally_averaged_channel.jl",
-                                                        force = true)
-
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(5days),
-                                                      prefix = "zonally_averaged_channel.jl",
+                                                      prefix = "zonally_averaged_channel",
                                                       field_slicer = nothing,
                                                       verbose = true,
                                                       force = true)
-
-simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
-                                                        schedule = AveragedTimeInterval(1days, window=1days, stride=1),
-                                                        prefix = "zonally_averaged_channel.jl_averages",
-                                                        verbose = true,
-                                                        force = true)
 
 @info "Running the simulation..."
 
@@ -265,7 +237,7 @@ run!(simulation, pickup=false)
 ##### Visualization
 #####
 
-grid = VerticallyStretchedRectilinearGrid(architecture = arch,
+grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
                                           topology = (Periodic, Bounded, Bounded),
                                           size = (grid.Nx, grid.Ny, grid.Nz),
                                           halo = (3, 3, 3),
@@ -273,90 +245,51 @@ grid = VerticallyStretchedRectilinearGrid(architecture = arch,
                                           y = (0, grid.Ly),
                                           z_faces = z_faces)
 
-xζ, yζ, zζ = nodes((Face, Face, Center), grid)
+xu, yu, zu = nodes((Face, Center, Center), grid)
 xc, yc, zc = nodes((Center, Center, Center), grid)
-xw, yw, zw = nodes((Center, Center, Face), grid)
 
-j′ = round(Int, grid.Ny / 2)
-y′ = yζ[j′]
-
-b_timeseries = FieldTimeSeries("zonally_averaged_channel.jl.jld2", "b", grid=grid)
-ζ_timeseries = FieldTimeSeries("zonally_averaged_channel.jl.jld2", "ζ", grid=grid)
-w_timeseries = FieldTimeSeries("zonally_averaged_channel.jl.jld2", "w", grid=grid)
+u_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "u", grid=grid)
+b_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "b", grid=grid)
 
 @show b_timeseries
 
 anim = @animate for i in 1:length(b_timeseries.times)
 
     b = b_timeseries[i]
-    ζ = ζ_timeseries[i]
-    w = w_timeseries[i]
+    u = u_timeseries[i]
     
-    b′ = interior(b) .- mean(b)
+    b_yz = interior(b)[1, :, :]
+    u_yz = interior(u)[1, :, :]
     
-    b_xy = b′[:, :, grid.Nz]
-    ζ_xy = interior(ζ)[:, :, grid.Nz]
-    ζ_xz = interior(ζ)[:, j′, :]
-    w_xz = interior(w)[:, j′, :]
+    @show umax = max(1e-9, maximum(abs, u_yz))
+    @show bmax = max(1e-9, maximum(abs, b_yz))
     
-    @show bmax = max(1e-9, maximum(abs, b_xy))
-    @show ζmax = max(1e-9, maximum(abs, ζ_xy))
-    @show wmax = max(1e-9, maximum(abs, w_xz))
-    
+    ulims = (-umax, umax) .* 0.8
     blims = (-bmax, bmax) .* 0.8
-    ζlims = (-ζmax, ζmax) .* 0.8
-    wlims = (-wmax, wmax) .* 0.8
     
+    ulevels = vcat([-umax], range(ulims[1], ulims[2], length=31), [umax])
     blevels = vcat([-bmax], range(blims[1], blims[2], length=31), [bmax])
-    ζlevels = vcat([-ζmax], range(ζlims[1], ζlims[2], length=31), [ζmax])
-    wlevels = vcat([-wmax], range(wlims[1], wlims[2], length=31), [wmax])
     
-    xlims = (-grid.Lx/2, grid.Lx/2) .* 1e-3
     ylims = (0, grid.Ly) .* 1e-3
     zlims = (-grid.Lz, 0)
     
-    w_xz_plot = contourf(xw * 1e-3, zw, w_xz',
-                         xlabel = "x (km)",
+    u_yz_plot = contourf(yu * 1e-3, zu * 1e-3, u_yz',
+                         xlabel = "y (km)",
                          ylabel = "z (m)",
-                         aspectratio = 0.05,
+                         aspectratio = :equal,
                          linewidth = 0,
-                         levels = wlevels,
-                         clims = wlims,
-                         xlims = xlims,
+                         levels = blevels,
+                         clims = blims,
+                         xlims = ylims,
                          ylims = zlims,
                          color = :balance)
     
-    ζ_xy_plot = contourf(xζ * 1e-3, yζ * 1e-3, ζ_xy',
-                         xlabel = "x (km)",
-                         ylabel = "y (km)",
-                         aspectratio = :equal,
-                         linewidth = 0,
-                         levels = ζlevels,
-                         clims = ζlims,
-                         xlims = xlims,
-                         ylims = ylims,
-                         color = :balance)
-    
-    _xy_plot = contourf(xc * 1e-3, yc * 1e-3, b_xy',
-                        xlabel = "x (km)",
-                        ylabel = "y (km)",
-                        aspectratio = :equal,
-                        linewidth = 0,
-                        levels = blevels,
-                        clims = blims,
-                        xlims = xlims,
-                        ylims = ylims,
-                        color = :balance)
-    
-    w_xz_title = @sprintf("w(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
-    ζ_xz_title = @sprintf("ζ(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
-    ζ_xy_title = "ζ(x, y)"
-    b_xy_title = "b(x, y)"
-    
-    layout = @layout [upper_slice_plot{0.2h}
-                      Plots.grid(1, 2)]
-
-    plot(w_xz_plot, ζ_xy_plot,  b_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title ζ_xy_title b_xy_title])
+    contour!(u_yz_plot,
+             yc * 1e-3, zc, b_yz',
+             linewidth = 1,
+             color = :black,
+             levels = blevels)
 end
 
-mp4(anim, "zonally_averaged_channel.jl.mp4", fps = 8) # hide
+mp4(anim, "zonally_averaged_channel.mp4", fps = 8) # hide
+
