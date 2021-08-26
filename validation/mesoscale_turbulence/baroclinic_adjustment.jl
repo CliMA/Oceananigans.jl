@@ -10,7 +10,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 # nobs
 stretched_grid = false
 hydrostatic = true
-implicit_free_surface = true
+implicit_free_surface = false
 
 
 # timestep
@@ -28,7 +28,7 @@ else
     wizard = Δt_min / 3
 end
 
-stop_time = 30days
+stop_time = 10days
 
 
 # domain
@@ -139,7 +139,7 @@ const Tz = 2e-3  # Vertical temperature gradient [K/m].
 using Random
 Random.seed!(1234)
 const temp_adjust = 0
-const noise_amp = 0.0001 * 1
+const noise_amp = 0.0000
 println("the temp adjust is ", temp_adjust)
 # Initial temperature field [°C].
 T₀(x, y, z) = 10 + Ty*min(max(0, y-225e3), 50e3) + Tz*z + noise_amp*rand()
