@@ -3,7 +3,7 @@
 
 ENV["GKSwstype"] = "100"
 
-#pushfirst!(LOAD_PATH, @__DIR__)
+pushfirst!(LOAD_PATH, @__DIR__)
 
 using Printf
 using Statistics
@@ -29,7 +29,7 @@ const Lz = sum(Δz_center)
 z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
 z_faces[Nz+1] = 0
 
-arch = GPU()
+arch = CPU()
 FT = Float64
 
 grid = VerticallyStretchedRectilinearGrid(architecture = arch,
@@ -207,7 +207,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=1days, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=2days, progress=print_progress, iteration_interval=10)
 
 #####
 ##### Diagnostics
@@ -223,7 +223,7 @@ outputs = (; b, u)
 # #####
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(5days),
+                                                      schedule = TimeInterval(0.2days),
                                                       prefix = "zonally_averaged_channel",
                                                       field_slicer = nothing,
                                                       verbose = true,
@@ -254,7 +254,6 @@ b_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "b", grid=grid)
 @show b_timeseries
 
 anim = @animate for i in 1:length(b_timeseries.times)
-
     b = b_timeseries[i]
     u = u_timeseries[i]
     
@@ -262,6 +261,7 @@ anim = @animate for i in 1:length(b_timeseries.times)
     u_yz = interior(u)[1, :, :]
     
     @show umax = max(1e-9, maximum(abs, u_yz))
+    @show umax = maximum(abs, u_timeseries[:, :, :, :])
     @show bmax = max(1e-9, maximum(abs, b_yz))
     
     ulims = (-umax, umax) .* 0.8
@@ -272,14 +272,14 @@ anim = @animate for i in 1:length(b_timeseries.times)
     
     ylims = (0, grid.Ly) .* 1e-3
     zlims = (-grid.Lz, 0)
-    
-    u_yz_plot = contourf(yu * 1e-3, zu * 1e-3, u_yz',
+
+    u_yz_plot = contourf(yu * 1e-3, zu, u_yz',
                          xlabel = "y (km)",
                          ylabel = "z (m)",
                          aspectratio = :equal,
                          linewidth = 0,
-                         levels = blevels,
-                         clims = blims,
+                         levels = ulevels,
+                         clims = ulims,
                          xlims = ylims,
                          ylims = zlims,
                          color = :balance)
@@ -288,7 +288,8 @@ anim = @animate for i in 1:length(b_timeseries.times)
              yc * 1e-3, zc, b_yz',
              linewidth = 1,
              color = :black,
-             levels = blevels)
+             levels = blevels,
+             legend = :none)
 end
 
 mp4(anim, "zonally_averaged_channel.mp4", fps = 8) # hide
