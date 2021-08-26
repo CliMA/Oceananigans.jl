@@ -80,12 +80,13 @@ end
 struct ColumnEnsembleSize{C<:Tuple{Int, Int}}
     ensemble :: C
     Nz :: Int
+    Hz :: Int
 end
 
-ColumnEnsembleSize(; Nz, ensemble=(0, 0)) = ColumnEnsembleSize(ensemble, Nz)
+ColumnEnsembleSize(; Nz, ensemble=(0, 0), Hz=1) = ColumnEnsembleSize(ensemble, Nz, Hz)
 
 validate_size(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemble[2], e.Nz)
-validate_halo(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemble[2], e.Nz)
+validate_halo(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(0, 0, e.Hz)
 
 @inline time_discretization(::AbstractArray{<:AbstractTurbulenceClosure{TD}}) where TD = TD()
 
@@ -150,3 +151,14 @@ end
     return hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid, val_tracer_index, advection, closure, args...)
 end
 
+#####
+##### Arrays of Coriolises
+#####
+
+import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
+
+const FPlaneArray = AbstractArray{<:FPlane, 2}
+
+@inline x_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis::FPlaneArray, U) = @inbounds - coriolis[i, j].f * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
+@inline y_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis::FPlaneArray, U) = @inbounds   coriolis[i, j].f * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
+@inline z_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis::FPlaneArray, U) = zero(eltype(grid))
