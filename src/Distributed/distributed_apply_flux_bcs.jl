@@ -1,3 +1,6 @@
+using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Architectures: AbstractArchitecture
+
 import Oceananigans.BoundaryConditions:
     apply_x_bcs!,
     apply_y_bcs!,
