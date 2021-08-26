@@ -6,7 +6,7 @@ env:
 
 steps:
   - label: "init :computer:"
-    key: "init_cpu_env"
+    key: "init_cpu"
     command:
       - "julia --project -e 'using Pkg; Pkg.instantiate(; verbose=true)'"
       - "julia --project -e 'using Pkg; Pkg.precompile(; strict=true)'"
@@ -17,7 +17,7 @@ steps:
       slurm_ntasks: 1
 
   - label: "init :flower_playing_cards:"
-    key: "init_gpu_env"
+    key: "init_gpu"
     env:
       - CUDA_VERSION: "10.2"
     command:
@@ -37,13 +37,19 @@ steps:
 
   - wait
   
-# "slurm_ntasks: 1" is converted to "-ntasks=1"
-  - label: ":flower_playing_cards: unit tests"
-    key: "gpu_unittests"
-    command:
-      - "julia --color=yes --project test/runtests.jl"
+# Note on slurm syntax:
+# Slurm specifications are passed to agent matrix
+# Keys starting with "slurm_" are converted to slurm commands
+# Example: the key "slurm_ntasks: 1" is converted to "-ntasks=1"
+
+  - label: "🐿️ gpu unit tests"
+    env:
+      TEST_GROUP: "unit"
+    commands:
+      - "julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     agents:
       config: gpu
       queue: central
       slurm_ntasks: 1
       slurm_gres: "gpu:1"
+    depends_on: "init_cpu"
