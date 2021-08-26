@@ -205,6 +205,7 @@ Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             CATKEVerticalDiffusivity)
 
 advection_schemes = (nothing,
+                     UpwindBiasedFirstOrder(),
                      CenteredSecondOrder(),
                      UpwindBiasedThirdOrder(),
                      CenteredFourthOrder(),
