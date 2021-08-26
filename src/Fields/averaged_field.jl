@@ -52,7 +52,7 @@ Arguments
                       within another computation. If `recompute_safely=false`,
                       `AveragedField` will *not* be recomputed before computing any dependent
                       computations if `AveragedField.status` is consistent with the current state of the simulation.
-                      If `recompute_safely=false`, `AveragedField` is always recomputed
+                      If `recompute_safely=true`, `AveragedField` is always recomputed
                       before performing a dependent computation.
 
 Examples
