@@ -11,6 +11,7 @@ using MPI
 
 using Oceananigans.Models
 using Oceananigans.Utils
+using Oceananigans.Grids
 
 include("distributed_utils.jl")
 include("multi_architectures.jl")
