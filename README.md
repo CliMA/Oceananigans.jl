@@ -48,6 +48,9 @@
   <a href="https://hub.docker.com/r/aliramadhan/oceananigans">
     <img alt="Docker build status" src="https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans?label=Docker&logo=docker&logoColor=white&style=flat-square">
   </a>
+  <a href="https://app.bors.tech/repositories/24771">
+    <img alt="Bors status" src="https://bors.tech/images/badge_small.svg">
+  </a>
 </p>
 
 Oceananigans.jl is a fast and friendly fluid flow solver written in Julia that can be run in 1-3 dimensions on CPUs and GPUs. It can simulate the incompressible Boussinesq equations, the shallow water equations, or the hydrostatic Boussinesq equations with a free surface. Oceananigans.jl comes with user-friendly features for simulating rotating stratified fluids including user-defined boundary conditions and forcing functions, arbitrary tracers, large eddy simulation turbulence closures, high-order advection schemes, immersed boundaries, Lagrangian particle tracking, and more!

@@ -1,0 +1,7 @@
+status = [
+  "buildkite/oceananigans-central",
+]
+delete_merged_branches = true
+timeout_sec = 12600
+block_labels = [ "🚨 DO NOT MERGE 🚨" ]
+cut_body_after = "<!--"
