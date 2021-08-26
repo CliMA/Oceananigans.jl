@@ -103,8 +103,6 @@ const VITD = VerticallyImplicitTimeDiscretization
 z_viscosity(closure::AD, args...) = closure.νz
 z_diffusivity(closure::AD, ::Val{tracer_index}, args...) where tracer_index = @inbounds closure.κz[tracer_index]
 
-const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
-
 @inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::AD, args...) = zero(eltype(grid))
 @inline viscous_flux_uz(i, j, k, grid, ::VITD, closure::AD, args...) = zero(eltype(grid))
 @inline viscous_flux_vz(i, j, k, grid, ::VITD, closure::AD, args...) = zero(eltype(grid))

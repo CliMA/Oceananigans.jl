@@ -14,7 +14,6 @@ function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
     grid = model.grid
 
-
     u, v, w = model.velocities
     η = model.free_surface.η
 
@@ -74,6 +73,7 @@ function run_pcg_implicit_free_surface_solver_tests(arch, grid)
     return nothing
 end
 
+
 @testset "Implicit free surface solver tests" begin
     for arch in archs
 
@@ -106,11 +106,11 @@ end
         fft_model = HydrostaticFreeSurfaceModel(architecture = arch,
                                                 grid = rectilinear_grid,
                                                 momentum_advection = nothing,
-                                                free_surface = fft_free_surface)
+                                                free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform))
 
-        @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
         @test fft_model.free_surface.implicit_step_solver isa FFTImplicitFreeSurfaceSolver
-
+        @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
+        
         for m in (pcg_model, fft_model)
             set_simple_divergent_velocity!(m)
             implicit_free_surface_step!(m.free_surface, m, Δt, 1.5, device_event(arch))
@@ -136,5 +136,17 @@ end
             # on the CPU.
             @test_skip all(pcg_η_cpu .≈ fft_η_cpu)
         end
+
+        pcg_η = pcg_model.free_surface.η
+        fft_η = fft_model.free_surface.η
+
+        Δη = Array(interior(pcg_η) .- interior(fft_η))
+
+	@info "FFT/PCG implicit free surface solver comparison, " *
+		"maximum(abs, Δη): $(maximum(abs, Δη)), " *
+		"maximum(abs, η_pcg): $(maximum(abs, pcg_η)) " *
+		"maximum(abs, η_fft): $(maximum(abs, fft_η)) "
+
+        @test all(isapprox.(Δη, 0, atol=sqrt(eps(eltype(rectilinear_grid)))))
     end
 end

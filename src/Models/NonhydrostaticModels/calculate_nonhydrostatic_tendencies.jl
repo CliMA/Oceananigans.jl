@@ -144,31 +144,15 @@ end
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
 function calculate_boundary_tendency_contributions!(Gⁿ, arch, velocities, tracers, clock, model_fields)
 
-    barrier = Event(device(arch))
+    barrier = device_event(arch)
 
-    events = []
+    fields = merge(velocities, tracers)
 
-    # Velocity fields
-    for i in 1:3
-        x_bcs_event = apply_x_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
-        y_bcs_event = apply_y_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
-        z_bcs_event = apply_z_bcs!(Gⁿ[i], velocities[i], arch, barrier, clock, model_fields)
-
-        push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
-    end
-
-    # Tracer fields
-    for i in 4:length(Gⁿ)
-        x_bcs_event = apply_x_bcs!(Gⁿ[i], tracers[i-3], arch, barrier, clock, model_fields)
-        y_bcs_event = apply_y_bcs!(Gⁿ[i], tracers[i-3], arch, barrier, clock, model_fields)
-        z_bcs_event = apply_z_bcs!(Gⁿ[i], tracers[i-3], arch, barrier, clock, model_fields)
-
-        push!(events, x_bcs_event, y_bcs_event, z_bcs_event)
-    end
-
-    events = filter(e -> typeof(e) <: Event, events)
-
-    wait(device(arch), MultiEvent(Tuple(events)))
+    x_events = Tuple(apply_x_bcs!(Gⁿ[i], fields[i], arch, barrier, clock, model_fields) for i in 1:length(fields))
+    y_events = Tuple(apply_y_bcs!(Gⁿ[i], fields[i], arch, barrier, clock, model_fields) for i in 1:length(fields))
+    z_events = Tuple(apply_z_bcs!(Gⁿ[i], fields[i], arch, barrier, clock, model_fields) for i in 1:length(fields))
+                         
+    wait(device(arch), MultiEvent(tuple(x_events..., y_events..., z_events...)))
 
     return nothing
 end

@@ -24,5 +24,5 @@ function compute_vertically_integrated_lateral_areas!(∫ᶻ_A, grid, arch)
 
     wait(device(arch), event)
 
-    return
+    return nothing
 end

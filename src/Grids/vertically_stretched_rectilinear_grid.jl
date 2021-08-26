@@ -40,8 +40,8 @@ end
                                         x = nothing, y = nothing,
                                         topology = (Periodic, Periodic, Bounded), halo = nothing)
 
-Creates a `VerticallyStretchedRectilinearGrid` with `size = (Nx, Ny, Nz)` grid points and
-a vertical grid specified by `z_faces`.
+Create a horizontally-regular, `VerticallyStretchedRectilinearGrid` with `size = (Nx, Ny, Nz)` grid points and
+vertical cell interfaces `z_faces`.
 
 Keyword arguments
 =================

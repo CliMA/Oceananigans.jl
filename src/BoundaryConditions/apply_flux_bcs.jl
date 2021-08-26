@@ -1,43 +1,53 @@
 using Oceananigans: instantiated_location
+using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Grids
+using Oceananigans.Grids: AbstractGrid
 
 #####
 ##### Algorithm for adding fluxes associated with non-trivial flux boundary conditions.
 ##### Value and Gradient boundary conditions are handled by filling halos.
 #####
 
-"""
-    apply_x_bcs!(Gc, arch, grid, args...)
+# Unpack
+apply_x_bcs!(Gc, c, args...) = apply_x_bcs!(Gc, Gc.grid, c, c.boundary_conditions.west, c.boundary_conditions.east, args...)
+apply_y_bcs!(Gc, c, args...) = apply_y_bcs!(Gc, Gc.grid, c, c.boundary_conditions.south, c.boundary_conditions.north, args...)
+apply_z_bcs!(Gc, c, args...) = apply_z_bcs!(Gc, Gc.grid, c, c.boundary_conditions.bottom, c.boundary_conditions.top, args...)
 
+# Shortcuts for...
+#
+# Nothing tendencies.
+apply_x_bcs!(::Nothing, args...) = NoneEvent()
+apply_y_bcs!(::Nothing, args...) = NoneEvent()
+apply_z_bcs!(::Nothing, args...) = NoneEvent()
+
+# Not-flux boundary conditions
+const NotFluxBC = Union{PBC, VBC, GBC, OBC, ZFBC, Nothing}
+
+apply_x_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, ::NotFluxBC, ::AbstractArchitecture, args...) = NoneEvent()
+apply_y_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, ::NotFluxBC, ::AbstractArchitecture, args...) = NoneEvent()
+apply_z_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, ::NotFluxBC, ::AbstractArchitecture, args...) = NoneEvent()
+
+# The real deal
+"""
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the left and right.
 """
-apply_x_bcs!(Gc, c, arch, dep, args...) = launch!(arch, c.grid, :yz, _apply_x_bcs!, Gc, instantiated_location(Gc), c.grid, 
-                                                  c.boundary_conditions.west, c.boundary_conditions.east, args...,
-                                                  dependencies=dep)
+apply_x_bcs!(Gc, grid::AbstractGrid, c, west_bc, east_bc, arch::AbstractArchitecture, dep, args...) =
+    launch!(arch, grid, :yz, _apply_x_bcs!, Gc, instantiated_location(Gc), grid, west_bc, east_bc, args..., dependencies=dep)
 
 """
-    apply_y_bcs!(Gc, arch, grid, args...)
-
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the left and right.
 """
-apply_y_bcs!(Gc, c, arch, dep, args...) = launch!(arch, c.grid, :xz, _apply_y_bcs!, Gc, instantiated_location(Gc), c.grid, 
-                                                  c.boundary_conditions.south, c.boundary_conditions.north, args...,
-                                                  dependencies=dep)
+apply_y_bcs!(Gc, grid::AbstractGrid, c, south_bc, north_bc, arch::AbstractArchitecture, dep, args...) =
+    launch!(arch, grid, :xz, _apply_y_bcs!, Gc, instantiated_location(Gc), grid, south_bc, north_bc, args..., dependencies=dep)
 
 """
-    apply_z_bcs!(Gc, arch, grid, args...)
-
 Apply flux boundary conditions to a field `c` by adding the associated flux divergence to
 the source term `Gc` at the top and bottom.
 """
-apply_z_bcs!(Gc, c, arch, dep, args...) = launch!(arch, c.grid, :xy, _apply_z_bcs!, Gc, instantiated_location(Gc), c.grid, 
-                                                  c.boundary_conditions.bottom, c.boundary_conditions.top, args...,
-                                                  dependencies=dep)
-
-apply_x_bcs!(::Nothing, args...) = nothing
-apply_y_bcs!(::Nothing, args...) = nothing
-apply_z_bcs!(::Nothing, args...) = nothing
+apply_z_bcs!(Gc, grid::AbstractGrid, c, bottom_bc, top_bc, arch::AbstractArchitecture, dep, args...) =
+    launch!(arch, grid, :xy, _apply_z_bcs!, Gc, instantiated_location(Gc), grid, bottom_bc, top_bc, args..., dependencies=dep)
 
 """
     _apply_x_bcs!(Gc, grid, west_bc, east_bc, args...)
@@ -72,21 +82,13 @@ Apply a top and/or bottom boundary condition to variable `c`.
        apply_z_top_bc!(Gc, loc, top_bc,    i, j, grid, args...)
 end
 
-# Fall back functions for boundary conditions that are not of type Flux.
-@inline apply_x_east_bc!(  Gc, args...) = nothing
-@inline apply_x_west_bc!(  Gc, args...) = nothing
-@inline apply_y_north_bc!( Gc, args...) = nothing
-@inline apply_y_south_bc!( Gc, args...) = nothing
-@inline apply_z_top_bc!(   Gc, args...) = nothing
-@inline apply_z_bottom_bc!(Gc, args...) = nothing
-
-# Shortcuts for 'zero' flux boundary conditions.
-@inline apply_x_east_bc!(  Gc, loc, ::ZFBC, args...) = nothing
-@inline apply_x_west_bc!(  Gc, loc, ::ZFBC, args...) = nothing
-@inline apply_y_north_bc!( Gc, loc, ::ZFBC, args...) = nothing
-@inline apply_y_south_bc!( Gc, loc, ::ZFBC, args...) = nothing
-@inline apply_z_top_bc!(   Gc, loc, ::ZFBC, args...) = nothing
-@inline apply_z_bottom_bc!(Gc, loc, ::ZFBC, args...) = nothing
+# Shortcuts for zero flux or non-flux boundary conditions
+@inline apply_x_east_bc!(  Gc, loc, ::NotFluxBC, args...) = nothing
+@inline apply_x_west_bc!(  Gc, loc, ::NotFluxBC, args...) = nothing
+@inline apply_y_north_bc!( Gc, loc, ::NotFluxBC, args...) = nothing
+@inline apply_y_south_bc!( Gc, loc, ::NotFluxBC, args...) = nothing
+@inline apply_z_top_bc!(   Gc, loc, ::NotFluxBC, args...) = nothing
+@inline apply_z_bottom_bc!(Gc, loc, ::NotFluxBC, args...) = nothing
 
 @inline flip(::Center) = Face()
 @inline flip(::Face) = Center()
