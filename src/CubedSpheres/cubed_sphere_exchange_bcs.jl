@@ -1,5 +1,8 @@
 using Adapt
 
+using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Grids: AbstractGrid
+
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification
 
