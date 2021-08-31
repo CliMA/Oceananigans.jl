@@ -25,11 +25,15 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵛ))
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
 
+# Half rotating, half not
+f_ij(i, j) = j < Ey/2 ? 1e-4 : 0.0
+coriolis_ensemble = CuArray([FPlane(f=f_ij(i, j)) for i=1:Ex, j=1:Ey])
+
 model = HydrostaticFreeSurfaceModel(architecture = GPU(),
                                     grid = grid,
                                     tracers = (:b, :e),
                                     buoyancy = BuoyancyTracer(),
-                                    coriolis = FPlane(f=1e-4),
+                                    coriolis = coriolis_ensemble,
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                     closure = closure)
                                     
