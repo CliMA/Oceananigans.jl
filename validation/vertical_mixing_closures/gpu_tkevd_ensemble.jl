@@ -3,7 +3,7 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", ".."))
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TimeSteppers: time_step!
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, TKEBasedVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, CATKEVerticalDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 
 using CUDA
@@ -15,7 +15,7 @@ halo = ColumnEnsembleSize(Nz=sz.Nz)
 
 grid = RegularRectilinearGrid(size=sz, halo=halo, z=(-128, 0), topology=(Flat, Flat, Bounded))
 
-closure = CuArray([TKEBasedVerticalDiffusivity() for i=1:Ex, j=1:Ey])
+closure = CuArray([CATKEVerticalDiffusivity() for i=1:Ex, j=1:Ey])
                                       
 Qᵇ = CuArray([+1e-8 for i=1:Ex, j=1:Ey])
 Qᵘ = CuArray([-1e-4 for i=1:Ex, j=1:Ey])
