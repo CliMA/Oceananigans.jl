@@ -4,7 +4,16 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification
 
 import Base: show
+
 import Oceananigans.BoundaryConditions: bc_str, print_condition
+
+import Oceananigans.BoundaryConditions:
+    apply_x_bcs!,
+    apply_y_bcs!,
+    apply_x_east_bc!,
+    apply_x_west_bc!,
+    apply_y_south_bc!,
+    apply_y_north_bc!
 
 struct CubedSphereExchange <: AbstractBoundaryConditionClassification end
 
@@ -82,7 +91,6 @@ Adapt.adapt_structure(to, ::CubedSphereExchangeBC) = nothing
 @inline apply_x_west_bc!(  Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
 @inline apply_y_north_bc!( Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
 @inline apply_y_south_bc!( Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
-@inline apply_z_top_bc!(   Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
-@inline apply_z_bottom_bc!(Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
 
-
+apply_x_bcs!(Gc, ::AbstractGrid, c, ::CubedSphereExchangeBC, ::CubedSphereExchangeBC, ::AbstractArchitecture, args...) = NoneEvent()
+apply_y_bcs!(Gc, ::AbstractGrid, c, ::CubedSphereExchangeBC, ::CubedSphereExchangeBC, ::AbstractArchitecture, args...) = NoneEvent()
