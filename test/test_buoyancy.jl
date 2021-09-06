@@ -1,7 +1,9 @@
 using Oceananigans.Fields: TracerFields
+using Statistics
 
 using Oceananigans.BuoyancyModels:
     required_tracers, ρ′, ∂x_b, ∂y_b,
+    x_dot_g_b, y_dot_g_b, z_dot_g_b,
     thermal_expansionᶜᶜᶜ, thermal_expansionᶠᶜᶜ, thermal_expansionᶜᶠᶜ, thermal_expansionᶜᶜᶠ,
     haline_contractionᶜᶜᶜ, haline_contractionᶠᶜᶜ, haline_contractionᶜᶠᶜ, haline_contractionᶜᶜᶠ
 
@@ -42,6 +44,52 @@ function ∂z_b_works(arch, FT, buoyancy)
     dbdz = ∂z_b(2, 2, 2, grid, buoyancy, C)
     return true
 end
+
+
+function tilted_gravity_works(arch, FT)
+    grid = RegularRectilinearGrid(FT, size=(3, 3, 3), x=(0, 1), y=(0, 1), z=(0, 1),
+                                  topology=(Periodic, Bounded, Bounded))
+    N² = 1e-5
+    g̃₁ = (0, 0, 1)
+    g̃₂ = (0, 1, 0)
+    buoyancy₁ = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃₁)
+    buoyancy₂ = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃₂)
+
+    BC = GradientBoundaryCondition(N²)
+    BC_b1 = FieldBoundaryConditions(bottom=BC, top=BC)
+    BC_b2 = FieldBoundaryConditions(south=BC, north=BC)
+
+    model₁ = NonhydrostaticModel(
+               architecture = arch,
+                       grid = grid,
+                   buoyancy = buoyancy₁,
+                    tracers = :b,
+                    closure = nothing,
+        boundary_conditions = (b=BC_b1,)
+    )
+
+    model₂ = NonhydrostaticModel(
+               architecture = arch,
+                       grid = grid,
+                   buoyancy = buoyancy₂,
+                    tracers = :b,
+                    closure = nothing,
+        boundary_conditions = (b=BC_b2,)
+    )
+
+    b₁(x, y, z) = N² * (y*g̃₁[2] + z*g̃₁[3])
+    b₂(x, y, z) = N² * (y*g̃₂[2] + z*g̃₂[3])
+    set!(model₁, b=b₁)
+    set!(model₂, b=b₂)
+
+    # These have to be taken at the middle point of domain that has an odd-number size
+    @test x_dot_g_b(2, 2, 2, grid, model₁.buoyancy, model₁.tracers) ≈ x_dot_g_b(2, 2, 2, grid, model₂.buoyancy, model₂.tracers) ≈ 0
+    @test y_dot_g_b(2, 2, 2, grid, model₁.buoyancy, model₁.tracers) ≈ z_dot_g_b(2, 2, 2, grid, model₂.buoyancy, model₂.tracers) ≈ 0
+    @test z_dot_g_b(2, 2, 2, grid, model₁.buoyancy, model₁.tracers) ≈ y_dot_g_b(2, 2, 2, grid, model₂.buoyancy, model₂.tracers)
+
+    return nothing
+end
+
 
 function thermal_expansion_works(arch, FT, eos)
     grid = RegularRectilinearGrid(FT, size=(3, 3, 3), extent=(1, 1, 1))
@@ -100,6 +148,24 @@ buoyancy_kwargs = (Dict(), Dict(:constant_salinity=>35.0), Dict(:constant_temper
                     @test thermal_expansion_works(arch, FT, EOS())
                     @test haline_contraction_works(arch, FT, EOS())
                 end
+            end
+        end
+    end
+
+    @testset "Tilted buoyancy" begin
+        @info "  Testing tilted buoyancy..."
+        for FT in float_types
+
+            # test constructor
+            buoyancy_models = (BuoyancyTracer, SeawaterBuoyancy)
+            for arch in archs
+                for buoyancy_model in buoyancy_models
+                    @test Buoyancy(model=buoyancy_model(), vertical_unit_vector=(0, 0, 1)).model isa buoyancy_model
+                end
+            end
+
+            for arch in archs
+                tilted_gravity_works(arch, FT)
             end
         end
     end

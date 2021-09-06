@@ -186,114 +186,6 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
     return u_rel_err_max < 5e-6 && v_rel_err_max < 5e-6
 end
 
-function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(arch, FT; N=32, L=2000, θ=60, N²=1e-5)
-    topo = (Periodic, Bounded, Bounded)
-    grid = RegularRectilinearGrid(FT, topology=topo, size=(1, N, N), extent=(L, L, L))
-
-    g̃ = (0, sind(θ), cosd(θ))
-    buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃)
-
-    y_bc = GradientBoundaryCondition(N² * g̃[2])
-    z_bc = GradientBoundaryCondition(N² * g̃[3])
-    b_bcs = FieldBoundaryConditions(bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
-
-    model = NonhydrostaticModel(
-               architecture = arch,
-                       grid = grid,
-                   buoyancy = buoyancy,
-                    tracers = :b,
-                    closure = nothing,
-        boundary_conditions = (b=b_bcs,)
-    )
-
-    b₀(x, y, z) = N² * (x*g̃[1] + y*g̃[2] + z*g̃[3])
-    set!(model, b=b₀)
-
-    simulation = Simulation(model, Δt=10minutes, stop_time=1hour)
-    run!(simulation)
-
-    ∂y_b = ComputedField(∂y(model.tracers.b))
-    ∂z_b = ComputedField(∂z(model.tracers.b))
-
-    compute!(∂y_b)
-    compute!(∂z_b)
-
-    mean_∂y_b = mean(∂y_b)
-    mean_∂z_b = mean(∂z_b)
-
-    Δ_y = N² * g̃[2] - mean_∂y_b
-    Δ_z = N² * g̃[3] - mean_∂z_b
-
-    @info "N² * g̃[2] = $(N² * g̃[2]), mean(∂y_b) = $(mean_∂y_b), Δ = $Δ_y at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
-    @info "N² * g̃[3] = $(N² * g̃[3]), mean(∂z_b) = $(mean_∂z_b), Δ = $Δ_z at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
-
-    @test N² * g̃[2] ≈ mean(∂y_b)
-    @test N² * g̃[3] ≈ mean(∂z_b)
-
-    CUDA.@allowscalar begin
-        @test all(N² * g̃[2] .≈ interior(∂y_b))
-        @test all(N² * g̃[3] .≈ interior(∂z_b))
-    end
-
-    return nothing
-end
-
-function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer(arch, FT; N=32, L=2000, θ=60, N²=1e-5)
-    topo = (Periodic, Bounded, Bounded)
-    grid = RegularRectilinearGrid(FT, topology=topo, size=(1, N, N), extent=(L, L, L))
-
-    g̃ = (0, sind(θ), cosd(θ))
-    buoyancy = Buoyancy(model=SeawaterBuoyancy(), vertical_unit_vector=g̃)
-
-    α  = buoyancy.model.equation_of_state.α
-    g₀ = buoyancy.model.gravitational_acceleration
-    ∂T∂z = N² / (g₀ * α)
-
-    y_bc = GradientBoundaryCondition(∂T∂z * g̃[2])
-    z_bc = GradientBoundaryCondition(∂T∂z * g̃[3])
-    T_bcs = FieldBoundaryConditions(bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
-
-    model = NonhydrostaticModel(
-               architecture = arch,
-                       grid = grid,
-                   buoyancy = buoyancy,
-                    tracers = (:T, :S),
-                    closure = nothing,
-        boundary_conditions = (T=T_bcs,)
-    )
-
-    T₀(x, y, z) = ∂T∂z * (x*g̃[1] + y*g̃[2] + z*g̃[3])
-    set!(model, T=T₀)
-
-    simulation = Simulation(model, Δt=10minute, stop_time=1hour)
-    run!(simulation)
-
-    ∂y_T = ComputedField(∂y(model.tracers.T))
-    ∂z_T = ComputedField(∂z(model.tracers.T))
-
-    compute!(∂y_T)
-    compute!(∂z_T)
-
-    mean_∂y_T = mean(∂y_T)
-    mean_∂z_T = mean(∂z_T)
-
-    Δ_y = ∂T∂z * g̃[2] - mean_∂y_T
-    Δ_z = ∂T∂z * g̃[3] - mean_∂z_T
-
-    @info "∂T∂z * g̃[2] = $(∂T∂z * g̃[2]), mean(∂y_T) = $(mean_∂y_T), Δ = $Δ_y at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
-    @info "∂T∂z * g̃[3] = $(∂T∂z * g̃[3]), mean(∂z_T) = $(mean_∂z_T), Δ = $Δ_z at t = $(prettytime(model.clock.time)) with θ=$(θ)°"
-
-    @test ∂T∂z * g̃[2] ≈ mean(∂y_T)
-    @test ∂T∂z * g̃[3] ≈ mean(∂z_T)
-
-    CUDA.@allowscalar begin
-        @test all(∂T∂z * g̃[2] .≈ interior(∂y_T))
-        @test all(∂T∂z * g̃[3] .≈ interior(∂z_T))
-    end
-
-    return nothing
-end
-
 
 
 function inertial_oscillations_work_with_rotation_in_different_axis(arch, FT)
@@ -546,16 +438,6 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
             model = NonhydrostaticModel(; grid=y_periodic_regular_grid, background_fields=background_fields, kwargs...)
             internal_wave_dynamics_test(model, solution, Δt)
-        end
-    end
-
-    @testset "Tilted gravity" begin
-        for arch in archs
-            @info "  Testing tilted gravity [$(typeof(arch))]..."
-            for θ in (0, 1, -30, 60, 90, -180)
-                stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(arch, Float64, θ=θ)
-                stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer(arch, Float64, θ=θ)
-            end
         end
     end
 
