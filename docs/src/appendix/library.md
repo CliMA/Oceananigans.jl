@@ -211,6 +211,7 @@ Pages   = [
     "Simulations/time_step_wizard.jl",
     "Simulations/simulation.jl",
     "Simulations/run.jl"
+    "Simulations/callback.jl"
 ]
 ```
 

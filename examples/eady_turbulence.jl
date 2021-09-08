@@ -235,15 +235,8 @@ nothing # hide
 # ## Simulation set-up
 #
 # We set up a simulation that runs for 10 days with a `JLD2OutputWriter` that saves the
-# vertical vorticity and divergence every 2 hours.
-#
-# ### The `TimeStepWizard`
-#
-# The TimeStepWizard manages the time-step adaptively, keeping the
-# Courant-Freidrichs-Lewy (CFL) number close to `1.0` while ensuring
-# the time-step does not increase beyond the maximum allowable value
-# for numerical stability given the specified background flow, Coriolis
-# time scales, and diffusion time scales.
+# vertical vorticity and divergence every 2 hours. We limit the time-step to
+# the maximum allowable due either to diffusion, internal waves, or advection by the background flow.
 
 ## Calculate absolute limit on time-step using diffusivities and
 ## background velocity.
@@ -251,11 +244,23 @@ Ū = basic_state_parameters.α * grid.Lz
 
 max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z, 1/basic_state_parameters.N)
 
+simulation = Simulation(model, Δt = max_Δt, stop_time = 8days)
+
+# ### The `TimeStepWizard`
+#
+# The TimeStepWizard manages the time-step adaptively, keeping the
+# Courant-Freidrichs-Lewy (CFL) number close to `1.0` while ensuring
+# the time-step does not increase beyond the maximum allowable value
+# for numerical stability given the specified background flow, internal wave
+# time scales, and diffusion time scales.
+
 wizard = TimeStepWizard(cfl=0.85, Δt=max_Δt, max_change=1.1, max_Δt=max_Δt)
+
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 # ### A progress messenger
 #
-# We write a function that prints out a helpful progress message while the simulation runs.
+# We add a callback that prints out a helpful progress message while the simulation runs.
 
 CFL = AdvectiveCFL(wizard)
 
@@ -265,18 +270,10 @@ progress(sim) = @printf("i: % 6d, sim time: % 10s, wall time: % 10s, Δt: % 10s,
                         sim.model.clock.iteration,
                         prettytime(sim.model.clock.time),
                         prettytime(1e-9 * (time_ns() - start_time)),
-                        prettytime(sim.Δt.Δt),
+                        prettytime(sim.Δt),
                         CFL(sim.model))
-nothing # hide
 
-# ### Build the simulation
-#
-# We're ready to build and run the simulation. We ask for a progress message and time-step update
-# every 20 iterations,
-
-simulation = Simulation(model, Δt = wizard, iteration_interval = 20,
-                                                     stop_time = 8days,
-                                                      progress = progress)
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 # ### Output
 #

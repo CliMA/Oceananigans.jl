@@ -30,7 +30,7 @@ function TimeStepWizard(FT=Float64; cfl = 0.1,
                                     min_change = 0.5,
                                     max_Δt = Inf,
                                     min_Δt = 0.0,
-                                    Δt = 0.01,
+                                    Δt = Inf,
                                     cell_advection_timescale = cell_advection_timescale,
                                     cell_diffusion_timescale = infinite_diffusion_timescale)
 
@@ -48,17 +48,15 @@ end
 using Oceananigans.Grids: topology
 
 """
-    update_Δt!(wizard, model)
+    adapt_Δt!(wizard, model)
 
-Compute `wizard.Δt` given the velocities and diffusivities of `model`, and the parameters
-of `wizard`.
+Compute `wizard.Δt` given the velocities and diffusivities of `model`,
+and the parameters of `wizard`.
 """
-function update_Δt!(wizard, model)
+function adapt_Δt!(wizard, model)
 
-    Δt = min(
-             wizard.cfl * wizard.cell_advection_timescale(model),          # advective
-             wizard.diffusive_cfl * wizard.cell_diffusion_timescale(model) # diffusive
-            )
+    Δt = min(wizard.cfl * wizard.cell_advection_timescale(model),           # advective
+             wizard.diffusive_cfl * wizard.cell_diffusion_timescale(model)) # diffusive
 
     # Put the kibosh on if needed
     Δt = min(wizard.max_change * wizard.Δt, Δt)
@@ -67,6 +65,13 @@ function update_Δt!(wizard, model)
 
     wizard.Δt = Δt
 
+    return nothing
+end
+
+function (wizard::TimeStepWizard)(simulation)
+    wizard.Δt = simulation.Δt
+    adapt_Δt!(wizard, simulation.model)
+    simulation.Δt = wizard.Δt
     return nothing
 end
 

@@ -1,6 +1,6 @@
 module Simulations
 
-export TimeStepWizard, Simulation, run!, Callback
+export TimeStepWizard, Simulation, run!, Callback, iteration
 
 import Base: show
 

@@ -1,6 +1,6 @@
 using Glob
 
-using Oceananigans.Utils: initialize_schedule!, align_time_step
+using Oceananigans.Utils: initialize_schedule!
 using Oceananigans.Fields: set!
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!, next_time, unit_time
@@ -8,6 +8,8 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3Tim
 using Oceananigans: AbstractModel, run_diagnostic!, write_output!
 
 import Oceananigans.OutputWriters: checkpoint_path, set!
+import Oceananigans.TimeSteppers: time_step!
+import Oceananigans.Utils: aligned_time_step
 
 # Simulations are for running
 
@@ -17,13 +19,13 @@ function stop(sim)
     for sc in sim.stop_criteria
         if sc(sim)
             time_after = time()
-            sim.run_time += time_after - time_before
+            sim.run_wall_time += time_after - time_before
             return true
         end
     end
 
     time_after = time()
-    sim.run_time += time_after - time_before
+    sim.run_wall_time += time_after - time_before
 
     return false
 end
@@ -47,8 +49,8 @@ function stop_time_exceeded(sim)
 end
 
 function wall_time_limit_exceeded(sim)
-    if sim.run_time >= sim.wall_time_limit
-          @info "Simulation is stopping. Simulation run time $(prettytime(sim.run_time)) " *
+    if sim.run_wall_time >= sim.wall_time_limit
+          @info "Simulation is stopping. Simulation run time $(prettytime(sim.run_wall_time)) " *
                 "has hit or exceeded simulation wall time limit $(prettytime(sim.wall_time_limit))."
           return true
     end
@@ -61,38 +63,30 @@ add_dependency!(diags, wta::WindowedTimeAverage) = wta ∈ values(diags) || push
 add_dependencies!(diags, writer) = [add_dependency!(diags, out) for out in values(writer.outputs)]
 add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
 
-get_Δt(Δt) = Δt
-get_Δt(wizard::TimeStepWizard) = wizard.Δt
-get_Δt(simulation::Simulation) = get_Δt(simulation.Δt)
-
-ab2_or_rk3_time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler) = time_step!(model, Δt, euler=euler)
-ab2_or_rk3_time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; euler) = time_step!(model, Δt)
-
 we_want_to_pickup(pickup::Bool) = pickup
 we_want_to_pickup(pickup) = true
 
 """
-    aligned_time_step(sim)
+    aligned_time_step(sim, Δt)
 
-Returns a time step Δt that is aligned with the output writer schedules and stop time of the simulation `sim`.
-The purpose of aligning the time step is to ensure simulations do not time step beyond the `sim.stop_time` and
-to ensure that output is written at the exact time specified by the output writer schedules.
+Return a time step 'aligned' with `sim.stop_time`, output writer schedules,
+and callback schedules. Alignment with `sim.stop_time` takes precedence.
 """
-function aligned_time_step(sim)
+function aligned_time_step(sim::Simulation, Δt)
     clock = sim.model.clock
 
-    # Align time step with output writing
-    Δt = get_Δt(sim)
-    for writer in values(sim.output_writers)
-        Δt = align_time_step(writer.schedule, clock, Δt)
+    # Align time step with output writing and callback execution
+    for obj in Iterators.flatten(zip(values(sim.output_writers), values(sim.callbacks)))
+        aligned_Δt = aligned_time_step(obj.schedule, clock, Δt)
     end
 
     # Align time step with simulation stop time
-    if next_time(clock, Δt) > sim.stop_time
-        Δt = unit_time(sim.stop_time - clock.time)
-    end
+    aligned_Δt = min(aligned_Δt, unit_time(sim.stop_time - clock.time))
 
-    return Δt
+    # Temporary fix for https://github.com/CliMA/Oceananigans.jl/issues/1280
+    aligned_Δt = aligned_Δt <= 0 ? Δt : aligned_Δt
+
+    return aligned_Δt
 end
 
 """
@@ -122,12 +116,49 @@ Possible values for `pickup` are:
 Note that `pickup=true` and `pickup=iteration` fails if `simulation.output_writers` contains
 more than one checkpointer.
 """
-function run!(sim; pickup=false, callbacks=[])
+function run!(sim; pickup=false)
 
+    initialize_run!(sim, pickup)
+
+    time_before = time()
+
+    while !stop(sim)
+        time_step!(sim)
+    end
+
+    time_after = time()
+    sim.run_wall_time += time_after - time_before
+
+    return nothing
+end
+
+""" Step `sim`ulation forward by one time step. """
+function time_step!(sim::Simulation)
     model = sim.model
     clock = model.clock
 
-    add_callbacks!(sim, callbacks)
+    # Evaluate all diagnostics, and then write all output at first iteration
+    if clock.iteration == 0
+        [run_diagnostic!(diag, model) for diag in values(sim.diagnostics)]
+        [callback(sim)                for callback in values(sim.callbacks)]
+        [write_output!(writer, model) for writer in values(sim.output_writers)]
+    end
+
+    Δt = aligned_time_step(sim, sim.Δt)
+    time_step!(model, Δt)
+
+    # Run diagnostics, execute callbacks, then write output
+    [diag.schedule(model)     && run_diagnostic!(diag, model) for diag in values(sim.diagnostics)]
+    [callback.schedule(model) && callback(sim)                for callback in values(sim.callbacks)]
+    [writer.schedule(model)   && write_output!(writer, model) for writer in values(sim.output_writers)]
+
+    return nothing
+end
+
+""" Initialization: pickup, update_state, initialize schedules. """
+function initialize_run!(sim, pickup=false)
+    model = sim.model
+    clock = model.clock
 
     if we_want_to_pickup(pickup)
         checkpointers = filter(writer -> writer isa Checkpointer, collect(values(sim.output_writers)))
@@ -145,53 +176,12 @@ function run!(sim; pickup=false, callbacks=[])
     update_state!(model)
 
     # Output and diagnostics initialization
-    for writer in values(sim.output_writers)
-        initialize_schedule!(writer.schedule)
-        add_dependencies!(sim.diagnostics, writer)
+    [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
+
+    for obj in Iterators.flatten(zip(values(sim.output_writers),
+                                     values(sim.diagnostics),
+                                     values(sim.callbacks)))
+
+        initialize_schedule!(obj.schedule)
     end
-
-    [initialize_schedule!(diag.schedule) for diag in values(sim.diagnostics)]
-
-    while !stop(sim)
-        time_before = time()
-
-        # Evaluate all diagnostics, and then write all output at first iteration
-        if clock.iteration == 0
-            [run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
-            [write_output!(writer, sim.model) for writer in values(sim.output_writers)]
-            [callback(sim) for callback in values(sim.callbacks)]
-        end
-
-        # Ensure that the simulation doesn't iterate past `stop_iteration`.
-        iterations = min(sim.iteration_interval, sim.stop_iteration - clock.iteration)
-
-        for n in 1:iterations
-            clock.time >= sim.stop_time && break
-
-            # Temporary fix for https://github.com/CliMA/Oceananigans.jl/issues/1280
-            aligned_Δt = aligned_time_step(sim)
-            if aligned_Δt <= 0
-                Δt = get_Δt(sim)
-            else
-                Δt = min(get_Δt(sim), aligned_Δt)
-            end
-
-            euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
-            ab2_or_rk3_time_step!(model, Δt, euler=euler)
-
-            # Run diagnostics, then write output
-            [  diag.schedule(model)   && run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
-            [writer.schedule(model)   && write_output!(writer, sim.model) for writer in values(sim.output_writers)]
-            [callback.schedule(model) && callback(sim)                    for callback in values(sim.callbacks)]
-        end
-
-        sim.progress(sim)
-
-        sim.Δt isa TimeStepWizard && update_Δt!(sim.Δt, model)
-
-        time_after = time()
-        sim.run_time += time_after - time_before
-    end
-
-    return nothing
 end
