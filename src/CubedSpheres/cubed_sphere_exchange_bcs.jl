@@ -1,10 +1,23 @@
 using Adapt
 
+using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Grids: AbstractGrid
 using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification
 
+using KernelAbstractions: NoneEvent
+
 import Base: show
+
 import Oceananigans.BoundaryConditions: bc_str, print_condition
+
+import Oceananigans.BoundaryConditions:
+    apply_x_bcs!,
+    apply_y_bcs!,
+    apply_x_east_bc!,
+    apply_x_west_bc!,
+    apply_y_south_bc!,
+    apply_y_north_bc!
 
 struct CubedSphereExchange <: AbstractBoundaryConditionClassification end
 
@@ -76,3 +89,12 @@ end
 
 Adapt.adapt_structure(to, ::CubedSphereExchangeInformation) = nothing
 Adapt.adapt_structure(to, ::CubedSphereExchangeBC) = nothing
+
+# Don't "apply fluxes" across CubedSphere boundaries
+@inline apply_x_east_bc!(  Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
+@inline apply_x_west_bc!(  Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
+@inline apply_y_north_bc!( Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
+@inline apply_y_south_bc!( Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
+
+apply_x_bcs!(Gc, ::AbstractGrid, c, ::CubedSphereExchangeBC, ::CubedSphereExchangeBC, ::AbstractArchitecture, args...) = NoneEvent()
+apply_y_bcs!(Gc, ::AbstractGrid, c, ::CubedSphereExchangeBC, ::CubedSphereExchangeBC, ::AbstractArchitecture, args...) = NoneEvent()

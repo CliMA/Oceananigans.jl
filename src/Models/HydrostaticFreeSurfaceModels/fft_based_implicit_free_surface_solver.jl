@@ -53,7 +53,6 @@ function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
     # Even if the three dimensional grid is vertically stretched, we can only use
     # FFTImplicitFreeSurfaceSolver with grids that are regularly spaced in the
     # horizontal direction.
-    #
     horizontal_grid = RegularRectilinearGrid(; topology = (TX, TY, Flat),
                                                size = sz,
                                                halo = halo,
@@ -81,7 +80,7 @@ function solve!(η, implicit_free_surface_solver::FFTImplicitFreeSurfaceSolver, 
 
     # solve! is blocking:
     solve!(η, solver, rhs, m)
-    
+
     return nothing
 end
 
@@ -96,7 +95,8 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
 
     event = launch!(arch, grid, :xy,
                     fft_based_implicit_free_surface_right_hand_side!,
-                    rhs, grid, g, H, Δt, ∫ᶻQ, η)
+                    rhs, grid, g, H, Δt, ∫ᶻQ, η,
+                    dependencies = device_event(arch))
 
     return event
 end

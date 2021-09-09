@@ -69,7 +69,7 @@ The keyword argument `dependencies` is an `Event` or `MultiEvent` specifying pri
 that must complete before `kernel!` is launched.
 """
 function launch!(arch, grid, dims, kernel!, args...;
-                 dependencies = nothing,
+                 dependencies = device_event(arch),
                  include_right_boundaries = false,
                  reduced_dimensions = (),
                  location = nothing)
