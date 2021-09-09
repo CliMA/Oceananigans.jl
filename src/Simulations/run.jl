@@ -145,9 +145,19 @@ function time_step!(sim::Simulation)
 
     !(sim.initialized) && @stopwatch(sim, initialize_simulation!(sim))
 
+    if clock.iteration == 0 
+        start_time = time_ns()
+        @info "Executing first time step..."
+    end
+
     @stopwatch sim begin
         Δt = aligned_time_step(sim, sim.Δt)
         time_step!(sim.model, Δt)
+    end
+
+    if clock.iteration == 1
+        elapsed_first_step_time = prettytime(1e-9 * (time_ns() - start_time))
+        @info "    ... first time step complete ($elapsed_first_step_time)."
     end
 
     @stopwatch sim begin
@@ -188,6 +198,9 @@ Initialize a simulation before running it. Initialization involves:
 
 """
 function initialize_simulation!(sim, pickup=false)
+    @info "Updating model auxiliary state during simulation initialization..."
+    start_time = time_ns()
+
     model = sim.model
     clock = model.clock
 
@@ -217,6 +230,9 @@ function initialize_simulation!(sim, pickup=false)
     end
 
     sim.initialized = true
+
+    initialization_time = prettytime(1e-9 * (time_ns() - start_time))
+    @info "    ... simulation initialization complete ($initialization_time)"
 
     return nothing
 end

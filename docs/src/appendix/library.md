@@ -108,6 +108,7 @@ Private = false
 Pages   = [
     "Fields/Fields.jl",
     "Fields/field.jl",
+    "Fields/averaged_field.jl",
     "Fields/set!.jl",
     "Fields/show_fields.jl",
 ]
