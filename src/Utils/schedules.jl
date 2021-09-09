@@ -10,7 +10,7 @@ abstract type AbstractSchedule end
 initialize_schedule!(schedule) = nothing # fallback
 
 # Default behavior is no alignment.
-aligned_time_step(schedule, clock, Δt) = Δt
+pruned_time_step(schedule, clock, Δt) = Δt
 
 #####
 ##### TimeInterval
@@ -51,7 +51,7 @@ function (schedule::TimeInterval)(model)
 
 end
 
-function aligned_time_step(schedule::TimeInterval, clock, Δt)
+function pruned_time_step(schedule::TimeInterval, clock, Δt)
     next_actuation_time = schedule.previous_actuation_time + schedule.interval
     return min(Δt, next_actuation_time - clock.time)
 end
