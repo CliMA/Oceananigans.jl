@@ -1,6 +1,5 @@
 using Glob
 
-using Oceananigans.Utils: initialize_schedule!
 using Oceananigans.Fields: set!
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!, next_time, unit_time
@@ -13,19 +12,31 @@ import Oceananigans.Utils: aligned_time_step
 
 # Simulations are for running
 
-function stop(sim)
-    time_before = time()
+"""
+    @stopwatch sim expr
 
-    for sc in sim.stop_criteria
-        if sc(sim)
-            time_after = time()
-            sim.run_wall_time += time_after - time_before
+Increment sim.stopwatch with the execution time of expr.
+"""
+macro stopwatch(sim, expr)
+    return esc(quote
+       local time_before = time_ns() * 1e-9
+       local output = $expr
+       local time_after = time_ns() * 1e-9
+       sim.wall_time += time_after - time_before
+       output
+   end)
+end
+
+#####
+##### But they must be stopped
+#####
+
+function stop(sim)
+    for criteria in sim.stop_criteria
+        if criteria(sim)
             return true
         end
     end
-
-    time_after = time()
-    sim.run_wall_time += time_after - time_before
 
     return false
 end
@@ -49,22 +60,19 @@ function stop_time_exceeded(sim)
 end
 
 function wall_time_limit_exceeded(sim)
-    if sim.run_wall_time >= sim.wall_time_limit
-          @info "Simulation is stopping. Simulation run time $(prettytime(sim.run_wall_time)) " *
+    if sim.wall_time >= sim.wall_time_limit
+          @info "Simulation is stopping. Simulation run time $(prettytime(sim.wall_time)) " *
                 "has hit or exceeded simulation wall time limit $(prettytime(sim.wall_time_limit))."
           return true
     end
     return false
 end
 
-add_dependency!(diagnostics, output) = nothing # fallback
-add_dependency!(diags, wta::WindowedTimeAverage) = wta ∈ values(diags) || push!(diags, wta)
+#####
+##### Time-step "alignment" with output and callbacks scheduled on TimeInterval
+#####
 
-add_dependencies!(diags, writer) = [add_dependency!(diags, out) for out in values(writer.outputs)]
-add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
-
-we_want_to_pickup(pickup::Bool) = pickup
-we_want_to_pickup(pickup) = true
+appointments(sim) = Iterators.flatten(zip(values(sim.output_writers), values(sim.callbacks)))
 
 """
     aligned_time_step(sim, Δt)
@@ -78,8 +86,8 @@ function aligned_time_step(sim::Simulation, Δt)
     aligned_Δt = Δt
 
     # Align time step with output writing and callback execution
-    for obj in Iterators.flatten(zip(values(sim.output_writers), values(sim.callbacks)))
-        aligned_Δt = aligned_time_step(obj.schedule, clock, aligned_Δt)
+    for app in appointments(sim)
+        aligned_Δt = aligned_time_step(app.schedule, clock, aligned_Δt)
     end
 
     # Align time step with simulation stop time
@@ -120,45 +128,66 @@ more than one checkpointer.
 """
 function run!(sim; pickup=false)
 
-    initialize_run!(sim, pickup)
+    @stopwatch sim initialize_simulation!(sim, pickup)
 
-    time_before = time()
+    sim.running = !(stop(sim))
 
-    while !stop(sim)
+    while sim.running
         time_step!(sim)
+        sim.running = !(stop(sim))
     end
-
-    time_after = time()
-    sim.run_wall_time += time_after - time_before
 
     return nothing
 end
 
 """ Step `sim`ulation forward by one time step. """
 function time_step!(sim::Simulation)
-    model = sim.model
-    clock = model.clock
 
-    # Evaluate all diagnostics, and then write all output at first iteration
-    if clock.iteration == 0
-        [run_diagnostic!(diag, model) for diag in values(sim.diagnostics)]
-        [callback(sim)                for callback in values(sim.callbacks)]
-        [write_output!(writer, model) for writer in values(sim.output_writers)]
+    !(sim.initialized) && @stopwatch(sim, initialize_simulation!(sim))
+
+    @stopwatch sim begin
+        Δt = aligned_time_step(sim, sim.Δt)
+        time_step!(sim.model, Δt)
     end
 
-    Δt = aligned_time_step(sim, sim.Δt)
-    time_step!(model, Δt)
-
-    # Run diagnostics, execute callbacks, then write output
-    [diag.schedule(model)     && run_diagnostic!(diag, model) for diag in values(sim.diagnostics)]
-    [callback.schedule(model) && callback(sim)                for callback in values(sim.callbacks)]
-    [writer.schedule(model)   && write_output!(writer, model) for writer in values(sim.output_writers)]
+    @stopwatch sim begin
+        evaluate_diagnostics!(sim)           
+        evaluate_callbacks!(sim)             
+        evaluate_output_writers!(sim)        
+    end
 
     return nothing
 end
 
-""" Initialization: pickup, update_state, initialize schedules. """
-function initialize_run!(sim, pickup=false)
+evaluate_diagnostics!(sim)    = [diag.schedule(sim.model)     && run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
+evaluate_callbacks!(sim)      = [callback.schedule(sim.model) && callback(sim)                    for callback in values(sim.callbacks)]
+evaluate_output_writers!(sim) = [writer.schedule(sim.model)   && write_output!(writer, sim.model) for writer in values(sim.output_writers)]
+
+#####
+##### Simulation initialization
+#####
+
+add_dependency!(diagnostics, output) = nothing # fallback
+add_dependency!(diags, wta::WindowedTimeAverage) = wta ∈ values(diags) || push!(diags, wta)
+
+add_dependencies!(diags, writer) = [add_dependency!(diags, out) for out in values(writer.outputs)]
+add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
+
+we_want_to_pickup(pickup::Bool) = pickup
+we_want_to_pickup(pickup) = true
+
+""" 
+    initialize_simulation!(sim, pickup=false)
+
+Initialize a simulation before running it. Initialization involves:
+
+- Updating the auxiliary state of the simulation (filling halo regions, computing auxiliary fields)
+- Evaluating all diagnostics, callbacks, and output writers if sim.model.clock.iteration == 0
+- Adding diagnostics that "depend" on output writers
+- If pickup != false, picking up the simulation from a checkpoint.
+
+"""
+function initialize_simulation!(sim, pickup=false)
     model = sim.model
     clock = model.clock
 
@@ -180,10 +209,15 @@ function initialize_run!(sim, pickup=false)
     # Output and diagnostics initialization
     [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
 
-    for obj in Iterators.flatten(zip(values(sim.output_writers),
-                                     values(sim.diagnostics),
-                                     values(sim.callbacks)))
-
-        initialize_schedule!(obj.schedule)
+    # Evaluate all diagnostics, and then write all output at first iteration
+    if clock.iteration == 0
+        [run_diagnostic!(diag, model) for diag in values(sim.diagnostics)]
+        [callback(sim)                for callback in values(sim.callbacks)]
+        [write_output!(writer, model) for writer in values(sim.output_writers)]
     end
+
+    sim.initialized = true
+
+    return nothing
 end
+

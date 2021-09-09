@@ -11,10 +11,12 @@ mutable struct Simulation{ML, DT, SC, SI, ST, WT, DI, OW, CB}
      stop_iteration :: SI
           stop_time :: ST
     wall_time_limit :: WT
-      run_wall_time :: Float64
         diagnostics :: DI
      output_writers :: OW
           callbacks :: CB
+          wall_time :: Float64
+            running :: Bool
+        initialized :: Bool
 end
 
 """
@@ -50,38 +52,48 @@ function Simulation(model; Δt,
                     stop_criteria = Any[iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded],
                     stop_iteration = Inf,
                     stop_time = Inf,
-                    wall_time_limit = Inf,
-                    diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
-                    output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
-                    callbacks = OrderedDict{Symbol, Callback}())
+                    wall_time_limit = Inf)
 
    if stop_iteration == Inf && stop_time == Inf && wall_time_limit == Inf
        @warn "This simulation will run forever as stop iteration = stop time " *
              "= wall time limit = Inf."
    end
 
+   diagnostics = OrderedDict{Symbol, AbstractDiagnostic}()
+   output_writers = OrderedDict{Symbol, AbstractOutputWriter}()
+   callbacks = OrderedDict{Symbol, Callback}()
+
    # Check for NaNs in the model's first prognostic field every 100 iterations.
    model_fields = fields(model)
    field_to_check_nans = NamedTuple{keys(model_fields) |> first |> tuple}(first(model_fields) |> tuple)
-   diagnostics[:nan_checker] = NaNChecker(fields=field_to_check_nans,
-                                          schedule=IterationInterval(100))
-
-   run_wall_time = 0.0
+   diagnostics[:nan_checker] = NaNChecker(fields=field_to_check_nans, schedule=IterationInterval(100))
 
    Δt = convert(eltype(model.grid), Δt)
 
-   return Simulation(model, Δt, stop_criteria, stop_iteration, stop_time, wall_time_limit, run_wall_time,
-                     diagnostics, output_writers, callbacks)
+   return Simulation(model,
+                     Δt,
+                     stop_criteria,
+                     stop_iteration,
+                     stop_time,
+                     wall_time_limit,
+                     diagnostics,
+                     output_writers,
+                     callbacks,
+                     0.0,
+                     false,
+                     false)
 end
 
 Base.show(io::IO, s::Simulation) =
     print(io, "Simulation{$(typeof(s.model).name){$(Base.typename(typeof(s.model.architecture))), $(eltype(s.model.grid))}}\n",
-            "├── Model clock: time = $(prettytime(s.model.clock.time)), iteration = $(s.model.clock.iteration) \n",
-            "├── Next time step: $(prettytime(s.Δt)) \n",
-            "├── Stop criteria: $(s.stop_criteria)\n",
-            "├── Run wall time: $(prettytime(s.run_wall_time)), wall time limit: $(s.wall_time_limit)\n",
-            "├── Stop time: $(prettytime(s.stop_time)), stop iteration: $(s.stop_iteration)\n",
-            "├── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))\n",
+            "├── Model clock: time = $(prettytime(s.model.clock.time)), iteration = $(s.model.clock.iteration)", '\n',
+            "├── Next time step: $(prettytime(s.Δt))", '\n',
+            "├── Elapsed wall time: $(prettytime(s.wall_time))", '\n',
+            "├── Stop time: $(prettytime(s.stop_time))", '\n',
+            "├── Stop iteration : $(s.stop_iteration)", '\n',
+            "├── Wall time limit: $(s.wall_time_limit)", '\n',
+            "├── Stop criteria: $(s.stop_criteria)", '\n',
+            "├── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))", '\n',
             "└── Output writers: $(ordered_dict_show(s.output_writers, "│"))")
 
 #####
@@ -102,4 +114,16 @@ Return the current simulation iteration.
 """
 iteration(sim::Simulation) = sim.model.clock.iteration
 
+"""
+    prettytime(sim::Simulation)
+
+Return `sim.model.clock.time` as a prettily formatted string."
+"""
 prettytime(sim::Simulation) = prettytime(time(sim))
+
+"""
+    wall_time(sim::Simulation)
+
+Return `sim.wall_time` as a prettily formatted string."
+"""
+wall_time(sim::Simulation) = prettytime(sim.wall_time)

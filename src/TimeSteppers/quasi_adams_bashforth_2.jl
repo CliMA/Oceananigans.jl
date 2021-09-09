@@ -46,12 +46,14 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Shenanigans for properly starting the AB2 loop with an Euler step
-    euler = (euler || Δt != model.timestepper.previous_Δt) ? true : false
-    model.timestepper.previous_Δt = Δt
-
+    euler = euler || (Δt != model.timestepper.previous_Δt)
     χ = ifelse(euler, convert(eltype(model.grid), -0.5), model.timestepper.χ)
 
-    # Be paranoid and update state at iteration 0, in case run! is not used:
+    euler && @debug "Taking a forward Euler step."
+
+    model.timestepper.previous_Δt = Δt
+
+    # Be paranoid and update state at iteration 0
     model.clock.iteration == 0 && update_state!(model)
 
     calculate_tendencies!(model)
