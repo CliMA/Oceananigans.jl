@@ -1,3 +1,5 @@
+import Oceananigans.Utils: prettytime
+
 # It's not a model --- its a simulation!
 
 default_progress(simulation) = nothing
@@ -99,3 +101,5 @@ Base.time(sim::Simulation) = sim.model.clock.time
 Return the current simulation iteration.
 """
 iteration(sim::Simulation) = sim.model.clock.iteration
+
+prettytime(sim::Simulation) = prettytime(time(sim))
