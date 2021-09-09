@@ -1,6 +1,6 @@
 using Oceananigans.Simulations:
     stop, iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
-    TimeStepWizard, update_Δt!
+    TimeStepWizard, adapt_Δt!
 
 function run_time_step_wizard_tests(arch)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
@@ -13,25 +13,25 @@ function run_time_step_wizard_tests(arch)
     model.velocities.u[1, 1, 1] = u₀
 
     wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0)
-    update_Δt!(wizard, model)
+    adapt_Δt!(wizard, model)
     @test wizard.Δt ≈ CFL * Δx / u₀
 
     wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0.75)
-    update_Δt!(wizard, model)
+    adapt_Δt!(wizard, model)
     @test wizard.Δt ≈ 0.75Δt
 
     wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0, min_Δt=1.99)
-    update_Δt!(wizard, model)
+    adapt_Δt!(wizard, model)
     @test wizard.Δt ≈ 1.99
 
     model.velocities.u[1, 1, 1] = u₀/100
 
     wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=1.1, min_change=0)
-    update_Δt!(wizard, model)
+    adapt_Δt!(wizard, model)
     @test wizard.Δt ≈ 1.1Δt
 
     wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0, max_Δt=3.99)
-    update_Δt!(wizard, model)
+    adapt_Δt!(wizard, model)
     @test wizard.Δt ≈ 3.99
 
     grid_stretched = VerticallyStretchedRectilinearGrid(size = (1, 1, 1),
@@ -50,7 +50,7 @@ function run_time_step_wizard_tests(arch)
     model.velocities.u .= u₀
 
     wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0)
-    update_Δt!(wizard, model)
+    adapt_Δt!(wizard, model)
     @test wizard.Δt ≈ CFL * Δx / u₀
 
     return nothing
@@ -95,14 +95,14 @@ function run_basic_simulation_tests(arch, Δt)
 
     # Test that simulation stops at `stop_iteration`.
     model = NonhydrostaticModel(architecture=arch, grid=grid)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=3, iteration_interval=88)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=3)
     run!(simulation)
 
     @test simulation.model.clock.iteration == 3
 
     # Test that simulation stops at `stop_time`.
     model = NonhydrostaticModel(architecture=arch, grid=grid)
-    simulation = Simulation(model, Δt=Δt, stop_time=20.20, iteration_interval=123)
+    simulation = Simulation(model, Δt=Δt, stop_time=20.20)
     run!(simulation)
 
     @test simulation.model.clock.time ≈ 20.20
