@@ -9,7 +9,7 @@ using Oceananigans: AbstractModel, run_diagnostic!, write_output!
 
 import Oceananigans.OutputWriters: checkpoint_path, set!
 import Oceananigans.TimeSteppers: time_step!
-import Oceananigans.Utils: pruned_time_step
+import Oceananigans.Utils: aligned_time_step
 
 # Simulations are for running
 
@@ -67,28 +67,28 @@ we_want_to_pickup(pickup::Bool) = pickup
 we_want_to_pickup(pickup) = true
 
 """
-    pruned_time_step(sim, Δt)
+    aligned_time_step(sim, Δt)
 
-Return a time step 'pruned' with `sim.stop_time`, output writer schedules,
+Return a time step 'aligned' with `sim.stop_time`, output writer schedules,
 and callback schedules. Alignment with `sim.stop_time` takes precedence.
 """
-function pruned_time_step(sim::Simulation, Δt)
+function aligned_time_step(sim::Simulation, Δt)
     clock = sim.model.clock
 
-    pruned_Δt = Δt
+    aligned_Δt = Δt
 
     # Align time step with output writing and callback execution
     for obj in Iterators.flatten(zip(values(sim.output_writers), values(sim.callbacks)))
-        pruned_Δt = pruned_time_step(obj.schedule, clock, pruned_Δt)
+        aligned_Δt = aligned_time_step(obj.schedule, clock, aligned_Δt)
     end
 
     # Align time step with simulation stop time
-    pruned_Δt = min(pruned_Δt, unit_time(sim.stop_time - clock.time))
+    aligned_Δt = min(aligned_Δt, unit_time(sim.stop_time - clock.time))
 
     # Temporary fix for https://github.com/CliMA/Oceananigans.jl/issues/1280
-    pruned_Δt = pruned_Δt <= 0 ? Δt : pruned_Δt
+    aligned_Δt = aligned_Δt <= 0 ? Δt : aligned_Δt
 
-    return pruned_Δt
+    return aligned_Δt
 end
 
 """
@@ -146,7 +146,7 @@ function time_step!(sim::Simulation)
         [write_output!(writer, model) for writer in values(sim.output_writers)]
     end
 
-    Δt = pruned_time_step(sim, sim.Δt)
+    Δt = aligned_time_step(sim, sim.Δt)
     time_step!(model, Δt)
 
     # Run diagnostics, execute callbacks, then write output
