@@ -3,7 +3,7 @@ pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", ".."))
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TimeSteppers: time_step!
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, TKEBasedVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, CATKEVerticalDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 
 using CUDA
@@ -15,7 +15,7 @@ halo = ColumnEnsembleSize(Nz=sz.Nz)
 
 grid = RegularRectilinearGrid(size=sz, halo=halo, z=(-128, 0), topology=(Flat, Flat, Bounded))
 
-closure = CuArray([TKEBasedVerticalDiffusivity() for i=1:Ex, j=1:Ey])
+closure = CuArray([CATKEVerticalDiffusivity() for i=1:Ex, j=1:Ey])
                                       
 Qᵇ = CuArray([+1e-8 for i=1:Ex, j=1:Ey])
 Qᵘ = CuArray([-1e-4 for i=1:Ex, j=1:Ey])
@@ -25,11 +25,15 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵛ))
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
 
+# Half rotating, half not
+f_ij(i, j) = j < Ey/2 ? 1e-4 : 0.0
+coriolis_ensemble = CuArray([FPlane(f=f_ij(i, j)) for i=1:Ex, j=1:Ey])
+
 model = HydrostaticFreeSurfaceModel(architecture = GPU(),
                                     grid = grid,
                                     tracers = (:b, :e),
                                     buoyancy = BuoyancyTracer(),
-                                    coriolis = FPlane(f=1e-4),
+                                    coriolis = coriolis_ensemble,
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                     closure = closure)
                                     
