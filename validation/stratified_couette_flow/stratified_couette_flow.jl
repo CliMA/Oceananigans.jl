@@ -232,7 +232,10 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Time stepping
     #####
 
-    wizard = TimeStepWizard(cfl=0.02, Δt=0.0001, max_change=1.1, max_Δt=0.02)
+    simulation = Simulation(model, Δt=0.0001, stop_time=end_time)
+
+    wizard = TimeStepWizard(cfl=0.02, max_change=1.1, max_Δt=0.02)
+    simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(Ni))
 
     # We will ramp up the CFL used by the adaptive time step wizard during spin up.
     cfl(t) = min(0.01t, 0.1)
@@ -261,9 +264,10 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
                 CFL, νmax, κmax, νCFL, κCFL, wizard.Δt, prettytime(simulation.run_time))
     end
 
-    simulation = Simulation(model, Δt=wizard, stop_time=end_time,
-                            progress=print_progress, iteration_interval=Ni)
+    simulation.callbacks[:progress] = Callback(print_progress, IterationInterval(Ni))
+
     push!(simulation.output_writers, field_writer, profile_writer, statistics_writer)
+
     run!(simulation)
 
     return simulation
