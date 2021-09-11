@@ -104,6 +104,55 @@ function (schedule::WallTimeInterval)(model)
 
 end
 
+#####
+##### SpecifiedTimes
+#####
+
+"""
+    struct SpecifiedTimes <: AbstractSchedule
+
+Callable `TimeInterval` schedule for periodic output or diagnostic evaluation
+according to `model.clock.time`.
+"""
+mutable struct SpecifiedTimes <: AbstractSchedule
+    times :: Vector{Float64}
+    previous_actuation :: Int
+end
+
+SpecifiedTimes(times...) = SpecifiedTimes(sort([Float64(t) for t in times]), 0)
+
+function next_appointment_time(st::SpecifiedTimes)
+    if st.previous_actuation >= length(schedule.times)
+        return Inf
+    else
+        return schedule.times[schedule.previous_actuation+1]
+    end
+end
+
+function (schedule::SpecifiedTimes)(model)
+    current_time = model.clock.time
+
+    if current_time >= next_appointment_time(st)
+        schedule.previous_actuation += 1
+        return true
+    else
+
+    return false
+end
+
+align_time_step(schedule::SpecifiedTimes, clock, Δt) = min(Δt, next_appointment_time(schedule) - clock.time)
+
+function specified_times_str(st)
+    str_elems = ["$(prettytime(t)), " for t in st.times]
+    str_elems = str_elems[1:end-2]
+    return string("[", str_elems..., "]")
+end
+
+#####
+##### Show methods
+#####
+
 show_schedule(schedule) = string(schedule)
 show_schedule(schedule::IterationInterval) = string("IterationInterval(", schedule.interval, ")")
 show_schedule(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
+show_schedule(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_times_str(schedule), ")")

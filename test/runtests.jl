@@ -93,6 +93,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_buoyancy.jl")
             include("test_stokes_drift.jl")
             include("test_utils.jl")
+            include("test_schedules.jl")
         end
     end
 
