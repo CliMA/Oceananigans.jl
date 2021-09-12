@@ -85,18 +85,6 @@ closure = AnisotropicDiffusivity(νh=2000, νz=1e-2, κh=500, κz=1e-2)
 
 # ## Model building
 
-# model = NonhydrostaticModel(architecture = CPU(),
-#                             timestepper = :RungeKutta3,
-#                             advection = UpwindBiasedFifthOrder(),
-#                             grid = grid,
-#                             coriolis = BetaPlane(latitude=45),
-#                             buoyancy = BuoyancyTracer(),
-#                             tracers = :b,
-#                             closure = closure,
-#                             boundary_conditions = (u=u_bcs, v=v_bcs),
-#                             forcing = (b=Fb,)
-#                             )
-# 
 model = HydrostaticFreeSurfaceModel(architecture = CPU(),
                                     grid = grid,
                                     free_surface = ImplicitFreeSurface(),
