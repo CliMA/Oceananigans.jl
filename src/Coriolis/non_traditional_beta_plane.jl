@@ -28,9 +28,9 @@ end
         fz=nothing, fy=nothing, β=nothing, γ=nothing,
         rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
 
-The user may directly specify `fz`, `fy`, `β`, `γ`, and `radius` or the three
-parameters `rotation_rate`, `latitude`, and `radius` that specify the rotation rate
-and radius of a planet, and the central latitude (where y = 0) at which the
+The user may directly specify `fz`, `fy`, `β`, `γ`, and `radius` or the three parameters
+`rotation_rate`, `latitude` (in degrees), and `radius` that specify the rotation rate
+and radius of a planet, and the central latitude (where ``y = 0``) at which the
 non-traditional `β`-plane approximation is to be made.
 
 If ``fz`, `fy`, `β`, and `γ` are not specified, they are calculated from `rotation_rate`, 
@@ -55,10 +55,10 @@ function NonTraditionalBetaPlane(FT=Float64;
     end
 
     if use_planet_parameters
-        fz =  2Ω*sind(φ)
-        fy =  2Ω*cosd(φ)
-        β  =  2Ω*cosd(φ)/R
-        γ  = -4Ω*sind(φ)/R
+        fz =  2Ω * sind(φ)
+        fy =  2Ω * cosd(φ)
+        β  =  2Ω * cosd(φ) / R
+        γ  = -4Ω * sind(φ) / R
     end
 
     return NonTraditionalBetaPlane{FT}(fz, fy, β, γ, R)
