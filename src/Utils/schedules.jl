@@ -122,20 +122,20 @@ end
 SpecifiedTimes(times...) = SpecifiedTimes(sort([Float64(t) for t in times]), 0)
 
 function next_appointment_time(st::SpecifiedTimes)
-    if st.previous_actuation >= length(schedule.times)
+    if st.previous_actuation >= length(st.times)
         return Inf
     else
-        return schedule.times[schedule.previous_actuation+1]
+        return st.times[st.previous_actuation+1]
     end
 end
 
-function (schedule::SpecifiedTimes)(model)
+function (st::SpecifiedTimes)(model)
     current_time = model.clock.time
 
     if current_time >= next_appointment_time(st)
-        schedule.previous_actuation += 1
+        st.previous_actuation += 1
         return true
-    else
+    end
 
     return false
 end
