@@ -4,70 +4,115 @@
 # https://mitgcm.readthedocs.io/en/latest/examples/baroclinic_gyre/baroclinic_gyre.html
 
 using Oceananigans
-using Oceananigans.Utils
-using Oceananigans.Grids
-using Oceananigans.Fields
-using Oceananigans.BoundaryConditions
-using Oceananigans.Advection
-using Oceananigans.Diagnostics
-using Oceananigans.OutputWriters
-using Oceananigans.AbstractOperations
-
-using Oceananigans.Fields: PressureField
-
+using Oceananigans.Units
+using Oceananigans.Grids: xnode, ynode, znode
+using Plots
 using Printf
 
-grid = RegularCartesianGrid(size=(64, 64, 16), x=(-2e5, 2e5), y=(-3e5, 3e5), z=(-1e3, 0),
-                            topology=(Bounded, Bounded, Bounded))
+const Lx = 400kilometers # east-west extent [m]
+const Ly = 600kilometers # north-south extent [m]
+const Lz = 1.8kilometers # depth [m]
+
+Nx = Ny = 64
+Nz = 16
+s = 1.2 # stretching factor
+hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
+
+
+grid = VerticallyStretchedRectilinearGrid(size = (Nx, Ny, Nz),
+                                          halo = (3, 3, 3),
+                                             x = (-Lx/2, Lx/2),
+                                             y = (-Ly/2, Ly/2),
+                                       z_faces = hyperbolically_spaced_faces,
+                                      topology = (Bounded, Bounded, Bounded))
+
+plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
+      marker = :circle,
+      ylabel = "Depth (m)",
+      xlabel = "Vertical spacing (m)",
+      legend = nothing)
+
+α  = 2e-4         # [K⁻¹] thermal expansion coefficient 
+g  = 9.81         # [m/s²] gravitational constant
+cᵖ = 3994.0       # [J/K]  heat capacity
+ρ  = 1028.1       # [kg/m³] reference density
+
+parameters = (Ly = Ly,
+              Lz = Lz,
+              τ = 0.1 / ρ,        # surface kinematic wind stress [m² s⁻²]
+              μ = 1 / 180days,    # bottom drag damping time-scale [s⁻¹]
+              Δb = 30 * α * g,    # surface vertical buoyancy gradient [s⁻²]
+              H = Lz,             # domain depth [m]
+              λ = 30days          # relaxation time scale [s]
+              )
+
 
 # ## Boundary conditions
 #
 # ### Wind stress
 
-@inline wind_stress(x, y, t, p) = - p.τ * cos(2π * y / p.Ly)
+@inline function u_stress(i, j, grid, clock, model_fields, p)
+    y = ynode(Center(), j, grid)
+    return - p.τ * cos(2π * y / p.Ly)
+end
 
-surface_stress_u_bc = BoundaryCondition(Flux, wind_stress, parameters=(τ=1e-4, Ly=grid.Ly))
+u_stress_bc = FluxBoundaryCondition(u_stress, discrete_form=true, parameters=parameters)
 
 # ### Bottom drag
 
-@inline bottom_drag_u(x, y, t, u, p) = - p.μ * p.Lz * u
-@inline bottom_drag_v(x, y, t, v, p) = - p.μ * p.Lz * v
+@inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.u[i, j, 1] 
+@inline v_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.v[i, j, 1]
 
-bottom_drag_u_bc = BoundaryCondition(Flux, bottom_drag_u, field_dependencies=:u, parameters=(μ=1/180day, Lz=grid.Lz))
-bottom_drag_v_bc = BoundaryCondition(Flux, bottom_drag_v, field_dependencies=:v, parameters=(μ=1/180day, Lz=grid.Lz))
+u_drag_bc = FluxBoundaryCondition(u_drag, discrete_form=true, parameters=parameters)
+v_drag_bc = FluxBoundaryCondition(v_drag, discrete_form=true, parameters=parameters)
 
-u_bcs = UVelocityBoundaryConditions(grid, top = surface_stress_u_bc, bottom = bottom_drag_u_bc)
-v_bcs = VVelocityBoundaryConditions(grid, bottom = bottom_drag_v_bc)
+u_bcs = FieldBoundaryConditions(top = u_stress_bc, bottom = u_drag_bc)
+v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
+
 
 # ### Buoyancy relaxation
 
-@inline buoyancy_flux(x, y, t, b, p) = - p.μ * (b - p.Δb / p.Ly * y)
+@inline function buoyancy_relaxation(i, j, k, grid, clock, model_fields, p)
+   y = ynode(Center(), j, grid)
+   b = @inbounds model_fields.b[i, j, k]
+   return - 1 / p.λ * (b - p.Δb / p.Ly * y)
+end
 
-buoyancy_flux_bc = BoundaryCondition(Flux, buoyancy_flux,
-                                     field_dependencies = :b,
-                                     parameters = (μ=1/day, Δb=0.05, Ly=grid.Ly))
-
-b_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc,
-                                       bottom = BoundaryCondition(Value, 0))
+Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 
 # ## Turbulence closure
-closure = AnisotropicDiffusivity(νh=500, νz=1e-2, κh=100, κz=1e-2)
+closure = AnisotropicDiffusivity(νh=2000, νz=1e-2, κh=500, κz=1e-2)
 
 # ## Model building
 
-model = IncompressibleModel(architecture = CPU(),
-                            timestepper = :RungeKutta3, 
-                            advection = UpwindBiasedFifthOrder(),
-                            grid = grid,
-                            coriolis = BetaPlane(latitude=45),
-                            buoyancy = BuoyancyTracer(),
-                            tracers = :b,
-                            closure = closure,
-                            boundary_conditions = (u=u_bcs, v=v_bcs, b=b_bcs))
+# model = NonhydrostaticModel(architecture = CPU(),
+#                             timestepper = :RungeKutta3,
+#                             advection = UpwindBiasedFifthOrder(),
+#                             grid = grid,
+#                             coriolis = BetaPlane(latitude=45),
+#                             buoyancy = BuoyancyTracer(),
+#                             tracers = :b,
+#                             closure = closure,
+#                             boundary_conditions = (u=u_bcs, v=v_bcs),
+#                             forcing = (b=Fb,)
+#                             )
+# 
+model = HydrostaticFreeSurfaceModel(architecture = CPU(),
+                                    grid = grid,
+                                    free_surface = ImplicitFreeSurface(),
+                                    momentum_advection = WENO5(),
+                                    tracer_advection = WENO5(),
+                                    buoyancy = BuoyancyTracer(),
+                                    coriolis = BetaPlane(latitude=45),
+                                    closure = (closure,),
+                                    tracers = :b,
+                                    boundary_conditions = (u=u_bcs, v=v_bcs),
+                                    forcing = (b=Fb,),
+                                    )
 
 # ## Initial conditions
 
-bᵢ(x, y, z) = b_bcs.top.condition.parameters.Δb * (1 + z / grid.Lz)
+bᵢ(x, y, z) = parameters.Δb * (1 + z / grid.Lz)
 
 set!(model, b=bᵢ)
 
@@ -75,13 +120,9 @@ set!(model, b=bᵢ)
 
 max_Δt = 1 / 5model.coriolis.f₀
 
-wizard = TimeStepWizard(cfl=1.0, Δt=hour/2, max_change=1.1, max_Δt=max_Δt)
+wizard = TimeStepWizard(cfl=0.8, Δt=hour/10, max_change=1.1, max_Δt=max_Δt)
 
 # Finally, we set up and run the the simulation.
-
-umax = FieldMaximum(abs, model.velocities.u)
-vmax = FieldMaximum(abs, model.velocities.v)
-wmax = FieldMaximum(abs, model.velocities.w)
 
 wall_clock = time_ns()
 
@@ -93,7 +134,9 @@ function print_progress(simulation)
                    model.clock.iteration,
                    prettytime(model.clock.time),
                    prettytime(wizard.Δt),
-                   umax(), vmax(), wmax(),
+                   maximum(abs, simulation.model.velocities.u),
+                   maximum(abs, simulation.model.velocities.v),
+                   maximum(abs, simulation.model.velocities.w),
                    prettytime(1e-9 * (time_ns() - wall_clock))
                   )
 
@@ -120,13 +163,11 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       field_slicer = FieldSlicer(k=model.grid.Nz),
                                                       force = true)
 
-p = PressureField(model)
-barotropic_p = AveragedField(p, dims=3)
 barotropic_u = AveragedField(model.velocities.u, dims=3)
 barotropic_v = AveragedField(model.velocities.v, dims=3)
 
 simulation.output_writers[:barotropic_velocities] =
-    JLD2OutputWriter(model, (u=barotropic_u, v=barotropic_v, p=barotropic_p),
+    JLD2OutputWriter(model, (u=barotropic_u, v=barotropic_v),
                      schedule = AveragedTimeInterval(30days, window=10days),
                      prefix = "double_gyre_circulation",
                      force = true)
