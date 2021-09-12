@@ -15,8 +15,9 @@ const Lz = 1.8kilometers # depth [m]
 
 Nx = Ny = 64
 Nz = 16
-s = 1.2 # stretching factor
-hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
+
+σ = 1.2 # stretching factor
+hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
 
 
 grid = VerticallyStretchedRectilinearGrid(size = (Nx, Ny, Nz),
@@ -32,18 +33,18 @@ plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
       xlabel = "Vertical spacing (m)",
       legend = nothing)
 
-α  = 2e-4         # [K⁻¹] thermal expansion coefficient 
-g  = 9.81         # [m/s²] gravitational constant
-cᵖ = 3994.0       # [J/K]  heat capacity
-ρ  = 1028.1       # [kg/m³] reference density
+α  = 2e-4 # [K⁻¹] thermal expansion coefficient 
+g  = 9.81 # [m s⁻²] gravitational constant
+cᵖ = 3991 # [J K⁻¹ kg⁻¹] heat capacity for seawater
+ρ₀ = 1028 # [kg m⁻³] reference density
 
 parameters = (Ly = Ly,
               Lz = Lz,
-              τ = 0.1 / ρ,        # surface kinematic wind stress [m² s⁻²]
-              μ = 1 / 180days,    # bottom drag damping time-scale [s⁻¹]
-              Δb = 30 * α * g,    # surface vertical buoyancy gradient [s⁻²]
-              H = Lz,             # domain depth [m]
-              λ = 30days          # relaxation time scale [s]
+               H = Lz,           # domain depth [m]
+               τ = 0.1 / ρ₀,     # surface kinematic wind stress [m² s⁻²]
+               μ = 1 / 180days,  # bottom drag damping time-scale [s⁻¹]
+              Δb = 30 * α * g,   # surface vertical buoyancy gradient [s⁻²]
+               λ = 30days        # relaxation time scale [s]
               )
 
 
@@ -75,7 +76,7 @@ v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
 @inline function buoyancy_relaxation(i, j, k, grid, clock, model_fields, p)
    y = ynode(Center(), j, grid)
    b = @inbounds model_fields.b[i, j, k]
-   return - 1 / p.λ * (b - p.Δb / p.Ly * y)
+   return - 1 / p.λ * (b - p.Δb * y / p.Ly)
 end
 
 Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
@@ -95,7 +96,7 @@ model = HydrostaticFreeSurfaceModel(architecture = CPU(),
                                     closure = (closure,),
                                     tracers = :b,
                                     boundary_conditions = (u=u_bcs, v=v_bcs),
-                                    forcing = (b=Fb,),
+                                    forcing = (b=Fb,)
                                     )
 
 # ## Initial conditions
