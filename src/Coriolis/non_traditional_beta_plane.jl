@@ -55,10 +55,10 @@ function NonTraditionalBetaPlane(FT=Float64;
     end
 
     if use_planet_parameters
-        fz =  2Ω*sind(φ)
-        fy =  2Ω*cosd(φ)
-        β  =  2Ω*cosd(φ)/R
-        γ  = -4Ω*sind(φ)/R
+        fz =  2Ω * sind(φ)
+        fy =  2Ω * cosd(φ)
+        β  =  2Ω * cosd(φ) / R
+        γ  = -4Ω * sind(φ) / R
     end
 
     return NonTraditionalBetaPlane{FT}(fz, fy, β, γ, R)

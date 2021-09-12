@@ -33,7 +33,7 @@ function FPlane(FT::DataType=Float64; f=nothing, rotation_rate=Ω_Earth, latitud
     if use_f
         return FPlane{FT}(f)
     elseif use_planet_parameters
-        return FPlane{FT}(2rotation_rate*sind(latitude))
+        return FPlane{FT}(2rotation_rate * sind(latitude))
     end
 end
 
