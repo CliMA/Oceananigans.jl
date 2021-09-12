@@ -19,7 +19,7 @@ export
     xnodes, ynodes, znodes, nodes,
 
     # Advection schemes
-    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5,
+    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5,
 
     # Boundary conditions
     BoundaryCondition,
@@ -85,7 +85,7 @@ export
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
 
     # Abstract operations
-    ∂x, ∂y, ∂z, @at,
+    ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
     # Cubed sphere
     ConformalCubedSphereGrid,

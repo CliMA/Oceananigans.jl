@@ -10,7 +10,7 @@ import Oceananigans: short_show
 
 Keeps track of the current `time`, `iteration` number, and time-stepping `stage`.
 `stage` is updated only for multi-stage time-stepping methods.
-The `time::T` can be either a number of a `DateTime` object.
+The `time::T` can be either a number or a `DateTime` object.
 """
 mutable struct Clock{T}
          time :: T

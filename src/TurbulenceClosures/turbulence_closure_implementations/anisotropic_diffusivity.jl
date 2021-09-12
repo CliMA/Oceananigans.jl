@@ -61,7 +61,7 @@ function with_tracers(tracers, closure::AnisotropicDiffusivity{TD}) where TD
     return AnisotropicDiffusivity{TD}(closure.νx, closure.νy, closure.νz, κx, κy, κz)
 end
 
-calculate_diffusivities!(K, arch, grid, closure::AnisotropicDiffusivity, args...) = nothing
+calculate_diffusivities!(diffusivities, closure::AnisotropicDiffusivity, args...) = nothing
 
 #####
 ##### Diffusive fluxes
@@ -102,8 +102,6 @@ const VITD = VerticallyImplicitTimeDiscretization
 
 z_viscosity(closure::AD, args...) = closure.νz
 z_diffusivity(closure::AD, ::Val{tracer_index}, args...) where tracer_index = @inbounds closure.κz[tracer_index]
-
-const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
 @inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::AD, args...) = zero(eltype(grid))
 @inline viscous_flux_uz(i, j, k, grid, ::VITD, closure::AD, args...) = zero(eltype(grid))

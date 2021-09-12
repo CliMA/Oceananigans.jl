@@ -137,3 +137,4 @@ Adapt.adapt_structure(to, forcing::ContinuousForcing{LX, LY, LZ}) where {LX, LY,
                                nothing,
                                Adapt.adapt(to, forcing.field_dependencies_indices),
                                Adapt.adapt(to, forcing.field_dependencies_interp))
+

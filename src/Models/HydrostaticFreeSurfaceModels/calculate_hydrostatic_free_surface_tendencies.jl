@@ -4,7 +4,6 @@ import Oceananigans: tracer_tendency_kernel_function
 using Oceananigans.Architectures: device_event
 using Oceananigans: fields, prognostic_fields
 using Oceananigans.Utils: work_layout
-using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity
 
 """
     calculate_tendencies!(model::NonhydrostaticModel)
@@ -86,22 +85,25 @@ function calculate_hydrostatic_momentum_tendencies!(model, velocities; dependenc
     return events
 end
 
-using Oceananigans.TurbulenceClosures: TKEVD
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVD, CATKEVDArray
 
 # Fallback
 @inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure, tracer_name) =
     hydrostatic_free_surface_tracer_tendency
 
-@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::TKEVD, ::Val{:e}) =
+@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::CATKEVD, ::Val{:e}) =
     hydrostatic_turbulent_kinetic_energy_tendency
 
 function tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closures::Tuple, ::Val{:e})
-    if any(c isa TKEVD for c in closures)
+    if any(cl isa Union{CATKEVD, CATKEVDArray} for cl in closures)
         return hydrostatic_turbulent_kinetic_energy_tendency
     else
         return hydrostatic_free_surface_tracer_tendency
     end
 end
+
+top_tracer_boundary_conditions(grid, tracers) =
+    NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
 """ Store previous value of the source term and calculate current source term. """
 function calculate_hydrostatic_free_surface_interior_tendency_contributions!(model)
@@ -112,6 +114,8 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
     barrier = device_event(model)
 
     events = calculate_hydrostatic_momentum_tendencies!(model, model.velocities; dependencies = barrier)
+
+    top_tracer_bcs = top_tracer_boundary_conditions(grid, model.tracers)
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
         @inbounds c_tendency = model.timestepper.Gⁿ[tracer_name]
@@ -131,6 +135,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
                            model.velocities,
                            model.free_surface,
                            model.tracers,
+                           top_tracer_bcs,
                            model.diffusivity_fields,
                            model.auxiliary_fields,
                            c_forcing,

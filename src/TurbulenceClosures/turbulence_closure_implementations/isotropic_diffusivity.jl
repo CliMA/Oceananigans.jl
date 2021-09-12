@@ -35,7 +35,7 @@ function with_tracers(tracers, closure::IsotropicDiffusivity{TD}) where TD
     return IsotropicDiffusivity{TD}(closure.ν, κ)
 end
 
-calculate_diffusivities!(K, arch, grid, closure::IsotropicDiffusivity, args...) = nothing
+calculate_diffusivities!(diffusivities, closure::IsotropicDiffusivity, args...) = nothing
 
 @inline diffusivity(closure::IsotropicDiffusivity, ::Val{tracer_index}, args...) where tracer_index = closure.κ[tracer_index]
 @inline viscosity(closure::IsotropicDiffusivity, args...) = closure.ν

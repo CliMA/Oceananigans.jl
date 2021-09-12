@@ -35,7 +35,52 @@ end
 """
     AveragedField(operand::AbstractField; dims, data=nothing, recompute_safely=false)
 
-Returns an AveragedField.
+Returns an AveragedField averaged over `dims`. `dims` is a tuple of integers indicating
+spatial dimensions; in a Cartesian coordinate system, `1=x, `2=y`, and `3=z`.
+
+Arguments
+=========
+
+- `dims`: Tuple of integers specifying the dimensions to average `operand`.
+          A single integer is also accepted for averaging over a single dimension.  
+
+- `data`: An `OffsetArray` for storing averaged data.
+          Useful if carefully managing memory allocation.
+          If unspecified, `data` is created by `Oceananigans.Grids.new_data`.
+
+- `recompute_safely`: A boolean that's relevant only if the `AveragedField` is used
+                      within another computation. If `recompute_safely=false`,
+                      `AveragedField` will *not* be recomputed before computing any dependent
+                      computations if `AveragedField.status` is consistent with the current state of the simulation.
+                      If `recompute_safely=true`, `AveragedField` is always recomputed
+                      before performing a dependent computation.
+
+Examples
+=======
+
+```julia
+julia> using Oceananigans
+
+julia> grid = RegularRectilinearGrid(size=(2, 2, 2), x=(0, 1), y=(0, 1), z=(0, 1));
+
+julia> c = CenterField(CPU(), grid);
+
+julia> C_xy = AveragedField(c, dims=(1, 2)) # average over x, y
+AveragedField over dims=(1, 2) located at (⋅, ⋅, Center) of Field located at (Center, Center, Center)
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 2)
+├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
+├── dims: (1, 2)
+├── operand: Field located at (Center, Center, Center)
+└── status: time=0.0
+
+julia> C_z = AveragedField(c, dims=3) # averaged over z
+AveragedField over dims=(3,) located at (Center, Center, ⋅) of Field located at (Center, Center, Center)
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (2, 2, 1)
+├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
+├── dims: (3,)
+├── operand: Field located at (Center, Center, Center)
+└── status: time=0.0
+```
 """
 function AveragedField(operand::AbstractField; dims, data=nothing, recompute_safely=true)
 

@@ -7,10 +7,7 @@ V★ = ∫ᶻ Ay * v★ dz`
 """
 ### Note - what we really want is RHS = divergence of the vertically integrated volume flux
 ###        we can optimize this a bit later to do this all in one go to save using intermediate variables.
-function compute_vertically_integrated_volume_flux!(∫ᶻ_U, model, velocities_update_event)
-
-    # Wait for predictor velocity update step to complete.
-    wait(device(model.architecture), velocities_update_event)
+function compute_vertically_integrated_volume_flux!(∫ᶻ_U, model)
 
     # Fill halo regions for predictor velocity.
     fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model))
