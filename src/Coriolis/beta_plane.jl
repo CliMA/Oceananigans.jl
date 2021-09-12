@@ -1,7 +1,7 @@
 """
     BetaPlane{T} <: AbstractRotation
 
-A parameter object for meridionally increasing Coriolis parameter (`f = f₀ + βy`)
+A parameter object for meridionally increasing Coriolis parameter (`f = f₀ + β y`)
 that accounts for the variation of the locally vertical component of the rotation
 vector with latitude.
 """
