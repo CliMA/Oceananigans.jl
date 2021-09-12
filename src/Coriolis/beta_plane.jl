@@ -14,9 +14,9 @@ end
     BetaPlane([T=Float64;] f₀=nothing, β=nothing,
                            rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
 
-The user may specify both `f₀` and `β`, or the three parameters `rotation_rate`,
-`latitude`, and `radius` that specify the rotation rate and radius of a planet, and
-the central latitude (where y = 0) at which the `β`-plane approximation is to be made.
+The user may specify both `f₀` and `β`, or the three parameters `rotation_rate`, `latitude`
+(in degrees), and `radius` that specify the rotation rate and radius of a planet, and
+the central latitude (where ``y = 0``) at which the `β`-plane approximation is to be made.
 
 If `f₀` and `β` are not specified, they are calculated from `rotation_rate`, `latitude`,
 and `radius` according to the relations `f₀ = 2 * rotation_rate * sind(latitude)` and

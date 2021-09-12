@@ -13,7 +13,7 @@ end
 Returns a parameter object for constant rotation at the angular frequency
 `f/2`, and therefore with background vorticity `f`, around a vertical axis.
 If `f` is not specified, it is calculated from `rotation_rate` and
-`latitude` according to the relation `f = 2 * rotation_rate * sind(latitude)`.
+`latitude` (in degrees) according to the relation `f = 2 * rotation_rate * sind(latitude)`.
 
 By default, `rotation_rate` is assumed to be Earth's.
 
