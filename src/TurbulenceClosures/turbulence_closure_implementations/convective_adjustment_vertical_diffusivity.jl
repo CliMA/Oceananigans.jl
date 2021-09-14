@@ -32,15 +32,15 @@ of `ConvectiveAdjustmentVerticalDiffusivity`. The default is `Float64`.
 Keyword arguments
 =================
 
-* `convective_κz` : Vertical tracer diffusivity in regions with unstable buoyancy gradients. Either
+* `convective_κz` : Vertical tracer diffusivity in regions with negative (unstable) buoyancy gradients. Either
                     a single number, function, array, field, or tuple of diffusivities for each tracer.
 
-* `background_κz` : Vertical tracer diffusivity in regions with stable buoyancy gradients.
+* `background_κz` : Vertical tracer diffusivity in regions with zero or positive (stable) buoyancy gradients.
 
-* `convective_νz` : Vertical viscosity in regions with unstable buoyancy gradients. Either
+* `convective_νz` : Vertical viscosity in regions with negative (unstable) buoyancy gradients. Either
                     a number, function, array, or field.
 
-* `background_κz` : Vertical viscosity in regions with stable buoyancy gradients.
+* `background_κz` : Vertical viscosity in regions with zero or positive (stable) buoyancy gradients.
 
 * `time_discretization` : Either `ExplicitTimeDiscretization` or `VerticallyImplicitTimeDiscretization`.
 """
@@ -92,27 +92,27 @@ function calculate_diffusivities!(diffusivities, closure::CAVD, model)
     return nothing
 end
 
-@inline is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy) = ∂z_b(i, j, k, grid, buoyancy, tracers) >= 0
+@inline is_unstableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy) = ∂z_b(i, j, k, grid, buoyancy, tracers) < 0
 
 @kernel function compute_convective_adjustment_diffusivities!(diffusivities, grid, closure, tracers, buoyancy)
     i, j, k, = @index(Global, NTuple)
 
-    stable_cell = is_stableᶜᶜᶠ(i, j, k+1, grid, tracers, buoyancy) & 
-                  is_stableᶜᶜᶠ(i, j, k,   grid, tracers, buoyancy)
+    unstable_cell = is_unstableᶜᶜᶠ(i, j, k+1, grid, tracers, buoyancy) | 
+                    is_unstableᶜᶜᶠ(i, j, k,   grid, tracers, buoyancy)
 
-    @inbounds diffusivities.κ[i, j, k] = ifelse(stable_cell,
-                                                closure.background_κz,
-                                                closure.convective_κz)
+    @inbounds diffusivities.κ[i, j, k] = ifelse(unstable_cell,
+                                                closure.convective_κz
+                                                closure.background_κz)
 
-    @inbounds diffusivities.ν[i, j, k] = ifelse(stable_cell,
-                                                closure.background_νz,
-                                                closure.convective_νz)
+    @inbounds diffusivities.ν[i, j, k] = ifelse(unstable_cell,
+                                                closure.convective_νz,
+                                                closure.background_νz)
 end
 
 #=
 @kernel function compute_stability!(diffusivities, grid, closure, tracers, buoyancy)
     i, j, k, = @index(Global, NTuple)
-    @inbounds diffusivities.stable_buoyancy_gradient[i, j, k] = is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
+    @inbounds diffusivities.unstable_buoyancy_gradient[i, j, k] = is_unstableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
 end
 =#
 
