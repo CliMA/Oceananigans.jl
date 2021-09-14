@@ -40,13 +40,11 @@ cᵖ = 3991 # [J K⁻¹ kg⁻¹] heat capacity for seawater
 
 parameters = (Ly = Ly,
               Lz = Lz,
-               H = Lz,           # domain depth [m]
                τ = 0.1 / ρ₀,     # surface kinematic wind stress [m² s⁻²]
                μ = 1 / 180days,  # bottom drag damping time-scale [s⁻¹]
               Δb = 30 * α * g,   # surface vertical buoyancy gradient [s⁻²]
                λ = 30days        # relaxation time scale [s]
               )
-
 
 # ## Boundary conditions
 #
@@ -82,7 +80,7 @@ end
 Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 
 # ## Turbulence closure
-closure = AnisotropicDiffusivity(νh=2000, νz=1e-2, κh=500, κz=1e-2)
+closure = AnisotropicDiffusivity(νh=1000, νz=1e-2, κh=500, κz=1e-2)
 
 # ## Model building
 
@@ -109,7 +107,7 @@ set!(model, b=bᵢ)
 
 max_Δt = 1 / 5model.coriolis.f₀
 
-wizard = TimeStepWizard(cfl=0.8, Δt=hour/10, max_change=1.1, max_Δt=max_Δt)
+wizard = TimeStepWizard(cfl=0.2, Δt=hour/10, max_change=1.1, max_Δt=max_Δt)
 
 # Finally, we set up and run the the simulation.
 
