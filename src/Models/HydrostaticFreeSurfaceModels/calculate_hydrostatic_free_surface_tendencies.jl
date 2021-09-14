@@ -145,7 +145,7 @@ function calculate_hydrostatic_free_surface_interior_tendency_contributions!(mod
         push!(events, Gc_event)
     end
 
-    wait(device(arch), MultiEvent(Tuple(events)))
+    wait(MultiEvent(Tuple(events)))
 
     return nothing
 end
