@@ -101,7 +101,7 @@ end
                     is_unstableᶜᶜᶠ(i, j, k,   grid, tracers, buoyancy)
 
     @inbounds diffusivities.κ[i, j, k] = ifelse(unstable_cell,
-                                                closure.convective_κz
+                                                closure.convective_κz,
                                                 closure.background_κz)
 
     @inbounds diffusivities.ν[i, j, k] = ifelse(unstable_cell,
