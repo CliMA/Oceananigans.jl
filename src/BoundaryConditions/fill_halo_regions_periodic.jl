@@ -18,5 +18,8 @@ for (x, side) in zip(coords, sides)
     name = Symbol(:fill_, side, :_halo!)
     H = Symbol(:H, x)
     N = Symbol(:N, x)
-    @eval $name(c, bc::PBC, arch, dep, grid, args...; kw...) = $name(c, bc, grid.$(H), grid.$(N))
+    @eval function $name(c, bc::PBC, arch, dep, grid, args...; kw...)
+        $name(c, bc, grid.$(H), grid.$(N))
+        return Event(device(arch))
+    end
 end
