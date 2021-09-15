@@ -12,6 +12,8 @@ stretched_grid = false
 hydrostatic = true
 implicit_free_surface = false
 
+plotting = false
+run_twice = true
 
 # timestep
 Δt_min = 60.0 * 5 # 30.0
@@ -28,17 +30,16 @@ else
     wizard = Δt_min / 3
 end
 
-stop_time = 10days
-
+stop_time = 20days # running for one day did not reveal bug
 
 # domain
 const Lx = 250kilometers # east-west extent [m]
 const Ly = 500kilometers # north-south extent [m]
 const Lz = 1kilometers    # depth [m]
 
-Nx = 64*2  #  * 2
-Ny = 128*2  #  * 2
-Nz = 8*4 # * 4
+Nx = 32*4 # * 4   #  64 * 2
+Ny = 64*4 # * 4 #  128 * 2
+Nz = 8*4 #  8 * 4
 
 s = 1.2 # stretching factor
 z_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
@@ -82,8 +83,8 @@ coriolis = BetaPlane(latitude=-45)
 κv = 𝒜 * κh # [m²/s] vertical diffusivity
 νv = 𝒜 * νh # [m²/s] vertical viscocity
 
-diffusive_closure = AnisotropicDiffusivity(νx=νh, νy=νh, νz=νv, κx=κh, κy=κh, κz=κv,
-					                       time_discretization = VerticallyImplicitTimeDiscretization())
+diffusive_closure = AnisotropicDiffusivity(νx=νh, νy=νh, νz=νv, κx=κh, κy=κh, κz=κv)
+                                           # time_discretization = VerticallyImplicitTimeDiscretization())
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)
@@ -94,7 +95,8 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 @info "Building a model..."
 
-closures = (diffusive_closure, convective_adjustment)
+# closures = (diffusive_closure, convective_adjustment)
+closures = (diffusive_closure)
 
 if hydrostatic
     println("Constructing hydrostatic model")
@@ -177,79 +179,91 @@ simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_p
 
 @info "Running the simulation..."
 tic = time()
-try
-    run!(simulation, pickup=false)
-catch err
-    @info "run! threw an error! The error message is"
-    showerror(stdout, err)
-end
+run!(simulation, pickup=false)
 toc = time()
 println("The amount of time for the simulation was ", (toc - tic)/60, " minutes")
+froofi = [maximum(abs, model.velocities.u), maximum(abs, model.velocities.v), maximum(abs, model.velocities.w)]
+
+if run_twice == true
+    if hydrostatic
+        println("Constructing hydrostatic model")
+        if implicit_free_surface
+            # free_surface = ImplicitFreeSurface()
+            free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, maximum_iterations = 10)
+        else
+            free_surface = ExplicitFreeSurface(gravitational_acceleration = 0.01)
+        end
+        model = HydrostaticFreeSurfaceModel(architecture = arch,
+                                            grid = grid,
+                                            coriolis = coriolis,
+                                            buoyancy = BuoyancyTracer(),
+                                            closure = closures,
+                                            tracers = :b,
+                                            momentum_advection = WENO5(),
+                                            tracer_advection = WENO5(),
+                                            free_surface = free_surface,
+                                            )
+    else
+        println("Constructing nonhydrostatic model")
+        model = NonhydrostaticModel(
+            architecture = arch,
+                    grid = grid,
+                coriolis = coriolis,
+                buoyancy = BuoyancyTracer(),
+                    closure = closures,
+                    tracers = :b,
+                advection = WENO5(),
+    )
+    end
+    set!(model, b=B₀)
+    simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=100)
+    @info "Running the simulation again ..."
+    tic = time()
+    run!(simulation, pickup=false)
+    new_froofi = [maximum(abs, model.velocities.u), maximum(abs, model.velocities.v), maximum(abs, model.velocities.w)]
+    println("the difference between froofies", froofi - new_froofi)
+else 
+    nothing
+end
 
 ## plotting
 using GLMakie
+if plotting == true
+    # plotting 
+    xsurf = range(0, Lx,  length = Nx)
+    ysurf = range(0, Ly,  length = Ny)
+    zsurf = range(-Lz, 0, length = Nz)
+    ϕsurf = Array(interior(simulation.model.tracers.b))
+    clims = extrema(ϕsurf)
+    zscale = 100
+    fig = Figure(resolution = (1920, 1080))
+    ax = fig[1,1] = LScene(fig, title= "Baroclinic Adjustment")
 
-# plotting 
-xsurf = range(0, Lx,  length = Nx)
-ysurf = range(0, Ly,  length = Ny)
-zsurf = range(-Lz, 0, length = Nz)
-ϕsurf = Array(interior(simulation.model.tracers.b))
-clims = extrema(ϕsurf)
-zscale = 100
-fig = Figure(resolution = (1920, 1080))
-ax = fig[1,1] = LScene(fig, title= "Baroclinic Adjustment")
+    # edge 1
+    ϕedge1 = ϕsurf[:,1,:]
+    GLMakie.surface!(ax, xsurf, zsurf .* zscale, ϕedge1, transformation = (:xz, 0),  colorrange = clims, colormap = :balance, show_axis=false)
 
-# edge 1
-ϕedge1 = ϕsurf[:,1,:]
-GLMakie.surface!(ax, xsurf, zsurf .* zscale, ϕedge1, transformation = (:xz, 0),  colorrange = clims, colormap = :balance, show_axis=false)
+    # edge 2
+    ϕedge2 = ϕsurf[:,end,:]
+    GLMakie.surface!(ax, xsurf, zsurf .* zscale, ϕedge2, transformation = (:xz, Ly),  colorrange = clims, colormap = :balance)
 
-# edge 2
-ϕedge2 = ϕsurf[:,end,:]
-GLMakie.surface!(ax, xsurf, zsurf .* zscale, ϕedge2, transformation = (:xz, Ly),  colorrange = clims, colormap = :balance)
+    # edge 3
+    ϕedge3 = ϕsurf[1,:,:]
+    GLMakie.surface!(ax, ysurf, zsurf .* zscale, ϕedge3, transformation = (:yz, 0),  colorrange = clims, colormap = :balance)
 
-# edge 3
-ϕedge3 = ϕsurf[1,:,:]
-GLMakie.surface!(ax, ysurf, zsurf .* zscale, ϕedge3, transformation = (:yz, 0),  colorrange = clims, colormap = :balance)
+    # edge 4
+    ϕedge4 = ϕsurf[end,:,:]
+    GLMakie.surface!(ax, ysurf, zsurf .* zscale, ϕedge4, transformation = (:yz, Lx),  colorrange = clims, colormap = :balance)
 
-# edge 4
-ϕedge4 = ϕsurf[end,:,:]
-GLMakie.surface!(ax, ysurf, zsurf .* zscale, ϕedge4, transformation = (:yz, Lx),  colorrange = clims, colormap = :balance)
+    # edge 5
+    ϕedge5 = ϕsurf[:,:,1]
+    GLMakie.surface!(ax, xsurf, ysurf, ϕedge5, transformation = (:xy, -Lz *  zscale), colorrange = clims, colormap = :balance)
 
-# edge 5
-ϕedge5 = ϕsurf[:,:,1]
-GLMakie.surface!(ax, xsurf, ysurf, ϕedge5, transformation = (:xy, -Lz *  zscale), colorrange = clims, colormap = :balance)
+    # edge 6
+    ϕedge6 = ϕsurf[:,:,end]
+    GLMakie.surface!(ax, xsurf, ysurf, ϕedge6, transformation = (:xy, 0 *  zscale), colorrange = clims, colormap = :balance)
 
-
-# edge 6
-ϕedge6 = ϕsurf[:,:,end]
-GLMakie.surface!(ax, xsurf, ysurf, ϕedge6, transformation = (:xy, 0 *  zscale), colorrange = clims, colormap = :balance)
-
-display(fig)
-
-#=
-using Oceananigans
-using Oceananigans.Solvers
-using Oceananigans.Operators
-using Oceananigans.Architectures
-using Oceananigans.Fields: ReducedField
-
-import Oceananigans.Solvers: solve!
-
-
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integrated_lateral_areas!
-
-    ∫ᶻ_Axᶠᶜᶜ = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
-    ∫ᶻ_Ayᶜᶠᶜ = ReducedField(Center, Face, Nothing, arch, grid; dims=3)
-
-    vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
-
-    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas, grid, arch)
-
-    right_hand_side = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
-
-if arch == GPU()
-    gpu_comp =    Array(interior(vertically_integrated_lateral_areas.xᶠᶜᶜ))[:,:,:]
-else
-    cpu_comp =    Array(interior(vertically_integrated_lateral_areas.xᶠᶜᶜ))[:,:,:]
+    display(fig)
+    else
+        nothing
 end
-=#
