@@ -1,45 +1,83 @@
+using KernelAbstractions: @kernel, @index
+using KernelAbstractions.Extras.LoopInfo: @unroll
+
 using Oceananigans.Architectures: arch_array, architecture
+using Oceananigans.Operators: Δzᵃᵃᶜ
 
 const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded}
 
-set_by_regridding!(u, target_grid, source_grid, v) =
-    throw(NotImplementedErorr("Regridding from a source grid $(typeof(source_grid))
-                               to target grid $(typeof(target_grid)) is not supported!"))
+function set_by_regridding!(u, target_grid, source_grid, v)
+    msg = """Using `set!` to regrid
+             $(short_show(v)) on $(short_show(source_grid))
+             to $(short_show(u)) on $(short_show(target_grid))
+             is not supported."""
+
+    return throw(ArgumentError(msg))
+end
 
 #####
 ##### Regridding for single column grids
 #####
 
 function set_by_regridding!(u, target_grid::SingleColumnGrid, source_grid::SingleColumnGrid, v)
+    arch = architecture(u)
+    source_z_faces = znodes(Face, source_grid)
 
+    event = launch!(arch, target_grid, :xy, _set_by_regridding!, u, v, target_grid, source_grid, source_z_faces)
+    wait(device(arch), event)
     return nothing
 end
 
-@kernel function multiple_cell_integral!(integral, c, grid, (k₋, k₊), (z₋, z₊))
+"""
+   target  source
+    --- kt=4    --- ks = 6
+                 x
+                --- ks = 5
+     x           x
+                --- ks = 4
+    --- kt=3     x 
+                --- ks = 3
+     x           x k=2
+                --- ks = 2
+    --- kt=2     x k=1
+                --- ks = 1
+
+"""
+@kernel function _set_by_regridding!(target_field, source_field, target_grid, source_grid, source_z_faces)
     i, j = @index(Global, NTuple)
 
-    @inbounds integral[i, j] = 0
+    Nx_target, Ny_target, Nz_target = size(target_grid)
+    Nx_source, Ny_source, Nz_source = size(source_grid)
+    i_src = ifelse(Nx_target == Nx_source, i, 1)
+    j_src = ifelse(Ny_target == Ny_source, j, 1)
 
-    @unroll for k = k₋:k₊
-        @inbounds integral[i, j] += c[i, j, k] * Δzᵃᵃᶜ(i, j, k, grid)
+    @unroll for k = 1:target_grid.Nz
+        @inbounds target_field[i, j, k] = 0
+
+        z₋ = znode(Center(), Center(), Face(), i, j, k,   target_grid)
+        z₊ = znode(Center(), Center(), Face(), i, j, k+1, target_grid)
+
+        # Integrate source field from z₋ to z₊
+        k₋_src = searchsortedfirst(source_z_faces, z₋)
+        k₊_src = searchsortedfirst(source_z_faces, z₊) - 1
+
+        # Add contribution from all full cells in the integration range
+        @unroll for k_src = k₋_src:k₊_src
+            @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δzᵃᵃᶜ(i_src, j_src, k_src, source_grid)
+        end
+
+        zk₋_src = znode(Center(), Center(), Face(), i_src, j_src, k₋_src, source_grid)
+        zk₊_src = znode(Center(), Center(), Face(), i_src, j_src, k₊_src+1, source_grid)
+
+        # Add contribution to integral from fractional bottom part,
+        # if that region is a part of the grid.
+        @inbounds target_field[i, j, k] += source_field[i_src, j_src, k₋_src - 1] * (zk₋_src - z₋)
+
+        # Add contribution to integral from fractional top part
+        @inbounds target_field[i, j, k] += source_field[i_src, j_src, k₊_src] * (z₊ - zk₊_src)
+
+        @inbounds target_field[i, j, k] /= Δzᵃᵃᶜ(i, j, k, target_grid)
     end
-
-    zk₋ = znode(Face(), i, j, k₋ + 1, grid)
-    zk₊ = znode(Face(), i, j, k₊, grid)
-
-    # Add contribution to integral from fractional bottom part,
-    # if that region is a part of the grid.
-    if k₋ > 0
-        @inbounds integral[i, j] += c[i, j, k₋] * (zk₋ - z₋)
-    end
-
-    # Add contribution to integral from fractional top part
-    @inbounds integral[i, j] += c[i, j, k₊] * (z₊ - zk₊)
-end
-
-@kernel function single_cell_integral!(integral, c, grid, (k₋, k₊), (z₋, z₊))
-    i, j = @index(Global, NTuple)
-    @inbounds integral[i, j] = c[i, j, k₁] * (z₊ - z₋)
 end
 
 function integrate_z(c::AbstractField{<:Any, <:Any, Center}, grid::SingleColumnGrid, z₋, z₊=0)
@@ -69,6 +107,7 @@ function integrate_z(c::AbstractField{<:Any, <:Any, Center}, grid::SingleColumnG
     return cell_integral
 end
 
+#=
 # Set interior of field `c` to values of `data`
 function set!(c::AbstractField, data::AbstractArray)
 
@@ -132,4 +171,4 @@ function set!(c::AbstractField{Ac, G}, d::AbstractField{Ad, G}) where {Ac, Ad, G
     end
 
 end
-
+=#

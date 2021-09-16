@@ -62,14 +62,6 @@ function set!(u::AbstractField, v::AbstractField)
     if u.grid == v.grid
         return _set!(u, v)
     else # fields aren't on the same grid!
-        @info """Attempting to set by regridding from source grid\n
-
-            source_grid = $(v.grid)
-
-            to target grid
-
-            target_grid = $(u.grid)
-        """
         return set_by_regridding!(u, u.grid, v.grid, v)
     end
 end

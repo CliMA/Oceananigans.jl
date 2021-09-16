@@ -289,4 +289,48 @@ end
             end
         end
     end
+
+    @testset "Regridding" begin
+        @info "  Testing field regridding..."
+
+        fine_grid = RegularRectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+        coarse_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+
+        fine_c = CenterField(fine_grid)
+        coarse_c = CenterField(coarse_grid)
+
+        # Someday this will work...
+        @test_throws ArgumentError set!(coarse_c, fine_c)
+
+        for arch in archs
+            coarse_column_grid    = RegularRectilinearGrid(size=1, z=(0, 1.2), topology=(Flat, Flat, Bounded))
+            fine_column_grid      = RegularRectilinearGrid(size=2, z=(0, 1.2), topology=(Flat, Flat, Bounded))
+            very_fine_column_grid = RegularRectilinearGrid(size=3, z=(0, 1.2), topology=(Flat, Flat, Bounded))
+
+            coarse_column_c    = CenterField(arch, coarse_column_grid)
+            fine_column_c      = CenterField(arch, fine_column_grid)
+            very_fine_column_c = CenterField(arch, very_fine_column_grid)
+
+            CUDA.@allowscalar begin
+                fine_column_c[1, 1, 1] = 1
+                fine_column_c[1, 1, 2] = 3
+            end
+
+            # Coarse-graining
+            set!(coarse_column_c, fine_column_c)
+
+            CUDA.@allowscalar begin
+                @test coarse_column_c[1, 1, 1] ≈ 2
+            end
+
+            # Fine-graining
+            set!(very_fine_column_c, fine_column_c)
+
+            CUDA.@allowscalar begin
+                @test very_fine_column_c[1, 1, 1] ≈ 1
+                @test very_fine_column_c[1, 1, 2] ≈ 2
+                @test very_fine_column_c[1, 1, 3] ≈ 3
+            end
+        end
+    end
 end
