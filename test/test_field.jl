@@ -293,9 +293,6 @@ end
     @testset "Regridding" begin
         @info "  Testing field regridding..."
 
-        # Someday this will work...
-        @test_throws ArgumentError set!(coarse_c, fine_c)
-
         Lz = 1.1
         ℓz = 0.5
         topology = (Flat, Flat, Bounded)
