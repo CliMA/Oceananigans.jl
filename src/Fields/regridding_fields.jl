@@ -28,21 +28,6 @@ function set_by_regridding!(u, target_grid::SingleColumnGrid, source_grid::Singl
     return nothing
 end
 
-"""
-   target  source
-    --- kt=4    --- ks = 6
-                 x
-                --- ks = 5
-     x           x
-                --- ks = 4
-    --- kt=3     x 
-                --- ks = 3
-     x           x k=2
-                --- ks = 2
-    --- kt=2     x k=1
-                --- ks = 1
-
-"""
 @kernel function _set_by_regridding!(target_field, source_field, target_grid, source_grid, source_z_faces)
     i, j = @index(Global, NTuple)
 
