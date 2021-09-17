@@ -312,7 +312,8 @@ end
             super_fine_column_stretched_c = CenterField(arch, super_fine_column_stretched_grid)
             super_fine_column_regular_c   = CenterField(arch, super_fine_column_regular_grid)
 
-            # we initialize an array on the `fine_column_stretched_grid` and regrid it to the rest
+            # we initialize an array on the `fine_column_stretched_grid`, regrid it to the rest
+            # grids, and check whether we get the anticipated results
             c₁ = 1
             c₂ = 3
             CUDA.@allowscalar begin
