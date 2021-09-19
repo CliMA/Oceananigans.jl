@@ -182,7 +182,9 @@ end
         # Some tests can reuse this same grid and model.
         topo = (Periodic, Periodic, Bounded)
         grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-        model = NonhydrostaticModel(architecture=arch, grid=grid)
+        model = NonhydrostaticModel(architecture=arch, grid=grid,
+                                    buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                    )
 
         @testset "WindowedTimeAverage [$(typeof(arch))]" begin
             @info "  Testing WindowedTimeAverage [$(typeof(arch))]..."

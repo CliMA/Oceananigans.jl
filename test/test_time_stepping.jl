@@ -97,7 +97,9 @@ end
     velocity field.
 """
 function incompressible_in_time(arch, grid, Nt, timestepper)
-    model = NonhydrostaticModel(grid=grid, architecture=arch, timestepper=timestepper)
+    model = NonhydrostaticModel(grid=grid, architecture=arch, timestepper=timestepper,
+                                buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                )
     grid = model.grid
     u, v, w = model.velocities
 
