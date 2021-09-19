@@ -201,7 +201,9 @@ end
     for arch in archs
         topo =(Periodic, Periodic, Bounded)
         grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-        model = NonhydrostaticModel(architecture=arch, grid=grid)
+        model = NonhydrostaticModel(architecture=arch, grid=grid,
+                                    buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                    )
 
         @testset "Dependency adding [$(typeof(arch))]" begin
             @info "    Testing dependency adding [$(typeof(arch))]..."

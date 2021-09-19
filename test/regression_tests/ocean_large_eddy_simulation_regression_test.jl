@@ -33,6 +33,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
                      grid = grid,
                  coriolis = FPlane(f=1e-4),
                  buoyancy = Buoyancy(model=SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4))),
+                  tracers = (:T, :S),
                   closure = closure,
       boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)
     )
