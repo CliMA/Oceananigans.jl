@@ -41,7 +41,9 @@ function test_thermal_bubble_checkpointer_output(arch)
 
     grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
-    true_model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure)
+    true_model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure,
+                                     buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                     )
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
@@ -66,7 +68,9 @@ function test_thermal_bubble_checkpointer_output(arch)
     ##### Test `set!(model, checkpoint_file)`
     #####
 
-    new_model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure)
+    new_model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure,
+                                    buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                    )
 
     set!(new_model, "checkpoint_iteration5.jld2")
 
@@ -108,7 +112,9 @@ end
 
 function run_checkpointer_cleanup_tests(arch)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    model = NonhydrostaticModel(architecture=arch, grid=grid,
+                                buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                )
     simulation = Simulation(model, Δt=0.2, stop_iteration=10)
 
     simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(3), cleanup=true)
