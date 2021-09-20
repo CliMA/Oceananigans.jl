@@ -6,7 +6,45 @@ using Oceananigans.Operators: Δzᵃᵃᶜ
 
 const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded}
 
-regrid!(u, v) = regrid!(u, u.grid, v.grid, v)
+"""
+    regrid!(a, b)
+
+Regrids field `b` into the grid of field `a`. Currently only regrids in the vertical ``z``.
+
+Example
+=======
+
+Generate a horizontally-periodic grid with cell interfaces stretched
+hyperbolically near the top:
+
+```jldoctest
+using Oceananigans
+using Oceananigans.Fields: regrid!
+
+Nz, Lz = 2, 1.0
+topology = (Flat, Flat, Bounded)
+
+input_grid = VerticallyStretchedRectilinearGrid(size=Nz, z_faces = [0, Lz/3, Lz], topology=topology)
+input_field = CenterField(input_grid)
+input_field[1, 1, 1:Nz] = [2, 3]
+
+output_grid = RegularRectilinearGrid(size=Nz, z=(0, Lz), topology=topology)
+output_field = CenterField(output_grid)
+
+regrid!(output_field, input_field)
+
+output_field[1, 1, :]
+
+# output
+4-element OffsetArray(::Vector{Float64}, 0:3) with eltype Float64 with indices 0:3:
+ 0.0
+ 2.333333333333334
+ 3.0
+ 0.0
+ ```
+"""
+
+regrid!(a, b) = regrid!(a, a.grid, b.grid, b)
 
 function regrid!(u, target_grid, source_grid, v)
     msg = """Regridding
