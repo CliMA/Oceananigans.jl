@@ -300,9 +300,9 @@ end
         for arch in archs
             coarse_column_regular_grid       = RegularRectilinearGrid(size=1, z=(0, Lz), topology=topology)
             fine_column_regular_grid         = RegularRectilinearGrid(size=2, z=(0, Lz), topology=topology)
-            fine_column_stretched_grid       = VerticallyStretchedRectilinearGrid(size=2, z_faces = [0, ℓz, Lz], topology=topology)
-            very_fine_column_stretched_grid  = VerticallyStretchedRectilinearGrid(size=3, z_faces = [0, 0.2, 0.6, Lz], topology=topology)
-            super_fine_column_stretched_grid = VerticallyStretchedRectilinearGrid(size=4, z_faces = [0, 0.1, 0.3, 0.65, Lz], topology=topology)
+            fine_column_stretched_grid       = VerticallyStretchedRectilinearGrid(architecture=arch, size=2, z_faces = [0, ℓz, Lz], topology=topology)
+            very_fine_column_stretched_grid  = VerticallyStretchedRectilinearGrid(architecture=arch, size=3, z_faces = [0, 0.2, 0.6, Lz], topology=topology)
+            super_fine_column_stretched_grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=4, z_faces = [0, 0.1, 0.3, 0.65, Lz], topology=topology)
             super_fine_column_regular_grid   = RegularRectilinearGrid(size=5, z=(0, Lz), topology=topology)
             
             coarse_column_regular_c       = CenterField(arch, coarse_column_regular_grid)
