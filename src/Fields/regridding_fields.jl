@@ -6,8 +6,10 @@ using Oceananigans.Operators: Δzᵃᵃᶜ
 
 const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded}
 
-function set_by_regridding!(u, target_grid, source_grid, v)
-    msg = """Using `set!` to regrid
+regrid!(u, v) = regrid!(u, u.grid, v.grid, v)
+
+function regrid!(u, target_grid, source_grid, v)
+    msg = """Regridding
              $(short_show(v)) on $(short_show(source_grid))
              to $(short_show(u)) on $(short_show(target_grid))
              is not supported."""
@@ -19,16 +21,16 @@ end
 ##### Regridding for single column grids
 #####
 
-function set_by_regridding!(u, target_grid::SingleColumnGrid, source_grid::SingleColumnGrid, v)
+function regrid!(u, target_grid::SingleColumnGrid, source_grid::SingleColumnGrid, v)
     arch = architecture(u)
     source_z_faces = znodes(Face, source_grid)
 
-    event = launch!(arch, target_grid, :xy, _set_by_regridding!, u, v, target_grid, source_grid, source_z_faces)
+    event = launch!(arch, target_grid, :xy, _regrid!, u, v, target_grid, source_grid, source_z_faces)
     wait(device(arch), event)
     return nothing
 end
 
-@kernel function _set_by_regridding!(target_field, source_field, target_grid, source_grid, source_z_faces)
+@kernel function _regrid!(target_field, source_field, target_grid, source_grid, source_z_faces)
     i, j = @index(Global, NTuple)
 
     Nx_target, Ny_target, Nz_target = size(target_grid)
@@ -63,32 +65,5 @@ end
 
         @inbounds target_field[i, j, k] /= Δzᵃᵃᶜ(i, j, k, target_grid)
     end
-end
-
-function integrate_z(c::AbstractField{<:Any, <:Any, Center}, grid::SingleColumnGrid, z₋, z₊=0)
-
-    Nx, Ny, Nz = size(c)
-    z_faces = znodes(Face, grid)
-
-    # Check some stuff
-    @assert z₊ > z_faces[1] "Integration region lies outside the domain."
-    @assert z₊ > z₋ "Invalid integration range: upper limit greater than lower limit."
-
-    # Find region bounded by the face ≤ z₊ and the face ≤ z₁
-    k₁ = searchsortedfirst(z_faces, z₋) - 1
-    k₂ = searchsortedfirst(z_faces, z₊) - 1
-
-    arch = architecture(c)
-    integral = zeros(arch, grid, Nx, Ny)
-
-    if k₂ ≠ k₁
-        # Calculate interior integral, recalling that the
-        # top interior cell has index k₂-2.
-        launch!(arch, grid, :xy, multiple_cell_integral!, integral, c, grid, (k₁+1, k₂-1), (z₋, z₊))
-    else
-        launch!(arch, grid, :xy, single_cell_integral!, integral, c, grid, (k₁+1, k₂-1), (z₋, z₊))
-    end
-
-    return cell_integral
 end
 

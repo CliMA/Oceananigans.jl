@@ -58,19 +58,11 @@ end
 ##### Setting fields to fields
 #####
 
-function set!(u::AbstractField, v::AbstractField)
-    if u.grid == v.grid
-        return _set!(u, v)
-    else # fields aren't on the same grid!
-        return set_by_regridding!(u, u.grid, v.grid, v)
-    end
-end
-
 """ Set the CPU field `u` data to the GPU field data of `v`. """
-_set!(u::AbstractCPUField, v::AbstractGPUField) = copyto!(parent(u), parent(v))
+set!(u::AbstractCPUField, v::AbstractGPUField) = copyto!(parent(u), parent(v))
 
 """ Set the GPU field `u` data to the CPU field data of `v`. """
-_set!(u::AbstractGPUField, v::AbstractCPUField) = copyto!(parent(u), parent(v))
+set!(u::AbstractGPUField, v::AbstractCPUField) = copyto!(parent(u), parent(v))
 
-_set!(u::AbstractCPUField, v::AbstractCPUField) = parent(u) .= parent(v)
-_set!(u::AbstractGPUField, v::AbstractGPUField) = parent(u) .= parent(v)
+set!(u::AbstractCPUField, v::AbstractCPUField) = parent(u) .= parent(v)
+set!(u::AbstractGPUField, v::AbstractGPUField) = parent(u) .= parent(v)

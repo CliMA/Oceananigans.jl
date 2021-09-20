@@ -1,4 +1,4 @@
-using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy
+using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy, regrid!
 
 """
     correct_field_size(arch, grid, FieldType, Tx, Ty, Tz)
@@ -322,13 +322,13 @@ end
             end
 
             # Coarse-graining
-            set!(coarse_column_regular_c, fine_column_stretched_c)
+            regrid!(coarse_column_regular_c, fine_column_stretched_c)
 
             CUDA.@allowscalar begin
                 @test coarse_column_regular_c[1, 1, 1] ≈ ℓz/Lz * c₁ + (1 - ℓz/Lz) * c₂
             end
 
-            set!(fine_column_regular_c, fine_column_stretched_c)
+            regrid!(fine_column_regular_c, fine_column_stretched_c)
 
             CUDA.@allowscalar begin
                 @test fine_column_regular_c[1, 1, 1] ≈ ℓz/(Lz/2) * c₁ + (1 - ℓz/(Lz/2)) * c₂
@@ -336,7 +336,7 @@ end
             end            
 
             # Fine-graining
-            set!(very_fine_column_stretched_c, fine_column_stretched_c)
+            regrid!(very_fine_column_stretched_c, fine_column_stretched_c)
 
             CUDA.@allowscalar begin
                 @test very_fine_column_stretched_c[1, 1, 1] ≈ c₁
@@ -344,7 +344,7 @@ end
                 @test very_fine_column_stretched_c[1, 1, 3] ≈ c₂
             end
             
-            set!(super_fine_column_stretched_c, fine_column_stretched_c)
+            regrid!(super_fine_column_stretched_c, fine_column_stretched_c)
 
             CUDA.@allowscalar begin
                 @test super_fine_column_stretched_c[1, 1, 1] ≈ c₁
@@ -353,7 +353,7 @@ end
                 @test super_fine_column_stretched_c[1, 1, 4] ≈ c₂
             end
             
-            set!(super_fine_column_regular_c, fine_column_stretched_c)
+            regrid!(super_fine_column_regular_c, fine_column_stretched_c)
             
             CUDA.@allowscalar begin
                 @test super_fine_column_regular_c[1, 1, 1] ≈ c₁
