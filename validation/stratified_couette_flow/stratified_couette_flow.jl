@@ -100,14 +100,14 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     grid = RegularRectilinearGrid(size = (Nxy, Nxy, Nz), extent = (4π*h, 2π*h, 2h))
 
-    Tbcs = FieldBoundaryConditions(top = BoundaryCondition(Value,  Θ_wall),
-                                   bottom = BoundaryCondition(Value, -Θ_wall))
+    Tbcs = FieldBoundaryConditions(top = ValueBoundaryCondition(Θ_wall),
+                                   bottom = ValueBoundaryCondition(-Θ_wall))
 
-    ubcs = FieldBoundaryConditions(top = BoundaryCondition(Value,  U_wall),
-                                   bottom = BoundaryCondition(Value, -U_wall))
+    ubcs = FieldBoundaryConditions(top = ValueBoundaryCondition(U_wall),
+                                   bottom = ValueBoundaryCondition(-U_wall))
 
-    vbcs = FieldBoundaryConditions(top = BoundaryCondition(Value, 0),
-                                   bottom = BoundaryCondition(Value, 0))
+    vbcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0),
+                                   bottom = ValueBoundaryCondition(0))
 
     #####
     ##### Non-dimensional model setup
