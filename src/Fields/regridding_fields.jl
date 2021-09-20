@@ -43,13 +43,12 @@ output_field[1, 1, :]
  0.0
  ```
 """
-
 regrid!(a, b) = regrid!(a, a.grid, b.grid, b)
 
-function regrid!(u, target_grid, source_grid, v)
+function regrid!(a, target_grid, source_grid, b)
     msg = """Regridding
-             $(short_show(v)) on $(short_show(source_grid))
-             to $(short_show(u)) on $(short_show(target_grid))
+             $(short_show(b)) on $(short_show(source_grid))
+             to $(short_show(a)) on $(short_show(target_grid))
              is not supported."""
 
     return throw(ArgumentError(msg))
@@ -59,11 +58,11 @@ end
 ##### Regridding for single column grids
 #####
 
-function regrid!(u, target_grid::SingleColumnGrid, source_grid::SingleColumnGrid, v)
-    arch = architecture(u)
+function regrid!(a, target_grid::SingleColumnGrid, source_grid::SingleColumnGrid, b)
+    arch = architecture(a)
     source_z_faces = znodes(Face, source_grid)
 
-    event = launch!(arch, target_grid, :xy, _regrid!, u, v, target_grid, source_grid, source_z_faces)
+    event = launch!(arch, target_grid, :xy, _regrid!, a, b, target_grid, source_grid, source_z_faces)
     wait(device(arch), event)
     return nothing
 end
