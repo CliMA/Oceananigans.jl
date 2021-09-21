@@ -12,7 +12,7 @@ Returns parameters for an isopycnal skew-symmetric tracer diffusivity with skew 
 `κ_skew` and symmetric diffusivity `κ_symmetric`. Both `κ_skew` and `κ_symmetric` may be
 constants, arrays, fields, or functions of `(x, y, z, t)`.
 """
-IsopycnalSkewSymmetricDiffusivity(FT=Float64; κ_skew=0, κ_symmetric=0) = IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric)
+IsopycnalSkewSymmetricDiffusivity(FT=Float64; κ_skew=0, κ_symmetric=0) = IsopycnalSkewSymmetricDiffusivity(convert_diffusivity(FT, κ_skew), convert_diffusivity(FT, κ_symmetric))
 
 function with_tracers(tracers, closure::ISSD)
     κ_skew = tracer_diffusivities(tracers, closure.κ_skew)
