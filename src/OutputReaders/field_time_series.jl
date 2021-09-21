@@ -6,10 +6,11 @@ using JLD2
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
+using Oceananigans.Grids: interior_parent_indices
 using Oceananigans.Fields: show_location
 
 import Oceananigans: short_show
-import Oceananigans.Fields: Field, set!
+import Oceananigans.Fields: Field, set!, interior
 
 struct FieldTimeSeries{X, Y, Z, K, A, T, D, G, B, χ} <: AbstractDataField{X, Y, Z, A, G, T, 4}
                    data :: D
@@ -183,6 +184,15 @@ parent_indices(idx::Base.Slice{<:IdOffsetRange}) = Colon()
 
 # Is this too surprising?
 Base.parent(vf::ViewField) = view(parent(parent(vf.data)), parent_indices.(vf.data.indices)...)
+
+"Returns a view of `f` that excludes halo points."
+@inline interior(f::FieldTimeSeries{X, Y, Z}) where {X, Y, Z} =
+    view(parent(f.data),
+         interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
+         interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
+         interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz),
+         :)
+
 
 #####
 ##### OnDisk time serieses
