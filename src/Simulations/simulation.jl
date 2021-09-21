@@ -4,13 +4,13 @@ import Oceananigans.Utils: prettytime
 
 default_progress(simulation) = nothing
 
-mutable struct Simulation{ML, DT, SC, SI, ST, WT, DI, OW, CB}
+mutable struct Simulation{ML, DT, SC, ST, DI, OW, CB}
               model :: ML
                  Δt :: DT
       stop_criteria :: SC
-     stop_iteration :: SI
+     stop_iteration :: Float64
           stop_time :: ST
-    wall_time_limit :: WT
+    wall_time_limit :: Float64
         diagnostics :: DI
      output_writers :: OW
           callbacks :: CB
@@ -68,14 +68,17 @@ function Simulation(model; Δt,
    field_to_check_nans = NamedTuple{keys(model_fields) |> first |> tuple}(first(model_fields) |> tuple)
    diagnostics[:nan_checker] = NaNChecker(fields=field_to_check_nans, schedule=IterationInterval(100))
 
-   Δt = convert(eltype(model.grid), Δt)
+   # Convert numbers to floating point; otherwise preserve type (eg for DateTime types)
+   FT = eltype(model.grid)
+   Δt = Δt isa Number ? FT(Δt) : Δt
+   stop_time = stop_time isa Number ? FT(stop_time) : stop_time
 
    return Simulation(model,
                      Δt,
                      stop_criteria,
-                     stop_iteration,
+                     Float64(stop_iteration),
                      stop_time,
-                     wall_time_limit,
+                     Float64(wall_time_limit),
                      diagnostics,
                      output_writers,
                      callbacks,
@@ -86,15 +89,15 @@ end
 
 Base.show(io::IO, s::Simulation) =
     print(io, "Simulation{$(typeof(s.model).name){$(Base.typename(typeof(s.model.architecture))), $(eltype(s.model.grid))}}\n",
-            "├── Model clock: time = $(prettytime(s.model.clock.time)), iteration = $(s.model.clock.iteration)", '\n',
-            "├── Next time step: $(prettytime(s.Δt))", '\n',
-            "├── Elapsed wall time: $(prettytime(s.wall_time))", '\n',
-            "├── Stop time: $(prettytime(s.stop_time))", '\n',
-            "├── Stop iteration : $(s.stop_iteration)", '\n',
-            "├── Wall time limit: $(s.wall_time_limit)", '\n',
-            "├── Stop criteria: $(s.stop_criteria)", '\n',
-            "├── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))", '\n',
-            "└── Output writers: $(ordered_dict_show(s.output_writers, "│"))")
+              "├── Model clock: time = $(prettytime(s.model.clock.time)), iteration = $(s.model.clock.iteration)", '\n',
+              "├── Next time step: $(prettytime(s.Δt))", '\n',
+              "├── Elapsed wall time: $(prettytime(s.wall_time))", '\n',
+              "├── Stop time: $(prettytime(s.stop_time))", '\n',
+              "├── Stop iteration : $(s.stop_iteration)", '\n',
+              "├── Wall time limit: $(s.wall_time_limit)", '\n',
+              "├── Stop criteria: $(s.stop_criteria)", '\n',
+              "├── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))", '\n',
+              "└── Output writers: $(ordered_dict_show(s.output_writers, "│"))")
 
 #####
 ##### Utilities
@@ -127,3 +130,19 @@ prettytime(sim::Simulation) = prettytime(time(sim))
 Return `sim.wall_time` as a prettily formatted string."
 """
 wall_time(sim::Simulation) = prettytime(sim.wall_time)
+
+"""
+    reset!(sim)
+
+Reset `model.clock` to it's initial state and set `sim.initialized=false`.
+"""
+function reset!(sim)
+    sim.model.clock.time = 0.0
+    sim.model.clock.iteration = 0
+    sim.stop_iteration = Inf
+    sim.stop_time = Inf
+    sim.wall_time_limit = Inf
+    sim.initialized = false
+    return nothing
+end
+

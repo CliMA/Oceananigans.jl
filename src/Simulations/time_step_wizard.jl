@@ -55,8 +55,10 @@ and the parameters of `wizard`.
 """
 function adapt_Δt!(wizard, model)
 
-    Δt = min(wizard.cfl * wizard.cell_advection_timescale(model),           # advective
-             wizard.diffusive_cfl * wizard.cell_diffusion_timescale(model)) # diffusive
+    advective_Δt = wizard.cfl * wizard.cell_advection_timescale(model)
+    diffusive_Δt = wizard.diffusive_cfl * wizard.cell_diffusion_timescale(model)
+
+    Δt = min(advective_Δt, diffusive_Δt)
 
     # Put the kibosh on if needed
     Δt = min(wizard.max_change * wizard.Δt, Δt)

@@ -74,6 +74,18 @@ end
 
 appointments(sim) = Iterators.flatten(zip(values(sim.output_writers), values(sim.callbacks)))
 
+function schedule_aligned_Δt(sim, aligned_Δt)
+    clock = sim.model.clock
+
+    for app in appointments(sim)
+        @show app app.schedule
+        app.schedule isa TimeInterval && @show app.schedule.previous_actuation_time
+        aligned_Δt = aligned_time_step(app.schedule, clock, aligned_Δt)
+    end
+
+    return aligned_Δt
+end
+
 """
     aligned_time_step(sim, Δt)
 
@@ -86,10 +98,8 @@ function aligned_time_step(sim::Simulation, Δt)
     aligned_Δt = Δt
 
     # Align time step with output writing and callback execution
-    for app in appointments(sim)
-        aligned_Δt = aligned_time_step(app.schedule, clock, aligned_Δt)
-    end
-
+    aligned_Δt = schedule_aligned_Δt(sim, aligned_Δt)
+    
     # Align time step with simulation stop time
     aligned_Δt = min(aligned_Δt, unit_time(sim.stop_time - clock.time))
 

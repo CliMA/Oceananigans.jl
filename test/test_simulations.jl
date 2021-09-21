@@ -1,8 +1,8 @@
 using Oceananigans.Simulations:
     stop, iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
-    TimeStepWizard, adapt_Δt!
+    TimeStepWizard, adapt_Δt!, reset!
 
-function run_time_step_wizard_tests(arch)
+function wall_time_step_wizard_tests(arch)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid)
 
@@ -56,14 +56,10 @@ function run_time_step_wizard_tests(arch)
     return nothing
 end
 
-function run_basic_simulation_tests(arch, Δt)
+function run_basic_simulation_tests(arch)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid)
-
-    model.clock.time = 0.0
-    model.clock.iteration = 0
-
-    simulation = Simulation(model, Δt=Δt, stop_iteration=1)
+    simulation = Simulation(model, Δt=3, stop_iteration=1)
 
     # Just make sure we can construct a simulation without any errors.
     @test simulation isa Simulation
@@ -80,10 +76,9 @@ function run_basic_simulation_tests(arch, Δt)
     @test iteration_limit_exceeded(simulation) == true
     @test stop(simulation) == true
 
-    t = Δt isa Number ? 3 : 5
-    @test model.clock.time ≈ t
+    @test model.clock.time ≈ simulation.Δt
     @test model.clock.iteration == 1
-    @test simulation.run_time > 0
+    @test simulation.wall_time > 0
 
     @test stop_time_exceeded(simulation) == false
     simulation.stop_time = 1e-12
@@ -94,18 +89,43 @@ function run_basic_simulation_tests(arch, Δt)
     @test wall_time_limit_exceeded(simulation) == true
 
     # Test that simulation stops at `stop_iteration`.
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=3)
+    reset!(simulation)
+    simulation.stop_iteration = 3
     run!(simulation)
 
     @test simulation.model.clock.iteration == 3
 
     # Test that simulation stops at `stop_time`.
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
-    simulation = Simulation(model, Δt=Δt, stop_time=20.20)
+    reset!(simulation)
+    simulation.stop_time = 20.20
     run!(simulation)
 
     @test simulation.model.clock.time ≈ 20.20
+
+    # Test that we can run a simulation with TimeStepWizard
+    reset!(simulation)
+    simulation.stop_iteration = 2
+  
+    wizard = TimeStepWizard(cfl=0.1)
+    simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(1))
+
+    run!(simulation)
+
+    @test simulation.callbacks[:wizard].func isa TimeStepWizard
+
+    # Test time-step alignment with callbacks
+    reset!(simulation)
+    simulation.stop_time = 2.0
+    simulation.Δt = 1.0
+
+    called_at = Float64[]
+    schedule = TimeInterval(0.31)
+    capture_call_time(sim) = push!(called_at, sim.model.clock.time)
+    simulation.callbacks[:tester] = Callback(capture_call_time, schedule)
+    run!(simulation)
+
+    @show called_at
+    @test all(called_at .== 0.0:schedule.interval:simulation.stop_time)
 
     return nothing
 end
@@ -115,7 +135,6 @@ function run_simulation_date_tests(arch, start_time, stop_time, Δt)
 
     clock = Clock(time=start_time)
     model = NonhydrostaticModel(architecture=arch, grid=grid, clock=clock)
-
     simulation = Simulation(model, Δt=Δt, stop_time=stop_time)
 
     @test model.clock.time == start_time
@@ -132,16 +151,14 @@ end
 @testset "Time step wizard" begin
     for arch in archs
         @info "Testing time step wizard [$(typeof(arch))]..."
-        run_time_step_wizard_tests(arch)
+        wall_time_step_wizard_tests(arch)
     end
 end
 
 @testset "Simulations" begin
     for arch in archs
         @info "Testing simulations [$(typeof(arch))]..."
-        for Δt in (3, TimeStepWizard(Δt=5.0))
-            run_basic_simulation_tests(arch, Δt)
-        end
+        run_basic_simulation_tests(arch)
 
         @info "Testing simulations with DateTime [$(typeof(arch))]..."
         run_simulation_date_tests(arch, 0.0, 1.0, 0.3)

@@ -627,10 +627,12 @@ function test_netcdf_output_alignment(arch)
     run!(simulation)
 
     Dataset(test_filename1, "r") do ds
+        @show ds["time"][:] Array(0:7.3:40)
         @test all(ds["time"] .== 0:7.3:40)
     end
 
     Dataset(test_filename2, "r") do ds
+        @show ds["time"][:] Array(0:3.0:40)
         @test all(ds["time"] .== 0:3.0:40)
     end
 
