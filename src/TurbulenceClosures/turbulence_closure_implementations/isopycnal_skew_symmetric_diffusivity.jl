@@ -5,6 +5,13 @@ end
 
 const ISSD = IsopycnalSkewSymmetricDiffusivity
 
+"""
+    IsopycnalSkewSymmetricDiffusivity([FT=Float64;] κ_skew=0, κ_symmetric=0)
+
+Returns parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
+`κ_skew` and symmetric diffusivity `κ_symmetric`. Both `κ_skew` and `κ_symmetric` may be
+constants, arrays, fields, or functions of `(x, y, z, t)`.
+"""
 IsopycnalSkewSymmetricDiffusivity(FT=Float64; κ_skew=0, κ_symmetric=0) = IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric)
 
 function with_tracers(tracers, closure::ISSD)
