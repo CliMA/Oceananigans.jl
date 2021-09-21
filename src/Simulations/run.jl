@@ -143,9 +143,10 @@ end
 """ Step `sim`ulation forward by one time step. """
 function time_step!(sim::Simulation)
 
-    !(sim.initialized) && @stopwatch(sim, initialize_simulation!(sim))
+    initialization_step = !(sim.initialized)
 
-    if sim.model.clock.iteration == 0 
+    if initialization_step 
+        @stopwatch(sim, initialize_simulation!(sim))
         start_time = time_ns()
         @info "Executing first time step..."
     end
@@ -155,7 +156,7 @@ function time_step!(sim::Simulation)
         time_step!(sim.model, Δt)
     end
 
-    if sim.model.clock.iteration == 1
+    if initialization_step
         elapsed_first_step_time = prettytime(1e-9 * (time_ns() - start_time))
         @info "    ... first time step complete ($elapsed_first_step_time)."
     end
