@@ -1,4 +1,4 @@
-# tracersomponents of the Redi rotation tensor
+# tracer components of the Redi rotation tensor
 
 @inline function isopycnal_rotation_tensor_xz_fcc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers) where FT
     bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
