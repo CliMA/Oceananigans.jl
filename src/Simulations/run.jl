@@ -155,7 +155,7 @@ function time_step!(sim::Simulation)
         time_step!(sim.model, Δt)
     end
 
-    if clock.iteration == 1
+    if sim.model.clock.iteration == 1
         elapsed_first_step_time = prettytime(1e-9 * (time_ns() - start_time))
         @info "    ... first time step complete ($elapsed_first_step_time)."
     end
