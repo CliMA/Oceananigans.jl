@@ -30,7 +30,7 @@ else
     wizard = Δt_min / 3
 end
 
-stop_time = 20days # running for one day did not reveal bug
+stop_time = 200days # running for one day did not reveal bug
 
 # domain
 const Lx = 250kilometers # east-west extent [m]
@@ -39,7 +39,7 @@ const Lz = 1kilometers    # depth [m]
 
 Nx = 32*4 # * 4   #  64 * 2
 Ny = 64*4 # * 4 #  128 * 2
-Nz = 8*4 #  8 * 4
+Nz = 8*8 #  8 * 4
 
 s = 1.2 # stretching factor
 z_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
