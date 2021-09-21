@@ -199,9 +199,14 @@ Planes = (FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane)
 
 BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipation(FT, Cb=1.0)
 
-Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
-            AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
-            SmagorinskyLilly, AnisotropicMinimumDissipation, BuoyancyModifiedAnisotropicMinimumDissipation,
+Closures = (IsotropicDiffusivity,
+            AnisotropicDiffusivity,
+            AnisotropicBiharmonicDiffusivity,
+            TwoDimensionalLeith,
+            IsopycnalSkewSymmetricDiffusivity,
+            SmagorinskyLilly,
+            AnisotropicMinimumDissipation,
+            BuoyancyModifiedAnisotropicMinimumDissipation,
             CATKEVerticalDiffusivity)
 
 advection_schemes = (nothing,

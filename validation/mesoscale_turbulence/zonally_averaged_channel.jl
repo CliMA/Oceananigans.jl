@@ -3,7 +3,7 @@
 
 ENV["GKSwstype"] = "100"
 
-pushfirst!(LOAD_PATH, @__DIR__)
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", ".."))
 
 using Printf
 using Statistics
@@ -95,7 +95,6 @@ b_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc)
 u_bcs = FieldBoundaryConditions(top = u_stress_bc, bottom = u_drag_bc)
 v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
 
-
 #####
 ##### Coriolis
 #####
@@ -110,7 +109,6 @@ coriolis = BetaPlane(FT, f₀ = f, β = β)
 
 @inline initial_buoyancy(z, p) = p.ΔB * (exp(z / p.h) - exp(-p.Lz / p.h)) / (1 - exp(-p.Lz / p.h))
 @inline mask(y, p) = max(0.0, y - p.y_sponge) / (Ly - p.y_sponge)
-
 
 @inline function buoyancy_relaxation(i, j, k, grid, clock, model_fields, p)
     timescale = p.λt
@@ -130,12 +128,12 @@ Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 κz = 0.5e-5 # [m²/s] vertical diffusivity
 νz = 3e-4   # [m²/s] vertical viscocity
 
-closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz)
-
+horizontal_diffusivity = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz)
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)
 
+gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew=0.3)
 
 #####
 ##### Model building
@@ -151,12 +149,10 @@ model = HydrostaticFreeSurfaceModel(architecture = arch,
                                     tracer_advection = WENO5(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = coriolis,
-                                    closure = (closure, convective_adjustment),
+                                    closure = (horizontal_diffusivity, convective_adjustment, gent_mcwilliams_diffusivity),
                                     tracers = :b,
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
-                                    forcing = (b=Fb,),
-                                    )
-
+                                    forcing = (; b=Fb))
 
 #=
 model = NonhydrostaticModel(architecture = arch,

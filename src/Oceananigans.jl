@@ -46,11 +46,14 @@ export
     UniformStokesDrift,
 
     # Turbulence closures
-    IsotropicDiffusivity, AnisotropicDiffusivity,
+    IsotropicDiffusivity,
+    AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
-    SmagorinskyLilly, AnisotropicMinimumDissipation,
+    SmagorinskyLilly,
+    AnisotropicMinimumDissipation,
     HorizontallyCurvilinearAnisotropicDiffusivity,
     ConvectiveAdjustmentVerticalDiffusivity,
+    IsopycnalSkewSymmetricDiffusivity,
 
     # Lagrangian particle tracking
     LagrangianParticles,

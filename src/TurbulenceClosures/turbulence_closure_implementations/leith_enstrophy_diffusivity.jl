@@ -87,39 +87,6 @@ end
 ##### Abstract Smagorinsky functionality
 #####
 
-# Components of the Redi rotation tensor
-
-@inline function Redi_tensor_xz_fcc(i, j, k, grid::AbstractGrid{FT}, buoyancy, C) where FT
-    bx = ∂x_b(i, j, k, grid, buoyancy, C)
-    bz = ℑxzᶠᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, C)
-    return ifelse(bx == 0 && bz == 0, zero(FT), - bx / bz)
-end
-
-@inline function Redi_tensor_xz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, C) where FT
-    bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, C)
-    bz = ∂z_b(i, j, k, grid, buoyancy, C)
-    return ifelse(bx == 0 && bz == 0, zero(FT), - bx / bz)
-end
-
-@inline function Redi_tensor_yz_cfc(i, j, k, grid::AbstractGrid{FT}, buoyancy, C) where FT
-    by = ∂y_b(i, j, k, grid, buoyancy, C)
-    bz = ℑyzᵃᶠᶜ(i, j, k, grid, ∂z_b, buoyancy, C)
-    return ifelse(by == 0 && bz == 0, zero(FT), - by / bz)
-end
-
-@inline function Redi_tensor_yz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, C) where FT
-    by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, C)
-    bz = ∂z_b(i, j, k, grid, buoyancy, C)
-    return ifelse(by == 0 && bz == 0, zero(FT), - by / bz)
-end
-
-@inline function Redi_tensor_zz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, C) where FT
-    bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, C)
-    by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, C)
-    bz = ∂z_b(i, j, k, grid, buoyancy, C)
-    return ifelse(by == 0 && bx == 0 && bz == 0, zero(FT), (bx^2 + by^2) / bz^2)
-end
-
 # Diffusive fluxes for Leith diffusivities
 
 @inline function diffusive_flux_x(i, j, k, grid, closure::TwoDimensionalLeith,
@@ -135,7 +102,7 @@ end
     ∂x_c = ∂xᶠᵃᵃ(i, j, k, grid, c)
     ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
 
-    R₁₃ = Redi_tensor_xz_fcc(i, j, k, grid, buoyancy, C)
+    R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, C)
 
     return - νₑⁱʲᵏ * (                 C_Redi * ∂x_c
                       + (C_Redi - C_GM) * R₁₃ * ∂z_c)
@@ -154,7 +121,7 @@ end
     ∂y_c = ∂yᵃᶠᵃ(i, j, k, grid, c)
     ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
 
-    R₂₃ = Redi_tensor_yz_cfc(i, j, k, grid, buoyancy, C)
+    R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, C)
     return - νₑⁱʲᵏ * (                  C_Redi * ∂y_c
                              + (C_Redi - C_GM) * R₂₃ * ∂z_c)
 end
@@ -173,9 +140,9 @@ end
     ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵃᶠᵃ, c)
     ∂z_c = ∂zᵃᵃᶠ(i, j, k, grid, c)
 
-    R₃₁ = Redi_tensor_xz_ccf(i, j, k, grid, buoyancy, C)
-    R₃₂ = Redi_tensor_yz_ccf(i, j, k, grid, buoyancy, C)
-    R₃₃ = Redi_tensor_zz_ccf(i, j, k, grid, buoyancy, C)
+    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, C)
+    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, C)
+    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, C)
 
     return - νₑⁱʲᵏ * (
           (C_Redi + C_GM) * R₃₁ * ∂x_c
