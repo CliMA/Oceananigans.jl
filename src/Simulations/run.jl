@@ -145,7 +145,7 @@ function time_step!(sim::Simulation)
 
     !(sim.initialized) && @stopwatch(sim, initialize_simulation!(sim))
 
-    if clock.iteration == 0 
+    if sim.model.clock.iteration == 0 
         start_time = time_ns()
         @info "Executing first time step..."
     end
@@ -169,9 +169,9 @@ function time_step!(sim::Simulation)
     return nothing
 end
 
-evaluate_diagnostics!(sim)    = [diag.schedule(sim.model)     && run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
+evaluate_diagnostics!(sim)    = [diag.schedule(sim.model)     && run_diagnostic!(diag, sim.model) for diag     in values(sim.diagnostics)]
 evaluate_callbacks!(sim)      = [callback.schedule(sim.model) && callback(sim)                    for callback in values(sim.callbacks)]
-evaluate_output_writers!(sim) = [writer.schedule(sim.model)   && write_output!(writer, sim.model) for writer in values(sim.output_writers)]
+evaluate_output_writers!(sim) = [writer.schedule(sim.model)   && write_output!(writer, sim.model) for writer   in values(sim.output_writers)]
 
 #####
 ##### Simulation initialization
