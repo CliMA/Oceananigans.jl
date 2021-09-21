@@ -14,8 +14,7 @@ Regrids field `b` into the grid of field `a`. Currently only regrids in the vert
 Example
 =======
 
-Generate a horizontally-periodic grid with cell interfaces stretched
-hyperbolically near the top:
+Generate a tracer field on a vertically stretched grid and regrid it on a regular grid.
 
 ```jldoctest
 using Oceananigans
