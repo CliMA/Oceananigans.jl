@@ -5,7 +5,7 @@ end
 
 const ISSD = IsopycnalSkewSymmetricDiffusivity
 
-IsopycnalSkewSymmetricDiffusivity(; κ_skew=0, κ_symmetric=0) = IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric)
+IsopycnalSkewSymmetricDiffusivity(FT=Float64; κ_skew=0, κ_symmetric=0) = IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric)
 
 function with_tracers(tracers, closure::ISSD)
     κ_skew = tracer_diffusivities(tracers, closure.κ_skew)
