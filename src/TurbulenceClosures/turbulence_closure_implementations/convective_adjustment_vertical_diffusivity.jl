@@ -19,7 +19,11 @@ struct ConvectiveAdjustmentVerticalDiffusivity{TD, CK, CN, BK, BN} <: AbstractTu
 end
                                        
 """
-    ConvectiveAdjustmentVerticalDiffusivity([FT=Float64;] convective_κz=0, convective_νz=0, background_κz=0, background_νz=0,
+    ConvectiveAdjustmentVerticalDiffusivity([FT=Float64;]
+                                            convective_κz = 0,
+                                            convective_νz = 0,
+                                            background_κz = 0,
+                                            background_νz = 0,
                                             time_discretization = VerticallyImplicitTimeDiscretization())
 
 The one positional argument determines the floating point type of the free parameters
@@ -28,19 +32,19 @@ of `ConvectiveAdjustmentVerticalDiffusivity`. The default is `Float64`.
 Keyword arguments
 =================
 
-* `convective_κz` : Vertical tracer diffusivity in regions with unstable buoyancy gradients. Either
+* `convective_κz` : Vertical tracer diffusivity in regions with negative (unstable) buoyancy gradients. Either
                     a single number, function, array, field, or tuple of diffusivities for each tracer.
 
-* `background_κz` : Vertical tracer diffusivity in regions with stable buoyancy gradients.
+* `background_κz` : Vertical tracer diffusivity in regions with zero or positive (stable) buoyancy gradients.
 
-* `convective_νz` : Vertical viscosity in regions with unstable buoyancy gradients. Either
+* `convective_νz` : Vertical viscosity in regions with negative (unstable) buoyancy gradients. Either
                     a number, function, array, or field.
 
-* `background_κz` : Vertical viscosity in regions with stable buoyancy gradients.
+* `background_κz` : Vertical viscosity in regions with zero or positive (stable) buoyancy gradients.
 
 * `time_discretization` : Either `ExplicitTimeDiscretization` or `VerticallyImplicitTimeDiscretization`.
 """
-function ConvectiveAdjustmentVerticalDiffusivity(FT=Float64;
+function ConvectiveAdjustmentVerticalDiffusivity(FT = Float64;
                                                  convective_κz = zero(FT),
                                                  convective_νz = zero(FT),
                                                  background_κz = zero(FT),
@@ -57,20 +61,18 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 ##### Diffusivity field utilities
 #####
 
-function with_tracers(tracers, closure::ConvectiveAdjustmentVerticalDiffusivity{TD}) where TD
-    background_κz = tracer_diffusivities(tracers, closure.background_κz)
-    convective_κz = tracer_diffusivities(tracers, closure.convective_κz)
-    return ConvectiveAdjustmentVerticalDiffusivity{TD}(convective_κz,
-                                                       closure.convective_νz,
-                                                       background_κz,
-                                                       closure.background_νz)
-end
+with_tracers(tracers, closure::ConvectiveAdjustmentVerticalDiffusivity{TD}) where TD =
+    ConvectiveAdjustmentVerticalDiffusivity{TD}(closure.convective_κz,
+                                                closure.convective_νz,
+                                                closure.background_κz,
+                                                closure.background_νz)
 
-
+# Note: computing diffusivities at cell centers for now.
 function DiffusivityFields(arch, grid, tracer_names, bcs, closure::CAVD)
-    data = new_data(Bool, arch, grid, (Center, Center, Face))
-    stable_buoyancy_gradient = Field(Center, Center, Face, arch, grid, nothing, data)
-    return (; stable_buoyancy_gradient)
+    #data = new_data(Bool, arch, grid, (Center, Center, Center))
+    κ = Field(Center, Center, Center, arch, grid)
+    ν = Field(Center, Center, Center, arch, grid)
+    return (; κ, ν)
 end       
 
 function calculate_diffusivities!(diffusivities, closure::CAVD, model)
@@ -81,7 +83,8 @@ function calculate_diffusivities!(diffusivities, closure::CAVD, model)
     buoyancy = model.buoyancy
 
     event = launch!(arch, grid, :xyz,
-                    compute_stability!, diffusivities, grid, tracers, buoyancy,
+                    #compute_stability!, diffusivities, grid, closure, tracers, buoyancy,
+                    compute_convective_adjustment_diffusivities!, diffusivities, grid, closure, tracers, buoyancy,
                     dependencies = device_event(arch))
 
     wait(device(arch), event)
@@ -89,136 +92,109 @@ function calculate_diffusivities!(diffusivities, closure::CAVD, model)
     return nothing
 end
 
-@inline is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy) = ∂z_b(i, j, k, grid, buoyancy, tracers) > 0
+@inline is_unstableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy) = ∂z_b(i, j, k, grid, buoyancy, tracers) < 0
 
-@kernel function compute_stability!(diffusivities, grid, tracers, buoyancy)
+@kernel function compute_convective_adjustment_diffusivities!(diffusivities, grid, closure, tracers, buoyancy)
     i, j, k, = @index(Global, NTuple)
-    @inbounds  diffusivities.stable_buoyancy_gradient[i, j, k] = is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
+
+    unstable_cell = is_unstableᶜᶜᶠ(i, j, k+1, grid, tracers, buoyancy) | 
+                    is_unstableᶜᶜᶠ(i, j, k,   grid, tracers, buoyancy)
+
+    @inbounds diffusivities.κ[i, j, k] = ifelse(unstable_cell,
+                                                closure.convective_κz,
+                                                closure.background_κz)
+
+    @inbounds diffusivities.ν[i, j, k] = ifelse(unstable_cell,
+                                                closure.convective_νz,
+                                                closure.background_νz)
 end
+
+#=
+@kernel function compute_stability!(diffusivities, grid, closure, tracers, buoyancy)
+    i, j, k, = @index(Global, NTuple)
+    @inbounds diffusivities.unstable_buoyancy_gradient[i, j, k] = is_unstableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
+end
+=#
 
 #####
 ##### Fluxes
 #####
 
-# u
-@inline function νᶠᶜᶠ(i, j, k, grid, clock, closure::CAVD, stable_buoyancy_gradient)
-    @inbounds stableᶠᶜᶠ = stable_buoyancy_gradient[i, j, k] || stable_buoyancy_gradient[i-1, j, k]
+const VITD = VerticallyImplicitTimeDiscretization
+const ATD = AbstractTimeDiscretization
 
-    ν = ifelse(stableᶠᶜᶠ,
-               νᶠᶜᶠ(i, j, k, grid, clock, closure.background_νz),
-               νᶠᶜᶠ(i, j, k, grid, clock, closure.convective_νz))
+@inline viscous_flux_ux(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_uy(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vx(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vy(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wx(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wy(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
 
-    return ν
-end
+@inline diffusive_flux_x(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
+@inline diffusive_flux_y(i, j, k, grid, ::ATD, closure::CAVD, args...) = zero(eltype(grid))
 
-@inline function viscous_flux_uz(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, tracers, buoyancy)
-    ν = νᶠᶜᶠ(i, j, k, grid, clock, closure, diffusivities.stable_buoyancy_gradient)
-    return - ν * ∂zᵃᵃᶠ(i, j, k, grid, velocities.u)
-end
+@inline viscous_flux_ux(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_uy(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vx(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_vy(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wx(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
+@inline viscous_flux_wy(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
 
-# v
-@inline function νᶜᶠᶠ(i, j, k, grid, clock, closure::CAVD, stable_buoyancy_gradient)
-    @inbounds stableᶜᶠᶠ = stable_buoyancy_gradient[i, j, k] || stable_buoyancy_gradient[i, j-1, k]
+@inline diffusive_flux_x(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
+@inline diffusive_flux_y(i, j, k, grid, closure::CAVD, args...) = zero(eltype(grid))
 
-    ν = ifelse(stableᶜᶠᶠ,
-               νᶜᶠᶠ(i, j, k, grid, clock, closure.background_νz),
-               νᶜᶠᶠ(i, j, k, grid, clock, closure.convective_νz))
+#####
+##### Diffusivity
+#####
 
-    return ν
-end
+const etd = ExplicitTimeDiscretization()
 
-@inline function viscous_flux_vz(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, tracers, buoyancy)
-    ν = νᶜᶠᶠ(i, j, k, grid, clock, closure, diffusivities.stable_buoyancy_gradient)
-    return - ν * ∂zᵃᵃᶠ(i, j, k, grid, velocities.v)
-end
+@inline z_boundary_adj(k, grid) = k == 1 | k == grid.Nz+1
 
-# w
-@inline function νᶜᶜᶜ(i, j, k, grid, clock, closure::CAVD, stable_buoyancy_gradient)
-    @inbounds stableᶜᶜᶜ = stable_buoyancy_gradient[i, j, k] || stable_buoyancy_gradient[i, j, k+1]
+@inline z_diffusivity(closure::CAVD, c_idx, diffusivities, args...) = diffusivities.κ
 
-    ν = ifelse(stableᶜᶜᶜ,
-               νᶜᶜᶜ(i, j, k, grid, clock, closure.background_νz),
-               νᶜᶜᶜ(i, j, k, grid, clock, closure.convective_νz))
-
-    return ν
-end
-
-@inline function viscous_flux_wz(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, tracers, buoyancy)
-    ν = νᶜᶜᶜ(i, j, k, grid, clock, closure, diffusivities.stable_buoyancy_gradient)
-    return - ν * ∂zᵃᵃᶜ(i, j, k, grid, velocities.w)
-end
-
-# tracers
-@inline function κᶜᶜᶠ(i, j, k, grid, clock, closure::CAVD, stable_buoyancy_gradient, ::Val{tracer_index}) where tracer_index
-    @inbounds stableᶜᶜᶠ = stable_buoyancy_gradient[i, j, k]
-
-    background_κz = closure.background_κz[tracer_index]
-    convective_κz = closure.convective_κz[tracer_index]
-
-    κ = ifelse(stableᶜᶜᶠ,
-               κᶜᶜᶠ(i, j, k, grid, clock, background_κz),
-               κᶜᶜᶠ(i, j, k, grid, clock, convective_κz))
-
-    return κ
-end
-
-@inline function diffusive_flux_z(i, j, k, grid, closure::CAVD, c, tracer_index, clock, diffusivities, tracers, buoyancy, velocities)
-    κ = κᶜᶜᶠ(i, j, k, grid, clock, closure, diffusivities.stable_buoyancy_gradient, tracer_index)
+@inline function diffusive_flux_z(i, j, k, grid, closure::CAVD, c, tracer_index, clock, diffusivities, args...)
+    κ = κᶜᶜᶠ(i, j, k, grid, clock, diffusivities.κ)
     return - κ * ∂zᵃᵃᶠ(i, j, k, grid, c)
 end
 
+@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::CAVD, args...)
+    explicit_flux_z = diffusive_flux_z(i, j, k, grid, etd, closure, args...)
+    return ifelse(z_boundary_adj(k, grid), explicit_flux_z, zero(eltype(grid)))
+end
+ 
 #####
-##### Support for VerticallyImplicitTimeDiscretization
+##### Viscosity
 #####
 
-struct ConvectiveAdjustmentCoeff{I, C, U}
-    closure :: C
-    stable_buoyancy_gradient :: U
-    function ConvectiveAdjustmentCoeff{I}(closure::C, stable_buoyancy_gradient::U) where {I, C, U}
-        return new{I, C, U}(closure, stable_buoyancy_gradient)
-    end
+@inline z_viscosity(closure::CAVD, diffusivities, args...) = diffusivities.ν
+
+@inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::CAVD, args...)
+    explicit_flux_z = viscous_flux_uz(i, j, k, grid, etd, closure, args...)
+    return ifelse(z_boundary_adj(k, grid), explicit_flux_z, zero(eltype(grid)))
 end
 
-@inline z_viscosity(closure::CAVD, diffusivities, args...) =
-    ConvectiveAdjustmentCoeff{Nothing}(closure, diffusivities.stable_buoyancy_gradient)
-
-@inline z_diffusivity(closure::CAVD, ::Val{tracer_index}, diffusivities, args...) where tracer_index =
-    ConvectiveAdjustmentCoeff{tracer_index}(closure, diffusivities.stable_buoyancy_gradient)
-
-@inline νᶜᶜᶜ(i, j, k, grid, clock, c::ConvectiveAdjustmentCoeff) = νᶜᶜᶜ(i, j, k, grid, clock, c.closure, c.stable_buoyancy_gradient)
-@inline νᶠᶠᶜ(i, j, k, grid, clock, c::ConvectiveAdjustmentCoeff) = νᶠᶠᶜ(i, j, k, grid, clock, c.closure, c.stable_buoyancy_gradient)
-@inline νᶠᶜᶠ(i, j, k, grid, clock, c::ConvectiveAdjustmentCoeff) = νᶠᶜᶠ(i, j, k, grid, clock, c.closure, c.stable_buoyancy_gradient)
-@inline νᶜᶠᶠ(i, j, k, grid, clock, c::ConvectiveAdjustmentCoeff) = νᶜᶠᶠ(i, j, k, grid, clock, c.closure, c.stable_buoyancy_gradient)
-@inline κᶜᶜᶠ(i, j, k, grid, clock, c::ConvectiveAdjustmentCoeff{I}) where I = κᶜᶜᶠ(i, j, k, grid, clock, c.closure, c.stable_buoyancy_gradient, Val(I))
-
-const VITD = VerticallyImplicitTimeDiscretization
-# const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
-
-@inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::CAVD, args...) = zero(eltype(grid))
-@inline viscous_flux_uz(i, j, k, grid, ::VITD, closure::CAVD, args...) = zero(eltype(grid))
-@inline viscous_flux_vz(i, j, k, grid, ::VITD, closure::CAVD, args...) = zero(eltype(grid))
-
-@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CAVD, args...) where FT
-    return ifelse(k == 1 || k == grid.Nz+1, 
-                  diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
-                  zero(FT))
+@inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::CAVD, args...)
+    explicit_flux_z = viscous_flux_vz(i, j, k, grid, etd, closure, args...)
+    return ifelse(z_boundary_adj(k, grid), explicit_flux_z, zero(eltype(grid)))
 end
 
-@inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CAVD, args...) where FT
-    return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
-                  zero(FT))
+@inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::CAVD, args...)
+    explicit_flux_z = viscous_flux_wz(i, j, k, grid, etd, closure, args...)
+    return ifelse(z_boundary_adj(k, grid), explicit_flux_z, zero(eltype(grid)))
 end
 
-@inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CAVD, args...) where FT
-    return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
-                  zero(FT))
+@inline function viscous_flux_uz(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, args...)
+    ν = νᶠᶜᶠ(i, j, k, grid, clock, diffusivities.ν)
+    return - ν * ∂zᵃᵃᶠ(i, j, k, grid, velocities.u)
 end
 
-@inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CAVD, args...) where FT
-    return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
-                  zero(FT))
+@inline function viscous_flux_vz(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, args...)
+    ν = νᶜᶠᶠ(i, j, k, grid, clock, diffusivities.ν)
+    return - ν * ∂zᵃᵃᶠ(i, j, k, grid, velocities.v)
 end
 
+@inline function viscous_flux_wz(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, args...)
+    ν = νᶜᶜᶜ(i, j, k, grid, clock, diffusivities.ν)
+    return - ν * ∂zᵃᵃᶜ(i, j, k, grid, velocities.w)
+end

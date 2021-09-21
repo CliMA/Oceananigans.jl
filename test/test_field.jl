@@ -1,4 +1,4 @@
-using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy
+using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy, regrid!
 
 """
     correct_field_size(arch, grid, FieldType, Tx, Ty, Tz)
@@ -286,6 +286,81 @@ end
                     f = ReducedField(X, Y, Z, arch, grid, dims=dims)
                     run_similar_field_tests(f)
                 end
+            end
+        end
+    end
+
+    @testset "Regridding" begin
+        @info "  Testing field regridding..."
+
+        Lz = 1.1
+        ℓz = 0.5
+        topology = (Flat, Flat, Bounded)
+        
+        for arch in archs
+            coarse_column_regular_grid       = RegularRectilinearGrid(size=1, z=(0, Lz), topology=topology)
+            fine_column_regular_grid         = RegularRectilinearGrid(size=2, z=(0, Lz), topology=topology)
+            fine_column_stretched_grid       = VerticallyStretchedRectilinearGrid(architecture=arch, size=2, z_faces = [0, ℓz, Lz], topology=topology)
+            very_fine_column_stretched_grid  = VerticallyStretchedRectilinearGrid(architecture=arch, size=3, z_faces = [0, 0.2, 0.6, Lz], topology=topology)
+            super_fine_column_stretched_grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=4, z_faces = [0, 0.1, 0.3, 0.65, Lz], topology=topology)
+            super_fine_column_regular_grid   = RegularRectilinearGrid(size=5, z=(0, Lz), topology=topology)
+            
+            coarse_column_regular_c       = CenterField(arch, coarse_column_regular_grid)
+            fine_column_regular_c         = CenterField(arch, fine_column_regular_grid)
+            fine_column_stretched_c       = CenterField(arch, fine_column_stretched_grid)
+            very_fine_column_stretched_c  = CenterField(arch, very_fine_column_stretched_grid)
+            super_fine_column_stretched_c = CenterField(arch, super_fine_column_stretched_grid)
+            super_fine_column_regular_c   = CenterField(arch, super_fine_column_regular_grid)
+
+            # we initialize an array on the `fine_column_stretched_grid`, regrid it to the rest
+            # grids, and check whether we get the anticipated results
+            c₁ = 1
+            c₂ = 3
+            CUDA.@allowscalar begin
+                fine_column_stretched_c[1, 1, 1] = c₁
+                fine_column_stretched_c[1, 1, 2] = c₂
+            end
+
+            # Coarse-graining
+            regrid!(coarse_column_regular_c, fine_column_stretched_c)
+
+            CUDA.@allowscalar begin
+                @test coarse_column_regular_c[1, 1, 1] ≈ ℓz/Lz * c₁ + (1 - ℓz/Lz) * c₂
+            end
+
+            regrid!(fine_column_regular_c, fine_column_stretched_c)
+
+            CUDA.@allowscalar begin
+                @test fine_column_regular_c[1, 1, 1] ≈ ℓz/(Lz/2) * c₁ + (1 - ℓz/(Lz/2)) * c₂
+                @test fine_column_regular_c[1, 1, 2] ≈ c₂
+            end            
+
+            # Fine-graining
+            regrid!(very_fine_column_stretched_c, fine_column_stretched_c)
+
+            CUDA.@allowscalar begin
+                @test very_fine_column_stretched_c[1, 1, 1] ≈ c₁
+                @test very_fine_column_stretched_c[1, 1, 2] ≈ (ℓz - 0.2)/0.4 * c₁ + (0.6 - ℓz)/0.4 * c₂
+                @test very_fine_column_stretched_c[1, 1, 3] ≈ c₂
+            end
+            
+            regrid!(super_fine_column_stretched_c, fine_column_stretched_c)
+
+            CUDA.@allowscalar begin
+                @test super_fine_column_stretched_c[1, 1, 1] ≈ c₁
+                @test super_fine_column_stretched_c[1, 1, 2] ≈ c₁
+                @test super_fine_column_stretched_c[1, 1, 3] ≈ (ℓz - 0.3)/0.35 * c₁ + (0.65 - ℓz)/0.35 * c₂
+                @test super_fine_column_stretched_c[1, 1, 4] ≈ c₂
+            end
+            
+            regrid!(super_fine_column_regular_c, fine_column_stretched_c)
+            
+            CUDA.@allowscalar begin
+                @test super_fine_column_regular_c[1, 1, 1] ≈ c₁
+                @test super_fine_column_regular_c[1, 1, 2] ≈ c₁
+                @test super_fine_column_regular_c[1, 1, 3] ≈ (3 - ℓz/(Lz/5)) * c₂ + (-2 + ℓz/(Lz/5)) * c₁
+                @test super_fine_column_regular_c[1, 1, 4] ≈ c₂
+                @test super_fine_column_regular_c[1, 1, 5] ≈ c₂
             end
         end
     end

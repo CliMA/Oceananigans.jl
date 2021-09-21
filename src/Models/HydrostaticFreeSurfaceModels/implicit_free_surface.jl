@@ -93,8 +93,11 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
     solver = free_surface.implicit_step_solver
     arch = model.architecture
 
+    # Wait for predictor velocity update step to complete.
+    wait(device(arch), velocities_update)
+
     # Compute barotropic volume flux. Blocking.
-    compute_vertically_integrated_volume_flux!(∫ᶻQ, model, velocities_update)
+    compute_vertically_integrated_volume_flux!(∫ᶻQ, model)
 
     # Compute right hand side of implicit free surface equation
     rhs_event = compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)

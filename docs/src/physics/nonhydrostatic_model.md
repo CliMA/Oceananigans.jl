@@ -32,8 +32,8 @@ at the top of the domain via the Craik-Leibovich approximation are
 where ``b \boldsymbol{\hat g}`` the is the buoyancy (a vector whose default direction is upward), 
 ``\boldsymbol{\tau}`` is the kinematic stress tensor, ``\boldsymbol{F_v}``
 denotes an internal forcing of the velocity field ``\boldsymbol{v}``, ``p`` is the kinematic 
-pressure, ``\boldsymbol{u}^S``is the 'Stokes drift' velocity field associated with surface gravity 
-waves, and ``\boldsymbol{f}`` is the *Coriolis parameter*, or the background vorticity associated 
+pressure, ``\boldsymbol{u}^S`` is the 'Stokes drift' velocity field associated with surface gravity 
+waves, and ``\boldsymbol{f}`` is the Coriolis parameter, or the background vorticity associated 
 with the specified rate of rotation of the frame of reference.
 
 The terms that appear on the right-hand side of the momentum conservation equation are (in order):

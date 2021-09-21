@@ -1,17 +1,17 @@
 using KernelAbstractions
 using Statistics
 using Oceananigans.Architectures: architecture, device_event
-using Oceananigans.Fields: location
+using Oceananigans.Fields: location, AbstractDataField
 
-mask_immersed_field!(field::AbstractField, loc=location(field)) = mask_immersed_field!(field, field.grid, loc)
-mask_immersed_field!(field, grid, loc) = NoneEvent()
 instantiate(X) = X()
 
-function mask_immersed_field!(field, grid::ImmersedBoundaryGrid, loc)
+mask_immersed_field!(field::AbstractField, value=zero(eltype(field.grid))) = mask_immersed_field!(field, field.grid, location(field), value)
+mask_immersed_field!(field, grid, loc, value) = NoneEvent()
+
+function mask_immersed_field!(field::AbstractDataField, grid::ImmersedBoundaryGrid, loc, value)
     arch = architecture(field)
     loc = instantiate.(loc)
-    mask_value = zero(eltype(grid))
-    return launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, mask_value; dependencies = device_event(arch))
+    return launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, value; dependencies = device_event(arch))
 end
 
 @kernel function _mask_immersed_field!(field, loc, grid, value)
