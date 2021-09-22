@@ -32,7 +32,9 @@ using Oceananigans.TimeSteppers: Clock
     @test wti(nothing)
 
     # SpecifiedTimes
-    st = SpecifiedTimes(2, 5, 6)
+    st = st_list = SpecifiedTimes(2, 5, 6)
+    st_vector = SpecifiedTimes([2, 5, 6])
+    @test st_list.times == st_vector.times
     @test st.times == [2.0, 5.0, 6.0]
 
     # Times are sorted
