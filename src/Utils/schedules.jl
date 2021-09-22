@@ -119,7 +119,8 @@ mutable struct SpecifiedTimes <: AbstractSchedule
     previous_actuation :: Int
 end
 
-SpecifiedTimes(times...) = SpecifiedTimes(sort([Float64(t) for t in times]), 0)
+SpecifiedTimes(times::Vararg{<:Number}) = SpecifiedTimes(sort([Float64(t) for t in times]), 0)
+SpecifiedTimes(times) = SpecifiedTimes(times...)
 
 function next_appointment_time(st::SpecifiedTimes)
     if st.previous_actuation >= length(st.times)
