@@ -4,8 +4,9 @@ import Oceananigans.Utils: prettytime
 
 default_progress(simulation) = nothing
 
-mutable struct Simulation{ML, DT, SC, ST, DI, OW, CB}
+mutable struct Simulation{ML, TS, DT, SC, ST, DI, OW, CB}
               model :: ML
+        timestepper :: TS
                  Δt :: DT
       stop_criteria :: SC
      stop_iteration :: Float64
@@ -74,6 +75,7 @@ function Simulation(model; Δt,
    stop_time = stop_time isa Number ? FT(stop_time) : stop_time
 
    return Simulation(model,
+                     model.timestepper,
                      Δt,
                      stop_criteria,
                      Float64(stop_iteration),
