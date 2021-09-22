@@ -136,7 +136,7 @@ wall_time(sim::Simulation) = prettytime(sim.wall_time)
 """
     reset!(sim)
 
-Reset `model.clock` to it's initial state and set `sim.initialized=false`.
+Reset `model.clock` to its initial state and set `sim.initialized=false`.
 """
 function reset!(sim)
     sim.model.clock.time = 0.0
