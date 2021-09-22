@@ -166,7 +166,7 @@ const etd = ExplicitTimeDiscretization()
 
 @inline z_boundary_adj(k, grid) = k == 1 | k == grid.Nz+1
 
-@inline z_diffusivity(closure::CAVD, c_idx, diffusivities, args...) = diffusivities.κ
+@inline z_diffusivity(closure::Union{CAVD, CAVDArray}, c_idx, diffusivities, args...) = diffusivities.κ
 
 @inline function diffusive_flux_z(i, j, k, grid, closure::CAVD, c, tracer_index, clock, diffusivities, args...)
     κ = κᶜᶜᶠ(i, j, k, grid, clock, diffusivities.κ)
@@ -182,7 +182,7 @@ end
 ##### Viscosity
 #####
 
-@inline z_viscosity(closure::CAVD, diffusivities, args...) = diffusivities.ν
+@inline z_viscosity(closure::Union{CAVD, CAVDArray}, diffusivities, args...) = diffusivities.ν
 
 @inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::CAVD, args...)
     explicit_flux_z = viscous_flux_uz(i, j, k, grid, etd, closure, args...)
