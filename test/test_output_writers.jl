@@ -100,7 +100,7 @@ function test_windowed_time_averaging_simulation(model)
                                             prefix = "test",
                                              force = true)
 
-                                          # https://github.com/Alexander-Barth/NCDatasets.jl/issues/105
+    # https://github.com/Alexander-Barth/NCDatasets.jl/issues/105
     nc_filepath1 = "windowed_time_average_test1.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
     nc_output_writer = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath1,

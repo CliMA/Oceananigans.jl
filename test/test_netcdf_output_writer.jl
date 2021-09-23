@@ -1,3 +1,16 @@
+using Test
+using Dates: DateTime, Nanosecond, Millisecond
+using TimesDates: TimeDate
+using CUDA
+using NCDatasets
+using Oceananigans
+using Oceananigans.Units
+using Oceananigans: Clock
+
+include("utils_for_runtests.jl")
+
+archs = test_architectures()
+
 #####
 ##### NetCDFOutputWriter tests
 #####
@@ -107,11 +120,11 @@ function test_thermal_bubble_netcdf_output(arch)
 
     ds3 = Dataset(nc_filepath)
 
-    @test haskey(ds3.attrib, "date") && !isnothing(ds3.attrib["date"])
-    @test haskey(ds3.attrib, "Julia") && !isnothing(ds3.attrib["Julia"])
-    @test haskey(ds3.attrib, "Oceananigans") && !isnothing(ds3.attrib["Oceananigans"])
-    @test haskey(ds3.attrib, "schedule") && ds3.attrib["schedule"] == "IterationInterval"
-    @test haskey(ds3.attrib, "interval") && ds3.attrib["interval"] == 10
+    @test haskey(ds3.attrib, "date")                      && !isnothing(ds3.attrib["date"])
+    @test haskey(ds3.attrib, "Julia")                     && !isnothing(ds3.attrib["Julia"])
+    @test haskey(ds3.attrib, "Oceananigans")              && !isnothing(ds3.attrib["Oceananigans"])
+    @test haskey(ds3.attrib, "schedule")                  && ds3.attrib["schedule"] == "IterationInterval"
+    @test haskey(ds3.attrib, "interval")                  && ds3.attrib["interval"] == 10
     @test haskey(ds3.attrib, "output iteration interval") && !isnothing(ds3.attrib["output iteration interval"])
 
     @test eltype(ds3["time"]) == eltype(model.clock.time)
@@ -500,7 +513,7 @@ function test_netcdf_time_averaging(arch)
 
     set!(model, c1=1, c2=1)
 
-    Δt = 1/512  # Nice floating-point number
+    Δt = 1/64 # Nice floating-point number
     simulation = Simulation(model, Δt=Δt, stop_time=50Δt)
 
     ∫c1_dxdy = AveragedField(model.tracers.c1, dims=(1, 2))
@@ -510,9 +523,14 @@ function test_netcdf_time_averaging(arch)
     nc_dimensions = Dict("c1" => ("zC",), "c2" => ("zC",))
 
     horizontal_average_nc_filepath = "decay_averaged_field_test.nc"
+
     simulation.output_writers[:horizontal_average] =
-        NetCDFOutputWriter(model, nc_outputs, filepath=horizontal_average_nc_filepath, schedule=TimeInterval(10Δt),
-                           dimensions=nc_dimensions, array_type=Array{Float64}, verbose=true)
+        NetCDFOutputWriter(model, nc_outputs,
+                           array_type = Array{Float64},
+                           verbose = true,
+                           filepath = horizontal_average_nc_filepath,
+                           schedule = TimeInterval(10Δt),
+                           dimensions = nc_dimensions)
 
     multiple_time_average_nc_filepath = "decay_windowed_time_average_test.nc"
     single_time_average_nc_filepath = "single_decay_windowed_time_average_test.nc"
@@ -523,14 +541,20 @@ function test_netcdf_time_averaging(arch)
     single_nc_dimension = Dict("c1" => ("zC",))
 
     simulation.output_writers[:single_output_time_average] =
-        NetCDFOutputWriter(model, single_nc_output, filepath=single_time_average_nc_filepath, array_type=Array{Float64},
-                           schedule=AveragedTimeInterval(10Δt, window=window, stride=stride),
-                           dimensions=single_nc_dimension, verbose=true)
+        NetCDFOutputWriter(model, single_nc_output,
+                           array_type = Array{Float64},
+                           verbose = true,
+                           filepath = single_time_average_nc_filepath,
+                           schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
+                           dimensions = single_nc_dimension)
 
     simulation.output_writers[:multiple_output_time_average] =
-        NetCDFOutputWriter(model, nc_outputs, filepath=multiple_time_average_nc_filepath, array_type=Array{Float64},
-                           schedule=AveragedTimeInterval(10Δt, window=window, stride=stride),
-                           dimensions=nc_dimensions, verbose=true)
+        NetCDFOutputWriter(model, nc_outputs,
+                           array_type = Array{Float64},
+                           verbose = true,
+                           filepath = multiple_time_average_nc_filepath,
+                           schedule = AveragedTimeInterval(10Δt, window = window, stride = stride),
+                           dimensions = nc_dimensions)
 
     run!(simulation)
 
@@ -627,12 +651,10 @@ function test_netcdf_output_alignment(arch)
     run!(simulation)
 
     Dataset(test_filename1, "r") do ds
-        @show ds["time"][:] Array(0:7.3:40)
         @test all(ds["time"] .== 0:7.3:40)
     end
 
     Dataset(test_filename2, "r") do ds
-        @show ds["time"][:] Array(0:3.0:40)
         @test all(ds["time"] .== 0:3.0:40)
     end
 
