@@ -72,15 +72,19 @@ end
 ##### Time-step "alignment" with output and callbacks scheduled on TimeInterval
 #####
 
-appointments(sim) = Iterators.flatten(zip(values(sim.output_writers), values(sim.callbacks)))
+function collect_scheduled_activities(sim)
+    writers = values(sim.output_writers)
+    callbacks = values(sim.callbacks)
+    return tuple(writers..., callbacks...)
+end
 
 function schedule_aligned_Δt(sim, aligned_Δt)
     clock = sim.model.clock
 
-    for app in appointments(sim)
-        @show app app.schedule
-        app.schedule isa TimeInterval && @show app.schedule.previous_actuation_time
-        aligned_Δt = aligned_time_step(app.schedule, clock, aligned_Δt)
+    activities = collect_scheduled_activities(sim)
+
+    for activity in activities
+        aligned_Δt = aligned_time_step(activity.schedule, clock, aligned_Δt)
     end
 
     return aligned_Δt
