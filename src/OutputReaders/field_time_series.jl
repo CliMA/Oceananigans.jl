@@ -65,7 +65,7 @@ Keyword arguments
 
 - `archiecture`: The architecture on which to store time series data. CPU() by default.
 
-- `backend`: Whether to load all data in 4D array, or to lazily load data from disk
+- `backend`: `InMemory()` to load data into a 4D array or `OnDisk()` to lazily load data from disk
              when indexing into `FieldTimeSeries`.
 
 - `grid`: A grid to associated with data, in the case that the native grid
