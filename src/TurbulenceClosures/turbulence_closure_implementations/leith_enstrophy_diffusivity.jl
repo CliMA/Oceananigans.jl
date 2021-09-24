@@ -4,15 +4,16 @@ using Oceananigans.Fields: AbstractField
 ##### The turbulence closure proposed by Leith
 #####
 
-struct TwoDimensionalLeith{FT, CR, GM} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
-         C :: FT
-    C_Redi :: CR
-      C_GM :: GM
+struct TwoDimensionalLeith{FT, CR, GM, M} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
+                  C :: FT
+             C_Redi :: CR
+               C_GM :: GM
+    isopycnal_model :: M
 
-    function TwoDimensionalLeith{FT}(C, C_Redi, C_GM) where FT
+    function TwoDimensionalLeith{FT}(C, C_Redi, C_GM, isopycnal_model) where FT
         C_Redi = convert_diffusivity(FT, C_Redi)
         C_GM = convert_diffusivity(FT, C_GM)
-        return new{FT, typeof(C_Redi), typeof(C_GM)}(C, C_Redi, C_GM)
+        return new{FT, typeof(C_Redi), typeof(C_GM), typeof(isopycnal_model)}(C, C_Redi, C_GM)
     end
 end
 
@@ -51,12 +52,13 @@ Fox‐Kemper, B., & D. Menemenlis (2008), "Can large eddy simulation techniques 
 Pearson, B. et al. (2017) , "Evaluation of scale-aware subgrid mesoscale eddy models in a global eddy
     rich model", Ocean Modelling 115, 42-58. doi: 10.1016/j.ocemod.2017.05.007
 """
-TwoDimensionalLeith(FT=Float64; C=0.3, C_Redi=1, C_GM=1) = TwoDimensionalLeith{FT}(C, C_Redi, C_GM)
+TwoDimensionalLeith(FT=Float64; C=0.3, C_Redi=1, C_GM=1, isopycnal_model=SmallSlopeApproximation()) =
+    TwoDimensionalLeith{FT}(C, C_Redi, C_GM, isopycnal_model)
 
 function with_tracers(tracers, closure::TwoDimensionalLeith{FT}) where FT
     C_Redi = tracer_diffusivities(tracers, closure.C_Redi)
     C_GM = tracer_diffusivities(tracers, closure.C_GM)
-    return TwoDimensionalLeith{FT}(closure.C, C_Redi, C_GM)
+    return TwoDimensionalLeith{FT}(closure.C, C_Redi, C_GM, closure.isopycnal_model)
 end
 
 @inline function abs²_∇h_ζ(i, j, k, grid, U)
@@ -79,8 +81,8 @@ const ArrayOrField = Union{AbstractArray, AbstractField}
     return wxz² + wyz²
 end
 
-@inline νᶜᶜᶜ(i, j, k, grid, clo::TwoDimensionalLeith{FT}, buoyancy, U, C) where FT =
-    (clo.C * Δᶠ(i, j, k, grid, clo))^3 * sqrt(  abs²_∇h_ζ(i, j, k, grid, U)
+@inline νᶜᶜᶜ(i, j, k, grid, closure::TwoDimensionalLeith{FT}, buoyancy, U, C) where FT =
+    (closure.C * Δᶠ(i, j, k, grid, closure))^3 * sqrt(  abs²_∇h_ζ(i, j, k, grid, U)
                                               + abs²_∇h_wz(i, j, k, grid, U.w))
 
 #####
@@ -102,7 +104,7 @@ end
     ∂x_c = ∂xᶠᵃᵃ(i, j, k, grid, c)
     ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
 
-    R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, C)
+    R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, C, closure.isopycnal_model)
 
     return - νₑⁱʲᵏ * (                 C_Redi * ∂x_c
                       + (C_Redi - C_GM) * R₁₃ * ∂z_c)
@@ -121,7 +123,7 @@ end
     ∂y_c = ∂yᵃᶠᵃ(i, j, k, grid, c)
     ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
 
-    R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, C)
+    R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, C, closure.isopycnal_model)
     return - νₑⁱʲᵏ * (                  C_Redi * ∂y_c
                              + (C_Redi - C_GM) * R₂₃ * ∂z_c)
 end
@@ -140,9 +142,9 @@ end
     ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵃᶠᵃ, c)
     ∂z_c = ∂zᵃᵃᶠ(i, j, k, grid, c)
 
-    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, C)
-    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, C)
-    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, C)
+    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, C, closure.isopycnal_model)
+    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, C, closure.isopycnal_model)
+    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, C, closure.isopycnal_model)
 
     return - νₑⁱʲᵏ * (
           (C_Redi + C_GM) * R₃₁ * ∂x_c
