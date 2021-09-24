@@ -1,13 +1,21 @@
 # tracer components of the Redi rotation tensor
 
 """
-    AbstractTurbulenceClosure
+    AbstractIcopycnalModel
 
-Abstract supertype for turbulence closures.
+Abstract supertype for isopycnal model.
 """
 abstract type AbstractIcopycnalModel end
 
+"""
+    An isopycnal model using the local slopes of the buoyancy field.
+"""
 struct SlopeApproximation <: AbstractIcopycnalModel end
+
+"""
+    An isopycnal model using the local slopes of the buoyancy field that assumes
+    that the horizontal isopycnal slopes are ``≪ 1``.
+"""
 struct SmallSlopeApproximation <: AbstractIcopycnalModel end
 
 # SmallSlopeApproximation approximation
