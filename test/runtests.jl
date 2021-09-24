@@ -53,8 +53,6 @@ Logging.global_logger(OceananigansLogger())
 
 float_types = (Float32, Float64)
 
-archs = test_architectures()
-
 closures = (
     :IsotropicDiffusivity,
     :AnisotropicDiffusivity,
@@ -75,6 +73,8 @@ CUDA.allowscalar(true)
 
 include("data_dependencies.jl")
 include("utils_for_runtests.jl")
+
+archs = test_architectures()
 
 group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
