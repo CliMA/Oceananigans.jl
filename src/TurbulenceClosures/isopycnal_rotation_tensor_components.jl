@@ -19,7 +19,11 @@ abstract type AbstractIcopycnalModel end
     
     where `slope² = slope_x² + slope_y²`.
 """
-struct SlopeApproximation <: AbstractIcopycnalModel end
+struct SlopeApproximation{L} <: AbstractIcopycnalModel
+    slope_limiter :: L
+end
+
+SlopeApproximation(args...) = nothing
 
 """
     An isopycnal model using the local slopes of the buoyancy field that assumes
@@ -36,7 +40,11 @@ struct SlopeApproximation <: AbstractIcopycnalModel end
     
     where `slope² = slope_x² + slope_y²`.
 """
-struct SmallSlopeApproximation <: AbstractIcopycnalModel end
+struct SmallSlopeApproximation{L} <: AbstractIcopycnalModel
+    slope_limiter :: L
+end
+
+SmallSlopeApproximation(args...) = nothing
 
 @inline function isopycnal_rotation_tensor_xz_fcc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::SmallSlopeApproximation) where FT
     bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
