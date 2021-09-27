@@ -478,7 +478,7 @@ uuid = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 deps = ["ChainRulesCore", "LogExpFunctions", "OpenLibm_jll", "OpenSpecFun_jll"]
 git-tree-sha1 = "ad42c30a6204c74d264692e633133dcea0e8b14e"
 uuid = "276daf66-3868-5448-9aa4-cd146d93841b"
-version = "1.6.2"
+version = "1.6.3"
 
 [[Static]]
 deps = ["IfElse"]
