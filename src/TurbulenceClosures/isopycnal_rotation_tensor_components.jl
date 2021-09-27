@@ -8,20 +8,35 @@ Abstract supertype for isopycnal model.
 abstract type AbstractIcopycnalModel end
 
 """
-    An isopycnal model using the local slopes of the buoyancy field.
+    An isopycnal model using the local slopes of the buoyancy field. Slopes are
+    computed via `slope_x = - ∂b/∂x / ∂b/∂z` and `slope_y = - ∂b/∂y / ∂b/∂z`,
+    with the negative sign to account for the stable stratification. Then, the
+    components of the isopycnal rotation tensor are:
+    
+                     ⎡     1 + slope_y²         - slope_x slope_y      slope_x ⎤ 
+      (1 + slope²)⁻¹ | - slope_x slope_y          1 + slope_x²         slope_y |
+                     ⎣       slope_x                 slope_y            slope² ⎦
+    
+    where `slope² = slope_x² + slope_y²`.
 """
 struct SlopeApproximation <: AbstractIcopycnalModel end
 
 """
     An isopycnal model using the local slopes of the buoyancy field that assumes
-    that the horizontal isopycnal slopes are ``≪ 1``.
+    utilizes the small-slope approximation, i.e., that the horizontal isopycnal
+    slopes, `slope_x` and `slope_y` are ``≪ 1``. Slopes are computed via
+    `slope_x = - ∂b/∂x / ∂b/∂z` and `slope_y = - ∂b/∂y / ∂b/∂z`, with the
+    negative sign to account for the stable stratification. Then, keeping only
+    terms up to linear in `slope_x` or `slope_y`, the components of the isopycnal
+    rotation tensor are:
+    
+      ⎡   1            0         slope_x ⎤ 
+      |   0            1         slope_y |
+      ⎣ slope_x      slope_y      slope² ⎦
+    
+    where `slope² = slope_x² + slope_y²`.
 """
 struct SmallSlopeApproximation <: AbstractIcopycnalModel end
-
-# SmallSlopeApproximation approximation
-#    1            0         slope_x
-#    0            1         slope_y
-# slope_x      slope_y      slope²
 
 @inline function isopycnal_rotation_tensor_xz_fcc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::SmallSlopeApproximation) where FT
     bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
@@ -60,8 +75,3 @@ end
     slope² = slope_x^2 + slope_y^2
     return ifelse(bz == 0, zero(FT), slope²)
 end
-
-# (full)-SlopeApproximation approximation
-#     (1 + slope_y^2) / (1 + slope²)     - slope_x * slope_y / (1 + slope²)   slope_x / (1 + slope²)
-# - slope_x * slope_y / (1 + slope²)         (1 + slope_x^2) / (1 + slope²)   slope_y / (1 + slope²)
-#             slope_x / (1 + slope²)                 slope_y / (1 + slope²)    slope² / (1 + slope²)
