@@ -8,20 +8,21 @@ end
 const ISSD = IsopycnalSkewSymmetricDiffusivity
 
 """
-    IsopycnalSkewSymmetricDiffusivity([FT=Float64;] κ_skew=0, κ_symmetric=0, isopycnal_model=SmallSlopeIsopycnalTensor())
+    IsopycnalSkewSymmetricDiffusivity([FT=Float64;] κ_skew=0, κ_symmetric=0,
+                                      isopycnal_model=SmallSlopeIsopycnalTensor(), slope_limiter=nothing)
 
 Returns parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
 `κ_skew` and symmetric diffusivity `κ_symmetric` using an `isopycnal_model` for calculating
-the isopycnal slopes. Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or
-functions of `(x, y, z, t)`.
+the isopycnal slopes, and optionally applying a `slope_limiter`. Both `κ_skew` and `κ_symmetric`
+may be constants, arrays, fields, or functions of `(x, y, z, t)`.
 """
-IsopycnalSkewSymmetricDiffusivity(FT=Float64; κ_skew=0, κ_symmetric=0, isopycnal_model=SmallSlopeIsopycnalTensor()) =
-    IsopycnalSkewSymmetricDiffusivity(convert_diffusivity(FT, κ_skew), convert_diffusivity(FT, κ_symmetric), isopycnal_model)
+IsopycnalSkewSymmetricDiffusivity(FT=Float64; κ_skew=0, κ_symmetric=0, isopycnal_model=SmallSlopeIsopycnalTensor(), slope_limiter=nothing) =
+    IsopycnalSkewSymmetricDiffusivity(convert_diffusivity(FT, κ_skew), convert_diffusivity(FT, κ_symmetric), isopycnal_model, slope_limiter)
 
 function with_tracers(tracers, closure::ISSD)
     κ_skew = tracer_diffusivities(tracers, closure.κ_skew)
     κ_symmetric = tracer_diffusivities(tracers, closure.κ_symmetric)
-    return IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric, closure.isopycnal_model)
+    return IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric, closure.isopycnal_model, closure.slope_limiter)
 end
 
 #####
