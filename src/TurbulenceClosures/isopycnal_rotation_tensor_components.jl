@@ -1,17 +1,18 @@
 # tracer components of the Redi rotation tensor
 
 """
-    AbstractIcopycnalModel
+    AbstractIsopycnalTensor
 
-Abstract supertype for isopycnal model.
+Abstract supertype for an isopycnal rotation model.
 """
-abstract type AbstractIcopycnalModel end
+abstract type AbstractIsopycnalTensor end
 
 """
-    An isopycnal model using the local slopes of the buoyancy field. Slopes are
-    computed via `slope_x = - ∂b/∂x / ∂b/∂z` and `slope_y = - ∂b/∂y / ∂b/∂z`,
-    with the negative sign to account for the stable stratification. Then, the
-    components of the isopycnal rotation tensor are:
+    An isopycnal tensor is a tensor that rotates a vector into the isopycnal plane
+    using the local slopes of the buoyancy field. Slopes are computed via
+    `slope_x = - ∂b/∂x / ∂b/∂z` and `slope_y = - ∂b/∂y / ∂b/∂z`, with the negative
+    sign to account for the stable stratification (`∂b/∂z < 0`).
+    Then, the components of the isopycnal rotation tensor are:
     
                      ⎡     1 + slope_y²         - slope_x slope_y      slope_x ⎤ 
       (1 + slope²)⁻¹ | - slope_x slope_y          1 + slope_x²         slope_y |
@@ -19,20 +20,16 @@ abstract type AbstractIcopycnalModel end
     
     where `slope² = slope_x² + slope_y²`.
 """
-struct SlopeApproximation{L} <: AbstractIcopycnalModel
-    slope_limiter :: L
-end
-
-SlopeApproximation(args...) = nothing
+struct IsopycnalTensor <: AbstractIsopycnalTensor end
 
 """
-    An isopycnal model using the local slopes of the buoyancy field that assumes
-    utilizes the small-slope approximation, i.e., that the horizontal isopycnal
-    slopes, `slope_x` and `slope_y` are ``≪ 1``. Slopes are computed via
-    `slope_x = - ∂b/∂x / ∂b/∂z` and `slope_y = - ∂b/∂y / ∂b/∂z`, with the
-    negative sign to account for the stable stratification. Then, keeping only
-    terms up to linear in `slope_x` or `slope_y`, the components of the isopycnal
-    rotation tensor are:
+    An isopycnal tensor is a tensor that rotates a vector into the isopycnal plane
+    using the local slopes of the buoyancy field and employing the small-slope
+    approximation, i.e., that the horizontal isopycnal slopes, `slope_x` and `slope_y`
+    are ``≪ 1``. Slopes are computed via `slope_x = - ∂b/∂x / ∂b/∂z` and
+    `slope_y = - ∂b/∂y / ∂b/∂z`, with the negative sign to account for the stable
+    stratification (`∂b/∂z < 0`). Then, by utilizing the small-slope appoximation,
+    the components of the isopycnal rotation tensor are:
     
       ⎡   1            0         slope_x ⎤ 
       |   0            1         slope_y |
@@ -40,11 +37,7 @@ SlopeApproximation(args...) = nothing
     
     where `slope² = slope_x² + slope_y²`.
 """
-struct SmallSlopeApproximation{L} <: AbstractIcopycnalModel
-    slope_limiter :: L
-end
-
-SmallSlopeApproximation(args...) = nothing
+struct SmallSlopeIsopycnalTensor <: AbstractIsopycnalTensor end
 
 @inline function isopycnal_rotation_tensor_xz_fcc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::SmallSlopeApproximation) where FT
     bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
