@@ -8,14 +8,14 @@ end
 const ISSD = IsopycnalSkewSymmetricDiffusivity
 
 """
-    IsopycnalSkewSymmetricDiffusivity([FT=Float64;] κ_skew=0, κ_symmetric=0, isopycnal_model=SmallSlopeApproximation())
+    IsopycnalSkewSymmetricDiffusivity([FT=Float64;] κ_skew=0, κ_symmetric=0, isopycnal_model=SmallSlopeIsopycnalTensor())
 
 Returns parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
 `κ_skew` and symmetric diffusivity `κ_symmetric` using an `isopycnal_model` for calculating
 the isopycnal slopes. Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or
 functions of `(x, y, z, t)`.
 """
-IsopycnalSkewSymmetricDiffusivity(FT=Float64; κ_skew=0, κ_symmetric=0, isopycnal_model=SmallSlopeApproximation()) =
+IsopycnalSkewSymmetricDiffusivity(FT=Float64; κ_skew=0, κ_symmetric=0, isopycnal_model=SmallSlopeIsopycnalTensor()) =
     IsopycnalSkewSymmetricDiffusivity(convert_diffusivity(FT, κ_skew), convert_diffusivity(FT, κ_symmetric), isopycnal_model)
 
 function with_tracers(tracers, closure::ISSD)
@@ -36,9 +36,11 @@ taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) 
     bx = ℑxᶜᵃᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers)
     by = ℑyᵃᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
     bz = ℑyᵃᶜᵃ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    
     slope_x = - bx / bz
     slope_y = - by / bz
     slope_h² = slope_x^2 + slope_y^2
+
     return min(one(FT), tapering.max_slope^2 / slope_h²)
 end
 
