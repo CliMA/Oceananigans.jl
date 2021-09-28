@@ -1,7 +1,8 @@
-struct IsopycnalSkewSymmetricDiffusivity{K, S, M} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
+struct IsopycnalSkewSymmetricDiffusivity{K, S, M, L} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
              κ_skew :: K
         κ_symmetric :: S
     isopycnal_model :: M
+      slope_limiter :: L
 end
 
 const ISSD = IsopycnalSkewSymmetricDiffusivity
@@ -23,6 +24,24 @@ function with_tracers(tracers, closure::ISSD)
     return IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric, closure.isopycnal_model)
 end
 
+#####
+##### Tapering
+#####
+
+struct FluxTapering end
+
+taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) where FT = one(FT)
+
+@inline function taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, tapering::FluxTapering{<:Number}) where FT
+    bx = ℑxᶜᵃᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers)
+    by = ℑyᵃᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
+    bz = ℑyᵃᶜᵃ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    slope_x = - bx / bz
+    slope_y = - by / bz
+    slope_h² = slope_x^2 + slope_y^2
+    return min(one(FT), tapering.max_slope^2 / slope_h²)
+end
+
 # Diffusive fluxes
 
 @inline function diffusive_flux_x(i, j, k, grid,
@@ -33,11 +52,17 @@ end
     κ_symmetric = @inbounds κᶠᶜᶜ(i, j, k, grid, clock, closure.κ_symmetric[tracer_index])
 
     ∂x_c = ∂xᶠᵃᵃ(i, j, k, grid, c)
+    ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᵃᶠᵃ, c)
     ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
 
+    R₁₁ = one(eltype(grid))
+    R₁₂ = zero(eltype(grid))
     R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_model)
+    ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
 
-    return - κ_symmetric * ∂x_c + (κ_skew - κ_symmetric) * R₁₃ * ∂z_c
+    return - ϵ * (           κ_symmetric * R₁₁ * ∂x_c +
+                             κ_symmetric * R₁₂ * ∂y_c +
+                  (κ_symmetric - κ_skew) * R₁₃ * ∂z_c)
 end
 
 @inline function diffusive_flux_y(i, j, k, grid,
@@ -47,12 +72,19 @@ end
     κ_skew = @inbounds κᶜᶠᶜ(i, j, k, grid, clock, closure.κ_skew[tracer_index])
     κ_symmetric = @inbounds κᶜᶠᶜ(i, j, k, grid, clock, closure.κ_symmetric[tracer_index])
 
+    ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᵃᵃ, c)
     ∂y_c = ∂yᵃᶠᵃ(i, j, k, grid, c)
     ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
 
+    R₂₁ = zeros(eltype(grid))
+    R₂₂ = one(eltype(grid))
     R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_model)
 
-    return - κ_symmetric * ∂y_c + (κ_skew - κ_symmetric) * R₂₃ * ∂z_c
+    ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
+
+    return - ϵ * (           κ_symmetric * R₂₁ * ∂x_c +
+                             κ_symmetric * R₂₂ * ∂y_c +
+                  (κ_symmetric - κ_skew) * R₂₃ * ∂z_c)
 end
 
 @inline function diffusive_flux_z(i, j, k, grid,
@@ -69,8 +101,11 @@ end
     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_model)
     R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_model)
     R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_model)
+    ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
 
-    return - (κ_symmetric + κ_skew) * R₃₁ * ∂x_c - (κ_symmetric + κ_skew) * R₃₂ * ∂y_c - κ_symmetric * R₃₃ * ∂z_c
+    return - ϵ * ((κ_symmetric + κ_skew) * R₃₁ * ∂x_c +
+                  (κ_symmetric + κ_skew) * R₃₂ * ∂y_c +
+                             κ_symmetric * R₃₃ * ∂z_c)
 end
 
 @inline viscous_flux_ux(i, j, k, grid, closure::ISSD, args...) = zero(eltype(grid))
