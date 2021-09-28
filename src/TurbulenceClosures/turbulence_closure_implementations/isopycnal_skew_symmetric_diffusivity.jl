@@ -11,7 +11,7 @@ const ISSD = IsopycnalSkewSymmetricDiffusivity
     IsopycnalSkewSymmetricDiffusivity([FT=Float64;] κ_skew=0, κ_symmetric=0,
                                       isopycnal_model=SmallSlopeIsopycnalTensor(), slope_limiter=nothing)
 
-Returns parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
+Return parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
 `κ_skew` and symmetric diffusivity `κ_symmetric` using an `isopycnal_model` for calculating
 the isopycnal slopes, and optionally applying a `slope_limiter`. Both `κ_skew` and `κ_symmetric`
 may be constants, arrays, fields, or functions of `(x, y, z, t)`.
@@ -31,18 +31,30 @@ end
 
 struct FluxTapering end
 
+"""
+    taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, tapering)
+
+Return the tapering factor `min(1, Sₘₐₓ² / slope²)`, where `slope² = slope_x² + slope_y²`
+that multiplies all components of the isopycnal slope tensor. All slopes involved in the
+tapering factor are computed at the cell centers.
+
+References
+==========
+R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical advection schemes
+    on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
+"""
 taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) where FT = one(FT)
 
 @inline function taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, tapering::FluxTapering) where FT
     bx = ℑxᶜᵃᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers)
     by = ℑyᵃᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
-    bz = ℑyᵃᶜᵃ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    bz = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     
     slope_x = - bx / bz
     slope_y = - by / bz
-    slope_h² = slope_x^2 + slope_y^2
+    slope² = slope_x^2 + slope_y^2
 
-    return min(one(FT), tapering.max_slope^2 / slope_h²)
+    return min(one(FT), tapering.max_slope^2 / slope²)
 end
 
 # Diffusive fluxes
@@ -61,6 +73,7 @@ end
     R₁₁ = one(eltype(grid))
     R₁₂ = zero(eltype(grid))
     R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_model)
+    
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
 
     return - ϵ * (           κ_symmetric * R₁₁ * ∂x_c +
@@ -79,7 +92,7 @@ end
     ∂y_c = ∂yᵃᶠᵃ(i, j, k, grid, c)
     ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
 
-    R₂₁ = zeros(eltype(grid))
+    R₂₁ = zero(eltype(grid))
     R₂₂ = one(eltype(grid))
     R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_model)
 
@@ -104,6 +117,7 @@ end
     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_model)
     R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_model)
     R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_model)
+
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
 
     return - ϵ * ((κ_symmetric + κ_skew) * R₃₁ * ∂x_c +
