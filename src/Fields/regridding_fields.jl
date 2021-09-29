@@ -6,12 +6,48 @@ using Oceananigans.Operators: Δzᵃᵃᶜ
 
 const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded}
 
-regrid!(u, v) = regrid!(u, u.grid, v.grid, v)
+"""
+    regrid!(a, b)
 
-function regrid!(u, target_grid, source_grid, v)
+Regrids field `b` into the grid of field `a`. Currently only regrids in the vertical ``z``.
+
+Example
+=======
+
+Generate a tracer field on a vertically stretched grid and regrid it on a regular grid.
+
+```jldoctest
+using Oceananigans
+using Oceananigans.Fields: regrid!
+
+Nz, Lz = 2, 1.0
+topology = (Flat, Flat, Bounded)
+
+input_grid = VerticallyStretchedRectilinearGrid(size=Nz, z_faces = [0, Lz/3, Lz], topology=topology)
+input_field = CenterField(input_grid)
+input_field[1, 1, 1:Nz] = [2, 3]
+
+output_grid = RegularRectilinearGrid(size=Nz, z=(0, Lz), topology=topology)
+output_field = CenterField(output_grid)
+
+regrid!(output_field, input_field)
+
+output_field[1, 1, :]
+
+# output
+4-element OffsetArray(::Vector{Float64}, 0:3) with eltype Float64 with indices 0:3:
+ 0.0
+ 2.333333333333334
+ 3.0
+ 0.0
+ ```
+"""
+regrid!(a, b) = regrid!(a, a.grid, b.grid, b)
+
+function regrid!(a, target_grid, source_grid, b)
     msg = """Regridding
-             $(short_show(v)) on $(short_show(source_grid))
-             to $(short_show(u)) on $(short_show(target_grid))
+             $(short_show(b)) on $(short_show(source_grid))
+             to $(short_show(a)) on $(short_show(target_grid))
              is not supported."""
 
     return throw(ArgumentError(msg))
@@ -21,11 +57,11 @@ end
 ##### Regridding for single column grids
 #####
 
-function regrid!(u, target_grid::SingleColumnGrid, source_grid::SingleColumnGrid, v)
-    arch = architecture(u)
+function regrid!(a, target_grid::SingleColumnGrid, source_grid::SingleColumnGrid, b)
+    arch = architecture(a)
     source_z_faces = znodes(Face, source_grid)
 
-    event = launch!(arch, target_grid, :xy, _regrid!, u, v, target_grid, source_grid, source_z_faces)
+    event = launch!(arch, target_grid, :xy, _regrid!, a, b, target_grid, source_grid, source_z_faces)
     wait(device(arch), event)
     return nothing
 end
