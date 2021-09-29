@@ -1,6 +1,6 @@
 using Glob
 
-using Oceananigans.Utils: initialize_schedule!, align_time_step
+using Oceananigans.Utils: initialize_schedule!, align_time_step, prettytime
 using Oceananigans.Fields: set!
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!, next_time, unit_time
@@ -103,29 +103,31 @@ The simulation will then stop.
 
 # Picking simulations up from a checkpoint
 
-Simulations will be "picked up" from a checkpoint if `pickup` is either `true`, a `String`,
-or an `Integer` greater than 0.
+Simulations are "picked up" from a checkpoint if `pickup` is either `true`, a `String`, or an
+`Integer` greater than 0.
 
 Picking up a simulation sets field and tendency data to the specified checkpoint,
 leaving all other model properties unchanged.
 
 Possible values for `pickup` are:
 
-    * `pickup=true` will pick a simulation up from the latest checkpoint associated with
-      the `Checkpointer` in simulation.output_writers`.
+    * `pickup=true` picks a simulation up from the latest checkpoint associated with
+      the `Checkpointer` in `simulation.output_writers`.
 
-    * `pickup=iteration::Int` will pick a simulation up from the checkpointed file associated
-       with `iteration` and the `Checkpointer` in simulation.output_writers`.
+    * `pickup=iteration::Int` picks a simulation up from the checkpointed file associated
+       with `iteration` and the `Checkpointer` in `simulation.output_writers`.
 
-    * `pickup=filepath::String` will pick a simulation up from checkpointer data in `filepath`.
+    * `pickup=filepath::String` picks a simulation up from checkpointer data in `filepath`.
 
-Note that `pickup=true` and `pickup=iteration` will fail if `simulation.output_writers` contains
+Note that `pickup=true` and `pickup=iteration` fails if `simulation.output_writers` contains
 more than one checkpointer.
 """
-function run!(sim; pickup=false)
+function run!(sim; pickup=false, callbacks=[])
 
     model = sim.model
     clock = model.clock
+
+    add_callbacks!(sim, callbacks)
 
     if we_want_to_pickup(pickup)
         checkpointers = filter(writer -> writer isa Checkpointer, collect(values(sim.output_writers)))
@@ -140,7 +142,10 @@ function run!(sim; pickup=false)
     end
 
     # Conservatively initialize the model state
+    @info "Updating model auxiliary state before the first time step..."
+    start_time = time_ns()
     update_state!(model)
+    @info "    ... updated in $(prettytime((time_ns() - start_time)*1e-9))."
 
     # Output and diagnostics initialization
     for writer in values(sim.output_writers)
@@ -157,6 +162,7 @@ function run!(sim; pickup=false)
         if clock.iteration == 0
             [run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
             [write_output!(writer, sim.model) for writer in values(sim.output_writers)]
+            [callback(sim) for callback in values(sim.callbacks)]
         end
 
         # Ensure that the simulation doesn't iterate past `stop_iteration`.
@@ -174,11 +180,16 @@ function run!(sim; pickup=false)
             end
 
             euler = clock.iteration == 0 || (sim.Δt isa TimeStepWizard && n == 1)
+
+
+            clock.iteration == 0 && @info "Executing first time step..."
             ab2_or_rk3_time_step!(model, Δt, euler=euler)
+            clock.iteration == 0 && @info "    ... first time step complete."
 
             # Run diagnostics, then write output
-            [  diag.schedule(model) && run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
-            [writer.schedule(model) && write_output!(writer, sim.model) for writer in values(sim.output_writers)]
+            [  diag.schedule(model)   && run_diagnostic!(diag, sim.model) for diag in values(sim.diagnostics)]
+            [writer.schedule(model)   && write_output!(writer, sim.model) for writer in values(sim.output_writers)]
+            [callback.schedule(model) && callback(sim)                    for callback in values(sim.callbacks)]
         end
 
         sim.progress(sim)

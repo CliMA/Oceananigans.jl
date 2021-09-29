@@ -17,23 +17,21 @@ a vertical axis such that
 ```
 where ``f`` is constant and determined by the user.
 
-### The non-traditional ``f``-plane approximation
+## The arbitrary-axis constant-Coriolis approximation
 
-In the *non-traditional* ``f``-plane approximation, the coordinate system rotates around
-an axis in the ``y,z``-plane, such that
+In this approximation, the coordinate system rotates around an axis in the ``x,y,z``-plane, such
+that
 ```math
-    \boldsymbol{f} = f_y \boldsymbol{\hat y} + f_z \boldsymbol{\hat z} \, ,
+    \boldsymbol{f} = f_x \boldsymbol{\hat x} + f_y \boldsymbol{\hat y} + f_z \boldsymbol{\hat z} \, ,
 ```
-where ``f_y`` and ``f_z`` are constants determined by the user.
+where ``f_x``, ``f_y`` and ``f_z`` are constants determined by the user.
 
 
 [^3]: The ``f``-plane approximation is used to model the effects of Earth's rotation on anisotropic 
       fluid motion in a plane tangent to the Earth's surface. In this case, the projection of 
       the Earth's rotation vector at latitude ``\varphi`` and onto a coordinate system in which 
       ``x, y, z`` correspond to the directions east, north, and up is
-      ```math
-          \boldsymbol{f} \approx \frac{4 \pi}{\text{day}} \left ( \cos \varphi \boldsymbol{\hat y} + \sin \varphi \boldsymbol{\hat z} \right ) \, ,
-      ```
+      ``\boldsymbol{f} \approx \frac{4 \pi}{\text{day}} \left ( \cos \varphi \boldsymbol{\hat y} + \sin \varphi \boldsymbol{\hat z} \right ) \, ,``
       where the Earth's rotation rate is approximately ``2 \pi / \text{day}``. The *traditional* 
       ``f``-plane approximation neglects the ``y``-component of this projection, which is appropriate 
       for fluid motions with large horizontal-to-vertical aspect ratios.

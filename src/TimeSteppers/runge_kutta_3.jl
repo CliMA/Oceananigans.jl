@@ -166,7 +166,8 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
                        stage_Δt(Δt, γⁿ, ζⁿ),
                        model.closure,
                        tracer_index,
-                       model.diffusivities,
+                       model.diffusivity_fields,
+                       model.tracers,
                        dependencies = field_event)
 
         push!(events, field_event)

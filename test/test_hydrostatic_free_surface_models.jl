@@ -2,7 +2,7 @@ using Oceananigans: CPU, GPU
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, ExplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, TKEBasedVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, ExplicitTimeDiscretization, CATKEVerticalDiffusivity
 using Oceananigans.Grids: Periodic, Bounded
 
 function time_step_hydrostatic_model_works(arch, grid;
@@ -13,7 +13,7 @@ function time_step_hydrostatic_model_works(arch, grid;
                                            velocities = nothing)
 
     tracers = [:T, :S]
-    closure isa TKEBasedVerticalDiffusivity && push!(tracers, :e)
+    closure isa CATKEVerticalDiffusivity && push!(tracers, :e)
 
     model = HydrostaticFreeSurfaceModel(grid = grid,
                                         architecture = arch,
@@ -57,14 +57,12 @@ function hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
     return nothing
 end
 
-topo_0d = (Flat, Flat, Flat)
 
-topos_1d = ((Bounded,  Flat,     Flat),    
-            (Flat,     Bounded,  Flat))
+topo_1d = (Flat, Flat, Bounded)
 
-topos_2d = ((Periodic, Periodic, Flat),
-            (Periodic, Bounded,  Flat),
-             (Bounded, Bounded,  Flat))
+topos_2d = ((Periodic, Flat, Bounded),
+            (Flat, Bounded,  Bounded),
+            (Bounded, Flat,  Bounded))
 
 topos_3d = ((Periodic, Periodic, Bounded),
             (Periodic, Bounded,  Bounded),
@@ -78,26 +76,14 @@ topos_3d = ((Periodic, Periodic, Bounded),
         @test_throws TypeError HydrostaticFreeSurfaceModel(architecture=CPU, grid=grid)
         @test_throws TypeError HydrostaticFreeSurfaceModel(architecture=GPU, grid=grid)
     end
-   
-    @testset "$topo_0d model construction" begin
-    @info "  Testing $topo_0d model construction..."
-        for arch in archs, FT in float_types                
-            grid = RegularRectilinearGrid(FT, topology=topo_0d, size=(), extent=())
-            model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)
-            
-            @test model isa HydrostaticFreeSurfaceModel
-        end
-    end
-    
-    for topo in topos_1d
-        @testset "$topo model construction" begin
-            @info "  Testing $topo model construction..."
-            for arch in archs, FT in float_types
-                grid = RegularRectilinearGrid(FT, topology=topo, size=(1), extent=(1))
-                model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)        
+      
+    @testset "$topo_1d model construction" begin
+        @info "  Testing $topo_1d model construction..."
+        for arch in archs, FT in float_types
+            grid = RegularRectilinearGrid(FT, topology=topo_1d, size=(1), extent=(1))
+            model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)        
 
-                @test model isa HydrostaticFreeSurfaceModel
-            end
+            @test model isa HydrostaticFreeSurfaceModel
         end
     end
     
@@ -218,8 +204,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
         for closure in (IsotropicDiffusivity(),
                         HorizontallyCurvilinearAnisotropicDiffusivity(),
                         HorizontallyCurvilinearAnisotropicDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization()),
-                        TKEBasedVerticalDiffusivity(),
-                        TKEBasedVerticalDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization()))
+                        CATKEVerticalDiffusivity(),
+                        CATKEVerticalDiffusivity(time_discretization=ExplicitTimeDiscretization()))
 
             @testset "Time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
                 @info "  Testing time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."

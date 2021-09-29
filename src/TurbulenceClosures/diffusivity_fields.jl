@@ -1,7 +1,7 @@
 using Oceananigans.Fields: validate_field_tuple_grid
 
 #####
-##### Forms for IncompressibleModel constructor
+##### Forms for NonhydrostaticModel constructor
 #####
 
 DiffusivityFields(diffusivities::NamedTuple, arch, grid, tracer_names, bcs, closure) =

@@ -6,7 +6,6 @@ export
     AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
     TwoDimensionalLeith,
-    ConstantSmagorinsky,
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     HorizontallyCurvilinearAnisotropicDiffusivity,
@@ -37,6 +36,8 @@ using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
 
+const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
+
 #####
 ##### Abstract types
 #####
@@ -50,22 +51,6 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization} end
 
 # Fallbacks
 add_closure_specific_boundary_conditions(closure, boundary_conditions, args...) = boundary_conditions
-
-viscous_flux_ux(i, j, k, grid, args...) = zero(eltype(grid))
-viscous_flux_uy(i, j, k, grid, args...) = zero(eltype(grid))
-viscous_flux_uz(i, j, k, grid, args...) = zero(eltype(grid))
-
-viscous_flux_vx(i, j, k, grid, args...) = zero(eltype(grid))
-viscous_flux_vy(i, j, k, grid, args...) = zero(eltype(grid))
-viscous_flux_vz(i, j, k, grid, args...) = zero(eltype(grid))
-
-viscous_flux_wx(i, j, k, grid, args...) = zero(eltype(grid))
-viscous_flux_wy(i, j, k, grid, args...) = zero(eltype(grid))
-viscous_flux_wz(i, j, k, grid, args...) = zero(eltype(grid))
-
-diffusive_flux_x(i, j, k, grid, args...) = zero(eltype(grid))
-diffusive_flux_y(i, j, k, grid, args...) = zero(eltype(grid))
-diffusive_flux_z(i, j, k, grid, args...) = zero(eltype(grid))
 
 #####
 ##### Include module code
@@ -90,8 +75,10 @@ include("turbulence_closure_implementations/anisotropic_biharmonic_diffusivity.j
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 include("turbulence_closure_implementations/smagorinsky_lilly.jl")
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
-include("turbulence_closure_implementations/tke_based_vertical_diffusivity.jl")
+include("turbulence_closure_implementations/CATKEVerticalDiffusivities/CATKEVerticalDiffusivities.jl")
 include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
+
+using .CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
 # Miscellaneous utilities
 include("diffusivity_fields.jl")
@@ -101,12 +88,5 @@ include("vertically_implicit_diffusion_solver.jl")
 #####
 ##### Some value judgements here
 #####
-
-"""
-    ConstantSmagorinsky
-
-An alias for `SmagorinskyLilly`.
-"""
-const ConstantSmagorinsky = SmagorinskyLilly
 
 end # module

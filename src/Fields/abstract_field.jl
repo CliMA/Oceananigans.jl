@@ -279,5 +279,5 @@ Apply the function `f` to each element of an Oceananigans `field` and take the m
 mean(f::Function, field::AbstractGPUDataField; dims=:) = mean(f, interior_copy(field); dims=dims)
 
 # Risky to use these without tests. Docs would also be nice.
-Statistics.norm(a::AbstractField) = sqrt(mapreduce(x -> x * x, +, interior(a)))
+Statistics.norm(a::AbstractDataField) = sqrt(mapreduce(x -> x * x, +, interior(a)))
 Statistics.dot(a::AbstractField, b::AbstractField) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))

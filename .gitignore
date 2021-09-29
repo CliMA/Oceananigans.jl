@@ -51,3 +51,5 @@ docs/src/generated
 
 # VSCode
 .vscode
+
+statprof

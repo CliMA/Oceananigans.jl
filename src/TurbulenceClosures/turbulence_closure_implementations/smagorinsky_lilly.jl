@@ -18,7 +18,7 @@ struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD}
 end
 
 """
-    SmagorinskyLilly([FT=Float64;] C=0.23, Pr=1, ν=0, κ=0,
+    SmagorinskyLilly([FT=Float64;] C=0.16, Pr=1, ν=0, κ=0,
                                    time_discretization=ExplicitTimeDiscretization())
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
@@ -37,9 +37,9 @@ modification to the eddy viscosity.
 
 Keyword arguments
 =================
-    - `C`  : Model constant
-    - `Cb` : Buoyancy term multipler (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
-             Typically `Cb=1/Pr`.)
+    - `C`  : Smagorinsky constant. Default value is 0.16 as obtained by Lilly (1966).
+    - `Cb` : Buoyancy term multipler based on Lilly (1962) (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
+             Typically, and according to the original work by Lilly (1962), `Cb=1/Pr`.)
     - `Pr` : Turbulent Prandtl numbers for each tracer. Either a constant applied to every
              tracer, or a `NamedTuple` with fields for each tracer individually.
     - `ν`  : Constant background viscosity for momentum
@@ -59,8 +59,11 @@ Lilly, D. K. "On the numerical simulation of buoyant convection." Tellus (1962)
 
 Smagorinsky, J. "General circulation experiments with the primitive equations: I.
     The basic experiment." Monthly weather review (1963)
+
+Lilly, D. K. "The representation of small-scale turbulence in numerical simulation experiments." 
+    NCAR Manuscript No. 281, 0, 1966.
 """
-SmagorinskyLilly(FT=Float64; C=0.23, Cb=1.0, Pr=1.0, ν=0, κ=0,
+SmagorinskyLilly(FT=Float64; C=0.16, Cb=1.0, Pr=1.0, ν=0, κ=0,
                              time_discretization::TD=ExplicitTimeDiscretization()) where TD =
     SmagorinskyLilly{TD, FT}(C, Cb, Pr, ν, κ)
 
@@ -102,10 +105,18 @@ filter width `Δᶠ`, and strain tensor dot product `Σ²`.
     return νₑ_deardorff(ς, clo.C, Δᶠ, Σ²) + clo.ν
 end
 
-function calculate_diffusivities!(K, arch, grid, closure::SmagorinskyLilly, buoyancy, U, C)
+function calculate_diffusivities!(diffusivity_fields, closure::SmagorinskyLilly, model)
 
-    event = launch!(arch, grid, :xyz, calculate_nonlinear_viscosity!, K.νₑ, grid, closure, buoyancy, U, C,
-                    dependencies=Event(device(arch)))
+    arch = model.architecture
+    grid = model.grid
+    buoyancy = model.buoyancy
+    velocities = model.velocities
+    tracers = model.tracers
+
+    event = launch!(arch, grid, :xyz,
+                    calculate_nonlinear_viscosity!,
+                    diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers,
+                    dependencies = device_event(arch))
 
     wait(device(arch), event)
 
@@ -188,9 +199,10 @@ Base.show(io::IO, closure::SmagorinskyLilly) =
 #####
 
 function DiffusivityFields(arch, grid, tracer_names, bcs, closure::SmagorinskyLilly)
-    νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
 
-    νₑ = CenterField(arch, grid, νₑ_bcs)
+    default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
+    bcs = merge(default_eddy_viscosity_bcs, bcs)
+    νₑ = CenterField(arch, grid, bcs.νₑ)
 
     # Use AbstractOperations to write eddy diffusivities in terms of
     # eddy viscosity
@@ -206,6 +218,6 @@ function DiffusivityFields(arch, grid, tracer_names, bcs, closure::SmagorinskyLi
 
     κₑ = NamedTuple{tracer_names}(Tuple(κₑ_ops))
 
-    return (νₑ=νₑ, κₑ=κₑ)
+    return (; νₑ, κₑ)
 end
 

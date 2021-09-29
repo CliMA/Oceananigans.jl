@@ -6,7 +6,7 @@ using Oceananigans.Utils: TimeInterval, pretty_filesize
 
 using Oceananigans.Fields: boundary_conditions
 
-default_included_properties(::IncompressibleModel) = [:grid, :coriolis, :buoyancy, :closure]
+default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
 default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
 
@@ -113,7 +113,7 @@ Write out 3D fields for w and T and a horizontal average:
 using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Fields
 using Oceananigans.Utils: hour, minute
 
-model = IncompressibleModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)
@@ -191,7 +191,7 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
             # Serialize the location and boundary conditions of each output.
             for (i, (field_name, field)) in enumerate(pairs(outputs))
                 file["timeseries/$field_name/serialized/location"] = location(field)
-                file["timeseries/$field_name/serialized/boundary_conditions"] = boundary_conditions(field)
+                serializeproperty!(file, "timeseries/$field_name/serialized/boundary_conditions", boundary_conditions(field))
             end
         end
     catch err
@@ -230,7 +230,7 @@ function write_output!(writer::JLD2OutputWriter, model)
     end_time, new_filesize = time_ns(), filesize(path)
 
     verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
-                              prettytime((start_time - end_time) / 1e9),
+                              prettytime((end_time - start_time) / 1e9),
                               pretty_filesize(new_filesize),
                               pretty_filesize(new_filesize - old_filesize))
 

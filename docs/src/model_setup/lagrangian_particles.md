@@ -36,10 +36,10 @@ lagrangian_particles = LagrangianParticles(x=x₀, y=y₀, z=z₀)
 then pass it to a model constructor
 
 ```jldoctest particles
-model = IncompressibleModel(grid=grid, particles=lagrangian_particles)
+model = NonhydrostaticModel(grid=grid, particles=lagrangian_particles)
 
 # output
-IncompressibleModel{CPU, Float64}(time = 0 seconds, iteration = 0)
+NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=10, Ny=10, Nz=10)
 ├── tracers: (:T, :S)
 ├── closure: Nothing

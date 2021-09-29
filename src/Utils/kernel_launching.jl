@@ -69,11 +69,10 @@ The keyword argument `dependencies` is an `Event` or `MultiEvent` specifying pri
 that must complete before `kernel!` is launched.
 """
 function launch!(arch, grid, dims, kernel!, args...;
-                 dependencies = nothing,
+                 dependencies = device_event(arch),
                  include_right_boundaries = false,
                  reduced_dimensions = (),
-                 location = nothing,
-                 kwargs...)
+                 location = nothing)
 
     workgroup, worksize = work_layout(grid, dims,
                                       include_right_boundaries = include_right_boundaries,
@@ -84,7 +83,7 @@ function launch!(arch, grid, dims, kernel!, args...;
 
     @debug "Launching kernel $kernel! with worksize $worksize"
 
-    event = loop!(args...; dependencies=dependencies, kwargs...)
+    event = loop!(args...; dependencies=dependencies)
 
     return event
 end

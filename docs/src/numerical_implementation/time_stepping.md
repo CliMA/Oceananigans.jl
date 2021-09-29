@@ -32,7 +32,7 @@ To effect such a fractional step method, we define an intermediate velocity fiel
     \boldsymbol{v}^\star - \boldsymbol{v}^n = \int_{t_n}^{t_{n+1}} \boldsymbol{G}_{\boldsymbol{v}} \, \mathrm{d} t \, ,
     \end{equation}
 ```
-where, e.g., for the incompressible model, 
+where, e.g., for the non-hydrostatic model, 
 ```math
 \boldsymbol{G}_{\boldsymbol{v}} \equiv - \boldsymbol{\nabla}_h p_{\rm{hyd}} 
                        - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v} 

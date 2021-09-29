@@ -9,7 +9,7 @@ are provided, then `func` must be callable with the signature
     `func(x, y, z, t)`
 
 where `x, y, z` are the east-west, north-south, and vertical spatial coordinates, and `t` is time.
-Note that this form is also default in the constructor for `IncompressibleModel`, so that `Forcing` is
+Note that this form is also default in the constructor for `NonhydrostaticModel`, so that `Forcing` is
 not needed.
 
 If `discrete_form=false` (the default), and `field_dependencies` are provided,
@@ -43,7 +43,7 @@ If `discrete_form=true` then `func` must be callable with the "discrete form"
 where `i, j, k` is the grid point at which the forcing is applied, `grid` is `model.grid`,
 `clock.time` is the current simulation time and `clock.iteration` is the current model iteration,
 and `model_fields` is a `NamedTuple` with `u, v, w`, the fields in `model.tracers`,
-and the fields in `model.diffusivities`, each of which is an `OffsetArray`s (or `NamedTuple`s
+and the fields in `model.diffusivity_fields`, each of which is an `OffsetArray`s (or `NamedTuple`s
 of `OffsetArray`s depending on the turbulence closure) of field data.
 
 When `discrete_form=true` and `parameters` _is_ specified, `func` must be callable with the signature
@@ -69,11 +69,11 @@ ContinuousForcing{NamedTuple{(:μ, :λ, :ω), Tuple{Int64, Float64, Irrational{:
 ```
 
 Note that because forcing locations are regularized within the
-`IncompressibleModel` constructor:
+`NonhydrostaticModel` constructor:
 
 ```jldoctest forcing
 grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = IncompressibleModel(grid=grid, forcing=(v=v_forcing,))
+model = NonhydrostaticModel(grid=grid, forcing=(v=v_forcing,))
 
 model.forcing.v
 
@@ -84,7 +84,7 @@ ContinuousForcing{NamedTuple{(:μ, :λ, :ω), Tuple{Int64, Float64, Irrational{:
 └── field dependencies: ()
 ```
 
-After passing through the constructor for `IncompressibleModel`, the `v`-forcing location
+After passing through the constructor for `NonhydrostaticModel`, the `v`-forcing location
 information is available and set to `Center, Face, Center`.
 
 ```jldoctest forcing

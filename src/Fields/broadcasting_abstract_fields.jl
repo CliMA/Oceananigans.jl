@@ -4,6 +4,9 @@
 
 using Base.Broadcast: DefaultArrayStyle
 using Base.Broadcast: Broadcasted
+using CUDA
+
+using Oceananigans.Architectures: device_event
 
 struct FieldBroadcastStyle <: Broadcast.AbstractArrayStyle{3} end
 
@@ -11,13 +14,17 @@ Base.Broadcast.BroadcastStyle(::Type{<:AbstractField}) = FieldBroadcastStyle()
 
 # Precedence rule
 Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::DefaultArrayStyle{N}) where N = FieldBroadcastStyle()
+Base.Broadcast.BroadcastStyle(::FieldBroadcastStyle, ::CUDA.CuArrayStyle{N}) where N = FieldBroadcastStyle()
 
 # For use in Base.copy when broadcasting with numbers and arrays (useful for comparisons like f::AbstractField .== 0)
 Base.similar(bc::Broadcasted{FieldBroadcastStyle}, ::Type{ElType}) where ElType = similar(Array{ElType}, axes(bc))
 
 # Bypass style combining for in-place broadcasting with arrays / scalars to use built-in broadcasting machinery
-@inline Base.Broadcast.materialize!(dest::AbstractField, bc::Broadcasted{<:DefaultArrayStyle}) =
-    Base.Broadcast.materialize!(DefaultArrayStyle{3}(), dest, bc)
+const BroadcastedArrayOrCuArray = Union{Broadcasted{<:DefaultArrayStyle},
+                                        Broadcasted{<:CUDA.CuArrayStyle}}
+
+@inline Base.Broadcast.materialize!(dest::AbstractField, bc::BroadcastedArrayOrCuArray) =
+    Base.Broadcast.materialize!(interior(dest), bc)
 
 #####
 ##### Kernels
@@ -78,6 +85,7 @@ broadcasted_to_abstract_operation(loc, grid, a) = a
 
     event = launch!(arch, grid, config, kernel, dest, bc′,
                     include_right_boundaries = true,
+                    dependencies = device_event(arch),
                     location = (X, Y, Z))
 
     wait(device(arch), event)

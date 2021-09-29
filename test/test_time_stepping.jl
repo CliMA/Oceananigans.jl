@@ -1,13 +1,13 @@
 using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.Fields: BackgroundField
 using Oceananigans.TimeSteppers: Clock
-using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
     extent = Tuple(1 for i = 1:topological_tuple_length(topology...))
     grid = RegularRectilinearGrid(size=size, extent=extent, topology=topology)
-    model = IncompressibleModel(grid=grid, architecture=arch)
+    model = NonhydrostaticModel(grid=grid, architecture=arch)
     time_step!(model, 1, euler=true)
     return true # Test that no errors/crashes happen when time stepping.
 end
@@ -15,7 +15,7 @@ end
 function time_stepping_works_with_coriolis(arch, FT, Coriolis)
     grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, 2, 3))
     c = Coriolis(FT, latitude=45)
-    model = IncompressibleModel(grid=grid, architecture=arch, coriolis=c)
+    model = NonhydrostaticModel(grid=grid, architecture=arch, coriolis=c)
 
     time_step!(model, 1, euler=true)
 
@@ -24,14 +24,14 @@ end
 
 function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(model=SeawaterBuoyancy(FT)))
 
-    # Add TKE tracer "e" to tracers when using TKEBasedVerticalDiffusivity
+    # Add TKE tracer "e" to tracers when using CATKEVerticalDiffusivity
     tracers = [:T, :S]
-    Closure === TKEBasedVerticalDiffusivity && push!(tracers, :e)
+    Closure === CATKEVerticalDiffusivity && push!(tracers, :e)
 
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
     grid = RegularRectilinearGrid(FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
 
-    model = IncompressibleModel(grid=grid, architecture=arch,
+    model = NonhydrostaticModel(grid=grid, architecture=arch,
                                 closure=Closure(FT), tracers=tracers, buoyancy=buoyancy)
 
     time_step!(model, 1, euler=true)
@@ -42,14 +42,14 @@ end
 function time_stepping_works_with_advection_scheme(arch, advection_scheme)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
     grid = RegularRectilinearGrid(size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
-    model = IncompressibleModel(grid=grid, architecture=arch, advection=advection_scheme)
+    model = NonhydrostaticModel(grid=grid, architecture=arch, advection=advection_scheme)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
 function time_stepping_works_with_nothing_closure(arch, FT)
     grid = RegularRectilinearGrid(FT; size=(1, 1, 1), extent=(1, 2, 3))
-    model = IncompressibleModel(grid=grid, architecture=arch, closure=nothing)
+    model = NonhydrostaticModel(grid=grid, architecture=arch, closure=nothing)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
 end
@@ -60,7 +60,7 @@ function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
     eos = EOS()
     b = SeawaterBuoyancy(equation_of_state=eos)
 
-    model = IncompressibleModel(architecture=arch, grid=grid, buoyancy=b)
+    model = NonhydrostaticModel(architecture=arch, grid=grid, buoyancy=b)
     time_step!(model, 1, euler=true)
 
     return true  # Test that no errors/crashes happen when time stepping.
@@ -72,7 +72,7 @@ function run_first_AB2_time_step_tests(arch, FT)
     # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
     grid = RegularRectilinearGrid(FT, size=(13, 17, 19), extent=(1, 2, 3))
 
-    model = IncompressibleModel(grid=grid, architecture=arch, forcing=(T=add_ones,))
+    model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=(T=add_ones,))
     time_step!(model, 1, euler=true)
 
     # Test that GT = 1, T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
@@ -97,11 +97,11 @@ end
     velocity field.
 """
 function incompressible_in_time(arch, grid, Nt, timestepper)
-    model = IncompressibleModel(grid=grid, architecture=arch, timestepper=timestepper)
+    model = NonhydrostaticModel(grid=grid, architecture=arch, timestepper=timestepper)
     grid = model.grid
     u, v, w = model.velocities
 
-    div_U = CenterField(arch, grid, TracerBoundaryConditions(grid))
+    div_U = CenterField(arch, grid)
 
     # Just add a temperature perturbation so we get some velocity field.
     CUDA.@allowscalar interior(model.tracers.T)[8:24, 8:24, 8:24] .+= 0.01
@@ -145,7 +145,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     topology = (Periodic, Bounded, Bounded)
     grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model = IncompressibleModel(architecture = arch, grid = grid,
+    model = NonhydrostaticModel(architecture = arch, grid = grid,
                                 closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
@@ -183,7 +183,7 @@ function time_stepping_with_background_fields(arch)
     background_S_func(x, y, z, t, α) = α * y
     background_S = BackgroundField(background_S_func, parameters=1.2)
 
-    model = IncompressibleModel(grid=grid, background_fields=(u=background_u, v=background_v, w=background_w,
+    model = NonhydrostaticModel(grid=grid, background_fields=(u=background_u, v=background_v, w=background_w,
                                                               T=background_T, S=background_S))
 
     time_step!(model, 1, euler=true)
@@ -195,16 +195,17 @@ function time_stepping_with_background_fields(arch)
            location(model.background_fields.tracers.S) === (Center, Center, Center)
 end
 
-Planes = (FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane)
+Planes = (FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane)
 
 BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipation(FT, Cb=1.0)
 
 Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
             AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
             SmagorinskyLilly, AnisotropicMinimumDissipation, BuoyancyModifiedAnisotropicMinimumDissipation,
-            TKEBasedVerticalDiffusivity)
+            CATKEVerticalDiffusivity)
 
 advection_schemes = (nothing,
+                     UpwindBiasedFirstOrder(),
                      CenteredSecondOrder(),
                      UpwindBiasedThirdOrder(),
                      CenteredFourthOrder(),
@@ -220,13 +221,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         @testset "Time stepping with DateTimes [$(typeof(arch)), $FT]" begin
             @info "  Testing time stepping with datetime clocks [$(typeof(arch)), $FT]"
 
-            model = IncompressibleModel(grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)),
+            model = NonhydrostaticModel(grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)),
                                         clock = Clock(time=DateTime(2020)))
 
             time_step!(model, 7.883)
             @test model.clock.time == DateTime("2020-01-01T00:00:07.883")
 
-            model = IncompressibleModel(grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)),
+            model = NonhydrostaticModel(grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)),
                                         clock = Clock(time=TimeDate(2020)))
 
             time_step!(model, 123e-9)  # 123 nanoseconds
@@ -277,8 +278,8 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
             for Closure in Closures
                 @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
-                if Closure === TwoDimensionalLeith && arch isa CPU
-                    # This test is extremely slow so we skip.
+                if Closure === TwoDimensionalLeith
+                    # TwoDimensionalLeith is slow on the CPU and doesn't compile right now on the GPU.
                     # See: https://github.com/CliMA/Oceananigans.jl/pull/1074
                     @test_skip time_stepping_works_with_closure(arch, FT, Closure)
                 else

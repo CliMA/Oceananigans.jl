@@ -159,17 +159,12 @@ locally. From the main directory of your local repository call
 ```
 julia --project -e 'using Pkg; Pkg.instantiate()'
 julia --project=docs/ -e 'using Pkg; Pkg.instantiate()'
-julia --project=docs/ docs/make.jl
+JULIA_DEBUG=Documenter julia --project=docs/ docs/make.jl
 ```
- 
-and then open `docs/build/index.html` in your favorite browser. The building of the documentation
-performs some basic tests (`doctests`), which create some temporary `.nc` and `.jld2` files.
-Make sure you delete those files before rebuilding the documentation, e.g.,
 
-```
-rm docs/*.jld2
-rm docs/*.nc
-```
+and then open `docs/build/index.html` in your favorite browser. Providing the environment variable 
+`JULIA_DEBUG=Documenter` will provide with more information in the documentation build process and
+thus help figuring out a potential bug.
 
 ## Credits
 

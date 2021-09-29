@@ -12,7 +12,7 @@
 # The phytoplankton in our model are advected, diffuse, grow, and die according to
 #
 # ```math
-# ∂_t P + \boldsymbol{u ⋅ ∇} P - κ ∇²P = (μ₀ \exp(z / λ) - m) \, P \, ,
+# ∂_t P + \boldsymbol{v ⋅ ∇} P - κ ∇²P = (μ₀ \exp(z / λ) - m) \, P \, ,
 # ```
 #
 # where ``\boldsymbol{v}`` is the turbulent velocity field, ``κ`` is an isotropic diffusivity,
@@ -54,7 +54,7 @@ grid = RegularRectilinearGrid(size=(64, 64), extent=(64, 64), topology=(Periodic
 #
 # We impose a surface buoyancy flux that's initially constant and then decays to zero,
 
-buoyancy_flux(x, y, t, p) = p.initial_buoyancy_flux * exp(-t^4 / (24 * p.shut_off_time^4))
+buoyancy_flux(x, y, t, params) = params.initial_buoyancy_flux * exp(-t^4 / (24 * params.shut_off_time^4))
 
 buoyancy_flux_parameters = (initial_buoyancy_flux = 1e-8, # m² s⁻³
                                     shut_off_time = 2hours)
@@ -92,14 +92,14 @@ buoyancy_gradient_bc = GradientBoundaryCondition(N²)
 # In summary, the buoyancy boundary conditions impose a destabilizing flux
 # at the top and a stable buoyancy gradient at the bottom:
 
-buoyancy_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc, bottom = buoyancy_gradient_bc)
+buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy_gradient_bc)
 
 # ## Phytoplankton dynamics: light-dependent growth and uniform mortality
 #
 # We use a simple model for the growth of phytoplankton in sunlight and decay
 # due to viruses and grazing by zooplankton,
 
-growing_and_grazing(x, y, z, t, P, p) = (p.μ₀ * exp(z / p.λ) - p.m) * P
+growing_and_grazing(x, y, z, t, P, params) = (params.μ₀ * exp(z / params.λ) - params.m) * P
 nothing # hide
 
 # with parameters
@@ -117,11 +117,11 @@ plankton_dynamics = Forcing(growing_and_grazing, field_dependencies = :P,
 # ## The model
 #
 # The name "`P`" for phytoplankton is specified in the
-# constructor for `IncompressibleModel`. We additionally specify a fifth-order
+# constructor for `NonhydrostaticModel`. We additionally specify a fifth-order
 # advection scheme, third-order Runge-Kutta time-stepping, isotropic viscosity and diffusivities,
 # and Coriolis forces appropriate for planktonic convection at mid-latitudes on Earth.
 
-model = IncompressibleModel(
+model = NonhydrostaticModel(
                    grid = grid,
               advection = UpwindBiasedFifthOrder(),
             timestepper = :RungeKutta3,

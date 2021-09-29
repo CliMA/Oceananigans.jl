@@ -18,8 +18,5 @@ for (x, side) in zip(coords, sides)
     name = Symbol(:fill_, side, :_halo!)
     H = Symbol(:H, x)
     N = Symbol(:N, x)
-    @eval begin
-        $name(c, bc::PBC, arch, dependencies, grid, args...; kwargs...) =
-            $name(c, bc, grid.$(H), grid.$(N))
-    end
+    @eval $name(c, bc::PBC, arch, dep, grid, args...; kw...) = $name(c, bc, grid.$(H), grid.$(N))
 end

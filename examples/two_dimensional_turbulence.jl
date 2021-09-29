@@ -27,7 +27,7 @@ using Oceananigans
 grid = RegularRectilinearGrid(size=(128, 128), extent=(2π, 2π), 
                               topology=(Periodic, Periodic, Flat))
 
-model = IncompressibleModel(timestepper = :RungeKutta3,
+model = NonhydrostaticModel(timestepper = :RungeKutta3,
                               advection = UpwindBiasedFifthOrder(),
                                    grid = grid,
                                buoyancy = nothing,
@@ -42,10 +42,15 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 
 using Statistics
 
-u₀ = rand(size(model.grid)...)
-u₀ .-= mean(u₀)
+u, v, w = model.velocities
 
-set!(model, u=u₀, v=u₀)
+uᵢ = rand(size(u)...)
+vᵢ = rand(size(v)...)
+
+uᵢ .-= mean(uᵢ)
+vᵢ .-= mean(vᵢ)
+
+set!(model, u=uᵢ, v=vᵢ)
 
 # ## Computing vorticity and speed
 

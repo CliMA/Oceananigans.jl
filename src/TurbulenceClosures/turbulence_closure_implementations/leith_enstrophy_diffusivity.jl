@@ -197,9 +197,17 @@ const L2D = TwoDimensionalLeith
 @inline viscous_flux_wy(i, j, k, grid, closure::L2D, clock, U, K) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, closure, K.νₑ, Σ₃₂, U.u, U.v, U.w)
 @inline viscous_flux_wz(i, j, k, grid, closure::L2D, clock, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, closure, K.νₑ, Σ₃₃, U.u, U.v, U.w)
 
-function calculate_diffusivities!(K, arch, grid, closure::TwoDimensionalLeith, buoyancy, U, C)
-    event = launch!(arch, grid, :xyz, calculate_nonlinear_viscosity!, K.νₑ, grid, closure, buoyancy, U, C,
-                    dependencies=Event(device(arch)))
+function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model)
+    arch = model.architecture
+    grid = model.grid
+    velocities = model.velocities
+    tracers = model.tracers
+    buoyancy = model.buoyancy
+
+    event = launch!(arch, grid, :xyz,
+                    calculate_nonlinear_viscosity!,
+                    diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers,
+                    dependencies = device_event(arch))
 
     wait(device(arch), event)
 
@@ -210,7 +218,8 @@ end
 @inline Δᶠ(i, j, k, grid::RegularRectilinearGrid, ::TwoDimensionalLeith) = sqrt(grid.Δx * grid.Δy)
 
 function DiffusivityFields(arch, grid, tracer_names, bcs, ::L2D)
-    νₑ_bcs = :νₑ ∈ keys(bcs) ? bcs[:νₑ] : DiffusivityBoundaryConditions(grid)
-    νₑ = CenterField(arch, grid, νₑ_bcs)
-    return (νₑ = νₑ,)
+    default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
+    bcs = merge(default_eddy_viscosity_bcs, bcs)
+    νₑ = CenterField(arch, grid, bcs.νₑ)
+    return (; νₑ)
 end

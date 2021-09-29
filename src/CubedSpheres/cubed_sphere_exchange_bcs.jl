@@ -1,16 +1,29 @@
 using Adapt
 
+using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Grids: AbstractGrid
 using Oceananigans.BoundaryConditions
-using Oceananigans.BoundaryConditions: BCType
+using Oceananigans.BoundaryConditions: AbstractBoundaryConditionClassification
+
+using KernelAbstractions: NoneEvent
 
 import Base: show
-import Oceananigans.BoundaryConditions: bctype_str, print_condition
 
-struct CubedSphereExchange <: BCType end
+import Oceananigans.BoundaryConditions: bc_str, print_condition
+
+import Oceananigans.BoundaryConditions:
+    apply_x_bcs!,
+    apply_y_bcs!,
+    apply_x_east_bc!,
+    apply_x_west_bc!,
+    apply_y_south_bc!,
+    apply_y_north_bc!
+
+struct CubedSphereExchange <: AbstractBoundaryConditionClassification end
 
 const CubedSphereExchangeBC = BoundaryCondition{<:CubedSphereExchange}
 
-bctype_str(::CubedSphereExchangeBC) ="CubedSphereExchange"
+bc_str(::CubedSphereExchangeBC) ="CubedSphereExchange"
 
 CubedSphereExchangeBoundaryCondition(val; kwargs...) = BoundaryCondition(CubedSphereExchange, val; kwargs...)
 
@@ -65,11 +78,23 @@ function inject_cubed_sphere_exchange_boundary_conditions(field_bcs, face_number
     south_exchange_bc = CubedSphereExchangeBoundaryCondition(south_exchange_info)
     north_exchange_bc = CubedSphereExchangeBoundaryCondition(north_exchange_info)
 
-    x_bcs = CoordinateBoundaryConditions(west_exchange_bc, east_exchange_bc)
-    y_bcs = CoordinateBoundaryConditions(south_exchange_bc, north_exchange_bc)
-
-    return FieldBoundaryConditions(x_bcs, y_bcs, field_bcs.z)
+    return FieldBoundaryConditions(west_exchange_bc,
+                                   east_exchange_bc,
+                                   south_exchange_bc,
+                                   north_exchange_bc,
+                                   field_bcs.bottom,
+                                   field_bcs.top,
+                                   field_bcs.immersed)
 end
 
 Adapt.adapt_structure(to, ::CubedSphereExchangeInformation) = nothing
 Adapt.adapt_structure(to, ::CubedSphereExchangeBC) = nothing
+
+# Don't "apply fluxes" across CubedSphere boundaries
+@inline apply_x_east_bc!(  Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
+@inline apply_x_west_bc!(  Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
+@inline apply_y_north_bc!( Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
+@inline apply_y_south_bc!( Gc, loc, ::CubedSphereExchangeBC, args...) = nothing
+
+apply_x_bcs!(Gc, ::AbstractGrid, c, ::CubedSphereExchangeBC, ::CubedSphereExchangeBC, ::AbstractArchitecture, args...) = NoneEvent()
+apply_y_bcs!(Gc, ::AbstractGrid, c, ::CubedSphereExchangeBC, ::CubedSphereExchangeBC, ::AbstractArchitecture, args...) = NoneEvent()

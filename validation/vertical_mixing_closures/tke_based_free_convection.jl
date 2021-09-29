@@ -1,13 +1,14 @@
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", ".."))
+
 using Plots
 using Printf
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, TKEBasedVerticalDiffusivity
-using Oceananigans.TurbulenceClosures: RiDependentDiffusivityScaling
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
-grid = RegularRectilinearGrid(size=32, z=(-64, 0), topology=(Flat, Flat, Bounded))
+grid = RegularRectilinearGrid(size=16, z=(-64, 0), topology=(Flat, Flat, Bounded))
 
-closure = TKEBasedVerticalDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization())
+closure = CATKEVerticalDiffusivity()
                                       
 Qᵇ = 1e-8
 Qᵘ = 0.0
@@ -16,17 +17,14 @@ Qᵛ = 0.0
 u★ = (Qᵘ^2 + Qᵛ^2)^(1/4)
 w★ = Qᵇ * grid.Δz
 
-Qᵉ = - closure.dissipation_parameter * (closure.surface_model.CᵂwΔ * w★ + closure.surface_model.Cᵂu★ * u★)
-
-u_bcs = UVelocityBoundaryConditions(grid; top = FluxBoundaryCondition(Qᵘ))
-v_bcs = VVelocityBoundaryConditions(grid; top = FluxBoundaryCondition(Qᵛ))
-b_bcs = TracerBoundaryConditions(grid; top = FluxBoundaryCondition(Qᵇ))
-tke_bcs = TracerBoundaryConditions(grid; top = FluxBoundaryCondition(Qᵉ))
+u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
+v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵛ))
+b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     tracers = (:b, :e),
                                     buoyancy = BuoyancyTracer(),
-                                    boundary_conditions = (b=b_bcs, e=tke_bcs),
+                                    boundary_conditions = (; b=b_bcs),
                                     closure = closure)
                                     
 N² = 1e-5
@@ -37,8 +35,8 @@ z = znodes(model.tracers.b)
 
 b = view(interior(model.tracers.b), 1, 1, :)
 e = view(interior(model.tracers.e), 1, 1, :)
-Kc = view(interior(model.diffusivities.Kᶜ), 1, 1, :)
-Ke = view(interior(model.diffusivities.Kᵉ), 1, 1, :)
+Kc = view(interior(model.diffusivity_fields.Kᶜ), 1, 1, :)
+Ke = view(interior(model.diffusivity_fields.Kᵉ), 1, 1, :)
 
 b_plot = plot(b, z, linewidth = 2, label = "t = 0", xlabel = "Buoyancy", ylabel = "z", legend=:bottomright)
 e_plot = plot(e, z, linewidth = 2, label = "t = 0", xlabel = "TKE", ylabel = "z", legend=:bottomright)

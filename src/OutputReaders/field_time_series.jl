@@ -33,12 +33,14 @@ end
 #####
 
 """
-    FieldTimeSeries(filepath, name; architecture=CPU(), backend=InMemory())
+    FieldTimeSeries(filepath, name; architecture=CPU(), backend=InMemory(); grid=nothing)
 
 Returns a `FieldTimeSeries` for the field `name` describing a field's time history from a JLD2 file
 located at `filepath`. Note that model output must have been saved with halos. The `InMemory` backend
 will store the data fully in memory as a 4D multi-dimensional array while the `OnDisk` backend will
 lazily load field time snapshots when the `FieldTimeSeries` is indexed linearly.
+
+If `grid` is not supplied, it will be reconstructed from file.
 """
 FieldTimeSeries(filepath, name; architecture=CPU(), grid=nothing, ArrayType=array_type(architecture), backend=InMemory()) =
     FieldTimeSeries(filepath, name, architecture, grid, ArrayType, backend)
@@ -46,7 +48,10 @@ FieldTimeSeries(filepath, name; architecture=CPU(), grid=nothing, ArrayType=arra
 function FieldTimeSeries(filepath, name, architecture, grid, ArrayType, backend::InMemory)
     file = jldopen(filepath)
 
-    grid = isnothing(grid) ? file["serialized/grid"] : grid
+    if isnothing(grid)
+        grid = file["serialized/grid"]
+    end
+  
     Hx, Hy, Hz = halo_size(grid)
 
     iterations = parse.(Int, keys(file["timeseries/t"]))
@@ -73,8 +78,11 @@ end
 
 function FieldTimeSeries(filepath, name, architecture, grid, ArrayType, backend::OnDisk)
     file = jldopen(filepath)
+    
+    if isnothing(grid)
+        grid = file["serialized/grid"]
+    end
 
-    grid = isnothing(grid) ? file["serialized/grid"] : grid
     iterations = parse.(Int, keys(file["timeseries/t"]))
     times = [file["timeseries/t/$i"] for i in iterations]
 

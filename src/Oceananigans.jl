@@ -19,14 +19,12 @@ export
     xnodes, ynodes, znodes, nodes,
 
     # Advection schemes
-    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5,
+    CenteredSecondOrder, CenteredFourthOrder, UpwindBiasedFirstOrder, UpwindBiasedThirdOrder, UpwindBiasedFifthOrder, WENO5,
 
     # Boundary conditions
     BoundaryCondition,
-    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition,
-    CoordinateBoundaryConditions, FieldBoundaryConditions,
-    UVelocityBoundaryConditions, VVelocityBoundaryConditions, WVelocityBoundaryConditions,
-    TracerBoundaryConditions, PressureBoundaryConditions,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
+    FieldBoundaryConditions,
 
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
@@ -37,7 +35,7 @@ export
     Forcing, Relaxation, LinearTarget, GaussianMask,
 
     # Coriolis forces
-    FPlane, BetaPlane, NonTraditionalFPlane, NonTraditionalBetaPlane,
+    FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
 
     # BuoyancyModels and equations of state
     Buoyancy, BuoyancyTracer, SeawaterBuoyancy,
@@ -50,7 +48,7 @@ export
     # Turbulence closures
     IsotropicDiffusivity, AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
-    ConstantSmagorinsky, AnisotropicMinimumDissipation,
+    SmagorinskyLilly, AnisotropicMinimumDissipation,
     HorizontallyCurvilinearAnisotropicDiffusivity,
     ConvectiveAdjustmentVerticalDiffusivity,
 
@@ -58,7 +56,7 @@ export
     LagrangianParticles,
 
     # Models
-    IncompressibleModel, NonDimensionalIncompressibleModel,
+    NonhydrostaticModel,
     HydrostaticFreeSurfaceModel,
     ShallowWaterModel,
     fields,
@@ -72,7 +70,7 @@ export
     Clock, TimeStepWizard, time_step!,
 
     # Simulations
-    Simulation, run!,
+    Simulation, run!, Callback, iteration,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics
@@ -87,7 +85,7 @@ export
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
 
     # Abstract operations
-    ∂x, ∂y, ∂z, @at,
+    ∂x, ∂y, ∂z, @at, KernelFunctionOperation,
 
     # Cubed sphere
     ConformalCubedSphereGrid,

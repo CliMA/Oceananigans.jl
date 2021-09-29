@@ -27,7 +27,7 @@ function run_test(; Δt, stop_iteration, timestepper, architecture = CPU())
 
     grid = RegularRectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(0, 1))
 
-    model = IncompressibleModel(architecture = architecture,
+    model = NonhydrostaticModel(architecture = architecture,
                                  timestepper = timestepper,
                                         grid = grid,
                                     coriolis = nothing,
