@@ -22,6 +22,8 @@ abstract type AbstractIsopycnalTensor end
 """
 struct IsopycnalTensor <: AbstractIsopycnalTensor end
 
+IsopycnalTensor() = throw("IsopycnalTensor not implemented yet; use SmallSlopeIsopycnalTensor instead.")
+
 """
     An isopycnal tensor is a tensor that rotates a vector into the isopycnal plane
     using the local slopes of the buoyancy field and employing the small-slope
