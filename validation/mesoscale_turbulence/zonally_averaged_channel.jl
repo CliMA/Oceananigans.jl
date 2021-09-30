@@ -133,7 +133,7 @@ horizontal_diffusivity = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=�
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)
 
-gerdes_koberle_willebrand_tapering = Oceananigans.TurbulenceClosures.FluxTapering()
+gerdes_koberle_willebrand_tapering = Oceananigans.TurbulenceClosures.FluxTapering(1e-2)
 
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 0.3,
                                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
