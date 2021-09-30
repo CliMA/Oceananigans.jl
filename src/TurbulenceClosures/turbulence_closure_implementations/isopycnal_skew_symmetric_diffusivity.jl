@@ -29,7 +29,9 @@ end
 ##### Tapering
 #####
 
-struct FluxTapering end
+struct FluxTapering{FT}
+    max_slope :: FT
+end
 
 """
     taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, tapering)
