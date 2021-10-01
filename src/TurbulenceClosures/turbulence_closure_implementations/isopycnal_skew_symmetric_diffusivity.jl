@@ -3,6 +3,11 @@ struct IsopycnalSkewSymmetricDiffusivity{K, S, M, L} <: AbstractTurbulenceClosur
         κ_symmetric :: S
     isopycnal_model :: M
       slope_limiter :: L
+    
+      IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric, isopycnal_model, slope_limiter) = 
+        typeof(isopycnal_model) == IsopycnalTensor ? 
+        error("IsopycnalTensor not implemented yet; use SmallSlopeIsopycnalTensor instead.") : 
+        new{typeof(κ_skew), typeof(κ_symmetric), typeof(isopycnal_model), typeof(slope_limiter)}(κ_skew, κ_symmetric, isopycnal_model, slope_limiter)
 end
 
 const ISSD = IsopycnalSkewSymmetricDiffusivity
@@ -34,7 +39,7 @@ struct FluxTapering{FT}
 end
 
 """
-    taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, tapering)
+    taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, tapering::FluxTapering)
 
 Return the tapering factor `min(1, Sₘₐₓ² / slope²)`, where `slope² = slope_x² + slope_y²`
 that multiplies all components of the isopycnal slope tensor. All slopes involved in the

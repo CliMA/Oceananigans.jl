@@ -8,11 +8,11 @@ Abstract supertype for an isopycnal rotation model.
 abstract type AbstractIsopycnalTensor end
 
 """
-    An isopycnal tensor is a tensor that rotates a vector into the isopycnal plane
-    using the local slopes of the buoyancy field. Slopes are computed via
-    `slope_x = - ∂b/∂x / ∂b/∂z` and `slope_y = - ∂b/∂y / ∂b/∂z`, with the negative
-    sign to account for the stable stratification (`∂b/∂z < 0`).
-    Then, the components of the isopycnal rotation tensor are:
+    A tensor that rotates a vector into the isopycnal plane using the local slopes
+    of the buoyancy field. Slopes are computed via `slope_x = - ∂b/∂x / ∂b/∂z` and
+    `slope_y = - ∂b/∂y / ∂b/∂z`, with the negative sign to account for the stable
+    stratification (`∂b/∂z < 0`). Then, the components of the isopycnal rotation
+    tensor are:
     
                      ⎡     1 + slope_y²         - slope_x slope_y      slope_x ⎤ 
       (1 + slope²)⁻¹ | - slope_x slope_y          1 + slope_x²         slope_y |
@@ -22,16 +22,14 @@ abstract type AbstractIsopycnalTensor end
 """
 struct IsopycnalTensor <: AbstractIsopycnalTensor end
 
-IsopycnalTensor() = throw("IsopycnalTensor not implemented yet; use SmallSlopeIsopycnalTensor instead.")
-
 """
-    An isopycnal tensor is a tensor that rotates a vector into the isopycnal plane
-    using the local slopes of the buoyancy field and employing the small-slope
-    approximation, i.e., that the horizontal isopycnal slopes, `slope_x` and `slope_y`
-    are ``≪ 1``. Slopes are computed via `slope_x = - ∂b/∂x / ∂b/∂z` and
-    `slope_y = - ∂b/∂y / ∂b/∂z`, with the negative sign to account for the stable
-    stratification (`∂b/∂z < 0`). Then, by utilizing the small-slope appoximation,
-    the components of the isopycnal rotation tensor are:
+    A tensor that rotates a vector into the isopycnal plane using the local slopes
+    of the buoyancy field and employing the small-slope approximation, i.e., that
+    the horizontal isopycnal slopes, `slope_x` and `slope_y` are ``≪ 1``. Slopes are
+    computed via `slope_x = - ∂b/∂x / ∂b/∂z` and `slope_y = - ∂b/∂y / ∂b/∂z`, with
+    the negative sign to account for the stable stratification (`∂b/∂z < 0`). Then,
+    by utilizing the small-slope appoximation, the components of the isopycnal
+    rotation tensor are:
     
       ⎡   1            0         slope_x ⎤ 
       |   0            1         slope_y |
