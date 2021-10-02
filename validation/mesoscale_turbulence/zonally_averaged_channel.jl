@@ -18,7 +18,7 @@ const Lx = 1000kilometers # zonal domain length [m]
 const Ly = 2000kilometers # meridional domain length [m]
 
 # number of grid points
-Nx = 200
+Nx = 1
 Ny = 400
 Nz = 35
 
@@ -34,7 +34,7 @@ FT = Float64
 
 grid = VerticallyStretchedRectilinearGrid(architecture = arch,
                                           topology = (Periodic, Bounded, Bounded),
-                                          size = (1, Ny, Nz),
+                                          size = (Nx, Ny, Nz),
                                           halo = (3, 3, 3),
                                           x = (0, Lx),
                                           y = (0, Ly),
@@ -49,7 +49,7 @@ grid = VerticallyStretchedRectilinearGrid(architecture = arch,
 α  = 2e-4     # [K⁻¹] thermal expansion coefficient 
 g  = 9.8061   # [m/s²] gravitational constant
 cᵖ = 3994.0   # [J/K]  heat capacity
-ρ  = 999.8    # [kg/m³] reference density
+ρ  = 1024.0   # [kg/m³] reference density
 
 parameters = (Ly = Ly,  
               Lz = Lz,    
@@ -100,7 +100,7 @@ v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
 #####
 
 const f = -1e-4
-const β = 1 * 10^(-11)
+const β =  1e-11
 coriolis = BetaPlane(FT, f₀ = f, β = β)
 
 #####
@@ -135,7 +135,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 gerdes_koberle_willebrand_tapering = Oceananigans.TurbulenceClosures.FluxTapering(1e-2)
 
-gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 0.3,
+gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 100, κ_symmetric = 100,
                                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
 #####
 ##### Model building
@@ -155,19 +155,6 @@ model = HydrostaticFreeSurfaceModel(architecture = arch,
                                     tracers = :b,
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                     forcing = (; b=Fb))
-
-#=
-model = NonhydrostaticModel(architecture = arch,
-                                    grid = grid,
-                                    advection = WENO5(),
-                                    buoyancy = BuoyancyTracer(),
-                                    coriolis = coriolis,
-                                    closure = (closure),
-                                    tracers = :b,
-                                    boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
-                                    forcing = (b=Fb,),
-                                    )
-=#
 
 @info "Built $model."
 
@@ -247,9 +234,16 @@ xu, yu, zu = nodes((Face, Center, Center), grid)
 xc, yc, zc = nodes((Center, Center, Center), grid)
 
 u_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "u", grid=grid)
+@show umax = maximum(abs, u_timeseries[:, :, :, :])
+    
 b_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "b", grid=grid)
-
 @show b_timeseries
+
+ulims = (-umax, umax) .* 0.8
+ulevels = vcat([-umax], range(ulims[1], ulims[2], length=31), [umax])
+
+ylims = (0, grid.Ly) .* 1e-3
+zlims = (-grid.Lz, 0)
 
 anim = @animate for i in 1:length(b_timeseries.times)
     b = b_timeseries[i]
@@ -258,19 +252,12 @@ anim = @animate for i in 1:length(b_timeseries.times)
     b_yz = interior(b)[1, :, :]
     u_yz = interior(u)[1, :, :]
     
-    @show umax = max(1e-9, maximum(abs, u_yz))
-    @show umax = maximum(abs, u_timeseries[:, :, :, :])
     @show bmax = max(1e-9, maximum(abs, b_yz))
-    
-    ulims = (-umax, umax) .* 0.8
+
     blims = (-bmax, bmax) .* 0.8
     
-    ulevels = vcat([-umax], range(ulims[1], ulims[2], length=31), [umax])
     blevels = vcat([-bmax], range(blims[1], blims[2], length=31), [bmax])
     
-    ylims = (0, grid.Ly) .* 1e-3
-    zlims = (-grid.Lz, 0)
-
     u_yz_plot = contourf(yu * 1e-3, zu, u_yz',
                          xlabel = "y (km)",
                          ylabel = "z (m)",
