@@ -230,7 +230,7 @@ function write_output!(writer::JLD2OutputWriter, model)
     end_time, new_filesize = time_ns(), filesize(path)
 
     verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
-                              prettytime((start_time - end_time) / 1e9),
+                              prettytime((end_time - start_time) / 1e9),
                               pretty_filesize(new_filesize),
                               pretty_filesize(new_filesize - old_filesize))
 

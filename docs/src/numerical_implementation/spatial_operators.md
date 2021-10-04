@@ -29,7 +29,8 @@ projecting it onto the cell faces
     \delta_z^{aaf} f_{i, j, k} &= f_{i, j, k} - f_{i, j, k-1} \, , 
 \end{align}
 ```
-and another for taking the difference of a face-centered variable and projecting it onto the cell centers
+and another for taking the difference of a face-centered variable and projecting it onto the
+cell centers
 ```math
 \begin{align}
     \delta_x^{caa} f_{i, j, k} &= f_{i+1, j, k} - f_{i, j, k} \, , \\
@@ -129,22 +130,22 @@ back onto the cell faces.
 
 An isotropic viscosity operator acting on vertical momentum is discretized via
 ```math
-    \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \nu_e \boldsymbol{\nabla} w \right )
+    \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \nu \boldsymbol{\nabla} w \right )
     = \frac{1}{V} \left[
-          \delta_x^{faa} ( \nu_e \overline{A_x}^{caa} \partial_x^{caa} w )
-        + \delta_y^{afa} ( \nu_e \overline{A_y}^{aca} \partial_y^{aca} w )
-        + \delta_z^{aaf} ( \nu_e \overline{A_z}^{aac} \partial_z^{aac} w )
+          \delta_x^{faa} ( \nu \overline{A_x}^{caa} \partial_x^{caa} w )
+        + \delta_y^{afa} ( \nu \overline{A_y}^{aca} \partial_y^{aca} w )
+        + \delta_z^{aaf} ( \nu \overline{A_z}^{aac} \partial_z^{aac} w )
     \right ] \, ,
 ```
 where ``\nu`` is the kinematic viscosity.
 
 An isotropic diffusion operator acting on a tracer ``c``, on the other hand, is discretized via
 ```math
-   \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \kappa_e \boldsymbol{\nabla} c \right )
-    = \frac{1}{V} \left[ \phantom{\overline{A_x}^{caa}}
-        \delta_x^{caa} ( \kappa_e A_x \partial_x^{faa} c )
-      + \delta_y^{aca} ( \kappa_e A_y \partial_y^{afa} c )
-      + \delta_z^{aac} ( \kappa_e A_z \partial_z^{aaf} c )
+   \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \kappa \boldsymbol{\nabla} c \right )
+    = \frac{1}{V} \left[ \vphantom{\overline{A_x}^{caa}}
+        \delta_x^{caa} ( \kappa A_x \partial_x^{faa} c )
+      + \delta_y^{aca} ( \kappa A_y \partial_y^{afa} c )
+      + \delta_z^{aac} ( \kappa A_z \partial_z^{aaf} c )
     \right] \, .
 ```
 
@@ -173,8 +174,9 @@ The vertical velocity ``w`` may be computed from ``u`` and ``v`` via the continu
 ```math
     w = - \int_{-L_z}^0 (\partial_x u + \partial_y v) \, \mathrm{d} z \, ,
 ```
-to satisfy the incompressibility condition ``\nabla\cdot\boldsymbol{v} = 0`` to numerical precision. 
-This also involves computing a vertical integral, in this case evaluated from the bottom up
+to satisfy the incompressibility condition ``\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v} = 0``
+to numerical precision. This also involves computing a vertical integral, in this case evaluated
+from the bottom up
 ```math
     \begin{equation}
     w_k =

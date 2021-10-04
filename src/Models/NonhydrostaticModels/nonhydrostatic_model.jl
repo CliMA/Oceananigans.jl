@@ -11,7 +11,7 @@ using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields,
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo
 using Oceananigans.Solvers: FFTBasedPoissonSolver
-using Oceananigans.TimeSteppers: Clock, TimeStepper
+using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
@@ -20,26 +20,27 @@ using Oceananigans.Grids: topology
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
-                                   V, S, K, BG, P, I} <: AbstractModel{TS}
+                                   V, S, K, BG, P, I, AF} <: AbstractModel{TS}
 
-          architecture :: A        # Computer `Architecture` on which `Model` is run
-                  grid :: G        # Grid of physical points on which `Model` is solved
-                 clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
-             advection :: V        # Advection scheme for velocities _and_ tracers
-              buoyancy :: B        # Set of parameters for buoyancy model
-              coriolis :: R        # Set of parameters for the background rotation rate of `Model`
-          stokes_drift :: SD       # Set of parameters for surfaces waves via the Craik-Leibovich approximation
-               forcing :: F        # Container for forcing functions defined by the user
-               closure :: E        # Diffusive 'turbulence closure' for all model fields
-     background_fields :: BG       # Background velocity and tracer fields
-             particles :: P        # Particle set for Lagrangian tracking
-            velocities :: U        # Container for velocity fields `u`, `v`, and `w`
-               tracers :: C        # Container for tracer fields
-             pressures :: Φ        # Container for hydrostatic and nonhydrostatic pressure
-    diffusivity_fields :: K        # Container for turbulent diffusivities
-           timestepper :: TS       # Object containing timestepper fields and parameters
-       pressure_solver :: S        # Pressure/Poisson solver
-     immersed_boundary :: I        # Models the physics of immersed boundaries within the grid
+         architecture :: A        # Computer `Architecture` on which `Model` is run
+                 grid :: G        # Grid of physical points on which `Model` is solved
+                clock :: Clock{T} # Tracks iteration number and simulation time of `Model`
+            advection :: V        # Advection scheme for velocities _and_ tracers
+             buoyancy :: B        # Set of parameters for buoyancy model
+             coriolis :: R        # Set of parameters for the background rotation rate of `Model`
+         stokes_drift :: SD       # Set of parameters for surfaces waves via the Craik-Leibovich approximation
+              forcing :: F        # Container for forcing functions defined by the user
+              closure :: E        # Diffusive 'turbulence closure' for all model fields
+    background_fields :: BG       # Background velocity and tracer fields
+            particles :: P        # Particle set for Lagrangian tracking
+           velocities :: U        # Container for velocity fields `u`, `v`, and `w`
+              tracers :: C        # Container for tracer fields
+            pressures :: Φ        # Container for hydrostatic and nonhydrostatic pressure
+   diffusivity_fields :: K        # Container for turbulent diffusivities
+          timestepper :: TS       # Object containing timestepper fields and parameters
+      pressure_solver :: S        # Pressure/Poisson solver
+    immersed_boundary :: I        # Models the physics of immersed boundaries within the grid
+     auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
 end
 
 """
@@ -62,7 +63,8 @@ end
               pressures = nothing,
      diffusivity_fields = nothing,
         pressure_solver = nothing,
-      immersed_boundary = nothing
+      immersed_boundary = nothing,
+       auxiliary_fields = NamedTuple(),
     )
 
 Construct a model for a non-hydrostatic, incompressible fluid, using the Boussinesq approximation
@@ -102,7 +104,8 @@ function NonhydrostaticModel(;    grid,
                              pressures = nothing,
                     diffusivity_fields = nothing,
                        pressure_solver = nothing,
-                     immersed_boundary = nothing
+                     immersed_boundary = nothing,
+                      auxiliary_fields = NamedTuple(),
     )
 
     if architecture == GPU() && !has_cuda()
@@ -117,8 +120,9 @@ function NonhydrostaticModel(;    grid,
     # Adjust halos when the advection scheme or turbulence closure requires it.
     # Note that halos are isotropic by default; however we respect user-input here
     # by adjusting each (x, y, z) halo individually.
-    Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, grid.Hz, topology(grid), advection, closure)
-    grid = with_halo((Hx, Hy, Hz), grid)
+    user_halo = grid.Hx, grid.Hy, grid.Hz
+    required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., topology(grid), advection, closure)
+    user_halo != required_halo && (grid = with_halo((Hx, Hy, Hz), grid)) # Don't replace grid unless needed.
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
@@ -165,9 +169,14 @@ function NonhydrostaticModel(;    grid,
     model_fields = merge(velocities, tracers)
     forcing = model_forcing(model_fields; forcing...)
 
-    return NonhydrostaticModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
-                               forcing, closure, background_fields, particles, velocities, tracers,
-                               pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary)
+    model = NonhydrostaticModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
+                                forcing, closure, background_fields, particles, velocities, tracers,
+                                pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary,
+                                auxiliary_fields)
+
+    update_state!(model)
+    
+    return model
 end
 
 #####

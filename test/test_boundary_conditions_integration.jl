@@ -1,4 +1,5 @@
 using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction
+using Oceananigans: prognostic_fields
 
 function test_boundary_condition(arch, FT, topo, side, field_name, boundary_condition)
     grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
@@ -36,10 +37,8 @@ function test_nonhydrostatic_flux_budget(arch, name, side, topo)
     flux = FT(π)
     direction = side ∈ (:west, :south, :bottom) ? 1 : -1
     bc_kwarg = Dict(side => BoundaryCondition(Flux, flux * direction))
-
     field_bcs = FieldBoundaryConditions(; bc_kwarg...)
-
-    model_bcs = NamedTuple{tuple(name)}(tuple(field_bcs))
+    model_bcs = (; name => field_bcs)
 
     model = NonhydrostaticModel(grid=grid, buoyancy=nothing, boundary_conditions=model_bcs,
                                 closure=nothing, architecture=arch, tracers=:c)
