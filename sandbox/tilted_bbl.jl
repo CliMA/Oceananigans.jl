@@ -4,8 +4,15 @@ using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
 using CUDA
 using Printf
 
-const Nx = 256; const Lx = 1000
-const Nz = 32; const Lz = 100
+if has_cuda_gpu()
+    Nx = 2^10
+    Nz = 2^7
+else
+    Nx= 2^8
+    Nz = 2^5
+end
+Lx = 1000
+Lz = 100
 const θ_rad = 0.05 # radians
 const θ_deg = rad2deg(θ_rad) # degrees
 const N²∞ = 1e-5
@@ -27,7 +34,6 @@ grid = VerticallyStretchedRectilinearGrid(topology=topo,
 
 #++++ Buoyancy model and background
 buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃)
-tracers = :b
 
 b∞(x, y, z, t) = N²∞ * (x*g̃[1] + z*g̃[3])
 B_field = BackgroundField(b∞)
@@ -82,8 +88,8 @@ forcing = (u=full_sponge_0, v=full_sponge_0, w=full_sponge_0, b=full_sponge_0)
 model = NonhydrostaticModel(grid = grid, timestepper = :RungeKutta3,
                             advection = UpwindBiasedFifthOrder(),
                             buoyancy = buoyancy,
-                            coriolis = FPlane(f=1e-4),
-                            tracers = tracers,
+                            coriolis = ConstantCartesianCoriolis(f=1e-4, rotation_axis=g̃),
+                            tracers = :b,
                             closure = IsotropicDiffusivity(ν=1e-3, κ=1e-3),
                             boundary_conditions = bcs,
                             background_fields = (b=B_field, v=V_field,),
