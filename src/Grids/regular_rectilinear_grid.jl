@@ -7,7 +7,8 @@ A rectilinear grid with with constant grid spacings `Δx`, `Δy`, and `Δz` betw
 and cell faces, elements of type `FT`, topology `{TX, TY, TZ}`, and coordinate ranges
 of type `R`.
 """
-struct RegularRectilinearGrid{FT, TX, TY, TZ, R} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
+struct RegularRectilinearGrid{FT, TX, TY, TZ, R, Arch} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
+    architecture :: Arch
     # Number of grid points in (x,y,z).
     Nx :: Int
     Ny :: Int
@@ -152,12 +153,14 @@ grid spacing (Δx, Δy, Δz): (0.0, 0.0, 0.5)
 ```
 """
 function RegularRectilinearGrid(FT=Float64;
-                                  size,
-                                     x = nothing, y = nothing, z = nothing,
+                                size,
+                                architecture = CPU(),
+                                x = nothing,
+                                y = nothing,
+                                z = nothing,
                                 extent = nothing,
-                              topology = (Periodic, Periodic, Bounded),
-                                  halo = nothing
-                              )
+                                topology = (Periodic, Periodic, Bounded),
+                                halo = nothing)
 
     TX, TY, TZ = validate_topology(topology)
     size = validate_size(TX, TY, TZ, size)
@@ -200,7 +203,7 @@ function RegularRectilinearGrid(FT=Float64;
     yF = OffsetArray(yF, -Hy)
     zF = OffsetArray(zF, -Hz)
 
-    return RegularRectilinearGrid{FT, TX, TY, TZ, typeof(xC)}(
+    return RegularRectilinearGrid{FT, TX, TY, TZ, typeof(xC)}(architecture,
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
 end
 
