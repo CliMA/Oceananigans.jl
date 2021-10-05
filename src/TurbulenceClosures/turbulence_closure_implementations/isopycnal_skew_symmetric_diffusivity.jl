@@ -59,13 +59,14 @@ taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) 
     
     slope_x = - bx / bz
     slope_y = - by / bz
-    slope² = slope_x^2 + slope_y^2
+    slope² = ifelse(bz <= 0, zero(FT), slope_x^2 + slope_y^2)
 
     return min(one(FT), tapering.max_slope^2 / slope²)
 end
 
 # Diffusive fluxes
 
+# defined at fcc
 @inline function diffusive_flux_x(i, j, k, grid,
                                   closure::ISSD, c, ::Val{tracer_index}, clock,
                                   diffusivity_fields, tracers, buoyancy, velocities) where tracer_index
@@ -88,6 +89,7 @@ end
                   (κ_symmetric - κ_skew) * R₁₃ * ∂z_c)
 end
 
+# defined at cfc
 @inline function diffusive_flux_y(i, j, k, grid,
                                   closure::ISSD, c, ::Val{tracer_index}, clock,
                                   diffusivity_fields, tracers, buoyancy, velocities) where tracer_index
@@ -110,6 +112,7 @@ end
                   (κ_symmetric - κ_skew) * R₂₃ * ∂z_c)
 end
 
+# defined at ccf
 @inline function diffusive_flux_z(i, j, k, grid,
                                   closure::ISSD, c, ::Val{tracer_index}, clock,
                                   diffusivity_fields, tracers, buoyancy, velocities) where tracer_index
