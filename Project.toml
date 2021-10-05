@@ -1,6 +1,6 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.63.1"
+version = "0.63.2"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -33,7 +33,7 @@ Tullio = "bc48ee85-29a4-5162-ae0b-a64e1601d4bc"
 
 [compat]
 Adapt = "^3"
-CUDA = "3"
+CUDA = "3.0.0 - 3.3.6"
 CUDAKernels = "0.2, 0.3"
 Crayons = "^4"
 CubedSphere = "0.1"
