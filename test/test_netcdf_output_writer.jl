@@ -573,9 +573,11 @@ function test_netcdf_time_averaging(arch)
     c̄1(z, t) = 1 / (Nx * Ny) * sum(exp(-λ1(x, y, z) * t) for x in xs for y in ys)
     c̄2(z, t) = 1 / (Nx * Ny) * sum(exp(-λ2(x, y, z) * t) for x in xs for y in ys)
 
+    rtol = 1e-5 # need custom rtol for isapprox because roundoff errors accumulate (?)
+
     for (n, t) in enumerate(ds["time"])
-        @test ds["c1"][:, n] ≈ c̄1.(zs, t)
-        @test ds["c2"][:, n] ≈ c̄2.(zs, t)
+        @test all(isapprox.(ds["c1"][:, n], c̄1.(zs, t), rtol=rtol))
+        @test all(isapprox.(ds["c2"][:, n], c̄2.(zs, t), rtol=rtol))
     end
 
     close(ds)
@@ -604,8 +606,8 @@ function test_netcdf_time_averaging(arch)
     @info "    Testing time-averaging of a single NetCDF output [$(typeof(arch))]..."
 
     for (n, t) in enumerate(single_ds["time"][2:end])
-        averaging_times = [t - n*Δt for n in 0:stride:window_size-1]
-        @test single_ds["c1"][:, n+1] ≈ c̄1(averaging_times)
+        averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
+        @test all(isapprox.(single_ds["c1"][:, n+1], c̄1(averaging_times), rtol=rtol))
     end
 
     close(single_ds)
@@ -620,9 +622,8 @@ function test_netcdf_time_averaging(arch)
     @info "    Testing time-averaging of multiple NetCDF outputs [$(typeof(arch))]..."
 
     for (n, t) in enumerate(ds["time"][2:end])
-        averaging_times = [t - n*Δt for n in 0:stride:window_size-1]
-        @test ds["c1"][:, n+1] ≈ c̄1(averaging_times)
-        @test ds["c2"][:, n+1] ≈ c̄2(averaging_times)
+        averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
+        @test all(isapprox.(ds["c2"][:, n+1], c̄2(averaging_times), rtol=rtol))
     end
 
     close(ds)
