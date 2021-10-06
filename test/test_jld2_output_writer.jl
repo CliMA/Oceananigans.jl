@@ -47,7 +47,7 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
     return size(u₁) == (2, 2, 4) && size(v₁) == (2, 2, 4) && size(w₁) == (2, 2, 5)
 end
 
-function run_jld2_file_splitting_tests(arch)
+function test_jld2_file_splitting(arch)
     model = NonhydrostaticModel(architecture=arch, grid=RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
 
@@ -83,9 +83,11 @@ function run_jld2_file_splitting_tests(arch)
         # Leave test directory clean.
         rm(filename)
     end
+
+    return nothing
 end
 
-function jld2_time_averaging_of_horizontal_averages(model)
+function test_jld2_time_averaging_of_horizontal_averages(model)
 
     model.clock.iteration = 0
     model.clock.time = 0.0
@@ -98,40 +100,23 @@ function jld2_time_averaging_of_horizontal_averages(model)
     w .= 0
     T .= 4
 
-    simulation = Simulation(model, Δt=1.0, stop_iteration=5)
+    Δt = 0.1
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     average_fluxes = (wu = AveragedField(w * u, dims=(1, 2)),
                       uv = AveragedField(u * v, dims=(1, 2)),
                       wT = AveragedField(w * T, dims=(1, 2)))
 
-    #=
     simulation.output_writers[:fluxes] = JLD2OutputWriter(model, average_fluxes,
-                                                          schedule = AveragedTimeInterval(4, window=2),
+                                                          schedule = AveragedTimeInterval(4Δt, window=2Δt),
                                                           dir = ".",
-                                                          prefix = "test",
+                                                          prefix = "jld2_time_averaging_test",
                                                           force = true)
-    =#
-
-    @show model
-    @show maximum(u)
-    @show minimum(u)
-    @show maximum(v)
-    @show minimum(v)
 
     run!(simulation)
 
-    @show maximum(u)
-    @show minimum(u)
-    @show maximum(v)
-    @show minimum(v)
-
-    wu = 0
-    uv = 0
-    wT = 0
-    FT = Float64
-
-    #=
-    file = jldopen("test.jld2")
+    test_file_name = "jld2_time_averaging_test.jld2"
+    file = jldopen(test_file_name)
 
     # Data is saved without halos by default
     wu = file["timeseries/wu/4"][1, 1, 3]
@@ -140,20 +125,21 @@ function jld2_time_averaging_of_horizontal_averages(model)
 
     close(file)
 
-    rm("test.jld2")
+    rm(test_file_name)
 
     FT = eltype(model.grid)
 
-    @show wu wT uv
-    =#
+    @test wu == zero(FT) 
+    @test wT == zero(FT) 
+    @test uv == FT(2)
 
-    return wu == zero(FT) && wT == zero(FT) && uv == FT(2)
+    return nothing
 end
 
 for arch in archs
     # Some tests can reuse this same grid and model.
     topo = (Periodic, Periodic, Bounded)
-    grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
+    grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 4), extent=(4, 4, 4))
     model = NonhydrostaticModel(architecture=arch, grid=grid, tracers=:T, buoyancy=nothing)
 
     @testset "JLD2 output writer [$(typeof(arch))]" begin
@@ -243,12 +229,12 @@ for arch in archs
         ##### File splitting
         #####
 
-        run_jld2_file_splitting_tests(arch)
+        test_jld2_file_splitting(arch)
 
         #####
         ##### Time-averaging
         #####
 
-        @test jld2_time_averaging_of_horizontal_averages(model)
+        test_jld2_time_averaging_of_horizontal_averages(model)
     end
 end
