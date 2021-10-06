@@ -1,49 +1,17 @@
-using Oceananigans.Fields: FieldSlicer
+using Test
+using CUDA
+using JLD2
+using Oceananigans
+using Oceananigans.Units
+using Oceananigans: Clock
+
+include("utils_for_runtests.jl")
+
+archs = test_architectures()
 
 #####
 ##### JLD2OutputWriter tests
 #####
-
-function jld2_field_output(model)
-
-    model.clock.iteration = 0
-    model.clock.time = 0.0
-
-    set!(model, u = (x, y, z) -> rand(),
-                v = (x, y, z) -> rand(),
-                w = (x, y, z) -> rand(),
-                T = 0,
-                S = 0)
-
-    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
-
-    simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                                    schedule = TimeInterval(1),
-                                                                        dir = ".",
-                                                                     prefix = "test",
-                                                                      force = true)
-
-    u₀ = CUDA.@allowscalar data(model.velocities.u)[3, 3, 3]
-    v₀ = CUDA.@allowscalar data(model.velocities.v)[3, 3, 3]
-    w₀ = CUDA.@allowscalar data(model.velocities.w)[3, 3, 3]
-
-    run!(simulation)
-
-    file = jldopen("test.jld2")
-
-    # Data is saved without halos by default
-    u₁ = file["timeseries/u/0"][3, 3, 3]
-    v₁ = file["timeseries/v/0"][3, 3, 3]
-    w₁ = file["timeseries/w/0"][3, 3, 3]
-
-    close(file)
-
-    rm("test.jld2")
-
-    FT = typeof(u₁)
-
-    return FT(u₀) == u₁ && FT(v₀) == v₁ && FT(w₀) == w₁
-end
 
 function jld2_sliced_field_output(model, outputs=model.velocities)
 
@@ -58,11 +26,11 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
 
     simulation.output_writers[:velocities] =
         JLD2OutputWriter(model, outputs,
-                             schedule = TimeInterval(1),
+                         schedule = TimeInterval(1),
                          field_slicer = FieldSlicer(i=1:2, j=1:2:4, k=:),
-                                  dir = ".",
-                               prefix = "test",
-                                force = true)
+                         dir = ".",
+                         prefix = "test",
+                         force = true)
 
     run!(simulation)
 
@@ -122,31 +90,47 @@ function jld2_time_averaging_of_horizontal_averages(model)
     model.clock.iteration = 0
     model.clock.time = 0.0
 
-    set!(model, u = (x, y, z) -> 1,
-                v = (x, y, z) -> 2,
-                w = (x, y, z) -> 0,
-                T = (x, y, z) -> 4)
-
     u, v, w = model.velocities
-    T, S = model.tracers
+    T = model.tracers.T
+
+    u .= 1
+    v .= 2
+    w .= 0
+    T .= 4
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=5)
-
-    u, v, w = model.velocities
-    T, S = model.tracers
 
     average_fluxes = (wu = AveragedField(w * u, dims=(1, 2)),
                       uv = AveragedField(u * v, dims=(1, 2)),
                       wT = AveragedField(w * T, dims=(1, 2)))
 
+    #=
     simulation.output_writers[:fluxes] = JLD2OutputWriter(model, average_fluxes,
                                                           schedule = AveragedTimeInterval(4, window=2),
-                                                               dir = ".",
-                                                            prefix = "test",
-                                                             force = true)
+                                                          dir = ".",
+                                                          prefix = "test",
+                                                          force = true)
+    =#
+
+    @show model
+    @show maximum(u)
+    @show minimum(u)
+    @show maximum(v)
+    @show minimum(v)
 
     run!(simulation)
 
+    @show maximum(u)
+    @show minimum(u)
+    @show maximum(v)
+    @show minimum(v)
+
+    wu = 0
+    uv = 0
+    wT = 0
+    FT = Float64
+
+    #=
     file = jldopen("test.jld2")
 
     # Data is saved without halos by default
@@ -160,25 +144,110 @@ function jld2_time_averaging_of_horizontal_averages(model)
 
     FT = eltype(model.grid)
 
+    @show wu wT uv
+    =#
+
     return wu == zero(FT) && wT == zero(FT) && uv == FT(2)
 end
 
 for arch in archs
     # Some tests can reuse this same grid and model.
-    topo =(Periodic, Periodic, Bounded)
+    topo = (Periodic, Periodic, Bounded)
     grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    model = NonhydrostaticModel(architecture=arch, grid=grid, tracers=:T, buoyancy=nothing)
 
     @testset "JLD2 output writer [$(typeof(arch))]" begin
         @info "  Testing JLD2 output writer [$(typeof(arch))]..."
 
-        @test jld2_field_output(model)
-        @test jld2_sliced_field_output(model)
-        @test jld2_sliced_field_output(model, (u = model -> model.velocities.u,
-                                               v = model -> model.velocities.v,
-                                               w = model -> model.velocities.w))
+        set!(model, u = (x, y, z) -> rand(),
+                    v = (x, y, z) -> rand(),
+                    w = (x, y, z) -> rand())
+
+        simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+
+        simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
+                                                                  schedule = TimeInterval(1),
+                                                                  dir = ".",
+                                                                  prefix = "vanilla_jld2_test",
+                                                                  field_slicer = FieldSlicer(),
+                                                                  force = true)
+
+        simulation.output_writers[:sliced] = JLD2OutputWriter(model, model.velocities,
+                                                              schedule = TimeInterval(1),
+                                                              field_slicer = FieldSlicer(i=1:2, j=1:2:4, k=:),
+                                                              dir = ".",
+                                                              prefix = "sliced_jld2_test",
+                                                              force = true)
+
+        u, v, w = model.velocities
+        func_outputs = (u = model -> u, v = model -> v, w = model -> w)
+
+        simulation.output_writers[:sliced_funcs] = JLD2OutputWriter(model, func_outputs,
+                                                                    schedule = TimeInterval(1),
+                                                                    field_slicer = FieldSlicer(i=1:2, j=1:2:4, k=:),
+                                                                    dir = ".",
+                                                                    prefix = "sliced_funcs_jld2_test",
+                                                                    force = true)
+
+        u₀ = CUDA.@allowscalar model.velocities.u[3, 3, 3]
+        v₀ = CUDA.@allowscalar model.velocities.v[3, 3, 3]
+        w₀ = CUDA.@allowscalar model.velocities.w[3, 3, 3]
+
+        run!(simulation)
+
+        #####
+        ##### Stuff was outputted
+        #####
+
+        file = jldopen("vanilla_jld2_test.jld2")
+
+        # Data is saved without halos by default
+        u₁ = file["timeseries/u/0"][3, 3, 3]
+        v₁ = file["timeseries/v/0"][3, 3, 3]
+        w₁ = file["timeseries/w/0"][3, 3, 3]
+
+        close(file)
+
+        rm("vanilla_jld2_test.jld2")
+
+        FT = typeof(u₁)
+
+        @test FT(u₀) == u₁ 
+        @test FT(v₀) == v₁ 
+        @test FT(w₀) == w₁
+
+        #####
+        ##### Field slicing
+        #####
+
+        function test_field_slicing(test_file_name)
+            file = jldopen(test_file_name)
+
+            u₁ = file["timeseries/u/0"]
+            v₁ = file["timeseries/v/0"]
+            w₁ = file["timeseries/w/0"]
+
+            close(file)
+
+            rm(test_file_name)
+
+            @test size(u₁) == (2, 2, 4) 
+            @test size(v₁) == (2, 2, 4)
+            @test size(w₁) == (2, 2, 5)
+        end
+
+        test_field_slicing("sliced_jld2_test.jld2")
+        test_field_slicing("sliced_funcs_jld2_test.jld2")
+        
+        #####
+        ##### File splitting
+        #####
 
         run_jld2_file_splitting_tests(arch)
+
+        #####
+        ##### Time-averaging
+        #####
 
         @test jld2_time_averaging_of_horizontal_averages(model)
     end
