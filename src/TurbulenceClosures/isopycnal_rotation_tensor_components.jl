@@ -58,6 +58,7 @@ end
 @inline function isopycnal_rotation_tensor_xz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor) where FT
     bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    bz = ifelse(bz < slope_model.minimum_bz, slope_model.minimum_bz, bz)
     
     slope_x = - bx / bz
     
