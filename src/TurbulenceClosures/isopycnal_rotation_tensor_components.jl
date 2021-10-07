@@ -20,7 +20,9 @@ abstract type AbstractIsopycnalTensor end
     
     where `slope² = slope_x² + slope_y²`.
 """
-struct IsopycnalTensor <: AbstractIsopycnalTensor end
+struct IsopycnalTensor{FT} <: AbstractIsopycnalTensor
+    minimum_bz :: FT
+end
 
 """
     A tensor that rotates a vector into the isopycnal plane using the local slopes
@@ -37,42 +39,61 @@ struct IsopycnalTensor <: AbstractIsopycnalTensor end
     
     where `slope² = slope_x² + slope_y²`.
 """
-struct SmallSlopeIsopycnalTensor <: AbstractIsopycnalTensor end
+struct SmallSlopeIsopycnalTensor{FT} <: AbstractIsopycnalTensor
+    minimum_bz :: FT
+end
 
-@inline function isopycnal_rotation_tensor_xz_fcc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::SmallSlopeIsopycnalTensor) where FT
+SmallSlopeIsopycnalTensor(; minimum_bz = 1e-8) = SmallSlopeIsopycnalTensor(minimum_bz)
+
+@inline function isopycnal_rotation_tensor_xz_fcc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor) where FT
     bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
     bz = ℑxzᶠᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    bz = ifelse(bz < slope_model.minimum_bz, slope_model.minimum_bz, bz)
+    
     slope_x = - bx / bz
+    
     return ifelse(bz == 0, zero(FT), slope_x)
 end
 
-@inline function isopycnal_rotation_tensor_xz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::SmallSlopeIsopycnalTensor) where FT
+@inline function isopycnal_rotation_tensor_xz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor) where FT
     bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    bz = ifelse(bz < slope_model.minimum_bz, slope_model.minimum_bz, bz)
+    
     slope_x = - bx / bz
+    
     return ifelse(bz == 0, zero(FT), slope_x)
 end
 
-@inline function isopycnal_rotation_tensor_yz_cfc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::SmallSlopeIsopycnalTensor) where FT
+@inline function isopycnal_rotation_tensor_yz_cfc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor) where FT
     by = ∂y_b(i, j, k, grid, buoyancy, tracers)
     bz = ℑyzᵃᶠᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
+    bz = ifelse(bz < slope_model.minimum_bz, slope_model.minimum_bz, bz)
+    
     slope_y = - by / bz
+    
     return ifelse(bz == 0, zero(FT), slope_y)
 end
 
-@inline function isopycnal_rotation_tensor_yz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::SmallSlopeIsopycnalTensor) where FT
+@inline function isopycnal_rotation_tensor_yz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor) where FT
     by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    bz = ifelse(bz < slope_model.minimum_bz, slope_model.minimum_bz, bz)
+    
     slope_y = - by / bz
+    
     return ifelse(bz == 0, zero(FT), slope_y)
 end
 
-@inline function isopycnal_rotation_tensor_zz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::SmallSlopeIsopycnalTensor) where FT
+@inline function isopycnal_rotation_tensor_zz_ccf(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, slope_model::SmallSlopeIsopycnalTensor) where FT
     bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
     by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
     bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    bz = ifelse(bz < slope_model.minimum_bz, slope_model.minimum_bz, bz)
+
     slope_x = - bx / bz
     slope_y = - by / bz
     slope² = slope_x^2 + slope_y^2
+    
     return ifelse(bz == 0, zero(FT), slope²)
 end
