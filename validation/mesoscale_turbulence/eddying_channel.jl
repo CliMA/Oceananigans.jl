@@ -14,10 +14,8 @@ using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
 
-
 const Lx = 1000kilometers # zonal domain length [m]
 const Ly = 2000kilometers # meridional domain length [m]
-
 
 # number of grid points
 Nx = 200
@@ -31,7 +29,6 @@ const Lz = sum(Δz_center)
 z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
 z_faces[Nz+1] = 0
 
-
 arch = GPU()
 FT = Float64
 
@@ -43,11 +40,7 @@ grid = VerticallyStretchedRectilinearGrid(architecture = arch,
                                           y = (0, Ly),
                                           z_faces = z_faces)
 
-
-
 @info "Built a grid: $grid."
-
-
 
 #####
 ##### Boundary conditions
@@ -58,24 +51,22 @@ g  = 9.8061   # [m/s²] gravitational constant
 cᵖ = 3994.0   # [J/K]  heat capacity
 ρ  = 999.8    # [kg/m³] reference density
 
-
 parameters = (
-Ly = Ly,  
-Lz = Lz,    
-Qᵇ = 10/(ρ * cᵖ) * α * g,            # buoyancy flux magnitude [m² s⁻³]    
-y_shutoff = 5/6 * Ly,                # shutoff location for buoyancy flux [m]
-τ = 0.2/ρ,                           # surface kinematic wind stress [m² s⁻²]
-μ = 1 / 30days,                      # bottom drag damping time-scale [s⁻¹]
-ΔB = 8 * α * g,                      # surface vertical buoyancy gradient [s⁻²]
-H = Lz,                              # domain depth [m]
-h = 1000.0,                          # exponential decay scale of stable stratification [m]
-y_sponge = 19/20 * Ly,               # southern boundary of sponge layer [m]
-λt = 7.0days                         # relaxation time scale [s]
+           Ly = Ly,  
+           Lz = Lz,    
+           Qᵇ = 10 / (ρ * cᵖ) * α * g, # buoyancy flux magnitude [m² s⁻³]    
+    y_shutoff = 5/6 * Ly,              # shutoff location for buoyancy flux [m]
+            τ = 0.2/ρ,                 # surface kinematic wind stress [m² s⁻²]
+            μ = 1 / 30days,            # bottom drag damping time-scale [s⁻¹]
+           ΔB = 8 * α * g,             # surface vertical buoyancy gradient [s⁻²]
+            H = Lz,                    # domain depth [m]
+            h = 1000.0,                # exponential decay scale of stable stratification [m]
+     y_sponge = 19/20 * Ly,            # southern boundary of sponge layer [m]
+           λt = 7.0days                # relaxation time scale [s]
 )
 
 # ynode(::Type{Center}, j, grid::RegularRectilinearGrid) = @inbounds grid.yC[j]
 # ynode(::Type{Center}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᵃᶜ[j]
-
 
 @inline function buoyancy_flux(i, j, grid, clock, model_fields, p)
     y = ynode(Center(), j, grid)
@@ -84,14 +75,12 @@ end
 
 buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, discrete_form=true, parameters=parameters)
 
-
 @inline function u_stress(i, j, grid, clock, model_fields, p)
     y = ynode(Center(), j, grid)
     return - p.τ * sin(π * y / p.Ly)
 end
 
 u_stress_bc = FluxBoundaryCondition(u_stress, discrete_form=true, parameters=parameters)
-
 
 @inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.u[i, j, 1] 
 @inline v_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.v[i, j, 1]
@@ -103,7 +92,6 @@ b_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc)
 
 u_bcs = FieldBoundaryConditions(top = u_stress_bc, bottom = u_drag_bc)
 v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
-
 
 #####
 ##### Coriolis
@@ -119,7 +107,6 @@ coriolis = BetaPlane(FT, f₀ = f, β = β)
 
 @inline initial_buoyancy(z, p) = p.ΔB * (exp(z / p.h) - exp(-p.Lz / p.h)) / (1 - exp(-p.Lz / p.h))
 @inline mask(y, p) = max(0.0, y - p.y_sponge) / (Ly - p.y_sponge)
-
 
 @inline function buoyancy_relaxation(i, j, k, grid, clock, model_fields, p)
     timescale = p.λt
@@ -143,15 +130,13 @@ closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz)
 
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
-                                                               convective_νz = 0.0)
-
+                                                                convective_νz = 0.0)
 
 #####
 ##### Model building
 #####
 
 @info "Building a model..."
-
 
 model = HydrostaticFreeSurfaceModel(architecture = arch,
                                     grid = grid,
@@ -163,8 +148,7 @@ model = HydrostaticFreeSurfaceModel(architecture = arch,
                                     closure = (closure, convective_adjustment),
                                     tracers = :b,
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
-                                    forcing = (b=Fb,),
-                                    )
+                                    forcing = (; b=Fb))
 
 
 #=
@@ -222,61 +206,51 @@ simulation = Simulation(model, Δt=wizard, stop_time=50days, progress=print_prog
 ##### Diagnostics
 #####
 
+u, v, w = model.velocities
+b = model.tracers.b
 
+ζ = ComputedField(∂x(v) - ∂y(u))
 
- u, v, w = model.velocities
- b = model.tracers.b
+B = AveragedField(b, dims=1)
+V = AveragedField(v, dims=1)
+W = AveragedField(w, dims=1)
 
- ζ = ComputedField(∂x(v) - ∂y(u))
+b′ = b - B
+v′ = v - V
+w′ = w - W
 
- B = AveragedField(b, dims=1)
- V = AveragedField(v, dims=1)
- W = AveragedField(w, dims=1)
+v′b′ = AveragedField(v′ * b′, dims=1)
+w′b′ = AveragedField(w′ * b′, dims=1)
 
- b′ = b - B
- v′ = v - V
- w′ = w - W
+outputs = (; b, ζ, w)
 
- v′b′ = AveragedField(v′ * b′, dims=1)
- w′b′ = AveragedField(w′ * b′, dims=1)
+averaged_outputs = (; v′b′, w′b′, B)
 
- outputs = (; b, ζ, w)
+#####
+##### Build checkpointer and output writer
+#####
 
- averaged_outputs = (; v′b′, w′b′, B)
+simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                        schedule = TimeInterval(100days),
+                                                        prefix = "eddying_channel",
+                                                        force = true)
 
-# #####
-# ##### Build checkpointer and output writer
-# #####
+simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
+                                                      schedule = TimeInterval(5days),
+                                                      prefix = "eddying_channel",
+                                                      field_slicer = nothing,
+                                                      verbose = true,
+                                                      force = true)
 
- simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                         schedule = TimeInterval(100days),
-                                                         prefix = "eddying_channel",
-                                                         force = true)
+simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
+                                                        schedule = AveragedTimeInterval(1days, window=1days, stride=1),
+                                                        prefix = "eddying_channel_averages",
+                                                        verbose = true,
+                                                        force = true)
 
- simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                       schedule = TimeInterval(5days),
-                                                       prefix = "eddying_channel",
-                                                       field_slicer = nothing,
-                                                       verbose = true,
-                                                       force = true)
+@info "Running the simulation..."
 
- simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
-                                                         schedule = AveragedTimeInterval(1days, window=1days, stride=1),
-                                                         prefix = "eddying_channel_averages",
-                                                         verbose = true,
-                                                         force = true)
-
- @info "Running the simulation..."
-
-#  try
 run!(simulation, pickup=false)
-#  catch err
-#         @info "run! threw an error! The error message is"
-#     showerror(stdout, err)
-#  end
-
-
-
 
 # #####
 # ##### Visualization
