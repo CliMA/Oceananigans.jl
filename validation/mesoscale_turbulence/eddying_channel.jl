@@ -18,8 +18,8 @@ const Lx = 1000kilometers # zonal domain length [m]
 const Ly = 2000kilometers # meridional domain length [m]
 
 # number of grid points
-Nx = 200
-Ny = 400
+Nx = 64
+Ny = 128
 Nz = 35
 
 # stretched grid 
@@ -29,7 +29,7 @@ const Lz = sum(Δz_center)
 z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
 z_faces[Nz+1] = 0
 
-arch = GPU()
+arch = CPU()
 FT = Float64
 
 grid = VerticallyStretchedRectilinearGrid(architecture = arch,
@@ -49,21 +49,21 @@ grid = VerticallyStretchedRectilinearGrid(architecture = arch,
 α  = 2e-4     # [K⁻¹] thermal expansion coefficient 
 g  = 9.8061   # [m/s²] gravitational constant
 cᵖ = 3994.0   # [J/K]  heat capacity
-ρ  = 999.8    # [kg/m³] reference density
+ρ  = 1024.0   # [kg/m³] reference density
 
 parameters = (
-Ly = Ly,
-Lz = Lz,
-Qᵇ = 10/(ρ * cᵖ) * α * g,            # buoyancy flux magnitude [m² s⁻³]    
-y_shutoff = 5/6 * Ly,                # shutoff location for buoyancy flux [m]
-τ = 0.2/ρ,                           # surface kinematic wind stress [m² s⁻²]
-μ = 1 / 30days,                      # bottom drag damping time-scale [s⁻¹]
-ΔB = 8 * α * g,                      # surface vertical buoyancy gradient [s⁻²]
-H = Lz,                              # domain depth [m]
-h = 1000.0,                          # exponential decay scale of stable stratification [m]
-y_sponge = 19/20 * Ly,               # southern boundary of sponge layer [m]
-λt = 7.0days                         # relaxation time scale [s]
-)
+              Ly = Ly,
+              Lz = Lz,
+              Qᵇ = 10/(ρ * cᵖ) * α * g,   # buoyancy flux magnitude [m² s⁻³]    
+              y_shutoff = 5/6 * Ly,       # shutoff location for buoyancy flux [m]
+              τ = 0.2 / ρ,                # surface kinematic wind stress [m² s⁻²]
+              μ = 1 / 30days,             # bottom drag damping time-scale [s⁻¹]
+              ΔB = 8 * α * g,             # surface vertical buoyancy gradient [s⁻²]
+              H = Lz,                     # domain depth [m]
+              h = 1000.0,                 # exponential decay scale of stable stratification [m]
+              y_sponge = 19/20 * Ly,      # southern boundary of sponge layer [m]
+              λt = 7days                  # relaxation time scale [s]
+              )
 
 # ynode(::Type{Center}, j, grid::RegularRectilinearGrid) = @inbounds grid.yC[j]
 # ynode(::Type{Center}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᵃᶜ[j]
@@ -83,7 +83,6 @@ end
 
 u_stress_bc = FluxBoundaryCondition(u_stress, discrete_form=true, parameters=parameters)
 
-
 @inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.u[i, j, 1] 
 @inline v_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.v[i, j, 1]
 
@@ -99,8 +98,8 @@ v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
 ##### Coriolis
 #####
 
-const f = -1e-4
-const β = 1 * 10^(-11)
+const f = -1e-4     # [s⁻¹]
+const β =  1e-11    # [m⁻¹ s⁻¹]
 coriolis = BetaPlane(FT, f₀ = f, β = β)
 
 #####
@@ -122,7 +121,7 @@ end
 
 Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 
-# closure
+# Turbulence closures
 
 κh = 0.5e-5 # [m²/s] horizontal diffusivity
 νh = 30.0   # [m²/s] horizontal viscocity
@@ -253,7 +252,7 @@ end
 # #####
 
 #=
- grid = VerticallyStretchedRectilinearGrid(architecture = arch,
+ grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
                                            topology = (Periodic, Bounded, Bounded),
                                            size = (grid.Nx, grid.Ny, grid.Nz),
                                            halo = (3, 3, 3),
