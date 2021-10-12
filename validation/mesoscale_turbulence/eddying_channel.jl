@@ -1,4 +1,4 @@
-# using Pkg
+#using Pkg
 # pkg"add Oceananigans GLMakie"
 
 #ENV["GKSwstype"] = "100"
@@ -52,17 +52,17 @@ cᵖ = 3994.0   # [J/K]  heat capacity
 ρ  = 999.8    # [kg/m³] reference density
 
 parameters = (
-           Ly = Ly,  
-           Lz = Lz,    
-           Qᵇ = 10 / (ρ * cᵖ) * α * g, # buoyancy flux magnitude [m² s⁻³]    
-    y_shutoff = 5/6 * Ly,              # shutoff location for buoyancy flux [m]
-            τ = 0.2/ρ,                 # surface kinematic wind stress [m² s⁻²]
-            μ = 1 / 30days,            # bottom drag damping time-scale [s⁻¹]
-           ΔB = 8 * α * g,             # surface vertical buoyancy gradient [s⁻²]
-            H = Lz,                    # domain depth [m]
-            h = 1000.0,                # exponential decay scale of stable stratification [m]
-     y_sponge = 19/20 * Ly,            # southern boundary of sponge layer [m]
-           λt = 7.0days                # relaxation time scale [s]
+Ly = Ly,
+Lz = Lz,
+Qᵇ = 10/(ρ * cᵖ) * α * g,            # buoyancy flux magnitude [m² s⁻³]    
+y_shutoff = 5/6 * Ly,                # shutoff location for buoyancy flux [m]
+τ = 0.2/ρ,                           # surface kinematic wind stress [m² s⁻²]
+μ = 1 / 30days,                      # bottom drag damping time-scale [s⁻¹]
+ΔB = 8 * α * g,                      # surface vertical buoyancy gradient [s⁻²]
+H = Lz,                              # domain depth [m]
+h = 1000.0,                          # exponential decay scale of stable stratification [m]
+y_sponge = 19/20 * Ly,               # southern boundary of sponge layer [m]
+λt = 7.0days                         # relaxation time scale [s]
 )
 
 # ynode(::Type{Center}, j, grid::RegularRectilinearGrid) = @inbounds grid.yC[j]
@@ -75,12 +75,14 @@ end
 
 buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, discrete_form=true, parameters=parameters)
 
+
 @inline function u_stress(i, j, grid, clock, model_fields, p)
     y = ynode(Center(), j, grid)
     return - p.τ * sin(π * y / p.Ly)
 end
 
 u_stress_bc = FluxBoundaryCondition(u_stress, discrete_form=true, parameters=parameters)
+
 
 @inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.u[i, j, 1] 
 @inline v_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.v[i, j, 1]
@@ -107,6 +109,7 @@ coriolis = BetaPlane(FT, f₀ = f, β = β)
 
 @inline initial_buoyancy(z, p) = p.ΔB * (exp(z / p.h) - exp(-p.Lz / p.h)) / (1 - exp(-p.Lz / p.h))
 @inline mask(y, p) = max(0.0, y - p.y_sponge) / (Ly - p.y_sponge)
+
 
 @inline function buoyancy_relaxation(i, j, k, grid, clock, model_fields, p)
     timescale = p.λt
@@ -148,21 +151,9 @@ model = HydrostaticFreeSurfaceModel(architecture = arch,
                                     closure = (closure, convective_adjustment),
                                     tracers = :b,
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
-                                    forcing = (; b=Fb))
-
-
-#=
-model = NonhydrostaticModel(architecture = arch,
-                                    grid = grid,
-                                    advection = WENO5(),
-                                    buoyancy = BuoyancyTracer(),
-                                    coriolis = coriolis,
-                                    closure = (closure),
-                                    tracers = :b,
-                                    boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
-                                    forcing = (b=Fb,),
+                                    forcing = (; b=Fb,)
                                     )
-=#
+
 
 @info "Built $model."
 
@@ -248,9 +239,14 @@ simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
                                                         verbose = true,
                                                         force = true)
 
-@info "Running the simulation..."
+ @info "Running the simulation..."
 
-run!(simulation, pickup=false)
+try
+    run!(simulation, pickup=false)
+catch err
+    @info "run! threw an error! The error message is"
+    showerror(stdout, err)
+end
 
 # #####
 # ##### Visualization
@@ -264,28 +260,20 @@ run!(simulation, pickup=false)
                                            x = (0, grid.Lx),
                                            y = (0, grid.Ly),
                                            z_faces = z_faces)
-
  xζ, yζ, zζ = nodes((Face, Face, Center), grid)
  xc, yc, zc = nodes((Center, Center, Center), grid)
  xw, yw, zw = nodes((Center, Center, Face), grid)
-
  j′ = round(Int, grid.Ny / 2)
  y′ = yζ[j′]
-
  b_timeseries = FieldTimeSeries("eddying_channel.jld2", "b", grid=grid)
  ζ_timeseries = FieldTimeSeries("eddying_channel.jld2", "ζ", grid=grid)
  w_timeseries = FieldTimeSeries("eddying_channel.jld2", "w", grid=grid)
-
  @show b_timeseries
-
  anim = @animate for i in 1:length(b_timeseries.times)
-
      b = b_timeseries[i]
      ζ = ζ_timeseries[i]
      w = w_timeseries[i]
-
      b′ = interior(b) .- mean(b)
-
      b_xy = b′[:, :, grid.Nz]
      ζ_xy = interior(ζ)[:, :, grid.Nz]
      ζ_xz = interior(ζ)[:, j′, :]
@@ -294,7 +282,6 @@ run!(simulation, pickup=false)
      @show bmax = max(1e-9, maximum(abs, b_xy))
      @show ζmax = max(1e-9, maximum(abs, ζ_xy))
      @show wmax = max(1e-9, maximum(abs, w_xz))
-
      blims = (-bmax, bmax) .* 0.8
      ζlims = (-ζmax, ζmax) .* 0.8
      wlims = (-wmax, wmax) .* 0.8
@@ -302,11 +289,9 @@ run!(simulation, pickup=false)
      blevels = vcat([-bmax], range(blims[1], blims[2], length=31), [bmax])
      ζlevels = vcat([-ζmax], range(ζlims[1], ζlims[2], length=31), [ζmax])
      wlevels = vcat([-wmax], range(wlims[1], wlims[2], length=31), [wmax])
-
      xlims = (-grid.Lx/2, grid.Lx/2) .* 1e-3
      ylims = (0, grid.Ly) .* 1e-3
      zlims = (-grid.Lz, 0)
-
      w_xz_plot = contourf(xw * 1e-3, zw, w_xz',
                           xlabel = "x (km)",
                           ylabel = "z (m)",
@@ -317,7 +302,6 @@ run!(simulation, pickup=false)
                           xlims = xlims,
                           ylims = zlims,
                           color = :balance)
-
      ζ_xy_plot = contourf(xζ * 1e-3, yζ * 1e-3, ζ_xy',
                           xlabel = "x (km)",
                           ylabel = "y (km)",
@@ -328,7 +312,6 @@ run!(simulation, pickup=false)
                           xlims = xlims,
                           ylims = ylims,
                           color = :balance)
-
     b_xy_plot = contourf(xc * 1e-3, yc * 1e-3, b_xy',
                           xlabel = "x (km)",
                           ylabel = "y (km)",
@@ -339,17 +322,13 @@ run!(simulation, pickup=false)
                           xlims = xlims,
                           ylims = ylims,
                           color = :balance)
-
      w_xz_title = @sprintf("w(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
      ζ_xz_title = @sprintf("ζ(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
      ζ_xy_title = "ζ(x, y)"
      b_xy_title = "b(x, y)"
-
      layout = @layout [upper_slice_plot{0.2h}
                        Plots.grid(1, 2)]
-
      plot(w_xz_plot, ζ_xy_plot,  b_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title ζ_xy_title b_xy_title])
  end
-
  mp4(anim, "eddying_channel.mp4", fps = 8) # hide
 =#
