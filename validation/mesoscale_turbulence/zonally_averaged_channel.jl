@@ -14,23 +14,30 @@ using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
 
-const Lx = 1000kilometers # zonal domain length [m]
-const Ly = 2000kilometers # meridional domain length [m]
+# Domain
+Lx = 1000kilometers # zonal domain length [m]
+Ly = 2000kilometers # meridional domain length [m]
+Lz = 3kilometers    # depth [m]
 
 # number of grid points
 Nx = 1
-Ny = 400
+Ny = 128
 Nz = 35
 
-# stretched grid 
-k_center = collect(1:Nz)
-Δz_center = @. 10 * 1.104^(Nz - k_center)
-const Lz = sum(Δz_center)
-z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
-z_faces[Nz+1] = 0
-
 arch = CPU()
-FT = Float64
+
+# stretched grid
+
+# we implement here a linearly streched grid in which the top grid cell has Δz_top
+# and every other cell is bigger by a factor σ, e.g.,
+# Δz_top, Δz_top * σ, Δz_top * σ², ..., Δz_top * σᴺᶻ⁻¹,
+# so that the sum of all cell heights is Lz
+
+# Given Lz and stretching factor σ > 1 the top cell height is Δz_top = Lz * (σ - 1) / σ^(Nz - 1)
+
+σ = 1.1 # linear stretching factor
+Δz_center_linear(k) = Lz * (σ - 1) * σ^(Nz - k) / (σ^Nz - 1) # k=1 is the bottom-most cell, k=Nz is the top cell
+linearly_spaced_faces(k) = k==1 ? -Lz : - Lz + sum(Δz_center_linear.(1:k-1))
 
 grid = VerticallyStretchedRectilinearGrid(architecture = arch,
                                           topology = (Periodic, Bounded, Bounded),
@@ -38,7 +45,14 @@ grid = VerticallyStretchedRectilinearGrid(architecture = arch,
                                           halo = (3, 3, 3),
                                           x = (0, Lx),
                                           y = (0, Ly),
-                                          z_faces = z_faces)
+                                          z_faces = linearly_spaced_faces)
+
+# The vertical spacing versus depth for the prescribed grid
+plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
+     marker = :circle,
+     ylabel = "Depth (m)",
+     xlabel = "Vertical spacing (m)",
+     legend = nothing)
 
 @info "Built a grid: $grid."
 
@@ -47,9 +61,9 @@ grid = VerticallyStretchedRectilinearGrid(architecture = arch,
 #####
 
 α  = 2e-4     # [K⁻¹] thermal expansion coefficient 
-g  = 9.8061   # [m/s²] gravitational constant
-cᵖ = 3994.0   # [J/K]  heat capacity
-ρ  = 1024.0   # [kg/m³] reference density
+g  = 9.8061   # [m s⁻²] gravitational constant
+cᵖ = 3994.0   # [J K⁻¹] heat capacity
+ρ  = 1024.0   # [kg m⁻³] reference density
 
 parameters = (Ly = Ly,  
               Lz = Lz,    
@@ -99,9 +113,9 @@ v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
 ##### Coriolis
 #####
 
-const f = -1e-4
-const β =  1e-11
-coriolis = BetaPlane(FT, f₀ = f, β = β)
+const f = -1e-4     # [s⁻¹]
+const β =  1e-11    # [m⁻¹ s⁻¹]
+coriolis = BetaPlane(f₀ = f, β = β)
 
 #####
 ##### Forcing and initial condition
@@ -135,7 +149,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 gerdes_koberle_willebrand_tapering = Oceananigans.TurbulenceClosures.FluxTapering(1e-2)
 
-gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 100, κ_symmetric = 100,
+gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 3000,
                                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
 #####
 ##### Model building
@@ -152,6 +166,7 @@ model = HydrostaticFreeSurfaceModel(architecture = arch,
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = coriolis,
                                     closure = (horizontal_diffusivity, convective_adjustment, gent_mcwilliams_diffusivity),
+                                    # closure = (convective_adjustment, gent_mcwilliams_diffusivity),
                                     tracers = :b,
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                     forcing = (; b=Fb))
@@ -192,7 +207,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=2days, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=2day, progress=print_progress, iteration_interval=10)
 
 #####
 ##### Diagnostics
@@ -201,22 +216,44 @@ simulation = Simulation(model, Δt=wizard, stop_time=2days, progress=print_progr
 u, v, w = model.velocities
 b = model.tracers.b
 
-outputs = (; b, u)
+dependencies = (gent_mcwilliams_diffusivity,
+                b,
+                Val(1),
+                model.clock,
+                model.diffusivity_fields,
+                model.tracers,
+                model.buoyancy,
+                model.velocities)
+
+using Oceananigans.TurbulenceClosures: diffusive_flux_y, diffusive_flux_z, ∇_dot_qᶜ
+
+∇_q_op = KernelFunctionOperation{Center, Center, Center}(∇_dot_qᶜ, grid, architecture=arch, computed_dependencies=dependencies)
+vb_op  = KernelFunctionOperation{Center, Face, Center}(diffusive_flux_y, grid, architecture=arch, computed_dependencies=dependencies)
+wb_op  = KernelFunctionOperation{Center, Center, Face}(diffusive_flux_z, grid, architecture=arch, computed_dependencies=dependencies)
+
+vb = ComputedField(vb_op)
+wb = ComputedField(wb_op)
+∇_q = ComputedField(∇_q_op)
+
+outputs = (; b, u, v, w, vb, wb, ∇_q)
 
 # #####
 # ##### Build checkpointer and output writer
 # #####
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(0.2days),
+                                                      schedule = TimeInterval(0.5days),
                                                       prefix = "zonally_averaged_channel",
                                                       field_slicer = nothing,
-                                                      verbose = true,
+                                                      verbose = false,
                                                       force = true)
 
 @info "Running the simulation..."
 
-run!(simulation, pickup=false)
+try
+    run!(simulation, pickup=false)
+catch
+end
 
 #####
 ##### Visualization
@@ -231,26 +268,53 @@ grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
                                           z_faces = z_faces)
 
 xu, yu, zu = nodes((Face, Center, Center), grid)
+xv, yv, zv = nodes((Center,Face,  Center), grid)
+xw, yw, zw = nodes((Center, Center, Face), grid)
 xc, yc, zc = nodes((Center, Center, Center), grid)
 
 u_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "u", grid=grid)
 @show umax = maximum(abs, u_timeseries[:, :, :, :])
-    
+
+v_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "v", grid=grid)
+@show umax = maximum(abs, v_timeseries[:, :, :, :])
+
+w_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "w", grid=grid)
+@show umax = maximum(abs, w_timeseries[:, :, :, :])
+
 b_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "b", grid=grid)
 @show b_timeseries
 
+vb_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "vb", grid=grid)
+@show vb_timeseries
+
+wb_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "wb", grid=grid)
+@show wb_timeseries
+
+wb_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "wb", grid=grid)
+@show wb_timeseries
+
+∇_q_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "∇_q", grid=grid)
+@show ∇_q_timeseries
+
+b_z = Field(Center, Center, Face, grid)
+
+umax = 1
 ulims = (-umax, umax) .* 0.8
 ulevels = vcat([-umax], range(ulims[1], ulims[2], length=31), [umax])
 
 ylims = (0, grid.Ly) .* 1e-3
 zlims = (-grid.Lz, 0)
 
-anim = @animate for i in 1:length(b_timeseries.times)
+anim = @animate for i in 1:length(b_timeseries.times)-1
     b = b_timeseries[i]
     u = u_timeseries[i]
     
+    b_z .= ∂z(b)
+
     b_yz = interior(b)[1, :, :]
     u_yz = interior(u)[1, :, :]
+   
+    b_z_yz = interior(b_z)[1, :, :]
     
     @show bmax = max(1e-9, maximum(abs, b_yz))
 
@@ -265,6 +329,14 @@ anim = @animate for i in 1:length(b_timeseries.times)
                          linewidth = 0,
                          levels = ulevels,
                          clims = ulims,
+                         xlims = ylims,
+                         ylims = zlims,
+                         color = :balance)
+    
+    bz_yz_plot = heatmap(yw * 1e-3, zw, b_z_yz',
+                         xlabel = "y (km)",
+                         ylabel = "z (m)",
+                         aspectratio = :equal,
                          xlims = ylims,
                          ylims = zlims,
                          color = :balance)

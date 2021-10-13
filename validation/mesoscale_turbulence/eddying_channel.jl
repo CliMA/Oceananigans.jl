@@ -3,34 +3,45 @@
 
 #ENV["GKSwstype"] = "100"
 
-#pushfirst!(LOAD_PATH, @__DIR__)
+pushfirst!(LOAD_PATH, @__DIR__)
 
 using Printf
 using Statistics
-using Plots
+using GLMakie
+using JLD2
 
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
 
-const Lx = 1000kilometers # zonal domain length [m]
-const Ly = 2000kilometers # meridional domain length [m]
+# Domain
+Lx = 1000kilometers # zonal domain length [m]
+Ly = 2000kilometers # meridional domain length [m]
+Lz = 2kilometers    # depth [m]
 
 # number of grid points
-Nx = 64
-Ny = 128
+Nx = 32
+Ny = 80
 Nz = 35
 
-# stretched grid 
-k_center = collect(1:Nz)
-Δz_center = @. 10 * 1.104^(Nz - k_center)
-const Lz = sum(Δz_center)
-z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
-z_faces[Nz+1] = 0
+movie_interval = 2days
+stop_time = 100days
 
 arch = CPU()
-FT = Float64
+
+# stretched grid
+
+# we implement here a linearly streched grid in which the top grid cell has Δz_top
+# and every other cell is bigger by a factor σ, e.g.,
+# Δz_top, Δz_top * σ, Δz_top * σ², ..., Δz_top * σᴺᶻ⁻¹,
+# so that the sum of all cell heights is Lz
+
+# Given Lz and stretching factor σ > 1 the top cell height is Δz_top = Lz * (σ - 1) / σ^(Nz - 1)
+
+σ = 1.1 # linear stretching factor
+Δz_center_linear(k) = Lz * (σ - 1) * σ^(Nz - k) / (σ^Nz - 1) # k=1 is the bottom-most cell, k=Nz is the top cell
+linearly_spaced_faces(k) = k==1 ? -Lz : - Lz + sum(Δz_center_linear.(1:k-1))
 
 grid = VerticallyStretchedRectilinearGrid(architecture = arch,
                                           topology = (Periodic, Bounded, Bounded),
@@ -38,7 +49,15 @@ grid = VerticallyStretchedRectilinearGrid(architecture = arch,
                                           halo = (3, 3, 3),
                                           x = (0, Lx),
                                           y = (0, Ly),
-                                          z_faces = z_faces)
+                                          z_faces = linearly_spaced_faces)
+
+# The vertical spacing versus depth for the prescribed grid
+plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
+     marker = :circle,
+     ylabel = "Depth (m)",
+     xlabel = "Vertical spacing (m)",
+     legend = nothing)
+
 
 @info "Built a grid: $grid."
 
@@ -47,9 +66,9 @@ grid = VerticallyStretchedRectilinearGrid(architecture = arch,
 #####
 
 α  = 2e-4     # [K⁻¹] thermal expansion coefficient 
-g  = 9.8061   # [m/s²] gravitational constant
-cᵖ = 3994.0   # [J/K]  heat capacity
-ρ  = 1024.0   # [kg/m³] reference density
+g  = 9.8061   # [m s⁻²] gravitational constant
+cᵖ = 3994.0   # [J K⁻¹] heat capacity
+ρ  = 1024.0   # [kg m⁻³] reference density
 
 parameters = (
               Ly = Ly,
@@ -64,9 +83,6 @@ parameters = (
               y_sponge = 19/20 * Ly,      # southern boundary of sponge layer [m]
               λt = 7days                  # relaxation time scale [s]
               )
-
-# ynode(::Type{Center}, j, grid::RegularRectilinearGrid) = @inbounds grid.yC[j]
-# ynode(::Type{Center}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᵃᶜ[j]
 
 @inline function buoyancy_flux(i, j, grid, clock, model_fields, p)
     y = ynode(Center(), j, grid)
@@ -100,7 +116,7 @@ v_bcs = FieldBoundaryConditions(bottom = v_drag_bc)
 
 const f = -1e-4     # [s⁻¹]
 const β =  1e-11    # [m⁻¹ s⁻¹]
-coriolis = BetaPlane(FT, f₀ = f, β = β)
+coriolis = BetaPlane(f₀ = f, β = β)
 
 #####
 ##### Forcing and initial condition
@@ -190,7 +206,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=50days, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=10)
 
 #####
 ##### Diagnostics
@@ -202,6 +218,7 @@ b = model.tracers.b
 ζ = ComputedField(∂x(v) - ∂y(u))
 
 B = AveragedField(b, dims=1)
+U = AveragedField(u, dims=1)
 V = AveragedField(v, dims=1)
 W = AveragedField(w, dims=1)
 
@@ -212,9 +229,9 @@ w′ = w - W
 v′b′ = AveragedField(v′ * b′, dims=1)
 w′b′ = AveragedField(w′ * b′, dims=1)
 
-outputs = (; b, ζ, w)
+outputs = (; b, ζ, u, v, w)
 
-averaged_outputs = (; v′b′, w′b′, B)
+averaged_outputs = (; v′b′, w′b′, B, U, V, W)
 
 #####
 ##### Build checkpointer and output writer
@@ -225,18 +242,35 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         prefix = "eddying_channel",
                                                         force = true)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(5days),
-                                                      prefix = "eddying_channel",
-                                                      field_slicer = nothing,
-                                                      verbose = true,
-                                                      force = true)
+slicers = (west = FieldSlicer(i=1),
+           east = FieldSlicer(i=grid.Nx),
+           south = FieldSlicer(j=1),
+           north = FieldSlicer(j=grid.Ny),
+           bottom = FieldSlicer(k=1),
+           top = FieldSlicer(k=grid.Nz))
 
+for side in keys(slicers)
+    field_slicer = slicers[side]
+
+    simulation.output_writers[side] = JLD2OutputWriter(model, outputs,
+                                                       schedule = TimeInterval(movie_interval),
+                                                       field_slicer = field_slicer,
+                                                       prefix = "eddying_channel_$(side)_slice",
+                                                       force = true)
+end
+
+simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U, v=V, w=W, vb=v′b′, wb=w′b′),
+                                                     schedule = TimeInterval(movie_interval),
+                                                     prefix = "eddying_channel_zonal_average",
+                                                     force = true)
+
+#=
 simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
                                                         schedule = AveragedTimeInterval(1days, window=1days, stride=1),
                                                         prefix = "eddying_channel_averages",
                                                         verbose = true,
                                                         force = true)
+=#
 
  @info "Running the simulation..."
 
@@ -247,87 +281,121 @@ catch err
     showerror(stdout, err)
 end
 
-# #####
-# ##### Visualization
-# #####
+#####
+##### Visualize
+#####
 
-#=
- grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
-                                           topology = (Periodic, Bounded, Bounded),
-                                           size = (grid.Nx, grid.Ny, grid.Nz),
-                                           halo = (3, 3, 3),
-                                           x = (0, grid.Lx),
-                                           y = (0, grid.Ly),
-                                           z_faces = z_faces)
- xζ, yζ, zζ = nodes((Face, Face, Center), grid)
- xc, yc, zc = nodes((Center, Center, Center), grid)
- xw, yw, zw = nodes((Center, Center, Face), grid)
- j′ = round(Int, grid.Ny / 2)
- y′ = yζ[j′]
- b_timeseries = FieldTimeSeries("eddying_channel.jld2", "b", grid=grid)
- ζ_timeseries = FieldTimeSeries("eddying_channel.jld2", "ζ", grid=grid)
- w_timeseries = FieldTimeSeries("eddying_channel.jld2", "w", grid=grid)
- @show b_timeseries
- anim = @animate for i in 1:length(b_timeseries.times)
-     b = b_timeseries[i]
-     ζ = ζ_timeseries[i]
-     w = w_timeseries[i]
-     b′ = interior(b) .- mean(b)
-     b_xy = b′[:, :, grid.Nz]
-     ζ_xy = interior(ζ)[:, :, grid.Nz]
-     ζ_xz = interior(ζ)[:, j′, :]
-     w_xz = interior(w)[:, j′, :]
-    
-     @show bmax = max(1e-9, maximum(abs, b_xy))
-     @show ζmax = max(1e-9, maximum(abs, ζ_xy))
-     @show wmax = max(1e-9, maximum(abs, w_xz))
-     blims = (-bmax, bmax) .* 0.8
-     ζlims = (-ζmax, ζmax) .* 0.8
-     wlims = (-wmax, wmax) .* 0.8
-    
-     blevels = vcat([-bmax], range(blims[1], blims[2], length=31), [bmax])
-     ζlevels = vcat([-ζmax], range(ζlims[1], ζlims[2], length=31), [ζmax])
-     wlevels = vcat([-wmax], range(wlims[1], wlims[2], length=31), [wmax])
-     xlims = (-grid.Lx/2, grid.Lx/2) .* 1e-3
-     ylims = (0, grid.Ly) .* 1e-3
-     zlims = (-grid.Lz, 0)
-     w_xz_plot = contourf(xw * 1e-3, zw, w_xz',
-                          xlabel = "x (km)",
-                          ylabel = "z (m)",
-                          aspectratio = 0.05,
-                          linewidth = 0,
-                          levels = wlevels,
-                          clims = wlims,
-                          xlims = xlims,
-                          ylims = zlims,
-                          color = :balance)
-     ζ_xy_plot = contourf(xζ * 1e-3, yζ * 1e-3, ζ_xy',
-                          xlabel = "x (km)",
-                          ylabel = "y (km)",
-                          aspectratio = :equal,
-                          linewidth = 0,
-                          levels = ζlevels,
-                          clims = ζlims,
-                          xlims = xlims,
-                          ylims = ylims,
-                          color = :balance)
-    b_xy_plot = contourf(xc * 1e-3, yc * 1e-3, b_xy',
-                          xlabel = "x (km)",
-                          ylabel = "y (km)",
-                          aspectratio = :equal,
-                          linewidth = 0,
-                          levels = blevels,
-                          clims = blims,
-                          xlims = xlims,
-                          ylims = ylims,
-                          color = :balance)
-     w_xz_title = @sprintf("w(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
-     ζ_xz_title = @sprintf("ζ(x, z) at t = %s", prettytime(ζ_timeseries.times[i]))
-     ζ_xy_title = "ζ(x, y)"
-     b_xy_title = "b(x, y)"
-     layout = @layout [upper_slice_plot{0.2h}
-                       Plots.grid(1, 2)]
-     plot(w_xz_plot, ζ_xy_plot,  b_xy_plot, layout = layout, size = (1200, 1200), title = [w_xz_title ζ_xy_title b_xy_title])
- end
- mp4(anim, "eddying_channel.mp4", fps = 8) # hide
-=#
+fig = Figure(resolution = (2000, 1000))
+ax_b = fig[1:5, 1] = LScene(fig)
+ax_u = fig[1:5, 2] = LScene(fig)
+
+# Extract surfaces on all 6 boundaries
+
+iter = Node(0)
+sides = keys(slicers)
+
+zonal_file = jldopen("eddying_channel_zonal_average.jld2")
+slice_files = NamedTuple(side => jldopen("eddying_channel_$(side)_slice.jld2") for side in sides)
+
+grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
+                                          topology = (Periodic, Bounded, Bounded),
+                                          size = (Nx, Ny, Nz),
+                                          halo = (3, 3, 3),
+                                          x = (0, Lx),
+                                          y = (0, Ly),
+                                          z_faces = linearly_spaced_faces)
+
+# Build coordinates, rescaling the vertical coordinate
+
+xζ, yζ, zζ = nodes((Face, Face, Center), grid)
+xu, yu, zu = nodes((Face, Center, Center), grid)
+xv, yv, zv = nodes((Center, Face, Center), grid)
+xw, yw, zw = nodes((Center, Center, Face), grid)
+xb, yb, zb = nodes((Center, Center, Center), grid)
+
+zscale = 300
+zb = zb .* zscale
+zζ = zζ .* zscale
+
+zonal_slice_displacement = 1.35
+
+b_slices = (
+      west = @lift(Array(slice_files.west["timeseries/b/"   * string($iter)][1, :, :])),
+      east = @lift(Array(slice_files.east["timeseries/b/"   * string($iter)][1, :, :])),
+     south = @lift(Array(slice_files.south["timeseries/b/"  * string($iter)][:, 1, :])),
+     north = @lift(Array(slice_files.north["timeseries/b/"  * string($iter)][:, 1, :])),
+    bottom = @lift(Array(slice_files.bottom["timeseries/b/" * string($iter)][:, :, 1])),
+       top = @lift(Array(slice_files.top["timeseries/b/"    * string($iter)][:, :, 1]))
+)
+
+clims_b = @lift extrema(slice_files.top["timeseries/b/" * string($iter)][:])
+clims_b = 
+kwargs_b = (colorrange=clims_b, colormap=:balance, show_axis=false)
+
+GLMakie.surface!(ax_b, yb, zb, b_slices.west;   transformation = (:yz, xb[1]),   kwargs_b...)
+# GLMakie.surface!(ax_b, yb, zb, b_slices.east;   transformation = (:yz, xb[end]), kwargs_b...)
+GLMakie.surface!(ax_b, xb, zb, b_slices.south;  transformation = (:xz, yb[1]),   kwargs_b...)
+# GLMakie.surface!(ax_b, xb, zb, b_slices.north;  transformation = (:xz, yb[end]), kwargs_b...)
+# GLMakie.surface!(ax_b, xb, yb, b_slices.bottom; transformation = (:xy, zb[1]),   kwargs_b...)
+GLMakie.surface!(ax_b, xb, yb, b_slices.top;    transformation = (:xy, zb[end]), kwargs_b...)
+
+b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
+u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
+
+clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
+
+GLMakie.contour!(ax_b, yb, zb, b_avg; levels = 15, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
+GLMakie.surface!(ax_b, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
+
+rotate_cam!(ax_b.scene, (π/24, -π/6, 0))
+
+u_slices = (
+      west = @lift(Array(slice_files.west["timeseries/u/"   * string($iter)][1, :, :])),
+      east = @lift(Array(slice_files.east["timeseries/u/"   * string($iter)][1, :, :])),
+     south = @lift(Array(slice_files.south["timeseries/u/"  * string($iter)][:, 1, :])),
+     north = @lift(Array(slice_files.north["timeseries/u/"  * string($iter)][:, 1, :])),
+    bottom = @lift(Array(slice_files.bottom["timeseries/u/" * string($iter)][:, :, 1])),
+       top = @lift(Array(slice_files.top["timeseries/u/"    * string($iter)][:, :, 1]))
+)
+
+clims_u = @lift extrema(slice_files.east["timeseries/u/" * string($iter)][:])
+# clims_ζ = (-1.0f-7, 1.0f-7)
+kwargs_u = (colormap=:balance, show_axis=false)
+
+GLMakie.surface!(ax_u, yb, zb, u_slices.west;   transformation = (:yz, xb[1]),   kwargs_u...)
+GLMakie.surface!(ax_u, yb, zb, u_slices.east;   transformation = (:yz, xb[end]), kwargs_u...)
+GLMakie.surface!(ax_u, xb, zb, u_slices.south;  transformation = (:xz, yb[1]),   kwargs_u...)
+GLMakie.surface!(ax_u, xb, zb, u_slices.north;  transformation = (:xz, yb[end]), kwargs_u...)
+GLMakie.surface!(ax_u, xb, yb, u_slices.bottom; transformation = (:xy, zb[1]),   kwargs_u...)
+GLMakie.surface!(ax_u, xb, yb, u_slices.top;    transformation = (:xy, zb[end]), kwargs_u...)b
+
+b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
+u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
+
+clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
+
+GLMakie.contour!(ax_u, yb, zb, b_avg; levels = 15, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
+GLMakie.surface!(ax_u, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
+
+rotate_cam!(ax_u.scene, (π/24, -π/6, 0))
+
+title = @lift(string("Buoyancy and zonally-averaged u at t = ",
+                     prettytime(zonal_file["timeseries/t/" * string($iter)])))
+
+fig[0, :] = Label(fig, title, textsize=30)
+
+
+iterations = parse.(Int, keys(zonal_file["timeseries/t"]))
+
+record(fig, "eddying_channel.mp4", iterations, framerate=8) do i
+    @info "Plotting iteration $i of $(iterations[end])..."
+    iter[] = i
+end
+
+display(fig)
+
+for file in slice_files
+    close(file)
+end
+
+close(zonal_file)
