@@ -21,14 +21,14 @@ Ly = 2000kilometers # meridional domain length [m]
 Lz = 2kilometers    # depth [m]
 
 # number of grid points
-Nx = 32
-Ny = 80
-Nz = 35
+Nx = 64
+Ny = 128
+Nz = 40
 
-movie_interval = 2days
-stop_time = 100days
+movie_interval = 1days
+stop_time = 600days
 
-arch = CPU()
+arch = GPU()
 
 # stretched grid
 
@@ -53,11 +53,8 @@ grid = VerticallyStretchedRectilinearGrid(architecture = arch,
 
 # The vertical spacing versus depth for the prescribed grid
 plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
-     marker = :circle,
-     ylabel = "Depth (m)",
-     xlabel = "Vertical spacing (m)",
-     legend = nothing)
-
+     axis=(xlabel = "Vertical spacing (m)",
+           ylabel = "Depth (m)"))
 
 @info "Built a grid: $grid."
 
@@ -179,8 +176,11 @@ model = HydrostaticFreeSurfaceModel(architecture = arch,
 # resting initial condition
 ε(σ) = σ * randn()
 bᵢ(x, y, z) = parameters.ΔB * ( exp(z/parameters.h) - exp(-Lz/parameters.h) ) / (1 - exp(-Lz/parameters.h)) + ε(1e-8)
+uᵢ(x, y, z) = ε(1e-8)
+vᵢ(x, y, z) = ε(1e-8)
+wᵢ(x, y, z) = ε(1e-8)
 
-set!(model, b=bᵢ)
+set!(model, b=bᵢ, u=uᵢ, v=vᵢ, w=wᵢ)
 
 #####
 ##### Simulation building
@@ -229,9 +229,9 @@ w′ = w - W
 v′b′ = AveragedField(v′ * b′, dims=1)
 w′b′ = AveragedField(w′ * b′, dims=1)
 
-outputs = (; b, ζ, u, v, w)
+outputs = (; b, ζ, u)
 
-averaged_outputs = (; v′b′, w′b′, B, U, V, W)
+averaged_outputs = (; v′b′, w′b′, B, U)
 
 #####
 ##### Build checkpointer and output writer
@@ -287,7 +287,7 @@ end
 
 fig = Figure(resolution = (2000, 1000))
 ax_b = fig[1:5, 1] = LScene(fig)
-ax_u = fig[1:5, 2] = LScene(fig)
+ax_ζ = fig[1:5, 2] = LScene(fig)
 
 # Extract surfaces on all 6 boundaries
 
@@ -314,6 +314,7 @@ xw, yw, zw = nodes((Center, Center, Face), grid)
 xb, yb, zb = nodes((Center, Center, Center), grid)
 
 zscale = 300
+zu = zu .* zscale
 zb = zb .* zscale
 zζ = zζ .* zscale
 
@@ -329,14 +330,13 @@ b_slices = (
 )
 
 clims_b = @lift extrema(slice_files.top["timeseries/b/" * string($iter)][:])
-clims_b = 
-kwargs_b = (colorrange=clims_b, colormap=:balance, show_axis=false)
+kwargs_b = (colorrange=clims_b, colormap=:deep, show_axis=false)
 
 GLMakie.surface!(ax_b, yb, zb, b_slices.west;   transformation = (:yz, xb[1]),   kwargs_b...)
-# GLMakie.surface!(ax_b, yb, zb, b_slices.east;   transformation = (:yz, xb[end]), kwargs_b...)
+GLMakie.surface!(ax_b, yb, zb, b_slices.east;   transformation = (:yz, xb[end]), kwargs_b...)
 GLMakie.surface!(ax_b, xb, zb, b_slices.south;  transformation = (:xz, yb[1]),   kwargs_b...)
-# GLMakie.surface!(ax_b, xb, zb, b_slices.north;  transformation = (:xz, yb[end]), kwargs_b...)
-# GLMakie.surface!(ax_b, xb, yb, b_slices.bottom; transformation = (:xy, zb[1]),   kwargs_b...)
+GLMakie.surface!(ax_b, xb, zb, b_slices.north;  transformation = (:xz, yb[end]), kwargs_b...)
+GLMakie.surface!(ax_b, xb, yb, b_slices.bottom; transformation = (:xy, zb[1]),   kwargs_b...)
 GLMakie.surface!(ax_b, xb, yb, b_slices.top;    transformation = (:xy, zb[end]), kwargs_b...)
 
 b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
@@ -344,40 +344,50 @@ u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
 
 clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
 
-GLMakie.contour!(ax_b, yb, zb, b_avg; levels = 15, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
+GLMakie.contour!(ax_b, yb, zb, b_avg; levels = 25, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
 GLMakie.surface!(ax_b, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
 
 rotate_cam!(ax_b.scene, (π/24, -π/6, 0))
 
-u_slices = (
-      west = @lift(Array(slice_files.west["timeseries/u/"   * string($iter)][1, :, :])),
-      east = @lift(Array(slice_files.east["timeseries/u/"   * string($iter)][1, :, :])),
-     south = @lift(Array(slice_files.south["timeseries/u/"  * string($iter)][:, 1, :])),
-     north = @lift(Array(slice_files.north["timeseries/u/"  * string($iter)][:, 1, :])),
-    bottom = @lift(Array(slice_files.bottom["timeseries/u/" * string($iter)][:, :, 1])),
-       top = @lift(Array(slice_files.top["timeseries/u/"    * string($iter)][:, :, 1]))
+ζ_slices = (
+      west = @lift(Array(slice_files.west["timeseries/ζ/"   * string($iter)][1, :, :])),
+      east = @lift(Array(slice_files.east["timeseries/ζ/"   * string($iter)][1, :, :])),
+     south = @lift(Array(slice_files.south["timeseries/ζ/"  * string($iter)][:, 1, :])),
+     north = @lift(Array(slice_files.north["timeseries/ζ/"  * string($iter)][:, 1, :])),
+    bottom = @lift(Array(slice_files.bottom["timeseries/ζ/" * string($iter)][:, :, 1])),
+       top = @lift(Array(slice_files.top["timeseries/ζ/"    * string($iter)][:, :, 1]))
 )
 
-clims_u = @lift extrema(slice_files.east["timeseries/u/" * string($iter)][:])
-# clims_ζ = (-1.0f-7, 1.0f-7)
-kwargs_u = (colormap=:balance, show_axis=false)
+# u_slices = (
+#       west = @lift(Array(slice_files.west["timeseries/u/"   * string($iter)][1, :, :])),
+#       east = @lift(Array(slice_files.east["timeseries/u/"   * string($iter)][1, :, :])),
+#      south = @lift(Array(slice_files.south["timeseries/u/"  * string($iter)][:, 1, :])),
+#      north = @lift(Array(slice_files.north["timeseries/u/"  * string($iter)][:, 1, :])),
+#     bottom = @lift(Array(slice_files.bottom["timeseries/u/" * string($iter)][:, :, 1])),
+#        top = @lift(Array(slice_files.top["timeseries/u/"    * string($iter)][:, :, 1]))
+# )
 
-GLMakie.surface!(ax_u, yb, zb, u_slices.west;   transformation = (:yz, xb[1]),   kwargs_u...)
-GLMakie.surface!(ax_u, yb, zb, u_slices.east;   transformation = (:yz, xb[end]), kwargs_u...)
-GLMakie.surface!(ax_u, xb, zb, u_slices.south;  transformation = (:xz, yb[1]),   kwargs_u...)
-GLMakie.surface!(ax_u, xb, zb, u_slices.north;  transformation = (:xz, yb[end]), kwargs_u...)
-GLMakie.surface!(ax_u, xb, yb, u_slices.bottom; transformation = (:xy, zb[1]),   kwargs_u...)
-GLMakie.surface!(ax_u, xb, yb, u_slices.top;    transformation = (:xy, zb[end]), kwargs_u...)b
+clims_ζ = @lift extrema(slice_files.top["timeseries/u/" * string($iter)][:])
+kwargs_ζ = (colormap=:curl, show_axis=false)
+# clims_u = @lift extrema(slice_files.top["timeseries/u/" * string($iter)][:])
+# kwargs_u = (colormap=:balance, show_axis=false)
+
+GLMakie.surface!(ax_ζ, yζ, zζ, ζ_slices.west;   transformation = (:yz, xζ[1]),   kwargs_ζ...)
+GLMakie.surface!(ax_ζ, yζ, zζ, ζ_slices.east;   transformation = (:yz, xζ[end]), kwargs_ζ...)
+GLMakie.surface!(ax_ζ, xζ, zζ, ζ_slices.south;  transformation = (:xz, yζ[1]),   kwargs_ζ...)
+GLMakie.surface!(ax_ζ, xζ, zζ, ζ_slices.north;  transformation = (:xz, yζ[end]), kwargs_ζ...)
+GLMakie.surface!(ax_ζ, xζ, yζ, ζ_slices.bottom; transformation = (:xy, zζ[1]),   kwargs_ζ...)
+GLMakie.surface!(ax_ζ, xζ, yζ, ζ_slices.top;    transformation = (:xy, zζ[end]), kwargs_ζ...)
 
 b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
 u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
 
 clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
 
-GLMakie.contour!(ax_u, yb, zb, b_avg; levels = 15, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
-GLMakie.surface!(ax_u, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
+GLMakie.contour!(ax_ζ, yb, zb, b_avg; levels = 25, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
+GLMakie.surface!(ax_ζ, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
 
-rotate_cam!(ax_u.scene, (π/24, -π/6, 0))
+rotate_cam!(ax_ζ.scene, (π/24, -π/6, 0))
 
 title = @lift(string("Buoyancy and zonally-averaged u at t = ",
                      prettytime(zonal_file["timeseries/t/" * string($iter)])))
