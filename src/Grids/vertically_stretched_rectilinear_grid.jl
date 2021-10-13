@@ -61,8 +61,8 @@ Keyword arguments
                   are stored on the CPU or GPU. Default: `architecture = CPU()`.
 
 - `z_faces`: An array or function of vertical index `k` that specifies the location of cell faces
-        in the `z-`direction for indices `k=1` through `k=Nz+1`, where `Nz` is the last element
-        of `size` that corresponds to the stretched dimension.
+        in the `z-`direction for indices `k=1` through `k=Nz+1`, where `Nz` is the
+        `size` of the stretched dimension.
 
 - `x`, `y`: Each of `x, y` are 2-tuples that specify the end points of the domain
             in their respect directions. Scalar values may be used in `Flat` directions.
