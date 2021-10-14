@@ -142,6 +142,7 @@ more than one checkpointer.
 """
 function run!(sim; pickup=false)
 
+    sim.initialized = false
     @stopwatch sim initialize_simulation!(sim, pickup)
 
     sim.running = !(stop(sim))
@@ -199,7 +200,9 @@ add_dependencies!(diags, writer) = [add_dependency!(diags, out) for out in value
 add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
 
 we_want_to_pickup(pickup::Bool) = pickup
-we_want_to_pickup(pickup) = true
+we_want_to_pickup(pickup::Number) = true
+we_want_to_pickup(pickup::String) = true
+we_want_to_pickup(pickup) = throw(ArgumentError("Cannot run! with pickup=$pickup"))
 
 """ 
     initialize_simulation!(sim, pickup=false)
@@ -213,22 +216,15 @@ Initialize a simulation before running it. Initialization involves:
 
 """
 function initialize_simulation!(sim, pickup=false)
-    @info "Updating model auxiliary state during simulation initialization..."
+    @info "Initializing simulation..."
     start_time = time_ns()
 
     model = sim.model
     clock = model.clock
 
     if we_want_to_pickup(pickup)
-        checkpointers = filter(writer -> writer isa Checkpointer, collect(values(sim.output_writers)))
-        checkpoint_filepath = checkpoint_path(pickup, checkpointers)
-
-        # https://github.com/CliMA/Oceananigans.jl/issues/1159
-        if pickup isa Bool && isnothing(checkpoint_filepath)
-            @warn "pickup=true but no checkpoints were found. Simulation will run without picking up."
-        else
-            set!(model, checkpoint_filepath)
-        end
+        checkpoint_file_path = checkpoint_path(pickup, sim.output_writers)
+        set!(model, checkpoint_file_path)
     end
 
     # Conservatively initialize the model state
