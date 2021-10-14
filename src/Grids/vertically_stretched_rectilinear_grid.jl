@@ -125,8 +125,8 @@ grid = VerticallyStretchedRectilinearGrid(size = (32, 32, Nz),
 VerticallyStretchedRectilinearGrid{Float64, Periodic, Periodic, Bounded}
                    domain: x ∈ [0.0, 64.0], y ∈ [0.0, 64.0], z ∈ [-32.0, -0.0]
                  topology: (Periodic, Periodic, Bounded)
-  resolution (Nx, Ny, Nz): (32, 32, 24)
-   halo size (Hx, Hy, Hz): (1, 1, 1)
+        size (Nx, Ny, Nz): (32, 32, 24)
+        halo (Hx, Hy, Hz): (1, 1, 1)
 grid spacing (Δx, Δy, Δz): (2.0, 2.0, [min=0.6826950100338962, max=1.8309085743885056])
 ```
 """
@@ -302,8 +302,8 @@ function show(io::IO, g::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) whe
     print(io, "VerticallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
-              "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
-              "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
+              "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
+              "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
               "grid spacing (Δx, Δy, Δz): (", g.Δx, ", ", g.Δy, ", [min=", Δz_min, ", max=", Δz_max,"])",)
 end
 
