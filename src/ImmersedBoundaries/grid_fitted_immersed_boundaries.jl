@@ -7,22 +7,21 @@ abstract type AbstractGridFittedBoundary <: AbstractImmersedBoundary end
 ##### GridFittedBoundary
 #####
 
-struct RasterDepthMask end
-
-struct GridFittedBoundary{M, S} <: AbstractGridFittedBoundary
+struct GridFittedBoundary{S} <: AbstractGridFittedBoundary
     mask :: S
-    mask_type :: M
 end
 
-GridFittedBoundary(mask; mask_type=nothing) = GridFittedBoundary(mask, mask_type)
-
 @inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary) = ib.mask(node(c, c, c, i, j, k, underlying_grid)...)
-@inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary{<:RasterDepthMask}) = ib.mask(i, j)
 
 #####
 ##### GridFittedBottom
 #####
 
+"""
+    GridFittedBottom(bottom)
+
+Return an immersed boundary...
+"""
 struct GridFittedBottom{B} <: AbstractGridFittedBoundary
     bottom :: B
 end
@@ -50,4 +49,14 @@ function ImmersedBoundaryGrid(grid, ib::Union{ArrayGridFittedBottom, CuArrayGrid
     new_ib = GridFittedBottom(offset_bottom_array)
     return ImmersedBoundaryGrid(grid, new_ib)
 end
+
+const GFBIBG = ImmersedBoundaryGrid{<:Any, <:GridFittedBottom}
+
+@inline Δzᵃᵃᶜ(i, j, k, ibg::GFBIBG) = ifelse(is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary),
+                                             zero(eltype(ibg.grid)),
+                                             Δzᵃᵃᶜ(i, j, k, ibg.grid))
+
+@inline Δzᵃᵃᶠ(i, j, k, ibg::GFBIBG) = ifelse(is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary),
+                                             zero(eltype(ibg.grid)),
+                                             Δzᵃᵃᶠ(i, j, k, ibg.grid))
 
