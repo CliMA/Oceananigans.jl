@@ -1,3 +1,4 @@
+using JLD2
 using Printf
 using GLMakie
 
@@ -9,15 +10,25 @@ east_west_stress_path = "off_TAUXvar1.bin"
 north_south_stress_path = "off_TAUY.bin"
 sea_surface_temperature_path="sst25_128x60x12.bin"
 
-bathymetry = reshape(bswap.(reinterpret(Float32, read(bathymetry_path,sizeof(Float32)*Nx*Ny))), (Nx, Ny))
-τˣ = reshape(bswap.(reinterpret(Float32, read(east_west_stress_path,sizeof(Float32)*Nx*Ny))), (Nx, Ny))
-τʸ = reshape(bswap.(reinterpret(Float32, read(north_south_stress_path,sizeof(Float32)*Nx*Ny))), (Nx, Ny))
-target_sea_surface_temperature = reshape(bswap.(reinterpret(Float32, read(sea_surface_temperature_path, sizeof(Float32)*Nx*Ny))), (Nx, Ny))
+Nbytes = sizeof(Float32) * Nx * Ny
+bathymetry = reshape(bswap.(reinterpret(Float32, read(bathymetry_path, Nbytes))), (Nx, Ny))
 
-bathymetry = Array{Float64, 2}(bathymetry)
-τˣ = Array{Float64, 2}(τˣ)
-τʸ = Array{Float64, 2}(τʸ)
-target_sea_surface_temperature = Array{Float64, 2}(target_sea_surface_temperature)
+τˣ = reshape(bswap.(reinterpret(Float32, read(east_west_stress_path,  12Nbytes))), (Nx, Ny, 12))
+τʸ = reshape(bswap.(reinterpret(Float32, read(north_south_stress_path, 12Nbytes))), (Nx, Ny, 12))
+target_sea_surface_temperature = reshape(bswap.(reinterpret(Float32, read(sea_surface_temperature_path, 12Nbytes))), (Nx, Ny, 12))
+
+τˣ = τˣ[:, :, 1]
+τʸ = τʸ[:, :, 1]
+target_sea_surface_temperature = target_sea_surface_temperature[:, :, 1] 
+
+# bathymetry = Array{Float64, 2}(bathymetry)
+# τˣ = Array{Float64, 2}(τˣ)
+# τʸ = Array{Float64, 2}(τʸ)
+# target_sea_surface_temperature = Array{Float64, 2}(target_sea_surface_temperature)
+
+bathymetry_file = jldopen("earth_bathymetry_128_60.jld2", "a+")
+bathymetry_file["bathymetry"] = bathymetry
+close(bathymetry_file)
 
 println("Bathymetry: min= ", minimum(bathymetry)," , max= ", maximum(bathymetry))
 println("τˣ: min= ", minimum(τˣ)," , max= ", maximum(τˣ))
