@@ -125,7 +125,7 @@ function run_basic_simulation_tests(arch)
     run!(simulation)
 
     @show called_at
-    @test all(called_at .== 0.0:schedule.interval:simulation.stop_time)
+    @test all(called_at .≈ 0.0:schedule.interval:simulation.stop_time)
 
     return nothing
 end
