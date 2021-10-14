@@ -1,3 +1,6 @@
+using CUDA: CuArray
+using Oceananigans.Fields: ReducedField, fill_halo_regions!
+
 abstract type AbstractGridFittedBoundary <: AbstractImmersedBoundary end
 
 #####
@@ -32,5 +35,19 @@ end
 @inline function is_immersed(i, j, k, underlying_grid, ib::GridFittedBottom{<:AbstractArray})
     x, y, z = node(c, c, c, i, j, k, underlying_grid)
     return z < ib.bottom[i, j]
+end
+
+const ArrayGridFittedBottom = GridFittedBottom{<:Array}
+const CuArrayGridFittedBottom = GridFittedBottom{<:CuArray}
+
+function ImmersedBoundaryGrid(grid, ib::Union{ArrayGridFittedBottom, CuArrayGridFittedBottom})
+    # Wrap bathymetry in an OffsetArray with halos
+    arch = architecture(ib.bottom)
+    bottom_field = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
+    bottom_field .= ib.bottom
+    fill_halo_regions!(bottom_field, arch)
+    offset_bottom_array = dropdims(bottom_field.data, dims=3)
+    new_ib = GridFittedBottom(offset_bottom_array)
+    return ImmersedBoundaryGrid(grid, new_ib)
 end
 
