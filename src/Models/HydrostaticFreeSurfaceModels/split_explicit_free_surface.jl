@@ -1,20 +1,12 @@
-using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Architectures: device
-using Oceananigans.Operators: ∂xᶠᵃᵃ, ∂yᵃᶠᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ
-using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Solvers: solve!
 using Oceananigans.Fields
-using Oceananigans.Utils: prettytime
-
 using Adapt
-using KernelAbstractions: NoneEvent
 
 """
 SplitExplicitFreeSurface{𝒮, 𝒫, ℰ}
 
 # Members
 state : (SplitExplicitState). The entire state for split-explicit
-parameters : (named tuple). Parameters for timestepping split-explicit
+parameters : (NamedTuple). Parameters for timestepping split-explicit
 settings : (SplitExplicitSettings). Settings for the split-explicit scheme
 """
 @Base.kwdef struct SplitExplicitFreeSurface{E, G, M}
@@ -28,16 +20,23 @@ function SplitExplicitFreeSurface()
     return SplitExplicitFreeSurface(nothing, nothing, nothing)
 end
 
+# automatically construct default
+function SplitExplicitFreeSurface(grid, arch)
+    return SplitExplicitFreeSurface(state = SplitExplicitState(grid, arch), 
+                                    parameters = (; g = g_Earth), 
+                                    settings = SplitExplicitSettings(),)
+end
+
 """
 SplitExplicitState{E}
 
 # Members
 `η` : (ReducedField). The instantaneous free surface 
 `U` : (ReducedField). The instantaneous barotropic component of the zonal velocity 
-`V` : (ReducedField). The instantaneous batropic component of the meridional velocity
+`V` : (ReducedField). The instantaneous barotropic component of the meridional velocity
 `η̅` : (ReducedField). The time-filtered free surface 
 `U̅` : (ReducedField). The time-filtered barotropic component of the zonal velocity 
-`V̅` : (ReducedField). The time-filtered batropic component of the meridional velocity
+`V̅` : (ReducedField). The time-filtered barotropic component of the meridional velocity
 """
 @Base.kwdef struct SplitExplicitState{𝒮}
     η :: 𝒮
@@ -48,10 +47,17 @@ SplitExplicitState{E}
     V̅ :: 𝒮
 end
 
-# TODO: given the grid construct the members of the struct
-function SplitExplicitState(grid)
-    # make split-explicit stuff here
-    return nothing
+function SplitExplicitState(grid, arch)
+    η = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
+    η̅ = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
+
+    U = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
+    U̅ = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
+
+    V = ReducedField(Center, Face, Nothing, arch, grid; dims=3)
+    V̅ = ReducedField(Center, Face, Nothing, arch, grid; dims=3)
+
+    return SplitExplicitState(η = η, η̅ = η̅, U = U, U̅ = U̅, V = V, V̅ = V̅)
 end
 
 """
@@ -68,9 +74,9 @@ free_surface_weights :: (Vector)
     free_surface_weights :: ℳ
 end
 
-#TODO: figure out and add smart defualts here. Also make GPU-friendly
+#TODO: figure out and add smart defaults here. Also make GPU-friendly (dispatch on arch?)
 function SplitExplicitSettings()
-    substeps = 200 # since free-surface is substep times faster than baroclinic part
+    substeps = 200 # since free-surface is "substep" times faster than baroclinic part
     velocity_weights = ones(substeps) ./ substeps
     free_surface_weights = ones(substeps) ./ substeps
 
