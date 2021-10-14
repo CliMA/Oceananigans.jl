@@ -97,8 +97,8 @@ function show(io::IO, g::RegularLatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT
     print(io, "RegularLatitudeLongitudeGrid{$FT, $TX, $TY, $TZ}\n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
-              "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
-              "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
+              "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
+              "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
               "grid spacing (Δλ, Δφ, Δz): ", (g.Δλ, g.Δφ, g.Δz))
 end
 

@@ -1,14 +1,15 @@
 #using Pkg
-# pkg"add Oceananigans GLMakie"
-
-#ENV["GKSwstype"] = "100"
-
+# pkg"add Oceananigans GLMakie JLD2"
+ENV["GKSwstype"] = "100"
 pushfirst!(LOAD_PATH, @__DIR__)
+pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "..")) # add Oceananigans
 
 using Printf
 using Statistics
 using GLMakie
 using JLD2
+
+GLMakie.inline!(false)
 
 using Oceananigans
 using Oceananigans.Units
@@ -32,12 +33,12 @@ arch = GPU()
 
 # stretched grid
 
-# we implement here a linearly streched grid in which the top grid cell has Δz_top
+# we implement here a linearly streched grid in which the top grid cell has Δzₜₒₚ
 # and every other cell is bigger by a factor σ, e.g.,
-# Δz_top, Δz_top * σ, Δz_top * σ², ..., Δz_top * σᴺᶻ⁻¹,
+# Δzₜₒₚ, Δzₜₒₚ * σ, Δzₜₒₚ * σ², ..., Δzₜₒₚ * σᴺᶻ⁻¹,
 # so that the sum of all cell heights is Lz
 
-# Given Lz and stretching factor σ > 1 the top cell height is Δz_top = Lz * (σ - 1) / σ^(Nz - 1)
+# Given Lz and stretching factor σ > 1 the top cell height is Δzₜₒₚ = Lz * (σ - 1) / σ^(Nz - 1)
 
 σ = 1.1 # linear stretching factor
 Δz_center_linear(k) = Lz * (σ - 1) * σ^(Nz - k) / (σ^Nz - 1) # k=1 is the bottom-most cell, k=Nz is the top cell
@@ -259,11 +260,12 @@ for side in keys(slicers)
                                                        force = true)
 end
 
+#=
 simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U, v=V, w=W, vb=v′b′, wb=w′b′),
                                                      schedule = TimeInterval(movie_interval),
                                                      prefix = "eddying_channel_zonal_average",
                                                      force = true)
-
+=#
 #=
 simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
                                                         schedule = AveragedTimeInterval(1days, window=1days, stride=1),
