@@ -55,18 +55,6 @@ float_types = (Float32, Float64)
 
 archs = CUDA.has_cuda() ? (GPU(),) : (CPU(),)
 
-closures = (
-    :IsotropicDiffusivity,
-    :AnisotropicDiffusivity,
-    :AnisotropicBiharmonicDiffusivity,
-    :TwoDimensionalLeith,
-    :SmagorinskyLilly,
-    :AnisotropicMinimumDissipation,
-    :HorizontallyCurvilinearAnisotropicDiffusivity,
-    :HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity,
-    :ConvectiveAdjustmentVerticalDiffusivity
-)
-
 #####
 ##### Run tests!
 #####
