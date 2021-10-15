@@ -54,6 +54,10 @@ end
 @inline ∂y_b(i, j, k, grid, b::Buoyancy, C) = ∂y_b(i, j, k, grid, b.model, C)
 @inline ∂z_b(i, j, k, grid, b::Buoyancy, C) = ∂z_b(i, j, k, grid, b.model, C)
 
+@inline ∂x_b(i, j, k, grid, b::Buoyancy, f::F, args...) where F<:Function = ∂x_b(i, j, k, grid, b.model, f, args...)
+@inline ∂y_b(i, j, k, grid, b::Buoyancy, f::F, args...) where F<:Function = ∂y_b(i, j, k, grid, b.model, f, args...)
+@inline ∂z_b(i, j, k, grid, b::Buoyancy, f::F, args...) where F<:Function = ∂z_b(i, j, k, grid, b.model, f, args...)
+
 @inline top_buoyancy_flux(i, j, grid, b::Buoyancy, args...) = top_buoyancy_flux(i, j, grid, b.model, args...)
 
 regularize_buoyancy(b) = b
