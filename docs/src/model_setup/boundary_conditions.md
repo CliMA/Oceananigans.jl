@@ -293,7 +293,7 @@ julia> u_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(+0.1),
 julia> T_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20),
                                        bottom = GradientBoundaryCondition(0.01));
 
-julia> model = NonhydrostaticModel(grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
+julia> model = NonhydrostaticModel(grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 ├── tracers: (:T, :S)

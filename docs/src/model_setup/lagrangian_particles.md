@@ -36,7 +36,7 @@ lagrangian_particles = LagrangianParticles(x=x₀, y=y₀, z=z₀)
 then pass it to a model constructor
 
 ```jldoctest particles
-model = NonhydrostaticModel(grid=grid, particles=lagrangian_particles)
+model = NonhydrostaticModel(grid=grid, particles=lagrangian_particles, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
 # output
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
