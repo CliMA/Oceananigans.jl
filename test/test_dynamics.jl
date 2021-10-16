@@ -72,6 +72,7 @@ function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization
     model = NonhydrostaticModel(timestepper = timestepper,
                                        grid = grid,
                                     closure = IsotropicDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
+                                    tracers = (:T, :S),
                                    buoyancy = nothing)
 
     field = get_model_field(fieldname, model)
