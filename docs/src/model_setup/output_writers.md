@@ -57,7 +57,7 @@ using Oceananigans, Oceananigans.OutputWriters
 
 grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
-model = NonhydrostaticModel(grid=grid);
+model = NonhydrostaticModel(grid=grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S));
 
 simulation = Simulation(model, Δt=12, stop_time=3600);
 
@@ -170,7 +170,7 @@ Write out 3D fields for w and T and a horizontal average:
 using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Fields
 using Oceananigans.Utils: hour, minute
 
-model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
