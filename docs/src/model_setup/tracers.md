@@ -62,7 +62,7 @@ NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S, :C₁, :CO₂, :nitrogen)
 ├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
+├── buoyancy: Nothing
 └── coriolis: Nothing
 ```
 
