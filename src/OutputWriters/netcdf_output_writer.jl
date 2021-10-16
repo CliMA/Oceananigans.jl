@@ -183,7 +183,7 @@ using Oceananigans, Oceananigans.OutputWriters
 
 grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
-model = NonhydrostaticModel(grid=grid);
+model = NonhydrostaticModel(grid=grid, tracers=(:T, :S));
 
 simulation = Simulation(model, Δt=12, stop_time=3600);
 
@@ -239,7 +239,7 @@ using Oceananigans, Oceananigans.OutputWriters
 
 grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
 
-model = NonhydrostaticModel(grid=grid);
+model = NonhydrostaticModel(grid=grid, tracers=(:T, :S));
 
 simulation = Simulation(model, Δt=1.25, stop_iteration=3);
 
