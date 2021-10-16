@@ -20,7 +20,7 @@ end
 ```jldoctest buoyancy
 julia> grid = RegularRectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
 
-julia> model = NonhydrostaticModel(grid=grid, buoyancy=nothing)
+julia> model = NonhydrostaticModel(grid=grid, buoyancy=nothing, tracers=(:T, :S))
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
@@ -64,7 +64,7 @@ To evolve temperature ``T`` and salinity ``S`` and diagnose the buoyancy, you ca
 `buoyancy = SeawaterBuoyancy()` which is the default.
 
 ```jldoctest buoyancy
-julia> model = NonhydrostaticModel(grid=grid, buoyancy=SeawaterBuoyancy())
+julia> model = NonhydrostaticModel(grid=grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
@@ -85,7 +85,7 @@ julia> buoyancy = SeawaterBuoyancy(gravitational_acceleration=1.3)
 SeawaterBuoyancy{Float64}: g = 1.3
 └── equation of state: LinearEquationOfState{Float64}: α = 1.67e-04, β = 7.80e-04
 
-julia> model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy)
+julia> model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=(:T, :S))
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
