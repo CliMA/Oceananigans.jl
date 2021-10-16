@@ -118,6 +118,7 @@ function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, bac
     grid = RegularRectilinearGrid(size=(N, N, 2), extent=(L, L, L))
     closure = IsotropicDiffusivity(ν=κ, κ=κ)
     model = NonhydrostaticModel(timestepper=timestepper, grid=grid, closure=closure,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 background_fields=background_fields)
 
     set!(model, u=u₀, v=v₀, T=T₀)
