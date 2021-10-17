@@ -166,7 +166,7 @@ function generate_vertical_grid_lat_lon(FT, z_topo, Nz, Hz, z_faces, architectur
     interior_zF = zeros(FT, Nz+1)
 
     for k = 1:Nz+1
-        interior_zF[k] = get_z_lat_lon_(z_faces, k)
+        interior_zF[k] = get_z_lat_lon(z_faces, k)
     end
 
     Lz = interior_zF[Nz+1] - interior_zF[1]
