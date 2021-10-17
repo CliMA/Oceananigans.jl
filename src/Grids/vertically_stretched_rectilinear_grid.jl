@@ -374,3 +374,28 @@ function min_Δz(grid::VerticallyStretchedRectilinearGrid)
         return minimum(parent(grid.Δzᵃᵃᶜ))
     end
 end
+
+
+
+#####
+##### Without the code below, grid1==deepcopy(grid1) returns `false`
+#####
+
+
+"""
+    grid1 == grid2
+
+Redefines Base.:(==) to tests if two grids are equal by testing `==` for every individual
+field of the two elements. (The default behavior is using `===`, which makes it so that 
+`grid1==deepcopy(grid1)` for `VerticallyStretchedRectilinearGrid`s.
+"""
+function Base.:(==)(grid1::VerticallyStretchedRectilinearGrid, grid2::VerticallyStretchedRectilinearGrid)
+    names = fieldnames(typeof(grid1))
+    for name in names
+        if getproperty(grid1, name) != getproperty(grid2, name)
+            return false
+        end
+    end
+
+    return true
+end
