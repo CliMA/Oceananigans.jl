@@ -376,12 +376,6 @@ function min_Δz(grid::VerticallyStretchedRectilinearGrid)
 end
 
 
-
-#####
-##### Without the code below, grid1==deepcopy(grid1) returns `false`
-#####
-
-
 """
     grid1 == grid2
 
