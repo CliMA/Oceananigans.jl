@@ -464,6 +464,58 @@ function test_basic_lat_lon_periodic_domain(FT)
 end
 
 #####
+##### Test latitude longitude grid
+#####
+
+function test_basic_lat_lon_general_grid(FT)
+
+    (Nλ, Nφ, Nz) = size = (24, 16, 16)
+    (Hλ, Hφ, Hz) = halo = ( 1,  1,  1)
+
+    lat = (-80,   80)
+    lon = (-180, 180) 
+    zᵣ  = (-100,   0)
+
+    Λ₁  = (lat[1], lon[1], zᵣ[1])
+    Λₙ  = (lat[2], lon[2], zᵣ[2])
+
+    (Lλ, Lφ, Lz) = L = @. Λₙ - Λ₁ 
+    
+    grid_reg = LatitudeLongitudeGrid(FT, size=size, halo=halo, latitude=lat, longitude=lon, z=zᵣ)
+
+    @test typeof(grid_reg.Δzᵃᵃᶜ) == typeof(grid_reg.Δzᵃᵃᶠ) == FT
+
+    Δz = grid_reg.Δzᵃᵃᶜ
+    zₛ = -Lz:Δz:0
+
+    grid_str = LatitudeLongitudeGrid(FT, size=size, halo=halo, latitude=lat, longitude=lon, z=zₛ)
+
+    @test length(grid_str.λᶠᵃᵃ) == length(grid_reg.λᶠᵃᵃ) == Nλ + 2Hλ
+    @test length(grid_str.λᶜᵃᵃ) == length(grid_reg.λᶜᵃᵃ) == Nλ + 2Hλ
+        
+    @test length(grid_str.φᵃᶠᵃ) == length(grid_reg.φᵃᶠᵃ) == Nφ + 2Hφ + 1
+    @test length(grid_str.φᵃᶜᵃ) == length(grid_reg.φᵃᶜᵃ) == Nφ + 2Hφ
+    
+    @test length(grid_str.zᵃᵃᶠ) == length(grid_reg.zᵃᵃᶠ) == Nz + 2Hz + 1
+    @test length(grid_str.zᵃᵃᶜ) == length(grid_reg.zᵃᵃᶜ) == Nz + 2Hz
+    
+    @test length(grid_str.Δzᵃᵃᶠ) == Nz + 2Hz + 2 
+    @test length(grid_str.Δzᵃᵃᶜ) == Nz + 2Hz - 1
+
+    @test all(grid_str.λᶜᵃᵃ == grid_reg.λᶜᵃᵃ) 
+    @test all(grid_str.λᶠᵃᵃ == grid_reg.λᶠᵃᵃ)
+    @test all(grid_str.φᵃᶜᵃ == grid_reg.φᵃᶜᵃ)
+    @test all(grid_str.φᵃᶠᵃ == grid_reg.φᵃᶠᵃ)
+    @test all(grid_str.zᵃᵃᶜ == grid_reg.zᵃᵃᶜ)
+    @test all(grid_str.zᵃᵃᶠ == grid_reg.zᵃᵃᶠ)
+
+    @test sum(grid_str.Δzᵃᵃᶜ) == grid_reg.Δzᵃᵃᶜ * length(grid_str.Δzᵃᵃᶜ)
+    @test sum(grid_str.Δzᵃᵃᶠ) == grid_reg.Δzᵃᵃᶠ * length(grid_str.Δzᵃᵃᶠ)
+
+    return nothing
+end
+
+#####
 ##### Conformal cubed sphere face grid
 #####
 
@@ -632,6 +684,46 @@ end
         end
 
         @test grid isa RegularLatitudeLongitudeGrid
+    end
+
+    @testset "General latitude-longitude grid" begin
+        @info "  Testing general latitude-longitude grid..."
+
+        for FT in float_types
+            test_basic_lat_lon_general_grid(FT)
+        end
+
+        # Testing show function for regular grid
+        grid = LatitudeLongitudeGrid(size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
+    
+        @test try
+            CUDA.allowscalar(false)           
+            show(grid); println()
+            CUDA.allowscalar(true)
+            true
+        catch err
+            println("error in show(::LatitudeLongitudeGrid)")
+            println(sprint(showerror, err))
+            false
+        end
+
+        @test grid isa LatitudeLongitudeGrid
+
+        # Testing show function for stretched grid
+        grid = LatitudeLongitudeGrid(size=(36, 32, 10), longitude=(-180, 180), latitude=(-80, 80), z=collect(0:10))
+
+        @test try
+            CUDA.allowscalar(false)           
+            show(grid); println()
+            CUDA.allowscalar(true)
+            true
+        catch err
+            println("error in show(::LatitudeLongitudeGrid)")
+            println(sprint(showerror, err))
+            false
+        end
+
+        @test grid isa LatitudeLongitudeGrid
     end
 
     @testset "Conformal cubed sphere face grid" begin

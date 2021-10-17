@@ -153,9 +153,11 @@ topos_3d = ((Periodic, Periodic, Bounded),
         rectilinear_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), halo=(3, 3, 3))
         vertically_stretched_grid = VerticallyStretchedRectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z_faces=z_face_generator(), halo=(3, 3, 3))
         lat_lon_sector_grid = RegularLatitudeLongitudeGrid(size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=(-1, 0))
-        lat_lon_strip_grid = RegularLatitudeLongitudeGrid(size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0))
+        lat_lon_strip_grid  = RegularLatitudeLongitudeGrid(size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0))
+        lat_lon_sector_grid_stretched = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=z_face_generator())
+        lat_lon_strip_grid_stretched  = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=z_face_generator())
 
-        grids = (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid) #, vertically_stretched_grid)
+        grids = (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid, lat_lon_sector_grid_stretched, lat_lon_strip_grid_stretched) #, vertically_stretched_grid)
         free_surfaces = (ExplicitFreeSurface(), ImplicitFreeSurface())
 
         for grid in grids

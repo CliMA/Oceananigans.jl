@@ -23,13 +23,15 @@ DataDeps.register(dd)
 grids = Dict(
      (CPU, :RegularRectilinearGrid)       => RegularRectilinearGrid(size=(1445, 1080, 1), extent=(1, 1, 1)),
      (CPU, :RegularLatitudeLongitudeGrid) => RegularLatitudeLongitudeGrid(size=(1445, 1080, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0)),
+     (CPU, :LatitudeLongitudeGrid)        => LatitudeLongitudeGrid(size=(1445, 1080, 1), longitude=(-180, 180), latitude=(-80, 80), z=[-1, 0]),
      (CPU, :ConformalCubedSphereFaceGrid) => ConformalCubedSphereFaceGrid(size=(1445, 1080, 1), z=(-1, 0)),
      (CPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_510_grid/cubed_sphere_510_grid.jld2", Nz=1, z=(-1, 0)),
      (GPU, :RegularRectilinearGrid)       => RegularRectilinearGrid(size=(1445, 1080, 1), extent=(1, 1, 1)),
      (GPU, :RegularLatitudeLongitudeGrid) => RegularLatitudeLongitudeGrid(size=(1445, 1080, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0)),
+     (GPU, :LatitudeLongitudeGrid)        => LatitudeLongitudeGrid(size=(1445, 1080, 1), longitude=(-180, 180), latitude=(-80, 80), z=[-1, 0]),
      # Uncomment when ConformalCubedSphereFaceGrids of any size can be built natively without loading from file:
      # (GPU, :ConformalCubedSphereFaceGrid) => ConformalCubedSphereFaceGrid(size=(1445, 1080, 1), z=(-1, 0), architecture=GPU()),
-     (GPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_510_grid/cubed_sphere_510_grid.jld2", Nz=1, z=(-1, 0), architecture=GPU()),
+     # (GPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_510_grid/cubed_sphere_510_grid.jld2", Nz=1, z=(-1, 0), architecture=GPU()),
 )
 
 free_surfaces = Dict(
@@ -49,7 +51,7 @@ function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
     time_step!(model, 1) # warmup
 
     trial = @benchmark begin
-        CUDA.@sync blocking=true time_step!($model, 1)
+       time_step!($model, 1)
     end samples=10
 
     return trial
@@ -62,15 +64,16 @@ Architectures = has_cuda() ? [CPU, GPU] : [CPU]
 grid_types = [
     :RegularRectilinearGrid,
     :RegularLatitudeLongitudeGrid,
+    :LatitudeLongitudeGrid,
     # Uncomment when ConformalCubedSphereFaceGrids of any size can be built natively without loading from file:
     # :ConformalCubedSphereFaceGrid,
-    :ConformalCubedSphereGrid
+    # :ConformalCubedSphereGrid
 ]
 
 free_surface_types = [
     :ExplicitFreeSurface,
     # ImplicitFreeSurface doesn't yet work on MultiRegionGrids like the ConformalCubedSphereGrid:
-    # :ImplicitFreeSurface
+    :ImplicitFreeSurface
 ]
 
 # Run and summarize benchmarks

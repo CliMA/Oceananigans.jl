@@ -5,7 +5,8 @@ export AbstractTopology, Periodic, Bounded, Flat, Connected, topology
 export AbstractGrid, AbstractUnderlyingGrid, halo_size
 export AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
-export RegularLatitudeLongitudeGrid, ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
+export LatitudeLongitudeGrid, RegularLatitudeLongitudeGrid
+export ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
 export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
 export offset_data, new_data
 
@@ -125,6 +126,7 @@ include("automatic_halo_sizing.jl")
 include("input_validation.jl")
 include("regular_rectilinear_grid.jl")
 include("vertically_stretched_rectilinear_grid.jl")
+include("latitude_longitude_grid.jl")
 include("regular_latitude_longitude_grid.jl")
 include("conformal_cubed_sphere_face_grid.jl")
 

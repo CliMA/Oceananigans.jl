@@ -1,4 +1,4 @@
-using Oceananigans.Grids: RegularLatitudeLongitudeGrid, ConformalCubedSphereFaceGrid
+using Oceananigans.Grids: LatitudeLongitudeGrid, RegularLatitudeLongitudeGrid, ConformalCubedSphereFaceGrid
 using Oceananigans.Operators: Δx_vᶜᶠᵃ, Δy_uᶠᶜᵃ, Δxᶠᶜᵃ, Δyᶜᶠᵃ, hack_sind
 
 # Our two Coriolis schemes are energy-conserving or enstrophy-conserving
@@ -27,8 +27,8 @@ By default, `rotation_rate` is assumed to be Earth's.
 HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, scheme::S=VectorInvariantEnergyConserving()) where S =
     HydrostaticSphericalCoriolis{S, FT}(rotation_rate, scheme)
 
-@inline φᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.φᵃᶠᵃ[j]
-@inline φᶠᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.φᶠᶠᵃ[i, j]
+@inline φᶠᶠᵃ(i, j, k, grid::Union{RegularLatitudeLongitudeGrid, LatitudeLongitudeGrid}) = @inbounds grid.φᵃᶠᵃ[j]
+@inline φᶠᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid)                               = @inbounds grid.φᶠᶠᵃ[i, j]
 
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::HydrostaticSphericalCoriolis) =
     2 * coriolis.rotation_rate * hack_sind(φᶠᶠᵃ(i, j, k, grid))
