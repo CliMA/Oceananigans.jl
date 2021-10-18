@@ -5,6 +5,7 @@ using GLMakie
 using CUDA
 using Oceananigans
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
+using Oceananigans.Architectures: arch_array
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
 using Oceananigans.Units
@@ -36,8 +37,14 @@ bathymetry = reshape(bswap.(reinterpret(Float32, read(bathymetry_path, bytes))),
 τʸ = - reshape(bswap.(reinterpret(Float32, read(north_south_stress_path, bytes))), (Nx, Ny)) ./ reference_density
 target_sea_surface_temperature = reshape(bswap.(reinterpret(Float32, read(sea_surface_temperature_path, bytes))), (Nx, Ny))
 
-H = 3600.0
-bathymetry = - H .* (bathymetry .< -10)
+bathymetry = arch_array(arch, bathymetry)
+τˣ = arch_array(arch, τˣ)
+τʸ = arch_array(arch, τʸ)
+target_sea_surface_temperature = arch_array(arch, target_sea_surface_temperature)
+
+# H = 3600.0
+# bathymetry = - H .* (bathymetry .< -10)
+H = - minimum(bathymetry)
 
 # A spherical domain
 @show underlying_grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, Nz),
@@ -45,23 +52,6 @@ bathymetry = - H .* (bathymetry .< -10)
                                                      latitude = latitude,
                                                      halo = (3, 3, 3),
                                                      z = (-H, 0))
-                                                     # bottom = bathymetry)
-
-#=
-function raster_depth(x, y, z, i, j, k)
-  #-- realistics coastline with vertical walls:
-  is_dry = i > 0 && i <= Nx && j > 0 && j <= Ny ? bathyZ[i,j] > -10. : false
-  #-- realistics domain bathy:
-# if bathyZ[i,j] > z
-#  is_dry = true
-# else
-#  is_dry = false
-# end
-  #-- only wet-points:
-  # is_dry = false
-  return is_dry
-end
-=#
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
@@ -72,11 +62,11 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 equatorial_Δx = grid.radius * deg2rad(grid.Δλ)
 diffusive_time_scale = 120days
 
-@show const νh₂ = 1e-3 * equatorial_Δx^2 / diffusive_time_scale
-@show const νh₄ = 1e-5 * equatorial_Δx^4 / diffusive_time_scale
-@show const νz = 1e-3
-@show const κh = 1e+3
-@show const κz = 1e-4
+@show νh₂ = 1e-3 * equatorial_Δx^2 / diffusive_time_scale
+@show νh₄ = 1e-5 * equatorial_Δx^4 / diffusive_time_scale
+@show νz = 1e-3
+@show κh = 1e+3
+@show κz = 1e-4
 
 background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₂, νz=νz, κh=κh, κz=κz)
 
@@ -87,8 +77,10 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 ##### Boundary conditions / constant-in-time surface forcing
 #####
 
-Δz_top = Δzᵃᵃᶜ(1, 1, grid.Nz, grid)
-Δz_bottom = Δzᵃᵃᶜ(1, 1, 1, grid)
+CUDA.@allowscalar begin
+    Δz_top = Δzᵃᵃᶜ(1, 1, grid.Nz, grid)
+    Δz_bottom = Δzᵃᵃᶜ(1, 1, 1, grid)
+end
 
 @inline surface_temperature_relaxation(i, j, grid, clock, fields, p) = @inbounds p.λ * (fields.T[i, j, grid.Nz] - p.T★[i, j])
 
