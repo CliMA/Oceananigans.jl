@@ -699,7 +699,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 
 function test_netcdf_regular_lat_lon_grid_output(arch)
     Nx = Ny = Nz = 16
-    grid = RegularLatitudeLongitudeGrid(size=(Nx, Ny, Nz), longitude=(-180, 180), latitude=(-80, 80), z=(-100, 0))
+    grid = LatitudeLongitudeGrid(size=(Nx, Ny, Nz), longitude=(-180, 180), latitude=(-80, 80), z=(-100, 0))
     model = HydrostaticFreeSurfaceModel(architecture=arch, momentum_advection = VectorInvariant(), grid=grid)
 
     Δt = 1.25

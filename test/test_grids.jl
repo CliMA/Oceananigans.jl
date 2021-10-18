@@ -365,14 +365,14 @@ function test_correct_tanh_grid_spacings(FT, Nz)
 end
 
 #####
-##### Regular latitude-longitude grid tests
+##### Latitude-longitude grid tests
 #####
 
 function test_basic_lat_lon_bounded_domain(FT)
     Nλ = Nφ = 18
     Hλ = Hφ = 1
 
-    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nφ, 1), longitude=(-90, 90), latitude=(-45, 45), z=(0, 1), halo=(Hλ, Hφ, 1))
+    grid = LatitudeLongitudeGrid(FT, size=(Nλ, Nφ, 1), longitude=(-90, 90), latitude=(-45, 45), z=(0, 1), halo=(Hλ, Hφ, 1))
 
     @test topology(grid) == (Bounded, Bounded, Bounded)
 
@@ -386,7 +386,8 @@ function test_basic_lat_lon_bounded_domain(FT)
 
     @test grid.Δλ == 10
     @test grid.Δφ == 5
-    @test grid.Δz == 1
+    @test grid.Δzᵃᵃᶜ == 1
+    @test grid.Δzᵃᵃᶠ == 1
 
     @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ + 1
     @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
@@ -420,7 +421,7 @@ function test_basic_lat_lon_periodic_domain(FT)
     Nφ = 32
     Hλ = Hφ = 1
 
-    grid = RegularLatitudeLongitudeGrid(FT, size=(Nλ, Nφ, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1), halo=(Hλ, Hφ, 1))
+    grid = LatitudeLongitudeGrid(FT, size=(Nλ, Nφ, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1), halo=(Hλ, Hφ, 1))
 
     @test topology(grid) == (Periodic, Bounded, Bounded)
 
@@ -434,7 +435,8 @@ function test_basic_lat_lon_periodic_domain(FT)
 
     @test grid.Δλ == 10
     @test grid.Δφ == 5
-    @test grid.Δz == 1
+    @test grid.Δzᵃᵃᶜ == 1
+    @test grid.Δzᵃᵃᶠ == 1
 
     @test length(grid.λᶠᵃᵃ) == Nλ + 2Hλ
     @test length(grid.λᶜᵃᵃ) == Nλ + 2Hλ
@@ -462,10 +464,6 @@ function test_basic_lat_lon_periodic_domain(FT)
 
     return nothing
 end
-
-#####
-##### Test latitude longitude grid
-#####
 
 function test_basic_lat_lon_general_grid(FT)
 
@@ -661,35 +659,12 @@ end
         end
     end
 
-    @testset "Regular latitude-longitude grid" begin
-        @info "  Testing regular latitude-longitude grid..."
+    @testset "Latitude-longitude grid" begin
+        @info "  Testing general latitude-longitude grid..."
 
         for FT in float_types
             test_basic_lat_lon_bounded_domain(FT)
             test_basic_lat_lon_periodic_domain(FT)
-        end
-
-        # Testing show function
-        grid = RegularLatitudeLongitudeGrid(size=(36, 32, 1), longitude=(-180, 180), latitude=(-80, 80), z=(0, 1))
-    
-        @test try
-            CUDA.allowscalar(false)           
-            show(grid); println()
-            CUDA.allowscalar(true)
-            true
-        catch err
-            println("error in show(::RegularLatitudeLongitudeGrid)")
-            println(sprint(showerror, err))
-            false
-        end
-
-        @test grid isa RegularLatitudeLongitudeGrid
-    end
-
-    @testset "General latitude-longitude grid" begin
-        @info "  Testing general latitude-longitude grid..."
-
-        for FT in float_types
             test_basic_lat_lon_general_grid(FT)
         end
 

@@ -36,10 +36,10 @@ function visualize_makie(output_prefix)
     Lz = file["grid/Lz"]
 
     # A spherical domain
-    grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                        longitude = (-180, 180),
-                                        latitude = (-Lφ/2, Lφ/2),
-                                        z = (-Lz, 0))
+    grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                                 longitude = (-180, 180),
+                                 latitude = (-Lφ/2, Lφ/2),
+                                 z = (-Lz, 0))
 
     iterations = parse.(Int, keys(file["timeseries/t"]))
 

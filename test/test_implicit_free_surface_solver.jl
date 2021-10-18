@@ -81,7 +81,7 @@ end
                                                   x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
                                                   topology = (Bounded, Periodic, Bounded))
 
-        lat_lon_grid = RegularLatitudeLongitudeGrid(size = (90, 90, 5),
+        lat_lon_grid =  LatitudeLongitudeGrid(size = (90, 90, 5),
                                                     longitude = (-30, 30),
                                                     latitude = (15, 75),
                                                     z = (-4000, 0))

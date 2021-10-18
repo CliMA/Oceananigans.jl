@@ -38,11 +38,11 @@ Nx = round(Int, 360 / resolution)
 Ny = round(Int, Δφ / resolution)
 
 # A spherical domain
-@show grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                          longitude = (-180, 180),
-                                          latitude = latitude,
-                                          halo = (2, 2, 2),
-                                          z = (-100, 0))
+@show grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                                   longitude = (-180, 180),
+                                   latitude = latitude,
+                                   halo = (2, 2, 2),
+                                   z = (-100, 0))
 
 #####
 ##### Physics and model setup
@@ -109,7 +109,7 @@ v .= + ∂x(ψ_total)
 ##### Shenanigans for rescaling the velocity field to
 #####   1. Have a magnitude (ish) that's a fixed fraction of
 #####      the surface gravity wave speed;
-#####   2. Zero volume mean on the curvilinear RegularLatitudeLongitudeGrid.
+#####   2. Zero volume mean on the curvilinear LatitudeLongitudeGrid.
 #####
 
 # Time-scale for gravity wave propagation across the smallest grid cell

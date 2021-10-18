@@ -94,7 +94,7 @@ function LatitudeLongitudeGrid(FT=Float64;
     # Calculate vertical direction (which might be stretched)
     # It is regular if z is Tuple{<:Real, <:Real}, 
     # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
-    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_vertical_grid_lat_lon(FT, topo[3], Nz, Hz, z, architecture)
+    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topo[3], Nz, Hz, z, architecture)
 
     R    = typeof(λᶠᵃᵃ)
     FA   = typeof(Δzᵃᵃᶠ)
@@ -123,7 +123,7 @@ function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, T
               "grid spacing (Δλ, Δφ, Δz): (", g.Δλ, ", ", g.Δφ, ", [min=", Δz_min, ", max=", Δz_max,"])",)
 end
 
-function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ, FA}) where {FT, TX, TY, TZ, FA<:Real}
+function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ, FA}) where {FT, TX, TY, TZ, FA<:Number}
     print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ}  Regular in the vertical direction \n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
@@ -151,96 +151,97 @@ all_z_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶠ
 
 architecture(::LatitudeLongitudeGrid) = nothing
 
-get_z_lat_lon(z::Function, k) = z(k)
-get_z_lat_lon(z::AbstractVector, k) = CUDA.@allowscalar z[k]
+# get_z_lat_lon(z::Function, k) = z(k)
+# get_z_lat_lon(z::AbstractVector, k) = CUDA.@allowscalar z[k]
 
-lower_lat_lon_exterior_Δzᵃᵃᶜ(z_topo,          zFi, Hz) = [zFi[end - Hz + k] - zFi[end - Hz + k - 1] for k = 1:Hz]
-lower_lat_lon_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[2]  - zFi[1] for k = 1:Hz]
+# lower_lat_lon_exterior_Δzᵃᵃᶜ(z_topo,          zFi, Hz) = [zFi[end - Hz + k] - zFi[end - Hz + k - 1] for k = 1:Hz]
+# lower_lat_lon_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[2]  - zFi[1] for k = 1:Hz]
 
-upper_lat_lon_exterior_Δzᵃᵃᶜ(z_topo,          zFi, Hz) = [zFi[k + 1] - zFi[k] for k = 1:Hz]
-upper_lat_lon_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[end]   - zFi[end - 1] for k = 1:Hz]
+# upper_lat_lon_exterior_Δzᵃᵃᶜ(z_topo,          zFi, Hz) = [zFi[k + 1] - zFi[k] for k = 1:Hz]
+# upper_lat_lon_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[end]   - zFi[end - 1] for k = 1:Hz]
 
-function generate_vertical_grid_lat_lon(FT, z_topo, Nz, Hz, z_faces, architecture)
+# function generate_vertical_grid_lat_lon(FT, z_topo, Nz, Hz, z_faces, architecture)
 
-    # Ensure correct type for zF and derived quantities
-    interior_zF = zeros(FT, Nz+1)
+#     # Ensure correct type for zF and derived quantities
+#     interior_zF = zeros(FT, Nz+1)
 
-    for k = 1:Nz+1
-        interior_zF[k] = get_z_lat_lon(z_faces, k)
-    end
+#     for k = 1:Nz+1
+#         interior_zF[k] = get_z_lat_lon(z_faces, k)
+#     end
 
-    Lz = interior_zF[Nz+1] - interior_zF[1]
+#     Lz = interior_zF[Nz+1] - interior_zF[1]
 
-    # Build halo regions
-    ΔzF₋ = lower_lat_lon_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
-    ΔzF₊ = upper_lat_lon_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
+#     # Build halo regions
+#     ΔzF₋ = lower_lat_lon_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
+#     ΔzF₊ = upper_lat_lon_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
 
-    z¹, zᴺ⁺¹ = interior_zF[1], interior_zF[Nz+1]
+#     z¹, zᴺ⁺¹ = interior_zF[1], interior_zF[Nz+1]
 
-    zF₋ = [z¹   - sum(ΔzF₋[k:Hz]) for k = 1:Hz] # locations of faces in lower halo
-    zF₊ = reverse([zᴺ⁺¹ + sum(ΔzF₊[k:Hz]) for k = 1:Hz]) # locations of faces in width of top halo region
+#     zF₋ = [z¹   - sum(ΔzF₋[k:Hz]) for k = 1:Hz] # locations of faces in lower halo
+#     zF₊ = reverse([zᴺ⁺¹ + sum(ΔzF₊[k:Hz]) for k = 1:Hz]) # locations of faces in width of top halo region
 
-    zF = vcat(zF₋, interior_zF, zF₊)
+#     zF = vcat(zF₋, interior_zF, zF₊)
 
-    # Build cell centers, cell center spacings, and cell interface spacings
-    TCz = total_length(Center, z_topo, Nz, Hz)
-     zC = [ (zF[k + 1] + zF[k]) / 2 for k = 1:TCz ]
-    ΔzC = [  zC[k] - zC[k - 1]      for k = 2:TCz ]
+#     # Build cell centers, cell center spacings, and cell interface spacings
+#     TCz = total_length(Center, z_topo, Nz, Hz)
+#      zC = [ (zF[k + 1] + zF[k]) / 2 for k = 1:TCz ]
+#     ΔzC = [  zC[k] - zC[k - 1]      for k = 2:TCz ]
 
-    # Trim face locations for periodic domains
-    TFz = total_length(Face, z_topo, Nz, Hz)
-    zF = zF[1:TFz]
+#     # Trim face locations for periodic domains
+#     TFz = total_length(Face, z_topo, Nz, Hz)
+#     zF = zF[1:TFz]
 
-    ΔzF = [zF[k + 1] - zF[k] for k = 1:TFz-1]
+#     ΔzF = [zF[k + 1] - zF[k] for k = 1:TFz-1]
 
-    ΔzF = OffsetArray(ΔzF, -Hz)
-    ΔzC = OffsetArray(ΔzC, -Hz)
+#     ΔzF = OffsetArray(ΔzF, -Hz)
+#     ΔzC = OffsetArray(ΔzC, -Hz)
 
-    # Seems needed to avoid out-of-bounds error in viscous dissipation
-    # operators wanting to access Δzᵃᵃᶠ[Nz+2].
-    ΔzF = OffsetArray(cat(ΔzF[0], ΔzF..., ΔzF[Nz], dims=1), -Hz-1)
+#     # Seems needed to avoid out-of-bounds error in viscous dissipation
+#     # operators wanting to access Δzᵃᵃᶠ[Nz+2].
+#     ΔzF = OffsetArray(cat(ΔzF[0], ΔzF..., ΔzF[Nz], dims=1), -Hz-1)
 
-    ΔzF = OffsetArray(arch_array(architecture, ΔzF.parent), ΔzF.offsets...)
-    ΔzC = OffsetArray(arch_array(architecture, ΔzC.parent), ΔzC.offsets...)
+#     ΔzF = OffsetArray(arch_array(architecture, ΔzF.parent), ΔzF.offsets...)
+#     ΔzC = OffsetArray(arch_array(architecture, ΔzC.parent), ΔzC.offsets...)
 
-    zF = OffsetArray(zF, -Hz)
-    zC = OffsetArray(zC, -Hz)
+#     zF = OffsetArray(zF, -Hz)
+#     zC = OffsetArray(zC, -Hz)
 
-    # Convert to appropriate array type for arch
-    zF  = OffsetArray(arch_array(architecture,  zF.parent),  zF.offsets...)
-    zC  = OffsetArray(arch_array(architecture,  zC.parent),  zC.offsets...)
+#     # Convert to appropriate array type for arch
+#     zF  = OffsetArray(arch_array(architecture,  zF.parent),  zF.offsets...)
+#     zC  = OffsetArray(arch_array(architecture,  zC.parent),  zC.offsets...)
 
-    return Lz, zF, zC, ΔzF, ΔzC
-end
+#     return Lz, zF, zC, ΔzF, ΔzC
+# end
 
-function generate_vertical_grid_lat_lon(FT, z_topo, Nz, Hz, z_faces::Tuple{<:Real,<:Real}, architecture)
+# #function generate_vertical_grid_lat_lon(FT, coord_topo, Ncoord, Hcoord, coord::Tuple{<:Number, <:Number}, architecture)
+# function generate_vertical_grid_lat_lon(FT, coord_topo, Ncoord, Hcoord, coord::Tuple{<:Number, <:Number}, architecture)
 
-    @assert length(z_faces) == 2
+#     @assert length(z_faces) == 2
 
-    z₁, z₂ = z_faces
-    @assert z₁ < z₂
-    Lz = z₂ - z₁
+#     z₁, z₂ = z_faces
+#     @assert z₁ < z₂
+#     Lz = z₂ - z₁
 
-    # Convert to get the correct type also when using single precision
-    ΔzF = ΔzC = Δz = convert(FT, Lz / Nz)
+#     # Convert to get the correct type also when using single precision
+#     ΔzF = ΔzC = Δz = convert(FT, Lz / Nz)
 
-    zF₋ = z₁ - Hz * Δz
-    zF₊ = zF₋ + total_extent(z_topo, Hz, Δz, Lz)
+#     zF₋ = z₁ - Hz * Δz
+#     zF₊ = zF₋ + total_extent(z_topo, Hz, Δz, Lz)
 
-    zC₋ = zF₋ + Δz / 2
-    zC₊ = zC₋ + Lz + Δz * (2Hz - 1)
+#     zC₋ = zF₋ + Δz / 2
+#     zC₊ = zC₋ + Lz + Δz * (2Hz - 1)
 
-    TFz = total_length(Face,   z_topo, Nz, Hz)
-    TCz = total_length(Center, z_topo, Nz, Hz)
+#     TFz = total_length(Face,   z_topo, Nz, Hz)
+#     TCz = total_length(Center, z_topo, Nz, Hz)
 
-    zF = range(zF₋, zF₊, length = TFz)
-    zC = range(zC₋, zC₊, length = TCz)
+#     zF = range(zF₋, zF₊, length = TFz)
+#     zC = range(zC₋, zC₊, length = TCz)
 
-    zF = OffsetArray(zF, -Hz)
-    zC = OffsetArray(zC, -Hz)
+#     zF = OffsetArray(zF, -Hz)
+#     zC = OffsetArray(zC, -Hz)
     
-    return Lz, zF, zC, ΔzF, ΔzC
-end
+#     return Lz, zF, zC, ΔzF, ΔzC
+# end
 
 @inline x_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.λᶠᵃᵃ)
 @inline y_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.φᵃᶠᵃ)

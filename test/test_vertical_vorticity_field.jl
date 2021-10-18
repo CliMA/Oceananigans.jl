@@ -6,7 +6,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField, 
         @testset "VerticalVorticityField with HydrostaticFreeSurfaceModel [$arch]" begin
             @info "  Testing VerticalVorticityField with HydrostaticFreeSurfaceModel [$arch]..."
 
-            grid = RegularLatitudeLongitudeGrid(size=(3, 3, 3),
+            grid = LatitudeLongitudeGrid(size=(3, 3, 3),
                                                 longitude = (0, 60),
                                                 latitude = (15, 75),
                                                 z = (-1, 0))

@@ -126,7 +126,7 @@ function accurate_advective_cfl_on_stretched_grid(arch, FT)
 end
 
 function accurate_advective_cfl_on_lat_lon_grid(arch, FT)
-    grid = RegularLatitudeLongitudeGrid(size=(8, 8, 8), longitude=(-10, 10), latitude=(0, 45), z=(-1000, 0))
+    grid = LatitudeLongitudeGrid(size=(8, 8, 8), longitude=(-10, 10), latitude=(0, 45), z=(-1000, 0))
     model = HydrostaticFreeSurfaceModel(architecture=arch, grid=grid, momentum_advection=VectorInvariant())
 
     Δt = FT(1000)
