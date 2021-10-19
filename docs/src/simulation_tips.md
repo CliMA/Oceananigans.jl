@@ -230,8 +230,8 @@ julia> grid = RegularRectilinearGrid(size=(1,1,1), extent=(1,1,1))
 RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}
                    domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
                  topology: (Periodic, Periodic, Bounded)
-  resolution (Nx, Ny, Nz): (1, 1, 1)
-   halo size (Hx, Hy, Hz): (1, 1, 1)
+        size (Nx, Ny, Nz): (1, 1, 1)
+        halo (Hx, Hy, Hz): (1, 1, 1)
 grid spacing (Δx, Δy, Δz): (1.0, 1.0, 1.0)
 
 julia> model = NonhydrostaticModel(grid=grid, architecture=GPU())

@@ -21,8 +21,8 @@ julia> grid = RegularRectilinearGrid(size=(32, 64, 256), extent=(128, 256, 512))
 RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}
                    domain: x ∈ [0.0, 128.0], y ∈ [0.0, 256.0], z ∈ [-512.0, 0.0]
                  topology: (Periodic, Periodic, Bounded)
-  resolution (Nx, Ny, Nz): (32, 64, 256)
-   halo size (Hx, Hy, Hz): (1, 1, 1)
+        size (Nx, Ny, Nz): (32, 64, 256)
+        halo (Hx, Hy, Hz): (1, 1, 1)
 grid spacing (Δx, Δy, Δz): (4.0, 4.0, 2.0)
 ```
 
@@ -46,8 +46,8 @@ julia> grid = RegularRectilinearGrid(topology=(Periodic, Bounded, Bounded), size
 RegularRectilinearGrid{Float64, Periodic, Bounded, Bounded}
                    domain: x ∈ [0.0, 10000.0], y ∈ [0.0, 10000.0], z ∈ [-1000.0, 0.0]
                  topology: (Periodic, Bounded, Bounded)
-  resolution (Nx, Ny, Nz): (64, 64, 32)
-   halo size (Hx, Hy, Hz): (1, 1, 1)
+        size (Nx, Ny, Nz): (64, 64, 32)
+        halo (Hx, Hy, Hz): (1, 1, 1)
 grid spacing (Δx, Δy, Δz): (156.25, 156.25, 31.25)
 ```
 
@@ -66,7 +66,7 @@ julia> grid = RegularRectilinearGrid(size=(32, 16, 256), x=(-100, 100), y=(0, 12
 RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}
                    domain: x ∈ [-100.0, 100.0], y ∈ [0.0, 12.5], z ∈ [-3.141592653589793, 3.141592653589793]
                  topology: (Periodic, Periodic, Bounded)
-  resolution (Nx, Ny, Nz): (32, 16, 256)
-   halo size (Hx, Hy, Hz): (1, 1, 1)
+        size (Nx, Ny, Nz): (32, 16, 256)
+        halo (Hx, Hy, Hz): (1, 1, 1)
 grid spacing (Δx, Δy, Δz): (6.25, 0.78125, 0.02454369260617026)
 ```

@@ -104,8 +104,8 @@ julia> grid = RegularRectilinearGrid(size=(32, 32, 32), extent=(1, 2, 3))
 RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}
                    domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [-3.0, 0.0]
                  topology: (Periodic, Periodic, Bounded)
-  resolution (Nx, Ny, Nz): (32, 32, 32)
-   halo size (Hx, Hy, Hz): (1, 1, 1)
+        size (Nx, Ny, Nz): (32, 32, 32)
+        halo (Hx, Hy, Hz): (1, 1, 1)
 grid spacing (Δx, Δy, Δz): (0.03125, 0.0625, 0.09375)
 ```
 
@@ -118,8 +118,8 @@ julia> grid = RegularRectilinearGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-1
 RegularRectilinearGrid{Float32, Periodic, Periodic, Bounded}
                    domain: x ∈ [0.0, 8.0], y ∈ [-10.0, 10.0], z ∈ [-3.1415927, 3.1415927]
                  topology: (Periodic, Periodic, Bounded)
-  resolution (Nx, Ny, Nz): (32, 32, 16)
-   halo size (Hx, Hy, Hz): (1, 1, 1)
+        size (Nx, Ny, Nz): (32, 32, 16)
+        halo (Hx, Hy, Hz): (1, 1, 1)
 grid spacing (Δx, Δy, Δz): (0.25f0, 0.625f0, 0.3926991f0)
 ```
 
@@ -132,8 +132,8 @@ julia> grid = RegularRectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=
 RegularRectilinearGrid{Float64, Periodic, Periodic, Flat}
                    domain: x ∈ [0.0, 6.283185307179586], y ∈ [0.0, 12.566370614359172], z ∈ [0.0, 0.0]
                  topology: (Periodic, Periodic, Flat)
-  resolution (Nx, Ny, Nz): (32, 32, 1)
-   halo size (Hx, Hy, Hz): (1, 1, 0)
+        size (Nx, Ny, Nz): (32, 32, 1)
+        halo (Hx, Hy, Hz): (1, 1, 0)
 grid spacing (Δx, Δy, Δz): (0.19634954084936207, 0.39269908169872414, 0.0)
 ```
 
@@ -146,8 +146,8 @@ julia> grid = RegularRectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat
 RegularRectilinearGrid{Float64, Flat, Flat, Bounded}
                    domain: x ∈ [0.0, 0.0], y ∈ [0.0, 0.0], z ∈ [-128.0, 0.0]
                  topology: (Flat, Flat, Bounded)
-  resolution (Nx, Ny, Nz): (1, 1, 256)
-   halo size (Hx, Hy, Hz): (0, 0, 1)
+        size (Nx, Ny, Nz): (1, 1, 256)
+        halo (Hx, Hy, Hz): (0, 0, 1)
 grid spacing (Δx, Δy, Δz): (0.0, 0.0, 0.5)
 ```
 """
@@ -249,8 +249,8 @@ function show(io::IO, g::RegularRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, 
     print(io, "RegularRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
-              "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
-              "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
+              "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
+              "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
               "grid spacing (Δx, Δy, Δz): ", (g.Δx, g.Δy, g.Δz))
 end
 
