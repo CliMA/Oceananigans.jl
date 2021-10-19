@@ -23,7 +23,7 @@ Nx = 128
 Ny = 60
 Nz = 18
 
-arch = CPU()
+arch = GPU()
 reference_density = 1035
 
 bathymetry_path = "bathy_128x60var4.bin"
@@ -42,9 +42,9 @@ bathymetry = arch_array(arch, bathymetry)
 τʸ = arch_array(arch, τʸ)
 target_sea_surface_temperature = arch_array(arch, target_sea_surface_temperature)
 
-# H = 3600.0
-# bathymetry = - H .* (bathymetry .< -10)
-H = - minimum(bathymetry)
+H = 3600.0
+bathymetry = - H .* (bathymetry .< -10)
+# H = - minimum(bathymetry)
 
 # A spherical domain
 @show underlying_grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, Nz),
@@ -77,10 +77,8 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 ##### Boundary conditions / constant-in-time surface forcing
 #####
 
-CUDA.@allowscalar begin
-    Δz_top = Δzᵃᵃᶜ(1, 1, grid.Nz, grid)
-    Δz_bottom = Δzᵃᵃᶜ(1, 1, 1, grid)
-end
+Δz_top = CUDA.@allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid)
+Δz_bottom = CUDA.@allowscalar Δzᵃᵃᶜ(1, 1, 1, grid)
 
 @inline surface_temperature_relaxation(i, j, grid, clock, fields, p) = @inbounds p.λ * (fields.T[i, j, grid.Nz] - p.T★[i, j])
 
@@ -162,7 +160,7 @@ function progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt = Δt, stop_iteration = 1000, iteration_interval = 10, progress = progress)
+simulation = Simulation(model, Δt = Δt, stop_iteration = 10000, iteration_interval = 100, progress = progress)
 
 output_fields = merge(model.velocities, model.tracers, (; η=model.free_surface.η))
 output_prefix = "global_lat_lon_$(grid.Nx)_$(grid.Ny)_$(grid.Nz)"
@@ -173,18 +171,34 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       force = true)
 
 # Let's goo!
+@printf "Running with Δt = %s" prettytime(simulation.Δt)
 run!(simulation)
 
-η = interior(model.free_surface.η)[:, :, 1]
+#####
+##### Visualization
+#####
 
-fig = Figure(resolution = (800, 800))
-ax_b = fig[1, 1] = LScene(fig, title = "Bathymetry")
-heatmap!(ax_b, bathymetry)
+η_cpu = Array(interior(model.free_surface.η))[:, :, 1]
+T_cpu = Array(interior(model.tracers.T))[:, :, end]
+h_cpu = Array(bathymetry)
 
-max_η = maximum(abs, η)
+max_η = maximum(abs, η_cpu)
 
-ax_η = fig[2, 1] = LScene(fig, title = "Free surface")
-hm = heatmap!(ax_η, η, colorrange=(-max_η, max_η), colormap=:balance)
-cb = Colorbar(fig[2, 2], hm)
+max_T = maximum(T_cpu)
+min_T = minimum(T_cpu)
+
+fig = Figure(resolution = (600, 900))
+
+ax_b = Axis(fig[1, 1], title="Bathymetry (m)")
+hm_b = heatmap!(ax_b, h_cpu)
+cb_b = Colorbar(fig[1, 2], hm_b)
+
+ax_η = Axis(fig[2, 1], title="Free surface displacement (m)")
+hm_η = heatmap!(ax_η, η_cpu, colorrange=(-max_η, max_η), colormap=:balance)
+cb_η = Colorbar(fig[2, 2], hm_η)
+
+ax_T = Axis(fig[3, 1], title="Sea surface temperature (ᵒC)")
+hm_T = heatmap!(ax_T, T_cpu, colorrange=(min_T, max_T), colormap=:thermal)
+cb_T = Colorbar(fig[3, 2], hm_T)
 
 display(fig)

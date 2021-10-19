@@ -1,3 +1,4 @@
+using Adapt
 using CUDA: CuArray
 using Oceananigans.Fields: ReducedField, fill_halo_regions!
 
@@ -59,4 +60,6 @@ const GFBIBG = ImmersedBoundaryGrid{<:Any, <:GridFittedBottom}
 @inline Δzᵃᵃᶠ(i, j, k, ibg::GFBIBG) = ifelse(is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary),
                                              zero(eltype(ibg.grid)),
                                              Δzᵃᵃᶠ(i, j, k, ibg.grid))
+
+Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom))     
 
