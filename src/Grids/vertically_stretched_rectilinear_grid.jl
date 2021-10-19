@@ -150,8 +150,15 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
     Hx, Hy, Hz = halo
 
     # Initialize vertically-stretched arrays on CPU
-    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ = generate_stretched_vertical_grid(FT, topology[3], Nz, Hz, z_faces)
 
+    # For the moment just check that z_faces is not a Tuple
+    if isa(z_faces, Tuple)
+        e = "z_faces is not a valid face variable! " *
+            "Valid face variables are 1D Vectors and Functions"
+        throw(ArgumentError(e))
+    end
+    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ = generate_coordinate(FT, topology[3], Nz, Hz, z_faces, architecture)
+    
     # Construct uniform horizontal grid
     Lh, Nh, Hh, X₁ = (Lx, Ly), size[1:2], halo[1:2], (x[1], y[1])
     Δx, Δy = Δh = Lh ./ Nh
@@ -177,24 +184,9 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
 
     xᶜᵃᵃ = OffsetArray(xᶜᵃᵃ,  -Hx)
     yᵃᶜᵃ = OffsetArray(yᵃᶜᵃ,  -Hy)
-    zᵃᵃᶜ = OffsetArray(zᵃᵃᶜ,  -Hz)
-
+    
     xᶠᵃᵃ = OffsetArray(xᶠᵃᵃ,  -Hx)
     yᵃᶠᵃ = OffsetArray(yᵃᶠᵃ,  -Hy)
-    zᵃᵃᶠ = OffsetArray(zᵃᵃᶠ,  -Hz)
-
-    Δzᵃᵃᶠ = OffsetArray(Δzᵃᵃᶠ, -Hz)
-    Δzᵃᵃᶜ = OffsetArray(Δzᵃᵃᶜ, -Hz)
-
-    # Seems needed to avoid out-of-bounds error in viscous dissipation
-    # operators wanting to access Δzᵃᵃᶠ[Nz+2].
-    Δzᵃᵃᶠ = OffsetArray(cat(Δzᵃᵃᶠ[0], Δzᵃᵃᶠ..., Δzᵃᵃᶠ[Nz], dims=1), -Hz-1)
-
-    # Convert to appropriate array type for arch
-    zᵃᵃᶠ  = OffsetArray(arch_array(architecture,  zᵃᵃᶠ.parent),  zᵃᵃᶠ.offsets...)
-    zᵃᵃᶜ  = OffsetArray(arch_array(architecture,  zᵃᵃᶜ.parent),  zᵃᵃᶜ.offsets...)
-    Δzᵃᵃᶜ = OffsetArray(arch_array(architecture, Δzᵃᵃᶜ.parent), Δzᵃᵃᶜ.offsets...)
-    Δzᵃᵃᶠ = OffsetArray(arch_array(architecture, Δzᵃᵃᶠ.parent), Δzᵃᵃᶠ.offsets...)
 
     R = typeof(xᶠᵃᵃ)
     A = typeof(zᵃᵃᶠ)
@@ -202,55 +194,6 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
 
     return VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A, Arch}(architecture,
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δzᵃᵃᶜ, Δzᵃᵃᶠ, xᶜᵃᵃ, yᵃᶜᵃ, zᵃᵃᶜ, xᶠᵃᵃ, yᵃᶠᵃ, zᵃᵃᶠ)
-end
-
-#####
-##### Vertically stretched grid utilities
-#####
-
-get_z_face(z::Function, k) = z(k)
-get_z_face(z::AbstractVector, k) = CUDA.@allowscalar z[k]
-
-lower_exterior_Δzᵃᵃᶜ(z_topo,          zFi, Hz) = [zFi[end - Hz + k] - zFi[end - Hz + k - 1] for k = 1:Hz]
-lower_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[2]  - zFi[1] for k = 1:Hz]
-
-upper_exterior_Δzᵃᵃᶜ(z_topo,          zFi, Hz) = [zFi[k + 1] - zFi[k] for k = 1:Hz]
-upper_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[end]   - zFi[end - 1] for k = 1:Hz]
-
-function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, z_faces)
-
-    # Ensure correct type for zF and derived quantities
-    interior_zF = zeros(FT, Nz+1)
-
-    for k = 1:Nz+1
-        interior_zF[k] = get_z_face(z_faces, k)
-    end
-
-    Lz = interior_zF[Nz+1] - interior_zF[1]
-
-    # Build halo regions
-    ΔzF₋ = lower_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
-    ΔzF₊ = upper_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
-
-    z¹, zᴺ⁺¹ = interior_zF[1], interior_zF[Nz+1]
-
-    zF₋ = [z¹   - sum(ΔzF₋[k:Hz]) for k = 1:Hz] # locations of faces in lower halo
-    zF₊ = reverse([zᴺ⁺¹ + sum(ΔzF₊[k:Hz]) for k = 1:Hz]) # locations of faces in width of top halo region
-
-    zF = vcat(zF₋, interior_zF, zF₊)
-
-    # Build cell centers, cell center spacings, and cell interface spacings
-    TCz = total_length(Center, z_topo, Nz, Hz)
-     zC = [ (zF[k + 1] + zF[k]) / 2 for k = 1:TCz ]
-    ΔzC = [  zC[k] - zC[k - 1]      for k = 2:TCz ]
-
-    # Trim face locations for periodic domains
-    TFz = total_length(Face, z_topo, Nz, Hz)
-    zF = zF[1:TFz]
-
-    ΔzF = [zF[k + 1] - zF[k] for k = 1:TFz-1]
-
-    return Lz, zF, zC, ΔzF, ΔzC
 end
 
 """
