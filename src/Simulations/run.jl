@@ -142,9 +142,12 @@ more than one checkpointer.
 """
 function run!(sim; pickup=false)
 
-    sim.initialized = false
-    @stopwatch sim initialize_simulation!(sim, pickup)
+    if we_want_to_pickup(pickup)
+        checkpoint_file_path = checkpoint_path(pickup, sim.output_writers)
+        set!(sim.model, checkpoint_file_path)
+    end
 
+    sim.initialized = false
     sim.running = !(stop(sim))
 
     while sim.running
@@ -161,7 +164,7 @@ function time_step!(sim::Simulation)
     initialization_step = !(sim.initialized)
 
     if initialization_step 
-        @stopwatch(sim, initialize_simulation!(sim))
+        @stopwatch sim initialize_simulation!(sim)
         start_time = time_ns()
         @info "Executing first time step..."
     end
@@ -177,17 +180,13 @@ function time_step!(sim::Simulation)
     end
 
     @stopwatch sim begin
-        evaluate_diagnostics!(sim)           
-        evaluate_callbacks!(sim)             
-        evaluate_output_writers!(sim)        
+        [diag.schedule(sim.model)     && run_diagnostic!(diag, sim.model) for diag     in values(sim.diagnostics)]
+        [callback.schedule(sim.model) && callback(sim)                    for callback in values(sim.callbacks)]
+        [writer.schedule(sim.model)   && write_output!(writer, sim.model) for writer   in values(sim.output_writers)]
     end
 
     return nothing
 end
-
-evaluate_diagnostics!(sim)    = [diag.schedule(sim.model)     && run_diagnostic!(diag, sim.model) for diag     in values(sim.diagnostics)]
-evaluate_callbacks!(sim)      = [callback.schedule(sim.model) && callback(sim)                    for callback in values(sim.callbacks)]
-evaluate_output_writers!(sim) = [writer.schedule(sim.model)   && write_output!(writer, sim.model) for writer   in values(sim.output_writers)]
 
 #####
 ##### Simulation initialization
@@ -200,7 +199,7 @@ add_dependencies!(diags, writer) = [add_dependency!(diags, out) for out in value
 add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
 
 we_want_to_pickup(pickup::Bool) = pickup
-we_want_to_pickup(pickup::Number) = true
+we_want_to_pickup(pickup::Integer) = true
 we_want_to_pickup(pickup::String) = true
 we_want_to_pickup(pickup) = throw(ArgumentError("Cannot run! with pickup=$pickup"))
 
@@ -215,19 +214,13 @@ Initialize a simulation before running it. Initialization involves:
 - If pickup != false, picking up the simulation from a checkpoint.
 
 """
-function initialize_simulation!(sim, pickup=false)
+function initialize_simulation!(sim)
     @info "Initializing simulation..."
     start_time = time_ns()
 
     model = sim.model
     clock = model.clock
 
-    if we_want_to_pickup(pickup)
-        checkpoint_file_path = checkpoint_path(pickup, sim.output_writers)
-        set!(model, checkpoint_file_path)
-    end
-
-    # Conservatively initialize the model state
     update_state!(model)
 
     # Output and diagnostics initialization
