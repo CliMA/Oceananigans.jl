@@ -1,8 +1,8 @@
 # Utilities to generate a grid with the following inputs
 
-get_domain_extent(coord)           = (coord[1], coord[2])
-get_domain_extent(coord::Function) = (coord[1], coord[2])
-
+get_domain_extent(coord)                 = (coord[1], coord[2])
+get_domain_extent(coord::Function)       = ()
+get_domain_extent(coord::AbstractVector) = ()
 
 get_coord_face(coord::Function, k) = coord(k)
 get_coord_face(coord::AbstractVector, k) = CUDA.@allowscalar coord[k]
