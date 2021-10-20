@@ -22,7 +22,7 @@ macro stopwatch(sim, expr)
        local time_before = time_ns() * 1e-9
        local output = $expr
        local time_after = time_ns() * 1e-9
-       sim.wall_time += time_after - time_before
+       sim.run_wall_time += time_after - time_before
        output
    end)
 end
@@ -60,9 +60,9 @@ function stop_time_exceeded(sim)
 end
 
 function wall_time_limit_exceeded(sim)
-    if sim.wall_time >= sim.wall_time_limit
-          @info "Simulation is stopping. Simulation run time $(prettytime(sim.wall_time)) " *
-                "has hit or exceeded simulation wall time limit $(prettytime(sim.wall_time_limit))."
+    if sim.run_wall_time >= sim.wall_time_limit
+        @info "Simulation is stopping. Simulation run time $(run_wall_time(sim)) " *
+              "has hit or exceeded simulation wall time limit $(prettytime(sim.wall_time_limit))."
           return true
     end
     return false

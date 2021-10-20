@@ -180,11 +180,12 @@ simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 # Nice progress messaging is helpful:
 
 ## Print a progress message
-progress_message(sim) =
-    @printf("i: %04d, t: %s, Δt: %s, wmax = %.1e ms⁻¹, wall time: %s\n",
-            iteration(sim), prettytime(sim),
-            prettytime(sim.Δt), maximum(abs, sim.model.velocities.w),
-            prettytime(sim.run_wall_time))
+progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = %.1e ms⁻¹, wall time: %s\n",
+                                iteration(sim),
+                                prettytime(sim),
+                                prettytime(sim.Δt),
+                                maximum(abs, sim.model.velocities.w),
+                                prettytime(sim.run_wall_time))
 
 simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
 

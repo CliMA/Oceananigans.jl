@@ -15,7 +15,7 @@ mutable struct Simulation{ML, TS, DT, SC, ST, DI, OW, CB}
         diagnostics :: DI
      output_writers :: OW
           callbacks :: CB
-          wall_time :: Float64
+           run_wall_time :: Float64
             running :: Bool
         initialized :: Bool
 end
@@ -93,7 +93,7 @@ Base.show(io::IO, s::Simulation) =
     print(io, "Simulation{$(typeof(s.model).name){$(Base.typename(typeof(s.model.architecture))), $(eltype(s.model.grid))}}\n",
               "├── Model clock: time = $(prettytime(s.model.clock.time)), iteration = $(s.model.clock.iteration)", '\n',
               "├── Next time step: $(prettytime(s.Δt))", '\n',
-              "├── Elapsed wall time: $(prettytime(s.wall_time))", '\n',
+              "├── Elapsed wall time: $(prettytime(s.run_wall_time))", '\n',
               "├── Stop time: $(prettytime(s.stop_time))", '\n',
               "├── Stop iteration : $(s.stop_iteration)", '\n',
               "├── Wall time limit: $(s.wall_time_limit)", '\n',
@@ -127,11 +127,11 @@ Return `sim.model.clock.time` as a prettily formatted string."
 prettytime(sim::Simulation) = prettytime(time(sim))
 
 """
-    wall_time(sim::Simulation)
+    run_wall_time(sim::Simulation)
 
-Return `sim.wall_time` as a prettily formatted string."
+Return `sim.run_wall_time` as a prettily formatted string."
 """
-wall_time(sim::Simulation) = prettytime(sim.wall_time)
+run_wall_time(sim::Simulation) = prettytime(sim.run_wall_time)
 
 """
     reset!(sim)
