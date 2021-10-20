@@ -261,7 +261,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
         @printf("[%06.2f%%] i: %d, t: %.2e, umax: (%.2e, %.2e, %.2e), CFL: %.2e, νκmax: (%.2e, %.2e), νκCFL: (%.2e, %.2e), next Δt: %.2e, wall time: %s\n",
                 progress, model.clock.iteration, model.clock.time, umax, vmax, wmax,
-                CFL, νmax, κmax, νCFL, κCFL, wizard.Δt, prettytime(simulation.wall_time))
+                CFL, νmax, κmax, νCFL, κCFL, wizard.Δt, prettytime(simulation.run_wall_time))
     end
 
     simulation.callbacks[:progress] = Callback(print_progress, IterationInterval(Ni))

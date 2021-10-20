@@ -78,7 +78,7 @@ function run_basic_simulation_tests(arch)
 
     @test model.clock.time ≈ simulation.Δt
     @test model.clock.iteration == 1
-    @test simulation.wall_time > 0
+    @test simulation.run_wall_time > 0
 
     @test stop_time_exceeded(simulation) == false
     simulation.stop_time = 1e-12
