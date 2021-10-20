@@ -384,8 +384,8 @@ function test_basic_lat_lon_bounded_domain(FT)
     @test grid.Ly == 90
     @test grid.Lz == 1
 
-    @test grid.Δλ == 10
-    @test grid.Δφ == 5
+    @test grid.Δλᶠᵃᵃ == 10
+    @test grid.Δφᵃᶠᵃ == 5
     @test grid.Δzᵃᵃᶜ == 1
     @test grid.Δzᵃᵃᶠ == 1
 
@@ -401,17 +401,17 @@ function test_basic_lat_lon_bounded_domain(FT)
     @test grid.φᵃᶠᵃ[1] == -45
     @test grid.φᵃᶠᵃ[Nφ+1] == 45
 
-    @test grid.λᶠᵃᵃ[0] == -90 - grid.Δλ
-    @test grid.λᶠᵃᵃ[Nλ+2] == 90 + grid.Δλ
+    @test grid.λᶠᵃᵃ[0] == -90 - grid.Δλᶠᵃᵃ
+    @test grid.λᶠᵃᵃ[Nλ+2] == 90 + grid.Δλᶠᵃᵃ
 
-    @test grid.φᵃᶠᵃ[0] == -45 - grid.Δφ
-    @test grid.φᵃᶠᵃ[Nφ+2] == 45 + grid.Δφ
+    @test grid.φᵃᶠᵃ[0] == -45 - grid.Δφᵃᶠᵃ
+    @test grid.φᵃᶠᵃ[Nφ+2] == 45 + grid.Δφᵃᶠᵃ
 
-    @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλ)
-    @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλ)
+    @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλᶠᵃᵃ)
+    @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλᶜᵃᵃ)
 
-    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφ)
-    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφ)
+    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφᵃᶠᵃ)
+    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφᵃᶜᵃ)
 
     return nothing
 end
@@ -433,8 +433,8 @@ function test_basic_lat_lon_periodic_domain(FT)
     @test grid.Ly == 160
     @test grid.Lz == 1
 
-    @test grid.Δλ == 10
-    @test grid.Δφ == 5
+    @test grid.Δλᶠᵃᵃ == 10
+    @test grid.Δφᵃᶠᵃ == 5
     @test grid.Δzᵃᵃᶜ == 1
     @test grid.Δzᵃᵃᶠ == 1
 
@@ -445,22 +445,22 @@ function test_basic_lat_lon_periodic_domain(FT)
     @test length(grid.φᵃᶜᵃ) == Nφ + 2Hφ
 
     @test grid.λᶠᵃᵃ[1] == -180
-    @test grid.λᶠᵃᵃ[Nλ] == 180 - grid.Δλ
+    @test grid.λᶠᵃᵃ[Nλ] == 180 - grid.Δλᶠᵃᵃ
 
     @test grid.φᵃᶠᵃ[1] == -80
     @test grid.φᵃᶠᵃ[Nφ+1] == 80
 
-    @test grid.λᶠᵃᵃ[0] == -180 - grid.Δλ
+    @test grid.λᶠᵃᵃ[0] == -180 - grid.Δλᶠᵃᵃ
     @test grid.λᶠᵃᵃ[Nλ+1] == 180
 
-    @test grid.φᵃᶠᵃ[0] == -80 - grid.Δφ
-    @test grid.φᵃᶠᵃ[Nφ+2] == 80 + grid.Δφ
+    @test grid.φᵃᶠᵃ[0] == -80 - grid.Δφᵃᶠᵃ
+    @test grid.φᵃᶠᵃ[Nφ+2] == 80 + grid.Δφᵃᶠᵃ
 
-    @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλ)
-    @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλ)
+    @test all(diff(grid.λᶠᵃᵃ.parent) .== grid.Δλᶠᵃᵃ)
+    @test all(diff(grid.λᶜᵃᵃ.parent) .== grid.Δλᶜᵃᵃ)
 
-    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφ)
-    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφ)
+    @test all(diff(grid.φᵃᶠᵃ.parent) .== grid.Δφᵃᶠᵃ)
+    @test all(diff(grid.φᵃᶜᵃ.parent) .== grid.Δφᵃᶜᵃ)
 
     return nothing
 end
