@@ -20,8 +20,8 @@ get_domain_extent(coord, N)                 = (coord[1], coord[2])
 get_domain_extent(coord::Function, N)       = (coord(1), coord(N+1))
 get_domain_extent(coord::AbstractVector, N) = (coord[1], coord[N+1])
 
-get_coord_face(coord::Function, k) = coord(k)
-get_coord_face(coord::AbstractVector, k) = CUDA.@allowscalar coord[k]
+get_coord_face(coord::Function, i) = coord(i)
+get_coord_face(coord::AbstractVector, i) = CUDA.@allowscalar coord[i]
 
 lower_exterior_Δcoordᶜ(topology,        Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
 lower_exterior_Δcoordᶜ(::Type{Bounded}, Fi, Hcoord) = [Fi[2]  - Fi[1] for i = 1:Hcoord]
@@ -47,7 +47,7 @@ function generate_coordinate(FT, topology, N, H, coord, architecture)
 
     c¹, cᴺ⁺¹ = interiorF[1], interiorF[N+1]
 
-    F₋ = [c¹   - sum(ΔF₋[i:H]) for i = 1:H] # locations of faces in lower halo
+    F₋ = [c¹   - sum(ΔF₋[i:H]) for i = 1:H]          # locations of faces in lower halo
     F₊ = reverse([cᴺ⁺¹ + sum(ΔF₊[i:H]) for i = 1:H]) # locations of faces in width of top halo region
 
     F = vcat(F₋, interiorF, F₊)
@@ -55,13 +55,13 @@ function generate_coordinate(FT, topology, N, H, coord, architecture)
     # Build cell centers, cell center spacings, and cell interface spacings
     TC = total_length(Center, topology, N, H)
      C = [ (F[i + 1] + F[i]) / 2 for i = 1:TC ]
-    ΔC = [  C[i] - C[i - 1]      for i = 2:TC ]
+    ΔF = [  C[i] - C[i - 1]      for i = 2:TC ]
 
     # Trim face locations for periodic domains
     TF = total_length(Face, topology, N, H)
     F  = F[1:TF]
 
-    ΔF = [F[i + 1] - F[i] for i = 1:TF-1]
+    ΔC = [F[i + 1] - F[i] for i = 1:TF-1]
 
     ΔF = OffsetArray(ΔF, -H)
     ΔC = OffsetArray(ΔC, -H)

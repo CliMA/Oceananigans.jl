@@ -157,7 +157,7 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
             "Valid face variables are 1D Vectors and Functions"
         throw(ArgumentError(e))
     end
-    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ = generate_coordinate(FT, topology[3], Nz, Hz, z_faces, architecture)
+    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topology[3], Nz, Hz, z_faces, architecture)
     
     # Construct uniform horizontal grid
     Lh, Nh, Hh, X₁ = (Lx, Ly), size[1:2], halo[1:2], (x[1], y[1])
@@ -182,11 +182,11 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
     xᶜᵃᵃ = range(xC₋, xC₊; length = TCx)
     yᵃᶜᵃ = range(yC₋, yC₊; length = TCy)
 
-    xᶜᵃᵃ = OffsetArray(xᶜᵃᵃ,  -Hx)
-    yᵃᶜᵃ = OffsetArray(yᵃᶜᵃ,  -Hy)
-    
-    xᶠᵃᵃ = OffsetArray(xᶠᵃᵃ,  -Hx)
-    yᵃᶠᵃ = OffsetArray(yᵃᶠᵃ,  -Hy)
+    xᶜᵃᵃ = OffsetArray(xᶜᵃᵃ, -Hx)
+    yᵃᶜᵃ = OffsetArray(yᵃᶜᵃ, -Hy)
+
+    xᶠᵃᵃ = OffsetArray(xᶠᵃᵃ, -Hx)
+    yᵃᶠᵃ = OffsetArray(yᵃᶠᵃ, -Hy)
 
     R = typeof(xᶠᵃᵃ)
     A = typeof(zᵃᵃᶠ)
@@ -197,17 +197,17 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
 end
 
 """
-    with_halo(new_halo, old_grid::VerticallyStretchedRectilinearGrid)
+    with_halo(_halo, old_grid::VerticallyStretchedRectilinearGrid)
 
-Returns a new `VerticallyStretchedRectilinearGrid` with the same properties as
-`old_grid` but with halos set to `new_halo`.
+Returns a  `VerticallyStretchedRectilinearGrid` with the same properties as
+`old_grid` but with halos set to `_halo`.
 
 Note that in contrast to the constructor for `VerticallyStretchedRectilinearGrid`,
-`new_halo` is expected to be a 3-`Tuple` by `with_halo`. The elements
-of `new_halo` corresponding to `Flat` directions are removed (and are
-therefore ignored) prior to constructing the new `VerticallyStretchedRectilinearGrid`.
+`_halo` is expected to be a 3-`Tuple` by `with_halo`. The elements
+of `_halo` corresponding to `Flat` directions are removed (and are
+therefore ignored) prior to constructing the  `VerticallyStretchedRectilinearGrid`.
 """
-function with_halo(new_halo, old_grid::VerticallyStretchedRectilinearGrid)
+function with_halo(_halo, old_grid::VerticallyStretchedRectilinearGrid)
 
     Nx, Ny, Nz = size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
@@ -216,20 +216,20 @@ function with_halo(new_halo, old_grid::VerticallyStretchedRectilinearGrid)
     y = y_domain(old_grid)
     z = z_domain(old_grid)
 
-    # Remove elements of size and new_halo in Flat directions as expected by grid
+    # Remove elements of size and _halo in Flat directions as expected by grid
     # constructor
     size = pop_flat_elements(size, topo)
-    new_halo = pop_flat_elements(new_halo, topo)
+    _halo = pop_flat_elements(_halo, topo)
 
-    new_grid = VerticallyStretchedRectilinearGrid(eltype(old_grid);
+    _grid = VerticallyStretchedRectilinearGrid(eltype(old_grid);
                                                   architecture = old_grid.architecture,
                                                   size = size,
                                                   x = x, y = y,
                                                   z_faces = old_grid.zᵃᵃᶠ,
                                                   topology = topo,
-                                                  halo = new_halo)
+                                                  halo = _halo)
 
-    return new_grid
+    return _grid
 end
 
 @inline x_domain(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.xᶠᵃᵃ)
@@ -287,33 +287,3 @@ all_y_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.yᵃ�
 all_z_nodes(::Type{Center}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃᵃᶜ
 all_z_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃᵃᶠ
 
-#
-# Get minima of grid
-#
-
-function min_Δx(grid::VerticallyStretchedRectilinearGrid)
-    topo = topology(grid)
-    if topo[1] == Flat
-        return Inf
-    else
-        return grid.Δx
-    end
-end
-
-function min_Δy(grid::VerticallyStretchedRectilinearGrid)
-    topo = topology(grid)
-    if topo[2] == Flat
-        return Inf
-    else
-        return grid.Δy
-    end
-end
-
-function min_Δz(grid::VerticallyStretchedRectilinearGrid)
-    topo = topology(grid)
-    if topo[3] == Flat
-        return Inf
-    else
-        return minimum(parent(grid.Δzᵃᵃᶜ))
-    end
-end

@@ -22,11 +22,11 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch
       Δφᵃᶜᵃ :: FY
       φᵃᶠᵃ  :: VY
       φᵃᶜᵃ  :: VY
-      Δzᵃᵃᶠ :: FZ
+      Δzᵃᵃᶠ :: FZ 
       Δzᵃᵃᶜ :: FZ
       zᵃᵃᶠ  :: VZ
       zᵃᵃᶜ  :: VZ
-      # Precomputed metrics 
+      # Precomputed metrics M <: Nothing means the metrics will be computed on the fly
       Δxᶠᶜᵃ :: M
       Δxᶜᶠᵃ :: M
       Δyᶠᶜᵃ :: MY
@@ -108,7 +108,7 @@ function domain_string(grid::LatitudeLongitudeGrid)
     return "longitude λ ∈ [$λ₁, $λ₂], latitude ∈ [$φ₁, $φ₂], z ∈ [$z₁, $z₂]"
 end
 
-function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ}) where {FT, TX, TY, TZ, M, MY, FX, FY, FZ}
+function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX, TY, TZ, M<:Nothing}
     print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} \n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
@@ -116,7 +116,8 @@ function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ
               "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
               "grid in λ: ", show_coordinate(g.Δλᶜᵃᵃ ), '\n',
               "grid in φ: ", show_coordinate(g.Δφᵃᶜᵃ ), '\n',
-              "grid in z: ", show_coordinate(g.Δzᵃᵃᶜ ))
+              "grid in z: ", show_coordinate(g.Δzᵃᵃᶜ ), '\n',
+              "metrics are computed on the fly")
 end
 
 # Node by node

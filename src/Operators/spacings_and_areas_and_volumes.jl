@@ -219,7 +219,7 @@ FY<: Number  means that the grid is not stretched in the longitude direction
                             @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ[j])
 
 @inline Δyᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY}) where {FT, TX, TY, TZ, M<:Nothing, MY, FX, FY<:Number} =
-                            @inbounds grid.radius * deg2rad(grid.Δφ)
+                            @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ)
 
 @inline Δyᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = 
                             @inbounds grid.Δyᶜᶠᵃ[j]
