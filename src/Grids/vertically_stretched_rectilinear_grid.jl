@@ -287,3 +287,32 @@ all_y_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.yᵃ�
 all_z_nodes(::Type{Center}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃᵃᶜ
 all_z_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃᵃᶠ
 
+# Get minima of grid
+#
+
+function min_Δx(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+    if topo[1] == Flat
+        return Inf
+    else
+        return grid.Δx
+    end
+end
+
+function min_Δy(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+    if topo[2] == Flat
+        return Inf
+    else
+        return grid.Δy
+    end
+end
+
+function min_Δz(grid::VerticallyStretchedRectilinearGrid)
+    topo = topology(grid)
+    if topo[3] == Flat
+        return Inf
+    else
+        return minimum(parent(grid.Δzᵃᵃᶜ))
+    end
+end

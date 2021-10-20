@@ -497,8 +497,8 @@ function test_basic_lat_lon_general_grid(FT)
     @test length(grid_str.zᵃᵃᶠ) == length(grid_reg.zᵃᵃᶠ) == Nz + 2Hz + 1
     @test length(grid_str.zᵃᵃᶜ) == length(grid_reg.zᵃᵃᶜ) == Nz + 2Hz
     
-    @test length(grid_str.Δzᵃᵃᶠ) == Nz + 2Hz + 2 
-    @test length(grid_str.Δzᵃᵃᶜ) == Nz + 2Hz - 1
+    @test length(grid_str.Δzᵃᵃᶠ) == Nz + 2Hz + 1
+    @test length(grid_str.Δzᵃᵃᶜ) == Nz + 2Hz 
 
     @test all(grid_str.λᶜᵃᵃ == grid_reg.λᶜᵃᵃ) 
     @test all(grid_str.λᶠᵃᵃ == grid_reg.λᶠᵃᵃ)

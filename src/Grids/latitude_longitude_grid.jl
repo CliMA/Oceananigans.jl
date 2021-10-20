@@ -29,7 +29,7 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch
       # Precomputed metrics M <: Nothing means the metrics will be computed on the fly
       Δxᶠᶜᵃ :: M
       Δxᶜᶠᵃ :: M
-      Δyᶠᶜᵃ :: MY
+      Δyᶜᶠᵃ :: MY
       Azᶠᶠᵃ :: M
       Azᶜᶜᵃ :: M
     radius  :: FT
@@ -76,13 +76,13 @@ function LatitudeLongitudeGrid(FT=Float64;
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topo[3], Nz, Hz, z,         architecture)
 
     if precompute_metrics
-        Δxᶠᶠᵃ, Δxᶜᶠᵃ, Δyᶠᶜᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ = generate_curvilinear_operators(FT, Δλᶠᵃᵃ, Δλᶜᵃᵃ, Δφᵃᶠᵃ, φᵃᶠᵃ, φᵃᶜᵃ, radius) 
+        Δxᶠᶠᵃ, Δxᶜᶠᵃ, Δyᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ = generate_curvilinear_operators(FT, Δλᶠᵃᵃ, Δλᶜᵃᵃ, Δφᵃᶠᵃ, φᵃᶠᵃ, φᵃᶜᵃ, radius) 
         M  = typeof(Δxᶠᶠᵃ)
-        MY = typeof(Δyᶠᶜᵃ)
+        MY = typeof(Δyᶜᶠᵃ)
     else
         Δxᶠᶠᵃ = nothing
         Δxᶜᶠᵃ = nothing
-        Δyᶠᶜᵃ = nothing
+        Δyᶜᶠᵃ = nothing
         Azᶠᶠᵃ = nothing
         Azᶜᶜᵃ = nothing
         M = MY = Nothing
@@ -98,7 +98,7 @@ function LatitudeLongitudeGrid(FT=Float64;
 
     return LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
             Nλ, Nφ, Nz, Hλ, Hφ, Hz, Lλ, Lφ, Lz, Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, Δφᵃᶜᵃ, Δφᵃᶠᵃ, φᵃᶠᵃ, φᵃᶜᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
-            Δxᶠᶠᵃ, Δxᶜᶠᵃ, Δyᶠᶜᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, radius)
+            Δxᶠᶠᵃ, Δxᶜᶠᵃ, Δyᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, radius)
 end
 
 function domain_string(grid::LatitudeLongitudeGrid)
@@ -167,6 +167,6 @@ Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX,
         adapt_if_vector(grid.zᵃᵃᶜ),
         adapt_if_vector(grid.Δxᶠᶠᵃ),
         adapt_if_vector(grid.Δxᶜᶠᵃ),
-        adapt_if_vector(grid.Δyᶠᶜᵃ),
+        adapt_if_vector(grid.Δyᶜᶠᵃ),
         adapt_if_vector(grid.Azᶠᶠᵃ),
         adapt_if_vector(grid.Azᶜᶜᵃ))
