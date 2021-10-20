@@ -43,7 +43,7 @@ bathymetry = arch_array(arch, bathymetry)
 target_sea_surface_temperature = arch_array(arch, target_sea_surface_temperature)
 
 H = 3600.0
-bathymetry = - H .* (bathymetry .< -10)
+# bathymetry = - H .* (bathymetry .< -10)
 # H = - minimum(bathymetry)
 
 # A spherical domain
@@ -62,11 +62,11 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 equatorial_Δx = grid.radius * deg2rad(grid.Δλ)
 diffusive_time_scale = 120days
 
-@show νh₂ = 1e-3 * equatorial_Δx^2 / diffusive_time_scale
-@show νh₄ = 1e-5 * equatorial_Δx^4 / diffusive_time_scale
-@show νz = 1e-3
-@show κh = 1e+3
-@show κz = 1e-4
+νh₂ = 1e-3 * equatorial_Δx^2 / diffusive_time_scale
+νh₄ = 1e-5 * equatorial_Δx^4 / diffusive_time_scale
+νz = 1e-3
+κh = 1e+3
+κz = 1e-4
 
 background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₂, νz=νz, κh=κh, κz=κz)
 
@@ -104,8 +104,10 @@ T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = arch,
-                                    free_surface = ExplicitFreeSurface(),
-                                    momentum_advection = WENO5(),
+                                    #free_surface = ExplicitFreeSurface(),
+                                    #free_surface = ImplicitFreeSurface(maximum_iterations=10),
+                                    free_surface = ImplicitFreeSurface(),
+                                    momentum_advection = VectorInvariant(),
                                     tracer_advection = WENO5(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
@@ -131,16 +133,16 @@ S .= 30
 # Time-scale for gravity wave propagation across the smallest grid cell
 g = model.free_surface.gravitational_acceleration
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
-
+    
 minimum_Δx = abs(grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(grid.Δλ))
 minimum_Δy = abs(grid.radius * deg2rad(grid.Δφ))
 wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
-@show Δt = 0.2 * minimum_Δx / gravity_wave_speed
 
-@info """
-    Minimum wave propagation time scale: $(prettytime(wave_propagation_time_scale))
-    Time step: $(prettytime(Δt))
-"""
+if model.free_surface isa ExplicitFreeSurface
+    Δt = 0.2 * minimum_Δx / gravity_wave_speed
+else
+    Δt = 20minutes
+end
 
 start_time = [time_ns()]
 
@@ -149,18 +151,27 @@ function progress(sim)
 
     η = model.free_surface.η
 
-    @info @sprintf("Time: %s, iteration: %d, max(|η|): %.2e m, wall time: %s",
-                   prettytime(sim.model.clock.time),
-                   sim.model.clock.iteration,
-                   maximum(abs, η),
-                   prettytime(wall_time))
+    if model.free_surface isa ExplicitFreeSurface
+        @info @sprintf("Time: % 12s, iteration: %d, max(|η|): %.2e m, wall time: %s",
+                       prettytime(sim.model.clock.time),
+                       sim.model.clock.iteration,
+                       maximum(abs, η),
+                       prettytime(wall_time))
+    else
+        @info @sprintf("Time: % 12s, iteration: %d, free surface iterations: %d, max(|η|): %.2e m, wall time: %s",
+                       prettytime(sim.model.clock.time),
+                       sim.model.clock.iteration,
+                       sim.model.free_surface.implicit_step_solver.preconditioned_conjugate_gradient_solver.iteration,
+                       maximum(abs, η),
+                       prettytime(wall_time))
+    end
 
     start_time[1] = time_ns()
 
     return nothing
 end
 
-simulation = Simulation(model, Δt = Δt, stop_iteration = 10000, iteration_interval = 100, progress = progress)
+simulation = Simulation(model, Δt = Δt, stop_time = 1day, iteration_interval = 10, progress = progress)
 
 output_fields = merge(model.velocities, model.tracers, (; η=model.free_surface.η))
 output_prefix = "global_lat_lon_$(grid.Nx)_$(grid.Ny)_$(grid.Nz)"
@@ -171,8 +182,21 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       force = true)
 
 # Let's goo!
-@printf "Running with Δt = %s" prettytime(simulation.Δt)
+@info "Running with Δt = $(prettytime(simulation.Δt))"
+
 run!(simulation)
+
+@info """
+
+    Simulation took $(prettytime(simulation.run_time))
+
+    Background diffusivity: $background_diffusivity
+    Minimum wave propagation time scale: $(prettytime(wave_propagation_time_scale))
+    Free surface: $(typeof(model.free_surface).name.wrapper)
+    Time step: $(prettytime(Δt))
+
+"""
+
 
 #####
 ##### Visualization
