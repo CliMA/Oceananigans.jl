@@ -92,8 +92,8 @@ end
 
 function ImmersedBoundaryGrid(grid, ib)
     @warn "ImmersedBoundaryGrid is unvalidated and may produce incorrect results. " *
-              "Don't hesitate to help validate ImmersedBoundaryGrid by reporting any bugs " *
-              "or unexpected behavior to https://github.com/CliMA/Oceananigans.jl/issues"
+          "Help validate ImmersedBoundaryGrid by reporting any bugs " *
+          "or unexpected behavior to https://github.com/CliMA/Oceananigans.jl/issues."
     
     TX, TY, TZ = topology(grid)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
