@@ -43,7 +43,7 @@ bathymetry = arch_array(arch, bathymetry)
 target_sea_surface_temperature = arch_array(arch, target_sea_surface_temperature)
 
 H = 3600.0
-# bathymetry = - H .* (bathymetry .< -10)
+bathymetry = - H .* (bathymetry .< -10)
 # H = - minimum(bathymetry)
 
 # A spherical domain
@@ -64,11 +64,12 @@ diffusive_time_scale = 120days
 
 νh₂ = 1e-3 * equatorial_Δx^2 / diffusive_time_scale
 νh₄ = 1e-5 * equatorial_Δx^4 / diffusive_time_scale
-νz = 1e-3
+νh = 1e+5
+νz = 1e0
 κh = 1e+3
 κz = 1e-4
 
-background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₂, νz=νz, κh=κh, κz=κz)
+background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz)
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)
@@ -105,8 +106,8 @@ T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = arch,
                                     #free_surface = ExplicitFreeSurface(),
-                                    #free_surface = ImplicitFreeSurface(maximum_iterations=10),
-                                    free_surface = ImplicitFreeSurface(),
+                                    free_surface = ImplicitFreeSurface(maximum_iterations=10),
+                                    #free_surface = ImplicitFreeSurface(),
                                     momentum_advection = VectorInvariant(),
                                     tracer_advection = WENO5(),
                                     coriolis = HydrostaticSphericalCoriolis(),
@@ -141,7 +142,7 @@ wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
 if model.free_surface isa ExplicitFreeSurface
     Δt = 0.2 * minimum_Δx / gravity_wave_speed
 else
-    Δt = 20minutes
+    Δt = 5minutes
 end
 
 start_time = [time_ns()]
@@ -197,16 +198,19 @@ run!(simulation)
 
 """
 
-
 #####
 ##### Visualization
 #####
 
 η_cpu = Array(interior(model.free_surface.η))[:, :, 1]
 T_cpu = Array(interior(model.tracers.T))[:, :, end]
+u_cpu = Array(interior(model.velocities.u))[:, :, end]
+v_cpu = Array(interior(model.velocities.v))[:, :, end]
 h_cpu = Array(bathymetry)
 
 max_η = maximum(abs, η_cpu)
+max_u = maximum(abs, u_cpu)
+max_v = maximum(abs, v_cpu)
 
 max_T = maximum(T_cpu)
 min_T = minimum(T_cpu)
@@ -224,5 +228,13 @@ cb_η = Colorbar(fig[2, 2], hm_η)
 ax_T = Axis(fig[3, 1], title="Sea surface temperature (ᵒC)")
 hm_T = heatmap!(ax_T, T_cpu, colorrange=(min_T, max_T), colormap=:thermal)
 cb_T = Colorbar(fig[3, 2], hm_T)
+
+ax_u = Axis(fig[1, 3], title="East-west velocity (m s⁻¹)")
+hm_u = heatmap!(ax_u, u_cpu, colorrange=(-max_u, max_u), colormap=:balance)
+cb_u = Colorbar(fig[1, 4], hm_u)
+
+ax_v = Axis(fig[2, 3], title="East-west velocity (m s⁻¹)")
+hm_v = heatmap!(ax_v, v_cpu, colorrange=(-max_u, max_u), colormap=:balance)
+cb_v = Colorbar(fig[2, 4], hm_v)
 
 display(fig)
