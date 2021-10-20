@@ -45,11 +45,6 @@ function Base.getproperty(free_surface::SplitExplicitFreeSurface, sym::Symbol)
     end
 end
 
-
-free_surface(state::SplitExplicitState) = state.η
-free_surface(free_surface::SplitExplicitFreeSurface) = free_surface(free_surface.state)
-
-
 """
 SplitExplicitState{E}
 
@@ -129,3 +124,7 @@ function SplitExplicitSettings()
                                  velocity_weights = velocity_weights,
                                  free_surface_weights = free_surface_weights)
 end
+
+# Convenience Functions for grabbing free surface
+free_surface(state::SplitExplicitState) = state.η
+free_surface(free_surface::SplitExplicitFreeSurface) = free_surface(free_surface.state)
