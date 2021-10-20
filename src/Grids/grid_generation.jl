@@ -1,25 +1,18 @@
 # Utilities to generate a grid with the following inputs
 
-@inline adapt_if_vector(var::Nothing)        = nothing
-@inline adapt_if_vector(var)                 = var
-@inline adapt_if_vector(var::AbstractVector) = Adapt.adapt(to, var)
+@inline adapt_if_vector(to, var::Nothing)        = nothing
+@inline adapt_if_vector(to, var)                 = var
+@inline adapt_if_vector(to, var::AbstractVector) = Adapt.adapt(to, var)
 
-function show_coordinate(Δ::FC) where {FC<:Number} 
-    string = "Regular, with spacing $Δ"
-    return string
-end  
-
-function show_coordinate(Δ::FC) where {FC<:AbstractVector} 
-    Δₘᵢₙ = minimum(parent(Δ))
-    Δₘₐₓ = maximum(parent(Δ))
-    string = "Stretched, with spacing min=$Δₘᵢₙ, max=$Δₘₐₓ"
-    return string
-end  
+@inline show_coordinate(Δ::Number, T)            = "Regular, with spacing $Δ"
+@inline show_coordinate(Δ::Number, ::Type{Flat}) = "Flattened"
+@inline show_coordinate(Δ::AbstractVector, T)    = "Stretched, with spacing min=$(minimum(parent(Δ))), max=$(maximum(parent(Δ)))"
 
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
 get_domain_extent(coord::Function, N)       = (coord(1), coord(N+1))
 get_domain_extent(coord::AbstractVector, N) = (coord[1], coord[N+1])
 
+get_coord_face(coord::Nothing, i) = 1
 get_coord_face(coord::Function, i) = coord(i)
 get_coord_face(coord::AbstractVector, i) = CUDA.@allowscalar coord[i]
 
@@ -112,6 +105,11 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
     
     return L, F, C, ΔF, ΔC
 end
+
+function generate_coordinate(FT, ::Type{Flat}, N, H, coord::Tuple{<:Number, <:Number}, architecture)
+    return 0, 0, 0, 0, 0
+end
+
 
 @inline hack_cosd(φ) = cos(π * φ / 180)
 @inline hack_sind(φ) = sin(π * φ / 180)

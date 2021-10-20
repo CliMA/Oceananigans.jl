@@ -142,8 +142,8 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
     TX, TY, TZ = validate_topology(topology)
     size = validate_size(TX, TY, TZ, size)
     halo = validate_halo(TX, TY, TZ, halo)
-    x = validate_dimension_specification(TX, x, :x)
-    y = validate_dimension_specification(TY, y, :y)
+    x = validate_dimension_specification(TX, x, :x, FT)
+    y = validate_dimension_specification(TY, y, :y, FT)
     Lx, Ly, x, y = validate_vertically_stretched_grid_xy(TX, TY, FT, x, y)
 
     Nx, Ny, Nz = size

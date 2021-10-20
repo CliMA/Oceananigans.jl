@@ -139,7 +139,7 @@ function accurate_advective_cfl_on_lat_lon_grid(arch, FT)
     # Will be the same at every grid point.
     Δy_min = CUDA.@allowscalar Oceananigans.Operators.Δyᶜᶠᵃ(1, 1, 1, grid)
 
-    Δz = model.grid.Δz
+    Δz = model.grid.Δzᵃᵃᶠ
 
     u₀ = FT(1.2)
     v₀ = FT(-2.5)

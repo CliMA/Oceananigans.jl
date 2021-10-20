@@ -169,6 +169,42 @@ const ZFlatVSRG = VerticallyStretchedRectilinearGrid{<:Any, <:Any, <:Any, <:Flat
 @inline Vᶜᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
 
 #####
+##### Temporary place for grid spacings and areas for RectilinearGrid
+#####
+
+@inline Δxᶜᵃᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ})         =  @inbounds grid.Δxᶜᵃᵃ
+@inline Δxᶜᵃᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX<:Number, FY, FZ}) =  @inbounds grid.Δxᶜᵃᵃ[i]
+@inline Δxᶠᵃᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ})         =  @inbounds grid.Δxᶠᵃᵃ
+@inline Δxᶠᵃᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX<:Number, FY, FZ}) =  @inbounds grid.Δxᶠᵃᵃ[i]
+@inline Δyᵃᶠᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ})         =  @inbounds grid.Δyᵃᶠᵃ
+@inline Δyᵃᶠᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY<:Number, FZ}) =  @inbounds grid.Δyᵃᶠᵃ[j]
+@inline Δyᵃᶜᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ})         =  @inbounds grid.Δyᵃᶜᵃ
+@inline Δyᵃᶜᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY<:Number, FZ}) =  @inbounds grid.Δyᵃᶜᵃ[j]
+@inline Δzᶠᵃᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ})         =  @inbounds grid.Δzᶠᵃᵃ
+@inline Δzᶠᵃᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ<:Number}) =  @inbounds grid.Δzᶠᵃᵃ[k]
+@inline Δzᵃᵃᶜ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ})         =  @inbounds grid.Δzᵃᵃᶜ
+@inline Δzᵃᵃᶜ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ<:Number}) =  @inbounds grid.Δzᵃᵃᶜ[k]
+
+const XFlatRG = RectilinearGrid{<:Any, <:Flat}
+const YFlatRG = RectilinearGrid{<:Any, <:Any, <:Flat}
+const ZFlatRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Flat}
+
+@inline Δx(i, j, k, grid::XFlatG)     = one(eltype(grid))
+@inline Δxᶜᶜᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
+@inline Δxᶜᶠᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
+@inline Δxᶠᶠᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
+@inline Δxᶠᶜᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
+@inline Δy(i, j, k, grid::YFlatRG)    = one(eltype(grid))
+@inline Δyᶜᶜᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
+@inline Δyᶠᶜᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
+@inline Δyᶜᶠᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
+@inline Δyᶠᶠᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
+@inline ΔzC(  i, j, k, grid::ZFlatRG) = one(eltype(grid))
+@inline ΔzF(  i, j, k, grid::ZFlatRG) = one(eltype(grid))
+@inline Δzᵃᵃᶠ(i, j, k, grid::ZFlatRG) = one(eltype(grid))
+@inline Δzᵃᵃᶜ(i, j, k, grid::ZFlatRG) = one(eltype(grid))
+
+#####
 ##### Temporary place for grid spacings and areas for LatitudeLongitudeGrid
 #####
 
