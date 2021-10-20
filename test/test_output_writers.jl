@@ -105,7 +105,6 @@ function test_windowed_time_averaging_simulation(model)
     model.clock.iteration = model.clock.time = 0
     simulation = Simulation(model, Δt=1.0, stop_iteration=0)
 
-    rm(jld_filename1 * ".jld2")
     jld2_output_writer = JLD2OutputWriter(model, model.velocities,
                                           schedule = AveragedTimeInterval(π, window=1),
                                           prefix = jld_filename1,
