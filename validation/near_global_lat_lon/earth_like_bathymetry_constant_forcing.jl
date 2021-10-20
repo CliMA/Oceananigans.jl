@@ -65,7 +65,7 @@ diffusive_time_scale = 120days
 νh₂ = 1e-3 * equatorial_Δx^2 / diffusive_time_scale
 νh₄ = 1e-5 * equatorial_Δx^4 / diffusive_time_scale
 νh = 1e+5
-νz = 1e0
+νz = 1e-2
 κh = 1e+3
 κz = 1e-4
 
@@ -113,7 +113,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
                                     buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=0.0)),
-                                    closure = nothing, # (background_diffusivity, convective_adjustment),
+                                    closure = (background_diffusivity, convective_adjustment),
                                     tracers = (:T, :S))
 
 #####
@@ -124,7 +124,7 @@ u, v, w = model.velocities
 η = model.free_surface.η
 T = model.tracers.T
 S = model.tracers.S
-T .= 5
+T .= -1
 S .= 30
 
 #####
@@ -142,7 +142,7 @@ wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
 if model.free_surface isa ExplicitFreeSurface
     Δt = 0.2 * minimum_Δx / gravity_wave_speed
 else
-    Δt = 5minutes
+    Δt = 20minutes
 end
 
 start_time = [time_ns()]
