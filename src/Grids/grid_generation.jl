@@ -117,23 +117,34 @@ end
 function generate_curvilinear_operators(FT, Δλᶠ, Δλᶜ, Δφᶠ, φᶠ, φᶜ, radius)
           
     # preallocate quantitie to ensure correct type and size
-    Δyᶜᶠᵃ = OffsetArray(zeros(FT, length(Δφᶠ)), φᶠ.offsets[1])
+    Δyᶜᶠᵃ = OffsetArray(zeros(FT, length(Δφᶠ)), Δφᶠ.offsets[1])
     
     Δxᶜᶠᵃ = OffsetArray(zeros(FT, length(Δλᶜ), length(φᶠ)), Δλᶜ.offsets[1], φᶠ.offsets[1])
     Δxᶠᶜᵃ = OffsetArray(zeros(FT, length(Δλᶠ), length(φᶜ)), Δλᶠ.offsets[1], φᶜ.offsets[1])
-    Azᶜᶜᵃ = OffsetArray(zeros(FT, length(Δλᶜ), length(φᶠ)), Δλᶜ.offsets[1], φᶠ.offsets[1])
-    Azᶠᶠᵃ = OffsetArray(zeros(FT, length(Δλᶠ), length(φᶜ)), Δλᶠ.offsets[1], φᶜ.offsets[1])
+    Azᶠᶠᵃ = OffsetArray(zeros(FT, length(Δλᶠ), length(φᶠ)), Δλᶠ.offsets[1], φᶠ.offsets[1])
+    Azᶜᶜᵃ = OffsetArray(zeros(FT, length(Δλᶜ), length(φᶜ)), Δλᶜ.offsets[1], φᶜ.offsets[1])
        
     for (i,x) in pairs(Δλᶠ)
         for (j,x) in pairs(φᶜ)
-            Azᶠᶠᵃ[i, j] = @inbounds radius^2 * deg2rad(Δλᶠ[i]) * (hack_sind(φᶜ[j])   - hack_sind(φᶜ[j-1]))
             Δxᶠᶜᵃ[i, j] = @inbounds radius * hack_cosd(φᶜ[j]) * deg2rad(Δλᶠ[i])
         end 
     end 
-    
+
     for (i,x) in pairs(Δλᶜ)
         for (j,x) in pairs(φᶠ)
             Δxᶜᶠᵃ[i, j] = @inbounds radius * hack_cosd(φᶠ[j]) * deg2rad(Δλᶜ[i])
+            
+        end
+    end
+
+    for (i,x) in pairs(Δλᶠ)
+        for (j,x) in pairs(φᶠ)
+            Azᶠᶠᵃ[i, j] = @inbounds radius^2 * deg2rad(Δλᶠ[i]) * (hack_sind(φᶜ[j])   - hack_sind(φᶜ[j-1]))
+        end
+    end
+
+    for (i,x) in pairs(Δλᶜ)
+        for (j,x) in pairs(φᶜ)
             Azᶜᶜᵃ[i, j] = @inbounds radius^2 * deg2rad(Δλᶜ[i]) * (hack_sind(φᶠ[j+1]) - hack_sind(φᶠ[j]))
         end
     end
@@ -148,22 +159,23 @@ end
 function generate_curvilinear_operators(FT, Δλᶠ::Number, Δλᶜ, Δφᶠ, φᶠ, φᶜ, radius)
           
     # preallocate quantitie to ensure correct type and size
-    Δyᶜᶠᵃ = OffsetArray(zeros(FT, length(Δφᶠ)), φᶠ.offsets[1])
+    Δyᶜᶠᵃ = OffsetArray(zeros(FT, length(Δφᶠ)), Δφᶠ.offsets[1])
     Δxᶜᶠᵃ = OffsetArray(zeros(FT, length(φᶠ)),  φᶠ.offsets[1])
     Δxᶠᶜᵃ = OffsetArray(zeros(FT, length(φᶜ)),  φᶜ.offsets[1])
-    Azᶜᶜᵃ = OffsetArray(zeros(FT, length(φᶠ)),  φᶠ.offsets[1])
-    Azᶠᶠᵃ = OffsetArray(zeros(FT, length(φᶜ)),  φᶜ.offsets[1])
+    Azᶜᶜᵃ = OffsetArray(zeros(FT, length(φᶜ)),  φᶜ.offsets[1])
+    Azᶠᶠᵃ = OffsetArray(zeros(FT, length(φᶠ)),  φᶠ.offsets[1])
     
     for (j,x) in pairs(φᶠ)
         Δxᶜᶠᵃ[j] = @inbounds radius * hack_cosd(φᶠ[j]) * deg2rad(Δλᶜ)
-        Azᶜᶜᵃ[j] = @inbounds radius^2 * deg2rad(Δλᶜ) * (hack_sind(φᶠ[j+1]) - hack_sind(φᶠ[j]))
+        Azᶠᶠᵃ[j] = @inbounds radius^2 * deg2rad(Δλᶠ) * (hack_sind(φᶜ[j])   - hack_sind(φᶜ[j-1]))
     end
     
     for (j,x) in pairs(φᶜ)
-        Azᶠᶠᵃ[j] = @inbounds radius^2 * deg2rad(Δλᶠ) * (hack_sind(φᶜ[j])   - hack_sind(φᶜ[j-1]))
         Δxᶠᶜᵃ[j] = @inbounds radius * hack_cosd(φᶜ[j]) * deg2rad(Δλᶠ)
+        Azᶜᶜᵃ[j] = @inbounds radius^2 * deg2rad(Δλᶜ) * (hack_sind(φᶠ[j+1]) - hack_sind(φᶠ[j]))
     end 
-    for (j,x) in pairs(φᶠ)
+
+    for (j,x) in pairs(Δφᶠ)
         Δyᶜᶠᵃ = convert(FT, radius * deg2rad(Δφᶠ[j]))
     end
 
@@ -177,19 +189,30 @@ function generate_curvilinear_operators(FT, Δλᶠ, Δλᶜ, Δφᶠ::Number, �
     # preallocate quantitie to ensure correct type and size
     Δxᶜᶠᵃ = OffsetArray(zeros(FT, length(Δλᶜ), length(φᶠ)), Δλᶜ.offsets[1], φᶠ.offsets[1])
     Δxᶠᶜᵃ = OffsetArray(zeros(FT, length(Δλᶠ), length(φᶜ)), Δλᶠ.offsets[1], φᶜ.offsets[1])
-    Azᶜᶜᵃ = OffsetArray(zeros(FT, length(Δλᶜ), length(φᶠ)), Δλᶜ.offsets[1], φᶠ.offsets[1])
-    Azᶠᶠᵃ = OffsetArray(zeros(FT, length(Δλᶠ), length(φᶜ)), Δλᶠ.offsets[1], φᶜ.offsets[1])
-    
+    Azᶠᶠᵃ = OffsetArray(zeros(FT, length(Δλᶠ), length(φᶠ)), Δλᶠ.offsets[1], φᶠ.offsets[1])
+    Azᶜᶜᵃ = OffsetArray(zeros(FT, length(Δλᶜ), length(φᶜ)), Δλᶜ.offsets[1], φᶜ.offsets[1])
+       
     for (i,x) in pairs(Δλᶠ)
         for (j,x) in pairs(φᶜ)
-            Azᶠᶠᵃ[i, j] = @inbounds radius^2 * deg2rad(Δλᶠ[i]) * (hack_sind(φᶜ[j])   - hack_sind(φᶜ[j-1]))
             Δxᶠᶜᵃ[i, j] = @inbounds radius * hack_cosd(φᶜ[j]) * deg2rad(Δλᶠ[i])
         end 
     end 
-    
+
     for (i,x) in pairs(Δλᶜ)
         for (j,x) in pairs(φᶠ)
             Δxᶜᶠᵃ[i, j] = @inbounds radius * hack_cosd(φᶠ[j]) * deg2rad(Δλᶜ[i])
+            
+        end
+    end
+
+    for (i,x) in pairs(Δλᶠ)
+        for (j,x) in pairs(φᶠ)
+            Azᶠᶠᵃ[i, j] = @inbounds radius^2 * deg2rad(Δλᶠ[i]) * (hack_sind(φᶜ[j])   - hack_sind(φᶜ[j-1]))
+        end
+    end
+
+    for (i,x) in pairs(Δλᶜ)
+        for (j,x) in pairs(φᶜ)
             Azᶜᶜᵃ[i, j] = @inbounds radius^2 * deg2rad(Δλᶜ[i]) * (hack_sind(φᶠ[j+1]) - hack_sind(φᶠ[j]))
         end
     end
@@ -204,17 +227,17 @@ function generate_curvilinear_operators(FT, Δλᶠ::Number, Δλᶜ, Δφᶠ::N
     # preallocate quantitie to ensure correct type and size
     Δxᶜᶠᵃ = OffsetArray(zeros(FT, length(φᶠ)), φᶠ.offsets[1])
     Δxᶠᶜᵃ = OffsetArray(zeros(FT, length(φᶜ)), φᶜ.offsets[1])
-    Azᶜᶜᵃ = OffsetArray(zeros(FT, length(φᶠ)), φᶠ.offsets[1])
-    Azᶠᶠᵃ = OffsetArray(zeros(FT, length(φᶜ)), φᶜ.offsets[1])
+    Azᶜᶜᵃ = OffsetArray(zeros(FT, length(φᶜ)), φᶜ.offsets[1])
+    Azᶠᶠᵃ = OffsetArray(zeros(FT, length(φᶠ)), φᶠ.offsets[1])
     
     for (j,x) in pairs(φᶠ)
         Δxᶜᶠᵃ[j] = @inbounds radius * hack_cosd(φᶠ[j]) * deg2rad(Δλᶜ)
-        Azᶜᶜᵃ[j] = @inbounds radius^2 * deg2rad(Δλᶜ) * (hack_sind(φᶠ[j+1]) - hack_sind(φᶠ[j]))
+        Azᶠᶠᵃ[j] = @inbounds radius^2 * deg2rad(Δλᶠ) * (hack_sind(φᶜ[j])   - hack_sind(φᶜ[j-1]))
     end
     
     for (j,x) in pairs(φᶜ)
-        Azᶠᶠᵃ[j] = @inbounds radius^2 * deg2rad(Δλᶠ) * (hack_sind(φᶜ[j])   - hack_sind(φᶜ[j-1]))
         Δxᶠᶜᵃ[j] = @inbounds radius * hack_cosd(φᶜ[j]) * deg2rad(Δλᶠ)
+        Azᶜᶜᵃ[j] = @inbounds radius^2 * deg2rad(Δλᶜ) * (hack_sind(φᶠ[j+1]) - hack_sind(φᶠ[j]))
     end 
 
     return Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δyᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ

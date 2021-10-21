@@ -22,7 +22,7 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
       Δzᵃᵃᶜ :: FZ
       zᵃᵃᶠ  :: VZ
       zᵃᵃᶜ  :: VZ
-      # temporarly just to help refractoring with regular rectilinear grid
+      # temporarly just to help refractoring with regular rectilinear grid (DELETE WHEN ALL THE Δx, Δy and Δz ARE REMOVED FROM THE CODE)
       Δx :: FT
       Δy :: FT
       Δz :: FT

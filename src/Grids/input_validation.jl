@@ -147,8 +147,8 @@ function validate_regular_grid_domain(TX, TY, TZ, FT, extent, x, y, z)
 end
 
 function validate_vertically_stretched_grid_xy(TX, TY, FT, x, y)
-    x = validate_dimension_specification(TX, x, :x)
-    y = validate_dimension_specification(TY, y, :y)
+    x = validate_dimension_specification(TX, x, :x, FT)
+    y = validate_dimension_specification(TY, y, :y, FT)
 
     Lx = x[2] - x[1]
     Ly = y[2] - y[1]

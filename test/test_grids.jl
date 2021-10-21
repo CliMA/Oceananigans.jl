@@ -1,5 +1,5 @@
 using Oceananigans.Grids: total_extent, halo_size
-
+using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δyᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 #####
 ##### Regular rectilinear grids
 #####
@@ -513,6 +513,40 @@ function test_basic_lat_lon_general_grid(FT)
     return nothing
 end
 
+function test_lat_lon_precomputed_metrics(FT)
+
+    Nλ, Nφ, Nz = N = (4, 2, 3)
+    Hλ, Hφ, Hz = H = (1, 1, 1)
+
+    latreg = (-80,   80)
+    lonreg = (-180, 180)
+    zreg   = (-1,     0)
+
+    latstr = [-80, 0, 80]
+    lonstr = [-180, -30, 10, 40, 180]
+    zstr   = collect(0:Nz)
+
+    latitude = (latreg, latstr) 
+    longitude = (lonreg, lonstr)
+    zcoord    = (zreg,     zstr)
+
+    # grid with pre computed metrics vs metrics computed on the fly
+    for lat in latitude
+        for lon in longitude
+            for z in zcoord
+                grid_pre = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, precompute_metrics=true) 
+                grid_fly = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z) 
+    
+                @test all([all([Δxᶠᶜᵃ(i, j, 1, grid_pre) == Δxᶠᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
+                @test all([all([Δxᶜᶠᵃ(i, j, 1, grid_pre) == Δxᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
+                @test all([all([Δyᶜᶠᵃ(i, j, 1, grid_pre) == Δyᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
+                @test all([all([Azᶠᶠᵃ(i, j, 1, grid_pre) == Azᶠᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
+                @test all([all([Azᶜᶜᵃ(i, j, 1, grid_pre) == Azᶜᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
+            end 
+        end
+    end
+end
+
 #####
 ##### Conformal cubed sphere face grid
 #####
@@ -666,6 +700,11 @@ end
             test_basic_lat_lon_bounded_domain(FT)
             test_basic_lat_lon_periodic_domain(FT)
             test_basic_lat_lon_general_grid(FT)
+        end
+
+        @info "  Testing precomputed metrics on latitude-longitude grid..."
+        for FT in float_types
+            test_lat_lon_precomputed_metrics(FT)
         end
 
         # Testing show function for regular grid

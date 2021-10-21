@@ -172,24 +172,29 @@ const ZFlatVSRG = VerticallyStretchedRectilinearGrid{<:Any, <:Any, <:Any, <:Flat
 ##### Temporary place for grid spacings and areas for RectilinearGrid
 #####
 
-@inline Δxᶜᵃᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ})         =  @inbounds grid.Δxᶜᵃᵃ
-@inline Δxᶜᵃᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX<:Number, FY, FZ}) =  @inbounds grid.Δxᶜᵃᵃ[i]
-@inline Δxᶠᵃᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ})         =  @inbounds grid.Δxᶠᵃᵃ
-@inline Δxᶠᵃᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX<:Number, FY, FZ}) =  @inbounds grid.Δxᶠᵃᵃ[i]
-@inline Δyᵃᶠᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ})         =  @inbounds grid.Δyᵃᶠᵃ
-@inline Δyᵃᶠᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY<:Number, FZ}) =  @inbounds grid.Δyᵃᶠᵃ[j]
-@inline Δyᵃᶜᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ})         =  @inbounds grid.Δyᵃᶜᵃ
-@inline Δyᵃᶜᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY<:Number, FZ}) =  @inbounds grid.Δyᵃᶜᵃ[j]
-@inline Δzᶠᵃᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ})         =  @inbounds grid.Δzᶠᵃᵃ
-@inline Δzᶠᵃᵃ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ<:Number}) =  @inbounds grid.Δzᶠᵃᵃ[k]
-@inline Δzᵃᵃᶜ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ})         =  @inbounds grid.Δzᵃᵃᶜ
-@inline Δzᵃᵃᶜ(i, j, k, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ<:Number}) =  @inbounds grid.Δzᵃᵃᶜ[k]
+const RG = RectilinearGrid
+const RGVX = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractVector}
+const RGVY = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVector}
+const RGVZ = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVector}
+
+@inline Δxᶜᵃᵃ(i, j, k, grid::RG)   =  @inbounds grid.Δxᶜᵃᵃ
+@inline Δxᶜᵃᵃ(i, j, k, grid::RGVX) =  @inbounds grid.Δxᶜᵃᵃ[i]
+@inline Δxᶠᵃᵃ(i, j, k, grid::RG)   =  @inbounds grid.Δxᶠᵃᵃ
+@inline Δxᶠᵃᵃ(i, j, k, grid::RGVX) =  @inbounds grid.Δxᶠᵃᵃ[i]
+@inline Δyᵃᶠᵃ(i, j, k, grid::RG)   =  @inbounds grid.Δyᵃᶠᵃ
+@inline Δyᵃᶠᵃ(i, j, k, grid::RGVY) =  @inbounds grid.Δyᵃᶠᵃ[j]
+@inline Δyᵃᶜᵃ(i, j, k, grid::RG)   =  @inbounds grid.Δyᵃᶜᵃ
+@inline Δyᵃᶜᵃ(i, j, k, grid::RGVY) =  @inbounds grid.Δyᵃᶜᵃ[j]
+@inline Δzᶠᵃᵃ(i, j, k, grid::RG)   =  @inbounds grid.Δzᶠᵃᵃ
+@inline Δzᶠᵃᵃ(i, j, k, grid::RGVZ) =  @inbounds grid.Δzᶠᵃᵃ[k]
+@inline Δzᵃᵃᶜ(i, j, k, grid::RG)   =  @inbounds grid.Δzᵃᵃᶜ
+@inline Δzᵃᵃᶜ(i, j, k, grid::RGVZ) =  @inbounds grid.Δzᵃᵃᶜ[k]
 
 const XFlatRG = RectilinearGrid{<:Any, <:Flat}
 const YFlatRG = RectilinearGrid{<:Any, <:Any, <:Flat}
 const ZFlatRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Flat}
 
-@inline Δx(i, j, k, grid::XFlatG)     = one(eltype(grid))
+@inline Δx(i, j, k, grid::XFlatRG)    = one(eltype(grid))
 @inline Δxᶜᶜᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
 @inline Δxᶜᶠᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
 @inline Δxᶠᶠᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
@@ -297,10 +302,10 @@ FY<: Number  means that the grid is not stretched in the longitude direction
                             @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
 
 @inline Azᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-                            @inbounds grid.Azᶜᶜᵃ[i,j]
+                            @inbounds grid.Azᶠᶠᵃ[i,j]
 
 @inline Azᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX}) where {FT, TX, TY, TZ, M, MY, FX<:Number} =
-                            @inbounds grid.Azᶜᶜᵃ[j]
+                            @inbounds grid.Azᶠᶠᵃ[j]
 
 @inline Azᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Azᶜᶜᵃ(i, j, k, grid)
 @inline Azᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Azᶠᶠᵃ(i, j, k, grid)
