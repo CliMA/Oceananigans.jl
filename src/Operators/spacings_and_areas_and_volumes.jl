@@ -222,51 +222,43 @@ FY<: Number  means that the grid is not stretched in the longitude direction
 
 """
 
+# P stands for precomputed metrics, F stands for on the fly calculation of metrics
+# the general case is when all the directions are stretched
+# X, Y and Z stands for the direction which is regular
+
+const LLGP  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any}       # Actually == to LatitudeLongitudeGrid
+const LLGPX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number} # no i-index for Δλ
+const LLGPY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number} # no j-index for Δφ
+const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing}
+const LLGFX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Number}
+const LLGFY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Any, <:Number}
+
+const LLGZ  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+
 @inline hack_cosd(φ) = cos(π * φ / 180)
 @inline hack_sind(φ) = sin(π * φ / 180)
 
 ## Δx metric
 
-@inline Δxᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M})  where {FT, TX, TY, TZ, M<:Nothing} = 
-                            @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ[i])
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ[i])
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ)                   
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δxᶜᶠᵃ[i, j]
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Δxᶜᶠᵃ[j]
 
-@inline Δxᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX}) where  {FT, TX, TY, TZ, M<:Nothing, MY, FX<:Number} =
-                            @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ)
-                                                        
-@inline Δxᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-                            @inbounds grid.Δxᶜᶠᵃ[i, j]
-
-@inline Δxᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX})  where {FT, TX, TY, TZ, M, MY, FX<:Number} =
-                            @inbounds grid.Δxᶜᶠᵃ[j]
-
-@inline Δxᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX, TY, TZ, M<:Nothing} = 
-                            @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ[i])
-
-@inline Δxᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX})  where  {FT, TX, TY, TZ, M<:Nothing, MY, FX<:Number} =
-                            @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ)
-
-@inline Δxᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ})  where {FT, TX, TY, TZ} =
-                            @inbounds grid.Δxᶠᶜᵃ[i, j]
-
-@inline Δxᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX}) where {FT, TX, TY, TZ, M, MY, FX<:Number} = 
-                            @inbounds grid.Δxᶠᶜᵃ[j]
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ[i])
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ)
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δxᶠᶜᵃ[i, j]
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Δxᶠᶜᵃ[j]
 
 @inline Δxᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Δxᶠᶜᵃ(i, j, k, grid)
 @inline Δxᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Δxᶜᶠᵃ(i, j, k, grid)
 
 ## Δy metric
 
-@inline Δyᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX, TY, TZ, M<:Nothing} =
-                            @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ[j])
-
-@inline Δyᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY}) where {FT, TX, TY, TZ, M<:Nothing, MY, FX, FY<:Number} =
-                            @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ)
-
-@inline Δyᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = 
-                            @inbounds grid.Δyᶜᶠᵃ[j]
-
-@inline Δyᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY}) where {FT, TX, TY, TZ, M, MY, FX, FY<:Number} =
-                            @inbounds grid.Δyᶜᶠᵃ
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ[j])
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGFY) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ)
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δyᶜᶠᵃ[j]
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGPY) = @inbounds grid.Δyᶜᶠᵃ
 
 @inline Δyᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
 @inline Δyᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
@@ -274,38 +266,21 @@ FY<: Number  means that the grid is not stretched in the longitude direction
 
 ## Δz and Az metric
 
-@inline Δzᵃᵃᶜ(i, j, k, grid::LatitudeLongitudeGrid) = grid.Δzᵃᵃᶜ
-@inline Δzᵃᵃᶠ(i, j, k, grid::LatitudeLongitudeGrid) = grid.Δzᵃᵃᶠ
+@inline Δzᵃᵃᶜ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶜ
+@inline Δzᵃᵃᶠ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶠ
+@inline Δzᵃᵃᶜ(i, j, k, grid::LLGP) = @inbounds grid.Δzᵃᵃᶜ[k]
+@inline Δzᵃᵃᶠ(i, j, k, grid::LLGP) = @inbounds grid.Δzᵃᵃᶠ[k]
 
-@inline Δzᵃᵃᶜ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ})  where {FT, TX, TY, TZ, M, MY, FX, FY, FZ<:AbstractVector} =
-                            @inbounds grid.Δzᵃᵃᶜ[k]
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Azᶜᶜᵃ[i, j]
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Azᶜᶜᵃ[j]
 
-@inline Δzᵃᵃᶠ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ})  where {FT, TX, TY, TZ, M, MY, FX, FY, FZ<:AbstractVector} =
-                            @inbounds grid.Δzᵃᵃᶠ[k]
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
 
-@inline Azᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX, TY, TZ, M<:Nothing} = 
-                            @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-
-@inline Azᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX}) where {FT, TX, TY, TZ, M<:Nothing, MY, FX<:Number} = 
-                            @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-
-@inline Azᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-                            @inbounds grid.Azᶜᶜᵃ[i,j]
-
-@inline Azᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX}) where {FT, TX, TY, TZ, M, MY, FX<:Number} =
-                            @inbounds grid.Azᶜᶜᵃ[j]
-
-@inline Azᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX, TY, TZ, M<:Nothing} = 
-                            @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-
-@inline Azᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX}) where {FT, TX, TY, TZ, M<:Nothing, MY, FX<:Number} = 
-                            @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-
-@inline Azᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-                            @inbounds grid.Azᶠᶠᵃ[i,j]
-
-@inline Azᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX}) where {FT, TX, TY, TZ, M, MY, FX<:Number} =
-                            @inbounds grid.Azᶠᶠᵃ[j]
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Azᶠᶠᵃ[i, j]
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Azᶠᶠᵃ[j]
 
 @inline Azᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Azᶜᶜᵃ(i, j, k, grid)
 @inline Azᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Azᶠᶠᵃ(i, j, k, grid)

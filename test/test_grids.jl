@@ -526,7 +526,7 @@ function test_lat_lon_precomputed_metrics(FT)
     lonstr = [-180, -30, 10, 40, 180]
     zstr   = collect(0:Nz)
 
-    latitude = (latreg, latstr) 
+    latitude  = (latreg, latstr) 
     longitude = (lonreg, lonstr)
     zcoord    = (zreg,     zstr)
 
