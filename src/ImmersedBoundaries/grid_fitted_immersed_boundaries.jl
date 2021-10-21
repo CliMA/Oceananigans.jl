@@ -51,7 +51,7 @@ function ImmersedBoundaryGrid(grid, ib::Union{ArrayGridFittedBottom, CuArrayGrid
     return ImmersedBoundaryGrid(grid, new_ib)
 end
 
-const GFBIBG = ImmersedBoundaryGrid{<:Any, <:GridFittedBottom}
+const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBottom}
 
 @inline Δzᵃᵃᶜ(i, j, k, ibg::GFBIBG) = ifelse(is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary),
                                              zero(eltype(ibg.grid)),
