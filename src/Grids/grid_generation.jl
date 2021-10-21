@@ -1,9 +1,5 @@
 # Utilities to generate a grid with the following inputs
 
-@inline adapt_if_vector(to, var::Nothing)        = nothing
-@inline adapt_if_vector(to, var)                 = var
-@inline adapt_if_vector(to, var::AbstractVector) = Adapt.adapt(to, var)
-
 @inline show_coordinate(Δ::Number, T)            = "Regular, with spacing $Δ"
 @inline show_coordinate(Δ::Number, ::Type{Flat}) = "Flattened"
 @inline show_coordinate(Δ::AbstractVector, T)    = "Stretched, with spacing min=$(minimum(parent(Δ))), max=$(maximum(parent(Δ)))"
@@ -109,7 +105,6 @@ end
 function generate_coordinate(FT, ::Type{Flat}, N, H, coord::Tuple{<:Number, <:Number}, architecture)
     return 0, 0, 0, 0, 0
 end
-
 
 @inline hack_cosd(φ) = cos(π * φ / 180)
 @inline hack_sind(φ) = sin(π * φ / 180)
@@ -250,3 +245,4 @@ function generate_curvilinear_operators(FT, Δλᶠ::Number, Δλᶜ, Δφᶠ::N
 end
 
 
+        # Δxᶠᶠᵃ, Δxᶜᶠᵃ, Δyᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ = generate_curvilinear_operators(FT, Δλᶠᵃᵃ, Δλᶜᵃᵃ, Δφᵃᶠᵃ, φᵃᶠᵃ, φᵃᶜᵃ, radius) 
