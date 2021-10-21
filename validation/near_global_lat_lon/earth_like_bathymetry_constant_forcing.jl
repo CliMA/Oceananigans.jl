@@ -40,10 +40,10 @@ target_sea_surface_temperature = reshape(bswap.(reinterpret(Float32, read(sea_su
 bathymetry = arch_array(arch, bathymetry)
 τˣ = arch_array(arch, τˣ)
 τʸ = arch_array(arch, τʸ)
-target_sea_surface_temperature = arch_array(arch, target_sea_surface_temperature)
+target_sea_surface_temperature = T★ = arch_array(arch, target_sea_surface_temperature)
 
 H = 3600.0
-bathymetry = - H .* (bathymetry .< -10)
+# bathymetry = - H .* (bathymetry .< -10)
 # H = - minimum(bathymetry)
 
 # A spherical domain
@@ -70,9 +70,7 @@ diffusive_time_scale = 120days
 κz = 1e-4
 
 background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz)
-
-convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
-                                                                convective_νz = 0.0)
+convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0)
 
 #####
 ##### Boundary conditions / constant-in-time surface forcing
@@ -112,9 +110,11 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     tracer_advection = WENO5(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
-                                    buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=0.0)),
-                                    closure = (background_diffusivity, convective_adjustment),
-                                    tracers = (:T, :S))
+                                    #buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=0.0)),
+                                    #tracers = (:T, :S),
+                                    buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4), constant_salinity=30.0),
+                                    tracers = :T,
+                                    closure = (background_diffusivity, convective_adjustment))
 
 #####
 ##### Initial condition:
@@ -123,9 +123,9 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
 u, v, w = model.velocities
 η = model.free_surface.η
 T = model.tracers.T
-S = model.tracers.S
-T .= -1
-S .= 30
+T .= 5
+#S = model.tracers.S
+#S .= 30
 
 #####
 ##### Simulation setup
@@ -172,7 +172,7 @@ function progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt = Δt, stop_time = 1day, iteration_interval = 10, progress = progress)
+simulation = Simulation(model, Δt = Δt, stop_time = 90day, iteration_interval = 10, progress = progress)
 
 output_fields = merge(model.velocities, model.tracers, (; η=model.free_surface.η))
 output_prefix = "global_lat_lon_$(grid.Nx)_$(grid.Ny)_$(grid.Nz)"
@@ -199,14 +199,54 @@ run!(simulation)
 """
 
 #####
-##### Visualization
+##### Visualize the setup
+#####
+
+setup_fig = Figure(resolution = (1200, 900))
+
+free_surface = model.free_surface
+∫Ax = free_surface.implicit_step_solver.vertically_integrated_lateral_face_areas.x
+∫Ay = free_surface.implicit_step_solver.vertically_integrated_lateral_face_areas.y
+
+h_cpu = Array(bathymetry)
+τˣ_cpu = Array(τˣ)
+τʸ_cpu = Array(τʸ)
+T★_cpu = Array(T★)
+∫Ax_cpu = Array(∫Ax)
+∫Ay_cpu = Array(∫Ay)
+
+ax_b = Axis(setup_fig[1, 1], title="Bathymetry (m)")
+hm_b = heatmap!(ax_b, h_cpu)
+cb_b = Colorbar(fig[1, 2], hm_b)
+
+ax_x = Axis(setup_fig[1, 3], title="Vertically-integrated x-face area (m³)")
+hm_x = heatmap!(ax_x, ∫Ax_cpu)
+cb_x = Colorbar(fig[1, 4], hm_x)
+
+ax_y = Axis(setup_fig[1, 5], title="Vertically-integrated x-face area (m³)")
+hm_y = heatmap!(ax_y, ∫Ay_cpu)
+cb_y = Colorbar(fig[1, 6], hm_y)
+
+ax_τˣ = Axis(setup_fig[2, 1], title="East-west wind stress (m² s⁻²)")
+hm_τˣ = heatmap!(ax_τˣ, τˣ_cpu)
+cb_τˣ = Colorbar(fig[2, 2], hm_τˣ)
+
+ax_τʸ = Axis(setup_fig[2, 3], title="North-south wind stress (m² s⁻²)")
+hm_τʸ = heatmap!(ax_τʸ, τʸ_cpu)
+cb_τʸ = Colorbar(fig[2, 4], hm_τʸ)
+
+ax_T★ = Axis(setup_fig[2, 3], title="Target sea surface temperature (ᵒC)")
+hm_T★ = heatmap!(ax_T★, T★_cpu)
+cb_T★ = Colorbar(fig[2, 4], hm_T★)
+
+#####
+##### Visualize solution
 #####
 
 η_cpu = Array(interior(model.free_surface.η))[:, :, 1]
 T_cpu = Array(interior(model.tracers.T))[:, :, end]
 u_cpu = Array(interior(model.velocities.u))[:, :, end]
 v_cpu = Array(interior(model.velocities.v))[:, :, end]
-h_cpu = Array(bathymetry)
 
 max_η = maximum(abs, η_cpu)
 max_u = maximum(abs, u_cpu)
@@ -215,26 +255,23 @@ max_v = maximum(abs, v_cpu)
 max_T = maximum(T_cpu)
 min_T = minimum(T_cpu)
 
-fig = Figure(resolution = (600, 900))
+solution_fig = Figure(resolution = (1200, 900))
 
-ax_b = Axis(fig[1, 1], title="Bathymetry (m)")
-hm_b = heatmap!(ax_b, h_cpu)
-cb_b = Colorbar(fig[1, 2], hm_b)
-
-ax_η = Axis(fig[2, 1], title="Free surface displacement (m)")
+ax_η = Axis(solution_fig[1, 1], title="Free surface displacement (m)")
 hm_η = heatmap!(ax_η, η_cpu, colorrange=(-max_η, max_η), colormap=:balance)
-cb_η = Colorbar(fig[2, 2], hm_η)
+cb_η = Colorbar(solution_fig[1, 2], hm_η)
 
-ax_T = Axis(fig[3, 1], title="Sea surface temperature (ᵒC)")
+ax_T = Axis(solution_fig[2, 1], title="Sea surface temperature (ᵒC)")
 hm_T = heatmap!(ax_T, T_cpu, colorrange=(min_T, max_T), colormap=:thermal)
-cb_T = Colorbar(fig[3, 2], hm_T)
+cb_T = Colorbar(solution_fig[2, 2], hm_T)
 
-ax_u = Axis(fig[1, 3], title="East-west velocity (m s⁻¹)")
+ax_u = Axis(solution_fig[1, 3], title="East-west velocity (m s⁻¹)")
 hm_u = heatmap!(ax_u, u_cpu, colorrange=(-max_u, max_u), colormap=:balance)
-cb_u = Colorbar(fig[1, 4], hm_u)
+cb_u = Colorbar(solution_fig[1, 4], hm_u)
 
-ax_v = Axis(fig[2, 3], title="East-west velocity (m s⁻¹)")
+ax_v = Axis(solution_fig[2, 3], title="East-west velocity (m s⁻¹)")
 hm_v = heatmap!(ax_v, v_cpu, colorrange=(-max_u, max_u), colormap=:balance)
-cb_v = Colorbar(fig[2, 4], hm_v)
+cb_v = Colorbar(solution_fig[2, 4], hm_v)
 
-display(fig)
+display(setup_fig)
+display(solution_fig)
