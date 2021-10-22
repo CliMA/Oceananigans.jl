@@ -232,8 +232,8 @@ Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT
 ####### Kernels to precompute the x- and z-metric
 #######
 
-@inline metric_worksize(grid::LLGF)   = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ)) 
-@inline metric_worksize(grid::LLGFX)  =  length(grid.φᵃᶜᵃ) 
+@inline metric_worksize(grid::LLGF)   = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ) - 1) 
+@inline metric_worksize(grid::LLGFX)  =  length(grid.φᵃᶜᵃ) - 1 
 @inline metric_workgroup(grid::LLGF)  = (16, 16) 
 @inline metric_workgroup(grid::LLGFX) =  16
 
