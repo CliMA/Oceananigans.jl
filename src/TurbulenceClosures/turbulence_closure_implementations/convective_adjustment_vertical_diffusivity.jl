@@ -103,7 +103,7 @@ function calculate_diffusivities!(diffusivities, closure::Union{CAVD, CAVDArray}
     return nothing
 end
 
-@inline is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy) = ∂z_b(i, j, k, grid, buoyancy, tracers) > 0
+@inline is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy) = ∂z_b(i, j, k, grid, buoyancy, tracers) >= 0
 
 @kernel function compute_convective_adjustment_diffusivities!(diffusivities, grid, closure, tracers, buoyancy)
     i, j, k, = @index(Global, NTuple)
