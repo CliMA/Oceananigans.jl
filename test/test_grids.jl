@@ -1,6 +1,5 @@
 using Oceananigans.Grids: total_extent, halo_size
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δyᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
-using Oceananigans.Architectures: arch_array
 
 #####
 ##### Regular rectilinear grids
