@@ -1,5 +1,5 @@
 function test_function_differentiation(T=Float64)
-    grid = RegularRectilinearGrid(T; size=(3, 3, 3), extent=(3, 3, 3))
+    grid = RectilinearGrid(T; size=(3, 3, 3), extent=(3, 3, 3))
     ϕ = rand(T, 3, 3, 3)
     ϕ² = ϕ.^2
 
@@ -27,7 +27,7 @@ function test_function_differentiation(T=Float64)
 end
 
 function test_function_interpolation(T=Float64)
-    grid = RegularRectilinearGrid(T; size=(3, 3, 3), extent=(3, 3, 3))
+    grid = RectilinearGrid(T; size=(3, 3, 3), extent=(3, 3, 3))
     ϕ = rand(T, 3, 3, 3)
     ϕ² = ϕ.^2
 
@@ -61,7 +61,7 @@ end
         @info "  Testing grid lengths, areas, and volume operators..."
 
         FT = Float64
-        grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(π, 2π, 3π))
+        grid = RectilinearGrid(FT, size=(1, 1, 1), extent=(π, 2π, 3π))
 
         @testset "Easterly lengths" begin
             @info "    Testing easterly lengths..."
@@ -131,7 +131,7 @@ end
         Lx, Ly, Lz = 100, 100, 100
 
         arch = CPU()
-        grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
         bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
 
         Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
@@ -143,7 +143,7 @@ end
 
         # A yz-slice with Nx==1.
         A2yz = OffsetArray(zeros(1+2Hx, Ty, Tz), 1-Hx:1+Hx, 1-Hy:Ny+Hy, 1-Hz:Nz+Hz)
-        grid_yz = RegularRectilinearGrid(size=(1, Ny, Nz), extent=(Lx, Ly, Lz))
+        grid_yz = RectilinearGrid(size=(1, Ny, Nz), extent=(Lx, Ly, Lz))
 
         # Manually fill in halos for the slice.
         A2yz[0:2, 0:Ny+1, 1:Nz] .= A3[1:1, 0:Ny+1, 1:Nz]
@@ -152,7 +152,7 @@ end
 
         # An xz-slice with Ny==1.
         A2xz = OffsetArray(zeros(Tx, 1+2Hy, Tz), 1-Hx:Nx+Hx, 1-Hy:1+Hy, 1-Hz:Nz+Hz)
-        grid_xz = RegularRectilinearGrid(size=(Nx, 1, Nz), extent=(Lx, Ly, Lz))
+        grid_xz = RectilinearGrid(size=(Nx, 1, Nz), extent=(Lx, Ly, Lz))
 
         # Manually fill in halos for the slice.
         A2xz[0:Nx+1, 0:2, 1:Nz] .= A3[0:Nx+1, 1:1, 1:Nz]

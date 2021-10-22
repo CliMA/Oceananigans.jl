@@ -30,7 +30,7 @@ function DistributedShallowWaterModel(; architecture, grid, model_kwargs...)
     y₁, y₂ = yL + (j-1)*ly, yL + j*ly
 
     # FIXME: local grid might have different topology!
-    my_grid = RegularRectilinearGrid(topology=topology(grid), size=(nx, ny), x=(x₁, x₂), y=(y₁, y₂), halo=(3,3))
+    my_grid = RectilinearGrid(topology=topology(grid), size=(nx, ny), x=(x₁, x₂), y=(y₁, y₂), halo=(3,3))
 
     ## Construct local model
 

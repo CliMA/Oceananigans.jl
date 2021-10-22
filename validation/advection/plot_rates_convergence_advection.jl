@@ -68,7 +68,7 @@ ROC   = Dict()
 
 for N in Ns, scheme in schemes
 
-    grid = RegularRectilinearGrid(Float64; size=N, 
+    grid = RectilinearGrid(Float64; size=N, 
                                 x=(-1, 1), 
                                 halo=(halos(scheme)),
                                 topology=(Periodic, Flat, Flat))

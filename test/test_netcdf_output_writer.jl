@@ -3,7 +3,7 @@
 #####
 
 function test_DateTime_netcdf_output(arch)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=DateTime(2021, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid, clock=clock)
 
@@ -34,7 +34,7 @@ function test_DateTime_netcdf_output(arch)
 end
 
 function test_TimeDate_netcdf_output(arch)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=TimeDate(2021, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid, clock=clock)
 
@@ -69,7 +69,7 @@ function test_thermal_bubble_netcdf_output(arch)
     Lx, Ly, Lz = 100, 100, 100
 
     topo = (Periodic, Periodic, Bounded)
-    grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure)
     simulation = Simulation(model, Δt=6, stop_iteration=10)
@@ -234,7 +234,7 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
     Lx, Ly, Lz = 100, 100, 100
 
     topo = (Periodic, Periodic, Bounded)
-    grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure)
     simulation = Simulation(model, Δt=6, stop_iteration=10)
@@ -327,7 +327,7 @@ function test_netcdf_function_output(arch)
     Δt = 1.25
     iters = 3
 
-    grid = RegularRectilinearGrid(size=(N, N, N), extent=(L, 2L, 3L))
+    grid = RectilinearGrid(size=(N, N, N), extent=(L, 2L, 3L))
     model = NonhydrostaticModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
     grid = model.grid
@@ -476,7 +476,7 @@ end
 function test_netcdf_time_averaging(arch)
     topo = (Periodic, Periodic, Periodic)
     domain = (x=(0, 1), y=(0, 1), z=(0, 1))
-    grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 4); domain...)
+    grid = RectilinearGrid(topology=topo, size=(4, 4, 4); domain...)
 
     λ1(x, y, z) = x + (1 - y)^2 + tanh(z)
     λ2(x, y, z) = x + (1 - y)^2 + tanh(4z)
@@ -610,7 +610,7 @@ function test_netcdf_time_averaging(arch)
 end
 
 function test_netcdf_output_alignment(arch)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=0.2, stop_time=40)
 
@@ -644,7 +644,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     Nx = Ny = 8
     Nz = 16
     zF = [k^2 for k in 0:Nz]
-    grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z_faces=zF)
+    grid = RectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z_faces=zF)
 
     model = NonhydrostaticModel(architecture=arch, grid=grid)
 

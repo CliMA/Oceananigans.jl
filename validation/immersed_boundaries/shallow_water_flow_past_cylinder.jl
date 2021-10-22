@@ -8,7 +8,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 experiment_name = "shallow_water_flow_past_cylinder"
 
-underlying_grid = RegularRectilinearGrid(size=(128, 64), x=(-5, 10), y=(-3, 3), topology=(Periodic, Bounded, Flat), halo = (3, 3))
+underlying_grid = RectilinearGrid(size=(128, 64), x=(-5, 10), y=(-3, 3), topology=(Periodic, Bounded, Flat), halo = (3, 3))
                               
 cylinder(x, y, z)  = (x^2 + y^2) < 1
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(cylinder))

@@ -40,7 +40,7 @@ Lz = 32
 
 hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
 
-grid = VerticallyStretchedRectilinearGrid(size = (32, 32, Nz), 
+grid = RectilinearGrid(size = (32, 32, Nz), 
                                           x = (0, 64),
                                           y = (0, 64),
                                           z_faces = hyperbolically_spaced_faces)

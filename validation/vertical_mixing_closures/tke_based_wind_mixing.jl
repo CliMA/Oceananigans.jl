@@ -4,7 +4,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
-grid = RegularRectilinearGrid(size=8, z=(-64, 0), topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(size=8, z=(-64, 0), topology=(Flat, Flat, Bounded))
 
 closure = CATKEVerticalDiffusivity()
                                       

@@ -27,7 +27,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
 #
 # We use a one-dimensional domain of geophysical proportions,
 
-grid = RegularRectilinearGrid(size = (128, 1),
+grid = RectilinearGrid(size = (128, 1),
                               x = (0, 1000kilometers), z = (-400meters, 0),
                               topology = (Bounded, Flat, Bounded))
 

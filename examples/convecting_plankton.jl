@@ -48,7 +48,7 @@
 using Oceananigans
 using Oceananigans.Units: minutes, hour, hours, day
 
-grid = RegularRectilinearGrid(size=(64, 64), extent=(64, 64), topology=(Periodic, Flat, Bounded))
+grid = RectilinearGrid(size=(64, 64), extent=(64, 64), topology=(Periodic, Flat, Bounded))
 
 # ## Boundary conditions
 #

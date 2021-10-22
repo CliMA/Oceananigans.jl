@@ -5,7 +5,7 @@ using Statistics
 
 function geostrophic_adjustment_simulation(free_surface)
 
-    grid = RegularRectilinearGrid(size = (64, 1, 1),
+    grid = RectilinearGrid(size = (64, 1, 1),
                                   x = (0, 1000kilometers), y = (0, 1), z = (-400meters, 0),
                                   topology = (Bounded, Periodic, Bounded))
 

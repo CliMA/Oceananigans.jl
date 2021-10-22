@@ -38,7 +38,7 @@ scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch
 function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0, advection = WENO5())
 
     # Regular model
-    grid = RegularRectilinearGrid(size=(Nh, Nh), halo=(3, 3),
+    grid = RectilinearGrid(size=(Nh, Nh), halo=(3, 3),
                                   x = (-2π, 2π), y=(-2π, 2π),
                                   topology = (Periodic, Bounded, Flat))
 
@@ -54,7 +54,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     # Non-regular model
     solid(x, y, z) = y > 2π
 
-    expanded_grid = RegularRectilinearGrid(size=(Nh, Int(5Nh/4)), halo=(3, 3),
+    expanded_grid = RectilinearGrid(size=(Nh, Int(5Nh/4)), halo=(3, 3),
                                            x = (-2π, 2π), y=(-2π, 3π),
                                            topology = (Periodic, Bounded, Flat))
 

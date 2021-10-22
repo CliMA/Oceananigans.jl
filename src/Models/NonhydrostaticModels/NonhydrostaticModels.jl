@@ -10,8 +10,8 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 import Oceananigans: fields, prognostic_fields
 
-PressureSolver(arch, grid::RegularRectilinearGrid) = FFTBasedPoissonSolver(arch, grid)
-PressureSolver(arch, grid::VerticallyStretchedRectilinearGrid) = FourierTridiagonalPoissonSolver(arch, grid)
+PressureSolver(arch, grid::RectilinearGrid) = FFTBasedPoissonSolver(arch, grid)
+PressureSolver(arch, grid::RectilinearGrid) = FourierTridiagonalPoissonSolver(arch, grid)
 
 # *Evil grin*
 PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.grid)

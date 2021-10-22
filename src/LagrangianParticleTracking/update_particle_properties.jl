@@ -22,7 +22,7 @@ along a `Periodic` dimension, put them on the other side.
     return x
 end
 
-@kernel function _advect_particles!(particles, restitution, grid::RegularRectilinearGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
+@kernel function _advect_particles!(particles, restitution, grid::RectilinearGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
     p = @index(Global)
 
     # Advect particles using forward Euler.

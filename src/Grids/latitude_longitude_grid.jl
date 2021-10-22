@@ -45,7 +45,7 @@ const LLGPX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:
 const LLGPY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
 const LLGPB = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
 
-# latitude, longitude and z can be a 2-tuple that specifies the end of the domain (see RegularRectilinearDomain) or an array or function that specifies the faces (see VerticallyStretchedRectilinearGrid)
+# latitude, longitude and z can be a 2-tuple that specifies the end of the domain (see RegularRectilinearDomain) or an array or function that specifies the faces (see RectilinearGrid)
 
 function LatitudeLongitudeGrid(FT=Float64; 
                                architecture=CPU(),
@@ -81,7 +81,7 @@ function LatitudeLongitudeGrid(FT=Float64;
     
     # Calculate all direction (which might be stretched)
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
-    # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
+    # it is stretched if being passed is a function or vector (as for the RectilinearGrid)
     
     Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topo[1], Nλ, Hλ, longitude, arch)
     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topo[2], Nφ, Hφ, latitude,  arch)
@@ -248,7 +248,7 @@ end
 @kernel function precompute_metrics_kernel!(grid::LLGF, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     i, j = @index(Global, NTuple)
     i += grid.Δλᶜᵃᵃ.offsets[1] 
-    j += grid.φᵃᶠᵃ.offsets[1] 
+    j += grid.φᵃᶠᵃ.offsets[1] + 1
     @inbounds begin
         Δxᶠᶜ[i, j] = Δxᶠᶜᵃ(i, j, 1, grid)
         Δxᶜᶠ[i, j] = Δxᶜᶠᵃ(i, j, 1, grid)
@@ -259,7 +259,7 @@ end
 
 @kernel function precompute_metrics_kernel!(grid::LLGFX, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     j = @index(Global, Linear)
-    j += grid.φᵃᶠᵃ.offsets[1]
+    j += grid.φᵃᶠᵃ.offsets[1] + 1
     @inbounds begin
         Δxᶠᶜ[j] = Δxᶠᶜᵃ(1, j, 1, grid)
         Δxᶜᶠ[j] = Δxᶜᶠᵃ(1, j, 1, grid)
@@ -271,7 +271,7 @@ end
 @kernel function precompute_metrics_kernel!(grid::LLGFY, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     i, j = @index(Global, NTuple)
     i += grid.Δλᶜᵃᵃ.offsets[1] 
-    j += grid.φᵃᶠᵃ.offsets[1] 
+    j += grid.φᵃᶠᵃ.offsets[1] + 1
     @inbounds begin
         Δxᶠᶜ[i, j]   = Δxᶠᶜᵃ(i, j, 1, grid)
         Δxᶜᶠ[i, j]   = Δxᶜᶠᵃ(i, j, 1, grid)
@@ -282,7 +282,7 @@ end
 
 @kernel function precompute_metrics_kernel!(grid::LLGFB, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     j = @index(Global, Linear)
-    j += grid.φᵃᶠᵃ.offsets[1] 
+    j += grid.φᵃᶠᵃ.offsets[1] + 1
     @inbounds begin
         Δxᶠᶜ[j] = Δxᶠᶜᵃ(1, j, 1, grid)
         Δxᶜᶠ[j] = Δxᶜᶠᵃ(1, j, 1, grid)

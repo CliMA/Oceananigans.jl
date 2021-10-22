@@ -32,7 +32,7 @@ z_faces[Nz+1] = 0
 arch = CPU()
 FT = Float64
 
-grid = VerticallyStretchedRectilinearGrid(architecture = arch,
+grid = RectilinearGrid(architecture = arch,
                                           topology = (Periodic, Bounded, Bounded),
                                           size = (1, Ny, Nz),
                                           halo = (3, 3, 3),
@@ -64,8 +64,8 @@ parameters = (Ly = Ly,
               λt = 7.0days                         # relaxation time scale [s]
 )
 
-# ynode(::Type{Center}, j, grid::RegularRectilinearGrid) = @inbounds grid.yC[j]
-# ynode(::Type{Center}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᵃᶜ[j]
+# ynode(::Type{Center}, j, grid::RectilinearGrid) = @inbounds grid.yC[j]
+# ynode(::Type{Center}, j, grid::RectilinearGrid) = @inbounds grid.yᵃᵃᶜ[j]
 
 
 @inline function buoyancy_flux(i, j, grid, clock, model_fields, p)
@@ -237,7 +237,7 @@ run!(simulation, pickup=false)
 ##### Visualization
 #####
 
-grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
+grid = RectilinearGrid(architecture = CPU(),
                                           topology = (Periodic, Bounded, Bounded),
                                           size = (grid.Nx, grid.Ny, grid.Nz),
                                           halo = (3, 3, 3),

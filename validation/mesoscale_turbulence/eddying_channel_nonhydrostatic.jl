@@ -42,7 +42,7 @@ const Ny = Int(400 * 0.5)
 const Nz = Int(32 * 0.5)
 # Create Grid
 topology = (Periodic, Bounded, Bounded)
-grid = RegularRectilinearGrid(topology=topology, 
+grid = RectilinearGrid(topology=topology, 
                             size=(Nx, Ny, Nz), 
                             x=(0, Lx), y=(0, Ly), z=(-Lz, 0))
 

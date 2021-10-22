@@ -47,7 +47,7 @@ scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch
 function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0,
                            momentum_advection = VectorInvariant())
 
-    grid = RegularRectilinearGrid(size=(Nh, Nh, 1),
+    grid = RectilinearGrid(size=(Nh, Nh, 1),
                                 x = (-2π, 2π), y=(-2π, 2π), z=(0, 1),
                                 topology = (Periodic, Periodic, Bounded))
 

@@ -10,7 +10,7 @@ using Oceananigans.Solvers
 # Benchmark function
 
 function benchmark_fourier_tridiagonal_poisson_solver(Arch, N, topo)
-    grid = VerticallyStretchedRectilinearGrid(architecture=Arch(), topology=topo, size=(N, N, N), x=(0, 1), y=(0, 1), z_faces=collect(0:N))
+    grid = RectilinearGrid(architecture=Arch(), topology=topo, size=(N, N, N), x=(0, 1), y=(0, 1), z_faces=collect(0:N))
     solver = FourierTridiagonalPoissonSolver(Arch(), grid)
 
     solve_poisson_equation!(solver) # warmup

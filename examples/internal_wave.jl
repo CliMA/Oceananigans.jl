@@ -20,7 +20,7 @@
 
 using Oceananigans
 
-grid = RegularRectilinearGrid(size=(128, 128), x=(-π, π), z=(-π, π),
+grid = RectilinearGrid(size=(128, 128), x=(-π, π), z=(-π, π),
                               topology=(Periodic, Flat, Periodic))
 
 # ## Internal wave parameters

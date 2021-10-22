@@ -127,7 +127,7 @@ using Oceananigans.Units: hours, day, days
 # horizontal extent of 1000 km, appropriate for mesoscale ocean dynamics
 # with characteristic scales of 50-200 km.
 
-grid = RegularRectilinearGrid(size=(48, 48, 16), x=(0, 1e6), y=(0, 1e6), z=(-4e3, 0))
+grid = RectilinearGrid(size=(48, 48, 16), x=(0, 1e6), y=(0, 1e6), z=(-4e3, 0))
 
 # ## Rotation
 #

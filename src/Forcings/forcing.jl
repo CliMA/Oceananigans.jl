@@ -72,7 +72,7 @@ Note that because forcing locations are regularized within the
 `NonhydrostaticModel` constructor:
 
 ```jldoctest forcing
-grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = NonhydrostaticModel(grid=grid, forcing=(v=v_forcing,))
 
 model.forcing.v

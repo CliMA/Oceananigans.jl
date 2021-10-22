@@ -105,7 +105,7 @@ For example, in the example below, calculating `u²` works in both CPUs and GPUs
 
 ```julia
 using Oceananigans
-grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
 model = NonhydrostaticModel(grid=grid, closure=IsotropicDiffusivity(ν=1e-6))
 u, v, w = model.velocities
 ν = model.closure.ν
@@ -226,8 +226,8 @@ its elements to do that. Consider the example below:
 ```julia
 julia> using Oceananigans; using Adapt
 
-julia> grid = RegularRectilinearGrid(size=(1,1,1), extent=(1,1,1))
-RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}
+julia> grid = RectilinearGrid(size=(1,1,1), extent=(1,1,1))
+RectilinearGrid{Float64, Periodic, Periodic, Bounded}
                    domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
                  topology: (Periodic, Periodic, Bounded)
         size (Nx, Ny, Nz): (1, 1, 1)
@@ -236,7 +236,7 @@ grid spacing (Δx, Δy, Δz): (1.0, 1.0, 1.0)
 
 julia> model = NonhydrostaticModel(grid=grid, architecture=GPU())
 NonhydrostaticModel{GPU, Float64}(time = 0 seconds, iteration = 0) 
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 ├── tracers: (:T, :S)
 ├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
 ├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}

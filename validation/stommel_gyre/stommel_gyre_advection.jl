@@ -33,7 +33,7 @@ ic_name(::typeof(ϕ_Square))   = "Square"
 function setup_simulation(N, T, CFL, ϕₐ, advection_scheme; u, v)
     topology = (Flat, Bounded, Bounded)
     domain = (x=(0, 1), y=(0, L), z=(0, L))
-    grid = RegularRectilinearGrid(topology=topology, size=(1, N, N), halo=(3, 3, 3); domain...)
+    grid = RectilinearGrid(topology=topology, size=(1, N, N), halo=(3, 3, 3); domain...)
 
     model = NonhydrostaticModel(
                grid = grid,

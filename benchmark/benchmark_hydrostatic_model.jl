@@ -21,11 +21,11 @@ DataDeps.register(dd)
 
 # All grids have 6 * 510^2 = 1,560,600 grid points.
 grids = Dict(
-     (CPU, :RegularRectilinearGrid)       => RegularRectilinearGrid(size=(1445, 1080, 1), extent=(1, 1, 1)),
+     (CPU, :RectilinearGrid)       => RectilinearGrid(size=(1445, 1080, 1), extent=(1, 1, 1)),
      (CPU, :LatitudeLongitudeGrid)        => LatitudeLongitudeGrid(size=(1445, 1080, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0)),
      (CPU, :ConformalCubedSphereFaceGrid) => ConformalCubedSphereFaceGrid(size=(1445, 1080, 1), z=(-1, 0)),
      (CPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_510_grid/cubed_sphere_510_grid.jld2", Nz=1, z=(-1, 0)),
-     (GPU, :RegularRectilinearGrid)       => RegularRectilinearGrid(size=(1445, 1080, 1), extent=(1, 1, 1)),
+     (GPU, :RectilinearGrid)       => RectilinearGrid(size=(1445, 1080, 1), extent=(1, 1, 1)),
      (GPU, :LatitudeLongitudeGrid)        => LatitudeLongitudeGrid(size=(1445, 1080, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0)),
      # Uncomment when ConformalCubedSphereFaceGrids of any size can be built natively without loading from file:
      # (GPU, :ConformalCubedSphereFaceGrid) => ConformalCubedSphereFaceGrid(size=(1445, 1080, 1), z=(-1, 0), architecture=GPU()),
@@ -60,7 +60,7 @@ end
 Architectures = has_cuda() ? [CPU, GPU] : [CPU]
 
 grid_types = [
-    :RegularRectilinearGrid,
+    :RectilinearGrid,
     :LatitudeLongitudeGrid,
     # Uncomment when ConformalCubedSphereFaceGrids of any size can be built natively without loading from file:
     # :ConformalCubedSphereFaceGrid,

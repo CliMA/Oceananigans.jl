@@ -181,7 +181,7 @@ to separate NetCDF files:
 ```jldoctest netcdf1
 using Oceananigans, Oceananigans.OutputWriters
 
-grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
 model = NonhydrostaticModel(grid=grid);
 
@@ -237,7 +237,7 @@ provided that their `dimensions` are provided:
 ```jldoctest
 using Oceananigans, Oceananigans.OutputWriters
 
-grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
 
 model = NonhydrostaticModel(grid=grid);
 

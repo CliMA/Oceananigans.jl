@@ -7,7 +7,7 @@ Logging.global_logger(OceananigansLogger())
 function simulate_lid_driven_cavity(; Re, N, end_time)
     topology = (Flat, Bounded, Bounded)
     domain = (y=(0, 1), z=(0, 1))
-    grid = RegularRectilinearGrid(topology=topology, size=(N, N); domain...)
+    grid = RectilinearGrid(topology=topology, size=(N, N); domain...)
 
     v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(1),
                                     bottom = ValueBoundaryCondition(0))

@@ -24,7 +24,7 @@
 
 using Oceananigans
 
-grid = RegularRectilinearGrid(size=(128, 128), extent=(2π, 2π), 
+grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), 
                               topology=(Periodic, Periodic, Flat))
 
 model = NonhydrostaticModel(timestepper = :RungeKutta3,

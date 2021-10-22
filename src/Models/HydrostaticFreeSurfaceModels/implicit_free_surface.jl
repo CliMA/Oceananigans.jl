@@ -68,8 +68,8 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arc
 end
 
 is_horizontally_regular(grid) = false
-is_horizontally_regular(::RegularRectilinearGrid) = true
-is_horizontally_regular(::VerticallyStretchedRectilinearGrid) = true
+is_horizontally_regular(::RectilinearGrid) = true
+is_horizontally_regular(::RectilinearGrid) = true
 
 function build_implicit_step_solver(::Val{:Default}, arch, grid, settings)
     default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :PreconditionedConjugateGradient

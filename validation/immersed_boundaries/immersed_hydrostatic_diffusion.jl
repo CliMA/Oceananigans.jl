@@ -5,7 +5,7 @@ using Plots
 
 solid(x, y, z) = z < 0
 
-underlying_grid = RegularRectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
+underlying_grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(solid))
 
 closure = IsotropicDiffusivity(κ = 1.0)

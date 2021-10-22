@@ -77,7 +77,7 @@ end
 @testset "Implicit free surface solver tests" begin
     for arch in archs
 
-        rectilinear_grid = RegularRectilinearGrid(size = (128, 1, 5),
+        rectilinear_grid = RectilinearGrid(size = (128, 1, 5),
                                                   x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
                                                   topology = (Bounded, Periodic, Bounded))
 

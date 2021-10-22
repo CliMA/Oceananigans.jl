@@ -3,7 +3,7 @@ using Printf
 using Oceananigans
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, time_discretization
 
-grid = RegularRectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 
 evd_closure = IsotropicDiffusivity(κ = 1.0)
 ivd_closure = IsotropicDiffusivity(κ = 1.0, time_discretization = VerticallyImplicitTimeDiscretization())

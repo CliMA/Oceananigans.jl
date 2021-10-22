@@ -39,7 +39,7 @@ function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, a
 
     inside_cylinder(x, y, z) = (x^2 + y^2) <= radius # immersed solid
 
-    underlying_grid = RegularRectilinearGrid(size=(Nh, Int(3*Nh/2),1), halo=(3, 3, 3),
+    underlying_grid = RectilinearGrid(size=(Nh, Int(3*Nh/2),1), halo=(3, 3, 3),
                                            x = (-10, 10), y=(-10, 20), z = (0,1),
                                            topology = (Periodic, Bounded, Bounded))
 

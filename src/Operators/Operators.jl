@@ -35,7 +35,7 @@ using Oceananigans.Grids
 
 const AG   = AbstractGrid
 const ARG  = AbstractRectilinearGrid
-const RCG  = RegularRectilinearGrid
+const RCG  = RectilinearGrid
 const ACG  = AbstractCurvilinearGrid
 const AHCG = AbstractHorizontallyCurvilinearGrid
 

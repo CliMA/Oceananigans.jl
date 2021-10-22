@@ -51,7 +51,7 @@ function ∇²_base_threads!(∇²ϕ, ϕ)
     return nothing
 end
 
-grid = RegularRectilinearGrid(size=(64, 64, 64), extent=(2π, 2π, 2π))
+grid = RectilinearGrid(size=(64, 64, 64), extent=(2π, 2π, 2π))
 
 ϕ = CenterField(CPU(), grid)
 ∇²ϕ = CenterField(CPU(), grid)
