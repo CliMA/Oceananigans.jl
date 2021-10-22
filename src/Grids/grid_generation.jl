@@ -1,5 +1,8 @@
 # Utilities to generate a grid with the following inputs
 
+@inline adapt_if_vector(to, var) = var
+@inline adapt_if_vector(to, var::AbstractArray) = Adapt.adapt(to, var)
+
 @inline show_coordinate(Δ::Number, T)            = "Regular, with spacing $Δ"
 @inline show_coordinate(Δ::Number, ::Type{Flat}) = "Flattened"
 @inline show_coordinate(Δ::AbstractVector, T)    = "Stretched, with spacing min=$(minimum(parent(Δ))), max=$(maximum(parent(Δ)))"

@@ -173,11 +173,16 @@ architecture(::LatitudeLongitudeGrid) = nothing
 @inline y_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.φᵃᶠᵃ)
 @inline z_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
 
-Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ}) where {FT, TX, TY, TZ, M, MY, FX, FY, FZ} =
-    LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ,
-                            typeof(grid.λᶠᵃᵃ),
-                            typeof(grid.φᵃᶠᵃ),
-                            typeof(grid.zᵃᵃᶠ),
+Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+    LatitudeLongitudeGrid{FT, TX, TY, TZ,
+                            typeof(Adapt.adapt(to, grid.Δxᶠᶜᵃ)),
+                            typeof(Adapt.adapt(to, grid.Δyᶜᶠᵃ)),
+                            typeof(Adapt.adapt(to, grid.Δλᶠᵃᵃ)),
+                            typeof(Adapt.adapt(to, grid.Δφᵃᶠᵃ)),
+                            typeof(Adapt.adapt(to, grid.Δzᵃᵃᶠ)),
+                            typeof(Adapt.adapt(to, grid.λᶠᵃᵃ)),
+                            typeof(Adapt.adapt(to, grid.φᵃᶠᵃ)),
+                            typeof(Adapt.adapt(to, grid.zᵃᵃᶠ)),
                             Nothing}(
         nothing,
         grid.Nx, grid.Ny, grid.Nz,
@@ -236,20 +241,10 @@ function  precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, 
     return nothing
 end
 
-function  precompute_Δyᶜᶠᵃ_metric(grid::Union{LLGF, LLGFX}, Δyᶜᶠ)
-    arch = grid.architecture
-    precompute_Δyᶜᶠᵃ_metrics! = precompute_Δyᶜᶠᵃ_kernel!(Oceananigans.Architectures.device(arch), 16, length(grid.Δφᵃᶠᵃ))
-    event = precompute_Δyᶜᶠᵃ_metrics!(grid, Δyᶜᶠ; dependencies=device_event(arch))
-    wait(Architectures.device(arch), event)
-    return Δyᶜᶠ
-end
+#######
+####### Kernels to precompute the x- and z-metric
+#######
 
-function  precompute_Δyᶜᶠᵃ_metric(grid::Union{LLGFY, LLGFB}, Δyᶜᶠ)
-    Δyᶜᶠ =  Δyᶜᶠᵃ(1, 1, 1, grid)
-    return Δyᶜᶠ
-end
-
-# kernel to pre_compute metrics
 @kernel function precompute_metrics_kernel!(grid::LLGF, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     i, j = @index(Global, NTuple)
     i += grid.Δλᶠᵃᵃ.offsets[1] + 1
@@ -296,6 +291,18 @@ end
     end
 end
 
+#######
+####### Kernels that precompute the y-metric
+#######
+
+function  precompute_Δyᶜᶠᵃ_metric(grid::Union{LLGF, LLGFX}, Δyᶜᶠ)
+    arch = grid.architecture
+    precompute_Δyᶜᶠᵃ_metrics! = precompute_Δyᶜᶠᵃ_kernel!(Architectures.device(arch), 16, length(grid.Δφᵃᶠᵃ))
+    event = precompute_Δyᶜᶠᵃ_metrics!(grid, Δyᶜᶠ; dependencies=device_event(arch))
+    wait(Architectures.device(arch), event)
+    return Δyᶜᶠ
+end
+
 @kernel function precompute_Δyᶜᶠᵃ_kernel!(grid, Δyᶜᶠ)
     j = @index(Global, Linear)
     j += grid.Δφᵃᶠᵃ.offsets[1]
@@ -303,6 +310,16 @@ end
         Δyᶜᶠ[j] = Δyᶜᶠᵃ(1, j, 1, grid)
     end
 end
+
+function  precompute_Δyᶜᶠᵃ_metric(grid::Union{LLGFY, LLGFB}, Δyᶜᶠ)
+    Δyᶜᶠ =  Δyᶜᶠᵃ(1, 1, 1, grid)
+    return Δyᶜᶠ
+end
+
+#######
+####### Kernels that preallocate memory on the device for all metrics
+#######
+
 
 function preallocate_metrics(FT, grid::LLGF)
     
