@@ -11,6 +11,13 @@
 ##### efficient transforms. `A` will be mutated.
 #####
 
+##### Only for regular grids (FX == FY == FZ <: Number) 
+##### and vertically stretched grids (FX == FY <: Number)
+
+const Regular             = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number} 
+const VerticallyStretched = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Any} 
+
+
 function plan_forward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT)
     length(dims) == 0 && return nothing
     return FFTW.plan_fft!(A, dims, flags=planner_flag)
@@ -73,7 +80,7 @@ backward_orders(::Type{Bounded},  ::Type{Bounded},  ::Type{Periodic}) = (3, 1, 2
 backward_orders(::Type{Bounded},  ::Type{Bounded},  ::Type{Bounded})  = (1, 2, 3)
 
 " Used by FFTBasedPoissonSolver "
-function plan_transforms(arch, grid::RectilinearGrid, storage, planner_flag)
+function plan_transforms(arch, grid::Regular, storage, planner_flag)
     Nx, Ny, Nz = size(grid)
     topo = topology(grid)
     periodic_dims = findall(t -> t == Periodic, topo)
@@ -141,8 +148,9 @@ function plan_transforms(arch, grid::RectilinearGrid, storage, planner_flag)
     return transforms
 end
 
+
 """ Used by FourierTridiagonalPoissonSolver. """
-function plan_transforms(arch, grid::RectilinearGrid, storage, planner_flag)
+function plan_transforms(arch, grid::VerticallyStretched, storage, planner_flag)
     Nx, Ny, Nz = size(grid)
     TX, TY, TZ = topo = topology(grid)
 

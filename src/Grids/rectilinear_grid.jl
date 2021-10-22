@@ -128,6 +128,31 @@ all_y_nodes(::Type{Face}, grid::RectilinearGrid) = grid.yᵃᶠᵃ
 all_z_nodes(::Type{Center}, grid::RectilinearGrid) = grid.zᵃᵃᶜ
 all_z_nodes(::Type{Face}, grid::RectilinearGrid) = grid.zᵃᵃᶠ
 
+function with_halo(new_halo, old_grid::RectilinearGrid)
+
+    Nx, Ny, Nz = size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
+    topo = topology(old_grid)
+
+    x = x_domain(old_grid)
+    y = y_domain(old_grid)
+    z = z_domain(old_grid)
+
+    # Remove elements of size and new_halo in Flat directions as expected by grid
+    # constructor
+    size = pop_flat_elements(size, topo)
+    new_halo = pop_flat_elements(new_halo, topo)
+
+    new_grid = RectilinearGrid(eltype(old_grid);
+               architecture = old_grid.architecture,
+               size = size,
+               x = x, y = y,
+               z_faces = old_grid.zᵃᵃᶠ,
+               topology = topo,
+               halo = new_halo)
+
+    return new_grid
+end
+
 # Get minima of grid
 #
 
