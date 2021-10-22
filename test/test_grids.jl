@@ -537,11 +537,11 @@ function test_lat_lon_precomputed_metrics(FT)
                 grid_pre = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, precompute_metrics=true) 
                 grid_fly = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z) 
     
-                @show @test all([all([Δxᶠᶜᵃ(i, j, 1, grid_pre) == Δxᶠᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
-                @show @test all([all([Δxᶜᶠᵃ(i, j, 1, grid_pre) == Δxᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
-                @show @test all([all([Δyᶜᶠᵃ(i, j, 1, grid_pre) == Δyᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
-                @show @test all([all([Azᶠᶠᵃ(i, j, 1, grid_pre) == Azᶠᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
-                @show @test all([all([Azᶜᶜᵃ(i, j, 1, grid_pre) == Azᶜᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
+                @test all([all([Δxᶠᶜᵃ(i, j, 1, grid_pre) == Δxᶠᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
+                @test all([all([Δxᶜᶠᵃ(i, j, 1, grid_pre) == Δxᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
+                @test all([all([Δyᶜᶠᵃ(i, j, 1, grid_pre) == Δyᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
+                @test all([all([Azᶠᶠᵃ(i, j, 1, grid_pre) == Azᶠᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
+                @test all([all([Azᶜᶜᵃ(i, j, 1, grid_pre) == Azᶜᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
             end 
         end
     end
