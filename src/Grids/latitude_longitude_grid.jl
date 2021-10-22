@@ -275,7 +275,7 @@ end
     @inbounds begin
         Δxᶠᶜ[i, j]   = Δxᶠᶜᵃ(i, j, 1, grid)
         Δxᶜᶠ[i, j]   = Δxᶜᶠᵃ(i, j, 1, grid)
-        Azᶠᶠ[i+1, j] = Azᶠᶠᵃ(i+1, j, 1, grid)
+        Azᶠᶠ[i, j]   = Azᶠᶠᵃ(i, j, 1, grid)
         Azᶜᶜ[i, j]   = Azᶜᶜᵃ(i, j, 1, grid)
     end
 end
