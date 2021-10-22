@@ -214,10 +214,6 @@ Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT
 @inline hack_cosd(φ) = cos(π * φ / 180)
 @inline hack_sind(φ) = sin(π * φ / 180)
 
-@inline metric_worksize(grid::LLGF)   = (length(grid.Δλᶠᵃᵃ) - 1, length(grid.φᵃᶠᵃ) - 1) 
-@inline metric_worksize(grid::LLGFX)  =  length(grid.φᵃᶠᵃ)  - 1
-@inline metric_workgroup(grid)        = (16, 16) 
-@inline metric_workgroup(grid::LLGFX) =  16
 
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ[i])
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ)
@@ -232,6 +228,14 @@ Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT
 @inline Azᶜᶜᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
 @inline Azᶜᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
 
+#######
+####### Kernels to precompute the x- and z-metric
+#######
+
+@inline metric_worksize(grid::LLGF)   = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ)) 
+@inline metric_worksize(grid::LLGFX)  =  length(grid.φᵃᶜᵃ) 
+@inline metric_workgroup(grid::LLGF)  = (16, 16) 
+@inline metric_workgroup(grid::LLGFX) =  16
 
 function  precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     arch = grid.architecture
@@ -241,14 +245,10 @@ function  precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, 
     return nothing
 end
 
-#######
-####### Kernels to precompute the x- and z-metric
-#######
-
 @kernel function precompute_metrics_kernel!(grid::LLGF, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     i, j = @index(Global, NTuple)
-    i += grid.Δλᶠᵃᵃ.offsets[1] + 1
-    j += grid.φᵃᶠᵃ.offsets[1]
+    i += grid.Δλᶜᵃᵃ.offsets[1] 
+    j += grid.φᵃᶠᵃ.offsets[1] 
     @inbounds begin
         Δxᶠᶜ[i, j] = Δxᶠᶜᵃ(i, j, 1, grid)
         Δxᶜᶠ[i, j] = Δxᶜᶠᵃ(i, j, 1, grid)
@@ -270,19 +270,19 @@ end
 
 @kernel function precompute_metrics_kernel!(grid::LLGFY, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     i, j = @index(Global, NTuple)
-    i += grid.Δλᶠᵃᵃ.offsets[1] + 1
-    j += grid.φᵃᶠᵃ.offsets[1]
+    i += grid.Δλᶜᵃᵃ.offsets[1] 
+    j += grid.φᵃᶠᵃ.offsets[1] 
     @inbounds begin
-        Δxᶠᶜ[i, j] = Δxᶠᶜᵃ(i, j, 1, grid)
-        Δxᶜᶠ[i, j] = Δxᶜᶠᵃ(i, j, 1, grid)
-        Azᶠᶠ[i, j] = Azᶠᶠᵃ(i, j, 1, grid)
-        Azᶜᶜ[i, j] = Azᶜᶜᵃ(i, j, 1, grid)
+        Δxᶠᶜ[i, j]   = Δxᶠᶜᵃ(i, j, 1, grid)
+        Δxᶜᶠ[i, j]   = Δxᶜᶠᵃ(i, j, 1, grid)
+        Azᶠᶠ[i+1, j] = Azᶠᶠᵃ(i+1, j, 1, grid)
+        Azᶜᶜ[i, j]   = Azᶜᶜᵃ(i, j, 1, grid)
     end
 end
 
 @kernel function precompute_metrics_kernel!(grid::LLGFB, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     j = @index(Global, Linear)
-    j += grid.φᵃᶠᵃ.offsets[1]
+    j += grid.φᵃᶠᵃ.offsets[1] 
     @inbounds begin
         Δxᶠᶜ[j] = Δxᶠᶜᵃ(1, j, 1, grid)
         Δxᶜᶠ[j] = Δxᶜᶠᵃ(1, j, 1, grid)
@@ -303,17 +303,17 @@ function  precompute_Δyᶜᶠᵃ_metric(grid::Union{LLGF, LLGFX}, Δyᶜᶠ)
     return Δyᶜᶠ
 end
 
+function  precompute_Δyᶜᶠᵃ_metric(grid::Union{LLGFY, LLGFB}, Δyᶜᶠ)
+    Δyᶜᶠ =  Δyᶜᶠᵃ(1, 1, 1, grid)
+    return Δyᶜᶠ
+end
+
 @kernel function precompute_Δyᶜᶠᵃ_kernel!(grid, Δyᶜᶠ)
     j = @index(Global, Linear)
     j += grid.Δφᵃᶠᵃ.offsets[1]
     @inbounds begin
         Δyᶜᶠ[j] = Δyᶜᶠᵃ(1, j, 1, grid)
     end
-end
-
-function  precompute_Δyᶜᶠᵃ_metric(grid::Union{LLGFY, LLGFB}, Δyᶜᶠ)
-    Δyᶜᶠ =  Δyᶜᶠᵃ(1, 1, 1, grid)
-    return Δyᶜᶠ
 end
 
 #######

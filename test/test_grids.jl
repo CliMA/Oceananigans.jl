@@ -1,5 +1,7 @@
 using Oceananigans.Grids: total_extent, halo_size
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δyᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
+using Oceananigans.Architectures: arch_array
+
 #####
 ##### Regular rectilinear grids
 #####
@@ -518,33 +520,41 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     Nλ, Nφ, Nz = N = (4, 2, 3)
     Hλ, Hφ, Hz = H = (1, 1, 1)
 
-    latreg = (-80,   80)
-    lonreg = (-180, 180)
+    latreg  = (-80,   80)
+    lonreg  = (-180, 180)
+    lonregB = (-160, 160)
+
     zreg   = (-1,     0)
 
-    latstr = [-80, 0, 80]
-    lonstr = [-180, -30, 10, 40, 180]
-    zstr   = collect(0:Nz)
+    latstr  = [-80, 0, 80]
+    lonstr  = [-180, -30, 10, 40, 180]
+    lonstrB = [-160, -30, 10, 40, 160]
+    zstr    = collect(0:Nz)
 
     latitude  = (latreg, latstr) 
-    longitude = (lonreg, lonstr)
+    longitude = (lonreg, lonstr, lonregB, lonstrB)
     zcoord    = (zreg,     zstr)
+
+    CUDA.allowscalar(true)
 
     # grid with pre computed metrics vs metrics computed on the fly
     for lat in latitude
         for lon in longitude
             for z in zcoord
+                println("$lat $lon $z")
                 grid_pre = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, architecture=arch, precompute_metrics=true) 
                 grid_fly = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, architecture=arch) 
     
-                @test all([all([Δxᶠᶜᵃ(i, j, 1, grid_pre) == Δxᶠᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
-                @test all([all([Δxᶜᶠᵃ(i, j, 1, grid_pre) == Δxᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
-                @test all([all([Δyᶜᶠᵃ(i, j, 1, grid_pre) == Δyᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
-                @test all([all([Azᶠᶠᵃ(i, j, 1, grid_pre) == Azᶠᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
-                @test all([all([Azᶜᶜᵃ(i, j, 1, grid_pre) == Azᶜᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
+                @test all(arch_array(CPU(), [all(arch_array(CPU(), [Δxᶜᶠᵃ(i, j, 1, grid_pre) == Δxᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
+                @test all(arch_array(CPU(), [all(arch_array(CPU(), [Δyᶜᶠᵃ(i, j, 1, grid_pre) == Δyᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
+                @test all(arch_array(CPU(), [all(arch_array(CPU(), [Azᶠᶠᵃ(i, j, 1, grid_pre) ≈  Azᶠᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
+                @test all(arch_array(CPU(), [all(arch_array(CPU(), [Azᶜᶜᵃ(i, j, 1, grid_pre) == Azᶜᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
             end 
         end
     end
+    
+    CUDA.allowscalar(false)
+    
 end
 
 #####
@@ -696,10 +706,10 @@ end
     @testset "Latitude-longitude grid" begin
         @info "  Testing general latitude-longitude grid..."
 
-        for arch in archs, FT in float_types
-            test_basic_lat_lon_bounded_domain(FT, arch)
-            test_basic_lat_lon_periodic_domain(FT, arch)
-            test_basic_lat_lon_general_grid(FT, arch)
+        for FT in float_types
+            test_basic_lat_lon_bounded_domain(FT)
+            test_basic_lat_lon_periodic_domain(FT)
+            test_basic_lat_lon_general_grid(FT)
         end
 
         @info "  Testing precomputed metrics on latitude-longitude grid..."
