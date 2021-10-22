@@ -248,7 +248,7 @@ end
 @kernel function precompute_metrics_kernel!(grid::LLGF, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     i, j = @index(Global, NTuple)
     i += grid.Δλᶜᵃᵃ.offsets[1] 
-    j += grid.φᵃᶠᵃ.offsets[1] 
+    j += grid.φᵃᶠᵃ.offsets[1] + 1
     @inbounds begin
         Δxᶠᶜ[i, j] = Δxᶠᶜᵃ(i, j, 1, grid)
         Δxᶜᶠ[i, j] = Δxᶜᶠᵃ(i, j, 1, grid)
@@ -259,7 +259,7 @@ end
 
 @kernel function precompute_metrics_kernel!(grid::LLGFX, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     j = @index(Global, Linear)
-    j += grid.φᵃᶠᵃ.offsets[1]
+    j += grid.φᵃᶠᵃ.offsets[1] + 1
     @inbounds begin
         Δxᶠᶜ[j] = Δxᶠᶜᵃ(1, j, 1, grid)
         Δxᶜᶠ[j] = Δxᶜᶠᵃ(1, j, 1, grid)
@@ -271,7 +271,7 @@ end
 @kernel function precompute_metrics_kernel!(grid::LLGFY, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     i, j = @index(Global, NTuple)
     i += grid.Δλᶜᵃᵃ.offsets[1] 
-    j += grid.φᵃᶠᵃ.offsets[1] 
+    j += grid.φᵃᶠᵃ.offsets[1] + 1
     @inbounds begin
         Δxᶠᶜ[i, j]   = Δxᶠᶜᵃ(i, j, 1, grid)
         Δxᶜᶠ[i, j]   = Δxᶜᶠᵃ(i, j, 1, grid)
@@ -282,7 +282,7 @@ end
 
 @kernel function precompute_metrics_kernel!(grid::LLGFB, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     j = @index(Global, Linear)
-    j += grid.φᵃᶠᵃ.offsets[1] 
+    j += grid.φᵃᶠᵃ.offsets[1] + 1
     @inbounds begin
         Δxᶠᶜ[j] = Δxᶠᶜᵃ(1, j, 1, grid)
         Δxᶜᶠ[j] = Δxᶜᶠᵃ(1, j, 1, grid)
