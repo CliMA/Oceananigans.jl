@@ -513,7 +513,7 @@ function test_basic_lat_lon_general_grid(FT)
     return nothing
 end
 
-function test_lat_lon_precomputed_metrics(FT)
+function test_lat_lon_precomputed_metrics(FT, arch)
 
     Nλ, Nφ, Nz = N = (4, 2, 3)
     Hλ, Hφ, Hz = H = (1, 1, 1)
@@ -534,8 +534,8 @@ function test_lat_lon_precomputed_metrics(FT)
     for lat in latitude
         for lon in longitude
             for z in zcoord
-                grid_pre = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, precompute_metrics=true) 
-                grid_fly = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z) 
+                grid_pre = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, architecture=arch, precompute_metrics=true) 
+                grid_fly = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, architecture=arch) 
     
                 @test all([all([Δxᶠᶜᵃ(i, j, 1, grid_pre) == Δxᶠᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
                 @test all([all([Δxᶜᶠᵃ(i, j, 1, grid_pre) == Δxᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ]) for j in 1:Nφ ])
@@ -696,15 +696,15 @@ end
     @testset "Latitude-longitude grid" begin
         @info "  Testing general latitude-longitude grid..."
 
-        for FT in float_types
-            test_basic_lat_lon_bounded_domain(FT)
-            test_basic_lat_lon_periodic_domain(FT)
-            test_basic_lat_lon_general_grid(FT)
+        for arch in archs, FT in float_types
+            test_basic_lat_lon_bounded_domain(FT, arch)
+            test_basic_lat_lon_periodic_domain(FT, arch)
+            test_basic_lat_lon_general_grid(FT, arch)
         end
 
         @info "  Testing precomputed metrics on latitude-longitude grid..."
-        for FT in float_types
-            test_lat_lon_precomputed_metrics(FT)
+        for arch in archs, FT in float_types
+            test_lat_lon_precomputed_metrics(FT, arch)
         end
 
         # Testing show function for regular grid

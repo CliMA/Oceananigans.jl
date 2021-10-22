@@ -40,6 +40,10 @@ const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing}
 const LLGFX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Number}
 const LLGFY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Any, <:Number}
 const LLGFB = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Number, <:Number}
+const LLGP  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any}
+const LLGPX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+const LLGPY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+const LLGPB = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
 
 # latitude, longitude and z can be a 2-tuple that specifies the end of the domain (see RegularRectilinearDomain) or an array or function that specifies the faces (see VerticallyStretchedRectilinearGrid)
 
@@ -123,7 +127,7 @@ function domain_string(grid::LatitudeLongitudeGrid)
 end
 
 function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX, TY, TZ, M<:Nothing}
-    print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} \n",
+    print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} on the $(g.architecture) \n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
               "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
@@ -135,7 +139,7 @@ function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX
 end
 
 function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} \n",
+    print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ}  on the $(g.architecture) \n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
               "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
@@ -205,13 +209,10 @@ Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX,
 @inline hack_cosd(φ) = cos(π * φ / 180)
 @inline hack_sind(φ) = sin(π * φ / 180)
 
-@inline metric_worksize(grid::LLGF)   = (grid.Nx, grid.Ny) 
-@inline metric_worksize(grid::LLGFY)  = (grid.Nx, grid.Ny) 
-@inline metric_worksize(grid::LLGFX)  =  grid.Ny
-@inline metric_worksize(grid::LLGFB)  =  grid.Ny
+@inline metric_worksize(grid::LLGF)   = (length(grid.Δλᶠᵃᵃ) - 1, length(grid.φᵃᶠᵃ) - 1) 
+@inline metric_worksize(grid::LLGFX)  =  length(grid.φᵃᶠᵃ)  - 1
 @inline metric_workgroup(grid)        = (16, 16) 
 @inline metric_workgroup(grid::LLGFX) =  16
-@inline metric_workgroup(grid::LLGFB) =  16 
 
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ[i])
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ)
@@ -229,7 +230,7 @@ Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX,
 
 function  precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     arch = grid.architecture
-    precompute_curvilinear_metrics! = precompute_metrics_kernel!(Oceananigans.Architectures.device(arch), metric_workgroup(grid), metric_worksize(grid))
+    precompute_curvilinear_metrics! = precompute_metrics_kernel!(Architectures.device(arch), metric_workgroup(grid), metric_worksize(grid))
     event = precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ,Azᶠᶠ, Azᶜᶜ; dependencies=device_event(arch))
     wait(Architectures.device(arch), event)
     return nothing
@@ -237,7 +238,7 @@ end
 
 function  precompute_Δyᶜᶠᵃ_metric(grid::Union{LLGF, LLGFX}, Δyᶜᶠ)
     arch = grid.architecture
-    precompute_Δyᶜᶠᵃ_metrics! = precompute_Δyᶜᶠᵃ_kernel!(Oceananigans.Architectures.device(arch), 16, grid.Ny)
+    precompute_Δyᶜᶠᵃ_metrics! = precompute_Δyᶜᶠᵃ_kernel!(Oceananigans.Architectures.device(arch), 16, length(grid.Δφᵃᶠᵃ))
     event = precompute_Δyᶜᶠᵃ_metrics!(grid, Δyᶜᶠ; dependencies=device_event(arch))
     wait(Architectures.device(arch), event)
     return Δyᶜᶠ
@@ -251,17 +252,19 @@ end
 # kernel to pre_compute metrics
 @kernel function precompute_metrics_kernel!(grid::LLGF, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     i, j = @index(Global, NTuple)
+    i += grid.Δλᶠᵃᵃ.offsets[1] + 1
+    j += grid.φᵃᶠᵃ.offsets[1]
     @inbounds begin
         Δxᶠᶜ[i, j] = Δxᶠᶜᵃ(i, j, 1, grid)
         Δxᶜᶠ[i, j] = Δxᶜᶠᵃ(i, j, 1, grid)
         Azᶠᶠ[i, j] = Azᶠᶠᵃ(i, j, 1, grid)
         Azᶜᶜ[i, j] = Azᶜᶜᵃ(i, j, 1, grid)
     end
-    
 end
 
 @kernel function precompute_metrics_kernel!(grid::LLGFX, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     j = @index(Global, Linear)
+    j += grid.φᵃᶠᵃ.offsets[1]
     @inbounds begin
         Δxᶠᶜ[j] = Δxᶠᶜᵃ(1, j, 1, grid)
         Δxᶜᶠ[j] = Δxᶜᶠᵃ(1, j, 1, grid)
@@ -272,6 +275,8 @@ end
 
 @kernel function precompute_metrics_kernel!(grid::LLGFY, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     i, j = @index(Global, NTuple)
+    i += grid.Δλᶠᵃᵃ.offsets[1] + 1
+    j += grid.φᵃᶠᵃ.offsets[1]
     @inbounds begin
         Δxᶠᶜ[i, j] = Δxᶠᶜᵃ(i, j, 1, grid)
         Δxᶜᶠ[i, j] = Δxᶜᶠᵃ(i, j, 1, grid)
@@ -282,6 +287,7 @@ end
 
 @kernel function precompute_metrics_kernel!(grid::LLGFB, Δxᶠᶜ, Δxᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     j = @index(Global, Linear)
+    j += grid.φᵃᶠᵃ.offsets[1]
     @inbounds begin
         Δxᶠᶜ[j] = Δxᶠᶜᵃ(1, j, 1, grid)
         Δxᶜᶠ[j] = Δxᶜᶠᵃ(1, j, 1, grid)
@@ -292,6 +298,7 @@ end
 
 @kernel function precompute_Δyᶜᶠᵃ_kernel!(grid, Δyᶜᶠ)
     j = @index(Global, Linear)
+    j += grid.Δφᵃᶠᵃ.offsets[1]
     @inbounds begin
         Δyᶜᶠ[j] = Δyᶜᶠᵃ(1, j, 1, grid)
     end
