@@ -220,7 +220,11 @@ function progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt = Δt, stop_time = 1day, iteration_interval = 10, progress = progress)
+simulation = Simulation(model,
+                        Δt = Δt,
+                        stop_time = 1day,
+                        iteration_interval = 10,
+                        progress = progress)
 
 output_fields = merge(model.velocities, model.tracers, (; η=model.free_surface.η))
 output_prefix = "global_lat_lon_$(grid.Nx)_$(grid.Ny)_$(grid.Nz)"
@@ -272,12 +276,12 @@ ax_T = Axis(solution_fig[2, 1], title="Sea surface temperature (ᵒC)")
 hm_T = heatmap!(ax_T, T_cpu, colorrange=(min_T, max_T), colormap=:thermal)
 cb_T = Colorbar(solution_fig[2, 2], hm_T)
 
-ax_u = Axis(solution_fig[1, 3], title="East-west velocity (m s⁻¹)")
+ax_u = Axis(solution_fig[1, 3], title="East-West velocity (m s⁻¹)")
 hm_u = heatmap!(ax_u, u_cpu, colorrange=(-max_u, max_u), colormap=:balance)
 cb_u = Colorbar(solution_fig[1, 4], hm_u)
 
-ax_v = Axis(solution_fig[2, 3], title="East-west velocity (m s⁻¹)")
-hm_v = heatmap!(ax_v, v_cpu, colorrange=(-max_u, max_u), colormap=:balance)
+ax_v = Axis(solution_fig[2, 3], title="North-South velocity (m s⁻¹)")
+hm_v = heatmap!(ax_v, v_cpu, colorrange=(-max_v, max_v), colormap=:balance)
 cb_v = Colorbar(solution_fig[2, 4], hm_v)
 
 display(solution_fig)
