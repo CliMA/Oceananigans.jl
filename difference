@@ -1,0 +1,1435 @@
+diff --git a/src/AbstractOperations/binary_operations.jl b/src/AbstractOperations/binary_operations.jl
+index 5c503c4a..3c38313c 100644
+--- a/src/AbstractOperations/binary_operations.jl
++++ b/src/AbstractOperations/binary_operations.jl
+@@ -157,11 +157,11 @@ Set{Any} with 6 elements:
+   :*
+   :plus_or_times
+ 
+-julia> c, d = (Field(Center, Center, Center, CPU(), RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:2);
++julia> c, d = (Field(Center, Center, Center, CPU(), RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:2);
+ 
+ julia> plus_or_times(c, d)
+ BinaryOperation at (Center, Center, Center)
+-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
++├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+ │   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
+ └── tree:
+     plus_or_times at (Center, Center, Center)
+diff --git a/src/AbstractOperations/grid_metrics.jl b/src/AbstractOperations/grid_metrics.jl
+index f0f15ce0..61d1da3d 100644
+--- a/src/AbstractOperations/grid_metrics.jl
++++ b/src/AbstractOperations/grid_metrics.jl
+@@ -66,11 +66,11 @@ julia> using Oceananigans
+ 
+ julia> using Oceananigans.AbstractOperations: Δz
+ 
+-julia> grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)); c = CenterField(CPU(), grid);
++julia> grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)); c = CenterField(CPU(), grid);
+ 
+ julia> c_dz = c * Δz # returns BinaryOperation between Field and GridMetricOperation
+ BinaryOperation at (Center, Center, Center)
+-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
++├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+ │   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [-3.0, 0.0]
+ └── tree:
+     * at (Center, Center, Center)
+@@ -105,13 +105,13 @@ julia> using Oceananigans
+ 
+ julia> using Oceananigans.AbstractOperations: volume
+ 
+-julia> grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 2, 3)); c = CenterField(CPU(), grid);
++julia> grid = RegularRectilinearGrid(size=(2, 2, 2), extent=(1, 2, 3)); c = CenterField(CPU(), grid);
+ 
+ julia> c .= 1;
+ 
+ julia> c_dV = c * volume
+ BinaryOperation at (Center, Center, Center)
+-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
++├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
+ │   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [-3.0, 0.0]
+ └── tree:
+     * at (Center, Center, Center)
+diff --git a/src/AbstractOperations/multiary_operations.jl b/src/AbstractOperations/multiary_operations.jl
+index 7b1153e5..0bafe9a6 100644
+--- a/src/AbstractOperations/multiary_operations.jl
++++ b/src/AbstractOperations/multiary_operations.jl
+@@ -76,11 +76,11 @@ julia> using Oceananigans, Oceananigans.AbstractOperations
+ julia> harmonic_plus(a, b, c) = 1/3 * (1/a + 1/b + 1/c)
+ harmonic_plus (generic function with 1 method)
+ 
+-julia> c, d, e = Tuple(Field(Center, Center, Center, CPU(), RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:3);
++julia> c, d, e = Tuple(Field(Center, Center, Center, CPU(), RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:3);
+ 
+ julia> harmonic_plus(c, d, e) # before magic @multiary transformation
+ BinaryOperation at (Center, Center, Center)
+-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
++├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+ │   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
+ └── tree:
+     * at (Center, Center, Center)
+@@ -104,7 +104,7 @@ Set{Any} with 3 elements:
+ 
+ julia> harmonic_plus(c, d, e)
+ MultiaryOperation at (Center, Center, Center)
+-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
++├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+ │   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
+ └── tree:
+     harmonic_plus at (Center, Center, Center)
+diff --git a/src/AbstractOperations/unary_operations.jl b/src/AbstractOperations/unary_operations.jl
+index ae599633..cac9ce73 100644
+--- a/src/AbstractOperations/unary_operations.jl
++++ b/src/AbstractOperations/unary_operations.jl
+@@ -66,11 +66,11 @@ Set{Any} with 8 elements:
+   :tanh
+   :sin
+ 
+-julia> c = Field(Center, Center, Center, CPU(), RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)));
++julia> c = Field(Center, Center, Center, CPU(), RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)));
+ 
+ julia> square_it(c)
+ UnaryOperation at (Center, Center, Center)
+-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
++├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+ │   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
+ └── tree:
+     square_it at (Center, Center, Center) via identity
+diff --git a/src/BuoyancyModels/buoyancy.jl b/src/BuoyancyModels/buoyancy.jl
+index 5754e484..de725fef 100644
+--- a/src/BuoyancyModels/buoyancy.jl
++++ b/src/BuoyancyModels/buoyancy.jl
+@@ -19,7 +19,7 @@ Example
+ ```julia
+ using Oceananigans
+ 
+-grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1000, 100))
++grid = RegularRectilinearGrid(size=(1, 8, 8), extent=(1, 1000, 100))
+ θ = 45 # degrees
+ g̃ = (0, sind(θ), cosd(θ))
+ 
+diff --git a/src/Diagnostics/cfl.jl b/src/Diagnostics/cfl.jl
+index 20712d70..079807e4 100644
+--- a/src/Diagnostics/cfl.jl
++++ b/src/Diagnostics/cfl.jl
+@@ -33,7 +33,7 @@ for advection across a cell.
+ Example
+ =======
+ ```julia
+-julia> model = NonhydrostaticModel(grid=RectilinearGrid(size=(16, 16, 16), length=(8, 8, 8)));
++julia> model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(16, 16, 16), length=(8, 8, 8)));
+ 
+ julia> cfl = AdvectiveCFL(1.0);
+ 
+@@ -58,7 +58,7 @@ returned.
+ Example
+ =======
+ ```julia
+-julia> model = NonhydrostaticModel(grid=RectilinearGrid(size=(16, 16, 16), length=(1, 1, 1)));
++julia> model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(16, 16, 16), length=(1, 1, 1)));
+ 
+ julia> dcfl = DiffusiveCFL(0.1);
+ 
+diff --git a/src/Diagnostics/windowed_spatial_average.jl b/src/Diagnostics/windowed_spatial_average.jl
+index a1bd8da6..1ff1fb57 100644
+--- a/src/Diagnostics/windowed_spatial_average.jl
++++ b/src/Diagnostics/windowed_spatial_average.jl
+@@ -24,7 +24,7 @@ julia> using Oceananigans
+ 
+ julia> using Oceananigans.Diagnostics: WindowedSpatialAverage
+ 
+-julia> grid = RectilinearGrid(size=(4, 6, 4), extent=(1, 1, 1));
++julia> grid = RegularRectilinearGrid(size=(4, 6, 4), extent=(1, 1, 1));
+ 
+ julia> model = NonhydrostaticModel(grid=grid);
+ 
+diff --git a/src/Distributed/distributed_nonhydrostatic_model.jl b/src/Distributed/distributed_nonhydrostatic_model.jl
+index 4c949030..22d379ad 100644
+--- a/src/Distributed/distributed_nonhydrostatic_model.jl
++++ b/src/Distributed/distributed_nonhydrostatic_model.jl
+@@ -33,7 +33,7 @@ function DistributedNonhydrostaticModel(; architecture, grid, model_kwargs...)
+     z₁, z₂ = zL + (k-1)*lz, zL + k*lz
+ 
+     # FIXME? local grid might have different topology!
+-    my_grid = RectilinearGrid(topology=topology(grid), size=(nx, ny, nz), x=(x₁, x₂), y=(y₁, y₂), z=(z₁, z₂), halo=halo_size(grid))
++    my_grid = RegularRectilinearGrid(topology=topology(grid), size=(nx, ny, nz), x=(x₁, x₂), y=(y₁, y₂), z=(z₁, z₂), halo=halo_size(grid))
+ 
+     ## Construct local model
+ 
+diff --git a/src/Distributed/distributed_shallow_water_model.jl b/src/Distributed/distributed_shallow_water_model.jl
+index c044f98c..9577399c 100644
+--- a/src/Distributed/distributed_shallow_water_model.jl
++++ b/src/Distributed/distributed_shallow_water_model.jl
+@@ -30,7 +30,7 @@ function DistributedShallowWaterModel(; architecture, grid, model_kwargs...)
+     y₁, y₂ = yL + (j-1)*ly, yL + j*ly
+ 
+     # FIXME: local grid might have different topology!
+-    my_grid = RectilinearGrid(topology=topology(grid), size=(nx, ny), x=(x₁, x₂), y=(y₁, y₂), halo=(3,3))
++    my_grid = RegularRectilinearGrid(topology=topology(grid), size=(nx, ny), x=(x₁, x₂), y=(y₁, y₂), halo=(3,3))
+ 
+     ## Construct local model
+ 
+diff --git a/src/Fields/averaged_field.jl b/src/Fields/averaged_field.jl
+index 9339eebb..6032d106 100644
+--- a/src/Fields/averaged_field.jl
++++ b/src/Fields/averaged_field.jl
+@@ -61,14 +61,14 @@ Examples
+ ```julia
+ julia> using Oceananigans
+ 
+-julia> grid = RectilinearGrid(size=(2, 2, 2), x=(0, 1), y=(0, 1), z=(0, 1));
++julia> grid = RegularRectilinearGrid(size=(2, 2, 2), x=(0, 1), y=(0, 1), z=(0, 1));
+ 
+ julia> c = CenterField(CPU(), grid);
+ 
+ julia> C_xy = AveragedField(c, dims=(1, 2)) # average over x, y
+ AveragedField over dims=(1, 2) located at (⋅, ⋅, Center) of Field located at (Center, Center, Center)
+ ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 2)
+-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
++├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
+ ├── dims: (1, 2)
+ ├── operand: Field located at (Center, Center, Center)
+ └── status: time=0.0
+@@ -76,7 +76,7 @@ AveragedField over dims=(1, 2) located at (⋅, ⋅, Center) of Field located at
+ julia> C_z = AveragedField(c, dims=3) # averaged over z
+ AveragedField over dims=(3,) located at (Center, Center, ⋅) of Field located at (Center, Center, Center)
+ ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (2, 2, 1)
+-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
++├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
+ ├── dims: (3,)
+ ├── operand: Field located at (Center, Center, Center)
+ └── status: time=0.0
+diff --git a/src/Fields/field.jl b/src/Fields/field.jl
+index 56aa1990..771cd070 100644
+--- a/src/Fields/field.jl
++++ b/src/Fields/field.jl
+@@ -27,10 +27,10 @@ Example
+ ```jldoctest
+ julia> using Oceananigans
+ 
+-julia> ω = Field(Face, Face, Center, CPU(), RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
++julia> ω = Field(Face, Face, Center, CPU(), RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+ Field located at (Face, Face, Center)
+ ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 1)
+-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
++├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+ └── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=ZeroFlux, top=ZeroFlux, immersed=ZeroFlux
+ ```
+ """
+diff --git a/src/Fields/interpolate.jl b/src/Fields/interpolate.jl
+index d0911081..ddd6cc4c 100644
+--- a/src/Fields/interpolate.jl
++++ b/src/Fields/interpolate.jl
+@@ -1,20 +1,20 @@
+-@inline fractional_x_index(x, ::Center, grid::RectilinearGrid) = @inbounds (x - grid.xC[1]) / grid.Δx
+-@inline fractional_x_index(x, ::Face, grid::RectilinearGrid) = @inbounds (x - grid.xF[1]) / grid.Δx
++@inline fractional_x_index(x, ::Center, grid::RegularRectilinearGrid) = @inbounds (x - grid.xC[1]) / grid.Δx
++@inline fractional_x_index(x, ::Face, grid::RegularRectilinearGrid) = @inbounds (x - grid.xF[1]) / grid.Δx
+ 
+-@inline fractional_y_index(y, ::Center, grid::RectilinearGrid) = @inbounds (y - grid.yC[1]) / grid.Δy
+-@inline fractional_y_index(y, ::Face, grid::RectilinearGrid) = @inbounds (y - grid.yF[1]) / grid.Δy
++@inline fractional_y_index(y, ::Center, grid::RegularRectilinearGrid) = @inbounds (y - grid.yC[1]) / grid.Δy
++@inline fractional_y_index(y, ::Face, grid::RegularRectilinearGrid) = @inbounds (y - grid.yF[1]) / grid.Δy
+ 
+-@inline fractional_z_index(z, ::Center, grid::RectilinearGrid) = @inbounds (z - grid.zC[1]) / grid.Δz
+-@inline fractional_z_index(z, ::Face, grid::RectilinearGrid) = @inbounds (z - grid.zF[1]) / grid.Δz
++@inline fractional_z_index(z, ::Center, grid::RegularRectilinearGrid) = @inbounds (z - grid.zC[1]) / grid.Δz
++@inline fractional_z_index(z, ::Face, grid::RegularRectilinearGrid) = @inbounds (z - grid.zF[1]) / grid.Δz
+ 
+ """
+-    fractional_indices(x, y, z, loc, grid::RectilinearGrid)
++    fractional_indices(x, y, z, loc, grid::RegularRectilinearGrid)
+ 
+ Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectilinear grid located at `loc`
+ where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are floats indicating a location between
+ grid points.
+ """
+-@inline function fractional_indices(x, y, z, loc, grid::RectilinearGrid)
++@inline function fractional_indices(x, y, z, loc, grid::RegularRectilinearGrid)
+     i = fractional_x_index(x, loc[1], grid)
+     j = fractional_y_index(y, loc[2], grid)
+     k = fractional_z_index(z, loc[3], grid)
+diff --git a/src/Fields/regridding_fields.jl b/src/Fields/regridding_fields.jl
+index 8dbc92ac..f3bd82c2 100644
+--- a/src/Fields/regridding_fields.jl
++++ b/src/Fields/regridding_fields.jl
+@@ -23,11 +23,11 @@ using Oceananigans.Fields: regrid!
+ Nz, Lz = 2, 1.0
+ topology = (Flat, Flat, Bounded)
+ 
+-input_grid = RectilinearGrid(size=Nz, z_faces = [0, Lz/3, Lz], topology=topology)
++input_grid = VerticallyStretchedRectilinearGrid(size=Nz, z_faces = [0, Lz/3, Lz], topology=topology)
+ input_field = CenterField(input_grid)
+ input_field[1, 1, 1:Nz] = [2, 3]
+ 
+-output_grid = RectilinearGrid(size=Nz, z=(0, Lz), topology=topology)
++output_grid = RegularRectilinearGrid(size=Nz, z=(0, Lz), topology=topology)
+ output_field = CenterField(output_grid)
+ 
+ regrid!(output_field, input_field)
+diff --git a/src/Forcings/forcing.jl b/src/Forcings/forcing.jl
+index 46b659fb..98a65e0e 100644
+--- a/src/Forcings/forcing.jl
++++ b/src/Forcings/forcing.jl
+@@ -72,7 +72,7 @@ Note that because forcing locations are regularized within the
+ `NonhydrostaticModel` constructor:
+ 
+ ```jldoctest forcing
+-grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
++grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+ model = NonhydrostaticModel(grid=grid, forcing=(v=v_forcing,))
+ 
+ model.forcing.v
+diff --git a/src/Grids/Grids.jl b/src/Grids/Grids.jl
+index 65887746..c6984a58 100644
+--- a/src/Grids/Grids.jl
++++ b/src/Grids/Grids.jl
+@@ -3,7 +3,7 @@ module Grids
+ export Center, Face
+ export AbstractTopology, Periodic, Bounded, Flat, Connected, topology
+ export AbstractGrid, AbstractUnderlyingGrid, halo_size
+-export AbstractRectilinearGrid, RectilinearGrid 
++export AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RectilinearGrid
+ export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
+ export LatitudeLongitudeGrid
+ export ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
+@@ -126,6 +126,8 @@ include("automatic_halo_sizing.jl")
+ include("input_validation.jl")
+ include("grid_generation.jl")
+ include("rectilinear_grid.jl")
++include("regular_rectilinear_grid.jl")
++include("vertically_stretched_rectilinear_grid.jl")
+ include("conformal_cubed_sphere_face_grid.jl")
+ include("latitude_longitude_grid.jl")
+ 
+diff --git a/src/Grids/conformal_cubed_sphere_face_grid.jl b/src/Grids/conformal_cubed_sphere_face_grid.jl
+index 04fe3e2c..98cdaace 100644
+--- a/src/Grids/conformal_cubed_sphere_face_grid.jl
++++ b/src/Grids/conformal_cubed_sphere_face_grid.jl
+@@ -52,7 +52,7 @@ function ConformalCubedSphereFaceGrid(FT = Float64; size, z,
+ 
+     ## Use a regular rectilinear grid for the face of the cube
+ 
+-    ξη_grid = RectilinearGrid(FT, topology=topology, size=(Nξ, Nη, Nz), x=ξ, y=η, z=z, halo=halo)
++    ξη_grid = RegularRectilinearGrid(FT, topology=topology, size=(Nξ, Nη, Nz), x=ξ, y=η, z=z, halo=halo)
+ 
+     ξᶠᵃᵃ = xnodes(Face, ξη_grid)
+     ξᶜᵃᵃ = xnodes(Center, ξη_grid)
+@@ -185,7 +185,7 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, FT = Float64;
+     ## Use a regular rectilinear grid for the vertical grid
+     ## The vertical coordinates can come out of the regular rectilinear grid!
+ 
+-    ξη_grid = RectilinearGrid(FT, topology=topology, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=z, halo=halo)
++    ξη_grid = RegularRectilinearGrid(FT, topology=topology, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=z, halo=halo)
+ 
+     Δz = ξη_grid.Δz
+     zᵃᵃᶠ = ξη_grid.zF
+diff --git a/src/Grids/grid_generation.jl b/src/Grids/grid_generation.jl
+index 59ce81e5..85250eba 100644
+--- a/src/Grids/grid_generation.jl
++++ b/src/Grids/grid_generation.jl
+@@ -110,5 +110,5 @@ end
+ 
+ # Fallback for a flat domain
+ function generate_coordinate(FT, ::Type{Flat}, N, H, coord::Tuple{<:Number, <:Number}, architecture)
+-    return FT(1), FT(1), FT(0), FT(0), FT(0)
++    return FT(1), FT(1), FT(1), FT(1), FT(1)
+ end
+diff --git a/src/Grids/grid_utils.jl b/src/Grids/grid_utils.jl
+index 02d0271f..f8a688fd 100644
+--- a/src/Grids/grid_utils.jl
++++ b/src/Grids/grid_utils.jl
+@@ -216,7 +216,7 @@ Examples
+ ```jldoctest znodes
+ julia> using Oceananigans
+ 
+-julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1),
++julia> horz_periodic_grid = RegularRectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1),
+                                                  topology=(Periodic, Periodic, Bounded));
+ 
+ julia> zC = znodes(Center, horz_periodic_grid)
+diff --git a/src/Grids/latitude_longitude_grid.jl b/src/Grids/latitude_longitude_grid.jl
+index 7ab2bbb2..b4a564d6 100644
+--- a/src/Grids/latitude_longitude_grid.jl
++++ b/src/Grids/latitude_longitude_grid.jl
+@@ -45,7 +45,7 @@ const LLGPX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:
+ const LLGPY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+ const LLGPB = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
+ 
+-# latitude, longitude and z can be a 2-tuple that specifies the end of the domain (see RegularRectilinearDomain) or an array or function that specifies the faces (see RectilinearGrid)
++# latitude, longitude and z can be a 2-tuple that specifies the end of the domain (see RegularRectilinearDomain) or an array or function that specifies the faces (see VerticallyStretchedRectilinearGrid)
+ 
+ function LatitudeLongitudeGrid(FT=Float64; 
+                                architecture=CPU(),
+@@ -81,7 +81,7 @@ function LatitudeLongitudeGrid(FT=Float64;
+     
+     # Calculate all direction (which might be stretched)
+     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
+-    # it is stretched if being passed is a function or vector (as for the RectilinearGrid)
++    # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
+     
+     Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topo[1], Nλ, Hλ, longitude, arch)
+     Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topo[2], Nφ, Hφ, latitude,  arch)
+@@ -232,8 +232,8 @@ Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT
+ ####### Kernels to precompute the x- and z-metric
+ #######
+ 
+-@inline metric_worksize(grid::LLGF)   = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ)) 
+-@inline metric_worksize(grid::LLGFX)  =  length(grid.φᵃᶜᵃ) 
++@inline metric_worksize(grid::LLGF)   = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ) - 1) 
++@inline metric_worksize(grid::LLGFX)  =  length(grid.φᵃᶜᵃ) - 1 
+ @inline metric_workgroup(grid::LLGF)  = (16, 16) 
+ @inline metric_workgroup(grid::LLGFX) =  16
+ 
+@@ -275,7 +275,7 @@ end
+     @inbounds begin
+         Δxᶠᶜ[i, j]   = Δxᶠᶜᵃ(i, j, 1, grid)
+         Δxᶜᶠ[i, j]   = Δxᶜᶠᵃ(i, j, 1, grid)
+-        Azᶠᶠ[i+1, j] = Azᶠᶠᵃ(i+1, j, 1, grid)
++        Azᶠᶠ[i, j]   = Azᶠᶠᵃ(i, j, 1, grid)
+         Azᶜᶜ[i, j]   = Azᶜᶜᵃ(i, j, 1, grid)
+     end
+ end
+diff --git a/src/Grids/rectilinear_grid.jl b/src/Grids/rectilinear_grid.jl
+index 6f259430..7af92cf6 100644
+--- a/src/Grids/rectilinear_grid.jl
++++ b/src/Grids/rectilinear_grid.jl
+@@ -60,9 +60,9 @@ function RectilinearGrid(FT = Float64;
+     VZ   = typeof(zᵃᵃᶠ)
+     Arch = typeof(architecture) 
+ 
+-    FX<:AbstractVector ? Δx = Δxᶠᵃᵃ[1] : Δx = Δxᶠᵃᵃ
+-    FY<:AbstractVector ? Δy = Δyᵃᶠᵃ[1] : Δy = Δyᵃᶠᵃ
+-    FZ<:AbstractVector ? Δz = Δzᵃᵃᶠ[1] : Δz = Δzᵃᵃᶠ
++    FX<:AbstractVector ? Δx = Array(Δxᶠᵃᵃ.parent)[1] : Δx = Δxᶠᵃᵃ
++    FY<:AbstractVector ? Δy = Array(Δyᵃᶠᵃ.parent)[1] : Δy = Δyᵃᶠᵃ
++    FZ<:AbstractVector ? Δz = Array(Δzᵃᵃᶠ.parent)[1] : Δz = Δzᵃᵃᶠ
+ 
+     return RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
+     Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, yᵃᶠᵃ, yᵃᶜᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ, Δx, Δy, Δz)
+@@ -88,19 +88,22 @@ function show(io::IO, g::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+ end
+ 
+ 
+-Adapt.adapt_structure(to, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ}) where {FT, TX, TY, TZ, FX, FY, FZ} =
+-    LatitudeLongitudeGrid{FT, TX, TY, TZ, FX, FY, FZ,
+-                            typeof(grid.xᶠᵃᵃ),
+-                            typeof(grid.yᵃᶠᵃ),
+-                            typeof(grid.zᵃᵃᶠ),
++Adapt.adapt_structure(to, grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
++    LatitudeLongitudeGrid{FT, TX, TY, TZ,
++                            typeof(Adapt.adapt(to, grid.Δxᶠᵃᵃ)),
++                            typeof(Adapt.adapt(to, grid.Δyᵃᶠᵃ)),
++                            typeof(Adapt.adapt(to, grid.Δzᵃᵃᶠ)),
++                            typeof(Adapt.adapt(to, grid.xᶠᵃᵃ)),
++                            typeof(Adapt.adapt(to, grid.yᵃᶠᵃ)),
++                            typeof(Adapt.adapt(to, grid.zᵃᵃᶠ)),
+                             Nothing}(
+         nothing,
+         grid.Nx, grid.Ny, grid.Nz,
+         grid.Hx, grid.Hy, grid.Hz,
+         grid.Lx, grid.Ly, grid.Lz,
++        Adapt.adapt(to, grid.Δxᶠᵃᵃ),
+         Adapt.adapt(to, grid.Δxᶜᵃᵃ),
+         Adapt.adapt(to, grid.xᶠᵃᵃ),
+-        Adapt.adapt(to, grid.Δxᶠᵃᵃ),
+         Adapt.adapt(to, grid.xᶜᵃᵃ),
+         Adapt.adapt(to, grid.Δyᵃᶠᵃ),
+         Adapt.adapt(to, grid.Δyᵃᶜᵃ),
+@@ -128,31 +131,6 @@ all_y_nodes(::Type{Face}, grid::RectilinearGrid) = grid.yᵃᶠᵃ
+ all_z_nodes(::Type{Center}, grid::RectilinearGrid) = grid.zᵃᵃᶜ
+ all_z_nodes(::Type{Face}, grid::RectilinearGrid) = grid.zᵃᵃᶠ
+ 
+-function with_halo(new_halo, old_grid::RectilinearGrid)
+-
+-    Nx, Ny, Nz = size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
+-    topo = topology(old_grid)
+-
+-    x = x_domain(old_grid)
+-    y = y_domain(old_grid)
+-    z = z_domain(old_grid)
+-
+-    # Remove elements of size and new_halo in Flat directions as expected by grid
+-    # constructor
+-    size = pop_flat_elements(size, topo)
+-    new_halo = pop_flat_elements(new_halo, topo)
+-
+-    new_grid = RectilinearGrid(eltype(old_grid);
+-               architecture = old_grid.architecture,
+-               size = size,
+-               x = x, y = y,
+-               z_faces = old_grid.zᵃᵃᶠ,
+-               topology = topo,
+-               halo = new_halo)
+-
+-    return new_grid
+-end
+-
+ # Get minima of grid
+ #
+ 
+diff --git a/src/Grids/regular_rectilinear_grid.jl b/src/Grids/regular_rectilinear_grid.jl
+new file mode 100644
+index 00000000..375401e8
+--- /dev/null
++++ b/src/Grids/regular_rectilinear_grid.jl
+@@ -0,0 +1,307 @@
++import Oceananigans.Architectures: architecture
++
++"""
++    RegularRectilinearGrid{FT, TX, TY, TZ, R} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
++
++A rectilinear grid with with constant grid spacings `Δx`, `Δy`, and `Δz` between cell centers
++and cell faces, elements of type `FT`, topology `{TX, TY, TZ}`, and coordinate ranges
++of type `R`.
++"""
++struct RegularRectilinearGrid{FT, TX, TY, TZ, R} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
++    # Number of grid points in (x,y,z).
++    Nx :: Int
++    Ny :: Int
++    Nz :: Int
++    # Halo size in (x,y,z).
++    Hx :: Int
++    Hy :: Int
++    Hz :: Int
++    # Domain size [m].
++    Lx :: FT
++    Ly :: FT
++    Lz :: FT
++    # Grid spacing [m].
++    Δx :: FT
++    Δy :: FT
++    Δz :: FT
++    # Range of coordinates at the centers of the cells.
++    xC :: R
++    yC :: R
++    zC :: R
++    # Range of grid coordinates at the faces of the cells.
++    xF :: R
++    yF :: R
++    zF :: R
++end
++
++"""
++    RegularRectilinearGrid([FT=Float64]; size,
++                           extent = nothing, x = nothing, y = nothing, z = nothing,
++                           topology = (Periodic, Periodic, Bounded), halo = (1, 1, 1))
++
++Creates a `RegularRectilinearGrid` with `size = (Nx, Ny, Nz)` grid points.
++
++Keyword arguments
++=================
++
++- `size` (required): A tuple prescribing the number of grid points in non-`Flat` directions.
++                     `size` is a 3-tuple for 3D models, a 2-tuple for 2D models, and either a
++                     scalar or 1-tuple for 1D models.
++
++- `topology`: A 3-tuple `(Tx, Ty, Tz)` specifying the topology of the domain.
++              `Tx`, `Ty`, and `Tz` specify whether the `x`-, `y`-, and `z` directions are
++              `Periodic`, `Bounded`, or `Flat`. The topology `Flat` indicates that a model does
++              not vary in those directions so that derivatives and interpolation are zero.
++              The default is `topology=(Periodic, Periodic, Bounded)`.
++
++- `extent`: A tuple prescribing the physical extent of the grid in non-`Flat` directions.
++            The origin for three-dimensional domains is the oceanic default `(0, 0, -Lz)`.
++
++- `x`, `y`, and `z`: Each of `x, y, z` are 2-tuples that specify the end points of the domain
++                     in their respect directions. Scalar values may be used in `Flat` directions.
++
++*Note*: _Either_ `extent`, or all of `x`, `y`, and `z` must be specified.
++
++- `halo`: A tuple of integers that specifies the size of the halo region of cells surrounding
++          the physical interior for each non-`Flat` direction.
++
++The physical extent of the domain can be specified via `x`, `y`, and `z` keyword arguments
++indicating the left and right endpoints of each dimensions, e.g. `x=(-π, π)` or via
++the `extent` argument, e.g. `extent=(Lx, Ly, Lz)` which specifies the extent of each dimension
++in which case 0 ≤ x ≤ Lx, 0 ≤ y ≤ Ly, and -Lz ≤ z ≤ 0.
++
++A grid topology may be specified via a tuple assigning one of `Periodic`, `Bounded`, and `Flat`
++to each dimension. By default, a horizontally periodic grid topology `(Periodic, Periodic, Bounded)`
++is assumed.
++
++Constants are stored using floating point values of type `FT`. By default this is `Float64`.
++Make sure to specify the desired `FT` if not using `Float64`.
++
++Grid properties
++===============
++
++- `(Nx, Ny, Nz)::Int`: Number of physical points in the (x, y, z)-direction
++
++- `(Hx, Hy, Hz)::Int`: Number of halo points in the (x, y, z)-direction
++
++- `(Lx, Ly, Lz)::FT`: Physical extent of the grid in the (x, y, z)-direction
++
++- `(Δx, Δy, Δz)::FT`: Grid spacing (distance between grid nodes) in the (x, y, z)-direction
++
++- `(xC, yC, zC)`: (x, y, z) coordinates of cell centers.
++
++- `(xF, yF, zF)`: (x, y, z) coordinates of cell faces.
++
++Examples
++========
++
++* A default grid with Float64 type:
++
++```jldoctest
++julia> using Oceananigans
++
++julia> grid = RegularRectilinearGrid(size=(32, 32, 32), extent=(1, 2, 3))
++RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}
++                   domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [-3.0, 0.0]
++                 topology: (Periodic, Periodic, Bounded)
++        size (Nx, Ny, Nz): (32, 32, 32)
++        halo (Hx, Hy, Hz): (1, 1, 1)
++grid spacing (Δx, Δy, Δz): (0.03125, 0.0625, 0.09375)
++```
++
++* A default grid with Float32 type:
++
++```jldoctest
++julia> using Oceananigans
++
++julia> grid = RegularRectilinearGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
++RegularRectilinearGrid{Float32, Periodic, Periodic, Bounded}
++                   domain: x ∈ [0.0, 8.0], y ∈ [-10.0, 10.0], z ∈ [-3.1415927, 3.1415927]
++                 topology: (Periodic, Periodic, Bounded)
++        size (Nx, Ny, Nz): (32, 32, 16)
++        halo (Hx, Hy, Hz): (1, 1, 1)
++grid spacing (Δx, Δy, Δz): (0.25f0, 0.625f0, 0.3926991f0)
++```
++
++* A two-dimenisional, horizontally-periodic grid:
++
++```jldoctest
++julia> using Oceananigans
++
++julia> grid = RegularRectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=(Periodic, Periodic, Flat))
++RegularRectilinearGrid{Float64, Periodic, Periodic, Flat}
++                   domain: x ∈ [0.0, 6.283185307179586], y ∈ [0.0, 12.566370614359172], z ∈ [0.0, 0.0]
++                 topology: (Periodic, Periodic, Flat)
++        size (Nx, Ny, Nz): (32, 32, 1)
++        halo (Hx, Hy, Hz): (1, 1, 0)
++grid spacing (Δx, Δy, Δz): (0.19634954084936207, 0.39269908169872414, 0.0)
++```
++
++* A one-dimensional "column" grid:
++
++```jldoctest
++julia> using Oceananigans
++
++julia> grid = RegularRectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bounded))
++RegularRectilinearGrid{Float64, Flat, Flat, Bounded}
++                   domain: x ∈ [0.0, 0.0], y ∈ [0.0, 0.0], z ∈ [-128.0, 0.0]
++                 topology: (Flat, Flat, Bounded)
++        size (Nx, Ny, Nz): (1, 1, 256)
++        halo (Hx, Hy, Hz): (0, 0, 1)
++grid spacing (Δx, Δy, Δz): (0.0, 0.0, 0.5)
++```
++"""
++function RegularRectilinearGrid(FT=Float64;
++                                  size,
++                                     x = nothing, y = nothing, z = nothing,
++                                extent = nothing,
++                              topology = (Periodic, Periodic, Bounded),
++                                  halo = nothing
++                              )
++
++    TX, TY, TZ = validate_topology(topology)
++    size = validate_size(TX, TY, TZ, size)
++    halo = validate_halo(TX, TY, TZ, halo)
++    Lx, Ly, Lz, x, y, z = validate_regular_grid_domain(TX, TY, TZ, FT, extent, x, y, z)
++
++    # Unpacking
++    Nx, Ny, Nz = N = size
++    Hx, Hy, Hz = H = halo
++                 L = (Lx, Ly, Lz)
++    Δx, Δy, Δz = Δ = L ./ N
++                X₁ = (x[1], y[1], z[1])
++
++    # Face-node limits in x, y, z
++    xF₋, yF₋, zF₋ = XF₋ = @. X₁ - H * Δ
++    xF₊, yF₊, zF₊ = XF₊ = @. XF₋ + total_extent(topology, halo, Δ, L)
++
++    # Center-node limits in x, y, z
++    xC₋, yC₋, zC₋ = XC₋ = @. XF₋ + Δ / 2
++    xC₊, yC₊, zC₊ = XC₊ = @. XC₋ + L + Δ * (2H - 1)
++
++    TFx, TFy, TFz = total_length.(Face, topology, N, H)
++    TCx, TCy, TCz = total_length.(Center, topology, N, H)
++
++    # Include halo points in coordinate arrays
++    xF = range(xF₋, xF₊; length = TFx)
++    yF = range(yF₋, yF₊; length = TFy)
++    zF = range(zF₋, zF₊; length = TFz)
++
++    xC = range(xC₋, xC₊; length = TCx)
++    yC = range(yC₋, yC₊; length = TCy)
++    zC = range(zC₋, zC₊; length = TCz)
++
++    # Offset.
++    xC = OffsetArray(xC, -Hx)
++    yC = OffsetArray(yC, -Hy)
++    zC = OffsetArray(zC, -Hz)
++
++    xF = OffsetArray(xF, -Hx)
++    yF = OffsetArray(yF, -Hy)
++    zF = OffsetArray(zF, -Hz)
++
++    return RegularRectilinearGrid{FT, TX, TY, TZ, typeof(xC)}(
++        Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δz, xC, yC, zC, xF, yF, zF)
++end
++
++"""
++    with_halo(new_halo, old_grid::RegularRectilinearGrid)
++
++Returns a new `RegularRectilinearGrid` with the same properties as
++`old_grid` but with halos set to `new_halo`.
++
++Note that in contrast to the constructor for `RegularRectilinearGrid`,
++`new_halo` is expected to be a 3-`Tuple` by `with_halo`. The elements
++of `new_halo` corresponding to `Flat` directions are removed (and are
++therefore ignored) prior to constructing the new `RegularRectilinearGrid`.
++"""
++function with_halo(new_halo, old_grid::RegularRectilinearGrid)
++
++    Nx, Ny, Nz = size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
++    topo = topology(old_grid)
++
++    x = x_domain(old_grid)
++    y = y_domain(old_grid)
++    z = z_domain(old_grid)
++
++    # Remove elements of size and new_halo in Flat directions as expected by grid
++    # constructor
++    size = pop_flat_elements(size, topo)
++    new_halo = pop_flat_elements(new_halo, topo)
++
++    new_grid = RegularRectilinearGrid(eltype(old_grid); size=size, x=x, y=y, z=z,
++                                      topology=topo, halo=new_halo)
++
++    return new_grid
++end
++
++short_show(grid::RegularRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
++    "RegularRectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
++
++function domain_string(grid)
++    xₗ, xᵣ = x_domain(grid)
++    yₗ, yᵣ = y_domain(grid)
++    zₗ, zᵣ = z_domain(grid)
++    return "x ∈ [$xₗ, $xᵣ], y ∈ [$yₗ, $yᵣ], z ∈ [$zₗ, $zᵣ]"
++end
++
++function show(io::IO, g::RegularRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
++    print(io, "RegularRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
++              "                   domain: $(domain_string(g))\n",
++              "                 topology: ", (TX, TY, TZ), '\n',
++              "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
++              "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
++              "grid spacing (Δx, Δy, Δz): ", (g.Δx, g.Δy, g.Δz))
++end
++
++# Regular nodes
++@inline xnode(::Center, i, grid::RegularRectilinearGrid) = @inbounds grid.xC[i]
++@inline xnode(::Face,   i, grid::RegularRectilinearGrid) = @inbounds grid.xF[i]
++
++@inline ynode(::Center, j, grid::RegularRectilinearGrid) = @inbounds grid.yC[j]
++@inline ynode(::Face,   j, grid::RegularRectilinearGrid) = @inbounds grid.yF[j]
++
++@inline znode(::Center, k, grid::RegularRectilinearGrid) = @inbounds grid.zC[k]
++@inline znode(::Face,   k, grid::RegularRectilinearGrid) = @inbounds grid.zF[k]
++
++all_x_nodes(::Type{Center}, grid::RegularRectilinearGrid) = grid.xC
++all_x_nodes(::Type{Face},   grid::RegularRectilinearGrid) = grid.xF
++all_y_nodes(::Type{Center}, grid::RegularRectilinearGrid) = grid.yC
++all_y_nodes(::Type{Face},   grid::RegularRectilinearGrid) = grid.yF
++all_z_nodes(::Type{Center}, grid::RegularRectilinearGrid) = grid.zC
++all_z_nodes(::Type{Face},   grid::RegularRectilinearGrid) = grid.zF
++
++#
++# Get minima of grid
++#
++
++function min_Δx(grid::RegularRectilinearGrid)
++    topo = topology(grid)
++    if topo[1] == Flat
++        return Inf
++    else
++        return grid.Δx
++    end
++end
++
++function min_Δy(grid::RegularRectilinearGrid)
++    topo = topology(grid)
++    if topo[2] == Flat
++        return Inf
++    else
++        return grid.Δy
++    end
++end
++
++
++function min_Δz(grid::RegularRectilinearGrid)
++    topo = topology(grid)
++    if topo[3] == Flat
++        return Inf
++    else
++        return grid.Δz
++    end
++end
++
++# All grid metrics are constants / functions / ranges, so there's no architecture.
++architecture(::RegularRectilinearGrid) = nothing
+diff --git a/src/Grids/vertically_stretched_rectilinear_grid.jl b/src/Grids/vertically_stretched_rectilinear_grid.jl
+new file mode 100644
+index 00000000..44ab4671
+--- /dev/null
++++ b/src/Grids/vertically_stretched_rectilinear_grid.jl
+@@ -0,0 +1,318 @@
++struct VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A, Arch} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
++
++    architecture :: Arch
++
++    # Number of grid points in (x,y,z).
++    Nx :: Int
++    Ny :: Int
++    Nz :: Int
++
++    # Halo size in (x,y,z).
++    Hx :: Int
++    Hy :: Int
++    Hz :: Int
++
++    # Domain size [m].
++    Lx :: FT
++    Ly :: FT
++    Lz :: FT
++
++    # Grid spacing [m].
++       Δx :: FT
++       Δy :: FT
++    Δzᵃᵃᶜ :: A
++    Δzᵃᵃᶠ :: A
++
++    # Range of coordinates at the centers of the cells.
++    xᶜᵃᵃ :: R
++    yᵃᶜᵃ :: R
++    zᵃᵃᶜ :: A
++
++    # Range of grid coordinates at the faces of the cells.
++    # Note: there are Nx+1 faces in the x-dimension, Ny+1 in the y, and Nz+1 in the z.
++    xᶠᵃᵃ :: R
++    yᵃᶠᵃ :: R
++    zᵃᵃᶠ :: A
++end
++
++"""
++    VerticallyStretchedRectilinearGrid([FT=Float64]; architecture=CPU(), size, z_faces,
++                                        x = nothing, y = nothing,
++                                        topology = (Periodic, Periodic, Bounded), halo = nothing)
++
++Create a horizontally-regular, `VerticallyStretchedRectilinearGrid` with `size = (Nx, Ny, Nz)` grid points and
++vertical cell interfaces `z_faces`.
++
++Keyword arguments
++=================
++
++- `size` (required): A tuple prescribing the number of grid points in non-`Flat` directions.
++                     `size` is a 3-tuple for 3D models, a 2-tuple for 2D models, and either a
++                     scalar or 1-tuple for 1D models.
++
++- `topology`: A 3-tuple `(Tx, Ty, Tz)` specifying the topology of the domain.
++              `Tz` must be `Bounded` for `VerticallyStretchedRectilinearGrid`.
++              `Tx` and `Ty` specify whether the `x`- and `y`- directions are
++              `Periodic`, `Bounded`, or `Flat`. The topology `Flat` indicates that a model does
++              not vary in that directions so that derivatives and interpolation are zero.
++              The default is `topology=(Periodic, Periodic, Bounded)`.
++
++- `architecture`: Specifies whether the array of vertical coordinates, interfaces, and spacings
++                  are stored on the CPU or GPU. Default: `architecture = CPU()`.
++
++- `z_faces`: An array or function of vertical index `k` that specifies the location of cell faces
++        in the `z-`direction for indices `k=1` through `k=Nz+1`, where `Nz` is the
++        `size` of the stretched dimension.
++
++- `x`, `y`: Each of `x, y` are 2-tuples that specify the end points of the domain
++            in their respect directions. Scalar values may be used in `Flat` directions.
++
++- `halo`: A tuple of integers that specifies the size of the halo region of cells surrounding
++          the physical interior for each non-`Flat` direction.
++
++The physical extent of the domain can be specified via `x` and `y` keyword arguments
++indicating the left and right endpoints of each dimensions, e.g. `x=(-π, π)`.
++
++A grid topology may be specified via a tuple assigning one of `Periodic`, `Bounded`, and `Flat`
++to each dimension. By default, a horizontally periodic grid topology `(Periodic, Periodic, Bounded)`
++is assumed.
++
++Constants are stored using floating point values of type `FT`. By default this is `Float64`.
++Make sure to specify the desired `FT` if not using `Float64`.
++
++Grid properties
++===============
++
++- `(Nx, Ny, Nz)::Int`: Number of physical points in the (x, y, z)-direction
++
++- `(Hx, Hy, Hz)::Int`: Number of halo points in the (x, y, z)-direction
++
++- `(Lx, Ly, Lz)::FT`: Physical extent of the grid in the (x, y, z)-direction
++
++- `(Δx, Δy)::FT`: Grid spacing (distance between grid nodes) in the (x, y)-direction
++
++- `Δzᵃᵃᶜ`: Grid spacing in the z-direction between cell faces.
++           Defined at cell centers in `z` and independent of cell location in (x, y).
++
++- `Δzᵃᵃᶠ`: Grid spacing in the z-direction between cell centers, and defined at cell faces in z.
++           Defined at cell faces in `z` and independent of cell location in (x, y).
++
++- `(xᶜᵃᵃ, yᵃᶜᵃ, zᵃᵃᶜ)`: (x, y, z) coordinates of cell centers.
++
++- `(xᶠᵃᵃ, yᵃᶠᵃ, zᵃᵃᶠ)`: (x, y, z) coordinates of cell faces.
++
++Example
++=======
++
++Generate a horizontally-periodic grid with cell interfaces stretched
++hyperbolically near the top:
++
++```jldoctest
++using Oceananigans
++
++σ = 1.1 # stretching factor
++Nz = 24 # vertical resolution
++Lz = 32 # depth (m)
++
++hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
++
++grid = VerticallyStretchedRectilinearGrid(size = (32, 32, Nz),
++                                          x = (0, 64),
++                                          y = (0, 64),
++                                          z_faces = hyperbolically_spaced_faces)
++
++# output
++VerticallyStretchedRectilinearGrid{Float64, Periodic, Periodic, Bounded}
++                   domain: x ∈ [0.0, 64.0], y ∈ [0.0, 64.0], z ∈ [-32.0, -0.0]
++                 topology: (Periodic, Periodic, Bounded)
++        size (Nx, Ny, Nz): (32, 32, 24)
++        halo (Hx, Hy, Hz): (1, 1, 1)
++grid spacing (Δx, Δy, Δz): (2.0, 2.0, [min=0.6826950100338962, max=1.8309085743885056])
++```
++"""
++function VerticallyStretchedRectilinearGrid(FT = Float64;
++                                            architecture = CPU(),
++                                            size,
++                                            z_faces,
++                                            x = nothing,
++                                            y = nothing,
++                                            halo = nothing,
++                                            topology = (Periodic, Periodic, Bounded))
++
++    TX, TY, TZ = validate_topology(topology)
++    size = validate_size(TX, TY, TZ, size)
++    halo = validate_halo(TX, TY, TZ, halo)
++    x = validate_dimension_specification(TX, x, :x, FT)
++    y = validate_dimension_specification(TY, y, :y, FT)
++    Lx, Ly, x, y = validate_vertically_stretched_grid_xy(TX, TY, FT, x, y)
++
++    Nx, Ny, Nz = size
++    Hx, Hy, Hz = halo
++
++    # Initialize vertically-stretched arrays on CPU
++
++    # For the moment just check that z_faces is not a Tuple
++    if isa(z_faces, Tuple)
++        e = "z_faces is not a valid face variable! " *
++            "Valid face variables are 1D Vectors and Functions"
++        throw(ArgumentError(e))
++    end
++    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topology[3], Nz, Hz, z_faces, architecture)
++    
++    # Construct uniform horizontal grid
++    Lh, Nh, Hh, X₁ = (Lx, Ly), size[1:2], halo[1:2], (x[1], y[1])
++    Δx, Δy = Δh = Lh ./ Nh
++
++    # Face-node limits in x, y, z
++    xF₋, yF₋ = XF₋ = @. X₁ - Hh * Δh
++    xF₊, yF₊ = XF₊ = @. XF₋ + total_extent(topology[1:2], Hh, Δh, Lh)
++
++    # Center-node limits in x, y, z
++    xC₋, yC₋ = XC₋ = @. XF₋ + Δh / 2
++    xC₊, yC₊ = XC₊ = @. XC₋ + Lh + Δh * (2Hh - 1)
++
++    # Total length of Center and Face quantities
++    TFx, TFy, TFz = total_length.(Face, topology, size, halo)
++    TCx, TCy, TCz = total_length.(Center, topology, size, halo)
++
++    # Include halo points in coordinate arrays
++    xᶠᵃᵃ = range(xF₋, xF₊; length = TFx)
++    yᵃᶠᵃ = range(yF₋, yF₊; length = TFy)
++
++    xᶜᵃᵃ = range(xC₋, xC₊; length = TCx)
++    yᵃᶜᵃ = range(yC₋, yC₊; length = TCy)
++
++    xᶜᵃᵃ = OffsetArray(xᶜᵃᵃ, -Hx)
++    yᵃᶜᵃ = OffsetArray(yᵃᶜᵃ, -Hy)
++
++    xᶠᵃᵃ = OffsetArray(xᶠᵃᵃ, -Hx)
++    yᵃᶠᵃ = OffsetArray(yᵃᶠᵃ, -Hy)
++
++    R = typeof(xᶠᵃᵃ)
++    A = typeof(zᵃᵃᶠ)
++    Arch = typeof(architecture)
++
++    return VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ, R, A, Arch}(architecture,
++        Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δzᵃᵃᶜ, Δzᵃᵃᶠ, xᶜᵃᵃ, yᵃᶜᵃ, zᵃᵃᶜ, xᶠᵃᵃ, yᵃᶠᵃ, zᵃᵃᶠ)
++end
++
++"""
++    with_halo(_halo, old_grid::VerticallyStretchedRectilinearGrid)
++
++Returns a  `VerticallyStretchedRectilinearGrid` with the same properties as
++`old_grid` but with halos set to `_halo`.
++
++Note that in contrast to the constructor for `VerticallyStretchedRectilinearGrid`,
++`_halo` is expected to be a 3-`Tuple` by `with_halo`. The elements
++of `_halo` corresponding to `Flat` directions are removed (and are
++therefore ignored) prior to constructing the  `VerticallyStretchedRectilinearGrid`.
++"""
++function with_halo(_halo, old_grid::VerticallyStretchedRectilinearGrid)
++
++    Nx, Ny, Nz = size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
++    topo = topology(old_grid)
++
++    x = x_domain(old_grid)
++    y = y_domain(old_grid)
++    z = z_domain(old_grid)
++
++    # Remove elements of size and _halo in Flat directions as expected by grid
++    # constructor
++    size = pop_flat_elements(size, topo)
++    _halo = pop_flat_elements(_halo, topo)
++
++    _grid = VerticallyStretchedRectilinearGrid(eltype(old_grid);
++                                                  architecture = old_grid.architecture,
++                                                  size = size,
++                                                  x = x, y = y,
++                                                  z_faces = old_grid.zᵃᵃᶠ,
++                                                  topology = topo,
++                                                  halo = _halo)
++
++    return _grid
++end
++
++@inline x_domain(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.xᶠᵃᵃ)
++@inline y_domain(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.yᵃᶠᵃ)
++@inline z_domain(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
++
++short_show(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
++    "VerticallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
++
++function show(io::IO, g::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
++    Δz_min = minimum(view(parent(g.Δzᵃᵃᶜ), g.Hz+1:g.Nz+g.Hz))
++    Δz_max = maximum(view(parent(g.Δzᵃᵃᶜ), g.Hz+1:g.Nz+g.Hz))
++    print(io, "VerticallyStretchedRectilinearGrid{$FT, $TX, $TY, $TZ}\n",
++              "                   domain: $(domain_string(g))\n",
++              "                 topology: ", (TX, TY, TZ), '\n',
++              "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
++              "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
++              "grid spacing (Δx, Δy, Δz): (", g.Δx, ", ", g.Δy, ", [min=", Δz_min, ", max=", Δz_max,"])",)
++end
++
++Adapt.adapt_structure(to, grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
++    VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ,
++                                       typeof(grid.xᶠᵃᵃ),
++                                       typeof(Adapt.adapt(to, grid.zᵃᵃᶠ)),
++                                       Nothing}(
++        nothing,
++        grid.Nx, grid.Ny, grid.Nz,
++        grid.Hx, grid.Hy, grid.Hz,
++        grid.Lx, grid.Ly, grid.Lz,
++        grid.Δx, grid.Δy,
++        Adapt.adapt(to, grid.Δzᵃᵃᶜ),
++        Adapt.adapt(to, grid.Δzᵃᵃᶠ),
++        grid.xᶜᵃᵃ, grid.yᵃᶜᵃ,
++        Adapt.adapt(to, grid.zᵃᵃᶜ),
++        grid.xᶠᵃᵃ, grid.yᵃᶠᵃ,
++        Adapt.adapt(to, grid.zᵃᵃᶠ))
++
++#####
++##### Should merge with grid_utils.jl at some point
++#####
++
++@inline xnode(::Center, i, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
++@inline xnode(::Face, i, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
++
++@inline ynode(::Center, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᶜᵃ[j]
++@inline ynode(::Face, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᶠᵃ[j]
++
++@inline znode(::Center, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶜ[k]
++@inline znode(::Face, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.zᵃᵃᶠ[k]
++
++all_x_nodes(::Type{Center}, grid::VerticallyStretchedRectilinearGrid) = grid.xᶜᵃᵃ
++all_x_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.xᶠᵃᵃ
++all_y_nodes(::Type{Center}, grid::VerticallyStretchedRectilinearGrid) = grid.yᵃᶜᵃ
++all_y_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.yᵃᶠᵃ
++all_z_nodes(::Type{Center}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃᵃᶜ
++all_z_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃᵃᶠ
++
++# Get minima of grid
++#
++
++function min_Δx(grid::VerticallyStretchedRectilinearGrid)
++    topo = topology(grid)
++    if topo[1] == Flat
++        return Inf
++    else
++        return grid.Δx
++    end
++end
++
++function min_Δy(grid::VerticallyStretchedRectilinearGrid)
++    topo = topology(grid)
++    if topo[2] == Flat
++        return Inf
++    else
++        return grid.Δy
++    end
++end
++
++function min_Δz(grid::VerticallyStretchedRectilinearGrid)
++    topo = topology(grid)
++    if topo[3] == Flat
++        return Inf
++    else
++        return minimum(parent(grid.Δzᵃᵃᶜ))
++    end
++end
+\ No newline at end of file
+diff --git a/src/LagrangianParticleTracking/update_particle_properties.jl b/src/LagrangianParticleTracking/update_particle_properties.jl
+index 44eb703f..014ba657 100644
+--- a/src/LagrangianParticleTracking/update_particle_properties.jl
++++ b/src/LagrangianParticleTracking/update_particle_properties.jl
+@@ -22,7 +22,7 @@ along a `Periodic` dimension, put them on the other side.
+     return x
+ end
+ 
+-@kernel function _advect_particles!(particles, restitution, grid::RectilinearGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
++@kernel function _advect_particles!(particles, restitution, grid::RegularRectilinearGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
+     p = @index(Global)
+ 
+     # Advect particles using forward Euler.
+diff --git a/src/Models/HydrostaticFreeSurfaceModels/fft_based_implicit_free_surface_solver.jl b/src/Models/HydrostaticFreeSurfaceModels/fft_based_implicit_free_surface_solver.jl
+index 336edc6c..ee53b7fb 100644
+--- a/src/Models/HydrostaticFreeSurfaceModels/fft_based_implicit_free_surface_solver.jl
++++ b/src/Models/HydrostaticFreeSurfaceModels/fft_based_implicit_free_surface_solver.jl
+@@ -30,7 +30,7 @@ step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `
+ """
+ function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
+ 
+-    grid isa RectilinearGrid || grid isa RectilinearGrid ||
++    grid isa RegularRectilinearGrid || grid isa VerticallyStretchedRectilinearGrid ||
+         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
+ 
+     # Construct a "horizontal grid". We support either x or y being Flat, but not both.
+@@ -53,7 +53,7 @@ function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
+     # Even if the three dimensional grid is vertically stretched, we can only use
+     # FFTImplicitFreeSurfaceSolver with grids that are regularly spaced in the
+     # horizontal direction.
+-    horizontal_grid = RectilinearGrid(; topology = (TX, TY, Flat),
++    horizontal_grid = RegularRectilinearGrid(; topology = (TX, TY, Flat),
+                                                size = sz,
+                                                halo = halo,
+                                                domain...)
+diff --git a/src/Models/HydrostaticFreeSurfaceModels/implicit_free_surface.jl b/src/Models/HydrostaticFreeSurfaceModels/implicit_free_surface.jl
+index 3843da5b..42e6c647 100644
+--- a/src/Models/HydrostaticFreeSurfaceModels/implicit_free_surface.jl
++++ b/src/Models/HydrostaticFreeSurfaceModels/implicit_free_surface.jl
+@@ -68,7 +68,8 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arc
+ end
+ 
+ is_horizontally_regular(grid) = false
+-is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
++is_horizontally_regular(::RegularRectilinearGrid) = true
++is_horizontally_regular(::VerticallyStretchedRectilinearGrid) = true
+ 
+ function build_implicit_step_solver(::Val{:Default}, arch, grid, settings)
+     default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :PreconditionedConjugateGradient
+diff --git a/src/Models/HydrostaticFreeSurfaceModels/set_hydrostatic_free_surface_model.jl b/src/Models/HydrostaticFreeSurfaceModels/set_hydrostatic_free_surface_model.jl
+index 926aec01..3d1fd4c9 100644
+--- a/src/Models/HydrostaticFreeSurfaceModels/set_hydrostatic_free_surface_model.jl
++++ b/src/Models/HydrostaticFreeSurfaceModels/set_hydrostatic_free_surface_model.jl
+@@ -14,7 +14,7 @@ a function with arguments `(x, y, z)`, or any data type for which a
+ Example
+ =======
+ ```julia
+-model = HydrostaticFreeSurfaceModel(grid=RectilinearGrid(size=(32, 32, 32), length=(1, 1, 1))
++model = HydrostaticFreeSurfaceModel(grid=RegularRectilinearGrid(size=(32, 32, 32), length=(1, 1, 1))
+ 
+ # Set u to a parabolic function of z, v to random numbers damped
+ # at top and bottom, and T to some silly array of half zeros,
+diff --git a/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl b/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl
+index 9eb01086..7ccc2a33 100644
+--- a/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl
++++ b/src/Models/NonhydrostaticModels/NonhydrostaticModels.jl
+@@ -10,8 +10,8 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+ 
+ import Oceananigans: fields, prognostic_fields
+ 
+-PressureSolver(arch, grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number}) = FFTBasedPoissonSolver(arch, grid)
+-PressureSolver(arch, grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Any})    = FourierTridiagonalPoissonSolver(arch, grid)
++PressureSolver(arch, grid::RegularRectilinearGrid) = FFTBasedPoissonSolver(arch, grid)
++PressureSolver(arch, grid::VerticallyStretchedRectilinearGrid) = FourierTridiagonalPoissonSolver(arch, grid)
+ 
+ # *Evil grin*
+ PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.grid)
+diff --git a/src/Models/NonhydrostaticModels/set_nonhydrostatic_model.jl b/src/Models/NonhydrostaticModels/set_nonhydrostatic_model.jl
+index 900f702a..79a49aa0 100644
+--- a/src/Models/NonhydrostaticModels/set_nonhydrostatic_model.jl
++++ b/src/Models/NonhydrostaticModels/set_nonhydrostatic_model.jl
+@@ -14,7 +14,7 @@ a function with arguments `(x, y, z)`, or any data type for which a
+ Example
+ =======
+ ```julia
+-model = NonhydrostaticModel(grid=RectilinearGrid(size=(32, 32, 32), length=(1, 1, 1))
++model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(32, 32, 32), length=(1, 1, 1))
+ 
+ # Set u to a parabolic function of z, v to random numbers damped
+ # at top and bottom, and T to some silly array of half zeros,
+diff --git a/src/Oceananigans.jl b/src/Oceananigans.jl
+index 69fa9264..ce84da52 100644
+--- a/src/Oceananigans.jl
++++ b/src/Oceananigans.jl
+@@ -14,7 +14,7 @@ export
+     # Grids
+     Center, Face,
+     Periodic, Bounded, Flat,
+-    RectilinearGrid, RectilinearGrid, 
++    RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RectilinearGrid, 
+     LatitudeLongitudeGrid,
+     ConformalCubedSphereFaceGrid,
+     xnodes, ynodes, znodes, nodes,
+diff --git a/src/Operators/Operators.jl b/src/Operators/Operators.jl
+index 54f7b414..8bd00859 100644
+--- a/src/Operators/Operators.jl
++++ b/src/Operators/Operators.jl
+@@ -35,7 +35,7 @@ using Oceananigans.Grids
+ 
+ const AG   = AbstractGrid
+ const ARG  = AbstractRectilinearGrid
+-const RCG  = RectilinearGrid
++const RCG  = RegularRectilinearGrid
+ const ACG  = AbstractCurvilinearGrid
+ const AHCG = AbstractHorizontallyCurvilinearGrid
+ 
+diff --git a/src/Operators/spacings_and_areas_and_volumes.jl b/src/Operators/spacings_and_areas_and_volumes.jl
+index 86a1ade3..4c5189f0 100644
+--- a/src/Operators/spacings_and_areas_and_volumes.jl
++++ b/src/Operators/spacings_and_areas_and_volumes.jl
+@@ -27,9 +27,27 @@ The operators in this file fall into three categories:
+    at most a stretched vertical dimension and regular horizontal dimensions.
+ 2. Operators needed for an algorithm on a grid that is curvilinear in the horizontal
+    at rectilinear (possibly stretched) in the vertical.
+-
+ """
+ 
++#####
++##### Grid lengths for horizontally-regular algorithms
++#####
++
++@inline Δx(i, j, k, grid::ARG) = grid.Δx
++@inline Δy(i, j, k, grid::ARG) = grid.Δy
++
++@inline ΔzC(i, j, k, grid::RegularRectilinearGrid) = grid.Δz
++@inline ΔzC(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶠ[k]
++
++@inline ΔzF(i, j, k, grid::RegularRectilinearGrid) = grid.Δz
++@inline ΔzF(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶜ[k]
++
++@inline Δzᵃᵃᶠ(i, j, k, grid::RegularRectilinearGrid) = grid.Δz
++@inline Δzᵃᵃᶠ(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶠ[k]
++
++@inline Δzᵃᵃᶜ(i, j, k, grid::RegularRectilinearGrid) = grid.Δz
++@inline Δzᵃᵃᶜ(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶜ[k]
++
+ #####
+ ##### "Spacings" in Flat directions for rectilinear grids.
+ ##### Here we dispatch all spacings to `one`. This abuse of notation
+@@ -41,6 +59,48 @@ The operators in this file fall into three categories:
+ 
+ using Oceananigans.Grids: Flat
+ 
++#####
++##### Horizontal metrics for AbstractRectilinearGrid
++#####
++
++const XFlatARG = AbstractRectilinearGrid{<:Any, <:Flat}
++const YFlatARG = AbstractRectilinearGrid{<:Any, <:Any, <:Flat}
++
++@inline Δx(i, j, k, grid::XFlatARG) = one(eltype(grid))
++@inline Δy(i, j, k, grid::YFlatARG) = one(eltype(grid))
++
++@inline Δxᶜᶜᵃ(i, j, k, grid::XFlatARG) = one(eltype(grid))
++@inline Δxᶜᶠᵃ(i, j, k, grid::XFlatARG) = one(eltype(grid))
++@inline Δxᶠᶠᵃ(i, j, k, grid::XFlatARG) = one(eltype(grid))
++@inline Δxᶠᶜᵃ(i, j, k, grid::XFlatARG) = one(eltype(grid))
++
++@inline Δyᶜᶜᵃ(i, j, k, grid::YFlatARG) = one(eltype(grid))
++@inline Δyᶠᶜᵃ(i, j, k, grid::YFlatARG) = one(eltype(grid))
++@inline Δyᶜᶠᵃ(i, j, k, grid::YFlatARG) = one(eltype(grid))
++@inline Δyᶠᶠᵃ(i, j, k, grid::YFlatARG) = one(eltype(grid))
++
++##### 
++##### Vertical metrics for RegularRectilinearGrid
++##### 
++
++const ZFlatRRG = RegularRectilinearGrid{<:Any, <:Any, <:Any, <:Flat}
++
++@inline ΔzC(  i, j, k, grid::ZFlatRRG) = one(eltype(grid))
++@inline ΔzF(  i, j, k, grid::ZFlatRRG) = one(eltype(grid))
++@inline Δzᵃᵃᶠ(i, j, k, grid::ZFlatRRG) = one(eltype(grid))
++@inline Δzᵃᵃᶜ(i, j, k, grid::ZFlatRRG) = one(eltype(grid))
++
++##### 
++##### Vertical metrics for VerticallyStretchedRectilinearGrid
++##### 
++
++const ZFlatVSRG = VerticallyStretchedRectilinearGrid{<:Any, <:Any, <:Any, <:Flat}
++
++@inline ΔzC(  i, j, k, grid::ZFlatVSRG) = one(eltype(grid))
++@inline ΔzF(  i, j, k, grid::ZFlatVSRG) = one(eltype(grid))
++@inline Δzᵃᵃᶠ(i, j, k, grid::ZFlatVSRG) = one(eltype(grid))
++@inline Δzᵃᵃᶜ(i, j, k, grid::ZFlatVSRG) = one(eltype(grid))
++
+ #####
+ ##### Areas for horizontally-regular algorithms
+ #####
+@@ -114,7 +174,7 @@ using Oceananigans.Grids: Flat
+ ##### Temporary place for grid spacings and areas for RectilinearGrid
+ #####
+ 
+-const RG   = RectilinearGrid
++const RG = RectilinearGrid
+ const RGVX = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractVector}
+ const RGVY = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVector}
+ const RGVZ = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVector}
+@@ -151,11 +211,6 @@ const ZFlatRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Flat}
+ @inline Δzᵃᵃᶠ(i, j, k, grid::ZFlatRG) = one(eltype(grid))
+ @inline Δzᵃᵃᶜ(i, j, k, grid::ZFlatRG) = one(eltype(grid))
+ 
+-@inline Δx(i,  j, k, grid::RG) = Δxᶜᵃᵃ(i, j, k, grid)
+-@inline Δy(i,  j, k, grid::RG) = Δyᵃᶜᵃ(i, j, k, grid)
+-@inline ΔzC(i, j, k, grid::RG) = Δzᵃᵃᶜ(i, j, k, grid)
+-@inline ΔzF(i, j, k, grid::RG) = Δzᵃᵃᶠ(i, j, k, grid)
+-
+ #####
+ ##### Temporary place for grid spacings and areas for LatitudeLongitudeGrid
+ #####
+diff --git a/src/OutputWriters/jld2_output_writer.jl b/src/OutputWriters/jld2_output_writer.jl
+index 9d6eb93b..3e69838f 100644
+--- a/src/OutputWriters/jld2_output_writer.jl
++++ b/src/OutputWriters/jld2_output_writer.jl
+@@ -113,7 +113,7 @@ Write out 3D fields for w and T and a horizontal average:
+ using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Fields
+ using Oceananigans.Utils: hour, minute
+ 
+-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
++model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+ simulation = Simulation(model, Δt=12, stop_time=1hour)
+ 
+ function init_save_some_metadata!(file, model)
+diff --git a/src/OutputWriters/netcdf_output_writer.jl b/src/OutputWriters/netcdf_output_writer.jl
+index 3353bcd4..36d89fd3 100644
+--- a/src/OutputWriters/netcdf_output_writer.jl
++++ b/src/OutputWriters/netcdf_output_writer.jl
+@@ -181,7 +181,7 @@ to separate NetCDF files:
+ ```jldoctest netcdf1
+ using Oceananigans, Oceananigans.OutputWriters
+ 
+-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
++grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
+ 
+ model = NonhydrostaticModel(grid=grid);
+ 
+@@ -237,7 +237,7 @@ provided that their `dimensions` are provided:
+ ```jldoctest
+ using Oceananigans, Oceananigans.OutputWriters
+ 
+-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
++grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
+ 
+ model = NonhydrostaticModel(grid=grid);
+ 
+diff --git a/src/OutputWriters/windowed_time_average.jl b/src/OutputWriters/windowed_time_average.jl
+index 1a4c2c67..ed731f82 100644
+--- a/src/OutputWriters/windowed_time_average.jl
++++ b/src/OutputWriters/windowed_time_average.jl
+@@ -60,7 +60,7 @@ using Oceananigans
+ using Oceananigans.OutputWriters: JLD2OutputWriter
+ using Oceananigans.Utils: minutes
+ 
+-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
++model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+ 
+ simulation = Simulation(model, Δt=10minutes, stop_time=30years)
+ 
+diff --git a/src/Solvers/plan_transforms.jl b/src/Solvers/plan_transforms.jl
+index 73106e52..c55d66de 100644
+--- a/src/Solvers/plan_transforms.jl
++++ b/src/Solvers/plan_transforms.jl
+@@ -11,13 +11,6 @@
+ ##### efficient transforms. `A` will be mutated.
+ #####
+ 
+-##### Only for regular grids (FX == FY == FZ <: Number) 
+-##### and vertically stretched grids (FX == FY <: Number)
+-
+-const Regular             = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number} 
+-const VerticallyStretched = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Any} 
+-
+-
+ function plan_forward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT)
+     length(dims) == 0 && return nothing
+     return FFTW.plan_fft!(A, dims, flags=planner_flag)
+@@ -80,7 +73,7 @@ backward_orders(::Type{Bounded},  ::Type{Bounded},  ::Type{Periodic}) = (3, 1, 2
+ backward_orders(::Type{Bounded},  ::Type{Bounded},  ::Type{Bounded})  = (1, 2, 3)
+ 
+ " Used by FFTBasedPoissonSolver "
+-function plan_transforms(arch, grid::Regular, storage, planner_flag)
++function plan_transforms(arch, grid::RegularRectilinearGrid, storage, planner_flag)
+     Nx, Ny, Nz = size(grid)
+     topo = topology(grid)
+     periodic_dims = findall(t -> t == Periodic, topo)
+@@ -148,9 +141,8 @@ function plan_transforms(arch, grid::Regular, storage, planner_flag)
+     return transforms
+ end
+ 
+-
+ """ Used by FourierTridiagonalPoissonSolver. """
+-function plan_transforms(arch, grid::VerticallyStretched, storage, planner_flag)
++function plan_transforms(arch, grid::VerticallyStretchedRectilinearGrid, storage, planner_flag)
+     Nx, Ny, Nz = size(grid)
+     TX, TY, TZ = topo = topology(grid)
+ 
+@@ -160,7 +152,7 @@ function plan_transforms(arch, grid::VerticallyStretched, storage, planner_flag)
+ 
+     # Convert Flat to Bounded for ordering purposes (transforms are omitted in Flat directions anyways)
+ 
+-    !(topo[3] === Bounded) && error("Cannot plan transforms on z-periodic RectilinearGrids.")
++    !(topo[3] === Bounded) && error("Cannot plan transforms on z-periodic VerticallyStretchedRectilinearGrids.")
+ 
+     if arch isa CPU
+         # This is the case where batching transforms is possible. It's always possible on the CPU
+diff --git a/src/TurbulenceClosures/turbulence_closure_implementations/leith_enstrophy_diffusivity.jl b/src/TurbulenceClosures/turbulence_closure_implementations/leith_enstrophy_diffusivity.jl
+index 8484ce77..3a8d1ef3 100644
+--- a/src/TurbulenceClosures/turbulence_closure_implementations/leith_enstrophy_diffusivity.jl
++++ b/src/TurbulenceClosures/turbulence_closure_implementations/leith_enstrophy_diffusivity.jl
+@@ -215,7 +215,7 @@ function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLei
+ end
+ 
+ "Return the filter width for a Leith Diffusivity on a regular rectilinear grid."
+-@inline Δᶠ(i, j, k, grid::RectilinearGrid, ::TwoDimensionalLeith) = sqrt(grid.Δx * grid.Δy)
++@inline Δᶠ(i, j, k, grid::RegularRectilinearGrid, ::TwoDimensionalLeith) = sqrt(grid.Δx * grid.Δy)
+ 
+ function DiffusivityFields(arch, grid, tracer_names, bcs, ::L2D)
+     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))

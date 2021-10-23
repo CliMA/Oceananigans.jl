@@ -60,9 +60,9 @@ function RectilinearGrid(FT = Float64;
     VZ   = typeof(zᵃᵃᶠ)
     Arch = typeof(architecture) 
 
-    FX<:AbstractVector ? Δx = Δxᶠᵃᵃ[1] : Δx = Δxᶠᵃᵃ
-    FY<:AbstractVector ? Δy = Δyᵃᶠᵃ[1] : Δy = Δyᵃᶠᵃ
-    FZ<:AbstractVector ? Δz = Δzᵃᵃᶠ[1] : Δz = Δzᵃᵃᶠ
+    FX<:AbstractVector ? Δx = Array(Δxᶠᵃᵃ.parent)[1] : Δx = Δxᶠᵃᵃ
+    FY<:AbstractVector ? Δy = Array(Δyᵃᶠᵃ.parent)[1] : Δy = Δyᵃᶠᵃ
+    FZ<:AbstractVector ? Δz = Array(Δzᵃᵃᶠ.parent)[1] : Δz = Δzᵃᵃᶠ
 
     return RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
     Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, yᵃᶠᵃ, yᵃᶜᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ, Δx, Δy, Δz)
@@ -88,19 +88,22 @@ function show(io::IO, g::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
 end
 
 
-Adapt.adapt_structure(to, grid::RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ}) where {FT, TX, TY, TZ, FX, FY, FZ} =
-    LatitudeLongitudeGrid{FT, TX, TY, TZ, FX, FY, FZ,
-                            typeof(grid.xᶠᵃᵃ),
-                            typeof(grid.yᵃᶠᵃ),
-                            typeof(grid.zᵃᵃᶠ),
-                            Nothing}(
+Adapt.adapt_structure(to, grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+             RectilinearGrid{FT, TX, TY, TZ, 
+                          typeof(Adapt.adapt(to, grid.Δxᶜᵃᵃ)),
+                          typeof(Adapt.adapt(to, grid.Δyᵃᶠᵃ)),
+                          typeof(Adapt.adapt(to, grid.Δzᵃᵃᶠ)),
+                          typeof(Adapt.adapt(to, grid.xᶠᵃᵃ)),
+                          typeof(Adapt.adapt(to, grid.yᵃᶠᵃ)),
+                          typeof(Adapt.adapt(to, grid.zᵃᵃᶠ)),
+                          Nothing}(
         nothing,
         grid.Nx, grid.Ny, grid.Nz,
         grid.Hx, grid.Hy, grid.Hz,
         grid.Lx, grid.Ly, grid.Lz,
+        Adapt.adapt(to, grid.Δxᶠᵃᵃ),
         Adapt.adapt(to, grid.Δxᶜᵃᵃ),
         Adapt.adapt(to, grid.xᶠᵃᵃ),
-        Adapt.adapt(to, grid.Δxᶠᵃᵃ),
         Adapt.adapt(to, grid.xᶜᵃᵃ),
         Adapt.adapt(to, grid.Δyᵃᶠᵃ),
         Adapt.adapt(to, grid.Δyᵃᶜᵃ),
