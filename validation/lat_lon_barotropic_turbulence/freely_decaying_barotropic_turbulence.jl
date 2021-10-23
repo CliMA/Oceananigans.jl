@@ -25,10 +25,13 @@ using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Statistics
 using JLD2
 using Printf
+using CUDA
 
 #####
 ##### Grid
 #####
+
+precompute = true
 
 latitude = (-80, 80)
 Δφ = latitude[2] - latitude[1]
@@ -42,7 +45,9 @@ Ny = round(Int, Δφ / resolution)
                                    longitude = (-180, 180),
                                    latitude = latitude,
                                    halo = (2, 2, 2),
-                                   z = (-100, 0))
+                                   z = (-100, 0),
+                                   architecture=GPU(),
+                                   precompute_metrics=precompute)
 
 #####
 ##### Physics and model setup
@@ -50,7 +55,9 @@ Ny = round(Int, Δφ / resolution)
 
 free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
 
-equatorial_Δx = grid.radius * deg2rad(grid.Δλ)
+CUDA.allowscalar(true)
+
+equatorial_Δx = grid.radius * deg2rad(mean(grid.Δλᶜᵃᵃ))
 diffusive_time_scale = 120days
 
 @show const νh₂ =        equatorial_Δx^2 / diffusive_time_scale
@@ -116,8 +123,8 @@ v .= + ∂x(ψ_total)
 g = model.free_surface.gravitational_acceleration
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
-minimum_Δx = grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(grid.Δλ)
-minimum_Δy = grid.radius * deg2rad(grid.Δφ)
+minimum_Δx = grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(maximum(abs, grid.Δλᶜᵃᵃ))
+minimum_Δy = grid.radius * deg2rad(minimum(abs, grid.Δφᵃᶜᵃ))
 wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
 
 @info "Max speeds prior to rescaling:"
@@ -206,7 +213,7 @@ end
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 100year,
+                        stop_time = 100days,
                         iteration_interval = 1000,
                         progress = Progress(time_ns()))
 
@@ -220,4 +227,5 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ = ζ,),
                                                       force = true)
 
 # Let's goo!
+
 run!(simulation)
