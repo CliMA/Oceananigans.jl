@@ -212,7 +212,12 @@ Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT
         Adapt.adapt(to, grid.zᵃᵃᶜ),
         Adapt.adapt(to, grid.Δxᶠᶜᵃ),
         Adapt.adapt(to, grid.Δxᶜᶠᵃ),
+        Adapt.adapt(to, grid.Δxᶠᶠᵃ),
+        Adapt.adapt(to, grid.Δxᶜᶜᵃ),
+        Adapt.adapt(to, grid.Δyᶠᶜᵃ),
         Adapt.adapt(to, grid.Δyᶜᶠᵃ),
+        Adapt.adapt(to, grid.Azᶠᶜᵃ),
+        Adapt.adapt(to, grid.Azᶜᶠᵃ),
         Adapt.adapt(to, grid.Azᶠᶠᵃ),
         Adapt.adapt(to, grid.Azᶜᶜᵃ),
         grid.radius)
