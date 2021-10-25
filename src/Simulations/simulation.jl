@@ -15,7 +15,7 @@ mutable struct Simulation{ML, TS, DT, SC, ST, DI, OW, CB}
         diagnostics :: DI
      output_writers :: OW
           callbacks :: CB
-           run_wall_time :: Float64
+      run_wall_time :: Float64
             running :: Bool
         initialized :: Bool
 end
@@ -25,10 +25,7 @@ end
                stop_criteria = Any[iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded],
                stop_iteration = Inf,
                stop_time = Inf,
-               wall_time_limit = Inf,
-               diagnostics = OrderedDict{Symbol, AbstractDiagnostic}(),
-               output_writers = OrderedDict{Symbol, AbstractOutputWriter}(),
-               callback = OrderedDict{Symbol, Callback}())
+               wall_time_limit = Inf)
 
 Construct a `Simulation` for a `model` with time step `Δt`.
 
