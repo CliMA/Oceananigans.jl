@@ -13,7 +13,7 @@ end
 infinite_diffusion_timescale(args...) = Inf # its not very limiting
 
 """
-    TimeStepWizard(cfl=0.1, max_change=2.0, min_change=0.5, max_Δt=Inf, min_Δt=0.0, Δt=0.01)
+    TimeStepWizard(cfl=0.1, max_change=2.0, min_change=0.5, max_Δt=Inf, min_Δt=0.0)
 
 A type for calculating adaptive time steps based on capping the CFL number at `cfl`.
 
@@ -30,7 +30,6 @@ function TimeStepWizard(FT=Float64; cfl = 0.1,
                                     min_change = 0.5,
                                     max_Δt = Inf,
                                     min_Δt = 0.0,
-                                    Δt = Inf,
                                     cell_advection_timescale = cell_advection_timescale,
                                     cell_diffusion_timescale = infinite_diffusion_timescale)
 
@@ -41,7 +40,7 @@ function TimeStepWizard(FT=Float64; cfl = 0.1,
     C = typeof(cell_advection_timescale)
     D = typeof(cell_diffusion_timescale)
 
-    return TimeStepWizard{FT, C, D}(cfl, diffusive_cfl, max_change, min_change, max_Δt, min_Δt, Δt,
+    return TimeStepWizard{FT, C, D}(cfl, diffusive_cfl, max_change, min_change, max_Δt, min_Δt, 0.0,
                                     cell_advection_timescale, cell_diffusion_timescale)
 end
 
