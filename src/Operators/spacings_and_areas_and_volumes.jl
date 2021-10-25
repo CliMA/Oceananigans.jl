@@ -234,6 +234,7 @@ const LLGPY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:
 const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing}
 const LLGFX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Number}
 const LLGFY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Any, <:Number}
+
 const LLGZ  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
 
 @inline hack_cosd(φ) = cos(π * φ / 180)
@@ -245,10 +246,10 @@ const LLGZ  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:
 @inline Δxᶠᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ)
 @inline Δxᶜᶠᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ[i])
 @inline Δxᶜᶠᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ)   
-@inline Δxᶠᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ[i])
-@inline Δxᶠᶠᵃ(i, j, k, grid::LLGPX) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ)
-@inline Δxᶜᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ[i])
-@inline Δxᶜᶜᵃ(i, j, k, grid::LLGPX) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ)   
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ[i])
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶠᵃᵃ)
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ[i])
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGFX) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ)   
 
 @inline Δyᶜᶠᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ[j])
 @inline Δyᶜᶠᵃ(i, j, k, grid::LLGFY) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ)
