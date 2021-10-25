@@ -551,7 +551,7 @@ function test_lat_lon_precomputed_metrics(FT, arch)
                 @test all(arch_array(CPU(), [all(arch_array(CPU(), [Δxᶜᶜᵃ(i, j, 1, grid_pre) == Δxᶜᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
                 @test all(arch_array(CPU(), [all(arch_array(CPU(), [Δyᶜᶠᵃ(i, j, 1, grid_pre) == Δyᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
                 @test all(arch_array(CPU(), [all(arch_array(CPU(), [Azᶠᶜᵃ(i, j, 1, grid_pre) == Azᶠᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
-                @test all(arch_array(CPU(), [all(arch_array(CPU(), [Azᶜᶠᵃ(i, j, 1, grid_pre) == Azᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
+                @test all(arch_array(CPU(), [all(arch_array(CPU(), [Azᶜᶠᵃ(i, j, 1, grid_pre) ≈  Azᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
                 @test all(arch_array(CPU(), [all(arch_array(CPU(), [Azᶠᶠᵃ(i, j, 1, grid_pre) ≈  Azᶠᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
                 @test all(arch_array(CPU(), [all(arch_array(CPU(), [Azᶜᶜᵃ(i, j, 1, grid_pre) == Azᶜᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
             end 

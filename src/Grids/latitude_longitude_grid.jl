@@ -424,8 +424,6 @@ function preallocate_metrics(FT, grid::LLGFB)
     
     # preallocate quantities to ensure correct type and size
   
-    Δyᶠᶜᵃ = FT(0.0)
-    Δyᶜᶠᵃ = FT(0.0)
     underlying_Δxᶠᶜᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
     underlying_Δxᶜᶠᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
     underlying_Δxᶠᶠᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
@@ -435,6 +433,8 @@ function preallocate_metrics(FT, grid::LLGFB)
     underlying_Azᶠᶠᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
     underlying_Azᶜᶜᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
 
+    Δyᶠᶜᵃ = FT(0.0)
+    Δyᶜᶠᵃ = FT(0.0)
 
     Δxᶠᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶠᶜᵃ), grid.φᵃᶜᵃ.offsets[1])
     Δxᶜᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶜᶠᵃ), grid.φᵃᶜᵃ.offsets[1])
