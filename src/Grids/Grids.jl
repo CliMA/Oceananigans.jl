@@ -114,9 +114,8 @@ Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
 Base.length(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
 
 function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
-    if fieldnames(typeof(grid1)) != fieldnames(typeof(grid2))
-        return false
-    end
+    # Return false if the wrapper types are not identical; eg if `grid1` is lat-lon and `grid2` is rectilinear
+    !isa(grid2, typeof(grid1).name.wrapper) && return false
     
     names = fieldnames(typeof(grid1))
     
