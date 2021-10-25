@@ -95,8 +95,9 @@ Base.show(io::IO, s::Simulation) =
               "├── Stop iteration : $(s.stop_iteration)", '\n',
               "├── Wall time limit: $(s.wall_time_limit)", '\n',
               "├── Stop criteria: $(s.stop_criteria)", '\n',
-              "├── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))", '\n',
-              "└── Output writers: $(ordered_dict_show(s.output_writers, "│"))")
+              "├── Callbacks: $(ordered_dict_show(s.callbacks, "│"))", '\n',
+              "├── Output writers: $(ordered_dict_show(s.output_writers, "│"))", '\n',
+              "└── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
 
 #####
 ##### Utilities
