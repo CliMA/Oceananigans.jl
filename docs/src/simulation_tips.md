@@ -94,7 +94,7 @@ fixes the issue by indicating to the compiler that `T₀` will not change.
 Note that the _literal_ `2π / 86400` is not an issue -- it's only the
 _variable_ `T₀` that must be declared `const`.
 
-Alternatively passing the variable as a parameter to `GradientBoundaryConditions` also works:
+Alternatively passing the variable as a parameter to `GradientBoundaryCondition also works:
 
 ```julia
 T₀ = 20 # ᵒC
