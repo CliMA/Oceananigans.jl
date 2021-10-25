@@ -227,5 +227,4 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, (ζ = ζ,),
                                                       force = true)
 
 # Let's goo!
-
 run!(simulation)
