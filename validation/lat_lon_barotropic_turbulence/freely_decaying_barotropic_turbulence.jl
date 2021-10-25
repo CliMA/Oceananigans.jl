@@ -46,8 +46,8 @@ Ny = round(Int, Δφ / resolution)
                                    latitude = latitude,
                                    halo = (2, 2, 2),
                                    z = (-100, 0),
-                                   architecture=GPU(),
-                                   precompute_metrics=precompute)
+                                   architecture = GPU(),
+                                   precompute_metrics = precompute)
 
 #####
 ##### Physics and model setup
