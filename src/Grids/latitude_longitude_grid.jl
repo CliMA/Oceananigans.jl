@@ -301,7 +301,7 @@ end
 
 function  precompute_Δyᶜᶠᵃ_metric(grid::LLGF, Δyᶠᶜ, Δyᶜᶠ)
     arch = grid.architecture
-    precompute_Δyᶜᶠᵃ_metrics! = precompute_Δyᶜᶠᵃ_kernel!(Architectures.device(arch), 16, length(grid.Δφᵃᶠᵃ))
+    precompute_Δyᶜᶠᵃ_metrics! = precompute_Δyᶜᶠᵃ_kernel!(Architectures.device(arch), 16, length(grid.Δφᵃᶜᵃ))
     event = precompute_Δyᶜᶠᵃ_metrics!(grid, Δyᶠᶜ, Δyᶜᶠ; dependencies=device_event(arch))
     wait(Architectures.device(arch), event)
     return Δyᶠᶜ, Δyᶜᶠ
@@ -315,7 +315,7 @@ end
 
 @kernel function precompute_Δyᶜᶠᵃ_kernel!(grid, Δyᶠᶜ, Δyᶜᶠ)
     j = @index(Global, Linear)
-    j += grid.Δφᵃᶠᵃ.offsets[1]
+    j += grid.Δφᵃᶜᵃ.offsets[1]
     @inbounds begin
         Δyᶜᶠ[j] = Δyᶜᶠᵃ(1, j, 1, grid)
         Δyᶠᶜ[j] = Δyᶜᶠᵃ(1, j, 1, grid)
