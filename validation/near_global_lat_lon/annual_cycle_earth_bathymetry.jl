@@ -2,13 +2,14 @@ using Statistics
 using JLD2
 using Printf
 using GLMakie
-using CUDA
 using Oceananigans
+using Oceananigans.Units
+
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
-using Oceananigans.Units
+using CUDA: @allowscalar
 using Oceananigans.Operators: Δzᵃᵃᶜ
 
 #####
@@ -22,6 +23,8 @@ latitude = (-84.375, 84.375)
 Nx = 128
 Ny = 60
 Nz = 18
+
+output_prefix = "annual_cycle_global_lat_lon_$(Nx)_$(Ny)_$Nz"
 
 arch = CPU()
 reference_density = 1035
@@ -40,9 +43,9 @@ Nmonths = 12
 bytes = sizeof(Float32) * Nx * Ny
 
 bathymetry = reshape(bswap.(reinterpret(Float32, read(bathymetry_path, bytes))), (Nx, Ny))
-τˣ = - reshape(bswap.(reinterpret(Float32, read(east_west_stress_path, 12bytes))), (Nx, Ny, 12)) ./ reference_density
-τʸ = - reshape(bswap.(reinterpret(Float32, read(north_south_stress_path, 12bytes))), (Nx, Ny, 12)) ./ reference_density
-target_sea_surface_temperature = reshape(bswap.(reinterpret(Float32, read(sea_surface_temperature_path, 12bytes))), (Nx, Ny, 12))
+τˣ = - reshape(bswap.(reinterpret(Float32, read(east_west_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ reference_density
+τʸ = - reshape(bswap.(reinterpret(Float32, read(north_south_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ reference_density
+target_sea_surface_temperature = reshape(bswap.(reinterpret(Float32, read(sea_surface_temperature_path, Nmonths * bytes))), (Nx, Ny, Nmonths))
 
 bathymetry = arch_array(arch, bathymetry)
 τˣ = arch_array(arch, τˣ)
@@ -66,11 +69,6 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 ##### Physics and model setup
 #####
 
-equatorial_Δx = grid.radius * deg2rad(grid.Δλ)
-diffusive_time_scale = 120days
-
-νh₂ = 1e-3 * equatorial_Δx^2 / diffusive_time_scale
-νh₄ = 1e-5 * equatorial_Δx^4 / diffusive_time_scale
 νh = 1e+5
 νz = 1e-2
 κh = 1e+3
@@ -83,8 +81,8 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 ##### Boundary conditions / constant-in-time surface forcing
 #####
 
-Δz_top = CUDA.@allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid.grid)
-Δz_bottom = CUDA.@allowscalar Δzᵃᵃᶜ(1, 1, 1, grid.grid)
+Δz_top = @allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid.grid)
+Δz_bottom = @allowscalar Δzᵃᵃᶜ(1, 1, 1, grid.grid)
 
 # 30 day cycle
 
@@ -152,7 +150,7 @@ T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = arch,
                                     #free_surface = ExplicitFreeSurface(),
-                                    free_surface = ImplicitFreeSurface(maximum_iterations=5),
+                                    free_surface = ImplicitFreeSurface(maximum_iterations=10),
                                     #free_surface = ImplicitFreeSurface(),
                                     momentum_advection = VectorInvariant(),
                                     tracer_advection = WENO5(),
@@ -188,7 +186,7 @@ wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
 if model.free_surface isa ExplicitFreeSurface
     Δt = 60seconds #0.2 * minimum_Δx / gravity_wave_speed
 else
-    Δt = 30minutes
+    Δt = 10minutes
 end
 
 start_time = [time_ns()]
@@ -218,14 +216,13 @@ function progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt = Δt, stop_time = 1year, iteration_interval = 10, progress = progress)
+simulation = Simulation(model, Δt = Δt, stop_time = 180days, iteration_interval = 10, progress = progress)
 
 u, v, w = model.velocities
 T, S = model.tracers
 η = model.free_surface.η
 
 output_fields = (; u, v, T, S, η)
-output_prefix = "annual_cycle_global_lat_lon_$(grid.Nx)_$(grid.Ny)_$(grid.Nz)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(1day),
