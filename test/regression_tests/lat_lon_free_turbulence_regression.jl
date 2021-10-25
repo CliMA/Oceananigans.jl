@@ -36,7 +36,7 @@ function run_lat_lon_free_turbulence_regression_test(grid, free_surface; regener
     
     set!(model, c = (λ, φ, z) -> cosd(2λ) * cosd(4φ) * z,
                 u = (λ, φ, z) -> polar_mask(φ) * exp(-φ^2 / 200),
-                v = (λ, φ, z) -> polar_mask(φ) * sin(2λ)) 
+                v = (λ, φ, z) -> polar_mask(φ) * sind(2λ)) 
 
     u, v, w = model.velocities
     η = model.free_surface.η
