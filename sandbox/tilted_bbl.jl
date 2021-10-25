@@ -1,66 +1,85 @@
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
-using CUDA
 using Printf
+using CUDA
 
-if has_cuda_gpu()
-    Nx = 2^10
-    Nz = 2^7
-else
-    Nx= 2^8
-    Nz = 2^5
-end
-Lx = 1000
-Lz = 100
-const θ_rad = 0.05 # radians
-const θ_deg = rad2deg(θ_rad) # degrees
-const N²∞ = 1e-5
-const V∞ = 0.1
-const g̃ = (sin(θ_rad), 0, cos(θ_rad))
+params = (f_0 = 1e-4, #1/s
+          V_inf = 0.1, # m/s
+          N2_inf = 1e-5, # 1/s²
+          θ_rad = 0.05,
+          Lx = 1000, # m
+          Lz = 100, # m
+          Nx = 64,
+          Nz = 64,
+          ν = 5e-4, # m²/s
+          sponge_frac = 1/5,
+          sponge_rate = √1e-5, # 1/s
+          z_0 = 0.1, # m (roughness length)
+          )
+
+arch = CPU()
+ĝ = [sin(params.θ_rad), 0, cos(params.θ_rad)]
+
+
 
 #++++ Grid
 S = 1.3
-z_faces(k) = Lz*(1 + tanh(S * ( (k - 1) / Nz - 1)) / tanh(S))
+z_faces(k) = params.Lz*(1 + tanh(S * ( (k - 1) / params.Nz- 1)) / tanh(S))
+
 topo = (Periodic, Flat, Bounded)
-grid = VerticallyStretchedRectilinearGrid(topology=topo,
-                                          architecture = CUDA.has_cuda() ? GPU() : CPU(), 
-                                          size=(Nx, Nz),
-                                          x=(0, Lx), z_faces=z_faces,
-                                          halo=(3,3),
-                                         )
+grid_reg = RegularRectilinearGrid(topology=topo,
+                              size=(params.Nx, params.Nz),
+                              x=(0, params.Lx), z=(0, params.Lz),
+                              halo=(3,3),
+                              )
+                          
+S = 1.3
+z_faces(k) = params.Lz*(1 + tanh(S * ( (k - 1) / (params.Nz) - 1)) / tanh(S))
+grid_str = VerticallyStretchedRectilinearGrid(topology=topo,
+                                              architecture = arch,
+                                              size=(params.Nx, params.Nz),
+                                              x=(0, params.Lx), z_faces=z_faces,
+                                              halo=(3,3),
+                                              )
+grid = grid_str
 @info grid
 #----
 
+
+
+
 #++++ Buoyancy model and background
-buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃)
+buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=ĝ)
 
-b∞(x, y, z, t) = N²∞ * (x*g̃[1] + z*g̃[3])
-B_field = BackgroundField(b∞)
+b∞(x, y, z, t, p) = p.N2_inf * (x * sin(p.θ_rad) + z * cos(p.θ_rad))
+B_field = BackgroundField(b∞, parameters=(; params.N2_inf, params.θ_rad))
 
-db∞dz = N²∞ * g̃[3]
+db∞dz = params.N2_inf * ĝ[3]
 grad_bc_b = GradientBoundaryCondition(-db∞dz) # db/dz + db∞/dz = 0 @ z=0
 b_bcs = FieldBoundaryConditions(bottom = grad_bc_b)
 #----
 
+
 #+++++ Boundary Conditions
-#+++++ Bottom Drag
-const z₀ = 0.01 # roughness length (m)
+#+++++ Bottom Drag (Implemented as in https://doi.org/10.1029/2005WR004685)
 const κ = 0.4 # von Karman constant
-z₁ = znodes(Center, grid)[1]
-const cᴰ = (κ / log(z₁))^2 # quadratic drag coefficient
+z₁ = CUDA.@allowscalar znodes(Center, grid)[1]
+cᴰ = (κ / log(z₁/params.z_0))^2 # quadratic drag coefficient
 
-@inline drag_u(x, y, t, u, v, cᴰ) = - cᴰ * √(u^2 + (v+V∞)^2) * u
-@inline drag_v(x, y, t, u, v, cᴰ) = - cᴰ * √(u^2 + (v+V∞)^2) * (v + V∞)
+@info "Adding drag"
+@inline drag_u(x, y, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * u
+@inline drag_v(x, y, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * (v + p.V∞)
 
-drag_bc_u = FluxBoundaryCondition(drag_u, field_dependencies=(:u, :v), parameters=cᴰ)
-drag_bc_v = FluxBoundaryCondition(drag_v, field_dependencies=(:u, :v), parameters=cᴰ)
+@info "Defining drag BC"
+drag_bc_u = FluxBoundaryCondition(drag_u, field_dependencies=(:u, :v), parameters=(cᴰ=cᴰ, V∞=params.V_inf))
+drag_bc_v = FluxBoundaryCondition(drag_v, field_dependencies=(:u, :v), parameters=(cᴰ=cᴰ, V∞=params.V_inf))
 
+@info "Defining u, v BCs"
 u_bcs = FieldBoundaryConditions(bottom = drag_bc_u)
 v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 
-V_bg(x, y, z, t) = V∞
-V_field = BackgroundField(V_bg)
+V_bg(x, y, z, t, p) = p.V∞
+V_field = BackgroundField(V_bg, parameters=(; V∞=params.V_inf))
 #-----
 
 bcs = (u=u_bcs,
@@ -71,33 +90,44 @@ bcs = (u=u_bcs,
 
 
 #++++ Sponge layer definition
+@info "Defining sponge layer"
 @inline heaviside(X) = ifelse(X < 0, zero(X), one(X))
-@inline mask2nd(X) = heaviside(X) * X^2
 
-function top_mask(x, y, z)
-    z₁ = +Lz; z₀ = z₁ - Lz/5
-    return mask2nd((z - z₀)/(z₁ - z₀))
+const sp_frac = params.sponge_frac
+const Lz = params.Lz
+
+function top_mask_2nd(x, y, z)
+    z₁ = +Lz; z₀ = z₁ - Lz * sp_frac 
+    return heaviside((z - z₀)/(z₁ - z₀)) * ((z - z₀)/(z₁ - z₀))^2
 end
 
-const rate = 1/1minutes
-full_sponge_0 = Relaxation(rate=rate, mask=top_mask, target=0)
-forcing = (u=full_sponge_0, v=full_sponge_0, w=full_sponge_0, b=full_sponge_0)
+full_sponge_0 = Relaxation(rate=params.sponge_rate, mask=top_mask_2nd, target=0)
+forcing = (u=full_sponge_0, v=full_sponge_0, w=full_sponge_0,)
 #----
 
+
+#++++ Turbulence closure
+closure = IsotropicDiffusivity(ν=params.ν, κ=params.ν)
+#----
+
+
 #++++ Model and ICs
+@info "Creating model"
 model = NonhydrostaticModel(grid = grid, timestepper = :RungeKutta3,
+                            architecture = arch,
                             advection = UpwindBiasedFifthOrder(),
                             buoyancy = buoyancy,
-                            coriolis = ConstantCartesianCoriolis(f=1e-4, rotation_axis=g̃),
+                            coriolis = ConstantCartesianCoriolis(f=params.f_0, rotation_axis=ĝ),
                             tracers = :b,
-                            closure = IsotropicDiffusivity(ν=1e-3, κ=1e-3),
+                            closure = closure,
                             boundary_conditions = bcs,
                             background_fields = (b=B_field, v=V_field,),
                             forcing=forcing,
                            )
-println(); println(model); println()
+@info "" model
+if has_cuda() run(`nvidia-smi`) end
 
-noise(z, kick) = kick * randn() * exp(-z / (Lz/5))
+noise(z, kick) = kick * randn() * exp(-z / (params.Lz/5))
 u_ic(x, y, z) = noise(z, 1e-3)
 set!(model, b=0, u=u_ic, w=u_ic)
 
@@ -110,10 +140,18 @@ model.velocities.v.data.parent .-= v̄
 model.velocities.w.data.parent .-= w̄
 #----
 
+
 #++++ Create simulation
-wizard = TimeStepWizard(Δt=0.1*grid.Δzᵃᵃᶜ[1]/V∞, max_change=1.05, cfl=0.2)
+using Oceananigans.Grids: min_Δz
+if ndims==3
+    cfl=0.85
+else
+    cfl=0.5
+end
+wizard = TimeStepWizard(Δt=0.5*min_Δz(grid)/params.V_inf, max_change=1.01, cfl=cfl)
 
 # Print a progress message
+start_time = 1e-9*time_ns()
 progress_message(sim) =
     @printf("i: %04d, t: %s, Δt: %s, wmax = %.1e ms⁻¹, wall time: %s\n",
             sim.model.clock.iteration, prettytime(model.clock.time),
@@ -121,15 +159,16 @@ progress_message(sim) =
             prettytime((time_ns() - start_time) * 1e-9))
 
 simulation = Simulation(model, Δt=wizard, 
-                        stop_time=2days, 
-                        #stop_time=2hours, 
+                        stop_time=3days, 
+                        wall_time_limit=23.5hours,
                         progress=progress_message,
-                        iteration_interval=10,
+                        iteration_interval=2,
                         stop_iteration=Inf,
                        )
 #----
 
 
+#++++ Outputs
 u, v, w = model.velocities
 b_tot = ComputedField(model.tracers.b + model.background_fields.tracers.b)
 v_tot = ComputedField(v + model.background_fields.velocities.v)
@@ -137,9 +176,10 @@ v_tot = ComputedField(v + model.background_fields.velocities.v)
 fields = merge((; u, v_tot, w, b_tot, ω_y))
 simulation.output_writers[:fields] =
 NetCDFOutputWriter(model, fields, filepath = "out.tilted_bbl.nc",
-                   schedule = TimeInterval(5minutes),
+                   schedule = TimeInterval(20minutes),
                    mode = "c")
-
+#----
+#
 
 @info "Starting simulation"
 start_time = time_ns() # so we can print the total elapsed wall time
