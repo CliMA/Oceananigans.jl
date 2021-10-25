@@ -1,21 +1,3 @@
-function summarize_regression_test(fields, correct_fields)
-    for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
-        Δ = φ .- φ_c
-
-        Δ_min      = minimum(Δ)
-        Δ_max      = maximum(Δ)
-        Δ_mean     = mean(Δ)
-        Δ_abs_mean = mean(abs, Δ)
-        Δ_std      = std(Δ)
-
-        matching    = sum(φ .≈ φ_c)
-        grid_points = length(φ_c)
-
-        @info @sprintf("Δ%s: min=%+.6e, max=%+.6e, mean=%+.6e, absmean=%+.6e, std=%+.6e (%d/%d matching grid points)",
-                       field_name, Δ_min, Δ_max, Δ_mean, Δ_abs_mean, Δ_std, matching, grid_points)
-    end
-end
-
 function get_fields_from_checkpoint(filename)
     file = jldopen(filename)
 
@@ -78,6 +60,19 @@ include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
                     run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
                 end
             end
+        end
+
+        @testset "HydrostaticFreeSurface latitude-longitude free turbulent decay [$(typeof(arch))]" begin
+
+        # A spherical domain
+        grid = RegularLatitudeLongitudeGrid(size = (90, 30, 3),
+                                            longitude = (-180, 180),
+                                            latitude = (-60, 60),
+                                            halo = (2, 2, 2),
+                                            z = (-90, 0))
+
+
+
         end
     end
 end
