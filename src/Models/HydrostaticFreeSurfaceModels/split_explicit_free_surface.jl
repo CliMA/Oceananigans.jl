@@ -3,6 +3,12 @@ using Oceananigans.Fields
 using Oceananigans.Grids
 using Oceananigans.Architectures
 
+# TODO: Potentially Change Structs before final PR
+# e.g. flatten the struct, 
+# forcing -> source / barotropic_source, 
+# parameters -> gravitational_accceleration
+# settings -> flattened_settings
+
 """
 SplitExplicitFreeSurface{𝒮, 𝒫, ℰ}
 
@@ -16,8 +22,7 @@ settings : (SplitExplicitSettings). Settings for the split-explicit scheme
     forcing :: ℱ
     parameters :: 𝒫
     settings :: ℰ
-end
-
+end 
 
 # use as a trait for dispatch purposes
 function SplitExplicitFreeSurface()
@@ -79,6 +84,7 @@ function SplitExplicitState(grid::AbstractGrid, arch::AbstractArchitecture)
     return SplitExplicitState(; η, η̅, U, U̅, V, V̅)
 end
 
+# TODO: CHANGE TO SOURCE?
 
 """
 SplitExplicitForcing{𝒞ℱ, ℱ𝒞}
