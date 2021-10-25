@@ -289,14 +289,14 @@ end
     j = @index(Global, Linear)
     j += grid.φᵃᶠᵃ.offsets[1] + 1
     @inbounds begin
-        Δxᶠᶜ[i] = Δxᶠᶜᵃ(1, j, 1, grid)
-        Δxᶜᶠ[i] = Δxᶜᶠᵃ(1, j, 1, grid)
-        Δxᶠᶠ[i] = Δxᶠᶠᵃ(1, j, 1, grid)
-        Δxᶜᶜ[i] = Δxᶜᶜᵃ(1, j, 1, grid)
-        Azᶠᶜ[i] = Azᶠᶜᵃ(1, j, 1, grid)
-        Azᶜᶠ[i] = Azᶜᶠᵃ(1, j, 1, grid)
-        Azᶠᶠ[i] = Azᶠᶠᵃ(1, j, 1, grid)
-        Azᶜᶜ[i] = Azᶜᶜᵃ(1, j, 1, grid)
+        Δxᶠᶜ[j] = Δxᶠᶜᵃ(1, j, 1, grid)
+        Δxᶜᶠ[j] = Δxᶜᶠᵃ(1, j, 1, grid)
+        Δxᶠᶠ[j] = Δxᶠᶠᵃ(1, j, 1, grid)
+        Δxᶜᶜ[j] = Δxᶜᶜᵃ(1, j, 1, grid)
+        Azᶠᶜ[j] = Azᶠᶜᵃ(1, j, 1, grid)
+        Azᶜᶠ[j] = Azᶜᶠᵃ(1, j, 1, grid)
+        Azᶠᶠ[j] = Azᶠᶠᵃ(1, j, 1, grid)
+        Azᶜᶜ[j] = Azᶜᶜᵃ(1, j, 1, grid)
     end
 end
 
