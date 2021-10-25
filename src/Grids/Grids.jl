@@ -113,7 +113,7 @@ Base.eltype(::AbstractGrid{FT}) where FT = FT
 Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
 Base.length(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
 
-function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
+function Base.:(==)(grid1::AbstractGrid{FT1, TX, TY, TZ}, grid2::AbstractGrid{FT2, TX, TY, TZ}) where {FT1, FT2, TX, TY, TZ}
     # Return false if the wrapper types are not identical; eg if `grid1` is lat-lon and `grid2` is rectilinear
     !isa(grid2, typeof(grid1).name.wrapper) && return false
     
