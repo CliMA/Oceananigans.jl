@@ -322,7 +322,8 @@ forcing functions on a GPU. To learn more about working with `CuArray`s, see the
 [array programming](https://juliagpu.github.io/CUDA.jl/dev/usage/array/) section
 of the CUDA.jl documentation.
 
-### Avoid trigonometric functions in GPUs
+
+### Avoid trigonometric functions on GPUs
 
 Trigonometric functions are slow to compute in GPUs, so it's best to avoid them inside functions
 that need to be computed on GPUs. For example, when running on GPUs, definiting a backgrouund field
