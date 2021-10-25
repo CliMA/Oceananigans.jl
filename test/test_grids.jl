@@ -540,7 +540,6 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     for lat in latitude
         for lon in longitude
             for z in zcoord
-                println("$lat $lon $z")
 
                 grid_pre = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, architecture=arch, precompute_metrics=true) 
                 grid_fly = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, architecture=arch) 
