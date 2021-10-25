@@ -119,7 +119,7 @@ function LatitudeLongitudeGrid(FT=Float64;
     if precompute_metrics
         Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ = preallocate_metrics(FT, grid)
         precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ )
-        Δyᶠᶜ, Δyᶜᶠ = precompute_Δyᶜᶠᵃ_metric(grid, Δyᶠᶜ, Δyᶜᶠ)
+        Δyᶠᶜ, Δyᶜᶠ = precompute_Δy_metrics(grid, Δyᶠᶜ, Δyᶜᶠ)
         M  = typeof(Δxᶠᶜ)
         MY = typeof(Δyᶜᶠ)
     end
@@ -299,21 +299,21 @@ end
 ####### Kernels that precompute the y-metric
 #######
 
-function  precompute_Δyᶜᶠᵃ_metric(grid::LLGF, Δyᶠᶜ, Δyᶜᶠ)
+function  precompute_Δy_metrics(grid::LLGF, Δyᶠᶜ, Δyᶜᶠ)
     arch = grid.architecture
-    precompute_Δyᶜᶠᵃ_metrics! = precompute_Δyᶜᶠᵃ_kernel!(Architectures.device(arch), 16, length(grid.Δφᵃᶜᵃ))
-    event = precompute_Δyᶜᶠᵃ_metrics!(grid, Δyᶠᶜ, Δyᶜᶠ; dependencies=device_event(arch))
+    precompute_Δy! = precompute_Δy_kernel!(Architectures.device(arch), 16, length(grid.Δφᵃᶜᵃ))
+    event = precompute_Δy!(grid, Δyᶠᶜ, Δyᶜᶠ; dependencies=device_event(arch))
     wait(Architectures.device(arch), event)
     return Δyᶠᶜ, Δyᶜᶠ
 end
 
-function  precompute_Δyᶜᶠᵃ_metric(grid::LLGFY, Δyᶠᶜ, Δyᶜᶠ)
+function  precompute_Δy_metrics(grid::LLGFY, Δyᶠᶜ, Δyᶜᶠ)
     Δyᶜᶠ =  Δyᶜᶠᵃ(1, 1, 1, grid)
     Δyᶠᶜ =  Δyᶠᶜᵃ(1, 1, 1, grid)
     return Δyᶠᶜ, Δyᶜᶠ
 end
 
-@kernel function precompute_Δyᶜᶠᵃ_kernel!(grid, Δyᶠᶜ, Δyᶜᶠ)
+@kernel function precompute_Δy_kernel!(grid, Δyᶠᶜ, Δyᶜᶠ)
     j = @index(Global, Linear)
     j += grid.Δφᵃᶜᵃ.offsets[1]
     @inbounds begin
