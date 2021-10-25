@@ -113,6 +113,27 @@ Base.eltype(::AbstractGrid{FT}) where FT = FT
 Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
 Base.length(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
 
+function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
+    if fieldnames(typeof(grid1)) != fieldnames(typeof(grid2))
+        return false
+    end
+    
+    names = fieldnames(typeof(grid1))
+    
+    for name in names
+        if name == :architecture
+            continue
+        end
+        
+        if Adapt.adapt_structure(CPU(), getproperty(grid1, name)) != Adapt.adapt_structure(CPU(), getproperty(grid2, name))
+            return false
+        end
+    end
+
+    # otherwise means that the grids are same
+    return true
+end
+
 halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
 
 topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
