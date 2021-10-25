@@ -194,7 +194,7 @@ function set!(model, filepath::AbstractString)
 
         # Validate the grid
         checkpointed_grid = file["grid"]
-        CUDA.@allowscalar model.grid == checkpointed_grid ||
+        model.grid == checkpointed_grid ||
             error("The grid associated with $filepath and model.grid are not the same!")
 
         # Set model fields and tendency fields
