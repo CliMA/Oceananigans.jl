@@ -3,9 +3,9 @@ using Oceananigans.Units
 using Printf
 using CUDA
 
-params = (f_0 = 1e-4, #1/s
-          V_inf = 0.1, # m/s
-          N2_inf = 1e-5, # 1/s²
+params = (f₀ = 1e-4, #1/s
+          V∞ = 0.1, # m/s
+          N²∞ = 1e-5, # 1/s²
           θ_rad = 0.05,
           Lx = 1000, # m
           Lz = 100, # m
@@ -51,10 +51,10 @@ grid = grid_str
 #++++ Buoyancy model and background
 buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=ĝ)
 
-b∞(x, y, z, t, p) = p.N2_inf * (x * sin(p.θ_rad) + z * cos(p.θ_rad))
-B_field = BackgroundField(b∞, parameters=(; params.N2_inf, params.θ_rad))
+b∞(x, y, z, t, p) = p.N²∞ * (x * sin(p.θ_rad) + z * cos(p.θ_rad))
+B_field = BackgroundField(b∞, parameters=(; params.N²∞, params.θ_rad))
 
-db∞dz = params.N2_inf * ĝ[3]
+db∞dz = params.N²∞ * ĝ[3]
 grad_bc_b = GradientBoundaryCondition(-db∞dz) # db/dz + db∞/dz = 0 @ z=0
 b_bcs = FieldBoundaryConditions(bottom = grad_bc_b)
 #----
@@ -71,15 +71,15 @@ cᴰ = (κ / log(z₁/params.z_0))^2 # quadratic drag coefficient
 @inline drag_v(x, y, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * (v + p.V∞)
 
 @info "Defining drag BC"
-drag_bc_u = FluxBoundaryCondition(drag_u, field_dependencies=(:u, :v), parameters=(cᴰ=cᴰ, V∞=params.V_inf))
-drag_bc_v = FluxBoundaryCondition(drag_v, field_dependencies=(:u, :v), parameters=(cᴰ=cᴰ, V∞=params.V_inf))
+drag_bc_u = FluxBoundaryCondition(drag_u, field_dependencies=(:u, :v), parameters=(cᴰ=cᴰ, V∞=params.V∞))
+drag_bc_v = FluxBoundaryCondition(drag_v, field_dependencies=(:u, :v), parameters=(cᴰ=cᴰ, V∞=params.V∞))
 
 @info "Defining u, v BCs"
 u_bcs = FieldBoundaryConditions(bottom = drag_bc_u)
 v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 
 V_bg(x, y, z, t, p) = p.V∞
-V_field = BackgroundField(V_bg, parameters=(; V∞=params.V_inf))
+V_field = BackgroundField(V_bg, parameters=(; V∞=params.V∞))
 #-----
 
 bcs = (u=u_bcs,
@@ -117,7 +117,7 @@ model = NonhydrostaticModel(grid = grid, timestepper = :RungeKutta3,
                             architecture = arch,
                             advection = UpwindBiasedFifthOrder(),
                             buoyancy = buoyancy,
-                            coriolis = ConstantCartesianCoriolis(f=params.f_0, rotation_axis=ĝ),
+                            coriolis = ConstantCartesianCoriolis(f=params.f₀, rotation_axis=ĝ),
                             tracers = :b,
                             closure = closure,
                             boundary_conditions = bcs,
@@ -148,7 +148,7 @@ if ndims==3
 else
     cfl=0.5
 end
-wizard = TimeStepWizard(Δt=0.5*min_Δz(grid)/params.V_inf, max_change=1.01, cfl=cfl)
+wizard = TimeStepWizard(Δt=0.5*min_Δz(grid)/params.V∞, max_change=1.03, cfl=cfl)
 
 # Print a progress message
 start_time = 1e-9*time_ns()
