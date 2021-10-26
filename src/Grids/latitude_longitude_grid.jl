@@ -306,7 +306,7 @@ end
 
 function  precompute_Δy_metrics(grid::LLGF, Δyᶠᶜ, Δyᶜᶠ)
     arch = grid.architecture
-    precompute_Δy! = precompute_Δy_kernel!(Architectures.device(arch), 16, length(grid.Δφᵃᶜᵃ))
+    precompute_Δy! = precompute_Δy_kernel!(Architectures.device(arch), 16, length(grid.Δφᵃᶜᵃ) - 1)
     event = precompute_Δy!(grid, Δyᶠᶜ, Δyᶜᶠ; dependencies=device_event(arch))
     wait(Architectures.device(arch), event)
     return Δyᶠᶜ, Δyᶜᶠ
