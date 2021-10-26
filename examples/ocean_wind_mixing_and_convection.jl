@@ -43,7 +43,7 @@ hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
 grid = RectilinearGrid(size = (32, 32, Nz), 
                                           x = (0, 64),
                                           y = (0, 64),
-                                          z_faces = hyperbolically_spaced_faces)
+                                          z = hyperbolically_spaced_faces)
 
 # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
 

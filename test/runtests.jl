@@ -81,7 +81,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
 @testset "Oceananigans" begin
     if group == :unit || group == :all
         @testset "Unit tests" begin
-            include("test_rectilinear_grid.jl")
+            include("test_grids.jl")
             include("test_operators.jl")
             include("test_boundary_conditions.jl")
             include("test_field.jl")

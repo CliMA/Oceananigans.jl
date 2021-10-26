@@ -23,7 +23,7 @@ using Oceananigans.Fields: regrid!
 Nz, Lz = 2, 1.0
 topology = (Flat, Flat, Bounded)
 
-input_grid = RectilinearGrid(size=Nz, z_faces = [0, Lz/3, Lz], topology=topology)
+input_grid = RectilinearGrid(size=Nz, z = [0, Lz/3, Lz], topology=topology)
 input_field = CenterField(input_grid)
 input_field[1, 1, 1:Nz] = [2, 3]
 

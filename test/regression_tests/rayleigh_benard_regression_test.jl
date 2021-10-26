@@ -26,10 +26,10 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     #####
 
     if grid_type == :regular
-        grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        grid = RectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     elseif grid_type == :vertically_unstretched
         zF = range(-Lz, 0, length=Nz+1)
-        grid = RectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z_faces=zF)
+        grid = RectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=zF)
     end
 
     # Force salinity as a passive tracer (βS=0)

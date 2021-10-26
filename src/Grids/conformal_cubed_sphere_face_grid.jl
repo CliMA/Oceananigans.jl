@@ -61,9 +61,9 @@ function ConformalCubedSphereFaceGrid(FT = Float64; size, z,
 
     ## The vertical coordinates can come out of the regular rectilinear grid!
 
-    Δz = ξη_grid.Δz
-    zᵃᵃᶠ = ξη_grid.zF
-    zᵃᵃᶜ = ξη_grid.zC
+    Δz = ξη_grid.Δzᵃᵃᶜ
+    zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
+    zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
 
     ## Compute staggered grid Cartesian coordinates (X, Y, Z) on the unit sphere.
 
@@ -187,9 +187,9 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, FT = Float64;
 
     ξη_grid = RectilinearGrid(FT, topology=topology, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=z, halo=halo)
 
-    Δz = ξη_grid.Δz
-    zᵃᵃᶠ = ξη_grid.zF
-    zᵃᵃᶜ = ξη_grid.zC
+    Δz = ξη_grid.Δzᵃᵃᶜ
+    zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
+    zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
 
     ## Read everything else from the file
 

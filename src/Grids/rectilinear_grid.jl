@@ -28,6 +28,10 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
       Δz :: FT
 end
 
+const RectilinearGridRegInX = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number}
+const RectilinearGridRegInY = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+const RectilinearGridRegInZ = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+
 function RectilinearGrid(FT = Float64;
          architecture = CPU(),
          size,
@@ -76,8 +80,15 @@ short_show(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     "RectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
     
 
+function domain_string(grid::RectilinearGrid)
+    x₁, x₂ = domain(topology(grid, 1), grid.Nx, grid.xᶠᵃᵃ)
+    y₁, y₂ = domain(topology(grid, 2), grid.Ny, grid.yᵃᶠᵃ)
+    z₁, z₂ = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
+    return "x ∈ [$x₁, $x₂], y ∈ [$y₁, $y₂], z ∈ [$z₁, $z₂]"
+end
+
 function show(io::IO, g::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    print(io, "RectilinearGrid{$FT, $TX, $TY, $TZ} \n",
+    print(io, "RectilinearGrid{$FT, $TX, $TY, $TZ} on the $(g.architecture)\n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
               "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
@@ -149,7 +160,7 @@ function with_halo(new_halo, old_grid::RectilinearGrid)
                architecture = old_grid.architecture,
                size = size,
                x = x, y = y,
-               z_faces = old_grid.zᵃᵃᶠ,
+               z = old_grid.zᵃᵃᶠ,
                topology = topo,
                halo = new_halo)
 

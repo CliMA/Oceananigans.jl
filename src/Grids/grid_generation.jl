@@ -110,5 +110,5 @@ end
 
 # Fallback for a flat domain
 function generate_coordinate(FT, ::Type{Flat}, N, H, coord::Tuple{<:Number, <:Number}, architecture)
-    return FT(1), FT(1), FT(0), FT(0), FT(0)
+    return FT(1), FT(1), FT(1), FT(1), FT(1)
 end

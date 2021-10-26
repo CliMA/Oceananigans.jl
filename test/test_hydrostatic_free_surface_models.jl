@@ -32,7 +32,7 @@ function time_step_hydrostatic_model_works(arch, grid;
 end
 
 function hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
-    grid = RectilinearGrid(size=(1, 1, 1), extent=(2π, 2π, 2π))
+    grid = RectilinearGrid(architecture=arch, size=(1, 1, 1), extent=(2π, 2π, 2π))
     model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch, tracers=(:T, :S, :c, :d))
 
     @test model.tracers.T isa Field
@@ -79,7 +79,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
     @testset "$topo_1d model construction" begin
         @info "  Testing $topo_1d model construction..."
         for arch in archs, FT in float_types
-            grid = RectilinearGrid(FT, topology=topo_1d, size=(1), extent=(1))
+            grid = RectilinearGrid(FT, architecture=arch, topology=topo_1d, size=(1), extent=(1))
             model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)        
 
             @test model isa HydrostaticFreeSurfaceModel
@@ -90,7 +90,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
-                grid = RectilinearGrid(FT, topology=topo, size=(1, 1), extent=(1, 2))
+                grid = RectilinearGrid(architecture=arch, FT, topology=topo, size=(1, 1), extent=(1, 2))
                 model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)
 
                 @test model isa HydrostaticFreeSurfaceModel
@@ -102,7 +102,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
-                grid = RectilinearGrid(FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
+                grid = RectilinearGrid(FT, architecture=arch, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
                 model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)
 
                 @test model isa HydrostaticFreeSurfaceModel
@@ -116,7 +116,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             N = (4, 4, 1)
             L = (2π, 3π, 5π)
 
-            grid = RectilinearGrid(FT, size=N, extent=L)
+            grid = RectilinearGrid(FT, architecture=arch, size=N, extent=L)
             model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)
 
             x, y, z = nodes((Face, Center, Center), model.grid, reshape=true)
@@ -139,7 +139,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
     for arch in archs
         for topo in topos_3d
-            grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=topo)
+            grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=topo, architecture=arch)
 
             @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $topo]" begin
                 @info "  Testing time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $topo]..."
@@ -149,14 +149,14 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
         z_face_generator(; Nz=1, p=1, H=1) = k -> -H + (k / (Nz+1))^p # returns a generating function
 
-        rectilinear_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), halo=(3, 3, 3))
+        rectilinear_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), halo=(3, 3, 3), architecture=arch)
 
-        lat_lon_sector_grid = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=(-1, 0))
-        lat_lon_strip_grid  = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0))
+        lat_lon_sector_grid = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=(-1, 0), architecture=arch)
+        lat_lon_strip_grid  = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0), architecture=arch)
         
-        vertically_stretched_grid = RectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z_faces=z_face_generator(), halo=(3, 3, 3), architecture=arch)
-        lat_lon_sector_grid_stretched = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=z_face_generator(), architecture=arch)
-        lat_lon_strip_grid_stretched  = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=z_face_generator(), architecture=arch)
+        vertically_stretched_grid = RectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=z_face_generator(), halo=(3, 3, 3), architecture=arch)
+        lat_lon_sector_grid_stretched = LatitudeLongitudeGrid(size=[1, 1, 1], longitude=[0, 60], latitude=(15, 75), z=z_face_generator(), architecture=arch)
+        lat_lon_strip_grid_stretched  = LatitudeLongitudeGrid(size=[1, 1, 1], longitude=[-180, 180], latitude=(15, 75), z=z_face_generator(), architecture=arch)
 
         grids = (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid, lat_lon_sector_grid_stretched, lat_lon_strip_grid_stretched, vertically_stretched_grid)
         free_surfaces = (ExplicitFreeSurface(), ImplicitFreeSurface())

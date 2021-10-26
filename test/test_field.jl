@@ -231,10 +231,10 @@ end
             ϕs = (u, v, w, c)
             [set!(ϕ, f) for ϕ in ϕs]
 
-            @test u[1, 2, 3] == f(grid.xF[1], grid.yC[2], grid.zC[3])
-            @test v[1, 2, 3] == f(grid.xC[1], grid.yF[2], grid.zC[3])
-            @test w[1, 2, 3] == f(grid.xC[1], grid.yC[2], grid.zF[3])
-            @test c[1, 2, 3] == f(grid.xC[1], grid.yC[2], grid.zC[3])
+            @test u[1, 2, 3] == f(grid.xᶠᵃᵃ[1], grid.yᵃᶜᵃ[2], grid.zᵃᵃᶜ[3])
+            @test v[1, 2, 3] == f(grid.xᶜᵃᵃ[1], grid.yᵃᶠᵃ[2], grid.zᵃᵃᶜ[3])
+            @test w[1, 2, 3] == f(grid.xᶜᵃᵃ[1], grid.yᵃᶜᵃ[2], grid.zᵃᵃᶠ[3])
+            @test c[1, 2, 3] == f(grid.xᶜᵃᵃ[1], grid.yᵃᶜᵃ[2], grid.zᵃᵃᶜ[3])
         end
     end
 

@@ -3,7 +3,7 @@ using Oceananigans.Simulations:
     TimeStepWizard, update_Δt!
 
 function run_time_step_wizard_tests(arch)
-    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), architecture=arch)
     model = NonhydrostaticModel(architecture=arch, grid=grid)
 
     Δx = grid.Δx
@@ -37,7 +37,7 @@ function run_time_step_wizard_tests(arch)
     grid_stretched = RectilinearGrid(size = (1, 1, 1),
                                                         x = (0, 1),
                                                         y = (0, 1),
-                                                        z_faces = z -> z, 
+                                                        z = z -> z, 
                                                         halo = (1, 1, 1),
                                                         architecture=arch)
 
@@ -57,7 +57,7 @@ function run_time_step_wizard_tests(arch)
 end
 
 function run_basic_simulation_tests(arch, Δt)
-    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), architecture=arch)
     model = NonhydrostaticModel(architecture=arch, grid=grid)
 
     model.clock.time = 0.0
@@ -111,7 +111,7 @@ function run_basic_simulation_tests(arch, Δt)
 end
 
 function run_simulation_date_tests(arch, start_time, stop_time, Δt)
-    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), architecture=arch)
 
     clock = Clock(time=start_time)
     model = NonhydrostaticModel(architecture=arch, grid=grid, clock=clock)

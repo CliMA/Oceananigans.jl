@@ -4,6 +4,7 @@ export Center, Face
 export AbstractTopology, Periodic, Bounded, Flat, Connected, topology
 export AbstractGrid, AbstractUnderlyingGrid, halo_size
 export AbstractRectilinearGrid, RectilinearGrid 
+export RectilinearGridRegInX, RectilinearGridRegInY, RectilinearGridRegInZ
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export LatitudeLongitudeGrid
 export ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
@@ -109,6 +110,13 @@ abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ} <: AbstractUnderlyingGrid{
 Abstract supertype for horizontally-curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
 abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ} <: AbstractCurvilinearGrid{FT, TX, TY, TZ} end
+
+
+
+"""
+    Constant Grid Definitions 
+
+"""
 
 Base.eltype(::AbstractGrid{FT}) where FT = FT
 Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)

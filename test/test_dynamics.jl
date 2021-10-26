@@ -479,11 +479,11 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         # Vertically stretched grid with regular spacing and no flat dimension
         z_faces = collect(znodes(Face, y_periodic_regular_grid))
         y_periodic_regularly_spaced_vertically_stretched_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
-                                                                                                   size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z_faces=z_faces)
+                                                                                                   size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=z_faces)
 
         # Vertically stretched grid with regular spacing and no flat dimension
         y_flat_regularly_spaced_vertically_stretched_grid = RectilinearGrid(topology=(Periodic, Flat, Bounded),
-                                                                                               size=(Nx, Nz), x=(0, Lx), z_faces=z_faces)
+                                                                                               size=(Nx, Nz), x=(0, Lx), z=z_faces)
 
         solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=false)
 
