@@ -319,8 +319,8 @@ function  precompute_Δy_metrics(grid::LLGFY, Δyᶠᶜ, Δyᶜᶠ)
 end
 
 @kernel function precompute_Δy_kernel!(grid, Δyᶠᶜ, Δyᶜᶠ)
-    j = @index(Global, Linear)
-    j += grid.Δφᵃᶜᵃ.offsets[1]
+    j  = @index(Global, Linear)
+    j += grid.Δφᵃᶜᵃ.offsets[1] + 1
     @inbounds begin
         Δyᶜᶠ[j] = Δyᶜᶠᵃ(1, j, 1, grid)
         Δyᶠᶜ[j] = Δyᶜᶠᵃ(1, j, 1, grid)
