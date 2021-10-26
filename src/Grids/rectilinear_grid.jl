@@ -28,9 +28,11 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
       Δz :: FT
 end
 
-const RectilinearGridRegInX = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number}
-const RectilinearGridRegInY = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
-const RectilinearGridRegInZ = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+const XRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number}
+const YRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+const ZRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+const HRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
+const  RegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number}
 
 function RectilinearGrid(FT = Float64;
          architecture = CPU(),

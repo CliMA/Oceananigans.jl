@@ -40,6 +40,11 @@ function Field(LX, LY, LZ,
                bcs = FieldBoundaryConditions(grid, (LX, LY, LZ)),
                data = new_data(eltype(grid), arch, grid, (LX, LY, LZ)))
 
+    # Make sure architecture is the same as the grid architecture
+    # if hasproperty(grid, :architecture)
+    #     arch = grid.architecture
+    # end 
+    
     validate_field_data(LX, LY, LZ, data, grid)
 
     return Field{LX, LY, LZ}(data, arch, grid, bcs)

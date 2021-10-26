@@ -114,18 +114,18 @@ using Oceananigans.Grids: Flat
 ##### Temporary place for grid spacings and areas for RectilinearGrid
 #####
 
-@inline Δxᶜᵃᵃ(i, j, k, grid::RectilinearGrid)       =  @inbounds grid.Δxᶜᵃᵃ[i]
-@inline Δxᶜᵃᵃ(i, j, k, grid::RectilinearGridRegInX) =  @inbounds grid.Δxᶜᵃᵃ
-@inline Δxᶠᵃᵃ(i, j, k, grid::RectilinearGrid)       =  @inbounds grid.Δxᶠᵃᵃ[i]
-@inline Δxᶠᵃᵃ(i, j, k, grid::RectilinearGridRegInX) =  @inbounds grid.Δxᶠᵃᵃ
-@inline Δyᵃᶠᵃ(i, j, k, grid::RectilinearGrid)       =  @inbounds grid.Δyᵃᶠᵃ[j]
-@inline Δyᵃᶠᵃ(i, j, k, grid::RectilinearGridRegInY) =  @inbounds grid.Δyᵃᶠᵃ
-@inline Δyᵃᶜᵃ(i, j, k, grid::RectilinearGrid)       =  @inbounds grid.Δyᵃᶜᵃ[j]
-@inline Δyᵃᶜᵃ(i, j, k, grid::RectilinearGridRegInY) =  @inbounds grid.Δyᵃᶜᵃ
-@inline Δzᵃᵃᶠ(i, j, k, grid::RectilinearGrid)       =  @inbounds grid.Δzᵃᵃᶠ[k]
-@inline Δzᵃᵃᶠ(i, j, k, grid::RectilinearGridRegInZ) =  @inbounds grid.Δzᵃᵃᶠ
-@inline Δzᵃᵃᶜ(i, j, k, grid::RectilinearGrid)       =  @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᵃᵃᶜ(i, j, k, grid::RectilinearGridRegInZ) =  @inbounds grid.Δzᵃᵃᶜ
+@inline Δxᶜᵃᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δxᶜᵃᵃ[i]
+@inline Δxᶜᵃᵃ(i, j, k, grid::XRegRectilinearGrid) =  @inbounds grid.Δxᶜᵃᵃ
+@inline Δxᶠᵃᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δxᶠᵃᵃ[i]
+@inline Δxᶠᵃᵃ(i, j, k, grid::XRegRectilinearGrid) =  @inbounds grid.Δxᶠᵃᵃ
+@inline Δyᵃᶠᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δyᵃᶠᵃ[j]
+@inline Δyᵃᶠᵃ(i, j, k, grid::YRegRectilinearGrid) =  @inbounds grid.Δyᵃᶠᵃ
+@inline Δyᵃᶜᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δyᵃᶜᵃ[j]
+@inline Δyᵃᶜᵃ(i, j, k, grid::YRegRectilinearGrid) =  @inbounds grid.Δyᵃᶜᵃ
+@inline Δzᵃᵃᶠ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δzᵃᵃᶠ[k]
+@inline Δzᵃᵃᶠ(i, j, k, grid::ZRegRectilinearGrid) =  @inbounds grid.Δzᵃᵃᶠ
+@inline Δzᵃᵃᶜ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δzᵃᵃᶜ[k]
+@inline Δzᵃᵃᶜ(i, j, k, grid::ZRegRectilinearGrid) =  @inbounds grid.Δzᵃᵃᶜ
 
 const XFlatRG = RectilinearGrid{<:Any, <:Flat}
 const YFlatRG = RectilinearGrid{<:Any, <:Any, <:Flat}

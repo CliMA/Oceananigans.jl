@@ -197,12 +197,12 @@ function test_triply_periodic_local_grid_with_411_ranks()
     local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
-    @test local_grid.xF[1] == 0.25*local_rank
-    @test local_grid.xF[nx+1] == 0.25*(local_rank+1)
-    @test local_grid.yF[1] == 0
-    @test local_grid.yF[ny+1] == 2
-    @test local_grid.zF[1] == -3
-    @test local_grid.zF[nz+1] == 0
+    @test local_grid.xᶠᵃᵃ[1] == 0.25*local_rank
+    @test local_grid.xᶠᵃᵃ[nx+1] == 0.25*(local_rank+1)
+    @test local_grid.yᵃᶠᵃ[1] == 0
+    @test local_grid.yᵃᶠᵃ[ny+1] == 2
+    @test local_grid.zᵃᵃᶠ[1] == -3
+    @test local_grid.zᵃᵃᶠ[nz+1] == 0
 
     return nothing
 end
@@ -217,12 +217,12 @@ function test_triply_periodic_local_grid_with_141_ranks()
     local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
-    @test local_grid.xF[1] == 0
-    @test local_grid.xF[nx+1] == 1
-    @test local_grid.yF[1] == 0.5*local_rank
-    @test local_grid.yF[ny+1] == 0.5*(local_rank+1)
-    @test local_grid.zF[1] == -3
-    @test local_grid.zF[nz+1] == 0
+    @test local_grid.xᶠᵃᵃ[1] == 0
+    @test local_grid.xᶠᵃᵃ[nx+1] == 1
+    @test local_grid.yᵃᶠᵃ[1] == 0.5*local_rank
+    @test local_grid.yᵃᶠᵃ[ny+1] == 0.5*(local_rank+1)
+    @test local_grid.zᵃᵃᶠ[1] == -3
+    @test local_grid.zᵃᵃᶠ[nz+1] == 0
 
     return nothing
 end
@@ -237,12 +237,12 @@ function test_triply_periodic_local_grid_with_114_ranks()
     local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
-    @test local_grid.xF[1] == 0
-    @test local_grid.xF[nx+1] == 1
-    @test local_grid.yF[1] == 0
-    @test local_grid.yF[ny+1] == 2
-    @test local_grid.zF[1] == -3 + 0.75*local_rank
-    @test local_grid.zF[nz+1] == -3 + 0.75*(local_rank+1)
+    @test local_grid.xᶠᵃᵃ[1] == 0
+    @test local_grid.xᶠᵃᵃ[nx+1] == 1
+    @test local_grid.yᵃᶠᵃ[1] == 0
+    @test local_grid.yᵃᶠᵃ[ny+1] == 2
+    @test local_grid.zᵃᵃᶠ[1] == -3 + 0.75*local_rank
+    @test local_grid.zᵃᵃᶠ[nz+1] == -3 + 0.75*(local_rank+1)
 
     return nothing
 end
@@ -257,12 +257,12 @@ function test_triply_periodic_local_grid_with_221_ranks()
     local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
-    @test local_grid.xF[1] == 0.5*(i-1)
-    @test local_grid.xF[nx+1] == 0.5*i
-    @test local_grid.yF[1] == j-1
-    @test local_grid.yF[ny+1] == j
-    @test local_grid.zF[1] == -3
-    @test local_grid.zF[nz+1] == 0
+    @test local_grid.xᶠᵃᵃ[1] == 0.5*(i-1)
+    @test local_grid.xᶠᵃᵃ[nx+1] == 0.5*i
+    @test local_grid.yᵃᶠᵃ[1] == j-1
+    @test local_grid.yᵃᶠᵃ[ny+1] == j
+    @test local_grid.zᵃᵃᶠ[1] == -3
+    @test local_grid.zᵃᵃᶠ[nz+1] == 0
 
     return nothing
 end

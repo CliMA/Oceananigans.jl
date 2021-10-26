@@ -4,7 +4,7 @@ export Center, Face
 export AbstractTopology, Periodic, Bounded, Flat, Connected, topology
 export AbstractGrid, AbstractUnderlyingGrid, halo_size
 export AbstractRectilinearGrid, RectilinearGrid 
-export RectilinearGridRegInX, RectilinearGridRegInY, RectilinearGridRegInZ
+export XRegRectilinearGridReg, YRegRectilinearGridRegInY, ZRegRectilinearGridRegInZ, RegRectilinearGrid, HRegRectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export LatitudeLongitudeGrid
 export ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid

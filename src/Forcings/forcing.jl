@@ -131,7 +131,7 @@ DiscreteForcing{Nothing}
 ```jldoctest forcing
 # Discrete-form forcing function with parameters
 masked_damping(i, j, k, grid, clock, model_fields, parameters) = 
-    @inbounds - parameters.μ * exp(grid.zC[k] / parameters.λ) * model_fields.u[i, j, k]
+    @inbounds - parameters.μ * exp(grid.zᵃᵃᶜ[k] / parameters.λ) * model_fields.u[i, j, k]
 
 masked_damping_forcing = Forcing(masked_damping, parameters=(μ=42, λ=π), discrete_form=true)
 

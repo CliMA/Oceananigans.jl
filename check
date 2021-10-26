@@ -1,0 +1,520 @@
+src/TurbulenceClosures/turbulence_closure_implementations/leith_enstrophy_diffusivity.jl:@inline Δᶠ(i, j, k, grid::RectilinearGrid, ::TwoDimensionalLeith) = sqrt(grid.Δx * grid.Δy)
+src/AbstractOperations/grid_metrics.jl:julia> grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)); c = CenterField(CPU(), grid);
+src/AbstractOperations/grid_metrics.jl:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+src/AbstractOperations/grid_metrics.jl:julia> grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 2, 3)); c = CenterField(CPU(), grid);
+src/AbstractOperations/grid_metrics.jl:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
+src/AbstractOperations/multiary_operations.jl:julia> c, d, e = Tuple(Field(Center, Center, Center, CPU(), RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:3);
+src/AbstractOperations/multiary_operations.jl:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+src/AbstractOperations/multiary_operations.jl:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+src/AbstractOperations/binary_operations.jl:julia> c, d = (Field(Center, Center, Center, CPU(), RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:2);
+src/AbstractOperations/binary_operations.jl:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+src/AbstractOperations/unary_operations.jl:julia> c = Field(Center, Center, Center, CPU(), RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)));
+src/AbstractOperations/unary_operations.jl:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+src/Distributed/distributed_shallow_water_model.jl:    my_grid = RectilinearGrid(topology=topology(grid), size=(nx, ny), x=(x₁, x₂), y=(y₁, y₂), halo=(3,3))
+src/Distributed/distributed_nonhydrostatic_model.jl:    my_grid = RectilinearGrid(topology=topology(grid), size=(nx, ny, nz), x=(x₁, x₂), y=(y₁, y₂), z=(z₁, z₂), halo=halo_size(grid))
+src/Models/NonhydrostaticModels/set_nonhydrostatic_model.jl:model = NonhydrostaticModel(grid=RectilinearGrid(size=(32, 32, 32), length=(1, 1, 1))
+src/Models/NonhydrostaticModels/NonhydrostaticModels.jl:PressureSolver(arch, grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number}) = FFTBasedPoissonSolver(arch, grid)
+src/Models/NonhydrostaticModels/NonhydrostaticModels.jl:PressureSolver(arch, grid::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Any})    = FourierTridiagonalPoissonSolver(arch, grid)
+src/Models/HydrostaticFreeSurfaceModels/hydrostatic_free_surface_model.jl:using Oceananigans.Grids: inflate_halo_size, with_halo, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
+src/Models/HydrostaticFreeSurfaceModels/fft_based_implicit_free_surface_solver.jl:    grid isa RectilinearGrid || grid isa RectilinearGrid ||
+src/Models/HydrostaticFreeSurfaceModels/fft_based_implicit_free_surface_solver.jl:    horizontal_grid = RectilinearGrid(; topology = (TX, TY, Flat),
+src/Models/HydrostaticFreeSurfaceModels/implicit_free_surface.jl:is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
+src/Models/HydrostaticFreeSurfaceModels/set_hydrostatic_free_surface_model.jl:model = HydrostaticFreeSurfaceModel(grid=RectilinearGrid(size=(32, 32, 32), length=(1, 1, 1))
+src/OutputWriters/jld2_output_writer.jl:model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+src/OutputWriters/netcdf_output_writer.jl:grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
+src/OutputWriters/netcdf_output_writer.jl:grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
+src/OutputWriters/windowed_time_average.jl:model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+src/Oceananigans.jl:    RectilinearGrid, RectilinearGrid, 
+src/BuoyancyModels/buoyancy.jl:grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1000, 100))
+src/Diagnostics/windowed_spatial_average.jl:julia> grid = RectilinearGrid(size=(4, 6, 4), extent=(1, 1, 1));
+src/Diagnostics/cfl.jl:julia> model = NonhydrostaticModel(grid=RectilinearGrid(size=(16, 16, 16), length=(8, 8, 8)));
+src/Diagnostics/cfl.jl:julia> model = NonhydrostaticModel(grid=RectilinearGrid(size=(16, 16, 16), length=(1, 1, 1)));
+src/Operators/Operators.jl:const ARG  = AbstractRectilinearGrid
+src/Operators/Operators.jl:const RCG  = RectilinearGrid
+src/Operators/spacings_and_areas_and_volumes.jl:##### Temporary place for grid spacings and areas for RectilinearGrid
+src/Operators/spacings_and_areas_and_volumes.jl:@inline Δxᶜᵃᵃ(i, j, k, grid::RectilinearGrid)       =  @inbounds grid.Δxᶜᵃᵃ[i]
+src/Operators/spacings_and_areas_and_volumes.jl:@inline Δxᶜᵃᵃ(i, j, k, grid::RectilinearGridRegInX) =  @inbounds grid.Δxᶜᵃᵃ
+src/Operators/spacings_and_areas_and_volumes.jl:@inline Δxᶠᵃᵃ(i, j, k, grid::RectilinearGrid)       =  @inbounds grid.Δxᶠᵃᵃ[i]
+src/Operators/spacings_and_areas_and_volumes.jl:@inline Δxᶠᵃᵃ(i, j, k, grid::RectilinearGridRegInX) =  @inbounds grid.Δxᶠᵃᵃ
+src/Operators/spacings_and_areas_and_volumes.jl:@inline Δyᵃᶠᵃ(i, j, k, grid::RectilinearGrid)       =  @inbounds grid.Δyᵃᶠᵃ[j]
+src/Operators/spacings_and_areas_and_volumes.jl:@inline Δyᵃᶠᵃ(i, j, k, grid::RectilinearGridRegInY) =  @inbounds grid.Δyᵃᶠᵃ
+src/Operators/spacings_and_areas_and_volumes.jl:@inline Δyᵃᶜᵃ(i, j, k, grid::RectilinearGrid)       =  @inbounds grid.Δyᵃᶜᵃ[j]
+src/Operators/spacings_and_areas_and_volumes.jl:@inline Δyᵃᶜᵃ(i, j, k, grid::RectilinearGridRegInY) =  @inbounds grid.Δyᵃᶜᵃ
+src/Operators/spacings_and_areas_and_volumes.jl:@inline Δzᵃᵃᶠ(i, j, k, grid::RectilinearGrid)       =  @inbounds grid.Δzᵃᵃᶠ[k]
+src/Operators/spacings_and_areas_and_volumes.jl:@inline Δzᵃᵃᶠ(i, j, k, grid::RectilinearGridRegInZ) =  @inbounds grid.Δzᵃᵃᶠ
+src/Operators/spacings_and_areas_and_volumes.jl:@inline Δzᵃᵃᶜ(i, j, k, grid::RectilinearGrid)       =  @inbounds grid.Δzᵃᵃᶜ[k]
+src/Operators/spacings_and_areas_and_volumes.jl:@inline Δzᵃᵃᶜ(i, j, k, grid::RectilinearGridRegInZ) =  @inbounds grid.Δzᵃᵃᶜ
+src/Operators/spacings_and_areas_and_volumes.jl:const XFlatRG = RectilinearGrid{<:Any, <:Flat}
+src/Operators/spacings_and_areas_and_volumes.jl:const YFlatRG = RectilinearGrid{<:Any, <:Any, <:Flat}
+src/Operators/spacings_and_areas_and_volumes.jl:const ZFlatRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Flat}
+src/Operators/spacings_and_areas_and_volumes.jl:@inline Δx(i,  j, k, grid::RectilinearGrid) = Δxᶜᵃᵃ(i, j, k, grid)
+src/Operators/spacings_and_areas_and_volumes.jl:@inline Δy(i,  j, k, grid::RectilinearGrid) = Δyᵃᶜᵃ(i, j, k, grid)
+src/Operators/spacings_and_areas_and_volumes.jl:@inline ΔzC(i, j, k, grid::RectilinearGrid) = Δzᵃᵃᶠ(i, j, k, grid)
+src/Operators/spacings_and_areas_and_volumes.jl:@inline ΔzF(i, j, k, grid::RectilinearGrid) = Δzᵃᵃᶜ(i, j, k, grid)
+src/Forcings/forcing.jl:grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+src/LagrangianParticleTracking/update_particle_properties.jl:@kernel function _advect_particles!(particles, restitution, grid::RectilinearGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
+src/Grids/latitude_longitude_grid.jl:# latitude, longitude and z can be a 2-tuple that specifies the end of the domain (see RegularRectilinearDomain) or an array or function that specifies the faces (see VerticallyStretchedRectilinearGrid)
+src/Grids/latitude_longitude_grid.jl:    # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
+src/Grids/Grids.jl:export AbstractRectilinearGrid, RectilinearGrid 
+src/Grids/Grids.jl:export RectilinearGridRegInX, RectilinearGridRegInY, RectilinearGridRegInZ
+src/Grids/Grids.jl:    AbstractRectilinearGrid{FT, TX, TY, TZ}
+src/Grids/Grids.jl:abstract type AbstractRectilinearGrid{FT, TX, TY, TZ} <: AbstractUnderlyingGrid{FT, TX, TY, TZ} end
+src/Grids/conformal_cubed_sphere_face_grid.jl:    ξη_grid = RectilinearGrid(FT, topology=topology, size=(Nξ, Nη, Nz), x=ξ, y=η, z=z, halo=halo)
+src/Grids/conformal_cubed_sphere_face_grid.jl:    ξη_grid = RectilinearGrid(FT, topology=topology, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=z, halo=halo)
+src/Grids/grid_utils.jl:julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1),
+src/Grids/rectilinear_grid.jl:struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
+src/Grids/rectilinear_grid.jl:const RectilinearGridRegInX = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number}
+src/Grids/rectilinear_grid.jl:const RectilinearGridRegInY = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+src/Grids/rectilinear_grid.jl:const RectilinearGridRegInZ = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+src/Grids/rectilinear_grid.jl:function RectilinearGrid(FT = Float64;
+src/Grids/rectilinear_grid.jl:    return RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
+src/Grids/rectilinear_grid.jl:@inline x_domain(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.xᶠᵃᵃ)
+src/Grids/rectilinear_grid.jl:@inline y_domain(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.yᵃᶠᵃ)
+src/Grids/rectilinear_grid.jl:@inline z_domain(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
+src/Grids/rectilinear_grid.jl:short_show(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+src/Grids/rectilinear_grid.jl:    "RectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
+src/Grids/rectilinear_grid.jl:function domain_string(grid::RectilinearGrid)
+src/Grids/rectilinear_grid.jl:function show(io::IO, g::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+src/Grids/rectilinear_grid.jl:    print(io, "RectilinearGrid{$FT, $TX, $TY, $TZ} on the $(g.architecture)\n",
+src/Grids/rectilinear_grid.jl:Adapt.adapt_structure(to, grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+src/Grids/rectilinear_grid.jl:             RectilinearGrid{FT, TX, TY, TZ, 
+src/Grids/rectilinear_grid.jl:@inline xnode(::Center, i, grid::RectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
+src/Grids/rectilinear_grid.jl:@inline xnode(::Face, i, grid::RectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
+src/Grids/rectilinear_grid.jl:@inline ynode(::Center, j, grid::RectilinearGrid) = @inbounds grid.yᵃᶜᵃ[j]
+src/Grids/rectilinear_grid.jl:@inline ynode(::Face, j, grid::RectilinearGrid) = @inbounds grid.yᵃᶠᵃ[j]
+src/Grids/rectilinear_grid.jl:@inline znode(::Center, k, grid::RectilinearGrid) = @inbounds grid.zᵃᵃᶜ[k]
+src/Grids/rectilinear_grid.jl:@inline znode(::Face, k, grid::RectilinearGrid) = @inbounds grid.zᵃᵃᶠ[k]
+src/Grids/rectilinear_grid.jl:all_x_nodes(::Type{Center}, grid::RectilinearGrid) = grid.xᶜᵃᵃ
+src/Grids/rectilinear_grid.jl:all_x_nodes(::Type{Face}, grid::RectilinearGrid) = grid.xᶠᵃᵃ
+src/Grids/rectilinear_grid.jl:all_y_nodes(::Type{Center}, grid::RectilinearGrid) = grid.yᵃᶜᵃ
+src/Grids/rectilinear_grid.jl:all_y_nodes(::Type{Face}, grid::RectilinearGrid) = grid.yᵃᶠᵃ
+src/Grids/rectilinear_grid.jl:all_z_nodes(::Type{Center}, grid::RectilinearGrid) = grid.zᵃᵃᶜ
+src/Grids/rectilinear_grid.jl:all_z_nodes(::Type{Face}, grid::RectilinearGrid) = grid.zᵃᵃᶠ
+src/Grids/rectilinear_grid.jl:function with_halo(new_halo, old_grid::RectilinearGrid)
+src/Grids/rectilinear_grid.jl:    new_grid = RectilinearGrid(eltype(old_grid);
+src/Grids/rectilinear_grid.jl:function min_Δx(grid::RectilinearGrid)
+src/Grids/rectilinear_grid.jl:function min_Δy(grid::RectilinearGrid)
+src/Grids/rectilinear_grid.jl:function min_Δz(grid::RectilinearGrid)
+src/Fields/interpolate.jl:@inline fractional_x_index(x, ::Face,   grid::RectilinearGrid)       = linear_interpolate_sorted_vector(grid.xᶠᵃᵃ, x)
+src/Fields/interpolate.jl:@inline fractional_x_index(x, ::Center, grid::RectilinearGrid)       = linear_interpolate_sorted_vector(grid.xᶜᵃᵃ, x)
+src/Fields/interpolate.jl:@inline fractional_x_index(x, ::Face,   grid::RectilinearGridRegInX) = @inbounds (x - grid.xᶠᵃᵃ[1]) / grid.Δxᶠᵃᵃ
+src/Fields/interpolate.jl:@inline fractional_x_index(x, ::Center, grid::RectilinearGridRegInX) = @inbounds (x - grid.xᶜᵃᵃ[1]) / grid.Δxᶜᵃᵃ
+src/Fields/interpolate.jl:@inline fractional_y_index(y, ::Face,   grid::RectilinearGrid)       = linear_interpolate_sorted_vector(grid.yᵃᶜᵃ, y)
+src/Fields/interpolate.jl:@inline fractional_y_index(y, ::Center, grid::RectilinearGrid)       = linear_interpolate_sorted_vector(grid.yᵃᶠᵃ, y)
+src/Fields/interpolate.jl:@inline fractional_y_index(y, ::Face,   grid::RectilinearGridRegInY) = @inbounds (y - grid.yᵃᶠᵃ[1]) / grid.Δyᵃᶠᵃ
+src/Fields/interpolate.jl:@inline fractional_y_index(y, ::Center, grid::RectilinearGridRegInY) = @inbounds (y - grid.yᵃᶜᵃ[1]) / grid.Δyᵃᶜᵃ
+src/Fields/interpolate.jl:@inline fractional_z_index(z, ::Face,   grid::RectilinearGrid)       = linear_interpolate_sorted_vector(grid.zᵃᵃᶜ, z)
+src/Fields/interpolate.jl:@inline fractional_z_index(z, ::Center, grid::RectilinearGrid)       = linear_interpolate_sorted_vector(grid.zᵃᵃᶠ, z)
+src/Fields/interpolate.jl:@inline fractional_z_index(z, ::Face,   grid::RectilinearGridRegInZ) = @inbounds (z - grid.zᵃᵃᶠ[1]) / grid.Δzᵃᵃᶠ
+src/Fields/interpolate.jl:@inline fractional_z_index(z, ::Center, grid::RectilinearGridRegInZ) = @inbounds (z - grid.zᵃᵃᶜ[1]) / grid.Δzᵃᵃᶜ
+src/Fields/interpolate.jl:    fractional_indices(x, y, z, loc, grid::RectilinearGrid)
+src/Fields/interpolate.jl:@inline function fractional_indices(x, y, z, loc, grid::RectilinearGrid)
+src/Fields/averaged_field.jl:julia> grid = RectilinearGrid(size=(2, 2, 2), x=(0, 1), y=(0, 1), z=(0, 1));
+src/Fields/averaged_field.jl:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
+src/Fields/averaged_field.jl:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
+src/Fields/regridding_fields.jl:input_grid = RectilinearGrid(size=Nz, z = [0, Lz/3, Lz], topology=topology)
+src/Fields/regridding_fields.jl:output_grid = RectilinearGrid(size=Nz, z=(0, Lz), topology=topology)
+src/Fields/field.jl:julia> ω = Field(Face, Face, Center, CPU(), RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+src/Fields/field.jl:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+src/Solvers/plan_transforms.jl:const Regular             = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number} 
+src/Solvers/plan_transforms.jl:const VerticallyStretched = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Any} 
+src/Solvers/plan_transforms.jl:    !(topo[3] === Bounded) && error("Cannot plan transforms on z-periodic RectilinearGrids.")
+test/test_halo_regions.jl:    grid = RectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+test/test_halo_regions.jl:    grid = RectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), 
+test/test_netcdf_output_writer.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_netcdf_output_writer.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_netcdf_output_writer.jl:    grid = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+test/test_netcdf_output_writer.jl:    grid = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+test/test_netcdf_output_writer.jl:    grid = RectilinearGrid(size=(N, N, N), extent=(L, 2L, 3L))
+test/test_netcdf_output_writer.jl:    grid = RectilinearGrid(topology=topo, size=(4, 4, 4); domain...)
+test/test_netcdf_output_writer.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_netcdf_output_writer.jl:    grid = RectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z=zF)
+test/test_grids.jl:    grid = RectilinearGrid(FT, size=(4, 6, 8), extent=(2π, 4π, 9π))
+test/test_grids.jl:    grid = RectilinearGrid(FT, size=(4, 6, 8), x=(1, 2), y=(π, 3π), z=(0, 4))
+test/test_grids.jl:    grid = RectilinearGrid(FT, size=(2, 3, 4), extent=(1, 1, 1), halo=(1, 1, 1),
+test/test_grids.jl:    grid = RectilinearGrid(FT, size=(4, 6, 8), extent=(2π, 4π, 9π), halo=(1, 2, 3))
+test/test_grids.jl:    grid = RectilinearGrid(FT, topology=topo, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(H, H, H))
+test/test_grids.jl:    grid = RectilinearGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(H, H, H))
+test/test_grids.jl:    grid = RectilinearGrid(FT, size=(N, N, N), x=(0, L), y=(0, L), z=(0, L), halo=(1, 1, 1),
+test/test_grids.jl:    grid = RectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(1, 1, 1), halo=(Hx, Hy, Hz),
+test/test_grids.jl:    grid = RectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(1, 1, π/2), halo=(1, 1, Hz))
+test/test_grids.jl:    grid = RectilinearGrid(FT, size=(10, 10, 10), extent=(1, 1//7, 2π))
+test/test_grids.jl:    grid = RectilinearGrid(FT, size=(N, N, N), x=(0, π), y=(0, π), z=(0, π),
+test/test_grids.jl:    @test isbitstype(typeof(RectilinearGrid(FT, size=(16, 16, 16), extent=(1, 1, 1))))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(32,), extent=(1, 1, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(32, 64), extent=(1, 1, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(32, 32, 32, 16), extent=(1, 1, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(32, 32, 32.0), extent=(1, 1, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(20.1, 32, 32), extent=(1, 1, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(32, nothing, 32), extent=(1, 1, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(32, "32", 32), extent=(1, 1, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(32, 32, 32), extent=(1, nothing, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(32, 32, 32), extent=(1, "1", 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(32, 32, 32), extent=(1, 1, 1), halo=(1, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(32, 32, 32), extent=(1, 1, 1), halo=(1.0, 1, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(16, 16, 16), y=[1, 2])
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(16, 16, 16), z=(-π, π))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(16, 16, 16), x=1, y=2, z=3)
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(16, 16, 16), x=(0, 1), y=(0, 2), z=4)
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(16, 16, 16), x=(-1//2, 1), y=(1//7, 5//7), z=("0", "1"))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(16, 16, 16), x=(-1//2, 1), y=(1//7, 5//7), z=(1, 2, 3))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(16, 16, 16), x=(1, 0), y=(1//7, 5//7), z=(1, 2))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(16, 16, 16), x=(0, 1), y=(1, 5), z=(π, -π))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(16, 16, 16), extent=(1, 2, 3), x=(0, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(16, 16, 16), extent=(1, 2, 3), x=(0, 1), y=(1, 5), z=(-π, π))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, size=(16, 16, 16), extent=(1, 1, 1), topology=(Periodic, Periodic, Flux))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, topology=(Flat, Periodic, Periodic), size=(16, 16, 16), extent=1)
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, topology=(Periodic, Flat, Periodic), size=(16, 16, 16), extent=(1, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, topology=(Periodic, Periodic, Flat), size=(16, 16, 16), extent=(1, 1, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, topology=(Periodic, Periodic, Flat), size=(16, 16),     extent=(1, 1, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, topology=(Periodic, Periodic, Flat), size=16,           extent=(1, 1, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, topology=(Periodic, Flat, Flat), size=16, extent=(1, 1, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, topology=(Flat, Periodic, Flat), size=16, extent=(1, 1))
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, topology=(Flat, Flat, Periodic), size=(16, 16), extent=1)
+test/test_grids.jl:    @test_throws ArgumentError RectilinearGrid(FT, topology=(Flat, Flat, Flat), size=16, extent=1)
+test/test_grids.jl:    grid = RectilinearGrid(FT; size=size, topology=topology, extent=extent)
+test/test_grids.jl:    grid = RectilinearGrid(FT; size=size, halo=halo, topology=topology, extent=extent)
+test/test_grids.jl:    grid = RectilinearGrid(FT; size=size, topology=topology, extent=extent)
+test/test_grids.jl:    grid = RectilinearGrid(FT, architecture=arch, size=(1, 1, 16), x=(0,1), y=(0,1), z=collect(0:16))
+test/test_grids.jl:    grid = RectilinearGrid(FT, architecture=arch, size=(1, 1, length(zᵃᵃᶠ)-1), x=(0, 1), y=(0, 1), z=zᵃᵃᶠ)
+test/test_grids.jl:    grid = RectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz))
+test/test_grids.jl:    grid = RectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
+test/test_grids.jl:    grid = RectilinearGrid(FT, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=zᵃᵃᶠ)
+test/test_grids.jl:        grid = RectilinearGrid(topology=topo, size=(3, 7, 9), x=(0, 1), y=(-π, π), z=(0, 2π))
+test/test_grids.jl:            println("error in show(::RectilinearGrid)")
+test/test_grids.jl:        @test grid isa RectilinearGrid
+test/test_grids.jl:            grid = RectilinearGrid(architecture=arch, size=(1, 1, Nz-1), x=(0, 1), y=(0, 1), z=collect(0:Nz).^2)
+test/test_grids.jl:                println("error in show(::RectilinearGrid)")
+test/test_grids.jl:            @test grid isa RectilinearGrid
+test/test_batched_tridiagonal_solver.jl:    grid = RectilinearGrid(size=(1, 1, N), extent=(1, 1, 1), architecture=arch)
+test/test_batched_tridiagonal_solver.jl:    grid = RectilinearGrid(size=(1, 1, N), extent=(1, 1, 1), architecture=arch)
+test/test_batched_tridiagonal_solver.jl:    grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 1, 1), architecture=arch)
+test/test_batched_tridiagonal_solver.jl:    grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 1, 1), architecture=arch)
+test/test_nonhydrostatic_models.jl:        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_nonhydrostatic_models.jl:                grid = RectilinearGrid(FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
+test/test_nonhydrostatic_models.jl:        default_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
+test/test_nonhydrostatic_models.jl:        funny_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 3, 4))
+test/test_nonhydrostatic_models.jl:            grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
+test/test_nonhydrostatic_models.jl:            grid = RectilinearGrid(FT, size=N, extent=L)
+test/test_lagrangian_particle_tracking.jl:    grid = RectilinearGrid(topology=topo, size=(5, 5, 5); domain...)
+test/test_poisson_solvers.jl:    grid = RectilinearGrid(FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
+test/test_poisson_solvers.jl:    vs_grid = RectilinearGrid(FT; architecture=arch, topology=topo, size=sz, z=zF, xy_intervals...)
+test/test_poisson_solvers.jl:                grids_3d = [RectilinearGrid(FT, size=(2, 2, 2), extent=(1, 1, 1)),
+test/test_poisson_solvers.jl:                            RectilinearGrid(FT, size=(1, 2, 2), extent=(1, 1, 1)),
+test/test_poisson_solvers.jl:                            RectilinearGrid(FT, size=(2, 1, 2), extent=(1, 1, 1)),
+test/test_poisson_solvers.jl:                            RectilinearGrid(FT, size=(2, 2, 1), extent=(1, 1, 1))]
+test/test_poisson_solvers.jl:                grids_2d = [RectilinearGrid(FT, size=(2, 2), extent=(1, 1), topology=topo)
+test/test_poisson_solvers.jl:                    grids_3d = [RectilinearGrid(topology=topo, size=(N, N, N), extent=(1, 1, 1)),
+test/test_poisson_solvers.jl:                                RectilinearGrid(topology=topo, size=(1, N, N), extent=(1, 1, 1)),
+test/test_poisson_solvers.jl:                                RectilinearGrid(topology=topo, size=(N, 1, N), extent=(1, 1, 1)),
+test/test_poisson_solvers.jl:                                RectilinearGrid(topology=topo, size=(N, N, 1), extent=(1, 1, 1))]
+test/test_poisson_solvers.jl:                    grids_2d = [RectilinearGrid(size=(N, N), extent=(1, 1), topology=topo)
+test/test_poisson_solvers.jl:                    grid = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+test/test_poisson_solvers.jl:            Float32_grids = [RectilinearGrid(Float32, topology=(Periodic, Bounded, Bounded), size=(16, 16, 16), extent=(1, 1, 1)),
+test/test_poisson_solvers.jl:                             RectilinearGrid(Float32, topology=(Bounded, Bounded, Periodic), size=(7, 11, 13), extent=(1, 1, 1))]
+test/test_kernel_computed_field.jl:grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1),
+test/regression_tests/ocean_large_eddy_simulation_regression_test.jl:        grid = RectilinearGrid(size=(N, N, N), extent=(L, L, L))
+test/regression_tests/ocean_large_eddy_simulation_regression_test.jl:        grid = RectilinearGrid(architecture=arch, size=(N, N, N), x=(0, L), y=(0, L), z=zF)
+test/regression_tests/rayleigh_benard_regression_test.jl:        grid = RectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+test/regression_tests/rayleigh_benard_regression_test.jl:        grid = RectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=zF)
+test/regression_tests/thermal_bubble_regression_test.jl:        grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+test/regression_tests/thermal_bubble_regression_test.jl:        grid = RectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=zF)
+test/test_abstract_operations.jl:    grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
+test/test_abstract_operations.jl:        grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
+test/test_abstract_operations.jl:            grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
+test/test_abstract_operations.jl:            grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3),
+test/test_abstract_operations.jl:            grid = RectilinearGrid(size=(Nx, Nx, Nx), extent=(Nx, Nx, Nx))
+test/test_abstract_operations.jl:        grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1),
+test/test_abstract_operations.jl:            grid = RectilinearGrid(size=(1, 1, 1), extent=(2, 3, 4))
+test/test_boundary_conditions.jl:        ppp_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=ppp_topology)
+test/test_boundary_conditions.jl:        ppb_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=ppb_topology)
+test/test_boundary_conditions.jl:        pbb_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=pbb_topology)
+test/test_boundary_conditions.jl:        bbb_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=bbb_topology)
+test/test_operators.jl:    grid = RectilinearGrid(T; size=(3, 3, 3), extent=(3, 3, 3))
+test/test_operators.jl:    grid = RectilinearGrid(T; size=(3, 3, 3), extent=(3, 3, 3))
+test/test_operators.jl:        grid = RectilinearGrid(FT, size=(1, 1, 1), extent=(π, 2π, 3π))
+test/test_operators.jl:        grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+test/test_operators.jl:        grid_yz = RectilinearGrid(size=(1, Ny, Nz), extent=(Lx, Ly, Lz))
+test/test_operators.jl:        grid_xz = RectilinearGrid(size=(Nx, 1, Nz), extent=(Lx, Ly, Lz))
+test/test_dynamics.jl:                                       grid = RectilinearGrid(size=(1, 1, 16), extent=(1, 1, 1)),
+test/test_dynamics.jl:    grid = RectilinearGrid(size=(N, N, 2), extent=(L, L, L))
+test/test_dynamics.jl:                grid = RectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
+test/test_dynamics.jl:    grid = RectilinearGrid(FT, topology=topo, size=(1, N, N), extent=(L, L, L))
+test/test_dynamics.jl:    grid = RectilinearGrid(FT, topology=topo, size=(1, N, N), extent=(L, L, L))
+test/test_dynamics.jl:    grid = RectilinearGrid(FT, size=(), topology=(Flat, Flat, Flat))
+test/test_dynamics.jl:                        grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
+test/test_dynamics.jl:                grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
+test/test_dynamics.jl:                    grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
+test/test_dynamics.jl:        y_periodic_regular_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
+test/test_dynamics.jl:        y_flat_regular_grid = RectilinearGrid(topology=(Periodic, Flat, Bounded),
+test/test_dynamics.jl:        y_periodic_regularly_spaced_vertically_stretched_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
+test/test_dynamics.jl:        y_flat_regularly_spaced_vertically_stretched_grid = RectilinearGrid(topology=(Periodic, Flat, Bounded),
+test/test_dynamics.jl:            y_periodic_regular_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
+test/test_shallow_water_models.jl:    grid = RectilinearGrid(size=(1, 1), extent=(2π, 2π), topology=topo)
+test/test_shallow_water_models.jl:    grid = RectilinearGrid(size=(1, 1), extent=(2π, 2π), topology=topo)
+test/test_shallow_water_models.jl:    grid = RectilinearGrid(size=(1, 1), extent=(2π, 2π), topology=((Periodic, Periodic, Flat)))
+test/test_shallow_water_models.jl:        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=(Periodic,Periodic,Bounded))
+test/test_shallow_water_models.jl:        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=(Periodic,Periodic,Periodic))
+test/test_shallow_water_models.jl:        grid = RectilinearGrid(size=(1, 1), extent=(1, 1), topology=((Periodic,Periodic,Flat)))
+test/test_shallow_water_models.jl:            grid = RectilinearGrid(FT, topology=topo, size=(), extent=())
+test/test_shallow_water_models.jl:                grid = RectilinearGrid(FT, topology=topo, size=1, extent=1, halo=3)
+test/test_shallow_water_models.jl:                grid = RectilinearGrid(FT, topology=topo, size=(1, 1), extent=(1, 2), halo=(3, 3))
+test/test_shallow_water_models.jl:            grid = RectilinearGrid(FT, size=N, extent=L, topology=(Periodic, Periodic, Flat), halo=(3, 3))
+test/test_shallow_water_models.jl:                grid = RectilinearGrid(size=(8, 8), x=(-10, 10), y=(0, 5), topology=(Periodic, Bounded, Flat))
+test/test_output_writers.jl:        grid = RectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
+test/test_output_writers.jl:        grid = RectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
+test/test_jld2_output_writer.jl:    model = NonhydrostaticModel(architecture=arch, grid=RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
+test/test_jld2_output_writer.jl:    grid = RectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
+test/test_preconditioned_conjugate_gradient_solver.jl:        grid = RectilinearGrid(size=(4, 8, 4), extent=(1, 3, 1))
+test/test_simulations.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), architecture=arch)
+test/test_simulations.jl:    grid_stretched = RectilinearGrid(size = (1, 1, 1),
+test/test_simulations.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), architecture=arch)
+test/test_simulations.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), architecture=arch)
+test/test_hydrostatic_free_surface_models.jl:    grid = RectilinearGrid(architecture=arch, size=(1, 1, 1), extent=(2π, 2π, 2π))
+test/test_hydrostatic_free_surface_models.jl:        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_hydrostatic_free_surface_models.jl:            grid = RectilinearGrid(FT, architecture=arch, topology=topo_1d, size=(1), extent=(1))
+test/test_hydrostatic_free_surface_models.jl:                grid = RectilinearGrid(architecture=arch, FT, topology=topo, size=(1, 1), extent=(1, 2))
+test/test_hydrostatic_free_surface_models.jl:                grid = RectilinearGrid(FT, architecture=arch, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
+test/test_hydrostatic_free_surface_models.jl:            grid = RectilinearGrid(FT, architecture=arch, size=N, extent=L)
+test/test_hydrostatic_free_surface_models.jl:            grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=topo, architecture=arch)
+test/test_hydrostatic_free_surface_models.jl:        rectilinear_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), halo=(3, 3, 3), architecture=arch)
+test/test_hydrostatic_free_surface_models.jl:        vertically_stretched_grid = RectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=z_face_generator(), halo=(3, 3, 3), architecture=arch)
+test/test_forcings.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_forcings.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_forcings.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_forcings.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_forcings.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_forcings.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_forcings.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_forcings.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_hydrostatic_free_surface_immersed_boundaries.jl:        underlying_grid = RectilinearGrid(size=(8, 8, 8), x = (-5, 5), y = (-5, 5), z = (0, 2))
+test/test_boundary_conditions_integration.jl:    grid = RectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
+test/test_boundary_conditions_integration.jl:    grid = RectilinearGrid(FT,
+test/test_boundary_conditions_integration.jl:    grid = RectilinearGrid(FT, size=(16, 16, 16), extent=(1, 1, Lz))
+test/test_boundary_conditions_integration.jl:        grid = RectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=(Periodic, Bounded, Bounded))
+test/test_broadcasting.jl:        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_broadcasting.jl:        three_point_grid = RectilinearGrid(size=(1, 1, 3), extent=(1, 1, 1))
+test/test_broadcasting.jl:        two_two_two_grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+test/test_field.jl:    grid = RectilinearGrid(FT, topology=topo, size=(N, N, N), x=(-1, 1), y=(0, 2π), z=(-1, 1), architecture=arch)
+test/test_field.jl:    grid = RectilinearGrid(FT, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), architecture=arch)
+test/test_field.jl:            grid = RectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic), architecture=arch)
+test/test_field.jl:            grid = RectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Bounded), architecture=arch)
+test/test_field.jl:            grid = RectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Bounded, Bounded), architecture=arch)
+test/test_field.jl:            grid = RectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Bounded, Bounded, Bounded), architecture=arch)
+test/test_field.jl:            grid = RectilinearGrid(FT, size=N, extent=L, topology=(Periodic, Periodic, Bounded))
+test/test_field.jl:            grid = RectilinearGrid(FT, topology=topo, size=(Nx, Nx, Nx), x=(-1, 1), y=(0, 2π), z=(-1, 1))
+test/test_field.jl:        grid = RectilinearGrid(size=(4, 6, 8), extent=(1, 1, 1))
+test/test_field.jl:        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_field.jl:            coarse_column_regular_grid       = RectilinearGrid(size=1, z=(0, Lz), topology=topology, architecture=arch)
+test/test_field.jl:            fine_column_regular_grid         = RectilinearGrid(size=2, z=(0, Lz), topology=topology, architecture=arch)
+test/test_field.jl:            fine_column_stretched_grid       = RectilinearGrid(architecture=arch, size=2, z = [0, ℓz, Lz], topology=topology, architecture=arch)
+test/test_field.jl:            very_fine_column_stretched_grid  = RectilinearGrid(architecture=arch, size=3, z = [0, 0.2, 0.6, Lz], topology=topology, architecture=arch)
+test/test_field.jl:            super_fine_column_stretched_grid = RectilinearGrid(architecture=arch, size=4, z = [0, 0.1, 0.3, 0.65, Lz], topology=topology, architecture=arch)
+test/test_field.jl:            super_fine_column_regular_grid   = RectilinearGrid(size=5, z=(0, Lz), topology=topology)
+test/test_distributed_poisson_solvers.jl:    full_grid = RectilinearGrid(topology=topo, size=grid_points, extent=(1, 2, 3))
+test/test_computed_field.jl:    grid = RectilinearGrid(topology=topo, size=(13, 17, 19), extent=(1, 1, 1))
+test/test_computed_field.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_computed_field.jl:        grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1),
+test/test_turbulence_closures.jl:          grid = RectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
+test/test_turbulence_closures.jl:          grid = RectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
+test/test_turbulence_closures.jl:                                grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)))
+test/test_turbulence_closures.jl:    model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)),
+test/test_turbulence_closures.jl:                                grid=RectilinearGrid(FT, size=(1, 1, 1), extent=(1, 2, 3)))
+test/test_turbulence_closures.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
+test/test_diagnostics.jl:    grid = RectilinearGrid(size=(4, 2, 1), extent=(1, 1, 1))
+test/test_diagnostics.jl:          grid = RectilinearGrid(FT, architecture = arch, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), z_faces=0:Δx:3Δx,),
+test/test_diagnostics.jl:          grid = RectilinearGrid(FT, topology=(Periodic, Periodic, Periodic), size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
+test/test_diagnostics.jl:    grid = RectilinearGrid(architecture=arch, size=(4, 4, 8), x=(0, 100), y=(0, 100), z_faces=[k^2 for k in 0:8])
+test/test_time_stepping.jl:    grid = RectilinearGrid(size=size, extent=extent, topology=topology)
+test/test_time_stepping.jl:    grid = RectilinearGrid(FT, size=(1, 1, 1), extent=(1, 2, 3))
+test/test_time_stepping.jl:    grid = RectilinearGrid(FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
+test/test_time_stepping.jl:    grid = RectilinearGrid(size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
+test/test_time_stepping.jl:    grid = RectilinearGrid(FT; size=(1, 1, 1), extent=(1, 2, 3))
+test/test_time_stepping.jl:    grid = RectilinearGrid(FT; size=(1, 1, 1), extent=(1, 2, 3))
+test/test_time_stepping.jl:    grid = RectilinearGrid(FT, size=(13, 17, 19), extent=(1, 2, 3))
+test/test_time_stepping.jl:    grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+test/test_time_stepping.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_time_stepping.jl:            model = NonhydrostaticModel(grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)),
+test/test_time_stepping.jl:            model = NonhydrostaticModel(grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)),
+test/test_time_stepping.jl:            regular_grid = RectilinearGrid(FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(-1, 1))
+test/test_time_stepping.jl:            hyperbolic_vs_grid = RectilinearGrid(FT,
+test/test_time_stepping.jl:            regular_vs_grid = RectilinearGrid(FT,
+test/test_averaged_field.jl:                grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
+test/test_averaged_field.jl:                big_grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
+test/test_averaged_field.jl:                grid = RectilinearGrid(FT, size=(2, 2, 2), extent=(1, 1, 1))
+test/test_buoyancy.jl:    grid = RectilinearGrid(FT, size=(3, 3, 3), extent=(1, 1, 1))
+test/test_buoyancy.jl:    grid = RectilinearGrid(FT, size=(3, 3, 3), extent=(1, 1, 1))
+test/test_buoyancy.jl:    grid = RectilinearGrid(FT, size=(3, 3, 3), extent=(1, 1, 1))
+test/test_buoyancy.jl:    grid = RectilinearGrid(FT, size=(3, 3, 3), extent=(1, 1, 1))
+test/test_buoyancy.jl:    grid = RectilinearGrid(FT, size=(3, 3, 3), extent=(1, 1, 1))
+test/test_buoyancy.jl:    grid = RectilinearGrid(FT, size=(3, 3, 3), extent=(1, 1, 1))
+test/test_checkpointer.jl:    grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+test/test_checkpointer.jl:    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+test/test_output_readers.jl:    grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(64, 64, 32))
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(16, 6, 4), extent=(1, 2, 3), halo=halo)
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(4, 16, 4), extent=(1, 2, 3), halo=halo)
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(4, 4, 16), extent=(1, 2, 3), halo=halo)
+test/test_distributed_models.jl:    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
+test/test_distributed_models.jl:        full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+test/test_distributed_models.jl:        full_grid = RectilinearGrid(topology=topo, size=(8, 8), extent=(1, 2), halo=(3, 3))
+test/test_implicit_free_surface_solver.jl:        rectilinear_grid = RectilinearGrid(size = (128, 1, 5),
+test/test_reduced_field.jl:            grid = RectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Bounded, Bounded, Bounded))
+test/test_reduced_field.jl:            grid = RectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Bounded))
+docs/src/model_setup/output_writers.md:grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
+docs/src/model_setup/output_writers.md:grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
+docs/src/model_setup/output_writers.md:model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+docs/src/model_setup/output_writers.md:model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+docs/src/model_setup/forcing_functions.md:grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+docs/src/model_setup/forcing_functions.md:grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+docs/src/model_setup/forcing_functions.md:grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+docs/src/model_setup/forcing_functions.md:grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+docs/src/model_setup/forcing_functions.md:grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)) 
+docs/src/model_setup/forcing_functions.md:grid = RectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(-1, 0))
+docs/src/model_setup/tracers.md:julia> grid = RectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
+docs/src/model_setup/tracers.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+docs/src/model_setup/tracers.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+docs/src/model_setup/tracers.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+docs/src/model_setup/tracers.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+docs/src/model_setup/buoyancy_and_equation_of_state.md:julia> grid = RectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
+docs/src/model_setup/buoyancy_and_equation_of_state.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+docs/src/model_setup/buoyancy_and_equation_of_state.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+docs/src/model_setup/buoyancy_and_equation_of_state.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+docs/src/model_setup/buoyancy_and_equation_of_state.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+docs/src/model_setup/buoyancy_and_equation_of_state.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+docs/src/model_setup/setting_initial_conditions.md:julia> grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
+docs/src/model_setup/setting_initial_conditions.md:julia> grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
+docs/src/model_setup/checkpointing.md:model = NonhydrostaticModel(grid=RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
+docs/src/model_setup/grids.md:We currently support only `RectilinearGrid`s with constant grid spacings.
+docs/src/model_setup/grids.md:A `RectilinearGrid` is constructed by specifying the `size` of the grid (a `Tuple` specifying the number of
+docs/src/model_setup/grids.md:julia> grid = RectilinearGrid(size=(32, 64, 256), extent=(128, 256, 512))
+docs/src/model_setup/grids.md:RectilinearGrid{Float64, Periodic, Periodic, Bounded}
+docs/src/model_setup/grids.md:By default, both the `RectilinearGrid` and the `RectilinearGrid` constructors 
+docs/src/model_setup/grids.md:julia> grid = RectilinearGrid(topology=(Periodic, Bounded, Bounded), size=(64, 64, 32), extent=(1e4, 1e4, 1e3))
+docs/src/model_setup/grids.md:RectilinearGrid{Float64, Periodic, Bounded, Bounded}
+docs/src/model_setup/grids.md:julia> grid = RectilinearGrid(size=(32, 16, 256), x=(-100, 100), y=(0, 12.5), z=(-π, π))
+docs/src/model_setup/grids.md:RectilinearGrid{Float64, Periodic, Periodic, Bounded}
+docs/src/model_setup/background_fields.md:grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+docs/src/model_setup/background_fields.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+docs/src/model_setup/background_fields.md:grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+docs/src/model_setup/background_fields.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+docs/src/model_setup/boundary_conditions.md:julia> grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology);
+docs/src/model_setup/boundary_conditions.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
+docs/src/model_setup/boundary_conditions.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
+docs/src/model_setup/boundary_conditions.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
+docs/src/model_setup/lagrangian_particles.md:grid = RectilinearGrid(size=(10, 10, 10), extent=(1, 1, 1));
+docs/src/model_setup/lagrangian_particles.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=10, Ny=10, Nz=10)
+docs/src/model_setup/number_type.md:    the type you want: e.g. `RectilinearGrid(Float32; size=(16, 16, 16), extent=(1, 1, 1))` and
+docs/src/simulation_tips.md:grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+docs/src/simulation_tips.md:julia> grid = RectilinearGrid(size=(1,1,1), extent=(1,1,1))
+docs/src/simulation_tips.md:RectilinearGrid{Float64, Periodic, Periodic, Bounded}
+docs/src/simulation_tips.md:├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+.git/packed-refs:a3777eb3981576da6b89e5f96c99098dcbe2058b refs/remotes/origin/fjp/ZonallyStretchedRectilinearGrid
+.git/packed-refs:c58f0b3a3d9999bfe5db33a3bbd54aff8db0d0c6 refs/remotes/origin/fjp/introduce-ZonalllyStretchedRectilinearGrid
+validation/thermal_bubble/thermal_bubble.jl:    grid = RectilinearGrid(topology=topology, size=(N, 1, N), halo=(5, 5, 5), extent=(L, L, L))
+validation/implicit_vertical_diffusion/nonhydrostatic_one_dimensional_diffusion.jl:grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
+validation/implicit_vertical_diffusion/hydrostatic_one_dimensional_diffusion.jl:grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
+validation/bickley_jet/bickley_jet.jl:    grid = RectilinearGrid(size=(Nh, Nh, 1),
+validation/stommel_gyre/stommel_gyre_advection.jl:    grid = RectilinearGrid(topology=topology, size=(1, N, N), halo=(3, 3, 3); domain...)
+validation/convergence_tests/src/OneDimensionalGaussianAdvectionDiffusion.jl:    grid = RectilinearGrid(topology=topo, size=(Nx, 1, 1), halo=(3, 3, 3); domain...)
+validation/convergence_tests/src/OneDimensionalGaussianAdvectionDiffusion.jl:    ygrid = RectilinearGrid(topology=topo, size=(1, Nx, 1), halo=(3, 3, 3); ydomain...)
+validation/convergence_tests/src/OneDimensionalGaussianAdvectionDiffusion.jl:    zgrid = RectilinearGrid(topology=topo, size=(1, 1, Nx), halo=(3, 3, 3); zdomain...)
+validation/convergence_tests/src/ConvergenceTests.jl:import Oceananigans: RectilinearGrid
+validation/convergence_tests/src/DoublyPeriodicTaylorGreen.jl:    grid = RectilinearGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, 2π), z=(0, 1),
+validation/convergence_tests/src/PointExponentialDecay.jl:    grid = RectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(0, 1))
+validation/convergence_tests/src/TwoDimensionalDiffusion.jl:    grid = RectilinearGrid(size=(Nx, Nx, 1), x=(0, Lx(topo)), y=(0, Ly(topo)), z=(0, 1), topology=topo)
+validation/convergence_tests/src/analysis.jl:    grid = RectilinearGrid(filename)
+validation/convergence_tests/src/analysis.jl:extract_sizes(filenames...) = [size(RectilinearGrid(filename)) for filename in filenames]
+validation/convergence_tests/src/ForcedFlowFreeSlip.jl:    grid = RectilinearGrid(size=(Nx, 1, Nx), x=(0, 2π), y=(0, 1), z=(0, π),
+validation/convergence_tests/src/ForcedFlowFreeSlip.jl:    grid = RectilinearGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, π), z=(0, 1),
+validation/convergence_tests/src/OneDimensionalCosineAdvectionDiffusion.jl:    grid = RectilinearGrid(topology=topo, size=(Nx, 1, 1), halo=(3, 3, 3); domain...)
+validation/convergence_tests/src/OneDimensionalCosineAdvectionDiffusion.jl:    ygrid = RectilinearGrid(topology=topo, size=(1, Nx, 1), halo=(3, 3, 3); ydomain...)
+validation/convergence_tests/src/OneDimensionalCosineAdvectionDiffusion.jl:    zgrid = RectilinearGrid(topology=topo, size=(1, 1, Nx), halo=(3, 3, 3); zdomain...)
+validation/convergence_tests/src/ForcedFlowFixedSlip.jl:    grid = RectilinearGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, 1), z=(0, 1),
+validation/convergence_tests/src/ForcedFlowFixedSlip.jl:    grid = RectilinearGrid(size=(Nx, 1, Nx), x=(0, 2π), y=(0, 1), z=(0, 1),
+validation/convergence_tests/src/file_wrangling.jl:function RectilinearGrid(filename)
+validation/convergence_tests/src/file_wrangling.jl:    grid = RectilinearGrid(size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(0, Lz),
+validation/stratified_couette_flow/stratified_couette_flow.jl:    grid = RectilinearGrid(size = (Nxy, Nxy, Nz), extent = (4π*h, 2π*h, 2h))
+validation/periodic_advection/periodic_advection.jl:    grid = RectilinearGrid(topology=topology, size=(N, ), halo=(9, ), x=(-L/2, L/2))
+validation/mesoscale_turbulence/baroclinic_adjustment.jl:    grid = RectilinearGrid(architecture = arch,
+validation/mesoscale_turbulence/baroclinic_adjustment.jl:    grid = RectilinearGrid(topology=(Periodic, Bounded, Bounded), 
+validation/mesoscale_turbulence/eddying_channel_nonhydrostatic.jl:grid = RectilinearGrid(topology=topology, 
+validation/mesoscale_turbulence/two_dimensional_channel.jl:grid = RectilinearGrid(architecture = arch,
+validation/mesoscale_turbulence/two_dimensional_channel.jl:cpu_grid(grid::RectilinearGrid) = grid
+validation/mesoscale_turbulence/two_dimensional_channel.jl:cpu_grid(grid::RectilinearGrid) =
+validation/mesoscale_turbulence/two_dimensional_channel.jl:    RectilinearGrid(architecture = CPU(),
+validation/mesoscale_turbulence/zonally_averaged_channel.jl:grid = RectilinearGrid(architecture = arch,
+validation/mesoscale_turbulence/zonally_averaged_channel.jl:# ynode(::Type{Center}, j, grid::RectilinearGrid) = @inbounds grid.yC[j]
+validation/mesoscale_turbulence/zonally_averaged_channel.jl:# ynode(::Type{Center}, j, grid::RectilinearGrid) = @inbounds grid.yᵃᵃᶜ[j]
+validation/mesoscale_turbulence/zonally_averaged_channel.jl:grid = RectilinearGrid(architecture = CPU(),
+validation/mesoscale_turbulence/eddying_channel.jl:grid = RectilinearGrid(architecture = arch,
+validation/mesoscale_turbulence/eddying_channel.jl:# ynode(::Type{Center}, j, grid::RectilinearGrid) = @inbounds grid.yC[j]
+validation/mesoscale_turbulence/eddying_channel.jl:# ynode(::Type{Center}, j, grid::RectilinearGrid) = @inbounds grid.yᵃᵃᶜ[j]
+validation/mesoscale_turbulence/eddying_channel.jl: grid = RectilinearGrid(architecture = arch,
+validation/implicit_free_surface/geostrophic_adjustment_test.jl:    grid = RectilinearGrid(size = (64, 1, 1),
+validation/vertical_mixing_closures/profile_catke_ensemble.jl:grid = RectilinearGrid(size=sz, halo=halo, z=(-128, 0), topology=(Flat, Flat, Bounded))
+validation/vertical_mixing_closures/gpu_tkevd_ensemble.jl:grid = RectilinearGrid(size=sz, halo=halo, z=(-128, 0), topology=(Flat, Flat, Bounded))
+validation/vertical_mixing_closures/many_tke_based_free_convection.jl:ensemble_grid = RectilinearGrid(size = sz,
+validation/vertical_mixing_closures/tke_based_free_convection.jl:grid = RectilinearGrid(size=16, z=(-64, 0), topology=(Flat, Flat, Bounded))
+validation/vertical_mixing_closures/convective_adjustment_free_convection.jl:grid = RectilinearGrid(size=32, z=(-64, 0), topology=(Flat, Flat, Bounded))
+validation/vertical_mixing_closures/profile_catke.jl:grid = RectilinearGrid(size=64, z=(-64, 0), topology=(Flat, Flat, Bounded))
+validation/vertical_mixing_closures/tke_based_wind_mixing.jl:grid = RectilinearGrid(size=8, z=(-64, 0), topology=(Flat, Flat, Bounded))
+validation/lid_driven_cavity/lid_driven_cavity.jl:    grid = RectilinearGrid(topology=topology, size=(N, N); domain...)
+validation/stencils/stencil_calculations.jl:grid = RectilinearGrid(size=(64, 64, 64), extent=(2π, 2π, 2π))
+validation/advection/plot_rates_convergence_advection.jl:    grid = RectilinearGrid(Float64; size=N, 
+validation/immersed_boundaries/immersed_hydrostatic_diffusion.jl:underlying_grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
+validation/immersed_boundaries/immersed_bickley_jet.jl:    grid = RectilinearGrid(size=(Nh, Nh), halo=(3, 3),
+validation/immersed_boundaries/immersed_bickley_jet.jl:    expanded_grid = RectilinearGrid(size=(Nh, Int(5Nh/4)), halo=(3, 3),
+validation/immersed_boundaries/cylinder_flow_with_tracer.jl:    underlying_grid = RectilinearGrid(size=(Nh, Int(3*Nh/2),1), halo=(3, 3, 3),
+validation/immersed_boundaries/immersed_tracer_1D.jl:underlying_grid = RectilinearGrid(size=nz, z = (-H,0), topology = (Flat, Flat, Bounded))
+validation/immersed_boundaries/internal_tide.jl:grid = RectilinearGrid(size=(512, 256), x=(-10, 10), z=(0, 5), topology=(Periodic, Flat, Bounded))
+validation/immersed_boundaries/shallow_water_flow_past_cylinder.jl:underlying_grid = RectilinearGrid(size=(128, 64), x=(-5, 10), y=(-3, 3), topology=(Periodic, Bounded, Flat), halo = (3, 3))
+validation/immersed_boundaries/shallow_water_flow_past_cape.jl:underlying_grid = RectilinearGrid(size=(256, 64), x=(-5, 15), y=(0, 5), topology=(Periodic, Bounded, Flat), halo = (3, 3))
+validation/mpi_shallow_water/mpi_shallow_water_turbulence.jl: full_grid = RectilinearGrid(topology=topo, size=(128, 128), extent=(4π, 4π), halo=(3, 3))
+examples/internal_wave.jl:grid = RectilinearGrid(size=(128, 128), x=(-π, π), z=(-π, π),
+examples/geostrophic_adjustment.jl:grid = RectilinearGrid(size = (128, 1),
+examples/eady_turbulence.jl:grid = RectilinearGrid(size=(48, 48, 16), x=(0, 1e6), y=(0, 1e6), z=(-4e3, 0))
+examples/convecting_plankton.jl:grid = RectilinearGrid(size=(64, 64), extent=(64, 64), topology=(Periodic, Flat, Bounded))
+examples/horizontal_convection.jl:grid = RectilinearGrid(size = (Nx, Nz),
+examples/two_dimensional_turbulence.jl:grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), 
+examples/one_dimensional_diffusion.jl:grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
+examples/langmuir_turbulence.jl:grid = RectilinearGrid(size=(32, 32, 48), extent=(128, 128, 96))
+examples/ocean_wind_mixing_and_convection.jl:grid = RectilinearGrid(size = (32, 32, Nz), 
+examples/shallow_water_Bickley_jet.jl:grid = RectilinearGrid(size = (Nx, Ny),
+examples/kelvin_helmholtz_instability.jl:grid = RectilinearGrid(size=(64, 64), x=(-5, 5), z=(-5, 5),
+README.md:grid = RectilinearGrid(size=(100, 100, 50), extent=(2π, 2π, 1))
+README.md:            grid = RectilinearGrid(topology=topology, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
+benchmark/benchmark_lagrangian_particle_tracking.jl:    grid = RectilinearGrid(size=(128, 128, 128), extent=(1, 1, 1))
+benchmark/distributed_shallow_water_model_mpi.jl:distributed_grid = RectilinearGrid(topology=topo, size=(Nx, Ny), extent=(1, 1))
+benchmark/benchmark_abstract_operations.jl:    grid = RectilinearGrid(FT, size=N, extent=(1, 1, 1))
+benchmark/benchmark_nonhydrostatic_model.jl:    grid = RectilinearGrid(FT, size=(N, N, N), extent=(1, 1, 1))
+benchmark/benchmark_topologies.jl:    grid = RectilinearGrid(topology=topo, size=(N, N, N), extent=(1, 1, 1))
+benchmark/benchmark_shallow_water_model.jl:    grid = RectilinearGrid(FT, size=(N, N), extent=(1, 1), topology=(Periodic, Periodic, Flat), halo=(3, 3))
+benchmark/distributed_nonhydrostatic_model_mpi.jl:distributed_grid = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+benchmark/benchmark_time_steppers.jl:    grid = RectilinearGrid(size=(N, N, N), extent=(1, 1, 1))
+benchmark/benchmark_vertically_stretched_nonhydrostatic_model.jl:    grid = RectilinearGrid(architecture=Arch(), size=(N, N, N), x=(0, 1), y=(0, 1), z=collect(0:N))
+benchmark/benchmark_fourier_tridiagonal_poisson_solver.jl:    grid = RectilinearGrid(architecture=Arch(), topology=topo, size=(N, N, N), x=(0, 1), y=(0, 1), z=collect(0:N))
+benchmark/benchmark_fft_based_poisson_solvers.jl:    grid = RectilinearGrid(topology=topo, size=(N, N, N), extent=(1, 1, 1))
+benchmark/benchmark_multithreading_single.jl:grid = RectilinearGrid(size=(N, N, N), extent=(1, 1, 1))
+benchmark/benchmark_tracers.jl:    grid = RectilinearGrid(size=(N, N, N), extent=(1, 1, 1))
+benchmark/benchmarkable_incompressible_model.jl:    grid = RectilinearGrid(FT, size=(N, N, N), extent=(1, 1, 1))
+benchmark/benchmark_hydrostatic_model.jl:     (CPU, :RectilinearGrid)       => RectilinearGrid(size=(1445, 1080, 1), extent=(1, 1, 1)),
+benchmark/benchmark_hydrostatic_model.jl:     (GPU, :RectilinearGrid)       => RectilinearGrid(size=(1445, 1080, 1), extent=(1, 1, 1)),
+benchmark/benchmark_hydrostatic_model.jl:    :RectilinearGrid,
+benchmark/distributed_nonhydrostatic_model_threaded.jl:grid = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+benchmark/benchmark_equations_of_state.jl:    grid = RectilinearGrid(size=(192, 192, 192), extent=(1, 1, 1))
+benchmark/benchmark_turbulence_closures.jl:    grid = RectilinearGrid(size=(128, 128, 128), extent=(1, 1, 1))
+benchmark/distributed_shallow_water_model_threaded.jl:grid = RectilinearGrid(topology=topo, size=(Nx, Ny), extent=(1, 1), halo=(3, 3))
+benchmark/benchmark_advection_schemes.jl:    grid = RectilinearGrid(size=(192, 192, 192), extent=(1, 1, 1))

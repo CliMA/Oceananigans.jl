@@ -30,7 +30,7 @@ step `Î”t`, gravitational acceleration `g`, and free surface at time-step `n` `Î
 """
 function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
 
-    grid isa RectilinearGrid || grid isa RectilinearGrid ||
+    grid isa RegRectilinearGrid || grid isa HRegRectilinearGrid ||
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
 
     # Construct a "horizontal grid". We support either x or y being Flat, but not both.
@@ -56,6 +56,7 @@ function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
     horizontal_grid = RectilinearGrid(; topology = (TX, TY, Flat),
                                                size = sz,
                                                halo = halo,
+                                               architecture = arch,
                                                domain...)
 
     solver = FFTBasedPoissonSolver(arch, horizontal_grid)
