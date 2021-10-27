@@ -16,7 +16,6 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
         @inline raster_depth(i, j) = 30 < i < 35 && 42 < j < 48
 
-        # grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
         bathymetry = zeros(Nx,Ny).-4000
         bathymetry[31:34,43:47] .= 0
         bathymetry = arch_array(arch, bathymetry )
