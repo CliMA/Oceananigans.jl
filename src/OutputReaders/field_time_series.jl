@@ -86,17 +86,26 @@ FieldTimeSeries(path, name; architecture=CPU(), backend=InMemory(), kwargs...) =
 
 const InMemoryFieldTimeSeries{X, Y, Z} = FieldTimeSeries{X, Y, Z, InMemory}
 
+struct UnspecifiedBoundaryConditions end
+
 function FieldTimeSeries(path, name, architecture, backend::InMemory;
-                         grid=nothing, iterations=nothing, times=nothing)
+                         grid = nothing,
+                         location = nothing,
+                         boundary_conditions = UnspecifiedBoundaryConditions(),
+                         iterations = nothing,
+                         times = nothing)
 
     file = jldopen(path)
 
-    grid       = isnothing(grid)       ? file["serialized/grid"]                       : grid
-    iterations = isnothing(iterations) ? parse.(Int, keys(file["timeseries/t"]))       : iterations
-    times      = isnothing(times)      ? [file["timeseries/t/$i"] for i in iterations] : times
-    
-    LX, LY, LZ = location = file["timeseries/$name/serialized/location"]
-    boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
+    # Non-defaults
+    isnothing(grid)       && (grid       =  file["serialized/grid"])
+    isnothing(iterations) && (iterations =  parse.(Int, keys(file["timeseries/t"])))
+    isnothing(times)      && (times      =  [file["timeseries/t/$i"] for i in iterations])
+    isnothing(location)   && (location   =  file["timeseries/$name/serialized/location"])
+
+    if boundary_conditions isa UnspecifiedBoundaryConditions
+        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
+    end
 
     close(file)
 
@@ -122,12 +131,13 @@ backend_str(::InMemory) = "InMemory"
 Load a Field saved in JLD2 file at `path`, with `name` and at `iter`ation.
 `architecture = CPU()` by default, and `grid` is loaded from `path` if not specified.
 """
-function Field(path::String, name::String, iter; architecture=CPU(), grid=nothing)
+function Field(location, path::String, name::String, iter;
+               architecture = CPU(),
+               grid = nothing,
+               boundary_conditions = nothing)
 
     file = jldopen(path)
 
-    location = file["timeseries/$name/serialized/location"]
-    boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
     raw_data = arch_array(architecture, file["timeseries/$name/$iter"])
     isnothing(grid) && (grid = file["serialized/grid"])
 
@@ -148,7 +158,10 @@ function set!(time_series::InMemoryFieldTimeSeries, path::String, name::String)
     for (n, time) in enumerate(time_series.times)
         file_index = findfirst(t -> t ≈ time, file_times)
         file_iter = file_iterations[file_index]
-        set!(time_series[n], Field(path, name, file_iter))
+
+        set!(time_series[n], Field(location(time_series), path, name, file_iter,
+                                   boundary_conditions = time_series.boundary_conditions),
+                                   grid = time_series.grid)
     end
 
     close(file)
