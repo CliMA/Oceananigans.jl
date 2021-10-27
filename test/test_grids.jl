@@ -288,8 +288,8 @@ function test_grid_equality()
 end
 
 function test_grid_equality_over_architectures()
-    grid_cpu = VerticallyStretchedRectilinearGrid(architecture=CPU(), topology=topo, size=(3, 7, 9), x=(0, 1), y=(-1, 1), z_faces=0:9)
-    grid_gpu = VerticallyStretchedRectilinearGrid(architecture=GPU(), topology=topo, size=(3, 7, 9), x=(0, 1), y=(-1, 1), z_faces=0:9)
+    grid_cpu = VerticallyStretchedRectilinearGrid(architecture=CPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z_faces=0:9)
+    grid_gpu = VerticallyStretchedRectilinearGrid(architecture=GPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z_faces=0:9)
 
     return grid_cpu == grid_gpu
 end
