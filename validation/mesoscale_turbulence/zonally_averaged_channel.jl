@@ -1,39 +1,45 @@
-# using Pkg
-# pkg"add Oceananigans GLMakie"
-
-ENV["GKSwstype"] = "100"
-
-pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", ".."))
+#using Pkg
+# pkg"add Oceananigans GLMakie JLD2"
+# ENV["GKSwstype"] = "100"
+# pushfirst!(LOAD_PATH, @__DIR__)
+# pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "..")) # add Oceananigans
 
 using Printf
 using Statistics
-using Plots
+using GLMakie
+using JLD2
 
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
 
+using Random
+Random.seed!(1234)
+
 # Domain
-Lx = 1000kilometers # zonal domain length [m]
-Ly = 2000kilometers # meridional domain length [m]
-Lz = 3kilometers    # depth [m]
+const Lx = 1000kilometers # zonal domain length [m]
+const Ly = 2000kilometers # meridional domain length [m]
+const Lz = 2kilometers    # depth [m]
 
 # number of grid points
 Nx = 1
 Ny = 128
-Nz = 35
+Nz = 40
+
+movie_interval = 0.05days
+stop_time = 3years
 
 arch = CPU()
 
 # stretched grid
 
-# we implement here a linearly streched grid in which the top grid cell has Δz_top
+# we implement here a linearly streched grid in which the top grid cell has Δzₜₒₚ
 # and every other cell is bigger by a factor σ, e.g.,
-# Δz_top, Δz_top * σ, Δz_top * σ², ..., Δz_top * σᴺᶻ⁻¹,
+# Δzₜₒₚ, Δzₜₒₚ * σ, Δzₜₒₚ * σ², ..., Δzₜₒₚ * σᴺᶻ⁻¹,
 # so that the sum of all cell heights is Lz
 
-# Given Lz and stretching factor σ > 1 the top cell height is Δz_top = Lz * (σ - 1) / σ^(Nz - 1)
+# Given Lz and stretching factor σ > 1 the top cell height is Δzₜₒₚ = Lz * (σ - 1) / σ^(Nz - 1)
 
 σ = 1.1 # linear stretching factor
 Δz_center_linear(k) = Lz * (σ - 1) * σ^(Nz - k) / (σ^Nz - 1) # k=1 is the bottom-most cell, k=Nz is the top cell
@@ -48,11 +54,11 @@ grid = VerticallyStretchedRectilinearGrid(architecture = arch,
                                           z_faces = linearly_spaced_faces)
 
 # The vertical spacing versus depth for the prescribed grid
+#=
 plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
-     marker = :circle,
-     ylabel = "Depth (m)",
-     xlabel = "Vertical spacing (m)",
-     legend = nothing)
+     axis=(xlabel = "Vertical spacing (m)",
+           ylabel = "Depth (m)"))
+=#
 
 @info "Built a grid: $grid."
 
@@ -65,22 +71,19 @@ g  = 9.8061   # [m s⁻²] gravitational constant
 cᵖ = 3994.0   # [J K⁻¹] heat capacity
 ρ  = 1024.0   # [kg m⁻³] reference density
 
-parameters = (Ly = Ly,  
-              Lz = Lz,    
-              Qᵇ = 10 / (ρ * cᵖ) * α * g,          # buoyancy flux magnitude [m² s⁻³]    
-              y_shutoff = 5/6 * Ly,                # shutoff location for buoyancy flux [m]
-              τ = 0.2/ρ,                           # surface kinematic wind stress [m² s⁻²]
-              μ = 1 / 30days,                      # bottom drag damping time-scale [s⁻¹]
-              ΔB = 8 * α * g,                      # surface vertical buoyancy gradient [s⁻²]
-              H = Lz,                              # domain depth [m]
-              h = 1000.0,                          # exponential decay scale of stable stratification [m]
-              y_sponge = 19/20 * Ly,               # southern boundary of sponge layer [m]
-              λt = 7.0days                         # relaxation time scale [s]
-)
-
-# ynode(::Type{Center}, j, grid::RegularRectilinearGrid) = @inbounds grid.yC[j]
-# ynode(::Type{Center}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᵃᶜ[j]
-
+parameters = (
+              Ly = Ly,
+              Lz = Lz,
+              Qᵇ = 10/(ρ * cᵖ) * α * g,   # buoyancy flux magnitude [m² s⁻³]    
+              y_shutoff = 5/6 * Ly,       # shutoff location for buoyancy flux [m]
+              τ = 0.2 / ρ,                # surface kinematic wind stress [m² s⁻²]
+              μ = 1 / 30days,             # bottom drag damping time-scale [s⁻¹]
+              ΔB = 8 * α * g,             # surface vertical buoyancy gradient [s⁻²]
+              H = Lz,                     # domain depth [m]
+              h = 1000.0,                 # exponential decay scale of stable stratification [m]
+              y_sponge = 19/20 * Ly,      # southern boundary of sponge layer [m]
+              λt = 7days                  # relaxation time scale [s]
+              )
 
 @inline function buoyancy_flux(i, j, grid, clock, model_fields, p)
     y = ynode(Center(), j, grid)
@@ -96,7 +99,6 @@ buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, discrete_form=true, para
 end
 
 u_stress_bc = FluxBoundaryCondition(u_stress, discrete_form=true, parameters=parameters)
-
 
 @inline u_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.u[i, j, 1] 
 @inline v_drag(i, j, grid, clock, model_fields, p) = @inbounds - p.μ * p.Lz * model_fields.v[i, j, 1]
@@ -135,10 +137,10 @@ end
 
 Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 
-# closure
+# Turbulence closures
 
-κh = 0.5e-5 # [m²/s] horizontal diffusivity
-νh = 30.0   # [m²/s] horizontal viscocity
+κh = 5e-5 # [m²/s] horizontal diffusivity
+νh = 100.0   # [m²/s] horizontal viscocity
 κz = 0.5e-5 # [m²/s] vertical diffusivity
 νz = 3e-4   # [m²/s] vertical viscocity
 
@@ -149,7 +151,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 gerdes_koberle_willebrand_tapering = Oceananigans.TurbulenceClosures.FluxTapering(1e-2)
 
-gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 3000,
+gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 100,
                                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
 #####
 ##### Model building
@@ -180,8 +182,11 @@ model = HydrostaticFreeSurfaceModel(architecture = arch,
 # resting initial condition
 ε(σ) = σ * randn()
 bᵢ(x, y, z) = parameters.ΔB * ( exp(z/parameters.h) - exp(-Lz/parameters.h) ) / (1 - exp(-Lz/parameters.h)) + ε(1e-8)
+uᵢ(x, y, z) = ε(1e-8)
+vᵢ(x, y, z) = ε(1e-8)
+wᵢ(x, y, z) = ε(1e-8)
 
-set!(model, b=bᵢ)
+set!(model, b=bᵢ, u=uᵢ, v=vᵢ, w=wᵢ)
 
 #####
 ##### Simulation building
@@ -207,7 +212,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=2day, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=10)
 
 #####
 ##### Diagnostics
@@ -241,6 +246,11 @@ outputs = (; b, u, v, w, vb, wb, ∇_q)
 # ##### Build checkpointer and output writer
 # #####
 
+simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                        schedule = TimeInterval(1years),
+                                                        prefix = "zonally_averaged_channel",
+                                                        force = true)
+
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(0.5days),
                                                       prefix = "zonally_averaged_channel",
@@ -252,8 +262,11 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
 
 try
     run!(simulation, pickup=false)
-catch
+catch err
+    @info "run! threw an error! The error message is"
+    showerror(stdout, err)
 end
+
 
 #####
 ##### Visualization
@@ -265,7 +278,7 @@ grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
                                           halo = (3, 3, 3),
                                           x = (0, grid.Lx),
                                           y = (0, grid.Ly),
-                                          z_faces = z_faces)
+                                          z_faces = linearly_spaced_faces)
 
 xu, yu, zu = nodes((Face, Center, Center), grid)
 xv, yv, zv = nodes((Center,Face,  Center), grid)
@@ -296,7 +309,100 @@ wb_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "wb", grid=grid
 ∇_q_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "∇_q", grid=grid)
 @show ∇_q_timeseries
 
+_, _, _, nt = size(b_timeseries)
+
+y_limits = (0, 2000)
+z_limits = (-200, 0)
+
+which_iteration = nt-1
+
+fig, ax, hm = heatmap(yc * 1e-3, zc, interior(∇_q_timeseries)[1, :, :, which_iteration],
+                      colormap=:balance, colorrange=(-1e-7, 1e-7),
+                      axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
+Colorbar(fig[1, 2], hm, ticklabelsize=20)
+fig[0, :] = Label(fig, "∇⋅q", textsize=30)
+xlims!(y_limits[1], y_limits[2])
+ylims!(z_limits[1], z_limits[2])
+display(fig)
+
+fig, ax, hm = heatmap(yv * 1e-3, zv, interior(vb_timeseries)[1, :, :, which_iteration],
+                      colormap=:balance, colorrange=(-2e-5, 2e-5),
+                      axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
+Colorbar(fig[1, 2], hm, ticklabelsize=20)
+fig[0, :] = Label(fig, "v'b'", textsize=30)
+xlims!(y_limits[1], y_limits[2])
+ylims!(z_limits[1], z_limits[2])
+display(fig)
+
+fig, ax, hm = heatmap(yw * 1e-3, zw, interior(wb_timeseries)[1, :, :, which_iteration],
+                      colormap=:balance, colorrange=(-1e-6, 1e-6),
+                      axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
+Colorbar(fig[1, 2], hm, ticklabelsize=20)
+fig[0, :] = Label(fig, "w'b'", textsize=30)
+xlims!(y_limits[1], y_limits[2])
+ylims!(z_limits[1], z_limits[2])
+display(fig)
+
+b = b_timeseries[which_iteration]
+
+fig, ax, hm = heatmap(yc * 1e-3, zc, interior(b)[1, :, :],
+                    #   colormap=:balance, colorrange=(-1e-7, 1e-7),
+                      axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
+Colorbar(fig[1, 2], hm, ticklabelsize=20)
+fig[0, :] = Label(fig, "b", textsize=30)
+xlims!(y_limits[1], y_limits[2])
+ylims!(z_limits[1], z_limits[2])
+display(fig)
+
+
+fig, ax, hm = heatmap(yu * 1e-3, zu, interior(u_timeseries)[1, :, :, which_iteration],
+                      colormap=:balance, colorrange=(-0.5, 0.5),
+                      axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
+Colorbar(fig[1, 2], hm, ticklabelsize=20)
+fig[0, :] = Label(fig, "u", textsize=30)
+# xlims!(y_limits[1], y_limits[2])
+# ylims!(z_limits[1], z_limits[2])
+display(fig)
+
+
+
+fig, ax, hm = heatmap(yv * 1e-3, zv, interior(v_timeseries)[1, :, :, which_iteration],
+                      colormap=:balance, colorrange=(-0.1, 0.1),
+                      axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
+Colorbar(fig[1, 2], hm, ticklabelsize=20)
+fig[0, :] = Label(fig, "v", textsize=30)
+# xlims!(y_limits[1], y_limits[2])
+# ylims!(z_limits[1], z_limits[2])
+display(fig)
+
+
+
+fig, ax, hm = heatmap(yw * 1e-3, zw, interior(w_timeseries)[1, :, :, which_iteration],
+                      colormap=:balance, colorrange=(-1e-4, 1e-4),
+                      axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
+Colorbar(fig[1, 2], hm, ticklabelsize=20)
+fig[0, :] = Label(fig, "w", textsize=30)
+# xlims!(y_limits[1], y_limits[2])
+# ylims!(z_limits[1], z_limits[2])
+display(fig)
+
+
+
+
 b_z = Field(Center, Center, Face, grid)
+
+b_z .= ∂z(b)
+
+fig, ax, hm = heatmap(yw * 1e-3, zw, interior(b_z)[1, :, :],
+                      colormap=:curl, colorrange=(-5e-4, 5e-4),
+                      axis=(xlabel="y", ylabel="z", xticklabelsize=20,  yticklabelsize=20, xlabelsize=25, ylabelsize=25))
+Colorbar(fig[1, 2], hm, ticklabelsize=20)
+fig[0, :] = Label(fig, "∂b/∂z", textsize=30)
+xlims!(y_limits[1], y_limits[2])
+ylims!(z_limits[1], z_limits[2])
+display(fig)
+
+
 
 umax = 1
 ulims = (-umax, umax) .* 0.8

@@ -1,15 +1,13 @@
 #using Pkg
 # pkg"add Oceananigans GLMakie JLD2"
-ENV["GKSwstype"] = "100"
-pushfirst!(LOAD_PATH, @__DIR__)
-pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "..")) # add Oceananigans
+# ENV["GKSwstype"] = "100"
+# pushfirst!(LOAD_PATH, @__DIR__)
+# pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "..")) # add Oceananigans
 
 using Printf
 using Statistics
-using GLMakie
+# using GLMakie
 using JLD2
-
-GLMakie.inline!(false)
 
 using Oceananigans
 using Oceananigans.Units
@@ -17,19 +15,19 @@ using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
 
 # Domain
-Lx = 1000kilometers # zonal domain length [m]
-Ly = 2000kilometers # meridional domain length [m]
-Lz = 2kilometers    # depth [m]
+const Lx = 1000kilometers # zonal domain length [m]
+const Ly = 2000kilometers # meridional domain length [m]
+const Lz = 2kilometers    # depth [m]
 
 # number of grid points
-Nx = 64
-Ny = 128
-Nz = 40
+Nx = 256
+Ny = 512
+Nz = 80
 
-movie_interval = 1days
-stop_time = 600days
+movie_interval = 2days
+stop_time = 50years
 
-arch = GPU()
+arch = CPU()
 
 # stretched grid
 
@@ -40,7 +38,7 @@ arch = GPU()
 
 # Given Lz and stretching factor σ > 1 the top cell height is Δzₜₒₚ = Lz * (σ - 1) / σ^(Nz - 1)
 
-σ = 1.1 # linear stretching factor
+σ = 1.04 # linear stretching factor
 Δz_center_linear(k) = Lz * (σ - 1) * σ^(Nz - k) / (σ^Nz - 1) # k=1 is the bottom-most cell, k=Nz is the top cell
 linearly_spaced_faces(k) = k==1 ? -Lz : - Lz + sum(Δz_center_linear.(1:k-1))
 
@@ -53,9 +51,11 @@ grid = VerticallyStretchedRectilinearGrid(architecture = arch,
                                           z_faces = linearly_spaced_faces)
 
 # The vertical spacing versus depth for the prescribed grid
+#=
 plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
      axis=(xlabel = "Vertical spacing (m)",
            ylabel = "Depth (m)"))
+=#
 
 @info "Built a grid: $grid."
 
@@ -123,7 +123,6 @@ coriolis = BetaPlane(f₀ = f, β = β)
 @inline initial_buoyancy(z, p) = p.ΔB * (exp(z / p.h) - exp(-p.Lz / p.h)) / (1 - exp(-p.Lz / p.h))
 @inline mask(y, p) = max(0.0, y - p.y_sponge) / (Ly - p.y_sponge)
 
-
 @inline function buoyancy_relaxation(i, j, k, grid, clock, model_fields, p)
     timescale = p.λt
     y = ynode(Center(), j, grid)
@@ -142,8 +141,7 @@ Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 κz = 0.5e-5 # [m²/s] vertical diffusivity
 νz = 3e-4   # [m²/s] vertical viscocity
 
-closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz)
-
+horizontal_diffusivity = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz)
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)
@@ -161,7 +159,7 @@ model = HydrostaticFreeSurfaceModel(architecture = arch,
                                     tracer_advection = WENO5(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = coriolis,
-                                    closure = (closure, convective_adjustment),
+                                    closure = (horizontal_diffusivity, convective_adjustment),
                                     tracers = :b,
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                     forcing = (; b=Fb,)
@@ -239,7 +237,7 @@ averaged_outputs = (; v′b′, w′b′, B, U)
 #####
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                        schedule = TimeInterval(100days),
+                                                        schedule = TimeInterval(1years),
                                                         prefix = "eddying_channel",
                                                         force = true)
 
@@ -260,12 +258,10 @@ for side in keys(slicers)
                                                        force = true)
 end
 
-#=
-simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U, v=V, w=W, vb=v′b′, wb=w′b′),
+simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U),#, v=V, w=W, vb=v′b′, wb=w′b′),
                                                      schedule = TimeInterval(movie_interval),
                                                      prefix = "eddying_channel_zonal_average",
                                                      force = true)
-=#
 #=
 simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
                                                         schedule = AveragedTimeInterval(1days, window=1days, stride=1),
@@ -282,6 +278,9 @@ catch err
     @info "run! threw an error! The error message is"
     showerror(stdout, err)
 end
+
+
+using GLMakie
 
 #####
 ##### Visualize
@@ -345,6 +344,7 @@ b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
 u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
 
 clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
+clims_u = (-0.4, 0.4)
 
 GLMakie.contour!(ax_b, yb, zb, b_avg; levels = 25, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
 GLMakie.surface!(ax_b, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
@@ -360,22 +360,24 @@ rotate_cam!(ax_b.scene, (π/24, -π/6, 0))
        top = @lift(Array(slice_files.top["timeseries/ζ/"    * string($iter)][:, :, 1]))
 )
 
-# u_slices = (
-#       west = @lift(Array(slice_files.west["timeseries/u/"   * string($iter)][1, :, :])),
-#       east = @lift(Array(slice_files.east["timeseries/u/"   * string($iter)][1, :, :])),
-#      south = @lift(Array(slice_files.south["timeseries/u/"  * string($iter)][:, 1, :])),
-#      north = @lift(Array(slice_files.north["timeseries/u/"  * string($iter)][:, 1, :])),
-#     bottom = @lift(Array(slice_files.bottom["timeseries/u/" * string($iter)][:, :, 1])),
-#        top = @lift(Array(slice_files.top["timeseries/u/"    * string($iter)][:, :, 1]))
-# )
+u_slices = (
+      west = @lift(Array(slice_files.west["timeseries/u/"   * string($iter)][1, :, :])),
+      east = @lift(Array(slice_files.east["timeseries/u/"   * string($iter)][1, :, :])),
+     south = @lift(Array(slice_files.south["timeseries/u/"  * string($iter)][:, 1, :])),
+     north = @lift(Array(slice_files.north["timeseries/u/"  * string($iter)][:, 1, :])),
+    bottom = @lift(Array(slice_files.bottom["timeseries/u/" * string($iter)][:, :, 1])),
+       top = @lift(Array(slice_files.top["timeseries/u/"    * string($iter)][:, :, 1]))
+)
 
-clims_ζ = @lift extrema(slice_files.top["timeseries/u/" * string($iter)][:])
-kwargs_ζ = (colormap=:curl, show_axis=false)
-# clims_u = @lift extrema(slice_files.top["timeseries/u/" * string($iter)][:])
-# kwargs_u = (colormap=:balance, show_axis=false)
+clims_ζ = @lift extrema(slice_files.top["timeseries/ζ/" * string($iter)][:])
+clims_ζ = (-1f-4, 1f-4)
+kwargs_ζ = (colormap=:curl, show_axis=false, colorrange=clims_ζ)
+kwargs_east = (colormap=:curl, show_axis=false, colorrange=(-5f-5, 5f-5))
+clims_u = @lift extrema(slice_files.top["timeseries/u/" * string($iter)][:])
+kwargs_u = (colormap=:balance, show_axis=false)
 
 GLMakie.surface!(ax_ζ, yζ, zζ, ζ_slices.west;   transformation = (:yz, xζ[1]),   kwargs_ζ...)
-GLMakie.surface!(ax_ζ, yζ, zζ, ζ_slices.east;   transformation = (:yz, xζ[end]), kwargs_ζ...)
+GLMakie.surface!(ax_ζ, yζ, zζ, ζ_slices.east;   transformation = (:yz, xζ[end]), kwargs_east...)
 GLMakie.surface!(ax_ζ, xζ, zζ, ζ_slices.south;  transformation = (:xz, yζ[1]),   kwargs_ζ...)
 GLMakie.surface!(ax_ζ, xζ, zζ, ζ_slices.north;  transformation = (:xz, yζ[end]), kwargs_ζ...)
 GLMakie.surface!(ax_ζ, xζ, yζ, ζ_slices.bottom; transformation = (:xy, zζ[1]),   kwargs_ζ...)
@@ -385,21 +387,24 @@ b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
 u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
 
 clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
+clims_u = (-0.4, 0.4)
 
 GLMakie.contour!(ax_ζ, yb, zb, b_avg; levels = 25, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
 GLMakie.surface!(ax_ζ, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
 
 rotate_cam!(ax_ζ.scene, (π/24, -π/6, 0))
 
-title = @lift(string("Buoyancy and zonally-averaged u at t = ",
+title = @lift(string("Buoyancy, vertical vorticity, and zonally-averaged u at t = ",
                      prettytime(zonal_file["timeseries/t/" * string($iter)])))
 
 fig[0, :] = Label(fig, title, textsize=30)
 
+display(fig)
 
 iterations = parse.(Int, keys(zonal_file["timeseries/t"]))
+iterations = iterations[1:Int((length(iterations)+1)/4)]
 
-record(fig, "eddying_channel.mp4", iterations, framerate=8) do i
+record(fig, "eddying_channel.mp4", iterations, framerate=12) do i
     @info "Plotting iteration $i of $(iterations[end])..."
     iter[] = i
 end
