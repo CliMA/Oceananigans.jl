@@ -150,3 +150,14 @@ end
 calculate_diffusivities!(diffusivity_fields, closure::ISSD, model) = nothing
 
 DiffusivityFields(arch, grid, tracer_names, bcs, ::ISSD) = nothing
+
+
+#####
+##### Show
+#####
+
+Base.show(io::IO, closure::ISSD) =
+    print(io, "IsopycnalSkewSymmetricDiffusivity: " *
+              "(κ_symmetric=$(closure.κ_symmetric), κ_skew=$(closure.κ_skew), " *
+              "(isopycnal_model=$(closure.isopycnal_model), slope_limiter=$(closure.slope_limiter))")
+              
