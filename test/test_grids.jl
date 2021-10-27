@@ -279,11 +279,12 @@ end
 
 function test_grid_equality()
     topo = (Periodic, Periodic, Bounded)
-    grid1 = RegularRectilinearGrid(topology=topo, size=(4, 7, 9), x=(0, 1), y=(-1, 1), z=(0, 2π))
-    grid2 = RegularRectilinearGrid(topology=topo, size=(3, 7, 9), x=(0, 1), y=(-1, 1), z_faces=[0:9])
-    grid3 = VerticallyStretchedRectilinearGrid(architecture=CPU(), topology=topo, size=(3, 7, 9), x=(0, 1), y=(-1, 1), z_faces=0:9)
+    Nx, Ny, Nz = 4, 7, 9
+    grid1 = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=(0, Nz))
+    grid2 = VerticallyStretchedRectilinearGrid(architecture=CPU(), topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z_faces=0:Nz)
+    grid3 = VerticallyStretchedRectilinearGrid(architecture=CPU(), topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z_faces=0:Nz)
 
-    return grid1==grid1 && grid1 == grid2 && grid1 !== grid3
+    return grid1==grid1 && grid2 == grid3 && grid1 !== grid3
 end
 
 function test_grid_equality_over_architectures()
