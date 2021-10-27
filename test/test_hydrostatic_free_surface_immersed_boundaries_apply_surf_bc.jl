@@ -1,4 +1,4 @@
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, RasterDepthMask
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
 @testset "Immersed boundaries with hydrostatic free surface models" begin
@@ -16,7 +16,12 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
         @inline raster_depth(i, j) = 30 < i < 35 && 42 < j < 48
 
-        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(raster_depth, mask_type=RasterDepthMask()))
+        # grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
+        bathymetry = zeros(Nx,Ny).-4000
+        bathymetry[31:34,43:47] .= 0
+        bathymetry = arch_array(arch, bathymetry )
+
+        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry) )
 
         free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
         coriolis = HydrostaticSphericalCoriolis(scheme = VectorInvariantEnstrophyConserving())
