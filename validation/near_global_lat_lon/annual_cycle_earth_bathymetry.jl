@@ -12,6 +12,8 @@ using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusi
 using CUDA: @allowscalar
 using Oceananigans.Operators: Δzᵃᵃᶜ
 
+include("cyclic_interpolate_utils.jl")
+
 #####
 ##### Grid
 #####

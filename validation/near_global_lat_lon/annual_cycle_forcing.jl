@@ -3,6 +3,8 @@ using GLMakie
 using Oceananigans
 using Oceananigans.Units
 
+include("cyclic_interpolate_utils.jl")
+
 # 2.8125 degree resolution
 Nx = 128
 Ny = 60
@@ -25,21 +27,6 @@ bytes = sizeof(Float32) * Nx * Ny
 τˣ = - reshape(bswap.(reinterpret(Float32, read(east_west_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ reference_density
 τʸ = - reshape(bswap.(reinterpret(Float32, read(north_south_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ reference_density
 T★ = reshape(bswap.(reinterpret(Float32, read(sea_surface_temperature_path, Nmonths * bytes))), (Nx, Ny, Nmonths))
-
-#####
-##### Utils
-#####
-
-@inline current_time_index(time, interval=thirty_days, length=Nmonths) = mod(trunc(Int, time / interval),     length) + 1
-@inline next_time_index(time, interval=thirty_days, length=Nmonths)    = mod(trunc(Int, time / interval) + 1, length) + 1
-
-@inline cyclic_interpolate(u₁, u₂, time, interval=thirty_days) = u₁ + mod(time / interval, 1) * (u₂ - u₁)
-
-@inline function cyclic_interpolate(τ::AbstractArray, time, interval=thirty_days, length=Nmonths)
-    n₁ = current_time_index(time, interval, length)
-    n₂ = next_time_index(time, interval, length)
-    return cyclic_interpolate.(view(τ, :, :, n₁), view(τ, :, :, n₂), time, interval)
-end
 
 times = 0:1days:24*30days
 discrete_times = 0:30days:11*30days
