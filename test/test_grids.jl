@@ -540,19 +540,19 @@ function test_lat_lon_precomputed_metrics(FT, arch)
     for lat in latitude
         for lon in longitude
             for z in zcoord
-
+                println("$lat, $lon, $z")
                 grid_pre = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, architecture=arch, precompute_metrics=true) 
                 grid_fly = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, architecture=arch) 
     
-                @test all(arch_array(CPU(), [all(arch_array(CPU(), [Δxᶠᶜᵃ(i, j, 1, grid_pre) == Δxᶠᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
-                @test all(arch_array(CPU(), [all(arch_array(CPU(), [Δxᶜᶠᵃ(i, j, 1, grid_pre) == Δxᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
-                @test all(arch_array(CPU(), [all(arch_array(CPU(), [Δxᶠᶠᵃ(i, j, 1, grid_pre) == Δxᶠᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
-                @test all(arch_array(CPU(), [all(arch_array(CPU(), [Δxᶜᶜᵃ(i, j, 1, grid_pre) == Δxᶜᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
-                @test all(arch_array(CPU(), [all(arch_array(CPU(), [Δyᶜᶠᵃ(i, j, 1, grid_pre) == Δyᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
-                @test all(arch_array(CPU(), [all(arch_array(CPU(), [Azᶠᶜᵃ(i, j, 1, grid_pre) == Azᶠᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
-                @test all(arch_array(CPU(), [all(arch_array(CPU(), [Azᶜᶠᵃ(i, j, 1, grid_pre) ≈  Azᶜᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
-                @test all(arch_array(CPU(), [all(arch_array(CPU(), [Azᶠᶠᵃ(i, j, 1, grid_pre) ≈  Azᶠᶠᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
-                @test all(arch_array(CPU(), [all(arch_array(CPU(), [Azᶜᶜᵃ(i, j, 1, grid_pre) == Azᶜᶜᵃ(i, j, 1, grid_fly) for i in 1:Nλ])) for j in 1:Nφ ]))
+                @test all(Array([all(Array([Δxᶠᶜᵃ(i, j, 1, grid_pre) ≈ Δxᶠᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Δxᶜᶠᵃ(i, j, 1, grid_pre) ≈ Δxᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Δxᶠᶠᵃ(i, j, 1, grid_pre) ≈ Δxᶠᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Δxᶜᶜᵃ(i, j, 1, grid_pre) ≈ Δxᶜᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Δyᶜᶠᵃ(i, j, 1, grid_pre) ≈ Δyᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Azᶠᶜᵃ(i, j, 1, grid_pre) ≈ Azᶠᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Azᶜᶠᵃ(i, j, 1, grid_pre) ≈ Azᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Azᶠᶠᵃ(i, j, 1, grid_pre) ≈ Azᶠᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
+                @test all(Array([all(Array([Azᶜᶜᵃ(i, j, 1, grid_pre) ≈ Azᶜᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
             end 
         end
     end

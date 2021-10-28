@@ -82,7 +82,7 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
 
     c₁, c₂ = coord
     @assert c₁ < c₂
-    L = c₂ - c₁
+    L = FT(c₂ - c₁)
 
     # Convert to get the correct type also when using single precision
     ΔF = ΔC = Δ = convert(FT, L / N)
@@ -101,10 +101,7 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)
-    
-    F = OffsetArray(arch_array(architecture, F.parent), F.offsets...)
-    C = OffsetArray(arch_array(architecture, C.parent), C.offsets...)
-    
+        
     return L, F, C, ΔF, ΔC
 end
 

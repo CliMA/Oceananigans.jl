@@ -55,29 +55,38 @@ end
 include("regression_tests/thermal_bubble_regression_test.jl")
 include("regression_tests/rayleigh_benard_regression_test.jl")
 include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
+include("regression_tests/lat_lon_free_turbulence_regression.jl")
 
 @testset "Regression" begin
     @info "Running regression tests..."
 
     for arch in archs
-        for grid_type in [:regular, :vertically_unstretched]
-            @testset "Thermal bubble [$(typeof(arch)), $grid_type grid]" begin
-                @info "  Testing thermal bubble regression [$(typeof(arch)), $grid_type grid]"
-                run_thermal_bubble_regression_test(arch, grid_type)
-            end
+        # for grid_type in [:regular, :vertically_unstretched]
+        #     @testset "Thermal bubble [$(typeof(arch)), $grid_type grid]" begin
+        #         @info "  Testing thermal bubble regression [$(typeof(arch)), $grid_type grid]"
+        #         run_thermal_bubble_regression_test(arch, grid_type)
+        #     end
 
-            @testset "Rayleigh–Bénard tracer [$(typeof(arch)), $grid_type grid]]" begin
-                @info "  Testing Rayleigh–Bénard tracer regression [$(typeof(arch)), $grid_type grid]"
-                run_rayleigh_benard_regression_test(arch, grid_type)
-            end
+        #     @testset "Rayleigh–Bénard tracer [$(typeof(arch)), $grid_type grid]]" begin
+        #         @info "  Testing Rayleigh–Bénard tracer regression [$(typeof(arch)), $grid_type grid]"
+        #         run_rayleigh_benard_regression_test(arch, grid_type)
+        #     end
 
-            for closure in (AnisotropicMinimumDissipation(ν=1.05e-6, κ=1.46e-7), SmagorinskyLilly(C=0.23, Cb=1, Pr=1, ν=1.05e-6, κ=1.46e-7))
-                closurename = string(typeof(closure).name.wrapper)
-                @testset "Ocean large eddy simulation [$(typeof(arch)), $closurename, $grid_type grid]" begin
-                    @info "  Testing oceanic large eddy simulation regression [$(typeof(arch)), $closurename, $grid_type grid]"
-                    run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
-                end
+        #     for closure in (AnisotropicMinimumDissipation(ν=1.05e-6, κ=1.46e-7), SmagorinskyLilly(C=0.23, Cb=1, Pr=1, ν=1.05e-6, κ=1.46e-7))
+        #         closurename = string(typeof(closure).name.wrapper)
+        #         @testset "Ocean large eddy simulation [$(typeof(arch)), $closurename, $grid_type grid]" begin
+        #             @info "  Testing oceanic large eddy simulation regression [$(typeof(arch)), $closurename, $grid_type grid]"
+        #             run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
+        #         end
+        #     end
+        # end
+        grid_conf = [:regular, :unstretched]
+        for grid_x in grid_conf, grid_y in grid_conf, grid_z in grid_conf, compute in (false)
+            @testset "Latitude Longitude free turbulence regression [$(typeof(arch)), ($grid_x, $grid_y, $grid_z) grid$(compute ? ", metrics are precomputed" : "")]" begin
+                @info "  Testing Latitude Longitude free turbulence [$(typeof(arch)), ($grid_x, $grid_y, $grid_z) grid$(compute ? ", metrics are precomputed" : "")]"
+                run_lat_lon_free_turbulence_regression_test(grid_x, grid_y, grid_z, arch, compute)
             end
         end
     end
 end
+
