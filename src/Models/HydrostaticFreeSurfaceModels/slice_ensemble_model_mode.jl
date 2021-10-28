@@ -3,7 +3,7 @@ using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: _top_tke_flux, CATKEVDArray
 
 import Oceananigans.Grids: validate_size, validate_halo
-import Oceananigans.TurbulenceClosures: time_discretization, calculate_diffusivities!
+import Oceananigans.TurbulenceClosures: time_discretization, calculate_diffusivities!, with_tracers
 import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: top_tke_flux
 import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
@@ -76,3 +76,6 @@ const CoriolisArray = AbstractArray{<:AbstractRotation}
 @inline y_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisArray, U) = @inbounds y_f_cross_U(i, j, k, grid, coriolis[i], U)
 @inline z_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisArray, U) = @inbounds z_f_cross_U(i, j, k, grid, coriolis[i], U)
 
+# For vectors of closure tuples
+with_tracers(tracers, closure_vector::AbstractVector{<:Tuple}) =
+    [with_tracers(closure_tuple) for closure_tuple in closure_vector]
