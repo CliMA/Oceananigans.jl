@@ -103,8 +103,8 @@ T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = arch,
-                                    #free_surface = ExplicitFreeSurface(),
-                                    free_surface = ImplicitFreeSurface(maximum_iterations=10),
+                                    free_surface = ExplicitFreeSurface(),
+                                    #free_surface = ImplicitFreeSurface(maximum_iterations=10),
                                     #free_surface = ImplicitFreeSurface(),
                                     momentum_advection = VectorInvariant(),
                                     tracer_advection = WENO5(),
@@ -167,7 +167,7 @@ u, v, w = model.velocities
 η = model.free_surface.η
 
 T = model.tracers.T
-T .= -1
+T .= 5
 
 S = model.tracers.S
 S .= 30
@@ -179,7 +179,7 @@ S .= 30
 # Time-scale for gravity wave propagation across the smallest grid cell
 g = model.free_surface.gravitational_acceleration
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
-    
+
 minimum_Δx = abs(grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ[1:grid.Ny])) * deg2rad(grid.Δλ))
 minimum_Δy = abs(grid.radius * deg2rad(grid.Δφ))
 wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
@@ -219,7 +219,7 @@ end
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 60days,
+                        stop_time = 1day,
                         iteration_interval = 10,
                         progress = progress)
 
