@@ -55,8 +55,10 @@ bathymetry = arch_array(arch, bathymetry)
 target_sea_surface_temperature = T★ = arch_array(arch, target_sea_surface_temperature)
 
 H = 3600.0
-# bathymetry = - H .* (bathymetry .< -10)
 # H = - minimum(bathymetry)
+
+# Uncomment for a flat bottom:
+# bathymetry = - H .* (bathymetry .< -10)
 
 # A spherical domain
 @show underlying_grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, Nz),
@@ -86,22 +88,6 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 Δz_top = @allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid.grid)
 Δz_bottom = @allowscalar Δzᵃᵃᶜ(1, 1, 1, grid.grid)
 
-# 30 day cycle
-
-const thirty_days = 30days
-
-@inline current_time_index(time) = mod(trunc(Int, time / thirty_days), 12) + 1
-@inline next_time_index(time) = mod(trunc(Int, time / thirty_days) + 1, 12) + 1
-
-"""
-    monthly_interpolate(u₁, u₂, time)
-
-r = mod1(time, month) / month
-u★ = u₁ + r * (u₂ - u₁)
-
-"""
-@inline thirty_day_interpolate(u₁, u₂, time) = u₁ + mod1(time / thirty_days, 1.0) * (u₂ - u₁)
-
 @inline function surface_temperature_relaxation(i, j, grid, clock, fields, p)
     time = clock.time
 
@@ -111,7 +97,7 @@ u★ = u₁ + r * (u₂ - u₁)
     T★₁ = @inbounds p.T★[i, j, n₁]
     T★₂ = @inbounds p.T★[i, j, n₂]
 
-    T★ = thirty_day_interpolate(T★₁, T★₂, time)
+    T★ = cyclic_interpolate(T★₁, T★₂, time)
                                 
     T_surface = @inbounds fields.T[i, j, grid.Nz]
 
@@ -127,7 +113,7 @@ T_surface_relaxation_bc = FluxBoundaryCondition(surface_temperature_relaxation,
     n₂ = next_time_index(time)
     τ₁ = @inbounds τ[i, j, n₁]
     τ₂ = @inbounds τ[i, j, n₂]
-    return thirty_day_interpolate(τ₁, τ₂, time)
+    return cyclic_interpolate(τ₁, τ₂, time)
 end
 
 @inline wind_stress_x(i, j, grid, clock, fields, τˣ) = wind_stress(i, j, clock.time, τˣ)
@@ -169,7 +155,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
 u, v, w = model.velocities
 η = model.free_surface.η
 T = model.tracers.T
-T .= -1
+T .= 5
 S = model.tracers.S
 S .= 30
 
@@ -186,9 +172,9 @@ minimum_Δy = abs(grid.radius * deg2rad(grid.Δφ))
 wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
 
 if model.free_surface isa ExplicitFreeSurface
-    Δt = 60seconds #0.2 * minimum_Δx / gravity_wave_speed
+    Δt = 60seconds
 else
-    Δt = 10minutes
+    Δt = 20minutes
 end
 
 start_time = [time_ns()]
@@ -218,7 +204,7 @@ function progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt = Δt, stop_time = 180days, iteration_interval = 10, progress = progress)
+simulation = Simulation(model, Δt = Δt, stop_time = 60day, iteration_interval = 10, progress = progress)
 
 u, v, w = model.velocities
 T, S = model.tracers
@@ -254,7 +240,7 @@ file = jldopen(output_prefix * ".jld2")
 
 iterations = parse.(Int, keys(file["timeseries/t"]))
 
-iter = Node(iterations[end])
+iter = Node(0)
 
 ηi(iter) = file["timeseries/η/" * string(iter)][:, :, 1]
 ui(iter) = file["timeseries/u/" * string(iter)][:, :, 1]
@@ -267,16 +253,22 @@ u = @lift ui($iter)
 v = @lift vi($iter)
 T = @lift Ti($iter)
 
-max_η = @lift + maximum(abs, ηi($iter))
-min_η = @lift - maximum(abs, ηi($iter))
-max_u = @lift + maximum(abs, ui($iter))
-min_u = @lift - maximum(abs, ui($iter))
-max_T = @lift maximum(Ti($iter))
-min_T = @lift minimum(Ti($iter))
+max_η = 10
+min_η = - max_η
+max_u = 10
+min_u = -max_u
+max_T = 0
+min_T = 20
+
+#max_η = @lift + maximum(abs, ηi($iter))
+#min_η = @lift - maximum(abs, ηi($iter))
+#max_u = @lift + maximum(abs, ui($iter))
+#min_u = @lift - maximum(abs, ui($iter))
+#max_T = @lift maximum(Ti($iter))
+#min_T = @lift minimum(Ti($iter))
 
 fig = Figure(resolution = (1200, 600))
 
-#ax_η = fig[1, 1] = LScene(fig)
 ax_η = Axis(fig[1, 1], title="Free surface displacement (m)")
 hm_η = heatmap!(ax_η, η, colorrange=(min_η, max_η), colormap=:balance)
 cb_η = Colorbar(fig[1, 2], hm_η)
@@ -296,9 +288,7 @@ cb_v = Colorbar(fig[2, 4], hm_v)
 title_str = @lift "Earth day = " * ti($iter)
 ax_t = fig[0, :] = Label(fig, title_str)
 
-display(fig)
-
-record(fig, output_prefix * ".mp4", iterations, framerate=8) do i
+GLMakie.record(fig, output_prefix * ".mp4", iterations, framerate=8) do i
     @info "Plotting iteration $i of $(iterations[end])..."
     iter[] = i
 end
