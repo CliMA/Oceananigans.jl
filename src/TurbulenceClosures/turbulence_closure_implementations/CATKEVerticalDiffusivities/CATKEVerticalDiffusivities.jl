@@ -13,6 +13,7 @@ using Oceananigans.BuoyancyModels: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 
 using Oceananigans.TurbulenceClosures:
+    get_closure_ij,
     AbstractTurbulenceClosure,
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization
@@ -144,12 +145,16 @@ function calculate_diffusivities!(diffusivities, closure::CATKEVD, model)
     return nothing
 end
 
-@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::CATKEVD, args...)
+@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::Union{CATKEVD, CATKEVDArray}, args...)
     i, j, k, = @index(Global, NTuple)
+
+    # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
+    closure_ij = get_closure_ij(i, j, closure)
+
     @inbounds begin
-        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure, args...)
-        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶜ(i, j, k, grid, closure, args...)
-        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶜ(i, j, k, grid, closure, args...)
+        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure_ij, args...)
+        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶜ(i, j, k, grid, closure_ij, args...)
+        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶜ(i, j, k, grid, closure_ij, args...)
     end
 end
 
