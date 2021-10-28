@@ -55,6 +55,8 @@ float_types = (Float32, Float64)
 
 archs = CUDA.has_cuda_gpu() ? (GPU(),) : (CPU(),)
 @show archs
+@show(has_cuda())
+@show(has_cuda_gpu())
 
 closures = (
     :IsotropicDiffusivity,
