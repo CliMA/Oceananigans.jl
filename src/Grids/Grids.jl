@@ -119,8 +119,8 @@ function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
 
     topology(grid1) !== topology(grid2) && return false
 
-    x1, y1, z1 = nodes((Face, Face, Face), grid1)
-    x2, y2, z2 = nodes((Face, Face, Face), grid2)
+    x1, y1, z1 = Adapt.adapt(CPU(), nodes((Face, Face, Face), grid1))
+    x2, y2, z2 = Adapt.adapt(CPU(), nodes((Face, Face, Face), grid2))
 
     return x1 == x2 && y1 == y2 && z1 == z2
 end
