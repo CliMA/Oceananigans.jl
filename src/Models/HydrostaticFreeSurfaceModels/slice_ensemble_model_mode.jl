@@ -47,9 +47,6 @@ validate_halo(TX, TY, TZ, e::SliceEnsembleSize) = tuple(0, e.Hy, e.Hz)
 ##### CATKEVerticalDiffusivity helpers
 #####
 
-@inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::CATKEVDArray, ::Val{:e}) =
-    hydrostatic_turbulent_kinetic_energy_tendency
-
 """ Compute the flux of TKE through the surface / top boundary. """
 @inline function top_tke_flux(i, j, grid::YZSliceGrid, clock, fields, parameters, closure_array::CATKEVDArray, buoyancy)
     top_tracer_bcs = parameters.top_tracer_boundary_conditions

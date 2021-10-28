@@ -49,9 +49,6 @@ end
 FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times, bcs=nothing) where {LX, LY, LZ} =
     FieldTimeSeries{LX, LY, LZ}(CPU(), grid, times, bcs)
 
-# Include the time dimension.
-@inline Base.size(fts::FieldTimeSeries) = (size(location(fts), fts.grid)..., length(fts.times))
-
 @propagate_inbounds Base.getindex(f::FieldTimeSeries{LX, LY, LZ, InMemory}, i, j, k, n) where {LX, LY, LZ} = f.data[i, j, k, n]
 
 """
@@ -121,8 +118,6 @@ end
 
 Base.getindex(fts::InMemoryFieldTimeSeries{LX, LY, LZ}, n::Int) where {LX, LY, LZ} =
     Field(LX, LY, LZ, fts.architecture, fts.grid, fts.boundary_conditions, view(fts.data, :, :, :, n))
-
-backend_str(::InMemory) = "InMemory"
 
 #####
 ##### set!
@@ -209,7 +204,6 @@ Base.parent(vf::ViewField) = view(parent(parent(vf.data)), parent_indices.(vf.da
          interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz),
          :)
 
-
 #####
 ##### OnDisk time serieses
 #####
@@ -260,9 +254,6 @@ end
 
 @propagate_inbounds Base.getindex(f::FieldTimeSeries{X, Y, Z, InMemory}, i, j, k, n) where {X, Y, Z} = f.data[i, j, k, n]
 
-Base.getindex(fts::FieldTimeSeries{X, Y, Z, InMemory}, n::Int) where {X, Y, Z} =
-    Field((X, Y, Z), fts.architecture, fts.grid, fts.boundary_conditions, fts.data[:, :, :, n])
-
 function Base.getindex(fts::FieldTimeSeries{X, Y, Z, OnDisk}, n::Int) where {X, Y, Z}
     # Load data
     file = jldopen(fts.data.path)
@@ -278,12 +269,6 @@ function Base.getindex(fts::FieldTimeSeries{X, Y, Z, OnDisk}, n::Int) where {X, 
 end
 
 Base.setindex!(fts::FieldTimeSeries, val, inds...) = Base.setindex!(fts.data, val, inds...)
-
-interior(f::FieldTimeSeries{X, Y, Z}) where {X, Y, Z} =
-    view(parent(f), interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
-                    interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
-                    interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz),
-                    :)
 
 #####
 ##### Show methods
