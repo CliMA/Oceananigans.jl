@@ -55,7 +55,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
         constant_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₀)
 
         model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    architecture = CPU(),
+                                    architecture = arch,
                                     momentum_advection = VectorInvariant(),
                                     free_surface = free_surface,
                                     coriolis = coriolis,
