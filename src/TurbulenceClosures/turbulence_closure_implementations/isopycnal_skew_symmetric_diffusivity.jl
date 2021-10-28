@@ -1,13 +1,16 @@
 struct IsopycnalSkewSymmetricDiffusivity{K, S, M, L} <: AbstractTurbulenceClosure{ExplicitTimeDiscretization}
-             κ_skew :: K
-        κ_symmetric :: S
-    isopycnal_model :: M
-      slope_limiter :: L
+                    κ_skew :: K
+               κ_symmetric :: S
+          isopycnal_tensor :: M
+             slope_limiter :: L
     
-      IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric, isopycnal_model, slope_limiter) = 
-        typeof(isopycnal_model) == IsopycnalTensor ? 
-        error("IsopycnalTensor not implemented yet; use SmallSlopeIsopycnalTensor instead.") : 
-        new{typeof(κ_skew), typeof(κ_symmetric), typeof(isopycnal_model), typeof(slope_limiter)}(κ_skew, κ_symmetric, isopycnal_model, slope_limiter)
+    function IsopycnalSkewSymmetricDiffusivity(κ_skew::K, κ_symmetric::S, isopycnal_tensor::I, slope_limiter::L) where {K, S, I, L}
+
+        isopycnal_tensor isa SmallSlopeIsopycnalTensor ||
+            error("Only isopycnal_tensor=SmallSlopeIsopycnalTensor() is currently supported.")
+
+        return new{K, S, I, L}(κ_skew, κ_symmetric, isopycnal_tensor, slope_limiter, constant_diffusivities)
+    end
 end
 
 const ISSD = IsopycnalSkewSymmetricDiffusivity
@@ -15,21 +18,24 @@ const ISSD = IsopycnalSkewSymmetricDiffusivity
 ISSDVector = AbstractVector{<:ISSD}
 
 """
-    IsopycnalSkewSymmetricDiffusivity([FT=Float64;] κ_skew=0, κ_symmetric=0,
-                                      isopycnal_model=SmallSlopeIsopycnalTensor(), slope_limiter=nothing)
+    IsopycnalSkewSymmetricDiffusivity([FT=Float64;]
+                                      κ_skew = 0,
+                                      κ_symmetric = 0,
+                                      isopycnal_tensor = SmallSlopeIsopycnalTensor(),
+                                      slope_limiter = nothing)
 
 Return parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
-`κ_skew` and symmetric diffusivity `κ_symmetric` using an `isopycnal_model` for calculating
+`κ_skew` and symmetric diffusivity `κ_symmetric` using an `isopycnal_tensor` for calculating
 the isopycnal slopes, and optionally applying a `slope_limiter`. Both `κ_skew` and `κ_symmetric`
 may be constants, arrays, fields, or functions of `(x, y, z, t)`.
 """
-IsopycnalSkewSymmetricDiffusivity(FT=Float64; κ_skew=0, κ_symmetric=0, isopycnal_model=SmallSlopeIsopycnalTensor(), slope_limiter=nothing) =
-    IsopycnalSkewSymmetricDiffusivity(convert_diffusivity(FT, κ_skew), convert_diffusivity(FT, κ_symmetric), isopycnal_model, slope_limiter)
+IsopycnalSkewSymmetricDiffusivity(FT=Float64; κ_skew=0, κ_symmetric=0, isopycnal_tensor=SmallSlopeIsopycnalTensor(), slope_limiter=nothing) =
+    IsopycnalSkewSymmetricDiffusivity(convert_diffusivity(FT, κ_skew), convert_diffusivity(FT, κ_symmetric), isopycnal_tensor, slope_limiter)
 
 function with_tracers(tracers, closure::ISSD)
-    κ_skew = tracer_diffusivities(tracers, closure.κ_skew)
-    κ_symmetric = tracer_diffusivities(tracers, closure.κ_symmetric)
-    return IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric, closure.isopycnal_model, closure.slope_limiter)
+    κ_skew = !isa(κ_skew, NamedTuple) ? κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
+    κ_symmetric = !isa(κ_symmetric, NamedTuple) ? κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
+    return IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
 function with_tracers(tracers, closure_vector::ISSDVector)
@@ -74,6 +80,9 @@ end
 
 # Diffusive fluxes
 
+@inline get_tracer_κ(κ::NamedTuple, tracer_index) = @inbounds κ[tracer_index]
+@inline get_tracer_κ(κ, tracer_index) = κ
+
 # defined at fcc
 @inline function diffusive_flux_x(i, j, k, grid,
                                   closure::Union{ISSD, ISSDVector}, c, ::Val{tracer_index}, clock,
@@ -81,8 +90,11 @@ end
 
     closure = get_closure_i(i, closure)
 
-    κ_skew = @inbounds κᶠᶜᶜ(i, j, k, grid, clock, closure.κ_skew[tracer_index])
-    κ_symmetric = @inbounds κᶠᶜᶜ(i, j, k, grid, clock, closure.κ_symmetric[tracer_index])
+    κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
+    κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
+
+    κ_skewᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, clock, κ_skew)
+    κ_symmetricᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, clock, κ_symmetric)
 
     ∂x_c = ∂xᶠᵃᵃ(i, j, k, grid, c)
     ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᵃᶠᵃ, c)
@@ -90,13 +102,13 @@ end
 
     R₁₁ = one(eltype(grid))
     R₁₂ = zero(eltype(grid))
-    R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_model)
+    R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
     
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
 
-    return - ϵ * (           κ_symmetric * R₁₁ * ∂x_c +
-                             κ_symmetric * R₁₂ * ∂y_c +
-                  (κ_symmetric - κ_skew) * R₁₃ * ∂z_c)
+    return - ϵ * (           κ_symmetricᶠᶜᶜ * R₁₁ * ∂x_c +
+                             κ_symmetricᶠᶜᶜ * R₁₂ * ∂y_c +
+                  (κ_symmetricᶠᶜᶜ - κ_skewᶠᶜᶜ) * R₁₃ * ∂z_c)
 end
 
 # defined at cfc
@@ -106,8 +118,11 @@ end
 
     closure = get_closure_i(i, closure)
 
-    κ_skew = @inbounds κᶜᶠᶜ(i, j, k, grid, clock, closure.κ_skew[tracer_index])
-    κ_symmetric = @inbounds κᶜᶠᶜ(i, j, k, grid, clock, closure.κ_symmetric[tracer_index])
+    κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
+    κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
+
+    κ_skewᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, clock, κ_skew)
+    κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, clock, κ_symmetric)
 
     ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᵃᵃ, c)
     ∂y_c = ∂yᵃᶠᵃ(i, j, k, grid, c)
@@ -115,13 +130,13 @@ end
 
     R₂₁ = zero(eltype(grid))
     R₂₂ = one(eltype(grid))
-    R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_model)
+    R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
 
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
 
-    return - ϵ * (           κ_symmetric * R₂₁ * ∂x_c +
-                             κ_symmetric * R₂₂ * ∂y_c +
-                  (κ_symmetric - κ_skew) * R₂₃ * ∂z_c)
+    return - ϵ * (           κ_symmetricᶜᶠᶜ * R₂₁ * ∂x_c +
+                             κ_symmetricᶜᶠᶜ * R₂₂ * ∂y_c +
+                  (κ_symmetricᶜᶠᶜ - κ_skewᶜᶠᶜ) * R₂₃ * ∂z_c)
 end
 
 # defined at ccf
@@ -131,22 +146,25 @@ end
 
     closure = get_closure_i(i, closure)
 
-    κ_skew = @inbounds κᶜᶜᶠ(i, j, k, grid, clock, closure.κ_skew[tracer_index])
-    κ_symmetric = @inbounds κᶜᶜᶠ(i, j, k, grid, clock, closure.κ_symmetric[tracer_index])
+    κ_skew = get_tracer_κ(closure.κ_skew, tracer_index)
+    κ_symmetric = get_tracer_κ(closure.κ_symmetric, tracer_index)
+
+    κ_skewᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, κ_skew)
+    κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, κ_symmetric)
 
     ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᵃᵃ, c)
     ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵃᶠᵃ, c)
     ∂z_c = ∂zᵃᵃᶠ(i, j, k, grid, c)
 
-    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_model)
-    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_model)
-    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_model)
+    R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
+    R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
 
     ϵ = taper_factor_ccc(i, j, k, grid, buoyancy, tracers, closure.slope_limiter)
 
-    return - ϵ * ((κ_symmetric + κ_skew) * R₃₁ * ∂x_c +
-                  (κ_symmetric + κ_skew) * R₃₂ * ∂y_c +
-                             κ_symmetric * R₃₃ * ∂z_c)
+    return - ϵ * ((κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₁ * ∂x_c +
+                  (κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₂ * ∂y_c +
+                                κ_symmetricᶜᶜᶠ * R₃₃ * ∂z_c)
 end
 
 @inline viscous_flux_ux(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
@@ -172,5 +190,5 @@ DiffusivityFields(arch, grid, tracer_names, bcs, ::Union{ISSD, ISSDVector}) = no
 Base.show(io::IO, closure::ISSD) =
     print(io, "IsopycnalSkewSymmetricDiffusivity: " *
               "(κ_symmetric=$(closure.κ_symmetric), κ_skew=$(closure.κ_skew), " *
-              "(isopycnal_model=$(closure.isopycnal_model), slope_limiter=$(closure.slope_limiter))")
+              "(isopycnal_tensor=$(closure.isopycnal_tensor), slope_limiter=$(closure.slope_limiter))")
               
