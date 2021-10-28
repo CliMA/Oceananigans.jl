@@ -76,6 +76,3 @@ const CoriolisArray = AbstractArray{<:AbstractRotation}
 @inline y_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisArray, U) = @inbounds y_f_cross_U(i, j, k, grid, coriolis[i], U)
 @inline z_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisArray, U) = @inbounds z_f_cross_U(i, j, k, grid, coriolis[i], U)
 
-# For vectors of closure tuples
-with_tracers(tracers, closure_vector::AbstractVector{<:Tuple}) =
-    [with_tracers(tracers, closure_tuple) for closure_tuple in closure_vector]

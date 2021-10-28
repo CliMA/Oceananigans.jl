@@ -50,8 +50,11 @@ Abstract supertype for turbulence closures.
 """
 abstract type AbstractTurbulenceClosure{TimeDiscretization} end
 
+@inline get_closure_i(i, closure::AbstractVector{<:AbstractTurbulenceClosure}) = @inbounds closure[i]
+@inline get_closure_i(i, closure::AbstractTurbulenceClosure) = closure
+
 @inline get_closure_ij(i, j, closure::AbstractMatrix{<:AbstractTurbulenceClosure}) = @inbounds closure[i, j]
-@inline get_closure_ij(i, j, closure::AbstractTurbulenceClosure) = @inbounds closure
+@inline get_closure_ij(i, j, closure::AbstractTurbulenceClosure) = closure
 
 # Fallbacks
 add_closure_specific_boundary_conditions(closure, boundary_conditions, args...) = boundary_conditions

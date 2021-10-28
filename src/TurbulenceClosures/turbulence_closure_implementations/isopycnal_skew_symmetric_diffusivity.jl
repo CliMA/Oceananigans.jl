@@ -12,6 +12,8 @@ end
 
 const ISSD = IsopycnalSkewSymmetricDiffusivity
 
+ISSDVector = AbstractVector{<:ISSD}
+
 """
     IsopycnalSkewSymmetricDiffusivity([FT=Float64;] κ_skew=0, κ_symmetric=0,
                                       isopycnal_model=SmallSlopeIsopycnalTensor(), slope_limiter=nothing)
@@ -28,6 +30,12 @@ function with_tracers(tracers, closure::ISSD)
     κ_skew = tracer_diffusivities(tracers, closure.κ_skew)
     κ_symmetric = tracer_diffusivities(tracers, closure.κ_symmetric)
     return IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric, closure.isopycnal_model, closure.slope_limiter)
+end
+
+function with_tracers(tracers, closure_vector::ISSDVector)
+    arch = architecture(closure_vector)
+    Ex = length(closure_vector)
+    return arch_array(arch, [with_tracers(tracers, closure_vector[i]) for i=1:Ex])
 end
 
 #####
@@ -68,8 +76,10 @@ end
 
 # defined at fcc
 @inline function diffusive_flux_x(i, j, k, grid,
-                                  closure::ISSD, c, ::Val{tracer_index}, clock,
+                                  closure::Union{ISSD, ISSDVector}, c, ::Val{tracer_index}, clock,
                                   diffusivity_fields, tracers, buoyancy, velocities) where tracer_index
+
+    closure = get_closure_i(i, closure)
 
     κ_skew = @inbounds κᶠᶜᶜ(i, j, k, grid, clock, closure.κ_skew[tracer_index])
     κ_symmetric = @inbounds κᶠᶜᶜ(i, j, k, grid, clock, closure.κ_symmetric[tracer_index])
@@ -91,8 +101,10 @@ end
 
 # defined at cfc
 @inline function diffusive_flux_y(i, j, k, grid,
-                                  closure::ISSD, c, ::Val{tracer_index}, clock,
+                                  closure::Union{ISSD, ISSDVector}, c, ::Val{tracer_index}, clock,
                                   diffusivity_fields, tracers, buoyancy, velocities) where tracer_index
+
+    closure = get_closure_i(i, closure)
 
     κ_skew = @inbounds κᶜᶠᶜ(i, j, k, grid, clock, closure.κ_skew[tracer_index])
     κ_symmetric = @inbounds κᶜᶠᶜ(i, j, k, grid, clock, closure.κ_symmetric[tracer_index])
@@ -114,8 +126,10 @@ end
 
 # defined at ccf
 @inline function diffusive_flux_z(i, j, k, grid,
-                                  closure::ISSD, c, ::Val{tracer_index}, clock,
+                                  closure::Union{ISSD, ISSDVector}, c, ::Val{tracer_index}, clock,
                                   diffusivity_fields, tracers, buoyancy, velocities) where tracer_index
+
+    closure = get_closure_i(i, closure)
 
     κ_skew = @inbounds κᶜᶜᶠ(i, j, k, grid, clock, closure.κ_skew[tracer_index])
     κ_symmetric = @inbounds κᶜᶜᶠ(i, j, k, grid, clock, closure.κ_symmetric[tracer_index])
@@ -135,22 +149,21 @@ end
                              κ_symmetric * R₃₃ * ∂z_c)
 end
 
-@inline viscous_flux_ux(i, j, k, grid, closure::ISSD, args...) = zero(eltype(grid))
-@inline viscous_flux_uy(i, j, k, grid, closure::ISSD, args...) = zero(eltype(grid))
-@inline viscous_flux_uz(i, j, k, grid, closure::ISSD, args...) = zero(eltype(grid))
+@inline viscous_flux_ux(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
+@inline viscous_flux_uy(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
+@inline viscous_flux_uz(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
 
-@inline viscous_flux_vx(i, j, k, grid, closure::ISSD, args...) = zero(eltype(grid))
-@inline viscous_flux_vy(i, j, k, grid, closure::ISSD, args...) = zero(eltype(grid))
-@inline viscous_flux_vz(i, j, k, grid, closure::ISSD, args...) = zero(eltype(grid))
+@inline viscous_flux_vx(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
+@inline viscous_flux_vy(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
+@inline viscous_flux_vz(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
 
-@inline viscous_flux_wx(i, j, k, grid, closure::ISSD, args...) = zero(eltype(grid))
-@inline viscous_flux_wy(i, j, k, grid, closure::ISSD, args...) = zero(eltype(grid))
-@inline viscous_flux_wz(i, j, k, grid, closure::ISSD, args...) = zero(eltype(grid))
+@inline viscous_flux_wx(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
+@inline viscous_flux_wy(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
+@inline viscous_flux_wz(i, j, k, grid, closure::Union{ISSD, ISSDVector}, args...) = zero(eltype(grid))
 
-calculate_diffusivities!(diffusivity_fields, closure::ISSD, model) = nothing
+calculate_diffusivities!(diffusivity_fields, closure::Union{ISSD, ISSDVector}, model) = nothing
 
-DiffusivityFields(arch, grid, tracer_names, bcs, ::ISSD) = nothing
-
+DiffusivityFields(arch, grid, tracer_names, bcs, ::Union{ISSD, ISSDVector}) = nothing
 
 #####
 ##### Show
