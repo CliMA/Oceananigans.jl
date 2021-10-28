@@ -568,7 +568,7 @@ end
             
             test_grid_equality()
 
-            if CUDA.has_cuda_gpu()
+            if CUDA.has_cuda()
                 test_grid_equality_over_architectures()
             end
         end
