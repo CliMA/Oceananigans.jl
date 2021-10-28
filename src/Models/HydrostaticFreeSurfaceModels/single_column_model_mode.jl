@@ -5,6 +5,7 @@ using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans.BoundaryConditions: left_gradient, right_gradient, linearly_extrapolate, FBC, VBC, GBC
 using Oceananigans.BoundaryConditions: fill_bottom_halo!, fill_top_halo!, apply_z_bottom_bc!, apply_z_top_bc!
 using Oceananigans.Grids: Flat, Bounded
+using Oceananigans.Coriolis: AbstractRotation
 using Oceananigans.Architectures: device_event
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: _top_tke_flux, CATKEVDArray
@@ -15,7 +16,7 @@ import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.TurbulenceClosures: time_discretization, calculate_diffusivities!
 import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: top_tke_flux
-
+import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 #####
 ##### Implements a "single column model mode" for HydrostaticFreeSurfaceModel
@@ -124,10 +125,9 @@ end
 ##### Arrays of Coriolises
 #####
 
-import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
+const CoriolisArray = AbstractArray{<:AbstractRotation}
 
-const FPlaneArray = AbstractArray{<:FPlane, 2}
+@inline x_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis::CoriolisArray, U) = @inbounds x_f_cross_U(i, j, k, grid, coriolis[i, j], U)
+@inline y_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis::CoriolisArray, U) = @inbounds y_f_cross_U(i, j, k, grid, coriolis[i, j], U)
+@inline z_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis::CoriolisArray, U) = @inbounds z_f_cross_U(i, j, k, grid, coriolis[i, j], U)
 
-@inline x_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis::FPlaneArray, U) = @inbounds - coriolis[i, j].f * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
-@inline y_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis::FPlaneArray, U) = @inbounds   coriolis[i, j].f * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
-@inline z_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis::FPlaneArray, U) = zero(eltype(grid))
