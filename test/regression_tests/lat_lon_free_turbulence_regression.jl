@@ -21,15 +21,21 @@ using GLMakie
 
 function run_lat_lon_free_turbulence_regression_test(grid, free_surface; regenerate_data=false)
 
+    # make sure grid and model have the same architecture
+    arch = CPU()
+    if hasproperty(grid, :architecture)
+        arch = grid.architecture
+    end
+
     model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        architecture = CPU(),
+                                        architecture = arch,
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
                                         coriolis = HydrostaticSphericalCoriolis(),
                                         tracers = :c,
                                         buoyancy = nothing,
-                                        closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=1e+5, κh=1e+4))
-
+                                        closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=1e+5, κh=1e+4))  
+    
     # Zonal wind
     step(x, d, c) = 1/2 * (1 + tanh((x - c) / d))
     polar_mask(y) = step(y, -5, 40) * step(y, 5, -40)
@@ -50,7 +56,6 @@ function run_lat_lon_free_turbulence_regression_test(grid, free_surface; regener
     ##### Shenanigans for rescaling the velocity field to
     #####   1. Have a magnitude (ish) that's a fixed fraction of
     #####      the surface gravity wave speed;
-    #####   2. Zero volume mean on the curvilinear RegularLatitudeLongitudeGrid.
     #####
 
     # Time-scale for gravity wave propagation across the smallest grid cell
@@ -72,8 +77,6 @@ function run_lat_lon_free_turbulence_regression_test(grid, free_surface; regener
     u .*= target_speed / max_speed_ish
     v .*= target_speed / max_speed_ish
 
-    # Zero out mean motion
-    #=
     u_cpu = XFaceField(CPU(), grid)
     v_cpu = YFaceField(CPU(), grid)
     set!(u_cpu, u)
@@ -108,8 +111,7 @@ function run_lat_lon_free_turbulence_regression_test(grid, free_surface; regener
 
     u .-= integrated_u / u_volume
     v .-= integrated_v / v_volume
-    =#
-
+    
     @info "Initial max speeds:"
     @show maximum(u)
     @show maximum(v)
@@ -134,7 +136,7 @@ function run_lat_lon_free_turbulence_regression_test(grid, free_surface; regener
     end
 
     stop_iteration = 20
-
+    
     simulation = Simulation(model,
                             Δt = Δt,
                             stop_iteration = stop_iteration,
