@@ -34,7 +34,7 @@ end
 
 @inline function is_immersed(i, j, k, underlying_grid, ib::GridFittedBottom{<:AbstractArray})
     x, y, z = node(c, c, c, i, j, k, underlying_grid)
-    return z < ib.bottom[i, j]
+    return @inbounds z < ib.bottom[i, j]
 end
 
 const ArrayGridFittedBottom = GridFittedBottom{<:Array}
