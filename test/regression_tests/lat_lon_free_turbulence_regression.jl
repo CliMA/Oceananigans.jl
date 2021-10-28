@@ -8,7 +8,6 @@ using Oceananigans.AbstractOperations: KernelFunctionOperation, volume
 
 function run_lat_lon_free_turbulence_regression_test(grid_λ, grid_φ, grid_z, arch, precompute; regenerate_data=false)
 
-
     #####
     ##### Constructing Grid and model
     #####
@@ -200,6 +199,7 @@ function run_lat_lon_free_turbulence_regression_test(grid_λ, grid_φ, grid_z, a
     @test all(test_fields.u .≈ truth_fields.u)
     @test all(test_fields.v .≈ truth_fields.v)
     @test all(test_fields.w .≈ truth_fields.w)
+    @test all(test_fields.c .≈ truth_fields.c)
     @test all(test_fields.η .≈ truth_fields.η)
 
     return nothing

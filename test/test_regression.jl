@@ -80,8 +80,9 @@ include("regression_tests/lat_lon_free_turbulence_regression.jl")
         #         end
         #     end
         # end
-        grid_conf = [:regular, :unstretched]
-        for grid_x in grid_conf, grid_y in grid_conf, grid_z in grid_conf, compute in (false)
+        grid_conf  = [:regular, :unstretched]
+        precompute = (false)
+        for grid_x in grid_conf, grid_y in grid_conf, grid_z in grid_conf, compute in precompute
             @testset "Latitude Longitude free turbulence regression [$(typeof(arch)), ($grid_x, $grid_y, $grid_z) grid$(compute ? ", metrics are precomputed" : "")]" begin
                 @info "  Testing Latitude Longitude free turbulence [$(typeof(arch)), ($grid_x, $grid_y, $grid_z) grid$(compute ? ", metrics are precomputed" : "")]"
                 run_lat_lon_free_turbulence_regression_test(grid_x, grid_y, grid_z, arch, compute)

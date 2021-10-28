@@ -284,15 +284,15 @@ const LLGZ  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:
 @inline Δyᶜᶠᵃ(i, j, k, grid::LLGPY) = @inbounds grid.Δyᶜᶠᵃ
 @inline Δyᶠᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δyᶠᶜᵃ[j]
 @inline Δyᶠᶜᵃ(i, j, k, grid::LLGPY) = @inbounds grid.Δyᶠᶜᵃ
-@inline Δyᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid)  = Δyᶠᶜᵃ(i, j, k, grid)
-@inline Δyᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)  = Δyᶜᶠᵃ(i, j, k, grid)
+@inline Δyᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Δyᶠᶜᵃ(i, j, k, grid)
+@inline Δyᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
 
 ## Δz and Az metric
 
-@inline Δzᵃᵃᶜ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶜ
 @inline Δzᵃᵃᶠ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶠ
-@inline Δzᵃᵃᶜ(i, j, k, grid::LLGP) = @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δzᵃᵃᶠ(i, j, k, grid::LLGP) = @inbounds grid.Δzᵃᵃᶠ[k]
+@inline Δzᵃᵃᶜ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶜ
+@inline Δzᵃᵃᶠ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.Δzᵃᵃᶠ[k]
+@inline Δzᵃᵃᶜ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.Δzᵃᵃᶜ[k]
 
 @inline Azᶠᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Azᶠᶜᵃ[i, j]
 @inline Azᶠᶜᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Azᶠᶜᵃ[j]
