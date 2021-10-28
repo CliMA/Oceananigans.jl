@@ -78,4 +78,4 @@ const CoriolisArray = AbstractArray{<:AbstractRotation}
 
 # For vectors of closure tuples
 with_tracers(tracers, closure_vector::AbstractVector{<:Tuple}) =
-    [with_tracers(closure_tuple) for closure_tuple in closure_vector]
+    [with_tracers(tracers, closure_tuple) for closure_tuple in closure_vector]
