@@ -108,6 +108,8 @@ function FieldTimeSeries(path, name, architecture, backend::InMemory;
     if boundary_conditions isa UnspecifiedBoundaryConditions
         boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
     end
+
+    LX, LY, LZ = location
   
     time_series = FieldTimeSeries{LX, LY, LZ}(architecture, grid, times, boundary_conditions)
 
