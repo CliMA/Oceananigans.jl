@@ -64,11 +64,6 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 ##### Physics and model setup
 #####
 
-equatorial_Δx = grid.radius * deg2rad(grid.Δλ)
-diffusive_time_scale = 120days
-
-νh₂ = 1e-3 * equatorial_Δx^2 / diffusive_time_scale
-νh₄ = 1e-5 * equatorial_Δx^4 / diffusive_time_scale
 νh = 1e+5
 νz = 1e-2
 κh = 1e+3
@@ -81,8 +76,8 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 ##### Boundary conditions / constant-in-time surface forcing
 #####
 
-Δz_top = CUDA.@allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid)
-Δz_bottom = CUDA.@allowscalar Δzᵃᵃᶜ(1, 1, 1, grid)
+Δz_top = CUDA.@allowscalar Δzᵃᵃᶜ(1, 1, grid.Nz, grid.grid)
+Δz_bottom = CUDA.@allowscalar Δzᵃᵃᶜ(1, 1, 1, grid.grid)
 
 @inline surface_temperature_relaxation(i, j, grid, clock, fields, p) = @inbounds p.λ * (fields.T[i, j, grid.Nz] - p.T★[i, j])
 
@@ -108,8 +103,8 @@ T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = arch,
-                                    free_surface = ExplicitFreeSurface(),
-                                    #free_surface = ImplicitFreeSurface(maximum_iterations=10),
+                                    #free_surface = ExplicitFreeSurface(),
+                                    free_surface = ImplicitFreeSurface(maximum_iterations=10),
                                     #free_surface = ImplicitFreeSurface(),
                                     momentum_advection = VectorInvariant(),
                                     tracer_advection = WENO5(),
@@ -170,8 +165,10 @@ display(setup_fig)
 
 u, v, w = model.velocities
 η = model.free_surface.η
+
 T = model.tracers.T
-T .= 5
+T .= -1
+
 S = model.tracers.S
 S .= 30
 
@@ -222,7 +219,7 @@ end
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 1day,
+                        stop_time = 60days,
                         iteration_interval = 10,
                         progress = progress)
 
