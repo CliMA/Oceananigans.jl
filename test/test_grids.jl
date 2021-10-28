@@ -277,6 +277,23 @@ function test_flat_size_regular_rectilinear_grid(FT)
     return nothing
 end
 
+function test_grid_equality()
+    topo = (Periodic, Periodic, Bounded)
+    Nx, Ny, Nz = 4, 7, 9
+    grid1 = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=(0, Nz))
+    grid2 = VerticallyStretchedRectilinearGrid(architecture=CPU(), topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z_faces=0:Nz)
+    grid3 = VerticallyStretchedRectilinearGrid(architecture=CPU(), topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z_faces=0:Nz)
+
+    return grid1==grid1 && grid2 == grid3 && grid1 !== grid3
+end
+
+function test_grid_equality_over_architectures()
+    grid_cpu = VerticallyStretchedRectilinearGrid(architecture=CPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z_faces=0:9)
+    grid_gpu = VerticallyStretchedRectilinearGrid(architecture=GPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z_faces=0:9)
+
+    return grid_cpu == grid_gpu
+end
+
 #####
 ##### Vertically stretched grids
 #####
@@ -543,6 +560,16 @@ end
 
             for FT in float_types
                 test_flat_size_regular_rectilinear_grid(FT)
+            end
+        end
+
+        @testset "Grid equality" begin
+            @info "    Testing grid equality operator (==)..."
+            
+            test_grid_equality()
+
+            if CUDA.has_cuda()
+                test_grid_equality_over_architectures()
             end
         end
 
