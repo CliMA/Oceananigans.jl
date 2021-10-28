@@ -159,9 +159,11 @@ function set!(time_series::InMemoryFieldTimeSeries, path::String, name::String)
         file_index = findfirst(t -> t ≈ time, file_times)
         file_iter = file_iterations[file_index]
 
-        set!(time_series[n], Field(location(time_series), path, name, file_iter,
-                                   boundary_conditions = time_series.boundary_conditions),
-                                   grid = time_series.grid)
+        field_n = Field(location(time_series), path, name, file_iter,
+                        boundary_conditions = time_series.boundary_conditions,
+                        grid = time_series.grid)
+
+        set!(time_series[n], field_n)
     end
 
     close(file)
