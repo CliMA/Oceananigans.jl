@@ -49,8 +49,6 @@ end
 FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times, bcs=nothing) where {LX, LY, LZ} =
     FieldTimeSeries{LX, LY, LZ}(CPU(), grid, times, bcs)
 
-@propagate_inbounds Base.getindex(f::FieldTimeSeries{LX, LY, LZ, InMemory}, i, j, k, n) where {LX, LY, LZ} = f.data[i, j, k, n]
-
 """
     FieldTimeSeries(path, name;
                     architecture = CPU(),
