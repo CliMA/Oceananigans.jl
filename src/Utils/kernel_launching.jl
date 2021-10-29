@@ -85,6 +85,8 @@ function launch!(arch, grid, dims, kernel!, args...;
 
     event = loop!(args...; dependencies=dependencies)
 
+    wait(Architectures.device(arch), event)
+
     return event
 end
 
