@@ -2,7 +2,7 @@ using Oceananigans.Architectures
 using Oceananigans.Architectures: device_event
 using Oceananigans.BoundaryConditions
 using Oceananigans.TurbulenceClosures: calculate_diffusivities!
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_reduced_field_xy!
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 
 import Oceananigans.TimeSteppers: update_state!
@@ -20,9 +20,14 @@ update_state!(model::HydrostaticFreeSurfaceModel) = update_state!(model, model.g
 function update_state!(model::HydrostaticFreeSurfaceModel, grid)
 
     # Mask immersed fields
-    masking_events = Tuple(mask_immersed_field!(field) for field in merge(model.auxiliary_fields, prognostic_fields(model)))
+    η = displacement(model.free_surface)
 
-    wait(device(model.architecture), MultiEvent(masking_events))
+    masking_events = Any[mask_immersed_field!(field)
+                         for field in merge(model.auxiliary_fields, prognostic_fields(model)) if field != η]
+
+    push!(masking_events, mask_immersed_reduced_field_xy!(η, k=grid.Nz))
+
+    wait(device(model.architecture), MultiEvent(Tuple(masking_events)))
 
     # Fill halos for velocities and tracers. On the CubedSphere, the halo filling for velocity fields is wrong.
     fill_halo_regions!(prognostic_fields(model), model.architecture, model.clock, fields(model))
