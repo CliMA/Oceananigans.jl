@@ -23,7 +23,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
     η = displacement(model.free_surface)
 
     masking_events = Any[mask_immersed_field!(field)
-                         for field in merge(model.auxiliary_fields, prognostic_fields(model)) if field != η]
+                         for field in merge(model.auxiliary_fields, prognostic_fields(model)) if field !== η]
 
     push!(masking_events, mask_immersed_reduced_field_xy!(η, k=grid.Nz))
 
