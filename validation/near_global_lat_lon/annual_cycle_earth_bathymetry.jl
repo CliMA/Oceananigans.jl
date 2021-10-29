@@ -8,7 +8,7 @@ using Oceananigans.Units
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
+using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity, VerticallyImplicitTimeDiscretization
 using CUDA: @allowscalar
 using Oceananigans.Operators: Δzᵃᵃᶜ
 
@@ -45,8 +45,8 @@ Nmonths = 12
 bytes = sizeof(Float32) * Nx * Ny
 
 bathymetry = reshape(bswap.(reinterpret(Float32, read(bathymetry_path, bytes))), (Nx, Ny))
-τˣ = - reshape(bswap.(reinterpret(Float32, read(east_west_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ reference_density
-τʸ = - reshape(bswap.(reinterpret(Float32, read(north_south_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ reference_density
+τˣ = - reshape(bswap.(reinterpret(Float32, read(east_west_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ 10reference_density
+τʸ = - reshape(bswap.(reinterpret(Float32, read(north_south_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ 10reference_density
 target_sea_surface_temperature = reshape(bswap.(reinterpret(Float32, read(sea_surface_temperature_path, Nmonths * bytes))), (Nx, Ny, Nmonths))
 
 bathymetry = arch_array(arch, bathymetry)
@@ -74,11 +74,13 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 #####
 
 νh = 1e+5
-νz = 1e-2
+νz = 1e+1
 κh = 1e+3
 κz = 1e-4
 
-background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz)
+background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz,
+                                                                       time_discretization = VerticallyImplicitTimeDiscretization())
+
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0)
 
 #####
@@ -126,7 +128,7 @@ v_wind_stress_bc = FluxBoundaryCondition(wind_stress_y, discrete_form = true, pa
 @inline v_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, 1]
 
 # Linear bottom drag:
-μ = 1 / 10days * Δz_bottom
+μ = Δz_bottom / 10days
 
 u_bottom_drag_bc = FluxBoundaryCondition(u_bottom_drag, discrete_form = true, parameters = μ)
 v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag, discrete_form = true, parameters = μ)
@@ -134,6 +136,8 @@ v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag, discrete_form = true, pa
 u_bcs = FieldBoundaryConditions(top = u_wind_stress_bc, bottom = u_bottom_drag_bc)
 v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_bc)
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
+
+# @inline function u_immersed_bottom_drag(i, j, k, grid, clock, fields, ν)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = arch,
@@ -155,7 +159,7 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
 u, v, w = model.velocities
 η = model.free_surface.η
 T = model.tracers.T
-T .= 5
+T .= -1
 S = model.tracers.S
 S .= 30
 
@@ -212,11 +216,18 @@ T, S = model.tracers
 
 output_fields = (; u, v, T, S, η)
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(1day),
-                                                      prefix = output_prefix,
-                                                      field_slicer = FieldSlicer(k=grid.Nz),
-                                                      force = true)
+simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
+                                                              schedule = TimeInterval(1day),
+                                                              prefix = output_prefix * "_surface",
+                                                              field_slicer = FieldSlicer(k=grid.Nz),
+                                                              force = true)
+
+simulation.output_writers[:bottom_fields] = JLD2OutputWriter(model, (; u, v, T, S),
+                                                             schedule = TimeInterval(1day),
+                                                             prefix = output_prefix * "_bottom",
+                                                             field_slicer = FieldSlicer(k=1),
+                                                             force = true)
+
 
 # Let's goo!
 @info "Running with Δt = $(prettytime(simulation.Δt))"
@@ -236,29 +247,36 @@ run!(simulation)
 ##### Visualize solution
 #####
 
-file = jldopen(output_prefix * ".jld2")
+surface_file = jldopen(output_prefix * "_surface.jld2")
+bottom_file = jldopen(output_prefix * "_bottom.jld2")
 
-iterations = parse.(Int, keys(file["timeseries/t"]))
+iterations = parse.(Int, keys(surface_file["timeseries/t"]))
 
 iter = Node(0)
 
-ηi(iter) = file["timeseries/η/" * string(iter)][:, :, 1]
-ui(iter) = file["timeseries/u/" * string(iter)][:, :, 1]
-vi(iter) = file["timeseries/v/" * string(iter)][:, :, 1]
-Ti(iter) = file["timeseries/T/" * string(iter)][:, :, 1]
-ti(iter) = string(file["timeseries/t/" * string(iter)] / day)
+ηi(iter) = surface_file["timeseries/η/" * string(iter)][:, :, 1]
+ui(iter) = surface_file["timeseries/u/" * string(iter)][:, :, 1]
+vi(iter) = surface_file["timeseries/v/" * string(iter)][:, :, 1]
+Ti(iter) = surface_file["timeseries/T/" * string(iter)][:, :, 1]
+ti(iter) = string(surface_file["timeseries/t/" * string(iter)] / day)
+
+ubi(iter) = bottom_file["timeseries/u/" * string(iter)][:, :, 1]
+vbi(iter) = bottom_file["timeseries/v/" * string(iter)][:, :, 1]
 
 η = @lift ηi($iter) 
 u = @lift ui($iter)
 v = @lift vi($iter)
 T = @lift Ti($iter)
 
-max_η = 10
+ub = @lift ubi($iter)
+vb = @lift vbi($iter)
+
+max_η = 1
 min_η = - max_η
-max_u = 10
-min_u = -max_u
-max_T = 0
-min_T = 20
+max_u = 1
+min_u = - max_u
+max_T = 30
+min_T = 0
 
 #max_η = @lift + maximum(abs, ηi($iter))
 #min_η = @lift - maximum(abs, ηi($iter))
@@ -267,23 +285,31 @@ min_T = 20
 #max_T = @lift maximum(Ti($iter))
 #min_T = @lift minimum(Ti($iter))
 
-fig = Figure(resolution = (1200, 600))
+fig = Figure(resolution = (1200, 900))
 
-ax_η = Axis(fig[1, 1], title="Free surface displacement (m)")
-hm_η = heatmap!(ax_η, η, colorrange=(min_η, max_η), colormap=:balance)
-cb_η = Colorbar(fig[1, 2], hm_η)
+ax = Axis(fig[1, 1], title="Free surface displacement (m)")
+hm = heatmap!(ax, η, colorrange=(min_η, max_η), colormap=:balance)
+cb = Colorbar(fig[1, 2], hm)
 
-ax_T = Axis(fig[2, 1], title="Sea surface temperature (ᵒC)")
-hm_T = heatmap!(ax_T, T, colorrange=(min_T, max_T), colormap=:thermal)
-cb_T = Colorbar(fig[2, 2], hm_T)
+ax = Axis(fig[2, 1], title="Sea surface temperature (ᵒC)")
+hm = heatmap!(ax, T, colorrange=(min_T, max_T), colormap=:thermal)
+cb = Colorbar(fig[2, 2], hm)
 
-ax_u = Axis(fig[1, 3], title="East-West velocity (m s⁻¹)")
-hm_u = heatmap!(ax_u, u, colorrange=(min_u, max_u), colormap=:balance)
-cb_u = Colorbar(fig[1, 4], hm_u)
+ax = Axis(fig[1, 3], title="East-west surface velocity (m s⁻¹)")
+hm = heatmap!(ax, u, colorrange=(min_u, max_u), colormap=:balance)
+cb = Colorbar(fig[1, 4], hm)
 
-ax_v = Axis(fig[2, 3], title="North-South velocity (m s⁻¹)")
-hm_v = heatmap!(ax_v, v, colorrange=(min_u, max_u), colormap=:balance)
-cb_v = Colorbar(fig[2, 4], hm_v)
+ax = Axis(fig[2, 3], title="North-south surface velocity (m s⁻¹)")
+hm = heatmap!(ax, v, colorrange=(min_u, max_u), colormap=:balance)
+cb = Colorbar(fig[2, 4], hm)
+
+ax = Axis(fig[3, 1], title="East-west bottom velocity (m s⁻¹)")
+hm = heatmap!(ax, ub, colorrange=(min_u, max_u), colormap=:balance)
+cb = Colorbar(fig[3, 2], hm)
+
+ax = Axis(fig[3, 3], title="North-south bottom velocity (m s⁻¹)")
+hm = heatmap!(ax, vb, colorrange=(min_u, max_u), colormap=:balance)
+cb = Colorbar(fig[3, 4], hm)
 
 title_str = @lift "Earth day = " * ti($iter)
 ax_t = fig[0, :] = Label(fig, title_str)
@@ -295,4 +321,4 @@ end
 
 display(fig)
 
-close(file)
+close(surface_file)
