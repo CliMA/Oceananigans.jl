@@ -39,7 +39,13 @@ include("regression_tests/rayleigh_benard_regression_test.jl")
 include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
 
 @testset "Regression" begin
+    
+    for topo in [:bounded, :periodic]
+        run_hydrostatic_free_turbulence_regression_test(topo, CPU(); regenerate_data=true)
+    end
+
     @info "Running regression tests..."
+
 
     for arch in archs
         for grid_type in [:regular, :vertically_unstretched]
