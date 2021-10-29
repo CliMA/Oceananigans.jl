@@ -40,7 +40,7 @@ end
 
 SliceEnsembleSize(; size, ensemble=0, halo=(1, 1)) = SliceEnsembleSize(ensemble, size[1], size[2], halo[1], halo[2])
 
-validate_size(TX, TY, TZ, e::SliceEnsembleSize) = tuple(e.ensemble[1], e.Ny, e.Nz)
+validate_size(TX, TY, TZ, e::SliceEnsembleSize) = tuple(e.ensemble, e.Ny, e.Nz)
 validate_halo(TX, TY, TZ, e::SliceEnsembleSize) = tuple(0, e.Hy, e.Hz)
 
 #####
@@ -75,4 +75,31 @@ const CoriolisArray = AbstractArray{<:AbstractRotation}
 @inline x_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisArray, U) = @inbounds x_f_cross_U(i, j, k, grid, coriolis[i], U)
 @inline y_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisArray, U) = @inbounds y_f_cross_U(i, j, k, grid, coriolis[i], U)
 @inline z_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisArray, U) = @inbounds z_f_cross_U(i, j, k, grid, coriolis[i], U)
+
+function FFTImplicitFreeSurfaceSolver(arch, grid::YZSliceGrid, settings)
+
+    grid isa RegularRectilinearGrid || grid isa VerticallyStretchedRectilinearGrid ||
+        throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
+
+    # Construct a "horizontal grid". We support either x or y being Flat, but not both.
+    TY = topology(grid, 2)
+
+    sz = Tuple(sz[i] for i in nonflat_dims)
+    halo = Tuple(halo[i] for i in nonflat_dims)
+    domain = NamedTuple((:x, :y)[i] => domain[i] for i in nonflat_dims)
+
+    ensemble_size = SliceEnsembleSize(size=(grid.Ny, 0), ensemble=grid.Nx, halo=(grid.Hy, 0))
+
+    horizontal_grid = RegularRectilinearGrid(; topology = (Flat, TY, Flat),
+                                               size = ensemble_size,
+                                               halo = grid.Hy,
+                                               y = y_domain(grid),
+                                               domain...)
+
+    solver = FFTBasedPoissonSolver(arch, horizontal_grid)
+    right_hand_side = solver.storage
+
+    return FFTImplicitFreeSurfaceSolver(solver, grid, horizontal_grid, right_hand_side)
+end
+
 
