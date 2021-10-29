@@ -26,8 +26,9 @@ Nx = 128
 Ny = 60
 Nz = 18
 
-output_prefix = "annual_cycle_global_lat_lon_$(Nx)_$(Ny)_$Nz"
+output_prefix = "annual_cycle_global_lat_lon_$(Nx)_$(Ny)_$(Nz)_temp"
 
+#=
 arch = GPU()
 reference_density = 1035
 
@@ -251,6 +252,8 @@ run!(simulation)
 ##### Visualize solution
 #####
 
+=#
+
 surface_file = jldopen(output_prefix * "_surface.jld2")
 bottom_file = jldopen(output_prefix * "_bottom.jld2")
 
@@ -275,11 +278,11 @@ T = @lift Ti($iter)
 ub = @lift ubi($iter)
 vb = @lift vbi($iter)
 
-max_η = 3
+max_η = 4
 min_η = - max_η
-max_u = 3
+max_u = 0.2
 min_u = - max_u
-max_T = 30
+max_T = 32
 min_T = 0
 
 #max_η = @lift + maximum(abs, ηi($iter))
