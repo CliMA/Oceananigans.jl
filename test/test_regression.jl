@@ -62,17 +62,11 @@ include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
             end
         end
 
-        @testset "HydrostaticFreeSurface latitude-longitude free turbulent decay [$(typeof(arch))]" begin
+        for topo in [:bounded, :periodic]
+            @testset "Hydrostatic free turbulence regression [$(typeof(arch)), $topo longitude" begin
+                @info "  Testing Hydrostatic free turbulence [$(typeof(arch)), $topo longitude"
+                run_hydrostatic_free_turbulence_regression_test(topo, arch)
+        end   
 
-        # A spherical domain
-        grid = RegularLatitudeLongitudeGrid(size = (90, 30, 3),
-                                            longitude = (-180, 180),
-                                            latitude = (-60, 60),
-                                            halo = (2, 2, 2),
-                                            z = (-90, 0))
-
-
-
-        end
     end
 end
