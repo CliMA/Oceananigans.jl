@@ -33,8 +33,8 @@ IsopycnalSkewSymmetricDiffusivity(FT=Float64; κ_skew=0, κ_symmetric=0, isopycn
     IsopycnalSkewSymmetricDiffusivity(convert_diffusivity(FT, κ_skew), convert_diffusivity(FT, κ_symmetric), isopycnal_tensor, slope_limiter)
 
 function with_tracers(tracers, closure::ISSD)
-    κ_skew = !isa(κ_skew, NamedTuple) ? κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
-    κ_symmetric = !isa(κ_symmetric, NamedTuple) ? κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
+    κ_skew = !isa(closure.κ_skew, NamedTuple) ? closure.κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
+    κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
     return IsopycnalSkewSymmetricDiffusivity(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
