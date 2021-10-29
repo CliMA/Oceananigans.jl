@@ -98,7 +98,7 @@ function run_hydrostatic_free_turbulence_regression_test(topology, arch; regener
     if regenerate_data
         @warn "Generating new data for the Hydrostatic regression test."
         
-        directory =  joinpath(dirname(@__FILE__), "data/")
+        directory =  joinpath(dirname(@__FILE__), "data")
         outputs   = (; u, v, w, η)
         simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                               dir = directory,
