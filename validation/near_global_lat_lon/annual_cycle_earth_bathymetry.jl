@@ -28,7 +28,7 @@ Nz = 18
 
 output_prefix = "annual_cycle_global_lat_lon_$(Nx)_$(Ny)_$Nz"
 
-arch = CPU()
+arch = GPU()
 reference_density = 1035
 
 #####
@@ -45,8 +45,8 @@ Nmonths = 12
 bytes = sizeof(Float32) * Nx * Ny
 
 bathymetry = reshape(bswap.(reinterpret(Float32, read(bathymetry_path, bytes))), (Nx, Ny))
-τˣ = - reshape(bswap.(reinterpret(Float32, read(east_west_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ 10reference_density
-τʸ = - reshape(bswap.(reinterpret(Float32, read(north_south_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ 10reference_density
+τˣ = - reshape(bswap.(reinterpret(Float32, read(east_west_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ 100reference_density
+τʸ = - reshape(bswap.(reinterpret(Float32, read(north_south_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ 100reference_density
 target_sea_surface_temperature = reshape(bswap.(reinterpret(Float32, read(sea_surface_temperature_path, Nmonths * bytes))), (Nx, Ny, Nmonths))
 
 bathymetry = arch_array(arch, bathymetry)
@@ -96,13 +96,14 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
     n₁ = current_time_index(time)
     n₂ = next_time_index(time)
 
-    T★₁ = @inbounds p.T★[i, j, n₁]
-    T★₂ = @inbounds p.T★[i, j, n₂]
+    @inbounds begin
+        T★₁ = p.T★[i, j, n₁]
+        T★₂ = p.T★[i, j, n₂]
+        T_surface = fields.T[i, j, grid.Nz]
+    end
 
     T★ = cyclic_interpolate(T★₁, T★₂, time)
                                 
-    T_surface = @inbounds fields.T[i, j, grid.Nz]
-
     return p.λ * (T_surface - T★)
 end
 
@@ -110,19 +111,21 @@ T_surface_relaxation_bc = FluxBoundaryCondition(surface_temperature_relaxation,
                                                 discrete_form = true,
                                                 parameters = (λ = Δz_top/3days, T★ = target_sea_surface_temperature))
 
-@inline function wind_stress(i, j, time, τ)
+@inline function wind_stress(i, j, grid, clock, fields, τ)
+    time = clock.time
     n₁ = current_time_index(time)
     n₂ = next_time_index(time)
-    τ₁ = @inbounds τ[i, j, n₁]
-    τ₂ = @inbounds τ[i, j, n₂]
+
+    @inbounds begin
+        τ₁ = τ[i, j, n₁]
+        τ₂ = τ[i, j, n₂]
+    end
+
     return cyclic_interpolate(τ₁, τ₂, time)
 end
 
-@inline wind_stress_x(i, j, grid, clock, fields, τˣ) = wind_stress(i, j, clock.time, τˣ)
-@inline wind_stress_y(i, j, grid, clock, fields, τʸ) = wind_stress(i, j, clock.time, τʸ)
-
-u_wind_stress_bc = FluxBoundaryCondition(wind_stress_x, discrete_form = true, parameters = τˣ)
-v_wind_stress_bc = FluxBoundaryCondition(wind_stress_y, discrete_form = true, parameters = τʸ)
+u_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, parameters = τˣ)
+v_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, parameters = τʸ)
 
 @inline u_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, 1]
 @inline v_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, 1]
@@ -208,22 +211,23 @@ function progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt = Δt, stop_time = 60day, iteration_interval = 10, progress = progress)
+simulation = Simulation(model, Δt = Δt, stop_time = 30year, iteration_interval = 10, progress = progress)
 
 u, v, w = model.velocities
 T, S = model.tracers
 η = model.free_surface.η
 
 output_fields = (; u, v, T, S, η)
+save_interval = 5days
 
 simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
-                                                              schedule = TimeInterval(1day),
+                                                              schedule = TimeInterval(save_interval),
                                                               prefix = output_prefix * "_surface",
                                                               field_slicer = FieldSlicer(k=grid.Nz),
                                                               force = true)
 
 simulation.output_writers[:bottom_fields] = JLD2OutputWriter(model, (; u, v, T, S),
-                                                             schedule = TimeInterval(1day),
+                                                             schedule = TimeInterval(save_interval),
                                                              prefix = output_prefix * "_bottom",
                                                              field_slicer = FieldSlicer(k=1),
                                                              force = true)
@@ -271,9 +275,9 @@ T = @lift Ti($iter)
 ub = @lift ubi($iter)
 vb = @lift vbi($iter)
 
-max_η = 1
+max_η = 3
 min_η = - max_η
-max_u = 1
+max_u = 3
 min_u = - max_u
 max_T = 30
 min_T = 0
