@@ -277,11 +277,11 @@ ax_T = Axis(fig[2, 1], title="Sea surface temperature (ᵒC)")
 hm_T = heatmap!(ax_T, T, colorrange=(min_T, max_T), colormap=:thermal)
 cb_T = Colorbar(fig[2, 2], hm_T)
 
-ax_u = Axis(fig[1, 3], title="East-west velocity (m s⁻¹)")
+ax_u = Axis(fig[1, 3], title="East-West velocity (m s⁻¹)")
 hm_u = heatmap!(ax_u, u, colorrange=(min_u, max_u), colormap=:balance)
 cb_u = Colorbar(fig[1, 4], hm_u)
 
-ax_v = Axis(fig[2, 3], title="East-west velocity (m s⁻¹)")
+ax_v = Axis(fig[2, 3], title="North-South velocity (m s⁻¹)")
 hm_v = heatmap!(ax_v, v, colorrange=(min_u, max_u), colormap=:balance)
 cb_v = Colorbar(fig[2, 4], hm_v)
 
