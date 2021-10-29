@@ -121,10 +121,9 @@ function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
 
     x1, y1, z1 = nodes((Face, Face, Face), grid1)
     x2, y2, z2 = nodes((Face, Face, Face), grid2)
-    
-    x1, y1, z1, x2, y2, z2 = Tuple(Array(x) for x in (x1, y1, z1, x2, y2, z2))
 
-    return x1 == x2 && y1 == y2 && z1 == z2
+    @info "DEBUG" typeof(x1)
+    CUDA.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
 end
 
 halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
