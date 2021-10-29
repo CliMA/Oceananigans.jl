@@ -9,7 +9,7 @@ struct IsopycnalSkewSymmetricDiffusivity{K, S, M, L} <: AbstractTurbulenceClosur
         isopycnal_tensor isa SmallSlopeIsopycnalTensor ||
             error("Only isopycnal_tensor=SmallSlopeIsopycnalTensor() is currently supported.")
 
-        return new{K, S, I, L}(κ_skew, κ_symmetric, isopycnal_tensor, slope_limiter, constant_diffusivities)
+        return new{K, S, I, L}(κ_skew, κ_symmetric, isopycnal_tensor, slope_limiter)
     end
 end
 
