@@ -72,7 +72,8 @@ include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
             @testset "Hydrostatic free turbulence regression [$(typeof(arch)), $topo longitude" begin
                 @info "  Testing Hydrostatic free turbulence [$(typeof(arch)), $topo longitude"
                 run_hydrostatic_free_turbulence_regression_test(topo, arch)
-        end   
+	    end   
+	end
 
     end
 end
