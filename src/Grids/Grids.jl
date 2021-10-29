@@ -122,7 +122,6 @@ function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
     x1, y1, z1 = nodes((Face, Face, Face), grid1)
     x2, y2, z2 = nodes((Face, Face, Face), grid2)
 
-    @info "DEBUG" typeof(x1)
     CUDA.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
 end
 
