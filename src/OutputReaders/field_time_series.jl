@@ -157,14 +157,15 @@ function set!(time_series::InMemoryFieldTimeSeries, path::String, name::String)
         file_index = findfirst(t -> t ≈ time, file_times)
         file_iter = file_iterations[file_index]
 
-        try
-            data_n = Field(location(time_series), path, name, file_iter,
-                           boundary_conditions = time_series.boundary_conditions,
-                           grid = time_series.grid)
+        data_n = try
+            return Field(location(time_series), path, name, file_iter,
+                         boundary_conditions = time_series.boundary_conditions,
+                         grid = time_series.grid)
         catch # ignore halos and boundary conditions
             file = jldopen(path)
             data_n = file["timeseries/$name/$file_iter"]
             close(file)
+            return data_n
         end
 
         set!(time_series[n], data_n)
