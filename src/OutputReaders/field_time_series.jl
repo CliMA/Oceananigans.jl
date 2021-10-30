@@ -58,12 +58,12 @@ FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times, bcs=nothing) where {LX, L
                     times = nothing)
 
 Returns a `FieldTimeSeries` for the field `name` describing a field's time history from a JLD2 file
-located at `path`. Note that model output must have been saved with halos.
+located at `path`.
 
 Keyword arguments
 =================
 
-- `archiecture`: The architecture on which to store time series data. CPU() by default.
+- `architecture`: The architecture on which to store time series data. `CPU()` by default.
 
 - `backend`: `InMemory()` to load data into a 4D array or `OnDisk()` to lazily load data from disk
              when indexing into `FieldTimeSeries`.
