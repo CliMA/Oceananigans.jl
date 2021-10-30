@@ -46,8 +46,8 @@ Nmonths = 12
 bytes = sizeof(Float32) * Nx * Ny
 
 bathymetry = reshape(bswap.(reinterpret(Float32, read(bathymetry_path, bytes))), (Nx, Ny))
-τˣ = - reshape(bswap.(reinterpret(Float32, read(east_west_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ 100reference_density
-τʸ = - reshape(bswap.(reinterpret(Float32, read(north_south_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ 100reference_density
+τˣ = - reshape(bswap.(reinterpret(Float32, read(east_west_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ reference_density
+τʸ = - reshape(bswap.(reinterpret(Float32, read(north_south_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ reference_density
 target_sea_surface_temperature = reshape(bswap.(reinterpret(Float32, read(sea_surface_temperature_path, Nmonths * bytes))), (Nx, Ny, Nmonths))
 
 bathymetry = arch_array(arch, bathymetry)
@@ -145,8 +145,8 @@ T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = arch,
-                                    #free_surface = ExplicitFreeSurface(),
-                                    free_surface = ImplicitFreeSurface(maximum_iterations=10),
+                                    free_surface = ExplicitFreeSurface(),
+                                    #free_surface = ImplicitFreeSurface(maximum_iterations=10),
                                     #free_surface = ImplicitFreeSurface(),
                                     momentum_advection = VectorInvariant(),
                                     tracer_advection = WENO5(),
@@ -212,7 +212,7 @@ function progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt = Δt, stop_time = 30year, iteration_interval = 10, progress = progress)
+simulation = Simulation(model, Δt = Δt, stop_time = 30year, iteration_interval = 100, progress = progress)
 
 u, v, w = model.velocities
 T, S = model.tracers
@@ -233,6 +233,11 @@ simulation.output_writers[:bottom_fields] = JLD2OutputWriter(model, (; u, v, T, 
                                                              field_slicer = FieldSlicer(k=1),
                                                              force = true)
 
+simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                        schedule = TimeInterval(1year),
+                                                        prefix = output_prefix * "_checkpoint",
+                                                        cleanup = true,
+                                                        force = true)
 
 # Let's goo!
 @info "Running with Δt = $(prettytime(simulation.Δt))"
