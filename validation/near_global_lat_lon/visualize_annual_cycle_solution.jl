@@ -21,7 +21,7 @@ Nx = 128
 Ny = 60
 Nz = 18
 
-output_prefix = "annual_cycle_global_lat_lon_$(Nx)_$(Ny)_$(Nz)_5yr"
+output_prefix = "annual_cycle_global_lat_lon_$(Nx)_$(Ny)_$(Nz)_1.5yr"
 bathymetry_path = "bathy_128x60var4.bin"
 
 Nmonths = 12
