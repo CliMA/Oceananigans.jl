@@ -293,8 +293,8 @@ Adapt.adapt_structure(to, grid::ConformalCubedSphereFaceGrid) = _adapt_structure
 
 function Base.show(io::IO, g::ConformalCubedSphereFaceGrid{FT}) where FT
     print(io, "ConformalCubedSphereFaceGrid{$FT}\n",
-              "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
-              "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
+              "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
+              "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
 end
 
 @inline xnode(::Face,   ::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶠᶠᵃ[i, j]
