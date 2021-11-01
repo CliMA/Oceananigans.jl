@@ -29,7 +29,7 @@ end
   @unroll for k = 1:H
       @inbounds begin
           c[i, j, k] = c[i, j, N+k]        # top
-          c[i, j, k, N+H+k] = c[i, j, H+k] # bottom
+          c[i, j, N+H+k] = c[i, j, H+k] # bottom
       end
   end
 end
