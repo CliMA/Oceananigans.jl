@@ -21,7 +21,7 @@ Nx = 128
 Ny = 60
 Nz = 18
 
-output_prefix = "annual_cycle_global_lat_lon_$(Nx)_$(Ny)_$(Nz)_1.5yr"
+output_prefix = "annual_cycle_global_lat_lon_$(Nx)_$(Ny)_$(Nz)"
 bathymetry_path = "bathy_128x60var4.bin"
 
 Nmonths = 12
@@ -64,9 +64,9 @@ end
 λv, ϕv, rv = nodes((Center, Face, Center), grid)
 λc, ϕc, rc = nodes((Center, Center, Center), grid)
 
-xu, yu, zu = geographic2cartesian(λu, ϕu, r=1.01)
-xv, yv, zv = geographic2cartesian(λv, ϕv, r=1.01)
-xc, yc, zc = geographic2cartesian(λc, ϕc, r=1.01)
+xu, yu, zu = geographic2cartesian(λu, ϕu)
+xv, yv, zv = geographic2cartesian(λv, ϕv)
+xc, yc, zc = geographic2cartesian(λc, ϕc)
 
 surface_file = jldopen(output_prefix * "_surface.jld2")
 bottom_file = jldopen(output_prefix * "_bottom.jld2")
@@ -126,6 +126,24 @@ u = @lift ui($iter)
 v = @lift vi($iter)
 T = @lift Ti($iter)
 
+T_sphere = @lift begin
+    T = cat(Ti($iter), Ti($iter)[1:1, :], dims=1)
+    T[land] .= NaN
+    return T
+end
+
+v_sphere = @lift begin
+    v = cat(vi($iter)[:, 1:Ny], vi($iter)[1:1, 1:Ny], dims=1)
+    v[land] .= NaN
+    return v
+end
+
+u_sphere = @lift begin
+    u = cat(ui($iter), ui($iter)[1:1, :], dims=1)
+    u[land] .= NaN
+    return u
+end
+
 ub = @lift ubi($iter)
 vb = @lift vbi($iter)
 
@@ -136,39 +154,77 @@ min_u = - max_u
 max_T = 32
 min_T = 0
 
-sphere_fig = Figure(resolution = (1200, 900))
+dλbg = 0.01
+dφbg = 0.01
+λbg = range(-180, stop=180 - dλbg, step=dλbg)
+φbg = range(-89.5, stop=89.5 - dφbg, step=dφbg)
+xbg, ybg, zbg = geographic2cartesian(λbg, φbg)
 
-ax = sphere_fig[1, 1:3] = LScene(sphere_fig)
+sphere_continents!(ax_T) = surface!(ax_T, xbg, ybg, zbg, color=fill("#080", 1, 1))
 
-# xc = cat(xc, xc[1:1, :], dims=1)
-# yc = cat(yc, yc[1:1, :], dims=1)
-# zc = cat(zc, zc[1:1, :], dims=1)
+#####
+##### Sphere
+#####
+
+sphere_fig = Figure(resolution = (1500, 900))
 
 graylim = 1.0
 α = 0.99
 
-surface!(ax, xc, yc, zc, color=sp, colormap=:blues, colorrange=(0, max_u),
+#surface!(ax, xc, yc, zc, color=sp, colormap=:blues, colorrange=(0, max_u),
+#         show_axis=false, shading=false, ssao=true)
+
+# Temperature
+ax_T = sphere_fig[1, 1:3] = LScene(sphere_fig)
+
+surface!(ax_T, xc, yc, zc, color=T_sphere, colormap=:thermal, colorrange=(0, max_T),
          show_axis=false, shading=false, ssao=true)
 
-surface!(ax, α .* xc, α .* yc, α .* zc, color=fill("#080", 1, 1))
+sphere_continents!(ax_T)
 
-rotate_cam!(ax.scene, (π/8, π/6, 0))
+rotate_cam!(ax_T.scene, (π/8, π/6, 0))
 
-plot_title = @lift "Ocean speed after " * ti($iter)
-supertitle = sphere_fig[0, 2] = Label(sphere_fig, plot_title, textsize=40)
+# Meridional velocity
+ax_v = sphere_fig[1, 4:6] = LScene(sphere_fig)
+
+surface!(ax_v, xc, yc, zc, color=u_sphere, colormap=:balance, colorrange=(min_u, max_u),
+         show_axis=false, shading=false, ssao=true)
+
+sphere_continents!(ax_v)
+
+rotate_cam!(ax_v.scene, (π/8, π/6, 0))
+
+plot_title = @lift "t = " * ti($iter)
+supertitle = sphere_fig[0, 3:4] = Label(sphere_fig, plot_title, textsize=40)
+
+#v_title = sphere_fig[0, 5] = Label(sphere_fig, "Ocean meridional velocity", textsize=20)
+#T_title = sphere_fig[0, 2] = Label(sphere_fig, "Ocean temperature", textsize=20)
 
 display(sphere_fig)
 
-dθ = 2π / length(iterations)
+save_interval = 5days
+full_rotation_savepoints = round(Int, 10year / save_interval) 
+dθ = 2π / full_rotation_savepoints
+dϕ = π/4 / full_rotation_savepoints
 
-halfway = iterations[round(Int, length(iterations/2))]
-dϕi(i) = i < halfway ? π/2 / length(iterations) : π/2 / length(iterations)
+function dϕi(i)
+    savepoint = i/iterations[end] * length(iterations)
+    mod_savepoint = mod1(savepoint, full_rotation_savepoints)
+    halfway_savepoint = 1/2 * length(iterations)
+    return mod_i < halfway_savepoint ? dϕ : - dϕ
+end
 
 GLMakie.record(sphere_fig, output_prefix * "_sphere.mp4", iterations, framerate=8) do i
     @info "Plotting iteration $i of $(iterations[end])..."
     iter[] = i
-    rotate_cam!(ax.scene, cameracontrols(ax.scene), (dϕi(i), dθ, 0))
+    rotate_cam!(ax_T.scene, cameracontrols(ax_T.scene), (dϕi(i), dθ, 0))
+    rotate_cam!(ax_v.scene, cameracontrols(ax_v.scene), (dϕi(i), dθ, 0))
 end
+
+#=
+#####
+##### Meridional velocity
+#####
 
 plane_fig = Figure(resolution = (1200, 900))
 
@@ -223,6 +279,7 @@ GLMakie.record(plane_fig, output_prefix * "_plane.mp4", iterations, framerate=8)
 end
 
 display(plane_fig)
+=#
 
 close(surface_file)
 close(bottom_file)
