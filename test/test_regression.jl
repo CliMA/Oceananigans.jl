@@ -72,7 +72,8 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
 
         for topo in [:bounded, :periodic]
             for free_surface in [:explicit, :implicit]
-                if !(arch==GPU() && topo == :periodic && free_surface == :explicit)
+                if !(arch==GPU() && topo == :periodic && free_surface == :explicit) # This issue will most likely be fixed by PR #1985
+                                                                                    #https://github.com/CliMA/Oceananigans.jl/pull/1985
                     @testset "Hydrostatic free turbulence regression [$(typeof(arch)), $topo longitude, $free_surface free surface]" begin
                         @info "  Testing Hydrostatic free turbulence [$(typeof(arch)), $topo longitude, $free_surface free surface]"
                         run_hydrostatic_free_turbulence_regression_test(topo, free_surface, arch)
