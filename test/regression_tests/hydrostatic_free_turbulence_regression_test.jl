@@ -5,24 +5,39 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
 using Oceananigans.AbstractOperations: KernelFunctionOperation, volume
 
-function run_hydrostatic_free_turbulence_regression_test(topology, free_surface_type, arch; regenerate_data=false)
+function run_hydrostatic_free_turbulence_regression_test(topology, grid_lon, grid_lat, grid_z, compute, free_surface_type, arch; regenerate_data=false)
 
     #####
     ##### Constructing Grid and model
     #####
     
-    H = (  2,  2, 2)
+    H = (2, 2, 2)
 
     if topology == :bounded
-        lon =  (-160, 160)
-        N   = (160, 60, 3)
-    else
-        lon =  (-180, 180)
-        N   = (180, 60, 3)
+        lim = 160
+    else 
+        lim = 180
     end
 
-    lat = (-60, 60)
-    z   = (-90, 0)
+    N = (lim, 60, 3)
+
+    if grid_lon == :regular
+        lon = (-lim, lim)
+    else
+        lon = collect(-lim:2:lim)
+    end
+    
+    if grid_lat == :regular
+        lat = (-60, 60)
+    else
+        lat = collect(-60:2:60)
+    end
+
+    if grid_z == :regular
+        z = (-90, 0)
+    else
+        z = collect(-90:30:0)
+    end
    
     if free_surface_type == :explicit
         free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
@@ -33,11 +48,13 @@ function run_hydrostatic_free_turbulence_regression_test(topology, free_surface_
         )
     end
 
-    grid  = RegularLatitudeLongitudeGrid(size = N, 
-                                    longitude = lon,
-                                     latitude = lat, 
-                                            z = z,
-                                         halo = H
+    grid  = LatitudeLongitudeGrid(size = N, 
+                             longitude = lon,
+                              latitude = lat, 
+                                     z = z,
+                                  halo = H,
+                    precompute_metrics = compute,
+                          architecture = arch
     )
 
                                  
@@ -73,9 +90,11 @@ function run_hydrostatic_free_turbulence_regression_test(topology, free_surface_
     # wave_speed is the hydrostatic (shallow water) gravity wave speed
     gravity    = model.free_surface.gravitational_acceleration
     wave_speed = sqrt(gravity * grid.Lz)                                 
-
-    minimum_Δx = grid.radius * cosd(maximum(abs, view(grid.φᵃᶜᵃ, 1:grid.Ny))) * deg2rad(grid.Δλ)
-    minimum_Δy = grid.radius * deg2rad(grid.Δφ)
+    
+    CUDA.allowscalar(true)
+    minimum_Δx = grid.radius * cosd(maximum(abs, view(grid.φᵃᶜᵃ, 1:grid.Ny))) * deg2rad(minimum(grid.Δλᶜᵃᵃ))
+    minimum_Δy = grid.radius * deg2rad(minimum(grid.Δφᵃᶜᵃ))
+    CUDA.allowscalar(false)
 
     wave_time_scale = min(minimum_Δx, minimum_Δy) / wave_speed
 

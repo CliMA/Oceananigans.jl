@@ -43,7 +43,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
     
     for topo in [:bounded, :periodic]
         for free_surface in [:explicit, :implicit]
-            run_hydrostatic_free_turbulence_regression_test(topo, free_surface, CPU(); regenerate_data=true)
+            run_hydrostatic_free_turbulence_regression_test(topo, :regular, :regular, :regular, false, free_surface, CPU(); regenerate_data=true)
         end
     end
 
@@ -71,13 +71,19 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
         end
 
         for topo in [:bounded, :periodic]
-            for free_surface in [:explicit, :implicit]
-            @testset "Hydrostatic free turbulence regression [$(typeof(arch)), $topo longitude, $free_surface free surface]" begin
-                @info "  Testing Hydrostatic free turbulence [$(typeof(arch)), $topo longitude, $free_surface free surface]"
-                run_hydrostatic_free_turbulence_regression_test(topo, free_surface, arch)
-            end
-	    end   
-	end
+            for surf in [:explicit, :implicit]
+                for gx in [:regular, :stretched], gy in [:regular, :stretched], gz in [:regular, :stretched], comp in (true, false)
+                
+                    if !(comp && surf == :implicit && typeof(arch) == GPU) # for the moment cannot run precomputed metrics with implicit surface as it can prompt a "too large parameter space" error
+                        @testset "Hydrostatic free turbulence regression [$(typeof(arch)), $topo, ($gx, $gy, $gz) grid, $surf free surface$(comp ? ", metrics are precomputed" : "")]" begin
+                            @info "  Testing Hydrostatic free turbulence [$(typeof(arch)), $topo, ($gx, $gy, $gz) grid, $surf free surface$(comp ? ", metrics are precomputed" : "")]"
+                            run_hydrostatic_free_turbulence_regression_test(topo, gx, gy, gz, comp, surf, arch)
+                       end
+                    end
+
+                end
+	        end   
+	    end
 
     end
 end
