@@ -5,7 +5,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
 using Oceananigans.AbstractOperations: KernelFunctionOperation, volume
 
-function run_hydrostatic_free_turbulence_regression_test(topology, arch; regenerate_data=false)
+function run_hydrostatic_free_turbulence_regression_test(topology, free_surface_type, arch; regenerate_data=false)
 
     #####
     ##### Constructing Grid and model
@@ -24,7 +24,14 @@ function run_hydrostatic_free_turbulence_regression_test(topology, arch; regener
     lat = (-60, 60)
     z   = (-90, 0)
    
-    free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
+    if free_surface_type == :explicit
+        free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
+    else
+        free_surface = ImplicitFreeSurface(gravitational_acceleration = 1.0,
+                                                        solver_method = :PreconditionedConjugateGradient,
+                                                            tolerance = 1e-15
+        )
+    end
 
     grid  = RegularLatitudeLongitudeGrid(size = N, 
                                     longitude = lon,

@@ -42,11 +42,12 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
 @testset "Regression" begin
     
     for topo in [:bounded, :periodic]
-        run_hydrostatic_free_turbulence_regression_test(topo, CPU(); regenerate_data=true)
+        for free_surface in [:explicit, :implicit]
+            run_hydrostatic_free_turbulence_regression_test(topo, free_surface, CPU(); regenerate_data=true)
+        end
     end
 
     @info "Running regression tests..."
-
 
     for arch in archs
         for grid_type in [:regular, :vertically_unstretched]
@@ -70,9 +71,11 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
         end
 
         for topo in [:bounded, :periodic]
-            @testset "Hydrostatic free turbulence regression [$(typeof(arch)), $topo longitude" begin
-                @info "  Testing Hydrostatic free turbulence [$(typeof(arch)), $topo longitude"
-                run_hydrostatic_free_turbulence_regression_test(topo, arch)
+            for free_surface in [:explicit, :implicit]
+            @testset "Hydrostatic free turbulence regression [$(typeof(arch)), $topo longitude, $free_surface free surface]" begin
+                @info "  Testing Hydrostatic free turbulence [$(typeof(arch)), $topo longitude, $free_surface free surface]"
+                run_hydrostatic_free_turbulence_regression_test(topo, free_surface, arch)
+            end
 	    end   
 	end
 
