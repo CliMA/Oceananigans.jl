@@ -70,14 +70,13 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
             end
         end
 
-        for topo in [:bounded, :periodic]
-            for free_surface in [:explicit, :implicit]
-                if !(arch==GPU() && topo == :periodic && free_surface == :explicit)
+        for topo in [:periodic]
+            for free_surface in [:explicit]
                     @testset "Hydrostatic free turbulence regression [$(typeof(arch)), $topo longitude, $free_surface free surface]" begin
                         @info "  Testing Hydrostatic free turbulence [$(typeof(arch)), $topo longitude, $free_surface free surface]"
                         run_hydrostatic_free_turbulence_regression_test(topo, free_surface, arch)
                     end
-                end
+                
             end
 	    end   
 	end
