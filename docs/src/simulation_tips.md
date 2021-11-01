@@ -323,22 +323,3 @@ forcing functions on a GPU. To learn more about working with `CuArray`s, see the
 of the CUDA.jl documentation.
 
 
-### Avoid trigonometric functions on GPUs
-
-Trigonometric functions can be slow to compute in GPUs, so it's best to avoid them inside functions
-that need to be computed on GPUs. For example, when running on GPUs, definiting a backgrouund field
-as seen below:
-
-```julia
-b∞(x, y, z, t, p) = p.N2 * (x * sin(p.θ_rad) + z * cos(p.θ_rad))
-B_field = BackgroundField(b∞, parameters=(N2=1e-5, θ_rad=0.05))
-```
-
-can run much slower than the alternative using parameters:
-
-```julia
-b∞(x, y, z, t, p) = p.N2 * (x * p.sinθ + z * p.cosθ)
-B_field = BackgroundField(b∞, parameters=(N2=1e-5, 
-                                          cosθ=cos(0.05), 
-                                          sinθ=sin(0.05),))
-```
