@@ -67,10 +67,10 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
                     @info "  Testing oceanic large eddy simulation regression [$(typeof(arch)), $closurename, $grid_type grid]"
                     run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
                 end
-            end
-        end
+           end
+       end
 
-        for topo in [:bounded, :periodic]
+        for topo in [:periodic]
             for surf in [:explicit, :implicit]
                 for gx in [:regular, :stretched], gy in [:regular, :stretched], gz in [:regular, :stretched], comp in (true, false)
                 
@@ -84,6 +84,14 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
                 end
 	        end   
 	    end
+        
+        
+
+        # topo = :periodic; surf = :explicit; gx = gy = gz = :stretched; comp = false
+        # @testset "Hydrostatic free turbulence regression [$(typeof(arch)), $topo, ($gx, $gy, $gz) grid, $surf free surface$(comp ? ", metrics are precomputed" : "")]" begin
+        #     @info "  Testing Hydrostatic free turbulence [$(typeof(arch)), $topo, ($gx, $gy, $gz) grid, $surf free surface$(comp ? ", metrics are precomputed" : "")]"
+        #     run_hydrostatic_free_turbulence_regression_test(topo, gx, gy, gz, comp, surf, arch)
+        # end
 
     end
 end

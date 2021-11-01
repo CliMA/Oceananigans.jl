@@ -2,13 +2,13 @@
 ##### Periodic boundary conditions
 #####
 
-  fill_west_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[1:H, :, :] = c.parent[N+1:N+H, :, :]
- fill_south_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[:, 1:H, :] = c.parent[:, N+1:N+H, :]
-fill_bottom_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[:, :, 1:H] = c.parent[:, :, N+1:N+H]
+  fill_west_halo!(c, ::PBC, H::Int, N, grid) = @views @. c.parent[1:H, :, :] = c.parent[N+1:N+H, :, :]
+ fill_south_halo!(c, ::PBC, H::Int, N, grid) = @views @. c.parent[:, 1:H, :] = c.parent[:, N+1:N+H, :]
+fill_bottom_halo!(c, ::PBC, H::Int, N, grid) = @views @. c.parent[:, :, 1:H] = c.parent[:, :, N+1:N+H]
 
- fill_east_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[N+H+1:N+2H, :, :] = c.parent[1+H:2H, :, :]
-fill_north_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[:, N+H+1:N+2H, :] = c.parent[:, 1+H:2H, :]
-  fill_top_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[:, :, N+H+1:N+2H] = c.parent[:, :, 1+H:2H]
+ fill_east_halo!(c, ::PBC, H::Int, N, grid) = @views @. c.parent[N+H+1:N+2H, :, :] = c.parent[1+H:2H, :, :]
+fill_north_halo!(c, ::PBC, H::Int, N, grid) = @views @. c.parent[:, N+H+1:N+2H, :] = c.parent[:, 1+H:2H, :]
+  fill_top_halo!(c, ::PBC, H::Int, N, grid) = @views @. c.parent[:, :, N+H+1:N+2H] = c.parent[:, :, 1+H:2H]
 
 # Generate interface functions for periodic boundary conditions
 sides = (:west, :east, :south, :north, :top, :bottom)
@@ -18,5 +18,5 @@ for (x, side) in zip(coords, sides)
     name = Symbol(:fill_, side, :_halo!)
     H = Symbol(:H, x)
     N = Symbol(:N, x)
-    @eval $name(c, bc::PBC, arch, dep, grid, args...; kw...) = $name(c, bc, grid.$(H), grid.$(N))
+    @eval $name(c, bc::PBC, arch, dep, grid, args...; kw...) = $name(c, bc, grid.$(H), grid.$(N), grid)
 end
