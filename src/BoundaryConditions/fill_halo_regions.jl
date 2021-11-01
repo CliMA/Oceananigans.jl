@@ -56,7 +56,7 @@ function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwar
     for task_idx = 1:6
         fill_halo! = fill_halos![task_idx]
         bc = field_bcs_array[task_idx]
-        barrier = fill_halo!(c, bc, arch, barrier, grid, args...; kwargs...)
+        barrier = fill_halo!(c, bc, arch, barrier, grid, args...; dependencies=barrier, kwargs...)
     end
 
     wait(device(arch), barrier)
