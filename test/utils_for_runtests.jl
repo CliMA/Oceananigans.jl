@@ -1,5 +1,11 @@
-using KernelAbstractions: @kernel, @index
+using Oceananigans
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
+using KernelAbstractions: @kernel, @index
+
+using Test
+using Printf
+
+import Oceananigans.Fields: interior
 
 function summarize_regression_test(fields, correct_fields)
     for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
