@@ -41,11 +41,11 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
 
 @testset "Regression" begin
     
-    # for topo in [:bounded, :periodic]
-    #     for free_surface in [:explicit, :implicit]
-    #         run_hydrostatic_free_turbulence_regression_test(topo, free_surface, CPU(); regenerate_data=true)
-    #     end
-    # end
+    for topo in [:bounded, :periodic]
+        for free_surface in [:explicit, :implicit]
+            run_hydrostatic_free_turbulence_regression_test(topo, free_surface, CPU(); regenerate_data=true)
+        end
+    end
 
     @info "Running regression tests..."
 

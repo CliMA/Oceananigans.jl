@@ -1,4 +1,4 @@
-include("dependencies_for_tests.jl")
+include("utils_for_runtests.jl")
 
 @testset "Oceananigans" begin
     if group == :unit || group == :all
