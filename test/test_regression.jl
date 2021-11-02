@@ -45,7 +45,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
 @testset "Regression" begin
     @info "Running regression tests..."
 
-    for arch in [CPU()]
+    for arch in archs
         for grid_type in [:regular, :vertically_unstretched]
             @testset "Thermal bubble [$(typeof(arch)), $grid_type grid]" begin
                 @info "  Testing thermal bubble regression [$(typeof(arch)), $grid_type grid]"
