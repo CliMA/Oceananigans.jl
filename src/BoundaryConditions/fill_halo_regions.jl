@@ -30,21 +30,21 @@ function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwar
     barrier = device_event(arch)
 
     fill_halos! = [
-        fill_bottom_and_top_halo!,
-        fill_south_and_north_halo!,
         fill_west_and_east_halo!,
+        fill_south_and_north_halo!,
+        fill_bottom_and_top_halo!,
     ]
 
     field_bcs_array_left = [
-        field_bcs.bottom,
-        field_bcs.south,
         field_bcs.west,
+        field_bcs.south,
+        field_bcs.bottom
     ]
 
     field_bcs_array_right = [
-        field_bcs.top,
-        field_bcs.north,
         field_bcs.east,
+        field_bcs.north,
+        field_bcs.top
     ]
 
     perm = sortperm(field_bcs_array_left, lt=fill_first)
