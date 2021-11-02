@@ -1,11 +1,12 @@
 using Test
 
-using DateTime
 using Oceananigans
-
+using Oceananigans.Units
 using Oceananigans.Simulations:
     stop, iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     TimeStepWizard, new_time_step, reset!
+
+using Dates: DateTime
 
 include("utils_for_runtests.jl")
 
