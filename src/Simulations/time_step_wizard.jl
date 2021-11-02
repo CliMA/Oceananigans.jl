@@ -82,6 +82,6 @@ function new_time_step(old_Δt, wizard, model)
 end
 
 (wizard::TimeStepWizard)(simulation) =
-    simulation.Δt = new_time_step(old_Δt, wizard, simulation.model)
+    simulation.Δt = new_time_step(simulation.Δt, wizard, simulation.model)
 
 (c::CFL{<:TimeStepWizard})(model) = c.Δt.Δt / c.timescale(model)
