@@ -1,21 +1,3 @@
-function summarize_regression_test(fields, correct_fields)
-    for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
-        Δ = φ .- φ_c
-
-        Δ_min      = minimum(Δ)
-        Δ_max      = maximum(Δ)
-        Δ_mean     = mean(Δ)
-        Δ_abs_mean = mean(abs, Δ)
-        Δ_std      = std(Δ)
-
-        matching    = sum(φ .≈ φ_c)
-        grid_points = length(φ_c)
-
-        @info @sprintf("Δ%s: min=%+.6e, max=%+.6e, mean=%+.6e, absmean=%+.6e, std=%+.6e (%d/%d matching grid points)",
-                       field_name, Δ_min, Δ_max, Δ_mean, Δ_abs_mean, Δ_std, matching, grid_points)
-    end
-end
-
 function get_fields_from_checkpoint(filename)
     file = jldopen(filename)
 
@@ -55,8 +37,16 @@ end
 include("regression_tests/thermal_bubble_regression_test.jl")
 include("regression_tests/rayleigh_benard_regression_test.jl")
 include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
+include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
 
 @testset "Regression" begin
+    
+    for topo in [:bounded, :periodic]
+        for free_surface in [:explicit, :implicit]
+            run_hydrostatic_free_turbulence_regression_test(topo, free_surface, CPU(); regenerate_data=true)
+        end
+    end
+
     @info "Running regression tests..."
 
     for arch in archs
@@ -79,5 +69,17 @@ include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
                 end
             end
         end
-    end
+
+        for topo in [:bounded, :periodic]
+            for free_surface in [:explicit, :implicit]
+                if !(arch==GPU() && topo == :periodic && free_surface == :explicit) # This issue will most likely be fixed by PR #1985
+                                                                                    #https://github.com/CliMA/Oceananigans.jl/pull/1985
+                    @testset "Hydrostatic free turbulence regression [$(typeof(arch)), $topo longitude, $free_surface free surface]" begin
+                        @info "  Testing Hydrostatic free turbulence [$(typeof(arch)), $topo longitude, $free_surface free surface]"
+                        run_hydrostatic_free_turbulence_regression_test(topo, free_surface, arch)
+                    end
+                end
+            end
+	    end   
+	end
 end
