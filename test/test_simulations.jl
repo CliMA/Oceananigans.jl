@@ -1,6 +1,14 @@
+using Test
+
+using Oceananigans
+
 using Oceananigans.Simulations:
     stop, iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
-    TimeStepWizard, adapt_Δt!, reset!
+    TimeStepWizard, new_time_step, reset!
+
+include("utils_for_runtests.jl")
+
+archs = test_architectures()
 
 function wall_time_step_wizard_tests(arch)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
@@ -12,27 +20,27 @@ function wall_time_step_wizard_tests(arch)
     Δt = 2.5
     model.velocities.u[1, 1, 1] = u₀
 
-    wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0)
-    adapt_Δt!(wizard, model)
-    @test wizard.Δt ≈ CFL * Δx / u₀
+    wizard = TimeStepWizard(cfl=CFL, max_change=Inf, min_change=0)
+    Δt = new_time_step(Δt, wizard, model)
+    @test Δt ≈ CFL * Δx / u₀
 
-    wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0.75)
-    adapt_Δt!(wizard, model)
-    @test wizard.Δt ≈ 0.75Δt
+    wizard = TimeStepWizard(cfl=CFL, max_change=Inf, min_change=0.75)
+    Δt = new_time_step(1.0, wizard, model)
+    @test Δt ≈ 0.75
 
-    wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0, min_Δt=1.99)
-    adapt_Δt!(wizard, model)
-    @test wizard.Δt ≈ 1.99
+    wizard = TimeStepWizard(cfl=CFL, max_change=Inf, min_change=0, min_Δt=1.99)
+    Δt = new_time_step(Δt, wizard, model)
+    @test Δt ≈ 1.99
 
     model.velocities.u[1, 1, 1] = u₀/100
 
-    wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=1.1, min_change=0)
-    adapt_Δt!(wizard, model)
-    @test wizard.Δt ≈ 1.1Δt
+    wizard = TimeStepWizard(cfl=CFL, max_change=1.1, min_change=0)
+    Δt = new_time_step(1.0, wizard, model)
+    @test Δt ≈ 1.1
 
-    wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0, max_Δt=3.99)
-    adapt_Δt!(wizard, model)
-    @test wizard.Δt ≈ 3.99
+    wizard = TimeStepWizard(cfl=CFL, max_change=Inf, min_change=0, max_Δt=3.99)
+    Δt = new_time_step(Δt, wizard, model)
+    @test Δt ≈ 3.99
 
     grid_stretched = VerticallyStretchedRectilinearGrid(size = (1, 1, 1),
                                                         x = (0, 1),
@@ -49,9 +57,9 @@ function wall_time_step_wizard_tests(arch)
     Δt = 2.5
     model.velocities.u .= u₀
 
-    wizard = TimeStepWizard(cfl=CFL, Δt=Δt, max_change=Inf, min_change=0)
-    adapt_Δt!(wizard, model)
-    @test wizard.Δt ≈ CFL * Δx / u₀
+    wizard = TimeStepWizard(cfl=CFL, max_change=Inf, min_change=0)
+    Δt = new_time_step(Δt, wizard, model)
+    @test Δt ≈ CFL * Δx / u₀
 
     return nothing
 end

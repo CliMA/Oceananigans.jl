@@ -54,17 +54,17 @@ function TimeStepWizard(FT=Float64; cfl = 0.1,
     C = typeof(cell_advection_timescale)
     D = typeof(cell_diffusion_timescale)
 
-    return TimeStepWizard{FT, C, D}(cfl, diffusive_cfl, max_change, min_change, max_Δt, min_Δt, 0.0,
+    return TimeStepWizard{FT, C, D}(cfl, diffusive_cfl, max_change, min_change, max_Δt, min_Δt,
                                     cell_advection_timescale, cell_diffusion_timescale)
 end
 
 using Oceananigans.Grids: topology
 
 """
-    adapt_Δt!(wizard, model)
+     new_time_step(old_Δt, wizard, model)
 
-Compute `wizard.Δt` given the velocities and diffusivities of `model`,
-and the parameters of `wizard`.
+Return a new time_step given `model.velocities` and model diffusivites,
+and the parameters of the `TimeStepWizard` `wizard`.
 """
 function new_time_step(old_Δt, wizard, model)
 
