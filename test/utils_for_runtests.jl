@@ -4,6 +4,7 @@ using KernelAbstractions: @kernel, @index
 
 using Test
 using Printf
+using Statistics
 
 import Oceananigans.Fields: interior
 
