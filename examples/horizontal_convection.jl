@@ -121,11 +121,9 @@ simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(50))
 #
 # We write a function that prints out a helpful progress message while the simulation runs.
 
-CFL = AdvectiveCFL(wizard)
-
 progress(sim) = @printf("i: % 6d, sim time: % 1.3f, wall time: % 10s, Δt: % 1.4f, CFL: %.2e\n",
                         iteration(sim), time(sim), prettytime(sim.run_wall_time),
-                        sim.Δt, CFL(sim.model))
+                        sim.Δt, AdvectiveCFL(sim.Δt)(sim.model))
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(50))
 
