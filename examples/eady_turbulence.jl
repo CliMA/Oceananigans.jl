@@ -254,7 +254,7 @@ simulation = Simulation(model, Δt = max_Δt, stop_time = 8days)
 # for numerical stability given the specified background flow, internal wave
 # time scales, and diffusion time scales.
 
-wizard = TimeStepWizard(cfl=0.85, Δt=max_Δt, max_change=1.1, max_Δt=max_Δt)
+wizard = TimeStepWizard(cfl=0.85, max_change=1.1, max_Δt=max_Δt)
 
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
