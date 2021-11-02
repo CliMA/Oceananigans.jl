@@ -51,7 +51,7 @@ function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwar
     # fill_halos! = fill_halos![perm]
     # field_bcs_array_left  = field_bcs_array_left[perm]
     # field_bcs_array_right = field_bcs_array_right[perm]
-
+#    
     for task = 1:3
        fill_halo! = fill_halos![task]
        bc_left    = field_bcs_array_left[task]
