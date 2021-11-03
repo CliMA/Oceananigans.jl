@@ -50,7 +50,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     )
 
     # Lz/Nz will work for both the :regular and :vertically_unstretched grids.
-    Δt = 0.01 * min(model.grid.Δx, model.grid.Δy, Lz/Nz)^2 / ν
+    Δt = 0.01 * min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, Lz/Nz)^2 / ν
 
     # We will manually change the stop_iteration as needed.
     simulation = Simulation(model, Δt=Δt, stop_iteration=0)

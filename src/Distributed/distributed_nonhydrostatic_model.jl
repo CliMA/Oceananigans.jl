@@ -32,8 +32,10 @@ function DistributedNonhydrostaticModel(; architecture, grid, model_kwargs...)
     y₁, y₂ = yL + (j-1)*ly, yL + j*ly
     z₁, z₂ = zL + (k-1)*lz, zL + k*lz
 
+    child_arch = child_architecture(architecture)
+
     # FIXME? local grid might have different topology!
-    my_grid = RectilinearGrid(topology=topology(grid), size=(nx, ny, nz), x=(x₁, x₂), y=(y₁, y₂), z=(z₁, z₂), halo=halo_size(grid))
+    my_grid = RectilinearGrid(topology=topology(grid), size=(nx, ny, nz), x=(x₁, x₂), y=(y₁, y₂), z=(z₁, z₂), halo=halo_size(grid), architecture=child_arch)
 
     ## Construct local model
 

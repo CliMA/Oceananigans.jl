@@ -14,8 +14,8 @@
 ##### Only for regular grids (FX == FY == FZ <: Number) 
 ##### and vertically stretched grids (FX == FY <: Number)
 
-const Regular             = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number} 
-const VerticallyStretched = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Any} 
+const Regular             = RegRectilinearGrid
+const VerticallyStretched = HRegRectilinearGrid
 
 
 function plan_forward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PATIENT)

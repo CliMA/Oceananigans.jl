@@ -143,9 +143,9 @@ function test_regular_rectilinear_grid_properties_are_same_type(FT)
     @test grid.Lx isa FT
     @test grid.Ly isa FT
     @test grid.Lz isa FT
-    @test grid.Δx isa FT
-    @test grid.Δy isa FT
-    @test grid.Δz isa FT
+    @test grid.Δxᶠᵃᵃ isa FT
+    @test grid.Δyᵃᶠᵃ isa FT
+    @test grid.Δzᵃᵃᶠ isa FT
 
     @test eltype(grid.xᶠᵃᵃ) == FT
     @test eltype(grid.yᵃᶠᵃ) == FT
@@ -285,8 +285,8 @@ function test_vertically_stretched_grid_properties_are_same_type(FT, arch)
     @test grid.Lx isa FT
     @test grid.Ly isa FT
     @test grid.Lz isa FT
-    @test grid.Δx isa FT
-    @test grid.Δy isa FT
+    @test grid.Δxᶠᵃᵃ isa FT
+    @test grid.Δyᵃᶠᵃ isa FT
 
     @test eltype(grid.xᶠᵃᵃ) == FT
     @test eltype(grid.xᶜᵃᵃ) == FT

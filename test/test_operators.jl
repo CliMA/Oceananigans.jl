@@ -65,21 +65,21 @@ end
 
         @testset "Easterly lengths" begin
             @info "    Testing easterly lengths..."
-            for δ in (Δx, Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ) 
+            for δ in (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ) 
                 @test δ(1, 1, 1, grid) == FT(π)
             end
         end
 
         @testset "Westerly lengths" begin
             @info "    Testing westerly lengths..."
-            for δ in (Δy, Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ) 
+            for δ in (Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ) 
                 @test δ(1, 1, 1, grid) == FT(2π)
             end
         end
 
         @testset "Vertical lengths" begin
             @info "    Testing vertical lengths..."
-            for δ in (ΔzF, ΔzC)
+            for δ in (Δzᵃᵃᶜ, Δzᵃᵃᶠ)
                 @test δ(1, 1, 1, grid) == FT(3π)
             end
         end

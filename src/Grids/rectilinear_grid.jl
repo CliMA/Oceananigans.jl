@@ -22,10 +22,6 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
       Δzᵃᵃᶜ :: FZ
       zᵃᵃᶠ  :: VZ
       zᵃᵃᶜ  :: VZ
-      # temporarly just to help refractoring with regular rectilinear grid (DELETE WHEN ALL THE Δx, Δy and Δz ARE REMOVED FROM THE CODE)
-      Δx :: FT
-      Δy :: FT
-      Δz :: FT
 end
 
 const XRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number}
@@ -66,12 +62,8 @@ function RectilinearGrid(FT = Float64;
     VZ   = typeof(zᵃᵃᶠ)
     Arch = typeof(architecture) 
 
-    FX<:AbstractVector ? Δx = Array(Δxᶠᵃᵃ.parent)[1] : Δx = Δxᶠᵃᵃ
-    FY<:AbstractVector ? Δy = Array(Δyᵃᶠᵃ.parent)[1] : Δy = Δyᵃᶠᵃ
-    FZ<:AbstractVector ? Δz = Array(Δzᵃᵃᶠ.parent)[1] : Δz = Δzᵃᵃᶠ
-
     return RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
-    Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, yᵃᶠᵃ, yᵃᶜᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ, Δx, Δy, Δz)
+        Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, yᵃᶠᵃ, yᵃᶜᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
 end
 
 @inline x_domain(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.xᶠᵃᵃ)
@@ -125,8 +117,7 @@ Adapt.adapt_structure(to, grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, 
         Adapt.adapt(to, grid.Δzᵃᵃᶠ),
         Adapt.adapt(to, grid.Δzᵃᵃᶜ),
         Adapt.adapt(to, grid.zᵃᵃᶠ),
-        Adapt.adapt(to, grid.zᵃᵃᶜ),
-        grid.Δx, grid.Δy, grid.Δz)
+        Adapt.adapt(to, grid.zᵃᵃᶜ))
 
 @inline xnode(::Center, i, grid::RectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
 @inline xnode(::Face, i, grid::RectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
@@ -146,23 +137,37 @@ all_z_nodes(::Type{Face}, grid::RectilinearGrid) = grid.zᵃᵃᶠ
 
 function with_halo(new_halo, old_grid::RectilinearGrid)
 
-    Nx, Ny, Nz = size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
+    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
-    x = x_domain(old_grid)
-    y = y_domain(old_grid)
-    z = z_domain(old_grid)
+   
+    if old_grid.Δxᶠᵃᵃ isa Number
+        x = x_domain(old_grid)
+    else
+        x = old_grid.xᶠᵃᵃ
+    end
+
+    if old_grid.Δyᵃᶠᵃ isa Number
+        y = y_domain(old_grid)
+    else
+        y = old_grid.yᵃᶠᵃ
+    end
+
+    if old_grid.Δzᵃᵃᶠ isa Number
+        z = z_domain(old_grid)
+    else
+        z = old_grid.zᵃᵃᶠ
+    end
 
     # Remove elements of size and new_halo in Flat directions as expected by grid
     # constructor
-    size = pop_flat_elements(size, topo)
+    size     = pop_flat_elements(size, topo)
     new_halo = pop_flat_elements(new_halo, topo)
 
     new_grid = RectilinearGrid(eltype(old_grid);
                architecture = old_grid.architecture,
                size = size,
-               x = x, y = y,
-               z = old_grid.zᵃᵃᶠ,
+               x = x, y = y,z = z,
                topology = topo,
                halo = new_halo)
 
