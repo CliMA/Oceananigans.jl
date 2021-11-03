@@ -165,26 +165,31 @@ set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)
 
 # ## Setting up a simulation
 #
-# We first build a `TimeStepWizard` to ensure stable time-stepping
+# We set-up a simulation with an initial time-step of 10 seconds
+# that stops at 40 minutes, with adaptive time-stepping and progress printing.
+
+simulation = Simulation(model, Δt=10.0, stop_time=40minutes)
+
+# The `TimeStepWizard` helps ensure stable time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0.
 
-wizard = TimeStepWizard(cfl=1.0, Δt=10.0, max_change=1.1, max_Δt=1minute)
+wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=1minute)
+
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 # Nice progress messaging is helpful:
 
-start_time = time_ns() # so we can print the total elapsed wall time
-
 ## Print a progress message
-progress_message(sim) =
-    @printf("i: %04d, t: %s, Δt: %s, wmax = %.1e ms⁻¹, wall time: %s\n",
-            sim.model.clock.iteration, prettytime(model.clock.time),
-            prettytime(wizard.Δt), maximum(abs, sim.model.velocities.w),
-            prettytime((time_ns() - start_time) * 1e-9))
+progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = %.1e ms⁻¹, wall time: %s\n",
+                                iteration(sim),
+                                prettytime(sim),
+                                prettytime(sim.Δt),
+                                maximum(abs, sim.model.velocities.w),
+                                prettytime(sim.run_wall_time))
+
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
 
 # We then set up the simulation:
-
-simulation = Simulation(model, Δt=wizard, stop_time=40minutes, iteration_interval=10,
-                        progress=progress_message)
 
 # ## Output
 #
@@ -194,7 +199,7 @@ simulation = Simulation(model, Δt=wizard, stop_time=40minutes, iteration_interv
 # `ocean_wind_mixing_and_convection.jld2`.
 
 ## Create a NamedTuple with eddy viscosity
-eddy_viscosity = (νₑ = model.diffusivity_fields.νₑ,)
+eddy_viscosity = (; νₑ = model.diffusivity_fields.νₑ)
 
 simulation.output_writers[:slices] =
     JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_viscosity),
