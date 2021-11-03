@@ -1,5 +1,5 @@
 include(pwd() * "/src/Models/HydrostaticFreeSurfaceModels/split_explicit_free_surface.jl") # CHANGE TO USING MODULE EVENTUALLY
-
+# TODO: clean up test, change to use interior
 using Oceananigans.Utils
 using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
