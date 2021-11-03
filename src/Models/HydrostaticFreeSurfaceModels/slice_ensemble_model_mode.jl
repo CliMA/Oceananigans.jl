@@ -89,7 +89,7 @@ function FFTImplicitFreeSurfaceSolver(arch, grid::YZSliceGrid, settings)
         SliceEnsembleSize(size=(grid.Ny, grid.Nz), ensemble=grid.Nx, halo=(grid.Hy, grid.Hz))
 
     horizontal_grid = RegularRectilinearGrid(; topology = (Flat, TY, Flat),
-                                               size = ensemble_size,
+                                               size = sz,
                                                halo = (grid.Hy, grid.Nz),
                                                y = y_domain(grid),
                                                z = z_domain(grid),
