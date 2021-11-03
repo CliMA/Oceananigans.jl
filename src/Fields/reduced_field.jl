@@ -1,4 +1,5 @@
 using Adapt
+using Statistics
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
@@ -117,3 +118,62 @@ reduced_location(loc; dims) = Tuple(i ∈ dims ? Nothing : loc[i] for i in 1:3)
 
 Adapt.adapt_structure(to, reduced_field::ReducedField{X, Y, Z}) where {X, Y, Z} =
     ReducedField{X, Y, Z}(adapt(to, reduced_field.data), nothing, adapt(to, reduced_field.grid), reduced_field.dims, nothing)
+
+#####
+##### Field reductions
+#####
+
+# Risky to use these without tests. Docs would also be nice.
+Statistics.norm(a::AbstractDataField) = sqrt(mapreduce(x -> x * x, +, interior(a)))
+Statistics.dot(a::AbstractDataField, b::AbstractDataField) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
+
+# The more general case, for AbstractOperations
+function Statistics.norm(a::AbstractField)
+    arch = architecture(a)
+    grid = a.grid
+
+    r = zeros(arch, grid, 1)
+    
+    Base.mapreducedim!(x -> x * x, +, r, a)
+
+    return CUDA.@allowscalar sqrt(r[1])
+end
+
+# Allocating and in-place reductions
+for reduction in (:sum, :maximum, :minimum, :all, :any)
+
+    reduction! = Symbol(reduction, '!')
+
+    @eval begin
+
+        # In-place
+        Base.$(reduction!)(f::Function, r::AbstractReducedField, a::AbstractArray; kwargs...) =
+            Base.$(reduction!)(f, interior(r), a; kwargs...)
+
+        Base.$(reduction!)(r::AbstractReducedField, a::AbstractArray; kwargs...) =
+            Base.$(reduction!)(identity, interior(r), a; kwargs...)
+
+        # If `a` is supported by data, reduce over the parent to leverage its contiguity
+        Base.$(reduction!)(f::Function, r::AbstractReducedField, a::AbstractDataField; kwargs...) =
+            Base.$(reduction!)(f, parent(r), parent(a); kwargs...)
+
+        Base.$(reduction!)(r::AbstractReducedField, a::AbstractDataField; kwargs...) =
+            Base.$(reduction!)(identity, parent(r), parent(a); kwargs...)
+
+        # Allocating
+        function Base.$(reduction)(f::Function, c::AbstractField; dims=:)
+            if dims isa Colon
+                r = zeros(architecture(c), c.grid, 1, 1, 1)
+                Base.$(reduction!)(f, r, c)
+                return CUDA.@allowscalar r[1, 1, 1]
+            else
+                r = ReducedField(location(c)..., architecture(c), c.grid; dims)
+                Base.$(reduction!)(f, r, c; dims)
+                return r
+            end
+        end
+
+        Base.$(reduction)(c::AbstractField; dims=:) = Base.$(reduction)(identity, c; dims)
+    end
+end
+
