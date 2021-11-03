@@ -28,8 +28,7 @@ Nz = 18
 
 output_prefix = "annual_cycle_global_lat_lon_$(Nx)_$(Ny)_$(Nz)_temp"
 
-#=
-arch = GPU()
+arch = CPU()
 reference_density = 1035
 
 #####
@@ -185,6 +184,8 @@ else
     Δt = 20minutes
 end
 
+simulation = Simulation(model, Δt = Δt, stop_time = 30year)
+
 start_time = [time_ns()]
 
 function progress(sim)
@@ -212,7 +213,7 @@ function progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt = Δt, stop_time = 30year, iteration_interval = 100, progress = progress)
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 u, v, w = model.velocities
 T, S = model.tracers
@@ -257,8 +258,6 @@ run!(simulation)
 ##### Visualize solution
 #####
 
-=#
-
 surface_file = jldopen(output_prefix * "_surface.jld2")
 bottom_file = jldopen(output_prefix * "_bottom.jld2")
 
@@ -289,13 +288,6 @@ max_u = 0.2
 min_u = - max_u
 max_T = 32
 min_T = 0
-
-#max_η = @lift + maximum(abs, ηi($iter))
-#min_η = @lift - maximum(abs, ηi($iter))
-#max_u = @lift + maximum(abs, ui($iter))
-#min_u = @lift - maximum(abs, ui($iter))
-#max_T = @lift maximum(Ti($iter))
-#min_T = @lift minimum(Ti($iter))
 
 fig = Figure(resolution = (1200, 900))
 

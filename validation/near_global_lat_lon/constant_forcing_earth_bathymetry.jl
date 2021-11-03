@@ -190,6 +190,8 @@ else
     Δt = 20minutes
 end
 
+simulation = Simulation(model, Δt = Δt, stop_time = 1day)
+
 start_time = [time_ns()]
 
 function progress(sim)
@@ -217,11 +219,7 @@ function progress(sim)
     return nothing
 end
 
-simulation = Simulation(model,
-                        Δt = Δt,
-                        stop_time = 1day,
-                        iteration_interval = 10,
-                        progress = progress)
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 output_fields = merge(model.velocities, model.tracers, (; η=model.free_surface.η))
 output_prefix = "global_lat_lon_$(grid.Nx)_$(grid.Ny)_$(grid.Nz)"
