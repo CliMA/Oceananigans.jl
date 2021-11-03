@@ -101,6 +101,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     model.clock.iteration = spinup_steps
 
     update_state!(model)
+    model.timestepper.previous_Δt = Δt
 
     for n in 1:test_steps
         time_step!(model, Δt, euler=false)
