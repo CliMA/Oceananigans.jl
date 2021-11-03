@@ -1,12 +1,18 @@
-using Oceananigans
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
-using KernelAbstractions: @kernel, @index
-
+using CUDA
 using Test
 using Printf
 using Statistics
 
+using KernelAbstractions: @kernel, @index, Event
+
+using Oceananigans
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
+
 import Oceananigans.Fields: interior
+
+import Oceananigans.Fields: interior
+
+test_architectures() = CUDA.has_cuda() ? tuple(GPU()) : tuple(CPU())
 
 function summarize_regression_test(fields, correct_fields)
     for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
@@ -43,13 +49,9 @@ end
 function compute_∇²!(∇²ϕ, ϕ, arch, grid)
     fill_halo_regions!(ϕ, arch)
     child_arch = child_architecture(arch)
-
     event = launch!(child_arch, grid, :xyz, ∇²!, ∇²ϕ, grid, ϕ, dependencies=Event(device(child_arch)))
-
     wait(device(child_arch), event)
-
     fill_halo_regions!(∇²ϕ, arch)
-
     return nothing
 end
 

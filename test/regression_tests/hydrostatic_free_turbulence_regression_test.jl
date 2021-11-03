@@ -60,8 +60,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface, arc
 
     simulation = Simulation(model,
                             Δt = Δt,
-                            stop_iteration = stop_iteration,
-                            iteration_interval = 10)
+                            stop_iteration = stop_iteration)
 
     η = model.free_surface.η
 
