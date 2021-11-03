@@ -47,46 +47,44 @@ function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwar
         field_bcs.top,
     ]
 
+    ## REMEMBER! NEW DATA HAS TO BE GENERATED FOR THE OCEAN AND HYDROSTATIC REGRESSION WITH THE REORDERING OF BC
+
     # perm = sortperm(field_bcs_array_left, lt=fill_first)
     # fill_halos! = fill_halos![perm]
     # field_bcs_array_left  = field_bcs_array_left[perm]
     # field_bcs_array_right = field_bcs_array_right[perm]
-#    
+    
     for task = 1:3
        fill_halo! = fill_halos![task]
        bc_left    = field_bcs_array_left[task]
        bc_right   = field_bcs_array_right[task]
        events     = fill_halo!(c, bc_left, bc_right, arch, barrier, grid, args...; kwargs...)
        
-       if eltype(events) <: Nothing
-            events = (NoneEvent(), NoneEvent())
-       end
-
-       wait(device(arch), MultiEvent(events))
+       wait(device(arch), events)
     end
 
-    return NoneEvent()
+    return nothing
 end
 
 # Fallbacks split into two calls
 function fill_west_and_east_halo!(c, west_bc, east_bc, args...; kwargs...)
      west_event = fill_west_halo!(c, west_bc, args...; kwargs...)
      east_event = fill_east_halo!(c, east_bc, args...; kwargs...)
-    multi_event = (west_event, east_event)
+    multi_event = MultiEvent((west_event, east_event))
     return multi_event
 end
 
 function fill_south_and_north_halo!(c, south_bc, north_bc, args...; kwargs...)
     south_event = fill_south_halo!(c, south_bc, args...; kwargs...)
     north_event = fill_north_halo!(c, north_bc, args...; kwargs...)
-    multi_event = (south_event, north_event)
+    multi_event = MultiEvent((south_event, north_event))
     return multi_event
 end
 
 function fill_bottom_and_top_halo!(c, bottom_bc, top_bc, args...; kwargs...)
     bottom_event = fill_bottom_halo!(c, bottom_bc, args...; kwargs...)
        top_event = fill_top_halo!(c, top_bc, args...; kwargs...)
-     multi_event = (bottom_event, top_event)
+     multi_event = MultiEvent((bottom_event, top_event))
     return multi_event
 end
 

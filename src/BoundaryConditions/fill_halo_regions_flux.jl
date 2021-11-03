@@ -55,13 +55,13 @@ end
 end
 
 fill_west_and_east_halo!(c, west_bc::FBC, east_bc::FBC, arch, dep, grid, args...; kwargs...) =
-    (NoneEvent(), launch!(arch, grid, :yz, fill_flux_west_and_east_halo!, c, grid; dependencies=dep, kwargs...))
+    launch!(arch, grid, :yz, fill_flux_west_and_east_halo!, c, grid; dependencies=dep, kwargs...)
 
 fill_south_and_north_halo!(c, south_bc::FBC, north_bc::FBC, arch, dep, grid, args...; kwargs...) =
-    (NoneEvent(), launch!(arch, grid, :xz, fill_flux_south_and_north_halo!, c, grid; dependencies=dep, kwargs...))
+    launch!(arch, grid, :xz, fill_flux_south_and_north_halo!, c, grid; dependencies=dep, kwargs...)
 
 fill_bottom_and_top_halo!(c, bottom_bc::FBC, top_bc::FBC, arch, dep, grid, args...; kwargs...) =
-    (NoneEvent(), launch!(arch, grid, :xy, fill_flux_bottom_and_top_halo!, c, grid; dependencies=dep, kwargs...))
+    launch!(arch, grid, :xy, fill_flux_bottom_and_top_halo!, c, grid; dependencies=dep, kwargs...)
 
 #####
 ##### Single halo filling functions
