@@ -1,6 +1,11 @@
-using KernelAbstractions: @kernel, @index, Event
 using CUDA
+using Test
 using Printf
+using Statistics
+
+using KernelAbstractions: @kernel, @index, Event
+
+using Oceananigans
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
 
 import Oceananigans.Fields: interior
