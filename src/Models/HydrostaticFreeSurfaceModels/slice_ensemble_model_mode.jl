@@ -92,8 +92,7 @@ function FFTImplicitFreeSurfaceSolver(arch, grid::YZSliceGrid, settings)
                                                size = sz,
                                                halo = (grid.Hy, grid.Nz),
                                                y = y_domain(grid),
-                                               z = z_domain(grid),
-                                               domain...)
+                                               z = z_domain(grid))
 
     solver = FFTBasedPoissonSolver(arch, horizontal_grid)
     right_hand_side = solver.storage
