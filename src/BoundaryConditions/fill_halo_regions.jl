@@ -66,24 +66,28 @@ function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwar
     return nothing
 end
 
+# Hacky way to get rid of "Nothing" events
+@inline validate_event(event)        = NoneEvent()
+@inline validate_event(event::Event) = event
+
 # Fallbacks split into two calls
 function fill_west_and_east_halo!(c, west_bc, east_bc, args...; kwargs...)
-     west_event = fill_west_halo!(c, west_bc, args...; kwargs...)
-     east_event = fill_east_halo!(c, east_bc, args...; kwargs...)
+     west_event = validate_event(fill_west_halo!(c, west_bc, args...; kwargs...))
+     east_event = validate_event(fill_east_halo!(c, east_bc, args...; kwargs...))
     multi_event = MultiEvent((west_event, east_event))
     return multi_event
 end
 
 function fill_south_and_north_halo!(c, south_bc, north_bc, args...; kwargs...)
-    south_event = fill_south_halo!(c, south_bc, args...; kwargs...)
-    north_event = fill_north_halo!(c, north_bc, args...; kwargs...)
+    south_event = validate_event(fill_south_halo!(c, south_bc, args...; kwargs...))
+    north_event = validate_event(fill_north_halo!(c, north_bc, args...; kwargs...))
     multi_event = MultiEvent((south_event, north_event))
     return multi_event
 end
 
 function fill_bottom_and_top_halo!(c, bottom_bc, top_bc, args...; kwargs...)
-    bottom_event = fill_bottom_halo!(c, bottom_bc, args...; kwargs...)
-       top_event = fill_top_halo!(c, top_bc, args...; kwargs...)
+    bottom_event = validate_event(fill_bottom_halo!(c, bottom_bc, args...; kwargs...))
+       top_event = validate_event(fill_top_halo!(c, top_bc, args...; kwargs...))
      multi_event = MultiEvent((bottom_event, top_event))
     return multi_event
 end
