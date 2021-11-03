@@ -24,7 +24,8 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
     CUDA.@allowscalar model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
-    regression_data_filepath = joinpath(dirname(@__FILE__), "data", "thermal_bubble_regression.nc")
+    mystring = "regression_test_data/thermal_bubble_regression.nc"
+    regression_data_filepath = @datadep_str mystring
 
     ####
     #### Uncomment the block below to generate regression data.

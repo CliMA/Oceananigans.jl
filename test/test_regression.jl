@@ -45,7 +45,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
 @testset "Regression" begin
     @info "Running regression tests..."
 
-    for arch in [CPU()]
+    for arch in archs
         for grid_type in [:regular, :vertically_unstretched]
             @testset "Thermal bubble [$(typeof(arch)), $grid_type grid]" begin
                 @info "  Testing thermal bubble regression [$(typeof(arch)), $grid_type grid]"
@@ -94,7 +94,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
 
                     @testset "Hydrostatic free turbulence regression [$(typeof(arch)), $(topology(grid, 1)) longitude, $free_surface_str]" begin
                         @info "  Testing Hydrostatic free turbulence [$(typeof(arch)), $(topology(grid, 1)) longitude, $free_surface_str]"
-                        run_hydrostatic_free_turbulence_regression_test(grid, free_surface, arch, regenerate_data=true)
+                        run_hydrostatic_free_turbulence_regression_test(grid, free_surface, arch)
                     end
                 end
             end

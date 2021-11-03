@@ -93,7 +93,8 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface, arc
         η = Array(interior(η))
     )
 
-    regression_data_path = joinpath(dirname(@__FILE__), "data", output_prefix * ".jld2")
+    mystring = "regression_test_data/" * output_prefix * ".jld2"
+    regression_data_path = @datadep_str mystring
     file = jldopen(regression_data_path)
 
     truth_fields = (
