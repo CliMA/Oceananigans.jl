@@ -84,7 +84,7 @@ function FFTImplicitFreeSurfaceSolver(arch, grid::YZSliceGrid, settings)
     # Construct a "horizontal grid". We support either x or y being Flat, but not both.
     TY = topology(grid, 2)
 
-    sz = grid.Nx == 0 ? grid.Ny : SliceEnsembleSize(size=(grid.Ny, 1), ensemble=grid.Nx, halo=(grid.Hy, 0))
+    sz = SliceEnsembleSize(size=(grid.Ny, 1), ensemble=grid.Nx, halo=(grid.Hy, 0))
 
     horizontal_grid = RegularRectilinearGrid(; topology = (Flat, TY, Flat),
                                                size = sz,
