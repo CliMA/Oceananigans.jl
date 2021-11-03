@@ -1,4 +1,4 @@
-using Oceananigans.Grids: Flat, Bounded
+using Oceananigans.Grids: Flat, Bounded, y_domain, z_domain
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: _top_tke_flux, CATKEVDArray
 
@@ -87,7 +87,6 @@ function FFTImplicitFreeSurfaceSolver(arch, grid::YZSliceGrid, settings)
     sz = grid.Nx == 0 ?
         (grid.Ny, grid.Nz) :
         SliceEnsembleSize(size=(grid.Ny, grid.Nz), ensemble=grid.Nx, halo=(grid.Hy, grid.Hz))
-        
 
     horizontal_grid = RegularRectilinearGrid(; topology = (Flat, TY, Flat),
                                                size = ensemble_size,
