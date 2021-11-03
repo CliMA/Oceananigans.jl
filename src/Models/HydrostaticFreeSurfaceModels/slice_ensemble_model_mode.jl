@@ -84,15 +84,12 @@ function FFTImplicitFreeSurfaceSolver(arch, grid::YZSliceGrid, settings)
     # Construct a "horizontal grid". We support either x or y being Flat, but not both.
     TY = topology(grid, 2)
 
-    sz = grid.Nx == 0 ?
-        (grid.Ny, grid.Nz) :
-        SliceEnsembleSize(size=(grid.Ny, grid.Nz), ensemble=grid.Nx, halo=(grid.Hy, grid.Hz))
+    sz = grid.Nx == 0 ? grid.Ny : SliceEnsembleSize(size=(grid.Ny, 0), ensemble=grid.Nx, halo=(grid.Hy, 0))
 
     horizontal_grid = RegularRectilinearGrid(; topology = (Flat, TY, Flat),
                                                size = sz,
-                                               halo = (grid.Hy, grid.Nz),
-                                               y = y_domain(grid),
-                                               z = z_domain(grid))
+                                               halo = grid.Hy,
+                                               y = y_domain(grid))
 
     solver = FFTBasedPoissonSolver(arch, horizontal_grid)
     right_hand_side = solver.storage
