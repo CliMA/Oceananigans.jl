@@ -88,7 +88,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
 
                 # GPU + ExplicitFreeSurface is broken. See:
                 # https://github.com/CliMA/Oceananigans.jl/pull/1985
-                if !(arch isa GPU && topology(grid, 1) isa Periodic && free_surface isa ExplicitFreeSurface)
+                if !(arch isa GPU && topology(grid, 1) === Periodic && free_surface isa ExplicitFreeSurface)
                                                                                     
                     free_surface_str = string(typeof(free_surface).name.wrapper)
 
