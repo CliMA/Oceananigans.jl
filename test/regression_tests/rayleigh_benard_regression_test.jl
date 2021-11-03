@@ -119,6 +119,8 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     # Step the model forward and perform the regression test
     update_state!(model)
 
+    model.timestepper.previous_Δt = Δt
+
     for n in 1:test_steps
         time_step!(model, Δt, euler=false)
     end

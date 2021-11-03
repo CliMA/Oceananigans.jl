@@ -2,6 +2,7 @@ using Glob
 import Oceananigans.Fields: set!
 
 using Oceananigans.Fields: offset_data
+using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
 mutable struct Checkpointer{T, P} <: AbstractOutputWriter
       schedule :: T
@@ -115,9 +116,10 @@ checkpoint_path(iteration::Int, c::Checkpointer) =
 defaultname(::Checkpointer, nelems) = :checkpointer
 
 """ Returns `filepath`. Shortcut for `run!(simulation, pickup=filepath)`. """
-checkpoint_path(filepath::AbstractString, checkpointers) = filepath
+checkpoint_path(filepath::AbstractString, output_writers) = filepath
 
-function checkpoint_path(pickup, checkpointers)
+function checkpoint_path(pickup, output_writers)
+    checkpointers = filter(writer -> writer isa Checkpointer, collect(values(output_writers)))
     length(checkpointers) == 0 && error("No checkpointers found: cannot pickup simulation!")
     length(checkpointers) > 1 && error("Multiple checkpointers found: not sure which one to pickup simulation from!")
     return checkpoint_path(pickup, first(checkpointers))
@@ -134,6 +136,8 @@ function checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
     filepaths = glob(checkpoint_superprefix(checkpointer.prefix) * "*.jld2", checkpointer.dir)
 
     if length(filepaths) == 0 # no checkpoint files found
+        # https://github.com/CliMA/Oceananigans.jl/issues/1159
+        @warn "pickup=true but no checkpoints were found. Simulation will run without picking up."
         return nothing
     else
         return latest_checkpoint(checkpointer, filepaths)
@@ -143,7 +147,7 @@ end
 function latest_checkpoint(checkpointer, filepaths)
     filenames = basename.(filepaths)
     leading = length(checkpoint_superprefix(checkpointer.prefix))
-    trailing = 5 # length(".jld2")
+    trailing = length(".jld2") # 5
     iterations = map(name -> parse(Int, name[leading+1:end-trailing]), filenames)
     latest_iteration, idx = findmax(iterations)
     return filepaths[idx]
@@ -182,6 +186,8 @@ end
 ##### set! for checkpointer filepaths
 #####
 
+set!(model, ::Nothing) = nothing
+
 """
     set!(model, filepath::AbstractString)
 
@@ -194,6 +200,7 @@ function set!(model, filepath::AbstractString)
 
         # Validate the grid
         checkpointed_grid = file["grid"]
+
         model.grid == checkpointed_grid ||
             error("The grid associated with $filepath and model.grid are not the same!")
 
@@ -208,23 +215,11 @@ function set!(model, filepath::AbstractString)
             model_field = model_fields[name]
             copyto!(model_field.data.parent, parent_data)
 
-            # Load tendency data
-            #
-            # Note: this step is unecessary for models that use RungeKutta3TimeStepper and
-            # tendency restoration could be depcrecated in the future.
-
-            # Tendency "n"
-            parent_data = file["timestepper/Gⁿ/$name/data"]
-
-            tendencyⁿ_field = model.timestepper.Gⁿ[name]
-            copyto!(tendencyⁿ_field.data.parent, parent_data)
-
-            # Tendency "n-1"
-            parent_data = file["timestepper/G⁻/$name/data"]
-
-            tendency⁻_field = model.timestepper.G⁻[name]
-            copyto!(tendency⁻_field.data.parent, parent_data)
+            # Restore timestepper tendencies and other metadata
+            # Note: this step is unecessary for models that use RungeKutta3TimeStepper.
         end
+
+        set_time_stepper!(model.timestepper, file, model_fields)
 
         if !isnothing(model.particles)
             copyto!(model.particles.properties, file["particles"])
@@ -235,9 +230,35 @@ function set!(model, filepath::AbstractString)
         # Update model clock
         model.clock.iteration = checkpointed_clock.iteration
         model.clock.time = checkpointed_clock.time
-
     end
 
     return nothing
 end
 
+function set_time_stepper_tendencies!(timestepper, file, model_fields)
+    for name in propertynames(model_fields)
+        # Tendency "n"
+        parent_data = file["timestepper/Gⁿ/$name/data"]
+
+        tendencyⁿ_field = timestepper.Gⁿ[name]
+        copyto!(tendencyⁿ_field.data.parent, parent_data)
+
+        # Tendency "n-1"
+        parent_data = file["timestepper/G⁻/$name/data"]
+
+        tendency⁻_field = timestepper.G⁻[name]
+        copyto!(tendency⁻_field.data.parent, parent_data)
+    end
+
+    return nothing
+end
+
+set_time_stepper!(timestepper::RungeKutta3TimeStepper, file, model_fields) =
+    set_time_stepper_tendencies!(timestepper, file, model_fields)
+
+function set_time_stepper!(timestepper::QuasiAdamsBashforth2TimeStepper, file, model_fields)
+    set_time_stepper_tendencies!(timestepper, file, model_fields)
+    timestepper.previous_Δt = file["timestepper/previous_Δt"]
+    return nothing
+end
+            

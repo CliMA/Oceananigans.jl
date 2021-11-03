@@ -1,83 +1,11 @@
-using Test
-using Printf
-using Random
-using Statistics
-using LinearAlgebra
-using Logging
-
-using CUDA
-using MPI
-using JLD2
-using FFTW
-using OffsetArrays
-using SeawaterPolynomials
-
-using Oceananigans
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Operators
-using Oceananigans.Advection
-using Oceananigans.BoundaryConditions
-using Oceananigans.Fields
-using Oceananigans.Coriolis
-using Oceananigans.BuoyancyModels
-using Oceananigans.Forcings
-using Oceananigans.Solvers
-using Oceananigans.Models
-using Oceananigans.Simulations
-using Oceananigans.Diagnostics
-using Oceananigans.OutputWriters
-using Oceananigans.TurbulenceClosures
-using Oceananigans.AbstractOperations
-using Oceananigans.Distributed
-using Oceananigans.Logger
-using Oceananigans.Units
-using Oceananigans.Utils
-using Oceananigans.Architectures: device # to resolve conflict with CUDA.device
-
-using Dates: DateTime, Nanosecond
-using TimesDates: TimeDate
-using Statistics: mean
-using LinearAlgebra: norm
-using NCDatasets: Dataset
 using KernelAbstractions: @kernel, @index, Event
-
+using CUDA
+using Printf
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
 
 import Oceananigans.Fields: interior
-import Oceananigans.Utils: launch!, datatuple
 
-Logging.global_logger(OceananigansLogger())
-
-#####
-##### Testing parameters
-#####
-
-float_types = (Float32, Float64)
-
-archs = CUDA.has_cuda() ? (GPU(),) : (CPU(),)
-
-closures = (
-    :IsotropicDiffusivity,
-    :AnisotropicDiffusivity,
-    :AnisotropicBiharmonicDiffusivity,
-    :TwoDimensionalLeith,
-    :SmagorinskyLilly,
-    :AnisotropicMinimumDissipation,
-    :HorizontallyCurvilinearAnisotropicDiffusivity,
-    :HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity,
-    :ConvectiveAdjustmentVerticalDiffusivity
-)
-
-#####
-##### Run tests!
-#####
-
-CUDA.allowscalar(true)
-
-include("data_dependencies.jl")
-
-group = get(ENV, "TEST_GROUP", :all) |> Symbol
+test_architectures() = CUDA.has_cuda() ? tuple(GPU()) : tuple(CPU())
 
 function summarize_regression_test(fields, correct_fields)
     for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
@@ -114,13 +42,9 @@ end
 function compute_∇²!(∇²ϕ, ϕ, arch, grid)
     fill_halo_regions!(ϕ, arch)
     child_arch = child_architecture(arch)
-
     event = launch!(child_arch, grid, :xyz, ∇²!, ∇²ϕ, grid, ϕ, dependencies=Event(device(child_arch)))
-
     wait(device(child_arch), event)
-
     fill_halo_regions!(∇²ϕ, arch)
-
     return nothing
 end
 
