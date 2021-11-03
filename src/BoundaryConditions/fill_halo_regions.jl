@@ -5,7 +5,8 @@ using Oceananigans.Architectures: device_event
 ##### General halo filling functions
 #####
 
-fill_halo_regions!(::Nothing, args...) = []
+fill_halo_regions!(::Nothing, args...) = nothing
+
 """
     fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)
 
@@ -22,7 +23,7 @@ function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)
 end
 
 # Some fields have `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
-fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = NoneEvent()
+fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
 "Fill halo regions in x, y, and z for a given field's data."
 function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwargs...)
