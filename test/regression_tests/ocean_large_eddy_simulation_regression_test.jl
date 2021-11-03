@@ -73,8 +73,8 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     #### Regression test
     ####
 
-    mystring = "regression_test_data/" * name * "_iteration$spinup_steps.jld2"
-    initial_filename = @datadep_str mystring
+    datadep_path = "regression_test_data/" * name * "_iteration$spinup_steps.jld2"
+    initial_filename = @datadep_str datadep_path
 
     solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
 
@@ -107,8 +107,8 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
         time_step!(model, Δt, euler=false)
     end
 
-    mystring = "regression_test_data/" * name * "_iteration$(spinup_steps+test_steps).jld2"
-    final_filename = @datadep_str mystring
+    datadep_path = "regression_test_data/" * name * "_iteration$(spinup_steps+test_steps).jld2"
+    final_filename = @datadep_str datadep_path
 
     solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
 
