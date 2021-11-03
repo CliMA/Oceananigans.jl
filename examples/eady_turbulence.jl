@@ -242,7 +242,7 @@ nothing # hide
 ## background velocity.
 Ū = basic_state_parameters.α * grid.Lz
 
-max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z, 1/basic_state_parameters.N)
+max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z, 1 / basic_state_parameters.N)
 
 simulation = Simulation(model, Δt = max_Δt, stop_time = 8days)
 
@@ -262,8 +262,6 @@ simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 #
 # We add a callback that prints out a helpful progress message while the simulation runs.
 
-CFL = AdvectiveCFL(wizard)
-
 start_time = time_ns()
 
 progress(sim) = @printf("i: % 6d, sim time: % 10s, wall time: % 10s, Δt: % 10s, CFL: %.2e\n",
@@ -271,7 +269,7 @@ progress(sim) = @printf("i: % 6d, sim time: % 10s, wall time: % 10s, Δt: % 10s,
                         prettytime(sim.model.clock.time),
                         prettytime(1e-9 * (time_ns() - start_time)),
                         prettytime(sim.Δt),
-                        CFL(sim.model))
+                        AdvectiveCFL(sim.Δt)(sim.model))
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
