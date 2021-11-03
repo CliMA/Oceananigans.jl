@@ -185,7 +185,7 @@ Base.fill!(f::AbstractDataField, val) = fill!(parent(f), val)
 #####
 
 # Don't use axes(f) to checkbounds; use axes(f.data)
-Base.checkbounds(f::AbstractField, I...) = Base.checkbounds(f.data, I...)
+Base.checkbounds(f::AbstractDataField, I...) = Base.checkbounds(f.data, I...)
 
 @propagate_inbounds Base.getindex(f::AbstractDataField, inds...) = getindex(f.data, inds...)
 
