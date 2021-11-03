@@ -64,7 +64,24 @@ using Oceananigans.Grids: Flat
 @inline Azᶜᶠᵃ(i, j, k, grid::ARG) = Δxᶜᵃᵃ(i, j, k, grid) * Δyᵃᶠᵃ(i, j, k, grid)
 @inline Azᶠᶜᵃ(i, j, k, grid::ARG) = Δxᶠᵃᵃ(i, j, k, grid) * Δyᵃᶜᵃ(i, j, k, grid)
 
-@inline Azᵃᵃᵃ(i, j, k, grid) = Azᶜᶜᵃ(i, j, k, grid) ## NOT GENERALLY TRUE, REMEMBER TO DELETE Azᵃᵃᵃ!
+#####
+##### Areas for horizontally-regular grids
+#####
+
+@inline Axᵃᵃᶜ(i, j, k, grid::HRegRectilinearGrid) = Δyᵃᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Axᵃᵃᶠ(i, j, k, grid::HRegRectilinearGrid) = Δyᵃᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
+
+@inline Ayᵃᵃᶜ(i, j, k, grid::HRegRectilinearGrid) = Δxᶜᵃᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Ayᵃᵃᶠ(i, j, k, grid::HRegRectilinearGrid) = Δxᶜᵃᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
+
+@inline Azᵃᵃᵃ(i, j, k, grid::HRegRectilinearGrid) = Δxᶜᵃᵃ(i, j, k, grid) * Δyᵃᶜᵃ(i, j, k, grid)
+
+#####
+##### Volumes for horizontally-regular algorithms
+#####
+
+@inline Vᵃᵃᶜ(i, j, k, grid::HRegRectilinearGrid) = Azᵃᵃᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Vᵃᵃᶠ(i, j, k, grid::HRegRectilinearGrid) = Azᵃᵃᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
 
 #####
 ##### Areas for three-dimensionally curvilinear algorithms

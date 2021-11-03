@@ -105,7 +105,7 @@ function can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz
     c = rand(Nz-1)
 
     @inline b(i, j, k, grid) = 3 + grid.xᶜᵃᵃ[i] * grid.yᵃᶜᵃ[j] * cos(2π * grid.zᵃᵃᶜ[k])
-    @inline f(i, j, k, grid) = (grid.xᶜᵃᵃ[i] + grid.yCᵃᶜᵃ[j]) * sin(2π * grid.zᵃᵃᶜ[k])
+    @inline f(i, j, k, grid) = (grid.xᶜᵃᵃ[i] + grid.yᵃᶜᵃ[j]) * sin(2π * grid.zᵃᵃᶜ[k])
 
     ϕ_correct = zeros(Nx, Ny, Nz)
 
