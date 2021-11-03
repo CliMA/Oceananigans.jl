@@ -90,13 +90,13 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
                 # https://github.com/CliMA/Oceananigans.jl/pull/1985
                 # if !(arch isa GPU && topology(grid, 1) === Periodic && free_surface isa ExplicitFreeSurface)
                                                                                     
-                    free_surface_str = string(typeof(free_surface).name.wrapper)
+                free_surface_str = string(typeof(free_surface).name.wrapper)
 
-                    @testset "Hydrostatic free turbulence regression [$(typeof(arch)), $(topology(grid, 1)) longitude, $free_surface_str]" begin
-                        @info "  Testing Hydrostatic free turbulence [$(typeof(arch)), $(topology(grid, 1)) longitude, $free_surface_str]"
-                        run_hydrostatic_free_turbulence_regression_test(grid, free_surface, arch)
-                    end
+                @testset "Hydrostatic free turbulence regression [$(typeof(arch)), $(topology(grid, 1)) longitude, $free_surface_str]" begin
+                    @info "  Testing Hydrostatic free turbulence [$(typeof(arch)), $(topology(grid, 1)) longitude, $free_surface_str]"
+                    run_hydrostatic_free_turbulence_regression_test(grid, free_surface, arch)
                 end
+            
             end
 	    end   
 	end
