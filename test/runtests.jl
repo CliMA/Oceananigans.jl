@@ -51,8 +51,6 @@ Logging.global_logger(OceananigansLogger())
 ##### Testing parameters
 #####
 
-float_types = (Float32, Float64)
-
 closures = (
     :IsotropicDiffusivity,
     :AnisotropicDiffusivity,

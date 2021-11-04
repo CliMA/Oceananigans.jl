@@ -1,11 +1,15 @@
+using Oceananigans
 using KernelAbstractions: @kernel, @index, Event
 using CUDA
 using Printf
+using Test
+
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
 
 import Oceananigans.Fields: interior
 
 test_architectures() = CUDA.has_cuda() ? tuple(GPU()) : tuple(CPU())
+float_types = (Float32, Float64)
 
 function summarize_regression_test(fields, correct_fields)
     for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)

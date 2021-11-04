@@ -1,7 +1,11 @@
 using Statistics
-
-using Oceananigans.Fields: CenterField, ZFaceField, compute_at!
+using Oceananigans.Fields: CenterField, ZFaceField, compute_at!, @compute
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Grids: halo_size
+
+include("utils_for_runtests.jl")
+
+archs = test_architectures()
 
 @testset "Averaged fields" begin
     @info "Testing averaged fields..."
@@ -12,8 +16,10 @@ using Oceananigans.Grids: halo_size
             for FT in float_types
 
                 grid = RegularRectilinearGrid(topology = (Periodic, Periodic, Bounded),
-                                                size = (2, 2, 2),
-                                                   x = (0, 2), y = (0, 2), z = (0, 2))
+                                              size = (2, 2, 2),
+                                              x = (0, 2),
+                                              y = (0, 2),
+                                              z = (0, 2))
 
                 w = ZFaceField(arch, grid)
                 T = CenterField(arch, grid)
@@ -23,36 +29,38 @@ using Oceananigans.Grids: halo_size
                 set!(T, trilinear)
                 set!(w, trilinear)
 
-                @compute T̃ = AveragedField(T, dims=(1, 2, 3))
+                @compute Txyz = AveragedField(T, dims=(1, 2, 3))
 
                 # Note: halo regions must be *filled* prior to computing an average
                 # if the average within halo regions is to be correct.
                 fill_halo_regions!(T, arch)
-                @compute T̅ = AveragedField(T, dims=(1, 2))
+                @compute Txy = AveragedField(T, dims=(1, 2))
 
                 fill_halo_regions!(T, arch)
-                @compute T̂ = AveragedField(T, dims=1)
+                @compute Tx = AveragedField(T, dims=1)
 
-                @compute w̃ = AveragedField(w, dims=(1, 2, 3))
-                @compute w̅ = AveragedField(w, dims=(1, 2))
-                @compute ŵ = AveragedField(w, dims=1)
+                @compute wxyz = AveragedField(w, dims=(1, 2, 3))
+                @compute wxy = AveragedField(w, dims=(1, 2))
+                @compute wx = AveragedField(w, dims=1)
 
                 Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
-                @test T̃[1, 1, 1] ≈ 3
+                @test Txyz[1, 1, 1] ≈ 3
 
-                @test Array(interior(T̅))[1, 1, :] ≈ [2.5, 3.5]
-                @test Array(interior(T̂))[1, :, :] ≈ [[2, 3] [3, 4]]
+                @test Array(interior(Txy))[1, 1, :] ≈ [2.5, 3.5]
+                @test Array(interior(Tx))[1, :, :] ≈ [[2, 3] [3, 4]]
 
-                @test w̃[1, 1, 1] ≈ 3
+                @test wxyz[1, 1, 1] ≈ 3
 
-                @test Array(interior(w̅))[1, 1, :] ≈ [2, 3, 4]
-                @test Array(interior(ŵ))[1, :, :] ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
+                @test Array(interior(wxy))[1, 1, :] ≈ [2, 3, 4]
+                @test Array(interior(wx))[1, :, :] ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
                 
                 # Test whether a race condition gets hit for averages over large fields
                 big_grid = RegularRectilinearGrid(topology = (Periodic, Periodic, Bounded),
                                                   size = (256, 256, 128),
-                                                     x = (0, 2), y = (0, 2), z = (0, 2))
+                                                  x = (0, 2),
+                                                  y = (0, 2),
+                                                  z = (0, 2))
 
                 c = CenterField(arch, big_grid)
                 c .= 1
