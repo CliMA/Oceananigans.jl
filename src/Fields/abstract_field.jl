@@ -228,5 +228,16 @@ nodes(ψ::AbstractField; kwargs...) = nodes(location(ψ), ψ.grid; kwargs...)
 ##### fill_halo_regions!
 #####
 
-fill_halo_regions!(field::AbstractDataField, arch, args...) = fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...)
+fill_halo_regions!(field::AbstractDataField, arch, args...) =
+    fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...)
 
+#####
+##### Some conveniences
+#####
+
+for f in (:+, :-)
+    @eval Base.$f(ϕ::AbstractArray, ψ::AbstractDataField) = $f(ϕ, interior(ψ))
+    @eval Base.$f(ϕ::AbstractDataField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
+end
+
+Base.isapprox(ϕ::AbstractDataField, ψ::AbstractDataField) = isapprox(interior(ϕ), interior(ψ))
