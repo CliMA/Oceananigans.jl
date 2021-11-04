@@ -76,6 +76,7 @@ const CoriolisArray = AbstractArray{<:AbstractRotation}
 @inline y_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisArray, U) = @inbounds y_f_cross_U(i, j, k, grid, coriolis[i], U)
 @inline z_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisArray, U) = @inbounds z_f_cross_U(i, j, k, grid, coriolis[i], U)
 
+#=
 function FFTImplicitFreeSurfaceSolver(arch, grid::YZSliceGrid, settings)
 
     grid isa RegularRectilinearGrid || grid isa VerticallyStretchedRectilinearGrid ||
@@ -96,5 +97,5 @@ function FFTImplicitFreeSurfaceSolver(arch, grid::YZSliceGrid, settings)
 
     return FFTImplicitFreeSurfaceSolver(solver, grid, horizontal_grid, right_hand_side)
 end
-
+=#
 
