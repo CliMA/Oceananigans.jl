@@ -5,7 +5,7 @@ using Oceananigans.Architectures
 
 # TODO: Potentially Change Structs before final PR
 # e.g. flatten the struct, 
-# forcing -> source / barotropic_source, 
+# auxiliary -> source / barotropic_source, 
 # parameters -> gravitational_accceleration
 # settings -> flattened_settings
 
@@ -19,7 +19,7 @@ settings : (SplitExplicitSettings). Settings for the split-explicit scheme
 """
 @Base.kwdef struct SplitExplicitFreeSurface{𝒮, ℱ, 𝒫, ℰ}
     state :: 𝒮
-    forcing :: ℱ
+    auxiliary :: ℱ
     parameters :: 𝒫
     settings :: ℰ
 end 
@@ -30,11 +30,11 @@ function SplitExplicitFreeSurface()
 end
 
 # automatically construct default
-function SplitExplicitFreeSurface(grid::AbstractGrid, arch::AbstractArchitecture)
+function SplitExplicitFreeSurface(grid::AbstractGrid, arch::AbstractArchitecture; substeps = 200)
     return SplitExplicitFreeSurface(state = SplitExplicitState(grid, arch), 
-                                    forcing = SplitExplicitForcing(grid, arch),
+                                    auxiliary = SplitExplicitAuxiliary(grid, arch),
                                     parameters = (; g = g_Earth), 
-                                    settings = SplitExplicitSettings(),)
+                                    settings = SplitExplicitSettings(substeps),)
 end
 
 # Extend to replicate functionality: TODO delete?
@@ -42,9 +42,12 @@ function Base.getproperty(free_surface::SplitExplicitFreeSurface, sym::Symbol)
     if sym in fieldnames(SplitExplicitState)
         @assert free_surface.state isa SplitExplicitState
         return getfield(free_surface.state, sym)
-    elseif sym in fieldnames(SplitExplicitForcing)
-        @assert free_surface.forcing isa SplitExplicitForcing
-        return getfield(free_surface.forcing, sym)
+    elseif sym in fieldnames(SplitExplicitAuxiliary)
+        @assert free_surface.auxiliary isa SplitExplicitAuxiliary
+        return getfield(free_surface.auxiliary, sym)
+    elseif sym in fieldnames(SplitExplicitSettings)
+        @assert free_surface.settings isa SplitExplicitSettings
+        return getfield(free_surface.settings, sym)
     else
         return getfield(free_surface, sym)
     end
@@ -87,23 +90,34 @@ end
 # TODO: CHANGE TO SOURCE?
 
 """
-SplitExplicitForcing{𝒞ℱ, ℱ𝒞}
+SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞}
 
 # Members
 `Gᵁ` : (ReducedField). Vertically integrated slow barotropic forcing function for U
 `Gⱽ` : (ReducedField). Vertically integrated slow barotropic forcing function for V
+`Hᶠᶜ`: (ReducedField). Depth at (Face, Center)
+`Hᶜᶠ`: (ReducedField). Depth at (Center, Face)
+`Hᶜᶜ`: (ReducedField). Depth at (Center, Center)
 """
-@Base.kwdef struct SplitExplicitForcing{𝒞ℱ, ℱ𝒞}
-    Gᵁ :: 𝒞ℱ
-    Gⱽ :: ℱ𝒞
+@Base.kwdef struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞}
+    Gᵁ :: ℱ𝒞
+    Gⱽ :: 𝒞ℱ
+    Hᶠᶜ:: ℱ𝒞
+    Hᶜᶠ:: 𝒞ℱ
+    Hᶜᶜ:: 𝒞𝒞
 end
 
-function SplitExplicitForcing(grid::AbstractGrid, arch::AbstractArchitecture)
+function SplitExplicitAuxiliary(grid::AbstractGrid, arch::AbstractArchitecture)
 
     Gᵁ = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
     Gⱽ = ReducedField(Center, Face, Nothing, arch, grid; dims=3)
 
-    return SplitExplicitForcing(; Gᵁ, Gⱽ)
+    Hᶠᶜ = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
+    Hᶜᶠ = ReducedField(Center, Face, Nothing, arch, grid; dims=3)
+
+    Hᶜᶜ = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
+
+    return SplitExplicitAuxiliary(; Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ)
 end
 
 """
@@ -111,8 +125,8 @@ SplitExplicitSettings{𝒩, ℳ}
 
 # Members
 substeps: (Int)
-velocity_weights :: (Vector) 
-free_surface_weights :: (Vector)
+velocity_weights : (Vector) 
+free_surface_weights : (Vector)
 """
 @Base.kwdef struct SplitExplicitSettings{𝒩, ℳ}
     substeps :: 𝒩
@@ -123,6 +137,18 @@ end
 # TODO: figure out and add smart defaults here. Also make GPU-friendly (dispatch on arch?)
 function SplitExplicitSettings()
     substeps = 200 # since free-surface is "substep" times faster than baroclinic part
+    velocity_weights = ones(substeps) ./ substeps
+    free_surface_weights = ones(substeps) ./ substeps
+
+    return SplitExplicitSettings(substeps = substeps,
+                                 velocity_weights = velocity_weights,
+                                 free_surface_weights = free_surface_weights)
+end
+
+"""
+SplitExplicitSettings(substeps)
+"""
+function SplitExplicitSettings(substeps)
     velocity_weights = ones(substeps) ./ substeps
     free_surface_weights = ones(substeps) ./ substeps
 
