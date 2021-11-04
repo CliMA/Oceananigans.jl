@@ -65,16 +65,17 @@ function naive_barotropic_mode!(arch, grid, ϕ̅, ϕ, Δz, Nk)
     wait(event)        
 end
 
-@kernel function barotropic_corrector_kernel!(u, v, U̅, V̅, U, V, H)
+@kernel function barotropic_corrector_kernel!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
     i, j, k = @index(Global, NTuple)
-    u[i,j,k] = u[i,j,k] + (-U[i,j] + U̅[i,j] )/ H[i,j]
-    v[i,j,k] = v[i,j,k] + (-V[i,j] + V̅[i,j] )/ H[i,j]
+    u[i,j,k] = u[i,j,k] + (-U[i,j] + U̅[i,j] )/ Hᶠᶜ[i,j]
+    v[i,j,k] = v[i,j,k] + (-V[i,j] + V̅[i,j] )/ Hᶜᶠ[i,j]
 end
 
 # may need to do Val(Nk) since it may not be known at compile. Also figure out where to put H
-function barotropic_corrector!(arch, grid, free_surface_state, u, v, H, Δz, Nk)
+function barotropic_corrector!(arch, grid, free_surface_state, u, v, Δz, Nk)
     sefs = free_surface_state
     U, V, U̅, V̅ = sefs.U, sefs.V, sefs.U̅, sefs.V̅
+    Hᶠᶜ, Hᶜᶠ = sefs.Hᶠᶜ, sefs.Hᶜᶠ
     # take out "bad" barotropic mode, 
     # !!!! reusing U and V for this storage since last timestep doesn't matter
     naive_barotropic_mode!(arch, grid, U, u, Δz, Nk)
@@ -82,7 +83,7 @@ function barotropic_corrector!(arch, grid, free_surface_state, u, v, H, Δz, Nk)
     # add in "good" barotropic mode
     
     event = launch!(arch, grid, :xyz, barotropic_corrector_kernel!, 
-            u, v, U̅, V̅, U, V, H,
+            u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ,
             dependencies=Event(device(arch)))
     wait(event)        
     
@@ -103,7 +104,7 @@ grid = RegularRectilinearGrid(topology=topology, size=(Nx, Ny, Nz), x=(0, Lx), y
 
 tmp = SplitExplicitFreeSurface()
 sefs = SplitExplicitState(grid, arch)
-sefs = SplitExplicitForcing(grid, arch)
+sefs = SplitExplicitAuxiliary(grid, arch)
 sefs = SplitExplicitFreeSurface(grid, arch)
 
 U, V, η̅, U̅, V̅, Gᵁ, Gⱽ  = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
@@ -183,7 +184,7 @@ topology = (Periodic, Periodic, Bounded)
 grid = RegularRectilinearGrid(topology=topology, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(-Lz, 0))
 tmp = SplitExplicitFreeSurface()
 sefs = SplitExplicitState(grid, arch)
-sefs = SplitExplicitForcing(grid, arch)
+sefs = SplitExplicitAuxiliary(grid, arch)
 sefs = SplitExplicitFreeSurface(grid, arch)
 U, V, η̅, U̅, V̅, Gᵁ, Gⱽ  = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
 Δz = Oceananigans.CUDA.CuArray(Δz)
@@ -194,7 +195,7 @@ all(Array(interior(U)) .≈ interior(exact_U))
 
 naive_barotropic_mode!(arch, grid, V, Oceananigans.CUDA.CuArray(v), Δz, Nz)
 all(Array(interior(V)) .≈ interior(exact_V))
-
+##
 # Test 4: Test Barotropic Correction
 arch = Oceananigans.CPU()
 FT = Float64
@@ -208,7 +209,7 @@ grid = RegularRectilinearGrid(topology=topology, size=(Nx, Ny, Nz), x=(0, Lx), y
 
 tmp = SplitExplicitFreeSurface()
 sefs = SplitExplicitState(grid, arch)
-sefs = SplitExplicitForcing(grid, arch)
+sefs = SplitExplicitAuxiliary(grid, arch)
 sefs = SplitExplicitFreeSurface(grid, arch)
 
 U, V, η̅, U̅, V̅, Gᵁ, Gⱽ  = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
@@ -232,12 +233,13 @@ set!(v, set_v)
 set!(V̅, set_V̅)
 set!(v_corrected, set_v_corrected)
 
-H = copy(U)
-H .= Lz
+sefs.Hᶠᶜ .= Lz
+sefs.Hᶜᶠ .= Lz
+
 Δz = zeros(Nz)
 Δz .= grid.Δz
 
-barotropic_corrector!(arch, grid, sefs, u, v, H, Δz, Nz)
+barotropic_corrector!(arch, grid, sefs, u, v, Δz, Nz)
 all((u .- u_corrected) .< 1e-14)
 all((v .- v_corrected) .< 1e-14)
 #=
