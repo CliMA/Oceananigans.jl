@@ -157,8 +157,13 @@ for reduction in (:sum, :maximum, :minimum, :all, :any)
         Base.$(reduction!)(f::Function, r::AbstractReducedField, a::AbstractDataField; kwargs...) =
             Base.$(reduction!)(f, parent(r), parent(a); kwargs...)
 
-        Base.$(reduction!)(r::AbstractReducedField, a::AbstractDataField; kwargs...) =
-            Base.$(reduction!)(identity, parent(r), parent(a); kwargs...)
+        function Base.$(reduction!)(r::AbstractReducedField, a::AbstractDataField; kwargs...)
+            if size(r) === (1, 1, 1) # omit halos
+                return Base.$(reduction!)(identity, interior(r), a; kwargs...)
+            else # include halos in reduction as an optimization
+                return Base.$(reduction!)(identity, parent(r), parent(a); kwargs...)
+            end
+        end
 
         # Allocating
         function Base.$(reduction)(f::Function, c::AbstractField; dims=:)
@@ -168,7 +173,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any)
                 return CUDA.@allowscalar r[1, 1, 1]
             else
                 r = ReducedField(location(c)..., architecture(c), c.grid; dims)
-                Base.$(reduction!)(f, r, c; dims)
+                Base.$(reduction!)(f, r, c)
                 return r
             end
         end
