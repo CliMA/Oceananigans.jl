@@ -153,18 +153,6 @@ for reduction in (:sum, :maximum, :minimum, :all, :any)
         Base.$(reduction!)(r::AbstractReducedField, a::AbstractArray; kwargs...) =
             Base.$(reduction!)(identity, interior(r), a; kwargs...)
 
-        # If `a` is supported by data, reduce over the parent to leverage its contiguity
-        Base.$(reduction!)(f::Function, r::AbstractReducedField, a::AbstractDataField; kwargs...) =
-            Base.$(reduction!)(f, parent(r), parent(a); kwargs...)
-
-        function Base.$(reduction!)(r::AbstractReducedField, a::AbstractDataField; kwargs...)
-            if size(r) === (1, 1, 1) # omit halos
-                return Base.$(reduction!)(identity, interior(r), a; kwargs...)
-            else # include halos in reduction as an optimization
-                return Base.$(reduction!)(identity, parent(r), parent(a); kwargs...)
-            end
-        end
-
         # Allocating
         function Base.$(reduction)(f::Function, c::AbstractField; dims=:)
             if dims isa Colon
