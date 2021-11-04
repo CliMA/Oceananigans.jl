@@ -34,7 +34,7 @@ for arch in (CPU(), GPU())
         
         time_step!(model, 1e-6) # warmup
 
-        @info "Benchmarking model with $(short_show(grid)) on $arch..."
+        @info "Benchmarking $arch model with $(short_show(grid))..."
         @btime ten_steps!($model)
     end
 end
