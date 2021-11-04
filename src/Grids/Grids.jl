@@ -5,7 +5,7 @@ export AbstractTopology, Periodic, Bounded, Flat, Connected, topology
 export AbstractGrid, AbstractUnderlyingGrid, halo_size
 export AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
-export LatitudeLongitudeGrid
+export LatitudeLongitudeGrid, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid, HRegLatLonGrid
 export ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
 export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
 export offset_data, new_data
