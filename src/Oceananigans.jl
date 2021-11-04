@@ -71,7 +71,7 @@ export
     Clock, TimeStepWizard, time_step!,
 
     # Simulations
-    Simulation, run!, Callback, iteration,
+    Simulation, run!, Callback, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics

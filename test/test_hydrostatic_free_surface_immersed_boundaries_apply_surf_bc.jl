@@ -61,17 +61,11 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
                                     buoyancy = nothing)
 
 
-        simulation = Simulation(model,
-                        Δt = 3600,
-                        stop_time = 3600,
-                        iteration_interval = 100)
-
+        simulation = Simulation(model, Δt = 3600, stop_time = 3600)
         run!(simulation)
-
 
         # If reached here it didn't error, so pass for now!
         @test true
-
     end
 end
 

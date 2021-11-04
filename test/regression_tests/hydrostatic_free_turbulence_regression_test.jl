@@ -1,3 +1,5 @@
+using JLD2
+
 using Oceananigans.Fields: FunctionField
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis, fᶠᶠᵃ
@@ -5,66 +7,18 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
 using Oceananigans.AbstractOperations: KernelFunctionOperation, volume
 
-function run_hydrostatic_free_turbulence_regression_test(topology, grid_lon, grid_lat, grid_z, compute, free_surface_type, arch; regenerate_data=false)
+function run_hydrostatic_free_turbulence_regression_test(grid, free_surface, arch; regenerate_data=false)
 
     #####
     ##### Constructing Grid and model
     #####
     
-    H = (2, 2, 2)
-
-    if topology == :bounded
-        lim = 160
-    else 
-        lim = 180
-    end
-
-    N = (lim, 60, 3)
-
-    if grid_lon == :regular
-        lon = (-lim, lim)
-    else
-        lon = collect(-lim:2:lim)
-    end
-    
-    if grid_lat == :regular
-        lat = (-60, 60)
-    else
-        lat = collect(-60:2:60)
-    end
-
-    if grid_z == :regular
-        z = (-90, 0)
-    else
-        z = collect(-90:30:0)
-    end
-   
-    if free_surface_type == :explicit
-        free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
-    else
-        free_surface = ImplicitFreeSurface(gravitational_acceleration = 1.0,
-                                                        solver_method = :PreconditionedConjugateGradient,
-                                                            tolerance = 1e-15
-        )
-    end
-
-    grid  = LatitudeLongitudeGrid(size = N, 
-                             longitude = lon,
-                              latitude = lat, 
-                                     z = z,
-                                  halo = H,
-                    precompute_metrics = compute,
-                          architecture = arch
-    )
-
-                                 
     model = HydrostaticFreeSurfaceModel(grid = grid,
                                 architecture = arch,
                           momentum_advection = VectorInvariant(),
                                 free_surface = free_surface,
                                     coriolis = HydrostaticSphericalCoriolis(),
-                                     closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=1e+5, κh=1e+4)
-    )  
+                                     closure = HorizontallyCurvilinearAnisotropicDiffusivity(νh=1e+5, κh=1e+4))
     
     #####
     ##### Imposing initial conditions:
@@ -78,8 +32,7 @@ function run_hydrostatic_free_turbulence_regression_test(topology, grid_lon, gri
     shear_func(x, y, z, p) = p.U * (0.5 + z / p.Lz) * polar_mask(y)
     
     set!(model, u = (λ, φ, z) -> polar_mask(φ) * exp(-φ^2 / 200),
-                v = (λ, φ, z) -> polar_mask(φ) * sind(2λ)
-    ) 
+                v = (λ, φ, z) -> polar_mask(φ) * sind(2λ))
 
     u, v, w = model.velocities
     U       = 0.1 * maximum(abs, u)
@@ -109,18 +62,14 @@ function run_hydrostatic_free_turbulence_regression_test(topology, grid_lon, gri
 
     simulation = Simulation(model,
                             Δt = Δt,
-                stop_iteration = stop_iteration,
-            iteration_interval = 10,
-    )
-
+                            stop_iteration = stop_iteration)
 
     η = model.free_surface.η
 
     free_surface_str = string(typeof(model.free_surface).name.wrapper)
-    output_prefix    = "hydrostatic_free_turbulence_regression_$(topology)_$free_surface_str"
+    x_topology_str = string(topology(grid, 1))
+    output_prefix = "hydrostatic_free_turbulence_regression_$(x_topology_str)_$free_surface_str"
 
-    # Uncomment to regenerate regression test data
-   
     if regenerate_data
         @warn "Generating new data for the Hydrostatic regression test."
         
@@ -145,7 +94,8 @@ function run_hydrostatic_free_turbulence_regression_test(topology, grid_lon, gri
         η = Array(interior(η))
     )
 
-    regression_data_path = joinpath(dirname(@__FILE__), "data", output_prefix * ".jld2")
+    datadep_path = "regression_test_data/" * output_prefix * ".jld2"
+    regression_data_path = @datadep_str datadep_path
     file = jldopen(regression_data_path)
 
     truth_fields = (
