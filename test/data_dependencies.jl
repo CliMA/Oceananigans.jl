@@ -36,3 +36,4 @@ dh = DataDep("regression_test_data",
 DataDeps.register(dh)
 
 datadep"regression_test_data"
+
