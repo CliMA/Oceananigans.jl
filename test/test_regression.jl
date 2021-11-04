@@ -88,8 +88,8 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
                                                                 z = (-90, 0),
                                                                 halo = (2, 2, 2))
 
-        for grid in [x_bounded_lat_lon_grid]
-            for free_surface in [explicit_free_surface]
+        for grid in [x_bounded_lat_lon_grid, x_periodic_lat_lon_grid]
+            for free_surface in [explicit_free_surface, implicit_free_surface]
 
                 # GPU + ExplicitFreeSurface is broken. See:
                 # https://github.com/CliMA/Oceananigans.jl/pull/1985
