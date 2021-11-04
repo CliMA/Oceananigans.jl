@@ -326,7 +326,7 @@ end
 end
 
 #######
-####### Preallocation metrics
+####### Preallocation kernel for metrics
 #######
 
 function preallocate_metrics(FT, grid::LatitudeLongitudeGrid)
