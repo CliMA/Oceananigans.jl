@@ -70,11 +70,11 @@ end
 ##### Arrays of Coriolises
 #####
 
-const CoriolisArray = AbstractArray{<:AbstractRotation}
+const CoriolisVector = AbstractVector{<:AbstractRotation}
 
-@inline x_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisArray, U) = @inbounds x_f_cross_U(i, j, k, grid, coriolis[i], U)
-@inline y_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisArray, U) = @inbounds y_f_cross_U(i, j, k, grid, coriolis[i], U)
-@inline z_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisArray, U) = @inbounds z_f_cross_U(i, j, k, grid, coriolis[i], U)
+@inline x_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds x_f_cross_U(i, j, k, grid, coriolis[i], U)
+@inline y_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds y_f_cross_U(i, j, k, grid, coriolis[i], U)
+@inline z_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds z_f_cross_U(i, j, k, grid, coriolis[i], U)
 
 function FFTImplicitFreeSurfaceSolver(arch, grid::YZSliceGrid, settings)
 

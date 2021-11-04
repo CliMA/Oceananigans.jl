@@ -125,9 +125,20 @@ end
 ##### Arrays of Coriolises
 #####
 
-const CoriolisArray = AbstractArray{<:AbstractRotation}
+const CoriolisMatrix = AbstractMatrix{<:AbstractRotation}
 
-@inline x_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis::CoriolisArray, U) = @inbounds x_f_cross_U(i, j, k, grid, coriolis[i, j], U)
-@inline y_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis::CoriolisArray, U) = @inbounds y_f_cross_U(i, j, k, grid, coriolis[i, j], U)
-@inline z_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis::CoriolisArray, U) = @inbounds z_f_cross_U(i, j, k, grid, coriolis[i, j], U)
+@inline function x_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisMatrix, U)
+    @inbounds coriolis = coriolis_array[i, j]
+    return x_f_cross_U(i, j, k, grid, coriolis, U)
+end
+
+@inline function y_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisMatrix, U)
+    @inbounds coriolis = coriolis_array[i, j]
+    return y_f_cross_U(i, j, k, grid, coriolis, U)
+end
+
+@inline function z_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisMatrix, U)
+    @inbounds coriolis = coriolis_array[i, j]
+    return z_f_cross_U(i, j, k, grid, coriolis, U)
+end
 
