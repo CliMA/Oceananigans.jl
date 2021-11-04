@@ -48,12 +48,10 @@ function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwar
         field_bcs.top,
     ]
 
-    ## REMEMBER! NEW DATA HAS TO BE GENERATED FOR THE OCEAN AND HYDROSTATIC REGRESSION WITH THE REORDERING OF BC
-
-    # perm = sortperm(field_bcs_array_left, lt=fill_first)
-    # fill_halos! = fill_halos![perm]
-    # field_bcs_array_left  = field_bcs_array_left[perm]
-    # field_bcs_array_right = field_bcs_array_right[perm]
+    perm = sortperm(field_bcs_array_left, lt=fill_first)
+    fill_halos! = fill_halos![perm]
+    field_bcs_array_left  = field_bcs_array_left[perm]
+    field_bcs_array_right = field_bcs_array_right[perm]
     
     for task = 1:3
     
