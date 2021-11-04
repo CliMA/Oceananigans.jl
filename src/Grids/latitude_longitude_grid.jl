@@ -162,10 +162,8 @@ end
 # Node by node
 @inline xnode(::Center, i, grid::LatitudeLongitudeGrid) = @inbounds grid.λᶜᵃᵃ[i]
 @inline xnode(::Face,   i, grid::LatitudeLongitudeGrid) = @inbounds grid.λᶠᵃᵃ[i]
-
 @inline ynode(::Center, j, grid::LatitudeLongitudeGrid) = @inbounds grid.φᵃᶜᵃ[j]
 @inline ynode(::Face,   j, grid::LatitudeLongitudeGrid) = @inbounds grid.φᵃᶠᵃ[j]
-
 @inline znode(::Center, k, grid::LatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶠ[k]
 @inline znode(::Face,   k, grid::LatitudeLongitudeGrid) = @inbounds grid.zᵃᵃᶜ[k]
 
@@ -250,10 +248,11 @@ Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT
 @inline Azᶠᶠᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
 @inline Azᶜᶜᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
 
+#######
+####### Utilities to precompute Metrics 
+#######
 
-#######
-####### Kernels to precompute the x- and z-metric
-#######
+####### Kernels that precompute the z- and x-metric
 
 @inline metric_worksize( grid::LatitudeLongitudeGrid)  = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ) - 1) 
 @inline metric_workgroup(grid::LatitudeLongitudeGrid)  = (16, 16) 
@@ -301,9 +300,7 @@ end
     end
 end
 
-#######
 ####### Kernels that precompute the y-metric
-#######
 
 function  precompute_Δy_metrics(grid::LatitudeLongitudeGrid, Δyᶠᶜ, Δyᶜᶠ)
     arch = grid.architecture
@@ -329,157 +326,47 @@ end
 end
 
 #######
-####### Kernels that preallocate memory on the device for all metrics
+####### Preallocation metrics
 #######
-
 
 function preallocate_metrics(FT, grid::LatitudeLongitudeGrid)
     
     # preallocate quantities to ensure correct type and size
-
-    underlying_Δyᶠᶜᵃ = zeros(FT, length(grid.Δφᵃᶜᵃ))
-    underlying_Δyᶜᶠᵃ = zeros(FT, length(grid.Δφᵃᶜᵃ))
-    underlying_Δxᶠᶜᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-    underlying_Δxᶜᶠᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-    underlying_Δxᶠᶠᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-    underlying_Δxᶜᶜᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-    underlying_Azᶠᶜᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-    underlying_Azᶜᶠᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-    underlying_Azᶠᶠᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-    underlying_Azᶜᶜᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-    
-    Δyᶠᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δyᶠᶜᵃ), grid.Δφᵃᶜᵃ.offsets[1])
-    Δyᶜᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δyᶜᶠᵃ), grid.Δφᵃᶜᵃ.offsets[1])
-    
-    Δxᶠᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶠᶜᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    Δxᶜᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶜᶠᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    Δxᶠᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶠᶠᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    Δxᶜᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶜᶜᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    Azᶠᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶠᶜᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    Azᶜᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶜᶠᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    Azᶠᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶠᶠᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    Azᶜᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶜᶜᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    
-    return Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
-end
-
-function preallocate_metrics(FT, grid::XRegLatLonGrid)
-    
-    # preallocate quantities to ensure correct type and size
-
-    underlying_Δyᶠᶜᵃ = zeros(FT, length(grid.Δφᵃᶜᵃ))
-    underlying_Δyᶜᶠᵃ = zeros(FT, length(grid.Δφᵃᶜᵃ))
-    underlying_Δxᶠᶜᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-    underlying_Δxᶜᶠᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-    underlying_Δxᶠᶠᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-    underlying_Δxᶜᶜᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-    underlying_Azᶠᶜᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-    underlying_Azᶜᶠᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-    underlying_Azᶠᶠᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-    underlying_Azᶜᶜᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-
-    Δyᶠᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δyᶠᶜᵃ), grid.Δφᵃᶜᵃ.offsets[1])
-    Δyᶜᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δyᶜᶠᵃ), grid.Δφᵃᶜᵃ.offsets[1])
-
-    Δxᶠᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶠᶜᵃ), grid.φᵃᶜᵃ.offsets[1])
-    Δxᶜᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶜᶠᵃ), grid.φᵃᶜᵃ.offsets[1])
-    Δxᶠᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶠᶠᵃ), grid.φᵃᶜᵃ.offsets[1])
-    Δxᶜᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶜᶜᵃ), grid.φᵃᶜᵃ.offsets[1])
-    Azᶠᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶠᶜᵃ), grid.φᵃᶜᵃ.offsets[1])
-    Azᶜᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶜᶠᵃ), grid.φᵃᶜᵃ.offsets[1])
-    Azᶠᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶠᶠᵃ), grid.φᵃᶜᵃ.offsets[1])
-    Azᶜᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶜᶜᵃ), grid.φᵃᶜᵃ.offsets[1])
-
-    return Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
-end
-
-function preallocate_metrics(FT, grid::YRegLatLonGrid)
-    
-    # preallocate quantities to ensure correct type and size
-
-    underlying_Δxᶠᶜᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-    underlying_Δxᶜᶠᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-    underlying_Δxᶠᶠᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-    underlying_Δxᶜᶜᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-    underlying_Azᶠᶜᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-    underlying_Azᶜᶠᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-    underlying_Azᶠᶠᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-    underlying_Azᶜᶜᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
-
-    Δyᶠᶜᵃ = FT(0.0)
-    Δyᶜᶠᵃ = FT(0.0)
-
-    Δxᶠᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶠᶜᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    Δxᶜᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶜᶠᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    Δxᶠᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶠᶠᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    Δxᶜᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶜᶜᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    Azᶠᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶠᶜᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    Azᶜᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶜᶠᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    Azᶠᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶠᶠᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    Azᶜᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶜᶜᵃ), grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-
-    return Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
-end
-
-function preallocate_metrics(FT, grid::HRegLatLonGrid)
-    
-    # preallocate quantities to ensure correct type and size
   
-    # grid_metrics = (:Δxᶠᶜᵃ,
-    #                 :Δxᶜᶠᵃ,
-    #                 :Δxᶠᶠᵃ,
-    #                 :Δxᶜᶜᵃ,
-    #                 :Azᶠᶜᵃ,
-    #                 :Azᶜᶠᵃ,
-    #                 :Azᶠᶠᵃ,
-    #                 :Azᶜᶜᵃ)
+    grid_metrics = (:Δxᶠᶜ,
+                    :Δxᶜᶠ,
+                    :Δxᶠᶠ,
+                    :Δxᶜᶜ,
+                    :Azᶠᶜ,
+                    :Azᶜᶠ,
+                    :Azᶠᶠ,
+                    :Azᶜᶜ)
 
-    # arch = grid.architecture
+    arch = grid.architecture
     
-    # if typeof(grid) <: XRegLatLonGrid
-    #   offsets     = (grid.φᵃᶜᵃ.offsets[1], )
-    #   metric_size = (length(grid.φᵃᶜᵃ), )
-    # else    
-    #   offsets     = (grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
-    #   metric_size = (length(grid.Δλᶜᵃᵃ)   , length(grid.φᵃᶜᵃ))
-    # end
+    if typeof(grid) <: XRegLatLonGrid
+      offsets     = (grid.φᵃᶜᵃ.offsets[1], )
+      metric_size = (length(grid.φᵃᶜᵃ), )
+    else    
+      offsets     = (grid.Δλᶜᵃᵃ.offsets[1], grid.φᵃᶜᵃ.offsets[1])
+      metric_size = (length(grid.Δλᶜᵃᵃ)   , length(grid.φᵃᶜᵃ))
+    end
 
-    # for metric in grid_metrics
-    #     parent_metric        = Symbol(metric, :_parent)
-    #     @eval $parent_metric = zeros($FT, $area_size...)
-    #     @eval $metric        = OffsetArray(arch_array($arch, $parent_metric), $offset...)
-    # end
+    for metric in grid_metrics
+        parentM        = Symbol(metric, :_parent)
+        @eval $parentM = zeros($FT, $metric_size...)
+        @eval $metric  = OffsetArray(arch_array($arch, $parentM), $offsets...)
+    end
 
-    # if typeof(grid) <: YRegLatLonGrid
-    #   Δyᶠᶜᵃ = FT(0.0)
-    #   Δyᶜᶠᵃ = FT(0.0)
-    # else    
-    #    parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
-    #    parentF = zeros(FT, length(grid.Δφᵃᶜᵃ))
-    #    Δyᶠᶜᵃ   = OffsetArray(arch_array(grid.architecture, parentC), grid.Δφᵃᶜᵃ.offsets[1])
-    #    Δyᶜᶠᵃ   = OffsetArray(arch_array(grid.architecture, parentF), grid.Δφᵃᶜᵃ.offsets[1])
-    # end
+    if typeof(grid) <: YRegLatLonGrid
+      Δyᶠᶜ = FT(0.0)
+      Δyᶜᶠ = FT(0.0)
+    else    
+       parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
+       parentF = zeros(FT, length(grid.Δφᵃᶜᵃ))
+       Δyᶠᶜ    = OffsetArray(arch_array(grid.architecture, parentC), grid.Δφᵃᶜᵃ.offsets[1])
+       Δyᶜᶠ    = OffsetArray(arch_array(grid.architecture, parentF), grid.Δφᵃᶜᵃ.offsets[1])
+    end
     
-    underlying_Δxᶠᶜᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-    underlying_Δxᶜᶠᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-    underlying_Δxᶠᶠᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-    underlying_Δxᶜᶜᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-    underlying_Azᶠᶜᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-    underlying_Azᶜᶠᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-    underlying_Azᶠᶠᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-    underlying_Azᶜᶜᵃ = zeros(FT, length(grid.φᵃᶜᵃ))
-
-    Δyᶠᶜᵃ = FT(0.0)
-    Δyᶜᶠᵃ = FT(0.0)
-
-    Δxᶠᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶠᶜᵃ), grid.φᵃᶜᵃ.offsets[1])
-    Δxᶜᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶜᶠᵃ), grid.φᵃᶜᵃ.offsets[1])
-    Δxᶠᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶠᶠᵃ), grid.φᵃᶜᵃ.offsets[1])
-    Δxᶜᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Δxᶜᶜᵃ), grid.φᵃᶜᵃ.offsets[1])
-    Azᶠᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶠᶜᵃ), grid.φᵃᶜᵃ.offsets[1])
-    Azᶜᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶜᶠᵃ), grid.φᵃᶜᵃ.offsets[1])
-    Azᶠᶠᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶠᶠᵃ), grid.φᵃᶜᵃ.offsets[1])
-    Azᶜᶜᵃ = OffsetArray(arch_array(grid.architecture, underlying_Azᶜᶜᵃ), grid.φᵃᶜᵃ.offsets[1])
-
-    return Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
+    return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
 end
