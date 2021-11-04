@@ -169,11 +169,12 @@ Base.fill!(f::AbstractDataField, val) = fill!(parent(f), val)
 @inline Base.parent(f::AbstractField) = parent(data(f))
 
 "Returns a view of `f` that excludes halo points."
-@inline interior(f::AbstractField{X, Y, Z}) where {X, Y, Z} =
+@inline interior(f::AbstractDataField{X, Y, Z}) where {X, Y, Z} =
     view(parent(f), interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
                     interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
                     interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz))
 
+@inline interior(f::AbstractField) = f
 
 @inline interior_copy(f::AbstractField{X, Y, Z}) where {X, Y, Z} =
     parent(f)[interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
@@ -236,8 +237,8 @@ fill_halo_regions!(field::AbstractDataField, arch, args...) =
 #####
 
 for f in (:+, :-)
-    @eval Base.$f(ϕ::AbstractArray, ψ::AbstractDataField) = $f(ϕ, interior(ψ))
-    @eval Base.$f(ϕ::AbstractDataField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
+    @eval Base.$f(ϕ::AbstractArray, ψ::AbstractField) = $f(ϕ, interior(ψ))
+    @eval Base.$f(ϕ::AbstractField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
 end
 
 Base.isapprox(ϕ::AbstractDataField, ψ::AbstractDataField) = isapprox(interior(ϕ), interior(ψ))
