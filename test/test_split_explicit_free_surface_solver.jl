@@ -50,10 +50,14 @@ end
 end
 
 function free_surface_substep!(arch, grid, Δτ, η, U, V, Gᵁ, Gⱽ, η̅, U̅, V̅, velocity_weight, tracer_weight)
+    fill_halo_regions!(η, arch)
     event = launch!(arch, grid, :xy, free_surface_substep_kernel_1!, 
             grid, Δτ, η, U, V, Gᵁ, Gⱽ,
             dependencies=Event(device(arch)))
     wait(event)
+    # U, V has been updated thus need to refil halo
+    fill_halo_regions!(U, arch)
+    fill_halo_regions!(V, arch)
     
     event = launch!(arch, grid, :xy, free_surface_substep_kernel_2!, 
             grid, Δτ, η, U, V, η̅, U̅, V̅, velocity_weight, tracer_weight,
@@ -83,10 +87,6 @@ U̅  .= 0.0
 V̅  .= 0.0
 Gᵁ .= 0.0
 Gⱽ .= 0.0 
-
-fill_halo_regions!(η, arch)
-fill_halo_regions!(U, arch)
-fill_halo_regions!(V, arch)
 
 free_surface_substep!(arch, grid, Δτ, η, U, V, Gᵁ, Gⱽ, η̅, U̅, V̅, velocity_weight, tracer_weight)
 
@@ -124,15 +124,9 @@ Gⱽ .= 0.0
 print("The full timestep loop takes ")
 tic = Base.time()
 for i in 1:Nt
-    fill_halo_regions!(η, arch)
-    fill_halo_regions!(U, arch)
-    fill_halo_regions!(V, arch)
     free_surface_substep!(arch, grid, Δτ, η, U, V, Gᵁ, Gⱽ, η̅, U̅, V̅, velocity_weight, tracer_weight)
 end
 # + correction for exact time
-fill_halo_regions!(η, arch)
-fill_halo_regions!(U, arch)
-fill_halo_regions!(V, arch)
 free_surface_substep!(arch, grid, Δτ_end, η, U, V, Gᵁ, Gⱽ, η̅, U̅, V̅, velocity_weight, tracer_weight)
 
 toc = Base.time()
@@ -194,17 +188,11 @@ tic = Base.time()
 for i in 1:Nt
     velocity_weight = velocity_weights[i]
     tracer_weight = tracer_weights[i]
-    fill_halo_regions!(η, arch)
-    fill_halo_regions!(U, arch)
-    fill_halo_regions!(V, arch)
     free_surface_substep!(arch, grid, Δτ, η, U, V, Gᵁ, Gⱽ, η̅, U̅, V̅, velocity_weight, tracer_weight)
 end
 # + correction for exact time
 velocity_weight = velocity_weights[Nt+1]
 tracer_weight   =   tracer_weights[Nt+1]
-fill_halo_regions!(η, arch)
-fill_halo_regions!(U, arch)
-fill_halo_regions!(V, arch)
 free_surface_substep!(arch, grid, Δτ_end, η, U, V, Gᵁ, Gⱽ, η̅, U̅, V̅, velocity_weight, tracer_weight)
 
 toc = Base.time()
