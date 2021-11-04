@@ -28,7 +28,7 @@ fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 "Fill halo regions in x, y, and z for a given field's data."
 function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwargs...)
 
-    barrier = Event(device(arch))
+    events = Event(device(arch))
 
     fill_halos! = [
         fill_west_and_east_halo!,
@@ -56,6 +56,8 @@ function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwar
     # field_bcs_array_right = field_bcs_array_right[perm]
     
     for task = 1:3
+    
+       barrier    = events
        fill_halo! = fill_halos![task]
        bc_left    = field_bcs_array_left[task]
        bc_right   = field_bcs_array_right[task]
