@@ -341,7 +341,7 @@ end
 ####### Preallocation kernel for metrics
 #######
 
-function preallocate_metrics(FT, grid::LatitudeLongitudeGrid)
+function allocate_metrics(FT, grid::LatitudeLongitudeGrid)
         
     underlying_Δyᶠᶜᵃ = zeros(FT, length(grid.Δφᵃᶜᵃ))
     underlying_Δyᶜᶠᵃ = zeros(FT, length(grid.Δφᵃᶜᵃ))
@@ -369,7 +369,7 @@ function preallocate_metrics(FT, grid::LatitudeLongitudeGrid)
     return Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 end
 
-function preallocate_metrics(FT, grid::XRegLatLonGrid)
+function allocate_metrics(FT, grid::XRegLatLonGrid)
 
     # preallocate quantities to ensure correct type and size
 
@@ -399,7 +399,7 @@ function preallocate_metrics(FT, grid::XRegLatLonGrid)
     return Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 end
 
-function preallocate_metrics(FT, grid::YRegLatLonGrid)
+function allocate_metrics(FT, grid::YRegLatLonGrid)
 
     underlying_Δxᶠᶜᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
     underlying_Δxᶜᶠᵃ = zeros(FT, length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ))
@@ -425,7 +425,7 @@ function preallocate_metrics(FT, grid::YRegLatLonGrid)
     return Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 end
 
-function preallocate_metrics(FT, grid::HRegLatLonGrid)
+function allocate_metrics(FT, grid::HRegLatLonGrid)
 
     # preallocate quantities to ensure correct type and size
 
