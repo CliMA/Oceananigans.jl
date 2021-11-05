@@ -99,13 +99,16 @@ function LatitudeLongitudeGrid(FT=Float64;
 
 
     if precompute_metrics == 1
-        grid = LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch}(arch,
+        grid = LatitudeLongitudeGrid{FT, TX, TY, TZ, Nothing, Nothing, FX, FY, FZ, VX, VY, VZ, Arch}(arch,
                 Nλ, Nφ, Nz, Hλ, Hφ, Hz, Lλ, Lφ, Lz, Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
                 nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, radius)
 
-        Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ = preallocate_metrics(FT, grid)
+        Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ = allocate_metrics(FT, grid)
+        
         precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ )
+        
         Δyᶠᶜ, Δyᶜᶠ = precompute_Δy_metrics(grid, Δyᶠᶜ, Δyᶜᶠ)
+        
         M  = typeof(Δxᶠᶜ)
         MY = typeof(Δyᶠᶜ)
     else
@@ -119,7 +122,7 @@ function LatitudeLongitudeGrid(FT=Float64;
         Azᶜᶠ = nothing
         Azᶠᶠ = nothing
         Azᶜᶜ = nothing
-        
+
         M    = Nothing
         MY   = Nothing
     end
@@ -253,22 +256,24 @@ Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT
 ####### Utilities to precompute Metrics 
 #######
 
-metrics_precomputed(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX, TY, TZ, M} = !(M<:Nothing) 
+@inline metrics_precomputed(::LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, Nothing}) = false 
+@inline metrics_precomputed(::LatitudeLongitudeGrid) = true
 
 ####### Kernels that precompute the z- and x-metric
 
-@inline metric_worksize( grid::LatitudeLongitudeGrid)  = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ) - 1) 
+@inline metric_worksize(grid::LatitudeLongitudeGrid)   = (length(grid.Δλᶜᵃᵃ), length(grid.φᵃᶜᵃ) - 1) 
 @inline metric_workgroup(grid::LatitudeLongitudeGrid)  = (16, 16) 
 
-@inline metric_worksize( grid::XRegLatLonGrid) =  length(grid.φᵃᶜᵃ) - 1 
+@inline metric_worksize(grid::XRegLatLonGrid)  =  length(grid.φᵃᶜᵃ) - 1 
 @inline metric_workgroup(grid::XRegLatLonGrid) =  16
 
 
 function  precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     
     arch = grid.architecture
-    precompute_curvilinear_metrics! = precompute_metrics_kernel!(Architectures.device(arch), metric_workgroup(grid), metric_worksize(grid))
-    event = precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ; dependencies=device_event(arch))
+    workgroup, worksize  = metric_workgroup(grid), metric_worksize(grid)
+    curvilinear_metrics! = precompute_metrics_kernel!(Architectures.device(arch), workgroup, worksize)
+    event                = curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ; dependencies=device_event(arch))
     
     wait(event)
     return nothing
@@ -448,18 +453,18 @@ end
 #     return Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 # end
 
-function preallocate_metrics(FT, grid::LatitudeLongitudeGrid)
+function allocate_metrics(FT, grid::LatitudeLongitudeGrid)
     
     # preallocate quantities to ensure correct type and size
   
-    grid_metrics = (:Δxᶠᶜᵃ,
-                    :Δxᶜᶠᵃ,
-                    :Δxᶠᶠᵃ,
-                    :Δxᶜᶜᵃ,
-                    :Azᶠᶜᵃ,
-                    :Azᶜᶠᵃ,
-                    :Azᶠᶠᵃ,
-                    :Azᶜᶜᵃ)
+    grid_metrics = (:Δxᶠᶜ,
+                    :Δxᶜᶠ,
+                    :Δxᶠᶠ,
+                    :Δxᶜᶜ,
+                    :Azᶠᶜ,
+                    :Azᶜᶠ,
+                    :Azᶠᶠ,
+                    :Azᶜᶜ)
 
     arch = grid.architecture
     
@@ -478,14 +483,14 @@ function preallocate_metrics(FT, grid::LatitudeLongitudeGrid)
     end
 
     if typeof(grid) <: YRegLatLonGrid
-      Δyᶠᶜᵃ = FT(0.0)
+      Δyᶠᶜ = FT(0.0)
       Δyᶜᶠ = FT(0.0)
     else    
        parentC = zeros(FT, length(grid.Δφᵃᶜᵃ))
        parentF = zeros(FT, length(grid.Δφᵃᶜᵃ))
-       Δyᶠᶜᵃ    = OffsetArray(arch_array(grid.architecture, parentC), grid.Δφᵃᶜᵃ.offsets[1])
-       Δyᶜᶠᵃ    = OffsetArray(arch_array(grid.architecture, parentF), grid.Δφᵃᶜᵃ.offsets[1])
+       Δyᶠᶜ    = OffsetArray(arch_array(grid.architecture, parentC), grid.Δφᵃᶜᵃ.offsets[1])
+       Δyᶜᶠ    = OffsetArray(arch_array(grid.architecture, parentF), grid.Δφᵃᶜᵃ.offsets[1])
     end
     
-    return Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
+    return Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ
 end
