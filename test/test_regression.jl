@@ -101,7 +101,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
                                                    solver_method = :PreconditionedConjugateGradient,
                                                    tolerance = 1e-15)
 
-        for lat in latitude, lon in longitude, z in zcoord, comp in (true, false)
+        for lat in latitude, lon in longitude, z in zcoord, comp in (false)
 
             lon[1] == -180 ? N = (180, 60, 3) : N = (160, 60, 3)
 
