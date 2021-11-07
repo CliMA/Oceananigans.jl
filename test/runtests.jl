@@ -74,7 +74,7 @@ closures = (
 ##### Run tests!
 #####
 
-CUDA.allowscalar(true)
+CUDA.allowscalar() do
 
 include("data_dependencies.jl")
 include("utils_for_runtests.jl")
@@ -184,4 +184,6 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
     if group == :convergence
         include("test_convergence.jl")
     end
-end
+end # @testset "Oceananigans"
+
+end # CUDA.allowscalar()
