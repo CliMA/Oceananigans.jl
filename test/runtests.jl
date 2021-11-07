@@ -56,7 +56,7 @@ float_types = (Float32, Float64)
 archs = CUDA.has_cuda() ? (GPU(),) : (CPU(),)
 @show archs
 @show(has_cuda())
-@show(has_cuda())
+@show(has_cuda_gpu())
 
 closures = (
     :IsotropicDiffusivity,
@@ -78,6 +78,8 @@ CUDA.allowscalar(true)
 
 include("data_dependencies.jl")
 include("utils_for_runtests.jl")
+
+archs = test_architectures()
 
 group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
