@@ -92,7 +92,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
 
         # Hydrostatic regression test
 
-        longitude = ((-180, 180), collect(-180:2:180))
+        longitude = ((-180, 180), collect(-180:2:180), (-160, 160), collect(-160:2:160))
         latitude  = ((-60, 60), collect(-60:2:60))
         zcoord    = ((-90, 0 ), collect(-90:30:0))
 
