@@ -14,4 +14,5 @@ Polynomials = "f27b6e38-b328-58d1-80ce-0feddd5e7a45"
 TimesDates = "bdfc003b-8df8-5c39-adcd-3a9087f5df4a"
 
 [compat]
+Literate = "≥2.9.0"
 Plots = "≥1.10.1"
