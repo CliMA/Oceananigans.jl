@@ -1,12 +1,15 @@
+using Oceananigans.Grids: XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid
 
 @inline function linear_interpolate_sorted_vector(vec, val)
 
-    y₂ = searchsortedfirst(vec, val)
-    y₁ = searchsortedlast(vec,  val)
+    @CUDA.allowscalar begin
+        y₂ = searchsortedfirst(vec, val)
+        y₁ = searchsortedlast(vec,  val)
 
-    x₂ = vec[y₂]
-    x₁ = vec[y₁]
-    
+        x₂ = vec[y₂]
+        x₁ = vec[y₁]
+    end    
+
     return (y₂ - y₁) / (x₂ - x₁) * (x - x₁) + y₁
 end
 

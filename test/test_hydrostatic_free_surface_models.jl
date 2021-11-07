@@ -154,7 +154,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
         lat_lon_sector_grid = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=(-1, 0), architecture=arch, precompute_metrics=true)
         lat_lon_strip_grid  = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0), architecture=arch, precompute_metrics=true)
         
-        vertically_stretched_grid = RectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z_faces=z_face_generator(), halo=(3, 3, 3), architecture=arch)
+        vertically_stretched_grid = RectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=z_face_generator(), halo=(3, 3, 3), architecture=arch)
         lat_lon_sector_grid_stretched = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=z_face_generator(), architecture=arch, precompute_metrics=true)
         lat_lon_strip_grid_stretched  = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=z_face_generator(), architecture=arch, precompute_metrics=true)
 

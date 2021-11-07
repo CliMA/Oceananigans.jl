@@ -279,16 +279,16 @@ end
 function test_grid_equality(arch)
     topo = (Periodic, Periodic, Bounded)
     Nx, Ny, Nz = 4, 7, 9
-    grid1 = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=(0, Nz))
-    grid2 = VerticallyStretchedRectilinearGrid(architecture=arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z_faces=0:Nz)
-    grid3 = VerticallyStretchedRectilinearGrid(architecture=arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z_faces=0:Nz)
+    grid1 = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=(0, Nz))
+    grid2 = RectilinearGrid(architecture=arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=0:Nz)
+    grid3 = RectilinearGrid(architecture=arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=0:Nz)
 
     return grid1==grid1 && grid2 == grid3 && grid1 !== grid3
 end
 
 function test_grid_equality_over_architectures()
-    grid_cpu = VerticallyStretchedRectilinearGrid(architecture=CPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z_faces=0:9)
-    grid_gpu = VerticallyStretchedRectilinearGrid(architecture=GPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z_faces=0:9)
+    grid_cpu = RectilinearGrid(architecture=CPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
+    grid_gpu = RectilinearGrid(architecture=GPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z=0:9)
 
     return grid_cpu == grid_gpu
 end

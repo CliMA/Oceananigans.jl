@@ -48,12 +48,12 @@ arch = GPU()
 if stretched_grid
     println("using a stretched grid")
     grid = RectilinearGrid(architecture = arch,
-                                            topology = (Periodic, Bounded, Bounded),
-                                            size = (Nx, Ny, Nz),
-                                            halo = (3, 3, 3),
-                                            x = (0, Lx),
-                                            y = (0, Ly),
-                                            z_faces = z_faces)
+                               topology = (Periodic, Bounded, Bounded),
+                                   size = (Nx, Ny, Nz),
+                                   halo = (3, 3, 3),
+                                      x = (0, Lx),
+                                      y = (0, Ly),
+                                      z = z_faces)
 else
     println("using a regular grid")
     grid = RectilinearGrid(topology=(Periodic, Bounded, Bounded), 

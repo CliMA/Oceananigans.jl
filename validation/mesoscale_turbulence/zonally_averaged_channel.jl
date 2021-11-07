@@ -38,7 +38,7 @@ grid = RectilinearGrid(architecture = arch,
                                           halo = (3, 3, 3),
                                           x = (0, Lx),
                                           y = (0, Ly),
-                                          z_faces = z_faces)
+                                          z = z_faces)
 
 @info "Built a grid: $grid."
 
@@ -243,7 +243,7 @@ grid = RectilinearGrid(architecture = CPU(),
                                           halo = (3, 3, 3),
                                           x = (0, grid.Lx),
                                           y = (0, grid.Ly),
-                                          z_faces = z_faces)
+                                          z = z_faces)
 
 xu, yu, zu = nodes((Face, Center, Center), grid)
 xc, yc, zc = nodes((Center, Center, Center), grid)

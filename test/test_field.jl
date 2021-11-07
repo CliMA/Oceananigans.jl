@@ -298,12 +298,12 @@ end
         topology = (Flat, Flat, Bounded)
         
         for arch in archs
-            coarse_column_regular_grid       = RectilinearGrid(size=1, z=(0, Lz), topology=topology, architecture=arch)
-            fine_column_regular_grid         = RectilinearGrid(size=2, z=(0, Lz), topology=topology, architecture=arch)
+            coarse_column_regular_grid       = RectilinearGrid(architecture=arch, size=1, z=(0, Lz), topology=topology)
+            fine_column_regular_grid         = RectilinearGrid(architecture=arch, size=2, z=(0, Lz), topology=topology)
             fine_column_stretched_grid       = RectilinearGrid(architecture=arch, size=2, z = [0, ℓz, Lz], topology=topology)
             very_fine_column_stretched_grid  = RectilinearGrid(architecture=arch, size=3, z = [0, 0.2, 0.6, Lz], topology=topology)
             super_fine_column_stretched_grid = RectilinearGrid(architecture=arch, size=4, z = [0, 0.1, 0.3, 0.65, Lz], topology=topology)
-            super_fine_column_regular_grid   = RectilinearGrid(size=5, z=(0, Lz), topology=topology)
+            super_fine_column_regular_grid   = RectilinearGrid(architecture=arch, size=5, z=(0, Lz), topology=topology)
             
             coarse_column_regular_c       = CenterField(arch, coarse_column_regular_grid)
             fine_column_regular_c         = CenterField(arch, fine_column_regular_grid)

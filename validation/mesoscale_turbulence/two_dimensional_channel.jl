@@ -34,7 +34,7 @@ grid = RectilinearGrid(architecture = arch,
                                           halo = (3, 3, 3),
                                           x = (0, Ly),
                                           y = (0, Ly),
-                                          z_faces = z_faces)
+                                          z = z_faces)
 
 
 @show grid
@@ -165,7 +165,7 @@ cpu_grid(grid::RectilinearGrid) =
                                        halo = halo_size(grid),
                                        x = (0, grid.Ly),
                                        y = (0, grid.Ly),
-                                       z_faces = grid.zᵃᵃᶠ)
+                                       z = grid.zᵃᵃᶠ)
 
 function channel_plot(u_device, b_device)
 

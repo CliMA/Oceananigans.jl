@@ -127,9 +127,9 @@ using Oceananigans.Grids: Flat
 @inline Δzᵃᵃᶠ(i, j, k, grid::ZRegRectilinearGrid) =  @inbounds grid.Δzᵃᵃᶠ
 @inline Δzᵃᵃᶜ(i, j, k, grid::ZRegRectilinearGrid) =  @inbounds grid.Δzᵃᵃᶜ
 
-const XFlatRG = RectilinearGrid{<:Any, <:Flat}
-const YFlatRG = RectilinearGrid{<:Any, <:Any, <:Flat}
-const ZFlatRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Flat}
+const XFlatRG = RectilinearGrid{<:Any, <:Flat, <:Any, <:Any, <:Number}
+const YFlatRG = RectilinearGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Number}
+const ZFlatRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Flat, <:Any, <:Any, <:Number}
 
 @inline Δxᶜᶜᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
 @inline Δxᶜᶠᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))

@@ -38,7 +38,7 @@ function test_isotropic_diffusion_budget(fieldname, model)
 
     ν = z_viscosity(model.closure, nothing) # for generalizing to isotropic AnisotropicDiffusivity
 
-    return test_diffusion_budget(fieldname, field, model, ν, model.grid.Δz)
+    return test_diffusion_budget(fieldname, field, model, ν, model.grid.Δzᵃᵃᶜ)
 end
 
 function test_biharmonic_diffusion_budget(fieldname, model)
@@ -47,7 +47,7 @@ function test_biharmonic_diffusion_budget(fieldname, model)
 
     field = get_model_field(fieldname, model)
 
-    return test_diffusion_budget(fieldname, field, model, model.closure.νz, model.grid.Δz, 4)
+    return test_diffusion_budget(fieldname, field, model, model.closure.νz, model.grid.Δzᵃᵃᶜ, 4)
 end
 
 function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)

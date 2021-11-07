@@ -79,7 +79,7 @@ end
     @inbounds  two_Ωᶻ(coriolis, grid.yᵃᶠᵃ[k], grid.zᵃᵃᶜ[k]) * ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 
 @inline z_f_cross_U(i, j, k, grid, coriolis::NonTraditionalBetaPlane, U) =
-    @inbounds -two_Ωʸ(coriolis, grid.yᵃᵃᶜ[j], grid.zᵃᵃᶠ[k]) * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
+    @inbounds -two_Ωʸ(coriolis, grid.yᵃᶜᵃ[j], grid.zᵃᵃᶠ[k]) * ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
 
 Base.show(io::IO, β_plane::NonTraditionalBetaPlane{FT}) where FT =
     print(io, "NonTraditionalBetaPlane{$FT}: ",
