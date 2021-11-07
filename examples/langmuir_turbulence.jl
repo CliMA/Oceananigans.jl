@@ -167,11 +167,15 @@ wᵢ(x, y, z) = sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
 set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
 
 # ## Setting up the simulation
-#
+
+simulation = Simulation(model, Δt=45.0, stop_time=4hours)
+
 # We use the `TimeStepWizard` for adaptive time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0,
 
-wizard = TimeStepWizard(cfl=1.0, Δt=45.0, max_change=1.1, max_Δt=1minute)
+wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=1minute)
+
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 # ### Nice progress messaging
 #
@@ -180,32 +184,23 @@ wizard = TimeStepWizard(cfl=1.0, Δt=45.0, max_change=1.1, max_Δt=1minute)
 
 using Printf
 
-wall_clock = time_ns()
-
 function print_progress(simulation)
-    model = simulation.model
-    u, v, w = model.velocities
+    u, v, w = simulation.model.velocities
 
     ## Print a progress message
     msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
-                   model.clock.iteration,
-                   prettytime(model.clock.time),
-                   prettytime(wizard.Δt),
+                   iteration(simulation),
+                   prettytime(time(simulation)),
+                   prettytime(simulation.Δt),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w),
-                   prettytime(1e-9 * (time_ns() - wall_clock))
-                  )
+                   prettytime(simulation.run_wall_time))
 
     @info msg
 
     return nothing
 end
 
-# Now we create the simulation,
-
-simulation = Simulation(model, iteration_interval = 10,
-                                               Δt = wizard,
-                                        stop_time = 4hours,
-                                         progress = print_progress)
+simulation.callbacks[:progress] = Callback(print_progress, IterationInterval(10))
 
 # ## Output
 #

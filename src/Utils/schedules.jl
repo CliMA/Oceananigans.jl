@@ -2,15 +2,13 @@
     AbstractSchedule
 
 Supertype for objects that schedule `OutputWriter`s and `Diagnostics`.
-Schedules must define a function `Schedule(model)` that returns true or
+Schedules must define the functor `Schedule(model)` that returns true or
 false.
 """
 abstract type AbstractSchedule end
 
-initialize_schedule!(schedule) = nothing # fallback
-
 # Default behavior is no alignment.
-align_time_step(schedule, clock, Δt) = Δt
+aligned_time_step(schedule, clock, Δt) = Δt
 
 #####
 ##### TimeInterval
@@ -48,11 +46,12 @@ function (schedule::TimeInterval)(model)
     else
         return false
     end
-
 end
 
-align_time_step(schedule::TimeInterval, clock, Δt) =
-    min(Δt, schedule.previous_actuation_time + schedule.interval - clock.time)
+function aligned_time_step(schedule::TimeInterval, clock, Δt)
+    next_actuation_time = schedule.previous_actuation_time + schedule.interval
+    return min(Δt, next_actuation_time - clock.time)
+end
 
 #####
 ##### IterationInterval
@@ -70,26 +69,28 @@ end
 
 (schedule::IterationInterval)(model) = model.clock.iteration % schedule.interval == 0
 
-"""
-    mutable struct WallTimeInterval <: AbstractSchedule
+#####
+##### WallTimeInterval
+#####
 
-"""
 mutable struct WallTimeInterval <: AbstractSchedule
     interval :: Float64
     previous_actuation_time :: Float64
 end
 
 """
-    WallTimeInterval(interval)
+    WallTimeInterval(interval; start_time = time_ns() * 1e-9)
 
 Returns a callable WallTimeInterval that schedules periodic output or diagnostic evaluation
-on a `interval` of "wall time" while a simulation runs. The "wall time"
-is the actual real world time, as kept by an actual or hypothetical clock hanging
-on your wall.
-"""
-WallTimeInterval(interval) = WallTimeInterval(Float64(interval), time_ns() * 1e-9)
+on a `interval` of "wall time" while a simulation runs, in units of seconds.
 
-initialize_schedule!(schedule::WallTimeInterval) = schedule.previous_actuation_time = time_ns() * 1e-9
+The "wall time" is the actual real world time in seconds, as kept by an actual
+or hypothetical clock hanging on your wall.
+
+The keyword argument `start_time` can be used to specify a starting wall time
+other than the moment `WallTimeInterval` is constructed.
+"""
+WallTimeInterval(interval; start_time = time_ns() * 1e-9) = WallTimeInterval(Float64(interval), Float64(start_time))
 
 function (schedule::WallTimeInterval)(model)
     wall_time = time_ns() * 1e-9
@@ -101,7 +102,6 @@ function (schedule::WallTimeInterval)(model)
     else
         return false
     end
-
 end
 
 show_schedule(schedule) = string(schedule)

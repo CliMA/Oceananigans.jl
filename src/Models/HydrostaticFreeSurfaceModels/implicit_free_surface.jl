@@ -107,7 +107,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 
     solve!(η, solver, rhs, g, Δt)
 
-    @debug "Implict step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
+    @debug "Implicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
 
     fill_halo_regions!(η, arch)
     

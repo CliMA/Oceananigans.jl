@@ -58,10 +58,8 @@ architecture(::CuArray) = GPU()
 array_type(::CPU) = Array
 array_type(::GPU) = CuArray
 
-arch_array(::AbstractCPUArchitecture, A::StepRangeLen) = A
 arch_array(::AbstractCPUArchitecture, A::Array)        = A
 arch_array(::AbstractCPUArchitecture, A::CuArray)      = Array(A)
-arch_array(::AbstractGPUArchitecture, A::StepRangeLen) = CuArray(A)
 arch_array(::AbstractGPUArchitecture, A::Array)        = CuArray(A)
 arch_array(::AbstractGPUArchitecture, A::CuArray)      = A
 

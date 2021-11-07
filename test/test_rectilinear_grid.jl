@@ -1,5 +1,4 @@
 using Oceananigans.Grids: total_extent, halo_size
-using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
 #####
 ##### Regular rectilinear grids
@@ -144,9 +143,9 @@ function test_regular_rectilinear_grid_properties_are_same_type(FT)
     @test grid.Lx isa FT
     @test grid.Ly isa FT
     @test grid.Lz isa FT
-    @test grid.Δxᶠᵃᵃ isa FT
-    @test grid.Δyᵃᶠᵃ isa FT
-    @test grid.Δzᵃᵃᶠ isa FT
+    @test grid.Δx isa FT
+    @test grid.Δy isa FT
+    @test grid.Δz isa FT
 
     @test eltype(grid.xᶠᵃᵃ) == FT
     @test eltype(grid.yᵃᶠᵃ) == FT
@@ -263,34 +262,17 @@ function test_flat_size_regular_rectilinear_grid(FT)
 
     @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Flat, Flat), size=(), extent=(), halo=()) === (0, 0, 0)
 
-    @test flat_extent_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) == (1, 1, 1)
-    @test flat_extent_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Periodic), size=(2, 3), extent=(1, 1)) == (1, 1, 1)
-    @test flat_extent_regular_rectilinear_grid(FT, topology=(Periodic, Periodic, Flat), size=(2, 3), extent=(1, 1)) == (1, 1, 1)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(2, 2)) == (1, 2, 2)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Periodic), size=(2, 3), extent=(2, 2)) == (2, 1, 2)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Periodic, Periodic, Flat), size=(2, 3), extent=(2, 2)) == (2, 2, 1)
 
-    @test flat_extent_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Flat), size=2, extent=1) == (1, 1, 1)
-    @test flat_extent_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Flat), size=2, extent=1) == (1, 1, 1)
-    @test flat_extent_regular_rectilinear_grid(FT, topology=(Flat, Flat, Periodic), size=2, extent=1) == (1, 1, 1)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Flat), size=2, extent=2) == (2, 1, 1)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Flat), size=2, extent=2) == (1, 2, 1)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Flat, Flat, Periodic), size=2, extent=2) == (1, 1, 2)
 
     @test flat_extent_regular_rectilinear_grid(FT, topology=(Flat, Flat, Flat), size=(), extent=()) == (1, 1, 1)
 
     return nothing
-end
-
-function test_grid_equality(arch)
-    topo = (Periodic, Periodic, Bounded)
-    Nx, Ny, Nz = 4, 7, 9
-    grid1 = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z=(0, Nz))
-    grid2 = VerticallyStretchedRectilinearGrid(architecture=arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z_faces=0:Nz)
-    grid3 = VerticallyStretchedRectilinearGrid(architecture=arch, topology=topo, size=(Nx, Ny, Nz), x=(0, 1), y=(-1, 1), z_faces=0:Nz)
-
-    return grid1==grid1 && grid2 == grid3 && grid1 !== grid3
-end
-
-function test_grid_equality_over_architectures()
-    grid_cpu = VerticallyStretchedRectilinearGrid(architecture=CPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z_faces=0:9)
-    grid_gpu = VerticallyStretchedRectilinearGrid(architecture=GPU(), topology=(Periodic, Periodic, Bounded), size=(3, 7, 9), x=(0, 1), y=(-1, 1), z_faces=0:9)
-
-    return grid_cpu == grid_gpu
 end
 
 #####
@@ -303,8 +285,8 @@ function test_vertically_stretched_grid_properties_are_same_type(FT, arch)
     @test grid.Lx isa FT
     @test grid.Ly isa FT
     @test grid.Lz isa FT
-    @test grid.Δxᶠᵃᵃ isa FT
-    @test grid.Δyᵃᶠᵃ isa FT
+    @test grid.Δx isa FT
+    @test grid.Δy isa FT
 
     @test eltype(grid.xᶠᵃᵃ) == FT
     @test eltype(grid.xᶜᵃᵃ) == FT
@@ -529,53 +511,6 @@ function test_basic_lat_lon_general_grid(FT)
     return nothing
 end
 
-function test_lat_lon_precomputed_metrics(FT, arch)
-
-    Nλ, Nφ, Nz = N = (4, 2, 3)
-    Hλ, Hφ, Hz = H = (1, 1, 1)
-
-    latreg  = (-80,   80)
-    lonreg  = (-180, 180)
-    lonregB = (-160, 160)
-
-    zreg   = (-1,     0)
-
-    latstr  = [-80, 0, 80]
-    lonstr  = [-180, -30, 10, 40, 180]
-    lonstrB = [-160, -30, 10, 40, 160]
-    zstr    = collect(0:Nz)
-
-    latitude  = (latreg, latstr)
-    longitude = (lonreg, lonstr, lonregB, lonstrB)
-    zcoord    = (zreg,     zstr)
-
-    CUDA.allowscalar(true)
-
-    # grid with pre computed metrics vs metrics computed on the fly
-    for lat in latitude
-        for lon in longitude
-            for z in zcoord
-                println("$lat, $lon, $z")
-                grid_pre = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, architecture=arch, precompute_metrics=true) 
-                grid_fly = LatitudeLongitudeGrid(FT, size=N, halo=H, latitude=lat, longitude=lon, z=z, architecture=arch) 
-    
-                @test all(Array([all(Array([Δxᶠᶜᵃ(i, j, 1, grid_pre) ≈ Δxᶠᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                @test all(Array([all(Array([Δxᶜᶠᵃ(i, j, 1, grid_pre) ≈ Δxᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                @test all(Array([all(Array([Δxᶠᶠᵃ(i, j, 1, grid_pre) ≈ Δxᶠᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                @test all(Array([all(Array([Δxᶜᶜᵃ(i, j, 1, grid_pre) ≈ Δxᶜᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                @test all(Array([all(Array([Δyᶜᶠᵃ(i, j, 1, grid_pre) ≈ Δyᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                @test all(Array([all(Array([Azᶠᶜᵃ(i, j, 1, grid_pre) ≈ Azᶠᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                @test all(Array([all(Array([Azᶜᶠᵃ(i, j, 1, grid_pre) ≈ Azᶜᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                @test all(Array([all(Array([Azᶠᶠᵃ(i, j, 1, grid_pre) ≈ Azᶠᶠᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-                @test all(Array([all(Array([Azᶜᶜᵃ(i, j, 1, grid_pre) ≈ Azᶜᶜᵃ(i, j, 1, grid_fly) for i in 1-Hλ+1:Nλ+Hλ-1])) for j in 1-Hφ+1:Nφ+Hφ-1]))
-            end 
-        end
-    end
-
-    CUDA.allowscalar(false)
-
-end
-
 #####
 ##### Conformal cubed sphere face grid
 #####
@@ -659,18 +594,6 @@ end
             end
         end
 
-        @testset "Grid equality" begin
-            @info "    Testing grid equality operator (==)..."
-            
-            for arch in archs
-                test_grid_equality(arch)
-            end
-
-            if CUDA.has_cuda()
-                test_grid_equality_over_architectures()
-            end
-        end
-
         # Testing show function
         topo = (Periodic, Periodic, Periodic)
         
@@ -741,11 +664,6 @@ end
             test_basic_lat_lon_bounded_domain(FT)
             test_basic_lat_lon_periodic_domain(FT)
             test_basic_lat_lon_general_grid(FT)
-        end
-
-        @info "  Testing precomputed metrics on latitude-longitude grid..."
-        for arch in archs, FT in float_types
-            test_lat_lon_precomputed_metrics(FT, arch)
         end
 
         # Testing show function for regular grid

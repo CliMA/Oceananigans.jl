@@ -20,9 +20,9 @@ function time_step_wizard_shallow_water_model_works(arch, topo, coriolis)
     model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, architecture=arch, coriolis=coriolis)
     set!(model, h=1)
 
-    wizard = TimeStepWizard(cfl=1.0, Δt=1.0, max_change=1.1, max_Δt=10)
-
-    simulation = Simulation(model, Δt=wizard, stop_iteration=1)
+    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+    wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=10)
+    simulation.callbacks[:wizard] = Callback(wizard)
     run!(simulation)
 
     return model.clock.iteration == 1

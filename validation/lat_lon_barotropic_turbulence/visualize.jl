@@ -80,6 +80,6 @@ function visualize_makie(output_prefix)
     return nothing
 end
 
-output_prefix = "rotating_freely_decaying_barotropic_turbulence_Nx1080_Ny480"
+output_prefix = "rotating_freely_decaying_barotropic_turbulence_fly_Nx1080_Ny480"
 
 visualize_makie(output_prefix)
