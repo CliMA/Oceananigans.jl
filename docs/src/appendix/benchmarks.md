@@ -2,7 +2,7 @@
 # [Performance benchmarks](@id performance_benchmarks)
 
 The performance benchmarking scripts in the
-[`benchmarks`](https://github.com/CliMA/Oceananigans.jl/tree/master/benchmark)
+[`benchmarks`](https://github.com/CliMA/Oceananigans.jl/tree/main/benchmark)
 directory of the git repository can be run to benchmark Oceananigans.jl on your machine.
 They use [BenchmarkTools.jl](https://github.com/JuliaCI/BenchmarkTools.jl) to collect data and [PrettyTables.jl](https://github.com/ronisbr/PrettyTables.jl)  to nicely
 format the benchmark results.
@@ -471,7 +471,7 @@ Environment:
 
 ### Strong Scaling Multithreaded Nonhydrostatic Model
 
-The notable and continuous decrease in efficiencies for the strong scaling nonhydrostatic model is likely caused by the `256^3` grid not sufficiently saturating 32 threads running on 32 CPUs. At the time this benchmark was produced, multithreading for both nonhydrostatic and shallow water models is still an active area of improvement. Please use the appropriate scripts found in [`benchmarks`](https://github.com/CliMA/Oceananigans.jl/tree/master/benchmark) to obtain more recent and hopefully ameliorated benchmark results.
+The notable and continuous decrease in efficiencies for the strong scaling nonhydrostatic model is likely caused by the `256^3` grid not sufficiently saturating 32 threads running on 32 CPUs. At the time this benchmark was produced, multithreading for both nonhydrostatic and shallow water models is still an active area of improvement. Please use the appropriate scripts found in [`benchmarks`](https://github.com/CliMA/Oceananigans.jl/tree/main/benchmark) to obtain more recent and hopefully ameliorated benchmark results.
 
 ```
 Oceananigans v0.58.9
