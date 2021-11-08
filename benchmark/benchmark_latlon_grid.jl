@@ -3,7 +3,7 @@ push!(LOAD_PATH, joinpath(@__DIR__, ".."))
 using BenchmarkTools
 using CUDA
 using Oceananigans
-import Oceananigans.Grids: metrics_precomputed
+using Oceananigans.Grids: metrics_precomputed
 
 N = 256
                                 
