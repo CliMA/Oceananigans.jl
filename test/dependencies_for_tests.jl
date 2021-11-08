@@ -1,5 +1,3 @@
-<<<<<<< HEAD
-=======
 using Test
 using Printf
 using Random
@@ -80,4 +78,3 @@ include("data_dependencies.jl")
 include("utils_for_runtests.jl")
 
 group = get(ENV, "TEST_GROUP", :all) |> Symbol
->>>>>>> ss/latitude_longitude_grid

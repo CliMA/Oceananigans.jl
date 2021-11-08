@@ -10,15 +10,8 @@ using Dates: DateTime
 
 include("utils_for_runtests.jl")
 
-<<<<<<< HEAD
 function run_time_step_wizard_tests(arch)
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), architecture=arch)
-=======
-archs = test_architectures()
-
-function wall_time_step_wizard_tests(arch)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
->>>>>>> ss/latitude_longitude_grid
     model = NonhydrostaticModel(architecture=arch, grid=grid)
 
     Δx = grid.Δx
@@ -71,13 +64,8 @@ function wall_time_step_wizard_tests(arch)
     return nothing
 end
 
-<<<<<<< HEAD
 function run_basic_simulation_tests(arch, Δt)
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), architecture=arch)
-=======
-function run_basic_simulation_tests(arch)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
->>>>>>> ss/latitude_longitude_grid
     model = NonhydrostaticModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=3, stop_iteration=1)
 
