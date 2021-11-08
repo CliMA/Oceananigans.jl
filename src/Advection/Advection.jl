@@ -21,7 +21,8 @@ export
     UpwindBiasedThirdOrder,
     UpwindBiasedFifthOrder,
     CenteredFourthOrder,
-    WENO5
+    WENO5,
+    WENO5S
 
 using Oceananigans.Grids
 using Oceananigans.Operators
