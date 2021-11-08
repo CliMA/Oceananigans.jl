@@ -85,7 +85,7 @@ otherwise `data` is allocated.
 If `boundary_conditions` are not provided, default boundary conditions are constructed
 using the reduced location.
 """
-function ReducedField(Xr, Yr, Zr, arch, grid; dims, data=nothing,
+function ReducedField(FT::DataType, Xr, Yr, Zr, arch, grid::AbstractGrid; dims, data=nothing,
                       boundary_conditions=nothing)
 
     dims = validate_reduced_dims(dims)
@@ -94,7 +94,7 @@ function ReducedField(Xr, Yr, Zr, arch, grid; dims, data=nothing,
     X, Y, Z = reduced_location((Xr, Yr, Zr); dims=dims)
 
     if isnothing(data)
-        data = new_data(arch, grid, (X, Y, Z))
+        data = new_data(FT, arch, grid, (X, Y, Z))
     end
 
     if isnothing(boundary_conditions)
@@ -104,7 +104,9 @@ function ReducedField(Xr, Yr, Zr, arch, grid; dims, data=nothing,
     return ReducedField{X, Y, Z}(data, arch, grid, dims, boundary_conditions)
 end
 
-ReducedField(Lr, arch, grid; dims, kwargs...) = ReducedField(Lr..., arch, grid; dims=dims, kwargs...)
+ReducedField(Xr, Yr, Zr, arch, grid::AbstractGrid; dims, kw...) = ReducedField(eltype(grid), Xr, Yr, Zr, arch, grid; dims, kw...)
+ReducedField(Lr::Tuple, arch, grid::AbstractGrid; dims, kw...) = ReducedField(Lr..., arch, grid; dims, kw...)
+ReducedField(FT::DataType, Lr::Tuple, arch, grid::AbstractGrid; dims, kw...) = ReducedField(FT, Lr..., arch, grid; dims, kw...)
 
 # Canonical `similar` for AbstractReducedField
 Base.similar(r::AbstractReducedField{X, Y, Z, Arch}) where {X, Y, Z, Arch} =
@@ -139,6 +141,25 @@ function Statistics.norm(a::AbstractField)
     return CUDA.@allowscalar sqrt(r[1])
 end
 
+# TODO: In-place allocations with function mappings need to be fixed in Julia Base...
+const SumReduction     = typeof(Base.sum!)
+const ProdReduction    = typeof(Base.prod!)
+const MaximumReduction = typeof(Base.maximum!)
+const MinimumReduction = typeof(Base.minimum!)
+const AllReduction     = typeof(Base.all!)
+const AnyReduction     = typeof(Base.any!)
+
+initialize_reduced_field!(::SumReduction,  f, r::AbstractReducedField, c) = Base.initarray!(interior(r), Base.add_sum, true, interior(c))
+initialize_reduced_field!(::ProdReduction, f, r::AbstractReducedField, c) = Base.initarray!(interior(r), Base.mul_prod, true, interior(c))
+initialize_reduced_field!(::AllReduction,  f, r::AbstractReducedField, c) = Base.initarray!(interior(r), &, true, interior(c))
+initialize_reduced_field!(::AnyReduction,  f, r::AbstractReducedField, c) = Base.initarray!(interior(r), |, true, interior(c))
+
+initialize_reduced_field!(::MaximumReduction, f, r::AbstractReducedField, c) = Base.mapfirst!(f, interior(r), c)
+initialize_reduced_field!(::MinimumReduction, f, r::AbstractReducedField, c) = Base.mapfirst!(f, interior(r), c)
+
+filltype(f, grid) = eltype(grid)
+filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
+
 # Allocating and in-place reductions
 for reduction in (:sum, :maximum, :minimum, :all, :any)
 
@@ -160,8 +181,10 @@ for reduction in (:sum, :maximum, :minimum, :all, :any)
                 Base.$(reduction!)(f, r, c)
                 return CUDA.@allowscalar r[1, 1, 1]
             else
-                r = ReducedField(location(c)..., architecture(c), c.grid; dims)
-                Base.$(reduction!)(f, r, c)
+                FT = filltype(Base.$(reduction!), c.grid)
+                r = ReducedField(FT, location(c), architecture(c), c.grid; dims)
+                initialize_reduced_field!(Base.$(reduction!), f, r, c)
+                Base.$(reduction!)(f, r, c, init=false)
                 return r
             end
         end
