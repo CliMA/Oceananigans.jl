@@ -95,8 +95,8 @@ SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞}
 # Members
 `Gᵁ` : (ReducedField). Vertically integrated slow barotropic forcing function for U
 `Gⱽ` : (ReducedField). Vertically integrated slow barotropic forcing function for V
-`Hᶠᶜ`: (ReducedField). Depth at (Face, Center)
-`Hᶜᶠ`: (ReducedField). Depth at (Center, Face)
+`Hᶠᶜ`: (ReducedField). Depth at (Face, Center): minimum depth of neighbors
+`Hᶜᶠ`: (ReducedField). Depth at (Center, Face): minimum depth of neighbors
 `Hᶜᶜ`: (ReducedField). Depth at (Center, Center)
 """
 @Base.kwdef struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞}
@@ -107,6 +107,7 @@ SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞}
     Hᶜᶜ:: 𝒞𝒞
 end
 
+# TODO: INITIALIZE DIFFERENT DOMAIN DEPTHS from Grid
 function SplitExplicitAuxiliary(grid::AbstractGrid, arch::AbstractArchitecture)
 
     Gᵁ = ReducedField(Face, Center, Nothing, arch, grid; dims=3)

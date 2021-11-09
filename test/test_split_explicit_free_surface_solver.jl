@@ -1,4 +1,5 @@
 include(pwd() * "/src/Models/HydrostaticFreeSurfaceModels/split_explicit_free_surface.jl") # CHANGE TO USING MODULE EVENTUALLY
+include(pwd() * "/src/Models/HydrostaticFreeSurfaceModels/split_explicit_free_surface_kernels.jl")
 # TODO: clean up test, change to use interior
 # TODO: clean up substep function so that it only takes in SplitExplicitFreeSurface
 using Oceananigans.Utils
@@ -12,8 +13,8 @@ arch = Oceananigans.GPU()
 FT = Float64
 topology = (Periodic, Periodic, Bounded)
 Nx = Ny = Nz = 16 * 8 
-Nx = 128 
-Ny = 64 
+Nx = 128
+Ny = 64
 Lx = Ly = Lz = 2π
 grid = RegularRectilinearGrid(topology=topology, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(-Lz, 0))
 
@@ -26,51 +27,6 @@ sefs.Gᵁ
 sefs.η .= 0.0
 sefs.state.η === sefs.η
 sefs.auxiliary.Gᵁ === sefs.Gᵁ
-
-#=
-∂t(η) = -∇⋅U⃗ 
-∂t(U⃗) = - gH∇η + f⃗
-=#
-
-@kernel function free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ)
-    i, j = @index(Global, NTuple)
-    # ∂τ(U⃗) = - ∇η + G⃗
-    @inbounds U[i, j, 1] +=  Δτ * (-g * Hᶠᶜ[i,j] * ∂xᶠᶜᵃ(i, j, 1,  grid, η) + Gᵁ[i, j, 1])
-    @inbounds V[i, j, 1] +=  Δτ * (-g * Hᶜᶠ[i,j] * ∂yᶜᶠᵃ(i, j, 1,  grid, η) + Gⱽ[i, j, 1])
-end
-
-@kernel function free_surface_substep_kernel_2!(grid, Δτ, η, U, V, η̅, U̅, V̅, velocity_weight, free_surface_weight)
-    i, j = @index(Global, NTuple)
-    # ∂τ(U⃗) = - ∇η + G⃗
-    @inbounds η[i, j, 1] -=  Δτ * div_xyᶜᶜᵃ(i, j, 1, grid, U, V)
-    # time-averaging
-    @inbounds U̅[i, j, 1] +=  velocity_weight * U[i, j, 1]
-    @inbounds V̅[i, j, 1] +=  velocity_weight * V[i, j, 1]
-    @inbounds η̅[i, j, 1] +=  free_surface_weight   * η[i, j, 1]
-end
-
-function free_surface_substep!(arch, grid, Δτ, free_surface::SplitExplicitFreeSurface, substep_index)
-    sefs = free_surface #split explicit free surface
-    U, V, η̅, U̅, V̅, Gᵁ, Gⱽ  = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
-    Hᶠᶜ, Hᶜᶠ = sefs.Hᶠᶜ, sefs.Hᶜᶠ
-    g = sefs.parameters.g
-    velocity_weight = sefs.velocity_weights[substep_index]
-    free_surface_weight = sefs.free_surface_weights[substep_index]
-
-    fill_halo_regions!(η, arch)
-    event = launch!(arch, grid, :xy, free_surface_substep_kernel_1!, 
-            grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
-            dependencies=Event(device(arch)))
-    wait(event)
-    # U, V has been updated thus need to refil halo
-    fill_halo_regions!(U, arch)
-    fill_halo_regions!(V, arch)
-    event = launch!(arch, grid, :xy, free_surface_substep_kernel_2!, 
-            grid, Δτ, η, U, V, η̅, U̅, V̅, velocity_weight, free_surface_weight,
-            dependencies=Event(device(arch)))
-    wait(event)
-            
-end
 
 ##
 # Test 1: Evaluating the RHS with a simple test
@@ -164,9 +120,11 @@ println("The L∞ norm of η is ", maximum(abs.(η_computed)))
 # Test 3: Testing analytic solution to 
 # ∂ₜη + ∇⋅U⃗ = 0
 # ∂ₜU⃗ + ∇η  = G⃗
+kx = 2
+ky = 3
 ω = sqrt(kx^2 + ky^2)
 T = 2π/ω / 3 * 2
-Δτ = 2π / maximum([Nx, Ny]) * 1e-2 # the last factor is essentially the order of accuracy
+Δτ = 2π / maximum([Nx, Ny]) * 1e-2 # error mostly spatially dependent, except in the averaging
 Nt = floor(Int, T/Δτ)
 Δτ_end = T - Nt * Δτ
 
@@ -174,12 +132,10 @@ Nt = floor(Int, T/Δτ)
 sefs = SplitExplicitFreeSurface(grid, arch, substeps = Nt+1)
 U, V, η̅, U̅, V̅, Gᵁ, Gⱽ  = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
 η = sefs.η
-sefs.Hᶠᶜ .= 1/sefs.parameters.g
-sefs.Hᶜᶠ .= 1/sefs.parameters.g
+sefs.Hᶠᶜ .= 1/sefs.parameters.g # to make life easy
+sefs.Hᶜᶠ .= 1/sefs.parameters.g # to make life easy
 
 # set!(η, f(x,y)) k^2 = ω^2
-kx = 2
-ky = 3
 gu_c = 1.0 
 gv_c = 2.0 
 η₀(x,y) = sin(kx * x) * sin(ky * y)
