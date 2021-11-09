@@ -406,10 +406,10 @@ function test_netcdf_function_output(arch)
     @test ds["zF"][1] == grid.zᵃᵃᶠ[1]
 
     @test ds["xC"][end] == grid.xᶜᵃᵃ[N]
-    @test ds["yC"][end] == grid.yᶠᵃᵃ[N]
-    @test ds["zC"][end] == grid.zᵃᶜᵃ[N]
-    @test ds["xF"][end] == grid.xᵃᶠᵃ[N]
-    @test ds["yF"][end] == grid.yᵃᵃᶜ[N]
+    @test ds["yC"][end] == grid.yᵃᶜᵃ[N]
+    @test ds["zC"][end] == grid.zᵃᵃᶜ[N]
+    @test ds["xF"][end] == grid.xᶠᵃᵃ[N]
+    @test ds["yF"][end] == grid.yᵃᶠᵃ[N]
     @test ds["zF"][end] == grid.zᵃᵃᶠ[N+1]  # z is Bounded
 
     @test ds.attrib["location"] == "Bay of Fundy"
