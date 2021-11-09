@@ -143,19 +143,19 @@ function test_thermal_bubble_netcdf_output(arch)
     @test length(ds3["yF"]) == Ny
     @test length(ds3["zF"]) == Nz+1  # z is Bounded
 
-    @test ds3["xC"][1] == grid.xC[1]
-    @test ds3["xF"][1] == grid.xF[1]
-    @test ds3["yC"][1] == grid.yC[1]
-    @test ds3["yF"][1] == grid.yF[1]
-    @test ds3["zC"][1] == grid.zC[1]
-    @test ds3["zF"][1] == grid.zF[1]
+    @test ds3["xC"][1] == grid.xᶜᵃᵃ[1]
+    @test ds3["xF"][1] == grid.xᶠᵃᵃ[1]
+    @test ds3["yC"][1] == grid.yᵃᶜᵃ[1]
+    @test ds3["yF"][1] == grid.yᵃᶠᵃ[1]
+    @test ds3["zC"][1] == grid.zᵃᵃᶜ[1]
+    @test ds3["zF"][1] == grid.zᵃᵃᶠ[1]
 
-    @test ds3["xC"][end] == grid.xC[Nx]
-    @test ds3["xF"][end] == grid.xF[Nx]
-    @test ds3["yC"][end] == grid.yC[Ny]
-    @test ds3["yF"][end] == grid.yF[Ny]
-    @test ds3["zC"][end] == grid.zC[Nz]
-    @test ds3["zF"][end] == grid.zF[Nz+1]  # z is Bounded
+    @test ds3["xC"][end] == grid.xᶜᵃᵃ[Nx]
+    @test ds3["xF"][end] == grid.xᶠᵃᵃ[Nx]
+    @test ds3["yC"][end] == grid.yᵃᶜᵃ[Ny]
+    @test ds3["yF"][end] == grid.yᵃᶠᵃ[Ny]
+    @test ds3["zC"][end] == grid.zᵃᵃᶜ[Nz]
+    @test ds3["zF"][end] == grid.zᵃᵃᶠ[Nz+1]  # z is Bounded
 
     @test eltype(ds3["u"]) == Float32
     @test eltype(ds3["v"]) == Float32
@@ -202,19 +202,19 @@ function test_thermal_bubble_netcdf_output(arch)
     @test length(ds2["zC"]) == length(k_slice)
     @test length(ds2["zF"]) == length(k_slice)
 
-    @test ds2["xC"][1] == grid.xC[i_slice[1]]
-    @test ds2["xF"][1] == grid.xF[i_slice[1]]
-    @test ds2["yC"][1] == grid.yC[j_slice[1]]
-    @test ds2["yF"][1] == grid.yF[j_slice[1]]
-    @test ds2["zC"][1] == grid.zC[k_slice[1]]
-    @test ds2["zF"][1] == grid.zF[k_slice[1]]
+    @test ds2["xC"][1] == grid.xᶜᵃᵃ[i_slice[1]]
+    @test ds2["xF"][1] == grid.xᶠᵃᵃ[i_slice[1]]
+    @test ds2["yC"][1] == grid.yᵃᶜᵃ[j_slice[1]]
+    @test ds2["yF"][1] == grid.yᵃᶠᵃ[j_slice[1]]
+    @test ds2["zC"][1] == grid.zᵃᵃᶜ[k_slice[1]]
+    @test ds2["zF"][1] == grid.zᵃᵃᶠ[k_slice[1]]
 
-    @test ds2["xC"][end] == grid.xC[i_slice[end]]
-    @test ds2["xF"][end] == grid.xF[i_slice[end]]
-    @test ds2["yC"][end] == grid.yC[j_slice[end]]
-    @test ds2["yF"][end] == grid.yF[j_slice[end]]
-    @test ds2["zC"][end] == grid.zC[k_slice[end]]
-    @test ds2["zF"][end] == grid.zF[k_slice[end]]
+    @test ds2["xC"][end] == grid.xᶜᵃᵃ[i_slice[end]]
+    @test ds2["xF"][end] == grid.xᶠᵃᵃ[i_slice[end]]
+    @test ds2["yC"][end] == grid.yᵃᶜᵃ[j_slice[end]]
+    @test ds2["yF"][end] == grid.yᵃᶠᵃ[j_slice[end]]
+    @test ds2["zC"][end] == grid.zᵃᵃᶜ[k_slice[end]]
+    @test ds2["zF"][end] == grid.zᵃᵃᶠ[k_slice[end]]
 
     @test eltype(ds2["u"]) == Float32
     @test eltype(ds2["v"]) == Float32
@@ -295,19 +295,19 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
     @test length(ds["yF"]) == Ny+2Hy
     @test length(ds["zF"]) == Nz+2Hz+1  # z is Bounded
 
-    @test ds["xC"][1] == grid.xC[1-Hx]
-    @test ds["xF"][1] == grid.xF[1-Hx]
-    @test ds["yC"][1] == grid.yC[1-Hy]
-    @test ds["yF"][1] == grid.yF[1-Hy]
-    @test ds["zC"][1] == grid.zC[1-Hz]
-    @test ds["zF"][1] == grid.zF[1-Hz]
+    @test ds["xC"][1] == grid.xᶜᵃᵃ[1-Hx]
+    @test ds["xF"][1] == grid.xᶠᵃᵃ[1-Hx]
+    @test ds["yC"][1] == grid.yᵃᶜᵃ[1-Hy]
+    @test ds["yF"][1] == grid.yᵃᶠᵃ[1-Hy]
+    @test ds["zC"][1] == grid.zᵃᵃᶜ[1-Hz]
+    @test ds["zF"][1] == grid.zᵃᵃᶠ[1-Hz]
 
-    @test ds["xC"][end] == grid.xC[Nx+Hx]
-    @test ds["xF"][end] == grid.xF[Nx+Hx]
-    @test ds["yC"][end] == grid.yC[Ny+Hy]
-    @test ds["yF"][end] == grid.yF[Ny+Hy]
-    @test ds["zC"][end] == grid.zC[Nz+Hz]
-    @test ds["zF"][end] == grid.zF[Nz+Hz+1]  # z is Bounded
+    @test ds["xC"][end] == grid.xᶜᵃᵃ[Nx+Hx]
+    @test ds["xF"][end] == grid.xᶠᵃᵃ[Nx+Hx]
+    @test ds["yC"][end] == grid.yᵃᶜᵃ[Ny+Hy]
+    @test ds["yF"][end] == grid.yᵃᶠᵃ[Ny+Hy]
+    @test ds["zC"][end] == grid.zᵃᵃᶜ[Nz+Hz]
+    @test ds["zF"][end] == grid.zᵃᵃᶠ[Nz+Hz+1]  # z is Bounded
 
     @test eltype(ds["u"]) == Float32
     @test eltype(ds["v"]) == Float32
@@ -398,19 +398,19 @@ function test_netcdf_function_output(arch)
     @test length(ds["yF"]) == N
     @test length(ds["zF"]) == N+1  # z is Bounded
 
-    @test ds["xC"][1] == grid.xC[1]
-    @test ds["xF"][1] == grid.xF[1]
-    @test ds["yC"][1] == grid.yC[1]
-    @test ds["yF"][1] == grid.yF[1]
-    @test ds["zC"][1] == grid.zC[1]
-    @test ds["zF"][1] == grid.zF[1]
+    @test ds["xC"][1] == grid.xᶜᵃᵃ[1]
+    @test ds["xF"][1] == grid.xᶠᵃᵃ[1]
+    @test ds["yC"][1] == grid.yᵃᶜᵃ[1]
+    @test ds["yF"][1] == grid.yᵃᶠᵃ[1]
+    @test ds["zC"][1] == grid.zᵃᵃᶜ[1]
+    @test ds["zF"][1] == grid.zᵃᵃᶠ[1]
 
-    @test ds["xC"][end] == grid.xC[N]
-    @test ds["yC"][end] == grid.yC[N]
-    @test ds["zC"][end] == grid.zC[N]
-    @test ds["xF"][end] == grid.xF[N]
-    @test ds["yF"][end] == grid.yF[N]
-    @test ds["zF"][end] == grid.zF[N+1]  # z is Bounded
+    @test ds["xC"][end] == grid.xᶜᵃᵃ[N]
+    @test ds["yC"][end] == grid.yᶠᵃᵃ[N]
+    @test ds["zC"][end] == grid.zᵃᶜᵃ[N]
+    @test ds["xF"][end] == grid.xᵃᶠᵃ[N]
+    @test ds["yF"][end] == grid.yᵃᵃᶜ[N]
+    @test ds["zF"][end] == grid.zᵃᵃᶠ[N+1]  # z is Bounded
 
     @test ds.attrib["location"] == "Bay of Fundy"
     @test ds.attrib["onions"] == 7

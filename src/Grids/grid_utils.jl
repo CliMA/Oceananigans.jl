@@ -85,9 +85,9 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 @inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
 @inline domain(::Type{Flat}, N, ξ) = CUDA.@allowscalar ξ[1], ξ[1]
 
-@inline x_domain(grid) = domain(topology(grid, 1), grid.Nx, grid.xF)
-@inline y_domain(grid) = domain(topology(grid, 2), grid.Ny, grid.yF)
-@inline z_domain(grid) = domain(topology(grid, 3), grid.Nz, grid.zF)
+@inline x_domain(grid) = domain(topology(grid, 1), grid.Nx, grid.xᶠᵃᵃ)
+@inline y_domain(grid) = domain(topology(grid, 2), grid.Ny, grid.yᵃᶠᵃ)
+@inline z_domain(grid) = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
 
 #####
 ##### << Indexing >>

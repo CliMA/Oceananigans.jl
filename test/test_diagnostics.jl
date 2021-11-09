@@ -54,7 +54,7 @@ function advective_cfl_diagnostic_is_correct_on_regular_grid(arch, FT)
     model = TestModel_RegularRectGrid(arch, FT)
 
     Δt = FT(1.3e-6)
-    Δx = FT(model.grid.Δx)
+    Δx = FT(model.grid.Δxᶜᵃᵃ)
     u₀ = FT(1.2)
     CFL_by_hand = Δt * u₀ / Δx
 
@@ -68,7 +68,7 @@ function advective_cfl_diagnostic_is_correct_on_vertically_stretched_grid(arch, 
     model = TestModel_VerticallyStrectedRectGrid(arch, FT)
 
     Δt = FT(1.3e-6)
-    Δx = FT(model.grid.Δx)
+    Δx = FT(model.grid.Δxᶜᵃᵃ)
     u₀ = FT(1.2)
     CFL_by_hand = Δt * u₀ / Δx
 
