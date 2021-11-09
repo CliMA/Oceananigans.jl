@@ -120,20 +120,20 @@ Adapt.adapt_structure(to, grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, 
         Adapt.adapt(to, grid.zᵃᵃᶜ))
 
 @inline xnode(::Center, i, grid::RectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
-@inline xnode(::Face, i, grid::RectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
+@inline xnode(::Face  , i, grid::RectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
 
 @inline ynode(::Center, j, grid::RectilinearGrid) = @inbounds grid.yᵃᶜᵃ[j]
-@inline ynode(::Face, j, grid::RectilinearGrid) = @inbounds grid.yᵃᶠᵃ[j]
+@inline ynode(::Face  , j, grid::RectilinearGrid) = @inbounds grid.yᵃᶠᵃ[j]
 
 @inline znode(::Center, k, grid::RectilinearGrid) = @inbounds grid.zᵃᵃᶜ[k]
-@inline znode(::Face, k, grid::RectilinearGrid) = @inbounds grid.zᵃᵃᶠ[k]
+@inline znode(::Face  , k, grid::RectilinearGrid) = @inbounds grid.zᵃᵃᶠ[k]
 
 all_x_nodes(::Type{Center}, grid::RectilinearGrid) = grid.xᶜᵃᵃ
-all_x_nodes(::Type{Face}, grid::RectilinearGrid) = grid.xᶠᵃᵃ
+all_x_nodes(::Type{Face}  , grid::RectilinearGrid) = grid.xᶠᵃᵃ
 all_y_nodes(::Type{Center}, grid::RectilinearGrid) = grid.yᵃᶜᵃ
-all_y_nodes(::Type{Face}, grid::RectilinearGrid) = grid.yᵃᶠᵃ
+all_y_nodes(::Type{Face}  , grid::RectilinearGrid) = grid.yᵃᶠᵃ
 all_z_nodes(::Type{Center}, grid::RectilinearGrid) = grid.zᵃᵃᶜ
-all_z_nodes(::Type{Face}, grid::RectilinearGrid) = grid.zᵃᵃᶠ
+all_z_nodes(::Type{Face}  , grid::RectilinearGrid) = grid.zᵃᵃᶠ
 
 function with_halo(new_halo, old_grid::RectilinearGrid)
 
