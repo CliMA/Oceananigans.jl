@@ -51,17 +51,17 @@ function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwar
     field_bcs_array_left  = field_bcs_array_left[perm]
     field_bcs_array_right = field_bcs_array_right[perm]
    
-    events = Event(device(arch))
+    events = NoneEvent()
+
     for task = 1:3
     
-        barrier = events
-
         fill_halo!  = fill_halos![task]
         bc_left     = field_bcs_array_left[task]
         bc_right    = field_bcs_array_right[task]
-        events      = fill_halo!(c, bc_left, bc_right, arch, barrier, grid, args...; kwargs...)
-       
+        events      = fill_halo!(c, bc_left, bc_right, arch, events, grid, args...; kwargs...)
+
     end
+
     wait(device(arch), events)
 
     return nothing
