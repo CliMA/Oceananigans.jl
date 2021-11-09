@@ -50,19 +50,18 @@ function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwar
 
     perm = sortperm(field_bcs_array_left, lt=fill_first)
     fill_halos! = fill_halos![perm]
-    field_bcs_array_left  = field_bcs_array_left[perm]
-    field_bcs_array_right = field_bcs_array_right[perm]
+    bcs_left  = field_bcs_array_left[perm]
+    bcs_right = field_bcs_array_right[perm]
     
-    for task = 1:3
-    
-       barrier    = events
-       fill_halo! = fill_halos![task]
-       bc_left    = field_bcs_array_left[task]
-       bc_right   = field_bcs_array_right[task]
-       events     = fill_halo!(c, bc_left, bc_right, arch, barrier, grid, args...; kwargs...)
-       
-       wait(device(arch), events)
-    end
+    fill_halo! = fill_halos![1]
+    event1     = fill_halo!(c, bc_left[1], bc_right[1], arch, events, grid, args...; kwargs...)   
+    wait(device(arch), event1)
+    fill_halo! = fill_halos![2]
+    event2     = fill_halo!(c, bc_left[2], bc_right[2], arch, event1, grid, args...; kwargs...)   
+    wait(device(arch), event2)
+    fill_halo! = fill_halos![3]
+    event3     = fill_halo!(c, bc_left[3], bc_right[3], arch, event2, grid, args...; kwargs...)   
+    wait(device(arch), event3)
 
     return nothing
 end
