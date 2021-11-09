@@ -113,7 +113,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
                                   architecture = arch,
                             precompute_metrics = comp)
 
-            for free_surface in [explicit_free_surface]
+            for free_surface in [explicit_free_surface, implicit_free_surface]
                                  
                 # GPU + ImplicitFreeSurface + precompute metrics is not compatible at the moment. 
                 # kernel "uses too much parameter space  (maximum 0x1100 bytes) " error 
