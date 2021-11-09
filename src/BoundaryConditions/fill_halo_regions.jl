@@ -51,7 +51,7 @@ function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwar
     field_bcs_array_left  = field_bcs_array_left[perm]
     field_bcs_array_right = field_bcs_array_right[perm]
    
-    events = MultiEvent(Event(device(arch)), NoneEvent(), NoneEvent(), NoneEvent())
+    events = MultiEvent((Event(device(arch)), NoneEvent(), NoneEvent(), NoneEvent()))
     for task = 1:3
     
        fill_halo!     = fill_halos![task]
