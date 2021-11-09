@@ -1,27 +1,41 @@
 
-using Oceananigans.Grids: min_Δz
+using Oceananigans.Grids: min_Δx
 using Oceananigans.Advection: WENO5S
 using JLD2
 using Plots
 
-grid  = RectilinearGrid(size = (100,), z = (0, 1), halo = (3,), topology = (Flat, Flat, Periodic))    
+""" cosine grid """
+
+Nx = 40
+Δx = 0.02 .+ 2*sin.(π*collect(1:Nx)/(Nx))
+
+xF = zeros(Float64, Nx+1)
+
+xF[1] = 0
+for i in 2:Nx+1
+    xF[i] = xF[i-1] + Δx[i-1]
+end
+
+xF = xF ./ xF[end]
+
+grid  = RectilinearGrid(size = (Nx,), x = xF, halo = (3,), topology = (Periodic, Flat, Flat))    
 
 wback(x, y, z, t) = 1.0
 
 W = BackgroundField(wback)
 
 
-for weno in [WENO5S()]
+for weno in [WENO5(), WENO5S()]
     model = NonhydrostaticModel(architecture = CPU(),
                                         grid = grid,
-                                advection = weno,
-                                timestepper = :RungeKutta3,
-                                    tracers = (:c,),
-                        background_fields = (w = W, ),
+                                   advection = weno,
+                                 timestepper = :RungeKutta3,
+                                     tracers = (:c,),
+                           background_fields = (u = W, ),
                                     buoyancy = nothing)
 
 
-    c₀(x, y, z) = 10*exp(-((z-0.5)/0.2)^2)
+    c₀(x, y, z) = 10*exp(-((x-0.5)/0.2)^2)
 
     set!(model, c=c₀, u=0, v=0, w=0)
 
@@ -33,7 +47,7 @@ for weno in [WENO5S()]
         return nothing
     end
 
-    Δ_min = min_Δz(grid)
+    Δ_min = min_Δx(grid)
 
     # Time-scale for advection propagation across the smallest grid cell
     CFL    = 0.5
@@ -41,15 +55,15 @@ for weno in [WENO5S()]
 
     simulation = Simulation(model,
                             Δt = Δt_max,
-                            stop_time = 20000*Δt_max)
+                            stop_time = 4000*Δt_max)
 
                                                             
     output_fields = model.tracers
 
-    output_prefix = "test_weno_fields$(grid.Nx)_$weno"
+    output_prefix = "test_weno_$weno"
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                        schedule = TimeInterval(100*Δt_max),
+                                                        schedule = TimeInterval(5*Δt_max),
                                                         prefix = output_prefix,
                                                         force = true)
 
@@ -60,8 +74,8 @@ end
 
 
 
-wenoU = jldopen("test_weno_fields1_WENO5().jld2")
-wenoS = jldopen("test_weno_fields1_WENO5S().jld2")
+wenoU = jldopen("test_weno_WENO5().jld2")
+wenoS = jldopen("test_weno_WENO5S().jld2")
 
 global cu = ()
 global cs = ()
@@ -73,9 +87,10 @@ for (i, key) in enumerate(keys(wenoU["timeseries/c"]))
     end
 end
 
-z = grid.zᵃᵃᶜ[1:grid.Nz]
+x = grid.xᶜᵃᵃ[1:grid.Nx]
 
-# anim = @animate for i ∈ 1:length(cu)
-#     plot(z, cu[i][1,1,:], i)
-# end
-# gif(anim, "anim_fps15.gif", fps = 15)
+anim = @animate for i ∈ 1:length(cu)
+    plot( x, cu[i][:])
+    plot!(x, cs[i][:])
+end
+gif(anim, "anim_fps15.gif", fps = 15)
