@@ -38,21 +38,21 @@ function fill_west_and_east_halo!(c, ::PBC, ::PBC, arch, dep, grid, args...; kw.
   c_parent = parent(c)
   yz_size = size(c_parent)[[2, 3]]
   event = launch!(arch, grid, yz_size, fill_periodic_west_and_east_halo!, c_parent, grid.Hx, grid.Nx; dependencies=dep, kw...)
-  return validate_event(event)
+  return event
 end
 
 function fill_south_and_north_halo!(c, ::PBC, ::PBC, arch, dep, grid, args...; kw...)
   c_parent = parent(c)
   xz_size = size(c_parent)[[1, 3]]
   event = launch!(arch, grid, xz_size, fill_periodic_south_and_north_halo!, c_parent, grid.Hy, grid.Ny; dependencies=dep, kw...)
-  return validate_event(event)
+  return event
 end
 
 function fill_bottom_and_top_halo!(c, ::PBC, ::PBC, arch, dep, grid, args...; kw...)
   c_parent = parent(c)
   xy_size = size(c_parent)[[1, 2]]
   event = launch!(arch, grid, xy_size, fill_periodic_bottom_and_top_halo!, c_parent, grid.Hz, grid.Nz; dependencies=dep, kw...)
-  return validate_event(event)
+  return event
 end
 
 ####
@@ -60,21 +60,21 @@ end
 ####
 
 
-  fill_west_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[1:H, :, :] = c.parent[N+1:N+H, :, :]
- fill_south_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[:, 1:H, :] = c.parent[:, N+1:N+H, :]
-fill_bottom_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[:, :, 1:H] = c.parent[:, :, N+1:N+H]
+#   fill_west_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[1:H, :, :] = c.parent[N+1:N+H, :, :]
+#  fill_south_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[:, 1:H, :] = c.parent[:, N+1:N+H, :]
+# fill_bottom_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[:, :, 1:H] = c.parent[:, :, N+1:N+H]
 
- fill_east_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[N+H+1:N+2H, :, :] = c.parent[1+H:2H, :, :]
-fill_north_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[:, N+H+1:N+2H, :] = c.parent[:, 1+H:2H, :]
-  fill_top_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[:, :, N+H+1:N+2H] = c.parent[:, :, 1+H:2H]
+#  fill_east_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[N+H+1:N+2H, :, :] = c.parent[1+H:2H, :, :]
+# fill_north_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[:, N+H+1:N+2H, :] = c.parent[:, 1+H:2H, :]
+#   fill_top_halo!(c, ::PBC, H::Int, N) = @views @. c.parent[:, :, N+H+1:N+2H] = c.parent[:, :, 1+H:2H]
 
-# Generate interface functions for periodic boundary conditions
-sides = (:west, :east, :south, :north, :top, :bottom)
-coords = (:x, :x, :y, :y, :z, :z)
+# # Generate interface functions for periodic boundary conditions
+# sides = (:west, :east, :south, :north, :top, :bottom)
+# coords = (:x, :x, :y, :y, :z, :z)
 
-for (x, side) in zip(coords, sides)
-   name = Symbol(:fill_, side, :_halo!)
-   H = Symbol(:H, x)
-   N = Symbol(:N, x)
-   @eval $name(c, bc::PBC, arch, dep, grid, args...; kw...) = $name(c, bc, grid.$(H), grid.$(N))
-end
+# for (x, side) in zip(coords, sides)
+#    name = Symbol(:fill_, side, :_halo!)
+#    H = Symbol(:H, x)
+#    N = Symbol(:N, x)
+#    @eval $name(c, bc::PBC, arch, dep, grid, args...; kw...) = $name(c, bc, grid.$(H), grid.$(N))
+# end

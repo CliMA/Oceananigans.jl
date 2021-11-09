@@ -92,16 +92,16 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
 
         # Hydrostatic regression test
 
-        longitude = ((-180, 180), collect(-180:2:180)) #, (-160, 160), collect(-160:2:160))
-        latitude  = ((-60, 60), collect(-60:2:60))
-        zcoord    = ((-90, 0 ), collect(-90:30:0))
+        longitude = ((-180, 180),) #, (-160, 160), collect(-160:2:160))
+        latitude  = ((-60, 60),)
+        zcoord    = (collect(-90:30:0),)
 
         explicit_free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
         implicit_free_surface = ImplicitFreeSurface(gravitational_acceleration = 1.0,
                                                    solver_method = :PreconditionedConjugateGradient,
                                                    tolerance = 1e-15)
 
-        for lat in latitude, lon in longitude, z in zcoord, comp in (true, false)
+        for lat in latitude, lon in longitude, z in zcoord, comp in (false)
 
             lon[1] == -180 ? N = (180, 60, 3) : N = (160, 60, 3)
 
@@ -113,7 +113,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
                                   architecture = arch,
                             precompute_metrics = comp)
 
-            for free_surface in [explicit_free_surface, implicit_free_surface]
+            for free_surface in [explicit_free_surface]
                                  
                 # GPU + ImplicitFreeSurface + precompute metrics is not compatible at the moment. 
                 # kernel "uses too much parameter space  (maximum 0x1100 bytes) " error 
