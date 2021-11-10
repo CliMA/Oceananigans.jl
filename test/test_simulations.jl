@@ -47,7 +47,7 @@ function wall_time_step_wizard_tests(arch)
     grid_stretched = RectilinearGrid(size = (1, 1, 1),
                                      x = (0, 1),
                                      y = (0, 1),
-                                     z_faces = z -> z, 
+                                     z = z -> z, 
                                      halo = (1, 1, 1),
                                      architecture=arch)
 
