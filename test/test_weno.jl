@@ -18,21 +18,21 @@ end
 
 xF = xF ./ xF[end]
 
-grid  = RectilinearGrid(size = (Nx,), x = xF, halo = (3,), topology = (Periodic, Flat, Flat))    
+grid  = RectilinearGrid(size = (Nx,), x = xF, halo = (3,), topology = (Periodic, Flat, Flat), architecture = GPU())    
 
-wback(x, y, z, t) = 1.0
 
-W = BackgroundField(wback)
+U = Field(Face, Center, Center, grid)
+set!(U, 1.0)
 
 
 for weno in [WENO5(), WENO5S()]
-    model = NonhydrostaticModel(architecture = CPU(),
-                                        grid = grid,
-                                   advection = weno,
-                                 timestepper = :RungeKutta3,
-                                     tracers = (:c,),
-                           background_fields = (u = W, ),
-                                    buoyancy = nothing)
+    model = HydrostaticFreeSurfaceModel(architecture = GPU(),
+                                                grid = grid,
+                                           advection = weno,
+                                         timestepper = :RungeKutta3,
+                                             tracers = (:c,),
+                                          velocities = PrescribedVelocityFields(u=U,),
+                                            buoyancy = nothing)
 
 
     c₀(x, y, z) = 10*exp(-((x-0.5)/0.2)^2)
