@@ -34,6 +34,9 @@ include("pcg_implicit_free_surface_solver.jl")
 include("fft_based_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
 
+include("split_explicit_free_surface.jl")
+include("split_explicit_free_surface_kernels.jl")
+
 include("hydrostatic_free_surface_field_tuples.jl")
 include("hydrostatic_free_surface_model.jl")
 include("show_hydrostatic_free_surface_model.jl")

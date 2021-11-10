@@ -17,24 +17,28 @@ state : (SplitExplicitState). The entire state for split-explicit
 parameters : (NamedTuple). Parameters for timestepping split-explicit
 settings : (SplitExplicitSettings). Settings for the split-explicit scheme
 """
-@Base.kwdef struct SplitExplicitFreeSurface{𝒮, ℱ, 𝒫, ℰ}
+struct SplitExplicitFreeSurface{𝒮, ℱ, 𝒫, ℰ, C}
     state :: 𝒮
     auxiliary :: ℱ
     parameters :: 𝒫
     settings :: ℰ
+    closure :: C
 end 
 
 # use as a trait for dispatch purposes
-function SplitExplicitFreeSurface()
-    return SplitExplicitFreeSurface(nothing, nothing, nothing, nothing)
+function SplitExplicitFreeSurface(; parameters = (; g = g_Earth),
+                                    settings = SplitExplicitSettings(200),
+                                    closure = nothing)
+
+    return SplitExplicitFreeSurface(nothing, nothing, parameters, settings, closure)
 end
 
-# automatically construct default
-function SplitExplicitFreeSurface(grid::AbstractGrid, arch::AbstractArchitecture; substeps = 200)
-    return SplitExplicitFreeSurface(state = SplitExplicitState(grid, arch), 
-                                    auxiliary = SplitExplicitAuxiliary(grid, arch),
-                                    parameters = (; g = g_Earth), 
-                                    settings = SplitExplicitSettings(substeps),)
+function FreeSurface(free_surface::SplitExplicitFreeSurface{Nothing}, velocities, arch, grid)
+    return SplitExplicitFreeSurface(SplitExplicitState(grid, arch), 
+                                    SplitExplicitAuxiliary(grid, arch),
+                                    free_surface.parameters,
+                                    free_surface.settings,
+                                    free_surface.closure)
 end
 
 # Extend to replicate functionality: TODO delete?
@@ -161,3 +165,14 @@ end
 # Convenience Functions for grabbing free surface
 free_surface(state::SplitExplicitState) = state.η
 free_surface(free_surface::SplitExplicitFreeSurface) = free_surface(free_surface.state)
+
+calculate_vertically_integrated_horizontal_velocities!(free_surface, model) = nothing
+
+function calculate_vertically_integrated_horizontal_velocities!(free_surface::SplitExplicitFreeSurface, model)
+    arch = model.architecture
+    grid = model.grid
+    u, v, w = model.velocities
+    barotropic_corrector!(free_surface, arch, grid, u, v)
+    return nothing
+end
+
