@@ -70,38 +70,38 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
     @info "Running regression tests..."
 
     for arch in archs
-        # for grid_type in [:regular, :vertically_unstretched]
-        #     @testset "Thermal bubble [$(typeof(arch)), $grid_type grid]" begin
-        #         @info "  Testing thermal bubble regression [$(typeof(arch)), $grid_type grid]"
-        #         run_thermal_bubble_regression_test(arch, grid_type)
-        #     end
+        for grid_type in [:regular, :vertically_unstretched]
+            @testset "Thermal bubble [$(typeof(arch)), $grid_type grid]" begin
+                @info "  Testing thermal bubble regression [$(typeof(arch)), $grid_type grid]"
+                run_thermal_bubble_regression_test(arch, grid_type)
+            end
 
-        #     @testset "Rayleigh–Bénard tracer [$(typeof(arch)), $grid_type grid]]" begin
-        #         @info "  Testing Rayleigh–Bénard tracer regression [$(typeof(arch)), $grid_type grid]"
-        #         run_rayleigh_benard_regression_test(arch, grid_type)
-        #     end
+            @testset "Rayleigh–Bénard tracer [$(typeof(arch)), $grid_type grid]]" begin
+                @info "  Testing Rayleigh–Bénard tracer regression [$(typeof(arch)), $grid_type grid]"
+                run_rayleigh_benard_regression_test(arch, grid_type)
+            end
 
-        #     for closure in (AnisotropicMinimumDissipation(ν=1.05e-6, κ=1.46e-7), SmagorinskyLilly(C=0.23, Cb=1, Pr=1, ν=1.05e-6, κ=1.46e-7))
-        #         closurename = string(typeof(closure).name.wrapper)
-        #         @testset "Ocean large eddy simulation [$(typeof(arch)), $closurename, $grid_type grid]" begin
-        #             @info "  Testing oceanic large eddy simulation regression [$(typeof(arch)), $closurename, $grid_type grid]"
-        #             run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
-        #         end
-        #     end
-        # end
+            for closure in (AnisotropicMinimumDissipation(ν=1.05e-6, κ=1.46e-7), SmagorinskyLilly(C=0.23, Cb=1, Pr=1, ν=1.05e-6, κ=1.46e-7))
+                closurename = string(typeof(closure).name.wrapper)
+                @testset "Ocean large eddy simulation [$(typeof(arch)), $closurename, $grid_type grid]" begin
+                    @info "  Testing oceanic large eddy simulation regression [$(typeof(arch)), $closurename, $grid_type grid]"
+                    run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
+                end
+            end
+        end
 
         # Hydrostatic regression test
 
         longitude = ((-180, 180), collect(-180:2:180), (-160, 160), collect(-160:2:160))
-        latitude  = (collect(-60:2:60),(-60, 60))
-        zcoord    = (collect(-90:30:0),(-90, 0))
+        latitude  = ((-60, 60),   collect(-60:2:60))
+        zcoord    = ((-90, 0) ,   collect(-90:30:0))
 
         explicit_free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
         implicit_free_surface = ImplicitFreeSurface(gravitational_acceleration = 1.0,
                                                    solver_method = :PreconditionedConjugateGradient,
                                                    tolerance = 1e-15)
 
-        for lon in longitude, lat in latitude, z in zcoord, comp in (false)
+        for lon in longitude, lat in latitude, z in zcoord, comp in (true, false)
 
             lon[1] == -180 ? N = (180, 60, 3) : N = (160, 60, 3)
 
@@ -116,7 +116,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
             for free_surface in [explicit_free_surface, implicit_free_surface]
                                  
                 # GPU + ImplicitFreeSurface + precompute metrics is not compatible at the moment. 
-                # kernel "uses too much parameter space  (maximum 0x1100 bytes) " error 
+                # kernel " uses too much parameter space  (maximum 0x1100 bytes) " error 
                 if !(comp && free_surface isa ImplicitFreeSurface && arch isa GPU) 
 
                     testset_str, info_str = show_hydrostatic_test(grid, free_surface, comp)
