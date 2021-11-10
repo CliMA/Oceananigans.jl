@@ -4,7 +4,7 @@ import Oceananigans.Utils: prettytime
 
 default_progress(simulation) = nothing
 
-mutable struct Simulation{ML, TS, DT, SC, ST, DI, OW, CB}
+mutable struct Simulation{ML, TS, DT, ST, DI, OW, CB}
               model :: ML
         timestepper :: TS
                  Δt :: DT
