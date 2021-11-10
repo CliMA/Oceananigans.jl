@@ -62,10 +62,9 @@ function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwar
         bc_right    = field_bcs_array_right[task]
 
         events      = fill_halo!(c, bc_left, bc_right, arch, barrier, grid, args...; kwargs...)
-        
+
     end
-    wait(device(arch), events)
-    
+    wait(device(arch), events) 
 
     return nothing
 end
@@ -89,7 +88,7 @@ function fill_bottom_and_top_halo!(c, bottom_bc, top_bc, args...; kwargs...)
     bottom_event = fill_bottom_halo!(c, bottom_bc, args...; kwargs...)
        top_event = fill_top_halo!(c, top_bc, args...; kwargs...)
      multi_event = MultiEvent((bottom_event, top_event))
-    return multi_event
+     return multi_event
 end
 
 #####

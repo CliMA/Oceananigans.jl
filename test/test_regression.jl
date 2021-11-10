@@ -1,4 +1,4 @@
-using Oceananigans.Grids: topology
+using Oceananigans.Grids: topology, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
 using CUDA
 
 include("utils_for_runtests.jl")
@@ -93,8 +93,8 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
         # Hydrostatic regression test
 
         longitude = ((-180, 180), collect(-180:2:180)) #, (-160, 160), collect(-160:2:160))
-        latitude  = ((-60, 60), collect(-60:2:60))
-        zcoord    = ((-90, 0), collect(-90:30:0))
+        latitude  = (collect(-60:2:60),)
+        zcoord    = (collect(-90:30:0),)
 
         explicit_free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
         implicit_free_surface = ImplicitFreeSurface(gravitational_acceleration = 1.0,
