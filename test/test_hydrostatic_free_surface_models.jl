@@ -31,7 +31,6 @@ function time_step_hydrostatic_model_works(arch, grid;
     return model.clock.iteration == 1
 end
 
-
 function hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(2π, 2π, 2π))
     model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch, tracers=(:T, :S, :c, :d))
@@ -151,11 +150,15 @@ topos_3d = ((Periodic, Periodic, Bounded),
         z_face_generator(; Nz=1, p=1, H=1) = k -> -H + (k / (Nz+1))^p # returns a generating function
 
         rectilinear_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), halo=(3, 3, 3))
-        vertically_stretched_grid = VerticallyStretchedRectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z_faces=z_face_generator(), halo=(3, 3, 3))
-        lat_lon_sector_grid = RegularLatitudeLongitudeGrid(size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=(-1, 0))
-        lat_lon_strip_grid = RegularLatitudeLongitudeGrid(size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0))
 
-        grids = (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid) #, vertically_stretched_grid)
+        lat_lon_sector_grid = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=(-1, 0), architecture=arch, precompute_metrics=true)
+        lat_lon_strip_grid  = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0), architecture=arch, precompute_metrics=true)
+        
+        vertically_stretched_grid = VerticallyStretchedRectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z_faces=z_face_generator(), halo=(3, 3, 3), architecture=arch)
+        lat_lon_sector_grid_stretched = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=z_face_generator(), architecture=arch, precompute_metrics=true)
+        lat_lon_strip_grid_stretched  = LatitudeLongitudeGrid(size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=z_face_generator(), architecture=arch, precompute_metrics=true)
+
+        grids = (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid, lat_lon_sector_grid_stretched, lat_lon_strip_grid_stretched, vertically_stretched_grid)
         free_surfaces = (ExplicitFreeSurface(), ImplicitFreeSurface())
 
         for grid in grids
@@ -163,7 +166,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
                 topo = topology(grid)
                 grid_type = typeof(grid).name.wrapper
                 free_surface_type = typeof(free_surface).name.wrapper
-                test_label = "[$arch, $grid_type, $topo, $free_surface_type]"
+                test_label = "[$arch, $grid_type, $topo, $free_surface_type]"                
                 @testset "Time-stepping HydrostaticFreeSurfaceModels with different grids $test_label" begin
                     @info "  Testing time-stepping HydrostaticFreeSurfaceModels with different grids $test_label..."
                     @test time_step_hydrostatic_model_works(arch, grid, free_surface=free_surface)
