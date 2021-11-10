@@ -1,7 +1,11 @@
 using Oceananigans
+
+using Statistics
 using KernelAbstractions: @kernel, @index, Event
 using CUDA
+using Test
 using Printf
+
 using Test
 
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!

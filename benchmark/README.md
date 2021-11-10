@@ -22,5 +22,5 @@ Run distributed benchmarks by running the launcher scripts for either the shallo
 
 ## Measuring performance regression
 
-Running the `benchmark_regression.jl` script will run the nonhydrostatic model tests on the current branch and on the master branch for comparison. This is useful to test whether the current branch slows down the code or introduces any performance regression.
+Running the `benchmark_regression.jl` script will run the nonhydrostatic model tests on the current branch and on the main branch for comparison. This is useful to test whether the current branch slows down the code or introduces any performance regression.
 

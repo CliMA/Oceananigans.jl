@@ -1,10 +1,11 @@
 using OffsetArrays: OffsetArray
+using Oceananigans.Architectures: device_event
 
 #####
 ##### General halo filling functions
 #####
 
-fill_halo_regions!(::Nothing, args...) = []
+fill_halo_regions!(::Nothing, args...) = nothing
 
 """
     fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)
@@ -25,32 +26,89 @@ end
 fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
 "Fill halo regions in x, y, and z for a given field's data."
-function fill_halo_regions!(c::OffsetArray, fieldbcs, arch, grid, args...; kwargs...)
+function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwargs...)
 
-    barrier = Event(device(arch))
+    events = Event(device(arch))
 
-      west_event =   fill_west_halo!(c, fieldbcs.west,   arch, barrier, grid, args...; kwargs...)
-      east_event =   fill_east_halo!(c, fieldbcs.east,   arch, barrier, grid, args...; kwargs...)
-     south_event =  fill_south_halo!(c, fieldbcs.south,  arch, barrier, grid, args...; kwargs...)
-     north_event =  fill_north_halo!(c, fieldbcs.north,  arch, barrier, grid, args...; kwargs...)
-    bottom_event = fill_bottom_halo!(c, fieldbcs.bottom, arch, barrier, grid, args...; kwargs...)
-       top_event =    fill_top_halo!(c, fieldbcs.top,    arch, barrier, grid, args...; kwargs...)
+    fill_halos! = [
+        fill_west_and_east_halo!,
+        fill_south_and_north_halo!,
+        fill_bottom_and_top_halo!,
+    ]
 
-    # Wait at the end
-    events = [west_event, east_event, south_event, north_event, bottom_event, top_event]
-    events = filter(e -> e isa Event, events)
-    wait(device(arch), MultiEvent(Tuple(events)))
+    field_bcs_array_left = [
+        field_bcs.west,
+        field_bcs.south,
+        field_bcs.bottom,
+    ]
+
+    field_bcs_array_right = [
+        field_bcs.east,
+        field_bcs.north,
+        field_bcs.top,
+    ]
+
+    perm = sortperm(field_bcs_array_left, lt=fill_first)
+    fill_halos! = fill_halos![perm]
+    field_bcs_array_left  = field_bcs_array_left[perm]
+    field_bcs_array_right = field_bcs_array_right[perm]
+    
+    for task = 1:3
+    
+       barrier    = events
+       fill_halo! = fill_halos![task]
+       bc_left    = field_bcs_array_left[task]
+       bc_right   = field_bcs_array_right[task]
+       events     = fill_halo!(c, bc_left, bc_right, arch, barrier, grid, args...; kwargs...)
+       
+       wait(device(arch), events)
+    end
 
     return nothing
+end
+
+# Hacky way to get rid of "Nothing" events
+@inline validate_event(event)        = NoneEvent()
+@inline validate_event(event::Event) = event
+
+# Fallbacks split into two calls
+function fill_west_and_east_halo!(c, west_bc, east_bc, args...; kwargs...)
+     west_event = validate_event(fill_west_halo!(c, west_bc, args...; kwargs...))
+     east_event = validate_event(fill_east_halo!(c, east_bc, args...; kwargs...))
+    multi_event = MultiEvent((west_event, east_event))
+    return multi_event
+end
+
+function fill_south_and_north_halo!(c, south_bc, north_bc, args...; kwargs...)
+    south_event = validate_event(fill_south_halo!(c, south_bc, args...; kwargs...))
+    north_event = validate_event(fill_north_halo!(c, north_bc, args...; kwargs...))
+    multi_event = MultiEvent((south_event, north_event))
+    return multi_event
+end
+
+function fill_bottom_and_top_halo!(c, bottom_bc, top_bc, args...; kwargs...)
+    bottom_event = validate_event(fill_bottom_halo!(c, bottom_bc, args...; kwargs...))
+       top_event = validate_event(fill_top_halo!(c, top_bc, args...; kwargs...))
+     multi_event = MultiEvent((bottom_event, top_event))
+    return multi_event
 end
 
 #####
 ##### Halo-filling for nothing boundary conditions
 #####
 
-  fill_west_halo!(c, ::Nothing, args...; kwargs...) = nothing
-  fill_east_halo!(c, ::Nothing, args...; kwargs...) = nothing
- fill_south_halo!(c, ::Nothing, args...; kwargs...) = nothing
- fill_north_halo!(c, ::Nothing, args...; kwargs...) = nothing
-   fill_top_halo!(c, ::Nothing, args...; kwargs...) = nothing
-fill_bottom_halo!(c, ::Nothing, args...; kwargs...) = nothing
+  fill_west_halo!(c, ::Nothing, args...; kwargs...) = NoneEvent()
+  fill_east_halo!(c, ::Nothing, args...; kwargs...) = NoneEvent()
+ fill_south_halo!(c, ::Nothing, args...; kwargs...) = NoneEvent()
+ fill_north_halo!(c, ::Nothing, args...; kwargs...) = NoneEvent()
+   fill_top_halo!(c, ::Nothing, args...; kwargs...) = NoneEvent()
+fill_bottom_halo!(c, ::Nothing, args...; kwargs...) = NoneEvent()
+
+#####
+##### Halo filling order
+#####
+
+fill_first(bc1::PBC, bc2)      = false
+fill_first(bc1, bc2::PBC)      = true
+fill_first(bc1::PBC, bc2::PBC) = true
+fill_first(bc1, bc2)           = true
