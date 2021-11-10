@@ -48,6 +48,9 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
 
     # Fill halo regions for pressure
     wait(device(model.architecture), pressure_calculation)
+    
+    # TODO FIX THIS:
+    calculate_vertically_integrated_horizontal_velocities!(model.free_surface, model)
 
     fill_halo_regions!(model.pressure.pHY′, model.architecture)
 
