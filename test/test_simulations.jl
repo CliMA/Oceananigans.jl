@@ -53,7 +53,7 @@ function wall_time_step_wizard_tests(arch)
 
     model = NonhydrostaticModel(architecture=arch, grid=grid_stretched)
 
-    Δx = grid_stretched.Δx
+    Δx = grid_stretched.Δxᶜᵃᵃ
     CFL = 0.45
     u₀ = 7
     Δt = 2.5
