@@ -69,12 +69,12 @@ end
 end
 
 fill_west_and_east_halo!(u, west_bc::OBC, east_bc::OBC, arch, dep, grid, args...; kwargs...) =
-    validate_event(launch!(arch, grid, :yz, set_west_and_east_u!, u, west_bc, east_bc, grid, args...; dependencies=dep, kwargs...))
+    launch!(arch, grid, :yz, set_west_and_east_u!, u, west_bc, east_bc, grid, args...; dependencies=dep, kwargs...)
 
 fill_south_and_north_halo!(v, south_bc::OBC, north_bc::OBC, arch, dep, grid, args...; kwargs...) =
-    validate_event(launch!(arch, grid, :xz, set_south_and_north_v!, v, south_bc, north_bc, grid, args...; dependencies=dep, kwargs...))
+    launch!(arch, grid, :xz, set_south_and_north_v!, v, south_bc, north_bc, grid, args...; dependencies=dep, kwargs...)
 
 fill_top_and_bottom_halo!(w, bottom_bc::OBC, top_bc::OBC, arch, dep, grid, args...; kwargs...) =
-    validate_event(launch!(arch, grid, :xy, set_bottom_and_top_w!, w, bottom_bc, top_bc, grid, args...; dependencies=dep, kwargs...))
+    launch!(arch, grid, :xy, set_bottom_and_top_w!, w, bottom_bc, top_bc, grid, args...; dependencies=dep, kwargs...)
 
 
