@@ -1,10 +1,19 @@
 
+using Oceananigans
 using Oceananigans.Grids: min_Δx
 using Oceananigans.Advection: WENO5S
 using JLD2
 using Plots
+using BenchmarkTools
 
 """ cosine grid """
+
+function multiple_steps!(model)
+    for i = 1:20
+        time_step!(model, 1e-6)
+    end
+    return nothing
+end
 
 Nx = 40
 Δx = 0.02 .+ 2*sin.(π*collect(1:Nx)/(Nx))
@@ -18,26 +27,27 @@ end
 
 xF = xF ./ xF[end]
 
-grid  = RectilinearGrid(size = (Nx,), x = xF, halo = (3,), topology = (Periodic, Flat, Flat), architecture = GPU())    
+grid  = RectilinearGrid(size = (Nx,), x = xF, halo = (3,), topology = (Periodic, Flat, Flat), architecture = CPU())    
 
+wback(x, y, z, t) = 1.0
 
-U = Field(Face, Center, Center, grid)
-set!(U, 1.0)
-
+U = BackgroundField(wback)
 
 for weno in [WENO5(), WENO5S()]
-    model = HydrostaticFreeSurfaceModel(architecture = GPU(),
-                                                grid = grid,
-                                           advection = weno,
-                                         timestepper = :RungeKutta3,
-                                             tracers = (:c,),
-                                          velocities = PrescribedVelocityFields(u=U,),
-                                            buoyancy = nothing)
+    model = NonhydrostaticModel(architecture = CPU(),
+                                        grid = grid,
+                                   advection = weno,
+                                     tracers = (:c,),
+                           background_fields = (u=U,),
+                                    buoyancy = nothing)
 
 
     c₀(x, y, z) = 10*exp(-((x-0.5)/0.2)^2)
 
-    set!(model, c=c₀, u=0, v=0, w=0)
+    set!(model, c=c₀)
+
+    time_step!(model, 1e-6) # warmup
+    @btime multiple_steps!($model)
 
     c = model.tracers.c
 
@@ -70,10 +80,9 @@ for weno in [WENO5(), WENO5S()]
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
     run!(simulation, pickup=false)
+
 end
-
-
-
+          
 wenoU = jldopen("test_weno_WENO5().jld2")
 wenoS = jldopen("test_weno_WENO5S().jld2")
 
