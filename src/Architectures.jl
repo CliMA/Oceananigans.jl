@@ -58,10 +58,10 @@ architecture(::CuArray) = GPU()
 array_type(::CPU) = Array
 array_type(::GPU) = CuArray
 
-arch_array(::AbstractCPUArchitecture, A::Array)        = A
-arch_array(::AbstractCPUArchitecture, A::CuArray)      = Array(A)
-arch_array(::AbstractGPUArchitecture, A::Array)        = CuArray(A)
-arch_array(::AbstractGPUArchitecture, A::CuArray)      = A
+arch_array(::AbstractCPUArchitecture, A::Array)   = A
+arch_array(::AbstractCPUArchitecture, A::CuArray) = Array(A)
+arch_array(::AbstractGPUArchitecture, A::Array)   = CuArray(A)
+arch_array(::AbstractGPUArchitecture, A::CuArray) = A
 
 const OffsetCPUArray = OffsetArray{FT, N, <:Array} where {FT, N}
 const OffsetGPUArray = OffsetArray{FT, N, <:CuArray} where {FT, N}
