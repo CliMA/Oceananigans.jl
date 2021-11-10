@@ -62,9 +62,17 @@ function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwar
 
         events      = fill_halo!(c, bc_left, bc_right, arch, barrier, grid, args...; kwargs...)
        
-        # Three different ways to synchronize the stream associated with the boundary
+        # Three different ways to synchronize the streams associated with the boundary 
+        # Some work, some will not work:
+        
+        # it most likely has to do with the fact that the events live in 
+        # scope: 
+        
+        # Most likely (again), kernel is launching kernels on different streams, and,
+        # as such the only way to synchronize is to synchronize on the host (slower but correct) 
         # 
-
+        # If we try to force the kernels in the same stream or try to keep all the 
+        
         # if events != NoneEvent() 
         #     if hasproperty(events, :events) 
         #         wait(device(arch), events)
@@ -72,9 +80,9 @@ function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwar
         #         arch isa CPU ? wait(events) : CUDA.synchronize(events.event)
         #     end
         # end
-
         wait(device(arch), events)
     end
+
 
 
     return nothing
