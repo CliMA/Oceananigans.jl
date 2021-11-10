@@ -241,5 +241,4 @@ for f in (:+, :-)
     @eval Base.$f(ϕ::AbstractField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
 end
 
-
 Base.isapprox(ϕ::AbstractDataField, ψ::AbstractDataField; kw...) = isapprox(interior(ϕ), interior(ψ); kw...)

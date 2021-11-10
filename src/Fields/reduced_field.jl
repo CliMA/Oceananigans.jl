@@ -168,14 +168,14 @@ for reduction in (:sum, :maximum, :minimum, :all, :any)
     @eval begin
 
         # In-place
-        Base.$(reduction!)(f::Function, r::AbstractReducedField, a::AbstractArray; kwargs...) =
+        Base.$(reduction!)(f, r::AbstractReducedField, a::AbstractArray; kwargs...) =
             Base.$(reduction!)(f, interior(r), a; kwargs...)
 
         Base.$(reduction!)(r::AbstractReducedField, a::AbstractArray; kwargs...) =
             Base.$(reduction!)(identity, interior(r), a; kwargs...)
 
         # Allocating
-        function Base.$(reduction)(f::Function, c::AbstractField; dims=:)
+        function Base.$(reduction)(f, c::AbstractField; dims=:)
             if dims isa Colon
                 r = zeros(architecture(c), c.grid, 1, 1, 1)
                 Base.$(reduction!)(f, r, c)
