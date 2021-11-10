@@ -74,7 +74,7 @@ end
 @inline validate_event(event) = event
 
 # Fallbacks split into two calls
-function fill_west_and_east_halo!(c, west_bc, east_bc, arch, args...; kwargs...)
+function fill_west_and_east_halo!(c, west_bc, east_bc, args...; kwargs...)
      west_event = validate_event(fill_west_halo!(c, west_bc, args...; kwargs...))
      east_event = validate_event(fill_east_halo!(c, east_bc, args...; kwargs...))
     multi_event = MultiEvent((west_event, east_event))
