@@ -47,7 +47,7 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
     return size(u₁) == (2, 2, 4) && size(v₁) == (2, 2, 4) && size(w₁) == (2, 2, 5)
 end
 
-function run_jld2_file_splitting_tests(arch)
+function test_jld2_file_splitting(arch)
     model = NonhydrostaticModel(architecture=arch, grid=RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
 

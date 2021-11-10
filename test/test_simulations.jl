@@ -16,7 +16,7 @@ function wall_time_step_wizard_tests(arch)
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid)
 
-    Δx = grid.Δx
+    Δx = grid.Δxᶜᵃᵃ
     CFL = 0.45
     u₀ = 7
     Δt = 2.5
@@ -67,7 +67,7 @@ function wall_time_step_wizard_tests(arch)
 end
 
 function run_basic_simulation_tests(arch)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid  = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=3, stop_iteration=1)
 
