@@ -52,29 +52,30 @@ function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwar
     field_bcs_array_right = field_bcs_array_right[perm]
    
     events = device_event(arch)
-
     for task = 1:3
 
-        barrier = events
-    
+        barrier = device_event(arch)
+
         fill_halo!  = fill_halos![task]
         bc_left     = field_bcs_array_left[task]
         bc_right    = field_bcs_array_right[task]
 
         events      = fill_halo!(c, bc_left, bc_right, arch, barrier, grid, args...; kwargs...)
        
-        # wait(device(arch), events)
-        if events != NoneEvent() 
-            if hasproperty(events, :events) 
-                wait(device(arch), events)
-             else
-                arch isa CPU ? wait(events) : 
-                        CUDA.record(events.event)
-                        CUDA.wait(events.event)
-            end
-        end
+        # Three different ways to synchronize the stream associated with the boundary
+        # 
 
+        # if events != NoneEvent() 
+        #     if hasproperty(events, :events) 
+        #         wait(device(arch), events)
+        #      else
+        #         arch isa CPU ? wait(events) : CUDA.synchronize(events.event)
+        #     end
+        # end
+
+        wait(device(arch), events)
     end
+
 
     return nothing
 end

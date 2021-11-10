@@ -2,9 +2,10 @@
 ##### Utilities for launching kernels
 #####
 
-using KernelAbstractions
 using Oceananigans.Architectures
 using Oceananigans.Grids
+using CUDAKernels
+import KernelAbstractions
 
 const MAX_THREADS_PER_BLOCK = 256
 
