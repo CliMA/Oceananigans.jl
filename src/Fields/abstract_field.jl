@@ -157,7 +157,7 @@ Base.fill!(f::AbstractDataField, val) = fill!(parent(f), val)
 #####
 
 "Returns `f.data` for `f::Field` or `f` for `f::AbstractArray."
-@inline data(a) = a # fallback
+@inline data(a) = nothing # fallback
 @inline data(f::AbstractDataField) = f.data
 
 @inline cpudata(a) = data(a)
@@ -229,7 +229,7 @@ nodes(ψ::AbstractField; kwargs...) = nodes(location(ψ), ψ.grid; kwargs...)
 ##### fill_halo_regions!
 #####
 
-fill_halo_regions!(field::AbstractDataField, arch, args...) =
+fill_halo_regions!(field::AbstractField, arch, args...) =
     fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...)
 
 #####
