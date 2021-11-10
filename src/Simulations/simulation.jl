@@ -145,7 +145,7 @@ end
 ##### Default stop criteria callback functions
 #####
 
-function iteration_limit_exceeded(sim)
+function stop_iteration_exceeded(sim)
     if sim.model.clock.iteration >= sim.stop_iteration
         @info "Simulation is stopping. Model iteration $(sim.model.clock.iteration) " *
                "has hit or exceeded simulation stop iteration $(sim.stop_iteration)."
