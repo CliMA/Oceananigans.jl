@@ -186,20 +186,20 @@ grid in z: Regular, with spacing 0.5
 * A horizontally-periodic regular grid with cell interfaces stretched hyperbolically near the top:
 
 ```jldoctest
-using Oceananigans
+julia> using Oceananigans
 
-σ = 1.1 # stretching factor
-Nz = 24 # vertical resolution
-Lz = 32 # depth (m)
+julia> σ = 1.1 # stretching factor
 
-hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
+julia> Nz = 24 # vertical resolution
 
-grid = RectilinearGrid(size = (32, 32, Nz),
+julia> Lz = 32 # depth (m)
+
+julia> hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
+
+julia> grid = RectilinearGrid(size = (32, 32, Nz),
                        x = (0, 64),
                        y = (0, 64),
                        z = hyperbolically_spaced_faces)
-
-# output
 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on the CPU()
                    domain: x ∈ [0.0, 64.0], y ∈ [0.0, 64.0], z ∈ [-32.0, -0.0]
                  topology: (Periodic, Periodic, Bounded)
@@ -215,23 +215,21 @@ grid in z: Stretched, with spacing min=0.6826950100338962, max=1.830908574388505
   stretched in z hyperbolically near the top:
 
 ```jldoctest
-using Oceananigans
+julia> using Oceananigans
 
-Nx, Ny, Nz = 32, 30, 24
-Lx, Ly, Lz = 200, 100, 32 # (m)
+julia> Nx, Ny, Nz = 32, 30, 24
+julia> Lx, Ly, Lz = 200, 100, 32 # (m)
 
-chebychev_like_spaced_faces(j) = - Ly/2 * cos(π * (j-1) / Ny)
+julia> chebychev_like_spaced_faces(j) = - Ly/2 * cos(π * (j-1) / Ny)
 
-σ = 1.1 # stretching factor
-hyperbolically_spaced_faces(j) = - Lz * (1 - tanh(σ * (j - 1) / Nz) / tanh(σ))
+julia> σ = 1.1 # stretching factor
+julia> hyperbolically_spaced_faces(j) = - Lz * (1 - tanh(σ * (j - 1) / Nz) / tanh(σ))
 
-grid = RectilinearGrid(size = (Nx, Ny, Nz),
-                       topology=(Periodic, Bounded, Bounded),
-                       x = (0, Lz),
-                       y = chebychev_like_spaced_faces,
-                       z = hyperbolically_spaced_faces)
-
-# output
+julia> grid = RectilinearGrid(size = (Nx, Ny, Nz),
+                              topology=(Periodic, Bounded, Bounded),
+                              x = (0, Lz),
+                              y = chebychev_like_spaced_faces,
+                              z = hyperbolically_spaced_faces)
 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on the CPU()
                    domain: x ∈ [0.0, 32.0], y ∈ [-50.0, 50.0], z ∈ [-32.0, -0.0]
                  topology: (Periodic, Periodic, Bounded)
