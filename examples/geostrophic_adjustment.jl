@@ -82,7 +82,7 @@ set!(model, v=vᵍ, η=ηⁱ)
 
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
-wave_propagation_time_scale = model.grid.Δx / gravity_wave_speed
+wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
 
 simulation = Simulation(model, Δt = 0.1wave_propagation_time_scale, stop_iteration = 1000)
 
