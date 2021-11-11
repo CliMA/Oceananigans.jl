@@ -18,12 +18,14 @@ end
 
 ```jldoctest
 julia> grid = RectilinearGrid(size=(32, 64, 256), extent=(128, 256, 512))
-RectilinearGrid{Float64, Periodic, Periodic, Bounded}
+RectilinearGrid{Float64, Periodic, Periodic, Bounded} on the CPU()
                    domain: x ∈ [0.0, 128.0], y ∈ [0.0, 256.0], z ∈ [-512.0, 0.0]
                  topology: (Periodic, Periodic, Bounded)
         size (Nx, Ny, Nz): (32, 64, 256)
         halo (Hx, Hy, Hz): (1, 1, 1)
-grid spacing (Δx, Δy, Δz): (4.0, 4.0, 2.0)
+grid in x: Regular, with spacing 4.0
+grid in y: Regular, with spacing 4.0
+grid in z: Regular, with spacing 2.0
 ```
 
 !!! info "Default domain"
@@ -43,12 +45,14 @@ in the ``y``- and ``z``-dimensions is build with,
 
 ```jldoctest
 julia> grid = RectilinearGrid(topology=(Periodic, Bounded, Bounded), size=(64, 64, 32), extent=(1e4, 1e4, 1e3))
-RectilinearGrid{Float64, Periodic, Bounded, Bounded}
+RectilinearGrid{Float64, Periodic, Bounded, Bounded} on the CPU()
                    domain: x ∈ [0.0, 10000.0], y ∈ [0.0, 10000.0], z ∈ [-1000.0, 0.0]
                  topology: (Periodic, Bounded, Bounded)
         size (Nx, Ny, Nz): (64, 64, 32)
         halo (Hx, Hy, Hz): (1, 1, 1)
-grid spacing (Δx, Δy, Δz): (156.25, 156.25, 31.25)
+grid in x: Regular, with spacing 156.25
+grid in y: Regular, with spacing 156.25
+grid in z: Regular, with spacing 31.25
 ```
 
 The `Flat` topology is useful when running problems with fewer than 3 dimensions. As an example,
@@ -63,10 +67,12 @@ is constructed via
 
 ```jldoctest
 julia> grid = RectilinearGrid(size=(32, 16, 256), x=(-100, 100), y=(0, 12.5), z=(-π, π))
-RectilinearGrid{Float64, Periodic, Periodic, Bounded}
+RectilinearGrid{Float64, Periodic, Periodic, Bounded} on the CPU()
                    domain: x ∈ [-100.0, 100.0], y ∈ [0.0, 12.5], z ∈ [-3.141592653589793, 3.141592653589793]
                  topology: (Periodic, Periodic, Bounded)
         size (Nx, Ny, Nz): (32, 16, 256)
         halo (Hx, Hy, Hz): (1, 1, 1)
-grid spacing (Δx, Δy, Δz): (6.25, 0.78125, 0.02454369260617026)
+grid in x: Regular, with spacing 6.25
+grid in y: Regular, with spacing 0.78125
+grid in z: Regular, with spacing 0.02454369260617026
 ```
