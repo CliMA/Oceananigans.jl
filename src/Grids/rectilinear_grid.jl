@@ -67,7 +67,10 @@ Keyword arguments
               The default is `topology = (Periodic, Periodic, Bounded)`.
 
 - `extent`: A tuple prescribing the physical extent of the grid in non-`Flat` directions.
-            The origin for three-dimensional domains is the oceanic default `(0, 0, -Lz)`.
+            All directions are contructed with regular grid spacing and the domain (in the
+            case that no direction is `Flat`) is x ∈ (0, Lx), y ∈ (0, Ly), and z ∈ (-Lz, 0), 
+            which is most appropriate for oceanic applications with z = 0 usually being the
+            ocean's surface.
 
 - `x`, `y`, and `z`: Each of `x, y, z` are either i) 2-tuples that specify the end points of the domain
                      in their respect directions (in which case scalar values may be used in `Flat`
