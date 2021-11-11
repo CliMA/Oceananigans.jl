@@ -77,8 +77,8 @@ Keyword arguments
                      directions), or (ii) arrays or functions of the corresponding indices `i`, `j`, or `k`
                      that specify the locations of cell faces in the `x`-, `y`-, or `z`-direction, respectively.
                      For example, to prescribe the cell faces in `z` we need to provide a function that takes
-                     `k` as argument for indices `k = 1` through `k = Nz + 1`, where `Nz` is the `size` of the
-                     stretched `z` dimension.
+                     `k` as argument and retuns the location of the faces for indices `k = 1` through `k = Nz + 1`,
+                     where `Nz` is the `size` of the stretched `z` dimension.
 
 *Note*: _Either_ `extent`, or all of `x`, `y`, and `z` must be specified.
 
@@ -221,26 +221,25 @@ julia> Nx, Ny, Nz = 32, 30, 24;
 
 julia> Lx, Ly, Lz = 200, 100, 32; # (m)
 
-julia> chebychev_like_spaced_faces(j) = - Ly/2 * cos(π * (j-1) / Ny);
+julia> chebychev_like_spaced_faces(j) = - Ly/2 * cos(π * (j - 1) / Ny);
 
 julia> σ = 1.1; # stretching factor
 
-julia> hyperbolically_spaced_faces(j) = - Lz * (1 - tanh(σ * (j - 1) / Nz) / tanh(σ));
+julia> hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ));
 
 julia> grid = RectilinearGrid(size = (Nx, Ny, Nz),
                               topology=(Periodic, Bounded, Bounded),
-                              x = (0, Lz),
+                              x = (0, Lx),
                               y = chebychev_like_spaced_faces,
                               z = hyperbolically_spaced_faces)
 RectilinearGrid{Float64, Periodic, Bounded, Bounded} on the CPU()
-                   domain: x ∈ [0.0, 32.0], y ∈ [-50.0, 50.0], z ∈ [-32.0, -0.0]
-                 topology: (Periodic, Periodic, Bounded)
+                   domain: x ∈ [0.0, 200.0], y ∈ [-50.0, 50.0], z ∈ [-32.0, -0.0]
+                 topology: (Periodic, Bounded, Bounded)
         size (Nx, Ny, Nz): (32, 30, 24)
         halo (Hx, Hy, Hz): (1, 1, 1)
-grid in x: Regular, with spacing 1.0
+grid in x: Regular, with spacing 6.25
 grid in y: Stretched, with spacing min=0.2739052315863262, max=5.22642316338267
 grid in z: Stretched, with spacing min=0.6826950100338962, max=1.8309085743885056
-```
 """
 function RectilinearGrid(FT = Float64;
                          architecture = CPU(),
