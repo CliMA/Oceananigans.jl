@@ -72,12 +72,12 @@ Keyword arguments
             which is most appropriate for oceanic applications with z = 0 usually being the
             ocean's surface.
 
-- `x`, `y`, and `z`: Each of `x, y, z` are either i) 2-tuples that specify the end points of the domain
+- `x`, `y`, and `z`: Each of `x, y, z` are either (i) 2-tuples that specify the end points of the domain
                      in their respect directions (in which case scalar values may be used in `Flat`
-                     directions), or ii) arrays or functions of the corresponding index `i`, `j`, or `k`
-                     that specifies the location of cell faces in the `x`-, `y`-, or `z`-direction respectively.
-                     For example, to specify the cell faces in `z` we need to give a function that takes
-                     `k` as an argument for indices `k=1` through `k = Nz+1`, where `Nz` is the `size` of the
+                     directions), or (ii) arrays or functions of the corresponding indices `i`, `j`, or `k`
+                     that specify the locations of cell faces in the `x`-, `y`-, or `z`-direction, respectively.
+                     For example, to prescribe the cell faces in `z` we need to provide a function that takes
+                     `k` as argument for indices `k = 1` through `k = Nz + 1`, where `Nz` is the `size` of the
                      stretched `z` dimension.
 
 *Note*: _Either_ `extent`, or all of `x`, `y`, and `z` must be specified.
@@ -86,8 +86,8 @@ Keyword arguments
           the physical interior for each non-`Flat` direction.
 
 The physical extent of the domain can be specified via `x`, `y`, and `z` keyword arguments
-indicating the left and right endpoints of each dimensions, e.g. `x=(-π, π)` or via
-the `extent` argument, e.g. `extent=(Lx, Ly, Lz)` which specifies the extent of each dimension
+indicating the left and right endpoints of each dimensions, e.g. `x = (-π, π)` or via
+the `extent` argument, e.g. `extent = (Lx, Ly, Lz)`, which specifies the extent of each dimension
 in which case 0 ≤ x ≤ Lx, 0 ≤ y ≤ Ly, and -Lz ≤ z ≤ 0.
 
 A grid topology may be specified via a tuple assigning one of `Periodic`, `Bounded`, and `Flat`
