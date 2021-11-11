@@ -2,9 +2,16 @@
 ##### Weighted Essentially Non-Oscillatory (WENO) scheme of order 5
 #####
 
-
 """
-Stretched WENO scheme ()
+
+GT here is used as a variable to decide wether to dispatch 
+on a "regular formulation" or a "stretched formulation"
+
+GT can take up the value of 
+- Val(0) => regular weno formulation
+- Val(1) => stretched weno formulation
+
+where the two WENO schemes differ like this
 
 u̅ᵢ = (1 - γ) uᵢ + γ uᵢ₊₁
 
@@ -55,95 +62,26 @@ struct WENO5S <: AbstractUpwindBiasedAdvectionScheme{2} end
 
 # Stencil to calculate the stretched WENO weights and smoothness indicators
 
-@inline left_stencil_x(grid::XRegRectilinearGrid, i, j, k, ψ) = ( [ψ[i-3, j, k], ψ[i-2, j, k], ψ[i-1, j, k]], [ψ[i-2, j, k], ψ[i-1, j, k], ψ[i, j, k]], [ψ[i-1, j, k], ψ[i, j, k], ψ[i+1, j, k]] )
-@inline left_stencil_y(grid::YRegRectilinearGrid, i, j, k, ψ) = ( [ψ[i, j-3, k], ψ[i, j-2, k], ψ[i, j-1, k]], [ψ[i, j-2, k], ψ[i, j-1, k], ψ[i, j, k]], [ψ[i, j-1, k], ψ[i, j, k], ψ[i, j+1, k]] )
-@inline left_stencil_z(grid::ZRegRectilinearGrid, i, j, k, ψ) = ( [ψ[i, j, k-3], ψ[i, j, k-2], ψ[i, j, k-1]], [ψ[i, j, k-2], ψ[i, j, k-1], ψ[i, j, k]], [ψ[i, j, k-1], ψ[i, j, k], ψ[i, j, k+1]] )
+@inline left_stencil_x(::Val{0}, i, j, k, ψ, args...) = @inbounds ( (ψ[i-3, j, k], ψ[i-2, j, k], ψ[i-1, j, k]), (ψ[i-2, j, k], ψ[i-1, j, k], ψ[i, j, k]), (ψ[i-1, j, k], ψ[i, j, k], ψ[i+1, j, k]) )
+@inline left_stencil_y(::Val{0}, i, j, k, ψ, args...) = @inbounds ( (ψ[i, j-3, k], ψ[i, j-2, k], ψ[i, j-1, k]), (ψ[i, j-2, k], ψ[i, j-1, k], ψ[i, j, k]), (ψ[i, j-1, k], ψ[i, j, k], ψ[i, j+1, k]) )
+@inline left_stencil_z(::Val{0}, i, j, k, ψ, args...) = @inbounds ( (ψ[i, j, k-3], ψ[i, j, k-2], ψ[i, j, k-1]), (ψ[i, j, k-2], ψ[i, j, k-1], ψ[i, j, k]), (ψ[i, j, k-1], ψ[i, j, k], ψ[i, j, k+1]) )
 
-@inline right_stencil_x(grid::XRegRectilinearGrid, i, j, k, ψ) = ( [ψ[i-2, j, k], ψ[i-1, j, k], ψ[i, j, k]], [ψ[i-1, j, k], ψ[i, j, k], ψ[i+1, j, k]], [ψ[i, j, k], ψ[i+1, j, k], ψ[i+2, j, k]] )
-@inline right_stencil_y(grid::YRegRectilinearGrid, i, j, k, ψ) = ( [ψ[i, j-2, k], ψ[i, j-1, k], ψ[i, j, k]], [ψ[i, j-1, k], ψ[i, j, k], ψ[i, j+1, k]], [ψ[i, j, k], ψ[i, j+1, k], ψ[i, j+2, k]] )
-@inline right_stencil_z(grid::ZRegRectilinearGrid, i, j, k, ψ) = ( [ψ[i, j, k-2], ψ[i, j, k-1], ψ[i, j, k]], [ψ[i, j, k-1], ψ[i, j, k], ψ[i, j, k+1]], [ψ[i, j, k], ψ[i, j, k+1], ψ[i, j, k+2]] )
-
-function right_stencil_x(grid::RectilinearGrid{FT}, i, j, k, ψ) where FT
-    u̅ = zeros(FT, 4)
-
-    for h = -2:1
-        γ =  Δxᶜᶜᵃ(i+h, j, k, grid)/(Δxᶜᶜᵃ(i+h, j, k, grid) + Δxᶜᶜᵃ(i+h+1, j, k, grid))
-        u̅[h+3] = (1 - γ) * ψ[i+h, j, k] + γ * ψ[i+h+1, j, k]
-    end
-
-    # u̅⁺ = ((2 * Δzᵃᵃᶜ(i, j, k+1, grid) + Δzᵃᵃᶜ(i, j, k+2, grid)) * ψ[i, j, k+1] - Δzᵃᵃᶜ(i, j, k+1, grid) * ψ[i, j, k+2]) / 
-    #           (Δzᵃᵃᶜ(i, j, k+1, grid) + Δzᵃᵃᶜ(i, j, k+2, grid))
-
-    return ([u̅[1], ψ[i-1, j, k], u̅[2]],
-            [u̅[2], ψ[i, j, k]  , u̅[3]],
-            [u̅[3], ψ[i+1, j, k], u̅[4]])
-            #[ψ[i, j, k+1], u̅[3], u̅⁺])
-end
-
-function left_stencil_x(grid::RectilinearGrid{FT}, i, j, k, ψ) where FT
-    u̅ = zeros(FT, 4)
-
-    for h = -3:0
-        γ =  Δxᶜᶜᵃ(i + h, j, k, grid)/(Δxᶜᶜᵃ(i + h, j, k, grid) + Δxᶜᶜᵃ(i + h + 1, j, k, grid))
-        u̅[h+4] = (1 - γ) * ψ[i + h, j, k] + γ * ψ[i + h + 1, j, k]
-    end
-
-    # u̅⁺ = ((2 * Δzᵃᵃᶜ(i, j, k-2, grid) + Δzᵃᵃᶜ(i, j, k-3, grid)) * ψ[i, j, k-2] - Δzᵃᵃᶜ(i, j, k-2, grid) * ψ[i, j, k-3]) / 
-    #           (Δzᵃᵃᶜ(i, j, k-2, grid) + Δzᵃᵃᶜ(i, j, k-3, grid))
-
-    #           #[u̅⁺  , u̅[1], ψ[i, j, k-2]]
-
-    return ([u̅[1], ψ[i-2, j, k], u̅[2]],
-            [u̅[2], ψ[i-1, j, k], u̅[3]],
-            [u̅[3], ψ[i, j, k]  , u̅[4]])
-end
-
-function right_stencil_z(grid::RectilinearGrid{FT}, i, j, k, ψ) where FT
-    u̅ = zeros(FT, 4)
-
-    for h = -2:1
-        γ =  Δzᵃᵃᶜ(i, j, k + h, grid)/(Δzᵃᵃᶜ(i, j, k + h, grid) + Δzᵃᵃᶜ(i, j, k + h + 1, grid))
-        u̅[h+3] = (1 - γ) * ψ[i, j, k + h] + γ * ψ[i, j, k + h + 1]
-    end
-
-    # u̅⁺ = ((2 * Δzᵃᵃᶜ(i, j, k+1, grid) + Δzᵃᵃᶜ(i, j, k+2, grid)) * ψ[i, j, k+1] - Δzᵃᵃᶜ(i, j, k+1, grid) * ψ[i, j, k+2]) / 
-    #           (Δzᵃᵃᶜ(i, j, k+1, grid) + Δzᵃᵃᶜ(i, j, k+2, grid))
-
-    return ([u̅[1], ψ[i, j, k-1], u̅[2]],
-            [u̅[2], ψ[i, j, k]  , u̅[3]],
-            [u̅[3], ψ[i, j, k+1], u̅[4]])
-            #[ψ[i, j, k+1], u̅[3], u̅⁺])
-end
-
-function left_stencil_z(grid::RectilinearGrid{FT}, i, j, k, ψ) where FT
-    u̅ = zeros(FT, 4)
-
-    for h = -3:0
-        γ =  Δzᵃᵃᶜ(i, j, k + h, grid)/(Δzᵃᵃᶜ(i, j, k + h, grid) + Δzᵃᵃᶜ(i, j, k + h + 1, grid))
-        u̅[h+4] = (1 - γ) * ψ[i, j, k + h] + γ * ψ[i, j, k + h + 1]
-    end
-
-    # u̅⁺ = ((2 * Δzᵃᵃᶜ(i, j, k-2, grid) + Δzᵃᵃᶜ(i, j, k-3, grid)) * ψ[i, j, k-2] - Δzᵃᵃᶜ(i, j, k-2, grid) * ψ[i, j, k-3]) / 
-    #           (Δzᵃᵃᶜ(i, j, k-2, grid) + Δzᵃᵃᶜ(i, j, k-3, grid))
-
-    #           #[u̅⁺  , u̅[1], ψ[i, j, k-2]]
-
-    return ([u̅[1], ψ[i, j, k-2], u̅[2]],
-            [u̅[2], ψ[i, j, k-1], u̅[3]],
-            [u̅[3], ψ[i, j, k]  , u̅[4]])
-end
+@inline right_stencil_x(::Val{0}, i, j, k, ψ, args...) = @inbounds ( (ψ[i-2, j, k], ψ[i-1, j, k], ψ[i, j, k]), (ψ[i-1, j, k], ψ[i, j, k], ψ[i+1, j, k]), (ψ[i, j, k], ψ[i+1, j, k], ψ[i+2, j, k]) )
+@inline right_stencil_y(::Val{0}, i, j, k, ψ, args...) = @inbounds ( (ψ[i, j-2, k], ψ[i, j-1, k], ψ[i, j, k]), (ψ[i, j-1, k], ψ[i, j, k], ψ[i, j+1, k]), (ψ[i, j, k], ψ[i, j+1, k], ψ[i, j+2, k]) )
+@inline right_stencil_z(::Val{0}, i, j, k, ψ, args...) = @inbounds ( (ψ[i, j, k-2], ψ[i, j, k-1], ψ[i, j, k]), (ψ[i, j, k-1], ψ[i, j, k], ψ[i, j, k+1]), (ψ[i, j, k], ψ[i, j, k+1], ψ[i, j, k+2]) )
 
 #####
 ##### Coefficients for stretched (and uniform) WENO
 #####
 
 @inline coeff_left_p₀(FT, ::Val{0}) = (FT(1/3), FT(5/6), - FT(1/6))
-@inline coeff_left_p₀(FT, ::Val{1}) = (FT(2/3), FT(2/3), - FT(1/3))
 @inline coeff_left_p₁(FT, ::Val{0}) = (- FT(1/6), FT(5/6), FT(1/3))
-@inline coeff_left_p₁(FT, ::Val{1}) = (- FT(1/3), FT(4/6), FT(2/3))                   
 @inline coeff_left_p₂(FT, ::Val{0}) = (FT(1/3), - FT(7/6),  FT(11/6))
-@inline coeff_left_p₂(FT, ::Val{1}) = (FT(2/3), - FT(10/3), FT(11/3))
-                                            
+                                          
+@inline coeff_left_p₀(FT, ::Val{1}) = (FT(1/3), FT(5/6), - FT(1/6))
+@inline coeff_left_p₁(FT, ::Val{1}) = (- FT(1/6), FT(5/6), FT(1/3))
+@inline coeff_left_p₂(FT, ::Val{1}) = (FT(1/3), - FT(7/6),  FT(11/6))
+
 @inline coeff_right_p₀(args...) = reverse(coeff_left_p₂(args...))
 @inline coeff_right_p₁(args...) = reverse(coeff_left_p₁(args...))
 @inline coeff_right_p₂(args...) = reverse(coeff_left_p₀(args...))
@@ -152,50 +90,53 @@ end
 ##### biased pₖ for û calculation
 #####
 
-@inline left_biased_p₀(grid::RectilinearGrid{FT}, ψ) where FT = @inbounds sum(coeff_left_p₀(FT, Val(1)) .* ψ)
-@inline left_biased_p₁(grid::RectilinearGrid{FT}, ψ) where FT = @inbounds sum(coeff_left_p₁(FT, Val(1)) .* ψ)
-@inline left_biased_p₂(grid::RectilinearGrid{FT}, ψ) where FT = @inbounds sum(coeff_left_p₂(FT, Val(1)) .* ψ)
+@inline left_biased_p₀(FT, GT, ψ, args...) = @inbounds sum(coeff_left_p₀(FT, GT) .* ψ)
+@inline left_biased_p₁(FT, GT, ψ, args...) = @inbounds sum(coeff_left_p₁(FT, GT) .* ψ)
+@inline left_biased_p₂(FT, GT, ψ, args...) = @inbounds sum(coeff_left_p₂(FT, GT) .* ψ)
 
-@inline right_biased_p₀(grid::RectilinearGrid{FT}, ψ) where FT = @inbounds sum(coeff_right_p₀(FT, Val(1)) .* ψ)
-@inline right_biased_p₁(grid::RectilinearGrid{FT}, ψ) where FT = @inbounds sum(coeff_right_p₁(FT, Val(1)) .* ψ)
-@inline right_biased_p₂(grid::RectilinearGrid{FT}, ψ) where FT = @inbounds sum(coeff_right_p₂(FT, Val(1)) .* ψ)
+@inline right_biased_p₀(FT, GT, ψ, args...) = @inbounds sum(coeff_right_p₀(FT, GT) .* ψ)
+@inline right_biased_p₁(FT, GT, ψ, args...) = @inbounds sum(coeff_right_p₁(FT, GT) .* ψ)
+@inline right_biased_p₂(FT, GT, ψ, args...) = @inbounds sum(coeff_right_p₂(FT, GT) .* ψ)
 
+@inline left_biased_p₀(FT, ::Val{1}, ψ, cf, c, i) = @inbounds sum(left_L₀(cf, c, i) .* ψ) + left_C₀(FT, ψ, c, i)
+@inline left_biased_p₁(FT, ::Val{1}, ψ, cf, c, i) = @inbounds sum(left_L₁(cf, c, i) .* ψ) + left_C₁(FT, ψ, c, i)
+@inline left_biased_p₂(FT, ::Val{1}, ψ, cf, c, i) = @inbounds sum(left_L₂(cf, c, i) .* ψ) + left_C₂(FT, ψ, c, i)
+
+##₁###
+##₂### Jiang & Shu (1996) WENO smoothness indicators. See also Equation 2.63 in Shu (1998)
 #####
-##### Jiang & Shu (1996) WENO smoothness indicators. See also Equation 2.63 in Shu (1998).
-#####
 
-@inline left_biased_β₀(grid::AG{FT}, ψ) where FT = @inbounds 2 * FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + 2 * FT(1/4) * (3ψ[1] - 4ψ[2] +  ψ[3])^two_32
-@inline left_biased_β₁(grid::AG{FT}, ψ) where FT = @inbounds 2 * FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + 2 * FT(1/4) * ( ψ[1]         -  ψ[3])^two_32
-@inline left_biased_β₂(grid::AG{FT}, ψ) where FT = @inbounds 2 * FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + 2 * FT(1/4) * ( ψ[1] - 4ψ[2] + 3ψ[3])^two_32
+@inline coeff_β₀(FT) = (FT(13/12) , FT(0.25))
+@inline coeff_β₁(FT) = (FT(13/12) , FT(0.25))
+@inline coeff_β₂(FT) = (FT(13/12) , FT(0.25))
 
-@inline right_biased_β₀(grid::AG{FT}, ψ) where FT = @inbounds 2 * FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + 2 * FT(1/4) * ( ψ[1] - 4ψ[2] + 3ψ[3])^two_32
-@inline right_biased_β₁(grid::AG{FT}, ψ) where FT = @inbounds 2 * FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + 2 * FT(1/4) * ( ψ[1]         -  ψ[3])^two_32
-@inline right_biased_β₂(grid::AG{FT}, ψ) where FT = @inbounds 2 * FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + 2 * FT(1/4) * (3ψ[1] - 4ψ[2] +  ψ[3])^two_32
+@inline left_biased_β₀(FT, ψ) = @inbounds coeff_β₀(FT)[1] * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + coeff_β₀(FT)[2] * (3ψ[1] - 4ψ[2] +  ψ[3])^two_32
+@inline left_biased_β₁(FT, ψ) = @inbounds coeff_β₁(FT)[1] * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + coeff_β₁(FT)[2] * ( ψ[1]         -  ψ[3])^two_32
+@inline left_biased_β₂(FT, ψ) = @inbounds coeff_β₂(FT)[1] * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + coeff_β₂(FT)[2] * ( ψ[1] - 4ψ[2] + 3ψ[3])^two_32
 
-
-# @inline left_biased_β₂(grid::AG{FT}, ψ) where FT = @inbounds FT(13/12)   * (2ψ[2] - 2ψ[1])^two_32 + FT(1/4) * ( - 2ψ[1] - 2ψ[2] + 4ψ[3])^two_32
-
-# @inline right_biased_β₀(grid::AG{FT}, ψ) where FT = @inbounds FT(13/12) * (2ψ[2] - 2ψ[3])^two_32  + FT(1/4) * ( - 2ψ[3] - 2ψ[2] + 4ψ[1])^two_32
+@inline right_biased_β₀(FT, ψ) = @inbounds coeff_β₀(FT)[1] * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + coeff_β₀(FT)[2] * ( ψ[1] - 4ψ[2] + 3ψ[3])^two_32
+@inline right_biased_β₁(FT, ψ) = @inbounds coeff_β₁(FT)[1] * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + coeff_β₁(FT)[2] * ( ψ[1]         -  ψ[3])^two_32
+@inline right_biased_β₂(FT, ψ) = @inbounds coeff_β₂(FT)[1] * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + coeff_β₂(FT)[2] * (3ψ[1] - 4ψ[2] +  ψ[3])^two_32
 
 # Right-biased smoothness indicators are a reflection or "symmetric modification" of the left-biased smoothness
 # indicators around grid point `i-1/2`.
 
-@inline left_biased_α₀(grid::AG{FT}, ψ) where FT = FT(C3₀) / (left_biased_β₀(grid, ψ) + FT(ε))^ƞ
-@inline left_biased_α₁(grid::AG{FT}, ψ) where FT = FT(C3₁) / (left_biased_β₁(grid, ψ) + FT(ε))^ƞ
-@inline left_biased_α₂(grid::AG{FT}, ψ) where FT = FT(C3₂) / (left_biased_β₂(grid, ψ) + FT(ε))^ƞ
+@inline left_biased_α₀(FT, ψ) = FT(C3₀) / (left_biased_β₀(FT, ψ) + FT(ε))^ƞ
+@inline left_biased_α₁(FT, ψ) = FT(C3₁) / (left_biased_β₁(FT, ψ) + FT(ε))^ƞ
+@inline left_biased_α₂(FT, ψ) = FT(C3₂) / (left_biased_β₂(FT, ψ) + FT(ε))^ƞ
 
-@inline right_biased_α₀(grid::AG{FT}, ψ) where FT = FT(C3₀) / (right_biased_β₀(grid, ψ) + FT(ε))^ƞ
-@inline right_biased_α₁(grid::AG{FT}, ψ) where FT = FT(C3₁) / (right_biased_β₁(grid, ψ) + FT(ε))^ƞ
-@inline right_biased_α₂(grid::AG{FT}, ψ) where FT = FT(C3₂) / (right_biased_β₂(grid, ψ) + FT(ε))^ƞ
+@inline right_biased_α₀(FT, ψ) = FT(C3₀) / (right_biased_β₀(FT, ψ) + FT(ε))^ƞ
+@inline right_biased_α₁(FT, ψ) = FT(C3₁) / (right_biased_β₁(FT, ψ) + FT(ε))^ƞ
+@inline right_biased_α₂(FT, ψ) = FT(C3₂) / (right_biased_β₂(FT, ψ) + FT(ε))^ƞ
 
 #####
 ##### WENO-5 reconstruction
 #####
 
-@inline function left_biased_weno5_weights(grid, ψ₂, ψ₁, ψ₀)
-    α₀ = left_biased_α₀(grid, ψ₀)
-    α₁ = left_biased_α₁(grid, ψ₁)
-    α₂ = left_biased_α₂(grid, ψ₂)
+@inline function left_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀)
+    α₀ = left_biased_α₀(FT, ψ₀)
+    α₁ = left_biased_α₁(FT, ψ₁)
+    α₂ = left_biased_α₂(FT, ψ₂)
 
     Σα = α₀ + α₁ + α₂
     w₀ = α₀ / Σα
@@ -205,10 +146,10 @@ end
     return w₀, w₁, w₂
 end
 
-@inline function right_biased_weno5_weights(grid, ψ₂, ψ₁, ψ₀)
-    α₀ = right_biased_α₀(grid, ψ₀)
-    α₁ = right_biased_α₁(grid, ψ₁)
-    α₂ = right_biased_α₂(grid, ψ₂)
+@inline function right_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀)
+    α₀ = right_biased_α₀(FT, ψ₀)
+    α₁ = right_biased_α₁(FT, ψ₁)
+    α₂ = right_biased_α₂(FT, ψ₂)
 
     Σα = α₀ + α₁ + α₂
     w₀ = α₀ / Σα
@@ -219,51 +160,77 @@ end
 end
 
 @inline function left_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::WENO5S, ψ)
-    ψ₂, ψ₁, ψ₀ = left_stencil_x(grid, i, j, k, ψ)
-    w₀, w₁, w₂ = left_biased_weno5_weights(grid, ψ₂, ψ₁, ψ₀)
-    return w₀ * left_biased_p₀(grid, ψ₀) + 
-           w₁ * left_biased_p₁(grid, ψ₁) + 
-           w₂ * left_biased_p₂(grid, ψ₂)
+    
+    typeof(grid) <: XRegRectilinearGrid ? GT = Val(0) : GT = Val(1)
+    
+    GT = Val(0)
+    FT         = eltype(grid)
+    ψ₂, ψ₁, ψ₀ = left_stencil_x(i, j, k, ψ, grid)
+    w₀, w₁, w₂ = left_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀)
+    return w₀ * left_biased_p₀(FT, GT, ψ₀, grid.xᶠᵃᵃ[i], grid.xᶜᵃᵃ, i) + 
+           w₁ * left_biased_p₁(FT, GT, ψ₁, grid.xᶠᵃᵃ[i], grid.xᶜᵃᵃ, i) + 
+           w₂ * left_biased_p₂(FT, GT, ψ₂, grid.xᶠᵃᵃ[i], grid.xᶜᵃᵃ, i)
 end
 
 @inline function left_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::WENO5S, ψ)
-    ψ₂, ψ₁, ψ₀ = left_stencil_y(grid, i, j, k, ψ)
-    w₀, w₁, w₂ = left_biased_weno5_weights(grid, ψ₂, ψ₁, ψ₀)
-    return w₀ * left_biased_p₀(grid, ψ₀) + 
-           w₁ * left_biased_p₁(grid, ψ₁) + 
-           w₂ * left_biased_p₂(grid, ψ₂)
+    
+    typeof(grid) <: YRegRectilinearGrid ? GT = Val(0) : GT = Val(1)
+    
+    FT         = eltype(grid)
+    ψ₂, ψ₁, ψ₀ = left_stencil_y(i, j, k, ψ, grid)
+    w₀, w₁, w₂ = left_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀)
+    return w₀ * left_biased_p₀(FT, GT, ψ₀, grid.yᵃᶠᵃ[j], grid.yᵃᶜᵃ, j) + 
+           w₁ * left_biased_p₁(FT, GT, ψ₁, grid.yᵃᶠᵃ[j], grid.yᵃᶜᵃ, j) + 
+           w₂ * left_biased_p₂(FT, GT, ψ₂, grid.yᵃᶠᵃ[j], grid.yᵃᶜᵃ, j)
 end
 
 @inline function left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::WENO5S, ψ)
-    ψ₂, ψ₁, ψ₀ = left_stencil_z(grid, i, j, k, ψ)
-    w₀, w₁, w₂ = left_biased_weno5_weights(grid, ψ₂, ψ₁, ψ₀)
-    return w₀ * left_biased_p₀(grid, ψ₀) +
-           w₁ * left_biased_p₁(grid, ψ₁) + 
-           w₂ * left_biased_p₂(grid, ψ₂)
+    
+    typeof(grid) <: ZRegRectilinearGrid ? GT = Val(0) : GT = Val(1)
+    
+    FT         = eltype(grid)
+    ψ₂, ψ₁, ψ₀ = left_stencil_z(i, j, k, ψ, grid)
+    w₀, w₁, w₂ = left_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀)
+    return w₀ * left_biased_p₀(FT, GT, ψ₀, grid.zᵃᵃᶠ[k], grid.zᵃᵃᶜ, k) +
+           w₁ * left_biased_p₁(FT, GT, ψ₁, grid.zᵃᵃᶠ[k], grid.zᵃᵃᶜ, k) + 
+           w₂ * left_biased_p₂(FT, GT, ψ₂, grid.zᵃᵃᶠ[k], grid.zᵃᵃᶜ, k)
 end
 
 @inline function right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, ::WENO5S, ψ)
-    ψ₂, ψ₁, ψ₀ = right_stencil_x(grid, i, j, k, ψ)
-    w₀, w₁, w₂ = right_biased_weno5_weights(grid, ψ₂, ψ₁, ψ₀)
-    return w₀ * right_biased_p₀(grid, ψ₀) +
-           w₁ * right_biased_p₁(grid, ψ₁) +
-           w₂ * right_biased_p₂(grid, ψ₂)
+    
+    typeof(grid) <: XRegRectilinearGrid ? GT = Val(0) : GT = Val(1)
+    
+    GT = Val(0)
+    FT         = eltype(grid)
+    ψ₂, ψ₁, ψ₀ = right_stencil_x(i, j, k, ψ, grid)
+    w₀, w₁, w₂ = right_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀)
+    return w₀ * right_biased_p₀(FT, GT, ψ₀, grid.xᶠᵃᵃ[i], grid.xᶜᵃᵃ, i) +
+           w₁ * right_biased_p₁(FT, GT, ψ₁, grid.xᶠᵃᵃ[i], grid.xᶜᵃᵃ, i) +
+           w₂ * right_biased_p₂(FT, GT, ψ₂, grid.xᶠᵃᵃ[i], grid.xᶜᵃᵃ, i)
 end
 
 @inline function right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, ::WENO5S, ψ)
-    ψ₂, ψ₁, ψ₀ = right_stencil_y(grid, i, j, k, ψ)
-    w₀, w₁, w₂ = right_biased_weno5_weights(grid, ψ₂, ψ₁, ψ₀)
-    return w₀ * right_biased_p₀(grid, ψ₀) + 
-           w₁ * right_biased_p₁(grid, ψ₁) + 
-           w₂ * right_biased_p₂(grid, ψ₂)
+    
+    typeof(grid) <: YRegRectilinearGrid ? GT = Val(0) : GT = Val(1)
+    
+    FT         = eltype(grid)
+    ψ₂, ψ₁, ψ₀ = right_stencil_y(i, j, k, ψ, grid)
+    w₀, w₁, w₂ = right_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀)
+    return w₀ * right_biased_p₀(FT, GT, ψ₀, grid.yᵃᶠᵃ[j], grid.yᵃᶜᵃ, j) + 
+           w₁ * right_biased_p₁(FT, GT, ψ₁, grid.yᵃᶠᵃ[j], grid.yᵃᶜᵃ, j) + 
+           w₂ * right_biased_p₂(FT, GT, ψ₂, grid.yᵃᶠᵃ[j], grid.yᵃᶜᵃ, j)
 end
 
 @inline function right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, ::WENO5S, ψ)
-    ψ₂, ψ₁, ψ₀ = right_stencil_z(grid, i, j, k, ψ)
-    w₀, w₁, w₂ = right_biased_weno5_weights(grid, ψ₂, ψ₁, ψ₀)
-    return w₀ * right_biased_p₀(grid, ψ₀) + 
-           w₁ * right_biased_p₁(grid, ψ₁) +
-           w₂ * right_biased_p₂(grid, ψ₂)
+    
+    typeof(grid) <: ZRegRectilinearGrid ? GT = Val(0) : GT = Val(1)
+    
+    FT         = eltype(grid)
+    ψ₂, ψ₁, ψ₀ = right_stencil_z(i, j, k, ψ, grid)
+    w₀, w₁, w₂ = right_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀)
+    return w₀ * right_biased_p₀(FT, GT, ψ₀, grid.zᵃᵃᶠ[k], grid.zᵃᵃᶜ, k) + 
+           w₁ * right_biased_p₁(FT, GT, ψ₁, grid.zᵃᵃᶠ[k], grid.zᵃᵃᶜ, k) +
+           w₂ * right_biased_p₂(FT, GT, ψ₂, grid.zᵃᵃᶠ[k], grid.zᵃᵃᶜ, k)
 end
 
 @inline left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::WENO5S, ψ) = left_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, ψ)
@@ -273,3 +240,19 @@ end
 @inline right_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::WENO5S, ψ) = right_biased_interpolate_xᶠᵃᵃ(i+1, j, k, grid, scheme, ψ)
 @inline right_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::WENO5S, ψ) = right_biased_interpolate_yᵃᶠᵃ(i, j+1, k, grid, scheme, ψ)
 @inline right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme::WENO5S, ψ) = right_biased_interpolate_zᵃᵃᶠ(i, j, k+1, grid, scheme, ψ)
+
+
+@inline left_L₀(cf, c, i) = ( (cf - c[i]  ) * (cf - c[i+1]) / (c[i-1] - c[i]  ) / (c[i-1] - c[i+1]), 
+                              (cf - c[i-1]) * (cf - c[i+1]) / (c[i-1] - c[i]  ) / (c[i-1] - c[i+1]),
+                              (cf - c[i-1]) * (cf - c[i]  ) / (c[i+1] - c[i-1]) / (c[i+1] - c[i]  ) )
+@inline left_L₁(cf, c, i) = ( (cf - c[i-1]) * (cf - c[i]  ) / (c[i-2] - c[i-1]) / (c[i-2] - c[i]), 
+                              (cf - c[i-2]) * (cf - c[i]  ) / (c[i-2] - c[i-1]) / (c[i-2] - c[i]),
+                              (cf - c[i-2]) * (cf - c[i-1]) / (c[i]   - c[i-2]) / (c[i]   - c[i-1]) )
+@inline left_L₂(cf, c, i) = ( (cf - c[i-2]) * (cf - c[i-1]) / (c[i-3] - c[i-2]) / (c[i-3] - c[i-1]), 
+                              (cf - c[i-3]) * (cf - c[i-1]) / (c[i-3] - c[i-2]) / (c[i-3] - c[i-1]),
+                              (cf - c[i-3]) * (cf - c[i-2]) / (c[i-1] - c[i-3]) / (c[i-1] - c[i-2]) )
+
+@inline left_C₀(FT, ψ, c, i) = - ((c[i]   - c[i-1]) * ψ[3] - (c[i+1] - c[i-1]) * ψ[2] + (c[i+1] - c[i]  ) * ψ[1]) / (c[i+1] - c[i]  ) / FT(12)
+@inline left_C₁(FT, ψ, c, i) = - ((c[i-1] - c[i-2]) * ψ[3] - (c[i]   - c[i-2]) * ψ[2] + (c[i]   - c[i-1]) * ψ[1]) / (c[i]   - c[i-1]) / FT(12)
+@inline left_C₂(FT, ψ, c, i) = - ((c[i-2] - c[i-3]) * ψ[3] - (c[i-1] - c[i-3]) * ψ[2] + (c[i-1] - c[i-2]) * ψ[1]) / (c[i-1] - c[i-2]) / FT(12)
+
