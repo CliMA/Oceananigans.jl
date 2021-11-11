@@ -30,7 +30,7 @@ progress(s) = @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e"
                              s.model.clock.time, maximum(abs, model.velocities.w))
 
 gravity_wave_speed = sqrt(model.free_surface.gravitational_acceleration * grid.Lz)
-Δt = 0.1 * grid.Δx / gravity_wave_speed
+Δt = 0.1 * grid.Δxᶜᵃᵃ / gravity_wave_speed
               
 simulation = Simulation(model, Δt = Δt, stop_time = 100, progress = progress, iteration_interval = 100)
 

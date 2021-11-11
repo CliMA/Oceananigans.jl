@@ -44,7 +44,7 @@ function progress(sim)
     return nothing
 end
 
-Δmin = min(grid.Δx, grid.Δy)
+Δmin = min(grid.Δxᶜᵃᵃ, grid.Δyᵃᶜᵃ)
 
 wizard = TimeStepWizard(cfl = 0.5, Δt = 0.01Δmin, max_change = 1.1, max_Δt = 0.05Δmin)
 

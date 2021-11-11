@@ -43,7 +43,7 @@ function progress(sim)
     return nothing
 end
 
-wizard = TimeStepWizard(cfl=0.5, Δt=0.01*grid.Δx, max_change=1.1, max_Δt=2e-3)
+wizard = TimeStepWizard(cfl=0.5, Δt=0.01*grid.Δxᶜᵃᵃ, max_change=1.1, max_Δt=2e-3)
 
 simulation = Simulation(model, Δt=wizard, stop_time=1, progress=progress, iteration_interval=10)
 

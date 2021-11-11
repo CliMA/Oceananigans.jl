@@ -48,7 +48,7 @@ function setup_simulation(N, T, CFL, ϕₐ, advection_scheme; u, v)
 
     v_max = maximum(abs, interior(model.velocities.v))
     w_max = maximum(abs, interior(model.velocities.w))
-    Δt = CFL * min(grid.Δy, grid.Δz) / max(v_max, w_max)
+    Δt = CFL * min(grid.Δyᵃᶜᵃ, grid.Δzᵃᵃᶜ) / max(v_max, w_max)
 
     simulation = Simulation(model, Δt=Δt, stop_time=T, progress=print_progress, iteration_interval=1,
                             parameters = (v_Stommel=u, w_Stommel=v))

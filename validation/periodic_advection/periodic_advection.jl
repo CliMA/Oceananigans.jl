@@ -56,7 +56,7 @@ function create_animation(N, L, CFL, ϕₐ, time_stepper, advection_scheme; U=1.
     
     v, c = model.velocities.v, model.tracers.c
     x = xnodes(c)
-    Δt = CFL * model.grid.Δx / abs(U)
+    Δt = CFL * model.grid.Δxᶜᵃᵃ / abs(U)
     Nt = ceil(Int, T/Δt)
 
     function every(n)
