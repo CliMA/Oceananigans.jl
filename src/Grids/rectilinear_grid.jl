@@ -223,6 +223,7 @@ chebychev_like_spaced_faces(j) = - Ly/2 * cos(π * (j-1) / Ny)
 hyperbolically_spaced_faces(j) = - Lz * (1 - tanh(σ * (j - 1) / Nz) / tanh(σ))
 
 grid = RectilinearGrid(size = (Nx, Ny, Nz),
+                       topology=(Periodic, Bounded, Bounded),
                        x = (0, Lz),
                        y = chebychev_like_spaced_faces,
                        z = hyperbolically_spaced_faces)
