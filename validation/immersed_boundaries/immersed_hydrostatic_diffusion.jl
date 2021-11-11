@@ -24,7 +24,7 @@ c_immersed = view(interior(immersed_model.tracers.c), 1, 1, :)
 c_plot = plot(c, z, linewidth = 2, label = "t = 0", xlabel = "Tracer concentration", ylabel = "z")
 plot!(c_plot, c_immersed, z, linewidth = 2, label = "t = 0, immersed model", xlabel = "Tracer concentration", ylabel = "z")
               
-diffusion_time_scale = model.grid.Δz^2 / model.closure.κ.c
+diffusion_time_scale = model.grid.Δzᵃᵃᶜ^2 / model.closure.κ.c
 stop_time = 100diffusion_time_scale
 
 simulations = [simulation = Simulation(m, Δt = 1e-1 * diffusion_time_scale, stop_time = stop_time) for m in (model, immersed_model)]

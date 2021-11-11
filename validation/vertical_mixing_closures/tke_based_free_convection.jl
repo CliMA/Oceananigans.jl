@@ -15,7 +15,7 @@ Qᵘ = 0.0
 Qᵛ = 0.0
 
 u★ = (Qᵘ^2 + Qᵛ^2)^(1/4)
-w★ = Qᵇ * grid.Δz
+w★ = Qᵇ * grid.Δzᵃᵃᶜ
 
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵛ))
