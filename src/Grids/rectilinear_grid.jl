@@ -188,13 +188,13 @@ grid in z: Regular, with spacing 0.5
 ```jldoctest
 julia> using Oceananigans
 
-julia> σ = 1.1 # stretching factor
+julia> σ = 1.1; # stretching factor
 
-julia> Nz = 24 # vertical resolution
+julia> Nz = 24; # vertical resolution
 
-julia> Lz = 32 # depth (m)
+julia> Lz = 32; # depth (m)
 
-julia> hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
+julia> hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ));
 
 julia> grid = RectilinearGrid(size = (32, 32, Nz),
                        x = (0, 64),
@@ -217,13 +217,15 @@ grid in z: Stretched, with spacing min=0.6826950100338962, max=1.830908574388505
 ```jldoctest
 julia> using Oceananigans
 
-julia> Nx, Ny, Nz = 32, 30, 24
-julia> Lx, Ly, Lz = 200, 100, 32 # (m)
+julia> Nx, Ny, Nz = 32, 30, 24;
 
-julia> chebychev_like_spaced_faces(j) = - Ly/2 * cos(π * (j-1) / Ny)
+julia> Lx, Ly, Lz = 200, 100, 32; # (m)
 
-julia> σ = 1.1 # stretching factor
-julia> hyperbolically_spaced_faces(j) = - Lz * (1 - tanh(σ * (j - 1) / Nz) / tanh(σ))
+julia> chebychev_like_spaced_faces(j) = - Ly/2 * cos(π * (j-1) / Ny);
+
+julia> σ = 1.1; # stretching factor
+
+julia> hyperbolically_spaced_faces(j) = - Lz * (1 - tanh(σ * (j - 1) / Nz) / tanh(σ));
 
 julia> grid = RectilinearGrid(size = (Nx, Ny, Nz),
                               topology=(Periodic, Bounded, Bounded),
