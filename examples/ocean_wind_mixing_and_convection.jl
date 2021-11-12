@@ -54,9 +54,9 @@ h(k) = (k - 1) / Nz
 z_faces(k) = Lz * (ζ₀(k) * Σ(k) - 1)
 
 grid = RectilinearGrid(size = (32, 32, Nz), 
-                                          x = (0, 64),
-                                          y = (0, 64),
-                                          z = z_faces)
+                          x = (0, 64),
+                          y = (0, 64),
+                          z = z_faces)
 
 # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
 

@@ -28,8 +28,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
 # We use a one-dimensional domain of geophysical proportions,
 
 grid = RectilinearGrid(size = (128, 1),
-                              x = (0, 1000kilometers), z = (-400meters, 0),
-                              topology = (Bounded, Flat, Bounded))
+                       x = (0, 1000kilometers), z = (-400meters, 0),
+                       topology = (Bounded, Flat, Bounded))
 
 # !!! note
 #   We always have to include the z-direction for `HydrostaticFreeSurfaceModel`, even if
