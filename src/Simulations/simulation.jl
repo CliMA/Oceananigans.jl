@@ -138,6 +138,7 @@ function reset!(sim)
     sim.stop_time = Inf
     sim.wall_time_limit = Inf
     sim.initialized = false
+    sim.running = true
     return nothing
 end
 

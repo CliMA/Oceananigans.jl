@@ -74,8 +74,9 @@ function run_basic_simulation_tests(arch)
     # Just make sure we can construct a simulation without any errors.
     @test simulation isa Simulation
 
-    @test stop_iteration_exceeded(simulation) == false
-    @test simulation.running = true
+    simulation.running = true
+    stop_iteration_exceeded(simulation)
+    @test simulation.running
 
     run!(simulation)
 
@@ -83,20 +84,31 @@ function run_basic_simulation_tests(arch)
     @test simulation isa Simulation
 
     # Some basic tests
-    @test stop_iteration_exceeded(simulation) == true
-    @test simulation.running = false
+    simulation.running = true
+    stop_iteration_exceeded(simulation)
+    @test !(simulation.running)
 
     @test model.clock.time ≈ simulation.Δt
     @test model.clock.iteration == 1
     @test simulation.run_wall_time > 0
 
-    @test stop_time_exceeded(simulation) == false
-    simulation.stop_time = 1e-12
-    @test stop_time_exceeded(simulation) == true
+    simulation.running = true
+    stop_time_exceeded(simulation)
+    @test simulation.running
 
-    @test wall_time_limit_exceeded(simulation) == false
+    simulation.running = true
+    simulation.stop_time = 1e-12 # less than the current time.
+    stop_time_exceeded(simulation)
+    @test !(simulation.running)
+
+    simulation.running = true
+    @test wall_time_limit_exceeded(simulation)
+    @test simulation.running
+
+    simulation.running = true
     simulation.wall_time_limit = 1e-12
-    @test wall_time_limit_exceeded(simulation) == true
+    wall_time_limit_exceeded(simulation)
+    @test !(simulation.running)
 
     # Test that simulation stops at `stop_iteration`.
     reset!(simulation)
