@@ -3,7 +3,7 @@ using Test
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Simulations:
-    iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
+    stop_iteration_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     TimeStepWizard, new_time_step, reset!
 
 using Dates: DateTime
@@ -74,7 +74,7 @@ function run_basic_simulation_tests(arch)
     # Just make sure we can construct a simulation without any errors.
     @test simulation isa Simulation
 
-    @test iteration_limit_exceeded(simulation) == false
+    @test stop_iteration_exceeded(simulation) == false
     @test simulation.running = true
 
     run!(simulation)
@@ -83,7 +83,7 @@ function run_basic_simulation_tests(arch)
     @test simulation isa Simulation
 
     # Some basic tests
-    @test iteration_limit_exceeded(simulation) == true
+    @test stop_iteration_exceeded(simulation) == true
     @test simulation.running = false
 
     @test model.clock.time ≈ simulation.Δt
