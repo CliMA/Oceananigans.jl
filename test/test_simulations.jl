@@ -102,7 +102,7 @@ function run_basic_simulation_tests(arch)
     @test !(simulation.running)
 
     simulation.running = true
-    @test wall_time_limit_exceeded(simulation)
+    wall_time_limit_exceeded(simulation)
     @test simulation.running
 
     simulation.running = true
