@@ -57,16 +57,12 @@ const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFit
                                              zero(eltype(ibg.grid)),
                                              Δzᵃᵃᶜ(i, j, k, ibg.grid))
 
-@inline Δzᶠᶜᶜ(i, j, k, ibg::GFBIBG) = ifelse(  is_immersed(i-1, j  , k, ibg.grid, ibg.immersed_boundary)
-                                             | is_immersed(i  , j  , k, ibg.grid, ibg.immersed_boundary)
-                                             ,
-                                             zero(eltype(ibg.grid)),
+@inline Δzᶠᶜᶜ(i, j, k, ibg::GFBIBG) =  ifelse(solid_node(Face(), Center(), Center(), i  , j, k, ibg),
+                                             zero(eltype(ibg)),
                                              Δzᵃᵃᶜ(i, j, k, ibg.grid))
 
-@inline Δzᶜᶠᶜ(i, j, k, ibg::GFBIBG) = ifelse(  is_immersed(i  , j-1, k, ibg.grid, ibg.immersed_boundary)
-                                             | is_immersed(i  , j  , k, ibg.grid, ibg.immersed_boundary)
-                                             ,
-                                             zero(eltype(ibg.grid)),
+@inline Δzᶜᶠᶜ(i, j, k, ibg::GFBIBG) = ifelse(solid_node(Center(), Face(), Center(), i  , j, k, ibg),
+                                             zero(eltype(ibg)),
                                              Δzᵃᵃᶜ(i, j, k, ibg.grid))
 
 @inline Δzᵃᵃᶠ(i, j, k, ibg::GFBIBG) = ifelse(is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary),
