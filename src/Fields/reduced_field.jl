@@ -176,7 +176,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any)
 
         # Allocating
         function Base.$(reduction)(f::Function, c::AbstractField; dims=:)
-            if dims isa Colon
+            if dims === (:)
                 r = zeros(architecture(c), c.grid, 1, 1, 1)
                 Base.$(reduction!)(f, r, c)
                 return CUDA.@allowscalar r[1, 1, 1]
@@ -194,3 +194,11 @@ for reduction in (:sum, :maximum, :minimum, :all, :any)
 end
 
 Statistics._mean(f, c::AbstractField, ::Colon) = sum(f, c) / length(c)
+
+function Statistics._mean(f, c::AbstractField, dims)
+    r = sum(f, c; dims)
+    n = mapreduce(i -> size(c, i), *, unique(dims); init=1)
+    parent(r) ./= n
+    return r
+end
+
