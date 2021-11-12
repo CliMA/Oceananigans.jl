@@ -92,13 +92,13 @@ For example, we can use the Chebychev nodes, which are more closely stacked near
 ``y``- and ``z``-faces.
 
 ```jldoctest
-julia> Nx, Ny, Nz = 64, 64, 32
+julia> Nx, Ny, Nz = 64, 64, 32;
 
-julia> Lx, Ly, Lz = 1e4, 1e4, 1e3
+julia> Lx, Ly, Lz = 1e4, 1e4, 1e3;
 
-julia> chebychev_spaced_y_faces(j) = - Ly/2 * cos(π * (j - 1) / Ny)
+julia> chebychev_spaced_y_faces(j) = - Ly/2 * cos(π * (j - 1) / Ny);
 
-julia> chebychev_spaced_z_faces(k) = - Lz/2 - Lz/2 * cos(π * (k - 1) / Nz)
+julia> chebychev_spaced_z_faces(k) = - Lz/2 - Lz/2 * cos(π * (k - 1) / Nz);
 
 julia> grid = RectilinearGrid(size = (Nx, Ny, Nz),
                               topology=(Periodic, Bounded, Bounded),
