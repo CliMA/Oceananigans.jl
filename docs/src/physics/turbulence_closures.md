@@ -169,3 +169,11 @@ each direction:
 The constant ``C_b`` permits the "buoyancy modification" term it multiplies to be omitted
 from a calculation.
 By default we use the model constants ``C=1/12`` and ``C_b=0``.
+
+## Convective adjustment vertical diffusivity
+
+This closure aims to model the enhanced mixing that occurs in the ocean's upper mixed layer due to convection.
+At every point and for every time instance, the closure checks the fluid's neutral stability and in any region
+that the buoyancy gradient is negative (unstable) it applies a vertical diffusivity `convective_κz` and or vertical
+viscosity `convective_νz` which are, usually, much enhanced compared to their normal values. That is,
+`convective_κz` ``\gg`` `background_κz` and `convective_νz` ``\gg`` `background_νz`.
