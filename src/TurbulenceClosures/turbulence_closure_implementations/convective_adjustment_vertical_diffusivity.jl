@@ -198,3 +198,11 @@ end
     ν = νᶜᶜᶜ(i, j, k, grid, clock, diffusivities.ν)
     return - ν * ∂zᵃᵃᶜ(i, j, k, grid, velocities.w)
 end
+
+#####
+##### Show
+#####
+Base.show(io::IO, closure::ConvectiveAdjustmentVerticalDiffusivity) =
+    print(io, "ConvectiveAdjustmentVerticalDiffusivity: " *
+              "(background_κz=$(closure.background_κz), convective_κz=$(closure.convective_κz), " *
+              "background_νz=$(closure.background_νz), convective_νz=$(closure.convective_νz)" * ")")
