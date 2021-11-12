@@ -250,7 +250,7 @@ run!(simulation)
 # We look at the results by plotting vertical slices of ``u`` and ``w``, and a horizontal
 # slice of ``w`` to look for Langmuir cells.
 
-k = searchsortedfirst(grid.zF[:], -8)
+k = searchsortedfirst(grid.zᵃᵃᶠ[:], -8)
 nothing # hide
 
 # Making the coordinate arrays takes a few lines of code,

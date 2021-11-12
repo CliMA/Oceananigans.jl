@@ -73,7 +73,6 @@ y_sponge = 19/20 * Ly,               # southern boundary of sponge layer [m]
 λt = 7.0days                         # relaxation time scale [s]
 )
 
-# ynode(::Type{Center}, j, grid::RectilinearGrid) = @inbounds grid.yC[j]
 # ynode(::Type{Center}, j, grid::RectilinearGrid) = @inbounds grid.yᵃᵃᶜ[j]
 
 
