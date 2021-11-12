@@ -114,3 +114,45 @@ grid in x: Regular, with spacing 156.25
 grid in y: Stretched, with spacing min=6.022718974138115, max=245.33837163709035
 grid in z: Stretched, with spacing min=2.407636663901485, max=49.008570164780394
 ```
+
+```@setup
+using Oceananigans
+using Plots
+Plots.scalefontsizes(1.25)
+Plots.default(lw=3)
+Nx, Ny, Nz = 64, 64, 32
+Lx, Ly, Lz = 1e4, 1e4, 1e3
+chebychev_spaced_y_faces(j) = - Ly/2 * cos(π * (j - 1) / Ny);
+chebychev_spaced_z_faces(k) = - Lz/2 - Lz/2 * cos(π * (k - 1) / Nz);
+grid = RectilinearGrid(size = (Nx, Ny, Nz),
+                              topology=(Periodic, Bounded, Bounded),
+                              x = (0, Lx),
+                              y = chebychev_spaced_y_faces,
+                              z = chebychev_spaced_z_faces)
+```
+
+We can easily visualize the spacing of ``y`` and ``z`` directions.
+
+```@example
+using Plots
+
+py = plot(grid.yᵃᶜᵃ[1:Ny],  grid.Δyᵃᶜᵃ[1:Ny],
+           marker = :circle,
+           ylabel = "y-spacing (m)",
+           xlabel = "y (m)",
+           legend = nothing,
+           ylims = (0, 250))
+
+pz = plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
+          marker = :square,
+          ylabel = "z (m)",
+          xlabel = "z-spacing (m)",
+          legend = nothing,
+          xlims = (0, 50))
+
+plot(py, pz, layout=(2, 1), size=(800, 900))
+
+savefig("plot_stretched_grid.svg"); nothing # hide
+```
+
+![](plot_stretched_grid.svg)
