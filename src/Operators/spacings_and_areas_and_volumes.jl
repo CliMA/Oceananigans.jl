@@ -46,8 +46,8 @@ The operators in this file fall into three categories:
 @inline Δzᵃᵃᶜ(i, j, k, grid::RegularRectilinearGrid) = grid.Δz
 @inline Δzᵃᵃᶜ(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶜ[k]
 
-@inline Δzᶠᶜᶜ(i, j, k, grid::RegularRectilinearGrid) = grid.Δz
-@inline Δzᶜᶠᶜ(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶜ[k]
+@inline Δzᶠᶜᶜ(i, j, k, grid) = Δzᵃᵃᶜ(i, j, k, grid)
+@inline Δzᶜᶠᶜ(i, j, k, grid) = Δzᵃᵃᶜ(i, j, k, grid)
 
 #####
 ##### "Spacings" in Flat directions for rectilinear grids.
