@@ -193,3 +193,4 @@ for reduction in (:sum, :maximum, :minimum, :all, :any)
     end
 end
 
+Statistics._mean(f, c::AbstractField, ::Colon) = sum(f, c) / length(c)
