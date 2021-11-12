@@ -33,8 +33,8 @@ grid in z: Regular, with spacing 2.0
 ```
 
 !!! info "Default domain"
-    When using the `extent` keyword, the domain is ``x \in [0, L_x]``, ``y \in [0, L_y]``, and ``z \in [-L_z, 0]``
-    -- a sensible choice for oceanographic applications.
+    When using the `extent` keyword, e.g., `extent = (Lx, Ly, Lz)`, then the ``x \in [0, L_x]``,
+    ``y \in [0, L_y]``, and ``z \in [-L_z, 0]`` -- a sensible choice for oceanographic applications.
 
 ## Specifying the grid's topology
 
@@ -60,13 +60,13 @@ grid in z: Regular, with spacing 31.25
 ```
 
 The `Flat` topology is useful when running problems with fewer than 3 dimensions. As an example,
-to use a 2D doubly periodic domain one would define the topology as `(Periodic, Periodic, Flat)`.
+to use a two-dimensional horizontal, doubly periodic domain the topology is `(Periodic, Periodic, Flat)`.
 
 
 ## Specifying domain end points
 
 To specify a domain with a different origin than the default, the `x`, `y`, and `z` keyword arguments must be used.
-For example, a grid with ``x \in [-100, 100]`` meters, ``y \in [0, 12.5]`` meters, and ``z \in [-π, π]`` meters
+For example, a grid with ``x \in [-100, 100]`` meters, ``y \in [0, 12.5]`` meters, and ``z \in [-\pi, \pi]`` meters
 is constructed via
 
 ```jldoctest
