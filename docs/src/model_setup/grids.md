@@ -115,7 +115,7 @@ grid in y: Stretched, with spacing min=6.022718974138115, max=245.33837163709035
 grid in z: Stretched, with spacing min=2.407636663901485, max=49.008570164780394
 ```
 
-```@setup
+```@setup 1
 using Oceananigans
 using Plots
 Plots.scalefontsizes(1.25)
@@ -133,7 +133,7 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
 
 We can easily visualize the spacing of ``y`` and ``z`` directions.
 
-```@example
+```@example 1
 using Plots
 
 py = plot(grid.yᵃᶜᵃ[1:Ny],  grid.Δyᵃᶜᵃ[1:Ny],
