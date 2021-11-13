@@ -172,6 +172,6 @@ By default we use the model constants ``C=1/12`` and ``C_b=0``.
 
 ## Convective adjustment vertical diffusivity
 
-This closure aims to model the enhanced mixing that occurs in the ocean's upper mixed layer due to convection.
+This closure aims to model the enhanced mixing that occurs due to convection.
 At every point and for every time instance, the closure diagnoses the gravitational stability of the fluid and applies the vertical diffusivities (i) `background_νz` to `u, v` and `background_κz` to all tracers if the fluid is gravitationally neutral or stable with `∂z(b) >= 0`, or (ii) `convective_νz` and `convective_κz` if `∂z(b) >= 0`.background_νz` and `background_κz`.
 This closure is a plausible model for convection if `convective_κz` ``\gg`` `background_κz` and `convective_νz` ``\gg`` `background_νz`.
