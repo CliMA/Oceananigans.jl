@@ -24,7 +24,7 @@ if @isdefined wenoS
     close(wenoS)
 end
 
-advection    = [WENO5(), WENO5S()]
+
 arch         = CPU()
 stretched    = true
 
@@ -49,7 +49,7 @@ else
     xF = range(0,1,length = Nx+1)
 end
 
-grid  = RectilinearGrid(size = (Nx,), x = xF, halo = (3,), topology = (Periodic, Flat, Flat), architecture = arch)    
+grid  = RectilinearGrid(size = (Nx,), x = xF, halo = (4,), topology = (Periodic, Flat, Flat), architecture = arch)    
 
 Δ_min = min_Δx(grid)
 
@@ -61,7 +61,7 @@ wback(x, y, z, t) = 1.0
 
 U = BackgroundField(wback)
 c₀(x, y, z) = 10*exp(-((x-0.5)/0.2)^2)
-
+advection    = [WENO5S(grid), WENO5()]
 for weno in advection
     model = NonhydrostaticModel(architecture = arch,
                                         grid = grid,

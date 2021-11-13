@@ -46,41 +46,61 @@ struct WENO5S{Buffer, FT, XT, YT, ZT} <: AbstractUpwindBiasedAdvectionScheme{2}
     
     coeff_zᵃᵃᶠ::ZT
     coeff_zᵃᵃᶜ::ZT
+    
 end
 
-function WENO5S(grid)  
-
-    FT = eltype(grid)
+function WENO5S(FT = Float64; grid = nothing) 
     
-    arch = grid.architecture
-    
-    # if typeof(grid) <: XRegRectilinearGrid 
-    #     coeff_xᶠᵃᵃ = nothing 
-    #     coeff_xᶜᵃᵃ = nothing 
-    # else
-        coeff_xᶠᵃᵃ = calc_interpolating_coefficients(FT, grid.xᶠᵃᵃ, arch, grid.Nx) 
-        coeff_xᶜᵃᵃ = calc_interpolating_coefficients(FT, grid.xᶜᵃᵃ, arch, grid.Nx)
-    # end
-    # if typeof(grid) <: YRegRectilinearGrid 
-    #     coeff_yᵃᶠᵃ = nothing   
-    #     coeff_yᵃᶜᵃ = nothing
-    # else    
-        coeff_yᵃᶠᵃ = calc_interpolating_coefficients(FT, grid.yᵃᶠᵃ, arch, grid.Ny)
-        coeff_yᵃᶜᵃ = calc_interpolating_coefficients(FT, grid.yᵃᶜᵃ, arch, grid.Ny)
-    # end
-    # if typeof(grid) <: ZRegRectilinearGrid 
-    #     coeff_zᵃᵃᶠ = nothing
-    #     coeff_zᵃᵃᶜ = nothing
-    # else
-        coeff_zᵃᵃᶠ = calc_interpolating_coefficients(FT, grid.zᵃᵃᶠ, arch, grid.Nz)
-        coeff_zᵃᵃᶜ = calc_interpolating_coefficients(FT, grid.zᵃᵃᶜ, arch, grid.Nz)
-    # end
-    
+    if grid isa Nothing
+        coeff_xᶠᵃᵃ = nothing 
+        coeff_xᶜᵃᵃ = nothing  
+        coeff_yᵃᶠᵃ = nothing   
+        coeff_yᵃᶜᵃ = nothing
+        coeff_zᵃᵃᶠ = nothing
+        coeff_zᵃᵃᶜ = nothing
+    else
+        FT = eltype(grid)
+        
+        arch = grid.architecture
+        
+        if typeof(grid) <: XRegRectilinearGrid 
+            coeff_xᶠᵃᵃ = nothing 
+            coeff_xᶜᵃᵃ = nothing 
+        else
+            coeff_xᶠᵃᵃ = calc_interpolating_coefficients(FT, grid.xᶠᵃᵃ, arch, grid.Nx) 
+            coeff_xᶜᵃᵃ = calc_interpolating_coefficients(FT, grid.xᶜᵃᵃ, arch, grid.Nx)
+        end
+        if typeof(grid) <: YRegRectilinearGrid 
+            coeff_yᵃᶠᵃ = nothing   
+            coeff_yᵃᶜᵃ = nothing
+        else    
+            coeff_yᵃᶠᵃ = calc_interpolating_coefficients(FT, grid.yᵃᶠᵃ, arch, grid.Ny)
+            coeff_yᵃᶜᵃ = calc_interpolating_coefficients(FT, grid.yᵃᶜᵃ, arch, grid.Ny)
+        end
+        if typeof(grid) <: ZRegRectilinearGrid 
+            coeff_zᵃᵃᶠ = nothing
+            coeff_zᵃᵃᶜ = nothing
+        else
+            coeff_zᵃᵃᶠ = calc_interpolating_coefficients(FT, grid.zᵃᵃᶠ, arch, grid.Nz)
+            coeff_zᵃᵃᶜ = calc_interpolating_coefficients(FT, grid.zᵃᵃᶜ, arch, grid.Nz)
+        end
+    end
     XT = typeof(coeff_xᶠᵃᵃ)
     YT = typeof(coeff_yᵃᶠᵃ)
     ZT = typeof(coeff_zᵃᵃᶠ)
 
     return WENO5S{2, FT, XT, YT, ZT}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ)
+end
+
+const XRegWENO = WENO5S{<:Any, <:Any, <:Nothing}
+const YRegWENO = WENO5S{<:Any, <:Any, <:Any, <:Nothing}
+const ZRegWENO = WENO5S{<:Any, <:Any, <:Any, <:Any, <:Nothing}
+
+
+function show(io::IO, a::WENO5S{Buffer, FT, RX, RY, RZ}) where {Buffer, FT, RX, RY, RZ}
+    print(io, "WENO5 advection sheme with X $(RX == Nothing ? "regular" : "stretched"), 
+                                          Y $(RY == Nothing ? "regular" : "stretched") and
+                                          Z $(RZ == Nothing ? "regular" : "stretched")")
 end
 
 @inline boundary_buffer(::WENO5S) = 2
