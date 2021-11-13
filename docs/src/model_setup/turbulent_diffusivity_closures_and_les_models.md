@@ -62,10 +62,10 @@ AnisotropicMinimumDissipation{Float64} turbulence closure with:
 no parameters are required although they may be specified. By default, the background viscosity and diffusivity
 are assumed to be the molecular values for seawater. For more details see [`AnisotropicMinimumDissipation`](@ref).
 
-## Convective Adjustement Vertical Diffusivity--Viscosity
+## Convective Adjustment Vertical Diffusivity--Viscosity
 
-To use the a convective adjustement scheme that applies enhanced values for vertical diffusivity ``\kappa_z`` and/or
-vicosity ``\nu_z`` anytime and anywhere the background stratification becomes unstable.
+To use the a convective adjustment scheme that applies enhanced values for vertical diffusivity ``\kappa_z`` and/or
+viscosity ``\nu_z``, anytime and anywhere the background stratification becomes unstable.
 
 ```jldoctest
 julia> using Oceananigans
