@@ -28,6 +28,14 @@ function WENO5S(FT = Float64; grid = nothing)
         coeff_yᵃᶜᵃ = nothing
         coeff_zᵃᵃᶠ = nothing
         coeff_zᵃᵃᶜ = nothing
+    elseif !(typeof(grid) <: RectilinearGrid)
+        @warn "Stretched WENO is not supported with grids other than Rectilinear, defaulting to Uniform WENO"
+        coeff_xᶠᵃᵃ = nothing 
+        coeff_xᶜᵃᵃ = nothing  
+        coeff_yᵃᶠᵃ = nothing   
+        coeff_yᵃᶜᵃ = nothing
+        coeff_zᵃᵃᶠ = nothing
+        coeff_zᵃᵃᶜ = nothing    
     else
         FT = eltype(grid)
         

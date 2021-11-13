@@ -10,26 +10,6 @@ on a "regular formulation" or a "stretched formulation"
 GT can take up the value of 
 - Val(0) => regular weno formulation
 - Val(1) => stretched weno formulation
-
-where the two WENO schemes differ like this
-
-u̅ᵢ = (1 - γ) uᵢ + γ uᵢ₊₁
-
-where 
-
-γ = Δxᵢ / (Δxᵢ + Δxᵢ₊₁) (with Δx calculated at the center of the cell)
-
-Uniform :
-
-p₀_left = + 1/3 * uᵢ₋₁ + 5/6 * uᵢ   -  1/6 * uᵢ₊₁
-p₁_left = - 1/6 * uᵢ₋₂ + 5/6 * uᵢ₋₁ +  1/3 * uᵢ
-p₂_left = + 1/3 * uᵢ₋₃ - 7/6 * uᵢ₋₂ + 11/6 * uᵢ₋₁
-
-Uniform :
-
-p₀_right = + 11/6 * uᵢ   - 7/6 * uᵢ₊₁  + 1/3 * uᵢ₊₂  
-p₁_right = +  1/3 * uᵢ₋₁ + 5/6 * uᵢ    - 1/6 * uᵢ₊₁    
-p₂_right = -  1/6 * uᵢ₋₂ + 5/6 * uᵢ₋₁  + 1/3 * uᵢ  
                                      
 """
 
