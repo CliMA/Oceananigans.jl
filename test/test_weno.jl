@@ -25,13 +25,12 @@ if @isdefined wenoS
 end
 
 advection    = [WENO5(), WENO5S()]
-architecture = GPU()
-stretched    = false
+arch         = CPU()
+stretched    = true
 
 if stretched
 
-    xfunc(x) = 1 - 0.9*exp(-((x/Nx-0.5)/0.1)^2)
-    Δx = xfunc.(collect(1:Nx))
+    Δx = zeros(Nx)
 
     Δx    .= 100
     Δx[4]  = 65
@@ -50,8 +49,7 @@ else
     xF = range(0,1,length = Nx+1)
 end
 
-grid  = RectilinearGrid(size = (Nx,), x = xF, halo = (3,), topology = (Periodic, Flat, Flat), architecture = CPU())    
-
+grid  = RectilinearGrid(size = (Nx,), x = xF, halo = (3,), topology = (Periodic, Flat, Flat), architecture = arch)    
 
 Δ_min = min_Δx(grid)
 
@@ -65,15 +63,13 @@ U = BackgroundField(wback)
 c₀(x, y, z) = 10*exp(-((x-0.5)/0.2)^2)
 
 for weno in advection
-    model = NonhydrostaticModel(architecture = CPU(),
+    model = NonhydrostaticModel(architecture = arch,
                                         grid = grid,
                                    advection = weno,
                                      tracers = (:c,),
                                  timestepper = :RungeKutta3,
                            background_fields = (u=U,),
                                     buoyancy = nothing)
-
-
 
     set!(model, c=c₀, u=0, v=0, w=0)
 
@@ -122,17 +118,20 @@ x = grid.xᶜᵃᵃ[1:grid.Nx]
 
 global t = 0
 anim = @animate for i ∈ 1:length(cu)
-    plot( x, cu[i][:])
-    plot!(x, cs[i][:])
-    plot!(x, c₀.(x .- t, 0, 0))
+    plot( x, cu[i][:], lw = 3, label = ["uniform weno scheme"])
+    plot!(x, cs[i][:], lw = 3, label = ["stretched weno scheme"])
+    plot!(x, c₀.(mod.((x .- t),1), 0, 0), seriestype = :scatter,  label = ["analytical"])
     global t += 5*Δt_max
 end
-# gif(anim, "anim_fps15.gif", fps = 15)
+
+stretched ? video = "str" : video = "reg"
+
+run(`ffmpeg -r 5 -f image2 -s 1920x1080 -i $(anim.dir)/%06d.png -vcodec libx264 -crf 25  -pix_fmt yuv420p $(video).mp4`)
 
 @info "Finished plots"
 
 for weno in advection
-    model = NonhydrostaticModel(architecture = CPU(),
+    model = NonhydrostaticModel(architecture = arch,
                                         grid = grid,
                                    advection = weno,
                                      tracers = (:c,),
