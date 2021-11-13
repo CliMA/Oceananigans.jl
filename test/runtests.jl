@@ -53,8 +53,6 @@ Logging.global_logger(OceananigansLogger())
 
 float_types = (Float32, Float64)
 
-archs = CUDA.has_cuda() ? (GPU(),) : (CPU(),)
-
 closures = (
     :IsotropicDiffusivity,
     :AnisotropicDiffusivity,
@@ -75,6 +73,8 @@ CUDA.allowscalar(true)
 
 include("data_dependencies.jl")
 include("utils_for_runtests.jl")
+
+archs = test_architectures()
 
 group = get(ENV, "TEST_GROUP", :all) |> Symbol
 
@@ -130,6 +130,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_hydrostatic_free_surface_immersed_boundaries.jl")
             include("test_vertical_vorticity_field.jl")
             include("test_implicit_free_surface_solver.jl")
+            include("test_hydrostatic_free_surface_immersed_boundaries_apply_surf_bc.jl")
         end
     end
 

@@ -1,6 +1,7 @@
 module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
+export KernelFunctionOperation
 
 using Base: @propagate_inbounds
 

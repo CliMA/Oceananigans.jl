@@ -113,6 +113,18 @@ Base.eltype(::AbstractGrid{FT}) where FT = FT
 Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
 Base.length(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
 
+function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
+    #check if grids are of the same type
+    !isa(grid2, typeof(grid1).name.wrapper) && return false
+
+    topology(grid1) !== topology(grid2) && return false
+
+    x1, y1, z1 = nodes((Face, Face, Face), grid1)
+    x2, y2, z2 = nodes((Face, Face, Face), grid2)
+
+    CUDA.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
+end
+
 halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
 
 topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)

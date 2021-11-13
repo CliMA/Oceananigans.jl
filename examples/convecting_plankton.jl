@@ -54,7 +54,7 @@ grid = RegularRectilinearGrid(size=(64, 64), extent=(64, 64), topology=(Periodic
 #
 # We impose a surface buoyancy flux that's initially constant and then decays to zero,
 
-buoyancy_flux(x, y, t, p) = p.initial_buoyancy_flux * exp(-t^4 / (24 * p.shut_off_time^4))
+buoyancy_flux(x, y, t, params) = params.initial_buoyancy_flux * exp(-t^4 / (24 * params.shut_off_time^4))
 
 buoyancy_flux_parameters = (initial_buoyancy_flux = 1e-8, # m² s⁻³
                                     shut_off_time = 2hours)
@@ -67,9 +67,9 @@ buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, parameters = buoyancy_fl
 
 using Plots, Measures
 
-time = range(0, 12hours, length=100)
+times = range(0, 12hours, length=100)
 
-flux_plot = plot(time ./ hour, [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in time],
+flux_plot = plot(times ./ hour, [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times],
                  linewidth = 2, xlabel = "Time (hours)", ylabel = "Surface buoyancy flux (m² s⁻³)",
                  size = (800, 300), margin = 5mm, label = nothing)
 
@@ -99,7 +99,7 @@ buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy
 # We use a simple model for the growth of phytoplankton in sunlight and decay
 # due to viruses and grazing by zooplankton,
 
-growing_and_grazing(x, y, z, t, P, p) = (p.μ₀ * exp(z / p.λ) - p.m) * P
+growing_and_grazing(x, y, z, t, P, params) = (params.μ₀ * exp(z / params.λ) - params.m) * P
 nothing # hide
 
 # with parameters
@@ -149,27 +149,30 @@ initial_buoyancy(x, y, z) = stratification(z) + noise(z)
 
 set!(model, b=initial_buoyancy, P=1)
 
-# ## Adaptive time-stepping, logging, output and simulation setup
+# ## Simulation with adaptive time-stepping, logging, and output
 #
-# We use a `TimeStepWizard` that limits the
+# We build a simulation
+
+simulation = Simulation(model, Δt=2minutes, stop_time=24hours)
+
+# with a `TimeStepWizard` that limits the
 # time-step to 2 minutes, and adapts the time-step such that CFL
 # (Courant-Freidrichs-Lewy) number hovers around `1.0`,
 
-wizard = TimeStepWizard(cfl=1.0, Δt=2minutes, max_change=1.1, max_Δt=2minutes)
+wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=2minutes)
 
-# We also write a function that prints the progress of the simulation
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+
+# We also add a callback that prints the progress of the simulation,
 
 using Printf
 
 progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
-                        sim.model.clock.iteration,
-                        prettytime(sim.model.clock.time),
-                        prettytime(sim.Δt.Δt))
+                        iteration(sim), prettytime(time(sim)), prettytime(sim.Δt))
 
-simulation = Simulation(model, Δt=wizard, stop_time=24hours,
-                        iteration_interval=20, progress=progress)
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 
-# We add a basic `JLD2OutputWriter` that writes velocities and both
+# and a basic `JLD2OutputWriter` that writes velocities and both
 # the two-dimensional and horizontally-averaged plankton concentration,
 
 averaged_plankton = AveragedField(model.tracers.P, dims=(1, 2))

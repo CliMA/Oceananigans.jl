@@ -12,8 +12,8 @@ using Oceananigans
 using Oceananigans.Distributed
 
      ranks = (2, 2, 1)
-      topo = (Periodic, Periodic, Bounded)
- full_grid = RegularRectilinearGrid(topology=topo, size=(128, 128, 1), extent=(4π, 4π, 1), halo=(3, 3, 3))
+      topo = (Periodic, Periodic, Flat)
+ full_grid = RegularRectilinearGrid(topology=topo, size=(128, 128), extent=(4π, 4π), halo=(3, 3))
       arch = MultiCPU(grid=full_grid, ranks=ranks)
 local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
 
@@ -25,7 +25,7 @@ model = DistributedShallowWaterModel(
     gravitational_acceleration = 1.0
 )
 
-set!(model, h=model.grid.Lz)
+set!(model, h=1)
 
 uh₀ = rand(size(model.grid)...);
 uh₀ .-= mean(uh₀);

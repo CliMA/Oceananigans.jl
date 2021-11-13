@@ -42,10 +42,15 @@ model = NonhydrostaticModel(timestepper = :RungeKutta3,
 
 using Statistics
 
-u₀ = rand(size(model.grid)...)
-u₀ .-= mean(u₀)
+u, v, w = model.velocities
 
-set!(model, u=u₀, v=u₀)
+uᵢ = rand(size(u)...)
+vᵢ = rand(size(v)...)
+
+uᵢ .-= mean(uᵢ)
+vᵢ .-= mean(vᵢ)
+
+set!(model, u=uᵢ, v=vᵢ)
 
 # ## Computing vorticity and speed
 
@@ -75,12 +80,17 @@ s = sqrt(u^2 + v^2)
 
 s_field = ComputedField(s)
 
-# We'll pass these `ComputedField`s to an output writer below to calculate them during the simulation.
-# Now we construct a simulation that prints out the iteration and model time as it runs.
+# We'll pass these `ComputedField`s to an output writer below to calculate and output them during the simulation.
 
-progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(round(Int, sim.model.clock.time))"
+simulation = Simulation(model, Δt=0.2, stop_time=50)
 
-simulation = Simulation(model, Δt=0.2, stop_time=50, iteration_interval=100, progress=progress)
+# ## Logging simulation progress
+#
+# We set up a callback that logs the simulation iteration and time every 100 iterations.
+
+progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
+
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 # ## Output
 #

@@ -13,6 +13,7 @@ Pages   = [
     "Advection/momentum_advection_operators.jl",
     "Advection/centered_second_order.jl",
     "Advection/centered_fourth_order.jl",
+    "Advection/upwind_biased_first_order.jl",
     "Advection/upwind_biased_third_order.jl",
     "Advection/upwind_biased_fifth_order.jl",
     "Advection/weno_fifth_order.jl"
@@ -107,6 +108,7 @@ Private = false
 Pages   = [
     "Fields/Fields.jl",
     "Fields/field.jl",
+    "Fields/averaged_field.jl",
     "Fields/set!.jl",
     "Fields/show_fields.jl",
 ]
@@ -209,7 +211,8 @@ Pages   = [
     "Simulations/Simulations.jl",
     "Simulations/time_step_wizard.jl",
     "Simulations/simulation.jl",
-    "Simulations/run.jl"
+    "Simulations/run.jl",
+    "Simulations/callback.jl"
 ]
 ```
 
@@ -252,6 +255,7 @@ Pages   = [
     "Utils/ordered_dict_show.jl",
     "Utils/cell_advection_timescale.jl",
     "Utils/output_writer_diagnostic_utils.jl",
+    "Utils/user_function_arguments.jl",
     "Utils/with_tracers.jl",
     "Utils/schedules.jl"
 ]
@@ -264,14 +268,14 @@ Modules = [Oceananigans, Oceananigans.AbstractOperations]
 Private = false
 Pages   = [
     "AbstractOperations/AbstractOperations.jl",
-    "AbstractOperations/unary_operations.jl",
+    "AbstractOperations/at.jl",
     "AbstractOperations/binary_operations.jl",
-    "AbstractOperations/multiary_operations.jl",
     "AbstractOperations/derivatives.jl",
-    "AbstractOperations/function_fields.jl",
-    "AbstractOperations/computations.jl",
-    "AbstractOperations/interpolation_utils.jl",
+    "AbstractOperations/grid_metrics.jl",
+    "AbstractOperations/grid_validation.jl",
+    "AbstractOperations/kernel_function_operaton.jl",
+    "AbstractOperations/multiary_operations.jl",
     "AbstractOperations/show_abstract_operations.jl",
-    "AbstractOperations/grid_validation.jl"
+    "AbstractOperations/unary_operations.jl",
 ]
 ```

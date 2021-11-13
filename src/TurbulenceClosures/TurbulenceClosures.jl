@@ -6,7 +6,6 @@ export
     AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
     TwoDimensionalLeith,
-    ConstantSmagorinsky,
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
     HorizontallyCurvilinearAnisotropicDiffusivity,
@@ -36,6 +35,8 @@ using Oceananigans.BuoyancyModels
 using Oceananigans.Utils
 
 using Oceananigans.Architectures: AbstractArchitecture, device
+
+const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
 #####
 ##### Abstract types
@@ -74,8 +75,10 @@ include("turbulence_closure_implementations/anisotropic_biharmonic_diffusivity.j
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
 include("turbulence_closure_implementations/smagorinsky_lilly.jl")
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
-include("turbulence_closure_implementations/tke_based_vertical_diffusivity.jl")
+include("turbulence_closure_implementations/CATKEVerticalDiffusivities/CATKEVerticalDiffusivities.jl")
 include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
+
+using .CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
 # Miscellaneous utilities
 include("diffusivity_fields.jl")
@@ -85,12 +88,5 @@ include("vertically_implicit_diffusion_solver.jl")
 #####
 ##### Some value judgements here
 #####
-
-"""
-    ConstantSmagorinsky
-
-An alias for `SmagorinskyLilly`.
-"""
-const ConstantSmagorinsky = SmagorinskyLilly
 
 end # module
