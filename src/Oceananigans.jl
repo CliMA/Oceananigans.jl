@@ -14,7 +14,8 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
-    RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RegularLatitudeLongitudeGrid,
+    RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RectilinearGrid, 
+    LatitudeLongitudeGrid,
     ConformalCubedSphereFaceGrid,
     xnodes, ynodes, znodes, nodes,
 
@@ -73,7 +74,7 @@ export
     Clock, TimeStepWizard, time_step!,
 
     # Simulations
-    Simulation, run!, Callback, iteration,
+    Simulation, run!, Callback, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics

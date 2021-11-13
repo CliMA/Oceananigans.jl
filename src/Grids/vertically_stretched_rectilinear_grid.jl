@@ -142,16 +142,23 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
     TX, TY, TZ = validate_topology(topology)
     size = validate_size(TX, TY, TZ, size)
     halo = validate_halo(TX, TY, TZ, halo)
-    x = validate_dimension_specification(TX, x, :x)
-    y = validate_dimension_specification(TY, y, :y)
+    x = validate_dimension_specification(TX, x, :x, FT)
+    y = validate_dimension_specification(TY, y, :y, FT)
     Lx, Ly, x, y = validate_vertically_stretched_grid_xy(TX, TY, FT, x, y)
 
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
     # Initialize vertically-stretched arrays on CPU
-    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ = generate_stretched_vertical_grid(FT, topology[3], Nz, Hz, z_faces)
 
+    # For the moment just check that z_faces is not a Tuple
+    if isa(z_faces, Tuple)
+        e = "z_faces is not a valid face variable! " *
+            "Valid face variables are 1D Vectors and Functions"
+        throw(ArgumentError(e))
+    end
+    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topology[3], Nz, Hz, z_faces, architecture)
+    
     # Construct uniform horizontal grid
     Lh, Nh, Hh, X₁ = (Lx, Ly), size[1:2], halo[1:2], (x[1], y[1])
     Δx, Δy = Δh = Lh ./ Nh
@@ -175,26 +182,11 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
     xᶜᵃᵃ = range(xC₋, xC₊; length = TCx)
     yᵃᶜᵃ = range(yC₋, yC₊; length = TCy)
 
-    xᶜᵃᵃ = OffsetArray(xᶜᵃᵃ,  -Hx)
-    yᵃᶜᵃ = OffsetArray(yᵃᶜᵃ,  -Hy)
-    zᵃᵃᶜ = OffsetArray(zᵃᵃᶜ,  -Hz)
+    xᶜᵃᵃ = OffsetArray(xᶜᵃᵃ, -Hx)
+    yᵃᶜᵃ = OffsetArray(yᵃᶜᵃ, -Hy)
 
-    xᶠᵃᵃ = OffsetArray(xᶠᵃᵃ,  -Hx)
-    yᵃᶠᵃ = OffsetArray(yᵃᶠᵃ,  -Hy)
-    zᵃᵃᶠ = OffsetArray(zᵃᵃᶠ,  -Hz)
-
-    Δzᵃᵃᶠ = OffsetArray(Δzᵃᵃᶠ, -Hz)
-    Δzᵃᵃᶜ = OffsetArray(Δzᵃᵃᶜ, -Hz)
-
-    # Seems needed to avoid out-of-bounds error in viscous dissipation
-    # operators wanting to access Δzᵃᵃᶠ[Nz+2].
-    Δzᵃᵃᶠ = OffsetArray(cat(Δzᵃᵃᶠ[0], Δzᵃᵃᶠ..., Δzᵃᵃᶠ[Nz], dims=1), -Hz-1)
-
-    # Convert to appropriate array type for arch
-    zᵃᵃᶠ  = OffsetArray(arch_array(architecture,  zᵃᵃᶠ.parent),  zᵃᵃᶠ.offsets...)
-    zᵃᵃᶜ  = OffsetArray(arch_array(architecture,  zᵃᵃᶜ.parent),  zᵃᵃᶜ.offsets...)
-    Δzᵃᵃᶜ = OffsetArray(arch_array(architecture, Δzᵃᵃᶜ.parent), Δzᵃᵃᶜ.offsets...)
-    Δzᵃᵃᶠ = OffsetArray(arch_array(architecture, Δzᵃᵃᶠ.parent), Δzᵃᵃᶠ.offsets...)
+    xᶠᵃᵃ = OffsetArray(xᶠᵃᵃ, -Hx)
+    yᵃᶠᵃ = OffsetArray(yᵃᶠᵃ, -Hy)
 
     R = typeof(xᶠᵃᵃ)
     A = typeof(zᵃᵃᶠ)
@@ -204,67 +196,18 @@ function VerticallyStretchedRectilinearGrid(FT = Float64;
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δx, Δy, Δzᵃᵃᶜ, Δzᵃᵃᶠ, xᶜᵃᵃ, yᵃᶜᵃ, zᵃᵃᶜ, xᶠᵃᵃ, yᵃᶠᵃ, zᵃᵃᶠ)
 end
 
-#####
-##### Vertically stretched grid utilities
-#####
-
-get_z_face(z::Function, k) = z(k)
-get_z_face(z::AbstractVector, k) = CUDA.@allowscalar z[k]
-
-lower_exterior_Δzᵃᵃᶜ(z_topo,          zFi, Hz) = [zFi[end - Hz + k] - zFi[end - Hz + k - 1] for k = 1:Hz]
-lower_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[2]  - zFi[1] for k = 1:Hz]
-
-upper_exterior_Δzᵃᵃᶜ(z_topo,          zFi, Hz) = [zFi[k + 1] - zFi[k] for k = 1:Hz]
-upper_exterior_Δzᵃᵃᶜ(::Type{Bounded}, zFi, Hz) = [zFi[end]   - zFi[end - 1] for k = 1:Hz]
-
-function generate_stretched_vertical_grid(FT, z_topo, Nz, Hz, z_faces)
-
-    # Ensure correct type for zF and derived quantities
-    interior_zF = zeros(FT, Nz+1)
-
-    for k = 1:Nz+1
-        interior_zF[k] = get_z_face(z_faces, k)
-    end
-
-    Lz = interior_zF[Nz+1] - interior_zF[1]
-
-    # Build halo regions
-    ΔzF₋ = lower_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
-    ΔzF₊ = upper_exterior_Δzᵃᵃᶜ(z_topo, interior_zF, Hz)
-
-    z¹, zᴺ⁺¹ = interior_zF[1], interior_zF[Nz+1]
-
-    zF₋ = [z¹   - sum(ΔzF₋[k:Hz]) for k = 1:Hz] # locations of faces in lower halo
-    zF₊ = reverse([zᴺ⁺¹ + sum(ΔzF₊[k:Hz]) for k = 1:Hz]) # locations of faces in width of top halo region
-
-    zF = vcat(zF₋, interior_zF, zF₊)
-
-    # Build cell centers, cell center spacings, and cell interface spacings
-    TCz = total_length(Center, z_topo, Nz, Hz)
-     zC = [ (zF[k + 1] + zF[k]) / 2 for k = 1:TCz ]
-    ΔzC = [  zC[k] - zC[k - 1]      for k = 2:TCz ]
-
-    # Trim face locations for periodic domains
-    TFz = total_length(Face, z_topo, Nz, Hz)
-    zF = zF[1:TFz]
-
-    ΔzF = [zF[k + 1] - zF[k] for k = 1:TFz-1]
-
-    return Lz, zF, zC, ΔzF, ΔzC
-end
-
 """
-    with_halo(new_halo, old_grid::VerticallyStretchedRectilinearGrid)
+    with_halo(_halo, old_grid::VerticallyStretchedRectilinearGrid)
 
-Returns a new `VerticallyStretchedRectilinearGrid` with the same properties as
-`old_grid` but with halos set to `new_halo`.
+Returns a  `VerticallyStretchedRectilinearGrid` with the same properties as
+`old_grid` but with halos set to `_halo`.
 
 Note that in contrast to the constructor for `VerticallyStretchedRectilinearGrid`,
-`new_halo` is expected to be a 3-`Tuple` by `with_halo`. The elements
-of `new_halo` corresponding to `Flat` directions are removed (and are
-therefore ignored) prior to constructing the new `VerticallyStretchedRectilinearGrid`.
+`_halo` is expected to be a 3-`Tuple` by `with_halo`. The elements
+of `_halo` corresponding to `Flat` directions are removed (and are
+therefore ignored) prior to constructing the  `VerticallyStretchedRectilinearGrid`.
 """
-function with_halo(new_halo, old_grid::VerticallyStretchedRectilinearGrid)
+function with_halo(_halo, old_grid::VerticallyStretchedRectilinearGrid)
 
     Nx, Ny, Nz = size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
@@ -273,20 +216,20 @@ function with_halo(new_halo, old_grid::VerticallyStretchedRectilinearGrid)
     y = y_domain(old_grid)
     z = z_domain(old_grid)
 
-    # Remove elements of size and new_halo in Flat directions as expected by grid
+    # Remove elements of size and _halo in Flat directions as expected by grid
     # constructor
     size = pop_flat_elements(size, topo)
-    new_halo = pop_flat_elements(new_halo, topo)
+    _halo = pop_flat_elements(_halo, topo)
 
-    new_grid = VerticallyStretchedRectilinearGrid(eltype(old_grid);
+    _grid = VerticallyStretchedRectilinearGrid(eltype(old_grid);
                                                   architecture = old_grid.architecture,
                                                   size = size,
                                                   x = x, y = y,
                                                   z_faces = old_grid.zᵃᵃᶠ,
                                                   topology = topo,
-                                                  halo = new_halo)
+                                                  halo = _halo)
 
-    return new_grid
+    return _grid
 end
 
 @inline x_domain(grid::VerticallyStretchedRectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.xᶠᵃᵃ)
@@ -344,7 +287,6 @@ all_y_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.yᵃ�
 all_z_nodes(::Type{Center}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃᵃᶜ
 all_z_nodes(::Type{Face}, grid::VerticallyStretchedRectilinearGrid) = grid.zᵃᵃᶠ
 
-#
 # Get minima of grid
 #
 

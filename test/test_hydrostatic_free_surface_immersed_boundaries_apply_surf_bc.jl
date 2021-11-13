@@ -9,7 +9,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
         Ny = 60
 
         # A spherical domain
-        underlying_grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
+        underlying_grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
                                                longitude = (-30, 30),
                                                latitude = (15, 75),
                                                z = (-4000, 0))
@@ -61,17 +61,11 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
                                     buoyancy = nothing)
 
 
-        simulation = Simulation(model,
-                        Δt = 3600,
-                        stop_time = 3600,
-                        iteration_interval = 100)
-
+        simulation = Simulation(model, Δt = 3600, stop_time = 3600)
         run!(simulation)
-
 
         # If reached here it didn't error, so pass for now!
         @test true
-
     end
 end
 

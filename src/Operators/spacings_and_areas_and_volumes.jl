@@ -1,4 +1,6 @@
 using Oceananigans.Grids: Center, Face
+using KernelAbstractions
+using Oceananigans.Architectures
 
 """
 Notes:
@@ -169,29 +171,137 @@ const ZFlatVSRG = VerticallyStretchedRectilinearGrid{<:Any, <:Any, <:Any, <:Flat
 @inline Vᶜᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
 
 #####
-##### Temporary place for grid spacings and areas for RegularLatitudeLongitudeGrid
+##### Temporary place for grid spacings and areas for RectilinearGrid
 #####
+
+const RG = RectilinearGrid
+const RGVX = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractVector}
+const RGVY = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVector}
+const RGVZ = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVector}
+
+@inline Δxᶜᵃᵃ(i, j, k, grid::RG)   =  @inbounds grid.Δxᶜᵃᵃ
+@inline Δxᶜᵃᵃ(i, j, k, grid::RGVX) =  @inbounds grid.Δxᶜᵃᵃ[i]
+@inline Δxᶠᵃᵃ(i, j, k, grid::RG)   =  @inbounds grid.Δxᶠᵃᵃ
+@inline Δxᶠᵃᵃ(i, j, k, grid::RGVX) =  @inbounds grid.Δxᶠᵃᵃ[i]
+@inline Δyᵃᶠᵃ(i, j, k, grid::RG)   =  @inbounds grid.Δyᵃᶠᵃ
+@inline Δyᵃᶠᵃ(i, j, k, grid::RGVY) =  @inbounds grid.Δyᵃᶠᵃ[j]
+@inline Δyᵃᶜᵃ(i, j, k, grid::RG)   =  @inbounds grid.Δyᵃᶜᵃ
+@inline Δyᵃᶜᵃ(i, j, k, grid::RGVY) =  @inbounds grid.Δyᵃᶜᵃ[j]
+@inline Δzᶠᵃᵃ(i, j, k, grid::RG)   =  @inbounds grid.Δzᶠᵃᵃ
+@inline Δzᶠᵃᵃ(i, j, k, grid::RGVZ) =  @inbounds grid.Δzᶠᵃᵃ[k]
+@inline Δzᵃᵃᶜ(i, j, k, grid::RG)   =  @inbounds grid.Δzᵃᵃᶜ
+@inline Δzᵃᵃᶜ(i, j, k, grid::RGVZ) =  @inbounds grid.Δzᵃᵃᶜ[k]
+
+const XFlatRG = RectilinearGrid{<:Any, <:Flat}
+const YFlatRG = RectilinearGrid{<:Any, <:Any, <:Flat}
+const ZFlatRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Flat}
+
+@inline Δx(i, j, k, grid::XFlatRG)    = one(eltype(grid))
+@inline Δxᶜᶜᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
+@inline Δxᶜᶠᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
+@inline Δxᶠᶠᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
+@inline Δxᶠᶜᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
+@inline Δy(i, j, k, grid::YFlatRG)    = one(eltype(grid))
+@inline Δyᶜᶜᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
+@inline Δyᶠᶜᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
+@inline Δyᶜᶠᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
+@inline Δyᶠᶠᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
+@inline ΔzC(  i, j, k, grid::ZFlatRG) = one(eltype(grid))
+@inline ΔzF(  i, j, k, grid::ZFlatRG) = one(eltype(grid))
+@inline Δzᵃᵃᶠ(i, j, k, grid::ZFlatRG) = one(eltype(grid))
+@inline Δzᵃᵃᶜ(i, j, k, grid::ZFlatRG) = one(eltype(grid))
+
+#####
+##### Temporary place for grid spacings and areas for LatitudeLongitudeGrid
+#####
+
+""" 
+the combination of types can be:
+
+M <: Nothing mean no precomputed metrics. They have to be computed again.
+FX<: Number  means that the grid is not stretched in the latitude direction
+FY<: Number  means that the grid is not stretched in the longitude direction
+
+"""
+
+# P stands for precomputed metrics, F stands for on the fly calculation of metrics
+# the general case is when all the directions are stretched
+# X, Y and Z stands for the direction which is regular
+
+const LLGP  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any}       # Actually == to LatitudeLongitudeGrid
+const LLGPX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number} # no i-index for Δλ
+const LLGPY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number} # no j-index for Δφ
+
+const LLGF  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing}
+const LLGFX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Number}
+const LLGFY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Nothing, <:Any, <:Any, <:Number}
+
+const LLGZ  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+
+## On the fly metrics
 
 @inline hack_cosd(φ) = cos(π * φ / 180)
 @inline hack_sind(φ) = sin(π * φ / 180)
 
-@inline Δxᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶠᵃ[j]) * deg2rad(grid.Δλ)
-@inline Δxᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλ)
-@inline Δxᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δxᶠᶜᵃ(i, j, k, grid)
-@inline Δxᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δxᶜᶠᵃ(i, j, k, grid)
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGF)  = grid.radius * deg2rad(grid.Δλᶠᵃᵃ[i]) * hack_cosd(grid.φᵃᶜᵃ[j]) 
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGFX) = grid.radius * deg2rad(grid.Δλᶠᵃᵃ)    * hack_cosd(grid.φᵃᶜᵃ[j]) 
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGF)  = grid.radius * deg2rad(grid.Δλᶜᵃᵃ[i]) * hack_cosd(grid.φᵃᶠᵃ[j]) 
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGFX) = grid.radius * deg2rad(grid.Δλᶜᵃᵃ)    * hack_cosd(grid.φᵃᶠᵃ[j]) 
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGF)  = grid.radius * deg2rad(grid.Δλᶠᵃᵃ[i]) * hack_cosd(grid.φᵃᶠᵃ[j]) 
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGFX) = grid.radius * deg2rad(grid.Δλᶠᵃᵃ)    * hack_cosd(grid.φᵃᶠᵃ[j]) 
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGF)  = grid.radius * deg2rad(grid.Δλᶜᵃᵃ[i]) * hack_cosd(grid.φᵃᶜᵃ[j]) 
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGFX) = grid.radius * deg2rad(grid.Δλᶜᵃᵃ)    * hack_cosd(grid.φᵃᶜᵃ[j]) 
 
-@inline Δyᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δφ)
-@inline Δyᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
-@inline Δyᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
-@inline Δyᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGF)  = grid.radius * deg2rad(grid.Δφᵃᶠᵃ[j])
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGFY) = grid.radius * deg2rad(grid.Δφᵃᶠᵃ)
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGF)  = grid.radius * deg2rad(grid.Δφᵃᶜᵃ[j])
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGFY) = grid.radius * deg2rad(grid.Δφᵃᶜᵃ)
 
-@inline Δzᵃᵃᶜ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.Δz
-@inline Δzᵃᵃᶠ(i, j, k, grid::RegularLatitudeLongitudeGrid) = grid.Δz
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
 
-@inline Azᶜᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-@inline Azᶠᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλ) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶠᶜᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Azᶜᶜᵃ(i, j, k, grid)
-@inline Azᶜᶠᵃ(i, j, k, grid::RegularLatitudeLongitudeGrid) = Azᶠᶠᵃ(i, j, k, grid)
+## Pre computed metrics
+## Δx metric
+
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δxᶜᶠᵃ[i, j]
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Δxᶜᶠᵃ[j]
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δxᶠᶜᵃ[i, j]
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Δxᶠᶜᵃ[j]
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δxᶠᶠᵃ[i, j]
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Δxᶠᶠᵃ[j]
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δxᶜᶜᵃ[i, j]
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Δxᶜᶜᵃ[j]
+
+## Δy metric
+
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δyᶜᶠᵃ[j]
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGPY) = @inbounds grid.Δyᶜᶠᵃ
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δyᶠᶜᵃ[j]
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGPY) = @inbounds grid.Δyᶠᶜᵃ
+@inline Δyᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Δyᶠᶜᵃ(i, j, k, grid)
+@inline Δyᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
+
+## Δz and Az metric
+
+@inline Δzᵃᵃᶠ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶠ
+@inline Δzᵃᵃᶜ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶜ
+@inline Δzᵃᵃᶠ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.Δzᵃᵃᶠ[k]
+@inline Δzᵃᵃᶜ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.Δzᵃᵃᶜ[k]
+
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Azᶠᶜᵃ[i, j]
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Azᶠᶜᵃ[j]
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Azᶜᶠᵃ[i, j]
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Azᶜᶠᵃ[j]
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Azᶠᶠᵃ[i, j]
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Azᶠᶠᵃ[j]
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Azᶜᶜᵃ[i, j]
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Azᶜᶜᵃ[j]
 
 #####
 ##### Temporary place for grid spacings and areas for ConformalCubedSphereFaceGrid

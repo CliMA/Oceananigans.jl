@@ -43,7 +43,7 @@
 <!-- CI/CD badges -->
 <p align="center">
   <a href="https://buildkite.com/clima/oceananigans">
-    <img alt="Buildkite CPU+GPU build status" src="https://img.shields.io/buildkite/4d921fc17b95341ea5477fb62df0e6d9364b61b154e050a123/master?logo=buildkite&label=Buildkite%20CPU%2BGPU&style=flat-square">
+    <img alt="Buildkite CPU+GPU build status" src="https://img.shields.io/buildkite/4d921fc17b95341ea5477fb62df0e6d9364b61b154e050a123/main?logo=buildkite&label=Buildkite%20CPU%2BGPU&style=flat-square">
   </a>
   <a href="https://hub.docker.com/r/aliramadhan/oceananigans">
     <img alt="Docker build status" src="https://img.shields.io/docker/cloud/build/aliramadhan/oceananigans?label=Docker&logo=docker&logoColor=white&style=flat-square">
@@ -130,7 +130,7 @@ You can see some movies from GPU simulations below along with CPU and GPU [perfo
 
 ## Getting help
 
-If you are interested in using Oceananigans.jl or are trying to figure out how to use it, please feel free to ask us questions and get in touch! If you're trying to set up a model then check out the examples and model setup documentation. Check out the [examples](https://github.com/clima/Oceananigans.jl/tree/master/examples) and please feel free to [start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions) if you have any questions, comments, suggestions, etc! There is also an #oceananigans channel on the [Julia Slack](https://julialang.org/slack/).
+If you are interested in using Oceananigans.jl or are trying to figure out how to use it, please feel free to ask us questions and get in touch! If you're trying to set up a model then check out the examples and model setup documentation. Check out the [examples](https://github.com/clima/Oceananigans.jl/tree/main/examples) and please feel free to [start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions) if you have any questions, comments, suggestions, etc! There is also an #oceananigans channel on the [Julia Slack](https://julialang.org/slack/).
 
 ## Citing
 
@@ -159,7 +159,7 @@ If you're interested in contributing to the development of Oceananigans we want 
 
 Let us know by [opening an issue](https://github.com/clima/Oceananigans.jl/issues/new) if you'd like to work on a new feature or if you're new to open-source and want to find a cool little project or issue to work on that fits your interests! We're more than happy to help along the way.
 
-For more information, check out our [contributor's guide](https://github.com/clima/Oceananigans.jl/blob/master/CONTRIBUTING.md).
+For more information, check out our [contributor's guide](https://github.com/clima/Oceananigans.jl/blob/main/CONTRIBUTING.md).
 
 ## Movies
 

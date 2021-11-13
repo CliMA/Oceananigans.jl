@@ -30,28 +30,42 @@ using Oceananigans.Units: minute, minutes, hour
 
 # ## The grid
 #
-# We use 32³ grid points with 2 m grid spacing in the horizontal and
+# We use 32²×24 grid points with 2 m grid spacing in the horizontal and
 # varying spacing in the vertical, with higher resolution closer to the
-# surface,
+# surface. Here we use a stretching function for the vertical nodes that
+# maintains relatively constant vertical spacing in the mixed layer, which
+# is desirable from a numerical standpoint:
 
-σ = 1.1 # stretching factor
-Nz = 24
-Lz = 32
+Nz = 24          # number of points in the vertical direction
+Lz = 32          # (m) domain depth
 
-hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
+refinement = 1.2 # controls spacing near surface (higher means finer spaced)
+stretching = 12  # controls rate of stretching at bottom
+
+## Normalized height ranging from 0 to 1
+h(k) = (k - 1) / Nz
+
+## Linear near-surface generator
+ζ₀(k) = 1 + (h(k) - 1) / refinement
+
+## Bottom-intensified stretching function 
+Σ(k) = (1 - exp(-stretching * h(k))) / (1 - exp(-stretching))
+
+## Generating function
+z_faces(k) = Lz * (ζ₀(k) * Σ(k) - 1)
 
 grid = VerticallyStretchedRectilinearGrid(size = (32, 32, Nz), 
                                           x = (0, 64),
                                           y = (0, 64),
-                                          z_faces = hyperbolically_spaced_faces)
+                                          z_faces = z_faces)
 
 # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
 
 plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
-      marker = :circle,
-      ylabel = "Depth (m)",
-      xlabel = "Vertical spacing (m)",
-      legend = nothing)
+     marker = :circle,
+     ylabel = "Depth (m)",
+     xlabel = "Vertical spacing (m)",
+     legend = nothing)
 
 # ## Buoyancy that depends on temperature and salinity
 #
@@ -59,7 +73,7 @@ plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4))
 
-# where $α$ and $β$ are the thermal expansion and haline contraction
+# where ``\alpha`` and ``\beta`` are the thermal expansion and haline contraction
 # coefficients for temperature and salinity.
 #
 # ## Boundary conditions
@@ -90,9 +104,9 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵀ),
 # to estimate the kinematic stress (that is, stress divided by density) exerted
 # by the wind on the ocean:
 
-u₁₀ = 10     # m s⁻¹, average wind velocity 10 meters above the ocean
-cᴰ = 2.5e-3  # dimensionless drag coefficient
-ρₐ = 1.225   # kg m⁻³, average density of air at sea-level
+u₁₀ = 10    # m s⁻¹, average wind velocity 10 meters above the ocean
+cᴰ = 2.5e-3 # dimensionless drag coefficient
+ρₐ = 1.225  # kg m⁻³, average density of air at sea-level
 
 Qᵘ = - ρₐ / ρₒ * cᴰ * u₁₀ * abs(u₁₀) # m² s⁻²
 
@@ -165,26 +179,31 @@ set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)
 
 # ## Setting up a simulation
 #
-# We first build a `TimeStepWizard` to ensure stable time-stepping
+# We set-up a simulation with an initial time-step of 10 seconds
+# that stops at 40 minutes, with adaptive time-stepping and progress printing.
+
+simulation = Simulation(model, Δt=10.0, stop_time=40minutes)
+
+# The `TimeStepWizard` helps ensure stable time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0.
 
-wizard = TimeStepWizard(cfl=1.0, Δt=10.0, max_change=1.1, max_Δt=1minute)
+wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=1minute)
+
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 # Nice progress messaging is helpful:
 
-start_time = time_ns() # so we can print the total elapsed wall time
-
 ## Print a progress message
-progress_message(sim) =
-    @printf("i: %04d, t: %s, Δt: %s, wmax = %.1e ms⁻¹, wall time: %s\n",
-            sim.model.clock.iteration, prettytime(model.clock.time),
-            prettytime(wizard.Δt), maximum(abs, sim.model.velocities.w),
-            prettytime((time_ns() - start_time) * 1e-9))
+progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = %.1e ms⁻¹, wall time: %s\n",
+                                iteration(sim),
+                                prettytime(sim),
+                                prettytime(sim.Δt),
+                                maximum(abs, sim.model.velocities.w),
+                                prettytime(sim.run_wall_time))
+
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
 
 # We then set up the simulation:
-
-simulation = Simulation(model, Δt=wizard, stop_time=40minutes, iteration_interval=10,
-                        progress=progress_message)
 
 # ## Output
 #
@@ -194,7 +213,7 @@ simulation = Simulation(model, Δt=wizard, stop_time=40minutes, iteration_interv
 # `ocean_wind_mixing_and_convection.jld2`.
 
 ## Create a NamedTuple with eddy viscosity
-eddy_viscosity = (νₑ = model.diffusivity_fields.νₑ,)
+eddy_viscosity = (; νₑ = model.diffusivity_fields.νₑ)
 
 simulation.output_writers[:slices] =
     JLD2OutputWriter(model, merge(model.velocities, model.tracers, eddy_viscosity),
