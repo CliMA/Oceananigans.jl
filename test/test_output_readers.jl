@@ -30,8 +30,9 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     uᵢ(x, y, z) = 1e-3 * randn()
     set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)
 
-    wizard = TimeStepWizard(cfl=1.0, Δt=10.0, max_change=1.1, max_Δt=1minute)
-    simulation = Simulation(model, Δt=wizard, stop_time=2minutes)
+    simulation = Simulation(model, Δt=10.0, stop_time=2minutes)
+    wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=1minute)
+    simulation.callbacks[:wizard] = Callback(wizard)
 
     u, v, w = model.velocities
 
@@ -191,8 +192,8 @@ end
 
             ds = FieldDataset(filepath3d, backend=Backend())
 
-            @test ds isa Dict
-            @test length(keys(ds)) == 8
+            @test ds isa FieldDataset
+            @test length(keys(ds.fields)) == 8
             @test ds["u"] isa FieldTimeSeries
             @test ds["v"][1] isa Field
             @test ds["T"][2] isa Field

@@ -17,7 +17,7 @@ for stress_div in (:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ)
 
         @inline $stress_div(i, j, k, grid::AbstractGrid, closures::Tuple, clock, U, Ks, args...) = (
                     $stress_div(i, j, k, grid, closures[1:2], clock, U, Ks[1:2], args...)
-                  + $stress_div(i, j, k, grid, closures[3:end], clock, U, K[3:end], args...))
+                  + $stress_div(i, j, k, grid, closures[3:end], clock, U, Ks[3:end], args...))
     end
 end
 

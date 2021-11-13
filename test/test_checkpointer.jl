@@ -1,3 +1,12 @@
+using Oceananigans
+using CUDA
+using Glob
+using Test
+
+include("utils_for_runtests.jl")
+
+archs = test_architectures()
+
 #####
 ##### Checkpointer tests
 #####
@@ -29,12 +38,17 @@ Run two coarse rising thermal bubble simulations and make sure
 1. When restarting from a checkpoint, the restarted model matches the non-restarted
    model to machine precision.
 
-2. When using set!(new_model) to a checkpoint, the new model matches the non-restarted
+2. When using set!(test_model) to a checkpoint, the new model matches the non-restarted
    simulation to machine precision.
 
-3. run!(new_model, pickup) works as expected
+3. run!(test_model, pickup) works as expected
 """
 function test_thermal_bubble_checkpointer_output(arch)
+
+    #####
+    ##### Create and run "true model"
+    #####
+
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
@@ -44,6 +58,7 @@ function test_thermal_bubble_checkpointer_output(arch)
     true_model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure,
                                      buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
                                      )
+    test_model = deepcopy(true_model)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
     # of the domain volume.
@@ -52,57 +67,80 @@ function test_thermal_bubble_checkpointer_output(arch)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
     CUDA.@allowscalar true_model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
-    checkpointed_model = deepcopy(true_model)
+    true_simulation = Simulation(true_model, Δt=Δt, stop_iteration=5)
 
-    true_simulation = Simulation(true_model, Δt=Δt, stop_iteration=9)
-    run!(true_simulation) # for 9 iterations
+    checkpointer = Checkpointer(true_model, schedule=IterationInterval(5), force=true)
+    push!(true_simulation.output_writers, checkpointer)
 
-    checkpointed_simulation = Simulation(checkpointed_model, Δt=Δt, stop_iteration=5)
-    checkpointer = Checkpointer(checkpointed_model, schedule=IterationInterval(5), force=true)
-    push!(checkpointed_simulation.output_writers, checkpointer)
+    run!(true_simulation) # for 5 iterations
 
-    # Checkpoint should be saved as "checkpoint_iteration5.jld" after the 5th iteration.
-    run!(checkpointed_simulation) # for 5 iterations
+    checkpointed_model = deepcopy(true_simulation.model)
+
+    true_simulation.stop_iteration = 9
+    run!(true_simulation) # for 4 more iterations
 
     #####
     ##### Test `set!(model, checkpoint_file)`
     #####
 
-    new_model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure,
-                                    buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
-                                    )
+    set!(test_model, "checkpoint_iteration5.jld2")
 
-    set!(new_model, "checkpoint_iteration5.jld2")
+    @test test_model.clock.iteration == checkpointed_model.clock.iteration
+    @test test_model.clock.time == checkpointed_model.clock.time
+    test_model_equality(test_model, checkpointed_model)
 
-    @test new_model.clock.iteration == checkpointed_model.clock.iteration
-    @test new_model.clock.time == checkpointed_model.clock.time
-    test_model_equality(new_model, checkpointed_model)
+    # This only applies to QuasiAdamsBashforthTimeStepper:
+    @test test_model.timestepper.previous_Δt == checkpointed_model.timestepper.previous_Δt
+
+    #####
+    ##### Test pickup from explicit checkpoint path
+    #####
+
+    test_simulation = Simulation(test_model, Δt=Δt, stop_iteration=9)
+
+    # Pickup from explicit checkpoint path
+    run!(test_simulation, pickup="checkpoint_iteration0.jld2")
+
+    @info "Testing model equality when running with pickup=checkpoint_iteration0.jld2."
+    @test test_simulation.model.clock.iteration == true_simulation.model.clock.iteration
+    @test test_simulation.model.clock.time == true_simulation.model.clock.time
+    test_model_equality(test_model, true_model)
+
+    run!(test_simulation, pickup="checkpoint_iteration5.jld2")
+    @info "Testing model equality when running with pickup=checkpoint_iteration5.jld2."
+
+    @test test_simulation.model.clock.iteration == true_simulation.model.clock.iteration
+    @test test_simulation.model.clock.time == true_simulation.model.clock.time
+    test_model_equality(test_model, true_model)
 
     #####
     ##### Test `run!(sim, pickup=true)
     #####
 
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=9)
-
-    # Pickup from explicit checkpoint path
-    run!(new_simulation, pickup="checkpoint_iteration0.jld2")
-    test_model_equality(new_model, true_model)
-
-    run!(new_simulation, pickup="checkpoint_iteration5.jld2")
-    test_model_equality(new_model, true_model)
-
     # Pickup using existing checkpointer
-    new_simulation.output_writers[:checkpointer] =
-        Checkpointer(new_model, schedule=IterationInterval(5), force=true)
+    test_simulation.output_writers[:checkpointer] =
+        Checkpointer(test_model, schedule=IterationInterval(5), force=true)
 
-    run!(new_simulation, pickup=true)
-    test_model_equality(new_model, true_model)
+    run!(test_simulation, pickup=true)
+    @info "    Testing model equality when running with pickup=true."
 
-    run!(new_simulation, pickup=0)
-    test_model_equality(new_model, true_model)
+    @test test_simulation.model.clock.iteration == true_simulation.model.clock.iteration
+    @test test_simulation.model.clock.time == true_simulation.model.clock.time
+    test_model_equality(test_model, true_model)
 
-    run!(new_simulation, pickup=5)
-    test_model_equality(new_model, true_model)
+    run!(test_simulation, pickup=0)
+    @info "    Testing model equality when running with pickup=0."
+
+    @test test_simulation.model.clock.iteration == true_simulation.model.clock.iteration
+    @test test_simulation.model.clock.time == true_simulation.model.clock.time
+    test_model_equality(test_model, true_model)
+
+    run!(test_simulation, pickup=5)
+    @info "    Testing model equality when running with pickup=5."
+
+    @test test_simulation.model.clock.iteration == true_simulation.model.clock.iteration
+    @test test_simulation.model.clock.time == true_simulation.model.clock.time
+    test_model_equality(test_model, true_model)
 
     rm("checkpoint_iteration0.jld2", force=true)
     rm("checkpoint_iteration5.jld2", force=true)
@@ -122,6 +160,8 @@ function run_checkpointer_cleanup_tests(arch)
 
     [@test !isfile("checkpoint_iteration$i.jld2") for i in 1:10 if i != 9]
     @test isfile("checkpoint_iteration9.jld2")
+
+    rm("checkpoint_iteration9.jld2", force=true)
 
     return nothing
 end
