@@ -91,9 +91,9 @@ for weno in advection
     output_prefix = "test_weno_$weno"
 
     simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                        schedule = TimeInterval(5*Δt_max),
-                                                        prefix = output_prefix,
-                                                        force = true)
+                                                          schedule = TimeInterval(5*Δt_max),
+                                                          prefix = output_prefix,
+                                                          force = true)
 
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 

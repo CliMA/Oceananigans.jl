@@ -16,7 +16,7 @@ struct WENO5S{FT, XT, YT, ZT, Buffer} <: AbstractUpwindBiasedAdvectionScheme{2}
     
     coeff_zᵃᵃᶠ::ZT
     coeff_zᵃᵃᶜ::ZT
-    
+ 
 end
 
 function WENO5S(FT = Float64; grid = nothing) 
@@ -259,12 +259,12 @@ function calc_interpolating_coefficients(FT, coord, arch, N)
     c₋₁    = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
-
-    c₁     = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
-               OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
-               OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
     
     c₀     = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
+               OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
+               OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
+
+    c₁     = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
 
