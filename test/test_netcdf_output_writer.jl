@@ -19,7 +19,7 @@ function test_DateTime_netcdf_output(arch)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=DateTime(2021, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid, clock=clock,
-                                buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 )
 
     Δt = 5days + 3hours + 44.123seconds
@@ -52,7 +52,7 @@ function test_TimeDate_netcdf_output(arch)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=TimeDate(2021, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid, clock=clock,
-                                buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 )
 
     Δt = 5days + 3hours + 44.123seconds
@@ -89,7 +89,7 @@ function test_thermal_bubble_netcdf_output(arch)
     grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure,
-                                buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 )
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
@@ -256,7 +256,7 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
     grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure,
-                                buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 )
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
@@ -350,7 +350,7 @@ function test_netcdf_function_output(arch)
 
     grid = RegularRectilinearGrid(size=(N, N, N), extent=(L, 2L, 3L))
     model = NonhydrostaticModel(architecture=arch, grid=grid,
-                                buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 )
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
     grid = model.grid
@@ -647,7 +647,7 @@ end
 function test_netcdf_output_alignment(arch)
     grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid,
-                                buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 )
     simulation = Simulation(model, Δt=0.2, stop_time=40)
 
@@ -684,7 +684,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z_faces=zF)
 
     model = NonhydrostaticModel(architecture=arch, grid=grid,
-                                buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 )
 
     Δt = 1.25

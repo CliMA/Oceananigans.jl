@@ -75,7 +75,7 @@ function run_first_AB2_time_step_tests(arch, FT)
     grid = RegularRectilinearGrid(FT, size=(13, 17, 19), extent=(1, 2, 3))
 
     model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=(T=add_ones,),
-                                buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 )
     time_step!(model, 1, euler=true)
 
@@ -102,7 +102,7 @@ end
 """
 function incompressible_in_time(arch, grid, Nt, timestepper)
     model = NonhydrostaticModel(grid=grid, architecture=arch, timestepper=timestepper,
-                                buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 )
     grid = model.grid
     u, v, w = model.velocities
@@ -153,7 +153,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model = NonhydrostaticModel(architecture = arch, grid = grid,
                                 closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz),
-                                buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 )
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
@@ -193,7 +193,7 @@ function time_stepping_with_background_fields(arch)
 
     model = NonhydrostaticModel(grid=grid, background_fields=(u=background_u, v=background_v, w=background_w,
                                                               T=background_T, S=background_S),
-                                buoyancy=Buoyancy(model=SeawaterBuoyancy()), tracers=(:T, :S),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 )
 
     time_step!(model, 1, euler=true)
