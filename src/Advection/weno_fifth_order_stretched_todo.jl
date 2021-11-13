@@ -4,39 +4,9 @@
 
 using OffsetArrays
 using Oceananigans.Architectures: arch_array
+import Base: show
 
-"""
-
-GT here is used as a variable to decide wether to dispatch 
-on a "regular formulation" or a "stretched formulation"
-
-GT can take up the value of 
-- Val(0) => regular weno formulation
-- Val(1) => stretched weno formulation
-
-where the two WENO schemes differ like this
-
-u̅ᵢ = (1 - γ) uᵢ + γ uᵢ₊₁
-
-where 
-
-γ = Δxᵢ / (Δxᵢ + Δxᵢ₊₁) (with Δx calculated at the center of the cell)
-
-Uniform :
-
-p₀_left = + 1/3 * uᵢ₋₁ + 5/6 * uᵢ   -  1/6 * uᵢ₊₁
-p₁_left = - 1/6 * uᵢ₋₂ + 5/6 * uᵢ₋₁ +  1/3 * uᵢ
-p₂_left = + 1/3 * uᵢ₋₃ - 7/6 * uᵢ₋₂ + 11/6 * uᵢ₋₁
-
-Uniform :
-
-p₀_right = + 11/6 * uᵢ   - 7/6 * uᵢ₊₁  + 1/3 * uᵢ₊₂  
-p₁_right = +  1/3 * uᵢ₋₁ + 5/6 * uᵢ    - 1/6 * uᵢ₊₁    
-p₂_right = -  1/6 * uᵢ₋₂ + 5/6 * uᵢ₋₁  + 1/3 * uᵢ  
-                                     
-"""
-
-struct WENO5S{Buffer, FT, XT, YT, ZT} <: AbstractUpwindBiasedAdvectionScheme{2} 
+struct WENO5S{FT, XT, YT, ZT, Buffer} <: AbstractUpwindBiasedAdvectionScheme{2} 
     
     coeff_xᶠᵃᵃ::XT
     coeff_xᶜᵃᵃ::XT
@@ -89,18 +59,11 @@ function WENO5S(FT = Float64; grid = nothing)
     YT = typeof(coeff_yᵃᶠᵃ)
     ZT = typeof(coeff_zᵃᵃᶠ)
 
-    return WENO5S{2, FT, XT, YT, ZT}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ)
+    return WENO5S{FT, XT, YT, ZT, 2}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ)
 end
 
-const XRegWENO = WENO5S{<:Any, <:Any, <:Nothing}
-const YRegWENO = WENO5S{<:Any, <:Any, <:Any, <:Nothing}
-const ZRegWENO = WENO5S{<:Any, <:Any, <:Any, <:Any, <:Nothing}
-
-
-function show(io::IO, a::WENO5S{Buffer, FT, RX, RY, RZ}) where {Buffer, FT, RX, RY, RZ}
-    print(io, "WENO5 advection sheme with X $(RX == Nothing ? "regular" : "stretched"), 
-                                          Y $(RY == Nothing ? "regular" : "stretched") and
-                                          Z $(RZ == Nothing ? "regular" : "stretched")")
+function Base.show(io::IO, a::WENO5S{ FT, RX, RY, RZ, Buffer}) where {FT, RX, RY, RZ, Buffer}
+    print(io, "WENO5 advection sheme with X $(RX == Nothing ? "regular" : "stretched"), Y $(RY == Nothing ? "regular" : "stretched") and Z $(RZ == Nothing ? "regular" : "stretched")")
 end
 
 @inline boundary_buffer(::WENO5S) = 2
@@ -208,72 +171,73 @@ end
     return w₀, w₁, w₂
 end
 
-@inline function weno_left_biased_interpolate_xᶠᵃᵃ(i, j, k, scheme::WENO5S, ψ, args...)
-    ψ₂, ψ₁, ψ₀ = left_stencil_x(i, j, k, ψ, grid)
+@inline function weno_left_biased_interpolate_xᶠᵃᵃ(i, j, k, scheme::WENO5S{FT, XT}, ψ, args...) where {FT, XT}
+    ψ₂, ψ₁, ψ₀ = left_stencil_x(i, j, k, ψ)
     w₀, w₁, w₂ = left_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀)
-    return w₀ * left_biased_p₀(scheme, ψ₀, Val(1), args...) + 
-           w₁ * left_biased_p₁(scheme, ψ₁, Val(1), args...) + 
-           w₂ * left_biased_p₂(scheme, ψ₂, Val(1), args...)
+    return w₀ * left_biased_p₀(scheme, ψ₀, XT, Val(1), args...) + 
+           w₁ * left_biased_p₁(scheme, ψ₁, XT, Val(1), args...) + 
+           w₂ * left_biased_p₂(scheme, ψ₂, XT, Val(1), args...)
 end
 
-@inline function weno_left_biased_interpolate_yᵃᶠᵃ(i, j, k, scheme::WENO5S, ψ, args...)
-    ψ₂, ψ₁, ψ₀ = left_stencil_y(i, j, k, ψ, grid)
+@inline function weno_left_biased_interpolate_yᵃᶠᵃ(i, j, k, scheme::WENO5S{FT, XT, YT}, ψ, args...) where {FT, XT, YT}
+    ψ₂, ψ₁, ψ₀ = left_stencil_y(i, j, k, ψ)
     w₀, w₁, w₂ = left_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀)
-    return w₀ * left_biased_p₀(scheme, ψ₀, Val(2), args...) + 
-           w₁ * left_biased_p₁(scheme, ψ₁, Val(2), args...) + 
-           w₂ * left_biased_p₂(scheme, ψ₂, Val(2), args...)
+    return w₀ * left_biased_p₀(scheme, ψ₀, YT, Val(2), args...) + 
+           w₁ * left_biased_p₁(scheme, ψ₁, YT, Val(2), args...) + 
+           w₂ * left_biased_p₂(scheme, ψ₂, YT, Val(2), args...)
 end
 
-@inline function weno_left_biased_interpolate_zᵃᵃᶠ(i, j, k, scheme::WENO5S, ψ, args...)
-    ψ₂, ψ₁, ψ₀ = left_stencil_z(i, j, k, ψ, grid)
+@inline function weno_left_biased_interpolate_zᵃᵃᶠ(i, j, k, scheme::WENO5S{FT, XT, YT, ZT}, ψ, args...) where {FT, XT, YT, ZT}
+    ψ₂, ψ₁, ψ₀ = left_stencil_z(i, j, k, ψ)
     w₀, w₁, w₂ = left_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀)
-    return w₀ * left_biased_p₀(scheme, ψ₀, Val(3), args...) +
-           w₁ * left_biased_p₁(scheme, ψ₁, Val(3), args...) + 
-           w₂ * left_biased_p₂(scheme, ψ₂, Val(3), args...)
+    return w₀ * left_biased_p₀(scheme, ψ₀, ZT, Val(3), args...) +
+           w₁ * left_biased_p₁(scheme, ψ₁, ZT, Val(3), args...) + 
+           w₂ * left_biased_p₂(scheme, ψ₂, ZT, Val(3), args...)
 end
 
-@inline function weno_right_biased_interpolate_xᶠᵃᵃ(i, j, k, scheme::WENO5S, ψ, args...)
+@inline function weno_right_biased_interpolate_xᶠᵃᵃ(i, j, k, scheme::WENO5S{FT, XT}, ψ, args...) where {FT, XT}
     ψ₂, ψ₁, ψ₀ = right_stencil_x(i, j, k, ψ)
     w₀, w₁, w₂ = right_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀)
-    return w₀ * right_biased_p₀(scheme, ψ₀, Val(1), args...) +
-           w₁ * right_biased_p₁(scheme, ψ₁, Val(1), args...) +
-           w₂ * right_biased_p₂(scheme, ψ₂, Val(1), args...)
+    return w₀ * right_biased_p₀(scheme, ψ₀, XT, Val(1), args...) +
+           w₁ * right_biased_p₁(scheme, ψ₁, XT, Val(1), args...) +
+           w₂ * right_biased_p₂(scheme, ψ₂, XT, Val(1), args...)
 end
 
-@inline function weno_right_biased_interpolate_yᵃᶠᵃ(i, j, k, scheme::WENO5S, ψ, args...)
+@inline function weno_right_biased_interpolate_yᵃᶠᵃ(i, j, k, scheme::WENO5S{FT, XT, YT}, ψ, args...) where {FT, XT, YT}
     ψ₂, ψ₁, ψ₀ = right_stencil_y(i, j, k, ψ)
     w₀, w₁, w₂ = right_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀)
-    return w₀ * right_biased_p₀(scheme, ψ₀, Val(2), args...) + 
-           w₁ * right_biased_p₁(scheme, ψ₁, Val(2), args...) + 
-           w₂ * right_biased_p₂(scheme, ψ₂, Val(2), args...)
+    return w₀ * right_biased_p₀(scheme, ψ₀, YT, Val(2), args...) + 
+           w₁ * right_biased_p₁(scheme, ψ₁, YT, Val(2), args...) + 
+           w₂ * right_biased_p₂(scheme, ψ₂, YT, Val(2), args...)
 end
 
-@inline function weno_right_biased_interpolate_zᵃᵃᶠ(i, j, k,scheme::WENO5S, ψ, args...)
+@inline function weno_right_biased_interpolate_zᵃᵃᶠ(i, j, k,scheme::WENO5S{FT, XT, YT, ZT}, ψ, args...) where {FT, XT, YT, ZT}
     ψ₂, ψ₁, ψ₀ = right_stencil_z(i, j, k, ψ)
     w₀, w₁, w₂ = right_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀)
-    return w₀ * right_biased_p₀(scheme, ψ₀, Val(3), args...) + 
-           w₁ * right_biased_p₁(scheme, ψ₁, Val(3), args...) +
-           w₂ * right_biased_p₂(scheme, ψ₂, Val(3), args...)
+    return w₀ * right_biased_p₀(scheme, ψ₀, ZT, Val(3), args...) + 
+           w₁ * right_biased_p₁(scheme, ψ₁, ZT, Val(3), args...) +
+           w₂ * right_biased_p₂(scheme, ψ₂, ZT, Val(3), args...)
 end
 
 #####
-##### Coefficients for stretched (and uniform) WENO
+##### Coefficients for stretched (and uniform) ENO schemes (see Shu )
 #####
-# coeff_left_p₀(scheme::WENO5S{2, FT}, ::Val{0}, args...) where FT = (  FT(1/3),    FT(5/6), - FT(1/6))
-# coeff_left_p₁(scheme::WENO5S{2, FT}, ::Val{0}, args...) where FT = (- FT(1/6),    FT(5/6),   FT(1/3))
-# coeff_left_p₂(scheme::WENO5S{2, FT}, ::Val{0}, args...) where FT = (  FT(1/3),  - FT(7/6),  FT(11/6))
 
-# coeff_right_p₀(scheme, ::Val{0}, args...) = reverse(coeff_left_p₂(scheme, Val(0), args...)) 
-# coeff_right_p₁(scheme, ::Val{0}, args...) = reverse(coeff_left_p₁(scheme, Val(0), args...)) 
-# coeff_right_p₂(scheme, ::Val{0}, args...) = reverse(coeff_left_p₀(scheme, Val(0), args...)) 
+@inline coeff_left_p₀(scheme::WENO5S{FT}, ::Type{Nothing}, args...) where FT = (  FT(1/3),    FT(5/6), - FT(1/6))
+@inline coeff_left_p₁(scheme::WENO5S{FT}, ::Type{Nothing}, args...) where FT = (- FT(1/6),    FT(5/6),   FT(1/3))
+@inline coeff_left_p₂(scheme::WENO5S{FT}, ::Type{Nothing}, args...) where FT = (  FT(1/3),  - FT(7/6),  FT(11/6))
 
-coeff_left_p₀(scheme, dir, i, loc) = retrieve_coeff(scheme, 0, dir, i ,loc)
-coeff_left_p₁(scheme, dir, i, loc) = retrieve_coeff(scheme, 1, dir, i ,loc)
-coeff_left_p₂(scheme, dir, i, loc) = retrieve_coeff(scheme, 2, dir, i ,loc)
+@inline coeff_right_p₀(scheme, ::Type{Nothing}, args...) = reverse(coeff_left_p₂(scheme, Nothing, args...)) 
+@inline coeff_right_p₁(scheme, ::Type{Nothing}, args...) = reverse(coeff_left_p₁(scheme, Nothing, args...)) 
+@inline coeff_right_p₂(scheme, ::Type{Nothing}, args...) = reverse(coeff_left_p₀(scheme, Nothing, args...)) 
 
-coeff_right_p₀(scheme, dir, i, loc) = retrieve_coeff(scheme, -1, dir, i ,loc)
-coeff_right_p₁(scheme, dir, i, loc) = retrieve_coeff(scheme,  0, dir, i ,loc)
-coeff_right_p₂(scheme, dir, i, loc) = retrieve_coeff(scheme,  1, dir, i ,loc)
+@inline coeff_left_p₀(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 0, dir, i ,loc)
+@inline coeff_left_p₁(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 1, dir, i ,loc)
+@inline coeff_left_p₂(scheme, T, dir, i, loc) = retrieve_coeff(scheme, 2, dir, i ,loc)
+
+@inline coeff_right_p₀(scheme, T, dir, i, loc) = retrieve_coeff(scheme, -1, dir, i ,loc)
+@inline coeff_right_p₁(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  0, dir, i ,loc)
+@inline coeff_right_p₂(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  1, dir, i ,loc)
 
 @inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Face})   = ( scheme.coeff_xᶠᵃᵃ[r+2][1][i], scheme.coeff_xᶠᵃᵃ[r+2][2][i], scheme.coeff_xᶠᵃᵃ[r+2][3][i] )
 @inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Center}) = ( scheme.coeff_xᶜᵃᵃ[r+2][1][i], scheme.coeff_xᶜᵃᵃ[r+2][2][i], scheme.coeff_xᶜᵃᵃ[r+2][3][i] )
@@ -314,15 +278,15 @@ function calc_interpolating_coefficients(FT, coord, arch, N)
     c₋₁ = ( OffsetArray(arch_array(arch, parent(c₋₁[1])), coord.offsets[1]),
             OffsetArray(arch_array(arch, parent(c₋₁[2])), coord.offsets[1]),
             OffsetArray(arch_array(arch, parent(c₋₁[3])), coord.offsets[1]) )
-    c₀  = ( OffsetArray(arch_array(arch, parent(c₋₁[1])), coord.offsets[1]),
-            OffsetArray(arch_array(arch, parent(c₋₁[2])), coord.offsets[1]),
-            OffsetArray(arch_array(arch, parent(c₋₁[3])), coord.offsets[1]) )
-    c₁  = ( OffsetArray(arch_array(arch, parent(c₋₁[1])), coord.offsets[1]),
-            OffsetArray(arch_array(arch, parent(c₋₁[2])), coord.offsets[1]),
-            OffsetArray(arch_array(arch, parent(c₋₁[3])), coord.offsets[1]) )
-    c₂  = ( OffsetArray(arch_array(arch, parent(c₋₁[1])), coord.offsets[1]),
-            OffsetArray(arch_array(arch, parent(c₋₁[2])), coord.offsets[1]),
-            OffsetArray(arch_array(arch, parent(c₋₁[3])), coord.offsets[1]) )
+    c₀  = ( OffsetArray(arch_array(arch, parent(c₀[1])) , coord.offsets[1]),
+            OffsetArray(arch_array(arch, parent(c₀[2])) , coord.offsets[1]),
+            OffsetArray(arch_array(arch, parent(c₀[3])) , coord.offsets[1]) )
+    c₁  = ( OffsetArray(arch_array(arch, parent(c₁[1])) , coord.offsets[1]),
+            OffsetArray(arch_array(arch, parent(c₁[2])) , coord.offsets[1]),
+            OffsetArray(arch_array(arch, parent(c₁[3])) , coord.offsets[1]) )
+    c₂  = ( OffsetArray(arch_array(arch, parent(c₂[1])) , coord.offsets[1]),
+            OffsetArray(arch_array(arch, parent(c₂[2])) , coord.offsets[1]),
+            OffsetArray(arch_array(arch, parent(c₂[3])) , coord.offsets[1]) )
 
     return (c₋₁, c₀, c₁, c₂)
 end

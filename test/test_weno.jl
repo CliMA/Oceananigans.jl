@@ -24,7 +24,6 @@ if @isdefined wenoS
     close(wenoS)
 end
 
-
 arch         = CPU()
 stretched    = true
 
@@ -61,7 +60,8 @@ wback(x, y, z, t) = 1.0
 
 U = BackgroundField(wback)
 c₀(x, y, z) = 10*exp(-((x-0.5)/0.2)^2)
-advection    = [WENO5S(grid), WENO5()]
+advection    = [WENO5S(grid = grid), WENO5()]
+
 for weno in advection
     model = NonhydrostaticModel(architecture = arch,
                                         grid = grid,
@@ -101,32 +101,32 @@ for weno in advection
 
 end
           
-wenoU = jldopen("test_weno_$(advection[1]).jld2")
-wenoS = jldopen("test_weno_$(advection[2]).jld2")
+# wenoU = jldopen("test_weno_$(advection[1]).jld2")
+# wenoS = jldopen("test_weno_$(advection[2]).jld2")
 
-global cu = ()
-global cs = ()
+# global cu = ()
+# global cs = ()
 
-for (i, key) in enumerate(keys(wenoU["timeseries/c"]))
-    if i > 1
-        global cu = (cu..., wenoU["timeseries/c/$key"])
-        global cs = (cs..., wenoS["timeseries/c/$key"])
-    end
-end
+# for (i, key) in enumerate(keys(wenoU["timeseries/c"]))
+#     if i > 1
+#         global cu = (cu..., wenoU["timeseries/c/$key"])
+#         global cs = (cs..., wenoS["timeseries/c/$key"])
+#     end
+# end
 
-x = grid.xᶜᵃᵃ[1:grid.Nx]
+# x = grid.xᶜᵃᵃ[1:grid.Nx]
 
-global t = 0
-anim = @animate for i ∈ 1:length(cu)
-    plot( x, cu[i][:], lw = 3, label = ["uniform weno scheme"])
-    plot!(x, cs[i][:], lw = 3, label = ["stretched weno scheme"])
-    plot!(x, c₀.(mod.((x .- t),1), 0, 0), seriestype = :scatter,  label = ["analytical"])
-    global t += 5*Δt_max
-end
+# global t = 0
+# anim = @animate for i ∈ 1:length(cu)
+#     plot( x, cu[i][:], lw = 3, label = ["uniform weno scheme"])
+#     plot!(x, cs[i][:], lw = 3, label = ["stretched weno scheme"])
+#     plot!(x, c₀.(mod.((x .- t),1), 0, 0), seriestype = :scatter,  label = ["analytical"])
+#     global t += 5*Δt_max
+# end
 
-stretched ? video = "str" : video = "reg"
+# stretched ? video = "str" : video = "reg"
 
-run(`ffmpeg -r 5 -f image2 -s 1920x1080 -i $(anim.dir)/%06d.png -vcodec libx264 -crf 25  -pix_fmt yuv420p $(video).mp4`)
+# run(`ffmpeg -r 5 -f image2 -s 1920x1080 -i $(anim.dir)/%06d.png -vcodec libx264 -crf 25  -pix_fmt yuv420p $(video).mp4`)
 
 @info "Finished plots"
 
