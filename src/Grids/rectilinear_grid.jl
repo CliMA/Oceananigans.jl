@@ -240,6 +240,7 @@ RectilinearGrid{Float64, Periodic, Bounded, Bounded} on the CPU()
 grid in x: Regular, with spacing 6.25
 grid in y: Stretched, with spacing min=0.2739052315863262, max=5.22642316338267
 grid in z: Stretched, with spacing min=0.6826950100338962, max=1.8309085743885056
+```
 """
 function RectilinearGrid(FT = Float64;
                          architecture = CPU(),
