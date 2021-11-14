@@ -35,7 +35,7 @@ using Oceananigans
 # Below, we build a regular rectilinear grid with 128 grid points in the `z`-direction,
 # where `z` spans from `z = -0.5` to `z = 0.5`,
 
-grid = RegularRectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 
 # The default topology is `(Periodic, Periodic, Bounded)` but since we only want to solve
 # a one-dimensional problem, we assign the `x` and `y` dimensions to `Flat`.  
@@ -96,7 +96,7 @@ T_plot = plot(interior(model.tracers.T)[1, 1, :], z,
 # Next we set-up a `Simulation` that time-steps the model forward and manages output.
 
 ## Time-scale for diffusion across a grid cell
-diffusion_time_scale = model.grid.Δz^2 / model.closure.κ.T
+diffusion_time_scale = model.grid.Δzᵃᵃᶜ^2 / model.closure.κ.T
 
 simulation = Simulation(model, Δt = 0.1 * diffusion_time_scale, stop_iteration = 1000)
 

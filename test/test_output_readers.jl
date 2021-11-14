@@ -8,7 +8,7 @@ using Oceananigans.Architectures: array_type
 using Oceananigans.Fields: location
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
-    grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(64, 64, 32))
+    grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(64, 64, 32))
 
     T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(5e-5), bottom = GradientBoundaryCondition(0.01))
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(-3e-4))

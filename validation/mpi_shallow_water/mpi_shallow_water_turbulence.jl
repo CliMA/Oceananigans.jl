@@ -13,7 +13,7 @@ using Oceananigans.Distributed
 
      ranks = (2, 2, 1)
       topo = (Periodic, Periodic, Flat)
- full_grid = RegularRectilinearGrid(topology=topo, size=(128, 128), extent=(4π, 4π), halo=(3, 3))
+ full_grid = RectilinearGrid(topology=topo, size=(128, 128), extent=(4π, 4π), halo=(3, 3))
       arch = MultiCPU(grid=full_grid, ranks=ranks)
 local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
 

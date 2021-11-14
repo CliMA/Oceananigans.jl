@@ -23,7 +23,7 @@ end
 Returns the discrete `div_xy = ∂x u + ∂y v` of velocity field `u, v` defined as
 
 ```
-1 / Azᶜᶜᵃ * [δxᶜᵃᵃ(Δy * u) + δyᵃᶜᵃ(Δx * v)]
+1 / Azᶜᶜᵃ * [δxᶜᵃᵃ(Δyᵃᶜᵃ * u) + δyᵃᶜᵃ(Δxᶜᵃᵃ * v)]
 ```
 
 at `i, j, k`, where `Azᶜᶜᵃ` is the area of the cell centered on (Center, Center, Any) --- a tracer cell,

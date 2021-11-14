@@ -12,7 +12,7 @@ function field_data(filename, field_name, iter)
     return data
 end
 
-function RegularRectilinearGrid(filename)
+function RectilinearGrid(filename)
     file = jldopen(filename)
     Nx = file["grid/Nx"]
     Ny = file["grid/Ny"]
@@ -22,7 +22,7 @@ function RegularRectilinearGrid(filename)
     Lz = file["grid/Lz"]
     close(file)
 
-    grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(0, Lz),
+    grid = RectilinearGrid(size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(0, Lz),
                                 topology=(Periodic, Periodic, Bounded))
 
     return grid
