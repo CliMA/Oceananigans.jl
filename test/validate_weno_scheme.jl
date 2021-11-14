@@ -2,10 +2,17 @@ using Oceananigans
 using Oceananigans.Grids: min_Δx
 using Oceananigans.Advection: WENO5S
 using JLD2
-using Plots
+using OffsetArrays
 using BenchmarkTools
 using Test
 using LinearAlgebra
+
+"""
+
+This simulation is a simple 1D advection of a gaussian function, to test the 
+validity of the stretched WENO scheme
+
+"""
 
 Nx = 20
 
@@ -29,28 +36,25 @@ for i in 2:Nx+1
 end
 xF_str = xF_str ./ xF_str[end]
 
-#chebishev grid
-@inline xF_che(i) = 1/2 + 1/2 * cos(π * (i - 1) / Nx);
 
-# Test accuracy
-for arch in architectures, xF in [xF_reg, xF_str, xF_che]
+# Checking the accuracy of different schemes with different settings
+for arch in architectures, xF in [xF_reg, xF_str]
 
-    if xF == xF_che
-        grid = RectilinearGrid(size = (Nx,), x = xF, halo = (3,), topology = (Bounded, Flat, Flat), architecture = arch)    
-    else
-        grid = RectilinearGrid(size = (Nx,), x = xF, halo = (3,), topology = (Periodic, Flat, Flat), architecture = arch)    
-    end
-
+    grid = RectilinearGrid(size = (Nx,), x = xF, halo = (3,), topology = (Periodic, Flat, Flat), architecture = arch)    
     x = grid.xᶜᵃᵃ[1:grid.Nx]
 
-    Δt_max = 0.75 * min_Δx(grid)
+    Δt_max   = 0.75 * min_Δx(grid)
+    end_time = 4000 * Δt_max
 
     c₀(x, y, z) = 10*exp(-((x-0.5)/0.2)^2)
+    creal       = Array(c₀.(mod.((x .- end_time),1), 0, 0))
+
     advection    = [WENO5S(grid = grid), WENO5S(), WENO5()]
 
     residual = zeros(Float64, 3)
 
     for (adv, weno) in enumerate(advection)
+
         model = NonhydrostaticModel(architecture = arch,
                                         grid = grid,
                                    advection = weno,
@@ -62,14 +66,17 @@ for arch in architectures, xF in [xF_reg, xF_str, xF_che]
         set!(model, c=c₀, u=0, v=0, w=0)
         c = model.tracers.c
 
-        end_time   = 4000 * Δt_max
-
         simulation = Simulation(model,
                                 Δt = Δt_max,
                                 stop_time = end_time)                           
         run!(simulation, pickup=false)
 
-        residal[adv] = norm(c₀.(mod.((x .- end_time),1), 0, 0) - c[1:grid.Nx, 1, 1])
+        ctest   = Array(parent(c.data))
+        offsets = (c.data.offsets[1],  c.data.offsets[2],  c.data.offsets[3])
+        ctemp   = OffsetArray(ctest, offsets)
+        ctests  = ctemp[1:grid.Nx, 1, 1]
+
+        residual[adv] = norm(creal - ctests)
     end
 
     @info """
@@ -91,14 +98,10 @@ function multiple_steps!(model)
     return nothing
 end
 
-# Benchmark time required
-for arch in architectures, xF in [xF_reg, xF_str, xF_che]
+# Benchmarking the different schemes with different settings
+for arch in architectures, xF in [xF_reg, xF_str]
 
-    if xF == xF_che
-        grid = RectilinearGrid(size = (Nx,), x = xF, halo = (3,), topology = (Bounded, Flat, Flat), architecture = arch)    
-    else
-        grid = RectilinearGrid(size = (Nx,), x = xF, halo = (3,), topology = (Periodic, Flat, Flat), architecture = arch)    
-    end
+    grid = RectilinearGrid(size = (Nx,), x = xF, halo = (3,), topology = (Periodic, Flat, Flat), architecture = arch)    
 
     x = grid.xᶜᵃᵃ[1:grid.Nx]
 
@@ -125,7 +128,7 @@ for arch in architectures, xF in [xF_reg, xF_str, xF_che]
         for i=1:10
             time_step!(model, 1e-6) # warmup
         end
-        time = (time..., @btime multiple_steps!($model))
+        time = (time..., @belapsed multiple_steps!($model))
     end
 
     @info """
