@@ -14,7 +14,7 @@
 ##### Only for regular grids (FX == FY == FZ <: Number) 
 ##### and vertically stretched grids (FX == FY <: Number)
 
-const Regular             = Union{RectilinearGrid, RegRectilinearGrid} # REMEMBER TO CHANGE!!!!
+const Regular             = RegRectilinearGrid
 const VerticallyStretched = HRegRectilinearGrid
 
 
