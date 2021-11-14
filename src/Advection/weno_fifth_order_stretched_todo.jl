@@ -3,6 +3,7 @@
 #####
 
 using OffsetArrays
+using Oceananigans.Grids: with_halo
 using Oceananigans.Architectures: arch_array
 using Adapt
 import Base: show
@@ -38,28 +39,29 @@ function WENO5S(FT = Float64; grid = nothing)
         coeff_zᵃᵃᶠ = nothing
         coeff_zᵃᵃᶜ = nothing    
     else
-        FT   = eltype(grid)
-        arch = grid.architecture
+        FT          = eltype(grid)
+        arch        = grid.architecture
+        helper_grid = with_halo((4, 4, 4), grid)
         if typeof(grid) <: XRegRectilinearGrid 
             coeff_xᶠᵃᵃ = nothing 
             coeff_xᶜᵃᵃ = nothing 
         else
-            coeff_xᶠᵃᵃ = calc_interpolating_coefficients(FT, grid.xᶠᵃᵃ, arch, grid.Nx) 
-            coeff_xᶜᵃᵃ = calc_interpolating_coefficients(FT, grid.xᶜᵃᵃ, arch, grid.Nx)
+            coeff_xᶠᵃᵃ = calc_interpolating_coefficients(FT, helper_grid.xᶠᵃᵃ, arch, grid.Nx) 
+            coeff_xᶜᵃᵃ = calc_interpolating_coefficients(FT, helper_grid.xᶜᵃᵃ, arch, grid.Nx)
         end
         if typeof(grid) <: YRegRectilinearGrid 
             coeff_yᵃᶠᵃ = nothing   
             coeff_yᵃᶜᵃ = nothing
         else    
-            coeff_yᵃᶠᵃ = calc_interpolating_coefficients(FT, grid.yᵃᶠᵃ, arch, grid.Ny)
-            coeff_yᵃᶜᵃ = calc_interpolating_coefficients(FT, grid.yᵃᶜᵃ, arch, grid.Ny)
+            coeff_yᵃᶠᵃ = calc_interpolating_coefficients(FT, helper_grid.yᵃᶠᵃ, arch, grid.Ny)
+            coeff_yᵃᶜᵃ = calc_interpolating_coefficients(FT, helper_grid.yᵃᶜᵃ, arch, grid.Ny)
         end
         if typeof(grid) <: ZRegRectilinearGrid 
             coeff_zᵃᵃᶠ = nothing
             coeff_zᵃᵃᶜ = nothing
         else
-            coeff_zᵃᵃᶠ = calc_interpolating_coefficients(FT, grid.zᵃᵃᶠ, arch, grid.Nz)
-            coeff_zᵃᵃᶜ = calc_interpolating_coefficients(FT, grid.zᵃᵃᶜ, arch, grid.Nz)
+            coeff_zᵃᵃᶠ = calc_interpolating_coefficients(FT, helper_grid.zᵃᵃᶠ, arch, grid.Nz)
+            coeff_zᵃᵃᶜ = calc_interpolating_coefficients(FT, helper_grid.zᵃᵃᶜ, arch, grid.Nz)
         end
     end
     XT = typeof(coeff_xᶠᵃᵃ)
@@ -325,79 +327,3 @@ function interpolation_weights(r, coord, i)
 
     return coeff
 end
-
-
-
-# function calc_interpolating_coefficients(FT, coord, arch, N) 
-
-#     c₋₁    = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
-#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
-#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
-    
-#     c₀     = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
-#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
-#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
-
-#     c₁     = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
-#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
-#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
-
-#     c₂     = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
-#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
-#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
-
-#     @inbounds begin
-#         for j=0:2
-#             for i = 0:N+1
-#                 c₋₁[j+1][i] = interpolation_weights(-1, coord, j, i)
-#                 c₀[j+1][i]  = interpolation_weights( 0, coord, j, i)
-#                 c₁[j+1][i]  = interpolation_weights( 1, coord, j, i)
-#                 c₂[j+1][i]  = interpolation_weights( 2, coord, j, i)
-#             end
-#         end
-#     end
-
-#     c₋₁ = ( OffsetArray(arch_array(arch, parent(c₋₁[1])), coord.offsets[1]),
-#             OffsetArray(arch_array(arch, parent(c₋₁[2])), coord.offsets[1]),
-#             OffsetArray(arch_array(arch, parent(c₋₁[3])), coord.offsets[1]) )
-#     c₀  = ( OffsetArray(arch_array(arch, parent(c₀[1])) , coord.offsets[1]),
-#             OffsetArray(arch_array(arch, parent(c₀[2])) , coord.offsets[1]),
-#             OffsetArray(arch_array(arch, parent(c₀[3])) , coord.offsets[1]) )
-#     c₁  = ( OffsetArray(arch_array(arch, parent(c₁[1])) , coord.offsets[1]),
-#             OffsetArray(arch_array(arch, parent(c₁[2])) , coord.offsets[1]),
-#             OffsetArray(arch_array(arch, parent(c₁[3])) , coord.offsets[1]) )
-#     c₂  = ( OffsetArray(arch_array(arch, parent(c₂[1])) , coord.offsets[1]),
-#             OffsetArray(arch_array(arch, parent(c₂[2])) , coord.offsets[1]),
-#             OffsetArray(arch_array(arch, parent(c₂[3])) , coord.offsets[1]) )
-
-#     return (c₋₁, c₀, c₁, c₂)
-# end
-
-# function interpolation_weights(r, coord, j, i)
-
-#     c = 0
-#     @inbounds begin
-#         for m = j+1:3
-#             num = 0
-#             for l = 0:3
-#                 if l != m
-#                     prod = 1
-#                     for q = 0:3
-#                         if q != m && q != l 
-#                             prod *= (coord[i] - coord[i-r+q-1])
-#                         end
-#                     end
-#                     num += prod
-#                 end
-#             end
-#             den = 1
-#             for l = 0:3
-#                 if l!= m
-#                     den *= (coord[i-r+m-1] - coord[i-r+l-1])
-#                 end
-#             end
-#             c += num / den
-#         end 
-#     end
-#     return c * (coord[i-r+j] - coord[i-r+j-1])
-# end

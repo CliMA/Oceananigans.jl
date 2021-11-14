@@ -137,6 +137,8 @@ for (i, key) in enumerate(keys(wenoU["timeseries/c"]))
     end
 end
 
+CUDA.allowscalar(true)
+
 x = grid.xᶜᵃᵃ[1:grid.Nx]
 
 global t = 0
