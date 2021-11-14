@@ -12,6 +12,15 @@ using LinearAlgebra
 This simulation is a simple 1D advection of a gaussian function, to test the 
 validity of the stretched WENO scheme
 
+cannot make this work unless the pressure solver is set for a non-regular grid (which does not exist for the moment)
+
+    i.e. :
+    
+    set (1) ** const Regular  =  RectilinearGrid                                                  ** in src/Solvers/plan_transform.jl
+    and (2) ** PressureSolver(arch, grid::RectilinearGrid)  = FFTBasedPoissonSolver(arch, grid)   ** in src/Models/NonhydrostaticModel/NonhydrostaticModel.jl
+
+    it will not change anything in terms of results as all the velocities are 0 and do not evolve.
+    
 """
 
 Nx = 20
