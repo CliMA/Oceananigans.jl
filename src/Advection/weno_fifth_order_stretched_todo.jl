@@ -4,6 +4,7 @@
 
 using OffsetArrays
 using Oceananigans.Architectures: arch_array
+using Adapt
 import Base: show
 
 struct WENO5S{FT, XT, YT, ZT, Buffer} <: AbstractUpwindBiasedAdvectionScheme{2} 
@@ -37,10 +38,8 @@ function WENO5S(FT = Float64; grid = nothing)
         coeff_zᵃᵃᶠ = nothing
         coeff_zᵃᵃᶜ = nothing    
     else
-        FT = eltype(grid)
-        
+        FT   = eltype(grid)
         arch = grid.architecture
-        
         if typeof(grid) <: XRegRectilinearGrid 
             coeff_xᶠᵃᵃ = nothing 
             coeff_xᶜᵃᵃ = nothing 
@@ -70,9 +69,21 @@ function WENO5S(FT = Float64; grid = nothing)
     return WENO5S{FT, XT, YT, ZT, 2}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ)
 end
 
-function Base.show(io::IO, a::WENO5S{ FT, RX, RY, RZ, Buffer}) where {FT, RX, RY, RZ, Buffer}
+function Base.show(io::IO, a::WENO5S{FT, RX, RY, RZ, Buffer}) where {FT, RX, RY, RZ, Buffer}
     print(io, "WENO5 advection sheme with X $(RX == Nothing ? "regular" : "stretched"), Y $(RY == Nothing ? "regular" : "stretched") and Z $(RZ == Nothing ? "regular" : "stretched")")
 end
+
+Adapt.adapt_structure(to, scheme::WENO5S{FT, RX, RY, RZ, Buffer}) where {FT, RX, RY, RZ, Buffer} =
+    WENO5S{FT, typeof(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ)),
+               typeof(Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ)),  
+               typeof(Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ)), Buffer}(
+        Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ),
+        Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
+        Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ),
+        Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
+        Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ),       
+        Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ))
+
 
 @inline boundary_buffer(::WENO5S) = 2
 
@@ -247,83 +258,146 @@ end
 @inline coeff_right_p₁(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  0, dir, i ,loc)
 @inline coeff_right_p₂(scheme, T, dir, i, loc) = retrieve_coeff(scheme,  1, dir, i ,loc)
 
-@inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Face})   = ( scheme.coeff_xᶠᵃᵃ[r+2][1][i], scheme.coeff_xᶠᵃᵃ[r+2][2][i], scheme.coeff_xᶠᵃᵃ[r+2][3][i] )
-@inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Center}) = ( scheme.coeff_xᶜᵃᵃ[r+2][1][i], scheme.coeff_xᶜᵃᵃ[r+2][2][i], scheme.coeff_xᶜᵃᵃ[r+2][3][i] )
-@inline retrieve_coeff(scheme, r, ::Val{2}, i, ::Type{Face})   = ( scheme.coeff_yᵃᶠᵃ[r+2][1][i], scheme.coeff_yᵃᶠᵃ[r+2][2][i], scheme.coeff_yᵃᶠᵃ[r+2][3][i] )
-@inline retrieve_coeff(scheme, r, ::Val{2}, i, ::Type{Center}) = ( scheme.coeff_yᵃᶜᵃ[r+2][1][i], scheme.coeff_yᵃᶜᵃ[r+2][2][i], scheme.coeff_yᵃᶜᵃ[r+2][3][i] )
-@inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Face})   = ( scheme.coeff_zᵃᵃᶠ[r+2][1][i], scheme.coeff_zᵃᵃᶠ[r+2][2][i], scheme.coeff_zᵃᵃᶠ[r+2][3][i] )
-@inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Center}) = ( scheme.coeff_zᵃᵃᶜ[r+2][1][i], scheme.coeff_zᵃᵃᶜ[r+2][2][i], scheme.coeff_zᵃᵃᶜ[r+2][3][i] )
+@inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Face})   = scheme.coeff_xᶠᵃᵃ[r+2][i] 
+@inline retrieve_coeff(scheme, r, ::Val{1}, i, ::Type{Center}) = scheme.coeff_xᶜᵃᵃ[r+2][i] 
+@inline retrieve_coeff(scheme, r, ::Val{2}, i, ::Type{Face})   = scheme.coeff_yᵃᶠᵃ[r+2][i] 
+@inline retrieve_coeff(scheme, r, ::Val{2}, i, ::Type{Center}) = scheme.coeff_yᵃᶜᵃ[r+2][i] 
+@inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Face})   = scheme.coeff_zᵃᵃᶠ[r+2][i] 
+@inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Center}) = scheme.coeff_zᵃᵃᶜ[r+2][i] 
 
 function calc_interpolating_coefficients(FT, coord, arch, N) 
 
-    c₋₁    = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
-               OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
-               OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
-    
-    c₀     = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
-               OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
-               OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
+    cpu_coord = Array(parent(coord))
+    cpu_coord = OffsetArray(cpu_coord, coord.offsets[1])
 
-    c₁     = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
-               OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
-               OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
-
-    c₂     = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
-               OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
-               OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
+    c₋₁ = Tuple{FT, FT, FT}[]
+    c₀  = Tuple{FT, FT, FT}[]
+    c₁  = Tuple{FT, FT, FT}[]
+    c₂  = Tuple{FT, FT, FT}[]
 
     @inbounds begin
-        for j = 0:2
-            for i = 0:N+1
-                c₋₁[j+1][i] = interpolation_weights(-1, coord, j, i)
-                c₀[j+1][i]  = interpolation_weights( 0, coord, j, i)
-                c₁[j+1][i]  = interpolation_weights( 1, coord, j, i)
-                c₂[j+1][i]  = interpolation_weights( 2, coord, j, i)
-            end
+        for i = 0:N+1
+            push!(c₋₁, interpolation_weights(-1, cpu_coord, i))
+            push!(c₀,  interpolation_weights( 0, cpu_coord, i))
+            push!(c₁,  interpolation_weights( 1, cpu_coord, i))
+            push!(c₂,  interpolation_weights( 2, cpu_coord, i))
         end
     end
 
-    c₋₁ = ( OffsetArray(arch_array(arch, parent(c₋₁[1])), coord.offsets[1]),
-            OffsetArray(arch_array(arch, parent(c₋₁[2])), coord.offsets[1]),
-            OffsetArray(arch_array(arch, parent(c₋₁[3])), coord.offsets[1]) )
-    c₀  = ( OffsetArray(arch_array(arch, parent(c₀[1])) , coord.offsets[1]),
-            OffsetArray(arch_array(arch, parent(c₀[2])) , coord.offsets[1]),
-            OffsetArray(arch_array(arch, parent(c₀[3])) , coord.offsets[1]) )
-    c₁  = ( OffsetArray(arch_array(arch, parent(c₁[1])) , coord.offsets[1]),
-            OffsetArray(arch_array(arch, parent(c₁[2])) , coord.offsets[1]),
-            OffsetArray(arch_array(arch, parent(c₁[3])) , coord.offsets[1]) )
-    c₂  = ( OffsetArray(arch_array(arch, parent(c₂[1])) , coord.offsets[1]),
-            OffsetArray(arch_array(arch, parent(c₂[2])) , coord.offsets[1]),
-            OffsetArray(arch_array(arch, parent(c₂[3])) , coord.offsets[1]) )
+    c₋₁ = OffsetArray(arch_array(arch, c₋₁), -1)
+    c₀  = OffsetArray(arch_array(arch, c₀ ), -1)
+    c₁  = OffsetArray(arch_array(arch, c₁ ), -1)
+    c₂  = OffsetArray(arch_array(arch, c₂ ), -1)
 
     return (c₋₁, c₀, c₁, c₂)
 end
 
-function interpolation_weights(r, coord, j, i)
+function interpolation_weights(r, coord, i)
 
-    c = 0
-    @inbounds begin
-        for m = j+1:3
-            num = 0
-            for l = 0:3
-                if l != m
-                    prod = 1
-                    for q = 0:3
-                        if q != m && q != l 
-                            prod *= (coord[i] - coord[i-r+q-1])
+    coeff = ()
+    for j = 0:2
+        c = 0
+        @inbounds begin
+            for m = j+1:3
+                num = 0
+                for l = 0:3
+                    if l != m
+                        prod = 1
+                        for q = 0:3
+                            if q != m && q != l 
+                                prod *= (coord[i] - coord[i-r+q-1])
+                            end
                         end
+                        num += prod
                     end
-                    num += prod
                 end
-            end
-            den = 1
-            for l = 0:3
-                if l!= m
-                    den *= (coord[i-r+m-1] - coord[i-r+l-1])
+                den = 1
+                for l = 0:3
+                    if l!= m
+                        den *= (coord[i-r+m-1] - coord[i-r+l-1])
+                    end
                 end
-            end
-            c += num / den
-        end 
+                c += num / den
+            end 
+        end
+        coeff = (coeff..., c * (coord[i-r+j] - coord[i-r+j-1]))
     end
-    return c * (coord[i-r+j] - coord[i-r+j-1])
+
+    return coeff
 end
+
+
+
+# function calc_interpolating_coefficients(FT, coord, arch, N) 
+
+#     c₋₁    = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
+#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
+#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
+    
+#     c₀     = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
+#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
+#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
+
+#     c₁     = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
+#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
+#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
+
+#     c₂     = ( OffsetArray(zeros(FT, length(coord)), coord.offsets[1]),
+#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]), 
+#                OffsetArray(zeros(FT, length(coord)), coord.offsets[1]) )
+
+#     @inbounds begin
+#         for j=0:2
+#             for i = 0:N+1
+#                 c₋₁[j+1][i] = interpolation_weights(-1, coord, j, i)
+#                 c₀[j+1][i]  = interpolation_weights( 0, coord, j, i)
+#                 c₁[j+1][i]  = interpolation_weights( 1, coord, j, i)
+#                 c₂[j+1][i]  = interpolation_weights( 2, coord, j, i)
+#             end
+#         end
+#     end
+
+#     c₋₁ = ( OffsetArray(arch_array(arch, parent(c₋₁[1])), coord.offsets[1]),
+#             OffsetArray(arch_array(arch, parent(c₋₁[2])), coord.offsets[1]),
+#             OffsetArray(arch_array(arch, parent(c₋₁[3])), coord.offsets[1]) )
+#     c₀  = ( OffsetArray(arch_array(arch, parent(c₀[1])) , coord.offsets[1]),
+#             OffsetArray(arch_array(arch, parent(c₀[2])) , coord.offsets[1]),
+#             OffsetArray(arch_array(arch, parent(c₀[3])) , coord.offsets[1]) )
+#     c₁  = ( OffsetArray(arch_array(arch, parent(c₁[1])) , coord.offsets[1]),
+#             OffsetArray(arch_array(arch, parent(c₁[2])) , coord.offsets[1]),
+#             OffsetArray(arch_array(arch, parent(c₁[3])) , coord.offsets[1]) )
+#     c₂  = ( OffsetArray(arch_array(arch, parent(c₂[1])) , coord.offsets[1]),
+#             OffsetArray(arch_array(arch, parent(c₂[2])) , coord.offsets[1]),
+#             OffsetArray(arch_array(arch, parent(c₂[3])) , coord.offsets[1]) )
+
+#     return (c₋₁, c₀, c₁, c₂)
+# end
+
+# function interpolation_weights(r, coord, j, i)
+
+#     c = 0
+#     @inbounds begin
+#         for m = j+1:3
+#             num = 0
+#             for l = 0:3
+#                 if l != m
+#                     prod = 1
+#                     for q = 0:3
+#                         if q != m && q != l 
+#                             prod *= (coord[i] - coord[i-r+q-1])
+#                         end
+#                     end
+#                     num += prod
+#                 end
+#             end
+#             den = 1
+#             for l = 0:3
+#                 if l!= m
+#                     den *= (coord[i-r+m-1] - coord[i-r+l-1])
+#                 end
+#             end
+#             c += num / den
+#         end 
+#     end
+#     return c * (coord[i-r+j] - coord[i-r+j-1])
+# end
