@@ -86,7 +86,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     wizard = TimeStepWizard(cfl=0.1, Δt=1e-4, max_change=1.1, max_Δt=10.0)
 
     c = sqrt(model.free_surface.gravitational_acceleration)
-    Δt = 0.1 * model.grid.Δx / c
+    Δt = 0.1 * model.grid.Δxᶜᵃᵃ / c
 
     simulation = Simulation(model, Δt=Δt, stop_time=stop_time,
                             iteration_interval=100, progress=progress)

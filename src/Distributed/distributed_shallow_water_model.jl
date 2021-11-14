@@ -15,8 +15,8 @@ function DistributedShallowWaterModel(; architecture, grid, model_kwargs...)
     Lx, Ly = length(grid)
 
     # Pull out endpoints for full grid.
-    xL, xR = grid.xF[1], grid.xF[Nx+1]
-    yL, yR = grid.yF[1], grid.yF[Ny+1]
+    xL, xR = grid.xᶠᵃᵃ[1], grid.xᶠᵃᵃ[Nx+1]
+    yL, yR = grid.yᵃᶠᵃ[1], grid.yᵃᶠᵃ[Ny+1]
 
     # Make sure we can put an integer number of grid points in each rank.
     # Will generalize in the future.

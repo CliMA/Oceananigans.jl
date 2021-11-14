@@ -178,7 +178,7 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 # `closure` to a tuple of two closures.
 
 κ₂z = 1e-2 # [m² s⁻¹] Laplacian vertical viscosity and diffusivity
-κ₄h = 1e-1 / day * grid.Δx^4 # [m⁴ s⁻¹] horizontal hyperviscosity and hyperdiffusivity
+κ₄h = 1e-1 / day * grid.Δxᶜᵃᵃ^4 # [m⁴ s⁻¹] horizontal hyperviscosity and hyperdiffusivity
 
 Laplacian_vertical_diffusivity = AnisotropicDiffusivity(νh=0, κh=0, νz=κ₂z, κz=κ₂z)
 biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
@@ -242,7 +242,7 @@ nothing # hide
 ## background velocity.
 Ū = basic_state_parameters.α * grid.Lz
 
-max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z, 1 / basic_state_parameters.N)
+max_Δt = min(grid.Δxᶜᵃᵃ / Ū, grid.Δxᶜᵃᵃ^4 / κ₄h, grid.Δxᶜᵃᵃ^2 / κ₂z, 1 / basic_state_parameters.N)
 
 simulation = Simulation(model, Δt = max_Δt, stop_time = 8days)
 

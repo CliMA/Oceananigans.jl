@@ -146,7 +146,7 @@ struct GridMetricOperation{X, Y, Z, A, G, T, M} <: AbstractOperation{X, Y, Z, A,
     architecture :: A
 
     function GridMetricOperation{X, Y, Z}(metric::M, grid::G) where {X, Y, Z, M, G}
-        arch = architecture(grid)
+        arch = grid.architecture
         A = typeof(arch)
         T = eltype(grid)
         return new{X, Y, Z, A, G, T, M}(metric, grid, arch)

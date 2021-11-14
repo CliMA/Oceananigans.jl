@@ -295,9 +295,9 @@ function analyze_immersed_bickley_jet(experiment_name)
     
     @info "    Plotting the surface normal velocity..."
 
-    norm_plot = plot(regular_v_timeseries.grid.xC, regular_norm_rms, label = "regular", yformatter = :scientific,
+    norm_plot = plot(regular_v_timeseries.grid.xᶜᵃᵃ, regular_norm_rms, label = "regular", yformatter = :scientific,
     color = :red, lw = 3, xlabel = "x", ylabel = "Vⁿ", legend = :bottomright)
-    plot!(regular_v_timeseries.grid.xC, immersed_norm_rms, label = "immersed", color = :blue, lw = 3)
+    plot!(regular_v_timeseries.grid.xᶜᵃᵃ, immersed_norm_rms, label = "immersed", color = :blue, lw = 3)
     plot!(yticks = 0:max_norm/5:max_norm, guidefontsize = 14, titlefont=14,legendfont = 10, 
         tickfont = 8)
         

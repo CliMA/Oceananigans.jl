@@ -241,7 +241,7 @@ function print_progress(sim)
     return nothing
 end
 
-diffusion_Δt = grid.Δy^2 / closure.νy
+diffusion_Δt = grid.Δyᵃᶜᵃ^2 / closure.νy
 @show Δt = min(10minutes, diffusion_Δt)
 
 simulation = Simulation(model, Δt=Δt, stop_time=10years, progress=print_progress, iteration_interval=1000)

@@ -64,7 +64,6 @@ parameters = (Ly = Ly,
               λt = 7.0days                         # relaxation time scale [s]
 )
 
-# ynode(::Type{Center}, j, grid::RectilinearGrid) = @inbounds grid.yC[j]
 # ynode(::Type{Center}, j, grid::RectilinearGrid) = @inbounds grid.yᵃᵃᶜ[j]
 
 

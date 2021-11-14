@@ -85,7 +85,7 @@ for N in Ns, scheme in schemes
 
     run!(simulation)
 
-    c₁  = c.(grid.xC[:,1,1], 0, 0, Δt, U, W);
+    c₁  = c.(grid.xᶜᵃᵃ[:,1,1], 0, 0, Δt, U, W);
 
     error[(N, scheme)] = norm(abs.(model.tracers.c[1:N, 1, 1] .- c₁[1:N]), pnorm)/N^(1/pnorm)   
 

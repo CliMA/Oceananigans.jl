@@ -91,7 +91,7 @@ function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, a
 
     @show experiment_name = "cylinder_tracer_Nh_$(Nh)_$(typeof(immersed_model.advection).name.wrapper)"
 
-    wizard = TimeStepWizard(cfl=0.07, Δt=0.07 * underlying_grid.Δx, max_change=1.1, max_Δt=10.0, min_Δt=0.0001)
+    wizard = TimeStepWizard(cfl=0.07, Δt=0.07 * underlying_grid.Δxᶜᵃᵃ, max_change=1.1, max_Δt=10.0, min_Δt=0.0001)
 
     simulation = Simulation(immersed_model, Δt=wizard, stop_time=stop_time, iteration_interval=100, progress=progress)
 
@@ -316,7 +316,7 @@ function analyze_cylinder_steadystate(experiment_name)
     center_grid = p_timeseries.grid
     xm, ym, zm = nodes(m_timeseries)
 
-    Vⁿ,Vᵗ, Cf, p_sfc, θ  = surface_values(140, U, V, W, P, center_grid, center_grid.Δx, nu)
+    Vⁿ,Vᵗ, Cf, p_sfc, θ  = surface_values(140, U, V, W, P, center_grid, center_grid.Δxᶜᵃᵃ, nu)
 
     # function creating mesh of (x,y)     
     function meshgrid(vx::AbstractVector{T}, vy::AbstractVector{T}) where T

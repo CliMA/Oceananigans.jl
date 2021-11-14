@@ -62,7 +62,7 @@ function print_progress(simulation)
     u_max = maximum(abs, interior(model.velocities.u))
     w_max = maximum(abs, interior(model.velocities.w))
     T_min, T_max = extrema(interior(model.tracers.T))
-    CFL = max(u_max, w_max) * simulation.Δt / min(model.grid.Δx, model.grid.Δz)
+    CFL = max(u_max, w_max) * simulation.Δt / min(model.grid.Δxᶜᵃᵃ, model.grid.Δzᵃᵃᶜ)
 
     i, t = model.clock.iteration, model.clock.time
     @info @sprintf("[%06.2f%%] i: %d, t: %.4f, U_max: (%.2e, %.2e), T: (min=%.5f, max=%.5f), CFL: %.4f",

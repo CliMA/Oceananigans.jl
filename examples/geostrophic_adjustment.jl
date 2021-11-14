@@ -28,8 +28,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
 # We use a one-dimensional domain of geophysical proportions,
 
 grid = RectilinearGrid(size = (128, 1),
-                              x = (0, 1000kilometers), z = (-400meters, 0),
-                              topology = (Bounded, Flat, Bounded))
+                       x = (0, 1000kilometers), z = (-400meters, 0),
+                       topology = (Bounded, Flat, Bounded))
 
 # !!! note
 #   We always have to include the z-direction for `HydrostaticFreeSurfaceModel`, even if
@@ -82,7 +82,7 @@ set!(model, v=vᵍ, η=ηⁱ)
 
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
-wave_propagation_time_scale = model.grid.Δx / gravity_wave_speed
+wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
 
 simulation = Simulation(model, Δt = 0.1wave_propagation_time_scale, stop_iteration = 1000)
 
