@@ -61,11 +61,11 @@ H = 3600.0
 # bathymetry = - H .* (bathymetry .< -10)
 
 # A spherical domain
-@show underlying_grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, Nz),
-                                                     longitude = (-180, 180),
-                                                     latitude = latitude,
-                                                     halo = (3, 3, 3),
-                                                     z = (-H, 0))
+@show underlying_grid = LatitudeLongitudeGrid(size = (Nx, Ny, Nz),
+                                              longitude = (-180, 180),
+                                              latitude = latitude,
+                                              halo = (3, 3, 3),
+                                              z = (-H, 0))
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 
