@@ -6,18 +6,6 @@ struct TestDiagnostic <: AbstractDiagnostic end
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 
-function nan_checker_aborts_simulation(arch)
-    grid = RectilinearGrid(size=(4, 2, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid, architecture=arch)
-    simulation = Simulation(model, Δt=1, stop_iteration=1)
-
-    model.velocities.u[1, 1, 1] = NaN
-
-    run!(simulation)
-
-    return nothing
-end
-
 TestModel_VerticallyStrectedRectGrid(arch, FT, ν=1.0, Δx=0.5) =
     NonhydrostaticModel(
           grid = RectilinearGrid(FT, architecture = arch, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), z=0:Δx:3Δx,),
@@ -187,13 +175,6 @@ end
 
 @testset "Diagnostics" begin
     @info "Testing diagnostics..."
-
-    for arch in archs
-        @testset "NaN Checker [$(typeof(arch))]" begin
-            @info "  Testing NaN Checker [$(typeof(arch))]..."
-            @test_throws ErrorException nan_checker_aborts_simulation(arch)
-        end
-    end
 
     for arch in archs
         @testset "CFL [$(typeof(arch))]" begin
