@@ -6,8 +6,9 @@ using Oceananigans.StokesDrift
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 using Oceananigans.Advection: div_Uc
 
-using Oceananigans.TurbulenceClosures: shear_production, buoyancy_flux, dissipation, TKETracerIndex
-import Oceananigans.TurbulenceClosures: hydrostatic_turbulent_kinetic_energy_tendency
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: shear_production, buoyancy_flux, dissipation, TKETracerIndex
+
+import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: hydrostatic_turbulent_kinetic_energy_tendency
 
 """
 Return the tendency for the horizontal velocity in the x-direction, or the east-west 
@@ -97,6 +98,7 @@ where `c = C[tracer_index]`.
                                                           velocities,
                                                           free_surface,
                                                           tracers,
+                                                          top_tracer_bcs,
                                                           diffusivities,
                                                           auxiliary_fields,
                                                           forcing,
@@ -133,7 +135,6 @@ The tendency is called ``G_η`` and defined via
                        + forcings.η(i, j, k_surface, grid, clock, model_fields))
 end
 
-
 @inline function hydrostatic_turbulent_kinetic_energy_tendency(i, j, k, grid,
                                                                val_tracer_index::Val{tracer_index},
                                                                advection,
@@ -142,6 +143,7 @@ end
                                                                velocities,
                                                                free_surface,
                                                                tracers,
+                                                               top_tracer_bcs,
                                                                diffusivities,
                                                                auxiliary_fields,
                                                                forcing,
@@ -154,9 +156,9 @@ end
 
     return ( - div_Uc(i, j, k, grid, advection, velocities, e)
              - ∇_dot_qᶜ(i, j, k, grid, closure, e, tke_index, clock, diffusivities, tracers, buoyancy, velocities)
-             + shear_production(i, j, k, grid, closure, clock, velocities, tracers, buoyancy, diffusivities)
-             + buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy)
-             - dissipation(i, j, k, grid, closure, tracers, buoyancy)
+             + shear_production(i, j, k, grid, closure, velocities, diffusivities)
+             + buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+             - dissipation(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs)
              + forcing(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 

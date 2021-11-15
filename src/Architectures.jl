@@ -2,7 +2,7 @@ module Architectures
 
 export AbstractArchitecture, AbstractCPUArchitecture, AbstractGPUArchitecture
 export CPU, GPU
-export device, architecture, array_type, arch_array
+export device, device_event, architecture, array_type, arch_array
 
 using CUDA
 using KernelAbstractions
@@ -58,9 +58,9 @@ architecture(::CuArray) = GPU()
 array_type(::CPU) = Array
 array_type(::GPU) = CuArray
 
-arch_array(::AbstractCPUArchitecture, A::Array) = A
+arch_array(::AbstractCPUArchitecture, A::Array)   = A
 arch_array(::AbstractCPUArchitecture, A::CuArray) = Array(A)
-arch_array(::AbstractGPUArchitecture, A::Array) = CuArray(A)
+arch_array(::AbstractGPUArchitecture, A::Array)   = CuArray(A)
 arch_array(::AbstractGPUArchitecture, A::CuArray) = A
 
 const OffsetCPUArray = OffsetArray{FT, N, <:Array} where {FT, N}

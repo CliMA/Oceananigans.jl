@@ -2,18 +2,18 @@ using Plots
 using Printf
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, TKEBasedVerticalDiffusivity
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
-grid = RegularRectilinearGrid(size=8, z=(-64, 0), topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(size=8, z=(-64, 0), topology=(Flat, Flat, Bounded))
 
-closure = TKEBasedVerticalDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization())
+closure = CATKEVerticalDiffusivity()
                                       
 Qᵇ = 0.0
 Qᵘ = - 1e-4
 Qᵛ = 0.0
 
 u★ = (Qᵘ^2 + Qᵛ^2)^(1/4)
-w★³ = Qᵇ * grid.Δz
+w★³ = Qᵇ * grid.Δzᵃᵃᶜ
 
 Qᵉ = - closure.dissipation_parameter * (closure.surface_model.CᵂwΔ * w★³ + closure.surface_model.Cᵂu★ * u★^3)
 

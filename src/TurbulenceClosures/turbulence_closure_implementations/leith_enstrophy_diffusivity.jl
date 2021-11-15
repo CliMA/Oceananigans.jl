@@ -197,9 +197,17 @@ const L2D = TwoDimensionalLeith
 @inline viscous_flux_wy(i, j, k, grid, closure::L2D, clock, U, K) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, closure, K.νₑ, Σ₃₂, U.u, U.v, U.w)
 @inline viscous_flux_wz(i, j, k, grid, closure::L2D, clock, U, K) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, closure, K.νₑ, Σ₃₃, U.u, U.v, U.w)
 
-function calculate_diffusivities!(K, arch, grid, closure::TwoDimensionalLeith, buoyancy, U, C)
-    event = launch!(arch, grid, :xyz, calculate_nonlinear_viscosity!, K.νₑ, grid, closure, buoyancy, U, C,
-                    dependencies=Event(device(arch)))
+function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLeith, model)
+    arch = model.architecture
+    grid = model.grid
+    velocities = model.velocities
+    tracers = model.tracers
+    buoyancy = model.buoyancy
+
+    event = launch!(arch, grid, :xyz,
+                    calculate_nonlinear_viscosity!,
+                    diffusivity_fields.νₑ, grid, closure, buoyancy, velocities, tracers,
+                    dependencies = device_event(arch))
 
     wait(device(arch), event)
 
@@ -207,7 +215,7 @@ function calculate_diffusivities!(K, arch, grid, closure::TwoDimensionalLeith, b
 end
 
 "Return the filter width for a Leith Diffusivity on a regular rectilinear grid."
-@inline Δᶠ(i, j, k, grid::RegularRectilinearGrid, ::TwoDimensionalLeith) = sqrt(grid.Δx * grid.Δy)
+@inline Δᶠ(i, j, k, grid::RectilinearGrid, ::TwoDimensionalLeith) = sqrt(Δxᶜᶜᵃ(i, j, k, grid) * Δyᶜᶜᵃ(i, j, k, grid)) 
 
 function DiffusivityFields(arch, grid, tracer_names, bcs, ::L2D)
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))

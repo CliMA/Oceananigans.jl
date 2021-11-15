@@ -9,7 +9,7 @@ using Oceananigans.Utils
 
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ(model, Uavg, U_wall)
-    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
+    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
     ν = model.closure.ν
 
     compute!(Uavg)
@@ -28,7 +28,7 @@ end
 
 """ Heat flux at the wall. See equation (16) of Vreugdenhil & Taylor (2018). """
 function q_wall(model, Tavg, Θ_wall)
-    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
+    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
     κ = model.closure.κ.T
 
     compute!(Tavg)
@@ -98,16 +98,16 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Impose boundary conditions
     #####
 
-    grid = RegularRectilinearGrid(size = (Nxy, Nxy, Nz), extent = (4π*h, 2π*h, 2h))
+    grid = RectilinearGrid(size = (Nxy, Nxy, Nz), extent = (4π*h, 2π*h, 2h))
 
-    Tbcs = FieldBoundaryConditions(top = BoundaryCondition(Value,  Θ_wall),
-                                   bottom = BoundaryCondition(Value, -Θ_wall))
+    Tbcs = FieldBoundaryConditions(top = ValueBoundaryCondition(Θ_wall),
+                                   bottom = ValueBoundaryCondition(-Θ_wall))
 
-    ubcs = FieldBoundaryConditions(top = BoundaryCondition(Value,  U_wall),
-                                   bottom = BoundaryCondition(Value, -U_wall))
+    ubcs = FieldBoundaryConditions(top = ValueBoundaryCondition(U_wall),
+                                   bottom = ValueBoundaryCondition(-U_wall))
 
-    vbcs = FieldBoundaryConditions(top = BoundaryCondition(Value, 0),
-                                   bottom = BoundaryCondition(Value, 0))
+    vbcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0),
+                                   bottom = ValueBoundaryCondition(0))
 
     #####
     ##### Non-dimensional model setup
@@ -232,7 +232,10 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Time stepping
     #####
 
-    wizard = TimeStepWizard(cfl=0.02, Δt=0.0001, max_change=1.1, max_Δt=0.02)
+    simulation = Simulation(model, Δt=0.0001, stop_time=end_time)
+
+    wizard = TimeStepWizard(cfl=0.02, max_change=1.1, max_Δt=0.02)
+    simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(Ni))
 
     # We will ramp up the CFL used by the adaptive time step wizard during spin up.
     cfl(t) = min(0.01t, 0.1)
@@ -248,22 +251,27 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         umax = maximum(abs, model.velocities.u.data.parent)
         vmax = maximum(abs, model.velocities.v.data.parent)
         wmax = maximum(abs, model.velocities.w.data.parent)
-        CFL = wizard.Δt / cell_advection_timescale(model)
+        CFL = simulation.Δt / cell_advection_timescale(model)
 
-        Δ = min(model.grid.Δx, model.grid.Δy, model.grid.Δz)
+        Δ = min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, model.grid.Δzᵃᵃᶜ)
         νmax = maximum(model.diffusivity_fields.νₑ.data.parent)
         κmax = maximum(model.diffusivity_fields.κₑ.T.data.parent)
-        νCFL = wizard.Δt / (Δ^2 / νmax)
-        κCFL = wizard.Δt / (Δ^2 / κmax)
+        νCFL = simulation.Δt / (Δ^2 / νmax)
+        κCFL = simulation.Δt / (Δ^2 / κmax)
 
-        @printf("[%06.2f%%] i: %d, t: %.2e, umax: (%.2e, %.2e, %.2e), CFL: %.2e, νκmax: (%.2e, %.2e), νκCFL: (%.2e, %.2e), next Δt: %.2e, wall time: %s\n",
-                progress, model.clock.iteration, model.clock.time, umax, vmax, wmax,
-                CFL, νmax, κmax, νCFL, κCFL, wizard.Δt, prettytime(simulation.run_time))
+        @printf("[%06.2f%%] i: %d, t: %.2e, umax: (%.2e, %.2e, %.2e), ",
+                progress, model.clock.iteration, model.clock.time, umax, vmax, wmax)
+
+        @printf("CFL: %.2e, νκmax: (%.2e, %.2e), νκCFL: (%.2e, %.2e), next Δt: %.2e, wall time: %s\n",
+                CFL, νmax, κmax, νCFL, κCFL, simulation.Δt, prettytime(simulation.run_wall_time))
+
+        return nothing
     end
 
-    simulation = Simulation(model, Δt=wizard, stop_time=end_time,
-                            progress=print_progress, iteration_interval=Ni)
+    simulation.callbacks[:progress] = Callback(print_progress, IterationInterval(Ni))
+
     push!(simulation.output_writers, field_writer, profile_writer, statistics_writer)
+
     run!(simulation)
 
     return simulation

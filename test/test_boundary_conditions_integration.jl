@@ -1,7 +1,8 @@
 using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction
+using Oceananigans: prognostic_fields
 
 function test_boundary_condition(arch, FT, topo, side, field_name, boundary_condition)
-    grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
+    grid = RectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
 
     boundary_condition_kwarg = (; side => boundary_condition)
     field_boundary_conditions = FieldBoundaryConditions(; boundary_condition_kwarg...)
@@ -26,7 +27,7 @@ function test_nonhydrostatic_flux_budget(arch, name, side, topo)
     Ly = 0.4
     Lz = 0.5
 
-    grid = RegularRectilinearGrid(FT,
+    grid = RectilinearGrid(FT,
                                   size = (1, 1, 1),
                                   x = (0, Lx),
                                   y = (0, Ly),
@@ -36,10 +37,8 @@ function test_nonhydrostatic_flux_budget(arch, name, side, topo)
     flux = FT(π)
     direction = side ∈ (:west, :south, :bottom) ? 1 : -1
     bc_kwarg = Dict(side => BoundaryCondition(Flux, flux * direction))
-
     field_bcs = FieldBoundaryConditions(; bc_kwarg...)
-
-    model_bcs = NamedTuple{tuple(name)}(tuple(field_bcs))
+    model_bcs = (; name => field_bcs)
 
     model = NonhydrostaticModel(grid=grid, buoyancy=nothing, boundary_conditions=model_bcs,
                                 closure=nothing, architecture=arch, tracers=:c)
@@ -69,7 +68,7 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     bz = FT(π)
     flux = - κ₀ * bz
 
-    grid = RegularRectilinearGrid(FT, size=(16, 16, 16), extent=(1, 1, Lz))
+    grid = RectilinearGrid(FT, size=(16, 16, 16), extent=(1, 1, Lz))
 
     buoyancy_bcs = FieldBoundaryConditions(bottom=GradientBoundaryCondition(bz))
     κₑ_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), bottom=ValueBoundaryCondition(κ₀))
@@ -138,7 +137,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
         # We use Periodic, Bounded, Bounded here because triply Bounded domains don't work on the GPU
         # yet.
-        grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=(Periodic, Bounded, Bounded))
+        grid = RectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=(Periodic, Bounded, Bounded))
 
         u_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
                                                         top    = simple_function_bc(Value),

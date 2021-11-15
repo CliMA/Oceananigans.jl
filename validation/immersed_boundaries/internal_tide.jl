@@ -2,7 +2,7 @@ using Printf
 using Oceananigans
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
-grid = RegularRectilinearGrid(size=(512, 256), x=(-10, 10), z=(0, 5), topology=(Periodic, Flat, Bounded))
+grid = RectilinearGrid(size=(512, 256), x=(-10, 10), z=(0, 5), topology=(Periodic, Flat, Bounded))
 
 # Gaussian bump of width "1"
 bump(x, y, z) = z < exp(-x^2)
@@ -30,7 +30,7 @@ progress(s) = @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e"
                              s.model.clock.time, maximum(abs, model.velocities.w))
 
 gravity_wave_speed = sqrt(model.free_surface.gravitational_acceleration * grid.Lz)
-Δt = 0.1 * grid.Δx / gravity_wave_speed
+Δt = 0.1 * grid.Δxᶜᵃᵃ / gravity_wave_speed
               
 simulation = Simulation(model, Δt = Δt, stop_time = 100, progress = progress, iteration_interval = 100)
 

@@ -25,7 +25,7 @@ rotation can be specified in three different ways:
 - Specifying all components `fx`, `fy` and `fz` directly.
 - Specifying the Coriolis parameter `f` and (optionally) a `rotation_axis` (which defaults to the
   `z` direction if not specified).
-- Specifying `latitude` (in degrees!) and (optionally) a `rotation_rate` in radians per second
+- Specifying `latitude` (in degrees) and (optionally) a `rotation_rate` in radians per second
   (which defaults to Earth's rotation rate).
 """
 function ConstantCartesianCoriolis(FT=Float64; fx=nothing, fy=nothing, fz=nothing,
@@ -52,10 +52,10 @@ function ConstantCartesianCoriolis(FT=Float64; fx=nothing, fy=nothing, fz=nothin
         end
 
     elseif all((!isnothing).((fx, fy, fz)))
-        all(isnothing.((latitude, f))) || throw(ArgumentError("Only `fx`, `fy` and `fz` can be specified when setting ech component directly."))
+        all(isnothing.((latitude, f))) || throw(ArgumentError("Only `fx`, `fy` and `fz` can be specified when setting each component directly."))
 
     else
-        throw(ArgumentError("At least `latitude`, or `f`, or `fx`, `fy` and `fz` must be specified."))
+        throw(ArgumentError("Either (i) `latitude`, or (ii) `f`, or (iii) `fx`, `fy` and `fz` must be specified."))
     end
 
 

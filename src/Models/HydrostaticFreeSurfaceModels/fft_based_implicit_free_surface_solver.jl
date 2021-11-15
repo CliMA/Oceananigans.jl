@@ -30,7 +30,7 @@ step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `�
 """
 function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
 
-    grid isa RegularRectilinearGrid || grid isa VerticallyStretchedRectilinearGrid ||
+    grid isa RegRectilinearGrid || grid isa HRegRectilinearGrid ||
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
 
     # Construct a "horizontal grid". We support either x or y being Flat, but not both.
@@ -53,10 +53,10 @@ function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
     # Even if the three dimensional grid is vertically stretched, we can only use
     # FFTImplicitFreeSurfaceSolver with grids that are regularly spaced in the
     # horizontal direction.
-    #
-    horizontal_grid = RegularRectilinearGrid(; topology = (TX, TY, Flat),
+    horizontal_grid = RectilinearGrid(; topology = (TX, TY, Flat),
                                                size = sz,
                                                halo = halo,
+                                               architecture = arch,
                                                domain...)
 
     solver = FFTBasedPoissonSolver(arch, horizontal_grid)
@@ -81,7 +81,7 @@ function solve!(η, implicit_free_surface_solver::FFTImplicitFreeSurfaceSolver, 
 
     # solve! is blocking:
     solve!(η, solver, rhs, m)
-    
+
     return nothing
 end
 
@@ -96,7 +96,8 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
 
     event = launch!(arch, grid, :xy,
                     fft_based_implicit_free_surface_right_hand_side!,
-                    rhs, grid, g, H, Δt, ∫ᶻQ, η)
+                    rhs, grid, g, H, Δt, ∫ᶻQ, η,
+                    dependencies = device_event(arch))
 
     return event
 end

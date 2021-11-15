@@ -10,7 +10,7 @@ using Oceananigans.Solvers
 # Benchmark function
 
 function benchmark_fft_based_poisson_solver(Arch, N, topo)
-    grid = RegularRectilinearGrid(topology=topo, size=(N, N, N), extent=(1, 1, 1))
+    grid = RectilinearGrid(topology=topo, size=(N, N, N), extent=(1, 1, 1))
     solver = FFTBasedPoissonSolver(Arch(), grid)
 
     solve_poisson_equation!(solver) # warmup

@@ -14,9 +14,9 @@ function DistributedNonhydrostaticModel(; architecture, grid, model_kwargs...)
     Lx, Ly, Lz = length(grid)
 
     # Pull out endpoints for full grid.
-    xL, xR = grid.xF[1], grid.xF[Nx+1]
-    yL, yR = grid.yF[1], grid.yF[Ny+1]
-    zL, zR = grid.zF[1], grid.zF[Nz+1]
+    xL, xR = grid.xᶠᵃᵃ[1], grid.xᶠᵃᵃ[Nx+1]
+    yL, yR = grid.yᵃᶠᵃ[1], grid.yᵃᶠᵃ[Ny+1]
+    zL, zR = grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[Nz+1]
 
     # Make sure we can put an integer number of grid points in each rank.
     # Will generalize in the future.
@@ -32,8 +32,10 @@ function DistributedNonhydrostaticModel(; architecture, grid, model_kwargs...)
     y₁, y₂ = yL + (j-1)*ly, yL + j*ly
     z₁, z₂ = zL + (k-1)*lz, zL + k*lz
 
+    child_arch = child_architecture(architecture)
+
     # FIXME? local grid might have different topology!
-    my_grid = RegularRectilinearGrid(topology=topology(grid), size=(nx, ny, nz), x=(x₁, x₂), y=(y₁, y₂), z=(z₁, z₂), halo=halo_size(grid))
+    my_grid = RectilinearGrid(topology=topology(grid), size=(nx, ny, nz), x=(x₁, x₂), y=(y₁, y₂), z=(z₁, z₂), halo=halo_size(grid), architecture=child_arch)
 
     ## Construct local model
 

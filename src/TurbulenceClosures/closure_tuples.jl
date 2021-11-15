@@ -17,7 +17,7 @@ for stress_div in (:∂ⱼ_τ₁ⱼ, :∂ⱼ_τ₂ⱼ, :∂ⱼ_τ₃ⱼ)
 
         @inline $stress_div(i, j, k, grid::AbstractGrid, closures::Tuple, clock, U, Ks, args...) = (
                     $stress_div(i, j, k, grid, closures[1:2], clock, U, Ks[1:2], args...)
-                  + $stress_div(i, j, k, grid, closures[3:end], clock, U, K[3:end], args...))
+                  + $stress_div(i, j, k, grid, closures[3:end], clock, U, Ks[3:end], args...))
     end
 end
 
@@ -43,10 +43,10 @@ end
 with_tracers(tracers, closure_tuple::Tuple) =
     Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
 
-function calculate_diffusivities!(Ks, arch, grid, closures::Tuple, args...)
-    for (α, closure) in enumerate(closures)
-        @inbounds K = Ks[α]
-        calculate_diffusivities!(K, arch, grid, closure, args...)
+function calculate_diffusivities!(diffusivity_fields_tuple, closure_tuple::Tuple, args...)
+    for (α, closure) in enumerate(closure_tuple)
+        @inbounds diffusivity_fields = diffusivity_fields_tuple[α]
+        calculate_diffusivities!(diffusivity_fields, closure, args...)
     end
     return nothing
 end
@@ -59,27 +59,27 @@ const EC = AbstractTurbulenceClosure{<:ExplicitTimeDiscretization}
 const VIC = AbstractTurbulenceClosure{<:VerticallyImplicitTimeDiscretization}
 
 # Filter explicitly-discretized closures.
-@inline z_diffusivity(clo::Tuple{<:EC},        Ks, ::Val{c_idx}) where {c_idx} = tuple(0)
-@inline z_diffusivity(clo::Tuple{<:VIC},       Ks, ::Val{c_idx}) where {c_idx} = tuple(z_diffusivity(clo[1], Ks[1], Val(c_idx)))
-@inline z_diffusivity(clo::Tuple{<:VIC, <:EC}, Ks, ::Val{c_idx}) where {c_idx} = tuple(z_diffusivity(clo[1], Ks[1], Val(c_idx)))
-@inline z_diffusivity(clo::Tuple{<:EC, <:VIC}, Ks, ::Val{c_idx}) where {c_idx} = tuple(z_diffusivity(clo[2], Ks[2], Val(c_idx)))
+@inline z_diffusivity(clo::Tuple{<:EC},        iᶜ, Ks, args...) = tuple(0)
+@inline z_diffusivity(clo::Tuple{<:VIC},       iᶜ, Ks, args...) = tuple(z_diffusivity(clo[1], iᶜ, Ks[1], args...))
+@inline z_diffusivity(clo::Tuple{<:VIC, <:EC}, iᶜ, Ks, args...) = tuple(z_diffusivity(clo[1], iᶜ, Ks[1], args...))
+@inline z_diffusivity(clo::Tuple{<:EC, <:VIC}, iᶜ, Ks, args...) = tuple(z_diffusivity(clo[2], iᶜ, Ks[2], args...))
 
-@inline z_diffusivity(clo::Tuple{<:VIC, <:VIC}, Ks, ::Val{c_idx}) where {c_idx} = tuple(z_diffusivity(clo[1], Ks[1], Val(c_idx)),
-                                                                                        z_diffusivity(clo[2], Ks[2], Val(c_idx)))
+@inline z_diffusivity(clo::Tuple{<:VIC, <:VIC}, iᶜ, Ks, args...) = tuple(z_diffusivity(clo[1], iᶜ, Ks[1], args...),
+                                                                         z_diffusivity(clo[2], iᶜ, Ks[2], args...))
 
-@inline z_diffusivity(clo::Tuple, Ks, ::Val{c_idx}) where c_idx = tuple(z_diffusivity(clo[1:2],   Ks[1:2], Val(c_idx))...,
-                                                                        z_diffusivity(clo[3:end], Ks[3:end], Val(c_idx))...)
+@inline z_diffusivity(clo::Tuple, iᶜ, Ks, args...) = tuple(z_diffusivity(clo[1:2],   iᶜ, Ks[1:2],   args...)...,
+                                                           z_diffusivity(clo[3:end], iᶜ, Ks[3:end], args...)...)
 
-@inline z_viscosity(clo::Tuple{<:EC},         Ks) = tuple(0)
-@inline z_viscosity(clo::Tuple{<:VIC},        Ks) = tuple(z_viscosity(clo[1], Ks[1]))
-@inline z_viscosity(clo::Tuple{<:VIC, <:EC},  Ks) = tuple(z_viscosity(clo[1], Ks[1]))
-@inline z_viscosity(clo::Tuple{<:EC, <:VIC},  Ks) = tuple(z_viscosity(clo[2], Ks[2]))
+@inline z_viscosity(clo::Tuple{<:EC},         Ks, args...) = tuple(0)
+@inline z_viscosity(clo::Tuple{<:VIC},        Ks, args...) = tuple(z_viscosity(clo[1], Ks[1], args...))
+@inline z_viscosity(clo::Tuple{<:VIC, <:EC},  Ks, args...) = tuple(z_viscosity(clo[1], Ks[1], args...))
+@inline z_viscosity(clo::Tuple{<:EC, <:VIC},  Ks, args...) = tuple(z_viscosity(clo[2], Ks[2], args...))
 
-@inline z_viscosity(clo::Tuple{<:VIC, <:VIC}, Ks) = tuple(z_viscosity(clo[1], Ks[1]),
-                                                          z_viscosity(clo[2], Ks[2]))
+@inline z_viscosity(clo::Tuple{<:VIC, <:VIC}, Ks, args...) = tuple(z_viscosity(clo[1], Ks[1], args...),
+                                                                   z_viscosity(clo[2], Ks[2], args...))
 
-@inline z_viscosity(clo::Tuple, Ks) = tuple(z_viscosity(clo[1:2],   Ks[1:2])...,
-                                            z_viscosity(clo[3:end], Ks[3:end])...)
+@inline z_viscosity(clo::Tuple, Ks, args...) = tuple(z_viscosity(clo[1:2],   Ks[1:2], args...)...,
+                                                     z_viscosity(clo[3:end], Ks[3:end], args...)...)
 
 for coeff in (:νᶜᶜᶜ, :νᶠᶠᶜ, :νᶠᶜᶠ, :νᶜᶠᶠ, :κᶜᶜᶠ, :κᶜᶠᶜ, :κᶠᶜᶜ)
     @eval begin

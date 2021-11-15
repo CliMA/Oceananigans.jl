@@ -8,36 +8,42 @@ using OffsetArrays
 using Oceananigans
 using Oceananigans.Models: ShallowWaterModel
 
+rate_of_convergence(::UpwindBiasedFirstOrder) = 1
 rate_of_convergence(::CenteredSecondOrder)    = 2
 rate_of_convergence(::UpwindBiasedThirdOrder) = 3
 rate_of_convergence(::CenteredFourthOrder)    = 4
 rate_of_convergence(::UpwindBiasedFifthOrder) = 5
 rate_of_convergence(::WENO5)                  = 5
 
+labels(::UpwindBiasedFirstOrder) = "Upwind1ˢᵗ"
 labels(::CenteredSecondOrder)    = "Center2ⁿᵈ"
 labels(::UpwindBiasedThirdOrder) = "Upwind3ʳᵈ"
 labels(::CenteredFourthOrder)    = "Center4ᵗʰ"
 labels(::UpwindBiasedFifthOrder) = "Upwind5ᵗʰ"
 labels(::WENO5)                  = "WENO5ᵗʰ "
 
+shapes(::UpwindBiasedFirstOrder) = :square
 shapes(::CenteredSecondOrder)    = :diamond
 shapes(::UpwindBiasedThirdOrder) = :dtriangle
 shapes(::CenteredFourthOrder)    = :rect
 shapes(::UpwindBiasedFifthOrder) = :star5
 shapes(::WENO5)                  = :star6
 
+colors(::UpwindBiasedFirstOrder) = :black
 colors(::CenteredSecondOrder)    = :green
 colors(::UpwindBiasedThirdOrder) = :red
 colors(::CenteredFourthOrder)    = :cyan
 colors(::UpwindBiasedFifthOrder) = :magenta
 colors(::WENO5)                  = :purple
 
+halos(::UpwindBiasedFirstOrder) = 1
 halos(::CenteredSecondOrder)    = 1
 halos(::UpwindBiasedThirdOrder) = 2
 halos(::CenteredFourthOrder)    = 2
 halos(::UpwindBiasedFifthOrder) = 3
 halos(::WENO5)                  = 3 
 
+L  = 2
 U  = 1
 W  = 0.1
 Ns = 2 .^ (6:10)
@@ -49,6 +55,7 @@ c(x, y, z, t, U, W) = exp( - (x - U * t)^2 / W^2 )
   uh(x, y, z) = U * h(x, y, z)
 
 schemes = (
+ UpwindBiasedFirstOrder(), 
  CenteredSecondOrder(), 
  UpwindBiasedThirdOrder(), 
  CenteredFourthOrder(), 
@@ -61,7 +68,7 @@ ROC   = Dict()
 
 for N in Ns, scheme in schemes
 
-    grid = RegularRectilinearGrid(Float64; size=N, 
+    grid = RectilinearGrid(Float64; size=N, 
                                 x=(-1, 1), 
                                 halo=(halos(scheme)),
                                 topology=(Periodic, Flat, Flat))
@@ -78,7 +85,7 @@ for N in Ns, scheme in schemes
 
     run!(simulation)
 
-    c₁  = c.(grid.xC[:,1,1], 0, 0, Δt, U, W);
+    c₁  = c.(grid.xᶜᵃᵃ[:,1,1], 0, 0, Δt, U, W);
 
     error[(N, scheme)] = norm(abs.(model.tracers.c[1:N, 1, 1] .- c₁[1:N]), pnorm)/N^(1/pnorm)   
 

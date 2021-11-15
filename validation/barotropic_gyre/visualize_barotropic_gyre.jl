@@ -33,10 +33,10 @@ function visualize_barotropic_gyre(filepath)
     Ny = file["grid/grid/Ny"]
 
     # A spherical domain
-    grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                        longitude = (-30, 30),
-                                        latitude = (15, 75),
-                                        z = (-4000, 0))
+    grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                                 longitude = (-30, 30),
+                                 latitude = (15, 75),
+                                 z = (-4000, 0))
 
     iterations = parse.(Int, keys(file["timeseries/t"]))
 

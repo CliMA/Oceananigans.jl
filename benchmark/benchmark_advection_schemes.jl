@@ -9,7 +9,7 @@ using Benchmarks
 # Benchmark function
 
 function benchmark_advection_scheme(Arch, Scheme)
-    grid = RegularRectilinearGrid(size=(192, 192, 192), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(192, 192, 192), extent=(1, 1, 1))
     model = NonhydrostaticModel(architecture=Arch(), grid=grid, advection=Scheme())
 
     time_step!(model, 1) # warmup
