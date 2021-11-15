@@ -24,7 +24,7 @@ end
 mask_immersed_reduced_field_xy!(field::AbstractReducedField, value=zero(eltype(field.grid)); k) =
     mask_immersed_reduced_field_xy!(field, field.grid, location(field), value; k)
 
-mask_immersed_reduced_field_xy!(field::AbstractReducedField, grid, loc, value; k) = NoneEvent()
+mask_immersed_reduced_field_xy!(field, grid, loc, value; k) = NoneEvent()
 
 function mask_immersed_reduced_field_xy!(field::AbstractReducedField, grid::ImmersedBoundaryGrid, loc, value; k)
     arch = architecture(field)
