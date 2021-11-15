@@ -8,6 +8,16 @@ using Oceananigans.Architectures: arch_array
 using Adapt
 import Base: show
 
+const AG = AbstractGrid
+const two_32 = Int32(2)
+
+const C3₀ = 3/10
+const C3₁ = 3/5
+const C3₂ = 1/10
+
+const ƞ = Int32(2) # WENO exponent
+const ε = 1e-6
+
 struct WENO5{FT, XT, YT, ZT, Buffer} <: AbstractUpwindBiasedAdvectionScheme{2} 
     
     coeff_xᶠᵃᵃ::XT
