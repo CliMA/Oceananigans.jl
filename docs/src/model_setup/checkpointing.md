@@ -18,7 +18,7 @@ end
 ```@repl checkpointing
 using Oceananigans, Oceananigans.Units
 
-model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
 
 simulation = Simulation(model, Δt=1, stop_iteration=1)
 

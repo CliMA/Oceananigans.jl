@@ -22,7 +22,7 @@ along a `Periodic` dimension, put them on the other side.
     return x
 end
 
-@kernel function _advect_particles!(particles, restitution, grid::RegularRectilinearGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
+@kernel function _advect_particles!(particles, restitution, grid::RectilinearGrid{FT, TX, TY, TZ}, Δt, velocities) where {FT, TX, TY, TZ}
     p = @index(Global)
 
     # Advect particles using forward Euler.
@@ -31,9 +31,9 @@ end
     @inbounds particles.z[p] += interpolate(velocities.w, Center(), Center(), Face(), grid, particles.x[p], particles.y[p], particles.z[p]) * Δt
 
     # Enforce boundary conditions for particles.
-    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], grid.xF[1], grid.xF[grid.Nx], restitution)
-    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], grid.yF[1], grid.yF[grid.Ny], restitution)
-    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], grid.zF[1], grid.zF[grid.Nz], restitution)
+    @inbounds particles.x[p] = enforce_boundary_conditions(TX(), particles.x[p], grid.xᶠᵃᵃ[1], grid.xᶠᵃᵃ[grid.Nx], restitution)
+    @inbounds particles.y[p] = enforce_boundary_conditions(TY(), particles.y[p], grid.yᵃᶠᵃ[1], grid.yᵃᶠᵃ[grid.Ny], restitution)
+    @inbounds particles.z[p] = enforce_boundary_conditions(TZ(), particles.z[p], grid.zᵃᵃᶠ[1], grid.zᵃᵃᶠ[grid.Nz], restitution)
 end
 
 @kernel function update_field_property!(particle_property, particles, grid, field, LX, LY, LZ)

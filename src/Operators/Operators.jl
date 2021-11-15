@@ -1,7 +1,7 @@
 module Operators
 
-export Δx, Δy, Δz, Ax, Ay, Az, volume
-export ΔzF, ΔzC, Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δzᶠᶜᶜ, Δzᶜᶠᶜ
+export Ax, Ay, Az, volume
+export Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δzᶠᶜᶜ, Δzᶜᶠᶜ
 export Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶠᶠᵃ, Δxᶜᶠᵃ
 export Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δyᶜᶠᵃ
 export Axᵃᵃᶜ, Axᵃᵃᶠ, Axᶜᶜᶜ, Axᶠᶜᶜ, Axᶠᶠᶜ, Axᶠᶜᶠ, Axᶜᶠᶜ, Axᶜᶜᶠ
@@ -35,7 +35,7 @@ using Oceananigans.Grids
 
 const AG   = AbstractGrid
 const ARG  = AbstractRectilinearGrid
-const RCG  = RegularRectilinearGrid
+const RCG  = RectilinearGrid
 const ACG  = AbstractCurvilinearGrid
 const AHCG = AbstractHorizontallyCurvilinearGrid
 

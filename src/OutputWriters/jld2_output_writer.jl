@@ -113,7 +113,7 @@ Write out 3D fields for w and T and a horizontal average:
 using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Fields
 using Oceananigans.Utils: hour, minute
 
-model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)

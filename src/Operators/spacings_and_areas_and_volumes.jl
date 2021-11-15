@@ -27,26 +27,8 @@ The operators in this file fall into three categories:
    at most a stretched vertical dimension and regular horizontal dimensions.
 2. Operators needed for an algorithm on a grid that is curvilinear in the horizontal
    at rectilinear (possibly stretched) in the vertical.
+
 """
-
-#####
-##### Grid lengths for horizontally-regular algorithms
-#####
-
-@inline Δx(i, j, k, grid::ARG) = grid.Δx
-@inline Δy(i, j, k, grid::ARG) = grid.Δy
-
-@inline ΔzC(i, j, k, grid::RegularRectilinearGrid) = grid.Δz
-@inline ΔzC(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶠ[k]
-
-@inline ΔzF(i, j, k, grid::RegularRectilinearGrid) = grid.Δz
-@inline ΔzF(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶜ[k]
-
-@inline Δzᵃᵃᶠ(i, j, k, grid::RegularRectilinearGrid) = grid.Δz
-@inline Δzᵃᵃᶠ(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶠ[k]
-
-@inline Δzᵃᵃᶜ(i, j, k, grid::RegularRectilinearGrid) = grid.Δz
-@inline Δzᵃᵃᶜ(i, j, k, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.Δzᵃᵃᶜ[k]
 
 @inline Δzᶠᶜᶜ(i, j, k, grid) = Δzᵃᵃᶜ(i, j, k, grid)
 @inline Δzᶜᶠᶜ(i, j, k, grid) = Δzᵃᵃᶜ(i, j, k, grid)
@@ -63,88 +45,46 @@ The operators in this file fall into three categories:
 using Oceananigans.Grids: Flat
 
 #####
-##### Horizontal metrics for AbstractRectilinearGrid
-#####
-
-const XFlatARG = AbstractRectilinearGrid{<:Any, <:Flat}
-const YFlatARG = AbstractRectilinearGrid{<:Any, <:Any, <:Flat}
-
-@inline Δx(i, j, k, grid::XFlatARG) = one(eltype(grid))
-@inline Δy(i, j, k, grid::YFlatARG) = one(eltype(grid))
-
-@inline Δxᶜᶜᵃ(i, j, k, grid::XFlatARG) = one(eltype(grid))
-@inline Δxᶜᶠᵃ(i, j, k, grid::XFlatARG) = one(eltype(grid))
-@inline Δxᶠᶠᵃ(i, j, k, grid::XFlatARG) = one(eltype(grid))
-@inline Δxᶠᶜᵃ(i, j, k, grid::XFlatARG) = one(eltype(grid))
-
-@inline Δyᶜᶜᵃ(i, j, k, grid::YFlatARG) = one(eltype(grid))
-@inline Δyᶠᶜᵃ(i, j, k, grid::YFlatARG) = one(eltype(grid))
-@inline Δyᶜᶠᵃ(i, j, k, grid::YFlatARG) = one(eltype(grid))
-@inline Δyᶠᶠᵃ(i, j, k, grid::YFlatARG) = one(eltype(grid))
-
-##### 
-##### Vertical metrics for RegularRectilinearGrid
-##### 
-
-const ZFlatRRG = RegularRectilinearGrid{<:Any, <:Any, <:Any, <:Flat}
-
-@inline ΔzC(  i, j, k, grid::ZFlatRRG) = one(eltype(grid))
-@inline ΔzF(  i, j, k, grid::ZFlatRRG) = one(eltype(grid))
-@inline Δzᵃᵃᶠ(i, j, k, grid::ZFlatRRG) = one(eltype(grid))
-@inline Δzᵃᵃᶜ(i, j, k, grid::ZFlatRRG) = one(eltype(grid))
-
-##### 
-##### Vertical metrics for VerticallyStretchedRectilinearGrid
-##### 
-
-const ZFlatVSRG = VerticallyStretchedRectilinearGrid{<:Any, <:Any, <:Any, <:Flat}
-
-@inline ΔzC(  i, j, k, grid::ZFlatVSRG) = one(eltype(grid))
-@inline ΔzF(  i, j, k, grid::ZFlatVSRG) = one(eltype(grid))
-@inline Δzᵃᵃᶠ(i, j, k, grid::ZFlatVSRG) = one(eltype(grid))
-@inline Δzᵃᵃᶜ(i, j, k, grid::ZFlatVSRG) = one(eltype(grid))
-
-#####
-##### Areas for horizontally-regular algorithms
-#####
-
-@inline Axᵃᵃᶜ(i, j, k, grid) = Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
-@inline Axᵃᵃᶠ(i, j, k, grid) = Δy(i, j, k, grid) * ΔzC(i, j, k, grid)
-
-@inline Ayᵃᵃᶜ(i, j, k, grid) = Δx(i, j, k, grid) * ΔzF(i, j, k, grid)
-@inline Ayᵃᵃᶠ(i, j, k, grid) = Δx(i, j, k, grid) * ΔzC(i, j, k, grid)
-
-@inline Azᵃᵃᵃ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
-
-#####
-##### Volumes for horizontally-regular algorithms
-#####
-
-@inline Vᵃᵃᶜ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzF(i, j, k, grid)
-@inline Vᵃᵃᶠ(i, j, k, grid) = Δx(i, j, k, grid) * Δy(i, j, k, grid) * ΔzC(i, j, k, grid)
-
-#####
 ##### Grid lengths for horizontally-curvilinear, vertically-rectilinear algorithms
 #####
 
-@inline Δxᶜᶜᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid)
-@inline Δxᶜᶠᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid)
-@inline Δxᶠᶠᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid)
-@inline Δxᶠᶜᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid)
+@inline Δxᶜᶜᵃ(i, j, k, grid::ARG) = Δxᶜᵃᵃ(i, j, k, grid)
+@inline Δxᶜᶠᵃ(i, j, k, grid::ARG) = Δxᶜᵃᵃ(i, j, k, grid)
+@inline Δxᶠᶠᵃ(i, j, k, grid::ARG) = Δxᶠᵃᵃ(i, j, k, grid)
+@inline Δxᶠᶜᵃ(i, j, k, grid::ARG) = Δxᶠᵃᵃ(i, j, k, grid)
 
-@inline Δyᶜᶜᵃ(i, j, k, grid::ARG) = Δy(i, j, k, grid)
-@inline Δyᶠᶜᵃ(i, j, k, grid::ARG) = Δy(i, j, k, grid)
-@inline Δyᶜᶠᵃ(i, j, k, grid::ARG) = Δy(i, j, k, grid)
-@inline Δyᶠᶠᵃ(i, j, k, grid::ARG) = Δy(i, j, k, grid)
+@inline Δyᶜᶜᵃ(i, j, k, grid::ARG) = Δyᵃᶜᵃ(i, j, k, grid)
+@inline Δyᶠᶜᵃ(i, j, k, grid::ARG) = Δyᵃᶜᵃ(i, j, k, grid)
+@inline Δyᶜᶠᵃ(i, j, k, grid::ARG) = Δyᵃᶠᵃ(i, j, k, grid)
+@inline Δyᶠᶠᵃ(i, j, k, grid::ARG) = Δyᵃᶠᵃ(i, j, k, grid)
 
 #####
 ##### Areas for algorithms that generalize to horizontally-curvilinear, vertically-rectilinear grids
 #####
 
-@inline Azᶜᶜᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
-@inline Azᶠᶠᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
-@inline Azᶜᶠᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
-@inline Azᶠᶜᵃ(i, j, k, grid::ARG) = Δx(i, j, k, grid) * Δy(i, j, k, grid)
+@inline Azᶜᶜᵃ(i, j, k, grid::ARG) = Δxᶜᵃᵃ(i, j, k, grid) * Δyᵃᶜᵃ(i, j, k, grid)
+@inline Azᶠᶠᵃ(i, j, k, grid::ARG) = Δxᶠᵃᵃ(i, j, k, grid) * Δyᵃᶠᵃ(i, j, k, grid)
+@inline Azᶜᶠᵃ(i, j, k, grid::ARG) = Δxᶜᵃᵃ(i, j, k, grid) * Δyᵃᶠᵃ(i, j, k, grid)
+@inline Azᶠᶜᵃ(i, j, k, grid::ARG) = Δxᶠᵃᵃ(i, j, k, grid) * Δyᵃᶜᵃ(i, j, k, grid)
+
+#####
+##### Areas for horizontally-regular grids
+#####
+
+@inline Axᵃᵃᶜ(i, j, k, grid::HRegRectilinearGrid) = Δyᵃᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Axᵃᵃᶠ(i, j, k, grid::HRegRectilinearGrid) = Δyᵃᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
+
+@inline Ayᵃᵃᶜ(i, j, k, grid::HRegRectilinearGrid) = Δxᶜᵃᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Ayᵃᵃᶠ(i, j, k, grid::HRegRectilinearGrid) = Δxᶜᵃᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
+
+@inline Azᵃᵃᵃ(i, j, k, grid::HRegRectilinearGrid) = Δxᶜᵃᵃ(i, j, k, grid) * Δyᵃᶜᵃ(i, j, k, grid)
+
+#####
+##### Volumes for horizontally-regular algorithms
+#####
+
+@inline Vᵃᵃᶜ(i, j, k, grid::HRegRectilinearGrid) = Azᵃᵃᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Vᵃᵃᶠ(i, j, k, grid::HRegRectilinearGrid) = Azᵃᵃᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
 
 #####
 ##### Areas for three-dimensionally curvilinear algorithms
@@ -174,43 +114,34 @@ const ZFlatVSRG = VerticallyStretchedRectilinearGrid{<:Any, <:Any, <:Any, <:Flat
 @inline Vᶜᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
 
 #####
-##### Temporary place for grid spacings and areas for RectilinearGrid
+##### Grid spacings and areas for RectilinearGrid
 #####
 
-const RG = RectilinearGrid
-const RGVX = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractVector}
-const RGVY = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVector}
-const RGVZ = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractVector}
+@inline Δxᶜᵃᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δxᶜᵃᵃ[i]
+@inline Δxᶠᵃᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δxᶠᵃᵃ[i]
+@inline Δyᵃᶠᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δyᵃᶠᵃ[j]
+@inline Δyᵃᶜᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δyᵃᶜᵃ[j]
+@inline Δzᵃᵃᶠ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δzᵃᵃᶠ[k]
+@inline Δzᵃᵃᶜ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δzᵃᵃᶜ[k]
+@inline Δxᶜᵃᵃ(i, j, k, grid::XRegRectilinearGrid) =  @inbounds grid.Δxᶜᵃᵃ
+@inline Δxᶠᵃᵃ(i, j, k, grid::XRegRectilinearGrid) =  @inbounds grid.Δxᶠᵃᵃ
+@inline Δyᵃᶠᵃ(i, j, k, grid::YRegRectilinearGrid) =  @inbounds grid.Δyᵃᶠᵃ
+@inline Δyᵃᶜᵃ(i, j, k, grid::YRegRectilinearGrid) =  @inbounds grid.Δyᵃᶜᵃ
+@inline Δzᵃᵃᶠ(i, j, k, grid::ZRegRectilinearGrid) =  @inbounds grid.Δzᵃᵃᶠ
+@inline Δzᵃᵃᶜ(i, j, k, grid::ZRegRectilinearGrid) =  @inbounds grid.Δzᵃᵃᶜ
 
-@inline Δxᶜᵃᵃ(i, j, k, grid::RG)   =  @inbounds grid.Δxᶜᵃᵃ
-@inline Δxᶜᵃᵃ(i, j, k, grid::RGVX) =  @inbounds grid.Δxᶜᵃᵃ[i]
-@inline Δxᶠᵃᵃ(i, j, k, grid::RG)   =  @inbounds grid.Δxᶠᵃᵃ
-@inline Δxᶠᵃᵃ(i, j, k, grid::RGVX) =  @inbounds grid.Δxᶠᵃᵃ[i]
-@inline Δyᵃᶠᵃ(i, j, k, grid::RG)   =  @inbounds grid.Δyᵃᶠᵃ
-@inline Δyᵃᶠᵃ(i, j, k, grid::RGVY) =  @inbounds grid.Δyᵃᶠᵃ[j]
-@inline Δyᵃᶜᵃ(i, j, k, grid::RG)   =  @inbounds grid.Δyᵃᶜᵃ
-@inline Δyᵃᶜᵃ(i, j, k, grid::RGVY) =  @inbounds grid.Δyᵃᶜᵃ[j]
-@inline Δzᶠᵃᵃ(i, j, k, grid::RG)   =  @inbounds grid.Δzᶠᵃᵃ
-@inline Δzᶠᵃᵃ(i, j, k, grid::RGVZ) =  @inbounds grid.Δzᶠᵃᵃ[k]
-@inline Δzᵃᵃᶜ(i, j, k, grid::RG)   =  @inbounds grid.Δzᵃᵃᶜ
-@inline Δzᵃᵃᶜ(i, j, k, grid::RGVZ) =  @inbounds grid.Δzᵃᵃᶜ[k]
+const XFlatRG = RectilinearGrid{<:Any, <:Flat, <:Any, <:Any, <:Number}
+const YFlatRG = RectilinearGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Number}
+const ZFlatRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Flat, <:Any, <:Any, <:Number}
 
-const XFlatRG = RectilinearGrid{<:Any, <:Flat}
-const YFlatRG = RectilinearGrid{<:Any, <:Any, <:Flat}
-const ZFlatRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Flat}
-
-@inline Δx(i, j, k, grid::XFlatRG)    = one(eltype(grid))
 @inline Δxᶜᶜᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
 @inline Δxᶜᶠᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
 @inline Δxᶠᶠᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
 @inline Δxᶠᶜᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
-@inline Δy(i, j, k, grid::YFlatRG)    = one(eltype(grid))
 @inline Δyᶜᶜᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
 @inline Δyᶠᶜᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
 @inline Δyᶜᶠᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
 @inline Δyᶠᶠᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
-@inline ΔzC(  i, j, k, grid::ZFlatRG) = one(eltype(grid))
-@inline ΔzF(  i, j, k, grid::ZFlatRG) = one(eltype(grid))
 @inline Δzᵃᵃᶠ(i, j, k, grid::ZFlatRG) = one(eltype(grid))
 @inline Δzᵃᵃᶜ(i, j, k, grid::ZFlatRG) = one(eltype(grid))
 

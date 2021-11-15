@@ -45,7 +45,7 @@ end
 
         # Triply periodic
         ppp_topology = (Periodic, Periodic, Periodic)
-        ppp_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=ppp_topology)
+        ppp_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=ppp_topology)
 
         default_bcs = FieldBoundaryConditions()
 
@@ -88,7 +88,7 @@ end
 
         # Doubly periodic. Engineers call this a "Channel geometry".
         ppb_topology = (Periodic, Periodic, Bounded)
-        ppb_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=ppb_topology)
+        ppb_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=ppb_topology)
 
         u_bcs = regularize_field_boundary_conditions(default_bcs, ppb_grid, :u)
         v_bcs = regularize_field_boundary_conditions(default_bcs, ppb_grid, :v)
@@ -129,7 +129,7 @@ end
 
         # Singly periodic. Oceanographers call this a "Channel", engineers call it a "Pipe"
         pbb_topology = (Periodic, Bounded, Bounded)
-        pbb_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=pbb_topology)
+        pbb_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=pbb_topology)
 
         u_bcs = regularize_field_boundary_conditions(default_bcs, pbb_grid, :u)
         v_bcs = regularize_field_boundary_conditions(default_bcs, pbb_grid, :v)
@@ -170,7 +170,7 @@ end
 
         # Triply bounded. Oceanographers call this a "Basin", engineers call it a "Box"
         bbb_topology = (Bounded, Bounded, Bounded)
-        bbb_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=bbb_topology)
+        bbb_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=bbb_topology)
 
         u_bcs = regularize_field_boundary_conditions(default_bcs, bbb_grid, :u)
         v_bcs = regularize_field_boundary_conditions(default_bcs, bbb_grid, :v)

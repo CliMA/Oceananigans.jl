@@ -4,7 +4,7 @@ using Oceananigans.Diagnostics
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 
 function nan_checker_aborts_simulation(arch)
-    grid = RegularRectilinearGrid(size=(4, 2, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(4, 2, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid=grid, architecture=arch)
     simulation = Simulation(model, Δt=1, stop_iteration=1)
 
@@ -17,7 +17,7 @@ end
 
 TestModel_VerticallyStrectedRectGrid(arch, FT, ν=1.0, Δx=0.5) =
     NonhydrostaticModel(
-          grid = VerticallyStretchedRectilinearGrid(FT, architecture = arch, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), z_faces=0:Δx:3Δx,),
+          grid = RectilinearGrid(FT, architecture = arch, size=(3, 3, 3), x=(0, 3Δx), y=(0, 3Δx), z=0:Δx:3Δx,),
        closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = arch
 )
@@ -25,7 +25,7 @@ TestModel_VerticallyStrectedRectGrid(arch, FT, ν=1.0, Δx=0.5) =
 
 TestModel_RegularRectGrid(arch, FT, ν=1.0, Δx=0.5) =
     NonhydrostaticModel(
-          grid = RegularRectilinearGrid(FT, topology=(Periodic, Periodic, Periodic), size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
+          grid = RectilinearGrid(FT, topology=(Periodic, Periodic, Periodic), size=(3, 3, 3), extent=(3Δx, 3Δx, 3Δx)),
        closure = IsotropicDiffusivity(FT, ν=ν, κ=ν),
   architecture = arch
 )
@@ -54,7 +54,7 @@ function advective_cfl_diagnostic_is_correct_on_regular_grid(arch, FT)
     model = TestModel_RegularRectGrid(arch, FT)
 
     Δt = FT(1.3e-6)
-    Δx = FT(model.grid.Δx)
+    Δx = FT(model.grid.Δxᶜᵃᵃ)
     u₀ = FT(1.2)
     CFL_by_hand = Δt * u₀ / Δx
 
@@ -68,7 +68,7 @@ function advective_cfl_diagnostic_is_correct_on_vertically_stretched_grid(arch, 
     model = TestModel_VerticallyStrectedRectGrid(arch, FT)
 
     Δt = FT(1.3e-6)
-    Δx = FT(model.grid.Δx)
+    Δx = FT(model.grid.Δxᶜᵃᵃ)
     u₀ = FT(1.2)
     CFL_by_hand = Δt * u₀ / Δx
 
@@ -83,9 +83,9 @@ function accurate_advective_cfl_on_regular_grid(arch, FT)
 
     Δt = FT(1.7)
 
-    Δx = model.grid.Δx
-    Δy = model.grid.Δy
-    Δz = model.grid.Δz
+    Δx = model.grid.Δxᶜᵃᵃ
+    Δy = model.grid.Δyᵃᶜᵃ
+    Δz = model.grid.Δzᵃᵃᶜ
 
     u₀ = FT(1.2)
     v₀ = FT(-2.5)
@@ -101,13 +101,13 @@ function accurate_advective_cfl_on_regular_grid(arch, FT)
 end
 
 function accurate_advective_cfl_on_stretched_grid(arch, FT)
-    grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(4, 4, 8), x=(0, 100), y=(0, 100), z_faces=[k^2 for k in 0:8])
+    grid = RectilinearGrid(architecture=arch, size=(4, 4, 8), x=(0, 100), y=(0, 100), z=[k^2 for k in 0:8])
     model = NonhydrostaticModel(grid=grid, architecture=arch)
 
     Δt = FT(15.5)
 
-    Δx = model.grid.Δx
-    Δy = model.grid.Δy
+    Δx = model.grid.Δxᶜᵃᵃ
+    Δy = model.grid.Δyᵃᶜᵃ
 
     # At k = 1, w = 0 so the CFL constraint happens at the second face (k = 2).
     Δz_min = CUDA.@allowscalar Oceananigans.Operators.Δzᵃᵃᶠ(1, 1, 2, grid)

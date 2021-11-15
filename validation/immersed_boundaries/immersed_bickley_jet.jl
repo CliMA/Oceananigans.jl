@@ -38,7 +38,7 @@ scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch
 function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0, advection = WENO5())
 
     # Regular model
-    grid = RegularRectilinearGrid(size=(Nh, Nh), halo=(3, 3),
+    grid = RectilinearGrid(size=(Nh, Nh), halo=(3, 3),
                                   x = (-2π, 2π), y=(-2π, 2π),
                                   topology = (Periodic, Bounded, Flat))
 
@@ -54,7 +54,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     # Non-regular model
     solid(x, y, z) = y > 2π
 
-    expanded_grid = RegularRectilinearGrid(size=(Nh, Int(5Nh/4)), halo=(3, 3),
+    expanded_grid = RectilinearGrid(size=(Nh, Int(5Nh/4)), halo=(3, 3),
                                            x = (-2π, 2π), y=(-2π, 3π),
                                            topology = (Periodic, Bounded, Flat))
 
@@ -295,9 +295,9 @@ function analyze_immersed_bickley_jet(experiment_name)
     
     @info "    Plotting the surface normal velocity..."
 
-    norm_plot = plot(regular_v_timeseries.grid.xC, regular_norm_rms, label = "regular", yformatter = :scientific,
+    norm_plot = plot(regular_v_timeseries.grid.xᶜᵃᵃ, regular_norm_rms, label = "regular", yformatter = :scientific,
     color = :red, lw = 3, xlabel = "x", ylabel = "Vⁿ", legend = :bottomright)
-    plot!(regular_v_timeseries.grid.xC, immersed_norm_rms, label = "immersed", color = :blue, lw = 3)
+    plot!(regular_v_timeseries.grid.xᶜᵃᵃ, immersed_norm_rms, label = "immersed", color = :blue, lw = 3)
     plot!(yticks = 0:max_norm/5:max_norm, guidefontsize = 14, titlefont=14,legendfont = 10, 
         tickfont = 8)
         
