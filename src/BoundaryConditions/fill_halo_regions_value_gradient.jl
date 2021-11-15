@@ -1,4 +1,4 @@
-using Oceananigans.Operators: ΔzC
+using Oceananigans.Operators: Δxᶠᵃᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶠ
 
 #####
 ##### Halo filling for value and gradient boundary conditions
@@ -22,7 +22,7 @@ using Oceananigans.Operators: ΔzC
 
     j, k = @index(Global, NTuple)
 
-    Δ = Δx(iᴮ, j, k, grid) # Δ between first interior and first west halo point, defined at cell face.
+    Δ = Δxᶠᵃᵃ(iᴮ, j, k, grid) # Δ between first interior and first west halo point, defined at cell face.
     @inbounds ∇c = left_gradient(bc, c[iᴵ, j, k], Δ, j, k, grid, args...)
     @inbounds c[iᴴ, j, k] = linearly_extrapolate(c[iᴵ, j, k], ∇c, -Δ) # extrapolate westward in -x direction.
 end
@@ -38,7 +38,7 @@ end
 
     j, k = @index(Global, NTuple)
 
-    Δ = Δx(iᴮ, j, k, grid) # Δ between last interior and first east halo point, defined at cell face. 
+    Δ = Δxᶠᵃᵃ(iᴮ, j, k, grid) # Δ between last interior and first east halo point, defined at cell face. 
     @inbounds ∇c = right_gradient(bc, c[iᴵ, j, k], Δ, j, k, grid, args...)
     @inbounds c[iᴴ, j, k] = linearly_extrapolate(c[iᴵ, j, k], ∇c, Δ) # extrapolate eastward in +x direction.
 end
@@ -53,7 +53,7 @@ end
 
     i, k = @index(Global, NTuple)
 
-    Δ = Δy(i, jᴮ, k, grid) # Δ between first interior and first south halo point, defined at cell face.
+    Δ = Δyᵃᶠᵃ(i, jᴮ, k, grid) # Δ between first interior and first south halo point, defined at cell face.
     @inbounds ∇c = left_gradient(bc, c[i, jᴵ, k], Δ, i, k, grid, args...)
     @inbounds c[i, jᴴ, k] = linearly_extrapolate(c[i, jᴵ, k], ∇c, -Δ) # extrapolate southward in -y direction.
 end
@@ -69,7 +69,7 @@ end
 
     i, k = @index(Global, NTuple)
 
-    Δ = Δy(i, jᴮ, k, grid) # Δ between first interior and first north halo point, defined at cell face.
+    Δ = Δyᵃᶠᵃ(i, jᴮ, k, grid) # Δ between first interior and first north halo point, defined at cell face.
     @inbounds ∇c = right_gradient(bc, c[i, jᴵ, k], Δ, i, k, grid, args...)
     @inbounds c[i, jᴴ, k] = linearly_extrapolate(c[i, jᴵ, k], ∇c, Δ) # extrapolate northward in +y direction.
 end
@@ -84,7 +84,7 @@ end
 
     i, j = @index(Global, NTuple)
 
-    Δ = ΔzC(i, j, kᴮ, grid) # Δ between first interior and first bottom halo point, defined at cell face.
+    Δ = Δzᵃᵃᶠ(i, j, kᴮ, grid) # Δ between first interior and first bottom halo point, defined at cell face.
     @inbounds ∇c = left_gradient(bc, c[i, j, kᴵ], Δ, i, j, grid, args...)
     @inbounds c[i, j, kᴴ] = linearly_extrapolate(c[i, j, kᴵ], ∇c, -Δ) # extrapolate downward in -z direction.
 end
@@ -100,7 +100,7 @@ end
 
     i, j = @index(Global, NTuple)
 
-    Δ = ΔzC(i, j, kᴮ, grid) # Δ between first interior and first top halo point, defined at cell face.
+    Δ = Δzᵃᵃᶠ(i, j, kᴮ, grid) # Δ between first interior and first top halo point, defined at cell face.
     @inbounds ∇c = right_gradient(bc, c[i, j, kᴵ], Δ, i, j, grid, args...)
     @inbounds c[i, j, kᴴ] = linearly_extrapolate(c[i, j, kᴵ], ∇c, Δ) # extrapolate upward in +z direction.
 end
@@ -109,9 +109,9 @@ end
 ##### Kernel callers
 #####
 
-  fill_west_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, args...; kwargs...) = validate_event(launch!(arch, grid, :yz, _fill_west_halo!,   c, bc, grid, args...; dependencies=dep, kwargs...))
-  fill_east_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, args...; kwargs...) = validate_event(launch!(arch, grid, :yz, _fill_east_halo!,   c, bc, grid, args...; dependencies=dep, kwargs...))
- fill_south_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, args...; kwargs...) = validate_event(launch!(arch, grid, :xz, _fill_south_halo!,  c, bc, grid, args...; dependencies=dep, kwargs...))
- fill_north_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, args...; kwargs...) = validate_event(launch!(arch, grid, :xz, _fill_north_halo!,  c, bc, grid, args...; dependencies=dep, kwargs...))
-fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, args...; kwargs...) = validate_event(launch!(arch, grid, :xy, _fill_bottom_halo!, c, bc, grid, args...; dependencies=dep, kwargs...))
-   fill_top_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, args...; kwargs...) = validate_event(launch!(arch, grid, :xy, _fill_top_halo!,    c, bc, grid, args...; dependencies=dep, kwargs...))
+  fill_west_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :yz, _fill_west_halo!,   c, bc, grid, args...; dependencies=dep, kwargs...)
+  fill_east_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :yz, _fill_east_halo!,   c, bc, grid, args...; dependencies=dep, kwargs...)
+ fill_south_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xz, _fill_south_halo!,  c, bc, grid, args...; dependencies=dep, kwargs...)
+ fill_north_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xz, _fill_north_halo!,  c, bc, grid, args...; dependencies=dep, kwargs...)
+fill_bottom_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xy, _fill_bottom_halo!, c, bc, grid, args...; dependencies=dep, kwargs...)
+   fill_top_halo!(c, bc::Union{VBC, GBC}, arch, dep, grid, args...; kwargs...) = launch!(arch, grid, :xy, _fill_top_halo!,    c, bc, grid, args...; dependencies=dep, kwargs...)

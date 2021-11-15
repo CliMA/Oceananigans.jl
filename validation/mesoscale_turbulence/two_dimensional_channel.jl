@@ -28,13 +28,13 @@ const Lz = sum(Δz_center)
 z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
 z_faces[Nz+1] = 0
 
-grid = VerticallyStretchedRectilinearGrid(architecture = arch,
+grid = RectilinearGrid(architecture = arch,
                                           topology = (Periodic, Bounded, Bounded),
                                           size = (1, Ny, Nz),
                                           halo = (3, 3, 3),
                                           x = (0, Ly),
                                           y = (0, Ly),
-                                          z_faces = z_faces)
+                                          z = z_faces)
 
 
 @show grid
@@ -156,16 +156,16 @@ set!(model, u=uᵢ, b=bᵢ)
 using Oceananigans.Fields: similar_cpu_field
 using Oceananigans.Grids: topology, halo_size
 
-cpu_grid(grid::RegularRectilinearGrid) = grid
+cpu_grid(grid::RectilinearGrid) = grid
 
-cpu_grid(grid::VerticallyStretchedRectilinearGrid) =
-    VerticallyStretchedRectilinearGrid(architecture = CPU(),
+cpu_grid(grid::RectilinearGrid) =
+    RectilinearGrid(architecture = CPU(),
                                        topology = topology(grid),
                                        size = size(grid),
                                        halo = halo_size(grid),
                                        x = (0, grid.Ly),
                                        y = (0, grid.Ly),
-                                       z_faces = grid.zᵃᵃᶠ)
+                                       z = grid.zᵃᵃᶠ)
 
 function channel_plot(u_device, b_device)
 
@@ -241,7 +241,7 @@ function print_progress(sim)
     return nothing
 end
 
-diffusion_Δt = grid.Δy^2 / closure.νy
+diffusion_Δt = grid.Δyᵃᶜᵃ^2 / closure.νy
 @show Δt = min(10minutes, diffusion_Δt)
 
 simulation = Simulation(model, Δt=Δt, stop_time=10years, progress=print_progress, iteration_interval=1000)

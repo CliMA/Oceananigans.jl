@@ -66,11 +66,11 @@ Set{Any} with 8 elements:
   :tanh
   :sin
 
-julia> c = Field(Center, Center, Center, CPU(), RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)));
+julia> c = Field(Center, Center, Center, CPU(), RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)));
 
 julia> square_it(c)
 UnaryOperation at (Center, Center, Center)
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 │   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
 └── tree:
     square_it at (Center, Center, Center) via identity

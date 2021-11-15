@@ -32,7 +32,7 @@ local_rank = MPI.Comm_rank(comm)
 @info "Setting up distributed nonhydrostatic model with N=($Nx, $Ny, $Nz) grid points and ranks=($Rx, $Ry, $Rz) on rank $local_rank..."
 
 topo = (Periodic, Periodic, Periodic)
-distributed_grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+distributed_grid = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
 arch = MultiCPU(grid=distributed_grid, ranks=(Rx, Ry, Rz))
 model = DistributedNonhydrostaticModel(architecture=arch, grid=distributed_grid)
 

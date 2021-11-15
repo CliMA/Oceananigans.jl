@@ -34,9 +34,9 @@ using Oceananigans.Models: ShallowWaterModel
 Lx, Ly, Lz = 2π, 20, 1
 Nx, Ny = 128, 128
 
-grid = RegularRectilinearGrid(size = (Nx, Ny),
-                              x = (0, Lx), y = (-Ly/2, Ly/2),
-                              topology = (Periodic, Bounded, Flat))
+grid = RectilinearGrid(size = (Nx, Ny),
+                       x = (0, Lx), y = (-Ly/2, Ly/2),
+                       topology = (Periodic, Bounded, Flat))
 
 # ## Physical parameters
 #

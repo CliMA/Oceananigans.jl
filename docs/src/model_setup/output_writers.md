@@ -55,7 +55,7 @@ to separate NetCDF files:
 ```jldoctest netcdf1
 using Oceananigans, Oceananigans.OutputWriters
 
-grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
 model = NonhydrostaticModel(grid=grid);
 
@@ -111,7 +111,7 @@ provided that their `dimensions` are provided:
 ```jldoctest
 using Oceananigans, Oceananigans.OutputWriters
 
-grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
 
 model = NonhydrostaticModel(grid=grid);
 
@@ -170,7 +170,7 @@ Write out 3D fields for w and T and a horizontal average:
 using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Fields
 using Oceananigans.Utils: hour, minute
 
-model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
@@ -255,7 +255,7 @@ using Oceananigans
 using Oceananigans.OutputWriters: JLD2OutputWriter
 using Oceananigans.Utils: minutes
 
-model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
 simulation = Simulation(model, Δt=10minutes, stop_time=30years)
 

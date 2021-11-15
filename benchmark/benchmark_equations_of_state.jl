@@ -10,7 +10,7 @@ using Benchmarks
 # Benchmark function
 
 function benchmark_equation_of_state(Arch, EOS)
-    grid = RegularRectilinearGrid(size=(192, 192, 192), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(192, 192, 192), extent=(1, 1, 1))
     buoyancy = SeawaterBuoyancy(equation_of_state=EOS())
     model = NonhydrostaticModel(architecture=Arch(), grid=grid, buoyancy=buoyancy)
 

@@ -15,11 +15,11 @@ latitude = (-60, 60)
 longitude = (-180, 180)
 
 # A spherical domain
-grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                    radius = 1,
-                                    latitude = latitude,
-                                    longitude = longitude,
-                                    z = (-1, 0))
+grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                             radius = 1,
+                             latitude = latitude,
+                             longitude = longitude,
+                             z = (-1, 0))
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = CPU(),

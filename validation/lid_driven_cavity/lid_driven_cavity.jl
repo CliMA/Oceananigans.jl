@@ -7,7 +7,7 @@ Logging.global_logger(OceananigansLogger())
 function simulate_lid_driven_cavity(; Re, N, end_time)
     topology = (Flat, Bounded, Bounded)
     domain = (y=(0, 1), z=(0, 1))
-    grid = RegularRectilinearGrid(topology=topology, size=(N, N); domain...)
+    grid = RectilinearGrid(topology=topology, size=(N, N); domain...)
 
     v_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(1),
                                     bottom = ValueBoundaryCondition(0))
@@ -34,7 +34,7 @@ function simulate_lid_driven_cavity(; Re, N, end_time)
         NetCDFOutputWriter(model, fields, filepath="lid_driven_cavity_Re$Re.nc", schedule=TimeInterval(0.1),
                            global_attributes=global_attributes, output_attributes=output_attributes)
 
-    max_Δt = 0.25 * model.grid.Δy^2 * Re / 2  # Make sure not to violate diffusive CFL.
+    max_Δt = 0.25 * model.grid.Δyᵃᶜᵃ^2 * Re / 2  # Make sure not to violate diffusive CFL.
     wizard = TimeStepWizard(cfl=0.1, Δt=1e-6, max_change=1.1, max_Δt=max_Δt)
 
     cfl = AdvectiveCFL(wizard)

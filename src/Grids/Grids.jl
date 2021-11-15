@@ -3,9 +3,11 @@ module Grids
 export Center, Face
 export AbstractTopology, Periodic, Bounded, Flat, Connected, topology
 export AbstractGrid, AbstractUnderlyingGrid, halo_size
-export AbstractRectilinearGrid, RegularRectilinearGrid, VerticallyStretchedRectilinearGrid
+export AbstractRectilinearGrid, RectilinearGrid 
+export XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid, HRegRectilinearGrid, RegRectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
-export RegularLatitudeLongitudeGrid, ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
+export LatitudeLongitudeGrid, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
+export ConformalCubedSphereFaceGrid, ConformalCubedSphereGrid
 export node, xnode, ynode, znode, xnodes, ynodes, znodes, nodes
 export offset_data, new_data
 
@@ -109,6 +111,13 @@ Abstract supertype for horizontally-curvilinear grids with elements of type `FT`
 """
 abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ} <: AbstractCurvilinearGrid{FT, TX, TY, TZ} end
 
+
+
+"""
+    Constant Grid Definitions 
+
+"""
+
 Base.eltype(::AbstractGrid{FT}) where FT = FT
 Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
 Base.length(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
@@ -135,9 +144,9 @@ include("zeros.jl")
 include("new_data.jl")
 include("automatic_halo_sizing.jl")
 include("input_validation.jl")
-include("regular_rectilinear_grid.jl")
-include("vertically_stretched_rectilinear_grid.jl")
-include("regular_latitude_longitude_grid.jl")
+include("grid_generation.jl")
+include("rectilinear_grid.jl")
 include("conformal_cubed_sphere_face_grid.jl")
+include("latitude_longitude_grid.jl")
 
 end
