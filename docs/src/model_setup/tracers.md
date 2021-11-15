@@ -1,6 +1,6 @@
 # Tracers
 
-The tracers to be advected around can be specified via a list of symbols. By default the model doesn't evolves any
+The tracers to be advected around can be specified via a list of symbols. By default the model doesn't evolve any
 tracer.
 
 ```@meta
