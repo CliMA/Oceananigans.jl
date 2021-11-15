@@ -61,7 +61,8 @@ function Simulation(model; Δt,
    # Check for NaNs in the model's first prognostic field every 100 iterations.
    model_fields = fields(model)
    field_to_check_nans = NamedTuple{keys(model_fields) |> first |> tuple}(first(model_fields) |> tuple)
-   diagnostics[:nan_checker] = NaNChecker(fields=field_to_check_nans, schedule=IterationInterval(100))
+   nan_checker = NaNChecker(field_to_check_nans)
+   callbacks[:nan_checker] = Callback(nan_checker, IterationInterval(100))
 
    # Convert numbers to floating point; otherwise preserve type (eg for DateTime types)
    FT = eltype(model.grid)

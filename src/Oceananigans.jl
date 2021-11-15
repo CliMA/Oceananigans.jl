@@ -75,8 +75,7 @@ export
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics
-    NaNChecker, StateChecker,
-    CFL, AdvectiveCFL, DiffusiveCFL,
+    StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
     FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,

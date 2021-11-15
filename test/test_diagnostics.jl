@@ -1,5 +1,8 @@
 using Oceananigans.Fields: FieldSlicer
 using Oceananigans.Diagnostics
+using Oceananigans.Diagnostics: AbstractDiagnostic
+
+struct TestDiagnostic end
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 
@@ -163,25 +166,23 @@ get_time(model) = model.clock.time
 function diagnostics_getindex(arch, FT)
     model = TestModel_RegularRectGrid(arch, FT)
     simulation = Simulation(model, Δt=0, stop_iteration=0)
-    nc = NaNChecker(model, schedule=IterationInterval(1), fields=model.velocities)
-    simulation.diagnostics[:nc] = nc
-
-    # The first diagnostic is the NaN checker.
-    return simulation.diagnostics[2] == nc
+    td = TestDiagnostic()
+    simulation.diagnostics[:td] = td
+    return simulation.diagnostics[1] == td
 end
 
 function diagnostics_setindex(arch, FT)
     model = TestModel_RegularRectGrid(arch, FT)
     simulation = Simulation(model, Δt=0, stop_iteration=0)
 
-    nc1 = NaNChecker(model, schedule=IterationInterval(1), fields=model.velocities)
-    nc2 = NaNChecker(model, schedule=IterationInterval(2), fields=model.velocities)
-    nc3 = NaNChecker(model, schedule=IterationInterval(3), fields=model.velocities)
+    td1 = TestDiagnostic()
+    td2 = TestDiagnostic()
+    td3 = TestDiagnostic()
 
-    push!(simulation.diagnostics, nc1, nc2)
-    simulation.diagnostics[2] = nc3
+    push!(simulation.diagnostics, td1, td2)
+    simulation.diagnostics[2] = td3
 
-    return simulation.diagnostics[:diag2] == nc3
+    return simulation.diagnostics[:diag2] == td3
 end
 
 @testset "Diagnostics" begin
