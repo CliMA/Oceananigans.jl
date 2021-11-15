@@ -42,13 +42,13 @@ arch = CPU()
 Δz_center_linear(k) = Lz * (σ - 1) * σ^(Nz - k) / (σ^Nz - 1) # k=1 is the bottom-most cell, k=Nz is the top cell
 linearly_spaced_faces(k) = k==1 ? -Lz : - Lz + sum(Δz_center_linear.(1:k-1))
 
-grid = VerticallyStretchedRectilinearGrid(architecture = arch,
-                                          topology = (Periodic, Bounded, Bounded),
-                                          size = (Nx, Ny, Nz),
-                                          halo = (3, 3, 3),
-                                          x = (0, Lx),
-                                          y = (0, Ly),
-                                          z_faces = linearly_spaced_faces)
+grid = RectilinearGrid(architecture = arch,
+                       topology = (Periodic, Bounded, Bounded),
+                       size = (Nx, Ny, Nz),
+                       halo = (3, 3, 3),
+                       x = (0, Lx),
+                       y = (0, Ly),
+                       z_faces = linearly_spaced_faces)
 
 # The vertical spacing versus depth for the prescribed grid
 #=
@@ -197,8 +197,7 @@ function print_progress(sim)
             maximum(abs, sim.model.velocities.u),
             maximum(abs, sim.model.velocities.v),
             maximum(abs, sim.model.velocities.w),
-            prettytime(sim.Δt.Δt))
- #           prettytime(sim.Δt))
+            prettytime(sim.Δt))
 
     wall_clock[1] = time_ns()
     
@@ -298,13 +297,13 @@ sides = keys(slicers)
 zonal_file = jldopen("eddying_channel_zonal_average.jld2")
 slice_files = NamedTuple(side => jldopen("eddying_channel_$(side)_slice.jld2") for side in sides)
 
-grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
-                                          topology = (Periodic, Bounded, Bounded),
-                                          size = (Nx, Ny, Nz),
-                                          halo = (3, 3, 3),
-                                          x = (0, Lx),
-                                          y = (0, Ly),
-                                          z_faces = linearly_spaced_faces)
+grid = RectilinearGrid(architecture = arch,
+                       topology = (Periodic, Bounded, Bounded),
+                       size = (grid.Nx, grid.Ny, grid.Nz),
+                       halo = (3, 3, 3),
+                       x = (0, grid.Lx),
+                       y = (0, grid.Ly),
+                       z = z_faces)
 
 # Build coordinates, rescaling the vertical coordinate
 

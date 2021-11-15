@@ -14,7 +14,7 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
-    RegularRectilinearGrid, VerticallyStretchedRectilinearGrid, RectilinearGrid, 
+    RectilinearGrid, 
     LatitudeLongitudeGrid,
     ConformalCubedSphereFaceGrid,
     xnodes, ynodes, znodes, nodes,

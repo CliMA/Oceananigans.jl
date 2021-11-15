@@ -27,10 +27,10 @@ Example
 ```jldoctest
 julia> using Oceananigans
 
-julia> ω = Field(Face, Face, Center, CPU(), RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+julia> ω = Field(Face, Face, Center, CPU(), RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 Field located at (Face, Face, Center)
 ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 1)
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 └── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=ZeroFlux, top=ZeroFlux, immersed=ZeroFlux
 ```
 """
@@ -40,6 +40,11 @@ function Field(LX, LY, LZ,
                bcs = FieldBoundaryConditions(grid, (LX, LY, LZ)),
                data = new_data(eltype(grid), arch, grid, (LX, LY, LZ)))
 
+    # Make sure architecture is the same as the grid architecture
+    # if hasproperty(grid, :architecture)
+    #     arch = grid.architecture
+    # end 
+    
     validate_field_data(LX, LY, LZ, data, grid)
 
     return Field{LX, LY, LZ}(data, arch, grid, bcs)

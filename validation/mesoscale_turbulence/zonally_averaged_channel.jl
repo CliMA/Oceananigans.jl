@@ -45,13 +45,13 @@ arch = CPU()
 Δz_center_linear(k) = Lz * (σ - 1) * σ^(Nz - k) / (σ^Nz - 1) # k=1 is the bottom-most cell, k=Nz is the top cell
 linearly_spaced_faces(k) = k==1 ? -Lz : - Lz + sum(Δz_center_linear.(1:k-1))
 
-grid = VerticallyStretchedRectilinearGrid(architecture = arch,
+grid = RectilinearGrid(architecture = arch,
                                           topology = (Periodic, Bounded, Bounded),
                                           size = (Nx, Ny, Nz),
                                           halo = (3, 3, 3),
                                           x = (0, Lx),
                                           y = (0, Ly),
-                                          z_faces = linearly_spaced_faces)
+                                          z = z_faces)
 
 # The vertical spacing versus depth for the prescribed grid
 #=
@@ -71,19 +71,20 @@ g  = 9.8061   # [m s⁻²] gravitational constant
 cᵖ = 3994.0   # [J K⁻¹] heat capacity
 ρ  = 1024.0   # [kg m⁻³] reference density
 
-parameters = (
-              Ly = Ly,
-              Lz = Lz,
-              Qᵇ = 10/(ρ * cᵖ) * α * g,   # buoyancy flux magnitude [m² s⁻³]    
-              y_shutoff = 5/6 * Ly,       # shutoff location for buoyancy flux [m]
-              τ = 0.2 / ρ,                # surface kinematic wind stress [m² s⁻²]
-              μ = 1 / 30days,             # bottom drag damping time-scale [s⁻¹]
-              ΔB = 8 * α * g,             # surface vertical buoyancy gradient [s⁻²]
-              H = Lz,                     # domain depth [m]
-              h = 1000.0,                 # exponential decay scale of stable stratification [m]
-              y_sponge = 19/20 * Ly,      # southern boundary of sponge layer [m]
-              λt = 7days                  # relaxation time scale [s]
-              )
+parameters = (Ly = Ly,  
+              Lz = Lz,    
+              Qᵇ = 10 / (ρ * cᵖ) * α * g,          # buoyancy flux magnitude [m² s⁻³]    
+              y_shutoff = 5/6 * Ly,                # shutoff location for buoyancy flux [m]
+              τ = 0.2/ρ,                           # surface kinematic wind stress [m² s⁻²]
+              μ = 1 / 30days,                      # bottom drag damping time-scale [s⁻¹]
+              ΔB = 8 * α * g,                      # surface vertical buoyancy gradient [s⁻²]
+              H = Lz,                              # domain depth [m]
+              h = 1000.0,                          # exponential decay scale of stable stratification [m]
+              y_sponge = 19/20 * Ly,               # southern boundary of sponge layer [m]
+              λt = 7.0days                         # relaxation time scale [s]
+)
+
+# ynode(::Type{Center}, j, grid::RectilinearGrid) = @inbounds grid.yᵃᵃᶜ[j]
 
 @inline function buoyancy_flux(i, j, grid, clock, model_fields, p)
     y = ynode(Center(), j, grid)
@@ -272,13 +273,13 @@ end
 ##### Visualization
 #####
 
-grid = VerticallyStretchedRectilinearGrid(architecture = CPU(),
-                                          topology = (Periodic, Bounded, Bounded),
-                                          size = (grid.Nx, grid.Ny, grid.Nz),
-                                          halo = (3, 3, 3),
-                                          x = (0, grid.Lx),
-                                          y = (0, grid.Ly),
-                                          z_faces = linearly_spaced_faces)
+grid = RectilinearGrid(architecture = CPU(),
+                       topology = (Periodic, Bounded, Bounded),
+                       size = (grid.Nx, grid.Ny, grid.Nz),
+                       halo = (3, 3, 3),
+                       x = (0, grid.Lx),
+                       y = (0, grid.Ly),
+                       z_faces = linearly_spaced_faces)
 
 xu, yu, zu = nodes((Face, Center, Center), grid)
 xv, yv, zv = nodes((Center,Face,  Center), grid)

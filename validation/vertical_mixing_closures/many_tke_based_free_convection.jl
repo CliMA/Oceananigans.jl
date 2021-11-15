@@ -11,7 +11,7 @@ Nz = 64
 Ex, Ey = (1, 3)
 sz = ColumnEnsembleSize(Nz=Nz, ensemble=(Ex, Ey))
 
-ensemble_grid = RegularRectilinearGrid(size = sz,
+ensemble_grid = RectilinearGrid(size = sz,
                                        halo = ColumnEnsembleSize(Nz=1),
                                        z = (-128, 0),
                                        topology = (Flat, Flat, Bounded))

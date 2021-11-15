@@ -61,14 +61,14 @@ Examples
 ```julia
 julia> using Oceananigans
 
-julia> grid = RegularRectilinearGrid(size=(2, 2, 2), x=(0, 1), y=(0, 1), z=(0, 1));
+julia> grid = RectilinearGrid(size=(2, 2, 2), x=(0, 1), y=(0, 1), z=(0, 1));
 
 julia> c = CenterField(CPU(), grid);
 
 julia> C_xy = AveragedField(c, dims=(1, 2)) # average over x, y
 AveragedField over dims=(1, 2) located at (⋅, ⋅, Center) of Field located at (Center, Center, Center)
 ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 2)
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
 ├── dims: (1, 2)
 ├── operand: Field located at (Center, Center, Center)
 └── status: time=0.0
@@ -76,7 +76,7 @@ AveragedField over dims=(1, 2) located at (⋅, ⋅, Center) of Field located at
 julia> C_z = AveragedField(c, dims=3) # averaged over z
 AveragedField over dims=(3,) located at (Center, Center, ⋅) of Field located at (Center, Center, Center)
 ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (2, 2, 1)
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
 ├── dims: (3,)
 ├── operand: Field located at (Center, Center, Center)
 └── status: time=0.0

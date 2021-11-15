@@ -32,17 +32,17 @@ of `ConvectiveAdjustmentVerticalDiffusivity`. The default is `Float64`.
 Keyword arguments
 =================
 
-* `convective_κz` : Vertical tracer diffusivity in regions with negative (unstable) buoyancy gradients. Either
-                    a single number, function, array, field, or tuple of diffusivities for each tracer.
+* `convective_κz`: Vertical tracer diffusivity in regions with negative (unstable) buoyancy gradients. Either
+                   a single number, function, array, field, or tuple of diffusivities for each tracer.
 
-* `background_κz` : Vertical tracer diffusivity in regions with zero or positive (stable) buoyancy gradients.
+* `background_κz`: Vertical tracer diffusivity in regions with zero or positive (stable) buoyancy gradients.
 
-* `convective_νz` : Vertical viscosity in regions with negative (unstable) buoyancy gradients. Either
-                    a number, function, array, or field.
+* `convective_νz`: Vertical viscosity in regions with negative (unstable) buoyancy gradients. Either
+                  a number, function, array, or field.
 
-* `background_κz` : Vertical viscosity in regions with zero or positive (stable) buoyancy gradients.
+* `background_κz`: Vertical viscosity in regions with zero or positive (stable) buoyancy gradients.
 
-* `time_discretization` : Either `ExplicitTimeDiscretization` or `VerticallyImplicitTimeDiscretization`.
+* `time_discretization`: Either `ExplicitTimeDiscretization` or `VerticallyImplicitTimeDiscretization`.
 """
 function ConvectiveAdjustmentVerticalDiffusivity(FT = Float64;
                                                  convective_κz = zero(FT),
@@ -213,3 +213,11 @@ end
     ν = νᶜᶜᶜ(i, j, k, grid, clock, diffusivities.ν)
     return - ν * ∂zᵃᵃᶜ(i, j, k, grid, velocities.w)
 end
+
+#####
+##### Show
+#####
+Base.show(io::IO, closure::ConvectiveAdjustmentVerticalDiffusivity) =
+    print(io, "ConvectiveAdjustmentVerticalDiffusivity: " *
+              "(background_κz=$(closure.background_κz), convective_κz=$(closure.convective_κz), " *
+              "background_νz=$(closure.background_νz), convective_νz=$(closure.convective_νz)" * ")")

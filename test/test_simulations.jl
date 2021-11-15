@@ -13,10 +13,10 @@ include("utils_for_runtests.jl")
 archs = test_architectures()
 
 function wall_time_step_wizard_tests(arch)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid)
 
-    Δx = grid.Δx
+    Δx = grid.Δxᶜᵃᵃ
     CFL = 0.45
     u₀ = 7
     Δt = 2.5
@@ -44,16 +44,16 @@ function wall_time_step_wizard_tests(arch)
     Δt = new_time_step(Δt, wizard, model)
     @test Δt ≈ 3.99
 
-    grid_stretched = VerticallyStretchedRectilinearGrid(size = (1, 1, 1),
-                                                        x = (0, 1),
-                                                        y = (0, 1),
-                                                        z_faces = z -> z, 
-                                                        halo = (1, 1, 1),
-                                                        architecture=arch)
+    grid_stretched = RectilinearGrid(size = (1, 1, 1),
+                                     x = (0, 1),
+                                     y = (0, 1),
+                                     z = z -> z, 
+                                     halo = (1, 1, 1),
+                                     architecture=arch)
 
     model = NonhydrostaticModel(architecture=arch, grid=grid_stretched)
 
-    Δx = grid_stretched.Δx
+    Δx = grid_stretched.Δxᶜᵃᵃ
     CFL = 0.45
     u₀ = 7
     Δt = 2.5
@@ -67,7 +67,7 @@ function wall_time_step_wizard_tests(arch)
 end
 
 function run_basic_simulation_tests(arch)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid  = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=3, stop_iteration=1)
 
@@ -141,7 +141,7 @@ function run_basic_simulation_tests(arch)
 end
 
 function run_simulation_date_tests(arch, start_time, stop_time, Δt)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
     clock = Clock(time=start_time)
     model = NonhydrostaticModel(architecture=arch, grid=grid, clock=clock)

@@ -24,12 +24,12 @@ movie_interval = 0.2day
 stop_time = 80days
 Δt₀ = 5minutes
 
-grid = RegularRectilinearGrid(topology = (Periodic, Bounded, Bounded), 
-                              size = (Nx, Ny, Nz), 
-                              x = (0, Lx),
-                              y = (-Ly/2, Ly/2),
-                              z = (-Lz, 0),
-                              halo = (3, 3, 3))
+grid = RectilinearGrid(topology = (Periodic, Bounded, Bounded), 
+                       size = (Nx, Ny, Nz), 
+                       x = (0, Lx),
+                       y = (-Ly/2, Ly/2),
+                       z = (-Lz, 0),
+                       halo = (3, 3, 3))
 
 coriolis = BetaPlane(latitude=-45)
 

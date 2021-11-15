@@ -16,7 +16,7 @@ archs = test_architectures()
 #####
 
 function test_DateTime_netcdf_output(arch)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=DateTime(2021, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid, clock=clock)
 
@@ -47,7 +47,7 @@ function test_DateTime_netcdf_output(arch)
 end
 
 function test_TimeDate_netcdf_output(arch)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=TimeDate(2021, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid, clock=clock)
 
@@ -82,7 +82,7 @@ function test_thermal_bubble_netcdf_output(arch)
     Lx, Ly, Lz = 100, 100, 100
 
     topo = (Periodic, Periodic, Bounded)
-    grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure)
     simulation = Simulation(model, Δt=6, stop_iteration=10)
@@ -143,19 +143,19 @@ function test_thermal_bubble_netcdf_output(arch)
     @test length(ds3["yF"]) == Ny
     @test length(ds3["zF"]) == Nz+1  # z is Bounded
 
-    @test ds3["xC"][1] == grid.xC[1]
-    @test ds3["xF"][1] == grid.xF[1]
-    @test ds3["yC"][1] == grid.yC[1]
-    @test ds3["yF"][1] == grid.yF[1]
-    @test ds3["zC"][1] == grid.zC[1]
-    @test ds3["zF"][1] == grid.zF[1]
+    @test ds3["xC"][1] == grid.xᶜᵃᵃ[1]
+    @test ds3["xF"][1] == grid.xᶠᵃᵃ[1]
+    @test ds3["yC"][1] == grid.yᵃᶜᵃ[1]
+    @test ds3["yF"][1] == grid.yᵃᶠᵃ[1]
+    @test ds3["zC"][1] == grid.zᵃᵃᶜ[1]
+    @test ds3["zF"][1] == grid.zᵃᵃᶠ[1]
 
-    @test ds3["xC"][end] == grid.xC[Nx]
-    @test ds3["xF"][end] == grid.xF[Nx]
-    @test ds3["yC"][end] == grid.yC[Ny]
-    @test ds3["yF"][end] == grid.yF[Ny]
-    @test ds3["zC"][end] == grid.zC[Nz]
-    @test ds3["zF"][end] == grid.zF[Nz+1]  # z is Bounded
+    @test ds3["xC"][end] == grid.xᶜᵃᵃ[Nx]
+    @test ds3["xF"][end] == grid.xᶠᵃᵃ[Nx]
+    @test ds3["yC"][end] == grid.yᵃᶜᵃ[Ny]
+    @test ds3["yF"][end] == grid.yᵃᶠᵃ[Ny]
+    @test ds3["zC"][end] == grid.zᵃᵃᶜ[Nz]
+    @test ds3["zF"][end] == grid.zᵃᵃᶠ[Nz+1]  # z is Bounded
 
     @test eltype(ds3["u"]) == Float32
     @test eltype(ds3["v"]) == Float32
@@ -202,19 +202,19 @@ function test_thermal_bubble_netcdf_output(arch)
     @test length(ds2["zC"]) == length(k_slice)
     @test length(ds2["zF"]) == length(k_slice)
 
-    @test ds2["xC"][1] == grid.xC[i_slice[1]]
-    @test ds2["xF"][1] == grid.xF[i_slice[1]]
-    @test ds2["yC"][1] == grid.yC[j_slice[1]]
-    @test ds2["yF"][1] == grid.yF[j_slice[1]]
-    @test ds2["zC"][1] == grid.zC[k_slice[1]]
-    @test ds2["zF"][1] == grid.zF[k_slice[1]]
+    @test ds2["xC"][1] == grid.xᶜᵃᵃ[i_slice[1]]
+    @test ds2["xF"][1] == grid.xᶠᵃᵃ[i_slice[1]]
+    @test ds2["yC"][1] == grid.yᵃᶜᵃ[j_slice[1]]
+    @test ds2["yF"][1] == grid.yᵃᶠᵃ[j_slice[1]]
+    @test ds2["zC"][1] == grid.zᵃᵃᶜ[k_slice[1]]
+    @test ds2["zF"][1] == grid.zᵃᵃᶠ[k_slice[1]]
 
-    @test ds2["xC"][end] == grid.xC[i_slice[end]]
-    @test ds2["xF"][end] == grid.xF[i_slice[end]]
-    @test ds2["yC"][end] == grid.yC[j_slice[end]]
-    @test ds2["yF"][end] == grid.yF[j_slice[end]]
-    @test ds2["zC"][end] == grid.zC[k_slice[end]]
-    @test ds2["zF"][end] == grid.zF[k_slice[end]]
+    @test ds2["xC"][end] == grid.xᶜᵃᵃ[i_slice[end]]
+    @test ds2["xF"][end] == grid.xᶠᵃᵃ[i_slice[end]]
+    @test ds2["yC"][end] == grid.yᵃᶜᵃ[j_slice[end]]
+    @test ds2["yF"][end] == grid.yᵃᶠᵃ[j_slice[end]]
+    @test ds2["zC"][end] == grid.zᵃᵃᶜ[k_slice[end]]
+    @test ds2["zF"][end] == grid.zᵃᵃᶠ[k_slice[end]]
 
     @test eltype(ds2["u"]) == Float32
     @test eltype(ds2["v"]) == Float32
@@ -247,7 +247,7 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
     Lx, Ly, Lz = 100, 100, 100
 
     topo = (Periodic, Periodic, Bounded)
-    grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure)
     simulation = Simulation(model, Δt=6, stop_iteration=10)
@@ -295,19 +295,19 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
     @test length(ds["yF"]) == Ny+2Hy
     @test length(ds["zF"]) == Nz+2Hz+1  # z is Bounded
 
-    @test ds["xC"][1] == grid.xC[1-Hx]
-    @test ds["xF"][1] == grid.xF[1-Hx]
-    @test ds["yC"][1] == grid.yC[1-Hy]
-    @test ds["yF"][1] == grid.yF[1-Hy]
-    @test ds["zC"][1] == grid.zC[1-Hz]
-    @test ds["zF"][1] == grid.zF[1-Hz]
+    @test ds["xC"][1] == grid.xᶜᵃᵃ[1-Hx]
+    @test ds["xF"][1] == grid.xᶠᵃᵃ[1-Hx]
+    @test ds["yC"][1] == grid.yᵃᶜᵃ[1-Hy]
+    @test ds["yF"][1] == grid.yᵃᶠᵃ[1-Hy]
+    @test ds["zC"][1] == grid.zᵃᵃᶜ[1-Hz]
+    @test ds["zF"][1] == grid.zᵃᵃᶠ[1-Hz]
 
-    @test ds["xC"][end] == grid.xC[Nx+Hx]
-    @test ds["xF"][end] == grid.xF[Nx+Hx]
-    @test ds["yC"][end] == grid.yC[Ny+Hy]
-    @test ds["yF"][end] == grid.yF[Ny+Hy]
-    @test ds["zC"][end] == grid.zC[Nz+Hz]
-    @test ds["zF"][end] == grid.zF[Nz+Hz+1]  # z is Bounded
+    @test ds["xC"][end] == grid.xᶜᵃᵃ[Nx+Hx]
+    @test ds["xF"][end] == grid.xᶠᵃᵃ[Nx+Hx]
+    @test ds["yC"][end] == grid.yᵃᶜᵃ[Ny+Hy]
+    @test ds["yF"][end] == grid.yᵃᶠᵃ[Ny+Hy]
+    @test ds["zC"][end] == grid.zᵃᵃᶜ[Nz+Hz]
+    @test ds["zF"][end] == grid.zᵃᵃᶠ[Nz+Hz+1]  # z is Bounded
 
     @test eltype(ds["u"]) == Float32
     @test eltype(ds["v"]) == Float32
@@ -340,7 +340,7 @@ function test_netcdf_function_output(arch)
     Δt = 1.25
     iters = 3
 
-    grid = RegularRectilinearGrid(size=(N, N, N), extent=(L, 2L, 3L))
+    grid = RectilinearGrid(size=(N, N, N), extent=(L, 2L, 3L))
     model = NonhydrostaticModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
     grid = model.grid
@@ -398,19 +398,19 @@ function test_netcdf_function_output(arch)
     @test length(ds["yF"]) == N
     @test length(ds["zF"]) == N+1  # z is Bounded
 
-    @test ds["xC"][1] == grid.xC[1]
-    @test ds["xF"][1] == grid.xF[1]
-    @test ds["yC"][1] == grid.yC[1]
-    @test ds["yF"][1] == grid.yF[1]
-    @test ds["zC"][1] == grid.zC[1]
-    @test ds["zF"][1] == grid.zF[1]
+    @test ds["xC"][1] == grid.xᶜᵃᵃ[1]
+    @test ds["xF"][1] == grid.xᶠᵃᵃ[1]
+    @test ds["yC"][1] == grid.yᵃᶜᵃ[1]
+    @test ds["yF"][1] == grid.yᵃᶠᵃ[1]
+    @test ds["zC"][1] == grid.zᵃᵃᶜ[1]
+    @test ds["zF"][1] == grid.zᵃᵃᶠ[1]
 
-    @test ds["xC"][end] == grid.xC[N]
-    @test ds["yC"][end] == grid.yC[N]
-    @test ds["zC"][end] == grid.zC[N]
-    @test ds["xF"][end] == grid.xF[N]
-    @test ds["yF"][end] == grid.yF[N]
-    @test ds["zF"][end] == grid.zF[N+1]  # z is Bounded
+    @test ds["xC"][end] == grid.xᶜᵃᵃ[N]
+    @test ds["yC"][end] == grid.yᵃᶜᵃ[N]
+    @test ds["zC"][end] == grid.zᵃᵃᶜ[N]
+    @test ds["xF"][end] == grid.xᶠᵃᵃ[N]
+    @test ds["yF"][end] == grid.yᵃᶠᵃ[N]
+    @test ds["zF"][end] == grid.zᵃᵃᶠ[N+1]  # z is Bounded
 
     @test ds.attrib["location"] == "Bay of Fundy"
     @test ds.attrib["onions"] == 7
@@ -489,7 +489,7 @@ end
 function test_netcdf_time_averaging(arch)
     topo = (Periodic, Periodic, Periodic)
     domain = (x=(0, 1), y=(0, 1), z=(0, 1))
-    grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 4); domain...)
+    grid = RectilinearGrid(topology=topo, size=(4, 4, 4); domain...)
 
     λ1(x, y, z) = x + (1 - y)^2 + tanh(z)
     λ2(x, y, z) = x + (1 - y)^2 + tanh(4z)
@@ -635,7 +635,7 @@ function test_netcdf_time_averaging(arch)
 end
 
 function test_netcdf_output_alignment(arch)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid)
     simulation = Simulation(model, Δt=0.2, stop_time=40)
 
@@ -669,7 +669,7 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     Nx = Ny = 8
     Nz = 16
     zF = [k^2 for k in 0:Nz]
-    grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z_faces=zF)
+    grid = RectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z=zF)
 
     model = NonhydrostaticModel(architecture=arch, grid=grid)
 

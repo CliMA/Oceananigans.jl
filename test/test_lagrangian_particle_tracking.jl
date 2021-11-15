@@ -14,7 +14,7 @@ end
 function run_simple_particle_tracking_tests(arch, timestepper)
     topo = (Periodic, Periodic, Bounded)
     domain = (x=(-1, 1), y=(-1, 1), z=(-1, 1))
-    grid = RegularRectilinearGrid(topology=topo, size=(5, 5, 5); domain...)
+    grid = RectilinearGrid(topology=topo, size=(5, 5, 5), architecture=arch; domain...)
 
     P = 10
     xs = convert(array_type(arch), zeros(P))

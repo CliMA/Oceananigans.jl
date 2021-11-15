@@ -54,10 +54,10 @@ h(k) = (k - 1) / Nz
 ## Generating function
 z_faces(k) = Lz * (ζ₀(k) * Σ(k) - 1)
 
-grid = VerticallyStretchedRectilinearGrid(size = (32, 32, Nz), 
-                                          x = (0, 64),
-                                          y = (0, 64),
-                                          z_faces = z_faces)
+grid = RectilinearGrid(size = (32, 32, Nz), 
+                          x = (0, 64),
+                          y = (0, 64),
+                          z = z_faces)
 
 # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
 
