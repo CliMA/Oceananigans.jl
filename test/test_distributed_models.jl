@@ -14,7 +14,7 @@ mpi_ranks = MPI.Comm_size(comm)
 
 function test_triply_periodic_rank_connectivity_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -51,7 +51,7 @@ end
 
 function test_triply_periodic_rank_connectivity_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -94,7 +94,7 @@ end
 
 function test_triply_periodic_rank_connectivity_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -140,7 +140,7 @@ end
 
 function test_triply_periodic_rank_connectivity_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
@@ -189,7 +189,7 @@ end
 
 function test_triply_periodic_local_grid_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
     model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -197,19 +197,19 @@ function test_triply_periodic_local_grid_with_411_ranks()
     local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
-    @test local_grid.xF[1] == 0.25*local_rank
-    @test local_grid.xF[nx+1] == 0.25*(local_rank+1)
-    @test local_grid.yF[1] == 0
-    @test local_grid.yF[ny+1] == 2
-    @test local_grid.zF[1] == -3
-    @test local_grid.zF[nz+1] == 0
+    @test local_grid.xᶠᵃᵃ[1] == 0.25*local_rank
+    @test local_grid.xᶠᵃᵃ[nx+1] == 0.25*(local_rank+1)
+    @test local_grid.yᵃᶠᵃ[1] == 0
+    @test local_grid.yᵃᶠᵃ[ny+1] == 2
+    @test local_grid.zᵃᵃᶠ[1] == -3
+    @test local_grid.zᵃᵃᶠ[nz+1] == 0
 
     return nothing
 end
 
 function test_triply_periodic_local_grid_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
     model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -217,19 +217,19 @@ function test_triply_periodic_local_grid_with_141_ranks()
     local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
-    @test local_grid.xF[1] == 0
-    @test local_grid.xF[nx+1] == 1
-    @test local_grid.yF[1] == 0.5*local_rank
-    @test local_grid.yF[ny+1] == 0.5*(local_rank+1)
-    @test local_grid.zF[1] == -3
-    @test local_grid.zF[nz+1] == 0
+    @test local_grid.xᶠᵃᵃ[1] == 0
+    @test local_grid.xᶠᵃᵃ[nx+1] == 1
+    @test local_grid.yᵃᶠᵃ[1] == 0.5*local_rank
+    @test local_grid.yᵃᶠᵃ[ny+1] == 0.5*(local_rank+1)
+    @test local_grid.zᵃᵃᶠ[1] == -3
+    @test local_grid.zᵃᵃᶠ[nz+1] == 0
 
     return nothing
 end
 
 function test_triply_periodic_local_grid_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
     model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -237,19 +237,19 @@ function test_triply_periodic_local_grid_with_114_ranks()
     local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
-    @test local_grid.xF[1] == 0
-    @test local_grid.xF[nx+1] == 1
-    @test local_grid.yF[1] == 0
-    @test local_grid.yF[ny+1] == 2
-    @test local_grid.zF[1] == -3 + 0.75*local_rank
-    @test local_grid.zF[nz+1] == -3 + 0.75*(local_rank+1)
+    @test local_grid.xᶠᵃᵃ[1] == 0
+    @test local_grid.xᶠᵃᵃ[nx+1] == 1
+    @test local_grid.yᵃᶠᵃ[1] == 0
+    @test local_grid.yᵃᶠᵃ[ny+1] == 2
+    @test local_grid.zᵃᵃᶠ[1] == -3 + 0.75*local_rank
+    @test local_grid.zᵃᵃᶠ[nz+1] == -3 + 0.75*(local_rank+1)
 
     return nothing
 end
 
 function test_triply_periodic_local_grid_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
     model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -257,12 +257,12 @@ function test_triply_periodic_local_grid_with_221_ranks()
     local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
-    @test local_grid.xF[1] == 0.5*(i-1)
-    @test local_grid.xF[nx+1] == 0.5*i
-    @test local_grid.yF[1] == j-1
-    @test local_grid.yF[ny+1] == j
-    @test local_grid.zF[1] == -3
-    @test local_grid.zF[nz+1] == 0
+    @test local_grid.xᶠᵃᵃ[1] == 0.5*(i-1)
+    @test local_grid.xᶠᵃᵃ[nx+1] == 0.5*i
+    @test local_grid.yᵃᶠᵃ[1] == j-1
+    @test local_grid.yᵃᶠᵃ[ny+1] == j
+    @test local_grid.zᵃᵃᶠ[1] == -3
+    @test local_grid.zᵃᵃᶠ[nz+1] == 0
 
     return nothing
 end
@@ -273,7 +273,7 @@ end
 
 function test_triply_periodic_bc_injection_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
     model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -290,7 +290,7 @@ end
 
 function test_triply_periodic_bc_injection_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
     model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -307,7 +307,7 @@ end
 
 function test_triply_periodic_bc_injection_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
     model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -324,7 +324,7 @@ end
 
 function test_triply_periodic_bc_injection_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
     model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -345,7 +345,7 @@ end
 
 function test_triply_periodic_halo_communication_with_411_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(16, 6, 4), extent=(1, 2, 3), halo=halo)
+    full_grid = RectilinearGrid(topology=topo, size=(16, 6, 4), extent=(1, 2, 3), halo=halo)
     arch = MultiCPU(grid=full_grid, ranks=(4, 1, 1))
     model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -369,7 +369,7 @@ end
 
 function test_triply_periodic_halo_communication_with_141_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(4, 16, 4), extent=(1, 2, 3), halo=halo)
+    full_grid = RectilinearGrid(topology=topo, size=(4, 16, 4), extent=(1, 2, 3), halo=halo)
     arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
     model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -392,7 +392,7 @@ end
 
 function test_triply_periodic_halo_communication_with_114_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 16), extent=(1, 2, 3), halo=halo)
+    full_grid = RectilinearGrid(topology=topo, size=(4, 4, 16), extent=(1, 2, 3), halo=halo)
     arch = MultiCPU(grid=full_grid, ranks=(1, 1, 4))
     model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -415,7 +415,7 @@ end
 
 function test_triply_periodic_halo_communication_with_221_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
+    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
     arch = MultiCPU(grid=full_grid, ranks=(2, 2, 1))
     model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
@@ -480,7 +480,7 @@ end
 
     @testset "Time stepping NonhydrostaticModel" begin
         topo = (Periodic, Periodic, Periodic)
-        full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+        full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
         arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
         model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid)
 
@@ -496,7 +496,7 @@ end
 
     @testset "Time stepping ShallowWaterModel" begin
         topo = (Periodic, Periodic, Flat)
-        full_grid = RegularRectilinearGrid(topology=topo, size=(8, 8), extent=(1, 2), halo=(3, 3))
+        full_grid = RectilinearGrid(topology=topo, size=(8, 8), extent=(1, 2), halo=(3, 3))
         arch = MultiCPU(grid=full_grid, ranks=(1, 4, 1))
         model = DistributedShallowWaterModel(architecture=arch, advection=nothing, grid=full_grid, gravitational_acceleration=1)
 

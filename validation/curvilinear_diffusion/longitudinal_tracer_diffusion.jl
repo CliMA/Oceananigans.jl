@@ -12,11 +12,11 @@ using GLMakie
 Nx = 360
 
 # A spherical domain
-grid = RegularLatitudeLongitudeGrid(size = (Nx, 1, 1),
-                                    radius = 1,
-                                    latitude = (-60, 60),
-                                    longitude = (-180, 180),
-                                    z = (-1, 0))
+grid = LatitudeLongitudeGrid(size = (Nx, 1, 1),
+                             radius = 1,
+                             latitude = (-60, 60),
+                             longitude = (-180, 180),
+                             z = (-1, 0))
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = CPU(),

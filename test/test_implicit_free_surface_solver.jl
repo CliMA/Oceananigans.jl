@@ -77,14 +77,14 @@ end
 @testset "Implicit free surface solver tests" begin
     for arch in archs
 
-        rectilinear_grid = RegularRectilinearGrid(size = (128, 1, 5),
+        rectilinear_grid = RectilinearGrid(size = (128, 1, 5),
                                                   x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
                                                   topology = (Bounded, Periodic, Bounded))
 
-        lat_lon_grid = RegularLatitudeLongitudeGrid(size = (90, 90, 5),
-                                                    longitude = (-30, 30),
-                                                    latitude = (15, 75),
-                                                    z = (-4000, 0))
+        lat_lon_grid = LatitudeLongitudeGrid(size = (90, 90, 5),
+                                        longitude = (-30, 30),
+                                         latitude = (15, 75),
+                                                z = (-4000, 0))
 
         for grid in (rectilinear_grid, lat_lon_grid)
             @info "Testing PreconditionedConjugateGradient implicit free surface solver [$(typeof(arch)), $(typeof(grid).name.wrapper)]..."

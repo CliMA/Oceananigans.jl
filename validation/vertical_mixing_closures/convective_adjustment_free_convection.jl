@@ -4,7 +4,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 
-grid = RegularRectilinearGrid(size=32, z=(-64, 0), topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(size=32, z=(-64, 0), topology=(Flat, Flat, Bounded))
 
 closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1, background_κz=1e-5)
                                       

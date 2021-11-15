@@ -1,7 +1,7 @@
 using Oceananigans.Fields: KernelComputedField
 using KernelAbstractions: @kernel, @index
 
-grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1),
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1),
                             topology=(Periodic, Periodic, Bounded))
 
 @kernel function double!(doubled_field, grid, single_field)

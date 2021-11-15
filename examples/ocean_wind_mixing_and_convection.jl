@@ -36,10 +36,11 @@ using Oceananigans.Units: minute, minutes, hour
 # maintains relatively constant vertical spacing in the mixed layer, which
 # is desirable from a numerical standpoint:
 
-Nz = 24 # number of points in the vertical direction
-Lz = 32 # domain depth
+Nz = 24          # number of points in the vertical direction
+Lz = 32          # (m) domain depth
+
 refinement = 1.2 # controls spacing near surface (higher means finer spaced)
-stretching = 8   # controls rate of stretching at bottom 
+stretching = 12  # controls rate of stretching at bottom
 
 ## Normalized height ranging from 0 to 1
 h(k) = (k - 1) / Nz
@@ -53,10 +54,10 @@ h(k) = (k - 1) / Nz
 ## Generating function
 z_faces(k) = Lz * (ζ₀(k) * Σ(k) - 1)
 
-grid = VerticallyStretchedRectilinearGrid(size = (32, 32, Nz), 
-                                          x = (0, 64),
-                                          y = (0, 64),
-                                          z_faces = z_faces)
+grid = RectilinearGrid(size = (32, 32, Nz), 
+                          x = (0, 64),
+                          y = (0, 64),
+                          z = z_faces)
 
 # We plot vertical spacing versus depth to inspect the prescribed grid stretching:
 
@@ -72,7 +73,7 @@ plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4))
 
-# where $α$ and $β$ are the thermal expansion and haline contraction
+# where ``\alpha`` and ``\beta`` are the thermal expansion and haline contraction
 # coefficients for temperature and salinity.
 #
 # ## Boundary conditions
@@ -103,9 +104,9 @@ T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵀ),
 # to estimate the kinematic stress (that is, stress divided by density) exerted
 # by the wind on the ocean:
 
-u₁₀ = 10     # m s⁻¹, average wind velocity 10 meters above the ocean
-cᴰ = 2.5e-3  # dimensionless drag coefficient
-ρₐ = 1.225   # kg m⁻³, average density of air at sea-level
+u₁₀ = 10    # m s⁻¹, average wind velocity 10 meters above the ocean
+cᴰ = 2.5e-3 # dimensionless drag coefficient
+ρₐ = 1.225  # kg m⁻³, average density of air at sea-level
 
 Qᵘ = - ρₐ / ρₒ * cᴰ * u₁₀ * abs(u₁₀) # m² s⁻²
 

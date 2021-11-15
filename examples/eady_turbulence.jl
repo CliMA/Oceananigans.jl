@@ -127,7 +127,7 @@ using Oceananigans.Units: hours, day, days
 # horizontal extent of 1000 km, appropriate for mesoscale ocean dynamics
 # with characteristic scales of 50-200 km.
 
-grid = RegularRectilinearGrid(size=(48, 48, 16), x=(0, 1e6), y=(0, 1e6), z=(-4e3, 0))
+grid = RectilinearGrid(size=(48, 48, 16), x=(0, 1e6), y=(0, 1e6), z=(-4e3, 0))
 
 # ## Rotation
 #
@@ -178,7 +178,7 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 # `closure` to a tuple of two closures.
 
 κ₂z = 1e-2 # [m² s⁻¹] Laplacian vertical viscosity and diffusivity
-κ₄h = 1e-1 / day * grid.Δx^4 # [m⁴ s⁻¹] horizontal hyperviscosity and hyperdiffusivity
+κ₄h = 1e-1 / day * grid.Δxᶜᵃᵃ^4 # [m⁴ s⁻¹] horizontal hyperviscosity and hyperdiffusivity
 
 Laplacian_vertical_diffusivity = AnisotropicDiffusivity(νh=0, κh=0, νz=κ₂z, κz=κ₂z)
 biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
@@ -242,7 +242,7 @@ nothing # hide
 ## background velocity.
 Ū = basic_state_parameters.α * grid.Lz
 
-max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z, 1 / basic_state_parameters.N)
+max_Δt = min(grid.Δxᶜᵃᵃ / Ū, grid.Δxᶜᵃᵃ^4 / κ₄h, grid.Δxᶜᵃᵃ^2 / κ₂z, 1 / basic_state_parameters.N)
 
 simulation = Simulation(model, Δt = max_Δt, stop_time = 8days)
 

@@ -35,13 +35,13 @@ z_faces[Nz+1] = 0
 arch = GPU()
 FT = Float64
 
-grid = VerticallyStretchedRectilinearGrid(architecture = arch,
+grid = RectilinearGrid(architecture = arch,
                                           topology = (Periodic, Bounded, Bounded),
                                           size = (Nx, Ny, Nz),
                                           halo = (3, 3, 3),
                                           x = (0, Lx),
                                           y = (0, Ly),
-                                          z_faces = z_faces)
+                                          z = z_faces)
 
 
 
@@ -73,8 +73,7 @@ y_sponge = 19/20 * Ly,               # southern boundary of sponge layer [m]
 λt = 7.0days                         # relaxation time scale [s]
 )
 
-# ynode(::Type{Center}, j, grid::RegularRectilinearGrid) = @inbounds grid.yC[j]
-# ynode(::Type{Center}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᵃᶜ[j]
+# ynode(::Type{Center}, j, grid::RectilinearGrid) = @inbounds grid.yᵃᵃᶜ[j]
 
 
 @inline function buoyancy_flux(i, j, grid, clock, model_fields, p)
@@ -283,13 +282,13 @@ run!(simulation, pickup=false)
 # #####
 
 #=
- grid = VerticallyStretchedRectilinearGrid(architecture = arch,
+ grid = RectilinearGrid(architecture = arch,
                                            topology = (Periodic, Bounded, Bounded),
                                            size = (grid.Nx, grid.Ny, grid.Nz),
                                            halo = (3, 3, 3),
                                            x = (0, grid.Lx),
                                            y = (0, grid.Ly),
-                                           z_faces = z_faces)
+                                           z = z_faces)
 
  xζ, yζ, zζ = nodes((Face, Face, Center), grid)
  xc, yc, zc = nodes((Center, Center, Center), grid)
