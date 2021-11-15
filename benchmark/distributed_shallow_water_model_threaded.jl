@@ -19,7 +19,7 @@ T = Threads.nthreads()
 @info "Setting up threaded serial shallow water model with N=($Nx, $Ny) grid points and $T threads..."
 
 topo = (Periodic, Periodic, Flat)   # Use Flat
-grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny), extent=(1, 1), halo=(3, 3))
+grid = RectilinearGrid(topology=topo, size=(Nx, Ny), extent=(1, 1), halo=(3, 3))
 model = ShallowWaterModel(architecture=CPU(), grid=grid, gravitational_acceleration=1.0)
 set!(model, h=1.0)
 

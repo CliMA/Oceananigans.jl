@@ -34,7 +34,7 @@ using Oceananigans.Units: minute, minutes, hours
 # We create a grid with modest resolution. The grid extent is similar, but not
 # exactly the same as that in McWilliams et al. (1997).
 
-grid = RegularRectilinearGrid(size=(32, 32, 48), extent=(128, 128, 96))
+grid = RectilinearGrid(size=(32, 32, 48), extent=(128, 128, 96))
 
 # ### The Stokes Drift profile
 #
@@ -250,7 +250,7 @@ run!(simulation)
 # We look at the results by plotting vertical slices of ``u`` and ``w``, and a horizontal
 # slice of ``w`` to look for Langmuir cells.
 
-k = searchsortedfirst(grid.zF[:], -8)
+k = searchsortedfirst(grid.zᵃᵃᶠ[:], -8)
 nothing # hide
 
 # Making the coordinate arrays takes a few lines of code,

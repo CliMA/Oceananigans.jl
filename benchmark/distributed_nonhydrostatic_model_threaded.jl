@@ -20,7 +20,7 @@ T = Threads.nthreads()
 @info "Setting up threaded serial nonhydrostatic model with N=($Nx, $Ny, $Nz) grid points and $T threads..."
 
 topo = (Periodic, Periodic, Periodic)
-grid = RegularRectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+grid = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
 model = NonhydrostaticModel(architecture=CPU(), grid=grid)
 
 @info "Warming up serial nonhydrostatic model..."

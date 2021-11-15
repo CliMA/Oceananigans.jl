@@ -18,11 +18,11 @@ end
 ```
 
 ```jldoctest buoyancy
-julia> grid = RegularRectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
+julia> grid = RectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
 
 julia> model = NonhydrostaticModel(grid=grid, buoyancy=nothing, tracers=(:T, :S))
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
 ├── closure: Nothing
 ├── buoyancy: Nothing
@@ -36,7 +36,7 @@ also pass`tracers = ()` to the model constructor.
 ```jldoctest buoyancy
 julia> model = NonhydrostaticModel(grid=grid, buoyancy=nothing, tracers=())
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
@@ -51,7 +51,7 @@ constructor. BuoyancyModels `:b` must be included as a tracer, for example,
 ```jldoctest buoyancy
 julia> model = NonhydrostaticModel(grid=grid, buoyancy=BuoyancyTracer(), tracers=(:b))
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:b,)
 ├── closure: Nothing
 ├── buoyancy: BuoyancyTracer
@@ -66,7 +66,7 @@ To evolve temperature ``T`` and salinity ``S`` and diagnose the buoyancy, you ca
 ```jldoctest buoyancy
 julia> model = NonhydrostaticModel(grid=grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
 ├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
@@ -87,7 +87,7 @@ SeawaterBuoyancy{Float64}: g = 1.3
 
 julia> model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=(:T, :S))
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
 ├── closure: Nothing
 ├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}

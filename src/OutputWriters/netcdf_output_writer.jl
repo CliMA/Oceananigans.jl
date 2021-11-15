@@ -37,12 +37,12 @@ function default_dimensions(output, grid, field_slicer)
     TX, TY, TZ = topology(grid)
 
     return Dict(
-        "xC" => all_x_nodes(Center, grid).parent[parent_slice_indices(Center, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
-        "xF" => all_x_nodes(Face, grid).parent[parent_slice_indices(Face, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
-        "yC" => all_y_nodes(Center, grid).parent[parent_slice_indices(Center, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
-        "yF" => all_y_nodes(Face, grid).parent[parent_slice_indices(Face, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
-        "zC" => all_z_nodes(Center, grid).parent[parent_slice_indices(Center, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)],
-        "zF" => all_z_nodes(Face, grid).parent[parent_slice_indices(Face, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)])
+        "xC" => parent(all_x_nodes(Center, grid))[parent_slice_indices(Center, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
+        "xF" => parent(all_x_nodes(Face, grid))[parent_slice_indices(Face, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
+        "yC" => parent(all_y_nodes(Center, grid))[parent_slice_indices(Center, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
+        "yF" => parent(all_y_nodes(Face, grid))[parent_slice_indices(Face, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
+        "zC" => parent(all_z_nodes(Center, grid))[parent_slice_indices(Center, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)],
+        "zF" => parent(all_z_nodes(Face, grid))[parent_slice_indices(Face, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)])
 end
 
 default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, field_slicer) =
@@ -181,7 +181,7 @@ to separate NetCDF files:
 ```jldoctest netcdf1
 using Oceananigans, Oceananigans.OutputWriters
 
-grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
 model = NonhydrostaticModel(grid=grid, tracers=(:T, :S));
 
@@ -237,7 +237,7 @@ provided that their `dimensions` are provided:
 ```jldoctest
 using Oceananigans, Oceananigans.OutputWriters
 
-grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
 
 model = NonhydrostaticModel(grid=grid, tracers=(:T, :S));
 

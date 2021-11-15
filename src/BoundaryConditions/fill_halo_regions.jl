@@ -28,8 +28,6 @@ fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 "Fill halo regions in x, y, and z for a given field's data."
 function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwargs...)
 
-    events = Event(device(arch))
-
     fill_halos! = [
         fill_west_and_east_halo!,
         fill_south_and_north_halo!,
@@ -52,24 +50,28 @@ function fill_halo_regions!(c::OffsetArray, field_bcs, arch, grid, args...; kwar
     fill_halos! = fill_halos![perm]
     field_bcs_array_left  = field_bcs_array_left[perm]
     field_bcs_array_right = field_bcs_array_right[perm]
-    
+   
     for task = 1:3
-    
-       barrier    = events
-       fill_halo! = fill_halos![task]
-       bc_left    = field_bcs_array_left[task]
-       bc_right   = field_bcs_array_right[task]
-       events     = fill_halo!(c, bc_left, bc_right, arch, barrier, grid, args...; kwargs...)
+
+        barrier = device_event(arch)
+
+        fill_halo!  = fill_halos![task]
+        bc_left     = field_bcs_array_left[task]
+        bc_right    = field_bcs_array_right[task]
+
+        events      = fill_halo!(c, bc_left, bc_right, arch, barrier, grid, args...; kwargs...)
        
-       wait(device(arch), events)
+        wait(device(arch), events)
+        
     end
+
+
 
     return nothing
 end
 
-# Hacky way to get rid of "Nothing" events
-@inline validate_event(event)        = NoneEvent()
-@inline validate_event(event::Event) = event
+@inline validate_event(::Nothing) = NoneEvent()
+@inline validate_event(event) = event
 
 # Fallbacks split into two calls
 function fill_west_and_east_halo!(c, west_bc, east_bc, args...; kwargs...)
@@ -90,19 +92,8 @@ function fill_bottom_and_top_halo!(c, bottom_bc, top_bc, args...; kwargs...)
     bottom_event = validate_event(fill_bottom_halo!(c, bottom_bc, args...; kwargs...))
        top_event = validate_event(fill_top_halo!(c, top_bc, args...; kwargs...))
      multi_event = MultiEvent((bottom_event, top_event))
-    return multi_event
+     return multi_event
 end
-
-#####
-##### Halo-filling for nothing boundary conditions
-#####
-
-  fill_west_halo!(c, ::Nothing, args...; kwargs...) = NoneEvent()
-  fill_east_halo!(c, ::Nothing, args...; kwargs...) = NoneEvent()
- fill_south_halo!(c, ::Nothing, args...; kwargs...) = NoneEvent()
- fill_north_halo!(c, ::Nothing, args...; kwargs...) = NoneEvent()
-   fill_top_halo!(c, ::Nothing, args...; kwargs...) = NoneEvent()
-fill_bottom_halo!(c, ::Nothing, args...; kwargs...) = NoneEvent()
 
 #####
 ##### Halo filling order
