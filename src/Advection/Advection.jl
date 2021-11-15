@@ -21,8 +21,7 @@ export
     UpwindBiasedThirdOrder,
     UpwindBiasedFifthOrder,
     CenteredFourthOrder,
-    WENO5,
-    WENO5S
+    WENO5
 
 using Oceananigans.Grids
 using Oceananigans.Operators
@@ -46,7 +45,6 @@ include("centered_second_order.jl")
 include("upwind_biased_third_order.jl")
 include("centered_fourth_order.jl")
 include("upwind_biased_fifth_order.jl")
-include("weno_fifth_order.jl")
 include("weno_fifth_order_stretched.jl")
 
 include("momentum_advection_operators.jl")
