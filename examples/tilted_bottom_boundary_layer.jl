@@ -17,7 +17,7 @@
 
 # ## Load `Oceananigans.jl` and define problem constants
 #
-# We set a named tuple that defines the necessary simulation parametrs:
+# We set a named tuple that defines the necessary simulation parameters:
 
 using Oceananigans
 using Oceananigans.Units
@@ -100,12 +100,6 @@ buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=ĝ)
 b∞(x, y, z, t, p) = p.N²∞ * (x * sin(p.θ_rad) + z * cos(p.θ_rad))
 B_field = BackgroundField(b∞, parameters=(; params.N²∞, params.θ_rad))
 
-## As a boundary condition
-
-#db∞dz = params.N²∞ * ĝ[3]
-#grad_bc_b = GradientBoundaryCondition(-db∞dz) # db/dz + db∞/dz = 0 @ z=0
-#b_bcs = FieldBoundaryConditions(bottom = grad_bc_b)
-
 
 # ## Bottom drag
 #
@@ -130,12 +124,12 @@ V_bg(x, y, z, t, p) = p.V∞
 V_field = BackgroundField(V_bg, parameters=(; V∞=params.V∞))
 #-----
 
-bcs = 
-#-----
 
+# ## Sponge layers
+#
+# In order to damp internal wave propagation, we use a sponge layer in the upper part of the domain.
+# One such sponge layer can be defined as
 
-#++++ Sponge layer definition
-@info "Defining sponge layer"
 @inline heaviside(X) = ifelse(X < 0, zero(X), one(X))
 
 const sp_frac = params.sponge_frac
@@ -151,42 +145,29 @@ forcing = (u=full_sponge_0, v=full_sponge_0, w=full_sponge_0,)
 #----
 
 
-#++++ Turbulence closure
-closure = IsotropicDiffusivity(ν=params.ν, κ=params.ν)
-#----
 
+# ## Create the `NonhydrostaticModel`
+#
+# We create model with a `WENO5` advection scheme and a `RungeKutta3` timestepper. For simplicity,
+# we use a constant-diffusivity turbulence closure:
 
-#++++ Model and ICs
-@info "Creating model"
 model = NonhydrostaticModel(grid = grid, timestepper = :RungeKutta3,
                             architecture = arch,
                             advection = WENO5(),
                             buoyancy = buoyancy,
                             coriolis = ConstantCartesianCoriolis(f=params.f₀, rotation_axis=ĝ),
                             tracers = :b,
-                            closure = closure,
+                            closure = IsotropicDiffusivity(ν=params.ν, κ=params.ν),
                             boundary_conditions = (u=u_bcs, v=v_bcs,),
                             background_fields = (b=B_field, v=V_field,),
                             forcing=forcing,
                            )
-@info "" model
-if has_cuda() run(`nvidia-smi`) end
-
-noise(z, kick) = kick * randn() * exp(-z / (params.Lz/5))
-u_ic(x, y, z) = noise(z, 1e-3)
-set!(model, b=0, u=u_ic, w=u_ic)
-
-ū = sum(model.velocities.u.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
-v̄ = sum(model.velocities.v.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
-w̄ = sum(model.velocities.w.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
-
-model.velocities.u.data.parent .-= ū
-model.velocities.v.data.parent .-= v̄
-model.velocities.w.data.parent .-= w̄
-#----
 
 
-#++++ Create simulation
+# ## Create a simulation
+#
+#
+
 using Oceananigans.Grids: min_Δz
 if ndims==3
     cfl=0.85
@@ -210,7 +191,9 @@ simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(1
 #----
 
 
-#++++ Outputs
+# ## Add outputs to the simulation:
+#
+
 u, v, w = model.velocities
 b_tot = ComputedField(model.tracers.b + model.background_fields.tracers.b)
 v_tot = ComputedField(v + model.background_fields.velocities.v)
