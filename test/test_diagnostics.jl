@@ -2,7 +2,7 @@ using Oceananigans.Fields: FieldSlicer
 using Oceananigans.Diagnostics
 using Oceananigans.Diagnostics: AbstractDiagnostic
 
-struct TestDiagnostic end
+struct TestDiagnostic <: AbstractDiagnostic end
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 
