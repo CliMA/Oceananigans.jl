@@ -26,7 +26,7 @@ But tracers can be added with the `tracer` keyword. For example to add temperatu
 
 
 ```jldoctest tracers
-julia> grid = RegularRectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
+julia> grid = RectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
 
 julia> model = NonhydrostaticModel(grid=grid, tracers=(:T, :S))
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
