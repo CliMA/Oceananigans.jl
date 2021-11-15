@@ -24,6 +24,8 @@ end
 mask_immersed_reduced_field_xy!(field::AbstractReducedField, value=zero(eltype(field.grid)); k) =
     mask_immersed_reduced_field_xy!(field, field.grid, location(field), value; k)
 
+mask_immersed_reduced_field_xy!(::Nothing, args...; kwargs...) = NoneEvent()
+
 mask_immersed_reduced_field_xy!(field, grid, loc, value; k) = NoneEvent()
 
 function mask_immersed_reduced_field_xy!(field::AbstractReducedField, grid::ImmersedBoundaryGrid, loc, value; k)
