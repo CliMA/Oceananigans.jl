@@ -142,7 +142,7 @@ for arch in archs
     # Some tests can reuse this same grid and model.
     topo =(Periodic, Periodic, Bounded)
     grid = RectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    model = NonhydrostaticModel(architecture=arch, grid=grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     @testset "JLD2 output writer [$(typeof(arch))]" begin
         @info "  Testing JLD2 output writer [$(typeof(arch))]..."
