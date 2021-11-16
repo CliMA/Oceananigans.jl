@@ -1,4 +1,5 @@
 using Adapt
+using Statistics
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
@@ -84,7 +85,7 @@ otherwise `data` is allocated.
 If `boundary_conditions` are not provided, default boundary conditions are constructed
 using the reduced location.
 """
-function ReducedField(Xr, Yr, Zr, arch, grid; dims, data=nothing,
+function ReducedField(FT::DataType, Xr, Yr, Zr, arch, grid::AbstractGrid; dims, data=nothing,
                       boundary_conditions=nothing)
 
     dims = validate_reduced_dims(dims)
@@ -93,7 +94,7 @@ function ReducedField(Xr, Yr, Zr, arch, grid; dims, data=nothing,
     X, Y, Z = reduced_location((Xr, Yr, Zr); dims=dims)
 
     if isnothing(data)
-        data = new_data(arch, grid, (X, Y, Z))
+        data = new_data(FT, arch, grid, (X, Y, Z))
     end
 
     if isnothing(boundary_conditions)
@@ -103,7 +104,9 @@ function ReducedField(Xr, Yr, Zr, arch, grid; dims, data=nothing,
     return ReducedField{X, Y, Z}(data, arch, grid, dims, boundary_conditions)
 end
 
-ReducedField(Lr, arch, grid; dims, kwargs...) = ReducedField(Lr..., arch, grid; dims=dims, kwargs...)
+ReducedField(Xr, Yr, Zr, arch, grid::AbstractGrid; dims, kw...) = ReducedField(eltype(grid), Xr, Yr, Zr, arch, grid; dims, kw...)
+ReducedField(Lr::Tuple, arch, grid::AbstractGrid; dims, kw...) = ReducedField(Lr..., arch, grid; dims, kw...)
+ReducedField(FT::DataType, Lr::Tuple, arch, grid::AbstractGrid; dims, kw...) = ReducedField(FT, Lr..., arch, grid; dims, kw...)
 
 # Canonical `similar` for AbstractReducedField
 Base.similar(r::AbstractReducedField{X, Y, Z, Arch}) where {X, Y, Z, Arch} =
@@ -117,3 +120,85 @@ reduced_location(loc; dims) = Tuple(i ∈ dims ? Nothing : loc[i] for i in 1:3)
 
 Adapt.adapt_structure(to, reduced_field::ReducedField{X, Y, Z}) where {X, Y, Z} =
     ReducedField{X, Y, Z}(adapt(to, reduced_field.data), nothing, adapt(to, reduced_field.grid), reduced_field.dims, nothing)
+
+#####
+##### Field reductions
+#####
+
+# Risky to use these without tests. Docs would also be nice.
+Statistics.norm(a::AbstractDataField) = sqrt(mapreduce(x -> x * x, +, interior(a)))
+Statistics.dot(a::AbstractDataField, b::AbstractDataField) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
+
+# The more general case, for AbstractOperations
+function Statistics.norm(a::AbstractField)
+    arch = architecture(a)
+    grid = a.grid
+
+    r = zeros(arch, grid, 1)
+    
+    Base.mapreducedim!(x -> x * x, +, r, a)
+
+    return CUDA.@allowscalar sqrt(r[1])
+end
+
+# TODO: In-place allocations with function mappings need to be fixed in Julia Base...
+const SumReduction     = typeof(Base.sum!)
+const ProdReduction    = typeof(Base.prod!)
+const MaximumReduction = typeof(Base.maximum!)
+const MinimumReduction = typeof(Base.minimum!)
+const AllReduction     = typeof(Base.all!)
+const AnyReduction     = typeof(Base.any!)
+
+initialize_reduced_field!(::SumReduction,  f, r::AbstractReducedField, c) = Base.initarray!(interior(r), Base.add_sum, true, interior(c))
+initialize_reduced_field!(::ProdReduction, f, r::AbstractReducedField, c) = Base.initarray!(interior(r), Base.mul_prod, true, interior(c))
+initialize_reduced_field!(::AllReduction,  f, r::AbstractReducedField, c) = Base.initarray!(interior(r), &, true, interior(c))
+initialize_reduced_field!(::AnyReduction,  f, r::AbstractReducedField, c) = Base.initarray!(interior(r), |, true, interior(c))
+
+initialize_reduced_field!(::MaximumReduction, f, r::AbstractReducedField, c) = Base.mapfirst!(f, interior(r), c)
+initialize_reduced_field!(::MinimumReduction, f, r::AbstractReducedField, c) = Base.mapfirst!(f, interior(r), c)
+
+filltype(f, grid) = eltype(grid)
+filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
+
+# Allocating and in-place reductions
+for reduction in (:sum, :maximum, :minimum, :all, :any)
+
+    reduction! = Symbol(reduction, '!')
+
+    @eval begin
+
+        # In-place
+        Base.$(reduction!)(f::Function, r::AbstractReducedField, a::AbstractArray; kwargs...) =
+            Base.$(reduction!)(f, interior(r), a; kwargs...)
+
+        Base.$(reduction!)(r::AbstractReducedField, a::AbstractArray; kwargs...) =
+            Base.$(reduction!)(identity, interior(r), a; kwargs...)
+
+        # Allocating
+        function Base.$(reduction)(f::Function, c::AbstractField; dims=:)
+            if dims === (:)
+                r = zeros(architecture(c), c.grid, 1, 1, 1)
+                Base.$(reduction!)(f, r, c)
+                return CUDA.@allowscalar r[1, 1, 1]
+            else
+                FT = filltype(Base.$(reduction!), c.grid)
+                r = ReducedField(FT, location(c), architecture(c), c.grid; dims)
+                initialize_reduced_field!(Base.$(reduction!), f, r, c)
+                Base.$(reduction!)(f, r, c, init=false)
+                return r
+            end
+        end
+
+        Base.$(reduction)(c::AbstractField; dims=:) = Base.$(reduction)(identity, c; dims)
+    end
+end
+
+Statistics._mean(f, c::AbstractField, ::Colon) = sum(f, c) / length(c)
+
+function Statistics._mean(f, c::AbstractField, dims)
+    r = sum(f, c; dims)
+    n = mapreduce(i -> size(c, i), *, unique(dims); init=1)
+    parent(r) ./= n
+    return r
+end
+

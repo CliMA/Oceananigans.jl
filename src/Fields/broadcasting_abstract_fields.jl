@@ -90,5 +90,5 @@ broadcasted_to_abstract_operation(loc, grid, a) = a
 
     wait(device(arch), event)
 
-    return nothing
+    return dest
 end

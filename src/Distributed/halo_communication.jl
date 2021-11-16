@@ -1,3 +1,4 @@
+using Oceananigans.Fields: AbstractField
 using KernelAbstractions: @kernel, @index, Event, MultiEvent
 using OffsetArrays: OffsetArray
 
