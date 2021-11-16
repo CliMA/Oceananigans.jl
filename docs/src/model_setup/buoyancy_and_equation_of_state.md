@@ -31,7 +31,7 @@ NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ```
 
 
-Otherwise, if you want to be explicit, you can simply pass `buoyancy = nothing` to the model constructor.
+Alternatively, if you want to be explicit, you can simply pass `buoyancy = nothing` to the model constructor.
 
 ```jldoctest buoyancy
 julia> grid = RectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
