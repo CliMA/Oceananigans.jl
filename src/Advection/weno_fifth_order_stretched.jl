@@ -49,28 +49,13 @@ function WENO5(FT = Float64; grid = nothing)
     else
         FT          = eltype(grid)
         arch        = grid.architecture
-        helper_grid = with_halo((4,4,4), grid)
-        if grid isa XRegRectilinearGrid
-            coeff_xᶠᵃᵃ = nothing
-            coeff_xᶜᵃᵃ = nothing
-        else
-            coeff_xᶠᵃᵃ = calc_interpolating_coefficients(FT, helper_grid.xᶠᵃᵃ, arch, grid.Nx) 
-            coeff_xᶜᵃᵃ = calc_interpolating_coefficients(FT, helper_grid.xᶜᵃᵃ, arch, grid.Nx)
-        end
-        if grid isa YRegRectilinearGrid
-            coeff_yᵃᶠᵃ = nothing
-            coeff_yᵃᶜᵃ = nothing
-        else
-            coeff_yᵃᶠᵃ = calc_interpolating_coefficients(FT, helper_grid.yᵃᶠᵃ, arch, grid.Ny)
-            coeff_yᵃᶜᵃ = calc_interpolating_coefficients(FT, helper_grid.yᵃᶜᵃ, arch, grid.Ny)
-        end
-        if grid isa ZRegRectilinearGrid
-            coeff_zᵃᵃᶠ = nothing
-            coeff_zᵃᵃᶜ = nothing
-        else
-            coeff_zᵃᵃᶠ = calc_interpolating_coefficients(FT, helper_grid.zᵃᵃᶠ, arch, grid.Nz)
-            coeff_zᵃᵃᶜ = calc_interpolating_coefficients(FT, helper_grid.zᵃᵃᶜ, arch, grid.Nz)
-        end
+        helper_grid = with_halo((4, 4, 4), grid)
+        coeff_xᶠᵃᵃ = calc_interpolating_coefficients(FT, helper_grid.xᶠᵃᵃ, arch, grid.Nx) 
+        coeff_xᶜᵃᵃ = calc_interpolating_coefficients(FT, helper_grid.xᶜᵃᵃ, arch, grid.Nx)
+        coeff_yᵃᶠᵃ = calc_interpolating_coefficients(FT, helper_grid.yᵃᶠᵃ, arch, grid.Ny)
+        coeff_yᵃᶜᵃ = calc_interpolating_coefficients(FT, helper_grid.yᵃᶜᵃ, arch, grid.Ny)
+        coeff_zᵃᵃᶠ = calc_interpolating_coefficients(FT, helper_grid.zᵃᵃᶠ, arch, grid.Nz)
+        coeff_zᵃᵃᶜ = calc_interpolating_coefficients(FT, helper_grid.zᵃᵃᶜ, arch, grid.Nz)
     end
     XT = typeof(coeff_xᶠᵃᵃ)
     YT = typeof(coeff_yᵃᶠᵃ)
@@ -149,9 +134,9 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ} 
 ##₂### Jiang & Shu (1996) WENO smoothness indicators. See also Equation 2.63 in Shu (1998)
 #####
 
-@inline coeff_β₀(FT) = (FT(13/12) , FT(0.25))
-@inline coeff_β₁(FT) = (FT(13/12) , FT(0.25))
-@inline coeff_β₂(FT) = (FT(13/12) , FT(0.25))
+@inline coeff_β₀(FT) = (FT(13/12) , FT(1/4))
+@inline coeff_β₁(FT) = (FT(13/12) , FT(1/4))
+@inline coeff_β₂(FT) = (FT(13/12) , FT(1/4))
 
 @inline left_biased_β₀(FT, ψ, args...) = @inbounds coeff_β₀(FT)[1] * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + coeff_β₀(FT)[2] * (3ψ[1] - 4ψ[2] +  ψ[3])^two_32
 @inline left_biased_β₁(FT, ψ, args...) = @inbounds coeff_β₁(FT)[1] * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + coeff_β₁(FT)[2] * ( ψ[1]         -  ψ[3])^two_32
@@ -277,34 +262,28 @@ end
 @inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Face})   = scheme.coeff_zᵃᵃᶠ[r+2][i] 
 @inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Center}) = scheme.coeff_zᵃᵃᶜ[r+2][i] 
 
-# @inline calc_interpolating_coefficients(FT, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N) = nothing
-# @inline calc_interpolating_coefficients(FT, coord::AbstractRange, arch, N) = nothing
+@inline calc_interpolating_coefficients(FT, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N) = nothing
+@inline calc_interpolating_coefficients(FT, coord::AbstractRange, arch, N) = nothing
 
 function calc_interpolating_coefficients(FT, coord, arch, N) 
 
     cpu_coord = Array(parent(coord))
     cpu_coord = OffsetArray(cpu_coord, coord.offsets[1])
 
-    c₋₁ = NTuple{3, FT}[]
-    c₀  = NTuple{3, FT}[]
-    c₁  = NTuple{3, FT}[]
-    c₂  = NTuple{3, FT}[]
+    coefficients = ()
 
-    @inbounds begin
-        for i = 0:N+1
-            push!(c₋₁, interpolation_weights(-1, cpu_coord, i))
-            push!(c₀,  interpolation_weights( 0, cpu_coord, i))
-            push!(c₁,  interpolation_weights( 1, cpu_coord, i))
-            push!(c₂,  interpolation_weights( 2, cpu_coord, i))
+    for stencil_index = -1:2
+        stencil = NTuple{3, FT}[]
+        @inbounds begin
+            for i = 0:N+1
+                push!(stencil, interpolation_weights(stencil_index, cpu_coord, i))
+            end
         end
+        stencil = OffsetArray(arch_array(arch, stencil), -1)
+        coefficients = (coefficients..., stencil)
     end
 
-    c₋₁ = OffsetArray(arch_array(arch, c₋₁), -1)
-    c₀  = OffsetArray(arch_array(arch, c₀ ), -1)
-    c₁  = OffsetArray(arch_array(arch, c₁ ), -1)
-    c₂  = OffsetArray(arch_array(arch, c₂ ), -1)
-
-    return (c₋₁, c₀, c₁, c₂)
+    return coefficients
 end
 
 function interpolation_weights(r, coord, i)
