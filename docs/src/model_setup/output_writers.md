@@ -53,38 +53,38 @@ Saving the u velocity field and temperature fields, the full 3D fields and surfa
 to separate NetCDF files:
 
 ```jldoctest netcdf1
-using Oceananigans, Oceananigans.OutputWriters
+using Oceananigans
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
-model = NonhydrostaticModel(grid=grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S));
+model = NonhydrostaticModel(grid=grid,);
 
 simulation = Simulation(model, Δt=12, stop_time=3600);
 
-fields = Dict("u" => model.velocities.u, "T" => model.tracers.T);
+fields = Dict("u" => model.velocities.u, "v" => model.velocities.v);
 
 simulation.output_writers[:field_writer] =
-    NetCDFOutputWriter(model, fields, filepath="more_fields.nc", schedule=TimeInterval(60))
+    NetCDFOutputWriter(model, fields, filepath="fields.nc", schedule=TimeInterval(60))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: more_fields.nc
+├── filepath: fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: ["T", "u"]
+├── 2 outputs: ["v", "u"]
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 └── array type: Array{Float32}
 ```
 
 ```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
-    NetCDFOutputWriter(model, fields, filepath="another_surface_xy_slice.nc",
+    NetCDFOutputWriter(model, fields, filepath="surface_xy_slice.nc",
                        schedule=TimeInterval(60), field_slicer=FieldSlicer(k=grid.Nz))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: another_surface_xy_slice.nc
+├── filepath: surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: ["T", "u"]
+├── 2 outputs: ["v", "u"]
 ├── field slicer: FieldSlicer(:, :, 16, with_halos=false)
 └── array type: Array{Float32}
 ```
@@ -92,15 +92,15 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ```jldoctest netcdf1
 simulation.output_writers[:averaged_profile_writer] =
     NetCDFOutputWriter(model, fields,
-                       filepath = "another_averaged_z_profile.nc",
+                       filepath = "averaged_z_profile.nc",
                        schedule = AveragedTimeInterval(60, window=20),
                        field_slicer = FieldSlicer(i=1, j=1))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: another_averaged_z_profile.nc
+├── filepath: averaged_z_profile.nc
 ├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
-├── 2 outputs: ["T", "u"] averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
+├── 2 outputs: ["v", "u"] averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 ├── field slicer: FieldSlicer(1, 1, :, with_halos=false)
 └── array type: Array{Float32}
 ```
@@ -109,7 +109,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 provided that their `dimensions` are provided:
 
 ```jldoctest
-using Oceananigans, Oceananigans.OutputWriters
+using Oceananigans
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
 
@@ -164,14 +164,13 @@ of the function will be saved to the JLD2 file.
 
 ### Examples
 
-Write out 3D fields for w and T and a horizontal average:
+Write out 3D fields for u, v, w, and a tracer c, along with a horizontal average:
 
 ```jldoctest jld2_output_writer
-using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Fields
+using Oceananigans
 using Oceananigans.Utils: hour, minute
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
-
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=(:c,))
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)
@@ -181,17 +180,17 @@ function init_save_some_metadata!(file, model)
     return nothing
 end
 
-T_avg =  AveragedField(model.tracers.T, dims=(1, 2))
+c_avg =  AveragedField(model.tracers.c, dims=(1, 2))
 
 # Note that model.velocities is NamedTuple
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          prefix = "some_more_data",
+                                                          prefix = "some_data",
                                                           schedule = TimeInterval(20minute),
                                                           init = init_save_some_metadata!)
 
 # output
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
-├── filepath: ./some_more_data.jld2
+├── filepath: ./some_data.jld2
 ├── 3 outputs: (:u, :v, :w)
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 ├── array type: Array{Float32}
@@ -199,22 +198,24 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 └── max filesize: Inf YiB
 ```
 
-and a time- and horizontal-average of temperature `T` every 20 minutes of simulation time
+and a time- and horizontal-average of tracer `c` every 20 minutes of simulation time
 to a file called `some_averaged_data.jld2`
 
 ```jldoctest jld2_output_writer
-simulation.output_writers[:avg_T] = JLD2OutputWriter(model, (T=T_avg,),
-                                                     prefix = "some_more_averaged_data",
+simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (c=c_avg,),
+                                                     prefix = "some_averaged_data",
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
+
 # output
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
-├── filepath: ./some_more_averaged_data.jld2
-├── 1 outputs: (:T,) averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
+├── filepath: ./some_averaged_data.jld2
+├── 1 outputs: (:c,) averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 ├── array type: Array{Float32}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
 └── max filesize: Inf YiB
 ```
+
 
 See [`JLD2OutputWriter`](@ref) for more information.
 
