@@ -2,14 +2,15 @@
 
 The buoyancy option selects how buoyancy is treated. There are currently three options:
 
-1. No buoyancy (and no gravity).
+1. No buoyancy (and no gravity). This is the default setting.
 2. Evolve buoyancy as a tracer.
 3. _Seawater buoyancy_: evolve temperature ``T`` and salinity ``S`` as tracers with a value for the gravitational
-   acceleration ``g`` and an equation of state of your choosing. This is the default setting.
+   acceleration ``g`` and an equation of state of your choosing.
 
 ## No buoyancy
 
-To turn off buoyancy (and gravity) simply pass `buoyancy = nothing` to the model constructor.
+To turn off buoyancy (and gravity) you can simply create a model without explocitly passing the
+`buoyancy` flag:
 
 ```@meta
 DocTestSetup = quote
@@ -20,21 +21,7 @@ end
 ```jldoctest buoyancy
 julia> grid = RectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
 
-julia> model = NonhydrostaticModel(grid=grid, buoyancy=nothing, tracers=(:T, :S))
-NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
-├── tracers: (:T, :S)
-├── closure: Nothing
-├── buoyancy: Nothing
-└── coriolis: Nothing
-```
-
-In this case, you might want to explicitly specify which tracers to evolve. In particular, you may
-not want to evolve temperature and salinity, which are included by default. To specify no tracers,
-also pass`tracers = ()` to the model constructor.
-
-```jldoctest buoyancy
-julia> model = NonhydrostaticModel(grid=grid, buoyancy=nothing, tracers=())
+julia> model = NonhydrostaticModel(grid=grid)
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: ()
@@ -43,10 +30,39 @@ NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 ```
 
+
+Otherwise, if you want to be explicit, you can simply pass `buoyancy = nothing` to the model constructor.
+
+```jldoctest buoyancy
+julia> grid = RectilinearGrid(size=(64, 64, 64), extent=(1, 1, 1));
+
+julia> model = NonhydrostaticModel(grid=grid, buoyancy=nothing)
+NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+├── tracers: ()
+├── closure: Nothing
+├── buoyancy: Nothing
+└── coriolis: Nothing
+```
+
+By default `NonhydrostaticModel` also evolves no tracers. If you want to evolve passive tracers you
+can pass the option `tracers` to the constructor:
+
+```jldoctest buoyancy
+julia> model = NonhydrostaticModel(grid=grid, buoyancy=nothing, tracers=(:c))
+NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+├── tracers: (:c,)
+├── closure: Nothing
+├── buoyancy: Nothing
+└── coriolis: Nothing
+```
+
 ## Buoyancy as a tracer
 
 To directly evolve buoyancy as a tracer simply pass `buoyancy = BuoyancyTracer()` to the model
-constructor. BuoyancyModels `:b` must be included as a tracer, for example,
+constructor. Keep in mind that this treatment of buoyancy requires that `:b` be included as a
+tracer. For example:
 
 ```jldoctest buoyancy
 julia> model = NonhydrostaticModel(grid=grid, buoyancy=BuoyancyTracer(), tracers=(:b))
@@ -61,7 +77,8 @@ NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ## Seawater buoyancy
 
 To evolve temperature ``T`` and salinity ``S`` and diagnose the buoyancy, you can pass
-`buoyancy = SeawaterBuoyancy()` which is the default.
+`buoyancy = SeawaterBuoyancy()`. Note that this treatment of buoyancy requires that 
+temperature `:T` and salinity `:S` be explicitly passed as tracers:
 
 ```jldoctest buoyancy
 julia> model = NonhydrostaticModel(grid=grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
@@ -138,3 +155,30 @@ julia> using SeawaterPolynomials.TEOS10
 julia> eos = TEOS10EquationOfState()
 SeawaterPolynomials.BoussinesqEquationOfState{TEOS10SeawaterPolynomial{Float64}, Int64}(TEOS10SeawaterPolynomial{Float64}(), 1020)
 ```
+
+
+## Gravity alignment
+
+If you want to simulate a set-up such that gravity doesn't align with the vertical (`z`) coordinate
+(for example when simulating a tilted domain) you can wrap your option for buoyancy treatment in the
+`Buoyancy()` function call, which allows for the option `vertical_unit_vector`. This works for both
+`BuoyancyTracer()` and `SeawaterBuoyancy()`. As example, using buoyancy as a tracer in a set-up in
+which gravity is tilted 45 degrees about the `x` axis can be done as
+
+```jldoctest buoyancy
+julia> θ = 45; # degrees
+
+julia> g̃ = (0, sind(θ), cosd(θ));
+
+julia> model = NonhydrostaticModel(grid=grid, 
+                                   buoyancy=Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃), 
+                                   tracers=(:b))
+NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0) 
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
+├── tracers: (:b,)
+├── closure: Nothing
+├── buoyancy: BuoyancyTracer
+└── coriolis: Nothing
+```
+
+
