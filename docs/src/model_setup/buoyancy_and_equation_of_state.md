@@ -174,7 +174,7 @@ julia> model = NonhydrostaticModel(grid=grid,
                                    buoyancy=Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃), 
                                    tracers=(:b))
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0) 
-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:b,)
 ├── closure: Nothing
 ├── buoyancy: BuoyancyTracer
