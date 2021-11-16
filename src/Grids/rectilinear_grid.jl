@@ -355,19 +355,19 @@ function with_halo(new_halo, old_grid::RectilinearGrid)
     if old_grid.Δxᶠᵃᵃ isa Number
         x = x_domain(old_grid)
     else
-        x = all_x_nodes(Face, adapt(CPU(), old_grid))[1:grid.Nx+1]
+        x = all_x_nodes(Face, adapt(CPU(), old_grid))[1:old_grid.Nx+1]
     end
 
     if old_grid.Δyᵃᶠᵃ isa Number
         y = y_domain(old_grid)
     else
-        y = all_y_nodes(Face, adapt(CPU(), old_grid))[1:grid.Ny+1]
+        y = all_y_nodes(Face, adapt(CPU(), old_grid))[1:old_grid.Ny+1]
     end
 
     if old_grid.Δzᵃᵃᶠ isa Number
         z = z_domain(old_grid)
     else
-        z = all_z_znodes(Face, adapt(CPU(), old_grid))[1:grid.Nz+1]
+        z = all_z_nodes(Face, adapt(CPU(), old_grid))[1:old_grid.Nz+1]
     end
 
     # Remove elements of size and new_halo in Flat directions as expected by grid

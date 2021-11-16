@@ -45,7 +45,7 @@ include("centered_second_order.jl")
 include("upwind_biased_third_order.jl")
 include("centered_fourth_order.jl")
 include("upwind_biased_fifth_order.jl")
-include("weno_fifth_order_stretched.jl")
+include("weno_fifth_order_stretched_full.jl")
 
 include("momentum_advection_operators.jl")
 include("tracer_advection_operators.jl")
