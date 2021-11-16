@@ -22,7 +22,7 @@ default_auxiliary_field_boundary_condition(::Bounded, ::Face) = nothing
 ##### Field boundary conditions
 #####
 
-struct FieldBoundaryConditions{W, E, S, N, B, T, I}
+mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I}
         west :: W
         east :: E
        south :: S
