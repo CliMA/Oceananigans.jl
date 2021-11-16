@@ -8,7 +8,7 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 
     Nz = 16
     Hz = 1 
-    grid = RegularRectilinearGrid(size=Nz, z=(-10, 10), topology=(Flat, Flat, Bounded), halo=1)
+    grid = RectilinearGrid(size=Nz, z=(-10, 10), topology=(Flat, Flat, Bounded), halo=1)
 
     closures = [CAVD(background_κz=1.0) CAVD(background_κz=1.1)
                 CAVD(background_κz=1.2) CAVD(background_κz=1.3)]
@@ -32,7 +32,7 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     end 
 
     ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(2, 2), Hz=1)
-    ensemble_grid = RegularRectilinearGrid(size=ensemble_size, z=(-10, 10), topology=(Flat, Flat, Bounded), halo=1)
+    ensemble_grid = RectilinearGrid(size=ensemble_size, z=(-10, 10), topology=(Flat, Flat, Bounded), halo=1)
 
     @test size(ensemble_grid) == (2, 2, Nz) 
 
@@ -55,7 +55,7 @@ end
 
     Nz = 2 
     Hz = 1 
-    grid = RegularRectilinearGrid(size=Nz, z=(-1, 0), topology=(Flat, Flat, Bounded), halo=1)
+    grid = RectilinearGrid(size=Nz, z=(-1, 0), topology=(Flat, Flat, Bounded), halo=1)
 
     #coriolises = [FPlane(f=0.0) FPlane(f=0.5)
     #              FPlane(f=1.0) FPlane(f=1.1)]
@@ -82,7 +82,7 @@ end
     end 
 
     ensemble_size = ColumnEnsembleSize(Nz=Nz, ensemble=(2, 2), Hz=1)
-    ensemble_grid = RegularRectilinearGrid(size=ensemble_size, z=(-1, 0), topology=(Flat, Flat, Bounded), halo=1)
+    ensemble_grid = RectilinearGrid(size=ensemble_size, z=(-1, 0), topology=(Flat, Flat, Bounded), halo=1)
     ensemble_model = HydrostaticFreeSurfaceModel(; grid=ensemble_grid, coriolis=coriolises, model_kwargs...)
     set_ic!(ensemble_model)
     ensemble_simulation = Simulation(ensemble_model; simulation_kwargs...)
