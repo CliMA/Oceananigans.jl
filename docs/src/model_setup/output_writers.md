@@ -184,13 +184,13 @@ c_avg =  AveragedField(model.tracers.c, dims=(1, 2))
 
 # Note that model.velocities is NamedTuple
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
-                                                          prefix = "some_data",
+                                                          prefix = "some_more_data",
                                                           schedule = TimeInterval(20minute),
                                                           init = init_save_some_metadata!)
 
 # output
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
-├── filepath: ./some_data.jld2
+├── filepath: ./some_more_data.jld2
 ├── 3 outputs: (:u, :v, :w)
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 ├── array type: Array{Float32}
@@ -199,16 +199,16 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ```
 
 and a time- and horizontal-average of tracer `c` every 20 minutes of simulation time
-to a file called `some_averaged_data.jld2`
+to a file called `some_more_averaged_data.jld2`
 
 ```jldoctest jld2_output_writer
 simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (c=c_avg,),
-                                                     prefix = "some_averaged_data",
+                                                     prefix = "some_more_averaged_data",
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
 
 # output
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
-├── filepath: ./some_averaged_data.jld2
+├── filepath: ./some_more_averaged_data.jld2
 ├── 1 outputs: (:c,) averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 ├── array type: Array{Float32}
