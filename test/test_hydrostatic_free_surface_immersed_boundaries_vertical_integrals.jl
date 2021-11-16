@@ -8,28 +8,25 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
         Nx = 5
         Ny = 5
 
-        # A spherical domain
-        underlying_grid =
-        RegularRectilinearGrid(size=(Nx, Ny, 3), extent=(Nx, Ny, 3), topology=(Periodic,Periodic,Bounded))
+        underlying_grid = RectilinearGrid(architecture = arch,
+                                          size = (Nx, Ny, 3),
+                                          extent = (Nx, Ny, 3),
+                                          topology = (Periodic, Periodic, Bounded))
 
         B = [-3. for i=1:Nx, j=1:Ny ]
         B[2:Nx-1,2:Ny-1] .= [-2. for i=2:Nx-1, j=2:Ny-1 ]
         B[3:Nx-2,3:Ny-2] .= [-1. for i=3:Nx-2, j=3:Ny-2 ]
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
 
-        free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
+        free_surface = ImplicitFreeSurface()
 
         model = HydrostaticFreeSurfaceModel(grid = grid,
-                                           architecture = arch,
-                                           #free_surface = ExplicitFreeSurface(),
-                                           #free_surface = ImplicitFreeSurface(maximum_iterations=10),
-                                           free_surface = ImplicitFreeSurface(),
-                                           momentum_advection = nothing,
-                                           tracer_advection = WENO5(),
-                                           coriolis = nothing,
-                                           buoyancy = nothing,
-                                           tracers = nothing,
-                                           closure = nothing)
+                                            architecture = arch,
+                                            free_surface = ImplicitFreeSurface(),
+                                            tracer_advection = WENO5(),
+                                            buoyancy = nothing,
+                                            tracers = nothing,
+                                            closure = nothing)
 
         x_ref = [0.0  0.0  0.0  0.0  0.0  0.0  0.0
                  0.0  3.0  3.0  3.0  3.0  3.0  0.0
@@ -47,10 +44,15 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
                  0.0  3.0  2.0  2.0  2.0  3.0  0.0
                  0.0  0.0  0.0  0.0  0.0  0.0  0.0]'
 
-        fs=model.free_surface
-        xok=parent(fs.implicit_step_solver.vertically_integrated_lateral_areas.xᶠᶜᶜ.data[:,:,1])-x_ref == zeros(7,7)
-        yok=parent(fs.implicit_step_solver.vertically_integrated_lateral_areas.yᶜᶠᶜ.data[:,:,1])-y_ref == zeros(7,7)
-        @test (xok & yok)
+        fs = model.free_surface
+        vertically_integrated_lateral_areas = fs.implicit_step_solver.vertically_integrated_lateral_areas
+        ∫Axᶠᶜᶜ = vertically_integrated_lateral_areas.xᶠᶜᶜ
+        ∫Ayᶜᶠᶜ = vertically_integrated_lateral_areas.yᶜᶠᶜ
+
+        Ax_ok = Array(parent(∫Axᶠᶜᶜ))[:, :, 1] ≈ x_ref
+        Ay_ok = Array(parent(∫Ayᶜᶠᶜ))[:, :, 1] ≈ y_ref
+
+        @test (Ax_ok & Ay_ok)
     end
 end
 
