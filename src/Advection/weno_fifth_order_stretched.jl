@@ -8,7 +8,6 @@ using Oceananigans.Architectures: arch_array
 using Adapt
 import Base: show
 
-const AG = AbstractGrid
 const two_32 = Int32(2)
 
 const C3₀ = 3/10
@@ -18,7 +17,7 @@ const C3₂ = 1/10
 const ƞ = Int32(2) # WENO exponent
 const ε = 1e-6
 
-struct WENO5{FT, XT, YT, ZT, Buffer} <: AbstractUpwindBiasedAdvectionScheme{2} 
+struct WENO5{FT, XT, YT, ZT} <: AbstractUpwindBiasedAdvectionScheme{2} 
     
     coeff_xᶠᵃᵃ::XT
     coeff_xᶜᵃᵃ::XT
@@ -27,8 +26,7 @@ struct WENO5{FT, XT, YT, ZT, Buffer} <: AbstractUpwindBiasedAdvectionScheme{2}
     coeff_yᵃᶜᵃ::YT
     
     coeff_zᵃᵃᶠ::ZT
-    coeff_zᵃᵃᶜ::ZT
- 
+    coeff_zᵃᵃᶜ::ZT 
 end
 
 function WENO5(FT = Float64; grid = nothing) 
@@ -40,7 +38,7 @@ function WENO5(FT = Float64; grid = nothing)
         coeff_yᵃᶜᵃ = nothing
         coeff_zᵃᵃᶠ = nothing
         coeff_zᵃᵃᶜ = nothing
-    elseif !(typeof(grid) <: RectilinearGrid)
+    elseif !(grid isa RectilinearGrid)
         @warn "Stretched WENO is not supported with grids other than Rectilinear, defaulting to Uniform WENO"
         coeff_xᶠᵃᵃ = nothing 
         coeff_xᶜᵃᵃ = nothing  
@@ -51,22 +49,22 @@ function WENO5(FT = Float64; grid = nothing)
     else
         FT          = eltype(grid)
         arch        = grid.architecture
-        helper_grid = with_halo((4, 4, 4), grid)
-        if typeof(grid) <: XRegRectilinearGrid 
-            coeff_xᶠᵃᵃ = nothing 
-            coeff_xᶜᵃᵃ = nothing 
+        helper_grid = with_halo((4,4,4), grid)
+        if grid isa XRegRectilinearGrid
+            coeff_xᶠᵃᵃ = nothing
+            coeff_xᶜᵃᵃ = nothing
         else
             coeff_xᶠᵃᵃ = calc_interpolating_coefficients(FT, helper_grid.xᶠᵃᵃ, arch, grid.Nx) 
             coeff_xᶜᵃᵃ = calc_interpolating_coefficients(FT, helper_grid.xᶜᵃᵃ, arch, grid.Nx)
         end
-        if typeof(grid) <: YRegRectilinearGrid 
-            coeff_yᵃᶠᵃ = nothing   
+        if grid isa YRegRectilinearGrid
+            coeff_yᵃᶠᵃ = nothing
             coeff_yᵃᶜᵃ = nothing
-        else    
+        else
             coeff_yᵃᶠᵃ = calc_interpolating_coefficients(FT, helper_grid.yᵃᶠᵃ, arch, grid.Ny)
             coeff_yᵃᶜᵃ = calc_interpolating_coefficients(FT, helper_grid.yᵃᶜᵃ, arch, grid.Ny)
         end
-        if typeof(grid) <: ZRegRectilinearGrid 
+        if grid isa ZRegRectilinearGrid
             coeff_zᵃᵃᶠ = nothing
             coeff_zᵃᵃᶜ = nothing
         else
@@ -78,17 +76,19 @@ function WENO5(FT = Float64; grid = nothing)
     YT = typeof(coeff_yᵃᶠᵃ)
     ZT = typeof(coeff_zᵃᵃᶠ)
 
-    return WENO5{FT, XT, YT, ZT, 2}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ)
+    return WENO5{FT, XT, YT, ZT}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ)
 end
 
-function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ, Buffer}) where {FT, RX, RY, RZ, Buffer}
-    print(io, "WENO5 advection sheme with X $(RX == Nothing ? "regular" : "stretched"), Y $(RY == Nothing ? "regular" : "stretched") and Z $(RZ == Nothing ? "regular" : "stretched")")
+function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
+    print(io, "WENO5 advection sheme with X $(RX == Nothing ? "regular" : "stretched") \n",
+                                        " Y $(RY == Nothing ? "regular" : "stretched") \n",
+                                        " Z $(RZ == Nothing ? "regular" : "stretched")" )
 end
 
-Adapt.adapt_structure(to, scheme::WENO5{FT, RX, RY, RZ, Buffer}) where {FT, RX, RY, RZ, Buffer} =
-    WENO5S{FT, typeof(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ)),
+Adapt.adapt_structure(to, scheme::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ} =
+     WENO5{FT, typeof(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ)),
                typeof(Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ)),  
-               typeof(Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ)), Buffer}(
+               typeof(Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ))}(
         Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ),
         Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
         Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ),
@@ -168,9 +168,9 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, RX, RY, RZ, Buffer}) where {FT, RX, 
 @inline left_biased_α₁(FT, ψ, args...) = FT(C3₁) / (left_biased_β₁(FT, ψ, args...) + FT(ε))^ƞ
 @inline left_biased_α₂(FT, ψ, args...) = FT(C3₂) / (left_biased_β₂(FT, ψ, args...) + FT(ε))^ƞ
 
-@inline right_biased_α₀(FT, ψ, args...) = FT(C3₀) / (right_biased_β₀(FT, ψ, args...) + FT(ε))^ƞ
+@inline right_biased_α₀(FT, ψ, args...) = FT(C3₂) / (right_biased_β₀(FT, ψ, args...) + FT(ε))^ƞ
 @inline right_biased_α₁(FT, ψ, args...) = FT(C3₁) / (right_biased_β₁(FT, ψ, args...) + FT(ε))^ƞ
-@inline right_biased_α₂(FT, ψ, args...) = FT(C3₂) / (right_biased_β₂(FT, ψ, args...) + FT(ε))^ƞ
+@inline right_biased_α₂(FT, ψ, args...) = FT(C3₀) / (right_biased_β₂(FT, ψ, args...) + FT(ε))^ƞ
 
 #####
 ##### WENO-5 reconstruction
@@ -190,9 +190,9 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, RX, RY, RZ, Buffer}) where {FT, RX, 
 end
 
 @inline function right_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀, args...)
+    α₀ = right_biased_α₀(FT, ψ₀, args...)
     α₁ = right_biased_α₁(FT, ψ₁, args...)
     α₂ = right_biased_α₂(FT, ψ₂, args...)
-    α₀ = right_biased_α₀(FT, ψ₀, args...)
 
     Σα = α₀ + α₁ + α₂
     w₀ = α₀ / Σα
@@ -277,15 +277,18 @@ end
 @inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Face})   = scheme.coeff_zᵃᵃᶠ[r+2][i] 
 @inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Center}) = scheme.coeff_zᵃᵃᶜ[r+2][i] 
 
+# @inline calc_interpolating_coefficients(FT, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N) = nothing
+# @inline calc_interpolating_coefficients(FT, coord::AbstractRange, arch, N) = nothing
+
 function calc_interpolating_coefficients(FT, coord, arch, N) 
 
     cpu_coord = Array(parent(coord))
     cpu_coord = OffsetArray(cpu_coord, coord.offsets[1])
 
-    c₋₁ = Tuple{FT, FT, FT}[]
-    c₀  = Tuple{FT, FT, FT}[]
-    c₁  = Tuple{FT, FT, FT}[]
-    c₂  = Tuple{FT, FT, FT}[]
+    c₋₁ = NTuple{3, FT}[]
+    c₀  = NTuple{3, FT}[]
+    c₁  = NTuple{3, FT}[]
+    c₂  = NTuple{3, FT}[]
 
     @inbounds begin
         for i = 0:N+1
