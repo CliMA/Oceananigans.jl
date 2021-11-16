@@ -107,13 +107,13 @@ Keyword arguments
 Example
 =======
 
-Write out 3D fields for w and T and a horizontal average:
+Write out 3D fields for u, v, w, and a tracer c, along with a horizontal average:
 
 ```jldoctest jld2_output_writer
-using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Fields
+using Oceananigans
 using Oceananigans.Utils: hour, minute
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=(:T, :S))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=(:c,))
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)
@@ -123,7 +123,7 @@ function init_save_some_metadata!(file, model)
     return nothing
 end
 
-T_avg =  AveragedField(model.tracers.T, dims=(1, 2))
+c_avg =  AveragedField(model.tracers.c, dims=(1, 2))
 
 # Note that model.velocities is NamedTuple
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
@@ -141,18 +141,18 @@ JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 └── max filesize: Inf YiB
 ```
 
-and a time- and horizontal-average of temperature `T` every 1 hour of simulation time
+and a time- and horizontal-average of tracer `c` every 1 hour of simulation time
 to a file called `some_averaged_data.jld2`
 
 ```jldoctest jld2_output_writer
-simulation.output_writers[:avg_T] = JLD2OutputWriter(model, (T=T_avg,),
+simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (c=c_avg,),
                                                      prefix = "some_averaged_data",
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
 
 # output
 JLD2OutputWriter scheduled on TimeInterval(20 minutes):
 ├── filepath: ./some_averaged_data.jld2
-├── 1 outputs: (:T,) averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
+├── 1 outputs: (:c,) averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 ├── array type: Array{Float32}
 ├── including: [:grid, :coriolis, :buoyancy, :closure]
