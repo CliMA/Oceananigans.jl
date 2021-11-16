@@ -42,7 +42,7 @@ const CuArrayGridFittedBottom = GridFittedBottom{<:CuArray}
 
 function ImmersedBoundaryGrid(grid, ib::Union{ArrayGridFittedBottom, CuArrayGridFittedBottom})
     # Wrap bathymetry in an OffsetArray with halos
-    arch = architecture(ib.bottom)
+    arch = grid.architecture
     bottom_field = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
     bottom_field .= ib.bottom
     fill_halo_regions!(bottom_field, arch)
