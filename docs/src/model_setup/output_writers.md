@@ -64,11 +64,11 @@ simulation = Simulation(model, Δt=12, stop_time=3600);
 fields = Dict("u" => model.velocities.u, "v" => model.velocities.v);
 
 simulation.output_writers[:field_writer] =
-    NetCDFOutputWriter(model, fields, filepath="fields.nc", schedule=TimeInterval(60))
+    NetCDFOutputWriter(model, fields, filepath="more_fields.nc", schedule=TimeInterval(60))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: fields.nc
+├── filepath: more_fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: ["v", "u"]
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
@@ -77,12 +77,12 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 
 ```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
-    NetCDFOutputWriter(model, fields, filepath="surface_xy_slice.nc",
+    NetCDFOutputWriter(model, fields, filepath="another_surface_xy_slice.nc",
                        schedule=TimeInterval(60), field_slicer=FieldSlicer(k=grid.Nz))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: surface_xy_slice.nc
+├── filepath: another_surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
 ├── 2 outputs: ["v", "u"]
 ├── field slicer: FieldSlicer(:, :, 16, with_halos=false)
@@ -92,13 +92,13 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ```jldoctest netcdf1
 simulation.output_writers[:averaged_profile_writer] =
     NetCDFOutputWriter(model, fields,
-                       filepath = "averaged_z_profile.nc",
+                       filepath = "another_averaged_z_profile.nc",
                        schedule = AveragedTimeInterval(60, window=20),
                        field_slicer = FieldSlicer(i=1, j=1))
 
 # output
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
-├── filepath: averaged_z_profile.nc
+├── filepath: another_averaged_z_profile.nc
 ├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
 ├── 2 outputs: ["v", "u"] averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 ├── field slicer: FieldSlicer(1, 1, :, with_halos=false)
