@@ -100,7 +100,7 @@ simulation.output_writers[:averaged_profile_writer] =
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: another_averaged_z_profile.nc
 ├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
-├── 2 outputs: ["v", "u"] averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
+├── 2 outputs: ["c", "u"] averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 ├── field slicer: FieldSlicer(1, 1, :, with_halos=false)
 └── array type: Array{Float32}
 ```
