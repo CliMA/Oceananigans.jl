@@ -74,8 +74,7 @@ function run_first_AB2_time_step_tests(arch, FT)
     grid = RectilinearGrid(FT, size=(13, 17, 19), extent=(1, 2, 3), architecture=arch)
 
     model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=(T=add_ones,),
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
-                                )
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     time_step!(model, 1, euler=true)
 
     # Test that GT = 1, T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
