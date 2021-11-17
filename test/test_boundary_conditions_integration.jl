@@ -8,7 +8,7 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
     field_boundary_conditions = FieldBoundaryConditions(; boundary_condition_kwarg...)
     bcs = (; field_name => field_boundary_conditions)
     model = NonhydrostaticModel(grid=grid, architecture=arch, boundary_conditions=bcs,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),)
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     success = try
         time_step!(model, 1e-16, euler=true)
