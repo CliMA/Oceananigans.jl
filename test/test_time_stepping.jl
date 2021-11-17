@@ -100,8 +100,7 @@ end
 """
 function incompressible_in_time(arch, grid, Nt, timestepper)
     model = NonhydrostaticModel(grid=grid, architecture=arch, timestepper=timestepper,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
-                                )
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     grid = model.grid
     u, v, w = model.velocities
 
