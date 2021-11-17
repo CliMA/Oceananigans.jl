@@ -56,8 +56,7 @@ function test_thermal_bubble_checkpointer_output(arch)
     grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     true_model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure,
-                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
-                                     )
+                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     test_model = deepcopy(true_model)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
