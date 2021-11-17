@@ -3,7 +3,7 @@ using Test
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Simulations:
-    stop, iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
+    stop_iteration_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     TimeStepWizard, new_time_step, reset!
 
 using Dates: DateTime
@@ -74,8 +74,9 @@ function run_basic_simulation_tests(arch)
     # Just make sure we can construct a simulation without any errors.
     @test simulation isa Simulation
 
-    @test iteration_limit_exceeded(simulation) == false
-    @test stop(simulation) == false
+    simulation.running = true
+    stop_iteration_exceeded(simulation)
+    @test simulation.running
 
     run!(simulation)
 
@@ -83,20 +84,31 @@ function run_basic_simulation_tests(arch)
     @test simulation isa Simulation
 
     # Some basic tests
-    @test iteration_limit_exceeded(simulation) == true
-    @test stop(simulation) == true
+    simulation.running = true
+    stop_iteration_exceeded(simulation)
+    @test !(simulation.running)
 
     @test model.clock.time ≈ simulation.Δt
     @test model.clock.iteration == 1
     @test simulation.run_wall_time > 0
 
-    @test stop_time_exceeded(simulation) == false
-    simulation.stop_time = 1e-12
-    @test stop_time_exceeded(simulation) == true
+    simulation.running = true
+    stop_time_exceeded(simulation)
+    @test simulation.running
 
-    @test wall_time_limit_exceeded(simulation) == false
+    simulation.running = true
+    simulation.stop_time = 1e-12 # less than the current time.
+    stop_time_exceeded(simulation)
+    @test !(simulation.running)
+
+    simulation.running = true
+    wall_time_limit_exceeded(simulation)
+    @test simulation.running
+
+    simulation.running = true
     simulation.wall_time_limit = 1e-12
-    @test wall_time_limit_exceeded(simulation) == true
+    wall_time_limit_exceeded(simulation)
+    @test !(simulation.running)
 
     # Test that simulation stops at `stop_iteration`.
     reset!(simulation)
@@ -158,6 +170,16 @@ function run_simulation_date_tests(arch, start_time, stop_time, Δt)
     return nothing
 end
 
+function nan_checker_stops_simulation_test(arch)
+    grid = RectilinearGrid(size=(4, 2, 1), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid=grid, architecture=arch)
+    simulation = Simulation(model, Δt=1, stop_iteration=1)
+    model.velocities.u[1, 1, 1] = NaN
+    run!(simulation)
+    @test model.clock.iteration == 0 # simulation did not run
+    return nothing
+end
+
 @testset "Time step wizard" begin
     for arch in archs
         @info "Testing time step wizard [$(typeof(arch))]..."
@@ -169,6 +191,11 @@ end
     for arch in archs
         @info "Testing simulations [$(typeof(arch))]..."
         run_basic_simulation_tests(arch)
+
+        @testset "NaN Checker [$(typeof(arch))]" begin
+            @info "  Testing NaN Checker [$(typeof(arch))]..."
+            nan_checker_stops_simulation_test(arch)
+        end
 
         @info "Testing simulations with DateTime [$(typeof(arch))]..."
         run_simulation_date_tests(arch, 0.0, 1.0, 0.3)
