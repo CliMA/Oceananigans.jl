@@ -195,8 +195,7 @@ end
         topo = (Periodic, Periodic, Bounded)
         grid = RectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
         model = NonhydrostaticModel(architecture=arch, grid=grid,
-                                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
-                                    )
+                                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
         @testset "WindowedTimeAverage [$(typeof(arch))]" begin
             @info "  Testing WindowedTimeAverage [$(typeof(arch))]..."
@@ -214,8 +213,7 @@ end
         topo =(Periodic, Periodic, Bounded)
         grid = RectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
         model = NonhydrostaticModel(architecture=arch, grid=grid,
-                                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
-                                    )
+                                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
         @testset "Dependency adding [$(typeof(arch))]" begin
             @info "    Testing dependency adding [$(typeof(arch))]..."

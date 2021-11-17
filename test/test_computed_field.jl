@@ -328,7 +328,7 @@ for arch in archs
                                              equation_of_state = LinearEquationOfState(α=1, β=1))
 
         model = NonhydrostaticModel(architecture = arch, grid = grid, buoyancy = buoyancy,
-                                         tracers = (:T, :S),
+                                         tracers = (:T, :S)
                                     )
 
         @testset "Derivative computations [$(typeof(arch))]" begin
