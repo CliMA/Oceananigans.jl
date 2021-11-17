@@ -153,8 +153,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), architecture=arch)
     model = NonhydrostaticModel(architecture = arch, grid = grid,
                                 closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz),
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
-                                )
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
     Tz = 5e-3  # Vertical temperature gradient [K/m].
