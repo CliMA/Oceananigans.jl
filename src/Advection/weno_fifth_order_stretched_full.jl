@@ -136,8 +136,8 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}) where {FT, 
 @inline left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::WENO5, ψ)  = weno_left_biased_interpolate_zᵃᵃᶠ(i, j, k, scheme, ψ, k, Face)
 
 @inline right_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::WENO5, ψ) = weno_right_biased_interpolate_yᵃᶠᵃ(i, j, k, scheme, ψ, i, Face)
-@inline right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::WENO5, ψ) = weno_right_biased_interpolate_zᵃᵃᶠ(i, j, k, scheme, ψ, j, Face)
-@inline right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::WENO5, ψ) = weno_right_biased_interpolate_xᶠᵃᵃ(i, j, k, scheme, ψ, k, Face)
+@inline right_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::WENO5, ψ) = weno_right_biased_interpolate_xᶠᵃᵃ(i, j, k, scheme, ψ, j, Face)
+@inline right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::WENO5, ψ) = weno_right_biased_interpolate_zᵃᵃᶠ(i, j, k, scheme, ψ, k, Face)
 
 @inline left_biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme::WENO5, ψ)  = weno_left_biased_interpolate_xᶠᵃᵃ(i+1, j, k, scheme, ψ, i, Center)
 @inline left_biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme::WENO5, ψ)  = weno_left_biased_interpolate_yᵃᶠᵃ(i, j+1, k, scheme, ψ, j, Center)
@@ -183,16 +183,15 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}) where {FT, 
 
 @inline function biased_β(ψ, scheme, r, args...) 
     stencil   = retrieve_smooth(scheme, r, args...)
-    Aᵢ  = stencil[1:3];   
+    Pᵢ  = stencil[1:3];   
     aᵢ  = stencil[4:6];
     aₓᵢ = stencil[7:9];
-    aₓₓ = stencil[10:12];
-    Bᵢ  = stencil[13:15];   
-    bᵢ  = stencil[16:18];
-    bₓᵢ = stencil[19:21];
-    bₓₓ = stencil[22:24];
+    aₓₓ = stencil[10:12];  
+    bᵢ  = stencil[13:15];
+    bₓᵢ = stencil[16:18];
+    bₓₓ = stencil[19:21];
     
-    return   dot(aᵢ, ψ) * dot(aₓᵢ, ψ) - dot(bᵢ, ψ) * dot(bₓᵢ, ψ) - dot(aₓₓ, ψ) * (dot(Aᵢ,  ψ) - dot(Bᵢ,  ψ)) + dot(bₓₓ, ψ)
+    return   dot(aᵢ, ψ) * dot(aₓᵢ, ψ) - dot(bᵢ, ψ) * dot(bₓᵢ, ψ) - dot(aₓₓ, ψ) * dot(Pᵢ,  ψ) + dot(bₓₓ, ψ)
 end
 
 @inline left_biased_β₀(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme, 0, args...) 
@@ -381,7 +380,7 @@ function calc_smoothness_coefficients(FT, beta, coord, arch, N)
     allstencils = ()
 
     for r = -1:2
-        stencil = NTuple{24, FT}[]   
+        stencil = NTuple{21, FT}[]   
 
         @inbounds begin
             for i = 0:N+1
@@ -395,7 +394,7 @@ function calc_smoothness_coefficients(FT, beta, coord, arch, N)
                 
                 secI  = der2_integ_interp_weights(r, cpu_coord, i)
 
-                push!(stencil, (prim..., val..., fir..., sec..., primL..., valL..., firL..., secI...))
+                push!(stencil, ((prim .- primL)..., val..., fir..., sec..., valL..., firL..., secI...))
             end
         end
 
