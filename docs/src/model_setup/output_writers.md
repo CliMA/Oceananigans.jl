@@ -70,7 +70,7 @@ simulation.output_writers[:field_writer] =
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: more_fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: ["v", "u"]
+├── 2 outputs: ["c", "u"]
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 └── array type: Array{Float32}
 ```
