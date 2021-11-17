@@ -23,7 +23,7 @@ Nx = 128
 Ny = 60
 Nz = 18
 
-arch = GPU()
+arch = CPU()
 reference_density = 1035
 
 #####
@@ -180,9 +180,9 @@ S .= 30
 g = model.free_surface.gravitational_acceleration
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
-minimum_Δx = abs(grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ[1:grid.Ny])) * deg2rad(grid.Δλ))
-minimum_Δy = abs(grid.radius * deg2rad(grid.Δφ))
-wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
+#minimum_Δx = abs(grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ[1:grid.Ny])) * deg2rad(grid.Δλ))
+#minimum_Δy = abs(grid.radius * deg2rad(grid.Δφ))
+#wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
 
 if model.free_surface isa ExplicitFreeSurface
     Δt = 60seconds #0.2 * minimum_Δx / gravity_wave_speed
@@ -225,7 +225,7 @@ output_fields = merge(model.velocities, model.tracers, (; η=model.free_surface.
 output_prefix = "global_lat_lon_$(grid.Nx)_$(grid.Ny)_$(grid.Nz)"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                      schedule = TimeInterval(10day),
+                                                      schedule = TimeInterval(10days),
                                                       prefix = output_prefix,
                                                       force = true)
 
@@ -236,14 +236,13 @@ run!(simulation)
 
 @info """
 
-    Simulation took $(prettytime(simulation.run_time))
-
     Background diffusivity: $background_diffusivity
-    Minimum wave propagation time scale: $(prettytime(wave_propagation_time_scale))
     Free surface: $(typeof(model.free_surface).name.wrapper)
     Time step: $(prettytime(Δt))
 
 """
+#   Simulation took $(prettytime(simulation.run_time))
+#   Minimum wave propagation time scale: $(prettytime(wave_propagation_time_scale))
 
 #####
 ##### Visualize solution
