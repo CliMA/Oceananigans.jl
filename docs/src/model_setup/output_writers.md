@@ -57,7 +57,7 @@ using Oceananigans
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
-model = NonhydrostaticModel(grid=grid,);
+model = NonhydrostaticModel(grid=grid, tracers=(:c));
 
 simulation = Simulation(model, Δt=12, stop_time=3600);
 
