@@ -10,13 +10,15 @@ using Plots
 
 This simulation is a simple 1D advection of a gaussian function, to test the 
 validity of the stretched WENO scheme
-    
+
 """
+
 N    = 40
 arch = CPU()
 
 # regular "stretched" mesh
 Freg = range(0,1,length = N+1)
+
 
 # seasaw mesh
 Fsaw(j) = 1 / N  * (j - 1) + 0.1 * 1 / N * mod(j - 1, 2)
