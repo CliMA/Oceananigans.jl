@@ -169,7 +169,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         model = NonhydrostaticModel(architecture = arch,
                                     grid = grid,
                                     boundary_conditions = boundary_conditions,
-                                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
+                                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S)
                                     )
 
         @test location(model.velocities.u.boundary_conditions.bottom.condition) == (Face, Center, Nothing)
