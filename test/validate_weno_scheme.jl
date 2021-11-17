@@ -2,8 +2,8 @@ using Oceananigans
 using Oceananigans.Grids: min_Δx, min_Δy, min_Δz
 using JLD2
 using OffsetArrays
-using BenchmarkTools
-using Test
+# using BenchmarkTools
+# using Test
 using LinearAlgebra
 using Plots
 """
@@ -12,7 +12,7 @@ This simulation is a simple 1D advection of a gaussian function, to test the
 validity of the stretched WENO scheme
     
 """
-N    = 32
+N    = 40
 arch = CPU()
 
 # regular "stretched" mesh
@@ -54,6 +54,7 @@ advection = [WENO5(), WENO5(), WENO5()]
 
 schemes = [:wreg, :wstr, :wstrS]
 
+vel = 1
 # Checking the accuracy of different schemes with different settings
 
 for grid in [grid_reg, grid_str, grid_str2], (adv, scheme) in enumerate(advection) 
@@ -62,7 +63,7 @@ for grid in [grid_reg, grid_str, grid_str2], (adv, scheme) in enumerate(advectio
     grid == grid_reg ? gr = :reg : grid == grid_str ? gr = :str : gr = :str2
 
     U = Field(Face, Center, Center, arch, grid)
-    parent(U) .= 1 
+    parent(U) .= vel
 
     if adv == 2
         scheme = WENO5(grid = grid)
@@ -82,14 +83,14 @@ for grid in [grid_reg, grid_str, grid_str2], (adv, scheme) in enumerate(advectio
 
     
     Δt_max   = 0.2 * min_Δx(grid)
-    end_time = 1000 * Δt_max
+    end_time = 5000 * Δt_max
     c₀(x, y, z) = 10*exp(-((x-0.5)/0.1)^2)
                                             
     set!(model, c=c₀)
     c = model.tracers.c
 
     x        = grid.xᶜᵃᵃ[1:grid.Nx]
-    creal    = Array(c₀.(mod.((x .- end_time),1), 0, 0))
+    creal    = Array(c₀.(mod.((x .- vel * end_time),1), 0, 0))
 
     simulation = Simulation(model,
                             Δt = Δt_max,
@@ -104,12 +105,28 @@ for grid in [grid_reg, grid_str, grid_str2], (adv, scheme) in enumerate(advectio
     real_sol[(gr)] = creal
     coord[(gr)]    = x
     
-    residual[(schemes[adv], gr)] = norm(abs.(creal .- ctests))
+    residual[(schemes[adv], gr)] = norm(abs.(creal .- ctests)) / N
     solution[(schemes[adv], gr)] = ctests
 end
 
+pos = Dict()
+for grid in [grid_reg, grid_str, grid_str2]
+    min = 1000
+    grid == grid_reg ? gr = :reg : grid == grid_str ? gr = :str : gr = :str2
+    for adv = 1:3
+        if residual[(schemes[adv], gr)] < min
+            min = residual[(schemes[adv], gr)]
+            pos[(gr)] = adv
+        end
+    end
+end
+
+@show pos, min
+
+
+
 # """
-# Now test a 2D simulation (to do)
+# Now test 2D advection 
 # """
 
 # solution2D  = Dict()
@@ -138,6 +155,10 @@ end
 
 #         if adv == 2
 #             scheme = WENO5(grid = grid)
+#         end
+
+#         if adv == 3
+#             scheme = WENO5(grid = grid, stretched_smoothness = true)
 #         end
 
 #         model = HydrostaticFreeSurfaceModel(architecture = arch,
@@ -184,7 +205,8 @@ end
 #     coord2D[(gr)]    = (x, y)
 #     anim = @animate for i ∈ 1:end_time/Δt_max/10
 #         plot(contourf(x, y, solution2D[(schemes[1], gr, Int(i))], clim=(0, 1), levels = 0:0.1:1),
-#              contourf(x, y, solution2D[(schemes[2], gr, Int(i))], clim=(0, 1), levels = 0:0.1:1))
+#              contourf(x, y, solution2D[(schemes[2], gr, Int(i))], clim=(0, 1), levels = 0:0.1:1),
+#              contourf(x, y, solution2D[(schemes[3], gr, Int(i))], clim=(0, 1), levels = 0:0.1:1))
 #     end 
 #     gif(anim, "anim_$gr.mp4", fps = 15)
 # end

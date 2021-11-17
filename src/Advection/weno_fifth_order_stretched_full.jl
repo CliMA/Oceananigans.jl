@@ -184,7 +184,7 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ} 
     bₓᵢ = stencil[19:21];
     bₓₓ = stencil[22:24];
     
-    return   dot(aᵢ, ψ) * dot(aₓᵢ, ψ) - dot(aₓₓ, ψ) * dot(Aᵢ,  ψ) - dot(bᵢ, ψ) * dot(bₓᵢ, ψ) + dot(aₓₓ, ψ) * dot(Bᵢ,  ψ) + dot(bₓₓ, ψ)
+    return   dot(aᵢ, ψ) * dot(aₓᵢ, ψ) - dot(bᵢ, ψ) * dot(bₓᵢ, ψ) - dot(aₓₓ, ψ) * (dot(Aᵢ,  ψ) - dot(Bᵢ,  ψ)) + dot(bₓₓ, ψ)
 end
 
 @inline left_biased_β₀(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme, 0, args...) 
@@ -356,6 +356,50 @@ function calc_interpolating_coefficients(FT, coord, arch, N)
     return (c₋₁, c₀, c₁, c₂)
 end
 
+function calc_smoothness_coefficients(FT, beta, coord, arch, N) 
+
+    cpu_coord = Array(parent(coord))
+    cpu_coord = OffsetArray(cpu_coord, coord.offsets[1])
+
+    ## The smoothness coefficients are calculated as :
+    ## Δxᵣ¹ pᵣ(x) * pᵣ'(x) |ₐᵇ - Δxᵣ¹ pᵣ''(x) * Pᵣ(x) |ₐᵇ + pᵣ''(x) * (b - a) Δxᵣ³
+    ## where a and b are xᵢ and xᵢ₋₁
+    ## and p(x) is the second order reconstruction polynomial while 
+    ## P(x), p'(x) and p''(x) are its primitive, first derivative and second derivative, respectively
+    ## as p(x) is a second order polynomial, p''(x) is a constant in x
+
+    ## so it's 21 coefficient total (P, p, p' and p'') calculated at xᵢ and xᵢ₋₁ (p''(x) does not depend on x)
+
+    allstencils = ()
+
+    for r = -1:2
+        stencil = NTuple{24, FT}[]   
+
+        @inbounds begin
+            for i = 0:N+1
+                prim  = prim_interp_weights(r, cpu_coord, i, 0)
+                val   =      interp_weights(r, cpu_coord, i, 0)
+                fir   = der1_interp_weights(r, cpu_coord, i, 0)
+                sec   = der2_interp_weights(r, cpu_coord, i, 0)
+                primL = prim_interp_weights(r, cpu_coord, i, 1)
+                valL  =      interp_weights(r, cpu_coord, i, 1)
+                firL  = der1_interp_weights(r, cpu_coord, i, 1)
+                
+                secI  = der2_integ_interp_weights(r, cpu_coord, i)
+
+                push!(stencil, (prim..., val..., fir..., sec..., primL..., valL..., firL..., secI...))
+            end
+        end
+
+        stencil = OffsetArray(arch_array(arch, stencil), -1)
+
+        allstencils = (allstencils..., stencil)
+    end
+
+    return allstencils
+end
+
+# Integral of ENO coefficients for 2nd order polynomial reconstruction at the face
 function prim_interp_weights(r, coord, i, left)
 
     coeff = ()
@@ -367,12 +411,14 @@ function prim_interp_weights(r, coord, i, left)
                 for l = 0:3
                     if l != m
                         prod = 1
+                        sum  = 0 
                         for q = 0:3
                             if q != m && q != l 
                                 prod *= coord[i-r+q-1]
+                                sum  += coord[i-r+q-1]
                             end
                         end
-                        num += coord[i-left]^3 / 3 - prod * coord[i-left]^2 / 2 + prod * coord[i-left]
+                        num += coord[i-left]^3 / 3 - sum * coord[i-left]^2 / 2 + prod * coord[i-left]
                     end
                 end
                 den = 1
@@ -390,6 +436,7 @@ function prim_interp_weights(r, coord, i, left)
     return coeff
 end
 
+# Second derivative of ENO coefficients for 2nd order polynomial reconstruction at the face
 function der2_interp_weights(r, coord, i, left)
 
     coeff = ()
@@ -418,7 +465,8 @@ function der2_interp_weights(r, coord, i, left)
     return coeff
 end
 
-function der2_integ_interp_weights(r, coord, i, left)
+# Integrated second derivative of ENO coefficients for 2nd order polynomial reconstruction at the face
+function der2_integ_interp_weights(r, coord, i)
 
     coeff = ()
     for j = 0:2
@@ -440,12 +488,13 @@ function der2_integ_interp_weights(r, coord, i, left)
                 c += num / den
             end 
         end
-        coeff = (coeff..., c * (coord[i-r+j] - coord[i-r+j-1]) * (coord[i] - coord[i-1]) * (coord[i-r+j] - coord[i-r+j-1])^2)
+        coeff = (coeff..., c * (coord[i-r+j] - coord[i-r+j-1]) * (coord[i] - coord[i-1]) * (coord[i-r+j] - coord[i-r+j-1])^3)
     end
 
     return coeff
 end
 
+# first derivative of ENO coefficients for 2nd order polynomial reconstruction at the face
 function der1_interp_weights(r, coord, i, left)
 
     coeff = ()
@@ -456,13 +505,13 @@ function der1_interp_weights(r, coord, i, left)
                 num = 0
                 for l = 0:3
                     if l != m
-                        prod = 1
+                        sum = 0
                         for q = 0:3
                             if q != m && q != l 
-                                prod *= coord[i-r+q-1]
+                                sum += coord[i-r+q-1]
                             end
                         end
-                        num += 2 * coord[i-left] - prod
+                        num += 2 * coord[i-left] - sum
                     end
                 end
                 den = 1
@@ -480,6 +529,7 @@ function der1_interp_weights(r, coord, i, left)
     return coeff
 end
 
+# ENO coefficients for 2nd order polynomial reconstruction at the face
 function interp_weights(r, coord, i, left)
 
     coeff = ()
@@ -514,72 +564,3 @@ function interp_weights(r, coord, i, left)
     return coeff
 end
 
-function calc_smoothness_coefficients(FT, beta, coord, arch, N) 
-
-    cpu_coord = Array(parent(coord))
-    cpu_coord = OffsetArray(cpu_coord, coord.offsets[1])
-
-    ## The smoothness coefficients are calculated as :
-    ## pᵣ(x) * pᵣ'(x) |ₐᵇ - pᵣ''(x) * Pᵣ(x) |ₐᵇ + pᵣ''(x) * (b - a)
-    ## where a and b are xᵢ and xᵢ₋₁
-    ## and p(x) is the second order reconstruction polynomial while 
-    ## P(x), p'(x) and p''(x) are its primitive, first derivative and second derivative, respectively
-    ## as p(x) is a second order polynomial, p''(x) is a constant in x
-
-    ## so it's 21 coefficient total (P, p, p' and p'') calculated at xᵢ and xᵢ₋₁ (p''(x) does not depend on x)
-
-    allstencils = ()
-
-    for r = -1:2
-        stencil = NTuple{24, FT}[]   
-
-        @inbounds begin
-            for i = 0:N+1
-                prim  = prim_interp_weights(r, cpu_coord, i, 0)
-                val   =      interp_weights(r, cpu_coord, i, 0)
-                fir   = der1_interp_weights(r, cpu_coord, i, 0)
-                sec   = der2_interp_weights(r, cpu_coord, i, 0)
-                primL = prim_interp_weights(r, cpu_coord, i, 1)
-                valL  =      interp_weights(r, cpu_coord, i, 1)
-                firL  = der1_interp_weights(r, cpu_coord, i, 1)
-                
-                secI  = der2_integ_interp_weights(r, cpu_coord, i, 0)
-
-                push!(stencil, (prim..., val..., fir..., sec..., primL..., valL..., firL..., secI...))
-            end
-        end
-
-        stencil = OffsetArray(arch_array(arch, stencil), -1)
-
-        allstencils = (allstencils..., stencil)
-    end
-
-    return allstencils
-end
-
-function calc_weight_coefficients(FT, coord, arch, N)
-
-    c = Array(parent(coord))
-    c = OffsetArray(cpu_coord, coord.offsets[1])
-
-    coeff  = NTuple{6, FT}[]
-
-    @inbounds begin
-        for i = 0:N+1
-            c₀ₗ = ( (c[i]   - c[i-3]) / (c[i+2] - c[i-3]) * (c[i] - c[i-2]) / (c[i+2] - c[i-2]) )
-            c₁ₗ = ( (c[i]   - c[i-3]) / (c[i+2] - c[i-3]) * (c[i+2] - c[i]) / (c[i+2] - c[i-2]) * ((c[i+2] - c[i-2]) / (c[i+1] - c[i-3]) + 1) )
-            c₂ₗ = ( (c[i+1] - c[i])   / (c[i+2] - c[i-3]) * (c[i+2] - c[i]) / (c[i+1] - c[i-3]) )
-            c₀ᵣ = ( (c[i]   - c[i-1]) / (c[i+3] - c[i-2]) * (c[i] - c[i-2]) / (c[i+3] - c[i-1]) )
-            c₁ᵣ = ( (c[i]   - c[i-2]) / (c[i+3] - c[i-2]) * (c[i+3] - c[i]) / (c[i+3] - c[i-1]) * ((c[i+3] - c[i-1]) / (c[i+2] - c[i-2]) + 1) )
-            c₂ᵣ = ( (c[i+2] - c[i])   / (c[i+3] - c[i-2]) * (c[i+3] - c[i]) / (c[i+2] - c[i-3]) )
-
-            push!(coeff, (c₀ₗ, c₁ₗ, c₂ₗ, c₀ᵣ, c₁ᵣ, c₂ᵣ))
-        end
-
-    end
-
-    coeff  = OffsetArray(arch_array(arch, coeff ), -1)
-    
-    return coeff
-
-end
