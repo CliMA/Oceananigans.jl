@@ -61,7 +61,7 @@ model = NonhydrostaticModel(grid=grid, tracers=(:c));
 
 simulation = Simulation(model, Δt=12, stop_time=3600);
 
-fields = Dict("u" => model.velocities.u, "v" => model.velocities.v);
+fields = Dict("u" => model.velocities.u, "c" => model.tracers.c);
 
 simulation.output_writers[:field_writer] =
     NetCDFOutputWriter(model, fields, filepath="more_fields.nc", schedule=TimeInterval(60))
