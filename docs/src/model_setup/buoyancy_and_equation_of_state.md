@@ -51,7 +51,7 @@ NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 In order to create a `HydrostaticFreeSurfaceModel` without any buoyancy treatment we need to pass
 explicitly pass the `buoyancy=nothing` flag. Note that by default `HydrostaticFreeSurfaceModel`
 advects temperature `T` and salinity `S` (which aren't necessary without a buoyancy treatment), so
-it often recommended to explicitly specify the tracers in this case as well:
+it is often recommended to explicitly specify the tracers in this case as well:
 
 ```jldoctest buoyancy
 julia> model = HydrostaticFreeSurfaceModel(grid=grid, buoyancy=nothing, tracers=())
