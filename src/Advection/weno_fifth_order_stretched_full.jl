@@ -112,7 +112,7 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}) where {FT, 
         Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ),
         Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
         Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ),       
-        Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ)
+        Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
         Adapt.adapt(to, smooth.smooth_xᶠᵃᵃ),
         Adapt.adapt(to, scheme.smooth_xᶜᵃᵃ),
         Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ),
