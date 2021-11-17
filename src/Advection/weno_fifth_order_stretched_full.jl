@@ -103,7 +103,7 @@ end
 Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}) where {FT, XT, YT, ZT, XS, YS, ZS} =
      WENO5{FT, typeof(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ)),
                typeof(Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ)),  
-               typeof(Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ))
+               typeof(Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ)),
                typeof(Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ)),
                typeof(Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ)),  
                typeof(Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ))}(
