@@ -193,8 +193,7 @@ function time_stepping_with_background_fields(arch)
 
     model = NonhydrostaticModel(grid=grid, background_fields=(u=background_u, v=background_v, w=background_w,
                                                               T=background_T, S=background_S),
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
-                                )
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     time_step!(model, 1, euler=true)
 
