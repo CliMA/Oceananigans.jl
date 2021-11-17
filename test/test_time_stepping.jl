@@ -61,8 +61,7 @@ function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
     b = SeawaterBuoyancy(equation_of_state=eos)
 
     model = NonhydrostaticModel(architecture=arch, grid=grid, buoyancy=b,
-                                tracers=(:T, :S),
-                                )
+                                tracers=(:T, :S))
     time_step!(model, 1, euler=true)
 
     return true  # Test that no errors/crashes happen when time stepping.
