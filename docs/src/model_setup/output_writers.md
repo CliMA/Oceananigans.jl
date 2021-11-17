@@ -84,7 +84,7 @@ simulation.output_writers[:surface_slice_writer] =
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: another_surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: ["v", "u"]
+├── 2 outputs: ["c", "u"]
 ├── field slicer: FieldSlicer(:, :, 16, with_halos=false)
 └── array type: Array{Float32}
 ```

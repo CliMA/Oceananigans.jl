@@ -9,7 +9,7 @@ The buoyancy option selects how buoyancy is treated. There are currently three o
 
 ## No buoyancy
 
-To turn off buoyancy (and gravity) you can simply create a model without explocitly passing the
+To turn off buoyancy (and gravity) you can simply create a model without explicitly passing the
 `buoyancy` flag:
 
 ```@meta
@@ -45,7 +45,7 @@ NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 └── coriolis: Nothing
 ```
 
-By default `NonhydrostaticModel` also evolves no tracers. If you want to evolve passive tracers you
+By default `NonhydrostaticModel` also does not evolve any tracers. If you want to evolve passive tracers you
 can pass the option `tracers` to the constructor:
 
 ```jldoctest buoyancy
@@ -162,8 +162,8 @@ SeawaterPolynomials.BoussinesqEquationOfState{TEOS10SeawaterPolynomial{Float64},
 If you want to simulate a set-up such that gravity doesn't align with the vertical (`z`) coordinate
 (for example when simulating a tilted domain) you can wrap your option for buoyancy treatment in the
 `Buoyancy()` function call, which allows for the option `vertical_unit_vector`. This works for both
-`BuoyancyTracer()` and `SeawaterBuoyancy()`. As example, using buoyancy as a tracer in a set-up in
-which gravity is tilted 45 degrees about the `x` axis can be done as
+`BuoyancyTracer()` and `SeawaterBuoyancy()`. For example, a set-up in using buoyancy as a tracer
+and in which gravity is tilted 45 degrees about the `x` axis can be done as
 
 ```jldoctest buoyancy
 julia> θ = 45; # degrees
