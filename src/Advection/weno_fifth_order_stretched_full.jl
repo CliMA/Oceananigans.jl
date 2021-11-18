@@ -183,25 +183,19 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}) where {FT, 
 
 @inline function biased_β(ψ, scheme, r, args...) 
     stencil   = retrieve_smooth(scheme, r, args...)
-    Pᵢ  = stencil[1:3];   
-    aᵢ  = stencil[4:6];
-    aₓᵢ = stencil[7:9];
-    aₓₓ = stencil[10:12];  
-    bᵢ  = stencil[13:15];
-    bₓᵢ = stencil[16:18];
-    bₓₓ = stencil[19:21];
+    wᵢᵢ = stencil[1:3]   
+    wᵢⱼ = stencil[4:6]
     
-    return   dot(aᵢ, ψ) * dot(aₓᵢ, ψ) - dot(bᵢ, ψ) * dot(bₓᵢ, ψ) - dot(aₓₓ, ψ) * dot(Pᵢ,  ψ) + dot(bₓₓ, ψ)
+    return   sum(ψ .* ( wᵢᵢ .* ψ .+ wᵢⱼ .* dagger(ψ) ) )
 end
 
-@inline left_biased_β₀(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme, 0, args...) 
-@inline left_biased_β₁(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme, 1, args...) 
-@inline left_biased_β₂(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme, 2, args...) 
+@inline left_biased_β₀(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme,  -1, args...) 
+@inline left_biased_β₁(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme,   1, args...) 
+@inline left_biased_β₂(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme,   2, args...) 
 
-@inline right_biased_β₀(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme, -1, args...) 
-@inline right_biased_β₁(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme,  0, args...) 
+@inline right_biased_β₀(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme,  2, args...) 
+@inline right_biased_β₁(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme,  1, args...) 
 @inline right_biased_β₂(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme,  1, args...) 
-
 
 # Right-biased smoothness indicators are a reflection or "symmetric modification" of the left-biased smoothness
 # indicators around grid point `i-1/2`.
@@ -213,8 +207,6 @@ end
 @inline right_biased_α₀(FT, ψ, args...) = FT(C3₂) / (right_biased_β₀(FT, ψ, args...) + FT(ε))^ƞ
 @inline right_biased_α₁(FT, ψ, args...) = FT(C3₁) / (right_biased_β₁(FT, ψ, args...) + FT(ε))^ƞ
 @inline right_biased_α₂(FT, ψ, args...) = FT(C3₀) / (right_biased_β₂(FT, ψ, args...) + FT(ε))^ƞ
-
-@inline dot(a, b) = sum(a .* b)
 
 #####
 ##### WENO-5 reconstruction
@@ -368,33 +360,36 @@ function calc_smoothness_coefficients(FT, beta, coord, arch, N)
     cpu_coord = Array(parent(coord))
     cpu_coord = OffsetArray(cpu_coord, coord.offsets[1])
 
-    ## The smoothness coefficients are calculated as :
-    ## Δxᵣ¹ pᵣ(x) * pᵣ'(x) |ₐᵇ - Δxᵣ¹ pᵣ''(x) * Pᵣ(x) |ₐᵇ + pᵣ''(x) * (b - a) Δxᵣ³
-    ## where a and b are xᵢ and xᵢ₋₁
-    ## and p(x) is the second order reconstruction polynomial while 
-    ## P(x), p'(x) and p''(x) are its primitive, first derivative and second derivative, respectively
-    ## as p(x) is a second order polynomial, p''(x) is a constant in x
-
-    ## so it's 21 coefficient total (P, p, p' and p'') calculated at xᵢ and xᵢ₋₁ (p''(x) does not depend on x)
+    # written all on overleaf
 
     allstencils = ()
 
     for r = -1:2
-        stencil = NTuple{21, FT}[]   
+        stencil = NTuple{6, FT}[]   
 
         @inbounds begin
             for i = 0:N+1
-                prim  = prim_interp_weights(r, cpu_coord, i, 0)
-                val   =      interp_weights(r, cpu_coord, i, 0)
-                fir   = der1_interp_weights(r, cpu_coord, i, 0)
-                sec   = der2_interp_weights(r, cpu_coord, i, 0)
-                primL = prim_interp_weights(r, cpu_coord, i, 1)
-                valL  =      interp_weights(r, cpu_coord, i, 1)
-                firL  = der1_interp_weights(r, cpu_coord, i, 1)
-                
-                secI  = der2_integ_interp_weights(r, cpu_coord, i)
+               
+                Δcᵢ  = cpu_coord[i] - cpu_coord[i-1]
 
-                push!(stencil, ((prim .- primL)..., val..., fir..., sec..., valL..., firL..., secI...))
+                r > 0 ? bias = (-1, 0) : bias = (0, 1)
+                
+                Bᵢ  = prim_interp_weights(r, cpu_coord, i, bias[2])
+                bᵢ  =      interp_weights(r, cpu_coord, i, bias[2])
+                bₓᵢ = der1_interp_weights(r, cpu_coord, i, bias[2])
+                Aᵢ  = prim_interp_weights(r, cpu_coord, i, bias[1])
+                aᵢ  =      interp_weights(r, cpu_coord, i, bias[1])
+                aₓᵢ = der1_interp_weights(r, cpu_coord, i, bias[1])
+
+                pₓₓ = der2_interp_weights(r, cpu_coord, i)
+
+                Pᵢ  =  (Bᵢ .- Aᵢ)
+
+                wᵢᵢ = Δcᵢ  .* (bᵢ .* bₓᵢ .- aᵢ .* aₓᵢ .- pₓₓ .* Pᵢ)  .+ Δcᵢ^4 .* (pₓₓ .* pₓₓ)
+                wᵢⱼ = Δcᵢ  .* (star(bᵢ, bₓᵢ)  .- star(aᵢ, aₓᵢ) .- star(pₓₓ, Pᵢ)) .+
+                                                         Δcᵢ^4 .* star(pₓₓ, pₓₓ)
+
+                push!(stencil, (wᵢᵢ..., wᵢⱼ...))
             end
         end
 
@@ -406,8 +401,11 @@ function calc_smoothness_coefficients(FT, beta, coord, arch, N)
     return allstencils
 end
 
+@inline dagger(ψ)    = (ψ[2:3]..., ψ[1])
+@inline star(ψ₁, ψ₂) = (ψ₁ .* dagger(ψ₂) .+ dagger(ψ₁) .* ψ₂)
+
 # Integral of ENO coefficients for 2nd order polynomial reconstruction at the face
-function prim_interp_weights(r, coord, i, left)
+function prim_interp_weights(r, coord, i, bias)
 
     coeff = ()
     for j = 0:2
@@ -425,7 +423,7 @@ function prim_interp_weights(r, coord, i, left)
                                 sum  += coord[i-r+q-1]
                             end
                         end
-                        num += coord[i-left]^3 / 3 - sum * coord[i-left]^2 / 2 + prod * coord[i-left]
+                        num += coord[i+bias]^3 / 3 - sum * coord[i+bias]^2 / 2 + prod * coord[i+bias]
                     end
                 end
                 den = 1
@@ -437,14 +435,14 @@ function prim_interp_weights(r, coord, i, left)
                 c += num / den
             end 
         end
-        coeff = (coeff..., c * (coord[i-r+j] - coord[i-r+j-1]) * (coord[i-r+j] - coord[i-r+j-1]) )
+        coeff = (coeff..., c * (coord[i-r+j] - coord[i-r+j-1]))
     end
 
     return coeff
 end
 
 # Second derivative of ENO coefficients for 2nd order polynomial reconstruction at the face
-function der2_interp_weights(r, coord, i, left)
+function der2_interp_weights(r, coord, i)
 
     coeff = ()
     for j = 0:2
@@ -472,37 +470,8 @@ function der2_interp_weights(r, coord, i, left)
     return coeff
 end
 
-# Integrated second derivative of ENO coefficients for 2nd order polynomial reconstruction at the face
-function der2_integ_interp_weights(r, coord, i)
-
-    coeff = ()
-    for j = 0:2
-        c = 0
-        @inbounds begin
-            for m = j+1:3
-                num = 0
-                for l = 0:3
-                    if l != m
-                        num += 2 
-                    end
-                end
-                den = 1
-                for l = 0:3
-                    if l!= m
-                        den *= (coord[i-r+m-1] - coord[i-r+l-1])
-                    end
-                end
-                c += num / den
-            end 
-        end
-        coeff = (coeff..., c * (coord[i-r+j] - coord[i-r+j-1]) * (coord[i] - coord[i-1]) * (coord[i-r+j] - coord[i-r+j-1])^3)
-    end
-
-    return coeff
-end
-
 # first derivative of ENO coefficients for 2nd order polynomial reconstruction at the face
-function der1_interp_weights(r, coord, i, left)
+function der1_interp_weights(r, coord, i, bias)
 
     coeff = ()
     for j = 0:2
@@ -518,7 +487,7 @@ function der1_interp_weights(r, coord, i, left)
                                 sum += coord[i-r+q-1]
                             end
                         end
-                        num += 2 * coord[i-left] - sum
+                        num += 2 * coord[i+bias] - sum
                     end
                 end
                 den = 1
@@ -530,14 +499,14 @@ function der1_interp_weights(r, coord, i, left)
                 c += num / den
             end 
         end
-        coeff = (coeff..., c * (coord[i-r+j] - coord[i-r+j-1]) * (coord[i-r+j] - coord[i-r+j-1]))
+        coeff = (coeff..., c * (coord[i-r+j] - coord[i-r+j-1]))
     end
 
     return coeff
 end
 
 # ENO coefficients for 2nd order polynomial reconstruction at the face
-function interp_weights(r, coord, i, left)
+function interp_weights(r, coord, i, bias)
 
     coeff = ()
     for j = 0:2
@@ -550,7 +519,7 @@ function interp_weights(r, coord, i, left)
                         prod = 1
                         for q = 0:3
                             if q != m && q != l 
-                                prod *= (coord[i-left] - coord[i-r+q-1])
+                                prod *= (coord[i+bias] - coord[i-r+q-1])
                             end
                         end
                         num += prod
