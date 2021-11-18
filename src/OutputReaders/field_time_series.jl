@@ -157,11 +157,18 @@ function set!(time_series::InMemoryFieldTimeSeries, path::String, name::String)
         file_index = findfirst(t -> t ≈ time, file_times)
         file_iter = file_iterations[file_index]
 
-        field_n = Field(location(time_series), path, name, file_iter,
-                        boundary_conditions = time_series.boundary_conditions,
-                        grid = time_series.grid)
+        try
+            field_n = Field(location(time_series), path, name, file_iter,
+                            boundary_conditions = time_series.boundary_conditions,
+                            grid = time_series.grid)
 
-        set!(time_series[n], field_n)
+            set!(time_series[n], field_n)
+        catch
+            file = jldopen(path)
+            raw_data = arch_array(architecture, file["timeseries/$name/$iter"])
+            interior(time_series[n]) .= raw_data
+            close(file)
+        end
     end
 
     return nothing
