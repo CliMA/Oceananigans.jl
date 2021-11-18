@@ -186,9 +186,47 @@ for op in (-, +)
     end
 end
 
+@inline left_biased_β₀(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * (3ψ[1] - 4ψ[2] +  ψ[3])^two_32
+@inline left_biased_β₁(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * ( ψ[1]         -  ψ[3])^two_32
+@inline left_biased_β₂(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * ( ψ[1] - 4ψ[2] + 3ψ[3])^two_32
+
+@inline right_biased_β₀(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * ( ψ[1] - 4ψ[2] + 3ψ[3])^two_32
+@inline right_biased_β₁(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * ( ψ[1]         -  ψ[3])^two_32
+@inline right_biased_β₂(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * (3ψ[1] - 4ψ[2] +  ψ[3])^two_32
+
+@inline function biased_left_β(ψ, scheme, r, args...) 
+    stencil   = retrieve_left_smooth(scheme, r, args...)
+    wᵢᵢ = stencil[1]   
+    wᵢⱼ = stencil[2]
+    
+    return   sum(ψ .* ( wᵢᵢ .* ψ .+ wᵢⱼ .* dagger(ψ) ) )
+end
+
+@inline function biased_right_β(ψ, scheme, r, args...) 
+    stencil   = retrieve_right_smooth(scheme, r, args...)
+    wᵢᵢ = stencil[1]   
+    wᵢⱼ = stencil[2]
+    
+    return   sum(ψ .* ( wᵢᵢ .* ψ .+ wᵢⱼ .* dagger(ψ) ) )
+end
+
+@inline left_biased_β₀(FT, ψ, T, scheme, args...) = @inbounds biased_left_β(ψ, scheme, 0, args...) 
+@inline left_biased_β₁(FT, ψ, T, scheme, args...) = @inbounds biased_left_β(ψ, scheme, 1, args...) 
+@inline left_biased_β₂(FT, ψ, T, scheme, args...) = @inbounds biased_left_β(ψ, scheme, 2, args...) 
+
+@inline right_biased_β₀(FT, ψ, T, scheme, args...) = @inbounds biased_right_β(ψ, scheme, 2, args...) 
+@inline right_biased_β₁(FT, ψ, T, scheme, args...) = @inbounds biased_right_β(ψ, scheme, 1, args...) 
+@inline right_biased_β₂(FT, ψ, T, scheme, args...) = @inbounds biased_right_β(ψ, scheme, 0, args...) 
+
+
 b0(x, y, z) = FT(13/12) .* (x, -2y , z).^2 .+ FT(1/4) .* (3x,  - 4y,  +  z).^2
 b1(x, y, z) = FT(13/12) .* (x, -2y , z).^2 .+ FT(1/4) .* ( x,    0y,  -  z).^2
 b2(x, y, z) = FT(13/12) .* (x, -2y , z).^2 .+ FT(1/4) .* ( x,  - 4y,  + 3z).^2
+
+b0s(x, y, z) = FT(13/12) .* star((x, -2y , z), (x, -2y , z)) .+ FT(1/4) .* star((3x,  - 4y,  +  z), (3x,  - 4y,  +  z))
+b1s(x, y, z) = FT(13/12) .* star((x, -2y , z), (x, -2y , z)) .+ FT(1/4) .* star(( x,    0y,  -  z), ( x,    0y,  -  z))
+b2s(x, y, z) = FT(13/12) .* star((x, -2y , z), (x, -2y , z)) .+ FT(1/4) .* star(( x,  - 4y,  + 3z), ( x,  - 4y,  + 3z))
+
 
 b0s(x, y, z) = FT(13/12) .* star((x, -2y , z), (x, -2y , z)) .+ FT(1/4) .* star((3x,  - 4y,  +  z), (3x,  - 4y,  +  z))
 b1s(x, y, z) = FT(13/12) .* star((x, -2y , z), (x, -2y , z)) .+ FT(1/4) .* star(( x,    0y,  -  z), ( x,    0y,  -  z))

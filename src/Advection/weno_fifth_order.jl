@@ -17,7 +17,7 @@ const C3₂ = 1/10
 const ƞ = Int32(2) # WENO exponent
 const ε = 1e-6
 
-struct WENO5{FT, XT, YT, ZT, XS, YS, ZS} <: AbstractUpwindBiasedAdvectionScheme{2} 
+struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, W} <: AbstractUpwindBiasedAdvectionScheme{2} 
     
     # coefficients for ENO reconstruction 
     coeff_xᶠᵃᵃ::XT
@@ -35,7 +35,7 @@ struct WENO5{FT, XT, YT, ZT, XS, YS, ZS} <: AbstractUpwindBiasedAdvectionScheme{
     smooth_zᵃᵃᶜ::ZS
 end
 
-function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false) 
+function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false, zweno = false) 
     
     metrics   = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
     dirsize   = (:Nx, :Nx, :Ny, :Ny, :Nz, :Nz)
@@ -70,10 +70,14 @@ function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false)
     XS = typeof(smooth_xᶠᵃᵃ)
     YS = typeof(smooth_yᵃᶠᵃ)
     ZS = typeof(smooth_zᵃᵃᶠ)
+    zweno ? W  = Number : W = Nothing
 
-    return WENO5{FT, XT, YT, ZT, XS, YS, ZS}(coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
-                                             smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ)
+    return WENO5{FT, XT, YT, ZT, XS, YS, ZS, W}(coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
+                                                smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ)
 end
+
+const JSWENO = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
+const ZWENO  = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any}
 
 function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
     print(io, "WENO5 advection sheme with X $(RX == Nothing ? "regular" : "stretched") \n",
@@ -162,6 +166,14 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}) where {FT, 
 @inline right_biased_β₁(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * ( ψ[1]         -  ψ[3])^two_32
 @inline right_biased_β₂(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * (3ψ[1] - 4ψ[2] +  ψ[3])^two_32
 
+#####
+##### Stretched smoothness indicators gathered from precomputed values.
+##### the stretched values for β coefficients is calculated from 
+##### Shu, NASA/CR-97-206253, ICASE Report No. 97-65
+##### by hardcoding that p(x) is a 2nd order polynomial
+#####
+
+
 @inline function biased_left_β(ψ, scheme, r, args...) 
     stencil   = retrieve_left_smooth(scheme, r, args...)
     wᵢᵢ = stencil[1]   
@@ -198,13 +210,18 @@ end
 @inline right_biased_α₂(FT, ψ, args...) = FT(C3₀) / (right_biased_β₂(FT, ψ, args...) + FT(ε))^ƞ
 
 #####
-##### WENO-5 reconstruction
+##### Z-WENO-5 reconstruction (Castro et al: High order weighted essentially non-oscillatory WENO-Z schemesfor hyperbolic conservation laws)
 #####
 
-@inline function left_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀, args...)
-    α₀ = left_biased_α₀(FT, ψ₀, args...)
-    α₁ = left_biased_α₁(FT, ψ₁, args...)
-    α₂ = left_biased_α₂(FT, ψ₂, args...)
+@inline function left_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀, T, scheme::ZWENO, args...)
+    β₀ = left_biased_β₀(FT, ψ₀, T, scheme, args...)
+    β₁ = left_biased_β₁(FT, ψ₁, T, scheme, args...)
+    β₂ = left_biased_β₂(FT, ψ₂, T, scheme, args...)
+    
+    τ₅ = abs(β₂ - β₀)
+    α₀ = FT(C3₀) * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
+    α₁ = FT(C3₁) * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
+    α₂ = FT(C3₂) * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
 
     Σα = α₀ + α₁ + α₂
     w₀ = α₀ / Σα
@@ -214,10 +231,32 @@ end
     return w₀, w₁, w₂
 end
 
-@inline function right_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀, args...)
-    α₀ = right_biased_α₀(FT, ψ₀, args...)
-    α₁ = right_biased_α₁(FT, ψ₁, args...)
-    α₂ = right_biased_α₂(FT, ψ₂, args...)
+@inline function right_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀, T, scheme::ZWENO, args...)
+    β₀ = right_biased_β₀(FT, ψ₀, T, scheme, args...)
+    β₁ = right_biased_β₁(FT, ψ₁, T, scheme, args...)
+    β₂ = right_biased_β₂(FT, ψ₂, T, scheme, args...)
+
+    τ₅ = abs(β₂ - β₀)
+    α₀ = FT(C3₂) * (1 + (τ₅ / (β₀ + FT(ε)))^ƞ) 
+    α₁ = FT(C3₁) * (1 + (τ₅ / (β₁ + FT(ε)))^ƞ) 
+    α₂ = FT(C3₀) * (1 + (τ₅ / (β₂ + FT(ε)))^ƞ) 
+    
+    Σα = α₀ + α₁ + α₂
+    w₀ = α₀ / Σα
+    w₁ = α₁ / Σα
+    w₂ = α₂ / Σα
+
+    return w₀, w₁, w₂
+end
+
+#####
+##### JS-WENO-5 reconstruction
+#####
+
+@inline function left_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀, T, scheme::JSWENO, args...)
+    α₀ = left_biased_α₀(FT, ψ₀, T, scheme, args...)
+    α₁ = left_biased_α₁(FT, ψ₁, T, scheme, args...)
+    α₂ = left_biased_α₂(FT, ψ₂, T, scheme, args...)
 
     Σα = α₀ + α₁ + α₂
     w₀ = α₀ / Σα
@@ -226,6 +265,23 @@ end
 
     return w₀, w₁, w₂
 end
+
+@inline function right_biased_weno5_weights(FT, ψ₂, ψ₁, ψ₀, T, scheme::JSWENO, args...)
+    α₀ = right_biased_α₀(FT, ψ₀, T, scheme, args...)
+    α₁ = right_biased_α₁(FT, ψ₁, T, scheme, args...)
+    α₂ = right_biased_α₂(FT, ψ₂, T, scheme, args...)
+
+    Σα = α₀ + α₁ + α₂
+    w₀ = α₀ / Σα
+    w₁ = α₁ / Σα
+    w₂ = α₂ / Σα
+
+    return w₀, w₁, w₂
+end
+
+#####
+##### Biased interpolation functions
+#####
 
 @inline function weno_left_biased_interpolate_xᶠᵃᵃ(i, j, k, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}, ψ, args...) where {FT, XT, YT, ZT, XS, YS, ZS}
     ψ₂, ψ₁, ψ₀ = left_stencil_x(i, j, k, ψ)
@@ -276,7 +332,7 @@ end
 end
 
 #####
-##### Coefficients for stretched (and uniform) ENO schemes (see Shu )
+##### Coefficients for stretched (and uniform) ENO schemes (see Shu NASA/CR-97-206253, ICASE Report No. 97-65)
 #####
 
 @inline coeff_left_p₀(scheme::WENO5{FT}, ::Type{Nothing}, args...) where FT = (  FT(1/3),    FT(5/6), - FT(1/6))
@@ -350,13 +406,13 @@ function calc_smoothness_coefficients(FT, beta, coord, arch, N)
     cpu_coord = Array(parent(coord))
     cpu_coord = OffsetArray(cpu_coord, coord.offsets[1])
 
-    # written all on overleaf
+    # derivation written on overleaf
 
     allstencils = ()
     for op = (-, +)
         for r = 0:2
             
-            stencil = NTuple{6, FT}[]   
+            stencil = NTuple{2, NTuple{3, FT}}[]   
             @inbounds begin
                 for i = 0:N+1
                
@@ -379,7 +435,7 @@ function calc_smoothness_coefficients(FT, beta, coord, arch, N)
                     wᵢⱼ = Δcᵢ  .* (star(bᵢ, bₓᵢ)  .- star(aᵢ, aₓᵢ) .- star(pₓₓ, Pᵢ)) .+
                                                          Δcᵢ^4 .* star(pₓₓ, pₓₓ)
     
-                    push!(stencil, (wᵢᵢ..., wᵢⱼ...))
+                    push!(stencil, (wᵢᵢ, wᵢⱼ))
                 end
             end
     
