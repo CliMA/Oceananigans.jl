@@ -19,7 +19,7 @@ function multiple_steps!(model)
     return nothing
 end
 
-N    = 32
+N    = 48
 arch = CPU()
 
 # regular "stretched" mesh
@@ -60,13 +60,12 @@ grid_str  = RectilinearGrid(size = (N,), x = Fsaw,  halo = (3,), topology = (Per
 grid_str2 = RectilinearGrid(size = (N,), x = Fstr2, halo = (3,), topology = (Periodic, Flat, Flat), architecture = arch)    
 
 advection = [WENO5(), WENO5(), WENO5()]
-# advection = [WENO5()]
 
 schemes = [:wreg, :wstr, :wstrS]
 
 vel = 1
-# Checking the accuracy of different schemes with different settings
 
+# Checking the accuracy of different schemes with different settings
 for grid in [grid_reg, grid_str, grid_str2]
     grid == grid_reg ? gr = :reg : grid == grid_str ? gr = :str : gr = :str2
 
@@ -78,7 +77,7 @@ for grid in [grid_reg, grid_str, grid_str2]
     coord[(gr)] = x
     Δt_max      = 0.2 * min_Δx(grid)
     end_time    = 1000 * Δt_max
-    c₀(x, y, z) = 10*exp(-((x-0.5)/0.1)^2)
+    c₀(x, y, z) = 10*exp(-((x-0.5)/0.2)^2)
                                             
     for (adv, scheme) in enumerate(advection) 
         if adv == 2
@@ -129,19 +128,9 @@ for grid in [grid_reg, grid_str, grid_str2]
         plot!(x, solution[(schemes[2], gr, Int(i))], linewidth = 1, linecolor =:blue , legend = false) 
         plot!(x, solution[(schemes[3], gr, Int(i))], linewidth = 1, linecolor =:green, legend = false) 
     end 
-    gif(anim, "anim_1D_$(gr)_right.mp4", fps = 15)
+    gif(anim, "anim_1D_$(gr).mp4", fps = 15)
     
 end
-
-# pos   = Dict()
-# plots = Dict()
-# for grid in [grid_reg, grid_str, grid_str2]
-#     grid == grid_reg ? gr = :reg : grid == grid_str ? gr = :str : gr = :str2
-#     plots[(gr)] = plot(coord[(gr)], real_sol[(gr, Int(end_time/Δt_max/10))],seriestype=:scatter )
-#     for adv = 1:3
-#         plots[(gr)] = plot!(coord[(gr)], solution[(schemes[adv], gr, Int(end_time/Δt_max/10))])
-#     end
-# end
 
 # """
 # Now test 2D advection 
@@ -174,7 +163,6 @@ for grid in [grid_reg, grid_str, grid_str2]
         if adv == 2
             scheme = WENO5(grid = grid)
         end
-
         if adv == 3
             scheme = WENO5(grid = grid, stretched_smoothness = true)
         end
@@ -190,8 +178,6 @@ for grid in [grid_reg, grid_str, grid_str2]
 
 
         mask(y) = (y < 0.6 && y > 0.4) ? 1 : 0
-        # c₀(x, y, z) = 10*exp(-((x-0.5)/0.3)^2) * mask(y)
-        # c₀(x, y, z) = 10*exp(-((y-0.5)/0.3)^2) * mask(z)
         c₀(x, y, z) = 1 * mask(z) * mask(x) 
                                 
         c = model.tracers.c
@@ -206,9 +192,7 @@ for grid in [grid_reg, grid_str, grid_str2]
             ctest   = Array(parent(model.tracers.c.data))
             offsets = (model.tracers.c.data.offsets[1],  model.tracers.c.data.offsets[2],  model.tracers.c.data.offsets[3])
             ctemp   = OffsetArray(ctest, offsets)
-            # ctests  = ctemp[1 ,1:grid.Ny, 1:grid.Nz]
             ctests  = ctemp[1:grid.Nx, 1 ,1:grid.Nz]
-            # ctests  = ctemp[1:grid.Nx, 1:grid.Ny, 1]
             solution2D[(schemes[adv], gr, Int(i))] = ctests
             for j = 1:10
                 time_step!(model, Δt_max)
@@ -218,7 +202,6 @@ for grid in [grid_reg, grid_str, grid_str2]
     end
 
     x        = grid.xᶜᵃᵃ[1:grid.Nx]
-    # y        = grid.yᵃᶜᵃ[1:grid.Ny]
     y        = grid.zᵃᵃᶜ[1:grid.Nz]
     coord2D[(gr)]    = (x, y)
     anim = @animate for i ∈ 1:end_time/Δt_max/10
