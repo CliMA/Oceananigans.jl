@@ -5,21 +5,20 @@ using OffsetArrays
 using BenchmarkTools
 using LinearAlgebra
 using Plots
-"""
 
+"""
 This simulation is a simple 1D advection of a gaussian function, to test the 
 validity of the stretched WENO scheme
-
 """
              
 function multiple_steps!(model)
-    for i = 1:20
+    for i = 1:1000
         time_step!(model, 1e-6)
     end
     return nothing
 end
 
-N    = 48
+N    = 32
 arch = CPU()
 
 # regular "stretched" mesh
@@ -118,9 +117,9 @@ for grid in [grid_reg, grid_str, grid_str2]
     
 end
 
-# """
-# Now test 2D advection 
 # # """
+# # Now test 2D advection 
+# # # """
 
 solution2D  = Dict()
 real_sol2D  = Dict()

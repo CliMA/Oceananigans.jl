@@ -19,76 +19,57 @@ const ε = 1e-6
 
 struct WENO5{FT, XT, YT, ZT, XS, YS, ZS} <: AbstractUpwindBiasedAdvectionScheme{2} 
     
+    # coefficients for ENO reconstruction 
     coeff_xᶠᵃᵃ::XT
     coeff_xᶜᵃᵃ::XT   
     coeff_yᵃᶠᵃ::YT
     coeff_yᵃᶜᵃ::YT
     coeff_zᵃᵃᶠ::ZT
     coeff_zᵃᵃᶜ::ZT
-
+    # coefficients to calculate WENO smoothness indicators
     smooth_xᶠᵃᵃ::XS
     smooth_xᶜᵃᵃ::XS
     smooth_yᵃᶠᵃ::YS
     smooth_yᵃᶜᵃ::YS
     smooth_zᵃᵃᶠ::ZS
     smooth_zᵃᵃᶜ::ZS
-
 end
 
 function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false) 
     
-    if grid isa Nothing
-        coeff_xᶠᵃᵃ = nothing 
-        coeff_xᶜᵃᵃ = nothing  
-        coeff_yᵃᶠᵃ = nothing   
-        coeff_yᵃᶜᵃ = nothing
-        coeff_zᵃᵃᶠ = nothing
-        coeff_zᵃᵃᶜ = nothing
-        smooth_xᶠᵃᵃ = nothing 
-        smooth_xᶜᵃᵃ = nothing  
-        smooth_yᵃᶠᵃ = nothing   
-        smooth_yᵃᶜᵃ = nothing
-        smooth_zᵃᵃᶠ = nothing
-        smooth_zᵃᵃᶜ = nothing        
-    elseif !(grid isa RectilinearGrid)
-        @warn "Stretched WENO is not supported with grids other than Rectilinear, defaulting to Uniform WENO"
-        coeff_xᶠᵃᵃ = nothing 
-        coeff_xᶜᵃᵃ = nothing  
-        coeff_yᵃᶠᵃ = nothing   
-        coeff_yᵃᶜᵃ = nothing
-        coeff_zᵃᵃᶠ = nothing
-        coeff_zᵃᵃᶜ = nothing
-        smooth_xᶠᵃᵃ = nothing 
-        smooth_xᶜᵃᵃ = nothing  
-        smooth_yᵃᶠᵃ = nothing   
-        smooth_yᵃᶜᵃ = nothing
-        smooth_zᵃᵃᶠ = nothing
-        smooth_zᵃᵃᶜ = nothing        
-    else
-        FT          = eltype(grid)
-        arch        = grid.architecture
-        helper_grid = with_halo((4,4,4), grid)
-        coeff_xᶠᵃᵃ = calc_interpolating_coefficients(FT, helper_grid.xᶠᵃᵃ, arch, grid.Nx) 
-        coeff_xᶜᵃᵃ = calc_interpolating_coefficients(FT, helper_grid.xᶜᵃᵃ, arch, grid.Nx)
-        coeff_yᵃᶠᵃ = calc_interpolating_coefficients(FT, helper_grid.yᵃᶠᵃ, arch, grid.Ny)
-        coeff_yᵃᶜᵃ = calc_interpolating_coefficients(FT, helper_grid.yᵃᶜᵃ, arch, grid.Ny)
-        coeff_zᵃᵃᶠ = calc_interpolating_coefficients(FT, helper_grid.zᵃᵃᶠ, arch, grid.Nz)
-        coeff_zᵃᵃᶜ = calc_interpolating_coefficients(FT, helper_grid.zᵃᵃᶜ, arch, grid.Nz)
+    metrics   = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
+    dirsize   = (:Nx, :Nx, :Ny, :Ny, :Nz, :Nz)
 
-        smooth_xᶠᵃᵃ = calc_smoothness_coefficients(FT, Val(stretched_smoothness), helper_grid.xᶠᵃᵃ, arch, grid.Nx) 
-        smooth_xᶜᵃᵃ = calc_smoothness_coefficients(FT, Val(stretched_smoothness), helper_grid.xᶜᵃᵃ, arch, grid.Nx)
-        smooth_yᵃᶠᵃ = calc_smoothness_coefficients(FT, Val(stretched_smoothness), helper_grid.yᵃᶠᵃ, arch, grid.Ny)
-        smooth_yᵃᶜᵃ = calc_smoothness_coefficients(FT, Val(stretched_smoothness), helper_grid.yᵃᶜᵃ, arch, grid.Ny)
-        smooth_zᵃᵃᶠ = calc_smoothness_coefficients(FT, Val(stretched_smoothness), helper_grid.zᵃᵃᶠ, arch, grid.Nz)
-        smooth_zᵃᵃᶜ = calc_smoothness_coefficients(FT, Val(stretched_smoothness), helper_grid.zᵃᵃᶜ, arch, grid.Nz)
+    if grid isa Nothing
+        @warn "defaulting to uniform WENO scheme with $(FT) precision, use WENO5(grid = grid) if this was not intended"
+        for metric in metrics
+            @eval $(Symbol(:coeff_ , metric)) = nothing
+            @eval $(Symbol(:smooth_, metric)) = nothing
+        end
+    elseif !(grid isa RectilinearGrid)
+        FT = Float32
+        @warn "Stretched WENO is not supported with grids other than Rectilinear, defaulting to Uniform WENO"
+        for metric in metrics
+            @eval $(Symbol(:coeff_ , metric)) = nothing
+            @eval $(Symbol(:smooth_, metric)) = nothing
+        end
+    else
+        FT       = eltype(grid)
+        arch     = grid.architecture
+        new_grid = with_halo((4,4,4), grid)
+       
+        for (dir, metric) in zip(dirsize, metrics)
+            @eval $(Symbol(:coeff_ , metric)) = calc_interpolating_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir)
+            @eval $(Symbol(:smooth_, metric)) = calc_smoothness_coefficients($FT, $Val($stretched_smoothness), $new_grid.$metric, $arch, $new_grid.$dir) 
+        end
     end
+
     XT = typeof(coeff_xᶠᵃᵃ)
     YT = typeof(coeff_yᵃᶠᵃ)
     ZT = typeof(coeff_zᵃᵃᶠ)
     XS = typeof(smooth_xᶠᵃᵃ)
     YS = typeof(smooth_yᵃᶠᵃ)
     ZS = typeof(smooth_zᵃᵃᶠ)
-
 
     return WENO5{FT, XT, YT, ZT, XS, YS, ZS}(coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
                                              smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ)
@@ -181,21 +162,29 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}) where {FT, 
 @inline right_biased_β₁(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * ( ψ[1]         -  ψ[3])^two_32
 @inline right_biased_β₂(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * (3ψ[1] - 4ψ[2] +  ψ[3])^two_32
 
-@inline function biased_β(ψ, scheme, r, args...) 
-    stencil   = retrieve_smooth(scheme, r, args...)
-    wᵢᵢ = stencil[1:3]   
-    wᵢⱼ = stencil[4:6]
+@inline function biased_left_β(ψ, scheme, r, args...) 
+    stencil   = retrieve_left_smooth(scheme, r, args...)
+    wᵢᵢ = stencil[1]   
+    wᵢⱼ = stencil[2]
     
     return   sum(ψ .* ( wᵢᵢ .* ψ .+ wᵢⱼ .* dagger(ψ) ) )
 end
 
-@inline left_biased_β₀(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme,  -1, args...) 
-@inline left_biased_β₁(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme,   1, args...) 
-@inline left_biased_β₂(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme,   2, args...) 
+@inline function biased_right_β(ψ, scheme, r, args...) 
+    stencil   = retrieve_right_smooth(scheme, r, args...)
+    wᵢᵢ = stencil[1]   
+    wᵢⱼ = stencil[2]
+    
+    return   sum(ψ .* ( wᵢᵢ .* ψ .+ wᵢⱼ .* dagger(ψ) ) )
+end
 
-@inline right_biased_β₀(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme,  2, args...) 
-@inline right_biased_β₁(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme,  1, args...) 
-@inline right_biased_β₂(FT, ψ, T, scheme, args...) = @inbounds biased_β(ψ, scheme,  1, args...) 
+@inline left_biased_β₀(FT, ψ, T, scheme, args...) = @inbounds biased_left_β(ψ, scheme, 0, args...) 
+@inline left_biased_β₁(FT, ψ, T, scheme, args...) = @inbounds biased_left_β(ψ, scheme, 1, args...) 
+@inline left_biased_β₂(FT, ψ, T, scheme, args...) = @inbounds biased_left_β(ψ, scheme, 2, args...) 
+
+@inline right_biased_β₀(FT, ψ, T, scheme, args...) = @inbounds biased_right_β(ψ, scheme, 2, args...) 
+@inline right_biased_β₁(FT, ψ, T, scheme, args...) = @inbounds biased_right_β(ψ, scheme, 1, args...) 
+@inline right_biased_β₂(FT, ψ, T, scheme, args...) = @inbounds biased_right_β(ψ, scheme, 0, args...) 
 
 # Right-biased smoothness indicators are a reflection or "symmetric modification" of the left-biased smoothness
 # indicators around grid point `i-1/2`.
@@ -313,15 +302,23 @@ end
 @inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Face})   = scheme.coeff_zᵃᵃᶠ[r+2][i] 
 @inline retrieve_coeff(scheme, r, ::Val{3}, i, ::Type{Center}) = scheme.coeff_zᵃᵃᶜ[r+2][i] 
 
-@inline retrieve_smooth(scheme, r, ::Val{1}, i, ::Type{Face})   = scheme.smooth_xᶠᵃᵃ[r+2][i] 
-@inline retrieve_smooth(scheme, r, ::Val{1}, i, ::Type{Center}) = scheme.smooth_xᶜᵃᵃ[r+2][i] 
-@inline retrieve_smooth(scheme, r, ::Val{2}, i, ::Type{Face})   = scheme.smooth_yᵃᶠᵃ[r+2][i] 
-@inline retrieve_smooth(scheme, r, ::Val{2}, i, ::Type{Center}) = scheme.smooth_yᵃᶜᵃ[r+2][i] 
-@inline retrieve_smooth(scheme, r, ::Val{3}, i, ::Type{Face})   = scheme.smooth_zᵃᵃᶠ[r+2][i] 
-@inline retrieve_smooth(scheme, r, ::Val{3}, i, ::Type{Center}) = scheme.smooth_zᵃᵃᶜ[r+2][i] 
+@inline retrieve_left_smooth(scheme, r, ::Val{1}, i, ::Type{Face})   = scheme.smooth_xᶠᵃᵃ[r+1][i] 
+@inline retrieve_left_smooth(scheme, r, ::Val{1}, i, ::Type{Center}) = scheme.smooth_xᶜᵃᵃ[r+1][i] 
+@inline retrieve_left_smooth(scheme, r, ::Val{2}, i, ::Type{Face})   = scheme.smooth_yᵃᶠᵃ[r+1][i] 
+@inline retrieve_left_smooth(scheme, r, ::Val{2}, i, ::Type{Center}) = scheme.smooth_yᵃᶜᵃ[r+1][i] 
+@inline retrieve_left_smooth(scheme, r, ::Val{3}, i, ::Type{Face})   = scheme.smooth_zᵃᵃᶠ[r+1][i] 
+@inline retrieve_left_smooth(scheme, r, ::Val{3}, i, ::Type{Center}) = scheme.smooth_zᵃᵃᶜ[r+1][i] 
+
+@inline retrieve_right_smooth(scheme, r, ::Val{1}, i, ::Type{Face})   = scheme.smooth_xᶠᵃᵃ[r+4][i] 
+@inline retrieve_right_smooth(scheme, r, ::Val{1}, i, ::Type{Center}) = scheme.smooth_xᶜᵃᵃ[r+4][i] 
+@inline retrieve_right_smooth(scheme, r, ::Val{2}, i, ::Type{Face})   = scheme.smooth_yᵃᶠᵃ[r+4][i] 
+@inline retrieve_right_smooth(scheme, r, ::Val{2}, i, ::Type{Center}) = scheme.smooth_yᵃᶜᵃ[r+4][i] 
+@inline retrieve_right_smooth(scheme, r, ::Val{3}, i, ::Type{Face})   = scheme.smooth_zᵃᵃᶠ[r+4][i] 
+@inline retrieve_right_smooth(scheme, r, ::Val{3}, i, ::Type{Center}) = scheme.smooth_zᵃᵃᶜ[r+4][i] 
+
 
 @inline calc_interpolating_coefficients(FT, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N) = nothing
-@inline calc_interpolating_coefficients(FT, coord::AbstractRange, arch, N) = nothing
+@inline calc_interpolating_coefficients(FT, coord::AbstractRange, arch, N)                              = nothing
 
 @inline calc_smoothness_coefficients(FT, ::Val{false}, args...) = nothing
 @inline calc_smoothness_coefficients(FT, ::Val{true}, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N) = nothing
@@ -333,26 +330,19 @@ function calc_interpolating_coefficients(FT, coord, arch, N)
     cpu_coord = Array(parent(coord))
     cpu_coord = OffsetArray(cpu_coord, coord.offsets[1])
 
-    c₋₁ = NTuple{3, FT}[]
-    c₀  = NTuple{3, FT}[]
-    c₁  = NTuple{3, FT}[]
-    c₂  = NTuple{3, FT}[]
-
-    @inbounds begin
-        for i = 0:N+1
-            push!(c₋₁, interp_weights(-1, cpu_coord, i, 0))
-            push!(c₀,  interp_weights( 0, cpu_coord, i, 0))
-            push!(c₁,  interp_weights( 1, cpu_coord, i, 0))
-            push!(c₂,  interp_weights( 2, cpu_coord, i, 0))
+    allstencils = ()
+    for r = -1:2
+        stencil = NTuple{3, FT}[]
+        @inbounds begin
+            for i = 0:N+1
+                push!(stencil, interp_weights(r, cpu_coord, i, 0, -))     
+            end
         end
+        stencil     = OffsetArray(arch_array(arch, stencil), -1)
+        allstencils = (allstencils..., stencil)
     end
 
-    c₋₁ = OffsetArray(arch_array(arch, c₋₁), -1)
-    c₀  = OffsetArray(arch_array(arch, c₀ ), -1)
-    c₁  = OffsetArray(arch_array(arch, c₁ ), -1)
-    c₂  = OffsetArray(arch_array(arch, c₂ ), -1)
-
-    return (c₋₁, c₀, c₁, c₂)
+    return allstencils
 end
 
 function calc_smoothness_coefficients(FT, beta, coord, arch, N) 
@@ -363,39 +353,39 @@ function calc_smoothness_coefficients(FT, beta, coord, arch, N)
     # written all on overleaf
 
     allstencils = ()
-
-    for r = -1:2
-        stencil = NTuple{6, FT}[]   
-
-        @inbounds begin
-            for i = 0:N+1
+    for op = (-, +)
+        for r = 0:2
+            
+            stencil = NTuple{6, FT}[]   
+            @inbounds begin
+                for i = 0:N+1
                
-                Δcᵢ  = cpu_coord[i] - cpu_coord[i-1]
-
-                r > 0 ? bias = (-1, 0) : bias = (0, 1)
+                    bias1 = Int(op == +)
+                    bias2 = bias1 - 1
+    
+                    Δcᵢ = cpu_coord[i + bias1] - cpu_coord[i + bias2]
                 
-                Bᵢ  = prim_interp_weights(r, cpu_coord, i, bias[2])
-                bᵢ  =      interp_weights(r, cpu_coord, i, bias[2])
-                bₓᵢ = der1_interp_weights(r, cpu_coord, i, bias[2])
-                Aᵢ  = prim_interp_weights(r, cpu_coord, i, bias[1])
-                aᵢ  =      interp_weights(r, cpu_coord, i, bias[1])
-                aₓᵢ = der1_interp_weights(r, cpu_coord, i, bias[1])
-
-                pₓₓ = der2_interp_weights(r, cpu_coord, i)
-
-                Pᵢ  =  (Bᵢ .- Aᵢ)
-
-                wᵢᵢ = Δcᵢ  .* (bᵢ .* bₓᵢ .- aᵢ .* aₓᵢ .- pₓₓ .* Pᵢ)  .+ Δcᵢ^4 .* (pₓₓ .* pₓₓ)
-                wᵢⱼ = Δcᵢ  .* (star(bᵢ, bₓᵢ)  .- star(aᵢ, aₓᵢ) .- star(pₓₓ, Pᵢ)) .+
+                    Bᵢ  = prim_interp_weights(r, cpu_coord, i, bias1, op)
+                    bᵢ  =      interp_weights(r, cpu_coord, i, bias1, op)
+                    bₓᵢ = der1_interp_weights(r, cpu_coord, i, bias1, op)
+                    Aᵢ  = prim_interp_weights(r, cpu_coord, i, bias2, op)
+                    aᵢ  =      interp_weights(r, cpu_coord, i, bias2, op)
+                    aₓᵢ = der1_interp_weights(r, cpu_coord, i, bias2, op)
+    
+                    pₓₓ = der2_interp_weights(r, cpu_coord, i, op)
+                    Pᵢ  =  (Bᵢ .- Aᵢ)
+    
+                    wᵢᵢ = Δcᵢ  .* (bᵢ .* bₓᵢ .- aᵢ .* aₓᵢ .- pₓₓ .* Pᵢ)  .+ Δcᵢ^4 .* (pₓₓ .* pₓₓ)
+                    wᵢⱼ = Δcᵢ  .* (star(bᵢ, bₓᵢ)  .- star(aᵢ, aₓᵢ) .- star(pₓₓ, Pᵢ)) .+
                                                          Δcᵢ^4 .* star(pₓₓ, pₓₓ)
-
-                push!(stencil, (wᵢᵢ..., wᵢⱼ...))
+    
+                    push!(stencil, (wᵢᵢ..., wᵢⱼ...))
+                end
             end
+    
+            stencil     = OffsetArray(arch_array(arch, stencil), -1)
+            allstencils = (allstencils..., stencil)
         end
-
-        stencil = OffsetArray(arch_array(arch, stencil), -1)
-
-        allstencils = (allstencils..., stencil)
     end
 
     return allstencils
@@ -405,7 +395,7 @@ end
 @inline star(ψ₁, ψ₂) = (ψ₁ .* dagger(ψ₂) .+ dagger(ψ₁) .* ψ₂)
 
 # Integral of ENO coefficients for 2nd order polynomial reconstruction at the face
-function prim_interp_weights(r, coord, i, bias)
+function prim_interp_weights(r, coord, i, bias, op)
 
     coeff = ()
     for j = 0:2
@@ -419,8 +409,8 @@ function prim_interp_weights(r, coord, i, bias)
                         sum  = 0 
                         for q = 0:3
                             if q != m && q != l 
-                                prod *= coord[i-r+q-1]
-                                sum  += coord[i-r+q-1]
+                                prod *= coord[op(i, r-q+1)]
+                                sum  += coord[op(i, r-q+1)]
                             end
                         end
                         num += coord[i+bias]^3 / 3 - sum * coord[i+bias]^2 / 2 + prod * coord[i+bias]
@@ -429,20 +419,20 @@ function prim_interp_weights(r, coord, i, bias)
                 den = 1
                 for l = 0:3
                     if l!= m
-                        den *= (coord[i-r+m-1] - coord[i-r+l-1])
+                        den *= (coord[op(i, r-m+1)] - coord[op(i, r-l+1)])
                     end
                 end
                 c += num / den
             end 
         end
-        coeff = (coeff..., c * (coord[i-r+j] - coord[i-r+j-1]))
+        coeff = (coeff..., c * (coord[op(i, r-j)] - coord[op(i, r-j+1)]))
     end
 
     return coeff
 end
 
 # Second derivative of ENO coefficients for 2nd order polynomial reconstruction at the face
-function der2_interp_weights(r, coord, i)
+function der2_interp_weights(r, coord, i, op)
 
     coeff = ()
     for j = 0:2
@@ -458,20 +448,20 @@ function der2_interp_weights(r, coord, i)
                 den = 1
                 for l = 0:3
                     if l!= m
-                        den *= (coord[i-r+m-1] - coord[i-r+l-1])
+                        den *= (coord[op(i, r-m+1)] - coord[op(i, r-l+1)])
                     end
                 end
                 c += num / den
             end 
         end
-        coeff = (coeff..., c * (coord[i-r+j] - coord[i-r+j-1]))
+        coeff = (coeff..., c * (coord[op(i, r-j)] - coord[op(i, r-j+1)]))
     end
 
     return coeff
 end
 
 # first derivative of ENO coefficients for 2nd order polynomial reconstruction at the face
-function der1_interp_weights(r, coord, i, bias)
+function der1_interp_weights(r, coord, i, bias, op)
 
     coeff = ()
     for j = 0:2
@@ -484,7 +474,7 @@ function der1_interp_weights(r, coord, i, bias)
                         sum = 0
                         for q = 0:3
                             if q != m && q != l 
-                                sum += coord[i-r+q-1]
+                                sum += coord[op(i, r-q+1)]
                             end
                         end
                         num += 2 * coord[i+bias] - sum
@@ -493,20 +483,20 @@ function der1_interp_weights(r, coord, i, bias)
                 den = 1
                 for l = 0:3
                     if l!= m
-                        den *= (coord[i-r+m-1] - coord[i-r+l-1])
+                        den *= (coord[op(i, r-m+1)] - coord[op(i, r-l+1)])
                     end
                 end
                 c += num / den
             end 
         end
-        coeff = (coeff..., c * (coord[i-r+j] - coord[i-r+j-1]))
+        coeff = (coeff..., c * (coord[op(i, r-j)] - coord[op(i, r-j+1)]))
     end
 
     return coeff
 end
 
 # ENO coefficients for 2nd order polynomial reconstruction at the face
-function interp_weights(r, coord, i, bias)
+function interp_weights(r, coord, i, bias, op)
 
     coeff = ()
     for j = 0:2
@@ -519,7 +509,7 @@ function interp_weights(r, coord, i, bias)
                         prod = 1
                         for q = 0:3
                             if q != m && q != l 
-                                prod *= (coord[i+bias] - coord[i-r+q-1])
+                                prod *= (coord[i+bias] - coord[op(i, r-q+1)])
                             end
                         end
                         num += prod
@@ -528,15 +518,17 @@ function interp_weights(r, coord, i, bias)
                 den = 1
                 for l = 0:3
                     if l!= m
-                        den *= (coord[i-r+m-1] - coord[i-r+l-1])
+                        den *= (coord[op(i, r-m+1)] - coord[op(i, r-l+1)])
                     end
                 end
                 c += num / den
             end 
         end
-        coeff = (coeff..., c * (coord[i-r+j] - coord[i-r+j-1]))
+        coeff = (coeff..., c * (coord[op(i, r-j)] - coord[op(i, r-j+1)]))
     end
 
     return coeff
 end
+
+
 
