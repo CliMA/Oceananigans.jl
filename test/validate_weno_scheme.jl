@@ -28,26 +28,13 @@ Freg = range(0,1,length = N+1)
 
 # seasaw mesh
 Fsaw(j) = 1 / N  * (j - 1) + 0.1 * 1 / N * mod(j - 1, 2)
-  
-function Δstr2(i, N)
-    if i < N/4
-     return 1
-    elseif i > N/4*3
-     return 1
-    elseif i<N/2
-     return 1.2 * (i - N/4) + 1
-    else
-     return  1.2 * (3*N/4 - i) + 1
-    end
-end   
+Δstr2(i, N) = i < N/4 ? 1 : ( i > N*0.75 ? 1 : ( i < N/2 ? 1.2 * (i - N/4) + 1 : 1.2 * (3*N/4 - i) + 1  )  ) 
 
- Fstr2 = zeros(Float64, N+1)
-
- for i = 2:N+1
+Fstr2 = zeros(Float64, N+1)
+for i = 2:N+1
      Fstr2[i] = Fstr2[i-1] + Δstr2(i-1, N)
- end
-
- Fstr2 ./= Fstr2[end]
+end
+Fstr2 ./= Fstr2[end]
 
 solution  = Dict()
 real_sol  = Dict()
@@ -119,7 +106,6 @@ for grid in [grid_reg, grid_str, grid_str2]
         end
         
         time[(schemes[adv], gr)] = @belapsed multiple_steps!($model)
-
     end
     
     anim = @animate for i ∈ 1:end_time/Δt_max
@@ -156,7 +142,7 @@ for grid in [grid_reg, grid_str, grid_str2]
     parent(V) .= 0.3
     
     Δt_max   = 0.1 * min_Δx(grid) / 2^(0.5)
-    end_time = 3000 * Δt_max
+    end_time = 6000 * Δt_max
 
     for (adv, scheme) in enumerate(advection) 
 
