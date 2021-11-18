@@ -40,7 +40,7 @@ output_field[1, 1, :]
  2.333333333333334
  3.0
  0.0
- ```
+```
 """
 regrid!(a, b) = regrid!(a, a.grid, b.grid, b)
 
