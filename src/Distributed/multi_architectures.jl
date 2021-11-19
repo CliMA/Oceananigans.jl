@@ -105,7 +105,7 @@ end
 ##### Constructors
 #####
 
-function MultiArch(; grid = grid, ranks = ranks, communicator = MPI.COMM_WORLD)
+function MultiArch(; grid, ranks, communicator = MPI.COMM_WORLD)
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
 
     validate_tupled_argument(ranks, Int, "ranks")
