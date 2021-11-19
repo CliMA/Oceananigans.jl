@@ -65,7 +65,7 @@ c₀_1D(x, y, z) = 10 .* exp.(-(x .- 0.5).^2 ./ 0.2.^2)
 c₀_2D(x, y, z) = mask(x) * mask(y) 
 
 # Checking the accuracy of different schemes with different settings
-for (gr, grid) in enumerate([grid_str2])
+for (gr, grid) in enumerate([grid_reg, grid_str, grid_str2])
     
     U = Field(Face, Center, Center, arch, grid)
     parent(U) .= 1
