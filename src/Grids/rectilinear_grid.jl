@@ -5,6 +5,7 @@ A rectilinear grid with with either constant or varying grid spacings between ce
 in all directions. Grid elements of type `FT`, topology `{TX, TY, TZ}`, grid spacings of type `{FX, FY, FZ}`
 and coordinates in each direction of type `{VX, VY, VZ}`. 
 """
+
 struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
         architecture::Arch
         Nx :: Int
@@ -346,29 +347,20 @@ all_y_nodes(::Type{Face}  , grid::RectilinearGrid) = grid.yᵃᶠᵃ
 all_z_nodes(::Type{Center}, grid::RectilinearGrid) = grid.zᵃᵃᶜ
 all_z_nodes(::Type{Face}  , grid::RectilinearGrid) = grid.zᵃᵃᶠ
 
+@inline cpu_face_constructor_x(grid::XRegRectilinearGrid) = x_domain(grid)
+@inline cpu_face_constructor_y(grid::YRegRectilinearGrid) = y_domain(grid)
+@inline cpu_face_constructor_z(grid::ZRegRectilinearGrid) = z_domain(grid)
+
+architecture(grid::RectilinearGrid) = grid.architecture
+
 function with_halo(new_halo, old_grid::RectilinearGrid)
 
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
-   
-    if old_grid.Δxᶠᵃᵃ isa Number
-        x = x_domain(old_grid)
-    else
-        x = old_grid.xᶠᵃᵃ
-    end
-
-    if old_grid.Δyᵃᶠᵃ isa Number
-        y = y_domain(old_grid)
-    else
-        y = old_grid.yᵃᶠᵃ
-    end
-
-    if old_grid.Δzᵃᵃᶠ isa Number
-        z = z_domain(old_grid)
-    else
-        z = old_grid.zᵃᵃᶠ
-    end
+    x = cpu_face_constructor_x(grid)
+    y = cpu_face_constructor_y(grid)
+    z = cpu_face_constructor_z(grid)  
 
     # Remove elements of size and new_halo in Flat directions as expected by grid
     # constructor
@@ -385,6 +377,31 @@ function with_halo(new_halo, old_grid::RectilinearGrid)
     return new_grid
 end
 
+function with_arch(new_arch, old_grid::RectilinearGrid)
+
+    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
+    topo = topology(old_grid)
+
+    x = cpu_face_constructor_x(old_grid)
+    y = cpu_face_constructor_y(old_grid)
+    z = cpu_face_constructor_z(old_grid)  
+
+    # Remove elements of size and new_halo in Flat directions as expected by grid
+    # constructor
+    size = pop_flat_elements(size, topo)
+    halo = pop_flat_elements(halo_size(old_grid), topo)
+
+    new_grid = RectilinearGrid(eltype(old_grid);
+               architecture = new_arch,
+               size = size,
+               x = x, y = y, z = z,
+               topology = topo,
+               halo = halo)
+
+    return new_grid
+end
+
+#
 # Get minima of grid
 #
 

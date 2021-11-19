@@ -6,10 +6,13 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Utils: launch!
 using Oceananigans.Grids
 using Oceananigans.Solvers
+using Oceananigans.Distributed: MultiArch
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 import Oceananigans: fields, prognostic_fields
 
+
+PressureSolver(arch::MultiArch, grid::RegRectilinearGrid) = DistributedFFTBasedPoissonSolver(arch, grid, arch.local_grid)
 PressureSolver(arch, grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(arch, grid)
 PressureSolver(arch, grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(arch, grid)
 

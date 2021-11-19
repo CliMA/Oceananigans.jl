@@ -1,10 +1,11 @@
 using Oceananigans.Architectures
-import Oceananigans.Architectures: device_event
+using Oceananigans.Grids: topology, validate_tupled_argument, with_arch
 
-using Oceananigans.Grids: topology, validate_tupled_argument
+import Oceananigans.Architectures: device, device_event, arch_array
+import Oceananigans.Grids: zeros
 
-struct MultiCPU{G, R, I, ρ, C, γ} <: AbstractCPUArchitecture
-    distributed_grid :: G
+struct MultiArch{G, R, I, ρ, C, γ} <: AbstractMultiArchitecture
+          local_grid :: G
           local_rank :: R
          local_index :: I
                ranks :: ρ
@@ -12,24 +13,14 @@ struct MultiCPU{G, R, I, ρ, C, γ} <: AbstractCPUArchitecture
         communicator :: γ
 end
 
-struct MultiGPU{G, R, I, ρ, C, γ} <: AbstractGPUArchitecture
-    distributed_grid :: G
-          local_rank :: R
-         local_index :: I
-               ranks :: ρ
-        connectivity :: C
-        communicator :: γ
-end
-
-const AbstractMultiArchitecture = Union{MultiCPU, MultiGPU}
-
-child_architecture(::MultiCPU) = CPU()
+child_architecture(arch::MultiArch) = child_architecture(architecture(arch.local_grid))
 child_architecture(::CPU) = CPU()
-
-child_architecture(::MultiGPU) = GPU()
 child_architecture(::GPU) = GPU()
 
-device_event(arch::AbstractMultiArchitecture) = device_event(child_architecture(arch))
+device(arch::AbstractMultiArchitecture)        = device(child_architecture(arch))
+device_event(arch::AbstractMultiArchitecture)  = device_event(child_architecture(arch))
+arch_array(arch::AbstractMultiArchitecture, A) = arch_array(child_architecture(arch), A)
+zeros(arch::MultiArch, grid, N...)             = zeros(eltype(grid), child_architecture(arch), N...)
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
@@ -114,7 +105,7 @@ end
 ##### Constructors
 #####
 
-function MultiArchitecture(MultiArch, grid, ranks, communicator)
+function MultiArch(grid, ranks, communicator)
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
 
     validate_tupled_argument(ranks, Int, "ranks")
@@ -122,8 +113,8 @@ function MultiArchitecture(MultiArch, grid, ranks, communicator)
     Rx, Ry, Rz = ranks
     total_ranks = Rx*Ry*Rz
 
-    mpi_ranks = MPI.Comm_size(communicator)
-    local_rank   = MPI.Comm_rank(communicator)
+    mpi_ranks  = MPI.Comm_size(communicator)
+    local_rank = MPI.Comm_rank(communicator)
 
     i, j, k = local_index = rank2index(local_rank, Rx, Ry, Rz)
 
@@ -134,19 +125,19 @@ function MultiArchitecture(MultiArch, grid, ranks, communicator)
 
     local_connectivity = RankConnectivity(local_index, ranks, topology(grid))
 
-    return MultiArch(grid, local_rank, local_index, ranks, local_connectivity, communicator)
-end
+    local_grid = local_grids(local_index, ranks, local_connectivity, grid)
 
-MultiCPU(; grid, ranks, communicator=MPI.COMM_WORLD) = MultiArchitecture(MultiCPU, grid, ranks, communicator)
-MultiGPU(; grid, ranks, communicator=MPI.COMM_WORLD) = MultiArchitecture(MultiGPU, grid, ranks, communicator)
+    return MultiArch(local_grid, local_rank, local_index, ranks, local_connectivity, communicator)
+end
 
 #####
 ##### Pretty printing
 #####
 
-function Base.show(io::IO, arch::MultiCPU)
+function Base.show(io::IO, arch::MultiArch)
     c = arch.connectivity
-    print(io, "MultiCPU architecture (rank $(arch.local_rank)/$(prod(arch.ranks)-1)) [index $(arch.local_index) / $(arch.ranks)]\n",
+    print(io, "Distributed architecture (rank $(arch.local_rank)/$(prod(arch.ranks)-1)) [index $(arch.local_index) / $(arch.ranks)]\n",
+              "└── child architecture: $(typeof(child_architecture(arch))) \n", 
               "└── connectivity:",
               isnothing(c.east) ? "" : " east=$(c.east)",
               isnothing(c.west) ? "" : " west=$(c.west)",

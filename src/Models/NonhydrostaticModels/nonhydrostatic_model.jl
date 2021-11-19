@@ -4,6 +4,7 @@ using OrderedCollections: OrderedDict
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Distributed: MultiArch
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
@@ -108,8 +109,12 @@ function NonhydrostaticModel(;    grid,
                       auxiliary_fields = NamedTuple(),
     )
 
-    if architecture == GPU() && !has_cuda()
+    if arch == GPU() && !has_cuda()
          throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
+    end
+
+    if typeof(architecure) == MultiArch
+        grid = architecture.local_grid
     end
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)

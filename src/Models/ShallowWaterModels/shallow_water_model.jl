@@ -1,6 +1,7 @@
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, CPU
+using Oceananigans.Distributed
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField
@@ -98,6 +99,10 @@ function ShallowWaterModel(;
                   diffusivity_fields = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
                  timestepper::Symbol = :RungeKutta3)
+
+    if typeof(architecture) == MultiArch
+        grid = architecture.local_grid
+    end
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 

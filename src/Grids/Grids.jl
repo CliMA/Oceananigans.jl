@@ -20,6 +20,7 @@ using Oceananigans.Architectures
 
 import Base: size, length, eltype, show
 import Oceananigans: short_show
+import Oceananigans.Architectures: architecture
 
 #####
 ##### Abstract types

@@ -1,4 +1,3 @@
-import Oceananigans.Architectures: architecture
 using KernelAbstractions: @kernel, @index
 
 const R_Earth = 6371.0e3    # Mean radius of the Earth [m] https://en.wikipedia.org/wiki/Earth
@@ -185,11 +184,38 @@ all_y_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.φᵃᶠᵃ
 all_z_nodes(::Type{Center}, grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶜ
 all_z_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶠ
 
-architecture(::LatitudeLongitudeGrid) = nothing
+architecture(grid::LatitudeLongitudeGrid) = grid.architecture
 
 @inline x_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.λᶠᵃᵃ)
 @inline y_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.φᵃᶠᵃ)
 @inline z_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
+
+@inline cpu_face_constructor_x(grid::XRegLatLonGrid) = x_domain(grid)
+@inline cpu_face_constructor_y(grid::YRegLatLonGrid) = y_domain(grid)
+@inline cpu_face_constructor_z(grid::ZRegLatLonGrid) = z_domain(grid)
+
+function with_arch(new_arch, old_grid::LatitudeLongitudeGrid)
+
+    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
+    topo = topology(old_grid)
+
+    x = cpu_face_constructor_x(old_grid)
+    y = cpu_face_constructor_y(old_grid)
+    z = cpu_face_constructor_z(old_grid)  
+
+    # Remove elements of size and new_halo in Flat directions as expected by grid
+    # constructor
+    size = pop_flat_elements(size, topo)
+    halo = pop_flat_elements(halo_size(old_grid), topo)
+
+    new_grid = LatitudeLongitudeGrid(eltype(old_grid);
+                                architecture = new_arch,
+                                        size = size,
+              longitude = x, latitude = y, z = z,
+                                        halo = halo)
+    return new_grid
+end
+
 
 Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     LatitudeLongitudeGrid{FT, TX, TY, TZ,
