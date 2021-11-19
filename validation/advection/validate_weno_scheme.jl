@@ -56,7 +56,7 @@ grid_str2 = RectilinearGrid(size = (N,), x = Fstr2, halo = (3,), topology = (Per
 #  (3) WENO5(grid=grid, stretched_smoothness=true),
 #  (4) WENO5(grid=grid, stretched_smoothness=true, zweno=true)
 
-advection = [WENO5()]
+advection = [WENO5(), WENO5(), WENO5(), WENO5()]
 schemes   = [:wreg, :wstr, :wstrS, :wstrZ]
 
 # mask for the initial condition
@@ -77,7 +77,7 @@ for (gr, grid) in enumerate([grid_str2])
         if adv == 2
             scheme = WENO5(grid = grid)
         end
-        if adv == 1
+        if adv == 3
             scheme = WENO5(grid = grid, stretched_smoothness = true)
         end
         if adv == 4
@@ -113,17 +113,17 @@ for (gr, grid) in enumerate([grid_str2])
         time[(schemes[adv], gr)] = @belapsed multiple_steps!($model)
     end
     
-    # x = adapt(CPU(), grid.xᶜᵃᵃ)
-    # x = x[1:N]
+    x = adapt(CPU(), grid.xᶜᵃᵃ)
+    x = x[1:N]
 
-    # anim = @animate for i ∈ 1:end_time/Δt_max
-    #     plot(x, c₀_1D(x, 1, 1), seriestype=:scatter, legend = false, title ="red: U, blue: S, green: β, black: Z") 
-    #     plot!(x, solution[(schemes[1], Int(i))], linewidth = 1, linecolor =:red  , legend = false) 
-    #     plot!(x, solution[(schemes[2], Int(i))], linewidth = 1, linecolor =:blue , legend = false) 
-    #     plot!(x, solution[(schemes[3], Int(i))], linewidth = 1, linecolor =:green, legend = false)
-    #     plot!(x, solution[(schemes[4], Int(i))], linewidth = 1, linecolor =:black, legend = false)  
-    # end 
-    # gif(anim, "anim_1D_$(gr).mp4", fps = 15)
+    anim = @animate for i ∈ 1:end_time/Δt_max
+        plot(x, c₀_1D(x, 1, 1), seriestype=:scatter, legend = false, title ="red: U, blue: S, green: β, black: Z") 
+        plot!(x, solution[(schemes[1], Int(i))], linewidth = 1, linecolor =:red  , legend = false) 
+        plot!(x, solution[(schemes[2], Int(i))], linewidth = 1, linecolor =:blue , legend = false) 
+        plot!(x, solution[(schemes[3], Int(i))], linewidth = 1, linecolor =:green, legend = false)
+        plot!(x, solution[(schemes[4], Int(i))], linewidth = 1, linecolor =:black, legend = false)  
+    end 
+    gif(anim, "anim_1D_$(gr).mp4", fps = 15)
 
 end
 

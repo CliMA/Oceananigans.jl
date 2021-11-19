@@ -177,8 +177,13 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, W}) where {F
         stencil = retrieve_left_smooth(scheme, r, dir, i, location)
         wᵢᵢ = stencil[1]   
         wᵢⱼ = stencil[2]
+        # horrible but have to do this for GPU execution (broadcast doesn't work apparently)
+        result = 0
+        for j = 1:3
+            result += ψ[j] * ( wᵢᵢ[j] * ψ[j] + wᵢⱼ[j] * dagger(ψ)[j] )
+        end
     end
-    return   sum(ψ .* ( wᵢᵢ .* ψ .+ wᵢⱼ .* dagger(ψ) ) )
+    return result
 end
 
 @inline function biased_right_β(ψ, scheme, r, dir, i, location) 
@@ -186,8 +191,13 @@ end
         stencil = retrieve_right_smooth(scheme, r, dir, i, location)
         wᵢᵢ = stencil[1]   
         wᵢⱼ = stencil[2]
+        # horrible but have to do this for GPU execution (broadcast doesn't work apparently sum(ψ.*(wᵢᵢ.*ψ.+wᵢⱼ.*dagger(ψ))) )
+        result = 0
+        for j = 1:3
+            result += ψ[j] * ( wᵢᵢ[j] * ψ[j] + wᵢⱼ[j] * dagger(ψ)[j] )
+        end
     end
-    return   sum(ψ .* ( wᵢᵢ .* ψ .+ wᵢⱼ .* dagger(ψ) ) )
+    return result
 end
 
 @inline left_biased_β₀(FT, ψ, T, scheme, args...) = biased_left_β(ψ, scheme, 0, args...) 
