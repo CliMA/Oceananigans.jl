@@ -125,42 +125,21 @@ V_field = BackgroundField(V_bg, parameters=(; V∞=params.V∞))
 #-----
 
 
-# ## Sponge layers
-#
-# In order to damp internal wave propagation, we use a sponge layer in the upper part of the domain.
-# One such sponge layer can be defined as
-
-@inline heaviside(X) = ifelse(X < 0, zero(X), one(X))
-
-const sp_frac = params.sponge_frac
-const Lz = params.Lz
-
-function top_mask_2nd(x, y, z)
-    z₁ = +Lz; z₀ = z₁ - Lz * sp_frac 
-    return heaviside((z - z₀)/(z₁ - z₀)) * ((z - z₀)/(z₁ - z₀))^2
-end
-
-full_sponge_0 = Relaxation(rate=params.sponge_rate, mask=top_mask_2nd, target=0)
-forcing = (u=full_sponge_0, v=full_sponge_0, w=full_sponge_0,)
-#----
-
-
 
 # ## Create the `NonhydrostaticModel`
 #
-# We create model with a `WENO5` advection scheme and a `RungeKutta3` timestepper. For simplicity,
+# We create model with a `UpwindBiasedFifthOrder` advection scheme and a `RungeKutta3` timestepper. For simplicity,
 # we use a constant-diffusivity turbulence closure:
 
 model = NonhydrostaticModel(grid = grid, timestepper = :RungeKutta3,
                             architecture = arch,
-                            advection = WENO5(),
+                            advection = UpwindBiasedFifthOrder(),
                             buoyancy = buoyancy,
                             coriolis = ConstantCartesianCoriolis(f=params.f₀, rotation_axis=ĝ),
                             tracers = :b,
                             closure = IsotropicDiffusivity(ν=params.ν, κ=params.ν),
                             boundary_conditions = (u=u_bcs, v=v_bcs,),
                             background_fields = (b=B_field, v=V_field,),
-                            forcing=forcing,
                            )
 
 
@@ -200,7 +179,7 @@ v_tot = ComputedField(v + model.background_fields.velocities.v)
 ω_y = ComputedField(∂z(u)-∂x(w))
 fields = merge((; u, v_tot, w, b_tot, ω_y))
 simulation.output_writers[:fields] =
-NetCDFOutputWriter(model, fields, filepath = "out.tilted_bbl.nc",
+NetCDFOutputWriter(model, fields, filepath = joinpath(@__DIR__, "out.tilted_bbl.nc"),
                    schedule = TimeInterval(20minutes),
                    mode = "c")
 #----
