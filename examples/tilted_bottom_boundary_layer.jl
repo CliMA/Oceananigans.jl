@@ -70,12 +70,12 @@ h₁(k) = ((-k+params.Nz)+1) / params.Nz
 z_faces(k) = -params.Lz * (ζ₁(k) * Σ₁(k) - 1)
 
 
-grid = VerticallyStretchedRectilinearGrid(topology=topo,
-                                          architecture = arch,
-                                          size=(params.Nx, params.Nz),
-                                          x=(0, params.Lx), z_faces=z_faces,
-                                          halo=(3,3),
-                                          )
+grid = RectilinearGrid(topology=(Periodic, Flat, Bounded),
+                       architecture = arch,
+                       size=(params.Nx, params.Nz),
+                       x=(0, params.Lx), z=z_faces,
+                       halo=(3,3),
+                       )
 @info grid
 
 
