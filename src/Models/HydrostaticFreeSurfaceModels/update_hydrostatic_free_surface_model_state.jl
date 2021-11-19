@@ -42,7 +42,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid)
     fill_halo_regions!(model.diffusivity_fields, model.architecture, model.clock, fields(model))
 
     update_hydrostatic_pressure!(model.pressure.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
-    fill_halo_regions!(model.pressures.pHY′, model.architecture)
+    fill_halo_regions!(model.pressure.pHY′, model.architecture)
 
     return nothing
 end
