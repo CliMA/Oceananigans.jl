@@ -9,7 +9,10 @@ const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded
 """
     regrid!(a, b)
 
-Regrids field `b` into the grid of field `a`. Currently only regrids in the vertical ``z``.
+Regrid field `b` onto the grid of field `a`. 
+
+!!! warning "Functionality limitation"
+    Currently `regrid!` only regrids in the vertical ``z`` direction.
 
 Example
 =======
