@@ -9,7 +9,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
         Ny = 60
 
         # A spherical domain
-        underlying_grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
+        underlying_grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
                                                longitude = (-30, 30),
                                                latitude = (15, 75),
                                                z = (-4000, 0))

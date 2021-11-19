@@ -113,7 +113,7 @@ Write out 3D fields for w and T and a horizontal average:
 using Oceananigans, Oceananigans.OutputWriters, Oceananigans.Fields
 using Oceananigans.Utils: hour, minute
 
-model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)
@@ -178,6 +178,14 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
     filepath = joinpath(dir, prefix * ".jld2")
     force && isfile(filepath) && rm(filepath, force=true)
 
+    initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
+    
+    return JLD2OutputWriter(filepath, outputs, schedule, field_slicer,
+                            array_type, init, including, part, max_filesize,
+                            force, verbose, jld2_kw)
+end
+
+function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
     try
         jldopen(filepath, "a+"; jld2_kw...) do file
             init(file, model)
@@ -195,16 +203,45 @@ function JLD2OutputWriter(model, outputs; prefix, schedule,
             end
         end
     catch err
-        @warn """Initialization of JLD2OutputWriter at $filepath threw $(typeof(err)): $(sprint(showerror, err))."
-                 Could not initialize $filepath."""
+        @warn """Initialization of $filepath failed because
+                 $(typeof(err)): $(sprint(showerror, err))"""
     end
 
-    return JLD2OutputWriter(filepath, outputs, schedule, field_slicer,
-                            array_type, init, including, part, max_filesize,
-                            force, verbose, jld2_kw)
+    return nothing
+end
+
+initialize_jld2_file!(writer::JLD2OutputWriter, model) =
+    initialize_jld2_file!(writer.filepath, writer.init, writer.jld2_kw, writer.including, writer.outputs, model)
+
+function iteration_zero_exists(filepath)
+    file = jldopen(filepath, "r")
+
+    zero_exists = try
+        t₀ = file["timeseries/t/0"]
+        true
+    catch
+        false
+    finally
+        close(file)
+    end
+
+    return zero_exists
 end
 
 function write_output!(writer::JLD2OutputWriter, model)
+
+    # Catch an error that occurs when a simulation is initialized but not time-stepped:
+    if model.clock.iteration == 0 && iteration_zero_exists(writer.filepath)
+        if writer.force
+            # Re-initialize file:
+            rm(writer.filepath, force=true)
+            initialize_jld2_file!(writer, model)
+        else
+            error("Attempting to overwrite data at iteration 0, possibly because a simulation is being
+                  re-initialized. Use `force=true` when constructing JLD2OutputWriter to
+                  replace any existing files and avoid this error.")
+        end
+    end
 
     verbose = writer.verbose
 
@@ -224,9 +261,7 @@ function write_output!(writer::JLD2OutputWriter, model)
     verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $path..."
 
     start_time, old_filesize = time_ns(), filesize(path)
-
     jld2output!(path, model.clock.iteration, model.clock.time, data, writer.jld2_kw)
-
     end_time, new_filesize = time_ns(), filesize(path)
 
     verbose && @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
@@ -274,11 +309,8 @@ function start_next_file(model, writer::JLD2OutputWriter)
     writer.force && isfile(writer.filepath) && rm(writer.filepath, force=true)
     verbose && @info "Now writing to: $(writer.filepath)"
 
-    jldopen(writer.filepath, "a+"; writer.jld2_kw...) do file
-        writer.init(file, model)
-        saveproperties!(file, model, writer.including)
-    end
-
+    initialize_jld2_file!(writer, model)
+    
     return nothing
 end
 

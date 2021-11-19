@@ -68,8 +68,7 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arc
 end
 
 is_horizontally_regular(grid) = false
-is_horizontally_regular(::RegularRectilinearGrid) = true
-is_horizontally_regular(::VerticallyStretchedRectilinearGrid) = true
+is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
 
 function build_implicit_step_solver(::Val{:Default}, arch, grid, settings)
     default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :PreconditionedConjugateGradient
@@ -108,7 +107,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 
     solve!(η, solver, rhs, g, Δt)
 
-    @debug "Implict step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
+    @debug "Implicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
 
     fill_halo_regions!(η, arch)
     

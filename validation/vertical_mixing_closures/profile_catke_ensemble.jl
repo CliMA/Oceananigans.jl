@@ -14,7 +14,7 @@ Ex, Ey = (1, 1)
 sz = ColumnEnsembleSize(Nz=128, ensemble=(Ex, Ey))
 halo = ColumnEnsembleSize(Nz=sz.Nz)
 
-grid = RegularRectilinearGrid(size=sz, halo=halo, z=(-128, 0), topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(size=sz, halo=halo, z=(-128, 0), topology=(Flat, Flat, Bounded))
 
 closure = [CATKEVerticalDiffusivity() for i=1:Ex, j=1:Ey]
                                       

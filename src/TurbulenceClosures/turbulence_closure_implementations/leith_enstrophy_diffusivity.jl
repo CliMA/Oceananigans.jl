@@ -215,7 +215,7 @@ function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLei
 end
 
 "Return the filter width for a Leith Diffusivity on a regular rectilinear grid."
-@inline Δᶠ(i, j, k, grid::RegularRectilinearGrid, ::TwoDimensionalLeith) = sqrt(grid.Δx * grid.Δy)
+@inline Δᶠ(i, j, k, grid::RectilinearGrid, ::TwoDimensionalLeith) = sqrt(Δxᶜᶜᵃ(i, j, k, grid) * Δyᶜᶜᵃ(i, j, k, grid)) 
 
 function DiffusivityFields(arch, grid, tracer_names, bcs, ::L2D)
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))

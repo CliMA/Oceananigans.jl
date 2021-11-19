@@ -9,7 +9,11 @@ const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded
 """
     regrid!(a, b)
 
-Regrids field `b` into the grid of field `a`. Currently only regrids in the vertical ``z``.
+Regrid field `b` onto the grid of field `a`. 
+
+!!! warning "Functionality limitation"
+    Currently `regrid!` only regrids in the vertical ``z`` direction and works only on
+    grids for which ``x`` and ``y`` dimensions are `Flat`.
 
 Example
 =======
@@ -18,16 +22,15 @@ Generate a tracer field on a vertically stretched grid and regrid it on a regula
 
 ```jldoctest
 using Oceananigans
-using Oceananigans.Fields: regrid!
 
 Nz, Lz = 2, 1.0
 topology = (Flat, Flat, Bounded)
 
-input_grid = VerticallyStretchedRectilinearGrid(size=Nz, z_faces = [0, Lz/3, Lz], topology=topology)
+input_grid = RectilinearGrid(size=Nz, z = [0, Lz/3, Lz], topology=topology)
 input_field = CenterField(input_grid)
 input_field[1, 1, 1:Nz] = [2, 3]
 
-output_grid = RegularRectilinearGrid(size=Nz, z=(0, Lz), topology=topology)
+output_grid = RectilinearGrid(size=Nz, z=(0, Lz), topology=topology)
 output_field = CenterField(output_grid)
 
 regrid!(output_field, input_field)
@@ -40,7 +43,7 @@ output_field[1, 1, :]
  2.333333333333334
  3.0
  0.0
- ```
+```
 """
 regrid!(a, b) = regrid!(a, a.grid, b.grid, b)
 

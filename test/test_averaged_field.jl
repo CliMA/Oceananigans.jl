@@ -11,7 +11,7 @@ using Oceananigans.Grids: halo_size
             @info "  Testing AveragedFields [$(typeof(arch))]"
             for FT in float_types
 
-                grid = RegularRectilinearGrid(topology = (Periodic, Periodic, Bounded),
+                grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
                                                 size = (2, 2, 2),
                                                    x = (0, 2), y = (0, 2), z = (0, 2))
 
@@ -50,7 +50,7 @@ using Oceananigans.Grids: halo_size
                 @test Array(interior(ŵ))[1, :, :] ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
                 
                 # Test whether a race condition gets hit for averages over large fields
-                big_grid = RegularRectilinearGrid(topology = (Periodic, Periodic, Bounded),
+                big_grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
                                                   size = (256, 256, 128),
                                                      x = (0, 2), y = (0, 2), z = (0, 2))
 
@@ -69,7 +69,7 @@ using Oceananigans.Grids: halo_size
         @testset "Conditional computation of AveragedFields [$(typeof(arch))]" begin
             @info "  Testing conditional computation of AveragedFields [$(typeof(arch))]"
             for FT in float_types
-                grid = RegularRectilinearGrid(FT, size=(2, 2, 2), extent=(1, 1, 1))
+                grid = RectilinearGrid(FT, size=(2, 2, 2), extent=(1, 1, 1))
                 c = CenterField(arch, grid)
 
                 for dims in (1, 2, 3, (1, 2), (2, 3), (1, 3), (1, 2, 3))

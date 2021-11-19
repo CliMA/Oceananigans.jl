@@ -13,7 +13,7 @@ const topo = -H + 5
 
 stop_time = 10.
 
-underlying_grid = RegularRectilinearGrid(size=nz, z = (-H,0), topology = (Flat, Flat, Bounded))
+underlying_grid = RectilinearGrid(size=nz, z = (-H,0), topology = (Flat, Flat, Bounded))
 
 solid(x, y, z) = (z <= topo)
 

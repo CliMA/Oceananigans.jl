@@ -19,7 +19,7 @@ function can_solve_single_tridiagonal_system(arch, N)
 
     ϕ = reshape(zeros(N), (1, 1, N)) |> ArrayType
 
-    grid = RegularRectilinearGrid(size=(1, 1, N), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(1, 1, N), extent=(1, 1, 1), architecture=arch)
 
     btsolver = BatchedTridiagonalSolver(arch, grid;
                                         lower_diagonal = a,
@@ -34,13 +34,13 @@ end
 function can_solve_single_tridiagonal_system_with_functions(arch, N)
     ArrayType = array_type(arch)
 
-    grid = RegularRectilinearGrid(size=(1, 1, N), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(1, 1, N), extent=(1, 1, 1), architecture=arch)
 
     a = rand(N-1)
     c = rand(N-1)
 
-    @inline b(i, j, k, grid) = 3 .+ cos(2π * grid.zC[k])  # +3 to ensure diagonal dominance.
-    @inline f(i, j, k, grid) = sin(2π * grid.zC[k])
+    @inline b(i, j, k, grid) = 3 .+ cos(2π * grid.zᵃᵃᶜ[k])  # +3 to ensure diagonal dominance.
+    @inline f(i, j, k, grid) = sin(2π * grid.zᵃᵃᶜ[k])
 
     bₐ = [b(1, 1, k, grid) for k in 1:N]
     fₐ = [f(1, 1, k, grid) for k in 1:N]
@@ -83,7 +83,7 @@ function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz)
     # Convert to CuArray if needed.
     a, b, c, f = ArrayType.([a, b, c, f])
 
-    grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 1, 1), architecture=arch)
     btsolver = BatchedTridiagonalSolver(arch, grid;
                                         lower_diagonal = a,
                                         diagonal = b,
@@ -99,13 +99,13 @@ end
 function can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz)
     ArrayType = array_type(arch)
 
-    grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 1, 1), architecture=arch)
 
     a = rand(Nz-1)
     c = rand(Nz-1)
 
-    @inline b(i, j, k, grid) = 3 + grid.xC[i] * grid.yC[j] * cos(2π * grid.zC[k])
-    @inline f(i, j, k, grid) = (grid.xC[i] + grid.yC[j]) * sin(2π * grid.zC[k])
+    @inline b(i, j, k, grid) = 3 + grid.xᶜᵃᵃ[i] * grid.yᵃᶜᵃ[j] * cos(2π * grid.zᵃᵃᶜ[k])
+    @inline f(i, j, k, grid) = (grid.xᶜᵃᵃ[i] + grid.yᵃᶜᵃ[j]) * sin(2π * grid.zᵃᵃᶜ[k])
 
     ϕ_correct = zeros(Nx, Ny, Nz)
 

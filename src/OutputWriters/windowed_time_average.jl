@@ -60,7 +60,7 @@ using Oceananigans
 using Oceananigans.OutputWriters: JLD2OutputWriter
 using Oceananigans.Utils: minutes
 
-model = NonhydrostaticModel(grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
 
 simulation = Simulation(model, Δt=10minutes, stop_time=30years)
 
