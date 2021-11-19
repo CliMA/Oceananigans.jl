@@ -105,7 +105,7 @@ end
 ##### Constructors
 #####
 
-function MultiArch(grid, ranks, communicator)
+function MultiArch(; grid = grid, ranks = ranks, communicator = MPI.COMM_WORLD)
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
 
     validate_tupled_argument(ranks, Int, "ranks")
@@ -127,7 +127,13 @@ function MultiArch(grid, ranks, communicator)
 
     local_grid = local_grids(local_index, ranks, local_connectivity, grid)
 
-    return MultiArch(local_grid, local_rank, local_index, ranks, local_connectivity, communicator)
+    G = typeof(local_grid)
+    R = typeof(local_rank)    
+    I = typeof(local_index)   
+    ρ = typeof(ranks)         
+    C = typeof(connectivity)  
+    γ = typeof(communicator)  
+    return MultiArch{G, R, I, ρ, C, γ}(local_grid, local_rank, local_index, ranks, local_connectivity, communicator)
 end
 
 #####
