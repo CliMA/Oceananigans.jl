@@ -72,13 +72,13 @@ for N in Ns, (adv, scheme) in enumerate(schemes)
 
     function Δx_str2(i, N)
         if i < N/4
-         return 1
-        elseif i > N/4*3
-         return 1
-        elseif i<N/2
-         return 1.2 * (i - N/4) + 1
+            return 1
+        elseif i > 3N/4
+            return 1
+        elseif i < N/2
+            return 1.2 * (i - N/4) + 1
         else
-         return  1.2 * (3*N/4 - i) + 1
+            return 1.2 * (3N/4 - i) + 1
         end
      end   
     
