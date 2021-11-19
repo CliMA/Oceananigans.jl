@@ -6,6 +6,7 @@ export CenterField, XFaceField, YFaceField, ZFaceField
 export ReducedField, AveragedField, ComputedField, KernelComputedField, BackgroundField
 export interior, data
 export xnode, ynode, znode, location
+export regrid!
 export set!, compute!, @compute
 export VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
 export interpolate, FieldSlicer
