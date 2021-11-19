@@ -21,7 +21,6 @@ Generate a tracer field on a vertically stretched grid and regrid it on a regula
 
 ```jldoctest
 using Oceananigans
-using Oceananigans.Fields: regrid!
 
 Nz, Lz = 2, 1.0
 topology = (Flat, Flat, Bounded)
