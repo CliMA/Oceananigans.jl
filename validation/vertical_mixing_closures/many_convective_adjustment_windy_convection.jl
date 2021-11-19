@@ -9,7 +9,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize
 
 column_ensemble_size = ColumnEnsembleSize(Nz=32, ensemble=(2, 1))
 
-grid = RegularRectilinearGrid(size=column_ensemble_size, z=(-64, 0), topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(size=column_ensemble_size, z=(-64, 0), topology=(Flat, Flat, Bounded))
 
 closure_1 = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1, background_κz = 1e-5, convective_νz = 1e-3, background_νz = 1e-4)
 closure_2 = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1, background_κz = 1e-5, convective_νz = 1e-1, background_νz = 1e-4)

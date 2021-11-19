@@ -2,7 +2,7 @@ using Oceananigans.Grids: Flat, Bounded, y_domain
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: _top_tke_flux, CATKEVDArray
 
-import Oceananigans.Grids: validate_size, validate_halo
+import Oceananigans.Grids: validate_size, validate_halo, HRegRectilinearGrid
 import Oceananigans.TurbulenceClosures: time_discretization, calculate_diffusivities!, with_tracers
 import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: top_tke_flux
@@ -78,7 +78,7 @@ const CoriolisVector = AbstractVector{<:AbstractRotation}
 
 function FFTImplicitFreeSurfaceSolver(arch, grid::YZSliceGrid, settings)
 
-    grid isa RegularRectilinearGrid || grid isa VerticallyStretchedRectilinearGrid ||
+    grid isa HRegRectilinearGrid || 
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
 
     # Construct a "horizontal grid". We support either x or y being Flat, but not both.
@@ -86,14 +86,13 @@ function FFTImplicitFreeSurfaceSolver(arch, grid::YZSliceGrid, settings)
 
     sz = SliceEnsembleSize(size=(grid.Ny, 1), ensemble=grid.Nx, halo=(grid.Hy, 0))
 
-    horizontal_grid = RegularRectilinearGrid(; topology = (Flat, TY, Flat),
-                                               size = sz,
-                                               halo = grid.Hy,
-                                               y = y_domain(grid))
+    horizontal_grid = RectilinearGrid(; topology = (Flat, TY, Flat),
+                                        size = sz,
+                                        halo = grid.Hy,
+                                        y = y_domain(grid))
 
     solver = FFTBasedPoissonSolver(arch, horizontal_grid)
     right_hand_side = solver.storage
 
     return FFTImplicitFreeSurfaceSolver(solver, grid, horizontal_grid, right_hand_side)
 end
-

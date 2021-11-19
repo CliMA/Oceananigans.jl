@@ -65,9 +65,6 @@ y_sponge = 19/20 * Ly,               # southern boundary of sponge layer [m]
 λt = 7.0days                         # relaxation time scale [s]
 )
 
-# ynode(::Type{Center}, j, grid::RegularRectilinearGrid) = @inbounds grid.yC[j]
-# ynode(::Type{Center}, j, grid::VerticallyStretchedRectilinearGrid) = @inbounds grid.yᵃᵃᶜ[j]
-
 @inline function buoyancy_flux(i, j, grid, clock, model_fields, p)
     y = ynode(Center(), j, grid)
     return ifelse(y < p.y_shutoff, p.Qᵇ * cos(3π * y / p.Ly), 0.0)
