@@ -85,13 +85,13 @@ function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
                                         " Z $(RZ == Nothing ? "regular" : "stretched")" )
 end
 
-Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}) where {FT, XT, YT, ZT, XS, YS, ZS} =
+Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, W}) where {FT, XT, YT, ZT, XS, YS, ZS, W} =
      WENO5{FT, typeof(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ)),
                typeof(Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ)),  
                typeof(Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ)),
                typeof(Adapt.adapt(to, scheme.smooth_xᶠᵃᵃ)),
                typeof(Adapt.adapt(to, scheme.smooth_yᵃᶠᵃ)),  
-               typeof(Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ))}(
+               typeof(Adapt.adapt(to, scheme.smooth_zᵃᵃᶠ)), W}(
         Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ),
         Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
         Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ),
@@ -157,14 +157,13 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}) where {FT, 
 ##₂### Jiang & Shu (1996) WENO smoothness indicators. See also Equation 2.63 in Shu (1998)
 #####
 
+@inline left_biased_β₀(FT, ψ, ::Type{Nothing}, scheme, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * (3ψ[1] - 4ψ[2] +  ψ[3])^two_32
+@inline left_biased_β₁(FT, ψ, ::Type{Nothing}, scheme, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * ( ψ[1]         -  ψ[3])^two_32
+@inline left_biased_β₂(FT, ψ, ::Type{Nothing}, scheme, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * ( ψ[1] - 4ψ[2] + 3ψ[3])^two_32
 
-@inline left_biased_β₀(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * (3ψ[1] - 4ψ[2] +  ψ[3])^two_32
-@inline left_biased_β₁(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * ( ψ[1]         -  ψ[3])^two_32
-@inline left_biased_β₂(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * ( ψ[1] - 4ψ[2] + 3ψ[3])^two_32
-
-@inline right_biased_β₀(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * ( ψ[1] - 4ψ[2] + 3ψ[3])^two_32
-@inline right_biased_β₁(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * ( ψ[1]         -  ψ[3])^two_32
-@inline right_biased_β₂(FT, ψ, ::Type{Nothing}, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * (3ψ[1] - 4ψ[2] +  ψ[3])^two_32
+@inline right_biased_β₀(FT, ψ, ::Type{Nothing}, scheme, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * ( ψ[1] - 4ψ[2] + 3ψ[3])^two_32
+@inline right_biased_β₁(FT, ψ, ::Type{Nothing}, scheme, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * ( ψ[1]         -  ψ[3])^two_32
+@inline right_biased_β₂(FT, ψ, ::Type{Nothing}, scheme, args...) = @inbounds FT(13/12) * (ψ[1] - 2ψ[2] + ψ[3])^two_32 + FT(1/4) * (3ψ[1] - 4ψ[2] +  ψ[3])^two_32
 
 #####
 ##### Stretched smoothness indicators gathered from precomputed values.
@@ -173,41 +172,42 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS}) where {FT, 
 ##### by hardcoding that p(x) is a 2nd order polynomial
 #####
 
-
-@inline function biased_left_β(ψ, scheme, r, args...) 
-    stencil   = retrieve_left_smooth(scheme, r, args...)
-    wᵢᵢ = stencil[1]   
-    wᵢⱼ = stencil[2]
-    
+@inline function biased_left_β(ψ, scheme, r, dir, i, location) 
+    @inbounds begin
+        stencil = retrieve_left_smooth(scheme, r, dir, i, location)
+        wᵢᵢ = stencil[1]   
+        wᵢⱼ = stencil[2]
+    end
     return   sum(ψ .* ( wᵢᵢ .* ψ .+ wᵢⱼ .* dagger(ψ) ) )
 end
 
-@inline function biased_right_β(ψ, scheme, r, args...) 
-    stencil   = retrieve_right_smooth(scheme, r, args...)
-    wᵢᵢ = stencil[1]   
-    wᵢⱼ = stencil[2]
-    
+@inline function biased_right_β(ψ, scheme, r, dir, i, location) 
+    @inbounds begin
+        stencil = retrieve_right_smooth(scheme, r, dir, i, location)
+        wᵢᵢ = stencil[1]   
+        wᵢⱼ = stencil[2]
+    end
     return   sum(ψ .* ( wᵢᵢ .* ψ .+ wᵢⱼ .* dagger(ψ) ) )
 end
 
-@inline left_biased_β₀(FT, ψ, T, scheme, args...) = @inbounds biased_left_β(ψ, scheme, 0, args...) 
-@inline left_biased_β₁(FT, ψ, T, scheme, args...) = @inbounds biased_left_β(ψ, scheme, 1, args...) 
-@inline left_biased_β₂(FT, ψ, T, scheme, args...) = @inbounds biased_left_β(ψ, scheme, 2, args...) 
+@inline left_biased_β₀(FT, ψ, T, scheme, args...) = biased_left_β(ψ, scheme, 0, args...) 
+@inline left_biased_β₁(FT, ψ, T, scheme, args...) = biased_left_β(ψ, scheme, 1, args...) 
+@inline left_biased_β₂(FT, ψ, T, scheme, args...) = biased_left_β(ψ, scheme, 2, args...) 
 
-@inline right_biased_β₀(FT, ψ, T, scheme, args...) = @inbounds biased_right_β(ψ, scheme, 2, args...) 
-@inline right_biased_β₁(FT, ψ, T, scheme, args...) = @inbounds biased_right_β(ψ, scheme, 1, args...) 
-@inline right_biased_β₂(FT, ψ, T, scheme, args...) = @inbounds biased_right_β(ψ, scheme, 0, args...) 
+@inline right_biased_β₀(FT, ψ, T, scheme, args...) = biased_right_β(ψ, scheme, 2, args...) 
+@inline right_biased_β₁(FT, ψ, T, scheme, args...) = biased_right_β(ψ, scheme, 1, args...) 
+@inline right_biased_β₂(FT, ψ, T, scheme, args...) = biased_right_β(ψ, scheme, 0, args...) 
 
 # Right-biased smoothness indicators are a reflection or "symmetric modification" of the left-biased smoothness
 # indicators around grid point `i-1/2`.
 
-@inline left_biased_α₀(FT, ψ, args...) = FT(C3₀) / (left_biased_β₀(FT, ψ, args...) + FT(ε))^ƞ
-@inline left_biased_α₁(FT, ψ, args...) = FT(C3₁) / (left_biased_β₁(FT, ψ, args...) + FT(ε))^ƞ
-@inline left_biased_α₂(FT, ψ, args...) = FT(C3₂) / (left_biased_β₂(FT, ψ, args...) + FT(ε))^ƞ
+@inline left_biased_α₀(FT, ψ, T, scheme, args...) = FT(C3₀) / (left_biased_β₀(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
+@inline left_biased_α₁(FT, ψ, T, scheme, args...) = FT(C3₁) / (left_biased_β₁(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
+@inline left_biased_α₂(FT, ψ, T, scheme, args...) = FT(C3₂) / (left_biased_β₂(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
 
-@inline right_biased_α₀(FT, ψ, args...) = FT(C3₂) / (right_biased_β₀(FT, ψ, args...) + FT(ε))^ƞ
-@inline right_biased_α₁(FT, ψ, args...) = FT(C3₁) / (right_biased_β₁(FT, ψ, args...) + FT(ε))^ƞ
-@inline right_biased_α₂(FT, ψ, args...) = FT(C3₀) / (right_biased_β₂(FT, ψ, args...) + FT(ε))^ƞ
+@inline right_biased_α₀(FT, ψ, T, scheme, args...) = FT(C3₂) / (right_biased_β₀(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
+@inline right_biased_α₁(FT, ψ, T, scheme, args...) = FT(C3₁) / (right_biased_β₁(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
+@inline right_biased_α₂(FT, ψ, T, scheme, args...) = FT(C3₀) / (right_biased_β₂(FT, ψ, T, scheme, args...) + FT(ε))^ƞ
 
 #####
 ##### Z-WENO-5 reconstruction (Castro et al: High order weighted essentially non-oscillatory WENO-Z schemesfor hyperbolic conservation laws)
@@ -386,19 +386,23 @@ function calc_interpolating_coefficients(FT, coord, arch, N)
     cpu_coord = Array(parent(coord))
     cpu_coord = OffsetArray(cpu_coord, coord.offsets[1])
 
-    allstencils = ()
-    for r = -1:2
-        stencil = NTuple{3, FT}[]
-        @inbounds begin
-            for i = 0:N+1
-                push!(stencil, interp_weights(r, cpu_coord, i, 0, -))     
-            end
-        end
-        stencil     = OffsetArray(arch_array(arch, stencil), -1)
-        allstencils = (allstencils..., stencil)
-    end
+    s1 = create_interp_coefficients(FT,-1, cpu_coord, arch, N)
+    s2 = create_interp_coefficients(FT, 0, cpu_coord, arch, N)
+    s3 = create_interp_coefficients(FT, 1, cpu_coord, arch, N)
+    s4 = create_interp_coefficients(FT, 2, cpu_coord, arch, N)
 
-    return allstencils
+    return (s1, s2, s3, s4)
+end
+
+function create_interp_coefficients(FT, r, cpu_coord, arch, N)
+
+    stencil = NTuple{3, FT}[]
+    @inbounds begin
+        for i = 0:N+1
+            push!(stencil, interp_weights(r, cpu_coord, i, 0, -))     
+        end
+    end
+    return OffsetArray(arch_array(arch, stencil), -1)
 end
 
 function calc_smoothness_coefficients(FT, beta, coord, arch, N) 
@@ -406,48 +410,51 @@ function calc_smoothness_coefficients(FT, beta, coord, arch, N)
     cpu_coord = Array(parent(coord))
     cpu_coord = OffsetArray(cpu_coord, coord.offsets[1])
 
-    # derivation written on overleaf
+    s1 = create_smoothness_coefficients(FT, 0, -, cpu_coord, arch, N)
+    s2 = create_smoothness_coefficients(FT, 1, -, cpu_coord, arch, N)
+    s3 = create_smoothness_coefficients(FT, 2, -, cpu_coord, arch, N)
+    s4 = create_smoothness_coefficients(FT, 0, +, cpu_coord, arch, N)
+    s5 = create_smoothness_coefficients(FT, 1, +, cpu_coord, arch, N)
+    s6 = create_smoothness_coefficients(FT, 2, +, cpu_coord, arch, N)
+    
+    return (s1, s2, s3, s4, s5, s6)
+end
 
-    allstencils = ()
-    for op = (-, +)
-        for r = 0:2
-            
-            stencil = NTuple{2, NTuple{3, FT}}[]   
-            @inbounds begin
-                for i = 0:N+1
-               
-                    bias1 = Int(op == +)
-                    bias2 = bias1 - 1
+function create_smoothness_coefficients(FT, r, op, cpu_coord, arch, N)
+
+    # derivation written on overleaf
     
-                    Δcᵢ = cpu_coord[i + bias1] - cpu_coord[i + bias2]
-                
-                    Bᵢ  = prim_interp_weights(r, cpu_coord, i, bias1, op)
-                    bᵢ  =      interp_weights(r, cpu_coord, i, bias1, op)
-                    bₓᵢ = der1_interp_weights(r, cpu_coord, i, bias1, op)
-                    Aᵢ  = prim_interp_weights(r, cpu_coord, i, bias2, op)
-                    aᵢ  =      interp_weights(r, cpu_coord, i, bias2, op)
-                    aₓᵢ = der1_interp_weights(r, cpu_coord, i, bias2, op)
-    
-                    pₓₓ = der2_interp_weights(r, cpu_coord, i, op)
-                    Pᵢ  =  (Bᵢ .- Aᵢ)
-    
-                    wᵢᵢ = Δcᵢ  .* (bᵢ .* bₓᵢ .- aᵢ .* aₓᵢ .- pₓₓ .* Pᵢ)  .+ Δcᵢ^4 .* (pₓₓ .* pₓₓ)
-                    wᵢⱼ = Δcᵢ  .* (star(bᵢ, bₓᵢ)  .- star(aᵢ, aₓᵢ) .- star(pₓₓ, Pᵢ)) .+
-                                                         Δcᵢ^4 .* star(pₓₓ, pₓₓ)
-    
-                    push!(stencil, (wᵢᵢ, wᵢⱼ))
-                end
-            end
-    
-            stencil     = OffsetArray(arch_array(arch, stencil), -1)
-            allstencils = (allstencils..., stencil)
+    stencil = NTuple{2, NTuple{3, FT}}[]   
+    @inbounds begin
+        for i = 0:N+1
+       
+            bias1 = Int(op == +)
+            bias2 = bias1 - 1
+
+            Δcᵢ = cpu_coord[i + bias1] - cpu_coord[i + bias2]
+        
+            Bᵢ  = prim_interp_weights(r, cpu_coord, i, bias1, op)
+            bᵢ  =      interp_weights(r, cpu_coord, i, bias1, op)
+            bₓᵢ = der1_interp_weights(r, cpu_coord, i, bias1, op)
+            Aᵢ  = prim_interp_weights(r, cpu_coord, i, bias2, op)
+            aᵢ  =      interp_weights(r, cpu_coord, i, bias2, op)
+            aₓᵢ = der1_interp_weights(r, cpu_coord, i, bias2, op)
+
+            pₓₓ = der2_interp_weights(r, cpu_coord, i, op)
+            Pᵢ  =  (Bᵢ .- Aᵢ)
+
+            wᵢᵢ = Δcᵢ  .* (bᵢ .* bₓᵢ .- aᵢ .* aₓᵢ .- pₓₓ .* Pᵢ)  .+ Δcᵢ^4 .* (pₓₓ .* pₓₓ)
+            wᵢⱼ = Δcᵢ  .* (star(bᵢ, bₓᵢ)  .- star(aᵢ, aₓᵢ) .- star(pₓₓ, Pᵢ)) .+
+                                                 Δcᵢ^4 .* star(pₓₓ, pₓₓ)
+
+            push!(stencil, (wᵢᵢ, wᵢⱼ))
         end
     end
 
-    return allstencils
+    return OffsetArray(arch_array(arch, stencil), -1)
 end
 
-@inline dagger(ψ)    = (ψ[2:3]..., ψ[1])
+@inline dagger(ψ)    = (ψ[2], ψ[3], ψ[1])
 @inline star(ψ₁, ψ₂) = (ψ₁ .* dagger(ψ₂) .+ dagger(ψ₁) .* ψ₂)
 
 # Integral of ENO coefficients for 2nd order polynomial reconstruction at the face
