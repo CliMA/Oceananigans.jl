@@ -131,7 +131,7 @@ function MultiArch(; grid, ranks, communicator = MPI.COMM_WORLD)
     R = typeof(local_rank)    
     I = typeof(local_index)   
     ρ = typeof(ranks)         
-    C = typeof(connectivity)  
+    C = typeof(local_connectivity)  
     γ = typeof(communicator)  
     return MultiArch{G, R, I, ρ, C, γ}(local_grid, local_rank, local_index, ranks, local_connectivity, communicator)
 end
