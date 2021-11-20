@@ -114,7 +114,10 @@ function NonhydrostaticModel(;    grid,
     end
 
     if typeof(architecture) == MultiArch
+        full_grid = grid
         grid = architecture.local_grid
+    else
+        full_grid = grid
     end
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
@@ -160,7 +163,7 @@ function NonhydrostaticModel(;    grid,
     diffusivity_fields = DiffusivityFields(diffusivity_fields, architecture, grid, tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
-        pressure_solver = PressureSolver(architecture, grid)
+        pressure_solver = PressureSolver(architecture, full_grid)
     end
 
     # Materialize background fields

@@ -2,8 +2,8 @@ using Oceananigans.Grids
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, pop_flat_elements
 
 
-@inline get_local_coords(c::Tuple         , nc, lc, index) = (c[1] + (index-1)*lc,    c[1] + index*lc)
-@inline get_local_coords(c::AbstractVector, nc, lc, index) = c[1 + (index -1) * nc : 1 + nc * index]
+@inline get_local_coords(c::Tuple         , nc, lc, index) = (c[1] + (index-1) * lc,    c[1] + index * lc)
+@inline get_local_coords(c::AbstractVector, nc, lc, index) = c[1 + (index-1) * nc : 1 + nc * index]
 
 @inline my_grid(grid::RectilinearGrid, x, y, z, size, halo) = RectilinearGrid(size = size, 
                                                                   halo = halo,
@@ -29,7 +29,7 @@ function local_grids(local_index, ranks, connectivity, grid)
     Nx, Ny, Nz = size(grid)
     Lx, Ly, Lz = length(grid)
     
-    # Pull out endpoints for full grid.
+    # Pull out face grid constructors
     x = cpu_face_constructor_x(grid)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
@@ -47,7 +47,7 @@ function local_grids(local_index, ranks, connectivity, grid)
     yl = get_local_coords(y, ny, ly, j)
     zl = get_local_coords(z, nz, lz, k)
 
-    topo = topology(grid)
+    topo       = topology(grid)
     local_size = pop_flat_elements((nx, ny, nz), topo)
     local_halo = pop_flat_elements(halo_size(grid), topo)
 
