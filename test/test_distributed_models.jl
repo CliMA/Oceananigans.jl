@@ -377,10 +377,10 @@ end
 end
 
 function test_triply_periodic_halo_communication_with_141_ranks(halo)
-    topo = (Periodic, Periodic, Periodic)
+    topo  = (Periodic, Periodic, Periodic)
     full_grid = RectilinearGrid(topology=topo, size=(4, 16, 4), extent=(1, 2, 3), halo=halo)
-    arch = MultiArch(grid=full_grid, ranks=(1, 4, 1))
-    grid = local_grids(arch, full_grid)
+    arch  = MultiArch(grid=full_grid, ranks=(1, 4, 1))
+    grid  = local_grids(arch, full_grid)
     model = NonhydrostaticModel(architecture=arch, grid=grid)
 
     for field in merge(fields(model), model.pressures)
