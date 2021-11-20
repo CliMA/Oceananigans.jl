@@ -115,7 +115,7 @@ function NonhydrostaticModel(;    grid,
 
     if architecture isa MultiArch
         if isnothing(pressure_solver)
-            pressure_solver = PressureSolver(architecture, full_grid)
+            pressure_solver = PressureSolver(architecture, grid)
         end
         grid = architecture.local_grid
     end
