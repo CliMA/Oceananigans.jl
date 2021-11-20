@@ -113,7 +113,7 @@ function NonhydrostaticModel(;    grid,
          throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
     end
 
-    if typeof(architecure) == MultiArch
+    if typeof(architecture) == MultiArch
         grid = architecture.local_grid
     end
 
