@@ -113,13 +113,6 @@ function NonhydrostaticModel(;    grid,
          throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
     end
 
-    if architecture isa MultiArch
-        if isnothing(pressure_solver)
-            pressure_solver = PressureSolver(architecture, grid)
-        end
-        grid = architecture.local_grid
-    end
-
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
     validate_buoyancy(buoyancy, tracernames(tracers))

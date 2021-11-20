@@ -1,7 +1,7 @@
 module Distributed
 
 export
-    MultiArch, child_architecture,
+    MultiArch, child_architecture, local_grids, 
     HaloCommunication, HaloCommunicationBC,
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver
@@ -12,8 +12,8 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 
 include("distributed_utils.jl")
-include("distributed_grids.jl")
 include("multi_architectures.jl")
+include("distributed_grids.jl")
 include("distributed_kernel_launching.jl")
 include("halo_communication_bcs.jl")
 include("halo_communication.jl")

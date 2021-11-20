@@ -100,10 +100,6 @@ function ShallowWaterModel(;
      boundary_conditions::NamedTuple = NamedTuple(),
                  timestepper::Symbol = :RungeKutta3)
 
-    if typeof(architecture) == MultiArch
-        grid = architecture.local_grid
-    end
-
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
     @assert topology(grid, 3) === Flat "ShallowWaterModel requires `topology(grid, 3) === Flat`. Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` when constructing `grid`."
