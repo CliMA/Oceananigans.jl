@@ -11,9 +11,11 @@ a container with key-value pairs like a dictionary or `NamedTuple`.
 """
 NaNChecker(; fields) = NaNChecker(fields)
 
+hasnan(field) = any(isnan, parent(field)) 
+
 function (nc::NaNChecker)(simulation)
     for (name, field) in pairs(nc.fields)
-        if any(isnan, parent(field))
+        if hasnan(field)
             @info "NaN found in field $name. Stopping simulation."
             simulation.running = false
         end
