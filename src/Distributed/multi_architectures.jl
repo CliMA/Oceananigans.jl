@@ -18,7 +18,7 @@ end
 ##### Constructors
 #####
 
-function MultiArch(; parent_grid, ranks, communicator = MPI.COMM_WORLD)
+function MultiArch(; grid, ranks, communicator = MPI.COMM_WORLD)
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
 
     validate_tupled_argument(ranks, Int, "ranks")
@@ -37,14 +37,14 @@ function MultiArch(; parent_grid, ranks, communicator = MPI.COMM_WORLD)
     local_index        = rank2index(local_rank, Rx, Ry, Rz)
     local_connectivity = RankConnectivity(local_index, ranks, topology(grid))
 
-    G = typeof(parent_grid)
+    G = typeof(grid)
     R = typeof(local_rank)    
     I = typeof(local_index)   
     ρ = typeof(ranks)         
     C = typeof(local_connectivity)  
     γ = typeof(communicator)  
     
-    return MultiArch{G, R, I, ρ, C, γ}(parent_grid, local_rank, local_index, ranks, local_connectivity, communicator)
+    return MultiArch{G, R, I, ρ, C, γ}(grid, local_rank, local_index, ranks, local_connectivity, communicator)
 end
 
 child_architecture(arch::MultiArch) = child_architecture(architecture(arch.parent_grid))
