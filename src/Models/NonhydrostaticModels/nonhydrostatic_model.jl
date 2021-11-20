@@ -109,7 +109,7 @@ function NonhydrostaticModel(;    grid,
                       auxiliary_fields = NamedTuple(),
     )
 
-    if arch == GPU() && !has_cuda()
+    if architecture == GPU() && !has_cuda()
          throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
     end
 
