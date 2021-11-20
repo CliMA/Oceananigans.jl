@@ -13,6 +13,40 @@ struct MultiArch{G, R, I, ρ, C, γ} <: AbstractMultiArchitecture
         communicator :: γ
 end
 
+
+#####
+##### Constructors
+#####
+
+function MultiArch(; grid, ranks, communicator = MPI.COMM_WORLD)
+    MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
+
+    validate_tupled_argument(ranks, Int, "ranks")
+
+    Rx, Ry, Rz = ranks
+    total_ranks = Rx*Ry*Rz
+
+    mpi_ranks  = MPI.Comm_size(communicator)
+    local_rank = MPI.Comm_rank(communicator)
+
+    if total_ranks != mpi_ranks
+        throw(ArgumentError("ranks=($Rx, $Ry, $Rz) [$total_ranks total] inconsistent " *
+                            "with number of MPI ranks: $mpi_ranks."))
+    end
+    
+    local_index        = rank2index(local_rank, Rx, Ry, Rz)
+    local_connectivity = RankConnectivity(local_index, ranks, topology(grid))
+    local_grid         = local_grids(local_index, ranks, local_connectivity, grid)
+
+    G = typeof(local_grid)
+    R = typeof(local_rank)    
+    I = typeof(local_index)   
+    ρ = typeof(ranks)         
+    C = typeof(local_connectivity)  
+    γ = typeof(communicator)  
+    return MultiArch{G, R, I, ρ, C, γ}(local_grid, local_rank, local_index, ranks, local_connectivity, communicator)
+end
+
 child_architecture(arch::MultiArch) = child_architecture(architecture(arch.local_grid))
 child_architecture(::CPU) = CPU()
 child_architecture(::GPU) = GPU()
@@ -99,41 +133,6 @@ function RankConnectivity(model_index, ranks, topology)
 
     return RankConnectivity(east=r_east, west=r_west, north=r_north,
                             south=r_south, top=r_top, bottom=r_bot)
-end
-
-#####
-##### Constructors
-#####
-
-function MultiArch(; grid, ranks, communicator = MPI.COMM_WORLD)
-    MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
-
-    validate_tupled_argument(ranks, Int, "ranks")
-
-    Rx, Ry, Rz = ranks
-    total_ranks = Rx*Ry*Rz
-
-    mpi_ranks  = MPI.Comm_size(communicator)
-    local_rank = MPI.Comm_rank(communicator)
-
-    i, j, k = local_index = rank2index(local_rank, Rx, Ry, Rz)
-
-    if total_ranks != mpi_ranks
-        throw(ArgumentError("ranks=($Rx, $Ry, $Rz) [$total_ranks total] inconsistent " *
-                            "with number of MPI ranks: $mpi_ranks."))
-    end
-
-    local_connectivity = RankConnectivity(local_index, ranks, topology(grid))
-
-    local_grid = local_grids(local_index, ranks, local_connectivity, grid)
-
-    G = typeof(local_grid)
-    R = typeof(local_rank)    
-    I = typeof(local_index)   
-    ρ = typeof(ranks)         
-    C = typeof(local_connectivity)  
-    γ = typeof(communicator)  
-    return MultiArch{G, R, I, ρ, C, γ}(local_grid, local_rank, local_index, ranks, local_connectivity, communicator)
 end
 
 #####

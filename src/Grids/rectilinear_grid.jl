@@ -358,9 +358,9 @@ function with_halo(new_halo, old_grid::RectilinearGrid)
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
-    x = cpu_face_constructor_x(grid)
-    y = cpu_face_constructor_y(grid)
-    z = cpu_face_constructor_z(grid)  
+    x = cpu_face_constructor_x(old_grid)
+    y = cpu_face_constructor_y(old_grid)
+    z = cpu_face_constructor_z(old_grid)  
 
     # Remove elements of size and new_halo in Flat directions as expected by grid
     # constructor

@@ -191,7 +191,7 @@ function test_triply_periodic_local_grid_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiArch(grid=full_grid, ranks=(4, 1, 1))
-    model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    model = NonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     local_grid = model.grid
@@ -211,7 +211,7 @@ function test_triply_periodic_local_grid_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiArch(grid=full_grid, ranks=(1, 4, 1))
-    model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    model = NonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     local_grid = model.grid
@@ -231,7 +231,7 @@ function test_triply_periodic_local_grid_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiArch(grid=full_grid, ranks=(1, 1, 4))
-    model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    model = NonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     local_grid = model.grid
@@ -251,7 +251,7 @@ function test_triply_periodic_local_grid_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiArch(grid=full_grid, ranks=(2, 2, 1))
-    model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    model = NonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     i, j, k = arch.local_index
     local_grid = model.grid
@@ -275,7 +275,7 @@ function test_triply_periodic_bc_injection_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiArch(grid=full_grid, ranks=(4, 1, 1))
-    model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    model = NonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in merge(fields(model), model.pressures)
         fbcs = field.boundary_conditions
@@ -292,7 +292,7 @@ function test_triply_periodic_bc_injection_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiArch(grid=full_grid, ranks=(1, 4, 1))
-    model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    model = NonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in merge(fields(model), model.pressures)
         fbcs = field.boundary_conditions
@@ -309,7 +309,7 @@ function test_triply_periodic_bc_injection_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiArch(grid=full_grid, ranks=(1, 1, 4))
-    model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    model = NonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in merge(fields(model), model.pressures)
         fbcs = field.boundary_conditions
@@ -326,7 +326,7 @@ function test_triply_periodic_bc_injection_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
     full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     arch = MultiArch(grid=full_grid, ranks=(2, 2, 1))
-    model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    model = NonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in merge(fields(model), model.pressures)
         fbcs = field.boundary_conditions
@@ -347,7 +347,7 @@ function test_triply_periodic_halo_communication_with_411_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
     full_grid = RectilinearGrid(topology=topo, size=(16, 6, 4), extent=(1, 2, 3), halo=halo)
     arch = MultiArch(grid=full_grid, ranks=(4, 1, 1))
-    model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    model = NonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in merge(fields(model), model.pressures)
         interior(field) .= arch.local_rank
@@ -371,7 +371,7 @@ function test_triply_periodic_halo_communication_with_141_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
     full_grid = RectilinearGrid(topology=topo, size=(4, 16, 4), extent=(1, 2, 3), halo=halo)
     arch = MultiArch(grid=full_grid, ranks=(1, 4, 1))
-    model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    model = NonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in merge(fields(model), model.pressures)
         interior(field) .= arch.local_rank
@@ -394,7 +394,7 @@ function test_triply_periodic_halo_communication_with_114_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
     full_grid = RectilinearGrid(topology=topo, size=(4, 4, 16), extent=(1, 2, 3), halo=halo)
     arch = MultiArch(grid=full_grid, ranks=(1, 1, 4))
-    model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    model = NonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in merge(fields(model), model.pressures)
         interior(field) .= arch.local_rank
@@ -417,7 +417,7 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
     full_grid = RectilinearGrid(topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
     arch = MultiArch(grid=full_grid, ranks=(2, 2, 1))
-    model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
+    model = NonhydrostaticModel(architecture=arch, grid=full_grid, pressure_solver=nothing)
 
     for field in merge(fields(model), model.pressures)
         interior(field) .= arch.local_rank
