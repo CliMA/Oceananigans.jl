@@ -6,7 +6,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Utils: launch!
 using Oceananigans.Grids
 using Oceananigans.Solvers
-using Oceananigans.Distributed: MultiArch
+using Oceananigans.Distributed: MultiArch, DistributedFFTBasedPoissonSolver
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 import Oceananigans: fields, prognostic_fields
