@@ -38,19 +38,21 @@ function local_grids(local_index, ranks, connectivity, grid)
     # Will generalize in the future.
     @assert isinteger(Nx / Rx)
     @assert isinteger(Ny / Ry)
-
-    nx, ny = Nx÷Rx, Ny÷Ry
-    lx, ly = Lx/Rx, Ly/Ry
+    @assert isinteger(Nz / Rz)
+    
+    nx, ny, nz = Nx÷Rx, Ny÷Ry, Nz÷Rz
+    lx, ly, lz = Lx/Rx, Ly/Ry, Lz/Rz
 
     xl = get_local_coords(x, nx, lx, i)
     yl = get_local_coords(y, ny, ly, j)
+    zl = get_local_coords(z, nz, lz, k)
 
     topo = topology(grid)
-    local_size = pop_flat_elements((nx, ny, Nz), topo)
+    local_size = pop_flat_elements((nx, ny, nz), topo)
     local_halo = pop_flat_elements(halo_size(grid), topo)
 
     # FIXME: local grid might have different topology!
-    local_grid = my_grid(grid, xl, yl, z, local_size, local_halo)
+    local_grid = my_grid(grid, xl, yl, zl, local_size, local_halo)
 
     return local_grid
 end

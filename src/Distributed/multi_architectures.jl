@@ -51,10 +51,12 @@ child_architecture(arch::MultiArch) = child_architecture(architecture(arch.local
 child_architecture(::CPU) = CPU()
 child_architecture(::GPU) = GPU()
 
+# Extending architecture specific methods
+
 device(arch::AbstractMultiArchitecture)        = device(child_architecture(arch))
 device_event(arch::AbstractMultiArchitecture)  = device_event(child_architecture(arch))
 arch_array(arch::AbstractMultiArchitecture, A) = arch_array(child_architecture(arch), A)
-zeros(FT, arch::MultiArch, N...) = zeros(FT, child_architecture(arch), N...) 
+zeros(FT, arch::MultiArch, N...)               = zeros(FT, child_architecture(arch), N...) 
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
