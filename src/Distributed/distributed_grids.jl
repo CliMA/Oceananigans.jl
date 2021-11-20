@@ -52,7 +52,7 @@ function local_grids(arch::MultiArch, grid)
     local_halo = pop_flat_elements(halo_size(grid), topo)
 
     # FIXME: local grid might have different topology!
-    local_grid = loca_grid_constructor(grid, xl, yl, zl, local_size, local_halo)
+    local_grid = local_grid_constructor(grid, xl, yl, zl, local_size, local_halo)
 
     return local_grid
 end
