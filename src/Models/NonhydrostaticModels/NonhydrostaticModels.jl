@@ -12,7 +12,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 import Oceananigans: fields, prognostic_fields
 
 
-PressureSolver(arch::MultiArch, grid::RegRectilinearGrid) = DistributedFFTBasedPoissonSolver(arch, arch.parent_grid, grid)
+PressureSolver(arch::MultiArch, grid::RegRectilinearGrid) = arch.ranks[1] == 1 ? DistributedFFTBasedPoissonSolver(arch, arch.parent_grid, grid) : nothing
 PressureSolver(arch, grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(arch, grid)
 PressureSolver(arch, grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(arch, grid)
 
