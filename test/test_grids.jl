@@ -236,43 +236,43 @@ function flat_extent_regular_rectilinear_grid(FT; topology, size, extent)
 end
 
 function test_flat_size_regular_rectilinear_grid(FT)
-    @test flat_size_regular_rectilinear_grid(CPU(), FT, topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
-    @test flat_size_regular_rectilinear_grid(CPU(), FT, topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
-    @test flat_size_regular_rectilinear_grid(CPU(), FT, topology=(Periodic, Bounded, Flat),  size=(2, 3), extent=(1, 1)) === (2, 3, 1)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(2, 3), extent=(1, 1)) === (2, 3, 1)
 
-    @test flat_size_regular_rectilinear_grid(CPU(), FT, topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
-    @test flat_size_regular_rectilinear_grid(CPU(), FT, topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
-    @test flat_size_regular_rectilinear_grid(CPU(), FT, topology=(Periodic, Bounded, Flat),  size=(2, 3), extent=(1, 1)) === (2, 3, 1)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) === (1, 2, 3)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(2, 3), extent=(1, 1)) === (2, 1, 3)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(2, 3), extent=(1, 1)) === (2, 3, 1)
 
-    @test flat_size_regular_rectilinear_grid(CPU(), FT, topology=(Periodic, Flat, Flat), size=2, extent=1) === (2, 1, 1)
-    @test flat_size_regular_rectilinear_grid(CPU(), FT, topology=(Flat, Periodic, Flat), size=2, extent=1) === (1, 2, 1)
-    @test flat_size_regular_rectilinear_grid(CPU(), FT, topology=(Flat, Flat, Bounded),  size=2, extent=1) === (1, 1, 2)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Flat), size=2, extent=1) === (2, 1, 1)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Flat), size=2, extent=1) === (1, 2, 1)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Flat, Bounded),  size=2, extent=1) === (1, 1, 2)
 
-    @test flat_size_regular_rectilinear_grid(CPU(), FT, topology=(Flat, Flat, Flat), size=(), extent=()) === (1, 1, 1)
+    @test flat_size_regular_rectilinear_grid(FT, topology=(Flat, Flat, Flat), size=(), extent=()) === (1, 1, 1)
 
-    @test flat_halo_regular_rectilinear_grid(CPU(), FT, topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=nothing) === (0, 1, 1)
-    @test flat_halo_regular_rectilinear_grid(CPU(), FT, topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=nothing) === (1, 0, 1)
-    @test flat_halo_regular_rectilinear_grid(CPU(), FT, topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=nothing) === (1, 1, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=nothing) === (0, 1, 1)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=nothing) === (1, 0, 1)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=nothing) === (1, 1, 0)
 
-    @test flat_halo_regular_rectilinear_grid(CPU(), FT, topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=(2, 3)) === (0, 2, 3)
-    @test flat_halo_regular_rectilinear_grid(CPU(), FT, topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 0, 3)
-    @test flat_halo_regular_rectilinear_grid(CPU(), FT, topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 3, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(1, 1), extent=(1, 1), halo=(2, 3)) === (0, 2, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Bounded),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 0, 3)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Bounded, Flat),  size=(1, 1), extent=(1, 1), halo=(2, 3)) === (2, 3, 0)
 
-    @test flat_halo_regular_rectilinear_grid(CPU(), FT, topology=(Periodic, Flat, Flat), size=1, extent=1, halo=2) === (2, 0, 0)
-    @test flat_halo_regular_rectilinear_grid(CPU(), FT, topology=(Flat, Periodic, Flat), size=1, extent=1, halo=2) === (0, 2, 0)
-    @test flat_halo_regular_rectilinear_grid(CPU(), FT, topology=(Flat, Flat, Bounded),  size=1, extent=1, halo=2) === (0, 0, 2)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Flat), size=1, extent=1, halo=2) === (2, 0, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Flat), size=1, extent=1, halo=2) === (0, 2, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Flat, Bounded),  size=1, extent=1, halo=2) === (0, 0, 2)
 
-    @test flat_halo_regular_rectilinear_grid(CPU(), FT, topology=(Flat, Flat, Flat), size=(), extent=(), halo=()) === (0, 0, 0)
+    @test flat_halo_regular_rectilinear_grid(FT, topology=(Flat, Flat, Flat), size=(), extent=(), halo=()) === (0, 0, 0)
 
-    @test flat_extent_regular_rectilinear_grid(CPU(), FT, topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) == (1, 1, 1)
-    @test flat_extent_regular_rectilinear_grid(CPU(), FT, topology=(Periodic, Flat, Periodic), size=(2, 3), extent=(1, 1)) == (1, 1, 1)
-    @test flat_extent_regular_rectilinear_grid(CPU(), FT, topology=(Periodic, Periodic, Flat), size=(2, 3), extent=(1, 1)) == (1, 1, 1)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Periodic), size=(2, 3), extent=(1, 1)) == (1, 1, 1)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Periodic), size=(2, 3), extent=(1, 1)) == (1, 1, 1)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Periodic, Periodic, Flat), size=(2, 3), extent=(1, 1)) == (1, 1, 1)
 
-    @test flat_extent_regular_rectilinear_grid(CPU(), FT, topology=(Periodic, Flat, Flat), size=2, extent=1) == (1, 1, 1)
-    @test flat_extent_regular_rectilinear_grid(CPU(), FT, topology=(Flat, Periodic, Flat), size=2, extent=1) == (1, 1, 1)
-    @test flat_extent_regular_rectilinear_grid(CPU(), FT, topology=(Flat, Flat, Periodic), size=2, extent=1) == (1, 1, 1)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Periodic, Flat, Flat), size=2, extent=1) == (1, 1, 1)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Flat, Periodic, Flat), size=2, extent=1) == (1, 1, 1)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Flat, Flat, Periodic), size=2, extent=1) == (1, 1, 1)
 
-    @test flat_extent_regular_rectilinear_grid(CPU(), FT, topology=(Flat, Flat, Flat), size=(), extent=()) == (1, 1, 1)
+    @test flat_extent_regular_rectilinear_grid(FT, topology=(Flat, Flat, Flat), size=(), extent=()) == (1, 1, 1)
 
     return nothing
 end
@@ -582,7 +582,7 @@ end
 #####
 
 function test_cubed_sphere_face_array_size(FT)
-    grid = ConformalCubedSphereFaceGrid(arch, FT, size=(10, 10, 1), z=(0, 1))
+    grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=(10, 10, 1), z=(0, 1))
 
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
     Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
@@ -812,7 +812,7 @@ end
         cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 
         for face in 1:6
-            grid = ConformalCubedSphereFaceGrid(CPU(), cs32_filepath, face=face, Nz=1, z=(-1, 0))
+            grid = ConformalCubedSphereFaceGrid(cs32_filepath, face=face, Nz=1, z=(-1, 0))
             @test grid isa ConformalCubedSphereFaceGrid
         end
     end
