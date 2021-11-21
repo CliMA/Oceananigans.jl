@@ -243,8 +243,8 @@ grid in y: Stretched, with spacing min=0.2739052315863262, max=5.22642316338267
 grid in z: Stretched, with spacing min=0.6826950100338962, max=1.8309085743885056
 ```
 """
-function RectilinearGrid(FT = Float64;
-                         architecture = CPU(),
+function RectilinearGrid(architecture = CPU(),
+                         FT = Float64;
                          size,
                          x = nothing,
                          y = nothing,
@@ -367,8 +367,7 @@ function with_halo(new_halo, old_grid::RectilinearGrid)
     size     = pop_flat_elements(size, topo)
     new_halo = pop_flat_elements(new_halo, topo)
 
-    new_grid = RectilinearGrid(eltype(old_grid);
-               architecture = old_grid.architecture,
+    new_grid = RectilinearGrid(architecture(old_grid), eltype(old_grid);
                size = size,
                x = x, y = y,z = z,
                topology = topo,
@@ -391,8 +390,7 @@ function with_arch(new_arch, old_grid::RectilinearGrid)
     size = pop_flat_elements(size, topo)
     halo = pop_flat_elements(halo_size(old_grid), topo)
 
-    new_grid = RectilinearGrid(eltype(old_grid);
-               architecture = new_arch,
+    new_grid = RectilinearGrid(new_arch, eltype(old_grid);
                size = size,
                x = x, y = y, z = z,
                topology = topo,

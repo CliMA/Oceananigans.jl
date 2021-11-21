@@ -53,8 +53,8 @@ or an array or function that specifies the faces (see VerticallyStretchedRectili
 
 """
 
-function LatitudeLongitudeGrid(FT=Float64; 
-                               architecture=CPU(),
+function LatitudeLongitudeGrid(architecture=CPU(),
+                               FT=Float64; 
                                precompute_metrics=false,
                                size,
                                latitude,
@@ -62,9 +62,7 @@ function LatitudeLongitudeGrid(FT=Float64;
                                z,                      
                                radius=R_Earth,
                                halo=(1, 1, 1))
-
-    arch = architecture
-    
+   
     λ₁, λ₂ = get_domain_extent(longitude, size[1])
     @assert λ₁ < λ₂ && λ₂ - λ₁ ≤ 360
 
@@ -89,9 +87,9 @@ function LatitudeLongitudeGrid(FT=Float64;
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
     # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
     
-    Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topo[1], Nλ, Hλ, longitude, arch)
-    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topo[2], Nφ, Hφ, latitude,  arch)
-    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topo[3], Nz, Hz, z,         arch)
+    Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topo[1], Nλ, Hλ, longitude, architecture)
+    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topo[2], Nφ, Hφ, latitude,  architecture)
+    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topo[3], Nz, Hz, z,         architecture)
 
     FX   = typeof(Δλᶠᵃᵃ)
     FY   = typeof(Δφᵃᶠᵃ)
@@ -99,19 +97,19 @@ function LatitudeLongitudeGrid(FT=Float64;
     VX   = typeof(λᶠᵃᵃ)
     VY   = typeof(φᵃᶠᵃ)
     VZ   = typeof(zᵃᵃᶠ)
-    Arch = typeof(arch) 
+    Arch = typeof(architecture) 
 
 
     if precompute_metrics == true
-        grid = LatitudeLongitudeGrid{FT, TX, TY, TZ, Nothing, Nothing, FX, FY, FZ, VX, VY, VZ, Arch}(arch,
+        grid = LatitudeLongitudeGrid{FT, TX, TY, TZ, Nothing, Nothing, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
                 Nλ, Nφ, Nz, Hλ, Hφ, Hz, Lλ, Lφ, Lz, Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
                 nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, radius)
 
         Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ = allocate_metrics(FT, grid)
-        wait(device_event(arch))
+        wait(device_event(architecture))
 
         precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ )
-        wait(device_event(arch))
+        wait(device_event(architecture))
 
         Δyᶠᶜ, Δyᶜᶠ = precompute_Δy_metrics(grid, Δyᶠᶜ, Δyᶜᶠ)
         
@@ -133,7 +131,7 @@ function LatitudeLongitudeGrid(FT=Float64;
         MY   = Nothing
     end
 
-    return LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch}(arch,
+    return LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
             Nλ, Nφ, Nz, Hλ, Hφ, Hz, Lλ, Lφ, Lz, Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
             Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ, radius)
 end
@@ -208,11 +206,12 @@ function with_arch(new_arch, old_grid::LatitudeLongitudeGrid)
     size = pop_flat_elements(size, topo)
     halo = pop_flat_elements(halo_size(old_grid), topo)
 
-    new_grid = LatitudeLongitudeGrid(eltype(old_grid);
-                                architecture = new_arch,
-                                        size = size,
-              longitude = x, latitude = y, z = z,
-                                        halo = halo)
+    new_grid = LatitudeLongitudeGrid(new_arch, eltype(old_grid);
+                                     size = size,
+                                longitude = x, 
+                                 latitude = y, 
+                                        z = z,
+                                     halo = halo)
     return new_grid
 end
 
