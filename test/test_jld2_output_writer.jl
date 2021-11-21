@@ -48,7 +48,7 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
 end
 
 function test_jld2_file_splitting(arch)
-    model = NonhydrostaticModel(architecture=arch, grid=RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)))
+    model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1)))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
 
     function fake_bc_init(file, model)
@@ -139,8 +139,8 @@ end
 for arch in archs
     # Some tests can reuse this same grid and model.
     topo =(Periodic, Periodic, Bounded)
-    grid = RectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid=grid)
 
     @testset "JLD2 output writer [$(typeof(arch))]" begin
         @info "  Testing JLD2 output writer [$(typeof(arch))]..."

@@ -1,7 +1,7 @@
 module Distributed
 
 export
-    MultiArch, child_architecture, local_grids, 
+    MultiArch, child_architecture, reconstruct_global_grid, 
     HaloCommunication, HaloCommunicationBC,
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver

@@ -6,7 +6,7 @@ using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size, Flat
+using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size, Flat, architecture
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.Utils: tupleit
@@ -88,7 +88,6 @@ Keyword arguments
 function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
-  architecture::AbstractArchitecture = CPU(),
                                clock = Clock{eltype(grid)}(0, 0, 1),
                            advection = UpwindBiasedFifthOrder(),
                             coriolis = nothing,
@@ -99,6 +98,8 @@ function ShallowWaterModel(;
                   diffusivity_fields = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
                  timestepper::Symbol = :RungeKutta3)
+
+    architecture = architecture(grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 

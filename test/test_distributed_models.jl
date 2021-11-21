@@ -277,10 +277,9 @@ end
 
 function test_triply_periodic_bc_injection_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    arch = MultiArch(grid=full_grid, ranks=(4, 1, 1))
-    grid = local_grids(arch, full_grid)
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    arch = MultiArch(ranks=(4, 1, 1))
+    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model), model.pressures)
         fbcs = field.boundary_conditions
@@ -295,10 +294,9 @@ end
 
 function test_triply_periodic_bc_injection_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    arch = MultiArch(grid=full_grid, ranks=(1, 4, 1))
-    grid = local_grids(arch, full_grid)
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    arch = MultiArch(ranks=(1, 4, 1))
+    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model), model.pressures)
         fbcs = field.boundary_conditions
@@ -313,10 +311,9 @@ end
 
 function test_triply_periodic_bc_injection_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    arch = MultiArch(grid=full_grid, ranks=(1, 1, 4))
-    grid = local_grids(arch, full_grid)
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    arch = MultiArch(ranks=(1, 1, 4))
+    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model), model.pressures)
         fbcs = field.boundary_conditions
@@ -331,10 +328,9 @@ end
 
 function test_triply_periodic_bc_injection_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    arch = MultiArch(grid=full_grid, ranks=(2, 2, 1))
-    grid = local_grids(arch, full_grid)
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    arch = MultiArch(ranks=(2, 2, 1))
+    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model), model.pressures)
         fbcs = field.boundary_conditions
@@ -353,10 +349,9 @@ end
 
 function test_triply_periodic_halo_communication_with_411_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(16, 6, 4), extent=(1, 2, 3), halo=halo)
-    arch = MultiArch(grid=full_grid, ranks=(4, 1, 1))
-    grid = local_grids(arch, full_grid)
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    arch = MultiArch(ranks=(4, 1, 1))
+    grid = RectilinearGrid(arch, topology=topo, size=(16, 6, 4), extent=(1, 2, 3), halo=halo)
+    model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model), model.pressures)
         interior(field) .= arch.local_rank
@@ -378,10 +373,9 @@ end
 
 function test_triply_periodic_halo_communication_with_141_ranks(halo)
     topo  = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(4, 16, 4), extent=(1, 2, 3), halo=halo)
-    arch  = MultiArch(grid=full_grid, ranks=(1, 4, 1))
-    grid  = local_grids(arch, full_grid)
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    arch  = MultiArch(ranks=(1, 4, 1))
+    grid  = RectilinearGrid(arch, topology=topo, size=(4, 16, 4), extent=(1, 2, 3), halo=halo)
+    model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model), model.pressures)
         interior(field) .= arch.local_rank
@@ -402,10 +396,9 @@ end
 
 function test_triply_periodic_halo_communication_with_114_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(4, 4, 16), extent=(1, 2, 3), halo=halo)
-    arch = MultiArch(grid=full_grid, ranks=(1, 1, 4))
-    grid = local_grids(arch, full_grid)
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    arch = MultiArch(ranks=(1, 1, 4))
+    grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 16), extent=(1, 2, 3), halo=halo)
+    model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model), model.pressures)
         interior(field) .= arch.local_rank
@@ -426,10 +419,9 @@ end
 
 function test_triply_periodic_halo_communication_with_221_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
-    arch = MultiArch(grid=full_grid, ranks=(2, 2, 1))
-    grid = local_grids(arch, full_grid)
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    arch = MultiArch(ranks=(2, 2, 1))
+    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
+    model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model), model.pressures)
         interior(field) .= arch.local_rank
@@ -492,10 +484,9 @@ end
 
     @testset "Time stepping NonhydrostaticModel" begin
         topo = (Periodic, Periodic, Periodic)
-        full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-        arch = MultiArch(grid=full_grid, ranks=(1, 4, 1))
-        grid = local_grids(arch, full_grid)
-        model = NonhydrostaticModel(architecture=arch, grid=grid)
+        arch = MultiArch(ranks=(1, 4, 1))
+        grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+        model = NonhydrostaticModel(grid=grid)
 
         time_step!(model, 1)
         @test model isa NonhydrostaticModel
@@ -509,10 +500,9 @@ end
 
     @testset "Time stepping ShallowWaterModel" begin
         topo = (Periodic, Periodic, Flat)
-        full_grid = RectilinearGrid(topology=topo, size=(8, 8), extent=(1, 2), halo=(3, 3))
-        arch = MultiArch(grid=full_grid, ranks=(1, 4, 1))
-        grid = local_grids(arch, full_grid)
-        model = ShallowWaterModel(architecture=arch, advection=nothing, grid=grid, gravitational_acceleration=1)
+        arch = MultiArch(ranks=(1, 4, 1))
+        grid = RectilinearGrid(arch, topology=topo, size=(8, 8), extent=(1, 2), halo=(3, 3))
+        model = ShallowWaterModel(advection=nothing, grid=grid, gravitational_acceleration=1)
 
         set!(model, h=1)
         time_step!(model, 1)

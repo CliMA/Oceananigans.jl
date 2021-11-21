@@ -67,7 +67,7 @@ function z_derivative(a)
 end
 
 function x_derivative_cell(arch)
-    grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
+    grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(3, 3, 3))
     a = Field(Center, Center, Center, arch, grid, nothing)
     dx_a = ∂x(a)
 
@@ -91,7 +91,7 @@ for arch in archs
     @testset "Abstract operations [$(typeof(arch))]" begin
         @info "Testing abstract operations [$(typeof(arch))]..."
 
-        grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
+        grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(3, 3, 3))
         u, v, w = VelocityFields(arch, grid)
         c = Field(Center, Center, Center, arch, grid, nothing)
 
@@ -147,7 +147,7 @@ for arch in archs
             @info "  Testing simple binary operations..."
             num1 = Float64(π)
             num2 = Float64(42)
-            grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
+            grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(3, 3, 3))
 
             u, v, w = VelocityFields(arch, grid)
             T, S = TracerFields((:T, :S), arch, grid)
@@ -163,7 +163,7 @@ for arch in archs
 
         @testset "Derivatives" begin
             @info "  Testing derivatives..."
-            grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3),
+            grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(3, 3, 3),
                                           topology=(Periodic, Periodic, Periodic))
 
             u, v, w = VelocityFields(arch, grid)
@@ -181,7 +181,7 @@ for arch in archs
             @info "  Testing combined binary operations and derivatives..."
             arch = CPU()
             Nx = 3 # Δx=1, xC = 0.5, 1.5, 2.5
-            grid = RectilinearGrid(size=(Nx, Nx, Nx), extent=(Nx, Nx, Nx))
+            grid = RectilinearGrid(arch, size=(Nx, Nx, Nx), extent=(Nx, Nx, Nx))
             a, b = (Field(Center, Center, Center, arch, grid, nothing) for i in 1:2)
 
             set!(b, 2)
@@ -216,15 +216,14 @@ for arch in archs
             @test times_x_derivative(a, b, (F, C, C), 4, 2, 2, -6)
         end
 
-        grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1),
+        grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1),
                                       topology=(Periodic, Periodic, Bounded))
 
         buoyancy = SeawaterBuoyancy(gravitational_acceleration = 1,
                                              equation_of_state = LinearEquationOfState(α=1, β=1))
 
-        model = NonhydrostaticModel(architecture = arch,
-                                            grid = grid,
-                                        buoyancy = buoyancy)
+        model = NonhydrostaticModel(grid = grid,
+                                buoyancy = buoyancy)
 
         @testset "Construction of abstract operations [$(typeof(arch))]" begin
             @info "    Testing construction of abstract operations [$(typeof(arch))]..."
@@ -266,7 +265,7 @@ for arch in archs
         end
 
         @testset "BinaryOperations with GridMetricOperation [$(typeof(arch))]" begin
-            grid = RectilinearGrid(size=(1, 1, 1), extent=(2, 3, 4))
+            grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(2, 3, 4))
             
             c = CenterField(arch, grid)
             c .= 1

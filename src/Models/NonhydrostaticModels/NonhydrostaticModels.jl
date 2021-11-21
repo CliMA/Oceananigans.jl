@@ -6,15 +6,20 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Utils: launch!
 using Oceananigans.Grids
 using Oceananigans.Solvers
-using Oceananigans.Distributed: MultiArch, DistributedFFTBasedPoissonSolver
+using Oceananigans.Distributed: MultiArch, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 import Oceananigans: fields, prognostic_fields
 
-PressureSolver(arch::MultiArch, grid::RegRectilinearGrid) = ifelse(arch.ranks[1] == 1,
-                                                            ifelse(arch.parent_grid.Nx == arch.parent_grid.Ny,
-                                                            DistributedFFTBasedPoissonSolver(arch, arch.parent_grid, grid), nothing),
-                                                            nothing)
+function PressureSolver(arch::MultiArch, grid::RegRectilinearGrid)
+    full_grid = reconstruct_global_grid(grid)
+    if arch.ranks[1] == 1 && full_grid.Nx == full_grid.Ny  # we would have to allow different settings
+        return DistributedFFTBasedPoissonSolver(arch, full_grid, grid)
+    else
+        @warn "A Distributed NonhydrostaticModel is allowed only when Nx == Ny and the X-direction is not parallelized"
+        return nothing
+    end
+end
 PressureSolver(arch, grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(arch, grid)
 PressureSolver(arch, grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(arch, grid)
 

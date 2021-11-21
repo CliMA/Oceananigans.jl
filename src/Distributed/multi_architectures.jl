@@ -4,8 +4,8 @@ using Oceananigans.Grids: topology, validate_tupled_argument, with_arch
 import Oceananigans.Architectures: device, device_event, arch_array
 import Oceananigans.Grids: zeros
 
-struct MultiArch{G, R, I, ρ, C, γ} <: AbstractMultiArchitecture
-         parent_grid :: G
+struct MultiArch{A, R, I, ρ, C, γ} <: AbstractMultiArchitecture
+          child_arch :: A
           local_rank :: R
          local_index :: I
                ranks :: ρ
@@ -18,7 +18,7 @@ end
 ##### Constructors
 #####
 
-function MultiArch(; grid, ranks, communicator = MPI.COMM_WORLD)
+function MultiArch(child_arch = CPU(); topology = (Periodic, Periodic, Periodic), ranks, communicator = MPI.COMM_WORLD)
     MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
 
     validate_tupled_argument(ranks, Int, "ranks")
@@ -35,19 +35,19 @@ function MultiArch(; grid, ranks, communicator = MPI.COMM_WORLD)
     end
     
     local_index        = rank2index(local_rank, Rx, Ry, Rz)
-    local_connectivity = RankConnectivity(local_index, ranks, topology(grid))
+    local_connectivity = RankConnectivity(local_index, ranks, topology)
 
-    G = typeof(grid)
+    A = typeof(child_arch)
     R = typeof(local_rank)    
     I = typeof(local_index)   
     ρ = typeof(ranks)         
     C = typeof(local_connectivity)  
     γ = typeof(communicator)  
     
-    return MultiArch{G, R, I, ρ, C, γ}(grid, local_rank, local_index, ranks, local_connectivity, communicator)
+    return MultiArch{A, R, I, ρ, C, γ}(child_arch, local_rank, local_index, ranks, local_connectivity, communicator)
 end
 
-child_architecture(arch::MultiArch) = child_architecture(architecture(arch.parent_grid))
+child_architecture(arch::MultiArch) = arch.child_arch
 child_architecture(::CPU) = CPU()
 child_architecture(::GPU) = GPU()
 

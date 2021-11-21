@@ -116,16 +116,10 @@ function LatitudeLongitudeGrid(architecture=CPU(),
         M  = typeof(Δxᶠᶜ)
         MY = typeof(Δyᶠᶜ)
     else
-        Δxᶠᶜ = nothing
-        Δxᶜᶠ = nothing
-        Δxᶠᶠ = nothing
-        Δxᶜᶜ = nothing
-        Δyᶠᶜ = nothing
-        Δyᶜᶠ = nothing
-        Azᶠᶜ = nothing
-        Azᶜᶠ = nothing
-        Azᶠᶠ = nothing
-        Azᶜᶜ = nothing
+        metrics = (:Δxᶠᶜ, :Δxᶜᶠ, :Δxᶠᶠ, :Δxᶜᶜ, :Δyᶠᶜ, :Δyᶜᶠ, :Azᶠᶜ, :Azᶜᶠ, :Azᶠᶠ, :Azᶜᶜ)
+        for metric in metrics
+            @eval $metric = nothing
+        end
 
         M    = Nothing
         MY   = Nothing
@@ -144,7 +138,8 @@ function domain_string(grid::LatitudeLongitudeGrid)
 end
 
 function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX, TY, TZ, M<:Nothing}
-    print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} on the $(g.architecture) \n",
+    print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} \n",
+              "             architecture: $(g.architecture)\n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
               "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
@@ -156,7 +151,8 @@ function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX
 end
 
 function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ}  on the $(g.architecture) \n",
+    print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ}\n",
+              "             architecture: $(g.architecture)\n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
               "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',

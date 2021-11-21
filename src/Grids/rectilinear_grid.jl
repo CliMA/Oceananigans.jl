@@ -39,8 +39,7 @@ const HRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number
 const  RegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number}
 
 """
-    RectilinearGrid([FT = Float64];
-                    architecture = CPU(),
+    RectilinearGrid([architecture = CPU()], [FT = Float64];
                     size,
                     x = nothing,
                     y = nothing,
@@ -294,7 +293,8 @@ function domain_string(grid::RectilinearGrid)
 end
 
 function show(io::IO, g::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    print(io, "RectilinearGrid{$FT, $TX, $TY, $TZ} on the $(g.architecture)\n",
+    print(io, "RectilinearGrid{$FT, $TX, $TY, $TZ}\n",
+              "             architecture: $(g.architecture)\n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
               "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',

@@ -9,7 +9,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
         Ny = 60
 
         # A spherical domain
-        underlying_grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+        underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
                                                longitude = (-30, 30),
                                                latitude = (15, 75),
                                                z = (-4000, 0))
@@ -51,7 +51,6 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
         constant_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₀)
 
         model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    architecture = CPU(),
                                     momentum_advection = VectorInvariant(),
                                     free_surface = free_surface,
                                     coriolis = coriolis,

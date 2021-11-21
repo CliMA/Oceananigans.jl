@@ -13,6 +13,7 @@ struct DistributedFFTBasedPoissonSolver{A, P, F, L, λ, S}
 end
 
 function DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
+
     topo = (TX, TY, TZ) = topology(full_grid)
 
     λx = poisson_eigenvalues(full_grid.Nx, full_grid.Lx, 1, TX())
