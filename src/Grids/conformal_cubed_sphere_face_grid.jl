@@ -40,7 +40,7 @@ struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHoriz
        radius :: FT
 end
 
-function ConformalCubedSphereFaceGrid(arch = CPU(); FT = Float64; size, z,
+function ConformalCubedSphereFaceGrid(arch = CPU(), FT = Float64; size, z,
                                       topology = (Bounded, Bounded, Bounded),
                                              ξ = (-1, 1),
                                              η = (-1, 1),
