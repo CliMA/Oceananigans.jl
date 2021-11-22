@@ -26,7 +26,7 @@ arch = CPU()
 iter = 1000
 
 # regular "stretched" grid
-Freg = range(0,1,length = N+1)
+Freg = range(0, 1, length = N+1)
 
 # alternating grid 
 Fsaw(j) = 1 / N  * (j - 1) + 0.1 * 1 / N * mod(j - 1, 2)
@@ -61,7 +61,7 @@ schemes   = [:wreg, :wstr, :wstrS, :wstrZ]
 
 # mask for the initial condition
 mask(y) = (y < 0.6 && y > 0.4) ? 1 : 0
-c₀_1D(x, y, z) = 10 .* exp.(-(x .- 0.5).^2 ./ 0.2.^2)
+c₀_1D(x, y, z) = 10 * exp(-(x - 0.5)^2 / 0.2^2)
 c₀_2D(x, y, z) = mask(x) * mask(y) 
 
 # Checking the accuracy of different schemes with different settings
@@ -123,7 +123,7 @@ for (gr, grid) in enumerate([grid_reg, grid_str, grid_str2])
         plot!(x, solution[(schemes[3], Int(i))], linewidth = 1, linecolor =:green, legend = false)
         plot!(x, solution[(schemes[4], Int(i))], linewidth = 1, linecolor =:black, legend = false)  
     end 
-    gif(anim, "anim_1D_$(gr).mp4", fps = 15)
+    mp4(anim, "anim_1D_$(gr).mp4", fps = 15)
 
 end
 
@@ -195,6 +195,5 @@ for (gr, grid) in enumerate([grid_reg, grid_str, grid_str2])
              contourf(x, y, solution2D[(schemes[3], Int(i))], clim=(0, 1), levels = 0:0.1:1, title="βweno"),
              contourf(x, y, solution2D[(schemes[4], Int(i))], clim=(0, 1), levels = 0:0.1:1, title="Zweno"))
     end
-    gif(anim, "anim_2D_$gr.mp4", fps = 15)
+    mp4(anim, "anim_2D_$gr.mp4", fps = 15)
 end
-
