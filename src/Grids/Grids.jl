@@ -81,7 +81,7 @@ const Connected = Periodic  # Right now we just need them to behave like Periodi
 
 Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
-abstract type AbstractGrid{FT, TX, TY, TZ} end
+abstract type AbstractGrid{FT, TX, TY, TZ, Arch} end
 
 """
     AbstractUnderlyingGrid{FT, TX, TY, TZ}

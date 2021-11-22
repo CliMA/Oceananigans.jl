@@ -3,7 +3,7 @@ using Oceananigans.Grids
 using Oceananigans.Grids: R_Earth, interior_indices
 
 import Base: show, size, eltype
-import Oceananigans.Grids: topology, domain_string
+import Oceananigans.Grids: topology, domain_string, architecture
 
 struct CubedSphereFaceConnectivityDetails{F, S}
     face :: F
@@ -116,31 +116,32 @@ end
 # Note: I think we want to keep faces and face_connectivity tuples
 # so it's easy to support an arbitrary number of faces.
 
-struct ConformalCubedSphereGrid{FT, F, C} <: AbstractHorizontallyCurvilinearGrid{FT, Connected, Connected, Bounded}
+struct ConformalCubedSphereGrid{FT, F, C, A} <: AbstractHorizontallyCurvilinearGrid{FT, Connected, Connected, Bounded}
+         architecture :: A
                 faces :: F
     face_connectivity :: C
 end
 
-function ConformalCubedSphereGrid(FT=Float64; face_size, z, radius=R_Earth)
+function ConformalCubedSphereGrid(arch = CPU(), FT=Float64; face_size, z, radius=R_Earth)
     @warn "ConformalCubedSphereGrid is experimental: use with caution!"
 
     # +z face (face 1)
-    z⁺_face_grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=face_size, z=z, radius=radius, rotation=nothing)
+    z⁺_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=nothing)
 
     # +x face (face 2)
-    x⁺_face_grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=face_size, z=z, radius=radius, rotation=RotX(π/2))
+    x⁺_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=RotX(π/2))
 
     # +y face (face 3)
-    y⁺_face_grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=face_size, z=z, radius=radius, rotation=RotY(π/2))
+    y⁺_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=RotY(π/2))
 
     # -x face (face 4)
-    x⁻_face_grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=face_size, z=z, radius=radius, rotation=RotX(-π/2))
+    x⁻_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=RotX(-π/2))
 
     # -y face (face 5)
-    y⁻_face_grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=face_size, z=z, radius=radius, rotation=RotY(-π/2))
+    y⁻_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=RotY(-π/2))
 
     # -z face (face 6)
-    z⁻_face_grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=face_size, z=z, radius=radius, rotation=RotX(π))
+    z⁻_face_grid = ConformalCubedSphereFaceGrid(arch, FT, size=face_size, z=z, radius=radius, rotation=RotX(π))
 
     faces = (
         z⁺_face_grid,
@@ -153,7 +154,7 @@ function ConformalCubedSphereGrid(FT=Float64; face_size, z, radius=R_Earth)
 
     face_connectivity = default_face_connectivity()
 
-    return ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity)}(faces, face_connectivity)
+    return ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity), typeof(arch)}(arch, faces, face_connectivity)
 end
 
 function ConformalCubedSphereGrid(filepath::AbstractString, architecture = CPU(), FT=Float64; Nz, z, radius = R_Earth, halo = (1, 1, 1))
@@ -166,7 +167,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString, architecture = CPU()
 
     face_connectivity = default_face_connectivity()
 
-    grid = ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity)}(faces, face_connectivity)
+    grid = ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity), typeof(arch)}(arch, faces, face_connectivity)
 
     fill_grid_metric_halos!(grid)
     fill_grid_metric_halos!(grid)
@@ -229,6 +230,7 @@ Base.size(grid::ConformalCubedSphereGrid) = (size(grid.faces[1])..., length(grid
 Base.eltype(grid::ConformalCubedSphereGrid{FT}) where FT = FT
 
 topology(::ConformalCubedSphereGrid) = (Bounded, Bounded, Bounded)
+architecture(grid::ConformalCubedSphereGrid) = grid.architecture
 
 # Not sure what to put. Gonna leave it blank so that Base.show(io::IO, operation::AbstractOperation) doesn't error.
 domain_string(grid::ConformalCubedSphereFaceGrid) = ""

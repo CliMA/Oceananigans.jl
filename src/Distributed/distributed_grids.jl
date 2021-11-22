@@ -2,7 +2,7 @@ using MPI
 using Oceananigans.Grids: validate_halo, validate_rectilinear_domain, validate_size, validate_topology, topology, size, halo_size, architecture
 using Oceananigans.Grids: generate_coordinate, cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, pop_flat_elements
 
-import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid
+import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
 
 
 @inline get_local_coords(c::Tuple         , nc, R, index) = (c[1] + (index-1) * (c[2] - c[1]) / R,    c[1] + index * (c[2] - c[1]) / R)
@@ -22,14 +22,14 @@ function get_global_coords(c::AbstractVector, nc, R, index, arch)
     return cG
 end
 
-function RectilinearGrid( arch::MultiArch, FT = Float64;
-                          size,
-                          x = nothing,
-                          y = nothing,
-                          z = nothing,
-                          halo = nothing,
-                          extent = nothing,
-                          topology = (Periodic, Periodic, Bounded))
+function RectilinearGrid(arch::MultiArch, FT = Float64;
+                         size,
+                         x = nothing,
+                         y = nothing,
+                         z = nothing,
+                         halo = nothing,
+                         extent = nothing,
+                         topology = (Periodic, Periodic, Bounded))
 
     TX, TY, TZ = validate_topology(topology)
     size = validate_size(TX, TY, TZ, size)
@@ -209,4 +209,43 @@ function reconstruct_global_grid(grid)
     return RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
     Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, yᵃᶠᵃ, yᵃᶜᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
 
+end
+
+function with_halo(halo, grid::AbstractGrid{FT, TX, TY, TZ, A}) where {A<:MultiArch}
+    new_grid  = with_halo(halo, reconstruct_global_grid(grid))
+    return reconstruct_local_grids(architecture(grid), new_grid)
+end
+
+function reconstruct_local_grids(arch::MultiArch, grid::RectilinearGrid)
+
+    N = size(grid)
+    
+    # Pull out face grid constructors
+    x = cpu_face_constructor_x(grid)
+    y = cpu_face_constructor_y(grid)
+    z = cpu_face_constructor_z(grid)
+
+    topo = topology(grid)
+    halo = pop_flat_elements(halo_size(grid), topo)
+
+    local_grid = RectilinearGrid(arch, eltype(grid); size = N, x = x, y = y, z = z, halo = halo, topology = topo)
+
+    return local_grid
+end
+
+function reconstruct_local_grids(arch::MultiArch, grid::LatitudeLongitudeGrid)
+
+    N = size(grid)
+    
+    # Pull out face grid constructors
+    x = cpu_face_constructor_x(grid)
+    y = cpu_face_constructor_y(grid)
+    z = cpu_face_constructor_z(grid)
+
+    topo = topology(grid)
+    halo = pop_flat_elements(halo_size(grid), topo)
+
+    local_grid = LatitudeLongitudeGrid(arch, eltype(grid); size = N, longitude = x, latitude = y, z = z, halo = halo)
+    
+    return local_grid
 end
