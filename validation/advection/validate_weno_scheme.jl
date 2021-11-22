@@ -61,7 +61,7 @@ schemes   = [:wreg, :wstr, :wstrS, :wstrZ]
 
 # mask for the initial condition
 mask(y) = (y < 0.6 && y > 0.4) ? 1 : 0
-c₀_1D(x, y, z) = 10 * exp(-(x - 0.5)^2 / 0.2^2)
+c₀_1D(x, y, z) = @. 10 * exp(-(x - 0.5)^2 / 0.2^2)
 c₀_2D(x, y, z) = mask(x) * mask(y) 
 
 # Checking the accuracy of different schemes with different settings
