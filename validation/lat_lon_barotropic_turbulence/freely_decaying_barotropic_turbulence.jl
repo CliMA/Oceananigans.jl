@@ -41,12 +41,11 @@ Nx = round(Int, 360 / resolution)
 Ny = round(Int, Δφ / resolution)
 
 # A spherical domain
-@show grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+@show grid = LatitudeLongitudeGrid(GPU(), size = (Nx, Ny, 1),
                                    longitude = (-180, 180),
                                    latitude = latitude,
                                    halo = (2, 2, 2),
                                    z = (-100, 0),
-                                   architecture = GPU(),
                                    precompute_metrics = precompute)
 
 #####
@@ -71,7 +70,6 @@ coriolis = HydrostaticSphericalCoriolis()
 coriolis = HydrostaticSphericalCoriolis(rotation_rate=Ω)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    architecture = GPU(),
                                     momentum_advection = VectorInvariant(),
                                     free_surface = free_surface,
                                     coriolis = coriolis,

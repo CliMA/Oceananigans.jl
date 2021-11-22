@@ -38,12 +38,11 @@ scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch
 function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0, advection = WENO5())
 
     # Regular model
-    grid = RectilinearGrid(size=(Nh, Nh), halo=(3, 3),
+    grid = RectilinearGrid(arch, size=(Nh, Nh), halo=(3, 3),
                                   x = (-2π, 2π), y=(-2π, 2π),
                                   topology = (Periodic, Bounded, Flat))
 
-    regular_model = NonhydrostaticModel(architecture = arch,
-                                        advection = advection,
+    regular_model = NonhydrostaticModel(advection = advection,
                                         timestepper = :RungeKutta3,
                                         grid = grid,
                                         tracers = :c,
@@ -54,14 +53,13 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     # Non-regular model
     solid(x, y, z) = y > 2π
 
-    expanded_grid = RectilinearGrid(size=(Nh, Int(5Nh/4)), halo=(3, 3),
+    expanded_grid = RectilinearGrid(arch, size=(Nh, Int(5Nh/4)), halo=(3, 3),
                                            x = (-2π, 2π), y=(-2π, 3π),
                                            topology = (Periodic, Bounded, Flat))
 
-    immersed_grid = ImmersedBoundaryGrid(expanded_grid, GridFittedBoundary(solid))
+    immersed_grid = ImmersedBoundaryGrid(arch, expanded_grid, GridFittedBoundary(solid))
 
-    immersed_model = NonhydrostaticModel(architecture = arch,
-                                         advection = advection,
+    immersed_model = NonhydrostaticModel(advection = advection,
                                          timestepper = :RungeKutta3,
                                          grid = immersed_grid,
                                          tracers = (:c, :mass),

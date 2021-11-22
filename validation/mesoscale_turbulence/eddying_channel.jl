@@ -35,7 +35,7 @@ z_faces[Nz+1] = 0
 arch = GPU()
 FT = Float64
 
-grid = RectilinearGrid(architecture = arch,
+grid = RectilinearGrid(arch,
                                           topology = (Periodic, Bounded, Bounded),
                                           size = (Nx, Ny, Nz),
                                           halo = (3, 3, 3),
@@ -152,7 +152,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 @info "Building a model..."
 
 
-model = HydrostaticFreeSurfaceModel(architecture = arch,
+model = HydrostaticFreeSurfaceModel(
                                     grid = grid,
                                     free_surface = ImplicitFreeSurface(),
                                     momentum_advection = WENO5(),
@@ -167,7 +167,7 @@ model = HydrostaticFreeSurfaceModel(architecture = arch,
 
 
 #=
-model = NonhydrostaticModel(architecture = arch,
+model = NonhydrostaticModel(
                                     grid = grid,
                                     advection = WENO5(),
                                     buoyancy = BuoyancyTracer(),

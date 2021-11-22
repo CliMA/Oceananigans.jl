@@ -73,7 +73,7 @@ for N in Ns, scheme in schemes
                                 halo=(halos(scheme)),
                                 topology=(Periodic, Flat, Flat))
 
-    model = ShallowWaterModel(architecture = CPU(), grid = grid,
+    model = ShallowWaterModel(  grid = grid,
                                 advection = scheme,
                                 coriolis = nothing,
                                 gravitational_acceleration = 0,

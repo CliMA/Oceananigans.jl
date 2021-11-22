@@ -28,7 +28,7 @@ const Lz = sum(Δz_center)
 z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
 z_faces[Nz+1] = 0
 
-grid = RectilinearGrid(architecture = arch,
+grid = RectilinearGrid(arch,
                                           topology = (Periodic, Bounded, Bounded),
                                           size = (1, Ny, Nz),
                                           halo = (3, 3, 3),
@@ -135,7 +135,7 @@ f² = FunctionField{Center, Center, Center}(f²_func, grid)
 closure = AnisotropicDiffusivity(νh = 100, νz = 10, κh = 10, κz = 10,
                                  time_discretization = VerticallyImplicitTimeDiscretization())
 
-model = IncompressibleModel(architecture = arch,
+model = IncompressibleModel(
                             grid = grid,
                             advection = UpwindBiasedFifthOrder(),
                             buoyancy = BuoyancyTracer(),
@@ -159,7 +159,7 @@ using Oceananigans.Grids: topology, halo_size
 cpu_grid(grid::RectilinearGrid) = grid
 
 cpu_grid(grid::RectilinearGrid) =
-    RectilinearGrid(architecture = CPU(),
+    RectilinearGrid(CPU(),
                                        topology = topology(grid),
                                        size = size(grid),
                                        halo = halo_size(grid),

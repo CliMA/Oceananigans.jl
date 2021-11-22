@@ -47,7 +47,7 @@ arch = GPU()
 
 if stretched_grid
     println("using a stretched grid")
-    grid = RectilinearGrid(architecture = arch,
+    grid = RectilinearGrid(arch,
                                topology = (Periodic, Bounded, Bounded),
                                    size = (Nx, Ny, Nz),
                                    halo = (3, 3, 3),
@@ -56,9 +56,10 @@ if stretched_grid
                                       z = z_faces)
 else
     println("using a regular grid")
-    grid = RectilinearGrid(topology=(Periodic, Bounded, Bounded), 
+    grid = RectilinearGrid(arch, 
+                        topology=(Periodic, Bounded, Bounded), 
                             size=(Nx, Ny, Nz), 
-                            x=(0, Lx), y=(0, Ly), z=(-Lz, 0),
+                              x=(0, Lx), y=(0, Ly), z=(-Lz, 0),
                             halo = (3,3,3))
 
 end
@@ -104,8 +105,7 @@ if hydrostatic
     else
         free_surface = ExplicitFreeSurface(gravitational_acceleration = 0.01)
     end
-    model = HydrostaticFreeSurfaceModel(architecture = arch,
-                                        grid = grid,
+    model = HydrostaticFreeSurfaceModel(grid = grid,
                                         coriolis = coriolis,
                                         buoyancy = BuoyancyTracer(),
                                         closure = closures,
@@ -117,7 +117,6 @@ if hydrostatic
 else
     println("Constructing nonhydrostatic model")
     model = NonhydrostaticModel(
-           architecture = arch,
                    grid = grid,
                coriolis = coriolis,
                buoyancy = BuoyancyTracer(),
