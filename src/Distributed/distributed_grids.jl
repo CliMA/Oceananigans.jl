@@ -223,14 +223,13 @@ end
 
 function reconstruct_local_grids(arch::MultiArch, grid::RectilinearGrid)
 
-    N = size(grid)
-    
     # Pull out face grid constructors
     x = cpu_face_constructor_x(grid)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
     topo = topology(grid)
+    N    = pop_flat_elements(size(grid))
     halo = pop_flat_elements(halo_size(grid), topo)
 
     local_grid = RectilinearGrid(arch, eltype(grid); size = N, x = x, y = y, z = z, halo = halo, topology = topo)
@@ -239,8 +238,6 @@ function reconstruct_local_grids(arch::MultiArch, grid::RectilinearGrid)
 end
 
 function reconstruct_local_grids(arch::MultiArch, grid::LatitudeLongitudeGrid)
-
-    N = size(grid)
     
     # Pull out face grid constructors
     x = cpu_face_constructor_x(grid)
@@ -248,6 +245,7 @@ function reconstruct_local_grids(arch::MultiArch, grid::LatitudeLongitudeGrid)
     z = cpu_face_constructor_z(grid)
 
     topo = topology(grid)
+    N    = pop_flat_element(size(grid))
     halo = pop_flat_elements(halo_size(grid), topo)
 
     local_grid = LatitudeLongitudeGrid(arch, eltype(grid); size = N, longitude = x, latitude = y, z = z, halo = halo)

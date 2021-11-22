@@ -6,7 +6,7 @@ in all directions. Grid elements of type `FT`, topology `{TX, TY, TZ}`, grid spa
 and coordinates in each direction of type `{VX, VY, VZ}`. 
 """
 
-struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
+struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: AbstractRectilinearGrid{FT, TX, TY, TZ, Arch}
         architecture::Arch
         Nx :: Int
         Ny :: Int
@@ -350,8 +350,6 @@ all_z_nodes(::Type{Face}  , grid::RectilinearGrid) = grid.zᵃᵃᶠ
 @inline cpu_face_constructor_x(grid::XRegRectilinearGrid) = x_domain(grid)
 @inline cpu_face_constructor_y(grid::YRegRectilinearGrid) = y_domain(grid)
 @inline cpu_face_constructor_z(grid::ZRegRectilinearGrid) = z_domain(grid)
-
-architecture(grid::RectilinearGrid) = grid.architecture
 
 function with_halo(new_halo, old_grid::RectilinearGrid)
 

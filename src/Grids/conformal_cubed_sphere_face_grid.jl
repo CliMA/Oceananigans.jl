@@ -6,7 +6,7 @@ using Adapt: adapt_structure
 
 using Oceananigans
 
-struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
+struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
  architecture :: Arch
            Nx :: Int
            Ny :: Int
@@ -314,5 +314,3 @@ end
 
 @inline znode(LX, LY, ::Face,   i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶠ[k]
 @inline znode(LX, LY, ::Center, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶜ[k]
-
-@inline architecture(grid::ConformalCubedSphereFaceGrid) = grid.architecture
