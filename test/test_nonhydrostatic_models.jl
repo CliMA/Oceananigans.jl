@@ -2,7 +2,7 @@
     @info "Testing models..."
 
     @testset "Model constructor errors" begin
-        grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
         @test_throws TypeError NonhydrostaticModel(architecture=CPU, grid=grid)
         @test_throws TypeError NonhydrostaticModel(architecture=GPU, grid=grid)
         @test_throws TypeError NonhydrostaticModel(grid=grid, boundary_conditions=1)
@@ -21,7 +21,7 @@
             for arch in archs, FT in float_types
 		        arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
 
-                grid = RegularRectilinearGrid(FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
+                grid = RectilinearGrid(FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
                 model = NonhydrostaticModel(grid=grid, architecture=arch)
 
                 @test model isa NonhydrostaticModel
@@ -32,8 +32,8 @@
     @testset "Adjustment of halos in NonhydrostaticModel constructor" begin
         @info "  Testing adjustment of halos in NonhydrostaticModel constructor..."
 
-        default_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
-        funny_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 3, 4))
+        default_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
+        funny_grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3), halo=(1, 3, 4))
 
         # Model ensures that halos are at least of size 1
         model = NonhydrostaticModel(grid=default_grid)
@@ -71,7 +71,7 @@
     @testset "Model construction with single tracer and nothing tracer" begin
         @info "  Testing model construction with single tracer and nothing tracer..."
         for arch in archs
-            grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
+            grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
 
             model = NonhydrostaticModel(grid=grid, architecture=arch, tracers=:c, buoyancy=nothing)
             @test model isa NonhydrostaticModel
@@ -87,7 +87,7 @@
             N = (4, 4, 4)
             L = (2π, 3π, 5π)
 
-            grid = RegularRectilinearGrid(FT, size=N, extent=L)
+            grid = RectilinearGrid(FT, size=N, extent=L)
             model = NonhydrostaticModel(architecture=arch, grid=grid)
 
             u, v, w = model.velocities

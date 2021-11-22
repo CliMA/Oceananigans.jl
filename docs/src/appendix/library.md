@@ -110,6 +110,7 @@ Pages   = [
     "Fields/field.jl",
     "Fields/averaged_field.jl",
     "Fields/set!.jl",
+    "Fields/regridding_fields.jl",
     "Fields/show_fields.jl",
 ]
 ```
@@ -137,8 +138,7 @@ Private = false
 Pages   = [
     "Grids/Grids.jl",
     "Grids/grid_utils.jl",
-    "Grids/regular_rectilinear_grid.jl",
-    "Grids/vertically_stretched_rectilinear_grid.jl"
+    "Grids/rectilinear_grid.jl"
 ]
 ```
 
@@ -236,6 +236,7 @@ Pages   = [
     "TurbulenceClosures/turbulence_closure_implementations/anisotropic_diffusivity.jl",
     "TurbulenceClosures/turbulence_closure_implementations/anisotropic_minimum_dissipation.jl",
     "TurbulenceClosures/turbulence_closure_implementations/leith_enstrophy_diffusivity.jl",
+    "TurbulenceClosures/turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl",
     "TurbulenceClosures/turbulence_closure_implementations/tke_based_vertical_diffusivity.jl"
 ]
 ```

@@ -15,11 +15,11 @@ include(joinpath(@__DIR__, "..", "solid_body_rotation", "hydrostatic_prescribed_
 Ny = 320
 
 # A spherical domain
-grid = RegularLatitudeLongitudeGrid(size = (1, Ny, 1),
-                                    radius = 1,
-                                    latitude = (-80, 80),
-                                    longitude = (-180, 180),
-                                    z = (-1, 0))
+grid = LatitudeLongitudeGrid(size = (1, Ny, 1),
+                             radius = 1,
+                             latitude = (-80, 80),
+                             longitude = (-180, 180),
+                             z = (-1, 0))
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     architecture = CPU(),

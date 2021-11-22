@@ -24,7 +24,7 @@ julia> using Oceananigans
 
 julia> using Oceananigans.Diagnostics: WindowedSpatialAverage
 
-julia> grid = RegularRectilinearGrid(size=(4, 6, 4), extent=(1, 1, 1));
+julia> grid = RectilinearGrid(size=(4, 6, 4), extent=(1, 1, 1));
 
 julia> model = NonhydrostaticModel(grid=grid);
 

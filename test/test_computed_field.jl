@@ -204,7 +204,7 @@ end
 
 function computation_including_boundaries(arch)
     topo = (Periodic, Bounded, Bounded)
-    grid = RegularRectilinearGrid(topology=topo, size=(13, 17, 19), extent=(1, 1, 1))
+    grid = RectilinearGrid(topology=topo, size=(13, 17, 19), extent=(1, 1, 1))
     model = NonhydrostaticModel(architecture=arch, grid=grid)
 
     u, v, w = model.velocities
@@ -241,7 +241,7 @@ function pressure_field(model)
 end
 
 function computations_with_buoyancy_field(arch, buoyancy)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
     tracers = buoyancy isa BuoyancyTracer ? :b : (:T, :S)
     model = NonhydrostaticModel(architecture=arch, grid=grid,
                                 tracers=tracers, buoyancy=buoyancy)
@@ -321,7 +321,7 @@ for arch in archs
     @testset "ComputedFields [$(typeof(arch))]" begin
         @info "  Testing ComputedFields [$(typeof(arch))]..."
 
-        grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1),
+        grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1),
                                       topology=(Periodic, Periodic, Bounded))
 
         buoyancy = SeawaterBuoyancy(gravitational_acceleration = 1,

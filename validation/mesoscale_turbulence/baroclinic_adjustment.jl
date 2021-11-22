@@ -47,16 +47,16 @@ arch = GPU()
 
 if stretched_grid
     println("using a stretched grid")
-    grid = VerticallyStretchedRectilinearGrid(architecture = arch,
-                                            topology = (Periodic, Bounded, Bounded),
-                                            size = (Nx, Ny, Nz),
-                                            halo = (3, 3, 3),
-                                            x = (0, Lx),
-                                            y = (0, Ly),
-                                            z_faces = z_faces)
+    grid = RectilinearGrid(architecture = arch,
+                               topology = (Periodic, Bounded, Bounded),
+                                   size = (Nx, Ny, Nz),
+                                   halo = (3, 3, 3),
+                                      x = (0, Lx),
+                                      y = (0, Ly),
+                                      z = z_faces)
 else
     println("using a regular grid")
-    grid = RegularRectilinearGrid(topology=(Periodic, Bounded, Bounded), 
+    grid = RectilinearGrid(topology=(Periodic, Bounded, Bounded), 
                             size=(Nx, Ny, Nz), 
                             x=(0, Lx), y=(0, Ly), z=(-Lz, 0),
                             halo = (3,3,3))

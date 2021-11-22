@@ -1,87 +1,4 @@
-using Test
-using Printf
-using Random
-using Statistics
-using LinearAlgebra
-using Logging
-
-using CUDA
-using MPI
-using JLD2
-using FFTW
-using OffsetArrays
-using SeawaterPolynomials
-
-using Oceananigans
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Operators
-using Oceananigans.Advection
-using Oceananigans.BoundaryConditions
-using Oceananigans.Fields
-using Oceananigans.Coriolis
-using Oceananigans.BuoyancyModels
-using Oceananigans.Forcings
-using Oceananigans.Solvers
-using Oceananigans.Models
-using Oceananigans.Simulations
-using Oceananigans.Diagnostics
-using Oceananigans.OutputWriters
-using Oceananigans.TurbulenceClosures
-using Oceananigans.AbstractOperations
-using Oceananigans.Distributed
-using Oceananigans.Logger
-using Oceananigans.Units
-using Oceananigans.Utils
-using Oceananigans.Architectures: device # to resolve conflict with CUDA.device
-
-using Dates: DateTime, Nanosecond
-using TimesDates: TimeDate
-using Statistics: mean
-using LinearAlgebra: norm
-using NCDatasets: Dataset
-using KernelAbstractions: @kernel, @index, Event
-
-import Oceananigans.Fields: interior
-import Oceananigans.Utils: launch!, datatuple
-
-Logging.global_logger(OceananigansLogger())
-
-#####
-##### Testing parameters
-#####
-
-float_types = (Float32, Float64)
-
-archs = CUDA.has_cuda() ? (GPU(),) : (CPU(),)
-@show archs
-@show(has_cuda())
-@show(has_cuda_gpu())
-
-closures = (
-    :IsotropicDiffusivity,
-    :AnisotropicDiffusivity,
-    :AnisotropicBiharmonicDiffusivity,
-    :TwoDimensionalLeith,
-    :SmagorinskyLilly,
-    :AnisotropicMinimumDissipation,
-    :HorizontallyCurvilinearAnisotropicDiffusivity,
-    :HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity,
-    :ConvectiveAdjustmentVerticalDiffusivity
-)
-
-#####
-##### Run tests!
-#####
-
-CUDA.allowscalar() do
-
-include("data_dependencies.jl")
-include("utils_for_runtests.jl")
-
-archs = test_architectures()
-
-group = get(ENV, "TEST_GROUP", :all) |> Symbol
+include("dependencies_for_runtests.jl")
 
 @testset "Oceananigans" begin
     if group == :unit || group == :all
@@ -90,8 +7,7 @@ group = get(ENV, "TEST_GROUP", :all) |> Symbol
             include("test_operators.jl")
             include("test_boundary_conditions.jl")
             include("test_field.jl")
-            include("test_reduced_field.jl")
-            include("test_averaged_field.jl")
+            include("test_reduced_fields.jl")
             include("test_kernel_computed_field.jl")
             include("test_halo_regions.jl")
             include("test_coriolis.jl")
