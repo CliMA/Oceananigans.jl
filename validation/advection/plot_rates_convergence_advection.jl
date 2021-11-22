@@ -60,7 +60,6 @@ schemes = (
  UpwindBiasedThirdOrder(), 
  CenteredFourthOrder(), 
  UpwindBiasedFifthOrder(), 
- WENO5(),
  WENO5()
 );
 
