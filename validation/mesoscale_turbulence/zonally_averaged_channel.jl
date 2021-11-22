@@ -6,12 +6,13 @@
 
 using Printf
 using Statistics
-using GLMakie
+#using GLMakie
 using JLD2
 
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 using Oceananigans.Grids: xnode, ynode, znode
 
 using Random
@@ -30,7 +31,7 @@ Nz = 40
 movie_interval = 0.05days
 stop_time = 3years
 
-arch = CPU()
+arch = GPU()
 
 # stretched grid
 
@@ -46,12 +47,12 @@ arch = CPU()
 linearly_spaced_faces(k) = k==1 ? -Lz : - Lz + sum(Δz_center_linear.(1:k-1))
 
 grid = RectilinearGrid(architecture = arch,
-                                          topology = (Periodic, Bounded, Bounded),
-                                          size = (Nx, Ny, Nz),
-                                          halo = (3, 3, 3),
-                                          x = (0, Lx),
-                                          y = (0, Ly),
-                                          z = z_faces)
+                       topology = (Periodic, Bounded, Bounded),
+                       size = (Nx, Ny, Nz),
+                       halo = (3, 3, 3),
+                       x = (0, Lx),
+                       y = (0, Ly),
+                       z = (-Lz, 0)) #linearly_spaced_faces)
 
 # The vertical spacing versus depth for the prescribed grid
 #=
@@ -160,6 +161,7 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 100,
 
 @info "Building a model..."
 
+catke = CATKEVerticalDiffusivity()
 
 model = HydrostaticFreeSurfaceModel(architecture = arch,
                                     grid = grid,
@@ -168,9 +170,9 @@ model = HydrostaticFreeSurfaceModel(architecture = arch,
                                     tracer_advection = WENO5(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = coriolis,
-                                    closure = (horizontal_diffusivity, convective_adjustment, gent_mcwilliams_diffusivity),
-                                    # closure = (convective_adjustment, gent_mcwilliams_diffusivity),
-                                    tracers = :b,
+                                    #closure = (horizontal_diffusivity, convective_adjustment, gent_mcwilliams_diffusivity),
+                                    closure = (catke, horizontal_diffusivity, gent_mcwilliams_diffusivity),
+                                    tracers = (:b, :e),
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                     forcing = (; b=Fb))
 
@@ -192,7 +194,7 @@ set!(model, b=bᵢ, u=uᵢ, v=vᵢ, w=wᵢ)
 #####
 ##### Simulation building
 
-wizard = TimeStepWizard(cfl=0.1, Δt=5minutes, max_change=1.1, max_Δt=20minutes)
+wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=20minutes)
 
 wall_clock = [time_ns()]
 
@@ -213,7 +215,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=5minutes, stop_time=1hour)
 
 #####
 ##### Diagnostics
@@ -268,7 +270,7 @@ catch err
     showerror(stdout, err)
 end
 
-
+#=
 #####
 ##### Visualization
 #####
@@ -279,7 +281,7 @@ grid = RectilinearGrid(architecture = CPU(),
                        halo = (3, 3, 3),
                        x = (0, grid.Lx),
                        y = (0, grid.Ly),
-                       z_faces = linearly_spaced_faces)
+                       z = linearly_spaced_faces)
 
 xu, yu, zu = nodes((Face, Center, Center), grid)
 xv, yv, zv = nodes((Center,Face,  Center), grid)
@@ -457,4 +459,4 @@ anim = @animate for i in 1:length(b_timeseries.times)-1
 end
 
 mp4(anim, "zonally_averaged_channel.mp4", fps = 8) # hide
-
+=#

@@ -22,7 +22,7 @@ function update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers)
                                    dependencies = Event(device(arch)))
 
     # Fill halo regions for pressure
-    wait(device(model.architecture), pressure_calculation)
+    wait(device(arch), pressure_calculation)
 
     return nothing
 end

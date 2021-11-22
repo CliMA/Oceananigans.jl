@@ -259,26 +259,26 @@ const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 @inline viscous_flux_vz(i, j, k, grid, ::VITD, closure::CATKEVD, args...) = zero(eltype(grid))
 
 @inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CATKEVD, args...) where FT
-    return ifelse(k == 1 || k == grid.Nz+1, 
-                  diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
+    return ifelse(k == 1 || k == grid.Nz+1, # on boundaries, calculate fluxes explicitly
+                  diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   zero(FT))
 end
 
 @inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CATKEVD, args...) where FT
-    return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
+    return ifelse(k == 1 || k == grid.Nz+1, # on boundaries, calculate fluxes explicitly
+                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   zero(FT))
 end
 
 @inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CATKEVD, args...) where FT
-    return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
+    return ifelse(k == 1 || k == grid.Nz+1, # on boundaries, calculate fluxes explicitly
+                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   zero(FT))
 end
 
 @inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::CATKEVD, args...) where FT
-    return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...), # on boundaries, calculate fluxes explicitly
+    return ifelse(k == 1 || k == grid.Nz+1, # on boundaries, calculate fluxes explicitly
+                  viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
                   zero(FT))
 end
 
