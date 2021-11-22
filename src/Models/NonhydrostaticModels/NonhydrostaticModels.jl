@@ -13,7 +13,7 @@ import Oceananigans: fields, prognostic_fields
 
 function PressureSolver(arch::MultiArch, grid::RegRectilinearGrid)
     full_grid = reconstruct_global_grid(grid)
-    if arch.ranks[1] == 1 && full_grid.Nx == full_grid.Ny  # we would have to allow different settings
+    if arch.ranks[1] == 1 && full_grid.Nx == full_grid.Ny  # we would have to allow different settings 
         return DistributedFFTBasedPoissonSolver(arch, full_grid, grid)
     else
         @warn "A Distributed NonhydrostaticModel is allowed only when Nx == Ny and the X-direction is not parallelized"

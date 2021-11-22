@@ -14,8 +14,7 @@ mpi_ranks = MPI.Comm_size(comm)
 
 function test_triply_periodic_rank_connectivity_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    arch = MultiArch(grid=full_grid, ranks=(4, 1, 1))
+    arch = MultiArch(CPU(), ranks=(4, 1, 1), topology = topo)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -51,8 +50,7 @@ end
 
 function test_triply_periodic_rank_connectivity_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    arch = MultiArch(grid=full_grid, ranks=(1, 4, 1))
+    arch = MultiArch(CPU(), ranks=(4, 1, 1), topology = topo)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -94,8 +92,7 @@ end
 
 function test_triply_periodic_rank_connectivity_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    arch = MultiArch(grid=full_grid, ranks=(1, 1, 4))
+    arch = MultiArch(CPU(), ranks=(4, 1, 1), topology = topo)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -140,8 +137,7 @@ end
 
 function test_triply_periodic_rank_connectivity_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    arch = MultiArch(grid=full_grid, ranks=(2, 2, 1))
+    arch = MultiArch(CPU(), ranks=(4, 1, 1), topology = topo)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -189,10 +185,9 @@ end
 
 function test_triply_periodic_local_grid_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    arch = MultiArch(grid=full_grid, ranks=(4, 1, 1))
-    grid = local_grids(arch, full_grid)
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    arch = MultiArch(CPU(), ranks=(4, 1, 1), topology = topo)
+    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    model = NonhydrostaticModel(grid=grid)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     local_grid = model.grid
@@ -210,10 +205,9 @@ end
 
 function test_triply_periodic_local_grid_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    arch = MultiArch(grid=full_grid, ranks=(1, 4, 1))
-    grid = local_grids(arch, full_grid)
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    arch = MultiArch(CPU(), ranks=(1, 4, 1), topology = topo)
+    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    model = NonhydrostaticModel(grid=grid)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     local_grid = model.grid
@@ -231,10 +225,9 @@ end
 
 function test_triply_periodic_local_grid_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    arch = MultiArch(grid=full_grid, ranks=(1, 1, 4))
-    grid = local_grids(arch, full_grid)
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    arch = MultiArch(CPU(), ranks=(1, 1, 4), topology = topo)
+    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    model = NonhydrostaticModel(grid=grid)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     local_grid = model.grid
@@ -252,10 +245,9 @@ end
 
 function test_triply_periodic_local_grid_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    arch = MultiArch(grid=full_grid, ranks=(2, 2, 1))
-    grid = local_grids(arch, full_grid)
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    arch = MultiArch(CPU(), ranks=(2, 2, 1), topology = topo)
+    grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    model = NonhydrostaticModel(grid=grid)
 
     i, j, k = arch.local_index
     local_grid = model.grid
@@ -277,7 +269,7 @@ end
 
 function test_triply_periodic_bc_injection_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(ranks=(4, 1, 1))
+    arch = MultiArch(ranks=(4, 1, 1), topology=topo)
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 

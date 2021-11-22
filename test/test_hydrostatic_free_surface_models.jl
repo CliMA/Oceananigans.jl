@@ -5,7 +5,7 @@ using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEns
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, ExplicitTimeDiscretization, CATKEVerticalDiffusivity
 using Oceananigans.Grids: Periodic, Bounded
 
-function time_step_hydrostatic_model_works(arch, grid;
+function time_step_hydrostatic_model_works(grid;
                                            coriolis = nothing,
                                            free_surface = ExplicitFreeSurface(),
                                            momentum_advection = nothing,
@@ -70,9 +70,10 @@ topos_3d = ((Periodic, Periodic, Bounded),
     @info "Testing hydrostatic free surface models..."
 
     @testset "Model constructor errors" begin
-        grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-        @test_throws TypeError HydrostaticFreeSurfaceModel(architecture=CPU, grid=grid)
-        @test_throws TypeError HydrostaticFreeSurfaceModel(architecture=GPU, grid=grid)
+        CPU_grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 1, 1))
+        @test_throws TypeError HydrostaticFreeSurfaceModel(grid=grid)
+        GPU_grid = RectilinearGrid(GPU(), size=(1, 1, 1), extent=(1, 1, 1))
+        @test_throws TypeError HydrostaticFreeSurfaceModel(grid=grid)
     end
       
     @testset "$topo_1d model construction" begin

@@ -1,4 +1,6 @@
 
+using Oceananigans.Distributed: reconstruct_global_grid
+
 function random_divergent_source_term(arch, grid)
     # Generate right hand side from a random (divergent) velocity field.
     Ru = XFaceField(arch, grid)
@@ -27,10 +29,10 @@ end
 
 function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RectilinearGrid(topology=topo, size=grid_points, extent=(1, 2, 3))
-    arch = MultiArch(grid=full_grid, ranks=ranks)
+    arch = MultiArch(CPU(), ranks=ranks, topology = topo)
+    local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(1, 2, 3))
     
-    local_grid = local_grids(arch, full_grid)
+    full_grid = reconstruct_global_grid(local_grid)
     solver = DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
 
     R = random_divergent_source_term(child_architecture(arch), local_grid)

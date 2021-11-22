@@ -193,7 +193,7 @@ end
     for arch in archs
         # Some tests can reuse this same grid and model.
         topo = (Periodic, Periodic, Bounded)
-        grid = RectilinearGrid(arch, opology=topo, size=(4, 4, 4), extent=(1, 1, 1))
+        grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
         model = NonhydrostaticModel(grid=grid)
 
         @testset "WindowedTimeAverage [$(typeof(arch))]" begin
