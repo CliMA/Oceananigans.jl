@@ -211,12 +211,7 @@ function reconstruct_global_grid(grid)
 
 end
 
-
-const LocalGrid = Union{RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:MultiArch},
-                      LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:MultiArch}}
-
-
-function with_halo(halo, grid::LocalGrid)
+function with_halo(halo, grid::AbstractGrid{FT, TX, TY, TZ, Arch}) where {FT, TX, TY, TZ, Arch <: MultiArch}
     new_grid  = with_halo(halo, reconstruct_global_grid(grid))
     return reconstruct_local_grids(architecture(grid), new_grid)
 end
@@ -229,7 +224,7 @@ function reconstruct_local_grids(arch::MultiArch, grid::RectilinearGrid)
     z = cpu_face_constructor_z(grid)
 
     topo = topology(grid)
-    N    = pop_flat_elements(size(grid))
+    N    = pop_flat_elements(size(grid), topo)
     halo = pop_flat_elements(halo_size(grid), topo)
 
     local_grid = RectilinearGrid(arch, eltype(grid); size = N, x = x, y = y, z = z, halo = halo, topology = topo)
@@ -245,7 +240,7 @@ function reconstruct_local_grids(arch::MultiArch, grid::LatitudeLongitudeGrid)
     z = cpu_face_constructor_z(grid)
 
     topo = topology(grid)
-    N    = pop_flat_element(size(grid))
+    N    = pop_flat_element(size(grid), topo)
     halo = pop_flat_elements(halo_size(grid), topo)
 
     local_grid = LatitudeLongitudeGrid(arch, eltype(grid); size = N, longitude = x, latitude = y, z = z, halo = halo)
