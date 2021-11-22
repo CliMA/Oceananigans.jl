@@ -215,7 +215,6 @@ const LocalGrid = Union{RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any
                       LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:MultiArch}}
 
 function with_halo(new_halo, grid::LocalGrid) 
-    @show "Ciao"
     new_grid  = with_halo(new_halo, reconstruct_global_grid(grid))
     return scatter_local_grids(architecture(grid), new_grid)
 end
