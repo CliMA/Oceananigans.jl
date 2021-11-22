@@ -211,7 +211,12 @@ function reconstruct_global_grid(grid)
 
 end
 
-function with_halo(halo, grid::AbstractGrid{FT, TX, TY, TZ, A}) where {A<:MultiArch}
+
+const MultiArchGrid = Union{RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:MultiArch},
+                      LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:MultiArch}}
+
+
+function with_halo(halo, grid::MultiArchGrid)
     new_grid  = with_halo(halo, reconstruct_global_grid(grid))
     return reconstruct_local_grids(architecture(grid), new_grid)
 end
