@@ -4,7 +4,7 @@ using Oceananigans.Grids
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection; timestepper=:RungeKutta3)
-    grid = RectilinearGrid(arch, size=(1, 1), extent=(2π, 2π), topology=topo, architecture=arch)
+    grid = RectilinearGrid(arch, size=(1, 1), extent=(2π, 2π), topology=topo)
     model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, coriolis=coriolis,
                               advection=advection, timestepper=:RungeKutta3)
     set!(model, h=1)
@@ -29,7 +29,7 @@ function time_step_wizard_shallow_water_model_works(arch, topo, coriolis)
 end
 
 function shallow_water_model_tracers_and_forcings_work(arch)
-    grid = RectilinearGrid(arch, size=(1, 1), extent=(2π, 2π), topology=((Periodic, Periodic, Flat)), architecture=arch)
+    grid = RectilinearGrid(arch, size=(1, 1), extent=(2π, 2π), topology=((Periodic, Periodic, Flat)))
     model = ShallowWaterModel(grid=grid, gravitational_acceleration=1, tracers=(:c, :d))
     set!(model, h=1)
 
@@ -55,16 +55,16 @@ end
 
     @testset "Must be Flat in the vertical" begin
         grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=(Periodic,Periodic,Bounded))
-        @test_throws TypeError ShallowWaterModel(grid=grid, gravitational_acceleration=1)        
+        @test_throws AssertionError ShallowWaterModel(grid=grid, gravitational_acceleration=1)        
 
         grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=(Periodic,Periodic,Periodic))
-        @test_throws TypeError ShallowWaterModel(grid=grid, gravitational_acceleration=1)        
+        @test_throws AssertionError ShallowWaterModel(grid=grid, gravitational_acceleration=1)        
     end
 
     @testset "Model constructor errors" begin
         grid = RectilinearGrid(size=(1, 1), extent=(1, 1), topology=(Periodic,Periodic,Flat))
-        @test_throws TypeError ShallowWaterModel(architecture=CPU, grid=grid, gravitational_acceleration=1)
-        @test_throws TypeError ShallowWaterModel(architecture=GPU, grid=grid, gravitational_acceleration=1)
+        @test_throws MethodError ShallowWaterModel(architecture=CPU, grid=grid, gravitational_acceleration=1)
+        @test_throws MethodError ShallowWaterModel(architecture=GPU, grid=grid, gravitational_acceleration=1)
     end
 
     topo = ( Flat,      Flat,     Flat )

@@ -53,10 +53,9 @@ function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
     # Even if the three dimensional grid is vertically stretched, we can only use
     # FFTImplicitFreeSurfaceSolver with grids that are regularly spaced in the
     # horizontal direction.
-    horizontal_grid = RectilinearGrid(; topology = (TX, TY, Flat),
+    horizontal_grid = RectilinearGrid(arch; topology = (TX, TY, Flat),
                                                size = sz,
                                                halo = halo,
-                                               architecture = arch,
                                                domain...)
 
     solver = FFTBasedPoissonSolver(arch, horizontal_grid)

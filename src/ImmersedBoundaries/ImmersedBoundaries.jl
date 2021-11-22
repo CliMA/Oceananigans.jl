@@ -37,7 +37,7 @@ using Oceananigans.Advection:
     advective_tracer_flux_z
 
 import Oceananigans.Utils: cell_advection_timescale
-import Oceananigans.Grids: with_halo
+import Oceananigans.Grids: with_halo, architecture
 import Oceananigans.Coriolis: φᶠᶠᵃ
 import Oceananigans.Grids: with_halo, xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
 
@@ -105,6 +105,8 @@ const IBG = ImmersedBoundaryGrid
 @inline get_ibg_property(ibg::IBG, ::Val{property}) where property = getfield(getfield(ibg, :grid), property)
 @inline get_ibg_property(ibg::IBG, ::Val{:immersed_boundary}) = getfield(ibg, :immersed_boundary)
 @inline get_ibg_property(ibg::IBG, ::Val{:grid}) = getfield(ibg, :grid)
+
+@inline architecture(ibg::IBG) = architecture(ibg.grid)
 
 Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.grid), adapt(to, ibg.immersed_boundary))

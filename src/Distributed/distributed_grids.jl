@@ -1,3 +1,4 @@
+using MPI
 using Oceananigans.Grids: validate_halo, validate_rectilinear_domain, validate_size, validate_topology, topology, size, halo_size, architecture
 using Oceananigans.Grids: generate_coordinate, cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, pop_flat_elements
 
@@ -7,7 +8,19 @@ import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid
 @inline get_local_coords(c::Tuple         , nc, R, index) = (c[1] + (index-1) * (c[2] - c[1]) / R,    c[1] + index * (c[2] - c[1]) / R)
 @inline get_local_coords(c::AbstractVector, nc, R, index) = c[1 + (index-1) * nc : 1 + nc * index]
 
-@inline get_global_coords(c::Tuple        , nc, R,  index) = (c[2] - index * (c[2] - c[1]), c[2] - (index - R) * (c[2] - c[1]))
+@inline get_global_coords(c::Tuple        , nc, R,  index, arch) = (c[2] - index * (c[2] - c[1]), c[2] - (index - R) * (c[2] - c[1]))
+
+function get_global_coords(c::AbstractVector, nc, R, index, arch) 
+    cG = zeros(eltype(c), nc*R+1)
+    cG[1 + (index-1) * nc : nc * index] .= c[1:end-1]
+    
+    if index == R
+        cG[end] = c[end]
+    end
+    MPI.Allreduce!(cG, +, arch.communicator)
+
+    return cG
+end
 
 function RectilinearGrid( arch::MultiArch, FT = Float64;
                           size,
@@ -156,8 +169,7 @@ function LatitudeLongitudeGrid(arch::MultiArch,
     Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ, radius)
 end
 
-#for the moment we can reconstruct only Rectilinear Grids
-function reconstruct_global_grid(grid::RegRectilinearGrid)
+function reconstruct_global_grid(grid)
 
     arch    = grid.architecture
     i, j, k = arch.local_index
@@ -174,9 +186,9 @@ function reconstruct_global_grid(grid::RegRectilinearGrid)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
-    xG = get_global_coords(x, nx, Rx, i)
-    yG = get_global_coords(y, ny, Ry, j)
-    zG = get_global_coords(z, nz, Rz, k)
+    xG = get_global_coords(x, nx, Rx, i, arch)
+    yG = get_global_coords(y, ny, Ry, j, arch)
+    zG = get_global_coords(z, nz, Rz, k, arch)
 
     architecture = child_architecture(arch)
 
