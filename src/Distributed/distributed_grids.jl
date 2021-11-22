@@ -2,7 +2,7 @@ using MPI
 using Oceananigans.Grids: validate_halo, validate_rectilinear_domain, validate_size, validate_topology, topology, size, halo_size, architecture
 using Oceananigans.Grids: generate_coordinate, cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, pop_flat_elements
 
-import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
+import Oceananigans.Grids: AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, with_halo
 
 
 @inline get_local_coords(c::Tuple         , nc, R, index) = (c[1] + (index-1) * (c[2] - c[1]) / R,    c[1] + index * (c[2] - c[1]) / R)
@@ -211,12 +211,12 @@ function reconstruct_global_grid(grid)
 
 end
 
-function with_halo(halo, grid::AbstractGrid{FT, TX, TY, TZ, Arch}) where {FT, TX, TY, TZ, Arch <: MultiArch}
-    new_grid  = with_halo(halo, reconstruct_global_grid(grid))
-    return reconstruct_local_grids(architecture(grid), new_grid)
+function with_halo(new_halo, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:MultiArch}) 
+    new_grid  = with_halo(new_halo, reconstruct_global_grid(grid))
+    return scatter_local_grids(architecture(grid), new_grid)
 end
 
-function reconstruct_local_grids(arch::MultiArch, grid::RectilinearGrid)
+function scatter_local_grids(arch::MultiArch, grid::RectilinearGrid)
 
     # Pull out face grid constructors
     x = cpu_face_constructor_x(grid)
@@ -232,7 +232,7 @@ function reconstruct_local_grids(arch::MultiArch, grid::RectilinearGrid)
     return local_grid
 end
 
-function reconstruct_local_grids(arch::MultiArch, grid::LatitudeLongitudeGrid)
+function scatter_local_grids(arch::MultiArch, grid::LatitudeLongitudeGrid)
     
     # Pull out face grid constructors
     x = cpu_face_constructor_x(grid)
