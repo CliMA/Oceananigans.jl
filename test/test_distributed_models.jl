@@ -246,7 +246,7 @@ end
 function test_triply_periodic_local_grid_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(CPU(), ranks=(2, 2, 1), topology = topo)
-    grid = RectilinearGrid(topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid)
 
     i, j, k = arch.local_index
@@ -492,7 +492,7 @@ end
 
     @testset "Time stepping ShallowWaterModel" begin
         topo = (Periodic, Periodic, Flat)
-        arch = MultiArch(ranks=(1, 4, 1))
+        arch = MultiArch(ranks=(1, 4, 1), topology = topo)
         grid = RectilinearGrid(arch, topology=topo, size=(8, 8), extent=(1, 2), halo=(3, 3))
         model = ShallowWaterModel(advection=nothing, grid=grid, gravitational_acceleration=1)
 
