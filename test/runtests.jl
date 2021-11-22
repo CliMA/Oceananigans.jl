@@ -1,4 +1,3 @@
-
 include("dependencies_for_runtests.jl")
 
 @testset "Oceananigans" begin
@@ -8,8 +7,7 @@ include("dependencies_for_runtests.jl")
             include("test_operators.jl")
             include("test_boundary_conditions.jl")
             include("test_field.jl")
-            include("test_reduced_field.jl")
-            include("test_averaged_field.jl")
+            include("test_reduced_fields.jl")
             include("test_kernel_computed_field.jl")
             include("test_halo_regions.jl")
             include("test_coriolis.jl")
