@@ -212,11 +212,11 @@ function reconstruct_global_grid(grid)
 end
 
 
-const MultiArchGrid = Union{RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:MultiArch},
+const LocalGrid = Union{RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:MultiArch},
                       LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:MultiArch}}
 
 
-function with_halo(halo, grid::MultiArchGrid)
+function with_halo(halo, grid::LocalGrid)
     new_grid  = with_halo(halo, reconstruct_global_grid(grid))
     return reconstruct_local_grids(architecture(grid), new_grid)
 end
