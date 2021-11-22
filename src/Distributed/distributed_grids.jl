@@ -2,7 +2,8 @@ using MPI
 using Oceananigans.Grids: validate_halo, validate_rectilinear_domain, validate_size, validate_topology, topology, size, halo_size, architecture
 using Oceananigans.Grids: generate_coordinate, cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, pop_flat_elements
 
-import Oceananigans.Grids: AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, with_halo
+using Oceananigans.Grids: AbstractGrid
+import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
 
 
 @inline get_local_coords(c::Tuple         , nc, R, index) = (c[1] + (index-1) * (c[2] - c[1]) / R,    c[1] + index * (c[2] - c[1]) / R)
@@ -211,7 +212,10 @@ function reconstruct_global_grid(grid)
 
 end
 
-function with_halo(new_halo, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:MultiArch}) 
+const LocalGrid = Union{RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:MultiArch},
+                      LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:MultiArch}}
+
+function with_halo(new_halo, grid::LocalGrid) 
     new_grid  = with_halo(new_halo, reconstruct_global_grid(grid))
     return scatter_local_grids(architecture(grid), new_grid)
 end
