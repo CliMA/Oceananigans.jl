@@ -12,7 +12,7 @@ using Adapt
 This simulation is a simple 1D advection to test the 
 validity of the stretched WENO scheme
 """
-             
+
 function multiple_steps!(model)
     for i = 1:1000
         time_step!(model, 1e-6)
@@ -50,7 +50,7 @@ grid_reg  = RectilinearGrid(size = (N,), x = Freg,  halo = (3,), topology = (Per
 grid_str  = RectilinearGrid(size = (N,), x = Fsaw,  halo = (3,), topology = (Periodic, Flat, Flat), architecture = arch)    
 grid_str2 = RectilinearGrid(size = (N,), x = Fstr2, halo = (3,), topology = (Periodic, Flat, Flat), architecture = arch)    
 
-# placeholder for the three different advection schemes 
+# placeholder for the four different advection schemes 
 #  (1) WENO5(), 
 #  (2) WENO5(grid=grid),
 #  (3) WENO5(grid=grid, stretched_smoothness=true),
@@ -98,7 +98,7 @@ for (gr, grid) in enumerate([grid_reg, grid_str, grid_str2])
 
         simulation = Simulation(model,
                                 Δt = Δt_max,
-                                stop_time = end_time)                           
+                                stop_time = end_time)
         
         
         for i = 1:end_time/Δt_max
@@ -118,9 +118,9 @@ for (gr, grid) in enumerate([grid_reg, grid_str, grid_str2])
 
     anim = @animate for i ∈ 1:end_time/Δt_max
         plot(x, c₀_1D(x, 1, 1), seriestype=:scatter, legend = false, title ="red: U, blue: S, green: β, black: Z") 
-        plot!(x, solution[(schemes[1], Int(i))], linewidth = 1, linecolor =:red  , legend = false) 
-        plot!(x, solution[(schemes[2], Int(i))], linewidth = 1, linecolor =:blue , legend = false) 
-        plot!(x, solution[(schemes[3], Int(i))], linewidth = 1, linecolor =:green, legend = false)
+        plot!(x, solution[(schemes[1], Int(i))], linewidth = 4, linecolor =:red  , legend = false) 
+        plot!(x, solution[(schemes[2], Int(i))], linewidth = 3, linecolor =:blue , legend = false) 
+        plot!(x, solution[(schemes[3], Int(i))], linewidth = 2, linecolor =:green, legend = false)
         plot!(x, solution[(schemes[4], Int(i))], linewidth = 1, linecolor =:black, legend = false)  
     end 
     mp4(anim, "anim_1D_$(gr).mp4", fps = 15)
@@ -175,11 +175,12 @@ for (gr, grid) in enumerate([grid_reg, grid_str, grid_str2])
         
         simulation = Simulation(model,
                                 Δt = Δt_max,
-                                stop_time = end_time)                           
+                                stop_time = end_time)
 
         for i = 1:end_time/Δt_max/10
             csim                               = adapt(CPU(), c)
             solution2D[(schemes[adv], Int(i))] = csim[1:N, 1:N, 1]
+            
             for j = 1:10
                 time_step!(model, Δt_max)
             end
