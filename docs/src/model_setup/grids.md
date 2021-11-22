@@ -22,7 +22,8 @@ end
 
 ```jldoctest
 julia> grid = RectilinearGrid(size=(32, 64, 256), extent=(128, 256, 512))
-RectilinearGrid{Float64, Periodic, Periodic, Bounded} on the CPU()
+RectilinearGrid{Float64, Periodic, Periodic, Bounded} 
+             architecture: CPU()
                    domain: x ∈ [0.0, 128.0], y ∈ [0.0, 256.0], z ∈ [-512.0, 0.0]
                  topology: (Periodic, Periodic, Bounded)
         size (Nx, Ny, Nz): (32, 64, 256)
@@ -49,7 +50,8 @@ in the ``y``- and ``z``-dimensions is build with,
 
 ```jldoctest
 julia> grid = RectilinearGrid(topology=(Periodic, Bounded, Bounded), size=(64, 64, 32), extent=(1e4, 1e4, 1e3))
-RectilinearGrid{Float64, Periodic, Bounded, Bounded} on the CPU()
+RectilinearGrid{Float64, Periodic, Bounded, Bounded} 
+             architecture: CPU()
                    domain: x ∈ [0.0, 10000.0], y ∈ [0.0, 10000.0], z ∈ [-1000.0, 0.0]
                  topology: (Periodic, Bounded, Bounded)
         size (Nx, Ny, Nz): (64, 64, 32)
@@ -71,7 +73,8 @@ is constructed via
 
 ```jldoctest
 julia> grid = RectilinearGrid(size=(32, 16, 256), x=(-100, 100), y=(0, 12.5), z=(-π, π))
-RectilinearGrid{Float64, Periodic, Periodic, Bounded} on the CPU()
+RectilinearGrid{Float64, Periodic, Periodic, Bounded}  
+             architecture: CPU()
                    domain: x ∈ [-100.0, 100.0], y ∈ [0.0, 12.5], z ∈ [-3.141592653589793, 3.141592653589793]
                  topology: (Periodic, Periodic, Bounded)
         size (Nx, Ny, Nz): (32, 16, 256)
@@ -105,7 +108,8 @@ julia> grid = RectilinearGrid(size = (Nx, Ny, Nz),
                               x = (0, Lx),
                               y = chebychev_spaced_y_faces,
                               z = chebychev_spaced_z_faces)
-RectilinearGrid{Float64, Periodic, Bounded, Bounded} on the CPU()
+RectilinearGrid{Float64, Periodic, Bounded, Bounded}  
+             architecture: CPU()
                    domain: x ∈ [0.0, 10000.0], y ∈ [-5000.0, 5000.0], z ∈ [-1000.0, 0.0]
                  topology: (Periodic, Bounded, Bounded)
         size (Nx, Ny, Nz): (64, 64, 32)

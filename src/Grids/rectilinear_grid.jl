@@ -50,11 +50,16 @@ const  RegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number
 
 Creates a `RectilinearGrid` with `size = (Nx, Ny, Nz)` grid points.
 
-Keyword arguments
+Positional arguments
 =================
 
 - `architecture`: Specifies whether the array of coordinates, interfaces, and spacings are stored
                   on the CPU or GPU. Default: `architecture = CPU()`.
+
+- `FT` : Floating point precision, might be Float32 or Float64
+
+Keyword arguments
+=================
 
 - `size` (required): A tuple prescribing the number of grid points in non-`Flat` directions.
                      `size` is a 3-tuple for 3D models, a 2-tuple for 2D models, and either a
@@ -125,7 +130,8 @@ Examples
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(32, 32, 32), extent=(1, 2, 3))
-RectilinearGrid{Float64, Periodic, Periodic, Bounded} on the CPU()
+RectilinearGrid{Float64, Periodic, Periodic, Bounded}
+             architecture: CPU()
                    domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [-3.0, 0.0]
                  topology: (Periodic, Periodic, Bounded)
         size (Nx, Ny, Nz): (32, 32, 32)
@@ -140,8 +146,9 @@ grid in z: Regular, with spacing 0.09375
 ```jldoctest
 julia> using Oceananigans
 
-julia> grid = RectilinearGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
-RectilinearGrid{Float32, Periodic, Periodic, Bounded} on the CPU()
+julia> grid = RectilinearGrid(CPU(), Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
+RectilinearGrid{Float32, Periodic, Periodic, Bounded} 
+             architecture: CPU()
                    domain: x ∈ [0.0, 8.0], y ∈ [-10.0, 10.0], z ∈ [-3.1415927, 3.1415927]
                  topology: (Periodic, Periodic, Bounded)
         size (Nx, Ny, Nz): (32, 32, 16)
@@ -157,7 +164,8 @@ grid in z: Regular, with spacing 0.3926991
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=(Periodic, Periodic, Flat))
-RectilinearGrid{Float64, Periodic, Periodic, Flat} on the CPU()
+RectilinearGrid{Float64, Periodic, Periodic, Flat} 
+             architecture: CPU()
                    domain: x ∈ [0.0, 6.283185307179586], y ∈ [0.0, 12.566370614359172], z ∈ [1.0, 1.0]
                  topology: (Periodic, Periodic, Flat)
         size (Nx, Ny, Nz): (32, 32, 1)
@@ -173,7 +181,8 @@ grid in z: Flattened
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bounded))
-RectilinearGrid{Float64, Flat, Flat, Bounded} on the CPU()
+RectilinearGrid{Float64, Flat, Flat, Bounded}
+             architecture: CPU()
                    domain: x ∈ [1.0, 1.0], y ∈ [1.0, 1.0], z ∈ [-128.0, 0.0]
                  topology: (Flat, Flat, Bounded)
         size (Nx, Ny, Nz): (1, 1, 256)
@@ -200,7 +209,8 @@ julia> grid = RectilinearGrid(size = (32, 32, Nz),
                        x = (0, 64),
                        y = (0, 64),
                        z = hyperbolically_spaced_faces)
-RectilinearGrid{Float64, Periodic, Periodic, Bounded} on the CPU()
+RectilinearGrid{Float64, Periodic, Periodic, Bounded}
+             architecture: CPU()
                    domain: x ∈ [0.0, 64.0], y ∈ [0.0, 64.0], z ∈ [-32.0, -0.0]
                  topology: (Periodic, Periodic, Bounded)
         size (Nx, Ny, Nz): (32, 32, 24)
@@ -232,7 +242,8 @@ julia> grid = RectilinearGrid(size = (Nx, Ny, Nz),
                               x = (0, Lx),
                               y = chebychev_like_spaced_faces,
                               z = hyperbolically_spaced_faces)
-RectilinearGrid{Float64, Periodic, Bounded, Bounded} on the CPU()
+RectilinearGrid{Float64, Periodic, Bounded, Bounded}
+             architecture: CPU()
                    domain: x ∈ [0.0, 200.0], y ∈ [-50.0, 50.0], z ∈ [-32.0, -0.0]
                  topology: (Periodic, Bounded, Bounded)
         size (Nx, Ny, Nz): (32, 30, 24)
