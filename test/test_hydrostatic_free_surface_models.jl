@@ -68,13 +68,6 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
 @testset "Hydrostatic free surface Models" begin
     @info "Testing hydrostatic free surface models..."
-
-    @testset "Model constructor errors" begin
-        CPU_grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 1, 1))
-        @test_throws TypeError HydrostaticFreeSurfaceModel(grid=grid)
-        GPU_grid = RectilinearGrid(GPU(), size=(1, 1, 1), extent=(1, 1, 1))
-        @test_throws TypeError HydrostaticFreeSurfaceModel(grid=grid)
-    end
       
     @testset "$topo_1d model construction" begin
         @info "  Testing $topo_1d model construction..."

@@ -6,14 +6,14 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalD
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
     extent = Tuple(1 for i = 1:topological_tuple_length(topology...))
-    grid = RectilinearGrid(arch, size=size, extent=extent, topology=topology, architecture=arch)
+    grid = RectilinearGrid(arch, size=size, extent=extent, topology=topology)
     model = NonhydrostaticModel(grid=grid)
     time_step!(model, 1, euler=true)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
 function time_stepping_works_with_coriolis(arch, FT, Coriolis)
-    grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3), architecture=arch)
+    grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3))
     c = Coriolis(FT, latitude=45)
     model = NonhydrostaticModel(grid=grid, coriolis=c)
 
@@ -29,7 +29,7 @@ function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(m
     Closure === CATKEVerticalDiffusivity && push!(tracers, :e)
 
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
-    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3), architecture=arch)
+    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
 
     model = NonhydrostaticModel(grid=grid,
                                 closure=Closure(FT), tracers=tracers, buoyancy=buoyancy)
@@ -41,14 +41,14 @@ end
 
 function time_stepping_works_with_advection_scheme(arch, advection_scheme)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
-    grid = RectilinearGrid(arch, size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3), architecture=arch)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid, advection=advection_scheme)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
 function time_stepping_works_with_nothing_closure(arch, FT)
-    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 2, 3), architecture=arch)
+    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid=grid, closure=nothing)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
@@ -70,7 +70,7 @@ function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
 
     # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
-    grid = RectilinearGrid(arch, FT, size=(13, 17, 19), extent=(1, 2, 3), architecture=arch)
+    grid = RectilinearGrid(arch, FT, size=(13, 17, 19), extent=(1, 2, 3))
 
     model = NonhydrostaticModel(grid=grid, forcing=(T=add_ones,))
     time_step!(model, 1, euler=true)
@@ -144,7 +144,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     νz, κz = α*νh, α*κh
 
     topology = (Periodic, Bounded, Bounded)
-    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), architecture=arch)
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model = NonhydrostaticModel(grid = grid,
                                 closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz))
 
@@ -170,7 +170,7 @@ end
 
 function time_stepping_with_background_fields(arch)
 
-    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1), architecture=arch)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
 
     background_u(x, y, z, t) = π
     background_v(x, y, z, t) = sin(x) * cos(y) * exp(t)
@@ -221,13 +221,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         @testset "Time stepping with DateTimes [$(typeof(arch)), $FT]" begin
             @info "  Testing time stepping with datetime clocks [$(typeof(arch)), $FT]"
 
-            model = NonhydrostaticModel(grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)),
+            model = NonhydrostaticModel(grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1)),
                                         clock = Clock(time=DateTime(2020)))
 
             time_step!(model, 7.883)
             @test model.clock.time == DateTime("2020-01-01T00:00:07.883")
 
-            model = NonhydrostaticModel(grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)),
+            model = NonhydrostaticModel(grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1)),
                                         clock = Clock(time=TimeDate(2020)))
 
             time_step!(model, 123e-9)  # 123 nanoseconds

@@ -116,10 +116,16 @@ function LatitudeLongitudeGrid(architecture=CPU(),
         M  = typeof(Δxᶠᶜ)
         MY = typeof(Δyᶠᶜ)
     else
-        metrics = (:Δxᶠᶜ, :Δxᶜᶠ, :Δxᶠᶠ, :Δxᶜᶜ, :Δyᶠᶜ, :Δyᶜᶠ, :Azᶠᶜ, :Azᶜᶠ, :Azᶠᶠ, :Azᶜᶜ)
-        for metric in metrics
-            @eval $metric = nothing
-        end
+        Δxᶠᶜ = nothing
+        Δxᶜᶠ = nothing
+        Δxᶠᶠ = nothing
+        Δxᶜᶜ = nothing
+        Δyᶠᶜ = nothing
+        Δyᶜᶠ = nothing
+        Azᶠᶜ = nothing
+        Azᶜᶠ = nothing
+        Azᶠᶠ = nothing
+        Azᶜᶜ = nothing
 
         M    = Nothing
         MY   = Nothing

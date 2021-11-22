@@ -160,11 +160,11 @@
             # Test setting the background_fields to a Field
             U_field = XFaceField(arch, grid)
             U_field .= 1
-            model = NonhydrostaticModel(grid=grid, background_fields = (u=U_field,))
+            model = NonhydrostaticModel(grid = grid, background_fields = (u=U_field,))
             @test model.background_fields.velocities.u isa Field
 			
 	    U_field = CenterField(arch, grid)            
-	    @test_throws ArgumentError NonhydrostaticModel(grid=grid, architecture=arch, background_fields = (u=U_field,))            
+	    @test_throws ArgumentError NonhydrostaticModel(grid=grid, background_fields = (u=U_field,))            
         end
     end
 end

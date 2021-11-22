@@ -50,7 +50,8 @@ function ConformalCubedSphereFaceGrid(arch = CPU(), FT = Float64; size, z,
     TX, TY, TZ = topology
     Nξ, Nη, Nz = size
     Hx, Hy, Hz = halo
-
+    Arch = typeof(arch)
+    
     ## Use a regular rectilinear grid for the face of the cube
 
     ξη_grid = RectilinearGrid(arch, FT, topology=topology, size=(Nξ, Nη, Nz), x=ξ, y=η, z=z, halo=halo)
