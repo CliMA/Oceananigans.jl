@@ -245,7 +245,7 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, architecture = C
         architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
          λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,  φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
         Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δz,
-        Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius, architecture)
+        Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
 function _adapt_structure(to, grid::ConformalCubedSphereFaceGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
@@ -286,10 +286,10 @@ function _adapt_structure(to, grid::ConformalCubedSphereFaceGrid{FT, TX, TY, TZ}
    
     Arch = typeof(architecture)
 
-    return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch}(grid.Nx, grid.Ny, grid.Nz, grid.Hx, grid.Hy, grid.Hz,
+    return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch}(architecture, grid.Nx, grid.Ny, grid.Nz, grid.Hx, grid.Hy, grid.Hz,
                                                               horizontal_coordinate_data..., zᵃᵃᶜ, zᵃᵃᶠ,
                                                               horizontal_grid_spacing_data..., grid.Δz,
-                                                              horizontal_area_data..., grid.radius, architecture)
+                                                              horizontal_area_data..., grid.radius)
 end
 
 Adapt.adapt_structure(::CPU, grid::ConformalCubedSphereFaceGrid) = _adapt_structure(CPU(), grid)
@@ -314,3 +314,5 @@ end
 
 @inline znode(LX, LY, ::Face,   i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶠ[k]
 @inline znode(LX, LY, ::Center, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.zᵃᵃᶜ[k]
+
+@inline architecture(grid::ConformalCubedSphereFaceGrid) = grid.architecture
