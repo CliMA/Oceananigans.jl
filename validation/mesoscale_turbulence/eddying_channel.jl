@@ -20,12 +20,12 @@ const Ly = 2000kilometers # meridional domain length [m]
 const Lz = 2kilometers    # depth [m]
 
 # number of grid points
-Nx = 256
-Ny = 512
-Nz = 80
+Nx = 128
+Ny = 256
+Nz = 40
 
-movie_interval = 2days
-stop_time = 50years
+movie_interval = 1days
+stop_time = 5years
 
 arch = CPU()
 
@@ -294,7 +294,7 @@ ax_ζ = fig[1:5, 2] = LScene(fig)
 iter = Node(0)
 sides = keys(slicers)
 
-zonal_file = jldopen("eddying_channel_zonal_average.jld2")
+# zonal_file = jldopen("eddying_channel_zonal_average.jld2")
 slice_files = NamedTuple(side => jldopen("eddying_channel_$(side)_slice.jld2") for side in sides)
 
 grid = RectilinearGrid(architecture = arch,
@@ -339,14 +339,18 @@ GLMakie.surface!(ax_b, xb, zb, b_slices.north;  transformation = (:xz, yb[end]),
 GLMakie.surface!(ax_b, xb, yb, b_slices.bottom; transformation = (:xy, zb[1]),   kwargs_b...)
 GLMakie.surface!(ax_b, xb, yb, b_slices.top;    transformation = (:xy, zb[end]), kwargs_b...)
 
-b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
-u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
+# b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
+# u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
 
+<<<<<<< Updated upstream
 clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
 clims_u = (-0.4, 0.4)
+=======
+# clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
+>>>>>>> Stashed changes
 
-GLMakie.contour!(ax_b, yb, zb, b_avg; levels = 25, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
-GLMakie.surface!(ax_b, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
+# GLMakie.contour!(ax_b, yb, zb, b_avg; levels = 25, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
+# GLMakie.surface!(ax_b, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
 
 rotate_cam!(ax_b.scene, (π/24, -π/6, 0))
 
@@ -382,14 +386,14 @@ GLMakie.surface!(ax_ζ, xζ, zζ, ζ_slices.north;  transformation = (:xz, yζ[e
 GLMakie.surface!(ax_ζ, xζ, yζ, ζ_slices.bottom; transformation = (:xy, zζ[1]),   kwargs_ζ...)
 GLMakie.surface!(ax_ζ, xζ, yζ, ζ_slices.top;    transformation = (:xy, zζ[end]), kwargs_ζ...)
 
-b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
-u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
+# b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
+# u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
 
 clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
 clims_u = (-0.4, 0.4)
 
-GLMakie.contour!(ax_ζ, yb, zb, b_avg; levels = 25, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
-GLMakie.surface!(ax_ζ, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
+# GLMakie.contour!(ax_ζ, yb, zb, b_avg; levels = 25, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
+# GLMakie.surface!(ax_ζ, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
 
 rotate_cam!(ax_ζ.scene, (π/24, -π/6, 0))
 
