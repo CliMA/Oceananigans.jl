@@ -2,13 +2,10 @@
     @info "Testing models..."
 
     @testset "Model constructor errors" begin
-        CPU_grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 1, 1))
-        GPU_grid = RectilinearGrid(GPU(), size=(1, 1, 1), extent=(1, 1, 1))
-        @test_throws TypeError NonhydrostaticModel(grid=CPU_grid)
-        @test_throws TypeError NonhydrostaticModel(grid=GPU_grid)
-        @test_throws TypeError NonhydrostaticModel(grid=CPU_grid, boundary_conditions=1)
-        @test_throws TypeError NonhydrostaticModel(grid=CPU_grid, forcing=2)
-        @test_throws TypeError NonhydrostaticModel(grid=CPU_grid, background_fields=3)
+        grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 1, 1))
+        @test_throws TypeError NonhydrostaticModel(grid=grid, boundary_conditions=1)
+        @test_throws TypeError NonhydrostaticModel(grid=grid, forcing=2)
+        @test_throws TypeError NonhydrostaticModel(grid=grid, background_fields=3)
     end
 
     topos = ((Periodic, Periodic, Periodic),

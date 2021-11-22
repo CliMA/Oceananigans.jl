@@ -186,7 +186,7 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, architecture = C
     ## Use a regular rectilinear grid for the vertical grid
     ## The vertical coordinates can come out of the regular rectilinear grid!
 
-    ξη_grid = RectilinearGrid(arch, FT, topology=topology, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=z, halo=halo)
+    ξη_grid = RectilinearGrid(architecture, FT, topology=topology, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=z, halo=halo)
 
     Δz = ξη_grid.Δzᵃᵃᶜ
     zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ

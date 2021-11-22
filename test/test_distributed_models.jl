@@ -50,7 +50,7 @@ end
 
 function test_triply_periodic_rank_connectivity_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(CPU(), ranks=(4, 1, 1), topology = topo)
+    arch = MultiArch(CPU(), ranks=(1, 4, 1), topology = topo)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -92,7 +92,7 @@ end
 
 function test_triply_periodic_rank_connectivity_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(CPU(), ranks=(4, 1, 1), topology = topo)
+    arch = MultiArch(CPU(), ranks=(1, 1, 4), topology = topo)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
@@ -137,7 +137,7 @@ end
 
 function test_triply_periodic_rank_connectivity_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
-    arch = MultiArch(CPU(), ranks=(4, 1, 1), topology = topo)
+    arch = MultiArch(CPU(), ranks=(2, 2, 1), topology = topo)
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)

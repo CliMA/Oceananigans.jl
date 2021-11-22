@@ -125,22 +125,22 @@ function ConformalCubedSphereGrid(FT=Float64; face_size, z, radius=R_Earth)
     @warn "ConformalCubedSphereGrid is experimental: use with caution!"
 
     # +z face (face 1)
-    z⁺_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=nothing)
+    z⁺_face_grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=face_size, z=z, radius=radius, rotation=nothing)
 
     # +x face (face 2)
-    x⁺_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=RotX(π/2))
+    x⁺_face_grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=face_size, z=z, radius=radius, rotation=RotX(π/2))
 
     # +y face (face 3)
-    y⁺_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=RotY(π/2))
+    y⁺_face_grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=face_size, z=z, radius=radius, rotation=RotY(π/2))
 
     # -x face (face 4)
-    x⁻_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=RotX(-π/2))
+    x⁻_face_grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=face_size, z=z, radius=radius, rotation=RotX(-π/2))
 
     # -y face (face 5)
-    y⁻_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=RotY(-π/2))
+    y⁻_face_grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=face_size, z=z, radius=radius, rotation=RotY(-π/2))
 
     # -z face (face 6)
-    z⁻_face_grid = ConformalCubedSphereFaceGrid(FT, size=face_size, z=z, radius=radius, rotation=RotX(π))
+    z⁻_face_grid = ConformalCubedSphereFaceGrid(CPU(), FT, size=face_size, z=z, radius=radius, rotation=RotX(π))
 
     faces = (
         z⁺_face_grid,
@@ -156,13 +156,13 @@ function ConformalCubedSphereGrid(FT=Float64; face_size, z, radius=R_Earth)
     return ConformalCubedSphereGrid{FT, typeof(faces), typeof(face_connectivity)}(faces, face_connectivity)
 end
 
-function ConformalCubedSphereGrid(filepath::AbstractString, FT=Float64; Nz, z, architecture = CPU(), radius = R_Earth, halo = (1, 1, 1))
+function ConformalCubedSphereGrid(filepath::AbstractString, architecture = CPU(), FT=Float64; Nz, z, radius = R_Earth, halo = (1, 1, 1))
     @warn "ConformalCubedSphereGrid is experimental: use with caution!"
 
     face_topo = (Connected, Connected, Bounded)
-    face_kwargs = (Nz=Nz, z=z, topology=face_topo, radius=radius, halo=halo, architecture=architecture)
+    face_kwargs = (Nz=Nz, z=z, topology=face_topo, radius=radius, halo=halo)
 
-    faces = Tuple(ConformalCubedSphereFaceGrid(filepath, FT; face=n, face_kwargs...) for n in 1:6)
+    faces = Tuple(ConformalCubedSphereFaceGrid(filepath, architecture, FT; face=n, face_kwargs...) for n in 1:6)
 
     face_connectivity = default_face_connectivity()
 

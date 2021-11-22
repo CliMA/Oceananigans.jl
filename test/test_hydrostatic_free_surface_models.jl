@@ -136,7 +136,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $topo]" begin
                 @info "  Testing time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $topo]..."
-                @test time_step_hydrostatic_model_works(arch, grid)
+                @test time_step_hydrostatic_model_works(grid)
             end
         end
 
