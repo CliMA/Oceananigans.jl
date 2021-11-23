@@ -115,7 +115,7 @@ julia> using Oceananigans
 
 julia> WENO5()
 ┌ Warning: defaulting to uniform WENO scheme with Float64 precision, use WENO5(grid = grid) if this was not intended
-└ @ Oceananigans.Advection ~/Research/OC2/src/Advection/weno_fifth_order.jl:90
+└ @ Oceananigans.Advection ~/builds/tartarus-1/clima/oceananigans/src/Advection/weno_fifth_order.jl:173
 WENO5 advection scheme with:
     ├── X regular
     ├── Y regular
