@@ -129,9 +129,8 @@ stretched grids.
 References
 ==========
 
-Shu, Essentially Non-Oscillatory and Weighted Essentially Non-Oscillatory Schemes for Hyperbolic Conservation Laws, 1997, NASA/CR-97-206253, ICASE Report No. 97-65
-Castro et al, High order weighted essentially non-oscillatory WENO-Z schemesfor hyperbolic conservation laws, 2011, Journal of Computational Physics 230(5):1766-1792
-
+- Shu, Essentially Non-Oscillatory and Weighted Essentially Non-Oscillatory Schemes for Hyperbolic Conservation Laws, 1997, NASA/CR-97-206253, ICASE Report No. 97-65
+- Castro et al, High order weighted essentially non-oscillatory WENO-Z schemes for hyperbolic conservation laws, 2011, Journal of Computational Physics 230(5):1766-1792
 """
 function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false, zweno = false)
     
