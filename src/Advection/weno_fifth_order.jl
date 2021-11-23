@@ -53,36 +53,6 @@ struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, W} <: AbstractUpwindBiasedAdvectionSche
     smooth_zᵃᵃᶜ::ZS
 end
 
-#=    
-
-`WENO5(grid = grid)` defaults to uniform interpolation coefficient for each of the grid directions that
-is uniform (`typeof(Δc) <: Number`) while it precomputes the ENO coefficients for reconstruction for all
-grid directions that are stretched. (After testing "on-the-fly" calculation of coefficients for stretched
-directions ended up being way too expensive and, therefore, is not supported.)
-
-`WENO5(grid = grid, stretched_smoothness = true)` additionally computes the smoothness indicators coefficients,
-``β₀``, ``β₁``, and ``β₂``, taking into account the stretched dimensions.
-
-`WENO5(zweno = true)` implements a Z-WENO formulation for the WENO weights calculation
-
-Comments
-========
-
-All methods have the same execution speed. However, `stretched_smoothness = true` requires more memory (and
-slightly more computation time) and is not much impactful. As such, most of the times we urge users to use
-`WENO5(grid = grid)`, as this does not seem to decrease accuracy but does decreases memory utilization (and
-also results in a slight speed-up).
-
-(The above claims were made after some preliminary tests. Thus, we still users to perform some
-benchmarks/checks before performing, e.g., a large simulation on a "weirdly" stretched grid.)
-
-On the other hand, a Z-WENO formulation is *always* beneficial (also in case of a uniform mesh) with no major
-decrease in performance. The same can be said for the stretched `WENO5(grid = grid)` formulation in case of
-stretched grids.
-"""
-=#
-
-
 """
     WENO5([FT = Float64;] grid = nothing, stretched_smoothness = false, zweno = false)
 
