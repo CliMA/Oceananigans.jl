@@ -114,20 +114,23 @@ the stretched dimensions.
 Comments
 ========
 
-All methods have the same execution speed. However, `stretched_smoothness = true` requires more memory (and
-slightly more computation time) and is not much impactful. As such, most of the times we urge users to use
-`WENO5(grid = grid)`, as this does not seem to decrease accuracy but does decreases memory utilization (and
-also results in a slight speed-up).
+All methods have the roughly the same execution speed except for `stretched_smoothness = true` which requires more memory and
+is less computationally efficeint, especially on GPUs. In addition, it has not been found to be much impactful on the tested cases.
+As such, most of the times we urge users to use `WENO5(grid = grid)`, as this increases accuracy on a stretched mesh  but does decreases
+memory utilization (and also results in a slight speed-up).
 
 (The above claims were made after some preliminary tests. Thus, we still users to perform some
 benchmarks/checks before performing, e.g., a large simulation on a "weirdly" stretched grid.)
 
-On the other hand, a Z-WENO formulation is *always* beneficial (also in case of a uniform mesh) with no major
-decrease in performance. The same can be said for the stretched `WENO5(grid = grid)` formulation in case of
+On the other hand, a Z-WENO formulation is *most of the times* beneficial (also in case of a uniform mesh) with roughly the 
+same performances (just a slight slow/down). The same can be said for the stretched `WENO5(grid = grid)` formulation in case of
 stretched grids.
 
 References
 ==========
+
+Shu, Essentially Non-Oscillatory and Weighted Essentially Non-Oscillatory Schemes for Hyperbolic Conservation Laws, 1997, NASA/CR-97-206253, ICASE Report No. 97-65
+Castro et al, High order weighted essentially non-oscillatory WENO-Z schemesfor hyperbolic conservation laws, 2011, Journal of Computational Physics 230(5):1766-1792
 
 """
 function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false, zweno = false)
