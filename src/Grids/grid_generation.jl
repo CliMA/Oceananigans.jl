@@ -35,7 +35,7 @@ function generate_coordinate(FT, topology, N, H, coord, architecture)
 
     # Build halo regions
     ΔF₋ = lower_exterior_Δcoordᶜ(topology, interiorF, H)
-    ΔF₊ = upper_exterior_Δcoordᶜ(topology, interiorF, H)
+    ΔF₊ = reverse(upper_exterior_Δcoordᶜ(topology, interiorF, H))
 
     c¹, cᴺ⁺¹ = interiorF[1], interiorF[N+1]
 

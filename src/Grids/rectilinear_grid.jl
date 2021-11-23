@@ -378,7 +378,7 @@ function with_halo(new_halo, old_grid::RectilinearGrid)
 
     new_grid = RectilinearGrid(architecture(old_grid), eltype(old_grid);
                size = size,
-               x = x, y = y,z = z,
+               x = x, y = y, z = z,
                topology = topo,
                halo = new_halo)
 
