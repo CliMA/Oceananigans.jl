@@ -1,5 +1,5 @@
 using Oceananigans: CPU, GPU
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, ExplicitFreeSurface
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, PrescribedField, ExplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, ExplicitTimeDiscretization, CATKEVerticalDiffusivity
@@ -222,6 +222,25 @@ topos_3d = ((Periodic, Periodic, Bounded),
         @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
             @info "  Testing time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
             @test time_step_hydrostatic_model_works(arch, rectilinear_grid, closure=closure)
+        end
+
+        @testset "PrescribedVelocityFields [$arch]" begin
+            @info "  Testing PrescribedVelocityFields [$arch]..."
+            
+            grid = RectilinearGrid(size = (2,), x = (0, 1),  halo = (2,), topology = (Periodic, Flat, Flat), architecture = arch)
+            
+            u₀, v₀
+            
+            U = Field(Face, Center, Center, arch, grid)
+            U .= u₀
+
+            V = Field(Center, Face, Center, arch, grid)
+            V .= v₀
+
+            u = PrescribedField(Face, Center, Center, U, grid)
+            v = PrescribedField(Face, Center, Center, V, grid)
+
+            @test parent(u.data)[:, 1, 1] == u₀ * ones(grid.Nx + 2grid.Hx) && parent(v.data)[:, 1, 1] == v₀ * ones(grid.Ny + 2grid.Hy)
         end
 
         @testset "Time-stepping HydrostaticFreeSurfaceModels with PrescribedVelocityFields [$arch]" begin
