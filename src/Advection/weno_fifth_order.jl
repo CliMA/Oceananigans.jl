@@ -1,5 +1,5 @@
 #####
-##### Weighted Essentially Non-Oscillatory (WENO) scheme of order 5
+##### Weighted Essentially Non-Oscillatory (WENO) fifth-order advection scheme
 #####
 
 using OffsetArrays
@@ -17,25 +17,154 @@ const C3₂ = 1/10
 const ƞ = Int32(2) # WENO exponent
 const ε = 1e-6
 
-struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, W} <: AbstractUpwindBiasedAdvectionScheme{2} 
+"""
+    struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, W} <: AbstractUpwindBiasedAdvectionScheme{2}
+
+Weighted Essentially Non-Oscillatory (WENO) fifth-order advection scheme.
+
+$(TYPEDFIELDS)
+"""
+struct WENO5{FT, XT, YT, ZT, XS, YS, ZS, W} <: AbstractUpwindBiasedAdvectionScheme{2}
     
-    # coefficients for ENO reconstruction 
+    "coefficient for ENO reconstruction on x-faces" 
     coeff_xᶠᵃᵃ::XT
-    coeff_xᶜᵃᵃ::XT   
+    "coefficient for ENO reconstruction on x-centers"
+    coeff_xᶜᵃᵃ::XT
+    "coefficient for ENO reconstruction on y-faces"
     coeff_yᵃᶠᵃ::YT
+    "coefficient for ENO reconstruction on y-centers"
     coeff_yᵃᶜᵃ::YT
+    "coefficient for ENO reconstruction on z-faces"
     coeff_zᵃᵃᶠ::ZT
+    "coefficient for ENO reconstruction on z-centers"
     coeff_zᵃᵃᶜ::ZT
-    # coefficients to calculate WENO smoothness indicators
+    
+    "coefficient for WENO smoothness indicators on x-faces"
     smooth_xᶠᵃᵃ::XS
+    "coefficient for WENO smoothness indicators on x-centers"
     smooth_xᶜᵃᵃ::XS
+    "coefficient for WENO smoothness indicators on y-faces"
     smooth_yᵃᶠᵃ::YS
+    "coefficient for WENO smoothness indicators on y-centers"
     smooth_yᵃᶜᵃ::YS
+    "coefficient for WENO smoothness indicators on z-faces"
     smooth_zᵃᵃᶠ::ZS
+    "coefficient for WENO smoothness indicators on z-centers"
     smooth_zᵃᵃᶜ::ZS
 end
 
-function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false, zweno = false) 
+#=    
+
+`WENO5(grid = grid)` defaults to uniform interpolation coefficient for each of the grid directions that
+is uniform (`typeof(Δc) <: Number`) while it precomputes the ENO coefficients for reconstruction for all
+grid directions that are stretched. (After testing "on-the-fly" calculation of coefficients for stretched
+directions ended up being way too expensive and, therefore, is not supported.)
+
+`WENO5(grid = grid, stretched_smoothness = true)` additionally computes the smoothness indicators coefficients,
+``β₀``, ``β₁``, and ``β₂``, taking into account the stretched dimensions.
+
+`WENO5(zweno = true)` implements a Z-WENO formulation for the WENO weights calculation
+
+Comments
+========
+
+All methods have the same execution speed. However, `stretched_smoothness = true` requires more memory (and
+slightly more computation time) and is not much impactful. As such, most of the times we urge users to use
+`WENO5(grid = grid)`, as this does not seem to decrease accuracy but does decreases memory utilization (and
+also results in a slight speed-up).
+
+(The above claims were made after some preliminary tests. Thus, we still users to perform some
+benchmarks/checks before performing, e.g., a large simulation on a "weirdly" stretched grid.)
+
+On the other hand, a Z-WENO formulation is *always* beneficial (also in case of a uniform mesh) with no major
+decrease in performance. The same can be said for the stretched `WENO5(grid = grid)` formulation in case of
+stretched grids.
+"""
+=#
+
+
+"""
+    WENO5([FT = Float64;] grid = nothing, stretched_smoothness = false, zweno = false)
+
+Construct a fifth-order weigthed essentially non-oscillatory advection scheme. The constructor allows
+construction of WENO schemes on either uniform or stretched grids.
+
+Keyword arguments
+=================
+
+  - `grid`: (defaults to `nothing`)
+  - `stretched_smoothness`: When `true` it results in the coefficients for the smoothness indicators 
+    β₀, β₁ and β₂ so that they account for the stretched `grid`. (defaults to `false`)
+  - `zweno`: When `true` implement a Z-WENO formulation for the WENO weights calculation. (defaults to
+    `false`)
+
+!!! warn "No support for WENO5 on curvilinear grids"
+    Currently, WENO 5th-order advection schemes don't work for for curvilinear grids.
+    Providing `WENO5(::AbstractCurvilinearGrid)` defaults to uniform setting, i.e.
+    `WENO5(::AbstractCurvilinearGrid) = WENO5()`.
+
+```@meta
+DocTestFilters = = [Regex("Warning: defaulting"), Regex("Oceananigans.Advection")"]
+```
+
+Not providing any keyword argument, `WENO5()` defaults to the uniform 5th-order coefficients ("uniform
+setting) in all directions, using a JS-WENO formulation.
+
+```jldoctest
+julia> using Oceananigans
+
+julia> WENO5()
+┌ Warning: defaulting to uniform WENO scheme with Float64 precision, use WENO5(grid = grid) if this was not intended
+└ @ Oceananigans.Advection ~/Research/OC2/src/Advection/weno_fifth_order.jl:90
+WENO5 advection scheme with:
+    ├── X regular
+    ├── Y regular
+    └── Z regular
+```
+
+`WENO5(grid = grid)` defaults to uniform interpolation coefficient for each of the grid directions that
+is uniform (`typeof(Δc) <: Number`) while it precomputes the ENO coefficients for reconstruction for all
+grid directions that are stretched. (After testing "on-the-fly" calculation of coefficients for stretched
+directions ended up being way too expensive and, therefore, is not supported.)
+
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = grid = RectilinearGrid(size = (3, 4, 5), x = (0, 1), y = (0, 1), z = [-10, -9, -7, -4, -1.5, 0]);
+
+julia> WENO5(grid = grid)
+WENO5 advection scheme with:
+    ├── X regular
+    ├── Y regular
+    └── Z stretched
+```
+
+`WENO5(grid = grid, stretched_smoothness = true)` behaves similarly to `WENO5(grid = grid)` but, additionally,
+it also computes the smoothness indicators coefficients, ``β₀``, ``β₁``, and ``β₂``, taking into account
+the stretched dimensions.
+
+`WENO5(zweno = true)` implements a Z-WENO formulation for the WENO weights calculation
+
+Comments
+========
+
+All methods have the same execution speed. However, `stretched_smoothness = true` requires more memory (and
+slightly more computation time) and is not much impactful. As such, most of the times we urge users to use
+`WENO5(grid = grid)`, as this does not seem to decrease accuracy but does decreases memory utilization (and
+also results in a slight speed-up).
+
+(The above claims were made after some preliminary tests. Thus, we still users to perform some
+benchmarks/checks before performing, e.g., a large simulation on a "weirdly" stretched grid.)
+
+On the other hand, a Z-WENO formulation is *always* beneficial (also in case of a uniform mesh) with no major
+decrease in performance. The same can be said for the stretched `WENO5(grid = grid)` formulation in case of
+stretched grids.
+
+References
+==========
+
+"""
+function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false, zweno = false)
     
     metrics   = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
     dirsize   = (:Nx, :Nx, :Ny, :Ny, :Nz, :Nz)
@@ -56,7 +185,7 @@ function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false, zweno
     else
         FT       = eltype(grid)
         arch     = grid.architecture
-        new_grid = with_halo((4,4,4), grid)
+        new_grid = with_halo((4, 4, 4), grid)
        
         for (dir, metric) in zip(dirsize, metrics)
             @eval $(Symbol(:coeff_ , metric)) = calc_interpolating_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir)
@@ -80,9 +209,10 @@ const JSWENO = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
 const ZWENO  = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any}
 
 function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
-    print(io, "WENO5 advection sheme with X $(RX == Nothing ? "regular" : "stretched") \n",
-                                        " Y $(RY == Nothing ? "regular" : "stretched") \n",
-                                        " Z $(RZ == Nothing ? "regular" : "stretched")" )
+    print(io, "WENO5 advection scheme with: \n",
+              "    ├── X $(RX == Nothing ? "regular" : "stretched") \n",
+              "    ├── Y $(RY == Nothing ? "regular" : "stretched") \n",
+              "    └── Z $(RZ == Nothing ? "regular" : "stretched")" )
 end
 
 Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, W}) where {FT, XT, YT, ZT, XS, YS, ZS, W} =
