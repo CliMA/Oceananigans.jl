@@ -229,7 +229,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             
             grid = RectilinearGrid(size = (2,), x = (0, 1),  halo = (2,), topology = (Periodic, Flat, Flat), architecture = arch)
             
-            u₀, v₀
+            u₀, v₀ = 0.1, 0.2
             
             U = Field(Face, Center, Center, arch, grid)
             U .= u₀
