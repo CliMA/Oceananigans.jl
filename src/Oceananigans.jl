@@ -30,7 +30,7 @@ export
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     AveragedField, ComputedField, KernelComputedField, BackgroundField,
-    interior, set!, compute!,
+    interior, set!, compute!, regrid!,
 
     # Forcing functions
     Forcing, Relaxation, LinearTarget, GaussianMask,
@@ -75,8 +75,7 @@ export
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics
-    NaNChecker, StateChecker,
-    CFL, AdvectiveCFL, DiffusiveCFL,
+    StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
     FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,

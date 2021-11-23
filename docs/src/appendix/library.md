@@ -110,6 +110,7 @@ Pages   = [
     "Fields/field.jl",
     "Fields/averaged_field.jl",
     "Fields/set!.jl",
+    "Fields/regridding_fields.jl",
     "Fields/show_fields.jl",
 ]
 ```

@@ -23,6 +23,8 @@ export
     CenteredFourthOrder,
     WENO5
 
+using DocStringExtensions
+
 using Oceananigans.Grids
 using Oceananigans.Operators
 
