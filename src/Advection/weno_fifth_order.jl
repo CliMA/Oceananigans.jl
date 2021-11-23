@@ -103,19 +103,15 @@ Keyword arguments
     Providing `WENO5(::AbstractCurvilinearGrid)` defaults to uniform setting, i.e.
     `WENO5(::AbstractCurvilinearGrid) = WENO5()`.
 
-```@meta
-DocTestFilters = = [Regex("Warning: defaulting"), Regex("Oceananigans.Advection")"]
-```
-
 Not providing any keyword argument, `WENO5()` defaults to the uniform 5th-order coefficients ("uniform
 setting) in all directions, using a JS-WENO formulation.
 
-```jldoctest
+```@example
 julia> using Oceananigans
 
 julia> WENO5()
 ┌ Warning: defaulting to uniform WENO scheme with Float64 precision, use WENO5(grid = grid) if this was not intended
-└ @ Oceananigans.Advection ~/builds/tartarus-1/clima/oceananigans/src/Advection/weno_fifth_order.jl:173
+└ @ Oceananigans.Advection .../src/Advection/weno_fifth_order.jl:90
 WENO5 advection scheme with:
     ├── X regular
     ├── Y regular
