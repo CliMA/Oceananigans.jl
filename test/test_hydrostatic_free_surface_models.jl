@@ -240,7 +240,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             u = PrescribedField(Face, Center, Center, U, grid)
             v = PrescribedField(Face, Center, Center, V, grid)
 
-            @test parent(u.data)[:, 1, 1] == u₀ * ones(grid.Nx + 2grid.Hx) && parent(v.data)[:, 1, 1] == v₀ * ones(grid.Ny + 2grid.Hy)
+            @test parent(u.data)[:, 1, 1] == u₀ * ones(grid.Nx + 2grid.Hx) && parent(v.data)[:, 1, 1] == v₀ * ones(grid.Nx + 2grid.Hx)
         end
 
         @testset "Time-stepping HydrostaticFreeSurfaceModels with PrescribedVelocityFields [$arch]" begin
