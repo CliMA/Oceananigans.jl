@@ -37,18 +37,18 @@ modification to the eddy viscosity.
 
 Keyword arguments
 =================
-    - `C`  : Smagorinsky constant. Default value is 0.16 as obtained by Lilly (1966).
-    - `Cb` : Buoyancy term multipler based on Lilly (1962) (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
-             Typically, and according to the original work by Lilly (1962), `Cb=1/Pr`.)
-    - `Pr` : Turbulent Prandtl numbers for each tracer. Either a constant applied to every
-             tracer, or a `NamedTuple` with fields for each tracer individually.
-    - `ν`  : Constant background viscosity for momentum
-    - `κ`  : Constant background diffusivity for tracer. Can either be a single number
-             applied to all tracers, or `NamedTuple` of diffusivities corresponding to each
-             tracer.
-    - `time_discretization` : Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
-                              which integrates the terms involving only z-derivatives in the
-                              viscous and diffusive fluxes with an implicit time discretization.
+  - `C`: Smagorinsky constant. Default value is 0.16 as obtained by Lilly (1966).
+  - `Cb`: Buoyancy term multipler based on Lilly (1962) (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
+          Typically, and according to the original work by Lilly (1962), `Cb=1/Pr`.)
+  - `Pr`: Turbulent Prandtl numbers for each tracer. Either a constant applied to every
+          tracer, or a `NamedTuple` with fields for each tracer individually.
+  - `ν`: Constant background viscosity for momentum.
+  - `κ`: Constant background diffusivity for tracer. Can either be a single number
+         applied to all tracers, or `NamedTuple` of diffusivities corresponding to each
+         tracer.
+  - `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+                           which integrates the terms involving only ``z``-derivatives in the
+                           viscous and diffusive fluxes with an implicit time discretization.
 
 References
 ==========
