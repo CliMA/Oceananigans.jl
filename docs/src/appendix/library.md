@@ -168,8 +168,35 @@ Modules = [Oceananigans.Models]
 Private = false
 Pages   = [
     "Models/Models.jl",
+]
+```
+
+### Non-hydrostatic models
+
+```@autodocs
+Modules = [Oceananigans.Models.NonhydrostaticModels]
+Private = false
+Pages   = [
     "Models/NonhydrostaticModels/nonhydrostatic_model.jl",
+]
+```
+
+### Hydrostatic free-surface models
+
+```@autodocs
+Modules = [Oceananigans.Models.HydrostaticFreeSurfaceModels]
+Private = false
+Pages   = [
     "Models/HydrostaticFreeSurfaceModels/hydrostatic_free_surface_model.jl",
+]
+```
+
+### Shallow-water models
+
+```@autodocs
+Modules = [Oceananigans.Models.ShallowWaterModels]
+Private = false
+Pages   = [
     "Models/ShallowWaterModels/shallow_water_model.jl"
 ]
 ```
