@@ -281,3 +281,91 @@ mean(f::Function, field::AbstractGPUDataField; dims=:) = mean(f, interior_copy(f
 # Risky to use these without tests. Docs would also be nice.
 Statistics.norm(a::AbstractDataField) = sqrt(mapreduce(x -> x * x, +, interior(a)))
 Statistics.dot(a::AbstractField, b::AbstractField) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
+
+const MAX_THREADS_PER_BLOCK = 1024
+
+function reduce_multiply_one_block!(::Val{FT}, aout, ain, bin, ::Val{totSize}, ::Val{block}) where {FT, totSize, block}
+
+        tix   = threadIdx().x
+        bix   = blockIdx().x
+        gdim  = gridDim().x * block
+
+        glb   = tix + (bix -1) * block
+
+    sum = FT(0.0)
+    for i = glb:gdim:totSize
+        sum += ain[i] * bin[i]
+    end
+
+    shArr = @cuStaticSharedMem(FT, block)
+        shArr[tix] = sum;
+
+    sync_threads()
+
+        iter = block ÷ 2
+    while iter > 0
+                if tix < iter + 1
+                        shArr[tix] += shArr[tix+iter]
+        end
+        sync_threads()
+        iter = iter ÷ 2
+        end
+        if tix == 1
+        aout[bix] = shArr[1]
+    end
+
+    sync_threads()
+end
+
+
+function reduce_one_block!(::Val{FT}, aout, ain, ::Val{totSize}, ::Val{block}) where {FT, totSize, block}
+
+    tix   = threadIdx().x
+    bix   = blockIdx().x
+    gdim  = gridDim().x * block
+
+    glb   = tix + (bix -1) * block
+
+    sum = 0.0;
+
+    for i = glb:gdim:totSize
+        sum += ain[i]
+    end
+
+    shArr = @cuStaticSharedMem(FT, block)
+        shArr[tix] = sum;
+
+    sync_threads()
+
+    iter = block ÷ 2
+    while iter > 0
+                if tix < iter + 1
+                        shArr[tix] += shArr[tix+iter]
+        end
+        sync_threads()
+        iter = iter ÷ 2
+    end
+    if tix == 1
+        aout[1] = shArr[1]
+    end
+
+    sync_threads()
+end
+
+function parallel_dot(FT, a::AbstractArray, b::AbstractArray)
+
+    block = Int(minimum([maximum([size(a)...]), MAX_THREADS_PER_BLOCK]))
+    grid  = Int(prod(size(gpu_a6)) / block)
+
+    wrk   = CuArray{FT}(undef, grid)
+    output = CuArray{FT}(undef, 1)
+    block = 2^floor(Int, log(2, block-1))
+
+    @cuda threads=block blocks=grid reduce_multiply_one_block!(Val(FT), wrk, a, b, Val(grid*block*2), Val(block))
+    if grid > 1
+        @cuda threads=block blocks=1 reduce_one_block!(Val(FT), output, wrk, Val(grid), Val(block))
+    end
+
+    return output
+end
+

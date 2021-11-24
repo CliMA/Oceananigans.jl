@@ -9,11 +9,6 @@ Base.length(::Type{Face}, ::Type{Bounded}, N) = N+1
 Base.length(::Type{Center}, topo, N) = N
 Base.length(::Type{Nothing}, topo, N) = 1
 
-function Base.size(loc, grid::AbstractGrid)
-    N = (grid.Nx, grid.Ny, grid.Nz)
-    return Tuple(length(loc[d], topology(grid, d), N[d]) for d in 1:3)
-end
-
 Base.size(loc, grid, d) = size(loc, grid)[d]
 
 """
@@ -27,7 +22,6 @@ of `f` along `x, y, z`.
                                               length(loc[2], topology(grid, 2), grid.Ny),
                                               length(loc[3], topology(grid, 3), grid.Nz))
 
-Base.size(grid::AbstractGrid) = size((Center, Center, Center), grid)
 Base.size(grid::AbstractGrid, d) = size(grid)[d]
 
 total_size(a) = size(a) # fallback
