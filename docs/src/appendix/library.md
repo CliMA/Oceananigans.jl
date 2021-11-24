@@ -188,6 +188,10 @@ Modules = [Oceananigans.Models.HydrostaticFreeSurfaceModels]
 Private = false
 Pages   = [
     "Models/HydrostaticFreeSurfaceModels/hydrostatic_free_surface_model.jl",
+    "Models/HydrostaticFreeSurfaceModels/explicit_free_surface.jl",
+    "Models/HydrostaticFreeSurfaceModels/implicit_free_surface.jl",
+    "Models/HydrostaticFreeSurfaceModels/prescribed_hydrostatic_velocity_fields.jl",
+    "Models/HydrostaticFreeSurfaceModels/fft_based_implicit_free_surface_solver.jl",
 ]
 ```
 
