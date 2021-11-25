@@ -1,3 +1,10 @@
+"""
+Main module for `Oceananigans.jl` -- a Julia software for fast, friendly, flexible,
+data-driven, ocean-flavored fluid dynamics on CPUs and GPUs."
+ 
+# Exports
+$(EXPORTS)
+"""
 module Oceananigans
 
 if VERSION < v"1.6"
@@ -101,6 +108,7 @@ using LinearAlgebra
 
 using CUDA
 using Adapt
+using DocStringExtensions
 using OffsetArrays
 using FFTW
 using JLD2

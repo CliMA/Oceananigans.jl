@@ -2,6 +2,16 @@
 
 Documenting the public user interface.
 
+## Oceananigans.jl
+
+```@autodocs
+Modules = [Oceananigans]
+Private = false
+Pages   = [
+    "Oceananigans.jl"
+]
+```
+
 ## Advection
 
 ```@autodocs
