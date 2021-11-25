@@ -70,10 +70,10 @@ second-order advection scheme, `Cb = nothing`, which terms off the buoyancy modi
 
 `Cν` or `Cκ` may be constant numbers, or functions of `x, y, z`.
 
-Example
-=======
+Examples
+========
 
-```julia
+```jldoctest
 julia> pretty_diffusive_closure = AnisotropicMinimumDissipation(C=1/2)
 AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.5
@@ -81,11 +81,12 @@ AnisotropicMinimumDissipation{Float64} turbulence closure with:
                         Buoyancy modification multiplier Cb: nothing
                 Background diffusivit(ies) for tracer(s), κ: 0.0
              Background kinematic viscosity for momentum, ν: 0.0
+```
 
+```jldoctest
 julia> const Δz = 0.5; # grid resolution at surface
 
-julia> surface_enhanced_tracer_C(x, y, z) = 1/12 * (1 + exp((z + Δz/2) / 8Δz))
-surface_enhanced_tracer_C (generic function with 1 method)
+julia> surface_enhanced_tracer_C(x, y, z) = 1/12 * (1 + exp((z + Δz/2) / 8Δz));
 
 julia> fancy_closure = AnisotropicMinimumDissipation(Cκ=surface_enhanced_tracer_C)
 AnisotropicMinimumDissipation{Float64} turbulence closure with:
@@ -94,7 +95,9 @@ AnisotropicMinimumDissipation{Float64} turbulence closure with:
                         Buoyancy modification multiplier Cb: nothing
                 Background diffusivit(ies) for tracer(s), κ: 0.0
              Background kinematic viscosity for momentum, ν: 0.0
+```
 
+```jldoctest
 julia> tracer_specific_closure = AnisotropicMinimumDissipation(Cκ=(c₁=1/12, c₂=1/6))
 AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
