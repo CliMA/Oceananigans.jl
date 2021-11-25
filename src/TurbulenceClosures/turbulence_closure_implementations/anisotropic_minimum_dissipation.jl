@@ -74,6 +74,8 @@ Examples
 ========
 
 ```jldoctest
+julia> using Oceananigans
+
 julia> pretty_diffusive_closure = AnisotropicMinimumDissipation(C=1/2)
 AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.5
@@ -84,6 +86,8 @@ AnisotropicMinimumDissipation{Float64} turbulence closure with:
 ```
 
 ```jldoctest
+julia> using Oceananigans
+
 julia> const Δz = 0.5; # grid resolution at surface
 
 julia> surface_enhanced_tracer_C(x, y, z) = 1/12 * (1 + exp((z + Δz/2) / 8Δz));
@@ -98,6 +102,8 @@ AnisotropicMinimumDissipation{Float64} turbulence closure with:
 ```
 
 ```jldoctest
+julia> using Oceananigans
+
 julia> tracer_specific_closure = AnisotropicMinimumDissipation(Cκ=(c₁=1/12, c₂=1/6))
 AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.08333333333333333
