@@ -1,9 +1,6 @@
 """
 Main module for `Oceananigans.jl` -- a Julia software for fast, friendly, flexible,
-data-driven, ocean-flavored fluid dynamics on CPUs and GPUs."
- 
-# Exports
-$(EXPORTS)
+data-driven, ocean-flavored fluid dynamics on CPUs and GPUs.
 """
 module Oceananigans
 
@@ -47,7 +44,7 @@ export
 
     # BuoyancyModels and equations of state
     Buoyancy, BuoyancyTracer, SeawaterBuoyancy,
-    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
+    LinearEquationOfState, TEOS10,
     BuoyancyField,
 
     # Surface wave Stokes drift via Craik-Leibovich equations

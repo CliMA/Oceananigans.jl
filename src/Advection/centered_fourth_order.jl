@@ -2,6 +2,11 @@
 ##### Centered fourth-order advection scheme
 #####
 
+"""
+    struct CenteredFourthOrder <: AbstractCenteredAdvectionScheme{1}
+
+Centered fourth-order advection scheme.
+"""
 struct CenteredFourthOrder <: AbstractCenteredAdvectionScheme{1} end
 
 const C4 = CenteredFourthOrder
