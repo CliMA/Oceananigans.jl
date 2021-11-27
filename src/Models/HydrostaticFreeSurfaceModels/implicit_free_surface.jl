@@ -30,7 +30,7 @@ The implicit free surface equation is
 where ``H`` is depth, ``g`` is gravitational acceleration, ``Δt`` is time step, and
 ``Q★`` is the barotropic volume flux associated with the predictor velocity field.
 
-This equation be solved in general using the `PreconditionedConjugateGradientSolver`.
+This equation can be solved in general using the `PreconditionedConjugateGradientSolver`.
 
 In the case that ``H`` is constant, we divide through to obtain
 
