@@ -96,7 +96,7 @@ directions ended up being way too expensive and, therefore, is not supported.)
 ```jldoctest
 julia> using Oceananigans
 
-julia> grid = grid = RectilinearGrid(size = (3, 4, 5), x = (0, 1), y = (0, 1), z = [-10, -9, -7, -4, -1.5, 0]);
+julia> grid = RectilinearGrid(size = (3, 4, 5), x = (0, 1), y = (0, 1), z = [-10, -9, -7, -4, -1.5, 0]);
 
 julia> WENO5(grid = grid)
 WENO5 advection scheme with:
