@@ -76,11 +76,7 @@ Keyword arguments
 Not providing any keyword argument, `WENO5()` defaults to the uniform 5th-order coefficients ("uniform
 setting) in all directions, using a JS-WENO formulation.
 
-```@meta
-DocTestFilters = [Regex(".*┌ Warning.*\n"), Regex(".*└ @ Oceananigans.*\n")]
-```
-
-```jldoctest
+```jldoctest; filter = [Regex(".*┌ Warning.*\n"), Regex(".*└ @ Oceananigans.*\n")]
 julia> using Oceananigans
 
 julia> WENO5()
