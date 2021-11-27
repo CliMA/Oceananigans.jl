@@ -76,7 +76,11 @@ Keyword arguments
 Not providing any keyword argument, `WENO5()` defaults to the uniform 5th-order coefficients ("uniform
 setting) in all directions, using a JS-WENO formulation.
 
-```jldoctest; filter = [Regex(".*┌ Warning.*\n"), Regex(".*└ @ Oceananigans.*\n")]
+```@meta
+DocTestFilters = [Regex(".*┌ Warning.*\n"), Regex(".*└ @ Oceananigans.*\n")]
+```
+
+```jldoctest
 julia> using Oceananigans
 
 julia> WENO5()
@@ -86,6 +90,10 @@ WENO5 advection scheme with:
     ├── X regular
     ├── Y regular
     └── Z regular
+```
+
+```@meta
+DocTestFilters = nothing
 ```
 
 `WENO5(grid = grid)` defaults to uniform interpolation coefficient for each of the grid directions that
