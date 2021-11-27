@@ -41,39 +41,41 @@ turbulence closure.
 
 Keyword arguments
 =================
-    - `C` : Poincaré constant for both eddy viscosity and eddy diffusivities. `C` is overridden
-            for eddy viscosity or eddy diffusivity if `Cν` or `Cκ` are set, respecitvely.
+  - `C`: Poincaré constant for both eddy viscosity and eddy diffusivities. `C` is overridden
+         for eddy viscosity or eddy diffusivity if `Cν` or `Cκ` are set, respecitvely.
 
-    - `Cν` : Poincaré constant for momentum eddy viscosity.
+  - `Cν`: Poincaré constant for momentum eddy viscosity.
 
-    - `Cκ` : Poincaré constant for tracer eddy diffusivities. If one number or function, the same
-             number or function is applied to all tracers. If a `NamedTuple`, it must possess
-             a field specifying the Poncaré constant for every tracer.
+  - `Cκ`: Poincaré constant for tracer eddy diffusivities. If one number or function, the same
+          number or function is applied to all tracers. If a `NamedTuple`, it must possess
+          a field specifying the Poncaré constant for every tracer.
 
-    - `Cb` : Buoyancy modification multiplier (`Cb = nothing` turns it off, `Cb = 1` was used by [Abkar16](@cite)).
-             *Note*: that we _do not_ subtract the horizontally-average component before computing this
-             buoyancy modification term. This implementation differs from [Abkar16](@cite)'s proposal
-             and the impact of this approximation has not been tested or validated.
+  - `Cb`: Buoyancy modification multiplier (`Cb = nothing` turns it off, `Cb = 1` was used by [Abkar16](@cite)).
+          *Note*: that we _do not_ subtract the horizontally-average component before computing this
+          buoyancy modification term. This implementation differs from [Abkar16](@cite)'s proposal
+          and the impact of this approximation has not been tested or validated.
 
-    - `ν` : Constant background viscosity for momentum.
+  - `ν`: Constant background viscosity for momentum.
 
-    - `κ` : Constant background diffusivity for tracer. If a single number, the same background
-            diffusivity is applied to all tracers. If a `NamedTuple`, it must possess a field
-            specifying a background diffusivity for every tracer.
+  - `κ`: Constant background diffusivity for tracer. If a single number, the same background
+         diffusivity is applied to all tracers. If a `NamedTuple`, it must possess a field
+         specifying a background diffusivity for every tracer.
 
-    - `time_discretization` : Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
-                              which integrates the terms involving only z-derivatives in the
-                              viscous and diffusive fluxes with an implicit time discretization.
+  - `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+                           which integrates the terms involving only z-derivatives in the
+                           viscous and diffusive fluxes with an implicit time discretization.
 
 By default: `C = Cν = Cκ` = 1/12, which is appropriate for a finite-volume method employing a
 second-order advection scheme, `Cb = nothing`, which terms off the buoyancy modification term.
 
 `Cν` or `Cκ` may be constant numbers, or functions of `x, y, z`.
 
-Example
-=======
+Examples
+========
 
-```julia
+```jldoctest
+julia> using Oceananigans
+
 julia> pretty_diffusive_closure = AnisotropicMinimumDissipation(C=1/2)
 AnisotropicMinimumDissipation{Float64} turbulence closure with:
            Poincaré constant for momentum eddy viscosity Cν: 0.5
@@ -81,11 +83,14 @@ AnisotropicMinimumDissipation{Float64} turbulence closure with:
                         Buoyancy modification multiplier Cb: nothing
                 Background diffusivit(ies) for tracer(s), κ: 0.0
              Background kinematic viscosity for momentum, ν: 0.0
+```
+
+```jldoctest
+julia> using Oceananigans
 
 julia> const Δz = 0.5; # grid resolution at surface
 
-julia> surface_enhanced_tracer_C(x, y, z) = 1/12 * (1 + exp((z + Δz/2) / 8Δz))
-surface_enhanced_tracer_C (generic function with 1 method)
+julia> surface_enhanced_tracer_C(x, y, z) = 1/12 * (1 + exp((z + Δz/2) / 8Δz));
 
 julia> fancy_closure = AnisotropicMinimumDissipation(Cκ=surface_enhanced_tracer_C)
 AnisotropicMinimumDissipation{Float64} turbulence closure with:
@@ -94,6 +99,10 @@ AnisotropicMinimumDissipation{Float64} turbulence closure with:
                         Buoyancy modification multiplier Cb: nothing
                 Background diffusivit(ies) for tracer(s), κ: 0.0
              Background kinematic viscosity for momentum, ν: 0.0
+```
+
+```jldoctest
+julia> using Oceananigans
 
 julia> tracer_specific_closure = AnisotropicMinimumDissipation(Cκ=(c₁=1/12, c₂=1/6))
 AnisotropicMinimumDissipation{Float64} turbulence closure with:

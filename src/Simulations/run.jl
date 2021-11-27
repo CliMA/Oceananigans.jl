@@ -73,13 +73,13 @@ leaving all other model properties unchanged.
 
 Possible values for `pickup` are:
 
-    * `pickup=true` picks a simulation up from the latest checkpoint associated with
-      the `Checkpointer` in `simulation.output_writers`.
+  * `pickup=true` picks a simulation up from the latest checkpoint associated with
+    the `Checkpointer` in `simulation.output_writers`.
 
-    * `pickup=iteration::Int` picks a simulation up from the checkpointed file associated
-       with `iteration` and the `Checkpointer` in `simulation.output_writers`.
+  * `pickup=iteration::Int` picks a simulation up from the checkpointed file associated
+     with `iteration` and the `Checkpointer` in `simulation.output_writers`.
 
-    * `pickup=filepath::String` picks a simulation up from checkpointer data in `filepath`.
+  * `pickup=filepath::String` picks a simulation up from checkpointer data in `filepath`.
 
 Note that `pickup=true` and `pickup=iteration` fails if `simulation.output_writers` contains
 more than one checkpointer.
