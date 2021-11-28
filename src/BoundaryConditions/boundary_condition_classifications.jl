@@ -6,7 +6,7 @@ Abstract supertype for boundary condition types.
 abstract type AbstractBoundaryConditionClassification end
 
 """
-    Periodic
+    struct Periodic <: AbstractBoundaryConditionClassification
 
 A classification specifying a periodic boundary condition.
 
@@ -15,13 +15,13 @@ A condition may not be specified with a `Periodic` boundary condition.
 struct Periodic <: AbstractBoundaryConditionClassification end
 
 """
-    Flux
+    struct Flux <: AbstractBoundaryConditionClassification
 
 A classification specifying a boundary condition on the flux of a field.
 
 The sign convention is such that a positive flux represents the flux of a quantity in the
 positive direction. For example, a positive vertical flux implies a quantity is fluxed
-upwards, in the +z direction.
+upwards, in the ``+z`` direction.
 
 Due to this convention, a positive flux applied to the top boundary specifies that a quantity
 is fluxed upwards across the top boundary and thus out of the domain. As a result, a positive
@@ -34,7 +34,7 @@ west, north, and south boundaries.
 struct Flux <: AbstractBoundaryConditionClassification end
 
 """
-    Gradient
+    struct Gradient <: AbstractBoundaryConditionClassification
 
 A classification specifying a boundary condition on the derivative or gradient of a field. Also
 called a Neumann boundary condition.
@@ -42,7 +42,7 @@ called a Neumann boundary condition.
 struct Gradient <: AbstractBoundaryConditionClassification end
 
 """
-    Value
+    struct Value <: AbstractBoundaryConditionClassification
 
 A classification specifying a boundary condition on the value of a field. Also called a Dirchlet
 boundary condition.
@@ -50,7 +50,7 @@ boundary condition.
 struct Value <: AbstractBoundaryConditionClassification end
 
 """
-    Open
+    struct Open <: AbstractBoundaryConditionClassification
 
 A classification that specifies the halo regions of a field directly.
 

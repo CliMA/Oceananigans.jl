@@ -68,21 +68,21 @@ Construct a shallow water `Oceananigans.jl` model on `grid` with `gravitational_
 Keyword arguments
 =================
 
-    - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
-    - `gravitational_acceleration`: (required) The gravitational accelaration constant.
-    - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
-    - `clock`: The `clock` for the model
-    - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
-    - `coriolis`: Parameters for the background rotation rate of the model.
-    - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
-    - `bathymetry`: The bottom bathymetry.
-    - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
-                 preallocated `CenterField`s.
-    - `diffusivity_fields`: Stores diffusivity fields when the closures require a diffusivity to be
-                            calculated at each timestep.
-    - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
-    - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2`,
-                     `:RungeKutta3`.
+  - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
+  - `gravitational_acceleration`: (required) The gravitational accelaration constant.
+  - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
+  - `clock`: The `clock` for the model
+  - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
+  - `coriolis`: Parameters for the background rotation rate of the model.
+  - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
+  - `bathymetry`: The bottom bathymetry.
+  - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
+               preallocated `CenterField`s.
+  - `diffusivity_fields`: Stores diffusivity fields when the closures require a diffusivity to be
+                          calculated at each timestep.
+  - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
+  - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2`,
+                   `:RungeKutta3`.
 """
 function ShallowWaterModel(;
                            grid,

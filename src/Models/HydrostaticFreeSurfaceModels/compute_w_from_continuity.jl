@@ -2,9 +2,11 @@ using Oceananigans.Architectures: device, device_event
 using Oceananigans.Operators: div_xyᶜᶜᵃ, Δzᵃᵃᶜ
 
 """
-Compute the vertical velocity w by integrating the continuity equation from the bottom upwards
+Compute the vertical velocity ``w`` by integrating the continuity equation from the bottom upwards:
 
-    `w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz`
+```
+w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz
+```
 """
 compute_w_from_continuity!(model) = compute_w_from_continuity!(model.velocities, model.architecture, model.grid)
 

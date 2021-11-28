@@ -72,17 +72,17 @@ Construct an hydrostatic `Oceananigans.jl` model with a free surface on `grid`.
 Keyword arguments
 =================
 
-    - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
-    - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
-    - `gravitational_acceleration`: The gravitational acceleration applied to the free surface
-    - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
-    - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
-    - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
-    - `coriolis`: Parameters for the background rotation rate of the model.
-    - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
-    - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
-    - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
-                 preallocated `CenterField`s.
+  - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
+  - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
+  - `gravitational_acceleration`: The gravitational acceleration applied to the free surface
+  - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
+  - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
+  - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
+  - `coriolis`: Parameters for the background rotation rate of the model.
+  - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
+  - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
+  - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
+               preallocated `CenterField`s.
 """
 function HydrostaticFreeSurfaceModel(; grid,
                 architecture::AbstractArchitecture = CPU(),
