@@ -63,8 +63,8 @@ Keyword arguments
 =================
 
   - `grid`: (defaults to `nothing`)
-  - `stretched_smoothness`: When `true` it results in the coefficients for the smoothness indicators 
-    β₀, β₁ and β₂ so that they account for the stretched `grid`. (defaults to `false`)
+  - `stretched_smoothness`: When `true` it results in computing the coefficients for the smoothness
+    indicators β₀, β₁ and β₂ so that they account for the stretched `grid`. (defaults to `false`)
   - `zweno`: When `true` implement a Z-WENO formulation for the WENO weights calculation. (defaults to
     `false`)
 
