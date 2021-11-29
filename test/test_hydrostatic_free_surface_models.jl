@@ -227,20 +227,27 @@ topos_3d = ((Periodic, Periodic, Bounded),
         @testset "PrescribedVelocityFields [$arch]" begin
             @info "  Testing PrescribedVelocityFields [$arch]..."
             
-            grid = RectilinearGrid(size = (2,), x = (0, 1),  halo = (2,), topology = (Periodic, Flat, Flat), architecture = arch)
+            grid = RectilinearGrid(size=1, x = (0, 1), topology = (Periodic, Flat, Flat), architecture = arch)
             
             u₀, v₀ = 0.1, 0.2
             
             U = Field(Face, Center, Center, arch, grid)
-            U .= u₀
-
             V = Field(Center, Face, Center, arch, grid)
-            V .= v₀
+
+            CUDA.@allowscalar begin
+                parent(U)[2, 1, 1] = u₀
+                parent(V)[2, 1, 1] = v₀
+            end
 
             u = PrescribedField(Face, Center, Center, U, grid)
             v = PrescribedField(Face, Center, Center, V, grid)
 
-            @test parent(u.data)[:, 1, 1] == u₀ * ones(grid.Nx + 2grid.Hx) && parent(v.data)[:, 1, 1] == v₀ * ones(grid.Nx + 2grid.Hx)
+            CUDA.@allowscalar begin
+                @test parent(u)[1, 1, 1] == u₀
+                @test parent(u)[3, 1, 1] == u₀
+                @test parent(v)[1, 1, 1] == v₀
+                @test parent(v)[3, 1, 1] == v₀
+            end
         end
 
         @testset "Time-stepping HydrostaticFreeSurfaceModels with PrescribedVelocityFields [$arch]" begin
