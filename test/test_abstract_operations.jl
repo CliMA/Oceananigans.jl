@@ -225,8 +225,7 @@ for arch in archs
         model = NonhydrostaticModel(architecture = arch,
                                             grid = grid,
                                         buoyancy = buoyancy,
-                                         tracers = (:T, :S),
-                                    )
+                                         tracers = (:T, :S))
 
         @testset "Construction of abstract operations [$(typeof(arch))]" begin
             @info "    Testing construction of abstract operations [$(typeof(arch))]..."
