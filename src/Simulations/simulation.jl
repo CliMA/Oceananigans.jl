@@ -166,7 +166,7 @@ function stop_time_exceeded(sim)
 end
 
 function wall_time_limit_exceeded(sim)
-    if sim.run_wall_time >= sim.wall_time_limit
+    if sim.run_wall_time >= 1e9 * sim.wall_time_limit
         @info "Simulation is stopping. Simulation run time $(run_wall_time(sim)) " *
               "has hit or exceeded simulation wall time limit $(prettytime(sim.wall_time_limit))."
        sim.running = false 
