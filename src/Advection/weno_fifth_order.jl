@@ -63,8 +63,8 @@ Keyword arguments
 =================
 
   - `grid`: (defaults to `nothing`)
-  - `stretched_smoothness`: When `true` it results in the coefficients for the smoothness indicators 
-    β₀, β₁ and β₂ so that they account for the stretched `grid`. (defaults to `false`)
+  - `stretched_smoothness`: When `true` it results in computing the coefficients for the smoothness
+    indicators β₀, β₁ and β₂ so that they account for the stretched `grid`. (defaults to `false`)
   - `zweno`: When `true` implement a Z-WENO formulation for the WENO weights calculation. (defaults to
     `false`)
 
@@ -76,11 +76,7 @@ Keyword arguments
 Not providing any keyword argument, `WENO5()` defaults to the uniform 5th-order coefficients ("uniform
 setting) in all directions, using a JS-WENO formulation.
 
-```@meta
-DocTestFilters = [Regex(".*┌ Warning.*\n"), Regex(".*└ @ Oceananigans.*\n")]
-```
-
-```jldoctest
+```jldoctest; filter = [r".*┌ Warning.*", r".*└ @ Oceananigans.*"]
 julia> using Oceananigans
 
 julia> WENO5()
@@ -92,10 +88,6 @@ WENO5 advection scheme with:
     └── Z regular
 ```
 
-```@meta
-DocTestFilters = nothing
-```
-
 `WENO5(grid = grid)` defaults to uniform interpolation coefficient for each of the grid directions that
 is uniform (`typeof(Δc) <: Number`) while it precomputes the ENO coefficients for reconstruction for all
 grid directions that are stretched. (After testing "on-the-fly" calculation of coefficients for stretched
@@ -104,7 +96,7 @@ directions ended up being way too expensive and, therefore, is not supported.)
 ```jldoctest
 julia> using Oceananigans
 
-julia> grid = grid = RectilinearGrid(size = (3, 4, 5), x = (0, 1), y = (0, 1), z = [-10, -9, -7, -4, -1.5, 0]);
+julia> grid = RectilinearGrid(size = (3, 4, 5), x = (0, 1), y = (0, 1), z = [-10, -9, -7, -4, -1.5, 0]);
 
 julia> WENO5(grid = grid)
 WENO5 advection scheme with:
@@ -179,7 +171,7 @@ function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false, zweno
     XS = typeof(smooth_xᶠᵃᵃ)
     YS = typeof(smooth_yᵃᶠᵃ)
     ZS = typeof(smooth_zᵃᵃᶠ)
-    zweno ? W  = Number : W = Nothing
+    zweno ? W = Number : W = Nothing
 
     return WENO5{FT, XT, YT, ZT, XS, YS, ZS, W}(coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
                                                 smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ)
