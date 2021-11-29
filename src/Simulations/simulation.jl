@@ -4,11 +4,10 @@ import Oceananigans.Utils: prettytime
 
 default_progress(simulation) = nothing
 
-mutable struct Simulation{ML, TS, DT, SC, ST, DI, OW, CB}
+mutable struct Simulation{ML, TS, DT, ST, DI, OW, CB}
               model :: ML
         timestepper :: TS
                  Δt :: DT
-      stop_criteria :: SC
      stop_iteration :: Float64
           stop_time :: ST
     wall_time_limit :: Float64
@@ -22,7 +21,6 @@ end
 
 """
     Simulation(model; Δt,
-               stop_criteria = Any[iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded],
                stop_iteration = Inf,
                stop_time = Inf,
                wall_time_limit = Inf)
@@ -35,10 +33,6 @@ Keyword arguments
 - `Δt`: Required keyword argument specifying the simulation time step. Can be a `Number`
         for constant time steps or a `TimeStepWizard` for adaptive time-stepping.
 
-- `stop_criteria`: A list of functions or callable objects (each taking a single argument,
-                   the `simulation`). If any of the functions return `true` when the stop criteria is
-                   evaluated the simulation will stop.
-
 - `stop_iteration`: Stop the simulation after this many iterations.
 
 - `stop_time`: Stop the simulation once this much model clock time has passed.
@@ -47,7 +41,6 @@ Keyword arguments
                      seconds of wall clock time.
 """
 function Simulation(model; Δt,
-                    stop_criteria = Any[iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded],
                     stop_iteration = Inf,
                     stop_time = Inf,
                     wall_time_limit = Inf)
@@ -61,10 +54,15 @@ function Simulation(model; Δt,
    output_writers = OrderedDict{Symbol, AbstractOutputWriter}()
    callbacks = OrderedDict{Symbol, Callback}()
 
+   callbacks[:stop_time_exceeded] = Callback(stop_time_exceeded)
+   callbacks[:stop_iteration_exceeded] = Callback(stop_iteration_exceeded)
+   callbacks[:wall_time_limit_exceeded] = Callback(wall_time_limit_exceeded)
+
    # Check for NaNs in the model's first prognostic field every 100 iterations.
    model_fields = fields(model)
    field_to_check_nans = NamedTuple{keys(model_fields) |> first |> tuple}(first(model_fields) |> tuple)
-   diagnostics[:nan_checker] = NaNChecker(fields=field_to_check_nans, schedule=IterationInterval(100))
+   nan_checker = NaNChecker(field_to_check_nans)
+   callbacks[:nan_checker] = Callback(nan_checker, IterationInterval(100))
 
    # Convert numbers to floating point; otherwise preserve type (eg for DateTime types)
    FT = eltype(model.grid)
@@ -74,7 +72,6 @@ function Simulation(model; Δt,
    return Simulation(model,
                      model.timestepper,
                      Δt,
-                     stop_criteria,
                      Float64(stop_iteration),
                      stop_time,
                      Float64(wall_time_limit),
@@ -94,7 +91,6 @@ Base.show(io::IO, s::Simulation) =
               "├── Stop time: $(prettytime(s.stop_time))", '\n',
               "├── Stop iteration : $(s.stop_iteration)", '\n',
               "├── Wall time limit: $(s.wall_time_limit)", '\n',
-              "├── Stop criteria: $(s.stop_criteria)", '\n',
               "├── Callbacks: $(ordered_dict_show(s.callbacks, "│"))", '\n',
               "├── Output writers: $(ordered_dict_show(s.output_writers, "│"))", '\n',
               "└── Diagnostics: $(ordered_dict_show(s.diagnostics, "│"))")
@@ -143,6 +139,38 @@ function reset!(sim)
     sim.stop_time = Inf
     sim.wall_time_limit = Inf
     sim.initialized = false
+    sim.running = true
+    return nothing
+end
+
+#####
+##### Default stop criteria callback functions
+#####
+
+function stop_iteration_exceeded(sim)
+    if sim.model.clock.iteration >= sim.stop_iteration
+        @info "Simulation is stopping. Model iteration $(sim.model.clock.iteration) " *
+               "has hit or exceeded simulation stop iteration $(sim.stop_iteration)."
+       sim.running = false 
+    end
+    return nothing
+end
+
+function stop_time_exceeded(sim)
+    if sim.model.clock.time >= sim.stop_time
+       @info "Simulation is stopping. Model time $(prettytime(sim.model.clock.time)) " *
+             "has hit or exceeded simulation stop time $(prettytime(sim.stop_time))."
+       sim.running = false 
+    end
+    return nothing
+end
+
+function wall_time_limit_exceeded(sim)
+    if sim.run_wall_time >= sim.wall_time_limit
+        @info "Simulation is stopping. Simulation run time $(run_wall_time(sim)) " *
+              "has hit or exceeded simulation wall time limit $(prettytime(sim.wall_time_limit))."
+       sim.running = false 
+    end
     return nothing
 end
 

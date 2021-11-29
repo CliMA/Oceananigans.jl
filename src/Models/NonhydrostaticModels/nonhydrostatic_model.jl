@@ -73,18 +73,18 @@ when `buoyancy != nothing`. By default, all Bounded directions are rigid and imp
 Keyword arguments
 =================
 
-    - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
-    - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
-    - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
-    - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
-    - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
-    - `coriolis`: Parameters for the background rotation rate of the model.
-    - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
-    - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
-    - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
-                 preallocated `CenterField`s.
-    - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
-                     `:RungeKutta3`.
+  - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
+  - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
+  - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
+  - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
+  - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
+  - `coriolis`: Parameters for the background rotation rate of the model.
+  - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
+  - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
+  - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
+               preallocated `CenterField`s.
+  - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
+                   `:RungeKutta3`.
 """
 function NonhydrostaticModel(;    grid,
     architecture::AbstractArchitecture = CPU(),
