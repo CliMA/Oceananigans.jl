@@ -57,7 +57,7 @@ using Oceananigans
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
-model = NonhydrostaticModel(grid=grid, tracers=(:c));
+model = NonhydrostaticModel(grid=grid, tracers=:c);
 
 simulation = Simulation(model, Δt=12, stop_time=3600);
 
@@ -202,7 +202,7 @@ and a time- and horizontal-average of tracer `c` every 20 minutes of simulation 
 to a file called `some_more_averaged_data.jld2`
 
 ```jldoctest jld2_output_writer
-simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (c=c_avg,),
+simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
                                                      prefix = "some_more_averaged_data",
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
 

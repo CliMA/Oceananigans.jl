@@ -87,7 +87,7 @@ NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 We follow the same pattern to create a `HydrostaticFreeSurfaceModel` with buoyancy as a tracer:
 
 ```jldoctest buoyancy; filter = [r".*┌ Warning.*", r".*└ @ Oceananigans.*"]
-julia> model = HydrostaticFreeSurfaceModel(grid=grid, buoyancy=BuoyancyTracer(), tracers=(:b))
+julia> model = HydrostaticFreeSurfaceModel(grid=grid, buoyancy=BuoyancyTracer(), tracers=:b)
 ┌ Warning: HydrostaticFreeSurfaceModel is experimental. Use with caution!
 └ @ Oceananigans.Models.HydrostaticFreeSurfaceModels ~/builds/tartarus-3/clima/oceananigans/src/Models/HydrostaticFreeSurfaceModels/hydrostatic_free_surface_model.jl:106
 HydrostaticFreeSurfaceModel{CPU, Float64}(time = 0 seconds, iteration = 0) 
@@ -217,7 +217,7 @@ julia> g̃ = (0, sind(θ), cosd(θ));
 
 julia> model = NonhydrostaticModel(grid=grid, 
                                    buoyancy=Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃), 
-                                   tracers=(:b))
+                                   tracers=:b)
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0) 
 ├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:b,)
