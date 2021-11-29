@@ -75,7 +75,7 @@ model constructor. Keep in mind that this treatment of buoyancy requires that `:
 tracer, so it needs to be explicitly specified. For example, for a `NonhydrostaticModel`:
 
 ```jldoctest buoyancy
-julia> model = NonhydrostaticModel(grid=grid, buoyancy=BuoyancyTracer(), tracers=(:b))
+julia> model = NonhydrostaticModel(grid=grid, buoyancy=BuoyancyTracer(), tracers=:b)
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:b,)
