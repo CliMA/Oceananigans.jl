@@ -53,7 +53,7 @@ explicitly pass the `buoyancy=nothing` flag. Note that by default `HydrostaticFr
 advects temperature `T` and salinity `S` (which aren't necessary without a buoyancy treatment), so
 it is often recommended to explicitly specify the tracers in this case as well:
 
-```jldoctest buoyancy
+```jldoctest buoyancy; filter = [r".*┌ Warning.*", r".*└ @ Oceananigans.*"]
 julia> model = HydrostaticFreeSurfaceModel(grid=grid, buoyancy=nothing, tracers=())
 ┌ Warning: HydrostaticFreeSurfaceModel is experimental. Use with caution!
 └ @ Oceananigans.Models.HydrostaticFreeSurfaceModels ~/builds/tartarus-3/clima/oceananigans/src/Models/HydrostaticFreeSurfaceModels/hydrostatic_free_surface_model.jl:106
@@ -86,7 +86,7 @@ NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 
 We follow the same pattern to create a `HydrostaticFreeSurfaceModel` with buoyancy as a tracer:
 
-```jldoctest buoyancy
+```jldoctest buoyancy; filter = [r".*┌ Warning.*", r".*└ @ Oceananigans.*"]
 julia> model = HydrostaticFreeSurfaceModel(grid=grid, buoyancy=BuoyancyTracer(), tracers=(:b))
 ┌ Warning: HydrostaticFreeSurfaceModel is experimental. Use with caution!
 └ @ Oceananigans.Models.HydrostaticFreeSurfaceModels ~/builds/tartarus-3/clima/oceananigans/src/Models/HydrostaticFreeSurfaceModels/hydrostatic_free_surface_model.jl:106
@@ -122,7 +122,7 @@ We can similarly create a `HydrostaticFreeSurfaceModel` with the same treatment 
 tracers don't need to be explicitly defined since this is default option for
 `HydrostaticFreeSurfaceModel`):
 
-```jldoctest buoyancy
+```jldoctest buoyancy; filter = [r".*┌ Warning.*", r".*└ @ Oceananigans.*"]
 julia> model = HydrostaticFreeSurfaceModel(grid=grid, buoyancy=SeawaterBuoyancy())
 ┌ Warning: HydrostaticFreeSurfaceModel is experimental. Use with caution!
 └ @ Oceananigans.Models.HydrostaticFreeSurfaceModels ~/builds/tartarus-3/clima/oceananigans/src/Models/HydrostaticFreeSurfaceModels/hydrostatic_free_surface_model.jl:106
