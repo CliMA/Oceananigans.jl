@@ -145,7 +145,7 @@ and a time- and horizontal-average of tracer `c` every 20 minutes of simulation 
 to a file called `some_averaged_data.jld2`
 
 ```jldoctest jld2_output_writer
-simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (c=c_avg,),
+simulation.output_writers[:avg_c] = JLD2OutputWriter(model, (; c=c_avg),
                                                      prefix = "some_averaged_data",
                                                      schedule = AveragedTimeInterval(20minute, window=5minute))
 
