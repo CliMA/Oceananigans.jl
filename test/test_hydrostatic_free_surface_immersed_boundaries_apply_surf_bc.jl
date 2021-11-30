@@ -12,15 +12,14 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
         Nx = 60
         Ny = 60
 
-        underlying_grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                               longitude = (-30, 30),
-                                               latitude = (15, 75),
-                                               z = (-4000, 0))
+        underlying_grid = LatitudeLongitudeGrid(architecture = arch,
+                                                size = (Nx, Ny, 1),
+                                                longitude = (-30, 30),
+                                                latitude = (15, 75),
+                                                z = (-4000, 0))
 
-        @inline raster_depth(i, j) = 30 < i < 35 && 42 < j < 48
-
-        bathymetry = zeros(Nx,Ny) .- 4000
-        bathymetry[31:34,43:47] .= 0
+        bathymetry = zeros(Nx, Ny) .- 4000
+        view(bathymetry, 31:34, 43:47) .= 0
         bathymetry = arch_array(arch, bathymetry)
 
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
