@@ -52,7 +52,8 @@ H = 3600.0
 # H = - minimum(bathymetry)
 
 # A spherical domain
-@show underlying_grid = LatitudeLongitudeGrid(size = (Nx, Ny, Nz),
+@show underlying_grid = LatitudeLongitudeGrid(architecture = arch,
+                                              size = (Nx, Ny, Nz),
                                               longitude = (-180, 180),
                                               latitude = latitude,
                                               halo = (3, 3, 3),

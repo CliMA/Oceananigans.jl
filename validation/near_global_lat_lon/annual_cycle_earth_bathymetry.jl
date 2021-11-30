@@ -61,7 +61,8 @@ H = 3600.0
 # bathymetry = - H .* (bathymetry .< -10)
 
 # A spherical domain
-@show underlying_grid = LatitudeLongitudeGrid(size = (Nx, Ny, Nz),
+@show underlying_grid = LatitudeLongitudeGrid(architecture = arch,
+                                              size = (Nx, Ny, Nz),
                                               longitude = (-180, 180),
                                               latitude = latitude,
                                               halo = (3, 3, 3),
@@ -78,8 +79,9 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 κh = 1e+3
 κz = 1e-4
 
-background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz,
-                                                                       time_discretization = VerticallyImplicitTimeDiscretization())
+background_diffusivity =
+    HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz,
+                                                  time_discretization = VerticallyImplicitTimeDiscretization())
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0)
 
