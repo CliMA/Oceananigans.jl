@@ -68,8 +68,6 @@ by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
     ∂y(L::Tuple, a::AbstractField)
 
-    $(SIGNATURES)
-
 Return an abstract representation of a y-derivative acting on field `a` followed
 by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """

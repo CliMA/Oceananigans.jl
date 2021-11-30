@@ -8,8 +8,6 @@ using Base: @propagate_inbounds
 import Adapt
 using CUDA
 
-using DocStringExtensions
-
 using Oceananigans
 using Oceananigans.Architectures
 using Oceananigans.Grids
