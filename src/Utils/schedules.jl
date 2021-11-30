@@ -107,3 +107,17 @@ end
 show_schedule(schedule) = string(schedule)
 show_schedule(schedule::IterationInterval) = string("IterationInterval(", schedule.interval, ")")
 show_schedule(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
+
+#####
+##### Both schedules
+#####
+
+struct MultiSchedule{S} <: AbstractSchedule
+    schedules :: S
+    MultiSchedule(schedules::S) where S <: Tuple = new{S}(schedules)
+end
+
+MultiSchedule(schedules...) = MultiSchedule(Tuple(schedules))
+
+(multi::MultiSchedule)(model) = all(schedule(model) for schedule in multi.schedules)
+
