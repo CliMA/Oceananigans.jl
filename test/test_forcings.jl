@@ -58,7 +58,8 @@ function time_step_with_single_field_dependent_forcing(arch, fld)
     forcing = NamedTuple{(fld,)}((Forcing((x, y, z, t, u) -> -u, field_dependencies=:u),))
 
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=forcing)
+    model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=forcing,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     time_step!(model, 1, euler=true)
 
     return true
@@ -70,7 +71,8 @@ function time_step_with_multiple_field_dependent_forcing(arch)
     u_forcing = Forcing((x, y, z, t, v, w, T) -> sin(v) * exp(w) * T, field_dependencies=(:v, :w, :T))
 
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=(u=u_forcing,))
+    model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=(u=u_forcing,),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     time_step!(model, 1, euler=true)
 
     return true

@@ -20,6 +20,8 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     model = NonhydrostaticModel(
                architecture = architecture,
                        grid = grid,
+                    tracers = (:T, :S),
+                   buoyancy = SeawaterBuoyancy(),
         boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)
     )
 

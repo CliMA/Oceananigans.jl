@@ -60,7 +60,8 @@ function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
     eos = EOS()
     b = SeawaterBuoyancy(equation_of_state=eos)
 
-    model = NonhydrostaticModel(architecture=arch, grid=grid, buoyancy=b)
+    model = NonhydrostaticModel(architecture=arch, grid=grid, buoyancy=b,
+                                tracers=(:T, :S))
     time_step!(model, 1, euler=true)
 
     return true  # Test that no errors/crashes happen when time stepping.
@@ -72,7 +73,8 @@ function run_first_AB2_time_step_tests(arch, FT)
     # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
     grid = RectilinearGrid(FT, size=(13, 17, 19), extent=(1, 2, 3), architecture=arch)
 
-    model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=(T=add_ones,))
+    model = NonhydrostaticModel(grid=grid, architecture=arch, forcing=(T=add_ones,),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     time_step!(model, 1, euler=true)
 
     # Test that GT = 1, T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
@@ -97,7 +99,8 @@ end
     velocity field.
 """
 function incompressible_in_time(arch, grid, Nt, timestepper)
-    model = NonhydrostaticModel(grid=grid, architecture=arch, timestepper=timestepper)
+    model = NonhydrostaticModel(grid=grid, architecture=arch, timestepper=timestepper,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     grid = model.grid
     u, v, w = model.velocities
 
@@ -146,7 +149,8 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     topology = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), architecture=arch)
     model = NonhydrostaticModel(architecture = arch, grid = grid,
-                                closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz))
+                                closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
     Tz = 5e-3  # Vertical temperature gradient [K/m].
@@ -184,7 +188,8 @@ function time_stepping_with_background_fields(arch)
     background_S = BackgroundField(background_S_func, parameters=1.2)
 
     model = NonhydrostaticModel(grid=grid, background_fields=(u=background_u, v=background_v, w=background_w,
-                                                              T=background_T, S=background_S))
+                                                              T=background_T, S=background_S),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     time_step!(model, 1, euler=true)
 
