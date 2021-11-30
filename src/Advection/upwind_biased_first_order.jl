@@ -2,6 +2,11 @@
 ##### Upwind-biased 1rd-order advection scheme
 #####
 
+"""
+    struct UpwindBiasedFirstOrder <: AbstractUpwindBiasedAdvectionScheme{1}
+
+Upwind-biased first-order advection scheme.
+"""
 struct UpwindBiasedFirstOrder <: AbstractUpwindBiasedAdvectionScheme{1} end
 
 const U1 = UpwindBiasedFirstOrder

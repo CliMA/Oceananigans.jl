@@ -23,18 +23,18 @@ const HCAD = HorizontallyCurvilinearAnisotropicDiffusivity
 
 Returns parameters for an anisotropic diffusivity model on curvilinear grids.
 
-Keyword args
-============
+Keyword arguments
+=================
 
-    * `νh`: Horizontal viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
+  - `νh`: Horizontal viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
 
-    * `νz`: Vertical viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
+  - `νz`: Vertical viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
 
-    * `κh`: Horizontal diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
-            `NamedTuple` of diffusivities with entries for each tracer.
+  - `κh`: Horizontal diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
+          `NamedTuple` of diffusivities with entries for each tracer.
 
-    * `κz`: Vertical diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
-            `NamedTuple` of diffusivities with entries for each tracer.
+  - `κz`: Vertical diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
+          `NamedTuple` of diffusivities with entries for each tracer.
 """
 function HorizontallyCurvilinearAnisotropicDiffusivity(FT=Float64; νh=0, κh=0, νz=0, κz=0,
                                                        time_discretization = ExplicitTimeDiscretization())

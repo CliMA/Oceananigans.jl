@@ -53,8 +53,7 @@ end
 addzero(args...) = 0
 
 """
-    UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero,
-                                    ∂t_uˢ=addzero, ∂t_vˢ=addzero)
+    UniformStokesDrift(; ∂z_uˢ=addzero, ∂z_vˢ=addzero, ∂t_uˢ=addzero, ∂t_vˢ=addzero)
 
 Construct a set of functions that describes the Stokes drift field beneath
 a uniform surface gravity wave field.

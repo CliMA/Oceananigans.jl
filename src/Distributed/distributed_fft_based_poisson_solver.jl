@@ -2,6 +2,7 @@ import PencilFFTs
 
 import Oceananigans.Solvers: poisson_eigenvalues, solve!
 using Oceananigans.Solvers: copy_real_component!
+using Oceananigans.Distributed: rank2index
 
 struct DistributedFFTBasedPoissonSolver{A, P, F, L, λ, S}
       architecture :: A
@@ -19,8 +20,18 @@ function DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
     λy = poisson_eigenvalues(full_grid.Ny, full_grid.Ly, 2, TY())
     λz = poisson_eigenvalues(full_grid.Nz, full_grid.Lz, 3, TZ())
 
-    I, J, K = arch.local_index
-    λx = λx[(J-1)*local_grid.Ny+1:J*local_grid.Ny, :, :]
+    arch.ranks[1] == arch.ranks[3] == 1 || error("Must have Rx == Rz == 1 for distributed fft solver")
+
+    Rx, Ry, Rz = arch.ranks
+
+    # PencilFFT performs a permutation y -> x. 
+    # x will be the "distributed direction" when  s = b / (λx + λy + λz)
+    # we have to permute (Rx, Ry, Rz) with (Ry, Rx, Rz)
+    I, J, K = rank2index(arch.local_rank, Ry, Rx, Rz)
+
+    perm_Nx = full_grid.Nx ÷ Ry
+
+    λx = λx[(I-1)*perm_Nx+1:I*perm_Nx, :, :]
 
     eigenvalues = (; λx, λy, λz)
 
