@@ -88,7 +88,8 @@
             L = (2π, 3π, 5π)
 
             grid = RectilinearGrid(FT, size=N, extent=L)
-            model = NonhydrostaticModel(architecture=arch, grid=grid)
+            model = NonhydrostaticModel(architecture=arch, grid=grid,
+                                        buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
             u, v, w = model.velocities
             T, S = model.tracers

@@ -2,6 +2,11 @@
 ##### Centered second-order advection scheme
 #####
 
+"""
+    struct CenteredSecondOrder <: AbstractAdvectionScheme{0}
+
+Centered second-order advection scheme.
+"""
 struct CenteredSecondOrder <: AbstractAdvectionScheme{0} end
 
 boundary_buffer(::CenteredSecondOrder) = 0

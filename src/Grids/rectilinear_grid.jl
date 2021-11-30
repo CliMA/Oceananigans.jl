@@ -130,9 +130,9 @@ RectilinearGrid{Float64, Periodic, Periodic, Bounded} on the CPU()
                  topology: (Periodic, Periodic, Bounded)
         size (Nx, Ny, Nz): (32, 32, 32)
         halo (Hx, Hy, Hz): (1, 1, 1)
-grid in x: Regular, with spacing 0.03125
-grid in y: Regular, with spacing 0.0625
-grid in z: Regular, with spacing 0.09375
+                grid in x: Regular, with spacing 0.03125
+                grid in y: Regular, with spacing 0.0625
+                grid in z: Regular, with spacing 0.09375
 ```
 
 * A default grid with `Float32` type:
@@ -146,9 +146,9 @@ RectilinearGrid{Float32, Periodic, Periodic, Bounded} on the CPU()
                  topology: (Periodic, Periodic, Bounded)
         size (Nx, Ny, Nz): (32, 32, 16)
         halo (Hx, Hy, Hz): (1, 1, 1)
-grid in x: Regular, with spacing 0.25
-grid in y: Regular, with spacing 0.625
-grid in z: Regular, with spacing 0.3926991
+                grid in x: Regular, with spacing 0.25
+                grid in y: Regular, with spacing 0.625
+                grid in z: Regular, with spacing 0.3926991
 ```
 
 * A two-dimenisional, horizontally-periodic grid:
@@ -162,9 +162,9 @@ RectilinearGrid{Float64, Periodic, Periodic, Flat} on the CPU()
                  topology: (Periodic, Periodic, Flat)
         size (Nx, Ny, Nz): (32, 32, 1)
         halo (Hx, Hy, Hz): (1, 1, 0)
-grid in x: Regular, with spacing 0.19634954084936207
-grid in y: Regular, with spacing 0.39269908169872414
-grid in z: Flattened
+                grid in x: Regular, with spacing 0.19634954084936207
+                grid in y: Regular, with spacing 0.39269908169872414
+                grid in z: Flattened
 ```
 
 * A one-dimensional "column" grid:
@@ -178,9 +178,9 @@ RectilinearGrid{Float64, Flat, Flat, Bounded} on the CPU()
                  topology: (Flat, Flat, Bounded)
         size (Nx, Ny, Nz): (1, 1, 256)
         halo (Hx, Hy, Hz): (0, 0, 1)
-grid in x: Flattened
-grid in y: Flattened
-grid in z: Regular, with spacing 0.5
+                grid in x: Flattened
+                grid in y: Flattened
+                grid in z: Regular, with spacing 0.5
 ```
 
 * A horizontally-periodic regular grid with cell interfaces stretched hyperbolically near the top:
@@ -205,9 +205,9 @@ RectilinearGrid{Float64, Periodic, Periodic, Bounded} on the CPU()
                  topology: (Periodic, Periodic, Bounded)
         size (Nx, Ny, Nz): (32, 32, 24)
         halo (Hx, Hy, Hz): (1, 1, 1)
-grid in x: Regular, with spacing 2.0
-grid in y: Regular, with spacing 2.0
-grid in z: Stretched, with spacing min=0.6826950100338962, max=1.8309085743885056
+                grid in x: Regular, with spacing 2.0
+                grid in y: Regular, with spacing 2.0
+                grid in z: Stretched, with spacing min=0.6826950100338962, max=1.8309085743885056
 ```
 
 * A three-dimensional grid with regular spacing in x, cell interfaces that are closely spaced
@@ -237,9 +237,9 @@ RectilinearGrid{Float64, Periodic, Bounded, Bounded} on the CPU()
                  topology: (Periodic, Bounded, Bounded)
         size (Nx, Ny, Nz): (32, 30, 24)
         halo (Hx, Hy, Hz): (1, 1, 1)
-grid in x: Regular, with spacing 6.25
-grid in y: Stretched, with spacing min=0.2739052315863262, max=5.22642316338267
-grid in z: Stretched, with spacing min=0.6826950100338962, max=1.8309085743885056
+                grid in x: Regular, with spacing 6.25
+                grid in y: Stretched, with spacing min=0.2739052315863262, max=5.22642316338267
+                grid in z: Stretched, with spacing min=0.6826950100338962, max=1.8309085743885056
 ```
 """
 function RectilinearGrid(FT = Float64;
@@ -298,9 +298,9 @@ function show(io::IO, g::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
               "                 topology: ", (TX, TY, TZ), '\n',
               "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
               "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
-              "grid in x: ", show_coordinate(g.Δxᶜᵃᵃ, TX), '\n',
-              "grid in y: ", show_coordinate(g.Δyᵃᶜᵃ, TY), '\n',
-              "grid in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ))
+              "                grid in x: ", show_coordinate(g.Δxᶜᵃᵃ, TX), '\n',
+              "                grid in y: ", show_coordinate(g.Δyᵃᶜᵃ, TY), '\n',
+              "                grid in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ))
 end
 
 
@@ -355,19 +355,19 @@ function with_halo(new_halo, old_grid::RectilinearGrid)
     if old_grid.Δxᶠᵃᵃ isa Number
         x = x_domain(old_grid)
     else
-        x = old_grid.xᶠᵃᵃ
+        x = all_x_nodes(Face, adapt(CPU(), old_grid))[1:old_grid.Nx+1]
     end
 
     if old_grid.Δyᵃᶠᵃ isa Number
         y = y_domain(old_grid)
     else
-        y = old_grid.yᵃᶠᵃ
+        y = all_y_nodes(Face, adapt(CPU(), old_grid))[1:old_grid.Ny+1]
     end
 
     if old_grid.Δzᵃᵃᶠ isa Number
         z = z_domain(old_grid)
     else
-        z = old_grid.zᵃᵃᶠ
+        z = all_z_nodes(Face, adapt(CPU(), old_grid))[1:old_grid.Nz+1]
     end
 
     # Remove elements of size and new_halo in Flat directions as expected by grid
@@ -378,7 +378,7 @@ function with_halo(new_halo, old_grid::RectilinearGrid)
     new_grid = RectilinearGrid(eltype(old_grid);
                architecture = old_grid.architecture,
                size = size,
-               x = x, y = y,z = z,
+               x = x, y = y, z = z,
                topology = topo,
                halo = new_halo)
 

@@ -327,7 +327,9 @@ for arch in archs
         buoyancy = SeawaterBuoyancy(gravitational_acceleration = 1,
                                              equation_of_state = LinearEquationOfState(α=1, β=1))
 
-        model = NonhydrostaticModel(architecture = arch, grid = grid, buoyancy = buoyancy)
+        model = NonhydrostaticModel(architecture = arch, grid = grid, buoyancy = buoyancy,
+                                         tracers = (:T, :S)
+                                    )
 
         @testset "Derivative computations [$(typeof(arch))]" begin
             @info "      Testing compute! derivatives..."

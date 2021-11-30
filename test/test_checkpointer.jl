@@ -38,10 +38,10 @@ Run two coarse rising thermal bubble simulations and make sure
 1. When restarting from a checkpoint, the restarted model matches the non-restarted
    model to machine precision.
 
-2. When using set!(new_model) to a checkpoint, the new model matches the non-restarted
+2. When using set!(test_model) to a checkpoint, the new model matches the non-restarted
    simulation to machine precision.
 
-3. run!(new_model, pickup) works as expected
+3. run!(test_model, pickup) works as expected
 """
 function test_thermal_bubble_checkpointer_output(arch)
 
@@ -55,8 +55,8 @@ function test_thermal_bubble_checkpointer_output(arch)
 
     grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
-
-    true_model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure)
+    true_model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure,
+                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     test_model = deepcopy(true_model)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
@@ -149,7 +149,10 @@ end
 
 function run_checkpointer_cleanup_tests(arch)
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    model = NonhydrostaticModel(architecture=arch, grid=grid,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S)
+                                )
+
     simulation = Simulation(model, Δt=0.2, stop_iteration=10)
 
     simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(3), cleanup=true)

@@ -78,6 +78,11 @@ import Oceananigans.TurbulenceClosures:
 
 export AbstractImmersedBoundary
 
+"""
+AbstractImmersedBoundary
+
+Abstract supertype for immersed boundary grids.
+"""
 abstract type AbstractImmersedBoundary end
 
 struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I} <: AbstractGrid{FT, TX, TY, TZ}

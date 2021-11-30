@@ -63,9 +63,9 @@ Turn each multiary operator in the list `(op1, op2, op3...)`
 into a multiary operator on `Oceananigans.Fields` for use in `AbstractOperations`.
 
 Note that a multiary operator:
-    * is a function with two or more arguments: for example, `+(x, y, z)` is a multiary function;
-    * must be imported to be extended if part of `Base`: use `import Base: op; @multiary op`;
-    * can only be called on `Oceananigans.Field`s if the "location" is noted explicitly; see example.
+  * is a function with two or more arguments: for example, `+(x, y, z)` is a multiary function;
+  * must be imported to be extended if part of `Base`: use `import Base: op; @multiary op`;
+  * can only be called on `Oceananigans.Field`s if the "location" is noted explicitly; see example.
 
 Example
 =======

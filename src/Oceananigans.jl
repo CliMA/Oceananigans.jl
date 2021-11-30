@@ -1,3 +1,7 @@
+"""
+Main module for `Oceananigans.jl` -- a Julia software for fast, friendly, flexible,
+data-driven, ocean-flavored fluid dynamics on CPUs and GPUs.
+"""
 module Oceananigans
 
 if VERSION < v"1.6"
@@ -30,7 +34,7 @@ export
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     AveragedField, ComputedField, KernelComputedField, BackgroundField,
-    interior, set!, compute!,
+    interior, set!, compute!, regrid!,
 
     # Forcing functions
     Forcing, Relaxation, LinearTarget, GaussianMask,
@@ -40,7 +44,7 @@ export
 
     # BuoyancyModels and equations of state
     Buoyancy, BuoyancyTracer, SeawaterBuoyancy,
-    LinearEquationOfState, RoquetIdealizedNonlinearEquationOfState, TEOS10,
+    LinearEquationOfState, TEOS10,
     BuoyancyField,
 
     # Surface wave Stokes drift via Craik-Leibovich equations
@@ -75,8 +79,7 @@ export
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
 
     # Diagnostics
-    NaNChecker, StateChecker,
-    CFL, AdvectiveCFL, DiffusiveCFL,
+    StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
     FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
@@ -102,6 +105,7 @@ using LinearAlgebra
 
 using CUDA
 using Adapt
+using DocStringExtensions
 using OffsetArrays
 using FFTW
 using JLD2

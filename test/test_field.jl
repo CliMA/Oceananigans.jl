@@ -1,4 +1,11 @@
-using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy, regrid!
+using Statistics
+using Oceananigans
+using Oceananigans.Architectures: array_type, arch_array
+using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy, regrid!, ReducedField, has_velocities, VelocityFields, TracerFields, interpolate
+
+include("utils_for_runtests.jl")
+
+archs = test_architectures()
 
 """
     correct_field_size(arch, grid, FieldType, Tx, Ty, Tz)
@@ -56,7 +63,7 @@ function run_field_reduction_tests(FT, arch)
 
     ϕs_vals = (u_vals, v_vals, w_vals, c_vals)
 
-    dims_to_test = (1, 2, 3, (1, 2), (1, 3), (2, 3))
+    dims_to_test = (1, 2, 3, (1, 2), (1, 3), (2, 3), (1, 2, 3))
 
     for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
 
@@ -75,13 +82,23 @@ function run_field_reduction_tests(FT, arch)
         @test mean(abs2, ϕ) ≈ mean(abs2, ϕ) atol=ε
 
         for dims in dims_to_test
-            @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
-            @test all(isapprox(maximum(ϕ, dims=dims), maximum(ϕ_vals, dims=dims), atol=4ε))
-            @test all(isapprox(   mean(ϕ, dims=dims),    mean(ϕ_vals, dims=dims), atol=4ε))
+            @test all(isapprox(minimum(ϕ, dims=dims),
+                               minimum(ϕ_vals, dims=dims), atol=4ε))
 
-            @test all(isapprox(minimum(sin,  ϕ, dims=dims), minimum(sin,  ϕ_vals, dims=dims), atol=4ε))
-            @test all(isapprox(maximum(cos,  ϕ, dims=dims), maximum(cos,  ϕ_vals, dims=dims), atol=4ε))
-            @test all(isapprox(   mean(cosh, ϕ, dims=dims),    mean(cosh, ϕ_vals, dims=dims), atol=5ε))
+            @test all(isapprox(maximum(ϕ, dims=dims),
+                               maximum(ϕ_vals, dims=dims), atol=4ε))
+
+            @test all(isapprox(mean(ϕ, dims=dims),
+                               mean(ϕ_vals, dims=dims), atol=4ε))
+
+            @test all(isapprox(minimum(sin, ϕ, dims=dims),
+                               minimum(sin, ϕ_vals, dims=dims), atol=4ε))
+
+            @test all(isapprox(maximum(cos, ϕ, dims=dims),
+                               maximum(cos, ϕ_vals, dims=dims), atol=4ε))
+
+            @test all(isapprox(mean(cosh, ϕ, dims=dims),
+                               mean(cosh, ϕ_vals, dims=dims), atol=5ε))
         end
 
         CUDA.allowscalar(true)
@@ -257,10 +274,10 @@ end
     @testset "Field utils" begin
         @info "  Testing field utils..."
 
-        @test Fields.has_velocities(()) == false
-        @test Fields.has_velocities((:u,)) == false
-        @test Fields.has_velocities((:u, :v)) == false
-        @test Fields.has_velocities((:u, :v, :w)) == true
+        @test has_velocities(()) == false
+        @test has_velocities((:u,)) == false
+        @test has_velocities((:u, :v)) == false
+        @test has_velocities((:u, :v, :w)) == true
 
         grid = RectilinearGrid(size=(4, 6, 8), extent=(1, 1, 1))
         ϕ = CenterField(CPU(), grid)

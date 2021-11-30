@@ -12,62 +12,6 @@ import Oceananigans.Utils: aligned_time_step
 
 # Simulations are for running
 
-"""
-    @stopwatch sim expr
-
-Increment sim.stopwatch with the execution time of expr.
-"""
-macro stopwatch(sim, expr)
-    return esc(quote
-       local time_before = time_ns() * 1e-9
-       local output = $expr
-       local time_after = time_ns() * 1e-9
-       sim.run_wall_time += time_after - time_before
-       output
-   end)
-end
-
-#####
-##### But they must be stopped
-#####
-
-function stop(sim)
-    for criteria in sim.stop_criteria
-        if criteria(sim)
-            return true
-        end
-    end
-
-    return false
-end
-
-function iteration_limit_exceeded(sim)
-    if sim.model.clock.iteration >= sim.stop_iteration
-          @info "Simulation is stopping. Model iteration $(sim.model.clock.iteration) " *
-                "has hit or exceeded simulation stop iteration $(sim.stop_iteration)."
-          return true
-    end
-    return false
-end
-
-function stop_time_exceeded(sim)
-    if sim.model.clock.time >= sim.stop_time
-          @info "Simulation is stopping. Model time $(prettytime(sim.model.clock.time)) " *
-                "has hit or exceeded simulation stop time $(prettytime(sim.stop_time))."
-          return true
-    end
-    return false
-end
-
-function wall_time_limit_exceeded(sim)
-    if sim.run_wall_time >= sim.wall_time_limit
-        @info "Simulation is stopping. Simulation run time $(run_wall_time(sim)) " *
-              "has hit or exceeded simulation wall time limit $(prettytime(sim.wall_time_limit))."
-          return true
-    end
-    return false
-end
-
 #####
 ##### Time-step "alignment" with output and callbacks scheduled on TimeInterval
 #####
@@ -129,13 +73,13 @@ leaving all other model properties unchanged.
 
 Possible values for `pickup` are:
 
-    * `pickup=true` picks a simulation up from the latest checkpoint associated with
-      the `Checkpointer` in `simulation.output_writers`.
+  * `pickup=true` picks a simulation up from the latest checkpoint associated with
+    the `Checkpointer` in `simulation.output_writers`.
 
-    * `pickup=iteration::Int` picks a simulation up from the checkpointed file associated
-       with `iteration` and the `Checkpointer` in `simulation.output_writers`.
+  * `pickup=iteration::Int` picks a simulation up from the checkpointed file associated
+     with `iteration` and the `Checkpointer` in `simulation.output_writers`.
 
-    * `pickup=filepath::String` picks a simulation up from checkpointer data in `filepath`.
+  * `pickup=filepath::String` picks a simulation up from checkpointer data in `filepath`.
 
 Note that `pickup=true` and `pickup=iteration` fails if `simulation.output_writers` contains
 more than one checkpointer.
@@ -148,11 +92,10 @@ function run!(sim; pickup=false)
     end
 
     sim.initialized = false
-    sim.running = !(stop(sim))
+    sim.running = true
 
     while sim.running
         time_step!(sim)
-        sim.running = !(stop(sim))
     end
 
     return nothing
@@ -161,29 +104,37 @@ end
 """ Step `sim`ulation forward by one time step. """
 function time_step!(sim::Simulation)
 
-    initialization_step = !(sim.initialized)
+    start_time_step = time_ns()
 
-    if initialization_step 
-        @stopwatch sim initialize_simulation!(sim)
-        start_time = time_ns()
-        @info "Executing first time step..."
-    end
+    if !(sim.initialized) # execute initialization step
+        initialize_simulation!(sim)
 
-    @stopwatch sim begin
+        if sim.running # check that initialization didn't stop time-stepping
+            @info "Executing initial time step..."
+
+            start_time = time_ns()
+            Δt = aligned_time_step(sim, sim.Δt)
+            time_step!(sim.model, Δt)
+
+            elapsed_initial_step_time = prettytime(1e-9 * (time_ns() - start_time))
+            @info "    ... initial time step complete ($elapsed_initial_step_time)."
+        else
+            @warn "Simulation stopped during initialization."
+        end
+    else # business as usual...
         Δt = aligned_time_step(sim, sim.Δt)
         time_step!(sim.model, Δt)
     end
 
-    if initialization_step
-        elapsed_first_step_time = prettytime(1e-9 * (time_ns() - start_time))
-        @info "    ... first time step complete ($elapsed_first_step_time)."
-    end
+    # Callbacks and callback-like things
+    [diag.schedule(sim.model)     && run_diagnostic!(diag, sim.model) for diag     in values(sim.diagnostics)]
+    [callback.schedule(sim.model) && callback(sim)                    for callback in values(sim.callbacks)]
+    [writer.schedule(sim.model)   && write_output!(writer, sim.model) for writer   in values(sim.output_writers)]
 
-    @stopwatch sim begin
-        [diag.schedule(sim.model)     && run_diagnostic!(diag, sim.model) for diag     in values(sim.diagnostics)]
-        [callback.schedule(sim.model) && callback(sim)                    for callback in values(sim.callbacks)]
-        [writer.schedule(sim.model)   && write_output!(writer, sim.model) for writer   in values(sim.output_writers)]
-    end
+    end_time_step = time_ns()
+
+    # Increment the wall clock
+    sim.run_wall_time += 1e-9 * (end_time_step - start_time_step)
 
     return nothing
 end
@@ -206,12 +157,11 @@ we_want_to_pickup(pickup) = throw(ArgumentError("Cannot run! with pickup=$pickup
 """ 
     initialize_simulation!(sim, pickup=false)
 
-Initialize a simulation before running it. Initialization involves:
+Initialize a simulation:
 
-- Updating the auxiliary state of the simulation (filling halo regions, computing auxiliary fields)
-- Evaluating all diagnostics, callbacks, and output writers if sim.model.clock.iteration == 0
-- Adding diagnostics that "depend" on output writers
-- If pickup != false, picking up the simulation from a checkpoint.
+- Update the auxiliary state of the simulation (filling halo regions, computing auxiliary fields)
+- Evaluate all diagnostics, callbacks, and output writers if sim.model.clock.iteration == 0
+- Add diagnostics that "depend" on output writers
 
 """
 function initialize_simulation!(sim)

@@ -22,22 +22,24 @@ end
 Return a `TwoDimensionalLeith` type associated with the turbulence closure proposed by
 Leith (1965) and Fox-Kemper & Menemenlis (2008) which has an eddy viscosity of the form
 
-    `νₑ = (C * Δᶠ)³ * √(|∇h ζ|² + |∇h ∂z w|²)`
+```julia
+νₑ = (C * Δᶠ)³ * √(|∇ₕ ζ|² + |∇ₕ ∂w/∂z|²)
+```
 
 and an eddy diffusivity of the form...
 
-where `Δᶠ` is the filter width, `ζ = ∂x v - ∂y u` is the vertical vorticity,
+where `Δᶠ` is the filter width, `ζ = ∂v/∂x - ∂u/∂y` is the vertical vorticity,
 and `C` is a model constant.
 
 Keyword arguments
 =================
-    - `C`      : Model constant
-    - `C_Redi` : Coefficient for down-gradient tracer diffusivity for each tracer.
-                 Either a constant applied to every tracer, or a `NamedTuple` with fields
-                 for each tracer individually.
-    - `C_GM`   : Coefficient for down-gradient tracer diffusivity for each tracer.
-                 Either a constant applied to every tracer, or a `NamedTuple` with fields
-                 for each tracer individually.
+  - `C`: Model constant
+  - `C_Redi`: Coefficient for down-gradient tracer diffusivity for each tracer.
+              Either a constant applied to every tracer, or a `NamedTuple` with fields
+              for each tracer individually.
+  - `C_GM`: Coefficient for down-gradient tracer diffusivity for each tracer.
+            Either a constant applied to every tracer, or a `NamedTuple` with fields
+            for each tracer individually.
 
 References
 ==========
@@ -56,6 +58,7 @@ TwoDimensionalLeith(FT=Float64; C=0.3, C_Redi=1, C_GM=1) = TwoDimensionalLeith{F
 function with_tracers(tracers, closure::TwoDimensionalLeith{FT}) where FT
     C_Redi = tracer_diffusivities(tracers, closure.C_Redi)
     C_GM = tracer_diffusivities(tracers, closure.C_GM)
+    
     return TwoDimensionalLeith{FT}(closure.C, C_Redi, C_GM)
 end
 
