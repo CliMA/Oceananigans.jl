@@ -1,3 +1,5 @@
+using Oceananigans.Models: AbstractModel
+
 struct NaNChecker{F}
     fields :: F
 end
@@ -12,6 +14,7 @@ a container with key-value pairs like a dictionary or `NamedTuple`.
 NaNChecker(; fields) = NaNChecker(fields)
 
 hasnan(field) = any(isnan, parent(field)) 
+hasnan(model::AbstractModel) = hasnan(first(fields(model)))
 
 function (nc::NaNChecker)(simulation)
     for (name, field) in pairs(nc.fields)
