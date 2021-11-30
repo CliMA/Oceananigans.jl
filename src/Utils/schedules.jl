@@ -2,7 +2,7 @@
     AbstractSchedule
 
 Supertype for objects that schedule `OutputWriter`s and `Diagnostics`.
-Schedules must define the functor `Schedule(model)` that returns true or
+Schedule must define the functor `Schedule(model)` that returns true or
 false.
 """
 abstract type AbstractSchedule end
@@ -109,15 +109,34 @@ show_schedule(schedule::IterationInterval) = string("IterationInterval(", schedu
 show_schedule(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
 
 #####
-##### Both schedules
+##### All and any schedules
 #####
 
-struct MultiSchedule{S} <: AbstractSchedule
+struct AllSchedule{S} <: AbstractSchedule
     schedules :: S
-    MultiSchedule(schedules::S) where S <: Tuple = new{S}(schedules)
+    AllSchedule(schedules::S) where S <: Tuple = new{S}(schedules)
 end
 
-MultiSchedule(schedules...) = MultiSchedule(Tuple(schedules))
+"""
+    AllSchedule(child_schedule_1, child_schedule_2, other_child_schedules...)
 
-(multi::MultiSchedule)(model) = all(schedule(model) for schedule in multi.schedules)
+Return a schedule that actuates when all `child_schedule`s actuate.
+"""
+AllSchedule(schedules...) = AllSchedule(Tuple(schedules))
+
+(as::AllSchedule)(model) = all(schedule(model) for schedule in as.schedules)
+
+struct AnySchedule{S} <: AbstractSchedule
+    schedules :: S
+    AnySchedule(schedules::S) where S <: Tuple = new{S}(schedules)
+end
+
+"""
+    AnySchedule(child_schedule_1, child_schedule_2, other_child_schedules...)
+
+Return a schedule that actuates when any of the `child_schedule`s actuates.
+"""
+AnySchedule(schedules...) = AnySchedule(Tuple(schedules))
+
+(as::AnySchedule)(model) = any(schedule(model) for schedule in as.schedules)
 
