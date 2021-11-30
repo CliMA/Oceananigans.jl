@@ -5,9 +5,9 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field
 #####
 
 """
-    VelocityFields(arch, grid, bcs::NamedTuple)
+    VelocityFields(arch, grid, user_bcs = NamedTuple())
 
-Return a NamedTuple with fields `u`, `v`, `w` initialized on the architecture `arch`
+Return a `NamedTuple` with fields `u`, `v`, `w` initialized on the architecture `arch`
 and `grid`. Boundary conditions `bcs` may be specified via a named tuple of
 `FieldBoundaryCondition`s.
 """
@@ -35,11 +35,11 @@ end
 #####
 
 """
-    TracerFields(tracer_names, arch, grid, bcs)
+    TracerFields(tracer_names, arch, grid, user_bcs)
 
-Returns a `NamedTuple` with tracer fields specified by `tracer_names` initialized as
-`CenterField`s on the architecture `arch` and `grid`. Boundary conditions `bcs` may
-be specified via a named tuple of `FieldBoundaryCondition`s.
+Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized as
+`CenterField`s on the architecture `arch` and `grid`. Boundary conditions `user_bcs`
+may be specified via a named tuple of `FieldBoundaryCondition`s.
 """
 function TracerFields(tracer_names, arch, grid, user_bcs)
     default_bcs = NamedTuple(name => FieldBoundaryConditions(grid, (Center, Center, Center)) for name in tracer_names)
@@ -50,7 +50,7 @@ end
 """
     TracerFields(tracer_names, arch, grid; kwargs...)
 
-Return a NamedTuple with tracer fields specified by `tracer_names` initialized as
+Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized as
 `CenterField`s on the architecture `arch` and `grid`. Fields may be passed via optional
 keyword arguments `kwargs` for each field.
 
@@ -73,9 +73,9 @@ TracerFields(::NamedTuple{(), Tuple{}}, arch, grid, bcs) = NamedTuple()
 """
     PressureFields(arch, grid, bcs::NamedTuple)
 
-Return a NamedTuple with pressure fields `pHY′` and `pNHS` initialized as
-`CenterField`s on the architecture `arch` and `grid`.  Boundary conditions `bcs` may
-be specified via a named tuple of `FieldBoundaryCondition`s.
+Return a `NamedTuple` with pressure fields `pHY′` and `pNHS` initialized as
+`CenterField`s on the architecture `arch` and `grid`.  Boundary conditions `bcs`
+may be specified via a named tuple of `FieldBoundaryCondition`s.
 """
 function PressureFields(arch, grid, bcs=NamedTuple())
 
@@ -104,9 +104,13 @@ end
 
 
 """
-    TendencyFields(arch, grid, tracer_names; kwargs...)
+    TendencyFields(arch, grid, tracer_names;
+                   u = XFaceField(arch, grid),
+                   v = YFaceField(arch, grid),
+                   w = ZFaceField(arch, grid),
+                   kwargs...)
 
-Return a NamedTuple with tendencies for all solution fields (velocity fields and
+Return a `NamedTuple` with tendencies for all solution fields (velocity fields and
 tracer fields), initialized on the architecture `arch` and `grid`. Optional `kwargs`
 can be specified to assign data arrays to each tendency field.
 """
@@ -131,9 +135,9 @@ VelocityFields(::Nothing, arch, grid, bcs) = VelocityFields(arch, grid, bcs)
 PressureFields(::Nothing, arch, grid, bcs) = PressureFields(arch, grid, bcs)
 
 """
-    VelocityFields(proposed_velocities::NamedTuple, arch, grid, tracer_names, bcs)
+    VelocityFields(proposed_velocities::NamedTuple{(:u, :v, :w)}, arch, grid, bcs)
 
-Returns a `NamedTuple` of velocity fields, overwriting boundary conditions
+Return a `NamedTuple` of velocity fields, overwriting boundary conditions
 in `proposed_velocities` with corresponding fields in the `NamedTuple` `bcs`.
 """
 function VelocityFields(proposed_velocities::NamedTuple{(:u, :v, :w)}, arch, grid, bcs)
@@ -150,7 +154,7 @@ end
 """
     TracerFields(proposed_tracers::NamedTuple, arch, grid, bcs)
 
-Returns a `NamedTuple` of tracers, overwriting boundary conditions
+Return a `NamedTuple` of tracers, overwriting boundary conditions
 in `proposed_tracers` with corresponding fields in the `NamedTuple` `bcs`.
 """
 function TracerFields(proposed_tracers::NamedTuple, arch, grid, bcs)
@@ -164,9 +168,9 @@ function TracerFields(proposed_tracers::NamedTuple, arch, grid, bcs)
 end
 
 """
-    PressureFields(pressures::NamedTuple, arch, grid, tracer_names, bcs)
+    PressureFields(proposed_pressures::NamedTuple{(:pHY′, :pNHS)}, arch, grid, bcs)
 
-Returns a `NamedTuple` of pressure fields with, overwriting boundary conditions
+Return a `NamedTuple` of pressure fields with, overwriting boundary conditions
 in `proposed_tracer_fields` with corresponding fields in the `NamedTuple` `bcs`.
 """
 function PressureFields(proposed_pressures::NamedTuple{(:pHY′, :pNHS)}, arch, grid, bcs)
