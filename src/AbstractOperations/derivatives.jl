@@ -8,7 +8,7 @@ struct Derivative{X, Y, Z, D, A, I, AD, R, G, T} <: AbstractOperation{X, Y, Z, R
     architecture :: R
             grid :: G
 
-    """
+    @doc """
         Derivative{X, Y, Z}(∂, arg, ▶, grid)
 
     Returns an abstract representation of the derivative `∂` on `arg`,
@@ -59,8 +59,8 @@ push!(operators, derivative_operators...)
 """
     ∂x(L::Tuple, a::AbstractField)
 
-Return an abstract representation of an x-derivative acting on `a` followed by
-interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
+Return an abstract representation of an x-derivative acting on field `a` followed
+by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
 ∂x(L::Tuple, arg::AF{X, Y, Z}) where {X, Y, Z} =
     _derivative(L, ∂x(X, Y, Z), arg, (flip(X), Y, Z), ∂x, arg.grid)
@@ -68,8 +68,10 @@ interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
     ∂y(L::Tuple, a::AbstractField)
 
-Return an abstract representation of a y-derivative acting on `a` followed by
-interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
+    $(SIGNATURES)
+
+Return an abstract representation of a y-derivative acting on field `a` followed
+by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
 ∂y(L::Tuple, arg::AF{X, Y, Z}) where {X, Y, Z} =
     _derivative(L, ∂y(X, Y, Z), arg, (X, flip(Y), Z), ∂y, arg.grid)
@@ -77,8 +79,8 @@ interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
     ∂z(L::Tuple, a::AbstractField)
 
-Return an abstract representation of a z-derivative acting on `a` followed by
-interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
+Return an abstract representation of a z-derivative acting on field `a` followed
+by  interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
 ∂z(L::Tuple, arg::AF{X, Y, Z}) where {X, Y, Z} =
     _derivative(L, ∂z(X, Y, Z), arg, (X, Y, flip(Z)), ∂z, arg.grid)
@@ -87,20 +89,20 @@ interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
     ∂x(a::AbstractField)
 
-Return an abstract representation of a x-derivative acting on `a`.
+Return an abstract representation of a x-derivative acting on field `a`.
 """
 ∂x(arg::AF{X, Y, Z}) where {X, Y, Z} = ∂x((flip(X), Y, Z), arg)
 
 """
     ∂y(a::AbstractField)
 
-Return an abstract representation of a y-derivative acting on `a`.
+Return an abstract representation of a y-derivative acting on field `a`.
 """
 ∂y(arg::AF{X, Y, Z}) where {X, Y, Z} = ∂y((X, flip(Y), Z), arg)
 """
     ∂z(a::AbstractField)
 
-Return an abstract representation of a z-derivative acting on `a`.
+Return an abstract representation of a z-derivative acting on field `a`.
 """
 ∂z(arg::AF{X, Y, Z}) where {X, Y, Z} = ∂z((X, Y, flip(Z)), arg)
 

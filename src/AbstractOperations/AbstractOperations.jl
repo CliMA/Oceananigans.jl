@@ -2,11 +2,14 @@ module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
 export KernelFunctionOperation
+export testfunction
 
 using Base: @propagate_inbounds
 
 import Adapt
 using CUDA
+
+using DocStringExtensions
 
 using Oceananigans
 using Oceananigans.Architectures
@@ -43,7 +46,7 @@ const operators = Set()
 """
     at(loc, abstract_operation)
 
-Returns `abstract_operation` relocated to `loc`ation.
+Return `abstract_operation` relocated to `loc`ation.
 """
 at(loc, f) = f # fallback
 
