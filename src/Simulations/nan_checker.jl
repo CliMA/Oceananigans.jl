@@ -3,6 +3,8 @@ mutable struct NaNChecker{F}
     erroring :: Bool
 end
 
+NaNChecker(fields) = NaNChecker(fields, false) # default
+
 """
     NaNChecker(; fields, erroring=false)
 
