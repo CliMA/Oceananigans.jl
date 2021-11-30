@@ -17,7 +17,7 @@ mutable struct Clock{T}
     iteration :: Int
         stage :: Int
 
-    """
+    @doc """
         Clock{T}(time, iteration, stage=1)
 
     Returns a `Clock` with time of type `T`, initialized to the first stage.

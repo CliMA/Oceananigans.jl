@@ -9,7 +9,7 @@ struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, R, G, T} <: AbstractOperation{X
     architecture :: R
             grid :: G
 
-    """
+    @doc """
         BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, arch, grid)
 
     Returns an abstract representation of the binary operation `op(▶a(a), ▶b(b))`.

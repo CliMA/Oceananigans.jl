@@ -19,7 +19,7 @@ struct BuoyancyField{B, S, A, D, G, T, C} <: AbstractDataField{Center, Center, C
          tracers :: C
           status :: S
 
-    """
+    @doc """
         BuoyancyField(data, grid, buoyancy, tracers)
 
     Returns a `BuoyancyField` with `data` on `grid` corresponding to
