@@ -91,7 +91,7 @@ function PressureFields(arch, grid, bcs=NamedTuple())
     return (pHY′=pHY′, pNHS=pNHS)
 end
 
-function PressureFields(arch, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, args...)
+function PressureFields(arch, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, bcs=NamedTuple())
     default_pressure_boundary_conditions =
         (pHY′ = FieldBoundaryConditions(grid, (Center, Center, Center)),
          pNHS = FieldBoundaryConditions(grid, (Center, Center, Center)))
