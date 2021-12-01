@@ -3,8 +3,6 @@ using Oceananigans
 using Oceananigans.Architectures: array_type, arch_array
 using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy, regrid!, ReducedField, has_velocities, VelocityFields, TracerFields, interpolate
 
-include("utils_for_runtests.jl")
-
 archs = test_architectures()
 
 """
