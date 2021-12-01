@@ -1,7 +1,6 @@
 using Oceananigans.Grids: topology, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
 using CUDA
 
-include("utils_for_runtests.jl")
 include("data_dependencies.jl")
 
 archs = test_architectures()

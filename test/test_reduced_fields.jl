@@ -4,8 +4,6 @@ using Oceananigans.Fields: ReducedField, CenterField, ZFaceField, compute_at!, @
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Grids: halo_size
 
-include("utils_for_runtests.jl")
-
 archs = test_architectures()
 
 """

@@ -3,8 +3,6 @@ using CUDA
 using Glob
 using Test
 
-include("utils_for_runtests.jl")
-
 archs = test_architectures()
 
 #####

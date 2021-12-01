@@ -8,8 +8,6 @@ using Oceananigans.Simulations:
 
 using Dates: DateTime
 
-include("utils_for_runtests.jl")
-
 archs = test_architectures()
 
 function wall_time_step_wizard_tests(arch)

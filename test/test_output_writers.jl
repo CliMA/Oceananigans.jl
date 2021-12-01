@@ -12,8 +12,6 @@ using Oceananigans: write_output!
 using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC, ContinuousBoundaryFunction
 using Oceananigans.TimeSteppers: update_state!
 
-include("utils_for_runtests.jl")
-
 archs = test_architectures()
 
 #####

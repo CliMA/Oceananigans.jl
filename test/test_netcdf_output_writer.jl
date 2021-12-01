@@ -7,8 +7,6 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans: Clock
 
-include("utils_for_runtests.jl")
-
 archs = test_architectures()
 
 #####
