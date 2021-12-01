@@ -13,31 +13,32 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 ##### Grid
 #####
 
-arch = GPU()
-const Ly = 2000kilometers # north-south extent [m]
+# Architecture
+architecture  = CPU()
 
-Ny = 400
+# number of grid points
+Nx = 100
+Ny = 200
 Nz = 35
 
-# s = 1.5 # stretching factor
-# z_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
-
+# stretched grid 
 k_center = collect(1:Nz)
 Δz_center = @. 10 * 1.104^(Nz - k_center)
+
 const Lz = sum(Δz_center)
+
 z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
 z_faces[Nz+1] = 0
 
-grid = RectilinearGrid(architecture = arch,
-                       topology = (Periodic, Bounded, Bounded),
-                       size = (1, Ny, Nz),
-                       halo = (3, 3, 3),
-                       x = (0, Ly),
+grid = RectilinearGrid(architecture = architecture,
+                       topology = (Flat, Bounded, Bounded),
+                       size = (Ny, Nz),
+                       halo = (3, 3),
                        y = (0, Ly),
                        z = z_faces)
 
+@info "Built a grid: $grid."
 
-@show grid
 
 #=
 # We visualize the cell interfaces by plotting the cell height
@@ -135,7 +136,7 @@ f² = FunctionField{Center, Center, Center}(f²_func, grid)
 closure = AnisotropicDiffusivity(νh = 100, νz = 10, κh = 10, κz = 10,
                                  time_discretization = VerticallyImplicitTimeDiscretization())
 
-model = IncompressibleModel(architecture = arch,
+model = NonhydrostaticModel(architecture = arch,
                             grid = grid,
                             advection = UpwindBiasedFifthOrder(),
                             buoyancy = BuoyancyTracer(),
@@ -160,12 +161,12 @@ cpu_grid(grid::RectilinearGrid) = grid
 
 cpu_grid(grid::RectilinearGrid) =
     RectilinearGrid(architecture = CPU(),
-                                       topology = topology(grid),
-                                       size = size(grid),
-                                       halo = halo_size(grid),
-                                       x = (0, grid.Ly),
-                                       y = (0, grid.Ly),
-                                       z = grid.zᵃᵃᶠ)
+                    topology = topology(grid),
+                    size = size(grid),
+                    halo = halo_size(grid),
+                    x = (0, grid.Ly),
+                    y = (0, grid.Ly),
+                    z = grid.zᵃᵃᶠ)
 
 function channel_plot(u_device, b_device)
 

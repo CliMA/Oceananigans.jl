@@ -16,6 +16,9 @@ using Oceananigans.Grids: xnode, ynode, znode
 const Lx = 1000kilometers # zonal domain length [m]
 const Ly = 2000kilometers # meridional domain length [m]
 
+# Architecture
+architecture  = CPU()
+
 # number of grid points
 Nx = 100
 Ny = 200
@@ -29,8 +32,6 @@ const Lz = sum(Δz_center)
 
 z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
 z_faces[Nz+1] = 0
-
-architecture = CPU()
 
 grid = RectilinearGrid(architecture = architecture,
                        topology = (Periodic, Bounded, Bounded),
