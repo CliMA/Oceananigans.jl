@@ -44,7 +44,8 @@ function ImmersedBoundaryGrid(grid, ib::Union{ArrayGridFittedBottom, CuArrayGrid
     # Wrap bathymetry in an OffsetArray with halos
     arch = grid.architecture
     bottom_field = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
-    bottom_field .= ib.bottom
+    bottom_data = arch_array(arch, ib.bottom)
+    bottom_field .= bottom_data
     fill_halo_regions!(bottom_field, arch)
     offset_bottom_array = dropdims(bottom_field.data, dims=3)
     new_ib = GridFittedBottom(offset_bottom_array)

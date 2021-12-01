@@ -13,12 +13,12 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
                                           extent = (Nx, Ny, 3),
                                           topology = (Periodic, Periodic, Bounded))
 
+        # B for bathymetry
         B = [-3. for i=1:Nx, j=1:Ny ]
         B[2:Nx-1,2:Ny-1] .= [-2. for i=2:Nx-1, j=2:Ny-1 ]
         B[3:Nx-2,3:Ny-2] .= [-1. for i=3:Nx-2, j=3:Ny-2 ]
-        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
 
-        free_surface = ImplicitFreeSurface()
+        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
 
         model = HydrostaticFreeSurfaceModel(grid = grid,
                                             architecture = arch,
@@ -46,11 +46,15 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
         fs = model.free_surface
         vertically_integrated_lateral_areas = fs.implicit_step_solver.vertically_integrated_lateral_areas
+
         ∫Axᶠᶜᶜ = vertically_integrated_lateral_areas.xᶠᶜᶜ
         ∫Ayᶜᶠᶜ = vertically_integrated_lateral_areas.yᶜᶠᶜ
 
-        Ax_ok = Array(parent(∫Axᶠᶜᶜ))[:, :, 1] ≈ x_ref
-        Ay_ok = Array(parent(∫Ayᶜᶠᶜ))[:, :, 1] ≈ y_ref
+        ∫Axᶠᶜᶜ = Array(parent(∫Axᶠᶜᶜ))
+        ∫Ayᶜᶠᶜ = Array(parent(∫Ayᶜᶠᶜ))
+
+        Ax_ok = ∫Axᶠᶜᶜ[:, :, 1] ≈ x_ref
+        Ay_ok = ∫Ayᶜᶠᶜ[:, :, 1] ≈ y_ref
 
         @test (Ax_ok & Ay_ok)
     end
