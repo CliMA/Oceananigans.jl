@@ -41,9 +41,9 @@ model = NonhydrostaticModel(grid=grid, particles=lagrangian_particles)
 # output
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=10, Ny=10, Nz=10)
-├── tracers: (:T, :S)
+├── tracers: ()
 ├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
+├── buoyancy: Nothing
 ├── coriolis: Nothing
 └── particles: 10 Lagrangian particles with 3 properties: (:x, :y, :z)
 ```

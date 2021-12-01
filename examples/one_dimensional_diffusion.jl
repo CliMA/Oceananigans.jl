@@ -50,7 +50,7 @@ closure = IsotropicDiffusivity(κ=1.0)
 
 # We finally pass these two ingredients to `NonhydrostaticModel`,
 
-model = NonhydrostaticModel(grid=grid, closure=closure)
+model = NonhydrostaticModel(grid=grid, closure=closure, buoyancy=nothing, tracers=:T)
 
 # Our simple `grid` and `model` use a number of defaults:
 #

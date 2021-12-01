@@ -72,6 +72,7 @@ function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization
     model = NonhydrostaticModel(timestepper = timestepper,
                                        grid = grid,
                                     closure = IsotropicDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
+                                    tracers = (:T, :S),
                                    buoyancy = nothing)
 
     field = get_model_field(fieldname, model)
@@ -117,6 +118,7 @@ function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, bac
     grid = RectilinearGrid(size=(N, N, 2), extent=(L, L, L))
     closure = IsotropicDiffusivity(ν=κ, κ=κ)
     model = NonhydrostaticModel(timestepper=timestepper, grid=grid, closure=closure,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 background_fields=background_fields)
 
     set!(model, u=u₀, v=v₀, T=T₀)
