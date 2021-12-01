@@ -1,9 +1,9 @@
 #using Pkg
 # pkg"add Oceananigans GLMakie"
 
-#ENV["GKSwstype"] = "100"
+ENV["GKSwstype"] = "100"
 
-#pushfirst!(LOAD_PATH, @__DIR__)
+pushfirst!(LOAD_PATH, @__DIR__)
 
 using Printf
 using Statistics
@@ -30,9 +30,9 @@ const Lz = sum(Δz_center)
 z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
 z_faces[Nz+1] = 0
 
-arch = CPU()
+architecture = CPU()
 
-grid = RectilinearGrid(architecture = arch,
+grid = RectilinearGrid(architecture = architecture,
                        topology = (Periodic, Bounded, Bounded),
                        size = (Nx, Ny, Nz),
                        halo = (3, 3, 3),
@@ -137,8 +137,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(architecture = arch,
-                                    grid = grid,
+model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = ImplicitFreeSurface(),
                                     momentum_advection = WENO5(grid = grid),
                                     tracer_advection = WENO5(grid = grid),
