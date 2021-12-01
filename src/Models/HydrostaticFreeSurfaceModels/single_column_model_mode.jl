@@ -5,13 +5,18 @@ using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans.BoundaryConditions: left_gradient, right_gradient, linearly_extrapolate, FBC, VBC, GBC
 using Oceananigans.BoundaryConditions: fill_bottom_halo!, fill_top_halo!, apply_z_bottom_bc!, apply_z_top_bc!
 using Oceananigans.Grids: Flat, Bounded
+using Oceananigans.Coriolis: AbstractRotation
 using Oceananigans.Architectures: device_event
+using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: _top_tke_flux, CATKEVDArray
 
 import Oceananigans.Utils: launch!
 import Oceananigans.Grids: validate_size, validate_halo
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.TurbulenceClosures: time_discretization
-import Oceananigans.TurbulenceClosures: calculate_diffusivities!
+import Oceananigans.TurbulenceClosures: time_discretization, calculate_diffusivities!
+import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
+import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: top_tke_flux
+import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 #####
 ##### Implements a "single column model mode" for HydrostaticFreeSurfaceModel
@@ -56,9 +61,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     return nothing
 end
 
-import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
-
-using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 
 const ClosureArray = AbstractArray{<:AbstractTurbulenceClosure}
 
@@ -88,46 +90,14 @@ ColumnEnsembleSize(; Nz, ensemble=(0, 0), Hz=1) = ColumnEnsembleSize(ensemble, N
 validate_size(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemble[2], e.Nz)
 validate_halo(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(0, 0, e.Hz)
 
-@inline time_discretization(::AbstractArray{<:AbstractTurbulenceClosure{TD}}) where TD = TD()
-
-#####
-##### TKEBasedVerticalDiffusivity helpers
-#####
-
-using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVD, Kuᶜᶜᶜ, Kcᶜᶜᶜ, Keᶜᶜᶜ, _top_tke_flux, CATKEVDArray
-
-import Oceananigans.TurbulenceClosures: calculate_diffusivities!
-import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: top_tke_flux
-
-function calculate_diffusivities!(diffusivities, closure::CATKEVDArray, model)
-
-    arch = model.architecture
-    grid = model.grid
-    velocities = model.velocities
-    tracers = model.tracers
-    buoyancy = model.buoyancy
-    clock = model.clock
-    top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
-
-    event = launch!(arch, grid, :xyz,
-                    calculate_CATKEArray_diffusivities!,
-                    diffusivities, grid, closure, velocities, tracers, buoyancy, clock, top_tracer_bcs,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
-
-    return nothing
+@inline function time_discretization(closure_array::AbstractArray)
+    first_closure = first(closure_array) # assumes all closures have same time-discretization
+    return time_discretization(first_closure)
 end
 
-@kernel function calculate_CATKEArray_diffusivities!(diffusivities, grid::SingleColumnGrid, closure_array::CATKEVDArray, args...)
-    i, j, k, = @index(Global, NTuple)
-    @inbounds begin
-        closure = closure_array[i, j]
-        diffusivities.Kᵘ[i, j, k] = Kuᶜᶜᶜ(i, j, k, grid, closure, args...)
-        diffusivities.Kᶜ[i, j, k] = Kcᶜᶜᶜ(i, j, k, grid, closure, args...)
-        diffusivities.Kᵉ[i, j, k] = Keᶜᶜᶜ(i, j, k, grid, closure, args...)
-    end
-end
+#####
+##### CATKEVerticalDiffusivity helpers
+#####
 
 @inline tracer_tendency_kernel_function(model::HydrostaticFreeSurfaceModel, closure::CATKEVDArray, ::Val{:e}) =
     hydrostatic_turbulent_kinetic_energy_tendency
@@ -155,10 +125,20 @@ end
 ##### Arrays of Coriolises
 #####
 
-import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
+const CoriolisMatrix = AbstractMatrix{<:AbstractRotation}
 
-const FPlaneArray = AbstractArray{<:FPlane, 2}
+@inline function x_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisMatrix, U)
+    @inbounds coriolis = coriolis_array[i, j]
+    return x_f_cross_U(i, j, k, grid, coriolis, U)
+end
 
-@inline x_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis::FPlaneArray, U) = @inbounds - coriolis[i, j].f * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
-@inline y_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis::FPlaneArray, U) = @inbounds   coriolis[i, j].f * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
-@inline z_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis::FPlaneArray, U) = zero(eltype(grid))
+@inline function y_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisMatrix, U)
+    @inbounds coriolis = coriolis_array[i, j]
+    return y_f_cross_U(i, j, k, grid, coriolis, U)
+end
+
+@inline function z_f_cross_U(i, j, k, grid::SingleColumnGrid, coriolis_array::CoriolisMatrix, U)
+    @inbounds coriolis = coriolis_array[i, j]
+    return z_f_cross_U(i, j, k, grid, coriolis, U)
+end
+

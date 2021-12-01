@@ -105,7 +105,7 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
     return L, F, C, ΔF, ΔC
 end
 
-# Fallback for a flat domain
+# Flat domains
 function generate_coordinate(FT, ::Type{Flat}, N, H, coord::Tuple{<:Number, <:Number}, architecture)
-    return FT(1), range(1, 1, length=1), range(1, 1, length=1), FT(1), FT(1)
+    return FT(1), range(1, 1, length=N), range(1, 1, length=N), FT(1), FT(1)
 end

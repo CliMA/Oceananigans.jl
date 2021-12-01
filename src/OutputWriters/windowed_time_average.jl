@@ -5,6 +5,7 @@ using Oceananigans.Utils: AbstractSchedule, prettytime
 
 import Oceananigans: short_show, run_diagnostic!
 import Oceananigans.Utils: TimeInterval, show_schedule
+import Oceananigans.Fields: location
 
 """
     mutable struct AveragedTimeInterval <: AbstractSchedule
@@ -128,6 +129,9 @@ function WindowedTimeAverage(operand, model=nothing; schedule, field_slicer=Fiel
 
     return WindowedTimeAverage(result, operand, 0.0, 0, 0.0, field_slicer, schedule)
 end
+
+# Time-averaging doesn't change spatial location
+location(wta::WindowedTimeAverage) = location(wta.operand)
 
 function accumulate_result!(wta, model)
 
