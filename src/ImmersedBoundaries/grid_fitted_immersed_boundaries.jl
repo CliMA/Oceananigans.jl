@@ -1,6 +1,7 @@
 using Adapt
 using CUDA: CuArray
 using Oceananigans.Fields: ReducedField, fill_halo_regions!
+using Oceananigans.Architectures: arch_array
 
 abstract type AbstractGridFittedBoundary <: AbstractImmersedBoundary end
 
