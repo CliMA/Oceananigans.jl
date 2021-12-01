@@ -319,10 +319,10 @@ ax_ζ = fig[1:5, 2] = LScene(fig)
 iter = Node(0)
 sides = keys(slicers)
 
-# zonal_file = jldopen(filename * "_zonal_average.jld2")
+zonal_file = jldopen(filename * "_zonal_average.jld2")
 slice_files = NamedTuple(side => jldopen(filename * "_$(side)_slice.jld2") for side in sides)
 
-grid = RectilinearGrid(architecture = arch,
+grid = RectilinearGrid(architecture = CPU(),
                        topology = (Periodic, Bounded, Bounded),
                        size = (grid.Nx, grid.Ny, grid.Nz),
                        halo = (3, 3, 3),
@@ -426,7 +426,6 @@ fig[0, :] = Label(fig, title, textsize=30)
 display(fig)
 
 iterations = parse.(Int, keys(zonal_file["timeseries/t"]))
-iterations = iterations[1:Int((length(iterations)+1)/4)]
 
 record(fig, filename * ".mp4", iterations, framerate=12) do i
     @info "Plotting iteration $i of $(iterations[end])..."

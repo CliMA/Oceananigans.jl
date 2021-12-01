@@ -1,23 +1,24 @@
+ENV["GKSwstype"] = "100"
+
 using Printf
 using Statistics
-using GLMakie
 using Random
 using JLD2
-
-GLMakie.inline!(false)
 
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
+filename = "baroclinic_adjustment"
+
 # Architecture
-architecture  = CPU()
+architecture  = GPU()
 
 # Domain
 Lx = 4000kilometers  # east-west extent [m]
-Ly = 1000kilometers # north-south extent [m]
-Lz = 1kilometers    # depth [m]
+Ly = 1000kilometers  # north-south extent [m]
+Lz = 1kilometers     # depth [m]
 
 Nx = 512
 Ny = 128
@@ -151,14 +152,14 @@ for side in keys(slicers)
     simulation.output_writers[side] = JLD2OutputWriter(model, fields(model),
                                                        schedule = TimeInterval(save_fields_interval),
                                                        field_slicer = field_slicer,
-                                                       prefix = "baroclinic_adj_$(side)_slice",
+                                                       prefix = filename * "_$(side)_slice",
                                                        force = true)
 end
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, fields(model),
                                                       schedule = TimeInterval(save_fields_interval),
                                                       field_slicer = nothing,
-                                                      prefix = "baroclinic_adj_fields",
+                                                      prefix = filename * "_fields",
                                                       force = true)
 
 B = AveragedField(model.tracers.b, dims=1)
@@ -169,7 +170,7 @@ W = AveragedField(model.velocities.w, dims=1)
 
 simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, c=C, u=U, v=V, w=W),
                                                      schedule = TimeInterval(save_fields_interval),
-                                                     prefix = "baroclinic_adj_zonal_average",
+                                                     prefix = filename * "_zonal_average",
                                                      force = true)
 
 @info "Running the simulation..."
@@ -187,6 +188,8 @@ end
 ##### Visualize
 #####
 
+using CairoMakie
+
 fig = Figure(resolution = (1400, 700))
 ax_b = fig[1:5, 1] = LScene(fig)
 ax_c = fig[1:5, 2] = LScene(fig)
@@ -195,8 +198,8 @@ ax_c = fig[1:5, 2] = LScene(fig)
 iter = Node(0)
 sides = keys(slicers)
 
-# zonal_file = jldopen("baroclinic_adj_zonal_average.jld2")
-slice_files = NamedTuple(side => jldopen("baroclinic_adj_$(side)_slice.jld2") for side in sides)
+zonal_file = jldopen(filename * "_zonal_average.jld2")
+slice_files = NamedTuple(side => jldopen(filename * "_$(side)_slice.jld2") for side in sides)
 
 grid = slice_files[1]["serialized/grid"]
 
@@ -226,20 +229,20 @@ b_slices = (
 clims_b = @lift extrema(slice_files.top["timeseries/b/" * string($iter)][:])
 kwargs_b = (colorrange=clims_b, colormap=:balance, show_axis=false)
 
-GLMakie.surface!(ax_b, y, z, b_slices.west;   transformation = (:yz, x[1]),   kwargs_b...)
-GLMakie.surface!(ax_b, y, z, b_slices.east;   transformation = (:yz, x[end]), kwargs_b...)
-GLMakie.surface!(ax_b, x, z, b_slices.south;  transformation = (:xz, y[1]),   kwargs_b...)
-GLMakie.surface!(ax_b, x, z, b_slices.north;  transformation = (:xz, y[end]), kwargs_b...)
-GLMakie.surface!(ax_b, x, y, b_slices.bottom; transformation = (:xy, z[1]),   kwargs_b...)
-GLMakie.surface!(ax_b, x, y, b_slices.top;    transformation = (:xy, z[end]), kwargs_b...)
+surface!(ax_b, y, z, b_slices.west;   transformation = (:yz, x[1]),   kwargs_b...)
+surface!(ax_b, y, z, b_slices.east;   transformation = (:yz, x[end]), kwargs_b...)
+surface!(ax_b, x, z, b_slices.south;  transformation = (:xz, y[1]),   kwargs_b...)
+surface!(ax_b, x, z, b_slices.north;  transformation = (:xz, y[end]), kwargs_b...)
+surface!(ax_b, x, y, b_slices.bottom; transformation = (:xy, z[1]),   kwargs_b...)
+surface!(ax_b, x, y, b_slices.top;    transformation = (:xy, z[end]), kwargs_b...)
 
-# b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
-# u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
+b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
+u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
 
 clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
 
-# GLMakie.contour!(ax_b, y, z, b_avg; levels = 25, linewidth=2, color=:black, transformation = (:yz, zonal_slice_displacement * x[end]), show_axis=false)
-# GLMakie.surface!(ax_b, y, z, u_avg; transformation = (:yz, zonal_slice_displacement * x[end]), colorrange=clims_u, colormap=:balance)
+contour!(ax_b, y, z, b_avg; levels = 25, linewidth=2, color=:black, transformation = (:yz, zonal_slice_displacement * x[end]), show_axis=false)
+surface!(ax_b, y, z, u_avg; transformation = (:yz, zonal_slice_displacement * x[end]), colorrange=clims_u, colormap=:balance)
 
 rotate_cam!(ax_b.scene, (π/24, -π/6, 0))
 
@@ -260,18 +263,18 @@ clims_c = @lift extrema(slice_files.top["timeseries/c/" * string($iter)][:])
 clims_c = (0, 0.5)
 kwargs_c = (colorrange=clims_c, colormap=:deep, show_axis=false)
 
-GLMakie.surface!(ax_c, y, z, c_slices.west;   transformation = (:yz, x[1]),   kwargs_c...)
-GLMakie.surface!(ax_c, y, z, c_slices.east;   transformation = (:yz, x[end]), kwargs_c...)
-GLMakie.surface!(ax_c, x, z, c_slices.south;  transformation = (:xz, y[1]),   kwargs_c...)
-GLMakie.surface!(ax_c, x, z, c_slices.north;  transformation = (:xz, y[end]), kwargs_c...)
-GLMakie.surface!(ax_c, x, y, c_slices.bottom; transformation = (:xy, z[1]),   kwargs_c...)
-GLMakie.surface!(ax_c, x, y, c_slices.top;    transformation = (:xy, z[end]), kwargs_c...)
+surface!(ax_c, y, z, c_slices.west;   transformation = (:yz, x[1]),   kwargs_c...)
+surface!(ax_c, y, z, c_slices.east;   transformation = (:yz, x[end]), kwargs_c...)
+surface!(ax_c, x, z, c_slices.south;  transformation = (:xz, y[1]),   kwargs_c...)
+surface!(ax_c, x, z, c_slices.north;  transformation = (:xz, y[end]), kwargs_c...)
+surface!(ax_c, x, y, c_slices.bottom; transformation = (:xy, z[1]),   kwargs_c...)
+surface!(ax_c, x, y, c_slices.top;    transformation = (:xy, z[end]), kwargs_c...)
 
-# b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
-# c_avg = @lift zonal_file["timeseries/c/" * string($iter)][1, :, :]
+b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
+c_avg = @lift zonal_file["timeseries/c/" * string($iter)][1, :, :]
 
-# GLMakie.contour!(ax_c, y, z, b_avg; levels = 25, linewidth=2, color=:black, transformation = (:yz, zonal_slice_displacement * x[end]), show_axis=false)
-# GLMakie.surface!(ax_c, y, z, c_avg; transformation = (:yz, zonal_slice_displacement * x[end]), colorrange=clims_c, colormap=:deep)
+contour!(ax_c, y, z, b_avg; levels = 25, linewidth=2, color=:black, transformation = (:yz, zonal_slice_displacement * x[end]), show_axis=false)
+surface!(ax_c, y, z, c_avg; transformation = (:yz, zonal_slice_displacement * x[end]), colorrange=clims_c, colormap=:deep)
 
 rotate_cam!(ax_c.scene, (π/24, -π/6, 0))
 
@@ -287,7 +290,7 @@ fig[0, :] = Label(fig, title, textsize=30)
 
 iterations = parse.(Int, keys(slice_files[1]["timeseries/t"]))
 
-record(fig, "baroclinic_adjustment.mp4", iterations, framerate=8) do i
+record(fig, filename * ".mp4", iterations, framerate=8) do i
     @info "Plotting iteration $i of $(iterations[end])..."
     iter[] = i
 end

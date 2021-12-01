@@ -1,5 +1,5 @@
 #using Pkg
-# pkg"add Oceananigans GLMakie"
+# pkg"add Oceananigans CairoMakie"
 
 ENV["GKSwstype"] = "100"
 

@@ -1,3 +1,5 @@
+ENV["GKSwstype"] = "100"
+
 using Printf
 using Statistics
 using Random
@@ -8,18 +10,19 @@ using Oceananigans.Units
 using Oceananigans: fields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
+filename = "zonally_averaged_baroclinic_adjustment_withGM"
+
 # Architecture
-architecture = CPU()
+architecture = GPU()
 
 # Domain
-Lx = 500kilometers  # east-west extent [m]
-Ly = 1000kilometers # north-south extent [m]
-Lz = 1kilometers    # depth [m]
+Ly = 1000kilometers  # north-south extent [m]
+Lz = 1kilometers     # depth [m]
 
 Ny = 128
 Nz = 40
 
-save_fields_interval = 0.2day
+save_fields_interval = 0.5day
 stop_time = 60days
 Δt₀ = 5minutes
 
@@ -161,6 +164,7 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ
                                                          grid,
                                                          architecture = model.architecture,
                                                          computed_dependencies = dependencies)
+
 # R(b) eg the Redi operator applied to buoyancy
 Rb = ComputedField(∇_q_op)
 
@@ -169,7 +173,7 @@ outputs = merge(fields(model), (; Rb))
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
                                                       schedule = TimeInterval(save_fields_interval),
                                                       field_slicer = nothing,
-                                                      prefix = "zonally_averaged_baroclinic_adj_fields",
+                                                      prefix = filename * "_fields",
                                                       force = true)
 
 @info "Running the simulation..."
@@ -182,11 +186,11 @@ run!(simulation, pickup=false)
 ##### Visualize
 #####
 
-using GLMakie
+using CairoMakie
 
 fig = Figure(resolution = (1400, 700))
 
-filepath = "zonally_averaged_baroclinic_adj_fields.jld2"
+filepath = filename * "_fields.jld2"
 
 ut = FieldTimeSeries(filepath, "u")
 bt = FieldTimeSeries(filepath, "b")
@@ -228,24 +232,24 @@ r = @lift rn($n)
 ax = Axis(fig[1, 1], title="Zonal velocity")
 hm = heatmap!(ax, y * 1e-3, z * 1e-3, u, colorrange=(min_u, max_u), colormap=:balance)
 contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
-# cb = Colorbar(fig[1, 2], hm)
+cb = Colorbar(fig[1, 2], hm)
 
 ax = Axis(fig[2, 1], title="Tracer concentration")
 hm = heatmap!(ax, y * 1e-3, z * 1e-3, c, colorrange=(0, 0.5), colormap=:speed)
 contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
-# cb = Colorbar(fig[2, 2], hm)
+cb = Colorbar(fig[2, 2], hm)
 
-# ax = Axis(fig[3, 1], title="R(b)")
-# hm = heatmap!(ax, y * 1e-3, z * 1e-3, r, colorrange=(min_r, max_r), colormap=:balance)
-# contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
-# cb = Colorbar(fig[3, 2], hm)
+ax = Axis(fig[3, 1], title="R(b)")
+hm = heatmap!(ax, y * 1e-3, z * 1e-3, r, colorrange=(min_r, max_r), colormap=:balance)
+contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
+cb = Colorbar(fig[3, 2], hm)
 
 title_str = @lift "Parameterized baroclinic adjustment at t = " * prettytime(times[$n])
 ax_t = fig[0, :] = Label(fig, title_str)
 
 display(fig)
 
-record(fig, "zonally_averaged_baroclinic_adj_withGM.mp4", 1:Nt, framerate=8) do i
+record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
     @info "Plotting frame $i of $Nt"
     n[] = i
 end

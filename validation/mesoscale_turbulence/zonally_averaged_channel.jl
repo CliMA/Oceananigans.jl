@@ -1,6 +1,6 @@
 #using Pkg
-# pkg"add Oceananigans GLMakie JLD2"
-# ENV["GKSwstype"] = "100"
+# pkg"add Oceananigans CairoMakie JLD2"
+ENV["GKSwstype"] = "100"
 # pushfirst!(LOAD_PATH, @__DIR__)
 # pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "..")) # add Oceananigans
 
@@ -20,7 +20,7 @@ Random.seed!(1234)
 filename = "zonally_averaged_channel_withGM"
 
 # Architecture
-architecture = GPU()
+architecture = CPU()
 
 # Domain
 const Lx = 1000kilometers # zonal domain length [m]
@@ -33,6 +33,7 @@ Nz = 80
 
 save_fields_interval = 7days
 stop_time = 5years
+stop_time = 70 days
 Δt₀ = 5minutes
 
 
@@ -246,15 +247,15 @@ dependencies = (gent_mcwilliams_diffusivity,
 
 using Oceananigans.TurbulenceClosures: diffusive_flux_y, diffusive_flux_z, ∇_dot_qᶜ
 
-∇_q_op = KernelFunctionOperation{Center, Center, Center}(∇_dot_qᶜ, grid, architecture=architecture, computed_dependencies=dependencies)
 vb_op  = KernelFunctionOperation{Center, Face, Center}(diffusive_flux_y, grid, architecture=architecture, computed_dependencies=dependencies)
 wb_op  = KernelFunctionOperation{Center, Center, Face}(diffusive_flux_z, grid, architecture=architecture, computed_dependencies=dependencies)
+∇_q_op = KernelFunctionOperation{Center, Center, Center}(∇_dot_qᶜ, grid, architecture=architecture, computed_dependencies=dependencies)
 
 vb = ComputedField(vb_op)
 wb = ComputedField(wb_op)
 ∇_q = ComputedField(∇_q_op)
 
-outputs = (; b, c, u, v, w, vb, wb, ∇_q)
+outputs = merge(fields(model), (; vb, wb, ∇_q))
 
 # #####
 # ##### Build checkpointer and output writer
@@ -266,7 +267,7 @@ simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         force = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = save_fields_interval,
+                                                      schedule = TimeInterval(save_fields_interval),
                                                       prefix = filename,
                                                       field_slicer = nothing,
                                                       verbose = false,
@@ -276,49 +277,45 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
 
 run!(simulation, pickup=false)
 
-#=
-
 #####
 ##### Visualization
 #####
 
 using CairoMakie
 
-grid = RectilinearGrid(architecture = CPU(),
-                       topology = (Periodic, Bounded, Bounded),
-                       size = (grid.Nx, grid.Ny, grid.Nz),
-                       halo = (3, 3, 3),
-                       x = (0, grid.Lx),
-                       y = (0, grid.Ly),
-                       z = linearly_spaced_faces)
+filepath = filename * ".jld2"
+
+zonal_file = jldopen(filepath)
+
+grid = zonal_file["serialized/grid"]
 
 xu, yu, zu = nodes((Face, Center, Center), grid)
 xv, yv, zv = nodes((Center,Face,  Center), grid)
 xw, yw, zw = nodes((Center, Center, Face), grid)
 xc, yc, zc = nodes((Center, Center, Center), grid)
 
-u_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "u", grid=grid)
+u_timeseries = FieldTimeSeries(filepath, "u", grid=grid)
 @show umax = maximum(abs, u_timeseries[:, :, :, :])
 
-v_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "v", grid=grid)
+v_timeseries = FieldTimeSeries(filepath, "v", grid=grid)
 @show umax = maximum(abs, v_timeseries[:, :, :, :])
 
-w_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "w", grid=grid)
+w_timeseries = FieldTimeSeries(filepath, "w", grid=grid)
 @show umax = maximum(abs, w_timeseries[:, :, :, :])
 
-b_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "b", grid=grid)
+b_timeseries = FieldTimeSeries(filepath, "b", grid=grid)
 @show b_timeseries
 
-vb_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "vb", grid=grid)
+vb_timeseries = FieldTimeSeries(filepath, "vb", grid=grid)
 @show vb_timeseries
 
-wb_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "wb", grid=grid)
+wb_timeseries = FieldTimeSeries(filepath, "wb", grid=grid)
 @show wb_timeseries
 
-wb_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "wb", grid=grid)
+wb_timeseries = FieldTimeSeries(filepath, "wb", grid=grid)
 @show wb_timeseries
 
-∇_q_timeseries = FieldTimeSeries("zonally_averaged_channel.jld2", "∇_q", grid=grid)
+∇_q_timeseries = FieldTimeSeries(filepath, "∇_q", grid=grid)
 @show ∇_q_timeseries
 
 _, _, _, nt = size(b_timeseries)
@@ -468,4 +465,3 @@ anim = @animate for i in 1:length(b_timeseries.times)-1
 end
 
 mp4(anim, filename*".mp4", fps = 8) # hide
-=#
