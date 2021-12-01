@@ -246,9 +246,9 @@ dependencies = (gent_mcwilliams_diffusivity,
 
 using Oceananigans.TurbulenceClosures: diffusive_flux_y, diffusive_flux_z, ∇_dot_qᶜ
 
-∇_q_op = KernelFunctionOperation{Center, Center, Center}(∇_dot_qᶜ, grid, architecture=arch, computed_dependencies=dependencies)
-vb_op  = KernelFunctionOperation{Center, Face, Center}(diffusive_flux_y, grid, architecture=arch, computed_dependencies=dependencies)
-wb_op  = KernelFunctionOperation{Center, Center, Face}(diffusive_flux_z, grid, architecture=arch, computed_dependencies=dependencies)
+∇_q_op = KernelFunctionOperation{Center, Center, Center}(∇_dot_qᶜ, grid, architecture=architecture, computed_dependencies=dependencies)
+vb_op  = KernelFunctionOperation{Center, Face, Center}(diffusive_flux_y, grid, architecture=architecture, computed_dependencies=dependencies)
+wb_op  = KernelFunctionOperation{Center, Center, Face}(diffusive_flux_z, grid, architecture=architecture, computed_dependencies=dependencies)
 
 vb = ComputedField(vb_op)
 wb = ComputedField(wb_op)
@@ -471,4 +471,4 @@ anim = @animate for i in 1:length(b_timeseries.times)-1
              legend = :none)
 end
 
-mp4(anim, "zonally_averaged_channel.mp4", fps = 8) # hide
+mp4(anim, filename*".mp4", fps = 8) # hide

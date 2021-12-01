@@ -14,6 +14,8 @@ using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
+filename = "eddying_channel"
+
 # Architecture
 architecture = GPU()
 
@@ -261,7 +263,7 @@ averaged_outputs = (; v′b′, w′b′, B, U)
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                         schedule = TimeInterval(1years),
-                                                        prefix = "eddying_channel",
+                                                        prefix = filename,
                                                         force = true)
 
 slicers = (west = FieldSlicer(i=1),
@@ -277,18 +279,18 @@ for side in keys(slicers)
     simulation.output_writers[side] = JLD2OutputWriter(model, outputs,
                                                        schedule = TimeInterval(save_fields_interval),
                                                        field_slicer = field_slicer,
-                                                       prefix = "eddying_channel_$(side)_slice",
+                                                       prefix = filename * "_$(side)_slice",
                                                        force = true)
 end
 
 simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U),#, v=V, w=W, vb=v′b′, wb=w′b′),
                                                      schedule = TimeInterval(save_fields_interval),
-                                                     prefix = "eddying_channel_zonal_average",
+                                                     prefix = filename * "_zonal_average",
                                                      force = true)
 #=
 simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
                                                         schedule = AveragedTimeInterval(1days, window=1days, stride=1),
-                                                        prefix = "eddying_channel_averages",
+                                                        prefix = filename * "_averages",
                                                         verbose = true,
                                                         force = true)
 =#
@@ -317,8 +319,8 @@ ax_ζ = fig[1:5, 2] = LScene(fig)
 iter = Node(0)
 sides = keys(slicers)
 
-# zonal_file = jldopen("eddying_channel_zonal_average.jld2")
-slice_files = NamedTuple(side => jldopen("eddying_channel_$(side)_slice.jld2") for side in sides)
+# zonal_file = jldopen(filename * "_zonal_average.jld2")
+slice_files = NamedTuple(side => jldopen(filename * "_$(side)_slice.jld2") for side in sides)
 
 grid = RectilinearGrid(architecture = arch,
                        topology = (Periodic, Bounded, Bounded),
@@ -426,7 +428,7 @@ display(fig)
 iterations = parse.(Int, keys(zonal_file["timeseries/t"]))
 iterations = iterations[1:Int((length(iterations)+1)/4)]
 
-record(fig, "eddying_channel.mp4", iterations, framerate=12) do i
+record(fig, filename * ".mp4", iterations, framerate=12) do i
     @info "Plotting iteration $i of $(iterations[end])..."
     iter[] = i
 end
