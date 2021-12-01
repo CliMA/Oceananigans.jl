@@ -1,18 +1,20 @@
 #using Pkg
 # pkg"add Oceananigans GLMakie JLD2"
-# ENV["GKSwstype"] = "100"
+ENV["GKSwstype"] = "100"
 # pushfirst!(LOAD_PATH, @__DIR__)
 # pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "..")) # add Oceananigans
 
 using Printf
 using Statistics
-# using GLMakie
 using JLD2
 
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
+
+# Architecture
+architecture = CPU()
 
 # Domain
 const Lx = 1000kilometers # zonal domain length [m]
@@ -24,13 +26,11 @@ Nx = 128
 Ny = 256
 Nz = 40
 
-movie_interval = 1days
+movie_interval = 7days
 stop_time = 5years
 
-arch = CPU()
-
-# stretched grid
-
+#=
+# # Stretched grid
 # we implement here a linearly streched grid in which the top grid cell has Δzₜₒₚ
 # and every other cell is bigger by a factor σ, e.g.,
 # Δzₜₒₚ, Δzₜₒₚ * σ, Δzₜₒₚ * σ², ..., Δzₜₒₚ * σᴺᶻ⁻¹,
@@ -42,21 +42,31 @@ arch = CPU()
 Δz_center_linear(k) = Lz * (σ - 1) * σ^(Nz - k) / (σ^Nz - 1) # k=1 is the bottom-most cell, k=Nz is the top cell
 linearly_spaced_faces(k) = k==1 ? -Lz : - Lz + sum(Δz_center_linear.(1:k-1))
 
-grid = RectilinearGrid(architecture = arch,
+grid = RectilinearGrid(architecture = architecture,
                        topology = (Periodic, Bounded, Bounded),
                        size = (Nx, Ny, Nz),
                        halo = (3, 3, 3),
                        x = (0, Lx),
                        y = (0, Ly),
-                       z_faces = linearly_spaced_faces)
+                       z = linearly_spaced_faces)
 
 # The vertical spacing versus depth for the prescribed grid
-#=
+
 plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
      axis=(xlabel = "Vertical spacing (m)",
            ylabel = "Depth (m)"))
+
 =#
 
+grid = RectilinearGrid(architecture = architecture,
+                       topology = (Periodic, Bounded, Bounded),
+                       size = (Nx, Ny, Nz),
+                       halo = (3, 3, 3),
+                       x = (0, Lx),
+                       y = (0, Ly),
+                       z = (-Lz, 0))
+
+                       
 @info "Built a grid: $grid."
 
 #####
@@ -146,25 +156,26 @@ horizontal_diffusivity = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=�
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)
 
+catke = CATKEVerticalDiffusivity()
+
 #####
 ##### Model building
 #####
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(architecture = arch,
+model = HydrostaticFreeSurfaceModel(architecture = architecture,
                                     grid = grid,
                                     free_surface = ImplicitFreeSurface(),
                                     momentum_advection = WENO5(),
                                     tracer_advection = WENO5(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = coriolis,
-                                    closure = (horizontal_diffusivity, convective_adjustment),
-                                    tracers = :b,
+                                    closure = (horizontal_diffusivity, catke),
+                                    tracers = (:b, :e, :c),
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                     forcing = (; b=Fb,)
                                     )
-
 
 @info "Built $model."
 
@@ -174,17 +185,22 @@ model = HydrostaticFreeSurfaceModel(architecture = arch,
 
 # resting initial condition
 ε(σ) = σ * randn()
-bᵢ(x, y, z) = parameters.ΔB * ( exp(z/parameters.h) - exp(-Lz/parameters.h) ) / (1 - exp(-Lz/parameters.h)) + ε(1e-8)
+bᵢ(x, y, z) = parameters.ΔB * ( exp(z/parameters.h) - exp(-Lz / parameters.h) ) / (1 - exp(-Lz / parameters.h)) + ε(1e-8)
 uᵢ(x, y, z) = ε(1e-8)
 vᵢ(x, y, z) = ε(1e-8)
 wᵢ(x, y, z) = ε(1e-8)
 
-set!(model, b=bᵢ, u=uᵢ, v=vᵢ, w=wᵢ)
+Δy = 100kilometers
+Δz = 100
+Δc = 2Δy
+cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / (2Δz^2))
+
+set!(model, b=bᵢ, u=uᵢ, v=vᵢ, w=wᵢ, c=cᵢ)
 
 #####
 ##### Simulation building
 
-wizard = TimeStepWizard(cfl=0.1, Δt=5minutes, max_change=1.1, max_Δt=20minutes)
+wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=20minutes)
 
 wall_clock = [time_ns()]
 
@@ -204,7 +220,13 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=10)
+simulation = Simulation(model, Δt=5minutes, stop_time=50days)
+
+# add timestep wizardrogress callback
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+
+# add progress callback
+simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(10))
 
 #####
 ##### Diagnostics
@@ -269,7 +291,7 @@ simulation.output_writers[:averages] = JLD2OutputWriter(model, averaged_outputs,
                                                         force = true)
 =#
 
- @info "Running the simulation..."
+@info "Running the simulation..."
 
 try
     run!(simulation, pickup=false)
@@ -278,12 +300,11 @@ catch err
     showerror(stdout, err)
 end
 
-
-using GLMakie
-
 #####
 ##### Visualize
 #####
+
+using GLMakie
 
 fig = Figure(resolution = (2000, 1000))
 ax_b = fig[1:5, 1] = LScene(fig)
@@ -303,7 +324,7 @@ grid = RectilinearGrid(architecture = arch,
                        halo = (3, 3, 3),
                        x = (0, grid.Lx),
                        y = (0, grid.Ly),
-                       z = z_faces)
+                       z = (-grid.Lz, 0))
 
 # Build coordinates, rescaling the vertical coordinate
 
@@ -342,12 +363,8 @@ GLMakie.surface!(ax_b, xb, yb, b_slices.top;    transformation = (:xy, zb[end]),
 # b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
 # u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
 
-<<<<<<< Updated upstream
 clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
 clims_u = (-0.4, 0.4)
-=======
-# clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
->>>>>>> Stashed changes
 
 # GLMakie.contour!(ax_b, yb, zb, b_avg; levels = 25, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
 # GLMakie.surface!(ax_b, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
