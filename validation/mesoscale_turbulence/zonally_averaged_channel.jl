@@ -20,7 +20,7 @@ Random.seed!(1234)
 filename = "zonally_averaged_channel_withGM"
 
 # Architecture
-architecture = CPU()
+architecture = GPU()
 
 # Domain
 const Lx = 1000kilometers # zonal domain length [m]
@@ -192,7 +192,7 @@ wᵢ(x, y, z) = ε(1e-8)
 Δy = 100kilometers
 Δz = 100
 Δc = 2Δy
-cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / (2Δz^2))
+cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
 
 set!(model, b=bᵢ, u=uᵢ, v=vᵢ, w=wᵢ, c=cᵢ)
 
@@ -204,7 +204,7 @@ simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
 
 # add timestep wizard callback
 wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=20minutes)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
 # add progress callback
 wall_clock = [time_ns()]
@@ -225,7 +225,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(10))
+simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
 
 
 #####
@@ -281,12 +281,12 @@ catch err
     showerror(stdout, err)
 end
 
-#=
+
 #####
 ##### Visualization
 #####
 
-using GLMakie
+using CairoMakie
 
 grid = RectilinearGrid(architecture = CPU(),
                        topology = (Periodic, Bounded, Bounded),
@@ -472,4 +472,3 @@ anim = @animate for i in 1:length(b_timeseries.times)-1
 end
 
 mp4(anim, "zonally_averaged_channel.mp4", fps = 8) # hide
-=#

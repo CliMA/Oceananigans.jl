@@ -1,5 +1,5 @@
 #using Pkg
-# pkg"add Oceananigans GLMakie JLD2"
+# pkg"add Oceananigans CairoMakie JLD2"
 ENV["GKSwstype"] = "100"
 # pushfirst!(LOAD_PATH, @__DIR__)
 # pushfirst!(LOAD_PATH, joinpath(@__DIR__, "..", "..")) # add Oceananigans
@@ -15,7 +15,7 @@ using Oceananigans.Grids: xnode, ynode, znode
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
 # Architecture
-architecture = CPU()
+architecture = GPU()
 
 # Domain
 const Lx = 1000kilometers # zonal domain length [m]
@@ -23,8 +23,8 @@ const Ly = 2000kilometers # meridional domain length [m]
 const Lz = 2kilometers    # depth [m]
 
 # number of grid points
-Nx = 128
-Ny = 256
+Nx = 64
+Ny = 128
 Nz = 40
 
 save_fields_interval = 7days
@@ -195,7 +195,7 @@ wᵢ(x, y, z) = ε(1e-8)
 Δy = 100kilometers
 Δz = 100
 Δc = 2Δy
-cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / (2Δz^2))
+cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
 
 set!(model, b=bᵢ, u=uᵢ, v=vᵢ, w=wᵢ, c=cᵢ)
 
@@ -225,10 +225,10 @@ end
 simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
 
 # add timestep wizardrogress callback
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
 # add progress callback
-simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(10))
+simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
 
 #####
 ##### Diagnostics
@@ -306,7 +306,7 @@ end
 ##### Visualize
 #####
 
-using GLMakie
+using CairoMakie
 
 fig = Figure(resolution = (2000, 1000))
 ax_b = fig[1:5, 1] = LScene(fig)
@@ -355,12 +355,12 @@ b_slices = (
 clims_b = @lift extrema(slice_files.top["timeseries/b/" * string($iter)][:])
 kwargs_b = (colorrange=clims_b, colormap=:deep, show_axis=false)
 
-GLMakie.surface!(ax_b, yb, zb, b_slices.west;   transformation = (:yz, xb[1]),   kwargs_b...)
-GLMakie.surface!(ax_b, yb, zb, b_slices.east;   transformation = (:yz, xb[end]), kwargs_b...)
-GLMakie.surface!(ax_b, xb, zb, b_slices.south;  transformation = (:xz, yb[1]),   kwargs_b...)
-GLMakie.surface!(ax_b, xb, zb, b_slices.north;  transformation = (:xz, yb[end]), kwargs_b...)
-GLMakie.surface!(ax_b, xb, yb, b_slices.bottom; transformation = (:xy, zb[1]),   kwargs_b...)
-GLMakie.surface!(ax_b, xb, yb, b_slices.top;    transformation = (:xy, zb[end]), kwargs_b...)
+surface!(ax_b, yb, zb, b_slices.west;   transformation = (:yz, xb[1]),   kwargs_b...)
+surface!(ax_b, yb, zb, b_slices.east;   transformation = (:yz, xb[end]), kwargs_b...)
+surface!(ax_b, xb, zb, b_slices.south;  transformation = (:xz, yb[1]),   kwargs_b...)
+surface!(ax_b, xb, zb, b_slices.north;  transformation = (:xz, yb[end]), kwargs_b...)
+surface!(ax_b, xb, yb, b_slices.bottom; transformation = (:xy, zb[1]),   kwargs_b...)
+surface!(ax_b, xb, yb, b_slices.top;    transformation = (:xy, zb[end]), kwargs_b...)
 
 # b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
 # u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
@@ -368,8 +368,8 @@ GLMakie.surface!(ax_b, xb, yb, b_slices.top;    transformation = (:xy, zb[end]),
 clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
 clims_u = (-0.4, 0.4)
 
-# GLMakie.contour!(ax_b, yb, zb, b_avg; levels = 25, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
-# GLMakie.surface!(ax_b, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
+# contour!(ax_b, yb, zb, b_avg; levels = 25, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
+# surface!(ax_b, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
 
 rotate_cam!(ax_b.scene, (π/24, -π/6, 0))
 
@@ -398,12 +398,12 @@ kwargs_east = (colormap=:curl, show_axis=false, colorrange=(-5f-5, 5f-5))
 clims_u = @lift extrema(slice_files.top["timeseries/u/" * string($iter)][:])
 kwargs_u = (colormap=:balance, show_axis=false)
 
-GLMakie.surface!(ax_ζ, yζ, zζ, ζ_slices.west;   transformation = (:yz, xζ[1]),   kwargs_ζ...)
-GLMakie.surface!(ax_ζ, yζ, zζ, ζ_slices.east;   transformation = (:yz, xζ[end]), kwargs_east...)
-GLMakie.surface!(ax_ζ, xζ, zζ, ζ_slices.south;  transformation = (:xz, yζ[1]),   kwargs_ζ...)
-GLMakie.surface!(ax_ζ, xζ, zζ, ζ_slices.north;  transformation = (:xz, yζ[end]), kwargs_ζ...)
-GLMakie.surface!(ax_ζ, xζ, yζ, ζ_slices.bottom; transformation = (:xy, zζ[1]),   kwargs_ζ...)
-GLMakie.surface!(ax_ζ, xζ, yζ, ζ_slices.top;    transformation = (:xy, zζ[end]), kwargs_ζ...)
+surface!(ax_ζ, yζ, zζ, ζ_slices.west;   transformation = (:yz, xζ[1]),   kwargs_ζ...)
+surface!(ax_ζ, yζ, zζ, ζ_slices.east;   transformation = (:yz, xζ[end]), kwargs_east...)
+surface!(ax_ζ, xζ, zζ, ζ_slices.south;  transformation = (:xz, yζ[1]),   kwargs_ζ...)
+surface!(ax_ζ, xζ, zζ, ζ_slices.north;  transformation = (:xz, yζ[end]), kwargs_ζ...)
+surface!(ax_ζ, xζ, yζ, ζ_slices.bottom; transformation = (:xy, zζ[1]),   kwargs_ζ...)
+surface!(ax_ζ, xζ, yζ, ζ_slices.top;    transformation = (:xy, zζ[end]), kwargs_ζ...)
 
 # b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
 # u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
@@ -411,8 +411,8 @@ GLMakie.surface!(ax_ζ, xζ, yζ, ζ_slices.top;    transformation = (:xy, zζ[e
 clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
 clims_u = (-0.4, 0.4)
 
-# GLMakie.contour!(ax_ζ, yb, zb, b_avg; levels = 25, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
-# GLMakie.surface!(ax_ζ, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
+# contour!(ax_ζ, yb, zb, b_avg; levels = 25, color = :black, linewidth = 2, transformation = (:yz, zonal_slice_displacement * xb[end]), show_axis=false)
+# surface!(ax_ζ, yu, zu, u_avg; transformation = (:yz, zonal_slice_displacement * xu[end]), colorrange=clims_u, colormap=:balance)
 
 rotate_cam!(ax_ζ.scene, (π/24, -π/6, 0))
 
