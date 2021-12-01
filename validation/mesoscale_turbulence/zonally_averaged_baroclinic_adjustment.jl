@@ -186,7 +186,7 @@ using GLMakie
 
 fig = Figure(resolution = (1400, 700))
 
-filepath = "zonally_averaged_baroclinic_adjustment/zonally_averaged_baroclinic_adj_fields.jld2"
+filepath = "zonally_averaged_baroclinic_adj_fields.jld2"
 
 ut = FieldTimeSeries(filepath, "u")
 bt = FieldTimeSeries(filepath, "b")

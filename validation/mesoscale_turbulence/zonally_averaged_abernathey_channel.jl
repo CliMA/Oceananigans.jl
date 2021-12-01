@@ -116,7 +116,7 @@ b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/7days)
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.Fields: TracerFields, FunctionField
 
-tracers = TracerFields(tuple(:b), arch, grid)
+tracers = TracerFields(tuple(:b), architecture, grid)
 
 b = tracers.b
 
@@ -136,7 +136,7 @@ f² = FunctionField{Center, Center, Center}(f²_func, grid)
 closure = AnisotropicDiffusivity(νh = 100, νz = 10, κh = 10, κz = 10,
                                  time_discretization = VerticallyImplicitTimeDiscretization())
 
-model = NonhydrostaticModel(architecture = arch,
+model = NonhydrostaticModel(architecture = architecture,
                             grid = grid,
                             advection = UpwindBiasedFifthOrder(),
                             buoyancy = BuoyancyTracer(),
@@ -235,7 +235,6 @@ function print_progress(sim)
             maximum(abs, sim.model.velocities.v),
             maximum(abs, sim.model.velocities.w),
             prettytime(sim.Δt))
-            #prettytime(sim.Δt.Δt))
 
     wall_clock[1] = time_ns()
     
@@ -245,7 +244,8 @@ end
 diffusion_Δt = grid.Δyᵃᶜᵃ^2 / closure.νy
 @show Δt = min(10minutes, diffusion_Δt)
 
-simulation = Simulation(model, Δt=Δt, stop_time=10years, progress=print_progress, iteration_interval=1000)
+simulation = Simulation(model, Δt=Δt, stop_time=10years)
+simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(100))
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -283,4 +283,4 @@ anim = @animate for i in 5:120
     channel_plot(u, b)
 end
 
-mp4(anim, "two_dimensional_channel.mp4", fps = 8) # hide
+mp4(anim, "zonally_averaged_abernathey_channel.mp4", fps = 8) # hide
