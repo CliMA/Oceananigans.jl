@@ -274,13 +274,9 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
 
 @info "Running the simulation..."
 
-try
-    run!(simulation, pickup=false)
-catch err
-    @info "run! threw an error! The error message is"
-    showerror(stdout, err)
-end
+run!(simulation, pickup=false)
 
+#=
 
 #####
 ##### Visualization
@@ -472,3 +468,4 @@ anim = @animate for i in 1:length(b_timeseries.times)-1
 end
 
 mp4(anim, filename*".mp4", fps = 8) # hide
+=#
