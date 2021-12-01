@@ -6,7 +6,6 @@
 
 using Printf
 using Statistics
-#using GLMakie
 using JLD2
 
 using Oceananigans
@@ -18,20 +17,24 @@ using Oceananigans.Grids: xnode, ynode, znode
 using Random
 Random.seed!(1234)
 
+filename = "zonally_averaged_channel_withGM"
+
+# Architecture
+architecture = CPU()
+
 # Domain
 const Lx = 1000kilometers # zonal domain length [m]
 const Ly = 2000kilometers # meridional domain length [m]
 const Lz = 2kilometers    # depth [m]
 
 # number of grid points
-Nx = 1
-Ny = 128
-Nz = 40
+Ny = 256
+Nz = 80
 
-movie_interval = 0.05days
-stop_time = 3years
+save_fields_interval = 7days
+stop_time = 5years
+Δt₀ = 5minutes
 
-arch = GPU()
 
 # stretched grid
 
@@ -46,13 +49,12 @@ arch = GPU()
 Δz_center_linear(k) = Lz * (σ - 1) * σ^(Nz - k) / (σ^Nz - 1) # k=1 is the bottom-most cell, k=Nz is the top cell
 linearly_spaced_faces(k) = k==1 ? -Lz : - Lz + sum(Δz_center_linear.(1:k-1))
 
-grid = RectilinearGrid(architecture = arch,
-                       topology = (Periodic, Bounded, Bounded),
-                       size = (Nx, Ny, Nz),
-                       halo = (3, 3, 3),
-                       x = (0, Lx),
+grid = RectilinearGrid(architecture = architecture,
+                       topology = (Flat, Bounded, Bounded),
+                       size = (Ny, Nz),
+                       halo = (3, 3),
                        y = (0, Ly),
-                       z = (-Lz, 0)) #linearly_spaced_faces)
+                       z = (-Lz, 0))
 
 # The vertical spacing versus depth for the prescribed grid
 #=
@@ -84,8 +86,6 @@ parameters = (Ly = Ly,
               y_sponge = 19/20 * Ly,               # southern boundary of sponge layer [m]
               λt = 7.0days                         # relaxation time scale [s]
 )
-
-# ynode(::Type{Center}, j, grid::RectilinearGrid) = @inbounds grid.yᵃᵃᶜ[j]
 
 @inline function buoyancy_flux(i, j, grid, clock, model_fields, p)
     y = ynode(Center(), j, grid)
@@ -151,9 +151,11 @@ horizontal_diffusivity = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=�
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)
 
+catke = CATKEVerticalDiffusivity()
+
 gerdes_koberle_willebrand_tapering = Oceananigans.TurbulenceClosures.FluxTapering(1e-2)
 
-gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 100,
+gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
                                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
 #####
 ##### Model building
@@ -161,9 +163,7 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 100,
 
 @info "Building a model..."
 
-catke = CATKEVerticalDiffusivity()
-
-model = HydrostaticFreeSurfaceModel(architecture = arch,
+model = HydrostaticFreeSurfaceModel(architecture = architecture,
                                     grid = grid,
                                     free_surface = ImplicitFreeSurface(),
                                     momentum_advection = WENO5(),
@@ -172,7 +172,7 @@ model = HydrostaticFreeSurfaceModel(architecture = arch,
                                     coriolis = coriolis,
                                     #closure = (horizontal_diffusivity, convective_adjustment, gent_mcwilliams_diffusivity),
                                     closure = (catke, horizontal_diffusivity, gent_mcwilliams_diffusivity),
-                                    tracers = (:b, :e),
+                                    tracers = (:b, :e, :c),
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                     forcing = (; b=Fb))
 
@@ -189,13 +189,24 @@ uᵢ(x, y, z) = ε(1e-8)
 vᵢ(x, y, z) = ε(1e-8)
 wᵢ(x, y, z) = ε(1e-8)
 
-set!(model, b=bᵢ, u=uᵢ, v=vᵢ, w=wᵢ)
+Δy = 100kilometers
+Δz = 100
+Δc = 2Δy
+cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / (2Δz^2))
+
+set!(model, b=bᵢ, u=uᵢ, v=vᵢ, w=wᵢ, c=cᵢ)
 
 #####
 ##### Simulation building
+#####
 
+simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
+
+# add timestep wizard callback
 wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=20minutes)
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
+# add progress callback
 wall_clock = [time_ns()]
 
 function print_progress(sim)
@@ -207,22 +218,22 @@ function print_progress(sim)
             maximum(abs, sim.model.velocities.u),
             maximum(abs, sim.model.velocities.v),
             maximum(abs, sim.model.velocities.w),
-            prettytime(sim.Δt.Δt))
- #           prettytime(sim.Δt))
+            prettytime(sim.Δt))
 
     wall_clock[1] = time_ns()
     
     return nothing
 end
 
-simulation = Simulation(model, Δt=5minutes, stop_time=1hour)
+simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(10))
+
 
 #####
 ##### Diagnostics
 #####
 
 u, v, w = model.velocities
-b = model.tracers.b
+b, c = model.tracers.b, model.tracers.c
 
 dependencies = (gent_mcwilliams_diffusivity,
                 b,
@@ -243,20 +254,20 @@ vb = ComputedField(vb_op)
 wb = ComputedField(wb_op)
 ∇_q = ComputedField(∇_q_op)
 
-outputs = (; b, u, v, w, vb, wb, ∇_q)
+outputs = (; b, c, u, v, w, vb, wb, ∇_q)
 
 # #####
 # ##### Build checkpointer and output writer
 # #####
 
 simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                        schedule = TimeInterval(1years),
-                                                        prefix = "zonally_averaged_channel",
+                                                        schedule = TimeInterval(5years),
+                                                        prefix = filename,
                                                         force = true)
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(0.5days),
-                                                      prefix = "zonally_averaged_channel",
+                                                      schedule = save_fields_interval,
+                                                      prefix = filename,
                                                       field_slicer = nothing,
                                                       verbose = false,
                                                       force = true)
@@ -274,6 +285,8 @@ end
 #####
 ##### Visualization
 #####
+
+using GLMakie
 
 grid = RectilinearGrid(architecture = CPU(),
                        topology = (Periodic, Bounded, Bounded),

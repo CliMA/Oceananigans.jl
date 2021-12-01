@@ -12,6 +12,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Grids: xnode, ynode, znode
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
 # Architecture
 architecture = CPU()
@@ -26,8 +27,9 @@ Nx = 128
 Ny = 256
 Nz = 40
 
-movie_interval = 7days
+save_fields_interval = 7days
 stop_time = 5years
+Δt₀ = 5minutes
 
 #=
 # # Stretched grid
@@ -220,7 +222,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation = Simulation(model, Δt=5minutes, stop_time=50days)
+simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
 
 # add timestep wizardrogress callback
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
@@ -233,7 +235,7 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 #####
 
 u, v, w = model.velocities
-b = model.tracers.b
+b, c = model.tracers.b, model.tracers.c
 
 ζ = ComputedField(∂x(v) - ∂y(u))
 
@@ -273,14 +275,14 @@ for side in keys(slicers)
     field_slicer = slicers[side]
 
     simulation.output_writers[side] = JLD2OutputWriter(model, outputs,
-                                                       schedule = TimeInterval(movie_interval),
+                                                       schedule = TimeInterval(save_fields_interval),
                                                        field_slicer = field_slicer,
                                                        prefix = "eddying_channel_$(side)_slice",
                                                        force = true)
 end
 
 simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, u=U),#, v=V, w=W, vb=v′b′, wb=w′b′),
-                                                     schedule = TimeInterval(movie_interval),
+                                                     schedule = TimeInterval(save_fields_interval),
                                                      prefix = "eddying_channel_zonal_average",
                                                      force = true)
 #=

@@ -29,12 +29,12 @@ z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
 z_faces[Nz+1] = 0
 
 grid = RectilinearGrid(architecture = arch,
-                                          topology = (Periodic, Bounded, Bounded),
-                                          size = (1, Ny, Nz),
-                                          halo = (3, 3, 3),
-                                          x = (0, Ly),
-                                          y = (0, Ly),
-                                          z = z_faces)
+                       topology = (Periodic, Bounded, Bounded),
+                       size = (1, Ny, Nz),
+                       halo = (3, 3, 3),
+                       x = (0, Ly),
+                       y = (0, Ly),
+                       z = z_faces)
 
 
 @show grid

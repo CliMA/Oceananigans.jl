@@ -1,6 +1,5 @@
 using Printf
 using Statistics
-using GLMakie
 using Random
 using JLD2
 
@@ -9,34 +8,33 @@ using Oceananigans.Units
 using Oceananigans: fields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
-#=
+# Architecture
+architecture = CPU()
+
 # Domain
 Lx = 500kilometers  # east-west extent [m]
 Ly = 1000kilometers # north-south extent [m]
 Lz = 1kilometers    # depth [m]
 
-Nx = 1
 Ny = 128
-Nz = 32
+Nz = 40
 
-architecture = CPU()
+save_fields_interval = 0.2day
+stop_time = 60days
+Δt₀ = 5minutes
 
-movie_interval = 0.2day
-stop_time = 40days
-Δt₀ = 10minutes
+grid = RectilinearGrid(architecture = architecture,
+                       topology = (Flat, Bounded, Bounded), 
+                       size = (Ny, Nz), 
+                       y = (-Ly/2, Ly/2),
+                       z = (-Lz, 0),
+                       halo = (3, 3))
 
-grid = RegularRectilinearGrid(topology = (Periodic, Bounded, Bounded), 
-                              size = (Nx, Ny, Nz), 
-                              x = (0, Lx),
-                              y = (-Ly/2, Ly/2),
-                              z = (-Lz, 0),
-                              halo = (3, 3, 3))
+coriolis = BetaPlane(latitude = -45)
 
-coriolis = BetaPlane(latitude=-45)
+Δy, Δz = Ly/Ny, Lz/Nz
 
-Δx, Δy, Δz = Lx/Nx, Ly/Ny, Lz/Nz
-
-𝒜 = Δz/Δx # Grid cell aspect ratio.
+𝒜 = Δz/Δy # Grid cell aspect ratio.
 
 κh = 0.1    # [m² s⁻¹] horizontal diffusivity
 νh = 0.1    # [m² s⁻¹] horizontal viscosity
@@ -52,10 +50,10 @@ diffusive_closure = AnisotropicDiffusivity(νh = νh,
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)
 
-gerdes_koberle_willebrand_tapering = Oceananigans.TurbulenceClosures.FluxTapering(1e-2)
+gerdes_koberle_willebrand_tapering = Oceananigans.TurbulenceClosures.FluxTapering(1e-1)
 
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
-                                                                κ_symmetric = (b=0, c=1000),
+                                                                κ_symmetric = 900,
                                                                 slope_limiter = gerdes_koberle_willebrand_tapering)
 #####
 ##### Model building
@@ -96,13 +94,15 @@ ramp(y, Δy) = min(max(0, y/Δy + 1/2), 1)
 N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
 M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
-Δy = 50kilometers
+Δy = 100kilometers
+Δz = 100
+
 Δc = 2Δy
 Δb = Δy * M²
 ϵb = 1e-2 * Δb # noise amplitude
 
 bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy)
-cᵢ(x, y, z) = exp(-y^2 / 2Δc^2)
+cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / (2Δz^2))
 
 set!(model, b=bᵢ, c=cᵢ)
 
@@ -110,10 +110,17 @@ set!(model, b=bᵢ, c=cᵢ)
 ##### Simulation building
 #####
 
+simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
+
+# add timestep wizard callback
+wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=20minutes)
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+
+# add progress callback
 wall_clock = [time_ns()]
 
 function print_progress(sim)
-    @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.8e, %6.8e, %6.8e) m/s, next Δt: %s\n",
+    @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
             100 * (sim.model.clock.time / sim.stop_time),
             sim.model.clock.iteration,
             prettytime(sim.model.clock.time),
@@ -121,16 +128,15 @@ function print_progress(sim)
             maximum(abs, sim.model.velocities.u),
             maximum(abs, sim.model.velocities.v),
             maximum(abs, sim.model.velocities.w),
-            prettytime(sim.Δt.Δt))
+            prettytime(sim.Δt))
 
     wall_clock[1] = time_ns()
     
     return nothing
 end
 
-wizard = TimeStepWizard(cfl=0.2, Δt=Δt₀, max_Δt=Δt₀)
+simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(10))
 
-simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=100)
 
 #####
 ##### Output
@@ -161,7 +167,7 @@ Rb = ComputedField(∇_q_op)
 outputs = merge(fields(model), (; Rb))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(movie_interval),
+                                                      schedule = TimeInterval(save_fields_interval),
                                                       field_slicer = nothing,
                                                       prefix = "zonally_averaged_baroclinic_adj_fields",
                                                       force = true)
@@ -171,15 +177,16 @@ simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
 run!(simulation, pickup=false)
 
 @info "Simulation completed in " * prettytime(simulation.run_time)
-=#
 
 #####
 ##### Visualize
 #####
 
+using GLMakie
+
 fig = Figure(resolution = (1400, 700))
 
-filepath = "zonally_averaged_baroclinic_adj_fields.jld2"
+filepath = "zonally_averaged_baroclinic_adjustment/zonally_averaged_baroclinic_adj_fields.jld2"
 
 ut = FieldTimeSeries(filepath, "u")
 bt = FieldTimeSeries(filepath, "b")
@@ -189,7 +196,7 @@ rt = FieldTimeSeries(filepath, "Rb")
 # Build coordinates, rescaling the vertical coordinate
 x, y, z = nodes((Center, Center, Center), grid)
 
-zscale = 100
+zscale = 1
 z = z .* zscale
 
 #####
@@ -219,26 +226,26 @@ c = @lift cn($n)
 r = @lift rn($n)
 
 ax = Axis(fig[1, 1], title="Zonal velocity")
-hm = heatmap!(ax, y, z, u, colorrange=(min_u, max_u), colormap=:balance)
-contour!(ax, y, z, b, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[1, 2], hm)
+hm = heatmap!(ax, y * 1e-3, z * 1e-3, u, colorrange=(min_u, max_u), colormap=:balance)
+contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
+# cb = Colorbar(fig[1, 2], hm)
 
 ax = Axis(fig[2, 1], title="Tracer concentration")
-hm = heatmap!(ax, y, z, c, colorrange=(min_c, max_c), colormap=:thermal)
-contour!(ax, y, z, b, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[2, 2], hm)
+hm = heatmap!(ax, y * 1e-3, z * 1e-3, c, colorrange=(0, 0.5), colormap=:speed)
+contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
+# cb = Colorbar(fig[2, 2], hm)
 
-ax = Axis(fig[3, 1], title="R(b)")
-hm = heatmap!(ax, y, z, r, colorrange=(min_r, max_r), colormap=:balance)
-contour!(ax, y, z, b, levels = 25, color=:black, linewidth=2)
-cb = Colorbar(fig[3, 2], hm)
+# ax = Axis(fig[3, 1], title="R(b)")
+# hm = heatmap!(ax, y * 1e-3, z * 1e-3, r, colorrange=(min_r, max_r), colormap=:balance)
+# contour!(ax, y * 1e-3, z * 1e-3, b, levels = 25, color=:black, linewidth=2)
+# cb = Colorbar(fig[3, 2], hm)
 
 title_str = @lift "Parameterized baroclinic adjustment at t = " * prettytime(times[$n])
 ax_t = fig[0, :] = Label(fig, title_str)
 
 display(fig)
 
-record(fig, "zonally_averaged_baroclinic_adj.mp4", 1:Nt, framerate=8) do i
+record(fig, "zonally_averaged_baroclinic_adj_withGM.mp4", 1:Nt, framerate=8) do i
     @info "Plotting frame $i of $Nt"
     n[] = i
 end

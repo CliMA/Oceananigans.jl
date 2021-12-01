@@ -11,31 +11,35 @@ using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: fields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
+# Architecture
+architecture  = CPU()
+
 # Domain
-Lx = 500kilometers  # east-west extent [m]
+Lx = 4000kilometers  # east-west extent [m]
 Ly = 1000kilometers # north-south extent [m]
 Lz = 1kilometers    # depth [m]
 
 Nx = 512
-Ny = 1024
-Nz = 64
+Ny = 128
+Nz = 40
 
-movie_interval = 0.2day
+save_fields_interval = 1day
 stop_time = 80days
 Δt₀ = 5minutes
 
-grid = RectilinearGrid(topology = (Periodic, Bounded, Bounded), 
+grid = RectilinearGrid(architecture = architecture,
+                       topology = (Periodic, Bounded, Bounded), 
                        size = (Nx, Ny, Nz), 
                        x = (0, Lx),
                        y = (-Ly/2, Ly/2),
                        z = (-Lz, 0),
                        halo = (3, 3, 3))
 
-coriolis = BetaPlane(latitude=-45)
+coriolis = BetaPlane(latitude = -45)
 
 Δx, Δy, Δz = Lx/Nx, Ly/Ny, Lz/Nz
 
-𝒜 = Δz/Δx # Grid cell aspect ratio.
+𝒜 = Δz/Δy # Grid cell aspect ratio.
 
 κh = 0.1    # [m² s⁻¹] horizontal diffusivity
 νh = 0.1    # [m² s⁻¹] horizontal viscosity
@@ -59,7 +63,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 closures = (diffusive_closure, convective_adjustment)
 
-model = HydrostaticFreeSurfaceModel(architecture = GPU(),
+model = HydrostaticFreeSurfaceModel(architecture = architecture,
                                     grid = grid,
                                     coriolis = coriolis,
                                     buoyancy = BuoyancyTracer(),
@@ -91,12 +95,14 @@ N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
 M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
 Δy = 50kilometers
+Δz = 100
+
 Δc = 2Δy
 Δb = Δy * M²
 ϵb = 1e-2 * Δb # noise amplitude
 
 bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy) + ϵb * randn()
-cᵢ(x, y, z) = exp(-y^2 / 2Δc^2)
+cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
 
 set!(model, b=bᵢ, c=cᵢ)
 
@@ -104,10 +110,17 @@ set!(model, b=bᵢ, c=cᵢ)
 ##### Simulation building
 #####
 
+simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
+
+# add timestep wizard callback
+wizard = TimeStepWizard(cfl=0.2, max_change=1.1, max_Δt=20minutes)
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+
+# add progress callback
 wall_clock = [time_ns()]
 
 function print_progress(sim)
-    @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.8e, %6.8e, %6.8e) m/s, next Δt: %s\n",
+    @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
             100 * (sim.model.clock.time / sim.stop_time),
             sim.model.clock.iteration,
             prettytime(sim.model.clock.time),
@@ -115,16 +128,15 @@ function print_progress(sim)
             maximum(abs, sim.model.velocities.u),
             maximum(abs, sim.model.velocities.v),
             maximum(abs, sim.model.velocities.w),
-            prettytime(sim.Δt.Δt))
+            prettytime(sim.Δt))
 
     wall_clock[1] = time_ns()
     
     return nothing
 end
 
-wizard = TimeStepWizard(cfl=0.2, Δt=Δt₀, max_Δt=Δt₀)
+simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(10))
 
-simulation = Simulation(model, Δt=wizard, stop_time=stop_time, progress=print_progress, iteration_interval=100)
 
 slicers = (west = FieldSlicer(i=1),
            east = FieldSlicer(i=grid.Nx),
@@ -137,14 +149,14 @@ for side in keys(slicers)
     field_slicer = slicers[side]
 
     simulation.output_writers[side] = JLD2OutputWriter(model, fields(model),
-                                                       schedule = TimeInterval(movie_interval),
+                                                       schedule = TimeInterval(save_fields_interval),
                                                        field_slicer = field_slicer,
                                                        prefix = "baroclinic_adj_$(side)_slice",
                                                        force = true)
 end
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, fields(model),
-                                                      schedule = TimeInterval(10day),
+                                                      schedule = TimeInterval(save_fields_interval),
                                                       field_slicer = nothing,
                                                       prefix = "baroclinic_adj_fields",
                                                       force = true)
@@ -156,13 +168,18 @@ V = AveragedField(model.velocities.v, dims=1)
 W = AveragedField(model.velocities.w, dims=1)
 
 simulation.output_writers[:zonal] = JLD2OutputWriter(model, (b=B, c=C, u=U, v=V, w=W),
-                                                     schedule = TimeInterval(movie_interval),
+                                                     schedule = TimeInterval(save_fields_interval),
                                                      prefix = "baroclinic_adj_zonal_average",
                                                      force = true)
 
 @info "Running the simulation..."
 
-run!(simulation, pickup=false)
+try
+    run!(simulation, pickup=false)
+catch err
+    @info "run! threw an error! The error message is"
+    showerror(stdout, err)
+end
 
 @info "Simulation completed in " * prettytime(simulation.run_time)
 
@@ -175,18 +192,21 @@ ax_b = fig[1:5, 1] = LScene(fig)
 ax_c = fig[1:5, 2] = LScene(fig)
 
 # Extract surfaces on all 6 boundaries
-
 iter = Node(0)
 sides = keys(slicers)
 
-zonal_file = jldopen("baroclinic_adj_zonal_average.jld2")
+# zonal_file = jldopen("baroclinic_adj_zonal_average.jld2")
 slice_files = NamedTuple(side => jldopen("baroclinic_adj_$(side)_slice.jld2") for side in sides)
+
+grid = slice_files[1]["serialized/grid"]
 
 # Build coordinates, rescaling the vertical coordinate
 x, y, z = nodes((Center, Center, Center), grid)
 
-zscale = 100
+yscale = 3
+zscale = 800
 z = z .* zscale
+y = y .* yscale
 
 zonal_slice_displacement = 1.35
 
@@ -213,13 +233,13 @@ GLMakie.surface!(ax_b, x, z, b_slices.north;  transformation = (:xz, y[end]), kw
 GLMakie.surface!(ax_b, x, y, b_slices.bottom; transformation = (:xy, z[1]),   kwargs_b...)
 GLMakie.surface!(ax_b, x, y, b_slices.top;    transformation = (:xy, z[end]), kwargs_b...)
 
-b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
-u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
+# b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
+# u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
 
 clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
 
-GLMakie.contour!(ax_b, y, z, b_avg; levels = 15, transformation = (:yz, zonal_slice_displacement * x[end]), show_axis=false)
-GLMakie.surface!(ax_b, y, z, u_avg; transformation = (:yz, zonal_slice_displacement * x[end]), colorrange=clims_u, colormap=:balance)
+# GLMakie.contour!(ax_b, y, z, b_avg; levels = 25, linewidth=2, color=:black, transformation = (:yz, zonal_slice_displacement * x[end]), show_axis=false)
+# GLMakie.surface!(ax_b, y, z, u_avg; transformation = (:yz, zonal_slice_displacement * x[end]), colorrange=clims_u, colormap=:balance)
 
 rotate_cam!(ax_b.scene, (π/24, -π/6, 0))
 
@@ -237,6 +257,7 @@ c_slices = (
 )
 
 clims_c = @lift extrema(slice_files.top["timeseries/c/" * string($iter)][:])
+clims_c = (0, 0.5)
 kwargs_c = (colorrange=clims_c, colormap=:deep, show_axis=false)
 
 GLMakie.surface!(ax_c, y, z, c_slices.west;   transformation = (:yz, x[1]),   kwargs_c...)
@@ -246,11 +267,11 @@ GLMakie.surface!(ax_c, x, z, c_slices.north;  transformation = (:xz, y[end]), kw
 GLMakie.surface!(ax_c, x, y, c_slices.bottom; transformation = (:xy, z[1]),   kwargs_c...)
 GLMakie.surface!(ax_c, x, y, c_slices.top;    transformation = (:xy, z[end]), kwargs_c...)
 
-b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
-c_avg = @lift zonal_file["timeseries/c/" * string($iter)][1, :, :]
+# b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
+# c_avg = @lift zonal_file["timeseries/c/" * string($iter)][1, :, :]
 
-GLMakie.contour!(ax_c, y, z, b_avg; levels = 15, transformation = (:yz, zonal_slice_displacement * x[end]), show_axis=false)
-GLMakie.surface!(ax_c, y, z, c_avg; transformation = (:yz, zonal_slice_displacement * x[end]), colorrange=clims_c, colormap=:deep)
+# GLMakie.contour!(ax_c, y, z, b_avg; levels = 25, linewidth=2, color=:black, transformation = (:yz, zonal_slice_displacement * x[end]), show_axis=false)
+# GLMakie.surface!(ax_c, y, z, c_avg; transformation = (:yz, zonal_slice_displacement * x[end]), colorrange=clims_c, colormap=:deep)
 
 rotate_cam!(ax_c.scene, (π/24, -π/6, 0))
 
@@ -258,13 +279,13 @@ rotate_cam!(ax_c.scene, (π/24, -π/6, 0))
 ##### Make title and animate
 #####
 
-title = @lift(string("Buoyancy and zonally-averaged u at t = ",
-                     prettytime(zonal_file["timeseries/t/" * string($iter)])))
+title = @lift(string("Buoyancy and tracer concentration at t = ",
+                     prettytime(slice_files[1]["timeseries/t/" * string($iter)])))
 
 fig[0, :] = Label(fig, title, textsize=30)
 
 
-iterations = parse.(Int, keys(zonal_file["timeseries/t"]))
+iterations = parse.(Int, keys(slice_files[1]["timeseries/t"]))
 
 record(fig, "baroclinic_adjustment.mp4", iterations, framerate=8) do i
     @info "Plotting iteration $i of $(iterations[end])..."
@@ -278,4 +299,3 @@ for file in slice_files
 end
 
 close(zonal_file)
-
