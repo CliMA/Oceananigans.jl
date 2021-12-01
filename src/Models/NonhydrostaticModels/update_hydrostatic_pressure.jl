@@ -16,6 +16,12 @@ the `buoyancy_perturbation` downwards:
     end
 end
 
+update_hydrostatic_pressure!(model) = update_hydrostatic_pressure!(model.grid, model)
+
+update_hydrostatic_pressure!(::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, model) = nothing
+
+update_hydrostatic_pressure!(grid, model) = update_hydrostatic_pressure!(model.pressures.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
+
 function update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers)
     pressure_calculation = launch!(arch, grid, :xy, _update_hydrostatic_pressure!,
                                    pHY′, grid, buoyancy, tracers,
@@ -26,6 +32,3 @@ function update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers)
 
     return nothing
 end
-
-update_hydrostatic_pressure!(pHY′, arch, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, args...) = nothing
-
