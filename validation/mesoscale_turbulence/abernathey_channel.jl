@@ -137,7 +137,8 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
+model = HydrostaticFreeSurfaceModel(architecture = architecture,
+                                    grid = grid,
                                     free_surface = ImplicitFreeSurface(),
                                     momentum_advection = WENO5(grid = grid),
                                     tracer_advection = WENO5(grid = grid),
