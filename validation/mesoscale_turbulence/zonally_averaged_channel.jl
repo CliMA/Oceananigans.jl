@@ -46,10 +46,11 @@ stop_time = 70 days
 
 # Given Lz and stretching factor σ > 1 the top cell height is Δzₜₒₚ = Lz * (σ - 1) / σ^(Nz - 1)
 
-σ = 1.1 # linear stretching factor
-Δz_center_linear(k) = Lz * (σ - 1) * σ^(Nz - k) / (σ^Nz - 1) # k=1 is the bottom-most cell, k=Nz is the top cell
-linearly_spaced_faces(k) = k==1 ? -Lz : - Lz + sum(Δz_center_linear.(1:k-1))
+# σ = 1.1 # linear stretching factor
+# Δz_center_linear(k) = Lz * (σ - 1) * σ^(Nz - k) / (σ^Nz - 1) # k=1 is the bottom-most cell, k=Nz is the top cell
+# linearly_spaced_faces(k) = k==1 ? -Lz : - Lz + sum(Δz_center_linear.(1:k-1))
 
+# We choose a regular grid though because of numerical issues that yet need to be resolved
 grid = RectilinearGrid(architecture = architecture,
                        topology = (Flat, Bounded, Bounded),
                        size = (Ny, Nz),
@@ -142,8 +143,8 @@ Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 
 # Turbulence closures
 
-κh = 5e-5 # [m²/s] horizontal diffusivity
-νh = 100.0   # [m²/s] horizontal viscocity
+κh = 0.5e-5 # [m²/s] horizontal diffusivity
+νh = 30.0   # [m²/s] horizontal viscocity
 κz = 0.5e-5 # [m²/s] vertical diffusivity
 νz = 3e-4   # [m²/s] vertical viscocity
 

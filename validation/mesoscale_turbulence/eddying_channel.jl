@@ -62,6 +62,7 @@ plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
 
 =#
 
+# We choose a regular grid though because of numerical issues that yet need to be resolved
 grid = RectilinearGrid(architecture = architecture,
                        topology = (Periodic, Bounded, Bounded),
                        size = (Nx, Ny, Nz),
@@ -82,19 +83,19 @@ g  = 9.8061   # [m s⁻²] gravitational constant
 cᵖ = 3994.0   # [J K⁻¹] heat capacity
 ρ  = 1024.0   # [kg m⁻³] reference density
 
-parameters = (
-              Ly = Ly,
-              Lz = Lz,
-              Qᵇ = 10/(ρ * cᵖ) * α * g,   # buoyancy flux magnitude [m² s⁻³]    
-              y_shutoff = 5/6 * Ly,       # shutoff location for buoyancy flux [m]
-              τ = 0.2 / ρ,                # surface kinematic wind stress [m² s⁻²]
-              μ = 1 / 30days,             # bottom drag damping time-scale [s⁻¹]
-              ΔB = 8 * α * g,             # surface vertical buoyancy gradient [s⁻²]
-              H = Lz,                     # domain depth [m]
-              h = 1000.0,                 # exponential decay scale of stable stratification [m]
-              y_sponge = 19/20 * Ly,      # southern boundary of sponge layer [m]
-              λt = 7days                  # relaxation time scale [s]
-              )
+parameters = (Ly = Ly,  
+              Lz = Lz,    
+              Qᵇ = 10 / (ρ * cᵖ) * α * g,          # buoyancy flux magnitude [m² s⁻³]    
+              y_shutoff = 5/6 * Ly,                # shutoff location for buoyancy flux [m]
+              τ = 0.2/ρ,                           # surface kinematic wind stress [m² s⁻²]
+              μ = 1 / 30days,                      # bottom drag damping time-scale [s⁻¹]
+              ΔB = 8 * α * g,                      # surface vertical buoyancy gradient [s⁻²]
+              H = Lz,                              # domain depth [m]
+              h = 1000.0,                          # exponential decay scale of stable stratification [m]
+              y_sponge = 19/20 * Ly,               # southern boundary of sponge layer [m]
+              λt = 7.0days                         # relaxation time scale [s]
+)
+
 
 @inline function buoyancy_flux(i, j, grid, clock, model_fields, p)
     y = ynode(Center(), j, grid)

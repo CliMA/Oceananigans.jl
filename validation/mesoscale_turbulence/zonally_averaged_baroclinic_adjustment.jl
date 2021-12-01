@@ -26,6 +26,7 @@ save_fields_interval = 0.5day
 stop_time = 60days
 Δt₀ = 5minutes
 
+# We choose a regular grid though because of numerical issues that yet need to be resolved
 grid = RectilinearGrid(architecture = architecture,
                        topology = (Flat, Bounded, Bounded), 
                        size = (Ny, Nz), 
@@ -37,7 +38,7 @@ coriolis = BetaPlane(latitude = -45)
 
 Δy, Δz = Ly/Ny, Lz/Nz
 
-𝒜 = Δz/Δy # Grid cell aspect ratio.
+𝒜 = Δz/Δy   # Grid cell aspect ratio.
 
 κh = 0.1    # [m² s⁻¹] horizontal diffusivity
 νh = 0.1    # [m² s⁻¹] horizontal viscosity
@@ -53,7 +54,7 @@ diffusive_closure = AnisotropicDiffusivity(νh = νh,
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)
 
-gerdes_koberle_willebrand_tapering = Oceananigans.TurbulenceClosures.FluxTapering(1e-1)
+gerdes_koberle_willebrand_tapering = Oceananigans.TurbulenceClosures.FluxTapering(1e-2)
 
 gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
                                                                 κ_symmetric = 900,

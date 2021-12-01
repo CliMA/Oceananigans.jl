@@ -28,6 +28,7 @@ save_fields_interval = 1day
 stop_time = 80days
 Δt₀ = 5minutes
 
+# We choose a regular grid though because of numerical issues that yet need to be resolved
 grid = RectilinearGrid(architecture = architecture,
                        topology = (Periodic, Bounded, Bounded), 
                        size = (Nx, Ny, Nz), 
@@ -40,7 +41,7 @@ coriolis = BetaPlane(latitude = -45)
 
 Δx, Δy, Δz = Lx/Nx, Ly/Ny, Lz/Nz
 
-𝒜 = Δz/Δy # Grid cell aspect ratio.
+𝒜 = Δz/Δy   # Grid cell aspect ratio.
 
 κh = 0.1    # [m² s⁻¹] horizontal diffusivity
 νh = 0.1    # [m² s⁻¹] horizontal viscosity
