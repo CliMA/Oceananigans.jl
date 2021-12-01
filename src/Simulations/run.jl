@@ -134,7 +134,7 @@ function time_step!(sim::Simulation)
     end_time_step = time_ns()
 
     # Increment the wall clock
-    sim.run_wall_time += end_time_step - start_time_step
+    sim.run_wall_time += 1e-9 * (end_time_step - start_time_step)
 
     return nothing
 end
