@@ -225,6 +225,7 @@ end
 #####
 
 Base.size(grid::ConformalCubedSphereGrid) = (size(grid.faces[1])..., length(grid.faces))
+Base.size(grid::ConformalCubedSphereGrid, i) = size(grid)[i]
 
 Base.eltype(grid::ConformalCubedSphereGrid{FT}) where FT = FT
 
