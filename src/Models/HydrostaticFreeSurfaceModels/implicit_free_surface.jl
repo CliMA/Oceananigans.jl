@@ -31,7 +31,7 @@ where ``η^n`` is the free-surface elevation at the ``n``-th time step, ``H`` is
 the gravitational acceleration, ``Δt`` is the time step, ``𝐐_⋆`` is the barotropic volume flux
 associated with the predictor velocity field, and ``𝛁_h`` is the horizontal gradient operator.
 
-This equation can be solved in general using the [`PreconditionedConjugateGradientSolver`](@ ref).
+This equation can be solved in general using the [`PreconditionedConjugateGradientSolver`](@ref).
 
 In the case that ``H`` is constant, we divide through to obtain
 
