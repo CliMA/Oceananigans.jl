@@ -21,25 +21,26 @@ end
 """
     ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...)
 
-The implicit free surface equation is
+The implicit free-surface equation is
 
 ```math
-(∇ʰ ⋅ H ∇ʰ - 1 / (g Δt²)) ηⁿ⁺¹ = ∇ʰ ⋅ Q★ / (g Δt) - ηⁿ / (g Δt²) ,
+\\left [ 𝛁_h ⋅ (H 𝛁_h) - \\frac{1}{g Δt^2} \\right ] η^{n+1} = \\frac{𝛁_h ⋅ 𝐐_⋆}{g Δt} - \\frac{η^{n}}{g Δt^2} ,
 ```
 
-where ``H`` is depth, ``g`` is gravitational acceleration, ``Δt`` is time step, and
-``Q★`` is the barotropic volume flux associated with the predictor velocity field.
+where ``η^n`` is the free-surface elevation at the ``n``-th time step, ``H`` is depth, ``g`` is
+the gravitational acceleration, ``Δt`` is the time step, ``𝐐_⋆`` is the barotropic volume flux
+associated with the predictor velocity field, and ``𝛁_h`` is the horizontal gradient operator.
 
-This equation can be solved in general using the `PreconditionedConjugateGradientSolver`.
+This equation can be solved in general using the [`PreconditionedConjugateGradientSolver`](@ ref).
 
 In the case that ``H`` is constant, we divide through to obtain
 
 ```math
-(∇² - 1 / (g H Δt²)) ηⁿ⁺¹ = 1 / (g H Δt) * (∇ʰ ⋅ Q★ - ηⁿ / Δt) ,
+\\left ( ∇^2 - \\frac{1}{g H Δt^2} \\right ) η^{n+1}  = \\frac{1}{g H Δt} \\left ( 𝛁_h ⋅ 𝐐_⋆ - \\frac{η^{n}}{Δt} \\right ) .
 ```
 
-The above can be solved with the `FFTImplicitFreeSurfaceSolver` on grids with regular spacing
-in ``x`` and ``y``.
+Thus, for constant ``H`` and on grids with regular spacing in ``x`` and ``y`` directions, the free
+surface can be obtained using the `FFTImplicitFreeSurfaceSolver`.
 """
 ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...) =
     ImplicitFreeSurface(nothing, gravitational_acceleration, nothing, nothing, solver_method, solver_settings)
