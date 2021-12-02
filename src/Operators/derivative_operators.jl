@@ -101,8 +101,20 @@
 @inline ∂xᶜᵃᵃ(i, j, k, grid, ::Nothing, args...) = 0
 @inline ∂xᶠᵃᵃ(i, j, k, grid, ::Nothing, args...) = 0
 
+@inline ∂xᶜᶜᵃ(i, j, k, grid, ::Nothing, args...) = 0
+@inline ∂xᶜᶠᵃ(i, j, k, grid, ::Nothing, args...) = 0
+
+@inline ∂xᶠᶠᵃ(i, j, k, grid, ::Nothing, args...) = 0
+@inline ∂xᶠᶜᵃ(i, j, k, grid, ::Nothing, args...) = 0
+
 @inline ∂yᵃᶜᵃ(i, j, k, grid, ::Nothing, args...) = 0
 @inline ∂yᵃᶠᵃ(i, j, k, grid, ::Nothing, args...) = 0
+
+@inline ∂yᶜᶜᵃ(i, j, k, grid, ::Nothing, args...) = 0
+@inline ∂yᶠᶜᵃ(i, j, k, grid, ::Nothing, args...) = 0
+
+@inline ∂yᶠᶠᵃ(i, j, k, grid, ::Nothing, args...) = 0
+@inline ∂yᶜᶠᵃ(i, j, k, grid, ::Nothing, args...) = 0
 
 @inline ∂zᵃᵃᶜ(i, j, k, grid, ::Nothing, args...) = 0
 @inline ∂zᵃᵃᶠ(i, j, k, grid, ::Nothing, args...) = 0
