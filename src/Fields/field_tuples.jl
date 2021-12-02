@@ -99,7 +99,7 @@ function PressureFields(arch, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, b
     bcs = merge(default_pressure_boundary_conditions, bcs)
     pNHS = CenterField(arch, grid, bcs.pNHS)
 
-    return (; pNHS=pNHS)
+    return (; pHY′=nothing, pNHS=pNHS)
 end
 
 """
