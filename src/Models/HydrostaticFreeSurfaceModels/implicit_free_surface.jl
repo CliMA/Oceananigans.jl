@@ -36,7 +36,7 @@ This equation can be solved in general using the [`PreconditionedConjugateGradie
 In the case that ``H`` is constant, we divide through to obtain
 
 ```math
-\\left ( ∇^2 - \\frac{1}{g H Δt^2} \\right ) η^{n+1}  = \\frac{1}{g H Δt} \\left ( 𝛁_h ⋅ 𝐐_⋆ - \\frac{η^{n}}{Δt} \\right ) .
+\\left ( ∇^2_h - \\frac{1}{g H Δt^2} \\right ) η^{n+1}  = \\frac{1}{g H Δt} \\left ( 𝛁_h ⋅ 𝐐_⋆ - \\frac{η^{n}}{Δt} \\right ) .
 ```
 
 Thus, for constant ``H`` and on grids with regular spacing in ``x`` and ``y`` directions, the free
