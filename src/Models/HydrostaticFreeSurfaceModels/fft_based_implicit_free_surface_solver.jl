@@ -28,7 +28,7 @@ representing an implicit time discretization of the linear free surface evolutio
 for a fluid with constant depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
-function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
+function FFTImplicitFreeSurfaceSolver(arch, grid, gravity::Number, settings)
 
     grid isa RegRectilinearGrid || grid isa HRegRectilinearGrid ||
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
@@ -65,8 +65,8 @@ function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
     return FFTImplicitFreeSurfaceSolver(solver, grid, horizontal_grid, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:FastFourierTransform}, arch, grid, settings) =
-    FFTImplicitFreeSurfaceSolver(arch, grid, settings)
+build_implicit_step_solver(::Val{:FastFourierTransform}, arch, grid, gravity, settings) =
+    FFTImplicitFreeSurfaceSolver(arch, grid, gravity, settings)
 
 #####
 ##### Solve...

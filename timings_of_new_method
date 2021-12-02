@@ -1,0 +1,32 @@
+# Some benchmarks from benchmarks/benchmark_hydrostatic_model.jl
+
+On the CPU: 
+                                                              Hydrostatic model benchmarks
+┌───────────────┬───────────────────────┬───────────────────────────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────┬─────────┐
+│ Architectures │            grid_types │        free_surface_types │        min │     median │       mean │        max │     memory │ allocs │ samples │
+├───────────────┼───────────────────────┼───────────────────────────┼────────────┼────────────┼────────────┼────────────┼────────────┼────────┼─────────┤
+│           CPU │       RectilinearGrid │       ExplicitFreeSurface │  98.254 ms │  98.871 ms │  98.973 ms │ 100.559 ms │ 855.94 KiB │   1521 │      10 │
+│           CPU │       RectilinearGrid │    FFTImplicitFreeSurface │ 129.990 ms │ 131.244 ms │ 131.595 ms │ 134.253 ms │   1.25 MiB │   2162 │      10 │
+│           CPU │       RectilinearGrid │    PCGImplicitFreeSurface │ 129.236 ms │ 130.703 ms │ 131.086 ms │ 132.816 ms │   1.29 MiB │   2518 │      10 │
+│           CPU │       RectilinearGrid │ MatrixImplicitFreeSurface │ 125.033 ms │ 126.983 ms │ 126.732 ms │ 128.404 ms │  17.20 MiB │   2243 │      10 │
+│           CPU │ LatitudeLongitudeGrid │       ExplicitFreeSurface │ 113.118 ms │ 114.663 ms │ 114.757 ms │ 116.207 ms │   1.14 MiB │   1531 │      10 │
+│           CPU │ LatitudeLongitudeGrid │    FFTImplicitFreeSurface │    1.174 s │    1.207 s │    1.214 s │    1.275 s │ 371.72 MiB │  40136 │       5 │
+│           CPU │ LatitudeLongitudeGrid │    PCGImplicitFreeSurface │ 874.181 ms │ 906.554 ms │ 917.599 ms │ 988.979 ms │ 264.83 MiB │  29206 │       6 │
+│           CPU │ LatitudeLongitudeGrid │ MatrixImplicitFreeSurface │ 152.481 ms │ 155.124 ms │ 159.953 ms │ 190.815 ms │  17.66 MiB │   2240 │      10 │
+└───────────────┴───────────────────────┴───────────────────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────┴─────────┘
+
+On the GPU:
+
+                                                            Hydrostatic model benchmarks
+┌───────────────┬───────────────────────┬───────────────────────────┬───────────┬───────────┬───────────┬───────────┬───────────┬────────┬─────────┐
+│ Architectures │            grid_types │        free_surface_types │       min │    median │      mean │       max │    memory │ allocs │ samples │
+├───────────────┼───────────────────────┼───────────────────────────┼───────────┼───────────┼───────────┼───────────┼───────────┼────────┼─────────┤
+│           GPU │       RectilinearGrid │       ExplicitFreeSurface │  2.033 ms │  2.096 ms │  2.260 ms │  3.756 ms │  1.91 MiB │   4218 │      10 │
+│           GPU │       RectilinearGrid │    FFTImplicitFreeSurface │  2.722 ms │  2.907 ms │  3.099 ms │  3.910 ms │  2.92 MiB │   5791 │      10 │
+│           GPU │       RectilinearGrid │    PCGImplicitFreeSurface │  3.205 ms │  3.308 ms │  3.484 ms │  5.147 ms │  2.89 MiB │   6734 │      10 │
+│           GPU │       RectilinearGrid │ MatrixImplicitFreeSurface │  2.949 ms │  3.048 ms │  3.500 ms │  5.292 ms │  2.66 MiB │   6011 │      10 │
+│           GPU │ LatitudeLongitudeGrid │       ExplicitFreeSurface │  2.301 ms │  2.344 ms │  2.420 ms │  3.118 ms │  2.76 MiB │   4327 │      10 │
+│           GPU │ LatitudeLongitudeGrid │    FFTImplicitFreeSurface │ 39.913 ms │ 43.555 ms │ 46.950 ms │ 64.546 ms │ 26.03 MiB │  96569 │      10 │
+│           GPU │ LatitudeLongitudeGrid │    PCGImplicitFreeSurface │ 30.370 ms │ 35.236 ms │ 37.247 ms │ 54.597 ms │ 20.34 MiB │  72963 │      10 │
+│           GPU │ LatitudeLongitudeGrid │ MatrixImplicitFreeSurface │  9.320 ms │  9.680 ms │  9.938 ms │ 12.769 ms │  4.11 MiB │   9438 │      10 │
+└───────────────┴───────────────────────┴───────────────────────────┴───────────┴───────────┴───────────┴───────────┴───────────┴────────┴─────────┘

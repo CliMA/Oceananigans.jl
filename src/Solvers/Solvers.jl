@@ -4,7 +4,8 @@ export
     BatchedTridiagonalSolver, solve!,
     FFTBasedPoissonSolver,
     FourierTridiagonalPoissonSolver,
-    PreconditionedConjugateGradientSolver
+    PreconditionedConjugateGradientSolver,
+    MatrixIterativeSolver
 
 using Statistics
 using FFTW
@@ -39,5 +40,7 @@ include("plan_transforms.jl")
 include("fft_based_poisson_solver.jl")
 include("fourier_tridiagonal_poisson_solver.jl")
 include("preconditioned_conjugate_gradient_solver.jl")
+include("gpu_ilu_preconditioner_methods.jl")
+include("matrix_iterative_solver.jl")
 
 end

@@ -24,7 +24,7 @@ representing an implicit time discretization of the linear free surface evolutio
 for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
-function PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
+function PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, gravity, settings)
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
     ∫ᶻ_Ayᶜᶠᶜ = ReducedField(Center, Face, Nothing, arch, grid; dims=3)
@@ -47,8 +47,8 @@ function PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings
     return PCGImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, arch, grid, settings) =
-    PCGImplicitFreeSurfaceSolver(arch, grid, settings)
+build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, arch, grid, gravity, settings) =
+    PCGImplicitFreeSurfaceSolver(arch, grid, gravity, settings)
 
 #####
 ##### Solve...

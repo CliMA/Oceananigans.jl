@@ -2,12 +2,13 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
 using Statistics
+using Plots
 
 function geostrophic_adjustment_simulation(free_surface)
 
-    grid = RectilinearGrid(size = (64, 1, 1),
-                                  x = (0, 1000kilometers), y = (0, 1), z = (-400meters, 0),
-                                  topology = (Bounded, Periodic, Bounded))
+    grid = RectilinearGrid(size = (64, 10, 1),
+                                  x = (0, 10), y = (0, 1), z = (-4, 0),
+                                  topology = (Periodic, Periodic, Bounded))
 
     coriolis = FPlane(f=1e-4)
 
@@ -34,7 +35,7 @@ function geostrophic_adjustment_simulation(free_surface)
     set!(model, v=vᵍ, η=ηⁱ)
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
-    simulation = Simulation(model, Δt=2wave_propagation_time_scale, stop_iteration=2)
+    simulation = Simulation(model, Δt=2wave_propagation_time_scale, stop_iteration=10000)
 
     return simulation
 end
@@ -68,31 +69,33 @@ function run_and_analyze(simulation)
     return (; η₀, η₁, Δη, ηx₀, ηx₁, u₀, u₁, v₀, v₁)
 end
 
-fft_based_free_surface = ImplicitFreeSurface(solver_method=:FFTBased)
-pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
+fft_based_free_surface = ImplicitFreeSurface()
+pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, tolerance = 1e-13)
+matrix_free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver, tolerance = 1e-13)
 
-free_surfaces = [fft_based_free_surface, pcg_free_surface]
+free_surfaces = [fft_based_free_surface, pcg_free_surface, matrix_free_surface]
 simulations = [geostrophic_adjustment_simulation(free_surface) for free_surface in free_surfaces]
 data = [run_and_analyze(sim) for sim in simulations]
 
 fft_data = data[1]
 pcg_data = data[2]
+mat_data = data[3]
 
-#pcg_p = plot([pcg_data.η₀ pcg_data.η₁ pcg_data.Δη], label=["η₀" "ηᵢ" "Δη"], linewidth=2)
-#fft_p = plot([fft_data.η₀ fft_data.η₁ fft_data.Δη], label=["η₀" "ηᵢ" "Δη"], linewidth=2)
-
+mat_p_η = plot([mat_data.η₀ mat_data.η₁], label=["η₀" "ηᵢ"], linewidth=2)
 pcg_p_η = plot([pcg_data.η₀ pcg_data.η₁], label=["η₀" "ηᵢ"], linewidth=2)
 fft_p_η = plot([fft_data.η₀ fft_data.η₁], label=["η₀" "ηᵢ"], linewidth=2)
 
+mat_p_ηx = plot([mat_data.ηx₀ mat_data.ηx₁], label=["ηx₀" "ηxᵢ"], linewidth=2)
 pcg_p_ηx = plot([pcg_data.ηx₀ pcg_data.ηx₁], label=["ηx₀" "ηxᵢ"], linewidth=2)
 fft_p_ηx = plot([fft_data.ηx₀ fft_data.ηx₁], label=["ηx₀" "ηxᵢ"], linewidth=2)
 
+mat_p_u = plot([mat_data.u₀ mat_data.u₁], label=["u₀" "uᵢ"], linewidth=2)
 pcg_p_u = plot([pcg_data.u₀ pcg_data.u₁], label=["u₀" "uᵢ"], linewidth=2)
 fft_p_u = plot([fft_data.u₀ fft_data.u₁], label=["u₀" "uᵢ"], linewidth=2)
 
-p = plot(pcg_p_η, fft_p_η,
-         pcg_p_u, fft_p_u,
-         pcg_p_ηx, fft_p_ηx,
-         layout=(3, 2), titles = ["PCG η" "FFT η" "PCG u" "FFT u" "PCG η_x" "FFT η_x"])
+p = plot(pcg_p_η, fft_p_η, mat_p_η,
+         pcg_p_u, fft_p_u, mat_p_u,
+         pcg_p_ηx, fft_p_ηx, mat_p_ηx,
+         layout=(3, 3), titles = ["PCG η" "FFT η" "MAT η" "PCG u" "FFT u" "MAT u" "PCG η_x" "FFT η_x" "MAT η_x"])
 
 display(p)

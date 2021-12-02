@@ -58,7 +58,7 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arc
     barotropic_volume_flux = (u=barotropic_x_volume_flux, v=barotropic_y_volume_flux)
 
     solver_method = free_surface.solver_method
-    solver = build_implicit_step_solver(Val(solver_method), arch, grid, free_surface.solver_settings)
+    solver = build_implicit_step_solver(Val(solver_method), arch, grid, g, free_surface.solver_settings)
 
     return ImplicitFreeSurface(η, g,
                                barotropic_volume_flux,
@@ -70,9 +70,9 @@ end
 is_horizontally_regular(grid) = false
 is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
 
-function build_implicit_step_solver(::Val{:Default}, arch, grid, settings)
+function build_implicit_step_solver(::Val{:Default}, arch, grid, gravity, settings)
     default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :PreconditionedConjugateGradient
-    return build_implicit_step_solver(Val(default_method), arch, grid, settings)
+    return build_implicit_step_solver(Val(default_method), arch, grid, gravity, settings)
 end
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
