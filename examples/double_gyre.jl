@@ -9,23 +9,29 @@ using Oceananigans.Grids: xnode, ynode, znode
 using Plots
 using Printf
 
+architecture = GPU()
+
 const Lx = 400kilometers # east-west extent [m]
 const Ly = 600kilometers # north-south extent [m]
 const Lz = 1.8kilometers # depth [m]
 
-Nx = Ny = 64
-Nz = 16
+Δt₀ = 5minutes
+stop_time = 365days
+
+Nx = Ny = 128
+Nz = 40
 
 σ = 1.2 # stretching factor
 hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
 
 
-grid = VerticallyStretchedRectilinearGrid(size = (Nx, Ny, Nz),
-                                          halo = (3, 3, 3),
-                                             x = (-Lx/2, Lx/2),
-                                             y = (-Ly/2, Ly/2),
-                                       z_faces = hyperbolically_spaced_faces,
-                                      topology = (Bounded, Bounded, Bounded))
+grid = RectilinearGrid(architecture = architecture,
+                               size = (Nx, Ny, Nz),
+                               halo = (3, 3, 3),
+                                  x = (-Lx/2, Lx/2),
+                                  y = (-Ly/2, Ly/2),
+                                  z = hyperbolically_spaced_faces,
+                           topology = (Bounded, Bounded, Bounded))
 
 plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
       marker = :circle,
@@ -84,7 +90,7 @@ closure = AnisotropicDiffusivity(νh=1000, νz=1e-2, κh=500, κz=1e-2)
 
 # ## Model building
 
-model = HydrostaticFreeSurfaceModel(architecture = CPU(),
+model = HydrostaticFreeSurfaceModel(architecture = architecture,
                                     grid = grid,
                                     free_surface = ImplicitFreeSurface(),
                                     momentum_advection = WENO5(),
@@ -105,34 +111,35 @@ set!(model, b=bᵢ)
 
 # ## Simulation setup
 
-max_Δt = 1 / 5model.coriolis.f₀
+simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
 
+# add timestep wizard callback
+max_Δt = 1 / 5model.coriolis.f₀
 wizard = TimeStepWizard(cfl=0.2, Δt=hour/10, max_change=1.1, max_Δt=max_Δt)
 
-# Finally, we set up and run the the simulation.
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
-wall_clock = time_ns()
+# add progress callback
+wall_clock = [time_ns()]
 
-function print_progress(simulation)
-    model = simulation.model
+function print_progress(sim)
+    @printf("[%05.2f%%] i: %d, t: %s, wall time: %s, max(u): (%6.3e, %6.3e, %6.3e) m/s, next Δt: %s\n",
+            100 * (sim.model.clock.time / sim.stop_time),
+            sim.model.clock.iteration,
+            prettytime(sim.model.clock.time),
+            prettytime(1e-9 * (time_ns() - wall_clock[1])),
+            maximum(abs, sim.model.velocities.u),
+            maximum(abs, sim.model.velocities.v),
+            maximum(abs, sim.model.velocities.w),
+            prettytime(sim.Δt))
 
-    ## Print a progress message
-    msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
-                   model.clock.iteration,
-                   prettytime(model.clock.time),
-                   prettytime(wizard.Δt),
-                   maximum(abs, simulation.model.velocities.u),
-                   maximum(abs, simulation.model.velocities.v),
-                   maximum(abs, simulation.model.velocities.w),
-                   prettytime(1e-9 * (time_ns() - wall_clock))
-                  )
-
-    @info msg
-
+    wall_clock[1] = time_ns()
+    
     return nothing
 end
 
-simulation = Simulation(model, Δt=wizard, stop_time=365days, iteration_interval=10, progress=print_progress)
+simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
+
 
 # ## Output
 
