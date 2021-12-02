@@ -203,7 +203,7 @@ function set!(model, filepath::AbstractString)
 
 	if model.grid isa ImmersedBoundaryGrid
             model.grid.grid == checkpointed_grid || 
-            error("The grid associated with $filepath and the underlying ib grid are not the same!")
+            error("The grid associated with $filepath and the underlying `ImmersedBoundaryGrid.grid` are not the same!")
         else
          model.grid == checkpointed_grid ||
              error("The grid associated with $filepath and model.grid are not the same!")
