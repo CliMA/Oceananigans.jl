@@ -3,8 +3,8 @@ using Statistics
 using JLD2
 
 using Oceananigans
+using Oceananigans.Units
 using Oceananigans.Architectures: array_type
-
 using Oceananigans.Fields: location
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())

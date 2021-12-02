@@ -51,11 +51,14 @@ export
     UniformStokesDrift,
 
     # Turbulence closures
-    IsotropicDiffusivity, AnisotropicDiffusivity,
+    IsotropicDiffusivity,
+    AnisotropicDiffusivity,
     AnisotropicBiharmonicDiffusivity,
-    SmagorinskyLilly, AnisotropicMinimumDissipation,
+    SmagorinskyLilly,
+    AnisotropicMinimumDissipation,
     HorizontallyCurvilinearAnisotropicDiffusivity,
     ConvectiveAdjustmentVerticalDiffusivity,
+    IsopycnalSkewSymmetricDiffusivity,
 
     # Lagrangian particle tracking
     LagrangianParticles,
@@ -83,7 +86,7 @@ export
 
     # Output writers
     FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
-    TimeInterval, IterationInterval, AveragedTimeInterval,
+    TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,

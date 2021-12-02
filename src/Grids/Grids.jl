@@ -2,7 +2,8 @@ module Grids
 
 export Center, Face
 export AbstractTopology, Periodic, Bounded, Flat, Connected, topology
-export AbstractGrid, AbstractUnderlyingGrid, halo_size
+
+export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
 export AbstractRectilinearGrid, RectilinearGrid 
 export XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid, HRegRectilinearGrid, RegRectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
