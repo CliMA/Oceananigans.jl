@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: architecture, arch_array
-using Oceananigans.Grids: interior_parent_indices
+using Oceananigans.Grids: interior_parent_indices, topology
 using Oceananigans.Fields: interior_copy
 using KernelAbstractions: @kernel, @index
 using LinearAlgebra, SparseArrays, IterativeSolvers
@@ -54,6 +54,10 @@ function MatrixIterativeSolver(coeffs;
                                precondition = true)
 
     arch = grid.architecture
+
+    if iterative_solver == (\) && arch isa GPU
+        throw(ArgumentError("Cannot specify a Direct solve on a GPU, it would need scalar indexing!"))
+    end
 
     matrix_constructors, diagonal = matrix_from_coefficients(arch, grid, coeffs)  
 
@@ -113,13 +117,13 @@ function matrix_from_coefficients(arch, grid, coeffs)
     
     if topology(grid)[1] == Periodic
         coeff_period_x_size = (1, Ny)
-        event_period_x = launch!(arch, grid, coeff_period_x_size, _matrix_from_period_x!, c, api, Ax, N, Nx)
+        event_period_x = launch!(arch, grid, coeff_period_x_size, _matrix_from_period_x!, c, api, Ax, Nx)
         wait(event_period_x)
     end
 
     if topology(grid)[2] == Periodic
         coeff_period_y_size = (Nx, 1)
-        event_period_y = launch!(arch, grid, coeff_period_y_size, _matrix_from_period_y!, c, apj, Ay, N, Nx)
+        event_period_y = launch!(arch, grid, coeff_period_y_size, _matrix_from_period_y!, c, apj, Ay, Ny, Nx)
         wait(event_period_y)
     end
 
@@ -139,16 +143,15 @@ end
 @kernel function _matrix_from_coeff_c!(diag, C, Nx)  
     i, j = @index(Global, NTuple)
     t  = i + Nx * (j-1)
-
     diag[t] = C[i, j]
 end
 
-#We have to split in two the kernels for synchronization reasons
+# filling c[t] and c[t+1] has to be split in two kernels for synchronization reasons 
+# (to avoid race conditions)
 @kernel function _matrix_from_coeff_x!(c, ai, Ax, Nx)
     i, j = @index(Global, NTuple)
 
     t  = i + Nx * (j-1)
-
     c[t]   -= Ax[i+1, j]
     ai[t]   = Ax[i+1, j]        
 end
@@ -156,44 +159,44 @@ end
 @kernel function _matrix_from_coeff_y!(c, aj, Ay, Nx)
     i, j = @index(Global, NTuple)
 
-    t  = i + Nx * (j-1)
-        
+    t  = i + Nx * (j-1)       
     c[t]    -= Ay[i, j+1]
     aj[t]    = Ay[i, j+1]       
 end
 
 @kernel function _matrix_from_coeff_x_plus!(c, Ax, Nx)
     i, j = @index(Global, NTuple)
-
     t  = i + Nx * (j-1)
-
     c[t+1] -= Ax[i+1, j]        
 end
 
 @kernel function _matrix_from_coeff_y_plus!(c, Ay, Nx)
     i, j = @index(Global, NTuple)
-
-    t  = i + Nx * (j-1)
-   
+    t  = i + Nx * (j-1)   
     c[t+Nx] -= Ay[i, j+1] 
 end
 
-# here we do not since every point
-@kernel function _matrix_from_period_x!(c, api, Ax, N, Nx)
+# here we do not since every point is unique
+@kernel function _matrix_from_period_x!(c, api, Ax, Nx)
     i, j = @index(Global, NTuple)
 
-    t = 1 + Nx * (j - 1)
-    c[t]      -= Ax[i, j]
-    c[t+Nx-1] -= Ax[i, j] 
-    api[t]     = Ax[i, j]       
+    tₘ = 1  + (j-1) * Nx
+    tₚ = Nx + (j-1) * Nx
+    
+    c[tₘ]   -= Ax[i, j]
+    c[tₚ]   -= Ax[i, j] 
+    api[tₘ]  = Ax[i, j]       
 end
 
-@kernel function _matrix_from_period_y!(c, apj, Ay, N, Nx)
+@kernel function _matrix_from_period_y!(c, apj, Ay, Ny, Nx)
     i, j = @index(Global, NTuple)
 
-    c[i]      -= Ay[i, j]
-    c[i+N-Nx] -= Ay[i, j] 
-    apj[i]     = Ay[i, j]       
+    tₘ = i 
+    tₚ = i + (Ny-1) * Nx
+
+    c[tₘ]   -= Ay[i, j]
+    c[tₚ]   -= Ay[i, j] 
+    apj[tₘ]  = Ay[i, j]       
 end
 
 function solve!(x, solver::MatrixIterativeSolver, b, Δt)
@@ -209,7 +212,11 @@ function solve!(x, solver::MatrixIterativeSolver, b, Δt)
         solver.Δt_previous = Δt
     end
         
-    q = solver.iterative_solver(solver.matrix, b; reltol=solver.tolerance, maxiter=solver.maximum_iterations, Pl=solver.preconditioner)
+    if solver.iterative_solver == (\)
+        q = solver.iterative_solver(solver.matrix, b)
+    else   
+        q = solver.iterative_solver(solver.matrix, b; reltol=solver.tolerance, maxiter=solver.maximum_iterations, Pl=solver.preconditioner)
+    end
 
     copy_into_x!(solver, x, q)
     fill_halo_regions!(x, solver.architecture) 
@@ -233,7 +240,7 @@ function update_diag!(constr, arch, grid, diagonal, Δt)
     
     col, row, val = unpack_constructors(arch, constr)
 
-    event = launch!(arch, grid, :xy, _update_diag!, diagonal, col, row, val, Δt, grid.Nx)
+    event = launch!(arch, grid, (grid.Nx, grid.Ny), _update_diag!, diagonal, col, row, val, Δt, grid.Nx)
     wait(event)
 
     constr = constructors(arch, grid.Nx * grid.Ny, (col, row, val))

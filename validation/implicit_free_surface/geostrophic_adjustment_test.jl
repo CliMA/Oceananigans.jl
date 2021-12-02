@@ -7,7 +7,7 @@ using Plots
 function geostrophic_adjustment_simulation(free_surface)
 
     grid = RectilinearGrid(size = (64, 10, 1),
-                                  x = (0, 10), y = (0, 1), z = (-4, 0),
+                                  x = (0, 1000kilometers), y = (0, 1), z = (-400meters, 0),
                                   topology = (Periodic, Periodic, Bounded))
 
     coriolis = FPlane(f=1e-4)
@@ -35,7 +35,7 @@ function geostrophic_adjustment_simulation(free_surface)
     set!(model, v=vᵍ, η=ηⁱ)
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
-    simulation = Simulation(model, Δt=2wave_propagation_time_scale, stop_iteration=10000)
+    simulation = Simulation(model, Δt=wave_propagation_time_scale/2, stop_iteration=100)
 
     return simulation
 end
@@ -70,8 +70,8 @@ function run_and_analyze(simulation)
 end
 
 fft_based_free_surface = ImplicitFreeSurface()
-pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, tolerance = 1e-13)
-matrix_free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver, tolerance = 1e-13)
+pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
+matrix_free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver, precondition=true)
 
 free_surfaces = [fft_based_free_surface, pcg_free_surface, matrix_free_surface]
 simulations = [geostrophic_adjustment_simulation(free_surface) for free_surface in free_surfaces]

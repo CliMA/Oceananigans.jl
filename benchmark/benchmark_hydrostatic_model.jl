@@ -18,17 +18,17 @@ DataDeps.register(dd)
 
 # Benchmark function
 
-Nx = 1024
-Ny = 512 
+Nx = 512
+Ny = 256
 
 # All grids have 6 * 510^2 = 1,560,600 grid points.
 grids = Dict(
-     (CPU, :RectilinearGrid)              => RectilinearGrid(size=(Nx, Ny, 1), extent=(1, 1, 1)),
+    #  (CPU, :RectilinearGrid)              => RectilinearGrid(size=(Nx, Ny, 1), extent=(1, 1, 1)),
      (CPU, :LatitudeLongitudeGrid)        => LatitudeLongitudeGrid(size=(Nx, Ny, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0), precompute_metrics=true),
     #  (CPU, :ConformalCubedSphereFaceGrid) => ConformalCubedSphereFaceGrid(size=(1445, 1080, 1), z=(-1, 0)),
     #  (CPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_510_grid/cubed_sphere_510_grid.jld2", Nz=1, z=(-1, 0)),
-     (GPU, :RectilinearGrid)              => RectilinearGrid(size=(Nx, Ny, 1), extent=(1, 1, 1), architecture=GPU()),
-     (GPU, :LatitudeLongitudeGrid)        => LatitudeLongitudeGrid(size=(Nx, Ny, 1), longitude=(-160, 160), latitude=(-80, 80), z=(-1, 0), architecture=GPU(), precompute_metrics=true),
+    #  (GPU, :RectilinearGrid)              => RectilinearGrid(size=(Nx, Ny, 1), extent=(1, 1, 1), architecture=GPU()),
+    #  (GPU, :LatitudeLongitudeGrid)        => LatitudeLongitudeGrid(size=(Nx, Ny, 1), longitude=(-160, 160), latitude=(-80, 80), z=(-1, 0), architecture=GPU(), precompute_metrics=true),
     # Uncomment when ConformalCubedSphereFaceGrids of any size can be built natively without loading from file:
     #  (GPU, :ConformalCubedSphereFaceGrid) => ConformalCubedSphereFaceGrid(size=(1445, 1080, 1), z=(-1, 0), architecture=GPU()),
     #  (GPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_510_grid/cubed_sphere_510_grid.jld2", Nz=1, z=(-1, 0), architecture=GPU()),
@@ -36,9 +36,10 @@ grids = Dict(
 
 free_surfaces = Dict(
     :ExplicitFreeSurface => ExplicitFreeSurface(),
-    :FFTImplicitFreeSurface => ImplicitFreeSurface() , 
+    # :FFTImplicitFreeSurface => ImplicitFreeSurface() , 
     :PCGImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, tolerance = 1e-8) , 
-    :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, tolerance = 1e-8) 
+    :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, iterative_solver = (\)) 
+    # :MatrixDirectSolveFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, iterative_solver = (\)) 
 )
 
 function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
@@ -63,10 +64,10 @@ end
 
 # Benchmark parameters
 
-Architectures = [GPU] #has_cuda() ? [GPU, CPU] : [CPU]
+Architectures = [CPU] #has_cuda() ? [GPU, CPU] : [CPU]
 
 grid_types = [
-    :RectilinearGrid,
+    # :RectilinearGrid,
     :LatitudeLongitudeGrid,
     # Uncomment when ConformalCubedSphereFaceGrids of any size can be built natively without loading from file:
     # :ConformalCubedSphereFaceGrid,
@@ -76,7 +77,7 @@ grid_types = [
 free_surface_types = [
     :ExplicitFreeSurface,
     # ImplicitFreeSurface doesn't yet work on MultiRegionGrids like the ConformalCubedSphereGrid:
-    :FFTImplicitFreeSurface, 
+    # :FFTImplicitFreeSurface, 
     :PCGImplicitFreeSurface,
     :MatrixImplicitFreeSurface
 ]

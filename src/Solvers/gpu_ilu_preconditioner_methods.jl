@@ -74,6 +74,28 @@ function backward_substitution!(F::ILUFactorizationGPU, y::AbstractVector)
     y
 end
 
+## Parallel version of the algorithm
+
+##   DO  PARALLEL I = 1, N
+##   X(I) = Y(I)
+##   END DO
+##   DO J = N, 1, -1
+##   X(J) = X(J) / U(J,J)
+##   DO PARALLEL I = 1, J-1
+##      X(I) = X(I) - U(I,J)*X(J)
+##   END DO
+##   END DO
+
+## Which in Julia would be
+
+## x .= y
+## for j = n:-1:1
+## x[j] = x[j] / nzval(diag)
+## parallelly: i = 1:j-1
+##   x[i] = x[i] - nzval(i,j) * x(j)
+## end
+## end
+
 function _backward_substitution!(n, colptr, rowval, nzval, y)
     @inbounds begin
         for col = n : -1 : 1
