@@ -30,14 +30,7 @@ function update_state!(model::NonhydrostaticModel)
     calculate_diffusivities!(model.diffusivity_fields, model.closure, model)
     fill_halo_regions!(model.diffusivity_fields, model.architecture, model.clock, fields(model))
 
-    # Calculate hydrostatic pressure
-    pressure_calculation = launch!(model.architecture, model.grid, :xy, update_hydrostatic_pressure!,
-                                   model.pressures.pHY′, model.grid, model.buoyancy, model.tracers,
-                                   dependencies=Event(device(model.architecture)))
-
-    # Fill halo regions for pressure
-    wait(device(model.architecture), pressure_calculation)
-
+    update_hydrostatic_pressure!(model.pressures.pHY′, model.architecture, model.grid, model.buoyancy, model.tracers)
     fill_halo_regions!(model.pressures.pHY′, model.architecture)
 
     return nothing

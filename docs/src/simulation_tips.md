@@ -70,7 +70,7 @@ GPU computing (and Julia) is again desirable, an inexperienced user can also ach
 in GPU simulations by following a few simple principles.
 
 
-### Variables that need to be used in GPU computations need to be defined as constants
+### Global variables that need to be used in GPU computations need to be defined as constants or passed as parameters
 
 Any global variable that needs to be accessed by the GPU needs to be a constant or the simulation
 will crash. This includes any variables that are referenced as global variables in functions
@@ -94,6 +94,14 @@ fixes the issue by indicating to the compiler that `T₀` will not change.
 Note that the _literal_ `2π / 86400` is not an issue -- it's only the
 _variable_ `T₀` that must be declared `const`.
 
+Alternatively, passing the variable as a parameter to `GradientBoundaryCondition` also works:
+
+```julia
+T₀ = 20 # ᵒC
+surface_temperature(x, y, t, p) = p.T₀ * sin(2π / 86400 * t)
+T_bcs = FieldBoundaryConditions(bottom = GradientBoundaryCondition(surface_temperature, parameters=(T₀=T₀,)))
+```
+
 ### Complex diagnostics using `ComputedField`s may not work on GPUs
 
 `ComputedField`s are the most convenient way to calculate diagnostics for your simulation. They will
@@ -105,7 +113,7 @@ For example, in the example below, calculating `u²` works in both CPUs and GPUs
 
 ```julia
 using Oceananigans
-grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
 model = NonhydrostaticModel(grid=grid, closure=IsotropicDiffusivity(ν=1e-6))
 u, v, w = model.velocities
 ν = model.closure.ν
@@ -226,17 +234,17 @@ its elements to do that. Consider the example below:
 ```julia
 julia> using Oceananigans; using Adapt
 
-julia> grid = RegularRectilinearGrid(size=(1,1,1), extent=(1,1,1))
-RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}
+julia> grid = RectilinearGrid(size=(1,1,1), extent=(1,1,1))
+RectilinearGrid{Float64, Periodic, Periodic, Bounded}
                    domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
                  topology: (Periodic, Periodic, Bounded)
-  resolution (Nx, Ny, Nz): (1, 1, 1)
-   halo size (Hx, Hy, Hz): (1, 1, 1)
+        size (Nx, Ny, Nz): (1, 1, 1)
+        halo (Hx, Hy, Hz): (1, 1, 1)
 grid spacing (Δx, Δy, Δz): (1.0, 1.0, 1.0)
 
 julia> model = NonhydrostaticModel(grid=grid, architecture=GPU())
 NonhydrostaticModel{GPU, Float64}(time = 0 seconds, iteration = 0) 
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
 ├── tracers: (:T, :S)
 ├── closure: IsotropicDiffusivity{Float64,NamedTuple{(:T, :S),Tuple{Float64,Float64}}}
 ├── buoyancy: SeawaterBuoyancy{Float64,LinearEquationOfState{Float64},Nothing,Nothing}

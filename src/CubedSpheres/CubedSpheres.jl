@@ -110,12 +110,17 @@ end
 ##### NaN checker for cubed sphere fields
 #####
 
-import Oceananigans.Diagnostics: error_if_nan_in_field
+import Oceananigans.Simulations: hasnan
 
-function error_if_nan_in_field(field::AbstractCubedSphereField, name, clock)
+function hasnan(field::AbstractCubedSphereField)
     for (face_index, face_field) in enumerate(faces(field))
-        error_if_nan_in_field(face_field, string(name) * " (face $face_index)", clock)
+        nanface = hasnan(face_field)
+        if nanface
+            @info "NaN found on face $face_index..."
+            return true
+        end
     end
+    return false
 end
 
 #####

@@ -15,7 +15,7 @@ end
 ```
 
 ```jldoctest particles
-grid = RegularRectilinearGrid(size=(10, 10, 10), extent=(1, 1, 1));
+grid = RectilinearGrid(size=(10, 10, 10), extent=(1, 1, 1));
 
 n_particles = 10;
 
@@ -40,10 +40,10 @@ model = NonhydrostaticModel(grid=grid, particles=lagrangian_particles)
 
 # output
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=10, Ny=10, Nz=10)
-├── tracers: (:T, :S)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=10, Ny=10, Nz=10)
+├── tracers: ()
 ├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
+├── buoyancy: Nothing
 ├── coriolis: Nothing
 └── particles: 10 Lagrangian particles with 3 properties: (:x, :y, :z)
 ```

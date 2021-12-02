@@ -27,7 +27,7 @@ end
 
 function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=grid_points, extent=(1, 2, 3))
+    full_grid = RectilinearGrid(topology=topo, size=grid_points, extent=(1, 2, 3))
     arch = MultiCPU(grid=full_grid, ranks=ranks)
     model = DistributedNonhydrostaticModel(architecture=arch, grid=full_grid)
 
@@ -56,4 +56,6 @@ end
     @info "  Testing distributed FFT-based Poisson solver..."
     @test divergence_free_poisson_solution_triply_periodic((16, 16, 1), (1, 4, 1))
     @test divergence_free_poisson_solution_triply_periodic((44, 44, 1), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((16, 44, 1), (1, 4, 1))
 end

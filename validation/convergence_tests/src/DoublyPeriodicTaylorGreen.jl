@@ -17,7 +17,7 @@ const DATA_DIR = joinpath(@__DIR__, "..", "data")
 
 function setup_simulation(; Nx, Δt, stop_iteration, U=1, architecture=CPU(), dir=DATA_DIR)
 
-    grid = RegularRectilinearGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, 2π), z=(0, 1),
+    grid = RectilinearGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, 2π), z=(0, 1),
                                 topology=(Periodic, Periodic, Bounded))
 
     model = NonhydrostaticModel(architecture = architecture,

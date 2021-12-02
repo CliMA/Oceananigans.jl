@@ -26,10 +26,10 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     #####
 
     if grid_type == :regular
-        grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        grid = RectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     elseif grid_type == :vertically_unstretched
         zF = range(-Lz, 0, length=Nz+1)
-        grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z_faces=zF)
+        grid = RectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=zF)
     end
 
     # Force salinity as a passive tracer (βS=0)
@@ -50,7 +50,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     )
 
     # Lz/Nz will work for both the :regular and :vertically_unstretched grids.
-    Δt = 0.01 * min(model.grid.Δx, model.grid.Δy, Lz/Nz)^2 / ν
+    Δt = 0.01 * min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, Lz/Nz)^2 / ν
 
     # We will manually change the stop_iteration as needed.
     simulation = Simulation(model, Δt=Δt, stop_iteration=0)
@@ -90,7 +90,8 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     #####
 
     # Load initial state
-    initial_filename = joinpath(dirname(@__FILE__), "data", prefix * "_iteration$spinup_steps.jld2")
+    datadep_path = "regression_test_data/" * prefix * "_iteration$spinup_steps.jld2"
+    initial_filename = @datadep_str datadep_path
 
     solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
 
@@ -119,11 +120,14 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     # Step the model forward and perform the regression test
     update_state!(model)
 
+    model.timestepper.previous_Δt = Δt
+
     for n in 1:test_steps
         time_step!(model, Δt, euler=false)
     end
 
-    final_filename = joinpath(@__DIR__, "data", prefix * "_iteration$(spinup_steps+test_steps).jld2")
+    datadep_path = "regression_test_data/" * prefix * "_iteration$(spinup_steps+test_steps).jld2"
+    final_filename = @datadep_str datadep_path
 
     solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
 

@@ -6,7 +6,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
-grid = RegularRectilinearGrid(size=16, z=(-64, 0), topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(size=16, z=(-64, 0), topology=(Flat, Flat, Bounded))
 
 closure = CATKEVerticalDiffusivity()
                                       
@@ -15,7 +15,7 @@ Qᵘ = 0.0
 Qᵛ = 0.0
 
 u★ = (Qᵘ^2 + Qᵛ^2)^(1/4)
-w★ = Qᵇ * grid.Δz
+w★ = Qᵇ * grid.Δzᵃᵃᶜ
 
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵛ))

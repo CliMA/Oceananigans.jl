@@ -19,26 +19,27 @@ struct ImplicitFreeSurface{E, G, B, I, M, S}
 end
 
 """
-    ImplicitFreeSurface(; solver=:PreconditionedConjugateGradient, gravitational_acceleration=g_Earth, solver_settings...) =
+    ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...)
 
 The implicit free surface equation is
 
 ```math
-(∇ʰ ⋅ H ∇ʰ - 1 / (g Δt²)) ηⁿ⁺¹ = ∇ʰ ⋅ Q★ / (g Δt) - ηⁿ / (g Δt²)
+(∇ʰ ⋅ H ∇ʰ - 1 / (g Δt²)) ηⁿ⁺¹ = ∇ʰ ⋅ Q★ / (g Δt) - ηⁿ / (g Δt²) ,
 ```
 
 where ``H`` is depth, ``g`` is gravitational acceleration, ``Δt`` is time step, and
 ``Q★`` is the barotropic volume flux associated with the predictor velocity field.
 
-This can be solved in general using the `PreconditionedConjugateGradientSolver`.
+This equation can be solved in general using the `PreconditionedConjugateGradientSolver`.
 
 In the case that ``H`` is constant, we divide through to obtain
 
 ```math
-(∇² - 1 / (g H Δt²)) ηⁿ⁺¹ = 1 / (g H Δt) * (∇ʰ ⋅ Q★ - ηⁿ / Δt)
+(∇² - 1 / (g H Δt²)) ηⁿ⁺¹ = 1 / (g H Δt) * (∇ʰ ⋅ Q★ - ηⁿ / Δt) ,
 ```
 
-The above can be solved with the `FastFourierTransformPoissonSolver` on grids with regular spacing in x and y.
+The above can be solved with the `FFTImplicitFreeSurfaceSolver` on grids with regular spacing
+in ``x`` and ``y``.
 """
 ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...) =
     ImplicitFreeSurface(nothing, gravitational_acceleration, nothing, nothing, solver_method, solver_settings)
@@ -68,8 +69,7 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arc
 end
 
 is_horizontally_regular(grid) = false
-is_horizontally_regular(::RegularRectilinearGrid) = true
-is_horizontally_regular(::VerticallyStretchedRectilinearGrid) = true
+is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
 
 function build_implicit_step_solver(::Val{:Default}, arch, grid, settings)
     default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :PreconditionedConjugateGradient
@@ -108,7 +108,7 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 
     solve!(η, solver, rhs, g, Δt)
 
-    @debug "Implict step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
+    @debug "Implicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
 
     fill_halo_regions!(η, arch)
     

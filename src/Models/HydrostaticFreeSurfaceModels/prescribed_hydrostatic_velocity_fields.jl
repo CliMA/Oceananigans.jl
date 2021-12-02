@@ -43,6 +43,11 @@ PrescribedVelocityFields(; u=zerofunc, v=zerofunc, w=zerofunc, parameters=nothin
 PrescribedField(X, Y, Z, f::Function,      grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
 PrescribedField(X, Y, Z, f::AbstractField, grid; kwargs...) = f
 
+function PrescribedField(X, Y, Z, f::AbstractDataField, grid; kwargs...)
+    fill_halo_regions!(f, architecture(f))
+    return f
+end
+
 function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields, arch, grid, clock, bcs)
 
     u = PrescribedField(Face, Center, Center, velocities.u, grid; clock=clock, parameters=velocities.parameters)

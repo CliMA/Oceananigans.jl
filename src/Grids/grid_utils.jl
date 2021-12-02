@@ -85,9 +85,9 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 @inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
 @inline domain(::Type{Flat}, N, ξ) = CUDA.@allowscalar ξ[1], ξ[1]
 
-@inline x_domain(grid) = domain(topology(grid, 1), grid.Nx, grid.xF)
-@inline y_domain(grid) = domain(topology(grid, 2), grid.Ny, grid.yF)
-@inline z_domain(grid) = domain(topology(grid, 3), grid.Nz, grid.zF)
+@inline x_domain(grid) = domain(topology(grid, 1), grid.Nx, grid.xᶠᵃᵃ)
+@inline y_domain(grid) = domain(topology(grid, 2), grid.Ny, grid.yᵃᶠᵃ)
+@inline z_domain(grid) = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
 
 #####
 ##### << Indexing >>
@@ -216,7 +216,7 @@ Examples
 ```jldoctest znodes
 julia> using Oceananigans
 
-julia> horz_periodic_grid = RegularRectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1),
+julia> horz_periodic_grid = RectilinearGrid(size=(3, 3, 3), extent=(2π, 2π, 1),
                                                  topology=(Periodic, Periodic, Bounded));
 
 julia> zC = znodes(Center, horz_periodic_grid)
@@ -297,7 +297,6 @@ function pop_flat_elements(tup, topo)
     end
     return Tuple(new_tup)
 end
-
 
 #####
 ##### Directions (for tilted domains)

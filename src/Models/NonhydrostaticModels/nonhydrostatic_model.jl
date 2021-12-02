@@ -49,13 +49,13 @@ end
            architecture = CPU(),
                   clock = Clock{eltype(grid)}(0, 0, 1),
               advection = CenteredSecondOrder(),
-               buoyancy = Buoyancy(SeawaterBuoyancy(eltype(grid))),
+               buoyancy = nothing,
                coriolis = nothing,
            stokes_drift = nothing,
                 forcing = NamedTuple(),
                 closure = nothing,
     boundary_conditions = NamedTuple(),
-                tracers = (:T, :S),
+                tracers = (),
             timestepper = :QuasiAdamsBashforth2,
       background_fields = NamedTuple(),
               particles = nothing,
@@ -73,30 +73,30 @@ when `buoyancy != nothing`. By default, all Bounded directions are rigid and imp
 Keyword arguments
 =================
 
-    - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
-    - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
-    - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
-    - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
-    - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
-    - `coriolis`: Parameters for the background rotation rate of the model.
-    - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
-    - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
-    - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
-                 preallocated `CenterField`s.
-    - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
-                     `:RungeKutta3`.
+  - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
+  - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
+  - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
+  - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
+  - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
+  - `coriolis`: Parameters for the background rotation rate of the model.
+  - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
+  - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
+  - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
+               preallocated `CenterField`s.
+  - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
+                   `:RungeKutta3`.
 """
 function NonhydrostaticModel(;    grid,
     architecture::AbstractArchitecture = CPU(),
                                  clock = Clock{eltype(grid)}(0, 0, 1),
                              advection = CenteredSecondOrder(),
-                              buoyancy = Buoyancy(model=SeawaterBuoyancy(eltype(grid))),
+                              buoyancy = nothing,
                               coriolis = nothing,
                           stokes_drift = nothing,
                    forcing::NamedTuple = NamedTuple(),
                                closure = nothing,
        boundary_conditions::NamedTuple = NamedTuple(),
-                               tracers = (:T, :S),
+                               tracers = (),
                            timestepper = :QuasiAdamsBashforth2,
          background_fields::NamedTuple = NamedTuple(),
          particles::ParticlesOrNothing = nothing,

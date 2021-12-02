@@ -1,10 +1,8 @@
-ENV["GKSwstype"] = "100"
-
 # # An unstable Bickley jet in Shallow Water model 
 #
-# This uses `Oceananigans.ShallowWaterModel` to simulate
+# This example uses Oceananigans.jl's `ShallowWaterModel` to simulate
 # the evolution of an unstable, geostrophically balanced, Bickley jet
-# This example is periodic in ``x`` with flat bathymetry and
+# The example is periodic in ``x`` with flat bathymetry and
 # uses the conservative formulation of the shallow water equations.
 # The initial conditions superpose the Bickley jet with small-amplitude perturbations.
 # See ["The nonlinear evolution of barotropically unstable jets," J. Phys. Oceanogr. (2003)](https://doi.org/10.1175/1520-0485(2003)033<2173:TNEOBU>2.0.CO;2)
@@ -36,9 +34,9 @@ using Oceananigans.Models: ShallowWaterModel
 Lx, Ly, Lz = 2π, 20, 1
 Nx, Ny = 128, 128
 
-grid = RegularRectilinearGrid(size = (Nx, Ny),
-                              x = (0, Lx), y = (-Ly/2, Ly/2),
-                              topology = (Periodic, Bounded, Flat))
+grid = RectilinearGrid(size = (Nx, Ny),
+                       x = (0, Lx), y = (-Ly/2, Ly/2),
+                       topology = (Periodic, Bounded, Flat))
 
 # ## Physical parameters
 #
