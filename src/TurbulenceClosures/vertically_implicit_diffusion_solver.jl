@@ -40,46 +40,49 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 
 @inline function ivd_upper_diagonalᵃᵃᶜ(i, j, k, grid, clock, Δt, κ⁻⁻ᶠ, κ)
     κᵏ⁺¹ = κ⁻⁻ᶠ(i, j, k+1, grid, clock, κ)
-    return - Δt * κ_Δz²(i, j, k, k+1, grid, κᵏ⁺¹)
+
+    return ifelse(k < 1,
+                  zero(eltype(grid)),
+                  - Δt * κ_Δz²(i, j, k, k+1, grid, κᵏ⁺¹))
 end
 
 @inline function ivd_lower_diagonalᵃᵃᶜ(i, j, k, grid, clock, Δt, κ⁻⁻ᶠ, κ)
     k′ = k + 1 # Shift to adjust for Tridiagonal indexing convenction
     κᵏ = κ⁻⁻ᶠ(i, j, k′, grid, clock, κ)
-    return - Δt * κ_Δz²(i, j, k′, k′, grid, κᵏ)
+
+    return ifelse(k > grid.Nz-1,
+                  zero(eltype(grid)),
+                  - Δt * κ_Δz²(i, j, k′, k′, grid, κᵏ))
 end
 
-@inline function ivd_diagonalᵃᵃᶜ(i, j, k, grid::AbstractGrid{FT}, clock, Δt, κ⁻⁻ᶠ, κ) where FT
-    κᵏ   = κ⁻⁻ᶠ(i, j, k,   grid, clock, κ)
-    κᵏ⁺¹ = κ⁻⁻ᶠ(i, j, k+1, grid, clock, κ)
-
-    return ifelse(k == 1,      one(FT) + Δt *  κ_Δz²(i, j, k, k+1, grid, κᵏ⁺¹),
-           ifelse(k < grid.Nz, one(FT) + Δt * (κ_Δz²(i, j, k, k+1, grid, κᵏ⁺¹) + κ_Δz²(i, j, k, k, grid, κᵏ)),
-                               one(FT) + Δt *                                    κ_Δz²(i, j, k, k, grid, κᵏ)))
-end
+@inline ivd_diagonalᵃᵃᶜ(i, j, k, grid, clock, Δt, κ⁻⁻ᶠ, κ) =
+    one(eltype(grid)) - ivd_upper_diagonalᵃᵃᶜ(i, j, k, grid, clock, Δt, κ⁻⁻ᶠ, κ) -
+                        ivd_lower_diagonalᵃᵃᶜ(i, j, k-1, grid, clock, Δt, κ⁻⁻ᶠ, κ)
 
 # Vertical velocity kernel functions (at cell interfaces in z)
+#
+# Note: these coefficients are specific to vertically-bounded grids (and so is
+# the BatchedTridiagonalSolver).
 
-@inline function ivd_upper_diagonalᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT}, clock, Δt, νᶜᶜᶜ, ν) where FT
-    return ifelse(k == 1,
-                  zero(FT), 
-                  - Δt * κ_Δz²(i, j, k, k, grid, νᶜᶜᶜ(i, j, k, grid, clock, ν)))
+@inline function ivd_upper_diagonalᵃᵃᶠ(i, j, k, grid, clock, Δt, νᶜᶜᶜ, ν)
+    νᵏ = νᶜᶜᶜ(i, j, k, grid, clock, ν)
+
+    return ifelse(k < 1, # should this be k < 2?
+                  zero(eltype(grid)),
+                  - Δt * κ_Δz²(i, j, k, k, grid, νᵏ))
 end
 
 @inline function ivd_lower_diagonalᵃᵃᶠ(i, j, k, grid, clock, Δt, νᶜᶜᶜ, ν)
     k′ = k + 1 # Shift to adjust for Tridiagonal indexing convenction
-    νᵏ⁻¹ = νᶜᶜᶜ(i, j, k′ - 1, grid, clock, ν)
-    return - Δt * κ_Δz²(i, j, k′, k′-1, grid, νᵏ⁻¹)
+    νᵏ⁻¹ = νᶜᶜᶜ(i, j, k′-1, grid, clock, ν)
+    return ifelse(k < 1,
+                  zero(eltype(grid)),
+                  - Δt * κ_Δz²(i, j, k′, k′-1, grid, νᵏ⁻¹))
 end
 
-@inline function ivd_diagonalᵃᵃᶠ(i, j, k, grid::AbstractGrid{FT}, clock, Δt, νᶜᶜᶜ, ν) where FT
-    νᵏ⁻¹ = νᶜᶜᶜ(i, j, k-1, grid, clock, ν)
-    νᵏ   = νᶜᶜᶜ(i, j, k,   grid, clock, ν)
-
-    return ifelse(k == 1,
-                  one(FT),
-                  1 + Δt * (κ_Δz²(i, j, k, k, grid, νᵏ) + κ_Δz²(i, j, k, k-1, grid, νᵏ⁻¹)))
-end
+@inline ivd_diagonalᵃᵃᶠ(i, j, k, grid, clock, Δt, νᶜᶜᶜ, ν)
+    one(FT) - ivd_upper_diagonalᵃᵃᶠ(i, j, k, grid, clock, Δt, νᶜᶜᶜ, ν) -
+              ivd_lower_diagonalᵃᵃᶠ(i, j, k-1, grid, clock, Δt, νᶜᶜᶜ, ν)
 
 #####
 ##### Solver constructor

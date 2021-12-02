@@ -164,7 +164,8 @@ const ATD = AbstractTimeDiscretization
 
 const etd = ExplicitTimeDiscretization()
 
-@inline z_boundary_adj(k, grid) = k == 1 | k == grid.Nz+1
+@inline z_boundary_adj(k, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Bounded}) = k == 1 | k == grid.Nz+1
+@inline z_boundary_adj(k, grid) = false
 
 @inline z_diffusivity(closure::Union{CAVD, CAVDArray}, c_idx, diffusivities, args...) = diffusivities.κ
 

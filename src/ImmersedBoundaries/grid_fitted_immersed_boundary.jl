@@ -2,6 +2,11 @@ using Oceananigans.Advection: AbstractAdvectionScheme
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
 
+import Oceananigans.TurbulenceClosures: ivd_upper_diagonalᵃᵃᶜ,
+                                        ivd_lower_diagonalᵃᵃᶜ,
+                                        ivd_upper_diagonalᵃᵃᶠ,
+                                        ivd_lower_diagonalᵃᵃᶠ
+
 const ATC = AbstractTurbulenceClosure
 const ATD = AbstractTimeDiscretization
 
@@ -164,3 +169,32 @@ end
 end
 
 mask_immersed_velocities!(U, arch, grid::GFIBG) = Tuple(mask_immersed_field!(q) for q in U)
+
+#####
+##### Implicit vertical diffusion
+#####
+
+# Tracers and horizontal velocities at cell centers in z
+
+@inline function ivd_upper_diagonalᵃᵃᶜ(i, j, k, ibg::GFIBG, clock, Δt, κ⁻⁻ᶠ, κ)
+    return ifelse(solid_node(Center(), Center(), Face(), i, j, k, ibg),
+                  zero(eltype(grid)),
+                  ivd_upper_diagonalᵃᵃᶜ(i, j, k, ibg.grid, clock, Δt, κ⁻⁻ᶠ, κ))
+end
+
+@inline function ivd_lower_diagonalᵃᵃᶜ(i, j, k, ibg::GFIBG, clock, Δt, κ⁻⁻ᶠ, κ)
+    # Could be either
+    #
+    # solid_node(Center(), Center(), Face(), i, j, k, ibg)
+    #
+    # or
+    #
+    # solid_node(Center(), Center(), Face(), i, j, k-1, ibg)
+    #
+    # (with an index shift). We need to test...
+    
+    return ifelse(solid_node(Center(), Center(), Face(), i, j, k-1, ibg),
+                  zero(eltype(grid)),
+                  ivd_lower_diagonalᵃᵃᶜ(i, j, k, ibg.grid, clock, Δt, κ⁻⁻ᶠ, κ))
+end
+
