@@ -93,28 +93,3 @@
 
 @inline ∂yᶠᶠᵃ(i, j, k, grid, u, args...) = δyᵃᶠᵃ(i, j, k, grid, u, args...) / Δyᶠᶠᵃ(i, j, k, grid)
 @inline ∂yᶜᶠᵃ(i, j, k, grid, c, args...) = δyᵃᶠᵃ(i, j, k, grid, c, args...) / Δyᶜᶠᵃ(i, j, k, grid)
-
-#####
-##### Given nothing the derivative is zero
-#####
-
-@inline ∂xᶜᵃᵃ(i, j, k, grid, ::Nothing, args...) = 0
-@inline ∂xᶠᵃᵃ(i, j, k, grid, ::Nothing, args...) = 0
-
-@inline ∂xᶜᶜᵃ(i, j, k, grid, ::Nothing, args...) = 0
-@inline ∂xᶜᶠᵃ(i, j, k, grid, ::Nothing, args...) = 0
-
-@inline ∂xᶠᶠᵃ(i, j, k, grid, ::Nothing, args...) = 0
-@inline ∂xᶠᶜᵃ(i, j, k, grid, ::Nothing, args...) = 0
-
-@inline ∂yᵃᶜᵃ(i, j, k, grid, ::Nothing, args...) = 0
-@inline ∂yᵃᶠᵃ(i, j, k, grid, ::Nothing, args...) = 0
-
-@inline ∂yᶜᶜᵃ(i, j, k, grid, ::Nothing, args...) = 0
-@inline ∂yᶠᶜᵃ(i, j, k, grid, ::Nothing, args...) = 0
-
-@inline ∂yᶠᶠᵃ(i, j, k, grid, ::Nothing, args...) = 0
-@inline ∂yᶜᶠᵃ(i, j, k, grid, ::Nothing, args...) = 0
-
-@inline ∂zᵃᵃᶜ(i, j, k, grid, ::Nothing, args...) = 0
-@inline ∂zᵃᵃᶠ(i, j, k, grid, ::Nothing, args...) = 0
