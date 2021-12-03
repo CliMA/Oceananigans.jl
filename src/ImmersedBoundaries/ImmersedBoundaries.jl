@@ -124,6 +124,10 @@ with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo
 @inline ynode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = ynode(LX, LY, LZ, i, j, k, ibg.grid)
 @inline znode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = znode(LX, LY, LZ, i, j, k, ibg.grid)
 
+@inline xnode(LX, i, ibg::ImmersedBoundaryGrid) = xnode(LX, i, ibg.grid)
+@inline ynode(LY, j, ibg::ImmersedBoundaryGrid) = ynode(LY, j, ibg.grid)
+@inline znode(LZ, k, ibg::ImmersedBoundaryGrid) = znode(LZ, k, ibg.grid)
+
 all_x_nodes(loc, ibg::ImmersedBoundaryGrid) = all_x_nodes(loc, ibg.grid)
 all_y_nodes(loc, ibg::ImmersedBoundaryGrid) = all_y_nodes(loc, ibg.grid)
 all_z_nodes(loc, ibg::ImmersedBoundaryGrid) = all_z_nodes(loc, ibg.grid)
