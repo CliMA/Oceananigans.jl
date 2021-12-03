@@ -160,6 +160,13 @@ Modules = [Oceananigans.Simulations]
 Private = false
 ```
 
+## Solvers
+
+```@autodocs
+Modules = [Oceananigans.Solvers]
+Private = false
+```
+
 ## Stokes drift
 
 ```@autodocs
