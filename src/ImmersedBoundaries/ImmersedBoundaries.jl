@@ -97,8 +97,8 @@ end
 
 function ImmersedBoundaryGrid(grid, ib)
     @warn "ImmersedBoundaryGrid is unvalidated and may produce incorrect results. " *
-              "Don't hesitate to help validate ImmersedBoundaryGrid by reporting any bugs " *
-              "or unexpected behavior to https://github.com/CliMA/Oceananigans.jl/issues"
+          "Help validate ImmersedBoundaryGrid by reporting any bugs " *
+          "or unexpected behavior to https://github.com/CliMA/Oceananigans.jl/issues."
     
     TX, TY, TZ = topology(grid)
     return ImmersedBoundaryGrid{TX, TY, TZ}(grid, ib)
@@ -124,12 +124,17 @@ with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo
 @inline ynode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = ynode(LX, LY, LZ, i, j, k, ibg.grid)
 @inline znode(LX, LY, LZ, i, j, k, ibg::ImmersedBoundaryGrid) = znode(LX, LY, LZ, i, j, k, ibg.grid)
 
+@inline xnode(LX, i, ibg::ImmersedBoundaryGrid) = xnode(LX, i, ibg.grid)
+@inline ynode(LY, j, ibg::ImmersedBoundaryGrid) = ynode(LY, j, ibg.grid)
+@inline znode(LZ, k, ibg::ImmersedBoundaryGrid) = znode(LZ, k, ibg.grid)
+
 all_x_nodes(loc, ibg::ImmersedBoundaryGrid) = all_x_nodes(loc, ibg.grid)
 all_y_nodes(loc, ibg::ImmersedBoundaryGrid) = all_y_nodes(loc, ibg.grid)
 all_z_nodes(loc, ibg::ImmersedBoundaryGrid) = all_z_nodes(loc, ibg.grid)
 
 include("immersed_grid_metrics.jl")
-include("grid_fitted_immersed_boundary.jl")
+include("grid_fitted_immersed_boundaries.jl")
+include("conditional_fluxes.jl")
 include("mask_immersed_field.jl")
 
 #####

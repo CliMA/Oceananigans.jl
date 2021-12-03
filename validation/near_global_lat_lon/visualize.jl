@@ -59,7 +59,6 @@ function visualize_makie(output_prefix)
         scale .* (-max_ζ, max_ζ)
     end
 
-
     ax = fig[:, :] = LScene(fig) # make plot area wider
     wireframe!(ax, Sphere(Point3f0(0), 1f0), show_axis=false)
     surface!(ax, x, y, z, color=ζ′, colormap=:blues, colorrange=clims)

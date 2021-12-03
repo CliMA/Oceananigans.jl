@@ -2,25 +2,8 @@ using Oceananigans.Advection: AbstractAdvectionScheme
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑxᶜᵃᵃ, ℑyᵃᶠᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶠ, ℑzᵃᵃᶜ 
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDiscretization
 
-import Oceananigans.TurbulenceClosures: ivd_upper_diagonalᵃᵃᶜ,
-                                        ivd_lower_diagonalᵃᵃᶜ,
-                                        ivd_upper_diagonalᵃᵃᶠ,
-                                        ivd_lower_diagonalᵃᵃᶠ
-
 const ATC = AbstractTurbulenceClosure
 const ATD = AbstractTimeDiscretization
-
-struct RasterDepthMask end
-
-struct GridFittedBoundary{M, S} <: AbstractImmersedBoundary
-    mask :: S
-    mask_type :: M
-end
-
-GridFittedBoundary(mask; mask_type=nothing) = GridFittedBoundary(mask, mask_type)
-
-@inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary) = ib.mask(node(c, c, c, i, j, k, underlying_grid)...)
-@inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary{<:RasterDepthMask}) = ib.mask(i, j)
 
 const IBG = ImmersedBoundaryGrid
 
@@ -31,7 +14,7 @@ const f = Face()
 ##### GridFittedImmersedBoundaryGrid
 #####
 
-const GFIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ, G, <:GridFittedBoundary} where {FT, TX, TY, TZ, G}
+const GFIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ, G, <:AbstractGridFittedBoundary} where {FT, TX, TY, TZ, G}
 
 @inline solid_cell(i, j, k, ibg) = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary)
 
@@ -116,13 +99,13 @@ const GFIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ, G, <:GridFittedBoundary} wher
 @inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
 @inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{0}) = false
 
-@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_cell(i - 1, j, k, ibg) || solid_cell(i, j, k, ibg) || solid_cell(i + 1, j, k, ibg)
-@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_cell(i, j - 1, k, ibg) || solid_cell(i, j, k, ibg) || solid_cell(i, j + 1, k, ibg)
-@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_cell(i, j, k - 1, ibg) || solid_cell(i, j, k, ibg) || solid_cell(i, j, k + 1, ibg)
+@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_cell(i - 1, j, k, ibg) | solid_cell(i, j, k, ibg) | solid_cell(i + 1, j, k, ibg)
+@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_cell(i, j - 1, k, ibg) | solid_cell(i, j, k, ibg) | solid_cell(i, j + 1, k, ibg)
+@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{1}) = solid_cell(i, j, k - 1, ibg) | solid_cell(i, j, k, ibg) | solid_cell(i, j, k + 1, ibg)
 
-@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_cell(i - 2, j, k, ibg) || solid_cell(i - 1, j, k, ibg) || solid_cell(i, j, k, ibg) || solid_cell(i + 1, j, k, ibg) || solid_cell(i + 2, j, k, ibg)
-@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_cell(i, j - 2, k, ibg) || solid_cell(i, j - 1, k, ibg) || solid_cell(i, j, k, ibg) || solid_cell(i, j + 1, k, ibg) || solid_cell(i, j + 2, k, ibg)
-@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_cell(i, j, k - 2, ibg) || solid_cell(i, j, k - 1, ibg) || solid_cell(i, j, k, ibg) || solid_cell(i, j, k + 1, ibg) || solid_cell(i, j, k + 2, ibg)
+@inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_cell(i - 2, j, k, ibg) | solid_cell(i - 1, j, k, ibg) | solid_cell(i, j, k, ibg) | solid_cell(i + 1, j, k, ibg) | solid_cell(i + 2, j, k, ibg)
+@inline near_y_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_cell(i, j - 2, k, ibg) | solid_cell(i, j - 1, k, ibg) | solid_cell(i, j, k, ibg) | solid_cell(i, j + 1, k, ibg) | solid_cell(i, j + 2, k, ibg)
+@inline near_z_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{2}) = solid_cell(i, j, k - 2, ibg) | solid_cell(i, j, k - 1, ibg) | solid_cell(i, j, k, ibg) | solid_cell(i, j, k + 1, ibg) | solid_cell(i, j, k + 2, ibg)
 
 # Takes forever to compile, but works.
 # @inline near_x_boundary(i, j, k, ibg, ::AbstractAdvectionScheme{buffer}) where buffer = any(ntuple(δ -> solid_cell(i - buffer - 1 + δ, j, k, ibg), Val(2buffer + 1)))
@@ -162,39 +145,11 @@ end
 ##### Masking for GridFittedBoundary
 #####
 
-@inline function scalar_mask(i, j, k, grid, ::GridFittedBoundary, LX, LY, LZ, value, field)
+@inline function scalar_mask(i, j, k, grid, ::AbstractGridFittedBoundary, LX, LY, LZ, value, field)
     return @inbounds ifelse(solid_node(LX, LY, LZ, i, j, k, grid),
                             value,
                             field[i, j, k])
 end
 
 mask_immersed_velocities!(U, arch, grid::GFIBG) = Tuple(mask_immersed_field!(q) for q in U)
-
-#####
-##### Implicit vertical diffusion
-#####
-
-# Tracers and horizontal velocities at cell centers in z
-
-@inline function ivd_upper_diagonalᵃᵃᶜ(i, j, k, ibg::GFIBG, clock, Δt, κ⁻⁻ᶠ, κ)
-    return ifelse(solid_node(Center(), Center(), Face(), i, j, k, ibg),
-                  zero(eltype(grid)),
-                  ivd_upper_diagonalᵃᵃᶜ(i, j, k, ibg.grid, clock, Δt, κ⁻⁻ᶠ, κ))
-end
-
-@inline function ivd_lower_diagonalᵃᵃᶜ(i, j, k, ibg::GFIBG, clock, Δt, κ⁻⁻ᶠ, κ)
-    # Could be either
-    #
-    # solid_node(Center(), Center(), Face(), i, j, k, ibg)
-    #
-    # or
-    #
-    # solid_node(Center(), Center(), Face(), i, j, k-1, ibg)
-    #
-    # (with an index shift). We need to test...
-    
-    return ifelse(solid_node(Center(), Center(), Face(), i, j, k-1, ibg),
-                  zero(eltype(grid)),
-                  ivd_lower_diagonalᵃᵃᶜ(i, j, k, ibg.grid, clock, Δt, κ⁻⁻ᶠ, κ))
-end
 

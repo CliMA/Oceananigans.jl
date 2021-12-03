@@ -91,7 +91,6 @@ function PressureFields(arch, grid, bcs=NamedTuple())
     return (pHY′=pHY′, pNHS=pNHS)
 end
 
-#=
 function PressureFields(arch, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, bcs=NamedTuple())
     default_pressure_boundary_conditions =
         (pHY′ = FieldBoundaryConditions(grid, (Center, Center, Center)),
@@ -100,9 +99,8 @@ function PressureFields(arch, grid::AbstractGrid{<:Any, <:Any, <:Any, <:Flat}, b
     bcs = merge(default_pressure_boundary_conditions, bcs)
     pNHS = CenterField(arch, grid, bcs.pNHS)
 
-    return (; pNHS=pNHS)
+    return (; pHY′=nothing, pNHS=pNHS)
 end
-=#
 
 """
     TendencyFields(arch, grid, tracer_names;
