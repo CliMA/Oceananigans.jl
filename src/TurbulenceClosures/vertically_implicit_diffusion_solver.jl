@@ -41,7 +41,7 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 @inline function ivd_upper_diagonalᵃᵃᶜ(i, j, k, grid, clock, Δt, κ⁻⁻ᶠ, κ)
     κᵏ⁺¹ = κ⁻⁻ᶠ(i, j, k+1, grid, clock, κ)
 
-    return ifelse(k < 1,
+    return ifelse(k > grid.Nz-1,
                   zero(eltype(grid)),
                   - Δt * κ_Δz²(i, j, k, k+1, grid, κᵏ⁺¹))
 end
@@ -50,7 +50,7 @@ end
     k′ = k + 1 # Shift to adjust for Tridiagonal indexing convenction
     κᵏ = κ⁻⁻ᶠ(i, j, k′, grid, clock, κ)
 
-    return ifelse(k > grid.Nz-1,
+    return ifelse(k < 1,
                   zero(eltype(grid)),
                   - Δt * κ_Δz²(i, j, k′, k′, grid, κᵏ))
 end
@@ -80,7 +80,7 @@ end
                   - Δt * κ_Δz²(i, j, k′, k′-1, grid, νᵏ⁻¹))
 end
 
-@inline ivd_diagonalᵃᵃᶠ(i, j, k, grid, clock, Δt, νᶜᶜᶜ, ν)
+@inline ivd_diagonalᵃᵃᶠ(i, j, k, grid, clock, Δt, νᶜᶜᶜ, ν) =
     one(FT) - ivd_upper_diagonalᵃᵃᶠ(i, j, k, grid, clock, Δt, νᶜᶜᶜ, ν) -
               ivd_lower_diagonalᵃᵃᶠ(i, j, k-1, grid, clock, Δt, νᶜᶜᶜ, ν)
 
