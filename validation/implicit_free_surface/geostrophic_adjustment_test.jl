@@ -2,13 +2,18 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
 using Statistics
-using Plots
+using IterativeSolvers
+using LinearAlgebra, SparseArrays
+using Oceananigans.Solvers: constructors, unpack_constructors
 
-function geostrophic_adjustment_simulation(free_surface)
+function geostrophic_adjustment_simulation(free_surface, topology)
 
-    grid = RectilinearGrid(size = (64, 10, 1),
-                                  x = (0, 1000kilometers), y = (0, 1), z = (-400meters, 0),
-                                  topology = (Periodic, Periodic, Bounded))
+    Lh = 100kilometers
+    Lz = 400meters
+
+    grid = RectilinearGrid(size = (64, 3, 1),
+                                  x = (0, Lh), y = (0, Lh), z = (-Lz, 0),
+                                  topology = topology)
 
     coriolis = FPlane(f=1e-4)
 
@@ -35,23 +40,29 @@ function geostrophic_adjustment_simulation(free_surface)
     set!(model, v=vᵍ, η=ηⁱ)
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
-    simulation = Simulation(model, Δt=wave_propagation_time_scale/2, stop_iteration=100)
+    simulation = Simulation(model, Δt=2wave_propagation_time_scale, stop_iteration=10000)
 
     return simulation
 end
 
-function run_and_analyze(simulation)
+function run_and_analyze(simulation, sim)
     η = simulation.model.free_surface.η
     u, v, w = simulation.model.velocities
+    Δt = simulation.Δt
 
     ηx = ComputedField(∂x(η))
     compute!(ηx)
 
-    u₀ = interior(u)[:, 1, 1]
-    v₀ = interior(v)[:, 1, 1]
-    η₀ = interior(η)[:, 1, 1]
+    u₀  = interior(u)[:, 1, 1]
+    v₀  = interior(v)[:, 1, 1]
+    η₀  = interior(η)[:, 1, 1]
     ηx₀ = interior(ηx)[:, 1, 1]
-    
+
+    simulation.output_writers[:fields] = JLD2OutputWriter(simulation.model, (η, ηx, u, v, w),
+                                                          schedule = TimeInterval(Δt),
+                                                          prefix = "solution.$(sim)")
+
+
     run!(simulation)
     
     compute!(ηx)
@@ -63,39 +74,110 @@ function run_and_analyze(simulation)
 
     @show mean(η₀)
     @show mean(η₁)
-    
+
     Δη = η₁ .- η₀
 
     return (; η₀, η₁, Δη, ηx₀, ηx₁, u₀, u₁, v₀, v₁)
 end
 
-fft_based_free_surface = ImplicitFreeSurface()
-pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
-matrix_free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver, precondition=true)
+# fft_based_free_surface = ImplicitFreeSurface()
+pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient);
+matrix_free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver);
 
-free_surfaces = [fft_based_free_surface, pcg_free_surface, matrix_free_surface]
-simulations = [geostrophic_adjustment_simulation(free_surface) for free_surface in free_surfaces]
-data = [run_and_analyze(sim) for sim in simulations]
+topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
 
-fft_data = data[1]
-pcg_data = data[2]
-mat_data = data[3]
+free_surfaces = [pcg_free_surface, matrix_free_surface];
+simulations = [geostrophic_adjustment_simulation(free_surface, topology_type) for free_surface in free_surfaces, topology_type in topology_types];
+data = [run_and_analyze(sim, i) for (sim, i) in zip(simulations, 1:length(simulations))];
 
-mat_p_η = plot([mat_data.η₀ mat_data.η₁], label=["η₀" "ηᵢ"], linewidth=2)
-pcg_p_η = plot([pcg_data.η₀ pcg_data.η₁], label=["η₀" "ηᵢ"], linewidth=2)
-fft_p_η = plot([fft_data.η₀ fft_data.η₁], label=["η₀" "ηᵢ"], linewidth=2)
+# mod1 = simulations[1].model
+# mod2 = simulations[2].model
 
-mat_p_ηx = plot([mat_data.ηx₀ mat_data.ηx₁], label=["ηx₀" "ηxᵢ"], linewidth=2)
-pcg_p_ηx = plot([pcg_data.ηx₀ pcg_data.ηx₁], label=["ηx₀" "ηxᵢ"], linewidth=2)
-fft_p_ηx = plot([fft_data.ηx₀ fft_data.ηx₁], label=["ηx₀" "ηxᵢ"], linewidth=2)
+# func = mod1.free_surface.implicit_step_solver.preconditioned_conjugate_gradient_solver.linear_operation!
+# matr = mod2.free_surface.implicit_step_solver.matrix_iterative_solver.matrix
 
-mat_p_u = plot([mat_data.u₀ mat_data.u₁], label=["u₀" "uᵢ"], linewidth=2)
-pcg_p_u = plot([pcg_data.u₀ pcg_data.u₁], label=["u₀" "uᵢ"], linewidth=2)
-fft_p_u = plot([fft_data.u₀ fft_data.u₁], label=["u₀" "uᵢ"], linewidth=2)
+# η = similar(mod1.free_surface.η)
+# β = similar(mod1.free_surface.η)
 
-p = plot(pcg_p_η, fft_p_η, mat_p_η,
-         pcg_p_u, fft_p_u, mat_p_u,
-         pcg_p_ηx, fft_p_ηx, mat_p_ηx,
-         layout=(3, 3), titles = ["PCG η" "FFT η" "MAT η" "PCG u" "FFT u" "MAT u" "PCG η_x" "FFT η_x" "MAT η_x"])
+# parent(η) .= 1
 
-display(p)
+# Ax = mod1.free_surface.implicit_step_solver.vertically_integrated_lateral_areas.xᶠᶜᶜ
+# Ay = mod1.free_surface.implicit_step_solver.vertically_integrated_lateral_areas.yᶜᶠᶜ
+
+# Nx, Ny = (mod1.grid.Nx, mod1.grid.Ny)
+
+# Δt = simulations[1].Δt
+# g = mod1.free_surface.gravitational_acceleration
+# grid = mod1.grid
+
+# parent(η) .= 0
+# η[1,1] = 1
+# func(β, η, Ax, Ay, g, Δt)
+# x1 = interior(β)
+
+# x2 = matr * interior(η)[:]
+# x2 = reshape(x2, Nx, Ny)
+
+
+# cy = grid.Lz * grid.Δxᶜᵃᵃ / grid.Δyᵃᶜᵃ   
+# cx = grid.Lz * grid.Δyᵃᶜᵃ / grid.Δxᶜᵃᵃ   
+
+# cL = grid.Δyᵃᶜᵃ * grid.Lz / 4 / grid.Δxᶜᵃᵃ
+
+using GLMakie
+using JLD2 
+
+file1 = jldopen("solution.1.jld2")
+file2 = jldopen("solution.2.jld2")
+file3 = jldopen("solution.3.jld2")
+file4 = jldopen("solution.4.jld2")
+
+grid = file1["serialized/grid"]
+
+x  = grid.xᶜᵃᵃ[1:grid.Nx]
+xf = grid.xᶠᵃᵃ[1:grid.Nx+1]
+y  = grid.yᵃᶜᵃ[1:grid.Ny]
+
+
+iterations = parse.(Int, keys(file1["timeseries/t"]))
+iterations = iterations[1:200]
+
+iter = Node(0)
+
+mid = Int(floor(grid.Ny/2))
+η0 = file1["timeseries/1/0"][:, mid, 1]
+η1 = @lift(Array(file1["timeseries/1/" * string($iter)])[:, mid, 1])
+η2 = @lift(Array(file2["timeseries/1/" * string($iter)])[:, mid, 1])
+u1 = @lift(Array(file1["timeseries/3/" * string($iter)])[:, mid, 1])
+u2 = @lift(Array(file2["timeseries/3/" * string($iter)])[:, mid, 1])
+
+fig = Figure(resolution=(1000, 500))
+plot(fig[1,1] , x, η0, color = :green)
+plot!(fig[1,1], x, η1, color = :red)
+plot!(fig[1,1], x, η2, color = :blue)
+plot(fig[1,2], xf, u1, color = :red)
+plot!(fig[1,2],xf, u2, color = :blue)
+ylims!(-5e-5, 5e-5)
+GLMakie.record(fig, "free_surface_bounded.mp4", iterations, framerate=12) do i
+    @info "Plotting iteration $i of $(iterations[end])..."
+    iter[] = i
+end
+
+mid = Int(floor(grid.Ny/2))
+η3 = @lift(Array(file3["timeseries/1/" * string($iter)])[:, mid, 1])
+η4 = @lift(Array(file4["timeseries/1/" * string($iter)])[:, mid, 1])
+u3 = @lift(Array(file3["timeseries/3/" * string($iter)])[:, mid, 1])
+u4 = @lift(Array(file4["timeseries/3/" * string($iter)])[:, mid, 1])
+
+
+fig = Figure(resolution=(1000, 500))
+plot(fig[1,1] , x, η0, color = :green)
+plot!(fig[1,1], x, η3, color = :red)
+plot!(fig[1,1], x, η4, color = :blue)
+plot(fig[1,2],  x, u3, color = :red )
+plot!(fig[1,2], x, u4, color = :blue)
+ylims!(-5e-5, 5e-5)
+GLMakie.record(fig, "free_surface_periodic.mp4", iterations, framerate=12) do i
+    @info "Plotting iteration $i of $(iterations[end])..."
+    iter[] = i
+end

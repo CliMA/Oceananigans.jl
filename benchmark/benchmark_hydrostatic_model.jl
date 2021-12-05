@@ -5,6 +5,7 @@ using CUDA
 using DataDeps
 using Oceananigans
 using Benchmarks
+using Statistics
 # Need a grid
 
 ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
@@ -18,17 +19,17 @@ DataDeps.register(dd)
 
 # Benchmark function
 
-Nx = 512
-Ny = 256
+Nx = 1024
+Ny = 512
 
 # All grids have 6 * 510^2 = 1,560,600 grid points.
 grids = Dict(
-    #  (CPU, :RectilinearGrid)              => RectilinearGrid(size=(Nx, Ny, 1), extent=(1, 1, 1)),
-     (CPU, :LatitudeLongitudeGrid)        => LatitudeLongitudeGrid(size=(Nx, Ny, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0), precompute_metrics=true),
+     (CPU, :RectilinearGrid)          => RectilinearGrid(size=(Nx, Ny, 1), extent=(1, 1, 1)),
+     (CPU, :LatitudeLongitudeGrid)    => LatitudeLongitudeGrid(size=(Nx, Ny, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0), precompute_metrics=true),
     #  (CPU, :ConformalCubedSphereFaceGrid) => ConformalCubedSphereFaceGrid(size=(1445, 1080, 1), z=(-1, 0)),
     #  (CPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_510_grid/cubed_sphere_510_grid.jld2", Nz=1, z=(-1, 0)),
-    #  (GPU, :RectilinearGrid)              => RectilinearGrid(size=(Nx, Ny, 1), extent=(1, 1, 1), architecture=GPU()),
-    #  (GPU, :LatitudeLongitudeGrid)        => LatitudeLongitudeGrid(size=(Nx, Ny, 1), longitude=(-160, 160), latitude=(-80, 80), z=(-1, 0), architecture=GPU(), precompute_metrics=true),
+     (GPU, :RectilinearGrid)          => RectilinearGrid(size=(Nx, Ny, 1), extent=(1, 1, 1), architecture=GPU()),
+     (GPU, :LatitudeLongitudeGrid)    => LatitudeLongitudeGrid(size=(Nx, Ny, 1), longitude=(-160, 160), latitude=(-80, 80), z=(-1, 0), architecture=GPU(), precompute_metrics=true),
     # Uncomment when ConformalCubedSphereFaceGrids of any size can be built natively without loading from file:
     #  (GPU, :ConformalCubedSphereFaceGrid) => ConformalCubedSphereFaceGrid(size=(1445, 1080, 1), z=(-1, 0), architecture=GPU()),
     #  (GPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_510_grid/cubed_sphere_510_grid.jld2", Nz=1, z=(-1, 0), architecture=GPU()),
@@ -36,24 +37,25 @@ grids = Dict(
 
 free_surfaces = Dict(
     :ExplicitFreeSurface => ExplicitFreeSurface(),
-    # :FFTImplicitFreeSurface => ImplicitFreeSurface() , 
-    :PCGImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, tolerance = 1e-8) , 
-    :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, iterative_solver = (\)) 
-    # :MatrixDirectSolveFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, iterative_solver = (\)) 
+    :FFTImplicitFreeSurface => ImplicitFreeSurface() , 
+    :PCGImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient) , 
+    :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver) 
 )
 
 function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
 
+    grid = grids[(Arch, grid_type)]
+
     model = HydrostaticFreeSurfaceModel(
               architecture = Arch(),
-                      grid = grids[(Arch, grid_type)],
+                      grid = grid,
         momentum_advection = VectorInvariant(),
               free_surface = free_surfaces[free_surface_type]
     )
 
     time_step!(model, 1) # warmup
 
-    set!(model, u=1, v=2)
+    set!(model, v=2, u=1)
 
     trial = @benchmark begin
         CUDA.@sync blocking = true time_step!($model, 1)
@@ -64,10 +66,10 @@ end
 
 # Benchmark parameters
 
-Architectures = [CPU] #has_cuda() ? [GPU, CPU] : [CPU]
+Architectures = has_cuda() ? [GPU, CPU] : [CPU]
 
 grid_types = [
-    # :RectilinearGrid,
+    :RectilinearGrid,
     :LatitudeLongitudeGrid,
     # Uncomment when ConformalCubedSphereFaceGrids of any size can be built natively without loading from file:
     # :ConformalCubedSphereFaceGrid,

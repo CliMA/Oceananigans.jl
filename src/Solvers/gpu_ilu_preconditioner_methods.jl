@@ -77,24 +77,31 @@ end
 ## Parallel version of the algorithm
 
 ##   DO  PARALLEL I = 1, N
-##   X(I) = Y(I)
+##      X(I) = Y(I)
 ##   END DO
 ##   DO J = N, 1, -1
-##   X(J) = X(J) / U(J,J)
-##   DO PARALLEL I = 1, J-1
-##      X(I) = X(I) - U(I,J)*X(J)
-##   END DO
+##      X(J) = X(J) / U(J,J)
+##      DO PARALLEL I = 1, J-1
+##        X(I) = X(I) - U(I,J)*X(J)
+##      END DO
 ##   END DO
 
 ## Which in Julia would be
 
 ## x .= y
 ## for j = n:-1:1
-## x[j] = x[j] / nzval(diag)
-## parallelly: i = 1:j-1
-##   x[i] = x[i] - nzval(i,j) * x(j)
+##  x[j] = x[j] / nzval(diag)
+##  parallelly: i = 1:j-1
+##    x[i] = x[i] - nzval(i,j) * x(j)
+##  end
 ## end
-## end
+
+function forward_substitution!(F::ILUFactorizationGPU, y::AbstractVector)
+    L = F.L
+    # for the moment just one thread does the substitution, maybe we wanna parallelize this
+    @cuda threads=1 _forward_substitution!(L.dims[1], L.colPtr, L.rowVal, L.nzVal, y)  
+    y
+end
 
 function _backward_substitution!(n, colptr, rowval, nzval, y)
     @inbounds begin
@@ -105,13 +112,6 @@ function _backward_substitution!(n, colptr, rowval, nzval, y)
             y[col] /= nzval[colptr[col]]
         end
     end
-end
-
-function forward_substitution!(F::ILUFactorizationGPU, y::AbstractVector)
-    L = F.L
-    # for the moment just one thread does the substitution, maybe we wanna parallelize this
-    @cuda threads=1 _forward_substitution!(L.dims[1], L.colPtr, L.rowVal, L.nzVal, y)  
-    y
 end
 
 function _forward_substitution!(n, colptr, rowval, nzval, y)

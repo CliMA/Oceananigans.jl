@@ -87,8 +87,8 @@ end
 # linearized right hand side
 @kernel function implicit_linearized_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η)
     i, j = @index(Global, NTuple)
-    Az = Azᶜᶜᵃ(i, j, 1, grid)
-    δ_Q = flux_div_xyᶜᶜᵃ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
+    Az   = Azᶜᶜᵃ(i, j, 1, grid)
+    δ_Q  = flux_div_xyᶜᶜᵃ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     t = i + grid.Nx * (j - 1)
     @inbounds rhs[t] = (δ_Q - Az * η[i, j, 1] / Δt) / (g * Δt)
 end
@@ -106,17 +106,16 @@ function compute_coefficients(vertically_integrated_areas, grid, gravity)
     ∫Ax = vertically_integrated_areas.xᶠᶜᶜ
     ∫Ay = vertically_integrated_areas.yᶜᶠᶜ
 
-    coeff_c_size = (Nx, Ny)
-    event_c = launch!(arch, grid, coeff_c_size, _compute_coefficients!, C, Ax, Ay, ∫Ax, ∫Ay, grid, gravity)
+    event_c = launch!(arch, grid, :xy, _compute_coefficients!, C, Ax, Ay, ∫Ax, ∫Ay, grid, gravity)
   
     wait(event_c)
 
-    return (Ax, Ay, C)
+    return (Array(Ax), Array(Ay), C)
 end
 
 @kernel function _compute_coefficients!(C, Ax, Ay, ∫Ax, ∫Ay, grid, g)
     i, j = @index(Global, NTuple)
-    Ay[i, j] = ∫Ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)
-    Ax[i, j] = ∫Ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid)
-    C[i, j] = - Azᶜᶜᵃ(i, j, 1, grid) / g
+    Ay[i, j] = ∫Ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)  
+    Ax[i, j] = ∫Ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid)  
+    C[i, j]  = - Azᶜᶜᵃ(i, j, 1, grid) / g
 end

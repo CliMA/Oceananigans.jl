@@ -1,6 +1,7 @@
 using Oceananigans.Architectures: architecture, arch_array
 using Oceananigans.Grids: interior_parent_indices, topology
 using Oceananigans.Fields: interior_copy
+using Oceananigans.Operators:  Δyᶜᶠᵃ,  Δxᶠᶜᵃ
 using KernelAbstractions: @kernel, @index
 using LinearAlgebra, SparseArrays, IterativeSolvers
 using CUDA, CUDA.CUSPARSE
@@ -15,7 +16,7 @@ mutable struct MatrixIterativeSolver{A, G, L, D, M, P, I, T, F}
              preconditioner :: P
            iterative_solver :: I
                   tolerance :: T
-                Δt_previous :: F
+                previous_Δt :: F
          maximum_iterations :: Int
 end
 
@@ -49,7 +50,7 @@ The default solver is a Conjugate Gradient (cg)
 function MatrixIterativeSolver(coeffs;
                                grid,
                                iterative_solver = cg,
-                               maximum_iterations = prod(size(template_field)),
+                               maximum_iterations = (grid.Nx * grid.Ny),
                                tolerance = 1e-13,
                                precondition = true)
 
@@ -92,46 +93,39 @@ function matrix_from_coefficients(arch, grid, coeffs)
     Nx, Ny = (grid.Nx, grid.Ny)
 
     N = Nx * Ny
+    topo = topology(grid)[1:2]
 
-    diag  = arch_array(arch, zeros(N))
-    c     = arch_array(arch, zeros(N))
-    ai    = arch_array(arch, zeros(N - 1))
-    aj    = arch_array(arch, zeros(Nx * (Ny-1)))
-    api   = arch_array(arch, zeros(Nx * (Ny-1) + 1))
-    apj   = arch_array(arch, zeros(Nx))
+    validate_laplacian_size.((Nx, Ny), topo)
 
-    coeff_c_size = (Nx, Ny)
-    coeff_x_size = (Nx-1, Ny)
-    coeff_y_size = (Nx, Ny-1)
+    diag  = arch_array(arch, zeros(eltype(grid), N))
 
-    event_c = launch!(arch, grid, coeff_c_size, _matrix_from_coeff_c!, diag, C, Nx)
+    # the following coefficients are the diagonals of the sparse matrix:
+    #  - coeff_d is the main diagonal (coefficents of xᵢⱼ)
+    #  - coeff_x is the diagonal at +1  / -1 (coefficients of xᵢ₊₁ and xᵢ₋₁)
+    #  - coeff_y is the diagonal at +Nx / -Nx (coefficients of xⱼ₊₁ and xⱼ₋₁)
+    #  - boundaries in x are filled in at Nx - 1 / 1 - Nx 
+    #  - boundaries in y are filled in at N - Nx / Nx - N 
+
+    coeff_d       = zeros(eltype(grid), N)
+    coeff_x       = zeros(eltype(grid), N - 1)
+    coeff_y       = zeros(eltype(grid), Nx * (Ny-1))
+    coeff_bound_x = zeros(eltype(grid), Nx * (Ny-1) + 1)
+    coeff_bound_y = zeros(eltype(grid), Nx)
+
+    # initializing elements which vary during the simulation (as a function of Δt)
+    event_c = launch!(arch, grid, :xy, _initialize_variable_diagonal!, diag, C, Nx)
     wait(event_c)
-    event_x = launch!(arch, grid, coeff_x_size, _matrix_from_coeff_x!, c, ai, Ax, Nx)
-    wait(event_x)
-    event_x = launch!(arch, grid, coeff_x_size, _matrix_from_coeff_x_plus!, c, Ax, Nx)
-    wait(event_x)
-    event_y = launch!(arch, grid, coeff_y_size, _matrix_from_coeff_y!, c, aj, Ay, Nx)
-    wait(event_y)
-    event_y = launch!(arch, grid, coeff_y_size, _matrix_from_coeff_y_plus!, c, Ay, Nx)
-    wait(event_y)
-    
-    if topology(grid)[1] == Periodic
-        coeff_period_x_size = (1, Ny)
-        event_period_x = launch!(arch, grid, coeff_period_x_size, _matrix_from_period_x!, c, api, Ax, Nx)
-        wait(event_period_x)
-    end
 
-    if topology(grid)[2] == Periodic
-        coeff_period_y_size = (Nx, 1)
-        event_period_y = launch!(arch, grid, coeff_period_y_size, _matrix_from_period_y!, c, apj, Ay, Ny, Nx)
-        wait(event_period_y)
-    end
+    # filling elements which stay constant in time
+    fill_core_matrix!(coeff_d, coeff_x, coeff_y, Ax, Ay, Nx, Ny)
+    fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, Nx, Ny, topo[1])
+    fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, Nx, Ny, topo[2])
 
-    sparse_matrix = spdiagm(0=>Array(c),
-                            1=>Array(ai),    -1=>Array(ai),
-                         Nx-1=>Array(api),-Nx+1=>Array(api),
-                           Nx=>Array(aj),   -Nx=>Array(aj), 
-                         N-Nx=>Array(apj),-N+Nx=>Array(apj))
+    sparse_matrix = spdiagm(0=>Array(coeff_d),
+                            1=>Array(coeff_x),         -1=>Array(coeff_x),
+                         Nx-1=>Array(coeff_bound_x),-Nx+1=>Array(coeff_bound_x),
+                           Nx=>Array(coeff_y),        -Nx=>Array(coeff_y), 
+                         N-Nx=>Array(coeff_bound_y),-N+Nx=>Array(coeff_bound_y))
 
     dropzeros!(sparse_matrix)
 
@@ -140,76 +134,89 @@ function matrix_from_coefficients(arch, grid, coeffs)
     return matrix_constructors, diag
 end
 
-@kernel function _matrix_from_coeff_c!(diag, C, Nx)  
+@kernel function _initialize_variable_diagonal!(diag, C, Nx)  
     i, j = @index(Global, NTuple)
     t  = i + Nx * (j-1)
     diag[t] = C[i, j]
 end
 
-# filling c[t] and c[t+1] has to be split in two kernels for synchronization reasons 
-# (to avoid race conditions)
-@kernel function _matrix_from_coeff_x!(c, ai, Ax, Nx)
-    i, j = @index(Global, NTuple)
-
-    t  = i + Nx * (j-1)
-    c[t]   -= Ax[i+1, j]
-    ai[t]   = Ax[i+1, j]        
+function fill_core_matrix!(coeff_d, coeff_x, coeff_y, Ax, Ay, Nx, Ny)
+    for j = 1:Ny-1, i = 1:Nx
+        t        = i + (j - 1) * Nx
+        coeff_y[t]     = Ay[i,j+1] 
+        coeff_d[t]    -= coeff_y[t]
+        coeff_d[t+Nx] -= coeff_y[t]
+    end
+    for j = 1:Ny, i = 1:Nx-1
+        t       = i + (j - 1) * Nx
+        coeff_x[t]   = Ax[i+1,j] 
+        coeff_d[t]   -= coeff_x[t]
+        coeff_d[t+1] -= coeff_x[t]
+    end
 end
 
-@kernel function _matrix_from_coeff_y!(c, aj, Ay, Nx)
-    i, j = @index(Global, NTuple)
+@inline fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, Nx, Ny, ::Type{Bounded}) = nothing
 
-    t  = i + Nx * (j-1)       
-    c[t]    -= Ay[i, j+1]
-    aj[t]    = Ay[i, j+1]       
+function fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, Nx, Ny, ::Type{Periodic})
+    for j in 1:Ny
+        tₘ = 1  + (j-1) * Nx
+        tₚ = Nx + (j-1) * Nx
+        coeff_bound_x[tₘ] = Ax[1,j]
+        coeff_d[tₘ]      -= coeff_bound_x[tₘ]
+        coeff_d[tₚ]      -= coeff_bound_x[tₘ]
+    end
 end
 
-@kernel function _matrix_from_coeff_x_plus!(c, Ax, Nx)
-    i, j = @index(Global, NTuple)
-    t  = i + Nx * (j-1)
-    c[t+1] -= Ax[i+1, j]        
+
+@inline fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, Nx, Ny, ::Type{Bounded}) = nothing
+
+function fill_boundaries_y!(coeff_d, coeff_bound_y, Ay, Nx, Ny, ::Type{Periodic})
+    for i in 1:Nx
+        tₘ = i + (1  -1) * Nx
+        tₚ = i + (Ny -1) * Nx
+        coeff_bound_y[tₘ] = Ay[i,1]
+        coeff_d[tₘ]      -= coeff_bound_y[tₘ]
+        coeff_d[tₚ]      -= coeff_bound_y[tₘ]
+    end
 end
-
-@kernel function _matrix_from_coeff_y_plus!(c, Ay, Nx)
-    i, j = @index(Global, NTuple)
-    t  = i + Nx * (j-1)   
-    c[t+Nx] -= Ay[i, j+1] 
-end
-
-# here we do not since every point is unique
-@kernel function _matrix_from_period_x!(c, api, Ax, Nx)
-    i, j = @index(Global, NTuple)
-
-    tₘ = 1  + (j-1) * Nx
-    tₚ = Nx + (j-1) * Nx
     
-    c[tₘ]   -= Ax[i, j]
-    c[tₚ]   -= Ax[i, j] 
-    api[tₘ]  = Ax[i, j]       
-end
+# @inline fill_immersed_boundaries()
 
-@kernel function _matrix_from_period_y!(c, apj, Ay, Ny, Nx)
-    i, j = @index(Global, NTuple)
+function matrix_from_linear_operation(grid, η, fun!, args...)
+    arch = grid.architecture
 
-    tₘ = i 
-    tₚ = i + (Ny-1) * Nx
+    β = similar(η)
 
-    c[tₘ]   -= Ay[i, j]
-    c[tₚ]   -= Ay[i, j] 
-    apj[tₘ]  = Ay[i, j]       
+    matrix = sprand(grid.Nx * grid.Ny, grid.Nx * grid.Ny, 0.0)
+
+    colptr, rowval, nzval = unpack_constructors(arch, constructors(arch, matrix))
+
+    for j = 1:grid.Ny, i = 1:grid.Nx
+        parent(η) .= 0.0
+        η[i, j] = 1.0   
+        t = i + (j-1) * Nx
+        fun!(β, η, args...)
+        sparse_vec = sparse(interior(β)[:])
+
+        colptr[t+1] = colptr[t] + length(sparse_vec.nzval)
+        rowval = [rowval..., sparse_vec.nzind...]
+        nzval  = [nzval..., sparse_vec.nzval...]
+    end
+
+    return constructors(arch, grid.Nx * grid.Ny, (colptr, rowval, nzval))
 end
 
 function solve!(x, solver::MatrixIterativeSolver, b, Δt)
 
     # update matrix and preconditioner if time step changes
-    if Δt != solver.Δt_previous
+    if Δt != solver.previous_Δt
         constructors = deepcopy(solver.matrix_constructors)
         update_diag!(constructors, solver.architecture, solver.grid, solver.diagonal, Δt)
         solver.matrix    = arch_sparse_matrix(solver.architecture, constructors) 
         if solver.architecture isa CPU && solver.preconditioner != Identity()
-            solver.preconditioner = ilu(solver.matrix, τ = 0.1)
+            solver.preconditioner = ilu(solver.matrix, τ = 2.0)
         end   
-        solver.Δt_previous = Δt
+        solver.previous_Δt = Δt
     end
         
     if solver.iterative_solver == (\)
@@ -232,7 +239,7 @@ end
 @kernel function _copy_into_x!(x, q, Nx)
     i, j = @index(Global, NTuple)
 
-    x.data[i, j] = q[i + Nx * (j - 1)]
+    x[i, j] = q[i + Nx * (j - 1)]
 end
 
 # We need to update the diagonal element each time the time step changes!!
@@ -269,3 +276,10 @@ function Base.show(io::IO, solver::MatrixIterativeSolver)
     print(io, " Solution method = ", solver.iterative_solver)
     return nothing
 end
+
+@inline function validate_laplacian_size(N, topo)
+    if N < 3 && topo == Bounded
+        throw(Argumenterror("We cannot solve a Laplacian on a Bounded domain with N < 3"))
+    end
+end
+
