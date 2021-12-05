@@ -89,7 +89,7 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 
 @inline function ivd_upper_diagonalᵃᵃᶜ(i, j, k, ibg::GFIBG, clock, Δt, κ⁻⁻ᶠ, κ)
     return ifelse(solid_node(Center(), Center(), Face(), i, j, k, ibg),
-                  zero(eltype(grid)),
+                  zero(eltype(ibg.grid)),
                   ivd_upper_diagonalᵃᵃᶜ(i, j, k, ibg.grid, clock, Δt, κ⁻⁻ᶠ, κ))
 end
 
@@ -105,7 +105,7 @@ end
     # (with an index shift). We need to test...
     
     return ifelse(solid_node(Center(), Center(), Face(), i, j, k-1, ibg),
-                  zero(eltype(grid)),
+                  zero(eltype(ibg.grid)),
                   ivd_lower_diagonalᵃᵃᶜ(i, j, k, ibg.grid, clock, Δt, κ⁻⁻ᶠ, κ))
 end
 
