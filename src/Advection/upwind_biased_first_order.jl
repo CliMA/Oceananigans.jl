@@ -9,6 +9,8 @@ Upwind-biased first-order advection scheme.
 """
 struct UpwindBiasedFirstOrder <: AbstractUpwindBiasedAdvectionScheme{1} end
 
+Base.print(io::IO, ::UpwindBiasedFirstOrder) = print(io, "UpwindBiasedFirstOrder")
+
 const U1 = UpwindBiasedFirstOrder
 
 @inline boundary_buffer(::U1) = 1

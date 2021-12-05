@@ -180,7 +180,7 @@ end
 const JSWENO = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
 const ZWENO  = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any}
 
-Base.print(io::IO, a::WENO5) = print(io, "WENO5")
+Base.print(io::IO, ::WENO5) = print(io, "WENO5")
 
 function Base.show(io::IO, a::WENO5{FT, RX, RY, RZ}) where {FT, RX, RY, RZ}
     print(io, "WENO5 advection scheme with: \n",

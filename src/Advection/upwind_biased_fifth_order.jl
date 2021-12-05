@@ -2,12 +2,16 @@
 ##### Upwind-biased 3rd-order advection scheme
 #####
 
+import Base: print 
+
 """
     struct UpwindBiasedFifthOrder <: AbstractUpwindBiasedAdvectionScheme{2}
 
 Upwind-biased fifth-order advection scheme.
 """
 struct UpwindBiasedFifthOrder <: AbstractUpwindBiasedAdvectionScheme{2} end
+
+Base.print(io::IO, ::UpwindBiasedFifthOrder) = print(io, "UpwindBiasedFifthOrder")
 
 const U5 = UpwindBiasedFifthOrder
 

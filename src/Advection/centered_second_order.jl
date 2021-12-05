@@ -2,12 +2,16 @@
 ##### Centered second-order advection scheme
 #####
 
+import Base: print
+
 """
     struct CenteredSecondOrder <: AbstractAdvectionScheme{0}
 
 Centered second-order advection scheme.
 """
 struct CenteredSecondOrder <: AbstractAdvectionScheme{0} end
+
+Base.print(io::IO, ::CenteredSecondOrder) = print(io, "CenteredSecondOrder")
 
 boundary_buffer(::CenteredSecondOrder) = 0
 
