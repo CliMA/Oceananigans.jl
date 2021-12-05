@@ -11,6 +11,8 @@ import Oceananigans.TurbulenceClosures: ivd_upper_diagonalᵃᵃᶜ,
 
 abstract type AbstractGridFittedBoundary <: AbstractImmersedBoundary end
 
+const GFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBoundary}
+
 #####
 ##### GridFittedBoundary
 #####

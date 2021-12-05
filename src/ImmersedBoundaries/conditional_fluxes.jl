@@ -14,7 +14,7 @@ const f = Face()
 ##### GridFittedImmersedBoundaryGrid
 #####
 
-const GFIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ, G, <:AbstractGridFittedBoundary} where {FT, TX, TY, TZ, G}
+const GFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBoundary}
 
 @inline solid_cell(i, j, k, ibg) = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary)
 
