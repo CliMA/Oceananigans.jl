@@ -153,11 +153,17 @@ end
 ##### ConsecutiveIterations
 #####
 
-mutable struct ConsecutiveIterations{S}
+mutable struct ConsecutiveIterations{S} <: AbstractSchedule
     parent :: S
     previous_parent_actuation_iteration :: Int
 end
 
+"""
+    ConsecutiveIterations(parent_schedule)
+
+Return a `schedule::ConsecutiveIterations` that actuates both when `parent_schedule`
+actuates, and at iterations immediately following the actuation of `parent_schedule`.
+"""
 ConsecutiveIterations(parent_schedule) = ConsecutiveIterations(parent_schedule, 0)
 
 function (schedule::ConsecutiveIterations)(model)
