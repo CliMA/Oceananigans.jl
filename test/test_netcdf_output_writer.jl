@@ -678,12 +678,8 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     zF = [k^2 for k in 0:Nz]
     grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z=zF)
 
-<<<<<<< HEAD
-    model = NonhydrostaticModel(grid=grid)
-=======
-    model = NonhydrostaticModel(arch, grid=grid,
+    model = NonhydrostaticModel(grid=grid,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
->>>>>>> origin/main
 
     Δt = 1.25
     iters = 3

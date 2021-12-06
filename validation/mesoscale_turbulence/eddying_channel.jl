@@ -181,23 +181,6 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     forcing = (; b=Fb,)
                                     )
 
-<<<<<<< HEAD
-
-#=
-model = NonhydrostaticModel(
-                                    grid = grid,
-                                    advection = WENO5(),
-                                    buoyancy = BuoyancyTracer(),
-                                    coriolis = coriolis,
-                                    closure = (closure),
-                                    tracers = :b,
-                                    boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
-                                    forcing = (b=Fb,),
-                                    )
-=#
-
-=======
->>>>>>> origin/main
 @info "Built $model."
 
 #####

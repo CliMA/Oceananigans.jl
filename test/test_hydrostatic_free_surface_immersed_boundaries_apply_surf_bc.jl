@@ -12,19 +12,11 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
         Nx = 60
         Ny = 60
 
-<<<<<<< HEAD
         # A spherical domain
         underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
                                                longitude = (-30, 30),
                                                latitude = (15, 75),
                                                z = (-4000, 0))
-=======
-        underlying_grid = LatitudeLongitudeGrid(architecture = arch,
-                                                size = (Nx, Ny, 1),
-                                                longitude = (-30, 30),
-                                                latitude = (15, 75),
-                                                z = (-4000, 0))
->>>>>>> origin/main
 
         bathymetry = zeros(Nx, Ny) .- 4000
         view(bathymetry, 31:34, 43:47) .= 0
@@ -59,7 +51,6 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
         constant_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₀)
 
         model = HydrostaticFreeSurfaceModel(grid = grid,
-<<<<<<< HEAD
                                     momentum_advection = VectorInvariant(),
                                     free_surface = free_surface,
                                     coriolis = coriolis,
@@ -68,16 +59,6 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
                                     tracers = nothing,
                                     buoyancy = nothing)
 
-=======
-                                            architecture = arch,
-                                            momentum_advection = VectorInvariant(),
-                                            free_surface = free_surface,
-                                            coriolis = coriolis,
-                                            boundary_conditions = (u=u_bcs, v=v_bcs),
-                                            closure = constant_horizontal_diffusivity,
-                                            tracers = nothing,
-                                            buoyancy = nothing)
->>>>>>> origin/main
 
         simulation = Simulation(model, Δt = 3600, stop_time = 3600)
 

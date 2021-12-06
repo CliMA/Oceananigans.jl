@@ -147,7 +147,7 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     νz, κz = α*νh, α*κh
 
     topology = (Periodic, Bounded, Bounded)
-    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz), architecture=arch)
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model = NonhydrostaticModel(grid = grid,
                                 closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz),
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))

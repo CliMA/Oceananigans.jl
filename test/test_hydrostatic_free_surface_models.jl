@@ -220,7 +220,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
         @testset "PrescribedVelocityFields [$arch]" begin
             @info "  Testing PrescribedVelocityFields [$arch]..."
             
-            grid = RectilinearGrid(size=1, x = (0, 1), topology = (Periodic, Flat, Flat), architecture = arch)
+            grid = RectilinearGrid(arch, size=1, x = (0, 1), topology = (Periodic, Flat, Flat))
             
             u₀, v₀ = 0.1, 0.2
             
