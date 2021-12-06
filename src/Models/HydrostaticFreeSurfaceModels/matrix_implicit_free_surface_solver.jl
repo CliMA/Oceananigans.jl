@@ -3,6 +3,7 @@ using Oceananigans.Operators
 using Oceananigans.Architectures
 using Oceananigans.Fields: ReducedField
 using Oceananigans.Solvers: MatrixIterativeSolver
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 import Oceananigans.Solvers: solve!
 
 struct MatrixImplicitFreeSurfaceSolver{V, S, R}
@@ -46,6 +47,7 @@ function MatrixImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, gravi
     coeffs = compute_coefficients(vertically_integrated_lateral_areas, grid, gravity)
 
     solver = MatrixIterativeSolver(coeffs;
+                            reduced_dim = (false, false, true),
                                    grid = grid,
                                    settings...)
 
@@ -99,23 +101,33 @@ function compute_coefficients(vertically_integrated_areas, grid, gravity)
 
     Nx, Ny = (grid.Nx, grid.Ny)
 
-    C  = arch_array(arch, zeros(Nx, Ny))
-    Ax = arch_array(arch, zeros(Nx, Ny))
-    Ay = arch_array(arch, zeros(Nx, Ny))
+    C     = arch_array(arch, zeros(Nx, Ny, 1))
+    diag  = arch_array(arch, zeros(Nx, Ny, 1))
+    Ax    = arch_array(arch, zeros(Nx, Ny, 1))
+    Ay    = arch_array(arch, zeros(Nx, Ny, 1))
 
     ∫Ax = vertically_integrated_areas.xᶠᶜᶜ
     ∫Ay = vertically_integrated_areas.yᶜᶠᶜ
 
-    event_c = launch!(arch, grid, :xy, _compute_coefficients!, C, Ax, Ay, ∫Ax, ∫Ay, grid, gravity)
+    event_c = launch!(arch, grid, :xy, _compute_coefficients!, diag, Ax, Ay, ∫Ax, ∫Ay, grid, gravity)
   
     wait(event_c)
 
-    return (Array(Ax), Array(Ay), C)
+    return (Array(Ax), Array(Ay), Array(C), diag)
 end
 
 @kernel function _compute_coefficients!(C, Ax, Ay, ∫Ax, ∫Ay, grid, g)
     i, j = @index(Global, NTuple)
-    Ay[i, j] = ∫Ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)  
-    Ax[i, j] = ∫Ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid)  
-    C[i, j]  = - Azᶜᶜᵃ(i, j, 1, grid) / g
+    Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)  
+    Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid)  
+    diag[i, j, 1]  = - Azᶜᶜᵃ(i, j, 1, grid) / g
+end
+
+@kernel function _compute_coefficients!(diag, Ax, Ay, ∫Ax, ∫Ay, grid::ImmersedBoundaryGrid, g)
+    i, j = @index(Global, NTuple)
+    if is_immersed(i, j, grid.Nz, grid.grid, grid)
+        Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)  
+        Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid) 
+        diag[i, j]  = - Azᶜᶜᵃ(i, j, 1, grid) / g
+    end
 end

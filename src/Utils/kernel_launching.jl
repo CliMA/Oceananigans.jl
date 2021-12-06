@@ -24,7 +24,7 @@ to be specified.
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
 
-function heuristic_workgroup(grid)
+function heuristic_workgroup(grid::AbstractGrid)
 
     Nx, Ny, Nz = size(grid)
 
@@ -48,7 +48,6 @@ function heuristic_workgroup(grid)
 
     return workgroup
 end
-
 
 function work_layout(grid, worksize::NTuple{N, Int}; kwargs...) where N
     workgroup = heuristic_workgroup(grid)
