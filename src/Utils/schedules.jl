@@ -150,6 +150,28 @@ function specified_times_str(st)
 end
 
 #####
+##### ConsecutiveIterations
+#####
+
+mutable struct ConsecutiveIterations{S}
+    parent :: S
+    previous_parent_actuation_iteration :: Int
+end
+
+ConsecutiveIterations(parent_schedule) = ConsecutiveIterations(parent_schedule, 0)
+
+function (schedule::ConsecutiveIterations)(model)
+    if schedule.parent(model)
+        schedule.previous_parent_actuation_iteration = model.clock.iteration
+        return true
+    elseif model.clock.iteration - 1 == schedule.previous_parent_actuation_iteration
+        return true # The iteration _after_ schedule.parent actuated!
+    else
+        return false
+    end
+end
+
+#####
 ##### Show methods
 #####
 
