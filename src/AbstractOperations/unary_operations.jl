@@ -7,7 +7,7 @@ struct UnaryOperation{X, Y, Z, O, A, I, R, G, T} <: AbstractOperation{X, Y, Z, R
     architecture :: R
             grid :: G
 
-    """
+    @doc """
         UnaryOperation{X, Y, Z}(op, arg, ▶, grid)
 
     Returns an abstract `UnaryOperation` representing the action of `op` on `arg`,

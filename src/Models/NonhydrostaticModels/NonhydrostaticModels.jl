@@ -1,5 +1,9 @@
 module NonhydrostaticModels
 
+export NonhydrostaticModel
+
+using DocStringExtensions
+
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 

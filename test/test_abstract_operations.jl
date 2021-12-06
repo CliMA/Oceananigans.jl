@@ -223,7 +223,8 @@ for arch in archs
                                              equation_of_state = LinearEquationOfState(α=1, β=1))
 
         model = NonhydrostaticModel(grid = grid,
-                                buoyancy = buoyancy)
+                                buoyancy = buoyancy,
+                                 tracers = (:T, :S))
 
         @testset "Construction of abstract operations [$(typeof(arch))]" begin
             @info "    Testing construction of abstract operations [$(typeof(arch))]..."

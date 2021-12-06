@@ -7,7 +7,8 @@ function test_boundary_condition(arch, FT, topo, side, field_name, boundary_cond
     boundary_condition_kwarg = (; side => boundary_condition)
     field_boundary_conditions = FieldBoundaryConditions(; boundary_condition_kwarg...)
     bcs = (; field_name => field_boundary_conditions)
-    model = NonhydrostaticModel(grid=grid, boundary_conditions=bcs)
+    model = NonhydrostaticModel(grid=grid, boundary_conditions=bcs,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     success = try
         time_step!(model, 1e-16, euler=true)
@@ -166,7 +167,9 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                T=T_boundary_conditions)
 
         model = NonhydrostaticModel(grid = grid,
-                                    boundary_conditions = boundary_conditions)
+                                    boundary_conditions = boundary_conditions,
+                                    buoyancy = SeawaterBuoyancy(),
+                                    tracers = (:T, :S))
 
         @test location(model.velocities.u.boundary_conditions.bottom.condition) == (Face, Center, Nothing)
         @test location(model.velocities.u.boundary_conditions.top.condition)    == (Face, Center, Nothing)

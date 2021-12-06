@@ -1,5 +1,7 @@
 module ShallowWaterModels
 
+export ShallowWaterModel
+
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
 using KernelAbstractions.Extras.LoopInfo: @unroll
 

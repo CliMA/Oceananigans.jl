@@ -63,8 +63,8 @@ Keyword arguments
 =================
 
   - `grid`: (defaults to `nothing`)
-  - `stretched_smoothness`: When `true` it results in the coefficients for the smoothness indicators 
-    β₀, β₁ and β₂ so that they account for the stretched `grid`. (defaults to `false`)
+  - `stretched_smoothness`: When `true` it results in computing the coefficients for the smoothness
+    indicators β₀, β₁ and β₂ so that they account for the stretched `grid`. (defaults to `false`)
   - `zweno`: When `true` implement a Z-WENO formulation for the WENO weights calculation. (defaults to
     `false`)
 
@@ -76,7 +76,7 @@ Keyword arguments
 Not providing any keyword argument, `WENO5()` defaults to the uniform 5th-order coefficients ("uniform
 setting) in all directions, using a JS-WENO formulation.
 
-```@example
+```jldoctest; filter = [r".*┌ Warning.*", r".*└ @ Oceananigans.*"]
 julia> using Oceananigans
 
 julia> WENO5()
@@ -96,7 +96,7 @@ directions ended up being way too expensive and, therefore, is not supported.)
 ```jldoctest
 julia> using Oceananigans
 
-julia> grid = grid = RectilinearGrid(size = (3, 4, 5), x = (0, 1), y = (0, 1), z = [-10, -9, -7, -4, -1.5, 0]);
+julia> grid = RectilinearGrid(size = (3, 4, 5), x = (0, 1), y = (0, 1), z = [-10, -9, -7, -4, -1.5, 0]);
 
 julia> WENO5(grid = grid)
 WENO5 advection scheme with:
@@ -105,32 +105,36 @@ WENO5 advection scheme with:
     └── Z stretched
 ```
 
-`WENO5(grid = grid, stretched_smoothness = true)` behaves similarly to `WENO5(grid = grid)` but, additionally,
-it also computes the smoothness indicators coefficients, ``β₀``, ``β₁``, and ``β₂``, taking into account
-the stretched dimensions.
+`WENO5(grid = grid, stretched_smoothness = true)` behaves similarly to `WENO5(grid = grid)` but,
+additionally, it also computes the smoothness indicators coefficients, ``β₀``, ``β₁``, and ``β₂``,
+taking into account the stretched dimensions.
 
 `WENO5(zweno = true)` implements a Z-WENO formulation for the WENO weights calculation
 
 Comments
 ========
 
-All methods have the roughly the same execution speed except for `stretched_smoothness = true` which requires more memory and
-is less computationally efficeint, especially on GPUs. In addition, it has not been found to be much impactful on the tested cases.
-As such, most of the times we urge users to use `WENO5(grid = grid)`, as this increases accuracy on a stretched mesh  but does decreases
+All methods have the roughly the same execution speed except for `stretched_smoothness = true` that
+requires more memory and is less computationally efficient, especially on GPUs. In addition, it has
+not been found to be much impactful on the tested cases. As such, most of the times we urge users
+to use `WENO5(grid = grid)`, as this increases accuracy on a stretched mesh  but does decreases
 memory utilization (and also results in a slight speed-up).
 
 (The above claims were made after some preliminary tests. Thus, we still users to perform some
 benchmarks/checks before performing, e.g., a large simulation on a "weirdly" stretched grid.)
 
-On the other hand, a Z-WENO formulation is *most of the times* beneficial (also in case of a uniform mesh) with roughly the 
-same performances (just a slight slow/down). The same can be said for the stretched `WENO5(grid = grid)` formulation in case of
-stretched grids.
+On the other hand, a Z-WENO formulation is *most of the times* beneficial (also in case of a uniform
+mesh) with roughly the same performances (just a slight slowdown). The same can be said for the
+stretched `WENO5(grid = grid)` formulation in case of stretched grids.
 
 References
 ==========
 
-- Shu, Essentially Non-Oscillatory and Weighted Essentially Non-Oscillatory Schemes for Hyperbolic Conservation Laws, 1997, NASA/CR-97-206253, ICASE Report No. 97-65
-- Castro et al, High order weighted essentially non-oscillatory WENO-Z schemes for hyperbolic conservation laws, 2011, Journal of Computational Physics 230(5):1766-1792
+Shu, Essentially Non-Oscillatory and Weighted Essentially Non-Oscillatory Schemes for Hyperbolic
+    Conservation Laws, 1997, NASA/CR-97-206253, ICASE Report No. 97-65
+
+Castro et al, High order weighted essentially non-oscillatory WENO-Z schemes for hyperbolic conservation
+    laws, 2011, Journal of Computational Physics, 230(5), 1766-1792
 """
 function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false, zweno = false)
     
@@ -167,7 +171,7 @@ function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false, zweno
     XS = typeof(smooth_xᶠᵃᵃ)
     YS = typeof(smooth_yᵃᶠᵃ)
     ZS = typeof(smooth_zᵃᵃᶠ)
-    zweno ? W  = Number : W = Nothing
+    zweno ? W = Number : W = Nothing
 
     return WENO5{FT, XT, YT, ZT, XS, YS, ZS, W}(coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
                                                 smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ)
@@ -265,7 +269,7 @@ Adapt.adapt_structure(to, scheme::WENO5{FT, XT, YT, ZT, XS, YS, ZS, W}) where {F
 
 #####
 ##### Stretched smoothness indicators gathered from precomputed values.
-##### the stretched values for β coefficients is calculated from 
+##### The stretched values for β coefficients are calculated from 
 ##### Shu, NASA/CR-97-206253, ICASE Report No. 97-65
 ##### by hardcoding that p(x) is a 2nd order polynomial
 #####

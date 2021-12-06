@@ -28,9 +28,9 @@ RectilinearGrid{Float64, Periodic, Periodic, Bounded}
                  topology: (Periodic, Periodic, Bounded)
         size (Nx, Ny, Nz): (32, 64, 256)
         halo (Hx, Hy, Hz): (1, 1, 1)
-grid in x: Regular, with spacing 4.0
-grid in y: Regular, with spacing 4.0
-grid in z: Regular, with spacing 2.0
+                grid in x: Regular, with spacing 4.0
+                grid in y: Regular, with spacing 4.0
+                grid in z: Regular, with spacing 2.0
 ```
 
 !!! info "Default domain"
@@ -56,9 +56,9 @@ RectilinearGrid{Float64, Periodic, Bounded, Bounded}
                  topology: (Periodic, Bounded, Bounded)
         size (Nx, Ny, Nz): (64, 64, 32)
         halo (Hx, Hy, Hz): (1, 1, 1)
-grid in x: Regular, with spacing 156.25
-grid in y: Regular, with spacing 156.25
-grid in z: Regular, with spacing 31.25
+                grid in x: Regular, with spacing 156.25
+                grid in y: Regular, with spacing 156.25
+                grid in z: Regular, with spacing 31.25
 ```
 
 The `Flat` topology is useful when running problems with fewer than 3 dimensions. As an example,
@@ -79,9 +79,9 @@ RectilinearGrid{Float64, Periodic, Periodic, Bounded}
                  topology: (Periodic, Periodic, Bounded)
         size (Nx, Ny, Nz): (32, 16, 256)
         halo (Hx, Hy, Hz): (1, 1, 1)
-grid in x: Regular, with spacing 6.25
-grid in y: Regular, with spacing 0.78125
-grid in z: Regular, with spacing 0.02454369260617026
+                grid in x: Regular, with spacing 6.25
+                grid in y: Regular, with spacing 0.78125
+                grid in z: Regular, with spacing 0.02454369260617026
 ```
 
 
@@ -114,9 +114,9 @@ RectilinearGrid{Float64, Periodic, Bounded, Bounded}
                  topology: (Periodic, Bounded, Bounded)
         size (Nx, Ny, Nz): (64, 64, 32)
         halo (Hx, Hy, Hz): (1, 1, 1)
-grid in x: Regular, with spacing 156.25
-grid in y: Stretched, with spacing min=6.022718974138115, max=245.33837163709035
-grid in z: Stretched, with spacing min=2.407636663901485, max=49.008570164780394
+                grid in x: Regular, with spacing 156.25
+                grid in y: Stretched, with spacing min=6.022718974138115, max=245.33837163709035
+                grid in z: Stretched, with spacing min=2.407636663901485, max=49.008570164780394
 ```
 
 ```@setup 1

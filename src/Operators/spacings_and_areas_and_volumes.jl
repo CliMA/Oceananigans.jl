@@ -11,9 +11,9 @@ On the staggered grid, there are 7 cells additional to the "reference cell"
 that are staggered with respect to the reference cell in x, y, and/or z.
 
 The staggering is denoted by the locations "Center" and "Face":
-    - "Center" is shared with the reference cell;
-    - "Face" lies between reference cell centers, roughly at the interface between
-      reference cells.
+  - "Center" is shared with the reference cell;
+  - "Face" lies between reference cell centers, roughly at the interface between
+    reference cells.
 
 The three-dimensional location of an object is defined by a 3-tuple of locations, and
 denoted by a triplet of superscripts. For example, an object `φ` whose cell is located at
@@ -29,6 +29,9 @@ The operators in this file fall into three categories:
    at rectilinear (possibly stretched) in the vertical.
 
 """
+
+@inline Δzᶠᶜᶜ(i, j, k, grid) = Δzᵃᵃᶜ(i, j, k, grid)
+@inline Δzᶜᶠᶜ(i, j, k, grid) = Δzᵃᵃᶜ(i, j, k, grid)
 
 #####
 ##### "Spacings" in Flat directions for rectilinear grids.
