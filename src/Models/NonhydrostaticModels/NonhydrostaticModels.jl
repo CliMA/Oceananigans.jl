@@ -16,11 +16,11 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 import Oceananigans: fields, prognostic_fields
 
 function PressureSolver(arch::MultiArch, grid::RegRectilinearGrid)
-    full_grid = reconstruct_global_grid(grid)
-    if arch.ranks[1] == 1 && full_grid.Nx == full_grid.Ny  # we would have to allow different settings 
-        return DistributedFFTBasedPoissonSolver(arch, full_grid, grid)
+    global_grid = reconstruct_global_grid(grid)
+    if arch.ranks[1] == 1 # we would have to allow different settings 
+        return DistributedFFTBasedPoissonSolver(arch, global_grid, grid)
     else
-        @warn "A Distributed NonhydrostaticModel is allowed only when Nx == Ny and the X-direction is not parallelized"
+        @warn "A Distributed NonhydrostaticModel is allowed only when the x-direction is not parallelized"
         return nothing
     end
 end
