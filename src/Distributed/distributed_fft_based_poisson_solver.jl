@@ -7,19 +7,19 @@ using Oceananigans.Distributed: rank2index
 struct DistributedFFTBasedPoissonSolver{A, P, F, L, λ, S}
       architecture :: A
               plan :: P
-         full_grid :: F
-           my_grid :: L
+       global_grid :: F
+        local_grid :: L
        eigenvalues :: λ
            storage :: S
 end
 
-function DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
+function DistributedFFTBasedPoissonSolver(arch, global_grid, local_grid)
 
-    topo = (TX, TY, TZ) = topology(full_grid)
+    topo = (TX, TY, TZ) = topology(global_grid)
 
-    λx = poisson_eigenvalues(full_grid.Nx, full_grid.Lx, 1, TX())
-    λy = poisson_eigenvalues(full_grid.Ny, full_grid.Ly, 2, TY())
-    λz = poisson_eigenvalues(full_grid.Nz, full_grid.Lz, 3, TZ())
+    λx = poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, TX())
+    λy = poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, TY())
+    λz = poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, TZ())
 
     arch.ranks[1] == arch.ranks[3] == 1 || @warn "Must have Rx == Rz == 1 for distributed fft solver"
 
@@ -30,7 +30,7 @@ function DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
     # we have to permute (Rx, Ry, Rz) with (Ry, Rx, Rz)
     I, J, K = rank2index(arch.local_rank, Ry, Rx, Rz)
 
-    perm_Nx = full_grid.Nx ÷ Ry
+    perm_Nx = global_grid.Nx ÷ Ry
 
     λx = λx[(I-1)*perm_Nx+1:I*perm_Nx, :, :]
 
@@ -38,10 +38,10 @@ function DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
 
     transform = PencilFFTs.Transforms.FFT!()
     proc_dims = (arch.ranks[2], arch.ranks[3])
-    plan = PencilFFTs.PencilFFTPlan(size(full_grid), transform, proc_dims, MPI.COMM_WORLD)
+    plan = PencilFFTs.PencilFFTPlan(size(global_grid), transform, proc_dims, MPI.COMM_WORLD)
     storage = PencilFFTs.allocate_input(plan)
 
-    return DistributedFFTBasedPoissonSolver(arch, plan, full_grid, local_grid, eigenvalues, storage)
+    return DistributedFFTBasedPoissonSolver(arch, plan, global_grid, local_grid, eigenvalues, storage)
 end
 
 function solve!(x, solver::DistributedFFTBasedPoissonSolver)
@@ -68,7 +68,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     solver.plan \ solver.storage
     xc_transposed = first(solver.storage)
 	
-    copy_event = launch!(arch, solver.my_grid, :xyz, copy_real_component!, x, xc_transposed, dependencies=device_event(arch))
+    copy_event = launch!(arch, solver.local_grid, :xyz, copy_real_component!, x, xc_transposed, dependencies=device_event(arch))
     wait(device(arch), copy_event)
 
     return x
