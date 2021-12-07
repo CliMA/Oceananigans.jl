@@ -5,6 +5,7 @@ using Oceananigans.Fields: interior_copy
 using Oceananigans.Utils: heuristic_workgroup
 using KernelAbstractions: @kernel, @index
 using LinearAlgebra, SparseArrays, IterativeSolvers
+using SparseArrays: fkeep!
 using CUDA, CUDA.CUSPARSE
 using IncompleteLU
 
@@ -30,9 +31,18 @@ matrix_constructors.
 
 In particular, given coefficients Ax, Ay, Az, C, D, the solved problem will be
 
+To have the equation solved on Center, Center, Center, the coefficients should be specified as follows
+- Ax -> Face, Center, Center
+- Ay -> Center, Face, Center
+- Az -> Center, Center, Face
+- C  -> Center, Center, Center
+- D  -> Center, Center, Center
+
 Axᵢ₊₁ ηᵢ₊₁ + Axᵢ ηᵢ₋₁ + Ayⱼ₊₁ ηⱼ₊₁ + Ayⱼ ηⱼ₋₁ + Azₖ₊₁ ηₖ₊₁ + Azₖ ηⱼ₋₁ 
-- 2 ( Axᵢ₊₁ + Axᵢ₊₁ + Ayⱼ₊₁ + Ayⱼ + Azₖ₊₁ + Azₖ ) ηᵢⱼₖ 
+- 2 ( Axᵢ₊₁ + Axᵢ + Ayⱼ₊₁ + Ayⱼ + Azₖ₊₁ + Azₖ ) ηᵢⱼₖ 
 +   ( Cᵢⱼₖ + Dᵢⱼₖ/Δt^2 ) ηᵢⱼₖ = b
+
+solver.matrix is precomputed with a value of Δt = 1.0
 
 The sparse matrix A can be constructed with
 
@@ -81,7 +91,7 @@ function MatrixIterativeSolver(coeffs;
     if arch isa GPU || !precondition  #until we find a suitable backward substitution for GPU, the preconditioning takes a lot of time!!
         placeholder_preconditioner = Identity()
     else
-        placeholder_preconditioner = ilu(placeholder_matrix, τ = 0.1)
+        placeholder_preconditioner = ilu(placeholder_matrix, τ = 0.01)
     end
    
     return MatrixIterativeSolver(arch,
@@ -154,7 +164,7 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
                         dz[1]=>coeff_z,      -dz[1]=>coeff_z,
                         dz[2]=>coeff_bound_z,-dz[2]=>coeff_bound_z)
 
-    dropzeros!(sparse_matrix)
+    ensure_diagonal_elements_are_present!(sparse_matrix)
 
     matrix_constructors = constructors(arch, sparse_matrix)
 
@@ -246,8 +256,8 @@ function solve!(x, solver::MatrixIterativeSolver, b, Δt)
         constructors = deepcopy(solver.matrix_constructors)
         update_diag!(constructors, solver.architecture, solver.problem_size, solver.diagonal, Δt)
         solver.matrix = arch_sparse_matrix(solver.architecture, constructors) 
-        if solver.architecture isa CPU && solver.preconditioner != Identity()
-            solver.preconditioner = ilu(solver.matrix, τ = 2.0)
+        if solver.preconditioner != Identity()
+            solver.preconditioner = ilu(solver.matrix, τ = 0.01)
         end   
         solver.previous_Δt = Δt
     end
@@ -296,7 +306,7 @@ end
 
 function Base.show(io::IO, solver::MatrixIterativeSolver)
     print(io, "matrix-based iterative solver with: \n")
-    print(io, " Problem size = "  , size(solver.grid), '\n')
+    print(io, " Problem size = "  , solver.problem_size, '\n')
     print(io, " Grid = "  , solver.grid, '\n')
     print(io, " Solution method = ", solver.iterative_solver)
     return nothing
@@ -314,3 +324,6 @@ end
 
 @inline validate_laplacian_size(N, dim) = dim == true ? N : 1
   
+# drop the zeros of the matrix ensuring that diagonal elements are present in the CSC formulation (for future addition of diag/Δt^2)
+@inline ensure_diagonal_elements_are_present!(A) = fkeep!(A, (i, j, x) -> (i == j || !iszero(x)))
+

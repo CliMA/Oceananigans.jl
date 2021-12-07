@@ -6,6 +6,7 @@ using DataDeps
 using Oceananigans
 using Benchmarks
 using Statistics
+using Oceananigans.TimeSteppers: update_state!
 # Need a grid
 
 ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
@@ -22,6 +23,27 @@ DataDeps.register(dd)
 Nx = 1024
 Ny = 512
 
+function set_simple_divergent_velocity!(model)
+    # Create a divergent velocity
+    grid = model.grid
+
+    u, v, w = model.velocities
+    η = model.free_surface.η
+
+    u .= 0
+    v .= 0
+    η .= 0
+
+    imid = Int(floor(grid.Nx / 2)) + 1
+    jmid = Int(floor(grid.Ny / 2)) + 1
+    CUDA.@allowscalar u[imid, jmid, 1] = 1
+
+    update_state!(model)
+
+    return nothing
+end
+
+
 # All grids have 6 * 510^2 = 1,560,600 grid points.
 grids = Dict(
      (CPU, :RectilinearGrid)          => RectilinearGrid(size=(Nx, Ny, 1), extent=(1, 1, 1)),
@@ -37,8 +59,7 @@ grids = Dict(
 
 free_surfaces = Dict(
     :ExplicitFreeSurface => ExplicitFreeSurface(),
-    :FFTImplicitFreeSurface => ImplicitFreeSurface() , 
-    :PCGImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient) , 
+    :ImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient), 
     :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver) 
 )
 
@@ -53,12 +74,12 @@ function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
               free_surface = free_surfaces[free_surface_type]
     )
 
-    time_step!(model, 1) # warmup
+    set_simple_divergent_velocity!(model)
 
-    set!(model, v=2, u=1)
-
+    time_step!(model, 1e-3) # warmup
+    
     trial = @benchmark begin
-        CUDA.@sync blocking = true time_step!($model, 1)
+        CUDA.@sync blocking = true time_step!($model, 1e-3)
     end samples = 10
 
     return trial
@@ -77,10 +98,10 @@ grid_types = [
 ]
 
 free_surface_types = [
-    :ExplicitFreeSurface,
+    # :ExplicitFreeSurface,
     # ImplicitFreeSurface doesn't yet work on MultiRegionGrids like the ConformalCubedSphereGrid:
     # :FFTImplicitFreeSurface, 
-    :PCGImplicitFreeSurface,
+    :ImplicitFreeSurface,
     :MatrixImplicitFreeSurface
 ]
 

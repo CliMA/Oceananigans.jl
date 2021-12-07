@@ -31,7 +31,7 @@ using Adapt
 
 """
 Extending the ILUFactorization methods to a ILUFactorizationGPU type which lives on the GPU
-This allow us to create a LU preconditioner on the GPU and use it whitin the IterativeSolvers
+This allow us to create an incomplete LU preconditioner on the GPU and use it within the IterativeSolvers
 directly on the GPU
 
 Next step should be to make an efficient parallel backward - forward substitution on the GPU
@@ -74,28 +74,6 @@ function backward_substitution!(F::ILUFactorizationGPU, y::AbstractVector)
     y
 end
 
-## Parallel version of the algorithm
-
-##   DO  PARALLEL I = 1, N
-##      X(I) = Y(I)
-##   END DO
-##   DO J = N, 1, -1
-##      X(J) = X(J) / U(J,J)
-##      DO PARALLEL I = 1, J-1
-##        X(I) = X(I) - U(I,J)*X(J)
-##      END DO
-##   END DO
-
-## Which in Julia would be
-
-## x .= y
-## for j = n:-1:1
-##  x[j] = x[j] / nzval(diag)
-##  parallelly: i = 1:j-1
-##    x[i] = x[i] - nzval(i,j) * x(j)
-##  end
-## end
-
 function forward_substitution!(F::ILUFactorizationGPU, y::AbstractVector)
     L = F.L
     # for the moment just one thread does the substitution, maybe we wanna parallelize this
@@ -124,11 +102,214 @@ function _forward_substitution!(n, colptr, rowval, nzval, y)
     end
 end
 
-function ilu(dA::CuSparseMatrix{Tv}; τ = 1e-3) where {Tv}
+function ilu(dA::CuSparseMatrix{Tv}; τ = 3.0) where {Tv}
     A = arch_sparse_matrix(CPU(), dA)
     p = ilu(A, τ = τ)
 
     return ILUFactorizationGPU(p)
+end
+
+using CUDA
+using Statistics: dot
+using BenchmarkTools
+using Adapt
+
+
+const MAX_THREADS_PER_BLOCK_TIMES_TWO = 2048
+
+# Reduce a value across a warp
+@inline function reduce_warp(op::F, val::T) where {F<:Function, T}
+    offset = CUDA.warpsize() ÷ UInt32(2)
+    # TODO: this can be unrolled if warpsize is known...
+    while offset > 0
+        val = op(val, CUDA.shfl_down_sync(5, val, offset))
+        offset ÷= UInt32(2)
+    end
+    return val
+end
+
+# Reduce a value across a block, using shared memory for communication
+@inline function reduce_block(op::F, val::T) where {F<:Function, T}
+    # shared mem for 32 partial sums
+    shared = @cuStaticSharedMem(T, 32)
+
+    # TODO: use fldmod1 (JuliaGPU/CUDAnative.jl#28)
+    wid  = div(threadIdx().x-UInt32(1), CUDA.warpsize()) + UInt32(1)
+    lane = rem(threadIdx().x-UInt32(1), CUDA.warpsize()) + UInt32(1)
+
+    # each warp performs partial reduction
+    val = reduce_warp(op, val)
+
+    # write reduced value to shared memory
+    if lane == 1
+        @inbounds shared[wid] = val
+    end
+
+    # wait for all partial reductions
+    sync_threads()
+
+    # read from shared memory only if that warp existed
+    @inbounds val = (threadIdx().x <= fld(blockDim().x, CUDA.warpsize())) ? shared[lane] : zero(T)
+
+    # final reduce within first warp
+    if wid == 1
+        val = reduce_warp(op, val)
+    end
+
+    return val
+end
+
+# Reduce an array across a complete grid
+function reduce_grid(op::F, input, output::CuDeviceArray{T,1}, len::Integer) where {F<:Function, T}
+
+    # TODO: neutral element depends on the operator (see Base's 2 and 3 argument `reduce`)
+    val = zero(T)
+
+    # reduce multiple elements per thread (grid-stride loop)
+    # TODO: step range (see JuliaGPU/CUDAnative.jl#12)
+    i = (blockIdx().x-UInt32(1)) * blockDim().x + threadIdx().x
+    step = blockDim().x * gridDim().x
+    while i <= len
+        @inbounds val = op(val, input[i])
+        i += step
+    end
+
+    val = reduce_block(op, val)
+
+    if threadIdx().x == UInt32(1)
+        @inbounds output[blockIdx().x] = val
+    end
+
+    return
+end
+
+# Reduce an array across a complete grid
+function reduce_grid_two(opr::F, opa::G, in1, in2, output::CuDeviceArray{T,1}, len::Integer) where {F<:Function, G, T}
+
+    # TODO: neutral element depends on the operator (see Base's 2 and 3 argument `reduce`)
+    val = zero(T)
+
+    # reduce multiple elements per thread (grid-stride loop)
+    # TODO: step range (see JuliaGPU/CUDAnative.jl#12)
+    i = (blockIdx().x-UInt32(1)) * blockDim().x + threadIdx().x
+    step = blockDim().x * gridDim().x
+    while i <= len
+        @inbounds val = opr(val, opa(in1[i], in2[i]))
+        i += step
+    end
+
+    val = reduce_block(opr, val)
+
+    if threadIdx().x == UInt32(1)
+        @inbounds output[blockIdx().x] = val
+    end
+
+    return
+end
+
+function gpu_reduce(opr::F, opa::G, in1::CuArray{T, N}, in2::CuArray{T, N}) where {F<:Function, G<:Function, T, N}
+    len = length(in1)
+
+    # TODO: these values are hardware-dependent, with recent GPUs supporting more threads
+    threads = 1024
+    blocks = min((len + threads - 1) ÷ threads, 1024)
+
+    tmp = CuArray{T}(undef, blocks)
+    out = CuArray{T}(undef, 1)
+
+    # the output array must have a size equal to or larger than the number of thread blocks
+    # in the grid because each block writes to a unique location within the array.
+    
+    @cuda blocks=blocks threads=threads reduce_grid_two(opr, opa, in1, in2, tmp, Int32(len))
+    @cuda blocks=1 threads=1024 reduce_grid(opr, tmp, out, Int32(blocks))
+
+    return out
+end
+
+"""
+My Reduce operation
+"""
+
+function reduce_multiply_one_block!(::Val{FT}, out, ain, bin, ::Val{totSize}, ::Val{block}) where {FT, totSize, block}
+
+	tix   = threadIdx().x 
+	bix   = blockIdx().x 
+	gdim  = gridDim().x * block
+    
+	glb   = tix + (bix -UInt32(1)) * block
+	
+    sum = FT(0.0)
+    for i = glb:gdim:totSize
+        @inbounds sum += ain[i] * bin[i]
+    end
+    
+    shArr = @cuStaticSharedMem(FT, block)
+	shArr[tix] = sum;
+
+    sync_threads()
+
+	iter = block ÷ UInt32(2)
+    while iter > 0
+		if tix < iter + UInt32(1)
+			shArr[tix] += shArr[tix+iter]
+        end
+        sync_threads()
+        iter = iter ÷ UInt32(2)
+	end
+	if tix == 1 
+       out[bix] = shArr[1]
+    end
+
+    sync_threads()
+end
+
+function reduce_one_block!(::Val{FT}, out, ain, ::Val{totSize}, ::Val{block}) where {FT, totSize, block}
+    
+	tix   = threadIdx().x 
+	bix   = blockIdx().x 
+	gdim  = gridDim().x * block
+
+	glb   = tix + (bix -1) * block
+	
+    sum = 0.0;
+    for i = glb:gdim:totSize
+        @inbounds sum += ain[i] 
+    end
+    
+    shArr = @cuStaticSharedMem(FT, block)
+	shArr[tix] = sum;
+
+    sync_threads()
+    
+    iter = block ÷ 2
+    while iter > 0
+		if tix < iter + 1
+			shArr[tix] += shArr[tix+iter]
+        end
+        sync_threads()
+        iter = iter ÷ 2
+	end
+    ain[bix] = shArr[1]
+ 
+    sync_threads()
+end
+
+function parallel_dot(a::AbstractArray{FT, N}, b::AbstractArray{FT, N}) where {FT, N}
+
+    len = length(a)
+
+    block = UInt32(gcd(len, MAX_THREADS_PER_BLOCK_TIMES_TWO))
+    grid  = UInt32(len / block)
+
+    block = 2^floor(UInt32, log(2, block-1))
+
+    tmp    = CuArray{FT}(undef, grid)
+    output = CuArray{FT}(undef, 1)
+
+    @cuda threads=block blocks=grid reduce_multiply_one_block!(Val(FT), tmp, a, b, Val(len), Val(block))
+    @cuda threads=block blocks=1 reduce_one_block!(Val(FT), output, tmp, Val(grid), Val(block))
+    
+    return output
 end
 
 

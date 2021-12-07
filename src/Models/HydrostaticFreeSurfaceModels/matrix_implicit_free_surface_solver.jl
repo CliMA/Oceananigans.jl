@@ -3,7 +3,7 @@ using Oceananigans.Operators
 using Oceananigans.Architectures
 using Oceananigans.Fields: ReducedField
 using Oceananigans.Solvers: MatrixIterativeSolver
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, solid_cell
 import Oceananigans.Solvers: solve!
 
 struct MatrixImplicitFreeSurfaceSolver{V, S, R}
@@ -44,7 +44,7 @@ function MatrixImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, gravi
     maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
     settings[:maximum_iterations] = maximum_iterations
 
-    coeffs = compute_coefficients(vertically_integrated_lateral_areas, grid, gravity)
+    coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravity)
 
     solver = MatrixIterativeSolver(coeffs;
                             reduced_dim = (false, false, true),
@@ -95,28 +95,31 @@ end
     @inbounds rhs[t] = (δ_Q - Az * η[i, j, 1] / Δt) / (g * Δt)
 end
 
-function compute_coefficients(vertically_integrated_areas, grid, gravity)
+function compute_matrix_coefficients(vertically_integrated_areas, grid, gravity)
 
     arch = grid.architecture
 
     Nx, Ny = (grid.Nx, grid.Ny)
 
-    C     = arch_array(arch, zeros(Nx, Ny, 1))
-    diag  = arch_array(arch, zeros(Nx, Ny, 1))
-    Ax    = arch_array(arch, zeros(Nx, Ny, 1))
-    Ay    = arch_array(arch, zeros(Nx, Ny, 1))
+    C     = zeros(Nx, Ny, 1)
+    diag  = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
+    Ax    = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
+    Ay    = arch_array(arch, zeros(eltype(grid), Nx, Ny, 1))
+    Az    = zeros(Nx, Ny, 1)
 
     ∫Ax = vertically_integrated_areas.xᶠᶜᶜ
     ∫Ay = vertically_integrated_areas.yᶜᶠᶜ
 
-    event_c = launch!(arch, grid, :xy, _compute_coefficients!, diag, Ax, Ay, ∫Ax, ∫Ay, grid, gravity)
+    event_c = launch!(arch, grid, :xy, _compute_coefficients!,
+                      diag, Ax, Ay, ∫Ax, ∫Ay, grid, gravity,
+                      dependencies = device_event(arch))
   
     wait(event_c)
 
-    return (Array(Ax), Array(Ay), Array(C), diag)
+    return (Array(Ax), Array(Ay), Array(Az), Array(C), diag)
 end
 
-@kernel function _compute_coefficients!(C, Ax, Ay, ∫Ax, ∫Ay, grid, g)
+@kernel function _compute_coefficients!(diag, Ax, Ay, ∫Ax, ∫Ay, grid, g)
     i, j = @index(Global, NTuple)
     Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)  
     Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid)  
@@ -125,9 +128,9 @@ end
 
 @kernel function _compute_coefficients!(diag, Ax, Ay, ∫Ax, ∫Ay, grid::ImmersedBoundaryGrid, g)
     i, j = @index(Global, NTuple)
-    if is_immersed(i, j, grid.Nz, grid.grid, grid)
-        Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)  
-        Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid) 
-        diag[i, j]  = - Azᶜᶜᵃ(i, j, 1, grid) / g
+    if solid_cell(i, j, grid.Nz, grid) == false
+        Ay[i, j, 1]  = ∫Ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)  
+        Ax[i, j, 1]  = ∫Ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid) 
+        diag[i, j, 1]   = - Azᶜᶜᵃ(i, j, 1, grid) / g
     end
 end

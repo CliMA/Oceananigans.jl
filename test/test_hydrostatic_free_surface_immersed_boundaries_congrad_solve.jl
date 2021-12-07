@@ -1,4 +1,5 @@
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
+using Oceananigans.Architectures: arch_array
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integrated_volume_flux!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_implicit_free_surface_right_hand_side!
@@ -17,73 +18,76 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
                                           extent = (Nx, Ny, 1),
                                           topology = (Periodic, Periodic, Bounded))
 
-        B = [-1. for i=1:Nx, j=1:Ny ]
+        B = arch_array(arch, [-1. for i=1:Nx, j=1:Ny ])
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
 
-        free_surface = ImplicitFreeSurface(gravitational_acceleration=1.0)
+        free_surfaces = [ImplicitFreeSurface(gravitational_acceleration=1.0), 
+                         ImplicitFreeSurface(solver_method=:MatrixIterativeSolver, gravitational_acceleration=1.0)]
 
-        model = HydrostaticFreeSurfaceModel(grid = grid,
-                                            architecture = arch,
-                                            free_surface = free_surface,
-                                            tracer_advection = WENO5(),
-                                            buoyancy = nothing,
-                                            tracers = nothing,
-                                            closure = nothing)
+        sol = ()
 
-        # Now create a divergent flow field and solve for 
-        # pressure correction
-        u, v, w     = model.velocities
-        imm1=Int( floor((Nx+1)/2)   )
-        imp1=Int( floor((Nx+1)/2)+1 )
-        jmm1=Int( floor((Ny+1)/2)   )
-        jmp1=Int( floor((Ny+1)/2)+1 )
-        u[imm1,jmm1,1:Nz ] .=  1.
-        u[imp1,jmm1,1:Nz ] .= -1.
-        v[imm1,jmm1,1:Nz ] .=  1.
-        v[imm1,jmp1,1:Nz ] .= -1.
+        for free_surface in free_surfaces
 
-             η = model.free_surface.η
-             g = model.free_surface.gravitational_acceleration
-           ∫ᶻQ = model.free_surface.barotropic_volume_flux
-           rhs = model.free_surface.implicit_step_solver.right_hand_side
-        solver = model.free_surface.implicit_step_solver;
-#           Δt = 3600.
-             Δt = 1.
-        compute_vertically_integrated_volume_flux!(∫ᶻQ, model)
-        rhs_event = compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
-        wait(device(arch), rhs_event)
+            model = HydrostaticFreeSurfaceModel(grid = grid,
+                                                architecture = arch,
+                                                free_surface = free_surface,
+                                                tracer_advection = WENO5(),
+                                                buoyancy = nothing,
+                                                tracers = nothing,
+                                                closure = nothing)
 
-        solve!(η, solver, rhs, g, Δt)
+            # Now create a divergent flow field and solve for 
+            # pressure correction
+            u, v, w     = model.velocities
+            imm1=Int( floor((Nx+1)/2)   )
+            imp1=Int( floor((Nx+1)/2)+1 )
+            jmm1=Int( floor((Ny+1)/2)   )
+            jmp1=Int( floor((Ny+1)/2)+1 )
+            u[imm1,jmm1,1:Nz ] .=  1.
+            u[imp1,jmm1,1:Nz ] .= -1.
+            v[imm1,jmm1,1:Nz ] .=  1.
+            v[imm1,jmp1,1:Nz ] .= -1.
 
-        fill_halo_regions!(η, arch)
+                η = model.free_surface.η
+                g = model.free_surface.gravitational_acceleration
+            ∫ᶻQ = model.free_surface.barotropic_volume_flux
+            rhs = model.free_surface.implicit_step_solver.right_hand_side
+            solver = model.free_surface.implicit_step_solver;
+                Δt = 1.
+            compute_vertically_integrated_volume_flux!(∫ᶻQ, model)
+            rhs_event = compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, ∫ᶻQ, η)
+            wait(device(arch), rhs_event)
 
-        println(typeof(model))
+            solve!(η, solver, rhs, g, Δt)
 
-        println("model.free_surface.gravitational_acceleration = ",model.free_surface.gravitational_acceleration)
-        println("∫ᶻQ.u")
-        show(stdout,"text/plain",∫ᶻQ.u.data[1:Nx,1:Ny,1])
-        println("")
+            fill_halo_regions!(η, arch)
 
-        println("rhs")
-        show(stdout,"text/plain",rhs.data[1:Nx,1:Ny,1])
-        println("")
+            println(typeof(model))
 
-        println("η")
-        show(stdout,"text/plain",η.data[1:Nx,1:Ny,1])
-        println("")
+            println("model.free_surface.gravitational_acceleration = ",model.free_surface.gravitational_acceleration)
+            println("∫ᶻQ.u")
+            show(stdout,"text/plain",∫ᶻQ.u.data[1:Nx,1:Ny,1])
+            println("")
 
-        pressure_correct_velocities!(model, Δt)
-        fill_halo_regions!(u, arch)
+            println("η")
+            show(stdout,"text/plain",η.data[1:Nx,1:Ny,1])
+            println("")
 
-        println("u")
-        show(stdout,"text/plain",u.data[1:Nx,1:Ny,1])
-        println("")
+            pressure_correct_velocities!(model, Δt)
+            fill_halo_regions!(u, arch)
 
-        fs = model.free_surface
-        vertically_integrated_lateral_areas = fs.implicit_step_solver.vertically_integrated_lateral_areas
-        ∫Axᶠᶜᶜ = vertically_integrated_lateral_areas.xᶠᶜᶜ
-        ∫Ayᶜᶠᶜ = vertically_integrated_lateral_areas.yᶜᶠᶜ
+            println("u")
+            show(stdout,"text/plain",u.data[1:Nx,1:Ny,1])
+            println("")
 
-        @test ( true )
+            fs = model.free_surface
+            vertically_integrated_lateral_areas = fs.implicit_step_solver.vertically_integrated_lateral_areas
+            ∫Axᶠᶜᶜ = vertically_integrated_lateral_areas.xᶠᶜᶜ
+            ∫Ayᶜᶠᶜ = vertically_integrated_lateral_areas.yᶜᶠᶜ
+
+            sol = (sol..., model.free_surface.η)
+        end
+
+        @test all(interior(sol[1]) .≈ interior(sol[2]))
     end
 end

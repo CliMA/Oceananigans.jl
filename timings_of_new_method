@@ -15,18 +15,17 @@ On the CPU:
 │           CPU │ LatitudeLongitudeGrid │ MatrixImplicitFreeSurface │ 152.481 ms │ 155.124 ms │ 159.953 ms │ 190.815 ms │  17.66 MiB │   2240 │      10 │
 └───────────────┴───────────────────────┴───────────────────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────┴─────────┘
 
-On the GPU:
 
                                                             Hydrostatic model benchmarks
-┌───────────────┬───────────────────────┬───────────────────────────┬───────────┬───────────┬───────────┬───────────┬───────────┬────────┬─────────┐
-│ Architectures │            grid_types │        free_surface_types │       min │    median │      mean │       max │    memory │ allocs │ samples │
-├───────────────┼───────────────────────┼───────────────────────────┼───────────┼───────────┼───────────┼───────────┼───────────┼────────┼─────────┤
-│           GPU │       RectilinearGrid │       ExplicitFreeSurface │  2.033 ms │  2.096 ms │  2.260 ms │  3.756 ms │  1.91 MiB │   4218 │      10 │
-│           GPU │       RectilinearGrid │    FFTImplicitFreeSurface │  2.722 ms │  2.907 ms │  3.099 ms │  3.910 ms │  2.92 MiB │   5791 │      10 │
-│           GPU │       RectilinearGrid │    PCGImplicitFreeSurface │  3.205 ms │  3.308 ms │  3.484 ms │  5.147 ms │  2.89 MiB │   6734 │      10 │
-│           GPU │       RectilinearGrid │ MatrixImplicitFreeSurface │  2.949 ms │  3.048 ms │  3.500 ms │  5.292 ms │  2.66 MiB │   6011 │      10 │
-│           GPU │ LatitudeLongitudeGrid │       ExplicitFreeSurface │  2.301 ms │  2.344 ms │  2.420 ms │  3.118 ms │  2.76 MiB │   4327 │      10 │
-│           GPU │ LatitudeLongitudeGrid │    FFTImplicitFreeSurface │ 39.913 ms │ 43.555 ms │ 46.950 ms │ 64.546 ms │ 26.03 MiB │  96569 │      10 │
-│           GPU │ LatitudeLongitudeGrid │    PCGImplicitFreeSurface │ 30.370 ms │ 35.236 ms │ 37.247 ms │ 54.597 ms │ 20.34 MiB │  72963 │      10 │
-│           GPU │ LatitudeLongitudeGrid │ MatrixImplicitFreeSurface │  9.320 ms │  9.680 ms │  9.938 ms │ 12.769 ms │  4.11 MiB │   9438 │      10 │
-└───────────────┴───────────────────────┴───────────────────────────┴───────────┴───────────┴───────────┴───────────┴───────────┴────────┴─────────┘
+┌───────────────┬───────────────────────┬───────────────────────────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────┬─────────┐
+│ Architectures │            grid_types │        free_surface_types │        min │     median │       mean │        max │     memory │ allocs │ samples │
+├───────────────┼───────────────────────┼───────────────────────────┼────────────┼────────────┼────────────┼────────────┼────────────┼────────┼─────────┤
+│           CPU │       RectilinearGrid │       ImplicitFreeSurface │    2.635 s │    2.654 s │    2.654 s │    2.674 s │ 688.03 MiB │  74306 │       2 │
+│           CPU │       RectilinearGrid │ MatrixImplicitFreeSurface │ 472.465 ms │ 497.325 ms │ 514.082 ms │ 574.351 ms │  17.19 MiB │   2250 │      10 │
+│           GPU │       RectilinearGrid │       ImplicitFreeSurface │  70.782 ms │  76.776 ms │  81.772 ms │ 101.949 ms │  30.11 MiB │ 161853 │      10 │
+│           GPU │       RectilinearGrid │ MatrixImplicitFreeSurface │  33.949 ms │  34.478 ms │  35.552 ms │  45.827 ms │   3.43 MiB │  23323 │      10 │
+│           CPU │ LatitudeLongitudeGrid │       ImplicitFreeSurface │ 229.579 ms │ 232.996 ms │ 235.238 ms │ 246.652 ms │  26.39 MiB │   4881 │      10 │
+│           CPU │ LatitudeLongitudeGrid │ MatrixImplicitFreeSurface │ 213.535 ms │ 229.010 ms │ 231.281 ms │ 256.997 ms │  17.65 MiB │   2247 │      10 │
+│           GPU │ LatitudeLongitudeGrid │       ImplicitFreeSurface │   6.925 ms │   7.125 ms │   7.319 ms │   8.319 ms │   5.58 MiB │  12347 │      10 │
+│           GPU │ LatitudeLongitudeGrid │ MatrixImplicitFreeSurface │   3.897 ms │   4.043 ms │   5.266 ms │  14.660 ms │   3.94 MiB │   6305 │      10 │
+└───────────────┴───────────────────────┴───────────────────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────┴─────────┘

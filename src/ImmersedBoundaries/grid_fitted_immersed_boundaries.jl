@@ -14,8 +14,6 @@ end
 
 @inline is_immersed(i, j, k, underlying_grid, ib::GridFittedBoundary) = ib.mask(node(c, c, c, i, j, k, underlying_grid)...)
 
-@inline is_immersed(i, j, k, igb::ImmersedBoundaryGrid) = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary)
-
 #####
 ##### GridFittedBottom
 #####
