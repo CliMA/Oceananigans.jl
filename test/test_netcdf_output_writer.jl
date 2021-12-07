@@ -642,7 +642,7 @@ end
 
 function test_netcdf_output_alignment(arch)
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(arch, grid=grid,
+    model = NonhydrostaticModel(grid=grid,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=0.2, stop_time=40)
 

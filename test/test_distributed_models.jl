@@ -260,10 +260,10 @@ end
 #####
 
 function test_triply_periodic_bc_injection_with_411_ranks()
-    topo = (Periodic, Periodic, time_stepping_with_background_fields)
+    topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(ranks=(4, 1, 1), topology=topo)
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    model = HydrostaticFreeSurfaceModel(grid=grid)
+    model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
@@ -277,10 +277,10 @@ function test_triply_periodic_bc_injection_with_411_ranks()
 end
 
 function test_triply_periodic_bc_injection_with_141_ranks()
-    topo = (Periodic, Periodic, Bounded)
+    topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(ranks=(1, 4, 1))
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    model = HydrostaticFreeSurfaceModel(grid=grid)
+    model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
@@ -311,10 +311,10 @@ function test_triply_periodic_bc_injection_with_114_ranks()
 end
 
 function test_triply_periodic_bc_injection_with_221_ranks()
-    topo = (Periodic, Periodic, Buonded)
+    topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(ranks=(2, 2, 1))
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    model = HydrostaticFreeSurfaceModel(grid=grid)
+    model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
@@ -405,7 +405,7 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(ranks=(2, 2, 1))
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
-    model = HydrostaticFreeSurfaceModel(grid=grid, free_surface = ExplicitFreeSurface())
+    model = NonhydrostaticModel(grid=grid)
 
     for field in merge(fields(model))
         interior(field) .= arch.local_rank
