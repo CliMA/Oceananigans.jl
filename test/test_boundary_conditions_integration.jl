@@ -182,29 +182,29 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         @test location(model.velocities.u.boundary_conditions.top.condition)    == (Face, Center, Nothing)
         @test location(model.velocities.u.boundary_conditions.north.condition)  == (Face, Nothing, Center)
         @test location(model.velocities.u.boundary_conditions.south.condition)  == (Face, Nothing, Center)
-        @test location(model.velocities.u.boundary_conditions.east.condition)  == (Face, Nothing, Center)
-        @test location(model.velocities.u.boundary_conditions.west.condition)  == (Face, Nothing, Center)
+        @test location(model.velocities.u.boundary_conditions.east.condition)  == (Nothing, Center, Center)
+        @test location(model.velocities.u.boundary_conditions.west.condition)  == (Nothing, Center, Center)
 
         @test location(model.velocities.v.boundary_conditions.bottom.condition) == (Center, Face, Nothing)
         @test location(model.velocities.v.boundary_conditions.top.condition)    == (Center, Face, Nothing)
         @test location(model.velocities.v.boundary_conditions.north.condition)  == (Center, Nothing, Center)
         @test location(model.velocities.v.boundary_conditions.south.condition)  == (Center, Nothing, Center)
-        @test location(model.velocities.v.boundary_conditions.east.condition)  == (Center, Nothing, Center)
-        @test location(model.velocities.v.boundary_conditions.west.condition)  == (Center, Nothing, Center)
+        @test location(model.velocities.v.boundary_conditions.east.condition)  == (Nothing, Face, Center)
+        @test location(model.velocities.v.boundary_conditions.west.condition)  == (Nothing, Face, Center)
 
         @test location(model.velocities.w.boundary_conditions.bottom.condition) == (Center, Center, Nothing)
         @test location(model.velocities.w.boundary_conditions.top.condition)    == (Center, Center, Nothing)
         @test location(model.velocities.w.boundary_conditions.north.condition)  == (Center, Nothing, Face)
         @test location(model.velocities.w.boundary_conditions.south.condition)  == (Center, Nothing, Face)
-        @test location(model.velocities.w.boundary_conditions.east.condition)  == (Center, Nothing, Face)
-        @test location(model.velocities.w.boundary_conditions.west.condition)  == (Center, Nothing, Face)
+        @test location(model.velocities.w.boundary_conditions.east.condition)  == (Nothing, Center, Face)
+        @test location(model.velocities.w.boundary_conditions.west.condition)  == (Nothing, Center, Face)
 
         @test location(model.tracers.T.boundary_conditions.bottom.condition) == (Center, Center, Nothing)
         @test location(model.tracers.T.boundary_conditions.top.condition)    == (Center, Center, Nothing)
         @test location(model.tracers.T.boundary_conditions.north.condition)  == (Center, Nothing, Center)
         @test location(model.tracers.T.boundary_conditions.south.condition)  == (Center, Nothing, Center)
-        @test location(model.tracers.T.boundary_conditions.east.condition)  == (Center, Nothing, Center)
-        @test location(model.tracers.T.boundary_conditions.west.condition)  == (Center, Nothing, Center)
+        @test location(model.tracers.T.boundary_conditions.east.condition)  == (Nothing, Center, Center)
+        @test location(model.tracers.T.boundary_conditions.west.condition)  == (Nothing, Center, Center)
     end
 
     @testset "Boudnary condition time-stepping works" begin
