@@ -115,7 +115,7 @@ simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
 
 # add timestep wizard callback
 max_Δt = 1 / 5model.coriolis.f₀
-wizard = TimeStepWizard(cfl=0.2, Δt=hour/10, max_change=1.1, max_Δt=max_Δt)
+wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=max_Δt)
 
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
