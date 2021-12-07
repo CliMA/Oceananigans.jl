@@ -24,7 +24,32 @@ to be specified.
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
 
-function heuristic_workgroup(grid::AbstractGrid)
+function heuristic_workgroup(worksize::NTuple{N, Int}) where N
+
+    Nx, Ny, Nz = worksize
+
+    workgroup = Nx == 1 && Ny == 1 ?
+
+                    # One-dimensional column models:
+                    (1, 1) :
+
+                Nx == 1 ?
+
+                    # Two-dimensional y-z slice models:
+                    (1, min(256, Ny)) :
+
+                Ny == 1 ?
+
+                    # Two-dimensional x-z slice models:
+                    (1, min(256, Nx)) :
+
+                    # Three-dimensional models
+                    (Int(√256), Int(√256))
+
+    return workgroup
+end
+
+function heuristic_workgroup(grid)
 
     Nx, Ny, Nz = size(grid)
 

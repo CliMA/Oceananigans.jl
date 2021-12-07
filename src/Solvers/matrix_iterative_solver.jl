@@ -1,7 +1,9 @@
 using Oceananigans.Architectures
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, is_immersed
 using Oceananigans.Architectures: architecture, arch_array
 using Oceananigans.Grids: interior_parent_indices, topology
 using Oceananigans.Fields: interior_copy
+using Oceananigans.Utils: heuristic_workgroup
 using KernelAbstractions: @kernel, @index
 using LinearAlgebra, SparseArrays, IterativeSolvers
 using CUDA, CUDA.CUSPARSE
@@ -129,7 +131,7 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     coeff_bound_z = zeros(eltype(grid), M - dz[2])
 
     # initializing elements which vary during the simulation (as a function of Δt)
-    loop! = _initialize_variable_diagonal!(Architectures.device(arch), my_workgroup(N), N)
+    loop! = _initialize_variable_diagonal!(Architectures.device(arch), heuristic_workgroup(N), N)
     event = loop!(diag, D, N; dependencies=Event(Architectures.device(arch)))
     wait(event)
 
@@ -144,6 +146,7 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     if dims[3]
         fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, topo[3])
     end
+    adjust_for_immersed_boundaries!(coeff_d, coeff_x, coeff_y, coeff_z, coeff_bound_x, coeff_bound_y, coeff_bound_z, grid, N)
 
     sparse_matrix = spdiagm(0=>coeff_d,
                         dx[1]=>coeff_x,      -dx[1]=>coeff_x,
@@ -238,6 +241,27 @@ function fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Periodic})
     end
 end
 
+@inline  adjust_for_immersed_boundaries!(cd, cx, cy, cz, cbx, cby, cbz, grid, N) = nothing
+function adjust_for_immersed_boundaries!(cd, cx, cy, cz, cbx, cby, cbz, grid::ImmersedBoundaryGrid, N) 
+    Nx, Ny, Nz = N
+    for k = 1:Nz, j = 1:Ny, i = 1:Nx
+        if !is_immersed(i, j, k, grid)
+            t = i +  Nx * (j - 1 + Ny * (k - 1))
+            cd[t] = 0
+            cx[t] = 0
+            cy[t] = 0
+            cz[t] = 0
+            cbx[t] = 0
+            cby[t] = 0
+            cbz[t] = 0
+            cx[t+1] = 0
+            cy[t+Nx] = 0
+            cz[t+Nx*Ny] = 0
+        end
+    end 
+    return
+end
+
 function solve!(x, solver::MatrixIterativeSolver, b, Δt)
 
     # update matrix and preconditioner if time step changes
@@ -270,7 +294,7 @@ function update_diag!(constr, arch, problem_size, diagonal, Δt)
     M = prod(N)
     col, row, val = unpack_constructors(arch, constr)
    
-    loop! = _update_diag!(Architectures.device(arch), my_workgroup(N), N)
+    loop! = _update_diag!(Architectures.device(arch), heuristic_workgroup(N), N)
     event = loop!(diagonal, col, row, val, Δt, N; dependencies=Event(Architectures.device(arch)))
     wait(event)
 
@@ -313,27 +337,3 @@ end
 
 @inline validate_laplacian_size(N, dim) = dim == true ? N : 1
   
-function my_workgroup(N) 
-
-    Nx, Ny, Nz = N
-
-    workgroup = Nx == 1 && Ny == 1 ?
-
-                    # One-dimensional column models:
-                    (1, 1) :
-
-                Nx == 1 ?
-
-                    # Two-dimensional y-z slice models:
-                    (1, min(256, Ny)) :
-
-                Ny == 1 ?
-
-                    # Two-dimensional x-z slice models:
-                    (1, min(256, Nx)) :
-
-                    # Three-dimensional models
-                    (Int(√256), Int(√256))
-
-    return workgroup
-end
