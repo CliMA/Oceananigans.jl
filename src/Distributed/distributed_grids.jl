@@ -56,9 +56,9 @@ function RectilinearGrid(arch::MultiArch, FT = Float64;
     yl = get_local_coords(y, ny, Ry, j)
     zl = get_local_coords(z, nz, Rz, k)
 
-    Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology[1], nx, hx, xl, arch.child_arch)
-    Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology[2], ny, hy, yl, arch.child_arch)
-    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topology[3], nz, hz, zl, arch.child_arch)
+    Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, topology[1], nx, hx, xl, child_architecture(arch))
+    Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology[2], ny, hy, yl, child_architecture(arch))
+    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topology[3], nz, hz, zl, child_architecture(arch))
 
     FX   = typeof(Δxᶠᵃᵃ)
     FY   = typeof(Δyᵃᶠᵃ)
