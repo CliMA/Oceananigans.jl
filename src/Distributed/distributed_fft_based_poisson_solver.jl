@@ -21,7 +21,7 @@ function DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
     λy = poisson_eigenvalues(full_grid.Ny, full_grid.Ly, 2, TY())
     λz = poisson_eigenvalues(full_grid.Nz, full_grid.Lz, 3, TZ())
 
-    arch.ranks[1] == arch.ranks[3] == 1 || error("Must have Rx == Rz == 1 for distributed fft solver")
+    arch.ranks[1] == arch.ranks[3] == 1 || @warn "Must have Rx == Rz == 1 for distributed fft solver"
 
     Rx, Ry, Rz = arch.ranks
 
