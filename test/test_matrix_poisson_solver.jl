@@ -133,7 +133,7 @@ end
     #     run_identity_operator_test(arch, grid)
     #     run_poisson_equation_test(arch, grid)
     # end
-    stretch_coord = [1, 1.5, 3, 7, 8.5, 10]
+    stretch_coord = [0, 1.5, 3, 7, 8.5, 10]
     for arch in archs
         grids = [RectilinearGrid(architecture = arch, size=(5, 5, 5), x = stretch_coord, y = (0, 10), z = (0, 10), topology = (Periodic, Periodic, Periodic)), 
                  RectilinearGrid(architecture = arch, size=(5, 5, 5), x = (0, 10), y = stretch_coord, z = (0, 10), topology = (Periodic, Periodic, Periodic)), 
