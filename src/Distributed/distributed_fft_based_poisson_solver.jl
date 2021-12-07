@@ -8,7 +8,7 @@ struct DistributedFFTBasedPoissonSolver{A, P, F, L, λ, S}
       architecture :: A
               plan :: P
        global_grid :: F
-        local_grid :: L
+           my_grid :: L
        eigenvalues :: λ
            storage :: S
 end
@@ -68,7 +68,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     solver.plan \ solver.storage
     xc_transposed = first(solver.storage)
 	
-    copy_event = launch!(arch, solver.local_grid, :xyz, copy_real_component!, x, xc_transposed, dependencies=device_event(arch))
+    copy_event = launch!(arch, solver.my_grid, :xyz, copy_real_component!, x, xc_transposed, dependencies=device_event(arch))
     wait(device(arch), copy_event)
 
     return x
