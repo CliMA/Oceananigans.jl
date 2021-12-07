@@ -186,11 +186,9 @@ end
 function test_triply_periodic_local_grid_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(CPU(), ranks=(4, 1, 1), topology = topo)
-    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid)
+    local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
     @test local_grid.xᶠᵃᵃ[1] == 0.25*local_rank
@@ -206,11 +204,9 @@ end
 function test_triply_periodic_local_grid_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(CPU(), ranks=(1, 4, 1), topology = topo)
-    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid)
+    local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
 
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
     @test local_grid.xᶠᵃᵃ[1] == 0
@@ -226,11 +222,9 @@ end
 function test_triply_periodic_local_grid_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(CPU(), ranks=(1, 1, 4), topology = topo)
-    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid)
-
+    local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    
     local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-    local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
     @test local_grid.xᶠᵃᵃ[1] == 0
@@ -246,11 +240,9 @@ end
 function test_triply_periodic_local_grid_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(CPU(), ranks=(2, 2, 1), topology = topo)
-    grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid)
-
+    local_grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
+    
     i, j, k = arch.local_index
-    local_grid = model.grid
     nx, ny, nz = size(local_grid)
 
     @test local_grid.xᶠᵃᵃ[1] == 0.5*(i-1)
@@ -271,9 +263,9 @@ function test_triply_periodic_bc_injection_with_411_ranks()
     topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(ranks=(4, 1, 1), topology=topo)
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid)
+    model = HydrostaticFreeSurfaceModel(grid=grid)
 
-    for field in merge(fields(model), model.pressures)
+    for field in merge(fields(model))
         fbcs = field.boundary_conditions
         @test fbcs.east isa HaloCommunicationBC
         @test fbcs.west isa HaloCommunicationBC
@@ -288,9 +280,9 @@ function test_triply_periodic_bc_injection_with_141_ranks()
     topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(ranks=(1, 4, 1))
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid)
+    model = HydrostaticFreeSurfaceModel(grid=grid)
 
-    for field in merge(fields(model), model.pressures)
+    for field in merge(fields(model))
         fbcs = field.boundary_conditions
         @test !isa(fbcs.east, HaloCommunicationBC)
         @test !isa(fbcs.west, HaloCommunicationBC)
@@ -305,9 +297,9 @@ function test_triply_periodic_bc_injection_with_114_ranks()
     topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(ranks=(1, 1, 4))
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid)
+    model = HydrostaticFreeSurfaceModel(grid=grid)
 
-    for field in merge(fields(model), model.pressures)
+    for field in merge(fields(model))
         fbcs = field.boundary_conditions
         @test !isa(fbcs.east, HaloCommunicationBC)
         @test !isa(fbcs.west, HaloCommunicationBC)
@@ -322,9 +314,9 @@ function test_triply_periodic_bc_injection_with_221_ranks()
     topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(ranks=(2, 2, 1))
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid)
+    model = HydrostaticFreeSurfaceModel(grid=grid)
 
-    for field in merge(fields(model), model.pressures)
+    for field in merge(fields(model))
         fbcs = field.boundary_conditions
         @test fbcs.east isa HaloCommunicationBC
         @test fbcs.west isa HaloCommunicationBC
@@ -343,9 +335,9 @@ function test_triply_periodic_halo_communication_with_411_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(ranks=(4, 1, 1))
     grid = RectilinearGrid(arch, topology=topo, size=(16, 6, 4), extent=(1, 2, 3), halo=halo)
-    model = NonhydrostaticModel(grid=grid)
+    model = HydrostaticFreeSurfaceModel(grid=grid)
 
-    for field in merge(fields(model), model.pressures)
+    for field in merge(fields(model))
         interior(field) .= arch.local_rank
         fill_halo_regions!(field, arch)
 
@@ -390,9 +382,9 @@ function test_triply_periodic_halo_communication_with_114_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(ranks=(1, 1, 4))
     grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 16), extent=(1, 2, 3), halo=halo)
-    model = NonhydrostaticModel(grid=grid)
+    model = HydrostaticFreeSurfaceModel(grid=grid)
 
-    for field in merge(fields(model), model.pressures)
+    for field in merge(fields(model))
         interior(field) .= arch.local_rank
         fill_halo_regions!(field, arch)
 
@@ -413,9 +405,9 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo)
     topo = (Periodic, Periodic, Periodic)
     arch = MultiArch(ranks=(2, 2, 1))
     grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 3), extent=(1, 2, 3), halo=halo)
-    model = NonhydrostaticModel(grid=grid)
+    model = HydrostaticFreeSurfaceModel(grid=grid)
 
-    for field in merge(fields(model), model.pressures)
+    for field in merge(fields(model))
         interior(field) .= arch.local_rank
         fill_halo_regions!(field, arch)
 
