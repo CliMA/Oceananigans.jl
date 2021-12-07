@@ -136,30 +136,36 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         FT = Float64
         arch = first(archs)
 
-        # We use Periodic, Bounded, Bounded here because triply Bounded domains don't work on the GPU
-        # yet.
-        grid = RectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=(Periodic, Bounded, Bounded))
+        grid = RectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=(Bounded, Bounded, Bounded))
 
         u_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
                                                         top    = simple_function_bc(Value),
                                                         north  = simple_function_bc(Value),
-                                                        south  = simple_function_bc(Value))
+                                                        south  = simple_function_bc(Value),
+                                                         east  = simple_function_bc(Value),
+                                                         west  = simple_function_bc(Value))
 
         v_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
                                                         top    = simple_function_bc(Value),
                                                         north  = simple_function_bc(Open),
-                                                        south  = simple_function_bc(Open))
+                                                        south  = simple_function_bc(Open),
+                                                         east  = simple_function_bc(Open),
+                                                         west  = simple_function_bc(Open))
 
 
         w_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Open),
                                                         top    = simple_function_bc(Open),
                                                         north  = simple_function_bc(Value),
-                                                        south  = simple_function_bc(Value))
+                                                        south  = simple_function_bc(Value),
+                                                         east  = simple_function_bc(Value),
+                                                         west  = simple_function_bc(Value))
 
         T_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
                                                         top    = simple_function_bc(Value),
                                                         north  = simple_function_bc(Value),
-                                                        south  = simple_function_bc(Value))
+                                                        south  = simple_function_bc(Value),
+                                                         east  = simple_function_bc(Value),
+                                                         west  = simple_function_bc(Value))
 
         boundary_conditions = (u=u_boundary_conditions,
                                v=v_boundary_conditions,
@@ -176,21 +182,29 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         @test location(model.velocities.u.boundary_conditions.top.condition)    == (Face, Center, Nothing)
         @test location(model.velocities.u.boundary_conditions.north.condition)  == (Face, Nothing, Center)
         @test location(model.velocities.u.boundary_conditions.south.condition)  == (Face, Nothing, Center)
+        @test location(model.velocities.u.boundary_conditions.east.condition)  == (Face, Nothing, Center)
+        @test location(model.velocities.u.boundary_conditions.west.condition)  == (Face, Nothing, Center)
 
         @test location(model.velocities.v.boundary_conditions.bottom.condition) == (Center, Face, Nothing)
         @test location(model.velocities.v.boundary_conditions.top.condition)    == (Center, Face, Nothing)
         @test location(model.velocities.v.boundary_conditions.north.condition)  == (Center, Nothing, Center)
         @test location(model.velocities.v.boundary_conditions.south.condition)  == (Center, Nothing, Center)
+        @test location(model.velocities.v.boundary_conditions.east.condition)  == (Center, Nothing, Center)
+        @test location(model.velocities.v.boundary_conditions.west.condition)  == (Center, Nothing, Center)
 
         @test location(model.velocities.w.boundary_conditions.bottom.condition) == (Center, Center, Nothing)
         @test location(model.velocities.w.boundary_conditions.top.condition)    == (Center, Center, Nothing)
         @test location(model.velocities.w.boundary_conditions.north.condition)  == (Center, Nothing, Face)
         @test location(model.velocities.w.boundary_conditions.south.condition)  == (Center, Nothing, Face)
+        @test location(model.velocities.w.boundary_conditions.east.condition)  == (Center, Nothing, Face)
+        @test location(model.velocities.w.boundary_conditions.west.condition)  == (Center, Nothing, Face)
 
         @test location(model.tracers.T.boundary_conditions.bottom.condition) == (Center, Center, Nothing)
         @test location(model.tracers.T.boundary_conditions.top.condition)    == (Center, Center, Nothing)
         @test location(model.tracers.T.boundary_conditions.north.condition)  == (Center, Nothing, Center)
         @test location(model.tracers.T.boundary_conditions.south.condition)  == (Center, Nothing, Center)
+        @test location(model.tracers.T.boundary_conditions.east.condition)  == (Center, Nothing, Center)
+        @test location(model.tracers.T.boundary_conditions.west.condition)  == (Center, Nothing, Center)
     end
 
     @testset "Boudnary condition time-stepping works" begin
