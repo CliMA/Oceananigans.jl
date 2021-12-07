@@ -114,25 +114,23 @@ function run_poisson_equation_test(arch, grid)
     return nothing
 end
 
-
 @testset "MatrixIterativeSolver" begin
-
-    # topologies = [(Periodic, Periodic, Flat), (Bounded, Bounded, Flat), (Periodic, Bounded, Flat), (Bounded, Periodic, Flat)]
-    # for arch in archs, topo in topologies
-    #     @info "Testing 2D MatrixIterativeSolver [$(typeof(arch)) $topo]..."
+    topologies = [(Periodic, Periodic, Flat), (Bounded, Bounded, Flat), (Periodic, Bounded, Flat), (Bounded, Periodic, Flat)]
+    for arch in archs, topo in topologies
+        @info "Testing 2D MatrixIterativeSolver [$(typeof(arch)) $topo]..."
         
-    #     grid = RectilinearGrid(architecture = arch, size=(4, 8), extent=(1, 3), topology = topo)
-    #     run_identity_operator_test(arch, grid)
-    #     run_poisson_equation_test(arch, grid)
-    # end
-    # topologies = [(Periodic, Periodic, Periodic), (Bounded, Bounded, Periodic), (Periodic, Bounded, Periodic), (Bounded, Periodic, Bounded)]
-    # for arch in archs, topo in topologies
-    #     @info "Testing 3D MatrixIterativeSolver [$(typeof(arch)) $topo]..."
+        grid = RectilinearGrid(architecture = arch, size=(4, 8), extent=(1, 3), topology = topo)
+        run_identity_operator_test(arch, grid)
+        run_poisson_equation_test(arch, grid)
+    end
+    topologies = [(Periodic, Periodic, Periodic), (Bounded, Bounded, Periodic), (Periodic, Bounded, Periodic), (Bounded, Periodic, Bounded)]
+    for arch in archs, topo in topologies
+        @info "Testing 3D MatrixIterativeSolver [$(typeof(arch)) $topo]..."
         
-    #     grid = RectilinearGrid(architecture = arch, size=(4, 8, 6), extent=(1, 3, 4), topology = topo)
-    #     run_identity_operator_test(arch, grid)
-    #     run_poisson_equation_test(arch, grid)
-    # end
+        grid = RectilinearGrid(architecture = arch, size=(4, 8, 6), extent=(1, 3, 4), topology = topo)
+        run_identity_operator_test(arch, grid)
+        run_poisson_equation_test(arch, grid)
+    end
     stretch_coord = [0, 1.5, 3, 7, 8.5, 10]
     for arch in archs
         grids = [RectilinearGrid(architecture = arch, size=(5, 5, 5), x = stretch_coord, y = (0, 10), z = (0, 10), topology = (Periodic, Periodic, Periodic)), 
