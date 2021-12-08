@@ -121,7 +121,6 @@ abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: Abstr
 """
 
 Base.eltype(::AbstractGrid{FT}) where FT = FT
-Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
 Base.length(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
 
 function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
