@@ -98,11 +98,11 @@ grid_types = [
 ]
 
 free_surface_types = [
-    # :ExplicitFreeSurface,
+    :ExplicitFreeSurface,
     # ImplicitFreeSurface doesn't yet work on MultiRegionGrids like the ConformalCubedSphereGrid:
     # :FFTImplicitFreeSurface, 
-    :ImplicitFreeSurface,
-    :MatrixImplicitFreeSurface
+    # :ImplicitFreeSurface,
+    # :MatrixImplicitFreeSurface
 ]
 
 # Run and summarize benchmarks
