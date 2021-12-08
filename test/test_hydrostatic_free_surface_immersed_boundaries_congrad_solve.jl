@@ -13,23 +13,31 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
         Ny = 11 
         Nz =  1
 
-        underlying_grid = RectilinearGrid(architecture = arch,
+        underlying_grid = RectilinearGrid(arch,
                                           size = (Nx, Ny, Nz),
                                           extent = (Nx, Ny, 1),
                                           topology = (Periodic, Periodic, Bounded))
 
-        B = arch_array(arch, [-1. for i=1:Nx, j=1:Ny ])
+        bottom = [-1. for i=1:Nx, j=1:Ny ]
+
+        imm1=Int( floor((Nx+1)/2)   )
+        imp1=Int( floor((Nx+1)/2)+1 )
+        jmm1=Int( floor((Ny+1)/2)   )
+        jmp1=Int( floor((Ny+1)/2)+1 )
+
+        # bottom[imm1:imp1, jmm1:jmp1] .= 0
+
+        B = arch_array(arch, bottom)
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
 
-        free_surfaces = [ImplicitFreeSurface(gravitational_acceleration=1.0), 
-                         ImplicitFreeSurface(solver_method=:MatrixIterativeSolver, gravitational_acceleration=1.0)]
+        free_surfaces = [ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, gravitational_acceleration=1.0), 
+                         ImplicitFreeSurface()]
 
         sol = ()
 
         for free_surface in free_surfaces
 
             model = HydrostaticFreeSurfaceModel(grid = grid,
-                                                architecture = arch,
                                                 free_surface = free_surface,
                                                 tracer_advection = WENO5(),
                                                 buoyancy = nothing,
@@ -39,10 +47,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
             # Now create a divergent flow field and solve for 
             # pressure correction
             u, v, w     = model.velocities
-            imm1=Int( floor((Nx+1)/2)   )
-            imp1=Int( floor((Nx+1)/2)+1 )
-            jmm1=Int( floor((Ny+1)/2)   )
-            jmp1=Int( floor((Ny+1)/2)+1 )
             u[imm1,jmm1,1:Nz ] .=  1.
             u[imp1,jmm1,1:Nz ] .= -1.
             v[imm1,jmm1,1:Nz ] .=  1.
@@ -88,6 +92,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
             sol = (sol..., model.free_surface.η)
         end
 
-        @test all(interior(sol[1]) .≈ interior(sol[2]))
+        @test all(interior(sol[1]) .≈ interior(sol[2]) .≈ 0)
     end
 end

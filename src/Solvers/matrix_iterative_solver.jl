@@ -119,25 +119,24 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     diag = arch_array(arch, zeros(eltype(grid), M))
 
     # the following coefficients are the diagonals of the sparse matrix:
-    #  - coeff_d is the main diagonal (coefficents of xᵢⱼₖ)
-    #  - coeff_x is the diagonal at +1  / -1 (coefficients of xᵢ₊₁ and xᵢ₋₁)
-    #  - coeff_y is the diagonal at +Nx / -Nx (coefficients of xⱼ₊₁ and xⱼ₋₁)
-    #  - coeff_z is the diagonal at +Nx / -Nx (coefficients of xₖ₊₁ and xₖ₋₁)
-    #  - boundaries in x are filled in at Nx - 1 / 1 - Nx 
-    #  - boundaries in y are filled in at N - Nx / Nx - N 
+    #  - coeff_d is the main diagonal (coefficents of ηᵢⱼₖ)
+    #  - coeff_x are the coefficients in the x-direction (coefficents of ηᵢ₋₁ⱼₖ and ηᵢ₊₁ⱼₖ)
+    #  - coeff_y are the coefficients in the y-direction (coefficents of ηᵢⱼ₋₁ₖ and ηᵢⱼ₊₁ₖ)
+    #  - coeff_z are the coefficients in the z-direction (coefficents of ηᵢⱼₖ₋₁ and ηᵢⱼₖ₊₁)
+    #  - periodic boundaries are stored in coeff_bound_
     
-    # position of diagonals for coefficients d[1] and their boundary d[2]
-    dx = (1,     Nx-1)
-    dy = (Nx,    Nx*(Ny-1))
-    dz = (Ny*Nx, Nx*Ny*(Nz-1))
+    # position of diagonals for coefficients pos[1] and their boundary pos[2]
+    posx = (1, Nx-1)
+    posy = (1, Ny-1) .* Nx
+    posz = (1, Nz-1) .* Nx .* Ny
 
     coeff_d       = zeros(eltype(grid), M)
-    coeff_x       = zeros(eltype(grid), M - dx[1])
-    coeff_y       = zeros(eltype(grid), M - dy[1])
-    coeff_z       = zeros(eltype(grid), M - dz[1])
-    coeff_bound_x = zeros(eltype(grid), M - dx[2])
-    coeff_bound_y = zeros(eltype(grid), M - dy[2])
-    coeff_bound_z = zeros(eltype(grid), M - dz[2])
+    coeff_x       = zeros(eltype(grid), M - posx[1])
+    coeff_y       = zeros(eltype(grid), M - posy[1])
+    coeff_z       = zeros(eltype(grid), M - posz[1])
+    coeff_bound_x = zeros(eltype(grid), M - posx[2])
+    coeff_bound_y = zeros(eltype(grid), M - posy[2])
+    coeff_bound_z = zeros(eltype(grid), M - posz[2])
 
     # initializing elements which vary during the simulation (as a function of Δt)
     loop! = _initialize_variable_diagonal!(Architectures.device(arch), heuristic_workgroup(N), N)
@@ -157,12 +156,12 @@ function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     end
 
     sparse_matrix = spdiagm(0=>coeff_d,
-                        dx[1]=>coeff_x,      -dx[1]=>coeff_x,
-                        dx[2]=>coeff_bound_x,-dx[2]=>coeff_bound_x,
-                        dy[1]=>coeff_y,      -dy[1]=>coeff_y,
-                        dy[2]=>coeff_bound_y,-dy[2]=>coeff_bound_y,
-                        dz[1]=>coeff_z,      -dz[1]=>coeff_z,
-                        dz[2]=>coeff_bound_z,-dz[2]=>coeff_bound_z)
+                      posx[1]=>coeff_x,      -posx[1]=>coeff_x,
+                      posx[2]=>coeff_bound_x,-posx[2]=>coeff_bound_x,
+                      posy[1]=>coeff_y,      -posy[1]=>coeff_y,
+                      posy[2]=>coeff_bound_y,-posy[2]=>coeff_bound_y,
+                      posz[1]=>coeff_z,      -posz[1]=>coeff_z,
+                      posz[2]=>coeff_bound_z,-posz[2]=>coeff_bound_z)
 
     ensure_diagonal_elements_are_present!(sparse_matrix)
 
@@ -191,7 +190,7 @@ function fill_core_matrix!(coeff_d, coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N,
             coeff_d[t+1] -= coeff_x[t]
         end
     end
-    if dims[1]
+    if dims[2]
         for k = 1:Nz, j = 1:Ny-1, i = 1:Nx
             t              = i +  Nx * (j - 1 + Ny * (k - 1))
             coeff_y[t]     = Ay[i, j+1, k] 
