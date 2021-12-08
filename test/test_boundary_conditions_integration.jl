@@ -214,15 +214,13 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             topo = arch isa CPU ? (Bounded, Bounded, Bounded) : (Periodic, Bounded, Bounded)
 
             for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
-                arch isa CPU && @test test_boundary_condition(arch, FT, topo, :east, :T, boundary_condition)
-
+                @test test_boundary_condition(arch, FT, topo, :east, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, topo, :south, :T, boundary_condition)
                 @test test_boundary_condition(arch, FT, topo, :top, :T, boundary_condition)
             end
 
             for boundary_condition in test_boundary_conditions(Open, FT, array_type(arch))
-                 arch isa CPU && @test test_boundary_condition(arch, FT, topo, :east, :u, boundary_condition)
-
+                @test test_boundary_condition(arch, FT, topo, :east, :u, boundary_condition)
                 @test test_boundary_condition(arch, FT, topo, :south, :v, boundary_condition)
                 @test test_boundary_condition(arch, FT, topo, :top, :w, boundary_condition)
             end
