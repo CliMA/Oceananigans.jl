@@ -128,7 +128,6 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 # we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
 model = NonhydrostaticModel(
-           architecture = CPU(),
               advection = WENO5(),
             timestepper = :RungeKutta3,
                    grid = grid,

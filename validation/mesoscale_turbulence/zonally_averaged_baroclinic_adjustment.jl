@@ -67,7 +67,7 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
 
 closures = (diffusive_closure, convective_adjustment, gent_mcwilliams_diffusivity)
 
-model = HydrostaticFreeSurfaceModel(architecture = architecture,
+model = HydrostaticFreeSurfaceModel(architecture,
                                     grid = grid,
                                     coriolis = coriolis,
                                     buoyancy = BuoyancyTracer(),

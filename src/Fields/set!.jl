@@ -3,7 +3,7 @@ using CUDAKernels
 using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
-using Oceananigans.Architectures: device, GPU, AbstractCPUArchitecture, AbstractGPUArchitecture
+using Oceananigans.Architectures: device, GPU, CPU, AbstractMultiArchitecture
 using Oceananigans.Utils: work_layout
 
 function set!(Φ::NamedTuple; kwargs...)
@@ -17,8 +17,8 @@ end
 set!(u::AbstractField, v) = u .= v # fallback
 
 # Niceties
-const AbstractCPUField = AbstractField{X, Y, Z, <:AbstractCPUArchitecture} where {X, Y, Z}
-const AbstractReducedCPUField = AbstractReducedField{X, Y, Z, <:AbstractCPUArchitecture} where {X, Y, Z}
+const AbstractCPUField = AbstractField{X, Y, Z, <:CPU} where {X, Y, Z}
+const AbstractReducedCPUField = AbstractReducedField{X, Y, Z, <:CPU} where {X, Y, Z}
 
 """ Returns an AbstractReducedField on the CPU. """
 function similar_cpu_field(u::AbstractReducedField)
@@ -37,8 +37,8 @@ end
 ##### set! for fields on the GPU
 #####
 
-const AbstractGPUField = AbstractField{X, Y, Z, <:AbstractGPUArchitecture} where {X, Y, Z}
-const AbstractReducedGPUField = AbstractReducedField{X, Y, Z, <:AbstractGPUArchitecture} where {X, Y, Z}
+const AbstractGPUField = AbstractField{X, Y, Z, <:GPU} where {X, Y, Z}
+const AbstractReducedGPUField = AbstractReducedField{X, Y, Z, <:GPU} where {X, Y, Z}
 
 """ Returns a field on the CPU with `nothing` boundary conditions. """
 function similar_cpu_field(u)

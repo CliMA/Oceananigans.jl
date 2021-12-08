@@ -26,10 +26,10 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     #####
 
     if grid_type == :regular
-        grid = RectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     elseif grid_type == :vertically_unstretched
         zF = range(-Lz, 0, length=Nz+1)
-        grid = RectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=zF)
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=zF)
     end
 
     # Force salinity as a passive tracer (βS=0)
@@ -40,7 +40,6 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
                                    bottom = BoundaryCondition(Value, Δb))
 
     model = NonhydrostaticModel(
-               architecture = arch,
                        grid = grid,
                     closure = IsotropicDiffusivity(ν=ν, κ=κ),
                     tracers = (:b, :c),
