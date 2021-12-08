@@ -102,12 +102,20 @@ function HydrostaticFreeSurfaceModel(; grid,
                                   auxiliary_fields = NamedTuple(),
     )
 
-    arch = architecture(grid)
     @warn "HydrostaticFreeSurfaceModel is experimental. Use with caution!"
 
-    if arch == GPU() && !has_cuda()
+    # Check halos and throw an error if the grid's halo is too small
+    user_halo = grid.Hx, grid.Hy, grid.Hz
+    req_halo_momentum = inflate_halo_size(user_halo..., topology(grid), momentum_advection, closure)
+    req_halo_tracers = inflate_halo_size(user_halo..., topology(grid), tracer_advection, closure)
+    any(user_halo .< req_halo_momentum) || any(user_halo .< req_halo_tracers) &&
+        error("The grid halo $user_halo must be larger than either $req_halo_momentum " *
+                "or $req_halo_tracers")
+
+    arch = architecture(grid)
+
+    arch == GPU() && !has_cuda() &&
          throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
-    end
 
     momentum_advection = validate_momentum_advection(momentum_advection, grid)
 
