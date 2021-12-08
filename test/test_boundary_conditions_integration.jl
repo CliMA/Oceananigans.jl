@@ -207,7 +207,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         @test location(model.tracers.T.boundary_conditions.west.condition)   == (Nothing, Center, Center)
     end
 
-    @testset "Boudnary condition time-stepping works" begin
+    @testset "Boundary condition time-stepping works" begin
         for arch in archs, FT in (Float64,) #float_types
             @info "  Testing that time-stepping with boundary conditions works [$(typeof(arch)), $FT]..."
 
