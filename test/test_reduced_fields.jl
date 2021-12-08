@@ -34,7 +34,7 @@ end
         @info "  Testing ReducedField initialization..."
         for arch in archs, FT in float_types
 
-            grid = RectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Bounded, Bounded, Bounded))
+            grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Bounded, Bounded, Bounded))
 
             @test correct_reduced_field_size((Center, Center, Center), arch, grid, 1,         1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
             @test correct_reduced_field_size((Face,   Center, Center), arch, grid, 1,         1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
@@ -62,7 +62,7 @@ end
         @info "  Testing ReducedField setting..."
         for arch in archs, FT in float_types
 
-            grid = RectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Bounded))
+            grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Bounded))
 
             for dims in reduced_dims, val in vals
                 @test correct_reduced_field_value_was_set(arch, grid, (Center, Center, Center), dims, val)
@@ -95,7 +95,7 @@ end
     for arch in archs
         arch_str = string(typeof(arch))
 
-        grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
+        grid = RectilinearGrid(arch, topology = (Periodic, Periodic, Bounded),
                                       size = (2, 2, 2),
                                       x = (0, 2),
                                       y = (0, 2),
@@ -140,7 +140,7 @@ end
                 @test Array(interior(wx))[1, :, :] ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
                 
                 # Test whether a race condition gets hit for averages over large fields
-                big_grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
+                big_grid = RectilinearGrid(arch, topology = (Periodic, Periodic, Bounded),
                                                   size = (256, 256, 128),
                                                   x = (0, 2),
                                                   y = (0, 2),
@@ -183,7 +183,7 @@ end
         @testset "Conditional computation of AveragedFields [$(typeof(arch))]" begin
             @info "  Testing conditional computation of AveragedFields [$(typeof(arch))]"
             for FT in float_types
-                grid = RectilinearGrid(FT, size=(2, 2, 2), extent=(1, 1, 1))
+                grid = RectilinearGrid(arch, FT, size=(2, 2, 2), extent=(1, 1, 1))
                 c = CenterField(arch, grid)
 
                 for dims in (1, 2, 3, (1, 2), (2, 3), (1, 3), (1, 2, 3))

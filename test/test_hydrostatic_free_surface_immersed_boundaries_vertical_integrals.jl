@@ -8,7 +8,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
         Nx = 5
         Ny = 5
 
-        underlying_grid = RectilinearGrid(architecture = arch,
+        underlying_grid = RectilinearGrid(arch,
                                           size = (Nx, Ny, 3),
                                           extent = (Nx, Ny, 3),
                                           topology = (Periodic, Periodic, Bounded))
@@ -21,7 +21,6 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
 
         model = HydrostaticFreeSurfaceModel(grid = grid,
-                                            architecture = arch,
                                             free_surface = ImplicitFreeSurface(),
                                             tracer_advection = WENO5(),
                                             buoyancy = nothing,

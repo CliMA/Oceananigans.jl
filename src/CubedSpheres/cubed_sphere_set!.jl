@@ -1,13 +1,13 @@
-using Oceananigans.Architectures: AbstractCPUArchitecture
+using Oceananigans.Architectures: CPU
 using Oceananigans.Fields: AbstractField, ReducedField
 
 import Oceananigans.Fields: set!
 
-const CubedSphereCPUField = CubedSphereField{X, Y, Z, <:AbstractCPUArchitecture} where {X, Y, Z}
-const CubedSphereGPUField = CubedSphereField{X, Y, Z, <:AbstractGPUArchitecture} where {X, Y, Z}
+const CubedSphereCPUField = CubedSphereField{X, Y, Z, <:CPU} where {X, Y, Z}
+const CubedSphereGPUField = CubedSphereField{X, Y, Z, <:GPU} where {X, Y, Z}
 
-const CubedSphereCPUReducedField = CubedSphereReducedField{X, Y, Z, <:AbstractCPUArchitecture} where {X, Y, Z}
-const CubedSphereGPUReducedField = CubedSphereReducedField{X, Y, Z, <:AbstractGPUArchitecture} where {X, Y, Z}
+const CubedSphereCPUReducedField = CubedSphereReducedField{X, Y, Z, <:CPU} where {X, Y, Z}
+const CubedSphereGPUReducedField = CubedSphereReducedField{X, Y, Z, <:GPU} where {X, Y, Z}
 
 const CubedSphereCPUFields = Union{CubedSphereCPUField, CubedSphereCPUReducedField}
 const CubedSphereGPUFields = Union{CubedSphereGPUField, CubedSphereGPUReducedField}

@@ -30,7 +30,7 @@ const Lz = sum(Δz_center)
 z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
 z_faces[Nz+1] = 0
 
-grid = RectilinearGrid(architecture = architecture,
+grid = RectilinearGrid(architecture,
                        topology = (Flat, Bounded, Bounded),
                        size = (Ny, Nz),
                        halo = (3, 3),
@@ -136,7 +136,7 @@ f² = FunctionField{Center, Center, Center}(f²_func, grid)
 closure = AnisotropicDiffusivity(νh = 100, νz = 10, κh = 10, κz = 10,
                                  time_discretization = VerticallyImplicitTimeDiscretization())
 
-model = NonhydrostaticModel(architecture = architecture,
+model = NonhydrostaticModel(architecture,
                             grid = grid,
                             advection = UpwindBiasedFifthOrder(),
                             buoyancy = BuoyancyTracer(),
@@ -159,14 +159,13 @@ using Oceananigans.Grids: topology, halo_size
 
 cpu_grid(grid::RectilinearGrid) = grid
 
-cpu_grid(grid::RectilinearGrid) =
-    RectilinearGrid(architecture = CPU(),
-                    topology = topology(grid),
-                    size = size(grid),
-                    halo = halo_size(grid),
-                    x = (0, grid.Ly),
-                    y = (0, grid.Ly),
-                    z = grid.zᵃᵃᶠ)
+cpu_grid(grid::RectilinearGrid) = RectilinearGrid(CPU(),
+                                       topology = topology(grid),
+                                       size = size(grid),
+                                       halo = halo_size(grid),
+                                       x = (0, grid.Ly),
+                                       y = (0, grid.Ly),
+                                       z = grid.zᵃᵃᶠ)
 
 function channel_plot(u_device, b_device)
 
