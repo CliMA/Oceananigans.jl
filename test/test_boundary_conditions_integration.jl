@@ -142,15 +142,15 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                                         top    = simple_function_bc(Value),
                                                         north  = simple_function_bc(Value),
                                                         south  = simple_function_bc(Value),
-                                                         east  = simple_function_bc(Value),
-                                                         west  = simple_function_bc(Value))
+                                                         east  = simple_function_bc(Open),
+                                                         west  = simple_function_bc(Open))
 
         v_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
                                                         top    = simple_function_bc(Value),
                                                         north  = simple_function_bc(Open),
                                                         south  = simple_function_bc(Open),
-                                                         east  = simple_function_bc(Open),
-                                                         west  = simple_function_bc(Open))
+                                                         east  = simple_function_bc(Value),
+                                                         west  = simple_function_bc(Value))
 
 
         w_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Open),
@@ -211,7 +211,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
         for arch in archs, FT in (Float64,) #float_types
             @info "  Testing that time-stepping with boundary conditions works [$(typeof(arch)), $FT]..."
 
-            topo = arch isa CPU ? (Bounded, Bounded, Bounded) : (Periodic, Bounded, Bounded)
+            topo = (Bounded, Bounded, Bounded)
 
             for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
                 @test test_boundary_condition(arch, FT, topo, :east, :T, boundary_condition)
