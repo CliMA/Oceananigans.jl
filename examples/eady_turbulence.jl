@@ -189,7 +189,6 @@ biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h,
 # Runge-Kutta time-stepping scheme, and a `BuoyancyTracer`.
 
 model = NonhydrostaticModel(
-           architecture = CPU(),
                    grid = grid,
               advection = WENO5(),
             timestepper = :RungeKutta3,

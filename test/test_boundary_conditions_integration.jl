@@ -2,12 +2,12 @@ using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction
 using Oceananigans: prognostic_fields
 
 function test_boundary_condition(arch, FT, topo, side, field_name, boundary_condition)
-    grid = RectilinearGrid(FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
+    grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
 
     boundary_condition_kwarg = (; side => boundary_condition)
     field_boundary_conditions = FieldBoundaryConditions(; boundary_condition_kwarg...)
     bcs = (; field_name => field_boundary_conditions)
-    model = NonhydrostaticModel(grid=grid, architecture=arch, boundary_conditions=bcs,
+    model = NonhydrostaticModel(grid=grid, boundary_conditions=bcs,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     success = try
@@ -28,7 +28,7 @@ function test_nonhydrostatic_flux_budget(arch, name, side, topo)
     Ly = 0.4
     Lz = 0.5
 
-    grid = RectilinearGrid(FT,
+    grid = RectilinearGrid(arch, FT,
                                   size = (1, 1, 1),
                                   x = (0, Lx),
                                   y = (0, Ly),
@@ -42,7 +42,7 @@ function test_nonhydrostatic_flux_budget(arch, name, side, topo)
     model_bcs = (; name => field_bcs)
 
     model = NonhydrostaticModel(grid=grid, buoyancy=nothing, boundary_conditions=model_bcs,
-                                closure=nothing, architecture=arch, tracers=:c)
+                                closure=nothing, tracers=:c)
                                 
     is_velocity_field = name ∈ (:u, :v, :w)
     field = is_velocity_field ? getproperty(model.velocities, name) : getproperty(model.tracers, name)
@@ -69,14 +69,14 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     bz = FT(π)
     flux = - κ₀ * bz
 
-    grid = RectilinearGrid(FT, size=(16, 16, 16), extent=(1, 1, Lz))
+    grid = RectilinearGrid(arch, FT, size=(16, 16, 16), extent=(1, 1, Lz))
 
     buoyancy_bcs = FieldBoundaryConditions(bottom=GradientBoundaryCondition(bz))
     κₑ_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), bottom=ValueBoundaryCondition(κ₀))
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
     model = NonhydrostaticModel(
-        grid=grid, architecture=arch, tracers=:b, buoyancy=BuoyancyTracer(),
+        grid=grid, tracers=:b, buoyancy=BuoyancyTracer(),
         closure=AnisotropicMinimumDissipation(), boundary_conditions=model_bcs
     )
 
@@ -172,8 +172,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                w=w_boundary_conditions,
                                T=T_boundary_conditions)
 
-        model = NonhydrostaticModel(architecture = arch,
-                                    grid = grid,
+        model = NonhydrostaticModel(grid = grid,
                                     boundary_conditions = boundary_conditions,
                                     buoyancy = SeawaterBuoyancy(),
                                     tracers = (:T, :S))

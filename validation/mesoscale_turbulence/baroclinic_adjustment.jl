@@ -29,7 +29,7 @@ stop_time = 80days
 Δt₀ = 5minutes
 
 # We choose a regular grid though because of numerical issues that yet need to be resolved
-grid = RectilinearGrid(architecture = architecture,
+grid = RectilinearGrid(architecture,
                        topology = (Periodic, Bounded, Bounded), 
                        size = (Nx, Ny, Nz), 
                        x = (0, Lx),
@@ -65,8 +65,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 closures = (diffusive_closure, convective_adjustment)
 
-model = HydrostaticFreeSurfaceModel(architecture = architecture,
-                                    grid = grid,
+model = HydrostaticFreeSurfaceModel(grid = grid,
                                     coriolis = coriolis,
                                     buoyancy = BuoyancyTracer(),
                                     closure = closures,

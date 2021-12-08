@@ -24,10 +24,9 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4, width = 0.05,
     #####
 
     domain = (x=(-1, 1.5), y=(0, 1), z=(0, 1))
-    grid = RectilinearGrid(topology=topo, size=(Nx, 1, 1), halo=(3, 3, 3); domain...)
+    grid = RectilinearGrid(architecture, topology=topo, size=(Nx, 1, 1), halo=(3, 3, 3); domain...)
 
-    model = NonhydrostaticModel(architecture = architecture,
-                                 timestepper = :RungeKutta3,
+    model = NonhydrostaticModel( timestepper = :RungeKutta3,
                                         grid = grid,
                                    advection = advection,
                                     coriolis = nothing,

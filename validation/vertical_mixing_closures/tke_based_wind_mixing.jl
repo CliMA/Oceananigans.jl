@@ -6,7 +6,7 @@ using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalD
 
 arch = CPU()
 
-grid = RectilinearGrid(architecture=arch, size=8, z=(-64, 0), topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(arch, size=8, z=(-64, 0), topology=(Flat, Flat, Bounded))
 
 closure = CATKEVerticalDiffusivity()
                                       
@@ -21,8 +21,7 @@ u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵛ))
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ))
 
-model = HydrostaticFreeSurfaceModel(architecture = arch,
-                                    grid = grid,
+model = HydrostaticFreeSurfaceModel(grid = grid,
                                     tracers = (:b, :e),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = FPlane(f=1e-4),

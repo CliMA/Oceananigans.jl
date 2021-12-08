@@ -19,7 +19,6 @@ grid = LatitudeLongitudeGrid(size = (Nx, 1, 1),
                              z = (-1, 0))
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    architecture = CPU(),
                                     tracers = :c,
                                     velocities = PrescribedVelocityFields(), # quiescent
                                     closure = HorizontallyCurvilinearAnisotropicDiffusivity(κh=1),

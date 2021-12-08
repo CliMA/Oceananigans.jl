@@ -1,10 +1,11 @@
 using Oceananigans.Architectures
-import Oceananigans.Architectures: device_event
+using Oceananigans.Grids: topology, validate_tupled_argument, with_arch
 
-using Oceananigans.Grids: topology, validate_tupled_argument
+import Oceananigans.Architectures: device, device_event, arch_array
+import Oceananigans.Grids: zeros
 
-struct MultiCPU{G, R, I, ρ, C, γ} <: AbstractCPUArchitecture
-    distributed_grid :: G
+struct MultiArch{A, R, I, ρ, C, γ} <: AbstractMultiArchitecture
+  child_architecture :: A
           local_rank :: R
          local_index :: I
                ranks :: ρ
@@ -12,24 +13,50 @@ struct MultiCPU{G, R, I, ρ, C, γ} <: AbstractCPUArchitecture
         communicator :: γ
 end
 
-struct MultiGPU{G, R, I, ρ, C, γ} <: AbstractGPUArchitecture
-    distributed_grid :: G
-          local_rank :: R
-         local_index :: I
-               ranks :: ρ
-        connectivity :: C
-        communicator :: γ
+
+#####
+##### Constructors
+#####
+
+function MultiArch(child_architecture = CPU(); topology = (Periodic, Periodic, Periodic), ranks, communicator = MPI.COMM_WORLD)
+    MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
+
+    validate_tupled_argument(ranks, Int, "ranks")
+
+    Rx, Ry, Rz = ranks
+    total_ranks = Rx*Ry*Rz
+
+    mpi_ranks  = MPI.Comm_size(communicator)
+    local_rank = MPI.Comm_rank(communicator)
+
+    if total_ranks != mpi_ranks
+        throw(ArgumentError("ranks=($Rx, $Ry, $Rz) [$total_ranks total] inconsistent " *
+                            "with number of MPI ranks: $mpi_ranks."))
+    end
+    
+    local_index        = rank2index(local_rank, Rx, Ry, Rz)
+    local_connectivity = RankConnectivity(local_index, ranks, topology)
+
+    A = typeof(child_architecture)
+    R = typeof(local_rank)    
+    I = typeof(local_index)   
+    ρ = typeof(ranks)         
+    C = typeof(local_connectivity)  
+    γ = typeof(communicator)  
+    
+    return MultiArch{A, R, I, ρ, C, γ}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator)
 end
 
-const AbstractMultiArchitecture = Union{MultiCPU, MultiGPU}
-
-child_architecture(::MultiCPU) = CPU()
+child_architecture(arch::MultiArch) = arch.child_architecture
 child_architecture(::CPU) = CPU()
-
-child_architecture(::MultiGPU) = GPU()
 child_architecture(::GPU) = GPU()
 
-device_event(arch::AbstractMultiArchitecture) = device_event(child_architecture(arch))
+# Extending architecture specific methods
+
+device(arch::AbstractMultiArchitecture)        = device(child_architecture(arch))
+device_event(arch::AbstractMultiArchitecture)  = device_event(child_architecture(arch))
+arch_array(arch::AbstractMultiArchitecture, A) = arch_array(child_architecture(arch), A)
+zeros(FT, arch::MultiArch, N...)               = zeros(FT, child_architecture(arch), N...) 
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
@@ -111,42 +138,13 @@ function RankConnectivity(model_index, ranks, topology)
 end
 
 #####
-##### Constructors
-#####
-
-function MultiArchitecture(MultiArch, grid, ranks, communicator)
-    MPI.Initialized() || error("Must call MPI.Init() before constructing a MultiCPU.")
-
-    validate_tupled_argument(ranks, Int, "ranks")
-
-    Rx, Ry, Rz = ranks
-    total_ranks = Rx*Ry*Rz
-
-    mpi_ranks = MPI.Comm_size(communicator)
-    local_rank   = MPI.Comm_rank(communicator)
-
-    i, j, k = local_index = rank2index(local_rank, Rx, Ry, Rz)
-
-    if total_ranks != mpi_ranks
-        throw(ArgumentError("ranks=($Rx, $Ry, $Rz) [$total_ranks total] inconsistent " *
-                            "with number of MPI ranks: $mpi_ranks."))
-    end
-
-    local_connectivity = RankConnectivity(local_index, ranks, topology(grid))
-
-    return MultiArch(grid, local_rank, local_index, ranks, local_connectivity, communicator)
-end
-
-MultiCPU(; grid, ranks, communicator=MPI.COMM_WORLD) = MultiArchitecture(MultiCPU, grid, ranks, communicator)
-MultiGPU(; grid, ranks, communicator=MPI.COMM_WORLD) = MultiArchitecture(MultiGPU, grid, ranks, communicator)
-
-#####
 ##### Pretty printing
 #####
 
-function Base.show(io::IO, arch::MultiCPU)
+function Base.show(io::IO, arch::MultiArch)
     c = arch.connectivity
-    print(io, "MultiCPU architecture (rank $(arch.local_rank)/$(prod(arch.ranks)-1)) [index $(arch.local_index) / $(arch.ranks)]\n",
+    print(io, "Distributed architecture (rank $(arch.local_rank)/$(prod(arch.ranks)-1)) [index $(arch.local_index) / $(arch.ranks)]\n",
+              "└── child architecture: $(typeof(child_architecture(arch))) \n", 
               "└── connectivity:",
               isnothing(c.east) ? "" : " east=$(c.east)",
               isnothing(c.west) ? "" : " west=$(c.west)",
