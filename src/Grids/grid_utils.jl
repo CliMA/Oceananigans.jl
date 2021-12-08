@@ -9,10 +9,6 @@ Base.length(::Type{Face}, ::Type{Bounded}, N) = N+1
 Base.length(::Type{Center}, topo, N) = N
 Base.length(::Type{Nothing}, topo, N) = 1
 
-<<<<<<< HEAD
-Base.size(loc, grid, d) = size(loc, grid)[d]
-=======
->>>>>>> origin/main
 
 """
     size(loc, grid)
@@ -25,13 +21,9 @@ along `x, y, z`.
                                               length(loc[2], topology(grid, 2), grid.Ny),
                                               length(loc[3], topology(grid, 3), grid.Nz))
 
-<<<<<<< HEAD
-Base.size(grid::AbstractGrid, d) = size(grid)[d]
-=======
 Base.size(grid::AbstractGrid) = size((Center, Center, Center), grid)
 Base.size(grid::AbstractGrid, d) = size(grid)[d]
 Base.size(loc, grid, d) = size(loc, grid)[d]
->>>>>>> origin/main
 
 total_size(a) = size(a) # fallback
 
