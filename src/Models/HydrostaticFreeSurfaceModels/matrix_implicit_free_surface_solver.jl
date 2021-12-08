@@ -125,12 +125,3 @@ end
     Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid)  
     diag[i, j, 1]  = - Azᶜᶜᵃ(i, j, 1, grid) / g
 end
-
-@kernel function _compute_coefficients!(diag, Ax, Ay, ∫Ax, ∫Ay, grid::ImmersedBoundaryGrid, g)
-    i, j = @index(Global, NTuple)
-    if solid_cell(i, j, grid.Nz, grid) == false
-        Ay[i, j, 1]  = ∫Ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)  
-        Ax[i, j, 1]  = ∫Ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid) 
-        diag[i, j, 1]   = - Azᶜᶜᵃ(i, j, 1, grid) / g
-    end
-end

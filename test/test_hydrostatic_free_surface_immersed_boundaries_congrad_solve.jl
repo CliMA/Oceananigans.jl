@@ -11,29 +11,30 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
     for arch in archs
         Nx = 11 
         Ny = 11 
-        Nz =  1
+        Nz = 1
 
         underlying_grid = RectilinearGrid(arch,
                                           size = (Nx, Ny, Nz),
                                           extent = (Nx, Ny, 1),
                                           topology = (Periodic, Periodic, Bounded))
 
-        bottom = [-1. for i=1:Nx, j=1:Ny ]
-
         imm1=Int( floor((Nx+1)/2)   )
         imp1=Int( floor((Nx+1)/2)+1 )
         jmm1=Int( floor((Ny+1)/2)   )
         jmp1=Int( floor((Ny+1)/2)+1 )
 
-        # bottom[imm1:imp1, jmm1:jmp1] .= 0
+        bottom = [-1. for i=1:Nx, j=1:Ny ]
+        bottom[imm1-1:imp1+1, jmm1-1:jmp1+1] .= 0
 
         B = arch_array(arch, bottom)
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
 
-        free_surfaces = [ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, gravitational_acceleration=1.0), 
-                         ImplicitFreeSurface()]
+        free_surfaces = [ImplicitFreeSurface(solver_method=:MatrixIterativeSolver, gravitational_acceleration=1.0),
+                         ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, gravitational_acceleration=1.0), 
+                         ImplicitFreeSurface(gravitational_acceleration=1.0)]
 
         sol = ()
+        f = ()
 
         for free_surface in free_surfaces
 
@@ -66,7 +67,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
 
             fill_halo_regions!(η, arch)
 
-            println(typeof(model))
+            # println(typeof(model))
 
             println("model.free_surface.gravitational_acceleration = ",model.free_surface.gravitational_acceleration)
             println("∫ᶻQ.u")
@@ -90,8 +91,9 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
             ∫Ayᶜᶠᶜ = vertically_integrated_lateral_areas.yᶜᶠᶜ
 
             sol = (sol..., model.free_surface.η)
+            f  = (f..., model.free_surface)
         end
 
-        @test all(interior(sol[1]) .≈ interior(sol[2]) .≈ 0)
+        @test all(interior(sol[1]) .≈ interior(sol[2]) .≈ interior(sol[3]))
     end
 end
