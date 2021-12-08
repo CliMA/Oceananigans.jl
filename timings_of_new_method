@@ -20,12 +20,16 @@ On the CPU:
 ┌───────────────┬───────────────────────┬───────────────────────────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────┬─────────┐
 │ Architectures │            grid_types │        free_surface_types │        min │     median │       mean │        max │     memory │ allocs │ samples │
 ├───────────────┼───────────────────────┼───────────────────────────┼────────────┼────────────┼────────────┼────────────┼────────────┼────────┼─────────┤
+│           CPU │       RectilinearGrid │       ExplicitFreeSurface │  95.091 ms │  95.707 ms │  96.051 ms │  98.382 ms │ 856.28 KiB │   1543 │      10 │
 │           CPU │       RectilinearGrid │       ImplicitFreeSurface │    2.635 s │    2.654 s │    2.654 s │    2.674 s │ 688.03 MiB │  74306 │       2 │
 │           CPU │       RectilinearGrid │ MatrixImplicitFreeSurface │ 472.465 ms │ 497.325 ms │ 514.082 ms │ 574.351 ms │  17.19 MiB │   2250 │      10 │
+│           GPU │       RectilinearGrid │       ExplicitFreeSurface │   1.913 ms │   1.983 ms │   2.097 ms │   2.974 ms │   1.91 MiB │   4273 │      10 │
 │           GPU │       RectilinearGrid │       ImplicitFreeSurface │  70.782 ms │  76.776 ms │  81.772 ms │ 101.949 ms │  30.11 MiB │ 161853 │      10 │
 │           GPU │       RectilinearGrid │ MatrixImplicitFreeSurface │  33.949 ms │  34.478 ms │  35.552 ms │  45.827 ms │   3.43 MiB │  23323 │      10 │
+│           CPU │ LatitudeLongitudeGrid │       ExplicitFreeSurface │ 115.814 ms │ 118.439 ms │ 120.243 ms │ 127.774 ms │   1.14 MiB │   1553 │      10 │
 │           CPU │ LatitudeLongitudeGrid │       ImplicitFreeSurface │ 229.579 ms │ 232.996 ms │ 235.238 ms │ 246.652 ms │  26.39 MiB │   4881 │      10 │
 │           CPU │ LatitudeLongitudeGrid │ MatrixImplicitFreeSurface │ 213.535 ms │ 229.010 ms │ 231.281 ms │ 256.997 ms │  17.65 MiB │   2247 │      10 │
+│           GPU │ LatitudeLongitudeGrid │       ExplicitFreeSurface │   2.242 ms │   2.382 ms │   2.538 ms │   3.972 ms │   2.76 MiB │   4378 │      10 │
 │           GPU │ LatitudeLongitudeGrid │       ImplicitFreeSurface │   6.925 ms │   7.125 ms │   7.319 ms │   8.319 ms │   5.58 MiB │  12347 │      10 │
 │           GPU │ LatitudeLongitudeGrid │ MatrixImplicitFreeSurface │   3.897 ms │   4.043 ms │   5.266 ms │  14.660 ms │   3.94 MiB │   6305 │      10 │
 └───────────────┴───────────────────────┴───────────────────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────┴─────────┘

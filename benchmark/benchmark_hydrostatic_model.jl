@@ -7,6 +7,7 @@ using Oceananigans
 using Benchmarks
 using Statistics
 using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 # Need a grid
 
 ENV["DATADEPS_ALWAYS_ACCEPT"] = "true"
@@ -76,10 +77,12 @@ function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
 
     set_simple_divergent_velocity!(model)
 
-    time_step!(model, 1e-3) # warmup
+    Δt = accurate_cell_advection_timescale(grid, model.velocities)
+
+    time_step!(model, Δt) # warmup
     
     trial = @benchmark begin
-        CUDA.@sync blocking = true time_step!($model, 1e-3)
+        CUDA.@sync blocking = true time_step!($model, $Δt)
     end samples = 10
 
     return trial
@@ -101,8 +104,8 @@ free_surface_types = [
     :ExplicitFreeSurface,
     # ImplicitFreeSurface doesn't yet work on MultiRegionGrids like the ConformalCubedSphereGrid:
     # :FFTImplicitFreeSurface, 
-    # :ImplicitFreeSurface,
-    # :MatrixImplicitFreeSurface
+    :ImplicitFreeSurface,
+    :MatrixImplicitFreeSurface
 ]
 
 # Run and summarize benchmarks

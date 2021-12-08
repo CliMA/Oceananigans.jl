@@ -12,7 +12,8 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
         Nx = 60
         Ny = 60
 
-        underlying_grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+        underlying_grid = LatitudeLongitudeGrid(architecture=CPU(), 
+                                               size = (Nx, Ny, 1),
                                                longitude = (-30, 30),
                                                latitude = (15, 75),
                                                z = (-4000, 0))
