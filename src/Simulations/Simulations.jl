@@ -15,6 +15,7 @@ using Oceananigans.Utils
 
 include("callback.jl")
 include("time_step_wizard.jl")
+include("nan_checker.jl")
 include("simulation.jl")
 include("run.jl")
 

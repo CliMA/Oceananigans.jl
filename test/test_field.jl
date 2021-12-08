@@ -1,4 +1,11 @@
-using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy, regrid!
+using Statistics
+using Oceananigans
+using Oceananigans.Architectures: array_type, arch_array
+using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy, regrid!, ReducedField, has_velocities, VelocityFields, TracerFields, interpolate
+
+include("utils_for_runtests.jl")
+
+archs = test_architectures()
 
 """
     correct_field_size(arch, grid, FieldType, Tx, Ty, Tz)
@@ -31,7 +38,7 @@ end
 function run_field_reduction_tests(FT, arch)
     N = 8
     topo = (Bounded, Bounded, Bounded)
-    grid = RectilinearGrid(FT, topology=topo, size=(N, N, N), x=(-1, 1), y=(0, 2π), z=(-1, 1), architecture=arch)
+    grid = RectilinearGrid(arch, FT, topology=topo, size=(N, N, N), x=(-1, 1), y=(0, 2π), z=(-1, 1))
 
     u = XFaceField(arch, grid)
     v = YFaceField(arch, grid)
@@ -56,7 +63,7 @@ function run_field_reduction_tests(FT, arch)
 
     ϕs_vals = (u_vals, v_vals, w_vals, c_vals)
 
-    dims_to_test = (1, 2, 3, (1, 2), (1, 3), (2, 3))
+    dims_to_test = (1, 2, 3, (1, 2), (1, 3), (2, 3), (1, 2, 3))
 
     for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
 
@@ -75,13 +82,23 @@ function run_field_reduction_tests(FT, arch)
         @test mean(abs2, ϕ) ≈ mean(abs2, ϕ) atol=ε
 
         for dims in dims_to_test
-            @test all(isapprox(minimum(ϕ, dims=dims), minimum(ϕ_vals, dims=dims), atol=4ε))
-            @test all(isapprox(maximum(ϕ, dims=dims), maximum(ϕ_vals, dims=dims), atol=4ε))
-            @test all(isapprox(   mean(ϕ, dims=dims),    mean(ϕ_vals, dims=dims), atol=4ε))
+            @test all(isapprox(minimum(ϕ, dims=dims),
+                               minimum(ϕ_vals, dims=dims), atol=4ε))
 
-            @test all(isapprox(minimum(sin,  ϕ, dims=dims), minimum(sin,  ϕ_vals, dims=dims), atol=4ε))
-            @test all(isapprox(maximum(cos,  ϕ, dims=dims), maximum(cos,  ϕ_vals, dims=dims), atol=4ε))
-            @test all(isapprox(   mean(cosh, ϕ, dims=dims),    mean(cosh, ϕ_vals, dims=dims), atol=5ε))
+            @test all(isapprox(maximum(ϕ, dims=dims),
+                               maximum(ϕ_vals, dims=dims), atol=4ε))
+
+            @test all(isapprox(mean(ϕ, dims=dims),
+                               mean(ϕ_vals, dims=dims), atol=4ε))
+
+            @test all(isapprox(minimum(sin, ϕ, dims=dims),
+                               minimum(sin, ϕ_vals, dims=dims), atol=4ε))
+
+            @test all(isapprox(maximum(cos, ϕ, dims=dims),
+                               maximum(cos, ϕ_vals, dims=dims), atol=4ε))
+
+            @test all(isapprox(mean(cosh, ϕ, dims=dims),
+                               mean(cosh, ϕ_vals, dims=dims), atol=5ε))
         end
 
         CUDA.allowscalar(true)
@@ -92,7 +109,7 @@ end
 
 function run_field_interpolation_tests(arch, FT)
 
-    grid = RectilinearGrid(size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7), architecture=arch)
+    grid = RectilinearGrid(arch, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7))
 
     velocities = VelocityFields(arch, grid)
     tracers = TracerFields((:c,), arch, grid)
@@ -157,25 +174,25 @@ end
         H = (1, 1, 1)
 
         for arch in archs, FT in float_types
-            grid = RectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic), architecture=arch)
+            grid = RectilinearGrid(arch , FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic))
             @test correct_field_size(arch, grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, XFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, YFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
 
-            grid = RectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Bounded), architecture=arch)
+            grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Bounded))
             @test correct_field_size(arch, grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, XFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, YFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3] + 1)
 
-            grid = RectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Bounded, Bounded), architecture=arch)
+            grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Bounded, Bounded))
             @test correct_field_size(arch, grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, XFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, YFaceField,  N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
 
-            grid = RectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Bounded, Bounded, Bounded), architecture=arch)
+            grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Bounded, Bounded, Bounded))
             @test correct_field_size(arch, grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, XFaceField,  N[1] + 1 + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(arch, grid, YFaceField,  N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
@@ -203,7 +220,7 @@ end
 
         for arch in archs, FT in float_types
             ArrayType = array_type(arch)
-            grid = RectilinearGrid(FT, size=N, extent=L, topology=(Periodic, Periodic, Bounded))
+            grid = RectilinearGrid(arch, FT, size=N, extent=L, topology=(Periodic, Periodic, Bounded))
 
             for FieldType in FieldTypes, val in vals
                 @test correct_field_value_was_set(arch, grid, FieldType, val)
@@ -219,7 +236,7 @@ end
 
             Nx = 8
             topo = (Bounded, Bounded, Bounded)
-            grid = RectilinearGrid(FT, topology=topo, size=(Nx, Nx, Nx), x=(-1, 1), y=(0, 2π), z=(-1, 1))
+            grid = RectilinearGrid(arch, FT, topology=topo, size=(Nx, Nx, Nx), x=(-1, 1), y=(0, 2π), z=(-1, 1))
 
             u = XFaceField(arch, grid)
             v = YFaceField(arch, grid)
@@ -257,12 +274,12 @@ end
     @testset "Field utils" begin
         @info "  Testing field utils..."
 
-        @test Fields.has_velocities(()) == false
-        @test Fields.has_velocities((:u,)) == false
-        @test Fields.has_velocities((:u, :v)) == false
-        @test Fields.has_velocities((:u, :v, :w)) == true
+        @test has_velocities(()) == false
+        @test has_velocities((:u,)) == false
+        @test has_velocities((:u, :v)) == false
+        @test has_velocities((:u, :v, :w)) == true
 
-        grid = RectilinearGrid(size=(4, 6, 8), extent=(1, 1, 1))
+        grid = RectilinearGrid(CPU(), size=(4, 6, 8), extent=(1, 1, 1))
         ϕ = CenterField(CPU(), grid)
         @test cpudata(ϕ).parent isa Array
 
@@ -275,7 +292,7 @@ end
 
         @info "    Testing similar(f) for f::Union(Field, ReducedField)..."
 
-        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 1, 1))
 
         for X in (Center, Face), Y in (Center, Face), Z in (Center, Face)
             for arch in archs
@@ -298,12 +315,12 @@ end
         topology = (Flat, Flat, Bounded)
         
         for arch in archs
-            coarse_column_regular_grid       = RectilinearGrid(architecture=arch, size=1, z=(0, Lz), topology=topology)
-            fine_column_regular_grid         = RectilinearGrid(architecture=arch, size=2, z=(0, Lz), topology=topology)
-            fine_column_stretched_grid       = RectilinearGrid(architecture=arch, size=2, z = [0, ℓz, Lz], topology=topology)
-            very_fine_column_stretched_grid  = RectilinearGrid(architecture=arch, size=3, z = [0, 0.2, 0.6, Lz], topology=topology)
-            super_fine_column_stretched_grid = RectilinearGrid(architecture=arch, size=4, z = [0, 0.1, 0.3, 0.65, Lz], topology=topology)
-            super_fine_column_regular_grid   = RectilinearGrid(architecture=arch, size=5, z=(0, Lz), topology=topology)
+            coarse_column_regular_grid       = RectilinearGrid(arch, size=1, z=(0, Lz), topology=topology)
+            fine_column_regular_grid         = RectilinearGrid(arch, size=2, z=(0, Lz), topology=topology)
+            fine_column_stretched_grid       = RectilinearGrid(arch, size=2, z = [0, ℓz, Lz], topology=topology)
+            very_fine_column_stretched_grid  = RectilinearGrid(arch, size=3, z = [0, 0.2, 0.6, Lz], topology=topology)
+            super_fine_column_stretched_grid = RectilinearGrid(arch, size=4, z = [0, 0.1, 0.3, 0.65, Lz], topology=topology)
+            super_fine_column_regular_grid   = RectilinearGrid(arch, size=5, z=(0, Lz), topology=topology)
             
             coarse_column_regular_c       = CenterField(arch, coarse_column_regular_grid)
             fine_column_regular_c         = CenterField(arch, fine_column_regular_grid)

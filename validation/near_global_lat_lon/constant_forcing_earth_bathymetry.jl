@@ -52,7 +52,8 @@ H = 3600.0
 # H = - minimum(bathymetry)
 
 # A spherical domain
-@show underlying_grid = LatitudeLongitudeGrid(size = (Nx, Ny, Nz),
+@show underlying_grid = LatitudeLongitudeGrid(arch,
+                                              size = (Nx, Ny, Nz),
                                               longitude = (-180, 180),
                                               latitude = latitude,
                                               halo = (3, 3, 3),
@@ -102,8 +103,6 @@ v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_b
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    architecture = arch,
-                                    free_surface = ExplicitFreeSurface(),
                                     #free_surface = ImplicitFreeSurface(maximum_iterations=10),
                                     #free_surface = ImplicitFreeSurface(),
                                     momentum_advection = VectorInvariant(),

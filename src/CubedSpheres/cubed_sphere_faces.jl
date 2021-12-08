@@ -63,12 +63,12 @@ const AbstractCubedSphereField{X, Y, Z, A} = Union{    CubedSphereAbstractField{
 ##### new data
 #####
 
-function new_data(FT, arch::AbstractCPUArchitecture, grid::ConformalCubedSphereGrid, (X, Y, Z))
+function new_data(FT, arch::CPU, grid::ConformalCubedSphereGrid, (X, Y, Z))
     faces = Tuple(new_data(FT, arch, face_grid, (X, Y, Z)) for face_grid in grid.faces)
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
 end
 
-function new_data(FT, arch::AbstractGPUArchitecture, grid::ConformalCubedSphereGrid, (X, Y, Z))
+function new_data(FT, arch::GPU, grid::ConformalCubedSphereGrid, (X, Y, Z))
     faces = Tuple(new_data(FT, arch, face_grid, (X, Y, Z)) for face_grid in grid.faces)
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
 end
@@ -148,9 +148,9 @@ minimum(field::AbstractCubedSphereField; dims=:) = minimum(minimum(face_field; d
 maximum(field::AbstractCubedSphereField; dims=:) = maximum(maximum(face_field; dims) for face_field in faces(field))
 mean(field::AbstractCubedSphereField; dims=:) = mean(mean(face_field; dims) for face_field in faces(field))
 
-minimum(f, field::AbstractCubedSphereField; dims=:) = minimum(minimum(f, face_field; dims) for face_field in faces(field))
-maximum(f, field::AbstractCubedSphereField; dims=:) = maximum(maximum(f, face_field; dims) for face_field in faces(field))
-mean(f, field::AbstractCubedSphereField; dims=:) = mean(mean(f, face_field; dims) for face_field in faces(field))
+minimum(f::Function, field::AbstractCubedSphereField; dims=:) = minimum(minimum(f, face_field; dims) for face_field in faces(field))
+maximum(f::Function, field::AbstractCubedSphereField; dims=:) = maximum(maximum(f, face_field; dims) for face_field in faces(field))
+mean(f::Function, field::AbstractCubedSphereField; dims=:) = mean(mean(f, face_field; dims) for face_field in faces(field))
 
 λnodes(field::CubedSphereFaceField{LX, LY, LZ}) where {LX, LY, LZ} = λnodes(LX(), LY(), LZ(), field.grid)
 φnodes(field::CubedSphereFaceField{LX, LY, LZ}) where {LX, LY, LZ} = φnodes(LX(), LY(), LZ(), field.grid)

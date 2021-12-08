@@ -55,7 +55,7 @@ end
 @inline get_coefficient(a::Base.Callable, i, j, k, grid, ::Nothing, args...) = a(i, j, k, grid, args...)
 
 """
-    solve!(ϕ, solver, rhs, args...; dependencies = device_event(solver.architecture))
+    solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; dependencies = device_event(solver.architecture))
                                       
 
 Solve the batched tridiagonal system of linear equations with right hand side

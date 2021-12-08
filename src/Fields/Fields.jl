@@ -6,6 +6,7 @@ export CenterField, XFaceField, YFaceField, ZFaceField
 export ReducedField, AveragedField, ComputedField, KernelComputedField, BackgroundField
 export interior, data
 export xnode, ynode, znode, location
+export regrid!
 export set!, compute!, @compute
 export VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
 export interpolate, FieldSlicer
@@ -34,7 +35,6 @@ include("interpolate.jl")
 include("field_slicer.jl")
 include("show_fields.jl")
 include("broadcasting_abstract_fields.jl")
-include("mapreduce_abstract_fields.jl")
 
 # Fallback: cannot infer boundary conditions.
 boundary_conditions(field) = nothing

@@ -16,9 +16,9 @@ archs = test_architectures()
 #####
 
 function test_DateTime_netcdf_output(arch)
-    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=DateTime(2021, 1, 1))
-    model = NonhydrostaticModel(architecture=arch, grid=grid, clock=clock)
+    model = NonhydrostaticModel(grid=grid, clock=clock, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 5days + 3hours + 44.123seconds
     simulation = Simulation(model, Δt=Δt, stop_time=DateTime(2021, 2, 1))
@@ -47,9 +47,10 @@ function test_DateTime_netcdf_output(arch)
 end
 
 function test_TimeDate_netcdf_output(arch)
-    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     clock = Clock(time=TimeDate(2021, 1, 1))
-    model = NonhydrostaticModel(architecture=arch, grid=grid, clock=clock)
+    model = NonhydrostaticModel(grid=grid, clock=clock,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 5days + 3hours + 44.123seconds
     simulation = Simulation(model, Δt=Δt, stop_time=TimeDate(2021, 2, 1))
@@ -82,9 +83,11 @@ function test_thermal_bubble_netcdf_output(arch)
     Lx, Ly, Lz = 100, 100, 100
 
     topo = (Periodic, Periodic, Bounded)
-    grid = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
-    model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure)
+    model = NonhydrostaticModel(grid=grid, closure=closure,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
+                                )
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
@@ -247,9 +250,11 @@ function test_thermal_bubble_netcdf_output_with_halos(arch)
     Lx, Ly, Lz = 100, 100, 100
 
     topo = (Periodic, Periodic, Bounded)
-    grid = RectilinearGrid(topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
-    model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure)
+    model = NonhydrostaticModel(grid=grid, closure=closure,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
+                                )
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
@@ -340,8 +345,10 @@ function test_netcdf_function_output(arch)
     Δt = 1.25
     iters = 3
 
-    grid = RectilinearGrid(size=(N, N, N), extent=(L, 2L, 3L))
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, 2L, 3L))
+    model = NonhydrostaticModel(grid=grid,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+
     simulation = Simulation(model, Δt=Δt, stop_iteration=iters)
     grid = model.grid
 
@@ -502,7 +509,6 @@ function test_netcdf_time_averaging(arch)
 
     model = NonhydrostaticModel(
                 grid = grid,
-        architecture = arch,
          timestepper = :RungeKutta3,
              tracers = (:c1, :c2),
              forcing = (c1=c1_forcing, c2=c2_forcing),
@@ -636,7 +642,8 @@ end
 
 function test_netcdf_output_alignment(arch)
     grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    model = NonhydrostaticModel(grid=grid,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=0.2, stop_time=40)
 
     test_filename1 = "test_output_alignment1.nc"
@@ -669,9 +676,10 @@ function test_netcdf_vertically_stretched_grid_output(arch)
     Nx = Ny = 8
     Nz = 16
     zF = [k^2 for k in 0:Nz]
-    grid = RectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z=zF)
+    grid = RectilinearGrid(arch; size=(Nx, Ny, Nz), x=(0, 1), y=(-π, π), z=zF)
 
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    model = NonhydrostaticModel(grid=grid,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Δt = 1.25
     iters = 3
@@ -724,8 +732,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 
 function test_netcdf_regular_lat_lon_grid_output(arch)
     Nx = Ny = Nz = 16
-    grid = LatitudeLongitudeGrid(size=(Nx, Ny, Nz), longitude=(-180, 180), latitude=(-80, 80), z=(-100, 0))
-    model = HydrostaticFreeSurfaceModel(architecture=arch, momentum_advection = VectorInvariant(), grid=grid)
+    grid = LatitudeLongitudeGrid(arch; size=(Nx, Ny, Nz), longitude=(-180, 180), latitude=(-80, 80), z=(-100, 0))
+    model = HydrostaticFreeSurfaceModel(momentum_advection = VectorInvariant(), grid=grid)
 
     Δt = 1.25
     iters = 3

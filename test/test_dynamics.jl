@@ -10,7 +10,7 @@ end
 function test_diffusion_simple(fieldname, timestepper, time_discretization)
 
     model = NonhydrostaticModel(timestepper = timestepper,
-                                       grid = RectilinearGrid(size=(1, 1, 16), extent=(1, 1, 1)),
+                                       grid = RectilinearGrid(CPU(), size=(1, 1, 16), extent=(1, 1, 1)),
                                     closure = IsotropicDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
                                    coriolis = nothing,
                                     tracers = :c,
@@ -72,6 +72,7 @@ function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization
     model = NonhydrostaticModel(timestepper = timestepper,
                                        grid = grid,
                                     closure = IsotropicDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
+                                    tracers = (:T, :S),
                                    buoyancy = nothing)
 
     field = get_model_field(fieldname, model)
@@ -117,6 +118,7 @@ function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, bac
     grid = RectilinearGrid(size=(N, N, 2), extent=(L, L, L))
     closure = IsotropicDiffusivity(ν=κ, κ=κ)
     model = NonhydrostaticModel(timestepper=timestepper, grid=grid, closure=closure,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 background_fields=background_fields)
 
     set!(model, u=u₀, v=v₀, T=T₀)
@@ -149,9 +151,8 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
     @inline v(x, y, z, t) =  sin(2π*x) * exp(-4π^2 * ν * t)
 
     model = NonhydrostaticModel(
-        architecture = arch,
          timestepper = timestepper,
-                grid = RectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
+                grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
              closure = IsotropicDiffusivity(FT, ν=1, time_discretization=time_discretization),
              tracers = nothing,
             buoyancy = nothing)
@@ -188,7 +189,7 @@ end
 
 function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(arch, FT; N=32, L=2000, θ=60, N²=1e-5)
     topo = (Periodic, Bounded, Bounded)
-    grid = RectilinearGrid(FT, topology=topo, size=(1, N, N), extent=(L, L, L))
+    grid = RectilinearGrid(arch, FT, topology=topo, size=(1, N, N), extent=(L, L, L))
 
     g̃ = (0, sind(θ), cosd(θ))
     buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃)
@@ -198,7 +199,6 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     b_bcs = FieldBoundaryConditions(bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
 
     model = NonhydrostaticModel(
-               architecture = arch,
                        grid = grid,
                    buoyancy = buoyancy,
                     tracers = :b,
@@ -240,7 +240,7 @@ end
 
 function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer(arch, FT; N=32, L=2000, θ=60, N²=1e-5)
     topo = (Periodic, Bounded, Bounded)
-    grid = RectilinearGrid(FT, topology=topo, size=(1, N, N), extent=(L, L, L))
+    grid = RectilinearGrid(arch, FT, topology=topo, size=(1, N, N), extent=(L, L, L))
 
     g̃ = (0, sind(θ), cosd(θ))
     buoyancy = Buoyancy(model=SeawaterBuoyancy(), vertical_unit_vector=g̃)
@@ -254,7 +254,6 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     T_bcs = FieldBoundaryConditions(bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
 
     model = NonhydrostaticModel(
-               architecture = arch,
                        grid = grid,
                    buoyancy = buoyancy,
                     tracers = (:T, :S),
@@ -297,7 +296,7 @@ end
 
 
 function inertial_oscillations_work_with_rotation_in_different_axis(arch, FT)
-    grid = RectilinearGrid(FT, size=(), topology=(Flat, Flat, Flat))
+    grid = RectilinearGrid(arch, FT, size=(), topology=(Flat, Flat, Flat))
 
     f₀ = 1
     ū = 1

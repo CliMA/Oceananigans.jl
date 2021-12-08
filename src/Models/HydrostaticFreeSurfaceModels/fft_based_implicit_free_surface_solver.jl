@@ -21,12 +21,12 @@ end
 Return a solver based on the fast Fourier transform for the elliptic equation
     
 ```math
-[∇² - Az / (g H Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - Az ηⁿ / Δt) / (g H Δt)
+[∇² - Az / (g H Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - Az ηⁿ / Δt) / (g H Δt) ,
 ```
 
 representing an implicit time discretization of the linear free surface evolution equation
 for a fluid with constant depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
-step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
+step `Δt`, gravitational acceleration `g`, and free surface at time-step `n`, `ηⁿ`.
 """
 function FFTImplicitFreeSurfaceSolver(arch, grid, gravity::Number, settings)
 
@@ -53,10 +53,9 @@ function FFTImplicitFreeSurfaceSolver(arch, grid, gravity::Number, settings)
     # Even if the three dimensional grid is vertically stretched, we can only use
     # FFTImplicitFreeSurfaceSolver with grids that are regularly spaced in the
     # horizontal direction.
-    horizontal_grid = RectilinearGrid(; topology = (TX, TY, Flat),
+    horizontal_grid = RectilinearGrid(arch; topology = (TX, TY, Flat),
                                                size = sz,
                                                halo = halo,
-                                               architecture = arch,
                                                domain...)
 
     solver = FFTBasedPoissonSolver(arch, horizontal_grid)

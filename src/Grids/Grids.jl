@@ -2,7 +2,8 @@ module Grids
 
 export Center, Face
 export AbstractTopology, Periodic, Bounded, Flat, Connected, topology
-export AbstractGrid, AbstractUnderlyingGrid, halo_size
+
+export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
 export AbstractRectilinearGrid, RectilinearGrid 
 export XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilinearGrid, HRegRectilinearGrid, RegRectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
@@ -20,6 +21,7 @@ using Oceananigans.Architectures
 
 import Base: size, length, eltype, show
 import Oceananigans: short_show
+import Oceananigans.Architectures: architecture
 
 #####
 ##### Abstract types
@@ -80,7 +82,7 @@ const Connected = Periodic  # Right now we just need them to behave like Periodi
 
 Abstract supertype for grids with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
-abstract type AbstractGrid{FT, TX, TY, TZ} end
+abstract type AbstractGrid{FT, TX, TY, TZ, Arch} end
 
 """
     AbstractUnderlyingGrid{FT, TX, TY, TZ}
@@ -88,28 +90,28 @@ abstract type AbstractGrid{FT, TX, TY, TZ} end
 Abstract supertype for "primary" grids (as opposed to grids with immersed boundaries)
 with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
-abstract type AbstractUnderlyingGrid{FT, TX, TY, TZ} <: AbstractGrid{FT, TX, TY, TZ} end
+abstract type AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch} end
 
 """
     AbstractRectilinearGrid{FT, TX, TY, TZ}
 
 Abstract supertype for rectilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
-abstract type AbstractRectilinearGrid{FT, TX, TY, TZ} <: AbstractUnderlyingGrid{FT, TX, TY, TZ} end
+abstract type AbstractRectilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} end
 
 """
     AbstractCurvilinearGrid{FT, TX, TY, TZ}
 
 Abstract supertype for curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
-abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ} <: AbstractUnderlyingGrid{FT, TX, TY, TZ} end
+abstract type AbstractCurvilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, Arch} end
 
 """
     AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
 
 Abstract supertype for horizontally-curvilinear grids with elements of type `FT` and topology `{TX, TY, TZ}`.
 """
-abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ} <: AbstractCurvilinearGrid{FT, TX, TY, TZ} end
+abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch} <: AbstractCurvilinearGrid{FT, TX, TY, TZ, Arch} end
 
 
 
@@ -119,7 +121,6 @@ abstract type AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ} <: AbstractCur
 """
 
 Base.eltype(::AbstractGrid{FT}) where FT = FT
-Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
 Base.length(grid::AbstractGrid) = (grid.Lx, grid.Ly, grid.Lz)
 
 function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
@@ -138,6 +139,7 @@ halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
 
 topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
 topology(grid, dim) = topology(grid)[dim]
+architecture(grid::AbstractGrid) = grid.architecture
 
 include("grid_utils.jl")
 include("zeros.jl")

@@ -12,16 +12,14 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
         Nx = 60
         Ny = 60
 
-        underlying_grid = LatitudeLongitudeGrid(architecture=CPU(), 
-                                               size = (Nx, Ny, 1),
+        # A spherical domain
+        underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
                                                longitude = (-30, 30),
                                                latitude = (15, 75),
                                                z = (-4000, 0))
 
-        @inline raster_depth(i, j) = 30 < i < 35 && 42 < j < 48
-
-        bathymetry = zeros(Nx,Ny) .- 4000
-        bathymetry[31:34,43:47] .= 0
+        bathymetry = zeros(Nx, Ny) .- 4000
+        view(bathymetry, 31:34, 43:47) .= 0
         bathymetry = arch_array(arch, bathymetry)
 
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
@@ -53,14 +51,14 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
         constant_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₀)
 
         model = HydrostaticFreeSurfaceModel(grid = grid,
-                                            architecture = arch,
-                                            momentum_advection = VectorInvariant(),
-                                            free_surface = free_surface,
-                                            coriolis = coriolis,
-                                            boundary_conditions = (u=u_bcs, v=v_bcs),
-                                            closure = constant_horizontal_diffusivity,
-                                            tracers = nothing,
-                                            buoyancy = nothing)
+                                    momentum_advection = VectorInvariant(),
+                                    free_surface = free_surface,
+                                    coriolis = coriolis,
+                                    boundary_conditions = (u=u_bcs, v=v_bcs),
+                                    closure = constant_horizontal_diffusivity,
+                                    tracers = nothing,
+                                    buoyancy = nothing)
+
 
         simulation = Simulation(model, Δt = 3600, stop_time = 3600)
 

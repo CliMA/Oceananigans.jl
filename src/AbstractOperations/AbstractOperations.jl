@@ -43,7 +43,7 @@ const operators = Set()
 """
     at(loc, abstract_operation)
 
-Returns `abstract_operation` relocated to `loc`ation.
+Return `abstract_operation` relocated to `loc`ation.
 """
 at(loc, f) = f # fallback
 
