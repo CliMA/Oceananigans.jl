@@ -13,13 +13,12 @@ using Oceananigans.Distributed
 
      ranks = (2, 2, 1)
       topo = (Periodic, Periodic, Flat)
- full_grid = RectilinearGrid(topology=topo, size=(128, 128), extent=(4π, 4π), halo=(3, 3))
-      arch = MultiCPU(grid=full_grid, ranks=ranks)
+      arch = MultiCPU(CPU(), ranks=ranks)
+      grid = RectilinearGrid(arch, topology=topo, size=(128, 128), extent=(4π, 4π), halo=(3, 3))
 local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
 
-model = DistributedShallowWaterModel(
-                  architecture = arch,
-                          grid = full_grid,
+model = ShallowWaterModel(
+                          grid = grid,
                    timestepper = :RungeKutta3,
                      advection = UpwindBiasedFifthOrder(),
     gravitational_acceleration = 1.0

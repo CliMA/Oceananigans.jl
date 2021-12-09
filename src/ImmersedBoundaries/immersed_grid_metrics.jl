@@ -11,6 +11,8 @@ for metric in (
 
                :Δzᵃᵃᶠ,
                :Δzᵃᵃᶜ,
+               :Δzᶠᶜᶜ,
+               :Δzᶜᶠᶜ,
 
                :Azᶜᶜᵃ,
                :Azᶜᶠᵃ,
@@ -42,3 +44,4 @@ for metric in (
         @inline $metric(i, j, k, ibg::ImmersedBoundaryGrid) = $metric(i, j, k, ibg.grid)
     end
 end
+

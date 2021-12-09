@@ -1,4 +1,4 @@
-using Oceananigans.Architectures: architecture, device_event
+using Oceananigans.Architectures: architecture, device_event, arch_array
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.BuoyancyModels: ∂z_b
 using Oceananigans.Operators: ℑzᵃᵃᶜ
@@ -61,21 +61,31 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 ##### Diffusivity field utilities
 #####
 
-with_tracers(tracers, closure::ConvectiveAdjustmentVerticalDiffusivity{TD}) where TD =
+# Support for "ManyIndependentColumnMode"
+const CAVDArray = AbstractArray{<:CAVD}
+
+with_tracers(tracers, closure::CAVD{TD}) where TD =
     ConvectiveAdjustmentVerticalDiffusivity{TD}(closure.convective_κz,
                                                 closure.convective_νz,
                                                 closure.background_κz,
                                                 closure.background_νz)
 
+function with_tracers(tracers, closure_array::CAVDArray)
+    arch = architecture(closure_array)
+    Ex, Ey = size(closure_array)
+    return arch_array(arch, [with_tracers(tracers, closure_array[i, j]) for i=1:Ex, j=1:Ey])
+end
+
 # Note: computing diffusivities at cell centers for now.
-function DiffusivityFields(arch, grid, tracer_names, bcs, closure::CAVD)
-    #data = new_data(Bool, arch, grid, (Center, Center, Center))
+function DiffusivityFields(arch, grid, tracer_names, bcs, closure::Union{CAVD, CAVDArray})
+    ## If we can get away with only precomputing the "stability" of a cell:
+    # data = new_data(Bool, arch, grid, (Center, Center, Center))
     κ = Field(Center, Center, Center, arch, grid)
     ν = Field(Center, Center, Center, arch, grid)
     return (; κ, ν)
 end       
 
-function calculate_diffusivities!(diffusivities, closure::CAVD, model)
+function calculate_diffusivities!(diffusivities, closure::Union{CAVD, CAVDArray}, model)
 
     arch = model.architecture
     grid = model.grid
@@ -83,7 +93,8 @@ function calculate_diffusivities!(diffusivities, closure::CAVD, model)
     buoyancy = model.buoyancy
 
     event = launch!(arch, grid, :xyz,
-                    #compute_stability!, diffusivities, grid, closure, tracers, buoyancy,
+                    ## If we can figure out how to only precompute the "stability" of a cell:
+                    # compute_stability!, diffusivities, grid, closure, tracers, buoyancy,
                     compute_convective_adjustment_diffusivities!, diffusivities, grid, closure, tracers, buoyancy,
                     dependencies = device_event(arch))
 
@@ -92,24 +103,28 @@ function calculate_diffusivities!(diffusivities, closure::CAVD, model)
     return nothing
 end
 
-@inline is_unstableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy) = ∂z_b(i, j, k, grid, buoyancy, tracers) < 0
+@inline is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy) = ∂z_b(i, j, k, grid, buoyancy, tracers) >= 0
 
 @kernel function compute_convective_adjustment_diffusivities!(diffusivities, grid, closure, tracers, buoyancy)
     i, j, k, = @index(Global, NTuple)
 
-    unstable_cell = is_unstableᶜᶜᶠ(i, j, k+1, grid, tracers, buoyancy) | 
-                    is_unstableᶜᶜᶠ(i, j, k,   grid, tracers, buoyancy)
+    # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
+    closure_ij = get_closure_ij(i, j, closure)
 
-    @inbounds diffusivities.κ[i, j, k] = ifelse(unstable_cell,
-                                                closure.convective_κz,
-                                                closure.background_κz)
+    stable_cell = is_stableᶜᶜᶠ(i, j, k+1, grid, tracers, buoyancy) & 
+                  is_stableᶜᶜᶠ(i, j, k,   grid, tracers, buoyancy)
 
-    @inbounds diffusivities.ν[i, j, k] = ifelse(unstable_cell,
-                                                closure.convective_νz,
-                                                closure.background_νz)
+    @inbounds diffusivities.κ[i, j, k] = ifelse(stable_cell,
+                                                closure_ij.background_κz,
+                                                closure_ij.convective_κz)
+
+    @inbounds diffusivities.ν[i, j, k] = ifelse(stable_cell,
+                                                closure_ij.background_νz,
+                                                closure_ij.convective_νz)
 end
 
 #=
+## If we can figure out how to only precompute the "stability" of a cell:
 @kernel function compute_stability!(diffusivities, grid, closure, tracers, buoyancy)
     i, j, k, = @index(Global, NTuple)
     @inbounds diffusivities.unstable_buoyancy_gradient[i, j, k] = is_unstableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
@@ -151,7 +166,7 @@ const etd = ExplicitTimeDiscretization()
 
 @inline z_boundary_adj(k, grid) = k == 1 | k == grid.Nz+1
 
-@inline z_diffusivity(closure::CAVD, c_idx, diffusivities, args...) = diffusivities.κ
+@inline z_diffusivity(closure::Union{CAVD, CAVDArray}, c_idx, diffusivities, args...) = diffusivities.κ
 
 @inline function diffusive_flux_z(i, j, k, grid, closure::CAVD, c, tracer_index, clock, diffusivities, args...)
     κ = κᶜᶜᶠ(i, j, k, grid, clock, diffusivities.κ)
@@ -167,7 +182,7 @@ end
 ##### Viscosity
 #####
 
-@inline z_viscosity(closure::CAVD, diffusivities, args...) = diffusivities.ν
+@inline z_viscosity(closure::Union{CAVD, CAVDArray}, diffusivities, args...) = diffusivities.ν
 
 @inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::CAVD, args...)
     explicit_flux_z = viscous_flux_uz(i, j, k, grid, etd, closure, args...)

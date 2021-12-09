@@ -53,9 +53,9 @@ function test_thermal_bubble_checkpointer_output(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
-    true_model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure,
+    true_model = NonhydrostaticModel(grid=grid, closure=closure,
                                      buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     test_model = deepcopy(true_model)
 
@@ -148,8 +148,8 @@ function test_thermal_bubble_checkpointer_output(arch)
 end
 
 function run_checkpointer_cleanup_tests(arch)
-    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=arch, grid=grid,
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid=grid,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S)
                                 )
 

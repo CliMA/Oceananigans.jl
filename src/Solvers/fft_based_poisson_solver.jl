@@ -53,7 +53,7 @@ function FFTBasedPoissonSolver(arch, grid, planner_flag=FFTW.PATIENT)
 end
 
 """
-    solve!(ϕ, poisson_solver::FFTBasedPoissonSolver, b, m=0)
+    solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
 
 Solves the "generalized" Poisson equation,
 
@@ -65,7 +65,7 @@ where ``m`` is a number, using a eigenfunction expansion of the discrete Poisson
 on a staggered grid and for periodic or Neumann boundary conditions.
 
 In-place transforms are applied to ``b``, which means ``b`` must have complex-valued
-elements (typically the same type as `poisson_solver.storage`).
+elements (typically the same type as `solver.storage`).
 
 Note: ``(∇² + m) ϕ = b`` is sometimes called the "screened Poisson" equation
 when ``m < 0``, or the Helmholtz equation when ``m > 0``.

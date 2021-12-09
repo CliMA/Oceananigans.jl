@@ -1,11 +1,12 @@
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture, CPU
+using Oceananigans.Distributed
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size, Flat
+using Oceananigans.Grids: with_halo, topology, inflate_halo_size, halo_size, Flat, architecture
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.Utils: tupleit
@@ -87,7 +88,6 @@ Keyword arguments
 function ShallowWaterModel(;
                            grid,
                            gravitational_acceleration,
-  architecture::AbstractArchitecture = CPU(),
                                clock = Clock{eltype(grid)}(0, 0, 1),
                            advection = UpwindBiasedFifthOrder(),
                             coriolis = nothing,
@@ -98,6 +98,8 @@ function ShallowWaterModel(;
                   diffusivity_fields = nothing,
      boundary_conditions::NamedTuple = NamedTuple(),
                  timestepper::Symbol = :RungeKutta3)
+
+    arch = architecture(grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
@@ -112,15 +114,15 @@ function ShallowWaterModel(;
 
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
 
-    solution           = ShallowWaterSolutionFields(architecture, grid, boundary_conditions)
-    tracers            = TracerFields(tracers, architecture, grid, boundary_conditions)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, architecture, grid,
+    solution           = ShallowWaterSolutionFields(arch, grid, boundary_conditions)
+    tracers            = TracerFields(tracers, arch, grid, boundary_conditions)
+    diffusivity_fields = DiffusivityFields(diffusivity_fields, arch, grid,
                                       tracernames(tracers), boundary_conditions, closure)
 
     # Instantiate timestepper if not already instantiated
-    timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers);
-                              Gⁿ = ShallowWaterTendencyFields(architecture, grid, tracernames(tracers)),
-                              G⁻ = ShallowWaterTendencyFields(architecture, grid, tracernames(tracers)))
+    timestepper = TimeStepper(timestepper, arch, grid, tracernames(tracers);
+                              Gⁿ = ShallowWaterTendencyFields(arch, grid, tracernames(tracers)),
+                              G⁻ = ShallowWaterTendencyFields(arch, grid, tracernames(tracers)))
 
     # Regularize forcing and closure for model tracer and velocity fields.
     model_fields = merge(solution, tracers)
@@ -128,7 +130,7 @@ function ShallowWaterModel(;
     closure = with_tracers(tracernames(tracers), closure)
 
     model = ShallowWaterModel(grid,
-                              architecture,
+                              arch,
                               clock,
                               eltype(grid)(gravitational_acceleration),
                               advection,

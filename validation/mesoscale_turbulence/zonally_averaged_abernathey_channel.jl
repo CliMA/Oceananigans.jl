@@ -13,31 +13,32 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 ##### Grid
 #####
 
-arch = GPU()
-const Ly = 2000kilometers # north-south extent [m]
+# Architecture
+architecture  = CPU()
 
-Ny = 400
+# number of grid points
+Nx = 100
+Ny = 200
 Nz = 35
 
-# s = 1.5 # stretching factor
-# z_faces(k) = - Lz * (1 - tanh(s * (k - 1) / Nz) / tanh(s))
-
+# stretched grid 
 k_center = collect(1:Nz)
 Δz_center = @. 10 * 1.104^(Nz - k_center)
+
 const Lz = sum(Δz_center)
+
 z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
 z_faces[Nz+1] = 0
 
-grid = RectilinearGrid(architecture = arch,
-                                          topology = (Periodic, Bounded, Bounded),
-                                          size = (1, Ny, Nz),
-                                          halo = (3, 3, 3),
-                                          x = (0, Ly),
-                                          y = (0, Ly),
-                                          z = z_faces)
+grid = RectilinearGrid(architecture,
+                       topology = (Flat, Bounded, Bounded),
+                       size = (Ny, Nz),
+                       halo = (3, 3),
+                       y = (0, Ly),
+                       z = z_faces)
 
+@info "Built a grid: $grid."
 
-@show grid
 
 #=
 # We visualize the cell interfaces by plotting the cell height
@@ -115,7 +116,7 @@ b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/7days)
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.Fields: TracerFields, FunctionField
 
-tracers = TracerFields(tuple(:b), arch, grid)
+tracers = TracerFields(tuple(:b), architecture, grid)
 
 b = tracers.b
 
@@ -135,7 +136,7 @@ f² = FunctionField{Center, Center, Center}(f²_func, grid)
 closure = AnisotropicDiffusivity(νh = 100, νz = 10, κh = 10, κz = 10,
                                  time_discretization = VerticallyImplicitTimeDiscretization())
 
-model = IncompressibleModel(architecture = arch,
+model = NonhydrostaticModel(architecture,
                             grid = grid,
                             advection = UpwindBiasedFifthOrder(),
                             buoyancy = BuoyancyTracer(),
@@ -158,8 +159,7 @@ using Oceananigans.Grids: topology, halo_size
 
 cpu_grid(grid::RectilinearGrid) = grid
 
-cpu_grid(grid::RectilinearGrid) =
-    RectilinearGrid(architecture = CPU(),
+cpu_grid(grid::RectilinearGrid) = RectilinearGrid(CPU(),
                                        topology = topology(grid),
                                        size = size(grid),
                                        halo = halo_size(grid),
@@ -234,7 +234,6 @@ function print_progress(sim)
             maximum(abs, sim.model.velocities.v),
             maximum(abs, sim.model.velocities.w),
             prettytime(sim.Δt))
-            #prettytime(sim.Δt.Δt))
 
     wall_clock[1] = time_ns()
     
@@ -244,7 +243,8 @@ end
 diffusion_Δt = grid.Δyᵃᶜᵃ^2 / closure.νy
 @show Δt = min(10minutes, diffusion_Δt)
 
-simulation = Simulation(model, Δt=Δt, stop_time=10years, progress=print_progress, iteration_interval=1000)
+simulation = Simulation(model, Δt=Δt, stop_time=10years)
+simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(100))
 
 u, v, w = model.velocities
 b = model.tracers.b
@@ -282,4 +282,4 @@ anim = @animate for i in 5:120
     channel_plot(u, b)
 end
 
-mp4(anim, "two_dimensional_channel.mp4", fps = 8) # hide
+mp4(anim, "zonally_averaged_abernathey_channel.mp4", fps = 8) # hide

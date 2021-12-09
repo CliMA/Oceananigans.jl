@@ -14,6 +14,7 @@ include("dependencies_for_runtests.jl")
             include("test_buoyancy.jl")
             include("test_stokes_drift.jl")
             include("test_utils.jl")
+            include("test_schedules.jl")
         end
     end
 
@@ -48,10 +49,12 @@ include("dependencies_for_runtests.jl")
     if group == :hydrostatic_free_surface || group == :all
         @testset "HydrostaticFreeSurfaceModel tests" begin
             include("test_hydrostatic_free_surface_models.jl")
+            include("test_ensemble_hydrostatic_free_surface_models.jl")
             include("test_hydrostatic_free_surface_immersed_boundaries.jl")
             include("test_vertical_vorticity_field.jl")
             include("test_implicit_free_surface_solver.jl")
             include("test_hydrostatic_free_surface_immersed_boundaries_apply_surf_bc.jl")
+            include("test_hydrostatic_free_surface_immersed_boundaries_vertical_integrals.jl")
         end
     end
 
