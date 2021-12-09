@@ -4,10 +4,9 @@ using Oceananigans.Grids: interior_parent_indices, topology
 using Oceananigans.Fields: interior_copy
 using Oceananigans.Utils: heuristic_workgroup
 using KernelAbstractions: @kernel, @index
-using LinearAlgebra, SparseArrays, IterativeSolvers
+using IterativeSolvers, SparseArrays, LinearAlgebra
 using SparseArrays: fkeep!
 using CUDA, CUDA.CUSPARSE
-using IncompleteLU
 
 mutable struct MatrixIterativeSolver{A, G, R, L, D, M, P, I, T, F}
                architecture :: A
@@ -64,21 +63,17 @@ The iterative_solver used can is to be chosen from the IterativeSolvers.jl packa
 The default solver is a Conjugate Gradient (cg)
 
 """
-
+   
 function MatrixIterativeSolver(coeffs;
                                grid,
                                iterative_solver = cg,
                                maximum_iterations = prod(size(grid)),
                                tolerance = 1e-13,
                                reduced_dim = (false, false, false), 
-                               placeholder_timestep = 1.0, 
+                               placeholder_timestep = -1.0, 
                                precondition = true)
 
     arch = grid.architecture
-
-    if iterative_solver == (\) && arch isa GPU
-        throw(ArgumentError("Cannot specify a Direct solve on a GPU, it would need scalar indexing!"))
-    end
 
     matrix_constructors, diagonal, problem_size = matrix_from_coefficients(arch, grid, coeffs, reduced_dim)  
 
@@ -88,19 +83,15 @@ function MatrixIterativeSolver(coeffs;
 
     placeholder_matrix = arch_sparse_matrix(arch, placeholder_constructors)
 
-    if arch isa GPU || !precondition  #until we find a suitable backward substitution for GPU, the preconditioning takes a lot of time!!
-        placeholder_preconditioner = Identity()
-    else
-        placeholder_preconditioner = ilu(placeholder_matrix, τ = 0.01)
-    end
-   
+    preconditioner = arch_preconditioner(Val(precondition), arch, placeholder_matrix)
+
     return MatrixIterativeSolver(arch,
                                  grid,
                                  problem_size, 
                                  matrix_constructors,
                                  diagonal,
                                  placeholder_matrix,
-                                 placeholder_preconditioner,
+                                 preconditioner,
                                  iterative_solver, 
                                  tolerance,
                                  placeholder_timestep,
@@ -256,17 +247,13 @@ function solve!(x, solver::MatrixIterativeSolver, b, Δt)
         update_diag!(constructors, solver.architecture, solver.problem_size, solver.diagonal, Δt)
         solver.matrix = arch_sparse_matrix(solver.architecture, constructors) 
         if solver.preconditioner != Identity()
-            solver.preconditioner = ilu(solver.matrix, τ = 0.01)
-        end   
+            solver.preconditioner = arch_preconditioner(Val(true), solver.architecture, solver.matrix)
+        end
         solver.previous_Δt = Δt
     end
-        
-    if solver.iterative_solver == (\)
-        q = solver.iterative_solver(solver.matrix, b)
-    else   
-        q = solver.iterative_solver(solver.matrix, b; reltol=solver.tolerance, maxiter=solver.maximum_iterations, Pl=solver.preconditioner)
-    end
-
+    
+    q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner)
+    
     set!(x, reshape(q, solver.problem_size...))
     fill_halo_regions!(x, solver.architecture) 
 

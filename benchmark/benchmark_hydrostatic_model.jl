@@ -21,8 +21,8 @@ DataDeps.register(dd)
 
 # Benchmark function
 
-Nx = 1024
-Ny = 512
+Nx = 128
+Ny = 64
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
@@ -47,12 +47,12 @@ end
 
 # All grids have 6 * 510^2 = 1,560,600 grid points.
 grids = Dict(
-     (CPU, :RectilinearGrid)          => RectilinearGrid(size=(Nx, Ny, 1), extent=(1, 1, 1)),
-     (CPU, :LatitudeLongitudeGrid)    => LatitudeLongitudeGrid(size=(Nx, Ny, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0), precompute_metrics=true),
+     (CPU, :RectilinearGrid)          => RectilinearGrid(CPU(), size=(Nx, Ny, 1), extent=(1, 1, 1)),
+     (CPU, :LatitudeLongitudeGrid)    => LatitudeLongitudeGrid(CPU(), size=(Nx, Ny, 1), longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0), precompute_metrics=true),
     #  (CPU, :ConformalCubedSphereFaceGrid) => ConformalCubedSphereFaceGrid(size=(1445, 1080, 1), z=(-1, 0)),
     #  (CPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_510_grid/cubed_sphere_510_grid.jld2", Nz=1, z=(-1, 0)),
-     (GPU, :RectilinearGrid)          => RectilinearGrid(size=(Nx, Ny, 1), extent=(1, 1, 1), architecture=GPU()),
-     (GPU, :LatitudeLongitudeGrid)    => LatitudeLongitudeGrid(size=(Nx, Ny, 1), longitude=(-160, 160), latitude=(-80, 80), z=(-1, 0), architecture=GPU(), precompute_metrics=true),
+     (GPU, :RectilinearGrid)          => RectilinearGrid(GPU(), size=(Nx, Ny, 1), extent=(1, 1, 1)),
+     (GPU, :LatitudeLongitudeGrid)    => LatitudeLongitudeGrid(GPU(), size=(Nx, Ny, 1), longitude=(-160, 160), latitude=(-80, 80), z=(-1, 0), precompute_metrics=true),
     # Uncomment when ConformalCubedSphereFaceGrids of any size can be built natively without loading from file:
     #  (GPU, :ConformalCubedSphereFaceGrid) => ConformalCubedSphereFaceGrid(size=(1445, 1080, 1), z=(-1, 0), architecture=GPU()),
     #  (GPU, :ConformalCubedSphereGrid)     => ConformalCubedSphereGrid(datadep"cubed_sphere_510_grid/cubed_sphere_510_grid.jld2", Nz=1, z=(-1, 0), architecture=GPU()),
@@ -69,7 +69,6 @@ function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
     grid = grids[(Arch, grid_type)]
 
     model = HydrostaticFreeSurfaceModel(
-              architecture = Arch(),
                       grid = grid,
         momentum_advection = VectorInvariant(),
               free_surface = free_surfaces[free_surface_type]
@@ -101,11 +100,11 @@ grid_types = [
 ]
 
 free_surface_types = [
-    :ExplicitFreeSurface,
+    # :ExplicitFreeSurface,
     # ImplicitFreeSurface doesn't yet work on MultiRegionGrids like the ConformalCubedSphereGrid:
     # :FFTImplicitFreeSurface, 
-    :ImplicitFreeSurface,
-    :MatrixImplicitFreeSurface
+    :MatrixImplicitFreeSurface,
+    :ImplicitFreeSurface
 ]
 
 # Run and summarize benchmarks
