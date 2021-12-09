@@ -163,6 +163,8 @@ end
 
 Return a `schedule::ConsecutiveIterations` that actuates both when `parent_schedule`
 actuates, and at iterations immediately following the actuation of `parent_schedule`.
+This can be used, for example, when one wants to use output to reproduce a first-order approximation
+of the time derivative of a quantity.
 """
 ConsecutiveIterations(parent_schedule) = ConsecutiveIterations(parent_schedule, 0)
 
