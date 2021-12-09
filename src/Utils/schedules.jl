@@ -158,37 +158,37 @@ function specified_times_str(st)
 end
 
 #####
-##### FollowingIterations
+##### ConsecutiveIterations
 #####
 
-mutable struct FollowingIterations{S} <: AbstractSchedule
+mutable struct ConsecutiveIterations{S} <: AbstractSchedule
     parent :: S
-    following_iterations :: Int
+    consecutive_iterations :: Int
     previous_parent_actuation_iteration :: Int
 end
 
 """
-    FollowingIterations(parent_schedule)
+    ConsecutiveIterations(parent_schedule)
 
-Return a `schedule::FollowingIterations` that actuates both when `parent_schedule`
+Return a `schedule::ConsecutiveIterations` that actuates both when `parent_schedule`
 actuates, and at iterations immediately following the actuation of `parent_schedule`.
 This can be used, for example, when one wants to use output to reproduce a first-order approximation
 of the time derivative of a quantity.
 """
-FollowingIterations(parent_schedule, N=1) = FollowingIterations(parent_schedule, N, 0)
+ConsecutiveIterations(parent_schedule, N=1) = ConsecutiveIterations(parent_schedule, N, 0)
 
-function (schedule::FollowingIterations)(model)
+function (schedule::ConsecutiveIterations)(model)
     if schedule.parent(model)
         schedule.previous_parent_actuation_iteration = model.clock.iteration
         return true
-    elseif model.clock.iteration - schedule.following_iterations <= schedule.previous_parent_actuation_iteration
+    elseif model.clock.iteration - schedule.consecutive_iterations <= schedule.previous_parent_actuation_iteration
         return true # The iteration _after_ schedule.parent actuated!
     else
         return false
     end
 end
 
-aligned_time_step(schedule::FollowingIterations, clock, Δt) =
+aligned_time_step(schedule::ConsecutiveIterations, clock, Δt) =
     aligned_time_step(schedule.parent, clock. Δt)
 
 #####
@@ -199,6 +199,6 @@ Base.summary(schedule) = string(schedule)
 Base.summary(schedule::IterationInterval) = string("IterationInterval(", schedule.interval, ")")
 Base.summary(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
 Base.summary(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_times_str(schedule), ")")
-Base.summary(schedule::FollowingIterations) = string("FollowingIterations(",
+Base.summary(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
                                                      summary(schedule.parent), ", ",
-                                                     schedule.following_iterations, ")")
+                                                     schedule.consecutive_iterations, ")")
