@@ -188,5 +188,11 @@ Return a schedule that actuates when any of the `child_schedule`s actuates.
 """
 AnySchedule(schedules...) = AnySchedule(Tuple(schedules))
 
-(as::AnySchedule)(model) = any(schedule(model) for schedule in as.schedules)
+function (as::AnySchedule)(model)
+    # Ensure that all `schedules` get queried
+    actuations = Tuple(schedule(model) for schedule in as.schedules)
+    return any(actuations)
+end
 
+align_time_step(any_or_all_schedule::Union{AnySchedule, AllSchedule}, clock, Δt) =
+    minimum(align_time_step(clock, Δt, schedule) for schedule in any_or_all_schedule.schedules)

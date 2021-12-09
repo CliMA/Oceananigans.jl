@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes
 using Oceananigans.TimeSteppers: Clock
 
@@ -28,16 +30,16 @@ using Oceananigans.TimeSteppers: Clock
     # AnySchedule
     ti_and_ii = AllSchedule(TimeInterval(2), IterationInterval(3))
     @test ti_and_ii(fake_model_at_time_2)
+    @test !(ti_and_ii(fake_model_at_time_4))
     @test !(ti_and_ii(fake_model_at_iter_3))
     @test !(ti_and_ii(fake_model_at_iter_5))
     @test !(ti_and_ii(fake_model_at_time_3))
 
     ti_or_ii = AnySchedule(TimeInterval(2), IterationInterval(3))
-    @test ti_or_ii(fake_model_at_time_2)
     @test ti_or_ii(fake_model_at_iter_3)
-    @test ti_or_ii(fake_model_at_iter_5)
-    @test ti_or_ii(fake_model_at_time_3)
-    @test ti_or_ii(fake_model_at_time_4)
+    @test ti_or_ii(fake_model_at_iter_5) # triggers TimeInterval but not IterationInterval
+    @test ti_or_ii(fake_model_at_time_3) # triggers IterationInterval but not TimeInterval
+    @test ti_or_ii(fake_model_at_time_4) # triggers TimeInterval but not IterationInterval
     @test !(ti_or_ii(fake_model_at_time_5))
 
     # WallTimeInterval
