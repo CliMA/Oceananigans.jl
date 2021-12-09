@@ -190,4 +190,3 @@ AnySchedule(schedules...) = AnySchedule(Tuple(schedules))
 
 (as::AnySchedule)(model) = any(schedule(model) for schedule in as.schedules)
 
-
