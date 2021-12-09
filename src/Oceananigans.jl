@@ -87,6 +87,7 @@ export
     # Output writers
     FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
+    AnySchedule, AllSchedule,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
@@ -203,6 +204,7 @@ include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
 include("CubedSpheres/CubedSpheres.jl")
+
 #####
 ##### Needed so we can export names from sub-modules at the top-level
 #####
