@@ -75,7 +75,7 @@ For example,
 """
 IterationInterval(interval; offset=0) = IterationInterval(interval, offset)
 
-(schedule::IterationInterval)(model) = model.clock.iteration - schedule.offset % schedule.interval == 0
+(schedule::IterationInterval)(model) = (model.clock.iteration - schedule.offset) % schedule.interval == 0
 
 #####
 ##### WallTimeInterval
