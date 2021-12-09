@@ -34,3 +34,7 @@ function (nc::NaNChecker)(simulation)
     return nothing
 end
 
+function erroring_NaNChecker!(simulation)
+    simulation.callbacks[:nan_checker].func.erroring = true
+    return nothing
+end

@@ -175,7 +175,7 @@ function run_nan_checker_test(arch; erroring)
     model = NonhydrostaticModel(grid=grid)
     simulation = Simulation(model, Δt=1, stop_iteration=1)
     model.velocities.u[1, 1, 1] = NaN
-    simulation.callbacks[:nan_checker].erroring = erroring
+    erroring && erroring_NaNChecker!(simulation)
 
     if erroring
         @test_throws ErrorException run!(simulation)
