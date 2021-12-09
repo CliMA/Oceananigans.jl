@@ -289,8 +289,9 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, yᵃᶠᵃ, yᵃᶜᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
 end
 
-# architecture = CPU default if only one argument is provided, and that argument is a floating point type...
-RectilinearGrid(FT::AbstractFloat; kwargs...) = RectilinearGrid(CPU(), FT; kwargs...)
+# architecture = CPU() default, assuming that a DataType positional arg
+# is specifying the floating point type.
+RectilinearGrid(FT::DataType; kwargs...) = RectilinearGrid(CPU(), FT; kwargs...)
 
 @inline x_domain(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.xᶠᵃᵃ)
 @inline y_domain(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.yᵃᶠᵃ)
