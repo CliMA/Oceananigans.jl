@@ -174,6 +174,8 @@ Return a schedule that actuates when all `child_schedule`s actuate.
 """
 AllSchedule(schedules...) = AllSchedule(Tuple(schedules))
 
+# Note that multiple schedules that have a "state" (like TimeInterval and WallTimeInterval)
+# could cause the logic of AllSchedule to fail, due to the short-circuiting nature of `all`.
 (as::AllSchedule)(model) = all(schedule(model) for schedule in as.schedules)
 
 struct AnySchedule{S} <: AbstractSchedule
