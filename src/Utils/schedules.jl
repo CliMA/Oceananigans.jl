@@ -57,17 +57,25 @@ end
 ##### IterationInterval
 #####
 
-"""
-    IterationInterval(interval)
-
-Returns a callable IterationInterval that schedules periodic output or diagnostic evaluation
-over `interval`, and therefore when `model.clock.iteration % schedule.interval == 0`.
-"""
 struct IterationInterval <: AbstractSchedule
     interval :: Int
+    offset :: Int
 end
 
-(schedule::IterationInterval)(model) = model.clock.iteration % schedule.interval == 0
+"""
+    IterationInterval(interval; offset=0)
+
+Returns a callable IterationInterval that "actuates" (schedules output or callback execution)
+whenever the model iteration (modified by `offset`) is a multiple of `interval`.
+
+For example, 
+
+    * `IterationInterval(100)` actuates at iterations `[100, 200, 300, ...]`.
+    * `IterationInterval(100, offset=-1)` actuates at iterations `[99, 199, 299, ...]`.
+"""
+IterationInterval(interval; offset=0) = IterationInterval(interval, offset)
+
+(schedule::IterationInterval)(model) = model.clock.iteration - schedule.offset % schedule.interval == 0
 
 #####
 ##### WallTimeInterval
@@ -150,43 +158,47 @@ function specified_times_str(st)
 end
 
 #####
-##### ConsecutiveIterations
+##### FollowingIterations
 #####
 
-mutable struct ConsecutiveIterations{S} <: AbstractSchedule
+mutable struct FollowingIterations{S} <: AbstractSchedule
     parent :: S
+    following_iterations :: Int
     previous_parent_actuation_iteration :: Int
 end
 
 """
-    ConsecutiveIterations(parent_schedule)
+    FollowingIterations(parent_schedule)
 
-Return a `schedule::ConsecutiveIterations` that actuates both when `parent_schedule`
+Return a `schedule::FollowingIterations` that actuates both when `parent_schedule`
 actuates, and at iterations immediately following the actuation of `parent_schedule`.
 This can be used, for example, when one wants to use output to reproduce a first-order approximation
 of the time derivative of a quantity.
 """
-ConsecutiveIterations(parent_schedule) = ConsecutiveIterations(parent_schedule, 0)
+FollowingIterations(parent_schedule, N=1) = FollowingIterations(parent_schedule, N, 0)
 
-function (schedule::ConsecutiveIterations)(model)
+function (schedule::FollowingIterations)(model)
     if schedule.parent(model)
         schedule.previous_parent_actuation_iteration = model.clock.iteration
         return true
-    elseif model.clock.iteration - 1 == schedule.previous_parent_actuation_iteration
+    elseif model.clock.iteration - schedule.following_iterations <= schedule.previous_parent_actuation_iteration
         return true # The iteration _after_ schedule.parent actuated!
     else
         return false
     end
 end
 
-aligned_time_step(schedule::ConsecutiveIterations, clock, Δt) =
+aligned_time_step(schedule::FollowingIterations, clock, Δt) =
     aligned_time_step(schedule.parent, clock. Δt)
 
 #####
 ##### Show methods
 #####
 
-show_schedule(schedule) = string(schedule)
-show_schedule(schedule::IterationInterval) = string("IterationInterval(", schedule.interval, ")")
-show_schedule(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
-show_schedule(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_times_str(schedule), ")")
+Base.summary(schedule) = string(schedule)
+Base.summary(schedule::IterationInterval) = string("IterationInterval(", schedule.interval, ")")
+Base.summary(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
+Base.summary(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_times_str(schedule), ")")
+Base.summary(schedule::FollowingIterations) = string("FollowingIterations(",
+                                                     summary(schedule.parent), ", ",
+                                                     schedule.following_iterations, ")")
