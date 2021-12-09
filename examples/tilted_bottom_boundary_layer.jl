@@ -148,11 +148,7 @@ model = NonhydrostaticModel(grid = grid, timestepper = :RungeKutta3,
 #
 
 using Oceananigans.Grids: min_Δz
-if ndims==3
-    cfl=0.85
-else
-    cfl=0.5
-end
+cfl=0.8
 wizard = TimeStepWizard(max_change=1.03, cfl=cfl)
 
 # Print a progress message
@@ -166,7 +162,7 @@ simulation = Simulation(model, Δt=0.5*min_Δz(grid)/params.V∞,
                         stop_time=3days, 
                        )
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(4))
-simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
+simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(100))
 #----
 
 
