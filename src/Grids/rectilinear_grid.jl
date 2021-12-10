@@ -39,7 +39,7 @@ const HRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number
 const  RegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number}
 
 """
-    RectilinearGrid([architecture = CPU()], [FT = Float64];
+    RectilinearGrid([architecture = CPU(), FT = Float64];
                     size,
                     x = nothing,
                     y = nothing,
@@ -253,7 +253,7 @@ RectilinearGrid{Float64, Periodic, Bounded, Bounded}
                 grid in z: Stretched, with spacing min=0.6826950100338962, max=1.8309085743885056
 ```
 """
-function RectilinearGrid(architecture = CPU(),
+function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
                          FT = Float64;
                          size,
                          x = nothing,
@@ -288,6 +288,10 @@ function RectilinearGrid(architecture = CPU(),
     return RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
         Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, yᵃᶠᵃ, yᵃᶜᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
 end
+
+# architecture = CPU() default, assuming that a DataType positional arg
+# is specifying the floating point type.
+RectilinearGrid(FT::DataType; kwargs...) = RectilinearGrid(CPU(), FT; kwargs...)
 
 @inline x_domain(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.xᶠᵃᵃ)
 @inline y_domain(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.yᵃᶠᵃ)
@@ -341,6 +345,7 @@ Adapt.adapt_structure(to, grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, 
         Adapt.adapt(to, grid.Δzᵃᵃᶜ),
         Adapt.adapt(to, grid.zᵃᵃᶠ),
         Adapt.adapt(to, grid.zᵃᵃᶜ))
+
 
 @inline xnode(::Center, i, grid::RectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
 @inline xnode(::Face  , i, grid::RectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
