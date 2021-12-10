@@ -50,19 +50,18 @@ offset_data(underlying_data, grid::AbstractGrid, loc) =
     offset_data(underlying_data, loc, topology(grid), size(grid), halo_size(grid))
 
 """
-    new_data([FT=Float64], arch, grid, loc)
+    new_data(FT, grid, loc)
 
 Returns an `OffsetArray` of zeros of float type `FT` on `arch`itecture,
 with indices corresponding to a field on a `grid` of `size(grid)` and located at `loc`.
 """
-function new_data(FT, arch, grid, loc)
-    underlying_data = zeros(FT, arch,
-                            total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
-                            total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
-                            total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
-
+function new_data(FT, grid, loc)
+    arch = architecture(grid)
+    Tx = total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx)
+    Ty = total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy)
+    Tz = total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz)
+    underlying_data = zeros(FT, arch, Tx, Ty, Tz)
     return offset_data(underlying_data, grid, loc)
 end
 
-# Default to type of Grid
-new_data(arch, grid, loc) = new_data(eltype(grid), arch, grid, loc)
+new_data(grid, loc) = new_data(eltype(grid), grid, loc)

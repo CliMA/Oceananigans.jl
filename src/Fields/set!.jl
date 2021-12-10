@@ -18,13 +18,6 @@ set!(u::AbstractField, v) = u .= v # fallback
 
 # Niceties
 const AbstractCPUField = AbstractField{X, Y, Z, <:CPU} where {X, Y, Z}
-const AbstractReducedCPUField = AbstractReducedField{X, Y, Z, <:CPU} where {X, Y, Z}
-
-""" Returns an AbstractReducedField on the CPU. """
-function similar_cpu_field(u::AbstractReducedField)
-    FieldType = typeof(u).name.wrapper
-    return FieldType(location(u), CPU(), u.grid; dims=u.dims)
-end
 
 """ Set the CPU field `u` data to the function `f(x, y, z)`. """
 function set!(u::AbstractCPUField, f::Function)
@@ -38,17 +31,11 @@ end
 #####
 
 const AbstractGPUField = AbstractField{X, Y, Z, <:GPU} where {X, Y, Z}
-const AbstractReducedGPUField = AbstractReducedField{X, Y, Z, <:GPU} where {X, Y, Z}
-
-""" Returns a field on the CPU with `nothing` boundary conditions. """
-function similar_cpu_field(u)
-    FieldType = typeof(u).name.wrapper
-    return FieldType(location(u), CPU(), adapt_structure(CPU(), u.grid), nothing)
-end
 
 """ Set the GPU field `u` to the array or function `v`. """
 function set!(u::AbstractGPUField, v::Union{Array, Function})
-    v_field = similar_cpu_field(u)
+    cpu_grid = adapt_structure(CPU(), u.grid)
+    v_field = similar(u, cpu_grid)
     set!(v_field, v)
     set!(u, v_field)
     return nothing

@@ -7,7 +7,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 import Base: getindex, size, show, minimum, maximum
 import Statistics: mean
 
-import Oceananigans.Fields: AbstractField, AbstractDataField, AbstractReducedField, Field, ReducedField, minimum, maximum, mean, location, short_show, KernelComputedField
+import Oceananigans.Fields: AbstractField, Field, minimum, maximum, mean, location, short_show, KernelComputedField
 import Oceananigans.Grids: new_data
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 
@@ -40,24 +40,14 @@ const ImmersedCubedSphereFaceField    = AbstractField{X, Y, Z, A, <:ImmersedConf
 const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{X, Y, Z, A},
                                       ImmersedCubedSphereFaceField{X, Y, Z, A}} where {X, Y, Z, A}
 
-const NonImmersedCubedSphereAbstractReducedFaceField = AbstractReducedField{X, Y, Z, A, D, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A, D}
-const ImmersedCubedSphereAbstractReducedFaceField = AbstractReducedField{X, Y, Z, A, D, <:ImmersedConformalCubedSphereFaceGrid} where {X, Y, Z, A, D}
-
-const CubedSphereAbstractReducedFaceField = Union{NonImmersedCubedSphereAbstractReducedFaceField{X, Y, Z, A},
-                                                     ImmersedCubedSphereAbstractReducedFaceField{X, Y, Z, A}} where {X, Y, Z, A}
-
 # CubedSphereField
 
 # Flavors of CubedSphereField
 const CubedSphereField                     = Field{X, Y, Z, A, <:CubedSphereData} where {X, Y, Z, A}
-const CubedSphereReducedField              = ReducedField{X, Y, Z, A, <:CubedSphereData} where {X, Y, Z, A}
 const CubedSphereAbstractField             = AbstractField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
-const CubedSphereAbstractDataField         = AbstractDataField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
 
-const AbstractCubedSphereField{X, Y, Z, A} = Union{    CubedSphereAbstractField{X, Y, Z, A},
-                                                   CubedSphereAbstractDataField{X, Y, Z, A},
-                                                        CubedSphereReducedField{X, Y, Z, A},
-                                                               CubedSphereField{X, Y, Z, A}} where {X, Y, Z, A}
+const AbstractCubedSphereField{X, Y, Z, A} = Union{CubedSphereAbstractField{X, Y, Z, A},
+                                                           CubedSphereField{X, Y, Z, A}} where {X, Y, Z, A}
 
 #####
 ##### new data
@@ -123,17 +113,7 @@ Base.size(data::CubedSphereData) = (size(data.faces[1])..., length(data.faces))
                           get_face(field.boundary_conditions, face_index))
 end
 
-@inline function get_face(reduced_field::CubedSphereReducedField, face_index)
-    X, Y, Z = location(reduced_field)
-
-    return ReducedField{X, Y, Z}(get_face(reduced_field.data, face_index),
-                                 reduced_field.architecture,
-                                 get_face(reduced_field.grid, face_index),
-                                 reduced_field.dims,
-                                 get_face(reduced_field.boundary_conditions, face_index))
-end
-
-@inline function get_face(kernel_field::CubedSphereAbstractDataField, face_index)
+@inline function get_face(kernel_field::CubedSphereAbstractField, face_index)
     X, Y, Z = location(kernel_field)
 
     return Field{X, Y, Z}(get_face(kernel_field.data, face_index),

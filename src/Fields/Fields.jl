@@ -16,12 +16,12 @@ using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 
 include("abstract_field.jl")
-include("reduced_getindex_setindex.jl")
+# include("reduced_getindex_setindex.jl")
 include("field.jl")
 include("zero_field.jl")
-include("reduced_field.jl")
+# include("reduced_field.jl")
 include("averaged_field.jl")
-include("computed_field.jl")
+# include("computed_field.jl")
 include("kernel_computed_field.jl")
 include("pressure_field.jl")
 include("function_field.jl")

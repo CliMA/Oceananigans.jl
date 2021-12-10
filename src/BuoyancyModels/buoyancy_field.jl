@@ -1,7 +1,22 @@
 using Adapt
 using KernelAbstractions
 
-using Oceananigans.Fields: AbstractDataField, FieldStatus, validate_field_data, conditional_compute!
+# TODO: define buoyancy_operation(model) and be done with it.
+
+#=
+function buoyancy_operation(model)
+    buoyancy = model.buoyancy
+    tracers = model.tracers
+    return KernelFunctionOperation{Center, Center, Center}(...)
+end
+
+function BuoyancyField(model)
+    op = buoyancy_operation(model)
+    return Field(op)
+end
+=#
+
+using Oceananigans.Fields: AbstractField, FieldStatus, validate_field_data, conditional_compute!
 using Oceananigans.Fields: architecture, tracernames
 using Oceananigans.Architectures: device
 using Oceananigans.Utils: work_layout
@@ -11,7 +26,7 @@ import Oceananigans.Fields: compute!, compute_at!
 
 import Oceananigans: short_show
 
-struct BuoyancyField{B, S, A, D, G, T, C} <: AbstractDataField{Center, Center, Center, A, G, T, 3}
+struct BuoyancyField{B, S, A, D, G, T, C} <: AbstractField{Center, Center, Center, A, G, T, 3}
             data :: D
     architecture :: A
             grid :: G

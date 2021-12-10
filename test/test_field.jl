@@ -1,24 +1,21 @@
-using Statistics
-using Oceananigans
-using Oceananigans.Architectures: array_type, arch_array
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy, regrid!, ReducedField, has_velocities, VelocityFields, TracerFields, interpolate
 
-include("utils_for_runtests.jl")
-
-archs = test_architectures()
-
 """
-    correct_field_size(arch, grid, FieldType, Tx, Ty, Tz)
+    correct_field_size(grid, FieldType, Tx, Ty, Tz)
 
-Test that the field initialized by the FieldType constructor on `arch` and `grid`
+Test that the field initialized by the FieldType constructor on `grid`
 has size `(Tx, Ty, Tz)`.
 """
-correct_field_size(a, g, FieldType, Tx, Ty, Tz) = size(parent(FieldType(a, g))) == (Tx, Ty, Tz)
+correct_field_size(g, FieldType, Tx, Ty, Tz) = size(parent(FieldType(g))) == (Tx, Ty, Tz)
 
 function run_similar_field_tests(f)
     g = similar(f)
     @test typeof(f) == typeof(g)
     @test f.grid == g.grid
+    @test location(f) === location(g)
+    @test !(f.data === g.data)
     return nothing
 end
 
@@ -29,8 +26,9 @@ Test that the field initialized by the field type function `ftf` on the grid g
 can be correctly filled with the value `val` using the `set!(f::AbstractField, v)`
 function.
 """
-function correct_field_value_was_set(arch, grid, FieldType, val::Number)
-    f = FieldType(arch, grid)
+function correct_field_value_was_set(grid, FieldType, val::Number)
+    arch = architecture(grid)
+    f = FieldType(grid)
     set!(f, val)
     return all(interior(f) .≈ val * arch_array(arch, ones(size(f))))
 end
@@ -40,10 +38,10 @@ function run_field_reduction_tests(FT, arch)
     topo = (Bounded, Bounded, Bounded)
     grid = RectilinearGrid(arch, FT, topology=topo, size=(N, N, N), x=(-1, 1), y=(0, 2π), z=(-1, 1))
 
-    u = XFaceField(arch, grid)
-    v = YFaceField(arch, grid)
-    w = ZFaceField(arch, grid)
-    c = CenterField(arch, grid)
+    u = XFaceField(grid)
+    v = YFaceField(grid)
+    w = ZFaceField(grid)
+    c = CenterField(grid)
 
     f(x, y, z) = 1 + exp(x) * sin(y) * tanh(z)
 
@@ -107,12 +105,12 @@ function run_field_reduction_tests(FT, arch)
     return nothing
 end
 
-function run_field_interpolation_tests(arch, FT)
+function run_field_interpolation_tests(FT, arch)
 
     grid = RectilinearGrid(arch, size=(4, 5, 7), x=(0, 1), y=(-π, π), z=(-5.3, 2.7))
 
-    velocities = VelocityFields(arch, grid)
-    tracers = TracerFields((:c,), arch, grid)
+    velocities = VelocityFields(grid)
+    tracers = TracerFields((:c,), grid)
 
     (u, v, w), c = velocities, tracers.c
 
@@ -163,6 +161,10 @@ function run_field_interpolation_tests(arch, FT)
     return nothing
 end
 
+#####
+#####
+#####
+
 @testset "Fields" begin
     @info "Testing Fields..."
 
@@ -175,28 +177,28 @@ end
 
         for arch in archs, FT in float_types
             grid = RectilinearGrid(arch , FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic))
-            @test correct_field_size(arch, grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(arch, grid, XFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(arch, grid, YFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(arch, grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, XFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, YFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
 
             grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Bounded))
-            @test correct_field_size(arch, grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(arch, grid, XFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(arch, grid, YFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(arch, grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3] + 1)
+            @test correct_field_size(grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, XFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, YFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3] + 1)
 
             grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Bounded, Bounded))
-            @test correct_field_size(arch, grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(arch, grid, XFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(arch, grid, YFaceField,  N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(arch, grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
+            @test correct_field_size(grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, XFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, YFaceField,  N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
 
             grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Bounded, Bounded, Bounded))
-            @test correct_field_size(arch, grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(arch, grid, XFaceField,  N[1] + 1 + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(arch, grid, YFaceField,  N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(arch, grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
+            @test correct_field_size(grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, XFaceField,  N[1] + 1 + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, YFaceField,  N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
         end
     end
 
@@ -223,11 +225,11 @@ end
             grid = RectilinearGrid(arch, FT, size=N, extent=L, topology=(Periodic, Periodic, Bounded))
 
             for FieldType in FieldTypes, val in vals
-                @test correct_field_value_was_set(arch, grid, FieldType, val)
+                @test correct_field_value_was_set(grid, FieldType, val)
             end
 
             for FieldType in FieldTypes
-                field = FieldType(arch, grid)
+                field = FieldType( grid)
                 sz = size(field)
                 A = rand(FT, sz...)
                 set!(field, A)
@@ -238,10 +240,10 @@ end
             topo = (Bounded, Bounded, Bounded)
             grid = RectilinearGrid(arch, FT, topology=topo, size=(Nx, Nx, Nx), x=(-1, 1), y=(0, 2π), z=(-1, 1))
 
-            u = XFaceField(arch, grid)
-            v = YFaceField(arch, grid)
-            w = ZFaceField(arch, grid)
-            c = CenterField(arch, grid)
+            u = XFaceField(grid)
+            v = YFaceField(grid)
+            w = ZFaceField(grid)
+            c = CenterField(grid)
 
             f(x, y, z) = exp(x) * sin(y) * tanh(z)
 
@@ -267,7 +269,7 @@ end
         @info "  Testing field interpolation..."
 
         for arch in archs, FT in float_types
-            run_field_interpolation_tests(arch, FT)
+            run_field_interpolation_tests(FT, arch)
         end
     end
 
@@ -296,17 +298,19 @@ end
 
         for X in (Center, Face), Y in (Center, Face), Z in (Center, Face)
             for arch in archs
-                f = Field(X, Y, Z, arch, grid)
+                f = Field{X, Y, Z}(grid)
                 run_similar_field_tests(f)
 
                 for dims in (3, (1, 2), (1, 2, 3))
-                    f = ReducedField(X, Y, Z, arch, grid, dims=dims)
+                    loc = reduced_location(loc; dims)
+                    f = Field(loc, grid)
                     run_similar_field_tests(f)
                 end
             end
         end
     end
 
+    #=
     @testset "Regridding" begin
         @info "  Testing field regridding..."
 
@@ -381,4 +385,5 @@ end
             end
         end
     end
+    =#
 end
