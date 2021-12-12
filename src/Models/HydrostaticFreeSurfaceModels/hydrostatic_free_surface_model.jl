@@ -103,7 +103,6 @@ function HydrostaticFreeSurfaceModel(; grid,
     )
 
     arch = architecture(grid)
-    @warn "HydrostaticFreeSurfaceModel is experimental. Use with caution!"
 
     if arch == GPU() && !has_cuda()
          throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
