@@ -40,13 +40,17 @@ struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHoriz
        radius :: FT
 end
 
-function ConformalCubedSphereFaceGrid(arch = CPU(), FT = Float64; size, z,
+function ConformalCubedSphereFaceGrid(arch::AbstractArchitecture = CPU(),
+                                      FT::DataType = Float64;
+                                      size,
+                                      z,
                                       topology = (Bounded, Bounded, Bounded),
-                                             ξ = (-1, 1),
-                                             η = (-1, 1),
-                                        radius = R_Earth,
-                                          halo = (1, 1, 1),
+                                      ξ = (-1, 1),
+                                      η = (-1, 1),
+                                      radius = R_Earth,
+                                      halo = (1, 1, 1),
                                       rotation = nothing)
+
     TX, TY, TZ = topology
     Nξ, Nη, Nz = size
     Hx, Hy, Hz = halo
@@ -153,6 +157,10 @@ function ConformalCubedSphereFaceGrid(arch = CPU(), FT = Float64; size, z,
         Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δz,
         Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
+
+# architecture = CPU() default, assuming that a DataType positional arg
+# is specifying the floating point type.
+ConformalCubedSphereFaceGrid(FT::DataType; kwargs...) = ConformalCubedSphereFaceGrid(CPU(), FT; kwargs...)
 
 function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo, N, H)
 
