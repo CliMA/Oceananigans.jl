@@ -135,8 +135,6 @@ function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
     CUDA.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
 end
 
-halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
-
 topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
 topology(grid, dim) = topology(grid)[dim]
 architecture(grid::AbstractGrid) = grid.architecture
