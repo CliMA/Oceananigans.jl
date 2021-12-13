@@ -27,15 +27,15 @@ using Oceananigans.TimeSteppers: Clock
     @test !(ii(fake_model_at_iter_5))
     @test ii(fake_model_at_iter_3)
 
-    # AnySchedule
-    ti_and_ii = AllSchedule(TimeInterval(2), IterationInterval(3))
+    # OrSchedule
+    ti_and_ii = AndSchedule(TimeInterval(2), IterationInterval(3))
     @test ti_and_ii(fake_model_at_time_2)
     @test !(ti_and_ii(fake_model_at_time_4))
     @test !(ti_and_ii(fake_model_at_iter_3))
     @test !(ti_and_ii(fake_model_at_iter_5))
     @test !(ti_and_ii(fake_model_at_time_3))
 
-    ti_or_ii = AnySchedule(TimeInterval(2), IterationInterval(3))
+    ti_or_ii = OrSchedule(TimeInterval(2), IterationInterval(3))
     @test ti_or_ii(fake_model_at_iter_3)
     @test ti_or_ii(fake_model_at_iter_5) # triggers TimeInterval but not IterationInterval
     @test ti_or_ii(fake_model_at_time_3) # triggers IterationInterval but not TimeInterval

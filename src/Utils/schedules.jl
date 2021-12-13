@@ -159,42 +159,43 @@ show_schedule(schedule::TimeInterval) = string("TimeInterval(", prettytime(sched
 show_schedule(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_times_str(schedule), ")")
 
 #####
-##### Any and AllSchedule
+##### Any and AndSchedule
 #####
 
-struct AllSchedule{S} <: AbstractSchedule
+struct AndSchedule{S} <: AbstractSchedule
     schedules :: S
-    AllSchedule(schedules::S) where S <: Tuple = new{S}(schedules)
+    AndSchedule(schedules::S) where S <: Tuple = new{S}(schedules)
 end
 
 """
-    AllSchedule(child_schedule_1, child_schedule_2, other_child_schedules...)
+    AndSchedule(child_schedule_1, child_schedule_2, other_child_schedules...)
 
 Return a schedule that actuates when all `child_schedule`s actuate.
 """
-AllSchedule(schedules...) = AllSchedule(Tuple(schedules))
+AndSchedule(schedules...) = AndSchedule(Tuple(schedules))
 
 # Note that multiple schedules that have a "state" (like TimeInterval and WallTimeInterval)
-# could cause the logic of AllSchedule to fail, due to the short-circuiting nature of `all`.
-(as::AllSchedule)(model) = all(schedule(model) for schedule in as.schedules)
+# could cause the logic of AndSchedule to fail, due to the short-circuiting nature of `all`.
+(as::AndSchedule)(model) = all(schedule(model) for schedule in as.schedules)
 
-struct AnySchedule{S} <: AbstractSchedule
+struct OrSchedule{S} <: AbstractSchedule
     schedules :: S
-    AnySchedule(schedules::S) where S <: Tuple = new{S}(schedules)
+    OrSchedule(schedules::S) where S <: Tuple = new{S}(schedules)
 end
 
 """
-    AnySchedule(child_schedule_1, child_schedule_2, other_child_schedules...)
+    OrSchedule(child_schedule_1, child_schedule_2, other_child_schedules...)
 
 Return a schedule that actuates when any of the `child_schedule`s actuates.
 """
-AnySchedule(schedules...) = AnySchedule(Tuple(schedules))
+OrSchedule(schedules...) = OrSchedule(Tuple(schedules))
 
-function (as::AnySchedule)(model)
+function (as::OrSchedule)(model)
     # Ensure that all `schedules` get queried
     actuations = Tuple(schedule(model) for schedule in as.schedules)
     return any(actuations)
 end
 
-align_time_step(any_or_all_schedule::Union{AnySchedule, AllSchedule}, clock, Δt) =
+align_time_step(any_or_all_schedule::Union{OrSchedule, AndSchedule}, clock, Δt) =
     minimum(align_time_step(clock, Δt, schedule) for schedule in any_or_all_schedule.schedules)
+
