@@ -1,8 +1,10 @@
 using Oceananigans: CPU, GPU
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, PrescribedField, ExplicitFreeSurface
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: PrescribedField, ExplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, ExplicitTimeDiscretization, CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, ExplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
 using Oceananigans.Grids: Periodic, Bounded
 
 function time_step_hydrostatic_model_works(grid;
@@ -71,11 +73,11 @@ topos_3d = ((Periodic, Periodic, Bounded),
       
     @testset "$topo_1d model construction" begin
         @info "  Testing $topo_1d model construction..."
-        for arch in archs, FT in float_types
+        for arch in archs, FT in [Float64] #float_types
             grid = RectilinearGrid(arch, FT, topology=topo_1d, size=(1), extent=(1))
             model = HydrostaticFreeSurfaceModel(grid=grid)        
-
             @test model isa HydrostaticFreeSurfaceModel
+
         end
     end
     
@@ -85,7 +87,6 @@ topos_3d = ((Periodic, Periodic, Bounded),
             for arch in archs, FT in float_types
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1), extent=(1, 2))
                 model = HydrostaticFreeSurfaceModel(grid=grid)
-
                 @test model isa HydrostaticFreeSurfaceModel
             end
         end
@@ -97,7 +98,28 @@ topos_3d = ((Periodic, Periodic, Bounded),
             for arch in archs, FT in float_types
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
                 model = HydrostaticFreeSurfaceModel(grid=grid)
+                @test model isa HydrostaticFreeSurfaceModel
 
+                hcabd_closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity()
+                @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=CenteredFourthOrder())
+                @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedThirdOrder())
+                @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedFifthOrder())
+                @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, momentum_advection=UpwindBiasedFifthOrder())
+                @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, closure=hcabd_closure)
+
+                # Big enough
+                bigger_grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3), halo=(3, 3, 3))
+
+                model = HydrostaticFreeSurfaceModel(grid=grid, closure=hcabd_closure)
+                @test model isa HydrostaticFreeSurfaceModel
+
+                model = HydrostaticFreeSurfaceModel(grid=grid, momentum_advection=UpwindBiasedFifthOrder())
+                @test model isa HydrostaticFreeSurfaceModel
+
+                model = HydrostaticFreeSurfaceModel(grid=grid, closure=hcabd_closure)
+                @test model isa HydrostaticFreeSurfaceModel
+
+                model = HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedFifthOrder())
                 @test model isa HydrostaticFreeSurfaceModel
             end
         end
