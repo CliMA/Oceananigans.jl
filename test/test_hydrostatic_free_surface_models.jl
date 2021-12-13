@@ -99,30 +99,34 @@ topos_3d = ((Periodic, Periodic, Bounded),
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
                 model = HydrostaticFreeSurfaceModel(grid=grid)
                 @test model isa HydrostaticFreeSurfaceModel
-
-                hcabd_closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity()
-                @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=CenteredFourthOrder())
-                @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedThirdOrder())
-                @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedFifthOrder())
-                @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, momentum_advection=UpwindBiasedFifthOrder())
-                @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, closure=hcabd_closure)
-
-                # Big enough
-                bigger_grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3), halo=(3, 3, 3))
-
-                model = HydrostaticFreeSurfaceModel(grid=grid, closure=hcabd_closure)
-                @test model isa HydrostaticFreeSurfaceModel
-
-                model = HydrostaticFreeSurfaceModel(grid=grid, momentum_advection=UpwindBiasedFifthOrder())
-                @test model isa HydrostaticFreeSurfaceModel
-
-                model = HydrostaticFreeSurfaceModel(grid=grid, closure=hcabd_closure)
-                @test model isa HydrostaticFreeSurfaceModel
-
-                model = HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedFifthOrder())
-                @test model isa HydrostaticFreeSurfaceModel
             end
         end
+    end
+
+    @testset "Halo size check in model constructor"
+        grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
+        hcabd_closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity()
+
+        @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=CenteredFourthOrder())
+        @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedThirdOrder())
+        @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedFifthOrder())
+        @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, momentum_advection=UpwindBiasedFifthOrder())
+        @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, closure=hcabd_closure)
+
+        # Big enough
+        bigger_grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3), halo=(3, 3, 3))
+
+        model = HydrostaticFreeSurfaceModel(grid=grid, closure=hcabd_closure)
+        @test model isa HydrostaticFreeSurfaceModel
+
+        model = HydrostaticFreeSurfaceModel(grid=grid, momentum_advection=UpwindBiasedFifthOrder())
+        @test model isa HydrostaticFreeSurfaceModel
+
+        model = HydrostaticFreeSurfaceModel(grid=grid, closure=hcabd_closure)
+        @test model isa HydrostaticFreeSurfaceModel
+
+        model = HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedFifthOrder())
+        @test model isa HydrostaticFreeSurfaceModel
     end
 
     @testset "Setting HydrostaticFreeSurfaceModel fields" begin
