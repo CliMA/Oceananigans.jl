@@ -105,7 +105,7 @@ topos = (topo_1d, topos_2d, topos_3d...)
     end
 
     @testset "Halo size check in model constructor" begin
-        for topo in topos
+        for topo in topos_3d
             grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
             hcabd_closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity()
 
