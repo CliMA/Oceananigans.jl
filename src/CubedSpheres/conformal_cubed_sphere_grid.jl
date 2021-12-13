@@ -227,7 +227,7 @@ end
 
 Base.size(grid::ConformalCubedSphereGrid) = (size(grid.faces[1])..., length(grid.faces))
 Base.size(grid::ConformalCubedSphereGrid, i) = size(grid)[i]
-halo_size(ccsg::ConformalCubedSphereGrid) = halo_size(first(ccsg)) # hack
+halo_size(ccsg::ConformalCubedSphereGrid) = halo_size(first(ccsg.faces)) # hack
 
 Base.eltype(grid::ConformalCubedSphereGrid{FT}) where FT = FT
 
