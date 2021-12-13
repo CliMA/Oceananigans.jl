@@ -77,7 +77,6 @@ topos_3d = ((Periodic, Periodic, Bounded),
             grid = RectilinearGrid(arch, FT, topology=topo_1d, size=(1), extent=(1))
             model = HydrostaticFreeSurfaceModel(grid=grid)        
             @test model isa HydrostaticFreeSurfaceModel
-
         end
     end
     
@@ -103,7 +102,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
         end
     end
 
-    @testset "Halo size check in model constructor"
+    @testset "Halo size check in model constructor" begin
         grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
         hcabd_closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity()
 
