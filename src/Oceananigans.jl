@@ -88,7 +88,7 @@ export
     # Output writers
     FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
-    AnySchedule, AllSchedule,
+    AndSchedule, OrSchedule,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
