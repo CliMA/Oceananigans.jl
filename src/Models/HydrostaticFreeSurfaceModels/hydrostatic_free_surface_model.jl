@@ -9,7 +9,8 @@ using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, Seawa
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: inflate_halo_size, with_halo, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
+using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo, AbstractRectilinearGrid
+using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
 using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
@@ -105,7 +106,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     @warn "HydrostaticFreeSurfaceModel is experimental. Use with caution!"
 
     # Check halos and throw an error if the grid's halo is too small
-    user_halo = grid.Hx, grid.Hy, grid.Hz
+    user_halo = halo_size(grid)
     req_halo_momentum = inflate_halo_size(user_halo..., topology(grid), momentum_advection, closure)
     req_halo_tracers = inflate_halo_size(user_halo..., topology(grid), tracer_advection, closure)
     any(user_halo .< req_halo_momentum) || any(user_halo .< req_halo_tracers) &&

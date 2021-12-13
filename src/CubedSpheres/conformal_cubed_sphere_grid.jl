@@ -3,7 +3,7 @@ using Oceananigans.Grids
 using Oceananigans.Grids: R_Earth, interior_indices
 
 import Base: show, size, eltype
-import Oceananigans.Grids: topology, domain_string, architecture
+import Oceananigans.Grids: topology, domain_string, architecture, halo_size
 
 struct CubedSphereFaceConnectivityDetails{F, S}
     face :: F
@@ -227,6 +227,7 @@ end
 
 Base.size(grid::ConformalCubedSphereGrid) = (size(grid.faces[1])..., length(grid.faces))
 Base.size(grid::ConformalCubedSphereGrid, i) = size(grid)[i]
+halo_size(ccsg::ConformalCubedSphereGrid) = halo_size(first(ccsg)) # hack
 
 Base.eltype(grid::ConformalCubedSphereGrid{FT}) where FT = FT
 
