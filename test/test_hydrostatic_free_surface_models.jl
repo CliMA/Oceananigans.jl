@@ -68,8 +68,6 @@ topos_3d = ((Periodic, Periodic, Bounded),
             (Periodic, Bounded,  Bounded),
             (Bounded,  Bounded,  Bounded))
 
-topos = (topo_1d, topos_2d, topos_3d...)
-
 @testset "Hydrostatic free surface Models" begin
     @info "Testing hydrostatic free surface models..."
       
