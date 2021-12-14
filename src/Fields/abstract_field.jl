@@ -162,7 +162,7 @@ Base.fill!(f::AbstractDataField, val) = fill!(parent(f), val)
 
 @inline cpudata(a) = data(a)
 
-@inline cpudata(f::AbstractField{X, Y, Z, <:AbstractGPUArchitecture}) where {X, Y, Z} =
+@inline cpudata(f::AbstractField{X, Y, Z, <:GPU}) where {X, Y, Z} =
     offset_data(Array(parent(f)), f.grid, location(f))
 
 "Returns `f.data.parent` for `f::Field`."

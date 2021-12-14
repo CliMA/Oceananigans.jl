@@ -65,7 +65,7 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
                                            super_rotations = 4)
 
     # A spherical domain
-    @show grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+    @show grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, 1),
                                        radius = 1,
                                        latitude = (-northern_boundary, northern_boundary),
                                        longitude = (-180, 180),
@@ -74,7 +74,6 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
     uᵢ(λ, ϕ, z, t=0) = solid_body_rotation(λ, ϕ)
 
     model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        architecture = architecture,
                                         tracers = (:c, :d, :e),
                                         velocities = PrescribedVelocityFields(u=uᵢ),
                                         coriolis = nothing,

@@ -101,7 +101,7 @@ for N in Ns, (adv, scheme) in enumerate(schemes)
         scheme = WENO5( grid = grid )
     end
 
-    model = ShallowWaterModel(architecture = CPU(), grid = grid,
+    model = ShallowWaterModel(CPU(), grid = grid,
                                 advection = scheme,
                                 coriolis = nothing,
                                 gravitational_acceleration = 0,

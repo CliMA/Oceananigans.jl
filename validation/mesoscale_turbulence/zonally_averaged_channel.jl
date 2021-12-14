@@ -51,7 +51,7 @@ stop_time = 70 days
 # linearly_spaced_faces(k) = k==1 ? -Lz : - Lz + sum(Δz_center_linear.(1:k-1))
 
 # We choose a regular grid though because of numerical issues that yet need to be resolved
-grid = RectilinearGrid(architecture = architecture,
+grid = RectilinearGrid(architecture,
                        topology = (Flat, Bounded, Bounded),
                        size = (Ny, Nz),
                        halo = (3, 3),
@@ -165,8 +165,8 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(architecture = architecture,
-                                    grid = grid,
+
+model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = ImplicitFreeSurface(),
                                     momentum_advection = WENO5(),
                                     tracer_advection = WENO5(),

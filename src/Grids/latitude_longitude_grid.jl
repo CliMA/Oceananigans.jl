@@ -1,9 +1,8 @@
-import Oceananigans.Architectures: architecture
 using KernelAbstractions: @kernel, @index
 
 const R_Earth = 6371.0e3    # Mean radius of the Earth [m] https://en.wikipedia.org/wiki/Earth
 
-struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
+struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
         architecture::Arch
         Nx :: Int
         Ny :: Int
@@ -54,18 +53,16 @@ or an array or function that specifies the faces (see VerticallyStretchedRectili
 
 """
 
-function LatitudeLongitudeGrid(FT=Float64; 
-                               architecture=CPU(),
-                               precompute_metrics=false,
+function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
+                               FT::DataType = Float64; 
+                               precompute_metrics = false,
                                size,
                                latitude,
                                longitude,
                                z,                      
-                               radius=R_Earth,
-                               halo=(1, 1, 1))
-
-    arch = architecture
-    
+                               radius = R_Earth,
+                               halo = (1, 1, 1))
+   
     λ₁, λ₂ = get_domain_extent(longitude, size[1])
     @assert λ₁ < λ₂ && λ₂ - λ₁ ≤ 360
 
@@ -90,9 +87,9 @@ function LatitudeLongitudeGrid(FT=Float64;
     # A direction is regular if the domain passed is a Tuple{<:Real, <:Real}, 
     # it is stretched if being passed is a function or vector (as for the VerticallyStretchedRectilinearGrid)
     
-    Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topo[1], Nλ, Hλ, longitude, arch)
-    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topo[2], Nφ, Hφ, latitude,  arch)
-    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topo[3], Nz, Hz, z,         arch)
+    Lλ, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topo[1], Nλ, Hλ, longitude, architecture)
+    Lφ, φᵃᶠᵃ, φᵃᶜᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ = generate_coordinate(FT, topo[2], Nφ, Hφ, latitude,  architecture)
+    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topo[3], Nz, Hz, z,         architecture)
 
     FX   = typeof(Δλᶠᵃᵃ)
     FY   = typeof(Δφᵃᶠᵃ)
@@ -100,19 +97,19 @@ function LatitudeLongitudeGrid(FT=Float64;
     VX   = typeof(λᶠᵃᵃ)
     VY   = typeof(φᵃᶠᵃ)
     VZ   = typeof(zᵃᵃᶠ)
-    Arch = typeof(arch) 
+    Arch = typeof(architecture) 
 
 
     if precompute_metrics == true
-        grid = LatitudeLongitudeGrid{FT, TX, TY, TZ, Nothing, Nothing, FX, FY, FZ, VX, VY, VZ, Arch}(arch,
+        grid = LatitudeLongitudeGrid{FT, TX, TY, TZ, Nothing, Nothing, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
                 Nλ, Nφ, Nz, Hλ, Hφ, Hz, Lλ, Lφ, Lz, Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
                 nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, nothing, radius)
 
         Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ = allocate_metrics(FT, grid)
-        wait(device_event(arch))
+        wait(device_event(architecture))
 
         precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ )
-        wait(device_event(arch))
+        wait(device_event(architecture))
 
         Δyᶠᶜ, Δyᶜᶠ = precompute_Δy_metrics(grid, Δyᶠᶜ, Δyᶜᶠ)
         
@@ -134,10 +131,14 @@ function LatitudeLongitudeGrid(FT=Float64;
         MY   = Nothing
     end
 
-    return LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch}(arch,
+    return LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
             Nλ, Nφ, Nz, Hλ, Hφ, Hz, Lλ, Lφ, Lz, Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
             Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ, radius)
 end
+
+# architecture = CPU() default, assuming that a DataType positional arg
+# is specifying the floating point type.
+LatitudeLongitudeGrid(FT::DataType; kwargs...) = LatitudeLongitudeGrid(CPU(), FT; kwargs...)
 
 function domain_string(grid::LatitudeLongitudeGrid)
     λ₁, λ₂ = domain(topology(grid, 1), grid.Nx, grid.λᶠᵃᵃ)
@@ -147,26 +148,28 @@ function domain_string(grid::LatitudeLongitudeGrid)
 end
 
 function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX, TY, TZ, M<:Nothing}
-    print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} on the $(g.architecture) \n",
+    print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} \n",
+              "             architecture: $(g.architecture)\n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
               "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
               "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
-              "                grid in λ: ", show_coordinate(g.Δλᶜᵃᵃ, TX), '\n',
-              "                grid in φ: ", show_coordinate(g.Δφᵃᶜᵃ, TY), '\n',
-              "                grid in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ), '\n',
+              "             spacing in λ: ", show_coordinate(g.Δλᶜᵃᵃ, TX), '\n',
+              "             spacing in φ: ", show_coordinate(g.Δφᵃᶜᵃ, TY), '\n',
+              "             spacing in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ), '\n',
               "metrics are computed on the fly")
 end
 
 function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ}  on the $(g.architecture) \n",
+    print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ}\n",
+              "             architecture: $(g.architecture)\n",
               "                   domain: $(domain_string(g))\n",
               "                 topology: ", (TX, TY, TZ), '\n',
               "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
               "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
-              "                grid in λ: ", show_coordinate(g.Δλᶜᵃᵃ, TX), '\n',
-              "                grid in φ: ", show_coordinate(g.Δφᵃᶜᵃ, TY), '\n',
-              "                grid in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ), '\n',
+              "             spacing in λ: ", show_coordinate(g.Δλᶜᵃᵃ, TX), '\n',
+              "             spacing in φ: ", show_coordinate(g.Δφᵃᶜᵃ, TY), '\n',
+              "             spacing in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ), '\n',
               "metrics are pre-computed")
 end
 
@@ -185,11 +188,37 @@ all_y_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.φᵃᶠᵃ
 all_z_nodes(::Type{Center}, grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶜ
 all_z_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶠ
 
-architecture(::LatitudeLongitudeGrid) = nothing
-
 @inline x_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.λᶠᵃᵃ)
 @inline y_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.φᵃᶠᵃ)
 @inline z_domain(grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
+
+@inline cpu_face_constructor_x(grid::XRegLatLonGrid) = x_domain(grid)
+@inline cpu_face_constructor_y(grid::YRegLatLonGrid) = y_domain(grid)
+@inline cpu_face_constructor_z(grid::ZRegLatLonGrid) = z_domain(grid)
+
+function with_arch(new_arch, old_grid::LatitudeLongitudeGrid)
+
+    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
+    topo = topology(old_grid)
+
+    x = cpu_face_constructor_x(old_grid)
+    y = cpu_face_constructor_y(old_grid)
+    z = cpu_face_constructor_z(old_grid)  
+
+    # Remove elements of size and new_halo in Flat directions as expected by grid
+    # constructor
+    size = pop_flat_elements(size, topo)
+    halo = pop_flat_elements(halo_size(old_grid), topo)
+
+    new_grid = LatitudeLongitudeGrid(new_arch, eltype(old_grid);
+                                     size = size,
+                                longitude = x, 
+                                 latitude = y, 
+                                        z = z,
+                                     halo = halo)
+    return new_grid
+end
+
 
 Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     LatitudeLongitudeGrid{FT, TX, TY, TZ,
