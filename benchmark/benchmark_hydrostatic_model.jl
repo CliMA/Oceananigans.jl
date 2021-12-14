@@ -21,8 +21,8 @@ DataDeps.register(dd)
 
 # Benchmark function
 
-Nx = 1024
-Ny = 512
+Nx = 128
+Ny = 128
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
@@ -60,7 +60,7 @@ grids = Dict(
 
 free_surfaces = Dict(
     :ExplicitFreeSurface => ExplicitFreeSurface(),
-    :ImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient), 
+    :ImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, precondition=false), 
     :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver) 
 )
 
@@ -103,8 +103,8 @@ free_surface_types = [
     # :ExplicitFreeSurface,
     # ImplicitFreeSurface doesn't yet work on MultiRegionGrids like the ConformalCubedSphereGrid:
     # :FFTImplicitFreeSurface, 
-    :ImplicitFreeSurface,
     :MatrixImplicitFreeSurface,
+    :ImplicitFreeSurface,
     # :ImplicitFreeSurface
 ]
 
