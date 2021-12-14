@@ -170,13 +170,20 @@ function run_simulation_date_tests(arch, start_time, stop_time, Δt)
     return nothing
 end
 
-function nan_checker_stops_simulation_test(arch)
+function run_nan_checker_test(arch; erroring)
     grid = RectilinearGrid(arch, size=(4, 2, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid=grid)
     simulation = Simulation(model, Δt=1, stop_iteration=1)
     model.velocities.u[1, 1, 1] = NaN
-    run!(simulation)
-    @test model.clock.iteration == 0 # simulation did not run
+    erroring && erroring_NaNChecker!(simulation)
+
+    if erroring
+        @test_throws ErrorException run!(simulation)
+    else
+        run!(simulation)
+        @test model.clock.iteration == 0 # simulation did not run
+    end
+
     return nothing
 end
 
@@ -194,7 +201,8 @@ end
 
         @testset "NaN Checker [$(typeof(arch))]" begin
             @info "  Testing NaN Checker [$(typeof(arch))]..."
-            nan_checker_stops_simulation_test(arch)
+            run_nan_checker_test(arch, erroring=true)
+            run_nan_checker_test(arch, erroring=false)
         end
 
         @info "Testing simulations with DateTime [$(typeof(arch))]..."
