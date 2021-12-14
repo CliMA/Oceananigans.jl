@@ -107,9 +107,10 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     # Check halos and throw an error if the grid's halo is too small
     user_halo = halo_size(grid)
-    req_halo_momentum = inflate_halo_size(user_halo..., topology(grid), momentum_advection, closure)
-    req_halo_tracers = inflate_halo_size(user_halo..., topology(grid), tracer_advection, closure)
-    any(user_halo .< req_halo_momentum) || any(user_halo .< req_halo_tracers) &&
+    req_halo_momentum = inflate_halo_size(user_halo..., topology(grid), momentum_advection)
+    req_halo_tracers = inflate_halo_size(user_halo..., topology(grid), tracer_advection)
+    req_halo_closure = inflate_halo_size(user_halo..., topology(grid), closure)
+    any(user_halo .< req_halo_momentum) || any(user_halo .< req_halo_tracers) || any(user_halo .< req_halo_closure) &&
         throw(ArgumentError("The grid halo $user_halo must be larger than either $req_halo_momentum " *
                             "or $req_halo_tracers"))
 
