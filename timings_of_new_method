@@ -33,3 +33,31 @@ On the CPU:
 │           GPU │ LatitudeLongitudeGrid │       ImplicitFreeSurface │   6.925 ms │   7.125 ms │   7.319 ms │   8.319 ms │   5.58 MiB │  12347 │      10 │
 │           GPU │ LatitudeLongitudeGrid │ MatrixImplicitFreeSurface │   3.897 ms │   4.043 ms │   5.266 ms │  14.660 ms │   3.94 MiB │   6305 │      10 │
 └───────────────┴───────────────────────┴───────────────────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────┴─────────┘
+
+
+Final timings
+                                                              Hydrostatic model benchmarks
+┌───────────────┬───────────────────────┬───────────────────────────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────┬─────────┐
+│ Architectures │            grid_types │        free_surface_types │        min │     median │       mean │        max │     memory │ allocs │ samples │
+├───────────────┼───────────────────────┼───────────────────────────┼────────────┼────────────┼────────────┼────────────┼────────────┼────────┼─────────┤
+│           CPU │       RectilinearGrid │       ImplicitFreeSurface │    5.208 s │    5.208 s │    5.208 s │    5.208 s │ 775.16 MiB │ 894657 │       1 │
+│           CPU │       RectilinearGrid │ MatrixImplicitFreeSurface │ 740.684 ms │ 797.775 ms │ 804.690 ms │ 908.189 ms │  17.22 MiB │   2333 │       7 │
+│           GPU │       RectilinearGrid │       ImplicitFreeSurface │ 103.616 ms │ 131.455 ms │ 344.845 ms │    2.350 s │  29.93 MiB │ 157907 │      10 │
+│           GPU │       RectilinearGrid │ MatrixImplicitFreeSurface │  32.840 ms │  33.439 ms │  33.427 ms │  34.127 ms │   3.47 MiB │  23241 │      10 │
+│           CPU │ LatitudeLongitudeGrid │       ImplicitFreeSurface │    7.011 s │    7.011 s │    7.011 s │    7.011 s │   1.38 GiB │ 148021 │       1 │
+│           CPU │ LatitudeLongitudeGrid │ MatrixImplicitFreeSurface │ 964.459 ms │ 968.946 ms │ 970.354 ms │ 982.903 ms │  17.67 MiB │   2327 │       6 │
+│           GPU │ LatitudeLongitudeGrid │       ImplicitFreeSurface │ 162.837 ms │ 170.582 ms │ 200.278 ms │ 417.294 ms │  81.34 MiB │ 326864 │      10 │
+│           GPU │ LatitudeLongitudeGrid │ MatrixImplicitFreeSurface │ 119.939 ms │ 122.278 ms │ 122.105 ms │ 124.059 ms │   6.94 MiB │  71666 │      10 │
+└───────────────┴───────────────────────┴───────────────────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────┴─────────┘
+
+With Jacobi Preconditioner on GPU()
+┌───────────────┬─────────────────┬──────────────────────────────┬────────────┬────────────┬────────────┬────────────┬────────────┬────────┬─────────┐
+│ Architectures │      grid_types │           free_surface_types │        min │     median │       mean │        max │     memory │ allocs │ samples │
+├───────────────┼─────────────────┼──────────────────────────────┼────────────┼────────────┼────────────┼────────────┼────────────┼────────┼─────────┤
+│           GPU │ RectilinearGrid │ MatrixImplicitFreeSurfacePre │  43.326 ms │  45.231 ms │  46.724 ms │  63.659 ms │   3.76 MiB │  29841 │      10 │
+│           CPU │ RectilinearGrid │ MatrixImplicitFreeSurfacePre │ 482.279 ms │ 497.200 ms │ 500.396 ms │ 531.172 ms │  17.23 MiB │   2416 │      10 │
+│           GPU │ RectilinearGrid │          ImplicitFreeSurface │  78.760 ms │  80.020 ms │  81.314 ms │  91.538 ms │  28.91 MiB │ 153050 │      10 │
+│           CPU │ RectilinearGrid │    MatrixImplicitFreeSurface │ 968.371 ms │    1.014 s │    1.010 s │    1.042 s │  17.28 MiB │   2853 │       5 │
+│           CPU │ RectilinearGrid │          ImplicitFreeSurface │    2.562 s │    2.612 s │    2.612 s │    2.661 s │ 679.98 MiB │  73519 │       2 │
+│           GPU │ RectilinearGrid │    MatrixImplicitFreeSurface │  35.628 ms │  36.291 ms │  38.279 ms │  55.611 ms │   3.53 MiB │  23753 │      10 │
+└───────────────┴─────────────────┴──────────────────────────────┴────────────┴────────────┴────────────┴────────────┴────────────┴────────┴─────────┘

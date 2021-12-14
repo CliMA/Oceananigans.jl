@@ -5,7 +5,6 @@ using Oceananigans.Fields: interior_copy
 using Oceananigans.Utils: heuristic_workgroup
 using KernelAbstractions: @kernel, @index
 using IterativeSolvers, SparseArrays, LinearAlgebra
-using SparseArrays: fkeep!
 using CUDA, CUDA.CUSPARSE
 
 mutable struct MatrixIterativeSolver{A, G, R, L, D, M, P, I, T, F}
@@ -73,7 +72,7 @@ function MatrixIterativeSolver(coeffs;
                                placeholder_timestep = -1.0, 
                                precondition = true)
 
-    arch = grid.architecture
+    arch = architecture(grid)
 
     matrix_constructors, diagonal, problem_size = matrix_from_coefficients(arch, grid, coeffs, reduced_dim)  
 
@@ -252,43 +251,13 @@ function solve!(x, solver::MatrixIterativeSolver, b, Δt)
         solver.previous_Δt = Δt
     end
     
-    q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner)
+    q = solver.iterative_solver(solver.matrix, b, verbose=true, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner)
     
     set!(x, reshape(q, solver.problem_size...))
     fill_halo_regions!(x, solver.architecture) 
 
     return
 end
-
-# We need to update the diagonal element each time the time step changes!!
-function update_diag!(constr, arch, problem_size, diagonal, Δt)
-    
-    N = problem_size
-    M = prod(N)
-    col, row, val = unpack_constructors(arch, constr)
-   
-    loop! = _update_diag!(Architectures.device(arch), heuristic_workgroup(N), N)
-    event = loop!(diagonal, col, row, val, Δt, N; dependencies=Event(Architectures.device(arch)))
-    wait(event)
-
-    constr = constructors(arch, M, (col, row, val))
-end
-
-@kernel function _update_diag!(diag, colptr, rowval, nzval, Δt, N)
-    i, j, k = @index(Global, NTuple)
-    t = i + N[1] * (j - 1 + N[2] * (k - 1)) 
-    map = 1
-    for idx in colptr[t]:colptr[t+1] - 1
-        if rowval[idx] == t
-            map = idx 
-            break
-        end
-    end
-    nzval[map] += diag[t] / Δt^2 
-end
-
-#unfortunately this cannot run on a GPU so we have to resort to that ugly loop in _update_diag!
-@inline map_row_to_diag_element(i, rowval, colptr) =  colptr[i] - 1 + findfirst(rowval[colptr[i]:colptr[i+1]-1] .== i)
 
 function Base.show(io::IO, solver::MatrixIterativeSolver)
     print(io, "matrix-based iterative solver with: \n")
@@ -297,19 +266,3 @@ function Base.show(io::IO, solver::MatrixIterativeSolver)
     print(io, " Solution method = ", solver.iterative_solver)
     return nothing
 end
-
-@inline function validate_laplacian_direction(N, topo, reduced_dim)
-   
-    dim = N > 1 && reduced_dim == false
-    if N < 3 && topo == Bounded && dim == true
-        throw(ArgumentError("cannot calculate laplacian in bounded domain with N < 3"))
-    end
-
-    return dim
-end
-
-@inline validate_laplacian_size(N, dim) = dim == true ? N : 1
-  
-# drop the zeros of the matrix ensuring that diagonal elements are present in the CSC formulation (for future addition of diag/Δt^2)
-@inline ensure_diagonal_elements_are_present!(A) = fkeep!(A, (i, j, x) -> (i == j || !iszero(x)))
-

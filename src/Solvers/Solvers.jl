@@ -40,7 +40,7 @@ include("plan_transforms.jl")
 include("fft_based_poisson_solver.jl")
 include("fourier_tridiagonal_poisson_solver.jl")
 include("preconditioned_conjugate_gradient_solver.jl")
-include("ilu_preconditioner_methods.jl")
+include("matrix_solver_utils.jl")
 include("matrix_iterative_solver.jl")
 
 end
