@@ -14,7 +14,7 @@ end
 
 const HCABD = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
 
-required_halo_size(closure::HCABD) = 2
+required_halo_size(::HCABD) = 2
 
 """
     HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(FT=Float64; νh=0, κh=0, νz=nothing, κz=nothing)
