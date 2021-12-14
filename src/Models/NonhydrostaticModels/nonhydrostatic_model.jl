@@ -124,7 +124,13 @@ function NonhydrostaticModel(;    grid,
     # by adjusting each (x, y, z) halo individually.
     user_halo = grid.Hx, grid.Hy, grid.Hz
     required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., topology(grid), advection, closure)
-    user_halo != required_halo && (grid = with_halo((Hx, Hy, Hz), grid)) # Don't replace grid unless needed.
+    if any(user_halo .< required_halo) # Replace grid
+        @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
+              "The model grid will be different from the input grid. To avoid this warning, " *
+              "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
+
+        grid = with_halo((Hx, Hy, Hz), grid)
+    end
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
