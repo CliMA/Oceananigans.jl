@@ -1,3 +1,5 @@
+using Oceananigans.Models: AbstractModel
+
 mutable struct NaNChecker{F}
     fields :: F
     erroring :: Bool
@@ -17,6 +19,7 @@ If `erroring=true`, the `NaNChecker` will throw an error on NaN detection.
 NaNChecker(; fields, erroring=false) = NaNChecker(fields, erroring)
 
 hasnan(field) = any(isnan, parent(field)) 
+hasnan(model::AbstractModel) = hasnan(first(fields(model)))
 
 function (nc::NaNChecker)(simulation)
     for (name, field) in pairs(nc.fields)
@@ -34,6 +37,11 @@ function (nc::NaNChecker)(simulation)
     return nothing
 end
 
+"""
+    erroring_NaNChecker!(simulation)
+
+Toggles `simulation`'s `NaNChecker` to throw an error when a `NaN` is detected.
+"""
 function erroring_NaNChecker!(simulation)
     simulation.callbacks[:nan_checker].func.erroring = true
     return nothing
