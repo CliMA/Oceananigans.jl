@@ -103,8 +103,6 @@ function HydrostaticFreeSurfaceModel(; grid,
                                   auxiliary_fields = NamedTuple(),
     )
 
-    @warn "HydrostaticFreeSurfaceModel is experimental. Use with caution!"
-
     # Check halos and throw an error if the grid's halo is too small
     user_halo = halo_size(grid)
     required_halo = inflate_halo_size(user_halo..., topology(grid),
