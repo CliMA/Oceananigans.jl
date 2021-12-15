@@ -24,6 +24,7 @@ import Base: size
 @inline unpack_constructors(::GPU, constr::Tuple) = (constr[1], constr[2], constr[3])
 @inline copy_unpack_constructors(::CPU, constr::Tuple) = deepcopy((constr[3], constr[4], constr[5]))
 @inline copy_unpack_constructors(::GPU, constr::Tuple) = deepcopy((constr[1], constr[2], constr[3]))
+
 @inline size(::CPU, constr::Tuple) = constr[1]
 @inline size(::GPU, constr::Tuple) = constr[4][1]
 
