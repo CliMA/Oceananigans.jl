@@ -188,6 +188,12 @@ git-tree-sha1 = "28e837ff3e7a6c3cdb252ce49fb412c8eb3caeef"
 uuid = "615f187c-cbe4-4ef1-ba3b-2fcf58d6d173"
 version = "0.1.0"
 
+[[IncompleteLU]]
+deps = ["LinearAlgebra", "SparseArrays"]
+git-tree-sha1 = "a22b92ffedeb499383720dfedcd473deb9608b62"
+uuid = "40713840-3770-5561-ab4c-a76e7d0d7895"
+version = "0.2.0"
+
 [[IntelOpenMP_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
 git-tree-sha1 = "d979e54b71da82f3a65b62553da4fc3d18c9004c"
@@ -208,6 +214,12 @@ version = "0.1.1"
 git-tree-sha1 = "7fd44fd4ff43fc60815f8e764c0f352b83c49151"
 uuid = "92d709cd-6900-40b7-9082-c6be49f344b6"
 version = "0.1.1"
+
+[[IterativeSolvers]]
+deps = ["LinearAlgebra", "Printf", "Random", "RecipesBase", "SparseArrays"]
+git-tree-sha1 = "1169632f425f79429f245113b775a0e3d121457c"
+uuid = "42fd0dbc-a981-5370-80f2-aaf504508153"
+version = "0.9.2"
 
 [[IteratorInterfaceExtensions]]
 git-tree-sha1 = "a3f24677c21f5bbe9d2a714f95dcd58337fb2856"
@@ -434,6 +446,11 @@ deps = ["Random", "Requires"]
 git-tree-sha1 = "043da614cc7e95c703498a491e2c21f58a2b8111"
 uuid = "e6cf234a-135c-5ec9-84dd-332b85af5143"
 version = "1.5.3"
+
+[[RecipesBase]]
+git-tree-sha1 = "6bf3f380ff52ce0832ddd3a2a7b9538ed1bcca7d"
+uuid = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
+version = "1.2.1"
 
 [[Reexport]]
 git-tree-sha1 = "45e428421666073eab6f2da5c9d310d99bb12f9b"
