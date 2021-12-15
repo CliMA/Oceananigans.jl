@@ -47,7 +47,7 @@ end
 
 
 function tilted_gravity_works(arch, FT)
-    grid = RectilinearGrid(FT, size=(3, 3, 3), x=(0, 1), y=(0, 1), z=(0, 1),
+    grid = RectilinearGrid(arch, FT, size=(3, 3, 3), x=(0, 1), y=(0, 1), z=(0, 1),
                            topology=(Periodic, Bounded, Bounded))
     N² = 1e-5
     g̃₁ = (0, 0, 1)
@@ -60,7 +60,6 @@ function tilted_gravity_works(arch, FT)
     BC_b2 = FieldBoundaryConditions(south=BC, north=BC)
 
     model₁ = NonhydrostaticModel(
-               architecture = arch,
                        grid = grid,
                    buoyancy = buoyancy₁,
                     tracers = :b,
@@ -69,7 +68,6 @@ function tilted_gravity_works(arch, FT)
     )
 
     model₂ = NonhydrostaticModel(
-               architecture = arch,
                        grid = grid,
                    buoyancy = buoyancy₂,
                     tracers = :b,
