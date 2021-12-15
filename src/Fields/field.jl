@@ -34,7 +34,7 @@ end
 #####
 
 """
-    Field{LX, LY, LZ}(grid; kwargs...)
+    Field{LX, LY, LZ}(grid; kw...)
 
 Construct a `Field` on `grid` at the location `(LX, LY, LZ)`.
 Each of `(LX, LY, LZ)` is either `Center` or `Face` and determines
@@ -58,11 +58,12 @@ Field located at (Face, Face, Center)
 └── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=ZeroFlux, top=ZeroFlux, immersed=ZeroFlux
 ```
 """
-Field{LX, LY, LZ}(grid::AbstractGrid, T; kwargs...) where {LX, LY, LZ} = Field((LX, LY, LZ), grid, T; kwargs...)
+Field{LX, LY, LZ}(grid::AbstractGrid, T::DataType=eltype(grid); kw...) where {LX, LY, LZ} =
+    Field((LX, LY, LZ), grid, T; kw...)
 
 function Field(loc::Tuple,
                grid::AbstractGrid,
-               T = eltype(grid);
+               T::DataType = eltype(grid);
                data = new_data(T, grid, loc),
                boundary_conditions = FieldBoundaryConditions(grid, loc))
 
@@ -277,12 +278,12 @@ end
 #####
 
 const XReducedField = Field{Nothing}
-const YReducedField = Field{Any, Nothing}
-const ZReducedField = Field{Any, Any, Nothing}
+const YReducedField = Field{<:Any, Nothing}
+const ZReducedField = Field{<:Any, <:Any, Nothing}
 
-const YZReducedField = Field{Any, Nothing, Nothing}
-const XZReducedField = Field{Nothing, Any, Nothing}
-const XYReducedField = Field{Nothing, Nothing, Any}
+const YZReducedField = Field{<:Any, Nothing, Nothing}
+const XZReducedField = Field{Nothing, <:Any, Nothing}
+const XYReducedField = Field{Nothing, Nothing, <:Any}
 
 const XYZReducedField = Field{Nothing, Nothing, Nothing}
 

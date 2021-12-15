@@ -1,6 +1,9 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy, regrid!, ReducedField, has_velocities, VelocityFields, TracerFields, interpolate
+using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy
+using Oceananigans.Fields: regrid!, ReducedField, has_velocities
+using Oceananigans.Fields: VelocityFields, TracerFields, interpolate
+using Oceananigans.Fields: reduced_location
 
 """
     correct_field_size(grid, FieldType, Tx, Ty, Tz)
@@ -229,7 +232,7 @@ end
             end
 
             for FieldType in FieldTypes
-                field = FieldType( grid)
+                field = FieldType(grid)
                 sz = size(field)
                 A = rand(FT, sz...)
                 set!(field, A)
@@ -250,10 +253,15 @@ end
             ϕs = (u, v, w, c)
             [set!(ϕ, f) for ϕ in ϕs]
 
-            @test u[1, 2, 3] == f(grid.xᶠᵃᵃ[1], grid.yᵃᶜᵃ[2], grid.zᵃᵃᶜ[3])
-            @test v[1, 2, 3] == f(grid.xᶜᵃᵃ[1], grid.yᵃᶠᵃ[2], grid.zᵃᵃᶜ[3])
-            @test w[1, 2, 3] == f(grid.xᶜᵃᵃ[1], grid.yᵃᶜᵃ[2], grid.zᵃᵃᶠ[3])
-            @test c[1, 2, 3] == f(grid.xᶜᵃᵃ[1], grid.yᵃᶜᵃ[2], grid.zᵃᵃᶜ[3])
+            xu, yu, zu = nodes(u)
+            xv, yv, zv = nodes(v)
+            xw, yw, zw = nodes(w)
+            xc, yc, zc = nodes(c)
+
+            @test u[1, 2, 3] == f(xu[1], yu[2], zu[3])
+            @test v[1, 2, 3] == f(xv[1], yv[2], zv[3])
+            @test w[1, 2, 3] == f(xw[1], yw[2], zw[3])
+            @test c[1, 2, 3] == f(xc[1], yc[2], zc[3])
         end
     end
 
@@ -282,11 +290,12 @@ end
         @test has_velocities((:u, :v, :w)) == true
 
         grid = RectilinearGrid(CPU(), size=(4, 6, 8), extent=(1, 1, 1))
-        ϕ = CenterField(CPU(), grid)
+        ϕ = CenterField(grid)
         @test cpudata(ϕ).parent isa Array
 
         if CUDA.has_cuda()
-            ϕ = CenterField(GPU(), grid)
+            grid = RectilinearGrid(GPU(), size=(4, 6, 8), extent=(1, 1, 1))
+            ϕ = CenterField(grid)
             @test cpudata(ϕ).parent isa Array
         end
 
@@ -302,7 +311,7 @@ end
                 run_similar_field_tests(f)
 
                 for dims in (3, (1, 2), (1, 2, 3))
-                    loc = reduced_location(loc; dims)
+                    loc = reduced_location((X, Y, Z); dims)
                     f = Field(loc, grid)
                     run_similar_field_tests(f)
                 end
@@ -310,7 +319,6 @@ end
         end
     end
 
-    #=
     @testset "Regridding" begin
         @info "  Testing field regridding..."
 
@@ -326,12 +334,12 @@ end
             super_fine_column_stretched_grid = RectilinearGrid(arch, size=4, z = [0, 0.1, 0.3, 0.65, Lz], topology=topology)
             super_fine_column_regular_grid   = RectilinearGrid(arch, size=5, z=(0, Lz), topology=topology)
             
-            coarse_column_regular_c       = CenterField(arch, coarse_column_regular_grid)
-            fine_column_regular_c         = CenterField(arch, fine_column_regular_grid)
-            fine_column_stretched_c       = CenterField(arch, fine_column_stretched_grid)
-            very_fine_column_stretched_c  = CenterField(arch, very_fine_column_stretched_grid)
-            super_fine_column_stretched_c = CenterField(arch, super_fine_column_stretched_grid)
-            super_fine_column_regular_c   = CenterField(arch, super_fine_column_regular_grid)
+            coarse_column_regular_c       = CenterField(coarse_column_regular_grid)
+            fine_column_regular_c         = CenterField(fine_column_regular_grid)
+            fine_column_stretched_c       = CenterField(fine_column_stretched_grid)
+            very_fine_column_stretched_c  = CenterField(very_fine_column_stretched_grid)
+            super_fine_column_stretched_c = CenterField(super_fine_column_stretched_grid)
+            super_fine_column_regular_c   = CenterField(super_fine_column_regular_grid)
 
             # we initialize an array on the `fine_column_stretched_grid`, regrid it to the rest
             # grids, and check whether we get the anticipated results
@@ -385,5 +393,4 @@ end
             end
         end
     end
-    =#
 end
