@@ -285,34 +285,34 @@ Below, non-default boundary conditions are imposed on the ``u``-velocity and tem
 ```jldoctest
 julia> topology = (Periodic, Periodic, Bounded);
 
-julia> grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology);
+julia> grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1), topology=topology);
 
 julia> u_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(+0.1),
                                        bottom = ValueBoundaryCondition(-0.1));
 
-julia> T_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20),
+julia> c_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition(20),
                                        bottom = GradientBoundaryCondition(0.01));
 
-julia> model = NonhydrostaticModel(grid=grid, boundary_conditions=(u=u_bcs, T=T_bcs))
+julia> model = NonhydrostaticModel(grid=grid, boundary_conditions=(u=u_bcs, c=c_bcs), tracers=:c)
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
-├── tracers: (:T, :S)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
+├── tracers: (:c,)
 ├── closure: Nothing
-├── buoyancy: SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}
+├── buoyancy: Nothing
 └── coriolis: Nothing
 
 julia> model.velocities.u
 Field located at (Face, Center, Center)
 ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (16, 16, 16)
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 └── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=Value, top=Value, immersed=ZeroFlux
 
-julia> model.tracers.T
+julia> model.tracers.c
 Field located at (Center, Center, Center)
 ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (16, 16, 16)
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
+├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=16, Ny=16, Nz=16)
 └── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=Gradient, top=Value, immersed=ZeroFlux
 ```
 
 Notice that the specified non-default boundary conditions have been applied at
-top and bottom of both `model.velocities.u` and `model.tracers.T`.
+top and bottom of both `model.velocities.u` and `model.tracers.c`.

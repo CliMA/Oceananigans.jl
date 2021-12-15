@@ -1,3 +1,4 @@
+using Oceananigans.Fields: AbstractField, AbstractReducedField
 using KernelAbstractions: @kernel, @index, Event, MultiEvent
 using OffsetArrays: OffsetArray
 
@@ -54,6 +55,10 @@ end
 
 fill_halo_regions!(field::AbstractField{LX, LY, LZ}, arch::AbstractMultiArchitecture, args...) where {LX, LY, LZ} =
     fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, (LX, LY, LZ), args...)
+
+
+fill_halo_regions!(field::AbstractReducedField, arch::AbstractMultiArchitecture, args...) =
+    fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...; reduced_dimensions=field.dims)
 
 function fill_halo_regions!(c::OffsetArray, bcs, arch::AbstractMultiArchitecture, grid, c_location, args...)
 

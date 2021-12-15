@@ -7,14 +7,13 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
 using Oceananigans.AbstractOperations: KernelFunctionOperation, volume
 
-function run_hydrostatic_free_turbulence_regression_test(grid, free_surface, arch; regenerate_data=false)
+function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; regenerate_data=false)
 
     #####
     ##### Constructing Grid and model
     #####
     
     model = HydrostaticFreeSurfaceModel(grid = grid,
-                                architecture = arch,
                           momentum_advection = VectorInvariant(),
                                 free_surface = free_surface,
                                     coriolis = HydrostaticSphericalCoriolis(),
@@ -43,9 +42,11 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface, arc
     # wave_speed is the hydrostatic (shallow water) gravity wave speed
     gravity    = model.free_surface.gravitational_acceleration
     wave_speed = sqrt(gravity * grid.Lz)                                 
-
-    minimum_Δx = grid.radius * cosd(maximum(abs, view(grid.φᵃᶜᵃ, 1:grid.Ny))) * deg2rad(grid.Δλ)
-    minimum_Δy = grid.radius * deg2rad(grid.Δφ)
+    
+    CUDA.allowscalar(true)
+    minimum_Δx = grid.radius * cosd(maximum(abs, view(grid.φᵃᶜᵃ, 1:grid.Ny))) * deg2rad(minimum(grid.Δλᶜᵃᵃ))
+    minimum_Δy = grid.radius * deg2rad(minimum(grid.Δφᵃᶜᵃ))
+    CUDA.allowscalar(false)
 
     wave_time_scale = min(minimum_Δx, minimum_Δy) / wave_speed
 

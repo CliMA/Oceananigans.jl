@@ -25,12 +25,11 @@ include("data_dependencies.jl")
 
         # Prototype grid and model for subsequent tests
         cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
-        grid = ConformalCubedSphereGrid(cs32_filepath, architecture=arch, Nz=1, z=(-1, 0))
+        grid = ConformalCubedSphereGrid(cs32_filepath, arch, Nz=1, z=(-1, 0))
 
         @info "Constructing a HydrostaticFreeSurfaceModel on a ConformalCubedSphereGrid [$(typeof(arch))]..."
 
         model = HydrostaticFreeSurfaceModel(
-                  architecture = arch,
                           grid = grid,
             momentum_advection = VectorInvariant(),
                   free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),

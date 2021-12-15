@@ -4,7 +4,7 @@ using PkgBenchmark
 using Oceananigans
 using Benchmarks
 
-baseline = BenchmarkConfig(id="master")
+baseline = BenchmarkConfig(id="main")
 script = joinpath(@__DIR__, "benchmarkable_nonhydrostatic_model.jl")
 resultfile = joinpath(@__DIR__, "regression_benchmarks.json")
 

@@ -24,7 +24,7 @@ end
         @info "  Testing ReducedField initialization..."
         for arch in archs, FT in float_types
 
-            grid = RegularRectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Bounded, Bounded, Bounded))
+            grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Bounded, Bounded, Bounded))
 
             @test correct_reduced_field_size((Center, Center, Center), arch, grid, 1,         1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
             @test correct_reduced_field_size((Face,   Center, Center), arch, grid, 1,         1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
@@ -52,7 +52,7 @@ end
         @info "  Testing ReducedField setting..."
         for arch in archs, FT in float_types
 
-            grid = RegularRectilinearGrid(FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Bounded))
+            grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Bounded))
 
             for dims in reduced_dims, val in vals
                 @test correct_reduced_field_value_was_set(arch, grid, (Center, Center, Center), dims, val)

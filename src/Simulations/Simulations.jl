@@ -1,6 +1,12 @@
 module Simulations
 
-export TimeStepWizard, Simulation, run!, Callback, iteration, stopwatch
+export TimeStepWizard
+export Simulation
+export run!
+export Callback
+export iteration
+export stopwatch
+export erroring_NaNChecker!
 
 import Base: show
 
@@ -15,6 +21,7 @@ using Oceananigans.Utils
 
 include("callback.jl")
 include("time_step_wizard.jl")
+include("nan_checker.jl")
 include("simulation.jl")
 include("run.jl")
 

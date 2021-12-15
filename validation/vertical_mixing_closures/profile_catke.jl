@@ -9,7 +9,7 @@ using Profile
 using StatProfilerHTML
 using BenchmarkTools
 
-grid = RegularRectilinearGrid(size=64, z=(-64, 0), topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(size=64, z=(-64, 0), topology=(Flat, Flat, Bounded))
 
 closure = CATKEVerticalDiffusivity()
                                       

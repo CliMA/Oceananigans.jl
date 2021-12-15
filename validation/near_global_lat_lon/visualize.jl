@@ -36,10 +36,10 @@ function visualize_makie(output_prefix)
     Lz = file["grid/Lz"]
 
     # A spherical domain
-    grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                        longitude = (-180, 180),
-                                        latitude = (-Lφ/2, Lφ/2),
-                                        z = (-Lz, 0))
+    grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                                 longitude = (-180, 180),
+                                 latitude = (-Lφ/2, Lφ/2),
+                                 z = (-Lz, 0))
 
     iterations = parse.(Int, keys(file["timeseries/t"]))
 
@@ -58,7 +58,6 @@ function visualize_makie(output_prefix)
         scale * max_ζ < min_clim && (-min_clim, min_clim)
         scale .* (-max_ζ, max_ζ)
     end
-
 
     ax = fig[:, :] = LScene(fig) # make plot area wider
     wireframe!(ax, Sphere(Point3f0(0), 1f0), show_axis=false)
@@ -80,6 +79,6 @@ function visualize_makie(output_prefix)
     return nothing
 end
 
-output_prefix = "rotating_freely_decaying_barotropic_turbulence_Nx1080_Ny480"
+output_prefix = "rotating_freely_decaying_barotropic_turbulence_fly_Nx1080_Ny480"
 
 visualize_makie(output_prefix)

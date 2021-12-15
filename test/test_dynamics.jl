@@ -10,7 +10,7 @@ end
 function test_diffusion_simple(fieldname, timestepper, time_discretization)
 
     model = NonhydrostaticModel(timestepper = timestepper,
-                                       grid = RegularRectilinearGrid(size=(1, 1, 16), extent=(1, 1, 1)),
+                                       grid = RectilinearGrid(CPU(), size=(1, 1, 16), extent=(1, 1, 1)),
                                     closure = IsotropicDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
                                    coriolis = nothing,
                                     tracers = :c,
@@ -38,7 +38,7 @@ function test_isotropic_diffusion_budget(fieldname, model)
 
     ν = z_viscosity(model.closure, nothing) # for generalizing to isotropic AnisotropicDiffusivity
 
-    return test_diffusion_budget(fieldname, field, model, ν, model.grid.Δz)
+    return test_diffusion_budget(fieldname, field, model, ν, model.grid.Δzᵃᵃᶜ)
 end
 
 function test_biharmonic_diffusion_budget(fieldname, model)
@@ -47,7 +47,7 @@ function test_biharmonic_diffusion_budget(fieldname, model)
 
     field = get_model_field(fieldname, model)
 
-    return test_diffusion_budget(fieldname, field, model, model.closure.νz, model.grid.Δz, 4)
+    return test_diffusion_budget(fieldname, field, model, model.closure.νz, model.grid.Δzᵃᵃᶜ, 4)
 end
 
 function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
@@ -72,6 +72,7 @@ function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization
     model = NonhydrostaticModel(timestepper = timestepper,
                                        grid = grid,
                                     closure = IsotropicDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
+                                    tracers = (:T, :S),
                                    buoyancy = nothing)
 
     field = get_model_field(fieldname, model)
@@ -114,9 +115,10 @@ function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, bac
 
     background_fields = NamedTuple{Tuple(keys(background_fields))}(values(background_fields))
 
-    grid = RegularRectilinearGrid(size=(N, N, 2), extent=(L, L, L))
+    grid = RectilinearGrid(size=(N, N, 2), extent=(L, L, L))
     closure = IsotropicDiffusivity(ν=κ, κ=κ)
     model = NonhydrostaticModel(timestepper=timestepper, grid=grid, closure=closure,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 background_fields=background_fields)
 
     set!(model, u=u₀, v=v₀, T=T₀)
@@ -149,9 +151,8 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
     @inline v(x, y, z, t) =  sin(2π*x) * exp(-4π^2 * ν * t)
 
     model = NonhydrostaticModel(
-        architecture = arch,
          timestepper = timestepper,
-                grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
+                grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz)),
              closure = IsotropicDiffusivity(FT, ν=1, time_discretization=time_discretization),
              tracers = nothing,
             buoyancy = nothing)
@@ -187,9 +188,8 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
 end
 
 
-
 function inertial_oscillations_work_with_rotation_in_different_axis(arch, FT)
-    grid = RegularRectilinearGrid(FT, size=(), topology=(Flat, Flat, Flat))
+    grid = RectilinearGrid(arch, FT, size=(), topology=(Flat, Flat, Flat))
 
     f₀ = 1
     ū = 1
@@ -275,7 +275,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                         topology[2] === Periodic && push!(fieldnames, :v)
                         topology[3] === Periodic && push!(fieldnames, :w)
 
-                        grid = RegularRectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
+                        grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
 
                         model = NonhydrostaticModel(timestepper = timestepper,
                                                            grid = grid,
@@ -311,7 +311,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 topology[2] === Periodic && push!(fieldnames, :v)
                 topology[3] === Periodic && push!(fieldnames, :w)
 
-                grid = RegularRectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
+                grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
 
                 model = NonhydrostaticModel(timestepper = timestepper,
                                                    grid = grid,
@@ -333,7 +333,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             for fieldname in (:u, :v, :T, :S)
                 for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
                     Nz, Lz = 128, π/2
-                    grid = RegularRectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
+                    grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
 
                     @info "  Testing diffusion cosine [$fieldname, $timestepper, $time_discretization]..."
                     @test test_diffusion_cosine(fieldname, timestepper, grid, time_discretization)
@@ -361,21 +361,21 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         Lx = Lz = 2π
 
         # Regular grid with no flat dimension
-        y_periodic_regular_grid = RegularRectilinearGrid(topology=(Periodic, Periodic, Bounded),
+        y_periodic_regular_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
                                                          size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
 
         # Regular grid with a flat y-dimension
-        y_flat_regular_grid = RegularRectilinearGrid(topology=(Periodic, Flat, Bounded),
+        y_flat_regular_grid = RectilinearGrid(topology=(Periodic, Flat, Bounded),
                                                      size=(Nx, Nz), x=(0, Lx), z=(-Lz, 0))
 
         # Vertically stretched grid with regular spacing and no flat dimension
         z_faces = collect(znodes(Face, y_periodic_regular_grid))
-        y_periodic_regularly_spaced_vertically_stretched_grid = VerticallyStretchedRectilinearGrid(topology=(Periodic, Periodic, Bounded),
-                                                                                                   size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z_faces=z_faces)
+        y_periodic_regularly_spaced_vertically_stretched_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
+                                                                                                   size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=z_faces)
 
         # Vertically stretched grid with regular spacing and no flat dimension
-        y_flat_regularly_spaced_vertically_stretched_grid = VerticallyStretchedRectilinearGrid(topology=(Periodic, Flat, Bounded),
-                                                                                               size=(Nx, Nz), x=(0, Lx), z_faces=z_faces)
+        y_flat_regularly_spaced_vertically_stretched_grid = RectilinearGrid(topology=(Periodic, Flat, Bounded),
+                                                                                               size=(Nx, Nz), x=(0, Lx), z=z_faces)
 
         solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=false)
 
@@ -431,7 +431,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             Lx = Lz = 2π
 
             # Regular grid with no flat dimension
-            y_periodic_regular_grid = RegularRectilinearGrid(topology=(Periodic, Periodic, Bounded),
+            y_periodic_regular_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
                                                              size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
                         
             solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=true)

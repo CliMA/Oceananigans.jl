@@ -1,6 +1,6 @@
 module Architectures
 
-export AbstractArchitecture, AbstractCPUArchitecture, AbstractGPUArchitecture
+export AbstractArchitecture, AbstractMultiArchitecture
 export CPU, GPU
 export device, device_event, architecture, array_type, arch_array
 
@@ -17,20 +17,12 @@ Abstract supertype for architectures supported by Oceananigans.
 """
 abstract type AbstractArchitecture end
 
-
 """
-    AbstractCPUArchitecture
+    AbstractMultiArchitecture
 
-Abstract supertype for CPU architectures supported by Oceananigans.
+Abstract supertype for Distributed architectures supported by Oceananigans.
 """
-abstract type AbstractCPUArchitecture <: AbstractArchitecture end
-
-"""
-    AbstractGPUArchitecture
-
-Abstract supertype for GPU architectures supported by Oceananigans.
-"""
-abstract type AbstractGPUArchitecture <: AbstractArchitecture end
+abstract type AbstractMultiArchitecture <: AbstractArchitecture end
 
 """
     CPU <: AbstractArchitecture
@@ -38,17 +30,19 @@ abstract type AbstractGPUArchitecture <: AbstractArchitecture end
 Run Oceananigans on one CPU node. Uses multiple threads if the environment
 variable `JULIA_NUM_THREADS` is set.
 """
-struct CPU <: AbstractCPUArchitecture end
+struct CPU <: AbstractArchitecture end
 
 """
     GPU <: AbstractArchitecture
 
 Run Oceananigans on a single NVIDIA CUDA GPU.
 """
-struct GPU <: AbstractGPUArchitecture end
+struct GPU <: AbstractArchitecture end
 
-device(::AbstractCPUArchitecture) = KernelAbstractions.CPU()
-device(::AbstractGPUArchitecture) = CUDAKernels.CUDADevice()
+## All extension of these methods is done in Distributed.jl
+
+device(::CPU) = KernelAbstractions.CPU()
+device(::GPU) = CUDAKernels.CUDADevice()
 
 architecture() = nothing
 architecture(::Number) = nothing
@@ -58,10 +52,10 @@ architecture(::CuArray) = GPU()
 array_type(::CPU) = Array
 array_type(::GPU) = CuArray
 
-arch_array(::AbstractCPUArchitecture, A::Array) = A
-arch_array(::AbstractCPUArchitecture, A::CuArray) = Array(A)
-arch_array(::AbstractGPUArchitecture, A::Array) = CuArray(A)
-arch_array(::AbstractGPUArchitecture, A::CuArray) = A
+arch_array(::CPU, A::Array)   = A
+arch_array(::CPU, A::CuArray) = Array(A)
+arch_array(::GPU, A::Array)   = CuArray(A)
+arch_array(::GPU, A::CuArray) = A
 
 const OffsetCPUArray = OffsetArray{FT, N, <:Array} where {FT, N}
 const OffsetGPUArray = OffsetArray{FT, N, <:CuArray} where {FT, N}

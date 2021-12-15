@@ -1,10 +1,29 @@
-using Oceananigans.Grids: topology
+using Oceananigans.Grids: topology, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
 using CUDA
 
 include("utils_for_runtests.jl")
 include("data_dependencies.jl")
 
 archs = test_architectures()
+
+
+function show_hydrostatic_test(grid, free_surface, comp) 
+
+    typeof(grid) <: XRegLatLonGrid ? gx = :regular : gx = :stretched
+    typeof(grid) <: YRegLatLonGrid ? gy = :regular : gy = :stretched
+    typeof(grid) <: ZRegLatLonGrid ? gz = :regular : gz = :stretched
+ 
+    arch = grid.architecture
+    free_surface_str = string(typeof(free_surface).name.wrapper)
+    
+    strc = "$(comp ? ", metrics are precomputed" : "")"
+
+    testset_str = "Hydrostatic free turbulence regression [$(typeof(arch)), $(topology(grid, 1)) longitude,  ($gx, $gy, $gz) grid, $free_surface_str]" * strc
+    info_str    =  "  Testing Hydrostatic free turbulence [$(typeof(arch)), $(topology(grid, 1)) longitude,  ($gx, $gy, $gz) grid, $free_surface_str]" * strc
+
+    return testset_str, info_str
+end
+
 
 function get_fields_from_checkpoint(filename)
     file = jldopen(filename)
@@ -71,35 +90,40 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
             end
         end
 
+        # Hydrostatic regression test
+
+        longitude = ((-180, 180), collect(-180:2:180), (-160, 160), collect(-160:2:160))
+        latitude  = ((-60, 60),   collect(-60:2:60))
+        zcoord    = ((-90, 0) ,   collect(-90:30:0))
+
         explicit_free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
         implicit_free_surface = ImplicitFreeSurface(gravitational_acceleration = 1.0,
-                                                    solver_method = :PreconditionedConjugateGradient,
-                                                    tolerance = 1e-15)
+                                                   solver_method = :PreconditionedConjugateGradient,
+                                                   tolerance = 1e-15)
 
-        x_bounded_lat_lon_grid  = RegularLatitudeLongitudeGrid(size = (160, 60, 3),
-                                                               longitude = (-160, 160),
-                                                               latitude = (-60, 60),
-                                                               z = (-90, 0),
-                                                               halo = (2, 2, 2))
- 
-        x_periodic_lat_lon_grid  = RegularLatitudeLongitudeGrid(size = (180, 60, 3),
-                                                                longitude = (-180, 180),
-                                                                latitude = (-60, 60),
-                                                                z = (-90, 0),
-                                                                halo = (2, 2, 2))
+        for lon in longitude, lat in latitude, z in zcoord, comp in (true, false)
 
-        for grid in [x_bounded_lat_lon_grid, x_periodic_lat_lon_grid]
+            lon[1] == -180 ? N = (180, 60, 3) : N = (160, 60, 3)
+
+            grid  = LatitudeLongitudeGrid(arch, 
+                                          size = N,
+                                     longitude = lon,
+                                      latitude = lat,
+                                             z = z,
+                                          halo = (2, 2, 2),
+                            precompute_metrics = comp)
+
             for free_surface in [explicit_free_surface, implicit_free_surface]
+                                 
+                # GPU + ImplicitFreeSurface + precompute metrics is not compatible at the moment. 
+                # kernel " uses too much parameter space  (maximum 0x1100 bytes) " error 
+                if !(comp && free_surface isa ImplicitFreeSurface && arch isa GPU) 
 
-                # GPU + ExplicitFreeSurface is broken. See:
-                # https://github.com/CliMA/Oceananigans.jl/pull/1985
-                # if !(arch isa GPU && topology(grid, 1) === Periodic && free_surface isa ExplicitFreeSurface)
-                                                                                    
-                free_surface_str = string(typeof(free_surface).name.wrapper)
-
-                @testset "Hydrostatic free turbulence regression [$(typeof(arch)), $(topology(grid, 1)) longitude, $free_surface_str]" begin
-                    @info "  Testing Hydrostatic free turbulence [$(typeof(arch)), $(topology(grid, 1)) longitude, $free_surface_str]"
-                    run_hydrostatic_free_turbulence_regression_test(grid, free_surface, arch)
+                    testset_str, info_str = show_hydrostatic_test(grid, free_surface, comp)
+                    @testset "$testset_str" begin
+                        @info "$info_str"
+                        run_hydrostatic_free_turbulence_regression_test(grid, free_surface)
+                    end
                 end
             end
 	    end   

@@ -25,10 +25,13 @@ using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Statistics
 using JLD2
 using Printf
+using CUDA
 
 #####
 ##### Grid
 #####
+
+precompute = true
 
 latitude = (-80, 80)
 Δφ = latitude[2] - latitude[1]
@@ -38,11 +41,12 @@ Nx = round(Int, 360 / resolution)
 Ny = round(Int, Δφ / resolution)
 
 # A spherical domain
-@show grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                          longitude = (-180, 180),
-                                          latitude = latitude,
-                                          halo = (2, 2, 2),
-                                          z = (-100, 0))
+@show grid = LatitudeLongitudeGrid(GPU(), size = (Nx, Ny, 1),
+                                   longitude = (-180, 180),
+                                   latitude = latitude,
+                                   halo = (2, 2, 2),
+                                   z = (-100, 0),
+                                   precompute_metrics = precompute)
 
 #####
 ##### Physics and model setup
@@ -50,7 +54,9 @@ Ny = round(Int, Δφ / resolution)
 
 free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
 
-equatorial_Δx = grid.radius * deg2rad(grid.Δλ)
+CUDA.allowscalar(true)
+
+equatorial_Δx = grid.radius * deg2rad(mean(grid.Δλᶜᵃᵃ))
 diffusive_time_scale = 120days
 
 @show const νh₂ =        equatorial_Δx^2 / diffusive_time_scale
@@ -64,7 +70,6 @@ coriolis = HydrostaticSphericalCoriolis()
 coriolis = HydrostaticSphericalCoriolis(rotation_rate=Ω)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    architecture = GPU(),
                                     momentum_advection = VectorInvariant(),
                                     free_surface = free_surface,
                                     coriolis = coriolis,
@@ -109,15 +114,15 @@ v .= + ∂x(ψ_total)
 ##### Shenanigans for rescaling the velocity field to
 #####   1. Have a magnitude (ish) that's a fixed fraction of
 #####      the surface gravity wave speed;
-#####   2. Zero volume mean on the curvilinear RegularLatitudeLongitudeGrid.
+#####   2. Zero volume mean on the curvilinear LatitudeLongitudeGrid.
 #####
 
 # Time-scale for gravity wave propagation across the smallest grid cell
 g = model.free_surface.gravitational_acceleration
 gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
 
-minimum_Δx = grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(grid.Δλ)
-minimum_Δy = grid.radius * deg2rad(grid.Δφ)
+minimum_Δx = grid.radius * cosd(maximum(abs, grid.φᵃᶜᵃ)) * deg2rad(maximum(abs, grid.Δλᶜᵃᵃ))
+minimum_Δy = grid.radius * deg2rad(minimum(abs, grid.Δφᵃᶜᵃ))
 wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
 
 @info "Max speeds prior to rescaling:"
@@ -206,7 +211,7 @@ end
 
 simulation = Simulation(model,
                         Δt = Δt,
-                        stop_time = 100year,
+                        stop_time = 100days,
                         iteration_interval = 1000,
                         progress = Progress(time_ns()))
 

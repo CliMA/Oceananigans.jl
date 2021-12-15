@@ -10,6 +10,7 @@ export ordered_dict_show
 export with_tracers
 export versioninfo_with_gpu, oceananigans_versioninfo
 export instantiate
+export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule
 
 import CUDA  # To avoid name conflicts
 

@@ -13,13 +13,13 @@ const topo = -H + 5
 
 stop_time = 10.
 
-underlying_grid = RegularRectilinearGrid(size=nz, z = (-H,0), topology = (Flat, Flat, Bounded))
+underlying_grid = RectilinearGrid(size=nz, z = (-H,0), topology = (Flat, Flat, Bounded))
 
 solid(x, y, z) = (z <= topo)
 
 immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(solid))
 
-model = NonhydrostaticModel(architecture = CPU(),
+model = NonhydrostaticModel(
                                advection = CenteredSecondOrder(),
                              timestepper = :RungeKutta3,
                                     grid = immersed_grid,

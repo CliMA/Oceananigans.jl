@@ -34,11 +34,11 @@ H = 1.0          # vertical domain extent
 Lx = 2H          # horizontal domain extent
 Nx, Nz = 128, 64 # horizontal, vertical resolution
 
-grid = RegularRectilinearGrid(size = (Nx, Nz),
-                                 x = (-Lx/2, Lx/2),
-                                 z = (-H, 0),
-                              halo = (3, 3),
-                          topology = (Bounded, Flat, Bounded))
+grid = RectilinearGrid(size = (Nx, Nz),
+                          x = (-Lx/2, Lx/2),
+                          z = (-H, 0),
+                       halo = (3, 3),
+                   topology = (Bounded, Flat, Bounded))
 
 # ### Boundary conditions
 #
@@ -91,7 +91,6 @@ nothing # hide
 # Runge-Kutta time-stepping scheme, and a `BuoyancyTracer`.
 
 model = NonhydrostaticModel(
-           architecture = CPU(),
                    grid = grid,
               advection = WENO5(),
             timestepper = :RungeKutta3,

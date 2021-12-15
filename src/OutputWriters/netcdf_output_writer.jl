@@ -37,12 +37,12 @@ function default_dimensions(output, grid, field_slicer)
     TX, TY, TZ = topology(grid)
 
     return Dict(
-        "xC" => all_x_nodes(Center, grid).parent[parent_slice_indices(Center, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
-        "xF" => all_x_nodes(Face, grid).parent[parent_slice_indices(Face, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
-        "yC" => all_y_nodes(Center, grid).parent[parent_slice_indices(Center, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
-        "yF" => all_y_nodes(Face, grid).parent[parent_slice_indices(Face, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
-        "zC" => all_z_nodes(Center, grid).parent[parent_slice_indices(Center, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)],
-        "zF" => all_z_nodes(Face, grid).parent[parent_slice_indices(Face, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)])
+        "xC" => parent(all_x_nodes(Center, grid))[parent_slice_indices(Center, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
+        "xF" => parent(all_x_nodes(Face, grid))[parent_slice_indices(Face, TX, Nx, Hx, field_slicer.i, field_slicer.with_halos)],
+        "yC" => parent(all_y_nodes(Center, grid))[parent_slice_indices(Center, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
+        "yF" => parent(all_y_nodes(Face, grid))[parent_slice_indices(Face, TY, Ny, Hy, field_slicer.j, field_slicer.with_halos)],
+        "zC" => parent(all_z_nodes(Center, grid))[parent_slice_indices(Center, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)],
+        "zF" => parent(all_z_nodes(Face, grid))[parent_slice_indices(Face, TZ, Nz, Hz, field_slicer.k, field_slicer.with_halos)])
 end
 
 default_dimensions(outputs::Dict{String,<:LagrangianParticles}, grid, field_slicer) =
@@ -179,15 +179,15 @@ Saving the u velocity field and temperature fields, the full 3D fields and surfa
 to separate NetCDF files:
 
 ```jldoctest netcdf1
-using Oceananigans, Oceananigans.OutputWriters
+using Oceananigans
 
-grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
-model = NonhydrostaticModel(grid=grid);
+model = NonhydrostaticModel(grid=grid, tracers=:c);
 
 simulation = Simulation(model, Δt=12, stop_time=3600);
 
-fields = Dict("u" => model.velocities.u, "T" => model.tracers.T);
+fields = Dict("u" => model.velocities.u, "c" => model.tracers.c);
 
 simulation.output_writers[:field_writer] =
     NetCDFOutputWriter(model, fields, filepath="fields.nc", schedule=TimeInterval(60))
@@ -196,7 +196,7 @@ simulation.output_writers[:field_writer] =
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: ["T", "u"]
+├── 2 outputs: ["c", "u"]
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 └── array type: Array{Float32}
 ```
@@ -210,7 +210,7 @@ simulation.output_writers[:surface_slice_writer] =
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: ["T", "u"]
+├── 2 outputs: ["c", "u"]
 ├── field slicer: FieldSlicer(:, :, 16, with_halos=false)
 └── array type: Array{Float32}
 ```
@@ -226,7 +226,7 @@ simulation.output_writers[:averaged_profile_writer] =
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: averaged_z_profile.nc
 ├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
-├── 2 outputs: ["T", "u"] averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
+├── 2 outputs: ["c", "u"] averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 ├── field slicer: FieldSlicer(1, 1, :, with_halos=false)
 └── array type: Array{Float32}
 ```
@@ -235,9 +235,9 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 provided that their `dimensions` are provided:
 
 ```jldoctest
-using Oceananigans, Oceananigans.OutputWriters
+using Oceananigans
 
-grid = RegularRectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
 
 model = NonhydrostaticModel(grid=grid);
 

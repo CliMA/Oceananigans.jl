@@ -1,9 +1,10 @@
 """
-Compute the vertical integrated volume flux from the bottom to z=0 (i.e. linear free-surface)
+Compute the vertical integrated volume flux from the bottom to ``z=0`` (i.e., linear free-surface).
 
 ```
-U★ = ∫ᶻ Ax * u★ dz`
-V★ = ∫ᶻ Ay * v★ dz`
+U★ = ∫ᶻ Ax * u★ dz
+V★ = ∫ᶻ Ay * v★ dz
+```
 """
 ### Note - what we really want is RHS = divergence of the vertically integrated volume flux
 ###        we can optimize this a bit later to do this all in one go to save using intermediate variables.

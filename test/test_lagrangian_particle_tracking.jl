@@ -14,7 +14,7 @@ end
 function run_simple_particle_tracking_tests(arch, timestepper)
     topo = (Periodic, Periodic, Bounded)
     domain = (x=(-1, 1), y=(-1, 1), z=(-1, 1))
-    grid = RegularRectilinearGrid(topology=topo, size=(5, 5, 5); domain...)
+    grid = RectilinearGrid(arch, topology=topo, size=(5, 5, 5); domain...)
 
     P = 10
     xs = convert(array_type(arch), zeros(P))
@@ -42,7 +42,7 @@ function run_simple_particle_tracking_tests(arch, timestepper)
     lagrangian_particles = LagrangianParticles(particles; tracked_fields)
     @test lagrangian_particles isa LagrangianParticles
 
-    model = NonhydrostaticModel(architecture=arch, grid=grid, timestepper=timestepper,
+    model = NonhydrostaticModel(grid=grid, timestepper=timestepper,
                                 velocities=velocities, particles=lagrangian_particles)
 
     set!(model, u=1, v=1)

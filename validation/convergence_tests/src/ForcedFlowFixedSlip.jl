@@ -41,14 +41,14 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     u_forcing(x, y, z, t) = Fᵘ(x, y, t)
     v_forcing(x, y, z, t) = Fᵛ(x, y, t)
 
-    grid = RegularRectilinearGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, 1), z=(0, 1),
+    grid = RectilinearGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, 1), z=(0, 1),
                                 topology=(Periodic, Bounded, Bounded))
 
     # "Fixed slip" boundary conditions (eg, no-slip on south wall, finite slip on north wall)."
     u_bcs = FieldBoundaryConditions(north = ValueBoundaryCondition((x, y, t) -> f(x, t)),
                                     south = ValueBoundaryCondition(0))
 
-    model = NonhydrostaticModel(architecture = CPU(),
+    model = NonhydrostaticModel(
                                 grid = grid,
                                 coriolis = nothing,
                                 buoyancy = nothing,
@@ -87,7 +87,7 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     u_forcing(x, y, z, t) = Fᵘ(x, z, t)
     w_forcing(x, y, z, t) = Fᵛ(x, z, t)
 
-    grid = RegularRectilinearGrid(size=(Nx, 1, Nx), x=(0, 2π), y=(0, 1), z=(0, 1),
+    grid = RectilinearGrid(size=(Nx, 1, Nx), x=(0, 2π), y=(0, 1), z=(0, 1),
                                 topology=(Periodic, Bounded, Bounded))
 
     # "Fixed slip" boundary conditions (eg, no-slip on bottom and finite slip on top)."

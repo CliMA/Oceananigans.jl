@@ -30,10 +30,9 @@ const DATA_DIR = joinpath(@__DIR__, "..", "data")
 function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DATA_DIR,
                           topo=(Periodic, Periodic, Bounded), output=false)
 
-    grid = RegularRectilinearGrid(size=(Nx, Nx, 1), x=(0, Lx(topo)), y=(0, Ly(topo)), z=(0, 1), topology=topo)
+    grid = RectilinearGrid(architecture, size=(Nx, Nx, 1), x=(0, Lx(topo)), y=(0, Ly(topo)), z=(0, 1), topology=topo)
 
-    model = NonhydrostaticModel(architecture = architecture,
-                                        grid = grid,
+    model = NonhydrostaticModel(        grid = grid,
                                     coriolis = nothing,
                                     buoyancy = nothing,
                                      tracers = :c,

@@ -37,8 +37,7 @@ function run_pcg_implicit_free_surface_solver_tests(arch, grid)
     Ny = grid.Ny
 
     # Create a model
-    model = HydrostaticFreeSurfaceModel(architecture = arch,
-                                        grid = grid,
+    model = HydrostaticFreeSurfaceModel(grid = grid,
                                         momentum_advection = nothing,
                                         free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient,
                                                                            tolerance = 1e-15))
@@ -77,14 +76,14 @@ end
 @testset "Implicit free surface solver tests" begin
     for arch in archs
 
-        rectilinear_grid = RegularRectilinearGrid(size = (128, 1, 5),
+        rectilinear_grid = RectilinearGrid(arch, size = (128, 1, 5),
                                                   x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
                                                   topology = (Bounded, Periodic, Bounded))
 
-        lat_lon_grid = RegularLatitudeLongitudeGrid(size = (90, 90, 5),
-                                                    longitude = (-30, 30),
-                                                    latitude = (15, 75),
-                                                    z = (-4000, 0))
+        lat_lon_grid = LatitudeLongitudeGrid(arch, size = (90, 90, 5),
+                                        longitude = (-30, 30),
+                                         latitude = (15, 75),
+                                                z = (-4000, 0))
 
         for grid in (rectilinear_grid, lat_lon_grid)
             @info "Testing PreconditionedConjugateGradient implicit free surface solver [$(typeof(arch)), $(typeof(grid).name.wrapper)]..."
@@ -98,13 +97,11 @@ end
         pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, tolerance=1e-15, maximum_iterations=128^3)
         fft_free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
 
-        pcg_model = HydrostaticFreeSurfaceModel(architecture = arch,
-                                                grid = rectilinear_grid,
+        pcg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
                                                 momentum_advection = nothing,
                                                 free_surface = pcg_free_surface)
 
-        fft_model = HydrostaticFreeSurfaceModel(architecture = arch,
-                                                grid = rectilinear_grid,
+        fft_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
                                                 momentum_advection = nothing,
                                                 free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform))
 

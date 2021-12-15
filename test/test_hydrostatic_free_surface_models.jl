@@ -1,11 +1,12 @@
-using Oceananigans: CPU, GPU
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, ExplicitFreeSurface
+include("dependencies_for_runtests.jl")
+
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, PrescribedField
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, ExplicitTimeDiscretization, CATKEVerticalDiffusivity
-using Oceananigans.Grids: Periodic, Bounded
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, ExplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
 
-function time_step_hydrostatic_model_works(arch, grid;
+function time_step_hydrostatic_model_works(grid;
                                            coriolis = nothing,
                                            free_surface = ExplicitFreeSurface(),
                                            momentum_advection = nothing,
@@ -16,7 +17,6 @@ function time_step_hydrostatic_model_works(arch, grid;
     closure isa CATKEVerticalDiffusivity && push!(tracers, :e)
 
     model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        architecture = arch,
                                         momentum_advection = momentum_advection,
                                         free_surface = free_surface,
                                         coriolis = coriolis,
@@ -31,10 +31,9 @@ function time_step_hydrostatic_model_works(arch, grid;
     return model.clock.iteration == 1
 end
 
-
 function hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(2π, 2π, 2π))
-    model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch, tracers=(:T, :S, :c, :d))
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(2π, 2π, 2π))
+    model = HydrostaticFreeSurfaceModel(grid=grid, tracers=(:T, :S, :c, :d))
 
     @test model.tracers.T isa Field
     @test model.tracers.S isa Field
@@ -70,19 +69,12 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
 @testset "Hydrostatic free surface Models" begin
     @info "Testing hydrostatic free surface models..."
-
-    @testset "Model constructor errors" begin
-        grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-        @test_throws TypeError HydrostaticFreeSurfaceModel(architecture=CPU, grid=grid)
-        @test_throws TypeError HydrostaticFreeSurfaceModel(architecture=GPU, grid=grid)
-    end
       
     @testset "$topo_1d model construction" begin
         @info "  Testing $topo_1d model construction..."
-        for arch in archs, FT in float_types
-            grid = RegularRectilinearGrid(FT, topology=topo_1d, size=(1), extent=(1))
-            model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)        
-
+        for arch in archs, FT in [Float64] #float_types
+            grid = RectilinearGrid(arch, FT, topology=topo_1d, size=(1), extent=(1))
+            model = HydrostaticFreeSurfaceModel(grid=grid)        
             @test model isa HydrostaticFreeSurfaceModel
         end
     end
@@ -91,9 +83,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
-                grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1), extent=(1, 2))
-                model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)
-
+                grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1), extent=(1, 2))
+                model = HydrostaticFreeSurfaceModel(grid=grid)
                 @test model isa HydrostaticFreeSurfaceModel
             end
         end
@@ -103,11 +94,38 @@ topos_3d = ((Periodic, Periodic, Bounded),
         @testset "$topo model construction" begin
             @info "  Testing $topo model construction..."
             for arch in archs, FT in float_types
-                grid = RegularRectilinearGrid(FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
-                model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)
-
+                grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
+                model = HydrostaticFreeSurfaceModel(grid=grid)
                 @test model isa HydrostaticFreeSurfaceModel
             end
+        end
+    end
+
+    @testset "Halo size check in model constructor" begin
+        for topo in topos_3d
+            grid = RectilinearGrid(topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
+            hcabd_closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity()
+
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=CenteredFourthOrder())
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedThirdOrder())
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedFifthOrder())
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, momentum_advection=UpwindBiasedFifthOrder())
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, closure=hcabd_closure)
+
+            # Big enough
+            bigger_grid = RectilinearGrid(topology=topo, size=(1, 1, 1), extent=(1, 2, 3), halo=(3, 3, 3))
+
+            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, closure=hcabd_closure)
+            @test model isa HydrostaticFreeSurfaceModel
+
+            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, momentum_advection=UpwindBiasedFifthOrder())
+            @test model isa HydrostaticFreeSurfaceModel
+
+            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, closure=hcabd_closure)
+            @test model isa HydrostaticFreeSurfaceModel
+
+            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, tracer_advection=UpwindBiasedFifthOrder())
+            @test model isa HydrostaticFreeSurfaceModel
         end
     end
 
@@ -117,8 +135,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
             N = (4, 4, 1)
             L = (2π, 3π, 5π)
 
-            grid = RegularRectilinearGrid(FT, size=N, extent=L)
-            model = HydrostaticFreeSurfaceModel(grid=grid, architecture=arch)
+            grid = RectilinearGrid(arch, FT, size=N, extent=L)
+            model = HydrostaticFreeSurfaceModel(grid=grid)
 
             x, y, z = nodes((Face, Center, Center), model.grid, reshape=true)
 
@@ -140,22 +158,26 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
     for arch in archs
         for topo in topos_3d
-            grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), topology=topo)
+            grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1), topology=topo)
 
             @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $topo]" begin
                 @info "  Testing time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $topo]..."
-                @test time_step_hydrostatic_model_works(arch, grid)
+                @test time_step_hydrostatic_model_works(grid)
             end
         end
 
         z_face_generator(; Nz=1, p=1, H=1) = k -> -H + (k / (Nz+1))^p # returns a generating function
 
-        rectilinear_grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1), halo=(3, 3, 3))
-        vertically_stretched_grid = VerticallyStretchedRectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z_faces=z_face_generator(), halo=(3, 3, 3))
-        lat_lon_sector_grid = RegularLatitudeLongitudeGrid(size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=(-1, 0))
-        lat_lon_strip_grid = RegularLatitudeLongitudeGrid(size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0))
+        rectilinear_grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1), halo=(3, 3, 3))
 
-        grids = (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid) #, vertically_stretched_grid)
+        lat_lon_sector_grid = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=(-1, 0), precompute_metrics=true)
+        lat_lon_strip_grid  = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0), precompute_metrics=true)
+        
+        vertically_stretched_grid = RectilinearGrid(arch, size=(1, 1, 1), x=(0, 1), y=(0, 1), z=z_face_generator(), halo=(3, 3, 3))
+        lat_lon_sector_grid_stretched = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(0, 60), latitude=(15, 75), z=z_face_generator(), precompute_metrics=true)
+        lat_lon_strip_grid_stretched  = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=z_face_generator(), precompute_metrics=true)
+
+        grids = (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid, lat_lon_sector_grid_stretched, lat_lon_strip_grid_stretched, vertically_stretched_grid)
         free_surfaces = (ExplicitFreeSurface(), ImplicitFreeSurface())
 
         for grid in grids
@@ -163,10 +185,10 @@ topos_3d = ((Periodic, Periodic, Bounded),
                 topo = topology(grid)
                 grid_type = typeof(grid).name.wrapper
                 free_surface_type = typeof(free_surface).name.wrapper
-                test_label = "[$arch, $grid_type, $topo, $free_surface_type]"
+                test_label = "[$arch, $grid_type, $topo, $free_surface_type]"                
                 @testset "Time-stepping HydrostaticFreeSurfaceModels with different grids $test_label" begin
                     @info "  Testing time-stepping HydrostaticFreeSurfaceModels with different grids $test_label..."
-                    @test time_step_hydrostatic_model_works(arch, grid, free_surface=free_surface)
+                    @test time_step_hydrostatic_model_works(grid, free_surface=free_surface)
                 end
             end
         end
@@ -174,7 +196,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
         for coriolis in (nothing, FPlane(f=1), BetaPlane(f₀=1, β=0.1))
             @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(coriolis))]" begin
                 @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(coriolis))]..."
-                @test time_step_hydrostatic_model_works(arch, rectilinear_grid, coriolis=coriolis)
+                @test time_step_hydrostatic_model_works(rectilinear_grid, coriolis=coriolis)
             end
         end
 
@@ -183,22 +205,22 @@ topos_3d = ((Periodic, Periodic, Bounded),
                          HydrostaticSphericalCoriolis(scheme=VectorInvariantEnstrophyConserving()))
 
             @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(coriolis))]" begin
-                @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, coriolis=coriolis)
-                @test time_step_hydrostatic_model_works(arch, lat_lon_strip_grid, coriolis=coriolis)
+                @test time_step_hydrostatic_model_works(lat_lon_sector_grid, coriolis=coriolis)
+                @test time_step_hydrostatic_model_works(lat_lon_strip_grid, coriolis=coriolis)
             end
         end
 
         for momentum_advection in (VectorInvariant(), CenteredSecondOrder(), WENO5())
             @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]" begin
                 @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]..."
-                @test time_step_hydrostatic_model_works(arch, rectilinear_grid, momentum_advection=momentum_advection)
+                @test time_step_hydrostatic_model_works(rectilinear_grid, momentum_advection=momentum_advection)
             end
         end
 
         momentum_advection = VectorInvariant()
         @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]" begin
             @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]..."
-            @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, momentum_advection=momentum_advection)
+            @test time_step_hydrostatic_model_works(lat_lon_sector_grid, momentum_advection=momentum_advection)
         end
 
         for closure in (IsotropicDiffusivity(),
@@ -210,15 +232,41 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @testset "Time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
                 @info "  Testing time-stepping Curvilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
                 @test_skip time_step_hydrostatic_model_works(arch, vertically_stretched_grid, closure=closure)
-                @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, closure=closure)
-                @test time_step_hydrostatic_model_works(arch, lat_lon_strip_grid, closure=closure)
+                @test time_step_hydrostatic_model_works(lat_lon_sector_grid, closure=closure)
+                @test time_step_hydrostatic_model_works(lat_lon_strip_grid, closure=closure)
             end
         end
 
         closure = IsotropicDiffusivity()
         @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
             @info "  Testing time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
-            @test time_step_hydrostatic_model_works(arch, rectilinear_grid, closure=closure)
+            @test time_step_hydrostatic_model_works(rectilinear_grid, closure=closure)
+        end
+
+        @testset "PrescribedVelocityFields [$arch]" begin
+            @info "  Testing PrescribedVelocityFields [$arch]..."
+            
+            grid = RectilinearGrid(arch, size=1, x = (0, 1), topology = (Periodic, Flat, Flat))
+            
+            u₀, v₀ = 0.1, 0.2
+            
+            U = Field(Face, Center, Center, arch, grid)
+            V = Field(Center, Face, Center, arch, grid)
+
+            CUDA.@allowscalar begin
+                parent(U)[2, 1, 1] = u₀
+                parent(V)[2, 1, 1] = v₀
+            end
+
+            u = PrescribedField(Face, Center, Center, U, grid)
+            v = PrescribedField(Face, Center, Center, V, grid)
+
+            CUDA.@allowscalar begin
+                @test parent(u)[1, 1, 1] == u₀
+                @test parent(u)[3, 1, 1] == u₀
+                @test parent(v)[1, 1, 1] == v₀
+                @test parent(v)[3, 1, 1] == v₀
+            end
         end
 
         @testset "Time-stepping HydrostaticFreeSurfaceModels with PrescribedVelocityFields [$arch]" begin
@@ -230,8 +278,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
             w(x, y, z, t) = sin(z)
             velocities = PrescribedVelocityFields(u=u, v=v, w=w)
 
-            @test time_step_hydrostatic_model_works(arch, rectilinear_grid, momentum_advection  = nothing, velocities = velocities)
-            @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, momentum_advection = nothing, velocities = velocities)
+            @test time_step_hydrostatic_model_works(rectilinear_grid, momentum_advection  = nothing, velocities = velocities)
+            @test time_step_hydrostatic_model_works(lat_lon_sector_grid, momentum_advection = nothing, velocities = velocities)
                                             
             parameters = (U=1, m=0.1, W=0.001)
             u(x, y, z, t, p) = p.U
@@ -240,8 +288,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             velocities = PrescribedVelocityFields(u=u, v=v, w=w, parameters=parameters)
 
-            @test time_step_hydrostatic_model_works(arch, rectilinear_grid, momentum_advection  = nothing, velocities = velocities)
-            @test time_step_hydrostatic_model_works(arch, lat_lon_sector_grid, momentum_advection = nothing, velocities = velocities)
+            @test time_step_hydrostatic_model_works(rectilinear_grid, momentum_advection  = nothing, velocities = velocities)
+            @test time_step_hydrostatic_model_works(lat_lon_sector_grid, momentum_advection = nothing, velocities = velocities)
         end
 
         @testset "HydrostaticFreeSurfaceModel with tracers and forcings [$arch]" begin

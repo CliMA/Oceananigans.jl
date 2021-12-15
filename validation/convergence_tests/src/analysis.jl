@@ -9,7 +9,7 @@ print_min_max_mean(ψ, name="") =
     @info @sprintf("%s min: %.9e, max: %.9e, mean: %.9e", name, minimum(ψ), maximum(ψ), mean(ψ))
 
 function extract_two_solutions(analytical_solution, filename; name=:u)
-    grid = RegularRectilinearGrid(filename)
+    grid = RectilinearGrid(filename)
     iters = iterations(filename)
     loc = location(name)
 
@@ -60,7 +60,7 @@ end
 compute_errors(analytical_solution, filenames::String...; kwargs...) =
     [compute_error(analytical_solution, filename; kwargs...) for filename in filenames]
 
-extract_sizes(filenames...) = [size(RegularRectilinearGrid(filename)) for filename in filenames]
+extract_sizes(filenames...) = [size(RectilinearGrid(filename)) for filename in filenames]
 
 function test_rate_of_convergence(error, N; name="", Ntest=N[end], expected, atol)
     i = searchsortedfirst(N, Ntest)

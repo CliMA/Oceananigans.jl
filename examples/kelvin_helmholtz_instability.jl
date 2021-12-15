@@ -17,8 +17,8 @@
 
 using Oceananigans
 
-grid = RegularRectilinearGrid(size=(64, 64), x=(-5, 5), z=(-5, 5),
-                              topology=(Periodic, Flat, Bounded))
+grid = RectilinearGrid(size=(64, 64), x=(-5, 5), z=(-5, 5),
+                       topology=(Periodic, Flat, Bounded))
 
 # # The basic state
 #

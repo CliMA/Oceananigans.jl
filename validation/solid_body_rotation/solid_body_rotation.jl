@@ -62,11 +62,11 @@ function run_solid_body_rotation(; architecture = CPU(),
                                    super_rotations = 4)
 
     # A spherical domain
-    grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                        radius = 1,
-                                        latitude = (-80, 80),
-                                        longitude = (-180, 180),
-                                        z = (-1, 0))
+    grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, 1),
+                                 radius = 1,
+                                 latitude = (-80, 80),
+                                 longitude = (-180, 180),
+                                 z = (-1, 0))
 
     free_surface = ExplicitFreeSurface(gravitational_acceleration = 1)
 
@@ -74,7 +74,6 @@ function run_solid_body_rotation(; architecture = CPU(),
                                             scheme = VectorInvariantEnstrophyConserving())
 
     model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        architecture = architecture,
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
                                         coriolis = coriolis,
@@ -140,11 +139,11 @@ function visualize_solid_body_rotation(filepath)
     Nx = file["grid/Nx"]
     Ny = file["grid/Ny"]
 
-    grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                        radius = 1,
-                                        latitude = (-80, 80),
-                                        longitude = (-180, 180),
-                                        z = (-1, 0))
+    grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                                 radius = 1,
+                                 latitude = (-80, 80),
+                                 longitude = (-180, 180),
+                                 z = (-1, 0))
 
     super_rotation_period = 2π * grid.radius / U
 
@@ -198,11 +197,11 @@ function plot_zonal_average_solid_body_rotation(filepath)
     Nx = file["grid/Nx"]
     Ny = file["grid/Ny"]
 
-    grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                        radius = 1,
-                                        latitude = (-80, 80),
-                                        longitude = (-180, 180),
-                                        z = (-1, 0))
+    grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                                 radius = 1,
+                                 latitude = (-80, 80),
+                                 longitude = (-180, 180),
+                                 z = (-1, 0))
 
     super_rotation_period = 2π * grid.radius / U
 
@@ -246,11 +245,11 @@ function analyze_solid_body_rotation(filepath)
     Nx = file["grid/Nx"]
     Ny = file["grid/Ny"]
 
-    grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                        radius = 1,
-                                        latitude = (-80, 80),
-                                        longitude = (-180, 180),
-                                        z = (-1, 0))
+    grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                                 radius = 1,
+                                 latitude = (-80, 80),
+                                 longitude = (-180, 180),
+                                 z = (-1, 0))
 
     super_rotation_period = 2π * grid.radius / U
 

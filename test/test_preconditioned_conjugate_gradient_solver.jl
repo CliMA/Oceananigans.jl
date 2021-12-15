@@ -62,7 +62,7 @@ end
 @testset "PreconditionedConjugateGradientSolver" begin
     for arch in archs
         @info "Testing PreconditionedConjugateGradientSolver [$(typeof(arch))]..."
-        grid = RegularRectilinearGrid(size=(4, 8, 4), extent=(1, 3, 1))
+        grid = RectilinearGrid(arch, size=(4, 8, 4), extent=(1, 3, 1))
         run_identity_operator_test(arch, grid)
         run_poisson_equation_test(arch, grid)
     end

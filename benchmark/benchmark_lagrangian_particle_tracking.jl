@@ -8,7 +8,7 @@ using Benchmarks
 # Benchmark function
 
 function benchmark_particle_tracking(Arch, N_particles)
-    grid = RegularRectilinearGrid(size=(128, 128, 128), extent=(1, 1, 1))
+    grid = RectilinearGrid(size=(128, 128, 128), extent=(1, 1, 1))
 
     if N_particles == 0
         particles = nothing
