@@ -4,7 +4,6 @@ import Oceananigans.Architectures: architecture
 using CUDA, CUDA.CUSPARSE
 using KernelAbstractions: @kernel, @index
 
-using IterativeSolvers
 using LinearAlgebra, SparseArrays, IncompleteLU
 using IncompleteLU
 using SparseArrays: fkeep!, nnz
