@@ -203,16 +203,17 @@ end
             @test correct_field_size(grid, (Center, Face, Center),   N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(grid, (Center, Center, Face),   N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
 
-            @test correct_reduced_field_size((Nothing, Center,  Center),  grid, 1,         1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
-            @test correct_reduced_field_size((Nothing, Center,  Center),  grid, 1,         1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
-            @test correct_reduced_field_size((Nothing, Face,    Center),  grid, 1,         1,               N[2] + 2 * H[2] + 1, N[3] + 2 * H[3])
-            @test correct_reduced_field_size((Nothing, Face,    Face),    grid, 1,         1,               N[2] + 2 * H[2] + 1, N[3] + 2 * H[3] + 1)
-            @test correct_reduced_field_size((Center,  Nothing, Center),  grid, 2,         N[1] + 2 * H[1], 1,                   N[3] + 2 * H[3])
-            @test correct_reduced_field_size((Center,  Nothing, Center),  grid, 2,         N[1] + 2 * H[1], 1,                   N[3] + 2 * H[3])
-            @test correct_reduced_field_size((Center,  Center,  Nothing), grid, 3,         N[1] + 2 * H[1], N[2] + 2 * H[2],     1)
-            @test correct_reduced_field_size((Nothing, Nothing, Center),  grid, (1, 2),    1,               1,                   N[3] + 2 * H[3])
-            @test correct_reduced_field_size((Center,  Nothing, Nothing), grid, (2, 3),    N[1] + 2 * H[1], 1,                   1)
-            @test correct_reduced_field_size((Nothing, Nothing, Nothing), grid, (1, 2, 3), 1,               1,                   1)
+            # Reduced fields
+            @test correct_field_size(grid, (Nothing, Center,  Center),  1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Nothing, Center,  Center),  1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Nothing, Face,    Center),  1,               N[2] + 2 * H[2] + 1, N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Nothing, Face,    Face),    1,               N[2] + 2 * H[2] + 1, N[3] + 2 * H[3] + 1)
+            @test correct_field_size(grid, (Center,  Nothing, Center),  N[1] + 2 * H[1], 1,                   N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Center,  Nothing, Center),  N[1] + 2 * H[1], 1,                   N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Center,  Center,  Nothing), N[1] + 2 * H[1], N[2] + 2 * H[2],     1)
+            @test correct_field_size(grid, (Nothing, Nothing, Center),  1,               1,                   N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Center,  Nothing, Nothing), N[1] + 2 * H[1], 1,                   1)
+            @test correct_field_size(grid, (Nothing, Nothing, Nothing), 1,               1,                   1)
 
         end
     end
