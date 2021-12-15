@@ -11,7 +11,7 @@ using Oceananigans.Fields: reduced_location
 Test that the field initialized by the FieldType constructor on `grid`
 has size `(Tx, Ty, Tz)`.
 """
-correct_field_size(g, FieldType, Tx, Ty, Tz) = size(parent(FieldType(g))) == (Tx, Ty, Tz)
+correct_field_size(grid, loc, Tx, Ty, Tz) = size(parent(Field(loc, grid))) == (Tx, Ty, Tz)
 
 function run_similar_field_tests(f)
     g = similar(f)
@@ -180,28 +180,40 @@ end
 
         for arch in archs, FT in float_types
             grid = RectilinearGrid(arch , FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic))
-            @test correct_field_size(grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(grid, XFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(grid, YFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Center, Center, Center), N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Face,   Center, Center), N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Center, Face,   Center), N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Center, Center, Face),   N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
 
             grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Bounded))
-            @test correct_field_size(grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(grid, XFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(grid, YFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3] + 1)
+            @test correct_field_size(grid, (Center, Center, Center), N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Face, Center, Center),   N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Center, Face, Center),   N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Center, Center, Face),   N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3] + 1)
 
             grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Bounded, Bounded))
-            @test correct_field_size(grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(grid, XFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(grid, YFaceField,  N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
+            @test correct_field_size(grid, (Center, Center, Center), N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Face, Center, Center),   N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Center, Face, Center),   N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Center, Center, Face),   N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
 
             grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Bounded, Bounded, Bounded))
-            @test correct_field_size(grid, CenterField, N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(grid, XFaceField,  N[1] + 1 + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(grid, YFaceField,  N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
-            @test correct_field_size(grid, ZFaceField,  N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
+            @test correct_field_size(grid, (Center, Center, Center), N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Face, Center, Center),   N[1] + 1 + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Center, Face, Center),   N[1] + 2 * H[1], N[2] + 1 + 2 * H[2], N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Center, Center, Face),   N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
+
+            @test correct_reduced_field_size((Nothing, Center,  Center),  grid, 1,         1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
+            @test correct_reduced_field_size((Nothing, Center,  Center),  grid, 1,         1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
+            @test correct_reduced_field_size((Nothing, Face,    Center),  grid, 1,         1,               N[2] + 2 * H[2] + 1, N[3] + 2 * H[3])
+            @test correct_reduced_field_size((Nothing, Face,    Face),    grid, 1,         1,               N[2] + 2 * H[2] + 1, N[3] + 2 * H[3] + 1)
+            @test correct_reduced_field_size((Center,  Nothing, Center),  grid, 2,         N[1] + 2 * H[1], 1,                   N[3] + 2 * H[3])
+            @test correct_reduced_field_size((Center,  Nothing, Center),  grid, 2,         N[1] + 2 * H[1], 1,                   N[3] + 2 * H[3])
+            @test correct_reduced_field_size((Center,  Center,  Nothing), grid, 3,         N[1] + 2 * H[1], N[2] + 2 * H[2],     1)
+            @test correct_reduced_field_size((Nothing, Nothing, Center),  grid, (1, 2),    1,               1,                   N[3] + 2 * H[3])
+            @test correct_reduced_field_size((Center,  Nothing, Nothing), grid, (2, 3),    N[1] + 2 * H[1], 1,                   1)
+            @test correct_reduced_field_size((Nothing, Nothing, Nothing), grid, (1, 2, 3), 1,               1,                   1)
+
         end
     end
 
@@ -231,12 +243,21 @@ end
                 @test correct_field_value_was_set(grid, FieldType, val)
             end
 
-            for FieldType in FieldTypes
-                field = FieldType(grid)
+            for loc in ((Center, Center, Center),
+                        (Face, Center, Center),
+                        (Center, Face, Center),
+                        (Center, Center, Face),
+                        (Nothing, Center, Center),
+                        (Center, Nothing, Center),
+                        (Center, Center, Nothing),
+                        (Nothing, Nothing, Center),
+                        (Nothing, Nothing, Nothing))
+
+                field = Field(loc, grid)
                 sz = size(field)
                 A = rand(FT, sz...)
                 set!(field, A)
-                @test field.data[2, 4, 6] == A[2, 4, 6]
+                @test field.data[1, 1, 1] == A[1, 1, 1]
             end
 
             Nx = 8
