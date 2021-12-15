@@ -108,17 +108,18 @@ on the GPU
 Identity() (no preconditioner)
 sparse_inverse_preconditioner() (sparse approximate inverse)
 
-The keyword arguments are
- 
+The preconditioner settings are
+
+Identity()                    -> none 
 ilu                           -> τ = drop tolerance (the lower the more elements allowed)
 sparse_inverse_preconditioner -> ε = residual tolerance (the lower the closer to the actual inverse)
                               -> nzrel = number of maximum elements allowed in the column / number of A element in the column
 
 """
 
-@inline arch_preconditioner(::Val{false}, args...) = Identity()
-@inline arch_preconditioner(::Val{true}, ::CPU, A) = ilu(A, τ=0.001) 
-@inline arch_preconditioner(::Val{true}, ::GPU, A) = sparse_inverse_preconditioner(A, ε=0.2, nzrel=1.0) 
+@inline arch_preconditioner(::Val{false}, args...)                       = Identity()
+@inline arch_preconditioner(::Val{true}, ::CPU, A, τ = 0.001)            = ilu(A, τ = τ) 
+@inline arch_preconditioner(::Val{true}, ::GPU, A, ε = 0.1, nzrel = 2.0) = sparse_inverse_preconditioner(A, ε = ε, nzrel = nzrel) 
 
 @inline architecture(::CuSparseMatrixCSC) = GPU()
 @inline architecture(::SparseMatrixCSC)   = CPU()
@@ -175,7 +176,7 @@ function  LinearAlgebra.ldiv!(precon::AbstractInversePreconditioner, v)
     mul!(v, matrix(precon), v)
 end
 
-struct MITGCMPreconditioner{M} <: AbstractInversePreconditioner{M}
+struct MitgcmPreconditioner{M} <: AbstractInversePreconditioner{M}
     Minv :: M
 end
 
@@ -194,7 +195,7 @@ function mit_gcm_preconditioner(A::AbstractMatrix)
     event = loop!(invdiag, colptr, rowval, nzval; dependencies=Event(dev))
     wait(dev, event)
 
-    loop! = _initialize_MIT_preconditioner!(dev, 256, M)
+    loop! = _initialize_mit_gcm_preconditioner!(dev, 256, M)
     event = loop!(nzval, colptr, rowval, invdiag; dependencies=Event(dev))
     wait(dev, event)
     
@@ -205,7 +206,7 @@ function mit_gcm_preconditioner(A::AbstractMatrix)
     return MITGCMPreconditioner(Minv)
 end
 
-@kernel function _initialize_MIT_preconditioner!(nzval, colptr, rowval, invdiag)
+@kernel function _initialize_mit_gcm_preconditioner!(nzval, colptr, rowval, invdiag)
     col = @index(Global, Linear)
 
     for idx = colptr[col] : colptr[col+1] - 1
@@ -221,7 +222,7 @@ struct SparseInversePreconditioner{M} <: AbstractInversePreconditioner{M}
     Minv :: M
 end
 
-@inline matrix(p::MITGCMPreconditioner)         = p.Minv
+@inline matrix(p::MitgcmPreconditioner)         = p.Minv
 @inline matrix(p::SparseInversePreconditioner)  = p.Minv
 
 function sparse_inverse_preconditioner(A::AbstractMatrix; ε, nzrel)

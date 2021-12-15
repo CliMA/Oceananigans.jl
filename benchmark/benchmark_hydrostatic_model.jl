@@ -60,6 +60,7 @@ grids = Dict(
 
 free_surfaces = Dict(
     :ExplicitFreeSurface => ExplicitFreeSurface(),
+    :FFTImplicitFreeSurface => ImplicitFreeSurface(), 
     :ImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient), 
     :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver) 
 )
@@ -89,7 +90,7 @@ end
 
 # Benchmark parameters
 
-Architectures = has_cuda() ? [GPU] : [CPU]
+Architectures = has_cuda() ? [GPU, CPU] : [CPU]
 
 grid_types = [
     :RectilinearGrid,
@@ -100,11 +101,11 @@ grid_types = [
 ]
 
 free_surface_types = [
-    # :ExplicitFreeSurface,
-    # ImplicitFreeSurface doesn't yet work on MultiRegionGrids like the ConformalCubedSphereGrid:
-    # :FFTImplicitFreeSurface, 
-    :ImplicitFreeSurface,
     :MatrixImplicitFreeSurface,
+    :ExplicitFreeSurface,
+    # ImplicitFreeSurface doesn't yet work on MultiRegionGrids like the ConformalCubedSphereGrid:
+    :FFTImplicitFreeSurface, 
+    :ImplicitFreeSurface,
     # :ImplicitFreeSurface
 ]
 

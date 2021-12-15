@@ -13,8 +13,9 @@ mutable struct SpaiIterator{VF<:AbstractVector, SV<:SparseVector, VI<:AbstractVe
 end
 
 """
-The SPAI preconditioner calculates a SParse Approximate Inverse M ≈ A⁻¹
-to be used as a preconditioner
+The SPAI preconditioner calculates a SParse Approximate Inverse M ≈ A⁻¹ to be used as a preconditioner
+Since it can be applied to the residual with just a matrix multiplication instead of the solution
+of a triangular linear problem it makes it very appealing to GPU use
 
 The algorithm implemeted here to calculates M following the specifications found in
 
@@ -56,13 +57,14 @@ returns a SparseInversePreconditioner(M) where M ≈ A⁻¹
 """
 
 function spai_preconditioner(A::AbstractMatrix; ε::Float64, nzrel)
+   
     FT = eltype(A)
     n  = size(A, 1)
-    r = spzeros(FT, n)
-    e = spzeros(FT, n)
+    r  = spzeros(FT, n)
+    e  = spzeros(FT, n)
     M  = spzeros(FT, n, n)
-    Q = spzeros(FT, 1, 1)
-    J = Int64[1]
+    Q  = spzeros(FT, 1, 1)
+    J  = Int64[1]
 
     iterator = SpaiIterator(e, e, r, J, J, J, J, Q, Q)
     # this loop can be parallelized!
@@ -93,9 +95,14 @@ function set_j_column!(iterator, A, j, ε, ncolmax, n, FT)
         # calculate the residuals and locations where r != 0
         calc_residuals!(iterator, A)
         iterator.J̃ = setdiff(iterator.r.nzind, iterator.J)
+
+        # we do not need to select the residuals here as our sparsity pattern is quite large 
+        # (only 13 elements maximum in a column). Therefore it gives no benefit to reduce the number of
+        # selected iterator.J̃ versus the computational time required by select_residuals. It is nice to switch
+        # on this function if we have to calculate the sparse inverse of a much more dense matrix
         # select_residuals!(iterator, A, n, FT)
         
-        # iterate until a certain tolerance is met
+        # iterate until a certain tolerance is met or the maximum number of fill is reached
         while norm(iterator.r) > ε && length(iterator.mhat) < ncolmax
             if isempty(iterator.J̃)
                 iterator.r .= 0
@@ -104,6 +111,7 @@ function set_j_column!(iterator, A, j, ε, ncolmax, n, FT)
                 calc_residuals!(iterator, A)
                 iterator.J̃ = setdiff(iterator.r.nzind, iterator.J)
                 # select_residuals!(iterator, A, n, FT)
+
             end
         end
     end
@@ -141,9 +149,9 @@ function update_mhat_given_col!(iterator, A, FT)
 
         Iₙ₁ = speye(FT, ñ₁)
         Iₙ₂ = speye(FT, n₂)
-        hm = spzeros(n₁, ñ₁)
+        hm  = spzeros(n₁, ñ₁)
         iterator.Q = vcat(hcat(iterator.Q, hm), hcat(hm', Iₙ₁))
-        hm = spzeros(ñ₁ + n₁ - n₂, n₂)
+        hm  = spzeros(ñ₁ + n₁ - n₂, n₂)
         iterator.Q = iterator.Q * vcat(hcat(Iₙ₂, hm'), hcat(hm, F.Q))
         
         hm = spzeros(ñ₂, n₂)
@@ -180,7 +188,7 @@ function select_residuals!(iterator, A, n, FT)
         ek   = speyecolumn(FT, k, n)
         ρ[t] = norm(iterator.r)^2 - norm(iterator.r' * A * ek)^2 / norm(A * ek)^2
     end
-    # iterator.J̃ = iterator.J̃[ ρ .< mean(ρ) ] 
+    iterator.J̃ = iterator.J̃[ ρ .< mean(ρ) ] 
 end
 
 @inline calc_residuals!(i::SpaiIterator, A) = copyto!(i.r, i.e - A[:, i.J] * i.mhat)

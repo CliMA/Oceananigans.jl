@@ -7,7 +7,7 @@ using KernelAbstractions: @kernel, @index
 using IterativeSolvers, SparseArrays, LinearAlgebra
 using CUDA, CUDA.CUSPARSE
 
-mutable struct MatrixIterativeSolver{A, G, R, L, D, M, P, I, T, F}
+mutable struct MatrixIterativeSolver{A, G, R, L, D, M, P, S, I, T, F}
                architecture :: A
                        grid :: G
                problem_size :: R
@@ -15,6 +15,7 @@ mutable struct MatrixIterativeSolver{A, G, R, L, D, M, P, I, T, F}
                    diagonal :: D
                      matrix :: M
              preconditioner :: P
+    preconditioner_settings :: S
            iterative_solver :: I
                   tolerance :: T
                 previous_Δt :: F
@@ -76,13 +77,16 @@ function MatrixIterativeSolver(coeffs;
 
     matrix_constructors, diagonal, problem_size = matrix_from_coefficients(arch, grid, coeffs, reduced_dim)  
 
-    # for the moment, a placeholder preconditioner is calculated using a "placeholder" timestep of 1
+    # for the moment, placeholder preconditioner and matrix are calculated using a "placeholder" timestep of - 1
+    # They will be recalculated before the first time step of the simulation
+
     placeholder_constructors = deepcopy(matrix_constructors)
     update_diag!(placeholder_constructors, arch, problem_size, diagonal, 1.0)
 
     placeholder_matrix = arch_sparse_matrix(arch, placeholder_constructors)
-
-    preconditioner = arch_preconditioner(Val(precondition), arch, placeholder_matrix)
+    
+    reduced_matrix = arch_sparse_matrix(arch, speye(eltype(grid), 2))
+    preconditioner = arch_preconditioner(Val(precondition), arch, reduced_matrix)
 
     return MatrixIterativeSolver(arch,
                                  grid,
@@ -91,6 +95,7 @@ function MatrixIterativeSolver(coeffs;
                                  diagonal,
                                  placeholder_matrix,
                                  preconditioner,
+                                 nothing,
                                  iterative_solver, 
                                  tolerance,
                                  placeholder_timestep,
