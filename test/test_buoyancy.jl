@@ -47,8 +47,8 @@ end
 
 
 function tilted_gravity_works(arch, FT)
-    grid = RegularRectilinearGrid(FT, size=(3, 3, 3), x=(0, 1), y=(0, 1), z=(0, 1),
-                                  topology=(Periodic, Bounded, Bounded))
+    grid = RectilinearGrid(FT, size=(3, 3, 3), x=(0, 1), y=(0, 1), z=(0, 1),
+                           topology=(Periodic, Bounded, Bounded))
     N² = 1e-5
     g̃₁ = (0, 0, 1)
     g̃₂ = (0, 1, 0)
