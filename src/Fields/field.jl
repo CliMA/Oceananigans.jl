@@ -287,12 +287,8 @@ const XYReducedField = Field{Nothing, Nothing, <:Any}
 
 const XYZReducedField = Field{Nothing, Nothing, Nothing}
 
-const ReducedField = Union{XReducedField,
-                           YReducedField,
-                           ZReducedField,
-                           YZReducedField,
-                           XZReducedField,
-                           XYReducedField,
+const ReducedField = Union{XReducedField, YReducedField, ZReducedField,
+                           YZReducedField, XZReducedField, XYReducedField,
                            XYZReducedField}
 
 reduced_dimensions(field::Field) = ()
@@ -322,7 +318,7 @@ function fill_halo_regions!(field::Field, arch, args...; kwargs...)
                                   architecture(field),
                                   field.grid,
                                   args...;
-                                  reduced_dimensions,
+                                  reduced_dimensions=reduced_dims,
                                   kwargs...)
     end
 end

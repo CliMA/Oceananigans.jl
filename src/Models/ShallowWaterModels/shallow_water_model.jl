@@ -13,21 +13,22 @@ using Oceananigans.Utils: tupleit
 
 function ShallowWaterTendencyFields(arch, grid, tracer_names)
 
-    uh = XFaceField(arch, grid)
-    vh = YFaceField(arch, grid)
-    h = CenterField(arch, grid)
+    uh = XFaceField(grid)
+    vh = YFaceField(grid)
+    h = CenterField(grid)
 
-    tracers = TracerFields(tracer_names, arch, grid)
+    tracers = TracerFields(tracer_names, grid)
+    solution = (; uh, vh, h)
 
-    return merge((uh=uh, vh=vh, h=h), tracers)
+    return merge(solution, tracers)
 end
 
-function ShallowWaterSolutionFields(arch, grid, bcs)
-    uh = XFaceField(arch, grid, bcs.uh)
-    vh = YFaceField(arch, grid, bcs.vh)
-    h = CenterField(arch, grid, bcs.h)
+function ShallowWaterSolutionFields(grid, bcs)
+    uh = XFaceField(grid, bcs.uh)
+    vh = YFaceField(grid, bcs.vh)
+    h = CenterField(grid, bcs.h)
 
-    return (uh=uh, vh=vh, h=h)
+    return (; uh, vh, h)
 end
 
 mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, TS} <: AbstractModel{TS}
@@ -114,15 +115,14 @@ function ShallowWaterModel(;
 
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
 
-    solution           = ShallowWaterSolutionFields(arch, grid, boundary_conditions)
-    tracers            = TracerFields(tracers, arch, grid, boundary_conditions)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, arch, grid,
-                                      tracernames(tracers), boundary_conditions, closure)
+    solution           = ShallowWaterSolutionFields(grid, boundary_conditions)
+    tracers            = TracerFields(tracers, grid, boundary_conditions)
+    diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
     # Instantiate timestepper if not already instantiated
-    timestepper = TimeStepper(timestepper, arch, grid, tracernames(tracers);
-                              Gⁿ = ShallowWaterTendencyFields(arch, grid, tracernames(tracers)),
-                              G⁻ = ShallowWaterTendencyFields(arch, grid, tracernames(tracers)))
+    timestepper = TimeStepper(timestepper, grid, tracernames(tracers);
+                              Gⁿ = ShallowWaterTendencyFields(grid, tracernames(tracers)),
+                              G⁻ = ShallowWaterTendencyFields(grid, tracernames(tracers)))
 
     # Regularize forcing and closure for model tracer and velocity fields.
     model_fields = merge(solution, tracers)

@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 @testset "Models" begin
     @info "Testing models..."
 
@@ -121,11 +123,11 @@
 
             Nx, Ny, Nz = size(model.grid)
 
-            u_cpu = XFaceField(CPU(), grid)
-            v_cpu = YFaceField(CPU(), grid)
-            w_cpu = ZFaceField(CPU(), grid)
-            T_cpu = CenterField(CPU(), grid)
-            S_cpu = CenterField(CPU(), grid)
+            u_cpu = XFaceField(grid)
+            v_cpu = YFaceField(grid)
+            w_cpu = ZFaceField(grid)
+            T_cpu = CenterField(grid)
+            S_cpu = CenterField(grid)
 
             set!(u_cpu, u)
             set!(v_cpu, v)
@@ -156,12 +158,12 @@
             @test all(abs.(interior(w_cpu)) .< ϵ)
 
             # Test setting the background_fields to a Field
-            U_field = XFaceField(arch, grid)
+            U_field = XFaceField(grid)
             U_field .= 1
             model = NonhydrostaticModel(grid = grid, background_fields = (u=U_field,))
             @test model.background_fields.velocities.u isa Field
 			
-	    U_field = CenterField(arch, grid)            
+	    U_field = CenterField(grid)
 	    @test_throws ArgumentError NonhydrostaticModel(grid=grid, background_fields = (u=U_field,))            
         end
     end

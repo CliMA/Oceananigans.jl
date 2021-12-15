@@ -145,10 +145,10 @@ function HydrostaticFreeSurfaceModel(; grid,
     closure = with_tracers(tracernames(tracers), closure)
 
     # Either check grid-correctness, or construct tuples of fields
-    velocities         = HydrostaticFreeSurfaceVelocityFields(velocities, arch, grid, clock, boundary_conditions)
-    tracers            = TracerFields(tracers, arch, grid, boundary_conditions)
-    pressure           = PressureField(arch, grid)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, arch, grid, tracernames(tracers), boundary_conditions, closure)
+    velocities         = HydrostaticFreeSurfaceVelocityFields(velocities, grid, clock, boundary_conditions)
+    tracers            = TracerFields(tracers, grid, boundary_conditions)
+    pressure           = PressureField(grid)
+    diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
     validate_velocity_boundary_conditions(velocities)
 
@@ -156,10 +156,10 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), arch, grid)
-    timestepper = TimeStepper(:QuasiAdamsBashforth2, arch, grid, tracernames(tracers);
+    timestepper = TimeStepper(:QuasiAdamsBashforth2, grid, tracernames(tracers);
                               implicit_solver = implicit_solver,
-                              Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, arch, grid, tracernames(tracers)),
-                              G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, arch, grid, tracernames(tracers)))
+                              Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)),
+                              G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)))
 
     # Regularize forcing for model tracer and velocity fields.
     model_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)

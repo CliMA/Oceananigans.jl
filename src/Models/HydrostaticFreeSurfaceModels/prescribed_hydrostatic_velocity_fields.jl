@@ -52,7 +52,7 @@ function PrescribedField(X, Y, Z, f::Field, grid; kwargs...)
     return f
 end
 
-function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields, arch, grid, clock, bcs)
+function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields, grid, clock, bcs)
 
     u = PrescribedField(Face, Center, Center, velocities.u, grid; clock=clock, parameters=velocities.parameters)
     v = PrescribedField(Center, Face, Center, velocities.v, grid; clock=clock, parameters=velocities.parameters)
@@ -61,7 +61,7 @@ function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFiel
     return PrescribedVelocityFields(u, v, w, velocities.parameters)
 end
 
-function HydrostaticFreeSurfaceTendencyFields(::PrescribedVelocityFields, free_surface, arch, grid, tracer_names)
+function HydrostaticFreeSurfaceTendencyFields(::PrescribedVelocityFields, free_surface, grid, tracer_names)
     tracers = TracerFields(tracer_names, arch, grid)
     return merge((u = nothing, v = nothing, η = nothing), tracers)
 end
@@ -76,9 +76,9 @@ compute_w_from_continuity!(::PrescribedVelocityFields, args...) = nothing
 validate_velocity_boundary_conditions(::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 
-FreeSurfaceDisplacementField(::PrescribedVelocityFields, ::Nothing, arch, grid) = nothing
-HorizontalVelocityFields(::PrescribedVelocityFields, arch, grid) = nothing, nothing
-FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, arch, grid) = nothing
+FreeSurfaceDisplacementField(::PrescribedVelocityFields, ::Nothing, grid) = nothing
+HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
+FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
 calculate_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields; kwargs...) = []

@@ -19,16 +19,16 @@ end
 
 """
     RungeKutta3TimeStepper(arch, grid, tracers,
-                           Gⁿ = TendencyFields(arch, grid, tracers),
-                           G⁻ = TendencyFields(arch, grid, tracers))
+                           Gⁿ = TendencyFields(grid, tracers),
+                           G⁻ = TendencyFields(grid, tracers))
 
 Return an `RungeKutta3TimeStepper` object with tendency fields on `arch` and
 `grid`. The tendency fields can be specified via optional kwargs.
 """
 function RungeKutta3TimeStepper(arch, grid, tracers;
                                 implicit_solver::TI = nothing,
-                                Gⁿ::TG = TendencyFields(arch, grid, tracers),
-                                G⁻ = TendencyFields(arch, grid, tracers)) where {TI, TG}
+                                Gⁿ::TG = TendencyFields(grid, tracers),
+                                G⁻ = TendencyFields(grid, tracers)) where {TI, TG}
 
     !isnothing(implicit_solver) &&
         @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 

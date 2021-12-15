@@ -151,10 +151,10 @@ function NonhydrostaticModel(;    grid,
     closure = with_tracers(tracernames(tracers), closure)
 
     # Either check grid-correctness, or construct tuples of fields
-    velocities         = VelocityFields(velocities, arch, grid, boundary_conditions)
-    tracers            = TracerFields(tracers,      arch, grid, boundary_conditions)
-    pressures          = PressureFields(pressures,  arch, grid, boundary_conditions)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, arch, grid, tracernames(tracers), boundary_conditions, closure)
+    velocities         = VelocityFields(velocities, grid, boundary_conditions)
+    tracers            = TracerFields(tracers,      grid, boundary_conditions)
+    pressures          = PressureFields(pressures,  grid, boundary_conditions)
+    diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
         pressure_solver = PressureSolver(arch, grid)
