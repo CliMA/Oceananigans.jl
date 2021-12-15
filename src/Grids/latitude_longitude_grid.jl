@@ -53,15 +53,15 @@ or an array or function that specifies the faces (see VerticallyStretchedRectili
 
 """
 
-function LatitudeLongitudeGrid(architecture=CPU(),
-                               FT=Float64; 
-                               precompute_metrics=false,
+function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
+                               FT::DataType = Float64; 
+                               precompute_metrics = false,
                                size,
                                latitude,
                                longitude,
                                z,                      
-                               radius=R_Earth,
-                               halo=(1, 1, 1))
+                               radius = R_Earth,
+                               halo = (1, 1, 1))
    
     λ₁, λ₂ = get_domain_extent(longitude, size[1])
     @assert λ₁ < λ₂ && λ₂ - λ₁ ≤ 360
@@ -136,6 +136,10 @@ function LatitudeLongitudeGrid(architecture=CPU(),
             Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Δyᶠᶜ, Δyᶜᶠ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ, radius)
 end
 
+# architecture = CPU() default, assuming that a DataType positional arg
+# is specifying the floating point type.
+LatitudeLongitudeGrid(FT::DataType; kwargs...) = LatitudeLongitudeGrid(CPU(), FT; kwargs...)
+
 function domain_string(grid::LatitudeLongitudeGrid)
     λ₁, λ₂ = domain(topology(grid, 1), grid.Nx, grid.λᶠᵃᵃ)
     φ₁, φ₂ = domain(topology(grid, 2), grid.Ny, grid.φᵃᶠᵃ)
@@ -150,9 +154,9 @@ function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX
               "                 topology: ", (TX, TY, TZ), '\n',
               "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
               "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
-              "                grid in λ: ", show_coordinate(g.Δλᶜᵃᵃ, TX), '\n',
-              "                grid in φ: ", show_coordinate(g.Δφᵃᶜᵃ, TY), '\n',
-              "                grid in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ), '\n',
+              "             spacing in λ: ", show_coordinate(g.Δλᶜᵃᵃ, TX), '\n',
+              "             spacing in φ: ", show_coordinate(g.Δφᵃᶜᵃ, TY), '\n',
+              "             spacing in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ), '\n',
               "metrics are computed on the fly")
 end
 
@@ -163,9 +167,9 @@ function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, T
               "                 topology: ", (TX, TY, TZ), '\n',
               "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
               "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
-              "                grid in λ: ", show_coordinate(g.Δλᶜᵃᵃ, TX), '\n',
-              "                grid in φ: ", show_coordinate(g.Δφᵃᶜᵃ, TY), '\n',
-              "                grid in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ), '\n',
+              "             spacing in λ: ", show_coordinate(g.Δλᶜᵃᵃ, TX), '\n',
+              "             spacing in φ: ", show_coordinate(g.Δφᵃᶜᵃ, TY), '\n',
+              "             spacing in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ), '\n',
               "metrics are pre-computed")
 end
 
