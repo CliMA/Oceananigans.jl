@@ -1,5 +1,6 @@
-using LinearAlgebra
+include("dependencies_for_runtests.jl")
 
+using LinearAlgebra
 using Oceananigans.Architectures: array_type
 
 function can_solve_single_tridiagonal_system(arch, N)
