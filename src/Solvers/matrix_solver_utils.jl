@@ -16,7 +16,7 @@ import Base: size
 
 @inline constructors(::CPU, A::SparseMatrixCSC) = (A.n, A.n, A.colptr, A.rowval, A.nzval)
 @inline constructors(::GPU, A::SparseMatrixCSC) = (CuArray(A.colptr), CuArray(A.rowval), CuArray(A.nzval),  (A.n, A.n))
-@inline constructors(::CPU, A::CuSparseMatrixCSC) = (A.dims[1], A.dims[2], Array(A.colPtr), Array(A.rowVal), Array(A.nzVal))
+@inline constructors(::CPU, A::CuSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
 @inline constructors(::GPU, A::CuSparseMatrixCSC) = (A.colPtr, A.rowVal, A.nzVal,  A.dims)
 @inline constructors(::CPU, n::Number, constr::Tuple) = (n, n, constr...)
 @inline constructors(::GPU, n::Number, constr::Tuple) = (constr..., (n, n))
@@ -93,25 +93,32 @@ end
 @inline ensure_diagonal_elements_are_present!(A) = fkeep!(A, (i, j, x) -> (i == j || !iszero(x)))
 
 """
-No matter what I try, to precondition the solver on the GPU() with a direct LU (or Choleski) type 
-of preconditioner would require a 
+Precondition the solver on the GPU() with a direct LU (or Choleski) type 
+of preconditioner would require too much computation for the ldiv!(P, r) step
+and completely hinder the performances
 
-This is extremely unefficient!
+Therefore, the choice of preconditioners are limited to
 
-choices of preconditioners on the CPU
+on the CPU
 Identity() (no preconditioner)
-ilu()
-sparse_inverse_preconditioner()
+ilu() (superior to everything)
+sparse_inverse_preconditioner() (not performant on CPU)
 
 on the GPU
 Identity() (no preconditioner)
-sparse_inverse_preconditioner()
+sparse_inverse_preconditioner() (sparse approximate inverse)
+
+The keyword arguments are
+ 
+ilu                           -> τ = drop tolerance (the lower the more elements allowed)
+sparse_inverse_preconditioner -> ε = residual tolerance (the lower the closer to the actual inverse)
+                              -> nzrel = number of maximum elements allowed in the column / number of A element in the column
 
 """
 
-@inline arch_preconditioner(::Val{false}, args...)      = Identity()
-@inline arch_preconditioner(::Val{true}, ::CPU, matrix) = sparse_inverse_preconditioner(matrix, ε=0.1) # mit_gcm_preconditioner(matrix) # #ilu(matrix, τ=0.001) 
-@inline arch_preconditioner(::Val{true}, ::GPU, matrix) = sparse_inverse_preconditioner(matrix, ε=0.1) # Identity()     
+@inline arch_preconditioner(::Val{false}, args...) = Identity()
+@inline arch_preconditioner(::Val{true}, ::CPU, A) = ilu(A, τ=0.001) 
+@inline arch_preconditioner(::Val{true}, ::GPU, A) = sparse_inverse_preconditioner(A, ε=0.2, nzrel=1.0) 
 
 @inline architecture(::CuSparseMatrixCSC) = GPU()
 @inline architecture(::SparseMatrixCSC)   = CPU()
@@ -217,11 +224,11 @@ end
 @inline matrix(p::MITGCMPreconditioner)         = p.Minv
 @inline matrix(p::SparseInversePreconditioner)  = p.Minv
 
-function sparse_inverse_preconditioner(A::AbstractMatrix; ε)
+function sparse_inverse_preconditioner(A::AbstractMatrix; ε, nzrel)
 
    # let's choose an initial sparsity => diagonal
    A_cpu    = arch_sparse_matrix(CPU(), A)
-   Minv_cpu = spai_preconditioner(A_cpu, ε = ε)
+   Minv_cpu = spai_preconditioner(A_cpu, ε = ε, nzrel = nzrel)
    
    Minv = arch_sparse_matrix(architecture(A), Minv_cpu)
    return SparseInversePreconditioner(Minv)

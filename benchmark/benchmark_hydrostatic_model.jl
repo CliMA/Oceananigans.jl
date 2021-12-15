@@ -21,7 +21,7 @@ DataDeps.register(dd)
 
 # Benchmark function
 
-Nx = 128
+Nx = 256
 Ny = 128
 
 function set_simple_divergent_velocity!(model)
@@ -60,7 +60,7 @@ grids = Dict(
 
 free_surfaces = Dict(
     :ExplicitFreeSurface => ExplicitFreeSurface(),
-    :ImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, precondition=false), 
+    :ImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient), 
     :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver) 
 )
 
@@ -93,7 +93,7 @@ Architectures = has_cuda() ? [GPU] : [CPU]
 
 grid_types = [
     :RectilinearGrid,
-    # :LatitudeLongitudeGrid,
+    :LatitudeLongitudeGrid,
     # Uncomment when ConformalCubedSphereFaceGrids of any size can be built natively without loading from file:
     # :ConformalCubedSphereFaceGrid,
     # :ConformalCubedSphereGrid
@@ -103,8 +103,8 @@ free_surface_types = [
     # :ExplicitFreeSurface,
     # ImplicitFreeSurface doesn't yet work on MultiRegionGrids like the ConformalCubedSphereGrid:
     # :FFTImplicitFreeSurface, 
-    :MatrixImplicitFreeSurface,
     :ImplicitFreeSurface,
+    :MatrixImplicitFreeSurface,
     # :ImplicitFreeSurface
 ]
 

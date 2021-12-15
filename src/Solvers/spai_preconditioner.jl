@@ -1,108 +1,194 @@
-using SparseArrays, LinearAlgebra
+using SparseArrays, LinearAlgebra, Statistics
 
-# function spai_preconditioner(A::AbstractMatrix; ε)
-    
-#     FT = eltype(A)
-#     n  = size(A, 1)
-#     M  = spzeros(FT, n, n)
-#     r  = ones(FT, n)
-#     Q = []
-#     R = []
-#     for j = 1 : n # this loop can be parallelized!
-#         @show j
-#         e = speyecolumn(FT, j, n)
-#         J = findall(x -> x .!=0, e)
-#         J̃ = []
-#         mhat, Q, R =  find_mj_given_col(J, A, e, Q, R, 1)
-#         r = e - A[:, J] * mhat
-#         while norm(r) > ε
-#             L = first.(Tuple.(findall(x -> x .!=0, r)))
-#             J̃ = unique([L..., J...]) 
-#             # ρ = zeros(length(J̃))
-#             # for (t, k) in enumerate(J̃)
-#             #     ek   = speyecolumn(FT, k, n)
-#             #     ρ[t] = norm(r)^2 - norm(r' * A * ek)^2 / norm(A * ek)^2
-#             # end
-#             # J̃    = J̃[ ρ .< 0.1 ]
-#             J    = unique([J..., J̃...])
-#             mhat, Q, R = find_mj_given_col(J, A, e, Q, R, 0)
-#             r = e - A[:, J] * mhat
+mutable struct SpaiIterator{VF<:AbstractVector, SV<:SparseVector, VI<:AbstractVector, Ti}
+     mhat :: VF
+        e :: SV
+        r :: SV
+        J :: VI
+        I :: VI
+        J̃ :: VI
+        Ĩ :: VI
+        Q :: SparseMatrixCSC{Float64, Ti}
+        R :: SparseMatrixCSC{Float64, Ti}
+end
 
-#             @show j
-#         end
-#          mj      = spzeros(FT, n, 1)
-#          mj[J]   = mhat
-#          M[:, j] = mj
-#     end
-#     return M
-# end
+"""
+The SPAI preconditioner calculates a SParse Approximate Inverse M ≈ A⁻¹
+to be used as a preconditioner
 
-# function find_mj_given_col(col_el, A, ej, Q, R, restart)
-    
-#     A1     = A[:, col_el]
-#     row_el = first.(Tuple.(findall(x -> x .!=0, A1)))
-#     row_el = unique(row_el)
+The algorithm implemeted here to calculates M following the specifications found in
 
-#     A1 = A1[row_el, :]
-#     bj = ej[row_el, :]     
-    
-#     # if restart == 1
-#         F = qr(A1)
-#     # else
-#     #     # update Q R factors
-#     # end
-#     mhat = minimize(F, bj, col_el)
-#     return mhat, Q, R #
-# end
+Grote M. J. & Huckle T, "Parallel Preconditioning with sparse approximate inverses" 
 
-# @inline minimize(F, bj, col_el) = (inv(Array(F.R)) * (F.Q' * bj)[1:length(col_el)])[sortperm(F.pcol)]
+In particular, the algorithm tries to minimize the Frobenius norm of
 
-function spai_preconditioner(A::AbstractMatrix; ε)
-    
+‖ A mⱼ - eⱼ ‖ where mⱼ and eⱼ are the jₜₕ column of matrix M and the identity matrix I, respectively
+
+Since we are solving for an "sparse approximate" inverse (i.e. a sparse version of the actually non-sparse A⁻¹),
+we start assuming that mⱼ has a sparsity pattern J, which means that
+
+mⱼ(k) = 0 ∀k ∉ J 
+
+we call m̂ⱼ = mⱼ(J). From here we calculate the set of row indices I for which
+
+A(i, J) !=0 for i ∈ I 
+
+we call Â = A(I, J). The problem is now reduces to a much smaller minimization problem which can be solved 
+with QR decomposition (which luckily we have neatly implemented in julia: Hooray! but not on GPUs... booo)
+
+once solved for m̂ⱼ we compute the residuals of the minimization problem
+
+r = eⱼ - A[:, J] * m̂
+
+we can repeat the computation on the indices for which r != 0 (J̃ and respective Ĩ on the rows),
+so that we have Â = A(I U Ĩ, J U J̃) and m̂ = mⱼ(J U J̃)
+
+(... in practice we choose only the more proficuous of the J̃, the ones that will have the larger
+change in residual value ...)
+
+To do that we do not need to recompute the entire QR factorization but just update it by appending the
+new terms (and recomputing QR for a small part of Â).
+
+
+spai_preconditioner(A::AbstractMatrix; ε)
+
+returns a SparseInversePreconditioner(M) where M ≈ A⁻¹
+"""
+
+function spai_preconditioner(A::AbstractMatrix; ε::Float64, nzrel)
     FT = eltype(A)
     n  = size(A, 1)
+    r = spzeros(FT, n)
+    e = spzeros(FT, n)
     M  = spzeros(FT, n, n)
-    r  = ones(FT, n)
-    Q = []
-    R = []
-    for j = 1 : n # this loop can be parallelized!
+    Q = spzeros(FT, 1, 1)
+    J = Int64[1]
+
+    iterator = SpaiIterator(e, e, r, J, J, J, J, Q, Q)
+    # this loop can be parallelized!
+    for j = 1 : n 
         @show j
-        e = speyecolumn(FT, j, n)
-        J = findall(x -> x .!=0, e)
-        J̃ = []
-        mhat =  find_mj_given_col(J, A, e)
-        r = e - A[:, J] * mhat
-        while norm(r) > ε
-            L = first.(Tuple.(findall(x -> x .!=0, r)))
-            J̃ = unique([L..., J...]) 
-            # ρ = zeros(length(J̃))
-            # for (t, k) in enumerate(J̃)
-            #     ek   = speyecolumn(FT, k, n)
-            #     ρ[t] = norm(r)^2 - norm(r' * A * ek)^2 / norm(A * ek)^2
-            # end
-            # J̃    = J̃[ ρ .< 0.1 ]
-            J    = unique([J..., J̃...])
-            mhat = find_mj_given_col(J, A, e)
-            r = e - A[:, J] * mhat
-        end
-         mj      = spzeros(FT, n, 1)
-         mj[J]   = mhat
-         M[:, j] = mj
+        
+        # maximum number of elements in a column
+        ncolmax = nzrel * nnz(A[:, j])
+
+        set_j_column!(iterator, A, j, ε, ncolmax, n, FT)
+        mj             = spzeros(FT, n, 1)
+        mj[iterator.J] = iterator.mhat
+        M[:, j]        = mj
     end
     return M
 end
 
-function find_mj_given_col(col_el, A, ej)
-    
-    A1     = A[:, col_el]
-    row_el = first.(Tuple.(findall(x -> x .!=0, A1)))
-    row_el = unique(row_el)
+function set_j_column!(iterator, A, j, ε, ncolmax, n, FT)
+    @inbounds begin
+        iterator.e = speyecolumn(FT, j, n)
 
-    A1 = A1[row_el, :]
-    bj = ej[row_el, :]     
+        # the initial sparsity pattern is assumed to be mⱼ = eⱼ
+        initial_sparsity_pattern!(iterator, j)
 
-    return A1 \ bj
+        # find the initial solution with mⱼ = eⱼ
+        find_mhat_given_col!(iterator, A, n)
+
+        # calculate the residuals and locations where r != 0
+        calc_residuals!(iterator, A)
+        iterator.J̃ = setdiff(iterator.r.nzind, iterator.J)
+        # select_residuals!(iterator, A, n, FT)
+        
+        # iterate until a certain tolerance is met
+        while norm(iterator.r) > ε && length(iterator.mhat) < ncolmax
+            if isempty(iterator.J̃)
+                iterator.r .= 0
+            else
+                update_mhat_given_col!(iterator, A, FT)
+                calc_residuals!(iterator, A)
+                iterator.J̃ = setdiff(iterator.r.nzind, iterator.J)
+                # select_residuals!(iterator, A, n, FT)
+            end
+        end
+    end
+end    
+
+function initial_sparsity_pattern!(iterator, j)
+    iterator.J = [j]
 end
 
+function update_mhat_given_col!(iterator, A, FT)
+    @inbounds begin
+        A1  = A[:, iterator.J̃]
+        A1I = A1[iterator.I, :]      
+
+        n₁ = length(iterator.I)
+        n₂ = length(iterator.J)
+        ñ₂ = length(iterator.J̃)
+
+        push!(iterator.J, iterator.J̃...)
+        Atmp = A[:, iterator.J]
+
+        iterator.Ĩ = setdiff(unique(Atmp.rowval), iterator.I)
+
+        A1Ĩ = A1[iterator.Ĩ, :]
+    
+        ñ₁ = length(iterator.Ĩ)
+
+        B1 = spzeros(n₂, ñ₂)
+        mul!(B1, iterator.Q[:,1:n₂]', A1I)
+        B2 = iterator.Q[:,n₂+1:end]' * A1I
+        B2 = sparse(vcat(B2, A1Ĩ))
+
+        # update_QR_decomposition!(iterator.Q, iterator.R, B1, B2, n₁, n₂, ñ₁, ñ₂)
+        F = qr(B2, ordering = false)
+
+        Iₙ₁ = speye(FT, ñ₁)
+        Iₙ₂ = speye(FT, n₂)
+        hm = spzeros(n₁, ñ₁)
+        iterator.Q = vcat(hcat(iterator.Q, hm), hcat(hm', Iₙ₁))
+        hm = spzeros(ñ₁ + n₁ - n₂, n₂)
+        iterator.Q = iterator.Q * vcat(hcat(Iₙ₂, hm'), hcat(hm, F.Q))
+        
+        hm = spzeros(ñ₂, n₂)
+        iterator.R = vcat(hcat(iterator.R, B1), hcat(hm, F.R))    
+        
+        push!(iterator.I, iterator.Ĩ...)
+
+        bj = zeros(length(iterator.I))
+        copyto!(bj, iterator.e[iterator.I])
+        minimize!(iterator, bj)
+    end
+end
+
+function find_mhat_given_col!(iterator, A, n)
+    
+    A1 = spzeros(n, length(iterator.J))
+    copyto!(A1, A[:, iterator.J])
+    
+    iterator.I = unique(A1.rowval)
+
+    bj = zeros(length(iterator.I))
+    copyto!(bj, iterator.e[iterator.I])
+    
+    F = qr(A1[iterator.I, :], ordering = false)
+    iterator.Q = sparse(F.Q)
+    iterator.R = sparse(F.R)
+    
+    minimize!(iterator, bj)
+end
+
+function select_residuals!(iterator, A, n, FT)
+    ρ = zeros(length(iterator.J̃))
+    @inbounds for (t, k) in enumerate(iterator.J̃)
+        ek   = speyecolumn(FT, k, n)
+        ρ[t] = norm(iterator.r)^2 - norm(iterator.r' * A * ek)^2 / norm(A * ek)^2
+    end
+    # iterator.J̃ = iterator.J̃[ ρ .< mean(ρ) ] 
+end
+
+@inline calc_residuals!(i::SpaiIterator, A) = copyto!(i.r, i.e - A[:, i.J] * i.mhat)
+@inline minimize!(i::SpaiIterator, bj)      = i.mhat = (i.R \ (i.Q' * bj)[1:length(i.J)])
 @inline speye(FT, n) = spdiagm(0=>ones(FT, n))
-@inline speyecolumn(FT, j, n) = [ FT(i == j) for i = 1 : n ]
+
+@inline function speyecolumn(FT, j, n) 
+    e    = spzeros(FT, n)
+    e[j] = FT(1)
+    return e
+end

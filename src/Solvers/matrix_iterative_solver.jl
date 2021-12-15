@@ -251,7 +251,7 @@ function solve!(x, solver::MatrixIterativeSolver, b, Δt)
         solver.previous_Δt = Δt
     end
     
-    q = solver.iterative_solver(solver.matrix, b, verbose=true, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner)
+    q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner)
     
     set!(x, reshape(q, solver.problem_size...))
     fill_halo_regions!(x, solver.architecture) 
