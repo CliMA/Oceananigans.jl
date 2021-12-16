@@ -121,7 +121,9 @@ end
 
 @kernel function _compute_coefficients!(diag, Ax, Ay, ∫Ax, ∫Ay, grid, g)
     i, j = @index(Global, NTuple)
-    Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)  
-    Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid)  
-    diag[i, j, 1]  = - Azᶜᶜᵃ(i, j, 1, grid) / g
+    @inbounds begin
+        Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)  
+        Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid)  
+        diag[i, j, 1]  = - Azᶜᶜᵃ(i, j, 1, grid) / g
+    end
 end
