@@ -53,8 +53,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
             v[imm1,jmm1,1:Nz ] .=  1.
             v[imm1,jmp1,1:Nz ] .= -1.
 
-                η = model.free_surface.η
-                g = model.free_surface.gravitational_acceleration
+              η = model.free_surface.η
+              g = model.free_surface.gravitational_acceleration
             ∫ᶻQ = model.free_surface.barotropic_volume_flux
             rhs = model.free_surface.implicit_step_solver.right_hand_side
             solver = model.free_surface.implicit_step_solver;
