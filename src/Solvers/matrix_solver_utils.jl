@@ -146,9 +146,7 @@ end
 
 @kernel function _multiply_in_place!(u, invdiag, v)
     i = @index(Global, Linear)
-    @inbounds begin
-        u[i] = invdiag[i] * v[i]
-    end
+    @inbounds u[i] = invdiag[i] * v[i]
 end  
 
 function  LinearAlgebra.ldiv!(u, precon::JacobiPreconditioner, v)
