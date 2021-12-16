@@ -82,7 +82,7 @@ end
 @inline function validate_laplacian_direction(N, topo, reduced_dim)  
     dim = N > 1 && reduced_dim == false
     if N < 3 && topo == Bounded && dim == true
-        throw(ArgumentError("cannot calculate laplacian in bounded domain with N < 3"))
+        throw(ArgumentError("Cannot calculate laplacian in bounded domain with N < 3!"))
     end
 
     return dim
