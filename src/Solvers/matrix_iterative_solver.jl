@@ -50,8 +50,9 @@ The sparse matrix A can be constructed with
 
 The constructors are calculated based on the pentadiagonal coeffients passed as an input (matrix_from_coefficients)
 
-The diagonal term -Az / (g * Δt^2) is added later on during the time stepping
-to allow for variable time step. It is updated only when Δt previous != Δt
+The diagonal term `- Az / (g * Δt²)` is added later on during the time stepping
+to allow for variable time step. It is updated only when the previous time step 
+is different (`Δt_previous != Δt`).
 
 Preconditioning is done through the incomplete LU factorization. 
 
