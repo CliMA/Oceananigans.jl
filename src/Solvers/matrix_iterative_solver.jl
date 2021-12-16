@@ -28,7 +28,7 @@ MatrixIterativeSolver is a framework to solve the problem A * X = b (provided th
 The solver relies on sparse version of the matrix `A` which are defined by the field
 matrix_constructors.
 
-In particular, given coefficients Ax, Ay, Az, C, D, the solved problem will be
+In particular, given coefficients `Ax`, `Ay`, `Az`, `C`, `D`, the solved problem will be
 
 To have the equation solved on Center, Center, Center, the coefficients should be specified as follows
 - Ax -> Face, Center, Center
