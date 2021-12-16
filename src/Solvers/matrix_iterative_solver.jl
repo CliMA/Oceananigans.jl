@@ -25,7 +25,7 @@ end
 """
 MatrixIterativeSolver is a framework to solve the problem A * X = b (provided that A is symmetric)
 
-The solver relies on sparse version of the matrix A which are defined by the field
+The solver relies on sparse version of the matrix `A` which are defined by the field
 matrix_constructors.
 
 In particular, given coefficients Ax, Ay, Az, C, D, the solved problem will be
