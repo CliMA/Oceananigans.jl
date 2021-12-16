@@ -90,40 +90,6 @@ free_surfaces = [pcg_free_surface, matrix_free_surface];
 simulations = [geostrophic_adjustment_simulation(free_surface, topology_type) for free_surface in free_surfaces, topology_type in topology_types];
 data = [run_and_analyze(sim, i) for (sim, i) in zip(simulations, 1:length(simulations))];
 
-# mod1 = simulations[1].model
-# mod2 = simulations[2].model
-
-# func = mod1.free_surface.implicit_step_solver.preconditioned_conjugate_gradient_solver.linear_operation!
-# matr = mod2.free_surface.implicit_step_solver.matrix_iterative_solver.matrix
-
-# η = similar(mod1.free_surface.η)
-# β = similar(mod1.free_surface.η)
-
-# parent(η) .= 1
-
-# Ax = mod1.free_surface.implicit_step_solver.vertically_integrated_lateral_areas.xᶠᶜᶜ
-# Ay = mod1.free_surface.implicit_step_solver.vertically_integrated_lateral_areas.yᶜᶠᶜ
-
-# Nx, Ny = (mod1.grid.Nx, mod1.grid.Ny)
-
-# Δt = simulations[1].Δt
-# g = mod1.free_surface.gravitational_acceleration
-# grid = mod1.grid
-
-# parent(η) .= 0
-# η[1,1] = 1
-# func(β, η, Ax, Ay, g, Δt)
-# x1 = interior(β)
-
-# x2 = matr * interior(η)[:]
-# x2 = reshape(x2, Nx, Ny)
-
-
-# cy = grid.Lz * grid.Δxᶜᵃᵃ / grid.Δyᵃᶜᵃ   
-# cx = grid.Lz * grid.Δyᵃᶜᵃ / grid.Δxᶜᵃᵃ   
-
-# cL = grid.Δyᵃᶜᵃ * grid.Lz / 4 / grid.Δxᶜᵃᵃ
-
 using GLMakie
 using JLD2 
 
