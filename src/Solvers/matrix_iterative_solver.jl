@@ -57,7 +57,7 @@ Preconditioning is done through the incomplete LU factorization.
 
 It works for GPU, but it relies on serial backward and forward substitution which are very heavy and destroy all the
 computational advantage, therefore it is switched off until a parallel backward/forward substitution is implemented
-It is also updated based on the matrix when Δt != Δt_previous
+It is also updated based on the matrix when `Δt != Δt_previous`
     
 The iterative_solver used can is to be chosen from the IterativeSolvers.jl package. 
 The default solver is a Conjugate Gradient (cg)
