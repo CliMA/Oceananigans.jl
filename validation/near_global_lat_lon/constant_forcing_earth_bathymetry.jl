@@ -7,7 +7,9 @@ using Oceananigans
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
+using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity,
+                                       ExplicitTimeDiscretization, 
+                                       VerticallyImplicitTimeDiscretization
 using Oceananigans.Units
 using Oceananigans.Operators: Δzᵃᵃᶜ
 
