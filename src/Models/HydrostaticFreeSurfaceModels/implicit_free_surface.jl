@@ -60,7 +60,7 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arc
     barotropic_volume_flux = (u=barotropic_x_volume_flux, v=barotropic_y_volume_flux)
 
     solver_method = free_surface.solver_method
-    solver = build_implicit_step_solver(Val(solver_method), arch, grid, g, free_surface.solver_settings)
+    solver = build_implicit_step_solver(Val(solver_method), arch, grid, gravitational_acceleration, free_surface.solver_settings)
 
     return ImplicitFreeSurface(η, g,
                                barotropic_volume_flux,
