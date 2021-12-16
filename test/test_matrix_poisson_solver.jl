@@ -1,9 +1,9 @@
-using Oceananigans.Solvers: solve!, MatrixIterativeSolver
+using Oceananigans.Solvers: solve!, MatrixIterativeSolver, spai_preconditioner
 using Oceananigans.Fields: interior_copy
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
 using Oceananigans.Architectures: arch_array
 using KernelAbstractions: @kernel, @index
-using Statistics, LinearAlgebra
+using Statistics, LinearAlgebra, SparseArrays
 
 function calc_∇²!(∇²ϕ, ϕ, arch, grid)
     fill_halo_regions!(ϕ, arch)
@@ -136,4 +136,14 @@ end
             run_poisson_equation_test(arch, grid)
         end
     end
+
+    @info "Testing Sparse Approximate Inverse Preconditioner"
+
+    A   = sprand(100, 100, 0.1)
+    A   = A + A' + 1I
+    A⁻¹ = sparse(inv(Array(A)))
+    M   = spai_preconditioner(A, ε = 0.0, nzrel = size(A, 1))
+
+    @test all(M .≈ A⁻¹)
+
 end

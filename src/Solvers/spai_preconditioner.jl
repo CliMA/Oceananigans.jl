@@ -69,8 +69,7 @@ function spai_preconditioner(A::AbstractMatrix; ε::Float64, nzrel)
     iterator = SpaiIterator(e, e, r, J, J, J, J, Q, Q)
     # this loop can be parallelized!
     for j = 1 : n 
-        @show j
-        
+       
         # maximum number of elements in a column
         ncolmax = nzrel * nnz(A[:, j])
 
