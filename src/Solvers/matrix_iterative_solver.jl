@@ -41,7 +41,7 @@ Axᵢ₊₁ ηᵢ₊₁ + Axᵢ ηᵢ₋₁ + Ayⱼ₊₁ ηⱼ₊₁ + Ayⱼ η
 - 2 ( Axᵢ₊₁ + Axᵢ + Ayⱼ₊₁ + Ayⱼ + Azₖ₊₁ + Azₖ ) ηᵢⱼₖ 
 +   ( Cᵢⱼₖ + Dᵢⱼₖ/Δt^2 ) ηᵢⱼₖ = b
 
-solver.matrix is precomputed with a value of Δt = 1.0
+`solver.matrix` is precomputed with a value of `Δt = -1.0`
 
 The sparse matrix A can be constructed with
 
