@@ -5,15 +5,9 @@ using Oceananigans.Architectures: arch_array
 using KernelAbstractions: @kernel, @index
 using Statistics, LinearAlgebra
 
-
-@kernel function _∇²!(∇²f, grid, f)
-    i, j, k = @index(Global, NTuple)
-    @inbounds ∇²f[i, j, k] = ∇²ᶜᶜᶜ(i, j, k, grid, f)
-end
-
 function calc_∇²!(∇²ϕ, ϕ, arch, grid)
     fill_halo_regions!(ϕ, arch)
-    event = launch!(arch, grid, :xyz, _∇²!, ∇²ϕ, grid, ϕ)
+    event = launch!(arch, grid, :xyz, ∇²!, ∇²ϕ, grid, ϕ)
     wait(event)
     fill_halo_regions!(∇²ϕ, arch)
     return nothing
