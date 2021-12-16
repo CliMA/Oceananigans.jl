@@ -64,8 +64,8 @@ function FFTImplicitFreeSurfaceSolver(arch, grid, gravitational_acceleration::Nu
     return FFTImplicitFreeSurfaceSolver(solver, grid, horizontal_grid, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:FastFourierTransform}, arch, grid, gravity, settings) =
-    FFTImplicitFreeSurfaceSolver(arch, grid, gravity, settings)
+build_implicit_step_solver(::Val{:FastFourierTransform}, arch, grid, gravitational_acceleration, settings) =
+    FFTImplicitFreeSurfaceSolver(arch, grid, gravitational_acceleration, settings)
 
 #####
 ##### Solve...

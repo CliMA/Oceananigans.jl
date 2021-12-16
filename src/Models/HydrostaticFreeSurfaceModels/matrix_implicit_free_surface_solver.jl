@@ -27,7 +27,7 @@ for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume fl
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
 
-function MatrixImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, gravity, settings)
+function MatrixImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, gravitational_acceleration, settings)
     
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
@@ -44,7 +44,7 @@ function MatrixImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, gravi
     maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
     settings[:maximum_iterations] = maximum_iterations
 
-    coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravity)
+    coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
 
     solver = MatrixIterativeSolver(coeffs;
                             reduced_dim = (false, false, true),
@@ -54,8 +54,8 @@ function MatrixImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, gravi
     return MatrixImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:MatrixIterativeSolver}, arch, grid, gravity, settings) =
-    MatrixImplicitFreeSurfaceSolver(arch, grid, gravity, settings)
+build_implicit_step_solver(::Val{:MatrixIterativeSolver}, arch, grid, gravitational_acceleration, settings) =
+    MatrixImplicitFreeSurfaceSolver(arch, grid, gravitational_acceleration, settings)
 
 #####
 ##### Solve...
@@ -95,7 +95,7 @@ end
     @inbounds rhs[t] = (δ_Q - Az * η[i, j, 1] / Δt) / (g * Δt)
 end
 
-function compute_matrix_coefficients(vertically_integrated_areas, grid, gravity)
+function compute_matrix_coefficients(vertically_integrated_areas, grid, gravitational_acceleration)
 
     arch = grid.architecture
 
@@ -111,7 +111,7 @@ function compute_matrix_coefficients(vertically_integrated_areas, grid, gravity)
     ∫Ay = vertically_integrated_areas.yᶜᶠᶜ
 
     event_c = launch!(arch, grid, :xy, _compute_coefficients!,
-                      diag, Ax, Ay, ∫Ax, ∫Ay, grid, gravity,
+                      diag, Ax, Ay, ∫Ax, ∫Ay, grid, gravitational_acceleration,
                       dependencies = device_event(arch))
   
     wait(event_c)
