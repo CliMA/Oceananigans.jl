@@ -31,11 +31,11 @@ matrix_constructors.
 In particular, given coefficients `Ax`, `Ay`, `Az`, `C`, `D`, the solved problem will be
 
 To have the equation solved on Center, Center, Center, the coefficients should be specified as follows
-- Ax -> Face, Center, Center
-- Ay -> Center, Face, Center
-- Az -> Center, Center, Face
-- C  -> Center, Center, Center
-- D  -> Center, Center, Center
+- `Ax` -> Face, Center, Center
+- `Ay` -> Center, Face, Center
+- `Az` -> Center, Center, Face
+- `C`  -> Center, Center, Center
+- `D`  -> Center, Center, Center
 
 ```julia
 Axᵢ₊₁ ηᵢ₊₁ + Axᵢ ηᵢ₋₁ + Ayⱼ₊₁ ηⱼ₊₁ + Ayⱼ ηⱼ₋₁ + Azₖ₊₁ ηₖ₊₁ + Azₖ ηⱼ₋₁ 
