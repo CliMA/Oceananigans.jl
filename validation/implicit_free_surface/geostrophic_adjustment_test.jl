@@ -45,7 +45,7 @@ function geostrophic_adjustment_simulation(free_surface, topology)
     return simulation
 end
 
-function run_and_analyze(simulation, sim_number)
+function run_and_analyze(simulation)
     η = simulation.model.free_surface.η
     u, v, w = simulation.model.velocities
     Δt = simulation.Δt
@@ -58,9 +58,11 @@ function run_and_analyze(simulation, sim_number)
     η₀  = interior(η)[:, 1, 1]
     ηx₀ = interior(ηx)[:, 1, 1]
 
+    solver_method = string(simulation.mode.free_surface.solver_method)
+
     simulation.output_writers[:fields] = JLD2OutputWriter(simulation.model, (η, ηx, u, v, w),
                                                           schedule = TimeInterval(Δt),
-                                                          prefix = "solution.$(sim_number)")
+                                                          prefix = "solution_$(solver_method)")
 
 
     run!(simulation)
@@ -88,15 +90,13 @@ topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
 
 free_surfaces = [pcg_free_surface, matrix_free_surface];
 simulations = [geostrophic_adjustment_simulation(free_surface, topology_type) for free_surface in free_surfaces, topology_type in topology_types];
-data = [run_and_analyze(sim, i) for (sim, i) in zip(simulations, 1:length(simulations))];
+data = [run_and_analyze(sim) for sim in simulations];
 
 using GLMakie
 using JLD2 
 
-file1 = jldopen("solution.1.jld2")
-file2 = jldopen("solution.2.jld2")
-file3 = jldopen("solution.3.jld2")
-file4 = jldopen("solution.4.jld2")
+file1 = jldopen("solution_PreconditionedConjugateGradient.jld2")
+file2 = jldopen("solution_MatrixIterativeSolver.jld2")
 
 grid = file1["serialized/grid"]
 
