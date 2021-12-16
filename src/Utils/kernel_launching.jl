@@ -44,7 +44,7 @@ function heuristic_workgroup(worksize::NTuple{N, Int}) where N
                     (1, min(256, Nx)) :
 
                     # Three-dimensional models
-                    (Int(√256), Int(√256))
+                    (16, 16)
 
     return workgroup
 end
