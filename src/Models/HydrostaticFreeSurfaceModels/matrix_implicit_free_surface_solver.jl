@@ -116,7 +116,7 @@ function compute_matrix_coefficients(vertically_integrated_areas, grid, gravity)
   
     wait(event_c)
 
-    return (Array(Ax), Array(Ay), Array(Az), Array(C), diag)
+    return (Ax, Ay, Az, C, diag)
 end
 
 @kernel function _compute_coefficients!(diag, Ax, Ay, ∫Ax, ∫Ay, grid, g)

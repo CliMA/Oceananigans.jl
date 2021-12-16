@@ -106,6 +106,12 @@ end
 
 function matrix_from_coefficients(arch, grid, coeffs, reduced_dim)
     Ax, Ay, Az, C, D = coeffs
+
+    Ax = arch_array(CPU(), Ax)
+    Ay = arch_array(CPU(), Ay)
+    Az = arch_array(CPU(), Az)
+    C  = arch_array(CPU(), C)
+
     N = size(grid)
 
     topo = topology(grid)
@@ -204,6 +210,19 @@ function fill_core_matrix!(coeff_d, coeff_x, coeff_y, coeff_z, Ax, Ay, Az, C, N,
         end
     end
 end
+
+# No-flux boundary conditions are implied in the construction of the matrix, so only
+# periodic boundary conditions have to be filled in
+#
+# In case of a periodic boundary condition a direction we have to modify the diagonal
+# as well as the off-diagonals. As an example, for x-periodic boundary conditions
+# we have to modify the following diagonal elements
+#
+# row number (1  + Nx * (j - 1 + Ny * (k - 1))) => corresponding to i = 1 , j = j and k = k
+# row number (Nx + Nx * (j - 1 + Ny * (k - 1))) => corresponding to i = Nx, j = j and k = k
+#
+# Since zero-flux BC were implied, we have to add the coefficients corresponding to i-1 and i+1
+# (respectively). Since the off-diagonal elements are symmetric we can fill it in only once
 
  @inline fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, ::Type{Bounded}) = nothing
  @inline fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, ::Type{Flat})    = nothing
