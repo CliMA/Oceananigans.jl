@@ -45,7 +45,7 @@ function geostrophic_adjustment_simulation(free_surface, topology)
     return simulation
 end
 
-function run_and_analyze(simulation, sim)
+function run_and_analyze(simulation, sim_number)
     η = simulation.model.free_surface.η
     u, v, w = simulation.model.velocities
     Δt = simulation.Δt
@@ -60,7 +60,7 @@ function run_and_analyze(simulation, sim)
 
     simulation.output_writers[:fields] = JLD2OutputWriter(simulation.model, (η, ηx, u, v, w),
                                                           schedule = TimeInterval(Δt),
-                                                          prefix = "solution.$(sim)")
+                                                          prefix = "solution.$(sim_number)")
 
 
     run!(simulation)
