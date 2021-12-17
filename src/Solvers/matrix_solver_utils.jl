@@ -9,7 +9,6 @@ using IncompleteLU
 using SparseArrays: fkeep!, nnz
 
 import LinearAlgebra.ldiv!
-import Base: size
 
 # Utils for sparse matrix manipulation
 
@@ -24,9 +23,6 @@ import Base: size
 @inline unpack_constructors(::GPU, constr::Tuple) = (constr[1], constr[2], constr[3])
 @inline copy_unpack_constructors(::CPU, constr::Tuple) = deepcopy((constr[3], constr[4], constr[5]))
 @inline copy_unpack_constructors(::GPU, constr::Tuple) = deepcopy((constr[1], constr[2], constr[3]))
-
-@inline size(::CPU, constr::Tuple) = constr[1]
-@inline size(::GPU, constr::Tuple) = constr[4][1]
 
 @inline arch_sparse_matrix(::CPU, constr::Tuple) = SparseMatrixCSC(constr...)
 @inline arch_sparse_matrix(::GPU, constr::Tuple) = CuSparseMatrixCSC(constr...)
@@ -136,7 +132,6 @@ struct JacobiPreconditioner{V}
     invdiag::V
 end
 
-# Constructor:
 function JacobiPreconditioner(A::AbstractMatrix)
     M    = size(A, 1)
     arch = architecture(A)
@@ -195,7 +190,7 @@ function simplified_inverse_preconditioner(A::AbstractMatrix)
     colptr, rowval, nzval = copy_unpack_constructors(arch, constr)
     dev                   = device(arch)
     
-    M = size(arch, constr)
+    M = size(A, 1)
 
     invdiag = arch_array(arch, zeros(eltype(nzval), M))
 
