@@ -268,11 +268,13 @@ end
 
 function solve!(x, solver::MatrixIterativeSolver, b, Δt)
 
+    arch = architecture(solver.matrix)
+    
     # update matrix and preconditioner if time step changes
     if Δt != solver.previous_Δt
         constructors = deepcopy(solver.matrix_constructors)
-        update_diag!(constructors, architecture(solver.matrix), solver.problem_size, solver.diagonal, Δt)
-        solver.matrix = arch_sparse_matrix(architecture(solver.matrix), constructors) 
+        update_diag!(constructors, arch, solver.problem_size, solver.diagonal, Δt)
+        solver.matrix = arch_sparse_matrix(arch, constructors) 
         solver.preconditioner = build_preconditioner(
                             Val(solver.preconditioner_method),
                             solver.matrix,
@@ -283,7 +285,7 @@ function solve!(x, solver::MatrixIterativeSolver, b, Δt)
     q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner)
     
     set!(x, reshape(q, solver.problem_size...))
-    fill_halo_regions!(x, architecture(matrix)) 
+    fill_halo_regions!(x, arch) 
 
     return
 end
