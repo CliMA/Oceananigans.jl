@@ -29,7 +29,6 @@ include("dependencies_for_runtests.jl")
             include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
             include("test_poisson_solvers.jl")
-            include("test_matrix_poisson_solver.jl")
         end
     end
 
@@ -62,7 +61,6 @@ include("dependencies_for_runtests.jl")
             include("test_implicit_free_surface_solver.jl")
             include("test_hydrostatic_free_surface_immersed_boundaries_apply_surf_bc.jl")
             include("test_hydrostatic_free_surface_immersed_boundaries_vertical_integrals.jl")
-            include("test_hydrostatic_free_surface_immersed_boundaries_congrad_solve.jl")
         end
     end
 
