@@ -2,10 +2,11 @@ include("dependencies_for_runtests.jl")
 
 @testset "Oceananigans" begin
     if test_file != :none
-      @testset "Single file test" begin
+        @testset "Single file test" begin
             include(String(test_file))
-      end
+        end
     end
+    
     if group == :unit || group == :all
         @testset "Unit tests" begin
             include("test_grids.jl")
