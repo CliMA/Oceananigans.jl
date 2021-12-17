@@ -93,27 +93,35 @@ end
 @inline ensure_diagonal_elements_are_present!(A) = fkeep!(A, (i, j, x) -> (i == j || !iszero(x)))
 
 """
-Precondition the solver on the GPU() with a direct LU (or Choleski) type 
-of preconditioner would require too much computation for the ldiv!(P, r) step
-and completely hinder the performances
+`JacobiPreconditioner`
+    stores only the diagonal `d` of D⁻¹ where `D = diag(A)`
+    is applied to `r` with a vector multiplication `d .* r`
 
-Therefore, the choice of preconditioners are limited to
+`ILUFactorization`
+    stores two sparse lower and upper trianguilar matrices `L` and `U` such that `LU ≈ A`
+    is applied to `r` with `forward_substitution!(L, r)` followed by `backward_substitution(U, r)`
+    constructed with `ilu(A, τ = drop_tolerance)`
+    
+`SparseInversePreconditioner`
+    stores a sparse matrix `M` such that `M ≈ A⁻¹` 
+    is applied to `r` with a matrix multiplication `M * r`
+    constructed with
+    `simplified_inverse_preconditioner(A)`
+        -> assumes that the sparsity of `M` is the same as the sparsity of `A`
+    `sparse_approximate_preconditioner(A, ε = tolerance, nzrel = relative_maximum_number_of_elements)`
+        -> starts constructing the sparse inverse of A from identity matrix until, either a tolerance (ε) is met or nnz(M) = nzrel * nnz(A) 
 
-on the CPU
-Identity() (no preconditioner)
-ilu() (superior to everything)
-sparse_inverse_preconditioner() (not performant on CPU)
+The suggested preconditioners are
 
-on the GPU
-Identity() (no preconditioner)
-sparse_inverse_preconditioner() (sparse approximate inverse)
+on the `CPU`
+`ilu()` (superior to everything always and in every situation!)
 
-The preconditioner settings are
+on the `GPU`
+`sparse_inverse_preconditioner()` (if `Δt` is constant)
+`simplified_inverse_preconditioner()` or `JacobiPreconditioner` (if Δt is variable)
 
-Identity()                    -> none 
-ilu                           -> τ = drop tolerance (the lower the more elements allowed)
-sparse_inverse_preconditioner -> ε = residual tolerance (the lower the closer to the actual inverse)
-                              -> nzrel = number of maximum elements allowed in the column / number of A element in the column
+`ilu()` cannot be used on the GPU because preconditioning the solver with a direct LU (or Choleski) type 
+of preconditioner would require too much computation for the `ldiv!(P, r)` step completely hindering the performances
 
 """
 
@@ -174,11 +182,13 @@ function  LinearAlgebra.ldiv!(precon::AbstractInversePreconditioner, v)
     mul!(v, matrix(precon), v)
 end
 
-struct MitgcmPreconditioner{M} <: AbstractInversePreconditioner{M}
+struct SparseInversePreconditioner{M} <: AbstractInversePreconditioner{M}
     Minv :: M
 end
 
-function mit_gcm_preconditioner(A::AbstractMatrix)
+@inline matrix(p::SparseInversePreconditioner)  = p.Minv
+
+function simplified_inverse_preconditioner(A::AbstractMatrix)
     
     arch                  = architecture(A)
     constr                = deepcopy(constructors(arch, A)) 
@@ -193,7 +203,7 @@ function mit_gcm_preconditioner(A::AbstractMatrix)
     event = loop!(invdiag, colptr, rowval, nzval; dependencies=Event(dev))
     wait(dev, event)
 
-    loop! = _initialize_mit_gcm_preconditioner!(dev, 256, M)
+    loop! = _initialize_simplified_inverse_preconditioner!(dev, 256, M)
     event = loop!(nzval, colptr, rowval, invdiag; dependencies=Event(dev))
     wait(dev, event)
     
@@ -201,10 +211,10 @@ function mit_gcm_preconditioner(A::AbstractMatrix)
 
     Minv = arch_sparse_matrix(arch, constructors(arch, M, constr_new))
 
-    return MITGCMPreconditioner(Minv)
+    return SparseInversePreconditioner(Minv)
 end
 
-@kernel function _initialize_mit_gcm_preconditioner!(nzval, colptr, rowval, invdiag)
+@kernel function _initialize_simplified_inverse_preconditioner!(nzval, colptr, rowval, invdiag)
     col = @index(Global, Linear)
 
     for idx = colptr[col] : colptr[col+1] - 1
@@ -215,13 +225,6 @@ end
         end
     end
 end
-
-struct SparseInversePreconditioner{M} <: AbstractInversePreconditioner{M}
-    Minv :: M
-end
-
-@inline matrix(p::MitgcmPreconditioner)         = p.Minv
-@inline matrix(p::SparseInversePreconditioner)  = p.Minv
 
 function sparse_inverse_preconditioner(A::AbstractMatrix; ε, nzrel)
 
