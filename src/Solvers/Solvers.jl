@@ -42,6 +42,7 @@ include("fourier_tridiagonal_poisson_solver.jl")
 include("preconditioned_conjugate_gradient_solver.jl")
 include("spai_preconditioner.jl")
 include("matrix_solver_utils.jl")
+include("sparse_preconditioners.jl")
 include("matrix_iterative_solver.jl")
 
 end

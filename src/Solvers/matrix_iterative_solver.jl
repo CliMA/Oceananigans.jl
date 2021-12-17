@@ -7,15 +7,15 @@ using KernelAbstractions: @kernel, @index
 using IterativeSolvers, SparseArrays, LinearAlgebra
 using CUDA, CUDA.CUSPARSE
 
-mutable struct MatrixIterativeSolver{A, G, R, L, D, M, P, S, I, T, F}
-               architecture :: A
+mutable struct MatrixIterativeSolver{G, R, L, D, M, P, PM, PS, I, T, F}
                        grid :: G
                problem_size :: R
         matrix_constructors :: L
                    diagonal :: D
                      matrix :: M
              preconditioner :: P
-    preconditioner_settings :: S
+      preconditioner_method :: PM
+    preconditioner_settings :: PS
            iterative_solver :: I
                   tolerance :: T
                 previous_Δt :: F
@@ -73,7 +73,8 @@ function MatrixIterativeSolver(coeffs;
                                tolerance = 1e-13,
                                reduced_dim = (false, false, false), 
                                placeholder_timestep = -1.0, 
-                               precondition = true)
+                               preconditioner_method = :Default, 
+                               preconditioner_settings = nothing)
 
     arch = architecture(grid)
 
@@ -87,17 +88,18 @@ function MatrixIterativeSolver(coeffs;
 
     placeholder_matrix = arch_sparse_matrix(arch, placeholder_constructors)
     
+    settings       = validate_settings(Val(preconditioner_method), arch, preconditioner_settings)
     reduced_matrix = arch_sparse_matrix(arch, speye(eltype(grid), 2))
-    preconditioner = arch_preconditioner(Val(precondition), arch, reduced_matrix)
+    preconditioner = build_preconditioner(Val(preconditioner_method), reduced_matrix, settings)
 
-    return MatrixIterativeSolver(arch,
-                                 grid,
+    return MatrixIterativeSolver(grid,
                                  problem_size, 
                                  matrix_constructors,
                                  diagonal,
                                  placeholder_matrix,
                                  preconditioner,
-                                 nothing,
+                                 preconditioner_method,
+                                 settings,
                                  iterative_solver, 
                                  tolerance,
                                  placeholder_timestep,
@@ -269,18 +271,19 @@ function solve!(x, solver::MatrixIterativeSolver, b, Δt)
     # update matrix and preconditioner if time step changes
     if Δt != solver.previous_Δt
         constructors = deepcopy(solver.matrix_constructors)
-        update_diag!(constructors, solver.architecture, solver.problem_size, solver.diagonal, Δt)
-        solver.matrix = arch_sparse_matrix(solver.architecture, constructors) 
-        if solver.preconditioner != Identity()
-            solver.preconditioner = arch_preconditioner(Val(true), solver.architecture, solver.matrix)
-        end
+        update_diag!(constructors, architecture(solver.matrix), solver.problem_size, solver.diagonal, Δt)
+        solver.matrix = arch_sparse_matrix(architecture(solver.matrix), constructors) 
+        solver.preconditioner = build_preconditioner(
+                            Val(solver.preconditioner_method),
+                            solver.matrix,
+                            solver.preconditioner_settings)
         solver.previous_Δt = Δt
     end
     
     q = solver.iterative_solver(solver.matrix, b, maxiter=solver.maximum_iterations, reltol=solver.tolerance, Pl=solver.preconditioner)
     
     set!(x, reshape(q, solver.problem_size...))
-    fill_halo_regions!(x, solver.architecture) 
+    fill_halo_regions!(x, architecture(matrix)) 
 
     return
 end
