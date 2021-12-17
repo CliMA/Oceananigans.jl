@@ -1,6 +1,7 @@
 using Oceananigans.Solvers
 using Oceananigans.Operators
 using Oceananigans.Architectures
+using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: ReducedField
 using Oceananigans.Solvers: MatrixIterativeSolver
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, solid_cell
@@ -75,7 +76,7 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
                                                         g, Δt, ∫ᶻQ, η)
 
     solver = implicit_solver.matrix_iterative_solver
-    arch = solver.architecture
+    arch = architecture(solver.matrix)
     grid = solver.grid
 
     event = launch!(arch, grid, :xy,
