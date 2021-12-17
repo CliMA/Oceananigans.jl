@@ -23,7 +23,7 @@ mutable struct MatrixIterativeSolver{A, G, R, L, D, M, P, S, I, T, F}
 end
 
 """
-MatrixIterativeSolver is a framework to solve the problem A * X = b (provided that A is symmetric)
+MatrixIterativeSolver is a framework to solve the problem `A * x = b` (provided that `A` is a symmetric matrix)
 
 The solver relies on sparse version of the matrix `A` which are defined by the field
 matrix_constructors.
