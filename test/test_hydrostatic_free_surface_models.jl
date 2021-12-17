@@ -56,7 +56,6 @@ function hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
     return nothing
 end
 
-
 topo_1d = (Flat, Flat, Bounded)
 
 topos_2d = ((Periodic, Flat, Bounded),
@@ -178,7 +177,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
         lat_lon_strip_grid_stretched  = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=z_face_generator(), precompute_metrics=true)
 
         grids = (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid, lat_lon_sector_grid_stretched, lat_lon_strip_grid_stretched, vertically_stretched_grid)
-        free_surfaces = (ExplicitFreeSurface(), ImplicitFreeSurface())
+        free_surfaces = (ExplicitFreeSurface(), ImplicitFreeSurface(), ImplicitFreeSurface(solver_method=:MatrixIterativeSolver))
 
         for grid in grids
             for free_surface in free_surfaces

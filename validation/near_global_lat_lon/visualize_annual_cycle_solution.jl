@@ -21,13 +21,27 @@ Nx = 128
 Ny = 60
 Nz = 18
 
-output_prefix = "annual_cycle_global_lat_lon_$(Nx)_$(Ny)_$(Nz)"
-bathymetry_path = "bathy_128x60var4.bin"
+using DataDeps
+
+path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/lat_lon_bathymetry_and_fluxes/"
+
+dh = DataDep("near_global_lat_lon",
+    "Forcing data for global latitude longitude simulation", path * "bathymetry_lat_lon_128x60_FP32.bin"
+)
+
+DataDeps.register(dh)
+
+datadep"near_global_lat_lon"
+
+bathymetry_data = Array{Float32}(undef, Nx*Ny)
+bathymetry_path = @datadep_str "near_global_lat_lon/bathymetry_lat_lon_128x60_FP32.bin"
+read!(bathymetry_path, bathymetry_data)
+
+bathymetry_data = bswap.(bathymetry_data) |> Array{Float64}
+bathymetry = reshape(bathymetry_data, Nx, Ny)
 
 Nmonths = 12
 bytes = sizeof(Float32) * Nx * Ny
-
-bathymetry = reshape(bswap.(reinterpret(Float32, read(bathymetry_path, bytes))), (Nx, Ny))
 
 H = 3600.0
 #bathymetry = - H .* (bathymetry .< -10)
@@ -68,6 +82,8 @@ xu, yu, zu = geographic2cartesian(λu, ϕu)
 xv, yv, zv = geographic2cartesian(λv, ϕv)
 xc, yc, zc = geographic2cartesian(λc, ϕc)
 
+output_prefix = "annual_cycle_global_lat_lon_128_60_18_temp"
+
 surface_file = jldopen(output_prefix * "_surface.jld2")
 bottom_file = jldopen(output_prefix * "_bottom.jld2")
 
@@ -76,7 +92,7 @@ iterations = parse.(Int, keys(surface_file["timeseries/t"]))
 iter = Node(0)
 
 # Continents
-land_ccc = bathymetry .> - underlying_grid.Δz / 2
+land_ccc = bathymetry .> - underlying_grid.Δzᵃᵃᶜ / 2
 
 function mask_land_cfc(v)
     land_cfc = cat(land_ccc, land_ccc[:, end:end], dims=2)
@@ -166,7 +182,7 @@ sphere_continents!(ax_T) = surface!(ax_T, xbg, ybg, zbg, color=fill("#080", 1, 1
 ##### Sphere
 #####
 
-sphere_fig = Figure(resolution = (1500, 900))
+sphere_fig = Figure(resolution = (150, 90))
 
 graylim = 1.0
 α = 0.99
