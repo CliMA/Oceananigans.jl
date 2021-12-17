@@ -58,8 +58,12 @@ Field located at (Face, Face, Center)
 └── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=ZeroFlux, top=ZeroFlux, immersed=ZeroFlux
 ```
 """
-Field{LX, LY, LZ}(grid::AbstractGrid, T::DataType=eltype(grid); kw...) where {LX, LY, LZ} =
-    Field((LX, LY, LZ), grid, T; kw...)
+function Field{LX, LY, LZ}(grid::AbstractGrid,
+                           T::DataType=eltype(grid);
+                           kw...) where {LX, LY, LZ}
+
+    return Field((LX, LY, LZ), grid, T; kw...)
+end
 
 function Field(loc::Tuple,
                grid::AbstractGrid,
@@ -120,7 +124,7 @@ Adapt.adapt_structure(to, field::Field) = Adapt.adapt(to, field.data)
 Returns `Field{Center, Center, Center}` on `arch`itecture and `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-CenterField(grid::AbstractGrid, FT=eltype(grid); kw...) = Field{Center, Center, Center}(grid, FT; kw...)
+CenterField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Center, Center}(grid, T; kw...)
 
 """
     XFaceField(grid; kw...)
@@ -128,7 +132,7 @@ CenterField(grid::AbstractGrid, FT=eltype(grid); kw...) = Field{Center, Center, 
 Returns `Field{Face, Center, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-XFaceField(grid::AbstractGrid, FT=eltype(grid); kw...) = Field{Face, Center, Center}(grid, FT; kw...)
+XFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Face, Center, Center}(grid, T; kw...)
 
 """
     YFaceField(grid; kw...)
@@ -136,7 +140,7 @@ XFaceField(grid::AbstractGrid, FT=eltype(grid); kw...) = Field{Face, Center, Cen
 Returns `Field{Center, Face, Center}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-YFaceField(grid::AbstractGrid, FT=eltype(grid); kw...) = Field{Center, Face, Center}(grid, FT; kw...)
+YFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Face, Center}(grid, T; kw...)
 
 """
     ZFaceField(grid; kw...)
@@ -144,7 +148,7 @@ YFaceField(grid::AbstractGrid, FT=eltype(grid); kw...) = Field{Center, Face, Cen
 Returns `Field{Center, Center, Face}` on `grid`.
 Additional keyword arguments are passed to the `Field` constructor.
 """
-ZFaceField(grid::AbstractGrid, FT=eltype(grid); kw...) = Field{Center, Center, Face}(grid, FT; kw...)
+ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Center, Face}(grid, T; kw...)
 
 #####
 ##### Fields computed from AbstractOperation and associated utilities

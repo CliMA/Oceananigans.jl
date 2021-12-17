@@ -24,7 +24,7 @@ end
 
 function solve_for_pressure!(pressure, solver::DistributedFFTBasedPoissonSolver, Δt, U★)
     rhs = first(solver.storage)
-    arch = solver.architecture
+    arch = architecture(solver)
     grid = solver.my_grid
 
     rhs_event = launch!(arch, grid, :xyz, calculate_pressure_source_term_fft_based_solver!,
@@ -43,7 +43,7 @@ function solve_for_pressure!(pressure, solver::FFTBasedPoissonSolver, Δt, U★)
 
     # Calculate right hand side:
     rhs = solver.storage
-    arch = solver.architecture
+    arch = architecture(solver)
     grid = solver.grid
 
     rhs_event = launch!(arch, grid, :xyz, calculate_pressure_source_term_fft_based_solver!,
@@ -61,7 +61,7 @@ function solve_for_pressure!(pressure, solver::FourierTridiagonalPoissonSolver, 
 
     # Calculate right hand side:
     rhs = solver.source_term
-    arch = solver.architecture
+    arch = architecture(solver)
     grid = solver.grid
 
     rhs_event = launch!(arch, grid, :xyz, calculate_pressure_source_term_fourier_tridiagonal_solver!,
