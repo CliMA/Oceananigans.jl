@@ -286,7 +286,7 @@ run!(simulation)
 
 @info """
 
-    Simulation took $(prettytime(simulation.run_time))
+    Simulation took $(prettytime(simulation.run_wall_time))
     Background diffusivity: $background_diffusivity
     Minimum wave propagation time scale: $(prettytime(wave_propagation_time_scale))
     Free surface: $(typeof(model.free_surface).name.wrapper)
