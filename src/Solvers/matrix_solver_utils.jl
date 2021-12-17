@@ -72,6 +72,18 @@ end
     end
 end
 
+@kernel function _get_diag!(diag, colptr, rowval, nzval)
+    col = @index(Global, Linear)
+    map = 1
+    for idx in colptr[col]:colptr[col+1] - 1
+        if rowval[idx] == col
+            map = idx 
+            break
+        end
+    end
+    diag[col] = nzval[map]
+end
+
 #unfortunately this cannot run on a GPU so we have to resort to that ugly loop in _update_diag!
 @inline map_row_to_diag_element(i, rowval, colptr) =  colptr[i] - 1 + findfirst(rowval[colptr[i]:colptr[i+1]-1] .== i)
 
@@ -192,14 +204,14 @@ function simplified_inverse_preconditioner(A::AbstractMatrix)
     
     M = size(A, 1)
 
-    invdiag = arch_array(arch, zeros(eltype(nzval), M))
+    diag = arch_array(arch, zeros(eltype(nzval), M))
 
-    loop! = _get_inv_diag!(dev, 256, M)
-    event = loop!(invdiag, colptr, rowval, nzval; dependencies=Event(dev))
+    loop! = _get_diag!(dev, 256, M)
+    event = loop!(diag, colptr, rowval, nzval; dependencies=Event(dev))
     wait(dev, event)
 
     loop! = _initialize_simplified_inverse_preconditioner!(dev, 256, M)
-    event = loop!(nzval, colptr, rowval, invdiag; dependencies=Event(dev))
+    event = loop!(nzval, colptr, rowval, diag; dependencies=Event(dev))
     wait(dev, event)
     
     constr_new = (colptr, rowval, nzval)
@@ -209,14 +221,14 @@ function simplified_inverse_preconditioner(A::AbstractMatrix)
     return SparseInversePreconditioner(Minv)
 end
 
-@kernel function _initialize_simplified_inverse_preconditioner!(nzval, colptr, rowval, invdiag)
+@kernel function _initialize_simplified_inverse_preconditioner!(nzval, colptr, rowval, diag)
     col = @index(Global, Linear)
 
     for idx = colptr[col] : colptr[col+1] - 1
         if rowval[idx] == col
-            nzval[idx] = - invdiag[col]
+            nzval[idx] = diag[col]
         else
-            nzval[idx] = nzval[idx] * invdiag[rowval[idx]]
+            nzval[idx] = - nzval[idx] * diag[rowval[idx]]
         end
     end
 end
