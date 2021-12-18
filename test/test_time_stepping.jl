@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.Fields: BackgroundField
 using Oceananigans.TimeSteppers: Clock
@@ -98,13 +100,13 @@ end
     stepped. It just initializes a cube shaped hot bubble perturbation in the center of the 3D domain to induce a
     velocity field.
 """
-function incompressible_in_time(arch, grid, Nt, timestepper)
+function incompressible_in_time(grid, Nt, timestepper)
     model = NonhydrostaticModel(grid=grid, timestepper=timestepper,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     grid = model.grid
     u, v, w = model.velocities
 
-    div_U = CenterField(arch, grid)
+    div_U = CenterField(grid)
 
     # Just add a temperature perturbation so we get some velocity field.
     CUDA.@allowscalar interior(model.tracers.T)[8:24, 8:24, 8:24] .+= 0.01
@@ -113,6 +115,7 @@ function incompressible_in_time(arch, grid, Nt, timestepper)
         ab2_or_rk3_time_step!(model, 0.05, n)
     end
 
+    arch = architecture(grid)
     event = launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, div_U.data, dependencies=Event(device(arch)))
     wait(device(arch), event)
 
@@ -343,7 +346,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                 @info "  Testing incompressibility [$FT, $(typeof(grid).name.wrapper)]..."
 
                 for Nt in [1, 10, 100], timestepper in timesteppers
-                    @test incompressible_in_time(arch, grid, Nt, timestepper)
+                    @test incompressible_in_time(grid, Nt, timestepper)
                 end
             end
         end
