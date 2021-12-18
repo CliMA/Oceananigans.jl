@@ -18,14 +18,14 @@ struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
 end
 
 """
-    RungeKutta3TimeStepper(arch, grid, tracers,
+    RungeKutta3TimeStepper(grid, tracers,
                            Gⁿ = TendencyFields(grid, tracers),
                            G⁻ = TendencyFields(grid, tracers))
 
-Return an `RungeKutta3TimeStepper` object with tendency fields on `arch` and
-`grid`. The tendency fields can be specified via optional kwargs.
+Return an `RungeKutta3TimeStepper` object with tendency fields on `grid`.
+The tendency fields can be specified via optional kwargs.
 """
-function RungeKutta3TimeStepper(arch, grid, tracers;
+function RungeKutta3TimeStepper(grid, tracers;
                                 implicit_solver::TI = nothing,
                                 Gⁿ::TG = TendencyFields(grid, tracers),
                                 G⁻ = TendencyFields(grid, tracers)) where {TI, TG}
@@ -142,9 +142,9 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
 
-    barrier = Event(device(model.architecture))
+    barrier = Event(device(architecture(model)))
 
-    substep_field_kernel! = rk3_substep_field!(device(model.architecture), workgroup, worksize)
+    substep_field_kernel! = rk3_substep_field!(device(architecture(model)), workgroup, worksize)
 
     model_fields = prognostic_fields(model)
 
@@ -173,7 +173,7 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
         push!(events, field_event)
     end
 
-    wait(device(model.architecture), MultiEvent(Tuple(events)))
+    wait(device(architecture(model)), MultiEvent(Tuple(events)))
 
     return nothing
 end

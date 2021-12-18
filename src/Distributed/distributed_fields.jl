@@ -7,7 +7,7 @@ function Field(X, Y, Z, arch::AbstractMultiArchitecture, grid::AbstractGrid,
                 bcs = FieldBoundaryConditions(grid, (X, Y, Z)),
                data = new_data(eltype(grid), arch, grid, (X, Y, Z)))
 
-    communicative_bcs = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity)
+    boudnary_conditions = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity)
 
-    return Field(X, Y, Z, child_architecture(arch), grid, communicative_bcs, data)
+    return Field{X, Y, Z}(grid; boundary_conditions, data)
 end

@@ -165,7 +165,7 @@ function NonhydrostaticModel(;    grid,
 
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), arch, grid)
-    timestepper = TimeStepper(timestepper, arch, grid, tracernames(tracers), implicit_solver=implicit_solver)
+    timestepper = TimeStepper(timestepper, grid, tracernames(tracers), implicit_solver=implicit_solver)
 
     # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(velocities, tracers)

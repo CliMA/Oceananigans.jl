@@ -28,7 +28,7 @@ const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded
 ##### Model constructor utils
 #####
 
-PressureField(arch, ::SingleColumnGrid) = (pHY′ = nothing,)
+PressureField(::SingleColumnGrid) = (; pHY′ = nothing)
 FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, velocities, arch, ::SingleColumnGrid) = nothing
 FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arch, ::SingleColumnGrid) = nothing
 

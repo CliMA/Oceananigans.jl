@@ -1,9 +1,9 @@
-using Oceananigans: CPU, GPU
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, PrescribedField, ExplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, ExplicitTimeDiscretization, CATKEVerticalDiffusivity
-using Oceananigans.Grids: Periodic, Bounded
 
 function time_step_hydrostatic_model_works(grid;
                                            coriolis = nothing,

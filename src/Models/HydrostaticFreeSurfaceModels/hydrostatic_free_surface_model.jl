@@ -24,7 +24,7 @@ validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_trac
 validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSecondOrder(), tracer_advection_tuple
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 
-PressureField(arch, grid) = (; pHY′ = CenterField(arch, grid))
+PressureField(grid) = (; pHY′ = CenterField(grid))
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
                                            G, T, V, B, R, F, P, U, C, Φ, K, AF} <: AbstractModel{TS}
@@ -152,7 +152,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     validate_velocity_boundary_conditions(velocities)
 
-    free_surface = FreeSurface(free_surface, velocities, arch, grid)
+    free_surface = FreeSurface(free_surface, velocities, grid)
 
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), arch, grid)

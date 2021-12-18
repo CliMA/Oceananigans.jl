@@ -62,7 +62,7 @@ function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFiel
 end
 
 function HydrostaticFreeSurfaceTendencyFields(::PrescribedVelocityFields, free_surface, grid, tracer_names)
-    tracers = TracerFields(tracer_names, arch, grid)
+    tracers = TracerFields(tracer_names, grid)
     return merge((u = nothing, v = nothing, η = nothing), tracers)
 end
 
