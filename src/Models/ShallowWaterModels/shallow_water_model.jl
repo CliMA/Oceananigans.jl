@@ -52,7 +52,6 @@ end
     ShallowWaterModel(;
                                grid,
                                gravitational_acceleration,
-      architecture::AbstractArchitecture = CPU(),
                                    clock = Clock{eltype(grid)}(0, 0, 1),
                                advection = UpwindBiasedFifthOrder(),
                                 coriolis = nothing,
@@ -71,7 +70,6 @@ Keyword arguments
 
   - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
   - `gravitational_acceleration`: (required) The gravitational accelaration constant.
-  - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
   - `clock`: The `clock` for the model
   - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
   - `coriolis`: Parameters for the background rotation rate of the model.
