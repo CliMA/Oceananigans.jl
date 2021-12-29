@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Architectures: arch_array
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
@@ -91,7 +93,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
             ∫Ayᶜᶠᶜ = vertically_integrated_lateral_areas.yᶜᶠᶜ
 
             solutions = (solutions..., model.free_surface.η)
-            free_surfaces  = (free_surfaces..., model.free_surface)
         end
 
         @test all(interior(solutions[1]) .≈ interior(solutions[2]) .≈ interior(solutions[3]))
