@@ -71,6 +71,8 @@ closures = (
 
 CUDA.allowscalar(true)
 
+float_types = (Float32, Float64)
+
 include("data_dependencies.jl")
 include("utils_for_runtests.jl")
 

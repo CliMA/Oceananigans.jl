@@ -18,6 +18,8 @@ using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
+import Oceananigans.Architectures: architecture
+
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
@@ -180,6 +182,8 @@ function NonhydrostaticModel(;    grid,
     
     return model
 end
+
+architecture(model::NonhydrostaticModel) = model.architecture
 
 #####
 ##### Recursive util for building NamedTuples of boundary conditions from NamedTuples of fields

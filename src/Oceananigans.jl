@@ -178,8 +178,8 @@ include("Logger.jl")
 include("Operators/Operators.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
-include("Advection/Advection.jl")
 include("AbstractOperations/AbstractOperations.jl")
+include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 include("Distributed/Distributed.jl")
 
@@ -203,6 +203,7 @@ include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
 include("CubedSpheres/CubedSpheres.jl")
+
 #####
 ##### Needed so we can export names from sub-modules at the top-level
 #####

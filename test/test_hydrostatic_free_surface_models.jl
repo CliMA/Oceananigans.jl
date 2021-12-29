@@ -55,7 +55,6 @@ function hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
     return nothing
 end
 
-
 topo_1d = (Flat, Flat, Bounded)
 
 topos_2d = ((Periodic, Flat, Bounded),
@@ -224,8 +223,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
             
             u₀, v₀ = 0.1, 0.2
             
-            U = Field(Face, Center, Center, arch, grid)
-            V = Field(Center, Face, Center, arch, grid)
+            U = Field{Face, Center, Center}(grid)
+            V = Field{Center, Face, Center}(grid)
 
             CUDA.@allowscalar begin
                 parent(U)[2, 1, 1] = u₀

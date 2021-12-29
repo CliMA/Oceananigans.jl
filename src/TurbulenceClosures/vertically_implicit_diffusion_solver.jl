@@ -110,12 +110,12 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, arch,
     topo[3] == Periodic && error("VerticallyImplicitTimeDiscretization can only be specified on " *
                                  "grids that are Bounded in the z-direction.")
 
-    z_center_solver = BatchedTridiagonalSolver(arch, grid;
+    z_center_solver = BatchedTridiagonalSolver(grid;
                                                lower_diagonal = ivd_lower_diagonalᵃᵃᶜ,
                                                diagonal = ivd_diagonalᵃᵃᶜ,
                                                upper_diagonal = ivd_upper_diagonalᵃᵃᶜ)
 
-    z_face_solver = BatchedTridiagonalSolver(arch, grid;
+    z_face_solver = BatchedTridiagonalSolver(grid;
                                              lower_diagonal = ivd_lower_diagonalᵃᵃᶠ,
                                              diagonal = ivd_diagonalᵃᵃᶠ,
                                              upper_diagonal = ivd_upper_diagonalᵃᵃᶠ,

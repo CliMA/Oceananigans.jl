@@ -1,3 +1,4 @@
+using Oceananigans.Architectures: architecture
 using Oceananigans: fields
 
 """
@@ -51,7 +52,7 @@ end
 #####
 
 """
-    time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; euler=false)
+    time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
 Step forward `model` one time step `Δt` with a 3rd-order Runge-Kutta method.
 The 3rd-order Runge-Kutta method takes three intermediate substep stages to

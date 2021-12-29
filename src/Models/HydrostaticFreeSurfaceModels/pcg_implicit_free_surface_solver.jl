@@ -4,6 +4,7 @@ using Oceananigans.Architectures
 using Oceananigans.Fields: Field, ZReducedField
 
 import Oceananigans.Solvers: solve!
+import Oceananigans.Architectures: architecture
 
 struct PCGImplicitFreeSurfaceSolver{V, S, R}
     vertically_integrated_lateral_areas :: V
@@ -11,8 +12,11 @@ struct PCGImplicitFreeSurfaceSolver{V, S, R}
     right_hand_side :: R
 end
 
+architecture(solver::PCGImplicitFreeSurfaceSolver) =
+    architecture(solver.preconditioned_conjugate_gradient_solver)
+
 """
-    PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
+    PCGImplicitFreeSurfaceSolver(grid, settings)
 
 Return a solver based on a preconditioned conjugate gradient method for the elliptic equation
     
@@ -24,14 +28,14 @@ representing an implicit time discretization of the linear free surface evolutio
 for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
-function PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
+function PCGImplicitFreeSurfaceSolver(grid, settings)
     # Initialize vertically integrated lateral face areas
     ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
     ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
-    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas, grid, arch)
+    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas, grid)
 
     right_hand_side = Field{Center, Center, Nothing}(grid)
 
@@ -47,8 +51,8 @@ function PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings
     return PCGImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, arch, grid, settings) =
-    PCGImplicitFreeSurfaceSolver(arch, grid, settings)
+build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid, settings) =
+    PCGImplicitFreeSurfaceSolver(grid, settings)
 
 #####
 ##### Solve...
@@ -76,7 +80,7 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
                                                         g, Δt, ∫ᶻQ, η)
 
     solver = implicit_solver.preconditioned_conjugate_gradient_solver
-    arch = solver.architecture
+    arch = architecture(solver)
     grid = solver.grid
 
     event = launch!(arch, grid, :xy,

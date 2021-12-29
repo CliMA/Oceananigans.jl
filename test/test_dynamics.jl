@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, z_viscosity
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
@@ -21,8 +23,10 @@ function test_diffusion_simple(fieldname, timestepper, time_discretization)
     value = π
     interior(field) .= value
 
+    update_state!(model)
+
     for n in 1:10
-        ab2_or_rk3_time_step!(model, 1, n)
+        time_step!(model, 1)
     end
 
     field_data = interior(field)
@@ -53,9 +57,11 @@ end
 function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
     init_mean = mean(interior(field))
 
+    update_state!(model)
+
     for n in 1:10
         # Very small time-steps required to bring error under machine precision
-        ab2_or_rk3_time_step!(model, 1e-4 * Δ^order / κ, n)
+        time_step!(model, 1e-4 * Δ^order / κ)
     end
 
     final_mean = mean(interior(field))
@@ -84,8 +90,11 @@ function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization
 
     # Step forward with small time-step relative to diff. time-scale
     Δt = 1e-6 * grid.Lz^2 / κ
+
+    update_state!(model)
+
     for n in 1:10
-        ab2_or_rk3_time_step!(model, Δt, n)
+        time_step!(model, Δt)
     end
 
      numerical = interior(field)
@@ -124,7 +133,7 @@ function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, bac
     set!(model, u=u₀, v=v₀, T=T₀)
 
     for n in 1:Nt
-        ab2_or_rk3_time_step!(model, Δt, n)
+        time_step!(model, Δt)
     end
 
     # Error tolerance is a bit arbitrary
@@ -162,7 +171,7 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
     set!(model, u=u₀, v=v₀)
 
     for n in 1:Nt
-        ab2_or_rk3_time_step!(model, Δt, n)
+        time_step!(model, Δt)
     end
 
     xF, yC, zC = nodes(model.velocities.u, reshape=true)

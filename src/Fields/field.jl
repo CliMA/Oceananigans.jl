@@ -91,6 +91,10 @@ end
 
 data(f::Field) = f.data
 
+# Fallback: cannot infer boundary conditions.
+boundary_conditions(field) = nothing
+boundary_conditions(f::Field) = f.boundary_conditions
+
 "Returns a view of `f` that excludes halo points."
 function interior(f::Field)
     LX, LY, LZ = location(f)
@@ -151,10 +155,8 @@ Additional keyword arguments are passed to the `Field` constructor.
 ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, Center, Face}(grid, T; kw...)
 
 #####
-##### Fields computed from AbstractOperation and associated utilities
+##### Interface for field computations
 #####
-
-const ComputedField = Field{<:Any, <:Any, <:Any, <:AbstractOperation}
 
 """
     compute!(field)
@@ -176,6 +178,17 @@ macro compute(def)
     return expr
 end
 
+#####
+##### Conditional computation
+#####
+
+mutable struct FieldStatus{T}
+    time :: T
+end
+
+FieldStatus() = FieldStatus(0.0)
+Adapt.adapt_structure(to, status::FieldStatus) = (; time = status.time)
+
 """
     compute_at!(field, time)
 
@@ -184,98 +197,26 @@ Computes `field.data` at `time`. Falls back to compute!(field).
 compute_at!(field, time) = compute!(field)
 
 """
-    conditional_compute!(field, time)
+    compute_at!(field, time)
 
 Computes `field.data` if `time != field.status.time`.
 """
-function conditional_compute!(field, time)
-    if time == zero(time) || time != field.status.time
+function compute_at!(field::Field, time)
+    if isnothing(field.status) # then always compute:
+        compute!(field, time)
+
+    # Otherwise, compute only on initialization or if field.status.time is not current,
+    elseif time == zero(time) || time != field.status.time
         compute!(field, time)
         field.status.time = time
     end
-    return nothing
+
+    return field
 end
 
 # This edge case occurs if `fetch_output` is called with `model::Nothing`.
 # We do the safe thing here and always compute.
-conditional_compute!(field, ::Nothing) = compute!(field, nothing)
-
-mutable struct FieldStatus{T}
-    time :: T
-end
-
-Adapt.adapt_structure(to, status::FieldStatus) = (; time = status.time)
-
-"""
-    Field(operand::AbstractOperation; kwargs...)
-
-Return `f::Field` where `f.data` is computed from `f.operand` by
-calling compute!(f).
-
-Keyword arguments
-=================
-
-data (AbstractArray): An offset Array or CuArray for storing the result of a computation.
-                      Must have `total_size(location(operand), grid)`.
-
-boundary_conditions (FieldBoundaryConditions): Boundary conditions for `f`. 
-
-recompute_safely (Bool): whether or not to _always_ "recompute" `f` if `f` is
-                         nested within another computation via an `AbstractOperation`.
-                         If `data` is not provided then `recompute_safely=false` and
-                         recomputation is _avoided_. If `data` is provided, then
-                         `recompute_safely=true` by default.
-"""
-function Field(operand::AbstractOperation;
-               data = nothing,
-               boundary_conditions = FieldBoundaryConditions(op.grid, location(op)),
-               recompute_safely = true)
-
-    if isnothing(data)
-        data = new_data(op.grid, location(op))
-        recompute_safely = false
-    end
-
-    status = recompute_safely ? nothing : FieldStatus(0.0)
-
-    return Field(location(op), op.grid, data, boundary_conditions, operand, status)
-end
-
-"""
-    compute!(comp::ComputedField)
-
-Compute `comp.operand` and store the result in `comp.data`.
-"""
-function compute!(comp::ComputedField, time=nothing)
-    # First compute `dependencies`:
-    compute_at!(comp.operand, time)
-
-    workgroup, worksize =
-        work_layout(comp.grid, :xyz, include_right_boundaries = true, location = location(comp))
-
-    arch = architecture(comp)
-    compute_kernel! = _compute!(device(arch), workgroup, worksize)
-    event = compute_kernel!(comp.data, comp.operand; dependencies = device_event(arch))
-    wait(device(arch), event)
-
-    fill_halo_regions!(comp, arch)
-
-    return comp
-end
-
-"""Compute an `operand` and store in `data`."""
-@kernel function _compute!(data, operand)
-    i, j, k = @index(Global, NTuple)
-    @inbounds data[i, j, k] = operand[i, j, k]
-end
-
-function compute_at!(field::ComputedField, time)
-    if isnothing(field.status)
-        return compute!(field, time)
-    else
-        return conditional_compute!(field, time)
-    end
-end
+compute_at!(field::Field, ::Nothing) = compute!(field, nothing)
 
 #####
 ##### Fields that are reduced along one or more dimensions

@@ -111,8 +111,9 @@ function incompressible_in_time(grid, Nt, timestepper)
     # Just add a temperature perturbation so we get some velocity field.
     CUDA.@allowscalar interior(model.tracers.T)[8:24, 8:24, 8:24] .+= 0.01
 
+    update_state!(model)
     for n in 1:Nt
-        ab2_or_rk3_time_step!(model, 0.05, n)
+        time_step!(model, 0.05)
     end
 
     arch = architecture(grid)
@@ -164,8 +165,9 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     Tavg0 = CUDA.@allowscalar mean(interior(model.tracers.T))
 
+    update_state!(model)
     for n in 1:Nt
-        ab2_or_rk3_time_step!(model, 600, n)
+        time_step!(model, 600)
     end
 
     Tavg = CUDA.@allowscalar mean(interior(model.tracers.T))

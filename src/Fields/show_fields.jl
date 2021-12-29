@@ -12,7 +12,6 @@ short_show(m::Missing) = "$m"
 
 short_show(field::AbstractField) = string(typeof(field).name.wrapper, " located at ", show_location(field))
 short_show(field::AveragedField) = string("AveragedField over dims=$(field.dims) located at ", show_location(field), " of ", short_show(field.operand))
-short_show(field::ComputedField) = string("ComputedField located at ", show_location(field), " of ", short_show(field.operand))
 
 Base.show(io::IO, field::AbstractField{X, Y, Z, A}) where {X, Y, Z, A} =
     print(io, "$(short_show(field))\n",
@@ -35,21 +34,6 @@ Base.show(io::IO, field::AveragedField) =
           "├── dims: $(field.dims)\n",
           "├── operand: $(short_show(field.operand))\n",
           "└── status: ", show_status(field.status))
-
-Base.show(io::IO, field::ComputedField) =
-    print(io, "$(short_show(field))\n",
-          "├── data: $(typeof(field.data)), size: $(size(field))\n",
-          "├── grid: $(short_show(field.grid))\n",
-          "├── operand: $(short_show(field.operand))\n",
-          "└── status: $(show_status(field.status))")
-
-Base.show(io::IO, field::KernelComputedField) =
-    print(io, "$(short_show(field))\n",
-          "├── data: $(typeof(field.data)), size: $(size(field))\n",
-          "├── grid: $(short_show(field.grid))\n",
-          "├── computed_dependencies: $(Tuple(short_show(d) for d in field.computed_dependencies))\n",
-          "├── kernel: $(short_show(field.kernel))\n",
-          "└── status: $(show_status(field.status))")
 
 Base.show(io::IO, field::ZeroField) = print(io, "ZeroField")
 

@@ -22,7 +22,7 @@ struct ComputedField{X, Y, Z, S, O, A, D, G, T, C} <: AbstractDataField{X, Y, Z,
         validate_field_data(X, Y, Z, data, grid)
 
         # Use FieldStatus if we want to avoid always recomputing
-        status = recompute_safely ? nothing : FieldStatus(0.0)
+        status = recompute_safely ? nothing : FieldStatus()
 
         S = typeof(status)
         T = eltype(grid)
