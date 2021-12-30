@@ -24,7 +24,6 @@ end
 function Field(loc::Tuple, grid::AbstractGrid, data, bcs, op, status)
     validate_field_data(loc, data, grid)
     # validate_boundary_conditions(loc, grid, bcs)
-    arch = architecture(grid)
     LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, op, status)
 end
@@ -163,7 +162,7 @@ ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field{Center, 
 
 Computes `field.data` from `field.operand`.
 """
-compute!(field) = nothing # fallback
+compute!(field, time=nothing) = nothing # fallback
 
 """
     @compute(exprs...)

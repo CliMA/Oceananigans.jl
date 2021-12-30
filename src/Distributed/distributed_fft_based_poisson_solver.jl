@@ -1,20 +1,25 @@
 import PencilFFTs
 
-import Oceananigans.Solvers: poisson_eigenvalues, solve!
 using Oceananigans.Solvers: copy_real_component!
 using Oceananigans.Distributed: rank2index
 
-struct DistributedFFTBasedPoissonSolver{A, P, F, L, λ, S}
-      architecture :: A
+import Oceananigans.Solvers: poisson_eigenvalues, solve!
+import Oceananigans.Architectures: architecture
+
+struct DistributedFFTBasedPoissonSolver{P, F, L, λ, S}
               plan :: P
        global_grid :: F
-           my_grid :: L
+        local_grid :: L
        eigenvalues :: λ
            storage :: S
 end
 
-function DistributedFFTBasedPoissonSolver(arch, global_grid, local_grid)
+architecture(solver::DistributedFFTBasedPoissonSolver) =
+    architecture(solver.global_grid)
 
+function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
+
+    arch = architecture(global_grid)
     topo = (TX, TY, TZ) = topology(global_grid)
 
     λx = poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, TX())
@@ -41,11 +46,11 @@ function DistributedFFTBasedPoissonSolver(arch, global_grid, local_grid)
     plan = PencilFFTs.PencilFFTPlan(size(global_grid), transform, proc_dims, MPI.COMM_WORLD)
     storage = PencilFFTs.allocate_input(plan)
 
-    return DistributedFFTBasedPoissonSolver(arch, plan, global_grid, local_grid, eigenvalues, storage)
+    return DistributedFFTBasedPoissonSolver(plan, global_grid, local_grid, eigenvalues, storage)
 end
 
 function solve!(x, solver::DistributedFFTBasedPoissonSolver)
-    arch = solver.architecture
+    arch = architecture(solver)
     λx, λy, λz = solver.eigenvalues
 
     # Apply forward transforms.
@@ -68,7 +73,7 @@ function solve!(x, solver::DistributedFFTBasedPoissonSolver)
     solver.plan \ solver.storage
     xc_transposed = first(solver.storage)
 	
-    copy_event = launch!(arch, solver.my_grid, :xyz, copy_real_component!, x, xc_transposed, dependencies=device_event(arch))
+    copy_event = launch!(arch, solver.local_grid, :xyz, copy_real_component!, x, xc_transposed, dependencies=device_event(arch))
     wait(device(arch), copy_event)
 
     return x

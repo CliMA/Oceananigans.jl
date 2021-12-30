@@ -1,6 +1,7 @@
 module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
+export AveragedField, IntegratedField
 export KernelFunctionOperation
 
 using Base: @propagate_inbounds
@@ -50,6 +51,7 @@ at(loc, f) = f # fallback
 
 include("grid_validation.jl")
 include("grid_metrics.jl")
+include("metric_field_reductions.jl")
 include("unary_operations.jl")
 include("binary_operations.jl")
 include("multiary_operations.jl")

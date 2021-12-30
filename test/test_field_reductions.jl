@@ -1,28 +1,28 @@
+include("dependencies_for_runtests.jl")
+
 using Statistics
 using Oceananigans.Architectures: arch_array
 using Oceananigans.Fields: ReducedField, CenterField, ZFaceField, compute_at!, @compute
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Grids: halo_size
 
-include("utils_for_runtests.jl")
-
-archs = test_architectures()
-
-@testset "AveragedField" begin
-    @info "Testing AveragedField..."
+@testset "Fields computed by Reduction" begin
+    @info "Testing Fields computed by reductions..."
 
     for arch in archs
-
         arch_str = string(typeof(arch))
 
         @testset "Averaged fields [$arch_str]" begin
-            @info "  Testing AveragedFields [$arch_str]"
+            @info "  Testing averaged Fields [$arch_str]"
 
-            grid = RectilinearGrid(arch, topology = (Periodic, Periodic, Bounded),
-                                          size = (2, 2, 2),
-                                          x = (0, 2),
-                                          y = (0, 2),
-                                          z = (0, 2))
+            grid = RectilinearGrid(arch,
+                                   topology = (Periodic, Periodic, Bounded),
+                                   size = (2, 2, 2),
+                                   x = (0, 2),
+                                   y = (0, 2),
+                                   z = (0, 2))
+
+            Nx, Ny, Nz = size(grid)
 
             w = ZFaceField(grid)
             T = CenterField(grid)
@@ -32,21 +32,21 @@ archs = test_architectures()
             set!(T, trilinear)
             set!(w, trilinear)
 
-            @compute Txyz = AveragedField(T, dims=(1, 2, 3))
+            #@compute Txyz = AveragedField(T, dims=(1, 2, 3))
+            @compute Txyz = Field(Average(T, dims=(1, 2, 3)))
 
             # Note: halo regions must be *filled* prior to computing an average
             # if the average within halo regions is to be correct.
             fill_halo_regions!(T, arch)
-            @compute Txy = AveragedField(T, dims=(1, 2))
+            #@compute Txy = AveragedField(T, dims=(1, 2))
+            @compute Txy = Field(Average(T, dims=(1, 2)))
 
             fill_halo_regions!(T, arch)
             @compute Tx = AveragedField(T, dims=1)
 
-            @compute wxyz = AveragedField(w, dims=(1, 2, 3))
-            @compute wxy = AveragedField(w, dims=(1, 2))
-            @compute wx = AveragedField(w, dims=1)
-
-            Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
+            @compute wxyz = Field(Average(w, dims=(1, 2, 3)))
+            @compute wxy = Field(Average(w, dims=(1, 2)))
+            @compute wx = Field(Average(w, dims=1))
 
             for FT in float_types
                 
@@ -71,7 +71,7 @@ archs = test_architectures()
                 c = CenterField(big_grid)
                 c .= 1
 
-                C = AveragedField(c, dims=(1, 2))
+                C = Field(Average(c, dims=(1, 2)))
 
                 # Test that the mean consistently returns 1 at every z for many evaluations
                 results = [all(interior(mean!(C, C.operand)) .== 1) for i = 1:10] # warm up...
@@ -102,11 +102,11 @@ archs = test_architectures()
             end
         end
 
-        @testset "Conditional computation of AveragedFields [$(typeof(arch))]" begin
-            @info "  Testing conditional computation of AveragedFields [$(typeof(arch))]"
+        @testset "Conditional computation of averaged Fields [$(typeof(arch))]" begin
+            @info "  Testing conditional computation of averaged Fields [$(typeof(arch))]"
             for FT in float_types
                 grid = RectilinearGrid(arch, FT, size=(2, 2, 2), extent=(1, 1, 1))
-                c = CenterField(arch, grid)
+                c = CenterField(grid)
 
                 for dims in (1, 2, 3, (1, 2), (2, 3), (1, 3), (1, 2, 3))
                     C = AveragedField(c, dims=dims)

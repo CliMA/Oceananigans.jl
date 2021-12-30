@@ -1,4 +1,6 @@
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+include("dependencies_for_runtests.jl")
+
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
 @inline surface_wind_stress(λ, φ, t, p) = p.τ₀ * cos(2π * (φ - p.φ₀) / p.Lφ)
@@ -18,7 +20,6 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
             underlying_grid = RectilinearGrid(arch, size=(8, 8, 8), x = (-5, 5), y = (-5, 5), z = (0, 2))
 
             bump(x, y, z) = z < exp(-x^2 - y^2)
-
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(bump))
             
             for closure in (IsotropicDiffusivity(ν=1, κ=0.5),
@@ -47,6 +48,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
                 @test b[4, 4, 2] == 0
                 @test u[4, 4, 2] == 0
             end
+        end
 
         @testset "Surface boundary conditions with immersed boundaries [$arch_str]" begin
             @info "  Testing surface boundary conditions with ImmersedBoundaries in HydrostaticFreeSurfaceModel [$arch_str]..."

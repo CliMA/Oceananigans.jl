@@ -113,7 +113,7 @@ function LatitudeLongitudeGrid(architecture=CPU(),
                                                          Δλᶠᵃᵃ, Δλᶜᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ,
                                                          Δφᵃᶠᵃ, Δφᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
                                                          Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ,
-                                                         (nothing for i=1:10)..., radius)
+                                                         (nothing for i=1:10)..., FT(radius))
 
     return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
 end

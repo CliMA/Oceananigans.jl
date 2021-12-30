@@ -1,6 +1,6 @@
 using Adapt
 using CUDA: CuArray
-using Oceananigans.Fields: ReducedField, fill_halo_regions!
+using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.Architectures: arch_array
 
 abstract type AbstractGridFittedBoundary <: AbstractImmersedBoundary end
@@ -44,7 +44,7 @@ const CuArrayGridFittedBottom = GridFittedBottom{<:CuArray}
 function ImmersedBoundaryGrid(grid, ib::Union{ArrayGridFittedBottom, CuArrayGridFittedBottom})
     # Wrap bathymetry in an OffsetArray with halos
     arch = grid.architecture
-    bottom_field = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
+    bottom_field = Field{Center, Center, Nothing}(grid)
     bottom_data = arch_array(arch, ib.bottom)
     bottom_field .= bottom_data
     fill_halo_regions!(bottom_field, arch)

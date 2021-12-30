@@ -1,13 +1,11 @@
 module Fields
 
 export Face, Center
-export AbstractField, AbstractDataField, Field
+export AbstractField, Field, Average, Integral, Reduction
 export CenterField, XFaceField, YFaceField, ZFaceField
-export ReducedField, AveragedField, ComputedField, KernelComputedField, BackgroundField
-export interior, data
-export xnode, ynode, znode, location
-export regrid!
-export set!, compute!, @compute
+export BackgroundField
+export interior, data, xnode, ynode, znode, location
+export set!, compute!, @compute, regrid!
 export VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
 export interpolate, FieldSlicer
 
@@ -16,13 +14,10 @@ using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 
 include("abstract_field.jl")
-# include("reduced_getindex_setindex.jl")
 include("field.jl")
 include("field_reductions.jl")
 include("zero_field.jl")
-# include("reduced_field.jl")
 include("averaged_field.jl")
-# include("computed_field.jl")
 include("kernel_computed_field.jl")
 include("function_field.jl")
 include("regridding_fields.jl")

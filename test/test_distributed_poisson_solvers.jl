@@ -1,11 +1,12 @@
+include("dependencies_for_runtests.jl")
 
 using Oceananigans.Distributed: reconstruct_global_grid
 
-function random_divergent_source_term(arch, grid)
+function random_divergent_source_term(grid)
     # Generate right hand side from a random (divergent) velocity field.
-    Ru = XFaceField(arch, grid)
-    Rv = YFaceField(arch, grid)
-    Rw = ZFaceField(arch, grid)
+    Ru = XFaceField(grid)
+    Rv = YFaceField(grid)
+    Rw = ZFaceField(grid)
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
@@ -13,6 +14,7 @@ function random_divergent_source_term(arch, grid)
     set!(Rv, (x, y, z) -> rand())
     set!(Rw, (x, y, z) -> rand())
 
+    arch = architecture(grid)
     fill_halo_regions!(Ru, arch)
     fill_halo_regions!(Rv, arch)
     fill_halo_regions!(Rw, arch)

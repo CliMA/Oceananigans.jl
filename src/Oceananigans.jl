@@ -33,7 +33,7 @@ export
 
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
-    AveragedField, ComputedField, KernelComputedField, BackgroundField,
+    Average, Integral, Reduction, BackgroundField,
     interior, set!, compute!, regrid!,
 
     # Forcing functions
