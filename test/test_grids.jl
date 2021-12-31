@@ -1,6 +1,6 @@
-
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Grids: total_extent
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
 #####

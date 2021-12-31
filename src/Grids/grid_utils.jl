@@ -30,7 +30,6 @@ Return the architecture (CPU or GPU) that the `grid` lives on.
 """
 @inline architecture(grid::AbstractGrid) = grid.architecture
 
-
 """
     Constant Grid Definitions 
 """
