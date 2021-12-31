@@ -1,6 +1,12 @@
 include("dependencies_for_runtests.jl")
 
 @testset "Oceananigans" begin
+    if test_file != :none
+        @testset "Single file test" begin
+            include(String(test_file))
+        end
+    end
+
     # Core Oceananigans 
     if group == :unit || group == :all
         @testset "Unit tests" begin
@@ -31,6 +37,7 @@ include("dependencies_for_runtests.jl")
             include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
             include("test_poisson_solvers.jl")
+            include("test_matrix_poisson_solver.jl")
         end
     end
 
@@ -71,9 +78,9 @@ include("dependencies_for_runtests.jl")
             include("test_hydrostatic_free_surface_models.jl")
             include("test_ensemble_hydrostatic_free_surface_models.jl")
             include("test_hydrostatic_free_surface_immersed_boundaries.jl")
-            include("test_hydrostatic_free_surface_immersed_boundaries_vertical_integrals.jl")
             include("test_vertical_vorticity_field.jl")
             include("test_implicit_free_surface_solver.jl")
+            include("test_hydrostatic_free_surface_immersed_boundaries_congrad_solve.jl")
         end
     end
     

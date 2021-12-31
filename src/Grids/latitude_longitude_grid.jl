@@ -83,9 +83,9 @@ or an array or function that specifies the faces (see VerticallyStretchedRectili
 
 """
 
-function LatitudeLongitudeGrid(architecture=CPU(),
-                               FT=Float64; 
-                               precompute_metrics=false,
+function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
+                               FT::DataType = Float64; 
+                               precompute_metrics = false,
                                size,
                                latitude,
                                longitude,
@@ -117,6 +117,10 @@ function LatitudeLongitudeGrid(architecture=CPU(),
 
     return !precompute_metrics ? preliminary_grid : with_precomputed_metrics(preliminary_grid)
 end
+
+# architecture = CPU() default, assuming that a DataType positional arg
+# is specifying the floating point type.
+LatitudeLongitudeGrid(FT::DataType; kwargs...) = LatitudeLongitudeGrid(CPU(), FT; kwargs...)
 
 """ Return a reproduction of `grid` with precomputed metric terms. """
 function with_precomputed_metrics(grid)
@@ -177,30 +181,20 @@ function domain_string(grid::LatitudeLongitudeGrid)
     return "longitude λ ∈ [$λ₁, $λ₂], latitude ∈ [$φ₁, $φ₂], z ∈ [$z₁, $z₂]"
 end
 
-function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ, M}) where {FT, TX, TY, TZ, M<:Nothing}
-    print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} \n",
-              "             architecture: $(g.architecture)\n",
-              "                   domain: $(domain_string(g))\n",
-              "                 topology: ", (TX, TY, TZ), '\n',
-              "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
-              "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
-              "                grid in λ: ", show_coordinate(g.Δλᶜᵃᵃ, TX), '\n',
-              "                grid in φ: ", show_coordinate(g.Δφᵃᶜᵃ, TY), '\n',
-              "                grid in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ), '\n',
-              "metrics are computed on the fly")
-end
+function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ, M})
+    show_metrics = M === Nothing ? "metrics are computed on the fly" : 
+                                   "metrics are pre-computed"
 
-function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ}\n",
-              "             architecture: $(g.architecture)\n",
-              "                   domain: $(domain_string(g))\n",
-              "                 topology: ", (TX, TY, TZ), '\n',
-              "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
-              "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
-              "                grid in λ: ", show_coordinate(g.Δλᶜᵃᵃ, TX), '\n',
-              "                grid in φ: ", show_coordinate(g.Δφᵃᶜᵃ, TY), '\n',
-              "                grid in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ), '\n',
-              "metrics are pre-computed")
+    return print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} \n",
+                     "             architecture: $(g.architecture)\n",
+                     "                   domain: $(domain_string(g))\n",
+                     "                 topology: ", (TX, TY, TZ), '\n',
+                     "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
+                     "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
+                     "             spacing in λ: ", show_coordinate(g.Δλᶜᵃᵃ, TX), '\n',
+                     "             spacing in φ: ", show_coordinate(g.Δφᵃᶜᵃ, TY), '\n',
+                     "             spacing in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ), '\n',
+                     show_metrics)
 end
 
 # Node by node
@@ -303,10 +297,10 @@ end
 @inline Δxᶜᶜᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius * hack_cosd(grid.φᵃᶜᵃ[j]) * deg2rad(grid.Δλᶜᵃᵃ)   
 @inline Δyᶜᶠᵃ(i, j, k, grid::YRegLatLonGrid) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶠᵃ)
 @inline Δyᶠᶜᵃ(i, j, k, grid::YRegLatLonGrid) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶜᵃ)
-@inline Azᶠᶜᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-@inline Azᶜᶠᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶠᶠᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶜᶜᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶠᶜᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::XRegLatLonGrid) = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
 
 #####
 ##### Utilities to precompute metrics 

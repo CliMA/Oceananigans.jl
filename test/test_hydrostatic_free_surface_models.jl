@@ -1,9 +1,10 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, PrescribedField, ExplicitFreeSurface
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, PrescribedField
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, ExplicitTimeDiscretization, CATKEVerticalDiffusivity
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, ExplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
 
 function time_step_hydrostatic_model_works(grid;
                                            coriolis = nothing,
@@ -70,10 +71,9 @@ topos_3d = ((Periodic, Periodic, Bounded),
       
     @testset "$topo_1d model construction" begin
         @info "  Testing $topo_1d model construction..."
-        for arch in archs, FT in float_types
+        for arch in archs, FT in [Float64] #float_types
             grid = RectilinearGrid(arch, FT, topology=topo_1d, size=(1), extent=(1))
             model = HydrostaticFreeSurfaceModel(grid=grid)        
-
             @test model isa HydrostaticFreeSurfaceModel
         end
     end
@@ -84,7 +84,6 @@ topos_3d = ((Periodic, Periodic, Bounded),
             for arch in archs, FT in float_types
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1), extent=(1, 2))
                 model = HydrostaticFreeSurfaceModel(grid=grid)
-
                 @test model isa HydrostaticFreeSurfaceModel
             end
         end
@@ -96,9 +95,36 @@ topos_3d = ((Periodic, Periodic, Bounded),
             for arch in archs, FT in float_types
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
                 model = HydrostaticFreeSurfaceModel(grid=grid)
-
                 @test model isa HydrostaticFreeSurfaceModel
             end
+        end
+    end
+
+    @testset "Halo size check in model constructor" begin
+        for topo in topos_3d
+            grid = RectilinearGrid(topology=topo, size=(1, 1, 1), extent=(1, 2, 3))
+            hcabd_closure = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity()
+
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=CenteredFourthOrder())
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedThirdOrder())
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, tracer_advection=UpwindBiasedFifthOrder())
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, momentum_advection=UpwindBiasedFifthOrder())
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid=grid, closure=hcabd_closure)
+
+            # Big enough
+            bigger_grid = RectilinearGrid(topology=topo, size=(1, 1, 1), extent=(1, 2, 3), halo=(3, 3, 3))
+
+            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, closure=hcabd_closure)
+            @test model isa HydrostaticFreeSurfaceModel
+
+            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, momentum_advection=UpwindBiasedFifthOrder())
+            @test model isa HydrostaticFreeSurfaceModel
+
+            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, closure=hcabd_closure)
+            @test model isa HydrostaticFreeSurfaceModel
+
+            model = HydrostaticFreeSurfaceModel(grid=bigger_grid, tracer_advection=UpwindBiasedFifthOrder())
+            @test model isa HydrostaticFreeSurfaceModel
         end
     end
 
@@ -151,7 +177,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
         lat_lon_strip_grid_stretched  = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=z_face_generator(), precompute_metrics=true)
 
         grids = (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid, lat_lon_sector_grid_stretched, lat_lon_strip_grid_stretched, vertically_stretched_grid)
-        free_surfaces = (ExplicitFreeSurface(), ImplicitFreeSurface())
+        free_surfaces = (ExplicitFreeSurface(), ImplicitFreeSurface(), ImplicitFreeSurface(solver_method=:MatrixIterativeSolver))
 
         for grid in grids
             for free_surface in free_surfaces

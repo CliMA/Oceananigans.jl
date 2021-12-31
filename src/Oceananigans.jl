@@ -80,6 +80,7 @@ export
     # Simulations
     Simulation, run!, Callback, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
+    erroring_NaNChecker!,
 
     # Diagnostics
     StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
@@ -87,6 +88,7 @@ export
     # Output writers
     FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
+    AndSchedule, OrSchedule,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,

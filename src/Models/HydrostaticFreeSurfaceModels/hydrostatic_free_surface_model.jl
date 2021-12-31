@@ -9,7 +9,8 @@ using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, Seawa
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: inflate_halo_size, with_halo, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
+using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo, AbstractRectilinearGrid
+using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
 using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
@@ -102,12 +103,20 @@ function HydrostaticFreeSurfaceModel(; grid,
                                   auxiliary_fields = NamedTuple(),
     )
 
-    arch = architecture(grid)
-    @warn "HydrostaticFreeSurfaceModel is experimental. Use with caution!"
+    # Check halos and throw an error if the grid's halo is too small
+    user_halo = halo_size(grid)
+    required_halo = inflate_halo_size(user_halo..., topology(grid),
+                                      momentum_advection,
+                                      tracer_advection,
+                                      closure)
 
-    if arch == GPU() && !has_cuda()
+    any(user_halo .< required_halo) &&
+        throw(ArgumentError("The grid halo $user_halo must be larger than $required_halo."))
+
+    arch = architecture(grid)
+
+    arch == GPU() && !has_cuda() &&
          throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
-    end
 
     momentum_advection = validate_momentum_advection(momentum_advection, grid)
 

@@ -78,4 +78,5 @@ include("utils_for_runtests.jl")
 
 archs = test_architectures()
 
-group = get(ENV, "TEST_GROUP", :all) |> Symbol
+group     = get(ENV, "TEST_GROUP", :all) |> Symbol
+test_file = get(ENV, "TEST_FILE", :none) |> Symbol

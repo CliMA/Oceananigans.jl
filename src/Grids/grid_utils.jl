@@ -9,6 +9,45 @@ Base.length(::Type{Face}, ::Type{Bounded}, N) = N+1
 Base.length(::Type{Center}, topo, N) = N
 Base.length(::Type{Nothing}, topo, N) = 1
 
+"""
+    topology(grid)
+
+Return a tuple with the topology of the `grid` for each dimension.
+"""
+@inline topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
+
+"""
+    topology(grid, dim)
+
+Return the topology of the `grid` for the `dim`-th dimension.
+"""
+@inline topology(grid, dim) = topology(grid)[dim]
+
+"""
+    architecture(grid::AbstractGrid)
+
+Return the architecture (CPU or GPU) that the `grid` lives on.
+"""
+@inline architecture(grid::AbstractGrid) = grid.architecture
+
+
+"""
+    Constant Grid Definitions 
+"""
+
+Base.eltype(::AbstractGrid{FT}) where FT = FT
+
+function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
+    #check if grids are of the same type
+    !isa(grid2, typeof(grid1).name.wrapper) && return false
+
+    topology(grid1) !== topology(grid2) && return false
+
+    x1, y1, z1 = nodes((Face, Face, Face), grid1)
+    x2, y2, z2 = nodes((Face, Face, Face), grid2)
+
+    CUDA.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
+end
 
 """
     size(loc, grid)
@@ -27,6 +66,8 @@ Base.size(loc, grid, d) = size(loc, grid)[d]
 
 total_size(a) = size(a) # fallback
 
+halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
+
 """
     total_size(loc, grid)
 
@@ -36,6 +77,13 @@ corresponding to the number of grid points along `x, y, z`.
 @inline total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
                                  total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
                                  total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
+
+"""
+    halo_size(grid)
+
+Return a tuple with the size of the halo in each dimension.
+"""
+halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
 
 """
     total_extent(topology, H, Δ, L)
