@@ -66,8 +66,6 @@ Base.size(loc, grid, d) = size(loc, grid)[d]
 
 total_size(a) = size(a) # fallback
 
-halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
-
 """
     total_size(loc, grid)
 

@@ -181,9 +181,12 @@ function domain_string(grid::LatitudeLongitudeGrid)
     return "longitude λ ∈ [$λ₁, $λ₂], latitude ∈ [$φ₁, $φ₂], z ∈ [$z₁, $z₂]"
 end
 
-function show(io::IO, g::LatitudeLongitudeGrid{FT, TX, TY, TZ, M})
-    show_metrics = M === Nothing ? "metrics are computed on the fly" : 
-                                   "metrics are pre-computed"
+function show(io::IO, g::LatitudeLongitudeGrid)
+    FT = eltype(g)
+    TX, TY, TZ = topology(g)
+
+    show_metrics = isnothing(g.Δxᶠᶜᵃ) ? "metrics are computed on the fly" : 
+                                        "metrics are pre-computed"
 
     return print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} \n",
                      "             architecture: $(g.architecture)\n",

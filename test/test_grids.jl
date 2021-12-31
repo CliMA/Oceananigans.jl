@@ -1,5 +1,6 @@
-using Oceananigans.Architectures
-using Oceananigans.Grids: total_extent, halo_size
+
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
 #####
