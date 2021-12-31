@@ -11,7 +11,7 @@ Return a `NamedTuple` with fields `u`, `v`, `w` initialized on `grid`.
 Boundary conditions `bcs` may be specified via a named tuple of
 `FieldBoundaryCondition`s.
 """
-function VelocityFields(grid, user_bcs = NamedTuple())
+function VelocityFields(grid::AbstractGrid, user_bcs = NamedTuple())
 
     template = FieldBoundaryConditions()
 

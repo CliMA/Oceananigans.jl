@@ -126,7 +126,8 @@ boundary conditions for prognostic model field boundary conditions.
     Currently, there is no support `ContinuousBoundaryFunction` for immersed boundary
     conditions.
 """
-function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid, field_name, prognostic_field_names=nothing)
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid::AbstractGrid, field_name,
+                                              prognostic_field_names=nothing)
 
     topo = topology(grid)
     loc = assumed_field_location(field_name)

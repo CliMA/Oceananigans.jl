@@ -67,6 +67,7 @@ export
     NonhydrostaticModel,
     HydrostaticFreeSurfaceModel,
     ShallowWaterModel,
+    PressureField,
     fields,
 
     # Hydrostatic free surface model stuff
