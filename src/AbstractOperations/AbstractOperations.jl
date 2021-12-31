@@ -1,8 +1,7 @@
 module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
-export AveragedField, IntegratedField
-export KernelFunctionOperation
+export Average, Integral, KernelFunctionOperation
 
 using Base: @propagate_inbounds
 

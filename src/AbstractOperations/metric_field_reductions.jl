@@ -1,3 +1,5 @@
+using Statistics: mean!, sum!
+
 import Oceananigans.Fields: Reduction
 
 ##### 
@@ -19,22 +21,33 @@ reduction_grid_metric(dims) = dims === tuple(1)  ? Δx :
 ##### Metric reductions
 ##### 
 
-abstract type AbstractMetricReduction end
-struct Average <: AbstractMetricReduction end
-struct Integral <: AbstractMetricReduction end
+"""docstring..."""
+struct Average end
 
-reduction(::Average) = mean!
-reduction(::Integral) = sum!
-
-function Reduction(r::AbstractMetricReduction, operand; dims)
+function Reduction(avg::Average, field::AbstractField; dims)
     dx = reduction_grid_metric(dims)
-    field_dx = field * dx
-    return Reduction(reduction(r), field_dx; dims)
+
+    # Compute "size" (length, area, or volume) of averaging region
+    metric = GridMetricOperation(location(field), dx, field.grid)
+    L = sum(metric; dims)
+    L⁻¹_field_dx = field * dx / L
+
+    return Reduction(sum!, L⁻¹_field_dx; dims)
+end
+
+Average(field::AbstractField; dims=:) = Reduction(Average(), field; dims)
+
+const AveragedField = Field{<:Any, <:Any, <:Any, <:Reduction{<:Average}}
+
+"""docstring..."""
+struct Integral end
+
+function Reduction(int::Integral, field::AbstractField; dims)
+    dx = reduction_grid_metric(dims)
+    return Reduction(sum!, field * dx; dims)
 end
 
 # Convenience
-Average(field::AbstractField; dims=:) = Reduction(Average(), field; dims)
 Integral(field::AbstractField; dims=:) = Reduction(Integral(), field; dims)
 
-const AveragedField = Field{<:Any, <:Any, <:Any, <:Reduction{<:Average}}
 const IntegratedField = Field{<:Any, <:Any, <:Any, <:Reduction{<:Integral}}

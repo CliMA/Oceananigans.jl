@@ -35,7 +35,7 @@ function Field(reduction::Reduction;
 
     operand = reduction.operand
     grid = operand.grid
-    LX, LY, LZ = loc = reduced_location(location(operand); dims)
+    LX, LY, LZ = loc = reduced_location(location(operand); dims=reduction.dims)
 
     if isnothing(data)
         data = new_data(grid, loc)
@@ -44,6 +44,7 @@ function Field(reduction::Reduction;
 
     boundary_conditions = FieldBoundaryConditions(grid, loc)
     status = recompute_safely ? nothing : FieldStatus()
+
     return Field(loc, grid, data, boundary_conditions, reduction, status)
 end
 
