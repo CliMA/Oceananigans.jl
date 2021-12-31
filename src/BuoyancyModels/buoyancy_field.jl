@@ -1,3 +1,5 @@
+using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Fields: Field
 using Adapt
 using KernelAbstractions
 
@@ -8,7 +10,7 @@ function buoyancy_operation(model)
 end
 
 buoyancy_operation(buoyancy_model, grid, tracers) =
-    KernelFunctionOperation{Center, Center, Center}(buoyancy_perturbation, model.grid, computed=dependencies=(buoyancy_model, tracers))
+    KernelFunctionOperation{Center, Center, Center}(buoyancy_perturbation, grid, computed_dependencies=(buoyancy_model, tracers))
 
 buoyancy_operation(::Nothing, grid, tracers) = nothing
 

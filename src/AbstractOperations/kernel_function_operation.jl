@@ -2,14 +2,12 @@ struct KernelFunctionOperation{LX, LY, LZ, P, A, G, T, K, D} <: AbstractOperatio
     kernel_function :: K
     computed_dependencies :: D
     parameters :: P
-    architecture :: A
     grid :: G
 
     function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K, computed_dependencies::D,
                                                  parameters::P, grid::G) where {LX, LY, LZ, K, G, D, P}
-        arch = architecture(grid)
         T = eltype(grid)
-        A = typeof(arch)
+        A = typeof(architecture(grid))
         return new{LX, LY, LZ, P, A, G, T, K, D}(kernel_function, computed_dependencies, parameters, grid)
     end
 
@@ -23,8 +21,7 @@ end
 Constructs a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid` an with
 an optional iterable of `computed_dependencies` and arbitrary `parameters`.
 
-With `isnothing(parameters)` (the default), `kernel_function` is called
-with
+With `isnothing(parameters)` (the default), `kernel_function` is called with
 
 ```julia
 kernel_function(i, j, k, grid, computed_dependencies...)
@@ -59,8 +56,12 @@ u, v, w = model.velocities
 ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᵃ, grid, computed_dependencies=(u, v))
 ```
 """
-KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid; computed_dependencies = (), parameters = nothing) where {LX, LY, LZ} =
-    KernelFunctionOperation{LX, LY, LZ}(kernel_function, computed_dependencies, parameters, grid)
+function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid;
+                                    computed_dependencies = (),
+                                    parameters = nothing) where {LX, LY, LZ}
+
+    return KernelFunctionOperation{LX, LY, LZ}(kernel_function, computed_dependencies, parameters, grid)
+end
 
 @inline Base.getindex(κ::KernelFunctionOperation, i, j, k) = κ.kernel_function(i, j, k, κ.grid, κ.computed_dependencies..., κ.parameters)
 @inline Base.getindex(κ::KernelFunctionOperation{LX, LY, LZ, <:Nothing}, i, j, k) where {LX, LY, LZ} = κ.kernel_function(i, j, k, κ.grid, κ.computed_dependencies...)
@@ -73,6 +74,5 @@ Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY
     KernelFunctionOperation{LX, LY, LZ}(Adapt.adapt(to, κ.kernel_function),
                                         Adapt.adapt(to, κ.computed_dependencies),
                                         Adapt.adapt(to, κ.parameters),
-                                        nothing,
                                         Adapt.adapt(to, κ.grid))
 
