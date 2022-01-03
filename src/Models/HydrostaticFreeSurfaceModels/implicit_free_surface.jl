@@ -51,7 +51,7 @@ Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
 
 # Internal function for HydrostaticFreeSurfaceModel
 function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid)
-    η = FreeSurfaceDisplacementField(velocities, free_surface, arch, grid)
+    η = FreeSurfaceDisplacementField(velocities, free_surface, grid)
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     # Initialize barotropic volume fluxes
@@ -74,7 +74,7 @@ is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, 
 
 function build_implicit_step_solver(::Val{:Default}, grid, gravitational_acceleration, settings)
     default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :PreconditionedConjugateGradient
-    return build_implicit_step_solver(Val(default_method), arch, grid, gravitational_acceleration, settings)
+    return build_implicit_step_solver(Val(default_method), grid, gravitational_acceleration, settings)
 end
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
