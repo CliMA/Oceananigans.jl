@@ -22,7 +22,7 @@ function can_solve_single_tridiagonal_system(arch, N)
 
     grid = RectilinearGrid(arch, size=(1, 1, N), extent=(1, 1, 1))
 
-    btsolver = BatchedTridiagonalSolver(arch, grid;
+    btsolver = BatchedTridiagonalSolver(grid;
                                         lower_diagonal = a,
                                         diagonal = b,
                                         upper_diagonal = c)
@@ -55,7 +55,7 @@ function can_solve_single_tridiagonal_system_with_functions(arch, N)
 
     ϕ = reshape(zeros(N), (1, 1, N)) |> ArrayType
 
-    btsolver = BatchedTridiagonalSolver(arch, grid;
+    btsolver = BatchedTridiagonalSolver(grid;
                                         lower_diagonal = a,
                                         diagonal = b,
                                         upper_diagonal = c)
@@ -85,7 +85,7 @@ function can_solve_batched_tridiagonal_system_with_3D_RHS(arch, Nx, Ny, Nz)
     a, b, c, f = ArrayType.([a, b, c, f])
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1))
-    btsolver = BatchedTridiagonalSolver(arch, grid;
+    btsolver = BatchedTridiagonalSolver(grid;
                                         lower_diagonal = a,
                                         diagonal = b,
                                         upper_diagonal = c)
@@ -122,7 +122,7 @@ function can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz
     # Convert to CuArray if needed.
     a, c = ArrayType.([a, c])
 
-    btsolver = BatchedTridiagonalSolver(arch, grid;
+    btsolver = BatchedTridiagonalSolver(grid;
                                         lower_diagonal = a,
                                         diagonal = b,
                                         upper_diagonal = c)
