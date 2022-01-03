@@ -14,16 +14,16 @@ import Oceananigans: short_show
 import Oceananigans.Fields: Field, set!, interior
 import Oceananigans.Architectures: architecture
 
-struct FieldTimeSeries{X, Y, Z, K, A, T, D, G, B, χ} <: AbstractField{X, Y, Z, A, G, T, 4}
+struct FieldTimeSeries{LX, LY, LZ, K, A, T, D, G, B, χ} <: AbstractField{LX, LY, LZ, A, G, T, 4}
                    data :: D
                    grid :: G
     boundary_conditions :: B
                   times :: χ
 
-    function FieldTimeSeries{X, Y, Z, K}(data::D, grid::G, bcs::B, times::χ) where {X, Y, Z, K, D, G, B, χ}
+    function FieldTimeSeries{LX, LY, LZ, K}(data::D, grid::G, bcs::B, times::χ) where {LX, LY, LZ, K, D, G, B, χ}
         T = eltype(grid) 
         A = typeof(architecture(grid))
-        return new{X, Y, Z, K, A, T, D, G, B, χ}(data, grid, bcs, times)
+        return new{LX, LY, LZ, K, A, T, D, G, B, χ}(data, grid, bcs, times)
     end
 end
 
@@ -80,7 +80,7 @@ FieldTimeSeries(path, name; backend=InMemory(), kwargs...) =
 ##### InMemory time serieses
 #####
 
-const InMemoryFieldTimeSeries{X, Y, Z} = FieldTimeSeries{X, Y, Z, InMemory}
+const InMemoryFieldTimeSeries{LX, LY, LZ} = FieldTimeSeries{LX, LY, LZ, InMemory}
 
 struct UnspecifiedBoundaryConditions end
 
@@ -208,7 +208,7 @@ parent_indices(idx::Base.Slice{<:IdOffsetRange}) = Colon()
 Base.parent(vf::ViewField) = view(parent(parent(vf.data)), parent_indices.(vf.data.indices)...)
 
 "Returns a view of `f` that excludes halo points."
-@inline interior(f::FieldTimeSeries{X, Y, Z}) where {X, Y, Z} =
+@inline interior(f::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
     view(parent(f.data),
          interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
          interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
@@ -263,9 +263,9 @@ end
 # Include the time dimension.
 @inline Base.size(fts::FieldTimeSeries) = (size(location(fts), fts.grid)..., length(fts.times))
 
-@propagate_inbounds Base.getindex(f::FieldTimeSeries{X, Y, Z, InMemory}, i, j, k, n) where {X, Y, Z} = f.data[i, j, k, n]
+@propagate_inbounds Base.getindex(f::FieldTimeSeries{LX, LY, LZ, InMemory}, i, j, k, n) where {LX, LY, LZ} = f.data[i, j, k, n]
 
-function Base.getindex(fts::FieldTimeSeries{X, Y, Z, OnDisk}, n::Int) where {X, Y, Z}
+function Base.getindex(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}, n::Int) where {LX, LY, LZ}
     # Load data
     arch = architecture(fts)
     file = jldopen(fts.data.path)
@@ -274,7 +274,7 @@ function Base.getindex(fts::FieldTimeSeries{X, Y, Z, OnDisk}, n::Int) where {X, 
     close(file)
 
     # Wrap Field
-    loc = (X, Y, Z)
+    loc = (LX, LY, LZ)
     field_data = offset_data(raw_data, fts.grid, loc)
 
     return Field(loc, fts.grid; boundary_conditions=fts.boundary_conditions, data=field_data)
@@ -282,7 +282,7 @@ end
 
 Base.setindex!(fts::FieldTimeSeries, val, inds...) = Base.setindex!(fts.data, val, inds...)
 
-Base.parent(fts::FieldTimeSeries{X, Y, Z, OnDisk}) = nothing
+Base.parent(fts::FieldTimeSeries{LX, LY, LZ, OnDisk}) where {LX, LY, LZ} = nothing
 
 #####
 ##### Show methods
@@ -295,10 +295,10 @@ backend_str(::OnDisk) = "OnDisk"
 ##### show
 #####
 
-short_show(fts::FieldTimeSeries{X, Y, Z, K}) where {X, Y, Z, K} =
+short_show(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K} =
     string("$(join(size(fts), "×")) FieldTimeSeries{$(backend_str(K()))} located at $(show_location(fts))")
 
-Base.show(io::IO, fts::FieldTimeSeries{X, Y, Z, K, A}) where {X, Y, Z, K, A} =
+Base.show(io::IO, fts::FieldTimeSeries{LX, LY, LZ, K, A}) where {LX, LY, LZ, K, A} =
     print(io, "$(short_show(fts))\n",
           "├── architecture: $A\n",
           "└── grid: $(short_show(fts.grid))")
