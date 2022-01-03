@@ -11,7 +11,9 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.Utils: tupleit
 
-function ShallowWaterTendencyFields(arch, grid, tracer_names)
+import Oceananigans.Architectures: architecture
+
+function ShallowWaterTendencyFields(grid, tracer_names)
 
     uh = XFaceField(grid)
     vh = YFaceField(grid)
@@ -24,9 +26,9 @@ function ShallowWaterTendencyFields(arch, grid, tracer_names)
 end
 
 function ShallowWaterSolutionFields(grid, bcs)
-    uh = XFaceField(grid, bcs.uh)
-    vh = YFaceField(grid, bcs.vh)
-    h = CenterField(grid, bcs.h)
+    uh = XFaceField(grid, boundary_conditions=bcs.uh)
+    vh = YFaceField(grid, boundary_conditions=bcs.vh)
+    h = CenterField(grid, boundary_conditions=bcs.h)
 
     return (; uh, vh, h)
 end
@@ -147,3 +149,5 @@ function ShallowWaterModel(;
 
     return model
 end
+
+architecture(model::ShallowWaterModel) = model.architecture
