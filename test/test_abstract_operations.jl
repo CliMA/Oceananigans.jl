@@ -251,7 +251,14 @@ for arch in archs
                     end
                 end
 
-                for metric in (Δx, Δy, Δz, Ax, Ay, Az, volume)
+                for metric in (AbstractOperations.Δx,
+                               AbstractOperations.Δy,
+                               AbstractOperations.Δz,
+                               AbstractOperations.Ax,
+                               AbstractOperations.Ay,
+                               AbstractOperations.Az,
+                               AbstractOperations.volume)
+
                     @test location(metric * ϕ) == location(ϕ)
                 end
             end
@@ -272,13 +279,13 @@ for arch in archs
             # Δx, Δy, Δz = 2, 3, 4
             # Ax, Ay, Az = 12, 8, 6
             # volume = 24
-            op = c * Δx;     @test op[1, 1, 1] == 2
-            op = c * Δy;     @test op[1, 1, 1] == 3
-            op = c * Δz;     @test op[1, 1, 1] == 4
-            op = c * Ax;     @test op[1, 1, 1] == 12
-            op = c * Ay;     @test op[1, 1, 1] == 8
-            op = c * Az;     @test op[1, 1, 1] == 6
-            op = c * volume; @test op[1, 1, 1] == 24
+            op = c * AbstractOperations.Δx;     @test op[1, 1, 1] == 2
+            op = c * AbstractOperations.Δy;     @test op[1, 1, 1] == 3
+            op = c * AbstractOperations.Δz;     @test op[1, 1, 1] == 4
+            op = c * AbstractOperations.Ax;     @test op[1, 1, 1] == 12
+            op = c * AbstractOperations.Ay;     @test op[1, 1, 1] == 8
+            op = c * AbstractOperations.Az;     @test op[1, 1, 1] == 6
+            op = c * AbstractOperations.volume; @test op[1, 1, 1] == 24
         end
     end
 end

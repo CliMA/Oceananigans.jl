@@ -19,6 +19,7 @@ using Oceananigans.Operators
 using Oceananigans.Advection
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
+using Oceananigans.AbstractOperations
 using Oceananigans.Coriolis
 using Oceananigans.BuoyancyModels
 using Oceananigans.Forcings
@@ -28,7 +29,6 @@ using Oceananigans.Simulations
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
-using Oceananigans.AbstractOperations
 using Oceananigans.Distributed
 using Oceananigans.Logger
 using Oceananigans.Units
