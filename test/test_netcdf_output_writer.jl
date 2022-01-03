@@ -1,15 +1,10 @@
-using Test
+include("dependencies_for_runtests.jl")
+
 using Dates: DateTime, Nanosecond, Millisecond
 using TimesDates: TimeDate
 using CUDA
 using NCDatasets
-using Oceananigans
-using Oceananigans.Units
 using Oceananigans: Clock
-
-include("utils_for_runtests.jl")
-
-archs = test_architectures()
 
 #####
 ##### NetCDFOutputWriter tests
@@ -522,8 +517,8 @@ function test_netcdf_time_averaging(arch)
     Δt = 1/64 # Nice floating-point number
     simulation = Simulation(model, Δt=Δt, stop_time=50Δt)
 
-    ∫c1_dxdy = AveragedField(model.tracers.c1, dims=(1, 2))
-    ∫c2_dxdy = AveragedField(model.tracers.c2, dims=(1, 2))
+    ∫c1_dxdy = Field(Average(model.tracers.c1, dims=(1, 2)))
+    ∫c2_dxdy = Field(Average(model.tracers.c2, dims=(1, 2)))
         
     nc_outputs = Dict("c1" => ∫c1_dxdy, "c2" => ∫c2_dxdy)
     nc_dimensions = Dict("c1" => ("zC",), "c2" => ("zC",))

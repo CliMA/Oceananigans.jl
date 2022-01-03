@@ -370,8 +370,6 @@ function Adapt.adapt_structure(to, grid::RectilinearGrid)
                                        Adapt.adapt(to, grid.zᵃᵃᶜ))
 end
 
-
-
 @inline xnode(::Center, i, grid::RectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
 @inline xnode(::Face  , i, grid::RectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
 
@@ -415,7 +413,7 @@ function with_halo(new_halo, old_grid::RectilinearGrid)
     return new_grid
 end
 
-function with_arch(new_arch, old_grid::RectilinearGrid)
+function on_architecture(new_arch, old_grid::RectilinearGrid)
 
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)

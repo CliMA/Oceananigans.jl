@@ -1,11 +1,4 @@
-using Test
-using Statistics
-using JLD2
-
-using Oceananigans
-using Oceananigans.Units
-using Oceananigans.Architectures: array_type
-using Oceananigans.Fields: location
+include("dependencies_for_runtests.jl")
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
@@ -17,12 +10,8 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     evaporation_bc = FluxBoundaryCondition(Qˢ, field_dependencies=:S, parameters=3e-7)
     S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 
-    model = NonhydrostaticModel(
-                       grid = grid,
-                    tracers = (:T, :S),
-                   buoyancy = SeawaterBuoyancy(),
-        boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)
-    )
+    model = NonhydrostaticModel(; grid, tracers = (:T, :S), buoyancy = SeawaterBuoyancy(),
+                                boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
     dTdz = 0.01
     Tᵢ(x, y, z) = 20 + dTdz * z + 1e-6 * randn()
@@ -37,27 +26,27 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
 
     computed_fields = (
         b = BuoyancyField(model),
-        ζ = ComputedField(∂x(v) - ∂y(u)),
-        ke = ComputedField(√(u^2 + v^2))
+        ζ = Field(∂x(v) - ∂y(u)),
+        ke = Field(√(u^2 + v^2))
     )
 
     fields_to_output = merge(model.velocities, model.tracers, computed_fields)
 
     simulation.output_writers[:jld2_3d_with_halos] =
         JLD2OutputWriter(model, fields_to_output,
-                  prefix = "test_3d_output_with_halos",
-            field_slicer = FieldSlicer(with_halos=true),
-                schedule = TimeInterval(30seconds),
-                   force = true)
+                         prefix = "test_3d_output_with_halos",
+                         field_slicer = FieldSlicer(with_halos=true),
+                         schedule = TimeInterval(30seconds),
+                         force = true)
 
-    profiles = NamedTuple{keys(fields_to_output)}(AveragedField(f, dims=(1, 2)) for f in fields_to_output)
+    profiles = NamedTuple{keys(fields_to_output)}(Field(Average(f, dims=(1, 2))) for f in fields_to_output)
 
     simulation.output_writers[:jld2_1d_with_halos] =
         JLD2OutputWriter(model, profiles,
-                  prefix = "test_1d_output_with_halos",
-            field_slicer = FieldSlicer(with_halos=true),
-                schedule = TimeInterval(30seconds),
-                   force = true)
+                         prefix = "test_1d_output_with_halos",
+                         field_slicer = FieldSlicer(with_halos=true),
+                         schedule = TimeInterval(30seconds),
+                         force = true)
 
     run!(simulation)
 

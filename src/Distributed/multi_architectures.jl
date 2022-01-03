@@ -1,5 +1,5 @@
 using Oceananigans.Architectures
-using Oceananigans.Grids: topology, validate_tupled_argument, with_arch
+using Oceananigans.Grids: topology, validate_tupled_argument
 
 import Oceananigans.Architectures: device, device_event, arch_array
 import Oceananigans.Grids: zeros
@@ -12,7 +12,6 @@ struct MultiArch{A, R, I, ρ, C, γ} <: AbstractMultiArchitecture
         connectivity :: C
         communicator :: γ
 end
-
 
 #####
 ##### Constructors

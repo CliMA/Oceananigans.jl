@@ -223,7 +223,7 @@ all_z_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶠ
 @inline cpu_face_constructor_y(grid::YRegLatLonGrid) = y_domain(grid)
 @inline cpu_face_constructor_z(grid::ZRegLatLonGrid) = z_domain(grid)
 
-function with_arch(new_arch, old_grid::LatitudeLongitudeGrid)
+function on_architecture(new_arch, old_grid::LatitudeLongitudeGrid)
 
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
