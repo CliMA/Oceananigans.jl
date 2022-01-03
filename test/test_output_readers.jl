@@ -78,11 +78,12 @@ end
 
             # This behavior ensures that set! works
             # but perhaps should be changed in the future
-            @test parent(u3) isa SubArray
-            @test parent(v3) isa SubArray
-            @test parent(w3) isa SubArray
-            @test parent(T3) isa SubArray
-            @test parent(b3) isa SubArray
+            @test parent(u3[1]) isa SubArray
+            @test parent(v3[1]) isa SubArray
+            @test parent(w3[1]) isa SubArray
+            @test parent(T3[1]) isa SubArray
+            @test parent(b3[1]) isa SubArray
+            @test parent(ζ3[1]) isa SubArray
 
             @test location(u3) == (Face, Center, Center)
             @test location(v3) == (Center, Face, Center)

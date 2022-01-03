@@ -114,6 +114,8 @@ function FieldTimeSeries(path, name, backend::InMemory;
     return time_series
 end
 
+Base.parent(fts::FieldTimeSeries) = parent(fts.data)
+
 Base.getindex(fts::InMemoryFieldTimeSeries{LX, LY, LZ}, n::Int) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(fts.grid, boundary_conditions=fts.boundary_conditions, data=view(fts.data, :, :, :, n))
 
@@ -279,6 +281,8 @@ function Base.getindex(fts::FieldTimeSeries{X, Y, Z, OnDisk}, n::Int) where {X, 
 end
 
 Base.setindex!(fts::FieldTimeSeries, val, inds...) = Base.setindex!(fts.data, val, inds...)
+
+Base.parent(fts::FieldTimeSeries{X, Y, Z, OnDisk}) = nothing
 
 #####
 ##### Show methods
