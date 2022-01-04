@@ -330,15 +330,9 @@ version = "0.19.2"
 
 [[MPICH_jll]]
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
-<<<<<<< HEAD
 git-tree-sha1 = "4d16537497fcde67c4640b7ac14346d90accad32"
 uuid = "7cb0a576-ebde-5e09-9194-50597f1243b4"
 version = "3.4.3+0"
-=======
-git-tree-sha1 = "480a8be51647c9dec19ff2211e26c9f30787840b"
-uuid = "7cb0a576-ebde-5e09-9194-50597f1243b4"
-version = "3.4.2+2"
->>>>>>> main
 
 [[MacroTools]]
 deps = ["Markdown", "Random"]
@@ -397,17 +391,10 @@ deps = ["Artifacts", "Libdl"]
 uuid = "05823500-19ac-5b8b-9628-191a04bc5112"
 
 [[OpenMPI_jll]]
-<<<<<<< HEAD
 deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "LazyArtifacts", "Libdl", "Pkg"]
 git-tree-sha1 = "6340586e076b2abd41f5ba1a3b9c774ec6b30fde"
 uuid = "fe0851c0-eecd-5654-98d4-656369965a5c"
 version = "4.1.2+0"
-=======
-deps = ["Artifacts", "CompilerSupportLibraries_jll", "JLLWrappers", "Libdl", "Pkg"]
-git-tree-sha1 = "08334c7cd6cb033274bc90918ece2174b5f84cc7"
-uuid = "fe0851c0-eecd-5654-98d4-656369965a5c"
-version = "4.1.1+5"
->>>>>>> main
 
 [[OpenSSL_jll]]
 deps = ["Artifacts", "JLLWrappers", "Libdl", "Pkg"]
