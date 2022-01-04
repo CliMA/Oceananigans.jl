@@ -69,8 +69,6 @@ closures = (
 ##### Run tests!
 #####
 
-CUDA.allowscalar(true)
-
 include("data_dependencies.jl")
 include("utils_for_runtests.jl")
 

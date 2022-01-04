@@ -1,5 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+CUDA.allowscalar() do
+
 @testset "Oceananigans" begin
     if test_file != :none
         @testset "Single file test" begin
@@ -112,3 +114,5 @@ include("dependencies_for_runtests.jl")
         include("test_convergence.jl")
     end
 end # @testset "Oceananigans"
+
+end # CUDA.allowscalar()
