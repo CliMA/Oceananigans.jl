@@ -53,7 +53,7 @@ struct ReducedField{X, Y, Z, A, D, G, T, N, B} <: AbstractReducedField{X, Y, Z, 
                    dims :: NTuple{N, Int}
     boundary_conditions :: B
 
-    """
+    @doc """
         ReducedField{X, Y, Z}(data, grid, dims)
 
     Returns a `ReducedField` at location `(X, Y, Z)` with `data` on `grid`

@@ -35,7 +35,7 @@ function generate_coordinate(FT, topology, N, H, coord, architecture)
 
     # Build halo regions
     ΔF₋ = lower_exterior_Δcoordᶜ(topology, interiorF, H)
-    ΔF₊ = upper_exterior_Δcoordᶜ(topology, interiorF, H)
+    ΔF₊ = reverse(upper_exterior_Δcoordᶜ(topology, interiorF, H))
 
     c¹, cᴺ⁺¹ = interiorF[1], interiorF[N+1]
 
@@ -105,7 +105,7 @@ function generate_coordinate(FT, topology, N, H, coord::Tuple{<:Number, <:Number
     return L, F, C, ΔF, ΔC
 end
 
-# Fallback for a flat domain
+# Flat domains
 function generate_coordinate(FT, ::Type{Flat}, N, H, coord::Tuple{<:Number, <:Number}, architecture)
-    return FT(1), range(1, 1, length=1), range(1, 1, length=1), FT(1), FT(1)
+    return FT(1), range(1, 1, length=N), range(1, 1, length=N), FT(1), FT(1)
 end

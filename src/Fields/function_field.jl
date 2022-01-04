@@ -5,7 +5,7 @@ struct FunctionField{X, Y, Z, C, P, F, G, T} <: AbstractField{X, Y, Z, Nothing, 
          clock :: C
     parameters :: P
 
-    """
+    @doc """
         FunctionField{X, Y, Z}(func, grid; clock=nothing, parameters=nothing) where {X, Y, Z}
 
     Returns a `FunctionField` on `grid` and at location `X, Y, Z`.
@@ -14,7 +14,7 @@ struct FunctionField{X, Y, Z, C, P, F, G, T} <: AbstractField{X, Y, Z, Nothing, 
     `func(x, y, z)`. If clock is specified, `func` must be a function with signature
     `func(x, y, z, t)`, where `t` is internally determined from `clock.time`.
 
-    A FunctionField will return the result of `func(x, y, z [, t])` at `X, Y, Z` on
+    A `FunctionField` will return the result of `func(x, y, z [, t])` at `X, Y, Z` on
     `grid` when indexed at `i, j, k`.
     """
     function FunctionField{X, Y, Z}(func::F, grid::G; clock::C=nothing, parameters::P=nothing) where {X, Y, Z, F, G, C, P}
@@ -22,7 +22,7 @@ struct FunctionField{X, Y, Z, C, P, F, G, T} <: AbstractField{X, Y, Z, Nothing, 
         return new{X, Y, Z, C, P, F, G, T}(func, grid, clock, parameters)
     end
 
-    """
+    @doc """
         FunctionField{X, Y, Z}(func::FunctionField, grid; clock) where {X, Y, Z}
 
     Adds `clock` to an existing `FunctionField` and relocates it to `(X, Y, Z)` on `grid`.

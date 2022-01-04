@@ -73,13 +73,13 @@ leaving all other model properties unchanged.
 
 Possible values for `pickup` are:
 
-    * `pickup=true` picks a simulation up from the latest checkpoint associated with
-      the `Checkpointer` in `simulation.output_writers`.
+  * `pickup=true` picks a simulation up from the latest checkpoint associated with
+    the `Checkpointer` in `simulation.output_writers`.
 
-    * `pickup=iteration::Int` picks a simulation up from the checkpointed file associated
-       with `iteration` and the `Checkpointer` in `simulation.output_writers`.
+  * `pickup=iteration::Int` picks a simulation up from the checkpointed file associated
+     with `iteration` and the `Checkpointer` in `simulation.output_writers`.
 
-    * `pickup=filepath::String` picks a simulation up from checkpointer data in `filepath`.
+  * `pickup=filepath::String` picks a simulation up from checkpointer data in `filepath`.
 
 Note that `pickup=true` and `pickup=iteration` fails if `simulation.output_writers` contains
 more than one checkpointer.
@@ -134,7 +134,7 @@ function time_step!(sim::Simulation)
     end_time_step = time_ns()
 
     # Increment the wall clock
-    sim.run_wall_time += end_time_step - start_time_step
+    sim.run_wall_time += 1e-9 * (end_time_step - start_time_step)
 
     return nothing
 end

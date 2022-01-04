@@ -187,7 +187,6 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     ## Model setup
 
     model = HydrostaticFreeSurfaceModel(
-               architecture = CPU(),
                        grid = grid,
          momentum_advection = VectorInvariant(),
                free_surface = ExplicitFreeSurface(gravitational_acceleration=0.5),

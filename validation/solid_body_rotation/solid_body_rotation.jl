@@ -62,7 +62,7 @@ function run_solid_body_rotation(; architecture = CPU(),
                                    super_rotations = 4)
 
     # A spherical domain
-    grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+    grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, 1),
                                  radius = 1,
                                  latitude = (-80, 80),
                                  longitude = (-180, 180),
@@ -74,7 +74,6 @@ function run_solid_body_rotation(; architecture = CPU(),
                                             scheme = VectorInvariantEnstrophyConserving())
 
     model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        architecture = architecture,
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
                                         coriolis = coriolis,

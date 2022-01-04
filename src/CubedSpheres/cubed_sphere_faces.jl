@@ -63,12 +63,12 @@ const AbstractCubedSphereField{X, Y, Z, A} = Union{    CubedSphereAbstractField{
 ##### new data
 #####
 
-function new_data(FT, arch::AbstractCPUArchitecture, grid::ConformalCubedSphereGrid, (X, Y, Z))
+function new_data(FT, arch::CPU, grid::ConformalCubedSphereGrid, (X, Y, Z))
     faces = Tuple(new_data(FT, arch, face_grid, (X, Y, Z)) for face_grid in grid.faces)
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
 end
 
-function new_data(FT, arch::AbstractGPUArchitecture, grid::ConformalCubedSphereGrid, (X, Y, Z))
+function new_data(FT, arch::GPU, grid::ConformalCubedSphereGrid, (X, Y, Z))
     faces = Tuple(new_data(FT, arch, face_grid, (X, Y, Z)) for face_grid in grid.faces)
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
 end

@@ -2,9 +2,7 @@
     @info "Testing models..."
 
     @testset "Model constructor errors" begin
-        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-        @test_throws TypeError NonhydrostaticModel(architecture=CPU, grid=grid)
-        @test_throws TypeError NonhydrostaticModel(architecture=GPU, grid=grid)
+        grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 1, 1))
         @test_throws TypeError NonhydrostaticModel(grid=grid, boundary_conditions=1)
         @test_throws TypeError NonhydrostaticModel(grid=grid, forcing=2)
         @test_throws TypeError NonhydrostaticModel(grid=grid, background_fields=3)
@@ -21,8 +19,8 @@
             for arch in archs, FT in float_types
 		        arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
 
-                grid = RectilinearGrid(FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
-                model = NonhydrostaticModel(grid=grid, architecture=arch)
+                grid = RectilinearGrid(arch, FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
+                model = NonhydrostaticModel(grid=grid)
 
                 @test model isa NonhydrostaticModel
             end
@@ -71,12 +69,12 @@
     @testset "Model construction with single tracer and nothing tracer" begin
         @info "  Testing model construction with single tracer and nothing tracer..."
         for arch in archs
-            grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
+            grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
 
-            model = NonhydrostaticModel(grid=grid, architecture=arch, tracers=:c, buoyancy=nothing)
+            model = NonhydrostaticModel(grid=grid, tracers=:c, buoyancy=nothing)
             @test model isa NonhydrostaticModel
 
-            model = NonhydrostaticModel(grid=grid, architecture=arch, tracers=nothing, buoyancy=nothing)
+            model = NonhydrostaticModel(grid=grid, tracers=nothing, buoyancy=nothing)
             @test model isa NonhydrostaticModel
         end
     end
@@ -87,8 +85,9 @@
             N = (4, 4, 4)
             L = (2π, 3π, 5π)
 
-            grid = RectilinearGrid(FT, size=N, extent=L)
-            model = NonhydrostaticModel(architecture=arch, grid=grid)
+            grid = RectilinearGrid(arch, FT, size=N, extent=L)
+            model = NonhydrostaticModel(grid=grid,
+                                        buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
             u, v, w = model.velocities
             T, S = model.tracers
@@ -159,11 +158,11 @@
             # Test setting the background_fields to a Field
             U_field = XFaceField(arch, grid)
             U_field .= 1
-            model = NonhydrostaticModel(grid=grid, architecture=arch, background_fields = (u=U_field,))
+            model = NonhydrostaticModel(grid = grid, background_fields = (u=U_field,))
             @test model.background_fields.velocities.u isa Field
 			
 	    U_field = CenterField(arch, grid)            
-	    @test_throws ArgumentError NonhydrostaticModel(grid=grid, architecture=arch, background_fields = (u=U_field,))            
+	    @test_throws ArgumentError NonhydrostaticModel(grid=grid, background_fields = (u=U_field,))            
         end
     end
 end

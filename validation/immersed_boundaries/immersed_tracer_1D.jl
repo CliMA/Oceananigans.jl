@@ -19,7 +19,7 @@ solid(x, y, z) = (z <= topo)
 
 immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(solid))
 
-model = NonhydrostaticModel(architecture = CPU(),
+model = NonhydrostaticModel(
                                advection = CenteredSecondOrder(),
                              timestepper = :RungeKutta3,
                                     grid = immersed_grid,

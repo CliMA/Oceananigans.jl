@@ -201,8 +201,13 @@ function set!(model, filepath::AbstractString)
         # Validate the grid
         checkpointed_grid = file["grid"]
 
-        model.grid == checkpointed_grid ||
-            error("The grid associated with $filepath and model.grid are not the same!")
+	if model.grid isa ImmersedBoundaryGrid
+            model.grid.grid == checkpointed_grid || 
+            error("The grid associated with $filepath and the underlying `ImmersedBoundaryGrid.grid` are not the same!")
+        else
+         model.grid == checkpointed_grid ||
+             error("The grid associated with $filepath and model.grid are not the same!")
+	end
 
         # Set model fields and tendency fields
         model_fields = merge(model.velocities, model.tracers)
