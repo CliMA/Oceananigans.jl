@@ -112,5 +112,3 @@ include("dependencies_for_runtests.jl")
         include("test_convergence.jl")
     end
 end # @testset "Oceananigans"
-
-end # CUDA.allowscalar()
