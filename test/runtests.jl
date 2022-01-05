@@ -24,12 +24,17 @@ include("dependencies_for_runtests.jl")
         end
     end
 
-    if group == :solvers || group == :all
+    if group == :poisson-solvers || group == :all
+        @testset "Solvers" begin
+            include("test_poisson_solvers.jl")
+            include("test_matrix_poisson_solver.jl")
+        end
+    end
+
+    if group == :general-solvers || group == :all
         @testset "Solvers" begin
             include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
-            include("test_poisson_solvers.jl")
-            include("test_matrix_poisson_solver.jl")
         end
     end
 
@@ -44,8 +49,13 @@ include("dependencies_for_runtests.jl")
         @testset "Model and time stepping tests (part 2)" begin
             include("test_boundary_conditions_integration.jl")
             include("test_forcings.jl")
-            include("test_turbulence_closures.jl")
             include("test_dynamics.jl")
+        end
+    end
+
+    if group == :turbulence_closures || group == :all
+        @testset "Turbulence closures tests" begin
+            include("test_turbulence_closures.jl")
         end
     end
 
