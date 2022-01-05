@@ -67,7 +67,7 @@ end
 function poisson_rhs!(r, grid)
     event = launch!(grid.architecture, grid, :xyz, _multiply_by_volume!, r, grid)
     wait(event)
-    return 
+    return nothing
 end
 
 function run_poisson_equation_test(arch, grid)
