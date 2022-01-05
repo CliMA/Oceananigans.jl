@@ -24,14 +24,14 @@ include("dependencies_for_runtests.jl")
         end
     end
 
-    if group == :poisson-solvers || group == :all
+    if group == :poisson_solvers || group == :all
         @testset "Solvers" begin
             include("test_poisson_solvers.jl")
             include("test_matrix_poisson_solver.jl")
         end
     end
 
-    if group == :general-solvers || group == :all
+    if group == :general_solvers || group == :all
         @testset "Solvers" begin
             include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
