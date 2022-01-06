@@ -90,11 +90,17 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
 
         # Hydrostatic regression test
 
-        longitude = ((-180, 180), collect(-180:2:180), (-160, 160), collect(-160:2:160))
-        latitude  = ((-60, 60),   collect(-60:2:60))
-        zcoord    = ((-90, 0) ,   collect(-90:30:0))
+        if grid_type == :regular
+            longitude = ((-180, 180), (-160, 160))
+            latitude  = ((-60, 60),)
+            zcoord    = ((-90, 0) ,)
+        elseif grid_type == :vertically_unstretched
+            longitude = (collect(-180:2:180), collect(-160:2:160))
+            latitude  = (collect(-60:2:60),)
+            zcoord    = (collect(-90:30:0),)
+        end
 
-        explicit_free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
+        explicit_free_surface = ExplicitFreeSurface(gravitational_acceleration = 1.0)
         implicit_free_surface = ImplicitFreeSurface(gravitational_acceleration = 1.0,
                                                    solver_method = :PreconditionedConjugateGradient,
                                                    tolerance = 1e-15)
