@@ -108,7 +108,13 @@ include("dependencies_for_runtests.jl")
         include("test_distributed_poisson_solvers.jl")
     end
 
-    if group == :regression || group == :all
+    if group == :regression_regular_grid || group == :all
+        grid_type = :regular
+        include("test_regression.jl")
+    end
+
+    if group == :regression_vertically_unstretched || group == :all
+        grid_type = :vertically_unstretched
         include("test_regression.jl")
     end
 
