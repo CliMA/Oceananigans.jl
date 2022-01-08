@@ -21,8 +21,8 @@ DataDeps.register(dd)
 
 # Benchmark function
 
-Nx = 1024 
-Ny = 512 
+Nx = 512
+Ny = 256 
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
@@ -60,9 +60,7 @@ grids = Dict(
 
 free_surfaces = Dict(
     :ExplicitFreeSurface => ExplicitFreeSurface(),
-    :FFTImplicitFreeSurface => ImplicitFreeSurface(), 
-    :ImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient), 
-    :SparseImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, preconditioner_method = :SparseInverse, preconditioner_settings = (ε=0.1, nzrel=3.0)), 
+    :ImplicitFreeSurface => ImplicitFreeSurface(), 
     :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver), 
     :NoneImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, preconditioner_method = :None) 
 )
@@ -104,9 +102,7 @@ grid_types = [
 
 free_surface_types = [
     :MatrixImplicitFreeSurface,
-    :SparseImplicitFreeSurface,
-    # :ExplicitFreeSurface,
-    # :FFTImplicitFreeSurface, 
+    :ExplicitFreeSurface,
     :ImplicitFreeSurface,
     :NoneImplicitFreeSurface
 ]
