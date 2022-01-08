@@ -20,8 +20,10 @@ import LinearAlgebra.ldiv!
     is applied to `r` with a matrix multiplication `M * r`
     constructed with
     `simplified_inverse_preconditioner(A)`
-        -> assumes that the sparsity of `M` is the same as the sparsity of `A`
+        -> same formulation as Marshall J. et al., "Finite-volume, incompressible Navier Stokes model for studies of the ocean on parallel computers"
+        -> assumes that the sparsity of `M` is the same as the sparsity of `A`, no additional settings needed
     `sparse_approximate_preconditioner(A, ε = tolerance, nzrel = relative_maximum_number_of_elements)`
+        -> same formulation as Grote M. J. & Huckle T, "Parallel Preconditioning with sparse approximate inverses" 
         -> starts constructing the sparse inverse of A from identity matrix until, either a tolerance (ε) is met or nnz(M) = nzrel * nnz(A) 
 
 The suggested preconditioners are
