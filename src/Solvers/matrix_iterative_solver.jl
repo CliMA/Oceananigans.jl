@@ -216,14 +216,14 @@ end
 # No-flux boundary conditions are implied in the construction of the matrix, so only
 # periodic boundary conditions have to be filled in
 #
-# In case of a periodic boundary condition a direction we have to modify the diagonal
+# In case of a periodic boundary condition we have to modify the diagonal
 # as well as the off-diagonals. As an example, for x-periodic boundary conditions
 # we have to modify the following diagonal elements
 #
 # row number (1  + Nx * (j - 1 + Ny * (k - 1))) => corresponding to i = 1 , j = j and k = k
 # row number (Nx + Nx * (j - 1 + Ny * (k - 1))) => corresponding to i = Nx, j = j and k = k
 #
-# Since zero-flux BC were implied, we have to add the coefficients corresponding to i-1 and i+1
+# Since zero-flux BC were implied, we have to also have to add the coefficients corresponding to i-1 and i+1
 # (respectively). Since the off-diagonal elements are symmetric we can fill it in only once
 
  @inline fill_boundaries_x!(coeff_d, coeff_bound_x, Ax, N, ::Type{Bounded}) = nothing

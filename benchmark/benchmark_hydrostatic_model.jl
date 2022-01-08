@@ -21,8 +21,8 @@ DataDeps.register(dd)
 
 # Benchmark function
 
-Nx = 256
-Ny = 128
+Nx = 1024 
+Ny = 512 
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
@@ -62,7 +62,9 @@ free_surfaces = Dict(
     :ExplicitFreeSurface => ExplicitFreeSurface(),
     :FFTImplicitFreeSurface => ImplicitFreeSurface(), 
     :ImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient), 
-    :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver) 
+    :SparseImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, preconditioner_method = :SparseInverse, preconditioner_settings = (ε=0.1, nzrel=3.0)), 
+    :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver), 
+    :NoneImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, preconditioner_method = :None) 
 )
 
 function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
@@ -90,7 +92,7 @@ end
 
 # Benchmark parameters
 
-Architectures = has_cuda() ? [GPU, CPU] : [CPU]
+Architectures = has_cuda() ? [GPU] : [CPU]
 
 grid_types = [
     :RectilinearGrid,
@@ -102,11 +104,11 @@ grid_types = [
 
 free_surface_types = [
     :MatrixImplicitFreeSurface,
-    :ExplicitFreeSurface,
-    # ImplicitFreeSurface doesn't yet work on MultiRegionGrids like the ConformalCubedSphereGrid:
-    :FFTImplicitFreeSurface, 
+    :SparseImplicitFreeSurface,
+    # :ExplicitFreeSurface,
+    # :FFTImplicitFreeSurface, 
     :ImplicitFreeSurface,
-    # :ImplicitFreeSurface
+    :NoneImplicitFreeSurface
 ]
 
 # Run and summarize benchmarks
