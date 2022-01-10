@@ -194,17 +194,17 @@ P_rⁿ⁺¹ = rᵢⱼ / Acᵢⱼ - 2 / Acᵢⱼ ( Ax⁻ / (Acᵢ + Acᵢ₋₁) 
 
 """
 
-# Kernels that act on vertically integrated / surface quantities for the preconditioner
+# Kernels that calculate coefficients for the preconditioner
 @inline Ax⁻(i, j, grid, ax) = @inbounds   ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid)
 @inline Ay⁻(i, j, grid, ay) = @inbounds   ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)
 @inline Ax⁺(i, j, grid, ax) = @inbounds ax[i+1, j, 1] / Δxᶠᶜᵃ(i+1, j, 1, grid)
 @inline Ay⁺(i, j, grid, ay) = @inbounds ay[i, j+1, 1] / Δyᶜᶠᵃ(i, j+1, 1, grid)
 
-@inline Ac(i, j, grid, g, Δt, ax, ay) = - Ax⁻(i, j, grid, ax) 
-                                        - Ax⁺(i, j, grid, ax)
-                                        - Ay⁻(i, j, grid, ay)
-                                        - Ay⁺(i, j, grid, ay)
-                                        - Azᶜᶜᵃ(i, j, 1, grid) / (g * Δt^2) 
+@inline Ac(i, j, grid, g, Δt, ax, ay) = - ( Ax⁻(i, j, grid, ax) 
+                                          + Ax⁺(i, j, grid, ax)
+                                          + Ay⁻(i, j, grid, ay)
+                                          + Ay⁺(i, j, grid, ay)
+                                          + Azᶜᶜᵃ(i, j, 1, grid) / (g * Δt^2) 
 
 @inline approximate_inverse(i, j, r, grid, g, Δt, ax, ay) = @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * ( r[i, j, 1] - 2 * (
         Ax⁻(i, j, grid, ax) / (Ac(i, j, grid, g, Δt, ax, ay) + Ac(i-1, j, grid, g, Δt, ax, ay)) * r[i-1, j, 1] +
