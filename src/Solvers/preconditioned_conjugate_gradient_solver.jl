@@ -80,9 +80,6 @@ function PreconditionedConjugateGradientSolver(linear_operation;
     arch = architecture(template_field)
     grid = template_field.grid
 
-    # If no preconditioner is used, change it to nothing 
-    (preconditioner_method == :None) && (preconditioner_method = nothing)
-
     # Create work arrays for solver
     linear_operator_product = similar(template_field) # A*xᵢ = qᵢ
     search_direction = similar(template_field) # pᵢ

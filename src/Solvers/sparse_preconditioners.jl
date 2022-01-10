@@ -62,7 +62,7 @@ function build_preconditioner(::Val{:Default}, matrix, settings)
     return build_preconditioner(Val(default_method), matrix, settings)
 end
 
-build_preconditioner(::Val{:None},              A, settings) = Identity()
+build_preconditioner(::Val{nothing},            A, settings) = Identity()
 build_preconditioner(::Val{:SparseInverse},     A, settings) = sparse_inverse_preconditioner(A, ε = settings.ε, nzrel = settings.nzrel)
 build_preconditioner(::Val{:SimplifiedInverse}, A, settings) = simplified_inverse_preconditioner(A)
 

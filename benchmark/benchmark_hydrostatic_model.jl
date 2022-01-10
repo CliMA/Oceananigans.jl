@@ -61,9 +61,9 @@ grids = Dict(
 free_surfaces = Dict(
     :ExplicitFreeSurface => ExplicitFreeSurface(),
     :PCGImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient), 
-    :PCGImplicitFreeSurfaceNoPreconditioner => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, preconditioner_method = :None), 
+    :PCGImplicitFreeSurfaceNoPreconditioner => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, preconditioner_method = nothing), 
     :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver), 
-    :MatrixImplicitFreeSurfaceNoPreconditioner => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, preconditioner_method = :None),
+    :MatrixImplicitFreeSurfaceNoPreconditioner => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, preconditioner_method = nothing),
     :MatrixImplicitFreeSurfaceSparsePreconditioner => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, preconditioner_method = :SparseInverse, preconditioner_settings = (ε = 0.05, nzrel = 2.0))
 )
 
