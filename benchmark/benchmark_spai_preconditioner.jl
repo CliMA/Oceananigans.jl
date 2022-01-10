@@ -14,7 +14,7 @@ function benchmark_spai_preconditioner(N, ε, nzrel)
 
     model = HydrostaticFreeSurfaceModel(
                       grid = grid,
-              free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver, precondition = false)
+              free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, precondition = false)
     )
 
     # to correctly create the matrix
