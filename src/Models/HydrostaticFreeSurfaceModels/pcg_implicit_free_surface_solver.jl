@@ -191,7 +191,6 @@ Return the simplified inverse preconditioner applied to the residuals in the for
 ```math
 P_rⁿ⁺¹ = rᵢⱼ / Acᵢⱼ - 2 / Acᵢⱼ ( Ax⁻ / (Acᵢ + Acᵢ₋₁) rᵢ₋₁ⱼ + Ax⁺ / (Acᵢ + Acᵢ₊₁) rᵢ₊₁ⱼ + Ay⁻ / (Acⱼ + Acⱼ₋₁) rᵢⱼ₋₁+ Ay⁺ / (Acⱼ + Acⱼ₊₁) rᵢⱼ₊₁ )
 ```
-
 """
 
 # Kernels that calculate coefficients for the preconditioner
@@ -204,7 +203,7 @@ P_rⁿ⁺¹ = rᵢⱼ / Acᵢⱼ - 2 / Acᵢⱼ ( Ax⁻ / (Acᵢ + Acᵢ₋₁) 
                                           + Ax⁺(i, j, grid, ax)
                                           + Ay⁻(i, j, grid, ay)
                                           + Ay⁺(i, j, grid, ay)
-                                          + Azᶜᶜᵃ(i, j, 1, grid) / (g * Δt^2) 
+                                          + Azᶜᶜᵃ(i, j, 1, grid) / (g * Δt^2) )
 
 @inline approximate_inverse(i, j, r, grid, g, Δt, ax, ay) = @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * ( r[i, j, 1] - 2 * (
         Ax⁻(i, j, grid, ax) / (Ac(i, j, grid, g, Δt, ax, ay) + Ac(i-1, j, grid, g, Δt, ax, ay)) * r[i-1, j, 1] +
