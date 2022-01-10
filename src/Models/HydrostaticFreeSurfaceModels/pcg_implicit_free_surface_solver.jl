@@ -52,7 +52,7 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_accelera
 end
 
 build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid, gravitational_acceleration, settings) =
-    PCGImplicitFreeSurfaceSolver(arch, grid, gravitational_acceleration, settings)
+    PCGImplicitFreeSurfaceSolver(grid, gravitational_acceleration, settings)
 
 #####
 ##### Solve...
@@ -102,8 +102,6 @@ end
 end
 
 """
-    implicit_free_surface_linear_operation!(result, x, arch, grid, bcs; args...)
-
 Returns `L(ηⁿ)`, where `ηⁿ` is the free surface displacement at time step `n`
 and `L` is the linear operator that arises
 in an implicit time step for the free surface displacement `η`.
