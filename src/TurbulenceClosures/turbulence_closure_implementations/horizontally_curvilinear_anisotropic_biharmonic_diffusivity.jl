@@ -1,3 +1,5 @@
+import Oceananigans.Grids: required_halo_size
+
 """
     HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity{N, K}
 
@@ -11,6 +13,8 @@ struct HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity{NH, NZ, KH, KZ} <
 end
 
 const HCABD = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
+
+required_halo_size(::HCABD) = 2
 
 """
     HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(FT=Float64; νh=0, κh=0, νz=nothing, κz=nothing)

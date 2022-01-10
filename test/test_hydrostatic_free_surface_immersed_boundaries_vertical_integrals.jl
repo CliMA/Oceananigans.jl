@@ -22,7 +22,6 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
         model = HydrostaticFreeSurfaceModel(grid = grid,
                                             free_surface = ImplicitFreeSurface(),
-                                            tracer_advection = WENO5(),
                                             buoyancy = nothing,
                                             tracers = nothing,
                                             closure = nothing)
