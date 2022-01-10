@@ -1,4 +1,4 @@
-using Oceananigans.Solvers: solve!, MatrixIterativeSolver, spai_preconditioner
+using Oceananigans.Solvers: solve!, MatrixIterativeSolver, sparse_approximate_inverse
 using Oceananigans.Fields: interior_copy
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
 using Oceananigans.Architectures: arch_array
@@ -137,12 +137,12 @@ end
         end
     end
 
-    @info "Testing Sparse Approximate Inverse Preconditioner"
+    @info "Testing Sparse Approximate Inverse Algorithm"
 
     A   = sprand(100, 100, 0.1)
     A   = A + A' + 1I
     A⁻¹ = sparse(inv(Array(A)))
-    M   = spai_preconditioner(A, ε = 0.0, nzrel = size(A, 1))
+    M   = sparse_approximate_inverse(A, ε = 0.0, nzrel = size(A, 1))
 
     @test all(M .≈ A⁻¹)
 
