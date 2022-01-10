@@ -215,6 +215,12 @@ where `Ac`, `Ax⁻`, `Ax⁺`, `Ay⁻` and `Ay⁺` are the coefficients of
         Ay⁻(i, j, grid, ay) / (Ac(i, j, grid, g, Δt, ax, ay) + Ac(i, j-1, grid, g, Δt, ax, ay)) * r[i, j-1, 1] + 
         Ay⁺(i, j, grid, ay) / (Ac(i, j, grid, g, Δt, ax, ay) + Ac(i, j+1, grid, g, Δt, ax, ay)) * r[i, j+1, 1] ) )
 
+# @inline approximate_inverse(i, j, r, grid, g, Δt, ax, ay) = @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * ( r[i, j, 1] - (
+#     Ax⁻(i, j, grid, ax) / Ac(i-1, j, grid, g, Δt, ax, ay) * r[i-1, j, 1] +
+#     Ax⁺(i, j, grid, ax) / Ac(i+1, j, grid, g, Δt, ax, ay) * r[i+1, j, 1] + 
+#     Ay⁻(i, j, grid, ay) / Ac(i, j-1, grid, g, Δt, ax, ay) * r[i, j-1, 1] + 
+#     Ay⁺(i, j, grid, ay) / Ac(i, j+1, grid, g, Δt, ax, ay) * r[i, j+1, 1] ) )
+
 @kernel function _implicit_free_surface_precondition!(P_rⁿ⁺¹, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     i, j = @index(Global, NTuple)
     @inbounds P_rⁿ⁺¹[i, j, 1] = approximate_inverse(i, j, r, grid, g, Δt, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ)

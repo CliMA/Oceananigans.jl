@@ -106,7 +106,7 @@ free_surface_types = [
     :ExplicitFreeSurface,
     :MatrixImplicitFreeSurface,
     :MatrixImplicitFreeSurfaceNoPreconditioner,
-    :MatrixImplicitFreeSurfaceSparsePreconditioner,
+    # :MatrixImplicitFreeSurfaceSparsePreconditioner,
     :PCGImplicitFreeSurface,
     :PCGImplicitFreeSurfaceNoPreconditioner
 ]
