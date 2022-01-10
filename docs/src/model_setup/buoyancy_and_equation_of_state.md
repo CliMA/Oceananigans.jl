@@ -53,10 +53,8 @@ explicitly pass the `buoyancy=nothing` flag. Note that by default `HydrostaticFr
 advects temperature `T` and salinity `S` (which aren't necessary without a buoyancy treatment), so
 it is often recommended to explicitly specify the tracers in this case as well:
 
-```jldoctest buoyancy; filter = [r".*┌ Warning.*", r".*└ @ Oceananigans.*"]
+```jldoctest buoyancy
 julia> model = HydrostaticFreeSurfaceModel(grid=grid, buoyancy=nothing, tracers=())
-┌ Warning: HydrostaticFreeSurfaceModel is experimental. Use with caution!
-└ @ Oceananigans.Models.HydrostaticFreeSurfaceModels ~/builds/tartarus-3/clima/oceananigans/src/Models/HydrostaticFreeSurfaceModels/hydrostatic_free_surface_model.jl:106
 HydrostaticFreeSurfaceModel{CPU, Float64}(time = 0 seconds, iteration = 0) 
 ├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: ()
@@ -86,10 +84,8 @@ NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 
 We follow the same pattern to create a `HydrostaticFreeSurfaceModel` with buoyancy as a tracer:
 
-```jldoctest buoyancy; filter = [r".*┌ Warning.*", r".*└ @ Oceananigans.*"]
+```jldoctest buoyancy
 julia> model = HydrostaticFreeSurfaceModel(grid=grid, buoyancy=BuoyancyTracer(), tracers=:b)
-┌ Warning: HydrostaticFreeSurfaceModel is experimental. Use with caution!
-└ @ Oceananigans.Models.HydrostaticFreeSurfaceModels ~/builds/tartarus-3/clima/oceananigans/src/Models/HydrostaticFreeSurfaceModels/hydrostatic_free_surface_model.jl:106
 HydrostaticFreeSurfaceModel{CPU, Float64}(time = 0 seconds, iteration = 0) 
 ├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:b,)
@@ -122,10 +118,8 @@ We can similarly create a `HydrostaticFreeSurfaceModel` with the same treatment 
 tracers don't need to be explicitly defined since this is default option for
 `HydrostaticFreeSurfaceModel`):
 
-```jldoctest buoyancy; filter = [r".*┌ Warning.*", r".*└ @ Oceananigans.*"]
+```jldoctest buoyancy
 julia> model = HydrostaticFreeSurfaceModel(grid=grid, buoyancy=SeawaterBuoyancy())
-┌ Warning: HydrostaticFreeSurfaceModel is experimental. Use with caution!
-└ @ Oceananigans.Models.HydrostaticFreeSurfaceModels ~/builds/tartarus-3/clima/oceananigans/src/Models/HydrostaticFreeSurfaceModels/hydrostatic_free_surface_model.jl:106
 HydrostaticFreeSurfaceModel{CPU, Float64}(time = 0 seconds, iteration = 0) 
 ├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
 ├── tracers: (:T, :S)
