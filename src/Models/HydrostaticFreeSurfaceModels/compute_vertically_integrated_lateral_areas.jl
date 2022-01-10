@@ -4,10 +4,8 @@
 @kernel function _compute_vertically_integrated_lateral_areas!(∫ᶻ_A, grid)
     i, j = @index(Global, NTuple)
 
-    # Hx, Hy, Hz = halo_size(grid)
-
-    # i -= Hx
-    # j -= Hy
+    # to account for halos (which are (2, 2) for the implicit free surface)
+    i, j .-= 2
 
     @inbounds begin
         ∫ᶻ_A.xᶠᶜᶜ[i, j, 1] = 0
@@ -22,9 +20,12 @@ end
 
 function compute_vertically_integrated_lateral_areas!(∫ᶻ_A, grid, arch)
 
-    # xy_size = size(grid)[[1, 2]] .+ halo_size(grid)[[1, 2]] .* 2
+    # we have to account for halos when calculating Integrated areas, in case 
+    # a periodic domain, where it is not guaranteed that η₁ == ηₙ 
+    # 2 halos are necessary to accomodate the preconditioner
+    xy_size = size(grid)[[1, 2]] .+ 4
     
-    event = launch!(arch, grid, :xy,
+    event = launch!(arch, grid, xy_size,
                     _compute_vertically_integrated_lateral_areas!,
                     ∫ᶻ_A, grid,
                     dependencies=Event(device(arch)))
