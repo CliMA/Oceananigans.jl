@@ -191,6 +191,10 @@ Return the simplified inverse preconditioner applied to the residuals in the for
 ```math
 P_rⁿ⁺¹ = rᵢⱼ / Acᵢⱼ - 2 / Acᵢⱼ ( Ax⁻ / (Acᵢ + Acᵢ₋₁) rᵢ₋₁ⱼ + Ax⁺ / (Acᵢ + Acᵢ₊₁) rᵢ₊₁ⱼ + Ay⁻ / (Acⱼ + Acⱼ₋₁) rᵢⱼ₋₁+ Ay⁺ / (Acⱼ + Acⱼ₊₁) rᵢⱼ₊₁ )
 ```
+
+where `Ac`, `Ax⁻`, `Ax⁺`, `Ay⁻` and `Ay⁺` are the coefficients of 
+`ηᵢⱼ`, `ηᵢ₋₁ⱼ`, `ηᵢ₊₁ⱼ`, `ηᵢⱼ₋₁` and `ηᵢⱼ₊₁` in `_implicit_free_surface_linear_operation!`
+
 """
 
 # Kernels that calculate coefficients for the preconditioner
