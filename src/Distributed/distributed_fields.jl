@@ -1,7 +1,7 @@
 import Oceananigans.Fields: Field
 
-function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, bcs, op, status)
+function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, op, status)
     arch = architecture(grid)
-    boundary_conditions = inject_halo_communication_boundary_conditions(bcs, arch.local_rank, arch.connectivity)
-    return Field{LX, LY, LZ}(grid, data, bcs, op, status)
+    new_bcs = inject_halo_communication_boundary_conditions(old_bcs, arch.local_rank, arch.connectivity)
+    return Field{LX, LY, LZ}(grid, data, new_bcs, op, status)
 end
