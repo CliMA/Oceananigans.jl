@@ -36,10 +36,10 @@ on the `GPU`
 `sparse_inverse_preconditioner()` (if `Δt` is constant and problem_size is not too large)
 
 as a rule of thumb, for poisson solvers:
-`sparse_inverse_preconditioner` is better performing than `simplified_inverse_preconditioner` when `nzrel >= 2.0`
-As such, we urge to use `simplified_inverse_preconditioner` when
-- Δt is variable (we have to recalculate the preconditioner every time that Δt changes)
-- it is unfeasible to choose `nzrel = 2.0`
+`sparse_inverse_preconditioner` is better performing than `simplified_inverse_preconditioner` only if `nzrel >= 2.0`
+As such, we urge to use `sparse_inverse_preconditioner` only when
+- Δt is constant (we don't have to recalculate the preconditioner during the simulation)
+- it is feasible to choose `nzrel = 2.0` (for not too large problem sizes)
 
 `ilu()` cannot be used on the GPU because preconditioning the solver with a direct LU (or Choleski) type 
 of preconditioner would require too much computation for the `ldiv!(P, r)` step completely hindering the performances
