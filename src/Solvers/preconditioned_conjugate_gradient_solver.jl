@@ -75,10 +75,13 @@ function PreconditionedConjugateGradientSolver(linear_operation;
                                                template_field::AbstractField,
                                                maximum_iterations = prod(size(template_field)),
                                                tolerance = 1e-13, #sqrt(eps(eltype(template_field.grid))),
-                                               precondition = nothing)
+                                               preconditioner_method = nothing)
 
     arch = architecture(template_field)
     grid = template_field.grid
+
+    # If no preconditioner is used, change it to nothing 
+    (preconditioner_method == :None) && (preconditioner_method = nothing)
 
     # Create work arrays for solver
     linear_operator_product = similar(template_field) # A*xᵢ = qᵢ
@@ -86,7 +89,7 @@ function PreconditionedConjugateGradientSolver(linear_operation;
             residual = similar(template_field) # rᵢ
 
     # Either nothing (no precondition) or P*xᵢ = zᵢ
-    precondition_product = initialize_precondition_product(precondition, template_field)
+    precondition_product = initialize_precondition_product(preconditioner_method, template_field)
 
     return PreconditionedConjugateGradientSolver(arch,
                                                  grid,
@@ -98,7 +101,7 @@ function PreconditionedConjugateGradientSolver(linear_operation;
                                                  linear_operator_product,
                                                  search_direction,
                                                  residual,
-                                                 precondition,
+                                                 preconditioner_method,
                                                  precondition_product)
 end
 
@@ -151,6 +154,7 @@ Loop:
      ρⁱ⁻¹ = ρ
 ```
 """
+
 function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
 
     # Initialize

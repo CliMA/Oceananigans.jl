@@ -21,8 +21,8 @@ DataDeps.register(dd)
 
 # Benchmark function
 
-Nx = 512
-Ny = 256 
+Nx = 256
+Ny = 128 
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
@@ -60,9 +60,11 @@ grids = Dict(
 
 free_surfaces = Dict(
     :ExplicitFreeSurface => ExplicitFreeSurface(),
-    :ImplicitFreeSurface => ImplicitFreeSurface(), 
+    :PCGImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient), 
+    :PCGImplicitFreeSurfaceNoPreconditioner => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, preconditioner_method = :None), 
     :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver), 
-    :NoneImplicitFreeSurface => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, preconditioner_method = :None) 
+    :MatrixImplicitFreeSurfaceNoPreconditioner => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, preconditioner_method = :None),
+    :MatrixImplicitFreeSurfaceSparsePreconditioner => ImplicitFreeSurface(solver_method = :MatrixIterativeSolver, preconditioner_method = :SparseInverse, preconditioner_settings = (ε = 0.05, nzrel = 2.0))
 )
 
 function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
@@ -101,10 +103,12 @@ grid_types = [
 ]
 
 free_surface_types = [
-    :MatrixImplicitFreeSurface,
     :ExplicitFreeSurface,
-    :ImplicitFreeSurface,
-    :NoneImplicitFreeSurface
+    :MatrixImplicitFreeSurface,
+    :MatrixImplicitFreeSurfaceNoPreconditioner,
+    :MatrixImplicitFreeSurfaceSparsePreconditioner,
+    :PCGImplicitFreeSurface,
+    :PCGImplicitFreeSurfaceNoPreconditioner
 ]
 
 # Run and summarize benchmarks

@@ -74,7 +74,6 @@ function build_preconditioner(::Val{:ILUFactorization},  A, settings)
     end
 end
 
-
 @inline architecture(::CuSparseMatrixCSC) = GPU()
 @inline architecture(::SparseMatrixCSC)   = CPU()
 
@@ -127,7 +126,7 @@ end
         if rowval[idx] == col
             nzval[idx] = invdiag[col]
         else
-            nzval[idx] = - nzval[idx] * invdiag[rowval[idx]] * invdiag[col]
+            nzval[idx] = - nzval[idx] * 2 / ( 1 / invdiag[rowval[idx]] + 1 / invdiag[col] ) * invdiag[col]
         end
     end
 end

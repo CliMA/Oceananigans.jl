@@ -40,6 +40,10 @@ function PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, gravitat
     maximum_iterations = get(settings, :maximum_iterations, grid.Nx * grid.Ny)
     settings[:maximum_iterations] = maximum_iterations
 
+    # Set preconditioner to default preconditioner if not specified
+    preconditioner = get(settings, :preconditioner_method, implicit_free_surface_precondition!)
+    settings[:preconditioner_method] = preconditioner
+
     solver = PreconditionedConjugateGradientSolver(implicit_free_surface_linear_operation!;
                                                    template_field = right_hand_side,
                                                    settings...)
@@ -123,6 +127,23 @@ function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫�
     return nothing
 end
 
+function implicit_free_surface_precondition!(P_rⁿ⁺¹, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+    grid = P_rⁿ⁺¹.grid
+    arch = architecture(P_rⁿ⁺¹)
+
+    fill_halo_regions!(r, arch)
+
+    event = launch!(arch, grid, :xy, _implicit_free_surface_precondition!,
+                    P_rⁿ⁺¹, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt,
+                    dependencies = device_event(arch))
+
+    wait(device(arch), event)
+
+    fill_halo_regions!(P_rⁿ⁺¹, arch)
+
+    return nothing
+end
+
 # Kernels that act on vertically integrated / surface quantities
 @inline ∫ᶻ_Ax_∂x_ηᶠᶜᶜ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, η) = @inbounds ∫ᶻ_Axᶠᶜᶜ[i, j, k] * ∂xᶠᶜᵃ(i, j, k, grid, η)
 @inline ∫ᶻ_Ay_∂y_ηᶜᶠᶜ(i, j, k, grid, ∫ᶻ_Ayᶜᶠᶜ, η) = @inbounds ∫ᶻ_Ayᶜᶠᶜ[i, j, k] * ∂yᶜᶠᵃ(i, j, k, grid, η)
@@ -160,4 +181,38 @@ where  ̂ indicates a vertical integral, and
     i, j = @index(Global, NTuple)
     Az = Azᶜᶜᵃ(i, j, 1, grid)
     @inbounds L_ηⁿ⁺¹[i, j, 1] = Az_∇h²ᶜᶜᵃ(i, j, 1, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, ηⁿ⁺¹) - Az * ηⁿ⁺¹[i, j, 1] / (g * Δt^2)
+end
+
+"""
+    _implicit_free_surface_precondition!(P_rⁿ⁺¹, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+
+Return the simplified inverse preconditioner applied to the residuals in the form
+
+```math
+P_rⁿ⁺¹ = rᵢⱼ / Acᵢⱼ - 2 / Acᵢⱼ ( Ax⁻ / (Acᵢ + Acᵢ₋₁) rᵢ₋₁ⱼ + Ax⁺ / (Acᵢ + Acᵢ₊₁) rᵢ₊₁ⱼ + Ay⁻ / (Acⱼ + Acⱼ₋₁) rᵢⱼ₋₁+ Ay⁺ / (Acⱼ + Acⱼ₊₁) rᵢⱼ₊₁ )
+```
+
+"""
+
+# Kernels that act on vertically integrated / surface quantities for the preconditioner
+@inline Ax⁻(i, j, grid, ax) = @inbounds   ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid)
+@inline Ay⁻(i, j, grid, ay) = @inbounds   ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)
+@inline Ax⁺(i, j, grid, ax) = @inbounds ax[i+1, j, 1] / Δxᶠᶜᵃ(i+1, j, 1, grid)
+@inline Ay⁺(i, j, grid, ay) = @inbounds ay[i, j+1, 1] / Δyᶜᶠᵃ(i, j+1, 1, grid)
+
+@inline Ac(i, j, grid, g, Δt, ax, ay) = - Ax⁻(i, j, grid, ax) 
+                                        - Ax⁺(i, j, grid, ax)
+                                        - Ay⁻(i, j, grid, ay)
+                                        - Ay⁺(i, j, grid, ay)
+                                        - Azᶜᶜᵃ(i, j, 1, grid) / (g * Δt^2) 
+
+@inline approximate_inverse(i, j, r, grid, g, Δt, ax, ay) = @inbounds 1 / Ac(i, j, grid, g, Δt, ax, ay) * ( r[i, j, 1] - 2 * (
+        Ax⁻(i, j, grid, ax) / (Ac(i, j, grid, g, Δt, ax, ay) + Ac(i-1, j, grid, g, Δt, ax, ay)) * r[i-1, j, 1] +
+        Ax⁺(i, j, grid, ax) / (Ac(i, j, grid, g, Δt, ax, ay) + Ac(i+1, j, grid, g, Δt, ax, ay)) * r[i+1, j, 1] + 
+        Ay⁻(i, j, grid, ay) / (Ac(i, j, grid, g, Δt, ax, ay) + Ac(i, j-1, grid, g, Δt, ax, ay)) * r[i, j-1, 1] + 
+        Ay⁺(i, j, grid, ay) / (Ac(i, j, grid, g, Δt, ax, ay) + Ac(i, j+1, grid, g, Δt, ax, ay)) * r[i, j+1, 1] ) )
+
+@kernel function _implicit_free_surface_precondition!(P_rⁿ⁺¹, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+    i, j = @index(Global, NTuple)
+    @inbounds P_rⁿ⁺¹[i, j, 1] = approximate_inverse(i, j, r, grid, g, Δt, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ)
 end
