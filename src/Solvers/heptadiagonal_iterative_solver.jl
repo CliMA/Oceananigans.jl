@@ -7,7 +7,7 @@ using KernelAbstractions: @kernel, @index
 using IterativeSolvers, SparseArrays, LinearAlgebra
 using CUDA, CUDA.CUSPARSE
 
-mutable struct MatrixIterativeSolver{G, R, L, D, M, P, PM, PS, I, T, F}
+mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, T, F}
                        grid :: G
                problem_size :: R
         matrix_constructors :: L
@@ -23,7 +23,7 @@ mutable struct MatrixIterativeSolver{G, R, L, D, M, P, PM, PS, I, T, F}
 end
 
 """
-MatrixIterativeSolver is a framework to solve the problem `A * x = b` (provided that `A` is a symmetric matrix)
+HeptadiagonalIterativeSolver is a framework to solve the problem `A * x = b` (provided that `A` is a symmetric matrix)
 
 The solver relies on sparse version of the matrix `A` which are defined by the field
 matrix_constructors.
@@ -64,17 +64,19 @@ It is also updated based on the matrix when `Δt != Δt_previous`
 The iterative_solver used can is to be chosen from the IterativeSolvers.jl package. 
 The default solver is a Conjugate Gradient (cg)
 
+solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D), grid = grid)
+
 """
    
-function MatrixIterativeSolver(coeffs;
-                               grid,
-                               iterative_solver = cg,
-                               maximum_iterations = prod(size(grid)),
-                               tolerance = 1e-13,
-                               reduced_dim = (false, false, false), 
-                               placeholder_timestep = -1.0, 
-                               preconditioner_method = :Default, 
-                               preconditioner_settings = nothing)
+function HeptadiagonalIterativeSolver(coeffs;
+                                      grid,
+                                      iterative_solver = cg,
+                                      maximum_iterations = prod(size(grid)),
+                                      tolerance = 1e-13,
+                                      reduced_dim = (false, false, false), 
+                                      placeholder_timestep = -1.0, 
+                                      preconditioner_method = :Default, 
+                                      preconditioner_settings = nothing)
 
     arch = architecture(grid)
 
@@ -92,7 +94,7 @@ function MatrixIterativeSolver(coeffs;
     reduced_matrix = arch_sparse_matrix(arch, speye(eltype(grid), 2))
     preconditioner = build_preconditioner(Val(preconditioner_method), reduced_matrix, settings)
 
-    return MatrixIterativeSolver(grid,
+    return HeptadiagonalIterativeSolver(grid,
                                  problem_size, 
                                  matrix_constructors,
                                  diagonal,
@@ -266,7 +268,7 @@ function fill_boundaries_z!(coeff_d, coeff_bound_z, Az, N, ::Type{Periodic})
     end
 end
 
-function solve!(x, solver::MatrixIterativeSolver, b, Δt)
+function solve!(x, solver::HeptadiagonalIterativeSolver, b, Δt)
 
     arch = architecture(solver.matrix)
     
@@ -290,7 +292,7 @@ function solve!(x, solver::MatrixIterativeSolver, b, Δt)
     return
 end
 
-function Base.show(io::IO, solver::MatrixIterativeSolver)
+function Base.show(io::IO, solver::HeptadiagonalIterativeSolver)
     print(io, "Matrix-based iterative solver with: \n")
     print(io, "├── Problem size = "  , solver.problem_size, '\n')
     print(io, "├── Grid = "  , solver.grid, '\n')

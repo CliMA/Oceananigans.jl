@@ -186,7 +186,7 @@ T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     # free_surface = ExplicitFreeSurface(),
                                     # free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient),
-                                    free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver),
+                                    free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver),
                                     momentum_advection = VectorInvariant(),
                                     tracer_advection = WENO5(),
                                     coriolis = HydrostaticSphericalCoriolis(),

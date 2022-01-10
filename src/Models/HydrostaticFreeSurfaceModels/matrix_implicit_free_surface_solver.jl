@@ -3,7 +3,7 @@ using Oceananigans.Operators
 using Oceananigans.Architectures
 using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: ReducedField
-using Oceananigans.Solvers: MatrixIterativeSolver
+using Oceananigans.Solvers: HeptadiagonalIterativeSolver
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, solid_cell
 import Oceananigans.Solvers: solve!
 
@@ -14,7 +14,7 @@ struct MatrixImplicitFreeSurfaceSolver{V, S, R}
 end
 
 """
-    PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
+    MatrixImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, gravitational_acceleration, settings)
 
 Return a the framework for solving the elliptic equation with one of the iterative solvers of IterativeSolvers.jl
 with a sparse matrix formulation.
@@ -47,15 +47,15 @@ function MatrixImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, gravi
 
     coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
 
-    solver = MatrixIterativeSolver(coeffs;
-                            reduced_dim = (false, false, true),
-                                   grid = grid,
-                                   settings...)
+    solver = HeptadiagonalIterativeSolver(coeffs;
+                                     reduced_dim = (false, false, true),
+                                            grid = grid,
+                                            settings...)
 
     return MatrixImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:MatrixIterativeSolver}, arch, grid, gravitational_acceleration, settings) =
+build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, arch, grid, gravitational_acceleration, settings) =
     MatrixImplicitFreeSurfaceSolver(arch, grid, gravitational_acceleration, settings)
 
 #####

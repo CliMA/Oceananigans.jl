@@ -1,4 +1,4 @@
-using Oceananigans.Solvers: solve!, MatrixIterativeSolver, sparse_approximate_inverse
+using Oceananigans.Solvers: solve!, HeptadiagonalIterativeSolver, sparse_approximate_inverse
 using Oceananigans.Fields: interior_copy
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
 using Oceananigans.Architectures: arch_array
@@ -30,7 +30,7 @@ function run_identity_operator_test(arch, grid)
     C =  ones(N...)
     D = arch_array(arch, zeros(N...))
 
-    solver = MatrixIterativeSolver((A, A, A, C, D), grid = grid)
+    solver = HeptadiagonalIterativeSolver((A, A, A, C, D), grid = grid)
 
     fill!(b, rand())
 
@@ -87,7 +87,7 @@ function run_poisson_equation_test(arch, grid)
     poisson_rhs!(rhs, grid)
     rhs = interior_copy(rhs)[:]
     weights = compute_poisson_weights(grid)
-    solver  = MatrixIterativeSolver(weights, grid = grid)
+    solver  = HeptadiagonalIterativeSolver(weights, grid = grid)
 
     # Solve Poisson equation
     ϕ_solution = CenterField(arch, grid)
@@ -108,10 +108,10 @@ function run_poisson_equation_test(arch, grid)
     return nothing
 end
 
-@testset "MatrixIterativeSolver" begin
+@testset "HeptadiagonalIterativeSolver" begin
     topologies = [(Periodic, Periodic, Flat), (Bounded, Bounded, Flat), (Periodic, Bounded, Flat), (Bounded, Periodic, Flat)]
     for arch in archs, topo in topologies
-        @info "Testing 2D MatrixIterativeSolver [$(typeof(arch)) $topo]..."
+        @info "Testing 2D HeptadiagonalIterativeSolver [$(typeof(arch)) $topo]..."
         
         grid = RectilinearGrid(arch, size=(4, 8), extent=(1, 3), topology = topo)
         run_identity_operator_test(arch, grid)
@@ -119,7 +119,7 @@ end
     end
     topologies = [(Periodic, Periodic, Periodic), (Bounded, Bounded, Periodic), (Periodic, Bounded, Periodic), (Bounded, Periodic, Bounded)]
     for arch in archs, topo in topologies
-        @info "Testing 3D MatrixIterativeSolver [$(typeof(arch)) $topo]..."
+        @info "Testing 3D HeptadiagonalIterativeSolver [$(typeof(arch)) $topo]..."
         
         grid = RectilinearGrid(arch, size=(4, 8, 6), extent=(1, 3, 4), topology = topo)
         run_identity_operator_test(arch, grid)
@@ -132,7 +132,7 @@ end
                  RectilinearGrid(arch, size=(5, 5, 5), x = (0, 10), y = (0, 10), z = stretch_coord, topology = (Periodic, Periodic, Periodic))]
 
         for grid in grids
-            @info "Testing stretched grid MatrixIterativeSolver [$(typeof(arch))]..."
+            @info "Testing stretched grid HeptadiagonalIterativeSolver [$(typeof(arch))]..."
             run_poisson_equation_test(arch, grid)
         end
     end

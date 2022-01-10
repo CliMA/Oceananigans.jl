@@ -19,7 +19,7 @@ import LinearAlgebra.ldiv!
     stores a sparse matrix `M` such that `M ≈ A⁻¹` 
     is applied to `r` with a matrix multiplication `M * r`
     constructed with
-    `simplified_inverse_preconditioner(A)`
+    `heuristic_inverse_preconditioner(A)`
         -> same formulation as Marshall J. et al., "Finite-volume, incompressible Navier Stokes model for studies of the ocean on parallel computers"
         -> assumes that the sparsity of `M` is the same as the sparsity of `A`, no additional settings needed
     `sparse_approximate_preconditioner(A, ε = tolerance, nzrel = relative_maximum_number_of_elements)`
@@ -32,11 +32,11 @@ on the `CPU`
 `ilu()` (superior to everything always and in every situation!)
 
 on the `GPU`
-`simplified_inverse_preconditioner()` (if `Δt` is variable or large problem_sizes)
+`heuristic_inverse_preconditioner()` (if `Δt` is variable or large problem_sizes)
 `sparse_inverse_preconditioner()` (if `Δt` is constant and problem_size is not too large)
 
 as a rule of thumb, for poisson solvers:
-`sparse_inverse_preconditioner` is better performing than `simplified_inverse_preconditioner` only if `nzrel >= 2.0`
+`sparse_inverse_preconditioner` is better performing than `heuristic_inverse_preconditioner` only if `nzrel >= 2.0`
 As such, we urge to use `sparse_inverse_preconditioner` only when
 - Δt is constant (we don't have to recalculate the preconditioner during the simulation)
 - it is feasible to choose `nzrel = 2.0` (for not too large problem sizes)
@@ -58,13 +58,13 @@ validate_settings(::Val{:SparseInverse}, arch, settings)    = haskey(settings, :
                                                                      throw(ArgumentError("both ε and nzrel have to be specified for SparseInverse"))
 
 function build_preconditioner(::Val{:Default}, matrix, settings)
-    default_method = architecture(matrix) isa CPU ? :ILUFactorization : :SimplifiedInverse
+    default_method = architecture(matrix) isa CPU ? :ILUFactorization : :HeuristicInverse
     return build_preconditioner(Val(default_method), matrix, settings)
 end
 
 build_preconditioner(::Val{nothing},            A, settings) = Identity()
 build_preconditioner(::Val{:SparseInverse},     A, settings) = sparse_inverse_preconditioner(A, ε = settings.ε, nzrel = settings.nzrel)
-build_preconditioner(::Val{:SimplifiedInverse}, A, settings) = simplified_inverse_preconditioner(A)
+build_preconditioner(::Val{:HeuristicInverse}, A, settings)  = heuristic_inverse_preconditioner(A)
 
 function build_preconditioner(::Val{:ILUFactorization},  A, settings) 
     if architecture(A) isa GPU 
@@ -93,7 +93,7 @@ end
 
 @inline matrix(p::SparseInversePreconditioner)  = p.Minv
 
-function simplified_inverse_preconditioner(A::AbstractMatrix)
+function heuristic_inverse_preconditioner(A::AbstractMatrix)
     
     arch                  = architecture(A)
     constr                = deepcopy(constructors(arch, A)) 
@@ -108,7 +108,7 @@ function simplified_inverse_preconditioner(A::AbstractMatrix)
     event = loop!(invdiag, colptr, rowval, nzval; dependencies=Event(dev))
     wait(dev, event)
 
-    loop! = _initialize_simplified_inverse_preconditioner!(dev, 256, M)
+    loop! = _initialize_heuristic_inverse_preconditioner!(dev, 256, M)
     event = loop!(nzval, colptr, rowval, invdiag; dependencies=Event(dev))
     wait(dev, event)
     
@@ -119,7 +119,7 @@ function simplified_inverse_preconditioner(A::AbstractMatrix)
     return SparseInversePreconditioner(Minv)
 end
 
-@kernel function _initialize_simplified_inverse_preconditioner!(nzval, colptr, rowval, invdiag)
+@kernel function _initialize_heuristic_inverse_preconditioner!(nzval, colptr, rowval, invdiag)
     col = @index(Global, Linear)
 
     for idx = colptr[col] : colptr[col+1] - 1

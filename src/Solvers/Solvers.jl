@@ -5,7 +5,7 @@ export
     FFTBasedPoissonSolver,
     FourierTridiagonalPoissonSolver,
     PreconditionedConjugateGradientSolver,
-    MatrixIterativeSolver
+    HeptadiagonalIterativeSolver
 
 using Statistics
 using FFTW
@@ -43,6 +43,6 @@ include("preconditioned_conjugate_gradient_solver.jl")
 include("sparse_approximate_inverse.jl")
 include("matrix_solver_utils.jl")
 include("sparse_preconditioners.jl")
-include("matrix_iterative_solver.jl")
+include("heptadiagonal_iterative_solver.jl")
 
 end
