@@ -103,7 +103,7 @@ Base.size(data::CubedSphereData) = (size(data.faces[1])..., length(data.faces))
 
     # Should we define a new lower-level constructor for Field that doesn't call validate_field_data?
     return Field{X, Y, Z}(get_face(field.data, face_index),
-                          architecture(field)
+                          architecture(field),
                           get_face(field.grid, face_index),
                           get_face(field.boundary_conditions, face_index))
 end
