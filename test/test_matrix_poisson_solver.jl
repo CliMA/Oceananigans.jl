@@ -5,7 +5,8 @@ using Oceananigans.Architectures: arch_array
 using KernelAbstractions: @kernel, @index
 using Statistics, LinearAlgebra, SparseArrays
 
-function calc_∇²!(∇²ϕ, ϕ, arch, grid)
+function calc_∇²!(∇²ϕ, ϕ, grid)
+    arch = architecture(grid)
     fill_halo_regions!(ϕ, arch)
     event = launch!(arch, grid, :xyz, ∇²!, ∇²ϕ, grid, ϕ)
     wait(event)
@@ -19,7 +20,8 @@ function identity_operator!(b, x)
     return nothing
 end
 
-function run_identity_operator_test(arch, grid)
+function run_identity_operator_test(grid)
+    arch = architecture(grid)
 
     N = size(grid)
     M = prod(N)
@@ -34,7 +36,7 @@ function run_identity_operator_test(arch, grid)
 
     fill!(b, rand())
 
-    initial_guess = solution = CenterField(arch, grid)
+    initial_guess = solution = CenterField(grid)
     set!(initial_guess, (x, y, z) -> rand())
     
     solve!(initial_guess, solver, b, 1.0)
@@ -54,7 +56,7 @@ function compute_poisson_weights(grid)
     Ay = zeros(N...)
     Az = zeros(N...)
     C  = zeros(N...)
-    D  = arch_array(grid.architecture, zeros(N...))
+    D  = arch_array(architecture(grid), zeros(N...))
     for i =1:grid.Nx, j = 1:grid.Ny, k = 1:grid.Nz
         Ax[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δyᶠᶜᵃ(i, j, k, grid) / Δxᶠᶜᵃ(i, j, k, grid)
         Ay[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i, j, k, grid)
@@ -65,14 +67,15 @@ end
 
 
 function poisson_rhs!(r, grid)
-    event = launch!(grid.architecture, grid, :xyz, _multiply_by_volume!, r, grid)
+    event = launch!(architecture(grid), grid, :xyz, _multiply_by_volume!, r, grid)
     wait(event)
     return 
 end
 
-function run_poisson_equation_test(arch, grid)
+function run_poisson_equation_test(grid)
     # Solve ∇²ϕ = r
-    ϕ_truth = Field(Center, Center, Center, arch, grid)
+    ϕ_truth = Field{Center, Center, Center}(grid)
+    arch = architecture(grid)
 
     # Initialize zero-mean "truth" solution with random numbers
     set!(ϕ_truth, (x, y, z) -> rand())
@@ -80,8 +83,8 @@ function run_poisson_equation_test(arch, grid)
     fill_halo_regions!(ϕ_truth, arch)
 
     # Calculate Laplacian of "truth"
-    ∇²ϕ = Field(Center, Center, Center, arch, grid)
-    calc_∇²!(∇²ϕ, ϕ_truth, arch, grid)
+    ∇²ϕ = Field{Center, Center, Center}(grid)
+    calc_∇²!(∇²ϕ, ϕ_truth, grid)
     
     rhs = deepcopy(∇²ϕ)
     poisson_rhs!(rhs, grid)
@@ -90,13 +93,13 @@ function run_poisson_equation_test(arch, grid)
     solver  = MatrixIterativeSolver(weights, grid = grid)
 
     # Solve Poisson equation
-    ϕ_solution = CenterField(arch, grid)
+    ϕ_solution = CenterField(grid)
 
     solve!(ϕ_solution, solver, rhs, 1.0)
 
     # Diagnose Laplacian of solution
-    ∇²ϕ_solution = CenterField(arch, grid)
-    calc_∇²!(∇²ϕ_solution, ϕ_solution, arch, grid)
+    ∇²ϕ_solution = CenterField(grid)
+    calc_∇²!(∇²ϕ_solution, ϕ_solution, grid)
 
     parent(ϕ_solution) .-= mean(ϕ_solution)
 
@@ -114,16 +117,16 @@ end
         @info "Testing 2D MatrixIterativeSolver [$(typeof(arch)) $topo]..."
         
         grid = RectilinearGrid(arch, size=(4, 8), extent=(1, 3), topology = topo)
-        run_identity_operator_test(arch, grid)
-        run_poisson_equation_test(arch, grid)
+        run_identity_operator_test(grid)
+        run_poisson_equation_test(grid)
     end
     topologies = [(Periodic, Periodic, Periodic), (Bounded, Bounded, Periodic), (Periodic, Bounded, Periodic), (Bounded, Periodic, Bounded)]
     for arch in archs, topo in topologies
         @info "Testing 3D MatrixIterativeSolver [$(typeof(arch)) $topo]..."
         
         grid = RectilinearGrid(arch, size=(4, 8, 6), extent=(1, 3, 4), topology = topo)
-        run_identity_operator_test(arch, grid)
-        run_poisson_equation_test(arch, grid)
+        run_identity_operator_test(grid)
+        run_poisson_equation_test(grid)
     end
     stretch_coord = [0, 1.5, 3, 7, 8.5, 10]
     for arch in archs
@@ -133,7 +136,7 @@ end
 
         for grid in grids
             @info "Testing stretched grid MatrixIterativeSolver [$(typeof(arch))]..."
-            run_poisson_equation_test(arch, grid)
+            run_poisson_equation_test(grid)
         end
     end
 
