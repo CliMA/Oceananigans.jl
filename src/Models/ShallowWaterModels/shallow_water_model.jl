@@ -106,15 +106,18 @@ function ShallowWaterModel(;
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
-    @assert topology(grid, 3) === Flat "ShallowWaterModel requires `topology(grid, 3) === Flat`. Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` when constructing `grid`."
+    @assert topology(grid, 3) === Flat "ShallowWaterModel requires `topology(grid, 3) === Flat`. " *
+                                       "Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` " *
+                                       "when constructing `grid`."
 
     Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, 0, topology(grid), advection, closure)
-    grid = with_halo((Hx, Hy, 0), grid)
+    grid.Hx, grid.Hy, grid.Hz != (Hx, Hy, 0) && (grid = with_halo((Hx, Hy, 0), grid))
 
     prognostic_field_names = (:uh, :vh, :h, tracers...)
-    default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions() for name in prognostic_field_names))
-    boundary_conditions = merge(default_boundary_conditions, boundary_conditions)
+    default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions()
+                                                                           for name in prognostic_field_names))
 
+    boundary_conditions = merge(default_boundary_conditions, boundary_conditions)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
 
     solution           = ShallowWaterSolutionFields(grid, boundary_conditions)
