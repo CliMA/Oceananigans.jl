@@ -196,11 +196,36 @@ all_z_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶠ
 @inline cpu_face_constructor_y(grid::YRegLatLonGrid) = y_domain(grid)
 @inline cpu_face_constructor_z(grid::ZRegLatLonGrid) = z_domain(grid)
 
-function with_arch(new_arch, old_grid::LatitudeLongitudeGrid)
+function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
 
     size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
     topo = topology(old_grid)
 
+    x = cpu_face_constructor_x(old_grid)
+    y = cpu_face_constructor_y(old_grid)
+    z = cpu_face_constructor_z(old_grid)  
+
+    # Remove elements of size and new_halo in Flat directions as expected by grid
+    # constructor
+    size     = pop_flat_elements(size, topo)
+    new_halo = pop_flat_elements(new_halo, topo)
+
+    new_grid = LatitudeLongitudeGrid(architecture(old_grid), eltype(old_grid);
+                                     size = size,        
+                                longitude = x, 
+                                 latitude = y, 
+                                        z = z,
+                                     halo = new_halo,
+                       precompute_metrics = metrics_precomputed(old_grid))
+
+    return new_grid
+end
+
+function with_arch(new_arch, old_grid::LatitudeLongitudeGrid)
+
+    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
+    topo = topology(old_grid)
+    
     x = cpu_face_constructor_x(old_grid)
     y = cpu_face_constructor_y(old_grid)
     z = cpu_face_constructor_z(old_grid)  
@@ -215,7 +240,8 @@ function with_arch(new_arch, old_grid::LatitudeLongitudeGrid)
                                 longitude = x, 
                                  latitude = y, 
                                         z = z,
-                                     halo = halo)
+                                     halo = halo,
+                       precompute_metrics = metrics_precomputed(old_grid))
     return new_grid
 end
 
@@ -302,7 +328,6 @@ Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid{FT, TX, TY, TZ}) where {FT
 
 @inline metric_worksize(grid::XRegLatLonGrid)  =  length(grid.φᵃᶜᵃ) - 1 
 @inline metric_workgroup(grid::XRegLatLonGrid) =  16
-
 
 function  precompute_curvilinear_metrics!(grid, Δxᶠᶜ, Δxᶜᶠ, Δxᶠᶠ, Δxᶜᶜ, Azᶠᶜ, Azᶜᶠ, Azᶠᶠ, Azᶜᶜ)
     

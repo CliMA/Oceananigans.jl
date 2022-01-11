@@ -122,7 +122,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
                     testset_str, info_str = show_hydrostatic_test(grid, free_surface, comp)
                     @testset "$testset_str" begin
                         @info "$info_str"
-                        run_hydrostatic_free_turbulence_regression_test(grid, free_surface, regenerate_data=true)
+                        run_hydrostatic_free_turbulence_regression_test(grid, free_surface)
                     end
                 end
             end

@@ -1,13 +1,13 @@
-
+using Oceananigans.Grids: halo_size
 # Has to be changed when the regression data is updated 
 
 @kernel function _compute_vertically_integrated_lateral_areas!(∫ᶻ_A, grid)
     i, j = @index(Global, NTuple)
 
     # to account for halos (Hx, Hy = 2, 2 for ∫ᶻ_A)
-    # Hx, Hy, Hz = halo_size(grid)
-    # i -= Hx
-    # j -= Hy
+    Hx, Hy, Hz = halo_size(grid)
+    i -= Hx
+    j -= Hy
 
     @inbounds begin
         ∫ᶻ_A.xᶠᶜᶜ[i, j, 1] = 0
@@ -30,7 +30,7 @@ function compute_vertically_integrated_lateral_areas!(∫ᶻ_A, grid, arch)
 
     xy_size = size(field_grid)[[1, 2]] .+ halo_size(field_grid)[[1, 2]] .* 2
     
-    event = launch!(arch, field_grid, :xy,
+    event = launch!(arch, field_grid, xy_size,
                     _compute_vertically_integrated_lateral_areas!,
                     ∫ᶻ_A, grid,
                     dependencies=Event(device(arch)))
