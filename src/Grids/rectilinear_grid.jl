@@ -40,10 +40,10 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
                                          Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
                                           yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
                                          Δzᵃᵃᶠ :: FZ, Δzᵃᵃᶜ :: FZ,
-                                          zᵃᵃᶠ :: VZ,  zᵃᵃᶜ :: VZ) where {Arch <: Union{Nothing, AbstractArchitecture},
-                                                                          TX, TY, TZ, FT,
-                                                                          FX, VX, FY, VY,
-                                                                          FZ, VZ}
+                                          zᵃᵃᶠ :: VZ,  zᵃᵃᶜ :: VZ) where {Arch, FT,
+                                                                          TX, TY, TZ,
+                                                                          FX, VX, FY,
+                                                                          VY, FZ, VZ}
                                                                                            
         return new{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(arch, Nx, Ny, Nz,
                                                                  Hx, Hy, Hz, Lx, Ly, Lz, 

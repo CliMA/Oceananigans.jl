@@ -55,8 +55,11 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch
                                                Δxᶠᶠ::M, Δxᶜᶜ::M,
                                                Δyᶠᶜ::MY, Δyᶜᶠ::MY,
                                                Azᶠᶜ::M, Azᶜᶠ::M, Azᶠᶠ::M, Azᶜᶜ::M,
-                                               radius::FT) where {Arch <: AbstractArchitecture,
-                                                                  FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, M, MY}
+                                               radius::FT) where {Arch, FT,
+                                                                  TX, TY, TZ,
+                                                                  FX, FY, FZ,
+                                                                  VX, VY, VZ,
+                                                                  M, MY}
 
         return new{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
                                                                         Nλ, Nφ, Nz,
