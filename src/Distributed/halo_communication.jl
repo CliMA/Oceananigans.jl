@@ -52,13 +52,13 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function fill_halo_regions!(c::OffsetArray, bcs, arch::MultiArch, grid, c_location, args...)
+function fill_halo_regions!(c::OffsetArray, bcs, arch::MultiArch, grid, c_location, args...; kwargs...)
 
     barrier = Event(device(child_architecture(arch)))
 
-    x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, arch, barrier, grid, c_location, args...)
-    y_events_requests = fill_south_and_north_halos!(c, bcs.south, bcs.north, arch, barrier, grid, c_location, args...)
-    z_events_requests = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, arch, barrier, grid, c_location, args...)
+    x_events_requests = fill_west_and_east_halos!(c, bcs.west, bcs.east, arch, barrier, grid, c_location, args...; kwargs...)
+    y_events_requests = fill_south_and_north_halos!(c, bcs.south, bcs.north, arch, barrier, grid, c_location, args...; kwargs...)
+    z_events_requests = fill_bottom_and_top_halos!(c, bcs.bottom, bcs.top, arch, barrier, grid, c_location, args...; kwargs...)
 
     events_and_requests = [x_events_requests..., y_events_requests..., z_events_requests...]
 

@@ -12,7 +12,6 @@ import Base: minimum, maximum, extrema
 import Statistics: mean
 import Oceananigans: location, instantiated_location
 import Oceananigans.Architectures: architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
 import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, xnode, ynode, znode
 import Oceananigans.Utils: datatuple
@@ -120,13 +119,6 @@ ynodes(ψ::AbstractField) = ynodes(location(ψ, 2), ψ.grid)
 znodes(ψ::AbstractField) = znodes(location(ψ, 3), ψ.grid)
 
 nodes(ψ::AbstractField; kwargs...) = nodes(location(ψ), ψ.grid; kwargs...)
-
-#####
-##### fill_halo_regions!
-#####
-
-fill_halo_regions!(field::AbstractField, arch, args...) =
-    fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...)
 
 #####
 ##### Some conveniences
