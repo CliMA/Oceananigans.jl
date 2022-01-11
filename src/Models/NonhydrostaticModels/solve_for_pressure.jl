@@ -21,11 +21,10 @@ end
 ##### Solve for pressure
 #####
 
-
 function solve_for_pressure!(pressure, solver::DistributedFFTBasedPoissonSolver, Δt, U★)
     rhs = first(solver.storage)
     arch = architecture(solver)
-    grid = solver.my_grid
+    grid = solver.local_grid
 
     rhs_event = launch!(arch, grid, :xyz, calculate_pressure_source_term_fft_based_solver!,
                         rhs, grid, Δt, U★, dependencies = device_event(arch))
