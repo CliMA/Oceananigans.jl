@@ -189,7 +189,7 @@ end
 """
     _implicit_free_surface_precondition!(P_rⁿ⁺¹, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
-Return the heuristic inverse preconditioner applied to the residuals in the form
+Return the asymptotic inverse preconditioner applied to the residuals in the form
 
 ```math
 P_rⁿ⁺¹ = rᵢⱼ / Acᵢⱼ - 2 / Acᵢⱼ ( Ax⁻ / (Acᵢ + Acᵢ₋₁) rᵢ₋₁ⱼ + Ax⁺ / (Acᵢ + Acᵢ₊₁) rᵢ₊₁ⱼ + Ay⁻ / (Acⱼ + Acⱼ₋₁) rᵢⱼ₋₁+ Ay⁺ / (Acⱼ + Acⱼ₊₁) rᵢⱼ₊₁ )
