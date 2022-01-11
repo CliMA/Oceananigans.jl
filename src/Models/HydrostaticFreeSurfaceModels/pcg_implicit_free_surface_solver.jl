@@ -131,7 +131,7 @@ function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫�
 end
 
 function implicit_free_surface_precondition!(P_rⁿ⁺¹, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
-    grid = P_rⁿ⁺¹.grid
+    grid = ∫ᶻ_Axᶠᶜᶜ.grid
     arch = architecture(P_rⁿ⁺¹)
 
     fill_halo_regions!(r, arch)
