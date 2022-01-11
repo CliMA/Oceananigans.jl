@@ -52,7 +52,7 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-function fill_halo_regions!(c::OffsetArray, bcs, arch::AbstractMultiArchitecture, grid, c_location, args...)
+function fill_halo_regions!(c::OffsetArray, bcs, arch::MultiArch, grid, c_location, args...)
 
     barrier = Event(device(child_architecture(arch)))
 

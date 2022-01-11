@@ -14,11 +14,9 @@ Fill halo regions for each field in the tuple `fields` according to their bounda
 conditions, possibly recursing into `fields` if it is a nested tuple-of-tuples.
 """
 function fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)
-
     for field in fields
         fill_halo_regions!(field, arch, args...)
     end
-
     return nothing
 end
 
