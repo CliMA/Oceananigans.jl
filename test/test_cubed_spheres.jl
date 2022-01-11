@@ -1,14 +1,9 @@
-using Test
+include("dependencies_for_runtests.jl")
 
 using Statistics: mean
-using CUDA
-
-using Oceananigans
 using Oceananigans.CubedSpheres
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
-
-include("data_dependencies.jl")
 
 @testset "Cubed spheres" begin
 
@@ -29,15 +24,13 @@ include("data_dependencies.jl")
 
         @info "Constructing a HydrostaticFreeSurfaceModel on a ConformalCubedSphereGrid [$(typeof(arch))]..."
 
-        model = HydrostaticFreeSurfaceModel(
-                          grid = grid,
-            momentum_advection = VectorInvariant(),
-                  free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),
-                      coriolis = nothing,
-                       closure = nothing,
-                       tracers = :c,
-                      buoyancy = nothing
-        )
+        free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
+        model = HydrostaticFreeSurfaceModel(; grid, free_surface,
+                                            momentum_advection = VectorInvariant(),
+                                            coriolis = nothing,
+                                            closure = nothing,
+                                            tracers = :c,
+                                            buoyancy = nothing)
 
         @testset "Constructing a grid from file [$(typeof(arch))]" begin
             @test grid isa ConformalCubedSphereGrid

@@ -3,8 +3,8 @@ using Oceananigans.Fields: AbstractField
 
 import Oceananigans.Fields: set!
 
-const CubedSphereCPUField = CubedSphereField{X, Y, Z, <:CPU} where {X, Y, Z}
-const CubedSphereGPUField = CubedSphereField{X, Y, Z, <:GPU} where {X, Y, Z}
+const CubedSphereCPUField = CubedSphereField{LX, LY, LZ, <:CPU} where {LX, LY, LZ}
+const CubedSphereGPUField = CubedSphereField{LX, LY, LZ, <:GPU} where {LX, LY, LZ}
 
 # We need to define the function once for CPU fields then again for GPU fields to avoid the method
 # ambiguity with Fields.set!.

@@ -3,7 +3,7 @@
 #####
 
 using KernelAbstractions: @kernel, @index
-using Oceananigans.Fields: FieldStatus
+using Oceananigans.Fields: FieldStatus, show_status
 using Oceananigans.Utils: work_layout
 
 import Oceananigans: short_show
@@ -76,7 +76,7 @@ end
     @inbounds data[i, j, k] = operand[i, j, k]
 end
 
-short_show(field::ComputedField) = string("ComputedField located at ", show_location(field), " of ", short_show(field.operand))
+short_show(field::ComputedField) = string("Field located at ", show_location(field), " computed from ", short_show(field.operand))
 
 Base.show(io::IO, field::ComputedField) =
     print(io, "$(short_show(field))\n",

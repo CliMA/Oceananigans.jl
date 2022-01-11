@@ -1,5 +1,6 @@
 using Statistics
 using Oceananigans.Architectures
+using Oceananigans.AbstractOperations: AbstractOperation
 
 using OffsetArrays: OffsetArray
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -43,11 +44,15 @@ const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{X, Y, Z, A},
 # CubedSphereField
 
 # Flavors of CubedSphereField
-const CubedSphereField         = Field{X, Y, Z, O, A, G, T, <:CubedSphereData} where {X, Y, Z, O, A, G, T}
-const CubedSphereAbstractField = AbstractField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
+const CubedSphereField{LX, LY, LZ, A} =
+    Union{Field{LX, LY, LZ, <:Nothing, A, <:ConformalCubedSphereGrid},
+          Field{LX, LY, LZ, <:AbstractOperation, A, <:ConformalCubedSphereGrid}}
 
-const AbstractCubedSphereField{X, Y, Z, A} = Union{CubedSphereAbstractField{X, Y, Z, A},
-                                                           CubedSphereField{X, Y, Z, A}} where {X, Y, Z, A}
+const CubedSphereAbstractField{LX, LY, LZ, A} = AbstractField{LX, LY, LZ, A, <:ConformalCubedSphereGrid}
+
+const AbstractCubedSphereField{LX, LY, LZ, A} =
+    Union{CubedSphereAbstractField{LX, LY, LZ, A},
+                  CubedSphereField{LX, LY, LZ, A}}
 
 #####
 ##### new data
@@ -80,7 +85,7 @@ end
 ##### Utils
 #####
 
-function Base.show(io::IO, field::AbstractCubedSphereField)
+function Base.show(io::IO, field::Union{CubedSphereField, AbstractCubedSphereField})
     LX, LY, LZ = location(field)
     arch = architecture(field)
     A = typeof(arch)
@@ -94,6 +99,7 @@ end
     return CubedSphereFaces(faces)
 end
 
+Base.size(field::CubedSphereField) = size(field.data)
 Base.size(data::CubedSphereData) = (size(data.faces[1])..., length(data.faces))
 
 @inline get_face(field::CubedSphereField, face_index) =
@@ -101,18 +107,13 @@ Base.size(data::CubedSphereData) = (size(data.faces[1])..., length(data.faces))
           data = get_face(field.data, face_index),
           boundary_conditions = get_face(field.boundary_conditions, face_index))
     
-@inline get_face(field::CubedSphereAbstractField, face_index) =
-    Field(location(field), get_face(field.grid, face_index);
-          data = get_face(field.data, face_index),
-          boundary_conditions = get_face(field.boundary_conditions, face_index))
-
 faces(field::AbstractCubedSphereField) = Tuple(get_face(field, face_index) for face_index in 1:length(field.data.faces))
 
 minimum(field::AbstractCubedSphereField; dims=:) = minimum(minimum(face_field; dims) for face_field in faces(field))
 maximum(field::AbstractCubedSphereField; dims=:) = maximum(maximum(face_field; dims) for face_field in faces(field))
 mean(field::AbstractCubedSphereField; dims=:) = mean(mean(face_field; dims) for face_field in faces(field))
 
-minimum(f::Function, field::AbstractCubedSphereField; dims=:) = minimum(minimum(f, face_field; dims) for face_field in faces(field))
+inimum(f::Function, field::AbstractCubedSphereField; dims=:) = minimum(minimum(f, face_field; dims) for face_field in faces(field))
 maximum(f::Function, field::AbstractCubedSphereField; dims=:) = maximum(maximum(f, face_field; dims) for face_field in faces(field))
 mean(f::Function, field::AbstractCubedSphereField; dims=:) = mean(mean(f, face_field; dims) for face_field in faces(field))
 
