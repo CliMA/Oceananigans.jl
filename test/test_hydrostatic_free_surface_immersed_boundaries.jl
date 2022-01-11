@@ -57,10 +57,11 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
             Ny = 60
 
             # A spherical domain
-            underlying_grid = LatitudeLongitudeGrid(arch, size = (Nx, Ny, 1),
-                                                   longitude = (-30, 30),
-                                                   latitude = (15, 75),
-                                                   z = (-4000, 0))
+            underlying_grid = LatitudeLongitudeGrid(arch,
+                                                    size = (Nx, Ny, 1),
+                                                    longitude = (-30, 30),
+                                                    latitude = (15, 75),
+                                                    z = (-4000, 0))
 
             bathymetry = zeros(Nx, Ny) .- 4000
             view(bathymetry, 31:34, 43:47) .= 0
@@ -94,14 +95,14 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
             νh₀ = 5e3 * (60 / grid.Nx)^2
             constant_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₀)
 
-            model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        momentum_advection = VectorInvariant(),
-                                        free_surface = free_surface,
-                                        coriolis = coriolis,
-                                        boundary_conditions = (u=u_bcs, v=v_bcs),
-                                        closure = constant_horizontal_diffusivity,
-                                        tracers = nothing,
-                                        buoyancy = nothing)
+            model = HydrostaticFreeSurfaceModel(; grid,
+                                                momentum_advection = VectorInvariant(),
+                                                free_surface = free_surface,
+                                                coriolis = coriolis,
+                                                boundary_conditions = (u=u_bcs, v=v_bcs),
+                                                closure = constant_horizontal_diffusivity,
+                                                tracers = nothing,
+                                                buoyancy = nothing)
 
 
             simulation = Simulation(model, Δt=3600, stop_iteration=1)
@@ -120,6 +121,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
             underlying_grid = RectilinearGrid(arch,
                                               size = (Nx, Ny, 3),
+                                              halo = (3, 3, 3),
                                               extent = (Nx, Ny, 3),
                                               topology = (Periodic, Periodic, Bounded))
 
@@ -130,7 +132,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
 
-            model = HydrostaticFreeSurfaceModel(grid = grid,
+            model = HydrostaticFreeSurfaceModel(; grid,
                                                 free_surface = ImplicitFreeSurface(),
                                                 tracer_advection = WENO5(),
                                                 buoyancy = nothing,
