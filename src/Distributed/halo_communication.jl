@@ -84,8 +84,8 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
     fill_opposite_side_halo! = Symbol("fill_$(opposite_side)_halo!")
 
     @eval begin
-        function $fill_both_halos!(c, bc_side, bc_opposite_side, arch, barrier, grid, args...)
-            event_side = $fill_side_halo!(c, bc_side, child_architecture(arch), barrier, grid, args...)
+        function $fill_both_halos!(c, bc_side, bc_opposite_side, arch, barrier, grid, args...; kwargs...)
+            event_side = $fill_side_halo!(c, bc_side, child_architecture(arch), barrier, grid, args...; kwargs...)
             event_opposite_side = $fill_opposite_side_halo!(c, bc_opposite_side, child_architecture(arch), barrier, grid, args...)
             return event_side, event_opposite_side
         end
@@ -107,7 +107,7 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
 
     @eval begin
         function $fill_both_halos!(c, bc_side::HaloCommunicationBC, bc_opposite_side::HaloCommunicationBC,
-                                   arch, barrier, grid, c_location, args...)
+                                   arch, barrier, grid, c_location, args...; kwargs...)
 
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
