@@ -3,8 +3,8 @@
 #####
 
 using KernelAbstractions: @kernel, @index
-using Oceananigans.Fields: FieldStatus, show_status
-using Oceananigans.Utils: work_layout
+using Oceananigans.Fields: FieldStatus, show_status, reduced_dimensions
+using Oceananigans.Utils: launch!
 
 import Oceananigans: short_show
 import Oceananigans.Fields: Field, compute!
@@ -57,12 +57,13 @@ function compute!(comp::ComputedField, time=nothing)
     # First compute `dependencies`:
     compute_at!(comp.operand, time)
 
-    workgroup, worksize =
-        work_layout(comp.grid, :xyz, include_right_boundaries = true, location = location(comp))
-
     arch = architecture(comp)
-    compute_kernel! = _compute!(device(arch), workgroup, worksize)
-    event = compute_kernel!(comp.data, comp.operand; dependencies = device_event(arch))
+    
+    event = launch!(arch, comp.grid, :xyz, _compute!, comp.data, comp.operand;
+                    include_right_boundaries = true,
+                    location = location(comp),
+                    reduced_dimensions = reduced_dimensions(comp))
+
     wait(device(arch), event)
 
     fill_halo_regions!(comp, arch)
