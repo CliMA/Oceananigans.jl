@@ -2,8 +2,9 @@ using Oceananigans.Architectures: device_event
 
 using Adapt
 using KernelAbstractions: @kernel, @index
-
 using Base: @propagate_inbounds
+
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 
 struct Field{LX, LY, LZ, O, A, G, T, D, B, S} <: AbstractField{LX, LY, LZ, A, G, T, 3}
     grid :: G

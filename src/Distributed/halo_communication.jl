@@ -1,4 +1,3 @@
-using Oceananigans.Fields: AbstractField
 using KernelAbstractions: @kernel, @index, Event, MultiEvent
 using OffsetArrays: OffsetArray
 
@@ -107,7 +106,9 @@ for (side, opposite_side) in zip([:west, :south, :bottom], [:east, :north, :top]
     recv_and_fill_opposite_side_halo! = Symbol("recv_and_fill_$(opposite_side)_halo!")
 
     @eval begin
-        function $fill_both_halos!(c, bc_side::HaloCommunicationBC, bc_opposite_side::HaloCommunicationBC, arch, barrier, grid, c_location, args...)
+        function $fill_both_halos!(c, bc_side::HaloCommunicationBC, bc_opposite_side::HaloCommunicationBC,
+                                   arch, barrier, grid, c_location, args...)
+
             @assert bc_side.condition.from == bc_opposite_side.condition.from  # Extra protection in case of bugs
             local_rank = bc_side.condition.from
 
