@@ -112,7 +112,7 @@ end
     X, Y, Z = location(kernel_field)
 
     return Field{X, Y, Z}(get_face(kernel_field.data, face_index),
-                          architecture(kernel_field)
+                          architecture(kernel_field),
                           get_face(kernel_field.grid, face_index),
                           get_face(kernel_field.boundary_conditions, face_index))
 end
