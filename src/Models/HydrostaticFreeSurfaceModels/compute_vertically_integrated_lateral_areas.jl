@@ -20,7 +20,7 @@ using Oceananigans.Grids: halo_size
     end
 end
 
-function compute_vertically_integrated_lateral_areas!(∫ᶻ_A, grid, arch)
+function compute_vertically_integrated_lateral_areas!(∫ᶻ_A, arch)
 
     # we have to account for halos when calculating Integrated areas, in case 
     # a periodic domain, where it is not guaranteed that ηₙ == ηₙ₊₁ 
@@ -28,11 +28,11 @@ function compute_vertically_integrated_lateral_areas!(∫ᶻ_A, grid, arch)
 
     field_grid = ∫ᶻ_A.xᶠᶜᶜ.grid
 
-    xy_size = size(field_grid)[[1, 2]] .+ halo_size(field_grid)[[1, 2]] .* 2
+    xy_size = size(field_grid)[[1, 2]] .+ (halo_size(field_grid)[[1, 2]] .* 2)
     
     event = launch!(arch, field_grid, xy_size,
                     _compute_vertically_integrated_lateral_areas!,
-                    ∫ᶻ_A, grid,
+                    ∫ᶻ_A, field_grid,
                     dependencies=Event(device(arch)))
 
     wait(device(arch), event)

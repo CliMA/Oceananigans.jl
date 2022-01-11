@@ -34,7 +34,7 @@ function PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, gravitat
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
-    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas, grid, arch)
+    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas, arch)
 
     right_hand_side = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
 
