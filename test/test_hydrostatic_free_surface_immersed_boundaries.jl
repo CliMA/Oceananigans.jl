@@ -121,20 +121,18 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 
             underlying_grid = RectilinearGrid(arch,
                                               size = (Nx, Ny, 3),
-                                              halo = (3, 3, 3),
                                               extent = (Nx, Ny, 3),
                                               topology = (Periodic, Periodic, Bounded))
 
             # B for bathymetry
             B = [-3. for i=1:Nx, j=1:Ny ]
-            B[2:Nx-1,2:Ny-1] .= [-2. for i=2:Nx-1, j=2:Ny-1 ]
-            B[3:Nx-2,3:Ny-2] .= [-1. for i=3:Nx-2, j=3:Ny-2 ]
+            B[2:Nx-1, 2:Ny-1] .= [-2 for i=2:Nx-1, j=2:Ny-1 ]
+            B[3:Nx-2, 3:Ny-2] .= [-1 for i=3:Nx-2, j=3:Ny-2 ]
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
 
             model = HydrostaticFreeSurfaceModel(; grid,
                                                 free_surface = ImplicitFreeSurface(),
-                                                tracer_advection = WENO5(),
                                                 buoyancy = nothing,
                                                 tracers = nothing,
                                                 closure = nothing)
