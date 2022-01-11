@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.Solvers: solve!, MatrixIterativeSolver, spai_preconditioner
 using Oceananigans.Fields: interior_copy
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
@@ -14,7 +16,6 @@ function calc_∇²!(∇²ϕ, ϕ, grid)
     return nothing
 end
 
-
 function identity_operator!(b, x)
     parent(b) .= parent(x)
     return nothing
@@ -25,12 +26,12 @@ function run_identity_operator_test(grid)
 
     N = size(grid)
     M = prod(N)
+    b = zeros(arch, M)
+    A = zeros(arch, N...)
+    D = zeros(grid, N...)
 
-    b = arch_array(arch, zeros(M))
-
-    A = zeros(N...)
-    C =  ones(N...)
-    D = arch_array(arch, zeros(N...))
+    C = zeros(arch, N...)
+    fill!(C, 1)
 
     solver = MatrixIterativeSolver((A, A, A, C, D), grid = grid)
 
@@ -42,6 +43,7 @@ function run_identity_operator_test(grid)
     solve!(initial_guess, solver, b, 1.0)
 
     b = reshape(b, size(grid)...)
+
     @test norm(interior(solution) .- b) .< solver.tolerance
 end
 
@@ -56,15 +58,14 @@ function compute_poisson_weights(grid)
     Ay = zeros(N...)
     Az = zeros(N...)
     C  = zeros(N...)
-    D  = arch_array(architecture(grid), zeros(N...))
-    for i =1:grid.Nx, j = 1:grid.Ny, k = 1:grid.Nz
+    D  = zeros(grid, N...)
+    for i = 1:grid.Nx, j = 1:grid.Ny, k = 1:grid.Nz
         Ax[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δyᶠᶜᵃ(i, j, k, grid) / Δxᶠᶜᵃ(i, j, k, grid)
         Ay[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i, j, k, grid)
         Az[i, j, k] = Δxᶜᵃᵃ(i, j, k, grid) * Δyᵃᶜᵃ(i, j, k, grid) / Δzᵃᵃᶠ(i, j, k, grid)
     end
     return (Ax, Ay, Az, C, D)
 end
-
 
 function poisson_rhs!(r, grid)
     event = launch!(architecture(grid), grid, :xyz, _multiply_by_volume!, r, grid)
@@ -73,9 +74,10 @@ function poisson_rhs!(r, grid)
 end
 
 function run_poisson_equation_test(grid)
-    # Solve ∇²ϕ = r
-    ϕ_truth = Field{Center, Center, Center}(grid)
     arch = architecture(grid)
+
+    # Solve ∇²ϕ = r
+    ϕ_truth = CenterField(grid)
 
     # Initialize zero-mean "truth" solution with random numbers
     set!(ϕ_truth, (x, y, z) -> rand())
@@ -83,7 +85,7 @@ function run_poisson_equation_test(grid)
     fill_halo_regions!(ϕ_truth, arch)
 
     # Calculate Laplacian of "truth"
-    ∇²ϕ = Field{Center, Center, Center}(grid)
+    ∇²ϕ = CenterField(grid)
     calc_∇²!(∇²ϕ, ϕ_truth, grid)
     
     rhs = deepcopy(∇²ϕ)
@@ -112,35 +114,41 @@ function run_poisson_equation_test(grid)
 end
 
 @testset "MatrixIterativeSolver" begin
+
     topologies = [(Periodic, Periodic, Flat), (Bounded, Bounded, Flat), (Periodic, Bounded, Flat), (Bounded, Periodic, Flat)]
+
     for arch in archs, topo in topologies
-        @info "Testing 2D MatrixIterativeSolver [$(typeof(arch)) $topo]..."
+        @info "  Testing 2D MatrixIterativeSolver [$(typeof(arch)) $topo]..."
         
         grid = RectilinearGrid(arch, size=(4, 8), extent=(1, 3), topology = topo)
         run_identity_operator_test(grid)
         run_poisson_equation_test(grid)
     end
+
     topologies = [(Periodic, Periodic, Periodic), (Bounded, Bounded, Periodic), (Periodic, Bounded, Periodic), (Bounded, Periodic, Bounded)]
+
     for arch in archs, topo in topologies
-        @info "Testing 3D MatrixIterativeSolver [$(typeof(arch)) $topo]..."
+        @info "  Testing 3D MatrixIterativeSolver [$(typeof(arch)) $topo]..."
         
-        grid = RectilinearGrid(arch, size=(4, 8, 6), extent=(1, 3, 4), topology = topo)
+        grid = RectilinearGrid(arch, size=(4, 8, 6), extent=(1, 3, 4), topology=topo)
         run_identity_operator_test(grid)
         run_poisson_equation_test(grid)
     end
+
     stretch_coord = [0, 1.5, 3, 7, 8.5, 10]
+
     for arch in archs
         grids = [RectilinearGrid(arch, size=(5, 5, 5), x = stretch_coord, y = (0, 10), z = (0, 10), topology = (Periodic, Periodic, Periodic)), 
                  RectilinearGrid(arch, size=(5, 5, 5), x = (0, 10), y = stretch_coord, z = (0, 10), topology = (Periodic, Periodic, Periodic)), 
                  RectilinearGrid(arch, size=(5, 5, 5), x = (0, 10), y = (0, 10), z = stretch_coord, topology = (Periodic, Periodic, Periodic))]
 
         for grid in grids
-            @info "Testing stretched grid MatrixIterativeSolver [$(typeof(arch))]..."
+            @info "  Testing stretched grid MatrixIterativeSolver [$(typeof(arch))]..."
             run_poisson_equation_test(grid)
         end
     end
 
-    @info "Testing Sparse Approximate Inverse Preconditioner"
+    @info "  Testing Sparse Approximate Inverse Preconditioner"
 
     A   = sprand(100, 100, 0.1)
     A   = A + A' + 1I
@@ -148,5 +156,4 @@ end
     M   = spai_preconditioner(A, ε = 0.0, nzrel = size(A, 1))
 
     @test all(M .≈ A⁻¹)
-
 end
