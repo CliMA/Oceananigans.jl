@@ -133,7 +133,7 @@ end
 
 function reconstruct_global_grid(grid::RectilinearGrid)
 
-    arch    = grid.architecture
+    arch = grid.architecture
     i, j, k = arch.local_index
 
     Rx, Ry, Rz = R = arch.ranks
@@ -152,22 +152,21 @@ function reconstruct_global_grid(grid::RectilinearGrid)
     yG = get_global_coords(y, ny, Ry, j, arch)
     zG = get_global_coords(z, nz, Rz, k, arch)
 
-    architecture = child_architecture(arch)
+    child_arch = child_architecture(arch)
 
     FT = eltype(grid)
 
-    Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, TX, Nx, Hx, xG, architecture)
-    Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, TY, Ny, Hy, yG, architecture)
-    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, TZ, Nz, Hz, zG, architecture)
+    Lx, xᶠᵃᵃ, xᶜᵃᵃ, Δxᶠᵃᵃ, Δxᶜᵃᵃ = generate_coordinate(FT, TX, Nx, Hx, xG, child_arch)
+    Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, TY, Ny, Hy, yG, child_arch)
+    Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, TZ, Nz, Hz, zG, child_arch)
 
-    return RectilinearGrid{TX, TY, TZ}(architecture,
+    return RectilinearGrid{TX, TY, TZ}(arch,
                                        Nx, Ny, Nz,
                                        Hx, Hy, Hz,
                                        Lx, Ly, Lz,
                                        Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
                                        Δyᵃᶜᵃ, Δyᵃᶠᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
                                        Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
-        
 end
 
 function with_halo(new_halo, grid::DistributedGrid) 
