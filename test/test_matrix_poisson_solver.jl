@@ -87,7 +87,7 @@ function run_poisson_equation_test(arch, grid)
     poisson_rhs!(rhs, grid)
     rhs = interior_copy(rhs)[:]
     weights = compute_poisson_weights(grid)
-    solver  = HeptadiagonalIterativeSolver(weights, grid = grid)
+    solver  = HeptadiagonalIterativeSolver(weights, grid = grid, preconditioner_method = nothing)
 
     # Solve Poisson equation
     ϕ_solution = CenterField(arch, grid)
