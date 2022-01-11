@@ -157,7 +157,7 @@ Set{Any} with 6 elements:
   :*
   :plus_or_times
 
-julia> c, d = (Field(Center, Center, Center, CPU(), RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:2);
+julia> c, d = (CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:2);
 
 julia> plus_or_times(c, d)
 BinaryOperation at (Center, Center, Center)
