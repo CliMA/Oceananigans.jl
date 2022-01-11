@@ -4,11 +4,6 @@ using Oceananigans.Grids: halo_size
 @kernel function _compute_vertically_integrated_lateral_areas!(∫ᶻ_A, grid)
     i, j = @index(Global, NTuple)
 
-    # to account for halos (Hx, Hy = 2, 2 for ∫ᶻ_A)
-    Hx, Hy, Hz = halo_size(grid)
-    i -= Hx
-    j -= Hy
-
     @inbounds begin
         ∫ᶻ_A.xᶠᶜᶜ[i, j, 1] = 0
         ∫ᶻ_A.yᶜᶠᶜ[i, j, 1] = 0
@@ -28,14 +23,15 @@ function compute_vertically_integrated_lateral_areas!(∫ᶻ_A, arch)
 
     field_grid = ∫ᶻ_A.xᶠᶜᶜ.grid
 
-    xy_size = size(field_grid)[[1, 2]] .+ (halo_size(field_grid)[[1, 2]] .* 2)
-    
-    event = launch!(arch, field_grid, xy_size,
+    event = launch!(arch, field_grid, :xy,
                     _compute_vertically_integrated_lateral_areas!,
                     ∫ᶻ_A, field_grid,
                     dependencies=Event(device(arch)))
-
+    
     wait(device(arch), event)
+
+    fill_halo_regions!(∫ᶻ_A.xᶠᶜᶜ, arch)
+    fill_halo_regions!(∫ᶻ_A.yᶜᶠᶜ, arch)
 
     return nothing
 end
