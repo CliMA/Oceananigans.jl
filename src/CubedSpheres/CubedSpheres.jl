@@ -18,10 +18,10 @@ include("immersed_conformal_cubed_sphere_grid.jl")
 import Oceananigans.Fields: validate_field_data
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_vertical_velocity_boundary_conditions
 
-function validate_field_data(X, Y, Z, data, grid::ConformalCubedSphereGrid)
+function validate_field_data(loc, data, grid::ConformalCubedSphereGrid)
 
     for (face_data, face_grid) in zip(data.faces, grid.faces)
-        validate_field_data(X, Y, Z, face_data, face_grid)
+        validate_field_data(loc, face_data, face_grid)
     end
 
     return nothing
