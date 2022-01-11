@@ -16,6 +16,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
         underlying_grid = RectilinearGrid(arch,
                                           size = (Nx, Ny, Nz),
                                           extent = (Nx, Ny, 1),
+                                          halo = (3, 3, 3),
                                           topology = (Periodic, Periodic, Bounded))
 
         imm1=Int( floor((Nx+1)/2)   )
