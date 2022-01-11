@@ -66,7 +66,7 @@ Set{Any} with 8 elements:
   :tanh
   :sin
 
-julia> c = Field(Center, Center, Center, CPU(), RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)));
+julia> c = CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)));
 
 julia> square_it(c)
 UnaryOperation at (Center, Center, Center)
