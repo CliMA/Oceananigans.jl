@@ -41,6 +41,10 @@ As such, we urge to use `sparse_inverse_preconditioner` only when
 - Δt is constant (we don't have to recalculate the preconditioner during the simulation)
 - it is feasible to choose `nzrel = 2.0` (for not too large problem sizes)
 
+Note that `heuristic_inverse_preconditioner` assumes the matrix to be diagonally dominant, for this reason it could 
+be detrimental when used on non-diagonally dominant system (cases where Δt is very large). In this case it is better 
+to use `sparse_approximate_inverse`
+
 `ilu()` cannot be used on the GPU because preconditioning the solver with a direct LU (or Choleski) type 
 of preconditioner would require too much computation for the `ldiv!(P, r)` step completely hindering the performances
 """
