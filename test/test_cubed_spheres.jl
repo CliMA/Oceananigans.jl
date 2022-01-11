@@ -79,7 +79,7 @@ include("data_dependencies.jl")
             @info "Testing KernelComputedField on a ConformalCubedSphereGrid [$(typeof(arch))]..."
             ζ = VerticalVorticityField(model)
 
-            @test ζ isa KernelComputedField
+            @test ζ isa Field
 
             set!(model, u = (x, y, z) -> rand())
 

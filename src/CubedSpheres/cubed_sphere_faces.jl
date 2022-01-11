@@ -43,8 +43,8 @@ const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{X, Y, Z, A},
 # CubedSphereField
 
 # Flavors of CubedSphereField
-const CubedSphereField                     = Field{X, Y, Z, A, <:CubedSphereData} where {X, Y, Z, A}
-const CubedSphereAbstractField             = AbstractField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
+const CubedSphereField         = Field{X, Y, Z, O, A, G, T, <:CubedSphereData} where {X, Y, Z, O, A, G, T}
+const CubedSphereAbstractField = AbstractField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
 
 const AbstractCubedSphereField{X, Y, Z, A} = Union{CubedSphereAbstractField{X, Y, Z, A},
                                                            CubedSphereField{X, Y, Z, A}} where {X, Y, Z, A}
@@ -88,8 +88,6 @@ function Base.show(io::IO, field::AbstractCubedSphereField)
           "├── architecture: $A\n",
           "└── grid: $(short_show(field.grid))")
 end
-
-
 
 @inline function interior(field::AbstractCubedSphereField)
     faces = Tuple(interior(face_field_face) for face_field in faces(field))
