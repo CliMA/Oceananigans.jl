@@ -1,4 +1,5 @@
 import Oceananigans.Utils: prettytime
+import Oceananigans.TimeSteppers: reset!
 
 # It's not a model --- its a simulation!
 
@@ -130,16 +131,18 @@ run_wall_time(sim::Simulation) = prettytime(sim.run_wall_time)
 """
     reset!(sim)
 
-Reset `model.clock` to its initial state and set `sim.initialized=false`.
+Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial state.
 """
-function reset!(sim)
+function reset!(sim::Simulation)
     sim.model.clock.time = 0.0
     sim.model.clock.iteration = 0
+    sim.model.clock.stage = 1
     sim.stop_iteration = Inf
     sim.stop_time = Inf
     sim.wall_time_limit = Inf
     sim.initialized = false
     sim.running = true
+    reset!(sim.model.timestepper)
     return nothing
 end
 

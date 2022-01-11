@@ -32,6 +32,11 @@ function QuasiAdamsBashforth2TimeStepper(arch, grid, tracers,
     return QuasiAdamsBashforth2TimeStepper{FT, GT, IT}(χ, Inf, Gⁿ, G⁻, implicit_solver)
 end
 
+function reset!(timestepper::QuasiAdamsBashforth2TimeStepper)
+    timestepper.previous_Δt = Inf
+    return nothing
+end
+
 #####
 ##### Time steppping
 #####
