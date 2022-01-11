@@ -66,7 +66,7 @@ julia> using Oceananigans
 
 julia> using Oceananigans.AbstractOperations: Δz
 
-julia> grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)); c = CenterField(CPU(), grid);
+julia> grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)); c = CenterField(grid);
 
 julia> c_dz = c * Δz # returns BinaryOperation between Field and GridMetricOperation
 BinaryOperation at (Center, Center, Center)
@@ -105,7 +105,7 @@ julia> using Oceananigans
 
 julia> using Oceananigans.AbstractOperations: volume
 
-julia> grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 2, 3)); c = CenterField(CPU(), grid);
+julia> grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 2, 3)); c = CenterField(grid);
 
 julia> c .= 1;
 
