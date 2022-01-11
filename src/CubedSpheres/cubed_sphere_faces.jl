@@ -103,7 +103,7 @@ Base.size(data::CubedSphereData) = (size(data.faces[1])..., length(data.faces))
 
     # Should we define a new lower-level constructor for Field that doesn't call validate_field_data?
     return Field{X, Y, Z}(get_face(field.data, face_index),
-                          field.architecture,
+                          architecture(field)
                           get_face(field.grid, face_index),
                           get_face(field.boundary_conditions, face_index))
 end
@@ -112,9 +112,9 @@ end
     X, Y, Z = location(kernel_field)
 
     return Field{X, Y, Z}(get_face(kernel_field.data, face_index),
-                                 kernel_field.architecture,
-                                 get_face(kernel_field.grid, face_index),
-                                 get_face(kernel_field.boundary_conditions, face_index))
+                          architecture(kernel_field)
+                          get_face(kernel_field.grid, face_index),
+                          get_face(kernel_field.boundary_conditions, face_index))
 end
 
 faces(field::AbstractCubedSphereField) = Tuple(get_face(field, face_index) for face_index in 1:length(field.data.faces))
