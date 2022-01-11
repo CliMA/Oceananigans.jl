@@ -1,5 +1,6 @@
 using Oceananigans.Solvers
 using Oceananigans.Operators
+using Oceananigans.Grids: with_halo
 using Oceananigans.Architectures
 using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: ReducedField
@@ -31,8 +32,8 @@ step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `�
 function MatrixImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, gravitational_acceleration, settings)
     
     # Initialize vertically integrated lateral face areas
-    ∫ᶻ_Axᶠᶜᶜ = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
-    ∫ᶻ_Ayᶜᶠᶜ = ReducedField(Center, Face, Nothing, arch, grid; dims=3)
+    ∫ᶻ_Axᶠᶜᶜ = ReducedField(Face, Center, Nothing, arch, with_halo((2, 2, 1), grid); dims=3)
+    ∫ᶻ_Ayᶜᶠᶜ = ReducedField(Center, Face, Nothing, arch, with_halo((2, 2, 1), grid); dims=3)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
@@ -50,7 +51,7 @@ function MatrixImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, gravi
     solver = HeptadiagonalIterativeSolver(coeffs;
                                      reduced_dim = (false, false, true),
                                             grid = grid,
-                                            settings...)
+                                        settings...)
 
     return MatrixImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
