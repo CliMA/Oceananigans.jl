@@ -1,4 +1,6 @@
-import Oceananigans.Fields: Field, fill_halo_regions!
+import Oceananigans.Fields: Field
+import Oceananigans.BoundaryConditions: fill_halo_regions!
+
 
 function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, op, status)
     arch = architecture(grid)
@@ -6,7 +8,7 @@ function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, op, st
     return Field{LX, LY, LZ}(grid, data, new_bcs, op, status)
 end
 
-const DistributedField = AbstractField{<:Any, <:Any, <:Any, <:MultiArch}
+const DistributedField = Field{<:Any, <:Any, <:Any, <:Any, <:MultiArch}
 
 fill_halo_regions!(field::DistributedField, arch, args...; kwargs...) =
     fill_halo_regions!(field.data,
