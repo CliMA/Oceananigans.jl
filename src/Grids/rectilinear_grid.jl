@@ -346,7 +346,6 @@ Adapt.adapt_structure(to, grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, 
         Adapt.adapt(to, grid.zᵃᵃᶠ),
         Adapt.adapt(to, grid.zᵃᵃᶜ))
 
-
 @inline xnode(::Center, i, grid::RectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
 @inline xnode(::Face  , i, grid::RectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
 
