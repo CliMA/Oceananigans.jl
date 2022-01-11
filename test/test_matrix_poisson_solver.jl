@@ -26,11 +26,11 @@ function run_identity_operator_test(grid)
 
     N = size(grid)
     M = prod(N)
-    b = zeros(arch, M)
-    A = zeros(arch, N...)
-    D = zeros(grid, N...)
 
-    C = zeros(arch, N...)
+    b = zeros(grid, M)
+    A = zeros(grid, N...)
+    D = zeros(grid, N...)
+    C = zeros(grid, N...)
     fill!(C, 1)
 
     solver = MatrixIterativeSolver((A, A, A, C, D), grid = grid)
@@ -57,12 +57,12 @@ function compute_poisson_weights(grid)
     Ax = zeros(N...)
     Ay = zeros(N...)
     Az = zeros(N...)
-    C  = zeros(N...)
+    C  = zeros(grid, N...)
     D  = zeros(grid, N...)
     for i = 1:grid.Nx, j = 1:grid.Ny, k = 1:grid.Nz
         Ax[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δyᶠᶜᵃ(i, j, k, grid) / Δxᶠᶜᵃ(i, j, k, grid)
         Ay[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * Δxᶜᶠᵃ(i, j, k, grid) / Δyᶜᶠᵃ(i, j, k, grid)
-        Az[i, j, k] = Δxᶜᵃᵃ(i, j, k, grid) * Δyᵃᶜᵃ(i, j, k, grid) / Δzᵃᵃᶠ(i, j, k, grid)
+        Az[i, j, k] = Δxᶜᶜᵃ(i, j, k, grid) * Δyᶜᶜᵃ(i, j, k, grid) / Δzᵃᵃᶠ(i, j, k, grid)
     end
     return (Ax, Ay, Az, C, D)
 end
@@ -118,9 +118,9 @@ end
     topologies = [(Periodic, Periodic, Flat), (Bounded, Bounded, Flat), (Periodic, Bounded, Flat), (Bounded, Periodic, Flat)]
 
     for arch in archs, topo in topologies
-        @info "  Testing 2D MatrixIterativeSolver [$(typeof(arch)) $topo]..."
-        
-        grid = RectilinearGrid(arch, size=(4, 8), extent=(1, 3), topology = topo)
+        @info "  Testing 2D MatrixIterativeSolver [$(typeof(arch)), $topo]..."
+
+        grid = RectilinearGrid(arch, size=(4, 8), extent=(1, 3), topology=topo)
         run_identity_operator_test(grid)
         run_poisson_equation_test(grid)
     end
@@ -128,27 +128,29 @@ end
     topologies = [(Periodic, Periodic, Periodic), (Bounded, Bounded, Periodic), (Periodic, Bounded, Periodic), (Bounded, Periodic, Bounded)]
 
     for arch in archs, topo in topologies
-        @info "  Testing 3D MatrixIterativeSolver [$(typeof(arch)) $topo]..."
+        @info "  Testing 3D MatrixIterativeSolver [$(typeof(arch)), $topo]..."
         
         grid = RectilinearGrid(arch, size=(4, 8, 6), extent=(1, 3, 4), topology=topo)
         run_identity_operator_test(grid)
         run_poisson_equation_test(grid)
     end
 
-    stretch_coord = [0, 1.5, 3, 7, 8.5, 10]
+    stretched_faces = [0, 1.5, 3, 7, 8.5, 10]
+    topo = (Periodic, Periodic, Periodic)
+    sz = (5, 5, 5)
 
     for arch in archs
-        grids = [RectilinearGrid(arch, size=(5, 5, 5), x = stretch_coord, y = (0, 10), z = (0, 10), topology = (Periodic, Periodic, Periodic)), 
-                 RectilinearGrid(arch, size=(5, 5, 5), x = (0, 10), y = stretch_coord, z = (0, 10), topology = (Periodic, Periodic, Periodic)), 
-                 RectilinearGrid(arch, size=(5, 5, 5), x = (0, 10), y = (0, 10), z = stretch_coord, topology = (Periodic, Periodic, Periodic))]
+        grids = [RectilinearGrid(arch, size = sz, x = stretched_faces, y = (0, 10), z = (0, 10), topology = topo), 
+                 RectilinearGrid(arch, size = sz, x = (0, 10), y = stretched_faces, z = (0, 10), topology = topo), 
+                 RectilinearGrid(arch, size = sz, x = (0, 10), y = (0, 10), z = stretched_faces, topology = topo)]
 
-        for grid in grids
-            @info "  Testing stretched grid MatrixIterativeSolver [$(typeof(arch))]..."
+        for (grid, stretched_direction) in zip(grids, [:x, :y, :z])
+            @info "  Testing MatrixIterativeSolver [stretched in $stretched_direction, $(typeof(arch))]..."
             run_poisson_equation_test(grid)
         end
     end
 
-    @info "  Testing Sparse Approximate Inverse Preconditioner"
+    @info "  Testing Sparse Approximate Inverse Preconditioner..."
 
     A   = sprand(100, 100, 0.1)
     A   = A + A' + 1I
