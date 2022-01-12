@@ -2,7 +2,7 @@ module HydrostaticFreeSurfaceModels
 
 export
     HydrostaticFreeSurfaceModel, VectorInvariant,
-    ExplicitFreeSurface, ImplicitFreeSurface,
+    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
     PrescribedVelocityFields
 
 using KernelAbstractions: @index, @kernel, Event, MultiEvent

@@ -1,7 +1,14 @@
-using Revise, Oceananigans, Adapt, Base
+using Oceananigans, Adapt, Base
 using Oceananigans.Fields
 using Oceananigans.Grids
 using Oceananigans.Architectures
+import Base.show
+
+# TODO: Potentially Change Structs before final PR
+# e.g. flatten the struct, 
+# auxiliary -> source / barotropic_source, 
+# gravitational_acceleration
+# settings -> flattened_settings
 
 """
 SplitExplicitFreeSurface{𝒮, 𝒫, ℰ}
@@ -14,33 +21,32 @@ settings : (SplitExplicitSettings). Settings for the split-explicit scheme
 struct SplitExplicitFreeSurface{𝒮, ℱ, 𝒫, ℰ}
     state :: 𝒮
     auxiliary :: ℱ
-    parameters :: 𝒫
+    gravitational_acceleration :: 𝒫
     settings :: ℰ
 end 
 
 # use as a trait for dispatch purposes
-function SplitExplicitFreeSurface(; parameters = (; g = g_Earth),
-                                    settings = SplitExplicitSettings(200),
+function SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth,
+                                    substeps = 200,
                                     closure = nothing)
 
-    return SplitExplicitFreeSurface(nothing, nothing, parameters, settings)
+    return SplitExplicitFreeSurface(nothing, nothing, gravitational_acceleration, SplitExplicitSettings(substeps))
 end
 
 function FreeSurface(free_surface::SplitExplicitFreeSurface{Nothing}, velocities, arch, grid)
     return SplitExplicitFreeSurface(SplitExplicitState(grid, arch), 
                                     SplitExplicitAuxiliary(grid, arch),
-                                    free_surface.parameters,
-                                    free_surface.settings,
-                                    )
+                                    free_surface.gravitational_acceleration, 
+                                    free_surface.settings)
 end
 
-function SplitExplicitFreeSurface(grid, arch; parameters = (; g = g_Earth),
-    settings = SplitExplicitSettings(200),
-    closure = nothing)
+function SplitExplicitFreeSurface(grid, arch; gravitational_acceleration = g_Earth,
+                                  settings = SplitExplicitSettings(200),
+                                   closure = nothing)
 
     sefs = SplitExplicitFreeSurface(SplitExplicitState(grid, arch),
         SplitExplicitAuxiliary(grid, arch),
-        parameters,
+        gravitational_acceleration,
         settings
         )
 

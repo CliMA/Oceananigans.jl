@@ -10,14 +10,14 @@ using Oceananigans.Operators
 ∂t(U⃗) = - gH∇η + f⃗
 =#
 
-@kernel function free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ)
+@kernel function split_explicit_free_surface_substep_kernel_1!(grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ)
     i, j = @index(Global, NTuple)
     # ∂τ(U⃗) = - ∇η + G⃗
     @inbounds U[i, j, 1] +=  Δτ * (-g * Hᶠᶜ[i, j] * ∂xᶠᶜᵃ(i, j, 1, grid, η) + Gᵁ[i, j, 1])
     @inbounds V[i, j, 1] +=  Δτ * (-g * Hᶜᶠ[i, j] * ∂yᶜᶠᵃ(i, j, 1, grid, η) + Gⱽ[i, j, 1])
 end
 
-@kernel function free_surface_substep_kernel_2!(grid, Δτ, η, U, V, η̅, U̅, V̅, velocity_weight, free_surface_weight)
+@kernel function split_explicit_free_surface_substep_kernel_2!(grid, Δτ, η, U, V, η̅, U̅, V̅, velocity_weight, free_surface_weight)
     i, j = @index(Global, NTuple)
     # ∂τ(U⃗) = - ∇η + G⃗
     @inbounds η[i, j, 1] -=  Δτ * div_xyᶜᶜᵃ(i, j, 1, grid, U, V)
@@ -27,17 +27,17 @@ end
     @inbounds η̅[i, j, 1] +=  free_surface_weight * η[i, j, 1]
 end
 
-function free_surface_substep!(arch, grid, Δτ, free_surface::SplitExplicitFreeSurface, substep_index)
-    sefs = free_surface #split explicit free surface
-    U, V, η̅, U̅, V̅, Gᵁ, Gⱽ  = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
-    Hᶠᶜ, Hᶜᶠ = sefs.Hᶠᶜ, sefs.Hᶜᶠ
-    g = sefs.parameters.g
-    velocity_weight = sefs.velocity_weights[substep_index]
-    free_surface_weight = sefs.free_surface_weights[substep_index]
+function split_explicit_free_surface_substep!(state, auxiliary, settings, arch, grid, Δτ, substep_index)
+    # unpack state quantities, parameters and forcing terms 
+    η, U, V, η̅, U̅, V̅, Gᵁ, Gⱽ  = state.η, state.U, state.V, state.η̅, state.U̅, state.V̅, 
+    Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ          = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
+
+    vel_weight = settings.vel_weights[substep_index]
+    η_weight   = settings.η_weights[substep_index]
 
     fill_halo_regions!(η, arch)
 
-    event = launch!(arch, grid, :xy, free_surface_substep_kernel_1!, 
+    event = launch!(arch, grid, :xy, split_explicit_free_surface_substep_kernel_1!, 
             grid, Δτ, η, U, V, Gᵁ, Gⱽ, g, Hᶠᶜ, Hᶜᶠ,
             dependencies=Event(device(arch)))
 
@@ -47,8 +47,8 @@ function free_surface_substep!(arch, grid, Δτ, free_surface::SplitExplicitFree
     fill_halo_regions!(U, arch)
     fill_halo_regions!(V, arch)
 
-    event = launch!(arch, grid, :xy, free_surface_substep_kernel_2!, 
-            grid, Δτ, η, U, V, η̅, U̅, V̅, velocity_weight, free_surface_weight,
+    event = launch!(arch, grid, :xy, split_explicit_free_surface_substep_kernel_2!, 
+            grid, Δτ, η, U, V, η̅, U̅, V̅, vel_weight, η_weight,
             dependencies=Event(device(arch)))
 
     wait(device(arch), event)
@@ -111,16 +111,65 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, arch, grid)
     wait(device(arch), event)
 end
 
-@kernel function set_average_zero_kernel!(η̅, U̅, V̅)
+@kernel function set_average_zero_kernel!(free_surface_state)
     i, j = @index(Global, NTuple)
-    @inbounds U̅[i, j, 1] = 0.0
-    @inbounds V̅[i, j, 1] = 0.0
-    @inbounds η̅[i, j, 1] = 0.0
+    @inbounds free_surface_state.U̅[i, j, 1] = 0.0
+    @inbounds free_surface_state.V̅[i, j, 1] = 0.0
+    @inbounds free_surface_state.η̅[i, j, 1] = 0.0
 end
 
-function set_average_to_zero!(arch, grid, η̅, U̅, V̅)
+function set_average_to_zero!(free_surface_state, arch, grid)
     event = launch!(arch, grid, :xy, set_average_zero_kernel!, 
-            η̅, U̅, V̅,
+            free_surface_state,
             dependencies=Event(device(arch)))
     wait(event)        
+end
+
+"""
+Explicitly step forward η in substeps.
+"""
+ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, velocities_update) =
+    split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, velocities_update)
+
+function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, velocities_update)
+    
+    # we start the time integration of η from the average ηⁿ     
+    state     = free_surface.state
+    auxiliary = free_surface.auxiliary
+    settings  = free_surface.auxiliary
+    η         = free_surface.state.η
+    g         = free_surface.gravitational_acceleration
+    
+    set!(η, free_surface.state.η̅)
+
+    grid = model.grid
+    arch = architecture(grid)
+    FT   = eltype(grid)
+
+    forcing_term = (FT(1.5) + χ) * model.timestepper.Gⁿ.u - (FT(0.5) + χ) * model.timestepper.G⁻.u
+
+    # reset free surface averages
+    set_average_to_zero!(state, arch, grid)
+    set_free_surface_auxiliary!(aux, model.timestepper, arch, grid)
+
+    # Wait for predictor velocity update step to complete.
+    wait(device(arch), velocities_update)
+
+    masking_events = Tuple(mask_immersed_field!(q) for q in model.velocities)
+    wait(device(arch), MultiEvent(masking_events))
+
+    # Compute barotropic tendency fields. Blocking.
+    compute_vertically_integrated_tendency_fields!(∫ᶻQ, model)
+
+    # Solve for the free surface at tⁿ⁺¹
+    start_time = time_ns()
+
+    for steps in 1:
+        split_explicit_free_surface_substep!(state, auxiliary, rhs, g, Δt)
+    end
+    @debug "Split explicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
+
+    fill_halo_regions!(η, arch)
+    
+    return NoneEvent()
 end

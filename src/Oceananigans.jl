@@ -70,7 +70,7 @@ export
     fields,
 
     # Hydrostatic free surface model stuff
-    VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface,
+    VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving, VectorInvariantEnergyConserving,
     PrescribedVelocityFields,
 
