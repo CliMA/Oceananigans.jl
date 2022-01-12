@@ -29,7 +29,7 @@
 #     and grazing by zooplankton.
 #   * How to set time-dependent boundary conditions.
 #   * How to use the `TimeStepWizard` to adapt the simulation time-step.
-#   * How to use `AveragedField` to diagnose spatial averages of model fields.
+#   * How to use `Average` and `Field` to diagnose spatial averages of model fields.
 #
 # ## Install dependencies
 #
@@ -175,7 +175,7 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 # and a basic `JLD2OutputWriter` that writes velocities and both
 # the two-dimensional and horizontally-averaged plankton concentration,
 
-averaged_plankton = AveragedField(model.tracers.P, dims=(1, 2))
+averaged_plankton = Field(Average(model.tracers.P, dims=(1, 2)))
 
 outputs = (w = model.velocities.w,
            plankton = model.tracers.P,
@@ -190,10 +190,9 @@ simulation.output_writers[:simple_output] =
 # !!! info "Using multiple output writers"
 #     Because each output writer is associated with a single output `schedule`,
 #     it often makes sense to use _different_ output writers for different types of output.
-#     For example, reduced fields like `AveragedField` usually consume less disk space than
-#     two- or three-dimensional fields, and can thus be output more frequently without
-#     blowing up your hard drive. An arbitrary number of output writers may be added to
-#     `simulation.output_writers`.
+#     For example, smaller outputs that consume less disk space may be written more
+#     frequently without threatening the capacity of your hard drive.
+#     An arbitrary number of output writers may be added to `simulation.output_writers`.
 #
 # The simulation is set up. Let there be plankton:
 
