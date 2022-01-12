@@ -29,8 +29,8 @@ function PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, gravitat
     
     # Initialize vertically integrated lateral face areas. They require 2 halos for the preconditioner
     # (for the moment this changes nothing until we change the regression data)
-    ∫ᶻ_Axᶠᶜᶜ = ReducedField(Face, Center, Nothing, arch, with_halo((2, 2, 1), grid); dims=3)
-    ∫ᶻ_Ayᶜᶠᶜ = ReducedField(Center, Face, Nothing, arch, with_halo((2, 2, 1), grid); dims=3)
+    ∫ᶻ_Axᶠᶜᶜ = ReducedField(Face, Center, Nothing, arch, with_halo((3, 3, 1), grid); dims=3)
+    ∫ᶻ_Ayᶜᶠᶜ = ReducedField(Center, Face, Nothing, arch, with_halo((3, 3, 1), grid); dims=3)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
@@ -130,23 +130,6 @@ function implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫�
     return nothing
 end
 
-function implicit_free_surface_precondition!(P_rⁿ⁺¹, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
-    grid = ∫ᶻ_Axᶠᶜᶜ.grid
-    arch = architecture(P_rⁿ⁺¹)
-
-    fill_halo_regions!(r, arch)
-
-    event = launch!(arch, grid, :xy, _implicit_free_surface_precondition!,
-                    P_rⁿ⁺¹, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt,
-                    dependencies = device_event(arch))
-
-    wait(device(arch), event)
-
-    fill_halo_regions!(P_rⁿ⁺¹, arch)
-
-    return nothing
-end
-
 # Kernels that act on vertically integrated / surface quantities
 @inline ∫ᶻ_Ax_∂x_ηᶠᶜᶜ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, η) = @inbounds ∫ᶻ_Axᶠᶜᶜ[i, j, k] * ∂xᶠᶜᵃ(i, j, k, grid, η)
 @inline ∫ᶻ_Ay_∂y_ηᶜᶠᶜ(i, j, k, grid, ∫ᶻ_Ayᶜᶠᶜ, η) = @inbounds ∫ᶻ_Ayᶜᶠᶜ[i, j, k] * ∂yᶜᶠᵃ(i, j, k, grid, η)
@@ -199,6 +182,23 @@ where `Ac`, `Ax⁻`, `Ax⁺`, `Ay⁻` and `Ay⁺` are the coefficients of
 `ηᵢⱼ`, `ηᵢ₋₁ⱼ`, `ηᵢ₊₁ⱼ`, `ηᵢⱼ₋₁` and `ηᵢⱼ₊₁` in `_implicit_free_surface_linear_operation!`
 
 """
+
+function implicit_free_surface_precondition!(P_rⁿ⁺¹, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+    grid = ∫ᶻ_Axᶠᶜᶜ.grid
+    arch = architecture(P_rⁿ⁺¹)
+
+    fill_halo_regions!(r, arch)
+
+    event = launch!(arch, grid, :xy, _implicit_free_surface_precondition!,
+                    P_rⁿ⁺¹, grid, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt,
+                    dependencies = device_event(arch))
+
+    wait(device(arch), event)
+
+    fill_halo_regions!(P_rⁿ⁺¹, arch)
+
+    return nothing
+end
 
 # Kernels that calculate coefficients for the preconditioner
 @inline Ax⁻(i, j, grid, ax) = @inbounds   ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid)
