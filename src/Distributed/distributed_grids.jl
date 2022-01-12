@@ -48,11 +48,11 @@ function RectilinearGrid(arch::MultiArch, FT = Float64;
     TX, TY, TZ, size, halo, x, y, z =
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
-    Nx, Ny, Nz = size
+    @show Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
     ri, rj, rk = arch.local_index
-    Rx, Ry, Rz = arch.ranks
+    @show Rx, Ry, Rz = arch.ranks
 
     # Make sure we can put an integer number of grid points in each rank.
     # Will generalize in the future.
@@ -95,7 +95,7 @@ function LatitudeLongitudeGrid(arch::MultiArch,
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topo =
         validate_lat_lon_grid_args(latitude, longitude, size, halo)
 
-    i, j, k    = arch.local_index
+    i, j, k = arch.local_index
     Rx, Ry, Rz = arch.ranks
 
     # Make sure we can put an integer number of grid points in each rank.
@@ -160,12 +160,12 @@ function reconstruct_global_grid(grid::RectilinearGrid)
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, TY, Ny, Hy, yG, child_arch)
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, TZ, Nz, Hz, zG, child_arch)
 
-    return RectilinearGrid{TX, TY, TZ}(arch,
+    return RectilinearGrid{TX, TY, TZ}(child_arch,
                                        Nx, Ny, Nz,
                                        Hx, Hy, Hz,
                                        Lx, Ly, Lz,
                                        Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                       Δyᵃᶜᵃ, Δyᵃᶠᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
+                                       Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
                                        Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
 end
 

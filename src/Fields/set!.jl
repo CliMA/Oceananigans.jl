@@ -3,6 +3,7 @@ using CUDAKernels
 using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
+using Oceananigans.Grids: on_architecture
 using Oceananigans.Architectures: device, GPU, CPU, AbstractMultiArchitecture
 using Oceananigans.Utils: work_layout
 
@@ -34,7 +35,7 @@ const AbstractGPUField = AbstractField{X, Y, Z, <:GPU} where {X, Y, Z}
 
 """ Set the GPU field `u` to the array or function `v`. """
 function set!(u::AbstractGPUField, v::Union{Array, Function})
-    cpu_grid = adapt_structure(CPU(), u.grid)
+    cpu_grid = on_architecture(CPU(), u.grid)
     v_field = similar(u, cpu_grid)
     set!(v_field, v)
     set!(u, v_field)

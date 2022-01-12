@@ -34,10 +34,10 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     arch = MultiArch(CPU(), ranks=ranks, topology = topo)
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(1, 2, 3))
     
-    full_grid = reconstruct_global_grid(local_grid)
-    solver = DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
+    global_grid = reconstruct_global_grid(local_grid)
+    solver = DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
-    R = random_divergent_source_term(child_architecture(arch), local_grid)
+    R = random_divergent_source_term(local_grid)
     first(solver.storage) .= R
 
     ϕc = first(solver.storage)
@@ -46,7 +46,7 @@ function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     p_bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
     p_bcs = inject_halo_communication_boundary_conditions(p_bcs, arch.local_rank, arch.connectivity)
 
-    ϕ   = CenterField(child_architecture(arch), local_grid, p_bcs)  # "pressure"
+    ϕ   = CenterField(child_architecture(arch), local_grid, p_bcs) # "pressure"
     ∇²ϕ = CenterField(child_architecture(arch), local_grid, p_bcs)
 
     interior(ϕ) .= real(first(solver.storage))
