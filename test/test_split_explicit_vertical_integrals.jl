@@ -9,19 +9,19 @@ const g_Earth = 9.80665
 arch = Oceananigans.CPU()
 FT = Float64
 topology = (Periodic, Periodic, Bounded)
-Nx = Ny = 16 * 8 
+Nx = Ny = 16 * 8
 Nz = 32
-Nx = 128 
-Ny = 64 
+Nx = 128
+Ny = 64
 Lx = Ly = Lz = 2π
-grid = RegularRectilinearGrid(topology=topology, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(-Lz, 0))
+grid = RectilinearGrid(topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
 tmp = SplitExplicitFreeSurface()
 sefs = SplitExplicitState(grid, arch)
 sefs = SplitExplicitAuxiliary(grid, arch)
 sefs = SplitExplicitFreeSurface(grid, arch)
 
-U, V, η̅, U̅, V̅, Gᵁ, Gⱽ  = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
+U, V, η̅, U̅, V̅, Gᵁ, Gⱽ = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
 
 u = Field(Face, Center, Center, arch, grid)
 v = Field(Center, Face, Center, arch, grid)
@@ -42,104 +42,86 @@ all(V̅.data.parent .== 0.0)
 
 # Test 2: Check that vertical integrals work on the CPU(). The following should be "inexact"
 Δz = zeros(Nz)
-Δz .= grid.Δz
+Δz .= grid.Δzᵃᵃᶠ
 
-set_u_check(x,y,z) =  cos( (π/2) * z / Lz)
-set_U_check(x,y) = (sin(0) - (-2* Lz /(π)))
+set_u_check(x, y, z) = cos((π / 2) * z / Lz)
+set_U_check(x, y) = (sin(0) - (-2 * Lz / (π)))
 set!(u, set_u_check)
 exact_U = copy(U)
 set!(exact_U, set_U_check)
-naive_barotropic_mode!(arch, grid, U, u, Δz, Nz)
+barotropic_mode!(U, V, arch, grid, u, v)
 tolerance = 1e-3
 all((interior(U) .- interior(exact_U)) .< tolerance)
 
-set_v_check(x,y,z) = sin(x*y) * cos( (π/2) * z / Lz)
-set_V_check(x,y) = sin(x*y) * (sin(0) - (-2* Lz /(π)))
+set_v_check(x, y, z) = sin(x * y) * cos((π / 2) * z / Lz)
+set_V_check(x, y) = sin(x * y) * (sin(0) - (-2 * Lz / (π)))
 set!(v, set_v_check)
 exact_V = copy(V)
 set!(exact_V, set_V_check)
-naive_barotropic_mode!(arch, grid, V, v, Δz, Nz)
+barotropic_mode!(U, V, arch, grid, u, v)
 all((interior(V) .- interior(exact_V)) .< tolerance)
-
+##
 # Test 3: Check that vertical integrals work on the CPU(). The following should be "exact"
 Δz = zeros(Nz)
-Δz .= grid.Δz
+Δz .= grid.Δzᵃᵃᶜ
 
 u .= 0.0
 U .= 1.0
-naive_barotropic_mode!(arch, grid, U, u, Δz, Nz)
+barotropic_mode!(U, V, arch, grid, u, v)
 all(U.data.parent .== 0.0)
 
 u .= 1.0
 U .= 1.0
-naive_barotropic_mode!(arch, grid, U, u, Δz, Nz)
+barotropic_mode!(U, V, arch, grid, u, v)
 all(interior(U) .≈ Lz)
 
-set_u_check(x,y,z) = sin(x)
-set_U_check(x,y) = sin(x) * Lz
+set_u_check(x, y, z) = sin(x)
+set_U_check(x, y) = sin(x) * Lz
 set!(u, set_u_check)
 exact_U = copy(U)
 set!(exact_U, set_U_check)
-naive_barotropic_mode!(arch, grid, U, u, Δz, Nz)
+barotropic_mode!(U, V, arch, grid, u, v)
 all(interior(U) .≈ interior(exact_U))
 
-set_v_check(x,y,z) = sin(x) * z * cos(y)
-set_V_check(x,y) = -sin(x) * Lz^2/2.0 * cos(y)
+set_v_check(x, y, z) = sin(x) * z * cos(y)
+set_V_check(x, y) = -sin(x) * Lz^2 / 2.0 * cos(y)
 set!(v, set_v_check)
 exact_V = copy(V)
 set!(exact_V, set_V_check)
-naive_barotropic_mode!(arch, grid, V, v, Δz, Nz)
+barotropic_mode!(U, V, arch, grid, u, v)
 all(interior(V) .≈ interior(exact_V))
 
-# Test 3: Check that vertical integrals work on the GPU(). Reuses the Arrays Defined in the CPU section
-arch = Oceananigans.GPU()
-FT = Float64
-topology = (Periodic, Periodic, Bounded)
-grid = RegularRectilinearGrid(topology=topology, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(-Lz, 0))
-tmp = SplitExplicitFreeSurface()
-sefs = SplitExplicitState(grid, arch)
-sefs = SplitExplicitAuxiliary(grid, arch)
-sefs = SplitExplicitFreeSurface(grid, arch)
-U, V, η̅, U̅, V̅, Gᵁ, Gⱽ  = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
-Δz = Oceananigans.CUDA.CuArray(Δz)
-
-set_U_check(x,y) = sin(x) * Lz
-naive_barotropic_mode!(arch, grid, U, Oceananigans.CUDA.CuArray(u), Δz, Nz)
-all(Array(interior(U)) .≈ interior(exact_U))
-
-naive_barotropic_mode!(arch, grid, V, Oceananigans.CUDA.CuArray(v), Δz, Nz)
-all(Array(interior(V)) .≈ interior(exact_V))
 ##
 # Test 4: Test Barotropic Correction
 arch = Oceananigans.CPU()
 FT = Float64
 topology = (Periodic, Periodic, Bounded)
-Nx = Ny = 16 * 8 
+Nx = Ny = 16 * 8
 Nz = 32
-Nx = 128 
-Ny = 64 
+Nx = 128
+Ny = 64
 Lx = Ly = Lz = 2π
-grid = RegularRectilinearGrid(topology=topology, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=(-Lz, 0))
+grid = RectilinearGrid(topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
 sefs = SplitExplicitFreeSurface(grid, arch)
 
-U, V, η̅, U̅, V̅, Gᵁ, Gⱽ  = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
+U, V, η̅, U̅, V̅, Gᵁ, Gⱽ = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
 
 u = Field(Face, Center, Center, arch, grid)
 v = Field(Center, Face, Center, arch, grid)
 u_corrected = copy(u)
 v_corrected = copy(v)
 
-set_u(x,y,z) =  z+Lz/2 + sin(x)
-set_U̅(x,y) = cos(x) * Lz
-set_u_corrected(x,y,z) =  z+Lz/2 + cos(x)
+set_u(x, y, z) = z + Lz / 2 + sin(x)
+set_U̅(x, y) = cos(x) * Lz
+set_u_corrected(x, y, z) = z + Lz / 2 + cos(x)
 set!(u, set_u)
 set!(U̅, set_U̅)
 set!(u_corrected, set_u_corrected)
 
-set_v(x,y,z) =  (z+Lz/2)*sin(y) + sin(x)
-set_V̅(x,y) = (cos(x) + x) * Lz
-set_v_corrected(x,y,z) =  (z+Lz/2)*sin(y) + cos(x)+x
+set_v(x, y, z) = (z + Lz / 2) * sin(y) + sin(x)
+set_V̅(x, y) = (cos(x) + x) * Lz
+set_v_corrected(x, y, z) = (z + Lz / 2) * sin(y) + cos(x) + x
 set!(v, set_v)
 set!(V̅, set_V̅)
 set!(v_corrected, set_v_corrected)
@@ -148,8 +130,8 @@ sefs.Hᶠᶜ .= Lz
 sefs.Hᶜᶠ .= Lz
 
 Δz = zeros(Nz)
-Δz .= grid.Δz
+Δz .= grid.Δzᵃᵃᶜ
 
-barotropic_corrector!(arch, grid, sefs, u, v, Δz, Nz)
+barotropic_split_explicit_corrector!(u, v, sefs, arch, grid)
 all((u .- u_corrected) .< 1e-14)
 all((v .- v_corrected) .< 1e-14)

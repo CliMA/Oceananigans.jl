@@ -3,12 +3,6 @@ using Oceananigans.Fields
 using Oceananigans.Grids
 using Oceananigans.Architectures
 
-# TODO: Potentially Change Structs before final PR
-# e.g. flatten the struct, 
-# auxiliary -> source / barotropic_source, 
-# parameters -> gravitational_accceleration
-# settings -> flattened_settings
-
 """
 SplitExplicitFreeSurface{𝒮, 𝒫, ℰ}
 

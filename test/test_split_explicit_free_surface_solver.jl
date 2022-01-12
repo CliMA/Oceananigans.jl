@@ -2,6 +2,8 @@ include(pwd() * "/src/Models/HydrostaticFreeSurfaceModels/split_explicit_free_su
 include(pwd() * "/src/Models/HydrostaticFreeSurfaceModels/split_explicit_free_surface_kernels.jl")
 # TODO: clean up test, change to use interior
 # TODO: clean up substep function so that it only takes in SplitExplicitFreeSurface
+
+using Test
 using Oceananigans.Utils
 using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
@@ -16,7 +18,7 @@ Nx = Ny = Nz = 16 * 8
 Nx = 128
 Ny = 64
 Lx = Ly = Lz = 2π
-grid = RegularRectilinearGrid(topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
+grid = RectilinearGrid(topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
 tmp = SplitExplicitFreeSurface()
 sefs = SplitExplicitState(grid, arch)
@@ -57,7 +59,7 @@ free_surface_substep!(arch, grid, Δτ, sefs, 1)
 
 U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
 
-U_exact = (reshape(-cos.(grid.xF), (length(grid.xC), 1)).+reshape(0 * grid.yC, (1, length(grid.yC))))[2:Nx+1, 2:Ny+1]
+U_exact = (reshape(-cos.(grid.xᶠᵃᵃ), (length(grid.xᶜᵃᵃ), 1)).+reshape(0 * grid.yᵃᶜᵃ, (1, length(grid.yᵃᶜᵃ))))[2:Nx+1, 2:Ny+1]
 
 println("maximum error is ", maximum(abs.(U_exact - U_computed)))
 ##

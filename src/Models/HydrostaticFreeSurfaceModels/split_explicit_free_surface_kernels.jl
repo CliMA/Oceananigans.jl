@@ -58,7 +58,7 @@ end
 # Barotropic Model Kernels
 # u_Δz = u * Δz
 
-@kernel function naive_barotropic_mode_kernel!(U, V, u, v, grid)
+@kernel function barotropic_mode_kernel!(U, V, u, v, grid)
     i, j = @index(Global, NTuple)
 
     # hand unroll first loop 
@@ -75,16 +75,16 @@ end
 end
 
 # may need to do Val(Nk) since it may not be known at compile
-function naive_barotropic_mode!(U, V, arch, grid, u, v)
+function barotropic_mode!(U, V, arch, grid, u, v)
     event = launch!(arch, grid, :xy,
-                    naive_barotropic_mode_kernel!, 
+                    barotropic_mode_kernel!, 
                     U, V, u, v, grid,
                     dependencies = Event(device(arch)))
 
     wait(device(arch), event)        
 end
 
-@kernel function barotropic_corrector_kernel!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
+@kernel function barotropic_split_explicit_corrector_kernel!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
     i, j, k = @index(Global, NTuple)
     @inbounds begin
         u[i, j, k] = u[i, j, k] + (-U[i, j] + U̅[i, j]) / Hᶠᶜ[i, j]
@@ -94,21 +94,21 @@ end
 
 # 
 # may need to do Val(Nk) since it may not be known at compile. Also figure out where to put H
-function barotropic_corrector!(free_surface, arch, grid, u, v)
+function barotropic_split_explicit_corrector!(u, v, free_surface, arch, grid)
     sefs = free_surface.state
     U, V, U̅, V̅ = sefs.U, sefs.V, sefs.U̅, sefs.V̅
     Hᶠᶜ, Hᶜᶠ = free_surface.auxiliary.Hᶠᶜ, free_surface.auxiliary.Hᶜᶠ
 
     # take out "bad" barotropic mode, 
     # !!!! reusing U and V for this storage since last timestep doesn't matter
-    naive_barotropic_mode!(U, V, arch, grid, u, v)
+    barotropic_mode!(U, V, arch, grid, u, v)
     # add in "good" barotropic mode
-    
-    event = launch!(arch, grid, :xyz, barotropic_corrector_kernel!, 
-            u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ,
-            dependencies = Event(device(arch)))
 
-    wait(device(arch), event)        
+    event = launch!(arch, grid, :xyz, barotropic_split_explicit_corrector_kernel!,
+        u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ,
+        dependencies = Event(device(arch)))
+
+    wait(device(arch), event)
 end
 
 @kernel function set_average_zero_kernel!(η̅, U̅, V̅)

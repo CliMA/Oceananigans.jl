@@ -34,13 +34,11 @@ function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt;
     return nothing
 end
 
-function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt; 
-    dependencies = device_event(model.architecture))
+function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt; dependecies = nothing)
     u, v, _ = model.velocities
-    arch = model.grid.arch
     grid = model.grid 
-    arch = architecture(model)
-    barotropic_corrector!(model.free_surface, arch, grid, u, v)
+    arch = architecture(grid)
+    barotropic_split_explicit_corrector!(u, v, model.free_surface, arch, grid)
 
     return nothing
 end
