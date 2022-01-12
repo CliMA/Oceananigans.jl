@@ -111,7 +111,8 @@ function ShallowWaterModel(;
                                        "when constructing `grid`."
 
     Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, 0, topology(grid), advection, closure)
-    grid.Hx, grid.Hy, grid.Hz != (Hx, Hy, 0) && (grid = with_halo((Hx, Hy, 0), grid))
+    any((grid.Hx, grid.Hy, grid.Hz) .< (Hx, Hy, 0)) && # halos are too small, remake grid
+        (grid = with_halo((Hx, Hy, 0), grid))
 
     prognostic_field_names = (:uh, :vh, :h, tracers...)
     default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions()
