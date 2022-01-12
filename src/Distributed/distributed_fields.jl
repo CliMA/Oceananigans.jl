@@ -7,7 +7,7 @@ function Field((LX, LY, LZ)::Tuple, grid::DistributedGrid, data, old_bcs, op, st
     return Field{LX, LY, LZ}(grid, data, new_bcs, op, status, child_architecture(arch))
 end
 
-const DistributedField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:DistributdGrid}
+const DistributedField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
 
 fill_halo_regions!(field::DistributedField, arch, args...; kwargs...) =
     fill_halo_regions!(field.data,
