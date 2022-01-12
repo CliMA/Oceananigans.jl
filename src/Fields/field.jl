@@ -14,9 +14,10 @@ struct Field{LX, LY, LZ, O, A, G, T, D, B, S} <: AbstractField{LX, LY, LZ, A, G,
     status :: S
 
     # Inner constructor that does not validate _anything_!
-    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, op::O, status::S) where {LX, LY, LZ, G, D, B, O, S}
-        T = eltype(grid)
-        A = typeof(architecture(grid))
+    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, op::O, status::S,
+                               arch::A=architecture(grid)) where {LX, LY, LZ,
+                                                                  G, D, B, O, S, A}
+        T = eltype(data)
         return new{LX, LY, LZ, O, A, G, T, D, B, S}(grid, data, bcs, op, status)
     end
 end
@@ -292,7 +293,8 @@ function Adapt.adapt_structure(to, reduced_field::ReducedField)
     LX, LY, LZ = location(reduced_field)
     return Field{LX, LY, LZ}(nothing,
                              adapt(to, reduced_field.data),
-                             nothing, nothing, nothing)
+                             nothing, nothing, nothing,
+                             adapt(to, architecture(reduced_field)))
 end
 
 #####
