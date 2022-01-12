@@ -19,7 +19,7 @@ architecture(solver::DistributedFFTBasedPoissonSolver) =
 
 function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
-    arch = architecture(global_grid)
+    arch = architecture(local_grid)
     topo = (TX, TY, TZ) = topology(global_grid)
 
     λx = poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, TX())
@@ -37,7 +37,9 @@ function DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
     perm_Nx = global_grid.Nx ÷ Ry
 
-    λx = λx[(I-1)*perm_Nx+1:I*perm_Nx, :, :]
+    i₁ = (I-1) * perm_Nx + 1
+    i₂ = I * perm_Nx
+    λx = λx[i₁:i₂, :, :]
 
     eigenvalues = (; λx, λy, λz)
 

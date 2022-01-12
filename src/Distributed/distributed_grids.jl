@@ -48,11 +48,11 @@ function RectilinearGrid(arch::MultiArch, FT = Float64;
     TX, TY, TZ, size, halo, x, y, z =
         validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
-    @show Nx, Ny, Nz = size
+    Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
     ri, rj, rk = arch.local_index
-    @show Rx, Ry, Rz = arch.ranks
+    Rx, Ry, Rz = arch.ranks
 
     # Make sure we can put an integer number of grid points in each rank.
     # Will generalize in the future.
