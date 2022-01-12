@@ -39,7 +39,7 @@ struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHoriz
            Azᶠᶠᵃ :: A
           radius :: FT
 
-    function ConformalCubedSphereFaceGrid{TX, TY, TZ}(architecture,
+    function ConformalCubedSphereFaceGrid{TX, TY, TZ}(architecture::Arch,
                                                       Nx, Ny, Nz,
                                                       Hx, Hy, Hz,
                                                        λᶜᶜᵃ :: A,  λᶠᶜᵃ :: A,  λᶜᶠᵃ :: A,  λᶠᶠᵃ :: A,
@@ -49,7 +49,7 @@ struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHoriz
                                                       Azᶜᶜᵃ :: A, Azᶠᶜᵃ :: A, Azᶜᶠᵃ :: A, Azᶠᶠᵃ :: A,
                                                       radius :: FT) where {TX, TY, TZ, FT, A, R, Arch}
 
-        return new{FT, TX, TY, TZ, A, R, Arch}(architecture
+        return new{FT, TX, TY, TZ, A, R, Arch}(architecture,
                                                Nx, Ny, Nz,
                                                Hx, Hy, Hz,
                                                λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
@@ -171,11 +171,12 @@ function ConformalCubedSphereFaceGrid(arch::AbstractArchitecture = CPU(),
     Azᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
     Azᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
 
-    return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, typeof(λᶜᶜᵃ), typeof(zᵃᵃᶠ), Arch}(arch,
-        Nξ, Nη, Nz, Hx, Hy, Hz,
-         λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,  φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
-        Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δz,
-        Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
+    return ConformalCubedSphereFaceGrid{TX, TY, TZ}(arch, Nξ, Nη, Nz, Hx, Hy, Hz,
+                                                     λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
+                                                     φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
+                                                    Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                                    Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δz,
+                                                    Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
 # architecture = CPU() default, assuming that a DataType positional arg
