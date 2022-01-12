@@ -236,7 +236,7 @@ RectilinearGrid{Float64, Periodic, Periodic, Bounded}
         halo (Hx, Hy, Hz): (1, 1, 1)
              spacing in x: Regular, with spacing 2.0
              spacing in y: Regular, with spacing 2.0
-             spacing in z: Stretched, with spacing min=0.6826950100338962, max=1.8309085743885056
+             spacing in z: Stretched, with spacing min=0.682695, max=1.830909
 ```
 
 * A three-dimensional grid with regular spacing in x, cell interfaces that are closely spaced
@@ -268,8 +268,8 @@ RectilinearGrid{Float64, Periodic, Bounded, Bounded}
         size (Nx, Ny, Nz): (32, 30, 24)
         halo (Hx, Hy, Hz): (1, 1, 1)
              spacing in x: Regular, with spacing 6.25
-             spacing in y: Stretched, with spacing min=0.2739052315863333, max=5.226423163382681
-             spacing in z: Stretched, with spacing min=0.6826950100338962, max=1.8309085743885056
+             spacing in y: Stretched, with spacing min=0.273905, max=5.226423
+             spacing in z: Stretched, with spacing min=0.682695, max=1.830909
 ```
 """
 function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
