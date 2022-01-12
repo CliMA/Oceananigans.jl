@@ -57,14 +57,7 @@ arch_array(::CPU, A::CuArray) = Array(A)
 arch_array(::GPU, A::Array)   = CuArray(A)
 arch_array(::GPU, A::CuArray) = A
 
-const OffsetCPUArray = OffsetArray{FT, N, <:Array} where {FT, N}
-const OffsetGPUArray = OffsetArray{FT, N, <:CuArray} where {FT, N}
-
-Adapt.adapt_structure(::CPU, a::OffsetCPUArray) = a
-Adapt.adapt_structure(::GPU, a::OffsetGPUArray) = a
-
-Adapt.adapt_structure(::GPU, a::OffsetCPUArray) = OffsetArray(CuArray(a.parent), a.offsets...)
-Adapt.adapt_structure(::CPU, a::OffsetGPUArray) = OffsetArray(Array(a.parent), a.offsets...)
+arch_array(arch, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
 
 device_event(arch) = Event(device(arch))
 

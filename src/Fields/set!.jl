@@ -18,10 +18,10 @@ end
 set!(u::AbstractField, v) = u .= v # fallback
 
 # Niceties
-const AbstractCPUField = AbstractField{X, Y, Z, <:CPU} where {X, Y, Z}
+const CPUField = Field{LX, LY, LZ, O, <:CPU} where {LX, LY, LZ, O}
 
 """ Set the CPU field `u` data to the function `f(x, y, z)`. """
-function set!(u::AbstractCPUField, f::Function)
+function set!(u::CPUField, f::Function)
     f_field = FunctionField(location(u), f, u.grid)
     u .= f_field
     return nothing
@@ -31,10 +31,10 @@ end
 ##### set! for fields on the GPU
 #####
 
-const AbstractGPUField = AbstractField{X, Y, Z, <:GPU} where {X, Y, Z}
+const GPUField = Field{LX, LY, LZ, O, <:GPU} where {LX, LY, LZ, O}
 
 """ Set the GPU field `u` to the array or function `v`. """
-function set!(u::AbstractGPUField, v::Union{Array, Function})
+function set!(u::GPUField, v::Union{Array, Function})
     cpu_grid = on_architecture(CPU(), u.grid)
     v_field = similar(u, cpu_grid)
     set!(v_field, v)
@@ -47,10 +47,10 @@ end
 #####
 
 """ Set the CPU field `u` data to the GPU field data of `v`. """
-set!(u::AbstractCPUField, v::AbstractGPUField) = copyto!(parent(u), parent(v))
+set!(u::CPUField, v::GPUField) = copyto!(parent(u), parent(v))
 
 """ Set the GPU field `u` data to the CPU field data of `v`. """
-set!(u::AbstractGPUField, v::AbstractCPUField) = copyto!(parent(u), parent(v))
+set!(u::GPUField, v::CPUField) = copyto!(parent(u), parent(v))
 
-set!(u::AbstractCPUField, v::AbstractCPUField) = parent(u) .= parent(v)
-set!(u::AbstractGPUField, v::AbstractGPUField) = parent(u) .= parent(v)
+set!(u::CPUField, v::CPUField) = parent(u) .= parent(v)
+set!(u::GPUField, v::GPUField) = parent(u) .= parent(v)
