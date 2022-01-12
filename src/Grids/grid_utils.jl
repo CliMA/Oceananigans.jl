@@ -1,4 +1,5 @@
 using CUDA
+using Printf
 
 #####
 ##### Convenience functions
@@ -351,3 +352,9 @@ end
 #####
 
 struct ZDirection end
+
+@inline show_coordinate(Δ::Number, T)            = "Regular, with spacing $Δ"
+@inline show_coordinate(Δ::Number, ::Type{Flat}) = "Flattened"
+@inline show_coordinate(Δ::AbstractVector, T)    = @sprintf("Stretched, with spacing min=%.6f, max=%.6f",
+                                                            minimum(parent(Δ)), maximum(parent(Δ)))
+
