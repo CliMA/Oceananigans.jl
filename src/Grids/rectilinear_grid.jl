@@ -268,7 +268,7 @@ RectilinearGrid{Float64, Periodic, Bounded, Bounded}
         size (Nx, Ny, Nz): (32, 30, 24)
         halo (Hx, Hy, Hz): (1, 1, 1)
              spacing in x: Regular, with spacing 6.25
-             spacing in y: Stretched, with spacing min=0.2739052315863333, max=5.226423163382681
+             spacing in y: Stretched, with spacing min=0.2739052315863262, max=5.22642316338267
              spacing in z: Stretched, with spacing min=0.6826950100338962, max=1.8309085743885056
 ```
 """
@@ -296,7 +296,7 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
                                        Hx, Hy, Hz,
                                        FT(Lx), FT(Ly), FT(Lz),
                                        Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                       Δyᵃᶜᵃ, Δyᵃᶠᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
+                                       Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
                                        Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
 end
 

@@ -3,6 +3,7 @@ using CUDAKernels
 using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
+using Oceananigans.Grids: on_architecture
 using Oceananigans.Architectures: device, GPU, CPU, AbstractMultiArchitecture
 using Oceananigans.Utils: work_layout
 
