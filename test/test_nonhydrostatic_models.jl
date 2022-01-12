@@ -115,19 +115,21 @@ include("dependencies_for_runtests.jl")
             xF, yF, zF = nodes((Face, Face, Face), model.grid; reshape=true)
 
             # Form solution arrays
-            u_answer = u₀.(xF, yC, zC)
-            v_answer = v₀.(xC, yF, zC)
-            w_answer = w₀.(xC, yC, zF)
-            T_answer = T₀.(xC, yC, zC)
-            S_answer = S₀.(xC, yC, zC)
+            u_answer = u₀.(xF, yC, zC) |> Array 
+            v_answer = v₀.(xC, yF, zC) |> Array
+            w_answer = w₀.(xC, yC, zF) |> Array
+            T_answer = T₀.(xC, yC, zC) |> Array
+            S_answer = S₀.(xC, yC, zC) |> Array
 
             Nx, Ny, Nz = size(model.grid)
 
-            u_cpu = XFaceField(grid)
-            v_cpu = YFaceField(grid)
-            w_cpu = ZFaceField(grid)
-            T_cpu = CenterField(grid)
-            S_cpu = CenterField(grid)
+            cpu_grid = on_architecture(CPU(), grid)
+
+            u_cpu = XFaceField(cpu_grid)
+            v_cpu = YFaceField(cpu_grid)
+            w_cpu = ZFaceField(cpu_grid)
+            T_cpu = CenterField(cpu_grid)
+            S_cpu = CenterField(cpu_grid)
 
             set!(u_cpu, u)
             set!(v_cpu, v)

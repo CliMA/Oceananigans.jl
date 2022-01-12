@@ -68,7 +68,8 @@ function run_field_reduction_tests(FT, arch)
 
     for (ϕ, ϕ_vals) in zip(ϕs, ϕs_vals)
 
-        ε = eps(maximum(ϕ_vals))
+        ε = eps(eltype(ϕ_vals)) * 10 * maximum(maximum.(ϕs_vals))
+        @info "    Testing field reductions with tolerance $ε..."
 
         @test all(isapprox.(ϕ, ϕ_vals, atol=ε)) # if this isn't true, reduction tests can't pass
 
@@ -280,10 +281,10 @@ end
             xw, yw, zw = nodes(w)
             xc, yc, zc = nodes(c)
 
-            @test u[1, 2, 3] == f(xu[1], yu[2], zu[3])
-            @test v[1, 2, 3] == f(xv[1], yv[2], zv[3])
-            @test w[1, 2, 3] == f(xw[1], yw[2], zw[3])
-            @test c[1, 2, 3] == f(xc[1], yc[2], zc[3])
+            @test u[1, 2, 3] ≈ f(xu[1], yu[2], zu[3])
+            @test v[1, 2, 3] ≈ f(xv[1], yv[2], zv[3])
+            @test w[1, 2, 3] ≈ f(xw[1], yw[2], zw[3])
+            @test c[1, 2, 3] ≈ f(xc[1], yc[2], zc[3])
         end
     end
 
