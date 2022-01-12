@@ -157,23 +157,24 @@ Base.fill!(f::AbstractDataField, val) = fill!(parent(f), val)
 #####
 
 "Returns `f.data` for `f::Field` or `f` for `f::AbstractArray."
-@inline data(a) = a # fallback
-@inline data(f::AbstractField) = f.data
+@inline data(a) = nothing # fallback
+@inline data(f::AbstractDataField) = f.data
 
 @inline cpudata(a) = data(a)
 
-@inline cpudata(f::AbstractField{X, Y, Z, <:AbstractGPUArchitecture}) where {X, Y, Z} =
+@inline cpudata(f::AbstractField{X, Y, Z, <:GPU}) where {X, Y, Z} =
     offset_data(Array(parent(f)), f.grid, location(f))
 
 "Returns `f.data.parent` for `f::Field`."
 @inline Base.parent(f::AbstractField) = parent(data(f))
 
 "Returns a view of `f` that excludes halo points."
-@inline interior(f::AbstractField{X, Y, Z}) where {X, Y, Z} =
+@inline interior(f::AbstractDataField{X, Y, Z}) where {X, Y, Z} =
     view(parent(f), interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
                     interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
                     interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz))
 
+@inline interior(f::AbstractField) = f
 
 @inline interior_copy(f::AbstractField{X, Y, Z}) where {X, Y, Z} =
     parent(f)[interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
@@ -185,7 +186,7 @@ Base.fill!(f::AbstractDataField, val) = fill!(parent(f), val)
 #####
 
 # Don't use axes(f) to checkbounds; use axes(f.data)
-Base.checkbounds(f::AbstractField, I...) = Base.checkbounds(f.data, I...)
+Base.checkbounds(f::AbstractDataField, I...) = Base.checkbounds(f.data, I...)
 
 @propagate_inbounds Base.getindex(f::AbstractDataField, inds...) = getindex(f.data, inds...)
 
@@ -228,56 +229,16 @@ nodes(ψ::AbstractField; kwargs...) = nodes(location(ψ), ψ.grid; kwargs...)
 ##### fill_halo_regions!
 #####
 
-fill_halo_regions!(field::AbstractField, arch, args...) = fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...)
+fill_halo_regions!(field::AbstractField, arch, args...) =
+    fill_halo_regions!(field.data, field.boundary_conditions, arch, field.grid, args...)
 
 #####
-##### Field reductions
+##### Some conveniences
 #####
 
-const AbstractGPUDataField = AbstractDataField{X, Y, Z, GPU} where {X, Y, Z}
+for f in (:+, :-)
+    @eval Base.$f(ϕ::AbstractArray, ψ::AbstractField) = $f(ϕ, interior(ψ))
+    @eval Base.$f(ϕ::AbstractField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
+end
 
-"""
-    minimum(field::AbstractDataField; dims=:)
-Compute the minimum value of an Oceananigans `field` over the given dimensions (not including halo points).
-By default all dimensions are included.
-"""
-minimum(field::AbstractGPUDataField; dims=:) = minimum(interior_copy(field); dims=dims)
-
-"""
-    minimum(f, field::AbstractDataField; dims=:)
-Returns the smallest result of calling the function `f` on each element of an Oceananigans `field`
-(not including halo points) over the given dimensions. By default all dimensions are included.
-"""
-minimum(f, field::AbstractGPUDataField; dims=:) = minimum(f, interior_copy(field); dims=dims)
-
-"""
-    maximum(field::AbstractDataField; dims=:)
-Compute the maximum value of an Oceananigans `field` over the given dimensions (not including halo points).
-By default all dimensions are included.
-"""
-maximum(field::AbstractGPUDataField; dims=:) = maximum(interior_copy(field); dims=dims)
-
-"""
-    maximum(f, field::AbstractDataField; dims=:)
-Returns the largest result of calling the function `f` on each element of an Oceananigans `field`
-(not including halo points) over the given dimensions. By default all dimensions are included.
-"""
-maximum(f, field::AbstractGPUDataField; dims=:) = maximum(f, interior_copy(field); dims=dims)
-
-"""
-    mean(field::AbstractDataField; dims=:)
-Compute the mean of an Oceananigans `field` over the given dimensions (not including halo points).
-By default all dimensions are included.
-"""
-mean(field::AbstractGPUDataField; dims=:) = mean(interior_copy(field); dims=dims)
-
-"""
-    mean(f::Function, field::AbstractDataField; dims=:)
-Apply the function `f` to each element of an Oceananigans `field` and take the mean over dimensions `dims`
-(not including halo points). By default all dimensions are included.
-"""
-mean(f::Function, field::AbstractGPUDataField; dims=:) = mean(f, interior_copy(field); dims=dims)
-
-# Risky to use these without tests. Docs would also be nice.
-Statistics.norm(a::AbstractDataField) = sqrt(mapreduce(x -> x * x, +, interior(a)))
-Statistics.dot(a::AbstractField, b::AbstractField) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
+Base.isapprox(ϕ::AbstractDataField, ψ::AbstractDataField; kw...) = isapprox(interior(ϕ), interior(ψ); kw...)

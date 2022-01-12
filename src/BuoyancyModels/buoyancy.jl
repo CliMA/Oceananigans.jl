@@ -19,7 +19,7 @@ Example
 ```julia
 using Oceananigans
 
-grid = RegularRectilinearGrid(size=(1, 8, 8), extent=(1, 1000, 100))
+grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1000, 100))
 θ = 45 # degrees
 g̃ = (0, sind(θ), cosd(θ))
 

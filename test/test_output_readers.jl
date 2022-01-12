@@ -3,12 +3,12 @@ using Statistics
 using JLD2
 
 using Oceananigans
+using Oceananigans.Units
 using Oceananigans.Architectures: array_type
-
 using Oceananigans.Fields: location
 
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
-    grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(64, 64, 32))
+    grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
 
     T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(5e-5), bottom = GradientBoundaryCondition(0.01))
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(-3e-4))
@@ -18,8 +18,9 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 
     model = NonhydrostaticModel(
-               architecture = architecture,
                        grid = grid,
+                    tracers = (:T, :S),
+                   buoyancy = SeawaterBuoyancy(),
         boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)
     )
 
@@ -28,8 +29,9 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     uᵢ(x, y, z) = 1e-3 * randn()
     set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)
 
-    wizard = TimeStepWizard(cfl=1.0, Δt=10.0, max_change=1.1, max_Δt=1minute)
-    simulation = Simulation(model, Δt=wizard, stop_time=2minutes)
+    simulation = Simulation(model, Δt=10.0, stop_time=2minutes)
+    wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=1minute)
+    simulation.callbacks[:wizard] = Callback(wizard)
 
     u, v, w = model.velocities
 

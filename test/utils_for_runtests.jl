@@ -1,4 +1,37 @@
+using Oceananigans
+
+using Statistics
+using KernelAbstractions: @kernel, @index, Event
+using CUDA
+using Test
+using Printf
+
+using Test
+
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
+
+import Oceananigans.Fields: interior
+
+test_architectures() = CUDA.has_cuda() ? tuple(GPU()) : tuple(CPU())
+float_types = (Float32, Float64)
+
+function summarize_regression_test(fields, correct_fields)
+    for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
+        Δ = φ .- φ_c
+
+        Δ_min      = minimum(Δ)
+        Δ_max      = maximum(Δ)
+        Δ_mean     = mean(Δ)
+        Δ_abs_mean = mean(abs, Δ)
+        Δ_std      = std(Δ)
+
+        matching    = sum(φ .≈ φ_c)
+        grid_points = length(φ_c)
+
+        @info @sprintf("Δ%s: min=%+.6e, max=%+.6e, mean=%+.6e, absmean=%+.6e, std=%+.6e (%d/%d matching grid points)",
+                       field_name, Δ_min, Δ_max, Δ_mean, Δ_abs_mean, Δ_std, matching, grid_points)
+    end
+end
 
 #####
 ##### Useful kernels
@@ -17,13 +50,9 @@ end
 function compute_∇²!(∇²ϕ, ϕ, arch, grid)
     fill_halo_regions!(ϕ, arch)
     child_arch = child_architecture(arch)
-
     event = launch!(child_arch, grid, :xyz, ∇²!, ∇²ϕ, grid, ϕ, dependencies=Event(device(child_arch)))
-
     wait(device(child_arch), event)
-
     fill_halo_regions!(∇²ϕ, arch)
-
     return nothing
 end
 

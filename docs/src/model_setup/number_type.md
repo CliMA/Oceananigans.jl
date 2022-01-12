@@ -6,7 +6,7 @@ with 64-bit or 32-bit floating point precision.
 !!! note "Avoiding mixed-precision operations"
     When not using `Float64` be careful to not mix different precisions as it could introduce implicit type conversions
     which can negatively effect performance. You can pass the number type desires to many constructors to enforce
-    the type you want: e.g. `RegularRectilinearGrid(Float32; size=(16, 16, 16), extent=(1, 1, 1))` and
+    the type you want: e.g. `RectilinearGrid(CPU(), Float32; size=(16, 16, 16), extent=(1, 1, 1))` and
     `IsotropicDiffusivity(Float16; κ=1//7, ν=2//7)`.
 
 !!! warning "Effect of floating point precision on simulation accuracy"

@@ -6,53 +6,59 @@ using Adapt: adapt_structure
 
 using Oceananigans
 
-struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ}
-        Nx :: Int
-        Ny :: Int
-        Nz :: Int
-        Hx :: Int
-        Hy :: Int
-        Hz :: Int
-      λᶜᶜᵃ :: A
-      λᶠᶜᵃ :: A
-      λᶜᶠᵃ :: A
-      λᶠᶠᵃ :: A
-      φᶜᶜᵃ :: A
-      φᶠᶜᵃ :: A
-      φᶜᶠᵃ :: A
-      φᶠᶠᵃ :: A
-      zᵃᵃᶜ :: R
-      zᵃᵃᶠ :: R
-     Δxᶜᶜᵃ :: A
-     Δxᶠᶜᵃ :: A
-     Δxᶜᶠᵃ :: A
-     Δxᶠᶠᵃ :: A
-     Δyᶜᶜᵃ :: A
-     Δyᶜᶠᵃ :: A
-     Δyᶠᶜᵃ :: A
-     Δyᶠᶠᵃ :: A
-     Δz    :: FT
-     Azᶜᶜᵃ :: A
-     Azᶠᶜᵃ :: A
-     Azᶜᶠᵃ :: A
-     Azᶠᶠᵃ :: A
-    radius :: FT
+struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
+ architecture :: Arch
+           Nx :: Int
+           Ny :: Int
+           Nz :: Int
+           Hx :: Int
+           Hy :: Int
+           Hz :: Int
+         λᶜᶜᵃ :: A
+         λᶠᶜᵃ :: A
+         λᶜᶠᵃ :: A
+         λᶠᶠᵃ :: A
+         φᶜᶜᵃ :: A
+         φᶠᶜᵃ :: A
+         φᶜᶠᵃ :: A
+         φᶠᶠᵃ :: A
+         zᵃᵃᶜ :: R
+         zᵃᵃᶠ :: R
+        Δxᶜᶜᵃ :: A
+        Δxᶠᶜᵃ :: A
+        Δxᶜᶠᵃ :: A
+        Δxᶠᶠᵃ :: A
+        Δyᶜᶜᵃ :: A
+        Δyᶜᶠᵃ :: A
+        Δyᶠᶜᵃ :: A
+        Δyᶠᶠᵃ :: A
+        Δz    :: FT
+        Azᶜᶜᵃ :: A
+        Azᶠᶜᵃ :: A
+        Azᶜᶠᵃ :: A
+        Azᶠᶠᵃ :: A
+       radius :: FT
 end
 
-function ConformalCubedSphereFaceGrid(FT = Float64; size, z,
+function ConformalCubedSphereFaceGrid(arch::AbstractArchitecture = CPU(),
+                                      FT::DataType = Float64;
+                                      size,
+                                      z,
                                       topology = (Bounded, Bounded, Bounded),
-                                             ξ = (-1, 1),
-                                             η = (-1, 1),
-                                        radius = R_Earth,
-                                          halo = (1, 1, 1),
+                                      ξ = (-1, 1),
+                                      η = (-1, 1),
+                                      radius = R_Earth,
+                                      halo = (1, 1, 1),
                                       rotation = nothing)
+
     TX, TY, TZ = topology
     Nξ, Nη, Nz = size
     Hx, Hy, Hz = halo
-
+    Arch = typeof(arch)
+    
     ## Use a regular rectilinear grid for the face of the cube
 
-    ξη_grid = RegularRectilinearGrid(FT, topology=topology, size=(Nξ, Nη, Nz), x=ξ, y=η, z=z, halo=halo)
+    ξη_grid = RectilinearGrid(arch, FT, topology=topology, size=(Nξ, Nη, Nz), x=ξ, y=η, z=z, halo=halo)
 
     ξᶠᵃᵃ = xnodes(Face, ξη_grid)
     ξᶜᵃᵃ = xnodes(Center, ξη_grid)
@@ -61,9 +67,9 @@ function ConformalCubedSphereFaceGrid(FT = Float64; size, z,
 
     ## The vertical coordinates can come out of the regular rectilinear grid!
 
-    Δz = ξη_grid.Δz
-    zᵃᵃᶠ = ξη_grid.zF
-    zᵃᵃᶜ = ξη_grid.zC
+    Δz = ξη_grid.Δzᵃᵃᶜ
+    zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
+    zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
 
     ## Compute staggered grid Cartesian coordinates (X, Y, Z) on the unit sphere.
 
@@ -145,12 +151,16 @@ function ConformalCubedSphereFaceGrid(FT = Float64; size, z,
     Azᶜᶠᵃ = OffsetArray(zeros(Nξ + 2Hx,     Nη + 2Hy + 1), -Hx, -Hy)
     Azᶠᶠᵃ = OffsetArray(zeros(Nξ + 2Hx + 1, Nη + 2Hy + 1), -Hx, -Hy)
 
-    return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, typeof(λᶜᶜᵃ), typeof(zᵃᵃᶠ)}(
+    return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, typeof(λᶜᶜᵃ), typeof(zᵃᵃᶠ), Arch}(arch,
         Nξ, Nη, Nz, Hx, Hy, Hz,
          λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,  φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
         Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δz,
         Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
+
+# architecture = CPU() default, assuming that a DataType positional arg
+# is specifying the floating point type.
+ConformalCubedSphereFaceGrid(FT::DataType; kwargs...) = ConformalCubedSphereFaceGrid(CPU(), FT; kwargs...)
 
 function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo, N, H)
 
@@ -171,9 +181,8 @@ function load_and_offset_cubed_sphere_data(file, FT, arch, field_name, loc, topo
     return offset_data(underlying_data, loc, topo, N, H)
 end
 
-function ConformalCubedSphereFaceGrid(filepath::AbstractString, FT = Float64;
+function ConformalCubedSphereFaceGrid(filepath::AbstractString, architecture = CPU(), FT = Float64;
                                       face, Nz, z,
-                                      architecture = CPU(),
                                       topology = (Bounded, Bounded, Bounded),
                                         radius = R_Earth,
                                           halo = (1, 1, 1),
@@ -185,11 +194,11 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, FT = Float64;
     ## Use a regular rectilinear grid for the vertical grid
     ## The vertical coordinates can come out of the regular rectilinear grid!
 
-    ξη_grid = RegularRectilinearGrid(FT, topology=topology, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=z, halo=halo)
+    ξη_grid = RectilinearGrid(architecture, FT, topology=topology, size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=z, halo=halo)
 
-    Δz = ξη_grid.Δz
-    zᵃᵃᶠ = ξη_grid.zF
-    zᵃᵃᶜ = ξη_grid.zC
+    Δz = ξη_grid.Δzᵃᵃᶜ
+    zᵃᵃᶠ = ξη_grid.zᵃᵃᶠ
+    zᵃᵃᶜ = ξη_grid.zᵃᵃᶜ
 
     ## Read everything else from the file
 
@@ -238,8 +247,10 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, FT = Float64;
     φᶠᶜᵃ = offset_data(zeros(FT, architecture, Txᶠᶜ, Tyᶠᶜ), loc_fc, topology, N, H)
     φᶜᶠᵃ = offset_data(zeros(FT, architecture, Txᶜᶠ, Tyᶜᶠ), loc_cf, topology, N, H)
 
-    return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, typeof(λᶜᶜᵃ), typeof(zᵃᵃᶠ)}(
-        Nξ, Nη, Nz, Hx, Hy, Hz,
+    Arch = typeof(architecture)
+
+    return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, typeof(λᶜᶜᵃ), typeof(zᵃᵃᶠ), Arch}(
+        architecture, Nξ, Nη, Nz, Hx, Hy, Hz,
          λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,  φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, zᵃᵃᶜ, zᵃᵃᶠ,
         Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δz,
         Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
@@ -280,8 +291,10 @@ function _adapt_structure(to, grid::ConformalCubedSphereFaceGrid{FT, TX, TY, TZ}
 
     A = typeof(horizontal_coordinate_data[1])
     R = typeof(grid.zᵃᵃᶜ)
+   
+    Arch = typeof(architecture)
 
-    return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R}(grid.Nx, grid.Ny, grid.Nz, grid.Hx, grid.Hy, grid.Hz,
+    return ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch}(architecture, grid.Nx, grid.Ny, grid.Nz, grid.Hx, grid.Hy, grid.Hz,
                                                               horizontal_coordinate_data..., zᵃᵃᶜ, zᵃᵃᶠ,
                                                               horizontal_grid_spacing_data..., grid.Δz,
                                                               horizontal_area_data..., grid.radius)
@@ -293,8 +306,8 @@ Adapt.adapt_structure(to, grid::ConformalCubedSphereFaceGrid) = _adapt_structure
 
 function Base.show(io::IO, g::ConformalCubedSphereFaceGrid{FT}) where FT
     print(io, "ConformalCubedSphereFaceGrid{$FT}\n",
-              "  resolution (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
-              "   halo size (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
+              "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
+              "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz))
 end
 
 @inline xnode(::Face,   ::Face,   LZ, i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.λᶠᶠᵃ[i, j]

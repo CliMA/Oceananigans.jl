@@ -114,7 +114,6 @@ function cubed_sphere_rossby_haurwitz(grid_filepath; check_fields=false, nsteps=
     end
 
     model = HydrostaticFreeSurfaceModel(
-              architecture = CPU(),
                       grid = grid,
         momentum_advection = momentum_advection,
               free_surface = ExplicitFreeSurface(gravitational_acceleration=100),

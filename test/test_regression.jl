@@ -1,20 +1,29 @@
-function summarize_regression_test(fields, correct_fields)
-    for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
-        Δ = φ .- φ_c
+using Oceananigans.Grids: topology, XRegLatLonGrid, YRegLatLonGrid, ZRegLatLonGrid
+using CUDA
 
-        Δ_min      = minimum(Δ)
-        Δ_max      = maximum(Δ)
-        Δ_mean     = mean(Δ)
-        Δ_abs_mean = mean(abs, Δ)
-        Δ_std      = std(Δ)
+include("utils_for_runtests.jl")
+include("data_dependencies.jl")
 
-        matching    = sum(φ .≈ φ_c)
-        grid_points = length(φ_c)
+archs = test_architectures()
 
-        @info @sprintf("Δ%s: min=%+.6e, max=%+.6e, mean=%+.6e, absmean=%+.6e, std=%+.6e (%d/%d matching grid points)",
-                       field_name, Δ_min, Δ_max, Δ_mean, Δ_abs_mean, Δ_std, matching, grid_points)
-    end
+
+function show_hydrostatic_test(grid, free_surface, comp) 
+
+    typeof(grid) <: XRegLatLonGrid ? gx = :regular : gx = :stretched
+    typeof(grid) <: YRegLatLonGrid ? gy = :regular : gy = :stretched
+    typeof(grid) <: ZRegLatLonGrid ? gz = :regular : gz = :stretched
+ 
+    arch = grid.architecture
+    free_surface_str = string(typeof(free_surface).name.wrapper)
+    
+    strc = "$(comp ? ", metrics are precomputed" : "")"
+
+    testset_str = "Hydrostatic free turbulence regression [$(typeof(arch)), $(topology(grid, 1)) longitude,  ($gx, $gy, $gz) grid, $free_surface_str]" * strc
+    info_str    =  "  Testing Hydrostatic free turbulence [$(typeof(arch)), $(topology(grid, 1)) longitude,  ($gx, $gy, $gz) grid, $free_surface_str]" * strc
+
+    return testset_str, info_str
 end
+
 
 function get_fields_from_checkpoint(filename)
     file = jldopen(filename)
@@ -55,6 +64,7 @@ end
 include("regression_tests/thermal_bubble_regression_test.jl")
 include("regression_tests/rayleigh_benard_regression_test.jl")
 include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
+include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
 
 @testset "Regression" begin
     @info "Running regression tests..."
@@ -79,5 +89,43 @@ include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
                 end
             end
         end
-    end
+
+        # Hydrostatic regression test
+
+        longitude = ((-180, 180), collect(-180:2:180), (-160, 160), collect(-160:2:160))
+        latitude  = ((-60, 60),   collect(-60:2:60))
+        zcoord    = ((-90, 0) ,   collect(-90:30:0))
+
+        explicit_free_surface = ExplicitFreeSurface(gravitational_acceleration=1.0)
+        implicit_free_surface = ImplicitFreeSurface(gravitational_acceleration = 1.0,
+                                                   solver_method = :PreconditionedConjugateGradient,
+                                                   tolerance = 1e-15)
+
+        for lon in longitude, lat in latitude, z in zcoord, comp in (true, false)
+
+            lon[1] == -180 ? N = (180, 60, 3) : N = (160, 60, 3)
+
+            grid  = LatitudeLongitudeGrid(arch, 
+                                          size = N,
+                                     longitude = lon,
+                                      latitude = lat,
+                                             z = z,
+                                          halo = (2, 2, 2),
+                            precompute_metrics = comp)
+
+            for free_surface in [explicit_free_surface, implicit_free_surface]
+                                 
+                # GPU + ImplicitFreeSurface + precompute metrics is not compatible at the moment. 
+                # kernel " uses too much parameter space  (maximum 0x1100 bytes) " error 
+                if !(comp && free_surface isa ImplicitFreeSurface && arch isa GPU) 
+
+                    testset_str, info_str = show_hydrostatic_test(grid, free_surface, comp)
+                    @testset "$testset_str" begin
+                        @info "$info_str"
+                        run_hydrostatic_free_turbulence_regression_test(grid, free_surface)
+                    end
+                end
+            end
+	    end   
+	end
 end

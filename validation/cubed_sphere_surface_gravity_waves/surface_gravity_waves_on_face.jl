@@ -26,7 +26,7 @@ DataDeps.register(dd)
 
 H = 4kilometers
 
-# grid = RegularLatitudeLongitudeGrid(size = (60, 60, 1), longitude = (-40, 40), latitude = (-40, 40), z = (-H, 0))
+# grid = LatitudeLongitudeGrid(size = (60, 60, 1), longitude = (-40, 40), latitude = (-40, 40), z = (-H, 0))
 
 cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
 grid = ConformalCubedSphereFaceGrid(cs32_filepath, face=1, Nz=1, z=(-H, 0))
@@ -106,7 +106,7 @@ simulation = Simulation(model,
 
 output_fields = merge(model.velocities, (η=model.free_surface.η,))
 
-output_prefix = grid isa RegularLatitudeLongitudeGrid ? "lat_lon_waves" : "cubed_sphere_face_waves"
+output_prefix = grid isa LatitudeLongitudeGrid ? "lat_lon_waves" : "cubed_sphere_face_waves"
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
                                                       schedule = TimeInterval(1hour),

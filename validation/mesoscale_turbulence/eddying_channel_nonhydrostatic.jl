@@ -42,7 +42,7 @@ const Ny = Int(400 * 0.5)
 const Nz = Int(32 * 0.5)
 # Create Grid
 topology = (Periodic, Bounded, Bounded)
-grid = RegularRectilinearGrid(topology=topology, 
+grid = RectilinearGrid(arch, topology=topology, 
                             size=(Nx, Ny, Nz), 
                             x=(0, Lx), y=(0, Ly), z=(-Lz, 0))
 
@@ -100,8 +100,8 @@ bottom_v_bc =  BoundaryCondition(Flux, vlineardrag, discrete_form = true, parame
 v_bcs = FieldBoundaryConditions(bottom = bottom_v_bc)
 
 # Buoyancy Boundary Conditions Forcing. Note: Flux convention opposite of Abernathy
-@inline cutoff(j, grid, p ) = grid.yC[j] > p.Qᵇ_cutoff ? -0.0 : 1.0
-@inline surface_flux(j, grid, p) = p.Qᵇ * cos(3π * grid.yC[j] / p.Ly) * cutoff(j, grid, p)
+@inline cutoff(j, grid, p ) = grid.yᵃᶜᵃ[j] > p.Qᵇ_cutoff ? -0.0 : 1.0
+@inline surface_flux(j, grid, p) = p.Qᵇ * cos(3π * grid.yᵃᶜᵃ[j] / p.Ly) * cutoff(j, grid, p)
 @inline relaxation(i, j, grid, clock, state, p) = @inbounds surface_flux(j, grid, p)
 top_b_bc = BoundaryCondition(Flux, relaxation, discrete_form = true, parameters = parameters)
 b_bcs = FieldBoundaryConditions(top = top_b_bc)
@@ -113,10 +113,10 @@ bcs = (b = b_bcs,  u = u_bcs, v = v_bcs,)
 # Sponge layers
 relu(y) = (abs(y) + y) * 0.5
 # Northern Wall Relaxation
-@inline relaxation_profile_north(k, grid, p) = p.ΔB * ( exp(grid.zC[k]/p.h) - exp(-p.Lz/p.h) ) / (1 - exp(-p.Lz/p.h))
+@inline relaxation_profile_north(k, grid, p) = p.ΔB * ( exp(grid.zᵃᵃᶜ[k]/p.h) - exp(-p.Lz/p.h) ) / (1 - exp(-p.Lz/p.h))
 function Fb_function(i, j, k, grid, clock, state, p)
     return @inbounds - (1/p.λᵗ)  * (state.b[i,j,k] 
-        - relaxation_profile_north(k, grid, p)) * relu( (grid.yC[j]-p.Lsponge) / (p.Ly - p.Lsponge))
+        - relaxation_profile_north(k, grid, p)) * relu( (grid.yᵃᶜᵃ[j]-p.Lsponge) / (p.Ly - p.Lsponge))
 end
 Fb = Forcing(Fb_function, parameters = parameters, discrete_form = true)
 
@@ -131,7 +131,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 # Model Setup
 if hydrostatic 
-    model = HydrostaticFreeSurfaceModel(architecture = arch,
+    model = HydrostaticFreeSurfaceModel(
             grid = grid,
             free_surface = ImplicitFreeSurface(),
             momentum_advection = WENO5(),
@@ -145,7 +145,6 @@ if hydrostatic
             )
 else
     model = NonhydrostaticModel(
-            architecture = arch,
                     grid = grid,
                 coriolis = coriolis,
                 buoyancy = buoyancy,

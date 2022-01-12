@@ -14,7 +14,7 @@ a function with arguments `(x, y, z)`, or any data type for which a
 Example
 =======
 ```julia
-model = HydrostaticFreeSurfaceModel(grid=RegularRectilinearGrid(size=(32, 32, 32), length=(1, 1, 1))
+model = HydrostaticFreeSurfaceModel(grid=RectilinearGrid(size=(32, 32, 32), length=(1, 1, 1))
 
 # Set u to a parabolic function of z, v to random numbers damped
 # at top and bottom, and T to some silly array of half zeros,

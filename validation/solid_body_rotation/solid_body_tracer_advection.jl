@@ -65,16 +65,15 @@ function run_solid_body_tracer_advection(; architecture = CPU(),
                                            super_rotations = 4)
 
     # A spherical domain
-    @show grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                              radius = 1,
-                                              latitude = (-northern_boundary, northern_boundary),
-                                              longitude = (-180, 180),
-                                              z = (-1, 0))
+    @show grid = LatitudeLongitudeGrid(architecture, size = (Nx, Ny, 1),
+                                       radius = 1,
+                                       latitude = (-northern_boundary, northern_boundary),
+                                       longitude = (-180, 180),
+                                       z = (-1, 0))
 
     uᵢ(λ, ϕ, z, t=0) = solid_body_rotation(λ, ϕ)
 
     model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        architecture = architecture,
                                         tracers = (:c, :d, :e),
                                         velocities = PrescribedVelocityFields(u=uᵢ),
                                         coriolis = nothing,
@@ -134,11 +133,11 @@ function visualize_solid_body_tracer_advection(filepath)
     Nx = file["grid/Nx"]
     Ny = file["grid/Ny"]
 
-    grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                        radius = 1,
-                                        latitude = (-northern_boundary, northern_boundary),
-                                        longitude = (-180, 180),
-                                        z = (-1, 0))
+    grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                                 radius = 1,
+                                 latitude = (-northern_boundary, northern_boundary),
+                                 longitude = (-180, 180),
+                                 z = (-1, 0))
 
     super_rotation_period = 2π * grid.radius / U
 

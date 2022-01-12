@@ -10,6 +10,7 @@ export
     AnisotropicMinimumDissipation,
     HorizontallyCurvilinearAnisotropicDiffusivity,
     ConvectiveAdjustmentVerticalDiffusivity,
+    IsopycnalSkewSymmetricDiffusivity,
 
     DiffusivityFields,
     calculate_diffusivities!,
@@ -49,6 +50,12 @@ Abstract supertype for turbulence closures.
 """
 abstract type AbstractTurbulenceClosure{TimeDiscretization} end
 
+@inline get_closure_i(i, closure::AbstractVector{<:AbstractTurbulenceClosure}) = @inbounds closure[i]
+@inline get_closure_i(i, closure::AbstractTurbulenceClosure) = closure
+
+@inline get_closure_ij(i, j, closure::AbstractMatrix{<:AbstractTurbulenceClosure}) = @inbounds closure[i, j]
+@inline get_closure_ij(i, j, closure::AbstractTurbulenceClosure) = closure
+
 # Fallbacks
 add_closure_specific_boundary_conditions(closure, boundary_conditions, args...) = boundary_conditions
 
@@ -64,6 +71,7 @@ include("velocity_tracer_gradients.jl")
 include("abstract_isotropic_diffusivity_closure.jl")
 include("abstract_eddy_viscosity_closure.jl")
 include("closure_tuples.jl")
+include("isopycnal_rotation_tensor_components.jl")
 
 # Implementations:
 include("turbulence_closure_implementations/nothing_closure.jl")
@@ -73,6 +81,7 @@ include("turbulence_closure_implementations/horizontally_curvilinear_anisotropic
 include("turbulence_closure_implementations/horizontally_curvilinear_anisotropic_biharmonic_diffusivity.jl")
 include("turbulence_closure_implementations/anisotropic_biharmonic_diffusivity.jl")
 include("turbulence_closure_implementations/leith_enstrophy_diffusivity.jl")
+include("turbulence_closure_implementations/isopycnal_skew_symmetric_diffusivity.jl")
 include("turbulence_closure_implementations/smagorinsky_lilly.jl")
 include("turbulence_closure_implementations/anisotropic_minimum_dissipation.jl")
 include("turbulence_closure_implementations/CATKEVerticalDiffusivities/CATKEVerticalDiffusivities.jl")

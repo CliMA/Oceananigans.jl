@@ -22,7 +22,7 @@ default_auxiliary_field_boundary_condition(::Bounded, ::Face) = nothing
 ##### Field boundary conditions
 #####
 
-struct FieldBoundaryConditions{W, E, S, N, B, T, I}
+mutable struct FieldBoundaryConditions{W, E, S, N, B, T, I}
         west :: W
         east :: E
        south :: S
@@ -35,25 +35,28 @@ end
 """
     FieldBoundaryConditions(; kwargs...)
 
-Returns a template for boundary conditions on prognostic fields.
+Return a template for boundary conditions on prognostic fields.
+
+Keyword arguments
+=================
 
 Keyword arguments specify boundary conditions on the 7 possible boundaries:
 
-    * `west`, left end point in the `x`-direction where `i=1`
-    * `east`, right end point in the `x`-direction where `i=grid.Nx`
-    * `south`, left end point in the `y`-direction where `j=1`
-    * `north`, right end point in the `y`-direction where `j=grid.Ny`
-    * `bottom`, right end point in the `z`-direction where `k=1`
-    * `top`, right end point in the `z`-direction where `k=grid.Nz`
-    * `immersed`, boundary between solid and fluid for immersed boundaries (experimental support only)
+  - `west`, left end point in the `x`-direction where `i=1`
+  - `east`, right end point in the `x`-direction where `i=grid.Nx`
+  - `south`, left end point in the `y`-direction where `j=1`
+  - `north`, right end point in the `y`-direction where `j=grid.Ny`
+  - `bottom`, right end point in the `z`-direction where `k=1`
+  - `top`, right end point in the `z`-direction where `k=grid.Nz`
+  - `immersed`, boundary between solid and fluid for immersed boundaries (experimental support only)
 
 If a boundary condition is unspecified, the default for prognostic fields
 and the topology in the boundary-normal direction is used:
 
-    * `PeriodicBoundaryCondition` for `Periodic` directions
-    * `NoFluxBoundaryCondition` for `Bounded` directions and `Centered`-located fields
-    * `ImpenetrableBoundaryCondition` for `Bounded` directions and `Face`-located fields
-    * `nothing` for `Flat` directions and/or `Nothing`-located fields
+  - `PeriodicBoundaryCondition` for `Periodic` directions
+  - `NoFluxBoundaryCondition` for `Bounded` directions and `Centered`-located fields
+  - `ImpenetrableBoundaryCondition` for `Bounded` directions and `Face`-located fields
+  - `nothing` for `Flat` directions and/or `Nothing`-located fields
 """
 function FieldBoundaryConditions(;     west = DefaultPrognosticFieldBoundaryCondition(),
                                        east = DefaultPrognosticFieldBoundaryCondition(),
@@ -69,26 +72,28 @@ end
 """
     FieldBoundaryConditions(grid, location; kwargs...)
 
-Returns boundary conditions for auxiliary fields (fields
-whose values are derived from a model's prognostic fields) on `grid`
-and at `location`.
+Return boundary conditions for auxiliary fields (fields whose values are
+derived from a model's prognostic fields) on `grid` and at `location`.
+
+Keyword arguments
+=================
 
 Keyword arguments specify boundary conditions on the 6 possible boundaries:
 
-    * `west`, left end point in the `x`-direction where `i=1`
-    * `east`, right end point in the `x`-direction where `i=grid.Nx`
-    * `south`, left end point in the `y`-direction where `j=1`
-    * `north`, right end point in the `y`-direction where `j=grid.Ny`
-    * `bottom`, right end point in the `z`-direction where `k=1`
-    * `top`, right end point in the `z`-direction where `k=grid.Nz`
+  - `west`, left end point in the `x`-direction where `i=1`
+  - `east`, right end point in the `x`-direction where `i=grid.Nx`
+  - `south`, left end point in the `y`-direction where `j=1`
+  - `north`, right end point in the `y`-direction where `j=grid.Ny`
+  - `bottom`, right end point in the `z`-direction where `k=1`
+  - `top`, right end point in the `z`-direction where `k=grid.Nz`
 
 If a boundary condition is unspecified, the default for auxiliary fields
 and the topology in the boundary-normal direction is used:
 
-    * `PeriodicBoundaryCondition` for `Periodic` directions
-    * `GradientBoundaryCondition(0)` for `Bounded` directions and `Centered`-located fields
-    * `nothing` for `Bounded` directions and `Face`-located fields
-    * `nothing` for `Flat` directions and/or `Nothing`-located fields)
+  - `PeriodicBoundaryCondition` for `Periodic` directions
+  - `GradientBoundaryCondition(0)` for `Bounded` directions and `Centered`-located fields
+  - `nothing` for `Bounded` directions and `Face`-located fields
+  - `nothing` for `Flat` directions and/or `Nothing`-located fields)
 """
 function FieldBoundaryConditions(grid, loc;
                                    west = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
@@ -115,8 +120,11 @@ regularize_boundary_condition(bc, args...) = bc # fallback
 Compute default boundary conditions and attach field locations to ContinuousBoundaryFunction
 boundary conditions for prognostic model field boundary conditions.
 
-Note: don't regularize immersed boundary conditions: we don't support ContinuousBoundaryFunction
-for immersed boundary conditions.
+!!! warn "No support for `ContinuousBoundaryFunction` for immersed boundary conditions"
+    Do not regularize immersed boundary conditions.
+
+    Currently, there is no support `ContinuousBoundaryFunction` for immersed boundary
+    conditions.
 """
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid, field_name, prognostic_field_names=nothing)
 

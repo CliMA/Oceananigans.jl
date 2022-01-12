@@ -39,7 +39,7 @@ for arch in archs
     @testset "Cubed sphere circulation [$(typeof(arch))]" begin
         @info "  Testing cubed sphere circulation [$(typeof(arch))]..."
 
-        grid = ConformalCubedSphereGrid(cs32_filepath, architecture=arch, Nz=1, z=(-1, 0))
+        grid = ConformalCubedSphereGrid(cs32_filepath, arch, Nz=1, z=(-1, 0))
 
         FT = eltype(grid)
         Nx, Ny, Nz, Nf = size(grid)

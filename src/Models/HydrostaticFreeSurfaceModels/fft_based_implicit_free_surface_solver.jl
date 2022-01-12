@@ -21,16 +21,16 @@ end
 Return a solver based on the fast Fourier transform for the elliptic equation
     
 ```math
-[∇² - Az / (g H Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - Az ηⁿ / Δt) / (g H Δt)
+[∇² - Az / (g H Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - Az ηⁿ / Δt) / (g H Δt) ,
 ```
 
 representing an implicit time discretization of the linear free surface evolution equation
 for a fluid with constant depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
-step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
+step `Δt`, gravitational acceleration `g`, and free surface at time-step `n`, `ηⁿ`.
 """
-function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
+function FFTImplicitFreeSurfaceSolver(arch, grid, gravitational_acceleration::Number, settings)
 
-    grid isa RegularRectilinearGrid || grid isa VerticallyStretchedRectilinearGrid ||
+    grid isa RegRectilinearGrid || grid isa HRegRectilinearGrid ||
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
 
     # Construct a "horizontal grid". We support either x or y being Flat, but not both.
@@ -53,7 +53,7 @@ function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
     # Even if the three dimensional grid is vertically stretched, we can only use
     # FFTImplicitFreeSurfaceSolver with grids that are regularly spaced in the
     # horizontal direction.
-    horizontal_grid = RegularRectilinearGrid(; topology = (TX, TY, Flat),
+    horizontal_grid = RectilinearGrid(arch; topology = (TX, TY, Flat),
                                                size = sz,
                                                halo = halo,
                                                domain...)
@@ -64,8 +64,8 @@ function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
     return FFTImplicitFreeSurfaceSolver(solver, grid, horizontal_grid, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:FastFourierTransform}, arch, grid, settings) =
-    FFTImplicitFreeSurfaceSolver(arch, grid, settings)
+build_implicit_step_solver(::Val{:FastFourierTransform}, arch, grid, gravitational_acceleration, settings) =
+    FFTImplicitFreeSurfaceSolver(arch, grid, gravitational_acceleration, settings)
 
 #####
 ##### Solve...

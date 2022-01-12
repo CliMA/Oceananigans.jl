@@ -20,7 +20,7 @@ By default, momentum and tracer forcing functions are assumed to be functions of
 ```jldoctest
 u_forcing(x, y, z, t) = exp(z) * cos(x) * sin(t)
 
-grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,))
 
 model.forcing.u
@@ -63,8 +63,8 @@ T_forcing_func(x, y, z, t, p) = - p.μ * exp(z / p.λ) * cos(p.k * x) * sin(p.ω
 
 T_forcing = Forcing(T_forcing_func, parameters=(μ=1, λ=0.5, k=2π, ω=4π))
 
-grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing, T=T_forcing))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing, T=T_forcing), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
 model.forcing.T
 
@@ -108,8 +108,8 @@ S_forcing_func(x, y, z, t, S, μ) = - μ * S
 
 S_forcing = Forcing(S_forcing_func, parameters=0.01, field_dependencies=:S)
 
-grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, forcing=(w=w_forcing, S=S_forcing))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid=grid, forcing=(w=w_forcing, S=S_forcing), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
 model.forcing.w
 
@@ -187,7 +187,7 @@ end
 
 u_forcing = Forcing(u_forcing_func, discrete_form=true, parameters=1e-3)
 
-grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 model = NonhydrostaticModel(grid=grid, tracers=:b, buoyancy=BuoyancyTracer(), forcing=(u=u_forcing, b=b_forcing))
 
 model.forcing.b
@@ -222,7 +222,7 @@ of the velocity field are damped to zero everywhere on a time-scale of 1000 seco
 ```jldoctest
 damping = Relaxation(rate = 1/1000)
 
-grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)) 
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)) 
 model = NonhydrostaticModel(grid=grid, forcing=(u=damping, v=damping, w=damping))
 
 model.forcing.w
@@ -244,7 +244,7 @@ velocity fields to zero and restores temperature to a linear gradient in the bot
 1/10th of the domain:
 
 ```jldoctest sponge_layer
-grid = RegularRectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(-1, 0))
+grid = RectilinearGrid(size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(-1, 0))
 
         damping_rate = 1/100 # relax fields on a 100 second time-scale
 temperature_gradient = 0.001 # ⁰C m⁻¹
@@ -256,7 +256,7 @@ target_temperature = LinearTarget{:z}(intercept=surface_temperature, gradient=te
 uvw_sponge = Relaxation(rate=damping_rate, mask=bottom_mask)
   T_sponge = Relaxation(rate=damping_rate, mask=bottom_mask, target=target_temperature)
 
-model = NonhydrostaticModel(grid=grid, forcing=(u=uvw_sponge, v=uvw_sponge, w=uvw_sponge, T=T_sponge))
+model = NonhydrostaticModel(grid=grid, forcing=(u=uvw_sponge, v=uvw_sponge, w=uvw_sponge, T=T_sponge), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
 model.forcing.u
 
