@@ -5,7 +5,8 @@
 
 @inline show_coordinate(Δ::Number, T)            = "Regular, with spacing $Δ"
 @inline show_coordinate(Δ::Number, ::Type{Flat}) = "Flattened"
-@inline show_coordinate(Δ::AbstractVector, T)    = "Stretched, with spacing min=$(minimum(parent(Δ))), max=$(maximum(parent(Δ)))"
+@inline show_coordinate(Δ::AbstractVector, T)    = @sprintf("Stretched, with spacing min=%.6f, max=%.6f",
+                                                            minimum(parent(Δ)), maximum(parent(Δ)))
 
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
 get_domain_extent(coord::Function, N)       = (coord(1), coord(N+1))
