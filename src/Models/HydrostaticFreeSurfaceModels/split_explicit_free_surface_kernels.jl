@@ -92,6 +92,7 @@ end
     end
 end
 
+# 
 # may need to do Val(Nk) since it may not be known at compile. Also figure out where to put H
 function barotropic_corrector!(free_surface, arch, grid, u, v)
     sefs = free_surface.state

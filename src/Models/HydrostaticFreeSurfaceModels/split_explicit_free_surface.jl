@@ -17,12 +17,11 @@ state : (SplitExplicitState). The entire state for split-explicit
 parameters : (NamedTuple). Parameters for timestepping split-explicit
 settings : (SplitExplicitSettings). Settings for the split-explicit scheme
 """
-struct SplitExplicitFreeSurface{𝒮, ℱ, 𝒫, ℰ, C}
+struct SplitExplicitFreeSurface{𝒮, ℱ, 𝒫, ℰ}
     state :: 𝒮
     auxiliary :: ℱ
     parameters :: 𝒫
     settings :: ℰ
-    closure :: C
 end 
 
 # use as a trait for dispatch purposes
@@ -30,7 +29,7 @@ function SplitExplicitFreeSurface(; parameters = (; g = g_Earth),
                                     settings = SplitExplicitSettings(200),
                                     closure = nothing)
 
-    return SplitExplicitFreeSurface(nothing, nothing, parameters, settings, closure)
+    return SplitExplicitFreeSurface(nothing, nothing, parameters, settings)
 end
 
 function FreeSurface(free_surface::SplitExplicitFreeSurface{Nothing}, velocities, arch, grid)
@@ -38,7 +37,20 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface{Nothing}, velocities
                                     SplitExplicitAuxiliary(grid, arch),
                                     free_surface.parameters,
                                     free_surface.settings,
-                                    free_surface.closure)
+                                    )
+end
+
+function SplitExplicitFreeSurface(grid, arch; parameters = (; g = g_Earth),
+    settings = SplitExplicitSettings(200),
+    closure = nothing)
+
+    sefs = SplitExplicitFreeSurface(SplitExplicitState(grid, arch),
+        SplitExplicitAuxiliary(grid, arch),
+        parameters,
+        settings
+        )
+
+    return sefs
 end
 
 # Extend to replicate functionality: TODO delete?
