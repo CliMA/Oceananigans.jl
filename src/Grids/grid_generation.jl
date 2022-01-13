@@ -59,16 +59,9 @@ function generate_coordinate(FT, topology, N, H, coord, architecture)
     for i = length(ΔF):-1:2
         ΔF[i] = ΔF[i-1]
     end
+
+    ΔC = OffsetArray(arch_array(architecture, ΔC), -H)
     ΔF = OffsetArray(arch_array(architecture, ΔF), -H-1)
-
-    # Seems needed to avoid out-of-bounds error in viscous dissipation
-    # operators wanting to access ΔF[N+2].
-    # ΔF = OffsetArray(ΔF, -H)
-    # ΔF = OffsetArray(cat(ΔF[0], ΔF..., ΔF[N], dims=1), -H-1)
-    # ΔF = OffsetArray(arch_array(architecture, ΔF.parent), ΔF.offsets...)
-
-    ΔC = OffsetArray(ΔC, -H)
-    ΔC = OffsetArray(arch_array(architecture, ΔC.parent), ΔC.offsets...)
 
     F = OffsetArray(F, -H)
     C = OffsetArray(C, -H)

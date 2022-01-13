@@ -37,6 +37,7 @@ include("dependencies_for_runtests.jl")
         @testset "Model and time stepping tests (part 1)" begin
             include("test_nonhydrostatic_models.jl")
             include("test_time_stepping.jl")
+            include("test_immersed_vertical_diffusion.jl")
         end
     end
 
