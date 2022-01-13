@@ -2,7 +2,7 @@ location_str(::Type{Face})    = "Face"
 location_str(::Type{Center})  = "Center"
 location_str(::Type{Nothing}) = "⋅"
 
-show_location(LX, LY, LZ) = "($(location_str(X)), $(location_str(Y)), $(location_str(Z)))"
+show_location(LX, LY, LZ) = "($(location_str(LX)), $(location_str(LY)), $(location_str(LZ)))"
 
 show_location(field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = show_location(LX, LY, LZ)
 
