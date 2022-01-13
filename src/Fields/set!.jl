@@ -32,7 +32,7 @@ function set!(u::Field, f::Function)
     return nothing
 end
 
-function set!(u::Field, f::AbstractArray)
+function set!(u::Field, f::Union{Array, CuArray, OffsetArray})
     f = arch_array(architecture(u), f)
     u .= f
     return nothing
