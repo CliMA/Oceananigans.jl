@@ -38,6 +38,7 @@ data(a) = a
 #####
 
 "Returns the location `(LX, LY, LZ)` of an `AbstractField{LX, LY, LZ}`."
+@inline location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference
 @inline location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX, LY, LZ) # note no instantiation
 @inline location(f::AbstractField, i) = location(f)[i]
 instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
