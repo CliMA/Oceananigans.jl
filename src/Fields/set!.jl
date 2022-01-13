@@ -17,7 +17,7 @@ end
 
 set!(u::Field, v) = u .= v # fallback
 
-function set!(u::Field, f::Union{Array, Function})
+function set!(u::Field, f::Function)
     if architecture(u) isa GPU
         cpu_grid = on_architecture(CPU(), u.grid)
         u_cpu = Field(location(u), cpu_grid)
@@ -32,13 +32,9 @@ function set!(u::Field, f::Union{Array, Function})
     return nothing
 end
 
-function set!(u::Field, f::CuArray)
-    if architecture(u) isa CPU
-        f_cpu = arch_array(CPU(), f)
-        u .= f_cpu
-    else
-        u .= f
-    end
+function set!(u::Field, f::AbstractArray)
+    f = arch_array(architecture(u), f)
+    u .= f
     return nothing
 end
 
