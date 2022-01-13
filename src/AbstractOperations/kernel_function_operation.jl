@@ -57,8 +57,8 @@ u, v, w = model.velocities
 ```
 """
 function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid;
-                                    computed_dependencies = (),
-                                    parameters = nothing) where {LX, LY, LZ}
+                                            computed_dependencies = (),
+                                            parameters = nothing) where {LX, LY, LZ}
 
     return KernelFunctionOperation{LX, LY, LZ}(kernel_function, computed_dependencies, parameters, grid)
 end
