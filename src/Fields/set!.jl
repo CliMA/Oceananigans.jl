@@ -27,15 +27,4 @@ function set!(u::Field, f::Union{Array, Function})
     return nothing
 end
 
-#####
-##### set! for fields on the GPU
-#####
-
-const GPUField = Field{LX, LY, LZ, O, <:GPU} where {LX, LY, LZ, O}
-
-""" Set the GPU field `u` to the array or function `v`. """
-function set!(u::GPUField, v::Union{Array, Function})
-    return nothing
-end
-
 set!(u::Field, v::Field) = copyto!(parent(u), parent(v))

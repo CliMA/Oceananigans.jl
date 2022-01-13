@@ -68,8 +68,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
             @test try time_step!(model, 1); true; catch; false; end
         end
 
-        @testset "KernelComputedField on ConformalCubedSphereGrid [$(typeof(arch))]" begin
-            @info "Testing KernelComputedField on a ConformalCubedSphereGrid [$(typeof(arch))]..."
+        @testset "VerticalVorticityField on ConformalCubedSphereGrid [$(typeof(arch))]" begin
+            @info "Testing VerticalVorticityField on a ConformalCubedSphereGrid [$(typeof(arch))]..."
             ζ = VerticalVorticityField(model)
 
             @test ζ isa Field

@@ -109,12 +109,25 @@ Base.size(data::CubedSphereData) = (size(data.faces[1])..., length(data.faces))
     
 faces(field::AbstractCubedSphereField) = Tuple(get_face(field, face_index) for face_index in 1:length(field.data.faces))
 
-function set!(u::CubedSphereField, v)
+#####
+##### set!
+#####
+
+function cubed_sphere_set!(u, v)
     for face = 1:length(u.grid.faces)
         set!(get_face(u, face), get_face(v, face))
     end
     return nothing
 end
+
+# Resolve ambiguities
+set!(u::CubedSphereField, v) = cubed_sphere_set!(u, v)
+set!(u::CubedSphereField, v::Union{Function, Array}) = cubed_sphere_set!(u, v)
+set!(u::CubedSphereField, v::CubedSphereField) = cubed_sphere_set!(u, v)
+
+#####
+##### Random utils
+#####
 
 minimum(field::AbstractCubedSphereField; dims=:) = minimum(minimum(face_field; dims) for face_field in faces(field))
 maximum(field::AbstractCubedSphereField; dims=:) = maximum(maximum(face_field; dims) for face_field in faces(field))
