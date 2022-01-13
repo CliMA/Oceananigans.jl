@@ -81,7 +81,7 @@ end
 end
 
 @inline ivd_diagonalᵃᵃᶠ(i, j, k, grid, clock, Δt, νᶜᶜᶜ, ν) =
-    one(FT) - ivd_upper_diagonalᵃᵃᶠ(i, j, k, grid, clock, Δt, νᶜᶜᶜ, ν) -
+    one(eltype(grid)) - ivd_upper_diagonalᵃᵃᶠ(i, j, k, grid, clock, Δt, νᶜᶜᶜ, ν) -
               ivd_lower_diagonalᵃᵃᶠ(i, j, k-1, grid, clock, Δt, νᶜᶜᶜ, ν)
 
 #####

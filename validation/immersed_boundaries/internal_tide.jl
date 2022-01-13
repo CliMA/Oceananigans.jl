@@ -7,46 +7,53 @@ grid = RectilinearGrid(GPU(), size=(512, 256), x=(-10, 10), z=(0, 5), topology=(
 # Gaussian bump of width "1"
 bump(x, y, z) = z < exp(-x^2)
 
+@inline show_name(t) = t isa ExplicitTimeDiscretization ? "explicit" : "implicit"
+
 grid_with_bump = ImmersedBoundaryGrid(GPU(), grid, GridFittedBoundary(bump))
 
 # Tidal forcing
 tidal_forcing(x, y, z, t) = 1e-4 * cos(t)
 
-model = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
-                                    momentum_advection = CenteredSecondOrder(),
-                                    free_surface = ExplicitFreeSurface(gravitational_acceleration=10),
-                                    closure = IsotropicDiffusivity(ν=1e-4, κ=1e-4),
-                                    tracers = :b,
-                                    buoyancy = BuoyancyTracer(),
-                                    coriolis = FPlane(f=sqrt(0.5)),
-                                    forcing = (u = tidal_forcing,))
+for time_stepper in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+    
+    model = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
+                                        momentum_advection = CenteredSecondOrder(),
+                                        free_surface = ExplicitFreeSurface(gravitational_acceleration=10),
+                                        closure = IsotropicDiffusivity(ν=1e-4, κ=1e-4, time_discretization = time_stepper),
+                                        tracers = :b,
+                                        buoyancy = BuoyancyTracer(),
+                                        coriolis = FPlane(f=sqrt(0.5)),
+                                        forcing = (u = tidal_forcing,))
 
-# Linear stratification
-set!(model, b = (x, y, z) -> 4 * z)
+    # Linear stratification
+    set!(model, b = (x, y, z) -> 4 * z)
 
-progress(s) = @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",
-                             100 * s.model.clock.time / s.stop_time, s.model.clock.iteration,
-                             s.model.clock.time, maximum(abs, model.velocities.w))
+    progress_message(s) = @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",
+                                100 * s.model.clock.time / s.stop_time, s.model.clock.iteration,
+                                s.model.clock.time, maximum(abs, model.velocities.w))
 
-gravity_wave_speed = sqrt(model.free_surface.gravitational_acceleration * grid.Lz)
-Δt = 0.1 * grid.Δxᶜᵃᵃ / gravity_wave_speed
-              
-simulation = Simulation(model, Δt = Δt, stop_time = 100, progress = progress, iteration_interval = 100)
+    gravity_wave_speed = sqrt(model.free_surface.gravitational_acceleration * grid.Lz)
+    Δt = 0.1 * grid.Δxᶜᵃᵃ / gravity_wave_speed
+                
+    simulation = Simulation(model, Δt = Δt, stop_time = 100,  iteration_interval = 100)
 
-serialize_grid(file, model) = file["serialized/grid"] = model.grid.grid
+    serialize_grid(file, model) = file["serialized/grid"] = model.grid.grid
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
-                                                      schedule = TimeInterval(0.1),
-                                                      prefix = "internal_tide",
-                                                      init = serialize_grid,
-                                                      force = true)
-                        
-run!(simulation)
+    simulation.output_writers[:fields] = JLD2OutputWriter(model, merge(model.velocities, model.tracers),
+                                                        schedule = TimeInterval(0.1),
+                                                        prefix = "internal_tide_$(show_name(time_stepper))",
+                                                        init = serialize_grid,
+                                                        force = true)
 
-@info """
-    Simulation complete.
-    Output: $(abspath(simulation.output_writers[:fields].filepath))
-"""
+    simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
+
+    run!(simulation)
+
+    @info """
+        Simulation complete.
+        Output: $(abspath(simulation.output_writers[:fields].filepath))
+    """
+end
 
 using JLD2
 using Plots
