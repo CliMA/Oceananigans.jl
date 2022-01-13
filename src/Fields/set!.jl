@@ -15,15 +15,30 @@ function set!(Φ::NamedTuple; kwargs...)
     return nothing
 end
 
-set!(u::AbstractField, v) = u .= v # fallback
+set!(u::Field, v) = u .= v # fallback
 
-# Niceties
-const CPUField = Field{LX, LY, LZ, O, <:CPU} where {LX, LY, LZ, O}
-
-""" Set the CPU field `u` data to the function `f(x, y, z)`. """
 function set!(u::Field, f::Union{Array, Function})
-    f_field = field(location(u), f, u.grid)
-    set!(u, f_field)
+    if architecture(u) isa GPU
+        cpu_grid = on_architecture(CPU(), u.grid)
+        u_cpu = Field(location(u), cpu_grid)
+        f_field = field(location(u), f, cpu_grid)
+        set!(u_cpu, f_field)
+        set!(u, u_cpu)
+    elseif architecture(u) isa CPU
+        f_field = field(location(u), f, u.grid)
+        set!(u, f_field)
+    end
+
+    return nothing
+end
+
+function set!(u::Field, f::CuArray)
+    if architecture(u) isa CPU
+        f_cpu = arch_array(CPU(), f)
+        u .= f_cpu
+    else
+        u .= f
+    end
     return nothing
 end
 
