@@ -214,9 +214,9 @@ Base.parent(vf::ViewField) = view(parent(parent(vf.data)), parent_indices.(vf.da
 "Returns a view of `f` that excludes halo points."
 @inline interior(f::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
     view(parent(f.data),
-         interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
-         interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
-         interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz),
+         interior_parent_indices(LX, topology(f, 1), f.grid.Nx, f.grid.Hx),
+         interior_parent_indices(LY, topology(f, 2), f.grid.Ny, f.grid.Hy),
+         interior_parent_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz),
          :)
 
 #####
