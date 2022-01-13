@@ -104,8 +104,10 @@ function FieldTimeSeries(path, name, backend::InMemory;
         architecture
 
     if isnothing(grid)
-        grid = on_architecture(architecture, file["serialized/grid"])
+        grid = file["serialized/grid"]
     end
+
+    grid = on_architecture(architecture, grid)
 
     if boundary_conditions isa UnspecifiedBoundaryConditions
         boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
