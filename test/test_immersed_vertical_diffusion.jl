@@ -3,7 +3,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Grids: ZRegRectilinearGrid
 using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 
-function run_tracer_1D_immersed_diffusion(arch, underlying_grid, time_stepping)
+function run_tracer_1D_immersed_diffusion(underlying_grid, time_stepping)
     
     immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> 0))
 
@@ -39,17 +39,15 @@ end
 
 function run_velocity_2D_immersed_diffusion(arch)
 
-    Nx, Nz = 8, 4
+    Nx, Nz = 128, 64
     
     underlying_grid = RectilinearGrid(arch, size = (Nx, Nz), extent = (10, 5), topology = (Periodic, Flat, Bounded))
 
     Δz = underlying_grid.Δzᵃᵃᶜ
 
-    B = [ - underlying_grid.Lz for i=1:Nx]
-    B[3:6] .+= Δz
-    B[4:5] .+= Δz
+    @inline wedge(x, y) = @. max(0, min( 1/2.5 * x - 1, -2/5 * x + 3))
 
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(wedge))
 
     explicit_closure = IsotropicDiffusivity(ν = 1.0)
     implicit_closure = IsotropicDiffusivity(ν = 1.0, time_discretization = VerticallyImplicitTimeDiscretization())
@@ -63,19 +61,21 @@ function run_velocity_2D_immersed_diffusion(arch)
                                          free_surface = ExplicitFreeSurface(gravitational_acceleration = 1.0)) 
 
     # initial divergence-free velocity
-    initial_velocity(x, y, z) = z > - Δz ? 1 : 0
-
-    set!(explicit_model, u = initial_velocity)
-    set!(implicit_model, u = initial_velocity)
-
+    initial_velocity(x, y, z) = z > - 2.5 ? 1 : 0
+    
+    # CFL condition (advective and diffusion) = 0.01
     Δt = accurate_cell_advection_timescale(grid, explicit_model.velocities)
-    Δt = minimum([Δt, grid.Δzᵃᵃᶜ^2 / explicit_closure.ν] ) / 10
+    Δt = min(Δt, grid.Δzᵃᵃᶜ^2 / explicit_closure.ν) / 100
 
-    for step in 1:100
+    for step in 1:2000
         time_step!(explicit_model, Δt)
         time_step!(implicit_model, Δt)
     end
-    
+
+    u_explicit = interior(explicit_model.velocities.u)[:, 1, :]
+    u_implicit = interior(implicit_model.velocities.u)[:, 1, :]
+    η_explicit = interior(explicit_model.free_surface.η)[:, 1, 1]
+    η_implicit = interior(implicit_model.free_surface.η)[:, 1, 1]
 end
 
 function stretched_coord(N)
@@ -104,7 +104,7 @@ end
         
         for step in time_steppings, grid in (regular_grid, stretched_grid)
             @info "  Testing 1D tracer immersed diffusion [$(typeof(arch)), $(typeof(step)), $(show_coord(grid))]"
-            run_tracer_1D_immersed_diffusion(arch, grid, step)
+            run_tracer_1D_immersed_diffusion(grid, step)
         end
 
 
