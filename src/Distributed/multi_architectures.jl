@@ -1,7 +1,7 @@
 using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
 
-import Oceananigans.Architectures: device, device_event, arch_array
+import Oceananigans.Architectures: device, device_event, arch_array, array_type
 import Oceananigans.Grids: zeros
 
 struct MultiArch{A, R, I, ρ, C, γ} <: AbstractMultiArchitecture
@@ -56,6 +56,7 @@ device(arch::AbstractMultiArchitecture)        = device(child_architecture(arch)
 device_event(arch::AbstractMultiArchitecture)  = device_event(child_architecture(arch))
 arch_array(arch::AbstractMultiArchitecture, A) = arch_array(child_architecture(arch), A)
 zeros(FT, arch::MultiArch, N...)               = zeros(FT, child_architecture(arch), N...) 
+array_type(arch::MultiArch)                    = array_type(child_architecture(arch))
 
 #####
 ##### Converting between index and MPI rank taking k as the fast index
