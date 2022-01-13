@@ -201,7 +201,7 @@ end
 # is there a better way?
 
 # FieldTimeSeries[i] returns ViewField
-const ViewField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:SubArray}
+const ViewField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:SubArray}
 
 using OffsetArrays: IdOffsetRange
 
