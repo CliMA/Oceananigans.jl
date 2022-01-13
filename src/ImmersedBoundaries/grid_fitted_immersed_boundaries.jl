@@ -88,23 +88,13 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 # Tracers and horizontal velocities at cell centers in z
 
 @inline function ivd_upper_diagonalᵃᵃᶜ(i, j, k, ibg::GFIBG, clock, Δt, κ⁻⁻ᶠ, κ)
-    return ifelse(solid_node(Center(), Center(), Face(), i, j, k, ibg),
+    return ifelse(solid_node(Center(), Center(), Face(), i, j, k+1, ibg),
                   zero(eltype(ibg.grid)),
                   ivd_upper_diagonalᵃᵃᶜ(i, j, k, ibg.grid, clock, Δt, κ⁻⁻ᶠ, κ))
 end
 
 @inline function ivd_lower_diagonalᵃᵃᶜ(i, j, k, ibg::GFIBG, clock, Δt, κ⁻⁻ᶠ, κ)
-    # Could be either
-    #
-    # solid_node(Center(), Center(), Face(), i, j, k, ibg)
-    #
-    # or
-    #
-    # solid_node(Center(), Center(), Face(), i, j, k-1, ibg)
-    #
-    # (with an index shift). We need to test...
-    
-    return ifelse(solid_node(Center(), Center(), Face(), i, j, k-1, ibg),
+    return ifelse(solid_node(Center(), Center(), Face(), i, j, k+1, ibg),
                   zero(eltype(ibg.grid)),
                   ivd_lower_diagonalᵃᵃᶜ(i, j, k, ibg.grid, clock, Δt, κ⁻⁻ᶠ, κ))
 end

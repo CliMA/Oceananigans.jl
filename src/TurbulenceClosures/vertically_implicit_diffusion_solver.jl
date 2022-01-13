@@ -34,7 +34,7 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 ##### Note: "ivd" stands for implicit vertical diffusion.
 #####
 
-@inline κ_Δz²(i, j, kᶠ, kᶜ, grid, κ) = κ / Δzᵃᵃᶜ(i, j, kᶜ, grid) / Δzᵃᵃᶠ(i, j, kᶠ, grid)
+@inline κ_Δz²(i, j, kᶜ, kᶠ, grid, κ) = κ / Δzᵃᵃᶜ(i, j, kᶜ, grid) / Δzᵃᵃᶠ(i, j, kᶠ, grid)
 
 # Tracers and horizontal velocities at cell centers in z
 
