@@ -2,6 +2,8 @@ using Oceananigans, Adapt, Base
 using Oceananigans.Fields
 using Oceananigans.Grids
 using Oceananigans.Architectures
+using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶜ, Δzᶠᶜᶜ 
+using KernelAbstractions: @index, @kernel
 import Base.show
 
 # TODO: Potentially Change Structs before final PR
@@ -27,8 +29,7 @@ end
 
 # use as a trait for dispatch purposes
 function SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth,
-                                    substeps = 200,
-                                    closure = nothing)
+                                    substeps = 200)
 
     return SplitExplicitFreeSurface(nothing, nothing, gravitational_acceleration, SplitExplicitSettings(substeps))
 end
@@ -41,8 +42,7 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface{Nothing}, velocities
 end
 
 function SplitExplicitFreeSurface(grid, arch; gravitational_acceleration = g_Earth,
-                                  settings = SplitExplicitSettings(200),
-                                   closure = nothing)
+                                  settings = SplitExplicitSettings(200))
 
     sefs = SplitExplicitFreeSurface(SplitExplicitState(grid, arch),
         SplitExplicitAuxiliary(grid, arch),
@@ -123,7 +123,6 @@ SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞}
     Hᶜᶜ:: 𝒞𝒞
 end
 
-# TODO: INITIALIZE DIFFERENT DOMAIN DEPTHS from Grid
 function SplitExplicitAuxiliary(grid::AbstractGrid, arch::AbstractArchitecture)
 
     Gᵁ = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
@@ -134,6 +133,11 @@ function SplitExplicitAuxiliary(grid::AbstractGrid, arch::AbstractArchitecture)
 
     Hᶜᶜ = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
 
+    event = launch!(arch, grid, :xy, initialize_vertical_depths_kernel!, 
+                    Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid, dependencies=Event(device(arch)))
+
+    wait(device(arch), event)
+    
     return SplitExplicitAuxiliary(; Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ, Hᶜᶜ)
 end
 
@@ -178,13 +182,18 @@ end
 free_surface(state::SplitExplicitState) = state.η
 free_surface(free_surface::SplitExplicitFreeSurface) = free_surface(free_surface.state)
 
-calculate_vertically_integrated_horizontal_velocities!(free_surface, model) = nothing
+@kernel function initialize_vertical_depths_kernel!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+    i, j = @index(Global, NTuple)
 
-function calculate_vertically_integrated_horizontal_velocities!(free_surface::SplitExplicitFreeSurface, model)
-    arch = model.architecture
-    grid = model.grid
-    u, v, w = model.velocities
-    barotropic_corrector!(free_surface, arch, grid, u, v)
-    return nothing
-end
+    @inbounds begin
+        Hᶠᶜ[i, j, 1] = 0
+        Hᶜᶠ[i, j, 1] = 0
+        Hᶜᶜ[i, j, 1] = 0
 
+        @unroll for k in 1:grid.Nz
+            Hᶠᶜ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid)
+            Hᶜᶠ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid)
+            Hᶜᶜ[i, j, 1] += Δzᶜᶜᶜ(i, j, k, grid)
+        end
+    end
+end 
