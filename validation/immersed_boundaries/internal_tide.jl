@@ -1,5 +1,6 @@
 using Printf
 using Oceananigans
+using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 grid = RectilinearGrid(GPU(), size=(512, 256), x=(-10, 10), z=(0, 5), topology=(Periodic, Flat, Bounded))
@@ -119,9 +120,10 @@ function visualize_internal_tide_simulation(prefix)
         plot(u_plot, w_plot, b_plot, layout = (3, 1), size = (1200, 1200))
     end
 
-    mp4(anim, "internal_tide.mp4", fps = 16)
+    mp4(anim, prefix * ".mp4", fps = 16)
 
     close(file)
 end
 
-visualize_internal_tide_simulation("internal_tide")
+visualize_internal_tide_simulation("internal_tide_explicit")
+visualize_internal_tide_simulation("internal_tide_implicit")
