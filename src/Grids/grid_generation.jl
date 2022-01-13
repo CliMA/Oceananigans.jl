@@ -5,7 +5,7 @@
 
 get_domain_extent(coord, N)                 = (coord[1], coord[2])
 get_domain_extent(coord::Function, N)       = (coord(1), coord(N+1))
-get_domain_extent(coord::AbstractVector, N) = (coord[1], coord[N+1])
+get_domain_extent(coord::AbstractVector, N) = CUDA.@allowscalar (coord[1], coord[N+1])
 
 get_coord_face(coord::Nothing, i) = 1
 get_coord_face(coord::Function, i) = coord(i)
