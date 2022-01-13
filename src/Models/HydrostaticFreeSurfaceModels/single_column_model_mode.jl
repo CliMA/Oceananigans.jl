@@ -1,5 +1,6 @@
 using KernelAbstractions: NoneEvent
 using OffsetArrays: OffsetArray
+using CUDA
 
 using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans.BoundaryConditions: left_gradient, right_gradient, linearly_extrapolate, FBC, VBC, GBC
