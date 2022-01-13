@@ -35,18 +35,18 @@ const CubedSphereData = CubedSphereFaces{<:OffsetArray}
 const ImmersedConformalCubedSphereFaceGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:ConformalCubedSphereFaceGrid} where {FT, TX, TY, TZ}
 
 # CubedSphereFaceField:
-const NonImmersedCubedSphereFaceField = AbstractField{LX, LY, LZ, <:ConformalCubedSphereFaceGrid} where {LX, LY, LZ, A}
-const ImmersedCubedSphereFaceField    = AbstractField{LX, LY, LZ, <:ImmersedConformalCubedSphereFaceGrid} where {LX, LY, LZ, A}
+const NonImmersedCubedSphereFaceField = AbstractField{LX, LY, LZ, <:ConformalCubedSphereFaceGrid} where {LX, LY, LZ}
+const ImmersedCubedSphereFaceField    = AbstractField{LX, LY, LZ, <:ImmersedConformalCubedSphereFaceGrid} where {LX, LY, LZ}
 
-const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{LX, LY, LZ, A},
-                                      ImmersedCubedSphereFaceField{LX, LY, LZ, A}} where {LX, LY, LZ, A}
+const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{LX, LY, LZ},
+                                      ImmersedCubedSphereFaceField{LX, LY, LZ}} where {LX, LY, LZ}
 
 # CubedSphereField
 
 # Flavors of CubedSphereField
-const CubedSphereField{LX, LY, LZ, A} =
-    Union{Field{LX, LY, LZ, <:Nothing, A, <:ConformalCubedSphereGrid},
-          Field{LX, LY, LZ, <:AbstractOperation, A, <:ConformalCubedSphereGrid}}
+const CubedSphereField{LX, LY, LZ} =
+    Union{Field{LX, LY, LZ, <:Nothing, <:ConformalCubedSphereGrid},
+          Field{LX, LY, LZ, <:AbstractOperation, <:ConformalCubedSphereGrid}}
 
 const CubedSphereAbstractField{LX, LY, LZ} = AbstractField{LX, LY, LZ, <:ConformalCubedSphereGrid}
 
