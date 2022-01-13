@@ -308,8 +308,9 @@ function Adapt.adapt_structure(to, reduced_field::ReducedField)
     LX, LY, LZ = location(reduced_field)
     return Field{LX, LY, LZ}(nothing,
                              adapt(to, reduced_field.data),
-                             nothing, nothing, nothing,
-                             adapt(to, architecture(reduced_field)))
+                             nothing,
+                             nothing,
+                             nothing)
 end
 
 #####
