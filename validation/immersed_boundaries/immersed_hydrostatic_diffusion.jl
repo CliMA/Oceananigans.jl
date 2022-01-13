@@ -1,12 +1,15 @@
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, z_viscosity
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
 
-Nx, Nz = 128, 64
+Nx, Nz = 64, 32
 
 underlying_grid = RectilinearGrid(arch, size = (Nx, Nz), extent = (10, 5), topology = (Periodic, Flat, Bounded))
 
 Δz = underlying_grid.Δzᵃᵃᶜ
+Δx = underlying_grid.Δxᶠᵃᵃ
 Lz = underlying_grid.Lz
+nsteps = 100
+diff   = zeros(nsteps)
 
 @inline wedge(x, y) = @. max(0, min( 1/2.5 * x - 1, -2/5 * x + 3))
 
@@ -26,14 +29,20 @@ implicit_model = HydrostaticFreeSurfaceModel(grid = grid,
 # initial divergence-free velocity
 initial_velocity(x, y, z) = z > - Lz / 2 ? 1 : 0
 
-set!(explicit_model, u = initial_velocity)
-# CFL condition (advective and diffusion) = 0.01
-Δt = accurate_cell_advection_timescale(grid, explicit_model.velocities)
-Δt = min(Δt, Δz^2 / explicit_closure.ν) / 100
+ue, ve, we = explicit_model.velocities
+ui, vi, wi = implicit_model.velocities
 
-for step in 1:20
+set!(ue, initial_velocity)
+set!(ui, initial_velocity)
+
+# CFL condition (advective and diffusion) = 0.01
+Δt = min( 1.0/Δx, Δz^2 / explicit_closure.ν) / 100
+
+for step in 1:nsteps
     time_step!(explicit_model, Δt)
     time_step!(implicit_model, Δt)
+
+    diff[step] = norm(ue .- ui) / norm(ue)
 end
 
 u_explicit = interior(explicit_model.velocities.u)[:, 1, :]

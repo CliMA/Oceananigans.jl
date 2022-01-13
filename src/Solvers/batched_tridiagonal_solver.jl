@@ -103,8 +103,6 @@ end
             β = bᵏ - aᵏ⁻¹ * t[i, j, k]
 
             fᵏ = get_coefficient(f, i, j, k, grid, p, args...)
-
-            @show cᵏ⁻¹, bᵏ, aᵏ⁻¹
             
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
