@@ -1,8 +1,9 @@
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, ExplicitTimeDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Grids: ZRegRectilinearGrid
+using Oceananigans.Diagnostics: accurate_cell_advection_timescale
 
-function run_tracer_one_dimensional_immersed_diffusion(arch, underlying_grid, time_stepping)
+function run_tracer_1D_immersed_diffusion(arch, underlying_grid, time_stepping)
     
     immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> 0))
 
@@ -10,29 +11,71 @@ function run_tracer_one_dimensional_immersed_diffusion(arch, underlying_grid, ti
 
     model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
-    model = HydrostaticFreeSurfaceModel(architecture = arch, grid = underlying_grid, 
-                                                      closure = closure;
-                                                      model_kwargs...)
+    model = HydrostaticFreeSurfaceModel(grid = underlying_grid, 
+                                     closure = closure;
+                                     model_kwargs...)
 
-    immersed_model = HydrostaticFreeSurfaceModel(architecture = arch, grid = immersed_grid,
-                                                               closure = closure; 
-                                                               model_kwargs...)
+    immersed_model = HydrostaticFreeSurfaceModel(grid = immersed_grid,
+                                              closure = closure; 
+                                              model_kwargs...)
                                         
     initial_temperature(x, y, z) = exp(-z^2 / 0.02)
-    [set!(m, c=initial_temperature) for m in (model, immersed_model)]
+    set!(         model, c = initial_temperature)
+    set!(immersed_model, c = initial_temperature)
 
-    diffusion_time_scale = model.grid.Δzᵃᵃᶜ^2 / model.closure.κ.c
+    diffusion_time_scale = minimum(model.grid.Δzᵃᵃᶜ)^2 / model.closure.κ.c
     stop_time = 100diffusion_time_scale
 
     simulations = [simulation = Simulation(m, Δt = 1e-1 * diffusion_time_scale, stop_time = stop_time) for m in (model, immersed_model)]
     [run!(sim) for sim in simulations]
 
-    test_domain = Int.((grid.Nz/2 + 1 + grid.Hz):(grid.Nz + grid.Hz))
+    test_domain = Int.((underlying_grid.Nz/2 + 1 + underlying_grid.Hz):(underlying_grid.Nz + underlying_grid.Hz))
 
     c          = Array(parent(model.tracers.c))[1, 1, test_domain]
     c_immersed = Array(parent(immersed_model.tracers.c))[1, 1, test_domain]
 
     @test all(c_immersed .≈ c)
+end
+
+function run_velocity_2D_immersed_diffusion(arch)
+
+    Nx, Nz = 8, 4
+    
+    underlying_grid = RectilinearGrid(arch, size = (Nx, Nz), extent = (10, 5), topology = (Periodic, Flat, Bounded))
+
+    Δz = underlying_grid.Δzᵃᵃᶜ
+
+    B = [ - underlying_grid.Lz for i=1:Nx]
+    B[3:6] .+= Δz
+    B[4:5] .+= Δz
+
+    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
+
+    explicit_closure = IsotropicDiffusivity(ν = 1.0)
+    implicit_closure = IsotropicDiffusivity(ν = 1.0, time_discretization = VerticallyImplicitTimeDiscretization())
+
+    explicit_model = HydrostaticFreeSurfaceModel(grid = grid, 
+                                              closure = explicit_closure,
+                                         free_surface = ExplicitFreeSurface(gravitational_acceleration = 1.0))
+
+    implicit_model = HydrostaticFreeSurfaceModel(grid = grid, 
+                                              closure = implicit_closure,
+                                         free_surface = ExplicitFreeSurface(gravitational_acceleration = 1.0)) 
+
+    # initial divergence-free velocity
+    initial_velocity(x, y, z) = z > - Δz ? 1 : 0
+
+    set!(explicit_model, u = initial_velocity)
+    set!(implicit_model, u = initial_velocity)
+
+    Δt = accurate_cell_advection_timescale(grid, explicit_model.velocities)
+    Δt = minimum([Δt, grid.Δzᵃᵃᶜ^2 / explicit_closure.ν] ) / 10
+
+    for step in 1:100
+        time_step!(explicit_model, Δt)
+        time_step!(implicit_model, Δt)
+    end
+    
 end
 
 function stretched_coord(N)
@@ -45,8 +88,8 @@ function stretched_coord(N)
     return z_faces
 end
 
-@inline show_coord(::ZRegRectilinearGrid) = "regular"
-@inline show_coord(::RectilinearGrid)     = "stretched"
+@inline show_coord(::ZRegRectilinearGrid) = "Regular grid"
+@inline show_coord(::RectilinearGrid)     = "Stretched grid"
 
 @testset "ImmersedVerticalDiffusion" begin
     for arch in archs
@@ -60,8 +103,10 @@ end
         stretched_grid = RectilinearGrid(arch, size = N, z = z_stretched, topology = (Flat, Flat, Bounded))
         
         for step in time_steppings, grid in (regular_grid, stretched_grid)
-            @info "  Testing one-dimensional immersed diffusion [$(arch), $(step), $(show_coord(grid))]"
-            run_tracer_one_dimensional_immersed_diffusion(arch, grid, step)
+            @info "  Testing 1D tracer immersed diffusion [$(typeof(arch)), $(typeof(step)), $(show_coord(grid))]"
+            run_tracer_1D_immersed_diffusion(arch, grid, step)
         end
+
+
     end
 end
