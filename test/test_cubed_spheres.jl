@@ -16,13 +16,13 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
 
     for arch in archs
 
-        @info "Constructing a ConformalCubedSphereGrid from file [$(typeof(arch))]..."
+        @info "  Constructing a ConformalCubedSphereGrid from file [$(typeof(arch))]..."
 
         # Prototype grid and model for subsequent tests
         cs32_filepath = datadep"cubed_sphere_32_grid/cubed_sphere_32_grid.jld2"
         grid = ConformalCubedSphereGrid(cs32_filepath, arch, Nz=1, z=(-1, 0))
 
-        @info "Constructing a HydrostaticFreeSurfaceModel on a ConformalCubedSphereGrid [$(typeof(arch))]..."
+        @info "  Constructing a HydrostaticFreeSurfaceModel on a ConformalCubedSphereGrid [$(typeof(arch))]..."
 
         free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
         model = HydrostaticFreeSurfaceModel(; grid, free_surface,
@@ -37,7 +37,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
         end
 
         @testset "CubedSphereData and CubedSphereFields [$(typeof(arch))]" begin
-            @info "Testing CubedSphereData and CubedSphereFields [$(typeof(arch))]..."
+            @info "  Testing CubedSphereData and CubedSphereFields [$(typeof(arch))]..."
             c = model.tracers.c
             η = model.free_surface.η
 
@@ -63,13 +63,13 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: VerticalVorticityField
         end
 
         @testset "Time stepping a HydrostaticFreeSurfaceModel [$(typeof(arch))]" begin
-            @info "Time-stepping HydrostaticFreeSurfaceModel on a ConformalCubedSphereGrid [$(typeof(arch))]..."
+            @info "  Time-stepping HydrostaticFreeSurfaceModel on a ConformalCubedSphereGrid [$(typeof(arch))]..."
             time_step!(model, 1)
             @test try time_step!(model, 1); true; catch; false; end
         end
 
         @testset "VerticalVorticityField on ConformalCubedSphereGrid [$(typeof(arch))]" begin
-            @info "Testing VerticalVorticityField on a ConformalCubedSphereGrid [$(typeof(arch))]..."
+            @info "  Testing VerticalVorticityField on a ConformalCubedSphereGrid [$(typeof(arch))]..."
             ζ = VerticalVorticityField(model)
 
             @test ζ isa Field
