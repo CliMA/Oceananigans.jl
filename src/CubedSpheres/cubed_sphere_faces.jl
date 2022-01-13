@@ -8,7 +8,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 import Base: getindex, size, show, minimum, maximum
 import Statistics: mean
 
-import Oceananigans.Fields: AbstractField, Field, minimum, maximum, mean, location, short_show, KernelComputedField
+import Oceananigans.Fields: AbstractField, Field, minimum, maximum, mean, location, short_show
 import Oceananigans.Grids: new_data
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 
