@@ -9,19 +9,52 @@ Base.length(::Type{Face}, ::Type{Bounded}, N) = N+1
 Base.length(::Type{Center}, topo, N) = N
 Base.length(::Type{Nothing}, topo, N) = 1
 
-function Base.size(loc, grid::AbstractGrid)
-    N = (grid.Nx, grid.Ny, grid.Nz)
-    return Tuple(length(loc[d], topology(grid, d), N[d]) for d in 1:3)
-end
+"""
+    topology(grid)
 
-Base.size(loc, grid, d) = size(loc, grid)[d]
+Return a tuple with the topology of the `grid` for each dimension.
+"""
+@inline topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
+
+"""
+    topology(grid, dim)
+
+Return the topology of the `grid` for the `dim`-th dimension.
+"""
+@inline topology(grid, dim) = topology(grid)[dim]
+
+"""
+    architecture(grid::AbstractGrid)
+
+Return the architecture (CPU or GPU) that the `grid` lives on.
+"""
+@inline architecture(grid::AbstractGrid) = grid.architecture
+
+
+"""
+    Constant Grid Definitions 
+"""
+
+Base.eltype(::AbstractGrid{FT}) where FT = FT
+
+function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
+    #check if grids are of the same type
+    !isa(grid2, typeof(grid1).name.wrapper) && return false
+
+    topology(grid1) !== topology(grid2) && return false
+
+    x1, y1, z1 = nodes((Face, Face, Face), grid1)
+    x2, y2, z2 = nodes((Face, Face, Face), grid2)
+
+    CUDA.@allowscalar return x1 == x2 && y1 == y2 && z1 == z2
+end
 
 """
     size(loc, grid)
 
-Returns the size of a field at `loc` on `grid`, not including halos.
+Return the size of a `grid` at `loc`, not including halos.
 This is a 3-tuple of integers corresponding to the number of interior nodes
-of `f` along `x, y, z`.
+along `x, y, z`.
 """
 @inline Base.size(loc, grid::AbstractGrid) = (length(loc[1], topology(grid, 1), grid.Nx),
                                               length(loc[2], topology(grid, 2), grid.Ny),
@@ -29,24 +62,33 @@ of `f` along `x, y, z`.
 
 Base.size(grid::AbstractGrid) = size((Center, Center, Center), grid)
 Base.size(grid::AbstractGrid, d) = size(grid)[d]
+Base.size(loc, grid, d) = size(loc, grid)[d]
 
 total_size(a) = size(a) # fallback
+
+halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
 
 """
     total_size(loc, grid)
 
-Returns the "total" size of a field at `loc` on `grid`.
-This is a 3-tuple of integers corresponding to the number of grid points
-contained by `f` along `x, y, z`.
+Return the "total" size of a `grid` at `loc`. This is a 3-tuple of integers
+corresponding to the number of grid points along `x, y, z`.
 """
 @inline total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
                                  total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
                                  total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
 
 """
+    halo_size(grid)
+
+Return a tuple with the size of the halo in each dimension.
+"""
+halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
+
+"""
     total_extent(topology, H, Δ, L)
 
-Returns the total extent, including halo regions, of constant-spaced
+Return the total extent, including halo regions, of constant-spaced
 `Periodic` and `Flat` dimensions with number of halo points `H`,
 constant grid spacing `Δ`, and interior extent `L`.
 """
@@ -55,7 +97,7 @@ constant grid spacing `Δ`, and interior extent `L`.
 """
     total_extent(::Type{Bounded}, H, Δ, L)
 
-Returns the total extent of, including halo regions, of constant-spaced
+Return the total extent of, including halo regions, of constant-spaced
 `Bounded` and `Flat` dimensions with number of halo points `H`,
 constant grid spacing `Δ`, and interior extent `L`.
 """
@@ -64,7 +106,7 @@ constant grid spacing `Δ`, and interior extent `L`.
 """
     total_length(loc, topo, N, H=0)
 
-Returns the total length (number of nodes), including halo points, of a field
+Return the total length (number of nodes), including halo points, of a field
 located at `Center` centers along a grid dimension of length `N` and with halo points `H`.
 """
 @inline total_length(loc, topo, N, H=0) = N + 2H
@@ -72,7 +114,7 @@ located at `Center` centers along a grid dimension of length `N` and with halo p
 """
     total_length(::Type{Face}, ::Type{Bounded}, N, H=0)
 
-Returns the total length, including halo points, of a field located at
+Return the total length, including halo points, of a field located at
 cell `Face`s along a grid dimension of length `N` and with halo points `H`.
 """
 @inline total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
@@ -80,7 +122,7 @@ cell `Face`s along a grid dimension of length `N` and with halo points `H`.
 """
     total_length(::Type{Nothing}, topo, N, H=0)
 
-Returns 1, which is the 'length' of a field along a reduced dimension.
+Return 1, which is the 'length' of a field along a reduced dimension.
 """
 @inline total_length(::Type{Nothing}, topo, N, H=0) = 1
 
@@ -160,6 +202,10 @@ Returns 1, which is the 'length' of a field along a reduced dimension.
 @inline node(LX::Nothing, LY, LZ::Nothing, i, j, k, grid) = tuple(ynode(LX, LY, LZ, i, j, k, grid))
 @inline node(LX::Nothing, LY::Nothing, LZ, i, j, k, grid) = tuple(znode(LX, LY, LZ, i, j, k, grid))
 
+@inline cpu_face_constructor_x(grid) = all_x_nodes(Face, adapt(CPU(), grid))[1:grid.Nx+1]
+@inline cpu_face_constructor_y(grid) = all_y_nodes(Face, adapt(CPU(), grid))[1:grid.Ny+1]
+@inline cpu_face_constructor_z(grid) = all_z_nodes(Face, adapt(CPU(), grid))[1:grid.Nz+1]
+
 all_x_nodes(::Type{Nothing}, grid) = 1:1
 all_y_nodes(::Type{Nothing}, grid) = 1:1
 all_z_nodes(::Type{Nothing}, grid) = 1:1
@@ -167,7 +213,7 @@ all_z_nodes(::Type{Nothing}, grid) = 1:1
 """
     xnodes(loc, grid, reshape=false)
 
-Returns a view over the interior `loc=Center` or `loc=Face` nodes
+Return a view over the interior `loc=Center` or `loc=Face` nodes
 on `grid` in the x-direction. For `Bounded` directions,
 `Face` nodes include the boundary points. `reshape=false` will
 return a 1D array while `reshape=true` will return a 3D array
@@ -186,14 +232,14 @@ end
 """
     ynodes(loc, grid, reshape=false)
 
-Returns a view over the interior `loc=Center` or `loc=Face` nodes
+Return a view over the interior `loc=Center` or `loc=Face` nodes
 on `grid` in the y-direction. For `Bounded` directions,
 `Face` nodes include the boundary points. `reshape=false` will
 return a 1D array while `reshape=true` will return a 3D array
 with size 1×Ny×1.
 
 
-See `znodes` for examples.
+See [`znodes`](@ref) for examples.
 """
 function ynodes(loc, grid; reshape=false)
 
@@ -206,7 +252,7 @@ end
 """
     znodes(loc, grid, reshape=false)
 
-Returns a view over the interior `loc=Center` or `loc=Face` nodes
+Return a view over the interior `loc=Center` or `loc=Face` nodes
 on `grid` in the z-direction. For `Bounded` directions,
 `Face` nodes include the boundary points. `reshape=false` will
 return a 1D array while `reshape=true` will return a 3D array
@@ -249,7 +295,7 @@ end
 """
     nodes(loc, grid; reshape=false)
 
-Returns a 3-tuple of views over the interior nodes
+Return a 3-tuple of views over the interior nodes
 at the locations in `loc` in `x, y, z`.
 
 If `reshape=true`, the views are reshaped to 3D arrays
@@ -257,7 +303,7 @@ with non-singleton dimensions 1, 2, 3 for `x, y, z`, respectively.
 These reshaped arrays can then be used in broadcast operations with 3D fields
 or arrays.
 
-See `xnodes`, `ynodes`, and `znodes`.
+See [`xnodes`](@ref), [`ynodes`](@ref), and [`znodes`](@ref).
 """
 function nodes(loc, grid::AbstractGrid; reshape=false)
     if reshape
@@ -289,7 +335,7 @@ flatten_size(TX, TY, TZ, halo) = Tuple(T === Flat ? 0 : halo[i] for (i, T) in en
 """
     pop_flat_elements(tup, topo)
 
-Returns a new tuple that contains the elements of `tup`,
+Return a new tuple that contains the elements of `tup`,
 except for those elements corresponding to the `Flat` directions
 in `topo`.
 """

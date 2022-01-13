@@ -20,7 +20,7 @@ for arch in archs
     @testset "Cubed sphere tracer halo exchange [$(typeof(arch))]" begin
         @info "  Testing cubed sphere tracer halo exchange [$(typeof(arch))]..."
 
-        grid = ConformalCubedSphereGrid(cs32_filepath, architecture=arch, Nz=1, z=(-1, 0))
+        grid = ConformalCubedSphereGrid(cs32_filepath, arch, Nz=1, z=(-1, 0))
         field = CenterField(arch, grid)
 
         ## We will fill each grid point with a 5-digit integer "fiijj" where
@@ -371,7 +371,7 @@ for arch in archs
     @testset "Cubed sphere velocity halo exchange [$(typeof(arch))]" begin
         @info "  Testing cubed sphere velocity halo exchange [$(typeof(arch))]..."
 
-        grid = ConformalCubedSphereGrid(cs32_filepath, architecture=arch, Nz=1, z=(-1, 0))
+        grid = ConformalCubedSphereGrid(cs32_filepath, arch, Nz=1, z=(-1, 0))
 
         u_field = XFaceField(arch, grid)
         v_field = YFaceField(arch, grid)

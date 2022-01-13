@@ -105,7 +105,6 @@ function cubed_sphere_tracer_advection(; face_number, α)
     ## Model setup
 
     model = HydrostaticFreeSurfaceModel(
-              architecture = CPU(),
                       grid = grid,
         momentum_advection = nothing,
                    tracers = :h,

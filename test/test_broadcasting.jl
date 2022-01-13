@@ -7,7 +7,7 @@
         ##### Basic functionality tests
         #####
         
-        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+        grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
         a, b, c = [CenterField(arch, grid) for i = 1:3]
 
         Nx, Ny, Nz = size(a)
@@ -32,7 +32,7 @@
         ##### Broadcasting with interpolation
         #####
         
-        three_point_grid = RectilinearGrid(size=(1, 1, 3), extent=(1, 1, 1))
+        three_point_grid = RectilinearGrid(arch, size=(1, 1, 3), extent=(1, 1, 1))
 
         a2 = CenterField(arch, three_point_grid)
 
@@ -78,7 +78,7 @@
         ##### Broadcasting with arrays
         #####
 
-        two_two_two_grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+        two_two_two_grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
 
         c = CenterField(arch, two_two_two_grid)
         random_column = arch_array(arch, reshape(rand(2), 1, 1, 2))

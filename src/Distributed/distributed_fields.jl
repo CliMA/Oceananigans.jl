@@ -1,5 +1,7 @@
+using MPI
+using Oceananigans.Fields: location
 import Oceananigans.Fields: Field
-import Oceananigans.Grids: AbstractGrid
+import Oceananigans.Grids: AbstractGrid, size
 
 function Field(X, Y, Z, arch::AbstractMultiArchitecture, grid::AbstractGrid,
                 bcs = FieldBoundaryConditions(grid, (X, Y, Z)),

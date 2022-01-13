@@ -7,14 +7,13 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceMo
 using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity
 using Oceananigans.AbstractOperations: KernelFunctionOperation, volume
 
-function run_hydrostatic_free_turbulence_regression_test(grid, free_surface, arch; regenerate_data=false)
+function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; regenerate_data=false)
 
     #####
     ##### Constructing Grid and model
     #####
     
     model = HydrostaticFreeSurfaceModel(grid = grid,
-                                architecture = arch,
                           momentum_advection = VectorInvariant(),
                                 free_surface = free_surface,
                                     coriolis = HydrostaticSphericalCoriolis(),

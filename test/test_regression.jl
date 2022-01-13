@@ -105,12 +105,12 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
 
             lon[1] == -180 ? N = (180, 60, 3) : N = (160, 60, 3)
 
-            grid  = LatitudeLongitudeGrid(size = N,
+            grid  = LatitudeLongitudeGrid(arch, 
+                                          size = N,
                                      longitude = lon,
                                       latitude = lat,
                                              z = z,
                                           halo = (2, 2, 2),
-                                  architecture = arch,
                             precompute_metrics = comp)
 
             for free_surface in [explicit_free_surface, implicit_free_surface]
@@ -122,7 +122,7 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
                     testset_str, info_str = show_hydrostatic_test(grid, free_surface, comp)
                     @testset "$testset_str" begin
                         @info "$info_str"
-                        run_hydrostatic_free_turbulence_regression_test(grid, free_surface, arch)
+                        run_hydrostatic_free_turbulence_regression_test(grid, free_surface)
                     end
                 end
             end
