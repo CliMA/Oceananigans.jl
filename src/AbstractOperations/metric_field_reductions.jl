@@ -1,6 +1,7 @@
 using Statistics: mean!, sum!
 
 import Oceananigans.Fields: Reduction
+import Oceananigans: short_show
 
 ##### 
 ##### Metric inference
@@ -51,3 +52,11 @@ end
 Integral(field::AbstractField; dims=:) = Reduction(Integral(), field; dims)
 
 const IntegratedField = Field{<:Any, <:Any, <:Any, <:Reduction{<:Integral}}
+
+#####
+##### show
+#####
+
+short_show(r::Reduction{<:Average}) = string("Average of ", short_show(r.operand), " over dims ", r.dims)
+short_show(r::Reduction{<:Integral}) = string("Integral of ", short_show(r.operand), " over dims ", r.dims)
+                                             
