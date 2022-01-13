@@ -99,6 +99,11 @@ function FieldTimeSeries(path, name, backend::InMemory;
     isnothing(times)        && (times      =  [file["timeseries/t/$i"] for i in iterations])
     isnothing(location)     && (location   =  file["timeseries/$name/serialized/location"])
 
+    # Default to CPU if neither architecture nor grid is specified
+    architecture = isnothing(architecture) ?
+        (isnothing(grid) ? CPU() : Architectures.architecture(grid)) :
+        architecture
+
     if isnothing(grid)
         grid = on_architecture(architecture, file["serialized/grid"])
     end

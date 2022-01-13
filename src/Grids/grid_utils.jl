@@ -5,8 +5,6 @@ using Printf
 ##### Convenience functions
 #####
 
-on_architecture(::Nothing, grid::AbstractGrid) = grid
-
 Base.length(::Type{Face}, topo, N) = N
 Base.length(::Type{Face}, ::Type{Bounded}, N) = N+1
 Base.length(::Type{Center}, topo, N) = N
