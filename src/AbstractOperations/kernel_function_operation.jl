@@ -1,4 +1,4 @@
-struct KernelFunctionOperation{LX, LY, LZ, P, A, G, T, K, D} <: AbstractOperation{LX, LY, LZ, A, G, T}
+struct KernelFunctionOperation{LX, LY, LZ, P, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
     kernel_function :: K
     computed_dependencies :: D
     parameters :: P
@@ -7,8 +7,7 @@ struct KernelFunctionOperation{LX, LY, LZ, P, A, G, T, K, D} <: AbstractOperatio
     function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K, computed_dependencies::D,
                                                  parameters::P, grid::G) where {LX, LY, LZ, K, G, D, P}
         T = eltype(grid)
-        A = typeof(architecture(grid))
-        return new{LX, LY, LZ, P, A, G, T, K, D}(kernel_function, computed_dependencies, parameters, grid)
+        return new{LX, LY, LZ, P, G, T, K, D}(kernel_function, computed_dependencies, parameters, grid)
     end
 
 end

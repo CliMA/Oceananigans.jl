@@ -1,5 +1,3 @@
-import Oceananigans: short_show
-
 location_str(::Type{Face})    = "Face"
 location_str(::Type{Center})  = "Center"
 location_str(::Type{Nothing}) = "⋅"

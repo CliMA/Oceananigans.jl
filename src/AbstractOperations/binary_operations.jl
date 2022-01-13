@@ -16,7 +16,7 @@ struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{L
     """
     function BinaryOperation{LX, LY, LZ}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, grid::G) where {LX, LY, LZ, O, A, B, IA, IB, G}
         T = eltype(grid)
-        return new{LX, LY, LZ, O, A, B, IA, IB, R, G, T}(op, a, b, ▶a, ▶b, grid)
+        return new{LX, LY, LZ, O, A, B, IA, IB, G, T}(op, a, b, ▶a, ▶b, grid)
     end
 end
 

@@ -101,8 +101,6 @@ function Base.similar(f::Field, grid=f.grid)
                  deepcopy(f.status))
 end
 
-data(f::Field) = f.data
-
 # Fallback: cannot infer boundary conditions.
 boundary_conditions(field) = nothing
 boundary_conditions(f::Field) = f.boundary_conditions

@@ -9,7 +9,7 @@ struct MultiaryOperation{LX, LY, LZ, N, O, A, I, G, T} <: AbstractOperation{LX, 
     function MultiaryOperation{LX, LY, LZ}(op::O, args::A, ▶::I, grid::G) where {LX, LY, LZ, O, A, I, G}
         T = eltype(grid)
         N = length(args)
-        return new{LX, LY, LZ, N, O, A, I, R, G, T}(op, args, ▶, grid)
+        return new{LX, LY, LZ, N, O, A, I, G, T}(op, args, ▶, grid)
     end
 end
 

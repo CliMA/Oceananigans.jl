@@ -13,6 +13,8 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 
+import Oceananigans: short_show
+
 include("abstract_field.jl")
 include("zero_field.jl")
 include("function_field.jl")
