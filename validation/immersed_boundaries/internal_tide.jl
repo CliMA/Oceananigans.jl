@@ -2,8 +2,32 @@ using Printf
 using Oceananigans
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+using LinearAlgebra
 
-grid = RectilinearGrid(CPU(), size=(512, 256), x=(-10, 10), z=(0, 5), topology=(Periodic, Flat, Bounded))
+function boundary_clustered(N, L, ini)
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
+    z_faces = zeros(N+1) 
+    for k = 2:N+1
+        z_faces[k] = z_faces[k-1] + Δz(k-1)
+    end
+    z_faces = z_faces ./ z_faces[end] .* L .- ini
+    return z_faces
+end
+
+function center_clustered(N, L, ini)
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
+    z_faces = zeros(N+1) 
+    for k = 2:N+1
+        z_faces[k] = z_faces[k-1] + 3 - Δz(k-1)
+    end
+    z_faces = z_faces ./ z_faces[end] .* L .- ini
+    return z_faces
+end
+
+grid = RectilinearGrid(GPU(), size=(512, 256), 
+                       x = center_clustered(512, 20, -10), 
+                       z = boundary_clustered(256, 5, 0),
+                topology = (Periodic, Flat, Bounded))
 
 # Gaussian bump of width "1"
 bump(x, y, z) = z < exp(-x^2)
@@ -36,7 +60,7 @@ for time_stepper in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscret
     gravity_wave_speed = sqrt(model.free_surface.gravitational_acceleration * grid.Lz)
     Δt = 0.1 * grid.Δxᶜᵃᵃ / gravity_wave_speed
                 
-    simulation = Simulation(model, Δt = Δt, stop_time = 5000Δt)
+    simulation = Simulation(model, Δt = Δt, stop_time = 50000Δt)
 
     serialize_grid(file, model) = file["serialized/grid"] = model.grid.grid
 
@@ -125,5 +149,45 @@ function visualize_internal_tide_simulation(prefix)
     close(file)
 end
 
+function plot_implicit_explicit_difference(filename)
+
+    file_explicit = jldopen(filename * "_explicit.jld2")
+    file_implicit = jldopen(filename * "_implicit.jld2")
+
+    iterations = parse.(Int, keys(file_explicit["timeseries/t"]))   
+
+    comparison_u = zeros(length(iterations))
+    comparison_w = zeros(length(iterations))
+    comparison_b = zeros(length(iterations))
+
+    for (i, iter) in enumerate(iterations)
+
+        u_explicit = file_explicit["timeseries/u/$iter"][:, 1, :]
+        w_explicit = file_explicit["timeseries/w/$iter"][:, 1, :]
+        b_explicit = file_explicit["timeseries/b/$iter"][:, 1, :]
+
+        u_implicit = file_implicit["timeseries/u/$iter"][:, 1, :]
+        w_implicit = file_implicit["timeseries/w/$iter"][:, 1, :]
+        b_implicit = file_implicit["timeseries/b/$iter"][:, 1, :]
+        
+        comparison_u[i] = norm(u_explicit .- u_implicit) 
+        comparison_w[i] = norm(w_explicit .- w_implicit) 
+        comparison_b[i] = norm(b_explicit .- b_implicit) 
+    end
+
+    kwargs = (linewidth = 2, foreground_color_legend = nothing, legendfontsize = 12, legend = :right, grid = false,
+              xtickfontsize = 12, ytickfontsize=12, xlabel = "time", ylabel = "norm of difference")
+
+     plot(iterations, comparison_u, label = "u"; kwargs...)
+    plot!(iterations, comparison_w, label = "w"; kwargs...)
+    plot!(iterations, comparison_b, label = "b"; kwargs...)
+
+    savefig(filename * "_comparison_implicit_explicit.png")
+
+    close(file_explicit)
+    close(file_implicit)
+end
+
 visualize_internal_tide_simulation("internal_tide_explicit")
 visualize_internal_tide_simulation("internal_tide_implicit")
+plot_implicit_explicit_difference("internal_tide")
