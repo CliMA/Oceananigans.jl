@@ -1,5 +1,48 @@
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 
+# TODO: This code belongs in the Models module
+
+#####
+##### Tracer names
+#####
+
+"Returns true if the first three elements of `names` are `(:u, :v, :w)`."
+has_velocities(names) = :u == names[1] && :v == names[2] && :w == names[3]
+
+# Tuples of length 0-2 cannot contain velocity fields
+has_velocities(::Tuple{}) = false
+has_velocities(::Tuple{X}) where X = false
+has_velocities(::Tuple{X, Y}) where {X, Y} = false
+
+tracernames(::Nothing) = ()
+tracernames(name::Symbol) = tuple(name)
+tracernames(names::NTuple{N, Symbol}) where N = has_velocities(names) ? names[4:end] : names
+tracernames(::NamedTuple{names}) where names = tracernames(names)
+
+#####
+##### Validation
+#####
+
+validate_field_grid(grid, field) = grid === field.grid
+
+validate_field_grid(grid, field_tuple::NamedTuple) =
+    all(validate_field_grid(grid, field) for field in field_tuple)
+
+"""
+    validate_field_tuple_grid(tuple_name, field_tuple, arch, grid, bcs)
+
+Validates the grids associated with grids in the (possibly nested) `field_tuple`,
+and returns `field_tuple` if validation succeeds.
+"""
+function validate_field_tuple_grid(tuple_name, field_tuple, grid)
+
+    all(validate_field_grid(grid, field) for field in field_tuple) ||
+        throw(ArgumentError("Model grid and $tuple_name grid are not identical! " *
+                            "Check that the grid used to construct $tuple_name has the correct halo size."))
+
+    return nothing
+end
+
 #####
 ##### Velocity fields tuples
 #####

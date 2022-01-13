@@ -1,7 +1,7 @@
 module Fields
 
 export Face, Center
-export AbstractField, Field, Average, Integral, Reduction
+export AbstractField, Field, Average, Integral, Reduction, field
 export CenterField, XFaceField, YFaceField, ZFaceField
 export BackgroundField
 export interior, data, xnode, ynode, znode, location
@@ -14,16 +14,11 @@ using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 
 include("abstract_field.jl")
+include("zero_field.jl")
+include("function_field.jl")
 include("field.jl")
 include("field_reductions.jl")
-include("zero_field.jl")
-include("averaged_field.jl")
-include("kernel_computed_field.jl")
-include("function_field.jl")
 include("regridding_fields.jl")
-include("set!.jl")
-include("tracer_names.jl")
-include("validate_field_tuple_grid.jl")
 include("field_tuples.jl")
 include("background_fields.jl")
 include("interpolate.jl")
@@ -31,4 +26,23 @@ include("field_slicer.jl")
 include("show_fields.jl")
 include("broadcasting_abstract_fields.jl")
 
+"""
+    field(loc, a, grid)
+
+Build a field from `a` at `loc` and on `grid`.
+"""
+function field(loc, a::Array, grid)
+    f = Field(loc, grid)
+    f .= a
+    return f
 end
+
+field(loc, a::Function, grid) = FunctionField(loc, a, grid)
+
+function field(loc, f::Field, grid)
+    loc === location(f) && grid === f.grid && return f
+    error("Cannot construct field at $loc and on $grid from $f")
+end
+
+include("set!.jl")
+

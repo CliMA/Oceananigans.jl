@@ -6,7 +6,7 @@ using Base: @propagate_inbounds
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 
-struct Field{LX, LY, LZ, O, A, G, T, D, B, S} <: AbstractField{LX, LY, LZ, A, G, T, 3}
+struct Field{LX, LY, LZ, O, G, T, D, B, S} <: AbstractField{LX, LY, LZ, G, T, 3}
     grid :: G
     data :: D
     boundary_conditions :: B
@@ -14,12 +14,23 @@ struct Field{LX, LY, LZ, O, A, G, T, D, B, S} <: AbstractField{LX, LY, LZ, A, G,
     status :: S
 
     # Inner constructor that does not validate _anything_!
-    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, op::O, status::S,
-                               arch::A=architecture(grid)) where {LX, LY, LZ,
-                                                                  G, D, B, O, S, A}
+    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, op::O, status::S) where {LX, LY, LZ, G, D, B, O, S}
         T = eltype(data)
-        return new{LX, LY, LZ, O, A, G, T, D, B, S}(grid, data, bcs, op, status)
+        return new{LX, LY, LZ, O, G, T, D, B, S}(grid, data, bcs, op, status)
     end
+end
+
+function validate_field_data(loc, data, grid)
+    Tx, Ty, Tz = total_size(loc, grid)
+
+    if size(data) != (Tx, Ty, Tz)
+        LX, LY, LZ = loc    
+        e = "Cannot construct field at ($LX, $LY, $LZ) with size(data)=$(size(data)). " *
+            "`data` must have size ($Tx, $Ty, $Tz)."
+        throw(ArgumentError(e))
+    end
+
+    return nothing
 end
 
 # Common outer constructor for all field flavors that validates data and boundary conditions
@@ -106,18 +117,27 @@ function interior(f::Field)
     return view(parent(f), ii, jj, kk)
 end
 
+interior_copy(f::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
+    parent(f)[interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
+              interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
+              interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz)]
+
 # Don't use axes(f) to checkbounds; use axes(f.data)
-Base.checkbounds(f::Field, I...) = Base.checkbounds(data(f), I...)
-@propagate_inbounds Base.getindex(f::Field, inds...) = getindex(data(f), inds...)
+Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
+
+@propagate_inbounds Base.getindex(f::Field, inds...) = getindex(f.data, inds...)
 @propagate_inbounds Base.getindex(f::Field, i::Int)  = parent(f)[i]
-@propagate_inbounds Base.setindex!(f::Field, val, i, j, k) = setindex!(data(f), val, i, j, k)
-@propagate_inbounds Base.lastindex(f::Field) = lastindex(data(f))
-@propagate_inbounds Base.lastindex(f::Field, dim) = lastindex(data(f), dim)
+@propagate_inbounds Base.setindex!(f::Field, val, i, j, k) = setindex!(f.data, val, i, j, k)
+@propagate_inbounds Base.lastindex(f::Field) = lastindex(f.data)
+@propagate_inbounds Base.lastindex(f::Field, dim) = lastindex(f.data, dim)
+
 Base.fill!(f::Field, val) = fill!(parent(f), val)
-
 Base.isapprox(ϕ::Field, ψ::Field; kw...) = isapprox(interior(ϕ), interior(ψ); kw...)
+Base.parent(f::Field) = parent(f.data)
+Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 
-Adapt.adapt_structure(to, field::Field) = Adapt.adapt(to, field.data)
+data(f::Field) = f.data
+cpudata(a::Field) = arch_array(CPU(), a.data)
 
 #####
 ##### Special constructors for tracers and velocity fields
@@ -179,10 +199,7 @@ macro compute(def)
     return expr
 end
 
-#####
-##### Conditional computation
-#####
-
+# Computation "status" for avoiding unnecessary recomputation
 mutable struct FieldStatus{T}
     time :: T
 end
@@ -301,10 +318,10 @@ end
 ##### Field reductions
 #####
 
-# Risky to use these without tests. Docs would also be nice.
+# TODO: needs test
 Statistics.dot(a::Field, b::Field) = mapreduce((x, y) -> x * y, +, interior(a), interior(b))
 
-# TODO: In-place allocations with function mappings need to be fixed in Julia Base...
+# TODO: in-place allocations with function mappings need to be fixed in Julia Base...
 const SumReduction     = typeof(Base.sum!)
 const ProdReduction    = typeof(Base.prod!)
 const MaximumReduction = typeof(Base.maximum!)

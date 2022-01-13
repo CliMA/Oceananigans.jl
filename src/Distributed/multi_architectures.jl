@@ -1,7 +1,7 @@
 using Oceananigans.Architectures
 using Oceananigans.Grids: topology, validate_tupled_argument
 
-import Oceananigans.Architectures: device, device_event, arch_array, array_type
+import Oceananigans.Architectures: device, device_event, arch_array, array_type, child_architecture
 import Oceananigans.Grids: zeros
 
 struct MultiArch{A, R, I, ρ, C, γ} <: AbstractMultiArchitecture
@@ -46,12 +46,11 @@ function MultiArch(child_architecture = CPU(); topology = (Periodic, Periodic, P
     return MultiArch{A, R, I, ρ, C, γ}(child_architecture, local_rank, local_index, ranks, local_connectivity, communicator)
 end
 
-child_architecture(arch::MultiArch) = arch.child_architecture
-child_architecture(::CPU) = CPU()
-child_architecture(::GPU) = GPU()
+#####
+##### All the architectures
+#####
 
-# Extending architecture specific methods
-
+child_architecture(arch::MultiArch)            = arch.child_architecture
 device(arch::AbstractMultiArchitecture)        = device(child_architecture(arch))
 device_event(arch::AbstractMultiArchitecture)  = device_event(child_architecture(arch))
 arch_array(arch::AbstractMultiArchitecture, A) = arch_array(child_architecture(arch), A)

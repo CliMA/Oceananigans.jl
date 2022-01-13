@@ -2,6 +2,8 @@ import Oceananigans: short_show
 using Oceananigans.Grids: Face, Bounded, topology
 using Oceananigans.Fields: location
 
+# TODO: this code probably belongs in the OutputWriters module
+
 """
     struct FieldSlicer{I, J, K, W}
 

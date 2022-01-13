@@ -35,11 +35,11 @@ const CubedSphereData = CubedSphereFaces{<:OffsetArray}
 const ImmersedConformalCubedSphereFaceGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:ConformalCubedSphereFaceGrid} where {FT, TX, TY, TZ}
 
 # CubedSphereFaceField:
-const NonImmersedCubedSphereFaceField = AbstractField{X, Y, Z, A, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A}
-const ImmersedCubedSphereFaceField    = AbstractField{X, Y, Z, A, <:ImmersedConformalCubedSphereFaceGrid} where {X, Y, Z, A}
+const NonImmersedCubedSphereFaceField = AbstractField{LX, LY, LZ, <:ConformalCubedSphereFaceGrid} where {LX, LY, LZ, A}
+const ImmersedCubedSphereFaceField    = AbstractField{LX, LY, LZ, <:ImmersedConformalCubedSphereFaceGrid} where {LX, LY, LZ, A}
 
-const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{X, Y, Z, A},
-                                      ImmersedCubedSphereFaceField{X, Y, Z, A}} where {X, Y, Z, A}
+const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{LX, LY, LZ, A},
+                                      ImmersedCubedSphereFaceField{LX, LY, LZ, A}} where {LX, LY, LZ, A}
 
 # CubedSphereField
 
@@ -48,18 +48,18 @@ const CubedSphereField{LX, LY, LZ, A} =
     Union{Field{LX, LY, LZ, <:Nothing, A, <:ConformalCubedSphereGrid},
           Field{LX, LY, LZ, <:AbstractOperation, A, <:ConformalCubedSphereGrid}}
 
-const CubedSphereAbstractField{LX, LY, LZ, A} = AbstractField{LX, LY, LZ, A, <:ConformalCubedSphereGrid}
+const CubedSphereAbstractField{LX, LY, LZ} = AbstractField{LX, LY, LZ, <:ConformalCubedSphereGrid}
 
-const AbstractCubedSphereField{LX, LY, LZ, A} =
-    Union{CubedSphereAbstractField{LX, LY, LZ, A},
-                  CubedSphereField{LX, LY, LZ, A}}
+const AbstractCubedSphereField{LX, LY, LZ} =
+    Union{CubedSphereAbstractField{LX, LY, LZ},
+                  CubedSphereField{LX, LY, LZ}}
 
 #####
 ##### new data
 #####
 
-function new_data(FT, grid::ConformalCubedSphereGrid, (X, Y, Z))
-    faces = Tuple(new_data(FT, face_grid, (X, Y, Z)) for face_grid in grid.faces)
+function new_data(FT, grid::ConformalCubedSphereGrid, (LX, LY, LZ))
+    faces = Tuple(new_data(FT, face_grid, (LX, LY, LZ)) for face_grid in grid.faces)
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
 end
 
@@ -67,11 +67,11 @@ end
 ##### FieldBoundaryConditions
 #####
 
-function FieldBoundaryConditions(grid::ConformalCubedSphereGrid, (X, Y, Z); user_defined_bcs...)
+function FieldBoundaryConditions(grid::ConformalCubedSphereGrid, (LX, LY, LZ); user_defined_bcs...)
 
     faces = Tuple(
         inject_cubed_sphere_exchange_boundary_conditions(
-            FieldBoundaryConditions(face_grid, (X, Y, Z); user_defined_bcs...),
+            FieldBoundaryConditions(face_grid, (LX, LY, LZ); user_defined_bcs...),
             face_index,
             grid.face_connectivity
         )

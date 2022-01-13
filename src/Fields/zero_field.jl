@@ -1,4 +1,6 @@
-struct ZeroField <: AbstractField{Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, 3} end
+struct ZeroField{N} <: AbstractField{Nothing, Nothing, Nothing, Nothing, Nothing, N} end
 
-@inline Base.getindex(::ZeroField, i, j, k) = 0
+ZeroField() = ZeroField{3}() # default
+
+@inline Base.getindex(::ZeroField, ind...) = 0
 

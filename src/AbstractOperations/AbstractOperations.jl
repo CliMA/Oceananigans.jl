@@ -29,16 +29,14 @@ import Oceananigans.Fields: data, compute_at!
 ##### Basic functionality
 #####
 
-using Oceananigans.Fields: AbstractOperation
-# abstract type AbstractOperation{X, Y, Z, A, G, T} <: AbstractField{X, Y, Z, A, G, T, 3} end
+abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G, T, 3} end
 
-const AF = AbstractField
-
-# We (informally) require that all field-like objects define `parent`:
-Base.parent(op::AbstractOperation) = op
+const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
 
 # We have no halos to fill
 fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
+
+architecture(a::AbstractOperation) = architecture(a.grid)
 
 # AbstractOperation macros add their associated functions to this list
 const operators = Set()

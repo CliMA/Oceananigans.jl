@@ -39,7 +39,9 @@ Run Oceananigans on a single NVIDIA CUDA GPU.
 """
 struct GPU <: AbstractArchitecture end
 
-## All extension of these methods is done in Distributed.jl
+#####
+##### These methods are extended in Distributed.jl
+#####
 
 device(::CPU) = KernelAbstractions.CPU()
 device(::GPU) = CUDAKernels.CUDADevice()
@@ -48,6 +50,14 @@ architecture() = nothing
 architecture(::Number) = nothing
 architecture(::Array) = CPU()
 architecture(::CuArray) = GPU()
+
+"""
+    child_architecture(arch)
+
+Return `arch`itecture of child processes.
+On single-process, non-distributed systems, return `arch`.
+"""
+child_architecture(arch) = arch
 
 array_type(::CPU) = Array
 array_type(::GPU) = CuArray

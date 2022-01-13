@@ -14,7 +14,7 @@ import Oceananigans: short_show
 import Oceananigans.Fields: Field, set!, interior
 import Oceananigans.Architectures: architecture
 
-struct FieldTimeSeries{LX, LY, LZ, K, A, T, D, G, B, χ} <: AbstractField{LX, LY, LZ, A, G, T, 4}
+struct FieldTimeSeries{LX, LY, LZ, K, T, D, G, B, χ} <: AbstractField{LX, LY, LZ, G, T, 4}
                    data :: D
                    grid :: G
     boundary_conditions :: B
@@ -22,8 +22,7 @@ struct FieldTimeSeries{LX, LY, LZ, K, A, T, D, G, B, χ} <: AbstractField{LX, LY
 
     function FieldTimeSeries{LX, LY, LZ, K}(data::D, grid::G, bcs::B, times::χ) where {LX, LY, LZ, K, D, G, B, χ}
         T = eltype(grid) 
-        A = typeof(architecture(grid))
-        return new{LX, LY, LZ, K, A, T, D, G, B, χ}(data, grid, bcs, times)
+        return new{LX, LY, LZ, K, T, D, G, B, χ}(data, grid, bcs, times)
     end
 end
 
