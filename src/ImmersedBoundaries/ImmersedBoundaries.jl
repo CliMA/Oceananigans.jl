@@ -40,6 +40,7 @@ import Oceananigans.Utils: cell_advection_timescale
 import Oceananigans.Grids: with_halo, architecture
 import Oceananigans.Coriolis: φᶠᶠᵃ
 import Oceananigans.Grids: with_halo, xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
+import Oceananigans.Grids: on_architecture
 
 import Oceananigans.Advection:
     _advective_momentum_flux_Uu,
@@ -135,6 +136,16 @@ with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo
 all_x_nodes(loc, ibg::ImmersedBoundaryGrid) = all_x_nodes(loc, ibg.grid)
 all_y_nodes(loc, ibg::ImmersedBoundaryGrid) = all_y_nodes(loc, ibg.grid)
 all_z_nodes(loc, ibg::ImmersedBoundaryGrid) = all_z_nodes(loc, ibg.grid)
+
+function on_architecture(arch, ibg::ImmersedBoundaryGrid)
+    underlying_grid = on_architecture(arch, ibg.grid)
+
+    immersed_boundary = ibg.immersed_boundary isa AbstractArray ?
+        arch_array(arch, ibg.immersed_boundary) :
+        ibg.immersed_boundary
+
+    return ImmersedBoundaryGrid(grid, immersed_boundary)
+end
 
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundaries.jl")
