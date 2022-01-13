@@ -8,7 +8,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 import Base: getindex, size, show, minimum, maximum
 import Statistics: mean
 
-import Oceananigans.Fields: AbstractField, Field, minimum, maximum, mean, location, short_show
+import Oceananigans.Fields: AbstractField, Field, minimum, maximum, mean, location, short_show, set!
 import Oceananigans.Grids: new_data
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 
@@ -108,6 +108,13 @@ Base.size(data::CubedSphereData) = (size(data.faces[1])..., length(data.faces))
           boundary_conditions = get_face(field.boundary_conditions, face_index))
     
 faces(field::AbstractCubedSphereField) = Tuple(get_face(field, face_index) for face_index in 1:length(field.data.faces))
+
+function set!(u::CubedSphereField, v)
+    for face = 1:length(u.grid.faces)
+        set!(get_face(u, face), get_face(v, face))
+    end
+    return nothing
+end
 
 minimum(field::AbstractCubedSphereField; dims=:) = minimum(minimum(face_field; dims) for face_field in faces(field))
 maximum(field::AbstractCubedSphereField; dims=:) = maximum(maximum(face_field; dims) for face_field in faces(field))
