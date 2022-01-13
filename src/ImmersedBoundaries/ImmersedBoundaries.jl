@@ -144,7 +144,7 @@ function on_architecture(arch, ibg::ImmersedBoundaryGrid)
         arch_array(arch, ibg.immersed_boundary) :
         ibg.immersed_boundary
 
-    return ImmersedBoundaryGrid(grid, immersed_boundary)
+    return ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
 end
 
 include("immersed_grid_metrics.jl")
