@@ -34,6 +34,32 @@ function summarize_regression_test(fields, correct_fields)
 end
 
 #####
+##### Grid utils
+#####
+
+function center_clustered(N, L)
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
+    z_faces = zeros(N+1) 
+    for k = 2:N+1
+        z_faces[k] = z_faces[k-1] + 3 - Δz(k-1)
+    end
+    z_faces = z_faces ./ z_faces[end] * L 
+    return z_faces
+end
+
+function boundary_clustered(N, L)
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
+    z_faces = zeros(N+1) 
+    for k = 2:N+1
+        z_faces[k] = z_faces[k-1] + Δz(k-1)
+    end
+    z_faces = z_faces ./ z_faces[end] * L 
+    return z_faces
+end
+
+
+
+#####
 ##### Useful kernels
 #####
 
