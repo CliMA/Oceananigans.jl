@@ -24,7 +24,7 @@ function run_tracer_1D_immersed_diffusion(underlying_grid, time_stepping)
     set!(immersed_model, c = initial_temperature)
 
     diffusion_time_scale = minimum(model.grid.Δzᵃᵃᶜ)^2 / model.closure.κ.c
-    stop_time = 300diffusion_time_scale
+    stop_time = 100diffusion_time_scale
 
     simulations = [simulation = Simulation(m, Δt = 1e-1 * diffusion_time_scale, stop_time = stop_time) for m in (model, immersed_model)]
     [run!(sim) for sim in simulations]
@@ -76,7 +76,8 @@ function run_velocity_2D_immersed_diffusion(arch)
     underlying_grid = RectilinearGrid(arch, size = (Nx, Nz), extent = (10, 5), topology = (Periodic, Flat, Bounded))
 
     Δz = underlying_grid.Δzᵃᵃᶜ
-
+    Lz = underlying_grid.Lz
+    
     @inline wedge(x, y) = @. max(0, min( 1/2.5 * x - 1, -2/5 * x + 3))
 
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(wedge))
@@ -86,20 +87,21 @@ function run_velocity_2D_immersed_diffusion(arch)
 
     explicit_model = HydrostaticFreeSurfaceModel(grid = grid, 
                                               closure = explicit_closure,
-                                         free_surface = ExplicitFreeSurface(gravitational_acceleration = 1.0))
+                                         free_surface = ImplicitFreeSurface())
 
     implicit_model = HydrostaticFreeSurfaceModel(grid = grid, 
                                               closure = implicit_closure,
-                                         free_surface = ExplicitFreeSurface(gravitational_acceleration = 1.0)) 
+                                         free_surface = ImplicitFreeSurface()) 
 
     # initial divergence-free velocity
-    initial_velocity(x, y, z) = z > - 2.5 ? 1 : 0
+    initial_velocity(x, y, z) = z > - Lz / 2 ? 1 : 0
     
+    set!(explicit_model, u = initial_velocity)
     # CFL condition (advective and diffusion) = 0.01
     Δt = accurate_cell_advection_timescale(grid, explicit_model.velocities)
-    Δt = min(Δt, grid.Δzᵃᵃᶜ^2 / explicit_closure.ν) / 100
+    Δt = min(Δt, Δz^2 / explicit_closure.ν) / 100
 
-    for step in 1:2000
+    for step in 1:20
         time_step!(explicit_model, Δt)
         time_step!(implicit_model, Δt)
     end
