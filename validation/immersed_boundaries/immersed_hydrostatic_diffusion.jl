@@ -1,42 +1,42 @@
-using Oceananigans
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Printf
-# using Plots
+using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, z_viscosity
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
-underlying_grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
-grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> 0))
+Nx, Nz = 128, 64
 
-implicit_closure = IsotropicDiffusivity(κ = 1.0, time_discretization=VerticallyImplicitTimeDiscretization())
-closure = IsotropicDiffusivity(κ = 1.0)
+underlying_grid = RectilinearGrid(arch, size = (Nx, Nz), extent = (10, 5), topology = (Periodic, Flat, Bounded))
 
-model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
+Δz = underlying_grid.Δzᵃᵃᶜ
+Lz = underlying_grid.Lz
 
-model = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure=closure, model_kwargs...)
-implicit_model = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure=implicit_closure, model_kwargs...)
-immersed_model = HydrostaticFreeSurfaceModel(; grid=grid, closure=closure, model_kwargs...)
-immersed_implicit_model = HydrostaticFreeSurfaceModel(; grid=grid, closure=implicit_closure, model_kwargs...)
-                                    
-initial_temperature(x, y, z) = exp(-z^2 / 0.02)
-[set!(m, c=initial_temperature) for m in (model, implicit_model, immersed_model, immersed_implicit_model)]
+@inline wedge(x, y) = @. max(0, min( 1/2.5 * x - 1, -2/5 * x + 3))
 
-z = znodes(model.tracers.c)
-c = view(interior(model.tracers.c), 1, 1, :)
-c_immersed = view(interior(immersed_model.tracers.c), 1, 1, :)
-c_immersed_implicit = view(interior(immersed_implicit_model.tracers.c), 1, 1, :)
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(wedge))
 
-# c_plot = plot(c, z, linewidth = 2, label = "t = 0", xlabel = "Tracer concentration", ylabel = "z")
-#plot!(c_plot, c_immersed, z, linewidth = 2, label = "t = 0, immersed model", xlabel = "Tracer concentration", ylabel = "z")
-#plot!(c_plot, c_immersed_implicit, z, linewidth = 2, label = "t = 0, immersed model with vertically-implicit diffusion", xlabel = "Tracer concentration", ylabel = "z")
-              
-diffusion_time_scale = model.grid.Δzᵃᵃᶜ^2 / model.closure.κ.c
-stop_time = 100diffusion_time_scale
+explicit_closure = IsotropicDiffusivity(ν = 1.0)
+implicit_closure = IsotropicDiffusivity(ν = 1.0, time_discretization = VerticallyImplicitTimeDiscretization())
 
-simulations = [simulation = Simulation(m, Δt = 1e-1 * diffusion_time_scale, stop_time = stop_time) for m in (model, implicit_model, immersed_model, immersed_implicit_model)]
-[run!(sim) for sim in simulations]
+explicit_model = HydrostaticFreeSurfaceModel(grid = grid,
+                                            closure = explicit_closure,
+                                        free_surface = ImplicitFreeSurface())
 
-# plot!(c_plot, c, z, linewidth = 2, alpha = 0.6, linestyle = :dash, label = @sprintf("Ordinary model, t = %.3e", model.clock.time))
-# plot!(c_plot, c_immersed, z, linewidth = 3, alpha = 0.6, label = @sprintf("Immersed model, t = %.3e", immersed_model.clock.time))
-# plot!(c_plot, c_immersed_implicit, z, linewidth = 3, alpha = 0.6, label = @sprintf("Immersed model, vertically-implicit diffusion, t = %.3e", immersed_model.clock.time))
+implicit_model = HydrostaticFreeSurfaceModel(grid = grid,
+                                            closure = implicit_closure,
+                                        free_surface = ImplicitFreeSurface())
 
-# display(c_plot)
+# initial divergence-free velocity
+initial_velocity(x, y, z) = z > - Lz / 2 ? 1 : 0
+
+set!(explicit_model, u = initial_velocity)
+# CFL condition (advective and diffusion) = 0.01
+Δt = accurate_cell_advection_timescale(grid, explicit_model.velocities)
+Δt = min(Δt, Δz^2 / explicit_closure.ν) / 100
+
+for step in 1:20
+    time_step!(explicit_model, Δt)
+    time_step!(implicit_model, Δt)
+end
+
+u_explicit = interior(explicit_model.velocities.u)[:, 1, :]
+u_implicit = interior(implicit_model.velocities.u)[:, 1, :]
+η_explicit = interior(explicit_model.free_surface.η)[:, 1, 1]
+η_implicit = interior(implicit_model.free_surface.η)[:, 1, 1]

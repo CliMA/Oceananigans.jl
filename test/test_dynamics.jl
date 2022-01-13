@@ -97,12 +97,8 @@ end
 function test_diffusion_immersed_cosine(fieldname, timestepper, grid, time_discretization)
     κ, m = 1, 2 # diffusivity and cosine wavenumber
 
-    Lhalf = grid.Lz / 2
-
-    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> Lhalf))
-
     model = NonhydrostaticModel(timestepper = timestepper,
-                                       grid = immersed_grid,
+                                       grid = grid,
                                     closure = IsotropicDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
                                     tracers = (:T, :S),
                                    buoyancy = nothing)
