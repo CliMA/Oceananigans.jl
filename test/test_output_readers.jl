@@ -1,5 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.OutputReaders: ViewField
+
 function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
 
@@ -78,12 +80,12 @@ end
 
             # This behavior ensures that set! works
             # but perhaps should be changed in the future
-            @test parent(u3[1]) isa SubArray
-            @test parent(v3[1]) isa SubArray
-            @test parent(w3[1]) isa SubArray
-            @test parent(T3[1]) isa SubArray
-            @test parent(b3[1]) isa SubArray
-            @test parent(ζ3[1]) isa SubArray
+            @test size(parent(u3[1])) == size(parent(u3))[1:3]
+            @test size(parent(v3[1])) == size(parent(v3))[1:3]
+            @test size(parent(w3[1])) == size(parent(w3))[1:3]
+            @test size(parent(T3[1])) == size(parent(T3))[1:3]
+            @test size(parent(b3[1])) == size(parent(b3))[1:3]
+            @test size(parent(ζ3[1])) == size(parent(ζ3))[1:3]
 
             @test location(u3) == (Face, Center, Center)
             @test location(v3) == (Center, Face, Center)
@@ -197,6 +199,6 @@ end
         end
     end
 
-    rm("test_3d_output_with_halos.jld2")
-    rm("test_1d_output_with_halos.jld2")
+    rm(filepath3d)
+    rm(filepath1d)
 end
