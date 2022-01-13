@@ -24,7 +24,7 @@ function run_tracer_1D_immersed_diffusion(underlying_grid, time_stepping)
     set!(immersed_model, c = initial_temperature)
 
     diffusion_time_scale = minimum(model.grid.Δzᵃᵃᶜ)^2 / model.closure.κ.c
-    stop_time = 100diffusion_time_scale
+    stop_time = 300diffusion_time_scale
 
     simulations = [simulation = Simulation(m, Δt = 1e-1 * diffusion_time_scale, stop_time = stop_time) for m in (model, immersed_model)]
     [run!(sim) for sim in simulations]
@@ -35,6 +35,38 @@ function run_tracer_1D_immersed_diffusion(underlying_grid, time_stepping)
     c_immersed = Array(parent(immersed_model.tracers.c))[1, 1, test_domain]
 
     @test all(c_immersed .≈ c)
+end
+
+function run_velocity_1D_immersed_diffusion(underlying_grid, time_stepping)
+    
+    immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> 0))
+
+    closure = IsotropicDiffusivity(ν = 1.0, time_discretization = time_stepping)
+
+    model = HydrostaticFreeSurfaceModel(grid = underlying_grid, 
+                                     closure = closure,
+                                    buoyancy = nothing)
+
+    immersed_model = HydrostaticFreeSurfaceModel(grid = immersed_grid,
+                                              closure = closure,
+                                             buoyancy = nothing)
+                                        
+    initial_velocity(x, y, z) = exp(-z^2 / 0.02)
+    set!(         model, u = initial_velocity)
+    set!(immersed_model, u = initial_velocity)
+
+    diffusion_time_scale = minimum(model.grid.Δzᵃᵃᶜ)^2 / model.closure.ν
+    stop_time = 100diffusion_time_scale
+
+    simulations = [simulation = Simulation(m, Δt = 1e-1 * diffusion_time_scale, stop_time = stop_time) for m in (model, immersed_model)]
+    [run!(sim) for sim in simulations]
+
+    test_domain = Int.((underlying_grid.Nz/2 + 1 + underlying_grid.Hz):(underlying_grid.Nz + underlying_grid.Hz))
+
+    u          = Array(parent(model.velocities.u))[1, 1, test_domain]
+    u_immersed = Array(parent(immersed_model.velocities.u))[1, 1, test_domain]
+
+    @test all(u_immersed .≈ u)
 end
 
 function run_velocity_2D_immersed_diffusion(arch)
@@ -82,7 +114,7 @@ function stretched_coord(N)
     Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
     z_faces = zeros(N+1) 
     for k = 2:N+1
-        z_faces[k] = z_faces[k-1] + Δz(k-1)
+        z_faces[k] = z_faces[k-1] + 3 - Δz(k-1)
     end
     z_faces = z_faces ./ z_faces[end] .- 0.5
     return z_faces
@@ -102,11 +134,10 @@ end
         regular_grid   = RectilinearGrid(arch, size = N, z = (-0.5, 0.5), topology = (Flat, Flat, Bounded))
         stretched_grid = RectilinearGrid(arch, size = N, z = z_stretched, topology = (Flat, Flat, Bounded))
         
-        for step in time_steppings, grid in (regular_grid, stretched_grid)
-            @info "  Testing 1D tracer immersed diffusion [$(typeof(arch)), $(typeof(step)), $(show_coord(grid))]"
+        for step in time_steppings, grid in (stretched_grid, )
+            @info "  Testing 1D immersed diffusion [$(typeof(arch)), $(typeof(step)), $(show_coord(grid))]"
             run_tracer_1D_immersed_diffusion(grid, step)
+            run_velocity_1D_immersed_diffusion(grid, step)
         end
-
-
     end
 end
