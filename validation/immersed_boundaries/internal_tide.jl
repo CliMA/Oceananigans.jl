@@ -3,14 +3,14 @@ using Oceananigans
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
-grid = RectilinearGrid(GPU(), size=(512, 256), x=(-10, 10), z=(0, 5), topology=(Periodic, Flat, Bounded))
+grid = RectilinearGrid(CPU(), size=(512, 256), x=(-10, 10), z=(0, 5), topology=(Periodic, Flat, Bounded))
 
 # Gaussian bump of width "1"
 bump(x, y, z) = z < exp(-x^2)
 
 @inline show_name(t) = t isa ExplicitTimeDiscretization ? "explicit" : "implicit"
 
-grid_with_bump = ImmersedBoundaryGrid(GPU(), grid, GridFittedBoundary(bump))
+grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
 
 # Tidal forcing
 tidal_forcing(x, y, z, t) = 1e-4 * cos(t)
@@ -36,7 +36,7 @@ for time_stepper in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscret
     gravity_wave_speed = sqrt(model.free_surface.gravitational_acceleration * grid.Lz)
     Δt = 0.1 * grid.Δxᶜᵃᵃ / gravity_wave_speed
                 
-    simulation = Simulation(model, Δt = Δt, stop_time = 100,  iteration_interval = 100)
+    simulation = Simulation(model, Δt = Δt, stop_time = 5000Δt)
 
     serialize_grid(file, model) = file["serialized/grid"] = model.grid.grid
 
