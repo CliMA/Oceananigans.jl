@@ -143,7 +143,7 @@ end
     A   = A + A' + 1I
     A⁻¹ = sparse(inv(Array(A)))
     M   = sparse_approximate_inverse(A, ε = 0.0, nzrel = size(A, 1))
-
+    
     @test all(Array(M) .≈ A⁻¹)
-
+    
 end

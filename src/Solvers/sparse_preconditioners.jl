@@ -19,9 +19,9 @@ import LinearAlgebra.ldiv!
     stores a sparse matrix `M` such that `M ≈ A⁻¹` 
     is applied to `r` with a matrix multiplication `M * r`
     constructed with
-    `heuristic_inverse_preconditioner(A)`
-        -> same formulation as Marshall J. et al., "Finite-volume, incompressible Navier Stokes model for studies of the ocean on parallel computers"
-        -> assumes that the sparsity of `M` is the same as the sparsity of `A`, no additional settings needed
+    `asymptotic_diagonal_inverse_preconditioner(A)`
+        -> is an asymptotic expansion of the inverse of A assuming that A is diagonally dominant
+        -> it is possible to choose order 0 (Jacobi), 1 or 2
     `sparse_approximate_preconditioner(A, ε = tolerance, nzrel = relative_maximum_number_of_elements)`
         -> same formulation as Grote M. J. & Huckle T, "Parallel Preconditioning with sparse approximate inverses" 
         -> starts constructing the sparse inverse of A from identity matrix until, either a tolerance (ε) is met or nnz(M) = nzrel * nnz(A) 
@@ -41,7 +41,7 @@ As such, we urge to use `sparse_inverse_preconditioner` only when
 - Δt is constant (we don't have to recalculate the preconditioner during the simulation)
 - it is feasible to choose `nzrel = 2.0` (for not too large problem sizes)
 
-Note that `heuristic_inverse_preconditioner` assumes the matrix to be diagonally dominant, for this reason it could 
+Note that `asymptotic_diagonal_inverse_preconditioner` assumes the matrix to be diagonally dominant, for this reason it could 
 be detrimental when used on non-diagonally dominant system (cases where Δt is very large). In this case it is better 
 to use `sparse_approximate_inverse`
 
@@ -49,10 +49,11 @@ to use `sparse_approximate_inverse`
 of preconditioner would require too much computation for the `ldiv!(P, r)` step completely hindering the performances
 """
 
-validate_settings(T, arch, settings)                                 = settings
-validate_settings(::Val{:Default}, arch, settings)                   = arch isa CPU ? (τ = 0.001, ) : nothing 
-validate_settings(::Val{:SparseInverse}, arch, settings::Nothing)    = (ε = 0.2, nzrel = 2.0)
-validate_settings(::Val{:ILUFactorization}, arch, settings::Nothing) = (τ = 0.001, ) 
+validate_settings(T, arch, settings)                                          = settings
+validate_settings(::Val{:Default}, arch, settings)                            = arch isa CPU ? (τ = 0.001, ) : (order = 2, ) 
+validate_settings(::Val{:SparseInverse}, arch, settings::Nothing)             = (ε = 0.1, nzrel = 2.0)
+validate_settings(::Val{:ILUFactorization}, arch, settings::Nothing)          = (τ = 0.001, ) 
+validate_settings(::Val{:DiagonallyDominantInverse}, arch, settings::Nothing) = (order = 1, ) 
 
 validate_settings(::Val{:ILUFactorization}, arch, settings) = haskey(settings, :τ) ? 
                                                                      settings :
@@ -62,13 +63,13 @@ validate_settings(::Val{:SparseInverse}, arch, settings)    = haskey(settings, :
                                                                      throw(ArgumentError("both ε and nzrel have to be specified for SparseInverse"))
 
 function build_preconditioner(::Val{:Default}, matrix, settings)
-    default_method = architecture(matrix) isa CPU ? :ILUFactorization : :HeuristicInverse
+    default_method = architecture(matrix) isa CPU ? :ILUFactorization : :DiagonallyDominantInverse
     return build_preconditioner(Val(default_method), matrix, settings)
 end
 
-build_preconditioner(::Val{nothing},            A, settings) = Identity()
-build_preconditioner(::Val{:SparseInverse},     A, settings) = sparse_inverse_preconditioner(A, ε = settings.ε, nzrel = settings.nzrel)
-build_preconditioner(::Val{:HeuristicInverse}, A, settings)  = heuristic_inverse_preconditioner(A)
+build_preconditioner(::Val{nothing},            A, settings)          = Identity()
+build_preconditioner(::Val{:SparseInverse},     A, settings)          = sparse_inverse_preconditioner(A, ε = settings.ε, nzrel = settings.nzrel)
+build_preconditioner(::Val{:DiagonallyDominantInverse}, A, settings)  = asymptotic_diagonal_inverse_preconditioner(A, asymptotic_order = settings.order)
 
 function build_preconditioner(::Val{:ILUFactorization},  A, settings) 
     if architecture(A) isa GPU 
@@ -97,7 +98,23 @@ end
 
 @inline matrix(p::SparseInversePreconditioner)  = p.Minv
 
-function heuristic_inverse_preconditioner(A::AbstractMatrix)
+"""
+The diagonally dominant inverse preconditioner is constructed with an asymptotic expansion of `A⁻¹` up to the second order
+If `I` is the Identity matrix and `D` is the matrix containing the diagonal of `A`, then
+
+the 0th order expansion is the Jacobi preconditioner `M = D⁻¹ ≈ A⁻¹` 
+
+the 1st order expansion corresponds to `M = D⁻¹(I - (A - D)D⁻¹) ≈ A⁻¹` 
+
+the 2nd order expansion corresponds to `M = D⁻¹(I - (A - D)D⁻¹ + (A - D)D⁻¹(A - D)D⁻¹) ≈ A⁻¹`
+
+all preconditioners are calculated on CPU and then moved to the GPU. 
+Additionally the first order expansion has a method to calculate the preconditioner directly on the GPU
+`asymptotic_diagonal_inverse_preconditioner_first_order(A)` in case of variable time step where the preconditioner
+has to be recalculated often
+"""
+
+function asymptotic_diagonal_inverse_preconditioner(A::AbstractMatrix; asymptotic_order)
     
     arch                  = architecture(A)
     constr                = deepcopy(constructors(arch, A)) 
@@ -112,25 +129,46 @@ function heuristic_inverse_preconditioner(A::AbstractMatrix)
     event = loop!(invdiag, colptr, rowval, nzval; dependencies=Event(dev))
     wait(dev, event)
 
-    loop! = _initialize_heuristic_inverse_preconditioner!(dev, 256, M)
-    event = loop!(nzval, colptr, rowval, invdiag; dependencies=Event(dev))
-    wait(dev, event)
+    if asymptotic_order == 0
+        Minv_cpu = spdiagm(0=>arch_array(CPU(), invdiag))
+        Minv = arch_sparse_matrix(arch, Minv_cpu)
+    elseif asymptotic_order == 1
+        loop! = _initialize_asymptotic_diagonal_inverse_preconditioner_first_order!(dev, 256, M)
+        event = loop!(nzval, colptr, rowval, invdiag; dependencies=Event(dev))
+        wait(dev, event)
     
-    constr_new = (colptr, rowval, nzval)
-
-    Minv = arch_sparse_matrix(arch, constructors(arch, M, constr_new))
+        constr_new = (colptr, rowval, nzval)
+        Minv = arch_sparse_matrix(arch, constructors(arch, M, constr_new))
+    else
+        D   = spdiagm(0=>diag(arch_sparse_matrix(CPU(), A)))
+        D⁻¹ = spdiagm(0=>arch_array(CPU(), invdiag))
+        Minv_cpu = D⁻¹ * (I - (A - D) * D⁻¹ + (A - D) * D⁻¹ * (A - D) * D⁻¹)
+        Minv = arch_sparse_matrix(arch, Minv_cpu)
+    end
 
     return SparseInversePreconditioner(Minv)
 end
 
-@kernel function _initialize_heuristic_inverse_preconditioner!(nzval, colptr, rowval, invdiag)
+@kernel function _initialize_asymptotic_diagonal_inverse_preconditioner_zeroth_order!(nzval, colptr, rowval, invdiag)
     col = @index(Global, Linear)
 
     for idx = colptr[col] : colptr[col+1] - 1
         if rowval[idx] == col
             nzval[idx] = invdiag[col]
         else
-            nzval[idx] = - nzval[idx] * 2 / ( 1 / invdiag[rowval[idx]] + 1 / invdiag[col] ) * invdiag[col]
+            nzval[idx] = - nzval[idx] * invdiag[rowval[idx]] * invdiag[col]
+        end
+    end
+end
+
+@kernel function _initialize_asymptotic_diagonal_inverse_preconditioner_first_order!(nzval, colptr, rowval, invdiag)
+    col = @index(Global, Linear)
+
+    for idx = colptr[col] : colptr[col+1] - 1
+        if rowval[idx] == col
+            nzval[idx] = invdiag[col]
+        else
+            nzval[idx] = - nzval[idx] * invdiag[rowval[idx]] * invdiag[col]
         end
     end
 end

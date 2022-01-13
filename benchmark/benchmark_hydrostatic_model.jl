@@ -22,7 +22,7 @@ DataDeps.register(dd)
 # Benchmark function
 
 Nx = 256
-Ny = 128 
+Ny = 128
 
 function set_simple_divergent_velocity!(model)
     # Create a divergent velocity
@@ -44,7 +44,6 @@ function set_simple_divergent_velocity!(model)
     return nothing
 end
 
-
 # All grids have 6 * 510^2 = 1,560,600 grid points.
 grids = Dict(
      (CPU, :RectilinearGrid)          => RectilinearGrid(CPU(), size=(Nx, Ny, 1), extent=(1, 1, 1)),
@@ -62,9 +61,11 @@ free_surfaces = Dict(
     :ExplicitFreeSurface => ExplicitFreeSurface(),
     :PCGImplicitFreeSurface => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient), 
     :PCGImplicitFreeSurfaceNoPreconditioner => ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, preconditioner_method = nothing), 
-    :MatrixImplicitFreeSurface => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver), 
+    :MatrixImplicitFreeSurfaceOrd2 => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver), 
+    :MatrixImplicitFreeSurfaceOrd1 => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_settings= (order = 1,) ), 
+    :MatrixImplicitFreeSurfaceOrd0 => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_settings= (order = 0,) ), 
     :MatrixImplicitFreeSurfaceNoPreconditioner => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_method = nothing),
-    :MatrixImplicitFreeSurfaceSparsePreconditioner => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_method = :SparseInverse, preconditioner_settings = (ε = 0.05, nzrel = 4.0))
+    :MatrixImplicitFreeSurfaceSparsePreconditioner => ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver, preconditioner_method = :SparseInverse)
 )
 
 function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
@@ -79,7 +80,7 @@ function benchmark_hydrostatic_model(Arch, grid_type, free_surface_type)
 
     set_simple_divergent_velocity!(model)
 
-    Δt = accurate_cell_advection_timescale(grid, model.velocities)
+    Δt = accurate_cell_advection_timescale(grid, model.velocities) * 2
 
     time_step!(model, Δt) # warmup
     
@@ -103,8 +104,10 @@ grid_types = [
 ]
 
 free_surface_types = [
+    :MatrixImplicitFreeSurfaceOrd0,
+    :MatrixImplicitFreeSurfaceOrd1,
+    :MatrixImplicitFreeSurfaceOrd2,
     :ExplicitFreeSurface,
-    :MatrixImplicitFreeSurface,
     :MatrixImplicitFreeSurfaceNoPreconditioner,
     :MatrixImplicitFreeSurfaceSparsePreconditioner,
     :PCGImplicitFreeSurface,
