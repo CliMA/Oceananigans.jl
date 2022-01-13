@@ -116,9 +116,9 @@ function interior(f::Field)
 end
 
 interior_copy(f::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
-    parent(f)[interior_parent_indices(X, topology(f, 1), f.grid.Nx, f.grid.Hx),
-              interior_parent_indices(Y, topology(f, 2), f.grid.Ny, f.grid.Hy),
-              interior_parent_indices(Z, topology(f, 3), f.grid.Nz, f.grid.Hz)]
+    parent(f)[interior_parent_indices(LX, topology(f, 1), f.grid.Nx, f.grid.Hx),
+              interior_parent_indices(LY, topology(f, 2), f.grid.Ny, f.grid.Hy),
+              interior_parent_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz)]
 
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
