@@ -1,5 +1,5 @@
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, z_viscosity
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
 
 function relative_error(u_num, u, time)
     u_ans = Field(location(u_num), architecture(u_num), u_num.grid, nothing)
