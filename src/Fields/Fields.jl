@@ -33,8 +33,9 @@ include("broadcasting_abstract_fields.jl")
 
 Build a field from `a` at `loc` and on `grid`.
 """
-function field(loc, a::Array, grid)
+function field(loc, a::AbstractArray, grid)
     f = Field(loc, grid)
+    a = arch_array(architecture(grid), a)
     f .= a
     return f
 end
