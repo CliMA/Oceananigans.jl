@@ -65,12 +65,9 @@ Base.show(io::IO, field::ReducedComputedField) =
     print(io, "$(short_show(field))\n",
           "├── data: $(typeof(field.data)), size: $(size(field))\n",
           "├── grid: $(short_show(field.grid))\n",
-          "├── dims: $(field.dims)\n",
           "├── operand: $(short_show(field.operand))\n",
           "└── status: ", show_status(field.status))
 
-short_show(field::ReducedComputedField) = string("Field at ", show_location(field), " via ", short_show(field.operand))
-
-short_show(r::Reduction) = string(typeof(r.reduce!), " of ", short_show(r.operand),
-                                  " over dims ", r.dims)
-                                  
+short_show(r::Reduction) = string(r.reduce!, 
+                                  " over dims ", r.dims,
+                                  " of ", short_show(r.operand))
