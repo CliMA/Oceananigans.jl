@@ -1,8 +1,3 @@
-include(pwd() * "/src/Models/HydrostaticFreeSurfaceModels/split_explicit_free_surface.jl") # CHANGE TO USING MODULE EVENTUALLY
-include(pwd() * "/src/Models/HydrostaticFreeSurfaceModels/split_explicit_free_surface_kernels.jl")
-# TODO: clean up test, change to use interior
-# TODO: clean up substep function so that it only takes in SplitExplicitFreeSurface
-
 using Test
 using Revise
 using Oceananigans
@@ -71,8 +66,9 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
 
     @testset "Multi-timestep test " begin
         U, V, η̅, U̅, V̅, Gᵁ, Gⱽ = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
-        sefs.Hᶠᶜ .= 1 / sefs.parameters.g
-        sefs.Hᶜᶠ .= 1 / sefs.parameters.g
+        g = sefs.gravitational_acceleration
+        sefs.Hᶠᶜ .= 1 / g
+        sefs.Hᶜᶠ .= 1 / g
         η = sefs.η
         velocity_weight = 0.0
         free_surface_weight = 0.0
@@ -101,7 +97,8 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, 1)
         end
         # + correction for exact time
-        free_surface_substep!(arch, grid, Δτ_end, sefs, 1)
+        # free_surface_substep!(arch, grid, Δτ_end, sefs, 1)
+        split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ_end, 1)
 
         U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
         η_computed = Array(η.data.parent)[2:Nx+1, 2:Ny+1]
@@ -134,8 +131,9 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         sefs = SplitExplicitFreeSurface(grid, arch, settings = SplitExplicitSettings(Nt + 1))
         U, V, η̅, U̅, V̅, Gᵁ, Gⱽ = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
         η = sefs.η
-        sefs.Hᶠᶜ .= 1 / sefs.parameters.g # to make life easy
-        sefs.Hᶜᶠ .= 1 / sefs.parameters.g # to make life easy
+        g = sefs.gravitational_acceleration
+        sefs.Hᶠᶜ .= 1 / g # to make life easy
+        sefs.Hᶜᶠ .= 1 / g # to make life easy
 
         # set!(η, f(x,y)) k^2 = ω^2
         gu_c = 1.0
@@ -157,10 +155,12 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         sefs.free_surface_weights[Nt+1] = Δτ_end / T     # since last timestep is different
 
         for i in 1:Nt
-            free_surface_substep!(arch, grid, Δτ, sefs, i)
+            # free_surface_substep!(arch, grid, Δτ, sefs, i)
+            split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, i)
         end
         # + correction for exact time
-        free_surface_substep!(arch, grid, Δτ_end, sefs, Nt + 1)
+        # free_surface_substep!(arch, grid, Δτ_end, sefs, Nt + 1)
+        split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ_end, Nt+1)
 
 
         η_computed = Array(η.data.parent)[2:Nx+1, 2:Ny+1]

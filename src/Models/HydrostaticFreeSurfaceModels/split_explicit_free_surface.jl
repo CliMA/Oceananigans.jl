@@ -157,7 +157,6 @@ end
 
 # TODO: figure out and add smart defaults here. Also make GPU-friendly (dispatch on arch?)
 function SplitExplicitSettings(; substeps = 200, velocity_weights = nothing, free_surface_weights = nothing)
-    substeps = 200 # since free-surface is "substep" times faster than baroclinic part
     velocity_weights = ones(substeps) ./ substeps
     free_surface_weights = ones(substeps) ./ substeps
 
