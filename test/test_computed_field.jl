@@ -507,7 +507,8 @@ for arch in archs
             @test try compute!(Field(tke_ccc             )); true; catch; false; end
 
             computed_tke = Field(tke_ccc)
-            @test (compute!(computed_tke); all(interior(computed_tke)[2:3, 2:3, 2:3] .== 9/2))
+            compute!(computed_tke)
+            @test all(interior(computed_tke)[2:3, 2:3, 2:3] .== 9/2)
         end
 
         @testset "Computations with Fields [$(typeof(arch))]" begin
