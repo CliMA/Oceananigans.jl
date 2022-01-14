@@ -1,4 +1,5 @@
 using Statistics
+using CUDA
 using Oceananigans.Architectures
 using Oceananigans.AbstractOperations: AbstractOperation
 
@@ -122,7 +123,8 @@ end
 
 # Resolve ambiguities
 set!(u::CubedSphereField, v) = cubed_sphere_set!(u, v)
-set!(u::CubedSphereField, v::Union{Function, Array}) = cubed_sphere_set!(u, v)
+set!(u::CubedSphereField, v::Function) = cubed_sphere_set!(u, v)
+set!(u::CubedSphereField, v::Union{Array, CuArray, OffsetArray}) = cubed_sphere_set!(u, v)
 set!(u::CubedSphereField, v::CubedSphereField) = cubed_sphere_set!(u, v)
 
 #####
