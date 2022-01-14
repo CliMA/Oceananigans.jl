@@ -1,4 +1,5 @@
 using Printf
+using CUDA
 using Oceananigans
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
@@ -10,7 +11,7 @@ function boundary_clustered(N, L, ini)
     for k = 2:N+1
         z_faces[k] = z_faces[k-1] + Δz(k-1)
     end
-    z_faces = z_faces ./ z_faces[end] .* L .- ini
+    z_faces = z_faces ./ z_faces[end] .* L .+ ini
     return z_faces
 end
 
@@ -20,13 +21,13 @@ function center_clustered(N, L, ini)
     for k = 2:N+1
         z_faces[k] = z_faces[k-1] + 3 - Δz(k-1)
     end
-    z_faces = z_faces ./ z_faces[end] .* L .- ini
+    z_faces = z_faces ./ z_faces[end] .* L .+ ini
     return z_faces
 end
 
 grid = RectilinearGrid(GPU(), size=(512, 256), 
-                       x = center_clustered(512, 20, -10), 
-                       z = boundary_clustered(256, 5, 0),
+                       x = (-10, 10), 
+                       z = (0, 5),
                 topology = (Periodic, Flat, Bounded))
 
 # Gaussian bump of width "1"
@@ -44,7 +45,7 @@ for time_stepper in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscret
     model = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
                                         momentum_advection = CenteredSecondOrder(),
                                         free_surface = ExplicitFreeSurface(gravitational_acceleration=10),
-                                        closure = IsotropicDiffusivity(ν=1e-4, κ=1e-4, time_discretization = time_stepper),
+                                        closure = IsotropicDiffusivity(ν=1e-2, κ=1e-2, time_discretization = time_stepper),
                                         tracers = :b,
                                         buoyancy = BuoyancyTracer(),
                                         coriolis = FPlane(f=sqrt(0.5)),
@@ -58,8 +59,9 @@ for time_stepper in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscret
                                 s.model.clock.time, maximum(abs, model.velocities.w))
 
     gravity_wave_speed = sqrt(model.free_surface.gravitational_acceleration * grid.Lz)
-    Δt = 0.1 * grid.Δxᶜᵃᵃ / gravity_wave_speed
-                
+    
+    Δt = CUDA.@allowscalar 0.1 * minimum(grid.Δxᶜᵃᵃ) / gravity_wave_speed
+    
     simulation = Simulation(model, Δt = Δt, stop_time = 50000Δt)
 
     serialize_grid(file, model) = file["serialized/grid"] = model.grid.grid
@@ -104,7 +106,7 @@ function visualize_internal_tide_simulation(prefix)
     filename = prefix * ".jld2"
     file = jldopen(filename)
 
-    grid = file["serialized/grid"]
+    grid = adapt(CPU(), file["serialized/grid"])
 
     bump(x, y, z) = z < exp(-x^2)
 
