@@ -94,7 +94,8 @@ function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization
     return !any(@. !isapprox(numerical, analytical, atol=1e-6, rtol=1e-6))
 end
 
-function test_diffusion_immersed_cosine(fieldname, timestepper, grid, time_discretization)
+# change into test_diffusion_immersed()
+function test_diffusion_cosine_immersed(field_name, timestepper, grid, time_discretization)
     κ, m = 1, 2 # diffusivity and cosine wavenumber
 
     model = NonhydrostaticModel(timestepper = timestepper,
@@ -103,7 +104,7 @@ function test_diffusion_immersed_cosine(fieldname, timestepper, grid, time_discr
                                     tracers = (:T, :S),
                                    buoyancy = nothing)
 
-    field = get_model_field(fieldname, model)
+    field = get_model_field(field_name, model)
 
     zC = znodes(Center, grid, reshape=true)
     interior(field) .= cos.(m * zC)
@@ -475,18 +476,18 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     @info "  Testing diffusion cosine [$fieldname, $timestepper, $time_discretization]..."
                     @test test_diffusion_cosine(fieldname, timestepper, grid, time_discretization)
 
-                    Nz, Lz = 128, π
+                    Nz, Lz = 128, π/2
                     grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
 
                     @info "  Testing diffusion cosine on ImmersedBoundaryGrid Regular [$fieldname, $timestepper, $time_discretization]..."
-                    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> π / 2))
-                    @test test_diffusion_immersed_cosine(fieldname, timestepper, immersed_grid, time_discretization)
+                    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> π/4))
+                    @test test_diffusion_cosine_immersed(fieldname, timestepper, immersed_grid, time_discretization)
 
-                    grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=center_clustered(Nz, Lz))
+                    grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=center_clustered(Nz, Lz, 0))
 
                     @info "  Testing diffusion cosine on ImmersedBoundaryGrid Stretched [$fieldname, $timestepper, $time_discretization]..."
-                    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> π / 2))
-                    @test test_diffusion_immersed_cosine(fieldname, timestepper, immersed_grid, time_discretization)
+                    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> π/4))
+                    @test test_diffusion_cosine_immersed(fieldname, timestepper, immersed_grid, time_discretization)
                 end
             end
         end
