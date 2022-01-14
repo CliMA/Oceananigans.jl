@@ -27,13 +27,13 @@ end
     @inbounds η̅[i, j, 1] +=  free_surface_weight * η[i, j, 1]
 end
 
-function split_explicit_free_surface_substep!(state, auxiliary, settings, arch, grid, Δτ, substep_index)
+function split_explicit_free_surface_substep!(state, auxiliary, settings, arch, grid, g, Δτ, substep_index)
     # unpack state quantities, parameters and forcing terms 
-    η, U, V, η̅, U̅, V̅, Gᵁ, Gⱽ  = state.η, state.U, state.V, state.η̅, state.U̅, state.V̅, 
-    Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ          = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
+    η, U, V, η̅, U̅, V̅  = state.η, state.U, state.V, state.η̅, state.U̅, state.V̅
+    Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ  = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
 
-    vel_weight = settings.vel_weights[substep_index]
-    η_weight   = settings.η_weights[substep_index]
+    vel_weight = settings.velocity_weights[substep_index]
+    η_weight   = settings.free_surface_weights[substep_index]
 
     fill_halo_regions!(η, arch)
 
@@ -65,12 +65,12 @@ end
     # FIXME: this algorithm will not work with bathymetry until
     # Oceananigans has vertical spacing operators with horizontal locations,
     # see https://github.com/CliMA/Oceananigans.jl/issues/2049
-    @inbounds U[i, j, 1] = Δzᵃᵃᶜ(i, j, 1, grid) * u[i, j, 1]
-    @inbounds V[i, j, 1] = Δzᵃᵃᶜ(i, j, 1, grid) * v[i, j, 1]
+    @inbounds U[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
+    @inbounds V[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
 
     @unroll for k in 2:grid.Nz
-        @inbounds U[i, j, 1] += Δzᵃᵃᶜ(i, j, k, grid) * u[i, j, k] 
-        @inbounds V[i, j, 1] += Δzᵃᵃᶜ(i, j, k, grid) * v[i, j, k] 
+        @inbounds U[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid) * u[i, j, k]
+        @inbounds V[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid) * v[i, j, k]
     end
 end
 
@@ -89,6 +89,22 @@ function set_average_to_zero!(free_surface_state, arch, grid)
     fill!(free_surface_state.U̅, 0.0)
     fill!(free_surface_state.V̅, 0.0)     
 end
+
+@kernel function initialize_vertical_depths_kernel!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
+    i, j = @index(Global, NTuple)
+
+    @inbounds begin
+        Hᶠᶜ[i, j, 1] = 0
+        Hᶜᶠ[i, j, 1] = 0
+        Hᶜᶜ[i, j, 1] = 0
+
+        @unroll for k in 1:grid.Nz
+            Hᶠᶜ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid)
+            Hᶜᶠ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid)
+            Hᶜᶜ[i, j, 1] += Δzᶜᶜᶜ(i, j, k, grid)
+        end
+    end
+end 
 
 @kernel function barotropic_split_explicit_corrector_kernel!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
     i, j, k = @index(Global, NTuple)
@@ -116,9 +132,6 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, arch, grid)
     wait(device(arch), event)
 end
 
-@inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = 0
-@inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = 0
-
 @inline calc_ab2_tendencies(Gⁿ, G⁻, χ) = (convert(eltype(Gⁿ), (1.5)) + χ) .* Gⁿ - (convert(eltype(Gⁿ), (1.5)) + χ) .* G⁻
 
 """
@@ -136,18 +149,18 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     state     = free_surface.state
     auxiliary = free_surface.auxiliary
     settings  = free_surface.settings
+    g = free_surface.gravitational_acceleration
 
     η, U, V   = (state.η, state.U, state.V)
-    Δτ        = 2 * Δt / settings.substeps  # we evolve for two times the Δt ?
+    Δτ        = 2 * Δt / settings.substeps  # we evolve for two times the Δt 
 
-    u, v, _ = model.velocities
+    u, v, _ = model.velocities # this is u⋆
 
     Gu = calc_ab2_tendencies(model.timestepper.Gⁿ.u, model.timestepper.G⁻.u, χ)
     Gv = calc_ab2_tendencies(model.timestepper.Gⁿ.v, model.timestepper.G⁻.v, χ)
 
     # reset free surface averages
     set_average_to_zero!(state, arch, grid)
-    set_free_surface_auxiliary!(aux, model.timestepper, χ, arch, grid)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     wait(device(arch), velocities_update)
@@ -165,7 +178,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     start_time = time_ns()
 
     for substep in 1:settings.substeps
-        split_explicit_free_surface_substep!(state, auxiliary, settings, arch, grid, Δτ, substep)
+        split_explicit_free_surface_substep!(state, auxiliary, settings, arch, grid, g, Δτ, substep)
     end
 
     @debug "Split explicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."

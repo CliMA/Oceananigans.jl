@@ -4,10 +4,15 @@ include(pwd() * "/src/Models/HydrostaticFreeSurfaceModels/split_explicit_free_su
 # TODO: clean up substep function so that it only takes in SplitExplicitFreeSurface
 
 using Test
+using Revise
+using Oceananigans
 using Oceananigans.Utils
 using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
 using KernelAbstractions
+using Oceananigans.Models.HydrostaticFreeSurfaceModels
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliary, SplitExplicitSettings, split_explicit_free_surface_substep!
 
 @testset "Split-Explicit Dynamics" begin
     # @testset "Split Explicit Free Surface " begin
@@ -34,8 +39,9 @@ using KernelAbstractions
 
         U, V, η̅, U̅, V̅, Gᵁ, Gⱽ = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
         Hᶠᶜ, Hᶜᶠ = sefs.Hᶠᶜ, sefs.Hᶜᶠ
-        Hᶠᶜ .= 1 / sefs.parameters.g
-        Hᶜᶠ .= 1 / sefs.parameters.g
+        g = sefs.gravitational_acceleration
+        Hᶠᶜ .= 1 / g
+        Hᶜᶠ .= 1 / g
         η = sefs.η
         velocity_weight = 0.0
         free_surface_weight = 0.0
@@ -54,8 +60,8 @@ using KernelAbstractions
         Gᵁ .= 0.0
         Gⱽ .= 0.0
 
-        free_surface_substep!(arch, grid, Δτ, sefs, 1)
-
+        # split_explicit_free_surface_step!(arch, grid, Δτ, sefs, 1)
+        split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, 1)
         U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
         U_exact = (reshape(-cos.(grid.xᶠᵃᵃ), (length(grid.xᶜᵃᵃ), 1)).+reshape(0 * grid.yᵃᶜᵃ, (1, length(grid.yᵃᶜᵃ))))[2:Nx+1, 2:Ny+1]
 
@@ -91,7 +97,8 @@ using KernelAbstractions
         Gⱽ .= 0.0
 
         for i in 1:Nt
-            free_surface_substep!(arch, grid, Δτ, sefs, 1)
+            # free_surface_substep!(arch, grid, Δτ, sefs, 1)
+            split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, 1)
         end
         # + correction for exact time
         free_surface_substep!(arch, grid, Δτ_end, sefs, 1)
@@ -111,7 +118,7 @@ using KernelAbstractions
 
     end
 
-@testset "Complex Multi-Timestep " begin
+    @testset "Complex Multi-Timestep " begin
         # Test 3: Testing analytic solution to 
         # ∂ₜη + ∇⋅U⃗ = 0
         # ∂ₜU⃗ + ∇η  = G⃗
