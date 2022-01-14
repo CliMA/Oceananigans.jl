@@ -1,7 +1,14 @@
+using Test
 using Revise
-
-include(pwd() * "/src/Models/HydrostaticFreeSurfaceModels/split_explicit_free_surface.jl")
-include(pwd() * "/src/Models/HydrostaticFreeSurfaceModels/split_explicit_free_surface_kernels.jl")
+using Oceananigans
+using Oceananigans.Utils
+using Oceananigans.BoundaryConditions
+using Oceananigans.Operators
+using KernelAbstractions
+using Oceananigans.Models.HydrostaticFreeSurfaceModels
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliary, SplitExplicitSettings, split_explicit_free_surface_substep!
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barotropic_split_explicit_corrector!, set_average_to_zero!
 
 @testset "Barotropic Kernels" begin
 
@@ -29,7 +36,7 @@ include(pwd() * "/src/Models/HydrostaticFreeSurfaceModels/split_explicit_free_su
         # set equal to something else
         η̅ .= U̅ .= V̅ .= 1.0
         # now set equal to zero
-        set_average_to_zero!(arch, grid, η̅, U̅, V̅)
+        set_average_to_zero!(sefs.state, arch, grid)
         # don't forget the ghost points
         fill_halo_regions!(η̅, arch)
         fill_halo_regions!(U̅, arch)
