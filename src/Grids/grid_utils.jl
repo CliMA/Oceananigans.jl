@@ -132,6 +132,8 @@ Return 1, which is the 'length' of a field along a reduced dimension.
 @inline y_domain(grid) = domain(topology(grid, 2), grid.Ny, grid.yᵃᶠᵃ)
 @inline z_domain(grid) = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
 
+regular_dimensions(grid) = ()
+
 #####
 ##### << Indexing >>
 #####

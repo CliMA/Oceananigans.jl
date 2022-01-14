@@ -1,5 +1,7 @@
 using Statistics: mean!, sum!
 
+using Oceananigans.Utils: tupleit
+using Oceananigans.Grids: regular_dimensions
 import Oceananigans.Fields: Reduction
 import Oceananigans: short_show
 
@@ -22,25 +24,41 @@ reduction_grid_metric(dims) = dims === tuple(1)  ? Δx :
 ##### Metric reductions
 ##### 
 
-"""docstring..."""
 struct Average end
 
 function Reduction(avg::Average, field::AbstractField; dims)
     dx = reduction_grid_metric(dims)
+    dims = tupleit(dims)
 
-    # Compute "size" (length, area, or volume) of averaging region
-    metric = GridMetricOperation(location(field), dx, field.grid)
-    L = sum(metric; dims)
-    L⁻¹_field_dx = field * dx / L
+    if dims === regular_dimensions(field.grid) # shortcut!
+        return Reduction(mean!, field; dims)
+    else
+        # Compute "size" (length, area, or volume) of averaging region
+        metric = GridMetricOperation(location(field), dx, field.grid)
+        L = sum(metric; dims)
 
-    return Reduction(sum!, L⁻¹_field_dx; dims)
+        # Construct summand of the Average
+        L⁻¹_field_dx = field * dx / L
+
+        return Reduction(sum!, L⁻¹_field_dx; dims)
+    end
 end
 
+"""
+    Average(field; dims=:)
+
+Return `Reduction` representing a spatial average of `field` over `dims`.
+
+Over regularly-spaced dimensions this is equivalent to a numerical `mean!`.
+
+Over dimensions of variable spacing, `field` is multipled by the
+appropriate grid length, area or volume, and divided by the total
+spatial extent of the interval.
+"""
 Average(field::AbstractField; dims=:) = Reduction(Average(), field; dims)
 
 const AveragedField = Field{<:Any, <:Any, <:Any, <:Reduction{<:Average}}
 
-"""docstring..."""
 struct Integral end
 
 function Reduction(int::Integral, field::AbstractField; dims)
@@ -48,7 +66,11 @@ function Reduction(int::Integral, field::AbstractField; dims)
     return Reduction(sum!, field * dx; dims)
 end
 
-# Convenience
+"""
+    Integral(field; dims=:)
+
+Return a `Reduction` representing a spatial integral of `field` over `dims`.
+"""
 Integral(field::AbstractField; dims=:) = Reduction(Integral(), field; dims)
 
 const IntegratedField = Field{<:Any, <:Any, <:Any, <:Reduction{<:Integral}}

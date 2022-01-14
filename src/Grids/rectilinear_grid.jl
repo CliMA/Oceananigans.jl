@@ -53,11 +53,22 @@ struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: Abstract
     end
 end
 
-const XRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number}
-const YRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
-const ZRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
-const HRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
-const  RegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number}
+const XRegRectilinearGrid  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number}
+const YRegRectilinearGrid  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any,    <:Number}
+const ZRegRectilinearGrid  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any,    <:Any,    <:Number}
+const HRegRectilinearGrid  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
+const XYRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
+const XZRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Any,    <:Number}
+const YZRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any,    <:Number, <:Number}
+const  RegRectilinearGrid  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number}
+
+regular_dimensions(::XRegRectilinearGrid) = tuple(1)
+regular_dimensions(::YRegRectilinearGrid) = tuple(2)
+regular_dimensions(::ZRegRectilinearGrid) = tuple(3)
+regular_dimensions(::XYRegRectilinearGrid) = (1, 2)
+regular_dimensions(::XZRegRectilinearGrid) = (1, 3)
+regular_dimensions(::YZRegRectilinearGrid) = (2, 3)
+regular_dimensions(::RegRectilinearGrid)   = (1, 2, 3)
 
 """
     RectilinearGrid([architecture = CPU(), FT = Float64];
