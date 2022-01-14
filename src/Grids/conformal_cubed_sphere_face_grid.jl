@@ -307,7 +307,7 @@ function on_architecture(arch, grid::ConformalCubedSphereFaceGrid)
 
     TX, TY, TZ = topology(grid)
 
-    new_grid = ConformalCubedSphereFaceGrid{TX, TY, TZ}(architecture,
+    new_grid = ConformalCubedSphereFaceGrid{TX, TY, TZ}(arch,
                                                         grid.Nx, grid.Ny, grid.Nz,
                                                         grid.Hx, grid.Hy, grid.Hz,
                                                         horizontal_coordinate_data..., zᵃᵃᶜ, zᵃᵃᶠ,
