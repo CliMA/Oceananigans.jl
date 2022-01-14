@@ -479,13 +479,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
 
                     @info "  Testing diffusion cosine on ImmersedBoundaryGrid Regular [$fieldname, $timestepper, $time_discretization]..."
-                    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x, y) -> π / 2)
+                    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> π / 2))
                     @test test_diffusion_immersed_cosine(fieldname, timestepper, immersed_grid, time_discretization)
 
                     grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=center_clustered(Nz, Lz))
 
                     @info "  Testing diffusion cosine on ImmersedBoundaryGrid Stretched [$fieldname, $timestepper, $time_discretization]..."
-                    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom(x, y) -> π / 2)
+                    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> π / 2))
                     @test test_diffusion_immersed_cosine(fieldname, timestepper, immersed_grid, time_discretization)
                 end
             end
