@@ -38,4 +38,12 @@ function set!(u::Field, f::Union{Array, CuArray, OffsetArray})
     return nothing
 end
 
-set!(u::Field, v::Field) = copyto!(parent(u), parent(v))
+function set!(u::Field, v::Field)
+    if architecture(u) === architecture(v)
+        parent(u) .= parent(v)
+    else
+        copyto!(parent(u), parent(v))
+    end
+    return nothing
+end
+
