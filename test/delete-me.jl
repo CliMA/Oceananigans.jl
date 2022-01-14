@@ -32,7 +32,11 @@ grid_r = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
 
 grid_s = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=center_clustered(Nz, Lz, 0))
 
-for time_discretization in time_disc, field_name in fields, grid in (grid_r, grid_s)
+# for time_discretization in time_disc, field_name in fields, grid in (grid_r, grid_s)
+
+    grid = grid_r
+    time_discretization = time_disc[2]
+    field_name = fields[1]
 
     @info "  Testing diffusion cosine on ImmersedBoundaryGrid Stretched [$fieldname, $time_discretization, $grid]..."
     immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> π/2))
@@ -40,10 +44,17 @@ for time_discretization in time_disc, field_name in fields, grid in (grid_r, gri
     κ, m = 1, 2 # diffusivity and cosine wavenumber
 
     model = NonhydrostaticModel(timestepper = timestepper,
-                                    grid = immersed_grid,
+                                       grid = immersed_grid,
                                     closure = IsotropicDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
                                     tracers = (:T, :S),
-                                buoyancy = nothing)
+                                   buoyancy = nothing)
+
+    # model = HydrostaticFreeSurfaceModel(grid = immersed_grid,
+    #                                  closure = IsotropicDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
+    #                               velocities = PrescribedVelocityFields(),
+    #                                  tracers = (:T, :S),
+    #                                 buoyancy = nothing)
+
 
     field = get_model_field(field_name, model)
 
@@ -58,8 +69,9 @@ for time_discretization in time_disc, field_name in fields, grid in (grid_r, gri
 
     # Step forward with small time-step relative to diff. time-scale
     Δt = 1e-6 * grid.Lz^2 / κ
-    for n in 1:10
-        ab2_or_rk3_time_step!(model, Δt, n)
+    for n in 1:1
+        # ab2_or_rk3_time_step!(model, Δt, n)
+        time_step!(model, Δt)
     end
 
     half = Int(grid.Nz/2 + 1)
@@ -73,4 +85,4 @@ for time_discretization in time_disc, field_name in fields, grid in (grid_r, gri
     analytical = diffusing_cosine.(κ, m, zC, model.clock.time)[1,1,:]
 
  @show assessment = !any(@. !isapprox(numerical_half, analytical_half, atol=1e-6, rtol=1e-6))
-end
+# end
