@@ -242,7 +242,7 @@ function on_architecture(new_arch, old_grid::LatitudeLongitudeGrid)
                                              old_grid.Nλ, old_grid.Nφ, old_grid.Nz,
                                              old_grid.Hλ, old_grid.Hφ, old_grid.Hz,
                                              old_grid.Lx, old_grid.Ly, old_grid.Lz,
-                                             new_properties...
+                                             new_properties...,
                                              old_grid.radius)
 end
 
