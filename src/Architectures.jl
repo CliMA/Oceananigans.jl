@@ -62,14 +62,15 @@ child_architecture(arch) = arch
 array_type(::CPU) = Array
 array_type(::GPU) = CuArray
 
-arch_array(::CPU, A::Array)   = A
-arch_array(::CPU, A::CuArray) = Array(A)
-arch_array(::GPU, A::Array)   = CuArray(A)
-arch_array(::GPU, A::CuArray) = A
+arch_array(::CPU, a::Array)   = a
+arch_array(::CPU, a::CuArray) = Array(a)
+arch_array(::GPU, a::Array)   = CuArray(a)
+arch_array(::GPU, a::CuArray) = a
 
-arch_array(arch, A::AbstractRange) = A
+arch_array(arch, a::AbstractRange) = a
 arch_array(arch, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
 arch_array(arch, ::Nothing) = nothing
+arch_array(arch, a::Number) = a
 
 device_event(arch) = Event(device(arch))
 
