@@ -41,7 +41,7 @@ end
 function set!(u::Field, v::Field)
     if architecture(u) === architecture(v)
         parent(u) .= parent(v)
-    elseif parent(v) isa SubArray
+    else
         u_parent = parent(u)
         v_parent = parent(v)
         # If u_parent is a view, we have to convert to an Array.
@@ -51,6 +51,7 @@ function set!(u::Field, v::Field)
         v_parent isa SubArray && (v_parent = Array(v_parent))
         copyto!(u_parent, v_parent)
     end
+
     return nothing
 end
 
