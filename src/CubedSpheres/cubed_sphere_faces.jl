@@ -1,4 +1,5 @@
 using Statistics
+using CUDA
 using Oceananigans.Architectures
 using Oceananigans.AbstractOperations: AbstractOperation
 
