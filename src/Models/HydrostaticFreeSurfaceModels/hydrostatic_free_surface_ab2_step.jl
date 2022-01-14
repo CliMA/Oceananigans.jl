@@ -15,14 +15,20 @@ function ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, χ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
 
+    if model.free_surface isa SplitExplicitFreeSurface
+        sefs = model.free_surface
+        u, v, _ = model.velocities
+        barotropic_mode!(sefs.U, sefs.V, model.grid.architecture, model.grid, u, v)
+    end
+
     explicit_velocity_step_events = ab2_step_velocities!(model.velocities, model, Δt, χ)
     explicit_tracer_step_events = ab2_step_tracers!(model.tracers, model, Δt, χ)
     free_surface_event = ab2_step_free_surface!(model.free_surface, model, Δt, χ,
-                                                MultiEvent(Tuple(explicit_velocity_step_events)))
+        MultiEvent(Tuple(explicit_velocity_step_events)))
 
     prognostic_field_events = MultiEvent(tuple(free_surface_event,
-                                               explicit_velocity_step_events...,
-                                               explicit_tracer_step_events...))
+        explicit_velocity_step_events...,
+        explicit_tracer_step_events...))
 
     wait(device(model.architecture), prognostic_field_events)
 

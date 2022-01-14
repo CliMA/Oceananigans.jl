@@ -160,7 +160,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         end
         # + correction for exact time
         # free_surface_substep!(arch, grid, Δτ_end, sefs, Nt + 1)
-        split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ_end, Nt+1)
+        split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ_end, Nt + 1)
 
 
         η_computed = Array(η.data.parent)[2:Nx+1, 2:Ny+1]
@@ -205,3 +205,18 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
     end
 
 end
+
+
+##
+arch = Oceananigans.CPU()
+FT = Float64
+topology = (Periodic, Periodic, Bounded)
+Nx = 16
+Ny = 16
+Nz = 1
+Lx = Ly = Lz = 2π
+grid = RectilinearGrid(topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
+f = SplitExplicitFreeSurface()
+model = HydrostaticFreeSurfaceModel(grid = grid, free_surface = f)
+time_step!(model, 1)
+

@@ -169,10 +169,9 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     #initializing the prognostic variables
     set!(η, free_surface.state.η̅)
-    barotropic_mode!(U, V, arch, grid, u, v)
 
     # Compute barotropic mode of tendency fields
-    barotropic_mode!(auxiliary.Gu, auxiliary.Gv, arch, grid, Gu, Gv)
+    barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, arch, grid, Gu, Gv)
 
     # Solve for the free surface at tⁿ⁺¹
     start_time = time_ns()
