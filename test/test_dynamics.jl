@@ -141,22 +141,28 @@ function test_diffusion_cosine_immersed(field_name, timestepper, grid, time_disc
     field = get_model_field(field_name, model)
 
     zC = znodes(Center, grid, reshape=true)
-    interior(field) .= cos.(m * zC)
+    interior(field)   .= cos.(m * zC)
 
     diffusing_cosine(κ, m, z, t) = exp(-κ * m^2 * t) * cos(m * z)
 
     # Step forward with small time-step relative to diff. time-scale
     Δt = 1e-6 * grid.Lz^2 / κ
-    for n in 1:10
-        ab2_or_rk3_time_step!(model, Δt, n)
+    for n in 1:1
+        # ab2_or_rk3_time_step!(model, Δt, n)
+        time_step!(model, Δt)
     end
 
-    half = Int(grid.Nz/2+1)
+    half = Int(grid.Nz/2 + 1)
 
-     numerical = interior(field)[1, 1, half:end]
-    analytical = diffusing_cosine.(κ, m, zC[half:end], model.clock.time)
+    initial_half = interior(initfield)[1,1,half+1:end]
+    numerical_half = interior(field)[1,1,half+1:end]
+    analytical_half = diffusing_cosine.(κ, m, zC, model.clock.time)[1,1,half+1:end]
 
-    return !any(@. !isapprox(numerical, analytical, atol=1e-6, rtol=1e-6))
+    initial = interior(initfield)[1,1,:]
+    numerical = interior(field)[1,1,:]
+    analytical = diffusing_cosine.(κ, m, zC, model.clock.time)[1,1,:]
+
+    @show assessment = !any(@. !isapprox(numerical_half, analytical_half, atol=1e-6, rtol=1e-6))
 end
 
 function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, background_velocity_field=false)

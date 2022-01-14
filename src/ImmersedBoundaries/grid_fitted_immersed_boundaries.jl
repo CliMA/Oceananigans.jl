@@ -104,13 +104,13 @@ end
 @inline function ivd_upper_diagonalᵃᵃᶠ(i, j, k, ibg::GFIBG, clock, Δt, νᶜᶜᶜ, κ)
     return ifelse(solid_node(Center(), Center(), Center(), i, j, k+1, ibg),
                   zero(eltype(ibg.grid)),
-                  ivd_upper_diagonalᵃᵃᶜ(i, j, k, ibg.grid, clock, Δt, νᶜᶜᶜ, κ))
+                  ivd_upper_diagonalᵃᵃᶠ(i, j, k, ibg.grid, clock, Δt, νᶜᶜᶜ, κ))
 end
 
 @inline function ivd_lower_diagonalᵃᵃᶠ(i, j, k, ibg::GFIBG, clock, Δt, νᶜᶜᶜ, κ)
     return ifelse(solid_node(Center(), Center(), Center(), i, j, k+1, ibg),
                   zero(eltype(ibg.grid)),
-                  ivd_lower_diagonalᵃᵃᶜ(i, j, k, ibg.grid, clock, Δt, νᶜᶜᶜ, κ))
+                  ivd_lower_diagonalᵃᵃᶠ(i, j, k, ibg.grid, clock, Δt, νᶜᶜᶜ, κ))
 end
 
 
