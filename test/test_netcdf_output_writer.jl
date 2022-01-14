@@ -608,7 +608,7 @@ function test_netcdf_time_averaging(arch)
 
     for (n, t) in enumerate(single_ds["time"][2:end])
         averaging_times = [t - n*Δt for n in 0:stride:window_size-1 if t - n*Δt >= 0]
-        @test all(isapprox.(single_ds["c1"][:, n+1], c̄1(averaging_times), rtol=rtol))
+        @test all(isapprox.(single_ds["c1"][:, n+1], c̄1(averaging_times), rtol=rtol, atol=rtol))
     end
 
     close(single_ds)
