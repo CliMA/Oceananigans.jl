@@ -24,49 +24,53 @@ function boundary_clustered(N, L, x₀)
 end
 
 timestepper = :QuasiAdamsBashforth2
-time_discretization = ExplicitTimeDiscretization()
+time_disc   = (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+fields = (:T,)
 
-Nz, Lz = 128, π/2
-grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
+Nz, Lz = 128, π
+grid_r = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
 
-# grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=center_clustered(Nz, Lz, 0))
+grid_s = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=center_clustered(Nz, Lz, 0))
 
-@info "  Testing diffusion cosine on ImmersedBoundaryGrid Stretched [$fieldname, $timestepper, $time_discretization]..."
-immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> π/4))
+for time_discretization in time_disc, field_name in fields, grid in (grid_r, grid_s)
 
-κ, m = 1, 2 # diffusivity and cosine wavenumber
+    @info "  Testing diffusion cosine on ImmersedBoundaryGrid Stretched [$fieldname, $time_discretization, $grid]..."
+    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> π/2))
 
-model = NonhydrostaticModel(timestepper = timestepper,
-                                grid = immersed_grid,
-                                closure = IsotropicDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
-                                tracers = (:T, :S),
-                            buoyancy = nothing)
+    κ, m = 1, 2 # diffusivity and cosine wavenumber
 
-field = get_model_field(:T, model)
+    model = NonhydrostaticModel(timestepper = timestepper,
+                                    grid = immersed_grid,
+                                    closure = IsotropicDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
+                                    tracers = (:T, :S),
+                                buoyancy = nothing)
 
-zC = znodes(Center, grid, reshape=true)
+    field = get_model_field(field_name, model)
 
-initfield= similar(field) 
+    zC = znodes(Center, grid, reshape=true)
 
-interior(field)   .= cos.(m * zC)
-interior(initfield) .= cos.(m * zC)
+    initfield= similar(field) 
 
-diffusing_cosine(κ, m, z, t) = exp(-κ * m^2 * t) * cos(m * z)
+    interior(field)   .= cos.(m * zC)
+    interior(initfield) .= cos.(m * zC)
 
-# Step forward with small time-step relative to diff. time-scale
-Δt = 1e-6 * grid.Lz^2 / κ
-for n in 1:1000
-    ab2_or_rk3_time_step!(model, Δt, n)
+    diffusing_cosine(κ, m, z, t) = exp(-κ * m^2 * t) * cos(m * z)
+
+    # Step forward with small time-step relative to diff. time-scale
+    Δt = 1e-6 * grid.Lz^2 / κ
+    for n in 1:10
+        ab2_or_rk3_time_step!(model, Δt, n)
+    end
+
+    half = Int(grid.Nz/2 + 1)
+
+    initial_half = interior(initfield)[1,1,half+1:end]
+    numerical_half = interior(field)[1,1,half+1:end]
+    analytical_half = diffusing_cosine.(κ, m, zC, model.clock.time)[1,1,half+1:end]
+
+    initial = interior(initfield)[1,1,:]
+    numerical = interior(field)[1,1,:]
+    analytical = diffusing_cosine.(κ, m, zC, model.clock.time)[1,1,:]
+
+ @show assessment = !any(@. !isapprox(numerical_half, analytical_half, atol=1e-6, rtol=1e-6))
 end
-
-half = Int(grid.Nz/2 + 1)
-
-initial_half = interior(initfield)[1,1,half+1:end]
-numerical_half = interior(field)[1,1,half+1:end]
-analytical_half = diffusing_cosine.(κ, m, zC, model.clock.time)[1,1,half+1:end]
-
-initial = interior(initfield)[1,1,:]
-numerical = interior(field)[1,1,:]
-analytical = diffusing_cosine.(κ, m, zC, model.clock.time)[1,1,:]
-
-assessment = !any(@. !isapprox(numerical, analytical, atol=1e-6, rtol=1e-6))
