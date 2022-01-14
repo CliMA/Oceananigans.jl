@@ -62,9 +62,9 @@ const XZRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Numbe
 const YZRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any,    <:Number, <:Number}
 const  RegRectilinearGrid  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number}
 
-regular_dimensions(::XRegRectilinearGrid) = tuple(1)
-regular_dimensions(::YRegRectilinearGrid) = tuple(2)
-regular_dimensions(::ZRegRectilinearGrid) = tuple(3)
+regular_dimensions(::XRegRectilinearGrid)  = tuple(1)
+regular_dimensions(::YRegRectilinearGrid)  = tuple(2)
+regular_dimensions(::ZRegRectilinearGrid)  = tuple(3)
 regular_dimensions(::XYRegRectilinearGrid) = (1, 2)
 regular_dimensions(::XZRegRectilinearGrid) = (1, 3)
 regular_dimensions(::YZRegRectilinearGrid) = (2, 3)

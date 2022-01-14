@@ -41,7 +41,7 @@ function define_multiary_operator(op)
             grid = Oceananigans.AbstractOperations.validate_grid(args...)
 
             # Convert any functions to FunctionFields
-            args = Tuple(Oceananigans.Fields.fieldify(Lop, a, grid) for a in args)
+            args = Tuple(Oceananigans.Fields.fieldify_function(Lop, a, grid) for a in args)
             Largs = Tuple(Oceananigans.Fields.location(a) for a in args)
 
             return Oceananigans.AbstractOperations._multiary_operation(Lop, $op, args, Largs, grid)

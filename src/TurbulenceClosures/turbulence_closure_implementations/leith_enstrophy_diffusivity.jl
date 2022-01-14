@@ -75,7 +75,7 @@ end
 const ArrayOrField = Union{AbstractArray, AbstractField}
 
 @inline ψ²(i, j, k, grid, ψ::Function, args...) = ψ(i, j, k, grid, args...)^2
-@inline ψ²(i, j, k, grid, ψ::ArrayOrField, args...) = ψ[i, j, k]^2
+@inline ψ²(i, j, k, grid, ψ::ArrayOrField, args...) = @inbounds ψ[i, j, k]^2
 
 @inline function abs²_∇h_wz(i, j, k, grid, w)
     wxz² = ℑxᶜᵃᵃ(i, j, k, grid, ψ², ∂xᶠᵃᵃ, ∂zᵃᵃᶜ, w)

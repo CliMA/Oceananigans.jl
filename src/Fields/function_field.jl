@@ -35,8 +35,8 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, 
 end
 
 """Return `a`, or convert `a` to `FunctionField` if `a::Function`"""
-fieldify(L, a, grid) = a
-fieldify(L, a::Function, grid) = FunctionField(L, a, grid)
+fieldify_function(L, a, grid) = a
+fieldify_function(L, a::Function, grid) = FunctionField(L, a, grid)
 
 """
     FunctionField(L::Tuple, func, grid)

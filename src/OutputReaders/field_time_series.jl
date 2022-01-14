@@ -21,7 +21,7 @@ struct FieldTimeSeries{LX, LY, LZ, K, T, D, G, B, χ} <: AbstractField{LX, LY, L
                   times :: χ
 
     function FieldTimeSeries{LX, LY, LZ, K}(data::D, grid::G, bcs::B, times::χ) where {LX, LY, LZ, K, D, G, B, χ}
-        T = eltype(grid) 
+        T = eltype(data) 
         return new{LX, LY, LZ, K, T, D, G, B, χ}(data, grid, bcs, times)
     end
 end

@@ -24,6 +24,8 @@ const GridOrNothing = Union{AbstractGrid, Nothing}
 
 Abstract supertype for fields located at `(LX, LY, LZ)`
 and defined on a grid `G` with eltype `T` and `N` dimensions.
+
+Note: we need the parameter `T` to subtype AbstractArray.
 """
 abstract type AbstractField{LX, LY, LZ, G <: GridOrNothing, T, N} <: AbstractArray{T, N} end
 
@@ -41,13 +43,13 @@ data(a) = a
 @inline location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference
 @inline location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX, LY, LZ) # note no instantiation
 @inline location(f::AbstractField, i) = location(f)[i]
-instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
+@inline instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
 
 "Returns the architecture of on which `f` is defined."
 architecture(f::AbstractField) = architecture(f.grid)
 
 "Returns the topology of a fields' `grid`."
-topology(f::AbstractField, args...) = topology(f.grid, args...)
+@inline topology(f::AbstractField, args...) = topology(f.grid, args...)
 
 """
     size(f::AbstractField)
@@ -78,6 +80,10 @@ interior(f::AbstractField) = f
 @propagate_inbounds ynode(j, ψ::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = ynode(LY(), j, ψ.grid)
 @propagate_inbounds znode(k, ψ::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = znode(LZ(), k, ψ.grid)
 
+@propagate_inbounds xnode(i, j, k, ψ::AbstractField) = xnode(instantiated_location(ψ)..., i, j, k, ψ.grid)
+@propagate_inbounds ynode(i, j, k, ψ::AbstractField) = ynode(instantiated_location(ψ)..., i, j, k, ψ.grid)
+@propagate_inbounds znode(i, j, k, ψ::AbstractField) = znode(instantiated_location(ψ)..., i, j, k, ψ.grid)
+
 xnodes(ψ::AbstractField) = xnodes(location(ψ, 1), ψ.grid)
 ynodes(ψ::AbstractField) = ynodes(location(ψ, 2), ψ.grid)
 znodes(ψ::AbstractField) = znodes(location(ψ, 3), ψ.grid)
@@ -94,9 +100,7 @@ for f in (:+, :-)
 end
 
 function Statistics.norm(a::AbstractField)
-    arch = architecture(a)
-    grid = a.grid
-    r = zeros(arch, grid, 1)
+    r = zeros(a.grid, 1)
     Base.mapreducedim!(x -> x * x, +, r, a)
     return CUDA.@allowscalar sqrt(r[1])
 end

@@ -18,7 +18,6 @@ reduction_grid_metric(dims) = dims === tuple(1)  ? Δx :
                               dims === (1, 3)    ? Ay :
                               dims === (2, 3)    ? Ax :
                               dims === (1, 2, 3) ? volume :
-                              dims isa Colon     ? volume :
                               throw(ArgumentError("Cannot determine grid metric for reducing over dims = $dims"))
 
 ##### 
@@ -28,8 +27,8 @@ reduction_grid_metric(dims) = dims === tuple(1)  ? Δx :
 struct Average end
 
 function Reduction(avg::Average, field::AbstractField; dims)
+    dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
     dx = reduction_grid_metric(dims)
-    dims = tupleit(dims)
 
     if dims === regular_dimensions(field.grid) # shortcut!
         return Reduction(mean!, field; dims)
@@ -63,6 +62,7 @@ const AveragedField = Field{<:Any, <:Any, <:Any, <:Reduction{<:Average}}
 struct Integral end
 
 function Reduction(int::Integral, field::AbstractField; dims)
+    dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
     dx = reduction_grid_metric(dims)
     return Reduction(sum!, field * dx; dims)
 end

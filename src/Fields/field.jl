@@ -339,7 +339,13 @@ initialize_reduced_field!(::MinimumReduction, f, r::ReducedField, c) = Base.mapf
 filltype(f, grid) = eltype(grid)
 filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
 
-reduced_location(loc; dims) = Tuple(i ∈ dims ? Nothing : loc[i] for i in 1:3)
+function reduced_location(loc; dims)
+    if dims isa Colon
+        return (Nothing, Nothing, Nothing)
+    else
+        return Tuple(i ∈ dims ? Nothing : loc[i] for i in 1:3)
+    end
+end
 
 # Allocating and in-place reductions
 for reduction in (:sum, :maximum, :minimum, :all, :any)
@@ -357,7 +363,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any)
 
         # Allocating
         function Base.$(reduction)(f::Function, c::AbstractField; dims=:)
-            if dims === (:)
+            if dims isa Colon
                 r = zeros(architecture(c), c.grid, 1, 1, 1)
                 Base.$(reduction!)(f, r, c)
                 return CUDA.@allowscalar r[1, 1, 1]
