@@ -75,9 +75,11 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, M, MY, FX, FY, FZ, VX, VY, VZ, Arch
 end
 
 const XRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
-const YRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
-const ZRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
+const YRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,    <:Number}
+const ZRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,    <:Any, <:Number}
 const HRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
+
+regular_dimensions(::ZRegLatLonGrid) = tuple(3)
 
 """
 
@@ -87,14 +89,14 @@ or an array or function that specifies the faces (see VerticallyStretchedRectili
 """
 
 function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
-                               FT::DataType = Float64; 
+                               FT::DataType = Float64;
                                precompute_metrics = false,
                                size,
                                latitude,
                                longitude,
-                               z,                      
-                               radius=R_Earth,
-                               halo=(1, 1, 1))
+                               z,
+                               radius = R_Earth,
+                               halo = (1, 1, 1))
 
     Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topo =
         validate_lat_lon_grid_args(latitude, longitude, size, halo)
@@ -239,8 +241,8 @@ function on_architecture(new_arch, old_grid::LatitudeLongitudeGrid)
     TX, TY, TZ = topology(old_grid)
 
     return LatitudeLongitudeGrid{TX, TY, TZ}(new_arch,
-                                             old_grid.Nλ, old_grid.Nφ, old_grid.Nz,
-                                             old_grid.Hλ, old_grid.Hφ, old_grid.Hz,
+                                             old_grid.Nx, old_grid.Ny, old_grid.Nz,
+                                             old_grid.Hx, old_grid.Hy, old_grid.Hz,
                                              old_grid.Lx, old_grid.Ly, old_grid.Lz,
                                              new_properties...,
                                              old_grid.radius)
