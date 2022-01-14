@@ -69,6 +69,7 @@ arch_array(::GPU, A::CuArray) = A
 
 arch_array(arch, A::AbstractRange) = A
 arch_array(arch, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+arch_array(arch, ::Nothing) = nothing
 
 device_event(arch) = Event(device(arch))
 

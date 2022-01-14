@@ -8,36 +8,36 @@ using Oceananigans
 
 struct ConformalCubedSphereFaceGrid{FT, TX, TY, TZ, A, R, Arch} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
-              Nx :: Int
-              Ny :: Int
-              Nz :: Int
-              Hx :: Int
-              Hy :: Int
-              Hz :: Int
-            λᶜᶜᵃ :: A
-            λᶠᶜᵃ :: A
-            λᶜᶠᵃ :: A
-            λᶠᶠᵃ :: A
-            φᶜᶜᵃ :: A
-            φᶠᶜᵃ :: A
-            φᶜᶠᵃ :: A
-            φᶠᶠᵃ :: A
-            zᵃᵃᶜ :: R
-            zᵃᵃᶠ :: R
-           Δxᶜᶜᵃ :: A
-           Δxᶠᶜᵃ :: A
-           Δxᶜᶠᵃ :: A
-           Δxᶠᶠᵃ :: A
-           Δyᶜᶜᵃ :: A
-           Δyᶜᶠᵃ :: A
-           Δyᶠᶜᵃ :: A
-           Δyᶠᶠᵃ :: A
-           Δz    :: FT
-           Azᶜᶜᵃ :: A
-           Azᶠᶜᵃ :: A
-           Azᶜᶠᵃ :: A
-           Azᶠᶠᵃ :: A
-          radius :: FT
+    Nx :: Int
+    Ny :: Int
+    Nz :: Int
+    Hx :: Int
+    Hy :: Int
+    Hz :: Int
+    λᶜᶜᵃ :: A
+    λᶠᶜᵃ :: A
+    λᶜᶠᵃ :: A
+    λᶠᶠᵃ :: A
+    φᶜᶜᵃ :: A
+    φᶠᶜᵃ :: A
+    φᶜᶠᵃ :: A
+    φᶠᶠᵃ :: A
+    zᵃᵃᶜ :: R
+    zᵃᵃᶠ :: R
+    Δxᶜᶜᵃ :: A
+    Δxᶠᶜᵃ :: A
+    Δxᶜᶠᵃ :: A
+    Δxᶠᶠᵃ :: A
+    Δyᶜᶜᵃ :: A
+    Δyᶜᶠᵃ :: A
+    Δyᶠᶜᵃ :: A
+    Δyᶠᶠᵃ :: A
+    Δz    :: FT
+    Azᶜᶜᵃ :: A
+    Azᶠᶜᵃ :: A
+    Azᶜᶠᵃ :: A
+    Azᶠᶠᵃ :: A
+    radius :: FT
 
     function ConformalCubedSphereFaceGrid{TX, TY, TZ}(architecture::Arch,
                                                       Nx, Ny, Nz,
@@ -275,51 +275,46 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, architecture = C
 end
 
 function on_architecture(arch, grid::ConformalCubedSphereFaceGrid)
-    if arch === architecture(grid)
-        return grid
-    else
+    horizontal_coordinates = (:λᶜᶜᵃ,
+                              :λᶠᶜᵃ,
+                              :λᶜᶠᵃ,
+                              :λᶠᶠᵃ,
+                              :φᶜᶜᵃ,
+                              :φᶠᶜᵃ,
+                              :φᶜᶠᵃ,
+                              :φᶠᶠᵃ)
 
-        horizontal_coordinates = (:λᶜᶜᵃ,
-                                  :λᶠᶜᵃ,
-                                  :λᶜᶠᵃ,
-                                  :λᶠᶠᵃ,
-                                  :φᶜᶜᵃ,
-                                  :φᶠᶜᵃ,
-                                  :φᶜᶠᵃ,
-                                  :φᶠᶠᵃ)
+    horizontal_grid_spacings = (:Δxᶜᶜᵃ,
+                                :Δxᶠᶜᵃ,
+                                :Δxᶜᶠᵃ,
+                                :Δxᶠᶠᵃ,
+                                :Δyᶜᶜᵃ,
+                                :Δyᶜᶠᵃ,
+                                :Δyᶠᶜᵃ,
+                                :Δyᶠᶠᵃ)
 
-        horizontal_grid_spacings = (:Δxᶜᶜᵃ,
-                                    :Δxᶠᶜᵃ,
-                                    :Δxᶜᶠᵃ,
-                                    :Δxᶠᶠᵃ,
-                                    :Δyᶜᶜᵃ,
-                                    :Δyᶜᶠᵃ,
-                                    :Δyᶠᶜᵃ,
-                                    :Δyᶠᶠᵃ)
+    horizontal_areas = (:Azᶜᶜᵃ,
+                        :Azᶠᶜᵃ,
+                        :Azᶜᶠᵃ,
+                        :Azᶠᶠᵃ)
 
-        horizontal_areas = (:Azᶜᶜᵃ,
-                            :Azᶠᶜᵃ,
-                            :Azᶜᶠᵃ,
-                            :Azᶠᶠᵃ)
+    horizontal_grid_spacing_data = Tuple(arch_array(arch, getproperty(grid, name)) for name in horizontal_grid_spacings)
+    horizontal_coordinate_data = Tuple(arch_array(arch, getproperty(grid, name)) for name in horizontal_coordinates)
+    horizontal_area_data = Tuple(arch_array(arch, getproperty(grid, name)) for name in horizontal_areas)
 
-        horizontal_grid_spacing_data = Tuple(arch_array(arch, getproperty(grid, name)) for name in horizontal_grid_spacings)
-        horizontal_coordinate_data = Tuple(arch_array(arch, getproperty(grid, name)) for name in horizontal_coordinates)
-        horizontal_area_data = Tuple(arch_array(arch, getproperty(grid, name)) for name in horizontal_areas)
+    zᵃᵃᶜ = arch_array(arch, grid.zᵃᵃᶜ)
+    zᵃᵃᶠ = arch_array(arch, grid.zᵃᵃᶠ)
 
-        zᵃᵃᶜ = arch_array(arch, grid.zᵃᵃᶜ)
-        zᵃᵃᶠ = arch_array(arch, grid.zᵃᵃᶠ)
+    TX, TY, TZ = topology(grid)
 
-        TX, TY, TZ = topology(grid)
+    new_grid = ConformalCubedSphereFaceGrid{TX, TY, TZ}(architecture,
+                                                        grid.Nx, grid.Ny, grid.Nz,
+                                                        grid.Hx, grid.Hy, grid.Hz,
+                                                        horizontal_coordinate_data..., zᵃᵃᶜ, zᵃᵃᶠ,
+                                                        horizontal_grid_spacing_data..., grid.Δz,
+                                                        horizontal_area_data..., grid.radius)
 
-        new_grid = ConformalCubedSphereFaceGrid{TX, TY, TZ}(architecture,
-                                                            grid.Nx, grid.Ny, grid.Nz,
-                                                            grid.Hx, grid.Hy, grid.Hz,
-                                                            horizontal_coordinate_data..., zᵃᵃᶜ, zᵃᵃᶠ,
-                                                            horizontal_grid_spacing_data..., grid.Δz,
-                                                            horizontal_area_data..., grid.radius)
-
-        return new_grid
-    end
+    return new_grid
 end
 
 function Adapt.adapt_structure(to, grid::ConformalCubedSphereFaceGrid)

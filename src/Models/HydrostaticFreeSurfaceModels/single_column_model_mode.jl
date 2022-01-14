@@ -12,7 +12,7 @@ using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: _top_tke_flux, CATKEVDArray
 
 import Oceananigans.Utils: launch!
-import Oceananigans.Grids: validate_size, validate_halo, on_architecture
+import Oceananigans.Grids: validate_size, validate_halo
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.TurbulenceClosures: time_discretization, calculate_diffusivities!
 import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
@@ -90,21 +90,6 @@ ColumnEnsembleSize(; Nz, ensemble=(0, 0), Hz=1) = ColumnEnsembleSize(ensemble, N
 
 validate_size(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemble[2], e.Nz)
 validate_halo(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(0, 0, e.Hz)
-
-function on_architecture(new_arch, old_grid::SingleColumnGrid)
-    if new_arch === architecture(old_grid)
-        return old_grid
-    else
-        size = ColumnEnsembleSize(; Nz=old_grid.Nz, ensemble=(old_grid.Nx, old_grid.Ny))
-        halo = ColumnEnsembleSize(nothing, nothing, old_grid.Hz)
-        z = cpu_face_constructor_z(old_grid)  
-
-        new_grid = RectilinearGrid(new_arch, eltype(old_grid); size, z, halo,
-                                   topology = (Flat, Flat, Bounded))
-
-        return new_grid
-    end
-end
 
 @inline function time_discretization(closure_array::AbstractArray)
     first_closure = CUDA.@allowscalar first(closure_array) # assumes all closures have same time-discretization

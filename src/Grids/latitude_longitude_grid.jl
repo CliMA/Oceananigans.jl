@@ -227,31 +227,23 @@ all_z_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶠ
 @inline cpu_face_constructor_z(grid::ZRegLatLonGrid) = z_domain(grid)
 
 function on_architecture(new_arch, old_grid::LatitudeLongitudeGrid)
-    if new_arch === architecture(old_grid)
-        return old_grid
-    else
+    old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ, old_grid.λᶜᵃᵃ,
+                      old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ, old_grid.φᵃᶜᵃ,
+                      old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ, old_grid.zᵃᵃᶜ,
+                      old_grid.Δxᶠᶜ,  old_grid.Δxᶜᶠ,  old_grid.Δxᶠᶠ, old_grid.Δxᶜᶜ,
+                      old_grid.Δyᶠᶜ,  old_grid.Δyᶜᶠ,
+                      old_grid.Azᶠᶜ,  old_grid.Azᶜᶠ, old_grid.Azᶠᶠ, old_grid.Azᶜᶜ)
 
-        size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
-        topo = topology(old_grid)
+    new_properties = arch_array.(new_arch, old_properties)
 
-        x = cpu_face_constructor_x(old_grid)
-        y = cpu_face_constructor_y(old_grid)
-        z = cpu_face_constructor_z(old_grid)  
+    TX, TY, TZ = topology(old_grid)
 
-        # Remove elements of size and new_halo in Flat directions as expected by grid
-        # constructor
-        size = pop_flat_elements(size, topo)
-        halo = pop_flat_elements(halo_size(old_grid), topo)
-
-        new_grid LatitudeLongitudeGrid(new_arch, eltype(old_grid);
-                                       size = size,
-                                       longitude = x, 
-                                       latitude = y, 
-                                       z = z,
-                                       halo = halo)
-
-        return new_grid
-    end
+    return LatitudeLongitudeGrid{TX, TY, TZ}(new_arch,
+                                             old_grid.Nλ, old_grid.Nφ, old_grid.Nz,
+                                             old_grid.Hλ, old_grid.Hφ, old_grid.Hz,
+                                             old_grid.Lx, old_grid.Ly, old_grid.Lz,
+                                             new_properties...
+                                             old_grid.radius)
 end
 
 function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
