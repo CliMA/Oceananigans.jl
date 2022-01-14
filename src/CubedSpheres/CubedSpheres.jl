@@ -35,7 +35,10 @@ validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
 
 import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
-function regularize_field_boundary_conditions(bcs::CubedSphereFaces, grid, field_name, prognostic_field_names)
+function regularize_field_boundary_conditions(bcs::CubedSphereFaces,
+                                              grid::AbstractGrid,
+                                              field_name::Symbol,
+                                              prognostic_field_names)
 
     faces = Tuple(regularize_field_boundary_conditions(face_bcs, face_grid, field_name, prognostic_field_names)
                   for (face_bcs, face_grid) in zip(bcs.faces, grid.faces))
@@ -43,7 +46,10 @@ function regularize_field_boundary_conditions(bcs::CubedSphereFaces, grid, field
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
 end
 
-function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid::ConformalCubedSphereGrid, field_name, prognostic_field_names)
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
+                                              grid::ConformalCubedSphereGrid,
+                                              field_name::Symbol,
+                                              prognostic_field_names)
 
     faces = Tuple(
         inject_cubed_sphere_exchange_boundary_conditions(
