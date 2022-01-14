@@ -227,12 +227,12 @@ all_z_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶠ
 @inline cpu_face_constructor_z(grid::ZRegLatLonGrid) = z_domain(grid)
 
 function on_architecture(new_arch, old_grid::LatitudeLongitudeGrid)
-    old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ, old_grid.λᶜᵃᵃ,
-                      old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ, old_grid.φᵃᶜᵃ,
-                      old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ, old_grid.zᵃᵃᶜ,
-                      old_grid.Δxᶠᶜ,  old_grid.Δxᶜᶠ,  old_grid.Δxᶠᶠ, old_grid.Δxᶜᶜ,
-                      old_grid.Δyᶠᶜ,  old_grid.Δyᶜᶠ,
-                      old_grid.Azᶠᶜ,  old_grid.Azᶜᶠ, old_grid.Azᶠᶠ, old_grid.Azᶜᶜ)
+    old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
+                      old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
+                      old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ,  old_grid.zᵃᵃᶜ,
+                      old_grid.Δxᶠᶜᵃ, old_grid.Δxᶜᶠᵃ, old_grid.Δxᶠᶠᵃ, old_grid.Δxᶜᶜᵃ,
+                      old_grid.Δyᶠᶜᵃ, old_grid.Δyᶜᶠᵃ,
+                      old_grid.Azᶠᶜᵃ, old_grid.Azᶜᶠᵃ, old_grid.Azᶠᶠᵃ, old_grid.Azᶜᶜᵃ)
 
     new_properties = Tuple(arch_array(new_arch, p) for p in old_properties)
 
