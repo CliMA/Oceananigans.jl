@@ -234,7 +234,7 @@ function on_architecture(new_arch, old_grid::LatitudeLongitudeGrid)
                       old_grid.Δyᶠᶜ,  old_grid.Δyᶜᶠ,
                       old_grid.Azᶠᶜ,  old_grid.Azᶜᶠ, old_grid.Azᶠᶠ, old_grid.Azᶜᶜ)
 
-    new_properties = arch_array.(new_arch, old_properties)
+    new_properties = Tuple(arch_array(new_arch, p) for p in old_properties)
 
     TX, TY, TZ = topology(old_grid)
 
