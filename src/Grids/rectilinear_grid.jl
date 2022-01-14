@@ -414,26 +414,30 @@ function with_halo(new_halo, old_grid::RectilinearGrid)
 end
 
 function on_architecture(new_arch, old_grid::RectilinearGrid)
+    if new_arch === architecture(old_grid)
+        return old_grid
+    else
 
-    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
-    topo = topology(old_grid)
+        size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
+        topo = topology(old_grid)
 
-    x = cpu_face_constructor_x(old_grid)
-    y = cpu_face_constructor_y(old_grid)
-    z = cpu_face_constructor_z(old_grid)  
+        x = cpu_face_constructor_x(old_grid)
+        y = cpu_face_constructor_y(old_grid)
+        z = cpu_face_constructor_z(old_grid)  
 
-    # Remove elements of size and new_halo in Flat directions as expected by grid
-    # constructor
-    size = pop_flat_elements(size, topo)
-    halo = pop_flat_elements(halo_size(old_grid), topo)
+        # Remove elements of size and new_halo in Flat directions as expected by grid
+        # constructor
+        size = pop_flat_elements(size, topo)
+        halo = pop_flat_elements(halo_size(old_grid), topo)
 
-    new_grid = RectilinearGrid(new_arch, eltype(old_grid);
-                               size = size,
-                               x = x, y = y, z = z,
-                               topology = topo,
-                               halo = halo)
+        new_grid = RectilinearGrid(new_arch, eltype(old_grid);
+                                   size = size,
+                                   x = x, y = y, z = z,
+                                   topology = topo,
+                                   halo = halo)
 
-    return new_grid
+        return new_grid
+    end
 end
 
 #####

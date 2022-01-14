@@ -227,25 +227,31 @@ all_z_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶠ
 @inline cpu_face_constructor_z(grid::ZRegLatLonGrid) = z_domain(grid)
 
 function on_architecture(new_arch, old_grid::LatitudeLongitudeGrid)
+    if new_arch === architecture(old_grid)
+        return old_grid
+    else
 
-    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
-    topo = topology(old_grid)
+        size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
+        topo = topology(old_grid)
 
-    x = cpu_face_constructor_x(old_grid)
-    y = cpu_face_constructor_y(old_grid)
-    z = cpu_face_constructor_z(old_grid)  
+        x = cpu_face_constructor_x(old_grid)
+        y = cpu_face_constructor_y(old_grid)
+        z = cpu_face_constructor_z(old_grid)  
 
-    # Remove elements of size and new_halo in Flat directions as expected by grid
-    # constructor
-    size = pop_flat_elements(size, topo)
-    halo = pop_flat_elements(halo_size(old_grid), topo)
+        # Remove elements of size and new_halo in Flat directions as expected by grid
+        # constructor
+        size = pop_flat_elements(size, topo)
+        halo = pop_flat_elements(halo_size(old_grid), topo)
 
-    return LatitudeLongitudeGrid(new_arch, eltype(old_grid);
-                                 size = size,
-                                 longitude = x, 
-                                 latitude = y, 
-                                 z = z,
-                                 halo = halo)
+        new_grid LatitudeLongitudeGrid(new_arch, eltype(old_grid);
+                                       size = size,
+                                       longitude = x, 
+                                       latitude = y, 
+                                       z = z,
+                                       halo = halo)
+
+        return new_grid
+    end
 end
 
 function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
