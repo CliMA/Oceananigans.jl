@@ -37,7 +37,7 @@ end
 ##### Grid utils
 #####
 
-function center_clustered(N, L, x₀)
+function center_clustered_coord(N, L, x₀)
     Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
     z_faces = zeros(N+1) 
     for k = 2:N+1
@@ -47,7 +47,7 @@ function center_clustered(N, L, x₀)
     return z_faces
 end
 
-function boundary_clustered(N, L, x₀)
+function boundary_clustered_coord(N, L, x₀)
     Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
     z_faces = zeros(N+1) 
     for k = 2:N+1
@@ -56,8 +56,6 @@ function boundary_clustered(N, L, x₀)
     z_faces = z_faces ./ z_faces[end] .* L .+ x₀ 
     return z_faces
 end
-
-
 
 #####
 ##### Useful kernels

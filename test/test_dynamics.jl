@@ -358,8 +358,6 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     return nothing
 end
 
-
-
 function inertial_oscillations_work_with_rotation_in_different_axis(arch, FT)
     grid = RectilinearGrid(arch, FT, size=(), topology=(Flat, Flat, Flat))
 
@@ -517,7 +515,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> π/2))
                     @test test_diffusion_cosine_immersed(fieldname, timestepper, immersed_grid, time_discretization)
 
-                    grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=center_clustered(Nz, Lz, 0))
+                    grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=center_clustered_coord(Nz, Lz, 0))
 
                     @info "  Testing diffusion cosine on ImmersedBoundaryGrid Stretched [$fieldname, $timestepper, $time_discretization]..."
                     immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> π/2))
@@ -533,7 +531,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
             Nz, Lz, z₀ = 128, 1, -0.5
 
             z_regular = (z₀, Lz + z₀)
-            z_stretch = center_clustered(Nz, Lz, z₀)
+            z_stretch = center_clustered_coord(Nz, Lz, z₀)
 
             for z_coord = (z_regular, z_stretch)
                 @info "  Testing gaussian immersed diffusion for [$time_discretization, $(typeof(z_coord) isa Tuple ? "regular" : "stretched")]..."
