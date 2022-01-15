@@ -192,12 +192,12 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Set up profile output writer
     #####
 
-    Uavg = AveragedField(model.velocities.u,            dims=(1, 2))
-    Vavg = AveragedField(model.velocities.v,            dims=(1, 2))
-    Wavg = AveragedField(model.velocities.w,            dims=(1, 2))
-    Tavg = AveragedField(model.tracers.T,               dims=(1, 2))
-    νavg = AveragedField(model.diffusivity_fields.νₑ,   dims=(1, 2))
-    κavg = AveragedField(model.diffusivity_fields.κₑ.T, dims=(1, 2))
+    Uavg = Field(Average(model.velocities.u,            dims=(1, 2)))
+    Vavg = Field(Average(model.velocities.v,            dims=(1, 2)))
+    Wavg = Field(Average(model.velocities.w,            dims=(1, 2)))
+    Tavg = Field(Average(model.tracers.T,               dims=(1, 2)))
+    νavg = Field(Average(model.diffusivity_fields.νₑ,   dims=(1, 2)))
+    κavg = Field(Average(model.diffusivity_fields.κₑ.T, dims=(1, 2)))
 
     profiles = Dict(
          :u => Uavg,

@@ -180,7 +180,7 @@ function init_save_some_metadata!(file, model)
     return nothing
 end
 
-c_avg =  AveragedField(model.tracers.c, dims=(1, 2))
+c_avg = Field(Average(model.tracers.c, dims=(1, 2)))
 
 # Note that model.velocities is NamedTuple
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,

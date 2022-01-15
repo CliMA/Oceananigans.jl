@@ -1,5 +1,6 @@
 using KernelAbstractions: Event, MultiEvent
 
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Architectures: device
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, PrescribedVelocityFields
 
@@ -20,6 +21,17 @@ get_face(velocities::PrescribedVelocityFields, face_index) =
                              get_face(velocities.v, face_index),
                              get_face(velocities.w, face_index),
                              velocities.parameters)
+
+function get_face(op::KernelFunctionOperation, face_index)
+    LX, LY, LZ = location(op)
+    computed_dependencies = get_face(op.computed_dependencies, face_index)
+    parameters = get_face(op.parameters, face_index)
+    face_grid = get_face(op.grid, face_index)
+    return KernelFunctionOperation{LX, LY, LZ}(op.kernel_function,
+                                               computed_dependencies,
+                                               parameters,
+                                               face_grid)
+end
 
 function launch!(arch, grid::ConformalCubedSphereGrid, dims, kernel!, args...; kwargs...)
 

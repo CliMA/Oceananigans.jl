@@ -1,4 +1,5 @@
 using CUDA
+using Printf
 
 #####
 ##### Convenience functions
@@ -29,7 +30,6 @@ Return the topology of the `grid` for the `dim`-th dimension.
 Return the architecture (CPU or GPU) that the `grid` lives on.
 """
 @inline architecture(grid::AbstractGrid) = grid.architecture
-
 
 """
     Constant Grid Definitions 
@@ -65,8 +65,6 @@ Base.size(grid::AbstractGrid, d) = size(grid)[d]
 Base.size(loc, grid, d) = size(loc, grid)[d]
 
 total_size(a) = size(a) # fallback
-
-halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
 
 """
     total_size(loc, grid)
@@ -133,6 +131,8 @@ Return 1, which is the 'length' of a field along a reduced dimension.
 @inline x_domain(grid) = domain(topology(grid, 1), grid.Nx, grid.xᶠᵃᵃ)
 @inline y_domain(grid) = domain(topology(grid, 2), grid.Ny, grid.yᵃᶠᵃ)
 @inline z_domain(grid) = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
+
+regular_dimensions(grid) = ()
 
 #####
 ##### << Indexing >>
@@ -352,3 +352,9 @@ end
 #####
 
 struct ZDirection end
+
+@inline show_coordinate(Δ::Number, T)            = "Regular, with spacing $Δ"
+@inline show_coordinate(Δ::Number, ::Type{Flat}) = "Flattened"
+@inline show_coordinate(Δ::AbstractVector, T)    = @sprintf("Stretched, with spacing min=%.6f, max=%.6f",
+                                                            minimum(parent(Δ)), maximum(parent(Δ)))
+

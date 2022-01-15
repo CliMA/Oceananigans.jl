@@ -371,7 +371,7 @@ end
 ##### DiffusivityFields
 #####
 
-function DiffusivityFields(arch, grid, tracer_names, user_bcs, ::AMD)
+function DiffusivityFields(grid, tracer_names, user_bcs, ::AMD)
 
     default_diffusivity_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
     default_κₑ_bcs = NamedTuple(c => default_diffusivity_bcs for c in tracer_names)
@@ -379,8 +379,8 @@ function DiffusivityFields(arch, grid, tracer_names, user_bcs, ::AMD)
 
     bcs = merge((; νₑ = default_diffusivity_bcs, κₑ = κₑ_bcs), user_bcs)
 
-    νₑ = CenterField(arch, grid, bcs.νₑ)
-    κₑ = NamedTuple(c => CenterField(arch, grid, bcs.κₑ[c]) for c in tracer_names)
+    νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
+    κₑ = NamedTuple(c => CenterField(grid, boundary_conditions=bcs.κₑ[c]) for c in tracer_names)
 
     return (; νₑ, κₑ)
 end

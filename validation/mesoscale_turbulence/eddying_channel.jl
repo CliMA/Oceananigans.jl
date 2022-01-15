@@ -239,7 +239,7 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 u, v, w = model.velocities
 b, c = model.tracers.b, model.tracers.c
 
-ζ = ComputedField(∂x(v) - ∂y(u))
+ζ = Field(∂x(v) - ∂y(u))
 
 B = AveragedField(b, dims=1)
 U = AveragedField(u, dims=1)
