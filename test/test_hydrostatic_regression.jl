@@ -69,30 +69,32 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
     implicit_free_surface = ImplicitFreeSurface(gravitational_acceleration = 1.0,
                                                 solver_method = :PreconditionedConjugateGradient,
                                                 tolerance = 1e-15)
+    
+    for arch in archs
+        for lon in longitude, lat in latitude, z in zcoord, comp in (true, false)
 
-    for lon in longitude, lat in latitude, z in zcoord, comp in (true, false)
+            lon[1] == -180 ? N = (180, 60, 3) : N = (160, 60, 3)
 
-        lon[1] == -180 ? N = (180, 60, 3) : N = (160, 60, 3)
+            grid  = LatitudeLongitudeGrid(arch, 
+                                        size = N,
+                                    longitude = lon,
+                                    latitude = lat,
+                                            z = z,
+                                        halo = (2, 2, 2),
+                            precompute_metrics = comp)
 
-        grid  = LatitudeLongitudeGrid(arch, 
-                                      size = N,
-                                 longitude = lon,
-                                  latitude = lat,
-                                         z = z,
-                                      halo = (2, 2, 2),
-                        precompute_metrics = comp)
+            for free_surface in [explicit_free_surface, implicit_free_surface]
+                                    
+                # GPU + ImplicitFreeSurface + precompute metrics is not compatible at the moment. 
+                # kernel " uses too much parameter space  (maximum 0x1100 bytes) " error 
+                if !(comp && free_surface isa ImplicitFreeSurface && arch isa GPU) 
 
-        for free_surface in [explicit_free_surface, implicit_free_surface]
-                                
-            # GPU + ImplicitFreeSurface + precompute metrics is not compatible at the moment. 
-            # kernel " uses too much parameter space  (maximum 0x1100 bytes) " error 
-            if !(comp && free_surface isa ImplicitFreeSurface && arch isa GPU) 
-
-                testset_str, info_str = show_hydrostatic_test(grid, free_surface, comp)
-                
-                @testset "$testset_str" begin
-                    @info "$info_str"
-                    run_hydrostatic_free_turbulence_regression_test(grid, free_surface)
+                    testset_str, info_str = show_hydrostatic_test(grid, free_surface, comp)
+                    
+                    @testset "$testset_str" begin
+                        @info "$info_str"
+                        run_hydrostatic_free_turbulence_regression_test(grid, free_surface)
+                    end
                 end
             end
         end
