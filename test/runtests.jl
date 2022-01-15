@@ -32,12 +32,18 @@ include("dependencies_for_runtests.jl")
         end
     end
 
-    if group == :solvers || group == :all
-        @testset "Solvers" begin
-            include("test_batched_tridiagonal_solver.jl")
-            include("test_preconditioned_conjugate_gradient_solver.jl")
+    if group == :poisson_solvers || group == :all
+        @testset "Poisson Solvers" begin
             include("test_poisson_solvers.jl")
             include("test_matrix_poisson_solver.jl")
+        end
+    end
+
+
+    if group == :general_solvers || group == :all
+        @testset "General Solvers" begin
+            include("test_batched_tridiagonal_solver.jl")
+            include("test_preconditioned_conjugate_gradient_solver.jl")
         end
     end
 
@@ -64,8 +70,13 @@ include("dependencies_for_runtests.jl")
         @testset "Model and time stepping tests (part 2)" begin
             include("test_boundary_conditions_integration.jl")
             include("test_forcings.jl")
-            include("test_turbulence_closures.jl")
             include("test_dynamics.jl")
+        end
+    end
+
+    if group == :turbulence_closures || group == :all
+        @testset "Turbulence closures tests" begin
+            include("test_turbulence_closures.jl")
         end
     end
 
@@ -99,8 +110,12 @@ include("dependencies_for_runtests.jl")
         include("test_distributed_poisson_solvers.jl")
     end
 
-    if group == :regression || group == :all
-        include("test_regression.jl")
+    if group == :nonhydrostatic_regression || group == :all
+        include("test_nonhydrostatic_regression.jl")
+    end
+
+    if group == :hydrostatic_regression || group == :all
+        include("test_hydrostatic_regression.jl")
     end
 
     if group == :scripts || group == :all
