@@ -19,6 +19,7 @@ using Oceananigans.Operators
 using Oceananigans.Advection
 using Oceananigans.BoundaryConditions
 using Oceananigans.Fields
+using Oceananigans.AbstractOperations
 using Oceananigans.Coriolis
 using Oceananigans.BuoyancyModels
 using Oceananigans.Forcings
@@ -28,13 +29,13 @@ using Oceananigans.Simulations
 using Oceananigans.Diagnostics
 using Oceananigans.OutputWriters
 using Oceananigans.TurbulenceClosures
-using Oceananigans.AbstractOperations
 using Oceananigans.Distributed
 using Oceananigans.Logger
 using Oceananigans.Units
 using Oceananigans.Utils
-using Oceananigans.Architectures: device # to resolve conflict with CUDA.device
+using Oceananigans.Architectures: device, array_type # to resolve conflict with CUDA.device
 
+using Oceananigans: Clock
 using Dates: DateTime, Nanosecond
 using TimesDates: TimeDate
 using Statistics: mean
@@ -70,6 +71,8 @@ closures = (
 #####
 
 CUDA.allowscalar(true)
+
+float_types = (Float32, Float64)
 
 include("data_dependencies.jl")
 include("utils_for_runtests.jl")

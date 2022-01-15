@@ -1,23 +1,27 @@
+include("dependencies_for_runtests.jl")
+
+using CUDA
 using Oceananigans.Solvers: solve!, set_source_term!
 using Oceananigans.Solvers: poisson_eigenvalues
 using Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: _compute_w_from_continuity!
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
-function poisson_solver_instantiates(arch, grid, planner_flag)
-    solver = FFTBasedPoissonSolver(arch, grid, planner_flag)
+function poisson_solver_instantiates(grid, planner_flag)
+    solver = FFTBasedPoissonSolver(grid, planner_flag)
     return true  # Just making sure the FFTBasedPoissonSolver does not error/crash.
 end
 
-function random_divergent_source_term(arch, grid)
+function random_divergent_source_term(grid)
+    arch = architecture(grid)
     default_bcs = FieldBoundaryConditions()
     u_bcs = regularize_field_boundary_conditions(default_bcs, grid, :u)
     v_bcs = regularize_field_boundary_conditions(default_bcs, grid, :v)
     w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
 
-    Ru = CenterField(arch, grid, u_bcs)
-    Rv = CenterField(arch, grid, v_bcs)
-    Rw = CenterField(arch, grid, w_bcs)
+    Ru = CenterField(grid, boundary_conditions=u_bcs)
+    Rv = CenterField(grid, boundary_conditions=v_bcs)
+    Rw = CenterField(grid, boundary_conditions=w_bcs)
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
@@ -39,16 +43,16 @@ function random_divergent_source_term(arch, grid)
     return R, U
 end
 
-function random_divergence_free_source_term(arch, grid)
+function random_divergence_free_source_term(grid)
     default_bcs = FieldBoundaryConditions()
     u_bcs = regularize_field_boundary_conditions(default_bcs, grid, :u)
     v_bcs = regularize_field_boundary_conditions(default_bcs, grid, :v)
     w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
 
     # Random right hand side
-    Ru = CenterField(arch, grid, u_bcs)
-    Rv = CenterField(arch, grid, v_bcs)
-    Rw = CenterField(arch, grid, w_bcs)
+    Ru = CenterField(grid, boundary_conditions=u_bcs)
+    Rv = CenterField(grid, boundary_conditions=v_bcs)
+    Rw = CenterField(grid, boundary_conditions=w_bcs)
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
@@ -56,6 +60,7 @@ function random_divergence_free_source_term(arch, grid)
     set!(Rv, rand(Nx, Ny, Nz))
     set!(Rw, zeros(Nx, Ny, Nz))
 
+    arch = architecture(grid)
     fill_halo_regions!(Ru, arch, nothing, nothing)
     fill_halo_regions!(Rv, arch, nothing, nothing)
     fill_halo_regions!(Rw, arch, nothing, nothing)
@@ -80,16 +85,17 @@ end
 ##### Regular rectilinear grid Poisson solver
 #####
 
-function divergence_free_poisson_solution(arch, grid, planner_flag=FFTW.MEASURE)
+function divergence_free_poisson_solution(grid, planner_flag=FFTW.MEASURE)
+    arch = architecture(grid)
     ArrayType = array_type(arch)
     FT = eltype(grid)
 
-    solver = FFTBasedPoissonSolver(arch, grid, planner_flag)
-    R, U = random_divergent_source_term(arch, grid)
+    solver = FFTBasedPoissonSolver(grid, planner_flag)
+    R, U = random_divergent_source_term(grid)
 
     p_bcs = FieldBoundaryConditions(grid, (Center, Center, Center))
-    ϕ   = CenterField(arch, grid, p_bcs)  # "kinematic pressure"
-    ∇²ϕ = CenterField(arch, grid, p_bcs)
+    ϕ   = CenterField(grid, boundary_conditions=p_bcs)  # "kinematic pressure"
+    ∇²ϕ = CenterField(grid, boundary_conditions=p_bcs)
 
     # Using Δt = 1 but it doesn't matter since velocities = 0.
     solve_for_pressure!(ϕ.data, solver, 1, U)
@@ -111,7 +117,7 @@ k²(::Type{Periodic}, n) = n^2
 
 function analytical_poisson_solver_test(arch, N, topo; FT=Float64, mode=1)
     grid = RectilinearGrid(arch, FT, topology=topo, size=(N, N, N), x=(0, 2π), y=(0, 2π), z=(0, 2π))
-    solver = FFTBasedPoissonSolver(arch, grid)
+    solver = FFTBasedPoissonSolver(grid)
 
     xC, yC, zC = nodes((Center, Center, Center), grid, reshape=true)
 
@@ -160,13 +166,13 @@ function vertically_stretched_poisson_solver_correct_answer(FT, arch, topo, Nx, 
     sz = get_grid_size(topo..., Nx, Ny, Nz)
     xy_intervals = get_xy_interval_kwargs(topo...)
     vs_grid = RectilinearGrid(arch, FT; topology=topo, size=sz, z=zF, xy_intervals...)
-    solver = FourierTridiagonalPoissonSolver(arch, vs_grid)
+    solver = FourierTridiagonalPoissonSolver(vs_grid)
 
     p_bcs = FieldBoundaryConditions(vs_grid, (Center, Center, Center))
-    ϕ   = CenterField(arch, vs_grid, p_bcs)  # "kinematic pressure"
-    ∇²ϕ = CenterField(arch, vs_grid, p_bcs)
+    ϕ   = CenterField(vs_grid, boundary_conditions=p_bcs)  # "kinematic pressure"
+    ∇²ϕ = CenterField(vs_grid, boundary_conditions=p_bcs)
 
-    R = random_divergence_free_source_term(arch, vs_grid)
+    R = random_divergence_free_source_term(vs_grid)
 
     set_source_term!(solver, R)
     ϕc = solver.storage
@@ -214,8 +220,8 @@ two_dimensional_topologies = [(Flat,     Bounded,  Bounded),
                 push!(grids, grids_3d..., grids_2d...)
 
                 for grid in grids
-                    @test poisson_solver_instantiates(arch, grid, FFTW.ESTIMATE)
-                    @test poisson_solver_instantiates(arch, grid, FFTW.MEASURE)
+                    @test poisson_solver_instantiates(grid, FFTW.ESTIMATE)
+                    @test poisson_solver_instantiates(grid, FFTW.MEASURE)
                 end
             end
         end
@@ -239,7 +245,7 @@ two_dimensional_topologies = [(Flat,     Bounded,  Bounded),
 
                     for grid in grids
                         N == 7 && @info "    Testing $(topology(grid)) topology on square grids [$(typeof(arch))]..."
-                        @test divergence_free_poisson_solution(arch, grid)
+                        @test divergence_free_poisson_solution(grid)
                     end
                 end
             end
@@ -249,7 +255,7 @@ two_dimensional_topologies = [(Flat,     Bounded,  Bounded),
                 @info "    Testing $topo topology on rectangular grids with even and prime sizes [$(typeof(arch))]..."
                 for Nx in Ns, Ny in Ns, Nz in Ns
                     grid = RectilinearGrid(arch, topology=topo, size=(Nx, Ny, Nz), extent=(1, 1, 1))
-                    @test divergence_free_poisson_solution(arch, grid)
+                    @test divergence_free_poisson_solution(grid)
                 end
             end
 
@@ -258,7 +264,7 @@ two_dimensional_topologies = [(Flat,     Bounded,  Bounded),
                              RectilinearGrid(arch, Float32, topology=(Bounded, Bounded, Periodic), size=(7, 11, 13), extent=(1, 1, 1))]
 
             for grid in Float32_grids
-                @test divergence_free_poisson_solution(arch, grid)
+                @test divergence_free_poisson_solution(grid)
             end
         end
 

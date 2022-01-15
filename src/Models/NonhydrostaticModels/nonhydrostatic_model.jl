@@ -18,6 +18,8 @@ using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
 
+import Oceananigans.Architectures: architecture
+
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F,
@@ -157,10 +159,10 @@ function NonhydrostaticModel(;    grid,
     closure = with_tracers(tracernames(tracers), closure)
 
     # Either check grid-correctness, or construct tuples of fields
-    velocities         = VelocityFields(velocities, arch, grid, boundary_conditions)
-    tracers            = TracerFields(tracers,      arch, grid, boundary_conditions)
-    pressures          = PressureFields(pressures,  arch, grid, boundary_conditions)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, arch, grid, tracernames(tracers), boundary_conditions, closure)
+    velocities         = VelocityFields(velocities, grid, boundary_conditions)
+    tracers            = TracerFields(tracers,      grid, boundary_conditions)
+    pressures          = PressureFields(pressures,  grid, boundary_conditions)
+    diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
         pressure_solver = PressureSolver(arch, grid)
@@ -171,7 +173,7 @@ function NonhydrostaticModel(;    grid,
 
     # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), arch, grid)
-    timestepper = TimeStepper(timestepper, arch, grid, tracernames(tracers), implicit_solver=implicit_solver)
+    timestepper = TimeStepper(timestepper, grid, tracernames(tracers), implicit_solver=implicit_solver)
 
     # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(velocities, tracers)
@@ -186,6 +188,8 @@ function NonhydrostaticModel(;    grid,
     
     return model
 end
+
+architecture(model::NonhydrostaticModel) = model.architecture
 
 #####
 ##### Recursive util for building NamedTuples of boundary conditions from NamedTuples of fields

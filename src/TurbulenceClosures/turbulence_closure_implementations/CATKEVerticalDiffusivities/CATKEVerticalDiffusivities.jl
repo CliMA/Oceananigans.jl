@@ -110,7 +110,7 @@ end
 ##### Diffusivities and diffusivity fields utilities
 #####
 
-function DiffusivityFields(arch, grid, tracer_names, bcs, closure::Union{CATKEVD, CATKEVDArray})
+function DiffusivityFields(grid, tracer_names, bcs, closure::Union{CATKEVD, CATKEVDArray})
 
     default_diffusivity_bcs = (Kᵘ = FieldBoundaryConditions(grid, (Center, Center, Center)),
                                Kᶜ = FieldBoundaryConditions(grid, (Center, Center, Center)),
@@ -118,9 +118,9 @@ function DiffusivityFields(arch, grid, tracer_names, bcs, closure::Union{CATKEVD
 
     bcs = merge(default_diffusivity_bcs, bcs)
 
-    Kᵘ = CenterField(arch, grid, bcs.Kᵘ)
-    Kᶜ = CenterField(arch, grid, bcs.Kᶜ)
-    Kᵉ = CenterField(arch, grid, bcs.Kᵉ)
+    Kᵘ = CenterField(grid, boundary_conditions=bcs.Kᵘ)
+    Kᶜ = CenterField(grid, boundary_conditions=bcs.Kᶜ)
+    Kᵉ = CenterField(grid, boundary_conditions=bcs.Kᵉ)
 
     return (; Kᵘ, Kᶜ, Kᵉ)
 end        

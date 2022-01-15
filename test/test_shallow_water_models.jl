@@ -1,6 +1,5 @@
-using Oceananigans
-using Oceananigans.Models
-using Oceananigans.Grids
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 function time_stepping_shallow_water_model_works(arch, topo, coriolis, advection; timestepper=:RungeKutta3)

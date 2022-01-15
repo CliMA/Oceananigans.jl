@@ -280,7 +280,7 @@ nothing # hide
 u, v, w = model.velocities
 b = model.tracers.b
 
-perturbation_vorticity = ComputedField(∂z(u) - ∂x(w))
+perturbation_vorticity = Field(∂z(u) - ∂x(w))
 
 xF, yF, zF = nodes(perturbation_vorticity)
 
@@ -332,7 +332,7 @@ nothing # hide
 
 using Random, Statistics
 
-mean_perturbation_kinetic_energy = AveragedField(1/2 * (u^2 + w^2), dims=(1, 2, 3))
+mean_perturbation_kinetic_energy = Field(Average(1/2 * (u^2 + w^2)))
 
 noise(x, y, z) = randn()
 
@@ -377,9 +377,9 @@ rescale!(simulation.model, mean_perturbation_kinetic_energy, target_kinetic_ener
 # buoyancy (perturbation + basic state). It'll be also neat to plot the kinetic energy time-series
 # and confirm it grows with the estimated growth rate.
 
-total_vorticity = ComputedField(∂z(u) + ∂z(model.background_fields.velocities.u) - ∂x(w))
+total_vorticity = Field(∂z(u) + ∂z(model.background_fields.velocities.u) - ∂x(w))
 
-total_b = ComputedField(b + model.background_fields.tracers.b)
+total_b = Field(b + model.background_fields.tracers.b)
 
 simulation.output_writers[:vorticity] =
     JLD2OutputWriter(model, (ω=perturbation_vorticity, Ω=total_vorticity, b=b, B=total_b, KE=mean_perturbation_kinetic_energy),
