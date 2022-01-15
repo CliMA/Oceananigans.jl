@@ -39,7 +39,9 @@ Run Oceananigans on a single NVIDIA CUDA GPU.
 """
 struct GPU <: AbstractArchitecture end
 
-## All extension of these methods is done in Distributed.jl
+#####
+##### These methods are extended in Distributed.jl
+#####
 
 device(::CPU) = KernelAbstractions.CPU()
 device(::GPU) = CUDAKernels.CUDADevice()
@@ -49,22 +51,26 @@ architecture(::Number) = nothing
 architecture(::Array) = CPU()
 architecture(::CuArray) = GPU()
 
+"""
+    child_architecture(arch)
+
+Return `arch`itecture of child processes.
+On single-process, non-distributed systems, return `arch`.
+"""
+child_architecture(arch) = arch
+
 array_type(::CPU) = Array
 array_type(::GPU) = CuArray
 
-arch_array(::CPU, A::Array)   = A
-arch_array(::CPU, A::CuArray) = Array(A)
-arch_array(::GPU, A::Array)   = CuArray(A)
-arch_array(::GPU, A::CuArray) = A
+arch_array(::CPU, a::Array)   = a
+arch_array(::CPU, a::CuArray) = Array(a)
+arch_array(::GPU, a::Array)   = CuArray(a)
+arch_array(::GPU, a::CuArray) = a
 
-const OffsetCPUArray = OffsetArray{FT, N, <:Array} where {FT, N}
-const OffsetGPUArray = OffsetArray{FT, N, <:CuArray} where {FT, N}
-
-Adapt.adapt_structure(::CPU, a::OffsetCPUArray) = a
-Adapt.adapt_structure(::GPU, a::OffsetGPUArray) = a
-
-Adapt.adapt_structure(::GPU, a::OffsetCPUArray) = OffsetArray(CuArray(a.parent), a.offsets...)
-Adapt.adapt_structure(::CPU, a::OffsetGPUArray) = OffsetArray(Array(a.parent), a.offsets...)
+arch_array(arch, a::AbstractRange) = a
+arch_array(arch, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+arch_array(arch, ::Nothing) = nothing
+arch_array(arch, a::Number) = a
 
 device_event(arch) = Event(device(arch))
 

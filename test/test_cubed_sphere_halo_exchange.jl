@@ -21,7 +21,7 @@ for arch in archs
         @info "  Testing cubed sphere tracer halo exchange [$(typeof(arch))]..."
 
         grid = ConformalCubedSphereGrid(cs32_filepath, arch, Nz=1, z=(-1, 0))
-        field = CenterField(arch, grid)
+        field = CenterField(grid)
 
         ## We will fill each grid point with a 5-digit integer "fiijj" where
         ## the f digit is the face number, the ii digits are the i index, and
@@ -373,8 +373,8 @@ for arch in archs
 
         grid = ConformalCubedSphereGrid(cs32_filepath, arch, Nz=1, z=(-1, 0))
 
-        u_field = XFaceField(arch, grid)
-        v_field = YFaceField(arch, grid)
+        u_field = XFaceField(grid)
+        v_field = YFaceField(grid)
 
         ## We will fill each grid point with a 6-digit integer "ufiijj" where
         ## the u digit is 1 for u and 2 for v, the f digit is the face number,

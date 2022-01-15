@@ -252,9 +252,9 @@ vb_op  = KernelFunctionOperation{Center, Face, Center}(diffusive_flux_y, grid, a
 wb_op  = KernelFunctionOperation{Center, Center, Face}(diffusive_flux_z, grid, architecture=architecture, computed_dependencies=dependencies)
 ∇_q_op = KernelFunctionOperation{Center, Center, Center}(∇_dot_qᶜ, grid, architecture=architecture, computed_dependencies=dependencies)
 
-vb = ComputedField(vb_op)
-wb = ComputedField(wb_op)
-∇_q = ComputedField(∇_q_op)
+vb = Field(vb_op)
+wb = Field(wb_op)
+∇_q = Field(∇_q_op)
 
 outputs = merge(fields(model), (; vb, wb, ∇_q))
 
