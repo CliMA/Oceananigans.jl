@@ -5,7 +5,7 @@
 #
 #   * How to run a model with no tracers and no buoyancy model.
 #   * How to use `AbstractOperations`.
-#   * How to use `ComputedField`s to generate output.
+#   * How to use computed `Field`s to generate output.
 
 # ## Install dependencies
 #
@@ -58,7 +58,7 @@ set!(model, u=uᵢ, v=vᵢ)
 # the `NamedTuple` model.velocities:
 u, v, w = model.velocities
 
-# Next we create two objects called `ComputedField`s that calculate
+# Next we create two `Field`s that calculate
 # _(i)_ vorticity that measures the rate at which the fluid rotates
 # and is defined as
 #
@@ -68,7 +68,7 @@ u, v, w = model.velocities
 
 ω = ∂x(v) - ∂y(u)
 
-ω_field = ComputedField(ω)
+ω_field = Field(ω)
 
 # We also calculate _(ii)_ the _speed_ of the flow,
 #
@@ -78,9 +78,9 @@ u, v, w = model.velocities
 
 s = sqrt(u^2 + v^2)
 
-s_field = ComputedField(s)
+s_field = Field(s)
 
-# We'll pass these `ComputedField`s to an output writer below to calculate and output them during the simulation.
+# We'll pass these `Field`s to an output writer below to calculate and output them during the simulation.
 
 simulation = Simulation(model, Δt=0.2, stop_time=50)
 

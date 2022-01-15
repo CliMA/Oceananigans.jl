@@ -4,7 +4,7 @@
 #
 # This example demonstrates:
 #
-#   * How to use `ComputedField`s for output.
+#   * How to use computed `Field`s for output.
 #   * How to post-process saved output using `FieldTimeSeries`.
 #
 # ## Install dependencies
@@ -128,18 +128,18 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(50))
 
 # ### Output
 #
-# We use `ComputedField`s to diagnose and output the total flow speed, the vorticity, ``\zeta``,
-# and the buoyancy, ``b``. Note that `ComputedField`s take "AbstractOperations" on `Field`s as
+# We use computed `Field`s to diagnose and output the total flow speed, the vorticity, ``\zeta``,
+# and the buoyancy, ``b``. Note that computed `Field`s take "AbstractOperations" on `Field`s as
 # input:
 
 u, v, w = model.velocities # unpack velocity `Field`s
 b = model.tracers.b        # unpack buoyancy `Field`
 
 ## total flow speed
-s = ComputedField(sqrt(u^2 + w^2))
+s = Field(sqrt(u^2 + w^2))
 
 ## y-component of vorticity
-ζ = ComputedField(∂z(u) - ∂x(w))
+ζ = Field(∂z(u) - ∂x(w))
 
 outputs = (s = s, b = b, ζ = ζ)
 nothing # hide
@@ -209,7 +209,7 @@ anim = @animate for i in 1:length(times)
     ζ_snapshot = interior(ζ_timeseries[i])[:, 1, :]
     
     b = b_timeseries[i]
-    χ = ComputedField(κ * (∂x(b)^2 + ∂z(b)^2))
+    χ = Field(κ * (∂x(b)^2 + ∂z(b)^2))
     compute!(χ)
     
     b_snapshot = interior(b)[:, 1, :]
@@ -313,8 +313,8 @@ nothing # hide
 
 grid = b_timeseries.grid
 
-∫ⱽ_s² = ReducedField(Nothing, Nothing, Nothing, CPU(), grid, dims=(1, 2, 3))
-∫ⱽ_mod²_∇b = ReducedField(Nothing, Nothing, Nothing, CPU(), grid, dims=(1, 2, 3))
+∫ⱽ_s² = Field{Nothing, Nothing, Nothing}(grid)
+∫ⱽ_mod²_∇b = Field{Nothing, Nothing, Nothing}(grid)
 
 # We recover the time from the saved `FieldTimeSeries` and construct two empty arrays to store
 # the volume-averaged kinetic energy and the instantaneous Nusselt number,

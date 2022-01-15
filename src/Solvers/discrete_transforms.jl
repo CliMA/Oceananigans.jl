@@ -1,11 +1,12 @@
+import Oceananigans.Architectures: architecture
+
 abstract type AbstractTransformDirection end
 
 struct Forward <: AbstractTransformDirection end
 struct Backward <: AbstractTransformDirection end
 
-struct DiscreteTransform{P, D, A, G, Δ, Ω, N, T, Σ}
+struct DiscreteTransform{P, D, G, Δ, Ω, N, T, Σ}
                plan :: P
-       architecture :: A
                grid :: G
           direction :: D
                dims :: Δ
@@ -14,6 +15,8 @@ struct DiscreteTransform{P, D, A, G, Δ, Ω, N, T, Σ}
     twiddle_factors :: T # # https://en.wikipedia.org/wiki/Twiddle_factor
      transpose_dims :: Σ
 end
+
+architecture(transform::DiscreteTransform) = architecture(transform.grid)
 
 #####
 ##### Normalization factors
@@ -76,7 +79,9 @@ end
 
 NoTransform() = DiscreteTransform([nothing for _ in fieldnames(DiscreteTransform)]...)
 
-function DiscreteTransform(plan, direction, arch, grid, dims)
+function DiscreteTransform(plan, direction, grid, dims)
+    arch = architecture(grid)
+
     isnothing(plan) && return NoTransform()
 
     N = size(grid)
@@ -90,7 +95,7 @@ function DiscreteTransform(plan, direction, arch, grid, dims)
 
     dims = length(dims) == 1 ? dims[1] : dims
 
-    return DiscreteTransform(plan, arch, grid, direction, dims, topo, normalization, twiddle, transpose)
+    return DiscreteTransform(plan, grid, direction, dims, topo, normalization, twiddle, transpose)
 end
 
 #####
@@ -100,7 +105,7 @@ end
 (transform::DiscreteTransform{<:Nothing})(A, buffer) = nothing
 
 function (transform::DiscreteTransform{P, <:Forward})(A, buffer) where P
-    maybe_permute_indices!(A, buffer, transform.architecture, transform.grid, transform.dims, transform.topology)
+    maybe_permute_indices!(A, buffer, architecture(transform), transform.grid, transform.dims, transform.topology)
     apply_transform!(A, buffer, transform.plan, transform.transpose_dims)
     maybe_twiddle_forward!(A, transform.twiddle_factors)
     maybe_normalize!(A, transform.normalization)
@@ -110,7 +115,7 @@ end
 function (transform::DiscreteTransform{P, <:Backward})(A, buffer) where P
     maybe_twiddle_backward!(A, transform.twiddle_factors)
     apply_transform!(A, buffer, transform.plan, transform.transpose_dims)
-    maybe_unpermute_indices!(A, buffer, transform.architecture, transform.grid, transform.dims, transform.topology)
+    maybe_unpermute_indices!(A, buffer, architecture(transform), transform.grid, transform.dims, transform.topology)
     maybe_normalize!(A, transform.normalization)
     return nothing
 end

@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 @testset "Models" begin
     @info "Testing models..."
 
@@ -113,19 +115,21 @@
             xF, yF, zF = nodes((Face, Face, Face), model.grid; reshape=true)
 
             # Form solution arrays
-            u_answer = u₀.(xF, yC, zC)
-            v_answer = v₀.(xC, yF, zC)
-            w_answer = w₀.(xC, yC, zF)
-            T_answer = T₀.(xC, yC, zC)
-            S_answer = S₀.(xC, yC, zC)
+            u_answer = u₀.(xF, yC, zC) |> Array 
+            v_answer = v₀.(xC, yF, zC) |> Array
+            w_answer = w₀.(xC, yC, zF) |> Array
+            T_answer = T₀.(xC, yC, zC) |> Array
+            S_answer = S₀.(xC, yC, zC) |> Array
 
             Nx, Ny, Nz = size(model.grid)
 
-            u_cpu = XFaceField(CPU(), grid)
-            v_cpu = YFaceField(CPU(), grid)
-            w_cpu = ZFaceField(CPU(), grid)
-            T_cpu = CenterField(CPU(), grid)
-            S_cpu = CenterField(CPU(), grid)
+            cpu_grid = on_architecture(CPU(), grid)
+
+            u_cpu = XFaceField(cpu_grid)
+            v_cpu = YFaceField(cpu_grid)
+            w_cpu = ZFaceField(cpu_grid)
+            T_cpu = CenterField(cpu_grid)
+            S_cpu = CenterField(cpu_grid)
 
             set!(u_cpu, u)
             set!(v_cpu, v)
@@ -156,12 +160,12 @@
             @test all(abs.(interior(w_cpu)) .< ϵ)
 
             # Test setting the background_fields to a Field
-            U_field = XFaceField(arch, grid)
+            U_field = XFaceField(grid)
             U_field .= 1
             model = NonhydrostaticModel(grid = grid, background_fields = (u=U_field,))
             @test model.background_fields.velocities.u isa Field
 			
-	    U_field = CenterField(arch, grid)            
+	    U_field = CenterField(grid)
 	    @test_throws ArgumentError NonhydrostaticModel(grid=grid, background_fields = (u=U_field,))            
         end
     end

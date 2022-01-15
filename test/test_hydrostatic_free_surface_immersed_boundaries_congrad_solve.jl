@@ -41,7 +41,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
 
             model = HydrostaticFreeSurfaceModel(grid = grid,
                                                 free_surface = free_surface,
-                                                tracer_advection = WENO5(),
                                                 buoyancy = nothing,
                                                 tracers = nothing,
                                                 closure = nothing)
@@ -49,10 +48,10 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
             # Now create a divergent flow field and solve for 
             # pressure correction
             u, v, w     = model.velocities
-            u[imm1,jmm1,1:Nz ] .=  1.
-            u[imp1,jmm1,1:Nz ] .= -1.
-            v[imm1,jmm1,1:Nz ] .=  1.
-            v[imm1,jmp1,1:Nz ] .= -1.
+            u[imm1, jmm1, 1:Nz ] .=  1
+            u[imp1, jmm1, 1:Nz ] .= -1
+            v[imm1, jmm1, 1:Nz ] .=  1
+            v[imm1, jmp1, 1:Nz ] .= -1
 
               η = model.free_surface.η
               g = model.free_surface.gravitational_acceleration
@@ -68,23 +67,23 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
 
             fill_halo_regions!(η, arch)
 
-            # println(typeof(model))
-
+            #=
             println("model.free_surface.gravitational_acceleration = ",model.free_surface.gravitational_acceleration)
             println("∫ᶻQ.u")
-            show(stdout,"text/plain",∫ᶻQ.u.data[1:Nx,1:Ny,1])
+            show(stdout,"text/plain", ∫ᶻQ.u.data[1:Nx, 1:Ny, 1])
             println("")
 
             println("η")
-            show(stdout,"text/plain",η.data[1:Nx,1:Ny,1])
+            show(stdout,"text/plain", η.data[1:Nx, 1:Ny, 1])
             println("")
 
             pressure_correct_velocities!(model, Δt)
             fill_halo_regions!(u, arch)
 
             println("u")
-            show(stdout,"text/plain",u.data[1:Nx,1:Ny,1])
+            show(stdout,"text/plain", u.data[1:Nx, 1:Ny, 1])
             println("")
+            =#
 
             fs = model.free_surface
             vertically_integrated_lateral_areas = fs.implicit_step_solver.vertically_integrated_lateral_areas
