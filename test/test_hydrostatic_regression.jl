@@ -19,7 +19,6 @@ function show_hydrostatic_test(grid, free_surface, comp)
     return testset_str, info_str
 end
 
-
 function get_fields_from_checkpoint(filename)
     file = jldopen(filename)
 
@@ -61,17 +60,17 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
 @testset "Hydrostatic Regression" begin
     @info "Running hydrostatic regression tests..."
 
-    longitude = ((-180, 180), (-160, 160))
-    latitude  = ((-60, 60))
-    zcoord    = ((-90, 0))
-
-    explicit_free_surface = ExplicitFreeSurface(gravitational_acceleration = 1.0)
-    implicit_free_surface = ImplicitFreeSurface(gravitational_acceleration = 1.0,
-                                                solver_method = :PreconditionedConjugateGradient,
-                                                tolerance = 1e-15)
-    
     for arch in archs
-        for lon in longitude, lat in latitude, z in zcoord, comp in (true, false)
+        longitude = ((-180, 180), (-160, 160))
+        latitude  = ((-60, 60),)
+        zcoord    = ((-90, 0),)
+    
+        explicit_free_surface = ExplicitFreeSurface(gravitational_acceleration = 1.0)
+        implicit_free_surface = ImplicitFreeSurface(gravitational_acceleration = 1.0,
+                                                    solver_method = :PreconditionedConjugateGradient,
+                                                    tolerance = 1e-15)
+        
+            for lon in longitude, lat in latitude, z in zcoord, comp in (true, false)
 
             lon[1] == -180 ? N = (180, 60, 3) : N = (160, 60, 3)
 
