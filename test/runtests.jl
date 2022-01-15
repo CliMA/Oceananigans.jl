@@ -35,10 +35,14 @@ include("dependencies_for_runtests.jl")
     if group == :poisson_solvers || group == :all
         @testset "Poisson Solvers" begin
             include("test_poisson_solvers.jl")
-            include("test_matrix_poisson_solver.jl")
         end
     end
 
+    if group == :matrix_poisson_solvers || group == :all
+        @testset "Matrix Poisson Solvers" begin
+            include("test_matrix_poisson_solver.jl")
+        end
+    end
 
     if group == :general_solvers || group == :all
         @testset "General Solvers" begin
