@@ -110,7 +110,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
 
         # Output: primitive fields + computations
         u, v, w, c = merge(m.velocities, m.tracers)
-        ζ = ComputedField(∂x(v) - ∂y(u))
+        ζ = Field(∂x(v) - ∂y(u))
         outputs = merge(m.velocities, m.tracers, (ζ=ζ,))
 
         output_name = m.grid isa ImmersedBoundaryGrid ?

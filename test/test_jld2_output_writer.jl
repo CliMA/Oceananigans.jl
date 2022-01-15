@@ -1,13 +1,4 @@
-using Test
-using CUDA
-using JLD2
-using Oceananigans
-using Oceananigans.Units
-using Oceananigans: Clock
-
-include("utils_for_runtests.jl")
-
-archs = test_architectures()
+include("dependencies_for_runtests.jl")
 
 #####
 ##### JLD2OutputWriter tests
@@ -105,9 +96,9 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
     Δt = 0.1
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
-    average_fluxes = (wu = AveragedField(w * u, dims=(1, 2)),
-                      uv = AveragedField(u * v, dims=(1, 2)),
-                      wT = AveragedField(w * T, dims=(1, 2)))
+    average_fluxes = (wu = Field(Average(w * u, dims=(1, 2))),
+                      uv = Field(Average(u * v, dims=(1, 2))),
+                      wT = Field(Average(w * T, dims=(1, 2))))
 
     simulation.output_writers[:fluxes] = JLD2OutputWriter(model, average_fluxes,
                                                           schedule = AveragedTimeInterval(4Δt, window=2Δt),

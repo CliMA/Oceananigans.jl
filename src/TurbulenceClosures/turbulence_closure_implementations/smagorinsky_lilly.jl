@@ -202,11 +202,11 @@ Base.show(io::IO, closure::SmagorinskyLilly) =
 ##### For closures that only require an eddy viscosity νₑ field.
 #####
 
-function DiffusivityFields(arch, grid, tracer_names, bcs, closure::SmagorinskyLilly)
+function DiffusivityFields(grid, tracer_names, bcs, closure::SmagorinskyLilly)
 
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
     bcs = merge(default_eddy_viscosity_bcs, bcs)
-    νₑ = CenterField(arch, grid, bcs.νₑ)
+    νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
 
     # Use AbstractOperations to write eddy diffusivities in terms of
     # eddy viscosity

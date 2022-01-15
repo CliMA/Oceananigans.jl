@@ -50,7 +50,7 @@ function run_and_analyze(simulation)
     u, v, w = simulation.model.velocities
     Δt = simulation.Δt
 
-    ηx = ComputedField(∂x(η))
+    ηx = Field(∂x(η))
     compute!(ηx)
 
     u₀  = interior(u)[:, 1, 1]

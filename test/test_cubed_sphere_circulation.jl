@@ -1,9 +1,9 @@
 using Oceananigans.Operators: Γᶠᶠᵃ, ζ₃ᶠᶠᵃ
 
 function diagnose_velocities_from_streamfunction(ψ, arch, grid)
-    ψᶠᶠᶜ = Field(Face, Face,   Center, arch, grid)
-    uᶠᶜᶜ = Field(Face, Center, Center, arch, grid)
-    vᶜᶠᶜ = Field(Center, Face, Center, arch, grid)
+    ψᶠᶠᶜ = Field{Face, Face,   Center}(grid)
+    uᶠᶜᶜ = Field{Face, Center, Center}(grid)
+    vᶜᶠᶜ = Field{Center, Face, Center}(grid)
 
     for (f, grid_face) in enumerate(grid.faces)
         Nx, Ny, Nz = size(grid_face)
@@ -45,8 +45,8 @@ for arch in archs
         Nx, Ny, Nz, Nf = size(grid)
         R = grid.faces[1].radius
 
-        u_field = XFaceField(arch, grid)
-        v_field = YFaceField(arch, grid)
+        u_field = XFaceField(grid)
+        v_field = YFaceField(grid)
 
         ψ(λ, φ) = R * sind(φ)
         CUDA.@allowscalar set_velocities_from_streamfunction!(u_field, v_field, ψ, arch, grid)

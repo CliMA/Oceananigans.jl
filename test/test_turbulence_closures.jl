@@ -26,8 +26,8 @@ function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3)
           arch = CPU()
        closure = IsotropicDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
           grid = RectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
-    velocities = VelocityFields(arch, grid)
-       tracers = TracerFields((:T, :S), arch, grid)
+    velocities = VelocityFields(grid)
+       tracers = TracerFields((:T, :S), grid)
          clock = Clock(time=0.0)
 
     u, v, w = velocities
@@ -59,8 +59,8 @@ function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), �
           grid = RectilinearGrid(arch, FT, size=(3, 1, 4), extent=(3, 1, 4))
            eos = LinearEquationOfState(FT)
       buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=eos)
-    velocities = VelocityFields(arch, grid)
-       tracers = TracerFields((:T, :S), arch, grid)
+    velocities = VelocityFields(grid)
+       tracers = TracerFields((:T, :S), grid)
          clock = Clock(time=0.0)
 
     u, v, w, T, S = merge(velocities, tracers)
@@ -93,15 +93,12 @@ function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), �
 end
 
 function time_step_with_variable_isotropic_diffusivity(arch)
-
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
     closure = IsotropicDiffusivity(ν = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t),
                                    κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
 
-    model = NonhydrostaticModel(closure=closure,
-                                grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)))
-
+    model = NonhydrostaticModel(; grid, closure)
     time_step!(model, 1, euler=true)
-
     return true
 end
 
@@ -136,15 +133,12 @@ function compute_closure_specific_diffusive_cfl(closurename)
     grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
     closure = getproperty(TurbulenceClosures, closurename)()
 
-    model = NonhydrostaticModel(grid=grid, closure=closure)
+    model = NonhydrostaticModel(; grid, closure)
     dcfl = DiffusiveCFL(0.1)
     @test dcfl(model) isa Number
 
-    tracerless_model = NonhydrostaticModel(grid=grid, closure=closure,
-                                           buoyancy=nothing, tracers=nothing)
-
+    tracerless_model = NonhydrostaticModel(; grid, closure, buoyancy=nothing, tracers=nothing)
     dcfl = DiffusiveCFL(0.2)
-
     @test dcfl(tracerless_model) isa Number
 
     return nothing

@@ -131,7 +131,7 @@ K = FunctionField{Center, Center, Center}(K_func, grid)
 f² = FunctionField{Center, Center, Center}(f²_func, grid)
 
 ν_op = @at (Center, Center, Center) K * f² / ∂z(b)
-ν = ComputedField(ν_op)
+ν = Field(ν_op)
 
 closure = AnisotropicDiffusivity(νh = 100, νz = 10, κh = 10, κz = 10,
                                  time_discretization = VerticallyImplicitTimeDiscretization())

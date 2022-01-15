@@ -37,6 +37,8 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
       boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)
     )
 
+    @show model.diffusivity_fields
+
     # We will manually change the stop_iteration as needed.
     simulation = Simulation(model, Δt=Δt, stop_iteration=0)
 
