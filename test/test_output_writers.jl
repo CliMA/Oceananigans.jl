@@ -1,20 +1,12 @@
+include("dependencies_for_runtests.jl")
+
 using Statistics
 using NCDatasets
-using Test
-
-using Oceananigans
-using Oceananigans.Diagnostics
-using Oceananigans.Fields
-using Oceananigans.OutputWriters
 
 using Dates: Millisecond
 using Oceananigans: write_output!
 using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC, ContinuousBoundaryFunction
 using Oceananigans.TimeSteppers: update_state!
-
-include("utils_for_runtests.jl")
-
-archs = test_architectures()
 
 #####
 ##### WindowedTimeAverage tests

@@ -1,23 +1,22 @@
 using Oceananigans.Operators: interpolation_code
 
-struct Derivative{X, Y, Z, D, A, I, AD, R, G, T} <: AbstractOperation{X, Y, Z, R, G, T}
+struct Derivative{LX, LY, LZ, D, A, I, AD, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
                ∂ :: D
              arg :: A
                ▶ :: I
       abstract_∂ :: AD
-    architecture :: R
             grid :: G
 
     @doc """
-        Derivative{X, Y, Z}(∂, arg, ▶, grid)
+        Derivative{LX, LY, LZ}(∂, arg, ▶, grid)
 
     Returns an abstract representation of the derivative `∂` on `arg`,
     and subsequent interpolation by `▶` on `grid`.
     """
-    function Derivative{X, Y, Z}(∂::D, arg::A, ▶::I, abstract_∂::AD,
-                                 arch::R, grid::G) where {X, Y, Z, D, A, I, AD, R, G}
+    function Derivative{LX, LY, LZ}(∂::D, arg::A, ▶::I, abstract_∂::AD,
+                                 grid::G) where {LX, LY, LZ, D, A, I, AD, G}
         T = eltype(grid)
-        return new{X, Y, Z, D, A, I, AD, R, G, T}(∂, arg, ▶, abstract_∂, arch, grid)
+        return new{LX, LY, LZ, D, A, I, AD, G, T}(∂, arg, ▶, abstract_∂, grid)
     end
 end
 
@@ -29,10 +28,9 @@ end
 
 """Create a derivative operator `∂` acting on `arg` at `L∂`, followed by
 interpolation to `L` on `grid`."""
-function _derivative(L, ∂, arg, L∂, abstract_∂, grid) where {X, Y, Z}
+function _derivative(L, ∂, arg, L∂, abstract_∂, grid) where {LX, LY, LZ}
     ▶ = interpolation_operator(L∂, L)
-    arch = architecture(arg)
-    return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, abstract_∂, arch, grid)
+    return Derivative{L[1], L[2], L[3]}(∂, arg, ▶, abstract_∂, grid)
 end
 
 # Recompute location of derivative
@@ -62,8 +60,8 @@ push!(operators, derivative_operators...)
 Return an abstract representation of an x-derivative acting on field `a` followed
 by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
-∂x(L::Tuple, arg::AF{X, Y, Z}) where {X, Y, Z} =
-    _derivative(L, ∂x(X, Y, Z), arg, (flip(X), Y, Z), ∂x, arg.grid)
+∂x(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
+    _derivative(L, ∂x(LX, LY, LZ), arg, (flip(LX), LY, LZ), ∂x, arg.grid)
 
 """
     ∂y(L::Tuple, a::AbstractField)
@@ -71,8 +69,8 @@ by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 Return an abstract representation of a y-derivative acting on field `a` followed
 by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
-∂y(L::Tuple, arg::AF{X, Y, Z}) where {X, Y, Z} =
-    _derivative(L, ∂y(X, Y, Z), arg, (X, flip(Y), Z), ∂y, arg.grid)
+∂y(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
+    _derivative(L, ∂y(LX, LY, LZ), arg, (LX, flip(LY), LZ), ∂y, arg.grid)
 
 """
     ∂z(L::Tuple, a::AbstractField)
@@ -80,8 +78,8 @@ by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 Return an abstract representation of a z-derivative acting on field `a` followed
 by  interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
-∂z(L::Tuple, arg::AF{X, Y, Z}) where {X, Y, Z} =
-    _derivative(L, ∂z(X, Y, Z), arg, (X, Y, flip(Z)), ∂z, arg.grid)
+∂z(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
+    _derivative(L, ∂z(LX, LY, LZ), arg, (LX, LY, flip(LZ)), ∂z, arg.grid)
 
 # Defaults
 """
@@ -89,26 +87,20 @@ by  interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 
 Return an abstract representation of a x-derivative acting on field `a`.
 """
-∂x(arg::AF{X, Y, Z}) where {X, Y, Z} = ∂x((flip(X), Y, Z), arg)
+∂x(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂x((flip(LX), LY, LZ), arg)
 
 """
     ∂y(a::AbstractField)
 
 Return an abstract representation of a y-derivative acting on field `a`.
 """
-∂y(arg::AF{X, Y, Z}) where {X, Y, Z} = ∂y((X, flip(Y), Z), arg)
+∂y(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂y((LX, flip(LY), LZ), arg)
 """
     ∂z(a::AbstractField)
 
 Return an abstract representation of a z-derivative acting on field `a`.
 """
-∂z(arg::AF{X, Y, Z}) where {X, Y, Z} = ∂z((X, Y, flip(Z)), arg)
-
-#####
-##### Architecture inference for derivatives
-#####
-
-architecture(∂::Derivative) = ∂.architecture
+∂z(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂z((LX, LY, flip(LZ)), arg)
 
 #####
 ##### Nested computations
@@ -123,7 +115,10 @@ compute_at!(∂::Derivative, time) = compute_at!(∂.arg, time)
 #####
 
 "Adapt `Derivative` to work on the GPU via CUDAnative and CUDAdrv."
-Adapt.adapt_structure(to, deriv::Derivative{X, Y, Z}) where {X, Y, Z} =
-    Derivative{X, Y, Z}(Adapt.adapt(to, deriv.∂), Adapt.adapt(to, deriv.arg),
-                        Adapt.adapt(to, deriv.▶), nothing, nothing, Adapt.adapt(to, deriv.grid))
+Adapt.adapt_structure(to, deriv::Derivative{LX, LY, LZ}) where {LX, LY, LZ} =
+    Derivative{LX, LY, LZ}(Adapt.adapt(to, deriv.∂),
+                           Adapt.adapt(to, deriv.arg),
+                           Adapt.adapt(to, deriv.▶),
+                           nothing,
+                           Adapt.adapt(to, deriv.grid))
 

@@ -167,7 +167,7 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ
                                                          computed_dependencies = dependencies)
 
 # R(b) eg the Redi operator applied to buoyancy
-Rb = ComputedField(∇_q_op)
+Rb = Field(∇_q_op)
 
 outputs = merge(fields(model), (; Rb))
 

@@ -11,23 +11,26 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields
 using Oceananigans.Utils: tupleit
 
-function ShallowWaterTendencyFields(arch, grid, tracer_names)
+import Oceananigans.Architectures: architecture
 
-    uh = XFaceField(arch, grid)
-    vh = YFaceField(arch, grid)
-    h = CenterField(arch, grid)
+function ShallowWaterTendencyFields(grid, tracer_names)
 
-    tracers = TracerFields(tracer_names, arch, grid)
+    uh = XFaceField(grid)
+    vh = YFaceField(grid)
+    h = CenterField(grid)
 
-    return merge((uh=uh, vh=vh, h=h), tracers)
+    tracers = TracerFields(tracer_names, grid)
+    solution = (; uh, vh, h)
+
+    return merge(solution, tracers)
 end
 
-function ShallowWaterSolutionFields(arch, grid, bcs)
-    uh = XFaceField(arch, grid, bcs.uh)
-    vh = YFaceField(arch, grid, bcs.vh)
-    h = CenterField(arch, grid, bcs.h)
+function ShallowWaterSolutionFields(grid, bcs)
+    uh = XFaceField(grid, boundary_conditions=bcs.uh)
+    vh = YFaceField(grid, boundary_conditions=bcs.vh)
+    h = CenterField(grid, boundary_conditions=bcs.h)
 
-    return (uh=uh, vh=vh, h=h)
+    return (; uh, vh, h)
 end
 
 mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q, C, K, TS} <: AbstractModel{TS}
@@ -101,26 +104,29 @@ function ShallowWaterModel(;
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
 
-    @assert topology(grid, 3) === Flat "ShallowWaterModel requires `topology(grid, 3) === Flat`. Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` when constructing `grid`."
+    @assert topology(grid, 3) === Flat "ShallowWaterModel requires `topology(grid, 3) === Flat`. " *
+                                       "Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` " *
+                                       "when constructing `grid`."
 
     Hx, Hy, Hz = inflate_halo_size(grid.Hx, grid.Hy, 0, topology(grid), advection, closure)
-    grid = with_halo((Hx, Hy, 0), grid)
+    any((grid.Hx, grid.Hy, grid.Hz) .< (Hx, Hy, 0)) && # halos are too small, remake grid
+        (grid = with_halo((Hx, Hy, 0), grid))
 
     prognostic_field_names = (:uh, :vh, :h, tracers...)
-    default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions() for name in prognostic_field_names))
-    boundary_conditions = merge(default_boundary_conditions, boundary_conditions)
+    default_boundary_conditions = NamedTuple{prognostic_field_names}(Tuple(FieldBoundaryConditions()
+                                                                           for name in prognostic_field_names))
 
+    boundary_conditions = merge(default_boundary_conditions, boundary_conditions)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
 
-    solution           = ShallowWaterSolutionFields(arch, grid, boundary_conditions)
-    tracers            = TracerFields(tracers, arch, grid, boundary_conditions)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, arch, grid,
-                                      tracernames(tracers), boundary_conditions, closure)
+    solution           = ShallowWaterSolutionFields(grid, boundary_conditions)
+    tracers            = TracerFields(tracers, grid, boundary_conditions)
+    diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
     # Instantiate timestepper if not already instantiated
-    timestepper = TimeStepper(timestepper, arch, grid, tracernames(tracers);
-                              Gⁿ = ShallowWaterTendencyFields(arch, grid, tracernames(tracers)),
-                              G⁻ = ShallowWaterTendencyFields(arch, grid, tracernames(tracers)))
+    timestepper = TimeStepper(timestepper, grid, tracernames(tracers);
+                              Gⁿ = ShallowWaterTendencyFields(grid, tracernames(tracers)),
+                              G⁻ = ShallowWaterTendencyFields(grid, tracernames(tracers)))
 
     # Regularize forcing and closure for model tracer and velocity fields.
     model_fields = merge(solution, tracers)
@@ -145,3 +151,5 @@ function ShallowWaterModel(;
 
     return model
 end
+
+architecture(model::ShallowWaterModel) = model.architecture

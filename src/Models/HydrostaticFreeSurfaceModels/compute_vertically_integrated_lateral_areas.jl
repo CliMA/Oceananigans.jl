@@ -12,7 +12,9 @@
     end
 end
 
-function compute_vertically_integrated_lateral_areas!(∫ᶻ_A, grid, arch)
+function compute_vertically_integrated_lateral_areas!(∫ᶻ_A, grid)
+
+    arch = architecture(grid)
 
     event = launch!(arch,
                     grid,
