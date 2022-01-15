@@ -103,15 +103,15 @@ u = uh / h
 v = vh / h
 
 ## Build and compute mean vorticity discretely
-ω = ComputedField(∂x(v) - ∂y(u))
+ω = Field(∂x(v) - ∂y(u))
 compute!(ω)
 
 ## Copy mean vorticity to a new field
-ωⁱ = Field(Face, Face, Nothing, model.architecture, model.grid)
+ωⁱ = Field{Face, Face, Nothing}(model.grid)
 ωⁱ .= ω
 
 ## Use this new field to compute the perturbation vorticity
-ω′ = ComputedField(ω - ωⁱ)
+ω′ = Field(ω - ωⁱ)
 
 # and finally set the "true" initial condition with noise,
 

@@ -153,7 +153,7 @@ end
 function stop_iteration_exceeded(sim)
     if sim.model.clock.iteration >= sim.stop_iteration
         @info "Simulation is stopping. Model iteration $(sim.model.clock.iteration) " *
-               "has hit or exceeded simulation stop iteration $(sim.stop_iteration)."
+               "has hit or exceeded simulation stop iteration $(Int(sim.stop_iteration))."
        sim.running = false 
     end
     return nothing

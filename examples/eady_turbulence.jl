@@ -6,7 +6,7 @@
 #   * How to use a tuple of turbulence closures
 #   * How to use hyperdiffusivity
 #   * How to implement background velocity and tracer distributions
-#   * How to use `ComputedField`s for output
+#   * How to build `Field`s that compute output
 #
 # ## Install dependencies
 #
@@ -275,16 +275,16 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 # ### Output
 #
 # To visualize the baroclinic turbulence ensuing in the Eady problem,
-# we use `ComputedField`s to diagnose and output vertical vorticity and divergence.
-# Note that `ComputedField`s take "AbstractOperations" on `Field`s as input:
+# we use computed `Field`s to diagnose and output vertical vorticity and divergence.
+# Note that computed `Field`s take "AbstractOperations" on `Field`s as input:
 
 u, v, w = model.velocities # unpack velocity `Field`s
 
 ## Vertical vorticity [s⁻¹]
-ζ = ComputedField(∂x(v) - ∂y(u))
+ζ = Field(∂x(v) - ∂y(u))
 
 ## Horizontal divergence, or ∂x(u) + ∂y(v) [s⁻¹]
-δ = ComputedField(-∂z(w))
+δ = Field(-∂z(w))
 
 # With the vertical vorticity, `ζ`, and the horizontal divergence, `δ` in hand,
 # we create a `JLD2OutputWriter` that saves `ζ` and `δ` and add them to
