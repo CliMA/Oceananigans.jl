@@ -49,8 +49,8 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_accel
 
     coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
 
-    solver = MatrixIterativeSolver(coeffs; reduced_dim = (false, false, true),
-                                   grid = grid, settings...)
+    solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true),
+                                          grid = grid, settings...)
 
     return MatrixImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
