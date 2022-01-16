@@ -42,7 +42,6 @@ implicitly during time-stepping.
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᵃ(i, j, k, grid, hydrostatic_pressure_anomaly)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, clock, velocities, diffusivities, tracers, buoyancy)
-             + ∂ⱼ_τ₁ⱼ(i, j, k, grid, free_surface.closure, clock, velocities, diffusivities, tracers, buoyancy)
              + forcings.u(i, j, k, grid, clock, hydrostatic_prognostic_fields(velocities, free_surface, tracers)))
 end
 

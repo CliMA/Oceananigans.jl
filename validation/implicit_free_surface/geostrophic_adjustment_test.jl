@@ -2,7 +2,7 @@ using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
 using Statistics
-using IterativeSolvers
+using Printf
 using LinearAlgebra, SparseArrays
 using Oceananigans.Solvers: constructors, unpack_constructors
 
@@ -30,17 +30,20 @@ function geostrophic_adjustment_simulation(free_surface, topology)
     vᵍ(x, y, z) = - U * (x - x₀) / L * gaussian(x - x₀, L)
     
     g = model.free_surface.gravitational_acceleration
-    
+    η = model.free_surface.η
+
     η₀ = coriolis.f * U * L / g # geostrohpic free surface amplitude
     
     ηᵍ(x) = η₀ * gaussian(x - x₀, L)
 
     ηⁱ(x, y) = 2 * ηᵍ(x)
 
-    set!(model, v=vᵍ, η=ηⁱ)
+    set!(model, v=vᵍ)
+    set!(η, ηⁱ)
+
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
-    simulation = Simulation(model, Δt=2wave_propagation_time_scale, stop_iteration=10000)
+    simulation = Simulation(model, Δt=2wave_propagation_time_scale, stop_iteration=300)
 
     return simulation
 end
@@ -62,14 +65,21 @@ function run_and_analyze(simulation)
     if f isa SplitExplicitFreeSurface
         solver_method = "SplitExplicitFreeSurface"
     else
-        solver_method = string(simulation.mode.free_surface.solver_method)
+        solver_method = string(simulation.model.free_surface.solver_method)
     end
 
     simulation.output_writers[:fields] = JLD2OutputWriter(simulation.model, (η, ηx, u, v, w),
                                                           schedule = TimeInterval(Δt),
-                                                          prefix = "solution_$(solver_method)")
+                                                          prefix = "solution_$(solver_method)",
+                                                          force = true)
 
-    progress_show(s) = 
+    progress_message(sim) = @info @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e",
+                                           100 * sim.model.clock.time / sim.stop_time, sim.model.clock.iteration,
+                                           sim.model.clock.time, maximum(abs, sim.model.velocities.u))
+
+    
+    simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(10))
+    
     run!(simulation)
     
     compute!(ηx)
@@ -98,7 +108,7 @@ free_surfaces = [pcg_free_surface, matrix_free_surface, splitexplicit_free_surfa
 simulations = [geostrophic_adjustment_simulation(free_surface, topology_type) for free_surface in free_surfaces, topology_type in topology_types];
 data = [run_and_analyze(sim) for sim in simulations];
 
-using GLMakie
+using Plots
 using JLD2 
 
 file1 = jldopen("solution_PreconditionedConjugateGradient.jld2")
@@ -115,30 +125,31 @@ y  = grid.yᵃᶜᵃ[1:grid.Ny]
 iterations = parse.(Int, keys(file1["timeseries/t"]))
 iterations = iterations[1:200]
 
-iter = Node(0)
+fig = Figure(resolution=(1000, 500))
 
 mid = Int(floor(grid.Ny/2))
 η0 = file1["timeseries/1/0"][:, mid, 1]
-η1 = @lift(Array(file1["timeseries/1/" * string($iter)])[:, mid, 1])
-η2 = @lift(Array(file2["timeseries/1/" * string($iter)])[:, mid, 1])
-η3 = @lift(Array(file3["timeseries/1/" * string($iter)])[:, mid, 1])
-u1 = @lift(Array(file1["timeseries/3/" * string($iter)])[:, mid, 1])
-u2 = @lift(Array(file2["timeseries/3/" * string($iter)])[:, mid, 1])
-u3 = @lift(Array(file3["timeseries/3/" * string($iter)])[:, mid, 1])
 
-fig = Figure(resolution=(1000, 500))
-plot(fig[1,1] , x, η0, color = :black)
-plot!(fig[1,1], x, η1, color = :red)
-plot!(fig[1,1], x, η2, color = :blue)
-plot!(fig[1,1], x, η3, color = :green)
-plot(fig[1,2], xf, u1, color = :red)
-plot!(fig[1,2],xf, u2, color = :blue)
-plot!(fig[1,2],xf, u3, color = :green)
-ylims!(-5e-5, 5e-5)
-GLMakie.record(fig, "free_surface_bounded.mp4", iterations, framerate=12) do i
-    @info "Plotting iteration $i of $(iterations[end])..."
-    iter[] = i
+anim = @animate for i in 1:200
+    η1 = file1["timeseries/1/" * string(i)][:, mid, 1]
+    η2 = file2["timeseries/1/" * string(i)][:, mid, 1]
+    η3 = file3["timeseries/1/" * string(i)][:, mid, 1]
+    u1 = file1["timeseries/3/" * string(i)][:, mid, 1]
+    u2 = file2["timeseries/3/" * string(i)][:, mid, 1]
+    u3 = file3["timeseries/3/" * string(i)][:, mid, 1]
+
+    η_plot = plot(x, η0, color = :black)
+    plot!(x, η1, color = :red)
+    plot!(x, η2, color = :blue)
+    plot!(x, η3, color = :green)
+
+    u_plot = plot(xf, u1, color = :red)
+    plot!(x, u2, color = :blue)
+    plot!(x, u3, color = :green)
+    ylims!(-5e-5, 5e-5)
 end
+
+mp4(anim, "free_surface_bounded.mp4")
 
 # mid = Int(floor(grid.Ny/2))
 # η3 = @lift(Array(file3["timeseries/1/" * string($iter)])[:, mid, 1])

@@ -64,8 +64,6 @@ function Base.getproperty(free_surface::SplitExplicitFreeSurface, sym::Symbol)
     elseif sym in fieldnames(SplitExplicitSettings)
         @assert free_surface.settings isa SplitExplicitSettings
         return getfield(free_surface.settings, sym)
-    elseif sym in [:closure]
-        return nothing
     else
         return getfield(free_surface, sym)
     end
