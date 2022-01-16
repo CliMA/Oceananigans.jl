@@ -93,7 +93,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     # Output: primitive fields + computations
     u, v, w, c = merge(model.velocities, model.tracers)
 
-    ζ = ComputedField(∂x(v) - ∂y(u))
+    ζ = Field(∂x(v) - ∂y(u))
 
     outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.η))
 

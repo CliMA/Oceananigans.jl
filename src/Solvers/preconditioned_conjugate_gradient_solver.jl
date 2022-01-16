@@ -3,6 +3,8 @@ using Oceananigans.Grids: interior_parent_indices
 using Statistics: norm, dot
 using LinearAlgebra
 
+import Oceananigans.Architectures: architecture
+
 mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P}
                architecture :: A
                        grid :: G
@@ -17,6 +19,8 @@ mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P}
               precondition! :: M
      preconditioner_product :: P
 end
+
+architecture(solver::PreconditionedConjugateGradientSolver) = solver.architecture
 
 no_precondition!(args...) = nothing
 

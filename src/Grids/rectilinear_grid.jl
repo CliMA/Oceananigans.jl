@@ -5,38 +5,70 @@ A rectilinear grid with with either constant or varying grid spacings between ce
 in all directions. Grid elements of type `FT`, topology `{TX, TY, TZ}`, grid spacings of type `{FX, FY, FZ}`
 and coordinates in each direction of type `{VX, VY, VZ}`. 
 """
-
 struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: AbstractRectilinearGrid{FT, TX, TY, TZ, Arch}
-        architecture::Arch
-        Nx :: Int
-        Ny :: Int
-        Nz :: Int
-        Hx :: Int
-        Hy :: Int
-        Hz :: Int
-        Lx :: FT
-        Ly :: FT
-        Lz :: FT
-      # All directions can be either regular (FX, FY, FZ) <: Number or stretched (FX, FY, FZ) <: AbstractVector
-      Δxᶠᵃᵃ :: FX
-      Δxᶜᵃᵃ :: FX
-      xᶠᵃᵃ  :: VX
-      xᶜᵃᵃ  :: VX
-      Δyᵃᶠᵃ :: FY
-      Δyᵃᶜᵃ :: FY
-      yᵃᶠᵃ  :: VY
-      yᵃᶜᵃ  :: VY
-      Δzᵃᵃᶠ :: FZ 
-      Δzᵃᵃᶜ :: FZ
-      zᵃᵃᶠ  :: VZ
-      zᵃᵃᶜ  :: VZ
+    architecture :: Arch
+    Nx :: Int
+    Ny :: Int
+    Nz :: Int
+    Hx :: Int
+    Hy :: Int
+    Hz :: Int
+    Lx :: FT
+    Ly :: FT
+    Lz :: FT
+    # All directions can be either regular (FX, FY, FZ) <: Number
+    # or stretched (FX, FY, FZ) <: AbstractVector
+    Δxᶠᵃᵃ :: FX
+    Δxᶜᵃᵃ :: FX
+    xᶠᵃᵃ  :: VX
+    xᶜᵃᵃ  :: VX
+    Δyᵃᶠᵃ :: FY
+    Δyᵃᶜᵃ :: FY
+    yᵃᶠᵃ  :: VY
+    yᵃᶜᵃ  :: VY
+    Δzᵃᵃᶠ :: FZ 
+    Δzᵃᵃᶜ :: FZ
+    zᵃᵃᶠ  :: VZ
+    zᵃᵃᶜ  :: VZ
+
+    function RectilinearGrid{TX, TY, TZ}(arch::Arch,
+                                         Nx, Ny, Nz,
+                                         Hx, Hy, Hz,
+                                         Lx::FT, Ly::FT, Lz::FT,
+                                         Δxᶠᵃᵃ :: FX, Δxᶜᵃᵃ :: FX,
+                                          xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
+                                         Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
+                                          yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
+                                         Δzᵃᵃᶠ :: FZ, Δzᵃᵃᶜ :: FZ,
+                                          zᵃᵃᶠ :: VZ,  zᵃᵃᶜ :: VZ) where {Arch, FT,
+                                                                          TX, TY, TZ,
+                                                                          FX, VX, FY,
+                                                                          VY, FZ, VZ}
+                                                                                           
+        return new{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(arch, Nx, Ny, Nz,
+                                                                 Hx, Hy, Hz, Lx, Ly, Lz, 
+                                                                 Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                                                 Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
+                                                                 Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
+    end
 end
 
-const XRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number}
-const YRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
-const ZRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number}
-const HRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
-const  RegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number}
+const XRegRectilinearGrid  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number}
+const YRegRectilinearGrid  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any,    <:Number}
+const ZRegRectilinearGrid  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any,    <:Any,    <:Number}
+const HRegRectilinearGrid  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
+const XYRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}
+const XZRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Any,    <:Number}
+const YZRegRectilinearGrid = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any,    <:Number, <:Number}
+const  RegRectilinearGrid  = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number, <:Number}
+
+regular_dimensions(::XRegRectilinearGrid)  = tuple(1)
+regular_dimensions(::YRegRectilinearGrid)  = tuple(2)
+regular_dimensions(::ZRegRectilinearGrid)  = tuple(3)
+regular_dimensions(::XYRegRectilinearGrid) = (1, 2)
+regular_dimensions(::XZRegRectilinearGrid) = (1, 3)
+regular_dimensions(::YZRegRectilinearGrid) = (2, 3)
+regular_dimensions(::RegRectilinearGrid)   = (1, 2, 3)
 
 """
     RectilinearGrid([architecture = CPU(), FT = Float64];
@@ -53,10 +85,10 @@ Creates a `RectilinearGrid` with `size = (Nx, Ny, Nz)` grid points.
 Positional arguments
 =================
 
-- `architecture`: Specifies whether the array of coordinates, interfaces, and spacings are stored
+- `architecture`: Specifies whether arrays of coordinates and spacings are stored
                   on the CPU or GPU. Default: `architecture = CPU()`.
 
-- `FT` : Floating point precision, might be Float32 or Float64
+- `FT` : Floating point data type. Default: `FT = Float64`.
 
 Keyword arguments
 =================
@@ -146,7 +178,7 @@ RectilinearGrid{Float64, Periodic, Periodic, Bounded}
 ```jldoctest
 julia> using Oceananigans
 
-julia> grid = RectilinearGrid(CPU(), Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
+julia> grid = RectilinearGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
 RectilinearGrid{Float32, Periodic, Periodic, Bounded} 
              architecture: CPU()
                    domain: x ∈ [0.0, 8.0], y ∈ [-10.0, 10.0], z ∈ [-3.1415927, 3.1415927]
@@ -205,10 +237,8 @@ julia> Lz = 32; # depth (m)
 
 julia> hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ));
 
-julia> grid = RectilinearGrid(size = (32, 32, Nz),
-                       x = (0, 64),
-                       y = (0, 64),
-                       z = hyperbolically_spaced_faces)
+julia> grid = RectilinearGrid(size = (32, 32, Nz), x = (0, 64),
+                              y = (0, 64), z = hyperbolically_spaced_faces)
 RectilinearGrid{Float64, Periodic, Periodic, Bounded}
              architecture: CPU()
                    domain: x ∈ [0.0, 64.0], y ∈ [0.0, 64.0], z ∈ [-32.0, -0.0]
@@ -217,7 +247,7 @@ RectilinearGrid{Float64, Periodic, Periodic, Bounded}
         halo (Hx, Hy, Hz): (1, 1, 1)
              spacing in x: Regular, with spacing 2.0
              spacing in y: Regular, with spacing 2.0
-             spacing in z: Stretched, with spacing min=0.6826950100338962, max=1.8309085743885056
+             spacing in z: Stretched, with spacing min=0.682695, max=1.830909
 ```
 
 * A three-dimensional grid with regular spacing in x, cell interfaces that are closely spaced
@@ -249,8 +279,8 @@ RectilinearGrid{Float64, Periodic, Bounded, Bounded}
         size (Nx, Ny, Nz): (32, 30, 24)
         halo (Hx, Hy, Hz): (1, 1, 1)
              spacing in x: Regular, with spacing 6.25
-             spacing in y: Stretched, with spacing min=0.2739052315863333, max=5.226423163382681
-             spacing in z: Stretched, with spacing min=0.6826950100338962, max=1.8309085743885056
+             spacing in y: Stretched, with spacing min=0.273905, max=5.226423
+             spacing in z: Stretched, with spacing min=0.682695, max=1.830909
 ```
 """
 function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
@@ -263,12 +293,7 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
                          extent = nothing,
                          topology = (Periodic, Periodic, Bounded))
 
-    TX, TY, TZ = validate_topology(topology)
-    size = validate_size(TX, TY, TZ, size)
-    halo = validate_halo(TX, TY, TZ, halo)
-
-    # Validate the rectilinear domain
-    x, y, z = validate_rectilinear_domain(TX, TY, TZ, FT, extent, x, y, z)
+    TX, TY, TZ, size, halo, x, y, z = validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
 
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
@@ -277,25 +302,38 @@ function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
     Ly, yᵃᶠᵃ, yᵃᶜᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ = generate_coordinate(FT, topology[2], Ny, Hy, y, architecture)
     Lz, zᵃᵃᶠ, zᵃᵃᶜ, Δzᵃᵃᶠ, Δzᵃᵃᶜ = generate_coordinate(FT, topology[3], Nz, Hz, z, architecture)
  
-    FX   = typeof(Δxᶠᵃᵃ)
-    FY   = typeof(Δyᵃᶠᵃ)
-    FZ   = typeof(Δzᵃᵃᶠ)
-    VX   = typeof(xᶠᵃᵃ)
-    VY   = typeof(yᵃᶠᵃ)
-    VZ   = typeof(zᵃᵃᶠ)
-    Arch = typeof(architecture) 
-
-    return RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch}(architecture,
-        Nx, Ny, Nz, Hx, Hy, Hz, Lx, Ly, Lz, Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ, Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
+    return RectilinearGrid{TX, TY, TZ}(architecture,
+                                       Nx, Ny, Nz,
+                                       Hx, Hy, Hz,
+                                       FT(Lx), FT(Ly), FT(Lz),
+                                       Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                       Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ,
+                                       Δzᵃᵃᶠ, Δzᵃᵃᶜ, zᵃᵃᶠ, zᵃᵃᶜ)
 end
+
+""" Validate user input arguments to the `RectilinearGrid` constructor. """
+function validate_rectilinear_grid_args(topology, size, halo, FT, extent, x, y, z)
+    TX, TY, TZ = validate_topology(topology)
+    size = validate_size(TX, TY, TZ, size)
+    halo = validate_halo(TX, TY, TZ, halo)
+
+    # Validate the rectilinear domain
+    x, y, z = validate_rectilinear_domain(TX, TY, TZ, FT, extent, x, y, z)
+
+    return TX, TY, TZ, size, halo, x, y, z
+end
+
+#####
+##### Showing grids
+#####
+
+x_domain(grid::RectilinearGrid) = domain(topology(grid, 1), grid.Nx, grid.xᶠᵃᵃ)
+y_domain(grid::RectilinearGrid) = domain(topology(grid, 2), grid.Ny, grid.yᵃᶠᵃ)
+z_domain(grid::RectilinearGrid) = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
 
 # architecture = CPU() default, assuming that a DataType positional arg
 # is specifying the floating point type.
 RectilinearGrid(FT::DataType; kwargs...) = RectilinearGrid(CPU(), FT; kwargs...)
-
-@inline x_domain(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TX, grid.Nx, grid.xᶠᵃᵃ)
-@inline y_domain(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TY, grid.Ny, grid.yᵃᶠᵃ)
-@inline z_domain(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = domain(TZ, grid.Nz, grid.zᵃᵃᶠ)
 
 short_show(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     "RectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
@@ -319,32 +357,29 @@ function show(io::IO, g::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
               "             spacing in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ))
 end
 
+#####
+##### Utilities
+#####
 
-Adapt.adapt_structure(to, grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-             RectilinearGrid{FT, TX, TY, TZ, 
-                          typeof(Adapt.adapt(to, grid.Δxᶜᵃᵃ)),
-                          typeof(Adapt.adapt(to, grid.Δyᵃᶠᵃ)),
-                          typeof(Adapt.adapt(to, grid.Δzᵃᵃᶠ)),
-                          typeof(Adapt.adapt(to, grid.xᶠᵃᵃ)),
-                          typeof(Adapt.adapt(to, grid.yᵃᶠᵃ)),
-                          typeof(Adapt.adapt(to, grid.zᵃᵃᶠ)),
-                          Nothing}(
-        nothing,
-        grid.Nx, grid.Ny, grid.Nz,
-        grid.Hx, grid.Hy, grid.Hz,
-        grid.Lx, grid.Ly, grid.Lz,
-        Adapt.adapt(to, grid.Δxᶠᵃᵃ),
-        Adapt.adapt(to, grid.Δxᶜᵃᵃ),
-        Adapt.adapt(to, grid.xᶠᵃᵃ),
-        Adapt.adapt(to, grid.xᶜᵃᵃ),
-        Adapt.adapt(to, grid.Δyᵃᶠᵃ),
-        Adapt.adapt(to, grid.Δyᵃᶜᵃ),
-        Adapt.adapt(to, grid.yᵃᶠᵃ),
-        Adapt.adapt(to, grid.yᵃᶜᵃ),
-        Adapt.adapt(to, grid.Δzᵃᵃᶠ),
-        Adapt.adapt(to, grid.Δzᵃᵃᶜ),
-        Adapt.adapt(to, grid.zᵃᵃᶠ),
-        Adapt.adapt(to, grid.zᵃᵃᶜ))
+function Adapt.adapt_structure(to, grid::RectilinearGrid)
+    TX, TY, TZ = topology(grid)
+    return RectilinearGrid{TX, TY, TZ}(nothing,
+                                       grid.Nx, grid.Ny, grid.Nz,
+                                       grid.Hx, grid.Hy, grid.Hz,
+                                       grid.Lx, grid.Ly, grid.Lz,
+                                       Adapt.adapt(to, grid.Δxᶠᵃᵃ),
+                                       Adapt.adapt(to, grid.Δxᶜᵃᵃ),
+                                       Adapt.adapt(to, grid.xᶠᵃᵃ),
+                                       Adapt.adapt(to, grid.xᶜᵃᵃ),
+                                       Adapt.adapt(to, grid.Δyᵃᶠᵃ),
+                                       Adapt.adapt(to, grid.Δyᵃᶜᵃ),
+                                       Adapt.adapt(to, grid.yᵃᶠᵃ),
+                                       Adapt.adapt(to, grid.yᵃᶜᵃ),
+                                       Adapt.adapt(to, grid.Δzᵃᵃᶠ),
+                                       Adapt.adapt(to, grid.Δzᵃᵃᶜ),
+                                       Adapt.adapt(to, grid.zᵃᵃᶠ),
+                                       Adapt.adapt(to, grid.zᵃᵃᶜ))
+end
 
 @inline xnode(::Center, i, grid::RectilinearGrid) = @inbounds grid.xᶜᵃᵃ[i]
 @inline xnode(::Face  , i, grid::RectilinearGrid) = @inbounds grid.xᶠᵃᵃ[i]
@@ -381,40 +416,33 @@ function with_halo(new_halo, old_grid::RectilinearGrid)
     new_halo = pop_flat_elements(new_halo, topo)
 
     new_grid = RectilinearGrid(architecture(old_grid), eltype(old_grid);
-               size = size,
-               x = x, y = y, z = z,
-               topology = topo,
-               halo = new_halo)
+                               size = size,
+                               x = x, y = y, z = z,
+                               topology = topo,
+                               halo = new_halo)
 
     return new_grid
 end
 
-function with_arch(new_arch, old_grid::RectilinearGrid)
+function on_architecture(new_arch, old_grid::RectilinearGrid)
+    old_properties = (old_grid.Δxᶠᵃᵃ, old_grid.Δxᶜᵃᵃ, old_grid.xᶠᵃᵃ, old_grid.xᶜᵃᵃ,
+                      old_grid.Δyᵃᶠᵃ, old_grid.Δyᵃᶜᵃ, old_grid.yᵃᶠᵃ, old_grid.yᵃᶜᵃ,
+                      old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ, old_grid.zᵃᵃᶜ)
 
-    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
-    topo = topology(old_grid)
+    new_properties = Tuple(arch_array(new_arch, p) for p in old_properties)
 
-    x = cpu_face_constructor_x(old_grid)
-    y = cpu_face_constructor_y(old_grid)
-    z = cpu_face_constructor_z(old_grid)  
+    TX, TY, TZ = topology(old_grid)
 
-    # Remove elements of size and new_halo in Flat directions as expected by grid
-    # constructor
-    size = pop_flat_elements(size, topo)
-    halo = pop_flat_elements(halo_size(old_grid), topo)
-
-    new_grid = RectilinearGrid(new_arch, eltype(old_grid);
-               size = size,
-               x = x, y = y, z = z,
-               topology = topo,
-               halo = halo)
-
-    return new_grid
+    return RectilinearGrid{TX, TY, TZ}(new_arch,
+                                       old_grid.Nx, old_grid.Ny, old_grid.Nz,
+                                       old_grid.Hx, old_grid.Hy, old_grid.Hz,
+                                       old_grid.Lx, old_grid.Ly, old_grid.Lz,
+                                       new_properties...)
 end
 
-#
-# Get minima of grid
-#
+#####
+##### Get minima of grid
+#####
 
 function min_Δx(grid::RectilinearGrid)
     topo = topology(grid)
