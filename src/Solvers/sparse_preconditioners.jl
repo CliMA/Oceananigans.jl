@@ -10,12 +10,12 @@ using SparseArrays: nnz
 import LinearAlgebra.ldiv!
 
 """
-`ILUFactorization`
+`ILUFactorization` (`preconditioner_method = :ILUFactorization`)
     stores two sparse lower and upper trianguilar matrices `L` and `U` such that `LU ≈ A`
     is applied to `r` with `forward_substitution!(L, r)` followed by `backward_substitution!(U, r)`
     constructed with `ilu(A, τ = drop_tolerance)`
     
-`SparseInversePreconditioner`
+`SparseInversePreconditioner` (`preconditioner_method = :SparseInverse` and `:AsymptoticInverse`)
     stores a sparse matrix `M` such that `M ≈ A⁻¹` 
     is applied to `r` with a matrix multiplication `M * r`
     constructed with
@@ -32,44 +32,48 @@ on the `CPU`
 `ilu()` (superior to everything always and in every situation!)
 
 on the `GPU`
-`heuristic_inverse_preconditioner()` (if `Δt` is variable or large problem_sizes)
+`aymptotic_diagonal_inverse_preconditioner()` (if `Δt` is variable or large problem_sizes)
 `sparse_inverse_preconditioner()` (if `Δt` is constant and problem_size is not too large)
 
 as a rule of thumb, for poisson solvers:
-`sparse_inverse_preconditioner` is better performing than `heuristic_inverse_preconditioner` only if `nzrel >= 2.0`
+`sparse_inverse_preconditioner` is better performing than `asymptotic_diagonal_inverse_preconditioner` only if `nzrel >= 2.0`
 As such, we urge to use `sparse_inverse_preconditioner` only when
 - Δt is constant (we don't have to recalculate the preconditioner during the simulation)
 - it is feasible to choose `nzrel = 2.0` (for not too large problem sizes)
 
 Note that `asymptotic_diagonal_inverse_preconditioner` assumes the matrix to be diagonally dominant, for this reason it could 
 be detrimental when used on non-diagonally dominant system (cases where Δt is very large). In this case it is better 
-to use `sparse_approximate_inverse`
+to use `sparse_inverse_preconditioner`
 
 `ilu()` cannot be used on the GPU because preconditioning the solver with a direct LU (or Choleski) type 
 of preconditioner would require too much computation for the `ldiv!(P, r)` step completely hindering the performances
 """
 
-validate_settings(T, arch, settings)                                          = settings
-validate_settings(::Val{:Default}, arch, settings)                            = arch isa CPU ? (τ = 0.001, ) : (order = 2, ) 
-validate_settings(::Val{:SparseInverse}, arch, settings::Nothing)             = (ε = 0.1, nzrel = 2.0)
-validate_settings(::Val{:ILUFactorization}, arch, settings::Nothing)          = (τ = 0.001, ) 
-validate_settings(::Val{:DiagonallyDominantInverse}, arch, settings::Nothing) = (order = 1, ) 
+validate_settings(T, arch, settings)                                  = settings
+validate_settings(::Val{:Default}, arch, settings)                    = arch isa CPU ? (τ = 0.001, ) : (order = 1, ) 
+validate_settings(::Val{:SparseInverse}, arch, settings::Nothing)     = (ε = 0.1, nzrel = 2.0)
+validate_settings(::Val{:ILUFactorization}, arch, settings::Nothing)  = (τ = 0.001, ) 
+validate_settings(::Val{:AsymptoticInverse}, arch, settings::Nothing) = (order = 1, ) 
 
-validate_settings(::Val{:ILUFactorization}, arch, settings) = haskey(settings, :τ) ? 
-                                                                     settings :
-                                                                     throw(ArgumentError("τ has to be specified for ILUFactorization"))
-validate_settings(::Val{:SparseInverse}, arch, settings)    = haskey(settings, :ε) && haskey(settings, :nzrel) ?
-                                                                     settings :
-                                                                     throw(ArgumentError("both ε and nzrel have to be specified for SparseInverse"))
+validate_settings(::Val{:ILUFactorization}, arch, settings)  = haskey(settings, :τ) ? 
+                                                                      settings :
+                                                                      throw(ArgumentError("τ has to be specified for ILUFactorization"))
+validate_settings(::Val{:SparseInverse}, arch, settings)     = haskey(settings, :ε) && haskey(settings, :nzrel) ?
+                                                                      settings :
+                                                                      throw(ArgumentError("both ε and nzrel have to be specified for SparseInverse"))
+validate_settings(::Val{:AsymptoticInverse}, arch, settings) = haskey(settings, :order) ?
+                                                                      settings :
+                                                                      throw(ArgumentError("and order ∈ [0, 1, 2] has to be specified for AsymptoticInverse"))
+
 
 function build_preconditioner(::Val{:Default}, matrix, settings)
     default_method = architecture(matrix) isa CPU ? :ILUFactorization : :DiagonallyDominantInverse
     return build_preconditioner(Val(default_method), matrix, settings)
 end
 
-build_preconditioner(::Val{nothing},            A, settings)          = Identity()
-build_preconditioner(::Val{:SparseInverse},     A, settings)          = sparse_inverse_preconditioner(A, ε = settings.ε, nzrel = settings.nzrel)
-build_preconditioner(::Val{:DiagonallyDominantInverse}, A, settings)  = asymptotic_diagonal_inverse_preconditioner(A, asymptotic_order = settings.order)
+build_preconditioner(::Val{nothing},            A, settings)  = Identity()
+build_preconditioner(::Val{:SparseInverse},     A, settings)  = sparse_inverse_preconditioner(A, ε = settings.ε, nzrel = settings.nzrel)
+build_preconditioner(::Val{:AsymptoticInverse}, A, settings)  = asymptotic_diagonal_inverse_preconditioner(A, asymptotic_order = settings.order)
 
 function build_preconditioner(::Val{:ILUFactorization},  A, settings) 
     if architecture(A) isa GPU 
@@ -131,7 +135,7 @@ function asymptotic_diagonal_inverse_preconditioner(A::AbstractMatrix; asymptoti
 
     if asymptotic_order == 0
         Minv_cpu = spdiagm(0=>arch_array(CPU(), invdiag))
-        Minv = arch_sparse_matrix(arch, Minv_cpu)
+        Minv     = arch_sparse_matrix(arch, Minv_cpu)
     elseif asymptotic_order == 1
         loop! = _initialize_asymptotic_diagonal_inverse_preconditioner_first_order!(dev, 256, M)
         event = loop!(nzval, colptr, rowval, invdiag; dependencies=Event(dev))
@@ -147,18 +151,6 @@ function asymptotic_diagonal_inverse_preconditioner(A::AbstractMatrix; asymptoti
     end
 
     return SparseInversePreconditioner(Minv)
-end
-
-@kernel function _initialize_asymptotic_diagonal_inverse_preconditioner_zeroth_order!(nzval, colptr, rowval, invdiag)
-    col = @index(Global, Linear)
-
-    for idx = colptr[col] : colptr[col+1] - 1
-        if rowval[idx] == col
-            nzval[idx] = invdiag[col]
-        else
-            nzval[idx] = - nzval[idx] * invdiag[rowval[idx]] * invdiag[col]
-        end
-    end
 end
 
 @kernel function _initialize_asymptotic_diagonal_inverse_preconditioner_first_order!(nzval, colptr, rowval, invdiag)

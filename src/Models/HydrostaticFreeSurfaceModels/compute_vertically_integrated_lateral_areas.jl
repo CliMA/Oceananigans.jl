@@ -22,7 +22,7 @@ function compute_vertically_integrated_lateral_areas!(∫ᶻ_A)
     # 2 halos (instead of only 1) are necessary to accomodate the preconditioner
 
     field_grid = ∫ᶻ_A.xᶠᶜᶜ.grid
-    arch = architecture(grid)
+    arch = architecture(field_grid)
 
     event = launch!(arch, field_grid, :xy,
                     _compute_vertically_integrated_lateral_areas!,
