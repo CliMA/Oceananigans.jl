@@ -37,7 +37,7 @@ end
 """
     aligned_time_step(sim, Δt)
 
-Return a time step 'aligned' with `sim.stop_time`, output writer schedules,
+Return a time step 'aligned' with `sim.stop_time`, output writer schedules, 
 and callback schedules. Alignment with `sim.stop_time` takes precedence.
 """
 function aligned_time_step(sim::Simulation, Δt)
