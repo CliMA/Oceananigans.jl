@@ -183,10 +183,12 @@ T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 
 # @inline function u_immersed_bottom_drag(i, j, k, grid, clock, fields, ν)
 
+free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner_method = nothing)
+
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     # free_surface = ExplicitFreeSurface(),
                                     # free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient),
-                                    free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver),
+                                    free_surface = free_surface,
                                     momentum_advection = VectorInvariant(),
                                     tracer_advection = WENO5(),
                                     coriolis = HydrostaticSphericalCoriolis(),
