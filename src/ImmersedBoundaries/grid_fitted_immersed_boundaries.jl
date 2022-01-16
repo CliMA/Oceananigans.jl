@@ -3,6 +3,10 @@ using CUDA: CuArray
 using Oceananigans.Fields: ReducedField, fill_halo_regions!
 using Oceananigans.Architectures: arch_array
 
+import Oceananigans.Operators: ∂xᶜᵃᵃ, ∂xᶠᵃᵃ, 
+                               ∂yᵃᶜᵃ, ∂yᵃᶠᵃ,
+                               ∂zᵃᵃᶜ, ∂zᵃᵃᶠ
+
 import Oceananigans.TurbulenceClosures: ivd_upper_diagonalᵃᵃᶜ,
                                         ivd_lower_diagonalᵃᵃᶜ,
                                         ivd_upper_diagonalᵃᵃᶠ,
@@ -101,16 +105,26 @@ end
 
 # Vertical velocitiy w at cell faces in z
 
-@inline function ivd_upper_diagonalᵃᵃᶠ(i, j, k, ibg::GFIBG, clock, Δt, νᶜᶜᶜ, κ)
-    return ifelse(solid_node(Center(), Center(), Center(), i, j, k+1, ibg),
+@inline function ivd_upper_diagonalᵃᵃᶠ(i, j, k, ibg::GFIBG, clock, Δt, νᶜᶜᶜ, ν)
+    return ifelse(solid_node(Center(), Center(), Center(), i, j, k, ibg),
                   zero(eltype(ibg.grid)),
-                  ivd_upper_diagonalᵃᵃᶠ(i, j, k, ibg.grid, clock, Δt, νᶜᶜᶜ, κ))
+                  ivd_upper_diagonalᵃᵃᶠ(i, j, k, ibg.grid, clock, Δt, νᶜᶜᶜ, ν))
 end
 
-@inline function ivd_lower_diagonalᵃᵃᶠ(i, j, k, ibg::GFIBG, clock, Δt, νᶜᶜᶜ, κ)
-    return ifelse(solid_node(Center(), Center(), Center(), i, j, k+1, ibg),
+@inline function ivd_lower_diagonalᵃᵃᶠ(i, j, k, ibg::GFIBG, clock, Δt, νᶜᶜᶜ, ν)
+    return ifelse(solid_node(Center(), Center(), Center(), i, j, k, ibg),
                   zero(eltype(ibg.grid)),
-                  ivd_lower_diagonalᵃᵃᶠ(i, j, k, ibg.grid, clock, Δt, νᶜᶜᶜ, κ))
+                  ivd_lower_diagonalᵃᵃᶠ(i, j, k, ibg.grid, clock, Δt, νᶜᶜᶜ, ν))
 end
 
 
+# metrics are 0 inside the immersed boundaries. To avoid NaNs in the Nonhydrostatic pressure solver correction
+# (we must be able to define derivatives also inside or across the immersed boundary)
+
+derivative_operators = (:∂xᶜᵃᵃ, :∂xᶠᵃᵃ, 
+                        :∂yᵃᶜᵃ, :∂yᵃᶠᵃ,
+                        :∂zᵃᵃᶜ, :∂zᵃᵃᶠ)
+
+for operator in derivative_operators
+        @eval $operator(i, j, k, ibg::GFIBG, args...) = $operator(i, j, k, ibg.grid, args...)
+end

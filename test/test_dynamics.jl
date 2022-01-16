@@ -147,22 +147,16 @@ function test_diffusion_cosine_immersed(field_name, timestepper, grid, time_disc
 
     # Step forward with small time-step relative to diff. time-scale
     Δt = 1e-6 * grid.Lz^2 / κ
-    for n in 1:1
-        # ab2_or_rk3_time_step!(model, Δt, n)
-        time_step!(model, Δt)
+    for n in 1:5
+        ab2_or_rk3_time_step!(model, Δt, n)
     end
 
     half = Int(grid.Nz/2 + 1)
 
-    initial_half = interior(initfield)[1,1,half+1:end]
-    numerical_half = interior(field)[1,1,half+1:end]
-    analytical_half = diffusing_cosine.(κ, m, zC, model.clock.time)[1,1,half+1:end]
+    numerical_half = interior(field)[1,1,half:end]
+    analytical_half = diffusing_cosine.(κ, m, zC, model.clock.time)[1,1,half:end]
 
-    initial = interior(initfield)[1,1,:]
-    numerical = interior(field)[1,1,:]
-    analytical = diffusing_cosine.(κ, m, zC, model.clock.time)[1,1,:]
-
-    @show assessment = !any(@. !isapprox(numerical_half, analytical_half, atol=1e-6, rtol=1e-6))
+    return !any(@. !isapprox(numerical_half, analytical_half, atol=1e-6, rtol=1e-6))
 end
 
 function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, background_velocity_field=false)
@@ -417,92 +411,92 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 @testset "Dynamics" begin
     @info "Testing dynamics..."
 
-    @testset "Simple diffusion" begin
-        @info "  Testing simple diffusion..."
-        for fieldname in (:u, :v, :c), timestepper in timesteppers
-            for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
-                @test test_diffusion_simple(fieldname, timestepper, time_discretization)
-            end
-        end
-    end
+    # @testset "Simple diffusion" begin
+    #     @info "  Testing simple diffusion..."
+    #     for fieldname in (:u, :v, :c), timestepper in timesteppers
+    #         for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+    #             @test test_diffusion_simple(fieldname, timestepper, time_discretization)
+    #         end
+    #     end
+    # end
 
-    @testset "Budgets in isotropic diffusion" begin
-        @info "  Testing model budgets with isotropic diffusion..."
-        for timestepper in timesteppers
-            for topology in ((Periodic, Periodic, Periodic),
-                             (Periodic, Periodic, Bounded),
-                             (Periodic, Bounded, Bounded),
-                             (Bounded, Bounded, Bounded))
+    # @testset "Budgets in isotropic diffusion" begin
+    #     @info "  Testing model budgets with isotropic diffusion..."
+    #     for timestepper in timesteppers
+    #         for topology in ((Periodic, Periodic, Periodic),
+    #                          (Periodic, Periodic, Bounded),
+    #                          (Periodic, Bounded, Bounded),
+    #                          (Bounded, Bounded, Bounded))
 
-                if topology !== (Periodic, Periodic, Periodic) # can't use implicit time-stepping in vertically-periodic domains right now
-                    time_discretizations = (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
-                else
-                    time_discretizations = (ExplicitTimeDiscretization(),)
-                end
+    #             if topology !== (Periodic, Periodic, Periodic) # can't use implicit time-stepping in vertically-periodic domains right now
+    #                 time_discretizations = (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+    #             else
+    #                 time_discretizations = (ExplicitTimeDiscretization(),)
+    #             end
 
-                for time_discretization in time_discretizations
+    #             for time_discretization in time_discretizations
 
-                    for closure in (IsotropicDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
-                                    AnisotropicDiffusivity(νh=1, νz=1, κh=1, κz=1, time_discretization=time_discretization))
+    #                 for closure in (IsotropicDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
+    #                                 AnisotropicDiffusivity(νh=1, νz=1, κh=1, κz=1, time_discretization=time_discretization))
 
-                        fieldnames = [:c]
+    #                     fieldnames = [:c]
 
-                        topology[1] === Periodic && push!(fieldnames, :u)
-                        topology[2] === Periodic && push!(fieldnames, :v)
-                        topology[3] === Periodic && push!(fieldnames, :w)
+    #                     topology[1] === Periodic && push!(fieldnames, :u)
+    #                     topology[2] === Periodic && push!(fieldnames, :v)
+    #                     topology[3] === Periodic && push!(fieldnames, :w)
 
-                        grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
+    #                     grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1), topology=topology)
 
-                        model = NonhydrostaticModel(timestepper = timestepper,
-                                                           grid = grid,
-                                                        closure = closure,
-                                                        tracers = :c,
-                                                       coriolis = nothing,
-                                                       buoyancy = nothing)
+    #                     model = NonhydrostaticModel(timestepper = timestepper,
+    #                                                        grid = grid,
+    #                                                     closure = closure,
+    #                                                     tracers = :c,
+    #                                                    coriolis = nothing,
+    #                                                    buoyancy = nothing)
 
-                        td = typeof(time_discretization).name.wrapper
-                        closurename = typeof(closure).name.wrapper
+    #                     td = typeof(time_discretization).name.wrapper
+    #                     closurename = typeof(closure).name.wrapper
 
-                        for fieldname in fieldnames
-                            @info "    [$timestepper, $td, $closurename] Testing $fieldname budget in a $topology domain with isotropic diffusion..."
-                            @test test_isotropic_diffusion_budget(fieldname, model)
-                        end
-                    end
-                end
-            end
-        end
-    end
+    #                     for fieldname in fieldnames
+    #                         @info "    [$timestepper, $td, $closurename] Testing $fieldname budget in a $topology domain with isotropic diffusion..."
+    #                         @test test_isotropic_diffusion_budget(fieldname, model)
+    #                     end
+    #                 end
+    #             end
+    #         end
+    #     end
+    # end
 
-    @testset "Budgets in biharmonic diffusion" begin
-        @info "  Testing model budgets with biharmonic diffusion..."
-        for timestepper in timesteppers
-            for topology in ((Periodic, Periodic, Periodic),
-                             (Periodic, Periodic, Bounded),
-                             (Periodic, Bounded, Bounded),
-                             (Bounded, Bounded, Bounded))
+    # @testset "Budgets in biharmonic diffusion" begin
+    #     @info "  Testing model budgets with biharmonic diffusion..."
+    #     for timestepper in timesteppers
+    #         for topology in ((Periodic, Periodic, Periodic),
+    #                          (Periodic, Periodic, Bounded),
+    #                          (Periodic, Bounded, Bounded),
+    #                          (Bounded, Bounded, Bounded))
 
-                fieldnames = [:c]
+    #             fieldnames = [:c]
 
-                topology[1] === Periodic && push!(fieldnames, :u)
-                topology[2] === Periodic && push!(fieldnames, :v)
-                topology[3] === Periodic && push!(fieldnames, :w)
+    #             topology[1] === Periodic && push!(fieldnames, :u)
+    #             topology[2] === Periodic && push!(fieldnames, :v)
+    #             topology[3] === Periodic && push!(fieldnames, :w)
 
-                grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
+    #             grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1), topology=topology)
 
-                model = NonhydrostaticModel(timestepper = timestepper,
-                                                   grid = grid,
-                                                closure = AnisotropicBiharmonicDiffusivity(νh=1, νz=1, κh=1, κz=1),
-                                               coriolis = nothing,
-                                                tracers = :c,
-                                               buoyancy = nothing)
+    #             model = NonhydrostaticModel(timestepper = timestepper,
+    #                                                grid = grid,
+    #                                             closure = AnisotropicBiharmonicDiffusivity(νh=1, νz=1, κh=1, κz=1),
+    #                                            coriolis = nothing,
+    #                                             tracers = :c,
+    #                                            buoyancy = nothing)
 
-                for fieldname in fieldnames
-                    @info "    [$timestepper] Testing $fieldname budget in a $topology domain with biharmonic diffusion..."
-                    @test test_biharmonic_diffusion_budget(fieldname, model)
-                end
-            end
-        end
-    end
+    #             for fieldname in fieldnames
+    #                 @info "    [$timestepper] Testing $fieldname budget in a $topology domain with biharmonic diffusion..."
+    #                 @test test_biharmonic_diffusion_budget(fieldname, model)
+    #             end
+    #         end
+    #     end
+    # end
 
     @testset "Diffusion cosine" begin
         for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
@@ -546,115 +540,115 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         end
     end
 
-    @testset "Passive tracer advection" begin
-        for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            @info "  Testing passive tracer advection [$timestepper]..."
-            @test passive_tracer_advection_test(timestepper)
-        end
-    end
+    # @testset "Passive tracer advection" begin
+    #     for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
+    #         @info "  Testing passive tracer advection [$timestepper]..."
+    #         @test passive_tracer_advection_test(timestepper)
+    #     end
+    # end
 
-    @testset "Internal wave" begin
-        include("test_internal_wave_dynamics.jl")
+    # @testset "Internal wave" begin
+    #     include("test_internal_wave_dynamics.jl")
 
-        Nx = Nz = 128
-        Lx = Lz = 2π
+    #     Nx = Nz = 128
+    #     Lx = Lz = 2π
 
-        # Regular grid with no flat dimension
-        y_periodic_regular_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
-                                                         size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
+    #     # Regular grid with no flat dimension
+    #     y_periodic_regular_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
+    #                                                      size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
 
-        # Regular grid with a flat y-dimension
-        y_flat_regular_grid = RectilinearGrid(topology=(Periodic, Flat, Bounded),
-                                                     size=(Nx, Nz), x=(0, Lx), z=(-Lz, 0))
+    #     # Regular grid with a flat y-dimension
+    #     y_flat_regular_grid = RectilinearGrid(topology=(Periodic, Flat, Bounded),
+    #                                                  size=(Nx, Nz), x=(0, Lx), z=(-Lz, 0))
 
-        # Vertically stretched grid with regular spacing and no flat dimension
-        z_faces = collect(znodes(Face, y_periodic_regular_grid))
-        y_periodic_regularly_spaced_vertically_stretched_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
-                                                                                                   size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=z_faces)
+    #     # Vertically stretched grid with regular spacing and no flat dimension
+    #     z_faces = collect(znodes(Face, y_periodic_regular_grid))
+    #     y_periodic_regularly_spaced_vertically_stretched_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
+    #                                                                                                size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=z_faces)
 
-        # Vertically stretched grid with regular spacing and no flat dimension
-        y_flat_regularly_spaced_vertically_stretched_grid = RectilinearGrid(topology=(Periodic, Flat, Bounded),
-                                                                                               size=(Nx, Nz), x=(0, Lx), z=z_faces)
+    #     # Vertically stretched grid with regular spacing and no flat dimension
+    #     y_flat_regularly_spaced_vertically_stretched_grid = RectilinearGrid(topology=(Periodic, Flat, Bounded),
+    #                                                                                            size=(Nx, Nz), x=(0, Lx), z=z_faces)
 
-        solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=false)
+    #     solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=false)
 
-        test_grids = (y_periodic_regular_grid,
-                      y_flat_regular_grid,
-                      y_periodic_regularly_spaced_vertically_stretched_grid,
-                      y_flat_regularly_spaced_vertically_stretched_grid)
+    #     test_grids = (y_periodic_regular_grid,
+    #                   y_flat_regular_grid,
+    #                   y_periodic_regularly_spaced_vertically_stretched_grid,
+    #                   y_flat_regularly_spaced_vertically_stretched_grid)
 
-        @testset "Internal wave with HydrostaticFreeSurfaceModel" begin
-            for grid in test_grids
-                grid_name = typeof(grid).name.wrapper
-                topo = topology(grid)
+    #     @testset "Internal wave with HydrostaticFreeSurfaceModel" begin
+    #         for grid in test_grids
+    #             grid_name = typeof(grid).name.wrapper
+    #             topo = topology(grid)
 
-                # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
-                g = (10σ)^2 / Lx
+    #             # Choose gravitational acceleration so that σ_surface = sqrt(g * Lx) = 10σ
+    #             g = (10σ)^2 / Lx
 
-                model = HydrostaticFreeSurfaceModel(; free_surface=ImplicitFreeSurface(gravitational_acceleration=g), grid=grid, kwargs...)
+    #             model = HydrostaticFreeSurfaceModel(; free_surface=ImplicitFreeSurface(gravitational_acceleration=g), grid=grid, kwargs...)
 
-                @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo]..."
-                internal_wave_dynamics_test(model, solution, Δt)
-            end
-        end
+    #             @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo]..."
+    #             internal_wave_dynamics_test(model, solution, Δt)
+    #         end
+    #     end
 
-        @testset "Internal wave with NonhydrostaticModel" begin
-            for grid in test_grids
-                grid_name = typeof(grid).name.wrapper
-                topo = topology(grid)
+    #     @testset "Internal wave with NonhydrostaticModel" begin
+    #         for grid in test_grids
+    #             grid_name = typeof(grid).name.wrapper
+    #             topo = topology(grid)
 
-                model = NonhydrostaticModel(; grid=grid, kwargs...)
+    #             model = NonhydrostaticModel(; grid=grid, kwargs...)
 
-                @info "  Testing internal wave [NonhydrostaticModel, $grid_name, $topo]..."
-                internal_wave_dynamics_test(model, solution, Δt)
-            end
-        end
-    end
+    #             @info "  Testing internal wave [NonhydrostaticModel, $grid_name, $topo]..."
+    #             internal_wave_dynamics_test(model, solution, Δt)
+    #         end
+    #     end
+    # end
 
-    @testset "Taylor-Green vortex" begin
-        for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
-                td = typeof(time_discretization).name.wrapper
-                @info "  Testing Taylor-Green vortex [$timestepper, $td]..."
-                @test taylor_green_vortex_test(CPU(), timestepper, time_discretization)
-            end
-        end
-    end
+    # @testset "Taylor-Green vortex" begin
+    #     for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
+    #         for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+    #             td = typeof(time_discretization).name.wrapper
+    #             @info "  Testing Taylor-Green vortex [$timestepper, $td]..."
+    #             @test taylor_green_vortex_test(CPU(), timestepper, time_discretization)
+    #         end
+    #     end
+    # end
 
-    @testset "Background fields" begin
-        for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            @info "  Testing dynamics with background fields [$timestepper]..."
-            @test_skip passive_tracer_advection_test(timestepper, background_velocity_field=true)
+    # @testset "Background fields" begin
+    #     for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
+    #         @info "  Testing dynamics with background fields [$timestepper]..."
+    #         @test_skip passive_tracer_advection_test(timestepper, background_velocity_field=true)
                         
-            Nx = Nz = 128
-            Lx = Lz = 2π
+    #         Nx = Nz = 128
+    #         Lx = Lz = 2π
 
-            # Regular grid with no flat dimension
-            y_periodic_regular_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
-                                                             size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
+    #         # Regular grid with no flat dimension
+    #         y_periodic_regular_grid = RectilinearGrid(topology=(Periodic, Periodic, Bounded),
+    #                                                          size=(Nx, 1, Nz), x=(0, Lx), y=(0, Lx), z=(-Lz, 0))
                         
-            solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=true)
+    #         solution, kwargs, background_fields, Δt, σ = internal_wave_solution(L=Lx, background_stratification=true)
 
-            model = NonhydrostaticModel(; grid=y_periodic_regular_grid, background_fields=background_fields, kwargs...)
-            internal_wave_dynamics_test(model, solution, Δt)
-        end
-    end
+    #         model = NonhydrostaticModel(; grid=y_periodic_regular_grid, background_fields=background_fields, kwargs...)
+    #         internal_wave_dynamics_test(model, solution, Δt)
+    #     end
+    # end
 
-    @testset "Tilted gravity" begin
-        for arch in archs
-            @info "  Testing tilted gravity [$(typeof(arch))]..."
-            for θ in (0, 1, -30, 60, 90, -180)
-                stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(arch, Float64, θ=θ)
-                stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer(arch, Float64, θ=θ)
-            end
-        end
-    end
+    # @testset "Tilted gravity" begin
+    #     for arch in archs
+    #         @info "  Testing tilted gravity [$(typeof(arch))]..."
+    #         for θ in (0, 1, -30, 60, 90, -180)
+    #             stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(arch, Float64, θ=θ)
+    #             stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer(arch, Float64, θ=θ)
+    #         end
+    #     end
+    # end
 
-    @testset "Background rotation about arbitrary axis" begin
-        for arch in archs
-            @info "  Testing background rotation about arbitrary axis [$(typeof(arch))]..."
-            inertial_oscillations_work_with_rotation_in_different_axis(arch, Float64)
-        end
-    end
+    # @testset "Background rotation about arbitrary axis" begin
+    #     for arch in archs
+    #         @info "  Testing background rotation about arbitrary axis [$(typeof(arch))]..."
+    #         inertial_oscillations_work_with_rotation_in_different_axis(arch, Float64)
+    #     end
+    # end
 
 end
