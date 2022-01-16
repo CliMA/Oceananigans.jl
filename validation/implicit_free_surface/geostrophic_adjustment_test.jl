@@ -53,18 +53,23 @@ function run_and_analyze(simulation)
     ηx = Field(∂x(η))
     compute!(ηx)
 
+    f   = simulation.model.free_surface
     u₀  = interior(u)[:, 1, 1]
     v₀  = interior(v)[:, 1, 1]
     η₀  = interior(η)[:, 1, 1]
     ηx₀ = interior(ηx)[:, 1, 1]
 
-    solver_method = string(simulation.mode.free_surface.solver_method)
+    if f isa SplitExplicitFreeSurface
+        solver_method = "SplitExplicitFreeSurface"
+    else
+        solver_method = string(simulation.mode.free_surface.solver_method)
+    end
 
     simulation.output_writers[:fields] = JLD2OutputWriter(simulation.model, (η, ηx, u, v, w),
                                                           schedule = TimeInterval(Δt),
                                                           prefix = "solution_$(solver_method)")
 
-
+    progress_show(s) = 
     run!(simulation)
     
     compute!(ηx)
@@ -85,10 +90,11 @@ end
 # fft_based_free_surface = ImplicitFreeSurface()
 pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient);
 matrix_free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver);
+splitexplicit_free_surface = SplitExplicitFreeSurface()
 
 topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
 
-free_surfaces = [pcg_free_surface, matrix_free_surface];
+free_surfaces = [pcg_free_surface, matrix_free_surface, splitexplicit_free_surface];
 simulations = [geostrophic_adjustment_simulation(free_surface, topology_type) for free_surface in free_surfaces, topology_type in topology_types];
 data = [run_and_analyze(sim) for sim in simulations];
 
@@ -97,6 +103,7 @@ using JLD2
 
 file1 = jldopen("solution_PreconditionedConjugateGradient.jld2")
 file2 = jldopen("solution_MatrixIterativeSolver.jld2")
+file3 = jldopen("solution_SplitExplicitFreeSurface.jld2")
 
 grid = file1["serialized/grid"]
 
@@ -114,36 +121,42 @@ mid = Int(floor(grid.Ny/2))
 η0 = file1["timeseries/1/0"][:, mid, 1]
 η1 = @lift(Array(file1["timeseries/1/" * string($iter)])[:, mid, 1])
 η2 = @lift(Array(file2["timeseries/1/" * string($iter)])[:, mid, 1])
+η3 = @lift(Array(file3["timeseries/1/" * string($iter)])[:, mid, 1])
 u1 = @lift(Array(file1["timeseries/3/" * string($iter)])[:, mid, 1])
 u2 = @lift(Array(file2["timeseries/3/" * string($iter)])[:, mid, 1])
+u3 = @lift(Array(file3["timeseries/3/" * string($iter)])[:, mid, 1])
 
 fig = Figure(resolution=(1000, 500))
-plot(fig[1,1] , x, η0, color = :green)
+plot(fig[1,1] , x, η0, color = :black)
 plot!(fig[1,1], x, η1, color = :red)
 plot!(fig[1,1], x, η2, color = :blue)
+plot!(fig[1,1], x, η3, color = :green)
 plot(fig[1,2], xf, u1, color = :red)
 plot!(fig[1,2],xf, u2, color = :blue)
+plot!(fig[1,2],xf, u3, color = :green)
 ylims!(-5e-5, 5e-5)
 GLMakie.record(fig, "free_surface_bounded.mp4", iterations, framerate=12) do i
     @info "Plotting iteration $i of $(iterations[end])..."
     iter[] = i
 end
 
-mid = Int(floor(grid.Ny/2))
-η3 = @lift(Array(file3["timeseries/1/" * string($iter)])[:, mid, 1])
-η4 = @lift(Array(file4["timeseries/1/" * string($iter)])[:, mid, 1])
-u3 = @lift(Array(file3["timeseries/3/" * string($iter)])[:, mid, 1])
-u4 = @lift(Array(file4["timeseries/3/" * string($iter)])[:, mid, 1])
+# mid = Int(floor(grid.Ny/2))
+# η3 = @lift(Array(file3["timeseries/1/" * string($iter)])[:, mid, 1])
+# η4 = @lift(Array(file4["timeseries/1/" * string($iter)])[:, mid, 1])
+# η4 = @lift(Array(file5["timeseries/1/" * string($iter)])[:, mid, 1])
+# u3 = @lift(Array(file3["timeseries/3/" * string($iter)])[:, mid, 1])
+# u4 = @lift(Array(file4["timeseries/3/" * string($iter)])[:, mid, 1])
+# u4 = @lift(Array(file5["timeseries/3/" * string($iter)])[:, mid, 1])
 
 
-fig = Figure(resolution=(1000, 500))
-plot(fig[1,1] , x, η0, color = :green)
-plot!(fig[1,1], x, η3, color = :red)
-plot!(fig[1,1], x, η4, color = :blue)
-plot(fig[1,2],  x, u3, color = :red )
-plot!(fig[1,2], x, u4, color = :blue)
-ylims!(-5e-5, 5e-5)
-GLMakie.record(fig, "free_surface_periodic.mp4", iterations, framerate=12) do i
-    @info "Plotting iteration $i of $(iterations[end])..."
-    iter[] = i
-end
+# fig = Figure(resolution=(1000, 500))
+# plot(fig[1,1] , x, η0, color = :green)
+# plot!(fig[1,1], x, η3, color = :red)
+# plot!(fig[1,1], x, η4, color = :blue)
+# plot(fig[1,2],  x, u3, color = :red )
+# plot!(fig[1,2], x, u4, color = :blue)
+# ylims!(-5e-5, 5e-5)
+# GLMakie.record(fig, "free_surface_periodic.mp4", iterations, framerate=12) do i
+#     @info "Plotting iteration $i of $(iterations[end])..."
+#     iter[] = i
+# end

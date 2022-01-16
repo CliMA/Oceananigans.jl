@@ -34,18 +34,18 @@ function SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth,
     return SplitExplicitFreeSurface(nothing, nothing, gravitational_acceleration, SplitExplicitSettings(substeps))
 end
 
-function FreeSurface(free_surface::SplitExplicitFreeSurface{Nothing}, velocities, arch, grid)
-    return SplitExplicitFreeSurface(SplitExplicitState(grid, arch),
-        SplitExplicitAuxiliary(grid, arch),
+function FreeSurface(free_surface::SplitExplicitFreeSurface{Nothing}, velocities, grid)
+    return SplitExplicitFreeSurface(SplitExplicitState(grid),
+        SplitExplicitAuxiliary(grid),
         free_surface.gravitational_acceleration,
         free_surface.settings)
 end
 
-function SplitExplicitFreeSurface(grid, arch; gravitational_acceleration = g_Earth,
+function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
     settings = SplitExplicitSettings(200))
 
-    sefs = SplitExplicitFreeSurface(SplitExplicitState(grid, arch),
-        SplitExplicitAuxiliary(grid, arch),
+    sefs = SplitExplicitFreeSurface(SplitExplicitState(grid),
+        SplitExplicitAuxiliary(grid),
         gravitational_acceleration,
         settings
     )
@@ -91,16 +91,16 @@ Base.@kwdef struct SplitExplicitState{𝒞𝒞,ℱ𝒞,𝒞ℱ}
     V̅::𝒞ℱ
 end
 
-function SplitExplicitState(grid::AbstractGrid, arch::AbstractArchitecture)
+function SplitExplicitState(grid::AbstractGrid)
 
-    η = ReducedField(Center, Center, Nothing, arch, grid; dims = 3)
-    η̅ = ReducedField(Center, Center, Nothing, arch, grid; dims = 3)
+    η = Field{Center, Center, Nothing}(grid)
+    η̅ = Field{Center, Center, Nothing}(grid)
 
-    U = ReducedField(Face, Center, Nothing, arch, grid; dims = 3)
-    U̅ = ReducedField(Face, Center, Nothing, arch, grid; dims = 3)
+    U = Field{Face, Center, Nothing}(grid)
+    U̅ = Field{Face, Center, Nothing}(grid)
 
-    V = ReducedField(Center, Face, Nothing, arch, grid; dims = 3)
-    V̅ = ReducedField(Center, Face, Nothing, arch, grid; dims = 3)
+    V = Field{Center, Face, Nothing}(grid)
+    V̅ = Field{Center, Face, Nothing}(grid)
 
     return SplitExplicitState(; η, η̅, U, U̅, V, V̅)
 end
@@ -125,15 +125,17 @@ Base.@kwdef struct SplitExplicitAuxiliary{𝒞ℱ,ℱ𝒞,𝒞𝒞}
     Hᶜᶜ::𝒞𝒞
 end
 
-function SplitExplicitAuxiliary(grid::AbstractGrid, arch::AbstractArchitecture)
+function SplitExplicitAuxiliary(grid::AbstractGrid)
 
-    Gᵁ = ReducedField(Face, Center, Nothing, arch, grid; dims = 3)
-    Gⱽ = ReducedField(Center, Face, Nothing, arch, grid; dims = 3)
+    Gᵁ = Field{Face, Center, Nothing}(grid)
+    Gⱽ = Field{Center, Face, Nothing}(grid)
 
-    Hᶠᶜ = ReducedField(Face, Center, Nothing, arch, grid; dims = 3)
-    Hᶜᶠ = ReducedField(Center, Face, Nothing, arch, grid; dims = 3)
+    Hᶠᶜ = Field{Face, Center, Nothing}(grid)
+    Hᶜᶠ = Field{Center, Face, Nothing}(grid)
 
-    Hᶜᶜ = ReducedField(Center, Center, Nothing, arch, grid; dims = 3)
+    Hᶜᶜ = Field{Center, Center, Nothing}(grid)
+
+    arch = architecture(grid)
 
     event = launch!(arch, grid, :xy, initialize_vertical_depths_kernel!,
         Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid, dependencies = Event(device(arch)))

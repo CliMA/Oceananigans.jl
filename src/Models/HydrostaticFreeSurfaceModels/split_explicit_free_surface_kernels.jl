@@ -62,9 +62,6 @@ end
     i, j = @index(Global, NTuple)
 
     # hand unroll first loop 
-    # FIXME: this algorithm will not work with bathymetry until
-    # Oceananigans has vertical spacing operators with horizontal locations,
-    # see https://github.com/CliMA/Oceananigans.jl/issues/2049
     @inbounds U[i, j, 1] = Δzᶠᶜᶜ(i, j, 1, grid) * u[i, j, 1]
     @inbounds V[i, j, 1] = Δzᶜᶠᶜ(i, j, 1, grid) * v[i, j, 1]
 
@@ -76,6 +73,7 @@ end
 
 # may need to do Val(Nk) since it may not be known at compile
 function barotropic_mode!(U, V, arch, grid, u, v)
+
     event = launch!(arch, grid, :xy,
                     barotropic_mode_kernel!, 
                     U, V, u, v, grid,
@@ -84,7 +82,7 @@ function barotropic_mode!(U, V, arch, grid, u, v)
     wait(device(arch), event)        
 end
 
-function set_average_to_zero!(free_surface_state, arch, grid)
+function set_average_to_zero!(free_surface_state)
     fill!(free_surface_state.η̅, 0.0)
     fill!(free_surface_state.U̅, 0.0)
     fill!(free_surface_state.V̅, 0.0)     
@@ -115,10 +113,11 @@ end
 end
 
 # may need to do Val(Nk) since it may not be known at compile. Also figure out where to put H
-function barotropic_split_explicit_corrector!(u, v, free_surface, arch, grid)
+function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     sefs = free_surface.state
     U, V, U̅, V̅ = sefs.U, sefs.V, sefs.U̅, sefs.V̅
     Hᶠᶜ, Hᶜᶠ = free_surface.auxiliary.Hᶠᶜ, free_surface.auxiliary.Hᶜᶠ
+    arch = architecture(grid)
 
     # take out "bad" barotropic mode, 
     # !!!! reusing U and V for this storage since last timestep doesn't matter
@@ -160,7 +159,7 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     Gv = calc_ab2_tendencies(model.timestepper.Gⁿ.v, model.timestepper.G⁻.v, χ)
 
     # reset free surface averages
-    set_average_to_zero!(state, arch, grid)
+    set_average_to_zero!(state)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     wait(device(arch), velocities_update)

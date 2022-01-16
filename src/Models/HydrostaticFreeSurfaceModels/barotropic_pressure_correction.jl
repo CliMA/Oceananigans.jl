@@ -37,8 +37,7 @@ end
 function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt; dependecies = nothing)
     u, v, _ = model.velocities
     grid = model.grid 
-    arch = architecture(grid)
-    barotropic_split_explicit_corrector!(u, v, model.free_surface, arch, grid)
+    barotropic_split_explicit_corrector!(u, v, model.free_surface, grid)
 
     return nothing
 end
