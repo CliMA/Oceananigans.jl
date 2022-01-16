@@ -1,5 +1,6 @@
 using KernelAbstractions: NoneEvent
 using OffsetArrays: OffsetArray
+using CUDA
 
 using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans.BoundaryConditions: left_gradient, right_gradient, linearly_extrapolate, FBC, VBC, GBC
@@ -93,7 +94,7 @@ validate_size(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemb
 validate_halo(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(0, 0, e.Hz)
 
 @inline function time_discretization(closure_array::AbstractArray)
-    first_closure = first(closure_array) # assumes all closures have same time-discretization
+    first_closure = CUDA.@allowscalar first(closure_array) # assumes all closures have same time-discretization
     return time_discretization(first_closure)
 end
 

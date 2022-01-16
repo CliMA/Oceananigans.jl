@@ -77,11 +77,11 @@ function with_tracers(tracers, closure_array::CAVDArray)
 end
 
 # Note: computing diffusivities at cell centers for now.
-function DiffusivityFields(arch, grid, tracer_names, bcs, closure::Union{CAVD, CAVDArray})
+function DiffusivityFields(grid, tracer_names, bcs, closure::Union{CAVD, CAVDArray})
     ## If we can get away with only precomputing the "stability" of a cell:
     # data = new_data(Bool, arch, grid, (Center, Center, Center))
-    κ = Field(Center, Center, Center, arch, grid)
-    ν = Field(Center, Center, Center, arch, grid)
+    κ = CenterField(grid)
+    ν = CenterField(grid)
     return (; κ, ν)
 end       
 

@@ -10,7 +10,7 @@ using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_n
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Diagnostics: WindowedSpatialAverage
-using Oceananigans.Fields: reduced_location, location, FieldSlicer, parent_slice_indices
+using Oceananigans.Fields: reduced_dimensions, reduced_location, location, FieldSlicer, parent_slice_indices
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
@@ -141,7 +141,7 @@ end
 
 Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` (which should
 be a `Dict`) to a NetCDF file, where `label` is a string that labels the output and `output` is
-either a `Field` (e.g. `model.velocities.u` or an `AveragedField`) or a function `f(model)` that
+either a `Field` (e.g. `model.velocities.u`) or a function `f(model)` that
 returns something to be written to disk. Custom output requires the spatial `dimensions` (a
 `Dict`) to be manually specified (see examples).
 
@@ -415,7 +415,7 @@ Base.close(nc::NetCDFOutputWriter) = close(nc.dataset)
 
 function save_output!(ds, output, model, ow, time_index, name)
     data = fetch_and_convert_output(output, model, ow)
-    data = drop_averaged_dims(output, data)
+    data = drop_output_dims(output, data)
 
     colons = Tuple(Colon() for _ in 1:ndims(data))
     ds[name][colons..., time_index] = data
@@ -478,9 +478,9 @@ function write_output!(ow::NetCDFOutputWriter, model)
     return nothing
 end
 
-drop_averaged_dims(output, data) = data # fallback
-drop_averaged_dims(output::AveragedField, data) = dropdims(data, dims=output.dims)
-drop_averaged_dims(output::WindowedTimeAverage{<:AveragedField}, data) = dropdims(data, dims=output.operand.dims)
+drop_output_dims(output, data) = data # fallback
+drop_output_dims(output::Field, data) = dropdims(data, dims=reduced_dimensions(output))
+drop_output_dims(output::WindowedTimeAverage{<:Field}, data) = dropdims(data, dims=reduced_dimensions(output.operand))
 
 #####
 ##### Show

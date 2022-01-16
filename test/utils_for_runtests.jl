@@ -1,19 +1,15 @@
 using Oceananigans
-
 using Statistics
 using KernelAbstractions: @kernel, @index, Event
 using CUDA
 using Test
 using Printf
-
 using Test
-
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
 
 import Oceananigans.Fields: interior
 
 test_architectures() = CUDA.has_cuda() ? tuple(GPU()) : tuple(CPU())
-float_types = (Float32, Float64)
 
 function summarize_regression_test(fields, correct_fields)
     for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
@@ -83,22 +79,6 @@ end
 #####
 ##### Useful utilities
 #####
-
-const AB2Model = NonhydrostaticModel{<:QuasiAdamsBashforth2TimeStepper}
-const RK3Model = NonhydrostaticModel{<:RungeKutta3TimeStepper}
-
-# For time-stepping without a Simulation
-function ab2_or_rk3_time_step!(model::AB2Model, Δt, n)
-    n == 1 && update_state!(model)
-    time_step!(model, Δt, euler=n==1)
-    return nothing
-end
-
-function ab2_or_rk3_time_step!(model::RK3Model, Δt, n)
-    n == 1 && update_state!(model)
-    time_step!(model, Δt)
-    return nothing
-end
 
 interior(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx,
                             grid.Hy+1:grid.Ny+grid.Hy,
