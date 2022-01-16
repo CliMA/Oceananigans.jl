@@ -139,7 +139,7 @@ function test_diffusion_cosine_immersed(field_name, timestepper, grid, time_disc
     # Step forward with small time-step relative to diff. time-scale
     Δt = 1e-6 * grid.Lz^2 / κ
     for n in 1:5
-        ab2_or_rk3_time_step!(model, Δt, n)
+        time_step!(model, Δt, n)
     end
 
     half = Int(grid.Nz/2 + 1)
