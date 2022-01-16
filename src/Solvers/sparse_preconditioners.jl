@@ -67,7 +67,7 @@ validate_settings(::Val{:AsymptoticInverse}, arch, settings) = haskey(settings, 
 
 
 function build_preconditioner(::Val{:Default}, matrix, settings)
-    default_method = architecture(matrix) isa CPU ? :ILUFactorization : :DiagonallyDominantInverse
+    default_method = architecture(matrix) isa CPU ? :ILUFactorization : :AsymptoticInverse
     return build_preconditioner(Val(default_method), matrix, settings)
 end
 
