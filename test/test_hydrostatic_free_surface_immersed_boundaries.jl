@@ -137,21 +137,17 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
                                                 tracers = nothing,
                                                 closure = nothing)
 
-            x_ref = [0.0  0.0  0.0  0.0  0.0  0.0  0.0
-                     0.0  3.0  3.0  3.0  3.0  3.0  0.0
-                     0.0  3.0  2.0  2.0  2.0  2.0  0.0
-                     0.0  3.0  2.0  1.0  1.0  2.0  0.0
-                     0.0  3.0  2.0  2.0  2.0  2.0  0.0
-                     0.0  3.0  3.0  3.0  3.0  3.0  0.0
-                     0.0  0.0  0.0  0.0  0.0  0.0  0.0]'
+            x_ref = [3.0  3.0  3.0  3.0  3.0
+                     3.0  2.0  2.0  2.0  2.0
+                     3.0  2.0  1.0  1.0  2.0
+                     3.0  2.0  2.0  2.0  2.0
+                     3.0  3.0  3.0  3.0  3.0]'
 
-            y_ref = [0.0  0.0  0.0  0.0  0.0  0.0  0.0
-                     0.0  3.0  3.0  3.0  3.0  3.0  0.0
-                     0.0  3.0  2.0  2.0  2.0  3.0  0.0
-                     0.0  3.0  2.0  1.0  2.0  3.0  0.0
-                     0.0  3.0  2.0  1.0  2.0  3.0  0.0
-                     0.0  3.0  2.0  2.0  2.0  3.0  0.0
-                     0.0  0.0  0.0  0.0  0.0  0.0  0.0]'
+            y_ref = [3.0  3.0  3.0  3.0  3.0
+                     3.0  2.0  2.0  2.0  3.0
+                     3.0  2.0  1.0  2.0  3.0
+                     3.0  2.0  1.0  2.0  3.0
+                     3.0  2.0  2.0  2.0  3.0]'
 
             fs = model.free_surface
             vertically_integrated_lateral_areas = fs.implicit_step_solver.vertically_integrated_lateral_areas
@@ -159,8 +155,8 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
             ∫Axᶠᶜᶜ = vertically_integrated_lateral_areas.xᶠᶜᶜ
             ∫Ayᶜᶠᶜ = vertically_integrated_lateral_areas.yᶜᶠᶜ
 
-            ∫Axᶠᶜᶜ = Array(parent(∫Axᶠᶜᶜ))
-            ∫Ayᶜᶠᶜ = Array(parent(∫Ayᶜᶠᶜ))
+            ∫Axᶠᶜᶜ = Array(interior(∫Axᶠᶜᶜ))
+            ∫Ayᶜᶠᶜ = Array(interior(∫Ayᶜᶠᶜ))
 
             Ax_ok = ∫Axᶠᶜᶜ[:, :, 1] ≈ x_ref
             Ay_ok = ∫Ayᶜᶠᶜ[:, :, 1] ≈ y_ref
