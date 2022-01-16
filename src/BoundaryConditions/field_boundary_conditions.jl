@@ -126,8 +126,7 @@ boundary conditions for prognostic model field boundary conditions.
     Currently, there is no support `ContinuousBoundaryFunction` for immersed boundary
     conditions.
 """
-function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid, field_name, prognostic_field_names=nothing)
-
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid::AbstractGrid, field_name::Symbol, prognostic_field_names=nothing)
     topo = topology(grid)
     loc = assumed_field_location(field_name)
     
@@ -146,13 +145,17 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions, grid
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
-regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, prognostic_field_names) =
-    NamedTuple(field_name => regularize_field_boundary_conditions(field_bcs, grid, field_name, prognostic_field_names)
-               for (field_name, field_bcs) in pairs(boundary_conditions))
-
 # For nested NamedTuples of boundary conditions (eg diffusivity boundary conditions)
-regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid, ::Symbol, prognostic_field_names) =
+regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid::AbstractGrid, group_name::Symbol, prognostic_field_names=nothing) =
     NamedTuple(field_name => regularize_field_boundary_conditions(field_bcs, grid, field_name, prognostic_field_names)
                for (field_name, field_bcs) in pairs(boundary_conditions))
 
-regularize_field_boundary_conditions(::Missing, grid, field_name, prognostic_field_names=nothing) = missing
+regularize_field_boundary_conditions(::Missing, grid::AbstractGrid, field_name::Symbol, prognostic_field_names=nothing) = missing
+
+#####
+##### Outer interface for model constructors
+#####
+
+regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid::AbstractGrid, prognostic_field_names::Tuple) =
+    NamedTuple(field_name => regularize_field_boundary_conditions(field_bcs, grid, field_name, prognostic_field_names)
+               for (field_name, field_bcs) in pairs(boundary_conditions))

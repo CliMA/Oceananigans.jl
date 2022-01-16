@@ -115,8 +115,8 @@ RectilinearGrid{Float64, Periodic, Bounded, Bounded}
         size (Nx, Ny, Nz): (64, 64, 32)
         halo (Hx, Hy, Hz): (1, 1, 1)
              spacing in x: Regular, with spacing 156.25
-             spacing in y: Stretched, with spacing min=6.022718974138115, max=245.33837163709035
-             spacing in z: Stretched, with spacing min=2.407636663901485, max=49.008570164780394
+             spacing in y: Stretched, with spacing min=6.022719, max=245.338372
+             spacing in z: Stretched, with spacing min=2.407637, max=49.008570
 ```
 
 ```@setup 1
