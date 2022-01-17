@@ -131,7 +131,7 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     wait(device(arch), event)
 end
 
-@inline calc_ab2_tendencies(Gⁿ, G⁻, χ) = (convert(eltype(Gⁿ), (1.5)) + χ) .* Gⁿ - (convert(eltype(Gⁿ), (1.5)) + χ) .* G⁻
+@inline calc_ab2_tendencies(Gⁿ, G⁻, χ) = (convert(eltype(Gⁿ), (1.5)) + χ) .* Gⁿ - (convert(eltype(Gⁿ), (0.5)) + χ) .* G⁻
 
 """
 Explicitly step forward η in substeps.
