@@ -92,18 +92,15 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 
 # Tracers and horizontal velocities at cell centers in z
 
-@inline function ivd_upper_diagonal(LX, LY, LZ, i, j, k, ibg::GFIBG, clock, Δt, interp_κ, κ)
-    return ifelse(z_solid_node(LX, LY, LZ, i, j, k, ibg),
-                  zero(eltype(ibg.grid)),
-                  ivd_upper_diagonal(LX, LY, LZ, i, j, k, ibg.grid, clock, Δt, interp_κ, κ))
+for location in (:upper_, :lower_)
+    func = Symbol(:ivd_, location, :diagonal)
+    @eval begin
+        @inline function $func(LX, LY, LZ, i, j, k, ibg::GFIBG, clock, Δt, interp_κ, κ)
+            return ifelse(z_solid_node(LX, LY, LZ, i, j, k, ibg),
+                          zero(eltype(ibg.grid)),
+                          $func(LX, LY, LZ, i, j, k, ibg.grid, clock, Δt, interp_κ, κ))
+    end
 end
-
-@inline function ivd_lower_diagonal(LX, LY, LZ, i, j, k, ibg::GFIBG, clock, Δt, interp_κ, κ)
-    return ifelse(z_solid_node(LX, LY, LZ, i, j, k, ibg),
-                  zero(eltype(ibg.grid)),
-                  ivd_lower_diagonal(LX, LY, LZ, i, j, k, ibg.grid, clock, Δt, interp_κ, κ))
-end
-
 
 # metrics are 0 inside the immersed boundaries. This means that derivatives are broken!
 # To avoid NaNs appearing everywhere we must be able to define derivatives also inside or across the immersed boundary
