@@ -90,7 +90,7 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 @inline z_solid_node(LX, LY, ::Center, i, j, k, ibg) = solid_node(LX, LY, Face(), i, j, k+1, ibg)
 @inline z_solid_node(LX, LY, ::Face, i, j, k, ibg)   = solid_node(LX, LY, Center(), i, j, k, ibg)
 
-# Tracers and horizontal velocities at cell centers in z
+# extending the upper and lower diagonal functions of the batched tridiagonal solver
 
 for location in (:upper_, :lower_)
     func = Symbol(:ivd_, location, :diagonal)
@@ -99,6 +99,7 @@ for location in (:upper_, :lower_)
             return ifelse(z_solid_node(LX, LY, LZ, i, j, k, ibg),
                           zero(eltype(ibg.grid)),
                           $func(LX, LY, LZ, i, j, k, ibg.grid, clock, Δt, interp_κ, κ))
+        end
     end
 end
 
