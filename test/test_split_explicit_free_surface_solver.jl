@@ -10,7 +10,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurfac
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliary, SplitExplicitSettings, split_explicit_free_surface_substep!
 
 @testset "Split-Explicit Dynamics" begin
-    
+    arch = Oceananigans.CPU()
     topology = (Periodic, Periodic, Bounded)
     
     Nx, Ny, Nz = 128, 64, 16

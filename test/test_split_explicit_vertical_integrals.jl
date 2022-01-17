@@ -23,20 +23,20 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
     grid = RectilinearGrid(topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
     tmp = SplitExplicitFreeSurface()
-    sefs = SplitExplicitState(grid, arch)
-    sefs = SplitExplicitAuxiliary(grid, arch)
-    sefs = SplitExplicitFreeSurface(grid, arch)
+    sefs = SplitExplicitState(grid)
+    sefs = SplitExplicitAuxiliary(grid)
+    sefs = SplitExplicitFreeSurface(grid)
 
     U, V, η̅, U̅, V̅, Gᵁ, Gⱽ = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
 
-    u = Field(Face, Center, Center, arch, grid)
-    v = Field(Center, Face, Center, arch, grid)
+    u = Field{Face, Center, Center}(grid)
+    v = Field{Center, Face, Center}(grid)
 
     @testset "Average to zero" begin
         # set equal to something else
         η̅ .= U̅ .= V̅ .= 1.0
         # now set equal to zero
-        set_average_to_zero!(sefs.state, arch, grid)
+        set_average_to_zero!(sefs.state)
         # don't forget the ghost points
         fill_halo_regions!(η̅, arch)
         fill_halo_regions!(U̅, arch)
@@ -113,12 +113,12 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
         Lx = Ly = Lz = 2π
         grid = RectilinearGrid(topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
-        sefs = SplitExplicitFreeSurface(grid, arch)
+        sefs = SplitExplicitFreeSurface(grid)
 
         U, V, η̅, U̅, V̅, Gᵁ, Gⱽ = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
 
-        u = Field(Face, Center, Center, arch, grid)
-        v = Field(Center, Face, Center, arch, grid)
+        u = Field{Face, Center, Center}(grid)
+        v = Field{Center, Face, Center}(grid)
         u_corrected = copy(u)
         v_corrected = copy(v)
 
@@ -142,7 +142,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
         Δz = zeros(Nz)
         Δz .= grid.Δzᵃᵃᶜ
 
-        barotropic_split_explicit_corrector!(u, v, sefs, arch, grid)
+        barotropic_split_explicit_corrector!(u, v, sefs, grid)
         @test all((u .- u_corrected) .< 1e-14)
         @test all((v .- v_corrected) .< 1e-14)
     end
