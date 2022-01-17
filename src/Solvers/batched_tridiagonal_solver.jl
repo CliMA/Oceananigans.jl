@@ -86,6 +86,21 @@ function solve!(ϕ::AbstractField{LX, LY, LZ}, solver::BatchedTridiagonalSolver,
     return nothing
 end
 
+function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; 
+    dependencies = device_event(architecture(solver))) where {LX, LY, LZ}
+
+    a, b, c, t, parameters = solver.a, solver.b, solver.c, solver.t, solver.parameters
+    grid = solver.grid
+
+    event = launch!(architecture(solver), grid, :xy,
+            solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, t, grid, parameters, args...,
+            dependencies = dependencies)
+
+    wait(device(architecture(solver)), event)
+
+    return nothing
+end
+
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
