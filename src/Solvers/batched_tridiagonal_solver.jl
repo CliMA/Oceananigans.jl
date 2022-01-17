@@ -87,7 +87,7 @@ function solve!(ϕ::AbstractField{LX, LY, LZ}, solver::BatchedTridiagonalSolver,
 end
 
 function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; 
-    dependencies = device_event(architecture(solver))) where {LX, LY, LZ}
+    dependencies = device_event(architecture(solver))) 
 
     a, b, c, t, parameters = solver.a, solver.b, solver.c, solver.t, solver.parameters
     grid = solver.grid
