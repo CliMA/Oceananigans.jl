@@ -40,11 +40,11 @@ function can_solve_single_tridiagonal_system_with_functions(arch, N)
     a = rand(N-1)
     c = rand(N-1)
 
-    @inline b(i, j, k, grid) = 3 .+ cos(2π * grid.zᵃᵃᶜ[k])  # +3 to ensure diagonal dominance.
-    @inline f(i, j, k, grid) = sin(2π * grid.zᵃᵃᶜ[k])
+    @inline b(LX, LY, LZ, i, j, k, grid) = 3 .+ cos(2π * grid.zᵃᵃᶜ[k])  # +3 to ensure diagonal dominance.
+    @inline f(LX, LY, LZ, i, j, k, grid) = sin(2π * grid.zᵃᵃᶜ[k])
 
-    bₐ = [b(1, 1, k, grid) for k in 1:N]
-    fₐ = [f(1, 1, k, grid) for k in 1:N]
+    bₐ = [b(Center(), Center(), Center(), 1, 1, k, grid) for k in 1:N]
+    fₐ = [f(Center(), Center(), Center(), 1, 1, k, grid) for k in 1:N]
 
     # Solve the system with backslash on the CPU to avoid scalar operations on the GPU.
     M = Tridiagonal(a, bₐ, c)
@@ -105,17 +105,17 @@ function can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz
     a = rand(Nz-1)
     c = rand(Nz-1)
 
-    @inline b(i, j, k, grid) = 3 + grid.xᶜᵃᵃ[i] * grid.yᵃᶜᵃ[j] * cos(2π * grid.zᵃᵃᶜ[k])
-    @inline f(i, j, k, grid) = (grid.xᶜᵃᵃ[i] + grid.yᵃᶜᵃ[j]) * sin(2π * grid.zᵃᵃᶜ[k])
+    @inline b(LX, LY, LZ, i, j, k, grid) = 3 + grid.xᶜᵃᵃ[i] * grid.yᵃᶜᵃ[j] * cos(2π * grid.zᵃᵃᶜ[k])
+    @inline f(LX, LY, LZ, i, j, k, grid) = (grid.xᶜᵃᵃ[i] + grid.yᵃᶜᵃ[j]) * sin(2π * grid.zᵃᵃᶜ[k])
 
     ϕ_correct = zeros(Nx, Ny, Nz)
 
     # Solve the system with backslash on the CPU to avoid scalar operations on the GPU.
     for i = 1:Nx, j = 1:Ny
-        bₐ = [b(i, j, k, grid) for k in 1:Nz]
+        bₐ = [b(Center(), Center(), Center(), i, j, k, grid) for k in 1:Nz]
         M = Tridiagonal(a, bₐ, c)
 
-        fₐ = [f(i, j, k, grid) for k in 1:Nz]
+        fₐ = [f(Center(), Center(), Center(), i, j, k, grid) for k in 1:Nz]
         ϕ_correct[i, j, :] .= M \ fₐ
     end
 

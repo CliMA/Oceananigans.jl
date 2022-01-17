@@ -73,7 +73,7 @@ end
 
 ### Diagonal terms
 
-@inline ivd_diagonal(LX, LY, i, j, k, grid, clock, Δt, interp_κ, κ) =
+@inline ivd_diagonal(LX, LY, LZ, i, j, k, grid, clock, Δt, interp_κ, κ) =
     one(eltype(grid)) - ivd_upper_diagonal(LX, LY, LZ, i, j, k, grid, clock, Δt, interp_κ, κ) -
                         ivd_lower_diagonal(LX, LY, LZ, i, j, k-1, grid, clock, Δt, interp_κ, κ)
 
