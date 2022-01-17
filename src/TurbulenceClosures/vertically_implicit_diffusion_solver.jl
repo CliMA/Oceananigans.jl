@@ -6,7 +6,7 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 ##### Vertically implicit solver
 #####
 
-struct VerticallyImplicitDiffusionSolver{A, H, Z}
+struct VerticallyImplicitDiffusionSolver{A, Z}
     architecture :: A
     z_solver :: Z
 end
@@ -112,9 +112,9 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, arch,
                                  "grids that are Bounded in the z-direction.")
 
     z_solver = BatchedTridiagonalSolver(grid;
-                                               lower_diagonal = ivd_lower_diagonal,
-                                               diagonal = ivd_diagonal,
-                                               upper_diagonal = ivd_upper_diagonal)
+                                        lower_diagonal = ivd_lower_diagonal,
+                                        diagonal = ivd_diagonal,
+                                        upper_diagonal = ivd_upper_diagonal)
 
     return VerticallyImplicitDiffusionSolver(arch, z_solver)
 end

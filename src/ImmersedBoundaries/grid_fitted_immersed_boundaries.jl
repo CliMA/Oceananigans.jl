@@ -89,37 +89,13 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 ##### Implicit vertical diffusion
 #####
 
-# for (xloc, xsup) in zip([Center, Face], [:ᶜ, :ᶠ])
-#     for (yloc, ysup) in zip([Center, Face], [:ᶜ, :ᶠ])
-#         for (zbias, zloc, zsup) in zip([1, 0], [Center, Face], [:ᶜ, :ᶠ])
-
-#             upper_diagonal = Symbol(:ivd_upper_diagonal, xsup, ysup, zsup)
-#             lower_diagonal = Symbol(:ivd_lower_diagonal, xsup, ysup, zsup)
-
-#             @eval begin
-#                 @inline function $upper_diagonal(i, j, k, ibg::GFIBG, clock, Δt, interp_κ, κ)
-#                     return ifelse(solid_node($xloc(), $yloc(), $zloc(), i, j, k+$zbias, ibg), 
-#                                 zero(eltype(ibg.grid)),
-#                                 $upper_diagonal(i, j, k, ibg.grid, clock, Δt, interp_κ, κ))
-#                 end
-                
-#                 @inline function $lower_diagonal(i, j, k, ibg::GFIBG, clock, Δt, interp_κ, κ)
-#                     return ifelse(solid_node($xloc(), $yloc(), $zloc(), i, j, k+$zbias, ibg),
-#                                 zero(eltype(ibg.grid)),
-#                                 $lower_diagonal(i, j, k, ibg.grid, clock, Δt, interp_κ, κ))
-#                 end
-#             end 
-#         end
-#     end
-# end
-
-@inline z_solid_node(LX, LY, LZ::Center, i, j, k, ibg) = solid_node(LX(), LY(), Face(), i, j, k+1, ibg)
-@inline z_solid_node(LX, LY, LZ::Face  , i, j, k, ibg) = solid_node(LX(), LY(), Center(), i, j, k, ibg)
+@inline z_solid_node(LX, LY, ::Center, i, j, k, ibg) = solid_node(LX(), LY(), Face(), i, j, k+1, ibg)
+@inline z_solid_node(LX, LY, ::Face  , i, j, k, ibg) = solid_node(LX(), LY(), Center(), i, j, k, ibg)
 
 
 # Tracers and horizontal velocities at cell centers in z
 
-@inline function ivd_upper_diagonal(LX, LY, i, j, k, ibg::GFIBG, clock, Δt, interp_κ, κ)
+@inline function ivd_upper_diagonal(LX, LY, LZ, i, j, k, ibg::GFIBG, clock, Δt, interp_κ, κ)
     return ifelse(z_solid_node(LX, LY, LZ, i, j, k, ibg),
                   zero(eltype(ibg.grid)),
                   ivd_upper_diagonal(LX, LY, LZ, i, j, k, ibg.grid, clock, Δt, interp_κ, κ))
