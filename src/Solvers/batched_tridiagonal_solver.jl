@@ -78,7 +78,7 @@ function solve!(ϕ::AbstractField{LX, LY, LZ}, solver::BatchedTridiagonalSolver,
     grid = solver.grid
 
     event = launch!(architecture(solver), grid, :xy,
-                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, t, grid, parameters, LX, LY, LZ, args...,
+                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, t, grid, parameters, LX(), LY(), LZ(), args...,
                     dependencies = dependencies)
 
     wait(device(architecture(solver)), event)

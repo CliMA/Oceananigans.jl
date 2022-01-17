@@ -87,8 +87,8 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 ##### Implicit vertical diffusion
 #####
 
-@inline z_solid_node(LX, LY, ::Type{Center}, i, j, k, ibg) = solid_node(LX(), LY(), Face(), i, j, k+1, ibg)
-@inline z_solid_node(LX, LY, ::Type{Face}, i, j, k, ibg)   = solid_node(LX(), LY(), Center(), i, j, k, ibg)
+@inline z_solid_node(LX, LY, ::Center, i, j, k, ibg) = solid_node(LX, LY, Face(), i, j, k+1, ibg)
+@inline z_solid_node(LX, LY, ::Face, i, j, k, ibg)   = solid_node(LX, LY, Center(), i, j, k, ibg)
 
 # Tracers and horizontal velocities at cell centers in z
 
