@@ -143,20 +143,23 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     grid = model.grid
     arch = architecture(grid)
-    
+
     # we start the time integration of η from the average ηⁿ     
-    state     = free_surface.state
+    state = free_surface.state
     auxiliary = free_surface.auxiliary
-    settings  = free_surface.settings
+    settings = free_surface.settings
     g = free_surface.gravitational_acceleration
 
-    η, U, V   = (state.η, state.U, state.V)
-    Δτ        = 2 * Δt / settings.substeps  # we evolve for two times the Δt 
+    η, U, V = (state.η, state.U, state.V)
+    Δτ = 2 * Δt / settings.substeps  # we evolve for two times the Δt 
 
     u, v, _ = model.velocities # this is u⋆
 
     Gu = calc_ab2_tendencies(model.timestepper.Gⁿ.u, model.timestepper.G⁻.u, χ)
     Gv = calc_ab2_tendencies(model.timestepper.Gⁿ.v, model.timestepper.G⁻.v, χ)
+    
+    #initializing the prognostic variables
+    set!(η, free_surface.state.η̅)
 
     # reset free surface averages
     set_average_to_zero!(state)
@@ -165,9 +168,6 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     wait(device(arch), velocities_update)
     masking_events = Tuple(mask_immersed_field!(q) for q in model.velocities)
     wait(device(arch), MultiEvent(masking_events))
-
-    #initializing the prognostic variables
-    set!(η, free_surface.state.η̅)
 
     # Compute barotropic mode of tendency fields
     barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, arch, grid, Gu, Gv)
@@ -182,6 +182,6 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     @debug "Split explicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
 
     fill_halo_regions!(η, arch)
-    
+
     return NoneEvent()
 end
