@@ -112,10 +112,10 @@ function can_solve_batched_tridiagonal_system_with_3D_functions(arch, Nx, Ny, Nz
 
     # Solve the system with backslash on the CPU to avoid scalar operations on the GPU.
     for i = 1:Nx, j = 1:Ny
-        bₐ = [b(Center(), Center(), Center(), i, j, k, grid) for k in 1:Nz]
+        bₐ = [b(i, j, k, grid) for k in 1:Nz]
         M = Tridiagonal(a, bₐ, c)
 
-        fₐ = [f(Center(), Center(), Center(), i, j, k, grid) for k in 1:Nz]
+        fₐ = [f(i, j, k, grid) for k in 1:Nz]
         ϕ_correct[i, j, :] .= M \ fₐ
     end
 
