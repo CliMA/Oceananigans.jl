@@ -104,20 +104,20 @@ end
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, LX, LY, LZ, args...)
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args...)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
     i, j = @index(Global, NTuple)
 
     @inbounds begin
-        β  = get_coefficient(b, i, j, 1, grid, p, LX, LY, LZ, args...)
-        f₁ = get_coefficient(f, i, j, 1, grid, p, LX, LY, LZ, args...)
+        β  = get_coefficient(b, i, j, 1, grid, p, args...)
+        f₁ = get_coefficient(f, i, j, 1, grid, p, args...)
         ϕ[i, j, 1] = f₁ / β
 
         @unroll for k = 2:Nz
-            cᵏ⁻¹ = get_coefficient(c, i, j, k-1, grid, p, LX, LY, LZ, args...)
-            bᵏ   = get_coefficient(b, i, j, k,   grid, p, LX, LY, LZ, args...)
-            aᵏ⁻¹ = get_coefficient(a, i, j, k-1, grid, p, LX, LY, LZ, args...)
+            cᵏ⁻¹ = get_coefficient(c, i, j, k-1, grid, p, args...)
+            bᵏ   = get_coefficient(b, i, j, k,   grid, p, args...)
+            aᵏ⁻¹ = get_coefficient(a, i, j, k-1, grid, p, args...)
 
             t[i, j, k] = cᵏ⁻¹ / β
             β = bᵏ - aᵏ⁻¹ * t[i, j, k]
