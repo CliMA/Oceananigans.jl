@@ -1,5 +1,6 @@
 using Test
 using Revise
+using Statistics
 using Oceananigans
 using Oceananigans.Utils
 using Oceananigans.BoundaryConditions
@@ -12,10 +13,10 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
 @testset "Split-Explicit Dynamics" begin
     arch = Oceananigans.CPU()
     topology = (Periodic, Periodic, Bounded)
-    
+
     Nx, Ny, Nz = 128, 64, 16
     Lx = Ly = Lz = 2π
-    
+
     grid = RectilinearGrid(topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
     sefs = SplitExplicitFreeSurface(grid)
@@ -30,7 +31,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         U, V, η̅, U̅, V̅, Gᵁ, Gⱽ = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
         Hᶠᶜ, Hᶜᶠ = sefs.Hᶠᶜ, sefs.Hᶜᶠ
         g = sefs.gravitational_acceleration
-        
+
         Hᶠᶜ .= 1 / g
         Hᶜᶠ .= 1 / g
         η = sefs.η
@@ -130,8 +131,10 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         # set!(η, f(x,y)) k^2 = ω^2
         gu_c = 1.0
         gv_c = 2.0
-        η₀(x, y) = sin(kx * x) * sin(ky * y)
+        η₀(x, y) = sin(kx * x) * sin(ky * y) + 1
         set!(η, η₀)
+
+        η_mean_before = mean(interior(η))
 
         U .= 0.0 # so that ∂ᵗη(t=0) = 0.0 
         V .= 0.0 # so that ∂ᵗη(t=0) = 0.0
@@ -152,6 +155,10 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         # + correction for exact time
         split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ_end, Nt + 1)
 
+        η_mean_after = mean(interior(η))
+
+        tolerance = eps(100.0)
+        @test abs(η_mean_after - η_mean_before) < tolerance
 
         η_computed = Array(η.data.parent)[2:Nx+1, 2:Ny+1]
         U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
@@ -162,8 +169,9 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         V̅_computed = Array(V̅.data.parent)[2:Nx+1, 2:Ny+1]
 
         set!(η, η₀)
+
         # ∂ₜₜ(η) = Δη
-        η_exact = cos(ω * T) * Array(η.data.parent)[2:Nx+1, 2:Ny+1]
+        η_exact = cos(ω * T) * (Array(η.data.parent)[2:Nx+1, 2:Ny+1] .- 1) .+ 1
 
         U₀(x, y) = kx * cos(kx * x) * sin(ky * y) # ∂ₜU = - ∂x(η), since we know η
         set!(U, U₀)
@@ -173,7 +181,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         set!(V, V₀)
         V_exact = -(sin(ω * T) * 1 / ω) .* Array(V.data.parent)[2:Nx+1, 2:Ny+1] .+ gv_c * T
 
-        η̅_exact = (sin(ω * T) / ω - sin(ω * 0) / ω) / T * Array(η.data.parent)[2:Nx+1, 2:Ny+1]
+        η̅_exact = (sin(ω * T) / ω - sin(ω * 0) / ω) / T * (Array(η.data.parent)[2:Nx+1, 2:Ny+1] .- 1) .+ 1
         U̅_exact = (cos(ω * T) * 1 / ω^2 - cos(ω * 0) * 1 / ω^2) / T * Array(U.data.parent)[2:Nx+1, 2:Ny+1] .+ gu_c * T / 2
         V̅_exact = (cos(ω * T) * 1 / ω^2 - cos(ω * 0) * 1 / ω^2) / T * Array(V.data.parent)[2:Nx+1, 2:Ny+1] .+ gv_c * T / 2
 
