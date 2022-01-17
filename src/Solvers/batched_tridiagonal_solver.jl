@@ -55,8 +55,8 @@ end
 
 @inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, args...) where {T} = @inbounds a[k]
 @inline get_coefficient(a::AbstractArray{T, 3}, i, j, k, grid, p, args...) where {T} = @inbounds a[i, j, k]
-@inline get_coefficient(a::Base.Callable, i, j, k, grid, p, args...) = a(i, j, k, grid, p, args...)
-@inline get_coefficient(a::Base.Callable, i, j, k, grid, ::Nothing, args...) = a(i, j, k, grid, args...)
+@inline get_coefficient(a::Base.Callable, i, j, k, grid, p, LX, LY, args...)         = a(LX, LY, i, j, k, grid, p, args...)
+@inline get_coefficient(a::Base.Callable, i, j, k, grid, ::Nothing, LX, LY, args...) = a(LX, LY, i, j, k, grid, args...)
 
 """
     solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; dependencies = device_event(solver.architecture))
@@ -71,13 +71,14 @@ The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 
 Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 """
-function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; dependencies = device_event(architecture(solver)))
+function solve!(ϕ::AbstractField{LX, LY, LZ}, solver::BatchedTridiagonalSolver, rhs, args...; 
+                dependencies = device_event(architecture(solver))) where {LX, LY, LZ}
 
     a, b, c, t, parameters = solver.a, solver.b, solver.c, solver.t, solver.parameters
     grid = solver.grid
 
     event = launch!(architecture(solver), grid, :xy,
-                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, t, grid, parameters, args...,
+                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, t, grid, parameters, LX, LY, LZ, args...,
                     dependencies = dependencies)
 
     wait(device(architecture(solver)), event)
@@ -88,20 +89,20 @@ end
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
-@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, args...)
+@kernel function solve_batched_tridiagonal_system_kernel!(ϕ, a, b, c, f, t, grid, p, LX, LY, LZ, args...)
     Nx, Ny, Nz = grid.Nx, grid.Ny, grid.Nz
 
     i, j = @index(Global, NTuple)
 
     @inbounds begin
-        β  = get_coefficient(b, i, j, 1, grid, p, args...)
-        f₁ = get_coefficient(f, i, j, 1, grid, p, args...)
+        β  = get_coefficient(b, i, j, 1, grid, p, LX, LY, LZ, args...)
+        f₁ = get_coefficient(f, i, j, 1, grid, p, LX, LY, LZ, args...)
         ϕ[i, j, 1] = f₁ / β
 
         @unroll for k = 2:Nz
-            cᵏ⁻¹ = get_coefficient(c, i, j, k-1, grid, p, args...)
-            bᵏ   = get_coefficient(b, i, j, k,   grid, p, args...)
-            aᵏ⁻¹ = get_coefficient(a, i, j, k-1, grid, p, args...)
+            cᵏ⁻¹ = get_coefficient(c, i, j, k-1, grid, p, LX, LY, LZ, args...)
+            bᵏ   = get_coefficient(b, i, j, k,   grid, p, LX, LY, LZ, args...)
+            aᵏ⁻¹ = get_coefficient(a, i, j, k-1, grid, p, LX, LY, LZ, args...)
 
             t[i, j, k] = cᵏ⁻¹ / β
             β = bᵏ - aᵏ⁻¹ * t[i, j, k]
