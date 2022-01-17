@@ -59,7 +59,7 @@ end
 @inline function ivd_upper_diagonal(i, j, k, grid, LX, LY, ::Face, clock, Δt, νᶜᶜᶜ, ν)
     νᵏ = νᶜᶜᶜ(i, j, k, grid, clock, ν)
 
-    return ifelse(k < 1, # should this be k < 2?
+    return ifelse(k < 1, # should this be k < 2? #should this be grid.Nz - 1?
                   zero(eltype(grid)),
                   - Δt * κ_Δz²(i, j, k, k, grid, νᵏ))
 end

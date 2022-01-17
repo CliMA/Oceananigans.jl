@@ -95,7 +95,12 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 for location in (:upper_, :lower_)
     func = Symbol(:ivd_, location, :diagonal)
     @eval begin
-        @inline function $func(i, j, k, ibg::GFIBG, LX, LY, LZ, clock, Δt, interp_κ, κ)
+        @inline function $func(i, j, k, ibg::GFIBG, LX, LY, LZ::Face, clock, Δt, interp_κ, κ)
+            return ifelse(z_solid_node(LX, LY, LZ, i, j, k, ibg),
+                          zero(eltype(ibg.grid)),
+                          $func(i, j, k, ibg.grid, LX, LY, LZ, clock, Δt, interp_κ, κ))
+        end
+        @inline function $func(i, j, k, ibg::GFIBG, LX, LY, LZ::Center, clock, Δt, interp_κ, κ)
             return ifelse(z_solid_node(LX, LY, LZ, i, j, k, ibg),
                           zero(eltype(ibg.grid)),
                           $func(i, j, k, ibg.grid, LX, LY, LZ, clock, Δt, interp_κ, κ))
