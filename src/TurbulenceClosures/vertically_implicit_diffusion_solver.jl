@@ -30,8 +30,9 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 
 @inline κ_Δz²(i, j, kᶜ, kᶠ, grid, κ) = κ / Δzᵃᵃᶜ(i, j, kᶜ, grid) / Δzᵃᵃᶠ(i, j, kᶠ, grid)
 
-# Tracers and horizontal velocities at cell centers in z
+instantiate(X) = X()
 
+# Tracers and horizontal velocities at cell centers in z
 
 @inline function ivd_upper_diagonal(i, j, k, grid, LX, LY, ::Center, clock, Δt, κ⁻⁻ᶠ, κ)
     κᵏ⁺¹ = κ⁻⁻ᶠ(i, j, k+1, grid, clock, κ)
@@ -170,7 +171,7 @@ function implicit_step!(field::AbstractField{LX, LY, LZ},
         error("Cannot take an implicit_step! for a field at $location")
     end
 
-    return solve!(field, implicit_solver, field, location...,
+    return solve!(field, implicit_solver, field, instantiate.(location)...,
                   clock, Δt, locate_coeff, coeff; dependencies = dependencies)
 end
 

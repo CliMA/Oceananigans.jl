@@ -53,8 +53,6 @@ function BatchedTridiagonalSolver(grid;
                                     scratch, grid, parameters)
 end
 
-const Loc = Union{Face, Center}
-
 @inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, args...) where {T} = @inbounds a[k]
 @inline get_coefficient(a::AbstractArray{T, 3}, i, j, k, grid, p, args...) where {T} = @inbounds a[i, j, k]
 @inline get_coefficient(a::Base.Callable, i, j, k, grid, p, args...)         = a(i, j, k, grid, p, args...)
