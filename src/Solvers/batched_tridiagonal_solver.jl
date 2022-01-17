@@ -53,10 +53,12 @@ function BatchedTridiagonalSolver(grid;
                                     scratch, grid, parameters)
 end
 
+const Loc = Union{Face, Center}
+
 @inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, args...) where {T} = @inbounds a[k]
 @inline get_coefficient(a::AbstractArray{T, 3}, i, j, k, grid, p, args...) where {T} = @inbounds a[i, j, k]
-@inline get_coefficient(a::Base.Callable, i, j, k, grid, p, LX, LY, LZ, args...)         = a(LX, LY, LZ, i, j, k, grid, p, args...)
-@inline get_coefficient(a::Base.Callable, i, j, k, grid, ::Nothing, LX, LY, LZ, args...) = a(LX, LY, LZ, i, j, k, grid, args...)
+@inline get_coefficient(a::Base.Callable, i, j, k, grid, p, args...)         = a(i, j, k, grid, p, args...)
+@inline get_coefficient(a::Base.Callable, i, j, k, grid, ::Nothing, args...) = a(i, j, k, grid, args...)
 
 """
     solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; dependencies = device_event(solver.architecture))
@@ -71,30 +73,14 @@ The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 
 Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 """
-function solve!(ϕ::AbstractField{LX, LY, LZ}, solver::BatchedTridiagonalSolver, rhs, args...; 
-                dependencies = device_event(architecture(solver))) where {LX, LY, LZ}
+function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; dependencies = device_event(architecture(solver))) 
 
     a, b, c, t, parameters = solver.a, solver.b, solver.c, solver.t, solver.parameters
     grid = solver.grid
 
     event = launch!(architecture(solver), grid, :xy,
-                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, t, grid, parameters, LX(), LY(), LZ(), args...,
+                    solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, t, grid, parameters, args...,
                     dependencies = dependencies)
-
-    wait(device(architecture(solver)), event)
-
-    return nothing
-end
-
-function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; 
-    dependencies = device_event(architecture(solver))) 
-
-    a, b, c, t, parameters = solver.a, solver.b, solver.c, solver.t, solver.parameters
-    grid = solver.grid
-
-    event = launch!(architecture(solver), grid, :xy,
-            solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, t, grid, parameters, args...,
-            dependencies = dependencies)
 
     wait(device(architecture(solver)), event)
 

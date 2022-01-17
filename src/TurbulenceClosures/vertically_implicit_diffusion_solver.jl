@@ -33,7 +33,7 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 # Tracers and horizontal velocities at cell centers in z
 
 
-@inline function ivd_upper_diagonal(LX, LY, ::Center, i, j, k, grid, clock, Δt, κ⁻⁻ᶠ, κ)
+@inline function ivd_upper_diagonal(i, j, k, grid, LX, LY, ::Center, clock, Δt, κ⁻⁻ᶠ, κ)
     κᵏ⁺¹ = κ⁻⁻ᶠ(i, j, k+1, grid, clock, κ)
 
     return ifelse(k > grid.Nz-1,
@@ -41,7 +41,7 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
                   - Δt * κ_Δz²(i, j, k, k+1, grid, κᵏ⁺¹))
 end
 
-@inline function ivd_lower_diagonal(LX, LY, ::Center, i, j, k, grid, clock, Δt, κ⁻⁻ᶠ, κ)
+@inline function ivd_lower_diagonal(i, j, k, grid, LX, LY, ::Center, clock, Δt, κ⁻⁻ᶠ, κ)
     k′ = k + 1 # Shift to adjust for Tridiagonal indexing convenction
     κᵏ = κ⁻⁻ᶠ(i, j, k′, grid, clock, κ)
 
@@ -55,7 +55,7 @@ end
 # Note: these coefficients are specific to vertically-bounded grids (and so is
 # the BatchedTridiagonalSolver).
 
-@inline function ivd_upper_diagonal(LX, LY, ::Face, i, j, k, grid, clock, Δt, νᶜᶜᶜ, ν)
+@inline function ivd_upper_diagonal(i, j, k, grid, LX, LY, ::Face, clock, Δt, νᶜᶜᶜ, ν)
     νᵏ = νᶜᶜᶜ(i, j, k, grid, clock, ν)
 
     return ifelse(k < 1, # should this be k < 2?
@@ -63,7 +63,7 @@ end
                   - Δt * κ_Δz²(i, j, k, k, grid, νᵏ))
 end
 
-@inline function ivd_lower_diagonal(LX, LY, ::Face, i, j, k, grid, clock, Δt, νᶜᶜᶜ, ν)
+@inline function ivd_lower_diagonal(i, j, k, grid, LX, LY, ::Face, clock, Δt, νᶜᶜᶜ, ν)
     k′ = k + 1 # Shift to adjust for Tridiagonal indexing convenction
     νᵏ⁻¹ = νᶜᶜᶜ(i, j, k′-1, grid, clock, ν)
     return ifelse(k < 1,
@@ -73,9 +73,9 @@ end
 
 ### Diagonal terms
 
-@inline ivd_diagonal(LX, LY, LZ, i, j, k, grid, clock, Δt, interp_κ, κ) =
-    one(eltype(grid)) - ivd_upper_diagonal(LX, LY, LZ, i, j, k, grid, clock, Δt, interp_κ, κ) -
-                        ivd_lower_diagonal(LX, LY, LZ, i, j, k-1, grid, clock, Δt, interp_κ, κ)
+@inline ivd_diagonal(i, j, k, grid, LX, LY, LZ, clock, Δt, interp_κ, κ) =
+    one(eltype(grid)) - ivd_upper_diagonal(i, j, k, grid, LX, LY, LZ, clock, Δt, interp_κ, κ) -
+                        ivd_lower_diagonal(i, j, k-1, grid, LX, LY, LZ, clock, Δt, interp_κ, κ)
 
 #####
 ##### Solver constructor
@@ -143,23 +143,25 @@ function implicit_step!(field::AbstractField{LX, LY, LZ},
                         tracer_index,
                         args...;
                         dependencies) where {LX, LY, LZ}
-                        
-    if is_c_location((LX, LY, LZ))
+    
+    location = (LX, LY, LZ)
+
+    if is_c_location(location)
 
         locate_coeff = κᶜᶜᶠ
         coeff = z_diffusivity(closure, Val(tracer_index), args...)
 
-    elseif is_u_location((LX, LY, LZ))
+    elseif is_u_location(location)
 
         locate_coeff = νᶠᶜᶠ
         coeff = z_viscosity(closure, args...)
 
-    elseif is_v_location((LX, LY, LZ))
+    elseif is_v_location(location)
 
         locate_coeff = νᶜᶠᶠ
         coeff = z_viscosity(closure, args...)
 
-    elseif is_w_location((LX, LY, LZ))
+    elseif is_w_location(location)
 
         locate_coeff = νᶜᶜᶜ
         coeff = z_viscosity(closure, args...)
@@ -168,7 +170,7 @@ function implicit_step!(field::AbstractField{LX, LY, LZ},
         error("Cannot take an implicit_step! for a field at $field_location")
     end
 
-    return solve!(field, implicit_solver, field,
+    return solve!(field, implicit_solver, field, location,
                   clock, Δt, locate_coeff, coeff; dependencies = dependencies)
 end
 

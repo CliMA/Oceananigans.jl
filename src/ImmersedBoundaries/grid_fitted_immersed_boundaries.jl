@@ -95,10 +95,10 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 for location in (:upper_, :lower_)
     func = Symbol(:ivd_, location, :diagonal)
     @eval begin
-        @inline function $func(LX, LY, LZ, i, j, k, ibg::GFIBG, clock, Δt, interp_κ, κ)
+        @inline function $func(i, j, k, ibg::GFIBG, LX, LY, LZ, clock, Δt, interp_κ, κ)
             return ifelse(z_solid_node(LX, LY, LZ, i, j, k, ibg),
                           zero(eltype(ibg.grid)),
-                          $func(LX, LY, LZ, i, j, k, ibg.grid, clock, Δt, interp_κ, κ))
+                          $func(i, j, k, ibg.grid, LX, LY, LZ, clock, Δt, interp_κ, κ))
         end
     end
 end
@@ -106,8 +106,8 @@ end
 # metrics are 0 inside the immersed boundaries. This means that derivatives are broken!
 # To avoid NaNs appearing everywhere we must be able to define derivatives also inside or across the immersed boundary
 
-derivative_operators = (:∂xᶜᵃᵃ, :∂xᶠᵃᵃ, 
-                        :∂yᵃᶜᵃ, :∂yᵃᶠᵃ,
+derivative_operators = (:∂xᶜᵃᵃ, :∂xᶠᵃᵃ, :∂xᶠᶜᵃ, :∂xᶜᶠᵃ, :∂xᶠᶠᵃ, :∂xᶜᶜᵃ, 
+                        :∂yᵃᶜᵃ, :∂yᵃᶠᵃ, :∂yᶠᶜᵃ, :∂yᶜᶠᵃ, :∂yᶠᶠᵃ, :∂yᶜᶜᵃ, 
                         :∂zᵃᵃᶜ, :∂zᵃᵃᶠ)
 
 for operator in derivative_operators

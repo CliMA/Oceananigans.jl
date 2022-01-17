@@ -61,6 +61,9 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, arch, grid, arg
         wait(device(arch), events)
     end
 
+    event = fill_halo_immersed!(c, bc_immersed, arch, device_event(arch), grid, args...; kwargs...) 
+    wait(device(arch), event)
+
     return nothing
 end
 
@@ -88,6 +91,8 @@ function fill_bottom_and_top_halo!(c, bottom_bc, top_bc, args...; kwargs...)
      multi_event = MultiEvent((bottom_event, top_event))
      return multi_event
 end
+
+@inline fill_halo_immersed!(c, bc_immersed, arch, barrier, grid, args...; kwargs...) = NoneEvent()
 
 #####
 ##### Halo filling order
