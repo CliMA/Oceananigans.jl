@@ -222,78 +222,78 @@ else
     Δt = 20minutes
 end
 
-simulation = Simulation(model, Δt = Δt, stop_time = 30year)
+# simulation = Simulation(model, Δt = Δt, stop_time = 2year)
 
-start_time = [time_ns()]
+# start_time = [time_ns()]
 
-function progress(sim)
-    wall_time = (time_ns() - start_time[1]) * 1e-9
+# function progress(sim)
+#     wall_time = (time_ns() - start_time[1]) * 1e-9
 
-    η = model.free_surface.η
+#     η = model.free_surface.η
 
-    if model.free_surface isa ExplicitFreeSurface
-        @info @sprintf("Time: % 12s, iteration: %d, max(|η|): %.2e m, wall time: %s",
-                       prettytime(sim.model.clock.time),
-                       sim.model.clock.iteration,
-                       maximum(abs, η),
-                       prettytime(wall_time))
-    else 
-        @info @sprintf("Time: % 12s, iteration: %d, max(|η|): %.2e m, wall time: %s",
-                       prettytime(sim.model.clock.time),
-                       sim.model.clock.iteration,
-                       maximum(abs, η),
-                       prettytime(wall_time))
-    end
+#     if model.free_surface isa ExplicitFreeSurface
+#         @info @sprintf("Time: % 12s, iteration: %d, max(|η|): %.2e m, wall time: %s",
+#                        prettytime(sim.model.clock.time),
+#                        sim.model.clock.iteration,
+#                        maximum(abs, η),
+#                        prettytime(wall_time))
+#     else 
+#         @info @sprintf("Time: % 12s, iteration: %d, max(|η|): %.2e m, wall time: %s",
+#                        prettytime(sim.model.clock.time),
+#                        sim.model.clock.iteration,
+#                        maximum(abs, η),
+#                        prettytime(wall_time))
+#     end
 
-    start_time[1] = time_ns()
+#     start_time[1] = time_ns()
 
-    return nothing
-end
+#     return nothing
+# end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+# simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
-u, v, w = model.velocities
-T, S = model.tracers
-η = model.free_surface.η
+# u, v, w = model.velocities
+# T, S = model.tracers
+# η = model.free_surface.η
 
-output_fields = (; u, v, T, S, η)
-save_interval = 5days
+# output_fields = (; u, v, T, S, η)
+# save_interval = 5days
 
-simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
-                                                              schedule = TimeInterval(save_interval),
-                                                              prefix = output_prefix * "_surface",
-                                                              field_slicer = FieldSlicer(k=grid.Nz),
-                                                              force = true)
+# simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
+#                                                               schedule = TimeInterval(save_interval),
+#                                                               prefix = output_prefix * "_surface",
+#                                                               field_slicer = FieldSlicer(k=grid.Nz),
+#                                                               force = true)
 
-simulation.output_writers[:bottom_fields] = JLD2OutputWriter(model, (; u, v, T, S),
-                                                             schedule = TimeInterval(save_interval),
-                                                             prefix = output_prefix * "_bottom",
-                                                             field_slicer = FieldSlicer(k=1),
-                                                             force = true)
+# simulation.output_writers[:bottom_fields] = JLD2OutputWriter(model, (; u, v, T, S),
+#                                                              schedule = TimeInterval(save_interval),
+#                                                              prefix = output_prefix * "_bottom",
+#                                                              field_slicer = FieldSlicer(k=1),
+#                                                              force = true)
 
-simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                        schedule = TimeInterval(1year),
-                                                        prefix = output_prefix * "_checkpoint",
-                                                        cleanup = true,
-                                                        force = true)
+# simulation.output_writers[:checkpointer] = Checkpointer(model,
+#                                                         schedule = TimeInterval(1year),
+#                                                         prefix = output_prefix * "_checkpoint",
+#                                                         cleanup = true,
+#                                                         force = true)
 
-# Let's goo!
-@info "Running with Δt = $(prettytime(simulation.Δt))"
+# # Let's goo!
+# @info "Running with Δt = $(prettytime(simulation.Δt))"
 
-run!(simulation)
+# run!(simulation)
 
-@info """
+# @info """
 
-    Simulation took $(prettytime(simulation.run_wall_time))
-    Background diffusivity: $background_diffusivity
-    Minimum wave propagation time scale: $(prettytime(wave_propagation_time_scale))
-    Free surface: $(typeof(model.free_surface).name.wrapper)
-    Time step: $(prettytime(Δt))
-"""
+#     Simulation took $(prettytime(simulation.run_wall_time))
+#     Background diffusivity: $background_diffusivity
+#     Minimum wave propagation time scale: $(prettytime(wave_propagation_time_scale))
+#     Free surface: $(typeof(model.free_surface).name.wrapper)
+#     Time step: $(prettytime(Δt))
+# """
 
-#####
-##### Visualize solution
-#####
+# ####
+# #### Visualize solution
+# ####
 
 # surface_file = jldopen(output_prefix * "_surface.jld2")
 # bottom_file = jldopen(output_prefix * "_bottom.jld2")
