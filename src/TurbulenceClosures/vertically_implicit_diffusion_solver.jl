@@ -167,7 +167,7 @@ function implicit_step!(field::AbstractField{LX, LY, LZ},
         coeff = z_viscosity(closure, args...)
 
     else
-        error("Cannot take an implicit_step! for a field at $field_location")
+        error("Cannot take an implicit_step! for a field at $location")
     end
 
     return solve!(field, implicit_solver, field, location...,

@@ -61,7 +61,7 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, arch, grid, arg
         wait(device(arch), events)
     end
 
-    event = fill_halo_immersed!(c, bc_immersed, arch, device_event(arch), grid, args...; kwargs...) 
+    event = fill_halo_immersed!(c, boundary_conditions.immersed, arch, device_event(arch), grid, args...; kwargs...) 
     wait(device(arch), event)
 
     return nothing
