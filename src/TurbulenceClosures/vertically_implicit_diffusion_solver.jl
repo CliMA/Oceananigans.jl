@@ -170,7 +170,7 @@ function implicit_step!(field::AbstractField{LX, LY, LZ},
         error("Cannot take an implicit_step! for a field at $field_location")
     end
 
-    return solve!(field, implicit_solver, field, location,
+    return solve!(field, implicit_solver, field, location...,
                   clock, Δt, locate_coeff, coeff; dependencies = dependencies)
 end
 
