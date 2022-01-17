@@ -55,8 +55,8 @@ end
 
 @inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, args...) where {T} = @inbounds a[k]
 @inline get_coefficient(a::AbstractArray{T, 3}, i, j, k, grid, p, args...) where {T} = @inbounds a[i, j, k]
-@inline get_coefficient(a::Base.Callable, i, j, k, grid, p, LX, LY, args...)         = a(LX, LY, i, j, k, grid, p, args...)
-@inline get_coefficient(a::Base.Callable, i, j, k, grid, ::Nothing, LX, LY, args...) = a(LX, LY, i, j, k, grid, args...)
+@inline get_coefficient(a::Base.Callable, i, j, k, grid, p, LX, LY, LZ, args...)         = a(LX, LY, LZ, i, j, k, grid, p, args...)
+@inline get_coefficient(a::Base.Callable, i, j, k, grid, ::Nothing, LX, LY, LZ, args...) = a(LX, LY, LZ, i, j, k, grid, args...)
 
 """
     solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; dependencies = device_event(solver.architecture))

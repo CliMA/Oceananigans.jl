@@ -3,13 +3,8 @@ using Oceananigans.AbstractOperations: flip
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
 #####
-##### Vertically implicit solver
+##### Batched Tridiagonal solver for implicit diffusion
 #####
-
-struct VerticallyImplicitDiffusionSolver{A, Z}
-    architecture :: A
-    z_solver :: Z
-end
 
 """
     z_viscosity(closure, args...)
@@ -116,7 +111,7 @@ function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, arch,
                                         diagonal = ivd_diagonal,
                                         upper_diagonal = ivd_upper_diagonal)
 
-    return VerticallyImplicitDiffusionSolver(arch, z_solver)
+    return z_solver
 end
 
 #####
@@ -129,7 +124,7 @@ is_v_location(loc) = loc === (Center, Face, Center)
 is_w_location(loc) = loc === (Center, Center, Face)
 
 """
-    implicit_step!(field, solver::VerticallyImplicitDiffusionSolver, clock, Δt,
+    implicit_step!(field, solver::BatchedTridiagonalSolver, clock, Δt,
                    closure, tracer_index, args...; dependencies = Event
 
 Initialize the right hand side array `solver.batched_tridiagonal_solver.f`, and then solve the
@@ -141,7 +136,7 @@ lower diagonal, diagonal, and upper diagonal of the resulting tridiagonal system
 the diffusivities / viscosities associated with `closure`.
 """
 function implicit_step!(field::AbstractField{LX, LY, LZ},
-                        implicit_solver::VerticallyImplicitDiffusionSolver,
+                        implicit_solver::BatchedTridiagonalSolver,
                         clock,
                         Δt,
                         closure,
@@ -173,9 +168,7 @@ function implicit_step!(field::AbstractField{LX, LY, LZ},
         error("Cannot take an implicit_step! for a field at $field_location")
     end
 
-    solver = implicit_solver.z_solver
-
-    return solve!(field, solver, field,
+    return solve!(field, implicit_solver, field,
                   clock, Δt, locate_coeff, coeff; dependencies = dependencies)
 end
 

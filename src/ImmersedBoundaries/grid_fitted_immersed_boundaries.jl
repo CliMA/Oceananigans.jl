@@ -7,10 +7,8 @@ import Oceananigans.Operators: ∂xᶜᵃᵃ, ∂xᶠᵃᵃ,
                                ∂yᵃᶜᵃ, ∂yᵃᶠᵃ,
                                ∂zᵃᵃᶜ, ∂zᵃᵃᶠ
 
-import Oceananigans.TurbulenceClosures: ivd_upper_diagonalᵃᵃᶜ,
-                                        ivd_lower_diagonalᵃᵃᶜ,
-                                        ivd_upper_diagonalᵃᵃᶠ,
-                                        ivd_lower_diagonalᵃᵃᶠ
+import Oceananigans.TurbulenceClosures: ivd_upper_diagonal,
+                                        ivd_lower_diagonal
 
 
 abstract type AbstractGridFittedBoundary <: AbstractImmersedBoundary end
