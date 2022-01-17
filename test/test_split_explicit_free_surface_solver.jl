@@ -109,6 +109,68 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
 
     end
 
+    @testset "Averaging / Do Nothing test " begin
+        U, V, η̅, U̅, V̅, Gᵁ, Gⱽ = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
+        g = sefs.gravitational_acceleration
+        sefs.Hᶠᶜ .= 1 / g
+        sefs.Hᶜᶠ .= 1 / g
+        η = sefs.η
+        velocity_weight = 0.0
+        free_surface_weight = 0.0
+
+        Δτ = 2π / maximum([Nx, Ny]) * 5e-2 # the last factor is essentially the order of accuracy
+
+        # set!(η, f(x,y))
+        η₀(x, y) = 1.0
+        set!(η, η₀)
+        U₀(x, y) = 2.0
+        set!(U, U₀)
+        V₀(x, y) = 3.0
+        set!(V, V₀)
+
+        η̅ .= 0.0
+        U̅ .= 0.0
+        V̅ .= 0.0
+        Gᵁ .= 0.0
+        Gⱽ .= 0.0
+        settings = sefs.settings
+
+        for i in 1:settings.substeps
+            split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, 1)
+        end
+
+        U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
+        V_computed = Array(V.data.parent)[2:Nx+1, 2:Ny+1]
+        η_computed = Array(η.data.parent)[2:Nx+1, 2:Ny+1]
+
+        U̅_computed = Array(U̅.data.parent)[2:Nx+1, 2:Ny+1]
+        V̅_computed = Array(V̅.data.parent)[2:Nx+1, 2:Ny+1]
+        η̅_computed = Array(η̅.data.parent)[2:Nx+1, 2:Ny+1]
+
+        set!(η, η₀)
+        set!(U, U₀)
+        set!(V, V₀)
+
+        err1 = maximum(abs.(U_computed - U))
+        err2 = maximum(abs.(η_computed - η))
+        err3 = maximum(abs.(V_computed - V))
+
+        err4 = maximum(abs.(U̅_computed - U))
+        err5 = maximum(abs.(η̅_computed - η))
+        err6 = maximum(abs.(V̅_computed - V))
+
+        tolerance = eps(100.0)
+        @test err1 < tolerance
+        @test err2 < tolerance
+        @test err3 < tolerance
+
+        @test err4 < tolerance
+        @test err5 < tolerance
+        @test err6 < tolerance
+
+    end
+
+
     @testset "Complex Multi-Timestep " begin
         # Test 3: Testing analytic solution to 
         # ∂ₜη + ∇⋅U⃗ = 0
@@ -157,7 +219,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
 
         η_mean_after = mean(interior(η))
 
-        tolerance = eps(100.0)
+        tolerance = eps(10.0)
         @test abs(η_mean_after - η_mean_before) < tolerance
 
         η_computed = Array(η.data.parent)[2:Nx+1, 2:Ny+1]
