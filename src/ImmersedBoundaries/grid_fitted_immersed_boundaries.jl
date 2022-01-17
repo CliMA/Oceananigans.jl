@@ -89,9 +89,8 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 ##### Implicit vertical diffusion
 #####
 
-@inline z_solid_node(LX, LY, ::Center, i, j, k, ibg) = solid_node(LX(), LY(), Face(), i, j, k+1, ibg)
-@inline z_solid_node(LX, LY, ::Face  , i, j, k, ibg) = solid_node(LX(), LY(), Center(), i, j, k, ibg)
-
+@inline z_solid_node(LX, LY, ::Type{Center}, i, j, k, ibg) = solid_node(LX(), LY(), Face(), i, j, k+1, ibg)
+@inline z_solid_node(LX, LY, ::Type{Face}, i, j, k, ibg)   = solid_node(LX(), LY(), Center(), i, j, k, ibg)
 
 # Tracers and horizontal velocities at cell centers in z
 
@@ -108,8 +107,8 @@ end
 end
 
 
-# metrics are 0 inside the immersed boundaries. To avoid NaNs in the Nonhydrostatic pressure solver correction
-# (we must be able to define derivatives also inside or across the immersed boundary)
+# metrics are 0 inside the immersed boundaries. This means that derivatives are broken!
+# To avoid NaNs appearing everywhere we must be able to define derivatives also inside or across the immersed boundary
 
 derivative_operators = (:∂xᶜᵃᵃ, :∂xᶠᵃᵃ, 
                         :∂yᵃᶜᵃ, :∂yᵃᶠᵃ,
