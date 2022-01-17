@@ -84,6 +84,30 @@ end
     one(eltype(grid)) - ivd_upper_diagonalᵃᵃᶠ(i, j, k, grid, clock, Δt, νᶜᶜᶜ, ν) -
               ivd_lower_diagonalᵃᵃᶠ(i, j, k-1, grid, clock, Δt, νᶜᶜᶜ, ν)
 
+
+# definitions for the upper and lower diagonals for all combinations of Center and Faces
+
+for xsup in [:ᶜ, :ᶠ], ysup in [:ᶜ, :ᶠ], zsup in [:ᶜ, :ᶠ]
+
+    upper_diagonal = Symbol(:ivd_upper_diagonal, xsup, ysup, zsup)
+    lower_diagonal = Symbol(:ivd_lower_diagonal, xsup, ysup, zsup)
+
+    diagonal = Symbol(:ivd_diagonal, xsup, ysup, zsup)
+
+    upper_parent = Symbol(:ivd_upper_diagonalᵃᵃ, zsup) 
+    lower_parent = Symbol(:ivd_lower_diagonalᵃᵃ, zsup) 
+
+    @eval begin
+        $upper_diagonal(i, j, k, grid, clock, Δt, interp_κ, κ) = $upper_parent(i, j, k, grid, clock, Δt, interp_κ, κ)     
+        $lower_diagonal(i, j, k, grid, clock, Δt, interp_κ, κ) = $lower_parent(i, j, k, grid, clock, Δt, interp_κ, κ)
+        
+        @inline function $diagonal(i, j, k, grid, clock, Δt, interp_κ, κ)
+            return one(eltype(grid)) - $upper_diagonal(i, j, k, grid, clock, Δt, interp_κ, κ) 
+                                     - $lower_diagonal(i, j, k-1, grid, clock, Δt, interp_κ, κ)  
+        end               
+    end
+end
+
 #####
 ##### Solver constructor
 #####
