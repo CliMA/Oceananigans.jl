@@ -12,7 +12,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
 
 @testset "Barotropic Kernels" begin
 
-    arch = Oceananigans.CPU()
+    arch = Oceananigans.GPU()
     FT = Float64
     topology = (Periodic, Periodic, Bounded)
     Nx = Ny = 16 * 8
@@ -20,7 +20,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
     Nx = 128
     Ny = 64
     Lx = Ly = Lz = 2π
-    grid = RectilinearGrid(topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
+    grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
     tmp = SplitExplicitFreeSurface()
     sefs = SplitExplicitState(grid)
@@ -42,9 +42,9 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
         fill_halo_regions!(U̅, arch)
         fill_halo_regions!(V̅, arch)
         # check
-        @test all(η̅.data.parent .== 0.0)
-        @test all(U̅.data.parent .== 0.0)
-        @test all(V̅.data.parent .== 0.0)
+        @test all(Array(η̅.data.parent) .== 0.0)
+        @test all(Array(U̅.data.parent .== 0.0))
+        @test all(Array(V̅.data.parent .== 0.0))
     end
 
     @testset "Inexact integration" begin
@@ -55,19 +55,19 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
         set_u_check(x, y, z) = cos((π / 2) * z / Lz)
         set_U_check(x, y) = (sin(0) - (-2 * Lz / (π)))
         set!(u, set_u_check)
-        exact_U = copy(U)
+        exact_U = similar(U)
         set!(exact_U, set_U_check)
         barotropic_mode!(U, V, arch, grid, u, v)
         tolerance = 1e-3
-        @test all((interior(U) .- interior(exact_U)) .< tolerance)
+        @test all((Array(interior(U) .- interior(exact_U))) .< tolerance)
 
         set_v_check(x, y, z) = sin(x * y) * cos((π / 2) * z / Lz)
         set_V_check(x, y) = sin(x * y) * (sin(0) - (-2 * Lz / (π)))
         set!(v, set_v_check)
-        exact_V = copy(V)
+        exact_V = similar(V)
         set!(exact_V, set_V_check)
         barotropic_mode!(U, V, arch, grid, u, v)
-        @test all((interior(V) .- interior(exact_V)) .< tolerance)
+        @test all((Array(interior(V) .- interior(exact_V))) .< tolerance)
     end
 
     @testset "Vertical Integral " begin
@@ -77,33 +77,32 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
         u .= 0.0
         U .= 1.0
         barotropic_mode!(U, V, arch, grid, u, v)
-        @test all(U.data.parent .== 0.0)
+        @test all(Array(U.data.parent) .== 0.0)
 
         u .= 1.0
         U .= 1.0
         barotropic_mode!(U, V, arch, grid, u, v)
-        @test all(interior(U) .≈ Lz)
+        @test all(Array(interior(U)) .≈ Lz)
 
         set_u_check(x, y, z) = sin(x)
         set_U_check(x, y) = sin(x) * Lz
         set!(u, set_u_check)
-        exact_U = copy(U)
+        exact_U = similar(U)
         set!(exact_U, set_U_check)
         barotropic_mode!(U, V, arch, grid, u, v)
-        @test all(interior(U) .≈ interior(exact_U))
+        @test all(Array(interior(U)) .≈ Array(interior(exact_U)))
 
         set_v_check(x, y, z) = sin(x) * z * cos(y)
         set_V_check(x, y) = -sin(x) * Lz^2 / 2.0 * cos(y)
         set!(v, set_v_check)
-        exact_V = copy(V)
+        exact_V = similar(V)
         set!(exact_V, set_V_check)
         barotropic_mode!(U, V, arch, grid, u, v)
-        @test all(interior(V) .≈ interior(exact_V))
+        @test all(Array(interior(V)) .≈ Array(interior(exact_V)))
     end
 
     @testset "Barotropic Correction" begin
         # Test 4: Test Barotropic Correction
-        arch = Oceananigans.CPU()
         FT = Float64
         topology = (Periodic, Periodic, Bounded)
         Nx = Ny = 16 * 8
@@ -111,7 +110,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
         Nx = 128
         Ny = 64
         Lx = Ly = Lz = 2π
-        grid = RectilinearGrid(topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
+        grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
         sefs = SplitExplicitFreeSurface(grid)
 
@@ -119,8 +118,8 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
 
         u = Field{Face, Center, Center}(grid)
         v = Field{Center, Face, Center}(grid)
-        u_corrected = copy(u)
-        v_corrected = copy(v)
+        u_corrected = similar(u)
+        v_corrected = similar(v)
 
         set_u(x, y, z) = z + Lz / 2 + sin(x)
         set_U̅(x, y) = cos(x) * Lz
@@ -143,8 +142,8 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
         Δz .= grid.Δzᵃᵃᶜ
 
         barotropic_split_explicit_corrector!(u, v, sefs, grid)
-        @test all((u .- u_corrected) .< 1e-14)
-        @test all((v .- v_corrected) .< 1e-14)
+        @test all(Array((interior(u) .- interior(u_corrected))) .< 1e-14)
+        @test all(Array((interior(v) .- interior(v_corrected))) .< 1e-14)
     end
 
 end
