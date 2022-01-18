@@ -16,11 +16,6 @@ using Oceananigans.ImmersedBoundaries
 @inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_wᶜᶜᵃ, w) * δzᵃᵃᶠ(i, j, k, grid, u) / Δzᵃᵃᶠ(i, j, k, grid) / Azᶠᶜᵃ(i, j, k, grid)
 @inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_wᶜᶜᵃ, w) * δzᵃᵃᶠ(i, j, k, grid, v) / Δzᵃᵃᶠ(i, j, k, grid) / Azᶜᶠᵃ(i, j, k, grid)
 
-# Ensure that we don't get NaNs because of Δzᵃᵃᶠ = 0 in the immersed boundary
-
-@inbounds ζ₂wᶠᶜᶠ(i, j, k, ibg::ImmersedBoundaryGrid, u, w) = ζ₂wᶠᶜᶠ(i, j, k, ibg.grid, u, w)
-@inbounds ζ₁wᶜᶠᶠ(i, j, k, ibg::ImmersedBoundaryGrid, v, w) = ζ₁wᶜᶠᶠ(i, j, k, ibg.grid, v, w)
-
 @inline U_dot_∇u(i, j, k, grid, advection::VectorInvariant, U) = (
     - ℑyᵃᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᵃ, U.u, U.v) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_vᶜᶠᵃ, U.v) / Δxᶠᶜᵃ(i, j, k, grid) # Vertical relative vorticity term
     + ∂xᶠᶜᵃ(i, j, k, grid, Khᶜᶜᶜ, U.u, U.v)    # Bernoulli head term

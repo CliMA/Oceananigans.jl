@@ -65,7 +65,7 @@ end
 
 const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBottom}
 
-@inline Δzᵃᵃᶜ(i, j, k, ibg::GFBIBG) = ifelse(is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary),
+@inline Δzᵃᵃᶜ(i, j, k, ibg::GFBIBG) = ifelse(solid_node(Center(), Center(), Center(), i, j, k, ibg),
                                              zero(eltype(ibg.grid)),
                                              Δzᵃᵃᶜ(i, j, k, ibg.grid))
 
@@ -77,7 +77,7 @@ const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFit
                                              zero(eltype(ibg)),
                                              Δzᵃᵃᶜ(i, j, k, ibg.grid))
 
-@inline Δzᵃᵃᶠ(i, j, k, ibg::GFBIBG) = ifelse(is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary),
+@inline Δzᵃᵃᶠ(i, j, k, ibg::GFBIBG) = ifelse(solid_node(Center(), Center(), Face(), i, j, k, ibg),
                                              zero(eltype(ibg.grid)),
                                              Δzᵃᵃᶠ(i, j, k, ibg.grid))
 
@@ -87,8 +87,8 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 ##### Implicit vertical diffusion
 #####
 
-@inline z_solid_node(LX, LY, ::Center, i, j, k, ibg) = solid_node(LX, LY, Face(), i, j, k+1, ibg)
-@inline z_solid_node(LX, LY, ::Face, i, j, k, ibg)   = solid_node(LX, LY, Center(), i, j, k, ibg)
+@inline z_solid_node(LX, LY, ::Center, i, j, k, ibg) = solid_interface(LX, LY, Face(), i, j, k+1, ibg)
+@inline z_solid_node(LX, LY, ::Face, i, j, k, ibg)   = solid_interface(LX, LY, Center(), i, j, k, ibg)
 
 # extending the upper and lower diagonal functions of the batched tridiagonal solver
 
