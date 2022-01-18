@@ -16,19 +16,19 @@ struct FFTImplicitFreeSurfaceSolver{S, G3, G2, R}
 end
 
 """
-    function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
+    function FFTImplicitFreeSurfaceSolver(grid, settings)
 
 Return a solver based on the fast Fourier transform for the elliptic equation
     
 ```math
-[∇² - Az / (g H Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - Az ηⁿ / Δt) / (g H Δt)
+[∇² - Az / (g H Δt²)] ηⁿ⁺¹ = (∇ʰ ⋅ Q★ - Az ηⁿ / Δt) / (g H Δt) ,
 ```
 
 representing an implicit time discretization of the linear free surface evolution equation
 for a fluid with constant depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
-step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
+step `Δt`, gravitational acceleration `g`, and free surface at time-step `n`, `ηⁿ`.
 """
-function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
+function FFTImplicitFreeSurfaceSolver(grid, gravitational_acceleration::Number, settings)
 
     grid isa RegRectilinearGrid || grid isa HRegRectilinearGrid ||
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
@@ -53,20 +53,20 @@ function FFTImplicitFreeSurfaceSolver(arch, grid, settings)
     # Even if the three dimensional grid is vertically stretched, we can only use
     # FFTImplicitFreeSurfaceSolver with grids that are regularly spaced in the
     # horizontal direction.
-    horizontal_grid = RectilinearGrid(; topology = (TX, TY, Flat),
-                                               size = sz,
-                                               halo = halo,
-                                               architecture = arch,
-                                               domain...)
+    horizontal_grid = RectilinearGrid(architecture(grid);
+                                      topology = (TX, TY, Flat),
+                                      size = sz,
+                                      halo = halo,
+                                      domain...)
 
-    solver = FFTBasedPoissonSolver(arch, horizontal_grid)
+    solver = FFTBasedPoissonSolver(horizontal_grid)
     right_hand_side = solver.storage
 
     return FFTImplicitFreeSurfaceSolver(solver, grid, horizontal_grid, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:FastFourierTransform}, arch, grid, settings) =
-    FFTImplicitFreeSurfaceSolver(arch, grid, settings)
+build_implicit_step_solver(::Val{:FastFourierTransform}, grid, gravitational_acceleration, settings) =
+    FFTImplicitFreeSurfaceSolver(grid, gravitational_acceleration, settings)
 
 #####
 ##### Solve...
@@ -90,7 +90,7 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
                                                         g, Δt, ∫ᶻQ, η)
 
     solver = implicit_solver.fft_based_poisson_solver
-    arch = solver.architecture
+    arch = architecture(solver)
     grid = implicit_solver.three_dimensional_grid
     H = grid.Lz
 

@@ -22,7 +22,6 @@ grid = LatitudeLongitudeGrid(size = (1, Ny, 1),
                              z = (-1, 0))
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    architecture = CPU(),
                                     momentum_advection = VectorInvariant(),
                                     tracers = :c,
                                     coriolis = nothing,

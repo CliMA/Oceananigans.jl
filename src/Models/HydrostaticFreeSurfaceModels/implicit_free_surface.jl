@@ -19,26 +19,28 @@ struct ImplicitFreeSurface{E, G, B, I, M, S}
 end
 
 """
-    ImplicitFreeSurface(; solver=:PreconditionedConjugateGradient, gravitational_acceleration=g_Earth, solver_settings...) =
+    ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...)
 
-The implicit free surface equation is
+The implicit free-surface equation is
 
 ```math
-(∇ʰ ⋅ H ∇ʰ - 1 / (g Δt²)) ηⁿ⁺¹ = ∇ʰ ⋅ Q★ / (g Δt) - ηⁿ / (g Δt²)
+\\left [ 𝛁_h ⋅ (H 𝛁_h) - \\frac{1}{g Δt^2} \\right ] η^{n+1} = \\frac{𝛁_h ⋅ 𝐐_⋆}{g Δt} - \\frac{η^{n}}{g Δt^2} ,
 ```
 
-where ``H`` is depth, ``g`` is gravitational acceleration, ``Δt`` is time step, and
-``Q★`` is the barotropic volume flux associated with the predictor velocity field.
+where ``η^n`` is the free-surface elevation at the ``n``-th time step, ``H`` is depth, ``g`` is
+the gravitational acceleration, ``Δt`` is the time step, ``𝐐_⋆`` is the barotropic volume flux
+associated with the predictor velocity field, and ``𝛁_h`` is the horizontal gradient operator.
 
-This can be solved in general using the `PreconditionedConjugateGradientSolver`.
+This equation can be solved in general using the [`PreconditionedConjugateGradientSolver`](@ref).
 
 In the case that ``H`` is constant, we divide through to obtain
 
 ```math
-(∇² - 1 / (g H Δt²)) ηⁿ⁺¹ = 1 / (g H Δt) * (∇ʰ ⋅ Q★ - ηⁿ / Δt)
+\\left ( ∇^2_h - \\frac{1}{g H Δt^2} \\right ) η^{n+1}  = \\frac{1}{g H Δt} \\left ( 𝛁_h ⋅ 𝐐_⋆ - \\frac{η^{n}}{Δt} \\right ) .
 ```
 
-The above can be solved with the `FastFourierTransformPoissonSolver` on grids with regular spacing in x and y.
+Thus, for constant ``H`` and on grids with regular spacing in ``x`` and ``y`` directions, the free
+surface can be obtained using the `FFTImplicitFreeSurfaceSolver`.
 """
 ImplicitFreeSurface(; solver_method=:Default, gravitational_acceleration=g_Earth, solver_settings...) =
     ImplicitFreeSurface(nothing, gravitational_acceleration, nothing, nothing, solver_method, solver_settings)
@@ -48,19 +50,19 @@ Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
                         nothing, nothing, nothing, nothing)
 
 # Internal function for HydrostaticFreeSurfaceModel
-function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arch, grid)
-    η = FreeSurfaceDisplacementField(velocities, free_surface, arch, grid)
-    g = convert(eltype(grid), free_surface.gravitational_acceleration)
+function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid)
+    η = FreeSurfaceDisplacementField(velocities, free_surface, grid)
+    gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     # Initialize barotropic volume fluxes
-    barotropic_x_volume_flux = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
-    barotropic_y_volume_flux = ReducedField(Center, Face, Nothing, arch, grid; dims=3)
+    barotropic_x_volume_flux = Field{Face, Center, Nothing}(grid)
+    barotropic_y_volume_flux = Field{Center, Face, Nothing}(grid)
     barotropic_volume_flux = (u=barotropic_x_volume_flux, v=barotropic_y_volume_flux)
 
     solver_method = free_surface.solver_method
-    solver = build_implicit_step_solver(Val(solver_method), arch, grid, free_surface.solver_settings)
+    solver = build_implicit_step_solver(Val(solver_method), grid, gravitational_acceleration, free_surface.solver_settings)
 
-    return ImplicitFreeSurface(η, g,
+    return ImplicitFreeSurface(η, gravitational_acceleration,
                                barotropic_volume_flux,
                                solver,
                                solver_method,
@@ -70,9 +72,9 @@ end
 is_horizontally_regular(grid) = false
 is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
 
-function build_implicit_step_solver(::Val{:Default}, arch, grid, settings)
+function build_implicit_step_solver(::Val{:Default}, grid, gravitational_acceleration, settings)
     default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :PreconditionedConjugateGradient
-    return build_implicit_step_solver(Val(default_method), arch, grid, settings)
+    return build_implicit_step_solver(Val(default_method), grid, gravitational_acceleration, settings)
 end
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
@@ -94,6 +96,9 @@ function implicit_free_surface_step!(free_surface::ImplicitFreeSurface, model, �
 
     # Wait for predictor velocity update step to complete.
     wait(device(arch), velocities_update)
+
+    masking_events = Tuple(mask_immersed_field!(q) for q in model.velocities)
+    wait(device(model.architecture), MultiEvent(masking_events))
 
     # Compute barotropic volume flux. Blocking.
     compute_vertically_integrated_volume_flux!(∫ᶻQ, model)

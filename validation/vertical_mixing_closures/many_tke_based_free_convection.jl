@@ -22,8 +22,6 @@ closure_ensemble = [default_closure for i = 1:Ex, j = 1:Ey]
 Qᵇ = 1e-7
 Qᵇ_ensemble = [Qᵇ for i = 1:Ex, j = 1:Ey]
 
-
-
 closure_ensemble[1, 1] = CATKEVerticalDiffusivity(mixing_length = MixingLength(Cᴷc⁻=1.0, Cᴸᵇ=0.0))
 closure_ensemble[1, 2] = CATKEVerticalDiffusivity(mixing_length = MixingLength(Cᴷc⁻=1.0, Cᴸᵇ=2.0))
 closure_ensemble[1, 3] = CATKEVerticalDiffusivity(mixing_length = MixingLength(Cᴷc⁻=1.0, Cᴸᵇ=4.0))
@@ -45,7 +43,7 @@ z = znodes(model.tracers.b)
 simulation = Simulation(model, Δt = 1minute/2, stop_time = 0.0)
 
 b = model.tracers.b
-bz = ComputedField(∂z(b))
+bz = Field(∂z(b))
 
 function column_bz(j)
     compute!(bz)

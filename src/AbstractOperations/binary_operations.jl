@@ -1,23 +1,22 @@
 const binary_operators = Set()
 
-struct BinaryOperation{X, Y, Z, O, A, B, IA, IB, R, G, T} <: AbstractOperation{X, Y, Z, R, G, T}
-              op :: O
-               a :: A
-               b :: B
-              ▶a :: IA
-              ▶b :: IB
-    architecture :: R
-            grid :: G
+struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
+    op :: O
+    a :: A
+    b :: B
+    ▶a :: IA
+    ▶b :: IB
+    grid :: G
 
-    """
-        BinaryOperation{X, Y, Z}(op, a, b, ▶a, ▶b, arch, grid)
+    @doc """
+        BinaryOperation{LX, LY, LZ}(op, a, b, ▶a, ▶b, grid)
 
     Returns an abstract representation of the binary operation `op(▶a(a), ▶b(b))`.
-    on `grid` and `arch`itecture, where `▶a` and `▶b` interpolate `a` and `b` to (X, Y, Z).
+    on `grid`, where `▶a` and `▶b` interpolate `a` and `b` to (LX, LY, LZ).
     """
-    function BinaryOperation{X, Y, Z}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, arch::R, grid::G) where {X, Y, Z, O, A, B, IA, IB, R, G}
+    function BinaryOperation{LX, LY, LZ}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, grid::G) where {LX, LY, LZ, O, A, B, IA, IB, G}
         T = eltype(grid)
-        return new{X, Y, Z, O, A, B, IA, IB, R, G, T}(op, a, b, ▶a, ▶b, arch, grid)
+        return new{LX, LY, LZ, O, A, B, IA, IB, G, T}(op, a, b, ▶a, ▶b, grid)
     end
 end
 
@@ -35,8 +34,7 @@ end
 function _binary_operation(Lc, op, a, b, La, Lb, grid)
      ▶a = interpolation_operator(La, Lc)
      ▶b = interpolation_operator(Lb, Lc)
-    arch = architecture(a, b)
-    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, arch, grid)
+    return BinaryOperation{Lc[1], Lc[2], Lc[3]}(op, a, b, ▶a, ▶b, grid)
 end
 
 const ConcreteLocationType = Union{Type{Face}, Type{Center}}
@@ -157,7 +155,7 @@ Set{Any} with 6 elements:
   :*
   :plus_or_times
 
-julia> c, d = (Field(Center, Center, Center, CPU(), RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:2);
+julia> c, d = (CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:2);
 
 julia> plus_or_times(c, d)
 BinaryOperation at (Center, Center, Center)
@@ -188,25 +186,6 @@ macro binary(ops...)
 end
 
 #####
-##### Architecture inference for BinaryOperation
-#####
-
-architecture(β::BinaryOperation) = β.architecture
-
-function architecture(a, b)
-    arch_a = architecture(a)
-    arch_b = architecture(b)
-
-    arch_a === arch_b && return arch_a
-    isnothing(arch_a) && return arch_b
-    isnothing(arch_b) && return arch_a
-
-    throw(ArgumentError("Operation involves fields on architectures $arch_a and $arch_b"))
-
-    return nothing
-end
-
-#####
 ##### Nested computations
 #####
 
@@ -221,7 +200,11 @@ end
 #####
 
 "Adapt `BinaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
-Adapt.adapt_structure(to, binary::BinaryOperation{X, Y, Z}) where {X, Y, Z} =
-    BinaryOperation{X, Y, Z}(Adapt.adapt(to, binary.op), Adapt.adapt(to, binary.a),  Adapt.adapt(to, binary.b),
-                             Adapt.adapt(to, binary.▶a), Adapt.adapt(to, binary.▶b), nothing, Adapt.adapt(to, binary.grid))
+Adapt.adapt_structure(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+    BinaryOperation{LX, LY, LZ}(Adapt.adapt(to, binary.op),
+                                Adapt.adapt(to, binary.a),
+                                Adapt.adapt(to, binary.b),
+                                Adapt.adapt(to, binary.▶a),
+                                Adapt.adapt(to, binary.▶b),
+                                Adapt.adapt(to, binary.grid))
 

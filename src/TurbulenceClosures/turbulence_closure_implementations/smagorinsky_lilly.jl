@@ -24,11 +24,15 @@ end
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
 Lilly (1962) and Smagorinsky (1958, 1963), which has an eddy viscosity of the form
 
-    `νₑ = (C * Δᶠ)² * √(2Σ²) * √(1 - Cb * N² / Σ²) + ν`,
+```
+    νₑ = (C * Δᶠ)² * √(2Σ²) * √(1 - Cb * N² / Σ²) + ν,
+```
 
 and an eddy diffusivity of the form
 
-    `κₑ = (νₑ - ν) / Pr + κ`
+```
+κₑ = (νₑ - ν) / Pr + κ ,
+```
 
 where `Δᶠ` is the filter width, `Σ² = ΣᵢⱼΣᵢⱼ` is the double dot product of
 the strain tensor `Σᵢⱼ`, `Pr` is the turbulent Prandtl number, and `N²` is
@@ -37,18 +41,18 @@ modification to the eddy viscosity.
 
 Keyword arguments
 =================
-    - `C`  : Smagorinsky constant. Default value is 0.16 as obtained by Lilly (1966).
-    - `Cb` : Buoyancy term multipler based on Lilly (1962) (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
-             Typically, and according to the original work by Lilly (1962), `Cb=1/Pr`.)
-    - `Pr` : Turbulent Prandtl numbers for each tracer. Either a constant applied to every
-             tracer, or a `NamedTuple` with fields for each tracer individually.
-    - `ν`  : Constant background viscosity for momentum
-    - `κ`  : Constant background diffusivity for tracer. Can either be a single number
-             applied to all tracers, or `NamedTuple` of diffusivities corresponding to each
-             tracer.
-    - `time_discretization` : Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
-                              which integrates the terms involving only z-derivatives in the
-                              viscous and diffusive fluxes with an implicit time discretization.
+  - `C`: Smagorinsky constant. Default value is 0.16 as obtained by Lilly (1966).
+  - `Cb`: Buoyancy term multipler based on Lilly (1962) (`Cb = 0` turns it off, `Cb ≠ 0` turns it on.
+          Typically, and according to the original work by Lilly (1962), `Cb=1/Pr`.)
+  - `Pr`: Turbulent Prandtl numbers for each tracer. Either a constant applied to every
+          tracer, or a `NamedTuple` with fields for each tracer individually.
+  - `ν`: Constant background viscosity for momentum.
+  - `κ`: Constant background diffusivity for tracer. Can either be a single number
+         applied to all tracers, or `NamedTuple` of diffusivities corresponding to each
+         tracer.
+  - `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+                           which integrates the terms involving only ``z``-derivatives in the
+                           viscous and diffusive fluxes with an implicit time discretization.
 
 References
 ==========
@@ -198,11 +202,11 @@ Base.show(io::IO, closure::SmagorinskyLilly) =
 ##### For closures that only require an eddy viscosity νₑ field.
 #####
 
-function DiffusivityFields(arch, grid, tracer_names, bcs, closure::SmagorinskyLilly)
+function DiffusivityFields(grid, tracer_names, bcs, closure::SmagorinskyLilly)
 
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
     bcs = merge(default_eddy_viscosity_bcs, bcs)
-    νₑ = CenterField(arch, grid, bcs.νₑ)
+    νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
 
     # Use AbstractOperations to write eddy diffusivities in terms of
     # eddy viscosity

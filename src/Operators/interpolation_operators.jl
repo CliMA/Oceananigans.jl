@@ -78,21 +78,21 @@ using Oceananigans.Grids: Flat
 ##### Support for Flat Earths
 #####
 
-@inline ℑxᶜᵃᵃ(i, j, k, grid::AG{FT, Flat, TY, TZ}, u) where {FT, TY, TZ} = @inbounds u[1, j, k]
-@inline ℑxᶠᵃᵃ(i, j, k, grid::AG{FT, Flat, TY, TZ}, c) where {FT, TY, TZ} = @inbounds c[1, j, k]
+@inline ℑxᶜᵃᵃ(i, j, k, grid::AG{FT, Flat, TY, TZ}, u) where {FT, TY, TZ} = @inbounds u[i, j, k]
+@inline ℑxᶠᵃᵃ(i, j, k, grid::AG{FT, Flat, TY, TZ}, c) where {FT, TY, TZ} = @inbounds c[i, j, k]
 
-@inline ℑyᵃᶜᵃ(i, j, k, grid::AG{FT, TX, Flat, TZ}, w) where {FT, TX, TZ} = @inbounds w[i, 1, k]
-@inline ℑyᵃᶠᵃ(i, j, k, grid::AG{FT, TX, Flat, TZ}, c) where {FT, TX, TZ} = @inbounds c[i, 1, k]
+@inline ℑyᵃᶜᵃ(i, j, k, grid::AG{FT, TX, Flat, TZ}, w) where {FT, TX, TZ} = @inbounds w[i, j, k]
+@inline ℑyᵃᶠᵃ(i, j, k, grid::AG{FT, TX, Flat, TZ}, c) where {FT, TX, TZ} = @inbounds c[i, j, k]
 
-@inline ℑzᵃᵃᶜ(i, j, k, grid::AG{FT, TX, TY, Flat}, w) where {FT, TX, TY} = @inbounds w[i, j, 1]
-@inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT, TX, TY, Flat}, c) where {FT, TX, TY} = @inbounds c[i, j, 1]
+@inline ℑzᵃᵃᶜ(i, j, k, grid::AG{FT, TX, TY, Flat}, w) where {FT, TX, TY} = @inbounds w[i, j, k]
+@inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT, TX, TY, Flat}, c) where {FT, TX, TY} = @inbounds c[i, j, k]
 
 
-@inline ℑxᶜᵃᵃ(i, j, k, grid::AG{FT, Flat, TY, TZ}, f::F, args...) where {FT, TY, TZ, F<:Function} = f(1, j, k, grid, args...)
-@inline ℑxᶠᵃᵃ(i, j, k, grid::AG{FT, Flat, TY, TZ}, f::F, args...) where {FT, TY, TZ, F<:Function} = f(1, j, k, grid, args...)
+@inline ℑxᶜᵃᵃ(i, j, k, grid::AG{FT, Flat, TY, TZ}, f::F, args...) where {FT, TY, TZ, F<:Function} = f(i, j, k, grid, args...)
+@inline ℑxᶠᵃᵃ(i, j, k, grid::AG{FT, Flat, TY, TZ}, f::F, args...) where {FT, TY, TZ, F<:Function} = f(i, j, k, grid, args...)
 
-@inline ℑyᵃᶜᵃ(i, j, k, grid::AG{FT, TX, Flat, TZ}, f::F, args...) where {FT, TX, TZ, F<:Function} = f(i, 1, k, grid, args...)
-@inline ℑyᵃᶠᵃ(i, j, k, grid::AG{FT, TX, Flat, TZ}, f::F, args...) where {FT, TX, TZ, F<:Function} = f(i, 1, k, grid, args...)
+@inline ℑyᵃᶜᵃ(i, j, k, grid::AG{FT, TX, Flat, TZ}, f::F, args...) where {FT, TX, TZ, F<:Function} = f(i, j, k, grid, args...)
+@inline ℑyᵃᶠᵃ(i, j, k, grid::AG{FT, TX, Flat, TZ}, f::F, args...) where {FT, TX, TZ, F<:Function} = f(i, j, k, grid, args...)
 
-@inline ℑzᵃᵃᶜ(i, j, k, grid::AG{FT, TX, TY, Flat}, f::F, args...) where {FT, TX, TY, F<:Function} = f(i, j, 1, grid, args...)
-@inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT, TX, TY, Flat}, f::F, args...) where {FT, TX, TY, F<:Function} = f(i, j, 1, grid, args...)
+@inline ℑzᵃᵃᶜ(i, j, k, grid::AG{FT, TX, TY, Flat}, f::F, args...) where {FT, TX, TY, F<:Function} = f(i, j, k, grid, args...)
+@inline ℑzᵃᵃᶠ(i, j, k, grid::AG{FT, TX, TY, Flat}, f::F, args...) where {FT, TX, TY, F<:Function} = f(i, j, k, grid, args...)

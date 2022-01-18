@@ -1,13 +1,11 @@
 module Fields
 
 export Face, Center
-export AbstractField, AbstractDataField, Field
+export AbstractField, Field, Average, Integral, Reduction, field
 export CenterField, XFaceField, YFaceField, ZFaceField
-export ReducedField, AveragedField, ComputedField, KernelComputedField, BackgroundField
-export interior, data
-export xnode, ynode, znode, location
-export regrid!
-export set!, compute!, @compute
+export BackgroundField
+export interior, data, xnode, ynode, znode, location
+export set!, compute!, @compute, regrid!
 export VelocityFields, TracerFields, tracernames, PressureFields, TendencyFields
 export interpolate, FieldSlicer
 
@@ -15,20 +13,14 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
 
+import Oceananigans: short_show
+
 include("abstract_field.jl")
-include("reduced_getindex_setindex.jl")
-include("field.jl")
 include("zero_field.jl")
-include("reduced_field.jl")
-include("averaged_field.jl")
-include("computed_field.jl")
-include("kernel_computed_field.jl")
-include("pressure_field.jl")
 include("function_field.jl")
+include("field.jl")
+include("field_reductions.jl")
 include("regridding_fields.jl")
-include("set!.jl")
-include("tracer_names.jl")
-include("validate_field_tuple_grid.jl")
 include("field_tuples.jl")
 include("background_fields.jl")
 include("interpolate.jl")
@@ -36,8 +28,25 @@ include("field_slicer.jl")
 include("show_fields.jl")
 include("broadcasting_abstract_fields.jl")
 
-# Fallback: cannot infer boundary conditions.
-boundary_conditions(field) = nothing
-boundary_conditions(f::Union{Field, ReducedField, ComputedField, KernelComputedField}) = f.boundary_conditions
+"""
+    field(loc, a, grid)
 
+Build a field from `a` at `loc` and on `grid`.
+"""
+function field(loc, a::AbstractArray, grid)
+    f = Field(loc, grid)
+    a = arch_array(architecture(grid), a)
+    f .= a
+    return f
 end
+
+field(loc, a::Function, grid) = FunctionField(loc, a, grid)
+
+function field(loc, f::Field, grid)
+    loc === location(f) && grid === f.grid && return f
+    error("Cannot construct field at $loc and on $grid from $f")
+end
+
+include("set!.jl")
+
+end # module

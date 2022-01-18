@@ -37,7 +37,7 @@ end
 """
     aligned_time_step(sim, Δt)
 
-Return a time step 'aligned' with `sim.stop_time`, output writer schedules,
+Return a time step 'aligned' with `sim.stop_time`, output writer schedules, 
 and callback schedules. Alignment with `sim.stop_time` takes precedence.
 """
 function aligned_time_step(sim::Simulation, Δt)
@@ -73,13 +73,13 @@ leaving all other model properties unchanged.
 
 Possible values for `pickup` are:
 
-    * `pickup=true` picks a simulation up from the latest checkpoint associated with
-      the `Checkpointer` in `simulation.output_writers`.
+  * `pickup=true` picks a simulation up from the latest checkpoint associated with
+    the `Checkpointer` in `simulation.output_writers`.
 
-    * `pickup=iteration::Int` picks a simulation up from the checkpointed file associated
-       with `iteration` and the `Checkpointer` in `simulation.output_writers`.
+  * `pickup=iteration::Int` picks a simulation up from the checkpointed file associated
+     with `iteration` and the `Checkpointer` in `simulation.output_writers`.
 
-    * `pickup=filepath::String` picks a simulation up from checkpointer data in `filepath`.
+  * `pickup=filepath::String` picks a simulation up from checkpointer data in `filepath`.
 
 Note that `pickup=true` and `pickup=iteration` fails if `simulation.output_writers` contains
 more than one checkpointer.
@@ -134,7 +134,7 @@ function time_step!(sim::Simulation)
     end_time_step = time_ns()
 
     # Increment the wall clock
-    sim.run_wall_time += end_time_step - start_time_step
+    sim.run_wall_time += 1e-9 * (end_time_step - start_time_step)
 
     return nothing
 end
@@ -176,8 +176,9 @@ function initialize_simulation!(sim)
     # Output and diagnostics initialization
     [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
 
-    # Evaluate all diagnostics, and then write all output at first iteration
+    # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration
     if clock.iteration == 0
+        reset!(sim.model.timestepper)
         [run_diagnostic!(diag, model) for diag in values(sim.diagnostics)]
         [callback(sim)                for callback in values(sim.callbacks)]
         [write_output!(writer, model) for writer in values(sim.output_writers)]

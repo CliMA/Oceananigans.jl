@@ -9,7 +9,8 @@ using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, Seawa
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: Field, CenterField, tracernames, VelocityFields, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: inflate_halo_size, with_halo, AbstractRectilinearGrid, AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
+using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo, AbstractRectilinearGrid
+using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
 using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
@@ -24,7 +25,7 @@ validate_tracer_advection(invalid_tracer_advection, grid) = error("$invalid_trac
 validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = CenteredSecondOrder(), tracer_advection_tuple
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 
-PressureField(arch, grid) = (; pHY′ = CenterField(arch, grid))
+PressureField(grid) = (; pHY′ = CenterField(grid))
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
                                            G, T, V, B, R, F, P, U, C, Φ, K, AF} <: AbstractModel{TS}
@@ -72,20 +73,19 @@ Construct an hydrostatic `Oceananigans.jl` model with a free surface on `grid`.
 Keyword arguments
 =================
 
-    - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
-    - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
-    - `gravitational_acceleration`: The gravitational acceleration applied to the free surface
-    - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
-    - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
-    - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
-    - `coriolis`: Parameters for the background rotation rate of the model.
-    - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
-    - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
-    - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
-                 preallocated `CenterField`s.
+  - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
+  - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
+  - `gravitational_acceleration`: The gravitational acceleration applied to the free surface
+  - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
+  - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
+  - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
+  - `coriolis`: Parameters for the background rotation rate of the model.
+  - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
+  - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
+  - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
+               preallocated `CenterField`s.
 """
 function HydrostaticFreeSurfaceModel(; grid,
-                architecture::AbstractArchitecture = CPU(),
                                              clock = Clock{eltype(grid)}(0, 0, 1),
                                 momentum_advection = CenteredSecondOrder(),
                                   tracer_advection = CenteredSecondOrder(),
@@ -103,11 +103,20 @@ function HydrostaticFreeSurfaceModel(; grid,
                                   auxiliary_fields = NamedTuple(),
     )
 
-    @warn "HydrostaticFreeSurfaceModel is experimental. Use with caution!"
+    # Check halos and throw an error if the grid's halo is too small
+    user_halo = halo_size(grid)
+    required_halo = inflate_halo_size(user_halo..., topology(grid),
+                                      momentum_advection,
+                                      tracer_advection,
+                                      closure)
 
-    if architecture == GPU() && !has_cuda()
+    any(user_halo .< required_halo) &&
+        throw(ArgumentError("The grid halo $user_halo must be larger than $required_halo."))
+
+    arch = architecture(grid)
+
+    arch == GPU() && !has_cuda() &&
          throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
-    end
 
     momentum_advection = validate_momentum_advection(momentum_advection, grid)
 
@@ -145,21 +154,21 @@ function HydrostaticFreeSurfaceModel(; grid,
     closure = with_tracers(tracernames(tracers), closure)
 
     # Either check grid-correctness, or construct tuples of fields
-    velocities         = HydrostaticFreeSurfaceVelocityFields(velocities, architecture, grid, clock, boundary_conditions)
-    tracers            = TracerFields(tracers, architecture, grid, boundary_conditions)
-    pressure           = PressureField(architecture, grid)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, architecture, grid, tracernames(tracers), boundary_conditions, closure)
+    velocities         = HydrostaticFreeSurfaceVelocityFields(velocities, grid, clock, boundary_conditions)
+    tracers            = TracerFields(tracers, grid, boundary_conditions)
+    pressure           = PressureField(grid)
+    diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
     validate_velocity_boundary_conditions(velocities)
 
-    free_surface = FreeSurface(free_surface, velocities, architecture, grid)
+    free_surface = FreeSurface(free_surface, velocities, grid)
 
     # Instantiate timestepper if not already instantiated
-    implicit_solver = implicit_diffusion_solver(time_discretization(closure), architecture, grid)
-    timestepper = TimeStepper(:QuasiAdamsBashforth2, architecture, grid, tracernames(tracers);
+    implicit_solver = implicit_diffusion_solver(time_discretization(closure), arch, grid)
+    timestepper = TimeStepper(:QuasiAdamsBashforth2, grid, tracernames(tracers);
                               implicit_solver = implicit_solver,
-                              Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)),
-                              G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, architecture, grid, tracernames(tracers)))
+                              Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)),
+                              G⁻ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)))
 
     # Regularize forcing for model tracer and velocity fields.
     model_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
@@ -175,7 +184,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     advection = merge((momentum=momentum_advection,), tracer_advection_tuple)
 
-    model = HydrostaticFreeSurfaceModel(architecture, grid, clock, advection, buoyancy, coriolis,
+    model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, velocities, tracers,
                                         pressure, diffusivity_fields, timestepper, auxiliary_fields)
 

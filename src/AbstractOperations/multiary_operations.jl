@@ -1,30 +1,28 @@
 const multiary_operators = Set()
 
-struct MultiaryOperation{X, Y, Z, N, O, A, I, R, G, T} <: AbstractOperation{X, Y, Z, R, G, T}
-              op :: O
-            args :: A
-               ▶ :: I
-    architecture :: R
-            grid :: G
+struct MultiaryOperation{LX, LY, LZ, N, O, A, I, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
+    op :: O
+    args :: A
+    ▶ :: I
+    grid :: G
 
-    function MultiaryOperation{X, Y, Z}(op::O, args::A, ▶::I, arch::R, grid::G) where {X, Y, Z, O, A, I, R, G}
+    function MultiaryOperation{LX, LY, LZ}(op::O, args::A, ▶::I, grid::G) where {LX, LY, LZ, O, A, I, G}
         T = eltype(grid)
         N = length(args)
-        return new{X, Y, Z, N, O, A, I, R, G, T}(op, args, ▶, arch, grid)
+        return new{LX, LY, LZ, N, O, A, I, G, T}(op, args, ▶, grid)
     end
 end
 
-@inline Base.getindex(Π::MultiaryOperation{X, Y, Z, N}, i, j, k)  where {X, Y, Z, N} =
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, N}, i, j, k)  where {LX, LY, LZ, N} =
     Π.op(ntuple(γ -> Π.▶[γ](i, j, k, Π.grid, Π.args[γ]), Val(N))...)
 
 #####
 ##### MultiaryOperation construction
 #####
 
-function _multiary_operation(L, op, args, Largs, grid) where {X, Y, Z}
+function _multiary_operation(L, op, args, Largs, grid) where {LX, LY, LZ}
     ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
-    arch = architecture(args...)
-    return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(a for a in args), ▶, arch, grid)
+    return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(a for a in args), ▶, grid)
 end
 
 # Recompute location of multiary operation
@@ -43,7 +41,7 @@ function define_multiary_operator(op)
             grid = Oceananigans.AbstractOperations.validate_grid(args...)
 
             # Convert any functions to FunctionFields
-            args = Tuple(Oceananigans.Fields.fieldify(Lop, a, grid) for a in args)
+            args = Tuple(Oceananigans.Fields.fieldify_function(Lop, a, grid) for a in args)
             Largs = Tuple(Oceananigans.Fields.location(a) for a in args)
 
             return Oceananigans.AbstractOperations._multiary_operation(Lop, $op, args, Largs, grid)
@@ -63,9 +61,9 @@ Turn each multiary operator in the list `(op1, op2, op3...)`
 into a multiary operator on `Oceananigans.Fields` for use in `AbstractOperations`.
 
 Note that a multiary operator:
-    * is a function with two or more arguments: for example, `+(x, y, z)` is a multiary function;
-    * must be imported to be extended if part of `Base`: use `import Base: op; @multiary op`;
-    * can only be called on `Oceananigans.Field`s if the "location" is noted explicitly; see example.
+  * is a function with two or more arguments: for example, `+(x, y, z)` is a multiary function;
+  * must be imported to be extended if part of `Base`: use `import Base: op; @multiary op`;
+  * can only be called on `Oceananigans.Field`s if the "location" is noted explicitly; see example.
 
 Example
 =======
@@ -76,7 +74,7 @@ julia> using Oceananigans, Oceananigans.AbstractOperations
 julia> harmonic_plus(a, b, c) = 1/3 * (1/a + 1/b + 1/c)
 harmonic_plus (generic function with 1 method)
 
-julia> c, d, e = Tuple(Field(Center, Center, Center, CPU(), RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:3);
+julia> c, d, e = Tuple(CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:3);
 
 julia> harmonic_plus(c, d, e) # before magic @multiary transformation
 BinaryOperation at (Center, Center, Center)
@@ -132,35 +130,14 @@ macro multiary(ops...)
 end
 
 #####
-##### Architecture inference for MultiaryOperation
-#####
-
-architecture(Π::MultiaryOperation) = Π.architecture
-
-function architecture(a, b, c, d...)
-
-    archs = []
-
-    push!(archs, architecture(a, b))
-    push!(archs, architecture(a, c))
-    append!(archs, [architecture(a, di) for di in d])
-
-    for arch in archs
-        if !(arch === nothing)
-            return arch
-        end
-    end
-
-    return nothing
-end
-
-#####
 ##### Nested computations
 #####
 
 function compute_at!(Π::MultiaryOperation, time)
-    c = Tuple(compute_at!(a, time) for a in Π.args)
-    return nothing
+    for a in Π.args
+        compute_at!(a, time) 
+    end
+    return Π
 end
 
 #####
@@ -168,7 +145,9 @@ end
 #####
 
 "Adapt `MultiaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
-Adapt.adapt_structure(to, multiary::MultiaryOperation{X, Y, Z}) where {X, Y, Z} =
-    MultiaryOperation{X, Y, Z}(Adapt.adapt(to, multiary.op), Adapt.adapt(to, multiary.args),
-                               Adapt.adapt(to, multiary.▶),  nothing, Adapt.adapt(to, multiary.grid))
+Adapt.adapt_structure(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+    MultiaryOperation{LX, LY, LZ}(Adapt.adapt(to, multiary.op),
+                                  Adapt.adapt(to, multiary.args),
+                                  Adapt.adapt(to, multiary.▶),
+                                  Adapt.adapt(to, multiary.grid))
 

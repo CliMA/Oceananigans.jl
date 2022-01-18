@@ -1,10 +1,8 @@
-using Oceananigans.AbstractOperations: UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
-using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
-using Oceananigans.Fields: PressureField, compute_at!
-using Oceananigans.BuoyancyModels: BuoyancyField
+include("dependencies_for_runtests.jl")
 
-using Oceananigans.AbstractOperations: Δx, Δy, Δz, Ax, Ay, Az, volume
+using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ
+using Oceananigans.Fields: compute_at!
+using Oceananigans.BuoyancyModels: BuoyancyField
 
 function simple_binary_operation(op, a, b, num1, num2)
     a_b = op(a, b)
@@ -67,8 +65,8 @@ function z_derivative(a)
 end
 
 function x_derivative_cell(arch)
-    grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
-    a = Field(Center, Center, Center, arch, grid, nothing)
+    grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(3, 3, 3))
+    a = Field{Center, Center, Center}(grid)
     dx_a = ∂x(a)
 
     one_four_four = arch_array(arch, [1, 4, 4])
@@ -91,9 +89,9 @@ for arch in archs
     @testset "Abstract operations [$(typeof(arch))]" begin
         @info "Testing abstract operations [$(typeof(arch))]..."
 
-        grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
-        u, v, w = VelocityFields(arch, grid)
-        c = Field(Center, Center, Center, arch, grid, nothing)
+        grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(3, 3, 3))
+        u, v, w = VelocityFields(grid)
+        c = Field{Center, Center, Center}(grid)
 
         @testset "Unary operations and derivatives [$(typeof(arch))]" begin
             for ψ in (u, v, w, c)
@@ -147,10 +145,10 @@ for arch in archs
             @info "  Testing simple binary operations..."
             num1 = Float64(π)
             num2 = Float64(42)
-            grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3))
+            grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(3, 3, 3))
 
-            u, v, w = VelocityFields(arch, grid)
-            T, S = TracerFields((:T, :S), arch, grid)
+            u, v, w = VelocityFields(grid)
+            T, S = TracerFields((:T, :S), grid)
 
             for op in (+, *, -, /)
                 @test simple_binary_operation(op, u, v, num1, num2)
@@ -163,11 +161,11 @@ for arch in archs
 
         @testset "Derivatives" begin
             @info "  Testing derivatives..."
-            grid = RectilinearGrid(size=(3, 3, 3), extent=(3, 3, 3),
+            grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(3, 3, 3),
                                           topology=(Periodic, Periodic, Periodic))
 
-            u, v, w = VelocityFields(arch, grid)
-            T, S = TracerFields((:T, :S), arch, grid)
+            u, v, w = VelocityFields(grid)
+            T, S = TracerFields((:T, :S), grid)
             for a in (u, v, w, T)
                 @test x_derivative(a)
                 @test y_derivative(a)
@@ -181,8 +179,8 @@ for arch in archs
             @info "  Testing combined binary operations and derivatives..."
             arch = CPU()
             Nx = 3 # Δx=1, xC = 0.5, 1.5, 2.5
-            grid = RectilinearGrid(size=(Nx, Nx, Nx), extent=(Nx, Nx, Nx))
-            a, b = (Field(Center, Center, Center, arch, grid, nothing) for i in 1:2)
+            grid = RectilinearGrid(arch, size=(Nx, Nx, Nx), extent=(Nx, Nx, Nx))
+            a, b = (Field{Center, Center, Center}(grid) for i in 1:2)
 
             set!(b, 2)
             set!(a, (x, y, z) -> x < 2 ? 3x : 6)
@@ -216,15 +214,15 @@ for arch in archs
             @test times_x_derivative(a, b, (F, C, C), 4, 2, 2, -6)
         end
 
-        grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1),
+        grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1),
                                       topology=(Periodic, Periodic, Bounded))
 
         buoyancy = SeawaterBuoyancy(gravitational_acceleration = 1,
                                              equation_of_state = LinearEquationOfState(α=1, β=1))
 
-        model = NonhydrostaticModel(architecture = arch,
-                                            grid = grid,
-                                        buoyancy = buoyancy)
+        model = NonhydrostaticModel(grid = grid,
+                                buoyancy = buoyancy,
+                                 tracers = (:T, :S))
 
         @testset "Construction of abstract operations [$(typeof(arch))]" begin
             @info "    Testing construction of abstract operations [$(typeof(arch))]..."
@@ -253,7 +251,14 @@ for arch in archs
                     end
                 end
 
-                for metric in (Δx, Δy, Δz, Ax, Ay, Az, volume)
+                for metric in (AbstractOperations.Δx,
+                               AbstractOperations.Δy,
+                               AbstractOperations.Δz,
+                               AbstractOperations.Ax,
+                               AbstractOperations.Ay,
+                               AbstractOperations.Az,
+                               AbstractOperations.volume)
+
                     @test location(metric * ϕ) == location(ϕ)
                 end
             end
@@ -266,21 +271,21 @@ for arch in archs
         end
 
         @testset "BinaryOperations with GridMetricOperation [$(typeof(arch))]" begin
-            grid = RectilinearGrid(size=(1, 1, 1), extent=(2, 3, 4))
+            grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(2, 3, 4))
             
-            c = CenterField(arch, grid)
+            c = CenterField(grid)
             c .= 1
 
             # Δx, Δy, Δz = 2, 3, 4
             # Ax, Ay, Az = 12, 8, 6
             # volume = 24
-            op = c * Δx;     @test op[1, 1, 1] == 2
-            op = c * Δy;     @test op[1, 1, 1] == 3
-            op = c * Δz;     @test op[1, 1, 1] == 4
-            op = c * Ax;     @test op[1, 1, 1] == 12
-            op = c * Ay;     @test op[1, 1, 1] == 8
-            op = c * Az;     @test op[1, 1, 1] == 6
-            op = c * volume; @test op[1, 1, 1] == 24
+            op = c * AbstractOperations.Δx;     @test op[1, 1, 1] == 2
+            op = c * AbstractOperations.Δy;     @test op[1, 1, 1] == 3
+            op = c * AbstractOperations.Δz;     @test op[1, 1, 1] == 4
+            op = c * AbstractOperations.Ax;     @test op[1, 1, 1] == 12
+            op = c * AbstractOperations.Ay;     @test op[1, 1, 1] == 8
+            op = c * AbstractOperations.Az;     @test op[1, 1, 1] == 6
+            op = c * AbstractOperations.volume; @test op[1, 1, 1] == 24
         end
     end
 end

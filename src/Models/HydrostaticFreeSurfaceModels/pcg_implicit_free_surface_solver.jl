@@ -1,9 +1,10 @@
 using Oceananigans.Solvers
 using Oceananigans.Operators
 using Oceananigans.Architectures
-using Oceananigans.Fields: ReducedField
+using Oceananigans.Fields: Field, ZReducedField
 
 import Oceananigans.Solvers: solve!
+import Oceananigans.Architectures: architecture
 
 struct PCGImplicitFreeSurfaceSolver{V, S, R}
     vertically_integrated_lateral_areas :: V
@@ -11,8 +12,11 @@ struct PCGImplicitFreeSurfaceSolver{V, S, R}
     right_hand_side :: R
 end
 
+architecture(solver::PCGImplicitFreeSurfaceSolver) =
+    architecture(solver.preconditioned_conjugate_gradient_solver)
+
 """
-    PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
+    PCGImplicitFreeSurfaceSolver(grid, settings)
 
 Return a solver based on a preconditioned conjugate gradient method for the elliptic equation
     
@@ -24,16 +28,16 @@ representing an implicit time discretization of the linear free surface evolutio
 for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
-function PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings)
+function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_acceleration::Number, settings)
     # Initialize vertically integrated lateral face areas
-    ∫ᶻ_Axᶠᶜᶜ = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
-    ∫ᶻ_Ayᶜᶠᶜ = ReducedField(Center, Face, Nothing, arch, grid; dims=3)
+    ∫ᶻ_Axᶠᶜᶜ = Field{Face, Center, Nothing}(grid)
+    ∫ᶻ_Ayᶜᶠᶜ = Field{Center, Face, Nothing}(grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
-    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas, grid, arch)
+    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas, grid)
 
-    right_hand_side = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
+    right_hand_side = Field{Center, Center, Nothing}(grid)
 
     # Set maximum iterations to Nx * Ny if not set
     settings = Dict{Symbol, Any}(settings)
@@ -47,8 +51,8 @@ function PCGImplicitFreeSurfaceSolver(arch::AbstractArchitecture, grid, settings
     return PCGImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, arch, grid, settings) =
-    PCGImplicitFreeSurfaceSolver(arch, grid, settings)
+build_implicit_step_solver(::Val{:PreconditionedConjugateGradient}, grid, gravitational_acceleration, settings) =
+    PCGImplicitFreeSurfaceSolver(grid, gravitational_acceleration, settings)
 
 #####
 ##### Solve...
@@ -76,7 +80,7 @@ function compute_implicit_free_surface_right_hand_side!(rhs,
                                                         g, Δt, ∫ᶻQ, η)
 
     solver = implicit_solver.preconditioned_conjugate_gradient_solver
-    arch = solver.architecture
+    arch = architecture(solver)
     grid = solver.grid
 
     event = launch!(arch, grid, :xy,
@@ -98,8 +102,6 @@ end
 end
 
 """
-    implicit_free_surface_linear_operation!(result, x, arch, grid, bcs; args...)
-
 Returns `L(ηⁿ)`, where `ηⁿ` is the free surface displacement at time step `n`
 and `L` is the linear operator that arises
 in an implicit time step for the free surface displacement `η`.
@@ -131,7 +133,7 @@ end
 Compute the horizontal divergence of vertically-uniform quantity using
 vertically-integrated face areas `∫ᶻ_Axᶠᶜᶜ` and `∫ᶻ_Ayᶜᶠᶜ`.
 """
-@inline Az_∇h²ᶜᶜᵃ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, η::ReducedField{X, Y, Nothing}) where {X, Y} =
+@inline Az_∇h²ᶜᶜᵃ(i, j, k, grid, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, η::ZReducedField) =
     (δxᶜᵃᵃ(i, j, k, grid, ∫ᶻ_Ax_∂x_ηᶠᶜᶜ, ∫ᶻ_Axᶠᶜᶜ, η) +
      δyᵃᶜᵃ(i, j, k, grid, ∫ᶻ_Ay_∂y_ηᶜᶠᶜ, ∫ᶻ_Ayᶜᶠᶜ, η))
 

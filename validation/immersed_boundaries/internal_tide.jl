@@ -2,18 +2,17 @@ using Printf
 using Oceananigans
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
-grid = RectilinearGrid(size=(512, 256), x=(-10, 10), z=(0, 5), topology=(Periodic, Flat, Bounded))
+grid = RectilinearGrid(GPU(), size=(512, 256), x=(-10, 10), z=(0, 5), topology=(Periodic, Flat, Bounded))
 
 # Gaussian bump of width "1"
 bump(x, y, z) = z < exp(-x^2)
 
-grid_with_bump = ImmersedBoundaryGrid(grid, GridFittedBoundary(bump))
+grid_with_bump = ImmersedBoundaryGrid(GPU(), grid, GridFittedBoundary(bump))
 
 # Tidal forcing
 tidal_forcing(x, y, z, t) = 1e-4 * cos(t)
 
-model = HydrostaticFreeSurfaceModel(architecture = GPU(),
-                                    grid = grid_with_bump,
+model = HydrostaticFreeSurfaceModel(grid = grid_with_bump,
                                     momentum_advection = CenteredSecondOrder(),
                                     free_surface = ExplicitFreeSurface(gravitational_acceleration=10),
                                     closure = IsotropicDiffusivity(ν=1e-4, κ=1e-4),

@@ -1,10 +1,12 @@
-using Plots
+# using Plots
 using Printf
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
-grid = RectilinearGrid(size=8, z=(-64, 0), topology=(Flat, Flat, Bounded))
+arch = CPU()
+
+grid = RectilinearGrid(arch, size=8, z=(-64, 0), topology=(Flat, Flat, Bounded))
 
 closure = CATKEVerticalDiffusivity()
                                       
@@ -14,8 +16,6 @@ Qᵛ = 0.0
 
 u★ = (Qᵘ^2 + Qᵛ^2)^(1/4)
 w★³ = Qᵇ * grid.Δzᵃᵃᶜ
-
-Qᵉ = - closure.dissipation_parameter * (closure.surface_model.CᵂwΔ * w★³ + closure.surface_model.Cᵂu★ * u★^3)
 
 u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵛ))

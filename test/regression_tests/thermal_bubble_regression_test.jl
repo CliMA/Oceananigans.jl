@@ -4,14 +4,15 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     Δt = 6
 
     if grid_type == :regular
-        grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     elseif grid_type == :vertically_unstretched
         zF = range(-Lz, 0, length=Nz+1)
-        grid = RectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=zF)
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=zF)
     end
 
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
-    model = NonhydrostaticModel(architecture=arch, grid=grid, closure=closure, coriolis=FPlane(f=1e-4))
+    model = NonhydrostaticModel(grid=grid, closure=closure, coriolis=FPlane(f=1e-4),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     model.tracers.T.data.parent .= 9.85

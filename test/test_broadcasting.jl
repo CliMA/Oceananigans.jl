@@ -7,8 +7,8 @@
         ##### Basic functionality tests
         #####
         
-        grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-        a, b, c = [CenterField(arch, grid) for i = 1:3]
+        grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+        a, b, c = [CenterField(grid) for i = 1:3]
 
         Nx, Ny, Nz = size(a)
 
@@ -32,12 +32,12 @@
         ##### Broadcasting with interpolation
         #####
         
-        three_point_grid = RectilinearGrid(size=(1, 1, 3), extent=(1, 1, 1))
+        three_point_grid = RectilinearGrid(arch, size=(1, 1, 3), extent=(1, 1, 1))
 
-        a2 = CenterField(arch, three_point_grid)
+        a2 = CenterField(three_point_grid)
 
         b2_bcs = FieldBoundaryConditions(grid, (Center, Center, Face), top=OpenBoundaryCondition(0), bottom=OpenBoundaryCondition(0))
-        b2 = ZFaceField(arch, three_point_grid, b2_bcs)
+        b2 = ZFaceField(three_point_grid, boundary_conditions=b2_bcs)
 
         b2 .= 1
         fill_halo_regions!(b2, arch) # sets b2[1, 1, 1] = b[1, 1, 4] = 0
@@ -61,7 +61,7 @@
         ##### Broadcasting with ReducedField
         #####
         
-        r, p, q = [ReducedField(Center, Center, Nothing, arch, grid, dims=3) for i = 1:3]
+        r, p, q = [Field{Center, Center, Nothing}(grid) for i = 1:3]
 
         r .= 2 
         @test all(r .== 2) 
@@ -78,9 +78,9 @@
         ##### Broadcasting with arrays
         #####
 
-        two_two_two_grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+        two_two_two_grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
 
-        c = CenterField(arch, two_two_two_grid)
+        c = CenterField(two_two_two_grid)
         random_column = arch_array(arch, reshape(rand(2), 1, 1, 2))
 
         c .= random_column # broadcast to every horizontal column in c

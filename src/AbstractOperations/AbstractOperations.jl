@@ -1,7 +1,9 @@
 module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
-export KernelFunctionOperation
+export Δx, Δy, Δz, Ax, Ay, Az, volume
+export Average, Integral, KernelFunctionOperation
+export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
 
 using Base: @propagate_inbounds
 
@@ -27,15 +29,14 @@ import Oceananigans.Fields: data, compute_at!
 ##### Basic functionality
 #####
 
-abstract type AbstractOperation{X, Y, Z, A, G, T} <: AbstractField{X, Y, Z, A, G, T, 3} end
+abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G, T, 3} end
 
-const AF = AbstractField
-
-# We (informally) require that all field-like objects define `parent`:
-Base.parent(op::AbstractOperation) = op
+const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
 
 # We have no halos to fill
 fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
+
+architecture(a::AbstractOperation) = architecture(a.grid)
 
 # AbstractOperation macros add their associated functions to this list
 const operators = Set()
@@ -43,17 +44,19 @@ const operators = Set()
 """
     at(loc, abstract_operation)
 
-Returns `abstract_operation` relocated to `loc`ation.
+Return `abstract_operation` relocated to `loc`ation.
 """
 at(loc, f) = f # fallback
 
 include("grid_validation.jl")
 include("grid_metrics.jl")
+include("metric_field_reductions.jl")
 include("unary_operations.jl")
 include("binary_operations.jl")
 include("multiary_operations.jl")
 include("derivatives.jl")
 include("kernel_function_operation.jl")
+include("computed_field.jl")
 include("at.jl")
 include("broadcasting_abstract_operations.jl")
 include("show_abstract_operations.jl")

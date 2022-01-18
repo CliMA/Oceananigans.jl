@@ -10,7 +10,7 @@ using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_n
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 using Oceananigans.TimeSteppers: float_or_date_time
 using Oceananigans.Diagnostics: WindowedSpatialAverage
-using Oceananigans.Fields: reduced_location, location, FieldSlicer, parent_slice_indices
+using Oceananigans.Fields: reduced_dimensions, reduced_location, location, FieldSlicer, parent_slice_indices
 
 dictify(outputs) = outputs
 dictify(outputs::NamedTuple) = Dict(string(k) => dictify(v) for (k, v) in zip(keys(outputs), values(outputs)))
@@ -141,7 +141,7 @@ end
 
 Construct a `NetCDFOutputWriter` that writes `(label, output)` pairs in `outputs` (which should
 be a `Dict`) to a NetCDF file, where `label` is a string that labels the output and `output` is
-either a `Field` (e.g. `model.velocities.u` or an `AveragedField`) or a function `f(model)` that
+either a `Field` (e.g. `model.velocities.u`) or a function `f(model)` that
 returns something to be written to disk. Custom output requires the spatial `dimensions` (a
 `Dict`) to be manually specified (see examples).
 
@@ -179,15 +179,15 @@ Saving the u velocity field and temperature fields, the full 3D fields and surfa
 to separate NetCDF files:
 
 ```jldoctest netcdf1
-using Oceananigans, Oceananigans.OutputWriters
+using Oceananigans
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
 
-model = NonhydrostaticModel(grid=grid);
+model = NonhydrostaticModel(grid=grid, tracers=:c);
 
 simulation = Simulation(model, Δt=12, stop_time=3600);
 
-fields = Dict("u" => model.velocities.u, "T" => model.tracers.T);
+fields = Dict("u" => model.velocities.u, "c" => model.tracers.c);
 
 simulation.output_writers[:field_writer] =
     NetCDFOutputWriter(model, fields, filepath="fields.nc", schedule=TimeInterval(60))
@@ -196,7 +196,7 @@ simulation.output_writers[:field_writer] =
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: fields.nc
 ├── dimensions: zC(16), zF(17), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: ["T", "u"]
+├── 2 outputs: ["c", "u"]
 ├── field slicer: FieldSlicer(:, :, :, with_halos=false)
 └── array type: Array{Float32}
 ```
@@ -210,7 +210,7 @@ simulation.output_writers[:surface_slice_writer] =
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: surface_xy_slice.nc
 ├── dimensions: zC(1), zF(1), xC(16), yF(16), xF(16), yC(16), time(0)
-├── 2 outputs: ["T", "u"]
+├── 2 outputs: ["c", "u"]
 ├── field slicer: FieldSlicer(:, :, 16, with_halos=false)
 └── array type: Array{Float32}
 ```
@@ -226,7 +226,7 @@ simulation.output_writers[:averaged_profile_writer] =
 NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 ├── filepath: averaged_z_profile.nc
 ├── dimensions: zC(16), zF(17), xC(1), yF(1), xF(1), yC(1), time(0)
-├── 2 outputs: ["T", "u"] averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
+├── 2 outputs: ["c", "u"] averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 ├── field slicer: FieldSlicer(1, 1, :, with_halos=false)
 └── array type: Array{Float32}
 ```
@@ -235,7 +235,7 @@ NetCDFOutputWriter scheduled on TimeInterval(1 minute):
 provided that their `dimensions` are provided:
 
 ```jldoctest
-using Oceananigans, Oceananigans.OutputWriters
+using Oceananigans
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
 
@@ -415,7 +415,7 @@ Base.close(nc::NetCDFOutputWriter) = close(nc.dataset)
 
 function save_output!(ds, output, model, ow, time_index, name)
     data = fetch_and_convert_output(output, model, ow)
-    data = drop_averaged_dims(output, data)
+    data = drop_output_dims(output, data)
 
     colons = Tuple(Colon() for _ in 1:ndims(data))
     ds[name][colons..., time_index] = data
@@ -478,9 +478,9 @@ function write_output!(ow::NetCDFOutputWriter, model)
     return nothing
 end
 
-drop_averaged_dims(output, data) = data # fallback
-drop_averaged_dims(output::AveragedField, data) = dropdims(data, dims=output.dims)
-drop_averaged_dims(output::WindowedTimeAverage{<:AveragedField}, data) = dropdims(data, dims=output.operand.dims)
+drop_output_dims(output, data) = data # fallback
+drop_output_dims(output::Field, data) = dropdims(data, dims=reduced_dimensions(output))
+drop_output_dims(output::WindowedTimeAverage{<:Field}, data) = dropdims(data, dims=reduced_dimensions(output.operand))
 
 #####
 ##### Show

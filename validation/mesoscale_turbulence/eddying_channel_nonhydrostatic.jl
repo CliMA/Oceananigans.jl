@@ -42,7 +42,7 @@ const Ny = Int(400 * 0.5)
 const Nz = Int(32 * 0.5)
 # Create Grid
 topology = (Periodic, Bounded, Bounded)
-grid = RectilinearGrid(topology=topology, 
+grid = RectilinearGrid(arch, topology=topology, 
                             size=(Nx, Ny, Nz), 
                             x=(0, Lx), y=(0, Ly), z=(-Lz, 0))
 
@@ -131,7 +131,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 # Model Setup
 if hydrostatic 
-    model = HydrostaticFreeSurfaceModel(architecture = arch,
+    model = HydrostaticFreeSurfaceModel(
             grid = grid,
             free_surface = ImplicitFreeSurface(),
             momentum_advection = WENO5(),
@@ -145,7 +145,6 @@ if hydrostatic
             )
 else
     model = NonhydrostaticModel(
-            architecture = arch,
                     grid = grid,
                 coriolis = coriolis,
                 buoyancy = buoyancy,
