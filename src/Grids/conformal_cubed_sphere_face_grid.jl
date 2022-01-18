@@ -274,7 +274,7 @@ function ConformalCubedSphereFaceGrid(filepath::AbstractString, architecture = C
         Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
-function on_architecture(arch, grid::ConformalCubedSphereFaceGrid)
+function on_architecture(arch::AbstractArchitecture, grid::ConformalCubedSphereFaceGrid)
     horizontal_coordinates = (:λᶜᶜᵃ,
                               :λᶠᶜᵃ,
                               :λᶜᶠᵃ,

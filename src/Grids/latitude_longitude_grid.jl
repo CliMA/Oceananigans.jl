@@ -228,7 +228,7 @@ all_z_nodes(::Type{Face},   grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶠ
 @inline cpu_face_constructor_y(grid::YRegLatLonGrid) = y_domain(grid)
 @inline cpu_face_constructor_z(grid::ZRegLatLonGrid) = z_domain(grid)
 
-function on_architecture(new_arch, old_grid::LatitudeLongitudeGrid)
+function on_architecture(new_arch::AbstractArchitecture, old_grid::LatitudeLongitudeGrid)
     old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
                       old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
                       old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ,  old_grid.zᵃᵃᶜ,
