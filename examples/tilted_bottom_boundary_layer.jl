@@ -1,7 +1,7 @@
 # # Tilted bottom boundary layer example
 #
-# This example simulates a two-dimensional tilted oceanic bottom boundary layer based 
-# on Wenegrat et al. (2020). It demonstrates how to tilt the domain by
+# This example simulates a two-dimensional (x-z) tilted oceanic bottom boundary layer based on
+# Wenegrat et al. (2020). It demonstrates how to simulate a domain tilt by
 #
 #   * Changing the direction of the buoyancy acceleration
 #   * Changing the axis of rotation for Coriolis
@@ -28,22 +28,21 @@ params = (f₀ = 1e-4, #1/s
           V∞ = 0.1, # m/s
           N²∞ = 1e-5, # 1/s²
           θ_rad = 0.05,
+          ν = 5e-4, # m²/s
+          z₀ = 0.1, # m (roughness length)
           Lx = 1000, # m
           Lz = 100, # m
           Nx = 64,
           Nz = 64,
-          ν = 5e-4, # m²/s
-          sponge_frac = 1/5,
-          sponge_rate = √1e-5, # 1/s
-          z₀ = 0.1, # m (roughness length)
           )
 
 arch = CPU()
 
 
-# Here `f₀` is the Coriolis frequency, `V∞` in the interior `v`-velocity, `N²∞` is the
-# interior stratification, `θ_rad` is the bottom slope in radians, `ν` is the eddy viscosity,
-# and `z₀` is the roughness length (needed for the drag at the bottom).
+# Here `f₀` is the Coriolis frequency, `V∞` in the constant interior `v`-velocity, `N²∞` is the
+# interior stratification, `θ_rad` is the bottom slope in radians, `ν` is the eddy viscosity, and
+# `z₀` is the roughness length (needed for the drag at the bottom). `Lx` and `Lz` are the domain
+# length and height, `Nx` and `Nz` are the number of grid points in the `x` and `z` directions.
 #
 #
 # ## Creating the grid
@@ -83,12 +82,20 @@ grid = RectilinearGrid(topology=(Periodic, Flat, Bounded),
 # the spacing near the bottom is relatively uniform with height, which is a desired property from
 # a numerical perspective.
 #
+
+plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
+     marker = :circle,
+     ylabel = "Depth (m)",
+     xlabel = "Vertical spacing (m)",
+     legend = nothing)
+
+
 #
 # ## Setting up a buoyancy model in a tilted domain
 #
-# We set-up our domain in a way that the coordinates align with the bottom. That means that, from
-# the coordinate's point of view, gravity needs to be tilted by `θ_rad` radians, which we can do by
-# passing the `vertical_units_vector` parameter to `Buoyancy()`:
+# We set-up our domain in a way that the coordinates align with the tilted bottom. That means that,
+# from the coordinate's point of view, gravity needs to be tilted by `θ_rad` radians, which we can
+# do by passing the `vertical_units_vector` parameter to `Buoyancy()`:
 
 ĝ = [sin(params.θ_rad), 0, cos(params.θ_rad)]
 buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=ĝ)
@@ -101,10 +108,11 @@ b∞(x, y, z, t, p) = p.N²∞ * (x * sin(p.θ_rad) + z * cos(p.θ_rad))
 B_field = BackgroundField(b∞, parameters=(; params.N²∞, params.θ_rad))
 
 
+
 # ## Bottom drag
 #
-# We also set-up a bottom drag that follows Monin-Obukhov theory, which can be implemented following https://doi.org/10.1029/2005WR004685.
-# Note that we need to include`V∞` in the velocity, since we will model it as a background field.
+# We also set-up a bottom drag that follows Monin-Obukhov theory. Note that we need to include`V∞`
+# in the velocity, since we will model it as a background field.
 #
 
 const κ = 0.4 # von Karman constant
@@ -122,20 +130,29 @@ v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 
 V_bg(x, y, z, t, p) = p.V∞
 V_field = BackgroundField(V_bg, parameters=(; V∞=params.V∞))
-#-----
 
 
 
 # ## Create the `NonhydrostaticModel`
 #
-# We create model with a `UpwindBiasedFifthOrder` advection scheme and a `RungeKutta3` timestepper. For simplicity,
-# we use a constant-diffusivity turbulence closure:
+# Since the coordinate system is aligned with the tilted domain, we can use a traditional f-plane
+# approximation (only keep the rotation component that's aligned with gravity) by also tilting the
+# rotation from the coordinate system's perpective by `θ_rad` radians using
+# `ConstantCartesianCoriolis` and passing the `rotation_axis` argument:
+#
+
+coriolis = ConstantCartesianCoriolis(f=params.f₀, rotation_axis=ĝ)
+
+#
+# We are now ready to create the model. We create a `NonhydrostaticModel` with an
+# `UpwindBiasedFifthOrder` advection scheme and a `RungeKutta3` timestepper.  For simplicity, we use
+# a constant-diffusivity turbulence closure:
 
 model = NonhydrostaticModel(grid = grid, timestepper = :RungeKutta3,
                             architecture = arch,
                             advection = UpwindBiasedFifthOrder(),
                             buoyancy = buoyancy,
-                            coriolis = ConstantCartesianCoriolis(f=params.f₀, rotation_axis=ĝ),
+                            coriolis = coriolis,
                             tracers = :b,
                             closure = IsotropicDiffusivity(ν=params.ν, κ=params.ν),
                             boundary_conditions = (u=u_bcs, v=v_bcs,),
@@ -145,7 +162,7 @@ model = NonhydrostaticModel(grid = grid, timestepper = :RungeKutta3,
 
 # ## Create a simulation
 #
-#
+# We are now ready to create the simulation
 
 using Oceananigans.Grids: min_Δz
 cfl=0.8
