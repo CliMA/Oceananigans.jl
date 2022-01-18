@@ -12,7 +12,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
 
 @testset "Barotropic Kernels" begin
 
-    arch = Oceananigans.GPU()
+for arch in [Oceananigans.GPU(), Oceananigans.CPU()]
     FT = Float64
     topology = (Periodic, Periodic, Bounded)
     Nx = Ny = 16 * 8
@@ -29,8 +29,8 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
 
     U, V, η̅, U̅, V̅, Gᵁ, Gⱽ = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
 
-    u = Field{Face, Center, Center}(grid)
-    v = Field{Center, Face, Center}(grid)
+    u = Field{Face,Center,Center}(grid)
+    v = Field{Center,Face,Center}(grid)
 
     @testset "Average to zero" begin
         # set equal to something else
@@ -116,8 +116,8 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
 
         U, V, η̅, U̅, V̅, Gᵁ, Gⱽ = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
 
-        u = Field{Face, Center, Center}(grid)
-        v = Field{Center, Face, Center}(grid)
+        u = Field{Face,Center,Center}(grid)
+        v = Field{Center,Face,Center}(grid)
         u_corrected = similar(u)
         v_corrected = similar(v)
 
@@ -145,5 +145,5 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
         @test all(Array((interior(u) .- interior(u_corrected))) .< 1e-14)
         @test all(Array((interior(v) .- interior(v_corrected))) .< 1e-14)
     end
-
-end
+end # end of architecture loop
+end # end of testset
