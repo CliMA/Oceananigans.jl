@@ -11,13 +11,14 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurfac
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliary, SplitExplicitSettings, split_explicit_free_surface_substep!
 
 @testset "Split-Explicit Dynamics" begin
-    arch = Oceananigans.CPU()
+
+for arch in [Oceananigans.GPU(), Oceananigans.CPU()]
     topology = (Periodic, Periodic, Bounded)
 
     Nx, Ny, Nz = 128, 64, 16
     Lx = Ly = Lz = 2π
 
-    grid = RectilinearGrid(topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
+    grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
 
     sefs = SplitExplicitFreeSurface(grid)
 
@@ -121,11 +122,14 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         Δτ = 2π / maximum([Nx, Ny]) * 5e-2 # the last factor is essentially the order of accuracy
 
         # set!(η, f(x,y))
-        η₀(x, y) = 1.0
+        η_avg = 1.0
+        U_avg = 2.0
+        V_avg = 3.0
+        η₀(x, y) = η_avg
         set!(η, η₀)
-        U₀(x, y) = 2.0
+        U₀(x, y) = U_avg
         set!(U, U₀)
-        V₀(x, y) = 3.0
+        V₀(x, y) = V_avg
         set!(V, V₀)
 
         η̅ .= 0.0
@@ -147,17 +151,13 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         V̅_computed = Array(V̅.data.parent)[2:Nx+1, 2:Ny+1]
         η̅_computed = Array(η̅.data.parent)[2:Nx+1, 2:Ny+1]
 
-        set!(η, η₀)
-        set!(U, U₀)
-        set!(V, V₀)
+        err1 = maximum(abs.(U_computed .- U_avg))
+        err2 = maximum(abs.(η_computed .- η_avg))
+        err3 = maximum(abs.(V_computed .- V_avg))
 
-        err1 = maximum(abs.(U_computed - U))
-        err2 = maximum(abs.(η_computed - η))
-        err3 = maximum(abs.(V_computed - V))
-
-        err4 = maximum(abs.(U̅_computed - U))
-        err5 = maximum(abs.(η̅_computed - η))
-        err6 = maximum(abs.(V̅_computed - V))
+        err4 = maximum(abs.(U̅_computed .- U_avg))
+        err5 = maximum(abs.(η̅_computed .- η_avg))
+        err6 = maximum(abs.(V̅_computed .- V_avg))
 
         tolerance = eps(100.0)
         @test err1 < tolerance
@@ -183,7 +183,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         Nt = floor(Int, T / Δτ)
         Δτ_end = T - Nt * Δτ
 
-        sefs = SplitExplicitFreeSurface(grid, settings = SplitExplicitSettings(Nt + 1))
+        sefs = SplitExplicitFreeSurface(grid)
         U, V, η̅, U̅, V̅, Gᵁ, Gⱽ = sefs.U, sefs.V, sefs.η̅, sefs.U̅, sefs.V̅, sefs.Gᵁ, sefs.Gⱽ
         η = sefs.η
         g = sefs.gravitational_acceleration
@@ -196,7 +196,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         η₀(x, y) = sin(kx * x) * sin(ky * y) + 1
         set!(η, η₀)
 
-        η_mean_before = mean(interior(η))
+        η_mean_before = mean(Array(interior(η)))
 
         U .= 0.0 # so that ∂ᵗη(t=0) = 0.0 
         V .= 0.0 # so that ∂ᵗη(t=0) = 0.0
@@ -205,11 +205,15 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         V̅ .= 0.0
         Gᵁ .= gu_c
         Gⱽ .= gv_c
+
         # overwrite weights
-        sefs.velocity_weights .= ones(Nt + 1) ./ Nt        # since taking Nt+1 timesteps
-        sefs.free_surface_weights .= ones(Nt + 1) ./ Nt  # since taking Nt+1 timesteps
-        sefs.velocity_weights[Nt+1] = Δτ_end / T         # since last timestep is different
-        sefs.free_surface_weights[Nt+1] = Δτ_end / T     # since last timestep is different
+        tmp = ones(Nt + 1) ./ Nt # since taking Nt+1 timesteps
+        tmp[end] = Δτ_end / T # since last timestep is different
+        velocity_weights = Tuple(tmp)
+        free_surface_weights = Tuple(tmp) # since taking Nt+1 timesteps
+
+        settings = SplitExplicitSettings(Nt + 1, velocity_weights, free_surface_weights)
+        sefs = sefs(settings)
 
         for i in 1:Nt
             split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, i)
@@ -217,7 +221,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         # + correction for exact time
         split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ_end, Nt + 1)
 
-        η_mean_after = mean(interior(η))
+        η_mean_after = mean(Array(interior(η)))
 
         tolerance = eps(10.0)
         @test abs(η_mean_after - η_mean_before) < tolerance
@@ -263,4 +267,6 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
         @test errV̅ < 1e-2
         @test errη̅ < 1e-2
     end
-end
+end # end of architecture loop
+
+end # end of testset loop
