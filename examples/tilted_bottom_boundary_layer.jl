@@ -1,7 +1,8 @@
 # # Tilted bottom boundary layer example
 #
-# This example simulates a two-dimensional (x-z) tilted oceanic bottom boundary layer based on
-# Wenegrat et al. (2020). It demonstrates how to simulate a domain tilt by
+# This example simulates a two-dimensional (x-z) tilted oceanic bottom boundary layer with a
+# constant background alongslope (y-direction) velocity. It demonstrates how to simulate a domain
+# tilt by
 #
 #   * Changing the direction of the buoyancy acceleration
 #   * Changing the axis of rotation for Coriolis
@@ -215,19 +216,19 @@ run!(simulation)
 # ## Visualize the results
 #
 # First we load the required package to load NetCDF output files and define the coordinates for
-# plotting using the existing `ω_y` object:
+# plotting using existing objects:
 #
 
 using NCDatasets
-xᶠ, zᶠ = xnodes(ω_y), znodes(ω_y)
-xᶜ, zᶜ = xnodes(v_tot), znodes(v_tot) 
+xᶠ, zᶠ = xnodes(ω_y), znodes(ω_y);
+xᶜ, zᶜ = xnodes(v_tot), znodes(v_tot) ;
+
 # Define keyword arguments for plotting function
 #
 kwargs = (xlabel = "x",
           zlabel = "z",
-          #aspect = 1,
           fill = true,
-          levels = 20,
+          levels = 30,
           linewidth = 0,
           color = :balance,
           colorbar = true,
@@ -257,7 +258,6 @@ anim = @animate for (iter, t) in enumerate(ds["time"])
                      title = @sprintf("Total along-slope velocity, at t = %.1f", t); kwargs...)
 
     plot(plot_ω, plot_v, layout = (2, 1), size = (800, 440))
-    #plot(plot_ω, size = (800, 440))
 end
 
 close(ds)
