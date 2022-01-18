@@ -181,10 +181,11 @@ u_bcs = FieldBoundaryConditions(top = u_wind_stress_bc, bottom = u_bottom_drag_b
 v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_bc)
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 
-# @inline function u_immersed_bottom_drag(i, j, k, grid, clock, fields, ν)
+free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver, preconditioner_method=:SparseInverse,
+                                   preconditioner_settings=(ε=0.01, nzrel=6))
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver),
+                                    free_surface = free_surface,
                                     momentum_advection = VectorInvariant(),
                                     tracer_advection = WENO5(),
                                     coriolis = HydrostaticSphericalCoriolis(),
@@ -222,144 +223,144 @@ else
     Δt = 20minutes
 end
 
-# simulation = Simulation(model, Δt = Δt, stop_time = 2year)
+simulation = Simulation(model, Δt = Δt, stop_time = 2years)
 
-# start_time = [time_ns()]
+start_time = [time_ns()]
 
-# function progress(sim)
-#     wall_time = (time_ns() - start_time[1]) * 1e-9
+function progress(sim)
+    wall_time = (time_ns() - start_time[1]) * 1e-9
 
-#     η = model.free_surface.η
+    η = model.free_surface.η
 
-#     if model.free_surface isa ExplicitFreeSurface
-#         @info @sprintf("Time: % 12s, iteration: %d, max(|η|): %.2e m, wall time: %s",
-#                        prettytime(sim.model.clock.time),
-#                        sim.model.clock.iteration,
-#                        maximum(abs, η),
-#                        prettytime(wall_time))
-#     else 
-#         @info @sprintf("Time: % 12s, iteration: %d, max(|η|): %.2e m, wall time: %s",
-#                        prettytime(sim.model.clock.time),
-#                        sim.model.clock.iteration,
-#                        maximum(abs, η),
-#                        prettytime(wall_time))
-#     end
+    if model.free_surface isa ExplicitFreeSurface
+        @info @sprintf("Time: % 12s, iteration: %d, max(|η|): %.2e m, wall time: %s",
+                       prettytime(sim.model.clock.time),
+                       sim.model.clock.iteration,
+                       maximum(abs, η),
+                       prettytime(wall_time))
+    else 
+        @info @sprintf("Time: % 12s, iteration: %d, max(|η|): %.2e m, wall time: %s",
+                       prettytime(sim.model.clock.time),
+                       sim.model.clock.iteration,
+                       maximum(abs, η),
+                       prettytime(wall_time))
+    end
 
-#     start_time[1] = time_ns()
+    start_time[1] = time_ns()
 
-#     return nothing
-# end
+    return nothing
+end
 
-# simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
-# u, v, w = model.velocities
-# T, S = model.tracers
-# η = model.free_surface.η
+u, v, w = model.velocities
+T, S = model.tracers
+η = model.free_surface.η
 
-# output_fields = (; u, v, T, S, η)
-# save_interval = 5days
+output_fields = (; u, v, T, S, η)
+save_interval = 5days
 
-# simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
-#                                                               schedule = TimeInterval(save_interval),
-#                                                               prefix = output_prefix * "_surface",
-#                                                               field_slicer = FieldSlicer(k=grid.Nz),
-#                                                               force = true)
+simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, T, S, η),
+                                                              schedule = TimeInterval(save_interval),
+                                                              prefix = output_prefix * "_surface",
+                                                              field_slicer = FieldSlicer(k=grid.Nz),
+                                                              force = true)
 
-# simulation.output_writers[:bottom_fields] = JLD2OutputWriter(model, (; u, v, T, S),
-#                                                              schedule = TimeInterval(save_interval),
-#                                                              prefix = output_prefix * "_bottom",
-#                                                              field_slicer = FieldSlicer(k=1),
-#                                                              force = true)
+simulation.output_writers[:bottom_fields] = JLD2OutputWriter(model, (; u, v, T, S),
+                                                             schedule = TimeInterval(save_interval),
+                                                             prefix = output_prefix * "_bottom",
+                                                             field_slicer = FieldSlicer(k=1),
+                                                             force = true)
 
-# simulation.output_writers[:checkpointer] = Checkpointer(model,
-#                                                         schedule = TimeInterval(1year),
-#                                                         prefix = output_prefix * "_checkpoint",
-#                                                         cleanup = true,
-#                                                         force = true)
+simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                        schedule = TimeInterval(1year),
+                                                        prefix = output_prefix * "_checkpoint",
+                                                        cleanup = true,
+                                                        force = true)
 
-# # Let's goo!
-# @info "Running with Δt = $(prettytime(simulation.Δt))"
+# Let's goo!
+@info "Running with Δt = $(prettytime(simulation.Δt))"
 
-# run!(simulation)
+run!(simulation)
 
-# @info """
+@info """
 
-#     Simulation took $(prettytime(simulation.run_wall_time))
-#     Background diffusivity: $background_diffusivity
-#     Minimum wave propagation time scale: $(prettytime(wave_propagation_time_scale))
-#     Free surface: $(typeof(model.free_surface).name.wrapper)
-#     Time step: $(prettytime(Δt))
-# """
+    Simulation took $(prettytime(simulation.run_wall_time))
+    Background diffusivity: $background_diffusivity
+    Minimum wave propagation time scale: $(prettytime(wave_propagation_time_scale))
+    Free surface: $(typeof(model.free_surface).name.wrapper)
+    Time step: $(prettytime(Δt))
+"""
 
-# ####
-# #### Visualize solution
-# ####
+####
+#### Visualize solution
+####
 
-# surface_file = jldopen(output_prefix * "_surface.jld2")
-# bottom_file = jldopen(output_prefix * "_bottom.jld2")
+surface_file = jldopen(output_prefix * "_surface.jld2")
+bottom_file = jldopen(output_prefix * "_bottom.jld2")
 
-# iterations = parse.(Int, keys(surface_file["timeseries/t"]))
+iterations = parse.(Int, keys(surface_file["timeseries/t"]))
 
-# iter = Node(0)
+iter = Node(0)
 
-# ηi(iter) = surface_file["timeseries/η/" * string(iter)][:, :, 1]
-# ui(iter) = surface_file["timeseries/u/" * string(iter)][:, :, 1]
-# vi(iter) = surface_file["timeseries/v/" * string(iter)][:, :, 1]
-# Ti(iter) = surface_file["timeseries/T/" * string(iter)][:, :, 1]
-# ti(iter) = string(surface_file["timeseries/t/" * string(iter)] / day)
+ηi(iter) = surface_file["timeseries/η/" * string(iter)][:, :, 1]
+ui(iter) = surface_file["timeseries/u/" * string(iter)][:, :, 1]
+vi(iter) = surface_file["timeseries/v/" * string(iter)][:, :, 1]
+Ti(iter) = surface_file["timeseries/T/" * string(iter)][:, :, 1]
+ti(iter) = string(surface_file["timeseries/t/" * string(iter)] / day)
 
-# ubi(iter) = bottom_file["timeseries/u/" * string(iter)][:, :, 1]
-# vbi(iter) = bottom_file["timeseries/v/" * string(iter)][:, :, 1]
+ubi(iter) = bottom_file["timeseries/u/" * string(iter)][:, :, 1]
+vbi(iter) = bottom_file["timeseries/v/" * string(iter)][:, :, 1]
 
-# η = @lift ηi($iter) 
-# u = @lift ui($iter)
-# v = @lift vi($iter)
-# T = @lift Ti($iter)
+η = @lift ηi($iter) 
+u = @lift ui($iter)
+v = @lift vi($iter)
+T = @lift Ti($iter)
 
-# ub = @lift ubi($iter)
-# vb = @lift vbi($iter)
+ub = @lift ubi($iter)
+vb = @lift vbi($iter)
 
-# max_η = 4
-# min_η = - max_η
-# max_u = 0.2
-# min_u = - max_u
-# max_T = 32
-# min_T = 0
+max_η = 4
+min_η = - max_η
+max_u = 0.2
+min_u = - max_u
+max_T = 32
+min_T = 0
 
-# fig = Figure(resolution = (1200, 900))
+fig = Figure(resolution = (1200, 900))
 
-# ax = Axis(fig[1, 1], title="Free surface displacement (m)")
-# hm = heatmap!(ax, η, colorrange=(min_η, max_η), colormap=:balance)
-# cb = Colorbar(fig[1, 2], hm)
+ax = Axis(fig[1, 1], title="Free surface displacement (m)")
+hm = heatmap!(ax, η, colorrange=(min_η, max_η), colormap=:balance)
+cb = Colorbar(fig[1, 2], hm)
 
-# ax = Axis(fig[2, 1], title="Sea surface temperature (ᵒC)")
-# hm = heatmap!(ax, T, colorrange=(min_T, max_T), colormap=:thermal)
-# cb = Colorbar(fig[2, 2], hm)
+ax = Axis(fig[2, 1], title="Sea surface temperature (ᵒC)")
+hm = heatmap!(ax, T, colorrange=(min_T, max_T), colormap=:thermal)
+cb = Colorbar(fig[2, 2], hm)
 
-# ax = Axis(fig[1, 3], title="East-west surface velocity (m s⁻¹)")
-# hm = heatmap!(ax, u, colorrange=(min_u, max_u), colormap=:balance)
-# cb = Colorbar(fig[1, 4], hm)
+ax = Axis(fig[1, 3], title="East-west surface velocity (m s⁻¹)")
+hm = heatmap!(ax, u, colorrange=(min_u, max_u), colormap=:balance)
+cb = Colorbar(fig[1, 4], hm)
 
-# ax = Axis(fig[2, 3], title="North-south surface velocity (m s⁻¹)")
-# hm = heatmap!(ax, v, colorrange=(min_u, max_u), colormap=:balance)
-# cb = Colorbar(fig[2, 4], hm)
+ax = Axis(fig[2, 3], title="North-south surface velocity (m s⁻¹)")
+hm = heatmap!(ax, v, colorrange=(min_u, max_u), colormap=:balance)
+cb = Colorbar(fig[2, 4], hm)
 
-# ax = Axis(fig[3, 1], title="East-west bottom velocity (m s⁻¹)")
-# hm = heatmap!(ax, ub, colorrange=(min_u, max_u), colormap=:balance)
-# cb = Colorbar(fig[3, 2], hm)
+ax = Axis(fig[3, 1], title="East-west bottom velocity (m s⁻¹)")
+hm = heatmap!(ax, ub, colorrange=(min_u, max_u), colormap=:balance)
+cb = Colorbar(fig[3, 2], hm)
 
-# ax = Axis(fig[3, 3], title="North-south bottom velocity (m s⁻¹)")
-# hm = heatmap!(ax, vb, colorrange=(min_u, max_u), colormap=:balance)
-# cb = Colorbar(fig[3, 4], hm)
+ax = Axis(fig[3, 3], title="North-south bottom velocity (m s⁻¹)")
+hm = heatmap!(ax, vb, colorrange=(min_u, max_u), colormap=:balance)
+cb = Colorbar(fig[3, 4], hm)
 
-# title_str = @lift "Earth day = " * ti($iter)
-# ax_t = fig[0, :] = Label(fig, title_str)
+title_str = @lift "Earth day = " * ti($iter)
+ax_t = fig[0, :] = Label(fig, title_str)
 
-# GLMakie.record(fig, output_prefix * ".mp4", iterations, framerate=8) do i
-#     @info "Plotting iteration $i of $(iterations[end])..."
-#     iter[] = i
-# end
+GLMakie.record(fig, output_prefix * ".mp4", iterations, framerate=8) do i
+    @info "Plotting iteration $i of $(iterations[end])..."
+    iter[] = i
+end
 
-# display(fig)
+display(fig)
 
-# close(surface_file)
+close(surface_file)
