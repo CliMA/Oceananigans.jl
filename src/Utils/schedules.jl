@@ -236,10 +236,9 @@ align_time_step(any_or_all_schedule::Union{OrSchedule, AndSchedule}, clock, Δt)
 ##### Show methods
 #####
 
-show_schedule(schedule) = string(schedule)
-show_schedule(schedule::IterationInterval) = string("IterationInterval(", schedule.interval, ")")
-show_schedule(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
-show_schedule(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_times_str(schedule), ")")
-show_schedule(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
-                                                        summary(schedule.parent), ", ",
-                                                        schedule.consecutive_iterations, ")")
+Base.summary(schedule::IterationInterval) = string("IterationInterval(", schedule.interval, ")")
+Base.summary(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
+Base.summary(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_times_str(schedule), ")")
+Base.summary(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
+                                                       summary(schedule.parent), ", ",
+                                                       schedule.consecutive_iterations, ")")
