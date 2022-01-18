@@ -30,7 +30,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: pressure_correct_velocit
         B = arch_array(arch, bottom)
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
 
-        free_surfaces = [ImplicitFreeSurface(solver_method=:MatrixIterativeSolver, gravitational_acceleration=1.0),
+        free_surfaces = [ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=1.0),
                          ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, gravitational_acceleration=1.0), 
                          ImplicitFreeSurface(gravitational_acceleration=1.0)]
 

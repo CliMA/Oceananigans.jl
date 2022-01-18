@@ -13,11 +13,11 @@ mutable struct SpaiIterator{VF<:AbstractVector, SV<:SparseVector, VI<:AbstractVe
 end
 
 """
-The SPAI preconditioner calculates a SParse Approximate Inverse M ≈ A⁻¹ to be used as a preconditioner
+the sparse_approximate_inverse function calculates a SParse Approximate Inverse M ≈ A⁻¹ to be used as a preconditioner
 Since it can be applied to the residual with just a matrix multiplication instead of the solution
 of a triangular linear problem it makes it very appealing to GPU use
 
-The algorithm implemeted here to calculates M following the specifications found in
+The algorithm implemeted here calculates M following the specifications found in
 
 Grote M. J. & Huckle T, "Parallel Preconditioning with sparse approximate inverses" 
 
@@ -34,7 +34,7 @@ we call m̂ⱼ = mⱼ(J). From here we calculate the set of row indices I for wh
 
 A(i, J) !=0 for i ∈ I 
 
-we call Â = A(I, J). The problem is now reduces to a much smaller minimization problem which can be solved 
+we call Â = A(I, J). The problem is now reduced to a much smaller minimization problem which can be solved 
 with QR decomposition (which luckily we have neatly implemented in julia: Hooray! but not on GPUs... booo)
 
 once solved for m̂ⱼ we compute the residuals of the minimization problem
@@ -50,13 +50,16 @@ change in residual value ...)
 To do that we do not need to recompute the entire QR factorization but just update it by appending the
 new terms (and recomputing QR for a small part of Â).
 
+sparse_approximate_inverse(A::AbstractMatrix; ε, nzrel)
 
-spai_preconditioner(A::AbstractMatrix; ε)
+returns M ≈ A⁻¹ where `|| AM - I ||` ≈ ε and `nnz(M) ≈ nnz(A) * nzrel`
 
-returns a SparseInversePreconditioner(M) where M ≈ A⁻¹
+if we choose a sufficiently large `nzrel` (`nzrel = size(A, 1)` for example), then
+
+sparse_approximate_inverse(A, 0.0, nzrel) = A⁻¹ ± machine_precision
 """
 
-function spai_preconditioner(A::AbstractMatrix; ε::Float64, nzrel)
+function sparse_approximate_inverse(A::AbstractMatrix; ε::Float64, nzrel)
    
     FT = eltype(A)
     n  = size(A, 1)
@@ -69,7 +72,8 @@ function spai_preconditioner(A::AbstractMatrix; ε::Float64, nzrel)
     iterator = SpaiIterator(e, e, r, J, J, J, J, Q, Q)
     # this loop can be parallelized!
     for j = 1 : n 
-       
+      
+        @show j
         # maximum number of elements in a column
         ncolmax = nzrel * nnz(A[:, j])
 

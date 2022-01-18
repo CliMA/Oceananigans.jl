@@ -1,3 +1,6 @@
+using Oceananigans.Grids: halo_size
+# Has to be changed when the regression data is updated 
+
 @kernel function _compute_vertically_integrated_lateral_areas!(∫ᶻ_A, grid)
     i, j = @index(Global, NTuple)
 
@@ -12,19 +15,24 @@
     end
 end
 
-function compute_vertically_integrated_lateral_areas!(∫ᶻ_A, grid)
+function compute_vertically_integrated_lateral_areas!(∫ᶻ_A)
 
-    arch = architecture(grid)
+    # we have to account for halos when calculating Integrated areas, in case 
+    # a periodic domain, where it is not guaranteed that ηₙ == ηₙ₊₁ 
+    # 2 halos (instead of only 1) are necessary to accomodate the preconditioner
 
-    event = launch!(arch,
-                    grid,
-                    :xy,
+    field_grid = ∫ᶻ_A.xᶠᶜᶜ.grid
+    arch = architecture(field_grid)
+
+    event = launch!(arch, field_grid, :xy,
                     _compute_vertically_integrated_lateral_areas!,
-                    ∫ᶻ_A,
-                    grid,
+                    ∫ᶻ_A, field_grid,
                     dependencies=Event(device(arch)))
-
+    
     wait(device(arch), event)
+
+    fill_halo_regions!(∫ᶻ_A.xᶠᶜᶜ, arch)
+    fill_halo_regions!(∫ᶻ_A.yᶜᶠᶜ, arch)
 
     return nothing
 end
