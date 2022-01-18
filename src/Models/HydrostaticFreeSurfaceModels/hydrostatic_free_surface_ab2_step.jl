@@ -39,9 +39,6 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
 
     # Launch velocity update kernels
     explicit_velocity_step_events = []
-    
-    println("Before ab2 step")
-    println("NaNs in u:", any(isnan.(interior(model.velocities.u))))
 
     for name in (:u, :v)
         Gⁿ = model.timestepper.Gⁿ[name]
@@ -54,9 +51,6 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
 
         push!(explicit_velocity_step_events, event)
     end
-
-    println("Before implicit step")
-    println("NaNs in u:", any(isnan.(interior(model.velocities.u))))
 
     for (i, name) in enumerate((:u, :v))
         velocity_field = model.velocities[name]
@@ -76,9 +70,6 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        model.buoyancy,
                        dependencies = explicit_velocity_step_events[i])
     end
-
-    println("after step")
-    println("NaNs in u:", any(isnan.(interior(model.velocities.u))))
 
     return explicit_velocity_step_events
 end
