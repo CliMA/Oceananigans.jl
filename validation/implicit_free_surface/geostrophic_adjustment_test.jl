@@ -110,7 +110,7 @@ matrix_free_surface = ImplicitFreeSurface(solver_method = :MatrixIterativeSolver
 splitexplicit_free_surface = SplitExplicitFreeSurface()
 
 topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
-topology_types = [topology_types[1]]
+topology_types = [topology_types[2]]
 
 free_surfaces = [pcg_free_surface, matrix_free_surface, splitexplicit_free_surface];
 simulations = [geostrophic_adjustment_simulation(free_surface, topology_type) for free_surface in free_surfaces, topology_type in topology_types];
@@ -156,23 +156,20 @@ ax2 = Axis(fig[1, 2]; options..., ylabel = "u [m/s]", ylims = (-5e-5, 5e-5))
 axislegend(ax1,
     [ηlines0, ηlines1, ηlines2, ηlines3],
     ["Initial Condition", "PCG", "Matrix", "Split-Explicit"])
-ylims!(ax1, (-5e-3, 5e-3))
+ylims!(ax1, (-5e-4, 5e-3))
+u0 = Array(file3["timeseries/3/"*string(0)])[:, mid, 1]
+xf = length(u0) == length(xf) ? xf : x
 ulines1 = lines!(ax2, xf, u1, color = :red)
 ulines2 = lines!(ax2, xf, u2, color = :blue)
 ulines3 = lines!(ax2, xf, u3, color = :orange)
 axislegend(ax2,
     [ulines1, ulines2, ulines3],
     ["PCG", "Matrix", "Split-Explicit"])
-ylims!(ax2, (-5e-5, 5e-5))
+ylims!(ax2, (-2e-4, 2e-4))
 GLMakie.record(fig, "free_surface_bounded.mp4", iterations, framerate = 12) do i
     @info "Plotting iteration $i of $(iterations[end])..."
     iter[] = i
 end
-
-
-
-
-
 
 
 

@@ -89,6 +89,9 @@ Base.@kwdef struct SplitExplicitState{𝒞𝒞,ℱ𝒞,𝒞ℱ}
     V̅::𝒞ℱ
 end
 
+# η̅ is solely used for setting the eta at the next substep iteration
+# it essentially acts as a filter for η
+
 function SplitExplicitState(grid::AbstractGrid)
 
     η = Field{Center, Center, Nothing}(grid)

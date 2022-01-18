@@ -88,6 +88,12 @@ function set_average_to_zero!(free_surface_state)
     fill!(free_surface_state.V̅, 0.0)     
 end
 
+function initialize_averages!(free_surface_state)
+    set!(free_surface_state.η̅, free_surface_state.η)
+    set!(free_surface_state.U̅, free_surface_state.U)
+    set!(free_surface_state.V̅, free_surface_state.V)
+end
+
 @kernel function initialize_vertical_depths_kernel!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
     i, j = @index(Global, NTuple)
 
@@ -157,12 +163,13 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     Gu = calc_ab2_tendencies(model.timestepper.Gⁿ.u, model.timestepper.G⁻.u, χ)
     Gv = calc_ab2_tendencies(model.timestepper.Gⁿ.v, model.timestepper.G⁻.v, χ)
-    
+
     #initializing the prognostic variables
     set!(η, free_surface.state.η̅)
 
     # reset free surface averages
     set_average_to_zero!(state)
+    # initialize_averages!(state)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     wait(device(arch), velocities_update)
@@ -175,10 +182,19 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     # Solve for the free surface at tⁿ⁺¹
     start_time = time_ns()
 
+    # println("----------")
+    # println("mean η values before")
+    # println(mean(interior(state.η)))
+    # println(mean(interior(state.η̅)))
+
     for substep in 1:settings.substeps
         split_explicit_free_surface_substep!(state, auxiliary, settings, arch, grid, g, Δτ, substep)
     end
 
+    # println("mean η values after")
+    # println(mean(interior(state.η)))
+    # println(mean(interior(state.η̅)))
+    # println("----------")
     @debug "Split explicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
 
     fill_halo_regions!(η, arch)
