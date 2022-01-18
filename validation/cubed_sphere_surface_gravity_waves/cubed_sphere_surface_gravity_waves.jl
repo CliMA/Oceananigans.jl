@@ -65,7 +65,6 @@ function cubed_sphere_surface_gravity_waves(; face_number)
     ## Model setup
 
     model = HydrostaticFreeSurfaceModel(
-              architecture = CPU(),
                       grid = grid,
         momentum_advection = nothing,
               free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1),

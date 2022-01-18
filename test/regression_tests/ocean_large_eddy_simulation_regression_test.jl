@@ -16,10 +16,10 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     # Grid
     N = L = 16
     if grid_type == :regular
-        grid = RectilinearGrid(size=(N, N, N), extent=(L, L, L))
+        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
     elseif grid_type == :vertically_unstretched
         zF = range(-L, 0, length=N+1)
-        grid = RectilinearGrid(architecture=arch, size=(N, N, N), x=(0, L), y=(0, L), z=zF)
+        grid = RectilinearGrid(arch, size=(N, N, N), x=(0, L), y=(0, L), z=zF)
     end
 
     # Boundary conditions
@@ -29,7 +29,6 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
 
     # Model instantiation
     model = NonhydrostaticModel(
-             architecture = arch,
                      grid = grid,
                  coriolis = FPlane(f=1e-4),
                  buoyancy = Buoyancy(model=SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4))),
@@ -37,6 +36,8 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
                   closure = closure,
       boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)
     )
+
+    @show model.diffusivity_fields
 
     # We will manually change the stop_iteration as needed.
     simulation = Simulation(model, Δt=Δt, stop_iteration=0)

@@ -50,19 +50,19 @@ Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
                         nothing, nothing, nothing, nothing)
 
 # Internal function for HydrostaticFreeSurfaceModel
-function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arch, grid)
-    η = FreeSurfaceDisplacementField(velocities, free_surface, arch, grid)
-    g = convert(eltype(grid), free_surface.gravitational_acceleration)
+function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid)
+    η = FreeSurfaceDisplacementField(velocities, free_surface, grid)
+    gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     # Initialize barotropic volume fluxes
-    barotropic_x_volume_flux = ReducedField(Face, Center, Nothing, arch, grid; dims=3)
-    barotropic_y_volume_flux = ReducedField(Center, Face, Nothing, arch, grid; dims=3)
+    barotropic_x_volume_flux = Field{Face, Center, Nothing}(grid)
+    barotropic_y_volume_flux = Field{Center, Face, Nothing}(grid)
     barotropic_volume_flux = (u=barotropic_x_volume_flux, v=barotropic_y_volume_flux)
 
     solver_method = free_surface.solver_method
-    solver = build_implicit_step_solver(Val(solver_method), arch, grid, free_surface.solver_settings)
+    solver = build_implicit_step_solver(Val(solver_method), grid, gravitational_acceleration, free_surface.solver_settings)
 
-    return ImplicitFreeSurface(η, g,
+    return ImplicitFreeSurface(η, gravitational_acceleration,
                                barotropic_volume_flux,
                                solver,
                                solver_method,
@@ -72,9 +72,9 @@ end
 is_horizontally_regular(grid) = false
 is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
 
-function build_implicit_step_solver(::Val{:Default}, arch, grid, settings)
+function build_implicit_step_solver(::Val{:Default}, grid, gravitational_acceleration, settings)
     default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :PreconditionedConjugateGradient
-    return build_implicit_step_solver(Val(default_method), arch, grid, settings)
+    return build_implicit_step_solver(Val(default_method), grid, gravitational_acceleration, settings)
 end
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0

@@ -59,13 +59,13 @@ broadcast_kernel(::AbstractField) = broadcast_xyz!
 
 const Loc = Union{Center, Face}
 
-broadcast_kernel(::AbstractReducedField{Nothing, <:Loc, <:Loc}) = broadcast_yz!
-broadcast_kernel(::AbstractReducedField{<:Loc, Nothing, <:Loc}) = broadcast_xz!
-broadcast_kernel(::AbstractReducedField{<:Loc, <:Loc, Nothing}) = broadcast_xy!
+broadcast_kernel(::Field{Nothing, <:Loc, <:Loc}) = broadcast_yz!
+broadcast_kernel(::Field{<:Loc, Nothing, <:Loc}) = broadcast_xz!
+broadcast_kernel(::Field{<:Loc, <:Loc, Nothing}) = broadcast_xy!
 
-launch_configuration(::AbstractReducedField{Nothing, <:Loc, <:Loc}) = :yz
-launch_configuration(::AbstractReducedField{<:Loc, Nothing, <:Loc}) = :xz
-launch_configuration(::AbstractReducedField{<:Loc, <:Loc, Nothing}) = :xy
+launch_configuration(::Field{Nothing, <:Loc, <:Loc}) = :yz
+launch_configuration(::Field{<:Loc, Nothing, <:Loc}) = :xz
+launch_configuration(::Field{<:Loc, <:Loc, Nothing}) = :xy
 
 broadcasted_to_abstract_operation(loc, grid, a) = a
 

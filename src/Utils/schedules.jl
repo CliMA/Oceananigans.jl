@@ -2,7 +2,7 @@
     AbstractSchedule
 
 Supertype for objects that schedule `OutputWriter`s and `Diagnostics`.
-Schedules must define the functor `Schedule(model)` that returns true or
+Schedule must define the functor `Schedule(model)` that returns true or
 false.
 """
 abstract type AbstractSchedule end
@@ -192,13 +192,54 @@ aligned_time_step(schedule::ConsecutiveIterations, clock, Δt) =
     aligned_time_step(schedule.parent, clock. Δt)
 
 #####
+##### Any and AndSchedule
+#####
+
+struct AndSchedule{S} <: AbstractSchedule
+    schedules :: S
+    AndSchedule(schedules::S) where S <: Tuple = new{S}(schedules)
+end
+
+"""
+    AndSchedule(child_schedule_1, child_schedule_2, other_child_schedules...)
+
+Return a schedule that actuates when all `child_schedule`s actuate.
+"""
+AndSchedule(schedules...) = AndSchedule(Tuple(schedules))
+
+# Note that multiple schedules that have a "state" (like TimeInterval and WallTimeInterval)
+# could cause the logic of AndSchedule to fail, due to the short-circuiting nature of `all`.
+(as::AndSchedule)(model) = all(schedule(model) for schedule in as.schedules)
+
+struct OrSchedule{S} <: AbstractSchedule
+    schedules :: S
+    OrSchedule(schedules::S) where S <: Tuple = new{S}(schedules)
+end
+
+"""
+    OrSchedule(child_schedule_1, child_schedule_2, other_child_schedules...)
+
+Return a schedule that actuates when any of the `child_schedule`s actuates.
+"""
+OrSchedule(schedules...) = OrSchedule(Tuple(schedules))
+
+function (as::OrSchedule)(model)
+    # Ensure that all `schedules` get queried
+    actuations = Tuple(schedule(model) for schedule in as.schedules)
+    return any(actuations)
+end
+
+align_time_step(any_or_all_schedule::Union{OrSchedule, AndSchedule}, clock, Δt) =
+    minimum(align_time_step(clock, Δt, schedule) for schedule in any_or_all_schedule.schedules)
+
+#####
 ##### Show methods
 #####
 
-Base.summary(schedule) = string(schedule)
-Base.summary(schedule::IterationInterval) = string("IterationInterval(", schedule.interval, ")")
-Base.summary(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
-Base.summary(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_times_str(schedule), ")")
-Base.summary(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
-                                                     summary(schedule.parent), ", ",
-                                                     schedule.consecutive_iterations, ")")
+show_schedule(schedule) = string(schedule)
+show_schedule(schedule::IterationInterval) = string("IterationInterval(", schedule.interval, ")")
+show_schedule(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
+show_schedule(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_times_str(schedule), ")")
+show_schedule(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
+                                                        summary(schedule.parent), ", ",
+                                                        schedule.consecutive_iterations, ")")

@@ -1,20 +1,14 @@
-using Test
+include("dependencies_for_runtests.jl")
 
-using Oceananigans
-using Oceananigans.Units
 using Oceananigans.Simulations:
     stop_iteration_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     TimeStepWizard, new_time_step, reset!
 
 using Dates: DateTime
 
-include("utils_for_runtests.jl")
-
-archs = test_architectures()
-
 function wall_time_step_wizard_tests(arch)
-    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid=grid)
 
     Δx = grid.Δxᶜᵃᵃ
     CFL = 0.45
@@ -44,14 +38,14 @@ function wall_time_step_wizard_tests(arch)
     Δt = new_time_step(Δt, wizard, model)
     @test Δt ≈ 3.99
 
-    grid_stretched = RectilinearGrid(size = (1, 1, 1),
+    grid_stretched = RectilinearGrid(arch, 
+                                    size = (1, 1, 1),
                                      x = (0, 1),
                                      y = (0, 1),
                                      z = z -> z, 
-                                     halo = (1, 1, 1),
-                                     architecture=arch)
+                                     halo = (1, 1, 1))
 
-    model = NonhydrostaticModel(architecture=arch, grid=grid_stretched)
+    model = NonhydrostaticModel(grid=grid_stretched)
 
     Δx = grid_stretched.Δxᶜᵃᵃ
     CFL = 0.45
@@ -67,8 +61,8 @@ function wall_time_step_wizard_tests(arch)
 end
 
 function run_basic_simulation_tests(arch)
-    grid  = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=arch, grid=grid)
+    grid  = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid=grid)
     simulation = Simulation(model, Δt=3, stop_iteration=1)
 
     # Just make sure we can construct a simulation without any errors.
@@ -153,10 +147,10 @@ function run_basic_simulation_tests(arch)
 end
 
 function run_simulation_date_tests(arch, start_time, stop_time, Δt)
-    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
 
     clock = Clock(time=start_time)
-    model = NonhydrostaticModel(architecture=arch, grid=grid, clock=clock)
+    model = NonhydrostaticModel(grid=grid, clock=clock)
     simulation = Simulation(model, Δt=Δt, stop_time=stop_time)
 
     @test model.clock.time == start_time
@@ -170,13 +164,20 @@ function run_simulation_date_tests(arch, start_time, stop_time, Δt)
     return nothing
 end
 
-function nan_checker_stops_simulation_test(arch)
-    grid = RectilinearGrid(size=(4, 2, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(grid=grid, architecture=arch)
+function run_nan_checker_test(arch; erroring)
+    grid = RectilinearGrid(arch, size=(4, 2, 1), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid=grid)
     simulation = Simulation(model, Δt=1, stop_iteration=1)
     model.velocities.u[1, 1, 1] = NaN
-    run!(simulation)
-    @test model.clock.iteration == 0 # simulation did not run
+    erroring && erroring_NaNChecker!(simulation)
+
+    if erroring
+        @test_throws ErrorException run!(simulation)
+    else
+        run!(simulation)
+        @test model.clock.iteration == 0 # simulation did not run
+    end
+
     return nothing
 end
 
@@ -194,7 +195,8 @@ end
 
         @testset "NaN Checker [$(typeof(arch))]" begin
             @info "  Testing NaN Checker [$(typeof(arch))]..."
-            nan_checker_stops_simulation_test(arch)
+            run_nan_checker_test(arch, erroring=true)
+            run_nan_checker_test(arch, erroring=false)
         end
 
         @info "Testing simulations with DateTime [$(typeof(arch))]..."

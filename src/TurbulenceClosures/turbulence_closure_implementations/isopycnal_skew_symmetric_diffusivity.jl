@@ -181,8 +181,6 @@ end
 
 calculate_diffusivities!(diffusivity_fields, closure::Union{ISSD, ISSDVector}, model) = nothing
 
-DiffusivityFields(arch, grid, tracer_names, bcs, ::Union{ISSD, ISSDVector}) = nothing
-
 #####
 ##### Show
 #####

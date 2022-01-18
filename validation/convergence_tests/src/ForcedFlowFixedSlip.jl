@@ -48,7 +48,7 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     u_bcs = FieldBoundaryConditions(north = ValueBoundaryCondition((x, y, t) -> f(x, t)),
                                     south = ValueBoundaryCondition(0))
 
-    model = NonhydrostaticModel(architecture = CPU(),
+    model = NonhydrostaticModel(
                                 grid = grid,
                                 coriolis = nothing,
                                 buoyancy = nothing,

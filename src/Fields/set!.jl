@@ -3,7 +3,8 @@ using CUDAKernels
 using KernelAbstractions: @kernel, @index
 using Adapt: adapt_structure
 
-using Oceananigans.Architectures: device, GPU, AbstractCPUArchitecture, AbstractGPUArchitecture
+using Oceananigans.Grids: on_architecture
+using Oceananigans.Architectures: device, GPU, CPU, AbstractMultiArchitecture
 using Oceananigans.Utils: work_layout
 
 function set!(Φ::NamedTuple; kwargs...)
@@ -14,55 +15,43 @@ function set!(Φ::NamedTuple; kwargs...)
     return nothing
 end
 
-set!(u::AbstractField, v) = u .= v # fallback
+set!(u::Field, v) = u .= v # fallback
 
-# Niceties
-const AbstractCPUField = AbstractField{X, Y, Z, <:AbstractCPUArchitecture} where {X, Y, Z}
-const AbstractReducedCPUField = AbstractReducedField{X, Y, Z, <:AbstractCPUArchitecture} where {X, Y, Z}
+function set!(u::Field, f::Function)
+    if architecture(u) isa GPU
+        cpu_grid = on_architecture(CPU(), u.grid)
+        u_cpu = Field(location(u), cpu_grid)
+        f_field = field(location(u), f, cpu_grid)
+        set!(u_cpu, f_field)
+        set!(u, u_cpu)
+    elseif architecture(u) isa CPU
+        f_field = field(location(u), f, u.grid)
+        set!(u, f_field)
+    end
 
-""" Returns an AbstractReducedField on the CPU. """
-function similar_cpu_field(u::AbstractReducedField)
-    FieldType = typeof(u).name.wrapper
-    return FieldType(location(u), CPU(), u.grid; dims=u.dims)
-end
-
-""" Set the CPU field `u` data to the function `f(x, y, z)`. """
-function set!(u::AbstractCPUField, f::Function)
-    f_field = FunctionField(location(u), f, u.grid)
-    u .= f_field
     return nothing
 end
 
-#####
-##### set! for fields on the GPU
-#####
-
-const AbstractGPUField = AbstractField{X, Y, Z, <:AbstractGPUArchitecture} where {X, Y, Z}
-const AbstractReducedGPUField = AbstractReducedField{X, Y, Z, <:AbstractGPUArchitecture} where {X, Y, Z}
-
-""" Returns a field on the CPU with `nothing` boundary conditions. """
-function similar_cpu_field(u)
-    FieldType = typeof(u).name.wrapper
-    return FieldType(location(u), CPU(), adapt_structure(CPU(), u.grid), nothing)
-end
-
-""" Set the GPU field `u` to the array or function `v`. """
-function set!(u::AbstractGPUField, v::Union{Array, Function})
-    v_field = similar_cpu_field(u)
-    set!(v_field, v)
-    set!(u, v_field)
+function set!(u::Field, f::Union{Array, CuArray, OffsetArray})
+    f = arch_array(architecture(u), f)
+    u .= f
     return nothing
 end
 
-#####
-##### Setting fields to fields
-#####
+function set!(u::Field, v::Field)
+    if architecture(u) === architecture(v)
+        parent(u) .= parent(v)
+    else
+        u_parent = parent(u)
+        v_parent = parent(v)
+        # If u_parent is a view, we have to convert to an Array.
+        # If u_parent or v_parent is on the GPU, we don't expect
+        # SubArray.
+        u_parent isa SubArray && (u_parent = Array(u_parent))
+        v_parent isa SubArray && (v_parent = Array(v_parent))
+        copyto!(u_parent, v_parent)
+    end
 
-""" Set the CPU field `u` data to the GPU field data of `v`. """
-set!(u::AbstractCPUField, v::AbstractGPUField) = copyto!(parent(u), parent(v))
+    return nothing
+end
 
-""" Set the GPU field `u` data to the CPU field data of `v`. """
-set!(u::AbstractGPUField, v::AbstractCPUField) = copyto!(parent(u), parent(v))
-
-set!(u::AbstractCPUField, v::AbstractCPUField) = parent(u) .= parent(v)
-set!(u::AbstractGPUField, v::AbstractGPUField) = parent(u) .= parent(v)

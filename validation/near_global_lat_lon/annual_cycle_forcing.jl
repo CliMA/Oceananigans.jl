@@ -5,6 +5,22 @@ using Oceananigans.Units
 
 include("cyclic_interpolate_utils.jl")
 
+using DataDeps
+
+path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/main/lat_lon_bathymetry_and_fluxes/"
+
+dh = DataDep("near_global_lat_lon",
+    "Forcing data for global latitude longitude simulation",
+    [path * "bathymetry_lat_lon_128x60_FP32.bin",
+     path * "sea_surface_temperature_25_128x60x12.jld2",
+     path * "tau_x_128x60x12.jld2",
+     path * "tau_y_128x60x12.jld2"]
+)
+
+DataDeps.register(dh)
+
+datadep"near_global_lat_lon"
+
 # 2.8125 degree resolution
 Nx = 128
 Ny = 60
@@ -16,17 +32,30 @@ reference_density = 1035
 ##### (Probably https://data1.gfdl.noaa.gov/nomads/forms/core/COREv2.html)
 #####
 
-east_west_stress_path = "off_TAUXvar1.bin"
-north_south_stress_path = "off_TAUY.bin"
-sea_surface_temperature_path="sst25_128x60x12.bin"
+filename = [:sea_surface_temperature_25_128x60x12, :tau_x_128x60x12, :tau_y_128x60x12]
 
-thirty_days = 30days
-Nmonths = 12
-bytes = sizeof(Float32) * Nx * Ny
+for name in filename
+    datadep_path = @datadep_str "near_global_lat_lon/" * string(name) * ".jld2"
+    file = Symbol(:file_, name)
+    @eval $file = jldopen($datadep_path)
+end
 
-τˣ = - reshape(bswap.(reinterpret(Float32, read(east_west_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ reference_density
-τʸ = - reshape(bswap.(reinterpret(Float32, read(north_south_stress_path, Nmonths * bytes))), (Nx, Ny, Nmonths)) ./ reference_density
-T★ = reshape(bswap.(reinterpret(Float32, read(sea_surface_temperature_path, Nmonths * bytes))), (Nx, Ny, Nmonths))
+bathymetry_data = Array{Float32}(undef, Nx*Ny)
+bathymetry_path = @datadep_str "near_global_lat_lon/bathymetry_lat_lon_128x60_FP32.bin"
+read!(bathymetry_path, bathymetry_data)
+
+bathymetry_data = bswap.(bathymetry_data) |> Array{Float64}
+bathymetry_data = reshape(bathymetry_data, Nx, Ny)
+
+τˣ = zeros(Nx, Ny, Nmonths)
+τʸ = zeros(Nx, Ny, Nmonths)
+T★ = zeros(Nx, Ny, Nmonths)
+
+for month in 1:Nmonths
+    τˣ[:, :, month] = file_tau_x_128x60x12["tau_x/$month"] ./ reference_density
+    τʸ[:, :, month] = file_tau_y_128x60x12["tau_y/$month"] ./ reference_density
+    T★[:, :, month] = file_sea_surface_temperature_25_128x60x12["sst25/$month"]
+end
 
 times = 0:1days:24*30days
 discrete_times = 0:30days:11*30days

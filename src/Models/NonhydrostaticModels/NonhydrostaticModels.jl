@@ -10,12 +10,23 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Utils: launch!
 using Oceananigans.Grids
 using Oceananigans.Solvers
+using Oceananigans.Distributed: MultiArch, DistributedFFTBasedPoissonSolver, reconstruct_global_grid   
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 import Oceananigans: fields, prognostic_fields
 
-PressureSolver(arch, grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(arch, grid)
-PressureSolver(arch, grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(arch, grid)
+function PressureSolver(arch::MultiArch, local_grid::RegRectilinearGrid)
+    global_grid = reconstruct_global_grid(local_grid)
+    if arch.ranks[1] == 1 # we would have to allow different settings 
+        return DistributedFFTBasedPoissonSolver(global_grid, local_grid)
+    else
+        @warn "A Distributed NonhydrostaticModel is allowed only when the x-direction is not parallelized"
+        return nothing
+    end
+end
+
+PressureSolver(arch, grid::RegRectilinearGrid)  = FFTBasedPoissonSolver(grid)
+PressureSolver(arch, grid::HRegRectilinearGrid) = FourierTridiagonalPoissonSolver(grid)
 
 # *Evil grin*
 PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.grid)
@@ -25,6 +36,7 @@ PressureSolver(arch, ibg::ImmersedBoundaryGrid) = PressureSolver(arch, ibg.grid)
 #####
 
 include("nonhydrostatic_model.jl")
+include("pressure_field.jl")
 include("show_nonhydrostatic_model.jl")
 include("set_nonhydrostatic_model.jl")
 

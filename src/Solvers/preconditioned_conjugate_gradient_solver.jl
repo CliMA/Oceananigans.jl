@@ -3,6 +3,8 @@ using Oceananigans.Grids: interior_parent_indices
 using Statistics: norm, dot
 using LinearAlgebra
 
+import Oceananigans.Architectures: architecture
+
 mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P}
                architecture :: A
                        grid :: G
@@ -17,6 +19,8 @@ mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P}
               precondition! :: M
      preconditioner_product :: P
 end
+
+architecture(solver::PreconditionedConjugateGradientSolver) = solver.architecture
 
 no_precondition!(args...) = nothing
 
@@ -75,7 +79,7 @@ function PreconditionedConjugateGradientSolver(linear_operation;
                                                template_field::AbstractField,
                                                maximum_iterations = prod(size(template_field)),
                                                tolerance = 1e-13, #sqrt(eps(eltype(template_field.grid))),
-                                               precondition = nothing)
+                                               preconditioner_method = nothing)
 
     arch = architecture(template_field)
     grid = template_field.grid
@@ -86,7 +90,7 @@ function PreconditionedConjugateGradientSolver(linear_operation;
             residual = similar(template_field) # rᵢ
 
     # Either nothing (no precondition) or P*xᵢ = zᵢ
-    precondition_product = initialize_precondition_product(precondition, template_field)
+    precondition_product = initialize_precondition_product(preconditioner_method, template_field)
 
     return PreconditionedConjugateGradientSolver(arch,
                                                  grid,
@@ -98,7 +102,7 @@ function PreconditionedConjugateGradientSolver(linear_operation;
                                                  linear_operator_product,
                                                  search_direction,
                                                  residual,
-                                                 precondition,
+                                                 preconditioner_method,
                                                  precondition_product)
 end
 
@@ -151,6 +155,7 @@ Loop:
      ρⁱ⁻¹ = ρ
 ```
 """
+
 function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
 
     # Initialize

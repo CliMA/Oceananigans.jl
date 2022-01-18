@@ -98,7 +98,7 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Impose boundary conditions
     #####
 
-    grid = RectilinearGrid(size = (Nxy, Nxy, Nz), extent = (4π*h, 2π*h, 2h))
+    grid = RectilinearGrid(arch, size = (Nxy, Nxy, Nz), extent = (4π*h, 2π*h, 2h))
 
     Tbcs = FieldBoundaryConditions(top = ValueBoundaryCondition(Θ_wall),
                                    bottom = ValueBoundaryCondition(-Θ_wall))
@@ -114,7 +114,6 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     #####
 
     model = NonhydrostaticModel(
-               architecture = arch,
                        grid = grid,
                    buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=1.0, β=0.0)),
                     tracers = (:T, :S),
@@ -193,12 +192,12 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Set up profile output writer
     #####
 
-    Uavg = AveragedField(model.velocities.u,            dims=(1, 2))
-    Vavg = AveragedField(model.velocities.v,            dims=(1, 2))
-    Wavg = AveragedField(model.velocities.w,            dims=(1, 2))
-    Tavg = AveragedField(model.tracers.T,               dims=(1, 2))
-    νavg = AveragedField(model.diffusivity_fields.νₑ,   dims=(1, 2))
-    κavg = AveragedField(model.diffusivity_fields.κₑ.T, dims=(1, 2))
+    Uavg = Field(Average(model.velocities.u,            dims=(1, 2)))
+    Vavg = Field(Average(model.velocities.v,            dims=(1, 2)))
+    Wavg = Field(Average(model.velocities.w,            dims=(1, 2)))
+    Tavg = Field(Average(model.tracers.T,               dims=(1, 2)))
+    νavg = Field(Average(model.diffusivity_fields.νₑ,   dims=(1, 2)))
+    κavg = Field(Average(model.diffusivity_fields.κₑ.T, dims=(1, 2)))
 
     profiles = Dict(
          :u => Uavg,
