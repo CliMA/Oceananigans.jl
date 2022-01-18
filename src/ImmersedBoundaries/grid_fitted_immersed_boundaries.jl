@@ -3,8 +3,8 @@ using CUDA: CuArray
 using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.Architectures: arch_array
 
-import Oceananigans.Operators: ∂xᶜᵃᵃ, ∂xᶠᵃᵃ, 
-                               ∂yᵃᶜᵃ, ∂yᵃᶠᵃ,
+import Oceananigans.Operators: ∂xᶜᵃᵃ, ∂xᶠᵃᵃ, ∂xᶠᶜᵃ, ∂xᶜᶠᵃ, ∂xᶠᶠᵃ, ∂xᶜᶜᵃ, 
+                               ∂yᵃᶜᵃ, ∂yᵃᶠᵃ, ∂yᶠᶜᵃ, ∂yᶜᶠᵃ, ∂yᶠᶠᵃ, ∂yᶜᶜᵃ,  
                                ∂zᵃᵃᶜ, ∂zᵃᵃᶠ
 
 import Oceananigans.TurbulenceClosures: ivd_upper_diagonal,
@@ -111,8 +111,8 @@ end
 # metrics are 0 inside the immersed boundaries. This means that derivatives are broken!
 # To avoid NaNs appearing everywhere we must be able to define derivatives also inside or across the immersed boundary
 
-derivative_operators = (:∂xᶜᵃᵃ, :∂xᶠᵃᵃ,
-                        :∂yᵃᶜᵃ, :∂yᵃᶠᵃ,
+derivative_operators = (:∂xᶜᵃᵃ, :∂xᶠᵃᵃ, :∂xᶠᶜᵃ, :∂xᶜᶠᵃ, :∂xᶠᶠᵃ, :∂xᶜᶜᵃ, 
+                        :∂yᵃᶜᵃ, :∂yᵃᶠᵃ, :∂yᶠᶜᵃ, :∂yᶜᶠᵃ, :∂yᶠᶠᵃ, :∂yᶜᶜᵃ,  
                         :∂zᵃᵃᶜ, :∂zᵃᵃᶠ)
 
 for operator in derivative_operators

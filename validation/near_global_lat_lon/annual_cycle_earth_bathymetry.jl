@@ -223,7 +223,7 @@ else
     Δt = 20minutes
 end
 
-simulation = Simulation(model, Δt = Δt, stop_time = 2years)
+simulation = Simulation(model, Δt = Δt, stop_time = 30years)
 
 start_time = [time_ns()]
 
