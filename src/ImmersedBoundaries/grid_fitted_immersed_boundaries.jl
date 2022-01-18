@@ -111,8 +111,8 @@ end
 # metrics are 0 inside the immersed boundaries. This means that derivatives are broken!
 # To avoid NaNs appearing everywhere we must be able to define derivatives also inside or across the immersed boundary
 
-derivative_operators = (:∂xᶜᵃᵃ, :∂xᶠᵃᵃ, :∂xᶠᶜᵃ, :∂xᶜᶠᵃ, :∂xᶠᶠᵃ, :∂xᶜᶜᵃ, 
-                        :∂yᵃᶜᵃ, :∂yᵃᶠᵃ, :∂yᶠᶜᵃ, :∂yᶜᶠᵃ, :∂yᶠᶠᵃ, :∂yᶜᶜᵃ,  
+derivative_operators = (:∂xᶜᵃᵃ, :∂xᶠᵃᵃ,
+                        :∂yᵃᶜᵃ, :∂yᵃᶠᵃ,
                         :∂zᵃᵃᶜ, :∂zᵃᵃᶠ)
 
 for operator in derivative_operators
