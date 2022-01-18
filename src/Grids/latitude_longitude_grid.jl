@@ -228,6 +228,28 @@ all_z_nodes(::Type{Center}, grid::LatitudeLongitudeGrid) = grid.zᵃᵃᶜ
 @inline cpu_face_constructor_y(grid::YRegLatLonGrid) = y_domain(grid)
 @inline cpu_face_constructor_z(grid::ZRegLatLonGrid) = z_domain(grid)
 
+function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
+
+    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
+    topo = topology(old_grid)
+
+    x = cpu_face_constructor_x(old_grid)
+    y = cpu_face_constructor_y(old_grid)
+    z = cpu_face_constructor_z(old_grid)  
+
+    # Remove elements of size and new_halo in Flat directions as expected by grid
+    # constructor
+    size     = pop_flat_elements(size, topo)
+    new_halo = pop_flat_elements(new_halo, topo)
+
+    new_grid = LatitudeLongitudeGrid(architecture(old_grid), eltype(old_grid);
+                                     size = size, halo = new_halo,
+                                     longitude = x, latitude = y, z = z,
+                                     precompute_metrics = metrics_precomputed(old_grid))
+
+    return new_grid
+end
+
 function on_architecture(new_arch, old_grid::LatitudeLongitudeGrid)
     old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
                       old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
