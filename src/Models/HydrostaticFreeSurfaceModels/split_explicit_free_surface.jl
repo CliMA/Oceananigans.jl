@@ -54,12 +54,6 @@ function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
     return sefs
 end
 
-# convenience functor
-function (sefs::SplitExplicitFreeSurface)(settings::SplitExplicitSettings)
-    return SplitExplicitFreeSurface(sefs.state, sefs.auxiliary, sefs.gravitational_acceleration, settings)
-end
-
-
 # Extend to replicate functionality: TODO delete?
 function Base.getproperty(free_surface::SplitExplicitFreeSurface, sym::Symbol)
     if sym in fieldnames(SplitExplicitState)
@@ -197,6 +191,12 @@ free_surface(free_surface::SplitExplicitFreeSurface) = free_surface(free_surface
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = 0
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = 0
 
+
+# convenience functor
+function (sefs::SplitExplicitFreeSurface)(settings::SplitExplicitSettings)
+    return SplitExplicitFreeSurface(sefs.state, sefs.auxiliary, sefs.gravitational_acceleration, settings)
+end
+
 ##
 #=
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
@@ -221,6 +221,7 @@ Adapt.adapt_structure(to, settings::SplitExplicitSettings) =
     SplitExplicitSettings(
         Adapt.adapt(to, settings.substeps), Adapt.adapt(to, settings.velocity_weights), Adapt.adapt(to, settings.free_surface_weights)
     )
+
 
 #=
     substeps::𝒩
