@@ -102,7 +102,7 @@ end
 
 # fft_based_free_surface = ImplicitFreeSurface()
 pcg_free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient);
-matrix_free_surface = ImplicitFreeSurface(solver_method = :MatrixIterativeSolver);
+matrix_free_surface = ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver);
 splitexplicit_free_surface = SplitExplicitFreeSurface()
 
 topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
