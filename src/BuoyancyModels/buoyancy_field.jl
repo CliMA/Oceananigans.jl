@@ -1,21 +1,16 @@
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Fields: Field
-using Adapt
-using KernelAbstractions
-
-function buoyancy_operation(model)
-    buoyancy_model = model.buoyancy.model
-    tracers = model.tracers
-    return buoyancy_operation(buoyancy_model, model.grid, tracers)
-end
-
-buoyancy_operation(buoyancy_model, grid, tracers) =
-    KernelFunctionOperation{Center, Center, Center}(buoyancy_perturbation, grid, computed_dependencies=(buoyancy_model, tracers))
-
-buoyancy_operation(::Nothing, grid, tracers) = nothing
+using Oceananigans.Fields: Field, ZeroField
 
 function BuoyancyField(model)
-    op = buoyancy_operation(model)
+    isnothing(model.buoyancy) && return ZeroField()
+
+    grid = model.grid
+    buoyancy = model.buoyancy
+    tracers = model.tracers
+
+    op = KernelFunctionOperation{Center, Center, Center}(buoyancy_perturbation, grid,
+                                                         computed_dependencies=(buoyancy.model, tracers))
+
     return Field(op)
 end
 
