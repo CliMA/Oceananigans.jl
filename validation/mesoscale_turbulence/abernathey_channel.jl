@@ -140,7 +140,7 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 model = HydrostaticFreeSurfaceModel(
     grid = grid,
-    free_surface = SplitExplicitFreeSurface(),
+    free_surface = ImplicitFreeSurface(),
     momentum_advection = WENO5(grid = grid),
     tracer_advection = WENO5(grid = grid),
     buoyancy = BuoyancyTracer(),

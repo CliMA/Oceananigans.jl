@@ -1,19 +1,7 @@
-using Test
-using Statistics
-using Oceananigans
-using Oceananigans.Utils
-using Oceananigans.BoundaryConditions
-using Oceananigans.Operators
-using KernelAbstractions
-using Revise
-archs = [Oceananigans.CPU(), Oceananigans.GPU()]
-
-# include("dependencies_for_runtests.jl")
+include("dependencies_for_runtests.jl")
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitFreeSurface
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, SplitExplicitAuxiliary, SplitExplicitSettings, split_explicit_free_surface_substep!
-
-
 
 @testset "Split-Explicit Dynamics" begin
 
