@@ -44,3 +44,16 @@ end
 #####
 
 mask_immersed_velocities!(U, arch, grid) = tuple(NoneEvent())
+
+#####
+##### Masking for GridFittedBoundary
+#####
+
+@inline function scalar_mask(i, j, k, grid, ::AbstractGridFittedBoundary, LX, LY, LZ, value, field)
+    return @inbounds ifelse(solid_interface(LX, LY, LZ, i, j, k, grid),
+                            value,
+                            field[i, j, k])
+end
+
+mask_immersed_velocities!(U, arch, grid::ImmersedBoundaryGrid) = Tuple(mask_immersed_field!(q) for q in U)
+

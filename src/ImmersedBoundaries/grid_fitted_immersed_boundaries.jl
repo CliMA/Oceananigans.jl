@@ -3,9 +3,7 @@ using CUDA: CuArray
 using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.Architectures: arch_array
 
-import Oceananigans.Operators: ∂xᶜᵃᵃ, ∂xᶠᵃᵃ, ∂xᶠᶜᵃ, ∂xᶜᶠᵃ, ∂xᶠᶠᵃ, ∂xᶜᶜᵃ, 
-                               ∂yᵃᶜᵃ, ∂yᵃᶠᵃ, ∂yᶠᶜᵃ, ∂yᶜᶠᵃ, ∂yᶠᶠᵃ, ∂yᶜᶜᵃ,  
-                               ∂zᵃᵃᶜ, ∂zᵃᵃᶠ
+import Oceananigans.Operators: Δzᵃᵃᶜ, Δzᶠᶜᶜ, Δzᶜᶠᶜ, Δzᵃᵃᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ
 
 import Oceananigans.TurbulenceClosures: ivd_upper_diagonal,
                                         ivd_lower_diagonal
@@ -63,58 +61,35 @@ function ImmersedBoundaryGrid(grid, ib::Union{ArrayGridFittedBottom, CuArrayGrid
     return ImmersedBoundaryGrid(grid, new_ib)
 end
 
-const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBottom}
-
-@inline Δzᵃᵃᶜ(i, j, k, ibg::GFBIBG) = ifelse(solid_node(Center(), Center(), Center(), i, j, k, ibg),
-                                             zero(eltype(ibg.grid)),
-                                             Δzᵃᵃᶜ(i, j, k, ibg.grid))
-
-@inline Δzᶠᶜᶜ(i, j, k, ibg::GFBIBG) = ifelse(solid_node(Face(), Center(), Center(), i, j, k, ibg),
-                                             zero(eltype(ibg)),
-                                             Δzᵃᵃᶜ(i, j, k, ibg.grid))
-
-@inline Δzᶜᶠᶜ(i, j, k, ibg::GFBIBG) = ifelse(solid_node(Center(), Face(), Center(), i, j, k, ibg),
-                                             zero(eltype(ibg)),
-                                             Δzᵃᵃᶜ(i, j, k, ibg.grid))
-
-@inline Δzᵃᵃᶠ(i, j, k, ibg::GFBIBG) = ifelse(solid_node(Center(), Center(), Face(), i, j, k, ibg),
-                                             zero(eltype(ibg.grid)),
-                                             Δzᵃᵃᶠ(i, j, k, ibg.grid))
-
 Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom))     
 
 #####
 ##### Implicit vertical diffusion
 #####
 
-@inline z_solid_node(LX, LY, ::Center, i, j, k, ibg) = solid_interface(LX, LY, Face(), i, j, k+1, ibg)
-@inline z_solid_node(LX, LY, ::Face, i, j, k, ibg)   = solid_interface(LX, LY, Center(), i, j, k, ibg)
+####
+#### For a center solver we have to check the interface "solidity" at faces k+1 in both the Upper diagonal and the Lower diagonal 
+#### (because of tridiagonal convention whene lower_diagonal is at k-1)
+#### Same goes for the face solver, where we check at centers k in both Upper and lower diagonal
+####
+
+@inline ivd_immersed_solid_interface(LX, LY, ::Center, i, j, k, ibg) = solid_interface(LX, LY, Face(), i, j, k+1, ibg)
+@inline ivd_immersed_solid_interface(LX, LY, ::Face, i, j, k, ibg)   = solid_interface(LX, LY, Center(), i, j, k, ibg)
 
 # extending the upper and lower diagonal functions of the batched tridiagonal solver
 
 for location in (:upper_, :lower_)
-    func = Symbol(:ivd_, location, :diagonal)
+    alt_func = Symbol(:_ivd_, location, :diagonal)
+    func     = Symbol(:ivd_ , location, :diagonal)
     @eval begin
-        @inline function $func(i, j, k, ibg::GFIBG, LX, LY, LZ::Face, clock, Δt, interp_κ, κ)
-            return ifelse(z_solid_node(LX, LY, LZ, i, j, k, ibg),
+        @inline function $alt_func(i, j, k, ibg::GFIBG, LX, LY, LZ, clock, Δt, interp_κ, κ)
+            return ifelse(ivd_immersed_solid_interface(LX, LY, LZ, i, j, k, ibg),
                           zero(eltype(ibg.grid)),
                           $func(i, j, k, ibg.grid, LX, LY, LZ, clock, Δt, interp_κ, κ))
         end
-        @inline function $func(i, j, k, ibg::GFIBG, LX, LY, LZ::Center, clock, Δt, interp_κ, κ)
-            return ifelse(z_solid_node(LX, LY, LZ, i, j, k, ibg),
-                          zero(eltype(ibg.grid)),
-                          $func(i, j, k, ibg.grid, LX, LY, LZ, clock, Δt, interp_κ, κ))
-        end
+        @inline $func(i, j, k, ibg::GFIBG, LX, LY, LZ::Face, clock, Δt, interp_κ, κ) =
+                $alt_func(i, j, k, ibg::GFIBG, LX, LY, LZ, clock, Δt, interp_κ, κ)
+        @inline $func(i, j, k, ibg::GFIBG, LX, LY, LZ::Center, clock, Δt, interp_κ, κ) =
+                $alt_func(i, j, k, ibg::GFIBG, LX, LY, LZ, clock, Δt, interp_κ, κ)
     end
-end
-
-# metrics are 0 inside the immersed boundaries. This means that derivatives are broken!
-# To avoid NaNs appearing everywhere we must be able to define derivatives also inside or across the immersed boundary
-
-derivative_operators = (:∂xᶜᵃᵃ, :∂xᶠᵃᵃ, :∂xᶠᶜᵃ, :∂xᶜᶠᵃ, :∂xᶠᶠᵃ, :∂xᶜᶜᵃ, 
-                        :∂yᵃᶜᵃ, :∂yᵃᶠᵃ, :∂yᶠᶜᵃ, :∂yᶜᶠᵃ, :∂yᶠᶠᵃ, :∂yᶜᶜᵃ,  
-                        :∂zᵃᵃᶜ, :∂zᵃᵃᶠ)
-
-for operator in derivative_operators
-        @eval $operator(i, j, k, ibg::GFIBG, args...) = $operator(i, j, k, ibg.grid, args...)
 end

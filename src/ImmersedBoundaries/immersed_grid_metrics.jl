@@ -64,11 +64,6 @@ for metric in (
                :Δyᶠᶠᵃ,
                :Δyᶠᶜᵃ,
 
-               :Δzᵃᵃᶠ,
-               :Δzᵃᵃᶜ,
-               :Δzᶠᶜᶜ,
-               :Δzᶜᶠᶜ,
-
                :Azᶜᶜᵃ,
                :Azᶜᶠᵃ,
                :Azᶠᶠᵃ,
@@ -100,3 +95,24 @@ for metric in (
     end
 end
 
+###
+### Z - metrics are zeroed inside the immersed boundary
+###
+
+metrics = (:ᶠᶜᶠ, :ᶜᶠᶠ, :ᵃᵃᶠ, :ᶠᶜᶜ, :ᶜᶠᶜ, :ᵃᵃᶜ)
+locations = [(f, c, f), 
+             (c, f, f), 
+             (c, c, f), 
+             (f, c, c), 
+             (c, f, c), 
+             (c, c, c)]
+
+for (metric, loc) in zip(metrics, locations)
+    metric_func = Symbol(:Δz, metric)
+
+    @eval begin
+        $metric_func(i, j, k, ibg::ImmersedBoundaryGrid) = ifelse(solid_node($loc..., i, j, k, ibg),
+                                                                  zero(eltype(ibg.grid)),
+                                                                  $metric_func(i, j, k, ibg.grid))
+    end
+end
