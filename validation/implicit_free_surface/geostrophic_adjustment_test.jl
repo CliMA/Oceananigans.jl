@@ -7,12 +7,13 @@ using Printf
 using LinearAlgebra, SparseArrays
 using Oceananigans.Solvers: constructors, unpack_constructors
 
-function geostrophic_adjustment_simulation(free_surface, topology)
+function geostrophic_adjustment_simulation(free_surface, topology; arch = Oceananigans.CPU())
 
     Lh = 100kilometers
     Lz = 400meters
 
-    grid = RectilinearGrid(size = (64, 3, 1),
+    grid = RectilinearGrid(arch,
+        size = (64, 3, 1),
         x = (0, Lh), y = (0, Lh), z = (-Lz, 0),
         topology = topology)
 
@@ -43,11 +44,6 @@ function geostrophic_adjustment_simulation(free_surface, topology)
     set!(model, v = vᵍ)
     set!(η, ηⁱ)
 
-    if model.free_surface isa SplitExplicitFreeSurface
-        η̅ = model.free_surface.η̅
-        set!(η̅, ηⁱ)
-    end
-
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
     wave_propagation_time_scale = model.grid.Δxᶜᵃᵃ / gravity_wave_speed
     simulation = Simulation(model, Δt = 2wave_propagation_time_scale, stop_iteration = 300)
@@ -64,10 +60,10 @@ function run_and_analyze(simulation)
     compute!(ηx)
 
     f = simulation.model.free_surface
-    u₀ = interior(u)[:, 1, 1]
-    v₀ = interior(v)[:, 1, 1]
-    η₀ = interior(η)[:, 1, 1]
-    ηx₀ = interior(ηx)[:, 1, 1]
+    @views u₀ = interior(u)[:, 1, 1]
+    @views v₀ = interior(v)[:, 1, 1]
+    @views η₀ = interior(η)[:, 1, 1]
+    @views ηx₀ = interior(ηx)[:, 1, 1]
 
     if f isa SplitExplicitFreeSurface
         solver_method = "SplitExplicitFreeSurface"
@@ -91,15 +87,15 @@ function run_and_analyze(simulation)
 
     compute!(ηx)
 
-    u₁ = interior(u)[:, 1, 1]
-    v₁ = interior(v)[:, 1, 1]
-    η₁ = interior(η)[:, 1, 1]
-    ηx₁ = interior(ηx)[:, 1, 1]
+    @views u₁ = interior(u)[:, 1, 1]
+    @views v₁ = interior(v)[:, 1, 1]
+    @views η₁ = interior(η)[:, 1, 1]
+    @views ηx₁ = interior(ηx)[:, 1, 1]
 
-    @show mean(η₀)
-    @show mean(η₁)
+    @show mean(Array(η₀))
+    @show mean(Array(η₁))
 
-    Δη = η₁ .- η₀
+    Δη = Array(η₁) - Array(η₀)
 
     return (; η₀, η₁, Δη, ηx₀, ηx₁, u₀, u₁, v₀, v₁)
 end
@@ -110,11 +106,16 @@ matrix_free_surface = ImplicitFreeSurface(solver_method = :MatrixIterativeSolver
 splitexplicit_free_surface = SplitExplicitFreeSurface()
 
 topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
-topology_types = [topology_types[2]]
+topology_types = [topology_types[1]]
+
+archs = [Oceananigans.CPU(), Oceananigans.GPU()]
+archs = [archs[1]]
 
 free_surfaces = [pcg_free_surface, matrix_free_surface, splitexplicit_free_surface];
-simulations = [geostrophic_adjustment_simulation(free_surface, topology_type) for free_surface in free_surfaces, topology_type in topology_types];
+simulations = [geostrophic_adjustment_simulation(free_surface, topology_type, arch = arch) for free_surface in free_surfaces, topology_type in topology_types, arch in archs];
 data = [run_and_analyze(sim) for sim in simulations];
+# run_and_analyze(simulations[3])
+
 
 using GLMakie
 using JLD2
@@ -133,7 +134,7 @@ y = grid.yᵃᶜᵃ[1:grid.Ny]
 iterations = parse.(Int, keys(file1["timeseries/t"]))
 iterations = iterations[1:200]
 
-iter = Observable(0)
+iter = Node(0) # Node or Observable depending on Makie version
 mid = Int(floor(grid.Ny / 2))
 η0 = file1["timeseries/1/0"][:, mid, 1]
 η1 = @lift(Array(file1["timeseries/1/"*string($iter)])[:, mid, 1])
