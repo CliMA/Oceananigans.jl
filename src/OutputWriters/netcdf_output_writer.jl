@@ -5,7 +5,7 @@ using Dates: AbstractTime, now
 using Oceananigans.Fields
 
 using Oceananigans: short_show
-using Oceananigans.Utils: show_schedule
+using Oceananigans.Utils: summary
 using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_nodes
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 using Oceananigans.TimeSteppers: float_or_date_time
@@ -494,7 +494,7 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
 
     averaging_schedule = output_averaging_schedule(ow)
 
-    print(io, "NetCDFOutputWriter scheduled on $(show_schedule(ow.schedule)):", '\n',
+    print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", '\n',
         "├── filepath: $(ow.filepath)", '\n',
         "├── dimensions: $dims", '\n',
         "├── $(length(ow.outputs)) outputs: $(keys(ow.outputs))", show_averaging_schedule(averaging_schedule), '\n',

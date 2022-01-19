@@ -1,6 +1,4 @@
-include("dependencies_for_runtests.jl")
-
-using Oceananigans.Solvers: solve!, MatrixIterativeSolver, spai_preconditioner
+using Oceananigans.Solvers: solve!, HeptadiagonalIterativeSolver, sparse_approximate_inverse
 using Oceananigans.Fields: interior_copy
 using Oceananigans.Operators: volume, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δyᵃᶜᵃ, Δxᶜᵃᵃ, Δzᵃᵃᶠ, Δzᵃᵃᶜ, ∇²ᶜᶜᶜ
 using Oceananigans.Architectures: arch_array
@@ -33,7 +31,7 @@ function run_identity_operator_test(grid)
     C = zeros(grid, N...)
     fill!(C, 1)
 
-    solver = MatrixIterativeSolver((A, A, A, C, D), grid = grid)
+    solver = HeptadiagonalIterativeSolver((A, A, A, C, D), grid = grid)
 
     fill!(b, rand())
 
@@ -92,7 +90,7 @@ function run_poisson_equation_test(grid)
     poisson_rhs!(rhs, grid)
     rhs = interior_copy(rhs)[:]
     weights = compute_poisson_weights(grid)
-    solver  = MatrixIterativeSolver(weights, grid = grid)
+    solver  = HeptadiagonalIterativeSolver(weights, grid = grid, preconditioner_method = nothing)
 
     # Solve Poisson equation
     ϕ_solution = CenterField(grid)
@@ -113,14 +111,13 @@ function run_poisson_equation_test(grid)
     return nothing
 end
 
-@testset "MatrixIterativeSolver" begin
-
+@testset "HeptadiagonalIterativeSolver" begin
     topologies = [(Periodic, Periodic, Flat), (Bounded, Bounded, Flat), (Periodic, Bounded, Flat), (Bounded, Periodic, Flat)]
 
     for arch in archs, topo in topologies
-        @info "  Testing 2D MatrixIterativeSolver [$(typeof(arch)), $topo]..."
-
-        grid = RectilinearGrid(arch, size=(4, 8), extent=(1, 3), topology=topo)
+        @info "Testing 2D HeptadiagonalIterativeSolver [$(typeof(arch)) $topo]..."
+        
+        grid = RectilinearGrid(arch, size=(4, 8), extent=(1, 3), topology = topo)
         run_identity_operator_test(grid)
         run_poisson_equation_test(grid)
     end
@@ -128,7 +125,7 @@ end
     topologies = [(Periodic, Periodic, Periodic), (Bounded, Bounded, Periodic), (Periodic, Bounded, Periodic), (Bounded, Periodic, Bounded)]
 
     for arch in archs, topo in topologies
-        @info "  Testing 3D MatrixIterativeSolver [$(typeof(arch)), $topo]..."
+        @info "Testing 3D HeptadiagonalIterativeSolver [$(typeof(arch)) $topo]..."
         
         grid = RectilinearGrid(arch, size=(4, 8, 6), extent=(1, 3, 4), topology=topo)
         run_identity_operator_test(grid)
@@ -145,17 +142,18 @@ end
                  RectilinearGrid(arch, size = sz, x = (0, 10), y = (0, 10), z = stretched_faces, topology = topo)]
 
         for (grid, stretched_direction) in zip(grids, [:x, :y, :z])
-            @info "  Testing MatrixIterativeSolver [stretched in $stretched_direction, $(typeof(arch))]..."
+            @info "  Testing HeptadiagonalIterativeSolver [stretched in $stretched_direction, $(typeof(arch))]..."
             run_poisson_equation_test(grid)
         end
     end
 
-    @info "  Testing Sparse Approximate Inverse Preconditioner..."
+    @info "  Testing Sparse Approximate Inverse..."
 
     A   = sprand(100, 100, 0.1)
     A   = A + A' + 1I
     A⁻¹ = sparse(inv(Array(A)))
-    M   = spai_preconditioner(A, ε = 0.0, nzrel = size(A, 1))
-
-    @test all(M .≈ A⁻¹)
+    M   = sparse_approximate_inverse(A, ε = 0.0, nzrel = size(A, 1))
+    
+    @test all(Array(M) .≈ A⁻¹)
+    
 end
