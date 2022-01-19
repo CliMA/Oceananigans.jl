@@ -85,6 +85,8 @@ function Field(loc::Tuple,
 
     return Field(loc, grid, data, boundary_conditions, nothing, nothing)
 end
+    
+Field(f::Field) = f # indeed
 
 #####
 ##### Field utils
