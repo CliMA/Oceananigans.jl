@@ -137,7 +137,7 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     wait(device(arch), event)
 end
 
-@inline calc_ab2_tendencies(Gⁿ, G⁻, χ) = (convert(eltype(Gⁿ), (1.5)) + χ) .* Gⁿ - (convert(eltype(Gⁿ), (0.5)) + χ) .* G⁻
+@inline calc_ab2_tendencies(Gⁿ, G⁻, χ) = (convert(eltype(Gⁿ), (1.5)) + χ) * Gⁿ - (convert(eltype(Gⁿ), (0.5)) + χ) * G⁻
 
 """
 Explicitly step forward η in substeps.
@@ -163,9 +163,6 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     Gu = calc_ab2_tendencies(model.timestepper.Gⁿ.u, model.timestepper.G⁻.u, χ)
     Gv = calc_ab2_tendencies(model.timestepper.Gⁿ.v, model.timestepper.G⁻.v, χ)
-
-    #initializing the prognostic variables
-    set!(η, free_surface.state.η̅)
 
     # reset free surface averages
     set_average_to_zero!(state)
@@ -195,6 +192,12 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     # println(mean(interior(state.η)))
     # println(mean(interior(state.η̅)))
     # println("----------")
+
+    # Reset eta for the next timestep
+    # this is the only way in which η̅ is used: as a smoother for the 
+    # substepped η field
+    set!(η, free_surface.state.η̅)
+
     @debug "Split explicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
 
     fill_halo_regions!(η, arch)
