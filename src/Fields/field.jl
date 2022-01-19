@@ -87,6 +87,7 @@ function Field(loc::Tuple,
 end
     
 Field(f::Field) = f # indeed
+Field(z::ZeroField) = z
 
 #####
 ##### Field utils
