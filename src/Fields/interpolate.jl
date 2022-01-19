@@ -15,21 +15,31 @@ end
 
 @inline fractional_x_index(x, ::Face,   grid::RectilinearGrid)     = linear_interpolate_sorted_vector(grid.xᶠᵃᵃ, x)
 @inline fractional_x_index(x, ::Center, grid::RectilinearGrid)     = linear_interpolate_sorted_vector(grid.xᶜᵃᵃ, x)
+@inline fractional_y_index(y, ::Face,   grid::RectilinearGrid)     = linear_interpolate_sorted_vector(grid.yᵃᶠᵃ, y)
+@inline fractional_y_index(y, ::Center, grid::RectilinearGrid)     = linear_interpolate_sorted_vector(grid.yᵃᶜᵃ, y)
 
 @inline fractional_x_index(x, ::Face,   grid::XRegRectilinearGrid) = @inbounds (x - grid.xᶠᵃᵃ[1]) / grid.Δxᶠᵃᵃ
 @inline fractional_x_index(x, ::Center, grid::XRegRectilinearGrid) = @inbounds (x - grid.xᶜᵃᵃ[1]) / grid.Δxᶜᵃᵃ
-
-@inline fractional_y_index(y, ::Face,   grid::RectilinearGrid)     = linear_interpolate_sorted_vector(grid.yᵃᶜᵃ, y)
-@inline fractional_y_index(y, ::Center, grid::RectilinearGrid)     = linear_interpolate_sorted_vector(grid.yᵃᶠᵃ, y)
-
 @inline fractional_y_index(y, ::Face,   grid::YRegRectilinearGrid) = @inbounds (y - grid.yᵃᶠᵃ[1]) / grid.Δyᵃᶠᵃ
 @inline fractional_y_index(y, ::Center, grid::YRegRectilinearGrid) = @inbounds (y - grid.yᵃᶜᵃ[1]) / grid.Δyᵃᶜᵃ
 
-@inline fractional_z_index(z, ::Face,   grid::RectilinearGrid)     = linear_interpolate_sorted_vector(grid.zᵃᵃᶜ, z)
-@inline fractional_z_index(z, ::Center, grid::RectilinearGrid)     = linear_interpolate_sorted_vector(grid.zᵃᵃᶠ, z)
+@inline fractional_x_index(λ, ::Face,   grid::LatitudeLongitudeGrid) = linear_interpolate_sorted_vector(grid.λᶠᵃᵃ, λ)
+@inline fractional_x_index(λ, ::Center, grid::LatitudeLongitudeGrid) = linear_interpolate_sorted_vector(grid.λᶜᵃᵃ, λ)
+@inline fractional_y_index(φ, ::Face,   grid::LatitudeLongitudeGrid) = linear_interpolate_sorted_vector(grid.φᵃᶠᵃ, φ)
+@inline fractional_y_index(φ, ::Center, grid::LatitudeLongitudeGrid) = linear_interpolate_sorted_vector(grid.φᵃᶜᵃ, φ)
 
-@inline fractional_z_index(z, ::Face,   grid::ZRegRectilinearGrid) = @inbounds (z - grid.zᵃᵃᶠ[1]) / grid.Δzᵃᵃᶠ
-@inline fractional_z_index(z, ::Center, grid::ZRegRectilinearGrid) = @inbounds (z - grid.zᵃᵃᶜ[1]) / grid.Δzᵃᵃᶜ
+@inline fractional_x_index(λ, ::Face,   grid::XRegLatLonGrid) = @inbounds (λ - grid.λᶠᵃᵃ[1]) / grid.Δλᶠᵃᵃ
+@inline fractional_x_index(λ, ::Center, grid::XRegLatLonGrid) = @inbounds (λ - grid.λᶜᵃᵃ[1]) / grid.Δλᶜᵃᵃ
+@inline fractional_y_index(φ, ::Face,   grid::YRegLatLonGrid) = @inbounds (φ - grid.φᵃᶠᵃ[1]) / grid.Δφᵃᶠᵃ
+@inline fractional_y_index(φ, ::Center, grid::YRegLatLonGrid) = @inbounds (φ - grid.φᵃᶜᵃ[1]) / grid.Δφᵃᶜᵃ
+
+const ZReg = Union{ZRegRectilinearGrid, ZRegLatLonGrid}
+
+@inline fractional_z_index(z, ::Face,   grid) = linear_interpolate_sorted_vector(grid.zᵃᵃᶠ, z)
+@inline fractional_z_index(z, ::Center, grid) = linear_interpolate_sorted_vector(grid.zᵃᵃᶜ, z)
+
+@inline fractional_z_index(z, ::Face,   grid::ZReg) = @inbounds (z - grid.zᵃᵃᶠ[1]) / grid.Δzᵃᵃᶠ
+@inline fractional_z_index(z, ::Center, grid::ZReg) = @inbounds (z - grid.zᵃᵃᶜ[1]) / grid.Δzᵃᵃᶜ
 
 """
     fractional_indices(x, y, z, loc, grid::RectilinearGrid)
@@ -38,7 +48,7 @@ Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectili
 where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are floats indicating a location between
 grid points.
 """
-@inline function fractional_indices(x, y, z, loc, grid::RectilinearGrid)
+@inline function fractional_indices(x, y, z, loc, grid)
     i = fractional_x_index(x, loc[1], grid)
     j = fractional_y_index(y, loc[2], grid)
     k = fractional_z_index(z, loc[3], grid)
