@@ -177,7 +177,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
         lat_lon_strip_grid_stretched  = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(-180, 180), latitude=(15, 75), z=z_face_generator(), precompute_metrics=true)
 
         grids = (rectilinear_grid, lat_lon_sector_grid, lat_lon_strip_grid, lat_lon_sector_grid_stretched, lat_lon_strip_grid_stretched, vertically_stretched_grid)
-        free_surfaces = (ExplicitFreeSurface(), ImplicitFreeSurface(), ImplicitFreeSurface(solver_method=:MatrixIterativeSolver))
+        free_surfaces = (ExplicitFreeSurface(), ImplicitFreeSurface(), ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver))
 
         for grid in grids
             for free_surface in free_surfaces
