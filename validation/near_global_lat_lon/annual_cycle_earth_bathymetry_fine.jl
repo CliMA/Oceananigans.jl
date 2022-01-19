@@ -130,7 +130,7 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
 ##### Physics and model setup
 #####
 
-νh = 1e+4
+νh = 1e+2
 νz = 1e+1
 κh = 1e+2
 κz = 1e-4
@@ -197,8 +197,8 @@ u_bcs = FieldBoundaryConditions(top = u_wind_stress_bc, bottom = u_bottom_drag_b
 v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_bc)
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 
-free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, preconditioner_method = :AsymptoticInverse,
-                                   preconditioner_settings = (order = 1,))
+free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
+
 buoyancy     = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=0.0), constant_salinity = true)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
@@ -210,6 +210,9 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     buoyancy = buoyancy,
                                     tracers = (:T, ),
                                     closure = (background_diffusivity, convective_adjustment))
+
+
+@show model.free_surface.implicit_step_solver.matrix_iterative_solver.preconditioner_method
 
 #####
 ##### Initial condition:
@@ -235,7 +238,7 @@ wave_propagation_time_scale = min(minimum_Δx, minimum_Δy) / gravity_wave_speed
 if model.free_surface isa ExplicitFreeSurface
     Δt = 10seconds
 else
-    Δt = 8minutes
+    Δt = 6minutes
 end
 
 simulation = Simulation(model, Δt = Δt, stop_time = 30years)
