@@ -1,16 +1,10 @@
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Fields: Field, ZeroField
 
-function BuoyancyField(model)
-    isnothing(model.buoyancy) && return ZeroField()
+buoyancy(model) = buoyancy(model.buoyancy, model)
 
-    grid = model.grid
-    buoyancy = model.buoyancy
-    tracers = model.tracers
-
-    op = KernelFunctionOperation{Center, Center, Center}(buoyancy_perturbation, grid,
-                                                         computed_dependencies=(buoyancy.model, tracers))
-
-    return Field(op)
-end
-
+buoyancy(::Nothing, model) = ZeroField()
+buoyancy(::BuoyancyTracer, model) = model.tracers.b
+buoyancy(b, model) = KernelFunctionOperation{Center, Center, Center}(buoyancy_perturbation, model.grid, computed_dependencies=(b.model, model.tracers))
+ 
+BuoyancyField(model) = Field(buoyancy(model))
