@@ -31,16 +31,16 @@ import Oceananigans.Architectures: arch_array
                                             closure = nothing)
 
         x_ref = arch_array(arch, [3.0  3.0  3.0  3.0  3.0
-                                  3.0  2.0  2.0  2.0  2.0
-                                  3.0  2.0  1.0  1.0  2.0
-                                  3.0  2.0  2.0  2.0  2.0
+                                  3.0  3.0  3.0  3.0  3.0
+                                  3.0  2.0  2.0  2.0  3.0
+                                  3.0  2.0  2.0  2.0  3.0
                                   3.0  3.0  3.0  3.0  3.0]')
 
         y_ref = arch_array(arch, [3.0  3.0  3.0  3.0  3.0
-                                  3.0  2.0  2.0  2.0  3.0
-                                  3.0  2.0  1.0  2.0  3.0
-                                  3.0  2.0  1.0  2.0  3.0
-                                  3.0  2.0  2.0  2.0  3.0]')
+                                  3.0  3.0  2.0  2.0  3.0
+                                  3.0  3.0  2.0  2.0  3.0
+                                  3.0  3.0  2.0  2.0  3.0
+                                  3.0  3.0  3.0  3.0  3.0]')
 
         fs = model.free_surface
         vertically_integrated_lateral_areas = fs.implicit_step_solver.vertically_integrated_lateral_areas
