@@ -199,6 +199,12 @@ end
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
+    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), nothing, nothing, free_surface.gravitational_acceleration,
+        nothing)
+
+# until we can pass Giganto structs into kernels, the following won't work with the ab2 step
+#=
+Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
     SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), Adapt.adapt(to, free_surface.state), Adapt.adapt(to, free_surface.auxiliary), free_surface.gravitational_acceleration,
         Adapt.adapt(to, free_surface.settings))
 
@@ -216,7 +222,7 @@ Adapt.adapt_structure(to, settings::SplitExplicitSettings) =
     SplitExplicitSettings(
         Adapt.adapt(to, settings.substeps), Adapt.adapt(to, settings.velocity_weights), Adapt.adapt(to, settings.free_surface_weights)
     )
-
+=#
 
 #=
     substeps::𝒩
