@@ -4,7 +4,7 @@ using Oceananigans.OutputWriters: fetch_output
 using Oceananigans.Utils: AbstractSchedule, prettytime
 
 import Oceananigans: short_show, run_diagnostic!
-import Oceananigans.Utils: TimeInterval, show_schedule
+import Oceananigans.Utils: TimeInterval
 import Oceananigans.Fields: location
 
 """
