@@ -235,7 +235,7 @@ function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
 
     x = cpu_face_constructor_x(old_grid)
     y = cpu_face_constructor_y(old_grid)
-    z = cpu_face_constructor_z(old_grid)  
+    z = cpu_face_constructor_z(old_grid)
 
     # Remove elements of size and new_halo in Flat directions as expected by grid
     # constructor
@@ -250,7 +250,7 @@ function with_halo(new_halo, old_grid::LatitudeLongitudeGrid)
     return new_grid
 end
 
-function on_architecture(new_arch, old_grid::LatitudeLongitudeGrid)
+function on_architecture(new_arch::AbstractArchitecture, old_grid::LatitudeLongitudeGrid)
     old_properties = (old_grid.Δλᶠᵃᵃ, old_grid.Δλᶜᵃᵃ, old_grid.λᶠᵃᵃ,  old_grid.λᶜᵃᵃ,
                       old_grid.Δφᵃᶠᵃ, old_grid.Δφᵃᶜᵃ, old_grid.φᵃᶠᵃ,  old_grid.φᵃᶜᵃ,
                       old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ,  old_grid.zᵃᵃᶜ,
@@ -397,7 +397,9 @@ end
     end
 end
 
-####### Kernels that precompute the y-metric
+#####
+##### Kernels that precompute the y-metric
+#####
 
 function precompute_Δy_metrics(grid::LatitudeLongitudeGrid, Δyᶠᶜ, Δyᶜᶠ)
     arch = grid.architecture
