@@ -3,11 +3,8 @@ using CUDA: CuArray
 using Oceananigans.Fields: fill_halo_regions!
 using Oceananigans.Architectures: arch_array
 
-import Oceananigans.Operators: Δzᵃᵃᶜ, Δzᶠᶜᶜ, Δzᶜᶠᶜ, Δzᵃᵃᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ
-
 import Oceananigans.TurbulenceClosures: ivd_upper_diagonal,
                                         ivd_lower_diagonal
-
 
 abstract type AbstractGridFittedBoundary <: AbstractImmersedBoundary end
 
