@@ -1,6 +1,4 @@
 
-using Oceananigans.AbstractOperations: GridMetricOperation
-
 const c = Center()
 const f = Face()
 
@@ -21,6 +19,9 @@ const f = Face()
 
      `solid_node(Center(), Center(), Center(), args...) == solid_interface(Center(), Center(), Center(), args...)` as 
      `Center(), Center(), Center()` can be only either fully immersed or not at all 
+
+     `solid_node` is used to assign a value to the z - spacings, i.e., partial cell -> full value of Δz;
+      fully immersed cell -> Δz = 0
 """
 
 @inline solid_node(i, j, k, ibg)                  = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary)
@@ -96,10 +97,10 @@ for metric in (
 end
 
 ###
-### Z - metrics are zeroed inside the immersed boundary
+### z - spacings are zeroed inside the immersed boundary
 ###
 
-metrics = (:ᶠᶜᶠ, :ᶜᶠᶠ, :ᵃᵃᶠ, :ᶠᶜᶜ, :ᶜᶠᶜ, :ᵃᵃᶜ)
+metrics = (:Δzᶠᶜᶠ, :Δzᶜᶠᶠ, :Δzᵃᵃᶠ, :Δzᶠᶜᶜ, :Δzᶜᶠᶜ, :Δzᵃᵃᶜ)
 locations = [(f, c, f), 
              (c, f, f), 
              (c, c, f), 
@@ -108,11 +109,10 @@ locations = [(f, c, f),
              (c, c, c)]
 
 for (metric, loc) in zip(metrics, locations)
-    metric_func = Symbol(:Δz, metric)
-
     @eval begin
-        $metric_func(i, j, k, ibg::ImmersedBoundaryGrid) = ifelse(solid_node($loc..., i, j, k, ibg),
-                                                                  zero(eltype(ibg.grid)),
-                                                                  $metric_func(i, j, k, ibg.grid))
+        import Oceananigans.Operators: $metric
+        $metric(i, j, k, ibg::ImmersedBoundaryGrid) = ifelse(solid_node($loc..., i, j, k, ibg),
+                                                             zero(eltype(ibg.grid)),
+                                                             $metric(i, j, k, ibg.grid))
     end
 end
