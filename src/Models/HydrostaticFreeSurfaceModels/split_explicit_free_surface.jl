@@ -21,7 +21,8 @@ state : (SplitExplicitState). The entire state for split-explicit
 parameters : (NamedTuple). Parameters for timestepping split-explicit
 settings : (SplitExplicitSettings). Settings for the split-explicit scheme
 """
-struct SplitExplicitFreeSurface{𝒮,ℱ,𝒫,ℰ}
+struct SplitExplicitFreeSurface{𝒩,𝒮,ℱ,𝒫,ℰ}
+    η::𝒩
     state::𝒮
     auxiliary::ℱ
     gravitational_acceleration::𝒫
@@ -32,9 +33,10 @@ end
 function SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth,
     substeps = 200)
 
-    return SplitExplicitFreeSurface(nothing, nothing, gravitational_acceleration, SplitExplicitSettings(substeps))
+    return SplitExplicitFreeSurface(nothing, nothing, nothing, gravitational_acceleration, SplitExplicitSettings(substeps))
 end
 
+# The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface{Nothing}, velocities, grid)
     return SplitExplicitFreeSurface(SplitExplicitState(grid),
         SplitExplicitAuxiliary(grid),
@@ -52,22 +54,6 @@ function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
     )
 
     return sefs
-end
-
-# Extend to replicate functionality: TODO delete?
-function Base.getproperty(free_surface::SplitExplicitFreeSurface, sym::Symbol)
-    if sym in fieldnames(SplitExplicitState)
-        @assert free_surface.state isa SplitExplicitState
-        return getfield(free_surface.state, sym)
-    elseif sym in fieldnames(SplitExplicitAuxiliary)
-        @assert free_surface.auxiliary isa SplitExplicitAuxiliary
-        return getfield(free_surface.auxiliary, sym)
-    elseif sym in fieldnames(SplitExplicitSettings)
-        @assert free_surface.settings isa SplitExplicitSettings
-        return getfield(free_surface.settings, sym)
-    else
-        return getfield(free_surface, sym)
-    end
 end
 
 """
@@ -115,8 +101,8 @@ SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞}
 # Members
 `Gᵁ` : (ReducedField). Vertically integrated slow barotropic forcing function for U
 `Gⱽ` : (ReducedField). Vertically integrated slow barotropic forcing function for V
-`Hᶠᶜ`: (ReducedField). Depth at (Face, Center): minimum depth of neighbors
-`Hᶜᶠ`: (ReducedField). Depth at (Center, Face): minimum depth of neighbors
+`Hᶠᶜ`: (ReducedField). Depth at (Face, Center)
+`Hᶜᶠ`: (ReducedField). Depth at (Center, Face)
 `Hᶜᶜ`: (ReducedField). Depth at (Center, Center)
 """
 Base.@kwdef struct SplitExplicitAuxiliary{𝒞ℱ,ℱ𝒞,𝒞𝒞}
@@ -191,20 +177,29 @@ free_surface(free_surface::SplitExplicitFreeSurface) = free_surface(free_surface
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = 0
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::SplitExplicitFreeSurface) = 0
 
-
+# extend constructor
+function SplitExplicitFreeSurface(state::SplitExplicitState, auxiliary::SplitExplicitAuxiliary, gravitational_acceleration::Number, settings::SplitExplicitSettings)
+    return SplitExplicitFreeSurface(state.η, state, auxiliary, gravitational_acceleration, settings)
+end
 # convenience functor
 function (sefs::SplitExplicitFreeSurface)(settings::SplitExplicitSettings)
     return SplitExplicitFreeSurface(sefs.state, sefs.auxiliary, sefs.gravitational_acceleration, settings)
 end
 
-##
+
 #=
-Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
-    SplitExplicitFreeSurface(nothing, nothing, nothing, nothing)
+function Base.getproperty(free_surface::SplitExplicitFreeSurface{S}, sym::Symbol) where {S<:SplitExplicitState}
+    if sym in split_explicit_state_fieldnames
+        return getfield(free_surface.state, sym)
+    else
+        return getfield(free_surface, sym)
+    end
+end
 =#
 
+# Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
-    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.state), Adapt.adapt(to, free_surface.auxiliary), free_surface.gravitational_acceleration,
+    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), Adapt.adapt(to, free_surface.state), Adapt.adapt(to, free_surface.auxiliary), free_surface.gravitational_acceleration,
         Adapt.adapt(to, free_surface.settings))
 
 Adapt.adapt_structure(to, state::SplitExplicitState) =
