@@ -126,4 +126,4 @@ end
 #   0.0 * NaN = NaN
 # false * NaN = 0.0
 
-@inline strong_zero_multiply(a, b) = a * ((a != 0) * b)
+@inline strong_zero_multiply(a::Number, b::Number) = a * ((a != 0) * b)

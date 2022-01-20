@@ -1,6 +1,5 @@
 module Operators
 
-export Ax, Ay, Az, volume
 export Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δzᶠᶜᶜ, Δzᶜᶠᶜ, Δzᶠᶜᶠ, Δzᶜᶠᶠ
 export Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶠᶠᵃ, Δxᶜᶠᵃ
 export Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δyᶜᶠᵃ

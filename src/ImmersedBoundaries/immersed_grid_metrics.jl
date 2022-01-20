@@ -2,6 +2,8 @@
 const c = Center()
 const f = Face()
 
+using Oceananigans.AbstractOperations: GridMetricOperation
+
 """
     `solid_node` returns true only if a location is completely immersed
     `solid_interface` returns true if a location is partially immersed
@@ -22,18 +24,24 @@ const f = Face()
 
      `solid_node` is used to assign a value to the z - spacings, i.e., partial cell -> full value of Δz;
       fully immersed cell -> Δz = 0
+
+      the `is_immersed_boundary` returns true only if the interface has a solid and a fluid side (the actual immersed boundary)
+      which is true only when `solid_node = false` and `solid_interface = true` (as the case of the face at `i` above)
 """
 
-@inline solid_node(i, j, k, ibg)                  = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary)
+# fallback for not-immersed grid
+@inline solid_node(i, j, k, grid)     = false
+@inline solid_node(i, j, k, ibg::IBG) = is_immersed(i, j, k, ibg.grid, ibg.immersed_boundary)
+
 @inline solid_node(LX, LY, LZ, i, j, k, ibg)      = solid_node(i, j, k, ibg)
 @inline solid_interface(LX, LY, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg)
 
-@inline solid_node(::Face, LY, LZ, i, j, k, ibg) = is_immersed(i  , j, k, ibg.grid, ibg.immersed_boundary) &
-                                                   is_immersed(i-1, j, k, ibg.grid, ibg.immersed_boundary)
-@inline solid_node(LX, ::Face, LZ, i, j, k, ibg) = is_immersed(i, j  , k, ibg.grid, ibg.immersed_boundary) &
-                                                   is_immersed(i, j-1, k, ibg.grid, ibg.immersed_boundary)
-@inline solid_node(LX, LY, ::Face, i, j, k, ibg) = is_immersed(i, j,   k, ibg.grid, ibg.immersed_boundary) &
-                                                   is_immersed(i, j, k-1, ibg.grid, ibg.immersed_boundary)
+@inline solid_node(::Face, LY, LZ, i, j, k, ibg) = solid_node(i  , j, k, ibg) &
+                                                   solid_node(i-1, j, k, ibg)
+@inline solid_node(LX, ::Face, LZ, i, j, k, ibg) = solid_node(i, j  , k, ibg) &
+                                                   solid_node(i, j-1, k, ibg)
+@inline solid_node(LX, LY, ::Face, i, j, k, ibg) = solid_node(i, j,   k, ibg) &
+                                                   solid_node(i, j, k-1, ibg)
 
 @inline solid_node(::Face, ::Face, LZ, i, j, k, ibg) = solid_node(c, f, c, i, j, k, ibg) & solid_node(c, f, c, i-1, j, k, ibg)
 @inline solid_node(::Face, LY, ::Face, i, j, k, ibg) = solid_node(c, c, f, i, j, k, ibg) & solid_node(c, c, f, i-1, j, k, ibg)
@@ -41,18 +49,20 @@ const f = Face()
 
 @inline solid_node(::Face, ::Face, ::Face, i, j, k, ibg) = solid_node(c, f, f, i, j, k, ibg) & solid_node(c, f, f, i-1, j, k, ibg)
 
-@inline solid_interface(::Face, LY, LZ, i, j, k, ibg) = is_immersed(i  , j, k, ibg.grid, ibg.immersed_boundary) |
-                                                        is_immersed(i-1, j, k, ibg.grid, ibg.immersed_boundary)
-@inline solid_interface(LX, ::Face, LZ, i, j, k, ibg) = is_immersed(i, j  , k, ibg.grid, ibg.immersed_boundary) |
-                                                        is_immersed(i, j-1, k, ibg.grid, ibg.immersed_boundary)
-@inline solid_interface(LX, LY, ::Face, i, j, k, ibg) = is_immersed(i, j,   k, ibg.grid, ibg.immersed_boundary) |
-                                                        is_immersed(i, j, k-1, ibg.grid, ibg.immersed_boundary)
+@inline solid_interface(::Face, LY, LZ, i, j, k, ibg) = solid_node(i  , j, k, ibg) |
+                                                        solid_node(i-1, j, k, ibg)
+@inline solid_interface(LX, ::Face, LZ, i, j, k, ibg) = solid_node(i, j  , k, ibg) |
+                                                        solid_node(i, j-1, k, ibg)
+@inline solid_interface(LX, LY, ::Face, i, j, k, ibg) = solid_node(i, j,   k, ibg) |
+                                                        solid_node(i, j, k-1, ibg)
 
 @inline solid_interface(::Face, ::Face, LZ, i, j, k, ibg) = solid_interface(c, f, c, i, j, k, ibg) | solid_interface(c, f, c, i-1, j, k, ibg)
 @inline solid_interface(::Face, LY, ::Face, i, j, k, ibg) = solid_interface(c, c, f, i, j, k, ibg) | solid_interface(c, c, f, i-1, j, k, ibg)
 @inline solid_interface(LX, ::Face, ::Face, i, j, k, ibg) = solid_interface(c, f, c, i, j, k, ibg) | solid_interface(c, f, c, i, j, k-1, ibg)
 
 @inline solid_interface(::Face, ::Face, ::Face, i, j, k, ibg) = solid_interface(c, f, f, i, j, k, ibg) | solid_interface(c, f, f, i-1, j, k, ibg)
+
+@inline is_face_immersed_boundary(LX, LY, LZ, i, j, k, ibg) = solid_interface(LX, LY, LZ, i, j, k, ibg) & !solid_node(LX, LY, LZ, i, j, k, ibg)
 
 for metric in (
                :Δxᶜᶜᵃ,
@@ -64,6 +74,13 @@ for metric in (
                :Δyᶜᶠᵃ,
                :Δyᶠᶠᵃ,
                :Δyᶠᶜᵃ,
+
+               :Δzᵃᵃᶜ,
+               :Δzᵃᵃᶠ,
+               :Δzᶠᶜᶜ,
+               :Δzᶜᶠᶜ,
+               :Δzᶠᶜᶠ,
+               :Δzᶜᶠᶠ,
 
                :Azᶜᶜᵃ,
                :Azᶜᶠᵃ,
@@ -97,22 +114,12 @@ for metric in (
 end
 
 ###
-### z - spacings are zeroed inside the immersed boundary
+### metric operations involving immersed boundary are zeroed in the immersed region 
+### (we exclude also the boundaries of the values at the boundaries with `solid_interface`)
 ###
 
-metrics = (:Δzᶠᶜᶠ, :Δzᶜᶠᶠ, :Δzᵃᵃᶠ, :Δzᶠᶜᶜ, :Δzᶜᶠᶜ, :Δzᵃᵃᶜ)
-locations = [(f, c, f), 
-             (c, f, f), 
-             (c, c, f), 
-             (f, c, c), 
-             (c, f, c), 
-             (c, c, c)]
-
-for (metric, loc) in zip(metrics, locations)
-    @eval begin
-        import Oceananigans.Operators: $metric
-        $metric(i, j, k, ibg::ImmersedBoundaryGrid) = ifelse(solid_node($loc..., i, j, k, ibg),
-                                                             zero(eltype(ibg.grid)),
-                                                             $metric(i, j, k, ibg.grid))
-    end
+@inline function Base.getindex(gm::GridMetricOperation{LX, LY, LZ, G}, i, j, k) where {LX, LY, LZ, G<:ImmersedBoundaryGrid}
+    return ifelse(solid_interface(LX(), LY(), LZ(), i, j, k, gm.grid), 
+                  zero(eltype(gm.grid.grid)), 
+                  gm.metric(i, j, k, gm.grid.grid))
 end
