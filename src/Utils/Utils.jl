@@ -14,8 +14,6 @@ export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSch
 
 import CUDA  # To avoid name conflicts
 
-import Oceananigans: short_show
-
 #####
 ##### Misc. small utils
 #####
@@ -23,13 +21,11 @@ import Oceananigans: short_show
 instantiate(x) = x
 instantiate(X::DataType) = X()
 
-short_show(a) = string(a) # fallback
-short_show(f::Function) = string(Symbol(f))
-
 #####
 ##### Include utils
 #####
 
+include("prettysummary.jl")
 include("kernel_launching.jl")
 include("cell_advection_timescale.jl")
 include("pretty_time.jl")

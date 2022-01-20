@@ -6,7 +6,6 @@ using KernelAbstractions: @kernel, @index
 using Oceananigans.Fields: FieldStatus, show_status, reduced_dimensions
 using Oceananigans.Utils: launch!
 
-import Oceananigans: short_show
 import Oceananigans.Fields: Field, compute!
 
 const ComputedField = Field{<:Any, <:Any, <:Any, <:AbstractOperation}
@@ -77,12 +76,13 @@ end
     @inbounds data[i, j, k] = operand[i, j, k]
 end
 
-short_show(field::ComputedField) = string("Field located at ", show_location(field), " computed from ", short_show(field.operand))
+Base.summary(field::ComputedField) =
+    string("Field located at ", show_location(field), " computed from ", summary(field.operand))
 
 Base.show(io::IO, field::ComputedField) =
-    print(io, "$(short_show(field))\n",
+    print(io, "$(summary(field))\n",
           "├── data: $(typeof(field.data)), size: $(size(field))\n",
-          "├── grid: $(short_show(field.grid))\n",
-          "├── operand: $(short_show(field.operand))\n",
-          "└── status: $(show_status(field.status))")
+          "├── grid: $(summary(field.grid))\n",
+          "├── operand: $(summary(field.operand))\n",
+          "└── status: $(summary(field.status))")
 

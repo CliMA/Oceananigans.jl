@@ -335,7 +335,7 @@ z_domain(grid::RectilinearGrid) = domain(topology(grid, 3), grid.Nz, grid.záµƒáµ
 # is specifying the floating point type.
 RectilinearGrid(FT::DataType; kwargs...) = RectilinearGrid(CPU(), FT; kwargs...)
 
-short_show(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
+Base.summary(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     "RectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
 
 function domain_string(grid::RectilinearGrid)
