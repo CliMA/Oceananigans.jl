@@ -1,7 +1,6 @@
 pushfirst!(LOAD_PATH, joinpath(@__DIR__, ".."))
 
 using Oceananigans
-using Oceananigans: short_show
 using Oceananigans.TimeSteppers: time_step!
 using BenchmarkTools
 
@@ -34,7 +33,7 @@ for arch in (CPU(), GPU())
         
         time_step!(model, 1e-6) # warmup
 
-        @info "Benchmarking $arch model with $(short_show(grid))..."
+        @info "Benchmarking $arch model with $(summary(grid))..."
         @btime ten_steps!($model)
     end
 end
