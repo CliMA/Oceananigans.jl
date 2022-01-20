@@ -112,18 +112,11 @@ end
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
             !definitely_diagonally_dominant && break
-            ϕ[i, j, k] = (fᵏ - strong_zero_multiply(aᵏ⁻¹, ϕ[i, j, k-1])) / β
+            ϕ[i, j, k] = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
         end
 
         @unroll for k = Nz-1:-1:1
-            ϕ[i, j, k] -= strong_zero_multiply(t[i, j, k+1], ϕ[i, j, k+1])
+            ϕ[i, j, k] -= t[i, j, k+1] * ϕ[i, j, k+1]
         end
     end
 end
-
-# To delete NaNs in the immersed boundary when the matrix element is 0
-# Remember! in Julia 0.0 is a weak zero and false is a strong zero, i.e.
-#   0.0 * NaN = NaN
-# false * NaN = 0.0
-
-@inline strong_zero_multiply(a::Number, b::Number) = a * ((a != 0) * b)
