@@ -40,6 +40,8 @@ validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing      
 validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
 
+validate_boundary_conditions(loc, grid, ::Missing) = nothing
+
 function validate_boundary_conditions(loc, grid, bcs)
     sides = (:east, :west, :north, :south, :bottom, :top)
     directions = (1, 1, 2, 2, 3, 3)
