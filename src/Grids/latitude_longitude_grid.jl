@@ -182,7 +182,7 @@ end
 function Base.summary(grid::LatitudeLongitudeGrid)
     FT = eltype(grid)
     TX, TY, TZ = topology(grid)
-    metric_computation = isnothing(g.Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
+    metric_computation = isnothing(grid.Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
 
     return string(size_summary(size(grid)),
                   " LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
