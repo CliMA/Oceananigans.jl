@@ -14,7 +14,7 @@ include("immersed_conformal_cubed_sphere_grid.jl")
 ##### Validating cubed sphere stuff
 #####
 
-import Oceananigans.Fields: validate_field_data
+import Oceananigans.Fields: validate_field_data, validate_boundary_conditions
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_vertical_velocity_boundary_conditions
 
 function validate_field_data(loc, data, grid::ConformalCubedSphereGrid)
@@ -25,6 +25,9 @@ function validate_field_data(loc, data, grid::ConformalCubedSphereGrid)
 
     return nothing
 end
+
+validate_boundary_conditions(loc, grid::ConformalCubedSphereGrid, bcs::CubedSphereFaces) =
+    [validate_boundary_conditions(loc, get_face(grid, face), get_face(bcs, face)) for face = 1:length(bcs)]
 
 validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
     [validate_vertical_velocity_boundary_conditions(w_face) for w_face in faces(w)]
