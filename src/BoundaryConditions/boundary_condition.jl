@@ -119,7 +119,7 @@ validate_boundary_condition_topology(bc, topo, side) = nothing
 
 validate_boundary_condition_architecture(bc, arch, side) = nothing
 
-validate_boundary_condition_architecture(bc::BoundaryCondition, arch, side)
+validate_boundary_condition_architecture(bc::BoundaryCondition, arch, side) =
     validate_boundary_condition_architecture(bc.condition, arch, bc, side)
 
 validate_boundary_condition_architecture(::Array, ::CPU, bc, side) = nothing
