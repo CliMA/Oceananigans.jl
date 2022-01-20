@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 @testset "Field broadcasting" begin
     @info "  Testing broadcasting with fields..."
 
@@ -61,18 +63,32 @@
         ##### Broadcasting with ReducedField
         #####
         
-        r, p, q = [Field{Center, Center, Nothing}(grid) for i = 1:3]
+        for loc in [
+                    (Nothing, Center, Center),
+                    (Center, Nothing, Center),
+                    (Center, Center, Nothing),
+                    (Center, Nothing, Nothing),
+                    (Nothing, Center, Nothing),
+                    (Nothing, Nothing, Center),
+                    (Nothing, Nothing, Nothing),
+                   ]
 
-        r .= 2 
-        @test all(r .== 2) 
+            @info "    Testing broadcasting to location $loc..."
 
-        p .= 3 
+            r, p, q = [Field(loc, grid) for i = 1:3]
 
-        q .= r .* p
-        @test all(q .== 6) 
+            r .= 2 
+            @test all(r .== 2) 
 
-        q .= r .* p .+ 1
-        @test all(q .== 7) 
+            p .= 3 
+
+            q .= r .* p
+            @test all(q .== 6) 
+
+            q .= r .* p .+ 1
+            @test all(q .== 7) 
+        end
+
 
         #####
         ##### Broadcasting with arrays
