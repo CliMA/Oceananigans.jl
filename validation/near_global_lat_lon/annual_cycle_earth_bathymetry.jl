@@ -6,7 +6,7 @@ using Oceananigans.Units
 
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, is_immersed_boundary
 using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity, VerticallyImplicitTimeDiscretization
 using CUDA: @allowscalar
 using Oceananigans.Operators: Δzᵃᵃᶜ
@@ -283,73 +283,73 @@ run!(simulation)
 #### Visualize solution
 ####
 
-using GLMakie
+# using GLMakie
 
-surface_file = jldopen(output_prefix * "_surface.jld2")
-bottom_file = jldopen(output_prefix * "_bottom.jld2")
+# surface_file = jldopen(output_prefix * "_surface.jld2")
+# bottom_file = jldopen(output_prefix * "_bottom.jld2")
 
-iterations = parse.(Int, keys(surface_file["timeseries/t"]))
+# iterations = parse.(Int, keys(surface_file["timeseries/t"]))
 
-iter = Node(0)
+# iter = Node(0)
 
-ηi(iter) = surface_file["timeseries/η/" * string(iter)][:, :, 1]
-ui(iter) = surface_file["timeseries/u/" * string(iter)][:, :, 1]
-vi(iter) = surface_file["timeseries/v/" * string(iter)][:, :, 1]
-Ti(iter) = surface_file["timeseries/T/" * string(iter)][:, :, 1]
-ti(iter) = string(surface_file["timeseries/t/" * string(iter)] / day)
+# ηi(iter) = surface_file["timeseries/η/" * string(iter)][:, :, 1]
+# ui(iter) = surface_file["timeseries/u/" * string(iter)][:, :, 1]
+# vi(iter) = surface_file["timeseries/v/" * string(iter)][:, :, 1]
+# Ti(iter) = surface_file["timeseries/T/" * string(iter)][:, :, 1]
+# ti(iter) = string(surface_file["timeseries/t/" * string(iter)] / day)
 
-ubi(iter) = bottom_file["timeseries/u/" * string(iter)][:, :, 1]
-vbi(iter) = bottom_file["timeseries/v/" * string(iter)][:, :, 1]
+# ubi(iter) = bottom_file["timeseries/u/" * string(iter)][:, :, 1]
+# vbi(iter) = bottom_file["timeseries/v/" * string(iter)][:, :, 1]
 
-η = @lift ηi($iter) 
-u = @lift ui($iter)
-v = @lift vi($iter)
-T = @lift Ti($iter)
+# η = @lift ηi($iter) 
+# u = @lift ui($iter)
+# v = @lift vi($iter)
+# T = @lift Ti($iter)
 
-ub = @lift ubi($iter)
-vb = @lift vbi($iter)
+# ub = @lift ubi($iter)
+# vb = @lift vbi($iter)
 
-max_η = 4
-min_η = - max_η
-max_u = 0.2
-min_u = - max_u
-max_T = 32
-min_T = 0
+# max_η = 4
+# min_η = - max_η
+# max_u = 0.2
+# min_u = - max_u
+# max_T = 32
+# min_T = 0
 
-fig = Figure(resolution = (1200, 900))
+# fig = Figure(resolution = (1200, 900))
 
-ax = Axis(fig[1, 1], title="Free surface displacement (m)")
-hm = GLMakie.heatmap!(ax, η, colorrange=(min_η, max_η), colormap=:balance)
-cb = Colorbar(fig[1, 2], hm)
+# ax = Axis(fig[1, 1], title="Free surface displacement (m)")
+# hm = GLMakie.heatmap!(ax, η, colorrange=(min_η, max_η), colormap=:balance)
+# cb = Colorbar(fig[1, 2], hm)
 
-ax = Axis(fig[2, 1], title="Sea surface temperature (ᵒC)")
-hm = GLMakie.heatmap!(ax, T, colorrange=(min_T, max_T), colormap=:thermal)
-cb = Colorbar(fig[2, 2], hm)
+# ax = Axis(fig[2, 1], title="Sea surface temperature (ᵒC)")
+# hm = GLMakie.heatmap!(ax, T, colorrange=(min_T, max_T), colormap=:thermal)
+# cb = Colorbar(fig[2, 2], hm)
 
-ax = Axis(fig[1, 3], title="East-west surface velocity (m s⁻¹)")
-hm = GLMakie.heatmap!(ax, u, colorrange=(min_u, max_u), colormap=:balance)
-cb = Colorbar(fig[1, 4], hm)
+# ax = Axis(fig[1, 3], title="East-west surface velocity (m s⁻¹)")
+# hm = GLMakie.heatmap!(ax, u, colorrange=(min_u, max_u), colormap=:balance)
+# cb = Colorbar(fig[1, 4], hm)
 
-ax = Axis(fig[2, 3], title="North-south surface velocity (m s⁻¹)")
-hm = GLMakie.heatmap!(ax, v, colorrange=(min_u, max_u), colormap=:balance)
-cb = Colorbar(fig[2, 4], hm)
+# ax = Axis(fig[2, 3], title="North-south surface velocity (m s⁻¹)")
+# hm = GLMakie.heatmap!(ax, v, colorrange=(min_u, max_u), colormap=:balance)
+# cb = Colorbar(fig[2, 4], hm)
 
-ax = Axis(fig[3, 1], title="East-west bottom velocity (m s⁻¹)")
-hm = GLMakie.heatmap!(ax, ub, colorrange=(min_u, max_u), colormap=:balance)
-cb = GLMakie.Colorbar(fig[3, 2], hm)
+# ax = Axis(fig[3, 1], title="East-west bottom velocity (m s⁻¹)")
+# hm = GLMakie.heatmap!(ax, ub, colorrange=(min_u, max_u), colormap=:balance)
+# cb = GLMakie.Colorbar(fig[3, 2], hm)
 
-ax = Axis(fig[3, 3], title="North-south bottom velocity (m s⁻¹)")
-hm = GLMakie.heatmap!(ax, vb, colorrange=(min_u, max_u), colormap=:balance)
-cb = Colorbar(fig[3, 4], hm)
+# ax = Axis(fig[3, 3], title="North-south bottom velocity (m s⁻¹)")
+# hm = GLMakie.heatmap!(ax, vb, colorrange=(min_u, max_u), colormap=:balance)
+# cb = Colorbar(fig[3, 4], hm)
 
-title_str = @lift "Earth day = " * ti($iter)
-ax_t = fig[0, :] = Label(fig, title_str)
+# title_str = @lift "Earth day = " * ti($iter)
+# ax_t = fig[0, :] = Label(fig, title_str)
 
-GLMakie.record(fig, output_prefix * ".mp4", iterations, framerate=8) do i
-    @info "Plotting iteration $i of $(iterations[end])..."
-    iter[] = i
-end
+# GLMakie.record(fig, output_prefix * ".mp4", iterations, framerate=8) do i
+#     @info "Plotting iteration $i of $(iterations[end])..."
+#     iter[] = i
+# end
 
-display(fig)
+# display(fig)
 
-close(surface_file)
+# close(surface_file)

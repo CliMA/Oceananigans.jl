@@ -13,6 +13,11 @@ using Oceananigans.Grids: XRegRectilinearGrid, YRegRectilinearGrid, ZRegRectilin
     return (y₂ - y₁) / (x₂ - x₁) * (x - x₁) + y₁
 end
 
+####
+#### Disclaimer! interpolation on LatitudeLongitudeGrid assumes a thin shell (i.e. no curvature effects when interpolating)
+#### Use other methods if a more accurate interpolation is required
+####
+
 @inline fractional_x_index(x, ::Face,   grid::RectilinearGrid)     = linear_interpolate_sorted_vector(grid.xᶠᵃᵃ, x)
 @inline fractional_x_index(x, ::Center, grid::RectilinearGrid)     = linear_interpolate_sorted_vector(grid.xᶜᵃᵃ, x)
 @inline fractional_y_index(y, ::Face,   grid::RectilinearGrid)     = linear_interpolate_sorted_vector(grid.yᵃᶠᵃ, y)
