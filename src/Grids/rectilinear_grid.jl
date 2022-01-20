@@ -162,15 +162,10 @@ Examples
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(32, 32, 32), extent=(1, 2, 3))
-RectilinearGrid{Float64, Periodic, Periodic, Bounded}
-             architecture: CPU()
-                   domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [-3.0, 0.0]
-                 topology: (Periodic, Periodic, Bounded)
-        size (Nx, Ny, Nz): (32, 32, 32)
-        halo (Hx, Hy, Hz): (1, 1, 1)
-             spacing in x: Regular, with spacing 0.03125
-             spacing in y: Regular, with spacing 0.0625
-             spacing in z: Regular, with spacing 0.09375
+32×32×16 RectilinearGrid{Float32} on CPU with 1×1×1 halo
+├── Periodic x ∈ [0.0, 8.0)          regularly spaced with Δx=0.25
+├── Periodic y ∈ [-10.0, 10.0)       regularly spaced with Δy=0.625
+└── Bounded  z ∈ [-3.14159, 3.14159] regularly spaced with Δz=0.392699
 ```
 
 * A default grid with `Float32` type:
@@ -179,15 +174,10 @@ RectilinearGrid{Float64, Periodic, Periodic, Bounded}
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(Float32; size=(32, 32, 16), x=(0, 8), y=(-10, 10), z=(-π, π))
-RectilinearGrid{Float32, Periodic, Periodic, Bounded} 
-             architecture: CPU()
-                   domain: x ∈ [0.0, 8.0], y ∈ [-10.0, 10.0], z ∈ [-3.1415927, 3.1415927]
-                 topology: (Periodic, Periodic, Bounded)
-        size (Nx, Ny, Nz): (32, 32, 16)
-        halo (Hx, Hy, Hz): (1, 1, 1)
-             spacing in x: Regular, with spacing 0.25
-             spacing in y: Regular, with spacing 0.625
-             spacing in z: Regular, with spacing 0.3926991
+32×32×16 RectilinearGrid{Float32} on CPU with 1×1×1 halo
+├── Periodic x ∈ [0.0, 8.0)          regularly spaced with Δx=0.25
+├── Periodic y ∈ [-10.0, 10.0)       regularly spaced with Δy=0.625
+└── Bounded  z ∈ [-3.14159, 3.14159] regularly spaced with Δz=0.392699
 ```
 
 * A two-dimenisional, horizontally-periodic grid:
@@ -196,15 +186,10 @@ RectilinearGrid{Float32, Periodic, Periodic, Bounded}
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(32, 32), extent=(2π, 4π), topology=(Periodic, Periodic, Flat))
-RectilinearGrid{Float64, Periodic, Periodic, Flat} 
-             architecture: CPU()
-                   domain: x ∈ [0.0, 6.283185307179586], y ∈ [0.0, 12.566370614359172], z ∈ [1.0, 1.0]
-                 topology: (Periodic, Periodic, Flat)
-        size (Nx, Ny, Nz): (32, 32, 1)
-        halo (Hx, Hy, Hz): (1, 1, 0)
-             spacing in x: Regular, with spacing 0.19634954084936207
-             spacing in y: Regular, with spacing 0.39269908169872414
-             spacing in z: Flattened
+32×32×1 RectilinearGrid{Float64} on CPU with 1×1×0 halo
+├── Periodic x ∈ [0.0, 6.28319) regularly spaced with Δx=0.19635
+├── Periodic y ∈ [0.0, 12.5664) regularly spaced with Δy=0.392699
+└── Flat z
 ```
 
 * A one-dimensional "column" grid:
@@ -213,15 +198,10 @@ RectilinearGrid{Float64, Periodic, Periodic, Flat}
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=256, z=(-128, 0), topology=(Flat, Flat, Bounded))
-RectilinearGrid{Float64, Flat, Flat, Bounded}
-             architecture: CPU()
-                   domain: x ∈ [1.0, 1.0], y ∈ [1.0, 1.0], z ∈ [-128.0, 0.0]
-                 topology: (Flat, Flat, Bounded)
-        size (Nx, Ny, Nz): (1, 1, 256)
-        halo (Hx, Hy, Hz): (0, 0, 1)
-             spacing in x: Flattened
-             spacing in y: Flattened
-             spacing in z: Regular, with spacing 0.5
+1×1×256 RectilinearGrid{Float64} on CPU with 0×0×1 halo
+├── Flat x
+├── Flat y
+└── Bounded  z ∈ [-128.0, 0.0] regularly spaced with Δz=0.5
 ```
 
 * A horizontally-periodic regular grid with cell interfaces stretched hyperbolically near the top:
@@ -239,19 +219,14 @@ julia> hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / ta
 
 julia> grid = RectilinearGrid(size = (32, 32, Nz), x = (0, 64),
                               y = (0, 64), z = hyperbolically_spaced_faces)
-RectilinearGrid{Float64, Periodic, Periodic, Bounded}
-             architecture: CPU()
-                   domain: x ∈ [0.0, 64.0], y ∈ [0.0, 64.0], z ∈ [-32.0, -0.0]
-                 topology: (Periodic, Periodic, Bounded)
-        size (Nx, Ny, Nz): (32, 32, 24)
-        halo (Hx, Hy, Hz): (1, 1, 1)
-             spacing in x: Regular, with spacing 2.0
-             spacing in y: Regular, with spacing 2.0
-             spacing in z: Stretched, with spacing min=0.682695, max=1.830909
+32×32×24 RectilinearGrid{Float64} on CPU with 1×1×1 halo
+├── Periodic x ∈ [0.0, 64.0)   regularly spaced with Δx=2.0
+├── Periodic y ∈ [0.0, 64.0)   regularly spaced with Δy=2.0
+└── Bounded  z ∈ [-32.0, -0.0] variably spaced with min(Δz)=0.682695, max(Δz)=1.83091
 ```
 
-* A three-dimensional grid with regular spacing in x, cell interfaces that are closely spaced
-  close to the boundaries in y (closely mimicing the Chebychev nodes) and cell interfaces
+* A three-dimensional grid with regular spacing in x,
+  cell interfaces at Chebyshev nodes in y, and cell interfaces
   stretched in z hyperbolically near the top:
 
 ```jldoctest
@@ -261,7 +236,7 @@ julia> Nx, Ny, Nz = 32, 30, 24;
 
 julia> Lx, Ly, Lz = 200, 100, 32; # (m)
 
-julia> chebychev_like_spaced_faces(j) = - Ly/2 * cos(π * (j - 1) / Ny);
+julia> chebychev_nodes(j) = - Ly/2 * cos(π * (j - 1) / Ny);
 
 julia> σ = 1.1; # stretching factor
 
@@ -270,17 +245,12 @@ julia> hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / ta
 julia> grid = RectilinearGrid(size = (Nx, Ny, Nz),
                               topology=(Periodic, Bounded, Bounded),
                               x = (0, Lx),
-                              y = chebychev_like_spaced_faces,
+                              y = chebychev_nodes,
                               z = hyperbolically_spaced_faces)
-RectilinearGrid{Float64, Periodic, Bounded, Bounded}
-             architecture: CPU()
-                   domain: x ∈ [0.0, 200.0], y ∈ [-50.0, 50.0], z ∈ [-32.0, -0.0]
-                 topology: (Periodic, Bounded, Bounded)
-        size (Nx, Ny, Nz): (32, 30, 24)
-        halo (Hx, Hy, Hz): (1, 1, 1)
-             spacing in x: Regular, with spacing 6.25
-             spacing in y: Stretched, with spacing min=0.273905, max=5.226423
-             spacing in z: Stretched, with spacing min=0.682695, max=1.830909
+32×30×24 RectilinearGrid{Float64} on CPU with 1×1×1 halo
+├── Periodic x ∈ [0.0, 200.0)  regularly spaced with Δx=6.25
+├── Bounded  y ∈ [-50.0, 50.0] variably spaced with min(Δy)=0.273905, max(Δy)=5.22642
+└── Bounded  z ∈ [-32.0, -0.0] variably spaced with min(Δz)=0.682695, max(Δz)=1.83091
 ```
 """
 function RectilinearGrid(architecture::AbstractArchitecture = CPU(),
