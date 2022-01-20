@@ -82,12 +82,43 @@ const HRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, 
 regular_dimensions(::ZRegLatLonGrid) = tuple(3)
 
 """
+    LatitudeLongitudeGrid([architecture = CPU(), FT = Float64];
+                          size,
+                          latitude,
+                          longitude,
+                          z,
+                          radius = R_Earth,
+                          precompute_metrics = false,
+                          halo = (1, 1, 1))
 
-latitude, longitude and z can be a 2-tuple that specifies the end of the domain (see RegularRectilinearDomain)
-or an array or function that specifies the faces (see VerticallyStretchedRectilinearGrid)
+Creates a `LatitudeLongitudeGrid` with `size = (Nx, Ny, Nz)` grid points.
 
+Positional arguments
+=================
+
+- `architecture`: Specifies whether arrays of coordinates and spacings are stored
+                  on the CPU or GPU. Default: `architecture = CPU()`.
+
+- `FT` : Floating point data type. Default: `FT = Float64`.
+
+Keyword arguments
+=================
+
+- `size` (required): A 3-tuple prescribing the number of grid points each direction.
+
+- `latitude`, `longitude`, `z`: Each is either a
+                                (i) 2-tuple that specify the end points of the domain,
+                                (ii) one-dimensional array specifying the cell interface locations or
+                                (iii) a single-argument function that takes an index and returns
+                                      cell interface location.
+
+- `precompute_metrics`: Boolean specifying whether to precompute horizontal spacings and areas.
+                        If `!precompute_metrics` (the default), horizontal spacings and areas
+                        are computed on-the-fly during a simulation.
+
+- `halo`: A 3-tuple of integers specifying the size of the halo region of cells surrounding
+          the physical interior.
 """
-
 function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                FT::DataType = Float64;
                                precompute_metrics = false,

@@ -1,10 +1,3 @@
-"""
-    RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: AbstractRectilinearGrid{FT, TX, TY, TZ}
-
-A rectilinear grid with with either constant or varying grid spacings between cell centers and cell faces
-in all directions. Grid elements of type `FT`, topology `{TX, TY, TZ}`, grid spacings of type `{FX, FY, FZ}`
-and coordinates in each direction of type `{VX, VY, VZ}`. 
-"""
 struct RectilinearGrid{FT, TX, TY, TZ, FX, FY, FZ, VX, VY, VZ, Arch} <: AbstractRectilinearGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
     Nx :: Int
