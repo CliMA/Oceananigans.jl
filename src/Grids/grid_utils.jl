@@ -353,8 +353,24 @@ end
 
 struct ZDirection end
 
-@inline show_coordinate(Δ::Number, T)            = "Regular, with spacing $Δ"
-@inline show_coordinate(Δ::Number, ::Type{Flat}) = "Flattened"
-@inline show_coordinate(Δ::AbstractVector, T)    = @sprintf("Stretched, with spacing min=%.6f, max=%.6f",
-                                                            minimum(parent(Δ)), maximum(parent(Δ)))
+#####
+##### Show utils
+#####
+
+size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
+
+dimension_summary(topo::Flat, left, right, spacing, name) = "Flat $name"
+
+function dimension_summary(topo, left, right, spacing, name)
+    interval = topo isa Periodic ? ")" : "]"
+    topo_string = topo isa Periodic ? "Periodic " :
+                                      "Bounded  "
+    return string(topo_string,
+                  name, " ∈ [", left, ", ", right, interval, " ",
+                  coordinate_summary(spacing, name))
+end
+
+coordinate_summary(Δ::Number, name)         = @sprintf("with Δ%s = %s", name, Δ)
+coordinate_summary(Δ::AbstractVector, name) = @sprintf("with min(Δ%s) = %.6f, max(Δ%s) = %.6f",
+                                                       name, minimum(parent(Δ)), name, maximum(parent(Δ)))
 

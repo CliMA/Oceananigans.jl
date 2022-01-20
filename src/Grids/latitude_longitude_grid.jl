@@ -179,30 +179,29 @@ function validate_lat_lon_grid_args(latitude, longitude, size, halo)
     return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topo
 end
 
-function domain_string(grid::LatitudeLongitudeGrid)
+function Base.summary(grid::LatitudeLongitudeGrid)
+    FT = eltype(grid)
+    TX, TY, TZ = topology(grid)
+    metric_computation = isnothing(g.Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
+
+    return string(size_summary(size(grid)),
+                  " LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+                  " with ", size_summary(halo_size(grid)), " halo",
+                  " and ", metric_computation)
+end
+
+function Base.show(io::IO, grid::LatitudeLongitudeGrid)
+    TX, TY, TZ = topology(grid)
+
     λ₁, λ₂ = domain(topology(grid, 1), grid.Nx, grid.λᶠᵃᵃ)
     φ₁, φ₂ = domain(topology(grid, 2), grid.Ny, grid.φᵃᶠᵃ)
     z₁, z₂ = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
-    return "longitude λ ∈ [$λ₁, $λ₂], latitude ∈ [$φ₁, $φ₂], z ∈ [$z₁, $z₂]"
-end
 
-function show(io::IO, g::LatitudeLongitudeGrid)
-    FT = eltype(g)
-    TX, TY, TZ = topology(g)
-
-    show_metrics = isnothing(g.Δxᶠᶜᵃ) ? "metrics are computed on the fly" : 
-                                        "metrics are pre-computed"
-
-    return print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} \n",
-                     "             architecture: $(g.architecture)\n",
-                     "                   domain: $(domain_string(g))\n",
-                     "                 topology: ", (TX, TY, TZ), '\n',
-                     "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
-                     "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
-                     "             spacing in λ: ", show_coordinate(g.Δλᶜᵃᵃ, TX), '\n',
-                     "             spacing in φ: ", show_coordinate(g.Δφᵃᶜᵃ, TY), '\n',
-                     "             spacing in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ), '\n',
-                     show_metrics)
+    print(io,
+          summary(grid), '\n',
+          "    ", dimension_summary(TX(), λ₁, λ₂, grid.Δλᶜᵃᵃ, "λ"), '\n',  
+          "    ", dimension_summary(TY(), φ₁, φ₂, grid.Δφᵃᶜᵃ, "φ"), '\n',  
+          "    ", dimension_summary(TZ(), z₁, z₂, grid.Δzᵃᵃᶜ, "z"))
 end
 
 # Node by node

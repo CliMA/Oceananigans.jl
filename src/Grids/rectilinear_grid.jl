@@ -335,26 +335,26 @@ z_domain(grid::RectilinearGrid) = domain(topology(grid, 3), grid.Nz, grid.zᵃ�
 # is specifying the floating point type.
 RectilinearGrid(FT::DataType; kwargs...) = RectilinearGrid(CPU(), FT; kwargs...)
 
-Base.summary(grid::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
-    "RectilinearGrid{$FT, $TX, $TY, $TZ}(Nx=$(grid.Nx), Ny=$(grid.Ny), Nz=$(grid.Nz))"
+function Base.summary(grid::RectilinearGrid)
+    FT = eltype(grid)
 
-function domain_string(grid::RectilinearGrid)
+    return string(size_summary(size(grid)),
+                  " RectilinearGrid{$FT} on ", summary(architecture(grid)),
+                  " with ", size_summary(halo_size(grid)), " halo")
+end
+
+function Base.show(io::IO, grid::RectilinearGrid)
+    TX, TY, TZ = topology(grid)
+
     x₁, x₂ = domain(topology(grid, 1), grid.Nx, grid.xᶠᵃᵃ)
     y₁, y₂ = domain(topology(grid, 2), grid.Ny, grid.yᵃᶠᵃ)
     z₁, z₂ = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
-    return "x ∈ [$x₁, $x₂], y ∈ [$y₁, $y₂], z ∈ [$z₁, $z₂]"
-end
 
-function show(io::IO, g::RectilinearGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    print(io, "RectilinearGrid{$FT, $TX, $TY, $TZ}\n",
-              "             architecture: $(g.architecture)\n",
-              "                   domain: $(domain_string(g))\n",
-              "                 topology: ", (TX, TY, TZ), '\n',
-              "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
-              "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
-              "             spacing in x: ", show_coordinate(g.Δxᶜᵃᵃ, TX), '\n',
-              "             spacing in y: ", show_coordinate(g.Δyᵃᶜᵃ, TY), '\n',
-              "             spacing in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ))
+    print(io,
+          summary(grid), '\n',
+          "    ", dimension_summary(TX(), x₁, x₂, grid.Δxᶜᵃᵃ, "x"), '\n',  
+          "    ", dimension_summary(TY(), y₁, y₂, grid.Δyᵃᶜᵃ, "y"), '\n',  
+          "    ", dimension_summary(TZ(), z₁, z₂, grid.Δzᵃᵃᶜ, "z"))
 end
 
 #####
