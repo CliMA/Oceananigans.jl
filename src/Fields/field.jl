@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: device_event
-using Oceananigans.BoundaryConditions: FBC, VBC, GBC
+using Oceananigans.BoundaryConditions: OBC
 
 using Adapt
 using KernelAbstractions: @kernel, @index
