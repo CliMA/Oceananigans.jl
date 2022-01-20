@@ -1,30 +1,52 @@
+using Printf
+using Oceananigans.Grids: size_summary, scalar_summary
+
 location_str(::Type{Face})    = "Face"
 location_str(::Type{Center})  = "Center"
 location_str(::Type{Nothing}) = "⋅"
-
 show_location(LX, LY, LZ) = "($(location_str(LX)), $(location_str(LY)), $(location_str(LZ)))"
+show_location(field::AbstractField) = show_location(location(field)...)
 
-show_location(field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = show_location(LX, LY, LZ)
+function Base.summary(field::Field)
+    LX, LY, LZ = location(field)
+    prefix = string(size_summary(size(field)), " Field{$LX, $LY, $LZ}")
 
-Base.summary(m::Missing) = "$m"
+    grid_name = typeof(field.grid).name.wrapper
+    reduced_dims = reduced_dimensions(field)
 
-Base.summary(field::AbstractField) = string(typeof(field).name.wrapper, " located at ", show_location(field))
+    suffix = reduced_dims === () ?
+        string(" on ", grid_name, " on ", summary(architecture(field))) :
+        string(" reduced over dims = ", reduced_dims,
+               " on ", grid_name, " on ", summary(architecture(field)))
 
-Base.show(io::IO, field::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
-    print(io, "$(summary(field))\n",
-          "├── architecture: $(architecture(field))\n",
-          "└── grid: $(summary(field.grid))")
+    return string(prefix, suffix)
+end
 
-Base.show(io::IO, field::Field) =
-    print(io, "$(summary(field))\n",
-          "├── data: $(typeof(field.data)), size: $(size(field))\n",
-          "├── grid: $(summary(field.grid))\n",
-          "└── boundary conditions: $(summary(field.boundary_conditions))")
+data_summary(field) = string("max=", scalar_summary(maximum(field)), ", ",
+                             "min=", scalar_summary(minimum(field)), ", ",
+                             "mean=", scalar_summary(mean(field)))
 
-show_status(::Nothing) = "nothing"
-show_status(status) = "time=$(status.time)"
+function Base.show(io::IO, field::Field)
 
-Base.show(io::IO, field::ZeroField) = print(io, "ZeroField")
+    prefix =
+        string("$(summary(field))\n",
+               "├── grid: ", summary(field.grid), '\n',
+               "├── boundary conditions: ", summary(field.boundary_conditions), '\n')
+
+    middle = isnothing(field.operand) ? "" :
+        string("├── operand: ", summary(field.operand), '\n',
+               "├── status: ", summary(field.status), '\n')
+
+    suffix = string("└── data: ", summary(field.data), '\n',
+                    "    └── ", data_summary(field))
+
+    print(io, prefix, middle, suffix)
+end
+
+Base.summary(status::FieldStatus) = "time=$(status.time)"
+
+Base.summary(::ZeroField{N}) where N = "ZeroField{$N}"
+Base.show(io::IO, z::ZeroField) = print(io, summary(z))
 
 Base.show(io::IO, ::MIME"text/plain", f::AbstractField) = show(io, f)
 

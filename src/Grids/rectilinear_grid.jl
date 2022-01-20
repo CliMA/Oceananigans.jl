@@ -350,11 +350,20 @@ function Base.show(io::IO, grid::RectilinearGrid)
     y₁, y₂ = domain(topology(grid, 2), grid.Ny, grid.yᵃᶠᵃ)
     z₁, z₂ = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
 
-    print(io,
-          summary(grid), '\n',
-          "    ", dimension_summary(TX(), x₁, x₂, grid.Δxᶜᵃᵃ, "x"), '\n',  
-          "    ", dimension_summary(TY(), y₁, y₂, grid.Δyᵃᶜᵃ, "y"), '\n',  
-          "    ", dimension_summary(TZ(), z₁, z₂, grid.Δzᵃᵃᶜ, "z"))
+    x_summary = domain_summary(TX(), "x", x₁, x₂)
+    y_summary = domain_summary(TY(), "y", y₁, y₂)
+    z_summary = domain_summary(TZ(), "z", z₁, z₂)
+
+    longest = max(length(x_summary), length(y_summary), length(z_summary)) 
+
+    x_summary = dimension_summary(TX(), "x", x₁, x₂, grid.Δxᶜᵃᵃ, longest - length(x_summary))
+    y_summary = dimension_summary(TY(), "y", y₁, y₂, grid.Δyᵃᶜᵃ, longest - length(y_summary))
+    z_summary = dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
+
+    return print(io, summary(grid), '\n',
+                 "├── ", x_summary, '\n',
+                 "├── ", y_summary, '\n',
+                 "└── ", z_summary)
 end
 
 #####

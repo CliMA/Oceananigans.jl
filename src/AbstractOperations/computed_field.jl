@@ -3,7 +3,7 @@
 #####
 
 using KernelAbstractions: @kernel, @index
-using Oceananigans.Fields: FieldStatus, show_status, reduced_dimensions
+using Oceananigans.Fields: FieldStatus, reduced_dimensions
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Fields: Field, compute!
@@ -75,14 +75,4 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds data[i, j, k] = operand[i, j, k]
 end
-
-Base.summary(field::ComputedField) =
-    string("Field located at ", show_location(field), " computed from ", summary(field.operand))
-
-Base.show(io::IO, field::ComputedField) =
-    print(io, "$(summary(field))\n",
-          "├── data: $(typeof(field.data)), size: $(size(field))\n",
-          "├── grid: $(summary(field.grid))\n",
-          "├── operand: $(summary(field.operand))\n",
-          "└── status: $(summary(field.status))")
 

@@ -29,13 +29,13 @@ function set!(u::Field, f::Function)
         set!(u, f_field)
     end
 
-    return nothing
+    return u
 end
 
 function set!(u::Field, f::Union{Array, CuArray, OffsetArray})
     f = arch_array(architecture(u), f)
     u .= f
-    return nothing
+    return u
 end
 
 function set!(u::Field, v::Field)
@@ -52,6 +52,6 @@ function set!(u::Field, v::Field)
         copyto!(u_parent, v_parent)
     end
 
-    return nothing
+    return u
 end
 
