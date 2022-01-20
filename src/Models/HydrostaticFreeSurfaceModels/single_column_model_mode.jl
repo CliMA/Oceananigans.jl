@@ -1,6 +1,6 @@
 using KernelAbstractions: NoneEvent
 using OffsetArrays: OffsetArray
-using CUDA
+using CUDA: @allowscalar
 
 using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans.BoundaryConditions: left_gradient, right_gradient, linearly_extrapolate, FBC, VBC, GBC
@@ -30,8 +30,8 @@ const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded
 #####
 
 PressureField(::SingleColumnGrid) = (; pHY′ = nothing)
-FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, velocities, arch, ::SingleColumnGrid) = nothing
-FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, arch, ::SingleColumnGrid) = nothing
+FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, velocities, ::SingleColumnGrid) = nothing
+FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, ::SingleColumnGrid) = nothing
 
 validate_momentum_advection(momentum_advection, ::SingleColumnGrid) = nothing
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleColumnGrid) = nothing, NamedTuple()
@@ -41,7 +41,7 @@ validate_tracer_advection(tracer_advection::Nothing, ::SingleColumnGrid) = nothi
 ##### Time-step optimizations
 #####
 
-calculate_free_surface_tendency!(arch, ::SingleColumnGrid, args...) = NoneEvent()
+calculate_free_surface_tendency!(::SingleColumnGrid, args...) = NoneEvent()
 
 # Fast state update and halo filling
 
@@ -92,7 +92,7 @@ validate_size(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(e.ensemble[1], e.ensemb
 validate_halo(TX, TY, TZ, e::ColumnEnsembleSize) = tuple(0, 0, e.Hz)
 
 @inline function time_discretization(closure_array::AbstractArray)
-    first_closure = CUDA.@allowscalar first(closure_array) # assumes all closures have same time-discretization
+    first_closure = @allowscalar first(closure_array) # assumes all closures have same time-discretization
     return time_discretization(first_closure)
 end
 
