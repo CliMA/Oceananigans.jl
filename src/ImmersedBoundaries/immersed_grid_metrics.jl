@@ -22,10 +22,11 @@ using Oceananigans.AbstractOperations: GridMetricOperation
      `solid_node(Center(), Center(), Center(), args...) == solid_interface(Center(), Center(), Center(), args...)` as 
      `Center(), Center(), Center()` can be only either fully immersed or not at all 
 
-     `solid_node` is used to assign a value to the z - spacings, i.e., partial cell -> full value of Δz;
-      fully immersed cell -> Δz = 0
+     `solid_interface` is used in `GridMetricOperation` to assess the grid metric value. 
+     `metric = ifelse(solid_interface, 0.0, metric)` eliminating values inside the immersed domain and values lying on the
+      immersed boundary from the reduction
 
-      the `is_immersed_boundary` returns true only if the interface has a solid and a fluid side (the actual immersed boundary)
+      `is_immersed_boundary` returns true only if the interface has a solid and a fluid side (the actual immersed boundary)
       which is true only when `solid_node = false` and `solid_interface = true` (as the case of the face at `i` above)
 """
 
