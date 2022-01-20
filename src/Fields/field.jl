@@ -34,8 +34,9 @@ function validate_field_data(loc, data, grid)
     return nothing
 end
 
-validate_boundary_condition_location(::Union{OBC, Nothing}, ::Union{Face, Nothing}, side) = nothing
-validate_boundary_condition_location(::Union{FBC, VBC, GBC}, ::Union{Center, Nothing}, side) = nothing
+validate_boundary_condition_location(bc, ::Center, side) = nothing
+validate_boundary_condition_location(::Nothing, ::Flat, side) = nothing
+validate_boundary_condition_location(::Union{OBC, Nothing}, ::Face, side) = nothing
 validate_boundary_condition_location(bc, loc, side) =
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $loc!"))
 
@@ -52,8 +53,7 @@ function validate_boundary_conditions(loc, grid, bcs)
         validate_boundary_condition_topology(bc, side, topo)
 
         # Check that boundary condition is valid given field location
-        topo isa Bounded &&
-            validate_boundary_condition_location(bc, ℓ, side)
+        topo isa Bounded && validate_boundary_condition_location(bc, ℓ, side)
 
         # Check that boundary condition arrays, if used, are on the right architecture
         validate_boundary_condition_architecture(bc.condition, architecture(grid), bc, side)
