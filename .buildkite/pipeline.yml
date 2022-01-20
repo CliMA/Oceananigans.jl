@@ -38,6 +38,7 @@ steps:
       TEST_GROUP: "init"
       CUDA_VISIBLE_DEVICES: "-1"
       JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
+      TMPDIR: "$TARTARUS_HOME/tmp"
     commands:
       # Download julia binaries
       - "wget -N -P $TARTARUS_HOME https://julialang-s3.julialang.org/bin/linux/x64/$JULIA_MINOR_VERSION/julia-$JULIA_VERSION-linux-x86_64.tar.gz"
