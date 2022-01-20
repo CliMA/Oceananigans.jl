@@ -103,13 +103,17 @@ GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient, val; kwa
 Adapt.adapt_structure(to, bc::BoundaryCondition) = BoundaryCondition(Adapt.adapt(to, bc.classification),
                                                                      Adapt.adapt(to, bc.condition))
 
+#####
+##### Validation
+#####
+
 validate_boundary_condition_topology(bc::Union{PBC, Nothing}, topo::Periodic, side) = nothing
 validate_boundary_condition_topology(bc, topo::Periodic, side) =
     throw(ArgumentError("Cannot set $side boundary condition $bc in a `Periodic` direction!"))
 
 validate_boundary_condition_topology(::Nothing, topo::Flat, side) = nothing
 validate_boundary_condition_topology(bc, topo::Flat, side) =
-    throw(ArgumentError("Cannot set $side boundary condition in a `Flat` direction!")
+    throw(ArgumentError("Cannot set $side boundary condition in a `Flat` direction!"))
 
 validate_boundary_condition_topology(bc, topo, side) = nothing
 
