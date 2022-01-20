@@ -36,12 +36,9 @@ using Oceananigans.AbstractOperations: GridMetricOperation
 @inline solid_node(LX, LY, LZ, i, j, k, ibg)      = solid_node(i, j, k, ibg)
 @inline solid_interface(LX, LY, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg)
 
-@inline solid_node(::Face, LY, LZ, i, j, k, ibg) = solid_node(i  , j, k, ibg) &
-                                                   solid_node(i-1, j, k, ibg)
-@inline solid_node(LX, ::Face, LZ, i, j, k, ibg) = solid_node(i, j  , k, ibg) &
-                                                   solid_node(i, j-1, k, ibg)
-@inline solid_node(LX, LY, ::Face, i, j, k, ibg) = solid_node(i, j,   k, ibg) &
-                                                   solid_node(i, j, k-1, ibg)
+@inline solid_node(::Face, LY, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg) & solid_node(i-1, j, k, ibg)
+@inline solid_node(LX, ::Face, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg) & solid_node(i, j-1, k, ibg)
+@inline solid_node(LX, LY, ::Face, i, j, k, ibg) = solid_node(i, j, k, ibg) & solid_node(i, j, k-1, ibg)
 
 @inline solid_node(::Face, ::Face, LZ, i, j, k, ibg) = solid_node(c, f, c, i, j, k, ibg) & solid_node(c, f, c, i-1, j, k, ibg)
 @inline solid_node(::Face, LY, ::Face, i, j, k, ibg) = solid_node(c, c, f, i, j, k, ibg) & solid_node(c, c, f, i-1, j, k, ibg)
@@ -49,12 +46,9 @@ using Oceananigans.AbstractOperations: GridMetricOperation
 
 @inline solid_node(::Face, ::Face, ::Face, i, j, k, ibg) = solid_node(c, f, f, i, j, k, ibg) & solid_node(c, f, f, i-1, j, k, ibg)
 
-@inline solid_interface(::Face, LY, LZ, i, j, k, ibg) = solid_node(i  , j, k, ibg) |
-                                                        solid_node(i-1, j, k, ibg)
-@inline solid_interface(LX, ::Face, LZ, i, j, k, ibg) = solid_node(i, j  , k, ibg) |
-                                                        solid_node(i, j-1, k, ibg)
-@inline solid_interface(LX, LY, ::Face, i, j, k, ibg) = solid_node(i, j,   k, ibg) |
-                                                        solid_node(i, j, k-1, ibg)
+@inline solid_interface(::Face, LY, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg) | solid_node(i-1, j, k, ibg)
+@inline solid_interface(LX, ::Face, LZ, i, j, k, ibg) = solid_node(i, j, k, ibg) | solid_node(i, j-1, k, ibg)
+@inline solid_interface(LX, LY, ::Face, i, j, k, ibg) = solid_node(i, j, k, ibg) | solid_node(i, j, k-1, ibg)
 
 @inline solid_interface(::Face, ::Face, LZ, i, j, k, ibg) = solid_interface(c, f, c, i, j, k, ibg) | solid_interface(c, f, c, i-1, j, k, ibg)
 @inline solid_interface(::Face, LY, ::Face, i, j, k, ibg) = solid_interface(c, c, f, i, j, k, ibg) | solid_interface(c, c, f, i-1, j, k, ibg)
@@ -115,7 +109,7 @@ end
 
 ###
 ### metric operations involving immersed boundary are zeroed in the immersed region 
-### (we exclude also the boundaries of the values at the boundaries with `solid_interface`)
+### (we exclude also the values on the faces of the immersed boundary with `solid_interface`)
 ###
 
 @inline function Base.getindex(gm::GridMetricOperation{LX, LY, LZ, G}, i, j, k) where {LX, LY, LZ, G<:ImmersedBoundaryGrid}

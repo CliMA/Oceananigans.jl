@@ -9,6 +9,7 @@ function compute_vertically_integrated_lateral_areas!(∫ᶻ_A)
     # 2 halos (instead of only 1) are necessary to accomodate the preconditioner
 
     field_grid = ∫ᶻ_A.xᶠᶜᶜ.grid
+    arch = architecture(field_grid)
 
     Axᶠᶜᶜ = GridMetricOperation((Face, Center, Center), Ax, field_grid)
     Ayᶜᶠᶜ = GridMetricOperation((Center, Face, Center), Ay, field_grid)
@@ -37,8 +38,8 @@ function compute_vertically_integrated_volume_flux!(∫ᶻ_U, model)
     # Fill halo regions for predictor velocity.
     fill_halo_regions!(model.velocities, model.architecture, model.clock, fields(model))
 
-    sum!(∫ᶻ_U.u, Ax * model.velocites.u)
-    sum!(∫ᶻ_U.v, Ay * model.velocites.v)
+    sum!(∫ᶻ_U.u, Ax * model.velocities.u)
+    sum!(∫ᶻ_U.v, Ay * model.velocities.v)
 
     # We didn't include right boundaries, so...
     fill_halo_regions!(∫ᶻ_U, model.architecture, model.clock, fields(model))
