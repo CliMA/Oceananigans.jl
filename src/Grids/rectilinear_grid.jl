@@ -422,7 +422,7 @@ function with_halo(new_halo, old_grid::RectilinearGrid)
     return new_grid
 end
 
-function on_architecture(new_arch, old_grid::RectilinearGrid)
+function on_architecture(new_arch::AbstractArchitecture, old_grid::RectilinearGrid)
     old_properties = (old_grid.Δxᶠᵃᵃ, old_grid.Δxᶜᵃᵃ, old_grid.xᶠᵃᵃ, old_grid.xᶜᵃᵃ,
                       old_grid.Δyᵃᶠᵃ, old_grid.Δyᵃᶜᵃ, old_grid.yᵃᶠᵃ, old_grid.yᵃᶜᵃ,
                       old_grid.Δzᵃᵃᶠ, old_grid.Δzᵃᵃᶜ, old_grid.zᵃᵃᶠ, old_grid.zᵃᵃᶜ)
