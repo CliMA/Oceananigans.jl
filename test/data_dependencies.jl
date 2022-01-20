@@ -16,7 +16,7 @@ datadep"cubed_sphere_32_grid"
 
 # Downloading the regression fields
 
-path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/ss/new_regression_data/data_for_regression_tests_new_hydrostatic/"
+path = "https://github.com/CliMA/OceananigansArtifacts.jl/raw/ss/new_hydrostatic_data_after_cleared_bugs/data_for_regression_tests/"
 
 dh = DataDep("regression_test_data",
     "Data for Regression tests",
