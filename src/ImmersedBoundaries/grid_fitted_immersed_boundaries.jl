@@ -66,7 +66,7 @@ Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.
 
 ####
 #### For a center solver we have to check the interface "solidity" at faces k+1 in both the Upper diagonal and the Lower diagonal 
-#### (because of tridiagonal convention whene lower_diagonal is at k-1)
+#### (because of tridiagonal convention where lower_diagonal on row k is found at k-1)
 #### Same goes for the face solver, where we check at centers k in both Upper and lower diagonal
 ####
 
