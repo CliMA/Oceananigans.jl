@@ -1,7 +1,7 @@
 module ImmersedBoundaries
 
 export ImmerseBoundaryGrid, GridFittedBoundary, GridFittedBottom, 
-       solid_node, solid_interface, is_mmersed_boundary
+       solid_node, solid_interface, is_immersed_boundary
 
 using Adapt
 

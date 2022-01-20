@@ -168,6 +168,22 @@ v_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, para
 μ         = Δz_bottom / 10days
 μ_forcing = 10days
 
+@inline function u_immersed_drag(i, j, k, grid, clock, fields, μ)
+    u = @inbounds fields.u[i, j, k]
+    return ifelse(is_immersed_boundary(Face(), Center(), Face(), i, j, k, grid), 
+                  - μ * u,
+                 zero(eltype(grid)))
+end
+
+@inline function v_immersed_drag(i, j, k, grid, clock, fields, μ)
+    v = @inbounds fields.v[i, j, k]
+    return ifelse(is_immersed_boundary(Center(), Face(), Face(), i, j, k, grid), 
+                  - μ * v,
+                 zero(eltype(grid)))
+end
+
+Fu = Forcing(u_immersed_drag, discrete_form = true, parameters = μ_forcing)
+Fv = Forcing(v_immersed_drag, discrete_form = true, parameters = μ_forcing)
 
 u_bottom_drag_bc = FluxBoundaryCondition(u_bottom_drag, discrete_form = true, parameters = μ)
 v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag, discrete_form = true, parameters = μ)
@@ -177,7 +193,7 @@ v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_b
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 
 free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, preconditioner_method=:SparseInverse,
-                                   preconditioner_settings = (ε = 0.01, nzrel =6))
+                                   preconditioner_settings = (ε = 0.01, nzrel = 6))
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = free_surface,
@@ -187,7 +203,8 @@ model = HydrostaticFreeSurfaceModel(grid = grid,
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
                                     buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=0.0)),
                                     tracers = (:T, :S),
-                                    closure = (background_diffusivity, convective_adjustment))
+                                    closure = (background_diffusivity, convective_adjustment)) #,
+                                    # forcing = (u=Fu, v=Fv))
 
 #####
 ##### Initial condition:
@@ -238,7 +255,7 @@ function progress(sim)
     return nothing
 end
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1))
 
 u, v, w = model.velocities
 T, S = model.tracers
