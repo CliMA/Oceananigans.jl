@@ -77,8 +77,28 @@ import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
 @multiary +
 
 # Comparison operators
-import Base: <, >, ==, <=, >=
+import Base: <, >, ==, <=, >=, max, min, &, |
 @binary < > == <= >=
+
+@multiary max min
+
+and = Symbol("(&)")
+eval(define_multiary_operator(and))
+push!(operators, and)
+push!(multiary_operators, and)
+
+eval(define_binary_operator(and))
+push!(operators, and)
+push!(binary_operators, and)
+
+or = Symbol("(|)")
+eval(define_multiary_operator(or))
+push!(operators, or)
+push!(multiary_operators, or)
+
+eval(define_binary_operator(or))
+push!(operators, or)
+push!(binary_operators, or)
 
 # For unknown reasons, the operator definition macros @binary and @multiary fail to work
 # properly for :*. We thus manually define :* for fields.
