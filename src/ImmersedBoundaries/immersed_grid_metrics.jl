@@ -107,14 +107,3 @@ for metric in (
         @inline $metric(i, j, k, ibg::ImmersedBoundaryGrid) = $metric(i, j, k, ibg.grid)
     end
 end
-
-###
-### metric operations involving immersed boundary are zeroed in the immersed region 
-### (we exclude also the values on the faces of the immersed boundary with `solid_interface`)
-###
-
-@inline function Base.getindex(gm::GridMetricOperation{LX, LY, LZ, G}, i, j, k) where {LX, LY, LZ, G<:ImmersedBoundaryGrid}
-    return ifelse(solid_interface(LX(), LY(), LZ(), i, j, k, gm.grid), 
-                  zero(eltype(gm.grid.grid)), 
-                  gm.metric(i, j, k, gm.grid.grid))
-end

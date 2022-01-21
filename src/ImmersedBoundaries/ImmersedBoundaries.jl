@@ -163,6 +163,7 @@ include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundaries.jl")
 include("conditional_fluxes.jl")
 include("mask_immersed_field.jl")
+include("masked_reductions.jl")
 
 #####
 ##### Diffusivities (for VerticallyImplicitTimeDiscretization)
