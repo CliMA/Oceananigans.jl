@@ -350,13 +350,15 @@ function reduced_location(loc; dims)
     end
 end
 
-## Allow support for ImmersedFields
-@inline masked_object(a, mask) = a
+## Allow support for MaskedOperations
+
 get_neutral_mask(::Union{AllReduction, AnyReduction}) = true
 get_neutral_mask(::MinimumReduction) =   Inf
 get_neutral_mask(::MaximumReduction) = - Inf
 get_neutral_mask(::ProdReduction)    =   1
 get_neutral_mask(::SumReduction)     =   0
+
+@inline mask_operation(operand, mask) = operand
 
 # Allocating and in-place reductions
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
