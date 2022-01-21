@@ -46,14 +46,13 @@ function (p::Progress)(sim)
                    maximum(abs, sim.model.velocities.u),
                    maximum(abs, sim.model.velocities.v),
                    minimum(sim.model.free_surface.η),
-                   maximum(sim.model.free_surface.η),
-                   sim.parameters.cfl(sim.model)
+                   maximum(sim.model.free_surface.η)
                   )
 
     @info @sprintf("           ETA: %s (%s), Δ(wall time): %s / iteration",
                    format(ETA_datetime, "yyyy-mm-dd HH:MM:SS"),
                    prettytime(ETA),
-                   prettytime(wall_time / sim.iteration_interval))
+                   prettytime(wall_time / sim.callbacks[:progress].schedule.interval) )
 
     p.interval_start_time = time_ns()
 
