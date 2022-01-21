@@ -61,7 +61,7 @@ function tree_show(multiary::MultiaryOperation, depth, nesting)
     LX, LY, LZ = location(multiary)
     N = length(multiary.args)
 
-    out = string(multiary.op, " at ", show_location(X, Y, Z), '\n',
+    out = string(multiary.op, " at ", show_location(LX, LY, LZ), '\n',
         ntuple(i -> padding * "├── " * tree_show(multiary.args[i], depth+1, nesting+1) * '\n', Val(N-1))...,
                     padding * "└── " * tree_show(multiary.args[N], depth+1, nesting)
                 )
