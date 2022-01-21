@@ -5,6 +5,7 @@ using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Statistics: norm
 
 struct Field{LX, LY, LZ, O, G, T, D, B, S} <: AbstractField{LX, LY, LZ, G, T, 3}
     grid :: G
@@ -416,3 +417,9 @@ function Statistics._mean(f, c::AbstractField, dims; condition = nothing)
 end
 
 Statistics._mean(c::AbstractField; dims) = Statistics._mean(identity, c, dims=dims)
+
+function Statistics.norm(a::AbstractField; condition = nothing)
+    r = zeros(a.grid, 1)
+    Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
+    return CUDA.@allowscalar sqrt(r[1])
+end

@@ -1,6 +1,6 @@
 using Oceananigans.Fields: AbstractField
 using Oceananigans.AbstractOperations: AbstractOperation, ConditionalOperation
-using CUDA: @allowscalar
+
 import Oceananigans.AbstractOperations: get_condition
 import Oceananigans.Fields: condition_operand, conditional_length
 
@@ -32,9 +32,3 @@ Statistics.dot(a::Field, b::ImmersedField) = Statistics.dot(a, condition_operand
 
 Statistics.dot(a::ImmersedField, b::ImmersedField) = Statistics.dot(condition_operand(a, nothing, 0),
                                                                     condition_operand(b, nothing, 0))
-
-function Statistics.norm(c::ImmersedField)
-    r = zeros(c.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, r, condition_operand(c, nothing, 0))
-    return @allowscalar sqrt(r[1])
-end
