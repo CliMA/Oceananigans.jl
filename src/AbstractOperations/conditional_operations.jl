@@ -34,8 +34,8 @@ end
 Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
             ConditionalOperation{LX, LY, LZ}(adapt(to, c.operand), 
                                      adapt(to, c.grid),
-                                     adapt(to, c.mask),
-                                     adapt(to, c.condition))
+                                     adapt(to, c.condition),
+                                     adapt(to, c.mask))
 
 @inline function Base.getindex(c::ConditionalOperation, i, j, k) 
     return ifelse(get_condition(c.condition, i, j, k, c.grid, c), 
