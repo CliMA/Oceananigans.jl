@@ -180,7 +180,7 @@ end
         H = (1, 1, 1)
 
         for arch in archs, FT in float_types
-            grid = RectilinearGrid(arch , FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic))
+            grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic))
             @test correct_field_size(grid, (Center, Center, Center), N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(grid, (Face,   Center, Center), N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
             @test correct_field_size(grid, (Center, Face,   Center), N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 2 * H[3])
@@ -216,6 +216,48 @@ end
             @test correct_field_size(grid, (Center,  Nothing, Nothing), N[1] + 2 * H[1], 1,                   1)
             @test correct_field_size(grid, (Nothing, Nothing, Nothing), 1,               1,                   1)
 
+            grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Periodic, Periodic))
+            for side in (:east, :west, :north, :south, :top, :bottom)
+                for wrong_bc in (ValueBoundaryCondition(0), 
+                                 FluxBoundaryCondition(0),
+                                 GradientBoundaryCondition(0))
+
+                    wrong_kw = Dict(side => wrong_bc)
+                    wrong_bcs = FieldBoundaryConditions(grid, (Center, Center, Center); wrong_kw...)
+                    @test_throws ArgumentError CenterField(grid, boundary_conditions=wrong_bcs)
+                end
+            end
+
+            grid = RectilinearGrid(arch, FT, size=N[2:3], extent=L[2:3], halo=H[2:3], topology=(Flat, Periodic, Periodic))
+            for side in (:east, :west)
+                for wrong_bc in (ValueBoundaryCondition(0), 
+                                 FluxBoundaryCondition(0),
+                                 GradientBoundaryCondition(0))
+
+                    wrong_kw = Dict(side => wrong_bc)
+                    wrong_bcs = FieldBoundaryConditions(grid, (Center, Center, Center); wrong_kw...)
+                    @test_throws ArgumentError CenterField(grid, boundary_conditions=wrong_bcs)
+                end
+            end
+
+            grid = RectilinearGrid(arch, FT, size=N, extent=L, halo=H, topology=(Periodic, Bounded, Bounded))
+            for side in (:east, :west, :north, :south)
+                for wrong_bc in (ValueBoundaryCondition(0), 
+                                 FluxBoundaryCondition(0),
+                                 GradientBoundaryCondition(0))
+
+                    wrong_kw = Dict(side => wrong_bc)
+                    wrong_bcs = FieldBoundaryConditions(grid, (Center, Face, Face); wrong_kw...)
+
+                    @test_throws ArgumentError Field{Center, Face, Face}(grid, boundary_conditions=wrong_bcs)
+                end
+            end
+
+            if arch isa GPU
+                wrong_bcs = FieldBoundaryConditions(grid, (Center, Center, Center),
+                                                    top=FluxBoundaryCondition(zeros(FT, N[1], N[2])))
+                @test_throws ArgumentError CenterField(grid, boundary_conditions=wrong_bcs)
+            end
         end
     end
 

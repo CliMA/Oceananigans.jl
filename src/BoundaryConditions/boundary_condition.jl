@@ -107,13 +107,13 @@ Adapt.adapt_structure(to, bc::BoundaryCondition) = BoundaryCondition(Adapt.adapt
 ##### Validation with topology
 #####
 
-validate_boundary_condition_topology(bc::Union{PBC, Nothing}, topo::Periodic, side) = nothing
-validate_boundary_condition_topology(bc, topo::Periodic, side) =
-    throw(ArgumentError("Cannot set $side boundary condition $bc in a `Periodic` direction!"))
+validate_boundary_condition_topology(bc::Union{PBC, Nothing}, topo::Grids.Periodic, side) = nothing
+validate_boundary_condition_topology(bc, topo::Grids.Periodic, side) =
+    throw(ArgumentError("Cannot set $side $bc in a `Periodic` direction!"))
 
 validate_boundary_condition_topology(::Nothing, topo::Flat, side) = nothing
 validate_boundary_condition_topology(bc, topo::Flat, side) =
-    throw(ArgumentError("Cannot set $side boundary condition in a `Flat` direction!"))
+    throw(ArgumentError("Cannot set $side $bc in a `Flat` direction!"))
 
 validate_boundary_condition_topology(bc, topo, side) = nothing
 
@@ -131,7 +131,7 @@ validate_boundary_condition_architecture(::Array, ::CPU, bc, side) = nothing
 validate_boundary_condition_architecture(::CuArray, ::GPU, bc, side) = nothing
 
 validate_boundary_condition_architecture(::CuArray, ::CPU, bc, side) =
-    throw(ArgumentError("$side boundary condition $bc must use `Array` rather than `CuArray` on CPU architectures!"))
+    throw(ArgumentError("$side $bc must use `Array` rather than `CuArray` on CPU architectures!"))
 
 validate_boundary_condition_architecture(::Array, ::GPU, bc, side) =
-    throw(ArgumentError("$side boundary condition $bc must use `CuArray` rather than `Array` on GPU architectures!"))
+    throw(ArgumentError("$side $bc must use `CuArray` rather than `Array` on GPU architectures!"))

@@ -52,7 +52,7 @@ function validate_boundary_conditions(loc, grid, bcs)
         bc = getproperty(bcs, side)
 
         # Check that boundary condition jives with the grid topology
-        validate_boundary_condition_topology(bc, side, topo)
+        validate_boundary_condition_topology(bc, topo, side)
 
         # Check that boundary condition is valid given field location
         topo isa Bounded && validate_boundary_condition_location(bc, ℓ, side)
