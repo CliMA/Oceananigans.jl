@@ -27,12 +27,14 @@ end
     return get_condition(condition.func, i, j, k, ibg, args...) & !(solid_interface(LX(), LY(), LZ(), i, j, k, ibg))
 end 
 
+Statistics.dot(a::ImmersedField, b::Field) = Statistics.dot(condition_operand(a, nothing, 0), b)
+Statistics.dot(a::Field, b::ImmersedField) = Statistics.dot(a, condition_operand(b, nothing, 0))
 
-# Statistics.dot(a::ImmersedField, b::Field) = Statistics.dot(condition_operand(a, 0), b)
-# Statistics.dot(a::Field, b::ImmersedField) = Statistics.dot(condition_operand(a, 0), b)
+Statistics.dot(a::ImmersedField, b::ImmersedField) = Statistics.dot(condition_operand(a, nothing, 0),
+                                                                    condition_operand(b, nothing, 0))
 
-# function Statistics.norm(c::ImmersedField)
-#     r = zeros(c.grid, 1)
-#     Base.mapreducedim!(x -> x * x, +, r, condition_operator(c, nothing, 0))
-#     return @allowscalar sqrt(r[1])
-# end
+function Statistics.norm(c::ImmersedField)
+    r = zeros(c.grid, 1)
+    Base.mapreducedim!(x -> x * x, +, r, condition_operand(c, nothing, 0))
+    return @allowscalar sqrt(r[1])
+end
