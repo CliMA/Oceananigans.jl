@@ -352,9 +352,10 @@ end
 
 ## Allow support for ImmersedFields
 @inline masked_object(a, mask) = a
-get_neutral_mask(::Union{AllReduction, AnyReduction, ProdReduction}) = 1
+get_neutral_mask(::Union{AllReduction, AnyReduction}) = true
 get_neutral_mask(::MinimumReduction) =   Inf
 get_neutral_mask(::MaximumReduction) = - Inf
+get_neutral_mask(::ProdReduction)    =   1
 get_neutral_mask(::SumReduction)     =   0
 
 # Allocating and in-place reductions
