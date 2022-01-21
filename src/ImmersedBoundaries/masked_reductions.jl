@@ -23,7 +23,10 @@ struct MaskedObject{LX, LY, LZ, O, G, M, T} <: AbstractOperation{LX, LY, LZ, G, 
     end
 end
 
-@inline masked_object(obj::ImmersedField, mask)    = masked_object(location(obj)..., obj, obj.grid, mask)
+@inline function masked_object(obj::ImmersedField, mask) 
+    return masked_object(location(obj)..., obj, obj.grid, mask)
+end
+
 @inline masked_object(LX, LY, LZ, obj, grid, mask) = MaskedObject{LX, LY, LZ}(obj, grid, mask)
 
 operation_name(mo::MaskedObject) = "Masked field"
