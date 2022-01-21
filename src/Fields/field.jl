@@ -379,7 +379,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
         Base.$(reduction!)(r::ReducedField, a::AbstractArray; 
                            condition = nothing, mask = get_neutral_mask(Base.$(reduction!)), kwargs...) =
-            Base.$(reduction!)(identity, interior(r), condition_operand(a, mask); kwargs...)
+            Base.$(reduction!)(identity, interior(r), condition_operand(a, condition, mask); kwargs...)
 
         # Allocating
         function Base.$(reduction)(f::Function, c::AbstractField;
