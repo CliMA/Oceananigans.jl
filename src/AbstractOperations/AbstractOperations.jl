@@ -66,8 +66,14 @@ include("show_abstract_operations.jl")
 # Number crunching:
 import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
 
-@unary - sqrt sin cos exp tanh
-@binary + - / ^
+@unary sqrt sin cos exp tanh
+@unary -
+
+@binary +
+@binary -
+@binary /
+@binary ^
+
 @multiary +
 
 # Comparison operators
