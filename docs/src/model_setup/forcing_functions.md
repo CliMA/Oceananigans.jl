@@ -115,7 +115,7 @@ model.forcing.w
 
 # output
 ContinuousForcing{Nothing} at (Center, Center, Face)
-├── func: w_forcing_func
+├── func: w_forcing_func (generic function with 1 method)
 ├── parameters: nothing
 └── field dependencies: (:u, :v, :w)
 ```
@@ -125,7 +125,7 @@ model.forcing.S
 
 # output
 ContinuousForcing{Float64} at (Center, Center, Center)
-├── func: S_forcing_func
+├── func: S_forcing_func (generic function with 1 method)
 ├── parameters: 0.01
 └── field dependencies: (:S,)
 ```
@@ -194,7 +194,7 @@ model.forcing.b
 
 # output
 DiscreteForcing{Nothing}
-├── func: b_forcing_func
+├── func: b_forcing_func (generic function with 1 method)
 └── parameters: nothing
 ```
 
@@ -203,7 +203,7 @@ model.forcing.u
 
 # output
 DiscreteForcing{Float64}
-├── func: u_forcing_func
+├── func: u_forcing_func (generic function with 1 method)
 └── parameters: 0.001
 ```
 
@@ -276,3 +276,4 @@ ContinuousForcing{Nothing} at (Center, Center, Center)
 ├── parameters: nothing
 └── field dependencies: (:T,)
 ```
+
