@@ -27,9 +27,19 @@ function (p::Progress)(sim)
     wall_time = (time_ns() - p.interval_start_time) * 1e-9
     progress = sim.model.clock.time / sim.stop_time
     ETA = (1 - progress) / progress * sim.run_wall_time
-    ETA_datetime = now() + Second(round(Int, ETA))
+    println("hello progress")
+    println("progress = ",progress)
+    println("sim.run_wall_time = ",sim.run_wall_time)
+    println("sim.model.clock.time = ",sim.model.clock.time)
+    println("sim.stop_time = ",sim.stop_time)
+    println("goodbye progress")
+    if isnan( ETA )
+      ETA_datetime = now() + Second(1000000000)
+    else
+      ETA_datetime = now() + Second(round(Int, ETA))
+    end
 
-    @info @sprintf("[%06.2f%%] Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e",
+    @info @sprintf("[%06.2f%%] Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e)",
                    100 * progress,
                    prettytime(sim.model.clock.time),
                    sim.model.clock.iteration,
@@ -37,7 +47,8 @@ function (p::Progress)(sim)
                    maximum(abs, sim.model.velocities.v),
                    minimum(sim.model.free_surface.η),
                    maximum(sim.model.free_surface.η),
-                   sim.parameters.cfl(sim.model))
+                   sim.parameters.cfl(sim.model)
+                  )
 
     @info @sprintf("           ETA: %s (%s), Δ(wall time): %s / iteration",
                    format(ETA_datetime, "yyyy-mm-dd HH:MM:SS"),
