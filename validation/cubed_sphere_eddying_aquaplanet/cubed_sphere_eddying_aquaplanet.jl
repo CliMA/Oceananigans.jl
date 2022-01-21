@@ -233,7 +233,7 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
               prefix = "cubed_sphere_eddying_aquaplanet",
                force = true)
 
-    # run!(simulation)
+    run!(simulation)
 
     return simulation
 end
