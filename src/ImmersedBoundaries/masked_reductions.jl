@@ -12,35 +12,42 @@ import Oceananigans.AbstractOperations: operation_name
 
 const ImmersedField = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
 
-struct MaskedObject{LX, LY, LZ, O, G, M, T} <: AbstractOperation{LX, LY, LZ, G, T} 
+struct MaskedObject{LX, LY, LZ, O, G, M, C, T} <: AbstractOperation{LX, LY, LZ, G, T} 
    obj  :: O
    grid :: G
    mask :: M
+   condition :: C
 
-    function MaskedObject{LX, LY, LZ}(obj::O, grid::G, mask::M) where {LX, LY, LZ, O, G, M}
+    function MaskedObject{LX, LY, LZ}(obj::O, grid::G, mask::M, condition::C) where {LX, LY, LZ, O, G, M, C}
         T = eltype(obj)
-        return new{LX, LY, LZ, O, G, M, T}(obj, grid, mask)
+        return new{LX, LY, LZ, O, G, M, C, T}(obj, grid, mask, condition)
     end
 end
 
 @inline function masked_object(obj::ImmersedField, mask) 
-    return masked_object(location(obj)..., obj, obj.grid, mask)
+    return masked_object(location(obj)..., obj, obj.grid, mask, immersed_condition)
 end
 
-@inline masked_object(LX, LY, LZ, obj, grid, mask) = MaskedObject{LX, LY, LZ}(obj, grid, mask)
+@inline immersed_condition(i, j, k, mo::MaskedObject{LX, LY, LZ}) = solid_interface(LX(), LY(), LZ(), i, j, k, mo.grid) 
+
+@inline masked_object(LX, LY, LZ, obj, grid, mask, condition) = MaskedObject{LX, LY, LZ}(obj, grid, mask, condition)
 
 operation_name(mo::MaskedObject) = "Masked field"
 
 Adapt.adapt_structure(to, mo::MaskedObject{LX, LY, LZ}) where {LX, LY, LZ} =
-            MaskedObject{LX, LY, LZ}(adapt(to, mo.obj), adapt(to, mo.grid), adapt(to, mo.mask))
+            MaskedObject{LX, LY, LZ}(adapt(to, mo.obj), adapt(to, mo.grid), adapt(to, mo.mask), adapt(to, mo.condition))
 
 @inline Base.size(mo::MaskedObject) = Base.size(mo.obj)
 
 @inline function Base.getindex(mo::MaskedObject{LX, LY, LZ}, i, j, k) where {LX, LY, LZ}
-    return ifelse(solid_interface(LX(), LY(), LZ(), i, j, k, mo.grid), 
-                  mo.mask, 
+    return ifelse(condition(i, j, k, mo), 
+                  get_mask(mo.mask, i, j, k), 
                   getindex(mo.obj, i, j, k))
 end
+
+@inline get_mask(mask::Number       , i, j, k) = mask
+@inline get_mask(mask::AbstractArray, i, j, k) = mask[i, j, k]
+@inline get_mask(mask::Base.Callable, i, j, k) = mask(i, j, k)
 
 @inline immersed_length(c::AbstractField) = length(c)
 @inline immersed_length(c::ImmersedField) = sum(masked_object(c / c, 0))
