@@ -78,21 +78,20 @@ julia> c, d, e = Tuple(CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 1,
 
 julia> harmonic_plus(c, d, e) # before magic @multiary transformation
 BinaryOperation at (Center, Center, Center)
-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
-│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     * at (Center, Center, Center)
     ├── 0.3333333333333333
     └── + at (Center, Center, Center)
         ├── / at (Center, Center, Center)
         │   ├── 1
-        │   └── Field located at (Center, Center, Center)
+        │   └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
         ├── / at (Center, Center, Center)
         │   ├── 1
-        │   └── Field located at (Center, Center, Center)
+        │   └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
         └── / at (Center, Center, Center)
             ├── 1
-            └── Field located at (Center, Center, Center)
+            └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 
 julia> @multiary harmonic_plus
 Set{Any} with 3 elements:
