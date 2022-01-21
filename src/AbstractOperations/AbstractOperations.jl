@@ -63,18 +63,16 @@ include("show_abstract_operations.jl")
 
 # Make some operators!
 
-# Some unaries:
+# Number crunching:
 import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
 
-@unary sqrt sin cos exp tanh
-@unary -
-
-@binary +
-@binary -
-@binary /
-@binary ^
-
+@unary - sqrt sin cos exp tanh
+@binary + - / ^
 @multiary +
+
+# Comparison operators
+import Base: <, >, ==, <=, >=
+@binary < > == <= >=
 
 # For unknown reasons, the operator definition macros @binary and @multiary fail to work
 # properly for :*. We thus manually define :* for fields.
