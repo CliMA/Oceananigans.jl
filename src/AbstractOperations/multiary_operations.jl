@@ -102,13 +102,12 @@ Set{Any} with 3 elements:
 
 julia> harmonic_plus(c, d, e)
 MultiaryOperation at (Center, Center, Center)
-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
-│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 1.0], z ∈ [-1.0, 0.0]
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     harmonic_plus at (Center, Center, Center)
-    ├── Field located at (Center, Center, Center)
-    ├── Field located at (Center, Center, Center)
-    └── Field located at (Center, Center, Center)
+    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ```
 """
 macro multiary(ops...)

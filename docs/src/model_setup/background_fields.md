@@ -85,7 +85,7 @@ BackgroundField{typeof(B), NamedTuple{(:α, :N, :f), Tuple{Float64, Float64, Flo
 └── parameters: (α = 3.14, N = 1.0, f = 0.1)
 ```
 
-When inserted into `NonhydrostaticModel`, we get out
+When inserted into `NonhydrostaticModel`, we get
 
 ```jldoctest moar_background
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
@@ -97,8 +97,9 @@ model.background_fields.tracers.b
 
 # output
 FunctionField located at (Center, Center, Center)
-├── func: B
-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── func: B (generic function with 1 method)
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── clock: Clock(time=0 seconds, iteration=0)
 └── parameters: (α = 3.14, N = 1.0, f = 0.1)
 ```
+
