@@ -54,7 +54,7 @@ may be eliminated when `buoyancy=nothing` by specifying `tracers=()`:
 ```jldoctest buoyancy
 julia> model = HydrostaticFreeSurfaceModel(grid=grid, buoyancy=nothing, tracers=())
 HydrostaticFreeSurfaceModel{CPU, Float64}(time = 0 seconds, iteration = 0) 
-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=64, Ny=64, Nz=64)
+├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
