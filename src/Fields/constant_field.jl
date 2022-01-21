@@ -9,7 +9,7 @@ OneField(T=Int) = OneField{T, 3}() # default 3D, integer 0
 
 struct ConstantField{T, N} <: AbstractField{Nothing, Nothing, Nothing, Nothing, T, N}
     constant :: T
-    ConstantField{N}(constant::T) where T = new{T, N}(constant)
+    ConstantField{N}(constant::T) where {T, N} = new{T, N}(constant)
 end
 
 # Default 3-dimensional field
