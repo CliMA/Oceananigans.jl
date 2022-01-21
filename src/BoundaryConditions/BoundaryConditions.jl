@@ -11,7 +11,7 @@ export
     fill_halo_regions!
 
 using CUDA
-using KernelAbstractions: @index, @kernel, MultiEvent
+using KernelAbstractions: @index, @kernel, MultiEvent, NoneEvent
 
 using Oceananigans.Architectures: CPU, GPU, device
 using Oceananigans.Utils: work_layout, launch!
