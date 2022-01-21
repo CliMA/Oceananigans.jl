@@ -1,6 +1,6 @@
 using Oceananigans.Fields: AbstractField
 using Oceananigans.AbstractOperations: AbstractOperation, ConditionalOperation
-
+using CUDA: @allowscalar
 import Oceananigans.AbstractOperations: get_condition
 import Oceananigans.Fields: condition_operand, conditional_length
 

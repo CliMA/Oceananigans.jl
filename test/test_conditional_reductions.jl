@@ -5,8 +5,8 @@ using Oceananigans.ImmersedBoundaries: conditional_length
 using Statistics: mean, norm
 using CUDA: @allowscalar
 
-@testset "Conditioned Reductions" begin
-
+@testset "Field broadcasting" begin
+    @info "    Testing Reductions on Immersed fields"
     for arch in archs
         grid = RectilinearGrid(arch, size = (1, 1, 4), extent = (1, 1, 1))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> - grid.Lz/2))
@@ -32,9 +32,6 @@ using CUDA: @allowscalar
             @test all(reduc(fful, dims=3)[:, :, 1]     .== reduc(fimm, dims=3)[:, :, 1])
         end
         @test sum(fful) == sum(fimm) / 2
-
-        @test all(sum(fful, dims=1)[:, 1, 6:end] .== sum(fimm, dims=1)[:, 1, 6:end] ./ 2)
-        @test all(sum(fful, dims=2)[1, :, 6:end] .== sum(fimm, dims=2)[1, :, 6:end] ./ 2)
         @test all(sum(fful, dims=3)[:, :, 1]     .== sum(fimm, dims=3)[:, :, 1] ./ 2)
     end
 end
