@@ -27,12 +27,6 @@ function (p::Progress)(sim)
     wall_time = (time_ns() - p.interval_start_time) * 1e-9
     progress = sim.model.clock.time / sim.stop_time
     ETA = (1 - progress) / progress * sim.run_wall_time
-    println("hello progress")
-    println("progress = ",progress)
-    println("sim.run_wall_time = ",sim.run_wall_time)
-    println("sim.model.clock.time = ",sim.model.clock.time)
-    println("sim.stop_time = ",sim.stop_time)
-    println("goodbye progress")
     if isnan( ETA )
       ETA_datetime = now() + Second(1000000000)
     else
