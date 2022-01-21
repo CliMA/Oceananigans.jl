@@ -10,6 +10,7 @@ for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Der
 end
 
 operation_name(op::GridMetricOperation) = string(op.metric)
+operation_name(mo::MaskedOperation) = "Masked field"
 
 function show_interp(op)
     op_str = string(op)

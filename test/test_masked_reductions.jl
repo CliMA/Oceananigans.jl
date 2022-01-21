@@ -1,7 +1,7 @@
 # include("dependencies_for_runtests.jl")
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.ImmersedBoundaries: immersed_length
+using Oceananigans.ImmersedBoundaries: masked_length
 using Statistics: mean, norm
 using CUDA: @allowscalar
 

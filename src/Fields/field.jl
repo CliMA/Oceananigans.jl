@@ -358,7 +358,7 @@ get_neutral_mask(::MaximumReduction) = - Inf
 get_neutral_mask(::ProdReduction)    =   1
 get_neutral_mask(::SumReduction)     =   0
 
-@inline mask_operation(operand, mask) = operand
+@inline mask_operator(operand, mask) = operand
 
 # Allocating and in-place reductions
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
@@ -370,23 +370,23 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
         # In-place
         Base.$(reduction!)(f::Function, r::ReducedField, a::AbstractArray; kwargs...) =
-            Base.$(reduction!)(f, interior(r), masked_object(a, mask); kwargs...)
+            Base.$(reduction!)(f, interior(r), mask_operator(a, mask); kwargs...)
 
         Base.$(reduction!)(r::ReducedField, a::AbstractArray; kwargs...) =
-            Base.$(reduction!)(identity, interior(r), masked_object(a, mask); kwargs...)
+            Base.$(reduction!)(identity, interior(r), mask_operator(a, mask); kwargs...)
 
         # Allocating
         function Base.$(reduction)(f::Function, c::AbstractField; dims=:)
             if dims isa Colon
                 r = zeros(architecture(c), c.grid, 1, 1, 1)
-                Base.$(reduction!)(f, r, masked_object(c, mask))
+                Base.$(reduction!)(f, r, mask_operator(c, mask))
                 return CUDA.@allowscalar r[1, 1, 1]
             else
                 T = filltype(Base.$(reduction!), c.grid)
                 loc = reduced_location(location(c); dims)
                 r = Field(loc, c.grid, T)
                 initialize_reduced_field!(Base.$(reduction!), f, r, c)
-                Base.$(reduction!)(f, r, masked_object(c, mask), init=false)
+                Base.$(reduction!)(f, r, mask_operator(c, mask), init=false)
                 return r
             end
         end

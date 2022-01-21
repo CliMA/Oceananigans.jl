@@ -1,6 +1,6 @@
-import Oceananigans.Fieds: mask_operation
+import Oceananigans.Fields: mask_operator
 
-# For conditional reductions such as mean(mask_operation(u, 0, u .> 0))
+# For conditional reductions such as mean(mask_operator(u, 0, u .> 0))
 
 struct MaskedOperation{LX, LY, LZ, O, G, M, C, T} <: AbstractOperation{LX, LY, LZ, G, T} 
     operand  :: O
@@ -14,11 +14,9 @@ struct MaskedOperation{LX, LY, LZ, O, G, M, C, T} <: AbstractOperation{LX, LY, L
      end
 end
  
-@inline mask_operation(operand, mask, ::Nothing) = operand 
-@inline mask_operation(operand::AbstractField, mask, condition)    = mask_operation(location(operand)..., operand.grid, mask, condition)
-@inline mask_operation(LX, LY, LZ, operand, grid, mask, condition) = MaskedOperation{LX, LY, LZ}(operand, grid, mask, condition)
-
-operation_name(mo::MaskedOperation) = "Masked field"
+@inline mask_operator(operand, mask, ::Nothing) = operand 
+@inline mask_operator(operand::AbstractField, mask, condition)    = mask_operator(location(operand)..., operand.grid, mask, condition)
+@inline mask_operator(LX, LY, LZ, operand, grid, mask, condition) = MaskedOperation{LX, LY, LZ}(operand, grid, mask, condition)
 
 Adapt.adapt_structure(to, mo::MaskedOperation{LX, LY, LZ}) where {LX, LY, LZ} =
             MaskedOperation{LX, LY, LZ}(adapt(to, mo.operand), 
