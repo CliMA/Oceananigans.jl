@@ -76,9 +76,9 @@ DataDeps.register(dd96)
 #####
 
 function diagnose_velocities_from_streamfunction(ψ, grid)
-    ψᶠᶠᶜ = Field(Face, Face,   Center, CPU(), grid)
-    uᶠᶜᶜ = Field(Face, Center, Center, CPU(), grid)
-    vᶜᶠᶜ = Field(Center, Face, Center, CPU(), grid)
+        ψᶠᶠᶜ = Field( (Face, Face,   Center), grid)
+        uᶠᶜᶜ = Field( (Face, Center, Center), grid)
+        vᶜᶠᶜ = Field( (Center, Face, Center), grid)
 
     for (f, grid_face) in enumerate(grid.faces)
         Nx, Ny, Nz = size(grid_face)
@@ -216,15 +216,12 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     deformation_radius_45°N = √(g * H) / (2Ω*sind(45))
     @info @sprintf("Deformation radius @ 45°N: %.2f km", deformation_radius_45°N / 1000)
 
-    cfl = CFL(Δt, accurate_cell_advection_timescale)
+    # cfl = CFL(Δt, accurate_cell_advection_timescale)
+    cfl = 0.2
 
-    simulation = Simulation(model,
-                        Δt = Δt,
-                 stop_time = 5years,
-        iteration_interval = 20,
-                  progress = Progress(time_ns()),
-                parameters = (; cfl)
-    )
+    simulation = Simulation( model, Δt=Δt, stop_time=5years)
+    # wizard = TimeStepWizard(cfl=cfl)
+    # simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
     output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=VerticalVorticityField(model)))
 
