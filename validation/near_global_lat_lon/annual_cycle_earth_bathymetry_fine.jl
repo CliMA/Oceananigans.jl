@@ -314,6 +314,7 @@ surface_file = jldopen(output_prefix * "_surface.jld2")
 bottom_file = jldopen(output_prefix * "_bottom.jld2")
 
 iterations = parse.(Int, keys(surface_file["timeseries/t"]))
+iterations = iterations[15:end]
 
 iter = Node(0)
 

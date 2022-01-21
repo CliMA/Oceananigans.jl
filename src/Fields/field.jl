@@ -358,7 +358,9 @@ get_neutral_mask(::MaximumReduction) = - Inf
 get_neutral_mask(::ProdReduction)    =   1
 get_neutral_mask(::SumReduction)     =   0
 
-@inline condition_operand(operand, ::Nothing, mask) = operand
+@inline condition_operand(operand, ::Nothing, mask)                = operand
+@inline condition_operand(operand::AbstractField, ::Nothing, mask) = operand
+
 @inline conditional_length(c::AbstractField)        = length(c)
 @inline conditional_length(c::AbstractField, dims)  = mapreduce(i -> size(c, i), *, unique(dims); init=1)
 
@@ -371,17 +373,17 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
         mask = get_neutral_mask(Base.$(reduction!))
 
         # In-place
-        Base.$(reduction!)(f::Function, r::ReducedField, a::AbstractArray; 
-                           condition = nothing, mask, kwargs...) =
+        Base.$(reduction!)(f::Function, r::ReducedField, a::AbstractArray, 
+                           condition = nothing, mask = mask; kwargs...) =
             Base.$(reduction!)(f, interior(r), condition_operand(a, condition, mask); kwargs...)
 
-        Base.$(reduction!)(r::ReducedField, a::AbstractArray; 
-                           condition = nothing, mask, kwargs...) =
+        Base.$(reduction!)(r::ReducedField, a::AbstractArray, 
+                           condition = nothing, mask = mask; kwargs...) =
             Base.$(reduction!)(identity, interior(r), condition_operand(a, mask); kwargs...)
 
         # Allocating
-        function Base.$(reduction)(f::Function, c::AbstractField; 
-                                   condition = nothing, mask,
+        function Base.$(reduction)(f::Function, c::AbstractField, 
+                                   condition = nothing, mask = mask;
                                    dims=:)
             if dims isa Colon
                 r = zeros(architecture(c), c.grid, 1, 1, 1)
@@ -397,7 +399,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             end
         end
 
-        Base.$(reduction)(c::AbstractField; kwargs...) = Base.$(reduction)(identity, c; kwargs...)
+        Base.$(reduction)(c::AbstractField, args...; kwargs...) = Base.$(reduction)(identity, c, args...; kwargs...)
     end
 end
 

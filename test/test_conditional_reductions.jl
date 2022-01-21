@@ -8,7 +8,7 @@ using CUDA: @allowscalar
 @testset "Conditioned Reductions" begin
 
     for arch in archs
-        grid = RectilinearGrid(arch, size = (10, 10, 10), extent = (1, 1, 1))
+        grid = RectilinearGrid(arch, size = (1, 1, 4), extent = (1, 1, 1))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> - grid.Lz/2))
 
         fful = Field{Center, Center, Center}(grid)
@@ -16,11 +16,11 @@ using CUDA: @allowscalar
 
         @test conditional_length(fimm) == length(fimm) / 2
 
-        fful .= 1
-        fimm .= 1
+        fful .= 2
+        fimm .= 2
 
-        @allowscalar fimm[:, :, 4:5] .= 1e6
-        @allowscalar fimm[:, :, 1:3] .= -1e4
+        @allowscalar fimm[:, :, 1] .= 1e6
+        @allowscalar fimm[:, :, 2] .= -1e4
 
         # @test norm(fful) ≈ √2 * norm(fimm)
 
