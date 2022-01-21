@@ -1,6 +1,5 @@
-using Oceananigans.Fields: AbstractField, ReducedField
+using Oceananigans.Fields: AbstractField
 using Oceananigans.AbstractOperations: AbstractOperation, ConditionalOperation
-using CUDA: @allowscalar
 
 import Oceananigans.AbstractOperations: get_condition
 import Oceananigans.Fields: condition_operand, conditional_length
@@ -12,7 +11,7 @@ import Oceananigans.Fields: condition_operand, conditional_length
 
 const ImmersedField = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
 
-struct NotImmersed{F} 
+struct NotImmersed{F} <: Function
     func :: F
 end
 
@@ -24,7 +23,7 @@ end
 @inline conditional_length(c::ImmersedField) = conditional_length(condition_operand(c, nothing, 0))
 
 @inline function get_condition(condition::NotImmersed, i, j, k, 
-                               ibg, co :: ConditionalOperation{LX, LY, LZ}, args...) where {LX, LY, LZ}
+                               ibg, co::ConditionalOperation{LX, LY, LZ}, args...) where {LX, LY, LZ}
     return get_condition(condition.func, i, j, k, ibg, args...) & !(solid_interface(LX(), LY(), LZ(), i, j, k, ibg))
 end 
 

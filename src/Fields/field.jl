@@ -374,16 +374,16 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
         # In-place
         Base.$(reduction!)(f::Function, r::ReducedField, a::AbstractArray, 
-                           condition = nothing, mask = mask; kwargs...) =
+                           condition = nothing, mask; kwargs...) =
             Base.$(reduction!)(f, interior(r), condition_operand(a, condition, mask); kwargs...)
 
         Base.$(reduction!)(r::ReducedField, a::AbstractArray, 
-                           condition = nothing, mask = mask; kwargs...) =
+                           condition = nothing, mask; kwargs...) =
             Base.$(reduction!)(identity, interior(r), condition_operand(a, mask); kwargs...)
 
         # Allocating
         function Base.$(reduction)(f::Function, c::AbstractField, 
-                                   condition = nothing, mask = mask;
+                                   condition = nothing, mask;
                                    dims=:)
             if dims isa Colon
                 r = zeros(architecture(c), c.grid, 1, 1, 1)

@@ -17,6 +17,10 @@ end
 @inline condition_operand(operand::AbstractField, condition, mask)    = condition_operand(location(operand)..., operand, operand.grid, condition, mask)
 @inline condition_operand(LX, LY, LZ, operand, grid, condition, mask) = ConditionalOperation{LX, LY, LZ}(operand, grid, condition, mask)
 
+# If we reduce, we keep the same condition!
+@inline condition_operand(operand::ConditionalOperation, ::Nothing, mask)    = condition_operand(location(operand)..., operand, operand.grid, operand.condition, mask)
+@inline condition_operand(operand::ConditionalOperation, condition, mask)    = condition_operand(location(operand)..., operand, operand.grid, condition, mask)
+
 @inline function evaluate_condition(c::ConditionalOperation)
     f = similar(c.operand)
     set!(f, c.condition)
