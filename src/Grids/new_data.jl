@@ -1,6 +1,10 @@
 using Oceananigans.Grids: total_length, topology
+using Oceananigans.Architectures: CPU, GPU, AbstractMultiArchitecture
 
+using CUDA
 using OffsetArrays: OffsetArray
+
+import Base: zeros
 
 #####
 ##### Creating offset arrays for field data by dispatching on architecture.
@@ -65,3 +69,14 @@ function new_data(FT, grid, loc)
 end
 
 new_data(grid, loc) = new_data(eltype(grid), grid, loc)
+
+#####
+##### zeros
+#####
+
+zeros(FT, ::CPU, N...) = zeros(FT, N...)
+zeros(FT, ::GPU, N...) = CUDA.zeros(FT, N...)
+
+zeros(arch::AbstractArchitecture, grid, N...) = zeros(eltype(grid), arch, N...)
+zeros(grid::AbstractGrid, N...) = zeros(eltype(grid), architecture(grid), N...)
+

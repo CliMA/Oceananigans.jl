@@ -38,7 +38,9 @@ function Field(reduction::Reduction;
     LX, LY, LZ = loc = reduced_location(location(operand); dims=reduction.dims)
 
     if isnothing(data)
-        data = new_data(grid, loc)
+        T_operand = CUDA.@allowscalar typeof(operand[1, 1, 1])
+        T_data = filltype(reduction.reduce!, operand_type)
+        data = new_data(T_data, grid, loc)
         recompute_safely = false
     end
 

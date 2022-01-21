@@ -2,6 +2,7 @@
 ##### Fields computed from abstract operations
 #####
 
+using CUDA
 using KernelAbstractions: @kernel, @index
 using Oceananigans.Fields: FieldStatus, show_status, reduced_dimensions
 using Oceananigans.Utils: launch!
@@ -39,7 +40,8 @@ function Field(operand::AbstractOperation;
     grid = operand.grid
 
     if isnothing(data)
-        data = new_data(grid, location(operand))
+        data_type = CUDA.@allowscalar typeof(operand[1, 1, 1])
+        data = new_data(data_type, grid, location(operand))
         recompute_safely = false
     end
 

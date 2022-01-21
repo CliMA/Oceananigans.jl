@@ -339,8 +339,8 @@ initialize_reduced_field!(::AnyReduction,  f, r::ReducedField, c) = Base.initarr
 initialize_reduced_field!(::MaximumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), c)
 initialize_reduced_field!(::MinimumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), c)
 
-filltype(f, grid) = eltype(grid)
-filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
+filltype(reduction, operand_type) = operand_type
+filltype(::Union{AllReduction, AnyReduction}, operand_type) = Bool
 
 function reduced_location(loc; dims)
     if dims isa Colon
@@ -366,14 +366,15 @@ for reduction in (:sum, :maximum, :minimum, :all, :any)
 
         # Allocating
         function Base.$(reduction)(f::Function, c::AbstractField; dims=:)
+            T_operand = CUDA.@allowscalar typeof(c[1, 1, 1])
+            T_data = filltype(Base.$(reduction!), operand_type)
             if dims isa Colon
-                r = zeros(architecture(c), c.grid, 1, 1, 1)
+                r = zeros(T_data, architecture(c), 1, 1, 1)
                 Base.$(reduction!)(f, r, c)
                 return CUDA.@allowscalar r[1, 1, 1]
             else
-                T = filltype(Base.$(reduction!), c.grid)
                 loc = reduced_location(location(c); dims)
-                r = Field(loc, c.grid, T)
+                r = Field(loc, c.grid, T_data)
                 initialize_reduced_field!(Base.$(reduction!), f, r, c)
                 Base.$(reduction!)(f, r, c, init=false)
                 return r
