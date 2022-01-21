@@ -26,7 +26,9 @@ function validate_field_data(loc, data, grid::ConformalCubedSphereGrid)
     return nothing
 end
 
+# We don't support validating cubed sphere boundary conditions at this time
 validate_boundary_conditions(loc, grid::ConformalCubedSphereGrid, bcs::CubedSphereFaces) = nothing
+validate_boundary_conditions(loc, grid::ConformalCubedSphereFaceGrid, bcs) = nothing
 
 validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
     [validate_vertical_velocity_boundary_conditions(w_face) for w_face in faces(w)]
