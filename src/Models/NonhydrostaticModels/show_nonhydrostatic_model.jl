@@ -6,15 +6,15 @@ function Base.show(io::IO, model::NonhydrostaticModel{TS, C, A}) where {TS, C, A
         "(time = $(prettytime(model.clock.time)), iteration = $(model.clock.iteration)) \n",
         "├── grid: $(summary(model.grid))\n",
         "├── tracers: $(tracernames(model.tracers))\n",
-        "├── closure: $(typeof(model.closure))\n",
-        "├── buoyancy: $(typeof(isnothing(model.buoyancy) ? model.buoyancy : model.buoyancy.model))\n")
+        "├── closure: ", summary(model.closure), '\n',
+        "├── buoyancy: ", summary(model.buoyancy), '\n')
 
     if isnothing(model.particles)
-        print(io, "└── coriolis: $(typeof(model.coriolis))")
+        print(io, "└── coriolis: ", summary(model.coriolis))
     else
         particles = model.particles.properties
         properties = propertynames(particles)
-        print(io, "├── coriolis: $(typeof(model.coriolis))\n")
+        print(io, "├── coriolis: ", summary(model.coriolis), '\n')
         print(io, "└── particles: $(length(particles)) Lagrangian particles with $(length(properties)) properties: $properties")
     end
 end
