@@ -23,12 +23,15 @@ OneField(T=Int) = OneField{T, 3}() # default 3D, integer 1
 @inline condition_operand(operand::AbstractField, condition, mask)    = condition_operand(location(operand)..., operand, operand.grid, condition, mask)
 @inline condition_operand(LX, LY, LZ, operand, grid, condition, mask) = ConditionalOperation{LX, LY, LZ}(operand, grid, condition, mask)
 
-# If we reduce, we keep the same condition!
-@inline condition_operand(operand::ConditionalOperation, ::Nothing, mask)    = condition_operand(location(operand)..., operand, operand.grid, operand.condition, mask)
-@inline condition_operand(operand::ConditionalOperation, condition, mask)    = condition_operand(location(operand)..., operand, operand.grid, condition, mask)
+@inline condition_onefield(c::ConditionalOperation{LX, LY, LZ}, mask) where {LX, LY, LZ} =
+                              ConditionalOperation{LX, LY, LZ}(OneField(), c.grid, c.condition, mask)
 
-@inline conditional_length(c::ConditionalOperation)       = sum(conditioned_domain(OneField(), c.condition, 0))
-@inline conditional_length(c::ConditionalOperation, dims) = sum(f, conditioned_domain(OneField(), c.condition, 0); dims = dims)
+# If we reduce a ConditionalOperation, we keep the same condition!
+@inline condition_operand(operand::ConditionalOperation, ::Nothing, mask) = condition_operand(location(operand)..., operand, operand.grid, operand.condition, mask)
+@inline condition_operand(operand::ConditionalOperation, condition, mask) = condition_operand(location(operand)..., operand, operand.grid, condition, mask)
+
+@inline conditional_length(c::ConditionalOperation)       = sum(condition_onefield(c, 0))
+@inline conditional_length(c::ConditionalOperation, dims) = sum(condition_onefield(c, 0); dims = dims)
 
 Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
             ConditionalOperation{LX, LY, LZ}(adapt(to, c.operand), 

@@ -22,16 +22,16 @@ using CUDA: @allowscalar
         @allowscalar fimm[:, :, 1] .= 1e6
         @allowscalar fimm[:, :, 2] .= -1e4
 
-        # @test norm(fful) ≈ √2 * norm(fimm)
+        @test norm(fful) ≈ √2 * norm(fimm)
 
-        for reduc in (mean, maximum, minimum, prod)
-            @test reduc(fful) == reduc(fimm)
-
-            @test all(reduc(fful, dims=1)[:, 1, 6:end] .== reduc(fimm, dims=1)[:, 1, 6:end])
-            @test all(reduc(fful, dims=2)[1, :, 6:end] .== reduc(fimm, dims=2)[1, :, 6:end])
-            @test all(reduc(fful, dims=3)[:, :, 1]     .== reduc(fimm, dims=3)[:, :, 1])
+        for reduc in (mean, maximum, minimum)
+            @show @test reduc(fful) == reduc(fimm)
+            @show @test all(reduc(fful, dims=3)[:, :, 1] .== reduc(fimm, dims=3)[:, :, 1])
         end
-        @test sum(fful) == sum(fimm) / 2
-        @test all(sum(fful, dims=3)[:, :, 1]     .== sum(fimm, dims=3)[:, :, 1] ./ 2)
+        @test sum(fful) == sum(fimm) * 2
+        @test all(sum(fful, dims=3)[:, :, 1] .== sum(fimm, dims=3)[:, :, 1] .* 2)
+
+        @test prod(fful) == prod(fimm) * 4
+        @test all(prod(fful, dims=3)[:, :, 1] .== prod(fimm, dims=3)[:, :, 1] .* 4)
     end
 end

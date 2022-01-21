@@ -20,7 +20,8 @@ end
 
 @inline neutral_func(args...) = true
 
-@inline conditional_length(c::ImmersedField) = conditional_length(condition_operand(c, nothing, 0))
+@inline conditional_length(c::ImmersedField)       = conditional_length(condition_operand(c, nothing, 0))
+@inline conditional_length(c::ImmersedField, dims) = conditional_length(condition_operand(c, nothing, 0), dims)
 
 @inline function get_condition(condition::NotImmersed, i, j, k, 
                                ibg, co::ConditionalOperation{LX, LY, LZ}, args...) where {LX, LY, LZ}
