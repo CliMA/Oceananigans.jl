@@ -399,7 +399,8 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             end
         end
 
-        Base.$(reduction)(c::AbstractField, args...; kwargs...) = Base.$(reduction)(identity, c, args...; kwargs...)
+        Base.$(reduction)(c::AbstractField, condition = nothing, mask = mask; kwargs...) =
+            Base.$(reduction)(identity, condition_operand(c, condition, mask); kwargs...)
     end
 end
 

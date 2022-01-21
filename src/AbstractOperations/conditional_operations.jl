@@ -14,7 +14,7 @@ struct ConditionalOperation{LX, LY, LZ, O, G, C, M, T} <: AbstractOperation{LX, 
      end
 end
  
-@inline condition_operand(operand::AbstractField, condition, mask)    = condition_operand(location(operand)..., operand.grid, condition, mask)
+@inline condition_operand(operand::AbstractField, condition, mask)    = condition_operand(location(operand)..., operand, operand.grid, condition, mask)
 @inline condition_operand(LX, LY, LZ, operand, grid, condition, mask) = ConditionalOperation{LX, LY, LZ}(operand, grid, condition, mask)
 
 @inline function evaluate_condition(c::ConditionalOperation)
@@ -38,6 +38,8 @@ Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ
                   getindex(c.operand, i, j, k),
                   c.mask)
 end
+
+@inline concretize_condition!(c::ConditionalOperation) = set!(c.operand, c)
 
 function concretize_condition(c::ConditionalOperation)
     f = similar(c.operand)
