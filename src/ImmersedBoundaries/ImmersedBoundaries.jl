@@ -94,7 +94,7 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, Arch} <: AbstractGrid{FT, TX, 
     architecture :: Arch
     grid :: G
     immersed_boundary :: I
-
+    
     function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I}
         FT = eltype(grid)
         arch = architecture(grid)

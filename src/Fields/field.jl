@@ -350,7 +350,7 @@ function reduced_location(loc; dims)
     end
 end
 
-## Allow support for MaskedOperations
+## Allow support for ConditionalOperation
 
 get_neutral_mask(::Union{AllReduction, AnyReduction}) = true
 get_neutral_mask(::MinimumReduction) =   Inf
@@ -358,7 +358,9 @@ get_neutral_mask(::MaximumReduction) = - Inf
 get_neutral_mask(::ProdReduction)    =   1
 get_neutral_mask(::SumReduction)     =   0
 
-@inline mask_operator(operand, mask) = operand
+@inline condition_operand(operand, ::Nothing, mask) = operand
+@inline conditional_length(c::AbstractField)        = length(c)
+@inline conditional_length(c::AbstractField, dims)  = mapreduce(i -> size(c, i), *, unique(dims); init=1)
 
 # Allocating and in-place reductions
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
@@ -369,38 +371,47 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
         mask = get_neutral_mask(Base.$(reduction!))
 
         # In-place
-        Base.$(reduction!)(f::Function, r::ReducedField, a::AbstractArray; kwargs...) =
-            Base.$(reduction!)(f, interior(r), mask_operator(a, mask); kwargs...)
+        Base.$(reduction!)(f::Function, r::ReducedField, a::AbstractArray; 
+                           condition = nothing, mask, kwargs...) =
+            Base.$(reduction!)(f, interior(r), condition_operand(a, condition, mask); kwargs...)
 
-        Base.$(reduction!)(r::ReducedField, a::AbstractArray; kwargs...) =
-            Base.$(reduction!)(identity, interior(r), mask_operator(a, mask); kwargs...)
+        Base.$(reduction!)(r::ReducedField, a::AbstractArray; 
+                           condition = nothing, mask, kwargs...) =
+            Base.$(reduction!)(identity, interior(r), condition_operand(a, mask); kwargs...)
 
         # Allocating
-        function Base.$(reduction)(f::Function, c::AbstractField; dims=:)
+        function Base.$(reduction)(f::Function, c::AbstractField; 
+                                   condition = nothing, mask,
+                                   dims=:)
             if dims isa Colon
                 r = zeros(architecture(c), c.grid, 1, 1, 1)
-                Base.$(reduction!)(f, r, mask_operator(c, mask))
+                Base.$(reduction!)(f, r, condition_operand(c, condition, mask))
                 return CUDA.@allowscalar r[1, 1, 1]
             else
                 T = filltype(Base.$(reduction!), c.grid)
                 loc = reduced_location(location(c); dims)
                 r = Field(loc, c.grid, T)
                 initialize_reduced_field!(Base.$(reduction!), f, r, c)
-                Base.$(reduction!)(f, r, mask_operator(c, mask), init=false)
+                Base.$(reduction!)(f, r, condition_operand(c, condition, mask), init=false)
                 return r
             end
         end
 
-        Base.$(reduction)(c::AbstractField; dims=:) = Base.$(reduction)(identity, c; dims)
+        Base.$(reduction)(c::AbstractField; kwargs...) = Base.$(reduction)(identity, c; kwargs...)
     end
 end
 
-Statistics._mean(f, c::AbstractField, ::Colon) = sum(f, c) / length(c)
+function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing) 
+    operator = condition_operand(c, condition, 0)
+    return sum(f, operator) / conditional_length(operator)
+end
 
-function Statistics._mean(f, c::AbstractField, dims)
-    r = sum(f, c; dims)
-    n = mapreduce(i -> size(c, i), *, unique(dims); init=1)
+function Statistics._mean(f, c::AbstractField, dims; condition = nothing)
+    operator = condition_operand(c, condition, 0)
+    r = sum(f, operator; dims)
+    n = conditional_length(c, dims)
     parent(r) ./= n
     return r
 end
 
+Statistics._mean(c::AbstractField; dims) = Statistics._mean(identity, c, dims=dims)

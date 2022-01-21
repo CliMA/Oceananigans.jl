@@ -9,8 +9,8 @@ for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Der
     end
 end
 
-operation_name(op::GridMetricOperation) = string(op.metric)
-operation_name(mo::MaskedOperation) = "Masked field"
+operation_name(op::GridMetricOperation)  = string(op.metric)
+operation_name(mo::ConditionalOperation) = "Conditioned Field"
 
 function show_interp(op)
     op_str = string(op)
@@ -30,7 +30,7 @@ Base.show(io::IO, operation::AbstractOperation) =
           "│   └── domain: ", domain_string(operation.grid), '\n',
           "└── tree: ", "\n", "    ", tree_show(operation, 1, 0))
 
-"Return a representaion of number or function leaf within a tree visualization of an `AbstractOperation`."
+"Return a representation of number or function leaf within a tree visualization of an `AbstractOperation`."
 tree_show(a::Union{Number, Function}, depth, nesting) = string(a)
 
 "Fallback for displaying a leaf within a tree visualization of an `AbstractOperation`."

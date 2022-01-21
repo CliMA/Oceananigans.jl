@@ -1,9 +1,9 @@
 using Oceananigans.Fields: AbstractField, ReducedField
-using Oceananigans.AbstractOperations: AbstractOperation, MaskedOperation
+using Oceananigans.AbstractOperations: AbstractOperation, ConditionalOperation
 using CUDA: @allowscalar
 
-import Statistics: norm
-import Oceananigans.Fields: mask_operator
+import Oceananigans.AbstractOperations: get_condition
+import Oceananigans.Fields: condition_operand, conditional_length
 
 # ###
 # ###  reduction operations involving immersed boundary grids exclude the immersed region 
@@ -11,34 +11,29 @@ import Oceananigans.Fields: mask_operator
 # ###
 
 const ImmersedField = AbstractField{<:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
-const ImmersedMask  = MaskedOperation{<:Any, <:Any, <:Any, <:Any, <:ImmersedBoundaryGrid}
 
-@inline immersed_condition(i, j, k, mo::ImmersedMask{LX, LY, LZ}) where {LX, LY, LZ} = solid_interface(LX(), LY(), LZ(), i, j, k, mo.grid) 
+@inline function get_condition(condition, i, j, k, 
+                               ibg :: ImmersedBoundaryGrid, 
+                               co :: ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ}
+    return get_condition(condition, i, j, k, ibg.grid, co) & !solid_interface(LX(), LY(), LZ(), i, j, k, ibg)
+end 
 
-@inline function masked_operation(obj::ImmersedField, mask) 
-    return mask_operator(location(obj)..., obj, obj.grid, mask, immersed_condition)
-end
+@inline condition_operand(c::ImmersedField, ::Nothing, mask) = condition_operand(location(c)..., c, c.grid, mask, neutral_func)
+@inline neutral_func(i, j, k, grid) = true
 
-@inline masked_length(c::AbstractField) = length(c)
-@inline masked_length(c::ImmersedField) = sum(mask_operator(c, 0))
+@inline conditional_length(c::ImmersedField) = conditional_length(condition_operand(c, nothing, 0))
 
-Statistics.dot(a::ImmersedField, b::Field) = Statistics.dot(mask_operator(a, 0), b)
-Statistics.dot(a::Field, b::ImmersedField) = Statistics.dot(mask_operator(a, 0), b)
 
-function Statistics.norm(c::ImmersedField)
-    r = zeros(c.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, r, mask_operator(c, 0))
-    return @allowscalar sqrt(r[1])
-end
 
-Statistics._mean(f, c::ImmersedField, ::Colon) = sum(f, c) / masked_length(c)
 
-function Statistics._mean(f, c::ImmersedField; dims)
-    r = sum(f, c; dims = dims)
-    n = sum(f, mask_operator(c / c, 0); dims = dims)
 
-    @show r, n
-    return r ./ n
-end
 
-Statistics._mean(c::ImmersedField; dims) = Statistics._mean(identity, c, dims=dims)
+
+# Statistics.dot(a::ImmersedField, b::Field) = Statistics.dot(condition_operand(a, 0), b)
+# Statistics.dot(a::Field, b::ImmersedField) = Statistics.dot(condition_operand(a, 0), b)
+
+# function Statistics.norm(c::ImmersedField)
+#     r = zeros(c.grid, 1)
+#     Base.mapreducedim!(x -> x * x, +, r, condition_operator(c, nothing, 0))
+#     return @allowscalar sqrt(r[1])
+# end
