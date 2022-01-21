@@ -67,6 +67,7 @@ Both `NonhydrostaticModel` and `HydrostaticFreeSurfaceModel` support evolving
 a buoyancy tracer by including `:b` in `tracers` and specifying  `buoyancy = BuoyancyTracer()`:
 
 ```jldoctest buoyancy
+julia> model = NonhydrostaticModel(grid=grid, buoyancy=BuoyancyTracer(), tracers=:b)
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── tracers: (:b,)
@@ -135,7 +136,6 @@ HydrostaticFreeSurfaceModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 To model flows near the surface of Europa where `gravitational_acceleration = 1.3 \, \text{m}\,\text{s}^{-2}`,
 we might alternatively specify
 
-
 ```jldoctest buoyancy
 julia> buoyancy = SeawaterBuoyancy(gravitational_acceleration=1.3)
 SeawaterBuoyancy{Float64}: g = 1.3
@@ -154,9 +154,8 @@ for example.
 
 ### Linear equation of state
 
-To use non-default thermal expansion and haline contraction coefficients, say
-``\alpha = 2 \times 10^{-3} \; \text{K}^{-1}`` and ``\beta = 5 \times 10^{-4} \text{psu}^{-1}`` corresponding to some other
-fluid, then use
+To specify the thermal expansion and haline contraction coefficients
+``\alpha = 2 \times 10^{-3} \; \text{K}^{-1}`` and ``\beta = 5 \times 10^{-4} \text{psu}^{-1}``,
 
 ```jldoctest
 julia> buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-3, β=5e-4))
