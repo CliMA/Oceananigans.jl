@@ -1,4 +1,5 @@
 using Oceananigans.Architectures: device_event
+using Oceananigans.BoundaryConditions: OBC
 
 using Adapt
 using KernelAbstractions: @kernel, @index
@@ -33,10 +34,40 @@ function validate_field_data(loc, data, grid)
     return nothing
 end
 
+validate_boundary_condition_location(bc, ::Center, side) = nothing                  # anything goes for centers
+validate_boundary_condition_location(::Union{OBC, Nothing}, ::Face, side) = nothing # only open or nothing on faces
+validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing          # its nothing or nothing
+validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
+    throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
+
+validate_boundary_conditions(loc, grid, ::Missing) = nothing
+
+function validate_boundary_conditions(loc, grid, bcs)
+    sides = (:east, :west, :north, :south, :bottom, :top)
+    directions = (1, 1, 2, 2, 3, 3)
+
+    for (side, dir) in zip(sides, directions)
+        topo = topology(grid, dir)()
+        ℓ = loc[dir]()
+        bc = getproperty(bcs, side)
+
+        # Check that boundary condition jives with the grid topology
+        validate_boundary_condition_topology(bc, topo, side)
+
+        # Check that boundary condition is valid given field location
+        topo isa Bounded && validate_boundary_condition_location(bc, ℓ, side)
+
+        # Check that boundary condition arrays, if used, are on the right architecture
+        validate_boundary_condition_architecture(bc, architecture(grid), side)
+    end
+
+    return nothing
+end
+
 # Common outer constructor for all field flavors that validates data and boundary conditions
 function Field(loc::Tuple, grid::AbstractGrid, data, bcs, op, status)
     validate_field_data(loc, data, grid)
-    # validate_boundary_conditions(loc, grid, bcs)
+    validate_boundary_conditions(loc, grid, bcs)
     LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, op, status)
 end
