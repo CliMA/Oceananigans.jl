@@ -26,7 +26,7 @@ end
 function (p::Progress)(sim)
     wall_time = (time_ns() - p.interval_start_time) * 1e-9
     progress = sim.model.clock.time / sim.stop_time
-    ETA = (1 - progress) / progress * sim.run_time
+    ETA = (1 - progress) / progress * sim.run_wall_time
     ETA_datetime = now() + Second(round(Int, ETA))
 
     @info @sprintf("[%06.2f%%] Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e",
@@ -222,6 +222,8 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     simulation = Simulation( model, Δt=Δt, stop_time=5years)
     # wizard = TimeStepWizard(cfl=cfl)
     # simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
+    #
+    simulation.callbacks[:progress] = Callback(Progress(time_ns()), IterationInterval(20))
 
     output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=VerticalVorticityField(model)))
 
@@ -231,7 +233,7 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
               prefix = "cubed_sphere_eddying_aquaplanet",
                force = true)
 
-    run!(simulation)
+    # run!(simulation)
 
     return simulation
 end
