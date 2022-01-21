@@ -16,7 +16,7 @@ using Oceananigans.BoundaryConditions
 import Oceananigans: short_show
 
 include("abstract_field.jl")
-include("zero_field.jl")
+include("constant_field.jl")
 include("function_field.jl")
 include("field.jl")
 include("field_reductions.jl")
