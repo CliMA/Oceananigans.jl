@@ -1,5 +1,6 @@
 using CUDA
 using Printf
+using Base.Ryu: writeshortest
 
 #####
 ##### Convenience functions
@@ -353,8 +354,32 @@ end
 
 struct ZDirection end
 
-@inline show_coordinate(Δ::Number, T)            = "Regular, with spacing $Δ"
-@inline show_coordinate(Δ::Number, ::Type{Flat}) = "Flattened"
-@inline show_coordinate(Δ::AbstractVector, T)    = @sprintf("Stretched, with spacing min=%.6f, max=%.6f",
-                                                            minimum(parent(Δ)), maximum(parent(Δ)))
+#####
+##### Show utils
+#####
+
+size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
+scalar_summary(σ) = writeshortest(σ, false, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
+dimension_summary(topo::Flat, name, args...) = "Flat $name"
+
+function domain_summary(topo, name, left, right)
+    interval = topo isa Periodic ? ")" : "]"
+    topo_string = topo isa Periodic ? "Periodic " :
+                                      "Bounded  "
+
+    prefix = string(topo_string, name, " ∈ [",
+                    scalar_summary(left), ", ",
+                    scalar_summary(right), interval)
+end
+
+function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
+    prefix = domain_summary(topo, name, left, right)
+    padding = " "^(pad_domain+1) 
+    return string(prefix, padding, coordinate_summary(spacing, name))
+end
+
+coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, scalar_summary(Δ))
+coordinate_summary(Δ::AbstractVector, name) = @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
+                                                       name, scalar_summary(minimum(parent(Δ))),
+                                                       name, scalar_summary(maximum(parent(Δ))))
 

@@ -3,7 +3,6 @@ using Statistics: mean!, sum!
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions
 import Oceananigans.Fields: Reduction
-import Oceananigans: short_show
 
 ##### 
 ##### Metric inference
@@ -57,8 +56,6 @@ spatial extent of the interval.
 """
 Average(field::AbstractField; dims=:) = Reduction(Average(), field; dims)
 
-const AveragedField = Field{<:Any, <:Any, <:Any, <:Reduction{<:Average}}
-
 struct Integral end
 
 function Reduction(int::Integral, field::AbstractField; dims)
@@ -74,12 +71,10 @@ Return a `Reduction` representing a spatial integral of `field` over `dims`.
 """
 Integral(field::AbstractField; dims=:) = Reduction(Integral(), field; dims)
 
-const IntegratedField = Field{<:Any, <:Any, <:Any, <:Reduction{<:Integral}}
-
 #####
 ##### show
 #####
 
-short_show(r::Reduction{<:Average}) = string("Average of ", short_show(r.operand), " over dims ", r.dims)
-short_show(r::Reduction{<:Integral}) = string("Integral of ", short_show(r.operand), " over dims ", r.dims)
+Base.summary(r::Reduction{<:Average}) = string("Average of ", summary(r.operand), " over dims ", r.dims)
+Base.summary(r::Reduction{<:Integral}) = string("Integral of ", summary(r.operand), " over dims ", r.dims)
                                              

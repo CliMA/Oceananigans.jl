@@ -1,3 +1,5 @@
+using Oceananigans.Utils: prettysummary
+
 struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, T, 3}
           func :: F
           grid :: G
@@ -69,8 +71,8 @@ Adapt.adapt_structure(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
 
 Base.show(io::IO, field::FunctionField) =
     print(io, "FunctionField located at ", show_location(field), '\n',
-          "├── func: $(short_show(field.func))", '\n',
-          "├── grid: $(short_show(field.grid))\n",
-          "├── clock: $(short_show(field.clock))\n",
+          "├── func: $(prettysummary(field.func))", '\n',
+          "├── grid: $(summary(field.grid))\n",
+          "├── clock: $(summary(field.clock))\n",
           "└── parameters: $(field.parameters)")
 

@@ -82,12 +82,43 @@ const HRegLatLonGrid = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, 
 regular_dimensions(::ZRegLatLonGrid) = tuple(3)
 
 """
+    LatitudeLongitudeGrid([architecture = CPU(), FT = Float64];
+                          size,
+                          latitude,
+                          longitude,
+                          z,
+                          radius = R_Earth,
+                          precompute_metrics = false,
+                          halo = (1, 1, 1))
 
-latitude, longitude and z can be a 2-tuple that specifies the end of the domain (see RegularRectilinearDomain)
-or an array or function that specifies the faces (see VerticallyStretchedRectilinearGrid)
+Creates a `LatitudeLongitudeGrid` with `size = (Nx, Ny, Nz)` grid points.
 
+Positional arguments
+=================
+
+- `architecture`: Specifies whether arrays of coordinates and spacings are stored
+                  on the CPU or GPU. Default: `architecture = CPU()`.
+
+- `FT` : Floating point data type. Default: `FT = Float64`.
+
+Keyword arguments
+=================
+
+- `size` (required): A 3-tuple prescribing the number of grid points each direction.
+
+- `latitude`, `longitude`, `z`: Each is either a
+                                (i) 2-tuple that specify the end points of the domain,
+                                (ii) one-dimensional array specifying the cell interface locations or
+                                (iii) a single-argument function that takes an index and returns
+                                      cell interface location.
+
+- `precompute_metrics`: Boolean specifying whether to precompute horizontal spacings and areas.
+                        If `!precompute_metrics` (the default), horizontal spacings and areas
+                        are computed on-the-fly during a simulation.
+
+- `halo`: A 3-tuple of integers specifying the size of the halo region of cells surrounding
+          the physical interior.
 """
-
 function LatitudeLongitudeGrid(architecture::AbstractArchitecture = CPU(),
                                FT::DataType = Float64;
                                precompute_metrics = false,
@@ -179,30 +210,38 @@ function validate_lat_lon_grid_args(latitude, longitude, size, halo)
     return Nλ, Nφ, Nz, Hλ, Hφ, Hz, latitude, longitude, topo
 end
 
-function domain_string(grid::LatitudeLongitudeGrid)
+function Base.summary(grid::LatitudeLongitudeGrid)
+    FT = eltype(grid)
+    TX, TY, TZ = topology(grid)
+    metric_computation = isnothing(grid.Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
+
+    return string(size_summary(size(grid)),
+                  " LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+                  " with ", size_summary(halo_size(grid)), " halo",
+                  " and ", metric_computation)
+end
+
+function Base.show(io::IO, grid::LatitudeLongitudeGrid)
+    TX, TY, TZ = topology(grid)
+
     λ₁, λ₂ = domain(topology(grid, 1), grid.Nx, grid.λᶠᵃᵃ)
     φ₁, φ₂ = domain(topology(grid, 2), grid.Ny, grid.φᵃᶠᵃ)
     z₁, z₂ = domain(topology(grid, 3), grid.Nz, grid.zᵃᵃᶠ)
-    return "longitude λ ∈ [$λ₁, $λ₂], latitude ∈ [$φ₁, $φ₂], z ∈ [$z₁, $z₂]"
-end
 
-function show(io::IO, g::LatitudeLongitudeGrid)
-    FT = eltype(g)
-    TX, TY, TZ = topology(g)
+    x_summary = domain_summary(TX(), "λ", λ₁, λ₂)
+    y_summary = domain_summary(TY(), "φ", φ₁, φ₂)
+    z_summary = domain_summary(TZ(), "z", z₁, z₂)
 
-    show_metrics = isnothing(g.Δxᶠᶜᵃ) ? "metrics are computed on the fly" : 
-                                        "metrics are pre-computed"
+    longest = max(length(x_summary), length(y_summary), length(z_summary)) 
 
-    return print(io, "LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} \n",
-                     "             architecture: $(g.architecture)\n",
-                     "                   domain: $(domain_string(g))\n",
-                     "                 topology: ", (TX, TY, TZ), '\n',
-                     "        size (Nx, Ny, Nz): ", (g.Nx, g.Ny, g.Nz), '\n',
-                     "        halo (Hx, Hy, Hz): ", (g.Hx, g.Hy, g.Hz), '\n',
-                     "             spacing in λ: ", show_coordinate(g.Δλᶜᵃᵃ, TX), '\n',
-                     "             spacing in φ: ", show_coordinate(g.Δφᵃᶜᵃ, TY), '\n',
-                     "             spacing in z: ", show_coordinate(g.Δzᵃᵃᶜ, TZ), '\n',
-                     show_metrics)
+    x_summary = dimension_summary(TX(), "λ", λ₁, λ₂, grid.Δλᶜᵃᵃ, longest - length(x_summary))
+    y_summary = dimension_summary(TY(), "φ", φ₁, φ₂, grid.Δφᵃᶜᵃ, longest - length(y_summary))
+    z_summary = dimension_summary(TZ(), "z", z₁, z₂, grid.Δzᵃᵃᶜ, longest - length(z_summary))
+
+    print(io, summary(grid), '\n',
+          "├── ", x_summary, '\n',
+          "├── ", y_summary, '\n',
+          "└── ", z_summary)
 end
 
 # Node by node

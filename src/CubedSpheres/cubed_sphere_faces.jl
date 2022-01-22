@@ -9,7 +9,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 import Base: getindex, size, show, minimum, maximum
 import Statistics: mean
 
-import Oceananigans.Fields: AbstractField, Field, minimum, maximum, mean, location, short_show, set!
+import Oceananigans.Fields: AbstractField, Field, minimum, maximum, mean, location, set!
 import Oceananigans.Grids: new_data
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 
@@ -92,7 +92,7 @@ function Base.show(io::IO, field::Union{CubedSphereField, AbstractCubedSphereFie
     A = typeof(arch)
     return print(io, "$(typeof(field).name.wrapper) at ($LX, $LY, $LZ)\n",
           "├── architecture: $A\n",
-          "└── grid: $(short_show(field.grid))")
+          "└── grid: $(summary(field.grid))")
 end
 
 @inline function interior(field::AbstractCubedSphereField)
