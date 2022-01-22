@@ -154,6 +154,6 @@ end
 GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(metric_function(L, metric), grid)
 
 Adapt.adapt_structure(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ} =
-    GridMericOperation{LX, LY, LZ}(Adapt.adapt(to, gm.metric),
-                                   Adapt.adapt(to, gm.grid))
+    GridMetricOperation{LX, LY, LZ}(Adapt.adapt(to, gm.metric), Adapt.adapt(to, gm.grid))
+                                   
 
