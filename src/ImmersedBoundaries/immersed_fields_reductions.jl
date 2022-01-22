@@ -25,7 +25,7 @@ end
 
 @inline function get_condition(condition::NotImmersed, i, j, k, 
                                ibg, co::ConditionalOperation{LX, LY, LZ}, args...) where {LX, LY, LZ}
-    return get_condition(condition.func, i, j, k, ibg, args...) & !(solid_interface(LX(), LY(), LZ(), i, j, k, ibg))
+    return get_condition(condition.func, i, j, k, ibg, args...) && !(solid_interface(LX(), LY(), LZ(), i, j, k, ibg))
 end 
 
 Statistics.dot(a::ImmersedField, b::Field) = Statistics.dot(condition_operand(a, nothing, 0), b)

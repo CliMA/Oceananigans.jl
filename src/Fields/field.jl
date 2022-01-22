@@ -424,7 +424,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                 T = filltype(Base.$(reduction!), c.grid)
                 loc = reduced_location(location(c); dims)
                 r = Field(loc, c.grid, T)
-                initialize_reduced_field!(Base.$(reduction!), f, r, c)
+                initialize_reduced_field!(Base.$(reduction!), f, r, condition_operand(c, condition, mask))
                 Base.$(reduction!)(f, r, condition_operand(c, condition, mask), init=false)
                 return r
             end
