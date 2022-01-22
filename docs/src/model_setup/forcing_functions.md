@@ -27,7 +27,7 @@ model.forcing.u
 
 # output
 ContinuousForcing{Nothing} at (Face, Center, Center)
-├── func: u_forcing
+├── func: u_forcing (generic function with 1 method)
 ├── parameters: nothing
 └── field dependencies: ()
 ```
@@ -70,7 +70,7 @@ model.forcing.T
 
 # output
 ContinuousForcing{NamedTuple{(:μ, :λ, :k, :ω), Tuple{Int64, Float64, Float64, Float64}}} at (Center, Center, Center)
-├── func: T_forcing_func
+├── func: T_forcing_func (generic function with 1 method)
 ├── parameters: (μ = 1, λ = 0.5, k = 6.283185307179586, ω = 12.566370614359172)
 └── field dependencies: ()
 ```
@@ -80,7 +80,7 @@ model.forcing.u
 
 # output
 ContinuousForcing{Float64} at (Face, Center, Center)
-├── func: u_forcing_func
+├── func: u_forcing_func (generic function with 1 method)
 ├── parameters: 0.1
 └── field dependencies: ()
 ```
@@ -115,7 +115,7 @@ model.forcing.w
 
 # output
 ContinuousForcing{Nothing} at (Center, Center, Face)
-├── func: w_forcing_func
+├── func: w_forcing_func (generic function with 1 method)
 ├── parameters: nothing
 └── field dependencies: (:u, :v, :w)
 ```
@@ -125,7 +125,7 @@ model.forcing.S
 
 # output
 ContinuousForcing{Float64} at (Center, Center, Center)
-├── func: S_forcing_func
+├── func: S_forcing_func (generic function with 1 method)
 ├── parameters: 0.01
 └── field dependencies: (:S,)
 ```
@@ -194,7 +194,7 @@ model.forcing.b
 
 # output
 DiscreteForcing{Nothing}
-├── func: b_forcing_func
+├── func: b_forcing_func (generic function with 1 method)
 └── parameters: nothing
 ```
 
@@ -203,7 +203,7 @@ model.forcing.u
 
 # output
 DiscreteForcing{Float64}
-├── func: u_forcing_func
+├── func: u_forcing_func (generic function with 1 method)
 └── parameters: 0.001
 ```
 
@@ -276,3 +276,4 @@ ContinuousForcing{Nothing} at (Center, Center, Center)
 ├── parameters: nothing
 └── field dependencies: (:T,)
 ```
+

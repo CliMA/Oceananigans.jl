@@ -162,7 +162,6 @@ function write_output! end
 function location end
 function instantiated_location end
 function tupleit end
-function short_show end
 
 function fields end
 function prognostic_fields end

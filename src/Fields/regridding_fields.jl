@@ -49,8 +49,8 @@ regrid!(a, b) = regrid!(a, a.grid, b.grid, b)
 
 function regrid!(a, target_grid, source_grid, b)
     msg = """Regridding
-             $(short_show(b)) on $(short_show(source_grid))
-             to $(short_show(a)) on $(short_show(target_grid))
+             $(summary(b)) on $(summary(source_grid))
+             to $(summary(a)) on $(summary(target_grid))
              is not supported."""
 
     return throw(ArgumentError(msg))

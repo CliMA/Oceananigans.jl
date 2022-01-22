@@ -4,8 +4,6 @@ using Dates: AbstractTime, now
 
 using Oceananigans.Fields
 
-using Oceananigans: short_show
-using Oceananigans.Utils: summary
 using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_nodes
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 using Oceananigans.TimeSteppers: float_or_date_time
@@ -498,6 +496,6 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
         "├── filepath: $(ow.filepath)", '\n',
         "├── dimensions: $dims", '\n',
         "├── $(length(ow.outputs)) outputs: $(keys(ow.outputs))", show_averaging_schedule(averaging_schedule), '\n',
-        "├── field slicer: $(short_show(ow.field_slicer))", '\n',
+        "├── field slicer: $(summary(ow.field_slicer))", '\n',
         "└── array type: ", show_array_type(ow.array_type))
 end
