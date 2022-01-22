@@ -449,8 +449,6 @@ end
 
 Statistics._mean(c::AbstractField, dims; condition = nothing) = Statistics._mean(identity, c, dims; condition = condition)
 
-Statistics.mean(c; dims=:, condition=nothing) = _mean(c; dims = dims, condition = condition)
-
 function Statistics.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
     Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
