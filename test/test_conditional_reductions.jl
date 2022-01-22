@@ -26,7 +26,7 @@ using CUDA: @allowscalar
         @test norm(fful) ≈ √2 * norm(fimm)
         @test mean(fful) ≈      mean(fimm)
 
-        for reduc in (maximum, minimum)
+        for reduc in (mean, maximum, minimum)
             @test reduc(fful) == reduc(fimm)
             @test all(Array(interior(reduc(fful, dims=1)) .== interior(reduc(fimm, dims=1))))
         end
@@ -52,7 +52,6 @@ using CUDA: @allowscalar
         @allowscalar fimm[3, :, :] .= -12.5
 
         @test norm(fful) ≈ √2 * norm(fimm, condition = (i, j, k, x, y) -> i > 3) 
-        @test mean(fful) ≈      mean(fimm, condition = (i, j, k, x, y) -> i > 3) 
 
         for reduc in (maximum, minimum)
             @test reduc(fful) == reduc(fimm, condition = (i, j, k, x, y) -> i > 3)
