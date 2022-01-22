@@ -46,7 +46,7 @@ function (p::Progress)(sim)
     @info @sprintf("           ETA: %s (%s), Δ(wall time): %s / iteration",
                    format(ETA_datetime, "yyyy-mm-dd HH:MM:SS"),
                    prettytime(ETA),
-                   prettytime(wall_time / sim.callbacks[:progress].schedule.interval) )
+                   prettytime(wall_time / sim.callbacks[:progress].schedule.interval))
 
     p.interval_start_time = time_ns()
 
