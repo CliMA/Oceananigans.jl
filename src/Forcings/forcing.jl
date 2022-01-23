@@ -63,7 +63,7 @@ v_forcing = Forcing(parameterized_func, parameters = (μ=42, λ=0.1, ω=π))
 
 # output
 ContinuousForcing{NamedTuple{(:μ, :λ, :ω), Tuple{Int64, Float64, Irrational{:π}}}}
-├── func: parameterized_func
+├── func: parameterized_func (generic function with 1 method)
 ├── parameters: (μ = 42, λ = 0.1, ω = π)
 └── field dependencies: ()
 ```
@@ -79,7 +79,7 @@ model.forcing.v
 
 # output
 ContinuousForcing{NamedTuple{(:μ, :λ, :ω), Tuple{Int64, Float64, Irrational{:π}}}} at (Center, Face, Center)
-├── func: parameterized_func
+├── func: parameterized_func (generic function with 1 method)
 ├── parameters: (μ = 42, λ = 0.1, ω = π)
 └── field dependencies: ()
 ```
@@ -95,7 +95,7 @@ plankton_forcing = Forcing(growth_in_sunlight, field_dependencies=:P)
 
 # output
 ContinuousForcing{Nothing}
-├── func: growth_in_sunlight
+├── func: growth_in_sunlight (generic function with 1 method)
 ├── parameters: nothing
 └── field dependencies: (:P,)
 ```
@@ -110,7 +110,7 @@ c_forcing = Forcing(tracer_relaxation,
 
 # output
 ContinuousForcing{NamedTuple{(:μ, :λ, :H, :dCdz), Tuple{Float64, Int64, Int64, Int64}}}
-├── func: tracer_relaxation
+├── func: tracer_relaxation (generic function with 1 method)
 ├── parameters: (μ = 0.016666666666666666, λ = 10, H = 1000, dCdz = 1)
 └── field dependencies: (:c,)
 ```
@@ -124,7 +124,7 @@ filtered_forcing = Forcing(filtered_relaxation, discrete_form=true)
 
 # output
 DiscreteForcing{Nothing}
-├── func: filtered_relaxation
+├── func: filtered_relaxation (generic function with 1 method)
 └── parameters: nothing
 ```
 
@@ -137,7 +137,7 @@ masked_damping_forcing = Forcing(masked_damping, parameters=(μ=42, λ=π), disc
 
 # output
 DiscreteForcing{NamedTuple{(:μ, :λ), Tuple{Int64, Irrational{:π}}}}
-├── func: masked_damping
+├── func: masked_damping (generic function with 1 method)
 └── parameters: (μ = 42, λ = π)
 ```
 """
@@ -148,3 +148,4 @@ function Forcing(func; parameters=nothing, field_dependencies=(), discrete_form=
         return ContinuousForcing(func; parameters=parameters, field_dependencies=field_dependencies)
     end
 end
+

@@ -1,5 +1,4 @@
 using Oceananigans.Architectures: device_event
-using Oceananigans: short_show
 
 import Oceananigans.Architectures: architecture
 
@@ -24,7 +23,7 @@ end
 
 Base.show(io::IO, solver::FFTBasedPoissonSolver) =
 print(io, "FFTBasedPoissonSolver on ", string(typeof(architecture(solver))), ": \n",
-          "├── grid: $(short_show(solver.grid))\n",
+          "├── grid: $(summary(solver.grid))\n",
           "├── storage: $(typeof(solver.storage))\n",
           "├── buffer: $(typeof(solver.buffer))\n",
           "└── transforms:\n",
