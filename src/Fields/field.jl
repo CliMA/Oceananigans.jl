@@ -140,16 +140,17 @@ end
 boundary_conditions(field) = nothing
 boundary_conditions(f::Field) = f.boundary_conditions
 
-"Returns a view of `f` that excludes halo points."
-function interior(f::Field)
-    LX, LY, LZ = location(f)
-    TX, TY, TZ = topology(f.grid)
-    ii = interior_parent_indices(LX, TX, f.grid.Nx, f.grid.Hx)
-    jj = interior_parent_indices(LY, TY, f.grid.Ny, f.grid.Hy)
-    kk = interior_parent_indices(LZ, TZ, f.grid.Nz, f.grid.Hz)
+function interior(a::OffsetArray, (LX, LY, LZ), grid)
+    TX, TY, TZ = topology(grid)
+    ii = interior_parent_indices(LX, TX, grid.Nx, grid.Hx)
+    jj = interior_parent_indices(LY, TY, grid.Ny, grid.Hy)
+    kk = interior_parent_indices(LZ, TZ, grid.Nz, grid.Hz)
     return view(parent(f), ii, jj, kk)
 end
 
+"Returns a view of `f` that excludes halo points."
+interior(f::Field) = interior(f.data, location(f), f.grid)
+    
 interior_copy(f::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
     parent(f)[interior_parent_indices(LX, topology(f, 1), f.grid.Nx, f.grid.Hx),
               interior_parent_indices(LY, topology(f, 2), f.grid.Ny, f.grid.Hy),

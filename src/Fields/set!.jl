@@ -40,16 +40,25 @@ end
 
 function set!(u::Field, v::Field)
     if architecture(u) === architecture(v)
-        parent(u) .= parent(v)
+        try # to transfer halos between architectures
+            parent(u) .= parent(v)
+        catch # just copy interior points
+            interior(u) .= interior(v)
+        end
     else
-        u_parent = parent(u)
-        v_parent = parent(v)
-        # If u_parent is a view, we have to convert to an Array.
-        # If u_parent or v_parent is on the GPU, we don't expect
-        # SubArray.
-        u_parent isa SubArray && (u_parent = Array(u_parent))
-        v_parent isa SubArray && (v_parent = Array(v_parent))
-        copyto!(u_parent, v_parent)
+        try # to transfer halos between architectures
+            u_parent = parent(u)
+            v_parent = parent(v)
+            # If u_parent is a view, we have to convert to an Array.
+            # If u_parent or v_parent is on the GPU, we don't expect
+            # SubArray.
+            u_parent isa SubArray && (u_parent = Array(u_parent))
+            v_parent isa SubArray && (v_parent = Array(v_parent))
+            copyto!(u_parent, v_parent)
+        catch # just copy interior points
+            v_data = arch_array(architecture(u), v.data)
+            interior(u) .= interior(v_data, location(v), v.grid)
+        end
     end
 
     return u
