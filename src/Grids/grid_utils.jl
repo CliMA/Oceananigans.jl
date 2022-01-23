@@ -105,6 +105,8 @@ one dimension of `topo`logy with `N` centered cells and
 @inline total_length(::Type{Face},    ::Type{Bounded}, N, H=0) = N + 1 + 2H
 @inline total_length(::Type{Nothing}, topo,            N, H=0) = 1
 @inline total_length(::Type{Nothing}, ::Type{Flat},    N, H=0) = N
+@inline total_length(::Type{Face},    ::Type{Flat},    N, H=0) = N
+@inline total_length(::Type{Center},  ::Type{Flat},    N, H=0) = N
 
 # Grid domains
 @inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
