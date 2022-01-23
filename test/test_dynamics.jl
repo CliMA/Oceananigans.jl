@@ -2,7 +2,6 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, z_viscosity
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
-using Oceananigans.Grids: show_coordinate
 
 function relative_error(u_num, u, time)
     u_ans = Field(location(u_num), u_num.grid)
