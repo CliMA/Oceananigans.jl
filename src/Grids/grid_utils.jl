@@ -73,9 +73,9 @@ total_size(a) = size(a) # fallback
 Return the "total" size of a `grid` at `loc`. This is a 3-tuple of integers
 corresponding to the number of grid points along `x, y, z`.
 """
-@inline total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
-                                 total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
-                                 total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
+@inline total_size(loc, grid) = (total_length(loc[1](), topology(grid, 1)(), grid.Nx, grid.Hx),
+                                 total_length(loc[2](), topology(grid, 2)(), grid.Ny, grid.Hy),
+                                 total_length(loc[3](), topology(grid, 3)(), grid.Nz, grid.Hz))
 
 """
     halo_size(grid)
@@ -92,38 +92,19 @@ Return the total extent, including halo regions, of constant-spaced
 constant grid spacing `Δ`, and interior extent `L`.
 """
 @inline total_extent(topology, H, Δ, L) = L + (2H - 1) * Δ
-
-"""
-    total_extent(::Type{Bounded}, H, Δ, L)
-
-Return the total extent of, including halo regions, of constant-spaced
-`Bounded` and `Flat` dimensions with number of halo points `H`,
-constant grid spacing `Δ`, and interior extent `L`.
-"""
 @inline total_extent(::Type{Bounded}, H, Δ, L) = L + 2H * Δ
 
 """
     total_length(loc, topo, N, H=0)
 
-Return the total length (number of nodes), including halo points, of a field
-located at `Center` centers along a grid dimension of length `N` and with halo points `H`.
+Return the total length of a field at `loc`ation along
+one dimension of `topo`logy with `N` centered cells and
+`H` halo cells.
 """
-@inline total_length(loc, topo, N, H=0) = N + 2H
-
-"""
-    total_length(::Type{Face}, ::Type{Bounded}, N, H=0)
-
-Return the total length, including halo points, of a field located at
-cell `Face`s along a grid dimension of length `N` and with halo points `H`.
-"""
-@inline total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
-
-"""
-    total_length(::Type{Nothing}, topo, N, H=0)
-
-Return 1, which is the 'length' of a field along a reduced dimension.
-"""
-@inline total_length(::Type{Nothing}, topo, N, H=0) = 1
+@inline total_length(loc,       topo,      N, H=0) = N + 2H
+@inline total_length(::Face,    ::Bounded, N, H=0) = N + 1 + 2H
+@inline total_length(::Nothing, topo,      N, H=0) = 1
+@inline total_length(::Nothing, ::Flat,    N, H=0) = N
 
 # Grid domains
 @inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
