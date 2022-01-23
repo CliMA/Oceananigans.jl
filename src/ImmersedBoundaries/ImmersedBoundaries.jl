@@ -6,6 +6,7 @@ export ImmerseBoundaryGrid, GridFittedBoundary, GridFittedBottom,
 using Adapt
 
 using Oceananigans.Grids
+using Oceananigans.Grids: size_summary
 using Oceananigans.Operators
 using Oceananigans.Fields
 using Oceananigans.Utils
@@ -39,9 +40,9 @@ using Oceananigans.Advection:
     advective_tracer_flux_y,
     advective_tracer_flux_z
 
-import Base: show
+import Base: show, summary
 import Oceananigans.Utils: cell_advection_timescale
-import Oceananigans.Grids: architecture, on_architecture, with_halo, domain_string
+import Oceananigans.Grids: architecture, on_architecture, with_halo
 import Oceananigans.Coriolis: φᶠᶠᵃ
 import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
 
@@ -125,7 +126,15 @@ Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
 
 with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo, ibg.grid), ibg.immersed_boundary)
 
-domain_string(ibg::ImmersedBoundaryGrid) = domain_string(ibg.grid)
+
+function Base.summary(grid::ImmersedBoundaryGrid)
+    FT = eltype(grid)
+    TX, TY, TZ = topology(grid)
+
+    return string(size_summary(size(grid)),
+                  " ImmersedBoundaryGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+                  " with ", size_summary(halo_size(grid)), " halo")
+end
 
 function show(io::IO, g::ImmersedBoundaryGrid)
     return print(io, "ImmersedBoundaryGrid on: \n",

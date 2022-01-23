@@ -6,7 +6,7 @@ using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Statistics: norm
+import Statistics: norm, mean, mean!
 
 struct Field{LX, LY, LZ, O, G, T, D, B, S} <: AbstractField{LX, LY, LZ, G, T, 3}
     grid :: G
@@ -358,6 +358,7 @@ Statistics.dot(a::Field, b::Field) = mapreduce((x, y) -> x * y, +, interior(a), 
 
 # TODO: in-place allocations with function mappings need to be fixed in Julia Base...
 const SumReduction     = typeof(Base.sum!)
+const MeanReduction    = typeof(Statistics.mean!)
 const ProdReduction    = typeof(Base.prod!)
 const MaximumReduction = typeof(Base.maximum!)
 const MinimumReduction = typeof(Base.minimum!)
@@ -385,11 +386,11 @@ end
 
 ## Allow support for ConditionalOperation
 
-get_neutral_mask(::Union{AllReduction, AnyReduction}) = true
+get_neutral_mask(::Union{AllReduction, AnyReduction})  = true
+get_neutral_mask(::Union{SumReduction, MeanReduction}) =   0
 get_neutral_mask(::MinimumReduction) =   Inf
 get_neutral_mask(::MaximumReduction) = - Inf
 get_neutral_mask(::ProdReduction)    =   1
-get_neutral_mask(::SumReduction)     =   0
 
 @inline condition_operand(operand, ::Nothing, mask)                = operand
 @inline condition_operand(operand::AbstractField, ::Nothing, mask) = operand
@@ -443,12 +444,14 @@ end
 function Statistics._mean(f, c::AbstractField, dims; condition = nothing)
     operator = condition_operand(c, condition, 0)
     r = sum(f, operator; dims)
-    n = conditional_length(c, dims)
+    n = conditional_length(operator, dims)
     parent(r) ./= n
     return r
 end
 
-Statistics._mean(c::AbstractField, dims; condition = nothing) = Statistics._mean(identity, c, dims; condition = condition)
+Statistics.mean(f::Function, c::AbstractField; condition = nothing, dims=:) = Statistics._mean(f, c, dims; condition)
+Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mean(identity, c, dims; condition)
+Statistics.mean!(f::Function, r::ReducedField, a::AbstractArray; condition = nothing) = Statistics.mean!(f, r, condition_operand(a, condition, 0))
 
 function Statistics.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
