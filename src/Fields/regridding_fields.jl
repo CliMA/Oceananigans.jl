@@ -48,7 +48,7 @@ output_field[1, 1, :]
 regrid!(a, b) = regrid!(a, a.grid, b.grid, b)
 
 function we_can_regrid(a, target_grid, source_grid, b)
-    # Only 1D regridding is supported, so check that
+    # Only 1D regridding in the vertical is supported, so check that
     #   1. source and target grid are in the same "class" and
     #   2. source and target grid have same horizontal size
     typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper &&
