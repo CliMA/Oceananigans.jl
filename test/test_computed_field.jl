@@ -78,6 +78,9 @@ function horizontal_average_of_plus(model)
 
     @compute ST = Field(Average(S + T, dims=(1, 2)))
 
+    @test ST.operand isa Reduction
+    @test ST.operand.reduce! === mean!
+
     zC = znodes(Center, model.grid)
     correct_profile = @. sin(π * zC) + 42 * zC
 

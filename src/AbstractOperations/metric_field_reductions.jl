@@ -29,7 +29,8 @@ function Reduction(avg::Average, field::AbstractField; dims)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
     dx = reduction_grid_metric(dims)
 
-    if dims === regular_dimensions(field.grid) # shortcut!
+    if all(d in regular_dimensions(field.grid) for d in dims)
+        # Dimensions being reduced are regular; just use mean!
         return Reduction(mean!, field; dims)
     else
         # Compute "size" (length, area, or volume) of averaging region
