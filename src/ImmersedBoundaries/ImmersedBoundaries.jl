@@ -5,7 +5,6 @@ export ImmerseBoundaryGrid, GridFittedBoundary, GridFittedBottom,
 
 using Adapt
 
-using Oceananigans: short_show
 using Oceananigans.Grids
 using Oceananigans.Operators
 using Oceananigans.Fields
@@ -131,7 +130,7 @@ domain_string(ibg::ImmersedBoundaryGrid) = domain_string(ibg.grid)
 function show(io::IO, g::ImmersedBoundaryGrid)
     return print(io, "ImmersedBoundaryGrid on: \n",
                      "    architecture: $(g.architecture)\n",
-                     "            grid: $(short_show(g.grid))\n",
+                     "            grid: $(summary(g.grid))\n",
                      "   with immersed: ", typeof(g.immersed_boundary))
 end
 
