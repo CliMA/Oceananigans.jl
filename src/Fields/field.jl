@@ -140,21 +140,23 @@ end
 boundary_conditions(field) = nothing
 boundary_conditions(f::Field) = f.boundary_conditions
 
-function interior(a::OffsetArray, (LX, LY, LZ), grid)
+function interior(a::Union{Field, OffsetArray}, (LX, LY, LZ), grid)
     TX, TY, TZ = topology(grid)
     ii = interior_parent_indices(LX, TX, grid.Nx, grid.Hx)
     jj = interior_parent_indices(LY, TY, grid.Ny, grid.Hy)
     kk = interior_parent_indices(LZ, TZ, grid.Nz, grid.Hz)
-    return view(parent(f), ii, jj, kk)
+    return view(parent(a), ii, jj, kk)
 end
 
 "Returns a view of `f` that excludes halo points."
-interior(f::Field) = interior(f.data, location(f), f.grid)
+interior(f::Field) = interior(f, location(f), f.grid)
     
-interior_copy(f::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
-    parent(f)[interior_parent_indices(LX, topology(f, 1), f.grid.Nx, f.grid.Hx),
-              interior_parent_indices(LY, topology(f, 2), f.grid.Ny, f.grid.Hy),
-              interior_parent_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz)]
+function interior_copy(f::Field)
+    LX, LY, LZ = location(f)
+    return parent(f)[interior_parent_indices(LX, topology(f, 1), f.grid.Nx, f.grid.Hx),
+                     interior_parent_indices(LY, topology(f, 2), f.grid.Ny, f.grid.Hy),
+                     interior_parent_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz)]
+end
 
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
