@@ -11,6 +11,10 @@ Base.length(::Type{Face}, ::Type{Bounded}, N) = N+1
 Base.length(::Type{Center}, topo, N) = N
 Base.length(::Type{Nothing}, topo, N) = 1
 
+Base.length(::Type{Nothing}, ::Type{Flat}, N) = N
+Base.length(::Type{Face},    ::Type{Flat}, N) = N
+Base.length(::Type{Center},  ::Type{Flat}, N) = N
+
 """
     topology(grid)
 
