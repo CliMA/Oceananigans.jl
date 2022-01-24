@@ -2,7 +2,7 @@
 ##### Reductions of AbstractField
 #####
 
-struct Reduction{R, O, D, C, M}
+struct Reduction{R, O, C, M, D}
     reduce! :: R
     operand :: O
     condition :: C
