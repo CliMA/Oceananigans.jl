@@ -17,8 +17,6 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
 
         sefs.η .= 0.0
 
-        @test sefs.state.η === sefs.η
-
         @testset " One timestep test " begin
             state = sefs.state
             auxiliary = sefs.auxiliary
@@ -47,7 +45,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             Gᵁ .= 0.0
             Gⱽ .= 0.0
 
-            split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, 1)
+            split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, 1)
             U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
             U_exact = (reshape(-cos.(grid.xᶠᵃᵃ), (length(grid.xᶜᵃᵃ), 1)).+reshape(0 * grid.yᵃᶜᵃ, (1, length(grid.yᵃᶜᵃ))))[2:Nx+1, 2:Ny+1]
 
@@ -86,11 +84,10 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             Gⱽ .= 0.0
 
             for i in 1:Nt
-                split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, 1)
+                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, 1)
             end
             # + correction for exact time
-            # free_surface_substep!(arch, grid, Δτ_end, sefs, 1)
-            split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ_end, 1)
+            split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ_end, 1)
 
             U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
             η_computed = Array(η.data.parent)[2:Nx+1, 2:Ny+1]
@@ -141,7 +138,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             settings = sefs.settings
 
             for i in 1:settings.substeps
-                split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, 1)
+                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, 1)
             end
 
             U_computed = Array(U.data.parent)[2:Nx+1, 2:Ny+1]
@@ -220,10 +217,10 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: SplitExplicitState, Spl
             sefs = sefs(settings)
 
             for i in 1:Nt
-                split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, i)
+                split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ, i)
             end
             # + correction for exact time
-            split_explicit_free_surface_substep!(sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ_end, Nt + 1)
+            split_explicit_free_surface_substep!(η, sefs.state, sefs.auxiliary, sefs.settings, arch, grid, g, Δτ_end, Nt + 1)
 
             η_mean_after = mean(Array(interior(η)))
 

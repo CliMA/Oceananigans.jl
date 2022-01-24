@@ -1,6 +1,7 @@
 using KernelAbstractions: @index, @kernel, Event
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.Utils
+using Oceananigans.AbstractOperations: Δz  
 using Oceananigans.BoundaryConditions
 using Oceananigans.Operators
 
@@ -27,9 +28,9 @@ end
     @inbounds η̅[i, j, 1] +=  free_surface_weight * η[i, j, 1]
 end
 
-function split_explicit_free_surface_substep!(state, auxiliary, settings, arch, grid, g, Δτ, substep_index)
+function split_explicit_free_surface_substep!(η, state, auxiliary, settings, arch, grid, g, Δτ, substep_index)
     # unpack state quantities, parameters and forcing terms 
-    η, U, V, η̅, U̅, V̅  = state.η, state.U, state.V, state.η̅, state.U̅, state.V̅
+    U, V, η̅, U̅, V̅     = state.U, state.V, state.η̅, state.U̅, state.V̅
     Gᵁ, Gⱽ, Hᶠᶜ, Hᶜᶠ  = auxiliary.Gᵁ, auxiliary.Gⱽ, auxiliary.Hᶠᶜ, auxiliary.Hᶜᶠ
 
     vel_weight = settings.velocity_weights[substep_index]
@@ -72,14 +73,13 @@ end
 end
 
 # may need to do Val(Nk) since it may not be known at compile
-function barotropic_mode!(U, V, arch, grid, u, v)
+function barotropic_mode!(U, V, grid, u, v)
+    sum!(U, u * Δz)
+    sum!(V, v * Δz)
 
-    event = launch!(arch, grid, :xy,
-                    barotropic_mode_kernel!, 
-                    U, V, u, v, grid,
-                    dependencies = Event(device(arch)))
-
-    wait(device(arch), event)        
+    arch = architecture(grid)
+    fill_halo_regions!(U, arch)
+    fill_halo_regions!(V, arch)
 end
 
 function set_average_to_zero!(free_surface_state)
@@ -87,28 +87,6 @@ function set_average_to_zero!(free_surface_state)
     fill!(free_surface_state.U̅, 0.0)
     fill!(free_surface_state.V̅, 0.0)     
 end
-
-function initialize_averages!(free_surface_state)
-    set!(free_surface_state.η̅, free_surface_state.η)
-    set!(free_surface_state.U̅, free_surface_state.U)
-    set!(free_surface_state.V̅, free_surface_state.V)
-end
-
-@kernel function initialize_vertical_depths_kernel!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
-    i, j = @index(Global, NTuple)
-
-    @inbounds begin
-        Hᶠᶜ[i, j, 1] = 0
-        Hᶜᶠ[i, j, 1] = 0
-        Hᶜᶜ[i, j, 1] = 0
-
-        @unroll for k in 1:grid.Nz
-            Hᶠᶜ[i, j, 1] += Δzᶠᶜᶜ(i, j, k, grid)
-            Hᶜᶠ[i, j, 1] += Δzᶜᶠᶜ(i, j, k, grid)
-            Hᶜᶜ[i, j, 1] += Δzᶜᶜᶜ(i, j, k, grid)
-        end
-    end
-end 
 
 @kernel function barotropic_split_explicit_corrector_kernel!(u, v, U̅, V̅, U, V, Hᶠᶜ, Hᶜᶠ)
     i, j, k = @index(Global, NTuple)
@@ -127,7 +105,7 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
 
     # take out "bad" barotropic mode, 
     # !!!! reusing U and V for this storage since last timestep doesn't matter
-    barotropic_mode!(U, V, arch, grid, u, v)
+    barotropic_mode!(U, V, grid, u, v)
     # add in "good" barotropic mode
 
     event = launch!(arch, grid, :xyz, barotropic_split_explicit_corrector_kernel!,
@@ -143,7 +121,7 @@ end
 Explicitly step forward η in substeps.
 """
 ab2_step_free_surface!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, velocities_update) =
-    split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, velocities_update)
+    split_explicit_free_surface_step!(free_surface, model, Δt, χ, velocities_update)
 
 function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurface, model, Δt, χ, velocities_update)
 
@@ -151,12 +129,13 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     arch = architecture(grid)
 
     # we start the time integration of η from the average ηⁿ     
+    η = free_surface.η
     state = free_surface.state
     auxiliary = free_surface.auxiliary
     settings = free_surface.settings
     g = free_surface.gravitational_acceleration
 
-    η, U, V = (state.η, state.U, state.V)
+    U, V = (state.U, state.V)
     Δτ = 2 * Δt / settings.substeps  # we evolve for two times the Δt 
 
     u, v, _ = model.velocities # this is u⋆
@@ -166,7 +145,6 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     # reset free surface averages
     set_average_to_zero!(state)
-    # initialize_averages!(state)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     wait(device(arch), velocities_update)
@@ -174,25 +152,15 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     wait(device(arch), MultiEvent(masking_events))
 
     # Compute barotropic mode of tendency fields
-    barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, arch, grid, Gu, Gv)
+    barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, grid, Gu, Gv)
 
     # Solve for the free surface at tⁿ⁺¹
     start_time = time_ns()
 
-    # println("----------")
-    # println("mean η values before")
-    # println(mean(interior(state.η)))
-    # println(mean(interior(state.η̅)))
-
     for substep in 1:settings.substeps
-        split_explicit_free_surface_substep!(state, auxiliary, settings, arch, grid, g, Δτ, substep)
+        split_explicit_free_surface_substep!(η, state, auxiliary, settings, arch, grid, g, Δτ, substep)
     end
-
-    # println("mean η values after")
-    # println(mean(interior(state.η)))
-    # println(mean(interior(state.η̅)))
-    # println("----------")
-
+        
     # Reset eta for the next timestep
     # this is the only way in which η̅ is used: as a smoother for the 
     # substepped η field

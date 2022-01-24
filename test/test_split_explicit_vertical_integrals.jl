@@ -55,7 +55,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
             set!(u, set_u_check)
             exact_U = similar(U)
             set!(exact_U, set_U_check)
-            barotropic_mode!(U, V, arch, grid, u, v)
+            barotropic_mode!(U, V, grid, u, v)
             tolerance = 1e-3
             @test all((Array(interior(U) .- interior(exact_U))) .< tolerance)
 
@@ -64,7 +64,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
             set!(v, set_v_check)
             exact_V = similar(V)
             set!(exact_V, set_V_check)
-            barotropic_mode!(U, V, arch, grid, u, v)
+            barotropic_mode!(U, V, grid, u, v)
             @test all((Array(interior(V) .- interior(exact_V))) .< tolerance)
         end
 
@@ -74,12 +74,12 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
 
             u .= 0.0
             U .= 1.0
-            barotropic_mode!(U, V, arch, grid, u, v)
+            barotropic_mode!(U, V, grid, u, v)
             @test all(Array(U.data.parent) .== 0.0)
 
             u .= 1.0
             U .= 1.0
-            barotropic_mode!(U, V, arch, grid, u, v)
+            barotropic_mode!(U, V, grid, u, v)
             @test all(Array(interior(U)) .≈ Lz)
 
             set_u_check(x, y, z) = sin(x)
@@ -87,7 +87,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
             set!(u, set_u_check)
             exact_U = similar(U)
             set!(exact_U, set_U_check)
-            barotropic_mode!(U, V, arch, grid, u, v)
+            barotropic_mode!(U, V, grid, u, v)
             @test all(Array(interior(U)) .≈ Array(interior(exact_U)))
 
             set_v_check(x, y, z) = sin(x) * z * cos(y)
@@ -95,7 +95,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: barotropic_mode!, barot
             set!(v, set_v_check)
             exact_V = similar(V)
             set!(exact_V, set_V_check)
-            barotropic_mode!(U, V, arch, grid, u, v)
+            barotropic_mode!(U, V, grid, u, v)
             @test all(Array(interior(V)) .≈ Array(interior(exact_V)))
         end
 
