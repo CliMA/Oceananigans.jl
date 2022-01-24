@@ -5,7 +5,7 @@ using Oceananigans.ImmersedBoundaries: conditional_length
 using Statistics: mean, mean!, norm
 using CUDA: @allowscalar
 
-@testset "Field broadcasting" begin
+@testset "Conditional Reductions" begin
     for arch in archs
         @info "    Testing Reductions on Immersed fields"
 

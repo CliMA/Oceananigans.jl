@@ -467,8 +467,8 @@ Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mea
 function Statistics.mean!(f::Function, r::ReducedField, a::AbstractArray; condition = nothing, mask = 0)
     sum!(f, r, a; condition, mask, init=true)
     dims = reduced_dimension(location(r))
-    x = 1 ./ conditional_length(condition_operand(a, condition, mask), dims)
-    r .= r .* x
+    n = conditional_length(condition_operand(a, condition, mask), dims)
+    r ./= n
     return r
 end
 
