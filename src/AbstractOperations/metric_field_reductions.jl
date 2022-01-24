@@ -2,6 +2,7 @@ using Statistics: mean!, sum!
 
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions
+using Oceananigans.Fields: condition_operand
 import Oceananigans.Fields: Reduction
 
 ##### 
@@ -31,7 +32,7 @@ function Reduction(avg::Average, field::AbstractField; condition = nothing, mask
 
     if all(d in regular_dimensions(field.grid) for d in dims)
         # Dimensions being reduced are regular; just use mean!
-        return Reduction(mean!, field; condition, mask, dims)
+        return Reduction(mean!, condition_operand(field, condition, mask); dims)
     else
         # Compute "size" (length, area, or volume) of averaging region
         metric = GridMetricOperation(location(field), dx, field.grid)
@@ -40,7 +41,7 @@ function Reduction(avg::Average, field::AbstractField; condition = nothing, mask
         # Construct summand of the Average
         L⁻¹_field_dx = field * dx / L
 
-        return Reduction(sum!, L⁻¹_field_dx; condition, mask, dims)
+        return Reduction(sum!, condition_operand(L⁻¹_field_dx, condition, mask), dims)
     end
 end
 
@@ -62,7 +63,7 @@ struct Integral end
 function Reduction(int::Integral, field::AbstractField; condition = nothing, mask = 0, dims)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
     dx = reduction_grid_metric(dims)
-    return Reduction(sum!, field * dx; condition, mask, dims)
+    return Reduction(sum!, condition_operand(field * dx, condition, mask), dims)
 end
 
 """
@@ -70,7 +71,7 @@ end
 
 Return a `Reduction` representing a spatial integral of `field` over `dims`.
 """
-Integral(field::AbstractField; condition = nothing, mask = 0, dims=:) = Reduction(Integral(), field; condition, mask, dims)
+Integral(field::AbstractField; condition = nothing, mask = 0, dims=:) = Reduction(Integral(), condition_operand(field, condition, mask), dims)
 
 #####
 ##### show

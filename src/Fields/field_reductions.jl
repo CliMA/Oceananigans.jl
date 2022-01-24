@@ -2,11 +2,9 @@
 ##### Reductions of AbstractField
 #####
 
-struct Reduction{R, O, C, M, D}
+struct Reduction{R, O, D}
     reduce! :: R
     operand :: O
-    condition :: C
-    mask :: M
     dims :: D
 end
 
@@ -31,7 +29,7 @@ julia> max_c² = Field(Reduction(maximum!, c^2, dims=3))
 
 julia> compute!(max_c²)
 """
-Reduction(reduce!, operand; condition, mask, dims) = Reduction(reduce!, operand, condition, mask, dims)
+Reduction(reduce!, operand; dims) = Reduction(reduce!, operand, dims)
 
 function Field(reduction::Reduction;
                data = nothing,
@@ -57,7 +55,7 @@ const ReducedComputedField = Field{<:Any, <:Any, <:Any, <:Reduction}
 function compute!(field::ReducedComputedField, time=nothing)
     reduction = field.operand
     compute_at!(reduction.operand, time)
-    reduction.reduce!(field, reduction.operand; condition = reduction.condition, mask = reduction.mask)
+    reduction.reduce!(field, reduction.operand)
     return nothing
 end
 

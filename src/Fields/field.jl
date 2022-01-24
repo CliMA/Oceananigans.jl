@@ -377,7 +377,7 @@ initialize_reduced_field!(::AnyReduction,  f, r::ReducedField, c) = Base.initarr
 initialize_reduced_field!(::MaximumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), c)
 initialize_reduced_field!(::MinimumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), c)
 
-filltype(f, grid) = eltype(grid)
+filltype(f, c) = eltype(c)
 filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
 
 function reduced_location(loc; dims)
@@ -435,7 +435,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                 Base.$(reduction!)(f, r, condition_operand(c, condition, mask))
                 return CUDA.@allowscalar r[1, 1, 1]
             else
-                T = filltype(Base.$(reduction!), c.grid)
+                T = filltype(Base.$(reduction!), c)
                 loc = reduced_location(location(c); dims)
                 r = Field(loc, c.grid, T)
                 initialize_reduced_field!(Base.$(reduction!), f, r, condition_operand(c, condition, mask))
