@@ -456,12 +456,15 @@ end
 Statistics.mean(f::Function, c::AbstractField; condition = nothing, dims=:) = Statistics._mean(f, c, dims; condition)
 Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mean(identity, c, dims; condition)
 
-function Statistics.mean!(f::Function, r::ReducedField, a::AbstractArray; condition = nothing, dims=:) 
-    set!(r, Statistics._mean(f, a, dims; condition))
+
+function Statistics.mean!(f::Function, r::ReducedField, a::AbstractArray; condition = nothing, mask = 0)
+    sum!(f, r, a; condition, mask, init=true)
+    x = max(1, length(r)) // conditional_length(condition_operand(a, condition, mask))
+    r .= r .* x
+    return r
 end
 
-Statistics.mean!(r::ReducedField, a::AbstractArray; condition = nothing, kwargs...) =
-                Statistics.mean!(identity, r, a; condition, kwargs...)
+Statistics.mean!(r::ReducedField, a::AbstractArray; kwargs...) = Statistics.mean!(identity, r, a; kwargs...)
 
 function Statistics.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)

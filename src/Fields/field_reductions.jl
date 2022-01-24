@@ -66,7 +66,7 @@ Base.show(io::IO, field::ReducedComputedField) =
           "├── data: $(typeof(field.data)), size: $(size(field))\n",
           "├── grid: $(summary(field.grid))\n",
           "├── operand: $(summary(field.operand))\n",
-          "└── status: ", show_status(field.status))
+          "└── status: ", field.status)
 
 Base.summary(r::Reduction) = string(r.reduce!, 
                                     " over dims ", r.dims,
