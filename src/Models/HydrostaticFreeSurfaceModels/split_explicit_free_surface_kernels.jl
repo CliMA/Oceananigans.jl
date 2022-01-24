@@ -88,6 +88,12 @@ function set_average_to_zero!(free_surface_state)
     fill!(free_surface_state.V̅, 0.0)     
 end
 
+function initialize_averages!(free_surface_state)
+    set!(free_surface_state.η̅, free_surface_state.η)
+    set!(free_surface_state.U̅, free_surface_state.U)
+    set!(free_surface_state.V̅, free_surface_state.V)
+end
+
 @kernel function initialize_vertical_depths_kernel!(Hᶠᶜ, Hᶜᶠ, Hᶜᶜ, grid)
     i, j = @index(Global, NTuple)
 
@@ -131,7 +137,7 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     wait(device(arch), event)
 end
 
-@inline calc_ab2_tendencies(Gⁿ, G⁻, χ) = (convert(eltype(Gⁿ), (1.5)) + χ) .* Gⁿ - (convert(eltype(Gⁿ), (1.5)) + χ) .* G⁻
+@inline calc_ab2_tendencies(Gⁿ, G⁻, χ) = (convert(eltype(Gⁿ), (1.5)) + χ) * Gⁿ - (convert(eltype(Gⁿ), (0.5)) + χ) * G⁻
 
 """
 Explicitly step forward η in substeps.
@@ -143,15 +149,15 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     grid = model.grid
     arch = architecture(grid)
-    
+
     # we start the time integration of η from the average ηⁿ     
-    state     = free_surface.state
+    state = free_surface.state
     auxiliary = free_surface.auxiliary
-    settings  = free_surface.settings
+    settings = free_surface.settings
     g = free_surface.gravitational_acceleration
 
-    η, U, V   = (state.η, state.U, state.V)
-    Δτ        = 2 * Δt / settings.substeps  # we evolve for two times the Δt 
+    η, U, V = (state.η, state.U, state.V)
+    Δτ = 2 * Δt / settings.substeps  # we evolve for two times the Δt 
 
     u, v, _ = model.velocities # this is u⋆
 
@@ -160,14 +166,12 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
 
     # reset free surface averages
     set_average_to_zero!(state)
+    # initialize_averages!(state)
 
     # Wait for predictor velocity update step to complete and mask it if immersed boundary.
     wait(device(arch), velocities_update)
     masking_events = Tuple(mask_immersed_field!(q) for q in model.velocities)
     wait(device(arch), MultiEvent(masking_events))
-
-    #initializing the prognostic variables
-    set!(η, free_surface.state.η̅)
 
     # Compute barotropic mode of tendency fields
     barotropic_mode!(auxiliary.Gᵁ, auxiliary.Gⱽ, arch, grid, Gu, Gv)
@@ -175,13 +179,28 @@ function split_explicit_free_surface_step!(free_surface::SplitExplicitFreeSurfac
     # Solve for the free surface at tⁿ⁺¹
     start_time = time_ns()
 
+    # println("----------")
+    # println("mean η values before")
+    # println(mean(interior(state.η)))
+    # println(mean(interior(state.η̅)))
+
     for substep in 1:settings.substeps
         split_explicit_free_surface_substep!(state, auxiliary, settings, arch, grid, g, Δτ, substep)
     end
 
+    # println("mean η values after")
+    # println(mean(interior(state.η)))
+    # println(mean(interior(state.η̅)))
+    # println("----------")
+
+    # Reset eta for the next timestep
+    # this is the only way in which η̅ is used: as a smoother for the 
+    # substepped η field
+    set!(η, free_surface.state.η̅)
+
     @debug "Split explicit step solve took $(prettytime((time_ns() - start_time) * 1e-9))."
 
     fill_halo_regions!(η, arch)
-    
+
     return NoneEvent()
 end

@@ -1,3 +1,4 @@
+using Revise
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
@@ -6,12 +7,13 @@ using Printf
 using LinearAlgebra, SparseArrays
 using Oceananigans.Solvers: constructors, unpack_constructors
 
-function geostrophic_adjustment_simulation(free_surface, topology)
+function geostrophic_adjustment_simulation(free_surface, topology; arch = Oceananigans.CPU())
 
     Lh = 100kilometers
     Lz = 400meters
 
-    grid = RectilinearGrid(size = (64, 3, 1),
+    grid = RectilinearGrid(arch,
+        size = (64, 3, 1),
         x = (0, Lh), y = (0, Lh), z = (-Lz, 0),
         topology = topology)
 
@@ -31,6 +33,7 @@ function geostrophic_adjustment_simulation(free_surface, topology)
 
     g = model.free_surface.gravitational_acceleration
     η = model.free_surface.η
+
 
     η₀ = coriolis.f * U * L / g # geostrohpic free surface amplitude
 
@@ -57,10 +60,10 @@ function run_and_analyze(simulation)
     compute!(ηx)
 
     f = simulation.model.free_surface
-    u₀ = interior(u)[:, 1, 1]
-    v₀ = interior(v)[:, 1, 1]
-    η₀ = interior(η)[:, 1, 1]
-    ηx₀ = interior(ηx)[:, 1, 1]
+    @views u₀ = interior(u)[:, 1, 1]
+    @views v₀ = interior(v)[:, 1, 1]
+    @views η₀ = interior(η)[:, 1, 1]
+    @views ηx₀ = interior(ηx)[:, 1, 1]
 
     if f isa SplitExplicitFreeSurface
         solver_method = "SplitExplicitFreeSurface"
@@ -84,15 +87,15 @@ function run_and_analyze(simulation)
 
     compute!(ηx)
 
-    u₁ = interior(u)[:, 1, 1]
-    v₁ = interior(v)[:, 1, 1]
-    η₁ = interior(η)[:, 1, 1]
-    ηx₁ = interior(ηx)[:, 1, 1]
+    @views u₁ = interior(u)[:, 1, 1]
+    @views v₁ = interior(v)[:, 1, 1]
+    @views η₁ = interior(η)[:, 1, 1]
+    @views ηx₁ = interior(ηx)[:, 1, 1]
 
-    @show mean(η₀)
-    @show mean(η₁)
+    @show mean(Array(η₀))
+    @show mean(Array(η₁))
 
-    Δη = η₁ .- η₀
+    Δη = Array(η₁) - Array(η₀)
 
     return (; η₀, η₁, Δη, ηx₀, ηx₁, u₀, u₁, v₀, v₁)
 end
@@ -105,9 +108,14 @@ splitexplicit_free_surface = SplitExplicitFreeSurface()
 topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
 topology_types = [topology_types[1]]
 
+archs = [Oceananigans.CPU(), Oceananigans.GPU()]
+archs = [archs[1]]
+
 free_surfaces = [pcg_free_surface, matrix_free_surface, splitexplicit_free_surface];
-simulations = [geostrophic_adjustment_simulation(free_surface, topology_type) for free_surface in free_surfaces, topology_type in topology_types];
+simulations = [geostrophic_adjustment_simulation(free_surface, topology_type, arch = arch) for free_surface in free_surfaces, topology_type in topology_types, arch in archs];
 data = [run_and_analyze(sim) for sim in simulations];
+# run_and_analyze(simulations[3])
+
 
 using GLMakie
 using JLD2
@@ -126,7 +134,7 @@ y = grid.yᵃᶜᵃ[1:grid.Ny]
 iterations = parse.(Int, keys(file1["timeseries/t"]))
 iterations = iterations[1:200]
 
-iter = Node(0)
+iter = Node(0) # Node or Observable depending on Makie version
 mid = Int(floor(grid.Ny / 2))
 η0 = file1["timeseries/1/0"][:, mid, 1]
 η1 = @lift(Array(file1["timeseries/1/"*string($iter)])[:, mid, 1])
@@ -135,24 +143,34 @@ mid = Int(floor(grid.Ny / 2))
 u1 = @lift(Array(file1["timeseries/3/"*string($iter)])[:, mid, 1])
 u2 = @lift(Array(file2["timeseries/3/"*string($iter)])[:, mid, 1])
 u3 = @lift(Array(file3["timeseries/3/"*string($iter)])[:, mid, 1])
-fig = Figure(resolution = (1000, 500))
-plot(fig[1, 1], x, η0, color = :black)
-plot!(fig[1, 1], x, η1, color = :red)
-plot!(fig[1, 1], x, η2, color = :blue)
-plot!(fig[1, 1], x, η3, color = :orange)
-plot(fig[1, 2], xf, u1, color = :red)
-plot!(fig[1, 2], xf, u2, color = :blue)
-plot!(fig[1, 2], xf, u3, color = :orange)
-ylims!(-5e-5, 5e-5)
+fig = Figure(resolution = (1400, 1000))
+options = (; ylabelsize = 22,
+    xlabelsize = 22, xgridstyle = :dash, ygridstyle = :dash, xtickalign = 1,
+    xticksize = 10, ytickalign = 1, yticksize = 10, xlabel = "y [m]", xlims = extrema(x))
+ax1 = Axis(fig[1, 1]; options..., ylabel = "η [m]", ylims = (-5e-4, 5e-4))
+ax2 = Axis(fig[1, 2]; options..., ylabel = "u [m/s]", ylims = (-5e-5, 5e-5))
+
+ηlines0 = lines!(ax1, x, η0, color = :black)
+ηlines1 = lines!(ax1, x, η1, color = :red)
+ηlines2 = lines!(ax1, x, η2, color = :blue)
+ηlines3 = lines!(ax1, x, η3, color = :orange)
+axislegend(ax1,
+    [ηlines0, ηlines1, ηlines2, ηlines3],
+    ["Initial Condition", "PCG", "Matrix", "Split-Explicit"])
+ylims!(ax1, (-5e-4, 5e-3))
+u0 = Array(file3["timeseries/3/"*string(0)])[:, mid, 1]
+xf = length(u0) == length(xf) ? xf : x
+ulines1 = lines!(ax2, xf, u1, color = :red)
+ulines2 = lines!(ax2, xf, u2, color = :blue)
+ulines3 = lines!(ax2, xf, u3, color = :orange)
+axislegend(ax2,
+    [ulines1, ulines2, ulines3],
+    ["PCG", "Matrix", "Split-Explicit"])
+ylims!(ax2, (-2e-4, 2e-4))
 GLMakie.record(fig, "free_surface_bounded.mp4", iterations, framerate = 12) do i
     @info "Plotting iteration $i of $(iterations[end])..."
     iter[] = i
 end
-
-
-
-
-
 
 
 
