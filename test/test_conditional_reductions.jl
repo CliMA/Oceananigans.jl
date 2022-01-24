@@ -51,7 +51,6 @@ using CUDA: @allowscalar
         @test norm(fful) ≈ √2 * norm(fcon, condition = (i, j, k, x, y) -> i > 3) 
 
         for reduc in (mean, maximum, minimum)
-            @show reduc
             @test reduc(fful) == reduc(fcon, condition = (i, j, k, x, y) -> i > 3)
             @test all(Array(interior(reduc(fful, dims=1)) .== interior(reduc(fcon, condition = (i, j, k, x, y) -> i > 3, dims=1))))
         end

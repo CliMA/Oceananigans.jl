@@ -13,12 +13,6 @@ struct ConditionalOperation{LX, LY, LZ, O, G, C, M, T} <: AbstractOperation{LX, 
          return new{LX, LY, LZ, O, G, C, M, T}(operand, grid, condition, mask)
      end
 end
- 
-################ Just to test for the moment (TOREMOVE)
-struct OneField{T, N} <: AbstractField{Nothing, Nothing, Nothing, Nothing, T, N} end
-OneField(T=Int) = OneField{T, 3}() # default 3D, integer 1
-@inline Base.getindex(::OneField{T, N}, ind...) where {N, T} = one(T)
-################
 
 @inline condition_operand(operand::AbstractField, condition, mask)    = condition_operand(location(operand)..., operand, operand.grid, condition, mask)
 @inline condition_operand(LX, LY, LZ, operand, grid, condition, mask) = ConditionalOperation{LX, LY, LZ}(operand, grid, condition, mask)
