@@ -36,7 +36,7 @@ function Reduction(avg::Average, field::AbstractField; condition = nothing, mask
     else
         # Compute "size" (length, area, or volume) of averaging region
         metric = GridMetricOperation(location(field), dx, field.grid)
-        L = sum(metric; dims)
+        L = sum(metric; condition, mask, dims)
 
         # Construct summand of the Average
         L⁻¹_field_dx = field * dx / L
