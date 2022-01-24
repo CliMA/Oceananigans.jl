@@ -41,6 +41,7 @@ validate_boundary_condition_location(bc, loc, side) = # everything else is wrong
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
 
 validate_boundary_conditions(loc, grid, ::Missing) = nothing
+validate_boundary_conditions(loc, grid, ::Nothing) = nothing
 
 function validate_boundary_conditions(loc, grid, bcs)
     sides = (:east, :west, :north, :south, :bottom, :top)
@@ -140,20 +141,23 @@ end
 boundary_conditions(field) = nothing
 boundary_conditions(f::Field) = f.boundary_conditions
 
-"Returns a view of `f` that excludes halo points."
-function interior(f::Field)
-    LX, LY, LZ = location(f)
-    TX, TY, TZ = topology(f.grid)
-    ii = interior_parent_indices(LX, TX, f.grid.Nx, f.grid.Hx)
-    jj = interior_parent_indices(LY, TY, f.grid.Ny, f.grid.Hy)
-    kk = interior_parent_indices(LZ, TZ, f.grid.Nz, f.grid.Hz)
-    return view(parent(f), ii, jj, kk)
+function interior(a::Union{Field, OffsetArray}, (LX, LY, LZ), grid)
+    TX, TY, TZ = topology(grid)
+    ii = interior_parent_indices(LX, TX, grid.Nx, grid.Hx)
+    jj = interior_parent_indices(LY, TY, grid.Ny, grid.Hy)
+    kk = interior_parent_indices(LZ, TZ, grid.Nz, grid.Hz)
+    return view(parent(a), ii, jj, kk)
 end
 
-interior_copy(f::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
-    parent(f)[interior_parent_indices(LX, topology(f, 1), f.grid.Nx, f.grid.Hx),
-              interior_parent_indices(LY, topology(f, 2), f.grid.Ny, f.grid.Hy),
-              interior_parent_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz)]
+"Returns a view of `f` that excludes halo points."
+interior(f::Field) = interior(f, location(f), f.grid)
+    
+function interior_copy(f::Field)
+    LX, LY, LZ = location(f)
+    return parent(f)[interior_parent_indices(LX, topology(f, 1), f.grid.Nx, f.grid.Hx),
+                     interior_parent_indices(LY, topology(f, 2), f.grid.Ny, f.grid.Hy),
+                     interior_parent_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz)]
+end
 
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
