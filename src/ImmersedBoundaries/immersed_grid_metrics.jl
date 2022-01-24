@@ -59,6 +59,14 @@ using Oceananigans.AbstractOperations: GridMetricOperation
 
 @inline is_immersed_boundary(LX, LY, LZ, i, j, k, ibg) = solid_interface(LX, LY, LZ, i, j, k, ibg) & !solid_node(LX, LY, LZ, i, j, k, ibg)
 
+@inline is_x_immersed_boundary⁺(::Face, LY, LZ, i, j, k, ibg) =  solid_node(i-1, j, k, ibg) & !solid_node(i, j, k, ibg)
+@inline is_y_immersed_boundary⁺(LX, ::Face, LZ, i, j, k, ibg) =  solid_node(i, j-1, k, ibg) & !solid_node(i, j, k, ibg)
+@inline is_z_immersed_boundary⁺(LX, LY, ::Face, i, j, k, ibg) =  solid_node(i, j, k-1, ibg) & !solid_node(i, j, k, ibg)
+
+@inline is_x_immersed_boundary⁻(::Face, LY, LZ, i, j, k, ibg) = !solid_node(i-1, j, k, ibg) &  solid_node(i, j, k, ibg)
+@inline is_y_immersed_boundary⁻(LX, ::Face, LZ, i, j, k, ibg) = !solid_node(i, j-1, k, ibg) &  solid_node(i, j, k, ibg)
+@inline is_z_immersed_boundary⁻(LX, LY, ::Face, i, j, k, ibg) = !solid_node(i, j, k-1, ibg) &  solid_node(i, j, k, ibg)
+
 for metric in (
                :Δxᶜᶜᵃ,
                :Δxᶜᶠᵃ,
