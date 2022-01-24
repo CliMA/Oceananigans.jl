@@ -13,6 +13,8 @@ end
 
 Return a `Reduction` of `operand` with `reduce!`, along `dims`.
 
+elements for which `condition(i ,j ,k) == true` are masked with a `mask`
+
 Example
 =======
 
@@ -62,12 +64,12 @@ end
 #####
 
 Base.show(io::IO, field::ReducedComputedField) =
-    print(io, "$(short_show(field))\n",
+    print(io, "$(summary(field))\n",
           "├── data: $(typeof(field.data)), size: $(size(field))\n",
-          "├── grid: $(short_show(field.grid))\n",
-          "├── operand: $(short_show(field.operand))\n",
-          "└── status: ", show_status(field.status))
+          "├── grid: $(summary(field.grid))\n",
+          "├── operand: $(summary(field.operand))\n",
+          "└── status: $(summary(field.status))")
 
-short_show(r::Reduction) = string(r.reduce!, 
-                                  " over dims ", r.dims,
-                                  " of ", short_show(r.operand))
+Base.summary(r::Reduction) = string(r.reduce!, 
+                                    " over dims ", r.dims,
+                                    " of ", summary(r.operand))

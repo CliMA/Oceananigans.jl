@@ -3,7 +3,7 @@ using Oceananigans.Grids
 using Oceananigans.Grids: R_Earth, interior_indices
 
 import Base: show, size, eltype
-import Oceananigans.Grids: topology, domain_string, architecture, halo_size
+import Oceananigans.Grids: topology, architecture, halo_size
 
 struct CubedSphereFaceConnectivityDetails{F, S}
     face :: F
@@ -233,10 +233,6 @@ Base.eltype(grid::ConformalCubedSphereGrid{FT}) where FT = FT
 
 topology(::ConformalCubedSphereGrid) = (Bounded, Bounded, Bounded)
 architecture(grid::ConformalCubedSphereGrid) = grid.architecture
-
-# Not sure what to put. Gonna leave it blank so that Base.show(io::IO, operation::AbstractOperation) doesn't error.
-domain_string(grid::ConformalCubedSphereFaceGrid) = ""
-domain_string(grid::ConformalCubedSphereGrid) = ""
 
 #####
 ##### filling grid halos

@@ -3,8 +3,8 @@ using Oceananigans.Fields: FieldSlicer
 using Oceananigans.OutputWriters: fetch_output
 using Oceananigans.Utils: AbstractSchedule, prettytime
 
-import Oceananigans: short_show, run_diagnostic!
-import Oceananigans.Utils: TimeInterval, show_schedule
+import Oceananigans: run_diagnostic!
+import Oceananigans.Utils: TimeInterval
 import Oceananigans.Fields: location
 
 """
@@ -215,14 +215,14 @@ function (wta::WindowedTimeAverage)(model)
     return wta.result
 end
 
-Base.show(io::IO, schedule::AveragedTimeInterval) = print(io, short_show(schedule))
+Base.show(io::IO, schedule::AveragedTimeInterval) = print(io, summary(schedule))
 
-short_show(schedule::AveragedTimeInterval) = string("AveragedTimeInterval(",
-                                                    "window=", prettytime(schedule.window), ", ",
-                                                    "stride=", schedule.stride, ", ",
-                                                    "interval=", prettytime(schedule.interval),  ")")
+Base.summary(schedule::AveragedTimeInterval) = string("AveragedTimeInterval(",
+                                                      "window=", prettytime(schedule.window), ", ",
+                                                      "stride=", schedule.stride, ", ",
+                                                      "interval=", prettytime(schedule.interval),  ")")
 
 show_averaging_schedule(schedule) = ""
-show_averaging_schedule(schedule::AveragedTimeInterval) = string(" averaged on ", short_show(schedule))
+show_averaging_schedule(schedule::AveragedTimeInterval) = string(" averaged on ", summary(schedule))
 
 output_averaging_schedule(output::WindowedTimeAverage) = output.schedule

@@ -159,3 +159,4 @@ regularize_field_boundary_conditions(::Missing, grid::AbstractGrid, field_name::
 regularize_field_boundary_conditions(boundary_conditions::NamedTuple, grid::AbstractGrid, prognostic_field_names::Tuple) =
     NamedTuple(field_name => regularize_field_boundary_conditions(field_bcs, grid, field_name, prognostic_field_names)
                for (field_name, field_bcs) in pairs(boundary_conditions))
+

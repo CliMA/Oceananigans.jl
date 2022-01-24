@@ -47,27 +47,38 @@ output_field[1, 1, :]
 """
 regrid!(a, b) = regrid!(a, a.grid, b.grid, b)
 
-function regrid!(a, target_grid, source_grid, b)
-    msg = """Regridding
-             $(short_show(b)) on $(short_show(source_grid))
-             to $(short_show(a)) on $(short_show(target_grid))
-             is not supported."""
+function we_can_regrid(a, target_grid, source_grid, b)
+    # Only 1D regridding in the vertical is supported, so check that
+    #   1. source and target grid are in the same "class" and
+    #   2. source and target grid have same horizontal size
+    typeof(source_grid).name.wrapper === typeof(target_grid).name.wrapper &&
+        size(source_grid)[1:2] === size(target_grid)[1:2] && return true
 
-    return throw(ArgumentError(msg))
+    return false
+end
+
+function regrid!(a, target_grid, source_grid, b)
+    if we_can_regrid(a, target_grid, source_grid, b)
+        arch = architecture(a)
+        source_z_faces = znodes(Face, source_grid)
+
+        event = launch!(arch, target_grid, :xy, _regrid!, a, b, target_grid, source_grid, source_z_faces)
+        wait(device(arch), event)
+
+        return a
+    else
+        msg = """Regridding
+                 $(summary(b)) on $(summary(source_grid))
+                 to $(summary(a)) on $(summary(target_grid))
+                 is not supported."""
+
+        return throw(ArgumentError(msg))
+    end
 end
 
 #####
 ##### Regridding for single column grids
 #####
-
-function regrid!(a, target_grid::SingleColumnGrid, source_grid::SingleColumnGrid, b)
-    arch = architecture(a)
-    source_z_faces = znodes(Face, source_grid)
-
-    event = launch!(arch, target_grid, :xy, _regrid!, a, b, target_grid, source_grid, source_z_faces)
-    wait(device(arch), event)
-    return nothing
-end
 
 @kernel function _regrid!(target_field, source_field, target_grid, source_grid, source_z_faces)
     i, j = @index(Global, NTuple)

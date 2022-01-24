@@ -1,10 +1,10 @@
 using Oceananigans.Solvers
 using Oceananigans.Operators
+using Oceananigans.Grids: with_halo
 using Oceananigans.Architectures
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: ReducedField
-using Oceananigans.Solvers: MatrixIterativeSolver
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, solid_cell
+using Oceananigans.Solvers: HeptadiagonalIterativeSolver
 import Oceananigans.Solvers: solve!
 
 struct MatrixImplicitFreeSurfaceSolver{V, S, R}
@@ -36,7 +36,7 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_accel
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
-    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas, grid)
+    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
 
     arch = architecture(grid)
     right_hand_side = zeros(grid, grid.Nx * grid.Ny) # linearized RHS for matrix operations
@@ -48,13 +48,13 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_accel
 
     coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
 
-    solver = MatrixIterativeSolver(coeffs; reduced_dim = (false, false, true),
-                                   grid = grid, settings...)
+    solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true),
+                                          grid = grid, settings...)
 
     return MatrixImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:MatrixIterativeSolver}, grid, gravitational_acceleration, settings) =
+build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, gravitational_acceleration, settings) =
     MatrixImplicitFreeSurfaceSolver(grid, gravitational_acceleration, settings)
 
 #####

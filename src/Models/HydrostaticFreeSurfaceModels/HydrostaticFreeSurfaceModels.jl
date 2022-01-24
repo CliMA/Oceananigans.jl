@@ -28,8 +28,7 @@ include("rigid_lid.jl")
 include("explicit_free_surface.jl")
 
 # Implicit solver functionality
-include("compute_vertically_integrated_lateral_areas.jl")
-include("compute_vertically_integrated_volume_flux.jl")
+include("compute_vertically_integrated_variables.jl")
 include("pcg_implicit_free_surface_solver.jl")
 include("matrix_implicit_free_surface_solver.jl")
 include("fft_based_implicit_free_surface_solver.jl")

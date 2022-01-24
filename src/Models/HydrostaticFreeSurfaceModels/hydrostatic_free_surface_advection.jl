@@ -12,8 +12,8 @@ using Oceananigans.Advection: div_𝐯u, div_𝐯v
 @inline ϕ²(i, j, k, grid, ϕ) = @inbounds ϕ[i, j, k]^2
 @inline Khᶜᶜᶜ(i, j, k, grid, u, v) = (ℑxᶜᵃᵃ(i, j, k, grid, ϕ², u) + ℑyᵃᶜᵃ(i, j, k, grid, ϕ², v)) / 2
 
-@inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_wᶜᶜᵃ, w) * δzᵃᵃᶠ(i, j, k, grid, u) / Δzᵃᵃᶠ(i, j, k, grid) / Azᶠᶜᵃ(i, j, k, grid)
-@inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_wᶜᶜᵃ, w) * δzᵃᵃᶠ(i, j, k, grid, v) / Δzᵃᵃᶠ(i, j, k, grid) / Azᶜᶠᵃ(i, j, k, grid)
+@inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_wᶜᶜᵃ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u) / Azᶠᶜᵃ(i, j, k, grid)
+@inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_wᶜᶜᵃ, w) * ∂zᶜᶠᶠ(i, j, k, grid, v) / Azᶜᶠᵃ(i, j, k, grid)
 
 @inline U_dot_∇u(i, j, k, grid, advection::VectorInvariant, U) = (
     - ℑyᵃᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᵃ, U.u, U.v) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_vᶜᶠᵃ, U.v) / Δxᶠᶜᵃ(i, j, k, grid) # Vertical relative vorticity term

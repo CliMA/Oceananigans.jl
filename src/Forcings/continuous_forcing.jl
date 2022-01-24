@@ -1,10 +1,9 @@
 import Adapt
 
-using Oceananigans: short_show
 using Oceananigans.Grids: node
 using Oceananigans.Operators: assumed_field_location, index_and_interp_dependencies
 using Oceananigans.Fields: show_location
-using Oceananigans.Utils: user_function_arguments, tupleit
+using Oceananigans.Utils: user_function_arguments, tupleit, prettysummary
 
 """
     ContinuousForcing{LX, LY, LZ, P, F, D, I, ℑ}
@@ -128,14 +127,14 @@ end
 """Show the innards of a `ContinuousForcing` in the REPL."""
 Base.show(io::IO, forcing::ContinuousForcing{LX, LY, LZ, P}) where {LX, LY, LZ, P} =
     print(io, "ContinuousForcing{$P} at ", show_location(LX, LY, LZ), '\n',
-        "├── func: $(short_show(forcing.func))", '\n',
+        "├── func: $(prettysummary(forcing.func))", '\n',
         "├── parameters: $(forcing.parameters)", '\n',
         "└── field dependencies: $(forcing.field_dependencies)")
 
 """Show the innards of an "non-regularized" `ContinuousForcing` in the REPL."""
 Base.show(io::IO, forcing::ContinuousForcing{Nothing, Nothing, Nothing, P}) where P =
     print(io, "ContinuousForcing{$P}", '\n',
-        "├── func: $(short_show(forcing.func))", '\n',
+        "├── func: $(prettysummary(forcing.func))", '\n',
         "├── parameters: $(forcing.parameters)", '\n',
         "└── field dependencies: $(forcing.field_dependencies)")
 
