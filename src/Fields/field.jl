@@ -388,6 +388,14 @@ function reduced_location(loc; dims)
     end
 end
 
+function reduced_dimension(loc)
+    dims = ()
+    for i in 1:3
+        loc[i] == Nothing ? dims = (dims..., i) : dims
+    end
+    return dims
+end
+
 ## Allow support for ConditionalOperation
 
 get_neutral_mask(::Union{AllReduction, AnyReduction})  = true
@@ -440,26 +448,26 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
     end
 end
 
-function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing) 
-    operator = condition_operand(c, condition, 0)
+function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0) 
+    operator = condition_operand(c, condition, mask)
     return sum(f, operator) / conditional_length(operator)
 end
 
-function Statistics._mean(f, c::AbstractField, dims; condition = nothing)
-    operator = condition_operand(c, condition, 0)
+function Statistics._mean(f, c::AbstractField, dims; condition = nothing, mask = 0)
+    operator = condition_operand(c, condition, mask)
     r = sum(f, operator; dims)
     n = conditional_length(operator, dims)
-    parent(r) ./= n
+    r ./= n
     return r
 end
 
 Statistics.mean(f::Function, c::AbstractField; condition = nothing, dims=:) = Statistics._mean(f, c, dims; condition)
 Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mean(identity, c, dims; condition)
 
-
 function Statistics.mean!(f::Function, r::ReducedField, a::AbstractArray; condition = nothing, mask = 0)
     sum!(f, r, a; condition, mask, init=true)
-    x = max(1, length(r)) // conditional_length(condition_operand(a, condition, mask))
+    dims = reduced_dimension(location(r))
+    x = 1 ./ conditional_length(condition_operand(a, condition, mask), dims)
     r .= r .* x
     return r
 end
