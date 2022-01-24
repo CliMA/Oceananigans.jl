@@ -64,7 +64,7 @@ using CUDA: @allowscalar
         @info "    Testing in-place conditional reductions"
     
         red = Field{Nothing, Center, Center}(grid)
-        for (reduc, reduc!) in zip((maximum, minimum, sum, prod), (maximum!, minimum!, sum!, prod!))
+        for (reduc, reduc!) in zip((mean, maximum, minimum, sum, prod), (mean!, maximum!, minimum!, sum!, prod!))
             @test reduc!(red, fimm)[1, 1 , 1] == reduc(fcon, condition = (i, j, k, x, y) -> i > 3, dims = 1)[1, 1, 1]
         end
     end

@@ -451,7 +451,13 @@ end
 
 Statistics.mean(f::Function, c::AbstractField; condition = nothing, dims=:) = Statistics._mean(f, c, dims; condition)
 Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mean(identity, c, dims; condition)
-Statistics.mean!(f::Function, r::ReducedField, a::AbstractArray; condition = nothing) = Statistics.mean!(f, r, condition_operand(a, condition, 0))
+
+function Statistics.mean!(f::Function, r::ReducedField, a::AbstractArray; condition = nothing, dims=:) 
+    set!(r, Statistics._mean(f, a, dims; condition))
+end
+
+Statistics.mean!(r::ReducedField, a::AbstractArray; condition = nothing, kwargs...) =
+                Statistics.mean!(identity, r, a; condition, kwargs...)
 
 function Statistics.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
