@@ -1,6 +1,7 @@
+using Oceananigans.Fields: OneField
 import Oceananigans.Fields: condition_operand, conditional_length, set!
 
-# For conditional reductions such as mean(condition_operand(u * v, 0, u > 0))
+# For conditional reductions such as mean(u * v, condition = u .> 0))
 
 struct ConditionalOperation{LX, LY, LZ, O, G, C, M, T} <: AbstractOperation{LX, LY, LZ, G, T} 
     operand :: O
