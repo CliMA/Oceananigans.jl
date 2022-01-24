@@ -15,6 +15,8 @@ end
 
 Return a `Reduction` of `operand` with `reduce!`, along `dims`.
 
+elements for which `condition(i ,j ,k) == true` are masked with a `mask`
+
 Example
 =======
 

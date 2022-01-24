@@ -25,8 +25,8 @@ end
 @inline condition_operand(operand::ConditionalOperation, ::Nothing, mask) = condition_operand(location(operand)..., operand, operand.grid, operand.condition, mask)
 @inline condition_operand(operand::ConditionalOperation, condition, mask) = condition_operand(location(operand)..., operand, operand.grid, condition, mask)
 
-@inline conditional_length(c::ConditionalOperation)       = sum(condition_onefield(c, 0))
-@inline conditional_length(c::ConditionalOperation, dims) = sum(condition_onefield(c, 0); dims = dims)
+@inline conditional_length(c::ConditionalOperation)       = Int.(sum(condition_onefield(c, 0)))
+@inline conditional_length(c::ConditionalOperation, dims) = Int.(sum(condition_onefield(c, 0); dims = dims))
 
 Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
             ConditionalOperation{LX, LY, LZ}(adapt(to, c.operand), 
