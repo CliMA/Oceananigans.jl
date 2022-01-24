@@ -1,4 +1,6 @@
 using Oceananigans.Fields: OneField
+using Oceananigans.Grids: architecture
+using Oceananigans.Architectures: arch_array
 import Oceananigans.Fields: condition_operand, conditional_length, set!
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
@@ -15,15 +17,20 @@ struct ConditionalOperation{LX, LY, LZ, O, G, C, M, T} <: AbstractOperation{LX, 
      end
 end
 
-@inline condition_operand(operand::AbstractField, condition, mask)    = condition_operand(location(operand)..., operand, operand.grid, condition, mask)
+const FieldOrConditional = Union{AbstractField, ConditionalOperation}
+
 @inline condition_operand(LX, LY, LZ, operand, grid, condition, mask) = ConditionalOperation{LX, LY, LZ}(operand, grid, condition, mask)
+@inline condition_operand(operand::AbstractField, condition, mask)    = condition_operand(location(operand)..., operand, operand.grid, condition, mask)
+@inline function condition_operand(operand::AbstractField, condition::AbstractArray, mask) 
+    condition = arch_array(architecture(operand.grid), condition)
+    return condition_operand(location(operand)..., operand, operand.grid, condition, mask)
+end
+
+# If we reduce a ConditionalOperation with no condition, we keep the original condition!
+@inline condition_operand(operand::ConditionalOperation, ::Nothing, mask) = condition_operand(location(operand)..., operand, operand.grid, operand.condition, mask)
 
 @inline condition_onefield(c::ConditionalOperation{LX, LY, LZ}, mask) where {LX, LY, LZ} =
                               ConditionalOperation{LX, LY, LZ}(OneField(), c.grid, c.condition, mask)
-
-# If we reduce a ConditionalOperation, we keep the same condition!
-@inline condition_operand(operand::ConditionalOperation, ::Nothing, mask) = condition_operand(location(operand)..., operand, operand.grid, operand.condition, mask)
-@inline condition_operand(operand::ConditionalOperation, condition, mask) = condition_operand(location(operand)..., operand, operand.grid, condition, mask)
 
 @inline conditional_length(c::ConditionalOperation)       = sum(condition_onefield(c, 0))
 @inline conditional_length(c::ConditionalOperation, dims) = sum(condition_onefield(c, 0); dims = dims)
