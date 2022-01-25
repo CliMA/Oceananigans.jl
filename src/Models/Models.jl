@@ -3,7 +3,7 @@ module Models
 export
     NonhydrostaticModel, ShallowWaterModel,
     HydrostaticFreeSurfaceModel, VectorInvariant,
-    ExplicitFreeSurface, ImplicitFreeSurface,
+    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving,
     PrescribedVelocityFields, PressureField
 
@@ -23,7 +23,7 @@ using .NonhydrostaticModels: NonhydrostaticModel, PressureField
 
 using .HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel, VectorInvariant,
-    ExplicitFreeSurface, ImplicitFreeSurface,
+    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     HydrostaticSphericalCoriolis,
     VectorInvariantEnstrophyConserving, VectorInvariantEnergyConserving,
     PrescribedVelocityFields
