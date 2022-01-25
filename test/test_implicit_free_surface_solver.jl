@@ -80,8 +80,7 @@ function run_matrix_implicit_free_surface_solver_tests(arch, grid)
     Ny = grid.Ny
 
     # Create a model
-    model = HydrostaticFreeSurfaceModel(architecture = arch,
-                                        grid = grid,
+    model = HydrostaticFreeSurfaceModel(grid = grid,
                                         momentum_advection = nothing,
                                         free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver,
                                                                            tolerance = 1e-15))
@@ -117,7 +116,6 @@ function run_matrix_implicit_free_surface_solver_tests(arch, grid)
 end
 
 
-
 @testset "Implicit free surface solver tests" begin
     for arch in archs
 
@@ -131,6 +129,9 @@ end
         for grid in (rectilinear_grid, lat_lon_grid)
             @info "Testing PreconditionedConjugateGradient implicit free surface solver [$(typeof(arch)), $(typeof(grid).name.wrapper)]..."
             run_pcg_implicit_free_surface_solver_tests(arch, grid)
+            
+            @info "Testing Matrix implicit free surface solver [$(typeof(arch)), $(typeof(grid).name.wrapper)]..."
+            run_matrix_implicit_free_surface_solver_tests(arch, grid)
         end
 
         @info "Testing implicit free surface solvers compared to FFT [$(typeof(arch))]..."
