@@ -1,3 +1,4 @@
+using Adapt
 using Oceananigans.Operators
 
 # Define aliases for some spacings and areas at all locations.
@@ -148,12 +149,13 @@ struct GridMetricOperation{LX, LY, LZ, G, T, M} <: AbstractOperation{LX, LY, LZ,
     end
 end
 
+Adapt.adapt_structure(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ}=
+         GridMetricOperation{LX, LY, LZ}(Adapt.adapt(to, gm.metric),
+                                         Adapt.adapt(to, gm.grid))
+
 @inline Base.getindex(gm::GridMetricOperation, i, j, k) = gm.metric(i, j, k, gm.grid)
 
 # Special constructor for BinaryOperation
 GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(metric_function(L, metric), grid)
 
-Adapt.adapt_structure(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ} =
-    GridMetricOperation{LX, LY, LZ}(Adapt.adapt(to, gm.metric), Adapt.adapt(to, gm.grid))
-                                   
 

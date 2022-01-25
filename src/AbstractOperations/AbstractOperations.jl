@@ -3,7 +3,7 @@ module AbstractOperations
 export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
 export Δx, Δy, Δz, Ax, Ay, Az, volume
 export Average, Integral, KernelFunctionOperation
-export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation
+export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 
 using Base: @propagate_inbounds
 
@@ -56,6 +56,7 @@ include("binary_operations.jl")
 include("multiary_operations.jl")
 include("derivatives.jl")
 include("kernel_function_operation.jl")
+include("conditional_operations.jl")
 include("computed_field.jl")
 include("at.jl")
 include("broadcasting_abstract_operations.jl")
@@ -63,7 +64,7 @@ include("show_abstract_operations.jl")
 
 # Make some operators!
 
-# Some unaries:
+# Some operators:
 import Base: sqrt, sin, cos, exp, tanh, -, +, /, ^, *
 
 @unary sqrt sin cos exp tanh

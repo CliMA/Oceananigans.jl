@@ -9,7 +9,6 @@ using Oceananigans.Utils
 using Oceananigans.Grids: interior_indices, interior_parent_indices
 
 import Base: minimum, maximum, extrema
-import Statistics: mean
 import Oceananigans: location, instantiated_location
 import Oceananigans.Architectures: architecture
 import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
@@ -97,11 +96,5 @@ nodes(ψ::AbstractField; kwargs...) = nodes(location(ψ), ψ.grid; kwargs...)
 for f in (:+, :-)
     @eval Base.$f(ϕ::AbstractArray, ψ::AbstractField) = $f(ϕ, interior(ψ))
     @eval Base.$f(ϕ::AbstractField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
-end
-
-function Statistics.norm(a::AbstractField)
-    r = zeros(a.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, r, a)
-    return CUDA.@allowscalar sqrt(r[1])
 end
 

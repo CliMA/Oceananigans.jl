@@ -27,6 +27,7 @@ include("dependencies_for_runtests.jl")
     if group == :abstract_operations || group == :all
         @testset "AbstractOperations and broadcasting tests" begin
             include("test_abstract_operations.jl")
+            include("test_conditional_reductions.jl")
             include("test_computed_field.jl")
             include("test_broadcasting.jl")
         end

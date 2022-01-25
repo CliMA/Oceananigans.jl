@@ -14,8 +14,8 @@
 @inline ∂y_u(i, j, k, grid, u) = ∂yᶠᶠᵃ(i, j, k, grid, u)
 @inline ∂y_w(i, j, k, grid, w) = ∂yᶜᶠᵃ(i, j, k, grid, w)
 
-@inline ∂z_u(i, j, k, grid, u) = ∂zᵃᵃᶠ(i, j, k, grid, u)
-@inline ∂z_v(i, j, k, grid, v) = ∂zᵃᵃᶠ(i, j, k, grid, v)
+@inline ∂z_u(i, j, k, grid, u) = ∂zᶠᶜᶠ(i, j, k, grid, u)
+@inline ∂z_v(i, j, k, grid, v) = ∂zᶜᶠᶠ(i, j, k, grid, v)
 
 #####
 ##### Strain components

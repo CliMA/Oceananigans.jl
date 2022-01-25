@@ -93,25 +93,27 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
         η = Array(interior(η))
     )
 
-    datadep_path = "regression_test_data/" * output_prefix * ".jld2"
-    regression_data_path = @datadep_str datadep_path
-    file = jldopen(regression_data_path)
+    if !regenerate_data
+        datadep_path = "regression_test_data/" * output_prefix * ".jld2"
+        regression_data_path = @datadep_str datadep_path
+        file = jldopen(regression_data_path)
 
-    truth_fields = (
-        u = file["timeseries/u/$stop_iteration"][:, :, :],
-        v = file["timeseries/v/$stop_iteration"][:, :, :],
-        w = file["timeseries/w/$stop_iteration"][:, :, :],
-        η = file["timeseries/η/$stop_iteration"][:, :, :]
-    )
+        truth_fields = (
+            u = file["timeseries/u/$stop_iteration"][:, :, :],
+            v = file["timeseries/v/$stop_iteration"][:, :, :],
+            w = file["timeseries/w/$stop_iteration"][:, :, :],
+            η = file["timeseries/η/$stop_iteration"][:, :, :]
+        )
 
-    close(file)
+        close(file)
 
-    summarize_regression_test(test_fields, truth_fields)
+        summarize_regression_test(test_fields, truth_fields)
 
-    @test all(test_fields.u .≈ truth_fields.u)
-    @test all(test_fields.v .≈ truth_fields.v)
-    @test all(test_fields.w .≈ truth_fields.w)
-    @test all(test_fields.η .≈ truth_fields.η)
-
+        @test all(test_fields.u .≈ truth_fields.u)
+        @test all(test_fields.v .≈ truth_fields.v)
+        @test all(test_fields.w .≈ truth_fields.w)
+        @test all(test_fields.η .≈ truth_fields.η)
+    end
+    
     return nothing
 end

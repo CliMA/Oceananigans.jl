@@ -1,5 +1,3 @@
-include("dependencies_for_runtests.jl")
-
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 

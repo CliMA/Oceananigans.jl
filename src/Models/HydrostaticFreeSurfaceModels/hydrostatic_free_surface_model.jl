@@ -164,7 +164,7 @@ function HydrostaticFreeSurfaceModel(; grid,
     free_surface = FreeSurface(free_surface, velocities, grid)
 
     # Instantiate timestepper if not already instantiated
-    implicit_solver = implicit_diffusion_solver(time_discretization(closure), arch, grid)
+    implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
     timestepper = TimeStepper(:QuasiAdamsBashforth2, grid, tracernames(tracers);
                               implicit_solver = implicit_solver,
                               Gⁿ = HydrostaticFreeSurfaceTendencyFields(velocities, free_surface, grid, tracernames(tracers)),

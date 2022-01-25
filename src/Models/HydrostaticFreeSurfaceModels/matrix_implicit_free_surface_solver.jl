@@ -5,7 +5,6 @@ using Oceananigans.Architectures
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: ReducedField
 using Oceananigans.Solvers: HeptadiagonalIterativeSolver
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, solid_cell
 import Oceananigans.Solvers: solve!
 
 struct MatrixImplicitFreeSurfaceSolver{V, S, R}

@@ -15,3 +15,16 @@ const Nmonths = 12
     return cyclic_interpolate.(view(τ, :, :, n₁), view(τ, :, :, n₂), time, interval)
 end
 
+@inline function interpolate_fluxes(old_array, Nx_old, Ny_old, Nx_new, Ny_new)
+    old_grid = LatitudeLongitudeGrid(size = (Nx_old, Ny_old, 1), latitude = (-80, 80), longitude = (-180, 180), z = (0, 1))
+    new_grid = LatitudeLongitudeGrid(size = (Nx_new, Ny_new, 1), latitude = (-80, 80), longitude = (-180, 180), z = (0, 1))
+
+    old_field = Field{Center, Center, Center}(old_grid)
+    set!(old_field, old_array)
+    new_array = zeros(Nx_new, Ny_new)
+
+    for i in 1:Nx_new, j in 1:Ny_new
+        new_array[i, j] = interpolate(old_field, new_grid.λᶜᵃᵃ[i], new_grid.φᵃᶜᵃ[j], old_grid.zᵃᵃᶜ[1])
+    end
+    return new_array
+end
