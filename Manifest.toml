@@ -179,10 +179,10 @@ uuid = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 version = "1.12.0"
 
 [[GPUArrays]]
-deps = ["Adapt", "LinearAlgebra", "Printf", "Random", "Serialization", "Statistics"]
-git-tree-sha1 = "d9681e61fbce7dde48684b40bdb1a319c4083be7"
+deps = ["Adapt", "LLVM", "LinearAlgebra", "Printf", "Random", "Serialization", "Statistics"]
+git-tree-sha1 = "cf91e6e9213b9190dc0511d6fff862a86652a94a"
 uuid = "0c68f7d7-f131-5f86-a1c3-88cf8149b2d7"
-version = "8.1.3"
+version = "8.2.1"
 
 [[GPUCompiler]]
 deps = ["ExprTools", "InteractiveUtils", "LLVM", "Libdl", "Logging", "TimerOutputs", "UUIDs"]
@@ -427,9 +427,9 @@ version = "0.12.1"
 
 [[PencilFFTs]]
 deps = ["AbstractFFTs", "FFTW", "LinearAlgebra", "MPI", "PencilArrays", "Reexport", "TimerOutputs"]
-git-tree-sha1 = "c664883316c03cf75a88fe1a2b38c1a8e33fcd39"
+git-tree-sha1 = "a59315d31fbd38888d62d2d21e773aef06523c40"
 uuid = "4a48f351-57a6-4416-9ec4-c37015456aae"
-version = "0.12.7"
+version = "0.13.0"
 
 [[Pkg]]
 deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markdown", "Printf", "REPL", "Random", "SHA", "Serialization", "TOML", "Tar", "UUIDs", "p7zip_jll"]
