@@ -7,8 +7,9 @@ calculate_pressure_correction!(::HydrostaticFreeSurfaceModel, Δt) = nothing
 #####
 
 const HFSM = HydrostaticFreeSurfaceModel
-const ExplicitFreeSurfaceHFSM = HFSM{<:Any, <:Any, <:Any, <:ExplicitFreeSurface}
-const ImplicitFreeSurfaceHFSM = HFSM{<:Any, <:Any, <:Any, <:ImplicitFreeSurface}
+const ExplicitFreeSurfaceHFSM      = HFSM{<:Any, <:Any, <:Any, <:ExplicitFreeSurface}
+const ImplicitFreeSurfaceHFSM      = HFSM{<:Any, <:Any, <:Any, <:ImplicitFreeSurface}
+const SplitExplicitFreeSurfaceHFSM = HFSM{<:Any, <:Any, <:Any, <:SplitExplicitFreeSurface}
 
 pressure_correct_velocities!(model::ExplicitFreeSurfaceHFSM, Δt; kwargs...) = nothing
 
@@ -29,6 +30,14 @@ function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt;
                     dependencies = dependencies)
 
     wait(device(model.architecture), event)
+
+    return nothing
+end
+
+function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt; dependecies = nothing)
+    u, v, _ = model.velocities
+    grid = model.grid 
+    barotropic_split_explicit_corrector!(u, v, model.free_surface, grid)
 
     return nothing
 end
