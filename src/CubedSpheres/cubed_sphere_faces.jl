@@ -1,5 +1,7 @@
 using Statistics
+using CUDA
 using Oceananigans.Architectures
+using Oceananigans.AbstractOperations: AbstractOperation
 
 using OffsetArrays: OffsetArray
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -7,7 +9,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 import Base: getindex, size, show, minimum, maximum
 import Statistics: mean
 
-import Oceananigans.Fields: AbstractField, AbstractDataField, AbstractReducedField, Field, ReducedField, minimum, maximum, mean, location, short_show, KernelComputedField
+import Oceananigans.Fields: AbstractField, Field, minimum, maximum, mean, location, set!
 import Oceananigans.Grids: new_data
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 
@@ -34,42 +36,31 @@ const CubedSphereData = CubedSphereFaces{<:OffsetArray}
 const ImmersedConformalCubedSphereFaceGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:ConformalCubedSphereFaceGrid} where {FT, TX, TY, TZ}
 
 # CubedSphereFaceField:
-const NonImmersedCubedSphereFaceField = AbstractField{X, Y, Z, A, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A}
-const ImmersedCubedSphereFaceField    = AbstractField{X, Y, Z, A, <:ImmersedConformalCubedSphereFaceGrid} where {X, Y, Z, A}
+const NonImmersedCubedSphereFaceField = AbstractField{LX, LY, LZ, <:ConformalCubedSphereFaceGrid} where {LX, LY, LZ}
+const ImmersedCubedSphereFaceField    = AbstractField{LX, LY, LZ, <:ImmersedConformalCubedSphereFaceGrid} where {LX, LY, LZ}
 
-const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{X, Y, Z, A},
-                                      ImmersedCubedSphereFaceField{X, Y, Z, A}} where {X, Y, Z, A}
-
-const NonImmersedCubedSphereAbstractReducedFaceField = AbstractReducedField{X, Y, Z, A, D, <:ConformalCubedSphereFaceGrid} where {X, Y, Z, A, D}
-const ImmersedCubedSphereAbstractReducedFaceField = AbstractReducedField{X, Y, Z, A, D, <:ImmersedConformalCubedSphereFaceGrid} where {X, Y, Z, A, D}
-
-const CubedSphereAbstractReducedFaceField = Union{NonImmersedCubedSphereAbstractReducedFaceField{X, Y, Z, A},
-                                                     ImmersedCubedSphereAbstractReducedFaceField{X, Y, Z, A}} where {X, Y, Z, A}
+const CubedSphereFaceField = Union{NonImmersedCubedSphereFaceField{LX, LY, LZ},
+                                      ImmersedCubedSphereFaceField{LX, LY, LZ}} where {LX, LY, LZ}
 
 # CubedSphereField
 
 # Flavors of CubedSphereField
-const CubedSphereField                     = Field{X, Y, Z, A, <:CubedSphereData} where {X, Y, Z, A}
-const CubedSphereReducedField              = ReducedField{X, Y, Z, A, <:CubedSphereData} where {X, Y, Z, A}
-const CubedSphereAbstractField             = AbstractField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
-const CubedSphereAbstractDataField         = AbstractDataField{X, Y, Z, A, <:ConformalCubedSphereGrid} where {X, Y, Z, A}
+const CubedSphereField{LX, LY, LZ} =
+    Union{Field{LX, LY, LZ, <:Nothing, <:ConformalCubedSphereGrid},
+          Field{LX, LY, LZ, <:AbstractOperation, <:ConformalCubedSphereGrid}}
 
-const AbstractCubedSphereField{X, Y, Z, A} = Union{    CubedSphereAbstractField{X, Y, Z, A},
-                                                   CubedSphereAbstractDataField{X, Y, Z, A},
-                                                        CubedSphereReducedField{X, Y, Z, A},
-                                                               CubedSphereField{X, Y, Z, A}} where {X, Y, Z, A}
+const CubedSphereAbstractField{LX, LY, LZ} = AbstractField{LX, LY, LZ, <:ConformalCubedSphereGrid}
+
+const AbstractCubedSphereField{LX, LY, LZ} =
+    Union{CubedSphereAbstractField{LX, LY, LZ},
+                  CubedSphereField{LX, LY, LZ}}
 
 #####
 ##### new data
 #####
 
-function new_data(FT, arch::CPU, grid::ConformalCubedSphereGrid, (X, Y, Z))
-    faces = Tuple(new_data(FT, arch, face_grid, (X, Y, Z)) for face_grid in grid.faces)
-    return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
-end
-
-function new_data(FT, arch::GPU, grid::ConformalCubedSphereGrid, (X, Y, Z))
-    faces = Tuple(new_data(FT, arch, face_grid, (X, Y, Z)) for face_grid in grid.faces)
+function new_data(FT, grid::ConformalCubedSphereGrid, (LX, LY, LZ))
+    faces = Tuple(new_data(FT, face_grid, (LX, LY, LZ)) for face_grid in grid.faces)
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
 end
 
@@ -77,11 +68,11 @@ end
 ##### FieldBoundaryConditions
 #####
 
-function FieldBoundaryConditions(grid::ConformalCubedSphereGrid, (X, Y, Z); user_defined_bcs...)
+function FieldBoundaryConditions(grid::ConformalCubedSphereGrid, (LX, LY, LZ); user_defined_bcs...)
 
     faces = Tuple(
         inject_cubed_sphere_exchange_boundary_conditions(
-            FieldBoundaryConditions(face_grid, (X, Y, Z); user_defined_bcs...),
+            FieldBoundaryConditions(face_grid, (LX, LY, LZ); user_defined_bcs...),
             face_index,
             grid.face_connectivity
         )
@@ -95,54 +86,50 @@ end
 ##### Utils
 #####
 
-function Base.show(io::IO, field::AbstractCubedSphereField)
+function Base.show(io::IO, field::Union{CubedSphereField, AbstractCubedSphereField})
     LX, LY, LZ = location(field)
     arch = architecture(field)
     A = typeof(arch)
     return print(io, "$(typeof(field).name.wrapper) at ($LX, $LY, $LZ)\n",
           "├── architecture: $A\n",
-          "└── grid: $(short_show(field.grid))")
+          "└── grid: $(summary(field.grid))")
 end
-
-
 
 @inline function interior(field::AbstractCubedSphereField)
     faces = Tuple(interior(face_field_face) for face_field in faces(field))
     return CubedSphereFaces(faces)
 end
 
+Base.size(field::CubedSphereField) = size(field.data)
 Base.size(data::CubedSphereData) = (size(data.faces[1])..., length(data.faces))
 
-@inline function get_face(field::CubedSphereField, face_index)
-    X, Y, Z = location(field)
-
-    # Should we define a new lower-level constructor for Field that doesn't call validate_field_data?
-    return Field{X, Y, Z}(get_face(field.data, face_index),
-                          field.architecture,
-                          get_face(field.grid, face_index),
-                          get_face(field.boundary_conditions, face_index))
-end
-
-@inline function get_face(reduced_field::CubedSphereReducedField, face_index)
-    X, Y, Z = location(reduced_field)
-
-    return ReducedField{X, Y, Z}(get_face(reduced_field.data, face_index),
-                                 reduced_field.architecture,
-                                 get_face(reduced_field.grid, face_index),
-                                 reduced_field.dims,
-                                 get_face(reduced_field.boundary_conditions, face_index))
-end
-
-@inline function get_face(kernel_field::CubedSphereAbstractDataField, face_index)
-    X, Y, Z = location(kernel_field)
-
-    return Field{X, Y, Z}(get_face(kernel_field.data, face_index),
-                                 kernel_field.architecture,
-                                 get_face(kernel_field.grid, face_index),
-                                 get_face(kernel_field.boundary_conditions, face_index))
-end
-
+@inline get_face(field::CubedSphereField, face_index) =
+    Field(location(field), get_face(field.grid, face_index);
+          data = get_face(field.data, face_index),
+          boundary_conditions = get_face(field.boundary_conditions, face_index))
+    
 faces(field::AbstractCubedSphereField) = Tuple(get_face(field, face_index) for face_index in 1:length(field.data.faces))
+
+#####
+##### set!
+#####
+
+function cubed_sphere_set!(u, v)
+    for face = 1:length(u.grid.faces)
+        set!(get_face(u, face), get_face(v, face))
+    end
+    return nothing
+end
+
+# Resolve ambiguities
+set!(u::CubedSphereField, v) = cubed_sphere_set!(u, v)
+set!(u::CubedSphereField, v::Function) = cubed_sphere_set!(u, v)
+set!(u::CubedSphereField, v::Union{Array, CuArray, OffsetArray}) = cubed_sphere_set!(u, v)
+set!(u::CubedSphereField, v::CubedSphereField) = cubed_sphere_set!(u, v)
+
+#####
+##### Random utils
+#####
 
 minimum(field::AbstractCubedSphereField; dims=:) = minimum(minimum(face_field; dims) for face_field in faces(field))
 maximum(field::AbstractCubedSphereField; dims=:) = maximum(maximum(face_field; dims) for face_field in faces(field))

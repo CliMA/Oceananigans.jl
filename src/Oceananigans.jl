@@ -33,7 +33,7 @@ export
 
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
-    AveragedField, ComputedField, KernelComputedField, BackgroundField,
+    Average, Integral, Reduction, BackgroundField,
     interior, set!, compute!, regrid!,
 
     # Forcing functions
@@ -67,6 +67,7 @@ export
     NonhydrostaticModel,
     HydrostaticFreeSurfaceModel,
     ShallowWaterModel,
+    PressureField,
     fields,
 
     # Hydrostatic free surface model stuff
@@ -161,7 +162,6 @@ function write_output! end
 function location end
 function instantiated_location end
 function tupleit end
-function short_show end
 
 function fields end
 function prognostic_fields end
@@ -180,8 +180,8 @@ include("Logger.jl")
 include("Operators/Operators.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
-include("Advection/Advection.jl")
 include("AbstractOperations/AbstractOperations.jl")
+include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
 include("Distributed/Distributed.jl")
 

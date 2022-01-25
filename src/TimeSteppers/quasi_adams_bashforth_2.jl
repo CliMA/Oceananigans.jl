@@ -13,23 +13,28 @@ end
 """
     QuasiAdamsBashforth2TimeStepper(arch, grid, tracers, χ=0.1;
                                     implicit_solver = nothing,
-                                    Gⁿ = TendencyFields(arch, grid, tracers),
-                                    G⁻ = TendencyFields(arch, grid, tracers))
+                                    Gⁿ = TendencyFields(grid, tracers),
+                                    G⁻ = TendencyFields(grid, tracers))
 
 Return an QuasiAdamsBashforth2TimeStepper object with tendency fields on `arch` and
 `grid` with AB2 parameter `χ`. The tendency fields can be specified via optional
 kwargs.
 """
-function QuasiAdamsBashforth2TimeStepper(arch, grid, tracers,
+function QuasiAdamsBashforth2TimeStepper(grid, tracers,
                                          χ = 0.1;
                                          implicit_solver::IT = nothing,
-                                         Gⁿ = TendencyFields(arch, grid, tracers),
-                                         G⁻ = TendencyFields(arch, grid, tracers)) where IT
+                                         Gⁿ = TendencyFields(grid, tracers),
+                                         G⁻ = TendencyFields(grid, tracers)) where IT
 
     FT = eltype(grid)
     GT = typeof(Gⁿ)
 
     return QuasiAdamsBashforth2TimeStepper{FT, GT, IT}(χ, Inf, Gⁿ, G⁻, implicit_solver)
+end
+
+function reset!(timestepper::QuasiAdamsBashforth2TimeStepper)
+    timestepper.previous_Δt = Inf
+    return nothing
 end
 
 #####

@@ -1,62 +1,55 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, z_viscosity
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
 
 function relative_error(u_num, u, time)
-    u_ans = Field(location(u_num), architecture(u_num), u_num.grid, nothing)
+    u_ans = Field(location(u_num), u_num.grid)
     set!(u_ans, (x, y, z) -> u(x, y, z, time))
     return mean((interior(u_num) .- interior(u_ans)).^2 ) / mean(interior(u_ans).^2)
 end
 
 function test_diffusion_simple(fieldname, timestepper, time_discretization)
 
-    model = NonhydrostaticModel(timestepper = timestepper,
-                                       grid = RectilinearGrid(CPU(), size=(1, 1, 16), extent=(1, 1, 1)),
-                                    closure = IsotropicDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
-                                   coriolis = nothing,
-                                    tracers = :c,
-                                   buoyancy = nothing)
-
-    field = get_model_field(fieldname, model)
+    model = NonhydrostaticModel(; timestepper,
+                                grid = RectilinearGrid(CPU(), size=(1, 1, 16), extent=(1, 1, 1)),
+                                closure = IsotropicDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
+                                coriolis = nothing,
+                                tracers = :c,
+                                buoyancy = nothing)
 
     value = π
+    field = get_model_field(fieldname, model)
     interior(field) .= value
+    update_state!(model)
 
-    for n in 1:10
-        ab2_or_rk3_time_step!(model, 1, n)
-    end
+    [time_step!(model, 1) for n = 1:10]
 
     field_data = interior(field)
-
     return !any(@. !isapprox(value, field_data))
 end
 
 function test_isotropic_diffusion_budget(fieldname, model)
     set!(model; u=0, v=0, w=0, c=0)
     set!(model; Dict(fieldname => (x, y, z) -> rand())...)
-
     field = get_model_field(fieldname, model)
-
     ν = z_viscosity(model.closure, nothing) # for generalizing to isotropic AnisotropicDiffusivity
-
     return test_diffusion_budget(fieldname, field, model, ν, model.grid.Δzᵃᵃᶜ)
 end
 
 function test_biharmonic_diffusion_budget(fieldname, model)
     set!(model; u=0, v=0, w=0, c=0)
     set!(model; Dict(fieldname => (x, y, z) -> rand())...)
-
     field = get_model_field(fieldname, model)
-
     return test_diffusion_budget(fieldname, field, model, model.closure.νz, model.grid.Δzᵃᵃᶜ, 4)
 end
 
 function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
     init_mean = mean(interior(field))
+    update_state!(model)
 
-    for n in 1:10
-        # Very small time-steps required to bring error under machine precision
-        ab2_or_rk3_time_step!(model, 1e-4 * Δ^order / κ, n)
-    end
+    # Very small time-steps required to bring error under machine precision
+    [time_step!(model, 1e-4 * Δ^order / κ) for n = 1:10]
 
     final_mean = mean(interior(field))
 
@@ -69,29 +62,152 @@ end
 function test_diffusion_cosine(fieldname, timestepper, grid, time_discretization)
     κ, m = 1, 2 # diffusivity and cosine wavenumber
 
-    model = NonhydrostaticModel(timestepper = timestepper,
-                                       grid = grid,
+    model = NonhydrostaticModel(; timestepper, grid,
                                     closure = IsotropicDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
                                     tracers = (:T, :S),
                                    buoyancy = nothing)
 
     field = get_model_field(fieldname, model)
 
+    z = znodes(Center, grid, reshape=true)
+    interior(field) .= cos.(m * z)
+    update_state!(model)
+
+    # Step forward with small time-step relative to diff. time-scale
+    Δt = 1e-6 * grid.Lz^2 / κ
+    [time_step!(model, Δt) for n = 1:10]
+
+    diffusing_cosine(κ, m, z, t) = exp(-κ * m^2 * t) * cos(m * z)
+
+     numerical = interior(field)
+    analytical = diffusing_cosine.(κ, m, z, model.clock.time)
+
+    return !any(@. !isapprox(numerical, analytical, atol=1e-6, rtol=1e-6))
+end
+
+function test_immersed_diffusion(Nz, z, time_discretization)
+
+    κ = 1.0
+    
+    closure = IsotropicDiffusivity(κ = κ, time_discretization = time_discretization)
+
+    underlying_grid = RectilinearGrid(size=Nz, z=z, topology=(Flat, Flat, Bounded))
+    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> 0))
+    
+    Δz_min = minimum(grid.grid.Δzᵃᵃᶜ)
+    model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
+
+    full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure=closure, model_kwargs...)
+    immersed_model = HydrostaticFreeSurfaceModel(; grid=grid, closure=closure, model_kwargs...)
+
+    initial_temperature(x, y, z) = exp(-z^2 / 0.02)
+    set!(full_model,     c=initial_temperature)
+    set!(immersed_model, c=initial_temperature)
+
+    Δt = Δz_min^2 / closure.κ * 1e-1
+
+    for n = 1:100
+        time_step!(full_model    , Δt)
+        time_step!(immersed_model, Δt)
+    end
+
+    half   = Int(grid.Nz/2 + 1)
+
+    c_full     = interior(full_model.tracers.c)[1, 1, half:end]
+    c_immersed = interior(immersed_model.tracers.c)[1, 1, half:end]
+
+    return all(c_full .≈ c_immersed)
+end
+
+function test_immersed_diffusion_3D(Nz, z, time_discretization)
+
+    κ = 1.0
+    
+    closure = AnisotropicDiffusivity(νh = κ, νz = κ, κh = 0, κz = κ, time_discretization = time_discretization)
+
+    b, l, m, u, t = -0.5, -0.2, 0, 0.2, 0.5
+
+    B = [b b b b b b b b b 
+         b l l l l l l l b
+         b l m m m m m l b
+         b l m u u u m l b
+         b l m u t u m l b
+         b l m u u u m l b
+         b l m m m m m l b
+         b l l l l l l l b
+         b b b b b b b b b]
+
+    underlying_grid = RectilinearGrid(size=(9, 9, Nz), x=(0, 1), y=(0, 1), z=z, topology=(Periodic, Periodic, Bounded))
+    grid            = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(B))
+    
+    Δz_min = minimum(grid.grid.Δzᵃᵃᶜ)
+    model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
+
+    full_model     = HydrostaticFreeSurfaceModel(; grid=underlying_grid, closure=closure, model_kwargs...)
+    immersed_model = HydrostaticFreeSurfaceModel(; grid=grid, closure=closure, model_kwargs...)
+
+    initial_temperature(x, y, z) = exp(-z^2 / 0.02)
+    set!(full_model,     c=initial_temperature)
+    set!(immersed_model, c=initial_temperature)
+
+    Δt = Δz_min^2 / closure.κz * 1e-1
+
+    for n = 1:100
+        time_step!(full_model    , Δt)
+        time_step!(immersed_model, Δt)
+    end
+
+    half   = Int(grid.Nz/2 + 1)
+
+    assesment = Array{Bool}(undef, 4)
+
+    c_full       = interior(full_model.tracers.c)[3, 3:7, half:end]
+    c_immersed   = interior(immersed_model.tracers.c)[3, 3:7, half:end]
+    assesment[1] = all(c_full .≈ c_immersed)
+
+    c_full       = interior(full_model.tracers.c)[3:7, 3, half:end]
+    c_immersed   = interior(immersed_model.tracers.c)[3:7, 3, half:end]
+    assesment[2] = all(c_full .≈ c_immersed)
+
+    c_full       = interior(full_model.tracers.c)[7, 3:7, half:end]
+    c_immersed   = interior(immersed_model.tracers.c)[7, 3:7, half:end]
+    assesment[3] = all(c_full .≈ c_immersed)
+
+    c_full       = interior(full_model.tracers.c)[3:7, 7, half:end]
+    c_immersed   = interior(immersed_model.tracers.c)[3:7, 7, half:end]
+    assesment[4] = all(c_full .≈ c_immersed)
+
+    return all(assesment)
+end
+
+function test_diffusion_cosine_immersed(field_name, timestepper, grid, time_discretization)
+    κ, m = 1, 2 # diffusivity and cosine wavenumber
+
+    model = NonhydrostaticModel(timestepper = timestepper,
+                                       grid = grid,
+                                    closure = IsotropicDiffusivity(ν=κ, κ=κ, time_discretization=time_discretization),
+                                    tracers = (:T, :S),
+                                   buoyancy = nothing)
+
+    field = get_model_field(field_name, model)
+
     zC = znodes(Center, grid, reshape=true)
-    interior(field) .= cos.(m * zC)
+    interior(field)   .= cos.(m * zC)
 
     diffusing_cosine(κ, m, z, t) = exp(-κ * m^2 * t) * cos(m * z)
 
     # Step forward with small time-step relative to diff. time-scale
     Δt = 1e-6 * grid.Lz^2 / κ
-    for n in 1:10
-        ab2_or_rk3_time_step!(model, Δt, n)
+    for n in 1:5
+        time_step!(model, Δt)
     end
 
-     numerical = interior(field)
-    analytical = diffusing_cosine.(κ, m, zC, model.clock.time)
+    half = Int(grid.Nz/2 + 1)
 
-    return !any(@. !isapprox(numerical, analytical, atol=1e-6, rtol=1e-6))
+    numerical_half = interior(field)[1,1,half:end]
+    analytical_half = diffusing_cosine.(κ, m, zC, model.clock.time)[1,1,half:end]
+
+    return !any(@. !isapprox(numerical_half, analytical_half, atol=1e-6, rtol=1e-6))
 end
 
 function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, background_velocity_field=false)
@@ -117,15 +233,12 @@ function passive_tracer_advection_test(timestepper; N=128, κ=1e-12, Nt=100, bac
 
     grid = RectilinearGrid(size=(N, N, 2), extent=(L, L, L))
     closure = IsotropicDiffusivity(ν=κ, κ=κ)
-    model = NonhydrostaticModel(timestepper=timestepper, grid=grid, closure=closure,
+    model = NonhydrostaticModel(; grid, closure, timestepper,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S),
                                 background_fields=background_fields)
 
     set!(model, u=u₀, v=v₀, T=T₀)
-
-    for n in 1:Nt
-        ab2_or_rk3_time_step!(model, Δt, n)
-    end
+    [time_step!(model, Δt) for n = 1:Nt]
 
     # Error tolerance is a bit arbitrary
     return relative_error(model.tracers.T, T, model.clock.time) < 1e-4
@@ -162,7 +275,7 @@ function taylor_green_vortex_test(arch, timestepper, time_discretization; FT=Flo
     set!(model, u=u₀, v=v₀)
 
     for n in 1:Nt
-        ab2_or_rk3_time_step!(model, Δt, n)
+        time_step!(model, Δt)
     end
 
     xF, yC, zC = nodes(model.velocities.u, reshape=true)
@@ -198,13 +311,10 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     z_bc = GradientBoundaryCondition(N² * g̃[3])
     b_bcs = FieldBoundaryConditions(bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
 
-    model = NonhydrostaticModel(
-                       grid = grid,
-                   buoyancy = buoyancy,
-                    tracers = :b,
-                    closure = nothing,
-        boundary_conditions = (b=b_bcs,)
-    )
+    model = NonhydrostaticModel(; grid, buoyancy,
+                                tracers = :b,
+                                closure = nothing,
+                                boundary_conditions = (; b=b_bcs))
 
     b₀(x, y, z) = N² * (x*g̃[1] + y*g̃[2] + z*g̃[3])
     set!(model, b=b₀)
@@ -212,11 +322,8 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_buoyancy_tracer(ar
     simulation = Simulation(model, Δt=10minutes, stop_time=1hour)
     run!(simulation)
 
-    ∂y_b = ComputedField(∂y(model.tracers.b))
-    ∂z_b = ComputedField(∂z(model.tracers.b))
-
-    compute!(∂y_b)
-    compute!(∂z_b)
+    @compute ∂y_b = Field(∂y(model.tracers.b))
+    @compute ∂z_b = Field(∂z(model.tracers.b))
 
     mean_∂y_b = mean(∂y_b)
     mean_∂z_b = mean(∂z_b)
@@ -253,13 +360,10 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     z_bc = GradientBoundaryCondition(∂T∂z * g̃[3])
     T_bcs = FieldBoundaryConditions(bottom=z_bc, top=z_bc, south=y_bc, north=y_bc)
 
-    model = NonhydrostaticModel(
-                       grid = grid,
-                   buoyancy = buoyancy,
-                    tracers = (:T, :S),
-                    closure = nothing,
-        boundary_conditions = (T=T_bcs,)
-    )
+    model = NonhydrostaticModel(; grid, buoyancy,
+                                tracers = (:T, :S),
+                                closure = nothing,
+                                boundary_conditions = (; T=T_bcs))
 
     T₀(x, y, z) = ∂T∂z * (x*g̃[1] + y*g̃[2] + z*g̃[3])
     set!(model, T=T₀)
@@ -267,11 +371,8 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     simulation = Simulation(model, Δt=10minute, stop_time=1hour)
     run!(simulation)
 
-    ∂y_T = ComputedField(∂y(model.tracers.T))
-    ∂z_T = ComputedField(∂z(model.tracers.T))
-
-    compute!(∂y_T)
-    compute!(∂z_T)
+    @compute ∂y_T = Field(∂y(model.tracers.T))
+    @compute ∂z_T = Field(∂z(model.tracers.T))
 
     mean_∂y_T = mean(∂y_T)
     mean_∂z_T = mean(∂z_T)
@@ -293,43 +394,35 @@ function stratified_fluid_remains_at_rest_with_tilted_gravity_temperature_tracer
     return nothing
 end
 
-
-
 function inertial_oscillations_work_with_rotation_in_different_axis(arch, FT)
     grid = RectilinearGrid(arch, FT, size=(), topology=(Flat, Flat, Flat))
-
     f₀ = 1
     ū = 1
     Δt = 1e-3
     T_inertial = 2π/f₀
     stop_time = T_inertial / 2
-
     zcoriolis = FPlane(f=f₀)
     xcoriolis = ConstantCartesianCoriolis(f=f₀, rotation_axis=(1,0,0))
 
-    model_x =  NonhydrostaticModel(grid=grid, buoyancy=nothing, tracers=nothing, closure=nothing,
-                                   timestepper = :RungeKutta3,
-                                   coriolis=xcoriolis,
-                                  )
+    model_x =  NonhydrostaticModel(; grid, buoyancy=nothing, tracers=nothing, closure=nothing,
+                                   timestepper = :RungeKutta3, coriolis = xcoriolis)
     set!(model_x, v=ū)
     simulation_x = Simulation(model_x, Δt=Δt, stop_time=stop_time)
     run!(simulation_x)
 
-    model_z =  NonhydrostaticModel(grid=grid, buoyancy=nothing, tracers=nothing, closure=nothing,
-                                   timestepper = :RungeKutta3,
-                                   coriolis=zcoriolis,
-                                   )
+    model_z =  NonhydrostaticModel(; grid, buoyancy=nothing, tracers=nothing, closure=nothing,
+                                   timestepper = :RungeKutta3, coriolis = zcoriolis)
     set!(model_z, u=ū)
     simulation_z = Simulation(model_z, Δt=Δt, stop_time=stop_time)
     run!(simulation_z)
 
-    u_x = model_x.velocities.u.data[1,1,1]
-    v_x = model_x.velocities.v.data[1,1,1]
-    w_x = model_x.velocities.w.data[1,1,1]
+    u_x = model_x.velocities.u[1, 1, 1]
+    v_x = model_x.velocities.v[1, 1, 1]
+    w_x = model_x.velocities.w[1, 1, 1]
 
-    u_z = model_z.velocities.u.data[1,1,1]
-    v_z = model_z.velocities.v.data[1,1,1]
-    w_z = model_z.velocities.w.data[1,1,1]
+    u_z = model_z.velocities.u[1, 1, 1]
+    v_z = model_z.velocities.v[1, 1, 1]
+    w_z = model_z.velocities.w[1, 1, 1]
 
     @test w_z == 0
     @test u_x == 0
@@ -445,11 +538,35 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     @info "  Testing diffusion cosine [$fieldname, $timestepper, $time_discretization]..."
                     @test test_diffusion_cosine(fieldname, timestepper, grid, time_discretization)
 
-                    @info "  Testing diffusion cosine on ImmersedBoundaryGrid [$fieldname, $timestepper, $time_discretization]..."
-                    solid(x, y, z) = false
-                    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBoundary(solid))
-                    @test test_diffusion_cosine(fieldname, timestepper, immersed_grid, time_discretization)
+                    Nz, Lz = 128, π
+                    grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
+
+                    @info "  Testing diffusion cosine on ImmersedBoundaryGrid Regular [$fieldname, $timestepper, $time_discretization]..."
+                    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> π/2))
+                    @test test_diffusion_cosine_immersed(fieldname, timestepper, immersed_grid, time_discretization)
+
+                    grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=center_clustered_coord(Nz, Lz, 0))
+
+                    @info "  Testing diffusion cosine on ImmersedBoundaryGrid Stretched [$fieldname, $timestepper, $time_discretization]..."
+                    immersed_grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> π/2))
+                    @test test_diffusion_cosine_immersed(fieldname, timestepper, immersed_grid, time_discretization)
                 end
+            end
+        end
+    end
+
+    @testset "Gaussian immersed diffusion" begin
+        for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+
+            Nz, Lz, z₀ = 128, 1, -0.5
+
+            z_regular = (z₀, Lz + z₀)
+            z_stretch = center_clustered_coord(Nz, Lz, z₀)
+
+            for z_coord = (z_regular, z_stretch)
+                @info "  Testing gaussian immersed diffusion for [$time_discretization, $(z_coord isa Tuple ? "regular" : "stretched")]..."
+                @test test_immersed_diffusion(Nz, z_coord, time_discretization)
+                @test test_immersed_diffusion_3D(Nz, z_coord, time_discretization)
             end
         end
     end
@@ -566,3 +683,4 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
 end
+

@@ -225,12 +225,12 @@ simulation.output_writers[:fields] =
 
 u, v, w = model.velocities
 
-U = AveragedField(u, dims=(1, 2))
-V = AveragedField(v, dims=(1, 2))
-B = AveragedField(model.tracers.b, dims=(1, 2))
+U = Field(Average(u, dims=(1, 2)))
+V = Field(Average(v, dims=(1, 2)))
+B = Field(Average(model.tracers.b, dims=(1, 2)))
 
-wu = AveragedField(w * u, dims=(1, 2))
-wv = AveragedField(w * v, dims=(1, 2))
+wu = Field(Average(w * u, dims=(1, 2)))
+wv = Field(Average(w * v, dims=(1, 2)))
 
 simulation.output_writers[:averages] =
     JLD2OutputWriter(model, (u=U, v=V, b=B, wu=wu, wv=wv),

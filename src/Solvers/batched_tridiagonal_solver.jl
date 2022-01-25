@@ -1,19 +1,23 @@
 using Oceananigans.Architectures: device_event, arch_array
 
+import Oceananigans.Architectures: architecture
+
 """
     BatchedTridiagonalSolver
 
 A batched solver for large numbers of triadiagonal systems.
 """
-struct BatchedTridiagonalSolver{A, B, C, T, G, R, P}
+struct BatchedTridiagonalSolver{A, B, C, T, G, P}
                a :: A
                b :: B
                c :: C
                t :: T
             grid :: G
-    architecture :: R
       parameters :: P
 end
+
+architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
+
 
 """
     BatchedTridiagonalSolver(grid; lower_diagonal, diagonal, upper_diagonal, parameters=nothing)
@@ -38,20 +42,20 @@ where `a` is the `lower_diagonal`, `b` is the `diagonal`, and `c` is the `upper_
     * If `!isnothing(parameters)` then `aⁱʲᵏ = a(i, j, k, grid, parameters, args...)`.
     where `args...` are `Varargs` passed to `solve_batched_tridiagonal_system!(ϕ, solver, args...)`.
 """
-function BatchedTridiagonalSolver(arch, grid;
+function BatchedTridiagonalSolver(grid;
                                   lower_diagonal,
                                   diagonal,
                                   upper_diagonal,
-                                  scratch = arch_array(arch, zeros(eltype(grid), grid.Nx, grid.Ny, grid.Nz)),
+                                  scratch = arch_array(architecture(grid), zeros(eltype(grid), grid.Nx, grid.Ny, grid.Nz)),
                                   parameters = nothing)
 
     return BatchedTridiagonalSolver(lower_diagonal, diagonal, upper_diagonal,
-                                    scratch, grid, arch, parameters)
+                                    scratch, grid, parameters)
 end
 
 @inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, args...) where {T} = @inbounds a[k]
 @inline get_coefficient(a::AbstractArray{T, 3}, i, j, k, grid, p, args...) where {T} = @inbounds a[i, j, k]
-@inline get_coefficient(a::Base.Callable, i, j, k, grid, p, args...) = a(i, j, k, grid, p, args...)
+@inline get_coefficient(a::Base.Callable, i, j, k, grid, p, args...)         = a(i, j, k, grid, p, args...)
 @inline get_coefficient(a::Base.Callable, i, j, k, grid, ::Nothing, args...) = a(i, j, k, grid, args...)
 
 """
@@ -67,16 +71,16 @@ The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 
 Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 """
-function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; dependencies = device_event(solver.architecture))
+function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; dependencies = device_event(architecture(solver))) 
 
     a, b, c, t, parameters = solver.a, solver.b, solver.c, solver.t, solver.parameters
     grid = solver.grid
 
-    event = launch!(solver.architecture, grid, :xy,
+    event = launch!(architecture(solver), grid, :xy,
                     solve_batched_tridiagonal_system_kernel!, ϕ, a, b, c, rhs, t, grid, parameters, args...,
                     dependencies = dependencies)
 
-    wait(device(solver.architecture), event)
+    wait(device(architecture(solver)), event)
 
     return nothing
 end
@@ -103,7 +107,7 @@ end
             β = bᵏ - aᵏ⁻¹ * t[i, j, k]
 
             fᵏ = get_coefficient(f, i, j, k, grid, p, args...)
-
+            
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
@@ -116,4 +120,3 @@ end
         end
     end
 end
-

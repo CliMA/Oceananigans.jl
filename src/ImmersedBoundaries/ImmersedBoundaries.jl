@@ -1,8 +1,15 @@
 module ImmersedBoundaries
 
+export ImmerseBoundaryGrid, GridFittedBoundary, GridFittedBottom, 
+       solid_node, solid_interface, is_immersed_boundary,
+       is_x_immersed_boundary⁺, is_x_immersed_boundary⁻,
+       is_y_immersed_boundary⁺, is_y_immersed_boundary⁻,
+       is_z_immersed_boundary⁺, is_z_immersed_boundary⁻
+
 using Adapt
 
 using Oceananigans.Grids
+using Oceananigans.Grids: size_summary
 using Oceananigans.Operators
 using Oceananigans.Fields
 using Oceananigans.Utils
@@ -36,10 +43,11 @@ using Oceananigans.Advection:
     advective_tracer_flux_y,
     advective_tracer_flux_z
 
+import Base: show, summary
 import Oceananigans.Utils: cell_advection_timescale
-import Oceananigans.Grids: with_halo, architecture
+import Oceananigans.Grids: architecture, on_architecture, with_halo
 import Oceananigans.Coriolis: φᶠᶠᵃ
-import Oceananigans.Grids: with_halo, xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
+import Oceananigans.Grids: xnode, ynode, znode, all_x_nodes, all_y_nodes, all_z_nodes
 
 import Oceananigans.Advection:
     _advective_momentum_flux_Uu,
@@ -89,7 +97,7 @@ struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, Arch} <: AbstractGrid{FT, TX, 
     architecture :: Arch
     grid :: G
     immersed_boundary :: I
-
+    
     function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I) where {TX, TY, TZ, G <: AbstractUnderlyingGrid, I}
         FT = eltype(grid)
         arch = architecture(grid)
@@ -121,6 +129,23 @@ Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
 
 with_halo(halo, ibg::ImmersedBoundaryGrid) = ImmersedBoundaryGrid(with_halo(halo, ibg.grid), ibg.immersed_boundary)
 
+
+function Base.summary(grid::ImmersedBoundaryGrid)
+    FT = eltype(grid)
+    TX, TY, TZ = topology(grid)
+
+    return string(size_summary(size(grid)),
+                  " ImmersedBoundaryGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+                  " with ", size_summary(halo_size(grid)), " halo")
+end
+
+function show(io::IO, g::ImmersedBoundaryGrid)
+    return print(io, "ImmersedBoundaryGrid on: \n",
+                     "    architecture: $(g.architecture)\n",
+                     "            grid: $(summary(g.grid))\n",
+                     "   with immersed: ", typeof(g.immersed_boundary))
+end
+
 @inline cell_advection_timescale(u, v, w, ibg::ImmersedBoundaryGrid) = cell_advection_timescale(u, v, w, ibg.grid)
 @inline φᶠᶠᵃ(i, j, k, ibg::ImmersedBoundaryGrid) = φᶠᶠᵃ(i, j, k, ibg.grid)
 
@@ -136,13 +161,25 @@ all_x_nodes(loc, ibg::ImmersedBoundaryGrid) = all_x_nodes(loc, ibg.grid)
 all_y_nodes(loc, ibg::ImmersedBoundaryGrid) = all_y_nodes(loc, ibg.grid)
 all_z_nodes(loc, ibg::ImmersedBoundaryGrid) = all_z_nodes(loc, ibg.grid)
 
+function on_architecture(arch, ibg::ImmersedBoundaryGrid)
+    underlying_grid = on_architecture(arch, ibg.grid)
+
+    immersed_boundary = ibg.immersed_boundary isa AbstractArray ?
+        arch_array(arch, ibg.immersed_boundary) :
+        ibg.immersed_boundary
+
+    return ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
+end
+
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundaries.jl")
 include("conditional_fluxes.jl")
 include("mask_immersed_field.jl")
+include("immersed_fields_reductions.jl")
 
 #####
 ##### Diffusivities (for VerticallyImplicitTimeDiscretization)
+##### (the diffusivities on the immersed boundaries are kept)
 #####
 
 for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
@@ -155,7 +192,7 @@ for (locate_coeff, loc) in ((:κᶠᶜᶜ, (f, c, c)),
 
     @eval begin
         @inline $locate_coeff(i, j, k, ibg::IBG{FT}, coeff) where FT =
-            ifelse(solid_cell(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.grid, coeff), zero(FT))
+            ifelse(solid_node(loc..., i, j, k, ibg), $locate_coeff(i, j, k, ibg.grid, coeff), zero(FT))
     end
 end
 

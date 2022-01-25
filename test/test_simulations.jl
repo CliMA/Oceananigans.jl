@@ -1,16 +1,10 @@
-using Test
+include("dependencies_for_runtests.jl")
 
-using Oceananigans
-using Oceananigans.Units
 using Oceananigans.Simulations:
     stop_iteration_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
     TimeStepWizard, new_time_step, reset!
 
 using Dates: DateTime
-
-include("utils_for_runtests.jl")
-
-archs = test_architectures()
 
 function wall_time_step_wizard_tests(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
@@ -142,8 +136,8 @@ function run_basic_simulation_tests(arch)
 
     called_at = Float64[]
     schedule = TimeInterval(0.31)
-    capture_call_time(sim) = push!(called_at, sim.model.clock.time)
-    simulation.callbacks[:tester] = Callback(capture_call_time, schedule)
+    capture_call_time(sim, data) = push!(data, sim.model.clock.time)
+    simulation.callbacks[:tester] = Callback(capture_call_time, schedule, parameters=called_at)
     run!(simulation)
 
     @show called_at

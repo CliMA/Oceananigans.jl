@@ -30,9 +30,6 @@ The operators in this file fall into three categories:
 
 """
 
-@inline Δzᶠᶜᶜ(i, j, k, grid) = Δzᵃᵃᶜ(i, j, k, grid)
-@inline Δzᶜᶠᶜ(i, j, k, grid) = Δzᵃᵃᶜ(i, j, k, grid)
-
 #####
 ##### "Spacings" in Flat directions for rectilinear grids.
 ##### Here we dispatch all spacings to `one`. This abuse of notation
@@ -58,6 +55,11 @@ using Oceananigans.Grids: Flat
 @inline Δyᶜᶠᵃ(i, j, k, grid::ARG) = Δyᵃᶠᵃ(i, j, k, grid)
 @inline Δyᶠᶠᵃ(i, j, k, grid::ARG) = Δyᵃᶠᵃ(i, j, k, grid)
 
+@inline Δzᶠᶜᶜ(i, j, k, grid) = Δzᵃᵃᶜ(i, j, k, grid)
+@inline Δzᶜᶠᶜ(i, j, k, grid) = Δzᵃᵃᶜ(i, j, k, grid)
+@inline Δzᶠᶜᶠ(i, j, k, grid) = Δzᵃᵃᶠ(i, j, k, grid)
+@inline Δzᶜᶠᶠ(i, j, k, grid) = Δzᵃᵃᶠ(i, j, k, grid)
+
 #####
 ##### Areas for algorithms that generalize to horizontally-curvilinear, vertically-rectilinear grids
 #####
@@ -73,10 +75,8 @@ using Oceananigans.Grids: Flat
 
 @inline Axᵃᵃᶜ(i, j, k, grid::HRegRectilinearGrid) = Δyᵃᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
 @inline Axᵃᵃᶠ(i, j, k, grid::HRegRectilinearGrid) = Δyᵃᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
-
 @inline Ayᵃᵃᶜ(i, j, k, grid::HRegRectilinearGrid) = Δxᶜᵃᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
 @inline Ayᵃᵃᶠ(i, j, k, grid::HRegRectilinearGrid) = Δxᶜᵃᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
-
 @inline Azᵃᵃᵃ(i, j, k, grid::HRegRectilinearGrid) = Δxᶜᵃᵃ(i, j, k, grid) * Δyᵃᶜᵃ(i, j, k, grid)
 
 #####

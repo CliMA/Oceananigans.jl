@@ -1,8 +1,6 @@
 using Printf
 using Statistics
 
-using Oceananigans: short_show
-
 struct StateChecker{T, F} <: AbstractDiagnostic
     schedule :: T
       fields :: F
@@ -19,7 +17,7 @@ StateChecker(model; schedule, fields=fields(model)) = StateChecker(schedule, fie
 function run_diagnostic!(sc::StateChecker, model)
     pad = keys(sc.fields) .|> string .|> length |> maximum
 
-    @info "State check @ $(short_show(model.clock))"
+    @info "State check @ $(summary(model.clock))"
 
     for (name, field) in pairs(sc.fields)
         state_check(field, name, pad)

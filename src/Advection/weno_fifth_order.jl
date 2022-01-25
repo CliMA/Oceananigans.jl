@@ -4,7 +4,7 @@
 
 using OffsetArrays
 using Oceananigans.Grids: with_halo
-using Oceananigans.Architectures: arch_array
+using Oceananigans.Architectures: arch_array, architecture
 using Adapt
 import Base: show, print
 
@@ -138,30 +138,27 @@ Castro et al, High order weighted essentially non-oscillatory WENO-Z schemes for
 """
 function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false, zweno = false)
     
-    metrics   = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
-    dirsize   = (:Nx, :Nx, :Ny, :Ny, :Nz, :Nz)
+    rect_metrics = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
     if grid isa Nothing
         @warn "defaulting to uniform WENO scheme with $(FT) precision, use WENO5(grid = grid) if this was not intended"
-        for metric in metrics
-            @eval $(Symbol(:coeff_ , metric)) = nothing
-            @eval $(Symbol(:smooth_, metric)) = nothing
-        end
-    elseif !(grid isa RectilinearGrid)
-        FT = Float32
-        @warn "Stretched WENO is not supported with grids other than Rectilinear, defaulting to Uniform WENO"
-        for metric in metrics
+        for metric in rect_metrics
             @eval $(Symbol(:coeff_ , metric)) = nothing
             @eval $(Symbol(:smooth_, metric)) = nothing
         end
     else
+        !(grid isa RectilinearGrid) && (@warn "WENO on a curvilinear stretched coordinate is not validated, use at your own risk!!")
+
+        metrics      = return_metrics(grid)
+        dirsize      = (:Nx, :Nx, :Ny, :Ny, :Nz, :Nz)
+
         FT       = eltype(grid)
-        arch     = grid.architecture
+        arch     = architecture(grid)
         new_grid = with_halo((4, 4, 4), grid)
        
-        for (dir, metric) in zip(dirsize, metrics)
-            @eval $(Symbol(:coeff_ , metric)) = calc_interpolating_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir)
-            @eval $(Symbol(:smooth_, metric)) = calc_smoothness_coefficients($FT, $Val($stretched_smoothness), $new_grid.$metric, $arch, $new_grid.$dir) 
+        for (dir, metric, rect_metric) in zip(dirsize, metrics, rect_metrics)
+            @eval $(Symbol(:coeff_ , rect_metric)) = calc_interpolating_coefficients($FT, $new_grid.$metric, $arch, $new_grid.$dir)
+            @eval $(Symbol(:smooth_, rect_metric)) = calc_smoothness_coefficients($FT, $Val($stretched_smoothness), $new_grid.$metric, $arch, $new_grid.$dir) 
         end
     end
 
@@ -176,6 +173,9 @@ function WENO5(FT = Float64; grid = nothing, stretched_smoothness = false, zweno
     return WENO5{FT, XT, YT, ZT, XS, YS, ZS, W}(coeff_xᶠᵃᵃ , coeff_xᶜᵃᵃ , coeff_yᵃᶠᵃ , coeff_yᵃᶜᵃ , coeff_zᵃᵃᶠ , coeff_zᵃᵃᶜ ,
                                                 smooth_xᶠᵃᵃ, smooth_xᶜᵃᵃ, smooth_yᵃᶠᵃ, smooth_yᵃᶜᵃ, smooth_zᵃᵃᶠ, smooth_zᵃᵃᶜ)
 end
+
+return_metrics(::LatitudeLongitudeGrid) = (:λᶠᵃᵃ, :λᶜᵃᵃ, :φᵃᶠᵃ, :φᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
+return_metrics(::RectilinearGrid)       = (:xᶠᵃᵃ, :xᶜᵃᵃ, :yᵃᶠᵃ, :yᵃᶜᵃ, :zᵃᵃᶠ, :zᵃᵃᶜ)
 
 const JSWENO = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Nothing}
 const ZWENO  = WENO5{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any}

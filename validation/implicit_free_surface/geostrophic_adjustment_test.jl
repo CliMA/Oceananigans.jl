@@ -50,7 +50,7 @@ function run_and_analyze(simulation)
     u, v, w = simulation.model.velocities
     Δt = simulation.Δt
 
-    ηx = ComputedField(∂x(η))
+    ηx = Field(∂x(η))
     compute!(ηx)
 
     u₀  = interior(u)[:, 1, 1]
@@ -84,7 +84,7 @@ end
 
 # fft_based_free_surface = ImplicitFreeSurface()
 pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient);
-matrix_free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver);
+matrix_free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver);
 
 topology_types = [(Bounded, Periodic, Bounded), (Periodic, Periodic, Bounded)]
 
@@ -96,7 +96,7 @@ using GLMakie
 using JLD2 
 
 file1 = jldopen("solution_PreconditionedConjugateGradient.jld2")
-file2 = jldopen("solution_MatrixIterativeSolver.jld2")
+file2 = jldopen("solution_HeptadiagonalIterativeSolver.jld2")
 
 grid = file1["serialized/grid"]
 

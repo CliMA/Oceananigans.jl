@@ -40,7 +40,7 @@ model = NonhydrostaticModel(grid=grid, particles=lagrangian_particles)
 
 # output
 NonhydrostaticModel{CPU, Float64}(time = 0 seconds, iteration = 0)
-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=10, Ny=10, Nz=10)
+├── grid: 10×10×10 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing

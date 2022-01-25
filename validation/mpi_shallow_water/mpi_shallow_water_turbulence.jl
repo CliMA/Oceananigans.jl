@@ -34,7 +34,7 @@ progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.mode
 simulation = Simulation(model, Δt=0.001, stop_time=100.0, iteration_interval=1, progress=progress)
 
 uh, vh, h = model.solution
-outputs = (ζ=ComputedField(∂x(vh/h) - ∂y(uh/h)),)
+outputs = (ζ=Field(∂x(vh/h) - ∂y(uh/h)),)
 filepath = "mpi_shallow_water_turbulence_rank$(local_rank).nc"
 simulation.output_writers[:fields] =
     NetCDFOutputWriter(model, outputs, filepath=filepath, schedule=TimeInterval(1.0), mode="c")

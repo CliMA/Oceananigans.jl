@@ -58,7 +58,7 @@ function run_pcg_implicit_free_surface_solver_tests(arch, grid)
     ∫ᶻ_Axᶠᶜᶜ = model.free_surface.implicit_step_solver.vertically_integrated_lateral_areas.xᶠᶜᶜ
     ∫ᶻ_Ayᶜᶠᶜ = model.free_surface.implicit_step_solver.vertically_integrated_lateral_areas.yᶜᶠᶜ
 
-    left_hand_side = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
+    left_hand_side = Field{Center, Center, Nothing}(grid)
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     # Compare
@@ -83,7 +83,7 @@ function run_matrix_implicit_free_surface_solver_tests(arch, grid)
     model = HydrostaticFreeSurfaceModel(architecture = arch,
                                         grid = grid,
                                         momentum_advection = nothing,
-                                        free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver,
+                                        free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver,
                                                                            tolerance = 1e-15))
     
     set_simple_divergent_velocity!(model)
@@ -101,7 +101,7 @@ function run_matrix_implicit_free_surface_solver_tests(arch, grid)
     ∫ᶻ_Axᶠᶜᶜ = model.free_surface.implicit_step_solver.vertically_integrated_lateral_areas.xᶠᶜᶜ
     ∫ᶻ_Ayᶜᶠᶜ = model.free_surface.implicit_step_solver.vertically_integrated_lateral_areas.yᶜᶠᶜ
 
-    left_hand_side = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
+    left_hand_side = Field{Center, Center, Nothing}(grid)
     implicit_free_surface_linear_operation!(left_hand_side, η, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
 
     # Compare
@@ -139,7 +139,7 @@ end
 
         Δt = 900
 
-        mat_free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver,           tolerance=1e-15, maximum_iterations=128^3)
+        mat_free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver,           tolerance=1e-15, maximum_iterations=128^3)
         pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, tolerance=1e-15, maximum_iterations=128^3)
         fft_free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
 
