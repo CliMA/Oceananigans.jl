@@ -186,7 +186,7 @@ end
             # This behavior is not observed on tartarus, where this test _would_ pass.
             # Suffice to say that the FFT solver appears to be accurate (as of this writing), and tests pass
             # on the CPU.
-            @info "  skipping comparisson between pcg and fft implicit free surface solver comparison"
+            @info "  Skipping comparison between pcg and fft implicit free surface solver"
             @test_skip all(pcg_η_cpu .≈ fft_η_cpu)
         end
 
