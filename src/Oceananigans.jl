@@ -33,7 +33,7 @@ export
 
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
-    AveragedField, ComputedField, KernelComputedField, BackgroundField,
+    Average, Integral, Reduction, BackgroundField,
     interior, set!, compute!, regrid!,
 
     # Forcing functions
@@ -67,10 +67,11 @@ export
     NonhydrostaticModel,
     HydrostaticFreeSurfaceModel,
     ShallowWaterModel,
+    PressureField,
     fields,
 
     # Hydrostatic free surface model stuff
-    VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface,
+    VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving, VectorInvariantEnergyConserving,
     PrescribedVelocityFields,
 
@@ -80,6 +81,7 @@ export
     # Simulations
     Simulation, run!, Callback, iteration, stopwatch,
     iteration_limit_exceeded, stop_time_exceeded, wall_time_limit_exceeded,
+    erroring_NaNChecker!,
 
     # Diagnostics
     StateChecker, CFL, AdvectiveCFL, DiffusiveCFL,
@@ -87,6 +89,7 @@ export
     # Output writers
     FieldSlicer, NetCDFOutputWriter, JLD2OutputWriter, Checkpointer,
     TimeInterval, IterationInterval, AveragedTimeInterval, SpecifiedTimes,
+    AndSchedule, OrSchedule,
 
     # Output readers
     FieldTimeSeries, FieldDataset, InMemory, OnDisk,
@@ -159,7 +162,6 @@ function write_output! end
 function location end
 function instantiated_location end
 function tupleit end
-function short_show end
 
 function fields end
 function prognostic_fields end
@@ -178,9 +180,10 @@ include("Logger.jl")
 include("Operators/Operators.jl")
 include("BoundaryConditions/BoundaryConditions.jl")
 include("Fields/Fields.jl")
-include("Advection/Advection.jl")
 include("AbstractOperations/AbstractOperations.jl")
+include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
+include("Distributed/Distributed.jl")
 
 # Physics, time-stepping, and models
 include("Coriolis/Coriolis.jl")
@@ -202,7 +205,6 @@ include("Simulations/Simulations.jl")
 
 # Abstractions for distributed and multi-region models
 include("CubedSpheres/CubedSpheres.jl")
-include("Distributed/Distributed.jl")
 
 #####
 ##### Needed so we can export names from sub-modules at the top-level
@@ -222,6 +224,7 @@ using .TurbulenceClosures
 using .LagrangianParticleTracking
 using .Solvers
 using .Forcings
+using .Distributed
 using .Models
 using .TimeSteppers
 using .Diagnostics
@@ -230,7 +233,6 @@ using .OutputReaders
 using .Simulations
 using .AbstractOperations
 using .CubedSpheres
-using .Distributed
 
 function __init__()
     threads = Threads.nthreads()

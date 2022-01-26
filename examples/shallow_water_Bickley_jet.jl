@@ -53,7 +53,7 @@ g = 9.8         # Gravitational acceleration
 # We build a `ShallowWaterModel` with the `WENO5` advection scheme and
 # 3rd-order Runge-Kutta time-stepping,
 
-model = ShallowWaterModel(architecture = CPU(),
+model = ShallowWaterModel(
                           timestepper = :RungeKutta3,
                           advection = WENO5(),
                           grid = grid,
@@ -103,15 +103,15 @@ u = uh / h
 v = vh / h
 
 ## Build and compute mean vorticity discretely
-ω = ComputedField(∂x(v) - ∂y(u))
+ω = Field(∂x(v) - ∂y(u))
 compute!(ω)
 
 ## Copy mean vorticity to a new field
-ωⁱ = Field(Face, Face, Nothing, model.architecture, model.grid)
+ωⁱ = Field{Face, Face, Nothing}(model.grid)
 ωⁱ .= ω
 
 ## Use this new field to compute the perturbation vorticity
-ω′ = ComputedField(ω - ωⁱ)
+ω′ = Field(ω - ωⁱ)
 
 # and finally set the "true" initial condition with noise,
 
@@ -188,8 +188,6 @@ nothing # hide
 
 ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
-iterations = keys(ds["time"])
-
 anim = @animate for (iter, t) in enumerate(ds["time"])
     ω = ds["ω"][:, :, 1, iter]
     ω′ = ds["ω′"][:, :, 1, iter]
@@ -214,8 +212,6 @@ mp4(anim, "shallow_water_Bickley_jet.mp4", fps=15)
 # Read in the `output_writer` for the scalar field (the norm of ``v``-velocity).
 
 ds2 = NCDataset(simulation.output_writers[:growth].filepath, "r")
-
-iterations = keys(ds2["time"])
 
      t = ds2["time"][:]
 norm_v = ds2["perturbation_norm"][:]

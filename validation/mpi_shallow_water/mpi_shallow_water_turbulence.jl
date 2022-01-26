@@ -13,13 +13,12 @@ using Oceananigans.Distributed
 
      ranks = (2, 2, 1)
       topo = (Periodic, Periodic, Flat)
- full_grid = RectilinearGrid(topology=topo, size=(128, 128), extent=(4π, 4π), halo=(3, 3))
-      arch = MultiCPU(grid=full_grid, ranks=ranks)
+      arch = MultiCPU(CPU(), ranks=ranks)
+      grid = RectilinearGrid(arch, topology=topo, size=(128, 128), extent=(4π, 4π), halo=(3, 3))
 local_rank = MPI.Comm_rank(MPI.COMM_WORLD)
 
-model = DistributedShallowWaterModel(
-                  architecture = arch,
-                          grid = full_grid,
+model = ShallowWaterModel(
+                          grid = grid,
                    timestepper = :RungeKutta3,
                      advection = UpwindBiasedFifthOrder(),
     gravitational_acceleration = 1.0
@@ -35,7 +34,7 @@ progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(sim.mode
 simulation = Simulation(model, Δt=0.001, stop_time=100.0, iteration_interval=1, progress=progress)
 
 uh, vh, h = model.solution
-outputs = (ζ=ComputedField(∂x(vh/h) - ∂y(uh/h)),)
+outputs = (ζ=Field(∂x(vh/h) - ∂y(uh/h)),)
 filepath = "mpi_shallow_water_turbulence_rank$(local_rank).nc"
 simulation.output_writers[:fields] =
     NetCDFOutputWriter(model, outputs, filepath=filepath, schedule=TimeInterval(1.0), mode="c")

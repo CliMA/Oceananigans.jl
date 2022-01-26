@@ -1,19 +1,15 @@
 using Oceananigans
-
 using Statistics
 using KernelAbstractions: @kernel, @index, Event
 using CUDA
 using Test
 using Printf
-
 using Test
-
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
 
 import Oceananigans.Fields: interior
 
 test_architectures() = CUDA.has_cuda() ? tuple(GPU()) : tuple(CPU())
-float_types = (Float32, Float64)
 
 function summarize_regression_test(fields, correct_fields)
     for (field_name, φ, φ_c) in zip(keys(fields), fields, correct_fields)
@@ -31,6 +27,30 @@ function summarize_regression_test(fields, correct_fields)
         @info @sprintf("Δ%s: min=%+.6e, max=%+.6e, mean=%+.6e, absmean=%+.6e, std=%+.6e (%d/%d matching grid points)",
                        field_name, Δ_min, Δ_max, Δ_mean, Δ_abs_mean, Δ_std, matching, grid_points)
     end
+end
+
+#####
+##### Grid utils
+#####
+
+function center_clustered_coord(N, L, x₀)
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
+    z_faces = zeros(N+1) 
+    for k = 2:N+1
+        z_faces[k] = z_faces[k-1] + 3 - Δz(k-1)
+    end
+    z_faces = z_faces ./ z_faces[end] .* L .+ x₀
+    return z_faces
+end
+
+function boundary_clustered_coord(N, L, x₀)
+    Δz(k)   = k < N / 2 + 1 ? 2 / (N - 1) * (k - 1) + 1 : - 2 / (N - 1) * (k - N) + 1 
+    z_faces = zeros(N+1) 
+    for k = 2:N+1
+        z_faces[k] = z_faces[k-1] + Δz(k-1)
+    end
+    z_faces = z_faces ./ z_faces[end] .* L .+ x₀ 
+    return z_faces
 end
 
 #####
@@ -59,22 +79,6 @@ end
 #####
 ##### Useful utilities
 #####
-
-const AB2Model = NonhydrostaticModel{<:QuasiAdamsBashforth2TimeStepper}
-const RK3Model = NonhydrostaticModel{<:RungeKutta3TimeStepper}
-
-# For time-stepping without a Simulation
-function ab2_or_rk3_time_step!(model::AB2Model, Δt, n)
-    n == 1 && update_state!(model)
-    time_step!(model, Δt, euler=n==1)
-    return nothing
-end
-
-function ab2_or_rk3_time_step!(model::RK3Model, Δt, n)
-    n == 1 && update_state!(model)
-    time_step!(model, Δt)
-    return nothing
-end
 
 interior(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx,
                             grid.Hy+1:grid.Ny+grid.Hy,

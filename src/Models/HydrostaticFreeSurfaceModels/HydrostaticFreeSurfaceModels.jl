@@ -2,7 +2,7 @@ module HydrostaticFreeSurfaceModels
 
 export
     HydrostaticFreeSurfaceModel, VectorInvariant,
-    ExplicitFreeSurface, ImplicitFreeSurface,
+    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface, 
     PrescribedVelocityFields
 
 using KernelAbstractions: @index, @kernel, Event, MultiEvent
@@ -19,8 +19,8 @@ fill_horizontal_velocity_halos!(args...) = nothing
 ##### HydrostaticFreeSurfaceModel definition
 #####
 
-FreeSurfaceDisplacementField(velocities, free_surface, arch, grid) = ReducedField(Center, Center, Nothing, arch, grid; dims=3)
-FreeSurfaceDisplacementField(velocities, ::Nothing, arch, grid) = nothing
+FreeSurfaceDisplacementField(velocities, free_surface, grid) = Field{Center, Center, Nothing}(grid)
+FreeSurfaceDisplacementField(velocities, ::Nothing, grid) = nothing
 
 include("compute_w_from_continuity.jl")
 
@@ -28,11 +28,14 @@ include("rigid_lid.jl")
 include("explicit_free_surface.jl")
 
 # Implicit solver functionality
-include("compute_vertically_integrated_lateral_areas.jl")
-include("compute_vertically_integrated_volume_flux.jl")
+include("compute_vertically_integrated_variables.jl")
 include("pcg_implicit_free_surface_solver.jl")
+include("matrix_implicit_free_surface_solver.jl")
 include("fft_based_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
+
+include("split_explicit_free_surface.jl")
+include("split_explicit_free_surface_kernels.jl")
 
 include("hydrostatic_free_surface_field_tuples.jl")
 include("hydrostatic_free_surface_model.jl")

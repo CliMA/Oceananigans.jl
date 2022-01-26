@@ -43,7 +43,7 @@ z = znodes(model.tracers.b)
 simulation = Simulation(model, Δt = 1minute/2, stop_time = 0.0)
 
 b = model.tracers.b
-bz = ComputedField(∂z(b))
+bz = Field(∂z(b))
 
 function column_bz(j)
     compute!(bz)

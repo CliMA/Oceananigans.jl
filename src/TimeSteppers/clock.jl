@@ -3,7 +3,6 @@ using Dates: AbstractTime, DateTime, Nanosecond, Millisecond
 using Oceananigans.Utils: prettytime
 
 import Base: show
-import Oceananigans: short_show
 
 """
     Clock{T<:Number}
@@ -34,7 +33,7 @@ Returns a `Clock` initialized to the zeroth iteration and first time step stage.
 """
 Clock(; time, iteration=0, stage=1) = Clock{typeof(time)}(time, iteration, stage)
 
-short_show(clock::Clock) = string("Clock(time=$(prettytime(clock.time)), iteration=$(clock.iteration))")
+Base.summary(clock::Clock) = string("Clock(time=$(prettytime(clock.time)), iteration=$(clock.iteration))")
 
 Base.show(io::IO, c::Clock{T}) where T =
     println(io, "Clock{$T}: time = $(prettytime(c.time)), iteration = $(c.iteration), stage = $(c.stage)")

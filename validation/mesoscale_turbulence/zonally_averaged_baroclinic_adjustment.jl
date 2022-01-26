@@ -67,7 +67,7 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
 
 closures = (diffusive_closure, convective_adjustment, gent_mcwilliams_diffusivity)
 
-model = HydrostaticFreeSurfaceModel(architecture = architecture,
+model = HydrostaticFreeSurfaceModel(architecture,
                                     grid = grid,
                                     coriolis = coriolis,
                                     buoyancy = BuoyancyTracer(),
@@ -167,7 +167,7 @@ using Oceananigans.TurbulenceClosures: ∇_dot_qᶜ
                                                          computed_dependencies = dependencies)
 
 # R(b) eg the Redi operator applied to buoyancy
-Rb = ComputedField(∇_q_op)
+Rb = Field(∇_q_op)
 
 outputs = merge(fields(model), (; Rb))
 

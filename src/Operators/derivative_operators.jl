@@ -11,6 +11,11 @@
 @inline ∂zᵃᵃᶜ(i, j, k, grid, w) = δzᵃᵃᶜ(i, j, k, grid, w) / Δzᵃᵃᶜ(i, j, k, grid)
 @inline ∂zᵃᵃᶠ(i, j, k, grid, c) = δzᵃᵃᶠ(i, j, k, grid, c) / Δzᵃᵃᶠ(i, j, k, grid)
 
+@inline ∂zᶠᶜᶠ(i, j, k, grid, u) = δzᵃᵃᶠ(i, j, k, grid, u) / Δzᶠᶜᶠ(i, j, k, grid)
+@inline ∂zᶜᶠᶠ(i, j, k, grid, v) = δzᵃᵃᶠ(i, j, k, grid, v) / Δzᶜᶠᶠ(i, j, k, grid)
+
+@inline ∂zᶜᶠᶜ(i, j, k, grid, c) = δzᵃᵃᶜ(i, j, k, grid, c) / Δzᶜᶠᶜ(i, j, k, grid)
+@inline ∂zᶠᶜᶜ(i, j, k, grid, c) = δzᵃᵃᶜ(i, j, k, grid, c) / Δzᶠᶜᶜ(i, j, k, grid)
 
 @inline ∂xᶜᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = δxᶜᵃᵃ(i, j, k, grid, f, args...) / Δxᶜᵃᵃ(i, j, k, grid)
 @inline ∂xᶠᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = δxᶠᵃᵃ(i, j, k, grid, f, args...) / Δxᶜᵃᵃ(i, j, k, grid)
@@ -93,4 +98,3 @@
 
 @inline ∂yᶠᶠᵃ(i, j, k, grid, u, args...) = δyᵃᶠᵃ(i, j, k, grid, u, args...) / Δyᶠᶠᵃ(i, j, k, grid)
 @inline ∂yᶜᶠᵃ(i, j, k, grid, c, args...) = δyᵃᶠᵃ(i, j, k, grid, c, args...) / Δyᶜᶠᵃ(i, j, k, grid)
-

@@ -123,7 +123,7 @@ function init_save_some_metadata!(file, model)
     return nothing
 end
 
-c_avg =  AveragedField(model.tracers.c, dims=(1, 2))
+c_avg =  Field(Average(model.tracers.c, dims=(1, 2)))
 
 # Note that model.velocities is NamedTuple
 simulation.output_writers[:velocities] = JLD2OutputWriter(model, model.velocities,
@@ -318,10 +318,10 @@ function Base.show(io::IO, ow::JLD2OutputWriter)
 
     averaging_schedule = output_averaging_schedule(ow)
 
-    print(io, "JLD2OutputWriter scheduled on $(show_schedule(ow.schedule)):", '\n',
+    print(io, "JLD2OutputWriter scheduled on $(summary(ow.schedule)):", '\n',
         "├── filepath: $(ow.filepath)", '\n',
         "├── $(length(ow.outputs)) outputs: $(keys(ow.outputs))", show_averaging_schedule(averaging_schedule), '\n',
-        "├── field slicer: $(short_show(ow.field_slicer))", '\n',
+        "├── field slicer: $(summary(ow.field_slicer))", '\n',
         "├── array type: ", show_array_type(ow.array_type), '\n',
         "├── including: ", ow.including, '\n',
         "└── max filesize: ", pretty_filesize(ow.max_filesize))

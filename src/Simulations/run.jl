@@ -37,7 +37,7 @@ end
 """
     aligned_time_step(sim, Δt)
 
-Return a time step 'aligned' with `sim.stop_time`, output writer schedules,
+Return a time step 'aligned' with `sim.stop_time`, output writer schedules, 
 and callback schedules. Alignment with `sim.stop_time` takes precedence.
 """
 function aligned_time_step(sim::Simulation, Δt)
@@ -176,8 +176,9 @@ function initialize_simulation!(sim)
     # Output and diagnostics initialization
     [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
 
-    # Evaluate all diagnostics, and then write all output at first iteration
+    # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration
     if clock.iteration == 0
+        reset!(sim.model.timestepper)
         [run_diagnostic!(diag, model) for diag in values(sim.diagnostics)]
         [callback(sim)                for callback in values(sim.callbacks)]
         [write_output!(writer, model) for writer in values(sim.output_writers)]

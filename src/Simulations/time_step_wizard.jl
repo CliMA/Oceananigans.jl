@@ -12,7 +12,7 @@ end
 infinite_diffusion_timescale(args...) = Inf # its not very limiting
 
 """
-    TimeStepWizard(cfl=0.1, max_change=2.0, min_change=0.5, max_Δt=Inf, min_Δt=0.0)
+    TimeStepWizard(cfl=0.2, max_change=1.1, min_change=0.5, max_Δt=Inf, min_Δt=0.0)
 
 Callback for adapting simulation time-steps `Δt` to maintain the advective
 Courant-Freidrichs-Lewy (`cfl`) number, the `diffusive_cfl`, while maintaining
@@ -38,9 +38,9 @@ julia> simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(4))
 Then when `run!(simulation)` is invoked, the time-step `simulation.Δt` will be updated every 4 iterations.
 Note that the name `:wizard` is unimportant.
 """
-function TimeStepWizard(FT=Float64; cfl = 0.1,
+function TimeStepWizard(FT=Float64; cfl = 0.2,
                                     diffusive_cfl = Inf,
-                                    max_change = 2.0,
+                                    max_change = 1.1,
                                     min_change = 0.5,
                                     max_Δt = Inf,
                                     min_Δt = 0.0,

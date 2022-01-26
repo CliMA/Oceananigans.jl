@@ -1,13 +1,4 @@
-using Test
-using CUDA
-using JLD2
-using Oceananigans
-using Oceananigans.Units
-using Oceananigans: Clock
-
-include("utils_for_runtests.jl")
-
-archs = test_architectures()
+include("dependencies_for_runtests.jl")
 
 #####
 ##### JLD2OutputWriter tests
@@ -48,7 +39,7 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
 end
 
 function test_jld2_file_splitting(arch)
-    model = NonhydrostaticModel(architecture=arch, grid=RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)),
+    model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1)),
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S)
                                 )
     simulation = Simulation(model, Δt=1, stop_iteration=10)
@@ -105,9 +96,9 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
     Δt = 0.1
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
-    average_fluxes = (wu = AveragedField(w * u, dims=(1, 2)),
-                      uv = AveragedField(u * v, dims=(1, 2)),
-                      wT = AveragedField(w * T, dims=(1, 2)))
+    average_fluxes = (wu = Field(Average(w * u, dims=(1, 2))),
+                      uv = Field(Average(u * v, dims=(1, 2))),
+                      wT = Field(Average(w * T, dims=(1, 2))))
 
     simulation.output_writers[:fluxes] = JLD2OutputWriter(model, average_fluxes,
                                                           schedule = AveragedTimeInterval(4Δt, window=2Δt),
@@ -141,8 +132,8 @@ end
 for arch in archs
     # Some tests can reuse this same grid and model.
     topo =(Periodic, Periodic, Bounded)
-    grid = RectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-    model = NonhydrostaticModel(architecture=arch, grid=grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid=grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     @testset "JLD2 output writer [$(typeof(arch))]" begin
         @info "  Testing JLD2 output writer [$(typeof(arch))]..."

@@ -4,18 +4,21 @@ using OrderedCollections: OrderedDict
 using Oceananigans: AbstractModel, AbstractOutputWriter, AbstractDiagnostic
 
 using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Distributed: MultiArch
 using Oceananigans.Advection: CenteredSecondOrder
 using Oceananigans.BuoyancyModels: validate_buoyancy, regularize_buoyancy, SeawaterBuoyancy
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Fields: BackgroundFields, Field, tracernames, VelocityFields, TracerFields, PressureFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: inflate_halo_size, with_halo
+using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
+
+import Oceananigans.Architectures: architecture
 
 const ParticlesOrNothing = Union{Nothing, LagrangianParticles}
 
@@ -87,7 +90,6 @@ Keyword arguments
                    `:RungeKutta3`.
 """
 function NonhydrostaticModel(;    grid,
-    architecture::AbstractArchitecture = CPU(),
                                  clock = Clock{eltype(grid)}(0, 0, 1),
                              advection = CenteredSecondOrder(),
                               buoyancy = nothing,
@@ -108,7 +110,9 @@ function NonhydrostaticModel(;    grid,
                       auxiliary_fields = NamedTuple(),
     )
 
-    if architecture == GPU() && !has_cuda()
+    arch = architecture(grid)
+
+    if arch == GPU() && !has_cuda()
          throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
     end
 
@@ -122,7 +126,13 @@ function NonhydrostaticModel(;    grid,
     # by adjusting each (x, y, z) halo individually.
     user_halo = grid.Hx, grid.Hy, grid.Hz
     required_halo = Hx, Hy, Hz = inflate_halo_size(user_halo..., topology(grid), advection, closure)
-    user_halo != required_halo && (grid = with_halo((Hx, Hy, Hz), grid)) # Don't replace grid unless needed.
+    if any(user_halo .< required_halo) # Replace grid
+        @warn "Inflating model grid halo size to ($Hx, $Hy, $Hz) and recreating grid. " *
+              "The model grid will be different from the input grid. To avoid this warning, " *
+              "pass halo=($Hx, $Hy, $Hz) when constructing the grid."
+
+        grid = with_halo((Hx, Hy, Hz), grid)
+    end
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:
@@ -149,27 +159,27 @@ function NonhydrostaticModel(;    grid,
     closure = with_tracers(tracernames(tracers), closure)
 
     # Either check grid-correctness, or construct tuples of fields
-    velocities         = VelocityFields(velocities, architecture, grid, boundary_conditions)
-    tracers            = TracerFields(tracers,      architecture, grid, boundary_conditions)
-    pressures          = PressureFields(pressures,  architecture, grid, boundary_conditions)
-    diffusivity_fields = DiffusivityFields(diffusivity_fields, architecture, grid, tracernames(tracers), boundary_conditions, closure)
+    velocities         = VelocityFields(velocities, grid, boundary_conditions)
+    tracers            = TracerFields(tracers,      grid, boundary_conditions)
+    pressures          = PressureFields(pressures,  grid, boundary_conditions)
+    diffusivity_fields = DiffusivityFields(diffusivity_fields, grid, tracernames(tracers), boundary_conditions, closure)
 
     if isnothing(pressure_solver)
-        pressure_solver = PressureSolver(architecture, grid)
+        pressure_solver = PressureSolver(arch, grid)
     end
 
     # Materialize background fields
     background_fields = BackgroundFields(background_fields, tracernames(tracers), grid, clock)
 
     # Instantiate timestepper if not already instantiated
-    implicit_solver = implicit_diffusion_solver(time_discretization(closure), architecture, grid)
-    timestepper = TimeStepper(timestepper, architecture, grid, tracernames(tracers), implicit_solver=implicit_solver)
+    implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
+    timestepper = TimeStepper(timestepper, grid, tracernames(tracers), implicit_solver=implicit_solver)
 
     # Regularize forcing for model tracer and velocity fields.
     model_fields = merge(velocities, tracers)
     forcing = model_forcing(model_fields; forcing...)
 
-    model = NonhydrostaticModel(architecture, grid, clock, advection, buoyancy, coriolis, stokes_drift,
+    model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, background_fields, particles, velocities, tracers,
                                 pressures, diffusivity_fields, timestepper, pressure_solver, immersed_boundary,
                                 auxiliary_fields)
@@ -178,6 +188,8 @@ function NonhydrostaticModel(;    grid,
     
     return model
 end
+
+architecture(model::NonhydrostaticModel) = model.architecture
 
 #####
 ##### Recursive util for building NamedTuples of boundary conditions from NamedTuples of fields

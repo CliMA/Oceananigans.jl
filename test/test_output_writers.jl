@@ -1,20 +1,12 @@
+include("dependencies_for_runtests.jl")
+
 using Statistics
 using NCDatasets
-using Test
-
-using Oceananigans
-using Oceananigans.Diagnostics
-using Oceananigans.Fields
-using Oceananigans.OutputWriters
 
 using Dates: Millisecond
 using Oceananigans: write_output!
 using Oceananigans.BoundaryConditions: PBC, FBC, ZFBC, ContinuousBoundaryFunction
 using Oceananigans.TimeSteppers: update_state!
-
-include("utils_for_runtests.jl")
-
-archs = test_architectures()
 
 #####
 ##### WindowedTimeAverage tests
@@ -193,8 +185,8 @@ end
     for arch in archs
         # Some tests can reuse this same grid and model.
         topo = (Periodic, Periodic, Bounded)
-        grid = RectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-        model = NonhydrostaticModel(architecture=arch, grid=grid,
+        grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
+        model = NonhydrostaticModel(grid=grid,
                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
         @testset "WindowedTimeAverage [$(typeof(arch))]" begin
@@ -211,8 +203,8 @@ end
 
     for arch in archs
         topo =(Periodic, Periodic, Bounded)
-        grid = RectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-        model = NonhydrostaticModel(architecture=arch, grid=grid,
+        grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
+        model = NonhydrostaticModel(grid=grid,
                                     buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
         @testset "Dependency adding [$(typeof(arch))]" begin

@@ -1,6 +1,6 @@
 module Architectures
 
-export AbstractArchitecture, AbstractCPUArchitecture, AbstractGPUArchitecture
+export AbstractArchitecture, AbstractMultiArchitecture
 export CPU, GPU
 export device, device_event, architecture, array_type, arch_array
 
@@ -17,20 +17,12 @@ Abstract supertype for architectures supported by Oceananigans.
 """
 abstract type AbstractArchitecture end
 
-
 """
-    AbstractCPUArchitecture
+    AbstractMultiArchitecture
 
-Abstract supertype for CPU architectures supported by Oceananigans.
+Abstract supertype for Distributed architectures supported by Oceananigans.
 """
-abstract type AbstractCPUArchitecture <: AbstractArchitecture end
-
-"""
-    AbstractGPUArchitecture
-
-Abstract supertype for GPU architectures supported by Oceananigans.
-"""
-abstract type AbstractGPUArchitecture <: AbstractArchitecture end
+abstract type AbstractMultiArchitecture <: AbstractArchitecture end
 
 """
     CPU <: AbstractArchitecture
@@ -38,39 +30,47 @@ abstract type AbstractGPUArchitecture <: AbstractArchitecture end
 Run Oceananigans on one CPU node. Uses multiple threads if the environment
 variable `JULIA_NUM_THREADS` is set.
 """
-struct CPU <: AbstractCPUArchitecture end
+struct CPU <: AbstractArchitecture end
 
 """
     GPU <: AbstractArchitecture
 
 Run Oceananigans on a single NVIDIA CUDA GPU.
 """
-struct GPU <: AbstractGPUArchitecture end
+struct GPU <: AbstractArchitecture end
 
-device(::AbstractCPUArchitecture) = KernelAbstractions.CPU()
-device(::AbstractGPUArchitecture) = CUDAKernels.CUDADevice()
+#####
+##### These methods are extended in Distributed.jl
+#####
+
+device(::CPU) = KernelAbstractions.CPU()
+device(::GPU) = CUDAKernels.CUDADevice()
 
 architecture() = nothing
 architecture(::Number) = nothing
 architecture(::Array) = CPU()
 architecture(::CuArray) = GPU()
 
+"""
+    child_architecture(arch)
+
+Return `arch`itecture of child processes.
+On single-process, non-distributed systems, return `arch`.
+"""
+child_architecture(arch) = arch
+
 array_type(::CPU) = Array
 array_type(::GPU) = CuArray
 
-arch_array(::AbstractCPUArchitecture, A::Array)   = A
-arch_array(::AbstractCPUArchitecture, A::CuArray) = Array(A)
-arch_array(::AbstractGPUArchitecture, A::Array)   = CuArray(A)
-arch_array(::AbstractGPUArchitecture, A::CuArray) = A
+arch_array(::CPU, a::Array)   = a
+arch_array(::CPU, a::CuArray) = Array(a)
+arch_array(::GPU, a::Array)   = CuArray(a)
+arch_array(::GPU, a::CuArray) = a
 
-const OffsetCPUArray = OffsetArray{FT, N, <:Array} where {FT, N}
-const OffsetGPUArray = OffsetArray{FT, N, <:CuArray} where {FT, N}
-
-Adapt.adapt_structure(::CPU, a::OffsetCPUArray) = a
-Adapt.adapt_structure(::GPU, a::OffsetGPUArray) = a
-
-Adapt.adapt_structure(::GPU, a::OffsetCPUArray) = OffsetArray(CuArray(a.parent), a.offsets...)
-Adapt.adapt_structure(::CPU, a::OffsetGPUArray) = OffsetArray(Array(a.parent), a.offsets...)
+arch_array(arch, a::AbstractRange) = a
+arch_array(arch, a::OffsetArray) = OffsetArray(arch_array(arch, a.parent), a.offsets...)
+arch_array(arch, ::Nothing) = nothing
+arch_array(arch, a::Number) = a
 
 device_event(arch) = Event(device(arch))
 
