@@ -108,8 +108,8 @@ function run_matrix_implicit_free_surface_solver_tests(arch, grid)
     std_tolerance = 1e-9
 
     CUDA.@allowscalar begin
-        @test maximum(abs, interior(left_hand_side) .- interior(right_hand_side)) < extrema_tolerance
-        @test std(interior(left_hand_side) .- interior(right_hand_side)) < std_tolerance
+        @test maximum(abs, interior(left_hand_side) .- right_hand_side) < extrema_tolerance
+        @test std(interior(left_hand_side) .- right_hand_side) < std_tolerance
     end
 
     return nothing
