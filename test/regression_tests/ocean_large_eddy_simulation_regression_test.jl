@@ -16,27 +16,28 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     # Grid
     N = L = 16
     if grid_type == :regular
-        grid = RegularRectilinearGrid(size=(N, N, N), extent=(L, L, L))
+        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
     elseif grid_type == :vertically_unstretched
         zF = range(-L, 0, length=N+1)
-        grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(N, N, N), x=(0, L), y=(0, L), z_faces=zF)
+        grid = RectilinearGrid(arch, size=(N, N, N), x=(0, L), y=(0, L), z=zF)
     end
 
     # Boundary conditions
-    u_bcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵘ))
-    T_bcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, Qᵀ),
-                                        bottom = BoundaryCondition(Gradient, ∂T∂z))
-    S_bcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Flux, 5e-8))
+    u_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux, Qᵘ))
+    T_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux, Qᵀ), bottom = BoundaryCondition(Gradient, ∂T∂z))
+    S_bcs = FieldBoundaryConditions(top = BoundaryCondition(Flux, 5e-8))
 
     # Model instantiation
-    model = IncompressibleModel(
-             architecture = arch,
+    model = NonhydrostaticModel(
                      grid = grid,
                  coriolis = FPlane(f=1e-4),
                  buoyancy = Buoyancy(model=SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=8e-4))),
+                  tracers = (:T, :S),
                   closure = closure,
       boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs)
     )
+
+    @show model.diffusivity_fields
 
     # We will manually change the stop_iteration as needed.
     simulation = Simulation(model, Δt=Δt, stop_iteration=0)
@@ -74,7 +75,8 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     #### Regression test
     ####
 
-    initial_filename = joinpath(dirname(@__FILE__), "data", name * "_iteration$spinup_steps.jld2")
+    datadep_path = "regression_test_data/" * name * "_iteration$spinup_steps.jld2"
+    initial_filename = @datadep_str datadep_path
 
     solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
 
@@ -102,12 +104,14 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     model.clock.iteration = spinup_steps
 
     update_state!(model)
+    model.timestepper.previous_Δt = Δt
 
     for n in 1:test_steps
         time_step!(model, Δt, euler=false)
     end
 
-    final_filename = joinpath(@__DIR__, "data", name * "_iteration$(spinup_steps+test_steps).jld2")
+    datadep_path = "regression_test_data/" * name * "_iteration$(spinup_steps+test_steps).jld2"
+    final_filename = @datadep_str datadep_path
 
     solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
 

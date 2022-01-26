@@ -20,8 +20,8 @@
 
 using Oceananigans
 
-grid = RegularRectilinearGrid(size=(128, 128), x=(-π, π), z=(-π, π),
-                              topology=(Periodic, Flat, Periodic))
+grid = RectilinearGrid(size=(128, 128), x=(-π, π), z=(-π, π),
+                       topology=(Periodic, Flat, Periodic))
 
 # ## Internal wave parameters
 #
@@ -32,7 +32,7 @@ grid = RegularRectilinearGrid(size=(128, 128), x=(-π, π), z=(-π, π),
 coriolis = FPlane(f=0.2)
 
 # On an `FPlane`, the domain is idealized as rotating at a constant rate with
-# rotation period `2π/f`. `coriolis` is passed to `IncompressibleModel` below.
+# rotation period `2π/f`. `coriolis` is passed to `NonhydrostaticModel` below.
 # Our units are arbitrary.
 
 # We use Oceananigans' `background_fields` abstraction to define a background
@@ -49,12 +49,12 @@ N = 1 ## buoyancy frequency
 B = BackgroundField(B_func, parameters=N)
 
 # We are now ready to instantiate our model. We pass `grid`, `coriolis`,
-# and `B` to the `IncompressibleModel` constructor.
+# and `B` to the `NonhydrostaticModel` constructor.
 # We add a small amount of `IsotropicDiffusivity` to keep the model stable
 # during time-stepping, and specify that we're using a single tracer called
 # `b` that we identify as buoyancy by setting `buoyancy=BuoyancyTracer()`.
 
-model = IncompressibleModel(
+model = NonhydrostaticModel(
                  grid = grid,
             advection = CenteredFourthOrder(),
           timestepper = :RungeKutta3,

@@ -1,9 +1,10 @@
+using Oceananigans.Grids: ZDirection, validate_unit_vector
+
 struct Buoyancy{M, G}
                    model :: M
     vertical_unit_vector :: G
 end
 
-struct ZDirection end
 
 """
     Buoyancy(; model, vertical_unit_vector=ZDirection())
@@ -18,32 +19,20 @@ Example
 ```julia
 using Oceananigans
 
-grid = RegularRectilinearGrid(size=(1, 8, 8), extent=(1, 1000, 100))
+grid = RectilinearGrid(size=(1, 8, 8), extent=(1, 1000, 100))
 θ = 45 # degrees
 g̃ = (0, sind(θ), cosd(θ))
 
 buoyancy = Buoyancy(model=BuoyancyTracer(), vertical_unit_vector=g̃)
 
-model = IncompressibleModel(grid=grid, buoyancy=buoyancy, tracers=:b)
+model = NonhydrostaticModel(grid=grid, buoyancy=buoyancy, tracers=:b)
 ```
 """
 function Buoyancy(; model, vertical_unit_vector=ZDirection())
-    vertical_unit_vector = validate_vertical_unit_vector(vertical_unit_vector)
+    vertical_unit_vector = validate_unit_vector(vertical_unit_vector)
     return Buoyancy(model, vertical_unit_vector)
 end
 
-validate_vertical_unit_vector(ĝ::ZDirection) = ĝ
-
-function validate_vertical_unit_vector(ĝ)
-    length(ĝ) == 3 || throw(ArgumentError("`vertical_unit_vector` must have length 3"))
-
-    gx, gy, gz = ĝ
-
-    gx^2 + gy^2 + gz^2 ≈ 1 ||
-        throw(ArgumentError("`vertical_unit_vector` must be a unit vector with g[1]² + g[2]² + g[3]² ≈ 1"))
-
-    return tuple(ĝ...)
-end
 
 @inline ĝ_x(buoyancy) = @inbounds buoyancy.vertical_unit_vector[1]
 @inline ĝ_y(buoyancy) = @inbounds buoyancy.vertical_unit_vector[2]

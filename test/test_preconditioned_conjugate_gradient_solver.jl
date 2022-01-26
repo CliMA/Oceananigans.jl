@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.Solvers: solve!
 using Statistics
 
@@ -6,8 +8,8 @@ function identity_operator!(b, x)
     return nothing
 end
 
-function run_identity_operator_test(arch, grid)
-    b = Field(Center, Center, Center, arch, grid)
+function run_identity_operator_test(grid)
+    b = CenterField(grid)
 
     solver = PreconditionedConjugateGradientSolver(identity_operator!, template_field = b)
 
@@ -19,9 +21,10 @@ function run_identity_operator_test(arch, grid)
     @test norm(solution) .< solver.tolerance
 end
 
-function run_poisson_equation_test(arch, grid)
+function run_poisson_equation_test(grid)
+    arch = architecture(grid)
     # Solve ∇²ϕ = r
-    ϕ_truth = Field(Center, Center, Center, arch, grid)
+    ϕ_truth = CenterField(grid)
 
     # Initialize zero-mean "truth" solution with random numbers
     set!(ϕ_truth, (x, y, z) -> rand())
@@ -29,17 +32,17 @@ function run_poisson_equation_test(arch, grid)
     fill_halo_regions!(ϕ_truth, arch)
 
     # Calculate Laplacian of "truth"
-    ∇²ϕ = r = Field(Center, Center, Center, arch, grid)
+    ∇²ϕ = r = CenterField(grid)
     compute_∇²!(∇²ϕ, ϕ_truth, arch, grid)
 
     solver = PreconditionedConjugateGradientSolver(compute_∇²!, template_field=ϕ_truth)
 
     # Solve Poisson equation
-    ϕ_solution = Field(Center, Center, Center, arch, grid)
+    ϕ_solution = CenterField(grid)
     solve!(ϕ_solution, solver, r, arch, grid)
 
     # Diagnose Laplacian of solution
-    ∇²ϕ_solution = Field(Center, Center, Center, arch, grid)
+    ∇²ϕ_solution = CenterField(grid)
     compute_∇²!(∇²ϕ_solution, ϕ_solution, arch, grid)
 
     # Test
@@ -62,8 +65,8 @@ end
 @testset "PreconditionedConjugateGradientSolver" begin
     for arch in archs
         @info "Testing PreconditionedConjugateGradientSolver [$(typeof(arch))]..."
-        grid = RegularRectilinearGrid(size=(4, 8, 4), extent=(1, 3, 1))
-        run_identity_operator_test(arch, grid)
-        run_poisson_equation_test(arch, grid)
+        grid = RectilinearGrid(arch, size=(4, 8, 4), extent=(1, 3, 1))
+        run_identity_operator_test(grid)
+        run_poisson_equation_test(grid)
     end
 end

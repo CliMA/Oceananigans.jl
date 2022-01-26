@@ -6,7 +6,7 @@
 #   * How to use a tuple of turbulence closures
 #   * How to use hyperdiffusivity
 #   * How to implement background velocity and tracer distributions
-#   * How to use `ComputedField`s for output
+#   * How to build `Field`s that compute output
 #
 # ## Install dependencies
 #
@@ -127,7 +127,7 @@ using Oceananigans.Units: hours, day, days
 # horizontal extent of 1000 km, appropriate for mesoscale ocean dynamics
 # with characteristic scales of 50-200 km.
 
-grid = RegularRectilinearGrid(size=(48, 48, 16), x=(0, 1e6), y=(0, 1e6), z=(-4e3, 0))
+grid = RectilinearGrid(size=(48, 48, 16), x=(0, 1e6), y=(0, 1e6), z=(-4e3, 0))
 
 # ## Rotation
 #
@@ -167,8 +167,8 @@ cᴰ = 1e-4 # quadratic drag coefficient
 drag_bc_u = FluxBoundaryCondition(drag_u, field_dependencies=(:u, :v), parameters=cᴰ)
 drag_bc_v = FluxBoundaryCondition(drag_v, field_dependencies=(:u, :v), parameters=cᴰ)
 
-u_bcs = UVelocityBoundaryConditions(grid, bottom = drag_bc_u)
-v_bcs = VVelocityBoundaryConditions(grid, bottom = drag_bc_v)
+u_bcs = FieldBoundaryConditions(bottom = drag_bc_u)
+v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
 
 # ## Turbulence closures
 #
@@ -178,7 +178,7 @@ v_bcs = VVelocityBoundaryConditions(grid, bottom = drag_bc_v)
 # `closure` to a tuple of two closures.
 
 κ₂z = 1e-2 # [m² s⁻¹] Laplacian vertical viscosity and diffusivity
-κ₄h = 1e-1 / day * grid.Δx^4 # [m⁴ s⁻¹] horizontal hyperviscosity and hyperdiffusivity
+κ₄h = 1e-1 / day * grid.Δxᶜᵃᵃ^4 # [m⁴ s⁻¹] horizontal hyperviscosity and hyperdiffusivity
 
 Laplacian_vertical_diffusivity = AnisotropicDiffusivity(νh=0, κh=0, νz=κ₂z, κz=κ₂z)
 biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h, κh=κ₄h)
@@ -188,8 +188,7 @@ biharmonic_horizontal_diffusivity = AnisotropicBiharmonicDiffusivity(νh=κ₄h,
 # We instantiate the model with the fifth-order WENO advection scheme, a 3rd order
 # Runge-Kutta time-stepping scheme, and a `BuoyancyTracer`.
 
-model = IncompressibleModel(
-           architecture = CPU(),
+model = NonhydrostaticModel(
                    grid = grid,
               advection = WENO5(),
             timestepper = :RungeKutta3,
@@ -222,7 +221,7 @@ set!(model, u=uᵢ, v=vᵢ, b=bᵢ)
 # We subtract off any residual mean velocity to avoid exciting domain-scale
 # inertial oscillations. We use a `sum` over the entire `parent` arrays or data
 # to ensure this operation is efficient on the GPU (set `architecture = GPU()`
-# in `IncompressibleModel` constructor to run this problem on the GPU if one
+# in `NonhydrostaticModel` constructor to run this problem on the GPU if one
 # is available).
 
 ū = sum(model.velocities.u.data.parent) / (grid.Nx * grid.Ny * grid.Nz)
@@ -235,29 +234,32 @@ nothing # hide
 # ## Simulation set-up
 #
 # We set up a simulation that runs for 10 days with a `JLD2OutputWriter` that saves the
-# vertical vorticity and divergence every 2 hours.
-#
-# ### The `TimeStepWizard`
-#
-# The TimeStepWizard manages the time-step adaptively, keeping the
-# Courant-Freidrichs-Lewy (CFL) number close to `1.0` while ensuring
-# the time-step does not increase beyond the maximum allowable value
-# for numerical stability given the specified background flow, Coriolis
-# time scales, and diffusion time scales.
+# vertical vorticity and divergence every 2 hours. We limit the time-step to
+# the maximum allowable due either to diffusion, internal waves, or advection by the background flow.
 
 ## Calculate absolute limit on time-step using diffusivities and
 ## background velocity.
 Ū = basic_state_parameters.α * grid.Lz
 
-max_Δt = min(grid.Δx / Ū, grid.Δx^4 / κ₄h, grid.Δz^2 / κ₂z, 1/basic_state_parameters.N)
+max_Δt = min(grid.Δxᶜᵃᵃ / Ū, grid.Δxᶜᵃᵃ^4 / κ₄h, grid.Δxᶜᵃᵃ^2 / κ₂z, 1 / basic_state_parameters.N)
 
-wizard = TimeStepWizard(cfl=0.85, Δt=max_Δt, max_change=1.1, max_Δt=max_Δt)
+simulation = Simulation(model, Δt = max_Δt, stop_time = 8days)
+
+# ### The `TimeStepWizard`
+#
+# The TimeStepWizard manages the time-step adaptively, keeping the
+# Courant-Freidrichs-Lewy (CFL) number close to `1.0` while ensuring
+# the time-step does not increase beyond the maximum allowable value
+# for numerical stability given the specified background flow, internal wave
+# time scales, and diffusion time scales.
+
+wizard = TimeStepWizard(cfl=0.85, max_change=1.1, max_Δt=max_Δt)
+
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 # ### A progress messenger
 #
-# We write a function that prints out a helpful progress message while the simulation runs.
-
-CFL = AdvectiveCFL(wizard)
+# We add a callback that prints out a helpful progress message while the simulation runs.
 
 start_time = time_ns()
 
@@ -265,32 +267,24 @@ progress(sim) = @printf("i: % 6d, sim time: % 10s, wall time: % 10s, Δt: % 10s,
                         sim.model.clock.iteration,
                         prettytime(sim.model.clock.time),
                         prettytime(1e-9 * (time_ns() - start_time)),
-                        prettytime(sim.Δt.Δt),
-                        CFL(sim.model))
-nothing # hide
+                        prettytime(sim.Δt),
+                        AdvectiveCFL(sim.Δt)(sim.model))
 
-# ### Build the simulation
-#
-# We're ready to build and run the simulation. We ask for a progress message and time-step update
-# every 20 iterations,
-
-simulation = Simulation(model, Δt = wizard, iteration_interval = 20,
-                                                     stop_time = 8days,
-                                                      progress = progress)
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 # ### Output
 #
 # To visualize the baroclinic turbulence ensuing in the Eady problem,
-# we use `ComputedField`s to diagnose and output vertical vorticity and divergence.
-# Note that `ComputedField`s take "AbstractOperations" on `Field`s as input:
+# we use computed `Field`s to diagnose and output vertical vorticity and divergence.
+# Note that computed `Field`s take "AbstractOperations" on `Field`s as input:
 
 u, v, w = model.velocities # unpack velocity `Field`s
 
 ## Vertical vorticity [s⁻¹]
-ζ = ComputedField(∂x(v) - ∂y(u))
+ζ = Field(∂x(v) - ∂y(u))
 
 ## Horizontal divergence, or ∂x(u) + ∂y(v) [s⁻¹]
-δ = ComputedField(-∂z(w))
+δ = Field(-∂z(w))
 
 # With the vertical vorticity, `ζ`, and the horizontal divergence, `δ` in hand,
 # we create a `JLD2OutputWriter` that saves `ζ` and `δ` and add them to

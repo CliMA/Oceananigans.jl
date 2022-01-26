@@ -1,21 +1,23 @@
+include("dependencies_for_runtests.jl")
+
 using Oceananigans.Grids: topological_tuple_length, total_size
 using Oceananigans.Fields: BackgroundField
 using Oceananigans.TimeSteppers: Clock
-using Oceananigans.TurbulenceClosures: TKEBasedVerticalDiffusivity
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
     extent = Tuple(1 for i = 1:topological_tuple_length(topology...))
-    grid = RegularRectilinearGrid(size=size, extent=extent, topology=topology)
-    model = IncompressibleModel(grid=grid, architecture=arch)
+    grid = RectilinearGrid(arch, size=size, extent=extent, topology=topology)
+    model = NonhydrostaticModel(grid=grid)
     time_step!(model, 1, euler=true)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
 function time_stepping_works_with_coriolis(arch, FT, Coriolis)
-    grid = RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3))
     c = Coriolis(FT, latitude=45)
-    model = IncompressibleModel(grid=grid, architecture=arch, coriolis=c)
+    model = NonhydrostaticModel(grid=grid, coriolis=c)
 
     time_step!(model, 1, euler=true)
 
@@ -24,14 +26,14 @@ end
 
 function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(model=SeawaterBuoyancy(FT)))
 
-    # Add TKE tracer "e" to tracers when using TKEBasedVerticalDiffusivity
+    # Add TKE tracer "e" to tracers when using CATKEVerticalDiffusivity
     tracers = [:T, :S]
-    Closure === TKEBasedVerticalDiffusivity && push!(tracers, :e)
+    Closure === CATKEVerticalDiffusivity && push!(tracers, :e)
 
     # Use halos of size 2 to accomadate time stepping with AnisotropicBiharmonicDiffusivity.
-    grid = RegularRectilinearGrid(FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), halo=(2, 2, 2), extent=(1, 2, 3))
 
-    model = IncompressibleModel(grid=grid, architecture=arch,
+    model = NonhydrostaticModel(grid=grid,
                                 closure=Closure(FT), tracers=tracers, buoyancy=buoyancy)
 
     time_step!(model, 1, euler=true)
@@ -41,26 +43,27 @@ end
 
 function time_stepping_works_with_advection_scheme(arch, advection_scheme)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
-    grid = RegularRectilinearGrid(size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
-    model = IncompressibleModel(grid=grid, architecture=arch, advection=advection_scheme)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), halo=(3, 3, 3), extent=(1, 2, 3))
+    model = NonhydrostaticModel(grid=grid, advection=advection_scheme)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
 function time_stepping_works_with_nothing_closure(arch, FT)
-    grid = RegularRectilinearGrid(FT; size=(1, 1, 1), extent=(1, 2, 3))
-    model = IncompressibleModel(grid=grid, architecture=arch, closure=nothing)
+    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 2, 3))
+    model = NonhydrostaticModel(grid=grid, closure=nothing)
     time_step!(model, 1, euler=true)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
 function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
-    grid = RegularRectilinearGrid(FT; size=(1, 1, 1), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 2, 3))
 
     eos = EOS()
     b = SeawaterBuoyancy(equation_of_state=eos)
 
-    model = IncompressibleModel(architecture=arch, grid=grid, buoyancy=b)
+    model = NonhydrostaticModel(grid=grid, buoyancy=b,
+                                tracers=(:T, :S))
     time_step!(model, 1, euler=true)
 
     return true  # Test that no errors/crashes happen when time stepping.
@@ -70,9 +73,10 @@ function run_first_AB2_time_step_tests(arch, FT)
     add_ones(args...) = 1.0
 
     # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
-    grid = RegularRectilinearGrid(FT, size=(13, 17, 19), extent=(1, 2, 3))
+    grid = RectilinearGrid(arch, FT, size=(13, 17, 19), extent=(1, 2, 3))
 
-    model = IncompressibleModel(grid=grid, architecture=arch, forcing=(T=add_ones,))
+    model = NonhydrostaticModel(grid=grid, forcing=(T=add_ones,),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     time_step!(model, 1, euler=true)
 
     # Test that GT = 1, T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
@@ -96,20 +100,23 @@ end
     stepped. It just initializes a cube shaped hot bubble perturbation in the center of the 3D domain to induce a
     velocity field.
 """
-function incompressible_in_time(arch, grid, Nt, timestepper)
-    model = IncompressibleModel(grid=grid, architecture=arch, timestepper=timestepper)
+function incompressible_in_time(grid, Nt, timestepper)
+    model = NonhydrostaticModel(grid=grid, timestepper=timestepper,
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     grid = model.grid
     u, v, w = model.velocities
 
-    div_U = CenterField(arch, grid, TracerBoundaryConditions(grid))
+    div_U = CenterField(grid)
 
     # Just add a temperature perturbation so we get some velocity field.
     CUDA.@allowscalar interior(model.tracers.T)[8:24, 8:24, 8:24] .+= 0.01
 
+    update_state!(model)
     for n in 1:Nt
-        ab2_or_rk3_time_step!(model, 0.05, n)
+        time_step!(model, 0.05)
     end
 
+    arch = architecture(grid)
     event = launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, div_U.data, dependencies=Event(device(arch)))
     wait(device(arch), event)
 
@@ -144,9 +151,10 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     νz, κz = α*νh, α*κh
 
     topology = (Periodic, Bounded, Bounded)
-    grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model = IncompressibleModel(architecture = arch, grid = grid,
-                                closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz))
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    model = NonhydrostaticModel(grid = grid,
+                                closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
     Tz = 5e-3  # Vertical temperature gradient [K/m].
@@ -157,8 +165,9 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     Tavg0 = CUDA.@allowscalar mean(interior(model.tracers.T))
 
+    update_state!(model)
     for n in 1:Nt
-        ab2_or_rk3_time_step!(model, 600, n)
+        time_step!(model, 600)
     end
 
     Tavg = CUDA.@allowscalar mean(interior(model.tracers.T))
@@ -170,7 +179,7 @@ end
 
 function time_stepping_with_background_fields(arch)
 
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
 
     background_u(x, y, z, t) = π
     background_v(x, y, z, t) = sin(x) * cos(y) * exp(t)
@@ -183,8 +192,9 @@ function time_stepping_with_background_fields(arch)
     background_S_func(x, y, z, t, α) = α * y
     background_S = BackgroundField(background_S_func, parameters=1.2)
 
-    model = IncompressibleModel(grid=grid, background_fields=(u=background_u, v=background_v, w=background_w,
-                                                              T=background_T, S=background_S))
+    model = NonhydrostaticModel(grid=grid, background_fields=(u=background_u, v=background_v, w=background_w,
+                                                              T=background_T, S=background_S),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     time_step!(model, 1, euler=true)
 
@@ -195,16 +205,22 @@ function time_stepping_with_background_fields(arch)
            location(model.background_fields.tracers.S) === (Center, Center, Center)
 end
 
-Planes = (FPlane, NonTraditionalFPlane, BetaPlane, NonTraditionalBetaPlane)
+Planes = (FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane)
 
 BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipation(FT, Cb=1.0)
 
-Closures = (IsotropicDiffusivity, AnisotropicDiffusivity,
-            AnisotropicBiharmonicDiffusivity, TwoDimensionalLeith,
-            SmagorinskyLilly, AnisotropicMinimumDissipation, BuoyancyModifiedAnisotropicMinimumDissipation,
-            TKEBasedVerticalDiffusivity)
+Closures = (IsotropicDiffusivity,
+            AnisotropicDiffusivity,
+            AnisotropicBiharmonicDiffusivity,
+            TwoDimensionalLeith,
+            IsopycnalSkewSymmetricDiffusivity,
+            SmagorinskyLilly,
+            AnisotropicMinimumDissipation,
+            BuoyancyModifiedAnisotropicMinimumDissipation,
+            CATKEVerticalDiffusivity)
 
 advection_schemes = (nothing,
+                     UpwindBiasedFirstOrder(),
                      CenteredSecondOrder(),
                      UpwindBiasedThirdOrder(),
                      CenteredFourthOrder(),
@@ -220,13 +236,13 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         @testset "Time stepping with DateTimes [$(typeof(arch)), $FT]" begin
             @info "  Testing time stepping with datetime clocks [$(typeof(arch)), $FT]"
 
-            model = IncompressibleModel(grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)),
+            model = NonhydrostaticModel(grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1)),
                                         clock = Clock(time=DateTime(2020)))
 
             time_step!(model, 7.883)
             @test model.clock.time == DateTime("2020-01-01T00:00:07.883")
 
-            model = IncompressibleModel(grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)),
+            model = NonhydrostaticModel(grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1)),
                                         clock = Clock(time=TimeDate(2020)))
 
             time_step!(model, 123e-9)  # 123 nanoseconds
@@ -312,29 +328,27 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         for FT in float_types, arch in archs
             Nx, Ny, Nz = 32, 32, 32
 
-            regular_grid = RegularRectilinearGrid(FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(-1, 1))
+            regular_grid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(-1, 1))
 
             S = 1.3 # Stretching factor
             hyperbolically_spaced_nodes(k) = tanh(S * (2 * (k - 1) / Nz - 1)) / tanh(S)
-            hyperbolic_vs_grid = VerticallyStretchedRectilinearGrid(FT,
-                                                                    architecture = arch,
-                                                                    size = (Nx, Ny, Nz),
-                                                                    x = (0, 1),
-                                                                    y = (0, 1),
-                                                                    z_faces = hyperbolically_spaced_nodes)
+            hyperbolic_vs_grid = RectilinearGrid(arch, FT,
+                                             size = (Nx, Ny, Nz),
+                                                x = (0, 1),
+                                                y = (0, 1),
+                                                z = hyperbolically_spaced_nodes)
 
-            regular_vs_grid = VerticallyStretchedRectilinearGrid(FT,
-                                                                 architecture = arch,
-                                                                 size = (Nx, Ny, Nz),
-                                                                 x = (0, 1),
-                                                                 y = (0, 1),
-                                                                 z_faces = collect(range(0, stop=1, length=Nz+1)))
+            regular_vs_grid = RectilinearGrid(arch, FT,
+                                             size = (Nx, Ny, Nz),
+                                                x = (0, 1),
+                                                y = (0, 1),
+                                                z = collect(range(0, stop=1, length=Nz+1)))
 
             for grid in (regular_grid, hyperbolic_vs_grid, regular_vs_grid)
                 @info "  Testing incompressibility [$FT, $(typeof(grid).name.wrapper)]..."
 
                 for Nt in [1, 10, 100], timestepper in timesteppers
-                    @test incompressible_in_time(arch, grid, Nt, timestepper)
+                    @test incompressible_in_time(grid, Nt, timestepper)
                 end
             end
         end

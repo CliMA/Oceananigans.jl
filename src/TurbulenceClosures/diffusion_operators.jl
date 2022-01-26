@@ -1,3 +1,5 @@
+using Oceananigans.Operators: Δy_cᶜᶜᵃ, Δx_cᶜᶜᵃ
+
 #####
 ##### Diffusivities
 #####
@@ -44,15 +46,15 @@ which will end up at the location `ccc`.
 
     disc = time_discretization(closure)
 
-    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_uᶠᶜᶜ, diffusive_flux_x, disc, closure, c, tracer_index, args...) +
-                                    δyᵃᶜᵃ(i, j, k, grid, Ay_vᶜᶠᶜ, diffusive_flux_y, disc, closure, c, tracer_index, args...) +
-                                    δzᵃᵃᶜ(i, j, k, grid, Az_wᶜᶜᵃ, diffusive_flux_z, disc, closure, c, tracer_index, args...))
+    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_uᶠᶜᶜ, _diffusive_flux_x, disc, closure, c, tracer_index, args...) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_vᶜᶠᶜ, _diffusive_flux_y, disc, closure, c, tracer_index, args...) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_wᶜᶜᵃ, _diffusive_flux_z, disc, closure, c, tracer_index, args...))
 end
 
 #####
 ##### Gradients of Laplacians
 #####
 
-@inline ∂x_∇²h_cᶠᶜᶜ(i, j, k, grid, c) = 1 / Azᶠᶜᵃ(i, j, k, grid) * δxᶠᵃᵃ(i, j, k, Δy_cᶜᶜᵃ, ∇²hᶜᶜᶜ, c)
-@inline ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c) = 1 / Azᶜᶠᵃ(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, Δx_cᶜᶜᵃ, ∇²hᶜᶜᶜ, c)
+@inline ∂x_∇²h_cᶠᶜᶜ(i, j, k, grid, c) = 1 / Azᶠᶜᵃ(i, j, k, grid) * δxᶠᵃᵃ(i, j, k, grid, Δy_cᶜᶜᵃ, ∇²hᶜᶜᶜ, c)
+@inline ∂y_∇²h_cᶜᶠᶜ(i, j, k, grid, c) = 1 / Azᶜᶠᵃ(i, j, k, grid) * δyᵃᶠᵃ(i, j, k, grid, Δx_cᶜᶜᵃ, ∇²hᶜᶜᶜ, c)
 

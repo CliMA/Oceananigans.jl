@@ -1,10 +1,12 @@
-using Oceananigans.Architectures: device
-using Oceananigans.Operators: div_xyᶜᶜᵃ, Δzᵃᵃᶠ
+using Oceananigans.Architectures: device, device_event
+using Oceananigans.Operators: div_xyᶜᶜᵃ, Δzᵃᵃᶜ
 
 """
-Compute the vertical velocity w by integrating the continuity equation from the bottom upwards
+Compute the vertical velocity ``w`` by integrating the continuity equation from the bottom upwards:
 
-    `w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz`
+```
+w^{n+1} = -∫ [∂/∂x (u^{n+1}) + ∂/∂y (v^{n+1})] dz
+```
 """
 compute_w_from_continuity!(model) = compute_w_from_continuity!(model.velocities, model.architecture, model.grid)
 
@@ -16,7 +18,7 @@ function compute_w_from_continuity!(velocities, arch, grid)
                     _compute_w_from_continuity!,
                     velocities,
                     grid,
-                    dependencies=Event(device(arch)))
+                    dependencies = device_event(arch))
 
     wait(device(arch), event)
 
@@ -25,8 +27,8 @@ end
 
 @kernel function _compute_w_from_continuity!(U, grid)
     i, j = @index(Global, NTuple)
-    # U.w[i, j, 1] = 0 is enforced via halo regions.
+    U.w[i, j, 1] = 0
     @unroll for k in 2:grid.Nz+1
-        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δzᵃᵃᶠ(i, j, k, grid) * div_xyᶜᶜᵃ(i, j, k-1, grid, U.u, U.v)
+        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δzᵃᵃᶜ(i, j, k-1, grid) * div_xyᶜᶜᵃ(i, j, k-1, grid, U.u, U.v)
     end
 end

@@ -1,3 +1,5 @@
+import Oceananigans.Grids: required_halo_size
+
 """
     HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity{N, K}
 
@@ -12,25 +14,27 @@ end
 
 const HCABD = HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
 
+required_halo_size(::HCABD) = 2
+
 """
-    HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity([FT=Float64;] νh=0, κh=0, νz=0, κz=0)
+    HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(FT=Float64; νh=0, κh=0, νz=nothing, κz=nothing)
 
 Returns parameters for an anisotropic biharmonic diffusivity model on curvilinear grids.
 
-Keyword args
-============
+Keyword arguments
+=================
 
-    * `νh`: Horizontal viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
+  - `νh`: Horizontal viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
 
-    * `νz`: Vertical viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
+  - `νz`: Vertical viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
 
-    * `κh`: Horizontal diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
-            `NamedTuple` of diffusivities with entries for each tracer.
+  - `κh`: Horizontal diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
+          `NamedTuple` of diffusivities with entries for each tracer.
 
-    * `κz`: Vertical diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
-            `NamedTuple` of diffusivities with entries for each tracer.
+  - `κz`: Vertical diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
+          `NamedTuple` of diffusivities with entries for each tracer.
 """
-function HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(FT=Float64; νh=0, κh=0, νz=0, κz=0)
+function HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(FT=Float64; νh=0, κh=0, νz=nothing, κz=nothing)
     νh = convert_diffusivity(FT, νh)
     νz = convert_diffusivity(FT, νz)
     κh = convert_diffusivity(FT, κh)
@@ -44,15 +48,21 @@ function with_tracers(tracers, closure::HorizontallyCurvilinearAnisotropicBiharm
     return HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity(closure.νh, closure.νz, κh, κz)
 end
 
-calculate_diffusivities!(K, arch, grid, closure::HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity, args...) = nothing
+calculate_diffusivities!(diffusivities, closure::HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity, args...) = nothing
 
-viscous_flux_ux(i, j, k, grid, closure::HCABD, clock, U, args...) = - ν_δ★ᶜᶜᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   
-viscous_flux_uy(i, j, k, grid, closure::HCABD, clock, U, args...) = + ν_ζ★ᶠᶠᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   
-viscous_flux_uz(i, j, k, grid, closure::HCABD, clock, U, args...) = - ν_uzzzᶠᶜᶠ(i, j, k, grid, clock, closure.νz, U.u)
-                                                      
-viscous_flux_vx(i, j, k, grid, closure::HCABD, clock, U, args...) = - ν_ζ★ᶠᶠᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)
-viscous_flux_vy(i, j, k, grid, closure::HCABD, clock, U, args...) = - ν_δ★ᶜᶜᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)
-viscous_flux_vz(i, j, k, grid, closure::HCABD, clock, U, args...) = - ν_uzzzᶠᶜᶠ(i, j, k, grid, clock, closure.νz, U.v)
+const NoVerticalViscHCABD = HCABD{<:Any, <:Nothing}
+const NoVerticalDiffHCABD = HCABD{<:Any, <:Any, <:Any, <:Nothing}
+
+@inline viscous_flux_ux(i, j, k, grid, closure::HCABD, clock, U, args...) = - ν_δ★ᶜᶜᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   
+@inline viscous_flux_uy(i, j, k, grid, closure::HCABD, clock, U, args...) = + ν_ζ★ᶠᶠᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   
+@inline viscous_flux_uz(i, j, k, grid, closure::HCABD, clock, U, args...) = - ν_uzzzᶠᶜᶠ(i, j, k, grid, clock, closure.νz, U.u)
+
+@inline viscous_flux_vx(i, j, k, grid, closure::HCABD, clock, U, args...) = - ν_ζ★ᶠᶠᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)
+@inline viscous_flux_vy(i, j, k, grid, closure::HCABD, clock, U, args...) = - ν_δ★ᶜᶜᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)
+@inline viscous_flux_vz(i, j, k, grid, closure::HCABD, clock, U, args...) = - ν_uzzzᶠᶜᶠ(i, j, k, grid, clock, closure.νz, U.v)
+
+@inline viscous_flux_uz(i, j, k, grid, closure::NoVerticalViscHCABD, clock, U, args...) = zero(eltype(grid))
+@inline viscous_flux_vz(i, j, k, grid, closure::NoVerticalViscHCABD, clock, U, args...) = zero(eltype(grid))
 
 @inline function diffusive_flux_x(i, j, k, grid, closure::HCABD, c, ::Val{tracer_index}, clock, args...) where tracer_index
     @inbounds κh = closure.κh[tracer_index]
@@ -68,6 +78,8 @@ end
     @inbounds κz = closure.κz[tracer_index]
     return - κᶜᶜᶠ(i, j, k, grid, clock, κz) * ∂³zᵃᵃᶠ(i, j, k, grid, c)
 end
+
+@inline diffusive_flux_z(i, j, k, grid, closure::NoVerticalDiffHCABD, args...) = zero(eltype(grid))
 
 Base.show(io::IO, closure::HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity) =
     print(io, "HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity: " *

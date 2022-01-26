@@ -1,9 +1,7 @@
+include("dependencies_for_runtests.jl")
+
 using Statistics
 using NCDatasets
-
-using Oceananigans.Diagnostics
-using Oceananigans.Fields
-using Oceananigans.OutputWriters
 
 using Dates: Millisecond
 using Oceananigans: write_output!
@@ -75,10 +73,10 @@ function test_dependency_adding(model)
 
     # NetCDF dependency test
     netcdf_output_writer = NetCDFOutputWriter(model, output,
-                                                       schedule = TimeInterval(4),
-                                                       filepath = "test.nc",
+                                              schedule = TimeInterval(4),
+                                              filepath = "test.nc",
                                               output_attributes = attributes,
-                                                     dimensions = dimensions)
+                                              dimensions = dimensions)
 
     @test dependencies_added_correctly!(model, windowed_time_average, netcdf_output_writer)
 
@@ -92,15 +90,19 @@ end
 #####
 
 function test_windowed_time_averaging_simulation(model)
+
+    jld_filename1 = "test_windowed_time_averaging1"
+    jld_filename2 = "test_windowed_time_averaging2"
+
     model.clock.iteration = model.clock.time = 0
     simulation = Simulation(model, Δt=1.0, stop_iteration=0)
 
     jld2_output_writer = JLD2OutputWriter(model, model.velocities,
                                           schedule = AveragedTimeInterval(π, window=1),
-                                            prefix = "test",
-                                             force = true)
+                                          prefix = jld_filename1,
+                                          force = true)
 
-                                          # https://github.com/Alexander-Barth/NCDatasets.jl/issues/105
+    # https://github.com/Alexander-Barth/NCDatasets.jl/issues/105
     nc_filepath1 = "windowed_time_average_test1.nc"
     nc_outputs = Dict(string(name) => field for (name, field) in pairs(model.velocities))
     nc_output_writer = NetCDFOutputWriter(model, nc_outputs, filepath=nc_filepath1,
@@ -152,7 +154,7 @@ function test_windowed_time_averaging_simulation(model)
 
     simulation.output_writers[:jld2] = JLD2OutputWriter(model, model.velocities,
                                                         schedule = AveragedTimeInterval(π, window=π),
-                                                          prefix = "test",
+                                                          prefix = jld_filename2,
                                                            force = true)
 
     nc_filepath2 = "windowed_time_average_test2.nc"
@@ -167,6 +169,8 @@ function test_windowed_time_averaging_simulation(model)
 
     rm(nc_filepath1)
     rm(nc_filepath2)
+    rm(jld_filename1 * ".jld2")
+    rm(jld_filename2 * ".jld2")
 
     return nothing
 end
@@ -181,8 +185,9 @@ end
     for arch in archs
         # Some tests can reuse this same grid and model.
         topo = (Periodic, Periodic, Bounded)
-        grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-        model = IncompressibleModel(architecture=arch, grid=grid)
+        grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
+        model = NonhydrostaticModel(grid=grid,
+                                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
         @testset "WindowedTimeAverage [$(typeof(arch))]" begin
             @info "  Testing WindowedTimeAverage [$(typeof(arch))]..."
@@ -198,8 +203,9 @@ end
 
     for arch in archs
         topo =(Periodic, Periodic, Bounded)
-        grid = RegularRectilinearGrid(topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-        model = IncompressibleModel(architecture=arch, grid=grid)
+        grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
+        model = NonhydrostaticModel(grid=grid,
+                                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
         @testset "Dependency adding [$(typeof(arch))]" begin
             @info "    Testing dependency adding [$(typeof(arch))]..."

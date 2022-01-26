@@ -17,4 +17,3 @@ required_tracers(::BuoyancyTracer) = (:b,)
 
 @inline    top_buoyancy_flux(i, j, grid, ::BuoyancyTracer, top_tracer_bcs, clock, fields) = getbc(top_tracer_bcs.b, i, j, grid, clock, fields)
 @inline bottom_buoyancy_flux(i, j, grid, ::BuoyancyTracer, bottom_tracer_bcs, clock, fields) = getbc(bottom_tracer_bcs.b, i, j, grid, clock, fields)
-    

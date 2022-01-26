@@ -1,74 +1,65 @@
-struct KernelFunctionOperation{LX, LY, LZ, P, A, G, T, K, D} <: AbstractOperation{LX, LY, LZ, A, G, T}
+struct KernelFunctionOperation{LX, LY, LZ, P, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
     kernel_function :: K
     computed_dependencies :: D
     parameters :: P
-    architecture :: A
     grid :: G
 
     function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K, computed_dependencies::D,
-                                                 parameters::P, architecture::A, grid::G) where {LX, LY, LZ, K, G, A, D, P}
+                                                 parameters::P, grid::G) where {LX, LY, LZ, K, G, D, P}
         T = eltype(grid)
-        return new{LX, LY, LZ, P, A, G, T, K, D}(kernel_function, computed_dependencies, parameters, architecture, grid)
+        return new{LX, LY, LZ, P, G, T, K, D}(kernel_function, computed_dependencies, parameters, grid)
     end
 
-    """
-        KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid; architecture=nothing,
-                                            computed_dependencies=(), parameters=nothing)
- 
-    Constructs a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid` an with
-    an optional iterable of `computed_dependencies` and arbitrary `parameters`.
+end
 
-    With `isnothing(parameters)` (the default), `kernel_function` is called
-    with
 
-    ```julia
-    kernel_function(i, j, k, grid, computed_dependencies...)
-    ```
+"""
+    KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid;
+                                        computed_dependencies=(), parameters=nothing)
 
-    Otherwise `kernel_function` is called with
+Constructs a `KernelFunctionOperation` at location `(LX, LY, LZ)` on `grid` an with
+an optional iterable of `computed_dependencies` and arbitrary `parameters`.
 
-    ```julia
-    kernel_function(i, j, k, grid, computed_dependencies..., parameters)
-    ```
+With `isnothing(parameters)` (the default), `kernel_function` is called with
 
-    Examples
-    ========
+```julia
+kernel_function(i, j, k, grid, computed_dependencies...)
+```
 
-    Construct a kernel function operation that returns random numbers:
+Otherwise `kernel_function` is called with
 
-    ```julia
-    random_kernel_function(i, j, k, grid) = rand() # use CUDA.rand on the GPU
+```julia
+kernel_function(i, j, k, grid, computed_dependencies..., parameters)
+```
 
-    kernel_op = KernelFunctionOperation{Center, Center, Center}(random_kernel_function, grid; architecture=CPU())
-    ```
+Examples
+========
 
-    Constrcut a kernel function operation using the vertical vorticity operator
-    valid on curvilinear and cubed sphere grids:
+Construct a kernel function operation that returns random numbers:
 
-    ```julia
-    using Oceananigans.Operators: ζ₃ᶠᶠᵃ # called with signature ζ₃ᶠᶠᵃ(i, j, k, grid, u, v)
+```julia
+random_kernel_function(i, j, k, grid) = rand() # use CUDA.rand on the GPU
 
-    grid = model.grid
-    u, v, w = model.velocities
+kernel_op = KernelFunctionOperation{Center, Center, Center}(random_kernel_function, grid)
+```
 
-    ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᵃ, CPU(), grid, computed_dependencies=(u, v))
-    ```
-    """
-    function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K,
-                                                 grid::G;
-                                                 architecture = nothing,
-                                                 computed_dependencies::D = (),
-                                                 parameters::P = nothing) where {LX, LY, LZ, K, G, D, P}
-        T = eltype(grid)
+Construct a kernel function operation using the vertical vorticity operator
+valid on curvilinear and cubed sphere grids:
 
-        arch = isnothing(architecture) ?
-            Oceananigans.Architectures.architecture(computed_dependencies...) :
-            architecture
+```julia
+using Oceananigans.Operators: ζ₃ᶠᶠᵃ # called with signature ζ₃ᶠᶠᵃ(i, j, k, grid, u, v)
 
-        A = typeof(arch)
+grid = model.grid
+u, v, w = model.velocities
 
-        return new{LX, LY, LZ, P, A, G, T, K, D}(kernel_function, computed_dependencies, parameters, arch, grid)
-    end
+ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᵃ, grid, computed_dependencies=(u, v))
+```
+"""
+function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid;
+                                            computed_dependencies = (),
+                                            parameters = nothing) where {LX, LY, LZ}
+
+    return KernelFunctionOperation{LX, LY, LZ}(kernel_function, computed_dependencies, parameters, grid)
 end
 
 @inline Base.getindex(κ::KernelFunctionOperation, i, j, k) = κ.kernel_function(i, j, k, κ.grid, κ.computed_dependencies..., κ.parameters)
@@ -82,5 +73,5 @@ Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY
     KernelFunctionOperation{LX, LY, LZ}(Adapt.adapt(to, κ.kernel_function),
                                         Adapt.adapt(to, κ.computed_dependencies),
                                         Adapt.adapt(to, κ.parameters),
-                                        nothing,
                                         Adapt.adapt(to, κ.grid))
+

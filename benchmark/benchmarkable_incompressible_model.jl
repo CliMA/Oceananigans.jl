@@ -18,8 +18,8 @@ SUITE = BenchmarkGroup()
 for Arch in Architectures, FT in Float_types, N in Ns
     @info "Setting up benchmark: ($Arch, $FT, $N)..."
 
-    grid = RegularRectilinearGrid(FT, size=(N, N, N), extent=(1, 1, 1))
-    model = IncompressibleModel(architecture=Arch(), grid=grid)
+    grid = RectilinearGrid(FT, size=(N, N, N), extent=(1, 1, 1))
+    model = NonhydrostaticModel(architecture=Arch(), grid=grid)
 
     time_step!(model, 1) # warmup
 

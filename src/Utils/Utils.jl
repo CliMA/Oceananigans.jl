@@ -10,10 +10,9 @@ export ordered_dict_show
 export with_tracers
 export versioninfo_with_gpu, oceananigans_versioninfo
 export instantiate
+export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule
 
 import CUDA  # To avoid name conflicts
-
-import Oceananigans: short_show
 
 #####
 ##### Misc. small utils
@@ -22,13 +21,11 @@ import Oceananigans: short_show
 instantiate(x) = x
 instantiate(X::DataType) = X()
 
-short_show(a) = string(a) # fallback
-short_show(f::Function) = string(Symbol(f))
-
 #####
 ##### Include utils
 #####
 
+include("prettysummary.jl")
 include("kernel_launching.jl")
 include("cell_advection_timescale.jl")
 include("pretty_time.jl")

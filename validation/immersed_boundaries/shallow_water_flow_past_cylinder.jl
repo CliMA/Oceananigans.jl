@@ -8,7 +8,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 experiment_name = "shallow_water_flow_past_cylinder"
 
-underlying_grid = RegularRectilinearGrid(size=(128, 64), x=(-5, 10), y=(-3, 3), topology=(Periodic, Bounded, Flat), halo = (3, 3))
+underlying_grid = RectilinearGrid(size=(128, 64), x=(-5, 10), y=(-3, 3), topology=(Periodic, Bounded, Flat), halo = (3, 3))
                               
 cylinder(x, y, z)  = (x^2 + y^2) < 1
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(cylinder))
@@ -44,7 +44,7 @@ function progress(sim)
     return nothing
 end
 
-Δmin = min(grid.Δx, grid.Δy)
+Δmin = min(grid.Δxᶜᵃᵃ, grid.Δyᵃᶜᵃ)
 
 wizard = TimeStepWizard(cfl = 0.5, Δt = 0.01Δmin, max_change = 1.1, max_Δt = 0.05Δmin)
 
@@ -52,7 +52,7 @@ simulation = Simulation(model, Δt=wizard, stop_time=1, progress=progress, itera
 
 uh, vh, h = model.solution
 
-ζ = ComputedField(∂x(vh / h) - ∂y(uh / h))
+ζ = Field(∂x(vh / h) - ∂y(uh / h))
 
 outputs = merge(model.solution, (ζ=ζ,))
 

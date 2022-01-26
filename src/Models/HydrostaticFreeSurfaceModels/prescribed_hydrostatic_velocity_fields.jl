@@ -6,7 +6,7 @@ using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: AbstractField, FunctionField
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Models.IncompressibleModels: extract_boundary_conditions
+import Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 
 using Adapt
 
@@ -28,11 +28,15 @@ Builds `PrescribedVelocityFields` with prescribed functions `u`, `v`, and `w`.
 
 If `isnothing(parameters)`, then `u, v, w` are called with the signature
 
-    `u(x, y, z, t) = # something interesting`
+```
+u(x, y, z, t) = # something interesting
+```
 
 If `!isnothing(parameters)`, then `u, v, w` are called with the signature
 
-    `u(x, y, z, t, parameters) = # something parameterized and interesting`
+```
+u(x, y, z, t, parameters) = # something parameterized and interesting
+```
 
 In the constructor for `HydrostaticFreeSurfaceModel`, the functions `u, v, w` are wrapped
 in `FunctionField` and associated with the model's `grid` and `clock`.
@@ -43,13 +47,23 @@ PrescribedVelocityFields(; u=zerofunc, v=zerofunc, w=zerofunc, parameters=nothin
 PrescribedField(X, Y, Z, f::Function,      grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
 PrescribedField(X, Y, Z, f::AbstractField, grid; kwargs...) = f
 
-function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields, arch, grid, clock, bcs)
+function PrescribedField(X, Y, Z, f::Field, grid; kwargs...)
+    fill_halo_regions!(f, architecture(f))
+    return f
+end
+
+function HydrostaticFreeSurfaceVelocityFields(velocities::PrescribedVelocityFields, grid, clock, bcs)
 
     u = PrescribedField(Face, Center, Center, velocities.u, grid; clock=clock, parameters=velocities.parameters)
     v = PrescribedField(Center, Face, Center, velocities.v, grid; clock=clock, parameters=velocities.parameters)
     w = PrescribedField(Center, Center, Face, velocities.w, grid; clock=clock, parameters=velocities.parameters)
 
     return PrescribedVelocityFields(u, v, w, velocities.parameters)
+end
+
+function HydrostaticFreeSurfaceTendencyFields(::PrescribedVelocityFields, free_surface, grid, tracer_names)
+    tracers = TracerFields(tracer_names, grid)
+    return merge((u = nothing, v = nothing, η = nothing), tracers)
 end
 
 @inline fill_halo_regions!(::PrescribedVelocityFields, args...) = nothing
@@ -62,9 +76,9 @@ compute_w_from_continuity!(::PrescribedVelocityFields, args...) = nothing
 validate_velocity_boundary_conditions(::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 
-FreeSurfaceDisplacementField(::PrescribedVelocityFields, ::Nothing, arch, grid) = nothing
-HorizontalVelocityFields(::PrescribedVelocityFields, arch, grid) = nothing, nothing
-FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, arch, grid) = nothing
+FreeSurfaceDisplacementField(::PrescribedVelocityFields, ::Nothing, grid) = nothing
+HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
+FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
 calculate_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields; kwargs...) = []

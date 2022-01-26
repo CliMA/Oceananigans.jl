@@ -30,9 +30,9 @@ ic_name(::typeof(ϕ_Square))   = "Square"
 
 function setup_model(N, L, U, ϕₐ, time_stepper, advection_scheme)
     topology = (Periodic, Flat, Flat)
-    grid = RegularRectilinearGrid(topology=topology, size=(N, ), halo=(9, ), x=(-L/2, L/2))
+    grid = RectilinearGrid(topology=topology, size=(N, ), halo=(9, ), x=(-L/2, L/2))
 
-    model = IncompressibleModel(
+    model = NonhydrostaticModel(
                grid = grid,
         timestepper = time_stepper,
           advection = advection_scheme,
@@ -56,7 +56,7 @@ function create_animation(N, L, CFL, ϕₐ, time_stepper, advection_scheme; U=1.
     
     v, c = model.velocities.v, model.tracers.c
     x = xnodes(c)
-    Δt = CFL * model.grid.Δx / abs(U)
+    Δt = CFL * model.grid.Δxᶜᵃᵃ / abs(U)
     Nt = ceil(Int, T/Δt)
 
     function every(n)

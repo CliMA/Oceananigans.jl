@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 using NCDatasets
 using StructArrays
 
@@ -14,12 +16,12 @@ end
 function run_simple_particle_tracking_tests(arch, timestepper)
     topo = (Periodic, Periodic, Bounded)
     domain = (x=(-1, 1), y=(-1, 1), z=(-1, 1))
-    grid = RegularRectilinearGrid(topology=topo, size=(5, 5, 5); domain...)
+    grid = RectilinearGrid(arch, topology=topo, size=(5, 5, 5); domain...)
 
     P = 10
-    xs = convert(array_type(arch), zeros(P))
-    ys = convert(array_type(arch), zeros(P))
-    zs = convert(array_type(arch), 0.5*ones(P))
+    xs = arch_array(arch, zeros(P))
+    ys = arch_array(arch, zeros(P))
+    zs = arch_array(arch, 0.5*ones(P))
 
     # Test first constructor
     lagrangian_particles = LagrangianParticles(x=xs, y=ys, z=zs)
@@ -32,17 +34,17 @@ function run_simple_particle_tracking_tests(arch, timestepper)
 
     particles = StructArray{TestParticle}((xs, ys, zs, us, vs, ws, ss))
 
-    velocities = VelocityFields(arch, grid)
+    velocities = VelocityFields(grid)
     u, v, w = velocities
-    speed = ComputedField(√(u*u + v*v + w*w))
+    speed = Field(√(u*u + v*v + w*w))
 
-    tracked_fields = merge(velocities, (s=speed,))
+    tracked_fields = merge(velocities, (; s=speed))
 
     # Test second constructor
     lagrangian_particles = LagrangianParticles(particles; tracked_fields)
     @test lagrangian_particles isa LagrangianParticles
 
-    model = IncompressibleModel(architecture=arch, grid=grid, timestepper=timestepper,
+    model = NonhydrostaticModel(grid=grid, timestepper=timestepper,
                                 velocities=velocities, particles=lagrangian_particles)
 
     set!(model, u=1, v=1)
@@ -51,7 +53,8 @@ function run_simple_particle_tracking_tests(arch, timestepper)
 
     jld2_filepath = "test_particles.jld2"
     sim.output_writers[:particles_jld2] =
-        JLD2OutputWriter(model, (particles=model.particles,), prefix="test_particles", schedule=IterationInterval(1))
+        JLD2OutputWriter(model, (; particles=model.particles),
+                         prefix="test_particles", schedule=IterationInterval(1))
 
     nc_filepath = "test_particles.nc"
     sim.output_writers[:particles_nc] =
@@ -63,7 +66,7 @@ function run_simple_particle_tracking_tests(arch, timestepper)
     run!(sim)
 
     @test length(model.particles) == P
-    @test size(model.particles) == (P,)
+    @test size(model.particles) == tuple(P)
     @test propertynames(model.particles.properties) == (:x, :y, :z, :u, :v, :w, :s)
 
     x = convert(array_type(arch), model.particles.properties.x)
@@ -74,13 +77,13 @@ function run_simple_particle_tracking_tests(arch, timestepper)
     w = convert(array_type(arch), model.particles.properties.w)
     s = convert(array_type(arch), model.particles.properties.s)
 
-    @test size(x) == (P,)
-    @test size(y) == (P,)
-    @test size(z) == (P,)
-    @test size(u) == (P,)
-    @test size(v) == (P,)
-    @test size(w) == (P,)
-    @test size(s) == (P,)
+    @test size(x) == tuple(P)
+    @test size(y) == tuple(P)
+    @test size(z) == tuple(P)
+    @test size(u) == tuple(P)
+    @test size(v) == tuple(P)
+    @test size(w) == tuple(P)
+    @test size(s) == tuple(P)
 
     @test all(x .≈ 0.01)
     @test all(y .≈ 0.01)
@@ -120,13 +123,13 @@ function run_simple_particle_tracking_tests(arch, timestepper)
     @test haskey(file["timeseries/particles"], "0")
     @test haskey(file["timeseries/particles"], "0")
 
-    @test size(file["timeseries/particles/1"].x) == (P,)
-    @test size(file["timeseries/particles/1"].y) == (P,)
-    @test size(file["timeseries/particles/1"].z) == (P,)
-    @test size(file["timeseries/particles/1"].u) == (P,)
-    @test size(file["timeseries/particles/1"].v) == (P,)
-    @test size(file["timeseries/particles/1"].w) == (P,)
-    @test size(file["timeseries/particles/1"].s) == (P,)
+    @test size(file["timeseries/particles/1"].x) == tuple(P)
+    @test size(file["timeseries/particles/1"].y) == tuple(P)
+    @test size(file["timeseries/particles/1"].z) == tuple(P)
+    @test size(file["timeseries/particles/1"].u) == tuple(P)
+    @test size(file["timeseries/particles/1"].v) == tuple(P)
+    @test size(file["timeseries/particles/1"].w) == tuple(P)
+    @test size(file["timeseries/particles/1"].s) == tuple(P)
 
     @test all(file["timeseries/particles/1"].x .≈ 0.01)
     @test all(file["timeseries/particles/1"].y .≈ 0.01)
@@ -160,13 +163,13 @@ function run_simple_particle_tracking_tests(arch, timestepper)
 
     @test model.particles.properties isa StructArray
 
-    @test size(x) == (P,)
-    @test size(y) == (P,)
-    @test size(z) == (P,)
-    @test size(u) == (P,)
-    @test size(v) == (P,)
-    @test size(w) == (P,)
-    @test size(s) == (P,)
+    @test size(x) == tuple(P)
+    @test size(y) == tuple(P)
+    @test size(z) == tuple(P)
+    @test size(u) == tuple(P)
+    @test size(v) == tuple(P)
+    @test size(w) == tuple(P)
+    @test size(s) == tuple(P)
 
     @test all(x .≈ 0.01)
     @test all(y .≈ 0.01)

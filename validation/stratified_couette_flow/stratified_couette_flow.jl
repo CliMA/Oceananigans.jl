@@ -9,7 +9,7 @@ using Oceananigans.Utils
 
 """ Friction velocity. See equation (16) of Vreugdenhil & Taylor (2018). """
 function uτ(model, Uavg, U_wall)
-    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
+    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
     ν = model.closure.ν
 
     compute!(Uavg)
@@ -28,7 +28,7 @@ end
 
 """ Heat flux at the wall. See equation (16) of Vreugdenhil & Taylor (2018). """
 function q_wall(model, Tavg, Θ_wall)
-    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δz
+    Nz, Hz, Δz = model.grid.Nz, model.grid.Hz, model.grid.Δzᵃᵃᶜ
     κ = model.closure.κ.T
 
     compute!(Tavg)
@@ -98,25 +98,25 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Impose boundary conditions
     #####
 
-    grid = RegularRectilinearGrid(size = (Nxy, Nxy, Nz), extent = (4π*h, 2π*h, 2h))
+    grid = RectilinearGrid(arch, size = (Nxy, Nxy, Nz), extent = (4π*h, 2π*h, 2h))
 
-    Tbcs = TracerBoundaryConditions(grid, top = BoundaryCondition(Value,  Θ_wall),
-                                       bottom = BoundaryCondition(Value, -Θ_wall))
+    Tbcs = FieldBoundaryConditions(top = ValueBoundaryCondition(Θ_wall),
+                                   bottom = ValueBoundaryCondition(-Θ_wall))
 
-    ubcs = UVelocityBoundaryConditions(grid, top = BoundaryCondition(Value,  U_wall),
-                                          bottom = BoundaryCondition(Value, -U_wall))
+    ubcs = FieldBoundaryConditions(top = ValueBoundaryCondition(U_wall),
+                                   bottom = ValueBoundaryCondition(-U_wall))
 
-    vbcs = VVelocityBoundaryConditions(grid, top = BoundaryCondition(Value, 0),
-                                          bottom = BoundaryCondition(Value, 0))
+    vbcs = FieldBoundaryConditions(top = ValueBoundaryCondition(0),
+                                   bottom = ValueBoundaryCondition(0))
 
     #####
     ##### Non-dimensional model setup
     #####
 
-    model = IncompressibleModel(
-               architecture = arch,
+    model = NonhydrostaticModel(
                        grid = grid,
                    buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=1.0, β=0.0)),
+                    tracers = (:T, :S),
                     closure = AnisotropicMinimumDissipation(ν=ν, κ=κ),
         boundary_conditions = (u=ubcs, v=vbcs, T=Tbcs)
     )
@@ -180,8 +180,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         :v => model -> Array(model.velocities.v.data.parent),
         :w => model -> Array(model.velocities.w.data.parent),
         :T => model -> Array(model.tracers.T.data.parent),
-   :kappaT => model -> Array(model.diffusivities.κₑ.T.data.parent),
-       :nu => model -> Array(model.diffusivities.νₑ.data.parent))
+   :kappaT => model -> Array(model.diffusivity_fields.κₑ.T.data.parent),
+       :nu => model -> Array(model.diffusivity_fields.νₑ.data.parent))
 
     field_writer =
         JLD2OutputWriter(model, fields, dir=base_dir, prefix=prefix * "_fields",
@@ -192,12 +192,12 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Set up profile output writer
     #####
 
-    Uavg = AveragedField(model.velocities.u,       dims=(1, 2))
-    Vavg = AveragedField(model.velocities.v,       dims=(1, 2))
-    Wavg = AveragedField(model.velocities.w,       dims=(1, 2))
-    Tavg = AveragedField(model.tracers.T,          dims=(1, 2))
-    νavg = AveragedField(model.diffusivities.νₑ,   dims=(1, 2))
-    κavg = AveragedField(model.diffusivities.κₑ.T, dims=(1, 2))
+    Uavg = Field(Average(model.velocities.u,            dims=(1, 2)))
+    Vavg = Field(Average(model.velocities.v,            dims=(1, 2)))
+    Wavg = Field(Average(model.velocities.w,            dims=(1, 2)))
+    Tavg = Field(Average(model.tracers.T,               dims=(1, 2)))
+    νavg = Field(Average(model.diffusivity_fields.νₑ,   dims=(1, 2)))
+    κavg = Field(Average(model.diffusivity_fields.κₑ.T, dims=(1, 2)))
 
     profiles = Dict(
          :u => Uavg,
@@ -232,7 +232,10 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
     ##### Time stepping
     #####
 
-    wizard = TimeStepWizard(cfl=0.02, Δt=0.0001, max_change=1.1, max_Δt=0.02)
+    simulation = Simulation(model, Δt=0.0001, stop_time=end_time)
+
+    wizard = TimeStepWizard(cfl=0.02, max_change=1.1, max_Δt=0.02)
+    simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(Ni))
 
     # We will ramp up the CFL used by the adaptive time step wizard during spin up.
     cfl(t) = min(0.01t, 0.1)
@@ -248,22 +251,27 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
         umax = maximum(abs, model.velocities.u.data.parent)
         vmax = maximum(abs, model.velocities.v.data.parent)
         wmax = maximum(abs, model.velocities.w.data.parent)
-        CFL = wizard.Δt / cell_advection_timescale(model)
+        CFL = simulation.Δt / cell_advection_timescale(model)
 
-        Δ = min(model.grid.Δx, model.grid.Δy, model.grid.Δz)
-        νmax = maximum(model.diffusivities.νₑ.data.parent)
-        κmax = maximum(model.diffusivities.κₑ.T.data.parent)
-        νCFL = wizard.Δt / (Δ^2 / νmax)
-        κCFL = wizard.Δt / (Δ^2 / κmax)
+        Δ = min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, model.grid.Δzᵃᵃᶜ)
+        νmax = maximum(model.diffusivity_fields.νₑ.data.parent)
+        κmax = maximum(model.diffusivity_fields.κₑ.T.data.parent)
+        νCFL = simulation.Δt / (Δ^2 / νmax)
+        κCFL = simulation.Δt / (Δ^2 / κmax)
 
-        @printf("[%06.2f%%] i: %d, t: %.2e, umax: (%.2e, %.2e, %.2e), CFL: %.2e, νκmax: (%.2e, %.2e), νκCFL: (%.2e, %.2e), next Δt: %.2e, wall time: %s\n",
-                progress, model.clock.iteration, model.clock.time, umax, vmax, wmax,
-                CFL, νmax, κmax, νCFL, κCFL, wizard.Δt, prettytime(simulation.run_time))
+        @printf("[%06.2f%%] i: %d, t: %.2e, umax: (%.2e, %.2e, %.2e), ",
+                progress, model.clock.iteration, model.clock.time, umax, vmax, wmax)
+
+        @printf("CFL: %.2e, νκmax: (%.2e, %.2e), νκCFL: (%.2e, %.2e), next Δt: %.2e, wall time: %s\n",
+                CFL, νmax, κmax, νCFL, κCFL, simulation.Δt, prettytime(simulation.run_wall_time))
+
+        return nothing
     end
 
-    simulation = Simulation(model, Δt=wizard, stop_time=end_time,
-                            progress=print_progress, iteration_interval=Ni)
+    simulation.callbacks[:progress] = Callback(print_progress, IterationInterval(Ni))
+
     push!(simulation.output_writers, field_writer, profile_writer, statistics_writer)
+
     run!(simulation)
 
     return simulation

@@ -3,6 +3,8 @@ using Oceananigans.Grids: interior_parent_indices
 using Statistics: norm, dot
 using LinearAlgebra
 
+import Oceananigans.Architectures: architecture
+
 mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P}
                architecture :: A
                        grid :: G
@@ -17,6 +19,8 @@ mutable struct PreconditionedConjugateGradientSolver{A, G, L, T, F, M, P}
               precondition! :: M
      preconditioner_product :: P
 end
+
+architecture(solver::PreconditionedConjugateGradientSolver) = solver.architecture
 
 no_precondition!(args...) = nothing
 
@@ -38,7 +42,7 @@ end
                                           precondition = nothing)
 
 Returns a PreconditionedConjugateGradientSolver that solves the linear equation
-``A*x = b`` using a iterative conjugate gradient method with optional preconditioning.
+``A x = b`` using a iterative conjugate gradient method with optional preconditioning.
 The solver is used by calling
 
 ```
@@ -47,8 +51,8 @@ solve!(x, solver::PreconditionedConjugateGradientOperator, b, args...)
 
 for `solver`, right-hand side `b`, solution `x`, and optional arguments `args...`.
 
-Args
-====
+Arguments
+=========
 
 * `template_field`: Dummy field that is the same type and size as `x` and `b`, which
                     is used to infer the `architecture`, `grid`, and to create work arrays
@@ -61,21 +65,21 @@ Args
 * `maximum_iterations`: Maximum number of iterations the solver may perform before exiting.
 
 * `tolerance`: Tolerance for convergence of the algorithm. The algorithm quits when
-               `norm(A*x - b) < tolerance`.
+               `norm(A * x - b) < tolerance`.
 
 * `precondition`: Function with signature `preconditioner!(z, y, args...)` that calculates
-                    `P*y` and stores the result in `z` for linear operator `P`.
-                    Note that some precondition algorithms describe the step
-                    "solve `M*x = b`" for precondition `M`"; in this context,
-                    `P = M⁻¹`.
+                  `P * y` and stores the result in `z` for linear operator `P`.
+                  Note that some precondition algorithms describe the step
+                  "solve `M * x = b`" for precondition `M`"; in this context,
+                  `P = M⁻¹`.
 
-See `solve!` for more information about the preconditioned conjugate-gradient algorithm.
+See [`solve!`](@ref) for more information about the preconditioned conjugate-gradient algorithm.
 """
 function PreconditionedConjugateGradientSolver(linear_operation;
                                                template_field::AbstractField,
                                                maximum_iterations = prod(size(template_field)),
                                                tolerance = 1e-13, #sqrt(eps(eltype(template_field.grid))),
-                                               precondition = nothing)
+                                               preconditioner_method = nothing)
 
     arch = architecture(template_field)
     grid = template_field.grid
@@ -86,7 +90,7 @@ function PreconditionedConjugateGradientSolver(linear_operation;
             residual = similar(template_field) # rᵢ
 
     # Either nothing (no precondition) or P*xᵢ = zᵢ
-    precondition_product = initialize_precondition_product(precondition, template_field)
+    precondition_product = initialize_precondition_product(preconditioner_method, template_field)
 
     return PreconditionedConjugateGradientSolver(arch,
                                                  grid,
@@ -98,29 +102,27 @@ function PreconditionedConjugateGradientSolver(linear_operation;
                                                  linear_operator_product,
                                                  search_direction,
                                                  residual,
-                                                 precondition,
+                                                 preconditioner_method,
                                                  precondition_product)
 end
 
 """
     solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
 
-Solves A*x = b using an iterative conjugate-gradient method,
-where A*x is determined by solver.linear_operation
+Solve `A * x = b` using an iterative conjugate-gradient method, where `A * x` is
+determined by `solver.linear_operation`
     
-See fig 2.5 in
+See figure 2.5 in
 
-> The Preconditioned Conjugate Gradient Method in
-  "Templates for the Solution of Linear Systems: Building Blocks for Iterative Methods"
-  Barrett et. al, 2nd Edition.
+> The Preconditioned Conjugate Gradient Method in "Templates for the Solution of Linear Systems: Building Blocks for Iterative Methods" Barrett et. al, 2nd Edition.
     
 Given:
-    * Linear Preconditioner operator M!(solution, x, other_args...) that computes `M*x=solution`
-    * Linear A matrix operator A as a function A();
-    * A dot product function norm();
-    * A right-hand side b;
-    * An initial guess x; and
-    * Local vectors: z, r, p, q
+  * Linear Preconditioner operator `M!(solution, x, other_args...)` that computes `M * x = solution`
+  * A matrix operator `A` as a function `A()`;
+  * A dot product function `norm()`;
+  * A right-hand side `b`;
+  * An initial guess `x`; and
+  * Local vectors: `z`, `r`, `p`, `q`
 
 This function executes the algorithm
     
@@ -153,6 +155,7 @@ Loop:
      ρⁱ⁻¹ = ρ
 ```
 """
+
 function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
 
     # Initialize
@@ -172,9 +175,9 @@ function solve!(x, solver::PreconditionedConjugateGradientSolver, b, args...)
         iterate!(x, solver, b, args...)
     end
 
-    fill_halo_regions!(x, solver.architecture)
+    fill_halo_regions!(x, solver.architecture) # blocking
 
-    return nothing
+    return x
 end
 
 function iterate!(x, solver, b, args...)

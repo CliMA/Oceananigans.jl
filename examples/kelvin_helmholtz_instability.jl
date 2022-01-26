@@ -17,8 +17,8 @@
 
 using Oceananigans
 
-grid = RegularRectilinearGrid(size=(64, 64), x=(-5, 5), z=(-5, 5),
-                              topology=(Periodic, Flat, Bounded))
+grid = RectilinearGrid(size=(64, 64), x=(-5, 5), z=(-5, 5),
+                       topology=(Periodic, Flat, Bounded))
 
 # # The basic state
 #
@@ -89,7 +89,7 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 # ```math
 # L \, \phi_j = \lambda_j \, \phi_j \quad j=1,2,\dots \, .
 # ```
-# From hereafter we'll use the convention that the eigenvalues are ordered according to their real part, ``\real(\lambda_1) \ge \real(\lambda_2) \ge \dotsb``.
+# From hereafter we'll use the convention that the eigenvalues are ordered according to their real part, ``\mathrm{Re}(\lambda_1) \ge \mathrm{Re}(\lambda_2) \ge \dotsb``.
 #
 # Remarks:
 #
@@ -106,7 +106,7 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 # ```math
 # \lim_{n \to \infty} L^n \Phi \propto \phi_1 \, .
 # ```
-# Of course, if ``\phi_1`` is an unstable mode (i.e., ``\sigma_1 = \real(\lambda_1) > 0``), then successive application
+# Of course, if ``\phi_1`` is an unstable mode (i.e., ``\sigma_1 = \mathrm{Re}(\lambda_1) > 0``), then successive application
 # of ``L`` will lead to exponential amplification. (Similarly, if ``\sigma_1 < 0``, successive application of ``L`` will
 # lead to exponential decay of ``\Phi`` down to machine precision.) Therefore, after each
 # application of the linear operator ``L``, we rescale the output ``L \Phi`` back to a pre-selected amplitude.
@@ -130,7 +130,7 @@ plot(U_plot, B_plot, Ri_plot, layout=(1, 3), size=(800, 400))
 
 # # The model
 
-model = IncompressibleModel(timestepper = :RungeKutta3,
+model = NonhydrostaticModel(timestepper = :RungeKutta3,
                               advection = UpwindBiasedFifthOrder(),
                                    grid = grid,
                                coriolis = nothing,
@@ -280,7 +280,7 @@ nothing # hide
 u, v, w = model.velocities
 b = model.tracers.b
 
-perturbation_vorticity = ComputedField(∂z(u) - ∂x(w))
+perturbation_vorticity = Field(∂z(u) - ∂x(w))
 
 xF, yF, zF = nodes(perturbation_vorticity)
 
@@ -332,7 +332,7 @@ nothing # hide
 
 using Random, Statistics
 
-mean_perturbation_kinetic_energy = AveragedField(1/2 * (u^2 + w^2), dims=(1, 2, 3))
+mean_perturbation_kinetic_energy = Field(Average(1/2 * (u^2 + w^2)))
 
 noise(x, y, z) = randn()
 
@@ -377,9 +377,9 @@ rescale!(simulation.model, mean_perturbation_kinetic_energy, target_kinetic_ener
 # buoyancy (perturbation + basic state). It'll be also neat to plot the kinetic energy time-series
 # and confirm it grows with the estimated growth rate.
 
-total_vorticity = ComputedField(∂z(u) + ∂z(model.background_fields.velocities.u) - ∂x(w))
+total_vorticity = Field(∂z(u) + ∂z(model.background_fields.velocities.u) - ∂x(w))
 
-total_b = ComputedField(b + model.background_fields.tracers.b)
+total_b = Field(b + model.background_fields.tracers.b)
 
 simulation.output_writers[:vorticity] =
     JLD2OutputWriter(model, (ω=perturbation_vorticity, Ω=total_vorticity, b=b, B=total_b, KE=mean_perturbation_kinetic_energy),

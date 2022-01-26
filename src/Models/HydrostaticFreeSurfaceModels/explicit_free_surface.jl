@@ -1,3 +1,4 @@
+using Oceananigans.Architectures: device_event
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Operators: ∂xᶠᶜᵃ, ∂yᶜᶠᵃ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
@@ -19,8 +20,8 @@ Adapt.adapt_structure(to, free_surface::ExplicitFreeSurface) =
 ##### Interface to HydrostaticFreeSurfaceModel
 #####
 
-function FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, velocities, arch, grid)
-    η = FreeSurfaceDisplacementField(velocities, free_surface, arch, grid)
+function FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, velocities, grid)
+    η = FreeSurfaceDisplacementField(velocities, free_surface, grid)
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
     return ExplicitFreeSurface(η, g)
 end
@@ -46,7 +47,7 @@ explicit_ab2_step_free_surface!(free_surface, model, Δt, χ) =
     launch!(model.architecture, model.grid, :xy,
             _explicit_ab2_step_free_surface!, free_surface.η, Δt, χ,
             model.timestepper.Gⁿ.η, model.timestepper.G⁻.η,
-            dependencies = Event(device(model.architecture)))
+            dependencies = device_event(model.architecture))
 
 #####
 ##### Kernel

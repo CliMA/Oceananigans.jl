@@ -38,14 +38,27 @@ FPlane{Float64}: f = 1.03e-04
 
 in which case the value of ``f`` is given by ``2\Omega\sin\varphi``.
 
-## Non-traditional ``f``-plane
+## Coriolis term for constant rotation in a Cartesian coordinate system
 
-To set up an ``f``-plane with non-traditional Coriolis terms, for example, with
+One can use `ConstantCartesianCoriolis` to set up a Coriolis acceleration term where the Coriolis parameter
+is constant and the rotation axis is arbitrary. For example, with
 ``\boldsymbol{f} = (0, f_y, f_z) = (0, 2, 1) \times 10^{-4} \text{s}^{-1}``,
 
 ```jldoctest
-julia> coriolis = NonTraditionalFPlane(fz=1e-4, fy=2e-4)
-NonTraditionalFPlane{Float64}: fz = 1.00e-04, fy = 2.00e-04
+julia> coriolis = ConstantCartesianCoriolis(fx=0, fy=2e-4, fz=1e-4)
+ConstantCartesianCoriolis{Float64}: fx = 0.00e+00, fy = 2.00e-04, fz = 1.00e-04
+```
+
+Or alternatively, the same result can be achieved by specifying the magnitude of the Coriolis
+frequency `f` and the `rotation_axis`. So another way to get a Coriolis acceleration with the same
+values is:
+
+```jldoctest
+julia> rotation_axis = (0, 2e-4, 1e-4)./√(2e-4^2 + 1e-4^2) # rotation_axis has to be a unit vector
+(0.0, 0.8944271909999159, 0.4472135954999579)
+
+julia> coriolis = ConstantCartesianCoriolis(f=√(2e-4^2+1e-4^2), rotation_axis=rotation_axis)
+ConstantCartesianCoriolis{Float64}: fx = 0.00e+00, fy = 2.00e-04, fz = 1.00e-04
 ```
 
 An ``f``-plane with non-traditional Coriolis terms can also be specified at some latitude on a spherical planet
@@ -53,8 +66,8 @@ with a planetary rotation rate. For example, to specify an ``f``-plane at a lati
 on Earth which has a rotation rate of ``\Omega = 7.292115 \times 10^{-5} \text{s}^{-1}``
 
 ```jldoctest
-julia> coriolis = NonTraditionalFPlane(rotation_rate=7.292115e-5, latitude=45)
-NonTraditionalFPlane{Float64}: fz = 1.03e-04, fy = 1.03e-04
+julia> coriolis = ConstantCartesianCoriolis(rotation_rate=7.292115e-5, latitude=45)
+ConstantCartesianCoriolis{Float64}: fx = 0.00e+00, fy = 1.03e-04, fz = 1.03e-04
 ```
 
 in which case ``f_z = 2\Omega\sin\varphi`` and ``f_y = 2\Omega\cos\varphi``.
@@ -71,7 +84,7 @@ BetaPlane{Float64}: f₀ = 1.00e-04, β = 1.50e-11
 ```
 
 Alternatively, a ``\beta``-plane can also be set up at some latitude on a spherical planet with a planetary rotation rate
-and planetary radius. For example, to specify a ``\beta``-plane at a latitude of ``\varphi = 10\degree{S}`` on Earth
+and planetary radius. For example, to specify a ``\beta``-plane at a latitude of ``\varphi = 10^\circ{S}`` on Earth
 which has a rotation rate of ``\Omega = 7.292115 \times 10^{-5} \text{s}^{-1}`` and a radius of ``R = 6,371 \text{km}``
 
 ```jldoctest

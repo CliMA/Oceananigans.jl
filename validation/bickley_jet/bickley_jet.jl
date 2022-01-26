@@ -47,13 +47,12 @@ scheme or formulation, with horizontal resolution `Nh`, viscosity `ν`, on `arch
 function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU(), Nh = 64, ν = 0,
                            momentum_advection = VectorInvariant())
 
-    grid = RegularRectilinearGrid(size=(Nh, Nh, 1),
+    grid = RectilinearGrid(arch, size=(Nh, Nh, 1),
                                 x = (-2π, 2π), y=(-2π, 2π), z=(0, 1),
                                 topology = (Periodic, Periodic, Bounded))
 
 
-    model = HydrostaticFreeSurfaceModel(      architecture = arch,
-                                        momentum_advection = momentum_advection,
+    model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
                                           tracer_advection = WENO5(),
                                                       grid = grid,
                                                    tracers = :c,
@@ -86,7 +85,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     wizard = TimeStepWizard(cfl=0.1, Δt=1e-4, max_change=1.1, max_Δt=10.0)
 
     c = sqrt(model.free_surface.gravitational_acceleration)
-    Δt = 0.1 * model.grid.Δx / c
+    Δt = 0.1 * model.grid.Δxᶜᵃᵃ / c
 
     simulation = Simulation(model, Δt=Δt, stop_time=stop_time,
                             iteration_interval=100, progress=progress)
@@ -94,7 +93,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     # Output: primitive fields + computations
     u, v, w, c = merge(model.velocities, model.tracers)
 
-    ζ = ComputedField(∂x(v) - ∂y(u))
+    ζ = Field(∂x(v) - ∂y(u))
 
     outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.η))
 

@@ -21,9 +21,9 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
     #####
 
     domain = (x=(0, 2π), y=(0, 1), z=(0, 1))
-    grid = RegularRectilinearGrid(topology=topo, size=(Nx, 1, 1), halo=(3, 3, 3); domain...)
+    grid = RectilinearGrid(architecture, topology=topo, size=(Nx, 1, 1), halo=(3, 3, 3); domain...)
 
-    model = IncompressibleModel(architecture = architecture,
+    model = NonhydrostaticModel(
                                  timestepper = :RungeKutta3,
                                         grid = grid,
                                    advection = advection,
@@ -60,9 +60,9 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
     #####
 
     ydomain = (x=(0, 1), y=(0, 2π), z=(0, 1))
-    ygrid = RegularRectilinearGrid(topology=topo, size=(1, Nx, 1), halo=(3, 3, 3); ydomain...)
+    ygrid = RectilinearGrid(topology=topo, size=(1, Nx, 1), halo=(3, 3, 3); ydomain...)
 
-    model = IncompressibleModel(architecture = architecture,
+    model = NonhydrostaticModel(architecture = architecture,
                                  timestepper = :RungeKutta3,
                                         grid = ygrid,
                                    advection = advection,
@@ -96,9 +96,9 @@ function run_test(; Nx, Δt, stop_iteration, U = 1, κ = 1e-4,
     #####
 
     zdomain = (x=(0, 1), y=(0, 1), z=(0, 2π))
-    zgrid = RegularRectilinearGrid(topology=topo, size=(1, 1, Nx), halo=(3, 3, 3); zdomain...)
+    zgrid = RectilinearGrid(topology=topo, size=(1, 1, Nx), halo=(3, 3, 3); zdomain...)
 
-    model = IncompressibleModel(architecture = architecture,
+    model = NonhydrostaticModel(architecture = architecture,
                                  timestepper = :RungeKutta3,
                                         grid = zgrid,
                                    advection = advection,

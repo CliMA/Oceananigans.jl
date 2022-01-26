@@ -12,7 +12,7 @@
 # The phytoplankton in our model are advected, diffuse, grow, and die according to
 #
 # ```math
-# ∂_t P + \boldsymbol{u ⋅ ∇} P - κ ∇²P = (μ₀ \exp(z / λ) - m) \, P \, ,
+# ∂_t P + \boldsymbol{v ⋅ ∇} P - κ ∇²P = (μ₀ \exp(z / λ) - m) \, P \, ,
 # ```
 #
 # where ``\boldsymbol{v}`` is the turbulent velocity field, ``κ`` is an isotropic diffusivity,
@@ -29,7 +29,7 @@
 #     and grazing by zooplankton.
 #   * How to set time-dependent boundary conditions.
 #   * How to use the `TimeStepWizard` to adapt the simulation time-step.
-#   * How to use `AveragedField` to diagnose spatial averages of model fields.
+#   * How to use `Average` and `Field` to diagnose spatial averages of model fields.
 #
 # ## Install dependencies
 #
@@ -48,13 +48,13 @@
 using Oceananigans
 using Oceananigans.Units: minutes, hour, hours, day
 
-grid = RegularRectilinearGrid(size=(64, 64), extent=(64, 64), topology=(Periodic, Flat, Bounded))
+grid = RectilinearGrid(size=(64, 64), extent=(64, 64), topology=(Periodic, Flat, Bounded))
 
 # ## Boundary conditions
 #
 # We impose a surface buoyancy flux that's initially constant and then decays to zero,
 
-buoyancy_flux(x, y, t, p) = p.initial_buoyancy_flux * exp(-t^4 / (24 * p.shut_off_time^4))
+buoyancy_flux(x, y, t, params) = params.initial_buoyancy_flux * exp(-t^4 / (24 * params.shut_off_time^4))
 
 buoyancy_flux_parameters = (initial_buoyancy_flux = 1e-8, # m² s⁻³
                                     shut_off_time = 2hours)
@@ -67,9 +67,9 @@ buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, parameters = buoyancy_fl
 
 using Plots, Measures
 
-time = range(0, 12hours, length=100)
+times = range(0, 12hours, length=100)
 
-flux_plot = plot(time ./ hour, [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in time],
+flux_plot = plot(times ./ hour, [buoyancy_flux(0, 0, t, buoyancy_flux_parameters) for t in times],
                  linewidth = 2, xlabel = "Time (hours)", ylabel = "Surface buoyancy flux (m² s⁻³)",
                  size = (800, 300), margin = 5mm, label = nothing)
 
@@ -92,14 +92,14 @@ buoyancy_gradient_bc = GradientBoundaryCondition(N²)
 # In summary, the buoyancy boundary conditions impose a destabilizing flux
 # at the top and a stable buoyancy gradient at the bottom:
 
-buoyancy_bcs = TracerBoundaryConditions(grid, top = buoyancy_flux_bc, bottom = buoyancy_gradient_bc)
+buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy_gradient_bc)
 
 # ## Phytoplankton dynamics: light-dependent growth and uniform mortality
 #
 # We use a simple model for the growth of phytoplankton in sunlight and decay
 # due to viruses and grazing by zooplankton,
 
-growing_and_grazing(x, y, z, t, P, p) = (p.μ₀ * exp(z / p.λ) - p.m) * P
+growing_and_grazing(x, y, z, t, P, params) = (params.μ₀ * exp(z / params.λ) - params.m) * P
 nothing # hide
 
 # with parameters
@@ -117,11 +117,11 @@ plankton_dynamics = Forcing(growing_and_grazing, field_dependencies = :P,
 # ## The model
 #
 # The name "`P`" for phytoplankton is specified in the
-# constructor for `IncompressibleModel`. We additionally specify a fifth-order
+# constructor for `NonhydrostaticModel`. We additionally specify a fifth-order
 # advection scheme, third-order Runge-Kutta time-stepping, isotropic viscosity and diffusivities,
 # and Coriolis forces appropriate for planktonic convection at mid-latitudes on Earth.
 
-model = IncompressibleModel(
+model = NonhydrostaticModel(
                    grid = grid,
               advection = UpwindBiasedFifthOrder(),
             timestepper = :RungeKutta3,
@@ -149,30 +149,33 @@ initial_buoyancy(x, y, z) = stratification(z) + noise(z)
 
 set!(model, b=initial_buoyancy, P=1)
 
-# ## Adaptive time-stepping, logging, output and simulation setup
+# ## Simulation with adaptive time-stepping, logging, and output
 #
-# We use a `TimeStepWizard` that limits the
+# We build a simulation
+
+simulation = Simulation(model, Δt=2minutes, stop_time=24hours)
+
+# with a `TimeStepWizard` that limits the
 # time-step to 2 minutes, and adapts the time-step such that CFL
 # (Courant-Freidrichs-Lewy) number hovers around `1.0`,
 
-wizard = TimeStepWizard(cfl=1.0, Δt=2minutes, max_change=1.1, max_Δt=2minutes)
+wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=2minutes)
 
-# We also write a function that prints the progress of the simulation
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+
+# We also add a callback that prints the progress of the simulation,
 
 using Printf
 
 progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
-                        sim.model.clock.iteration,
-                        prettytime(sim.model.clock.time),
-                        prettytime(sim.Δt.Δt))
+                        iteration(sim), prettytime(time(sim)), prettytime(sim.Δt))
 
-simulation = Simulation(model, Δt=wizard, stop_time=24hours,
-                        iteration_interval=20, progress=progress)
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 
-# We add a basic `JLD2OutputWriter` that writes velocities and both
+# and a basic `JLD2OutputWriter` that writes velocities and both
 # the two-dimensional and horizontally-averaged plankton concentration,
 
-averaged_plankton = AveragedField(model.tracers.P, dims=(1, 2))
+averaged_plankton = Field(Average(model.tracers.P, dims=(1, 2)))
 
 outputs = (w = model.velocities.w,
            plankton = model.tracers.P,
@@ -187,10 +190,9 @@ simulation.output_writers[:simple_output] =
 # !!! info "Using multiple output writers"
 #     Because each output writer is associated with a single output `schedule`,
 #     it often makes sense to use _different_ output writers for different types of output.
-#     For example, reduced fields like `AveragedField` usually consume less disk space than
-#     two- or three-dimensional fields, and can thus be output more frequently without
-#     blowing up your hard drive. An arbitrary number of output writers may be added to
-#     `simulation.output_writers`.
+#     For example, smaller outputs that consume less disk space may be written more
+#     frequently without threatening the capacity of your hard drive.
+#     An arbitrary number of output writers may be added to `simulation.output_writers`.
 #
 # The simulation is set up. Let there be plankton:
 

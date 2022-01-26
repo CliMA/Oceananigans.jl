@@ -46,22 +46,22 @@ using Oceananigans
 
 U(x, y, z, t) = 0.2 * z
 
-grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
-model = IncompressibleModel(grid = grid, background_fields = (u=U,))
+model = NonhydrostaticModel(grid = grid, background_fields = (u=U,))
 
 model.background_fields.velocities.u
 
 # output
 FunctionField located at (Face, Center, Center)
-├── func: U
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── func: U (generic function with 1 method)
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── clock: Clock(time=0 seconds, iteration=0)
 └── parameters: nothing
 ```
 
 `BackgroundField`s are specified by passing them to the kwarg `background_fields`
-in the `IncompressibleModel` constructor. The kwarg `background_fields` expects
+in the `NonhydrostaticModel` constructor. The kwarg `background_fields` expects
 a `NamedTuple` of fields, which are internally sorted into `velocities` and `tracers`,
 wrapped in `FunctionField`s, and assigned their appropriate locations.
 
@@ -81,24 +81,25 @@ B_field = BackgroundField(B, parameters=parameters)
 
 # output
 BackgroundField{typeof(B), NamedTuple{(:α, :N, :f), Tuple{Float64, Float64, Float64}}}
-├── func: B
+├── func: B (generic function with 1 method)
 └── parameters: (α = 3.14, N = 1.0, f = 0.1)
 ```
 
-When inserted into `IncompressibleModel`, we get out
+When inserted into `NonhydrostaticModel`, we get
 
 ```jldoctest moar_background
-grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
-model = IncompressibleModel(grid = grid, background_fields = (u=U_field, b=B_field),
+model = NonhydrostaticModel(grid = grid, background_fields = (u=U_field, b=B_field),
                             tracers=:b, buoyancy=BuoyancyTracer())
 
 model.background_fields.tracers.b
 
 # output
 FunctionField located at (Center, Center, Center)
-├── func: B
-├── grid: RegularRectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── func: B (generic function with 1 method)
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── clock: Clock(time=0 seconds, iteration=0)
 └── parameters: (α = 3.14, N = 1.0, f = 0.1)
 ```
+

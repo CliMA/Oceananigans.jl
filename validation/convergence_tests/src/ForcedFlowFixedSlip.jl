@@ -3,9 +3,6 @@ module ForcedFlowFixedSlip
 using Printf
 
 using Oceananigans
-using Oceananigans.BoundaryConditions
-using Oceananigans.OutputWriters
-using Oceananigans.Fields
 
 # Functions that define the forced flow problem
 
@@ -44,21 +41,21 @@ function setup_xy_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     u_forcing(x, y, z, t) = Fᵘ(x, y, t)
     v_forcing(x, y, z, t) = Fᵛ(x, y, t)
 
-    grid = RegularRectilinearGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, 1), z=(0, 1),
+    grid = RectilinearGrid(size=(Nx, Nx, 1), x=(0, 2π), y=(0, 1), z=(0, 1),
                                 topology=(Periodic, Bounded, Bounded))
 
     # "Fixed slip" boundary conditions (eg, no-slip on south wall, finite slip on north wall)."
-    u_bcs = UVelocityBoundaryConditions(grid, north = ValueBoundaryCondition((x, y, t) -> f(x, t)),
-                                              south = ValueBoundaryCondition(0))
+    u_bcs = FieldBoundaryConditions(north = ValueBoundaryCondition((x, y, t) -> f(x, t)),
+                                    south = ValueBoundaryCondition(0))
 
-    model = IncompressibleModel(       architecture = CPU(),
-                                               grid = grid,
-                                           coriolis = nothing,
-                                           buoyancy = nothing,
-                                            tracers = nothing,
-                                            closure = IsotropicDiffusivity(ν=1),
+    model = NonhydrostaticModel(
+                                grid = grid,
+                                coriolis = nothing,
+                                buoyancy = nothing,
+                                tracers = nothing,
+                                closure = IsotropicDiffusivity(ν=1),
                                 boundary_conditions = (u=u_bcs,),
-                                            forcing = (u=u_forcing, v=v_forcing))
+                                forcing = (u=u_forcing, v=v_forcing))
 
     set!(model, u = (x, y, z) -> u(x, y, 0),
                 v = (x, y, z) -> v(x, y, 0))
@@ -90,21 +87,21 @@ function setup_xz_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=
     u_forcing(x, y, z, t) = Fᵘ(x, z, t)
     w_forcing(x, y, z, t) = Fᵛ(x, z, t)
 
-    grid = RegularRectilinearGrid(size=(Nx, 1, Nx), x=(0, 2π), y=(0, 1), z=(0, 1),
+    grid = RectilinearGrid(size=(Nx, 1, Nx), x=(0, 2π), y=(0, 1), z=(0, 1),
                                 topology=(Periodic, Bounded, Bounded))
 
     # "Fixed slip" boundary conditions (eg, no-slip on bottom and finite slip on top)."
-    u_bcs = UVelocityBoundaryConditions(grid,    top = ValueBoundaryCondition((x, z, t) -> f(x, t)),
-                                              bottom = ValueBoundaryCondition(0))
+    u_bcs = FieldBoundaryConditions(top = ValueBoundaryCondition((x, z, t) -> f(x, t)),
+                                    bottom = ValueBoundaryCondition(0))
 
-    model = IncompressibleModel(       architecture = CPU(),
-                                               grid = grid,
-                                           coriolis = nothing,
-                                           buoyancy = nothing,
-                                            tracers = nothing,
-                                            closure = IsotropicDiffusivity(ν=1),
+    model = NonhydrostaticModel(architecture = CPU(),
+                                grid = grid,
+                                coriolis = nothing,
+                                buoyancy = nothing,
+                                tracers = nothing,
+                                closure = IsotropicDiffusivity(ν=1),
                                 boundary_conditions = (u=u_bcs,),
-                                            forcing = (u=u_forcing, w=w_forcing))
+                                forcing = (u=u_forcing, w=w_forcing))
 
     set!(model, u = (x, y, z) -> u(x, z, 0),
                 w = (x, y, z) -> v(x, z, 0))

@@ -34,7 +34,7 @@ using Oceananigans.Units: minute, minutes, hours
 # We create a grid with modest resolution. The grid extent is similar, but not
 # exactly the same as that in McWilliams et al. (1997).
 
-grid = RegularRectilinearGrid(size=(32, 32, 48), extent=(128, 128, 96))
+grid = RectilinearGrid(size=(32, 32, 48), extent=(128, 128, 96))
 
 # ### The Stokes Drift profile
 #
@@ -61,7 +61,7 @@ const Uˢ = amplitude^2 * wavenumber * frequency # m s⁻¹
 
 # The `const` declarations ensure that Stokes drift functions compile on the GPU.
 # To run this example on the GPU, write `architecture = GPU()` in the constructor
-# for `IncompressibleModel` below.
+# for `NonhydrostaticModel` below.
 #
 # The Stokes drift profile is
 
@@ -95,7 +95,7 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 
 Qᵘ = -3.72e-5 # m² s⁻², surface kinematic momentum flux
 
-u_boundary_conditions = UVelocityBoundaryConditions(grid, top = FluxBoundaryCondition(Qᵘ))
+u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵘ))
 
 # McWilliams et al. (1997) impose a linear buoyancy gradient `N²` at the bottom
 # along with a weak, destabilizing flux of buoyancy at the surface to faciliate
@@ -104,8 +104,8 @@ u_boundary_conditions = UVelocityBoundaryConditions(grid, top = FluxBoundaryCond
 Qᵇ = 2.307e-9 # m³ s⁻², surface buoyancy flux
 N² = 1.936e-5 # s⁻², initial and bottom buoyancy gradient
 
-b_boundary_conditions = TracerBoundaryConditions(grid, top = FluxBoundaryCondition(Qᵇ),
-                                                       bottom = GradientBoundaryCondition(N²))
+b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵇ),
+                                                bottom = GradientBoundaryCondition(N²))
 
 # !!! info "The flux convention in Oceananigans"
 #     Note that Oceananigans uses "positive upward" conventions for all fluxes. In consequence,
@@ -127,8 +127,7 @@ coriolis = FPlane(f=1e-4) # s⁻¹
 # model for large eddy simulation. Because our Stokes drift does not vary in ``x, y``,
 # we use `UniformStokesDrift`, which expects Stokes drift functions of ``z, t`` only.
 
-model = IncompressibleModel(
-           architecture = CPU(),
+model = NonhydrostaticModel(
               advection = WENO5(),
             timestepper = :RungeKutta3,
                    grid = grid,
@@ -167,11 +166,15 @@ wᵢ(x, y, z) = sqrt(abs(Qᵘ)) * 1e-1 * Ξ(z)
 set!(model, u=uᵢ, w=wᵢ, b=bᵢ)
 
 # ## Setting up the simulation
-#
+
+simulation = Simulation(model, Δt=45.0, stop_time=4hours)
+
 # We use the `TimeStepWizard` for adaptive time-stepping
 # with a Courant-Freidrichs-Lewy (CFL) number of 1.0,
 
-wizard = TimeStepWizard(cfl=1.0, Δt=45.0, max_change=1.1, max_Δt=1minute)
+wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=1minute)
+
+simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
 
 # ### Nice progress messaging
 #
@@ -180,32 +183,23 @@ wizard = TimeStepWizard(cfl=1.0, Δt=45.0, max_change=1.1, max_Δt=1minute)
 
 using Printf
 
-wall_clock = time_ns()
-
 function print_progress(simulation)
-    model = simulation.model
-    u, v, w = model.velocities
+    u, v, w = simulation.model.velocities
 
     ## Print a progress message
     msg = @sprintf("i: %04d, t: %s, Δt: %s, umax = (%.1e, %.1e, %.1e) ms⁻¹, wall time: %s\n",
-                   model.clock.iteration,
-                   prettytime(model.clock.time),
-                   prettytime(wizard.Δt),
+                   iteration(simulation),
+                   prettytime(time(simulation)),
+                   prettytime(simulation.Δt),
                    maximum(abs, u), maximum(abs, v), maximum(abs, w),
-                   prettytime(1e-9 * (time_ns() - wall_clock))
-                  )
+                   prettytime(simulation.run_wall_time))
 
     @info msg
 
     return nothing
 end
 
-# Now we create the simulation,
-
-simulation = Simulation(model, iteration_interval = 10,
-                                               Δt = wizard,
-                                        stop_time = 4hours,
-                                         progress = print_progress)
+simulation.callbacks[:progress] = Callback(print_progress, IterationInterval(10))
 
 # ## Output
 #
@@ -216,7 +210,7 @@ simulation = Simulation(model, iteration_interval = 10,
 
 output_interval = 5minutes
 
-fields_to_output = merge(model.velocities, model.tracers, (νₑ=model.diffusivities.νₑ,))
+fields_to_output = merge(model.velocities, model.tracers, (νₑ=model.diffusivity_fields.νₑ,))
 
 simulation.output_writers[:fields] =
     JLD2OutputWriter(model, fields_to_output,
@@ -231,12 +225,12 @@ simulation.output_writers[:fields] =
 
 u, v, w = model.velocities
 
-U = AveragedField(u, dims=(1, 2))
-V = AveragedField(v, dims=(1, 2))
-B = AveragedField(model.tracers.b, dims=(1, 2))
+U = Field(Average(u, dims=(1, 2)))
+V = Field(Average(v, dims=(1, 2)))
+B = Field(Average(model.tracers.b, dims=(1, 2)))
 
-wu = AveragedField(w * u, dims=(1, 2))
-wv = AveragedField(w * v, dims=(1, 2))
+wu = Field(Average(w * u, dims=(1, 2)))
+wv = Field(Average(w * v, dims=(1, 2)))
 
 simulation.output_writers[:averages] =
     JLD2OutputWriter(model, (u=U, v=V, b=B, wu=wu, wv=wv),
@@ -255,7 +249,7 @@ run!(simulation)
 # We look at the results by plotting vertical slices of ``u`` and ``w``, and a horizontal
 # slice of ``w`` to look for Langmuir cells.
 
-k = searchsortedfirst(grid.zF[:], -8)
+k = searchsortedfirst(grid.zᵃᵃᶠ[:], -8)
 nothing # hide
 
 # Making the coordinate arrays takes a few lines of code,

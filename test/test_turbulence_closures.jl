@@ -25,9 +25,9 @@ end
 function run_constant_isotropic_diffusivity_fluxdiv_tests(FT=Float64; ν=FT(0.3), κ=FT(0.7))
           arch = CPU()
        closure = IsotropicDiffusivity(FT, κ=(T=κ, S=κ), ν=ν)
-          grid = RegularRectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
-    velocities = VelocityFields(arch, grid)
-       tracers = TracerFields((:T, :S), arch, grid)
+          grid = RectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
+    velocities = VelocityFields(grid)
+       tracers = TracerFields((:T, :S), grid)
          clock = Clock(time=0.0)
 
     u, v, w = velocities
@@ -56,11 +56,11 @@ end
 function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νz=FT(0.1), κz=FT(0.5))
           arch = CPU()
        closure = AnisotropicDiffusivity(FT, νh=νh, νz=νz, κh=(T=κh, S=κh), κz=(T=κz, S=κz))
-          grid = RegularRectilinearGrid(FT, size=(3, 1, 4), extent=(3, 1, 4))
+          grid = RectilinearGrid(arch, FT, size=(3, 1, 4), extent=(3, 1, 4))
            eos = LinearEquationOfState(FT)
       buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=eos)
-    velocities = VelocityFields(arch, grid)
-       tracers = TracerFields((:T, :S), arch, grid)
+    velocities = VelocityFields(grid)
+       tracers = TracerFields((:T, :S), grid)
          clock = Clock(time=0.0)
 
     u, v, w, T, S = merge(velocities, tracers)
@@ -92,51 +92,26 @@ function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), �
               ∂ⱼ_τ₃ⱼ(2, 1, 3, grid, closure, clock, U, nothing) == - (6νh + 8νz))
 end
 
-function test_calculate_diffusivities(arch, closurename, FT=Float64; kwargs...)
-      tracernames = (:b,)
-          closure = getproperty(TurbulenceClosures, closurename)(FT, kwargs...)
-          closure = with_tracers(tracernames, closure)
-             grid = RegularRectilinearGrid(FT, size=(3, 3, 3), extent=(3, 3, 3))
-    diffusivities = DiffusivityFields(arch, grid, tracernames, NamedTuple(), closure)
-         buoyancy = Buoyancy(model=BuoyancyTracer())
-       velocities = VelocityFields(arch, grid)
-          tracers = TracerFields(tracernames, arch, grid)
-
-    calculate_diffusivities!(diffusivities, arch, grid, closure, buoyancy, velocities, tracers)
-
-    return true
-end
-
 function time_step_with_variable_isotropic_diffusivity(arch)
-
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
     closure = IsotropicDiffusivity(ν = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t),
                                    κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t))
 
-    model = IncompressibleModel(
-        architecture=arch, closure=closure,
-        grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
-    )
-
+    model = NonhydrostaticModel(; grid, closure)
     time_step!(model, 1, euler=true)
-
     return true
 end
 
 function time_step_with_variable_anisotropic_diffusivity(arch)
 
-    closure = AnisotropicDiffusivity(
-                                     νx = (x, y, z, t) -> 1 * exp(z) * cos(x) * cos(y) * cos(t),
+    closure = AnisotropicDiffusivity(νx = (x, y, z, t) -> 1 * exp(z) * cos(x) * cos(y) * cos(t),
                                      νy = (x, y, z, t) -> 2 * exp(z) * cos(x) * cos(y) * cos(t),
                                      νz = (x, y, z, t) -> 4 * exp(z) * cos(x) * cos(y) * cos(t),
                                      κx = (x, y, z, t) -> 1 * exp(z) * cos(x) * cos(y) * cos(t),
                                      κy = (x, y, z, t) -> 2 * exp(z) * cos(x) * cos(y) * cos(t),
-                                     κz = (x, y, z, t) -> 4 * exp(z) * cos(x) * cos(y) * cos(t)
-                                    )
+                                     κz = (x, y, z, t) -> 4 * exp(z) * cos(x) * cos(y) * cos(t))
 
-    model = IncompressibleModel(
-        architecture=arch, closure=closure,
-        grid=RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
-    )
+    model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), closure=closure)
 
     time_step!(model, 1, euler=true)
 
@@ -146,23 +121,23 @@ end
 function time_step_with_tupled_closure(FT, arch)
     closure_tuple = (AnisotropicMinimumDissipation(FT), AnisotropicDiffusivity(FT))
 
-    model = IncompressibleModel(architecture=arch, closure=closure_tuple,
-                                grid=RegularRectilinearGrid(FT, size=(1, 1, 1), extent=(1, 2, 3)))
+    model = NonhydrostaticModel(closure=closure_tuple,
+                                grid=RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3)))
 
     time_step!(model, 1, euler=true)
+
     return true
 end
 
 function compute_closure_specific_diffusive_cfl(closurename)
-    grid = RegularRectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3))
+    grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
     closure = getproperty(TurbulenceClosures, closurename)()
 
-    model = IncompressibleModel(grid=grid, closure=closure)
+    model = NonhydrostaticModel(; grid, closure)
     dcfl = DiffusiveCFL(0.1)
     @test dcfl(model) isa Number
 
-    tracerless_model = IncompressibleModel(grid=grid, closure=closure,
-                                           buoyancy=nothing, tracers=nothing)
+    tracerless_model = NonhydrostaticModel(; grid, closure, buoyancy=nothing, tracers=nothing)
     dcfl = DiffusiveCFL(0.2)
     @test dcfl(tracerless_model) isa Number
 
@@ -201,18 +176,6 @@ end
         for arch in archs
             @test time_step_with_variable_isotropic_diffusivity(arch)
             @test time_step_with_variable_anisotropic_diffusivity(arch)
-        end
-    end
-
-    @testset "Calculation of nonlinear diffusivities" begin
-        @info "  Testing calculation of nonlinear diffusivities..."
-        for FT in [Float64]
-            for arch in archs
-                for closure in closures
-                    @info "    Calculating diffusivities for $closure [$FT, $(typeof(arch))]"
-                    @test test_calculate_diffusivities(arch, closure, FT)
-                end
-            end
         end
     end
 

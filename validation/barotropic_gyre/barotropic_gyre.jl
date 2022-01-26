@@ -28,23 +28,14 @@ Nx = 60
 Ny = 60
 
 # A spherical domain
-underlying_grid = RegularLatitudeLongitudeGrid(size = (Nx, Ny, 1),
-                                               longitude = (-30, 30),
-                                               latitude = (15, 75),
-                                               z = (-4000, 0))
+underlying_grid = LatitudeLongitudeGrid(size = (Nx, Ny, 1),
+                                        longitude = (-30, 30),
+                                        latitude = (15, 75),
+                                        z = (-4000, 0))
 
 @inline raster_depth(i, j) = 30 < i < 35 && 42 < j < 48
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(raster_depth, mask_type=RasterDepthMask()))
-
-solid(x, y, z, i, j, k) = (
-                           if i > 30 && i < 35;
-                                   if j > 42 && j < 48;
-                                           return true;
-                                   end;
-                           end;
-                           return false;
-                          )
 
 free_surface = ImplicitFreeSurface(gravitational_acceleration=0.1)
 # free_surface = ExplicitFreeSurface(gravitational_acceleration=0.1)
@@ -73,12 +64,10 @@ v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag,
                                          discrete_form = true,
                                          parameters = μ)
 
-u_bcs = UVelocityBoundaryConditions(grid,
-                                    top = surface_wind_stress_bc,
-                                    bottom = u_bottom_drag_bc)
+u_bcs = FieldBoundaryConditions(top = surface_wind_stress_bc,
+                                bottom = u_bottom_drag_bc)
 
-v_bcs = VVelocityBoundaryConditions(grid,
-                                    bottom = v_bottom_drag_bc)
+v_bcs = FieldBoundaryConditions(bottom = v_bottom_drag_bc)
 
 @show const νh₀ = 5e3 * (60 / grid.Nx)^2
 
@@ -88,7 +77,6 @@ variable_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(
 constant_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₀)
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    architecture = CPU(),
                                     momentum_advection = VectorInvariant(),
                                     free_surface = free_surface,
                                     coriolis = coriolis,

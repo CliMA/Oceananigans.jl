@@ -1,4 +1,3 @@
-import Oceananigans: short_show
 
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1
@@ -6,8 +5,8 @@ import Oceananigans: short_show
 T_zerofunction = typeof(zerofunction)
 T_onefunction = typeof(onefunction)
 
-short_show(::T_zerofunction) = "0"
-short_show(::T_onefunction) = "1"
+Base.summary(::T_zerofunction) = "0"
+Base.summary(::T_onefunction) = "1"
 
 """
     struct Relaxation{R, M, T}
@@ -88,11 +87,11 @@ end
 Base.show(io::IO, relaxation::Relaxation{R, M, T}) where {R, M, T} =
     print(io, "Relaxation{$R, $M, $T}", '\n',
         "├── rate: $(relaxation.rate)", '\n',
-        "├── mask: $(short_show(relaxation.mask))", '\n',
-        "└── target: $(short_show(relaxation.target))")
+        "├── mask: $(summary(relaxation.mask))", '\n',
+        "└── target: $(summary(relaxation.target))")
 
-short_show(relaxation::Relaxation) =
-    "Relaxation(rate=$(relaxation.rate), mask=$(short_show(relaxation.mask)), target=$(short_show(relaxation.target)))"
+Base.summary(relaxation::Relaxation) =
+    "Relaxation(rate=$(relaxation.rate), mask=$(summary(relaxation.mask)), target=$(summary(relaxation.target)))"
 
 #####
 ##### Sponge layer functions
@@ -131,7 +130,7 @@ show_exp_arg(D, c) = c == 0 ? "$D^2" :
                      c > 0  ? "($D - $c)^2" :
                               "($D + $(-c))^2"
 
-short_show(g::GaussianMask{D}) where D =
+Base.summary(g::GaussianMask{D}) where D =
     "exp(-$(show_exp_arg(D, g.center)) / (2 * $(g.width)^2))"
 
 #####
@@ -168,6 +167,6 @@ end
 @inline (p::LinearTarget{:y})(x, y, z, t) = p.intercept + p.gradient * y
 @inline (p::LinearTarget{:z})(x, y, z, t) = p.intercept + p.gradient * z
 
-short_show(l::LinearTarget{:x}) = "$(l.intercept) + $(l.gradient) * x"
-short_show(l::LinearTarget{:y}) = "$(l.intercept) + $(l.gradient) * y"
-short_show(l::LinearTarget{:z}) = "$(l.intercept) + $(l.gradient) * z"
+Base.summary(l::LinearTarget{:x}) = "$(l.intercept) + $(l.gradient) * x"
+Base.summary(l::LinearTarget{:y}) = "$(l.intercept) + $(l.gradient) * y"
+Base.summary(l::LinearTarget{:z}) = "$(l.intercept) + $(l.gradient) * z"

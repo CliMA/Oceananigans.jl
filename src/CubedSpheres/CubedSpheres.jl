@@ -6,7 +6,6 @@ include("cubed_sphere_utils.jl")
 include("conformal_cubed_sphere_grid.jl")
 include("cubed_sphere_exchange_bcs.jl")
 include("cubed_sphere_faces.jl")
-include("cubed_sphere_set!.jl")
 include("cubed_sphere_halo_filling.jl")
 include("cubed_sphere_kernel_launching.jl")
 include("immersed_conformal_cubed_sphere_grid.jl")
@@ -15,17 +14,21 @@ include("immersed_conformal_cubed_sphere_grid.jl")
 ##### Validating cubed sphere stuff
 #####
 
-import Oceananigans.Fields: validate_field_data
+import Oceananigans.Fields: validate_field_data, validate_boundary_conditions
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_vertical_velocity_boundary_conditions
 
-function validate_field_data(X, Y, Z, data, grid::ConformalCubedSphereGrid)
+function validate_field_data(loc, data, grid::ConformalCubedSphereGrid)
 
     for (face_data, face_grid) in zip(data.faces, grid.faces)
-        validate_field_data(X, Y, Z, face_data, face_grid)
+        validate_field_data(loc, face_data, face_grid)
     end
 
     return nothing
 end
+
+# We don't support validating cubed sphere boundary conditions at this time
+validate_boundary_conditions(loc, grid::ConformalCubedSphereGrid, bcs::CubedSphereFaces) = nothing
+validate_boundary_conditions(loc, grid::ConformalCubedSphereFaceGrid, bcs) = nothing
 
 validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
     [validate_vertical_velocity_boundary_conditions(w_face) for w_face in faces(w)]
@@ -36,11 +39,29 @@ validate_vertical_velocity_boundary_conditions(w::AbstractCubedSphereField) =
 
 import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
-function regularize_field_boundary_conditions(bcs::CubedSphereFaces, grid, model_field_names, field_name)
+function regularize_field_boundary_conditions(bcs::CubedSphereFaces,
+                                              grid::AbstractGrid,
+                                              field_name::Symbol,
+                                              prognostic_field_names)
+
+    faces = Tuple(regularize_field_boundary_conditions(face_bcs, face_grid, field_name, prognostic_field_names)
+                  for (face_bcs, face_grid) in zip(bcs.faces, grid.faces))
+
+    return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
+end
+
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
+                                              grid::ConformalCubedSphereGrid,
+                                              field_name::Symbol,
+                                              prognostic_field_names)
 
     faces = Tuple(
-        regularize_field_boundary_conditions(face_bcs, face_grid, model_field_names, field_name)
-        for (face_bcs, face_grid) in zip(bcs.faces, grid.faces)
+        inject_cubed_sphere_exchange_boundary_conditions(
+            regularize_field_boundary_conditions(bcs, face_grid, field_name, prognostic_field_names),
+            face_index,
+            grid.face_connectivity
+        )
+        for (face_index, face_grid) in enumerate(grid.faces)
     )
 
     return CubedSphereFaces{typeof(faces[1]), typeof(faces)}(faces)
@@ -52,14 +73,28 @@ end
 
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: apply_flux_bcs!
 
-function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCubedSphereField, arch, barrier, clock, model_fields)
+function apply_flux_bcs!(Gcⁿ::AbstractCubedSphereField, events, c::AbstractCubedSphereField, arch, barrier, args...)
 
     for (face_index, Gcⁿ_face) in enumerate(faces(Gcⁿ))
         apply_flux_bcs!(Gcⁿ_face, events, get_face(c, face_index), arch, barrier,
-                        clock, get_face(model_fields, face_index))
+                        Tuple(get_face(a, face_index) for a in args)...)
     end
 
     return nothing
+end
+
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: top_tracer_boundary_conditions
+
+function face_tracers(tracers, face)
+    tracer_names = propertynames(tracers)
+    return NamedTuple(name => get_face(tracers[name], face) for name in tracer_names)
+end
+
+function top_tracer_boundary_conditions(grid::ConformalCubedSphereGrid, tracers)
+    tracer_names = propertynames(tracers)
+    top_tracer_bcs = Tuple(top_tracer_boundary_conditions(get_face(grid, i), face_tracers(tracers, i))
+                           for i = 1:length(grid.faces))
+    return CubedSphereFaces(top_tracer_bcs)
 end
 
 #####
@@ -84,12 +119,17 @@ end
 ##### NaN checker for cubed sphere fields
 #####
 
-import Oceananigans.Diagnostics: error_if_nan_in_field
+import Oceananigans.Simulations: hasnan
 
-function error_if_nan_in_field(field::AbstractCubedSphereField, name, clock)
+function hasnan(field::AbstractCubedSphereField)
     for (face_index, face_field) in enumerate(faces(field))
-        error_if_nan_in_field(face_field, string(name) * " (face $face_index)", clock)
+        nanface = hasnan(face_field)
+        if nanface
+            @info "NaN found on face $face_index..."
+            return true
+        end
     end
+    return false
 end
 
 #####

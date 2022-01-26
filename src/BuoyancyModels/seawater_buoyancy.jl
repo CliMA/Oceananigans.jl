@@ -30,8 +30,8 @@ and absolute salinity) to density anomalies and buoyancy.
 
 `constant_temperature` indicates that buoyancy depends only on salinity. For a nonlinear
 equation of state, `constant_temperature` is used as the temperature of the system.
-`true`. The same logic with the role of salinity and temperature reversed holds when `constant_salinity`
-is provided.
+The same logic, with the roles of salinity and temperature reversed, holds when
+`constant_salinity` is provided.
 
 For a linear equation of state, the values of `constant_temperature` or `constant_salinity` are irrelevant;
 in this case, `constant_temperature=true` (and similar for `constant_salinity`) is valid input.

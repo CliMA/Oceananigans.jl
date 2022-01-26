@@ -4,14 +4,15 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     Δt = 6
 
     if grid_type == :regular
-        grid = RegularRectilinearGrid(size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     elseif grid_type == :vertically_unstretched
         zF = range(-Lz, 0, length=Nz+1)
-        grid = VerticallyStretchedRectilinearGrid(architecture=arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z_faces=zF)
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(0, Lx), y=(0, Ly), z=zF)
     end
 
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
-    model = IncompressibleModel(architecture=arch, grid=grid, closure=closure, coriolis=FPlane(f=1e-4))
+    model = NonhydrostaticModel(grid=grid, closure=closure, coriolis=FPlane(f=1e-4),
+                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     model.tracers.T.data.parent .= 9.85
@@ -24,7 +25,8 @@ function run_thermal_bubble_regression_test(arch, grid_type)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
     CUDA.@allowscalar model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
 
-    regression_data_filepath = joinpath(dirname(@__FILE__), "data", "thermal_bubble_regression.nc")
+    datadep_path = "regression_test_data/thermal_bubble_regression.nc"
+    regression_data_filepath = @datadep_str datadep_path
 
     ####
     #### Uncomment the block below to generate regression data.

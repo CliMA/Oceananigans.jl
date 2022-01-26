@@ -6,7 +6,7 @@ using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Models
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
-underlying_grid = RegularRectilinearGrid(size=(256, 64), x=(-5, 15), y=(0, 5), topology=(Periodic, Bounded, Flat), halo = (3, 3))
+underlying_grid = RectilinearGrid(size=(256, 64), x=(-5, 15), y=(0, 5), topology=(Periodic, Bounded, Flat), halo = (3, 3))
                               
 cape(x, y, z)  = y < exp(-x^2)
 
@@ -43,13 +43,13 @@ function progress(sim)
     return nothing
 end
 
-wizard = TimeStepWizard(cfl=0.5, Δt=0.01*grid.Δx, max_change=1.1, max_Δt=2e-3)
+wizard = TimeStepWizard(cfl=0.5, Δt=0.01*grid.Δxᶜᵃᵃ, max_change=1.1, max_Δt=2e-3)
 
 simulation = Simulation(model, Δt=wizard, stop_time=1, progress=progress, iteration_interval=10)
 
 uh, vh, h = model.solution
 
-ζ = ComputedField(∂x(vh / h) - ∂y(uh / h))
+ζ = Field(∂x(vh / h) - ∂y(uh / h))
 
 outputs = merge(model.solution, (ζ=ζ,))
 

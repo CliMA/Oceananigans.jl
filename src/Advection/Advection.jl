@@ -17,10 +17,13 @@ export
     advective_tracer_flux_z,
 
     CenteredSecondOrder,
+    UpwindBiasedFirstOrder,
     UpwindBiasedThirdOrder,
     UpwindBiasedFifthOrder,
     CenteredFourthOrder,
     WENO5
+
+using DocStringExtensions
 
 using Oceananigans.Grids
 using Oceananigans.Operators
@@ -39,6 +42,7 @@ include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
 include("flat_advective_fluxes.jl")
 
+include("upwind_biased_first_order.jl")
 include("centered_second_order.jl")
 include("upwind_biased_third_order.jl")
 include("centered_fourth_order.jl")

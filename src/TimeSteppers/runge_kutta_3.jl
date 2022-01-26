@@ -1,3 +1,4 @@
+using Oceananigans.Architectures: architecture
 using Oceananigans: fields
 
 """
@@ -18,17 +19,17 @@ struct RungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
 end
 
 """
-    RungeKutta3TimeStepper(arch, grid, tracers,
-                           Gⁿ = TendencyFields(arch, grid, tracers),
-                           G⁻ = TendencyFields(arch, grid, tracers))
+    RungeKutta3TimeStepper(grid, tracers,
+                           Gⁿ = TendencyFields(grid, tracers),
+                           G⁻ = TendencyFields(grid, tracers))
 
-Return an `RungeKutta3TimeStepper` object with tendency fields on `arch` and
-`grid`. The tendency fields can be specified via optional kwargs.
+Return an `RungeKutta3TimeStepper` object with tendency fields on `grid`.
+The tendency fields can be specified via optional kwargs.
 """
-function RungeKutta3TimeStepper(arch, grid, tracers;
+function RungeKutta3TimeStepper(grid, tracers;
                                 implicit_solver::TI = nothing,
-                                Gⁿ::TG = TendencyFields(arch, grid, tracers),
-                                G⁻ = TendencyFields(arch, grid, tracers)) where {TI, TG}
+                                Gⁿ::TG = TendencyFields(grid, tracers),
+                                G⁻ = TendencyFields(grid, tracers)) where {TI, TG}
 
     !isnothing(implicit_solver) &&
         @warn("Implicit-explicit time-stepping with RungeKutta3TimeStepper is not tested. " * 
@@ -51,7 +52,7 @@ end
 #####
 
 """
-    time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; euler=false)
+    time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt)
 
 Step forward `model` one time step `Δt` with a 3rd-order Runge-Kutta method.
 The 3rd-order Runge-Kutta method takes three intermediate substep stages to
@@ -142,9 +143,9 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
 
     workgroup, worksize = work_layout(model.grid, :xyz)
 
-    barrier = Event(device(model.architecture))
+    barrier = Event(device(architecture(model)))
 
-    substep_field_kernel! = rk3_substep_field!(device(model.architecture), workgroup, worksize)
+    substep_field_kernel! = rk3_substep_field!(device(architecture(model)), workgroup, worksize)
 
     model_fields = prognostic_fields(model)
 
@@ -166,13 +167,14 @@ function rk3_substep!(model, Δt, γⁿ, ζⁿ)
                        stage_Δt(Δt, γⁿ, ζⁿ),
                        model.closure,
                        tracer_index,
-                       model.diffusivities,
+                       model.diffusivity_fields,
+                       model.tracers,
                        dependencies = field_event)
 
         push!(events, field_event)
     end
 
-    wait(device(model.architecture), MultiEvent(Tuple(events)))
+    wait(device(architecture(model)), MultiEvent(Tuple(events)))
 
     return nothing
 end

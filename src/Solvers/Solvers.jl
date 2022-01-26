@@ -2,9 +2,10 @@ module Solvers
 
 export
     BatchedTridiagonalSolver, solve!,
-    FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, PreconditionedConjugateGradientSolver, PressureSolver,
-    solve_for_pressure!, solve_poisson_equation!
-
+    FFTBasedPoissonSolver,
+    FourierTridiagonalPoissonSolver,
+    PreconditionedConjugateGradientSolver,
+    HeptadiagonalIterativeSolver
 
 using Statistics
 using FFTW
@@ -39,9 +40,9 @@ include("plan_transforms.jl")
 include("fft_based_poisson_solver.jl")
 include("fourier_tridiagonal_poisson_solver.jl")
 include("preconditioned_conjugate_gradient_solver.jl")
-include("solve_for_pressure.jl")
-
-PressureSolver(arch, grid::RegularRectilinearGrid) = FFTBasedPoissonSolver(arch, grid)
-PressureSolver(arch, grid::VerticallyStretchedRectilinearGrid) = FourierTridiagonalPoissonSolver(arch, grid)
+include("sparse_approximate_inverse.jl")
+include("matrix_solver_utils.jl")
+include("sparse_preconditioners.jl")
+include("heptadiagonal_iterative_solver.jl")
 
 end

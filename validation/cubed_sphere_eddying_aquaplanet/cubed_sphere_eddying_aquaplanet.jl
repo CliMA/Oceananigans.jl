@@ -26,23 +26,27 @@ end
 function (p::Progress)(sim)
     wall_time = (time_ns() - p.interval_start_time) * 1e-9
     progress = sim.model.clock.time / sim.stop_time
-    ETA = (1 - progress) / progress * sim.run_time
-    ETA_datetime = now() + Second(round(Int, ETA))
+    ETA = (1 - progress) / progress * sim.run_wall_time
+    if isnan( ETA )
+      ETA_datetime = now() + Second(1000000000)
+    else
+      ETA_datetime = now() + Second(round(Int, ETA))
+    end
 
-    @info @sprintf("[%06.2f%%] Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e), CFL: %.2e",
+    @info @sprintf("[%06.2f%%] Time: %s, iteration: %d, max(|u⃗|): (%.2e, %.2e) m/s, extrema(η): (min=%.2e, max=%.2e)",
                    100 * progress,
                    prettytime(sim.model.clock.time),
                    sim.model.clock.iteration,
                    maximum(abs, sim.model.velocities.u),
                    maximum(abs, sim.model.velocities.v),
                    minimum(sim.model.free_surface.η),
-                   maximum(sim.model.free_surface.η),
-                   sim.parameters.cfl(sim.model))
+                   maximum(sim.model.free_surface.η)
+                  )
 
     @info @sprintf("           ETA: %s (%s), Δ(wall time): %s / iteration",
                    format(ETA_datetime, "yyyy-mm-dd HH:MM:SS"),
                    prettytime(ETA),
-                   prettytime(wall_time / sim.iteration_interval))
+                   prettytime(wall_time / sim.callbacks[:progress].schedule.interval))
 
     p.interval_start_time = time_ns()
 
@@ -76,9 +80,9 @@ DataDeps.register(dd96)
 #####
 
 function diagnose_velocities_from_streamfunction(ψ, grid)
-    ψᶠᶠᶜ = Field(Face, Face,   Center, CPU(), grid)
-    uᶠᶜᶜ = Field(Face, Center, Center, CPU(), grid)
-    vᶜᶠᶜ = Field(Center, Face, Center, CPU(), grid)
+        ψᶠᶠᶜ = Field( (Face, Face,   Center), grid)
+        uᶠᶜᶜ = Field( (Face, Center, Center), grid)
+        vᶜᶠᶜ = Field( (Center, Face, Center), grid)
 
     for (f, grid_face) in enumerate(grid.faces)
         Nx, Ny, Nz = size(grid_face)
@@ -187,7 +191,6 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     ## Model setup
 
     model = HydrostaticFreeSurfaceModel(
-               architecture = CPU(),
                        grid = grid,
          momentum_advection = VectorInvariant(),
                free_surface = ExplicitFreeSurface(gravitational_acceleration=0.5),
@@ -217,15 +220,14 @@ function cubed_sphere_eddying_aquaplanet(grid_filepath)
     deformation_radius_45°N = √(g * H) / (2Ω*sind(45))
     @info @sprintf("Deformation radius @ 45°N: %.2f km", deformation_radius_45°N / 1000)
 
-    cfl = CFL(Δt, accurate_cell_advection_timescale)
+    # cfl = CFL(Δt, accurate_cell_advection_timescale)
+    cfl = 0.2
 
-    simulation = Simulation(model,
-                        Δt = Δt,
-                 stop_time = 5years,
-        iteration_interval = 20,
-                  progress = Progress(time_ns()),
-                parameters = (; cfl)
-    )
+    simulation = Simulation( model, Δt=Δt, stop_time=5years)
+    # wizard = TimeStepWizard(cfl=cfl)
+    # simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
+    #
+    simulation.callbacks[:progress] = Callback(Progress(time_ns()), IterationInterval(20))
 
     output_fields = merge(model.velocities, (η=model.free_surface.η, ζ=VerticalVorticityField(model)))
 

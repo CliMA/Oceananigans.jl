@@ -23,18 +23,18 @@ const HCAD = HorizontallyCurvilinearAnisotropicDiffusivity
 
 Returns parameters for an anisotropic diffusivity model on curvilinear grids.
 
-Keyword args
-============
+Keyword arguments
+=================
 
-    * `νh`: Horizontal viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
+  - `νh`: Horizontal viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
 
-    * `νz`: Vertical viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
+  - `νz`: Vertical viscosity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`.
 
-    * `κh`: Horizontal diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
-            `NamedTuple` of diffusivities with entries for each tracer.
+  - `κh`: Horizontal diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
+          `NamedTuple` of diffusivities with entries for each tracer.
 
-    * `κz`: Vertical diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
-            `NamedTuple` of diffusivities with entries for each tracer.
+  - `κz`: Vertical diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
+          `NamedTuple` of diffusivities with entries for each tracer.
 """
 function HorizontallyCurvilinearAnisotropicDiffusivity(FT=Float64; νh=0, κh=0, νz=0, κz=0,
                                                        time_discretization = ExplicitTimeDiscretization())
@@ -54,7 +54,7 @@ function with_tracers(tracers, closure::HorizontallyCurvilinearAnisotropicDiffus
     return HorizontallyCurvilinearAnisotropicDiffusivity{TD}(closure.νh, closure.νz, κh, κz)
 end
 
-calculate_diffusivities!(K, arch, grid, closure::HorizontallyCurvilinearAnisotropicDiffusivity, args...) = nothing
+calculate_diffusivities!(diffusivities, closure::HorizontallyCurvilinearAnisotropicDiffusivity, args...) = nothing
 
 viscous_flux_ux(i, j, k, grid, closure::HCAD, clock, U, args...) = - ν_δᶜᶜᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   
 viscous_flux_uy(i, j, k, grid, closure::HCAD, clock, U, args...) = + ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   
@@ -87,8 +87,6 @@ const VITD = VerticallyImplicitTimeDiscretization
 
 z_viscosity(closure::HorizontallyCurvilinearAnisotropicDiffusivity, args...) = closure.νz
 z_diffusivity(closure::HorizontallyCurvilinearAnisotropicDiffusivity, ::Val{tracer_index}, args...) where tracer_index = @inbounds closure.κz[tracer_index]
-
-const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
 @inline diffusive_flux_z(i, j, k, grid, ::VITD, closure::HCAD, args...) = zero(eltype(grid))
 @inline viscous_flux_uz(i, j, k, grid, ::VITD, closure::HCAD, args...) = zero(eltype(grid))

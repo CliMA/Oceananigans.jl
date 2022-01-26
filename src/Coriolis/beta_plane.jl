@@ -1,22 +1,22 @@
 """
     BetaPlane{T} <: AbstractRotation
 
-A parameter object for meridionally increasing Coriolis parameter (`f = f₀ + βy`)
+A parameter object for meridionally increasing Coriolis parameter (`f = f₀ + β y`)
 that accounts for the variation of the locally vertical component of the rotation
 vector with latitude.
 """
 struct BetaPlane{T} <: AbstractRotation
     f₀ :: T
-     β :: T
+    β :: T
 end
 
 """
     BetaPlane([T=Float64;] f₀=nothing, β=nothing,
                            rotation_rate=Ω_Earth, latitude=nothing, radius=R_Earth)
 
-The user may specify both `f₀` and `β`, or the three parameters `rotation_rate`,
-`latitude`, and `radius` that specify the rotation rate and radius of a planet, and
-the central latitude (where y = 0) at which the `β`-plane approximation is to be made.
+The user may specify both `f₀` and `β`, or the three parameters `rotation_rate`, `latitude`
+(in degrees), and `radius` that specify the rotation rate and radius of a planet, and
+the central latitude (where ``y = 0``) at which the `β`-plane approximation is to be made.
 
 If `f₀` and `β` are not specified, they are calculated from `rotation_rate`, `latitude`,
 and `radius` according to the relations `f₀ = 2 * rotation_rate * sind(latitude)` and
@@ -44,10 +44,10 @@ function BetaPlane(T=Float64; f₀=nothing, β=nothing,
 end
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
-    @inbounds - (coriolis.f₀ + coriolis.β * grid.yC[j]) * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
+    @inbounds - (coriolis.f₀ + coriolis.β * ynode(Face(), Center(), Center(), i, j, k, grid)) * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) =
-    @inbounds   (coriolis.f₀ + coriolis.β * grid.yF[j]) * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
+    @inbounds + (coriolis.f₀ + coriolis.β * ynode(Center(), Face(), Center(), i, j, k, grid)) * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
 
 @inline z_f_cross_U(i, j, k, grid::AbstractGrid{FT}, coriolis::BetaPlane, U) where FT = zero(FT)
 

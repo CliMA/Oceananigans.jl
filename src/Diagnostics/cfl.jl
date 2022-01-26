@@ -33,7 +33,7 @@ for advection across a cell.
 Example
 =======
 ```julia
-julia> model = IncompressibleModel(grid=RegularRectilinearGrid(size=(16, 16, 16), length=(8, 8, 8)));
+julia> model = NonhydrostaticModel(grid=RectilinearGrid(size=(16, 16, 16), length=(8, 8, 8)));
 
 julia> cfl = AdvectiveCFL(1.0);
 
@@ -58,7 +58,7 @@ returned.
 Example
 =======
 ```julia
-julia> model = IncompressibleModel(grid=RegularRectilinearGrid(size=(16, 16, 16), length=(1, 1, 1)));
+julia> model = NonhydrostaticModel(grid=RectilinearGrid(size=(16, 16, 16), length=(1, 1, 1)));
 
 julia> dcfl = DiffusiveCFL(0.1);
 

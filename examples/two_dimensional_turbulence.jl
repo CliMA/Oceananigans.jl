@@ -5,7 +5,7 @@
 #
 #   * How to run a model with no tracers and no buoyancy model.
 #   * How to use `AbstractOperations`.
-#   * How to use `ComputedField`s to generate output.
+#   * How to use computed `Field`s to generate output.
 
 # ## Install dependencies
 #
@@ -24,10 +24,10 @@
 
 using Oceananigans
 
-grid = RegularRectilinearGrid(size=(128, 128), extent=(2π, 2π), 
+grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), 
                               topology=(Periodic, Periodic, Flat))
 
-model = IncompressibleModel(timestepper = :RungeKutta3,
+model = NonhydrostaticModel(timestepper = :RungeKutta3,
                               advection = UpwindBiasedFifthOrder(),
                                    grid = grid,
                                buoyancy = nothing,
@@ -42,10 +42,15 @@ model = IncompressibleModel(timestepper = :RungeKutta3,
 
 using Statistics
 
-u₀ = rand(size(model.grid)...)
-u₀ .-= mean(u₀)
+u, v, w = model.velocities
 
-set!(model, u=u₀, v=u₀)
+uᵢ = rand(size(u)...)
+vᵢ = rand(size(v)...)
+
+uᵢ .-= mean(uᵢ)
+vᵢ .-= mean(vᵢ)
+
+set!(model, u=uᵢ, v=vᵢ)
 
 # ## Computing vorticity and speed
 
@@ -53,7 +58,7 @@ set!(model, u=u₀, v=u₀)
 # the `NamedTuple` model.velocities:
 u, v, w = model.velocities
 
-# Next we create two objects called `ComputedField`s that calculate
+# Next we create two `Field`s that calculate
 # _(i)_ vorticity that measures the rate at which the fluid rotates
 # and is defined as
 #
@@ -63,7 +68,7 @@ u, v, w = model.velocities
 
 ω = ∂x(v) - ∂y(u)
 
-ω_field = ComputedField(ω)
+ω_field = Field(ω)
 
 # We also calculate _(ii)_ the _speed_ of the flow,
 #
@@ -73,14 +78,19 @@ u, v, w = model.velocities
 
 s = sqrt(u^2 + v^2)
 
-s_field = ComputedField(s)
+s_field = Field(s)
 
-# We'll pass these `ComputedField`s to an output writer below to calculate them during the simulation.
-# Now we construct a simulation that prints out the iteration and model time as it runs.
+# We'll pass these `Field`s to an output writer below to calculate and output them during the simulation.
 
-progress(sim) = @info "Iteration: $(sim.model.clock.iteration), time: $(round(Int, sim.model.clock.time))"
+simulation = Simulation(model, Δt=0.2, stop_time=50)
 
-simulation = Simulation(model, Δt=0.2, stop_time=50, iteration_interval=100, progress=progress)
+# ## Logging simulation progress
+#
+# We set up a callback that logs the simulation iteration and time every 100 iterations.
+
+progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
+
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 # ## Output
 #

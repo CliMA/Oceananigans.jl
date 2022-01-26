@@ -63,7 +63,7 @@ Each tracer may have a unique diffusivity components ``\kappa_h`` and ``\kappa_v
 
 ## Smagorinsky-Lilly turbulence closure
 
-In the turbulence closure proposed by Lilly (1962) and [Smagorinsky63](@cite),
+In the turbulence closure proposed by [Lilly62](@cite) and [Smagorinsky63](@cite),
 the subgrid stress associated with unresolved turbulent motions is modeled diffusively via
 ```math
 \tau_{ij} = \nu_e \Sigma_{ij} \, ,
@@ -73,22 +73,22 @@ strain rate.
 The eddy viscosity is given by
 ```math
     \begin{align}
-    \nu_e = \left ( C \Delta_f \right )^2 \sqrt{ \Sigma^2 } \, \Upsilon(Ri) + \nu \, ,
+    \nu_e = \left ( C \Delta_f \right )^2 \sqrt{ \Sigma^2 } \, \varsigma(N^2 / \Sigma^2) + \nu \, ,
     \label{eq:smagorinsky-viscosity}
     \end{align}
 ```
 where ``\Delta_f`` is the "filter width" associated with the finite volume grid spacing,
 ``C`` is a user-specified model constant, ``\Sigma^2 \equiv \Sigma_{ij} \Sigma_{ij}``, and
 ``\nu`` is a constant isotropic background viscosity.
-The factor ``\Upsilon(Ri)`` reduces ``\nu_e`` in regions of
-strong stratification where the resolved gradient Richardson number
-``Ri \equiv N^2 / \Sigma^2`` is large via
+The factor ``\varsigma(N^2 / \Sigma^2)`` reduces ``\nu_e`` in regions of
+strong stratification via
 ```math
-    \Upsilon(Ri) = \sqrt{1 - \min \left ( 1, C_b N^2 / \Sigma^2 \right )} \, ,
+    \varsigma(N^2 / \Sigma^2) = \sqrt{1 - \min \left ( 1, C_b N^2 / \Sigma^2 \right )} \, ,
 ```
 where ``N^2 = \max \left (0, \partial_z b \right )`` is the squared buoyancy frequency for stable
-stratification with ``\partial_z b > 0`` and ``C_b`` is a user-specified constant.
-Roughly speaking, the filter width for the Smagorinsky-Lilly closure is taken as
+stratification with ``\partial_z b > 0`` and ``C_b`` is a user-specified constant.  Lilly (1962)
+proposed ``C_b = 1/Pr``, where ``Pr`` is a turbulent Prandtl number.
+The filter width for the Smagorinsky-Lilly closure is
 ```math
 \Delta_f(\boldsymbol{x}) = \left ( \Delta x \Delta y \Delta z \right)^{1/3} \, ,
 ```
@@ -103,13 +103,13 @@ where the eddy diffusivity ``\kappa_e`` is
 ```math
 \kappa_e = \frac{\nu_e - \nu}{Pr} + \kappa \, ,
 ```
-where ``Pr`` is a turbulent Prandtl number and ``\kappa`` is a constant isotropic background diffusivity.
+where ``\kappa`` is a constant isotropic background diffusivity.
 Both ``Pr`` and ``\kappa`` may be set independently for each tracer.
 
 ## Anisotropic minimum dissipation (AMD) turbulence closure
 
 Oceananigans.jl uses the anisotropic minimum dissipation (AMD) model proposed by
-Verstappen18 and described and tested by Vreugdenhil18.
+[Verstappen18](@cite) and described and tested by [Vreugdenhil18](@cite).
 The AMD model uses an eddy diffusivity hypothesis similar the Smagorinsky-Lilly model.
 In the AMD model, the eddy viscosity and diffusivity for each tracer are defined in terms
 of eddy viscosity and diffusivity *predictors*
@@ -124,7 +124,7 @@ constant isotropic background viscosity and diffusivities for each tracer. The e
 predictor is
 ```math
     \begin{equation}
-    \nu_e^\dagger = -(C \Delta_f)^2
+    \nu_e^\dagger = -C \Delta_f^2
     \frac
         {(\hat{\partial}_k \hat{v}_i) (\hat{\partial}_k \hat{v}_j) \hat{\Sigma}_{ij}
         + C_b \hat{\delta}_{i3} (\hat{\partial}_k \hat{v_i}) (\hat{\partial}_k b)}
@@ -136,7 +136,7 @@ while the eddy diffusivity predictor for tracer ``c`` is
 ```math
     \begin{equation}
     \label{eq:kappa-dagger}
-    \kappa_e^\dagger = -(C \Delta_f)^2
+    \kappa_e^\dagger = -C \Delta_f^2
     \frac
         {(\hat{\partial}_k \hat{v}_i) (\hat{\partial}_k c) (\hat{\partial}_i c)}
         {(\hat{\partial}_l c) (\hat{\partial}_l c)} \, .
@@ -169,3 +169,9 @@ each direction:
 The constant ``C_b`` permits the "buoyancy modification" term it multiplies to be omitted
 from a calculation.
 By default we use the model constants ``C=1/12`` and ``C_b=0``.
+
+## Convective adjustment vertical diffusivity
+
+This closure aims to model the enhanced mixing that occurs due to convection.
+At every point and for every time instance, the closure diagnoses the gravitational stability of the fluid and applies the vertical diffusivities (i) `background_νz` to `u, v` and `background_κz` to all tracers if the fluid is gravitationally neutral or stable with `∂z(b) >= 0`, or (ii) `convective_νz` and `convective_κz` if `∂z(b) >= 0`.
+This closure is a plausible model for convection if `convective_κz` ``\gg`` `background_κz` and `convective_νz` ``\gg`` `background_νz`.

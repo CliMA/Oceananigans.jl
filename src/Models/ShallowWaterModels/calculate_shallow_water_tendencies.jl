@@ -37,7 +37,7 @@ function calculate_tendencies!(model::ShallowWaterModel)
                                                model.bathymetry,
                                                model.solution,
                                                model.tracers,
-                                               model.diffusivities,
+                                               model.diffusivity_fields,
                                                model.forcing,
                                                model.clock)
 

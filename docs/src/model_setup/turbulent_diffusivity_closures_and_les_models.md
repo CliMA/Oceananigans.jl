@@ -8,7 +8,7 @@ on turbulent diffusivity closures.
 
 ## Constant isotropic diffusivity
 
-To use constant isotropic values for the viscosity ν and diffusivity κ you can use [`IsotropicDiffusivity`](@ref)
+To use constant isotropic values for the viscosity ``\nu`` and diffusivity ``\kappa`` you can use [`IsotropicDiffusivity`](@ref)
 
 ```jldoctest
 julia> using Oceananigans.TurbulenceClosures
@@ -19,8 +19,8 @@ IsotropicDiffusivity: ν=0.01, κ=0.01
 
 ## Constant anisotropic diffusivity
 
-To specify constant values for the horizontal and vertical viscosities, ``\nu_h`` and ``\nu_v``, and horizontal and vertical
-diffusivities, ``\kappa_h`` and ``\kappa_v``, you can use [`AnisotropicDiffusivity`](@ref)
+To specify constant values for the horizontal and vertical viscosities, ``\nu_h`` and ``\nu_z``, and horizontal and vertical
+diffusivities, ``\kappa_h`` and ``\kappa_z``, you can use [`AnisotropicDiffusivity`](@ref)
 
 ```jldoctest
 julia> using Oceananigans.TurbulenceClosures
@@ -37,7 +37,7 @@ To use the Smagorinsky-Lilly LES closure, no parameters are required
 julia> using Oceananigans.TurbulenceClosures
 
 julia> closure = SmagorinskyLilly()
-SmagorinskyLilly: C=0.23, Cb=1.0, Pr=1.0, ν=0.0, κ=0.0
+SmagorinskyLilly: C=0.16, Cb=1.0, Pr=1.0, ν=0.0, κ=0.0
 ```
 
 although they may be specified. By default, the background viscosity and diffusivity are assumed to be the molecular
@@ -61,3 +61,15 @@ AnisotropicMinimumDissipation{Float64} turbulence closure with:
 
 no parameters are required although they may be specified. By default, the background viscosity and diffusivity
 are assumed to be the molecular values for seawater. For more details see [`AnisotropicMinimumDissipation`](@ref).
+
+## Convective Adjustment Vertical Diffusivity--Viscosity
+
+To use the a convective adjustment scheme that applies enhanced values for vertical diffusivity ``\kappa_z`` and/or
+viscosity ``\nu_z``, anytime and anywhere the background stratification becomes unstable.
+
+```jldoctest
+julia> using Oceananigans
+
+julia> closure = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0, background_κz = 1e-3)
+ConvectiveAdjustmentVerticalDiffusivity: (background_κz=0.001, convective_κz=1.0, background_νz=0.0, convective_νz=0.0)
+```

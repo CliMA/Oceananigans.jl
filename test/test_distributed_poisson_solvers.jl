@@ -1,16 +1,20 @@
+include("dependencies_for_runtests.jl")
 
-function random_divergent_source_term(arch, grid)
+using Oceananigans.Distributed: reconstruct_global_grid
+
+function random_divergent_source_term(grid)
     # Generate right hand side from a random (divergent) velocity field.
-    Ru = CenterField(arch, grid, UVelocityBoundaryConditions(grid))
-    Rv = CenterField(arch, grid, VVelocityBoundaryConditions(grid))
-    Rw = CenterField(arch, grid, WVelocityBoundaryConditions(grid))
+    Ru = XFaceField(grid)
+    Rv = YFaceField(grid)
+    Rw = ZFaceField(grid)
     U = (u=Ru, v=Rv, w=Rw)
 
     Nx, Ny, Nz = size(grid)
-    set!(Ru, rand(Nx, Ny, Nz))
-    set!(Rv, rand(Nx, Ny, Nz))
-    set!(Rw, rand(Nx, Ny, Nz))
+    set!(Ru, (x, y, z) -> rand())
+    set!(Rv, (x, y, z) -> rand())
+    set!(Rw, (x, y, z) -> rand())
 
+    arch = architecture(grid)
     fill_halo_regions!(Ru, arch)
     fill_halo_regions!(Rv, arch)
     fill_halo_regions!(Rw, arch)
@@ -27,23 +31,23 @@ end
 
 function divergence_free_poisson_solution_triply_periodic(grid_points, ranks)
     topo = (Periodic, Periodic, Periodic)
-    full_grid = RegularRectilinearGrid(topology=topo, size=grid_points, extent=(1, 2, 3))
-    arch = MultiCPU(grid=full_grid, ranks=ranks)
-    model = DistributedIncompressibleModel(architecture=arch, grid=full_grid)
+    arch = MultiArch(CPU(), ranks=ranks, topology = topo)
+    local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(1, 2, 3))
+    
+    global_grid = reconstruct_global_grid(local_grid)
+    solver = DistributedFFTBasedPoissonSolver(global_grid, local_grid)
 
-    local_grid = model.grid
-    solver = DistributedFFTBasedPoissonSolver(arch, full_grid, local_grid)
-
-    R = random_divergent_source_term(child_architecture(arch), local_grid)
+    R = random_divergent_source_term(local_grid)
     first(solver.storage) .= R
 
-    solve_poisson_equation!(solver)
+    ϕc = first(solver.storage)
+    solve!(ϕc, solver)
 
-    p_bcs = PressureBoundaryConditions(local_grid)
+    p_bcs = FieldBoundaryConditions(local_grid, (Center, Center, Center))
     p_bcs = inject_halo_communication_boundary_conditions(p_bcs, arch.local_rank, arch.connectivity)
 
-    ϕ   = CenterField(child_architecture(arch), local_grid, p_bcs)  # "pressure"
-    ∇²ϕ = CenterField(child_architecture(arch), local_grid, p_bcs)
+    ϕ   = CenterField(local_grid, boundary_conditions=p_bcs) # "pressure"
+    ∇²ϕ = CenterField(local_grid, boundary_conditions=p_bcs)
 
     interior(ϕ) .= real(first(solver.storage))
     compute_∇²!(∇²ϕ, ϕ, arch, local_grid)
@@ -55,4 +59,6 @@ end
     @info "  Testing distributed FFT-based Poisson solver..."
     @test divergence_free_poisson_solution_triply_periodic((16, 16, 1), (1, 4, 1))
     @test divergence_free_poisson_solution_triply_periodic((44, 44, 1), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((44, 16, 1), (1, 4, 1))
+    @test divergence_free_poisson_solution_triply_periodic((16, 44, 1), (1, 4, 1))
 end
