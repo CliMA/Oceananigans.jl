@@ -3,8 +3,8 @@ module Operators
 export Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δzᶠᶜᶜ, Δzᶜᶠᶜ, Δzᶠᶜᶠ, Δzᶜᶠᶠ
 export Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶠᶠᵃ, Δxᶜᶠᵃ
 export Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δyᶜᶠᵃ
-export Axᵃᵃᶜ, Axᵃᵃᶠ, Axᶜᶜᶜ, Axᶠᶜᶜ, Axᶠᶠᶜ, Axᶠᶜᶠ, Axᶜᶠᶜ, Axᶜᶜᶠ
-export Ayᵃᵃᶜ, Ayᵃᵃᶠ, Ayᶜᶜᶜ, Ayᶜᶠᶜ, Ayᶠᶠᶜ, Ayᶜᶠᶠ, Ayᶠᶜᶜ, Ayᶜᶜᶠ
+export Axᵃᵃᶜ, Axᵃᵃᶠ, Axᶜᶜᶜ, Axᶠᶜᶜ, Axᶜᶠᶜ, Axᶜᶜᶠ, Axᶠᶠᶜ, Axᶠᶜᶠ, Axᶜᶠᶠ, Axᶠᶠᶠ
+export Ayᵃᵃᶜ, Ayᵃᵃᶠ, Ayᶜᶜᶜ, Ayᶠᶜᶜ, Ayᶜᶠᶜ, Ayᶜᶜᶠ, Ayᶠᶠᶜ, Ayᶠᶜᶠ, Ayᶜᶠᶠ, Ayᶠᶠᶠ
 export Azᵃᵃᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ
 export Vᵃᵃᶜ, Vᵃᵃᶠ, Vᶜᶜᶜ, Vᶠᶜᶜ, Vᶜᶠᶜ, Vᶜᶜᶠ
 export δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, δzᵃᵃᶠ
