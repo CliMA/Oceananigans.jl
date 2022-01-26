@@ -6,7 +6,7 @@ export Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶠᶠᵃ, Δyᶜᶠᵃ
 export Axᵃᵃᶜ, Axᵃᵃᶠ, Axᶜᶜᶜ, Axᶠᶜᶜ, Axᶜᶠᶜ, Axᶜᶜᶠ, Axᶠᶠᶜ, Axᶠᶜᶠ, Axᶜᶠᶠ, Axᶠᶠᶠ
 export Ayᵃᵃᶜ, Ayᵃᵃᶠ, Ayᶜᶜᶜ, Ayᶠᶜᶜ, Ayᶜᶠᶜ, Ayᶜᶜᶠ, Ayᶠᶠᶜ, Ayᶠᶜᶠ, Ayᶜᶠᶠ, Ayᶠᶠᶠ
 export Azᵃᵃᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ
-export Vᵃᵃᶜ, Vᵃᵃᶠ, Vᶜᶜᶜ, Vᶠᶜᶜ, Vᶜᶠᶜ, Vᶜᶜᶠ
+export Vᵃᵃᶜ, Vᵃᵃᶠ, Vᶜᶜᶜ, Vᶠᶜᶜ, Vᶜᶠᶜ, Vᶜᶜᶠ, Vᶠᶠᶜ, Vᶠᶜᶠ, Vᶜᶠᶠ, Vᶠᶠᶠ
 export δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, δzᵃᵃᶠ
 export Ax_ψᵃᵃᶠ, Ax_ψᵃᵃᶜ, Ay_ψᵃᵃᶠ, Ay_ψᵃᵃᶜ, Az_ψᵃᵃᵃ
 export Ax_uᶠᶜᶜ, Ay_vᶜᶠᶜ, Az_wᶜᶜᵃ
