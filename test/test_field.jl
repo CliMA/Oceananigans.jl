@@ -468,6 +468,7 @@ end
 
             # Fine-graining from reduction
             fine_stretched_c_mean_xy = Field(Reduction(mean!, fine_stretched_c, dims=(1, 2)))
+            compute!(fine_stretched_c_mean_xy)
 
             regrid!(super_fine_from_reduction_regular_c, fine_stretched_c_mean_xy)
             
