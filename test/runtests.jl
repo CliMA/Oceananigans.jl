@@ -98,7 +98,7 @@ include("dependencies_for_runtests.jl")
             include("test_implicit_free_surface_solver.jl")
             include("test_split_explicit_free_surface_solver.jl")
             include("test_split_explicit_vertical_integrals.jl")
-            include("test_hydrostatic_free_surface_immersed_boundaries_congrad_solve.jl")
+            include("test_hydrostatic_free_surface_immersed_boundaries_implicit_solve.jl")
         end
     end
     
