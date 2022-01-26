@@ -29,17 +29,28 @@ CUDA.allowscalar() do
     if group == :abstract_operations || group == :all
         @testset "AbstractOperations and broadcasting tests" begin
             include("test_abstract_operations.jl")
+            include("test_conditional_reductions.jl")
             include("test_computed_field.jl")
             include("test_broadcasting.jl")
         end
     end
 
-    if group == :solvers || group == :all
-        @testset "Solvers" begin
+    if group == :poisson_solvers || group == :all
+        @testset "Poisson Solvers" begin
+            include("test_poisson_solvers.jl")
+        end
+    end
+
+    if group == :matrix_poisson_solvers || group == :all
+        @testset "Matrix Poisson Solvers" begin
+            include("test_matrix_poisson_solver.jl")
+        end
+    end
+
+    if group == :general_solvers || group == :all
+        @testset "General Solvers" begin
             include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
-            include("test_poisson_solvers.jl")
-            include("test_matrix_poisson_solver.jl")
         end
     end
 
@@ -66,8 +77,13 @@ CUDA.allowscalar() do
         @testset "Model and time stepping tests (part 2)" begin
             include("test_boundary_conditions_integration.jl")
             include("test_forcings.jl")
-            include("test_turbulence_closures.jl")
             include("test_dynamics.jl")
+        end
+    end
+
+    if group == :turbulence_closures || group == :all
+        @testset "Turbulence closures tests" begin
+            include("test_turbulence_closures.jl")
         end
     end
 
@@ -82,6 +98,8 @@ CUDA.allowscalar() do
             include("test_hydrostatic_free_surface_immersed_boundaries.jl")
             include("test_vertical_vorticity_field.jl")
             include("test_implicit_free_surface_solver.jl")
+            include("test_split_explicit_free_surface_solver.jl")
+            include("test_split_explicit_vertical_integrals.jl")
             include("test_hydrostatic_free_surface_immersed_boundaries_congrad_solve.jl")
         end
     end
@@ -101,8 +119,12 @@ CUDA.allowscalar() do
         include("test_distributed_poisson_solvers.jl")
     end
 
-    if group == :regression || group == :all
-        include("test_regression.jl")
+    if group == :nonhydrostatic_regression || group == :all
+        include("test_nonhydrostatic_regression.jl")
+    end
+
+    if group == :hydrostatic_regression || group == :all
+        include("test_hydrostatic_regression.jl")
     end
 
     if group == :scripts || group == :all

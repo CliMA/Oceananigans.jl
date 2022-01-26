@@ -10,7 +10,6 @@ using Oceananigans.Fields
 using Oceananigans.Grids: topology, total_size, interior_parent_indices
 using Oceananigans.Fields: show_location
 
-import Oceananigans: short_show
 import Oceananigans.Fields: Field, set!, interior
 import Oceananigans.Architectures: architecture
 
@@ -301,11 +300,11 @@ backend_str(::OnDisk) = "OnDisk"
 ##### show
 #####
 
-short_show(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K} =
+Base.summary(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K} =
     string("$(join(size(fts), "×")) FieldTimeSeries{$(backend_str(K()))} located at $(show_location(fts))")
 
 Base.show(io::IO, fts::FieldTimeSeries{LX, LY, LZ, K, A}) where {LX, LY, LZ, K, A} =
-    print(io, "$(short_show(fts))\n",
+    print(io, "$(summary(fts))\n",
           "├── architecture: $A\n",
-          "└── grid: $(short_show(fts.grid))")
+          "└── grid: $(summary(fts.grid))")
 

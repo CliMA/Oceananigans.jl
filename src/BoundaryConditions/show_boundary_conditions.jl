@@ -1,5 +1,4 @@
 import Base: show
-import Oceananigans: short_show
 
 const DFBC = DefaultPrognosticFieldBoundaryCondition
 
@@ -33,7 +32,7 @@ show(io::IO, bc::BoundaryCondition) =
 ##### FieldBoundaryConditions
 #####
 
-short_show(fbcs::FieldBoundaryConditions) =
+Base.summary(fbcs::FieldBoundaryConditions) =
     string("west=$(bc_str(fbcs.west)), ",
            "east=$(bc_str(fbcs.east)), ",
            "south=$(bc_str(fbcs.south)), ",

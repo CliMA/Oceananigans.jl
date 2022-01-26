@@ -111,7 +111,7 @@ slice_parent(::Nothing, field) = parent(field)
 show_index(i) = string(i)
 show_index(i::Colon) = ":"
 
-short_show(fs::FieldSlicer) = string("FieldSlicer(",
-                                     "$(show_index(fs.i)), ",
-                                     "$(show_index(fs.j)), ",
-                                     "$(show_index(fs.k)), with_halos=$(fs.with_halos))")
+Base.summary(fs::FieldSlicer) = string("FieldSlicer(",
+                                       "$(show_index(fs.i)), ",
+                                       "$(show_index(fs.j)), ",
+                                       "$(show_index(fs.k)), with_halos=$(fs.with_halos))")

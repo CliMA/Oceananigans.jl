@@ -38,8 +38,9 @@ function set!(model::HydrostaticFreeSurfaceModel; kwargs...)
         elseif fldname ∈ propertynames(model.free_surface)
             ϕ = getproperty(model.free_surface, fldname)
         else
-            throw(ArgumentError("name $fldname not found in model.velocities, model.tracers, or model.free_surface."))
+            throw(ArgumentError("name $fldname not found in model.velocities, model.tracers, or model.free_surface"))
         end
+
         set!(ϕ, value)
     end
 

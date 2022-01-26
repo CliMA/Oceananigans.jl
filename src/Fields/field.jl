@@ -1,10 +1,12 @@
 using Oceananigans.Architectures: device_event
+using Oceananigans.BoundaryConditions: OBC
 
 using Adapt
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Statistics: norm, mean, mean!
 
 struct Field{LX, LY, LZ, O, G, T, D, B, S} <: AbstractField{LX, LY, LZ, G, T, 3}
     grid :: G
@@ -33,10 +35,41 @@ function validate_field_data(loc, data, grid)
     return nothing
 end
 
+validate_boundary_condition_location(bc, ::Center, side) = nothing                  # anything goes for centers
+validate_boundary_condition_location(::Union{OBC, Nothing}, ::Face, side) = nothing # only open or nothing on faces
+validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing          # its nothing or nothing
+validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
+    throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
+
+validate_boundary_conditions(loc, grid, ::Missing) = nothing
+validate_boundary_conditions(loc, grid, ::Nothing) = nothing
+
+function validate_boundary_conditions(loc, grid, bcs)
+    sides = (:east, :west, :north, :south, :bottom, :top)
+    directions = (1, 1, 2, 2, 3, 3)
+
+    for (side, dir) in zip(sides, directions)
+        topo = topology(grid, dir)()
+        ℓ = loc[dir]()
+        bc = getproperty(bcs, side)
+
+        # Check that boundary condition jives with the grid topology
+        validate_boundary_condition_topology(bc, topo, side)
+
+        # Check that boundary condition is valid given field location
+        topo isa Bounded && validate_boundary_condition_location(bc, ℓ, side)
+
+        # Check that boundary condition arrays, if used, are on the right architecture
+        validate_boundary_condition_architecture(bc, architecture(grid), side)
+    end
+
+    return nothing
+end
+
 # Common outer constructor for all field flavors that validates data and boundary conditions
 function Field(loc::Tuple, grid::AbstractGrid, data, bcs, op, status)
     validate_field_data(loc, data, grid)
-    # validate_boundary_conditions(loc, grid, bcs)
+    validate_boundary_conditions(loc, grid, bcs)
     LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, op, status)
 end
@@ -64,10 +97,11 @@ Example
 julia> using Oceananigans
 
 julia> ω = Field{Face, Face, Center}(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
-Field located at (Face, Face, Center)
-├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 1)
-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
-└── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=ZeroFlux, top=ZeroFlux, immersed=ZeroFlux
+1×1×1 Field{Face, Face, Center} on RectilinearGrid on CPU
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── boundary conditions: west=Periodic, east=Periodic, south=Periodic, north=Periodic, bottom=ZeroFlux, top=ZeroFlux, immersed=ZeroFlux
+└── data: 3×3×3 OffsetArray(::Array{Float64, 3}, 0:2, 0:2, 0:2) with eltype Float64 with indices 0:2×0:2×0:2
+    └── max=0.0, min=0.0, mean=0.0
 ```
 """
 function Field{LX, LY, LZ}(grid::AbstractGrid,
@@ -85,6 +119,9 @@ function Field(loc::Tuple,
 
     return Field(loc, grid, data, boundary_conditions, nothing, nothing)
 end
+    
+Field(f::Field) = f # indeed
+Field(z::ZeroField) = z
 
 #####
 ##### Field utils
@@ -105,20 +142,23 @@ end
 boundary_conditions(field) = nothing
 boundary_conditions(f::Field) = f.boundary_conditions
 
-"Returns a view of `f` that excludes halo points."
-function interior(f::Field)
-    LX, LY, LZ = location(f)
-    TX, TY, TZ = topology(f.grid)
-    ii = interior_parent_indices(LX, TX, f.grid.Nx, f.grid.Hx)
-    jj = interior_parent_indices(LY, TY, f.grid.Ny, f.grid.Hy)
-    kk = interior_parent_indices(LZ, TZ, f.grid.Nz, f.grid.Hz)
-    return view(parent(f), ii, jj, kk)
+function interior(a::Union{Field, OffsetArray}, (LX, LY, LZ), grid)
+    TX, TY, TZ = topology(grid)
+    ii = interior_parent_indices(LX, TX, grid.Nx, grid.Hx)
+    jj = interior_parent_indices(LY, TY, grid.Ny, grid.Hy)
+    kk = interior_parent_indices(LZ, TZ, grid.Nz, grid.Hz)
+    return view(parent(a), ii, jj, kk)
 end
 
-interior_copy(f::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} =
-    parent(f)[interior_parent_indices(LX, topology(f, 1), f.grid.Nx, f.grid.Hx),
-              interior_parent_indices(LY, topology(f, 2), f.grid.Ny, f.grid.Hy),
-              interior_parent_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz)]
+"Returns a view of `f` that excludes halo points."
+interior(f::Field) = interior(f, location(f), f.grid)
+    
+function interior_copy(f::Field)
+    LX, LY, LZ = location(f)
+    return parent(f)[interior_parent_indices(LX, topology(f, 1), f.grid.Nx, f.grid.Hx),
+                     interior_parent_indices(LY, topology(f, 2), f.grid.Ny, f.grid.Hy),
+                     interior_parent_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz)]
+end
 
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
@@ -322,6 +362,7 @@ Statistics.dot(a::Field, b::Field) = mapreduce((x, y) -> x * y, +, interior(a), 
 
 # TODO: in-place allocations with function mappings need to be fixed in Julia Base...
 const SumReduction     = typeof(Base.sum!)
+const MeanReduction    = typeof(Statistics.mean!)
 const ProdReduction    = typeof(Base.prod!)
 const MaximumReduction = typeof(Base.maximum!)
 const MinimumReduction = typeof(Base.minimum!)
@@ -336,7 +377,7 @@ initialize_reduced_field!(::AnyReduction,  f, r::ReducedField, c) = Base.initarr
 initialize_reduced_field!(::MaximumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), c)
 initialize_reduced_field!(::MinimumReduction, f, r::ReducedField, c) = Base.mapfirst!(f, interior(r), c)
 
-filltype(f, grid) = eltype(grid)
+filltype(f, c) = eltype(c)
 filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
 
 function reduced_location(loc; dims)
@@ -347,46 +388,94 @@ function reduced_location(loc; dims)
     end
 end
 
+function reduced_dimension(loc)
+    dims = ()
+    for i in 1:3
+        loc[i] == Nothing ? dims = (dims..., i) : dims
+    end
+    return dims
+end
+
+## Allow support for ConditionalOperation
+
+get_neutral_mask(::Union{AllReduction, AnyReduction})  = true
+get_neutral_mask(::Union{SumReduction, MeanReduction}) =   0
+get_neutral_mask(::MinimumReduction) =   Inf
+get_neutral_mask(::MaximumReduction) = - Inf
+get_neutral_mask(::ProdReduction)    =   1
+
+@inline condition_operand(operand, ::Nothing, mask)                = operand
+@inline condition_operand(operand::AbstractField, ::Nothing, mask) = operand
+
+@inline conditional_length(c::AbstractField)        = length(c)
+@inline conditional_length(c::AbstractField, dims)  = mapreduce(i -> size(c, i), *, unique(dims); init=1)
+
 # Allocating and in-place reductions
-for reduction in (:sum, :maximum, :minimum, :all, :any)
+for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
     reduction! = Symbol(reduction, '!')
 
     @eval begin
-
+        
         # In-place
-        Base.$(reduction!)(f::Function, r::ReducedField, a::AbstractArray; kwargs...) =
-            Base.$(reduction!)(f, interior(r), a; kwargs...)
+        Base.$(reduction!)(f::Function, r::ReducedField, a::AbstractArray;
+                           condition = nothing, mask = get_neutral_mask(Base.$(reduction!)), kwargs...) =
+            Base.$(reduction!)(f, interior(r), condition_operand(a, condition, mask); kwargs...)
 
-        Base.$(reduction!)(r::ReducedField, a::AbstractArray; kwargs...) =
-            Base.$(reduction!)(identity, interior(r), a; kwargs...)
+        Base.$(reduction!)(r::ReducedField, a::AbstractArray; 
+                           condition = nothing, mask = get_neutral_mask(Base.$(reduction!)), kwargs...) =
+            Base.$(reduction!)(identity, interior(r), condition_operand(a, condition, mask); kwargs...)
 
         # Allocating
-        function Base.$(reduction)(f::Function, c::AbstractField; dims=:)
+        function Base.$(reduction)(f::Function, c::AbstractField;
+                                   condition = nothing, mask = get_neutral_mask(Base.$(reduction!)),
+                                   dims=:)
             if dims isa Colon
                 r = zeros(architecture(c), c.grid, 1, 1, 1)
-                Base.$(reduction!)(f, r, c)
+                Base.$(reduction!)(f, r, condition_operand(c, condition, mask))
                 return CUDA.@allowscalar r[1, 1, 1]
             else
-                T = filltype(Base.$(reduction!), c.grid)
+                T = filltype(Base.$(reduction!), c)
                 loc = reduced_location(location(c); dims)
                 r = Field(loc, c.grid, T)
-                initialize_reduced_field!(Base.$(reduction!), f, r, c)
-                Base.$(reduction!)(f, r, c, init=false)
+                initialize_reduced_field!(Base.$(reduction!), f, r, condition_operand(c, condition, mask))
+                Base.$(reduction!)(f, r, condition_operand(c, condition, mask), init=false)
                 return r
             end
         end
 
-        Base.$(reduction)(c::AbstractField; dims=:) = Base.$(reduction)(identity, c; dims)
+        Base.$(reduction)(c::AbstractField; kwargs...) = Base.$(reduction)(identity, c; kwargs...)
     end
 end
 
-Statistics._mean(f, c::AbstractField, ::Colon) = sum(f, c) / length(c)
+function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0) 
+    operator = condition_operand(c, condition, mask)
+    return sum(f, operator) / conditional_length(operator)
+end
 
-function Statistics._mean(f, c::AbstractField, dims)
-    r = sum(f, c; dims)
-    n = mapreduce(i -> size(c, i), *, unique(dims); init=1)
-    parent(r) ./= n
+function Statistics._mean(f, c::AbstractField, dims; condition = nothing, mask = 0)
+    operator = condition_operand(c, condition, mask)
+    r = sum(f, operator; dims)
+    n = conditional_length(operator, dims)
+    r ./= n
     return r
 end
 
+Statistics.mean(f::Function, c::AbstractField; condition = nothing, dims=:) = Statistics._mean(f, c, dims; condition)
+Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mean(identity, c, dims; condition)
+
+function Statistics.mean!(f::Function, r::ReducedField, a::AbstractArray; condition = nothing, mask = 0)
+    sum!(f, r, a; condition, mask, init=true)
+    dims = reduced_dimension(location(r))
+    n = conditional_length(condition_operand(a, condition, mask), dims)
+    r ./= n
+    return r
+end
+
+Statistics.mean!(r::ReducedField, a::AbstractArray; kwargs...) = Statistics.mean!(identity, r, a; kwargs...)
+
+function Statistics.norm(a::AbstractField; condition = nothing)
+    r = zeros(a.grid, 1)
+    Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
+    return CUDA.@allowscalar sqrt(r[1])
+end

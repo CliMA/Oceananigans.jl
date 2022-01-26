@@ -46,6 +46,8 @@ function calculate_tendencies! end
 calculate_pressure_correction!(model, Δt) = nothing
 pressure_correct_velocities!(model, Δt) = nothing
 
+reset!(timestepper) = nothing
+
 include("clock.jl")
 include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")

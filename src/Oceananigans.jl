@@ -71,7 +71,7 @@ export
     fields,
 
     # Hydrostatic free surface model stuff
-    VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface,
+    VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     HydrostaticSphericalCoriolis, VectorInvariantEnstrophyConserving, VectorInvariantEnergyConserving,
     PrescribedVelocityFields,
 
@@ -162,7 +162,6 @@ function write_output! end
 function location end
 function instantiated_location end
 function tupleit end
-function short_show end
 
 function fields end
 function prognostic_fields end

@@ -188,8 +188,6 @@ nothing # hide
 
 ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
-iterations = keys(ds["time"])
-
 anim = @animate for (iter, t) in enumerate(ds["time"])
     ω = ds["ω"][:, :, 1, iter]
     ω′ = ds["ω′"][:, :, 1, iter]
@@ -214,8 +212,6 @@ mp4(anim, "shallow_water_Bickley_jet.mp4", fps=15)
 # Read in the `output_writer` for the scalar field (the norm of ``v``-velocity).
 
 ds2 = NCDataset(simulation.output_writers[:growth].filepath, "r")
-
-iterations = keys(ds2["time"])
 
      t = ds2["time"][:]
 norm_v = ds2["perturbation_norm"][:]

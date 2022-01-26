@@ -55,7 +55,7 @@ end
 
 @inline get_coefficient(a::AbstractArray{T, 1}, i, j, k, grid, p, args...) where {T} = @inbounds a[k]
 @inline get_coefficient(a::AbstractArray{T, 3}, i, j, k, grid, p, args...) where {T} = @inbounds a[i, j, k]
-@inline get_coefficient(a::Base.Callable, i, j, k, grid, p, args...) = a(i, j, k, grid, p, args...)
+@inline get_coefficient(a::Base.Callable, i, j, k, grid, p, args...)         = a(i, j, k, grid, p, args...)
 @inline get_coefficient(a::Base.Callable, i, j, k, grid, ::Nothing, args...) = a(i, j, k, grid, args...)
 
 """
@@ -71,7 +71,7 @@ The result is stored in `ϕ` which must have size `(grid.Nx, grid.Ny, grid.Nz)`.
 
 Reference implementation per Numerical Recipes, Press et. al 1992 (§ 2.4).
 """
-function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; dependencies = device_event(architecture(solver)))
+function solve!(ϕ, solver::BatchedTridiagonalSolver, rhs, args...; dependencies = device_event(architecture(solver))) 
 
     a, b, c, t, parameters = solver.a, solver.b, solver.c, solver.t, solver.parameters
     grid = solver.grid
@@ -107,7 +107,7 @@ end
             β = bᵏ - aᵏ⁻¹ * t[i, j, k]
 
             fᵏ = get_coefficient(f, i, j, k, grid, p, args...)
-
+            
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
@@ -120,4 +120,3 @@ end
         end
     end
 end
-

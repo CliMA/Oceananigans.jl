@@ -7,7 +7,7 @@ vector with latitude.
 """
 struct BetaPlane{T} <: AbstractRotation
     f₀ :: T
-     β :: T
+    β :: T
 end
 
 """

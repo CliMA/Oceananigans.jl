@@ -2,9 +2,12 @@ include("dependencies_for_runtests.jl")
 
 using Statistics
 using Oceananigans.Architectures: arch_array
+using Oceananigans.AbstractOperations: BinaryOperation
 using Oceananigans.Fields: ReducedField, CenterField, ZFaceField, compute_at!, @compute
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Grids: halo_size
+
+trilinear(x, y, z) = x + y + z
 
 @testset "Fields computed by Reduction" begin
     @info "Testing Fields computed by reductions..."
@@ -12,43 +15,98 @@ using Oceananigans.Grids: halo_size
     for arch in archs
         arch_str = string(typeof(arch))
 
-        grid = RectilinearGrid(arch, size = (2, 2, 2),
-                               x = (0, 2), y = (0, 2), z = (0, 2),
-                               topology = (Periodic, Periodic, Bounded))
+        regular_grid = RectilinearGrid(arch, size = (2, 2, 2),
+                                       x = (0, 2), y = (0, 2), z = (0, 2),
+                                       topology = (Periodic, Periodic, Bounded))
 
-        Nx, Ny, Nz = size(grid)
-
-        w = ZFaceField(grid)
-        T = CenterField(grid)
-
-        trilinear(x, y, z) = x + y + z
-
-        set!(T, trilinear)
-        set!(w, trilinear)
-
-        @compute Txyz = Field(Average(T, dims=(1, 2, 3)))
-
-        # Note: halo regions must be *filled* prior to computing an average
-        # if the average within halo regions is to be correct.
-        fill_halo_regions!(T, arch)
-        @compute Txy = Field(Average(T, dims=(1, 2)))
-
-        fill_halo_regions!(T, arch)
-        @compute Tx = Field(Average(T, dims=1))
-
-        @compute wxyz = Field(Average(w, dims=(1, 2, 3)))
-        @compute wxy = Field(Average(w, dims=(1, 2)))
-        @compute wx = Field(Average(w, dims=1))
+        xy_regular_grid = RectilinearGrid(arch, size=(2, 2, 2),
+                                          x=(0, 2), y=(0, 2), z=[0, 1, 2],
+                                          topology = (Periodic, Periodic, Bounded))
 
         @testset "Averaged fields [$arch_str]" begin
             @info "  Testing averaged Fields [$arch_str]"
 
-            @test Txyz[1, 1, 1] ≈ 3
-            @test Array(interior(Txy))[1, 1, :] ≈ [2.5, 3.5]
-            @test Array(interior(Tx))[1, :, :] ≈ [[2, 3] [3, 4]]
-            @test wxyz[1, 1, 1] ≈ 3
-            @test Array(interior(wxy))[1, 1, :] ≈ [2, 3, 4]
-            @test Array(interior(wx))[1, :, :] ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
+            for grid in (regular_grid, xy_regular_grid)
+
+                Nx, Ny, Nz = size(grid)
+
+                w = ZFaceField(grid)
+                T = CenterField(grid)
+
+                set!(T, trilinear)
+                set!(w, trilinear)
+
+                @compute Txyz = Field(Average(T, dims=(1, 2, 3)))
+
+                # Note: halo regions must be *filled* prior to computing an average
+                # if the average within halo regions is to be correct.
+                fill_halo_regions!(T, arch)
+                @compute Txy = Field(Average(T, dims=(1, 2)))
+
+                fill_halo_regions!(T, arch)
+                @compute Tx = Field(Average(T, dims=1))
+
+                @compute wxyz = Field(Average(w, dims=(1, 2, 3)))
+                @compute wxy = Field(Average(w, dims=(1, 2)))
+                @compute wx = Field(Average(w, dims=1))
+
+                for T′ in (Tx, Txy)
+                    @test T′.operand.operand === T
+                end
+                
+                for w′ in (wx, wxy)
+                    @test w′.operand.operand === w
+                end
+
+                for f in (wx, wxy, Tx, Txy)
+                    @test f.operand isa Reduction
+                    @test f.operand.reduce! === mean!
+                end
+
+                @test Txyz.operand isa Reduction
+                @test wxyz.operand isa Reduction
+
+                # Different behavior for regular grid z vs not.
+                if grid === regular_grid
+                    @test Txyz.operand.reduce! === mean!
+                    @test wxyz.operand.reduce! === mean!
+                    @test Txyz.operand.operand === T
+                    @test wxyz.operand.operand === w
+                else
+                    @test Txyz.operand.reduce! === sum!
+                    @test wxyz.operand.reduce! === sum!
+                    @test Txyz.operand.operand isa BinaryOperation
+                    @test wxyz.operand.operand isa BinaryOperation
+                end
+
+                @test Tx.operand.dims === tuple(1)
+                @test wx.operand.dims === tuple(1)
+                @test Txy.operand.dims === (1, 2)
+                @test wxy.operand.dims === (1, 2)
+                @test Txyz.operand.dims === (1, 2, 3)
+                @test wxyz.operand.dims === (1, 2, 3)
+
+                @test Txyz[1, 1, 1] ≈ 3
+                @test Array(interior(Txy))[1, 1, :] ≈ [2.5, 3.5]
+                @test Array(interior(Tx))[1, :, :] ≈ [[2, 3] [3, 4]]
+                @test wxyz[1, 1, 1] ≈ 3
+                @test Array(interior(wxy))[1, 1, :] ≈ [2, 3, 4]
+                @test Array(interior(wx))[1, :, :] ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
+                
+                @compute Txyz = Field(Average(T, condition=T.>3))
+                @compute Txy = Field(Average(T, dims=(1, 2), condition=T.>3))
+                @compute Tx = Field(Average(T, dims=1, condition=T.>2))
+                @test Txyz[1,1,1] ≈ 3.75
+                @test Array(interior(Txy))[1, 1, :] ≈ [3.5, 11.5/3]
+                @test Array(interior(Tx))[1, :, :] ≈ [[2.5, 3] [3, 4]]
+
+                @compute wxyz = Field(Average(w, condition=w.>3))
+                @compute wxy = Field(Average(w, dims=(1, 2), condition=w.>2))
+                @compute wx = Field(Average(w, dims=1, condition=w.>1))
+                @test wxyz[1,1,1] ≈ 4.25
+                @test Array(interior(wxy))[1, 1, :] ≈ [3, 10/3, 4]
+                @test Array(interior(wx))[1, :, :] ≈ [[2, 2.5] [2.5, 3.5] [3.5, 4.5]]
+            end
             
             # Test whether a race condition gets hit for averages over large fields
             big_grid = RectilinearGrid(arch,
@@ -71,7 +129,7 @@ using Oceananigans.Grids: halo_size
 
             results = []
             for i = 1:10
-                sum!(C, C.operand.operand)
+                mean!(C, C.operand.operand)
                 push!(results, all(interior(C) .== 1))
             end
 
@@ -80,7 +138,26 @@ using Oceananigans.Grids: halo_size
 
         @testset "Allocating reductions [$arch_str]" begin
             @info "  Testing allocating reductions"
-        
+
+            grid = RectilinearGrid(arch, size = (2, 2, 2),
+                                   x = (0, 2), y = (0, 2), z = (0, 2),
+                                   topology = (Periodic, Periodic, Bounded))
+
+            w = ZFaceField(grid)
+            T = CenterField(grid)
+            set!(T, trilinear)
+            set!(w, trilinear)
+            fill_halo_regions!(T, arch)
+            fill_halo_regions!(w, arch)
+
+            @compute Txyz = Field(Average(T, dims=(1, 2, 3)))
+            @compute Txy = Field(Average(T, dims=(1, 2)))
+            @compute Tx = Field(Average(T, dims=1))
+
+            @compute wxyz = Field(Average(w, dims=(1, 2, 3)))
+            @compute wxy = Field(Average(w, dims=(1, 2)))
+            @compute wx = Field(Average(w, dims=1))
+
             # Mean
             @test Txyz[1, 1, 1] == mean(T)
             @test interior(Txy) == interior(mean(T, dims=(1, 2)))
