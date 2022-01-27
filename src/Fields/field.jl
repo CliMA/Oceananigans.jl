@@ -79,16 +79,20 @@ end
 #####
 
 """
-    Field{LX, LY, LZ}(grid; kw...)
+    Field{LX, LY, LZ}(grid::AbstractGrid,
+                      T::DataType=eltype(grid); kw...) where {LX, LY, LZ}
 
-Construct a `Field` on `grid` at the location `(LX, LY, LZ)`.
-Each of `(LX, LY, LZ)` is either `Center` or `Face` and determines
-the field's location in `(x, y, z)`.
+Construct a `Field` on `grid` with data type `T` at the location `(LX, LY, LZ)`.
+Each of `(LX, LY, LZ)` is either `Center` or `Face` and determines the field's
+location in `(x, y, z)` respectively.
 
 Keyword arguments
 =================
 
-- data: 
+- data :: OffsetArray: An offset array with the fields data. If nothing is providet the
+  field is created with zeros.
+- boundary_conditions: If nothing is provided then the field is created using the default
+  boundary conditions as via [FieldBoundaryConditions](@ref).
 
 Example
 =======
