@@ -28,6 +28,11 @@ ConditionalOperation(operand; func=identity, condition=nothing, mask=0)
 
 Returns a `ConditionalOperation` which allows masked reductions over the `AbstractField` `operand`.
 
+Positional arguments
+====================
+
+- `operand`: The `AbstractField` which will be masked (it must have a `grid` property!)
+
 Keyword arguments
 =================
 
@@ -38,10 +43,6 @@ Keyword arguments
                false, operand will be masked with `mask`
 
 - `mask`: a scalar which masked the data contained in `func(operand)` where `condition` evaluates to false
-
-Indexing a `ConditionalOperation` with indices [i, j, k] will return
-
-
 """
 
 function ConditionalOperation(operand::AbstractField; func = identity, condition = nothing, mask = 0)
