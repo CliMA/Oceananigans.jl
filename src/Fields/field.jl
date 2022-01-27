@@ -92,7 +92,7 @@ Keyword arguments
 - data :: OffsetArray: An offset array with the fields data. If nothing is providet the
   field is created with zeros.
 - boundary_conditions: If nothing is provided then the field is created using the default
-  boundary conditions as via [FieldBoundaryConditions](@ref).
+  boundary conditions as via [`FieldBoundaryConditions`](@ref).
 
 Example
 =======
