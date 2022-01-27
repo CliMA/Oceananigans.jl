@@ -13,21 +13,35 @@ end
 
 Return a `Reduction` of `operand` with `reduce!`, along `dims`.
 
-elements for which `condition(i ,j ,k) == true` are masked with a `mask`
+Field elements for which `condition(i ,j ,k) == true` are masked with a `mask`.
 
 Example
 =======
 
-julia> grid = RectilinearGrid(size=(3, 3, 3), x=(0, 1), y=(0, 1), z=(0, 1),
-                              topology=(Periodic, Periodic, Periodic))
+```jldoctest
+using Oceananigans
 
-julia> c = CenterField(grid)
+Nx, Ny, Nz = 3, 3, 3
 
-julia> set!(c, (x, y, z) -> x + y + z)
+grid = RectilinearGrid(size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(0, 1),
+                       topology=(Periodic, Periodic, Periodic))
 
-julia> max_c² = Field(Reduction(maximum!, c^2, dims=3))
+c = CenterField(grid)
 
-julia> compute!(max_c²)
+set!(c, (x, y, z) -> x + y + z)
+
+max_c² = Field(Reduction(maximum!, c^2, dims=3))
+
+compute!(max_c²)
+
+max_c²[1:Nx, 1:Ny]
+
+# output
+3×3 Matrix{Float64}:
+ 1.36111  2.25     3.36111
+ 2.25     3.36111  4.69444
+ 3.36111  4.69444  6.25
+```
 """
 Reduction(reduce!, operand; dims) = Reduction(reduce!, operand, dims)
 
