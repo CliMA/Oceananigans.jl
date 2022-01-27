@@ -404,11 +404,8 @@ get_neutral_mask(::MinimumReduction) =   Inf
 get_neutral_mask(::MaximumReduction) = - Inf
 get_neutral_mask(::ProdReduction)    =   1
 
-@inline condition_operand(f::Function, operand, ::Nothing, mask)                = operand
-@inline condition_operand(f::Function, operand::AbstractField, ::Nothing, mask) = operand
-
-@inline condition_operand(operand, ::Nothing, mask)                = operand
-@inline condition_operand(operand::AbstractField, ::Nothing, mask) = operand
+@inline condition_operand(f::typeof(identity), operand, ::Nothing, mask) = operand
+@inline condition_operand(f::typeof(identity), operand::AbstractField, ::Nothing, mask) = operand
 
 @inline conditional_length(c::AbstractField)        = length(c)
 @inline conditional_length(c::AbstractField, dims)  = mapreduce(i -> size(c, i), *, unique(dims); init=1)
@@ -427,7 +424,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
         Base.$(reduction!)(r::ReducedField, a::AbstractArray; 
                            condition = nothing, mask = get_neutral_mask(Base.$(reduction!)), kwargs...) =
-            Base.$(reduction!)(identity, interior(r), condition_operand(a, condition, mask); kwargs...)
+            Base.$(reduction!)(identity, interior(r), condition_operand(identity, a, condition, mask); kwargs...)
 
         # Allocating
         function Base.$(reduction)(f::Function, c::AbstractField;
@@ -452,12 +449,12 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 end
 
 function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0) 
-    operator = condition_operand(c, condition, mask)
+    operator = condition_operand(f, c, condition, mask)
     return sum(f, operator) / conditional_length(operator)
 end
 
 function Statistics._mean(f, c::AbstractField, dims; condition = nothing, mask = 0)
-    operator = condition_operand(c, condition, mask)
+    operator = condition_operand(f, c, condition, mask)
     r = sum(f, operator; dims)
     n = conditional_length(operator, dims)
     r ./= n
@@ -470,7 +467,7 @@ Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mea
 function Statistics.mean!(f::Function, r::ReducedField, a::AbstractArray; condition = nothing, mask = 0)
     sum!(f, r, a; condition, mask, init=true)
     dims = reduced_dimension(location(r))
-    n = conditional_length(condition_operand(a, condition, mask), dims)
+    n = conditional_length(condition_operand(f, a, condition, mask), dims)
     r ./= n
     return r
 end
@@ -479,6 +476,6 @@ Statistics.mean!(r::ReducedField, a::AbstractArray; kwargs...) = Statistics.mean
 
 function Statistics.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
+    Base.mapreducedim!(x -> x * x, +, r, condition_operand(identity, a, condition, 0))
     return CUDA.@allowscalar sqrt(r[1])
 end

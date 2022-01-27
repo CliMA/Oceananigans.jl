@@ -59,20 +59,21 @@ function ConditionalOperation(c::ConditionalOperation; func = identity, conditio
     return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
 end
 
-@inline condition_operand(operand::AbstractField, condition, mask) = ConditionalOperation(operand; condition, mask)
-@inline condition_operand(c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; mask)
-@inline condition_operand(func::Function, c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; func, mask)
 @inline condition_operand(func::Function, operand::AbstractField, condition, mask) = ConditionalOperation(operand; func, condition, mask)
-
+@inline condition_operand(func::Function, operand::AbstractField, ::Nothing, mask) = ConditionalOperation(operand; func, condition = truefunc, mask)
 @inline function condition_operand(func::Function, operand::AbstractField, condition::AbstractArray, mask) 
     condition = arch_array(architecture(operand.grid), condition)
     return ConditionalOperation(operand; func, condition, mask)
 end
-
 @inline function condition_operand(operand::AbstractField, condition::AbstractArray, mask) 
     condition = arch_array(architecture(operand.grid), condition)
     return ConditionalOperation(operand; func, condition, mask)
 end
+
+@inline condition_operand(c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; mask)
+@inline condition_operand(func::Function, c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; func, mask)
+
+@inline truefunc(args...) = true
 
 @inline condition_onefield(c::ConditionalOperation{LX, LY, LZ}, mask) where {LX, LY, LZ} =
                               ConditionalOperation{LX, LY, LZ}(OneField(), identity, c.grid, c.condition, mask)
