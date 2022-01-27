@@ -1,6 +1,6 @@
 using Oceananigans.Fields: AbstractField
 
-import Oceananigans.AbstractOperations: get_condition
+import Oceananigans.AbstractOperations: ConditionalOperation, get_condition
 import Oceananigans.Fields: condition_operand, conditional_length
 
 # ###
