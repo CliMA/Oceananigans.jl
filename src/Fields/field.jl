@@ -89,10 +89,10 @@ location in `(x, y, z)` respectively.
 Keyword arguments
 =================
 
-- data :: OffsetArray: An offset array with the fields data. If nothing is providet the
-  field is created with zeros.
-- boundary_conditions: If nothing is provided then the field is created using the default
-  boundary conditions as via [`FieldBoundaryConditions`](@ref).
+- `data :: OffsetArray`: An offset array with the fields data. If nothing is providet the
+  field is filled with zeros.
+- `boundary_conditions`: If nothing is provided, then field is created using the default
+  boundary conditions via [`FieldBoundaryConditions`](@ref).
 
 Example
 =======
