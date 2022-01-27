@@ -78,7 +78,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @test model isa HydrostaticFreeSurfaceModel
 
             # SingleColumnGrid tests
-            @test grid isa a SingleColumnGrid
+            @test grid isa SingleColumnGrid
             @test isnothing(model.free_surface)
             @test !(:η ∈ fields(model)) # doesn't include free surface
         end
