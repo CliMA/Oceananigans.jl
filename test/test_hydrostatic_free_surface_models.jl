@@ -79,6 +79,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             # SingleColumnGrid tests
             @test grid isa a SingleColumnGrid
+            @test isnothing(model.free_surface)
             @test !(:η ∈ fields(model)) # doesn't include free surface
         end
     end
