@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, PrescribedField
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
 using Oceananigans.Coriolis: VectorInvariantEnergyConserving, VectorInvariantEnstrophyConserving
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, ExplicitTimeDiscretization
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity
@@ -73,8 +74,12 @@ topos_3d = ((Periodic, Periodic, Bounded),
         @info "  Testing $topo_1d model construction..."
         for arch in archs, FT in [Float64] #float_types
             grid = RectilinearGrid(arch, FT, topology=topo_1d, size=(1), extent=(1))
-            model = HydrostaticFreeSurfaceModel(grid=grid)        
+            model = HydrostaticFreeSurfaceModel(grid=grid)
             @test model isa HydrostaticFreeSurfaceModel
+
+            # SingleColumnGrid tests
+            @test grid isa a SingleColumnGrid
+            @test !(:η ∈ fields(model)) # doesn't include free surface
         end
     end
     
@@ -85,6 +90,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1), extent=(1, 2))
                 model = HydrostaticFreeSurfaceModel(grid=grid)
                 @test model isa HydrostaticFreeSurfaceModel
+                @test :η ∈ fields(model) # contrary to the SingleColumnGrid case
             end
         end
     end
