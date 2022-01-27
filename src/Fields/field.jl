@@ -404,6 +404,7 @@ get_neutral_mask(::MinimumReduction) =   Inf
 get_neutral_mask(::MaximumReduction) = - Inf
 get_neutral_mask(::ProdReduction)    =   1
 
+# If func = identity and condition = nothing, nothing happens
 @inline condition_operand(f::typeof(identity), operand, ::Nothing, mask) = operand
 @inline condition_operand(f::typeof(identity), operand::AbstractField, ::Nothing, mask) = operand
 
@@ -450,12 +451,12 @@ end
 
 function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0) 
     operator = condition_operand(f, c, condition, mask)
-    return sum(f, operator) / conditional_length(operator)
+    return sum(operator) / conditional_length(operator)
 end
 
 function Statistics._mean(f, c::AbstractField, dims; condition = nothing, mask = 0)
     operator = condition_operand(f, c, condition, mask)
-    r = sum(f, operator; dims)
+    r = sum(operator; dims)
     n = conditional_length(operator, dims)
     r ./= n
     return r

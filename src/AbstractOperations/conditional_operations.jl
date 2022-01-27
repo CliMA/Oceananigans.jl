@@ -42,21 +42,9 @@ function ConditionalOperation(operand::AbstractField; func = identity, condition
     return ConditionalOperation{LX, LY, LZ}(operand, func, grid, condition, mask)
 end
 
-function ConditionalOperation(c::ConditionalOperation; func = identity, condition = nothing, mask = 0)
-    grid = c.grid
+function ConditionalOperation(c::ConditionalOperation; func = nothing, condition = nothing, mask = nothing)
     LX, LY, LZ = location(c)
-
-    for var in (:condition, :mask)
-        if eval(var) isa Nothing
-            @eval $var = c.$var
-        end
-    end
-
-    if func isa typeof(identity)
-        func = c.func
-    end
-
-    return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
+    return ConditionalOperation{LX, LY, LZ}(c.operand, c.func, c.grid, c.condition, c.mask)
 end
 
 @inline condition_operand(func::Function, operand::AbstractField, condition, mask) = ConditionalOperation(operand; func, condition, mask)
@@ -65,12 +53,8 @@ end
     condition = arch_array(architecture(operand.grid), condition)
     return ConditionalOperation(operand; func, condition, mask)
 end
-@inline function condition_operand(operand::AbstractField, condition::AbstractArray, mask) 
-    condition = arch_array(architecture(operand.grid), condition)
-    return ConditionalOperation(operand; func, condition, mask)
-end
 
-@inline condition_operand(c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; mask)
+@inline condition_operand(func::typeof(identity), c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; mask)
 @inline condition_operand(func::Function, c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; func, mask)
 
 @inline truefunc(args...) = true
