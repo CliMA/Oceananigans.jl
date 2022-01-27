@@ -79,16 +79,20 @@ end
 #####
 
 """
-    Field{LX, LY, LZ}(grid; kw...)
+    Field{LX, LY, LZ}(grid::AbstractGrid,
+                      T::DataType=eltype(grid); kw...) where {LX, LY, LZ}
 
-Construct a `Field` on `grid` at the location `(LX, LY, LZ)`.
-Each of `(LX, LY, LZ)` is either `Center` or `Face` and determines
-the field's location in `(x, y, z)`.
+Construct a `Field` on `grid` with data type `T` at the location `(LX, LY, LZ)`.
+Each of `(LX, LY, LZ)` is either `Center` or `Face` and determines the field's
+location in `(x, y, z)` respectively.
 
 Keyword arguments
 =================
 
-- data: 
+- `data :: OffsetArray`: An offset array with the fields data. If nothing is providet the
+  field is filled with zeros.
+- `boundary_conditions`: If nothing is provided, then field is created using the default
+  boundary conditions via [`FieldBoundaryConditions`](@ref).
 
 Example
 =======
@@ -227,7 +231,7 @@ compute!(field, time=nothing) = nothing # fallback
 """
     @compute(exprs...)
 
-Call compute! on fields after defining them.
+Call `compute!` on fields after defining them.
 """
 macro compute(def)
     expr = Expr(:block)

@@ -49,7 +49,6 @@ end
 """
     NonhydrostaticModel(;
                    grid,
-           architecture = CPU(),
                   clock = Clock{eltype(grid)}(0, 0, 1),
               advection = CenteredSecondOrder(),
                buoyancy = nothing,
@@ -77,7 +76,6 @@ Keyword arguments
 =================
 
   - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
-  - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
   - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
