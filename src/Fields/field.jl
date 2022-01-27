@@ -231,7 +231,7 @@ compute!(field, time=nothing) = nothing # fallback
 """
     @compute(exprs...)
 
-Call compute! on fields after defining them.
+Call `compute!` on fields after defining them.
 """
 macro compute(def)
     expr = Expr(:block)
