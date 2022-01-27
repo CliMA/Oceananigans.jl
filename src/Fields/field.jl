@@ -404,6 +404,9 @@ get_neutral_mask(::MinimumReduction) =   Inf
 get_neutral_mask(::MaximumReduction) = - Inf
 get_neutral_mask(::ProdReduction)    =   1
 
+@inline condition_operand(f::Function, operand, ::Nothing, mask)                = operand
+@inline condition_operand(f::Function, operand::AbstractField, ::Nothing, mask) = operand
+
 @inline condition_operand(operand, ::Nothing, mask)                = operand
 @inline condition_operand(operand::AbstractField, ::Nothing, mask) = operand
 
@@ -420,7 +423,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
         # In-place
         Base.$(reduction!)(f::Function, r::ReducedField, a::AbstractArray;
                            condition = nothing, mask = get_neutral_mask(Base.$(reduction!)), kwargs...) =
-            Base.$(reduction!)(f, interior(r), condition_operand(a, condition, mask); kwargs...)
+            Base.$(reduction!)(identity, interior(r), condition_operand(f, a, condition, mask); kwargs...)
 
         Base.$(reduction!)(r::ReducedField, a::AbstractArray; 
                            condition = nothing, mask = get_neutral_mask(Base.$(reduction!)), kwargs...) =
@@ -432,14 +435,14 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                    dims=:)
             if dims isa Colon
                 r = zeros(architecture(c), c.grid, 1, 1, 1)
-                Base.$(reduction!)(f, r, condition_operand(c, condition, mask))
+                Base.$(reduction!)(identity, r, condition_operand(f, c, condition, mask))
                 return CUDA.@allowscalar r[1, 1, 1]
             else
                 T = filltype(Base.$(reduction!), c)
                 loc = reduced_location(location(c); dims)
                 r = Field(loc, c.grid, T)
-                initialize_reduced_field!(Base.$(reduction!), f, r, condition_operand(c, condition, mask))
-                Base.$(reduction!)(f, r, condition_operand(c, condition, mask), init=false)
+                initialize_reduced_field!(Base.$(reduction!), identity, r, condition_operand(f, c, condition, mask))
+                Base.$(reduction!)(identity, r, condition_operand(f, c, condition, mask), init=false)
                 return r
             end
         end

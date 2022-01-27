@@ -1,5 +1,4 @@
 using Oceananigans.Fields: AbstractField
-using Oceananigans.AbstractOperations: AbstractOperation, ConditionalOperation
 
 import Oceananigans.AbstractOperations: get_condition
 import Oceananigans.Fields: condition_operand, conditional_length
@@ -15,8 +14,11 @@ struct NotImmersed{F} <: Function
     func :: F
 end
 
-@inline condition_operand(c::ImmersedField, ::Nothing, mask) = condition_operand(location(c)..., c, c.grid, NotImmersed(neutral_func), mask)
-@inline condition_operand(c::ImmersedField, condition, mask) = condition_operand(location(c)..., c, c.grid, NotImmersed(condition), mask)
+@inline condition_operand(c::ImmersedField, ::Nothing, mask) = condition_operand(c, NotImmersed(neutral_func), mask)
+@inline condition_operand(c::ImmersedField, condition, mask) = condition_operand(c, NotImmersed(condition), mask)
+
+@inline condition_operand(f::Function, c::ImmersedField, ::Nothing, mask) = condition_operand(f, c, NotImmersed(neutral_func), mask)
+@inline condition_operand(f::Function, c::ImmersedField, condition, mask) = condition_operand(f, c, NotImmersed(condition), mask)
 
 @inline neutral_func(args...) = true
 
@@ -27,9 +29,3 @@ end
                                ibg, co::ConditionalOperation{LX, LY, LZ}, args...) where {LX, LY, LZ}
     return get_condition(condition.func, i, j, k, ibg, args...) & !(solid_interface(LX(), LY(), LZ(), i, j, k, ibg))
 end 
-
-Statistics.dot(a::ImmersedField, b::Field) = Statistics.dot(condition_operand(a, nothing, 0), b)
-Statistics.dot(a::Field, b::ImmersedField) = Statistics.dot(a, condition_operand(b, nothing, 0))
-
-Statistics.dot(a::ImmersedField, b::ImmersedField) = Statistics.dot(condition_operand(a, nothing, 0),
-                                                                    condition_operand(b, nothing, 0))

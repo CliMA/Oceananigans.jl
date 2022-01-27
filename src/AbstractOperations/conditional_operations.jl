@@ -5,45 +5,91 @@ import Oceananigans.Fields: condition_operand, conditional_length, set!
 
 # For conditional reductions such as mean(u * v, condition = u .> 0))
 
-struct ConditionalOperation{LX, LY, LZ, O, G, C, M, T} <: AbstractOperation{LX, LY, LZ, G, T} 
+struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{LX, LY, LZ, G, T} 
     operand :: O
+    func :: F
     grid :: G
     condition :: C
     mask :: M
  
-     function ConditionalOperation{LX, LY, LZ}(operand::O, grid::G, condition::C, mask::M) where {LX, LY, LZ, O, G, C, M}
+     function ConditionalOperation{LX, LY, LZ}(operand::O, func::F, grid::G, condition::C, mask::M) where {LX, LY, LZ, O, F, G, C, M}
          T = eltype(operand)
-         return new{LX, LY, LZ, O, G, C, M, T}(operand, grid, condition, mask)
+         return new{LX, LY, LZ, O, F, G, C, M, T}(operand, func, grid, condition, mask)
      end
 end
 
-const FieldOrConditional = Union{AbstractField, ConditionalOperation}
+"""
+    ConditionalOperation(operand; func=identity, condition=nothing, mask=0)
 
-@inline condition_operand(LX, LY, LZ, operand, grid, condition, mask) = ConditionalOperation{LX, LY, LZ}(operand, grid, condition, mask)
-@inline condition_operand(operand::AbstractField, condition, mask)    = condition_operand(location(operand)..., operand, operand.grid, condition, mask)
-@inline function condition_operand(operand::AbstractField, condition::AbstractArray, mask) 
-    condition = arch_array(architecture(operand.grid), condition)
-    return condition_operand(location(operand)..., operand, operand.grid, condition, mask)
+Returns a `ConditionalOperation` which allows masked reductions over the `AbstractField` `operand`.
+
+Keyword arguments
+=================
+
+- `func`: A unary function to apply to every element of `operand`, default is identity
+
+- `condition`: Either a function which takes as an input (i, j, k, grid, operand) and returns a Boolean
+               or a 3-dimensional Boolean AbstractArray (or AbstractField). Where condition evaluates to
+               false, operand will be masked with `mask`
+
+- `mask`: a scalar which masked the data contained in `func(operand)` where `condition` evaluates to false
+
+"""
+
+function ConditionalOperation(operand::AbstractField; func = identity, condition = nothing, mask = 0)
+    grid = operand.grid
+    LX, LY, LZ = location(operand)
+    return ConditionalOperation{LX, LY, LZ}(operand, func, grid, condition, mask)
 end
 
-# If we reduce a ConditionalOperation with no condition, we keep the original condition!
-@inline condition_operand(operand::ConditionalOperation, ::Nothing, mask) = condition_operand(location(operand)..., operand, operand.grid, operand.condition, mask)
+function ConditionalOperation(c::ConditionalOperation; func = identity, condition = nothing, mask = 0)
+    grid = c.grid
+    LX, LY, LZ = location(c)
+
+    for var in (:condition, :mask)
+        if eval(var) isa Nothing
+            @eval $var = c.$var
+        end
+    end
+
+    if func isa typeof(identity)
+        func = c.func
+    end
+
+    return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
+end
+
+@inline condition_operand(operand::AbstractField, condition, mask) = ConditionalOperation(operand; condition, mask)
+@inline condition_operand(c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; mask)
+@inline condition_operand(func::Function, c::ConditionalOperation, ::Nothing, mask) = ConditionalOperation(c; func, mask)
+@inline condition_operand(func::Function, operand::AbstractField, condition, mask) = ConditionalOperation(operand; func, condition, mask)
+
+@inline function condition_operand(func::Function, operand::AbstractField, condition::AbstractArray, mask) 
+    condition = arch_array(architecture(operand.grid), condition)
+    return ConditionalOperation(operand; func, condition, mask)
+end
+
+@inline function condition_operand(operand::AbstractField, condition::AbstractArray, mask) 
+    condition = arch_array(architecture(operand.grid), condition)
+    return ConditionalOperation(operand; func, condition, mask)
+end
 
 @inline condition_onefield(c::ConditionalOperation{LX, LY, LZ}, mask) where {LX, LY, LZ} =
-                              ConditionalOperation{LX, LY, LZ}(OneField(), c.grid, c.condition, mask)
+                              ConditionalOperation{LX, LY, LZ}(OneField(), identity, c.grid, c.condition, mask)
 
 @inline conditional_length(c::ConditionalOperation)       = sum(condition_onefield(c, 0))
 @inline conditional_length(c::ConditionalOperation, dims) = sum(condition_onefield(c, 0); dims = dims)
 
 Adapt.adapt_structure(to, c::ConditionalOperation{LX, LY, LZ}) where {LX, LY, LZ} =
-            ConditionalOperation{LX, LY, LZ}(adapt(to, c.operand), 
+            ConditionalOperation{LX, LY, LZ}(adapt(to, c.operand),
+                                     adapt(to, c.func), 
                                      adapt(to, c.grid),
                                      adapt(to, c.condition),
                                      adapt(to, c.mask))
 
 @inline function Base.getindex(c::ConditionalOperation, i, j, k) 
     return ifelse(get_condition(c.condition, i, j, k, c.grid, c), 
-                  getindex(c.operand, i, j, k),
+                  c.func(getindex(c.operand, i, j, k)),
                   c.mask)
 end
 
