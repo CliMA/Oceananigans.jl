@@ -405,8 +405,9 @@ get_neutral_mask(::MaximumReduction) = - Inf
 get_neutral_mask(::ProdReduction)    =   1
 
 # If func = identity and condition = nothing, nothing happens
-@inline condition_operand(f::typeof(identity), operand, ::Nothing, mask) = operand
 @inline condition_operand(f::typeof(identity), operand::AbstractField, ::Nothing, mask) = operand
+
+@inline condition_operand(operand, condition, mask) = condition_operand(identity, operand, condition, mask)
 
 @inline conditional_length(c::AbstractField)        = length(c)
 @inline conditional_length(c::AbstractField, dims)  = mapreduce(i -> size(c, i), *, unique(dims); init=1)
