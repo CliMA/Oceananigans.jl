@@ -53,11 +53,12 @@ may be eliminated when `buoyancy=nothing` by specifying `tracers=()`:
 
 ```jldoctest buoyancy
 julia> model = HydrostaticFreeSurfaceModel(grid=grid, buoyancy=nothing, tracers=())
-HydrostaticFreeSurfaceModel{CPU, Float64}(time = 0 seconds, iteration = 0) 
+HydrostaticFreeSurfaceModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── grid: 64×64×64 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
+├── free surface: ExplicitFreeSurface; gravitational acceleration 9.80665 m s⁻²
 └── coriolis: Nothing
 ```
 
@@ -85,6 +86,7 @@ HydrostaticFreeSurfaceModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── tracers: (:b,)
 ├── closure: Nothing
 ├── buoyancy: Buoyancy{BuoyancyTracer, Oceananigans.Grids.ZDirection}
+├── free surface: ExplicitFreeSurface; gravitational acceleration 9.80665 m s⁻²
 └── coriolis: Nothing
 ```
 
@@ -118,6 +120,7 @@ HydrostaticFreeSurfaceModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── tracers: (:T, :S)
 ├── closure: Nothing
 ├── buoyancy: Buoyancy{SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}, Oceananigans.Grids.ZDirection}
+├── free surface: ExplicitFreeSurface; gravitational acceleration 9.80665 m s⁻²
 └── coriolis: Nothing
 ```
 
@@ -130,6 +133,7 @@ HydrostaticFreeSurfaceModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── tracers: (:T, :S)
 ├── closure: Nothing
 ├── buoyancy: Buoyancy{SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}, Oceananigans.Grids.ZDirection}
+├── free surface: ExplicitFreeSurface; gravitational acceleration 9.80665 m s⁻²
 └── coriolis: Nothing
 ```
 
