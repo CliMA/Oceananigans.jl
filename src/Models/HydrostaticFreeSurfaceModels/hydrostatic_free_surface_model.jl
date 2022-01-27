@@ -49,23 +49,22 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
 end
 
 """
-    HydrostaticFreeSurfaceModel(;
-                   grid,
-           architecture = CPU(),
-                  clock = Clock{eltype(grid)}(0, 0, 1),
-     momentum_advection = CenteredSecondOrder(),
-       tracer_advection = CenteredSecondOrder(),
-               buoyancy = SeawaterBuoyancy(eltype(grid)),
-               coriolis = nothing,
-                forcing = NamedTuple(),
-                closure = IsotropicDiffusivity(eltype(grid), ν=ν₀, κ=κ₀),
-    boundary_conditions = NamedTuple(),
-                tracers = (:T, :S),
-              particles = nothing,
-             velocities = nothing,
-               pressure = nothing,
-     diffusivity_fields = nothing,
-       auxiliary_fields = NamedTuple(),
+function HydrostaticFreeSurfaceModel(; grid,
+                                             clock = Clock{eltype(grid)}(0, 0, 1),
+                                momentum_advection = CenteredSecondOrder(),
+                                  tracer_advection = CenteredSecondOrder(),
+                                          buoyancy = SeawaterBuoyancy(eltype(grid)),
+                                          coriolis = nothing,
+                                      free_surface = ExplicitFreeSurface(gravitational_acceleration=g_Earth),
+                               forcing::NamedTuple = NamedTuple(),
+                                           closure = nothing,
+                   boundary_conditions::NamedTuple = NamedTuple(),
+                                           tracers = (:T, :S),
+    particles::Union{Nothing, LagrangianParticles} = nothing,
+                                        velocities = nothing,
+                                          pressure = nothing,
+                                diffusivity_fields = nothing,
+                                  auxiliary_fields = NamedTuple(),
     )
 
 Construct an hydrostatic `Oceananigans.jl` model with a free surface on `grid`.
@@ -74,7 +73,6 @@ Keyword arguments
 =================
 
   - `grid`: (required) The resolution and discrete geometry on which `model` is solved.
-  - `architecture`: `CPU()` or `GPU()`. The computer architecture used to time-step `model`.
   - `gravitational_acceleration`: The gravitational acceleration applied to the free surface
   - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyModels`.

@@ -52,19 +52,18 @@ mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, V, R, F, E, B, Q
 end
 
 """
-    ShallowWaterModel(;
-                               grid,
-                               gravitational_acceleration,
-                                   clock = Clock{eltype(grid)}(0, 0, 1),
-                               advection = UpwindBiasedFifthOrder(),
-                                coriolis = nothing,
-                     forcing::NamedTuple = NamedTuple(),
-                                 closure = nothing,
-                              bathymetry = nothing,
-                                 tracers = (),
-                      diffusivity_fields = nothing,
-         boundary_conditions::NamedTuple = NamedTuple(),
-                     timestepper::Symbol = :RungeKutta3)
+    ShallowWaterModel(; grid,
+                        gravitational_acceleration,
+                            clock = Clock{eltype(grid)}(0, 0, 1),
+                        advection = UpwindBiasedFifthOrder(),
+                         coriolis = nothing,
+              forcing::NamedTuple = NamedTuple(),
+                          closure = nothing,
+                       bathymetry = nothing,
+                          tracers = (),
+               diffusivity_fields = nothing,
+  boundary_conditions::NamedTuple = NamedTuple(),
+              timestepper::Symbol = :RungeKutta3)
 
 Construct a shallow water `Oceananigans.jl` model on `grid` with `gravitational_acceleration` constant.
 
