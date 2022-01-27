@@ -149,9 +149,9 @@ Examples
 * Create a linear target function varying in `z`, equal to `0` at
   `z=0` and with gradient 10⁻⁶:
 
-```julia
-julia> target = LinearTarget{:z}(intercept=0, gradient=1e-6)
-```
+  ```julia
+  julia> target = LinearTarget{:z}(intercept=0, gradient=1e-6)
+  ```
 """
 struct LinearTarget{D, T}
     intercept :: T
