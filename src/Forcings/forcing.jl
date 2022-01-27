@@ -6,7 +6,9 @@ Returns a forcing function added to the tendency of an Oceananigans model field.
 If `discrete_form=false` (the default), and neither `parameters` nor `field_dependencies`
 are provided, then `func` must be callable with the signature
 
-    `func(x, y, z, t)`
+```
+func(x, y, z, t)
+```
 
 where `x, y, z` are the east-west, north-south, and vertical spatial coordinates, and `t` is time.
 Note that this form is also default in the constructor for `NonhydrostaticModel`, so that `Forcing` is
@@ -16,7 +18,9 @@ If `discrete_form=false` (the default), and `field_dependencies` are provided,
 the signature of `func` must include them. For example, if `field_dependencies=(:u, :S)`
 (and `parameters` are _not_ provided), then `func` must be callable with the signature
 
-    `func(x, y, z, t, u, S)`
+```
+func(x, y, z, t, u, S)`
+```
 
 where `u` is assumed to be the `u`-velocity component, and `S` is a tracer. Note that any field
 which does not have the name `u`, `v`, or `w` is assumed to be a tracer and must be present
@@ -26,7 +30,9 @@ If `discrete_form=false` (the default) and `parameters` are provided, then the _
 to `func` must be `parameters`. For example, if `func` has no `field_dependencies` but does
 depend on `parameters`, then it must be callable with the signature
 
-    `func(x, y, z, t, parameters)`
+```
+func(x, y, z, t, parameters)
+```
 
 The object `parameters` is arbitrary in principle, however GPU compilation can place
 constraints on `typeof(parameters)`.
@@ -34,11 +40,15 @@ constraints on `typeof(parameters)`.
 With `field_dependencies=(:u, :v, :w, :c)` and `parameters`, then `func` must be
 callable with the signature
 
-    `func(x, y, z, t, u, v, w, c, parameters)`
+```
+func(x, y, z, t, u, v, w, c, parameters)
+```
 
 If `discrete_form=true` then `func` must be callable with the "discrete form"
 
-    `func(i, j, k, grid, clock, model_fields)`
+```
+func(i, j, k, grid, clock, model_fields)
+```
 
 where `i, j, k` is the grid point at which the forcing is applied, `grid` is `model.grid`,
 `clock.time` is the current simulation time and `clock.iteration` is the current model iteration,
@@ -48,7 +58,9 @@ of `OffsetArray`s depending on the turbulence closure) of field data.
 
 When `discrete_form=true` and `parameters` _is_ specified, `func` must be callable with the signature
 
-    `func(i, j, k, grid, clock, model_fields, parameters)`
+```
+func(i, j, k, grid, clock, model_fields, parameters)
+```
 
 Examples
 ========
