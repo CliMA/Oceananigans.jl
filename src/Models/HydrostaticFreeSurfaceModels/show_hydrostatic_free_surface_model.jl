@@ -8,10 +8,14 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel{TS, C, A}) where {
         "├── tracers: $(tracernames(model.tracers))\n",
         "├── closure: ", summary(model.closure), '\n',
         "├── buoyancy: ", summary(model.buoyancy), '\n',
-        "├── free surface: ", typeof(model.free_surface).name.wrapper, "; gravitational acceleration $(model.free_surface.gravitational_acceleration) m s⁻²", '\n')
+        "├── free surface: ", typeof(model.free_surface).name.wrapper, " with gravitational acceleration $(model.free_surface.gravitational_acceleration) m s⁻²", '\n')
 
     if typeof(model.free_surface).name.wrapper == ImplicitFreeSurface
         print(io, "│   └── solver: ", string(model.free_surface.solver_method), '\n')
+    end
+
+    if typeof(model.free_surface).name.wrapper == SplitExplicitFreeSurface
+        print(io, "│   └── number of substeps: $(model.free_surface.settings.substeps)", '\n')
     end
 
     if isnothing(model.particles)
