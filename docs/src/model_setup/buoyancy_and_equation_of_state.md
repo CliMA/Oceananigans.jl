@@ -58,7 +58,7 @@ HydrostaticFreeSurfaceModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── tracers: ()
 ├── closure: Nothing
 ├── buoyancy: Nothing
-├── free surface: ExplicitFreeSurface; gravitational acceleration 9.80665 m s⁻²
+├── free surface: ExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 └── coriolis: Nothing
 ```
 
@@ -86,7 +86,7 @@ HydrostaticFreeSurfaceModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── tracers: (:b,)
 ├── closure: Nothing
 ├── buoyancy: Buoyancy{BuoyancyTracer, Oceananigans.Grids.ZDirection}
-├── free surface: ExplicitFreeSurface; gravitational acceleration 9.80665 m s⁻²
+├── free surface: ExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 └── coriolis: Nothing
 ```
 
@@ -120,7 +120,7 @@ HydrostaticFreeSurfaceModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── tracers: (:T, :S)
 ├── closure: Nothing
 ├── buoyancy: Buoyancy{SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}, Oceananigans.Grids.ZDirection}
-├── free surface: ExplicitFreeSurface; gravitational acceleration 9.80665 m s⁻²
+├── free surface: ExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 └── coriolis: Nothing
 ```
 
@@ -133,7 +133,7 @@ HydrostaticFreeSurfaceModel{CPU, Float64}(time = 0 seconds, iteration = 0)
 ├── tracers: (:T, :S)
 ├── closure: Nothing
 ├── buoyancy: Buoyancy{SeawaterBuoyancy{Float64, LinearEquationOfState{Float64}, Nothing, Nothing}, Oceananigans.Grids.ZDirection}
-├── free surface: ExplicitFreeSurface; gravitational acceleration 9.80665 m s⁻²
+├── free surface: ExplicitFreeSurface with gravitational acceleration 9.80665 m s⁻²
 └── coriolis: Nothing
 ```
 
