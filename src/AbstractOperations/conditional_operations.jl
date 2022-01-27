@@ -12,20 +12,19 @@ struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{L
     condition :: C
     mask :: M
 
-    @doc """
-        ConditionalOperation{LX, LY, LZ}(operand, func, grid, condition, mask)
-
-    Returns a masking procedure whereas indexing a `ConditionalOperation` returns
-     `func(getindex(operand, args...))` where `condition == true` and `mask` where `condition == false`.
-    """
      function ConditionalOperation{LX, LY, LZ}(operand::O, func::F, grid::G, condition::C, mask::M) where {LX, LY, LZ, O, F, G, C, M}
          T = eltype(operand)
          return new{LX, LY, LZ, O, F, G, C, M, T}(operand, func, grid, condition, mask)
      end
 end
 
-"""
-    ConditionalOperation(operand; func=identity, condition=nothing, mask=0)
+@doc """
+ConditionalOperation{LX, LY, LZ}(operand, func, grid, condition, mask)
+
+Returns a masking procedure whereas indexing a `ConditionalOperation` returns
+`func(getindex(operand, args...))` where `condition == true` and `mask` where `condition == false`.
+
+ConditionalOperation(operand; func=identity, condition=nothing, mask=0)
 
 Returns a `ConditionalOperation` which allows masked reductions over the `AbstractField` `operand`.
 
