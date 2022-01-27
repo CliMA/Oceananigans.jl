@@ -101,7 +101,11 @@ Base.summary(relaxation::Relaxation) =
     GaussianMask{D}(center, width)
 
 Callable object that returns a Gaussian masking function centered on
-`center`, with `width`, and varying along direction `D`.
+`center`, with `width`, and varying along direction `D`, i.e.,
+
+```
+exp(-(D - center)^2 / (2 * width^2))
+```
 
 Examples
 ========
@@ -141,7 +145,11 @@ Base.summary(g::GaussianMask{D}) where D =
     LinearTarget{D}(intercept, gradient)
 
 Callable object that returns a Linear target function
-with `intercept` and `gradient`, and varying along direction `D`.
+with `intercept` and `gradient`, and varying along direction `D`, i.e.,
+
+```
+intercept + D * gradient
+```
 
 Examples
 ========
