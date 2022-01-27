@@ -80,7 +80,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             # SingleColumnGrid tests
             @test grid isa SingleColumnGrid
             @test isnothing(model.free_surface)
-            @test !(:η ∈ fields(model)) # doesn't include free surface
+            @test !(:η ∈ keys(fields(model))) # doesn't include free surface
         end
     end
     
@@ -91,7 +91,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(1, 1), extent=(1, 2))
                 model = HydrostaticFreeSurfaceModel(grid=grid)
                 @test model isa HydrostaticFreeSurfaceModel
-                @test :η ∈ fields(model) # contrary to the SingleColumnGrid case
+                @test :η ∈ keys(fields(model)) # contrary to the SingleColumnGrid case
             end
         end
     end
