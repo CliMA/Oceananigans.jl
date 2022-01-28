@@ -40,6 +40,9 @@ Keyword arguments
 
 - `mask`: the scalar mask
 
+`condition_operand` is the function used to construct a `ConditionalOperation`
+
+`condition_operand(func::Function, operand::AbstractField, condition, mask) = ConditionalOperation(operand; func, condition, mask)`
 
 Example
 =======
