@@ -92,17 +92,22 @@ using Oceananigans.Grids: Flat
 
 @inline Axᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # c
 @inline Axᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # u
-@inline Axᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # ζ
 @inline Axᶜᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # η
-@inline Axᶠᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid) # η
 @inline Axᶜᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid) # η
+@inline Axᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # ζ
+@inline Axᶠᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid) # η
+@inline Axᶜᶠᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
+@inline Axᶠᶠᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
+
 
 @inline Ayᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # c
-@inline Ayᶜᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # v
 @inline Ayᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # v
-@inline Ayᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # ζ
-@inline Ayᶜᶠᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid) # ξ
+@inline Ayᶜᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # v
 @inline Ayᶜᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid) # ξ
+@inline Ayᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # ζ
+@inline Ayᶠᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
+@inline Ayᶜᶠᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid) # ξ
+@inline Ayᶠᶠᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
 
 #####
 ##### Volumes for three-dimensionally curvilinear algorithms
@@ -112,6 +117,11 @@ using Oceananigans.Grids: Flat
 @inline Vᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
 @inline Vᶜᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
 @inline Vᶜᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
+@inline Vᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Vᶠᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Azᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
+@inline Vᶜᶠᶠ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
+@inline Vᶠᶠᶠ(i, j, k, grid::Union{ARG, AHCG}) = Azᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
+
 
 #####
 ##### Grid spacings and areas for RectilinearGrid
@@ -294,3 +304,7 @@ volume(i, j, k, grid, ::Center, ::Center, ::Center) = Vᶜᶜᶜ(i, j, k, grid)
 volume(i, j, k, grid, ::Face,   ::Center, ::Center) = Vᶠᶜᶜ(i, j, k, grid)
 volume(i, j, k, grid, ::Center, ::Face,   ::Center) = Vᶜᶠᶜ(i, j, k, grid)
 volume(i, j, k, grid, ::Center, ::Center, ::Face)   = Vᶜᶜᶠ(i, j, k, grid)
+volume(i, j, k, grid, ::Face,   ::Face,   ::Center) = Vᶠᶠᶜ(i, j, k, grid)
+volume(i, j, k, grid, ::Face,   ::Center, ::Face)   = Vᶠᶜᶠ(i, j, k, grid)
+volume(i, j, k, grid, ::Center, ::Face,   ::Face)   = Vᶜᶠᶠ(i, j, k, grid)
+volume(i, j, k, grid, ::Face,   ::Face,   ::Face)   = Vᶠᶠᶠ(i, j, k, grid)
