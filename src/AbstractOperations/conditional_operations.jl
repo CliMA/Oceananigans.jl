@@ -55,7 +55,7 @@ julia> using Oceananigans.Fields: condition_operand
 julia> c = CenterField(RectilinearGrid(size=(2, 1, 1), extent=(1, 1, 1)));
 
 julia> f(i, j, k, grid, c) = i < 2; d = condition_operand(cos, c, f, 10)
-Conditioned field at (Center, Center, Center)
+ConditionalOperand of 2×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU with condition typeof(f)
 ├── operand: 2×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── func: typeof(cos)
