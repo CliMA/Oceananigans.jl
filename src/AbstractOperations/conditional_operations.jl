@@ -18,33 +18,52 @@ struct ConditionalOperation{LX, LY, LZ, O, F, G, C, M, T} <: AbstractOperation{L
      end
 end
 
-@doc """
-ConditionalOperation{LX, LY, LZ}(operand, func, grid, condition, mask)
+"""
+    ConditionalOperation{LX, LY, LZ}(operand, func, grid, condition, mask)
 
-Returns a masking procedure whereas indexing a `ConditionalOperation` returns
-`func(getindex(operand, args...))` where `condition == true` and `mask` where `condition == false`.
-
-ConditionalOperation(operand; func=identity, condition=nothing, mask=0)
-
-Returns a `ConditionalOperation` which allows masked reductions over the `AbstractField` `operand`.
+Returns an abstract representation of the masking operated by `condition` on a field 
+described by `func(operand)`.
 
 Positional arguments
 ====================
 
-- `operand`: The `AbstractField` which will be masked (it must have a `grid` property!)
+- `operand`: The `AbstractField` to be masked (it must have a `grid` property!)
 
 Keyword arguments
 =================
 
-- `func`: A unary function to apply to every element of `operand`, default is identity
+- `func`: A unary function applied to the elements of `operand` where `condition == true`, default is `identity`
 
-- `condition`: Either a function which takes as an input (i, j, k, grid, operand) and returns a Boolean
-               or a 3-dimensional Boolean AbstractArray (or AbstractField). Where condition evaluates to
-               false, operand will be masked with `mask`
+- `condition`: A function of `(i, j, k, grid, operand)` returning a Boolean
+               or a 3-dimensional Boolean `AbstractArray`. Where `condition == false`,
+               operand will be masked by `mask`
 
-- `mask`: a scalar which masked the data contained in `func(operand)` where `condition` evaluates to false
+- `mask`: the scalar mask
+
+
+Example
+=======
+
+```jldoctest
+julia> using Oceananigans
+
+julia> using Oceananigans.Fields: condition_operand
+
+julia> c = CenterField(RectilinearGrid(size=(2, 1, 1), extent=(1, 1, 1)));
+
+julia> d = condition_operand(c, (i, j, k, grid, c) -> i < 2, 10)
+Conditioned Field at (Center, Center, Center)
+├── grid: 2×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+└── tree: 
+    Conditioned Field at (Center, Center, Center)
+
+julia> d[1, 1, 1]
+0.0
+
+julia> d[2, 1, 1]
+10
+```
 """
-
 function ConditionalOperation(operand::AbstractField; func = identity, condition = nothing, mask = 0)
     grid = operand.grid
     LX, LY, LZ = location(operand)

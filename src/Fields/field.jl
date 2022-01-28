@@ -426,7 +426,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
         Base.$(reduction!)(r::ReducedField, a::AbstractArray; 
                            condition = nothing, mask = get_neutral_mask(Base.$(reduction!)), kwargs...) =
-            Base.$(reduction!)(identity, interior(r), condition_operand(identity, a, condition, mask); kwargs...)
+            Base.$(reduction!)(identity, interior(r), condition_operand(a, condition, mask); kwargs...)
 
         # Allocating
         function Base.$(reduction)(f::Function, c::AbstractField;
@@ -478,6 +478,6 @@ Statistics.mean!(r::ReducedField, a::AbstractArray; kwargs...) = Statistics.mean
 
 function Statistics.norm(a::AbstractField; condition = nothing)
     r = zeros(a.grid, 1)
-    Base.mapreducedim!(x -> x * x, +, r, condition_operand(identity, a, condition, 0))
+    Base.mapreducedim!(x -> x * x, +, r, condition_operand(a, condition, 0))
     return CUDA.@allowscalar sqrt(r[1])
 end

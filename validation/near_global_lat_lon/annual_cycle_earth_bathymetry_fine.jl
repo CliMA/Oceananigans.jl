@@ -96,8 +96,8 @@ for month in 1:Nmonths
 end
 
 bathymetry = arch_array(arch, bathymetry)
-τˣ = arch_array(arch, τˣ)
-τʸ = arch_array(arch, τʸ)
+τˣ = arch_array(arch, - τˣ)
+τʸ = arch_array(arch, - τʸ)
 target_sea_surface_temperature = T★ = arch_array(arch, T★)
 
 H = 3600.0

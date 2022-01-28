@@ -71,7 +71,7 @@ end
 
 Return a `Reduction` representing a spatial integral of `field` over `dims`.
 """
-Integral(field::AbstractField; condition = nothing, mask = 0, dims=:) = Reduction(Integral(), condition_operand(identity, field, condition, mask), dims)
+Integral(field::AbstractField; condition = nothing, mask = 0, dims=:) = Reduction(Integral(), condition_operand(field, condition, mask), dims)
 
 #####
 ##### show
