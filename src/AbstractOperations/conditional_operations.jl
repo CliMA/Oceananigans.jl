@@ -55,7 +55,7 @@ julia> using Oceananigans.Fields: condition_operand
 julia> c = CenterField(RectilinearGrid(size=(2, 1, 1), extent=(1, 1, 1)));
 
 julia> f(i, j, k, grid, c) = i < 2; d = condition_operand(cos, c, f, 10)
-ConditionalOperand of 2×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU with condition typeof(f)
+ConditionalOperation at (Center, Center, Center)
 ├── operand: 2×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── func: typeof(cos)
@@ -123,11 +123,11 @@ end
 @inline get_condition(condition::AbstractArray, i, j, k, grid, args...) = @inbounds condition[i, j, k]
 
 
-Base.summary(c::ConditionalOperation) = string("ConditionalOperand of ", summary(c.operand), " with condition ", summary(c.condition))
+Base.summary(c::ConditionalOperation) = string("ConditionalOperation of ", summary(c.operand), " with condition ", summary(c.condition))
 
 Base.show(io::IO, operation::ConditionalOperation) =
     print(io,
-          summary(operation), '\n',
+          "ConditionalOperation at $(location(operation))", '\n',
           "├── operand: ", summary(operation.operand), '\n',
           "├── grid: ", summary(operation.grid), '\n',
           "├── func: ", summary(operation.func), '\n',
