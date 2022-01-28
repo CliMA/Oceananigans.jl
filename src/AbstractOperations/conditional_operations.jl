@@ -54,14 +54,16 @@ julia> using Oceananigans.Fields: condition_operand
 
 julia> c = CenterField(RectilinearGrid(size=(2, 1, 1), extent=(1, 1, 1)));
 
-julia> d = condition_operand(c, (i, j, k, grid, c) -> i < 2, 10)
-Conditioned Field at (Center, Center, Center)
+julia> f(i, j, k, grid, c) = i < 2; d = condition_operand(cos, c, f, 10)
+Conditioned field at (Center, Center, Center)
+├── operand: 2×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
-└── tree: 
-    Conditioned Field at (Center, Center, Center)
+├── func: typeof(cos)
+├── condition: typeof(f)
+└── mask: 10
 
 julia> d[1, 1, 1]
-0.0
+1.0
 
 julia> d[2, 1, 1]
 10
@@ -120,3 +122,14 @@ end
 @inline get_condition(condition, i, j, k, grid, args...)                = condition(i, j, k, grid, args...)
 @inline get_condition(condition::AbstractArray, i, j, k, grid, args...) = condition[i, j, k]
 
+
+Base.summary(operation::ConditionalOperation) = string("Conditioned field at ", show_location(operation))
+
+Base.show(io::IO, operation::ConditionalOperation) =
+    print(io,
+          summary(operation), '\n',
+          "├── operand: ", summary(operation.operand), '\n',
+          "├── grid: ", summary(operation.grid), '\n',
+          "├── func: ", summary(operation.func), '\n',
+          "├── condition: ", summary(operation.condition), '\n',
+          "└── mask: ", operation.mask)
