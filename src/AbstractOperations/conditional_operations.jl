@@ -55,7 +55,7 @@ julia> using Oceananigans.Fields: condition_operand
 julia> c = CenterField(RectilinearGrid(size=(2, 1, 1), extent=(1, 1, 1)));
 
 julia> f(i, j, k, grid, c) = i < 2; d = condition_operand(cos, c, f, 10)
-Conditioned field at (Center, Center, Center)
+ConditionalOperation at (Center, Center, Center)
 ├── operand: 2×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 2×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── func: typeof(cos)
@@ -75,7 +75,10 @@ function ConditionalOperation(operand::AbstractField; func = identity, condition
     return ConditionalOperation{LX, LY, LZ}(operand, func, grid, condition, mask)
 end
 
-ConditionalOperation(c::ConditionalOperation) = c
+function ConditionalOperation(c::ConditionalOperation; func = nothing, condition = nothing, mask = nothing)
+    LX, LY, LZ = location(c)
+    return ConditionalOperation{LX, LY, LZ}(c.operand, c.func, c.grid, c.condition, c.mask)
+end
 
 @inline condition_operand(func::Function, operand::AbstractField, condition, mask) = ConditionalOperation(operand; func, condition, mask)
 @inline condition_operand(func::Function, operand::AbstractField, ::Nothing, mask) = ConditionalOperation(operand; func, condition = truefunc, mask)
@@ -120,11 +123,11 @@ end
 @inline get_condition(condition::AbstractArray, i, j, k, grid, args...) = @inbounds condition[i, j, k]
 
 
-Base.summary(c::ConditionalOperation) = string("ConditionalOperand of ", summary(c.operand), " with condition ", summary(c.condition))
+Base.summary(c::ConditionalOperation) = string("ConditionalOperation of ", summary(c.operand), " with condition ", summary(c.condition))
 
 Base.show(io::IO, operation::ConditionalOperation) =
     print(io,
-          summary(operation), '\n',
+          "ConditionalOperation at $(location(operation))", '\n',
           "├── operand: ", summary(operation.operand), '\n',
           "├── grid: ", summary(operation.grid), '\n',
           "├── func: ", summary(operation.func), '\n',
