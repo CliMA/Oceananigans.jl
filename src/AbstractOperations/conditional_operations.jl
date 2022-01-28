@@ -21,7 +21,7 @@ end
 """
     ConditionalOperation{LX, LY, LZ}(operand, func, grid, condition, mask)
 
-Returns an abstract representation of the masking operated by `condition` on a field 
+Returns an abstract representation of a masking procedure applied when `condition` is satisfied on a field 
 described by `func(operand)`.
 
 Positional arguments
@@ -32,15 +32,15 @@ Positional arguments
 Keyword arguments
 =================
 
-- `func`: A unary function applied to the elements of `operand` where `condition == true`, default is `identity`
+- `func`: A unary transformation applied element-wise to the field `operand` at locations where `condition == true`. Default is `identity`
 
-- `condition`: A function of `(i, j, k, grid, operand)` returning a Boolean
-               or a 3-dimensional Boolean `AbstractArray`. Where `condition == false`,
+- `condition`: either a function of `(i, j, k, grid, operand)` returning a Boolean,
+               or a 3-dimensional Boolean `AbstractArray`. At locations where `condition == false`,
                operand will be masked by `mask`
 
 - `mask`: the scalar mask
 
-`condition_operand` is the function used to construct a `ConditionalOperation`
+`condition_operand` is a conveniece function used to construct a `ConditionalOperation`
 
 `condition_operand(func::Function, operand::AbstractField, condition, mask) = ConditionalOperation(operand; func, condition, mask)`
 
