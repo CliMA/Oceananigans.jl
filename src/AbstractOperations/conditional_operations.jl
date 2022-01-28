@@ -120,7 +120,7 @@ end
 @inline get_condition(condition::AbstractArray, i, j, k, grid, args...) = condition[i, j, k]
 
 
-Base.summary(operation::ConditionalOperation) = string("Conditioned field at ", show_location(operation))
+Base.summary(c::ConditionalOperation) = string("ConditionalOperand of ", summary(c.operand), " with condition ", summary(c.condition))
 
 Base.show(io::IO, operation::ConditionalOperation) =
     print(io,
