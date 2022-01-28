@@ -75,10 +75,7 @@ function ConditionalOperation(operand::AbstractField; func = identity, condition
     return ConditionalOperation{LX, LY, LZ}(operand, func, grid, condition, mask)
 end
 
-function ConditionalOperation(c::ConditionalOperation; func = nothing, condition = nothing, mask = nothing)
-    LX, LY, LZ = location(c)
-    return ConditionalOperation{LX, LY, LZ}(c.operand, c.func, c.grid, c.condition, c.mask)
-end
+ConditionalOperation(c::ConditionalOperation) = c
 
 @inline condition_operand(func::Function, operand::AbstractField, condition, mask) = ConditionalOperation(operand; func, condition, mask)
 @inline condition_operand(func::Function, operand::AbstractField, ::Nothing, mask) = ConditionalOperation(operand; func, condition = truefunc, mask)
