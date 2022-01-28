@@ -17,3 +17,6 @@ ConstantField(constant) = ConstantField{3}(constant)
 
 @inline Base.getindex(f::ConstantField, ind...) = f.constant
 
+const CF = Union{ConstantField, ZeroField, OneField}
+@inlne Base.summary(f::CF) = string("Constant Field of ", f[1, 1, 1]) 
+ 
