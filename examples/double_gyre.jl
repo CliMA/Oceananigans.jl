@@ -6,38 +6,39 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: xnode, ynode, znode
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Plots
 using Printf
 
-architecture = GPU()
+architecture = CPU()
 
-const Lx = 400kilometers # east-west extent [m]
-const Ly = 600kilometers # north-south extent [m]
+const Lx = 4000kilometers # east-west extent [m]
+const Ly = 6000kilometers # north-south extent [m]
 const Lz = 1.8kilometers # depth [m]
 
-Δt₀ = 5minutes
-stop_time = 365days
+Δt₀ = 10minutes
+stop_time = 10years
 
-Nx = Ny = 128
-Nz = 40
+Nx = 160
+Ny = 240
+Nz = 50
 
 σ = 1.2 # stretching factor
 hyperbolically_spaced_faces(k) = - Lz * (1 - tanh(σ * (k - 1) / Nz) / tanh(σ))
 
+grid = RectilinearGrid(architecture;
+                           size = (Nx, Ny, Nz),
+                           halo = (3, 3, 3),
+                              x = (-Lx/2, Lx/2),
+                              y = (-Ly/2, Ly/2),
+                              z = hyperbolically_spaced_faces,
+                       topology = (Bounded, Bounded, Bounded))
 
-grid = RectilinearGrid(architecture = architecture,
-                               size = (Nx, Ny, Nz),
-                               halo = (3, 3, 3),
-                                  x = (-Lx/2, Lx/2),
-                                  y = (-Ly/2, Ly/2),
-                                  z = hyperbolically_spaced_faces,
-                           topology = (Bounded, Bounded, Bounded))
-
-plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
-      marker = :circle,
-      ylabel = "Depth (m)",
-      xlabel = "Vertical spacing (m)",
-      legend = nothing)
+# plot(grid.Δzᵃᵃᶜ[1:Nz], grid.zᵃᵃᶜ[1:Nz],
+#       marker = :circle,
+#       ylabel = "Depth (m)",
+#       xlabel = "Vertical spacing (m)",
+#       legend = nothing)
 
 α  = 2e-4 # [K⁻¹] thermal expansion coefficient 
 g  = 9.81 # [m s⁻²] gravitational constant
@@ -47,7 +48,7 @@ cᵖ = 3991 # [J K⁻¹ kg⁻¹] heat capacity for seawater
 parameters = (Ly = Ly,
               Lz = Lz,
                τ = 0.1 / ρ₀,     # surface kinematic wind stress [m² s⁻²]
-               μ = 1 / 180days,  # bottom drag damping time-scale [s⁻¹]
+               μ = 1 / 30days,   # bottom drag damping time-scale [s⁻¹]
               Δb = 30 * α * g,   # surface vertical buoyancy gradient [s⁻²]
                λ = 30days        # relaxation time scale [s]
               )
@@ -86,15 +87,18 @@ end
 Fb = Forcing(buoyancy_relaxation, discrete_form = true, parameters = parameters)
 
 # ## Turbulence closure
-closure = AnisotropicDiffusivity(νh=1000, νz=1e-2, κh=500, κz=1e-2)
+closure = AnisotropicDiffusivity(νh=5000,
+                                 νz=1e-2,
+                                 κh=1000,
+                                 κz=1e-5,
+                                 time_discretization = VerticallyImplicitTimeDiscretization())
 
 # ## Model building
 
-model = HydrostaticFreeSurfaceModel(architecture = architecture,
-                                    grid = grid,
+model = HydrostaticFreeSurfaceModel(grid = grid,
                                     free_surface = ImplicitFreeSurface(),
-                                    momentum_advection = WENO5(),
-                                    tracer_advection = WENO5(),
+                                    momentum_advection = WENO5(grid = grid),
+                                    tracer_advection = WENO5(grid = grid),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = BetaPlane(latitude=45),
                                     closure = (closure,),
@@ -115,7 +119,7 @@ simulation = Simulation(model, Δt=Δt₀, stop_time=stop_time)
 
 # add timestep wizard callback
 max_Δt = 1 / 5model.coriolis.f₀
-wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=max_Δt)
+wizard = TimeStepWizard(cfl=0.15, max_change=1.1, max_Δt=max_Δt)
 
 simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(20))
 
@@ -138,7 +142,7 @@ function print_progress(sim)
     return nothing
 end
 
-simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(20))
+simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterval(200))
 
 
 # ## Output
@@ -146,19 +150,19 @@ simulation.callbacks[:print_progress] = Callback(print_progress, IterationInterv
 u, v, w = model.velocities
 b = model.tracers.b
 
-speed = ComputedField(u^2 + v^2)
-buoyancy_variance = ComputedField(b^2)
+speed = Field(u^2 + v^2)
+buoyancy_variance = Field(b^2)
 
 outputs = merge(model.velocities, model.tracers, (speed=speed, b²=buoyancy_variance))
 
 simulation.output_writers[:fields] = JLD2OutputWriter(model, outputs,
-                                                      schedule = TimeInterval(2days),
+                                                      schedule = TimeInterval(7days),
                                                       prefix = "double_gyre",
                                                       field_slicer = FieldSlicer(k=model.grid.Nz),
                                                       force = true)
 
-barotropic_u = AveragedField(model.velocities.u, dims=3)
-barotropic_v = AveragedField(model.velocities.v, dims=3)
+barotropic_u = Field(Average(model.velocities.u, dims=3))
+barotropic_v = Field(Average(model.velocities.v, dims=3))
 
 simulation.output_writers[:barotropic_velocities] =
     JLD2OutputWriter(model, (u=barotropic_u, v=barotropic_v),
@@ -170,23 +174,29 @@ run!(simulation)
 
 # # A neat movie
 
-x, y, z = nodes(model.velocities.u)
+# We open the JLD2 file, and extract the `grid` and the iterations we ended up saving at,
+
+using JLD2
+
+filename = "double_gyre.jld2"
+
+u_timeseries = FieldTimeSeries(filename, "u"; grid = grid)
+v_timeseries = FieldTimeSeries(filename, "v"; grid = grid)
+s_timeseries = FieldTimeSeries(filename, "speed"; grid = grid)
+
+times = u_timeseries.times
+
+xu, yu, zu = nodes(u_timeseries[1])
+xv, yv, zv = nodes(v_timeseries[1])
+xs, ys, zs = nodes(s_timeseries[1])
 
 xlims = (-grid.Lx/2 * 1e-3, grid.Lx/2 * 1e-3)
 ylims = (-grid.Ly/2 * 1e-3, grid.Ly/2 * 1e-3)
 
-x_km = x * 1e-3
-y_km = y * 1e-3
+xu_km, yu_km = xu * 1e-3, yu * 1e-3
+xv_km, yv_km = xv * 1e-3, yv * 1e-3
+xs_km, ys_km = xs * 1e-3, ys * 1e-3
 
-nothing # hide
-
-# Next, we open the JLD2 file, and extract the iterations we ended up saving at,
-
-using JLD2, Plots
-
-file = jldopen("double_gyre.jld2")
-
-iterations = parse.(Int, keys(file["timeseries/t"]))
 
 # These utilities are handy for calculating nice contour intervals:
 
@@ -210,61 +220,67 @@ end
 
 @info "Making an animation from the saved data..."
 
-anim = @animate for (i, iter) in enumerate(iterations)
+anim = @animate for i in 1:length(times)
     
-    @info "Drawing frame $i from iteration $iter \n"
+    @info "Drawing frame $i from iteration $(length(times)) \n"
 
-    t = file["timeseries/t/$iter"]
-    u = file["timeseries/u/$iter"][:, :, 1]
-    v = file["timeseries/v/$iter"][:, :, 1]
-    s = file["timeseries/speed/$iter"][:, :, 1]
+    t = times[i]
+    u = interior(u_timeseries[i])[:, :, grid.Nz]
+    v = interior(v_timeseries[i])[:, :, grid.Nz]
+    s = interior(s_timeseries[i])[:, :, grid.Nz]
 
-    ulims, ulevels = divergent_levels(u, 1.0)
-    slims, slevels = sequential_levels(s, (0.0, 1.5))
+    ulims, ulevels = divergent_levels(u, 0.8)
+    slims, slevels = sequential_levels(s, (0.0, 0.8))
 
     kwargs = (aspectratio=:equal, linewidth=0, xlims=xlims,
               ylims=ylims, xlabel="x (km)", ylabel="y (km)")
 
-    u_plot = contourf(x_km, y_km, u';
+    u_plot = contourf(xu_km, yu_km, u';
                       color = :balance,
                       clims = ulims,
                       levels = ulevels,
                       kwargs...)
-                        
-    s_plot = contourf(x_km, y_km, s';
+
+    v_plot = contourf(xv_km, yv_km, v';
+                      color = :balance,
+                      clims = ulims,
+                      levels = ulevels,
+                      kwargs...)
+
+    s_plot = contourf(xs_km, ys_km, s';
                       color = :thermal,
                       clims = slims,
                       levels = slevels,
                       kwargs...)
                              
-    plot(u_plot, s_plot, size=(800, 500),
+    plot(u_plot, v_plot, s_plot, layout = Plots.grid(1, 3), size=(1200, 500),
          title = ["u(t="*string(round(t/day, digits=1))*" day)" "speed"])
-
-    iter == iterations[end] && close(file)
 end
 
-gif(anim, "double_gyre.gif", fps = 8) # hide
+mp4(anim, "double_gyre.mp4", fps = 8) # hide
 
 # Plot the barotropic circulation
 
-xv, yv, zv = nodes(model.velocities.v)
+filename_barotropic = "double_gyre_circulation.jld2"
 
-xv_km, yv_km = xv * 1e-3, yv * 1e-3
+U_timeseries = FieldTimeSeries(filename_barotropic, "u"; grid = grid)
+V_timeseries = FieldTimeSeries(filename_barotropic, "v"; grid = grid)
 
-file = jldopen("double_gyre_circulation.jld2")
+# average for the last `n_years`
+n_years = 3
 
-last_iteration = parse(Int, last(keys(file["timeseries/t"])))
+U = mean(interior(U_timeseries)[:, :, :, end-n_years*52:end], dims=4)[:, :, grid.Nz, 1]
+V = mean(interior(V_timeseries)[:, :, :, end-n_years*52:end], dims=4)[:, :, grid.Nz, 1]
 
-U = file["timeseries/u/$last_iteration"][:, :, 1]
-V = file["timeseries/v/$last_iteration"][:, :, 1]
-
-U_plot = contourf(x_km, y_km, U', xlims=xlims, ylims=ylims,
+U_plot = contourf(xu_km, yu_km, U', xlims=xlims, ylims=ylims,
                   linewidth=0, color=:balance, aspectratio=:equal)
 
 V_plot = contourf(xv_km, yv_km, V', xlims=xlims, ylims=ylims,
                   linewidth=0, color=:balance, aspectratio=:equal)
 
-plot(U_plot, V_plot, size=(800, 500),
+plot(U_plot, V_plot, layout = Plots.grid(1, 2), size=(800, 500),
      title=["Depth- and time-averaged \$ u \$" "Depth- and time-averaged \$ v \$"])
 
-savefig("double_gyre_circulation.png") # hide
+savefig("double_gyre_circulation.png"); nothing # hide
+
+![](assets/double_gyre_circulation.svg)
