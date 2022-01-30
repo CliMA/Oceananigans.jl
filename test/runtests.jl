@@ -35,9 +35,15 @@ CUDA.allowscalar() do
         end
     end
 
-    if group == :poisson_solvers || group == :all
-        @testset "Poisson Solvers" begin
+    if group == :poisson_solvers_1 || group == :all
+        @testset "Poisson Solvers 1" begin
             include("test_poisson_solvers.jl")
+        end
+    end
+
+    if group == :poisson_solvers_2 || group == :all
+        @testset "Poisson Solvers 2" begin
+            include("test_poisson_solvers_vertically_stretched_grid.jl")
         end
     end
 
@@ -100,7 +106,7 @@ CUDA.allowscalar() do
             include("test_implicit_free_surface_solver.jl")
             include("test_split_explicit_free_surface_solver.jl")
             include("test_split_explicit_vertical_integrals.jl")
-            include("test_hydrostatic_free_surface_immersed_boundaries_congrad_solve.jl")
+            include("test_hydrostatic_free_surface_immersed_boundaries_implicit_solve.jl")
         end
     end
     

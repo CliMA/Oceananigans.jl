@@ -79,16 +79,20 @@ end
 #####
 
 """
-    Field{LX, LY, LZ}(grid; kw...)
+    Field{LX, LY, LZ}(grid::AbstractGrid,
+                      T::DataType=eltype(grid); kw...) where {LX, LY, LZ}
 
-Construct a `Field` on `grid` at the location `(LX, LY, LZ)`.
-Each of `(LX, LY, LZ)` is either `Center` or `Face` and determines
-the field's location in `(x, y, z)`.
+Construct a `Field` on `grid` with data type `T` at the location `(LX, LY, LZ)`.
+Each of `(LX, LY, LZ)` is either `Center` or `Face` and determines the field's
+location in `(x, y, z)` respectively.
 
 Keyword arguments
 =================
 
-- data: 
+- `data :: OffsetArray`: An offset array with the fields data. If nothing is providet the
+  field is filled with zeros.
+- `boundary_conditions`: If nothing is provided, then field is created using the default
+  boundary conditions via [`FieldBoundaryConditions`](@ref).
 
 Example
 =======
@@ -227,7 +231,7 @@ compute!(field, time=nothing) = nothing # fallback
 """
     @compute(exprs...)
 
-Call compute! on fields after defining them.
+Call `compute!` on fields after defining them.
 """
 macro compute(def)
     expr = Expr(:block)
@@ -404,8 +408,10 @@ get_neutral_mask(::MinimumReduction) =   Inf
 get_neutral_mask(::MaximumReduction) = - Inf
 get_neutral_mask(::ProdReduction)    =   1
 
-@inline condition_operand(operand, ::Nothing, mask)                = operand
-@inline condition_operand(operand::AbstractField, ::Nothing, mask) = operand
+# If func = identity and condition = nothing, nothing happens
+@inline condition_operand(f::typeof(identity), operand::AbstractField, ::Nothing, mask) = operand
+
+@inline condition_operand(operand, condition, mask) = condition_operand(identity, operand, condition, mask)
 
 @inline conditional_length(c::AbstractField)        = length(c)
 @inline conditional_length(c::AbstractField, dims)  = mapreduce(i -> size(c, i), *, unique(dims); init=1)
@@ -420,7 +426,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
         # In-place
         Base.$(reduction!)(f::Function, r::ReducedField, a::AbstractArray;
                            condition = nothing, mask = get_neutral_mask(Base.$(reduction!)), kwargs...) =
-            Base.$(reduction!)(f, interior(r), condition_operand(a, condition, mask); kwargs...)
+            Base.$(reduction!)(identity, interior(r), condition_operand(f, a, condition, mask); kwargs...)
 
         Base.$(reduction!)(r::ReducedField, a::AbstractArray; 
                            condition = nothing, mask = get_neutral_mask(Base.$(reduction!)), kwargs...) =
@@ -432,14 +438,14 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                    dims=:)
             if dims isa Colon
                 r = zeros(architecture(c), c.grid, 1, 1, 1)
-                Base.$(reduction!)(f, r, condition_operand(c, condition, mask))
+                Base.$(reduction!)(identity, r, condition_operand(f, c, condition, mask))
                 return CUDA.@allowscalar r[1, 1, 1]
             else
                 T = filltype(Base.$(reduction!), c)
                 loc = reduced_location(location(c); dims)
                 r = Field(loc, c.grid, T)
-                initialize_reduced_field!(Base.$(reduction!), f, r, condition_operand(c, condition, mask))
-                Base.$(reduction!)(f, r, condition_operand(c, condition, mask), init=false)
+                initialize_reduced_field!(Base.$(reduction!), identity, r, condition_operand(f, c, condition, mask))
+                Base.$(reduction!)(identity, r, condition_operand(f, c, condition, mask), init=false)
                 return r
             end
         end
@@ -449,13 +455,13 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 end
 
 function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0) 
-    operator = condition_operand(c, condition, mask)
-    return sum(f, operator) / conditional_length(operator)
+    operator = condition_operand(f, c, condition, mask)
+    return sum(operator) / conditional_length(operator)
 end
 
 function Statistics._mean(f, c::AbstractField, dims; condition = nothing, mask = 0)
-    operator = condition_operand(c, condition, mask)
-    r = sum(f, operator; dims)
+    operator = condition_operand(f, c, condition, mask)
+    r = sum(operator; dims)
     n = conditional_length(operator, dims)
     r ./= n
     return r
@@ -467,7 +473,7 @@ Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mea
 function Statistics.mean!(f::Function, r::ReducedField, a::AbstractArray; condition = nothing, mask = 0)
     sum!(f, r, a; condition, mask, init=true)
     dims = reduced_dimension(location(r))
-    n = conditional_length(condition_operand(a, condition, mask), dims)
+    n = conditional_length(condition_operand(f, a, condition, mask), dims)
     r ./= n
     return r
 end

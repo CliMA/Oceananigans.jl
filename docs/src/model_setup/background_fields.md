@@ -72,7 +72,7 @@ using Oceananigans
 
 parameters = (α=3.14, N=1.0, f=0.1)
 
-## Background fields are defined via function of x, y, z, t, and optional parameters
+# Background fields are defined via function of x, y, z, t, and optional parameters
 U(x, y, z, t, α) = α * z
 B(x, y, z, t, p) = - p.α * p.f * y + p.N^2 * z 
 
