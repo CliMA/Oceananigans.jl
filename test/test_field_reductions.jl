@@ -1,5 +1,3 @@
-include("dependencies_for_runtests.jl")
-
 using Statistics
 using Oceananigans.Architectures: arch_array
 using Oceananigans.AbstractOperations: BinaryOperation
