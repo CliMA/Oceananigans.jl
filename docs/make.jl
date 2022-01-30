@@ -41,6 +41,7 @@ examples = [
     "ocean_wind_mixing_and_convection.jl",
     "langmuir_turbulence.jl",
     "eady_turbulence.jl",
+    "double_gyre",
     "kelvin_helmholtz_instability.jl",
     "shallow_water_Bickley_jet.jl",
     "horizontal_convection.jl"
@@ -64,6 +65,7 @@ example_pages = [
     "Ocean wind mixing and convection"   => "generated/ocean_wind_mixing_and_convection.md",
     "Langmuir turbulence"                => "generated/langmuir_turbulence.md",
     "Eady turbulence"                    => "generated/eady_turbulence.md",
+    "Double gyre"                        => "generated/double_gyre.md",
     "Kelvin-Helmholtz instability"       => "generated/kelvin_helmholtz_instability.md",
     "Shallow water Bickley jet"          => "generated/shallow_water_Bickley_jet.md",
     "Horizontal convection"              => "generated/horizontal_convection.md"
