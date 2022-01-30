@@ -25,10 +25,10 @@ function run_similar_field_tests(f)
 end
 
 """
-     correct_field_value_was_set(N, L, ftf, val)
+     correct_field_value_was_set(grid, FieldType, val::Number)
 
-Test that the field initialized by the field type function `ftf` on the grid g
-can be correctly filled with the value `val` using the `set!(f::AbstractField, v)`
+Test that the field initialized by the field type function `FieldType` on the `grid`
+can be correctly filled with the value `val` using the `set!(f::AbstractField, val)`
 function.
 """
 function correct_field_value_was_set(grid, FieldType, val::Number)
@@ -265,8 +265,6 @@ end
 
     @testset "Setting fields" begin
         @info "  Testing field setting..."
-
-        CUDA.allowscalar(true)
 
         FieldTypes = (CenterField, XFaceField, YFaceField, ZFaceField)
 
