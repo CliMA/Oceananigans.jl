@@ -11,7 +11,7 @@ using Oceananigans.Utils
 using Benchmarks
 
 FT = Float64
-Archs = has_cuda() ? [CPU, GPU] : [CPU]
+Archs = CUDA.functional() ? [CPU, GPU] : [CPU]
 
 #####
 ##### Run benchmarks
