@@ -1,6 +1,6 @@
 module Diagnostics
 
-export StateChecker, CFL, AdvectiveCFL, DiffusiveCFL, WindowedSpatialAverage
+export StateChecker, CFL, AdvectiveCFL, DiffusiveCFL
 
 using CUDA
 using Oceananigans
@@ -14,6 +14,5 @@ import Oceananigans: run_diagnostic!
 
 include("state_checker.jl")
 include("cfl.jl")
-include("windowed_spatial_average.jl")
 
 end

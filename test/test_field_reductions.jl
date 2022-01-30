@@ -32,9 +32,11 @@ trilinear(x, y, z) = x + y + z
 
                 w = ZFaceField(grid)
                 T = CenterField(grid)
+                ζ = Field{Face, Face, Face}(grid)
 
                 set!(T, trilinear)
                 set!(w, trilinear)
+                set!(ζ, trilinear)
 
                 @compute Txyz = Field(Average(T, dims=(1, 2, 3)))
 
@@ -50,6 +52,10 @@ trilinear(x, y, z) = x + y + z
                 @compute wxy = Field(Average(w, dims=(1, 2)))
                 @compute wx = Field(Average(w, dims=1))
 
+                @compute ζxyz = Field(Average(ζ, dims=(1, 2, 3)))
+                @compute ζxy = Field(Average(ζ, dims=(1, 2)))
+                @compute ζx = Field(Average(ζ, dims=1))
+
                 for T′ in (Tx, Txy)
                     @test T′.operand.operand === T
                 end
@@ -58,13 +64,18 @@ trilinear(x, y, z) = x + y + z
                     @test w′.operand.operand === w
                 end
 
-                for f in (wx, wxy, Tx, Txy)
+                for ζ′ in (ζx, ζxy)
+                    @test ζ′.operand.operand === ζ
+                end
+
+                for f in (wx, wxy, Tx, Txy, ζx, ζxy)
                     @test f.operand isa Reduction
                     @test f.operand.reduce! === mean!
                 end
 
                 @test Txyz.operand isa Reduction
                 @test wxyz.operand isa Reduction
+                @test ζxyz.operand isa Reduction
 
                 # Different behavior for regular grid z vs not.
                 if grid === regular_grid
