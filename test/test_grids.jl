@@ -668,7 +668,7 @@ end
                 test_grid_equality(arch)
             end
 
-            if CUDA.has_cuda()
+            if CUDA.functional()
                 test_grid_equality_over_architectures()
             end
         end

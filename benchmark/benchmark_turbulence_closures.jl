@@ -23,7 +23,7 @@ end
 
 # Benchmark parameters
 
-Architectures = has_cuda() ? [CPU, GPU] : [CPU]
+Architectures = CUDA.functional() ? [CPU, GPU] : [CPU]
 
 Closures = [Nothing,
             IsotropicDiffusivity,

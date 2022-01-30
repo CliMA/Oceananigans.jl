@@ -37,7 +37,7 @@ end
 ##### Run test
 #####
 
-arch = CUDA.has_cuda() ? GPU() : CPU()
+arch = CUDA.functional() ? GPU() : CPU()
 
 Nx = 2 .^ (6:8) # N = 64 through N = 256
 diffusion_results = run_convergence_test(1e-1, 0, Nx, arch)

@@ -113,7 +113,7 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     arch = architecture(grid)
 
-    arch == GPU() && !has_cuda() &&
+    arch == GPU() && !CUDA.functional() &&
          throw(ArgumentError("Cannot create a GPU model. No CUDA-enabled GPU was detected!"))
 
     momentum_advection = validate_momentum_advection(momentum_advection, grid)

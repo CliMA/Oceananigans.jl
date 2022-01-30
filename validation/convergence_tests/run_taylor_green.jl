@@ -5,7 +5,7 @@ using Oceananigans
 
 using ConvergenceTests.DoublyPeriodicTaylorGreen: setup_and_run
 
-arch = CUDA.has_cuda() ? GPU() : CPU()
+arch = CUDA.functional() ? GPU() : CPU()
 Nx = [8, 16, 32, 64, 128]
 stop_time = 0.25
 

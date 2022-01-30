@@ -22,7 +22,7 @@ end
 
 # Benchmark parameters
 
-Architectures = has_cuda() ? [CPU, GPU] : [CPU]
+Architectures = CUDA.functional() ? [CPU, GPU] : [CPU]
 Float_types = [Float32, Float64]
 Ns = [32, 64, 128, 256]
 

@@ -32,7 +32,7 @@ end
 
 unpack_errors(results) = map(r -> r.L₁, results)
 
-arch = CUDA.has_cuda() ? GPU() : CPU()
+arch = CUDA.functional() ? GPU() : CPU()
 
 stop_time = 3
 Δt = 10 .^ range(-3, 0, length=30)  # Equally spaced in log space.

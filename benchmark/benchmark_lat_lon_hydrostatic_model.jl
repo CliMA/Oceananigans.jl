@@ -14,7 +14,7 @@ function multiple_steps!(model)
     return nothing
 end
 
-for arch in [ has_cuda() ? [CPU(), GPU()] : [CPU()] ]
+for arch in [ CUDA.functional() ? [CPU(), GPU()] : [CPU()] ]
 
     grid_fly = LatitudeLongitudeGrid(size = (N, N, 1), 
                                      halo = (2, 2, 2), 

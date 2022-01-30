@@ -93,7 +93,7 @@ end
 
 # Benchmark parameters
 
-Architectures = has_cuda() ? [GPU] : [CPU]
+Architectures = CUDA.functional() ? [GPU] : [CPU]
 
 grid_types = [
     :RectilinearGrid,

@@ -27,7 +27,7 @@ function convergence_test(Nx, Δt, stop_iteration, arch, topo)
 end
 
 # Setup and run simulations
-arch = CUDA.has_cuda() ? GPU() : CPU()
+arch = CUDA.functional() ? GPU() : CPU()
 Nx = [8, 16, 32, 64, 128, 256]
 stop_time = 1e-4
 

@@ -5,7 +5,7 @@ using Oceananigans
 
 using ConvergenceTests.ForcedFlowFreeSlip: setup_and_run_xy, setup_and_run_xz
 
-arch = CUDA.has_cuda() ? GPU() : CPU()
+arch = CUDA.functional() ? GPU() : CPU()
 
 # Run 4 simulations:
 Nx = [32, 64, 128, 256]

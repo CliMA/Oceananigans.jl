@@ -31,14 +31,14 @@ function __init__()
 end
 
 macro sync_gpu(expr)
-    return CUDA.has_cuda() ? :($(esc(CUDA.@sync expr))) : :($(esc(expr)))
+    return CUDA.functional() ? :($(esc(CUDA.@sync expr))) : :($(esc(expr)))
 end
 
 function print_system_info()
     println()
     println(oceananigans_versioninfo())
     println(versioninfo_with_gpu())
-    CUDA.has_cuda() && println(CUDA.versioninfo())
+    CUDA.functional() && println(CUDA.versioninfo())
     println()
     return nothing
 end

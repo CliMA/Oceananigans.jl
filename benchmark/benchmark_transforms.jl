@@ -45,7 +45,7 @@ end
 
 # Benchmark parameters
 
-Architectures = has_cuda() ? [CPU, GPU] : [CPU]
+Architectures = CUDA.functional() ? [CPU, GPU] : [CPU]
 Ns = [16, 64, 256]
 dims = [1, 2, 3, (1, 2, 3)]
 

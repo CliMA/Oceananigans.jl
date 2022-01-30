@@ -36,7 +36,7 @@ end
 ##### Run tests
 #####
 
-arch = CUDA.has_cuda() ? GPU() : CPU()
+arch = CUDA.functional() ? GPU() : CPU()
 
 advection_schemes = (CenteredSecondOrder(), CenteredFourthOrder(), UpwindBiasedThirdOrder(),
                      UpwindBiasedFifthOrder(), WENO5())

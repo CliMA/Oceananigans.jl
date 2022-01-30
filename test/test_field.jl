@@ -360,7 +360,7 @@ end
         ϕ = CenterField(grid)
         @test cpudata(ϕ).parent isa Array
 
-        if CUDA.has_cuda()
+        if CUDA.functional()
             grid = RectilinearGrid(GPU(), size=(4, 6, 8), extent=(1, 1, 1))
             ϕ = CenterField(grid)
             @test cpudata(ϕ).parent isa Array

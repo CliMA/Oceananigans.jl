@@ -22,7 +22,7 @@ end
 
 # Benchmark parameters
 
-Architectures = has_cuda() ? [CPU, GPU] : [CPU]
+Architectures = CUDA.functional() ? [CPU, GPU] : [CPU]
 Ns = [128]
 PB = (Periodic, Bounded)
 Topologies = collect(Iterators.product(PB, PB, PB))[:]

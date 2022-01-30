@@ -12,7 +12,7 @@ using Oceananigans
 using ConvergenceTests
 using ConvergenceTests.ForcedFlowFixedSlip: u
 
-arch = CUDA.has_cuda() ? GPU() : CPU()
+arch = CUDA.functional() ? GPU() : CPU()
 
 defaultcolors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
 removespine(side) = gca().spines[side].set_visible(false)

@@ -45,7 +45,7 @@ end
 
 # Benchmark parameters
 
-Architectures = has_cuda() ? [CPU, GPU] : [CPU]
+Architectures = CUDA.functional() ? [CPU, GPU] : [CPU]
 Ns = [128]
 
 # Each test case specifies (number of active tracers, number of passive tracers)
