@@ -12,7 +12,7 @@ end
 infinite_diffusion_timescale(args...) = Inf # its not very limiting
 
 """
-    TimeStepWizard(cfl=0.2, max_change=1.1, min_change=0.5, max_Δt=Inf, min_Δt=0.0)
+    TimeStepWizard(cfl=0.2, diffusive_cfl=Inf, max_change=1.1, min_change=0.5, max_Δt=Inf, min_Δt=0.0)
 
 Callback for adapting simulation time-steps `Δt` to maintain the advective
 Courant-Freidrichs-Lewy (`cfl`) number, the `diffusive_cfl`, while maintaining
