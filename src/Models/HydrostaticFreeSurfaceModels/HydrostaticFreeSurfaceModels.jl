@@ -27,16 +27,18 @@ FreeSurfaceDisplacementField(velocities, ::Nothing, grid) = nothing
 include("compute_w_from_continuity.jl")
 
 include("rigid_lid.jl")
+
+# Explicit free-surface solver functionality
 include("explicit_free_surface.jl")
 
-# Implicit solver functionality
+# Implicit free-surface solver functionality
 include("compute_vertically_integrated_variables.jl")
 include("pcg_implicit_free_surface_solver.jl")
 include("matrix_implicit_free_surface_solver.jl")
 include("fft_based_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
 
-# Split-Expllicit solver functionality
+# Split-Explicit free-surface solver functionality
 include("split_explicit_free_surface.jl")
 include("split_explicit_free_surface_kernels.jl")
 
