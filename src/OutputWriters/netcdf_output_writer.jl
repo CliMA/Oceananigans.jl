@@ -178,13 +178,13 @@ to separate NetCDF files:
 ```jldoctest netcdf1
 using Oceananigans
 
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
-model = NonhydrostaticModel(grid=grid, tracers=:c);
+model = NonhydrostaticModel(grid=grid, tracers=:c)
 
-simulation = Simulation(model, Δt=12, stop_time=3600);
+simulation = Simulation(model, Δt=12, stop_time=3600)
 
-fields = Dict("u" => model.velocities.u, "c" => model.tracers.c);
+fields = Dict("u" => model.velocities.u, "c" => model.tracers.c)
 
 simulation.output_writers[:field_writer] =
     NetCDFOutputWriter(model, fields, filepath="fields.nc", schedule=TimeInterval(60))
@@ -234,22 +234,22 @@ provided that their `dimensions` are provided:
 ```jldoctest
 using Oceananigans
 
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3))
 
-model = NonhydrostaticModel(grid=grid);
+model = NonhydrostaticModel(grid=grid)
 
-simulation = Simulation(model, Δt=1.25, stop_iteration=3);
+simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
 f(model) = model.clock.time^2; # scalar output
 
-g(model) = model.clock.time .* exp.(znodes(Center, grid)); # vector/profile output
+g(model) = model.clock.time .* exp.(znodes(Center, grid)) # vector/profile output
 
 h(model) = model.clock.time .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
-                            .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1])); # xy slice output
+                            .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1])) # xy slice output
 
-outputs = Dict("scalar" => f, "profile" => g, "slice" => h);
+outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 
-dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"));
+dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
 
 output_attributes = Dict(
     "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
@@ -257,7 +257,7 @@ output_attributes = Dict(
     "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
 );
 
-global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7);
+global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
 simulation.output_writers[:things] =
     NetCDFOutputWriter(model, outputs,

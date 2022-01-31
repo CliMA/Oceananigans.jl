@@ -42,40 +42,40 @@ flip(::Type{Center}) = Face
 
 const LocationType = Union{Type{Face}, Type{Center}, Type{Nothing}}
 
-"""Return the x-derivative function acting at (`X`, `Y`, `Any`)."""
+"""Return the ``x``-derivative function acting at (`X`, `Y`, `Any`)."""
 ∂x(X::LocationType, Y::LocationType, Z::LocationType) = eval(Symbol(:∂x, interpolation_code(flip(X)), interpolation_code(Y), :ᵃ))
 
-"""Return the y-derivative function acting at (`X`, `Y`, `Any`)."""
+"""Return the ``y``-derivative function acting at (`X`, `Y`, `Any`)."""
 ∂y(X::LocationType, Y::LocationType, Z::LocationType) = eval(Symbol(:∂y, interpolation_code(X), interpolation_code(flip(Y)), :ᵃ))
 
-"""Return the z-derivative function acting at (`Any`, `Any`, `Z`)."""
+"""Return the ``z``-derivative function acting at (`Any`, `Any`, `Z`)."""
 ∂z(X::LocationType, Y::LocationType, Z::LocationType) = eval(Symbol(:∂zᵃᵃ, interpolation_code(flip(Z))))
 
 const derivative_operators = Set([:∂x, :∂y, :∂z])
 push!(operators, derivative_operators...)
 
 """
-    ∂x(L::Tuple, a::AbstractField)
+    ∂x(L::Tuple, arg::AbstractField)
 
-Return an abstract representation of an x-derivative acting on field `a` followed
+Return an abstract representation of an ``x``-derivative acting on field `a` followed
 by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
 ∂x(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
     _derivative(L, ∂x(LX, LY, LZ), arg, (flip(LX), LY, LZ), ∂x, arg.grid)
 
 """
-    ∂y(L::Tuple, a::AbstractField)
+    ∂y(L::Tuple, arg::AbstractField)
 
-Return an abstract representation of a y-derivative acting on field `a` followed
+Return an abstract representation of a ``y``-derivative acting on field `a` followed
 by interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
 ∂y(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
     _derivative(L, ∂y(LX, LY, LZ), arg, (LX, flip(LY), LZ), ∂y, arg.grid)
 
 """
-    ∂z(L::Tuple, a::AbstractField)
+    ∂z(L::Tuple, arg::AbstractField)
 
-Return an abstract representation of a z-derivative acting on field `a` followed
+Return an abstract representation of a ``z``-derivative acting on field `a` followed
 by  interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 """
 ∂z(L::Tuple, arg::AF{LX, LY, LZ}) where {LX, LY, LZ} =
@@ -83,22 +83,22 @@ by  interpolation to `L`, where `L` is a 3-tuple of `Face`s and `Center`s.
 
 # Defaults
 """
-    ∂x(a::AbstractField)
+    ∂x(arg::AbstractField)
 
-Return an abstract representation of a x-derivative acting on field `a`.
+Return an abstract representation of a ``x``-derivative acting on field `a`.
 """
 ∂x(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂x((flip(LX), LY, LZ), arg)
 
 """
-    ∂y(a::AbstractField)
+    ∂y(arg::AbstractField)
 
-Return an abstract representation of a y-derivative acting on field `a`.
+Return an abstract representation of a ``y``-derivative acting on field `a`.
 """
 ∂y(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂y((LX, flip(LY), LZ), arg)
 """
-    ∂z(a::AbstractField)
+    ∂z(arg::AbstractField)
 
-Return an abstract representation of a z-derivative acting on field `a`.
+Return an abstract representation of a ``z``-derivative acting on field `a`.
 """
 ∂z(arg::AF{LX, LY, LZ}) where {LX, LY, LZ} = ∂z((LX, LY, flip(LZ)), arg)
 

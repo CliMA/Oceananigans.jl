@@ -87,7 +87,7 @@ import Oceananigans.TurbulenceClosures:
 export AbstractImmersedBoundary
 
 """
-AbstractImmersedBoundary
+    abstract type AbstractImmersedBoundary
 
 Abstract supertype for immersed boundary grids.
 """
