@@ -23,14 +23,27 @@ mutable struct HeptadiagonalIterativeSolver{G, R, L, D, M, P, PM, PS, I, T, F}
 end
 
 """
-HeptadiagonalIterativeSolver is a framework to solve the problem `A * x = b` (provided that `A` is a symmetric matrix)
+    HeptadiagonalIterativeSolver(coeffs;
+                                 grid,
+                                 iterative_solver = cg,
+                                 maximum_iterations = prod(size(grid)),
+                                 tolerance = 1e-13,
+                                 reduced_dim = (false, false, false), 
+                                 placeholder_timestep = -1.0, 
+                                 preconditioner_method = :Default, 
+                                 preconditioner_settings = nothing)
 
-The solver relies on sparse version of the matrix `A` which are defined by the field
-matrix_constructors.
+`HeptadiagonalIterativeSolver` is a framework to solve the problem `A * x = b`
+(provided that `A` is a symmetric matrix).
+
+The solver relies on sparse version of the matrix `A` which are defined by the
+field matrix_constructors.
 
 In particular, given coefficients `Ax`, `Ay`, `Az`, `C`, `D`, the solved problem will be
 
-To have the equation solved on Center, Center, Center, the coefficients should be specified as follows
+To have the equation solved on Center, Center, Center, the coefficients should be specified
+as follows:
+
 - `Ax` -> Face, Center, Center
 - `Ay` -> Center, Face, Center
 - `Az` -> Center, Center, Face
@@ -41,15 +54,17 @@ To have the equation solved on Center, Center, Center, the coefficients should b
 Axᵢ₊₁ ηᵢ₊₁ + Axᵢ ηᵢ₋₁ + Ayⱼ₊₁ ηⱼ₊₁ + Ayⱼ ηⱼ₋₁ + Azₖ₊₁ ηₖ₊₁ + Azₖ ηⱼ₋₁ 
 - 2 ( Axᵢ₊₁ + Axᵢ + Ayⱼ₊₁ + Ayⱼ + Azₖ₊₁ + Azₖ ) ηᵢⱼₖ 
 +   ( Cᵢⱼₖ + Dᵢⱼₖ/Δt^2 ) ηᵢⱼₖ = b
+```
 
 `solver.matrix` is precomputed with a value of `Δt = -1.0`
 
-The sparse matrix A can be constructed with
+The sparse matrix `A` can be constructed with
 
--   SparseMatrixCSC(constructors...) for CPU
-- CuSparseMatrixCSC(constructors...) for GPU
+- `SparseMatrixCSC(constructors...)` for CPU
+- `CuSparseMatrixCSC(constructors...)` for GPU
 
-The constructors are calculated based on the pentadiagonal coeffients passed as an input (matrix_from_coefficients)
+The constructors are calculated based on the pentadiagonal coeffients passed as an input
+(`matrix_from_coefficients`).
 
 The diagonal term `- Az / (g * Δt²)` is added later on during the time stepping
 to allow for variable time step. It is updated only when the previous time step 
@@ -57,17 +72,18 @@ is different (`Δt_previous != Δt`).
 
 Preconditioning is done through the incomplete LU factorization. 
 
-It works for GPU, but it relies on serial backward and forward substitution which are very heavy and destroy all the
-computational advantage, therefore it is switched off until a parallel backward/forward substitution is implemented
-It is also updated based on the matrix when `Δt != Δt_previous`
+It works for GPU, but it relies on serial backward and forward substitution which are very
+heavy and destroy all the computational advantage, therefore it is switched off until a
+parallel backward/forward substitution is implemented. It is also updated based on the
+matrix when `Δt != Δt_previous`
     
 The iterative_solver used can is to be chosen from the IterativeSolvers.jl package. 
 The default solver is a Conjugate Gradient (cg)
 
+```julia
 solver = HeptadiagonalIterativeSolver((Ax, Ay, Az, C, D), grid = grid)
-
+```
 """
-   
 function HeptadiagonalIterativeSolver(coeffs;
                                       grid,
                                       iterative_solver = cg,

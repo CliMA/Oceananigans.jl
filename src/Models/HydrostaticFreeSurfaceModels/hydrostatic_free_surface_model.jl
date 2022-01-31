@@ -49,7 +49,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
 end
 
 """
-function HydrostaticFreeSurfaceModel(; grid,
+    HydrostaticFreeSurfaceModel(; grid,
                                              clock = Clock{eltype(grid)}(0, 0, 1),
                                 momentum_advection = CenteredSecondOrder(),
                                   tracer_advection = CenteredSecondOrder(),
