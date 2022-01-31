@@ -9,13 +9,9 @@ using Adapt
 import Base.show
 
 """
-SplitExplicitFreeSurface{𝒮, 𝒫, ℰ}
+    struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ}
 
-# Members
-`η` : (ReducedField). The instantaneous free surface 
-`state` : (SplitExplicitState). The entire state for split-explicit
-`gravitational_acceleration` : (NamedTuple). Parameters for timestepping split-explicit
-`settings` : (SplitExplicitSettings). Settings for the split-explicit scheme
+The split-explicit free surface solver.
 
 $(TYPEDFIELDS)
 """
@@ -33,11 +29,9 @@ struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ}
 end
 
 # use as a trait for dispatch purposes
-function SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, substeps = 200)
-
-    return SplitExplicitFreeSurface(nothing, nothing, nothing,
-                                    gravitational_acceleration, SplitExplicitSettings(substeps))
-end
+SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, substeps = 200) =
+    SplitExplicitFreeSurface(nothing, nothing, nothing,
+                             gravitational_acceleration, SplitExplicitSettings(substeps))
 
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
@@ -50,9 +44,12 @@ function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
 end
 
 function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
-    settings = SplitExplicitSettings(200))
+                                        settings = SplitExplicitSettings(200))
+
     η =  Field{Center, Center, Nothing}(grid)
-    sefs = SplitExplicitFreeSurface(η, SplitExplicitState(grid),
+
+    sefs = SplitExplicitFreeSurface(η,
+                                    SplitExplicitState(grid),
                                     SplitExplicitAuxiliary(grid),
                                     gravitational_acceleration,
                                     settings
@@ -188,5 +185,5 @@ end
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
-    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), nothing, nothing, free_surface.gravitational_acceleration,
-        nothing)
+    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η), nothing, nothing,
+                             free_surface.gravitational_acceleration, nothing)
