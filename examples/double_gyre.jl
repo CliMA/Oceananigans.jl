@@ -197,7 +197,6 @@ xu_km, yu_km = xu * 1e-3, yu * 1e-3
 xv_km, yv_km = xv * 1e-3, yv * 1e-3
 xs_km, ys_km = xs * 1e-3, ys * 1e-3
 
-
 # These utilities are handy for calculating nice contour intervals:
 
 """ Returns colorbar levels equispaced from `(-clim, clim)` and encompassing the extrema of `c`. """
@@ -267,10 +266,12 @@ U_timeseries = FieldTimeSeries(filename_barotropic, "u"; grid = grid)
 V_timeseries = FieldTimeSeries(filename_barotropic, "v"; grid = grid)
 
 # average for the last `n_years`
-n_years = 3
+n_years = 5
 
-U = mean(interior(U_timeseries)[:, :, :, end-n_years*52:end], dims=4)[:, :, grid.Nz, 1]
-V = mean(interior(V_timeseries)[:, :, :, end-n_years*52:end], dims=4)[:, :, grid.Nz, 1]
+using Statistics
+
+U = mean(interior(U_timeseries)[:, :, :, end-n_years*12:end], dims=4)[:, :, 1, 1]
+V = mean(interior(V_timeseries)[:, :, :, end-n_years*12:end], dims=4)[:, :, 1, 1]
 
 U_plot = contourf(xu_km, yu_km, U', xlims=xlims, ylims=ylims,
                   linewidth=0, color=:balance, aspectratio=:equal)
@@ -278,8 +279,15 @@ U_plot = contourf(xu_km, yu_km, U', xlims=xlims, ylims=ylims,
 V_plot = contourf(xv_km, yv_km, V', xlims=xlims, ylims=ylims,
                   linewidth=0, color=:balance, aspectratio=:equal)
 
-plot(U_plot, V_plot, layout = Plots.grid(1, 2), size=(800, 500),
-     title=["Depth- and time-averaged \$ u \$" "Depth- and time-averaged \$ v \$"])
+Ψ = cumsum(V, dims=1) * grid.Δxᶜᵃᵃ * grid.Lz * 1e-6
+
+Ψlims, Ψlevels = divergent_levels(Ψ, 45)
+
+Ψ_plot = contourf(xv_km, yv_km, Ψ', xlims=xlims, ylims=ylims, levels = Ψlevels, clims = Ψlims,
+                  linewidth=0, color=:balance, aspectratio=:equal)
+
+plot(U_plot, V_plot, Ψ_plot, layout = Plots.grid(1, 3), size=(1200, 400),
+     title=["Depth- and time-averaged \$ u \$" "Depth- and time-averaged \$ v \$" "Barotropic streamfunction"])
 
 savefig("double_gyre_circulation.png"); nothing # hide
 
