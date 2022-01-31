@@ -5,8 +5,17 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
 using Adapt
 
+"""
+    struct ExplicitFreeSurface{E, T}
+
+The explicit free surface solver.
+
+$(TYPEDFIELDS)
+"""
 struct ExplicitFreeSurface{E, T}
+    "free surface elevation"
     η :: E
+    "gravitational accelerations"
     gravitational_acceleration :: T
 end
 
@@ -23,6 +32,7 @@ Adapt.adapt_structure(to, free_surface::ExplicitFreeSurface) =
 function FreeSurface(free_surface::ExplicitFreeSurface{Nothing}, velocities, grid)
     η = FreeSurfaceDisplacementField(velocities, free_surface, grid)
     g = convert(eltype(grid), free_surface.gravitational_acceleration)
+
     return ExplicitFreeSurface(η, g)
 end
 

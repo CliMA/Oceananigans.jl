@@ -7,9 +7,19 @@ using Oceananigans.Fields: Field, ZReducedField
 import Oceananigans.Solvers: solve!
 import Oceananigans.Architectures: architecture
 
+"""
+    struct PCGImplicitFreeSurfaceSolver{V, S, R}
+
+The preconditioned conjugate gradient iterative implicit free-surface solver.
+
+$(TYPEDFIELDS)
+"""
 struct PCGImplicitFreeSurfaceSolver{V, S, R}
+    "The vertically-integrated lateral areas"
     vertically_integrated_lateral_areas :: V
+    "The preconditioned conjugate gradient solver"
     preconditioned_conjugate_gradient_solver :: S
+    "The right hand side of the free surface evolution equation"
     right_hand_side :: R
 end
 
@@ -187,7 +197,6 @@ P_rᵢⱼ = rᵢⱼ / Acᵢⱼ - 1 / Acᵢⱼ ( Ax⁻ / Acᵢ₋₁ rᵢ₋₁�
 where `Ac`, `Ax⁻`, `Ax⁺`, `Ay⁻` and `Ay⁺` are the coefficients of 
 `ηᵢⱼ`, `ηᵢ₋₁ⱼ`, `ηᵢ₊₁ⱼ`, `ηᵢⱼ₋₁` and `ηᵢⱼ₊₁` in `_implicit_free_surface_linear_operation!`
 """
-
 function implicit_free_surface_precondition!(P_r, r, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
     grid = ∫ᶻ_Axᶠᶜᶜ.grid
     arch = architecture(P_r)

@@ -34,7 +34,7 @@ using Oceananigans.Operators: Δy_cᶜᶜᵃ, Δx_cᶜᶜᵃ
 @inline _diffusive_flux_z(args...) = diffusive_flux_z(args...)
 
 """
-    ∇_dot_qᶜ(i, j, k, grid, clock, closure::AbstractTurbulenceClosure, c, ::Val{tracer_index}, args...)
+    ∇_dot_qᶜ(i, j, k, grid, clock, closure::AbstractTurbulenceClosure, c, tracer_index, args...)
 
 Calculates the divergence of the diffusive flux `qᶜ` for a tracer `c` via
 

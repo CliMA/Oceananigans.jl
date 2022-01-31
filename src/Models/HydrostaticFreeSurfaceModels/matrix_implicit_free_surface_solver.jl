@@ -7,14 +7,24 @@ using Oceananigans.Fields: ReducedField
 using Oceananigans.Solvers: HeptadiagonalIterativeSolver
 import Oceananigans.Solvers: solve!
 
+"""
+    struct MatrixImplicitFreeSurfaceSolver{V, S, R}
+
+The hepta-diagonal matrix iterative implicit free-surface solver.
+
+$(TYPEDFIELDS)
+"""
 struct MatrixImplicitFreeSurfaceSolver{V, S, R}
+    "The vertically-integrated lateral areas"
     vertically_integrated_lateral_areas :: V
+    "The matrix iterative solver"
     matrix_iterative_solver :: S
+    "The right hand side of the free surface evolution equation"
     right_hand_side :: R
 end
 
 """
-    MatrixImplicitFreeSurfaceSolver(grid, gravitational_acceleration, settings)
+    MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_acceleration, settings)
 
 Return a the framework for solving the elliptic equation with one of the iterative solvers of IterativeSolvers.jl
 with a sparse matrix formulation.
@@ -27,7 +37,6 @@ representing an implicit time discretization of the linear free surface evolutio
 for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
-
 function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_acceleration, settings)
     
     # Initialize vertically integrated lateral face areas

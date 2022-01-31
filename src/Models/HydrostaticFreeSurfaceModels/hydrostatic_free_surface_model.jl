@@ -49,7 +49,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
 end
 
 """
-function HydrostaticFreeSurfaceModel(; grid,
+    HydrostaticFreeSurfaceModel(; grid,
                                              clock = Clock{eltype(grid)}(0, 0, 1),
                                 momentum_advection = CenteredSecondOrder(),
                                   tracer_advection = CenteredSecondOrder(),
@@ -67,7 +67,7 @@ function HydrostaticFreeSurfaceModel(; grid,
                                   auxiliary_fields = NamedTuple(),
     )
 
-Construct an hydrostatic `Oceananigans.jl` model with a free surface on `grid`.
+Construct an hydrostatic model with a free surface on `grid`.
 
 Keyword arguments
 =================

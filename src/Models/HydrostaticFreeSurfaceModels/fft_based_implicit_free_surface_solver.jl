@@ -16,7 +16,7 @@ struct FFTImplicitFreeSurfaceSolver{S, G3, G2, R}
 end
 
 """
-    function FFTImplicitFreeSurfaceSolver(grid, settings)
+    FFTImplicitFreeSurfaceSolver(grid, gravitational_acceleration::Number, settings)
 
 Return a solver based on the fast Fourier transform for the elliptic equation
     

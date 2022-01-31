@@ -18,7 +18,9 @@ struct TwoDimensionalLeith{FT, CR, GM, M} <: AbstractTurbulenceClosure{ExplicitT
 end
 
 """
-    TwoDimensionalLeith([FT=Float64;] C=0.3, C_Redi=1, C_GM=1)
+    TwoDimensionalLeith(FT=Float64;
+                        C=0.3, C_Redi=1, C_GM=1,
+                        isopycnal_model=SmallSlopeIsopycnalTensor())
 
 Return a `TwoDimensionalLeith` type associated with the turbulence closure proposed by
 Leith (1965) and Fox-Kemper & Menemenlis (2008) which has an eddy viscosity of the form
@@ -60,6 +62,7 @@ TwoDimensionalLeith(FT=Float64; C=0.3, C_Redi=1, C_GM=1, isopycnal_model=SmallSl
 function with_tracers(tracers, closure::TwoDimensionalLeith{FT}) where FT
     C_Redi = tracer_diffusivities(tracers, closure.C_Redi)
     C_GM = tracer_diffusivities(tracers, closure.C_GM)
+
     return TwoDimensionalLeith{FT}(closure.C, C_Redi, C_GM, closure.isopycnal_model)
 end
 
@@ -192,5 +195,6 @@ function DiffusivityFields(grid, tracer_names, bcs, ::L2D)
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
+    
     return (; νₑ)
 end

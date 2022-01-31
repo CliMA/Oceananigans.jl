@@ -2,6 +2,8 @@ using Oceananigans.Architectures: device, device_event
 using Oceananigans.Operators: div_xyᶜᶜᵃ, Δzᵃᵃᶜ
 
 """
+    compute_w_from_continuity!(model)
+
 Compute the vertical velocity ``w`` by integrating the continuity equation from the bottom upwards:
 
 ```
