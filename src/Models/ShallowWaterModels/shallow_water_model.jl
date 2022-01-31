@@ -54,18 +54,18 @@ end
 """
     ShallowWaterModel(; grid,
                         gravitational_acceleration,
-                            clock = Clock{eltype(grid)}(0, 0, 1),
-                        advection = UpwindBiasedFifthOrder(),
-                         coriolis = nothing,
-              forcing::NamedTuple = NamedTuple(),
-                          closure = nothing,
-                       bathymetry = nothing,
-                          tracers = (),
-               diffusivity_fields = nothing,
-  boundary_conditions::NamedTuple = NamedTuple(),
-              timestepper::Symbol = :RungeKutta3)
+                              clock = Clock{eltype(grid)}(0, 0, 1),
+                          advection = UpwindBiasedFifthOrder(),
+                           coriolis = nothing,
+                forcing::NamedTuple = NamedTuple(),
+                            closure = nothing,
+                         bathymetry = nothing,
+                            tracers = (),
+                 diffusivity_fields = nothing,
+    boundary_conditions::NamedTuple = NamedTuple(),
+                timestepper::Symbol = :RungeKutta3)
 
-Construct a shallow water `Oceananigans.jl` model on `grid` with `gravitational_acceleration` constant.
+Construct a shallow water model on `grid` with `gravitational_acceleration` constant.
 
 Keyword arguments
 =================
