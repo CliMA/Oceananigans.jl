@@ -19,7 +19,7 @@ Courant-Freidrichs-Lewy (`cfl`) number, the `diffusive_cfl`, while maintaining
 `max_Δt`, `min_Δt`, and satisfying `max_change` and `min_change` criteria
 so `Δt` is not adapted "too quickly".
 
-For more information on `cfl`, see the [wikipedia entry]
+For more information on the `cfl` number, see its [wikipedia entry]
 (https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition).
 
 Example
