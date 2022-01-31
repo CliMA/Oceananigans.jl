@@ -10,6 +10,8 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Utils: launch!
 
+using DocStringExtensions
+
 import Oceananigans: fields, prognostic_fields
 
 # This is only used by the cubed sphere for now.
@@ -34,6 +36,7 @@ include("matrix_implicit_free_surface_solver.jl")
 include("fft_based_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
 
+# Split-Expllicit solver functionality
 include("split_explicit_free_surface.jl")
 include("split_explicit_free_surface_kernels.jl")
 
