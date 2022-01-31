@@ -5,13 +5,8 @@ using Oceananigans.Architectures
 using Oceananigans.AbstractOperations: Δz, GridMetricOperation
 using KernelAbstractions: @index, @kernel
 using Adapt
-import Base.show
 
-# TODO: Potentially Change Structs before final PR
-# e.g. flatten the struct, 
-# auxiliary -> source / barotropic_source, 
-# gravitational_acceleration
-# settings -> flattened_settings
+import Base.show
 
 """
 SplitExplicitFreeSurface{𝒮, 𝒫, ℰ}
@@ -21,66 +16,78 @@ SplitExplicitFreeSurface{𝒮, 𝒫, ℰ}
 `state` : (SplitExplicitState). The entire state for split-explicit
 `gravitational_acceleration` : (NamedTuple). Parameters for timestepping split-explicit
 `settings` : (SplitExplicitSettings). Settings for the split-explicit scheme
+
+$(TYPEDFIELDS)
 """
-struct SplitExplicitFreeSurface{𝒩,𝒮,ℱ,𝒫,ℰ}
-    η::𝒩
-    state::𝒮
-    auxiliary::ℱ
-    gravitational_acceleration::𝒫
-    settings::ℰ
+struct SplitExplicitFreeSurface{𝒩, 𝒮, ℱ, 𝒫 ,ℰ}
+    "The instantaneous free surface (`ReducedField`)"
+    η :: 𝒩
+    "The entire state for the split-explicit (`SplitExplicitState`)"
+    state :: 𝒮
+    "Parameters for timestepping split-explicit (`NamedTuple`)"
+    auxiliary :: ℱ
+    "Gravitational acceleration"
+    gravitational_acceleration :: 𝒫
+    "Settings for the split-explicit scheme (`NamedTuple`)"
+    settings :: ℰ
 end
 
 # use as a trait for dispatch purposes
-function SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth,
-    substeps = 200)
+function SplitExplicitFreeSurface(; gravitational_acceleration = g_Earth, substeps = 200)
 
-    return SplitExplicitFreeSurface(nothing, nothing, nothing, gravitational_acceleration, SplitExplicitSettings(substeps))
+    return SplitExplicitFreeSurface(nothing, nothing, nothing,
+                                    gravitational_acceleration, SplitExplicitSettings(substeps))
 end
 
 # The new constructor is defined later on after the state, settings, auxiliary have been defined
 function FreeSurface(free_surface::SplitExplicitFreeSurface, velocities, grid)
     η =  Field{Center, Center, Nothing}(grid)
+
     return SplitExplicitFreeSurface(η, SplitExplicitState(grid),
-        SplitExplicitAuxiliary(grid),
-        free_surface.gravitational_acceleration,
-        free_surface.settings)
+                                    SplitExplicitAuxiliary(grid),
+                                    free_surface.gravitational_acceleration,
+                                    free_surface.settings)
 end
 
 function SplitExplicitFreeSurface(grid; gravitational_acceleration = g_Earth,
     settings = SplitExplicitSettings(200))
     η =  Field{Center, Center, Nothing}(grid)
     sefs = SplitExplicitFreeSurface(η, SplitExplicitState(grid),
-        SplitExplicitAuxiliary(grid),
-        gravitational_acceleration,
-        settings
-    )
+                                    SplitExplicitAuxiliary(grid),
+                                    gravitational_acceleration,
+                                    settings
+                                    )
 
     return sefs
 end
 
 """
-SplitExplicitState{E}
+    struct SplitExplicitState{𝒞𝒞, ℱ𝒞, 𝒞ℱ}
 
-# Members
-`U` : (ReducedField). The instantaneous barotropic component of the zonal velocity 
-`V` : (ReducedField). The instantaneous barotropic component of the meridional velocity
-`η̅` : (ReducedField). The time-filtered free surface 
-`U̅` : (ReducedField). The time-filtered barotropic component of the zonal velocity 
-`V̅` : (ReducedField). The time-filtered barotropic component of the meridional velocity
+A struct containing the state fields for the split-explicit free surface.
+
+$(TYPEDFIELDS)
 """
-Base.@kwdef struct SplitExplicitState{𝒞𝒞,ℱ𝒞,𝒞ℱ}
-    U::ℱ𝒞
-    V::𝒞ℱ
-    η̅::𝒞𝒞
-    U̅::ℱ𝒞
-    V̅::𝒞ℱ
+Base.@kwdef struct SplitExplicitState{𝒞𝒞, ℱ𝒞, 𝒞ℱ}
+    "The instantaneous barotropic component of the zonal velocity. (`ReducedField`)"
+    U :: ℱ𝒞
+    "The instantaneous barotropic component of the meridional velocity. (`ReducedField`)"
+    V :: 𝒞ℱ
+    "The time-filtered free surface. (`ReducedField`)"
+    η̅ :: 𝒞𝒞
+    "The time-filtered barotropic component of the zonal velocity. (`ReducedField`)"
+    U̅ :: ℱ𝒞
+    "The time-filtered barotropic component of the meridional velocity. (`ReducedField`)"
+    V̅ :: 𝒞ℱ
 end
 
-# η̅ is solely used for setting the eta at the next substep iteration
-# it essentially acts as a filter for η
+"""
+    SplitExplicitState(grid::AbstractGrid)
 
+Return the split-explicit state. Note that `η̅` is solely used for setting the `η`
+at the next substep iteration -- it essentially acts as a filter for `η`.
+"""
 function SplitExplicitState(grid::AbstractGrid)
-
     η̅ = Field{Center, Center, Nothing}(grid)
 
     U = Field{Face, Center, Nothing}(grid)
@@ -92,24 +99,24 @@ function SplitExplicitState(grid::AbstractGrid)
     return SplitExplicitState(; U, V, η̅, U̅, V̅)
 end
 
-# TODO: CHANGE TO SOURCE?
-
 """
-SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞}
+    SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞}
 
-# Members
-`Gᵁ` : (ReducedField). Vertically integrated slow barotropic forcing function for U
-`Gⱽ` : (ReducedField). Vertically integrated slow barotropic forcing function for V
-`Hᶠᶜ`: (ReducedField). Depth at (Face, Center)
-`Hᶜᶠ`: (ReducedField). Depth at (Center, Face)
-`Hᶜᶜ`: (ReducedField). Depth at (Center, Center)
+A struct containing auxiliary fields for the split-explicit free surface.
+
+$(TYPEDFIELDS)
 """
-Base.@kwdef struct SplitExplicitAuxiliary{𝒞ℱ,ℱ𝒞,𝒞𝒞}
-    Gᵁ::ℱ𝒞
-    Gⱽ::𝒞ℱ
-    Hᶠᶜ::ℱ𝒞
-    Hᶜᶠ::𝒞ℱ
-    Hᶜᶜ::𝒞𝒞
+Base.@kwdef struct SplitExplicitAuxiliary{𝒞ℱ, ℱ𝒞, 𝒞𝒞}
+    "Vertically integrated slow barotropic forcing function for `U` (`ReducedField`)"
+    Gᵁ :: ℱ𝒞
+    "Vertically integrated slow barotropic forcing function for `V` (`ReducedField`)"
+    Gⱽ :: 𝒞ℱ
+    "Depth at `(Face, Center)` (`ReducedField`)"
+    Hᶠᶜ :: ℱ𝒞
+    "Depth at `(Center, Face)` (`ReducedField`)"
+    Hᶜᶠ :: 𝒞ℱ
+    "Depth at `(Center, Center)` (`ReducedField`)"
+    Hᶜᶜ :: 𝒞𝒞
 end
 
 function SplitExplicitAuxiliary(grid::AbstractGrid)
@@ -134,17 +141,19 @@ function SplitExplicitAuxiliary(grid::AbstractGrid)
 end
 
 """
-SplitExplicitSettings{𝒩, ℳ}
+    struct SplitExplicitSettings{𝒩, ℳ}
 
-# Members
-substeps: (Int)
-velocity_weights : (Vector) 
-free_surface_weights : (Vector)
+A struct containing settings for the split-explicit free surface.
+
+$(TYPEDFIELDS)
 """
-struct SplitExplicitSettings{𝒩,ℳ}
-    substeps::𝒩
-    velocity_weights::ℳ
-    free_surface_weights::ℳ
+struct SplitExplicitSettings{𝒩, ℳ}
+    "substeps: (`Int`)"
+    substeps :: 𝒩
+    "velocity_weights : (`Vector`)"
+    velocity_weights :: ℳ
+    "free_surface_weights : (`Vector`)"
+    free_surface_weights :: ℳ
 end
 
 function SplitExplicitSettings(; substeps = 200, velocity_weights = nothing, free_surface_weights = nothing)
@@ -156,9 +165,6 @@ function SplitExplicitSettings(; substeps = 200, velocity_weights = nothing, fre
         free_surface_weights)
 end
 
-"""
-SplitExplicitSettings(substeps)
-"""
 function SplitExplicitSettings(substeps)
     velocity_weights = Tuple(ones(substeps) ./ substeps)
     free_surface_weights = Tuple(ones(substeps) ./ substeps)
