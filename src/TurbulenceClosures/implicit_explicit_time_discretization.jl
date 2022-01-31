@@ -20,8 +20,8 @@ Represents "vertically-implicit" time-discretization of a `TurbulenceClosure`.
 This imples that a flux divergence such as `∇ ⋅ q` at the n-th timestep is 
 time-discretized as
 
-```
-[∇ ⋅ q]ⁿ = [explicit_flux_divergence]ⁿ + [∂z (κ ∂z c)]ⁿ⁺¹.
+```julia
+[∇ ⋅ q]ⁿ = [explicit_flux_divergence]ⁿ + [∂z (κ ∂z c)]ⁿ⁺¹
 ```
 """
 struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization end

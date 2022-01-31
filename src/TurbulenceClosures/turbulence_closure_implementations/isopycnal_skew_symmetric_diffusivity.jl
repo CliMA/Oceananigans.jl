@@ -25,9 +25,11 @@ ISSDVector = AbstractVector{<:ISSD}
                                       slope_limiter = nothing)
 
 Return parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
-`κ_skew` and symmetric diffusivity `κ_symmetric` using an `isopycnal_tensor` for calculating
-the isopycnal slopes, and optionally applying a `slope_limiter`. Both `κ_skew` and `κ_symmetric`
-may be constants, arrays, fields, or functions of `(x, y, z, t)`.
+`κ_skew` and symmetric diffusivity `κ_symmetric` that uses an `isopycnal_tensor` model for
+for calculating the isopycnal slopes, and (optionally) applying a `slope_limiter` to the
+calculated isopycnal slope values.
+    
+Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
 """
 IsopycnalSkewSymmetricDiffusivity(FT=Float64; κ_skew=0, κ_symmetric=0, isopycnal_tensor=SmallSlopeIsopycnalTensor(), slope_limiter=nothing) =
     IsopycnalSkewSymmetricDiffusivity(convert_diffusivity(FT, κ_skew), convert_diffusivity(FT, κ_symmetric), isopycnal_tensor, slope_limiter)
@@ -53,7 +55,7 @@ struct FluxTapering{FT}
 end
 
 """
-    taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, tapering::FluxTapering)
+    taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, tapering::FluxTapering) 
 
 Return the tapering factor `min(1, Sₘₐₓ² / slope²)`, where `slope² = slope_x² + slope_y²`
 that multiplies all components of the isopycnal slope tensor. All slopes involved in the
@@ -64,8 +66,6 @@ References
 R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical advection schemes
     on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
 """
-taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) where FT = one(FT)
-
 @inline function taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, tapering::FluxTapering) where FT
     bx = ℑxᶜᵃᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers)
     by = ℑyᵃᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
@@ -77,6 +77,13 @@ taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) 
 
     return min(one(FT), tapering.max_slope^2 / slope²)
 end
+
+"""
+    taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) where FT
+
+Returns 1 for the  isopycnal slope tapering factor, that is, no tapering is done.
+"""
+taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) where FT = one(FT)
 
 # Diffusive fluxes
 

@@ -25,13 +25,13 @@ Return a `SmagorinskyLilly` type associated with the turbulence closure proposed
 Lilly (1962) and Smagorinsky (1958, 1963), which has an eddy viscosity of the form
 
 ```
-    νₑ = (C * Δᶠ)² * √(2Σ²) * √(1 - Cb * N² / Σ²) + ν,
+νₑ = (C * Δᶠ)² * √(2Σ²) * √(1 - Cb * N² / Σ²) + ν
 ```
 
 and an eddy diffusivity of the form
 
 ```
-κₑ = (νₑ - ν) / Pr + κ ,
+κₑ = (νₑ - ν) / Pr + κ
 ```
 
 where `Δᶠ` is the filter width, `Σ² = ΣᵢⱼΣᵢⱼ` is the double dot product of

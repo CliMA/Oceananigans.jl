@@ -10,16 +10,20 @@ struct IsotropicDiffusivity{TD, N, K} <: AbstractIsotropicDiffusivity{TD}
 end
 
 """
-    IsotropicDiffusivity([FT=Float64;] ν=0, κ=0, time_discretization = ExplicitTimeDiscretization())
+    IsotropicDiffusivity([FT=Float64;]
+                         ν=0, κ=0, time_discretization = ExplicitTimeDiscretization())
 
 Returns parameters for an isotropic diffusivity model with viscosity `ν`
 and thermal diffusivities `κ` for each tracer field in `tracers`
-`ν` and the fields of `κ` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
+`ν` and the fields of `κ` may be constants, arrays, fields, or
+functions of `(x, y, z, t)`.
 
-`κ` may be a `NamedTuple` with fields corresponding
-to each tracer, or a single number to be a applied to all tracers.
+`κ` may be a `NamedTuple` with fields corresponding to each tracer, or a
+single number to be a applied to all tracers.
 """
-function IsotropicDiffusivity(FT=Float64; ν=0, κ=0, time_discretization::TD = ExplicitTimeDiscretization()) where TD
+function IsotropicDiffusivity(FT=Float64;
+                              ν=0, κ=0, time_discretization::TD = ExplicitTimeDiscretization()) where TD
+
     if ν isa Number && κ isa Number
         κ = convert_diffusivity(FT, κ)
         return IsotropicDiffusivity{TD}(FT(ν), κ)
