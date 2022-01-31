@@ -27,7 +27,7 @@ end
 """
     GridFittedBottom(bottom)
 
-Return an immersed boundary...
+Return an immersed boundary.
 """
 struct GridFittedBottom{B} <: AbstractGridFittedBoundary
     bottom :: B

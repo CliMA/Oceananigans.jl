@@ -12,7 +12,7 @@ struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{L
         BinaryOperation{LX, LY, LZ}(op, a, b, ▶a, ▶b, grid)
 
     Returns an abstract representation of the binary operation `op(▶a(a), ▶b(b))`.
-    on `grid`, where `▶a` and `▶b` interpolate `a` and `b` to (LX, LY, LZ).
+    on `grid`, where `▶a` and `▶b` interpolate `a` and `b` to locations `(LX, LY, LZ)`.
     """
     function BinaryOperation{LX, LY, LZ}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, grid::G) where {LX, LY, LZ, O, A, B, IA, IB, G}
         T = eltype(grid)
@@ -206,4 +206,3 @@ Adapt.adapt_structure(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ
                                 Adapt.adapt(to, binary.▶a),
                                 Adapt.adapt(to, binary.▶b),
                                 Adapt.adapt(to, binary.grid))
-

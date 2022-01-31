@@ -32,9 +32,14 @@ Base.show(io::IO, closure::AMD{TD, FT}) where {TD, FT} =
               "             Background kinematic viscosity for momentum, ν: ", closure.ν)
 
 """
-    AnisotropicMinimumDissipation([FT=Float64;] C=1/12, Cν=nothing, Cκ=nothing,
-                                                Cb=nothing, ν=0, κ=0,
-                                                time_discretization=ExplicitTimeDiscretization())
+    AnisotropicMinimumDissipation([FT = Float64;]
+                                    C = 1/12,
+                                   Cν = nothing,
+                                   Cκ = nothing,
+                                   Cb = nothing,
+                                    ν = 0,
+                                    κ = 0,
+                                   time_discretization=ExplicitTimeDiscretization())
                                        
 Returns parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
@@ -123,7 +128,7 @@ Verstappen, R. (2018), "How much eddy dissipation is needed to counterbalance th
     Computers & Fluids 176, pp. 276-284.
 """
 function AnisotropicMinimumDissipation(FT = Float64;
-                                       C = 1/12,
+                                        C = 1/12,
                                        Cν = nothing,
                                        Cκ = nothing,
                                        Cb = nothing,

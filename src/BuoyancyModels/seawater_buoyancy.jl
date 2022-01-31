@@ -19,12 +19,14 @@ required_tracers(::SeawaterBuoyancy{FT, EOS, <:Nothing, <:Number}) where {FT, EO
 required_tracers(::SeawaterBuoyancy{FT, EOS, <:Number, <:Nothing}) where {FT, EOS} = (:S,) # active salinity only
 
 """
-    SeawaterBuoyancy([FT=Float64;] gravitational_acceleration = g_Earth,
-                                  equation_of_state = LinearEquationOfState(FT),
-                                  constant_temperature = false, constant_salinity = false)
+    SeawaterBuoyancy([FT = Float64;]
+                     gravitational_acceleration = g_Earth,
+                              equation_of_state = LinearEquationOfState(FT),
+                           constant_temperature = false,
+                              constant_salinity = false)
 
 Returns parameters for a temperature- and salt-stratified seawater buoyancy model
-with a `gravitational_acceleration` constant (typically called 'g'), and an
+with a `gravitational_acceleration` constant (typically called ``g``), and an
 `equation_of_state` that related temperature and salinity (or conservative temperature
 and absolute salinity) to density anomalies and buoyancy.
 
@@ -33,8 +35,9 @@ equation of state, `constant_temperature` is used as the temperature of the syst
 The same logic, with the roles of salinity and temperature reversed, holds when
 `constant_salinity` is provided.
 
-For a linear equation of state, the values of `constant_temperature` or `constant_salinity` are irrelevant;
-in this case, `constant_temperature=true` (and similar for `constant_salinity`) is valid input.
+For a linear equation of state, the values of `constant_temperature` or `constant_salinity`
+are irrelevant; in this case, `constant_temperature=true` (and similar for `constant_salinity`)
+is valid input.
 """
 function SeawaterBuoyancy(                        FT = Float64;
                           gravitational_acceleration = g_Earth,
@@ -73,21 +76,21 @@ end
 """
     ∂x_b(i, j, k, grid, b::SeawaterBuoyancy, C)
 
-Returns the x-derivative of buoyancy for temperature and salt-stratified water,
+Returns the ``x``-derivative of buoyancy for temperature and salt-stratified water,
 
 ```math
 ∂_x b = g ( α ∂_x T - β ∂_x S ) ,
 ```
 
-where `g` is gravitational acceleration, `α` is the thermal expansion
-coefficient, `β` is the haline contraction coefficient, `T` is
-conservative temperature, and `S` is absolute salinity.
+where ``g`` is gravitational acceleration, ``α`` is the thermal expansion
+coefficient, ``β`` is the haline contraction coefficient, ``T`` is
+conservative temperature, and ``S`` is absolute salinity.
 
 Note: In Oceananigans, `model.tracers.T` is conservative temperature and
 `model.tracers.S` is absolute salinity.
 
-Note that `∂x_T`, `∂x_S`, `α`, and `β` are all evaluated at cell interfaces in `x`
-and cell centers in `y` and `z`.
+Note that ``∂_x T`` (`∂x_T`), ``∂_x S`` (`∂x_S`), ``α``, and ``β`` are all evaluated at cell
+interfaces in `x` and cell centers in `y` and `z`.
 """
 @inline function ∂x_b(i, j, k, grid, b::SeawaterBuoyancy, C)
     T, S = get_temperature_and_salinity(b, C)
@@ -99,21 +102,21 @@ end
 """
     ∂y_b(i, j, k, grid, b::SeawaterBuoyancy, C)
 
-Returns the y-derivative of buoyancy for temperature and salt-stratified water,
+Returns the ``y``-derivative of buoyancy for temperature and salt-stratified water,
 
 ```math
 ∂_y b = g ( α ∂_y T - β ∂_y S ) ,
 ```
 
-where `g` is gravitational acceleration, `α` is the thermal expansion
-coefficient, `β` is the haline contraction coefficient, `T` is
-conservative temperature, and `S` is absolute salinity.
+where ``g`` is gravitational acceleration, ``α`` is the thermal expansion
+coefficient, ``β`` is the haline contraction coefficient, ``T`` is
+conservative temperature, and ``S`` is absolute salinity.
 
 Note: In Oceananigans, `model.tracers.T` is conservative temperature and
 `model.tracers.S` is absolute salinity.
 
-Note that `∂y_T`, `∂y_S`, `α`, and `β` are all evaluated at cell interfaces in `y`
-and cell centers in `x` and `z`.
+Note that ``∂_y T`` (`∂y_T`), ``∂_y S`` (`∂y_S`), ``α``, and ``β`` are all evaluated at cell
+interfaces in `y` and cell centers in `x` and `z`.
 """
 @inline function ∂y_b(i, j, k, grid, b::SeawaterBuoyancy, C)
     T, S = get_temperature_and_salinity(b, C)
@@ -131,15 +134,15 @@ Returns the vertical derivative of buoyancy for temperature and salt-stratified 
 ∂_z b = N^2 = g ( α ∂_z T - β ∂_z S ) ,
 ```
 
-where `g` is gravitational acceleration, `α` is the thermal expansion
-coefficient, `β` is the haline contraction coefficient, `T` is
-conservative temperature, and `S` is absolute salinity.
+where ``g`` is gravitational acceleration, ``α`` is the thermal expansion
+coefficient, ``β`` is the haline contraction coefficient, ``T`` is
+conservative temperature, and ``S`` is absolute salinity.
 
 Note: In Oceananigans, `model.tracers.T` is conservative temperature and
 `model.tracers.S` is absolute salinity.
 
-Note that `∂z_T`, `∂z_S`, `α`, and `β` are all evaluated at cell interfaces in `z`
-and cell centers in `x` and `y`.
+Note that ``∂_z T`` (`∂z_T`), ``∂_z S`` (`∂z_S`), ``α``, and ``β`` are all evaluated at cell
+interfaces in `z` and cell centers in `x` and `y`.
 """
 @inline function ∂z_b(i, j, k, grid, b::SeawaterBuoyancy, C)
     T, S = get_temperature_and_salinity(b, C)
