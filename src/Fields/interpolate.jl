@@ -96,7 +96,7 @@ Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolat
     ζ, k = modf(k)
 
     # Convert indices to proper integers and shift to 1-based indexing.
-    return _interpolate(field.data, ξ, η, ζ, Int(i+1), Int(j+1), Int(k+1))
+    return _interpolate(field, ξ, η, ζ, Int(i+1), Int(j+1), Int(k+1))
 end
 
 """
