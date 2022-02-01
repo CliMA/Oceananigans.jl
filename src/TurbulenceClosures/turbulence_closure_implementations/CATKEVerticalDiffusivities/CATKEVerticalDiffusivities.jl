@@ -293,11 +293,5 @@ Base.show(io::IO, closure::CATKEVD) =
               " $(closure.mixing_length), \n" *
               " $(closure.surface_TKE_flux)" * ")")
 
-
-# Base.show(io::IO, closure::CATKEVD) =
-#     print(io, "CATKEVerticalDiffusivity: " *
-#               "(background_κz=$(closure.background_κz), convective_κz=$(closure.convective_κz), " *
-#               "background_νz=$(closure.background_νz), convective_νz=$(closure.convective_νz)" * ")")
-
 end
 
