@@ -143,5 +143,5 @@ end
 
 Base.show(io::IO, SurfaceTKEFlux::SurfaceTKEFlux) =
     print(io, "SurfaceTKEFlux: \n" *
-              "        Cᵂu★=$(SurfaceTKEFlux.Cᵂu★), \n" *
-              "        CᵂwΔ=$(SurfaceTKEFlux.CᵂwΔ)")
+              "         Cᵂu★ = $(SurfaceTKEFlux.Cᵂu★), \n" *
+              "         CᵂwΔ = $(SurfaceTKEFlux.CᵂwΔ)")
