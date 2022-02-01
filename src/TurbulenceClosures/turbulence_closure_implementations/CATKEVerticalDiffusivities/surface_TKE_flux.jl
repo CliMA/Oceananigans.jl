@@ -142,5 +142,6 @@ function add_closure_specific_boundary_conditions(closure::Union{CATKEVD, CATKEV
 end
 
 Base.show(io::IO, SurfaceTKEFlux::SurfaceTKEFlux) =
-    print(io, "SurfaceTKEFlux: " *
-              "(Cᵂu★=$(SurfaceTKEFlux.Cᵂu★), CᵂwΔ=$(SurfaceTKEFlux.CᵂwΔ)" * ")")
+    print(io, "SurfaceTKEFlux: \n" *
+              "        Cᵂu★=$(SurfaceTKEFlux.Cᵂu★), \n" *
+              "        CᵂwΔ=$(SurfaceTKEFlux.CᵂwΔ)")

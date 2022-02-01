@@ -287,11 +287,11 @@ end
 #####
 ##### Show
 #####
-Base.show(io::IO, closure::CATKEVD) =
-    print(io, "CATKEVerticalDiffusivity: \n" *
-              "(Cᴰ=$(closure.Cᴰ), \n" * 
-              " $(closure.mixing_length), \n" *
-              " $(closure.surface_TKE_flux)" * ")")
+Base.show(io::IO, closure::CATKEVD{TD}) where TD =
+    print(io, "CATKEVerticalDiffusivity with $(TD) and parameters: \n" *
+              "    Cᴰ=$(closure.Cᴰ), \n" * 
+              "    $(closure.mixing_length), \n" *
+              "    $(closure.surface_TKE_flux)")
 
 end
 

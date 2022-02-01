@@ -207,9 +207,19 @@ end
 end
 
 Base.show(io::IO, ML::MixingLength) =
-    print(io, "MixingLength: (Cᴸᵇ=$(ML.Cᴸᵇ), \n" *
-              "                Cᵟu=$(ML.Cᵟu), Cᵟc=$(ML.Cᵟc), Cᵟe=$(ML.Cᵟe), \n" *
-              "                Cᴬu=$(ML.Cᴬu), Cᴬc=$(ML.Cᴬc), Cᴬe=$(ML.Cᴬe), \n" *
-              "                Cᴷu⁻=$(ML.Cᴷu⁻), Cᴷc⁻=$(ML.Cᴷc⁻), Cᴷe⁻=$(ML.Cᴷe⁻), \n" *
-              "                Cᴷuʳ=$(ML.Cᴷuʳ), Cᴷcʳ=$(ML.Cᴷcʳ), Cᴷeʳ=$(ML.Cᴷeʳ), \n" *
-              "                CᴷRiʷ=$(ML.CᴷRiʷ), CᴷRiᶜ=$(ML.CᴷRiᶜ)" * ")")
+    print(io, "MixingLength: \n" *
+              "        Cᴸᵇ=$(ML.Cᴸᵇ), \n" *
+              "        Cᵟu=$(ML.Cᵟu), \n" *
+              "        Cᵟc=$(ML.Cᵟc), \n" *
+              "        Cᵟe=$(ML.Cᵟe), \n" *
+              "        Cᴬu=$(ML.Cᴬu), \n" *
+              "        Cᴬc=$(ML.Cᴬc), \n" *
+              "        Cᴬe=$(ML.Cᴬe), \n" *
+              "        Cᴷu⁻=$(ML.Cᴷu⁻), \n" *
+              "        Cᴷc⁻=$(ML.Cᴷc⁻), \n" *
+              "        Cᴷe⁻=$(ML.Cᴷe⁻), \n" *
+              "        Cᴷuʳ=$(ML.Cᴷuʳ), \n" *
+              "        Cᴷcʳ=$(ML.Cᴷcʳ), \n" *
+              "        Cᴷeʳ=$(ML.Cᴷeʳ), \n" *
+              "        CᴷRiʷ=$(ML.CᴷRiʷ), \n" *
+              "        CᴷRiᶜ=$(ML.CᴷRiᶜ)")
