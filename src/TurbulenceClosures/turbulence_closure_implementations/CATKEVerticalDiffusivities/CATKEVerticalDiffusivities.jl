@@ -78,7 +78,8 @@ end
                              Cᴰ = 2.91,
                              mixing_length = MixingLength{FT}(),
                              surface_TKE_flux = SurfaceTKEFlux{FT}(),
-                             time_discretization::TD = VerticallyImplicitTimeDiscretization())
+                             warning = true,
+                             time_discretization::TD = VerticallyImplicitTimeDiscretization()) where TD
 
 Returns the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
 small-scale ocean turbulence based on the prognostic evolution of subgrid
@@ -282,4 +283,15 @@ end
                   zero(FT))
 end
 
+
+#####
+##### Show
+#####
+Base.show(io::IO, closure::CATKEVD{TD}) where TD =
+    print(io, "CATKEVerticalDiffusivity with $(TD.name.name) and parameters: \n" *
+              "    Cᴰ = $(closure.Cᴰ), \n" * 
+              "    $(closure.mixing_length), \n" *
+              "    $(closure.surface_TKE_flux)")
+
 end
+
