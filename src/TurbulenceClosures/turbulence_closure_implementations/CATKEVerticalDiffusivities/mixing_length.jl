@@ -206,3 +206,10 @@ end
     return max(Cᴬe * ℓᴬ, Cᵟe * ℓᵟ, σe * ℓ★)
 end
 
+Base.show(io::IO, ML::MixingLength) =
+    print(io, "MixingLength: (Cᴸᵇ=$(ML.Cᴸᵇ), \n" *
+              "                Cᵟu=$(ML.Cᵟu), Cᵟc=$(ML.Cᵟc), Cᵟe=$(ML.Cᵟe), \n" *
+              "                Cᴬu=$(ML.Cᴬu), Cᴬc=$(ML.Cᴬc), Cᴬe=$(ML.Cᴬe), \n" *
+              "                Cᴷu⁻=$(ML.Cᴷu⁻), Cᴷc⁻=$(ML.Cᴷc⁻), Cᴷe⁻=$(ML.Cᴷe⁻), \n" *
+              "                Cᴷuʳ=$(ML.Cᴷuʳ), Cᴷcʳ=$(ML.Cᴷcʳ), Cᴷeʳ=$(ML.Cᴷeʳ), \n" *
+              "                CᴷRiʷ=$(ML.CᴷRiʷ), CᴷRiᶜ=$(ML.CᴷRiᶜ)" * ")")
