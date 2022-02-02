@@ -33,32 +33,39 @@ The operators in this file fall into three categories:
 #####
 #####
 
+@inline Δxᶠᵃᵃ(i, j, k, grid) =  nothing
+@inline Δxᶜᵃᵃ(i, j, k, grid) =  nothing
+@inline Δyᵃᶠᵃ(i, j, k, grid) =  nothing
+@inline Δyᵃᶜᵃ(i, j, k, grid) =  nothing
+@inline Δzᵃᵃᶠ(i, j, k, grid) =  nothing
+@inline Δzᵃᵃᶜ(i, j, k, grid) =  nothing
 
 # Convenience Functions for all grids
-for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
     
     x_spacing_1D = Symbol(:Δx, LX, :ᵃ, :ᵃ)
     x_spacing_2D = Symbol(:Δx, LX, LY, :ᵃ)
-    x_spacing_3D = Symbol(:Δx, LX, LY, LZ)
-
-    y_spacing_1D = Symbol(:Δx, LX, :ᵃ, :ᵃ)
+    
+    y_spacing_1D = Symbol(:Δy, :ᵃ, LY, :ᵃ)
     y_spacing_2D = Symbol(:Δy, LX, LY, :ᵃ)
-    y_spacing_3D = Symbol(:Δy, LX, LY, LZ)
-
-    z_spacing_1D = Symbol(:Δz, :ᵃ, :ᵃ, LZ)
-    z_spacing_3D = Symbol(:Δz, LX, LY, LZ)
 
     @eval begin
-        @inline $x_spacing_1D(i, j, k, grid) = nothing
         @inline $x_spacing_2D(i, j, k, grid) = $x_spacing_1D(i, j, k, grid)
-        @inline $x_spacing_3D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid)
-        
-        @inline $y_spacing_1D(i, j, k, grid) = nothing
-        @inline $y_spacing_2D(i, j, k, grid) = $x_spacing_1D(i, j, k, grid)
-        @inline $y_spacing_3D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid)
-        
-        @inline $z_spacing_1D(i, j, k, grid) = nothing
-        @inline $z_spacing_3D(i, j, k, grid) = $x_spacing_1D(i, j, k, grid)
+        @inline $y_spacing_2D(i, j, k, grid) = $y_spacing_1D(i, j, k, grid)
+    end
+
+    for LZ in (:ᶜ, :ᶠ)
+        x_spacing_3D = Symbol(:Δx, LX, LY, LZ)
+        y_spacing_3D = Symbol(:Δy, LX, LY, LZ)
+
+        z_spacing_1D = Symbol(:Δz, :ᵃ, :ᵃ, LZ)
+        z_spacing_3D = Symbol(:Δz, LX, LY, LZ)
+
+        @eval begin
+            @inline $x_spacing_3D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid)
+            @inline $y_spacing_3D(i, j, k, grid) = $y_spacing_2D(i, j, k, grid)
+            @inline $z_spacing_3D(i, j, k, grid) = $z_spacing_1D(i, j, k, grid)
+        end
     end
 end
 
