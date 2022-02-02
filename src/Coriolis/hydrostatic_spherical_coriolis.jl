@@ -1,5 +1,5 @@
 using Oceananigans.Grids: LatitudeLongitudeGrid, ConformalCubedSphereFaceGrid
-using Oceananigans.Operators: Δx_vᶜᶠᶜ, Δy_uᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind
+using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δxᶠᶜᶜ, Δyᶜᶠᶜ, hack_sind
 
 # Our two Coriolis schemes are energy-conserving or enstrophy-conserving
 # with a "vector invariant" momentum advection scheme, but not with a "flux form"
@@ -42,10 +42,10 @@ HydrostaticSphericalCoriolis(FT::DataType=Float64; rotation_rate=Ω_Earth, schem
 const VIEnstrophy = HydrostaticSphericalCoriolis{<:VectorInvariantEnstrophyConserving}
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::VIEnstrophy, U) =
-    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_vᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
+    @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, U[2]) / Δxᶠᶜᶜ(i, j, k, grid)
 
 @inline y_f_cross_U(i, j, k, grid, coriolis::VIEnstrophy, U) =
-    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_uᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
+    @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, U[1]) / Δyᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Energy-conserving scheme

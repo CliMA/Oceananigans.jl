@@ -14,7 +14,7 @@ which will end up at the cell centers `ccc`.
 @inline function divᶜᶜᶜ(i, j, k, grid, u, v, w)
     return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
                                     δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, v) +
-                                    δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᵃ, w))
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶜ, w))
 end
 
 """
@@ -36,6 +36,3 @@ and `Δx` is the length of the cell centered on (Center, Face, Any) in `x` (a `v
                                        δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v))
 end
 
-@inline function div_xyᶜᶜᶠ(i, j, k, grid, u, v)
-    return 1 / Azᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u) +
-                                       δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v))
