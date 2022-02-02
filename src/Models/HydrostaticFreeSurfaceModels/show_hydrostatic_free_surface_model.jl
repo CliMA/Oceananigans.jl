@@ -13,7 +13,7 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel{TS, C, A}) where {
         print(io, "├── free surface: ", typeof(model.free_surface).name.wrapper, " with gravitational acceleration $(model.free_surface.gravitational_acceleration) m s⁻²", '\n')
 
         if typeof(model.free_surface).name.wrapper == ImplicitFreeSurface
-            print(io, "│   └── solver: ", string(typeof(model.free_surface.implicit_step_solver).name.name), '\n')
+            print(io, "│   └── solver: ", string(model.free_surface.solver_method), '\n')
         end
 
         if typeof(model.free_surface).name.wrapper == SplitExplicitFreeSurface
