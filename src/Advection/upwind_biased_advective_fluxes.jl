@@ -39,7 +39,7 @@ end
     uᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, u)
     uᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, u)
 
-    return Azᶠᶜᵃ(i, j, k, grid) * upwind_biased_product(w̃, uᴸ, uᴿ)
+    return Azᶠᶜᶠ(i, j, k, grid) * upwind_biased_product(w̃, uᴸ, uᴿ)
 end
 
 @inline function advective_momentum_flux_Uv(i, j, k, grid, scheme::Upwind, U, v)
@@ -66,7 +66,7 @@ end
     vᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, v)
     vᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, v)
 
-    return Azᶜᶠᵃ(i, j, k, grid) * upwind_biased_product(w̃, vᴸ, vᴿ)
+    return Azᶜᶠᶠ(i, j, k, grid) * upwind_biased_product(w̃, vᴸ, vᴿ)
 end
 
 @inline function advective_momentum_flux_Uw(i, j, k, grid, scheme::Upwind, U, w)
@@ -93,7 +93,7 @@ end
     wᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w)
     wᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w)
 
-    return Azᶜᶠᵃ(i, j, k, grid) * upwind_biased_product(w̃, wᴸ, wᴿ)
+    return Azᶜᶜᶜ(i, j, k, grid) * upwind_biased_product(w̃, wᴸ, wᴿ)
 end
 
 #####
