@@ -7,15 +7,18 @@ function Base.show(io::IO, model::HydrostaticFreeSurfaceModel{TS, C, A}) where {
         "├── grid: $(summary(model.grid))\n",
         "├── tracers: $(tracernames(model.tracers))\n",
         "├── closure: ", summary(model.closure), '\n',
-        "├── buoyancy: ", summary(model.buoyancy), '\n',
-        "├── free surface: ", typeof(model.free_surface).name.wrapper, " with gravitational acceleration $(model.free_surface.gravitational_acceleration) m s⁻²", '\n')
+        "├── buoyancy: ", summary(model.buoyancy), '\n')
 
-    if typeof(model.free_surface).name.wrapper == ImplicitFreeSurface
-        print(io, "│   └── solver: ", string(model.free_surface.solver_method), '\n')
-    end
+    if model.free_surface !== nothing
+        print(io, "├── free surface: ", typeof(model.free_surface).name.wrapper, " with gravitational acceleration $(model.free_surface.gravitational_acceleration) m s⁻²", '\n')
 
-    if typeof(model.free_surface).name.wrapper == SplitExplicitFreeSurface
-        print(io, "│   └── number of substeps: $(model.free_surface.settings.substeps)", '\n')
+        if typeof(model.free_surface).name.wrapper == ImplicitFreeSurface
+            print(io, "│   └── solver: ", string(model.free_surface.solver_method), '\n')
+        end
+
+        if typeof(model.free_surface).name.wrapper == SplitExplicitFreeSurface
+            print(io, "│   └── number of substeps: $(model.free_surface.settings.substeps)", '\n')
+        end
     end
 
     if isnothing(model.particles)
