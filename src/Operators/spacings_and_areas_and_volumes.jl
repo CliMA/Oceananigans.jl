@@ -33,6 +33,7 @@ The operators in this file fall into three categories:
 #####
 #####
 
+
 # Convenience Functions for all grids
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
     
@@ -40,7 +41,7 @@ for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
     x_spacing_2D = Symbol(:Δx, LX, LY, :ᵃ)
     x_spacing_3D = Symbol(:Δx, LX, LY, LZ)
 
-    y_spacing_1D = Symbol(:Δy, :ᵃ, LY, :ᵃ)
+    y_spacing_1D = Symbol(:Δx, LX, :ᵃ, :ᵃ)
     y_spacing_2D = Symbol(:Δy, LX, LY, :ᵃ)
     y_spacing_3D = Symbol(:Δy, LX, LY, LZ)
 
@@ -87,6 +88,7 @@ end
 # the general case is when all the directions are stretched
 # X, Y and Z stands for the direction which is regular
 
+const LLGP  = LatitudeLongitudeGrid
 const LLGPX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number} # no i-index for Δλ
 const LLGPY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number} # no j-index for Δφ
 
@@ -118,21 +120,21 @@ const LLGZ  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:
 ## Pre computed metrics
 ## Δx metric
 
-@inline Δxᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)  = @inbounds grid.Δxᶜᶠᵃ[i, j]
-@inline Δxᶜᶠᵃ(i, j, k, grid::LLGPX)                  = @inbounds grid.Δxᶜᶠᵃ[j]
-@inline Δxᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid)  = @inbounds grid.Δxᶠᶜᵃ[i, j]
-@inline Δxᶠᶜᵃ(i, j, k, grid::LLGPX)                  = @inbounds grid.Δxᶠᶜᵃ[j]
-@inline Δxᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)  = @inbounds grid.Δxᶠᶠᵃ[i, j]
-@inline Δxᶠᶠᵃ(i, j, k, grid::LLGPX)                  = @inbounds grid.Δxᶠᶠᵃ[j]
-@inline Δxᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid)  = @inbounds grid.Δxᶜᶜᵃ[i, j]
-@inline Δxᶜᶜᵃ(i, j, k, grid::LLGPX)                  = @inbounds grid.Δxᶜᶜᵃ[j]
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δxᶜᶠᵃ[i, j]
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Δxᶜᶠᵃ[j]
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δxᶠᶜᵃ[i, j]
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Δxᶠᶜᵃ[j]
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δxᶠᶠᵃ[i, j]
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Δxᶠᶠᵃ[j]
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δxᶜᶜᵃ[i, j]
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Δxᶜᶜᵃ[j]
 
 ## Δy metric
 
-@inline Δyᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)  = @inbounds grid.Δyᶜᶠᵃ[j]
-@inline Δyᶜᶠᵃ(i, j, k, grid::LLGPY)                  = @inbounds grid.Δyᶜᶠᵃ
-@inline Δyᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid)  = @inbounds grid.Δyᶠᶜᵃ[j]
-@inline Δyᶠᶜᵃ(i, j, k, grid::LLGPY)                  = @inbounds grid.Δyᶠᶜᵃ
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δyᶜᶠᵃ[j]
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGPY) = @inbounds grid.Δyᶜᶠᵃ
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δyᶠᶜᵃ[j]
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGPY) = @inbounds grid.Δyᶠᶜᵃ
 
 @inline Δyᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Δyᶠᶜᵃ(i, j, k, grid)
 @inline Δyᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
