@@ -17,7 +17,6 @@ The three-dimensional location of an object is defined by a 3-tuple of locations
 denoted by a triplet of superscripts. For example, an object `φ` whose cell is located at
 (Center, Center, Face) is denoted `φᶜᶜᶠ`. `ᶜᶜᶠ` is Centered in `x`, `Centered` in `y`, and on
 reference cell interfaces in `z` (this is where the vertical velocity is located, for example).
-The super script `ᵃ` denotes "any" location.
 
 The operators in this file fall into three categories:
 
@@ -224,15 +223,6 @@ end
 @inline Vᶠᶜᶠ(i, j, k, grid) = Azᶠᶜᶠ(i, j, k, grid) * Δzᶠᶜᶠ(i, j, k, grid)
 @inline Vᶜᶠᶠ(i, j, k, grid) = Azᶜᶠᶠ(i, j, k, grid) * Δzᶜᶠᶠ(i, j, k, grid)
 @inline Vᶠᶠᶠ(i, j, k, grid) = Azᶠᶠᶠ(i, j, k, grid) * Δzᶠᶠᶠ(i, j, k, grid)
-
-""" 
-the combination of types can be:
-
-M <: Nothing mean no precomputed metrics. They have to be computed again.
-FX<: Number  means that the grid is not stretched in the latitude direction
-FY<: Number  means that the grid is not stretched in the longitude direction
-
-"""
 
 #####
 ##### Generic functions for specified locations

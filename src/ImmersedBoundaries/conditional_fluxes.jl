@@ -5,17 +5,6 @@ using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure, AbstractTimeDi
 const ATC = AbstractTurbulenceClosure
 const ATD = AbstractTimeDiscretization
 
-const IBG = ImmersedBoundaryGrid
-
-const c = Center()
-const f = Face()
-
-#####
-##### GridFittedImmersedBoundaryGrid
-#####
-
-const GFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBoundary}
-
 @inline conditional_flux_ccc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(c, c, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
 @inline conditional_flux_ffc(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(f, f, c, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
 @inline conditional_flux_fcf(i, j, k, ibg::IBG{FT}, flux, args...) where FT = ifelse(solid_interface(f, c, f, i, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))

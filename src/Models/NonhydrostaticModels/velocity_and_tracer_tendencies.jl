@@ -6,11 +6,11 @@ using Oceananigans.StokesDrift
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 
 "return the ``x``-gradient of hydrostatic pressure"
-hydrostatic_pressure_gradient_x(i, j, k, grid, hydrostatic_pressure) = ∂xᶠᶜᵃ(i, j, k, grid, hydrostatic_pressure)
+hydrostatic_pressure_gradient_x(i, j, k, grid, hydrostatic_pressure) = ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure)
 hydrostatic_pressure_gradient_x(i, j, k, grid, ::Nothing) = zero(eltype(grid))
 
 "return the ``y``-gradient of hydrostatic pressure"
-hydrostatic_pressure_gradient_y(i, j, k, grid, hydrostatic_pressure) = ∂yᶜᶠᵃ(i, j, k, grid, hydrostatic_pressure)
+hydrostatic_pressure_gradient_y(i, j, k, grid, hydrostatic_pressure) = ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure)
 hydrostatic_pressure_gradient_y(i, j, k, grid, ::Nothing) = zero(eltype(grid))
 
 """

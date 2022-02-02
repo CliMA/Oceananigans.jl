@@ -1,4 +1,4 @@
-using Oceananigans.Operators: interpolation_code
+using Oceananigans.Operators: interpolation_code, Δzᵃᵃᶜ, Δzᵃᵃᶠ
 using Oceananigans.AbstractOperations: flip
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
@@ -28,7 +28,7 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 ##### Note: "ivd" stands for implicit vertical diffusion.
 #####
 
-@inline κ_Δz²(i, j, kᶜ, kᶠ, grid, κ) = κ / Δzᵃᵃᶜ(i, j, kᶜ, grid) / Δzᵃᵃᶠ(i, j, kᶠ, grid)
+@inline κ_Δz²(i, j, kᶜ, kᶠ, LX, LY, grid, κ) = κ / Δzᵃᵃᶜ(i, j, kᶜ, grid) / Δzᵃᵃᶠ(i, j, kᶠ, grid)
 
 instantiate(X) = X()
 

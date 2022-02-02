@@ -124,5 +124,5 @@ end
     cᴸ =  _left_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c)
     cᴿ = _right_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, c)
 
-    return Azᶜᶜᵃ(i, j, k, grid) * upwind_biased_product(w̃, cᴸ, cᴿ) 
+    return Azᶜᶜᶠ(i, j, k, grid) * upwind_biased_product(w̃, cᴸ, cᴿ) 
 end

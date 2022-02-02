@@ -171,7 +171,7 @@ const etd = ExplicitTimeDiscretization()
 
 @inline function diffusive_flux_z(i, j, k, grid, closure::CAVD, c, tracer_index, clock, diffusivities, args...)
     κ = κᶜᶜᶠ(i, j, k, grid, clock, diffusivities.κ)
-    return - κ * ∂zᵃᵃᶠ(i, j, k, grid, c)
+    return - κ * ∂zᶜᶜᶠ(i, j, k, grid, c)
 end
 
 @inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::CAVD, args...)
@@ -212,7 +212,7 @@ end
 
 @inline function viscous_flux_wz(i, j, k, grid, closure::CAVD, clock, velocities, diffusivities, args...)
     ν = νᶜᶜᶜ(i, j, k, grid, clock, diffusivities.ν)
-    return - ν * ∂zᵃᵃᶜ(i, j, k, grid, velocities.w)
+    return - ν * ∂zᶜᶜᶜ(i, j, k, grid, velocities.w)
 end
 
 #####

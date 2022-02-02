@@ -62,21 +62,21 @@ end
 calculate_diffusivities!(diffusivities, closure::AnisotropicBiharmonicDiffusivity, args...) = nothing
 
 @inline ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, clock, U, args...) = (
-      closure.νx * ∂⁴xᶠᵃᵃ(i, j, k, grid, U.u)
-    + closure.νy * ∂⁴yᵃᶜᵃ(i, j, k, grid, U.u)
-    + closure.νz * ∂⁴zᵃᵃᶜ(i, j, k, grid, U.u)
+      closure.νx * ∂⁴xᶠᶜᶜ(i, j, k, grid, U.u)
+    + closure.νy * ∂⁴yᶠᶜᶜ(i, j, k, grid, U.u)
+    + closure.νz * ∂⁴zᶠᶜᶜ(i, j, k, grid, U.u)
     )
 
 @inline ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, clock, U, args...) = (
-      closure.νx * ∂⁴xᶜᵃᵃ(i, j, k, grid, U.v)
-    + closure.νy * ∂⁴yᵃᶠᵃ(i, j, k, grid, U.v)
-    + closure.νz * ∂⁴zᵃᵃᶜ(i, j, k, grid, U.v)
+      closure.νx * ∂⁴xᶜᶠᶜ(i, j, k, grid, U.v)
+    + closure.νy * ∂⁴yᶜᶠᶜ(i, j, k, grid, U.v)
+    + closure.νz * ∂⁴zᶜᶠᶜ(i, j, k, grid, U.v)
     )
 
 @inline ∂ⱼ_τ₃ⱼ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity, clock, U, args...) = (
-      closure.νx * ∂⁴xᶜᵃᵃ(i, j, k, grid, U.w)
-    + closure.νy * ∂⁴yᵃᶜᵃ(i, j, k, grid, U.w)
-    + closure.νz * ∂⁴zᵃᵃᶠ(i, j, k, grid, U.w)
+      closure.νx * ∂⁴xᶜᶜᶠ(i, j, k, grid, U.w)
+    + closure.νy * ∂⁴yᶜᶜᶠ(i, j, k, grid, U.w)
+    + closure.νz * ∂⁴zᶜᶜᶠ(i, j, k, grid, U.w)
     )
 
 @inline function ∇_dot_qᶜ(i, j, k, grid, closure::AnisotropicBiharmonicDiffusivity,
@@ -86,8 +86,8 @@ calculate_diffusivities!(diffusivities, closure::AnisotropicBiharmonicDiffusivit
     @inbounds κy = closure.κy[tracer_index]
     @inbounds κz = closure.κz[tracer_index]
 
-    return (  κx * ∂⁴xᶜᵃᵃ(i, j, k, grid, c)
-            + κy * ∂⁴yᵃᶜᵃ(i, j, k, grid, c)
-            + κz * ∂⁴zᵃᵃᶜ(i, j, k, grid, c)
+    return (  κx * ∂⁴xᶜᶜᶜ(i, j, k, grid, c)
+            + κy * ∂⁴yᶜᶜᶜ(i, j, k, grid, c)
+            + κz * ∂⁴zᶜᶜᶜ(i, j, k, grid, c)
            )
 end

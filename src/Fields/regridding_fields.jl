@@ -2,7 +2,7 @@ using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Architectures: arch_array, architecture
-using Oceananigans.Operators: Δzᵃᵃᶜ
+using Oceananigans.Operators: Δzᶜᶜᶜ
 
 const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded}
 
@@ -100,7 +100,7 @@ end
 
         # Add contribution from all full cells in the integration range
         @unroll for k_src = k₋_src:k₊_src
-            @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δzᵃᵃᶜ(i_src, j_src, k_src, source_grid)
+            @inbounds target_field[i, j, k] += source_field[i_src, j_src, k_src] * Δzᶜᶜᶜ(i_src, j_src, k_src, source_grid)
         end
 
         zk₋_src = znode(Center(), Center(), Face(), i_src, j_src, k₋_src, source_grid)
@@ -113,7 +113,7 @@ end
         # Add contribution to integral from fractional top part
         @inbounds target_field[i, j, k] += source_field[i_src, j_src, k₊_src] * (z₊ - zk₊_src)
 
-        @inbounds target_field[i, j, k] /= Δzᵃᵃᶜ(i, j, k, target_grid)
+        @inbounds target_field[i, j, k] /= Δzᶜᶜᶜ(i, j, k, target_grid)
     end
 end
 

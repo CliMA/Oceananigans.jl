@@ -67,51 +67,19 @@ using Oceananigans.AbstractOperations: GridMetricOperation
 @inline is_y_immersed_boundary⁻(LX, ::Face, LZ, i, j, k, ibg) = !solid_node(i, j-1, k, ibg) &  solid_node(i, j, k, ibg)
 @inline is_z_immersed_boundary⁻(LX, LY, ::Face, i, j, k, ibg) = !solid_node(i, j, k-1, ibg) &  solid_node(i, j, k, ibg)
 
-for metric in (
-               :Δxᶜᶜᵃ,
-               :Δxᶜᶠᵃ,
-               :Δxᶠᶠᵃ,
-               :Δxᶠᶜᵃ,
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
+    for dir in (:x, :y, :z), operator in (:Δ, :A)
+    
+        metric = Symbol(operator, dir, LX, LY, LZ)
+        @eval begin
+            import Oceananigans.Operators: $metric
+            @inline $metric(i, j, k, ibg::ImmersedBoundaryGrid) = $metric(i, j, k, ibg.grid)
+        end
+    end
 
-               :Δyᶜᶜᵃ,
-               :Δyᶜᶠᵃ,
-               :Δyᶠᶠᵃ,
-               :Δyᶠᶜᵃ,
-
-               :Δzᵃᵃᶜ,
-               :Δzᵃᵃᶠ,
-               :Δzᶠᶜᶜ,
-               :Δzᶜᶠᶜ,
-               :Δzᶠᶜᶠ,
-               :Δzᶜᶠᶠ,
-
-               :Azᶜᶜᵃ,
-               :Azᶜᶠᵃ,
-               :Azᶠᶠᵃ,
-               :Azᶠᶜᵃ,
-
-               :Axᶜᶜᶜ, 
-               :Axᶠᶜᶜ,
-               :Axᶠᶠᶜ,
-               :Axᶜᶠᶜ,
-               :Axᶠᶜᶠ,
-               :Axᶜᶜᶠ,
-               
-               :Ayᶜᶜᶜ,
-               :Ayᶜᶠᶜ,
-               :Ayᶠᶜᶜ,
-               :Ayᶠᶠᶜ,
-               :Ayᶜᶠᶠ,
-               :Ayᶜᶜᶠ,
-
-               :Vᶜᶜᶜ, 
-               :Vᶠᶜᶜ,
-               :Vᶜᶠᶜ,
-               :Vᶜᶜᶠ,
-              )
-
+    volume = Symbol(:V, LX, LY, LZ)
     @eval begin
-        import Oceananigans.Operators: $metric
-        @inline $metric(i, j, k, ibg::ImmersedBoundaryGrid) = $metric(i, j, k, ibg.grid)
+        import Oceananigans.Operators: $volume
+        @inline $volume(i, j, k, ibg::ImmersedBoundaryGrid) = $volume(i, j, k, ibg.grid)
     end
 end

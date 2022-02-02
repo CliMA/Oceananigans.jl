@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: device, device_event
-using Oceananigans.Operators: div_xyᶜᶜᵃ, Δzᵃᵃᶜ
+using Oceananigans.Operators: div_xyᶜᶜᶜ, Δzᶜᶜᶜ
 
 """
     compute_w_from_continuity!(model)
@@ -31,6 +31,6 @@ end
     i, j = @index(Global, NTuple)
     U.w[i, j, 1] = 0
     @unroll for k in 2:grid.Nz+1
-        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δzᵃᵃᶜ(i, j, k-1, grid) * div_xyᶜᶜᵃ(i, j, k-1, grid, U.u, U.v)
+        @inbounds U.w[i, j, k] = U.w[i, j, k-1] - Δzᶜᶜᶜ(i, j, k-1, grid) * div_xyᶜᶜᶜ(i, j, k-1, grid, U.u, U.v)
     end
 end
