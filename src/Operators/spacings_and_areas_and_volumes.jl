@@ -1,6 +1,4 @@
 using Oceananigans.Grids: Center, Face
-using KernelAbstractions
-using Oceananigans.Architectures
 
 """
 Notes:
@@ -31,148 +29,65 @@ The operators in this file fall into three categories:
 """
 
 #####
-##### "Spacings" in Flat directions for rectilinear grids.
-##### Here we dispatch all spacings to `one`. This abuse of notation
-##### makes volumes and areas correct. E.g., with `z` Flat we have `v = dx * dy * 1`.
 #####
-##### Note: Vertical metrics are specific to each rectilinear grid type; therefore
-##### we must dispatch on Flat vertical directions for each grid independently.
+##### Spacing!!
+#####
 #####
 
-using Oceananigans.Grids: Flat
+# Convenience Functions for all grids
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
+    
+    x_spacing_1D = Symbol(:Δx, LX, :ᵃ, :ᵃ)
+    x_spacing_2D = Symbol(:Δx, LX, LY, :ᵃ)
+    x_spacing_3D = Symbol(:Δx, LX, LY, LZ)
+
+    y_spacing_1D = Symbol(:Δy, :ᵃ, LY, :ᵃ)
+    y_spacing_2D = Symbol(:Δy, LX, LY, :ᵃ)
+    y_spacing_3D = Symbol(:Δy, LX, LY, LZ)
+
+    z_spacing_1D = Symbol(:Δz, :ᵃ, :ᵃ, LZ)
+    z_spacing_3D = Symbol(:Δz, LX, LY, LZ)
+
+    @eval begin
+        @inline $x_spacing_1D(i, j, k, grid) = nothing
+        @inline $x_spacing_2D(i, j, k, grid) = $x_spacing_1D(i, j, k, grid)
+        @inline $x_spacing_3D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid)
+        
+        @inline $y_spacing_1D(i, j, k, grid) = nothing
+        @inline $y_spacing_2D(i, j, k, grid) = $x_spacing_1D(i, j, k, grid)
+        @inline $y_spacing_3D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid)
+        
+        @inline $z_spacing_1D(i, j, k, grid) = nothing
+        @inline $z_spacing_3D(i, j, k, grid) = $x_spacing_1D(i, j, k, grid)
+    end
+end
 
 #####
-##### Grid lengths for horizontally-curvilinear, vertically-rectilinear algorithms
+##### Rectilinear Grids (Flat grids already have Δ = 1)
 #####
 
-@inline Δxᶜᶜᵃ(i, j, k, grid::ARG) = Δxᶜᵃᵃ(i, j, k, grid)
-@inline Δxᶜᶠᵃ(i, j, k, grid::ARG) = Δxᶜᵃᵃ(i, j, k, grid)
-@inline Δxᶠᶠᵃ(i, j, k, grid::ARG) = Δxᶠᵃᵃ(i, j, k, grid)
-@inline Δxᶠᶜᵃ(i, j, k, grid::ARG) = Δxᶠᵃᵃ(i, j, k, grid)
-
-@inline Δyᶜᶜᵃ(i, j, k, grid::ARG) = Δyᵃᶜᵃ(i, j, k, grid)
-@inline Δyᶠᶜᵃ(i, j, k, grid::ARG) = Δyᵃᶜᵃ(i, j, k, grid)
-@inline Δyᶜᶠᵃ(i, j, k, grid::ARG) = Δyᵃᶠᵃ(i, j, k, grid)
-@inline Δyᶠᶠᵃ(i, j, k, grid::ARG) = Δyᵃᶠᵃ(i, j, k, grid)
-
-@inline Δzᶠᶜᶜ(i, j, k, grid) = Δzᵃᵃᶜ(i, j, k, grid)
-@inline Δzᶜᶠᶜ(i, j, k, grid) = Δzᵃᵃᶜ(i, j, k, grid)
-@inline Δzᶠᶜᶠ(i, j, k, grid) = Δzᵃᵃᶠ(i, j, k, grid)
-@inline Δzᶜᶠᶠ(i, j, k, grid) = Δzᵃᵃᶠ(i, j, k, grid)
-
-#####
-##### Areas for algorithms that generalize to horizontally-curvilinear, vertically-rectilinear grids
-#####
-
-@inline Azᶜᶜᵃ(i, j, k, grid::ARG) = Δxᶜᵃᵃ(i, j, k, grid) * Δyᵃᶜᵃ(i, j, k, grid)
-@inline Azᶠᶠᵃ(i, j, k, grid::ARG) = Δxᶠᵃᵃ(i, j, k, grid) * Δyᵃᶠᵃ(i, j, k, grid)
-@inline Azᶜᶠᵃ(i, j, k, grid::ARG) = Δxᶜᵃᵃ(i, j, k, grid) * Δyᵃᶠᵃ(i, j, k, grid)
-@inline Azᶠᶜᵃ(i, j, k, grid::ARG) = Δxᶠᵃᵃ(i, j, k, grid) * Δyᵃᶜᵃ(i, j, k, grid)
-
-#####
-##### Areas for horizontally-regular grids
-#####
-
-@inline Axᵃᵃᶜ(i, j, k, grid::HRegRectilinearGrid) = Δyᵃᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
-@inline Axᵃᵃᶠ(i, j, k, grid::HRegRectilinearGrid) = Δyᵃᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
-@inline Ayᵃᵃᶜ(i, j, k, grid::HRegRectilinearGrid) = Δxᶜᵃᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
-@inline Ayᵃᵃᶠ(i, j, k, grid::HRegRectilinearGrid) = Δxᶜᵃᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
-@inline Azᵃᵃᵃ(i, j, k, grid::HRegRectilinearGrid) = Δxᶜᵃᵃ(i, j, k, grid) * Δyᵃᶜᵃ(i, j, k, grid)
-
-#####
-##### Volumes for horizontally-regular algorithms
-#####
-
-@inline Vᵃᵃᶜ(i, j, k, grid::HRegRectilinearGrid) = Azᵃᵃᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
-@inline Vᵃᵃᶠ(i, j, k, grid::HRegRectilinearGrid) = Azᵃᵃᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
-
-#####
-##### Areas for three-dimensionally curvilinear algorithms
-#####
-
-@inline Axᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # c
-@inline Axᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # u
-@inline Axᶜᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # η
-@inline Axᶜᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid) # η
-@inline Axᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # ζ
-@inline Axᶠᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid) # η
-@inline Axᶜᶠᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
-@inline Axᶠᶠᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δyᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
-
-
-@inline Ayᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # c
-@inline Ayᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # v
-@inline Ayᶜᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # v
-@inline Ayᶜᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid) # ξ
-@inline Ayᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid) # ζ
-@inline Ayᶠᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
-@inline Ayᶜᶠᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid) # ξ
-@inline Ayᶠᶠᶠ(i, j, k, grid::Union{ARG, AHCG}) = Δxᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
-
-#####
-##### Volumes for three-dimensionally curvilinear algorithms
-#####
-
-@inline Vᶜᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
-@inline Vᶠᶜᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
-@inline Vᶜᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
-@inline Vᶜᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
-@inline Vᶠᶠᶜ(i, j, k, grid::Union{ARG, AHCG}) = Azᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶜ(i, j, k, grid)
-@inline Vᶠᶜᶠ(i, j, k, grid::Union{ARG, AHCG}) = Azᶠᶜᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
-@inline Vᶜᶠᶠ(i, j, k, grid::Union{ARG, AHCG}) = Azᶜᶠᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
-@inline Vᶠᶠᶠ(i, j, k, grid::Union{ARG, AHCG}) = Azᶠᶠᵃ(i, j, k, grid) * Δzᵃᵃᶠ(i, j, k, grid)
-
-
-#####
-##### Grid spacings and areas for RectilinearGrid
-#####
-
-@inline Δxᶜᵃᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δxᶜᵃᵃ[i]
 @inline Δxᶠᵃᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δxᶠᵃᵃ[i]
+@inline Δxᶜᵃᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δxᶜᵃᵃ[i]
 @inline Δyᵃᶠᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δyᵃᶠᵃ[j]
 @inline Δyᵃᶜᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δyᵃᶜᵃ[j]
 @inline Δzᵃᵃᶠ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δzᵃᵃᶠ[k]
 @inline Δzᵃᵃᶜ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δzᵃᵃᶜ[k]
-@inline Δxᶜᵃᵃ(i, j, k, grid::XRegRectilinearGrid) =  @inbounds grid.Δxᶜᵃᵃ
+
 @inline Δxᶠᵃᵃ(i, j, k, grid::XRegRectilinearGrid) =  @inbounds grid.Δxᶠᵃᵃ
+@inline Δxᶜᵃᵃ(i, j, k, grid::XRegRectilinearGrid) =  @inbounds grid.Δxᶜᵃᵃ
 @inline Δyᵃᶠᵃ(i, j, k, grid::YRegRectilinearGrid) =  @inbounds grid.Δyᵃᶠᵃ
 @inline Δyᵃᶜᵃ(i, j, k, grid::YRegRectilinearGrid) =  @inbounds grid.Δyᵃᶜᵃ
 @inline Δzᵃᵃᶠ(i, j, k, grid::ZRegRectilinearGrid) =  @inbounds grid.Δzᵃᵃᶠ
 @inline Δzᵃᵃᶜ(i, j, k, grid::ZRegRectilinearGrid) =  @inbounds grid.Δzᵃᵃᶜ
 
-const XFlatRG = RectilinearGrid{<:Any, <:Flat, <:Any, <:Any, <:Number}
-const YFlatRG = RectilinearGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Number}
-const ZFlatRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Flat, <:Any, <:Any, <:Number}
-
-@inline Δxᶜᶜᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
-@inline Δxᶜᶠᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
-@inline Δxᶠᶠᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
-@inline Δxᶠᶜᵃ(i, j, k, grid::XFlatRG) = one(eltype(grid))
-@inline Δyᶜᶜᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
-@inline Δyᶠᶜᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
-@inline Δyᶜᶠᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
-@inline Δyᶠᶠᵃ(i, j, k, grid::YFlatRG) = one(eltype(grid))
-@inline Δzᵃᵃᶠ(i, j, k, grid::ZFlatRG) = one(eltype(grid))
-@inline Δzᵃᵃᶜ(i, j, k, grid::ZFlatRG) = one(eltype(grid))
-
 #####
-##### Temporary place for grid spacings and areas for LatitudeLongitudeGrid
+##### LatitudeLongitudeGrid
 #####
-
-""" 
-the combination of types can be:
-
-M <: Nothing mean no precomputed metrics. They have to be computed again.
-FX<: Number  means that the grid is not stretched in the latitude direction
-FY<: Number  means that the grid is not stretched in the longitude direction
-
-"""
 
 # P stands for precomputed metrics, F stands for on the fly calculation of metrics
 # the general case is when all the directions are stretched
 # X, Y and Z stands for the direction which is regular
 
-const LLGP  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any}       # Actually == to LatitudeLongitudeGrid
 const LLGPX = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number} # no i-index for Δλ
 const LLGPY = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Number} # no j-index for Δφ
 
@@ -201,15 +116,6 @@ const LLGZ  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:
 @inline Δyᶠᶜᵃ(i, j, k, grid::LLGF)  = grid.radius * deg2rad(grid.Δφᵃᶜᵃ[j])
 @inline Δyᶠᶜᵃ(i, j, k, grid::LLGFY) = grid.radius * deg2rad(grid.Δφᵃᶜᵃ)
 
-@inline Azᶠᶜᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-@inline Azᶠᶜᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-@inline Azᶜᶠᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶜᶠᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶠᶠᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶠᶠᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶜᶜᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-@inline Azᶜᶜᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-
 ## Pre computed metrics
 ## Δx metric
 
@@ -228,6 +134,7 @@ const LLGZ  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:
 @inline Δyᶜᶠᵃ(i, j, k, grid::LLGPY) = @inbounds grid.Δyᶜᶠᵃ
 @inline Δyᶠᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δyᶠᶜᵃ[j]
 @inline Δyᶠᶜᵃ(i, j, k, grid::LLGPY) = @inbounds grid.Δyᶠᶜᵃ
+
 @inline Δyᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Δyᶠᶜᵃ(i, j, k, grid)
 @inline Δyᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
 
@@ -235,20 +142,12 @@ const LLGZ  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:
 
 @inline Δzᵃᵃᶠ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶠ
 @inline Δzᵃᵃᶜ(i, j, k, grid::LLGZ) = grid.Δzᵃᵃᶜ
+
 @inline Δzᵃᵃᶠ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.Δzᵃᵃᶠ[k]
 @inline Δzᵃᵃᶜ(i, j, k, grid::LatitudeLongitudeGrid) = @inbounds grid.Δzᵃᵃᶜ[k]
 
-@inline Azᶠᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Azᶠᶜᵃ[i, j]
-@inline Azᶠᶜᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Azᶠᶜᵃ[j]
-@inline Azᶜᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Azᶜᶠᵃ[i, j]
-@inline Azᶜᶠᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Azᶜᶠᵃ[j]
-@inline Azᶠᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Azᶠᶠᵃ[i, j]
-@inline Azᶠᶠᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Azᶠᶠᵃ[j]
-@inline Azᶜᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Azᶜᶜᵃ[i, j]
-@inline Azᶜᶜᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Azᶜᶜᵃ[j]
-
 #####
-##### Temporary place for grid spacings and areas for ConformalCubedSphereFaceGrid
+#####  ConformalCubedSphereFaceGrid
 #####
 
 @inline Δxᶜᶜᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Δxᶜᶜᵃ[i, j]
@@ -264,10 +163,76 @@ const LLGZ  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:
 @inline Δzᵃᵃᶜ(i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.Δz
 @inline Δzᵃᵃᶠ(i, j, k, grid::ConformalCubedSphereFaceGrid) = grid.Δz
 
-@inline Azᶜᶜᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Azᶜᶜᵃ[i, j]
-@inline Azᶠᶜᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Azᶠᶜᵃ[i, j]
-@inline Azᶜᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Azᶜᶠᵃ[i, j]
-@inline Azᶠᶠᵃ(i, j, k, grid::ConformalCubedSphereFaceGrid) = @inbounds grid.Azᶠᶠᵃ[i, j]
+#####
+#####
+##### Areas!!
+#####
+#####
+
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
+    
+    x_spacing_3D = Symbol(:Δx, LX, LY, LZ)
+    y_spacing_3D = Symbol(:Δy, LX, LY, LZ)
+    z_spacing_3D = Symbol(:Δz, LX, LY, LZ)
+    
+    x_area_3D = Symbol(:Ax, LX, LY, LZ)
+    y_area_3D = Symbol(:Ay, LX, LY, LZ)
+    z_area_3D = Symbol(:Az, LX, LY, LZ)
+
+    @eval begin
+        @inline $x_area_3D(i, j, k, grid) = $y_spacing_3D(i, j, k, grid) * $z_spacing_3D(i, j, k, grid)
+        @inline $y_area_3D(i, j, k, grid) = $x_spacing_3D(i, j, k, grid) * $z_spacing_3D(i, j, k, grid)
+        @inline $z_area_3D(i, j, k, grid) = $x_spacing_3D(i, j, k, grid) * $y_spacing_3D(i, j, k, grid)
+    end
+end
+
+
+####
+#### Special Areas for LatitudeLongitudeGrid and ConformalCubedSphereFaceGrid
+####
+
+@inline latitude_variables(LY) = LY == :ᶠ ? (:φᵃᶜᵃ, 0, -1) : (:φᵃᶠᵃ, 1, 0) 
+
+for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
+    
+    z_area_3D = Symbol(:Az, LX, LY, LZ)
+    z_area_2D = Symbol(:Az, LX, LY, :ᵃ)
+
+    φ, j₁, j₂ = latitude_variables(LY)
+    Δλ        = Symbol(:Δλ, LX, :ᵃᵃ)
+
+    @eval begin
+        @inline $z_area_3D(i, j, k, grid::Union{LLGP, ConformalCubedSphereFaceGrid})  = @inbounds grid.$z_area_2D[i, j]
+        @inline $z_area_3D(i, j, k, grid::LLGPX)                                      = @inbounds grid.$z_area_2D[j]
+        @inline $z_area_3D(i, j, k, grid::LLGF)   = @inbounds grid.radius^2 * deg2rad(grid.$Δλ[i]) * (hack_sind(grid.$φ[j + j₁]) - hack_sind(grid.$φ[j + j₂]))
+        @inline $z_area_3D(i, j, k, grid::LLGFX)  = @inbounds grid.radius^2 * deg2rad(grid.$Δλ)    * (hack_sind(grid.$φ[j + j₁]) - hack_sind(grid.$φ[j + j₂]))
+    end
+end
+
+
+#####
+#####
+##### Volumes!!
+#####
+#####
+
+@inline Vᶜᶜᶜ(i, j, k, grid) = Azᶜᶜᶜ(i, j, k, grid) * Δzᶜᶜᶜ(i, j, k, grid)
+@inline Vᶠᶜᶜ(i, j, k, grid) = Azᶠᶜᶜ(i, j, k, grid) * Δzᶠᶜᶜ(i, j, k, grid)
+@inline Vᶜᶠᶜ(i, j, k, grid) = Azᶜᶠᶜ(i, j, k, grid) * Δzᶜᶠᶜ(i, j, k, grid)
+@inline Vᶜᶜᶠ(i, j, k, grid) = Azᶜᶜᶠ(i, j, k, grid) * Δzᶜᶜᶠ(i, j, k, grid)
+@inline Vᶠᶠᶜ(i, j, k, grid) = Azᶠᶠᶜ(i, j, k, grid) * Δzᶠᶠᶜ(i, j, k, grid)
+@inline Vᶠᶜᶠ(i, j, k, grid) = Azᶠᶜᶠ(i, j, k, grid) * Δzᶠᶜᶠ(i, j, k, grid)
+@inline Vᶜᶠᶠ(i, j, k, grid) = Azᶜᶠᶠ(i, j, k, grid) * Δzᶜᶠᶠ(i, j, k, grid)
+@inline Vᶠᶠᶠ(i, j, k, grid) = Azᶠᶠᶠ(i, j, k, grid) * Δzᶠᶠᶠ(i, j, k, grid)
+
+""" 
+the combination of types can be:
+
+M <: Nothing mean no precomputed metrics. They have to be computed again.
+FX<: Number  means that the grid is not stretched in the latitude direction
+FY<: Number  means that the grid is not stretched in the longitude direction
+
+"""
 
 #####
 ##### Generic functions for specified locations
