@@ -118,21 +118,21 @@ const LLGZ  = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:
 ## Pre computed metrics
 ## Δx metric
 
-@inline Δxᶜᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δxᶜᶠᵃ[i, j]
-@inline Δxᶜᶠᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Δxᶜᶠᵃ[j]
-@inline Δxᶠᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δxᶠᶜᵃ[i, j]
-@inline Δxᶠᶜᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Δxᶠᶜᵃ[j]
-@inline Δxᶠᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δxᶠᶠᵃ[i, j]
-@inline Δxᶠᶠᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Δxᶠᶠᵃ[j]
-@inline Δxᶜᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δxᶜᶜᵃ[i, j]
-@inline Δxᶜᶜᵃ(i, j, k, grid::LLGPX) = @inbounds grid.Δxᶜᶜᵃ[j]
+@inline Δxᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)  = @inbounds grid.Δxᶜᶠᵃ[i, j]
+@inline Δxᶜᶠᵃ(i, j, k, grid::LLGPX)                  = @inbounds grid.Δxᶜᶠᵃ[j]
+@inline Δxᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid)  = @inbounds grid.Δxᶠᶜᵃ[i, j]
+@inline Δxᶠᶜᵃ(i, j, k, grid::LLGPX)                  = @inbounds grid.Δxᶠᶜᵃ[j]
+@inline Δxᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)  = @inbounds grid.Δxᶠᶠᵃ[i, j]
+@inline Δxᶠᶠᵃ(i, j, k, grid::LLGPX)                  = @inbounds grid.Δxᶠᶠᵃ[j]
+@inline Δxᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid)  = @inbounds grid.Δxᶜᶜᵃ[i, j]
+@inline Δxᶜᶜᵃ(i, j, k, grid::LLGPX)                  = @inbounds grid.Δxᶜᶜᵃ[j]
 
 ## Δy metric
 
-@inline Δyᶜᶠᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δyᶜᶠᵃ[j]
-@inline Δyᶜᶠᵃ(i, j, k, grid::LLGPY) = @inbounds grid.Δyᶜᶠᵃ
-@inline Δyᶠᶜᵃ(i, j, k, grid::LLGP)  = @inbounds grid.Δyᶠᶜᵃ[j]
-@inline Δyᶠᶜᵃ(i, j, k, grid::LLGPY) = @inbounds grid.Δyᶠᶜᵃ
+@inline Δyᶜᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid)  = @inbounds grid.Δyᶜᶠᵃ[j]
+@inline Δyᶜᶠᵃ(i, j, k, grid::LLGPY)                  = @inbounds grid.Δyᶜᶠᵃ
+@inline Δyᶠᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid)  = @inbounds grid.Δyᶠᶜᵃ[j]
+@inline Δyᶠᶜᵃ(i, j, k, grid::LLGPY)                  = @inbounds grid.Δyᶠᶜᵃ
 
 @inline Δyᶜᶜᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Δyᶠᶜᵃ(i, j, k, grid)
 @inline Δyᶠᶠᵃ(i, j, k, grid::LatitudeLongitudeGrid) = Δyᶜᶠᵃ(i, j, k, grid)
