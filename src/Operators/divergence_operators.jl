@@ -12,9 +12,9 @@ Calculates the divergence ∇·𝐔 of a vector field 𝐔 = (u, v, w),
 which will end up at the cell centers `ccc`.
 """
 @inline function divᶜᶜᶜ(i, j, k, grid, u, v, w)
-    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_uᶠᶜᶜ, u) +
-                                    δyᵃᶜᵃ(i, j, k, grid, Ay_vᶜᶠᶜ, v) +
-                                    δzᵃᵃᶜ(i, j, k, grid, Az_wᶜᶜᵃ, w))
+    return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
+                                    δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, v) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᵃ, w))
 end
 
 """
@@ -32,10 +32,10 @@ and `Δx` is the length of the cell centered on (Center, Face, Any) in `x` (a `v
 `div_xyᶜᶜᵃ` ends up at the location `cca`.
 """
 @inline function div_xyᶜᶜᶜ(i, j, k, grid, u, v)
-    return 1 / Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_uᶠᶜᵃ, u) +
-                                       δyᵃᶜᵃ(i, j, k, grid, Δx_vᶜᶠᵃ, v))
+    return 1 / Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u) +
+                                       δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v))
 end
 
 @inline function div_xyᶜᶜᶠ(i, j, k, grid, u, v)
-    return 1 / Azᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_uᶠᶜᵃ, u) +
-                                       δyᵃᶜᵃ(i, j, k, grid, Δx_vᶜᶠᵃ, v))
+    return 1 / Azᶜᶜᶠ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u) +
+                                       δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v))

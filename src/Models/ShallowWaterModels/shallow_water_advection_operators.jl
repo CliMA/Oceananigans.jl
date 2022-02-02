@@ -5,7 +5,7 @@ using Oceananigans.Advection:
     _advective_momentum_flux_Vv
 
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Operators: Ax_uᶠᶜᶜ, Ay_vᶜᶠᶜ
+using Oceananigans.Operators: Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ
 
 #####
 ##### Momentum flux operators
@@ -53,8 +53,8 @@ Calculates the divergence of the mass flux into a cell,
 which will end up at the location `ccc`.
 """
 @inline function div_Uh(i, j, k, grid, solution)
-    1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_uᶠᶜᶜ, solution.uh) + 
-                             δyᵃᶜᵃ(i, j, k, grid, Ay_vᶜᶠᶜ, solution.vh))
+    1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, solution.uh) + 
+                             δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, solution.vh))
 end
 
 #####
