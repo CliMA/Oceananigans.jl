@@ -219,7 +219,7 @@ for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ)
     end
 
     for LZ in (:ᶠ, :ᶜ)
-        z_area_3D = Symbol(:Az, LX, LY, Lz)
+        z_area_3D = Symbol(:Az, LX, LY, LZ)
 
         @eval begin
             @inline $z_area_3D(i, j, k, grid::ConformalCubedSphereFaceGrid) = $z_area_2D(i, j, k, grid)
