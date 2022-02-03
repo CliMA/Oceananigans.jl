@@ -75,7 +75,7 @@ end
 ##### Operators of the form A*∂(q) where A is an area and q is some quantity.
 #####
 
-for dir in (:x, :y, :z), LX in (), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
+for dir in (:x, :y, :z), LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
     
     operator   = Symbol(:A, dir, :_∂, dir, LX, LY, LZ)
     area       = Symbol(:A, dir, LX, LY, LZ)
