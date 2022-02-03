@@ -1,3 +1,5 @@
+using Oceananigans: Δyᶜᶜᵃ
+
 function test_function_differentiation(T=Float64)
     grid = RectilinearGrid(CPU(), T; size=(3, 3, 3), extent=(3, 3, 3))
     ϕ = rand(T, 3, 3, 3)
@@ -14,16 +16,31 @@ function test_function_differentiation(T=Float64)
 
     f(i, j, k, grid, ϕ) = ϕ[i, j, k]^2
 
-    return (
-        ∂xᶜᵃᵃ(2, 2, 2, grid, f, ϕ) == ∂x_ϕ_c &&
-        ∂xᶠᵃᵃ(2, 2, 2, grid, f, ϕ) == ∂x_ϕ_f &&
+    assess = true 
 
-        ∂yᵃᶜᵃ(2, 2, 2, grid, f, ϕ) == ∂y_ϕ_c &&
-        ∂yᵃᶠᵃ(2, 2, 2, grid, f, ϕ) == ∂y_ϕ_f &&
 
-        ∂zᵃᵃᶜ(2, 2, 2, grid, f, ϕ) == ∂z_ϕ_c &&
-        ∂zᵃᵃᶠ(2, 2, 2, grid, f, ϕ) == ∂z_ϕ_f
-    )
+    for ∂x in (∂xᶜᶜᶜ, ∂xᶜᶜᶠ, ∂xᶜᶠᶜ, ∂xᶜᶠᶠ)
+        assess = assess && ∂x(2, 2, 2, grid, f, ϕ) == ∂x_ϕ_c 
+    end
+    for ∂x in (∂xᶠᶜᶜ, ∂xᶠᶜᶠ, ∂xᶠᶠᶜ, ∂xᶠᶠᶠ)
+        assess = assess && ∂x(2, 2, 2, grid, f, ϕ) == ∂x_ϕ_f 
+    end
+
+    for ∂y in (∂yᶜᶜᶜ, ∂yᶜᶜᶠ, ∂yᶠᶜᶜ, ∂yᶠᶜᶠ)
+        assess = assess && ∂y(2, 2, 2, grid, f, ϕ) == ∂y_ϕ_c 
+    end
+    for ∂y in (∂yᶜᶠᶜ, ∂yᶠᶠᶜ, ∂yᶜᶠᶠ, ∂yᶠᶠᶠ)
+        assess = assess && ∂y(2, 2, 2, grid, f, ϕ) == ∂y_ϕ_f 
+    end
+
+    for ∂z in (∂zᶜᶜᶜ, ∂zᶜᶠᶜ, ∂zᶠᶜᶜ, ∂zᶠᶠᶜ)
+        assess = assess && ∂z(2, 2, 2, grid, f, ϕ) == ∂z_ϕ_c 
+    end
+    for ∂z in (∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶠᶠᶠ)
+        assess = assess && ∂z(2, 2, 2, grid, f, ϕ) == ∂z_ϕ_f 
+    end
+
+    return assess
 end
 
 function test_function_interpolation(T=Float64)
@@ -65,49 +82,49 @@ end
 
         @testset "Easterly lengths" begin
             @info "    Testing easterly lengths..."
-            for δ in (Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ) 
+            for δ in (Δxᶜᶜᶜ, Δxᶠᶜᶜ, Δxᶜᶠᶜ, Δxᶜᶜᶠ, Δxᶠᶠᶠ, Δxᶠᶠᶜ, Δxᶠᶜᶠ, Δxᶜᶠᶠ) 
                 @test δ(1, 1, 1, grid) == FT(π)
             end
         end
 
         @testset "Westerly lengths" begin
             @info "    Testing westerly lengths..."
-            for δ in (Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ) 
+            for δ in (Δyᶜᶜᶜ, Δyᶠᶜᶜ, Δyᶜᶠᶜ, Δyᶜᶜᶠ, Δyᶠᶠᶠ, Δyᶠᶠᶜ, Δyᶠᶜᶠ, Δyᶜᶠᶠ) 
                 @test δ(1, 1, 1, grid) == FT(2π)
             end
         end
 
         @testset "Vertical lengths" begin
             @info "    Testing vertical lengths..."
-            for δ in (Δzᵃᵃᶜ, Δzᵃᵃᶠ)
+            for δ in (Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δzᶜᶜᶜ, Δzᶠᶜᶜ, Δzᶜᶠᶜ, Δzᶜᶜᶠ, Δzᶠᶠᶠ, Δzᶠᶠᶜ, Δzᶠᶜᶠ, Δzᶜᶠᶠ)
                 @test δ(1, 1, 1, grid) == FT(3π)
             end
         end
 
         @testset "East-normal areas in the yz-plane" begin
             @info "    Testing areas with easterly normal in the yz-plane..."
-            for A in (Axᵃᵃᶜ, Axᵃᵃᶠ, Axᶠᶜᶜ)
+            for A in (Axᶜᶜᶜ, Axᶠᶜᶜ, Axᶜᶠᶜ, Axᶜᶜᶠ, Axᶠᶠᶠ, Axᶠᶠᶜ, Axᶠᶜᶠ, Axᶜᶠᶠ)
                 @test A(1, 1, 1, grid) == FT(6 * π^2)
             end
         end
 
         @testset "West-normal areas in the xz-plane" begin
             @info "    Testing areas with westerly normal in the xz-plane..."
-            for A in (Ayᵃᵃᶜ, Ayᵃᵃᶠ, Ayᶜᶠᶜ)
+            for A in (Ayᶜᶜᶜ, Ayᶠᶜᶜ, Ayᶜᶠᶜ, Ayᶜᶜᶠ, Ayᶠᶠᶠ, Ayᶠᶠᶜ, Ayᶠᶜᶠ, Ayᶜᶠᶠ)
                 @test A(1, 1, 1, grid) == FT(3 * π^2)
             end
         end
 
         @testset "Horizontal areas in the xy-plane" begin
             @info "    Testing horizontal areas in the xy-plane..."
-            for A in (Azᵃᵃᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ)
+            for A in (Azᶜᶜᶜ, Azᶠᶜᶜ, Azᶜᶠᶜ, Azᶜᶜᶠ, Azᶠᶠᶠ, Azᶠᶠᶜ, Azᶠᶜᶠ, Azᶜᶠᶠ)
                 @test A(1, 1, 1, grid) == FT(2 * π^2)
             end
         end
 
         @testset "Volumes" begin
             @info "    Testing volumes..."
-            for V in (Vᵃᵃᶜ, Vᵃᵃᶠ, Vᶜᶜᶜ)
+            for V in (Vᶜᶜᶜ, Vᶠᶜᶜ, Vᶜᶠᶜ, Vᶜᶜᶠ, Vᶠᶠᶠ, Vᶠᶠᶜ, Vᶠᶜᶠ, Vᶜᶠᶠ)
                 @test V(1, 1, 1, grid) == FT(6 * π^3)
             end
         end
