@@ -14,7 +14,7 @@ which will end up at the cell centers `ccc`.
 @inline function divᶜᶜᶜ(i, j, k, grid, u, v, w)
     return 1/Vᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
                                     δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, v) +
-                                    δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶜ, w))
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, w))
 end
 
 """

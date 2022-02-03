@@ -196,27 +196,37 @@ end
 
 
 ####
-#### Special Areas for LatitudeLongitudeGrid and ConformalCubedSphereFaceGrid
+#### Special 2D Areas for LatitudeLongitudeGrid and ConformalCubedSphereFaceGrid
 ####
 
-@inline latitude_variables(LY) = LY == :ᶠ ? (:φᵃᶜᵃ, 0, -1) : (:φᵃᶠᵃ, 1, 0) 
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶜᶜᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
 
-for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ), LZ in (:ᶠ, :ᶜ)
+for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ)
     
-    z_area_3D = Symbol(:Az, LX, LY, LZ)
     z_area_2D = Symbol(:Az, LX, LY, :ᵃ)
 
-    φ, j₁, j₂ = latitude_variables(LY)
-    Δλ        = Symbol(:Δλ, LX, :ᵃᵃ)
-
     @eval begin
-        @inline $z_area_3D(i, j, k, grid::Union{LLGP, ConformalCubedSphereFaceGrid})  = @inbounds grid.$z_area_2D[i, j]
-        @inline $z_area_3D(i, j, k, grid::LLGPX)                                      = @inbounds grid.$z_area_2D[j]
-        @inline $z_area_3D(i, j, k, grid::LLGF)   = @inbounds grid.radius^2 * deg2rad(grid.$Δλ[i]) * (hack_sind(grid.$φ[j + j₁]) - hack_sind(grid.$φ[j + j₂]))
-        @inline $z_area_3D(i, j, k, grid::LLGFX)  = @inbounds grid.radius^2 * deg2rad(grid.$Δλ)    * (hack_sind(grid.$φ[j + j₁]) - hack_sind(grid.$φ[j + j₂]))
+        @inline $z_area_2D(i, j, k, grid::ConformalCubedSphereFaceGrid)  = @inbounds grid.$z_area_2D[i, j]
+        @inline $z_area_2D(i, j, k, grid::LLGP                        )  = @inbounds grid.$z_area_2D[i, j]
+        @inline $z_area_2D(i, j, k, grid::LLGPX)                         = @inbounds grid.$z_area_2D[j]
+    end
+
+    for LZ in (:ᶠ, :ᶜ)
+        z_area_3D = Symbol(:Az, LX, LY, Lz)
+
+        @eval begin
+            @inline $z_area_3D(i, j, k, grid::ConformalCubedSphereFaceGrid) = $z_area_2D(i, j, k, grid)
+            @inline $z_area_3D(i, j, k, grid::LatitudeLongitudeGrid)        = $z_area_2D(i, j, k, grid)
+        end
     end
 end
-
 
 #####
 #####

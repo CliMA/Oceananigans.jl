@@ -1,4 +1,4 @@
-using Oceananigans.Operators: interpolation_code, Δzᵃᵃᶜ, Δzᵃᵃᶠ
+using Oceananigans.Operators: Δz, flip
 using Oceananigans.AbstractOperations: flip
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
@@ -28,7 +28,7 @@ implicit_diffusion_solver(::ExplicitTimeDiscretization, args...; kwargs...) = no
 ##### Note: "ivd" stands for implicit vertical diffusion.
 #####
 
-@inline κ_Δz²(i, j, kᶜ, kᶠ, LX, LY, grid, κ) = κ / Δzᵃᵃᶜ(i, j, kᶜ, grid) / Δzᵃᵃᶠ(i, j, kᶠ, grid)
+@inline κ_Δz²(i, j, kᶜ, kᶠ, LX, LY, grid, κ) = κ / Δz(LX, LY, Center(), i, j, kᶜ, grid) / Δz(LX, LY, Face(), i, j, kᶠ, grid)
 
 instantiate(X) = X()
 
@@ -39,7 +39,7 @@ instantiate(X) = X()
 
     return ifelse(k > grid.Nz-1,
                   zero(eltype(grid)),
-                  - Δt * κ_Δz²(i, j, k, k+1, grid, κᵏ⁺¹))
+                  - Δt * κ_Δz²(i, j, k, k+1, LX, LY, grid, κᵏ⁺¹))
 end
 
 @inline function ivd_lower_diagonal(i, j, k, grid, LX, LY, ::Center, clock, Δt, κ⁻⁻ᶠ, κ)
@@ -48,7 +48,7 @@ end
 
     return ifelse(k < 1,
                   zero(eltype(grid)),
-                  - Δt * κ_Δz²(i, j, k′, k′, grid, κᵏ))
+                  - Δt * κ_Δz²(i, j, k′, k′, LX, LY, grid, κᵏ))
 end
 
 # Vertical velocity kernel functions (at cell interfaces in z)
@@ -61,7 +61,7 @@ end
 
     return ifelse(k < 1, # should this be k < 2? #should this be grid.Nz - 1?
                   zero(eltype(grid)),
-                  - Δt * κ_Δz²(i, j, k, k, grid, νᵏ))
+                  - Δt * κ_Δz²(i, j, k, k, LX, LY, grid, νᵏ))
 end
 
 @inline function ivd_lower_diagonal(i, j, k, grid, LX, LY, ::Face, clock, Δt, νᶜᶜᶜ, ν)
@@ -69,7 +69,7 @@ end
     νᵏ⁻¹ = νᶜᶜᶜ(i, j, k′-1, grid, clock, ν)
     return ifelse(k < 1,
                   zero(eltype(grid)),
-                  - Δt * κ_Δz²(i, j, k′, k′-1, grid, νᵏ⁻¹))
+                  - Δt * κ_Δz²(i, j, k′, k′-1, LX, LY, grid, νᵏ⁻¹))
 end
 
 ### Diagonal terms
