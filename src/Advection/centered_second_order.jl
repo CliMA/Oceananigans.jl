@@ -19,7 +19,7 @@ const C2 = CenteredSecondOrder
 
 @inline advective_momentum_flux_Uv(i, j, k, grid, ::C2, U, v) = ℑyᵃᶠᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, U) * ℑxᶠᵃᵃ(i, j, k, grid, v)
 @inline advective_momentum_flux_Vv(i, j, k, grid, ::C2, V, v) = ℑyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, V) * ℑyᵃᶜᵃ(i, j, k, grid, v)
-@inline advective_momentum_flux_Wv(i, j, k, grid, ::C2, W, v) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᵃ, W) * ℑzᵃᵃᶠ(i, j, k, grid, v)
+@inline advective_momentum_flux_Wv(i, j, k, grid, ::C2, W, v) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶜ, W) * ℑzᵃᵃᶠ(i, j, k, grid, v)
 
 @inline advective_momentum_flux_Uw(i, j, k, grid, ::C2, U, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ax_qᶠᶜᶜ, U) * ℑxᶠᵃᵃ(i, j, k, grid, w)
 @inline advective_momentum_flux_Vw(i, j, k, grid, ::C2, V, w) = ℑzᵃᵃᶠ(i, j, k, grid, Ay_qᶜᶠᶜ, V) * ℑyᵃᶠᵃ(i, j, k, grid, w)
