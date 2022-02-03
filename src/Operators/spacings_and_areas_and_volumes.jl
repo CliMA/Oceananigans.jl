@@ -37,8 +37,14 @@ The operators in this file fall into three categories:
 @inline Δxᶜᵃᵃ(i, j, k, grid) =  nothing
 @inline Δyᵃᶠᵃ(i, j, k, grid) =  nothing
 @inline Δyᵃᶜᵃ(i, j, k, grid) =  nothing
-@inline Δzᵃᵃᶠ(i, j, k, grid) =  nothing
-@inline Δzᵃᵃᶜ(i, j, k, grid) =  nothing
+
+ZRegularGrid = Union{ZRegLatLonGrid, ZRegRectilinearGrid}
+
+@inline Δzᵃᵃᶠ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶠ[k]
+@inline Δzᵃᵃᶜ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶜ[k]
+
+@inline Δzᵃᵃᶠ(i, j, k, grid::ZRegularGrid) =  @inbounds grid.Δzᵃᵃᶠ
+@inline Δzᵃᵃᶜ(i, j, k, grid::ZRegularGrid) =  @inbounds grid.Δzᵃᵃᶜ
 
 # Convenience Functions for all grids
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
@@ -73,19 +79,17 @@ end
 ##### Rectilinear Grids (Flat grids already have Δ = 1)
 #####
 
+
+
 @inline Δxᶠᵃᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δxᶠᵃᵃ[i]
 @inline Δxᶜᵃᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δxᶜᵃᵃ[i]
 @inline Δyᵃᶠᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δyᵃᶠᵃ[j]
 @inline Δyᵃᶜᵃ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δyᵃᶜᵃ[j]
-@inline Δzᵃᵃᶠ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δzᵃᵃᶠ[k]
-@inline Δzᵃᵃᶜ(i, j, k, grid::RectilinearGrid)     =  @inbounds grid.Δzᵃᵃᶜ[k]
 
 @inline Δxᶠᵃᵃ(i, j, k, grid::XRegRectilinearGrid) =  @inbounds grid.Δxᶠᵃᵃ
 @inline Δxᶜᵃᵃ(i, j, k, grid::XRegRectilinearGrid) =  @inbounds grid.Δxᶜᵃᵃ
 @inline Δyᵃᶠᵃ(i, j, k, grid::YRegRectilinearGrid) =  @inbounds grid.Δyᵃᶠᵃ
 @inline Δyᵃᶜᵃ(i, j, k, grid::YRegRectilinearGrid) =  @inbounds grid.Δyᵃᶜᵃ
-@inline Δzᵃᵃᶠ(i, j, k, grid::ZRegRectilinearGrid) =  @inbounds grid.Δzᵃᵃᶠ
-@inline Δzᵃᵃᶜ(i, j, k, grid::ZRegRectilinearGrid) =  @inbounds grid.Δzᵃᵃᶜ
 
 #####
 ##### LatitudeLongitudeGrid
