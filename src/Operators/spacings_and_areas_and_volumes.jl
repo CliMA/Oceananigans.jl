@@ -185,7 +185,7 @@ for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
 
         x_area_3D = Symbol(:Ax, LX, LY, LZ)
         y_area_3D = Symbol(:Ay, LX, LY, LZ)
-        z_area_3D = Symbol(:Ay, LX, LY, LZ)
+        z_area_3D = Symbol(:Az, LX, LY, LZ)
 
         @eval begin
             @inline $x_area_3D(i, j, k, grid) = $x_spacing_3D(i, j, k, grid) * $z_spacing_3D(i, j, k, grid)
