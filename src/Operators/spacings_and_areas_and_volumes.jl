@@ -188,8 +188,8 @@ for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
         z_area_3D = Symbol(:Az, LX, LY, LZ)
 
         @eval begin
-            @inline $x_area_3D(i, j, k, grid) = $x_spacing_3D(i, j, k, grid) * $z_spacing_3D(i, j, k, grid)
-            @inline $y_area_3D(i, j, k, grid) = $y_spacing_3D(i, j, k, grid) * $z_spacing_3D(i, j, k, grid)
+            @inline $x_area_3D(i, j, k, grid) = $y_spacing_3D(i, j, k, grid) * $z_spacing_3D(i, j, k, grid)
+            @inline $y_area_3D(i, j, k, grid) = $x_spacing_3D(i, j, k, grid) * $z_spacing_3D(i, j, k, grid)
             @inline $z_area_3D(i, j, k, grid) = $z_area_2D(i, j, k, grid)
         end
     end
