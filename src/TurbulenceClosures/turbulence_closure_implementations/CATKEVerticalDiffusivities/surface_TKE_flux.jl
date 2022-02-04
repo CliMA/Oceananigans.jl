@@ -65,7 +65,7 @@ end
 @inline function top_convective_turbulent_velocity³(i, j, grid, clock, fields, buoyancy, tracer_bcs)
     FT = eltype(grid)
     Qᵇ = top_buoyancy_flux(i, j, grid, buoyancy, tracer_bcs, clock, fields)
-    Δz = Δzᵃᵃᶜ(i, j, grid.Nz, grid)
+    Δz = Δzᶜᶜᶜ(i, j, grid.Nz, grid)
     return max(zero(FT), Qᵇ) * Δz   
 end
 

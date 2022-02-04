@@ -47,12 +47,12 @@ Construct a kernel function operation using the vertical vorticity operator
 valid on curvilinear and cubed sphere grids:
 
 ```julia
-using Oceananigans.Operators: ζ₃ᶠᶠᵃ # called with signature ζ₃ᶠᶠᵃ(i, j, k, grid, u, v)
+using Oceananigans.Operators: ζ₃ᶠᶠᶜ # called with signature ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
 
 grid = model.grid
 u, v, w = model.velocities
 
-ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᵃ, grid, computed_dependencies=(u, v))
+ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
 ```
 """
 function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid;

@@ -98,8 +98,8 @@ end
 # linearized right hand side
 @kernel function implicit_linearized_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η)
     i, j = @index(Global, NTuple)
-    Az   = Azᶜᶜᵃ(i, j, 1, grid)
-    δ_Q  = flux_div_xyᶜᶜᵃ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
+    Az   = Azᶜᶜᶜ(i, j, 1, grid)
+    δ_Q  = flux_div_xyᶜᶜᶜ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     t = i + grid.Nx * (j - 1)
     @inbounds rhs[t] = (δ_Q - Az * η[i, j, 1] / Δt) / (g * Δt)
 end
@@ -131,8 +131,8 @@ end
 @kernel function _compute_coefficients!(diag, Ax, Ay, ∫Ax, ∫Ay, grid, g)
     i, j = @index(Global, NTuple)
     @inbounds begin
-        Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)  
-        Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid)  
-        diag[i, j, 1]  = - Azᶜᶜᵃ(i, j, 1, grid) / g
+        Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᶜ(i, j, 1, grid)  
+        Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᶜ(i, j, 1, grid)  
+        diag[i, j, 1]  = - Azᶜᶜᶜ(i, j, 1, grid) / g
     end
 end

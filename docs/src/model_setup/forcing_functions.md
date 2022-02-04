@@ -173,11 +173,11 @@ b_forcing_func(i, j, k, grid, clock, model_fields) = - local_average(i, j, k, gr
 b_forcing = Forcing(b_forcing_func, discrete_form=true)
 
 # A term that damps the local velocity field in the presence of stratification
-using Oceananigans.Operators: ∂zᵃᵃᶠ, ℑxzᶠᵃᶜ
+using Oceananigans.Operators: ∂zᶠᶜᶠ, ℑxzᶠᵃᶜ
 
 function u_forcing_func(i, j, k, grid, clock, model_fields, ε)
     # The vertical derivative of buoyancy, interpolated to the u-velocity location:
-    N² = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, model_fields.b)
+    N² = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶠᶜᶠ, model_fields.b)
 
     # Set to zero in unstable stratification where N² < 0:
     N² = max(N², zero(typeof(N²)))

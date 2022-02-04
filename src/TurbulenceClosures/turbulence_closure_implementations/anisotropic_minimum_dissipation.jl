@@ -243,9 +243,9 @@ end
 #####
 
 # Recall that filter widths are 2x the grid spacing in AMD
-@inline Δᶠxᶜᶜᶜ(i, j, k, grid) = 2 * Δxᶜᶜᵃ(i, j, k, grid)
-@inline Δᶠyᶜᶜᶜ(i, j, k, grid) = 2 * Δyᶜᶜᵃ(i, j, k, grid)
-@inline Δᶠzᶜᶜᶜ(i, j, k, grid) = 2 * Δzᵃᵃᶜ(i, j, k, grid)
+@inline Δᶠxᶜᶜᶜ(i, j, k, grid) = 2 * Δxᶜᶜᶜ(i, j, k, grid)
+@inline Δᶠyᶜᶜᶜ(i, j, k, grid) = 2 * Δyᶜᶜᶜ(i, j, k, grid)
+@inline Δᶠzᶜᶜᶜ(i, j, k, grid) = 2 * Δzᶜᶜᶜ(i, j, k, grid)
 
 for loc in (:ccf, :fcc, :cfc, :ffc, :cff, :fcf), ξ in (:x, :y, :z)
     Δ_loc = Symbol(:Δᶠ, ξ, :_, loc)
@@ -333,13 +333,13 @@ end
     ijk = (i, j, k, grid)
 
     wx_bx = (ℑxzᶜᵃᶜ(ijk..., norm_∂x_w, w)
-             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᵃᵃ, buoyancy_perturbation, buoyancy.model, C))
+             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᶜᶜ, buoyancy_perturbation, buoyancy.model, C))
 
     wy_by = (ℑyzᵃᶜᶜ(ijk..., norm_∂y_w, w)
-             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᵃᶠᵃ, buoyancy_perturbation, buoyancy.model, C))
+             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᶜᶠᶜ, buoyancy_perturbation, buoyancy.model, C))
 
     wz_bz = (norm_∂z_w(ijk..., w)
-             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᵃᵃᶠ, buoyancy_perturbation, buoyancy.model, C))
+             * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᶜᶜᶠ, buoyancy_perturbation, buoyancy.model, C))
 
     return Cb * (wx_bx + wy_by + wz_bz)
 end

@@ -103,9 +103,9 @@ taper_factor_ccc(i, j, k, grid::AbstractGrid{FT}, buoyancy, tracers, ::Nothing) 
     κ_skewᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, clock, κ_skew)
     κ_symmetricᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, clock, κ_symmetric)
 
-    ∂x_c = ∂xᶠᵃᵃ(i, j, k, grid, c)
-    ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᵃᶠᵃ, c)
-    ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
+    ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
+    ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₁₁ = one(eltype(grid))
     R₁₂ = zero(eltype(grid))
@@ -131,9 +131,9 @@ end
     κ_skewᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, clock, κ_skew)
     κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, clock, κ_symmetric)
 
-    ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᵃᵃ, c)
-    ∂y_c = ∂yᵃᶠᵃ(i, j, k, grid, c)
-    ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
+    ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, c)
+    ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
+    ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₂₁ = zero(eltype(grid))
     R₂₂ = one(eltype(grid))
@@ -159,9 +159,9 @@ end
     κ_skewᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, κ_skew)
     κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, clock, κ_symmetric)
 
-    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᵃᵃ, c)
-    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵃᶠᵃ, c)
-    ∂z_c = ∂zᵃᵃᶠ(i, j, k, grid, c)
+    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
+    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
 
     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
     R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)

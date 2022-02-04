@@ -43,13 +43,13 @@ flip(::Type{Center}) = Face
 const LocationType = Union{Type{Face}, Type{Center}, Type{Nothing}}
 
 """Return the ``x``-derivative function acting at (`X`, `Y`, `Any`)."""
-∂x(X::LocationType, Y::LocationType, Z::LocationType) = eval(Symbol(:∂x, interpolation_code(flip(X)), interpolation_code(Y), :ᵃ))
+∂x(X::LocationType, Y::LocationType, Z::LocationType) = eval(Symbol(:∂x, interpolation_code(flip(X)), interpolation_code(Y), interpolation_code(Z)))
 
 """Return the ``y``-derivative function acting at (`X`, `Y`, `Any`)."""
-∂y(X::LocationType, Y::LocationType, Z::LocationType) = eval(Symbol(:∂y, interpolation_code(X), interpolation_code(flip(Y)), :ᵃ))
+∂y(X::LocationType, Y::LocationType, Z::LocationType) = eval(Symbol(:∂y, interpolation_code(X), interpolation_code(flip(Y)), interpolation_code(Z)))
 
 """Return the ``z``-derivative function acting at (`Any`, `Any`, `Z`)."""
-∂z(X::LocationType, Y::LocationType, Z::LocationType) = eval(Symbol(:∂zᵃᵃ, interpolation_code(flip(Z))))
+∂z(X::LocationType, Y::LocationType, Z::LocationType) = eval(Symbol(:∂z, interpolation_code(X), interpolation_code(Y), interpolation_code(flip(Z))))
 
 const derivative_operators = Set([:∂x, :∂y, :∂z])
 push!(operators, derivative_operators...)

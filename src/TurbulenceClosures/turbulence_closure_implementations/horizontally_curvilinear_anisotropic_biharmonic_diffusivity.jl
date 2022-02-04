@@ -76,7 +76,7 @@ end
 
 @inline function diffusive_flux_z(i, j, k, grid, closure::HCABD, c, ::Val{tracer_index}, clock, args...) where tracer_index
     @inbounds κz = closure.κz[tracer_index]
-    return - κᶜᶜᶠ(i, j, k, grid, clock, κz) * ∂³zᵃᵃᶠ(i, j, k, grid, c)
+    return - κᶜᶜᶠ(i, j, k, grid, clock, κz) * ∂³zᶜᶜᶠ(i, j, k, grid, c)
 end
 
 @inline diffusive_flux_z(i, j, k, grid, closure::NoVerticalDiffHCABD, args...) = zero(eltype(grid))

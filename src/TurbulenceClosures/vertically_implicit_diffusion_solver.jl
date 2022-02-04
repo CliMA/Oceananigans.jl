@@ -1,4 +1,4 @@
-using Oceananigans.Operators: interpolation_code
+using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
 using Oceananigans.AbstractOperations: flip
 using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 

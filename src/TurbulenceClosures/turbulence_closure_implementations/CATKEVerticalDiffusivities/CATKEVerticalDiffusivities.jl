@@ -190,28 +190,28 @@ struct TKETracerIndex{N} end
 
 @inline function viscous_flux_uz(i, j, k, grid, closure::CATKEVD, clock, velocities, diffusivities, args...)
     Ku = ℑxzᶠᵃᶠ(i, j, k, grid, diffusivities.Kᵘ)
-    return - Ku * ∂zᵃᵃᶠ(i, j, k, grid, velocities.u)
+    return - Ku * ∂zᶠᶜᶠ(i, j, k, grid, velocities.u)
 end
 
 @inline function viscous_flux_vz(i, j, k, grid, closure::CATKEVD, clock, velocities, diffusivities, args...)
     Kv = ℑyzᵃᶠᶠ(i, j, k, grid, diffusivities.Kᵘ)
-    return - Kv * ∂zᵃᵃᶠ(i, j, k, grid, velocities.v)
+    return - Kv * ∂zᶜᶠᶠ(i, j, k, grid, velocities.v)
 end
 
 @inline function viscous_flux_wz(i, j, k, grid, closure::CATKEVD, clock, velocities, diffusivities, args...)
     @inbounds Kw = diffusivities.Kᵘ[i, j, k]
-    return - Kw * ∂zᵃᵃᶜ(i, j, k, grid, velocities.w)
+    return - Kw * ∂zᶜᶜᶜ(i, j, k, grid, velocities.w)
 end
 
 @inline function diffusive_flux_z(i, j, k, grid, closure::CATKEVD, c, tracer_index, clock, diffusivities, args...)
     Kcᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, diffusivities.Kᶜ)
-    return - Kcᶜᶜᶠ * ∂zᵃᵃᶠ(i, j, k, grid, c)
+    return - Kcᶜᶜᶠ * ∂zᶜᶜᶠ(i, j, k, grid, c)
 end
 
 # Diffusive flux of TKE!
 @inline function diffusive_flux_z(i, j, k, grid, closure::CATKEVD, e, ::TKETracerIndex, clock, diffusivities, args...)
     Keᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, diffusivities.Kᵉ)
-    return - Keᶜᶜᶠ * ∂zᵃᵃᶠ(i, j, k, grid, e)
+    return - Keᶜᶜᶠ * ∂zᶜᶜᶠ(i, j, k, grid, e)
 end
 
 # "Translations" for diffusive transport by non-CATKEVD closures

@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: device_event
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Operators: ∂xᶠᶜᵃ, ∂yᶜᶠᵃ
+using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
 using Adapt
@@ -41,10 +41,10 @@ end
 #####
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂xᶠᶜᵃ(i, j, k, grid, free_surface.η)
+    free_surface.gravitational_acceleration * ∂xᶠᶜᶜ(i, j, k, grid, free_surface.η)
 
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂yᶜᶠᵃ(i, j, k, grid, free_surface.η)
+    free_surface.gravitational_acceleration * ∂yᶜᶠᶜ(i, j, k, grid, free_surface.η)
 
 #####
 ##### Time stepping

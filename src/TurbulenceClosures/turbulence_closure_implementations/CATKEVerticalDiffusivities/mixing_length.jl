@@ -130,8 +130,8 @@ end
 
 @inline function Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy)
     FT = eltype(grid)
-    ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᵃᵃᶠ, velocities.u)
-    ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᵃᵃᶠ, velocities.v)
+    ∂z_u² = ℑxzᶜᵃᶜ(i, j, k, grid, ϕ², ∂zᶠᶜᶠ, velocities.u)
+    ∂z_v² = ℑyzᵃᶜᶜ(i, j, k, grid, ϕ², ∂zᶜᶠᶠ, velocities.v)
     N² = ℑzᵃᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
     return ifelse(N² == 0, zero(FT), N² / (∂z_u² + ∂z_v²))
 end
@@ -172,7 +172,7 @@ end
     ℓᴬ = unscaled_convective_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
 
     Cᵟu = closure.mixing_length.Cᵟu
-    ℓᵟ = Δzᵃᵃᶜ(i, j, k, grid)
+    ℓᵟ = Δzᶜᶜᶜ(i, j, k, grid)
 
     σu = momentum_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     ℓ★ = unscaled_stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, tracers.e, tracers, buoyancy)
@@ -185,7 +185,7 @@ end
     ℓᴬ = unscaled_convective_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
 
     Cᵟc = closure.mixing_length.Cᵟc
-    ℓᵟ = Δzᵃᵃᶜ(i, j, k, grid)
+    ℓᵟ = Δzᶜᶜᶜ(i, j, k, grid)
 
     σc = tracer_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     ℓ★ = unscaled_stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, tracers.e, tracers, buoyancy)
@@ -198,7 +198,7 @@ end
     ℓᴬ = unscaled_convective_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
 
     Cᵟe = closure.mixing_length.Cᵟe
-    ℓᵟ = Δzᵃᵃᶜ(i, j, k, grid)
+    ℓᵟ = Δzᶜᶜᶜ(i, j, k, grid)
 
     σe = TKE_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     ℓ★ = unscaled_stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, tracers.e, tracers, buoyancy)
