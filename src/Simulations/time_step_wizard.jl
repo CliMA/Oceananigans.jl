@@ -1,3 +1,6 @@
+using Oceananigans: TurbulenceClosures
+
+
 mutable struct TimeStepWizard{FT, C, D}
                          cfl :: FT
                diffusive_cfl :: FT
@@ -47,9 +50,10 @@ function TimeStepWizard(FT=Float64; cfl = 0.2,
                                     cell_advection_timescale = cell_advection_timescale,
                                     cell_diffusion_timescale = infinite_diffusion_timescale)
 
-    isfinite(diffusive_cfl) && # user wants to limit by diffusive CFL
-    !(cell_diffusion_timescale === infinite_diffusion_timescale) && # user did not provide custom timescale
-        (cell_diffusion_timescale = Oceananigans.TurbulenceClosures.cell_diffusion_timescale)
+    # user wants to limit by diffusive CFL and did not provide custom function to calculate timescale
+    if isfinite(diffusive_cfl) && (cell_diffusion_timescale === infinite_diffusion_timescale)
+       cell_diffusion_timescale = TurbulenceClosures.cell_diffusion_timescale
+    end
 
     C = typeof(cell_advection_timescale)
     D = typeof(cell_diffusion_timescale)

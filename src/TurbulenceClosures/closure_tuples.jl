@@ -65,8 +65,11 @@ end
 ##### Support for VerticallyImplicitTimeDiscretization
 #####
 
-const EC = AbstractTurbulenceClosure{<:ExplicitTimeDiscretization}
-const VIC = AbstractTurbulenceClosure{<:VerticallyImplicitTimeDiscretization}
+const SingleExplicitClosure = AbstractTurbulenceClosure{<:ExplicitTimeDiscretization}
+const SingleImplicitClosure = AbstractTurbulenceClosure{<:VerticallyImplicitTimeDiscretization}
+
+const EC = Union{SingleExplicitClosure, AbstractArray{<:SingleExplicitClosure}}
+const VIC = Union{SingleImplicitClosure, AbstractArray{<:SingleImplicitClosure}}
 
 # Filter explicitly-discretized closures.
 @inline z_diffusivity(clo::Tuple{<:EC},        iᶜ, Ks, args...) = tuple(0)

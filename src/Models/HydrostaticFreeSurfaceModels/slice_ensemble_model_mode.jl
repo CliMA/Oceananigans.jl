@@ -76,7 +76,7 @@ const CoriolisVector = AbstractVector{<:AbstractRotation}
 @inline y_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds y_f_cross_U(i, j, k, grid, coriolis[i], U)
 @inline z_f_cross_U(i, j, k, grid::YZSliceGrid, coriolis::CoriolisVector, U) = @inbounds z_f_cross_U(i, j, k, grid, coriolis[i], U)
 
-function FFTImplicitFreeSurfaceSolver(arch, grid::YZSliceGrid, settings)
+function FFTImplicitFreeSurfaceSolver(grid::YZSliceGrid, gravitational_acceleration::Number, settings)
 
     grid isa HRegRectilinearGrid || 
         throw(ArgumentError("FFTImplicitFreeSurfaceSolver requires horizontally-regular rectilinear grids."))
@@ -86,12 +86,13 @@ function FFTImplicitFreeSurfaceSolver(arch, grid::YZSliceGrid, settings)
 
     sz = SliceEnsembleSize(size=(grid.Ny, 1), ensemble=grid.Nx, halo=(grid.Hy, 0))
 
-    horizontal_grid = RectilinearGrid(; topology = (Flat, TY, Flat),
-                                        size = sz,
-                                        halo = grid.Hy,
-                                        y = y_domain(grid))
+    horizontal_grid = RectilinearGrid(architecture(grid);
+                                      topology = (Flat, TY, Flat),
+                                      size = sz,
+                                      halo = grid.Hy,
+                                      y = y_domain(grid))
 
-    solver = FFTBasedPoissonSolver(arch, horizontal_grid)
+    solver = FFTBasedPoissonSolver(horizontal_grid)
     right_hand_side = solver.storage
 
     return FFTImplicitFreeSurfaceSolver(solver, grid, horizontal_grid, right_hand_side)
