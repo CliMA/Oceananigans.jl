@@ -170,20 +170,28 @@ end
 #####
 #####
 
-for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
-    
-    x_spacing_3D = Symbol(:Δx, LX, LY, LZ)
-    y_spacing_3D = Symbol(:Δy, LX, LY, LZ)
-    z_spacing_3D = Symbol(:Δz, LX, LY, LZ)
-    
-    x_area_3D = Symbol(:Ax, LX, LY, LZ)
-    y_area_3D = Symbol(:Ay, LX, LY, LZ)
-    z_area_3D = Symbol(:Az, LX, LY, LZ)
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)
 
-    @eval begin
-        @inline $x_area_3D(i, j, k, grid) = $y_spacing_3D(i, j, k, grid) * $z_spacing_3D(i, j, k, grid)
-        @inline $y_area_3D(i, j, k, grid) = $x_spacing_3D(i, j, k, grid) * $z_spacing_3D(i, j, k, grid)
-        @inline $z_area_3D(i, j, k, grid) = $x_spacing_3D(i, j, k, grid) * $y_spacing_3D(i, j, k, grid)
+    x_spacing_2D = Symbol(:Δx, LX, LY, :ᵃ)
+    y_spacing_2D = Symbol(:Δy, LX, LY, :ᵃ)
+    z_area_2D    = Symbol(:Az, LX, LY, :ᵃ)
+
+    @eval $z_area_2D(i, j, k, grid) = $x_spacing_2D(i, j, k, grid) * $y_spacing_2D(i, j, k, grid)
+
+    for LZ in (:ᶜ, :ᶠ)
+        x_spacing_3D = Symbol(:Δx, LX, LY, LZ)
+        y_spacing_3D = Symbol(:Δy, LX, LY, LZ)
+        z_spacing_3D = Symbol(:Δz, LX, LY, LZ)
+
+        x_area_3D = Symbol(:Ax, LX, LY, LZ)
+        y_area_3D = Symbol(:Ay, LX, LY, LZ)
+        z_area_3D = Symbol(:Ayz LX, LY, LZ)
+
+        @eval begin
+            @inline $x_area_3D(i, j, k, grid) = $x_spacing_3D(i, j, k, grid) * $z_spacing_3D(i, j, k, grid)
+            @inline $y_area_3D(i, j, k, grid) = $y_spacing_3D(i, j, k, grid) * $z_spacing_3D(i, j, k, grid)
+            @inline $z_area_3D(i, j, k, grid) = $z_area_2D(i, j, k, grid)
+        end
     end
 end
 
@@ -193,12 +201,12 @@ end
 ####
 
 @inline Azᶠᶜᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
-@inline Azᶠᶜᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
 @inline Azᶜᶠᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶜᶠᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
 @inline Azᶠᶠᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
-@inline Azᶠᶠᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
 @inline Azᶜᶜᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶠᶜᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
+@inline Azᶜᶠᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
+@inline Azᶠᶠᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ)    * (hack_sind(grid.φᵃᶜᵃ[j])   - hack_sind(grid.φᵃᶜᵃ[j-1]))
 @inline Azᶜᶜᵃ(i, j, k, grid::LLGFX) = grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ)    * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))
 
 for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ)
@@ -209,15 +217,6 @@ for LX in (:ᶠ, :ᶜ), LY in (:ᶠ, :ᶜ)
         @inline $z_area_2D(i, j, k, grid::CCSG) = @inbounds grid.$z_area_2D[i, j]
         @inline $z_area_2D(i, j, k, grid::LLG)  = @inbounds grid.$z_area_2D[i, j]
         @inline $z_area_2D(i, j, k, grid::LLGX) = @inbounds grid.$z_area_2D[j]
-    end
-
-    for LZ in (:ᶠ, :ᶜ)
-        z_area_3D = Symbol(:Az, LX, LY, LZ)
-
-        @eval begin
-            @inline $z_area_3D(i, j, k, grid::CCSG) = $z_area_2D(i, j, k, grid)
-            @inline $z_area_3D(i, j, k, grid::LLG)  = $z_area_2D(i, j, k, grid)
-        end
     end
 end
 
