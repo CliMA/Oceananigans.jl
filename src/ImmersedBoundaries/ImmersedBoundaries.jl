@@ -174,6 +174,7 @@ end
 include("immersed_grid_metrics.jl")
 include("grid_fitted_immersed_boundaries.jl")
 include("conditional_fluxes.jl")
+include("conditional_derivatives.jl")
 include("mask_immersed_field.jl")
 include("immersed_fields_reductions.jl")
 
