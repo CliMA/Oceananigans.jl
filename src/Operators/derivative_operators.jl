@@ -55,19 +55,19 @@ for dir in (:x, :y, :z), L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
     @eval begin
         $der_face_2(i, j, k, grid, c) = $der_face_1(i, j, k, grid, $der_center_1, c)
         $der_face_3(i, j, k, grid, c) = $der_face_1(i, j, k, grid, $der_center_2, c)
-        $der_face_4(i, j, k, grid, c) = $der_face_2(i, j, k, grid, $der_center_2, c)
+        $der_face_4(i, j, k, grid, c) = $der_face_2(i, j, k, grid, $der_face_2,   c)
 
-        $der_center_2(i, j, k, grid, c) = $der_center_1(i, j, k, grid, $der_face_1, c)
-        $der_center_3(i, j, k, grid, c) = $der_center_1(i, j, k, grid, $der_face_2, c)
-        $der_center_4(i, j, k, grid, c) = $der_center_2(i, j, k, grid, $der_face_2, c)
+        $der_center_2(i, j, k, grid, c) = $der_center_1(i, j, k, grid, $der_face_1,   c)
+        $der_center_3(i, j, k, grid, c) = $der_center_1(i, j, k, grid, $der_face_2,   c)
+        $der_center_4(i, j, k, grid, c) = $der_center_2(i, j, k, grid, $der_center_2, c)
 
         $der_face_2(i, j, k, grid, f::Function, args...) = $der_face_1(i, j, k, grid, $der_center_1, f::Function, args...)
         $der_face_3(i, j, k, grid, f::Function, args...) = $der_face_1(i, j, k, grid, $der_center_2, f::Function, args...)
-        $der_face_4(i, j, k, grid, f::Function, args...) = $der_face_2(i, j, k, grid, $der_center_2, f::Function, args...)
+        $der_face_4(i, j, k, grid, f::Function, args...) = $der_face_2(i, j, k, grid, $der_face_2,   f::Function, args...)
 
-        $der_center_2(i, j, k, grid, f::Function, args...) = $der_center_1(i, j, k, grid, $der_face_1, f::Function, args...)
-        $der_center_3(i, j, k, grid, f::Function, args...) = $der_center_1(i, j, k, grid, $der_face_2, f::Function, args...)
-        $der_center_4(i, j, k, grid, f::Function, args...) = $der_center_2(i, j, k, grid, $der_face_2, f::Function, args...)
+        $der_center_2(i, j, k, grid, f::Function, args...) = $der_center_1(i, j, k, grid, $der_face_1,   f::Function, args...)
+        $der_center_3(i, j, k, grid, f::Function, args...) = $der_center_1(i, j, k, grid, $der_face_2,   f::Function, args...)
+        $der_center_4(i, j, k, grid, f::Function, args...) = $der_center_2(i, j, k, grid, $der_center_2, f::Function, args...)
     end
 end
 
