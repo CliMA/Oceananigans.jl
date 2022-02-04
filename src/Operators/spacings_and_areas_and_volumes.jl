@@ -58,7 +58,7 @@ The operators in this file fall into three categories:
 @inline Δyᵃᶠᵃ(i, j, k, grid) =  nothing
 @inline Δyᵃᶜᵃ(i, j, k, grid) =  nothing
 
-ZRG = Union{LLGZ, RGZ}
+const ZRG = Union{LLGZ, RGZ}
 
 @inline Δzᵃᵃᶠ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶠ[k]
 @inline Δzᵃᵃᶜ(i, j, k, grid) = @inbounds grid.Δzᵃᵃᶜ[k]
@@ -197,7 +197,7 @@ end
 
 
 ####
-#### Special 2D Areas for LatitudeLongitudeGrid and ConformalCubedSphereFaceGrid
+#### Special 2D z Areas for LatitudeLongitudeGrid and ConformalCubedSphereFaceGrid
 ####
 
 @inline Azᶠᶜᵃ(i, j, k, grid::LLGF)  = grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * (hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j]))

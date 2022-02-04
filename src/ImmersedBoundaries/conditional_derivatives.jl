@@ -29,8 +29,8 @@
 ∂yᶠᶜᶠ(i, j, k, ibg::IBG, args...) = conditional_y_derivative_c(f, f, i, j, k, ibg, ∂yᶠᶜᶠ, args...)
 
 ∂zᶜᶜᶠ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_f(c, c, i, j, k, ibg, ∂zᶜᶜᶠ, args...)
-∂zᶠᶜᶠ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_f(c, f, i, j, k, ibg, ∂zᶠᶜᶠ, args...)
-∂zᶜᶠᶠ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_f(f, c, i, j, k, ibg, ∂zᶠᶜᶠ, args...)
+∂zᶜᶠᶠ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_f(c, f, i, j, k, ibg, ∂zᶜᶠᶠ, args...)
+∂zᶠᶜᶠ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_f(f, c, i, j, k, ibg, ∂zᶠᶜᶠ, args...)
 ∂zᶠᶠᶠ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_f(f, f, i, j, k, ibg, ∂zᶠᶠᶠ, args...)
 
 ∂zᶜᶜᶜ(i, j, k, ibg::IBG, args...) = conditional_z_derivative_c(c, c, i, j, k, ibg, ∂zᶜᶜᶜ, args...)
