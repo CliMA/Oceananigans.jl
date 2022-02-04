@@ -8,10 +8,10 @@
 @inline conditional_z_derivative_f(LX, LY, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(solid_node(LX, LY, c, i, j, k, ibg) || solid_node(LX, LY, c, i, j, k-1, ibg), zero(FT), deriv(i, j, k, ibg.grid, args...))
 @inline conditional_z_derivative_c(LX, LY, i, j, k, ibg::IBG{FT}, deriv, args...) where FT = ifelse(solid_node(LX, LY, f, i, j, k, ibg) || solid_node(LX, LY, f, i, j, k+1, ibg), zero(FT), deriv(i, j, k, ibg.grid, args...))
 
-∂xᶠᶜᶜ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_f(c, c, i, j, k, ibg, ∂xᶠᶠᶜ, args...)
-∂xᶠᶜᶠ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_f(c, f, i, j, k, ibg, ∂xᶠᶠᶜ, args...)
+∂xᶠᶜᶜ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_f(c, c, i, j, k, ibg, ∂xᶠᶜᶜ, args...)
+∂xᶠᶜᶠ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_f(c, f, i, j, k, ibg, ∂xᶠᶜᶠ, args...)
 ∂xᶠᶠᶜ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_f(f, c, i, j, k, ibg, ∂xᶠᶠᶜ, args...)
-∂xᶠᶠᶠ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_f(f, f, i, j, k, ibg, ∂xᶠᶠᶜ, args...)
+∂xᶠᶠᶠ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_f(f, f, i, j, k, ibg, ∂xᶠᶠᶠ, args...)
 
 ∂xᶜᶜᶜ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_c(c, c, i, j, k, ibg, ∂xᶜᶜᶜ, args...)
 ∂xᶜᶜᶠ(i, j, k, ibg::IBG, args...) = conditional_x_derivative_c(c, f, i, j, k, ibg, ∂xᶜᶜᶠ, args...)
