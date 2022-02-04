@@ -57,15 +57,7 @@ using Oceananigans.AbstractOperations: GridMetricOperation
 
 @inline solid_interface(::Face, ::Face, ::Face, i, j, k, ibg) = solid_interface(c, f, f, i, j, k, ibg) | solid_interface(c, f, f, i-1, j, k, ibg)
 
-@inline is_immersed_boundary(LX, LY, LZ, i, j, k, ibg) = solid_interface(LX, LY, LZ, i, j, k, ibg) & !solid_node(LX, LY, LZ, i, j, k, ibg)
-
-@inline is_x_immersed_boundary⁺(::Face, LY, LZ, i, j, k, ibg) =  solid_node(i-1, j, k, ibg) & !solid_node(i, j, k, ibg)
-@inline is_y_immersed_boundary⁺(LX, ::Face, LZ, i, j, k, ibg) =  solid_node(i, j-1, k, ibg) & !solid_node(i, j, k, ibg)
-@inline is_z_immersed_boundary⁺(LX, LY, ::Face, i, j, k, ibg) =  solid_node(i, j, k-1, ibg) & !solid_node(i, j, k, ibg)
-
-@inline is_x_immersed_boundary⁻(::Face, LY, LZ, i, j, k, ibg) = !solid_node(i-1, j, k, ibg) &  solid_node(i, j, k, ibg)
-@inline is_y_immersed_boundary⁻(LX, ::Face, LZ, i, j, k, ibg) = !solid_node(i, j-1, k, ibg) &  solid_node(i, j, k, ibg)
-@inline is_z_immersed_boundary⁻(LX, LY, ::Face, i, j, k, ibg) = !solid_node(i, j, k-1, ibg) &  solid_node(i, j, k, ibg)
+# Defining all the metrics for Immersed Boundaries
 
 for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
     for dir in (:x, :y, :z), operator in (:Δ, :A)
@@ -73,13 +65,21 @@ for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
         metric = Symbol(operator, dir, LX, LY, LZ)
         @eval begin
             import Oceananigans.Operators: $metric
-            @inline $metric(i, j, k, ibg::ImmersedBoundaryGrid) = $metric(i, j, k, ibg.grid)
+            @inline $metric(i, j, k, ibg::IBG) = $metric(i, j, k, ibg.grid)
         end
     end
 
     volume = Symbol(:V, LX, LY, LZ)
     @eval begin
         import Oceananigans.Operators: $volume
-        @inline $volume(i, j, k, ibg::ImmersedBoundaryGrid) = $volume(i, j, k, ibg.grid)
+        @inline $volume(i, j, k, ibg::IBG) = $volume(i, j, k, ibg.grid)
     end
 end
+
+@inline Δzᵃᵃᶜ(i, j, k, ibg::IBG) = Δzᵃᵃᶜ(i, j, k, ibg.grid)
+@inline Δzᵃᵃᶠ(i, j, k, ibg::IBG) = Δzᵃᵃᶠ(i, j, k, ibg.grid)
+
+# Defining all the First order derivatives for the immersed boundaries
+
+# ∂xᶠᶠᶜ(i, j, k, ibg::IBG, f, args...) = ifelse(solid_node(c, f, c, i, j, k, ibg) || solid_node(c, f, c, i-1, j, k, ibg), zero(FT), flux(i, j, k, ibg, args...))
+# ∂xᶜᶠᶜ(i, j, k, ibg::IBG, f, args...) = 

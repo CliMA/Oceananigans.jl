@@ -1,4 +1,9 @@
-using Oceananigans: Δyᶜᶜᵃ
+using Oceananigans.Operators: Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶠᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ
+using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ
+
+using Oceananigans.Operators: Axᶠᶠᵃ, Axᶠᶜᵃ, Axᶜᶠᵃ, Axᶜᶜᵃ
+using Oceananigans.Operators: Ayᶠᶠᵃ, Ayᶠᶜᵃ, Ayᶜᶠᵃ, Ayᶜᶜᵃ
+using Oceananigans.Operators: Azᶠᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶜᶜᵃ
 
 function test_function_differentiation(T=Float64)
     grid = RectilinearGrid(CPU(), T; size=(3, 3, 3), extent=(3, 3, 3))
@@ -77,26 +82,37 @@ end
     @testset "Grid lengths, areas, and volume operators" begin
         @info "  Testing grid lengths, areas, and volume operators..."
 
+        x_spacings = ( [eval(Symbol(:Δx, LX, :ᵃ, :ᵃ)) for LX in (:ᶜ, :ᶠ)]..., 
+                       [eval(Symbol(:Δx, LX, LY, :ᵃ)) for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)]...,
+                       [eval(Symbol(:Δx, LX, LY, LZ)) for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)]...)
+
+        y_spacings = ( [eval(Symbol(:Δy, :ᵃ, LY, :ᵃ)) for LY in (:ᶜ, :ᶠ)]..., 
+                       [eval(Symbol(:Δy, LX, LY, :ᵃ)) for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ)]...,
+                       [eval(Symbol(:Δy, LX, LY, LZ)) for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)]...)
+
+        z_spacings = ( [eval(Symbol(:Δz, :ᵃ, :ᵃ, LZ)) for LZ in (:ᶜ, :ᶠ)]..., 
+                       [eval(Symbol(:Δz, LX, LY, LZ)) for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)]...)
+
         FT = Float64
         grid = RectilinearGrid(CPU(), FT, size=(1, 1, 1), extent=(π, 2π, 3π))
 
         @testset "Easterly lengths" begin
             @info "    Testing easterly lengths..."
-            for δ in (Δxᶜᶜᶜ, Δxᶠᶜᶜ, Δxᶜᶠᶜ, Δxᶜᶜᶠ, Δxᶠᶠᶠ, Δxᶠᶠᶜ, Δxᶠᶜᶠ, Δxᶜᶠᶠ) 
+            for δ in x_spacings
                 @test δ(1, 1, 1, grid) == FT(π)
             end
         end
 
         @testset "Westerly lengths" begin
             @info "    Testing westerly lengths..."
-            for δ in (Δyᶜᶜᶜ, Δyᶠᶜᶜ, Δyᶜᶠᶜ, Δyᶜᶜᶠ, Δyᶠᶠᶠ, Δyᶠᶠᶜ, Δyᶠᶜᶠ, Δyᶜᶠᶠ) 
+            for δ in y_spacings
                 @test δ(1, 1, 1, grid) == FT(2π)
             end
         end
 
         @testset "Vertical lengths" begin
             @info "    Testing vertical lengths..."
-            for δ in (Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δzᶜᶜᶜ, Δzᶠᶜᶜ, Δzᶜᶠᶜ, Δzᶜᶜᶠ, Δzᶠᶠᶠ, Δzᶠᶠᶜ, Δzᶠᶜᶠ, Δzᶜᶠᶠ)
+            for δ in z_spacings
                 @test δ(1, 1, 1, grid) == FT(3π)
             end
         end

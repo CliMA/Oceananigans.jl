@@ -132,7 +132,7 @@ end
     κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, clock, κ_symmetric)
 
     ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    ∂y_c = ∂yᵃᶠᵃ(i, j, k, grid, c)
+    ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
     ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₂₁ = zero(eltype(grid))

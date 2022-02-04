@@ -239,39 +239,33 @@ end
 #####
 ##### Generic functions for specified locations
 #####
-##### For example, Δx(i, j, k, Face, Center, LZ) is equivalent to = Δxᶠᶜᵃ(i, j, k, grid).
+##### For example, Δx(i, j, k, Face, Center, Face) is equivalent to = Δxᶠᶜᶠ(i, j, k, grid).
 #####
 ##### We also use the function "volume" rather than `V`.
 #####
 
-location_code_xy(LX, LY) = Symbol(interpolation_code(LX), interpolation_code(LY), :ᵃ)
 location_code(LX, LY, LZ) = Symbol(interpolation_code(LX), interpolation_code(LY), interpolation_code(LZ))
 
 for LX in (:Center, :Face)
     for LY in (:Center, :Face)
-        LXe = @eval $LX
-        LYe = @eval $LY
+        for LZ in (:Center, :Face)
+            LXe = @eval $LX
+            LYe = @eval $LY
+            LZe = @eval $LZ
 
-        Ax_function = Symbol(:Ax, location_code(LXe, LYe, Center()))
-        Ay_function = Symbol(:Ay, location_code(LXe, LYe, Center()))
-        Az_function = Symbol(:Az, location_code_xy(LXe, LYe))
+            Ax_function = Symbol(:Ax, location_code(LXe, LYe, LZe))
+            Ay_function = Symbol(:Ay, location_code(LXe, LYe, LZe))
+            Az_function = Symbol(:Az, location_code(LXe, LYe, LZe))
 
-        @eval begin
-            Az(i, j, k, grid, ::$LX, ::$LY, LZ) = $Az_function(i, j, k, grid)
-            Ax(i, j, k, grid, ::$LX, ::$LY, ::Center) = $Ax_function(i, j, k, grid)
-            Ay(i, j, k, grid, ::$LX, ::$LY, ::Center) = $Ay_function(i, j, k, grid)
+            volume_function = Symbol(:V, location_code(LXe, LYe, LZe))
+
+            @eval begin
+                Az(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $Az_function(i, j, k, grid)
+                Ax(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $Ax_function(i, j, k, grid)
+                Ay(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $Ay_function(i, j, k, grid)
+
+                volume(i, j, k, grid, ::$LX, ::$LY, ::$LZ) = $volume_function(i, j, k, grid)
+            end
         end
     end
 end
-
-Ax(i, j, k, grid, ::Face, ::Center, ::Face) = Axᶠᶜᶠ(i, j, k, grid)
-Ay(i, j, k, grid, ::Center, ::Face, ::Face) = Ayᶜᶠᶠ(i, j, k, grid)
-
-volume(i, j, k, grid, ::Center, ::Center, ::Center) = Vᶜᶜᶜ(i, j, k, grid)
-volume(i, j, k, grid, ::Face,   ::Center, ::Center) = Vᶠᶜᶜ(i, j, k, grid)
-volume(i, j, k, grid, ::Center, ::Face,   ::Center) = Vᶜᶠᶜ(i, j, k, grid)
-volume(i, j, k, grid, ::Center, ::Center, ::Face)   = Vᶜᶜᶠ(i, j, k, grid)
-volume(i, j, k, grid, ::Face,   ::Face,   ::Center) = Vᶠᶠᶜ(i, j, k, grid)
-volume(i, j, k, grid, ::Face,   ::Center, ::Face)   = Vᶠᶜᶠ(i, j, k, grid)
-volume(i, j, k, grid, ::Center, ::Face,   ::Face)   = Vᶜᶠᶠ(i, j, k, grid)
-volume(i, j, k, grid, ::Face,   ::Face,   ::Face)   = Vᶠᶠᶠ(i, j, k, grid)
