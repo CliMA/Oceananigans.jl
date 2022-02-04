@@ -93,7 +93,7 @@ end
     wᴸ =  _left_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w)
     wᴿ = _right_biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, w)
 
-    return Azᶜᶠᵃ(i, j, k, grid) * upwind_biased_product(w̃, wᴸ, wᴿ)
+    return Azᶜᶜᵃ(i, j, k, grid) * upwind_biased_product(w̃, wᴸ, wᴿ)
 end
 
 #####
