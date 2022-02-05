@@ -69,12 +69,10 @@ function Checkpointer(model; schedule,
                          verbose = false,
                          cleanup = false,
                       properties = [:architecture, :grid, :clock, :coriolis,
-                                    :buoyancy, :closure, :velocities, :tracers,
-                                    :timestepper, :particles]
-                     )
+                                    :buoyancy, :closure, :timestepper, :particles])
 
     # Certain properties are required for `restore_from_checkpoint` to work.
-    required_properties = (:grid, :architecture, :velocities, :tracers, :timestepper, :particles)
+    required_properties = (:grid, :architecture, :timestepper, :particles)
 
     for rp in required_properties
         if rp ∉ properties
@@ -213,17 +211,18 @@ function set!(model, filepath::AbstractString)
         model_fields = fields(model)
 
         for name in propertynames(model_fields)
-            # Load data for each model field
-            address = name == :η ? "free_surface/$name" :
-                      name ∈ (:u, :v, :w) ? "velocities/$name" : "tracers/$name"
+            try
+                # Load data for each model field
+                address = name == :η ? "free_surface/$name" :
+                          name ∈ (:u, :v, :w) ? "velocities/$name" : "tracers/$name"
 
-            parent_data = file[address * "/data"]
+                parent_data = file[address * "/data"]
 
-            model_field = model_fields[name]
-            copyto!(model_field.data.parent, parent_data)
-
-            # Restore timestepper tendencies and other metadata
-            # Note: this step is unecessary for models that use RungeKutta3TimeStepper.
+                model_field = model_fields[name]
+                copyto!(model_field.data.parent, parent_data)
+            catch
+                @warn "Could not retore $name from checkpoint."
+            end
         end
 
         set_time_stepper!(model.timestepper, file, model_fields)
