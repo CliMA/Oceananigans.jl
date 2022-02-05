@@ -189,7 +189,7 @@ end
 for arch in archs
     @testset "Checkpointer [$(typeof(arch))]" begin
         @info "  Testing Checkpointer [$(typeof(arch))]..."
-        #test_thermal_bubble_checkpointer_output(arch)
+        test_thermal_bubble_checkpointer_output(arch)
     
         for free_surface in [ExplicitFreeSurface(gravitational_acceleration=1),
                              ImplicitFreeSurface(gravitational_acceleration=1)]
