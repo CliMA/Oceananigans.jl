@@ -209,12 +209,13 @@ function set!(model, filepath::AbstractString)
              error("The grid associated with $filepath and model.grid are not the same!")
 	end
 
-        # Set model fields and tendency fields
-        model_fields = merge(model.velocities, model.tracers)
+        model_fields = fields(model)
 
         for name in propertynames(model_fields)
             # Load data for each model field
-            address = name ∈ (:u, :v, :w) ? "velocities/$name" : "tracers/$name"
+            address = name == :η ? "free_surface/$name" :
+                      name ∈ (:u, :v, :w) ? "velocities/$name" : "tracers/$name"
+
             parent_data = file[address * "/data"]
 
             model_field = model_fields[name]
