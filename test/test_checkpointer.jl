@@ -44,7 +44,6 @@ Run two coarse rising thermal bubble simulations and make sure
 3. run!(test_model, pickup) works as expected
 """
 function test_thermal_bubble_checkpointer_output(arch)
-
     #####
     ##### Create and run "true model"
     #####
@@ -57,6 +56,7 @@ function test_thermal_bubble_checkpointer_output(arch)
     closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
     true_model = NonhydrostaticModel(grid=grid, closure=closure,
                                      buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+
     test_model = deepcopy(true_model)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
@@ -65,6 +65,30 @@ function test_thermal_bubble_checkpointer_output(arch)
     j1, j2 = round(Int, Ny/4), round(Int, 3Ny/4)
     k1, k2 = round(Int, Nz/4), round(Int, 3Nz/4)
     CUDA.@allowscalar true_model.tracers.T.data[i1:i2, j1:j2, k1:k2] .+= 0.01
+
+    return run_checkpointer_tests(true_model, test_model, Δt)
+end
+
+function test_hydrostatic_splash_checkpointer(arch, free_surface)
+    #####
+    ##### Create and run "true model"
+    #####
+
+    Nx, Ny, Nz = 16, 16, 4
+    Lx, Ly, Lz = 1, 1, 1
+
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(-10, 10), y=(-10, 10), z=(-1, 0))
+    closure = IsotropicDiffusivity(ν=1e-2, κ=1e-2)
+    true_model = HydrostaticFreeSurfaceModel(; grid, free_surface, closure, buoyancy=nothing, tracers=())
+    test_model = deepcopy(true_model)
+
+    ηᵢ(x, y) = 1e-3 * exp(-x^2 - y^2)
+    set!(true_model, η=ηᵢ)
+
+    return run_checkpointer_tests(true_model, test_model, 1e-6)
+end
+
+function run_checkpointer_tests(true_model, test_model, Δt)
 
     true_simulation = Simulation(true_model, Δt=Δt, stop_iteration=5)
 
@@ -170,6 +194,13 @@ for arch in archs
     @testset "Checkpointer [$(typeof(arch))]" begin
         @info "  Testing Checkpointer [$(typeof(arch))]..."
         test_thermal_bubble_checkpointer_output(arch)
+    
+        for free_surface in [ExplicitFreeSurface(gravitational_acceleration=1),
+                             ImplicitFreeSurface(gravitational_acceleration=1)]
+
+            test_hydrostatic_splash_checkpointer(arch, free_surface)
+        end
+
         run_checkpointer_cleanup_tests(arch)
     end
 end
