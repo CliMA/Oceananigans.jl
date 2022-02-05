@@ -164,6 +164,12 @@ function write_output!(c::Checkpointer, model)
     jldopen(filepath, "w") do file
         file["checkpointed_properties"] = c.properties
         serializeproperties!(file, model, c.properties)
+
+        model_fields = fields(model)
+        field_names = keys(model_fields)
+        for name in field_names
+            serializeproperty!(file, string(name), model_fields[name])
+        end
     end
 
     t2, sz = time_ns(), filesize(filepath)
@@ -212,12 +218,7 @@ function set!(model, filepath::AbstractString)
 
         for name in propertynames(model_fields)
             try
-                # Load data for each model field
-                address = name == :η ? "free_surface/$name" :
-                          name ∈ (:u, :v, :w) ? "velocities/$name" : "tracers/$name"
-
-                parent_data = file[address * "/data"]
-
+                parent_data = file["$name/data"]
                 model_field = model_fields[name]
                 copyto!(model_field.data.parent, parent_data)
             catch
