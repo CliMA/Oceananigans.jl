@@ -13,19 +13,17 @@ archs = test_architectures()
 
 function test_model_equality(test_model, true_model)
     CUDA.@allowscalar begin
-        for q in keys(test_model.velocities)
-            @test parent(test_model.velocities[q]) ≈ parent(true_model.velocities[q])
-        end
+        test_model_fields = fields(test_model)
+        true_model_fields = fields(true_model)
+        field_names = keys(test_model_fields)
 
-        for c in keys(test_model.tracers)
-            @test parent(test_model.tracers[c]) ≈ parent(true_model.tracers[c])
-        end
-
-        for q in keys(test_model.timestepper.Gⁿ)
-            @test parent(test_model.timestepper.Gⁿ[c]) ≈ parent(true_model.timestepper.Gⁿ[c])
-            @test parent(test_model.timestepper.G⁻[c]) ≈ parent(true_model.timestepper.G⁻[c])
+        for name in field_names
+            @test all(test_model_fields[name].data .≈ true_model_fields[name].data)
+            @test all(test_model.timestepper.Gⁿ[name].data .≈ true_model.timestepper.Gⁿ[name].data)
+            @test all(test_model.timestepper.G⁻[name].data .≈ true_model.timestepper.G⁻[name].data)
         end
     end
+
     return nothing
 end
 
@@ -79,8 +77,9 @@ function test_hydrostatic_splash_checkpointer(arch, free_surface)
     true_model = HydrostaticFreeSurfaceModel(; grid, free_surface, closure, buoyancy=nothing, tracers=())
     test_model = deepcopy(true_model)
 
-    ηᵢ(x, y) = 1e-3 * exp(-x^2 - y^2)
-    set!(true_model, η=ηᵢ)
+    ηᵢ(x, y) = 1e-1 * exp(-x^2 - y^2)
+    ϵᵢ(x, y, z) = 1e-6 * randn()
+    set!(true_model, η=ηᵢ, u=ϵᵢ, v=ϵᵢ)
 
     return run_checkpointer_tests(true_model, test_model, 1e-6)
 end
