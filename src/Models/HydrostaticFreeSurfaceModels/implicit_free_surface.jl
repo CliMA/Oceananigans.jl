@@ -59,19 +59,28 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, gri
     barotropic_y_volume_flux = Field{Center, Face, Nothing}(grid)
     barotropic_volume_flux = (u=barotropic_x_volume_flux, v=barotropic_y_volume_flux)
 
-    solver_method = is_horizontally_regular(grid) ? :FastFourierTransform : :PreconditionedConjugateGradient
-    
+    solver_method = free_surface.solver_method   # could be = :Default
+
     solver = build_implicit_step_solver(Val(solver_method), grid, gravitational_acceleration, free_surface.solver_settings)
+    
+    actual_solver_method = typeof(solver).name.name
+
+    actual_solver_method = actual_solver_method == :PCGImplicitFreeSurfaceSolver ? :PreconditionedConjugateGradientImplicitFreeSurfaceSolver : actual_solver_method
 
     return ImplicitFreeSurface(η, gravitational_acceleration,
                                barotropic_volume_flux,
                                solver,
-                               solver_method,
+                               actual_solver_method,
                                free_surface.solver_settings)
 end
 
 is_horizontally_regular(grid) = false
 is_horizontally_regular(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Number, <:Number}) = true
+
+function build_implicit_step_solver(::Val{:Default}, grid, gravitational_acceleration, settings)
+    default_method = is_horizontally_regular(grid) ? :FastFourierTransform : :PreconditionedConjugateGradient
+    return build_implicit_step_solver(Val(default_method), grid, gravitational_acceleration, settings)
+end
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
