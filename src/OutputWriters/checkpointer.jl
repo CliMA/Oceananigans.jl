@@ -1,6 +1,7 @@
 using Glob
 import Oceananigans.Fields: set!
 
+using Oceananigans: fields
 using Oceananigans.Fields: offset_data
 using Oceananigans.TimeSteppers: RungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
 
