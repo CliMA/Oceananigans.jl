@@ -229,7 +229,7 @@ end
 
 function Base.show(io::IO, solver::PreconditionedConjugateGradientSolver)
     print(io, "Oceananigans-compatible preconditioned conjugate gradient solver.\n")
-    print(io, " Problem size = "  , size(solver.q), '\n')
+    print(io, " Problem size = "  , size(solver.grid), '\n')
     print(io, " Grid = "  , solver.grid)
     return nothing
 end

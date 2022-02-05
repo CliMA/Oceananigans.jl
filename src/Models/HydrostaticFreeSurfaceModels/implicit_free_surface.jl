@@ -59,13 +59,18 @@ function FreeSurface(free_surface::ImplicitFreeSurface{Nothing}, velocities, gri
     barotropic_y_volume_flux = Field{Center, Face, Nothing}(grid)
     barotropic_volume_flux = (u=barotropic_x_volume_flux, v=barotropic_y_volume_flux)
 
-    solver_method = free_surface.solver_method
+    solver_method = free_surface.solver_method   # could be = :Default
+
     solver = build_implicit_step_solver(Val(solver_method), grid, gravitational_acceleration, free_surface.solver_settings)
+    
+    actual_solver_method = typeof(solver).name.name
+
+    actual_solver_method = actual_solver_method == :PCGImplicitFreeSurfaceSolver ? :PreconditionedConjugateGradientImplicitFreeSurfaceSolver : actual_solver_method
 
     return ImplicitFreeSurface(η, gravitational_acceleration,
                                barotropic_volume_flux,
                                solver,
-                               solver_method,
+                               actual_solver_method,
                                free_surface.solver_settings)
 end
 
