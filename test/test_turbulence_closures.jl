@@ -1,5 +1,6 @@
 using Oceananigans.Diagnostics
 using Oceananigans.TimeSteppers: Clock
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: CATKEVerticalDiffusivity
 
 for closure in closures
     @eval begin
@@ -129,6 +130,36 @@ function time_step_with_tupled_closure(FT, arch)
     return true
 end
 
+function time_step_with_catke_closure(FT, arch)
+    closure = CATKEVerticalDiffusivity(FT)
+
+    model = NonhydrostaticModel(closure=closure,
+                                grid=RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3)),
+                                buoyancy = BuoyancyTracer(),
+                                tracers = (:b, :e))
+
+    @test model.tracers.e.boundary_conditions.top.condition !== nothing
+
+    time_step!(model, 1, euler=true)
+
+    return true
+end
+
+function time_step_with_tupled_catke_closure(FT, arch)
+    closure_tuple = (CATKEVerticalDiffusivity(FT), AnisotropicDiffusivity(FT))
+
+    model = NonhydrostaticModel(closure=closure_tuple,
+                                grid=RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3)),
+                                buoyancy = BuoyancyTracer(),
+                                tracers = (:b, :e))
+
+    @test model.tracers.e.boundary_conditions.top.condition !== nothing
+
+    time_step!(model, 1, euler=true)
+
+    return true
+end
+
 function compute_closure_specific_diffusive_cfl(closurename)
     grid = RectilinearGrid(CPU(), size=(1, 1, 1), extent=(1, 2, 3))
     closure = getproperty(TurbulenceClosures, closurename)()
@@ -176,6 +207,14 @@ end
         for arch in archs
             @test time_step_with_variable_isotropic_diffusivity(arch)
             @test time_step_with_variable_anisotropic_diffusivity(arch)
+        end
+    end
+
+    @testset "Time-stepping with CATKE closure" begin
+        @info "  Testing time-stepping with CATKE closure..."
+        for arch in archs
+            @test time_step_with_catke_closure(arch)
+            @test time_step_with_tupled_catke_closure(arch)
         end
     end
 
