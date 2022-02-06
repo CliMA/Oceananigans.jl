@@ -177,7 +177,7 @@ end
     σu = momentum_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     ℓ★ = unscaled_stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, tracers.e, tracers, buoyancy)
 
-    return max(Cᴬu * ℓᴬ, Cᵟu * ℓᵟ, σu * ℓ★)
+    return max(Cᴬu * ℓᴬ, σu * max(Cᵟu * ℓᵟ, ℓ★))
 end
 
 @inline function tracer_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
@@ -190,7 +190,7 @@ end
     σc = tracer_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     ℓ★ = unscaled_stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, tracers.e, tracers, buoyancy)
 
-    return max(Cᴬc * ℓᴬ, Cᵟc * ℓᵟ, σc * ℓ★)
+    return max(Cᴬc * ℓᴬ, σc * max(Cᵟc * ℓᵟ, ℓ★))
 end
 
 @inline function TKE_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, clock, tracer_bcs)
@@ -203,7 +203,7 @@ end
     σe = TKE_stable_mixing_scale(i, j, k, grid, closure, velocities, tracers, buoyancy)
     ℓ★ = unscaled_stable_mixing_lengthᶜᶜᶜ(i, j, k, grid, closure, tracers.e, tracers, buoyancy)
 
-    return max(Cᴬe * ℓᴬ, Cᵟe * ℓᵟ, σe * ℓ★)
+    return max(Cᴬe * ℓᴬ, σe * max(Cᵟe * ℓᵟ, ℓ★))
 end
 
 Base.show(io::IO, ML::MixingLength) =
