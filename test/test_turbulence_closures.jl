@@ -140,7 +140,7 @@ function time_step_with_catke_closure(arch)
 
     @test !(model.tracers.e.boundary_conditions.top isa BoundaryCondition{Flux, Nothing})
 
-    time_step!(model, 1, euler=true)
+    time_step!(model, 1)
 
     return true
 end
