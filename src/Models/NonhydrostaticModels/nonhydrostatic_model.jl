@@ -13,7 +13,8 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
-using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
+using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, time_discretization, implicit_diffusion_solver
+using Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: topology
@@ -115,6 +116,13 @@ function NonhydrostaticModel(;    grid,
     end
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
+
+    # We don't support CAKTE for NonhydrostaticModel yet.
+    closure = validate_closure(closure)
+    first_closure = closure isa Tuple ? first(closure) : closure
+    first_closure isa FlavorOfCATKE &&
+        error("CATKEVerticalDiffusivity is not supported for " *
+              "NonhydrostaticModel --- yet!")
 
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = regularize_buoyancy(buoyancy)
