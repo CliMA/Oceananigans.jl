@@ -130,11 +130,11 @@ function time_step_with_tupled_closure(FT, arch)
     return true
 end
 
-function time_step_with_catke_closure(FT, arch)
-    closure = CATKEVerticalDiffusivity(FT)
+function time_step_with_catke_closure(arch)
+    closure = CATKEVerticalDiffusivity()
 
     model = NonhydrostaticModel(closure=closure,
-                                grid=RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3)),
+                                grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)),
                                 buoyancy = BuoyancyTracer(),
                                 tracers = (:b, :e))
 
@@ -145,11 +145,11 @@ function time_step_with_catke_closure(FT, arch)
     return true
 end
 
-function time_step_with_tupled_catke_closure(FT, arch)
-    closure_tuple = (CATKEVerticalDiffusivity(FT), AnisotropicDiffusivity(FT))
+function time_step_with_tupled_catke_closure(arch)
+    closure_tuple = (CATKEVerticalDiffusivity(), AnisotropicDiffusivity())
 
     model = NonhydrostaticModel(closure=closure_tuple,
-                                grid=RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3)),
+                                grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)),
                                 buoyancy = BuoyancyTracer(),
                                 tracers = (:b, :e))
 
