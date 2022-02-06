@@ -9,7 +9,7 @@ import Oceananigans.TurbulenceClosures.CATKEVerticalDiffusivities: top_tke_flux
 import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 #####
-##### Implements a "single column model mode" for HydrostaticFreeSurfaceModel
+##### Implements a "slice ensemble model mode" for HydrostaticFreeSurfaceModel
 #####
 
 const YZSliceGrid = Union{AbstractGrid{<:AbstractFloat, <:Flat, <:Bounded, <:Bounded},
