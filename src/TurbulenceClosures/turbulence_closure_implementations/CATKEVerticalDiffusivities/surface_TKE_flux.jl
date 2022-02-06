@@ -32,13 +32,20 @@ end
 #####
 
 """ Compute the flux of TKE through the surface / top boundary. """
-@inline function top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy)
+@inline function top_tke_flux(i, j, grid, clock, fields, parameters, closure::Union{CATKEVD, CATKEVDArray}, buoyancy)
     top_tracer_bcs = parameters.top_tracer_boundary_conditions
     top_velocity_bcs = parameters.top_velocity_boundary_conditions
 
     return _top_tke_flux(i, j, grid, closure.surface_TKE_flux, closure,
                          buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
 end
+
+""" Compute the flux of TKE through the surface / top boundary. """
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy) = 0
+
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple, buoyancy) =
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[1], buoyancy) + 
+    top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple[2:end], buoyancy)
 
 @inline function _top_tke_flux(i, j, grid, surface_TKE_flux::SurfaceTKEFlux, closure,
                               buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
