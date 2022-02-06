@@ -153,7 +153,7 @@ function time_step_with_tupled_catke_closure(arch)
                                 buoyancy = BuoyancyTracer(),
                                 tracers = (:b, :e))
 
-    @test model.tracers.e.boundary_conditions.top.condition !== nothing
+    @test !(model.tracers.e.boundary_conditions.top.condition isa BoundaryCondition{Flux, Nothing})
 
     time_step!(model, 1, euler=true)
 
