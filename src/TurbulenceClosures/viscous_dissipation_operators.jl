@@ -49,10 +49,13 @@ end
 @inline νᶠᶜᶠ(i, j, k, grid, clock, ν::AbstractArray) = @inbounds ℑxzᶠᵃᶠ(i, j, k, grid, ν)
 @inline νᶜᶠᶠ(i, j, k, grid, clock, ν::AbstractArray) = @inbounds ℑyzᵃᶠᶠ(i, j, k, grid, ν)
 
-@inline νᶜᶜᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Center(), k, grid), clock.time)
-@inline νᶠᶠᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Face(),   i, grid), ynode(Face(),   j, grid), znode(Center(), k, grid), clock.time)
+# @inline νᶜᶜᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Center(), k, grid), clock.time)
+# @inline νᶠᶠᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Face(),   i, grid), ynode(Face(),   j, grid), znode(Center(), k, grid), clock.time)
 @inline νᶠᶜᶠ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Face(),   i, grid), ynode(Center(), j, grid), znode(Face(),   k, grid), clock.time)
 @inline νᶜᶠᶠ(i, j, k, grid, clock, ν::F) where F<:Function = ν(xnode(Center(), i, grid), ynode(Face(),   j, grid), znode(Face(),   k, grid), clock.time)
+
+@inline νᶜᶜᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(i, j, k, grid)
+@inline νᶠᶠᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(i, j, k, grid)
 
 #####
 ##### Convenience "vanilla" viscous flux functions
@@ -91,8 +94,8 @@ end
     @inline Δy_∇²u(i, j, k, grid, u) = Δy_qᶠᶜᶜ(i, j, k, grid, ∇²hᶠᶜᶜ, u)
     @inline Δx_∇²v(i, j, k, grid, v) = Δx_qᶜᶠᶜ(i, j, k, grid, ∇²hᶜᶠᶜ, v)
 
-    return 1 / Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᶜᶜ(i, j, k, Δy_∇²u, u) +
-                                       δyᶜᶜᶜ(i, j, k, Δx_∇²v, v))
+    return 1 / Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, Δy_∇²u, u) +
+                                       δyᵃᶜᵃ(i, j, k, Δx_∇²v, v))
 end
 
 @inline function ζ★ᶠᶠᶜ(i, j, k, grid, u, v)
