@@ -136,7 +136,7 @@ end
     return ifelse(N² == 0, zero(FT), N² / (∂z_u² + ∂z_v²))
 end
 
-@inline step(x, c, w) = (1 + tanh((x - c) / w)) / 2
+@inline step(x, c, w) = (1 + tanh(x / w - c)) / 2
 
 @inline scale(Ri, σ⁻, rσ, c, w) = σ⁻ * (1 + rσ * step(Ri, c, w))
 
