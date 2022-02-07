@@ -18,10 +18,10 @@ function prettytime(t, longform=true)
     
     # Some shortcuts
     iszero(t) && return "0 seconds"
-    t < 1e-9 && return @sprintf("%.3e seconds", t)
+    t < 1e-9 && return @sprintf("%.3e seconds", t) # yah that's small
 
     t = maybe_int(t)
-    value, units = prettyunits(t, longform)
+    value, units = prettytimeunits(t, longform)
 
     if isinteger(value)
         return @sprintf("%d %s", value, units)
@@ -30,32 +30,29 @@ function prettytime(t, longform=true)
     end
 end
 
-function prettyunits(t, longform)
-    if t < 1e-9
-        return ""
-    elseif t < 1e-6
-        return = t * 1e9, "ns"
-    elseif t < 1e-3
-        return = t * 1e6, "μs"
-    elseif t < 1
-        return = t * 1e3, "ms"
-    elseif t < minute
+function prettytimeunits(t, longform=true)
+    t < 1e-9 && return t, "" # just _forget_ picoseconds!
+    t < 1e-6 && return t * 1e9, "ns"
+    t < 1e-3 && return t * 1e6, "μs"
+    t < 1    && return t * 1e3, "ms"
+    if t < minute
         value = t
-        longform && return value, "s"
+        !longform && return value, "s"
         units = value == 1 ? "second" : "seconds"
         return value, units
     elseif t < hour
         value = maybe_int(t / minute)
-        longform && return value, "m"
+        !longform && return value, "m"
         units = value == 1 ? "minute" : "minutes"
+        return value, units
     elseif t < day
         value = maybe_int(t / hour)
         units = value == 1 ? (longform ? "hour" : "hr") :
-                             (longform ? "hrs" : "hours")
+                             (longform ? "hours" : "hrs")
         return value, units
     elseif t < year
         value = maybe_int(t / day)
-        longform && return value, "d"
+        !longform && return value, "d"
         units = value == 1 ? "day" : "days"
         return value, units
     else
