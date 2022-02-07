@@ -21,8 +21,9 @@ function prettytime(t, longform=true)
     # Modified from: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
     
     # Some shortcuts
-    iszero(t) && return "0 seconds"
-    t < 1e-9 && return @sprintf("%.3e seconds", t) # yah that's small
+    s = longform ? "seconds" : "s" 
+    iszero(t) && return "0 $s"
+    t < 1e-9 && return @sprintf("%.3e %s", t, s) # yah that's small
 
     t = maybe_int(t)
     value, units = prettytimeunits(t, longform)
