@@ -6,12 +6,16 @@ using Oceananigans.Units
 maybe_int(t) = isinteger(t) ? Int(t) : t
 
 """
-    prettytime(t)
+    prettytime(t, longform=true)
 
-Convert a floating point value `t` representing an amount of time in seconds to a more
-human-friendly formatted string with three decimal places. Depending on the value of `t`
-the string will be formatted to show `t` in nanoseconds (ns), microseconds (μs),
-milliseconds (ms), seconds, minutes, hours, days, or years.
+Convert a floating point value `t` representing an amount of time in
+SI units of seconds to a human-friendly string with three decimal places.
+Depending on the value of `t` the string will be formatted to show `t` in
+nanoseconds (ns), microseconds (μs), milliseconds (ms),
+seconds, minutes, hours, days, or years.
+
+With `longform=false`, we use s, m, hrs, d, and yrs in place of seconds,
+minutes, hours, and years.
 """
 function prettytime(t, longform=true)
     # Modified from: https://github.com/JuliaCI/BenchmarkTools.jl/blob/master/src/trials.jl
