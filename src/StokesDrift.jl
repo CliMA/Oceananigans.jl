@@ -18,7 +18,7 @@ using Oceananigans.Operators
     abstract type AbstractStokesDrift end
 
 Parent type for parameter structs for Stokes drift fields
-associated with surface waves
+associated with surface waves.
 """
 abstract type AbstractStokesDrift end
 

@@ -1,3 +1,5 @@
+include("dependencies_for_runtests.jl")
+
 @testset "Utils" begin
     @info "Testing utils..."
 
