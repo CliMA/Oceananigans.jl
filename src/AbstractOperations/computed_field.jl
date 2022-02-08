@@ -76,3 +76,6 @@ end
     @inbounds data[i, j, k] = operand[i, j, k]
 end
 
+# It's cute
+compute!(op::AbstractOperand) = compute!(Field(op))
+
