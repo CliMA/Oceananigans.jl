@@ -32,13 +32,20 @@ end
 #####
 
 """ Compute the flux of TKE through the surface / top boundary. """
-@inline function top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy)
+@inline function top_tke_flux(i, j, grid, clock, fields, parameters, closure::FlavorOfCATKE, buoyancy)
     top_tracer_bcs = parameters.top_tracer_boundary_conditions
     top_velocity_bcs = parameters.top_velocity_boundary_conditions
 
     return _top_tke_flux(i, j, grid, closure.surface_TKE_flux, closure,
                          buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
 end
+
+""" Compute the flux of TKE through the surface / top boundary. """
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure, buoyancy) = 0
+
+# ASSUMING that CATKE is first.
+@inline top_tke_flux(i, j, grid, clock, fields, parameters, closure_tuple::Tuple, buoyancy) =
+    top_tke_flux(i, j, grid, clock, fields, parameters, first(closure_tuple), buoyancy)
 
 @inline function _top_tke_flux(i, j, grid, surface_TKE_flux::SurfaceTKEFlux, closure,
                               buoyancy, fields, top_tracer_bcs, top_velocity_bcs, clock)
@@ -109,7 +116,7 @@ function top_velocity_boundary_conditions(grid, user_bcs)
 end
 
 """ Add TKE boundary conditions specific to `CATKEVerticalDiffusivity`. """
-function add_closure_specific_boundary_conditions(closure::Union{CATKEVD, CATKEVDArray},
+function add_closure_specific_boundary_conditions(closure::FlavorOfCATKE,
                                                   user_bcs,
                                                   grid,
                                                   tracer_names,

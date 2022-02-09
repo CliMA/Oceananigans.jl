@@ -13,7 +13,7 @@ using Oceananigans.Grids: halo_size, inflate_halo_size, with_halo, AbstractRecti
 using Oceananigans.Grids: AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid, architecture
 using Oceananigans.Models.NonhydrostaticModels: extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
-using Oceananigans.TurbulenceClosures: with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
+using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, DiffusivityFields, add_closure_specific_boundary_conditions
 using Oceananigans.TurbulenceClosures: time_discretization, implicit_diffusion_solver
 using Oceananigans.LagrangianParticleTracking: LagrangianParticles
 using Oceananigans.Utils: tupleit
@@ -158,6 +158,9 @@ function HydrostaticFreeSurfaceModel(; grid,
 
     # Ensure `closure` describes all tracers
     closure = with_tracers(tracernames(tracers), closure)
+
+    # Put CATKE first in the list of closures
+    closure = validate_closure(closure)
 
     # Either check grid-correctness, or construct tuples of fields
     velocities         = HydrostaticFreeSurfaceVelocityFields(velocities, grid, clock, boundary_conditions)
