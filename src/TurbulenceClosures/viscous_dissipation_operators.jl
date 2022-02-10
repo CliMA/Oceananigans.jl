@@ -94,8 +94,8 @@ end
     @inline Δy_∇²u(i, j, k, grid, u) = Δy_qᶠᶜᶜ(i, j, k, grid, ∇²hᶠᶜᶜ, u)
     @inline Δx_∇²v(i, j, k, grid, v) = Δx_qᶜᶠᶜ(i, j, k, grid, ∇²hᶜᶠᶜ, v)
 
-    return 1 / Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, Δy_∇²u, u) +
-                                       δyᵃᶜᵃ(i, j, k, Δx_∇²v, v))
+    return 1 / Azᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²u, u) +
+                                       δyᵃᶜᵃ(i, j, k, grid, Δx_∇²v, v))
 end
 
 @inline function ζ★ᶠᶠᶜ(i, j, k, grid, u, v)
@@ -105,8 +105,8 @@ end
     @inline Δy_∇²v(i, j, k, grid, v) = Δy_qᶜᶠᶜ(i, j, k, grid, ∇²hᶜᶠᶜ, v)
     @inline Δx_∇²u(i, j, k, grid, u) = Δx_qᶠᶜᶜ(i, j, k, grid, ∇²hᶠᶜᶜ, u)
 
-    return 1 / Azᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, Δy_∇²v, v) -
-                                       δyᵃᶠᵃ(i, j, k, Δx_∇²u, u))
+    return 1 / Azᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²v, v) -
+                                       δyᵃᶠᵃ(i, j, k, grid, Δx_∇²u, u))
 end
 
 @inline ν_δ★ᶜᶜᶜ(i, j, k, grid, clock, ν, u, v) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * δ★ᶜᶜᶜ(i, j, k, grid, u, v)
