@@ -1,6 +1,6 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.68.1"
+version = "0.70.3"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -52,7 +52,7 @@ MPI = "0.16, 0.17, 0.18, 0.19"
 NCDatasets = "^0.10, ^0.11"
 OffsetArrays = "^1.4"
 OrderedCollections = "1.1"
-PencilFFTs = "0.12"
+PencilFFTs = "0.12, 0.13"
 Rotations = "1.0"
 SafeTestsets = "0.0.1"
 SeawaterPolynomials = "^0.2"

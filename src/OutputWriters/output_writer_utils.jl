@@ -72,7 +72,7 @@ end
 
 function serializeproperty!(file, location, p::Field{LX, LY, LZ}) where {LX, LY, LZ}
     serializeproperty!(file, location * "/location", (LX(), LY(), LZ()))
-    serializeproperty!(file, location * "/data", p.data.parent)
+    serializeproperty!(file, location * "/data", parent(p))
     serializeproperty!(file, location * "/boundary_conditions", p.boundary_conditions)
 end
 

@@ -23,7 +23,7 @@ end
 # Some fields have `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
 fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
-"Fill halo regions in x, y, and z for a given field's data."
+"Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::OffsetArray, boundary_conditions, arch, grid, args...; kwargs...)
 
     fill_halos! = [

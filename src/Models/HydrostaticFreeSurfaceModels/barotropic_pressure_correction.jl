@@ -7,8 +7,9 @@ calculate_pressure_correction!(::HydrostaticFreeSurfaceModel, Δt) = nothing
 #####
 
 const HFSM = HydrostaticFreeSurfaceModel
-const ExplicitFreeSurfaceHFSM = HFSM{<:Any, <:Any, <:Any, <:ExplicitFreeSurface}
-const ImplicitFreeSurfaceHFSM = HFSM{<:Any, <:Any, <:Any, <:ImplicitFreeSurface}
+const ExplicitFreeSurfaceHFSM      = HFSM{<:Any, <:Any, <:Any, <:ExplicitFreeSurface}
+const ImplicitFreeSurfaceHFSM      = HFSM{<:Any, <:Any, <:Any, <:ImplicitFreeSurface}
+const SplitExplicitFreeSurfaceHFSM = HFSM{<:Any, <:Any, <:Any, <:SplitExplicitFreeSurface}
 
 pressure_correct_velocities!(model::ExplicitFreeSurfaceHFSM, Δt; kwargs...) = nothing
 
@@ -33,11 +34,19 @@ function pressure_correct_velocities!(model::ImplicitFreeSurfaceHFSM, Δt;
     return nothing
 end
 
+function pressure_correct_velocities!(model::SplitExplicitFreeSurfaceHFSM, Δt; dependecies = nothing)
+    u, v, _ = model.velocities
+    grid = model.grid 
+    barotropic_split_explicit_corrector!(u, v, model.free_surface, grid)
+
+    return nothing
+end
+
 @kernel function _barotropic_pressure_correction(U, grid, Δt, g, η)
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
-        U.u[i, j, k] -= g * Δt * ∂xᶠᶜᵃ(i, j, k, grid, η)
-        U.v[i, j, k] -= g * Δt * ∂yᶜᶠᵃ(i, j, k, grid, η)
+        U.u[i, j, k] -= g * Δt * ∂xᶠᶜᶜ(i, j, k, grid, η)
+        U.v[i, j, k] -= g * Δt * ∂yᶜᶠᶜ(i, j, k, grid, η)
     end
 end

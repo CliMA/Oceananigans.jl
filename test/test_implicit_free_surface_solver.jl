@@ -80,10 +80,9 @@ function run_matrix_implicit_free_surface_solver_tests(arch, grid)
     Ny = grid.Ny
 
     # Create a model
-    model = HydrostaticFreeSurfaceModel(architecture = arch,
-                                        grid = grid,
+    model = HydrostaticFreeSurfaceModel(grid = grid,
                                         momentum_advection = nothing,
-                                        free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver,
+                                        free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver,
                                                                            tolerance = 1e-15))
     
     set_simple_divergent_velocity!(model)
@@ -109,43 +108,40 @@ function run_matrix_implicit_free_surface_solver_tests(arch, grid)
     std_tolerance = 1e-9
 
     CUDA.@allowscalar begin
-        @test maximum(abs, interior(left_hand_side) .- interior(right_hand_side)) < extrema_tolerance
-        @test std(interior(left_hand_side) .- interior(right_hand_side)) < std_tolerance
+        # Note: `right_hand_side` is not a Field but an Array/CuArray
+        @test maximum(abs, interior(left_hand_side) .- reshape(right_hand_side, (Nx, Ny, 1))) < extrema_tolerance
+        @test std(interior(left_hand_side) .- reshape(right_hand_side, (Nx, Ny, 1))) < std_tolerance
     end
 
     return nothing
 end
 
 
-
 @testset "Implicit free surface solver tests" begin
     for arch in archs
 
         rectilinear_grid = RectilinearGrid(arch, size = (128, 1, 5),
-                                                  x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
-                                                  topology = (Bounded, Periodic, Bounded))
+                                                 x = (0, 1000kilometers), y = (0, 1), z = (-400, 0),
+                                                 topology = (Bounded, Periodic, Bounded))
 
         lat_lon_grid = LatitudeLongitudeGrid(arch, size = (90, 90, 5),
-                                        longitude = (-30, 30),
-                                         latitude = (15, 75),
-                                                z = (-4000, 0))
+                                                   longitude = (-30, 30), latitude = (15, 75), z = (-4000, 0))
 
         for grid in (rectilinear_grid, lat_lon_grid)
             @info "Testing PreconditionedConjugateGradient implicit free surface solver [$(typeof(arch)), $(typeof(grid).name.wrapper)]..."
             run_pcg_implicit_free_surface_solver_tests(arch, grid)
+            
+            @info "Testing Matrix implicit free surface solver [$(typeof(arch)), $(typeof(grid).name.wrapper)]..."
+            run_matrix_implicit_free_surface_solver_tests(arch, grid)
         end
 
         @info "Testing implicit free surface solvers compared to FFT [$(typeof(arch))]..."
 
         Δt = 900
 
-        mat_free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver,           tolerance=1e-15, maximum_iterations=128^3)
-        pcg_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, tolerance=1e-15, maximum_iterations=128^3)
-        fft_free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform)
-
-        mat_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
-                                                momentum_advection = nothing,
-                                                free_surface = mat_free_surface)
+        mat_free_surface = ImplicitFreeSurface(solver_method = :HeptadiagonalIterativeSolver,    tolerance=1e-15, maximum_iterations=128^3)
+        pcg_free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient, tolerance=1e-15, maximum_iterations=128^3)
+        fft_free_surface = ImplicitFreeSurface(solver_method = :FastFourierTransform)
 
         pcg_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
                                                 momentum_advection = nothing,
@@ -153,7 +149,11 @@ end
 
         fft_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
                                                 momentum_advection = nothing,
-                                                free_surface = ImplicitFreeSurface(solver_method=:FastFourierTransform))
+                                                free_surface = fft_free_surface)
+
+        mat_model = HydrostaticFreeSurfaceModel(grid = rectilinear_grid,
+                                                momentum_advection = nothing,
+                                                free_surface = mat_free_surface)
 
         @test fft_model.free_surface.implicit_step_solver isa FFTImplicitFreeSurfaceSolver
         @test pcg_model.free_surface.implicit_step_solver isa PCGImplicitFreeSurfaceSolver
@@ -187,6 +187,7 @@ end
             # This behavior is not observed on tartarus, where this test _would_ pass.
             # Suffice to say that the FFT solver appears to be accurate (as of this writing), and tests pass
             # on the CPU.
+            @info "  Skipping comparison between pcg and fft implicit free surface solver"
             @test_skip all(pcg_η_cpu .≈ fft_η_cpu)
         end
 

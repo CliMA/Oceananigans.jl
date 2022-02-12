@@ -137,13 +137,13 @@ using Oceananigans.AbstractOperations: KernelFunctionOperation
 @inline fψ_plus_gφ²(i, j, k, grid, f, ψ, g, φ) = @inbounds (f(i, j, k, grid, ψ) + g(i, j, k, grid, φ))^2
 
 function isotropic_viscous_dissipation_rate_ccc(i, j, k, grid, u, v, w, ν)
-    Σˣˣ² = ∂xᶜᵃᵃ(i, j, k, grid, u)^2
-    Σʸʸ² = ∂yᵃᶜᵃ(i, j, k, grid, v)^2
-    Σᶻᶻ² = ∂zᵃᵃᶜ(i, j, k, grid, w)^2
+    Σˣˣ² = ∂xᶜᶜᶜ(i, j, k, grid, u)^2
+    Σʸʸ² = ∂yᶜᶜᶜ(i, j, k, grid, v)^2
+    Σᶻᶻ² = ∂zᶜᶜᶜ(i, j, k, grid, w)^2
 
-    Σˣʸ² = ℑxyᶜᶜᵃ(i, j, k, grid, fψ_plus_gφ², ∂yᵃᶠᵃ, u, ∂xᶠᵃᵃ, v) / 4
-    Σˣᶻ² = ℑxzᶜᵃᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᵃᵃᶠ, u, ∂xᶠᵃᵃ, w) / 4
-    Σʸᶻ² = ℑyzᵃᶜᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᵃᵃᶠ, v, ∂yᵃᶠᵃ, w) / 4
+    Σˣʸ² = ℑxyᶜᶜᵃ(i, j, k, grid, fψ_plus_gφ², ∂yᶠᶠᶜ, u, ∂xᶠᶠᶜ, v) / 4
+    Σˣᶻ² = ℑxzᶜᵃᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᶠᶜᶠ, u, ∂xᶠᶜᶠ, w) / 4
+    Σʸᶻ² = ℑyzᵃᶜᶜ(i, j, k, grid, fψ_plus_gφ², ∂zᶜᶠᶠ, v, ∂yᶜᶠᶠ, w) / 4
 
     return ν * 2 * (Σˣˣ² + Σʸʸ² + Σᶻᶻ² + 2 * (Σˣʸ² + Σˣᶻ² + Σʸᶻ²))
 end

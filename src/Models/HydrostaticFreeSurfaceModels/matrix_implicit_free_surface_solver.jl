@@ -1,20 +1,30 @@
 using Oceananigans.Solvers
 using Oceananigans.Operators
+using Oceananigans.Grids: with_halo
 using Oceananigans.Architectures
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Fields: ReducedField
-using Oceananigans.Solvers: MatrixIterativeSolver
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, solid_cell
+using Oceananigans.Solvers: HeptadiagonalIterativeSolver
 import Oceananigans.Solvers: solve!
 
+"""
+    struct MatrixImplicitFreeSurfaceSolver{V, S, R}
+
+The hepta-diagonal matrix iterative implicit free-surface solver.
+
+$(TYPEDFIELDS)
+"""
 struct MatrixImplicitFreeSurfaceSolver{V, S, R}
+    "The vertically-integrated lateral areas"
     vertically_integrated_lateral_areas :: V
+    "The matrix iterative solver"
     matrix_iterative_solver :: S
+    "The right hand side of the free surface evolution equation"
     right_hand_side :: R
 end
 
 """
-    MatrixImplicitFreeSurfaceSolver(grid, gravitational_acceleration, settings)
+    MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_acceleration, settings)
 
 Return a the framework for solving the elliptic equation with one of the iterative solvers of IterativeSolvers.jl
 with a sparse matrix formulation.
@@ -27,7 +37,6 @@ representing an implicit time discretization of the linear free surface evolutio
 for a fluid with variable depth `H`, horizontal areas `Az`, barotropic volume flux `Q★`, time
 step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `ηⁿ`.
 """
-
 function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_acceleration, settings)
     
     # Initialize vertically integrated lateral face areas
@@ -36,7 +45,7 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_accel
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 
-    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas, grid)
+    compute_vertically_integrated_lateral_areas!(vertically_integrated_lateral_areas)
 
     arch = architecture(grid)
     right_hand_side = zeros(grid, grid.Nx * grid.Ny) # linearized RHS for matrix operations
@@ -48,13 +57,13 @@ function MatrixImplicitFreeSurfaceSolver(grid::AbstractGrid, gravitational_accel
 
     coeffs = compute_matrix_coefficients(vertically_integrated_lateral_areas, grid, gravitational_acceleration)
 
-    solver = MatrixIterativeSolver(coeffs; reduced_dim = (false, false, true),
-                                   grid = grid, settings...)
+    solver = HeptadiagonalIterativeSolver(coeffs; reduced_dim = (false, false, true),
+                                          grid = grid, settings...)
 
     return MatrixImplicitFreeSurfaceSolver(vertically_integrated_lateral_areas, solver, right_hand_side)
 end
 
-build_implicit_step_solver(::Val{:MatrixIterativeSolver}, grid, gravitational_acceleration, settings) =
+build_implicit_step_solver(::Val{:HeptadiagonalIterativeSolver}, grid, gravitational_acceleration, settings) =
     MatrixImplicitFreeSurfaceSolver(grid, gravitational_acceleration, settings)
 
 #####
@@ -89,8 +98,8 @@ end
 # linearized right hand side
 @kernel function implicit_linearized_free_surface_right_hand_side!(rhs, grid, g, Δt, ∫ᶻQ, η)
     i, j = @index(Global, NTuple)
-    Az   = Azᶜᶜᵃ(i, j, 1, grid)
-    δ_Q  = flux_div_xyᶜᶜᵃ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
+    Az   = Azᶜᶜᶜ(i, j, 1, grid)
+    δ_Q  = flux_div_xyᶜᶜᶜ(i, j, 1, grid, ∫ᶻQ.u, ∫ᶻQ.v)
     t = i + grid.Nx * (j - 1)
     @inbounds rhs[t] = (δ_Q - Az * η[i, j, 1] / Δt) / (g * Δt)
 end
@@ -122,8 +131,8 @@ end
 @kernel function _compute_coefficients!(diag, Ax, Ay, ∫Ax, ∫Ay, grid, g)
     i, j = @index(Global, NTuple)
     @inbounds begin
-        Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᵃ(i, j, 1, grid)  
-        Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᵃ(i, j, 1, grid)  
-        diag[i, j, 1]  = - Azᶜᶜᵃ(i, j, 1, grid) / g
+        Ay[i, j, 1]    = ∫Ay[i, j, 1] / Δyᶜᶠᶜ(i, j, 1, grid)  
+        Ax[i, j, 1]    = ∫Ax[i, j, 1] / Δxᶠᶜᶜ(i, j, 1, grid)  
+        diag[i, j, 1]  = - Azᶜᶜᶜ(i, j, 1, grid) / g
     end
 end

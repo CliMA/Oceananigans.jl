@@ -1,95 +1,87 @@
-#####
-##### Rectilinear derivative operators
-#####
-
-@inline ∂xᶜᵃᵃ(i, j, k, grid, u) = δxᶜᵃᵃ(i, j, k, grid, u) / Δxᶜᵃᵃ(i, j, k, grid)
-@inline ∂xᶠᵃᵃ(i, j, k, grid, c) = δxᶠᵃᵃ(i, j, k, grid, c) / Δxᶠᵃᵃ(i, j, k, grid)
-                              
-@inline ∂yᵃᶜᵃ(i, j, k, grid, v) = δyᵃᶜᵃ(i, j, k, grid, v) / Δyᵃᶜᵃ(i, j, k, grid)
-@inline ∂yᵃᶠᵃ(i, j, k, grid, c) = δyᵃᶠᵃ(i, j, k, grid, c) / Δyᵃᶠᵃ(i, j, k, grid)
-
-@inline ∂zᵃᵃᶜ(i, j, k, grid, w) = δzᵃᵃᶜ(i, j, k, grid, w) / Δzᵃᵃᶜ(i, j, k, grid)
-@inline ∂zᵃᵃᶠ(i, j, k, grid, c) = δzᵃᵃᶠ(i, j, k, grid, c) / Δzᵃᵃᶠ(i, j, k, grid)
-
-
-@inline ∂xᶜᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = δxᶜᵃᵃ(i, j, k, grid, f, args...) / Δxᶜᵃᵃ(i, j, k, grid)
-@inline ∂xᶠᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = δxᶠᵃᵃ(i, j, k, grid, f, args...) / Δxᶜᵃᵃ(i, j, k, grid)
-                            
-@inline ∂yᵃᶜᵃ(i, j, k, grid, f::F, args...) where F<:Function = δyᵃᶜᵃ(i, j, k, grid, f, args...) / Δyᵃᶜᵃ(i, j, k, grid)
-@inline ∂yᵃᶠᵃ(i, j, k, grid, f::F, args...) where F<:Function = δyᵃᶠᵃ(i, j, k, grid, f, args...) / Δyᵃᶠᵃ(i, j, k, grid)
-
-@inline ∂zᵃᵃᶜ(i, j, k, grid, f::F, args...) where F<:Function = δzᵃᵃᶜ(i, j, k, grid, f, args...) / Δzᵃᵃᶜ(i, j, k, grid)
-@inline ∂zᵃᵃᶠ(i, j, k, grid, f::F, args...) where F<:Function = δzᵃᵃᶠ(i, j, k, grid, f, args...) / Δzᵃᵃᶠ(i, j, k, grid)
 
 #####
-##### Operators of the form A*δ(q) where A is an area and q is some quantity.
+##### First derivative operators
 #####
 
-@inline Ax_∂xᶠᶜᶜ(i, j, k, grid, c) = Axᶠᶜᶜ(i, j, k, grid) * ∂xᶠᶜᵃ(i, j, k, grid, c)
-@inline Ax_∂xᶜᶜᶜ(i, j, k, grid, u) = Axᶜᶜᶜ(i, j, k, grid) * ∂xᶜᶜᵃ(i, j, k, grid, u)
-@inline Ax_∂xᶠᶠᶜ(i, j, k, grid, v) = Axᶠᶠᶜ(i, j, k, grid) * ∂xᶠᶠᵃ(i, j, k, grid, v)
+for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
+    
+    x_derivative = Symbol(:∂x, LX, LY, LZ)
+    x_spacing    = Symbol(:Δx, LX, LY, LZ)
+    x_difference = Symbol(:δx, LX, :ᵃ, :ᵃ)
 
-@inline Ay_∂yᶜᶠᶜ(i, j, k, grid, c) = Ayᶜᶠᶜ(i, j, k, grid) * ∂yᶜᶠᵃ(i, j, k, grid, c)
-@inline Ay_∂yᶠᶠᶜ(i, j, k, grid, u) = Ayᶠᶠᶜ(i, j, k, grid) * ∂yᶠᶠᵃ(i, j, k, grid, u)
-@inline Ay_∂yᶜᶜᶜ(i, j, k, grid, v) = Ayᶜᶜᶜ(i, j, k, grid) * ∂yᶜᶜᵃ(i, j, k, grid, v)
+    y_derivative = Symbol(:∂y, LX, LY, LZ)
+    y_spacing    = Symbol(:Δy, LX, LY, LZ)
+    y_difference = Symbol(:δy, :ᵃ, LY, :ᵃ)
 
-@inline Az_∂zᶜᶜᶠ(i, j, k, grid, c) = Azᶜᶜᵃ(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, c)
+    z_derivative = Symbol(:∂z, LX, LY, LZ)
+    z_spacing    = Symbol(:Δz, LX, LY, LZ)
+    z_difference = Symbol(:δz, :ᵃ, :ᵃ, LZ)
 
-#####
-##### Second derivatives
-#####
-
-@inline ∂²xᶜᵃᵃ(i, j, k, grid, c) = ∂xᶜᵃᵃ(i, j, k, grid, ∂xᶠᵃᵃ, c)
-@inline ∂²xᶠᵃᵃ(i, j, k, grid, u) = ∂xᶠᵃᵃ(i, j, k, grid, ∂xᶜᵃᵃ, u)
-
-@inline ∂²yᵃᶜᵃ(i, j, k, grid, c) = ∂yᵃᶜᵃ(i, j, k, grid, ∂yᵃᶠᵃ, c)
-@inline ∂²yᵃᶠᵃ(i, j, k, grid, v) = ∂yᵃᶠᵃ(i, j, k, grid, ∂yᵃᶜᵃ, v)
-
-@inline ∂²zᵃᵃᶜ(i, j, k, grid, c) = ∂zᵃᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
-@inline ∂²zᵃᵃᶠ(i, j, k, grid, w) = ∂zᵃᵃᶠ(i, j, k, grid, ∂zᵃᵃᶜ, w)
-
-
-@inline ∂²xᶜᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = ∂xᶜᵃᵃ(i, j, k, grid, ∂xᶠᵃᵃ, f, args...)
-@inline ∂²xᶠᵃᵃ(i, j, k, grid, f::F, args...) where F<:Function = ∂xᶠᵃᵃ(i, j, k, grid, ∂xᶜᵃᵃ, f, args...)
-
-@inline ∂²yᵃᶜᵃ(i, j, k, grid, f::F, args...) where F<:Function = ∂yᵃᶜᵃ(i, j, k, grid, ∂yᵃᶠᵃ, f, args...)
-@inline ∂²yᵃᶠᵃ(i, j, k, grid, f::F, args...) where F<:Function = ∂yᵃᶠᵃ(i, j, k, grid, ∂yᵃᶜᵃ, f, args...)
-
-@inline ∂²zᵃᵃᶜ(i, j, k, grid, f::F, args...) where F<:Function = ∂zᵃᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, f, args...)
-@inline ∂²zᵃᵃᶠ(i, j, k, grid, f::F, args...) where F<:Function = ∂zᵃᵃᶠ(i, j, k, grid, ∂zᵃᵃᶜ, f, args...)
+    @eval begin
+        @inline $x_derivative(i, j, k, grid, c) = $x_difference(i, j, k, grid, c) / $x_spacing(i, j, k, grid)
+        @inline $y_derivative(i, j, k, grid, c) = $y_difference(i, j, k, grid, c) / $y_spacing(i, j, k, grid)
+        @inline $z_derivative(i, j, k, grid, c) = $z_difference(i, j, k, grid, c) / $z_spacing(i, j, k, grid)
+        
+        @inline $x_derivative(i, j, k, grid, f::Function, args...) = $x_difference(i, j, k, grid, f, args...) / $x_spacing(i, j, k, grid)
+        @inline $y_derivative(i, j, k, grid, f::Function, args...) = $y_difference(i, j, k, grid, f, args...) / $y_spacing(i, j, k, grid)
+        @inline $z_derivative(i, j, k, grid, f::Function, args...) = $z_difference(i, j, k, grid, f, args...) / $z_spacing(i, j, k, grid)
+    end
+end
 
 #####
-##### Third derivatives
+##### Second, Third, and Fourth derivatives
 #####
 
-@inline ∂³zᵃᵃᶜ(i, j, k, grid, w) = ∂zᵃᵃᶜ(i, j, k, grid, ∂²zᵃᵃᶠ, w)
-@inline ∂³zᵃᵃᶠ(i, j, k, grid, c) = ∂zᵃᵃᶠ(i, j, k, grid, ∂²zᵃᵃᶜ, c)
+@inline insert_symbol(dir, L, L1, L2) = 
+                      dir == :x ?
+                      (L, L1, L2) :
+                      dir == :y ?
+                      (L1, L, L2) :
+                      (L1, L2, L)
+
+
+for dir in (:x, :y, :z), L1 in (:ᶜ, :ᶠ), L2 in (:ᶜ, :ᶠ)
+
+    der_face_1 = Symbol(:∂,  dir, insert_symbol(dir, :ᶠ, L1, L2)...)
+    der_face_2 = Symbol(:∂², dir, insert_symbol(dir, :ᶠ, L1, L2)...)
+    der_face_3 = Symbol(:∂³, dir, insert_symbol(dir, :ᶠ, L1, L2)...)
+    der_face_4 = Symbol(:∂⁴, dir, insert_symbol(dir, :ᶠ, L1, L2)...)
+
+    der_center_1 = Symbol(:∂,  dir, insert_symbol(dir, :ᶜ, L1, L2)...)
+    der_center_2 = Symbol(:∂², dir, insert_symbol(dir, :ᶜ, L1, L2)...)
+    der_center_3 = Symbol(:∂³, dir, insert_symbol(dir, :ᶜ, L1, L2)...)
+    der_center_4 = Symbol(:∂⁴, dir, insert_symbol(dir, :ᶜ, L1, L2)...)
+
+    @eval begin
+        $der_face_2(i, j, k, grid, c) = $der_face_1(i, j, k, grid, $der_center_1, c)
+        $der_face_3(i, j, k, grid, c) = $der_face_1(i, j, k, grid, $der_center_2, c)
+        $der_face_4(i, j, k, grid, c) = $der_face_2(i, j, k, grid, $der_center_2, c)
+
+        $der_center_2(i, j, k, grid, c) = $der_center_1(i, j, k, grid, $der_face_1, c)
+        $der_center_3(i, j, k, grid, c) = $der_center_1(i, j, k, grid, $der_face_2, c)
+        $der_center_4(i, j, k, grid, c) = $der_center_2(i, j, k, grid, $der_face_2, c)
+
+        $der_face_2(i, j, k, grid, f::Function, args...) = $der_face_1(i, j, k, grid, $der_center_1, f::Function, args...)
+        $der_face_3(i, j, k, grid, f::Function, args...) = $der_face_1(i, j, k, grid, $der_center_2, f::Function, args...)
+        $der_face_4(i, j, k, grid, f::Function, args...) = $der_face_2(i, j, k, grid, $der_center_2, f::Function, args...)
+
+        $der_center_2(i, j, k, grid, f::Function, args...) = $der_center_1(i, j, k, grid, $der_face_1, f::Function, args...)
+        $der_center_3(i, j, k, grid, f::Function, args...) = $der_center_1(i, j, k, grid, $der_face_2, f::Function, args...)
+        $der_center_4(i, j, k, grid, f::Function, args...) = $der_center_2(i, j, k, grid, $der_face_2, f::Function, args...)
+    end
+end
 
 #####
-##### Fourth derivatives
+##### Operators of the form A*∂(q) where A is an area and q is some quantity.
 #####
 
-@inline ∂⁴xᶜᵃᵃ(i, j, k, grid, c, args...) = ∂²xᶜᵃᵃ(i, j, k, grid, ∂²xᶜᵃᵃ, c, args...)
-@inline ∂⁴xᶠᵃᵃ(i, j, k, grid, u, args...) = ∂²xᶠᵃᵃ(i, j, k, grid, ∂²xᶠᵃᵃ, u, args...)
+for dir in (:x, :y, :z), LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
+    
+    operator   = Symbol(:A, dir, :_∂, dir, LX, LY, LZ)
+    area       = Symbol(:A, dir, LX, LY, LZ)
+    derivative = Symbol(:∂, dir, LX, LY, LZ)
 
-@inline ∂⁴yᵃᶜᵃ(i, j, k, grid, c, args...) = ∂²yᵃᶜᵃ(i, j, k, grid, ∂²yᵃᶜᵃ, c, args...)
-@inline ∂⁴yᵃᶠᵃ(i, j, k, grid, v, args...) = ∂²yᵃᶠᵃ(i, j, k, grid, ∂²yᵃᶠᵃ, v, args...)
-
-@inline ∂⁴zᵃᵃᶜ(i, j, k, grid, c, args...) = ∂²zᵃᵃᶜ(i, j, k, grid, ∂²zᵃᵃᶜ, c, args...)
-@inline ∂⁴zᵃᵃᶠ(i, j, k, grid, w, args...) = ∂²zᵃᵃᶠ(i, j, k, grid, ∂²zᵃᵃᶠ, w, args...)
-
-#####
-##### Horizontally curvilinear derivative operators
-#####
-
-@inline ∂xᶜᶜᵃ(i, j, k, grid, u, args...) = δxᶜᵃᵃ(i, j, k, grid, u, args...) / Δxᶜᶜᵃ(i, j, k, grid)
-@inline ∂xᶜᶠᵃ(i, j, k, grid, ζ, args...) = δxᶜᵃᵃ(i, j, k, grid, ζ, args...) / Δxᶜᶠᵃ(i, j, k, grid)
-
-@inline ∂xᶠᶠᵃ(i, j, k, grid, v, args...) = δxᶠᵃᵃ(i, j, k, grid, v, args...) / Δxᶠᶠᵃ(i, j, k, grid)
-@inline ∂xᶠᶜᵃ(i, j, k, grid, c, args...) = δxᶠᵃᵃ(i, j, k, grid, c, args...) / Δxᶠᶜᵃ(i, j, k, grid)
-
-@inline ∂yᶜᶜᵃ(i, j, k, grid, v, args...) = δyᵃᶜᵃ(i, j, k, grid, v, args...) / Δyᶜᶜᵃ(i, j, k, grid)
-@inline ∂yᶠᶜᵃ(i, j, k, grid, ζ, args...) = δyᵃᶜᵃ(i, j, k, grid, ζ, args...) / Δyᶠᶜᵃ(i, j, k, grid)
-
-@inline ∂yᶠᶠᵃ(i, j, k, grid, u, args...) = δyᵃᶠᵃ(i, j, k, grid, u, args...) / Δyᶠᶠᵃ(i, j, k, grid)
-@inline ∂yᶜᶠᵃ(i, j, k, grid, c, args...) = δyᵃᶠᵃ(i, j, k, grid, c, args...) / Δyᶜᶠᵃ(i, j, k, grid)
+    @eval begin
+        $operator(i, j, k, grid, c) = $area(i, j, k, grid) * $derivative(i, j, k, grid, c)
+    end
+end

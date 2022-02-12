@@ -78,6 +78,9 @@ function horizontal_average_of_plus(model)
 
     @compute ST = Field(Average(S + T, dims=(1, 2)))
 
+    @test ST.operand isa Reduction
+    @test ST.operand.reduce! === mean!
+
     zC = znodes(Center, model.grid)
     correct_profile = @. sin(π * zC) + 42 * zC
 
@@ -385,10 +388,10 @@ for arch in archs
 
             @test begin
                 u, v, w = model.velocities
-                ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᵃ, grid, computed_dependencies=(u, v))
+                ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, computed_dependencies=(u, v))
                 ζ = Field(ζ_op) # identical to `VerticalVorticityField`
                 compute!(ζ)
-                ζ isa Field && ζ.operand.kernel_function === ζ₃ᶠᶠᵃ
+                ζ isa Field && ζ.operand.kernel_function === ζ₃ᶠᶠᶜ
             end
         end
 

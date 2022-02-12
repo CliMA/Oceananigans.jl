@@ -1,5 +1,6 @@
 using CUDA
 using Printf
+using Base.Ryu: writeshortest
 
 #####
 ##### Convenience functions
@@ -9,6 +10,10 @@ Base.length(::Type{Face}, topo, N) = N
 Base.length(::Type{Face}, ::Type{Bounded}, N) = N+1
 Base.length(::Type{Center}, topo, N) = N
 Base.length(::Type{Nothing}, topo, N) = 1
+
+Base.length(::Type{Nothing}, ::Type{Flat}, N) = N
+Base.length(::Type{Face},    ::Type{Flat}, N) = N
+Base.length(::Type{Center},  ::Type{Flat}, N) = N
 
 """
     topology(grid)
@@ -91,38 +96,21 @@ Return the total extent, including halo regions, of constant-spaced
 constant grid spacing `Δ`, and interior extent `L`.
 """
 @inline total_extent(topology, H, Δ, L) = L + (2H - 1) * Δ
-
-"""
-    total_extent(::Type{Bounded}, H, Δ, L)
-
-Return the total extent of, including halo regions, of constant-spaced
-`Bounded` and `Flat` dimensions with number of halo points `H`,
-constant grid spacing `Δ`, and interior extent `L`.
-"""
 @inline total_extent(::Type{Bounded}, H, Δ, L) = L + 2H * Δ
 
 """
     total_length(loc, topo, N, H=0)
 
-Return the total length (number of nodes), including halo points, of a field
-located at `Center` centers along a grid dimension of length `N` and with halo points `H`.
+Return the total length of a field at `loc`ation along
+one dimension of `topo`logy with `N` centered cells and
+`H` halo cells.
 """
-@inline total_length(loc, topo, N, H=0) = N + 2H
-
-"""
-    total_length(::Type{Face}, ::Type{Bounded}, N, H=0)
-
-Return the total length, including halo points, of a field located at
-cell `Face`s along a grid dimension of length `N` and with halo points `H`.
-"""
-@inline total_length(::Type{Face}, ::Type{Bounded}, N, H=0) = N + 1 + 2H
-
-"""
-    total_length(::Type{Nothing}, topo, N, H=0)
-
-Return 1, which is the 'length' of a field along a reduced dimension.
-"""
-@inline total_length(::Type{Nothing}, topo, N, H=0) = 1
+@inline total_length(loc,             topo,            N, H=0) = N + 2H
+@inline total_length(::Type{Face},    ::Type{Bounded}, N, H=0) = N + 1 + 2H
+@inline total_length(::Type{Nothing}, topo,            N, H=0) = 1
+@inline total_length(::Type{Nothing}, ::Type{Flat},    N, H=0) = N
+@inline total_length(::Type{Face},    ::Type{Flat},    N, H=0) = N
+@inline total_length(::Type{Center},  ::Type{Flat},    N, H=0) = N
 
 # Grid domains
 @inline domain(topo, N, ξ) = CUDA.@allowscalar ξ[1], ξ[N+1]
@@ -152,30 +140,46 @@ regular_dimensions(grid) = ()
 @inline underlying_right_halo_indices(::Type{Face}, ::Type{Bounded}, N, H) = N+2+H:N+1+2H
 @inline underlying_right_halo_indices(::Type{Nothing}, topo, N, H) = 1:0 # empty
 
-@inline interior_indices(loc, topo, N) = 1:N
-@inline interior_indices(::Type{Face}, ::Type{Bounded}, N) = 1:N+1
-@inline interior_indices(::Type{Nothing}, topo, N) = 1:1
+@inline interior_indices(loc,             topo,            N) = 1:N
+@inline interior_indices(::Type{Face},    ::Type{Bounded}, N) = 1:N+1
+@inline interior_indices(::Type{Nothing}, topo,            N) = 1:1
+
+@inline interior_indices(::Type{Nothing}, topo::Type{Flat}, N) = 1:N
+@inline interior_indices(::Type{Face},    topo::Type{Flat}, N) = 1:N
+@inline interior_indices(::Type{Center},  topo::Type{Flat}, N) = 1:N
 
 @inline interior_x_indices(loc, grid) = interior_indices(loc, topology(grid, 1), grid.Nx)
 @inline interior_y_indices(loc, grid) = interior_indices(loc, topology(grid, 2), grid.Ny)
 @inline interior_z_indices(loc, grid) = interior_indices(loc, topology(grid, 3), grid.Nz)
 
-@inline interior_parent_indices(loc, topo, N, H) = 1+H:N+H
-@inline interior_parent_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1+H:N+1+H
-@inline interior_parent_indices(::Type{Nothing}, topo, N, H) = 1:1
+@inline interior_parent_indices(loc,             topo,            N, H) = 1+H:N+H
+@inline interior_parent_indices(::Type{Face},    ::Type{Bounded}, N, H) = 1+H:N+1+H
+@inline interior_parent_indices(::Type{Nothing}, topo,            N, H) = 1:1
+
+@inline interior_parent_indices(::Type{Nothing}, topo::Type{Flat}, N, H) = 1:N
+@inline interior_parent_indices(::Type{Face},    topo::Type{Flat}, N, H) = 1:N
+@inline interior_parent_indices(::Type{Center},  topo::Type{Flat}, N, H) = 1:N
 
 # All indices including halos.
-@inline all_indices(loc, topo, N, H) = 1-H:N+H
-@inline all_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1-H:N+1+H
-@inline all_indices(::Type{Nothing}, topo, N, H) = 1:1
+@inline all_indices(loc,             topo,            N, H) = 1-H:N+H
+@inline all_indices(::Type{Face},    ::Type{Bounded}, N, H) = 1-H:N+1+H
+@inline all_indices(::Type{Nothing}, topo,            N, H) = 1:1
+
+@inline all_indices(::Type{Nothing}, ::Type{Flat}, N, H) = 1:N
+@inline all_indices(::Type{Face},    ::Type{Flat}, N, H) = 1:N
+@inline all_indices(::Type{Center},  ::Type{Flat}, N, H) = 1:N
 
 @inline all_x_indices(loc, grid) = all_indices(loc, topology(grid, 1), grid.Nx, grid.Hx)
 @inline all_y_indices(loc, grid) = all_indices(loc, topology(grid, 2), grid.Ny, grid.Hy)
 @inline all_z_indices(loc, grid) = all_indices(loc, topology(grid, 3), grid.Nz, grid.Hz)
 
-@inline all_parent_indices(loc, topo, N, H) = 1:N+2H
-@inline all_parent_indices(::Type{Face}, ::Type{Bounded}, N, H) = 1:N+1+2H
-@inline all_parent_indices(::Type{Nothing}, topo, N, H) = 1:1
+@inline all_parent_indices(loc,             topo,            N, H) = 1:N+2H
+@inline all_parent_indices(::Type{Face},    ::Type{Bounded}, N, H) = 1:N+1+2H
+@inline all_parent_indices(::Type{Nothing}, topo,            N, H) = 1:1
+
+@inline all_parent_indices(::Type{Nothing}, ::Type{Flat}, N, H) = 1:N
+@inline all_parent_indices(::Type{Face},    ::Type{Flat}, N, H) = 1:N
+@inline all_parent_indices(::Type{Center},  ::Type{Flat}, N, H) = 1:N
 
 @inline all_parent_x_indices(loc, grid) = all_parent_indices(loc, topology(grid, 1), grid.Nx, grid.Hx)
 @inline all_parent_y_indices(loc, grid) = all_parent_indices(loc, topology(grid, 2), grid.Ny, grid.Hy)
@@ -353,8 +357,32 @@ end
 
 struct ZDirection end
 
-@inline show_coordinate(Δ::Number, T)            = "Regular, with spacing $Δ"
-@inline show_coordinate(Δ::Number, ::Type{Flat}) = "Flattened"
-@inline show_coordinate(Δ::AbstractVector, T)    = @sprintf("Stretched, with spacing min=%.6f, max=%.6f",
-                                                            minimum(parent(Δ)), maximum(parent(Δ)))
+#####
+##### Show utils
+#####
+
+size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
+scalar_summary(σ) = writeshortest(σ, false, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
+dimension_summary(topo::Flat, name, args...) = "Flat $name"
+
+function domain_summary(topo, name, left, right)
+    interval = topo isa Periodic ? ")" : "]"
+    topo_string = topo isa Periodic ? "Periodic " :
+                                      "Bounded  "
+
+    prefix = string(topo_string, name, " ∈ [",
+                    scalar_summary(left), ", ",
+                    scalar_summary(right), interval)
+end
+
+function dimension_summary(topo, name, left, right, spacing, pad_domain=0)
+    prefix = domain_summary(topo, name, left, right)
+    padding = " "^(pad_domain+1) 
+    return string(prefix, padding, coordinate_summary(spacing, name))
+end
+
+coordinate_summary(Δ::Number, name) = @sprintf("regularly spaced with Δ%s=%s", name, scalar_summary(Δ))
+coordinate_summary(Δ::AbstractVector, name) = @sprintf("variably spaced with min(Δ%s)=%s, max(Δ%s)=%s",
+                                                       name, scalar_summary(minimum(parent(Δ))),
+                                                       name, scalar_summary(maximum(parent(Δ))))
 

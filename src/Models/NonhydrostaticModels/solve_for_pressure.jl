@@ -14,7 +14,7 @@ end
 
 @kernel function calculate_pressure_source_term_fourier_tridiagonal_solver!(rhs, grid, Δt, U★)
     i, j, k = @index(Global, NTuple)
-    @inbounds rhs[i, j, k] = Δzᵃᵃᶜ(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
+    @inbounds rhs[i, j, k] = Δzᶜᶜᶜ(i, j, k, grid) * divᶜᶜᶜ(i, j, k, grid, U★.u, U★.v, U★.w) / Δt
 end
 
 #####
@@ -68,7 +68,7 @@ function solve_for_pressure!(pressure, solver::FourierTridiagonalPoissonSolver, 
 
     wait(device(arch), rhs_event)
 
-    # Pressure Poisson rhs, scaled by Δzᵃᵃᶜ, is stored in solver.source_term:
+    # Pressure Poisson rhs, scaled by Δzᶜᶜᶜ, is stored in solver.source_term:
     solve!(pressure, solver)
 
     return nothing

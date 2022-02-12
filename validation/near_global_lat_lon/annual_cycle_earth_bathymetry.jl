@@ -1,13 +1,12 @@
 using Statistics
 using JLD2
 using Printf
-# using GLMakie
 using Oceananigans
 using Oceananigans.Units
 
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, is_immersed_boundary
 using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity, VerticallyImplicitTimeDiscretization
 using CUDA: @allowscalar
 using Oceananigans.Operators: Δzᵃᵃᶜ
@@ -51,12 +50,6 @@ dh = DataDep("near_global_lat_lon",
 DataDeps.register(dh)
 
 datadep"near_global_lat_lon"
-
-# 2.8125 degree resolution
-Nx = 128
-Ny = 60
-Nz = 18
-reference_density = 1035
 
 #####
 ##### Load forcing files roughly from CORE2 paper
@@ -165,14 +158,32 @@ T_surface_relaxation_bc = FluxBoundaryCondition(surface_temperature_relaxation,
     return cyclic_interpolate(τ₁, τ₂, time)
 end
 
-u_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, parameters = τˣ)
-v_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, parameters = τʸ)
+u_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, parameters = - τˣ)
+v_wind_stress_bc = FluxBoundaryCondition(wind_stress, discrete_form = true, parameters = - τʸ)
 
 @inline u_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.u[i, j, 1]
 @inline v_bottom_drag(i, j, grid, clock, fields, μ) = @inbounds - μ * fields.v[i, j, 1]
 
 # Linear bottom drag:
-μ = Δz_bottom / 10days
+μ         = Δz_bottom / 10days
+μ_forcing = 10days
+
+@inline function u_immersed_drag(i, j, k, grid, clock, fields, μ)
+    u = @inbounds fields.u[i, j, k]
+    return ifelse(is_immersed_boundary(Face(), Center(), Face(), i, j, k, grid), 
+                  - μ * u,
+                 zero(eltype(grid)))
+end
+
+@inline function v_immersed_drag(i, j, k, grid, clock, fields, μ)
+    v = @inbounds fields.v[i, j, k]
+    return ifelse(is_immersed_boundary(Center(), Face(), Face(), i, j, k, grid), 
+                  - μ * v,
+                 zero(eltype(grid)))
+end
+
+Fu = Forcing(u_immersed_drag, discrete_form = true, parameters = μ_forcing)
+Fv = Forcing(v_immersed_drag, discrete_form = true, parameters = μ_forcing)
 
 u_bottom_drag_bc = FluxBoundaryCondition(u_bottom_drag, discrete_form = true, parameters = μ)
 v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag, discrete_form = true, parameters = μ)
@@ -181,19 +192,19 @@ u_bcs = FieldBoundaryConditions(top = u_wind_stress_bc, bottom = u_bottom_drag_b
 v_bcs = FieldBoundaryConditions(top = v_wind_stress_bc, bottom = v_bottom_drag_bc)
 T_bcs = FieldBoundaryConditions(top = T_surface_relaxation_bc)
 
-# @inline function u_immersed_bottom_drag(i, j, k, grid, clock, fields, ν)
+free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, preconditioner_method=:SparseInverse,
+                                   preconditioner_settings = (ε = 0.01, nzrel = 6))
 
 model = HydrostaticFreeSurfaceModel(grid = grid,
-                                    # free_surface = ExplicitFreeSurface(),
-                                    # free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient),
-                                    free_surface = ImplicitFreeSurface(solver_method=:MatrixIterativeSolver),
+                                    free_surface = free_surface,
                                     momentum_advection = VectorInvariant(),
                                     tracer_advection = WENO5(),
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     boundary_conditions = (u=u_bcs, v=v_bcs, T=T_bcs),
                                     buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState(α=2e-4, β=0.0)),
                                     tracers = (:T, :S),
-                                    closure = (background_diffusivity, convective_adjustment))
+                                    closure = (background_diffusivity, convective_adjustment)) #,
+                                    # forcing = (u=Fu, v=Fv))
 
 #####
 ##### Initial condition:
@@ -224,7 +235,7 @@ else
     Δt = 20minutes
 end
 
-simulation = Simulation(model, Δt = Δt, stop_time = 30year)
+simulation = Simulation(model, Δt = Δt, stop_time = 5years)
 
 start_time = [time_ns()]
 
@@ -232,20 +243,12 @@ function progress(sim)
     wall_time = (time_ns() - start_time[1]) * 1e-9
 
     η = model.free_surface.η
-
-    if model.free_surface isa ExplicitFreeSurface
-        @info @sprintf("Time: % 12s, iteration: %d, max(|η|): %.2e m, wall time: %s",
-                       prettytime(sim.model.clock.time),
-                       sim.model.clock.iteration,
-                       maximum(abs, η),
-                       prettytime(wall_time))
-    else 
-        @info @sprintf("Time: % 12s, iteration: %d, max(|η|): %.2e m, wall time: %s",
-                       prettytime(sim.model.clock.time),
-                       sim.model.clock.iteration,
-                       maximum(abs, η),
-                       prettytime(wall_time))
-    end
+    u = model.velocities.u
+    @info @sprintf("Time: % 12s, iteration: %d, max(|η|): %.2e m, max(|u|): %.2e ms⁻¹, wall time: %s",
+                    prettytime(sim.model.clock.time),
+                    sim.model.clock.iteration,
+                    maximum(abs, η), maximum(abs, u),
+                    prettytime(wall_time))
 
     start_time[1] = time_ns()
 
@@ -293,9 +296,11 @@ run!(simulation)
     Time step: $(prettytime(Δt))
 """
 
-#####
-##### Visualize solution
-#####
+####
+#### Visualize solution
+####
+
+# using GLMakie
 
 # surface_file = jldopen(output_prefix * "_surface.jld2")
 # bottom_file = jldopen(output_prefix * "_bottom.jld2")
@@ -331,27 +336,27 @@ run!(simulation)
 # fig = Figure(resolution = (1200, 900))
 
 # ax = Axis(fig[1, 1], title="Free surface displacement (m)")
-# hm = heatmap!(ax, η, colorrange=(min_η, max_η), colormap=:balance)
+# hm = GLMakie.heatmap!(ax, η, colorrange=(min_η, max_η), colormap=:balance)
 # cb = Colorbar(fig[1, 2], hm)
 
 # ax = Axis(fig[2, 1], title="Sea surface temperature (ᵒC)")
-# hm = heatmap!(ax, T, colorrange=(min_T, max_T), colormap=:thermal)
+# hm = GLMakie.heatmap!(ax, T, colorrange=(min_T, max_T), colormap=:thermal)
 # cb = Colorbar(fig[2, 2], hm)
 
 # ax = Axis(fig[1, 3], title="East-west surface velocity (m s⁻¹)")
-# hm = heatmap!(ax, u, colorrange=(min_u, max_u), colormap=:balance)
+# hm = GLMakie.heatmap!(ax, u, colorrange=(min_u, max_u), colormap=:balance)
 # cb = Colorbar(fig[1, 4], hm)
 
 # ax = Axis(fig[2, 3], title="North-south surface velocity (m s⁻¹)")
-# hm = heatmap!(ax, v, colorrange=(min_u, max_u), colormap=:balance)
+# hm = GLMakie.heatmap!(ax, v, colorrange=(min_u, max_u), colormap=:balance)
 # cb = Colorbar(fig[2, 4], hm)
 
 # ax = Axis(fig[3, 1], title="East-west bottom velocity (m s⁻¹)")
-# hm = heatmap!(ax, ub, colorrange=(min_u, max_u), colormap=:balance)
-# cb = Colorbar(fig[3, 2], hm)
+# hm = GLMakie.heatmap!(ax, ub, colorrange=(min_u, max_u), colormap=:balance)
+# cb = GLMakie.Colorbar(fig[3, 2], hm)
 
 # ax = Axis(fig[3, 3], title="North-south bottom velocity (m s⁻¹)")
-# hm = heatmap!(ax, vb, colorrange=(min_u, max_u), colormap=:balance)
+# hm = GLMakie.heatmap!(ax, vb, colorrange=(min_u, max_u), colormap=:balance)
 # cb = Colorbar(fig[3, 4], hm)
 
 # title_str = @lift "Earth day = " * ti($iter)

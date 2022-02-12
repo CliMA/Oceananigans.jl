@@ -4,12 +4,9 @@ using Dates: AbstractTime, now
 
 using Oceananigans.Fields
 
-using Oceananigans: short_show
-using Oceananigans.Utils: show_schedule
 using Oceananigans.Grids: topology, halo_size, all_x_nodes, all_y_nodes, all_z_nodes
 using Oceananigans.Utils: versioninfo_with_gpu, oceananigans_versioninfo
 using Oceananigans.TimeSteppers: float_or_date_time
-using Oceananigans.Diagnostics: WindowedSpatialAverage
 using Oceananigans.Fields: reduced_dimensions, reduced_location, location, FieldSlicer, parent_slice_indices
 
 dictify(outputs) = outputs
@@ -181,13 +178,13 @@ to separate NetCDF files:
 ```jldoctest netcdf1
 using Oceananigans
 
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1));
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
-model = NonhydrostaticModel(grid=grid, tracers=:c);
+model = NonhydrostaticModel(grid=grid, tracers=:c)
 
-simulation = Simulation(model, Δt=12, stop_time=3600);
+simulation = Simulation(model, Δt=12, stop_time=3600)
 
-fields = Dict("u" => model.velocities.u, "c" => model.tracers.c);
+fields = Dict("u" => model.velocities.u, "c" => model.tracers.c)
 
 simulation.output_writers[:field_writer] =
     NetCDFOutputWriter(model, fields, filepath="fields.nc", schedule=TimeInterval(60))
@@ -237,22 +234,22 @@ provided that their `dimensions` are provided:
 ```jldoctest
 using Oceananigans
 
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3));
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 2, 3))
 
-model = NonhydrostaticModel(grid=grid);
+model = NonhydrostaticModel(grid=grid)
 
-simulation = Simulation(model, Δt=1.25, stop_iteration=3);
+simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
 f(model) = model.clock.time^2; # scalar output
 
-g(model) = model.clock.time .* exp.(znodes(Center, grid)); # vector/profile output
+g(model) = model.clock.time .* exp.(znodes(Center, grid)) # vector/profile output
 
 h(model) = model.clock.time .* (   sin.(xnodes(Center, grid, reshape=true)[:, :, 1])
-                            .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1])); # xy slice output
+                            .*     cos.(ynodes(Face, grid, reshape=true)[:, :, 1])) # xy slice output
 
-outputs = Dict("scalar" => f, "profile" => g, "slice" => h);
+outputs = Dict("scalar" => f, "profile" => g, "slice" => h)
 
-dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"));
+dims = Dict("scalar" => (), "profile" => ("zC",), "slice" => ("xC", "yC"))
 
 output_attributes = Dict(
     "scalar"  => Dict("longname" => "Some scalar", "units" => "bananas"),
@@ -260,7 +257,7 @@ output_attributes = Dict(
     "slice"   => Dict("longname" => "Some slice", "units" => "mushrooms")
 );
 
-global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7);
+global_attributes = Dict("location" => "Bay of Fundy", "onions" => 7)
 
 simulation.output_writers[:things] =
     NetCDFOutputWriter(model, outputs,
@@ -392,20 +389,6 @@ define_output_variable!(dataset, output::WindowedTimeAverage{<:AbstractField}, a
     define_output_variable!(dataset, output.operand, args...)
 
 
-""" Defines variable for WindowedSpatialAverage outputs """
-function define_output_variable!(dataset,
-                                 wtsa::Union{WindowedSpatialAverage, WindowedTimeAverage{<:WindowedSpatialAverage}},
-                                 name, array_type, compression, attributes, dimensions)
-    wsa = wtsa isa WindowedTimeAverage ? wtsa.operand : wtsa
-    LX, LY, LZ = reduced_location(location(wsa.field), dims=wsa.dims)
-
-    output_dims = tuple(xdim(LX)..., ydim(LY)..., zdim(LZ)...)
-    defVar(dataset, name, eltype(array_type), (output_dims..., "time"),
-           compression=compression, attrib=attributes)
-    return nothing
-end
-
-
 #####
 ##### Write output
 #####
@@ -494,10 +477,10 @@ function Base.show(io::IO, ow::NetCDFOutputWriter)
 
     averaging_schedule = output_averaging_schedule(ow)
 
-    print(io, "NetCDFOutputWriter scheduled on $(show_schedule(ow.schedule)):", '\n',
+    print(io, "NetCDFOutputWriter scheduled on $(summary(ow.schedule)):", '\n',
         "├── filepath: $(ow.filepath)", '\n',
         "├── dimensions: $dims", '\n',
         "├── $(length(ow.outputs)) outputs: $(keys(ow.outputs))", show_averaging_schedule(averaging_schedule), '\n',
-        "├── field slicer: $(short_show(ow.field_slicer))", '\n',
+        "├── field slicer: $(summary(ow.field_slicer))", '\n',
         "└── array type: ", show_array_type(ow.array_type))
 end

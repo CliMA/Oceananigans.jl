@@ -271,21 +271,39 @@ for arch in archs
         end
 
         @testset "BinaryOperations with GridMetricOperation [$(typeof(arch))]" begin
-            grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(2, 3, 4))
-            
-            c = CenterField(grid)
-            c .= 1
+            lat_lon_grid = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(0, 1), latitude=(0, 1), z=(0, 1))
+            rectilinear_grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(2, 3, 4))
 
-            # Δx, Δy, Δz = 2, 3, 4
-            # Ax, Ay, Az = 12, 8, 6
-            # volume = 24
-            op = c * AbstractOperations.Δx;     @test op[1, 1, 1] == 2
-            op = c * AbstractOperations.Δy;     @test op[1, 1, 1] == 3
-            op = c * AbstractOperations.Δz;     @test op[1, 1, 1] == 4
-            op = c * AbstractOperations.Ax;     @test op[1, 1, 1] == 12
-            op = c * AbstractOperations.Ay;     @test op[1, 1, 1] == 8
-            op = c * AbstractOperations.Az;     @test op[1, 1, 1] == 6
-            op = c * AbstractOperations.volume; @test op[1, 1, 1] == 24
+            for LX in (Center, Face)
+                for LY in (Center, Face)
+                    for LZ in (Center, Face)
+                        loc = (LX, LY, LZ)
+                        f = Field(loc, rectilinear_grid)
+                        f .= 1
+            
+                        # Δx, Δy, Δz = 2, 3, 4
+                        # Ax, Ay, Az = 12, 8, 6
+                        # volume = 24
+                        op = f * AbstractOperations.Δx;     @test op[1, 1, 1] == 2
+                        op = f * AbstractOperations.Δy;     @test op[1, 1, 1] == 3
+                        op = f * AbstractOperations.Δz;     @test op[1, 1, 1] == 4
+                        op = f * AbstractOperations.Ax;     @test op[1, 1, 1] == 12
+                        op = f * AbstractOperations.Ay;     @test op[1, 1, 1] == 8
+                        op = f * AbstractOperations.Az;     @test op[1, 1, 1] == 6
+                        op = f * AbstractOperations.volume; @test op[1, 1, 1] == 24
+
+                        # Here we are really testing that `op` can be called
+                        f = Field(loc, lat_lon_grid)
+                        op = f * AbstractOperations.Δx;     @test op[1, 1, 1] == 0
+                        op = f * AbstractOperations.Δy;     @test op[1, 1, 1] == 0
+                        op = f * AbstractOperations.Δz;     @test op[1, 1, 1] == 0
+                        op = f * AbstractOperations.Ax;     @test op[1, 1, 1] == 0
+                        op = f * AbstractOperations.Ay;     @test op[1, 1, 1] == 0
+                        op = f * AbstractOperations.Az;     @test op[1, 1, 1] == 0
+                        op = f * AbstractOperations.volume; @test op[1, 1, 1] == 0
+                    end
+                end
+            end
         end
     end
 end

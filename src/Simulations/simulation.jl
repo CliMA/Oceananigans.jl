@@ -119,7 +119,7 @@ iteration(sim::Simulation) = sim.model.clock.iteration
 
 Return `sim.model.clock.time` as a prettily formatted string."
 """
-prettytime(sim::Simulation) = prettytime(time(sim))
+prettytime(sim::Simulation, longform=true) = prettytime(time(sim))
 
 """
     run_wall_time(sim::Simulation)

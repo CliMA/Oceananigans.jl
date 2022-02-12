@@ -3,28 +3,28 @@
 #####
 
 # Diagonal
-@inline ∂x_u(i, j, k, grid, u) = ∂xᶜᶜᵃ(i, j, k, grid, u)
-@inline ∂y_v(i, j, k, grid, v) = ∂yᶜᶜᵃ(i, j, k, grid, v)
-@inline ∂z_w(i, j, k, grid, w) = ∂zᵃᵃᶜ(i, j, k, grid, w)
+@inline ∂x_u(i, j, k, grid, u) = ∂xᶜᶜᶜ(i, j, k, grid, u)
+@inline ∂y_v(i, j, k, grid, v) = ∂yᶜᶜᶜ(i, j, k, grid, v)
+@inline ∂z_w(i, j, k, grid, w) = ∂zᶜᶜᶜ(i, j, k, grid, w)
 
 # Off-diagonal
-@inline ∂x_v(i, j, k, grid, v) = ∂xᶠᶠᵃ(i, j, k, grid, v)
-@inline ∂x_w(i, j, k, grid, w) = ∂xᶠᶜᵃ(i, j, k, grid, w)
+@inline ∂x_v(i, j, k, grid, v) = ∂xᶠᶠᶜ(i, j, k, grid, v)
+@inline ∂x_w(i, j, k, grid, w) = ∂xᶠᶜᶜ(i, j, k, grid, w)
 
-@inline ∂y_u(i, j, k, grid, u) = ∂yᶠᶠᵃ(i, j, k, grid, u)
-@inline ∂y_w(i, j, k, grid, w) = ∂yᶜᶠᵃ(i, j, k, grid, w)
+@inline ∂y_u(i, j, k, grid, u) = ∂yᶠᶠᶜ(i, j, k, grid, u)
+@inline ∂y_w(i, j, k, grid, w) = ∂yᶜᶠᶜ(i, j, k, grid, w)
 
-@inline ∂z_u(i, j, k, grid, u) = ∂zᵃᵃᶠ(i, j, k, grid, u)
-@inline ∂z_v(i, j, k, grid, v) = ∂zᵃᵃᶠ(i, j, k, grid, v)
+@inline ∂z_u(i, j, k, grid, u) = ∂zᶠᶜᶠ(i, j, k, grid, u)
+@inline ∂z_v(i, j, k, grid, v) = ∂zᶜᶠᶠ(i, j, k, grid, v)
 
 #####
 ##### Strain components
 #####
 
 # ccc strain components
-@inline Σ₁₁(i, j, k, grid, u) = ∂xᶜᶜᵃ(i, j, k, grid, u)
-@inline Σ₂₂(i, j, k, grid, v) = ∂yᶜᶜᵃ(i, j, k, grid, v)
-@inline Σ₃₃(i, j, k, grid, w) = ∂zᵃᵃᶜ(i, j, k, grid, w)
+@inline Σ₁₁(i, j, k, grid, u) = ∂xᶜᶜᶜ(i, j, k, grid, u)
+@inline Σ₂₂(i, j, k, grid, v) = ∂yᶜᶜᶜ(i, j, k, grid, v)
+@inline Σ₃₃(i, j, k, grid, w) = ∂zᶜᶜᶜ(i, j, k, grid, w)
 
 @inline tr_Σ(i, j, k, grid, u, v, w) =
     Σ₁₁(i, j, k, grid, u) + Σ₂₂(i, j, k, grid, v) + Σ₃₃(i, j, k, grid, w)
@@ -114,9 +114,9 @@ const Σ₃₂ = Σ₂₃
 ##### Tracer gradients
 #####
 
-@inline ∂x_c²(ijk...) = ∂xᶠᵃᵃ(ijk...)^2
-@inline ∂y_c²(ijk...) = ∂yᵃᶠᵃ(ijk...)^2
-@inline ∂z_c²(ijk...) = ∂zᵃᵃᶠ(ijk...)^2
+@inline ∂x_c²(ijk...) = ∂xᶠᶜᶜ(ijk...)^2
+@inline ∂y_c²(ijk...) = ∂yᶜᶠᶜ(ijk...)^2
+@inline ∂z_c²(ijk...) = ∂zᶜᶜᶠ(ijk...)^2
 
 #####
 ##### Normalized gradients
@@ -149,9 +149,9 @@ const norm_∂z_w = ∂z_w
     Δᶠz_cff(i, j, k, grid) / Δᶠy_cff(i, j, k, grid) * ∂z_v(i, j, k, grid, v)
 
 # tracers
-@inline norm_∂x_c(i, j, k, grid, c) = Δᶠx_fcc(i, j, k, grid) * ∂xᶠᶜᵃ(i, j, k, grid, c)
-@inline norm_∂y_c(i, j, k, grid, c) = Δᶠy_cfc(i, j, k, grid) * ∂yᶜᶠᵃ(i, j, k, grid, c)
-@inline norm_∂z_c(i, j, k, grid, c) = Δᶠz_ccf(i, j, k, grid) * ∂zᵃᵃᶠ(i, j, k, grid, c)
+@inline norm_∂x_c(i, j, k, grid, c) = Δᶠx_fcc(i, j, k, grid) * ∂xᶠᶜᶜ(i, j, k, grid, c)
+@inline norm_∂y_c(i, j, k, grid, c) = Δᶠy_cfc(i, j, k, grid) * ∂yᶜᶠᶜ(i, j, k, grid, c)
+@inline norm_∂z_c(i, j, k, grid, c) = Δᶠz_ccf(i, j, k, grid) * ∂zᶜᶜᶠ(i, j, k, grid, c)
 
 #####
 ##### Strain operators

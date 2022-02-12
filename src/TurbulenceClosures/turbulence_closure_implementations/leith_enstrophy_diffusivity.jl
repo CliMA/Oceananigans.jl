@@ -18,7 +18,9 @@ struct TwoDimensionalLeith{FT, CR, GM, M} <: AbstractTurbulenceClosure{ExplicitT
 end
 
 """
-    TwoDimensionalLeith([FT=Float64;] C=0.3, C_Redi=1, C_GM=1)
+    TwoDimensionalLeith(FT=Float64;
+                        C=0.3, C_Redi=1, C_GM=1,
+                        isopycnal_model=SmallSlopeIsopycnalTensor())
 
 Return a `TwoDimensionalLeith` type associated with the turbulence closure proposed by
 Leith (1965) and Fox-Kemper & Menemenlis (2008) which has an eddy viscosity of the form
@@ -60,14 +62,15 @@ TwoDimensionalLeith(FT=Float64; C=0.3, C_Redi=1, C_GM=1, isopycnal_model=SmallSl
 function with_tracers(tracers, closure::TwoDimensionalLeith{FT}) where FT
     C_Redi = tracer_diffusivities(tracers, closure.C_Redi)
     C_GM = tracer_diffusivities(tracers, closure.C_GM)
+
     return TwoDimensionalLeith{FT}(closure.C, C_Redi, C_GM, closure.isopycnal_model)
 end
 
 @inline function abs²_∇h_ζ(i, j, k, grid, U)
-    vxx = ℑyᵃᶜᵃ(i, j, k, grid, ∂²xᶜᵃᵃ, U.v)
-    uyy = ℑxᶜᵃᵃ(i, j, k, grid, ∂²yᵃᶜᵃ, U.u)
-    uxy = ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶜᵃᵃ, ∂yᵃᶠᵃ, U.u)
-    vxy = ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᵃᵃ, ∂yᵃᶜᵃ, U.v)
+    vxx = ℑyᵃᶜᵃ(i, j, k, grid, ∂²xᶜᶠᶜ, U.v)
+    uyy = ℑxᶜᵃᵃ(i, j, k, grid, ∂²yᶠᶜᶜ, U.u)
+    uxy = ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶜᶠᶜ, ∂yᶠᶠᶜ, U.u)
+    vxy = ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶜᶜ, ∂yᶜᶜᶜ, U.v)
 
     return (vxx - uxy)^2 + (vxy - uyy)^2
 end
@@ -78,8 +81,8 @@ const ArrayOrField = Union{AbstractArray, AbstractField}
 @inline ψ²(i, j, k, grid, ψ::ArrayOrField, args...) = @inbounds ψ[i, j, k]^2
 
 @inline function abs²_∇h_wz(i, j, k, grid, w)
-    wxz² = ℑxᶜᵃᵃ(i, j, k, grid, ψ², ∂xᶠᵃᵃ, ∂zᵃᵃᶜ, w)
-    wyz² = ℑyᵃᶜᵃ(i, j, k, grid, ψ², ∂yᵃᶠᵃ, ∂zᵃᵃᶜ, w)
+    wxz² = ℑxᶜᵃᵃ(i, j, k, grid, ψ², ∂xᶠᶜᶜ, ∂zᶜᶜᶜ, w)
+    wyz² = ℑyᵃᶜᵃ(i, j, k, grid, ψ², ∂yᶜᶠᶜ, ∂zᶜᶜᶜ, w)
     return wxz² + wyz²
 end
 
@@ -103,8 +106,8 @@ end
 
     νₑⁱʲᵏ = ℑxᶠᵃᵃ(i, j, k, grid, νₑ)
 
-    ∂x_c = ∂xᶠᵃᵃ(i, j, k, grid, c)
-    ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
+    ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
+    ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₁₃ = isopycnal_rotation_tensor_xz_fcc(i, j, k, grid, buoyancy, C, closure.isopycnal_model)
 
@@ -122,8 +125,8 @@ end
 
     νₑⁱʲᵏ = ℑyᵃᶠᵃ(i, j, k, grid, νₑ)
 
-    ∂y_c = ∂yᵃᶠᵃ(i, j, k, grid, c)
-    ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᵃᵃᶠ, c)
+    ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
+    ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₂₃ = isopycnal_rotation_tensor_yz_cfc(i, j, k, grid, buoyancy, C, closure.isopycnal_model)
     return - νₑⁱʲᵏ * (                  C_Redi * ∂y_c
@@ -140,9 +143,9 @@ end
 
     νₑⁱʲᵏ = ℑzᵃᵃᶠ(i, j, k, grid, νₑ)
 
-    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᵃᵃ, c)
-    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵃᶠᵃ, c)
-    ∂z_c = ∂zᵃᵃᶠ(i, j, k, grid, c)
+    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
+    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
 
     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, C, closure.isopycnal_model)
     R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, C, closure.isopycnal_model)
@@ -186,11 +189,12 @@ function calculate_diffusivities!(diffusivity_fields, closure::TwoDimensionalLei
 end
 
 "Return the filter width for a Leith Diffusivity on a regular rectilinear grid."
-@inline Δᶠ(i, j, k, grid::RectilinearGrid, ::TwoDimensionalLeith) = sqrt(Δxᶜᶜᵃ(i, j, k, grid) * Δyᶜᶜᵃ(i, j, k, grid)) 
+@inline Δᶠ(i, j, k, grid::RectilinearGrid, ::TwoDimensionalLeith) = sqrt(Δxᶜᶜᶜ(i, j, k, grid) * Δyᶜᶜᶜ(i, j, k, grid)) 
 
 function DiffusivityFields(grid, tracer_names, bcs, ::L2D)
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center, Center, Center)))
     bcs = merge(default_eddy_viscosity_bcs, bcs)
     νₑ = CenterField(grid, boundary_conditions=bcs.νₑ)
+    
     return (; νₑ)
 end

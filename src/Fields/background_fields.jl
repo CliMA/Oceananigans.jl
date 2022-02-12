@@ -1,3 +1,5 @@
+using Oceananigans.Utils: prettysummary
+
 # TODO: This code belongs in the Models module
 
 function BackgroundVelocityFields(bg, grid, clock)
@@ -31,7 +33,7 @@ end
 """
     BackgroundField{F, P}
 
-Temporary container for storing information about BackgroundFields.
+Temporary container for storing information about `BackgroundFields`.
 """
 struct BackgroundField{F, P}
     func:: F
@@ -74,5 +76,5 @@ end
 
 Base.show(io::IO, field::BackgroundField{F, P}) where {F, P} =
     print(io, "BackgroundField{$F, $P}", '\n',
-          "├── func: $(short_show(field.func))", '\n',
+          "├── func: $(prettysummary(field.func))", '\n',
           "└── parameters: $(field.parameters)")

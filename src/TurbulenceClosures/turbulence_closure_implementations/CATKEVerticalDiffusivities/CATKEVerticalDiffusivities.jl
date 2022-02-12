@@ -15,12 +15,14 @@ using Oceananigans.Operators: ℑzᵃᵃᶜ
 using Oceananigans.TurbulenceClosures:
     get_closure_ij,
     AbstractTurbulenceClosure,
+    AbstractIsotropicDiffusivity,
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization
 
 import Oceananigans.BoundaryConditions: getbc
 import Oceananigans.Utils: with_tracers
 import Oceananigans.TurbulenceClosures:
+    validate_closure,
     add_closure_specific_boundary_conditions,
     calculate_diffusivities!,
     DiffusivityFields,
@@ -58,11 +60,25 @@ const CATKEVD = CATKEVerticalDiffusivity
 
 # Support for "ManyIndependentColumnMode"
 const CATKEVDArray = AbstractArray{<:CATKEVD}
+const FlavorOfCATKE = Union{CATKEVD, CATKEVDArray}
 
-function with_tracers(tracer_names, closure::Union{CATKEVD, CATKEVDArray})
-    :e ∈ tracer_names || error("Tracers must contain :e to represent turbulent kinetic energy for `CATKEVerticalDiffusivity`.")
+function with_tracers(tracer_names, closure::FlavorOfCATKE)
+    :e ∈ tracer_names ||
+        throw(ArgumentError("Tracers must contain :e to represent turbulent kinetic energy " *
+                            "for `CATKEVerticalDiffusivity`."))
+
     return closure
 end
+
+# Closure tuple sorting
+validate_closure(closure_tuple::Tuple) = Tuple(sort(collect(closure_tuple), lt=catke_first))
+
+catke_first(closure1, catke::FlavorOfCATKE) = false
+catke_first(catke::FlavorOfCATKE, closure2) = true
+catke_first(closure1, closure2) = true
+
+# Two CATKEs?!
+catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have two CATKEs in one closure tuple.")
 
 include("mixing_length.jl")
 include("surface_TKE_flux.jl")
@@ -78,7 +94,8 @@ end
                              Cᴰ = 2.91,
                              mixing_length = MixingLength{FT}(),
                              surface_TKE_flux = SurfaceTKEFlux{FT}(),
-                             time_discretization::TD = VerticallyImplicitTimeDiscretization())
+                             warning = true,
+                             time_discretization::TD = VerticallyImplicitTimeDiscretization()) where TD
 
 Returns the `CATKEVerticalDiffusivity` turbulence closure for vertical mixing by
 small-scale ocean turbulence based on the prognostic evolution of subgrid
@@ -110,7 +127,7 @@ end
 ##### Diffusivities and diffusivity fields utilities
 #####
 
-function DiffusivityFields(grid, tracer_names, bcs, closure::Union{CATKEVD, CATKEVDArray})
+function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfCATKE)
 
     default_diffusivity_bcs = (Kᵘ = FieldBoundaryConditions(grid, (Center, Center, Center)),
                                Kᶜ = FieldBoundaryConditions(grid, (Center, Center, Center)),
@@ -125,7 +142,7 @@ function DiffusivityFields(grid, tracer_names, bcs, closure::Union{CATKEVD, CATK
     return (; Kᵘ, Kᶜ, Kᵉ)
 end        
 
-function calculate_diffusivities!(diffusivities, closure::Union{CATKEVD, CATKEVDArray}, model)
+function calculate_diffusivities!(diffusivities, closure::FlavorOfCATKE, model)
 
     arch = model.architecture
     grid = model.grid
@@ -145,7 +162,7 @@ function calculate_diffusivities!(diffusivities, closure::Union{CATKEVD, CATKEVD
     return nothing
 end
 
-@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::Union{CATKEVD, CATKEVDArray}, args...)
+@kernel function calculate_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, args...)
     i, j, k, = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
@@ -189,34 +206,41 @@ struct TKETracerIndex{N} end
 
 @inline function viscous_flux_uz(i, j, k, grid, closure::CATKEVD, clock, velocities, diffusivities, args...)
     Ku = ℑxzᶠᵃᶠ(i, j, k, grid, diffusivities.Kᵘ)
-    return - Ku * ∂zᵃᵃᶠ(i, j, k, grid, velocities.u)
+    return - Ku * ∂zᶠᶜᶠ(i, j, k, grid, velocities.u)
 end
 
 @inline function viscous_flux_vz(i, j, k, grid, closure::CATKEVD, clock, velocities, diffusivities, args...)
     Kv = ℑyzᵃᶠᶠ(i, j, k, grid, diffusivities.Kᵘ)
-    return - Kv * ∂zᵃᵃᶠ(i, j, k, grid, velocities.v)
+    return - Kv * ∂zᶜᶠᶠ(i, j, k, grid, velocities.v)
 end
 
 @inline function viscous_flux_wz(i, j, k, grid, closure::CATKEVD, clock, velocities, diffusivities, args...)
     @inbounds Kw = diffusivities.Kᵘ[i, j, k]
-    return - Kw * ∂zᵃᵃᶜ(i, j, k, grid, velocities.w)
+    return - Kw * ∂zᶜᶜᶜ(i, j, k, grid, velocities.w)
 end
 
 @inline function diffusive_flux_z(i, j, k, grid, closure::CATKEVD, c, tracer_index, clock, diffusivities, args...)
     Kcᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, diffusivities.Kᶜ)
-    return - Kcᶜᶜᶠ * ∂zᵃᵃᶠ(i, j, k, grid, c)
+    return - Kcᶜᶜᶠ * ∂zᶜᶜᶠ(i, j, k, grid, c)
 end
 
 # Diffusive flux of TKE!
 @inline function diffusive_flux_z(i, j, k, grid, closure::CATKEVD, e, ::TKETracerIndex, clock, diffusivities, args...)
     Keᶜᶜᶠ = ℑzᵃᵃᶠ(i, j, k, grid, diffusivities.Kᵉ)
-    return - Keᶜᶜᶠ * ∂zᵃᵃᶠ(i, j, k, grid, e)
+    return - Keᶜᶜᶠ * ∂zᶜᶜᶠ(i, j, k, grid, e)
 end
 
 # "Translations" for diffusive transport by non-CATKEVD closures
-@inline diffusive_flux_x(i, j, k, grid, closure, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_x(i, j, k, grid, closure, e, Val(N), args...)
-@inline diffusive_flux_y(i, j, k, grid, closure, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, closure, e, Val(N), args...)
-@inline diffusive_flux_z(i, j, k, grid, closure, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, closure, e, Val(N), args...)
+const ATC = AbstractTurbulenceClosure
+@inline diffusive_flux_x(i, j, k, grid, clo::ATC, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_x(i, j, k, grid, clo, e, Val(N), args...)
+@inline diffusive_flux_y(i, j, k, grid, clo::ATC, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, clo, e, Val(N), args...)
+@inline diffusive_flux_z(i, j, k, grid, clo::ATC, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
+
+# Disambiguiate
+const AID = AbstractIsotropicDiffusivity
+@inline diffusive_flux_x(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_x(i, j, k, grid, clo, e, Val(N), args...)
+@inline diffusive_flux_y(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_y(i, j, k, grid, clo, e, Val(N), args...)
+@inline diffusive_flux_z(i, j, k, grid, clo::AID, e, ::TKETracerIndex{N}, args...) where N = diffusive_flux_z(i, j, k, grid, clo, e, Val(N), args...)
 
 # Shortcuts --- CATKEVD incurs no horizontal transport
 @inline viscous_flux_ux(i, j, k, grid, ::CATKEVD, args...) = zero(eltype(grid))
@@ -238,9 +262,9 @@ end
 
 const VITD = VerticallyImplicitTimeDiscretization
 
-@inline z_viscosity(closure::Union{CATKEVD, CATKEVDArray}, diffusivities, args...) = diffusivities.Kᵘ
+@inline z_viscosity(closure::FlavorOfCATKE, diffusivities, args...) = diffusivities.Kᵘ
 
-@inline function z_diffusivity(closure::Union{CATKEVD, CATKEVDArray}, ::Val{tracer_index},
+@inline function z_diffusivity(closure::FlavorOfCATKE, ::Val{tracer_index},
                                diffusivities, tracers, args...) where tracer_index
 
     tke_index = findfirst(name -> name === :e, keys(tracers))
@@ -282,4 +306,15 @@ end
                   zero(FT))
 end
 
+
+#####
+##### Show
+#####
+Base.show(io::IO, closure::CATKEVD{TD}) where TD =
+    print(io, "CATKEVerticalDiffusivity with $(TD.name.name) and parameters: \n" *
+              "    Cᴰ = $(closure.Cᴰ), \n" * 
+              "    $(closure.mixing_length), \n" *
+              "    $(closure.surface_TKE_flux)")
+
 end
+

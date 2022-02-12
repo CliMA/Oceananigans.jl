@@ -1,27 +1,5 @@
+using Adapt
 using Oceananigans.Operators
-
-# Define aliases for some spacings and areas at all locations.
-for LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
-
-    x_spacing_alias = Symbol(:Δx, LX, LY, LZ)
-    y_spacing_alias = Symbol(:Δy, LX, LY, LZ)
-    z_spacing_alias = Symbol(:Δz, LX, LY, LZ)
-
-    z_area_alias = Symbol(:Az, LX, LY, LZ)
-
-    x_spacing_function = Symbol(:Δx, LX, LY, :ᵃ)
-    y_spacing_function = Symbol(:Δy, LX, LY, :ᵃ)
-    z_spacing_function = Symbol(:Δz, :ᵃᵃ, LZ)
-
-    z_area_function = Symbol(:Az, LX, LY, :ᵃ)
-
-    @eval begin
-        const $x_spacing_alias = $x_spacing_function
-        const $y_spacing_alias = $y_spacing_function
-        const $z_spacing_alias = $z_spacing_function
-        const $z_area_alias = $z_area_function
-    end
-end
 
 abstract type AbstractGridMetric end
 
@@ -70,12 +48,11 @@ julia> grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 2, 3)); c = CenterField
 
 julia> c_dz = c * Δz # returns BinaryOperation between Field and GridMetricOperation
 BinaryOperation at (Center, Center, Center)
-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
-│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [-3.0, 0.0]
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     * at (Center, Center, Center)
-    ├── Field located at (Center, Center, Center)
-    └── Δzᵃᵃᶜ at (Center, Center, Center)
+    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    └── Δzᶜᶜᶜ at (Center, Center, Center)
 
 julia> c .= 1;
 
@@ -111,11 +88,10 @@ julia> c .= 1;
 
 julia> c_dV = c * volume
 BinaryOperation at (Center, Center, Center)
-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=2, Ny=2, Nz=2)
-│   └── domain: x ∈ [0.0, 1.0], y ∈ [0.0, 2.0], z ∈ [-3.0, 0.0]
+├── grid: 2×2×2 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     * at (Center, Center, Center)
-    ├── Field located at (Center, Center, Center)
+    ├── 2×2×2 Field{Center, Center, Center} on RectilinearGrid on CPU
     └── Vᶜᶜᶜ at (Center, Center, Center)
 
 julia> c_dV[1, 1, 1]
@@ -150,8 +126,13 @@ struct GridMetricOperation{LX, LY, LZ, G, T, M} <: AbstractOperation{LX, LY, LZ,
     end
 end
 
+Adapt.adapt_structure(to, gm::GridMetricOperation{LX, LY, LZ}) where {LX, LY, LZ}=
+         GridMetricOperation{LX, LY, LZ}(Adapt.adapt(to, gm.metric),
+                                         Adapt.adapt(to, gm.grid))
+
 @inline Base.getindex(gm::GridMetricOperation, i, j, k) = gm.metric(i, j, k, gm.grid)
 
 # Special constructor for BinaryOperation
 GridMetricOperation(L, metric, grid) = GridMetricOperation{L[1], L[2], L[3]}(metric_function(L, metric), grid)
+
 

@@ -57,7 +57,10 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization} end
 @inline get_closure_ij(i, j, closure::AbstractTurbulenceClosure) = closure
 
 # Fallbacks
-add_closure_specific_boundary_conditions(closure, boundary_conditions, args...) = boundary_conditions
+validate_closure(closure) = closure
+
+const ClosureKinda = Union{Nothing, AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}}
+add_closure_specific_boundary_conditions(closure::ClosureKinda, bcs, args...) = bcs
 
 #####
 ##### Include module code

@@ -54,8 +54,8 @@ model.background_fields.velocities.u
 
 # output
 FunctionField located at (Face, Center, Center)
-├── func: U
-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── func: U (generic function with 1 method)
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── clock: Clock(time=0 seconds, iteration=0)
 └── parameters: nothing
 ```
@@ -72,7 +72,7 @@ using Oceananigans
 
 parameters = (α=3.14, N=1.0, f=0.1)
 
-## Background fields are defined via function of x, y, z, t, and optional parameters
+# Background fields are defined via function of x, y, z, t, and optional parameters
 U(x, y, z, t, α) = α * z
 B(x, y, z, t, p) = - p.α * p.f * y + p.N^2 * z 
 
@@ -81,11 +81,11 @@ B_field = BackgroundField(B, parameters=parameters)
 
 # output
 BackgroundField{typeof(B), NamedTuple{(:α, :N, :f), Tuple{Float64, Float64, Float64}}}
-├── func: B
+├── func: B (generic function with 1 method)
 └── parameters: (α = 3.14, N = 1.0, f = 0.1)
 ```
 
-When inserted into `NonhydrostaticModel`, we get out
+When inserted into `NonhydrostaticModel`, we get
 
 ```jldoctest moar_background
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
@@ -97,8 +97,9 @@ model.background_fields.tracers.b
 
 # output
 FunctionField located at (Center, Center, Center)
-├── func: B
-├── grid: RectilinearGrid{Float64, Periodic, Periodic, Bounded}(Nx=1, Ny=1, Nz=1)
+├── func: B (generic function with 1 method)
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── clock: Clock(time=0 seconds, iteration=0)
 └── parameters: (α = 3.14, N = 1.0, f = 0.1)
 ```
+

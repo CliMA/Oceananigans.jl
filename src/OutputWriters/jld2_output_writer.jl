@@ -318,10 +318,10 @@ function Base.show(io::IO, ow::JLD2OutputWriter)
 
     averaging_schedule = output_averaging_schedule(ow)
 
-    print(io, "JLD2OutputWriter scheduled on $(show_schedule(ow.schedule)):", '\n',
+    print(io, "JLD2OutputWriter scheduled on $(summary(ow.schedule)):", '\n',
         "├── filepath: $(ow.filepath)", '\n',
         "├── $(length(ow.outputs)) outputs: $(keys(ow.outputs))", show_averaging_schedule(averaging_schedule), '\n',
-        "├── field slicer: $(short_show(ow.field_slicer))", '\n',
+        "├── field slicer: $(summary(ow.field_slicer))", '\n',
         "├── array type: ", show_array_type(ow.array_type), '\n',
         "├── including: ", ow.including, '\n',
         "└── max filesize: ", pretty_filesize(ow.max_filesize))
