@@ -61,18 +61,6 @@ end
 ##### Convenience "vanilla" viscous flux functions
 #####
 
-@inline viscous_flux_ux(i, j, k, grid, clock, ν, u) = - νᶜᶜᶜ(i, j, k, grid, clock, ν) * ∂xᶜᶜᶜ(i, j, k, grid, u)
-@inline viscous_flux_uy(i, j, k, grid, clock, ν, u) = - νᶠᶠᶜ(i, j, k, grid, clock, ν) * ∂yᶠᶠᶜ(i, j, k, grid, u)
-@inline viscous_flux_uz(i, j, k, grid, clock, ν, u) = - νᶠᶜᶠ(i, j, k, grid, clock, ν) * ∂zᶠᶜᶠ(i, j, k, grid, u)
-
-@inline viscous_flux_vx(i, j, k, grid, clock, ν, v) = - νᶠᶠᶜ(i, j, k, grid, clock, ν) * ∂xᶠᶠᶜ(i, j, k, grid, v)
-@inline viscous_flux_vy(i, j, k, grid, clock, ν, v) = - νᶜᶜᶜ(i, j, k, grid, clock, ν) * ∂yᶜᶜᶜ(i, j, k, grid, v)
-@inline viscous_flux_vz(i, j, k, grid, clock, ν, v) = - νᶜᶠᶠ(i, j, k, grid, clock, ν) * ∂zᶜᶠᶠ(i, j, k, grid, v)
-
-@inline viscous_flux_wx(i, j, k, grid, clock, ν, w) = - νᶠᶜᶠ(i, j, k, grid, clock, ν) * ∂xᶠᶜᶠ(i, j, k, grid, w)
-@inline viscous_flux_wy(i, j, k, grid, clock, ν, w) = - νᶜᶠᶠ(i, j, k, grid, clock, ν) * ∂yᶜᶠᶠ(i, j, k, grid, w)
-@inline viscous_flux_wz(i, j, k, grid, clock, ν, w) = - νᶜᶜᶜ(i, j, k, grid, clock, ν) * ∂zᶜᶜᶜ(i, j, k, grid, w)
-
 #####
 ##### Products of viscosity and divergence, vorticity, vertical momentum gradients
 #####
