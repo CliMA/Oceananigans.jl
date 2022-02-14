@@ -1,12 +1,10 @@
 import Oceananigans.Grids: required_halo_size
 
-
-
 struct ScalarDiffusivity{TD, Dir, N, K} 
     ν :: N
     κ :: K
 
-    function ScalarDiffusivity{TD, Dir}(ν::N, κ::K) where {TD, N, K}
+    function ScalarDiffusivity{TD, Dir}(ν::N, κ::K) where {TD, Dir, N, K}
         return new{TD, Dir, N, K}(ν, κ)
     end
 end
@@ -47,14 +45,11 @@ function with_tracers(tracers, closure::ScalarDiffusivity{TD, Dir}) where {TD, D
     return ScalarDiffusivity{TD, Dir}(closure.ν, κ)
 end
 
-calculate_diffusivities!(diffusivities, closure::ScalarDiffusivity, args...) = nothing
-
 @inline diffusivity(closure::ScalarDiffusivity, ::Val{tracer_index}, args...) where tracer_index = closure.κ[tracer_index]
-@inline viscosity(closure::ScalarDiffusivity, args...) = closure.ν
                         
 Base.show(io::IO, closure::ScalarDiffusivity{TD, Dir}) = 
     print(io, "ScalarDiffusivity:\n",
-              "ν=$(closure.ν), κ=$(closure.κ)"
+              "ν=$(closure.ν), κ=$(closure.κ)",
               "time discretization: $(time_discretization(closure))\n",
               "direction: $TD")
 
@@ -66,23 +61,21 @@ const ID = ScalarDiffusivity{<:Any, <:ThreeDimensional}
 const HD = ScalarDiffusivity{<:Any, <:Horizontal}
 const VD = ScalarDiffusivity{<:Any, <:Vertical}
 
-@inline viscous_flux_ux(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₁₁, U.u, U.v, U.w)
-@inline viscous_flux_vx(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₂₁, U.u, U.v, U.w)
-@inline viscous_flux_wx(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₃₁, U.u, U.v, U.w)
+@inline viscous_flux_ux(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, closure.ν, Σ₁₁, U.u, U.v, U.w)
+@inline viscous_flux_vx(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clock, closure.ν, Σ₂₁, U.u, U.v, U.w)
+@inline viscous_flux_wx(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clock, closure.ν, Σ₃₁, U.u, U.v, U.w)
+@inline viscous_flux_uy(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clock, closure.ν, Σ₁₂, U.u, U.v, U.w)
+@inline viscous_flux_vy(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, closure.ν, Σ₂₂, U.u, U.v, U.w)
+@inline viscous_flux_wy(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clock, closure.ν, Σ₃₂, U.u, U.v, U.w)
 
-@inline viscous_flux_ux(i, j, k, grid, closure::HD, clock, U, args...) = - ν_δᶜᶜᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   
-@inline viscous_flux_vx(i, j, k, grid, closure::HD, clock, U, args...) = - ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)
+@inline viscous_flux_ux(i, j, k, grid, closure::HD, clock, U, args...) = - ν_δᶜᶜᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)   
+@inline viscous_flux_vx(i, j, k, grid, closure::HD, clock, U, args...) = - ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)
+@inline viscous_flux_uy(i, j, k, grid, closure::HD, clock, U, args...) = + ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)   
+@inline viscous_flux_vy(i, j, k, grid, closure::HD, clock, U, args...) = - ν_δᶜᶜᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)
 
-@inline viscous_flux_uy(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₁₂, U.u, U.v, U.w)
-@inline viscous_flux_vy(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₂₂, U.u, U.v, U.w)
-@inline viscous_flux_wy(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₃₂, U.u, U.v, U.w)
-
-@inline viscous_flux_uy(i, j, k, grid, closure::HD, clock, U, args...) = + ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   
-@inline viscous_flux_vy(i, j, k, grid, closure::HD, clock, U, args...) = - ν_δᶜᶜᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)
-
-@inline viscous_flux_uz(i, j, k, grid, closure::Union{ID, VD}, clock, U, args...) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₁₃, U.u, U.v, U.w)
-@inline viscous_flux_vz(i, j, k, grid, closure::Union{ID, VD}, clock, U, args...) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₂₃, U.u, U.v, U.w)
-@inline viscous_flux_wz(i, j, k, grid, closure::Union{ID, VD}, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₃₃, U.u, U.v, U.w)
+@inline viscous_flux_uz(i, j, k, grid, closure::Union{ID, VD}, clock, U, args...) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clock, closure.ν, Σ₁₃, U.u, U.v, U.w)
+@inline viscous_flux_vz(i, j, k, grid, closure::Union{ID, VD}, clock, U, args...) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clock, closure.ν, Σ₂₃, U.u, U.v, U.w)
+@inline viscous_flux_wz(i, j, k, grid, closure::Union{ID, VD}, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, closure.ν, Σ₃₃, U.u, U.v, U.w)
 
 #####
 ##### Diffusive fluxes
@@ -116,8 +109,8 @@ const VITD = VerticallyImplicitTimeDiscretization
   @inline z_viscosity(closure::Union{ID, VD}, args...)        = viscosity(closure, args...)
 @inline z_diffusivity(closure::Union{ID, VD}, c_idx, args...) = diffusivity(closure, c_idx, args...)
 
-@inline ivd_viscous_flux_uz(i, j, k, grid, closure, clock, U, args...) = - ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂xᶠᶜᶠ, U.w)
-@inline ivd_viscous_flux_vz(i, j, k, grid, closure, clock, U, args...) = - ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂yᶜᶠᶠ, U.w)
+@inline ivd_viscous_flux_uz(i, j, k, grid, closure, clock, U, args...) = - ν_σᶠᶜᶠ(i, j, k, grid, clock, closure.ν, ∂xᶠᶜᶠ, U.w)
+@inline ivd_viscous_flux_vz(i, j, k, grid, closure, clock, U, args...) = - ν_σᶜᶠᶠ(i, j, k, grid, clock, closure.ν, ∂yᶜᶠᶠ, U.w)
 
 # General functions (eg for vertically periodic)
 @inline viscous_flux_uz(i, j, k, grid,  ::VITD, closure::Union{ID, VD}, args...) = ivd_viscous_flux_uz(i, j, k, grid, closure, args...)
