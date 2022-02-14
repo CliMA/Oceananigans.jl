@@ -95,19 +95,19 @@ and the topology in the boundary-normal direction is used:
   - `nothing` for `Bounded` directions and `Face`-located fields
   - `nothing` for `Flat` directions and/or `Nothing`-located fields)
 """
-function FieldBoundaryConditions(grid, loc, indices;
-                                   west = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
-                                   east = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
-                                  south = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
-                                  north = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
-                                 bottom = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
-                                    top = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
-                               immersed = NoFluxBoundaryCondition())
+function FieldBoundaryConditions(grid, loc, indices=(:, :, :);
+                                 west     = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
+                                 east     = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
+                                 south    = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
+                                 north    = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
+                                 bottom   = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
+                                 top      = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
+                                 immersed = NoFluxBoundaryCondition())
 
-    # Turn bcs in sliced dimensions into nothing
+    # Turn bcs in windowed dimensions into nothing
     west, east   = nullify_slice_bcs(indices[1], west, east)
     south, north = nullify_slice_bcs(indices[2], south, north)
-    bottom, top  = nullify_slice_bcs(indices[3], botttom, top)
+    bottom, top  = nullify_slice_bcs(indices[3], bottom, top)
 
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end

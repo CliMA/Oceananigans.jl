@@ -20,7 +20,7 @@ struct Field{LX, LY, LZ, O, G, I, T, D, B, S} <: AbstractField{LX, LY, LZ, G, T,
     function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, op::O, status::S,
                                indices::I) where {LX, LY, LZ, G, D, B, O, S, I}
         T = eltype(data)
-        return new{LX, LY, LZ, O, G, T, D, B, S, I}(grid, data, bcs, op, status, indices)
+        return new{LX, LY, LZ, O, G, I, T, D, B, S}(grid, data, bcs, op, status, indices)
     end
 end
 
@@ -68,10 +68,15 @@ function validate_boundary_conditions(loc, grid, bcs)
     return nothing
 end
 
+validate_index(::Colon) = nothing
+validate_index(::UnitRange) = nothing
+validate_index(idx) = ArgumentError("$idx are not valid window indices for Field!")
+
 # Common outer constructor for all field flavors that validates data and boundary conditions
-function Field(loc::Tuple, grid::AbstractGrid, data, bcs, op, status, indices)
+function Field(loc::Tuple, grid::AbstractGrid, data, bcs, op, status, indices::Tuple)
     validate_field_data(loc, data, grid, indices)
     validate_boundary_conditions(loc, grid, bcs)
+    validate_index.(indices)
     LX, LY, LZ = loc
     return Field{LX, LY, LZ}(grid, data, bcs, op, status, indices)
 end
@@ -120,7 +125,7 @@ end
 function Field(loc::Tuple,
                grid::AbstractGrid,
                T::DataType = eltype(grid);
-               indices = (:, :, :),
+               indices = default_indices(),
                data = new_data(T, grid, loc, indices),
                boundary_conditions = FieldBoundaryConditions(grid, loc, indices))
 
@@ -139,36 +144,43 @@ function Base.similar(f::Field, grid=f.grid)
     loc = location(f)
     return Field(loc,
                  grid,
-                 new_data(eltype(parent(f)), grid, loc),
+                 new_data(eltype(parent(f)), grid, loc, f.indices),
                  FieldBoundaryConditions(grid, loc),
                  f.operand,
-                 deepcopy(f.status))
+                 deepcopy(f.status),
+                 f.indices)
 end
 
 boundary_conditions(field) = nothing
 boundary_conditions(f::Field) = f.boundary_conditions
 
-indices(field) = nothing
+# Default
+default_indices() = (:, :, :)
+indices(field) = default_indices()
 indices(f::Field) = f.indices
 
-function interior(a::Union{Field, OffsetArray}, (LX, LY, LZ), grid, indices)
+"""Return indices that create a `view` over the interior of a Field."""
+interior_view_indices(field_indices, interior_indices) = Colon()
+interior_view_indices(::Colon,       interior_indices) = interior_indices
+
+function interior(a::OffsetArray, (LX, LY, LZ)::Tuple, grid::AbstractGrid, indices::Tuple=default_indices())
     TX, TY, TZ = topology(grid)
     i_interior = interior_parent_indices(LX, TX, grid.Nx, grid.Hx)
     j_interior = interior_parent_indices(LY, TY, grid.Ny, grid.Hy)
     k_interior = interior_parent_indices(LZ, TZ, grid.Nz, grid.Hz)
 
-    # Indices isa Colon => slice halos.
-    # Otherwise, use Colon since we have nothing to slice.
-    ii = indices[1] isa Colon ? i_interior : Colon()
-    jj = indices[2] isa Colon ? j_interior : Colon()
-    kk = indices[3] isa Colon ? k_interior : Colon()
+    # Indices isa Colon => omit halos from view.
+    # Otherwise, `a` is already windowed, and we view with `Colon`.
+    i_view = interior_view_indices(indices[1], i_interior)
+    j_view = interior_view_indices(indices[2], j_interior)
+    k_view = interior_view_indices(indices[3], k_interior)
 
-    return view(parent(a), ii, jj, kk)
+    return view(parent(a), i_view, j_view, k_view)
 end
 
 "Returns a view of `f` that excludes halo points."
-interior(f::Field) = interior(f, location(f), f.grid, f.indices)
-interior(f::Field, ix, iy, iz) = view(interior(f, location(f), f.grid), ix, iy, iz)
+interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
+interior(f::Field, I...) = view(interior(f), I...)
     
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
@@ -187,8 +199,8 @@ Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 length_indices(N, i::Colon) = N
 length_indices(N, i::UnitRange) = length(i)
 
-total_size(f::AbstractField) = length_indices.(total_size(location(f), f.grid), f.indices)
-Base.size(f::Field)          = length_indices.(      size(location(f), f.grid), f.indices)
+total_size(f::Field) = length_indices.(total_size(location(f), f.grid), f.indices)
+Base.size(f::Field)  = length_indices.(      size(location(f), f.grid), f.indices)
 
 #####
 ##### Special constructors for tracers and velocity fields
@@ -400,6 +412,8 @@ function reduced_location(loc; dims)
         return Tuple(i ∈ dims ? Nothing : loc[i] for i in 1:3)
     end
 end
+
+reduced_indices(indices; dims) = Tuple(i ∈ dims ? Colon() : indices[i] for i in 1:3)
 
 function reduced_dimension(loc)
     dims = ()

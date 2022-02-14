@@ -53,12 +53,12 @@ offset_data(underlying_data, grid::AbstractGrid, loc, indices) =
 Returns an `OffsetArray` of zeros of float type `FT` on `arch`itecture,
 with indices corresponding to a field on a `grid` of `size(grid)` and located at `loc`.
 """
-function new_data(FT, grid, loc, indices)
+function new_data(FT::DataType, grid, loc, indices)
     arch = architecture(grid)
     Tx, Ty, Tz = total_size(loc, grid, indices)
     underlying_data = zeros(FT, arch, Tx, Ty, Tz)
     return offset_data(underlying_data, grid, loc, indices)
 end
 
-new_data(grid, loc) = new_data(eltype(grid), grid, loc)
+new_data(grid, loc, indices) = new_data(eltype(grid), grid, loc, indices)
 

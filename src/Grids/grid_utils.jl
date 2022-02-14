@@ -84,7 +84,7 @@ total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.H
 total_size(loc, grid, ::Nothing) = total_size(loc, grid)
 
 total_size(loc, grid, indices::Tuple) =
-    Tuple(ind isa Colon ? total_size(loc, grid)[i] : length(ind) for ind in indices)
+    Tuple(ind isa Colon ? total_size(loc, grid)[i] : length(ind) for (i, ind) in enumerate(indices))
 
 """
     halo_size(grid)

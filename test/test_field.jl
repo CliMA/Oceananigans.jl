@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Statistics
 
-using Oceananigans.Fields: FieldSlicer, interior_copy
+using Oceananigans.Fields: FieldSlicer
 using Oceananigans.Fields: regrid!, ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate
 using Oceananigans.Fields: reduced_location

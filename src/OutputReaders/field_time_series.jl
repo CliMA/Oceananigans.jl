@@ -13,15 +13,17 @@ using Oceananigans.Fields: show_location
 import Oceananigans.Fields: Field, set!, interior
 import Oceananigans.Architectures: architecture
 
-struct FieldTimeSeries{LX, LY, LZ, K, T, D, G, B, χ} <: AbstractField{LX, LY, LZ, G, T, 4}
+struct FieldTimeSeries{LX, LY, LZ, K, I, D, G, T, B, χ} <: AbstractField{LX, LY, LZ, G, T, 4}
                    data :: D
                    grid :: G
     boundary_conditions :: B
+                indices :: I
                   times :: χ
 
-    function FieldTimeSeries{LX, LY, LZ, K}(data::D, grid::G, bcs::B, times::χ) where {LX, LY, LZ, K, D, G, B, χ}
+    function FieldTimeSeries{LX, LY, LZ, K}(data::D, grid::G, bcs::B, times::χ,
+                                            indices::I) where {LX, LY, LZ, K, D, G, B, χ, I}
         T = eltype(data) 
-        return new{LX, LY, LZ, K, T, D, G, B, χ}(data, grid, bcs, times)
+        return new{LX, LY, LZ, K, I, D, G, T, B, χ}(data, grid, bcs, times)
     end
 end
 
@@ -43,7 +45,7 @@ function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);
     location = (LX, LY, LZ)
     Nt = length(times)
     data = offset_data(FT, grid, location, indices)
-    return FieldTimeSeries{LX, LY, LZ, InMemory}(data, grid, boundary_conditions, times)
+    return FieldTimeSeries{LX, LY, LZ, InMemory}(data, grid, boundary_conditions, times, indices)
 end
 
 """
@@ -229,7 +231,7 @@ struct OnDiskData
     name :: String
 end
 
-function FieldTimeSeries(path, name, backend::OnDisk; architecture=nothing, grid=nothing)
+function FieldTimeSeries(path, name, backend::OnDisk; architecture=nothing, grid=nothing, indices=(:, :, :))
     file = jldopen(path)
 
     if isnothing(grid)
@@ -245,7 +247,7 @@ function FieldTimeSeries(path, name, backend::OnDisk; architecture=nothing, grid
 
     close(file)
 
-    return FieldTimeSeries{LX, LY, LZ, OnDisk}(data, grid, bcs, times)
+    return FieldTimeSeries{LX, LY, LZ, OnDisk}(data, grid, bcs, times, indices)
 end
 
 # For creating an empty `FieldTimeSeries`.

@@ -53,16 +53,17 @@ function Field(reduction::Reduction;
     operand = reduction.operand
     grid = operand.grid
     LX, LY, LZ = loc = reduced_location(location(operand); dims=reduction.dims)
+    ind = reduced_indices(indices(operand); dims=reduction.dims)
 
     if isnothing(data)
-        data = new_data(grid, loc)
+        data = new_data(grid, loc, ind)
         recompute_safely = false
     end
 
-    boundary_conditions = FieldBoundaryConditions(grid, loc)
+    boundary_conditions = FieldBoundaryConditions(grid, loc, ind)
     status = recompute_safely ? nothing : FieldStatus()
 
-    return Field(loc, grid, data, boundary_conditions, reduction, status)
+    return Field(loc, grid, data, boundary_conditions, reduction, status, ind)
 end
 
 const ReducedComputedField = Field{<:Any, <:Any, <:Any, <:Reduction}
