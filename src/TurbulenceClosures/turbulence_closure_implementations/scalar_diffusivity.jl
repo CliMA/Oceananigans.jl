@@ -38,7 +38,7 @@ function with_tracers(tracers, closure::ScalarDiffusivity{TD, Dir}) where {TD, D
     κ = tracer_diffusivities(tracers, closure.κ)
     return ScalarDiffusivity{TD, Dir}(closure.ν, κ)
 end
-
+@inline viscosity(closure::ScalarDiffusivity, args...) = closure.ν
 @inline diffusivity(closure::ScalarDiffusivity, ::Val{tracer_index}, args...) where tracer_index = closure.κ[tracer_index]
                         
 Base.show(io::IO, closure::ScalarDiffusivity{TD, Dir})  where {TD, Dir}= 
