@@ -13,13 +13,13 @@ const AIBD = AbstractScalarBiharmonicDiffusivity{<:ThreeDimensional}
 const AHBD = AbstractScalarBiharmonicDiffusivity{<:Horizontal}
 const AVBD = AbstractScalarBiharmonicDiffusivity{<:Vertical}
 
-@inline viscous_flux_ux(i, j, k, grid, closure::Union{AIBD, ABHD}, clock, U, args...) = + ν_δ★ᶜᶜᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)   
-@inline viscous_flux_uy(i, j, k, grid, closure::Union{AIBD, ABHD}, clock, U, args...) = - ν_ζ★ᶠᶠᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)   
-@inline viscous_flux_vx(i, j, k, grid, closure::Union{AIBD, ABHD}, clock, U, args...) = + ν_ζ★ᶠᶠᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)
-@inline viscous_flux_vy(i, j, k, grid, closure::Union{AIBD, ABHD}, clock, U, args...) = + ν_δ★ᶜᶜᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)
+@inline viscous_flux_ux(i, j, k, grid, closure::Union{AIBD, AHBD}, clock, U, args...) = + ν_δ★ᶜᶜᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)   
+@inline viscous_flux_uy(i, j, k, grid, closure::Union{AIBD, AHBD}, clock, U, args...) = - ν_ζ★ᶠᶠᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)   
+@inline viscous_flux_vx(i, j, k, grid, closure::Union{AIBD, AHBD}, clock, U, args...) = + ν_ζ★ᶠᶠᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)
+@inline viscous_flux_vy(i, j, k, grid, closure::Union{AIBD, AHBD}, clock, U, args...) = + ν_δ★ᶜᶜᶜ(i, j, k, grid, clock, closure.ν, U.u, U.v)
 
-@inline viscous_flux_wx(i, j, k, grid, closure::Union{AIBD, AIBD}, clock, U, args...) = ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂xᶠᶜᶠ, ∇²hᶜᶜᶠ, U.w)
-@inline viscous_flux_wy(i, j, k, grid, closure::Union{AIBD, AIBD}, clock, U, args...) = ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂yᶜᶠᶠ, ∇²hᶜᶜᶠ, U.w)
+@inline viscous_flux_wx(i, j, k, grid, closure::Union{AIBD, AHBD}, clock, U, args...) = ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂xᶠᶜᶠ, ∇²hᶜᶜᶠ, U.w)
+@inline viscous_flux_wy(i, j, k, grid, closure::Union{AIBD, AHBD}, clock, U, args...) = ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), ∂yᶜᶠᶠ, ∇²hᶜᶜᶠ, U.w)
 
 @inline viscous_flux_uz(i, j, k, grid, closure::Union{AIBD, AVBD}, clock, U, args...) = ν_uzzzᶠᶜᶠ(i, j, k, grid, clock, closure.ν, U.u)
 @inline viscous_flux_vz(i, j, k, grid, closure::Union{AIBD, AVBD}, clock, U, args...) = ν_vzzzᶜᶠᶠ(i, j, k, grid, clock, closure.ν, U.v)
