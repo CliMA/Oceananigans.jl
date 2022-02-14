@@ -1,6 +1,8 @@
 import Oceananigans.Grids: required_halo_size
 
-struct ScalarDiffusivity{TD, Dir, N, K} <: AbstractScalarDiffusivity{TD, Dir}
+
+
+struct ScalarDiffusivity{TD, Dir, N, K} 
     ν :: N
     κ :: K
 
@@ -110,7 +112,6 @@ end
 #####
 
 const VITD = VerticallyImplicitTimeDiscretization
-const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
   @inline z_viscosity(closure::Union{ID, VD}, args...)        = viscosity(closure, args...)
 @inline z_diffusivity(closure::Union{ID, VD}, c_idx, args...) = diffusivity(closure, c_idx, args...)
