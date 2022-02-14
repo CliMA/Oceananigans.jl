@@ -2,13 +2,11 @@ module TurbulenceClosures
 
 export
     AbstractEddyViscosityClosure,
-    IsotropicDiffusivity,
-    AnisotropicDiffusivity,
+    ScalarDiffusivity,
     AnisotropicBiharmonicDiffusivity,
     TwoDimensionalLeith,
     SmagorinskyLilly,
     AnisotropicMinimumDissipation,
-    HorizontallyCurvilinearAnisotropicDiffusivity,
     ConvectiveAdjustmentVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
 
@@ -68,6 +66,7 @@ include("turbulence_closure_utils.jl")
 include("diffusion_operators.jl")
 include("viscous_dissipation_operators.jl")
 include("velocity_tracer_gradients.jl")
+include("abstract_scalar_diffusivity_closure.jl")
 include("abstract_eddy_viscosity_closure.jl")
 include("closure_tuples.jl")
 include("isopycnal_rotation_tensor_components.jl")

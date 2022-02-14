@@ -54,7 +54,7 @@ function test_thermal_bubble_checkpointer_output(arch)
     Δt = 6
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    closure = IsotropicDiffusivity(ν=4e-2, κ=4e-2)
+    closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
     true_model = NonhydrostaticModel(grid=grid, closure=closure,
                                      buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     test_model = deepcopy(true_model)

@@ -55,13 +55,11 @@ Logging.global_logger(OceananigansLogger())
 float_types = (Float32, Float64)
 
 closures = (
-    :IsotropicDiffusivity,
-    :AnisotropicDiffusivity,
+    :ScalarDiffusivity,
     :AnisotropicBiharmonicDiffusivity,
     :TwoDimensionalLeith,
     :SmagorinskyLilly,
     :AnisotropicMinimumDissipation,
-    :HorizontallyCurvilinearAnisotropicDiffusivity,
     :HorizontallyCurvilinearAnisotropicBiharmonicDiffusivity,
     :ConvectiveAdjustmentVerticalDiffusivity
 )

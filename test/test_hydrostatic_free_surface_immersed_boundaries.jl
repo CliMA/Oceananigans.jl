@@ -20,8 +20,8 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
             bump(x, y, z) = z < exp(-x^2 - y^2)
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(bump))
             
-            for closure in (IsotropicDiffusivity(ν=1, κ=0.5),
-                            IsotropicDiffusivity(ν=1, κ=0.5, time_discretization=VerticallyImplicitTimeDiscretization()))
+            for closure in (ScalarDiffusivity(ν=1, κ=0.5),
+                            ScalarDiffusivity(ν=1, κ=0.5, time_discretization=VerticallyImplicitTimeDiscretization()))
 
                 model = HydrostaticFreeSurfaceModel(grid = grid, 
                                                     tracers = :b,
@@ -91,7 +91,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
             v_bcs = FieldBoundaryConditions(bottom = v_bottom_drag_bc)
 
             νh₀ = 5e3 * (60 / grid.Nx)^2
-            constant_horizontal_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh₀)
+            constant_horizontal_diffusivity = ScalarDiffusivity(ν=νh₀, direction=:Horizontal)
 
             model = HydrostaticFreeSurfaceModel(; grid,
                                                 momentum_advection = VectorInvariant(),

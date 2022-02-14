@@ -41,8 +41,8 @@ end
 
 @inline diffusivity(closure::ScalarDiffusivity, ::Val{tracer_index}, args...) where tracer_index = closure.κ[tracer_index]
                         
-Base.show(io::IO, closure::ScalarDiffusivity{TD, Dir}) = 
+Base.show(io::IO, closure::ScalarDiffusivity{TD, Dir})  where {TD, Dir}= 
     print(io, "ScalarDiffusivity:\n",
               "ν=$(closure.ν), κ=$(closure.κ)",
               "time discretization: $(time_discretization(closure))\n",
-              "direction: $TD")
+              "direction: $Dir")

@@ -229,9 +229,10 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @test time_step_hydrostatic_model_works(lat_lon_sector_grid, momentum_advection=momentum_advection)
         end
 
-        for closure in (IsotropicDiffusivity(),
-                        HorizontallyCurvilinearAnisotropicDiffusivity(),
-                        HorizontallyCurvilinearAnisotropicDiffusivity(time_discretization=VerticallyImplicitTimeDiscretization()),
+        for closure in (ScalarDiffusivity(),
+                        ScalarDiffusivity(direction = :Horizontal),
+                        ScalarDiffusivity(direction = :Vertical),
+                        ScalarDiffusivity(direction = :Vertical, time_discretization=VerticallyImplicitTimeDiscretization()),
                         CATKEVerticalDiffusivity(),
                         CATKEVerticalDiffusivity(time_discretization=ExplicitTimeDiscretization()))
 
@@ -243,7 +244,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             end
         end
 
-        closure = IsotropicDiffusivity()
+        closure = ScalarDiffusivity()
         @testset "Time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]" begin
             @info "  Testing time-stepping Rectilinear HydrostaticFreeSurfaceModels [$arch, $(typeof(closure).name.wrapper)]..."
             @test time_step_hydrostatic_model_works(rectilinear_grid, closure=closure)

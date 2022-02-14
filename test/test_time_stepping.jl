@@ -153,7 +153,8 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     topology = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     model = NonhydrostaticModel(grid = grid,
-                                closure = AnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz),
+                                closure = (ScalarDiffusivity(ν=νh, κ=κh, direction=:Horizontal), 
+                                           ScalarDiffusivity(ν=νz, κ=κz, direction=:Vertical)),
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     Ty = 1e-4  # Meridional temperature gradient [K/m].
@@ -209,8 +210,7 @@ Planes = (FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane)
 
 BuoyancyModifiedAnisotropicMinimumDissipation(FT) = AnisotropicMinimumDissipation(FT, Cb=1.0)
 
-Closures = (IsotropicDiffusivity,
-            AnisotropicDiffusivity,
+Closures = (ScalarDiffusivity,
             AnisotropicBiharmonicDiffusivity,
             TwoDimensionalLeith,
             IsopycnalSkewSymmetricDiffusivity,

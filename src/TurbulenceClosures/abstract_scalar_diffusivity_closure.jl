@@ -80,10 +80,12 @@ for (dir, closure) in zip((:x, :y, :z), (:AVD, :AVD, :AHD))
     diffusive_flux = Symbol(:diffusive_flux_, dir)
     viscous_flux_u = Symbol(:viscous_flux_u, dir)
     viscous_flux_v = Symbol(:viscous_flux_v, dir)
+    viscous_flux_w = Symbol(:viscous_flux_w, dir)
     @eval begin
         @inline $diffusive_flux(i, j, k, grid, closure::$closure, c, c_idx, clock, args...) = zero(eltype(grid))
-        @inline $viscous_flux_u(i, j, k, grid, closure::$closure, c, c_idx, clock, args...) = zero(eltype(grid))
-        @inline $viscous_flux_v(i, j, k, grid, closure::$closure, c, c_idx, clock, args...) = zero(eltype(grid))
+        @inline $viscous_flux_u(i, j, k, grid, closure::$closure, c, clock, U, args...)     = zero(eltype(grid))
+        @inline $viscous_flux_v(i, j, k, grid, closure::$closure, c, clock, U, args...)     = zero(eltype(grid))
+        @inline $viscous_flux_w(i, j, k, grid, closure::$closure, c, clock, U, args...)     = zero(eltype(grid))
     end
 end
 
