@@ -4,8 +4,8 @@ struct ScalarDiffusivity{TD, Dir, N, K} <: AbstractScalarDiffusivity{TD, Dir}
     ν :: N
     κ :: K
 
-    function ScalarDiffusivity{TD}(ν::N, κ::K) where {TD, N, K}
-        return new{TD, N, K}(ν, κ)
+    function ScalarDiffusivity{TD, Dir}(ν::N, κ::K) where {TD, N, K}
+        return new{TD, Dir, N, K}(ν, κ)
     end
 end
 
@@ -60,19 +60,21 @@ Base.show(io::IO, closure::ScalarDiffusivity{TD, Dir}) =
 ##### Stress divergences
 #####
 
-const ID = Union{ScalarDiffusivity{<:Any, <:ThreeDimensional}}
+const ID = ScalarDiffusivity{<:Any, <:ThreeDimensional}
 const HD = ScalarDiffusivity{<:Any, <:Horizontal}
 const VD = ScalarDiffusivity{<:Any, <:Vertical}
 
 @inline viscous_flux_ux(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₁₁, U.u, U.v, U.w)
 @inline viscous_flux_vx(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₂₁, U.u, U.v, U.w)
 @inline viscous_flux_wx(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶠᶜᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₃₁, U.u, U.v, U.w)
+
 @inline viscous_flux_ux(i, j, k, grid, closure::HD, clock, U, args...) = - ν_δᶜᶜᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   
 @inline viscous_flux_vx(i, j, k, grid, closure::HD, clock, U, args...) = - ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)
 
 @inline viscous_flux_uy(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶠᶠᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₁₂, U.u, U.v, U.w)
 @inline viscous_flux_vy(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶜᶜᶜ(i, j, k, grid, clock, viscosity(closure, args...), Σ₂₂, U.u, U.v, U.w)
 @inline viscous_flux_wy(i, j, k, grid, closure::ID, clock, U, args...) = - 2 * ν_σᶜᶠᶠ(i, j, k, grid, clock, viscosity(closure, args...), Σ₃₂, U.u, U.v, U.w)
+
 @inline viscous_flux_uy(i, j, k, grid, closure::HD, clock, U, args...) = + ν_ζᶠᶠᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)   
 @inline viscous_flux_vy(i, j, k, grid, closure::HD, clock, U, args...) = - ν_δᶜᶜᶜ(i, j, k, grid, clock, closure.νh, U.u, U.v)
 
@@ -88,17 +90,20 @@ const VD = ScalarDiffusivity{<:Any, <:Vertical}
 @inline diffusive_flux_y(i, j, k, grid, closure::Union{ID, HD}, c, c_idx, clock, args...) = diffusive_flux_y(i, j, k, grid, clock, diffusivity(closure, c_idx, args...), c)
 @inline diffusive_flux_z(i, j, k, grid, closure::Union{ID, VD}, c, c_idx, clock, args...) = diffusive_flux_z(i, j, k, grid, clock, diffusivity(closure, c_idx, args...), c)
 
-#have to code all these??
-@inline diffusive_flux_x(i, j, k, grid, closure::VD, c, c_idx, clock, args...) = zero(eltype(grid))
-@inline diffusive_flux_y(i, j, k, grid, closure::VD, c, c_idx, clock, args...) = zero(eltype(grid))
-@inline diffusive_flux_z(i, j, k, grid, closure::HD, c, c_idx, clock, args...) = zero(eltype(grid))
+#####
+##### Zero out not used fluxes
+#####
 
-@inline viscous_flux_ux(i, j, k, grid, closure::VD, c, c_idx, clock, args...) = zero(eltype(grid))
-@inline viscous_flux_uy(i, j, k, grid, closure::VD, c, c_idx, clock, args...) = zero(eltype(grid))
-@inline viscous_flux_uz(i, j, k, grid, closure::HD, c, c_idx, clock, args...) = zero(eltype(grid))
-@inline viscous_flux_vx(i, j, k, grid, closure::VD, c, c_idx, clock, args...) = zero(eltype(grid))
-@inline viscous_flux_vy(i, j, k, grid, closure::VD, c, c_idx, clock, args...) = zero(eltype(grid))
-@inline viscous_flux_vz(i, j, k, grid, closure::HD, c, c_idx, clock, args...) = zero(eltype(grid))
+for (dir, closure) in zip((:x, :y, :z), (:VD, :VD, :HD))
+    diffusive_flux = Symbol(:diffusive_flux_, dir)
+    viscous_flux_u = Symbol(:viscous_flux_u, dir)
+    viscous_flux_v = Symbol(:viscous_flux_v, dir)
+    @eval begin
+        @inline $diffusive_flux(i, j, k, grid, closure::$closure, c, c_idx, clock, args...) = zero(eltype(grid))
+        @inline $viscous_flux_u(i, j, k, grid, closure::$closure, c, c_idx, clock, args...) = zero(eltype(grid))
+        @inline $viscous_flux_v(i, j, k, grid, closure::$closure, c, c_idx, clock, args...) = zero(eltype(grid))
+    end
+end
 
 #####
 ##### Support for VerticallyImplicitTimeDiscretization
