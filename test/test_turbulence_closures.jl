@@ -55,8 +55,8 @@ end
 
 function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νz=FT(0.1), κz=FT(0.5))
           arch = CPU()
-      closureh = ScalatDiffusivity(FT, ν=νh, κ=(T=κh, S=κh), direction=:Horizontal)
-      closurez = ScalatDiffusivity(FT, ν=νz, κ=(T=κz, S=κz), direction=:Vertical)
+      closureh = ScalarDiffusivity(FT, ν=νh, κ=(T=κh, S=κh), direction=:Horizontal)
+      closurez = ScalarDiffusivity(FT, ν=νz, κ=(T=κz, S=κz), direction=:Vertical)
           grid = RectilinearGrid(arch, FT, size=(3, 1, 4), extent=(3, 1, 4))
            eos = LinearEquationOfState(FT)
       buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=eos)
