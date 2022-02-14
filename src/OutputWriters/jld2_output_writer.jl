@@ -3,8 +3,7 @@ using JLD2
 using Oceananigans.Utils
 using Oceananigans.Models
 using Oceananigans.Utils: TimeInterval, pretty_filesize
-
-using Oceananigans.Fields: boundary_conditions
+using Oceananigans.Fields: boundary_conditions, indices
 
 default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
 default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
@@ -16,18 +15,18 @@ default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, 
 An output writer for writing to JLD2 files.
 """
 mutable struct JLD2OutputWriter{O, T, FS, D, IF, IN, KW} <: AbstractOutputWriter
-              filepath :: String
-               outputs :: O
-              schedule :: T
-          field_slicer :: FS
-            array_type :: D
-                  init :: IF
-             including :: IN
-                  part :: Int
-          max_filesize :: Float64
-                 force :: Bool
-               verbose :: Bool
-               jld2_kw :: KW
+    filepath :: String
+    outputs :: O
+    schedule :: T
+    field_slicer :: FS
+    array_type :: D
+    init :: IF
+    including :: IN
+    part :: Int
+    max_filesize :: Float64
+    force :: Bool
+    verbose :: Bool
+    jld2_kw :: KW
 end
 
 noinit(args...) = nothing
@@ -199,12 +198,12 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
             # Serialize the location and boundary conditions of each output.
             for (i, (field_name, field)) in enumerate(pairs(outputs))
                 file["timeseries/$field_name/serialized/location"] = location(field)
+                file["timeseries/$field_name/serialized/indices"] = indices(field)
                 serializeproperty!(file, "timeseries/$field_name/serialized/boundary_conditions", boundary_conditions(field))
             end
         end
     catch err
-        @warn """Initialization of $filepath failed because
-                 $(typeof(err)): $(sprint(showerror, err))"""
+        @warn """Initialization of $filepath failed because $(typeof(err)): $(sprint(showerror, err))"""
     end
 
     return nothing

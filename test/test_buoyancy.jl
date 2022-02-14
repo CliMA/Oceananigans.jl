@@ -19,35 +19,35 @@ end
 
 function density_perturbation_works(arch, FT, eos)
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    C = datatuple(TracerFields((:T, :S), grid))
+    C = TracerFields((:T, :S), grid)
     density_anomaly = ρ′(2, 2, 2, grid, eos, C.T, C.S)
     return true
 end
 
 function ∂x_b_works(arch, FT, buoyancy)
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    C = datatuple(TracerFields(required_tracers(buoyancy), grid))
+    C = TracerFields(required_tracers(buoyancy), grid)
     dbdx = ∂x_b(2, 2, 2, grid, buoyancy, C)
     return true
 end
 
 function ∂y_b_works(arch, FT, buoyancy)
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    C = datatuple(TracerFields(required_tracers(buoyancy), grid))
+    C = TracerFields(required_tracers(buoyancy), grid)
     dbdy = ∂y_b(2, 2, 2, grid, buoyancy, C)
     return true
 end
 
 function ∂z_b_works(arch, FT, buoyancy)
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    C = datatuple(TracerFields(required_tracers(buoyancy), grid))
+    C = TracerFields(required_tracers(buoyancy), grid)
     dbdz = ∂z_b(2, 2, 2, grid, buoyancy, C)
     return true
 end
 
 function thermal_expansion_works(arch, FT, eos)
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    C = datatuple(TracerFields((:T, :S), grid))
+    C = TracerFields((:T, :S), grid)
     α = thermal_expansionᶜᶜᶜ(2, 2, 2, grid, eos, C.T, C.S)
     α = thermal_expansionᶠᶜᶜ(2, 2, 2, grid, eos, C.T, C.S)
     α = thermal_expansionᶜᶠᶜ(2, 2, 2, grid, eos, C.T, C.S)
@@ -57,7 +57,7 @@ end
 
 function haline_contraction_works(arch, FT, eos)
     grid = RectilinearGrid(arch, FT, size=(3, 3, 3), extent=(1, 1, 1))
-    C = datatuple(TracerFields((:T, :S), grid))
+    C = TracerFields((:T, :S), grid)
     β = haline_contractionᶜᶜᶜ(2, 2, 2, grid, eos, C.T, C.S)
     β = haline_contractionᶠᶜᶜ(2, 2, 2, grid, eos, C.T, C.S)
     β = haline_contractionᶜᶠᶜ(2, 2, 2, grid, eos, C.T, C.S)

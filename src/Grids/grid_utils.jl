@@ -77,9 +77,14 @@ total_size(a) = size(a) # fallback
 Return the "total" size of a `grid` at `loc`. This is a 3-tuple of integers
 corresponding to the number of grid points along `x, y, z`.
 """
-@inline total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
-                                 total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
-                                 total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
+total_size(loc, grid) = (total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx),
+                         total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy),
+                         total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz))
+
+total_size(loc, grid, ::Nothing) = total_size(loc, grid)
+
+total_size(loc, grid, indices::Tuple) =
+    Tuple(ind isa Colon ? total_size(loc, grid)[i] : length(ind) for ind in indices)
 
 """
     halo_size(grid)

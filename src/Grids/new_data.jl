@@ -24,18 +24,16 @@ Return a range of indices for a field along a 'reduced' dimension.
 """
 offset_indices(::Type{Nothing}, topo, N, H=0) = 1 : 1
 
-function offset_data(underlying_data::AbstractArray{FT, 3}, loc, topo, N, H) where FT
-    ii = offset_indices(loc[1], topo[1], N[1], H[1])
-    jj = offset_indices(loc[2], topo[2], N[2], H[2])
-    kk = offset_indices(loc[3], topo[3], N[3], H[3])
+offset_indices(L, T, N, H, ::Colon) = offset_indices(L, T, N, H)
+offset_indices(L, T, N, H, i::UnitRange) = i
 
+function offset_data(underlying_data::AbstractArray{FT, 3}, loc, topo, N, H, indices) where FT
+    ii, jj, kk = offset_indices.(loc, topo, N, H, indices)
     return OffsetArray(underlying_data, ii, jj, kk)
 end
 
-function offset_data(underlying_data::AbstractArray{FT, 2}, loc, topo, N, H) where FT
-    ii = offset_indices(loc[1], topo[1], N[1], H[1])
-    jj = offset_indices(loc[2], topo[2], N[2], H[2])
-
+function offset_data(underlying_data::AbstractArray{FT, 2}, loc, topo, N, H, indices) where FT
+    ii, jj, kk = offset_indices.(loc, topo, N, H, indices)
     return OffsetArray(underlying_data, ii, jj)
 end
 
@@ -46,22 +44,21 @@ Returns an `OffsetArray` that maps to `underlying_data` in memory,
 with offset indices appropriate for the `data` of a field on
 a `grid` of `size(grid)` and located at `loc`.
 """
-offset_data(underlying_data, grid::AbstractGrid, loc) =
-    offset_data(underlying_data, loc, topology(grid), size(grid), halo_size(grid))
+offset_data(underlying_data, grid::AbstractGrid, loc, indices) =
+    offset_data(underlying_data, loc, topology(grid), size(grid), halo_size(grid), indices)
 
 """
-    new_data(FT, grid, loc)
+    new_data(FT, grid, loc, indices)
 
 Returns an `OffsetArray` of zeros of float type `FT` on `arch`itecture,
 with indices corresponding to a field on a `grid` of `size(grid)` and located at `loc`.
 """
-function new_data(FT, grid, loc)
+function new_data(FT, grid, loc, indices)
     arch = architecture(grid)
-    Tx = total_length(loc[1], topology(grid, 1), grid.Nx, grid.Hx)
-    Ty = total_length(loc[2], topology(grid, 2), grid.Ny, grid.Hy)
-    Tz = total_length(loc[3], topology(grid, 3), grid.Nz, grid.Hz)
+    Tx, Ty, Tz = total_size(loc, grid, indices)
     underlying_data = zeros(FT, arch, Tx, Ty, Tz)
-    return offset_data(underlying_data, grid, loc)
+    return offset_data(underlying_data, grid, loc, indices)
 end
 
 new_data(grid, loc) = new_data(eltype(grid), grid, loc)
+

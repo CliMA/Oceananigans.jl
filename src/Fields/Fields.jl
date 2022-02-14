@@ -34,7 +34,11 @@ Build a field from `a` at `loc` and on `grid`.
 function field(loc, a::AbstractArray, grid)
     f = Field(loc, grid)
     a = arch_array(architecture(grid), a)
-    f .= a
+    try
+        copyto!(parent(f), a)
+    catch
+        f .= a
+    end
     return f
 end
 

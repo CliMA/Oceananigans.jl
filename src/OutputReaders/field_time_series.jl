@@ -37,12 +37,12 @@ architecture(fts::FieldTimeSeries) = architecture(fts.grid)
 Return `FieldTimeSeries` at location `(LX, LY, LZ)`, on `grid`, at `times`, with
 `boundary_conditions`, and initialized with zeros of `eltype(grid)`.
 """
-function FieldTimeSeries{LX, LY, LZ}(grid, times; boundary_conditions=nothing) where {LX, LY, LZ}
+function FieldTimeSeries{LX, LY, LZ}(grid, times, FT=eltype(grid);
+                                     indices=(:, :, :),
+                                     boundary_conditions=nothing) where {LX, LY, LZ}
     location = (LX, LY, LZ)
     Nt = length(times)
-    data_size = total_size(location, grid)
-    raw_data = zeros(grid, data_size..., Nt)
-    data = offset_data(raw_data, grid, location)
+    data = offset_data(FT, grid, location, indices)
     return FieldTimeSeries{LX, LY, LZ, InMemory}(data, grid, boundary_conditions, times)
 end
 

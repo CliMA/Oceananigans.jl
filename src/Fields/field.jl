@@ -8,27 +8,29 @@ using Base: @propagate_inbounds
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Statistics: norm, mean, mean!
 
-struct Field{LX, LY, LZ, O, G, T, D, B, S} <: AbstractField{LX, LY, LZ, G, T, 3}
+struct Field{LX, LY, LZ, O, G, I, T, D, B, S} <: AbstractField{LX, LY, LZ, G, T, 3}
     grid :: G
     data :: D
     boundary_conditions :: B
     operand :: O
     status :: S
+    indices :: I
 
     # Inner constructor that does not validate _anything_!
-    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, op::O, status::S) where {LX, LY, LZ, G, D, B, O, S}
+    function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, op::O, status::S,
+                               indices::I) where {LX, LY, LZ, G, D, B, O, S, I}
         T = eltype(data)
-        return new{LX, LY, LZ, O, G, T, D, B, S}(grid, data, bcs, op, status)
+        return new{LX, LY, LZ, O, G, T, D, B, S, I}(grid, data, bcs, op, status, indices)
     end
 end
 
-function validate_field_data(loc, data, grid)
-    Tx, Ty, Tz = total_size(loc, grid)
+function validate_field_data(loc, data, grid, indices)
+    Fx, Fy, Fz = total_size(loc, grid, indices)
 
-    if size(data) != (Tx, Ty, Tz)
+    if size(data) != (Fx, Fy, Fz)
         LX, LY, LZ = loc    
         e = "Cannot construct field at ($LX, $LY, $LZ) with size(data)=$(size(data)). " *
-            "`data` must have size ($Tx, $Ty, $Tz)."
+            "`data` must have size ($Fx, $Fy, $Fz)."
         throw(ArgumentError(e))
     end
 
@@ -67,11 +69,11 @@ function validate_boundary_conditions(loc, grid, bcs)
 end
 
 # Common outer constructor for all field flavors that validates data and boundary conditions
-function Field(loc::Tuple, grid::AbstractGrid, data, bcs, op, status)
-    validate_field_data(loc, data, grid)
+function Field(loc::Tuple, grid::AbstractGrid, data, bcs, op, status, indices)
+    validate_field_data(loc, data, grid, indices)
     validate_boundary_conditions(loc, grid, bcs)
     LX, LY, LZ = loc
-    return Field{LX, LY, LZ}(grid, data, bcs, op, status)
+    return Field{LX, LY, LZ}(grid, data, bcs, op, status, indices)
 end
 
 #####
@@ -118,10 +120,11 @@ end
 function Field(loc::Tuple,
                grid::AbstractGrid,
                T::DataType = eltype(grid);
-               data = new_data(T, grid, loc),
-               boundary_conditions = FieldBoundaryConditions(grid, loc))
+               indices = (:, :, :),
+               data = new_data(T, grid, loc, indices),
+               boundary_conditions = FieldBoundaryConditions(grid, loc, indices))
 
-    return Field(loc, grid, data, boundary_conditions, nothing, nothing)
+    return Field(loc, grid, data, boundary_conditions, nothing, nothing, indices)
 end
     
 Field(f::Field) = f # indeed
@@ -142,28 +145,31 @@ function Base.similar(f::Field, grid=f.grid)
                  deepcopy(f.status))
 end
 
-# Fallback: cannot infer boundary conditions.
 boundary_conditions(field) = nothing
 boundary_conditions(f::Field) = f.boundary_conditions
 
-function interior(a::Union{Field, OffsetArray}, (LX, LY, LZ), grid)
+indices(field) = nothing
+indices(f::Field) = f.indices
+
+function interior(a::Union{Field, OffsetArray}, (LX, LY, LZ), grid, indices)
     TX, TY, TZ = topology(grid)
-    ii = interior_parent_indices(LX, TX, grid.Nx, grid.Hx)
-    jj = interior_parent_indices(LY, TY, grid.Ny, grid.Hy)
-    kk = interior_parent_indices(LZ, TZ, grid.Nz, grid.Hz)
+    i_interior = interior_parent_indices(LX, TX, grid.Nx, grid.Hx)
+    j_interior = interior_parent_indices(LY, TY, grid.Ny, grid.Hy)
+    k_interior = interior_parent_indices(LZ, TZ, grid.Nz, grid.Hz)
+
+    # Indices isa Colon => slice halos.
+    # Otherwise, use Colon since we have nothing to slice.
+    ii = indices[1] isa Colon ? i_interior : Colon()
+    jj = indices[2] isa Colon ? j_interior : Colon()
+    kk = indices[3] isa Colon ? k_interior : Colon()
+
     return view(parent(a), ii, jj, kk)
 end
 
 "Returns a view of `f` that excludes halo points."
-interior(f::Field) = interior(f, location(f), f.grid)
+interior(f::Field) = interior(f, location(f), f.grid, f.indices)
+interior(f::Field, ix, iy, iz) = view(interior(f, location(f), f.grid), ix, iy, iz)
     
-function interior_copy(f::Field)
-    LX, LY, LZ = location(f)
-    return parent(f)[interior_parent_indices(LX, topology(f, 1), f.grid.Nx, f.grid.Hx),
-                     interior_parent_indices(LY, topology(f, 2), f.grid.Ny, f.grid.Hy),
-                     interior_parent_indices(LZ, topology(f, 3), f.grid.Nz, f.grid.Hz)]
-end
-
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
@@ -173,13 +179,16 @@ Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 @propagate_inbounds Base.lastindex(f::Field) = lastindex(f.data)
 @propagate_inbounds Base.lastindex(f::Field, dim) = lastindex(f.data, dim)
 
-Base.fill!(f::Field, val) = fill!(parent(f), val)
 Base.isapprox(ϕ::Field, ψ::Field; kw...) = isapprox(interior(ϕ), interior(ψ); kw...)
 Base.parent(f::Field) = parent(f.data)
+Base.fill!(f::Field, val) = fill!(parent(f), val)
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 
-data(f::Field) = f.data
-cpudata(a::Field) = arch_array(CPU(), a.data)
+length_indices(N, i::Colon) = N
+length_indices(N, i::UnitRange) = length(i)
+
+total_size(f::AbstractField) = length_indices.(total_size(location(f), f.grid), f.indices)
+Base.size(f::Field)          = length_indices.(      size(location(f), f.grid), f.indices)
 
 #####
 ##### Special constructors for tracers and velocity fields

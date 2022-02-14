@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Statistics
 
-using Oceananigans.Fields: cpudata, FieldSlicer, interior_copy
+using Oceananigans.Fields: FieldSlicer, interior_copy
 using Oceananigans.Fields: regrid!, ReducedField, has_velocities
 using Oceananigans.Fields: VelocityFields, TracerFields, interpolate
 using Oceananigans.Fields: reduced_location
@@ -355,16 +355,6 @@ end
         @test has_velocities((:u,)) == false
         @test has_velocities((:u, :v)) == false
         @test has_velocities((:u, :v, :w)) == true
-
-        grid = RectilinearGrid(CPU(), size=(4, 6, 8), extent=(1, 1, 1))
-        ϕ = CenterField(grid)
-        @test cpudata(ϕ).parent isa Array
-
-        if CUDA.has_cuda()
-            grid = RectilinearGrid(GPU(), size=(4, 6, 8), extent=(1, 1, 1))
-            ϕ = CenterField(grid)
-            @test cpudata(ϕ).parent isa Array
-        end
 
         @test FieldSlicer() isa FieldSlicer
 

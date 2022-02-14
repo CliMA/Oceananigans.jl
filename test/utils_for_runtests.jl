@@ -84,9 +84,6 @@ interior(a, grid) = view(a, grid.Hx+1:grid.Nx+grid.Hx,
                             grid.Hy+1:grid.Ny+grid.Hy,
                             grid.Hz+1:grid.Nz+grid.Hz)
 
-datatuple(A) = NamedTuple{propertynames(A)}(Array(data(a)) for a in A)
-datatuple(args, names) = NamedTuple{names}(a.data for a in args)
-
 function get_model_field(field_name, model)
     if field_name ∈ (:u, :v, :w)
         return getfield(model.velocities, field_name)

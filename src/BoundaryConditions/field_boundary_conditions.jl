@@ -6,17 +6,17 @@ using Oceananigans.Operators: assumed_field_location
 
 struct DefaultPrognosticFieldBoundaryCondition end
 
-default_prognostic_field_boundary_condition(::Grids.Periodic, loc)       = PeriodicBoundaryCondition()
-default_prognostic_field_boundary_condition(::Bounded,        ::Center)  = NoFluxBoundaryCondition()
-default_prognostic_field_boundary_condition(::Bounded,        ::Face)    = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::Grids.Periodic, loc)       = PeriodicBoundaryCondition()
+default_prognostic_bc(::Bounded,        ::Center)  = NoFluxBoundaryCondition()
+default_prognostic_bc(::Bounded,        ::Face)    = ImpenetrableBoundaryCondition()
 
-default_prognostic_field_boundary_condition(::Bounded,        ::Nothing) = nothing
-default_prognostic_field_boundary_condition(::Flat,           ::Nothing) = nothing
-default_prognostic_field_boundary_condition(::Grids.Periodic, ::Nothing) = nothing
-default_prognostic_field_boundary_condition(::Flat, loc) = nothing
+default_prognostic_bc(::Bounded,        ::Nothing) = nothing
+default_prognostic_bc(::Flat,           ::Nothing) = nothing
+default_prognostic_bc(::Grids.Periodic, ::Nothing) = nothing
+default_prognostic_bc(::Flat, loc) = nothing
 
-default_auxiliary_field_boundary_condition(topo, loc) = default_prognostic_field_boundary_condition(topo, loc)
-default_auxiliary_field_boundary_condition(::Bounded, ::Face) = nothing
+default_auxiliary_bc(topo, loc) = default_prognostic_bc(topo, loc)
+default_auxiliary_bc(::Bounded, ::Face) = nothing
 
 #####
 ##### Field boundary conditions
@@ -95,24 +95,32 @@ and the topology in the boundary-normal direction is used:
   - `nothing` for `Bounded` directions and `Face`-located fields
   - `nothing` for `Flat` directions and/or `Nothing`-located fields)
 """
-function FieldBoundaryConditions(grid, loc;
-                                   west = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
-                                   east = default_auxiliary_field_boundary_condition(topology(grid, 1)(), loc[1]()),
-                                  south = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
-                                  north = default_auxiliary_field_boundary_condition(topology(grid, 2)(), loc[2]()),
-                                 bottom = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()),
-                                    top = default_auxiliary_field_boundary_condition(topology(grid, 3)(), loc[3]()),
+function FieldBoundaryConditions(grid, loc, indices;
+                                   west = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
+                                   east = default_auxiliary_bc(topology(grid, 1)(), loc[1]()),
+                                  south = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
+                                  north = default_auxiliary_bc(topology(grid, 2)(), loc[2]()),
+                                 bottom = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
+                                    top = default_auxiliary_bc(topology(grid, 3)(), loc[3]()),
                                immersed = NoFluxBoundaryCondition())
 
-   return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+    # Turn bcs in sliced dimensions into nothing
+    west, east   = nullify_slice_bcs(indices[1], west, east)
+    south, north = nullify_slice_bcs(indices[2], south, north)
+    bottom, top  = nullify_slice_bcs(indices[3], botttom, top)
+
+    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
+
+nullify_slice_bcs(::Colon, left, right) = left, right
+nullify_slice_bcs(::UnitRange, left, right) = nothing, nothing
 
 #####
 ##### Boundary condition "regularization"
 #####
 
 regularize_boundary_condition(::DefaultPrognosticFieldBoundaryCondition, topo, loc, dim, args...) =
-    default_prognostic_field_boundary_condition(topo[dim](), loc[dim]())
+    default_prognostic_bc(topo[dim](), loc[dim]())
 
 regularize_boundary_condition(bc, args...) = bc # fallback
 
