@@ -58,11 +58,7 @@ end
 @inline νᶠᶠᶜ(i, j, k, grid, clock, ν::F) where F<:Function = ν(i, j, k, grid)
 
 #####
-##### Convenience "vanilla" viscous flux functions
-#####
-
-#####
-##### Products of viscosity and divergence, vorticity, vertical momentum gradients
+##### Products of viscosity and stress, divergence, vorticity, vertical momentum gradients
 #####
 
 @inline ν_σᶜᶜᶜ(i, j, k, grid, clock, ν, σᶜᶜᶜ, args...) = νᶜᶜᶜ(i, j, k, grid, clock, ν) * σᶜᶜᶜ(i, j, k, grid, args...)

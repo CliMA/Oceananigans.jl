@@ -3,7 +3,7 @@
 ##### We also call this 'Constant Smagorinsky'.
 #####
 
-struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD}
+struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD, ThreeDimensional}
      C :: FT
     Cb :: FT
     Pr :: P
