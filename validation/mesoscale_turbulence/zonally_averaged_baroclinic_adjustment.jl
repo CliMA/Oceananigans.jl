@@ -8,7 +8,7 @@ using JLD2
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans: fields
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures: VerticallyImplicit
 
 filename = "zonally_averaged_baroclinic_adjustment_withGM"
 
@@ -49,7 +49,7 @@ diffusive_closure = AnisotropicDiffusivity(νh = νh,
                                            νz = νz,
                                            κh = κh,
                                            κz = κz,
-					                       time_discretization = VerticallyImplicitTimeDiscretization())
+					                       time_discretization = VerticallyImplicit())
 
 convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0,
                                                                 convective_νz = 0.0)

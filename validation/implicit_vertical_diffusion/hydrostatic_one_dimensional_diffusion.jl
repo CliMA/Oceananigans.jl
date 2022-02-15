@@ -1,12 +1,12 @@
 using Plots
 using Printf
 using Oceananigans
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, time_discretization
+using Oceananigans.TurbulenceClosures: VerticallyImplicit, time_discretization
 
 grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 
 evd_closure = HorizontallyCurvilinearAnisotropicDiffusivity(κz = 1.0)
-ivd_closure = HorizontallyCurvilinearAnisotropicDiffusivity(κz = 1.0, time_discretization = VerticallyImplicitTimeDiscretization())
+ivd_closure = HorizontallyCurvilinearAnisotropicDiffusivity(κz = 1.0, time_discretization = VerticallyImplicit())
 
 model_kwargs = (grid=grid, tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 

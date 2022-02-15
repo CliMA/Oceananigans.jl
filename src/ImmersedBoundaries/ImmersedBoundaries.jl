@@ -179,7 +179,7 @@ include("mask_immersed_field.jl")
 include("immersed_fields_reductions.jl")
 
 #####
-##### Diffusivities (for VerticallyImplicitTimeDiscretization)
+##### Diffusivities (for VerticallyImplicit)
 ##### (the diffusivities on the immersed boundaries are kept)
 #####
 

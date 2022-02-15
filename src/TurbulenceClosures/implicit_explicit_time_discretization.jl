@@ -6,14 +6,14 @@ using Oceananigans.Grids: AbstractGrid
 abstract type AbstractTimeDiscretization end
 
 """
-    struct ExplicitTimeDiscretization <: AbstractTimeDiscretization
+    struct Explicit <: AbstractTimeDiscretization
 
 Represents fully-explicit time-discretization of a `TurbulenceClosure`.
 """
-struct ExplicitTimeDiscretization <: AbstractTimeDiscretization end
+struct Explicit <: AbstractTimeDiscretization end
 
 """
-    struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization
+    struct VerticallyImplicit <: AbstractTimeDiscretization
 
 Represents "vertically-implicit" time-discretization of a `TurbulenceClosure`.
 
@@ -24,13 +24,13 @@ time-discretized as
 [∇ ⋅ q]ⁿ = [explicit_flux_divergence]ⁿ + [∂z (κ ∂z c)]ⁿ⁺¹
 ```
 """
-struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization end
+struct VerticallyImplicit <: AbstractTimeDiscretization end
 
 @inline time_discretization(::AbstractTurbulenceClosure{TimeDiscretization}) where TimeDiscretization = TimeDiscretization()
-@inline time_discretization(::Nothing) = ExplicitTimeDiscretization() # placeholder for closure::Nothing
+@inline time_discretization(::Nothing) = Explicit() # placeholder for closure::Nothing
 
 #####
-##### ExplicitTimeDiscretization: move along, nothing to worry about here (use fallbacks).
+##### Explicit: move along, nothing to worry about here (use fallbacks).
 #####
 
 const ATD = AbstractTimeDiscretization

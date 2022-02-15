@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, z_viscosity
+using Oceananigans.TurbulenceClosures: Explicit, VerticallyImplicit, z_viscosity
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
 
 function relative_error(u_num, u, time)
@@ -41,7 +41,7 @@ function test_biharmonic_diffusion_budget(fieldname, model)
     set!(model; u=0, v=0, w=0, c=0)
     set!(model; Dict(fieldname => (x, y, z) -> rand())...)
     field = get_model_field(fieldname, model)
-    return test_diffusion_budget(fieldname, field, model, model.closure.νz, model.grid.Δzᵃᵃᶜ, 4)
+    return test_diffusion_budget(fieldname, field, model, model.closure.ν, model.grid.Δzᵃᵃᶜ, 4)
 end
 
 function test_diffusion_budget(fieldname, field, model, κ, Δ, order=2)
@@ -444,7 +444,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     @testset "Simple diffusion" begin
         @info "  Testing simple diffusion..."
         for fieldname in (:u, :v, :c), timestepper in timesteppers
-            for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+            for time_discretization in (Explicit(), VerticallyImplicit())
                 @test test_diffusion_simple(fieldname, timestepper, time_discretization)
             end
         end
@@ -459,16 +459,16 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                              (Bounded, Bounded, Bounded))
 
                 if topology !== (Periodic, Periodic, Periodic) # can't use implicit time-stepping in vertically-periodic domains right now
-                    time_discretizations = (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+                    time_discretizations = (Explicit(), VerticallyImplicit())
                 else
-                    time_discretizations = (ExplicitTimeDiscretization(),)
+                    time_discretizations = (Explicit(),)
                 end
 
                 for time_discretization in time_discretizations
 
                     for closure in (ScalarDiffusivity(ν=1, κ=1, time_discretization=time_discretization),
-                                    ScalarDiffusivity(ν=1, κ=1, direction = :Vertical, time_discretization=time_discretization),
-                                    ScalarDiffusivity(ν=1, κ=1, direction = :Horizontal),
+                                    ScalarDiffusivity(ν=1, κ=1, isotropy = Vertical(), time_discretization=time_discretization),
+                                    ScalarDiffusivity(ν=1, κ=1, isotropy = Horizontal()),
                                     )
 
                         fieldnames = [:c]
@@ -533,7 +533,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     @testset "Diffusion cosine" begin
         for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
             for fieldname in (:u, :v, :T, :S)
-                for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+                for time_discretization in (Explicit(), VerticallyImplicit())
                     Nz, Lz = 128, π/2
                     grid = RectilinearGrid(size=(1, 1, Nz), x=(0, 1), y=(0, 1), z=(0, Lz))
 
@@ -558,7 +558,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
     end
 
     @testset "Gaussian immersed diffusion" begin
-        for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+        for time_discretization in (Explicit(), VerticallyImplicit())
 
             Nz, Lz, z₀ = 128, 1, -0.5
 
@@ -640,7 +640,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
     @testset "Taylor-Green vortex" begin
         for timestepper in (:QuasiAdamsBashforth2,) #timesteppers
-            for time_discretization in (ExplicitTimeDiscretization(), VerticallyImplicitTimeDiscretization())
+            for time_discretization in (Explicit(), VerticallyImplicit())
                 td = typeof(time_discretization).name.wrapper
                 @info "  Testing Taylor-Green vortex [$timestepper, $td]..."
                 @test taylor_green_vortex_test(CPU(), timestepper, time_discretization)

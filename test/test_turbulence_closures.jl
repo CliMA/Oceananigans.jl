@@ -18,7 +18,7 @@ function constant_isotropic_diffusivity_basic(T=Float64; ν=T(0.3), κ=T(0.7))
 end
 
 function anisotropic_diffusivity_convenience_kwarg(T=Float64; νh=T(0.3), κh=T(0.7))
-    closure = ScalarDiffusivity(κ=(T=κh, S=κh), ν=νh, direction=:Horizontal)
+    closure = ScalarDiffusivity(κ=(T=κh, S=κh), ν=νh, isotropy=Horizontal())
     return closure.ν == νh && closure.κ.T == κh && closure.κ.T == κh
 end
 
@@ -55,8 +55,8 @@ end
 
 function anisotropic_diffusivity_fluxdiv(FT=Float64; νh=FT(0.3), κh=FT(0.7), νz=FT(0.1), κz=FT(0.5))
           arch = CPU()
-      closureh = ScalarDiffusivity(FT, ν=νh, κ=(T=κh, S=κh), direction=:Horizontal)
-      closurez = ScalarDiffusivity(FT, ν=νz, κ=(T=κz, S=κz), direction=:Vertical)
+      closureh = ScalarDiffusivity(FT, ν=νh, κ=(T=κh, S=κh), isotropy=Horizontal())
+      closurez = ScalarDiffusivity(FT, ν=νz, κ=(T=κz, S=κz), isotropy=Vertical())
           grid = RectilinearGrid(arch, FT, size=(3, 1, 4), extent=(3, 1, 4))
            eos = LinearEquationOfState(FT)
       buoyancy = SeawaterBuoyancy(FT, gravitational_acceleration=1, equation_of_state=eos)
@@ -109,7 +109,7 @@ end
 
 function time_step_with_variable_anisotropic_diffusivity(arch)
 
-    for dir in (:Horizontal, :Vertical)
+    for dir in (Horizontal(), Vertical())
         closure = ScalarDiffusivity(ν = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t),
                                     κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t),
                                     direction = dir)

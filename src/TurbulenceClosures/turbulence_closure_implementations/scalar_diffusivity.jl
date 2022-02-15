@@ -1,17 +1,17 @@
 import Oceananigans.Grids: required_halo_size
 
-struct ScalarDiffusivity{TD, Dir, N, K} <: AbstractScalarDiffusivity{TD, Dir}
+struct ScalarDiffusivity{TD, Iso, N, K} <: AbstractScalarDiffusivity{TD, Iso}
     ν :: N
     κ :: K
 
-    function ScalarDiffusivity{TD, Dir}(ν::N, κ::K) where {TD, Dir, N, K}
-        return new{TD, Dir, N, K}(ν, κ)
+    function ScalarDiffusivity{TD, Iso}(ν::N, κ::K) where {TD, Iso, N, K}
+        return new{TD, Iso, N, K}(ν, κ)
     end
 end
 
 """
     ScalarDiffusivity([FT=Float64;]
-                         ν=0, κ=0, time_discretization = ExplicitTimeDiscretization())
+                         ν=0, κ=0, time_discretization = Explicit())
 
 Returns parameters for an isotropic diffusivity model with viscosity `ν`
 and thermal diffusivities `κ` for each tracer field in `tracers`
@@ -22,25 +22,26 @@ functions of `(x, y, z, t)`.
 single number to be a applied to all tracers.
 """
 function ScalarDiffusivity(FT=Float64;
-                              ν=0, κ=0, direction=:ThreeDimensional, time_discretization::TD = ExplicitTimeDiscretization()) where {TD, Dir}
+                              ν=0, κ=0, isotropy::Iso=ThreeDimensional(),
+                              time_discretization::TD = Explicit()) where {TD, Iso}
 
-    if direction == :Horizontal && time_discretization == VerticallyImplicitTimeDiscretization()
-        throw(ArgumentError("The Implicit discretization is supported only for vertical directions"))
+    if isotropy == Horizontal() && time_discretization == VerticallyImplicit()
+        throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `isotropy = Horizontal()` or `isotropy = ThreeDimensional()`"))
     end
                                   
     if ν isa Number && κ isa Number
         κ = convert_diffusivity(FT, κ)
-        return ScalarDiffusivity{TD, eval(direction)}(FT(ν), κ)
+        return ScalarDiffusivity{TD, Iso}(FT(ν), κ)
     else
-        return ScalarDiffusivity{TD, eval(direction)}(ν, κ)
+        return ScalarDiffusivity{TD, Iso}(ν, κ)
     end
 end
 
 required_halo_size(closure::ScalarDiffusivity) = 1 
  
-function with_tracers(tracers, closure::ScalarDiffusivity{TD, Dir}) where {TD, Dir}
+function with_tracers(tracers, closure::ScalarDiffusivity{TD, Iso}) where {TD, Iso}
     κ = tracer_diffusivities(tracers, closure.κ)
-    return ScalarDiffusivity{TD, Dir}(closure.ν, κ)
+    return ScalarDiffusivity{TD, Iso}(closure.ν, κ)
 end
 
 @inline viscosity(closure::ScalarDiffusivity, args...) = closure.ν
@@ -48,8 +49,8 @@ end
                     
 calculate_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
 
-Base.show(io::IO, closure::ScalarDiffusivity{TD, Dir})  where {TD, Dir}= 
+Base.show(io::IO, closure::ScalarDiffusivity{TD, Iso})  where {TD, Iso}= 
     print(io, "ScalarDiffusivity:\n",
               "ν=$(closure.ν), κ=$(closure.κ)\n",
               "time discretization: $(time_discretization(closure))\n",
-              "direction: $Dir")
+              "direction: $Iso")

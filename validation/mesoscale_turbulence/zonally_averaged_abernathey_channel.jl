@@ -113,7 +113,7 @@ const y_sponge = 19/20 * Ly # southern boundary of sponge layer [m]
 
 b_forcing = Relaxation(target=b_target, mask=northern_mask, rate=1/7days)
 
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures: VerticallyImplicit
 using Oceananigans.Fields: TracerFields, FunctionField
 
 tracers = TracerFields(tuple(:b), architecture, grid)
@@ -134,7 +134,7 @@ f² = FunctionField{Center, Center, Center}(f²_func, grid)
 ν = Field(ν_op)
 
 closure = AnisotropicDiffusivity(νh = 100, νz = 10, κh = 10, κz = 10,
-                                 time_discretization = VerticallyImplicitTimeDiscretization())
+                                 time_discretization = VerticallyImplicit())
 
 model = NonhydrostaticModel(architecture,
                             grid = grid,

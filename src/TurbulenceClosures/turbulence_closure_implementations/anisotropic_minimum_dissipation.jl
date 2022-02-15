@@ -39,7 +39,7 @@ Base.show(io::IO, closure::AMD{TD, FT}) where {TD, FT} =
                                    Cb = nothing,
                                     ν = 0,
                                     κ = 0,
-                                   time_discretization=ExplicitTimeDiscretization())
+                                   time_discretization=Explicit())
                                        
 Returns parameters of type `FT` for the `AnisotropicMinimumDissipation`
 turbulence closure.
@@ -66,7 +66,7 @@ Keyword arguments
          diffusivity is applied to all tracers. If a `NamedTuple`, it must possess a field
          specifying a background diffusivity for every tracer.
 
-  - `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+  - `time_discretization`: Either `Explicit()` or `VerticallyImplicit()`, 
                            which integrates the terms involving only z-derivatives in the
                            viscous and diffusive fluxes with an implicit time discretization.
 
@@ -134,7 +134,7 @@ function AnisotropicMinimumDissipation(FT = Float64;
                                        Cb = nothing,
                                        ν = 0,
                                        κ = 0,
-                                       time_discretization::TD = ExplicitTimeDiscretization()) where TD
+                                       time_discretization::TD = Explicit()) where TD
     Cν = Cν === nothing ? C : Cν
     Cκ = Cκ === nothing ? C : Cκ
     

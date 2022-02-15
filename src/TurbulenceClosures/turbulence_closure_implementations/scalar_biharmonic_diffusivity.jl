@@ -1,16 +1,16 @@
 import Oceananigans.Grids: required_halo_size
 
 """
-    ScalarBiharmonicDiffusivity{N, K, Dir}
+    ScalarBiharmonicDiffusivity{Iso, N, K}
 
 Holds viscosity and diffusivities for models with prescribed isotropic diffusivities.
 """
-struct ScalarBiharmonicDiffusivity{Dir, N, K} <: AbstractScalarBiharmonicDiffusivity{Dir}
+struct ScalarBiharmonicDiffusivity{Iso, N, K} <: AbstractScalarBiharmonicDiffusivity{Iso}
     ν :: N
     κ :: K
 
-    function ScalarBiharmonicDiffusivity{Dir}(ν::N, κ::K) where {Dir, N, K}
-        return new{Dir, N, K}(ν, κ)
+    function ScalarBiharmonicDiffusivity{Iso}(ν::N, κ::K) where {Iso, N, K}
+        return new{Iso, N, K}(ν, κ)
     end
 end
 
@@ -34,15 +34,15 @@ Keyword arguments
   - `κz`: Vertical diffusivity. `Number`, `AbstractArray`, or `Function(x, y, z, t)`, or
           `NamedTuple` of diffusivities with entries for each tracer.
 """
-function ScalarBiharmonicDiffusivity(FT=Float64; ν=0, κ=0, direction = :Horizontal)
+function ScalarBiharmonicDiffusivity(FT=Float64; ν=0, κ=0, isotropy::Iso = Horizontal()) where {Iso}
     ν = convert_diffusivity(FT, ν)
     κ = convert_diffusivity(FT, κ)
-    return ScalarBiharmonicDiffusivity{eval(direction)}(FT(ν), κ)
+    return ScalarBiharmonicDiffusivity{Iso}(FT(ν), κ)
 end
 
-function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{Dir}) where {Dir}
+function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{Iso}) where {Iso}
     κ = tracer_diffusivities(tracers, closure.κ)
-    return ScalarBiharmonicDiffusivity{Dir}(closure.ν, κ)
+    return ScalarBiharmonicDiffusivity{Iso}(closure.ν, κ)
 end
 
 @inline viscosity(closure::ScalarBiharmonicDiffusivity, args...) = closure.ν
@@ -50,7 +50,7 @@ end
 
 calculate_diffusivities!(diffusivities, closure::ScalarBiharmonicDiffusivity, args...) = nothing
 
-Base.show(io::IO, closure::ScalarBiharmonicDiffusivity{Dir}) where {Dir} = 
+Base.show(io::IO, closure::ScalarBiharmonicDiffusivity{Iso}) where {Iso} = 
     print(io, "ScalarBiharmonicDiffusivity: " *
               "(ν=$(closure.ν), κ=$(closure.κ)), " *
-              "direction: $Dir")
+              "isotropy: $Iso")

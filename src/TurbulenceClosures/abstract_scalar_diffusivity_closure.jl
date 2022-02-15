@@ -3,26 +3,26 @@
 
 Abstract type for closures with *isotropic* diffusivities.
 """
-abstract type AbstractScalarDiffusivity{TD, Dir} <: AbstractTurbulenceClosure{TD} end
+abstract type AbstractScalarDiffusivity{TD, Iso} <: AbstractTurbulenceClosure{TD} end
 
 """
     struct ThreeDimensional end
 
-Corresponds to a closure which is three-dimensionally isotropic
+Specifies a three-dimensionally-isotropic `ScalarDiffusivity`.
 """
 struct ThreeDimensional end
 
 """
     struct Horizontal end
 
-Corresponds to a closure which is horizontally isotropic and calculated in a VectorInvariant form
+Specifies a horizontally-isotropic, `VectorInvariant`, `ScalarDiffusivity`.
 """
 struct Horizontal end
 
 """
     struct Vertical end
 
-Corresponds to a closure which calculates only the vertical direction
+Specifies a `ScalarDiffusivity` acting only in the vertical direction.
 """
 struct Vertical end
 
@@ -39,6 +39,8 @@ function viscosity end
 Returns the isotropic diffusivity associated with `closure` and tracer index `c_idx`.
 """
 function diffusivity end 
+
+@inline isotropy(::AbstractScalarDiffusivity{TD, Iso}) where {TD, Iso} = Iso()
 
 #####
 ##### Stress divergences
@@ -97,10 +99,10 @@ for (dir, closure) in zip((:x, :y, :z), (:AVD, :AVD, :AHD))
 end
 
 #####
-##### Support for VerticallyImplicitTimeDiscretization
+##### Support for VerticallyImplicit
 #####
 
-const VITD = VerticallyImplicitTimeDiscretization
+const VITD = VerticallyImplicit
 
   @inline z_viscosity(closure::AbstractScalarDiffusivity, args...)        = viscosity(closure, args...)
 @inline z_diffusivity(closure::AbstractScalarDiffusivity, c_idx, args...) = diffusivity(closure, c_idx, args...)
@@ -124,24 +126,24 @@ const VITD = VerticallyImplicitTimeDiscretization
 
 @inline function viscous_flux_uz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::Union{AID, AVD}, args...)
     return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_uz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
+                  viscous_flux_uz(i, j, k, grid, Explicit(), closure, args...),
                   ivd_viscous_flux_uz(i, j, k, grid, closure, args...))
 end
 
 @inline function viscous_flux_vz(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::Union{AID, AVD}, args...)
     return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_vz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
+                  viscous_flux_vz(i, j, k, grid, Explicit(), closure, args...),
                   ivd_viscous_flux_vz(i, j, k, grid, closure, args...))
 end
 
 @inline function viscous_flux_wz(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::Union{AID, AVD}, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
-                  viscous_flux_wz(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
+                  viscous_flux_wz(i, j, k, grid, Explicit(), closure, args...),
                   zero(FT))
 end
 
 @inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid{FT}, ::VITD, closure::Union{AID, AVD}, args...) where FT
     return ifelse(k == 1 || k == grid.Nz+1, 
-                  diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, args...),
+                  diffusive_flux_z(i, j, k, grid, Explicit(), closure, args...),
                   zero(FT))
 end

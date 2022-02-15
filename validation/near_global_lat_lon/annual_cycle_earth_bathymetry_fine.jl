@@ -8,7 +8,7 @@ using Oceananigans.Fields: interpolate
 using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
 using Oceananigans.Architectures: arch_array
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
-using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity, VerticallyImplicitTimeDiscretization
+using Oceananigans.TurbulenceClosures: HorizontallyCurvilinearAnisotropicDiffusivity, VerticallyImplicit
 using CUDA: @allowscalar
 using Oceananigans.Operators: Δzᵃᵃᶜ
 
@@ -136,7 +136,7 @@ datadep"near_global_lat_lon"
 # κz = 1e-4
 
 # background_diffusivity = HorizontallyCurvilinearAnisotropicDiffusivity(νh=νh, νz=νz, κh=κh, κz=κz,
-#                                                                        time_discretization = VerticallyImplicitTimeDiscretization())
+#                                                                        time_discretization = VerticallyImplicit())
 
 # convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0)
 
