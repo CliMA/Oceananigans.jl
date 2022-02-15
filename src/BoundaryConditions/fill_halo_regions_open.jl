@@ -24,7 +24,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     j, k = @index(Global, NTuple)
     @inbounds u[i_boundary, j, k] = getbc(bc, j, k, grid, args...)
 
-    @unroll for i in 1:grid.Hx
+    @unroll for i in 1:grid.Hx-1
         _fill_open_west_halo!(i, j, k, grid, u)
     end
 end
@@ -33,7 +33,7 @@ end
     j, k = @index(Global, NTuple)
     @inbounds u[i_boundary, j, k] = getbc(bc, j, k, grid, args...)
 
-    @unroll for i in 1:grid.Hx
+    @unroll for i in 1:grid.Hx-1
         _fill_open_east_halo!(i, j, k, grid, u)
     end
 end
@@ -42,7 +42,7 @@ end
     i, k = @index(Global, NTuple)
     @inbounds v[i, j_boundary, k] = getbc(bc, i, k, grid, args...)
 
-    @unroll for j in 1:grid.Hy
+    @unroll for j in 1:grid.Hy-1
         _fill_open_south_halo!(i, j, k, grid, v)
     end
 end
@@ -51,7 +51,7 @@ end
     i, k = @index(Global, NTuple)
     @inbounds v[i, j_boundary, k] = getbc(bc, i, k, grid, args...)
     
-    @unroll for j in 1:grid.Hy
+    @unroll for j in 1:grid.Hy-1
         _fill_open_north_halo!(i, j, k, grid, v)
     end
 end
@@ -60,7 +60,7 @@ end
     i, j = @index(Global, NTuple)
     @inbounds w[i, j, k_boundary] = getbc(bc, i, j, grid, args...)
     
-    @unroll for k in 1:grid.Hz
+    @unroll for k in 1:grid.Hz-1
         _fill_open_bottom_halo!(i, j, k, grid, w)
     end
 end
@@ -69,7 +69,7 @@ end
     i, j = @index(Global, NTuple)
     @inbounds w[i, j, k_boundary] = getbc(bc, i, j, grid, args...)
     
-    @unroll for k in 1:grid.Hz
+    @unroll for k in 1:grid.Hz-1
         _fill_open_top_halo!(i, j, k, grid, w)
     end
 end
@@ -93,7 +93,7 @@ end
         u[i_east, j, k] = getbc(east_bc, j, k, grid, args...)
     end
 
-    @unroll for i in 1:grid.Hx
+    @unroll for i in 1:grid.Hx-1
         _fill_open_west_halo!(i, j, k, grid, u)
         _fill_open_east_halo!(i, j, k, grid, u)
     end
@@ -110,7 +110,7 @@ end
         v[i, j_north, k] = getbc(north_bc, i, k, grid, args...)
     end
 
-    @unroll for j in 1:grid.Hy
+    @unroll for j in 1:grid.Hy-1
         _fill_open_south_halo!(i, j, k, grid, v)
         _fill_open_north_halo!(i, j, k, grid, v)
     end
@@ -127,7 +127,7 @@ end
         w[i, j, k_top]    = getbc(top_bc, i, j, grid, args...)
     end    
     
-    @unroll for k in 1:grid.Hz
+    @unroll for k in 1:grid.Hz-1
         _fill_open_bottom_halo!(i, j, k, grid, w)
         _fill_open_top_halo!(i, j, k, grid, w)
     end
