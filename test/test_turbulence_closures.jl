@@ -114,7 +114,7 @@ function time_step_with_variable_anisotropic_diffusivity(arch)
     for dir in (Horizontal(), Vertical())
         closure = ScalarDiffusivity(ν = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t),
                                     κ = (x, y, z, t) -> exp(z) * cos(x) * cos(y) * cos(t),
-                                    direction = dir)
+                                    isotropy = dir)
         model = NonhydrostaticModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)), closure=closure)
 
         time_step!(model, 1, euler=true)

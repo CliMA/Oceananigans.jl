@@ -123,7 +123,7 @@ function test_immersed_diffusion_3D(Nz, z, time_discretization)
 
     κ = 1.0
     
-    closure = ScalarDiffusivity(ν = κ, κ = κ, direction = Vertical(), time_discretization = time_discretization)
+    closure = ScalarDiffusivity(ν = κ, κ = κ, isotropy = Vertical(), time_discretization = time_discretization)
 
     b, l, m, u, t = -0.5, -0.2, 0, 0.2, 0.5
 
