@@ -12,13 +12,14 @@ function tracer_diffusivities(tracers, κ::NamedTuple)
     return κ
 end
 
-convert_diffusivity(FT, κ) = κ # fallback
+convert_diffusivity(FT, κ, discrete) = κ # fallback
+convert_diffusivity(FT, κ::Number, discrete) = convert(FT, κ)
+convert_diffusivity(FT, κ::F, ::Val{true})  where F<:Function = DiscreteFunction(κ) 
+convert_diffusivity(FT, κ::F, ::Val{False}) where F<:Function = κ
 
-convert_diffusivity(FT, κ::Number) = convert(FT, κ)
-
-function convert_diffusivity(FT, κ::NamedTuple)
+function convert_diffusivity(FT, κ::NamedTuple, discrete)
     κ_names = propertynames(κ)
-    return NamedTuple{κ_names}(Tuple(convert_diffusivity(FT, κi) for κi in κ))
+    return NamedTuple{κ_names}(Tuple(convert_diffusivity(FT, κi, discrete) for κi in κ))
 end
 
 @inline geo_mean_Δᶠ(i, j, k, grid::AbstractGrid) =

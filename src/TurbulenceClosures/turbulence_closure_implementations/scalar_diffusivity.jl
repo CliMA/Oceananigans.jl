@@ -22,17 +22,16 @@ functions of `(x, y, z, t)`.
 single number to be a applied to all tracers.
 """
 function ScalarDiffusivity(FT=Float64;
-                              ν=0, κ=0, isotropy::Iso=ThreeDimensional(),
+                              ν=0, κ=0,
+                              discrete_diffusivity = false,
+                              isotropy::Iso=ThreeDimensional(),
                               time_discretization::TD = Explicit()) where {TD, Iso}
 
     if isotropy == Horizontal() && time_discretization == VerticallyImplicit()
         throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `isotropy = Horizontal()` or `isotropy = ThreeDimensional()`"))
     end
                                   
-    if ν isa Number && κ isa Number
-        κ = convert_diffusivity(FT, κ)
-        return ScalarDiffusivity{TD, Iso}(FT(ν), κ)
-    else
+    
         return ScalarDiffusivity{TD, Iso}(ν, κ)
     end
 end

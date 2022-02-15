@@ -2,18 +2,26 @@
 ##### Diffusivities
 #####
 
+struct DiscreteFunction{F} <: Function
+    func :: F
+end
+
 @inline κᶠᶜᶜ(i, j, k, grid, clock, κ::Number) = κ
 @inline κᶜᶠᶜ(i, j, k, grid, clock, κ::Number) = κ
 @inline κᶜᶜᶠ(i, j, k, grid, clock, κ::Number) = κ
-
-@inline κᶠᶜᶜ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Face(),   i, grid), ynode(Center(), j, grid), znode(Center(), k, grid), clock.time)
-@inline κᶜᶠᶜ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Center(), i, grid), ynode(Face(),   j, grid), znode(Center(), k, grid), clock.time)
-@inline κᶜᶜᶠ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Face(),   k, grid), clock.time)
 
 # Assumes that `κ` is located at cell centers
 @inline κᶠᶜᶜ(i, j, k, grid, clock, κ::AbstractArray) = ℑxᶠᵃᵃ(i, j, k, grid, κ)
 @inline κᶜᶠᶜ(i, j, k, grid, clock, κ::AbstractArray) = ℑyᵃᶠᵃ(i, j, k, grid, κ)
 @inline κᶜᶜᶠ(i, j, k, grid, clock, κ::AbstractArray) = ℑzᵃᵃᶠ(i, j, k, grid, κ)
+
+@inline κᶠᶜᶜ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Face(),   i, grid), ynode(Center(), j, grid), znode(Center(), k, grid), clock.time)
+@inline κᶜᶠᶜ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Center(), i, grid), ynode(Face(),   j, grid), znode(Center(), k, grid), clock.time)
+@inline κᶜᶜᶠ(i, j, k, grid, clock, κ::F) where F<:Function = κ(xnode(Center(), i, grid), ynode(Center(), j, grid), znode(Face(),   k, grid), clock.time)
+
+@inline κᶠᶜᶜ(i, j, k, grid, clock, κ::DiscreteFunction) = κ.func(Face(),   Center(), Center(), i, j, k, grid, clock.time)
+@inline κᶜᶠᶜ(i, j, k, grid, clock, κ::DiscreteFunction) = κ.func(Center(), Face(),   Center(), i, j, k, grid, clock.time)
+@inline κᶜᶜᶠ(i, j, k, grid, clock, κ::DiscreteFunction) = κ.func(Center(), Center(), Face(),   i, j, k, grid, clock.time)
 
 #####
 ##### Convenience diffusive flux function

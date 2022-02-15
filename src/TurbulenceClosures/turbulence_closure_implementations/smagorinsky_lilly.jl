@@ -11,8 +11,8 @@ struct SmagorinskyLilly{TD, FT, P, K} <: AbstractEddyViscosityClosure{TD, ThreeD
      κ :: K
 
     function SmagorinskyLilly{TD, FT}(C, Cb, Pr, ν, κ) where {TD, FT}
-        Pr = convert_diffusivity(FT, Pr)
-         κ = convert_diffusivity(FT, κ)
+        Pr = convert_diffusivity(FT, Pr, Val(false))
+         κ = convert_diffusivity(FT, κ, Val(false))
         return new{TD, FT, typeof(Pr), typeof(κ)}(C, Cb, Pr, ν, κ)
     end
 end
