@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.TurbulenceClosures: Explicit, VerticallyImplicit, z_viscosity
+using Oceananigans.TurbulenceClosures: Explicit, VerticallyImplicit, z_viscosity, Horizontal, Vertical
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, GridFittedBottom
 
 function relative_error(u_num, u, time)
@@ -123,7 +123,7 @@ function test_immersed_diffusion_3D(Nz, z, time_discretization)
 
     κ = 1.0
     
-    closure = ScalarDiffusivity(ν = κ, κ = κ, direction = :Vertical, time_discretization = time_discretization)
+    closure = ScalarDiffusivity(ν = κ, κ = κ, direction = Vertical(), time_discretization = time_discretization)
 
     b, l, m, u, t = -0.5, -0.2, 0, 0.2, 0.5
 
