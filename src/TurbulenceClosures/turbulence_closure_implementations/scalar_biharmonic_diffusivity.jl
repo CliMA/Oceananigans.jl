@@ -40,7 +40,7 @@ function ScalarBiharmonicDiffusivity(FT=Float64; ν=0, κ=0, direction = :Horizo
     return ScalarBiharmonicDiffusivity{eval(direction)}(FT(ν), κ)
 end
 
-function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{Dir})
+function with_tracers(tracers, closure::ScalarBiharmonicDiffusivity{Dir}) where {Dir}
     κ = tracer_diffusivities(tracers, closure.κ)
     return ScalarBiharmonicDiffusivity{Dir}(closure.ν, κ)
 end
