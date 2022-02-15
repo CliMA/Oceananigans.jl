@@ -11,12 +11,17 @@ end
 
 """
     ScalarDiffusivity([FT=Float64;]
-                         ν=0, κ=0, time_discretization = Explicit())
+                         ν=0, κ=0,
+                         discrete_diffusivity = false,
+                         isotropy = ThreeDimensional() 
+                         time_discretization = Explicit())
 
 Returns parameters for an isotropic diffusivity model with viscosity `ν`
 and thermal diffusivities `κ` for each tracer field in `tracers`
-`ν` and the fields of `κ` may be constants, arrays, fields, or
-functions of `(x, y, z, t)`.
+`ν` and the fields of `κ` may be constants, arrays, fields or
+- functions of `(x, y, z, t)` if `discrete_diffusivity = false`
+- functions of `(LX, LY, LZ, i, j, k, grid, t)` with `LX`, `LY` and `LZ` are either `Face()` or `Center()` if
+  `discrete_diffusivity = true`.
 
 `κ` may be a `NamedTuple` with fields corresponding to each tracer, or a
 single number to be a applied to all tracers.
@@ -30,10 +35,9 @@ function ScalarDiffusivity(FT=Float64;
     if isotropy == Horizontal() && time_discretization == VerticallyImplicit()
         throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for `isotropy = Horizontal()` or `isotropy = ThreeDimensional()`"))
     end
-                                  
-    
-        return ScalarDiffusivity{TD, Iso}(ν, κ)
-    end
+    κ = convert_diffusivity(FT, κ, Val(discrete_diffusivity))
+    ν = convert_diffusivity(FT, ν, Val(discrete_diffusivity))
+    return ScalarDiffusivity{TD, Iso}(ν, κ)
 end
 
 required_halo_size(closure::ScalarDiffusivity) = 1 

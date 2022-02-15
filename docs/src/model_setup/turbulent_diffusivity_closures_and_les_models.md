@@ -35,13 +35,13 @@ julia> horizontal_closure = ScalarDiffusivity(ν=1e-3, κ=2e-3, isotropy=Horizon
 ScalarDiffusivity:
 ν=0.001, κ=0.002
 time discretization: Oceananigans.TurbulenceClosures.Explicit()
-isotropy: Horizontal
+isotropy: Oceananigans.TurbulenceClosures.Horizontal
 
 julia> vertical_closure = ScalarDiffusivity(ν=1e-3, κ=2e-3, isotropy=Vertical())
 ScalarDiffusivity:
 ν=0.001, κ=0.002
 time discretization: Oceananigans.TurbulenceClosures.Explicit()
-isotropy: Vertical
+isotropy: Oceananigans.TurbulenceClosures.Vertical
 
 ```
 
